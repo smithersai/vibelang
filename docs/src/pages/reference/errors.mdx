@@ -1,0 +1,92 @@
+# Errors [Reference for declared failures, propagation, recovery, and defects]
+
+## Declaration
+
+```ts
+error Identifier { FieldList }
+```
+
+Example:
+
+```ts
+error HttpError {
+  status: number
+  url: string
+}
+```
+
+Declared error types are nominal. Each runtime value has:
+
+- normal `Error` behavior
+- a stable discriminant such as `_tag`
+- declared readonly fields
+- an internal VibeLang failure brand
+
+## Throwing
+
+Throwing a declared error adds its type to the surrounding failure set:
+
+```ts
+throw HttpError({ status: 503, url })
+```
+
+Throwing or receiving an unbranded value is a defect or imprecise foreign failure, not automatically a member of a declared error union.
+
+## Inferred Set
+
+```ts
+function operation(): !Output
+```
+
+`!Output` tells the compiler to infer the union from reachable declared throws and propagated calls.
+
+## Explicit Set
+
+```ts
+function operation(): Output throws ErrorA | ErrorB
+```
+
+The compiler verifies that every reachable typed failure is assignable to the declared set.
+
+## `try`
+
+```ts
+try expression
+try await expression
+```
+
+On success, returns the inner value. On failure, exits through the current function's failure channel.
+
+## `catch`
+
+```ts
+expression catch fallback
+expression catch |binding| handler
+```
+
+The handler receives the typed failure union. A catch expression does not catch defects.
+
+## Exhaustiveness
+
+When a switch handles a failure union, every member must be covered or rethrown:
+
+```ts
+operation() catch |error| switch (error) {
+  NotFound => fallback,
+  Timeout => throw error,
+}
+```
+
+An unhandled member is a compile error when the set is known.
+
+## JavaScript `try/catch`
+
+Existing statement-form JavaScript `try/catch` keeps its ordinary behavior. It may observe typed failures and defects. Code should prefer VibeLang catch expressions when it intends to recover only expected failures.
+
+## Failure Identity Across Realms
+
+Worker and durable boundaries transport declared failures using derived tagged codecs. The receiver reconstructs the declared failure identity and fields. Unrecognized exceptions cross as defects according to the boundary protocol.
+
+## Cleanup
+
+`errdefer` runs for a typed-failure exit. The normative interaction with defects and cancellation is not finalized.

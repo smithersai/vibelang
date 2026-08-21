@@ -1,0 +1,89 @@
+# Platforms & Targets [Compile one program without hiding its host dependencies]
+
+VibeLang is designed to target TypeScript, native code, and Wasm. Portability is checked through the same requirement system used for application services.
+
+## Target Families
+
+| Target | Intended output | Host examples |
+| --- | --- | --- |
+| TypeScript | ordinary TypeScript or JavaScript | Node, Bun, Deno, browser, edge |
+| Native | near-native code through LLVM | server, CLI, worker |
+| Wasm | portable WebAssembly | browser, WASI, sandbox |
+
+The TypeScript target supports the complete TypeScript language. Native and Wasm targets classify features according to whether they can be implemented safely and predictably.
+
+## Platform as Capability
+
+Host facilities are not unconditional globals in authored `.vibe` code:
+
+```ts
+function refreshCache(): !void
+  uses clock: Clock, http: HttpClient, fs: FileSystem {
+  const data = try http.get(cacheUrl(clock.today()))
+  try fs.writeBytes(cachePath, data.body)
+}
+```
+
+The program declares exactly what it needs. A deployment supplies implementations that are valid for its target.
+
+`process`, `window`, `document`, ambient filesystem access, and ambient network access are modeled as requirements rather than universally available globals.
+
+## Feature Classification
+
+VibeLang classifies TypeScript and JavaScript behavior in three groups:
+
+1. **Portable** — implemented on TypeScript and native targets.
+2. **TypeScript-required** — valid, but adds the built-in `TypeScript` requirement.
+3. **Forbidden** — unavailable in authored `.vibe` code.
+
+For example, `any` and `eval` are valid on the TypeScript target but add `TypeScript`. Type-only imports do not add a runtime requirement.
+
+:::note
+The complete classification table is not finished. `Proxy`, prototype mutation, reflection, weak references, custom thenables, and Promise subclassing still need final assignments.
+:::
+
+## Native Pins
+
+A native pin is a checked assertion that a function's complete dependency graph can run without the `TypeScript` requirement:
+
+```ts
+// Exact modifier spelling is still open.
+native function checksum(bytes: Uint8Array): Digest {
+  return Hash.blake3(bytes)
+}
+```
+
+If a transitive call, provider, or dynamic feature requires TypeScript, compilation fails with the dependency path that introduced it.
+
+## Selecting a Target
+
+Use `comptime.target` when the implementation differs by output environment:
+
+```ts
+const FileSystemLive = comptime switch (comptime.target) {
+  "node" => NodeFileSystem,
+  "bun" => BunFileSystem,
+  "deno" => DenoFileSystem,
+  "native" => NativeFileSystem,
+  "wasm" => WasiFileSystem,
+}
+```
+
+Unselected implementations are not emitted.
+
+## Foreign Sources
+
+Zig and Rust modules can be compiled to Wasm or native artifacts with generated bindings:
+
+```ts
+import { hashMany } from "./hash.zig"
+import { parse } from "./parser.rs"
+```
+
+The compiler owns toolchain invocation and caching. The import's types, source maps, target, compiler versions, and foreign dependency graph contribute to its cache identity.
+
+## Runtime Model
+
+Native output is expected to use a Go-like compiled runtime with garbage collection. Closures, classes, generics, unions, and async functions are not rejected merely because they need runtime support.
+
+Backend-specific lowering is allowed. The source-level failure, requirement, and control-flow semantics remain consistent.

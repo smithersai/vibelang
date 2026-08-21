@@ -1,0 +1,90 @@
+# Project Philosophy [The principles that keep VibeLang small, compatible, and predictable]
+
+VibeLang adds systems-language structure to TypeScript without asking application code to enter a separate programming model.
+
+## A True TypeScript Superset
+
+TypeScript succeeds because adoption is incremental. VibeLang keeps that property.
+
+A `.ts` program remains valid on the TypeScript target and keeps its TypeScript behavior. Teams can rename one file at a time, add precise failures to one public boundary, or introduce a capability around one platform service. Precision is opt-in; compatibility is not.
+
+This does not make every TypeScript feature portable to every backend. Instead, the compiler records use of TypeScript-specific runtime behavior as a requirement. A native-pinned function is rejected if that requirement reaches it.
+
+## Compile Structure, Not Wrappers
+
+Libraries can model a computation as a value such as `Effect<A, E, R>`. VibeLang puts the same three channels on ordinary function types:
+
+```text
+A  value returned on success
+E  declared failures
+R  required capabilities
+```
+
+The channels are checked by the compiler and erased where possible. Calling a VibeLang function is still an eager call with an ordinary stack. Async functions still return promises. JavaScript output remains recognizable.
+
+Runtime machinery exists only where the program asks for it: scoped provider environments, workers, or durable Flows all have runtime meaning. Ordinary functions do not become interpreted programs.
+
+## Inference Inside, Declarations at Boundaries
+
+Most bookkeeping should be inferred from the body:
+
+```ts
+function loadConfig(path: string): !Config {
+  const source = try FileSystem.readText(path)
+  return try Config.parse(source)
+}
+```
+
+The compiler follows calls to collect the failure and requirement rows. Exported APIs pin those rows because a public signature is a contract:
+
+```ts
+export function loadConfig(path: string): Config
+  throws FileNotFound | InvalidConfig
+  uses fs: FileSystem
+```
+
+Inference keeps local code light. Explicit boundaries keep changes reviewable.
+
+## Platform Is a Dependency
+
+Filesystem access, network access, clocks, randomness, environment variables, and host globals differ across targets. VibeLang models each as a capability instead of pretending the platform is universal.
+
+That gives one mechanism three jobs:
+
+- production selects the platform implementation
+- tests supply deterministic implementations
+- the compiler checks whether a target can satisfy the program
+
+Portability and testability become the same feature.
+
+## Comptime Is Hermetic
+
+Compile-time code can generate values, types, validators, and execution plans. It cannot silently observe ambient filesystem state, the network, the clock, or random input.
+
+Every external compiler input must enter through a tracked import or loader context. That makes incremental builds reproducible: when an input changes, its dependent work is invalidated; unrelated work remains cached.
+
+## Backend-Appropriate Compilation
+
+VibeLang does not require every backend to use the same lowering strategy.
+
+The TypeScript backend should preserve the stock TypeScript pipeline wherever possible. Native and Wasm backends may use checked whole-program information, a garbage-collected runtime, and a shared VibeLang IR. Durable deployment builds may partition one program into a coordinator and several worker artifacts.
+
+The semantics stay consistent even when the emitted machinery differs.
+
+## One Toolchain
+
+The long-term toolchain follows Go's product shape: a fast compiler, formatter, language service, test tooling, standard library, and build integration delivered as one coherent distribution.
+
+VibeLang is planned as a minimal-diff fork of the Go-native TypeScript compiler with a narrow plugin host. The goal is to inherit TypeScript's checker and release cadence while keeping VibeLang features isolated enough to evolve deliberately.
+
+## Evolve With the Ecosystem
+
+VibeLang borrows proven ideas instead of renaming them:
+
+- TypeScript supplies the host language and migration path.
+- Effect demonstrates the value of typed failures, requirements, schema, and the failure/defect split.
+- Zig supplies inferred error sets, comptime, and expression-oriented control flow.
+- Go supplies the toolchain ethos.
+- Bun supplies the standard for frictionless foreign-language integration.
+
+The language should converge with TC39 work when that work fits the model. New syntax is reserved for places where TypeScript and JavaScript do not already have a suitable direction.

@@ -1,0 +1,103 @@
+# Durable Execution [Normative model for Actions, Flows, and distributed runtime behavior]
+
+Status: the core Action/Flow model and distributed-build requirement are **locked**. Plan details, policies, wire format, and deployment APIs are partly **direction** or **open**.
+
+## Scope
+
+Durable execution MUST be opt-in. Ordinary VibeLang functions MUST remain ordinary eager functions and MUST NOT be executed by the durable scheduler unless selected through an Action or Flow boundary.
+
+## Action
+
+An Action is an abstract runtime operation with:
+
+- an open, replaceable implementation
+- a closed typed function signature
+- compiler-derived input, success, failure, and requirement information
+- compiler-derived persistence schemas or explicit codecs where derivation is impossible
+
+An Action implementation MUST be an ordinary VibeLang function or callback. It MUST NOT require an Effect wrapper around the implementation.
+
+Source authors MUST NOT repeat Action types as separate schema arguments.
+
+## Durable Boundary
+
+Every value crossing an Action or Flow persistence boundary MUST satisfy the compiler-checked durable codec contract.
+
+Plain data SHOULD derive the contract automatically. Functions, capabilities, process handles, and other ephemeral values MUST be rejected unless they define an explicit durable representation.
+
+`any` and `unknown` MUST require an explicit codec at the boundary.
+
+## Flow
+
+A Flow is a closed comptime program that emits a statically analyzable execution-plan template from Action calls.
+
+Calling `Action.run` during Flow compilation MUST emit a plan node and return a typed symbolic result. It MUST NOT execute the Action implementation.
+
+Property access and argument passing on a symbolic result MUST create typed projections and dependency edges when representable in Plan IR.
+
+The Flow callback MUST be removable after the compiler emits its plan, schemas, channel rows, identities, and debug map.
+
+## Flow Purity
+
+A Flow callback MAY capture comptime values only. It MUST NOT observe runtime clock, randomness, environment, mutable state, services, or I/O while constructing the plan.
+
+Runtime-dependent control flow MUST be represented explicitly in Plan IR. The compiler MUST reject an operation that would inspect a symbolic value without a corresponding IR representation.
+
+## Compilation Phases
+
+A durable implementation MUST distinguish:
+
+1. **template compilation**, which emits target-neutral Plan IR
+2. **deployment build**, which resolves providers and emits coordinator, worker, and manifest artifacts
+3. **execution**, which instantiates a validated template input and schedules nodes
+
+The deployment build MUST check the complete provider dependency closure for every emitted worker artifact.
+
+## Ordering and Concurrency
+
+Action ordering MUST be determined by data and control edges, not source position alone. Independent Action calls MAY execute concurrently.
+
+Programs requiring order without a data dependency MUST use an explicit sequencing construct. The construct's syntax is **open**.
+
+## Replay
+
+Every completed Action invocation MUST be journaled within its Flow execution, including typed failures and nondeterministic successes.
+
+After restart, the same Flow execution MUST observe the committed outcome instead of repeating the completed invocation.
+
+Replay is mandatory execution history, not an optional cross-execution cache.
+
+## Recovery
+
+Recovery safety and cross-execution reuse MUST be independent policy dimensions.
+
+The runtime SHOULD distinguish idempotent, compensable, and irreversible recovery behavior. It MUST NOT retry an ambiguously committed irreversible Action automatically.
+
+The runtime provides at-least-once execution only where retry is allowed. Exactly-once external effects require idempotency, fencing, hermetic sealing, or compensation outside the scheduler's basic guarantee.
+
+## Reuse
+
+Cross-execution reuse MUST distinguish:
+
+- **memoization**, where one committed acceptable result becomes canonical for an explicit key
+- **content caching**, where the complete content key asserts reproducible equivalence
+
+A memoized result MUST NOT be promoted automatically to a deterministic content-cache entry.
+
+A content key SHOULD include canonical inputs, implementation and policy digests, relevant dependency identities, toolchain and target facts, and explicit invalidation salts.
+
+## Distributed Deployment
+
+A deployment build MUST be capable of emitting a coordinator plus separate tree-shaken TypeScript, native, or Wasm worker artifacts and a routing manifest.
+
+Placement MUST belong to provider or deployment configuration rather than the abstract Action signature. Multiple implementations of one Action MAY target different worker pools or machines.
+
+## Security
+
+Workers MUST receive only their declared provider authority. Messages crossing coordinator and worker boundaries MUST be validated against derived codecs.
+
+Secrets, sandboxing, artifact access, worker authentication, fencing, and attestation are runtime concerns but MUST preserve the compiler-derived Action contract.
+
+## Open Questions
+
+The following remain open: stable source IDs, plan loop and fan-out semantics, explicit sequencing, wire encoding, schema migration, deployment syntax, provider selection, and large-artifact reference protocols.

@@ -1,0 +1,126 @@
+# Durable Execution [Compile selected programs into typed, resumable plans]
+
+Durable execution is opt-in. An **Action** defines a closed persistence boundary, and a **Flow** turns Action calls into a statically analyzable plan.
+
+:::warning Design draft
+The Action and Flow model is accepted, but the runtime and compiler are not implemented. Provider spelling, stable IDs, loop semantics, wire encoding, and deployment APIs remain under design.
+:::
+
+## Define an Action
+
+An Action closes over one function signature:
+
+```ts
+abstract class Compile extends Action<
+  (input: CompileInput) => CompileOutput throws CompileError
+> {}
+
+abstract class Package extends Action<
+  (input: PackageInput) => Artifact throws PackageError
+> {}
+```
+
+The compiler derives the input, success, and tagged-failure codecs from those types. The author does not repeat schemas in an Action constructor.
+
+Action values crossing a persistence or machine boundary must satisfy `Durable<T>`. Plain data derives this automatically. Functions, process handles, and other ephemeral values require an explicit durable representation or are rejected.
+
+## Build a Flow
+
+A Flow is a comptime program:
+
+```ts
+const Build = comptime Flow((input: BuildInput) => {
+  const compiled = Compile.run({ source: input.source })
+  return Package.run({ code: compiled.code })
+})
+```
+
+During Flow compilation, `Compile.run` does not invoke a compiler. It emits an Action node and returns a typed symbolic value. Accessing `compiled.code` creates a projection, and passing that value to `Package.run` creates a data edge.
+
+The callback disappears after compilation. The emitted template contains the plan, codecs, inferred failures and requirements, stable identities, and debug map.
+
+## Compilation Phases
+
+Durable programs have three distinct phases:
+
+1. **Template compilation** evaluates the Flow with symbolic input and emits target-neutral Plan IR.
+2. **Deployment build** resolves providers, checks the dependency closure, and partitions coordinator and worker artifacts.
+3. **Execution** validates an input, instantiates the template, and dispatches eligible Action nodes.
+
+Keeping the phases separate allows one plan to deploy across TypeScript, native, and Wasm workers.
+
+## Provide Implementations
+
+Actions are abstract capabilities. Layers install ordinary function implementations and their policies:
+
+```ts
+import { Action, Layer } from "vibelang:provider"
+
+const BuildActions = Layer.merge(
+  Action.provide(Compile, compileWithEsbuild, {
+    recovery: Action.idempotent,
+    reuse: Action.content,
+  }),
+  Action.provide(Package, packageArtifact, {
+    recovery: Action.idempotent,
+    reuse: Action.execution,
+  }),
+)
+```
+
+The abstract Action owns the durable contract. A deployment layer chooses its implementation, placement, resource limits, and recovery policy.
+
+## Control Flow in Plans
+
+Branches on comptime values reduce normally. Branches on Flow input or Action output emit plan nodes and compile both arms:
+
+```ts
+const Release = comptime Flow((input: ReleaseInput) => {
+  const tested = Test.run({ source: input.source })
+  return if (tested.passed) {
+    Deploy.run({ artifact: tested.artifact })
+  } else {
+    ReportFailure.run({ report: tested.report })
+  }
+})
+```
+
+Pure operations on symbolic values become portable expression IR. An operation the IR cannot represent is a compile error; it never reads a fake placeholder at comptime.
+
+## Replay and Retry
+
+Every completed Action invocation is journaled for its Flow execution. After a restart, the same execution observes the recorded success or typed failure instead of repeating completed work.
+
+Retry safety is a separate decision:
+
+- **idempotent** work may repeat after an ambiguous crash
+- **compensable** work may repeat with an explicit rollback path
+- **irreversible** work does not retry after ambiguity
+
+The safe default is execution-local replay with no ambiguous retry unless the implementation declares how repetition is safe.
+
+## Memoization and Content Caching
+
+Cross-execution reuse has two meanings:
+
+- **Memoization** records one acceptable result for an explicit key, even when the operation is nondeterministic.
+- **Content caching** asserts that complete keyed inputs, implementation, dependencies, and execution semantics reproduce an equivalent result.
+
+These policies are never interchangeable. A memoized model response must not be promoted to a hermetic shared cache entry.
+
+## Distributed Builds
+
+A deployment can emit:
+
+- a coordinator artifact
+- several tree-shaken worker artifacts
+- derived RPC bindings and schemas
+- a signed routing manifest
+
+Different worker pools can use TypeScript, native, or Wasm implementations of the same Action. Placement belongs to the deployment layer, so the durable signature stays independent of one machine topology.
+
+## Security Boundary
+
+The Action signature describes data, not authority. Worker implementations receive only their declared providers, and coordinator-to-worker messages are validated against derived codecs.
+
+OS isolation, secret delivery, fencing, artifact storage, and worker attestation remain runtime responsibilities built around the compiler-derived contract.

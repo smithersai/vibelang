@@ -1,0 +1,85 @@
+# Capabilities [Reference for requirements and layer composition]
+
+## Capability Declaration
+
+```ts
+abstract class Service {
+  abstract operation(input: Input): !Output
+}
+```
+
+Class identity is the capability identity. Abstract capabilities require a provider. Concrete capabilities may supply a default implementation.
+
+## Requirement Binding
+
+```ts
+function run(): !Output uses service: Service {
+  return try service.operation(input)
+}
+```
+
+`service` is a lexical binding whose static type is `Service`.
+
+## Multiple Requirements
+
+```ts
+function run(): !Output
+  uses db: Database, clock: Clock, log: Logger
+```
+
+Requirement rows are nominal sets. Binding names do not change service identity.
+
+## Layer Type
+
+```ts
+Layer<Provides, Error, Requires>
+```
+
+| Parameter | Meaning |
+| --- | --- |
+| `Provides` | capabilities made available by the layer |
+| `Error` | failures possible during acquisition |
+| `Requires` | capabilities needed to acquire the layer |
+
+## Constructors
+
+Current design examples use:
+
+```ts
+Layer.succeed(Service, implementation)
+Layer.merge(left, right, ...rest)
+Layer.provide(layer, callback)
+```
+
+These names are API direction, not a stable published package.
+
+## Composition Rules
+
+- `merge` unions provided capabilities and acquisition failures.
+- construction requirements propagate until another layer satisfies them.
+- `provide` removes satisfied requirements from the callback's requirement row.
+- layer acquisition failures enter the provided expression's failure row.
+- a missing capability is a compile error when the closure is statically known.
+
+## Platform Services
+
+Standard capabilities include planned services such as:
+
+```text
+FileSystem  HttpClient  Clock  Random  Environment  Console
+```
+
+Target packages supply live implementations. Tests supply deterministic implementations through the same layer API.
+
+## Open Lifecycle Semantics
+
+The following APIs are not yet specified:
+
+- scoped acquisition and disposal
+- memoization and layer sharing
+- override precedence
+- cycle diagnostics
+- asynchronous acquisition
+- finalizer failure handling
+
+Provider composition is locked as a library API from `vibelang:provider`; a special `provide {}` language statement is not part of the accepted design.

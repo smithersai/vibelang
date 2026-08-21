@@ -1,0 +1,85 @@
+# TypeScript Interop [Adopt VibeLang without leaving the JavaScript ecosystem]
+
+The TypeScript target preserves valid TypeScript source and runtime behavior. VibeLang adds precision around that code instead of requiring a rewrite.
+
+## Existing TypeScript
+
+This function has the same behavior in `.ts` and `.vibe`:
+
+```ts
+export async function readUser(id: string): Promise<User> {
+  const response = await fetch(`/users/${id}`)
+  return response.json()
+}
+```
+
+VibeLang conservatively models inference-impossible failures as `unknown`. Using runtime values from TypeScript or JavaScript also contributes the built-in `TypeScript` requirement.
+
+## Type-Only Imports
+
+An erased import does not add a runtime requirement:
+
+```ts
+import type { User } from "./legacy-types"
+```
+
+Only runtime dependence on the foreign module enters the requirement row.
+
+## Exact Host Modules
+
+Direct use of a host module is intended to carry an exact requirement:
+
+```ts
+import { readFile } from "node:fs/promises"
+
+// contributes Module<"node:fs/promises">
+```
+
+That requirement can be satisfied on the TypeScript target or rejected from a native-pinned dependency graph. General application code should prefer portable capabilities such as `FileSystem`.
+
+## `any` and Dynamic Features
+
+VibeLang does not globally ban TypeScript escape hatches:
+
+```ts
+declare const plugin: any
+plugin.activate()
+```
+
+Using `any` adds the `TypeScript` requirement. `eval` follows the same rule. Linters may discourage both without changing TypeScript compatibility.
+
+Some dynamic features will be classified as portable, TypeScript-required, or forbidden. The complete table is not yet specified.
+
+## Adapting a Boundary
+
+Wrap a foreign API when you know more than its TypeScript signature expresses:
+
+```ts
+error ConnectFailed { cause: unknown }
+
+function connect(options: Options): Client throws ConnectFailed {
+  return legacyConnect(options) catch |cause| {
+    throw ConnectFailed({ cause })
+  }
+}
+```
+
+The adapter turns an imprecise boundary into a stable VibeLang contract. The exact foreign-catch spelling remains subject to the failure interop specification.
+
+## Promise Interop
+
+Ordinary promises remain ordinary promises. VibeLang enriches their static form as `Promise<T, E>` and restores `E` when they are awaited.
+
+Custom thenables, Promise subclassing, and behaviors that depend on JavaScript-specific scheduling may add `TypeScript`. Standard async functions and common promise operations are intended to remain portable.
+
+## Effect Interop
+
+Planned Effect interoperability maps `Effect<A, E, R>` values to VibeLang's function channels and back. This lets a VibeLang module live inside an existing Effect application without discarding typed failures or requirements.
+
+The bridge is planned for milestone M4 and has no stable API yet.
+
+## Native Compatibility
+
+Native output is not a stricter source-language mode. It is a checked property of a dependency graph.
+
+A native pin asks the compiler to prove that no transitive operation, provider, or foreign runtime value requires TypeScript. Diagnostics should show the complete path when that proof fails.

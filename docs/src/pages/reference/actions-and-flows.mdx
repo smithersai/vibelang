@@ -1,0 +1,101 @@
+# Actions & Flows [Reference for durable signatures and execution plans]
+
+Actions and Flows are design-stage compiler/library primitives. The semantics below are accepted unless marked open; API names remain provisional.
+
+## Action
+
+```ts
+abstract class Name extends Action<FunctionSignature> {}
+```
+
+An Action has:
+
+- a nominal durable identity and version
+- input, success, and tagged-failure schemas
+- inferred success, failure, and requirement channels
+- implementation and policy digests
+- source and debug metadata
+
+Schemas and channel rows are derived from `FunctionSignature`.
+
+## Action Invocation
+
+```ts
+Name.run(input)
+```
+
+Inside Flow compilation, `run` emits a Plan IR node and returns a typed symbolic result. Outside Flow compilation, the runtime dispatches the configured implementation.
+
+## Flow
+
+```ts
+const Name = comptime Flow((input: Input) => {
+  // Action calls and representable control flow
+  return output
+})
+```
+
+The callback may capture comptime values only. It is removed after plan compilation.
+
+## Plan IR Nodes
+
+The initial IR includes:
+
+- constant, input, projection, and pure expression
+- Action call
+- parallel join and explicit sequence
+- branch, switch, typed catch, and completion
+- parameterized loop and fan-out templates
+- inline Flow, child Flow, and next-round handoff
+- durable sleep, signal, and cancellation boundary
+- compensation and finalization
+
+## Ordering
+
+Data and control edges determine Action order. Source order alone does not serialize independent calls. Explicit sequencing syntax is still open.
+
+Independent nodes may run concurrently.
+
+## Durable Values
+
+Action inputs, success values, and declared failures must implement:
+
+```ts
+Durable<T>
+```
+
+Plain data derives this contract. `any` and `unknown` require explicit codecs at an Action boundary. Functions, capabilities, handles, and weak references require durable representations or are rejected.
+
+## Recovery Policy
+
+| Policy | Ambiguous retry behavior |
+| --- | --- |
+| idempotent | may repeat |
+| compensable | may repeat with compensation |
+| irreversible | does not repeat automatically |
+
+Completed invocations are journaled for execution-local replay regardless of reuse policy.
+
+## Reuse Policy
+
+| Policy | Cross-execution behavior |
+| --- | --- |
+| execution-only | no reuse outside the execution |
+| memoized | first committed acceptable outcome for an explicit key |
+| content | reproducible equivalent result from a complete content key |
+
+Memoization does not imply determinism or hermeticity.
+
+## Deployment Output
+
+A deployment build may emit:
+
+- coordinator bundle
+- target-specific worker bundles
+- routing and placement manifest
+- derived wire codecs and RPC bindings
+- implementation and policy digests
+
+## Open Semantics
+
+Stable persisted ID syntax, loop and fan-out rules, explicit sequencing, wire encoding, schema migration, provider APIs, and deployment configuration are not finalized.

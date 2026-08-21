@@ -1,0 +1,79 @@
+# Compatibility [Normative direction for TypeScript source and backend portability]
+
+Status: **Locked**, except where marked.
+
+## Source Superset
+
+1. A valid TypeScript program MUST remain valid VibeLang input for the TypeScript target.
+2. Its observable TypeScript behavior MUST be preserved unless the source opts into VibeLang-specific syntax or APIs.
+3. VibeLang MUST NOT impose a globally sound type system that invalidates TypeScript escape hatches.
+4. Precision MAY be adopted incrementally across files and API boundaries.
+
+VibeLang source uses the `.vibe` extension. The JSX-capable extension is **open**; `.vibex` is a candidate only.
+
+## TypeScript Target
+
+The TypeScript target MUST support the complete TypeScript language. VibeLang constructs SHOULD lower into ordinary TypeScript before the stock pipeline finishes checking and emission where feasible.
+
+Failure and requirement annotations MUST erase where they do not require runtime machinery. The backend MUST NOT wrap every function result merely to encode its static channels.
+
+## Runtime TypeScript Dependency
+
+Using a value from TypeScript or JavaScript code MUST add a runtime requirement representing that compatibility boundary. A type-only import MUST NOT add that requirement.
+
+The built-in requirement is currently named `TypeScript`.
+
+The requirement MUST propagate through callers like any other requirement.
+
+## Dynamic Features
+
+Every relevant TypeScript or JavaScript runtime feature MUST be assigned one classification:
+
+1. portable across TypeScript and native targets
+2. valid but contributing the `TypeScript` requirement
+3. forbidden in authored `.vibe` source
+
+Use of `any` and `eval` MUST contribute `TypeScript`; neither is globally forbidden.
+
+The classification of `Proxy`, prototype APIs, property descriptors, weak references, custom thenables, and Promise subclassing is **open**.
+
+## Host Globals
+
+Platform-specific globals such as `process`, `window`, `document`, filesystem, and network MUST NOT be unconditional globals in authored `.vibe` code. Host functionality MUST be represented by typed requirements.
+
+Facilities truly present in every supported JavaScript environment MAY be unconditional globals. Host-sensitive operations such as clock and random access MUST still use capabilities.
+
+## Host Modules
+
+**Direction:** direct host-module usage contributes an exact module requirement such as:
+
+```ts
+Module<"node:fs">
+```
+
+This is preferred over a coarse platform flag because a provider or target may satisfy one host contract without satisfying another.
+
+## Native and Wasm Targets
+
+VibeLang MUST support a near-native target through LLVM and SHOULD support Wasm.
+
+The native backend MAY use a garbage-collected runtime. Closures, classes, generics, unions, and async functions MUST NOT be rejected solely because runtime support is required.
+
+Arbitrary dynamic import expressions MUST initially be unavailable in native code. A future finite, statically enumerable import-set implementation MAY make some forms portable.
+
+## Native Pin
+
+A native pin MUST be a checked assertion over the complete transitive graph. Compilation MUST fail if any reachable operation or provider requires `TypeScript`.
+
+The diagnostic SHOULD show the dependency path that introduced the requirement.
+
+The exact source spelling of a native pin is **open**.
+
+## Type Assertions
+
+Assertion semantics are **open**. The current candidate is:
+
+- provably safe assertions erase
+- reifiable assertions may check and defect on failure
+- assertions that cannot be made safe add `TypeScript`
+- native casts MUST NOT reinterpret memory unsafely

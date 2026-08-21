@@ -1,0 +1,85 @@
+# Comptime [Normative model for deterministic phase evaluation]
+
+Status: phase evaluation, type generation, and tracked input requirements are **locked**. Loader syntax and module shapes are **open**.
+
+## Evaluation Principle
+
+The compiler MAY evaluate code automatically when its inputs and operations are available at compile time.
+
+An explicit `comptime` expression MUST be evaluated during compilation. Compilation MUST fail if the expression cannot be evaluated under the comptime rules.
+
+Comptime evaluation MUST NOT silently defer explicit work to runtime.
+
+## Types as Values
+
+Comptime code MAY consume and produce types. A generated type MUST participate in ordinary checking, declarations, diagnostics, and editor behavior.
+
+The language MUST NOT require a separate `runtime type` declaration modifier.
+
+## Determinism
+
+Comptime evaluation MUST be hermetic and deterministic with respect to its declared inputs.
+
+It MUST NOT observe ambient:
+
+- filesystem state
+- network state
+- environment variables
+- process state
+- wall clock
+- randomness
+- mutable host state
+
+An equivalent value MAY enter through a compiler-owned, dependency-tracked input API.
+
+## Comptime I/O
+
+Compiler-known imports and embedding MUST be supported. The compiler MUST record every such asset as an incremental dependency.
+
+Arbitrary unavailable runtime I/O MUST NOT be performed merely because a call occurs beneath `comptime`.
+
+## Target Selection
+
+The compiler MUST expose a typed target value, currently designed as `comptime.target`.
+
+A target-selected branch resolved at comptime MUST NOT emit unselected runtime code. Target-dependent loaders and derived artifacts MUST include the target in their cache identity.
+
+## Asset Loaders
+
+VibeLang MUST support comptime loaders for non-code assets.
+
+A loader MUST:
+
+1. receive immutable compiler-owned source text or bytes
+2. declare transitive inputs through a tracked context
+3. produce a checked typed module or equivalent checked representation
+4. preserve source spans for diagnostics
+5. participate in incremental caching
+
+A loader MUST NOT use ambient filesystem, network, clock, random, or process access.
+
+## Built-In Formats
+
+The toolchain MUST include loaders for JSON, Markdown, and MDX.
+
+VibeLang's const JSON form MUST preserve literal values recursively and expose a deeply readonly type. Existing TypeScript JSON imports MUST retain TypeScript semantics.
+
+The const-import grammar is **open**.
+
+Markdown and MDX MUST preserve source locations. Their standard export shapes, JSX runtime selection, component injection, and frontmatter typing are **open**.
+
+## Incremental Identity
+
+A comptime or loader cache key MUST include every semantically relevant input. At minimum this includes:
+
+- compiler version
+- implementation graph and package resolution
+- configuration and target
+- direct source bytes
+- transitive dependency hashes
+
+File modification time alone SHOULD NOT invalidate content whose semantic key is unchanged.
+
+## Resource Limits
+
+A compiler MAY limit comptime CPU, memory, recursion, and output size. Limit failures MUST produce deterministic diagnostics and MUST NOT fall back silently to runtime behavior.

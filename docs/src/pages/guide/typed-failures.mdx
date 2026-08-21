@@ -1,0 +1,136 @@
+# Typed Failures [Declare, propagate, and recover from expected failures]
+
+JavaScript lets any function throw any value. VibeLang keeps JavaScript exceptions at runtime while adding a checked channel for failures callers are expected to handle.
+
+## Declaring an Error
+
+Use `error` to declare a nominal failure with structured fields:
+
+```ts
+error NotFound { id: string }
+error RateLimited { retryAfter: Duration }
+error Unauthorized {}
+```
+
+Declared errors compile to `_tag`-discriminated `Error` subclasses with a VibeLang failure brand. The tag supports exhaustive matching and the brand keeps failures distinct from defects.
+
+## Inferring a Failure Set
+
+Use `!T` on an internal function when the compiler should infer its failure set:
+
+```ts
+function readSettings(path: string): !Settings {
+  const source = try FileSystem.readText(path)
+  return try Settings.parse(source)
+}
+```
+
+If `readText` fails with `FileNotFound | PermissionDenied` and `parse` fails with `InvalidSettings`, the inferred set is:
+
+```ts
+FileNotFound | PermissionDenied | InvalidSettings
+```
+
+The set is a union, so duplicates disappear as failures move through a call graph.
+
+## Propagating With `try`
+
+`try expression` evaluates the expression and returns its success value. A typed failure returns from the current function through its failure channel:
+
+```ts
+function loadApplication(): !Application {
+  const settings = try readSettings("app.json")
+  return Application.make(settings)
+}
+```
+
+`try` is visible control flow. It marks the exact call that can leave the function.
+
+## Recovering With `catch`
+
+A catch expression transforms a failure into a value or another failure:
+
+```ts
+const settings = readSettings("app.json") catch Settings.default()
+```
+
+Capture the error when recovery depends on its type or fields:
+
+```ts
+const settings = readSettings("app.json") catch |error| switch (error) {
+  FileNotFound => Settings.default(),
+  PermissionDenied => throw error,
+  InvalidSettings => reportAndExit(error),
+}
+```
+
+The switch must cover every member of the input failure set. Rethrowing a member keeps it in the surrounding expression's failure set; returning a value removes it.
+
+:::note
+Exact switch-pattern spelling is still being specified. Exhaustiveness over the known failure set is a locked behavior.
+:::
+
+## Failures and Defects
+
+A **failure** is expected by the program's domain: a missing record, invalid input, timeout, or rejected request. It belongs in `E`.
+
+A **defect** indicates a bug or broken invariant: an impossible state, failed assertion, or unexpected foreign exception. It does not belong in a declared failure set.
+
+VibeLang catch expressions catch failures only:
+
+```ts
+const value = operation() catch recover
+// A branded typed failure calls recover.
+// A RangeError or panic continues unwinding.
+```
+
+Existing JavaScript `try { } catch { }` keeps its JavaScript behavior and can observe both channels when boundary code genuinely needs that.
+
+## Sync and Async Use One Channel
+
+Promises carry the failure row as `Promise<T, E>`. Awaiting a promise restores that failure to the surrounding function:
+
+```ts
+async function loadUser(id: string): !User {
+  const response = try await HttpClient.get(`/users/${id}`)
+  return try await response.json(User)
+}
+```
+
+There is no separate `.catch()` error model for asynchronous work. `try await` propagates; `await expression catch` recovers.
+
+## Public Failure Contracts
+
+Exported functions state their failures explicitly with `throws`:
+
+```ts
+export function readSettings(path: string): Settings
+  throws FileNotFound | PermissionDenied | InvalidSettings {
+  return try readSettingsInternal(path)
+}
+```
+
+The compiler checks the declared set against the body. Adding a new uncaught failure becomes a public API change instead of silently widening the signature.
+
+## TypeScript Boundaries
+
+When the compiler cannot infer what foreign TypeScript or JavaScript may throw, the boundary contributes `unknown`. You can handle it at the boundary, adapt the API with a precise declaration, or let `unknown` propagate.
+
+Typed failures are optional. Existing code continues to work; precision increases as boundaries are described.
+
+## Cleanup
+
+Use `errdefer` for cleanup that runs only when the scope exits through a failure:
+
+```ts
+function replaceFile(path: string, contents: string): !void {
+  const temporary = try FileSystem.createTemp(path)
+  defer temporary.close()
+  errdefer FileSystem.remove(temporary.path)
+
+  try temporary.write(contents)
+  try FileSystem.replace(temporary.path, path)
+}
+```
+
+`defer` runs on every exit path. `errdefer` runs only for failure exits, making rollback behavior adjacent to resource acquisition.

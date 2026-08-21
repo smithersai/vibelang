@@ -1,0 +1,110 @@
+# Expression-Oriented Control Flow [Use conditions, switches, blocks, and loops as values]
+
+VibeLang makes common control-flow forms usable as expressions. New syntax follows Zig where TypeScript does not already provide a suitable form.
+
+## If Expressions
+
+An `if` can produce a value:
+
+```ts
+const access = if (user.isAdmin) "all" else "limited"
+```
+
+Each reachable branch must produce a compatible type. A block returns its final expression:
+
+```ts
+const price = if (customer.isMember) {
+  const discount = calculateDiscount(customer)
+  subtotal * (1 - discount)
+} else {
+  subtotal
+}
+```
+
+Statement-form TypeScript `if` remains valid.
+
+## Switch Expressions
+
+A switch can return a value and can be checked for exhaustiveness:
+
+```ts
+const message = switch (state) {
+  Loading => "Loading…",
+  Ready(value) => value.title,
+  Failed(error) => error.message,
+}
+```
+
+VibeLang owns the initial expression-form grammar while leaving room to converge with future TC39 pattern matching.
+
+## Blocks and Labeled Breaks
+
+A labeled block can compute a value from an early exit:
+
+```ts
+const result = parse: {
+  if (input.length === 0) break :parse ParseResult.empty()
+  if (!isValid(input)) break :parse ParseResult.invalid(input)
+  break :parse ParseResult.valid(input)
+}
+```
+
+The label makes the destination explicit and allows `break` to carry a value.
+
+## Loop Expressions
+
+Loops can produce a value when a labeled break succeeds:
+
+```ts
+const firstEven = search: for (const value of values) {
+  if (value % 2 === 0) break :search value
+} else -1
+```
+
+The `else` expression runs when the loop completes without breaking to its value label.
+
+Runtime-sized loops remain ordinary runtime loops. Comptime-known loops may be evaluated or unrolled when used from comptime code.
+
+## Throw Expressions
+
+`throw` can appear where an expression is expected:
+
+```ts
+const port = config.port ?? throw InvalidConfig({ field: "port" })
+```
+
+The thrown type enters the function's failure set when it is a declared failure.
+
+## Declarations in Conditions
+
+VibeLang plans to adopt declarations in conditionals from TC39 where appropriate:
+
+```ts
+if (const user = cache.get(id); user !== null) {
+  render(user)
+}
+```
+
+The binding stays scoped to the conditional construct.
+
+## `defer` and `errdefer`
+
+Cleanup belongs next to acquisition:
+
+```ts
+function write(path: string, contents: string): !void {
+  const file = try FileSystem.open(path, "write")
+  defer file.close()
+  try file.write(contents)
+}
+```
+
+`defer` runs when the current scope exits, regardless of the path. `errdefer` runs only when the scope exits through a typed failure:
+
+```ts
+const transaction = try Database.begin()
+errdefer transaction.rollback()
+try transaction.commit()
+```
+
+The exact interaction with defects, async suspension, and disposal protocols will be finalized in the normative specification.

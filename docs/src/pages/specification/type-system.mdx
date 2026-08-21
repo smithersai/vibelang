@@ -1,0 +1,78 @@
+# Type System [Function rows, inference, optionals, and boundary precision]
+
+Status: **Locked**, except optional conversion and annotation grammar details.
+
+## Gradual Foundation
+
+VibeLang extends TypeScript's gradual type system. Existing TypeScript escape hatches remain available on the TypeScript target and MAY be restricted by lint policy rather than the language.
+
+Typed failures and requirements are optional precision. They MUST NOT require a separate globally strict mode.
+
+## Function Type
+
+A function type conceptually contains three channels:
+
+```text
+(A, E, R)
+```
+
+- `A` is the success value.
+- `E` is a set of recoverable failure types.
+- `R` is a set of nominal capability requirements.
+
+Functions MUST remain ordinary eager functions. The function type MUST NOT imply an `Effect`, `Result`, or other universal runtime wrapper.
+
+## Row Inference
+
+The compiler MUST infer `E` and `R` whenever possible, including transitively through ordinary function calls.
+
+Rows compose as sets. Unioning the same nominal member more than once MUST NOT create duplicate obligations.
+
+Handling a failure MAY remove that member from `E`. Providing a capability MAY remove that member from `R`. New failures or provider-construction requirements introduced by those operations MUST propagate normally.
+
+## Explicit Boundaries
+
+An explicit failure or requirement annotation pins the inferred row and MUST be checked against the implementation.
+
+Exported APIs SHOULD state their failure and requirement rows explicitly. This is a design rule for stable contracts; the exact enforcement policy is not finalized.
+
+Annotations MUST NOT activate the channel model. Functions conceptually carry channels regardless of whether the author writes them.
+
+## Unknown Foreign Failures
+
+At a TypeScript or JavaScript boundary where failure inference is impossible, `E` MUST conservatively include `unknown`.
+
+An adapter MAY convert the unknown boundary into declared failures. The compiler MUST NOT invent precise foreign failures without a trusted declaration or checked adapter.
+
+## Async Values
+
+Sync and async code MUST share one failure channel. A promise-like result is statically representable as:
+
+```ts
+Promise<A, E>
+```
+
+Awaiting MUST restore `E` to the enclosing expression. Runtime promise compatibility MUST be preserved on the TypeScript target.
+
+## Optionals
+
+VibeLang MUST provide a Zig-style optional `?T` with:
+
+- an absence value represented by `null` in the current direction
+- payload capture
+- `orelse` fallback
+- asserted unwrap through `.?`
+
+Optional absence MUST remain distinct from typed failure.
+
+Existing TypeScript optional parameters, optional properties, `undefined`, and nullish unions MUST remain supported for TypeScript compatibility.
+
+Conversions between `?T`, `T | null`, and `T | undefined`, including nested cases, are **open**.
+
+## Reification
+
+Ordinary types MAY be consumed as comptime values. Comptime code MAY derive validators, codecs, equality, hashing, schemas, and generated types.
+
+There MUST NOT be a separate `runtime type` declaration modifier.
+
+At durable boundaries, values MUST have a compiler-known durable codec or an explicit user-supplied codec.

@@ -1,0 +1,115 @@
+# Comptime [Evaluate deterministic code and produce types during compilation]
+
+VibeLang uses compile-time execution for work that the compiler can prove depends only on compiler-known inputs. Explicit `comptime` requires evaluation and reports an error when the work cannot be completed during the build.
+
+## Automatic Evaluation
+
+The compiler may evaluate ordinary code when every input is known and evaluation is useful:
+
+```ts
+const kibibyte = 1024
+const bufferSize = kibibyte * 64
+```
+
+You do not need to mark routine constant folding.
+
+## Required Evaluation
+
+Use `comptime` when the result must exist during compilation:
+
+```ts
+const routes = comptime parseRoutes(embed("./routes.json"))
+```
+
+If `parseRoutes` depends on a runtime value or unavailable capability, compilation fails at that expression instead of moving the work silently to runtime.
+
+## Generating Types
+
+Comptime values can produce types:
+
+```ts
+const definition = comptime JSON.parse(embed("./api.json"))
+type Api = comptime deriveApi(definition)
+```
+
+`Api` is a normal checked type everywhere it is used. Generated declarations participate in editor tooling and diagnostics.
+
+This removes the usual split between a code generator, its output files, and the build step that must remember to refresh them.
+
+## Target Selection
+
+`comptime.target` describes the selected output environment:
+
+```ts
+const defaultTransport = comptime switch (comptime.target) {
+  "browser" => BrowserTransport,
+  "node" => NodeTransport,
+  "bun" => BunTransport,
+  "deno" => DenoTransport,
+  "edge" => FetchTransport,
+  "native" => NativeTransport,
+  "wasm" => WasiTransport,
+}
+```
+
+Branches for other targets are removed from the artifact. Their implementations do not need to be loadable at runtime.
+
+## Compiler-Known Inputs
+
+Comptime can read source assets through tracked imports and embedding APIs:
+
+```ts
+import query from "./find-user.sql"
+const plan = comptime optimize(query)
+```
+
+The compiler records the asset, loader implementation, options, target, and transitive inputs in its incremental graph.
+
+## Hermetic Execution
+
+Comptime code cannot observe ambient runtime state:
+
+- no undeclared filesystem access
+- no network access
+- no process environment
+- no wall clock
+- no randomness
+- no mutable host globals
+
+A loader receives a compiler-owned context for importing additional assets. Those reads become dependency edges automatically.
+
+Hermetic does not mean isolated from all input. It means every input is declared, stable, and available to the build graph.
+
+## Comptime and Runtime Code
+
+The same function may be callable in both phases when its operations are valid in both:
+
+```ts
+function slugify(value: string): string {
+  return value.trim().toLowerCase().replaceAll(" ", "-")
+}
+
+const route = comptime slugify("Account Settings")
+const userSlug = slugify(form.name)
+```
+
+Phase-specific capabilities are checked. A function that needs `HttpClient` cannot run at comptime unless a comptime-safe implementation and declared input model exist.
+
+## Incremental Builds
+
+Comptime results are content-addressed. A result is conceptually keyed by the compiler version, evaluated code, options, target, source assets, and transitive dependency hashes.
+
+Changing one input invalidates its dependent cone. Touching a file without changing its content does not need to invalidate the result.
+
+## Common Uses
+
+Comptime is the shared foundation for:
+
+- deriving validators and codecs
+- producing types from JSON or schemas
+- compiling Markdown, MDX, SQL, and GraphQL
+- generating Zig and Rust bindings
+- selecting platform implementations
+- compiling durable Flows into Plan IR
+
+Each feature uses the same deterministic evaluator and dependency graph instead of inventing a separate code-generation system.

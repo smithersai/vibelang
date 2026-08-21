@@ -1,0 +1,94 @@
+# Function Channels [Reference for success, failure, and requirement rows]
+
+Every VibeLang function conceptually has the type `(A, E, R)`.
+
+| Parameter | Name | Meaning |
+| --- | --- | --- |
+| `A` | Success | returned value |
+| `E` | Failure | declared recoverable failures |
+| `R` | Requirements | capabilities needed to execute |
+
+## Example
+
+```ts
+function getUser(id: string): !User
+  uses db: Database, log: Logger {
+  const row = try db.find(id)
+  if (row === null) throw NotFound({ id })
+  log.info(`user:${id}`)
+  return User.from(row)
+}
+```
+
+Given `Database.find: Row | null throws DatabaseError`, the inferred channels are:
+
+```text
+A = User
+E = DatabaseError | NotFound
+R = Database | Logger
+```
+
+## Composition
+
+A call contributes its uncaught failure members and unsatisfied requirements to the caller.
+
+```ts
+function showUser(id: string): !string {
+  return (try getUser(id)).displayName
+}
+```
+
+`showUser` acquires `getUser`'s `E` and `R` unless it handles or provides them.
+
+## Row Operations
+
+| Operation | Effect on `E` | Effect on `R` |
+| --- | --- | --- |
+| ordinary call | union callee failures | union callee requirements |
+| `try` | propagate callee failures | unchanged |
+| exhaustive `catch` | remove handled members | unchanged |
+| rethrow | keep rethrown member | unchanged |
+| `Layer.provide` | include layer init failure | remove provided capabilities; add layer requirements |
+| `await` | restore promise failure row | unchanged |
+
+Rows behave as sets for inference. Duplicate members collapse.
+
+## Annotations
+
+```ts
+function local(): !A
+```
+
+Infers `E` from the body.
+
+```ts
+export function boundary(): A throws E uses service: R
+```
+
+Pins public channels and checks the body against them. An annotation does not activate checking; VibeLang functions always have the conceptual channels.
+
+## TypeScript Defaults
+
+Legacy TypeScript functions keep their behavior and are conservatively classified where inference is impossible:
+
+```text
+A = declared TypeScript return type
+E = unknown
+R = TypeScript when runtime TypeScript behavior is used
+```
+
+The precise `TypeScript` requirement is attached to runtime use, not type-only imports.
+
+## Async Functions
+
+Async functions expose their failure channel through an enriched promise type:
+
+```ts
+Promise<A, E>
+```
+
+`await` returns `A` and makes `E` available to the enclosing expression. Runtime output remains compatible with ordinary promises on the TypeScript target.
+
+## Erasure
+
+Failure and requirement annotations erase like TypeScript types. Provider scopes may emit a small environment mechanism. Durable Flows emit an explicit runtime plan. Ordinary function results are never wrapped solely to represent `(A, E, R)`.

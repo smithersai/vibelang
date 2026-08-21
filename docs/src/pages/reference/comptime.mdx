@@ -1,0 +1,96 @@
+# Comptime [Reference for phases, targets, inputs, and evaluation]
+
+## Explicit Form
+
+```ts
+comptime expression
+```
+
+Requires `expression` to evaluate during compilation.
+
+Valid result categories include:
+
+- runtime-emittable values
+- comptime-only values
+- types
+- typed module descriptions from loaders
+- durable Plan IR through `Flow`
+
+## Implicit Evaluation
+
+The compiler may evaluate code automatically when all inputs are known. Implicit evaluation must not change observable runtime semantics.
+
+## Target
+
+```ts
+comptime.target
+```
+
+Current target vocabulary is direction and includes:
+
+```text
+node  bun  deno  browser  edge  native  wasm
+```
+
+A branch resolved from `comptime.target` is eliminated for other targets.
+
+## Allowed Inputs
+
+Comptime code may depend on:
+
+- literals and other comptime values
+- checked pure computation
+- compiler configuration exposed through a typed API
+- compiler-tracked imports and embedded assets
+- loader-context dependencies
+
+## Unavailable Ambient State
+
+Comptime code cannot directly observe:
+
+```text
+filesystem  network  environment  process  clock  random  mutable host state
+```
+
+An equivalent input is valid only when supplied through a tracked compiler mechanism.
+
+## Loader Contract
+
+A loader conceptually receives:
+
+```ts
+type Loader = (
+  asset: CompilerAsset,
+  context: LoaderContext,
+) => TypedModule
+```
+
+The context records transitive imports and reports structured diagnostics. Exact declaration and registration syntax is open.
+
+## Cache Identity
+
+A comptime result is keyed by all semantically relevant inputs, including:
+
+```text
+compiler version
+evaluated implementation graph
+configuration
+target
+source bytes
+transitive dependency hashes
+```
+
+Process-local function identity is insufficient for a portable cache key.
+
+## Errors
+
+Compilation fails when explicit comptime code:
+
+- depends on a runtime-only value
+- requests an unavailable capability
+- exceeds resource limits
+- produces an invalid type or module
+- attempts an untracked read
+- uses an operation unsupported by the target-neutral evaluator
+
+Loader diagnostics should retain source spans into the original asset.

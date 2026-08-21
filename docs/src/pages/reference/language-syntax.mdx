@@ -1,0 +1,143 @@
+# Language Syntax [Quick reference for VibeLang source forms]
+
+This page summarizes current design syntax. **Locked** means the behavior is accepted; **direction** means the spelling or detailed semantics may change.
+
+## Source Files
+
+| Form | Status | Meaning |
+| --- | --- | --- |
+| `.vibe` | Locked | VibeLang source file |
+| `.ts` | Locked | TypeScript source with TypeScript behavior |
+| `.vibex` | Open | Candidate JSX-capable VibeLang extension |
+
+## Typed Errors
+
+```ts
+error Name { field: Type }
+```
+
+Declares a nominal, tagged failure type. Runtime instances extend `Error` and carry the VibeLang failure brand.
+
+```ts
+throw Name({ field: value })
+```
+
+Constructs and throws a declared failure. Constructor spelling is direction; typed failure behavior is locked.
+
+## Function Failure Annotations
+
+```ts
+function inferred(): !Value
+```
+
+Requests compiler inference of the checked failure set.
+
+```ts
+export function publicApi(): Value throws ErrorA | ErrorB
+```
+
+Pins and checks an explicit failure set. Exact grammar is direction.
+
+## Requirements
+
+```ts
+function run(input: Input): !Output
+  uses store: Store, log: Logger
+```
+
+Declares lexical capability bindings. Service identity is nominal; binding names are local.
+
+## Failure Propagation
+
+```ts
+const value = try operation()
+const value = try await asyncOperation()
+```
+
+Returns the success value or propagates the typed failure from the current function.
+
+## Failure Recovery
+
+```ts
+const value = operation() catch fallback
+
+const value = operation() catch |error| switch (error) {
+  ErrorA => recoverA(error),
+  ErrorB => recoverB(error),
+}
+```
+
+Handles declared failures only. Exhaustiveness is checked against the failure set.
+
+## Optionals
+
+```ts
+let value: ?T
+const resolved = value orelse fallback
+const required = value.?
+```
+
+`?T` represents `T` or absence. `orelse` supplies a fallback. `.?` asserts presence and defects when absent. Syntax is direction; the optional model is locked.
+
+## Expression Control Flow
+
+```ts
+const value = if (condition) whenTrue else whenFalse
+```
+
+```ts
+const value = switch (input) {
+  PatternA => resultA,
+  PatternB(value) => resultB(value),
+}
+```
+
+Blocks, `if`, `switch`, `for`, and `while` may produce values.
+
+## Labeled Values
+
+```ts
+const value = label: {
+  break :label result
+}
+```
+
+A labeled `break` yields a value from a block or loop.
+
+## Loop Else
+
+```ts
+const value = label: for (const item of items) {
+  if (matches(item)) break :label item
+} else fallback
+```
+
+The `else` expression runs when the loop completes without a value break.
+
+## Cleanup
+
+```ts
+defer cleanup()
+errdefer rollback()
+```
+
+`defer` runs on scope exit. `errdefer` runs when the scope exits through a typed failure.
+
+## Comptime
+
+```ts
+const value = comptime expression
+type Generated = comptime expression
+comptime.target
+```
+
+Explicit `comptime` requires deterministic compile-time evaluation. Comptime expressions may produce types.
+
+## Durable Declarations
+
+```ts
+abstract class Name extends Action<Signature> {}
+const Name = comptime Flow(callback)
+```
+
+These library/compiler-recognized forms declare durable Actions and compile Flows into Plan IR. Exact API spelling remains open.

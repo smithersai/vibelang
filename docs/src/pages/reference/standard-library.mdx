@@ -1,0 +1,73 @@
+# Standard Library [Planned modules and service categories]
+
+The VibeLang standard library is a product direction, not an implemented API. Module names and signatures on this page are illustrative.
+
+## Design Contract
+
+The standard library should:
+
+- operate on ordinary VibeLang values and functions
+- use typed failures for recoverable errors
+- declare platform services as capabilities
+- work across TypeScript, native, and Wasm where applicable
+- derive schemas and codecs from ordinary types
+- include structured concurrency without a fiber runtime
+
+## Core Data
+
+Planned areas include:
+
+```text
+Array  Chunk  HashMap  HashSet  Option  Either  Data  Match
+```
+
+TypeScript-compatible built-ins remain available on the TypeScript target. Portable alternatives should not require wrapper values merely for effect tracking.
+
+## Schema and Encoding
+
+```text
+Schema  Codec  Json  JsonSchema  Equivalence  Hash
+```
+
+These artifacts are derived at comptime where possible. Parsing failures use the ordinary error channel.
+
+## Configuration and Time
+
+```text
+Config  Duration  Instant  Schedule
+```
+
+Reading environment variables or the wall clock requires a capability. Pure duration arithmetic does not.
+
+## Platform Services
+
+```text
+FileSystem  HttpClient  Clock  Random  Environment  Console
+Path  Process  Socket  Terminal
+```
+
+Each service can have Node, Bun, Deno, browser, edge, native, WASI, and test implementations where the host supports it.
+
+## Concurrency and Streams
+
+```text
+TaskScope  Governor  Stream  Queue  Semaphore  Channel
+```
+
+The library follows typed joins, cancellation, workers, and bounded async iteration rather than introducing Effect-style fibers.
+
+## Durable Runtime
+
+```text
+Action  Flow  Artifact  Signal  Journal  Deployment
+```
+
+These APIs connect compiler-derived plans to coordinator and worker runtimes.
+
+## Agent Library
+
+The separately packaged `@vibelang/agent` is planned to provide MDX prompt rendering, model adapters, TypeScript compilation, sandbox execution, and optional Action/Flow durability adapters.
+
+## Implementation Strategy
+
+Compute-heavy portable components may use Wasm, including implementations written in Zig. JavaScript/Wasm boundaries should be chosen by measurement. Host-specific implementations remain behind capabilities.

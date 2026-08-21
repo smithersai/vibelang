@@ -1,0 +1,91 @@
+# Concurrency [Use typed workers and bounded task scopes without a fiber runtime]
+
+VibeLang builds structured concurrency from ordinary async functions and emerging TC39 primitives. It does not reinterpret every function as a fiber.
+
+:::warning Design direction
+The concurrency model is accepted direction, not implemented syntax. Several primitives depend on active TC39 proposals and may track those proposals as they change.
+:::
+
+## Typed Workers
+
+Module expressions define a statically visible worker surface:
+
+```ts
+const analytics = spawn module {
+  export function summarize(values: Float64Array): !Summary {
+    return Statistics.summarize(values)
+  }
+}
+```
+
+Calls across the worker boundary retain their success and failure types. Values crossing realms need an appropriate structured or shared representation.
+
+## Task Scopes
+
+A task scope owns child work:
+
+```ts
+using scope = TaskScope.bounded(8)
+
+const [profile, activity] = try await.all(
+  scope.run(() => loadProfile(id)),
+  scope.run(() => loadActivity(id)),
+)
+```
+
+The bound limits active work. Leaving the scope joins or cancels children according to the scope policy, so tasks do not outlive the code responsible for them.
+
+## Typed Joins
+
+Join operations combine success values and failure sets:
+
+```ts
+const [stats, metadata] = try await.all(
+  scope.run(() => analytics.summarize(samples)),
+  scope.run(() => fetchMetadata(datasetId)),
+)
+```
+
+If the first operation fails with `InvalidSample` and the second with `Timeout`, the join fails with `InvalidSample | Timeout | Cancelled`.
+
+The same approach extends to `await.race`, `await.any`, `await.allSettled`, and keyed joins.
+
+## Cancellation
+
+Cancellation is visible as a typed failure. A cancellation capability is supplied through the requirement system rather than threaded through every call by hand:
+
+```ts
+async function index(records: AsyncIterable<Record>): !Index
+  uses cancellation: Cancellation {
+  for await (const record of records) {
+    try cancellation.checkpoint()
+    // ...
+  }
+}
+```
+
+Callers can distinguish cancellation from timeout or domain failure and decide whether to recover, retry, or propagate it.
+
+## Shared Data
+
+Shared structs over `SharedArrayBuffer` provide an explicit path for high-throughput worker communication. Ordinary mutable objects are not silently shared between realms.
+
+The compiler can check the cross-realm layout and failure transport protocol while each backend chooses its most appropriate implementation.
+
+## Async Iteration
+
+Governors and unordered async iteration provide bounded fan-out:
+
+```ts
+using governor = Governor.concurrency(16)
+
+for await (const result of urls.mapUnordered(fetchPage, { governor })) {
+  try index(result)
+}
+```
+
+Bounds are resources with lexical lifetimes, not global scheduler settings.
+
+## Promises and Native Output
+
+Standard async functions remain the basic abstraction. Promise behaviors that cannot be implemented efficiently or soundly on native targets may add the `TypeScript` requirement. The exact supported subset, including custom thenables and Promise subclassing, is still open.

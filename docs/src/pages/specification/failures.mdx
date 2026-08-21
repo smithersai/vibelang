@@ -1,0 +1,71 @@
+# Failure Semantics [Normative model for declared failures and defects]
+
+Status: **Locked** for the failure/defect model; exact annotation and matching grammar is **direction**.
+
+## Categories
+
+VibeLang distinguishes:
+
+- a **typed failure**, declared as part of a function's `E` channel
+- a **defect**, which represents a bug, panic, broken invariant, or unclassified foreign exception
+
+Typed failure values MUST be distinguishable from defects at runtime.
+
+## Declared Error Types
+
+An `error` declaration MUST define a nominal failure type with a stable discriminant and declared payload fields.
+
+On the TypeScript target, a declared failure MUST behave as an `Error` and MUST carry the VibeLang failure brand.
+
+The specific private branding mechanism is not part of the source language contract.
+
+## Throw
+
+Throwing a declared failure MUST add its nominal type to the enclosing inferred failure set unless the failure is handled before leaving the function.
+
+Throwing a defect MUST NOT falsely add a precise declared type to `E`.
+
+## Propagation
+
+`try expression` MUST:
+
+1. evaluate the operand
+2. yield its success value when successful
+3. exit the current function through its failure channel when the operand fails
+
+The propagated members MUST enter the current function's inferred `E`.
+
+`try await expression` MUST apply the same behavior after awaiting the operand.
+
+## Recovery
+
+A VibeLang catch expression MUST intercept typed failures from its operand. It MUST NOT intercept defects.
+
+A handler that returns a success value removes the handled member from the resulting failure set. A handler that rethrows a member keeps it in the result.
+
+## Exhaustiveness
+
+When the compiler knows the complete failure set, matching recovery MUST be exhaustive. Missing a reachable failure type MUST be a compile error.
+
+An explicit propagation or rethrow arm counts as handling that member for exhaustiveness.
+
+## JavaScript Catch
+
+Existing JavaScript statement-form `try/catch` MUST retain JavaScript semantics on the TypeScript target. It MAY observe both VibeLang failures and defects.
+
+VibeLang MUST NOT silently change existing JavaScript catch blocks into failure-only handlers.
+
+## Async Semantics
+
+Async rejection MUST preserve typed failure identity. Awaiting a typed rejected operation MUST reintroduce its failure set into the current function.
+
+Cross-realm and durable transports MUST encode declared failures using checked tagged schemas. A receiver MUST NOT treat an unrecognized defect payload as a valid declared failure.
+
+## Cleanup
+
+VibeLang MUST support `defer` and `errdefer`.
+
+- `defer` runs when the containing scope exits.
+- `errdefer` runs when the scope exits through a failure.
+
+Ordering, async finalization, and precise defect/cancellation interaction require further normative specification.

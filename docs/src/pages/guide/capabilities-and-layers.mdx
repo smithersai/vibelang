@@ -1,0 +1,124 @@
+# Capabilities & Layers [Make dependencies visible and provide them by scope]
+
+VibeLang models a dependency as a capability in a function's requirement channel. The function names the dependency it uses; a layer decides how to construct it.
+
+## Defining a Capability
+
+A capability is a nominal class:
+
+```ts
+abstract class Mailer {
+  abstract send(message: Message): !Receipt
+}
+```
+
+An abstract class has no default implementation and must be provided. A concrete class can act as its own default implementation.
+
+Nominal identity matters. Two classes with the same methods are still different capabilities.
+
+## Using a Capability
+
+Declare requirements after the function signature:
+
+```ts
+function welcome(user: User): !Receipt
+  uses mailer: Mailer, clock: Clock {
+  const message = Message.welcome(user, clock.now())
+  return try mailer.send(message)
+}
+```
+
+`mailer` and `clock` are lexical bindings with normal types. Business logic does not call a service locator or read a global container.
+
+## Requirement Inference
+
+Requirements propagate like failures:
+
+```ts
+function register(input: Signup): !User {
+  const user = try Users.create(input)
+  try welcome(user)
+  return user
+}
+```
+
+If the called functions require `Users`, `Mailer`, and `Clock`, `register` acquires those requirements automatically. Local functions may rely on inference; exported APIs pin the requirement row.
+
+## Building a Layer
+
+Provider composition lives in `vibelang:provider`:
+
+```ts
+import { Layer } from "vibelang:provider"
+
+const Production = Layer.merge(
+  Layer.succeed(Clock, SystemClock),
+  Layer.succeed(Mailer, new SesMailer(credentials)),
+  Layer.succeed(Users, new PostgresUsers(databaseUrl)),
+)
+```
+
+A layer is conceptually typed as:
+
+```ts
+Layer<Provides, InitError, Requires>
+```
+
+Constructing a service can therefore fail or require another service. Those rows are checked while layers compose.
+
+## Providing a Layer
+
+Use `Layer.provide` to satisfy requirements for a scope:
+
+```ts
+Layer.provide(Production, async () => {
+  const user = try await register(input)
+  return user.id
+})
+```
+
+The provided capabilities are available to ordinary calls inside the scope. A missing `Mailer`, `Clock`, or `Users` is a compile error when the dependency closure is known.
+
+## Testing With Layers
+
+Tests provide deterministic implementations through the same API:
+
+```ts
+const Test = Layer.merge(
+  Layer.succeed(Clock, TestClock.at("2026-08-20T12:00:00Z")),
+  Layer.succeed(Mailer, RecordingMailer.make()),
+  Layer.succeed(Users, InMemoryUsers.empty()),
+)
+
+Layer.provide(Test, () => {
+  const user = try register(fixture)
+  expect(RecordingMailer.sent).toHaveLength(1)
+})
+```
+
+There is no module replacement or global clock patch. The test supplies the program's declared requirements.
+
+## Platform Capabilities
+
+The same mechanism covers host features:
+
+```ts
+function loadConfig(): !Config uses fs: FileSystem {
+  const text = try fs.readText("app.json")
+  return try Config.parse(text)
+}
+```
+
+Node, Bun, Deno, native, WASI, and tests can provide different `FileSystem` implementations. Target selection and dependency injection share one model.
+
+## What Is Still Open
+
+The layer algebra is accepted, but several lifecycle details remain under design:
+
+- acquisition and disposal ordering
+- memoization and sharing
+- nested overrides
+- scoped resources
+- the exact JavaScript lowering strategy
+
+The compiler may use hidden environment parameters or a scoped ambient implementation. User code depends on the semantics, not that lowering choice.

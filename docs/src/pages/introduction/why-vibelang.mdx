@@ -1,0 +1,86 @@
+# Why VibeLang [Why application structure belongs in the compiler]
+
+TypeScript describes values well, but serious applications need to describe more than values.
+
+## The Missing Parts
+
+Consider a function that loads a user:
+
+```ts
+async function getUser(id: string): Promise<User> {
+  const response = await fetch(`/users/${id}`)
+  if (!response.ok) throw new Error("request failed")
+  return response.json()
+}
+```
+
+Its signature omits the information a caller needs most:
+
+- it may fail for several recoverable reasons
+- it needs an HTTP client and access to a host environment
+- the decoded response is not actually known to be a `User`
+- tests must intercept global behavior or restructure the function
+
+TypeScript cannot infer these facts because its function type has only a success channel.
+
+## The Library Answer
+
+Effect systems implemented as libraries can make these facts explicit. They model the program as a value whose type carries a success, failure, and requirement channel. That approach proves the model is useful and can deliver excellent reliability.
+
+It also creates a second execution vocabulary. Application code constructs effect values, composes them with combinators or generators, and eventually hands them to a runtime interpreter. Existing promise-returning libraries cross an adapter boundary.
+
+For many teams, that trade is worthwhile. VibeLang explores a different trade.
+
+## The Compiler Answer
+
+A compiler can attach the same information to an ordinary function:
+
+```ts
+async function getUser(id: string): !User
+  uses http: HttpClient {
+  const response = try await http.get(`/users/${id}`)
+  if (response.status === 404) throw NotFound({ id })
+  return try response.json(User)
+}
+```
+
+The function remains eager. Its result is still a `User` or a `Promise`. The compiler infers and checks the extra channels, then erases their type-level representation.
+
+This enables a few things a library cannot do as directly:
+
+- infer failure and requirement rows through ordinary calls
+- make catch expressions exhaustive
+- preserve one error model across sync and async code
+- generate validators from ordinary types at comptime
+- select platform implementations and remove dead targets
+- lower new control-flow syntax without runtime combinators
+
+## Why Not Improve TypeScript With Types Alone?
+
+Typed tuples, branded promises, decorators, and conditional types can encode parts of the model. They cannot change JavaScript's throw semantics, make `catch` exhaustive, inject lexical capability bindings, or evaluate type-producing code at compile time.
+
+VibeLang changes the grammar and checker where language support produces a simpler user model. It lowers back to TypeScript where the host language is already sufficient.
+
+## Why Durable Execution Belongs Here
+
+Durable runtimes usually ask developers to repeat information the compiler already knows: input schemas, output schemas, error shapes, dependency declarations, and RPC bindings.
+
+In VibeLang, an Action closes over a typed function signature and a Flow is compiled into a plan. The compiler can derive the boundary codecs, dependency edges, and worker contracts from the same types used by local code.
+
+Durability stays opt-in. Ordinary functions do not pay for a scheduler.
+
+## When VibeLang Fits
+
+VibeLang is designed for TypeScript teams that want:
+
+- checked recoverable failures without result wrappers
+- explicit, transitive dependencies without a container API in business logic
+- portable services across JavaScript, native, Wasm, and test targets
+- type-driven validation and asset loading
+- durable workflows whose runtime contracts come from source types
+
+## When It Does Not
+
+VibeLang is not ready for production use today. It is also a poor fit if your project depends heavily on unconstrained JavaScript reflection and must compile unchanged to native code, or if adopting an established library effect system already solves your needs.
+
+The project is a language-design bet: the strongest application guarantees should feel like part of TypeScript, because the compiler can make them lighter than a library can.

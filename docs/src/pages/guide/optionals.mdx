@@ -1,0 +1,81 @@
+# Optionals [Represent absence without turning it into failure]
+
+VibeLang separates a missing value from an operation that failed. Zig-style optionals provide a compact representation for ordinary absence.
+
+:::note Design direction
+Optionals are a locked language requirement, but conversions with TypeScript's `null` and `undefined` unions are not yet fully specified. The syntax on this page shows the current direction.
+:::
+
+## Optional Values
+
+`?T` means that a value is either a `T` or absent:
+
+```ts
+function findCached(id: string): ?User {
+  return cache.get(id)
+}
+```
+
+Absence does not add a member to the function's failure channel. It is part of the success value.
+
+## Provide a Fallback
+
+Use `orelse` when both branches produce the same value type:
+
+```ts
+const user = findCached(id) orelse try loadUser(id)
+```
+
+The fallback is evaluated only when the left side is absent.
+
+## Capture the Payload
+
+Conditionals can capture the present value:
+
+```ts
+const label = if (findCached(id)) |user| {
+  user.displayName
+} else {
+  "Guest"
+}
+```
+
+Inside the first branch, `user` has type `User`, not `?User`.
+
+## Assert Presence
+
+Use `.?` when absence would violate an invariant:
+
+```ts
+const primary = users.first().?
+```
+
+An asserted unwrap is intended for impossible absence. It defects when the value is absent; it does not create a recoverable typed failure.
+
+## Optional or Failure?
+
+Use an optional when absence is an expected result of a successful lookup:
+
+```ts
+function lookupHeader(name: string): ?string
+```
+
+Use a typed failure when the caller needs structured recovery information:
+
+```ts
+function requireUser(id: string): User throws NotFound
+```
+
+Use both when the operation can fail independently of finding no value:
+
+```ts
+function findUser(id: string): !?User
+// success: User or absent
+// failure: inferred database failures
+```
+
+## TypeScript Interoperability
+
+Existing optional properties, optional parameters, `T | null`, and `T | undefined` remain valid on the TypeScript target. VibeLang will define explicit conversions rather than silently changing their meaning.
+
+Nested optional behavior and the precise conversion rules remain open specification work. Until those rules are locked, treat `?T` examples as design syntax rather than a stable source contract.

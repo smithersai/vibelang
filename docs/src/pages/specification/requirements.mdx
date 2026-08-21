@@ -1,0 +1,81 @@
+# Requirements [Normative model for capabilities and provider layers]
+
+Status: **Locked** for capability identity, lexical binding, inference, and layer-based provision. Lifecycle and lowering are **open**.
+
+## Capability Identity
+
+A capability MUST be represented by a nominal class identity.
+
+Two structurally identical capability classes MUST remain different requirements unless the language defines an explicit identity relationship.
+
+An abstract capability MUST require an external implementation. A concrete capability MAY provide its own default implementation.
+
+## Requirement Bindings
+
+A function MAY declare named requirements:
+
+```ts
+function f(): A uses db: Database, log: Logger
+```
+
+Each name MUST create a lexical binding within the function body. The name is local; capability identity comes from its declared nominal type.
+
+The implementation MUST NOT require user code to fetch these values from an untyped service locator.
+
+## Inference
+
+Calling a function with unsatisfied requirements MUST add those capabilities to the caller's `R` row.
+
+Requirement inference MUST be transitive through ordinary calls. Duplicate nominal requirements MUST collapse.
+
+An explicit requirement annotation MUST pin and check the inferred row.
+
+## Platform Requirements
+
+Platform-sensitive functionality MUST use requirements. This includes filesystem, network, environment, clock, randomness, process, browser document, and comparable host facilities.
+
+A capability MAY have multiple target implementations. For example, `FileSystem` MAY be implemented by Node, Bun, Deno, native, WASI, or a test provider.
+
+Portability MUST be determined from the satisfied dependency closure, not merely the source module's import path.
+
+## Layer Algebra
+
+Provider composition MUST be expressed by a library imported from `vibelang:provider`. The accepted design MUST NOT rely on a dedicated source-language `provide {}` statement.
+
+A layer conceptually has the type:
+
+```ts
+Layer<Provides, Error, Requires>
+```
+
+Layer composition MUST track:
+
+- the nominal capabilities produced
+- failures during construction
+- capabilities required for construction
+
+## Satisfaction
+
+Providing a layer to a callback MUST remove matching capabilities from the callback's unsatisfied requirement row.
+
+Layer acquisition failures MUST enter the surrounding failure row. Layer construction requirements MUST remain in the surrounding requirement row unless another layer satisfies them.
+
+When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error.
+
+## Scoping
+
+Provided implementations MUST be scoped to the provided computation. Nested scopes MAY override implementations according to a future explicit precedence rule.
+
+Resources acquired by a scoped layer MUST eventually be finalized. Acquisition order, memoization, sharing, override behavior, and disposal error policy are **open**.
+
+## Lowering
+
+The TypeScript backend MAY lower requirements through hidden environment parameters, scoped ambient context, or another mechanism that preserves semantics.
+
+Ambient runtime context is not a locked implementation choice. The lowering MUST preserve async scope, nesting, failure cleanup, and nominal lookup behavior.
+
+## TypeScript Requirement
+
+`TypeScript` is a built-in capability representing runtime dependence on TypeScript/JavaScript-specific behavior.
+
+It MUST propagate and be satisfiable or rejectable like other requirements. A native pin MUST reject any transitive `TypeScript` requirement.

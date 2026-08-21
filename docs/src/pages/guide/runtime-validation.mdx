@@ -1,0 +1,73 @@
+# Runtime Validation [Derive schemas from the types you already use]
+
+Static types disappear before untrusted data reaches your program. VibeLang uses comptime to derive runtime validators and codecs from ordinary types.
+
+## Derive a Schema
+
+Start with the application type:
+
+```ts
+type SignupRequest = {
+  email: string
+  age: number
+}
+
+const SignupRequestSchema = comptime Schema.derive<SignupRequest>()
+```
+
+The compiler produces a runtime parser whose success type is `SignupRequest`. There is no second schema declaration to keep synchronized.
+
+## Parse Unknown Data
+
+External input should remain `unknown` until it is validated:
+
+```ts
+function handleSignup(body: unknown): !User {
+  const request = try SignupRequestSchema.parse(body)
+  return try Users.create(request)
+}
+```
+
+A validation problem is a typed failure. It composes with the same `try`, `catch`, and exhaustiveness rules as filesystem or domain failures.
+
+## Decode at a Boundary
+
+Platform APIs can accept a type or derived schema directly:
+
+```ts
+const response = try await http.get("/account")
+const account = try await response.json(Account)
+```
+
+The type argument asks the compiler or standard library to use the derived codec. Invalid JSON and structurally invalid data remain distinguishable failures when the API declares them separately.
+
+## Trusted Compiler Inputs
+
+JSON imported by the compiler is different from runtime JSON:
+
+```ts
+import config from "./config.json"
+```
+
+The compiler has already parsed a known project file, so a handwritten runtime schema is not required merely to establish its shape. The imported value receives a literal-preserving readonly type in VibeLang's const-import form.
+
+Data received over HTTP, from a database, or from a user is still untrusted and should be parsed from `unknown`.
+
+## More Than Validation
+
+The same type reflection can derive:
+
+- encoders and decoders
+- stable equality and hashing
+- durable boundary codecs
+- JSON Schema or OpenAPI descriptions
+- RPC bindings
+- form and configuration metadata
+
+The derived artifact can be customized where a type alone does not carry enough policy. The type remains the structural source of truth.
+
+## Reifiable Types
+
+Not every TypeScript type can become a runtime check. Structural data types, tagged unions, tuples, arrays, and supported refinements are natural candidates. Types involving arbitrary functions, erased nominal facts, or unconstrained `any` need an explicit codec or are rejected at a durable boundary.
+
+The exact reification rules are specification work. Native casts must never use a type assertion to reinterpret memory unsafely.

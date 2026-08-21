@@ -1,0 +1,64 @@
+# Specification Status [How to read the VibeLang design specification]
+
+This specification records the accepted semantic model of VibeLang. It is not a final language standard and does not imply a conforming implementation exists.
+
+Last reconciled with the decision ledger: **August 20, 2026**.
+
+## Maturity Labels
+
+Every design rule has one of three maturity levels:
+
+| Label | Meaning |
+| --- | --- |
+| **Locked** | explicitly accepted by the language designer |
+| **Direction** | accepted principle whose spelling or mechanics remain open |
+| **Open** | discussed but not decided |
+
+Unless a section says otherwise, statements in these specification pages summarize locked decisions. Syntax shown for a directional feature is informative.
+
+## Normative Terms
+
+The words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe intended conformance requirements. Because the grammar and compiler contract are incomplete, these terms apply only to behavior marked locked.
+
+Examples are non-normative unless the surrounding text states otherwise.
+
+## Conformance Targets
+
+VibeLang defines several distinct subjects of conformance:
+
+- a **source implementation** parses and checks `.vibe` programs
+- the **TypeScript backend** preserves TypeScript-compatible source behavior and emits TypeScript/JavaScript artifacts
+- a **native backend** emits near-native code and supplies the VibeLang runtime
+- a **Wasm backend** emits WebAssembly for a declared host contract
+- a **durable runtime** executes compiler-produced Flow plans and Action protocols
+
+No conforming compiler has been released. The repository prototype is not a reference implementation.
+
+## Source of Truth
+
+During early design, accepted decisions live in the [decision ledger](https://github.com/smithersai/vibelang/blob/main/docs/DECISIONS.md). The [durable execution draft](https://github.com/smithersai/vibelang/blob/main/docs/DURABLE_EXECUTION.md) expands the distributed runtime model.
+
+When these pages conflict with the ledger, the ledger wins until the specification is updated. A future complete specification will replace that arrangement.
+
+## Specification Map
+
+- [Compatibility](/specification/compatibility) defines the TypeScript superset and target model.
+- [Type System](/specification/type-system) defines function channels, optionals, and portability classification.
+- [Failure Semantics](/specification/failures) defines failures, defects, propagation, and recovery.
+- [Requirements](/specification/requirements) defines capabilities and layer satisfaction.
+- [Control Flow](/specification/control-flow) defines expression forms and cleanup direction.
+- [Comptime](/specification/comptime) defines phase evaluation and tracked compiler input.
+- [Durable Execution](/specification/durable-execution) defines Actions, Flows, plan compilation, and runtime guarantees.
+
+## Known Gaps
+
+The following areas prevent a complete normative grammar and conformance suite:
+
+1. dynamic TypeScript feature classification
+2. assertion and cast semantics
+3. conversions among `?T`, `null`, and `undefined`
+4. layer lifecycle and lowering
+5. shared checked IR and compiler plugin seams
+6. loader registration and built-in asset module shapes
+7. durable IDs, loops, sequencing, encoding, and migration
+8. exact standard-library and agent-library APIs

@@ -1,0 +1,53 @@
+# CLI [Current prototype commands and planned toolchain surface]
+
+VibeLang does not have a released compiler CLI. The only working command is the repository prototype.
+
+## Prototype
+
+From `prototype/`:
+
+```bash
+bun vsc.ts examples/demo.vibe
+```
+
+This writes `examples/demo.ts`.
+
+Run the complete demonstration:
+
+```bash
+bun install
+bun run demo
+```
+
+The `demo` script lowers, optionally type-checks, and runs the example.
+
+## Prototype Arguments
+
+```text
+bun vsc.ts <file.vibe>
+```
+
+| Argument | Required | Description |
+| --- | --- | --- |
+| `<file.vibe>` | Yes | input VibeLang file |
+
+The output path replaces `.vibe` with `.ts`. There are no target, output-directory, watch, source-map, or project options.
+
+## Supported Prototype Syntax
+
+- `error Name { field: type }`
+- expression-form `try`
+- failure-only `catch |e|`
+- `uses A, B` on function declarations
+- `provide { A: value } { ... }` prototype syntax
+- single-line if expressions
+
+:::warning
+The prototype's `provide {}` form is not part of the accepted language design. Production provider composition will use `vibelang:provider` layers.
+:::
+
+## Planned Toolchain
+
+The final distribution is intended to include compilation, formatting, testing, language services, build integration, and foreign toolchain driving in one binary.
+
+No command names or flags are stable yet. Documentation will add the production command reference after the compiler interface is accepted.

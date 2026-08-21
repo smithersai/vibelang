@@ -1,0 +1,141 @@
+# Getting Started [Start with TypeScript, then add typed failures and requirements]
+
+## Overview
+
+VibeLang is a programming language built as a true superset of TypeScript on its TypeScript target. A `.vibe` file can begin as ordinary TypeScript and adopt VibeLang features one at a time.
+
+VibeLang adds four main capabilities:
+
+- typed failures and explicit failure handling
+- capability-based dependency injection
+- deterministic compile-time execution
+- opt-in durable and distributed execution
+
+The result is still ordinary eager code. There is no value wrapper to construct and no universal effect interpreter to run.
+
+:::warning
+VibeLang is in the **early design phase**. The repository contains a demo-grade syntax-lowering prototype, not a production compiler. Examples in these docs describe the intended language unless a page says that the prototype supports them today.
+:::
+
+## Project Status
+
+The implementation is organized as milestones:
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| M0 | Parser and expression-oriented control flow | Prototype only |
+| M1 | Typed failure channel | Design |
+| M2 | Requirements and layers | Design |
+| M3 | Comptime, targets, and loaders | Design |
+| M4 | Effect interoperability | Planned |
+
+The current prototype recognizes a small set of syntax with ordered text transforms. It is useful for testing the feel of the language, but it does not implement the type system described in the guide.
+
+## Run the Prototype
+
+VibeLang is not published as a toolchain yet. To try the working prototype, clone the repository and run its demo with [Bun](https://bun.sh):
+
+```bash
+git clone https://github.com/smithersai/vibelang.git
+cd vibelang/prototype
+bun install
+bun run demo
+```
+
+The demo performs three steps:
+
+1. lowers `examples/demo.vibe` to TypeScript
+2. type-checks the lowered file when TypeScript is installed
+3. runs the generated program with Bun
+
+:::note Compatibility note
+The prototype uses regular-expression passes and a synchronous ambient context. Multiline expressions, async capability scopes, methods with `uses`, and full error-set checking are not implemented yet.
+:::
+
+## Your First VibeLang Function
+
+A VibeLang function can expose its failures and requirements in its signature:
+
+```ts
+error NotFound { id: string }
+
+abstract class Users {
+  abstract find(id: string): User | null
+}
+
+function getUser(id: string): !User uses users: Users {
+  const user = users.find(id)
+  if (user === null) throw NotFound({ id })
+  return user
+}
+```
+
+Read the signature from left to right:
+
+- the function accepts an `id`
+- it returns a `User`
+- `!User` asks the compiler to infer its failure set
+- `uses users: Users` declares the capability available inside the body
+
+For this function, the compiler infers `NotFound` as the failure and `Users` as the requirement.
+
+## Handle a Failure
+
+Use a catch expression when the caller can recover:
+
+```ts
+const user = getUser("42") catch |error| switch (error) {
+  NotFound => User.guest(),
+}
+```
+
+The switch must cover the complete typed failure set. A VibeLang catch expression handles declared failures only. A defect such as an assertion failure or out-of-bounds access continues unwinding.
+
+Use `try` when the current function cannot recover:
+
+```ts
+function displayName(id: string): !string uses users: Users {
+  const user = try getUser(id)
+  return user.name
+}
+```
+
+The compiler adds `getUser`'s failure and requirement rows to `displayName` automatically.
+
+## Provide a Capability
+
+Capabilities are constructed and scoped with layers from `vibelang:provider`:
+
+```ts
+import { Layer } from "vibelang:provider"
+
+const App = Layer.succeed(Users, new PostgresUsers(databaseUrl))
+
+Layer.provide(App, () => {
+  const name = try displayName("42")
+  console.log(name)
+})
+```
+
+Removing the `Users` provider is intended to be a compile error. Tests can provide an in-memory implementation without changing the function under test.
+
+## TypeScript Files
+
+Existing TypeScript keeps its behavior on the TypeScript target:
+
+```ts
+// valid TypeScript and valid VibeLang
+export function greet(name: string) {
+  return `Hello, ${name}`
+}
+```
+
+Rename the file to `.vibe` when you want to use VibeLang syntax. Interactions with untyped JavaScript or inference-impossible TypeScript boundaries conservatively add `unknown` to the failure channel. Runtime TypeScript values also add the built-in `TypeScript` requirement, making native compatibility visible to callers.
+
+## Next Steps
+
+- Read [Features](/guide/features) for a tour of the language.
+- Learn how [typed failures](/guide/typed-failures) propagate and recover.
+- Learn how [capabilities and layers](/guide/capabilities-and-layers) make dependencies visible.
+- Read [Why VibeLang](/introduction/why-vibelang) for the motivation behind the design.
+- Check [Status & Conventions](/specification/) before relying on exact syntax.

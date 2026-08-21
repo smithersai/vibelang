@@ -1,0 +1,103 @@
+# Agent Library [Run generated TypeScript with an explicit authority surface]
+
+VibeLang's proposed coding-agent library builds on ordinary TypeScript, typed functions, Actions, Flows, and the built-in MDX loader. It does not add agent-specific language syntax.
+
+:::warning Proposed library API
+The behavior on this page is the current design. Package names and API spelling are not implemented or locked.
+:::
+
+## Define a Coding Agent
+
+An agent receives a model, prompt, sandbox, and table of callable functions:
+
+```ts
+import { CodingAgent, TypeScriptSandbox } from "@vibelang/agent"
+import CodingPrompt from "./coding-agent.mdx"
+
+const Coder = CodingAgent.make({
+  model,
+  prompt: CodingPrompt,
+  sandbox: TypeScriptSandbox.make({
+    timeout: "30s",
+    memory: "512mb",
+  }),
+  functions: {
+    readFile: ReadFile,
+    editFile: EditFile,
+    build: Build,
+  },
+})
+
+const result = try await Coder.run({ task })
+```
+
+The `functions` object is the generated program's complete authority surface.
+
+## Generated Programs
+
+On each turn, the model writes ordinary TypeScript with one entry point:
+
+```ts
+export default async function turn(functions: Functions) {
+  const source = await functions.readFile({ path: "src/index.ts" })
+  return functions.build({ source })
+}
+```
+
+`Functions` is generated from the supplied Action, Flow, and callback signatures. Type-checking catches invalid calls before the sandbox runs the program.
+
+## Turn Lifecycle
+
+The library:
+
+1. renders the MDX prompt and turn state
+2. invokes the model and extracts TypeScript
+3. checks the source against the generated callable surface
+4. optionally returns diagnostics for repair
+5. executes accepted code in the sandbox
+6. records results and observations
+7. continues or returns the final result
+
+JSON tool calling is an adapter, not the fundamental execution model. A tool is a typed function generated code can call.
+
+## Sandboxing
+
+The sandbox begins without ambient filesystem, network, process, environment, module loading, or host-object access. The host grants authority only by passing a function.
+
+Removing Node or DOM declarations improves diagnostics, but types are not the security boundary. The runtime sandbox must enforce isolation, resource limits, cancellation, and output bounds.
+
+The backend may use an isolate, worker, process, container, or Wasm runtime as long as it preserves the same authority rule.
+
+## MDX Prompts
+
+The agent package supplies ordinary MDX components:
+
+```mdx
+<System>You are a coding agent.</System>
+
+<Context>
+  <File path="README.md" />
+</Context>
+
+<Task>{task}</Task>
+```
+
+The VibeLang compiler loads MDX as a typed module. The agent library decides how components become provider messages, attachments, and model-specific payloads.
+
+## Durable Turns
+
+Actions and Flows make durability compositional:
+
+- a model request can be a memoized Action
+- compilation can be a deterministic content-cached Action
+- sandbox execution can be journaled
+- the turn protocol can be a Flow
+- passed functions retain their individual recovery policies
+
+Replay reuses the recorded model response and completed calls. Generated code remains ordinary runtime TypeScript; it is not silently converted into a comptime Flow.
+
+## Building a Custom Agent
+
+The library should expose replaceable primitives for prompt rendering, model invocation, state, source extraction, diagnostics, sandbox creation, function binding, observations, stopping, and optional durable adapters.
+
+A custom agent composes those parts. It does not need to reimplement a hidden loop or adopt one model vendor's tool-call protocol.

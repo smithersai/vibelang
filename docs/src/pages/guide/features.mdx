@@ -1,0 +1,174 @@
+# Features [A tour of the language model]
+
+At the most basic level, writing VibeLang is the same as writing TypeScript. VibeLang adds features where the compiler can provide stronger application guarantees with less runtime ceremony.
+
+:::warning Design documentation
+This page describes the intended language. Only a small syntax-lowering prototype exists today. See [Getting Started](/introduction/getting-started#project-status) for implementation status.
+:::
+
+## Three-Channel Functions
+
+Ordinary function types carry three channels:
+
+| Channel | Meaning | Example |
+| --- | --- | --- |
+| `A` | value returned on success | `User` |
+| `E` | typed failures | `NotFound | Timeout` |
+| `R` | required capabilities | `Db | Logger` |
+
+```ts
+async function getUser(id: string): !User
+  uses db: Db, log: Logger {
+  const row = try await db.findUser(id)
+  if (row === null) throw NotFound({ id })
+  log.info(`loaded user:${id}`)
+  return User.from(row)
+}
+```
+
+The compiler infers `(User, NotFound | DbError, Db | Logger)` from the body. No `Effect` or `Result` value is created at runtime.
+
+## Typed Failures
+
+An `error` declaration creates a tagged, inspectable failure:
+
+```ts
+error NotFound { id: string }
+error InvalidEmail { input: string }
+```
+
+Use `try` to propagate and a catch expression to recover:
+
+```ts
+const profile = loadProfile(id) catch |error| switch (error) {
+  NotFound => Profile.guest(),
+  InvalidProfile => throw error,
+}
+```
+
+Catch expressions handle typed failures. Defects continue unwinding. [Learn more](/guide/typed-failures).
+
+## Capabilities and Layers
+
+A capability is a nominal service declared with a class. Requirements become lexical bindings through `uses`:
+
+```ts
+abstract class Clock {
+  abstract now(): Instant
+}
+
+function createToken(): Token uses clock: Clock {
+  return Token.make({ issuedAt: clock.now() })
+}
+```
+
+Layers construct and provide implementations. Requirements flow through callers until a layer satisfies them. [Learn more](/guide/capabilities-and-layers).
+
+## Optionals
+
+Zig-style optionals keep absence separate from failure:
+
+```ts
+const cached: ?User = cache.get(id)
+const user = cached orelse try loadUser(id)
+```
+
+`?T` represents a value that may be absent. It does not add anything to the failure channel. [Learn more](/guide/optionals).
+
+## Expression-Oriented Control Flow
+
+Blocks, conditionals, switches, and loops can produce values:
+
+```ts
+const tier = if (score >= 90) "gold"
+  else if (score >= 60) "silver"
+  else "bronze"
+```
+
+Labeled breaks yield values from blocks and loops. `defer` and `errdefer` make cleanup local to acquisition. [Learn more](/guide/control-flow).
+
+## Comptime
+
+Code runs at compile time when its inputs are known. Explicit `comptime` requires it:
+
+```ts
+const schema = comptime JSON.parse(embed("./routes.json"))
+type Routes = comptime deriveRoutes(schema)
+```
+
+Comptime is deterministic and dependency-tracked. It can create real types, not only runtime values. [Learn more](/guide/comptime).
+
+## Runtime Validation
+
+Ordinary types are available to comptime code, so a validator does not need a parallel schema declaration:
+
+```ts
+type Signup = { email: string; age: number }
+const SignupSchema = comptime Schema.derive<Signup>()
+
+const signup = try SignupSchema.parse(input)
+```
+
+Validation failures use the normal typed failure channel. [Learn more](/guide/runtime-validation).
+
+## Typed Asset Imports
+
+JSON, Markdown, and MDX are built-in compiler inputs. Custom comptime loaders can turn SQL, GraphQL, YAML, or another format into a typed module.
+
+```ts
+import config from "./config.json"
+import query from "./users.sql"
+```
+
+Every input becomes an incremental build dependency. [Learn more](/guide/asset-imports).
+
+## Multiple Targets
+
+VibeLang is designed for TypeScript, native, and Wasm output. Platform operations are capabilities, and `comptime.target` chooses implementations without emitting unused targets.
+
+```ts
+const transport = comptime.target === "browser"
+  ? browserTransport
+  : socketTransport
+```
+
+[Learn more](/guide/platforms-and-targets).
+
+## Structured Concurrency
+
+VibeLang follows emerging JavaScript concurrency primitives instead of introducing a fiber runtime. Typed workers, bounded task scopes, cancellation, and typed joins share the same failure model.
+
+```ts
+const [profile, activity] = try await.all(
+  scope.run(() => loadProfile(id)),
+  scope.run(() => loadActivity(id)),
+)
+```
+
+[Learn more](/guide/concurrency).
+
+## Durable Execution
+
+Actions define closed durable boundaries. Flows compile selected calls into a typed execution plan:
+
+```ts
+const Build = comptime Flow((input: BuildInput) => {
+  const compiled = Compile.run({ source: input.source })
+  return Package.run({ code: compiled.code })
+})
+```
+
+Retries, persistence, placement, and worker protocols apply only to this explicit program. [Learn more](/guide/durable-execution).
+
+## Polyglot Imports
+
+Zig and Rust sources are intended to import like ordinary modules. The compiler drives the foreign toolchain, derives typed bindings, and chooses Wasm or native output as appropriate:
+
+```ts
+import { hash } from "./simd.zig"
+import { tokenize } from "./parser.rs"
+
+const digest = hash(bytes)
+```
+
+This feature builds on the same loader, comptime, target, and incremental-cache infrastructure as other asset imports.

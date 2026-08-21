@@ -1,0 +1,102 @@
+# Asset Imports [Turn project files into typed modules at compile time]
+
+VibeLang treats compiler-known files as source inputs. Built-in and user-defined loaders parse them at comptime, expose typed modules, and join the incremental build graph.
+
+## Built-In Formats
+
+JSON, Markdown, and MDX work without project configuration in `.vibe` code:
+
+```ts
+import config from "./config.json"
+import readme from "./README.md"
+import Prompt from "./coding-agent.mdx"
+```
+
+The exact Markdown and MDX export shapes are still under design. Both formats preserve source locations so diagnostics can point back to the original asset.
+
+## Const JSON
+
+The VibeLang const form gives JSON a deeply readonly, literal-preserving type:
+
+```ts
+import config from "./config.json" as const
+
+// typeof config is equivalent to:
+// {
+//   readonly mode: "production"
+//   readonly ports: readonly [80, 443]
+// }
+```
+
+:::note
+The concise const-import behavior is accepted, but its exact grammar is not. Existing TypeScript JSON imports must keep their TypeScript meaning.
+:::
+
+## Custom Loaders
+
+A comptime loader can support another extension:
+
+```ts
+// Proposed API shape
+comptime loader "*.yaml" = (asset, context) => {
+  const value = parseYaml(asset.text())
+  const schema = context.import("./config.schema.json", { const: true })
+  const config = validate(schema, value)
+
+  return module {
+    export default config
+    export type Config = typeof config
+  }
+}
+```
+
+The returned value is a normal checked module. It may contain runtime values, comptime values, and generated types.
+
+## Tracked Dependencies
+
+Loaders do not read the ambient filesystem. Additional files enter through the loader context:
+
+```ts
+const fragment = context.import("./fragment.graphql")
+```
+
+The compiler records that import as an edge. A loader result is keyed by:
+
+- source bytes
+- loader implementation and package resolution
+- loader options
+- compiler and loader ABI versions
+- selected target
+- every transitive imported asset
+
+This keeps watch mode and remote caches sound.
+
+## Raw Text and Bytes
+
+Raw acquisition should converge on TC39 Import Text and Import Bytes:
+
+```ts
+import source from "./query.sql" with { type: "text" }
+import image from "./logo.png" with { type: "bytes" }
+```
+
+VibeLang may lower temporary syntax while the proposals evolve, but it does not need competing runtime primitives.
+
+## Common Loader Uses
+
+One loader system covers:
+
+- SQL and GraphQL compilation
+- YAML and configuration formats
+- image metadata and generated assets
+- embedded Markdown and MDX
+- generated protocol bindings
+- Zig and Rust imports
+
+Unused runtime exports are tree-shaken. Type-only and comptime-only exports produce no runtime code.
+
+## MDX Is General Purpose
+
+The compiler treats MDX as a typed component module. Libraries may provide component vocabularies for documentation, emails, or model prompts, but those meanings are not part of the language.
+
+The agent library's `<System>`, `<Context>`, and `<Task>` components are ordinary library components layered on the built-in MDX loader.
