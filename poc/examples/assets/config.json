@@ -1,0 +1,9 @@
+{
+  "mode": "production",
+  "ports": [80, 443],
+  "features": {
+    "agents": true,
+    "durableFlows": true
+  }
+}
+
