@@ -1,0 +1,12 @@
+{
+  "name": "vibescript-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun vsc.ts examples/demo.vs",
+    "demo": "bash run.sh"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
