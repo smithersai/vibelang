@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
-// vsc.ts — VibeLang (.vs) -> TypeScript (.ts) lowering.
+// vsc.ts — VibeLang (.vibe) -> TypeScript (.ts) lowering.
 // DELIBERATELY HACKY: regex + a tiny brace matcher, no real parser. See NOTES.md.
 //
-// usage: bun vsc.ts examples/demo.vs   (writes examples/demo.ts)
+// usage: bun vsc.ts examples/demo.vibe   (writes examples/demo.ts)
 
 import { readFileSync, writeFileSync } from "node:fs";
 import * as path from "node:path";
@@ -237,12 +237,12 @@ function lowerIfExpr(src: string): string {
 // main
 // ---------------------------------------------------------------------------
 const inFile = process.argv[2];
-if (!inFile || !inFile.endsWith(".vs")) {
-  console.error("usage: bun vsc.ts <file.vs>");
+if (!inFile || !inFile.endsWith(".vibe")) {
+  console.error("usage: bun vsc.ts <file.vibe>");
   process.exit(1);
 }
 const abs = path.resolve(inFile);
-const outFile = abs.replace(/\.vs$/, ".ts");
+const outFile = abs.replace(/\.vibe$/, ".ts");
 
 const HERE = (import.meta as any).dirname ?? path.dirname(new URL(import.meta.url).pathname);
 let runtimeImport = path.relative(path.dirname(outFile), path.join(HERE, "runtime")).split(path.sep).join("/");

@@ -1,4 +1,4 @@
-// Generated from demo.vs by vsc.ts — DO NOT EDIT
+// Generated from demo.vibe by vsc.ts — DO NOT EDIT
 import { __VSError, __vsTry, __vsCatch, __vsProvide, __vsUse } from "../runtime";
 
 // VibeLang demo — exercises errors, try/catch expressions, uses/provide DI,

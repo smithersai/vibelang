@@ -2,7 +2,7 @@
 
 **TypeScript with the missing parts compiled in: typed errors, capability-based DI, and comptime — no wrapper types, no runtime, no ceremony.**
 
-VibeLang is a true superset of TypeScript (`.vs` / `.vsx`). Every `.ts` file is already a valid `.vs` file and behaves identically. On top of that, ordinary function types carry three channels — **what it returns, how it fails, and what it needs** — and the compiler infers, checks, and erases all of it.
+VibeLang is a true superset of TypeScript (`.vibe` / `.vibex`). Every `.ts` file is already a valid `.vibe` file and behaves identically. On top of that, ordinary function types carry three channels — **what it returns, how it fails, and what it needs** — and the compiler infers, checks, and erases all of it.
 
 ```typescript
 error NotFound { id: string }
@@ -228,7 +228,7 @@ const [stats, meta] = try await.all(
 
 ## Design principles
 
-1. **True superset.** Rename `.ts` to `.vs` and it must behave identically. Legacy functions type as `(T, unknown, ∅)`; precision is opt-in, migration is incremental.
+1. **True superset.** Rename `.ts` to `.vibe` and it must behave identically. Legacy functions type as `(T, unknown, ∅)`; precision is opt-in, migration is incremental.
 2. **Erasure principle.** `E` and `R` are typechecking, not runtime. Emit strips them the way TypeScript strips types. The only runtime footprint in the whole design: the failure brand on `error` classes and the tiny scoped ambient context behind `provide`.
 3. **No fiber runtime.** Execution is eager. A function call is a function call. There is nothing to `.run()`, no interpreter between you and your code, and stack traces are your stack traces.
 4. **Syntax-directed emit.** Every VibeLang construct lowers locally and predictably to plain TypeScript. No whole-program transforms, no magic — you can read the output.
@@ -239,10 +239,10 @@ const [stats, meta] = try await.all(
 
 ## Architecture
 
-VibeLang is a **minimal-diff fork of [typescript-go](https://github.com/microsoft/typescript-go)** — the Go-native TypeScript 7 compiler. The fork adds exactly one thing: a plugin host. VibeLang itself is implemented as Go plugins that lower `.vs`/`.vsx` to plain TypeScript, after which the stock TS pipeline continues untouched.
+VibeLang is a **minimal-diff fork of [typescript-go](https://github.com/microsoft/typescript-go)** — the Go-native TypeScript 7 compiler. The fork adds exactly one thing: a plugin host. VibeLang itself is implemented as Go plugins that lower `.vibe`/`.vibex` to plain TypeScript, after which the stock TS pipeline continues untouched.
 
 ```
- .vs / .vsx
+ .vibe / .vibex
      │
      ▼
  ┌───────────────────────────────────────────────┐
@@ -268,7 +268,7 @@ Staying a minimal diff means we inherit TypeScript's checker, language service, 
 
 ## Roadmap
 
-- **M0 — Parser + expressions.** Superset parser for `.vs`/`.vsx`; `if`/`switch`/loops/blocks as expressions, `break :label`, loop `else`, `defer`/`errdefer`; syntax-directed lowering to plain TS through the plugin host.
+- **M0 — Parser + expressions.** Superset parser for `.vibe`/`.vibex`; `if`/`switch`/loops/blocks as expressions, `break :label`, loop `else`, `defer`/`errdefer`; syntax-directed lowering to plain TS through the plugin host.
 - **M1 — Error channel.** `error` declarations, `!T` with Zig-style set inference, `try`, `catch`-expressions, `throws` on exports, exhaustive `switch` over error sets, `Promise<T, E>` and `await` re-raising, failure/defect split.
 - **M2 — Requirements channel.** Capability classes (concrete defaults, abstract must-provide), `uses`, `provide`, requirement inference up call chains, missing-dependency compile errors, the scoped ambient context.
 - **M3 — Comptime.** Hermetic deterministic interpreter, type generation from comptime values, `comptime.target`, platform selection with dead-platform elimination; polyglot imports ride this infrastructure.

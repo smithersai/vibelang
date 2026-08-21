@@ -86,5 +86,5 @@ skip strings.
   stripping it; check `catch |e|` exhaustiveness against the inferred failure set.
 - `AsyncLocalStorage`-backed context; `uses` on arrows/methods; lazy per-reference
   capability resolution (`__ctx().Db`) so unused capabilities don't throw.
-- Source maps, a file watcher, and a bun plugin (`Bun.plugin` onLoad for `.vs`)
-  so `.vs` files import directly without a separate transpile step.
+- Source maps, a file watcher, and a bun plugin (`Bun.plugin` onLoad for `.vibe`)
+  so `.vibe` files import directly without a separate transpile step.

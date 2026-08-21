@@ -4,7 +4,7 @@ set -uo pipefail
 cd "$(dirname "$0")"
 
 echo "== 1. transpile (vsc) =="
-bun vsc.ts examples/demo.vs || exit 1
+bun vsc.ts examples/demo.vibe || exit 1
 
 echo
 echo "== 2. typecheck lowered output (non-fatal) =="

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bun vsc.ts examples/demo.vs",
+    "build": "bun vsc.ts examples/demo.vibe",
     "demo": "bash run.sh"
   },
   "devDependencies": {
