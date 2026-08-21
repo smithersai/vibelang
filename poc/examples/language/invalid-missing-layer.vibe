@@ -1,0 +1,13 @@
+import { Layer } from "vibelang:provider"
+
+abstract class Db { abstract read(): string }
+abstract class Logger { abstract info(message: string): void }
+
+function needsBoth(): string uses db: Db, log: Logger {
+  log.info("read")
+  return db.read()
+}
+
+const OnlyDb = Layer.succeed(Db, { read: () => "value" })
+
+Layer.provide(OnlyDb, () => needsBoth())
