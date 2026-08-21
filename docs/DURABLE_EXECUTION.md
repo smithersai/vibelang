@@ -1,0 +1,437 @@
+# Durable execution
+
+Status: design draft. The core model and distributed-build requirement are
+locked in `DECISIONS.md`; everything else here is a proposed baseline unless
+that ledger says otherwise.
+
+## Product contract
+
+VibeLang durable execution supersedes the separate `flows` library. The
+existing implementation is prior art and a source of tested runtime machinery,
+not a required user-facing dependency.
+
+- An **Action** is an open runtime implementation behind a closed, durable
+  signature.
+- A **Flow** is a closed program which the compiler evaluates at comptime into
+  a typed, target-neutral execution-plan template.
+- Action implementations are ordinary VibeLang functions/callbacks. Their
+  input, success, typed failure, and requirements are taken from the signature;
+  the compiler derives persistence codecs rather than asking authors to repeat
+  schemas in an Action constructor.
+- Ordinary functions remain ordinary eager functions. Only `Action` and `Flow`
+  opt into the durable runtime.
+- A local process, isolate, sandbox, container, and remote machine all use the
+  same Action invocation protocol.
+
+```ts
+abstract class Compile extends Action<
+  (input: CompileInput) => CompileOutput throws CompileError
+> {}
+
+abstract class Package extends Action<
+  (input: PackageInput) => Artifact throws PackageError
+> {}
+
+const Build = comptime Flow((input: BuildInput) => {
+  const compiled = Compile.run({ source: input.source })
+  return Package.run({ code: compiled.code })
+})
+```
+
+`Compile.run` performs no work while compiling `Build`. It emits an Action
+node. `compiled` is a typed symbolic value and `compiled.code` is a typed
+projection from that node. Passing it to `Package.run` creates the data edge.
+
+## Compilation model
+
+There are three distinct phases:
+
+1. **Template compilation.** The compiler invokes the Flow callback once with
+   a symbolic input. It emits Plan IR, schemas, inferred failures and
+   requirements, stable identities, and a source map. The callback itself is
+   not needed at runtime.
+2. **Deployment build.** Provider layers are resolved. The compiler checks
+   their complete dependency closure, partitions implementations into worker
+   pools, and emits coordinator and worker artifacts plus a signed manifest.
+3. **Execution.** An execution ID and validated input instantiate the template.
+   The durable scheduler evaluates control nodes and dispatches Action nodes to
+   eligible workers.
+
+This differs usefully from the current `flows` implementation: it currently
+builds a graph by running a JavaScript body with the real payload and retains
+live functions in side tables. VibeLang can emit portable expression IR and
+compiler-stable hashes instead.
+
+## Plan IR
+
+The first Plan IR should contain these semantic nodes:
+
+- constant, input, projection, and pure expression;
+- Action call;
+- parallel join and explicit sequence;
+- branch/switch, typed catch, and completion;
+- parameterized `for`/`while` templates;
+- inline Flow, child Flow, and next-round handoff;
+- durable sleep, external signal, and cancellation boundary;
+- compensation/finalization.
+
+Rules:
+
+- A comptime-known branch is reduced normally.
+- A branch on Flow input or Action output emits a branch node and compiles both
+  arms. Its error and requirement rows include both arms.
+- Pure operations on symbolic values become portable expression IR. Operations
+  the IR cannot represent are compile errors; they never inspect a placeholder
+  accidentally.
+- Loops over comptime-known collections may unroll. Runtime-sized loops and
+  fan-out emit a body template plus a stable iteration key. The plan is then a
+  statically known template whose instantiated node count may grow at runtime.
+- Inline recursive Flow expansion is rejected. Recursion uses a child boundary
+  or a durable next-round handoff and has a configurable round budget.
+- Action calls are ordered by data/control edges, not source position.
+  Independent calls may run concurrently. An explicit sequencing construct is
+  required when two calls have no data dependency but order matters.
+- The Flow may capture only comptime values. Clock, random, environment,
+  services, I/O, and mutable runtime state are unavailable while constructing
+  the template.
+
+### Scheduling and graph behavior
+
+- A plan instance is append-only. Dynamic loop/fan-out instantiation may append
+  nodes, but it never rewrites an executed prefix.
+- Independent ready Actions may run concurrently within declared worker and
+  resource limits. Priority and fairness are scheduler policy recorded in the
+  deployment/run configuration, not accidental queue order.
+- A failed node always blocks its dependent cone. Whether unrelated cones
+  continue, cancel immediately, quarantine, or await an explicit recovery node
+  is a visible Flow policy; the default remains open.
+- A durable race records its winner before exposing the result. Loser
+  cancellation and cleanup are explicit policy.
+- Child Flows are attached by default: they have their own execution identity
+  and journal, and parent cancellation propagates. Detached children require an
+  explicit boundary and lifecycle policy.
+
+## Action contract
+
+Every Action descriptor contains:
+
+- a nominal durable ID and version;
+- derived input, success, and tagged-error schemas;
+- its inferred `A`, `E`, and Action requirement;
+- implementation and policy digests;
+- source/debug metadata.
+
+These are compiler outputs, not fields the author repeats. The source-level
+Action closes over one ordinary function signature, while a provider supplies
+any ordinary function implementation compatible with that signature. The
+provider also supplies the implementation's recovery and reuse policies.
+
+An Action signature must cross persistence and machine boundaries. Therefore
+its input, success, and error types must implement the compiler's `Durable<T>`
+contract. Plain data derives this automatically. Functions, capabilities,
+process handles, weak references, and other ephemeral values require an
+explicit durable representation or are rejected at the Action boundary.
+`any`/`unknown` require an explicit codec there; this is not a restriction on
+ordinary VibeLang code.
+
+**Proposed:** public Action and Flow declarations have an explicit stable ID.
+Compiler-derived IDs are convenient during development but renaming a symbol
+must not silently change the identity of an in-flight durable operation.
+
+### Recovery and cache policy
+
+The current `flows` code compresses several guarantees into one tier enum
+(`sealed`, `compensable`, or `irreversible`). VibeLang separates one invariant
+from three policies:
+
+- **Run-local recording is mandatory.** It is not a cache policy.
+- **Retry safety** is repeatable, downstream-deduplicated by a stable key, or
+  manual after ambiguous completion.
+- **Compensation** is optional and independent of retry safety.
+- **Cross-execution reuse** is execution-only, memoized, or content-cacheable.
+
+Every Action node has run-local durable state keyed independently of any
+cross-run reuse key. Before a value is exposed downstream, each attempt and the
+node's terminal exit—success, typed failure, or defect—commit with their
+lifecycle events. Restart reuses that run-local exit. A memo or content hit is
+first adopted into the current run, so later cache eviction cannot change
+replay. Suspension, cancellation, and worker loss are lifecycle states rather
+than reusable values.
+
+Cross-execution reuse has two different meanings:
+
+- **Memoized choice** is allowed to be nondeterministic. `memo(key)` uses an
+  atomic compare-and-set in a declared scope and generation. The first
+  committed success becomes canonical; concurrent losers adopt that success
+  before exposing a value. Typed failures, defects, cancellation, and worker
+  loss remain run-local by default and do not poison the memo. An LLM
+  generation is a representative use: rerunning the model could produce
+  another valid answer, but callers deliberately reuse the chosen one.
+- **Content cache** is a stronger assertion that the complete keyed inputs,
+  implementation, dependencies, and execution semantics reproduce an
+  equivalent result. This is the policy suitable for trusted shared build
+  caches and verification. Successes are reusable by default; observing unequal
+  outputs for one complete key is an integrity defect, not first-writer-wins.
+  Hits revalidate declared input evidence and verify/materialize
+  content-addressed outputs before adoption into the run.
+
+`sealed` should mean hermetic, deterministic, and eligible for shared caching;
+it should not merely mean “an implementation was provided.” Shared sealing is
+accepted only when the sandbox can enforce or attest the declared read/write
+boundary. Memoization makes no hermeticity claim and must never be promoted to a
+sealed content-cache entry. The safe default is execution-local replay and no
+ambiguous retry without an idempotency contract.
+
+A cross-execution key includes canonical inputs, the selected implementation
+and policy digests, relevant provider/dependency identities, toolchain and
+target facts, and explicit invalidation salts. Four identities must never be
+conflated: the run-local node key, a downstream idempotency key, a
+nondeterministic memo key, and a deterministic content key.
+
+Content-cache locality and eviction affect performance only. Memo scope and
+reset/expiry policy affect program behavior, are pinned in the deployment
+manifest, and require a consistency protocol that chooses one winner across
+machines. Reset or expiry opens a new memo generation; an existing run keeps
+the generation and value digest it adopted. Distributed single-flight may
+avoid duplicate work but is only an optimization around the atomic commit rule.
+
+Retry policy, deadline, heartbeat, resources, and placement are separate
+policies. A retry deadline and sampled jitter are persisted so a restart does
+not reset them.
+
+## Providers
+
+Provider composition comes from `vibelang:provider`; there is no special
+`provide { ... }` statement. Exact API spelling remains open, but the type
+algebra is:
+
+```ts
+Layer<Provides, InitError, Requires>
+```
+
+Conceptually:
+
+```ts
+import { Action, Layer } from "vibelang:provider"
+
+const BuildActions = Layer.merge(
+  Action.provide(Compile, compileWithEsbuild, {
+    recovery: Action.repeatable,
+    reuse: Action.content
+  }),
+  Action.provide(Package, packageArtifact, {
+    recovery: Action.repeatable,
+    reuse: Action.content
+  })
+)
+```
+
+- `Compile.run(...)` adds the nominal `Compile` requirement to the Flow plan.
+- The layer satisfies `Compile` and carries the requirements and initialization
+  failures inferred from `compileWithEsbuild`.
+- A deployment build resolves that layer closure. Missing platform services,
+  Action implementations, codecs, or target support are build errors with a
+  full requirement path.
+- Provider selection is pinned in the deployment manifest. A runtime must not
+  silently switch to a semantically different implementation.
+- Layer scope, memoization, acquisition, and disposal apply on the worker that
+  owns the implementation. Secrets are injected there and are not embedded in
+  the plan or bundle.
+
+## Distributed builds and placement
+
+Placement is a property of an implementation/deployment, not of the abstract
+Action. This preserves “open implementation, closed signature”: one `Compile`
+Action may have native Linux, Node, Wasm, browser, local-test, and remote
+implementations.
+
+A deployment declares worker pools. A pool has:
+
+- target and ABI: TypeScript/JS, native, or Wasm;
+- hard constraints: OS, architecture, region/data residency, required device,
+  sandbox strength, and capability envelope;
+- scheduling preferences: affinity, cost, latency, and locality;
+- resource and concurrency limits;
+- the provider layer whose Action implementations it hosts.
+
+The concrete configuration syntax is still open. Its shape is approximately:
+
+```ts
+import { Deployment, Layer, Worker } from "vibelang:provider"
+
+export default Deployment.make({
+  workers: [
+    Worker.pool("build", {
+      target: "typescript-node",
+      sandbox: "container",
+      placement: { region: "us-west", cpu: 4 },
+      layer: BuildActions
+    })
+  ]
+})
+```
+
+The build emits:
+
+1. a coordinator artifact containing Plan IR, schemas, routing, and durable
+   runtime code, but not remote implementation code;
+2. one tree-shaken artifact per worker pool, containing only that pool's
+   Actions and provider closure;
+3. optional target variants of a pool, such as a Node bundle, native binary,
+   or Wasm component;
+4. a deployment manifest mapping each Action implementation digest to its
+   artifact, schemas, requirements, policies, and allowed placement;
+5. source maps and an inspectable plan graph.
+
+The compiler groups compatible Actions into worker-pool artifacts; it does not
+blindly create one bundle per Action. A `TypeScript` requirement forces the
+implementation into a TypeScript-capable pool. A native-pinned implementation
+fails the build if any transitive dependency requires TypeScript.
+
+An in-process executor is simply the local implementation of the same worker
+protocol. Sandboxing and distribution therefore do not change Flow semantics.
+
+Flow callbacks are never shipped as opaque code. Coordinators evaluate the
+portable Plan/expression IR; workers receive only Action implementations. A
+child-Flow boundary may route to another coordinator, region, or deployment
+when its manifest says so.
+
+## Worker protocol
+
+The transport is replaceable, but the semantic request is fixed and
+schema-versioned:
+
+```text
+Invocation {
+  executionId, nodeId, attempt, actionId, implementationDigest,
+  input, deadline, capabilityGrant, lease, fencingToken, traceContext
+}
+```
+
+A worker:
+
+1. advertises the exact artifact digest and Action table it loaded;
+2. leases an eligible invocation;
+3. verifies the manifest and decodes the input schema;
+4. runs under a narrowed capability grant and sandbox;
+5. heartbeats for long work;
+6. commits one encoded success, typed failure, or remote defect.
+
+Large values use typed content-addressed `Artifact<T>` references rather than
+passing bytes through the task queue. The wire encoding must be canonical and
+identical across TypeScript, native, and Wasm so hashes and schemas agree.
+
+The runtime journal/store is the authority. A worker process is disposable.
+Leases and fencing tokens prevent a late zombie worker from committing runtime
+state after a new attempt owns the node. They fence an external system only
+when that system receives and validates the token.
+
+## Runtime guarantees
+
+- Execution lifecycle is durable: pending, running, suspended, completed,
+  failed, cancelled.
+- Execution identity is separate from cache identity. Callers normally provide
+  an execution ID; payload-derived coalescing is explicit opt-in.
+- State transitions and their journal event commit atomically.
+- Journal and runtime state commit atomically with each other, never with an
+  arbitrary external service. After an ambiguous crash, an admitted Action may
+  execute again. An external effect is safe only when its destination
+  atomically deduplicates a stable idempotency key, honors the supplied
+  fencing/transaction protocol, or the Action has an explicit compensation
+  strategy. Compensation repairs consequences; it does not provide
+  exactly-once. `sealed` is a content-cache claim and does not make external
+  effects exactly-once.
+- Domain failures use the Action's typed `E`. Defects, worker loss, storage
+  failure, and deployment unavailability remain distinct runtime outcomes.
+  Infrastructure interruption may be retried without pretending it is a
+  domain failure.
+- Cancellation is recorded before propagation to active attempts and attached
+  children. A race has one durably recorded winner.
+- Timers, signals, human approvals, queues, and child Flows suspend without
+  occupying a worker lease.
+- In-flight executions are pinned to a Plan IR digest, provider manifest, and
+  schemas. A new deployment does not silently replay old history under new
+  code. Old worker artifacts remain routable until runs finish or an explicit
+  migration is applied.
+- The journal supports inspection and deterministic state reconstruction.
+  Fork, rewind, and compensation are higher-level operations over that journal;
+  irreversible boundaries are reported and never crossed silently.
+
+### Execution control surface
+
+Exact names are proposed, but long-running execution needs more than
+`execute(input)`:
+
+- `start(input, { executionId })` returns a typed durable handle immediately;
+- `execute` is the start-and-await convenience form;
+- a handle exposes status, typed result, cancel, and signal operations;
+- external signals carry schemas and idempotency keys;
+- poll, subscribe, inspect history, fork, and administrative recovery are
+  runtime/library APIs over the same persisted execution.
+
+Execution IDs are normally caller-selected. Payload-derived identity is an
+explicit idempotency policy, never an automatic assumption that equal inputs
+mean the same business operation.
+
+## Security and authority
+
+Static requirements and an OS sandbox solve different problems and both are
+needed:
+
+- The compiler proves which capabilities an Action implementation can request.
+- The deployment grants only the subset allowed for that pool and invocation.
+- The sandbox prevents ambient filesystem, network, process, environment, and
+  host-global access from bypassing those providers.
+- Authority may be narrowed across child calls but never widened by callees.
+- Artifact digests and manifests are verified before dispatch. Secrets and
+  fields marked sensitive are redacted from traces and encrypted or excluded
+  from durable payloads according to policy.
+
+This section governs distributed Action workers. A code-writing agent may use a
+smaller sandbox implemented entirely by its library: generated code is placed
+in an otherwise confined evaluator and receives only explicitly passed
+functions, some of which may invoke Actions or Flows. That agent sandbox adds no
+VibeLang syntax or compiler security model; see
+[`AGENT_LIBRARY.md`](AGENT_LIBRARY.md).
+
+## What VibeLang should reuse from `flows`
+
+Keep the proven ideas:
+
+- the Action/Flow split and `Node<A, E, R>` algebra;
+- symbolic projections and explicit branch/catch topology;
+- content-addressed plan and dispatch keys;
+- one-owner leases, heartbeats, fencing, and zombie protection;
+- atomic journal/state transitions;
+- sealed-cache evidence, idempotency, compensation, and irreversible effects;
+- durable timers, signals/deferreds, queues, child executions, cancellation,
+  replay inspection, fork, and rewind.
+
+Replace library limitations with compiler features:
+
+- JavaScript proxies become checker-enforced symbolic values;
+- function-source hashes and live side tables become portable expression IR;
+- handler replay becomes execution of a persisted plan;
+- opaque placement becomes a typed deployment contract and multi-artifact
+  build;
+- the single Action tier becomes independent retry, compensation, and reuse
+  policies;
+- unsafe default sealing becomes explicit, evidence-backed sealing.
+
+## Open design decisions
+
+Resolve these one at a time:
+
+1. Exact semantics and syntax for runtime-sized `for`, `while`, and fan-out,
+   including stable item keys.
+2. Provider API spelling and the retry/compensation/reuse policy shapes.
+3. Stable Action/Flow ID and version syntax.
+4. Deployment/worker-pool syntax and call-site placement constraints.
+5. Canonical cross-target wire format and custom codec interface.
+6. Code/schema migration rules for in-flight executions.
+7. Explicit sequencing syntax for independent side-effecting Actions.
+8. Memo scope/generation syntax and whether a later explicit negative-cache
+   policy may retain selected typed failures; success-only is the baseline.
+9. Default graph-failure, race-loser, child-cancellation, and resource-fairness
+   policies.
+10. Exact execution-handle, signal, inspection, and administrative APIs.
