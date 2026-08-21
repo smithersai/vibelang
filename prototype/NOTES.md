@@ -3,6 +3,12 @@
 Quickest-possible working prototype. Speed was the goal; this is a demo-grade
 lowering pipeline, not a compiler. Run it with `./run.sh` (or `bun run demo`).
 
+This is a historical syntax experiment, not the current design. In particular,
+the accepted language now uses named `uses name: Type` parameters and
+Effect-like layers from `vibelang:provider`; the prototype's special
+`provide { ... }` block remains only because that is what the regex demo
+implemented.
+
 ## What it does (all verified working end-to-end)
 
 - `error Name { field: type }` → class extending `__VSError` (which extends `Error`)
