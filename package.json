@@ -1,0 +1,25 @@
+{
+  "name": "vibelang",
+  "version": "0.0.1",
+  "description": "VibeLang — a true superset of TypeScript with typed errors, capability-based dependency injection, Zig-style comptime, and expression-oriented control flow. Early design phase.",
+  "keywords": [
+    "vibelang",
+    "typescript",
+    "superset",
+    "typed-errors",
+    "dependency-injection",
+    "comptime",
+    "effect",
+    "zig",
+    "language"
+  ],
+  "homepage": "https://github.com/smithersai/vibelang#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smithersai/vibelang.git"
+  },
+  "license": "MIT",
+  "files": [
+    "README.md"
+  ]
+}

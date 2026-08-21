@@ -1,7 +1,7 @@
 // Generated from demo.vs by vsc.ts — DO NOT EDIT
 import { __VSError, __vsTry, __vsCatch, __vsProvide, __vsUse } from "../runtime";
 
-// VibeScript demo — exercises errors, try/catch expressions, uses/provide DI,
+// VibeLang demo — exercises errors, try/catch expressions, uses/provide DI,
 // if-expressions, and the failure-vs-defect distinction.
 
 class NotFound extends __VSError {

@@ -1,4 +1,4 @@
-# VibeScript prototype — NOTES
+# VibeLang prototype — NOTES
 
 Quickest-possible working prototype. Speed was the goal; this is a demo-grade
 lowering pipeline, not a compiler. Run it with `./run.sh` (or `bun run demo`).
@@ -7,7 +7,7 @@ lowering pipeline, not a compiler. Run it with `./run.sh` (or `bun run demo`).
 
 - `error Name { field: type }` → class extending `__VSError` (which extends `Error`)
   with `_tag`, declared fields, a fields-object constructor, and the
-  `Symbol.for("vibescript.failure")` brand.
+  `Symbol.for("vibelang.failure")` brand.
 - `try expr` in expression position → `__vsTry(() => (expr))` (pass-through; JS
   throw already propagates — the pass just makes the syntax legal).
 - `expr catch |e| fallback` → `__vsCatch(() => expr, (e) => fallback)`. Branded

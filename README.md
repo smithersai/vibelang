@@ -1,8 +1,8 @@
-# VibeScript
+# VibeLang
 
 **TypeScript with the missing parts compiled in: typed errors, capability-based DI, and comptime — no wrapper types, no runtime, no ceremony.**
 
-VibeScript is a true superset of TypeScript (`.vs` / `.vsx`). Every `.ts` file is already a valid `.vs` file and behaves identically. On top of that, ordinary function types carry three channels — **what it returns, how it fails, and what it needs** — and the compiler infers, checks, and erases all of it.
+VibeLang is a true superset of TypeScript (`.vs` / `.vsx`). Every `.ts` file is already a valid `.vs` file and behaves identically. On top of that, ordinary function types carry three channels — **what it returns, how it fails, and what it needs** — and the compiler infers, checks, and erases all of it.
 
 ```typescript
 error NotFound { id: string }
@@ -48,7 +48,7 @@ Delete the `provide` block and this is a **compile error**, not a 2 a.m. crash. 
 
 Effect fixes all of this — as a library. The price is `Effect<A, E, R>` wrapping every value, a fiber runtime interpreting your program, `pipe`/generator ceremony around every function, and a parallel universe of combinators to learn.
 
-**VibeScript's bet: everything Effect.ts proves TypeScript needs, built into the compiler, with Zig's soul.** We have a compiler instead of a library, so `A`, `E`, and `R` become extra rows on *normal function types* instead of a wrapper around values. Execution stays eager. Syntax stays TypeScript. Inference does the bookkeeping — like Zig's inferred error sets — and everything erases at emit time.
+**VibeLang's bet: everything Effect.ts proves TypeScript needs, built into the compiler, with Zig's soul.** We have a compiler instead of a library, so `A`, `E`, and `R` become extra rows on *normal function types* instead of a wrapper around values. Execution stays eager. Syntax stays TypeScript. Inference does the bookkeeping — like Zig's inferred error sets — and everything erases at emit time.
 
 Legacy TypeScript functions simply type as `(T, unknown, ∅)`: return `T`, might fail with anything, requires nothing. That's why the superset is *true* — all existing TypeScript code works unchanged, and gets more precise as you migrate.
 
@@ -231,7 +231,7 @@ const [stats, meta] = try await.all(
 1. **True superset.** Rename `.ts` to `.vs` and it must behave identically. Legacy functions type as `(T, unknown, ∅)`; precision is opt-in, migration is incremental.
 2. **Erasure principle.** `E` and `R` are typechecking, not runtime. Emit strips them the way TypeScript strips types. The only runtime footprint in the whole design: the failure brand on `error` classes and the tiny scoped ambient context behind `provide`.
 3. **No fiber runtime.** Execution is eager. A function call is a function call. There is nothing to `.run()`, no interpreter between you and your code, and stack traces are your stack traces.
-4. **Syntax-directed emit.** Every VibeScript construct lowers locally and predictably to plain TypeScript. No whole-program transforms, no magic — you can read the output.
+4. **Syntax-directed emit.** Every VibeLang construct lowers locally and predictably to plain TypeScript. No whole-program transforms, no magic — you can read the output.
 5. **Platform as dependency.** The stdlib takes the platform as a capability; comptime picks defaults per target; tests provide fakes. Portability and testability are the same feature.
 6. **Inference inside, declaration at boundaries.** Error sets and requirements are inferred through bodies and call chains (Zig-style); exported APIs state them explicitly.
 
@@ -239,14 +239,14 @@ const [stats, meta] = try await.all(
 
 ## Architecture
 
-VibeScript is a **minimal-diff fork of [typescript-go](https://github.com/microsoft/typescript-go)** — the Go-native TypeScript 7 compiler. The fork adds exactly one thing: a plugin host. VibeScript itself is implemented as Go plugins that lower `.vs`/`.vsx` to plain TypeScript, after which the stock TS pipeline continues untouched.
+VibeLang is a **minimal-diff fork of [typescript-go](https://github.com/microsoft/typescript-go)** — the Go-native TypeScript 7 compiler. The fork adds exactly one thing: a plugin host. VibeLang itself is implemented as Go plugins that lower `.vs`/`.vsx` to plain TypeScript, after which the stock TS pipeline continues untouched.
 
 ```
  .vs / .vsx
      │
      ▼
  ┌───────────────────────────────────────────────┐
- │ VibeScript plugins (Go)                       │
+ │ VibeLang plugins (Go)                       │
  │   • superset parser + expression lowering     │
  │   • error-channel inference        (E rows)   │
  │   • requirements inference         (R rows)   │
@@ -264,7 +264,7 @@ Staying a minimal diff means we inherit TypeScript's checker, language service, 
 
 ## Status
 
-**Early design phase.** The specification is under active development and nothing is implemented yet beyond prototypes. Every code sample in this README is design-spec: it shows committed direction, not shipped behavior, and details of syntax may still change. Do not build anything on VibeScript today — but do open issues about the design; this is exactly the moment feedback is cheapest.
+**Early design phase.** The specification is under active development and nothing is implemented yet beyond prototypes. Every code sample in this README is design-spec: it shows committed direction, not shipped behavior, and details of syntax may still change. Do not build anything on VibeLang today — but do open issues about the design; this is exactly the moment feedback is cheapest.
 
 ## Roadmap
 
@@ -272,13 +272,13 @@ Staying a minimal diff means we inherit TypeScript's checker, language service, 
 - **M1 — Error channel.** `error` declarations, `!T` with Zig-style set inference, `try`, `catch`-expressions, `throws` on exports, exhaustive `switch` over error sets, `Promise<T, E>` and `await` re-raising, failure/defect split.
 - **M2 — Requirements channel.** Capability classes (concrete defaults, abstract must-provide), `uses`, `provide`, requirement inference up call chains, missing-dependency compile errors, the scoped ambient context.
 - **M3 — Comptime.** Hermetic deterministic interpreter, type generation from comptime values, `comptime.target`, platform selection with dead-platform elimination; polyglot imports ride this infrastructure.
-- **M4 — Effect.ts interop.** `Effect<A, E, R>` values map onto `(A, E, R)` function rows and back, so Effect codebases can adopt VibeScript incrementally — and VibeScript code can live inside an Effect app.
+- **M4 — Effect.ts interop.** `Effect<A, E, R>` values map onto `(A, E, R)` function rows and back, so Effect codebases can adopt VibeLang incrementally — and VibeLang code can live inside an Effect app.
 
 ---
 
 ## Inspirations
 
-- **[Effect.ts](https://effect.website)** — the diagnosis. Typed errors, the requirements channel, Schema, the failure/defect split, platform services: Effect proved TypeScript application code needs all of it. VibeScript exists to move that diagnosis from library to language — same fixes or better, because a compiler can infer, check exhaustively, and erase.
+- **[Effect.ts](https://effect.website)** — the diagnosis. Typed errors, the requirements channel, Schema, the failure/defect split, platform services: Effect proved TypeScript application code needs all of it. VibeLang exists to move that diagnosis from library to language — same fixes or better, because a compiler can infer, check exhaustively, and erase.
 - **[TypeScript](https://www.typescriptlang.org)** — the host. Syntax and semantics stay as close to TS as possible; the superset discipline is non-negotiable. TS proved gradual adoption is how languages actually win.
 - **[Zig](https://ziglang.org)** — the soul, and the best-language inspiration for every piece of new syntax: inferred error sets, `try`/`catch`-expressions, comptime, expression-oriented control flow, `defer`/`errdefer`, no hidden control flow.
 - **[Go](https://go.dev)** — the toolchain ethos: one boring fast binary, batteries-included stdlib, syntax that optimizes for the reader. Also, literally, the compiler — we build on the Go-native typescript-go.
@@ -286,4 +286,4 @@ Staying a minimal diff means we inherit TypeScript's checker, language service, 
 
 ---
 
-*VibeScript is not affiliated with Microsoft, the Effect maintainers, the Zig Software Foundation, Google, or Oven. It just owes them all.*
+*VibeLang is not affiliated with Microsoft, the Effect maintainers, the Zig Software Foundation, Google, or Oven. It just owes them all.*

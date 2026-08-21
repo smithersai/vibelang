@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// vsc.ts — VibeScript (.vs) -> TypeScript (.ts) lowering.
+// vsc.ts — VibeLang (.vs) -> TypeScript (.ts) lowering.
 // DELIBERATELY HACKY: regex + a tiny brace matcher, no real parser. See NOTES.md.
 //
 // usage: bun vsc.ts examples/demo.vs   (writes examples/demo.ts)

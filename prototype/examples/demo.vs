@@ -1,4 +1,4 @@
-// VibeScript demo — exercises errors, try/catch expressions, uses/provide DI,
+// VibeLang demo — exercises errors, try/catch expressions, uses/provide DI,
 // if-expressions, and the failure-vs-defect distinction.
 
 error NotFound { id: number }

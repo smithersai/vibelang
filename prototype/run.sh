@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VibeScript prototype: transpile -> (typecheck output, non-fatal) -> run.
+# VibeLang prototype: transpile -> (typecheck output, non-fatal) -> run.
 set -uo pipefail
 cd "$(dirname "$0")"
 

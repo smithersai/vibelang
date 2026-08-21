@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "vibescript-prototype",
+      "name": "vibelang-prototype",
       "devDependencies": {
         "typescript": "^7.0.2",
       },
