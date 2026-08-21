@@ -1,7 +1,7 @@
 {
   "name": "vibelang",
   "version": "0.0.1",
-  "description": "VibeLang — a true superset of TypeScript with typed errors, capability-based dependency injection, Zig-style comptime, and expression-oriented control flow. Early design phase.",
+  "description": "VibeLang — a TypeScript superset with typed errors, capability DI, Zig-style comptime, and durable distributed execution. Early design phase.",
   "keywords": [
     "vibelang",
     "typescript",
@@ -9,6 +9,8 @@
     "typed-errors",
     "dependency-injection",
     "comptime",
+    "durable-execution",
+    "distributed-computing",
     "effect",
     "zig",
     "language"
