@@ -3,9 +3,10 @@
 ## Outcome
 
 The core product model hangs together: ordinary eager functions can keep typed
-failure and requirement rows; explicit Flow compilation can produce durable
-plans without infecting normal execution; and agent code can remain a library
-consumer of the same typed callable boundaries.
+failure and requirement rows; the compiler can lower a statically resolvable
+function passed to `durable(...)` into a durable plan without infecting normal
+execution; and agent code can remain a library consumer of the same typed
+callable boundaries.
 
 The POC also found four places where a shortcut would create the wrong
 architecture:
@@ -55,7 +56,7 @@ memory/CPU/output budgets or transport backpressure.
 | Reproduced failure | POC response | Production implication |
 | --- | --- | --- |
 | Plain TypeScript was accidentally rewritten as Vibe syntax and scripts became modules | Added contextual scanning, conditional helpers, and identity regressions | Superset compatibility needs a renamed TypeScript corpus gate and upstream parser ownership |
-| A shared asset cache reused dependency paths from another project; symlinks escaped lexical roots; loader code changes reused stale output | Store root-relative evidence, resolve real paths, and key an explicit loader-artifact digest | One hermetic graph rule ABI must own identity, authority, and dependency discovery |
+| A shared asset cache reused dependency paths from another project; mutable options, exotic values, symlinks, `__proto__`, loader changes, and poisoned envelopes broke key/output equivalence | Snapshot options, require strict JSON IR, emit safe literals, resolve real paths, key loader artifacts, and verify output digests | One hermetic graph rule ABI must own identity, authority, normalization, and dependency discovery |
 | Settled/unconsumed async work and early iterator exit could outlive their owner | Retain scope children; cancel and join unordered mapping on exit | Layer lifetime and cancellation must integrate with structured scopes, not only async context propagation |
 | Durable retries lost deadline/backoff state; stale fenced attempts could race global reuse; mutable manifests changed behavior under a fixed digest | Persist timing state and make fencing, cache publication, and pinned immutable artifacts explicit invariants | Kill/restart and two-coordinator race suites are release gates, not optional unit tests |
 | Generated code returned before host RPC finished, returned non-JSON values, and escaped deterministic globals through fresh realms | Reject unawaited calls, validate strict JSON, abort in-flight calls, deny obvious realm creation, and use a fresh zero-permission process | Compiler-emitted codecs plus an audited container/VM sandbox and bounded transport are required |
@@ -81,7 +82,7 @@ TypeScript/VibeLang frontend (Go)
 
 The build graph should be orchestration, not a second language. Compiler passes,
 comptime evaluation, asset loaders, schema/code generation, foreign toolchains,
-Flow planning, bundle partitioning, and custom diagnostics should all expose
+durable Plan IR lowering and analysis, bundle partitioning, and custom diagnostics should all expose
 stable inputs, outputs, dependency edges, and content identities through one
 narrow rule contract.
 
@@ -104,9 +105,10 @@ narrow rule contract.
 
 ### Comptime, schemas, and builds
 
-- Content keys can cleanly include loader identity/version, source, options,
-  target, and tracked dependencies. A persistent logical index is useful for
-  avoiding loader execution when all prior content digests still match.
+- Content keys can cleanly include loader identity/artifact digest, immutable
+  option snapshots, normalized source, target, and tracked dependencies. A
+  persistent logical index avoids loader execution when all prior evidence and
+  the cached-output digest still match.
 - Loader code needs a hermetic execution boundary, stable typed output IR,
   deterministic resource limits, and compiler-owned dependency APIs. Merely
   asking a normal JavaScript callback not to use ambient state is insufficient.
@@ -119,9 +121,12 @@ narrow rule contract.
 
 ### Durable execution
 
-- Keep three phases as separate artifact contracts: template compilation,
-  deployment build, and execution. Do not retain a live Flow callback in the
-  runtime.
+- Keep four phases as separate artifact contracts: template compilation,
+  deployment build, plan/preview, and execution. Template compilation lowers
+  checked syntax and control flow without invoking the source function;
+  plan/preview loads only emitted Plan IR and runs no Action implementation.
+- The POC's `Flow.define(...)` and host callback execution are disposable
+  instrumentation, not the accepted authoring or planning mechanism.
 - Keep four identities separate in storage and APIs: run-local node,
   downstream idempotency, nondeterministic memo generation, and deterministic
   content key.
@@ -148,7 +153,8 @@ narrow rule contract.
 
 ### P0 — Upstream seam and identity lowering
 
-- Track `microsoft/TypeScript/tsc` at a pinned revision.
+- Track the `smithersai/TypeScript` fork at a pinned revision and vendor that
+  snapshot into the VibeLang repository.
 - Add `.vibe` identity parsing/emission, source maps, declarations, and language
   service support.
 - Establish narrow hooks for syntax extensions, row metadata, checked IR,
@@ -177,13 +183,17 @@ narrow rule contract.
 
 ### P3 — Plan IR and local durability
 
-- Lower ordinary Flow source control into symbolic expression/Plan IR.
+- Implement the compiler-owned `vibelang:flows` binding and lower the checked
+  body of statically resolvable functions passed to `durable(...)` into symbolic
+  expression/Plan IR without invoking them.
 - Lock stable IDs/versioning, explicit sequence, fan-out keys, canonical wire
   encoding, and run/schema migration rules.
 - Build an atomic local executor with inspection, replay, retries, timers,
   signals, children, cancellation, artifacts, and the distinct reuse policies.
-- Gate: kill/restart at every journal boundary and verify adoption, fencing,
-  memo CAS, content integrity, cancellation races, and version pinning.
+- Gate: prove plan/preview runs from emitted IR with the source and Action
+  implementations absent; then kill/restart at every journal boundary and
+  verify adoption, fencing, memo CAS, content integrity, cancellation races,
+  and version pinning.
 
 ### P4 — Targets and distributed deployment
 

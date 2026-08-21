@@ -1,6 +1,6 @@
-# Actions & Flows [Reference for durable signatures and execution plans]
+# Actions & Flows [Reference for durable signatures, planning, and execution]
 
-Actions and Flows are design-stage compiler/library primitives. The semantics below are accepted unless marked open; API names remain provisional.
+Actions and Flows are design-stage compiler/library primitives. The semantics below are accepted unless marked open.
 
 ## Action
 
@@ -29,13 +29,21 @@ Inside Flow compilation, `run` emits a Plan IR node and returns a typed symbolic
 ## Flow
 
 ```ts
-const Name = comptime Flow((input: Input) => {
+import { durable } from "vibelang:flows"
+
+const Name = durable((input: Input) => {
   // Action calls and representable control flow
   return output
 })
 ```
 
-The callback may capture comptime values only. It is removed after plan compilation.
+`durable` is a compiler-recognized imported function, not a keyword. Its argument must be an inline or otherwise statically resolvable function. The compiler lowers that function's checked syntax and control flow into Plan IR without invoking it with proxy values.
+
+The source function may capture compiler-known immutable values only. It is removed after plan compilation.
+
+## Plan/Preview
+
+Plan/preview reads emitted Plan IR and may specialize compiler- or input-known branches. It never loads or invokes the durable source function or an Action implementation. Unknown branches and runtime-sized fan-out remain explicit IR templates.
 
 ## Plan IR Nodes
 

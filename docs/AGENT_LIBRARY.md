@@ -14,7 +14,7 @@ Actions and Flows are the common callable boundary:
 
 ```text
 tool or MCP operation -> typed Action -> generated-code function
-comptime Flow         -> typed high-level function
+durable(...) Flow     -> typed high-level function
 ```
 
 An MCP protocol and a tool-calling protocol are adapters, not separate agent
@@ -38,7 +38,7 @@ const Coder = CodingAgent.make({
     readFile: ReadFile,       // Action
     editFile: EditFile,       // Action
     callGitHub: GitHubCall,   // MCP operation adapted to an Action
-    build: Build              // comptime Flow
+    build: Build              // Flow emitted by durable(...)
   }
 })
 
@@ -59,6 +59,13 @@ signatures. In a durable or remote composition, Action and Flow members may be
 RPC proxies into the durable executor; a local composition may use ordinary
 closures. Only Action and Flow calls receive durable execution semantics.
 
+This explicit argument is the authority boundary for untrusted generated
+TypeScript, not VibeLang's capability mechanism. Authored VibeLang functions
+obtain capabilities through the inherited `Capability.context()` method from
+`vibelang/context`, and those requirements appear in the function's static
+type without adding a source parameter. The sandbox passes `functions`
+deliberately because generated code is otherwise denied ambient authority.
+
 ## MDX prompts
 
 The agent package supplies an ordinary typed MDX component vocabulary. The
@@ -73,6 +80,10 @@ model messages and provider-specific payloads.
 
 Applications can replace components or render the same prompt for another
 model API without compiler support.
+
+The MDX component named `Context` is prompt markup supplied by the agent
+library. It is unrelated to the `Context` capability base class in
+`vibelang/context`.
 
 ## Turn lifecycle
 
@@ -114,7 +125,7 @@ explicit memo key, scope, and generation atomically becomes canonical. Typed
 failures do not poison that memo by default. It is not a sealed content-cache
 claim that invoking the model again would reproduce the same text.
 
-Generated code is not silently converted into a comptime Flow. It is ordinary
+Generated code is not silently wrapped in `durable(...)` or converted into a Flow. It is ordinary
 runtime TypeScript. Under the durable adapter, proxy calls are child
 invocations with stable identities derived from the turn execution,
 accepted-source digest, call site, and per-site ordinal. Restarting the turn

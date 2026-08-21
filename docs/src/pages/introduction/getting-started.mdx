@@ -49,33 +49,40 @@ The demo performs three steps:
 3. runs the generated program with Bun
 
 :::note Compatibility note
-The prototype uses regular-expression passes and a synchronous ambient context. Multiline expressions, async capability scopes, methods with `uses`, and full error-set checking are not implemented yet.
+The prototype uses regular-expression passes and a synchronous ambient context. It still contains the obsolete `uses` and `provide {}` experiments; neither is part of the accepted language design. Multiline expressions, async capability scopes, compiler-aware capability access, and full error-set checking are not implemented yet.
 :::
 
 ## Your First VibeLang Function
 
-A VibeLang function can expose its failures and requirements in its signature:
+A VibeLang function can expose its failures while the compiler infers its context requirements from ordinary library calls:
 
 ```ts
-error NotFound { id: string }
+import { Context } from "vibelang/context"
 
-abstract class Users {
+class NotFound extends Error {
+  constructor(readonly id: string) {
+    super(`User not found: ${id}`)
+  }
+}
+
+abstract class Users extends Context {
   abstract find(id: string): User | null
 }
 
-function getUser(id: string): !User uses users: Users {
+function getUser(id: string) {
+  const users = Users.context()
   const user = users.find(id)
-  if (user === null) throw NotFound({ id })
+  if (user === null) throw new NotFound(id)
   return user
 }
 ```
 
-Read the signature from left to right:
+Read the inferred function channels from the body:
 
 - the function accepts an `id`
-- it returns a `User`
-- `!User` asks the compiler to infer its failure set
-- `uses users: Users` declares the capability available inside the body
+- returning `user` makes `User` the success type
+- throwing `NotFound` adds it to the typed failure set
+- `Users.context()` adds `Users` to the function's inferred context channel
 
 For this function, the compiler infers `NotFound` as the failure and `Users` as the requirement.
 
@@ -84,30 +91,33 @@ For this function, the compiler infers `NotFound` as the failure and `Users` as 
 Use a catch expression when the caller can recover:
 
 ```ts
-const user = getUser("42") catch |error| switch (error) {
-  NotFound => User.guest(),
+const user = getUser("42") catch (error) {
+  switch (error.constructor) {
+    case NotFound:
+      User.guest()
+  }
 }
 ```
 
-The switch must cover the complete typed failure set. A VibeLang catch expression handles declared failures only. A defect such as an assertion failure or out-of-bounds access continues unwinding.
+The switch must cover the complete typed failure set. A VibeLang catch expression handles typed failures only. A defect such as an assertion failure or out-of-bounds access continues unwinding.
 
 Use `try` when the current function cannot recover:
 
 ```ts
-function displayName(id: string): !string uses users: Users {
+function displayName(id: string) {
   const user = try getUser(id)
   return user.name
 }
 ```
 
-The compiler adds `getUser`'s failure and requirement rows to `displayName` automatically.
+The compiler adds `getUser`'s failure and context requirement rows to `displayName` automatically. The caller does not accept or forward a context argument.
 
 ## Provide a Capability
 
-Capabilities are constructed and scoped with layers from `vibelang:provider`:
+Capabilities are constructed and scoped with layers from `vibelang/provider`. The layer satisfies the requirement inferred from `Users.context()`:
 
 ```ts
-import { Layer } from "vibelang:provider"
+import { Layer } from "vibelang/provider"
 
 const App = Layer.succeed(Users, new PostgresUsers(databaseUrl))
 

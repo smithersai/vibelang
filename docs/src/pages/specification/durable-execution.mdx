@@ -6,6 +6,25 @@ Status: the core Action/Flow model and distributed-build requirement are **locke
 
 Durable execution MUST be opt-in. Ordinary VibeLang functions MUST remain ordinary eager functions and MUST NOT be executed by the durable scheduler unless selected through an Action or Flow boundary.
 
+## Compiler-Recognized API
+
+A Flow MUST be declared with ordinary TypeScript call syntax:
+
+```ts
+import { durable } from "vibelang:flows"
+
+const Build = durable((input: BuildInput) => {
+  const compiled = Compile.run({ source: input.source })
+  return Package.run({ code: compiled.code })
+})
+```
+
+`durable` is a compiler-recognized function imported from the compiler-owned `vibelang:flows` virtual module. It is not a language keyword. The compiler MUST recognize the resolved imported binding, so an aliased import preserves durable behavior while an unrelated function named `durable` remains ordinary.
+
+The argument MUST be an inline function or a function declaration/value that the compiler can resolve statically. Passing an opaque runtime-selected function MUST be a compile error.
+
+The compiler MUST replace a recognized `durable(...)` call with a serializable Flow descriptor referencing the emitted Plan IR. It MUST NOT emit a runtime callback wrapper. Uncompiled JavaScript execution MUST fail during `vibelang:flows` virtual-module loading.
+
 ## Action
 
 An Action is an abstract runtime operation with:
@@ -15,7 +34,11 @@ An Action is an abstract runtime operation with:
 - compiler-derived input, success, failure, and requirement information
 - compiler-derived persistence schemas or explicit codecs where derivation is impossible
 
-An Action implementation MUST be an ordinary VibeLang function or callback. It MUST NOT require an Effect wrapper around the implementation.
+An Action implementation MUST be an ordinary VibeLang function or callback. A fallible implementation returns `Result<A, E>` or `Promise<Result<A, E>>`; compiler lifting allows its body to use plain success returns and Error throws. It MUST NOT require an Effect wrapper or failure annotation.
+
+An abstract Action signature has no implementation body from which to infer failures, so a fallible signature MUST state an explicit `Result<A, E>` or `Promise<Result<A, E>>` return type.
+
+If an implementation calls `Capability.context()` directly or invokes a function with context requirements, those capabilities MUST enter the Action implementation's compiler-inferred requirement row. They MUST NOT become explicit Action inputs or source-level context parameters.
 
 Source authors MUST NOT repeat Action types as separate schema arguments.
 
@@ -29,17 +52,19 @@ Plain data SHOULD derive the contract automatically. Functions, capabilities, pr
 
 ## Flow
 
-A Flow is a closed comptime program that emits a statically analyzable execution-plan template from Action calls.
+A Flow is the closed program produced when the compiler lowers a function passed to `durable(...)` into a statically analyzable execution-plan template.
 
-Calling `Action.run` during Flow compilation MUST emit a plan node and return a typed symbolic result. It MUST NOT execute the Action implementation.
+The compiler MUST lower the function's checked syntax, control flow, and data flow into Plan IR. It MUST NOT invoke the source function with proxy or symbolic JavaScript values to discover the graph.
+
+An `Action.run` expression inside the lowered function MUST emit a plan node and a typed symbolic result. Neither template compilation nor planning MUST execute the Action implementation.
 
 Property access and argument passing on a symbolic result MUST create typed projections and dependency edges when representable in Plan IR.
 
-The Flow callback MUST be removable after the compiler emits its plan, schemas, channel rows, identities, and debug map.
+The durable source function MUST be removable after the compiler emits its plan, schemas, channel rows, identities, and debug map. A planner or coordinator MUST NOT require the source function or a live function side table.
 
 ## Flow Purity
 
-A Flow callback MAY capture comptime values only. It MUST NOT observe runtime clock, randomness, environment, mutable state, services, or I/O while constructing the plan.
+A durable source function MAY capture compiler-known immutable values, including results produced through `comptime(...)`, only. It MUST NOT observe runtime clock, randomness, environment, mutable state, services, or I/O while the compiler constructs the template.
 
 Runtime-dependent control flow MUST be represented explicitly in Plan IR. The compiler MUST reject an operation that would inspect a symbolic value without a corresponding IR representation.
 
@@ -49,9 +74,12 @@ A durable implementation MUST distinguish:
 
 1. **template compilation**, which emits target-neutral Plan IR
 2. **deployment build**, which resolves providers and emits coordinator, worker, and manifest artifacts
-3. **execution**, which instantiates a validated template input and schedules nodes
+3. **plan/preview**, which reads emitted Plan IR, validates and optionally specializes known inputs, and reports the graph without dispatching Actions
+4. **execution**, which creates or resumes a durable run and schedules ready nodes from the Plan IR
 
-The deployment build MUST check the complete provider dependency closure for every emitted worker artifact.
+Plan/preview MUST NOT load or invoke the function originally passed to `durable(...)`. It MUST NOT load or invoke an Action implementation. A branch or fan-out whose value is not known to the planner MUST remain an explicit conditional or parameterized template in the reported plan.
+
+The deployment build MUST check the complete provider dependency closure for every emitted worker artifact. Provider layers MUST satisfy the context requirements of each selected Action implementation before deployment.
 
 ## Ordering and Concurrency
 

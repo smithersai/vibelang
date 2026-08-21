@@ -10,7 +10,9 @@ Status:
 - **Direction** — accepted principle whose detailed spelling or mechanics remain open.
 - **Open** — discussed but not decided.
 
-Last reconciled: 2026-08-20.
+Last reconciled with the published specification pages: 2026-08-20.
+Latest ledger decisions: 2026-08-21. The specification pages still need to be
+reconciled with the compatibility and foreign-panic decisions below.
 
 ## Identity and compatibility
 
@@ -18,8 +20,15 @@ Last reconciled: 2026-08-20.
 - **Locked:** VibeLang source uses `.vibe`.
 - **Open:** The JSX-capable extension has not been confirmed; `.vibex` must not
   imply a stricter or sounder language mode.
-- **Locked:** VibeLang is a true TypeScript superset on the TypeScript target.
-  Existing `.ts` code remains valid and behaves as TypeScript.
+- **Locked:** VibeLang is not a syntactic superset of TypeScript. `.vibe` has an
+  intentionally TypeScript-derived grammar with a small set of deliberate,
+  important differences such as failure handling and expression control flow.
+- **Locked:** VibeLang can directly import TypeScript and JavaScript modules.
+  `.ts`, `.tsx`, and JavaScript sources retain their own syntax and semantics;
+  they are interoperability inputs, not source that must parse as `.vibe`.
+- **Locked:** Syntax shared by VibeLang and TypeScript keeps TypeScript behavior
+  unless a divergence is explicitly accepted and documented. VibeLang does not
+  make gratuitous syntax changes.
 - **Locked:** VibeLang adds precision incrementally rather than imposing a
   globally sound type system. TypeScript escape hatches remain available and
   can be discouraged by lint rules.
@@ -28,50 +37,86 @@ Last reconciled: 2026-08-20.
 
 - **Locked:** Functions remain ordinary, eager functions. There is no
   `Effect<A, E, R>` value, interpreter, or `.run()` step.
-- **Locked:** Function types conceptually carry three inferred channels:
-  return value `A`, typed failures `E`, and requirements `R`.
-- **Locked:** Errors and requirements are inferred whenever possible, including
-  transitively through calls. Explicit annotations pin/check the inferred row;
-  they do not activate the feature.
+- **Locked:** A function that can complete with an `Error` returns
+  `Result<A, E>`. A fallible async function returns
+  `Promise<Result<A, E>>`. Failure is represented by the ordinary return value,
+  not an erased side channel.
+- **Locked:** Plain `return value` inside a Result-returning function produces
+  the success variant. `throw error` produces the error variant and exits the
+  function. Authors do not write `Result.ok(...)` or `Result.err(...)`.
+- **Locked:** Fallibility and requirements are inferred transitively whenever
+  possible. `Result<A, E>` makes the public failure contract explicit;
+  compiler-aware context types preserve `R` in editor and declaration
+  signatures.
 - **Locked:** VibeLang does not introduce an Effect-style fiber runtime.
 - **Direction:** The native target has a Go-like compiled runtime with garbage
   collection, while the TypeScript target lowers to ordinary TypeScript/JS.
 
 ## Typed failures
 
-- **Locked:** Typed errors are optional. Inference-impossible TypeScript/JS
-  boundaries default to `unknown`.
-- **Locked:** Declared failures are tagged at runtime and distinct from defects.
-- **Locked:** VibeLang catch expressions catch declared failures; defects keep
-  unwinding. Existing JavaScript `try/catch` retains its normal behavior.
-- **Locked:** Sync and async code share one error channel. `await` preserves and
-  propagates the awaited operation's typed failures.
-- **Direction:** `!T` denotes an inferred checked failure set; `throws E` pins an
-  explicit set, especially at exported boundaries. Exact grammar remains to be
-  finalized.
-- **Locked:** `try` and `catch` are expressions, using Zig as the primary syntax
-  inspiration.
+- **Locked:** Any ordinary class extending `Error` is a nominal recoverable
+  error. VibeLang does not require a `TaggedError("Name")` factory or separate
+  error-declaration syntax. The compiler supplies stable identity and transport
+  metadata without changing normal `Error` behavior.
+- **Locked:** The `Result` type is built in. It provides Better Result-inspired
+  matching, transformation, recovery, observation, collection, and extraction
+  methods, but its authoring API intentionally omits `Result.ok` and
+  `Result.err` because ordinary `return` and `throw` construct those variants.
+- **Locked:** `Result.unwrap()` is the ordinary-call spelling for propagating an
+  error from a Result-returning function. The compiler tracks the error type and
+  lowers the error path to the enclosing function's Result return.
+- **Locked:** Result values are must-use: a Result must be returned, awaited when
+  wrapped in a Promise, matched, transformed, explicitly inspected, or
+  unwrapped. Silently discarding one is a compile error.
+- **Locked:** `Error.prototype` has compiler-aware quality-of-life methods,
+  initially `is`, `matches`, `match`, `matchPartial`, and `rootCause`.
+  `error.match({...})` is exhaustive for a statically known error union and keys
+  cases by compiler-stable nominal Error identity.
+- **Locked:** There is no `throws` clause, prefix `try` expression, postfix
+  `catch` expression, `!T` marker, or special panic-catch grammar. Ordinary
+  JavaScript `try/catch` remains available for JavaScript interoperability but
+  is not the typed Result recovery mechanism.
+- **Locked:** An unannotated function that reaches `throw error`, unwraps an
+  error Result, or returns a Result is inferred as `Result<A, E>`. Public,
+  abstract, and declaration-only contracts spell fallibility directly as
+  `Result<A, E>`.
+- **Locked:** Foreign exceptions and Promise rejections are caught at the
+  VibeLang boundary and represented as `UnhandledException` in the Result error
+  type unless a trusted adapter maps them to a more precise `Error` subclass.
+- **Locked:** `Reflect.panic` remains the hard defect mechanism for compiler or
+  runtime invariants and is not a recoverable Result error.
 - **Locked:** `defer` and `errdefer` are supported.
 
 ## Optionals and nullability
 
-- **Locked:** VibeLang must add Zig-style optionals and nullability; this was
-  missing from the original feature list.
-- **Direction:** The surface includes `?T`, `null`, payload capture,
-  `value orelse fallback`, and `value.?` for an asserted unwrap.
+- **Locked:** VibeLang has a built-in `Optional<T>` value type with Result-like
+  matching, transformation, chaining, observation, fallback, and extraction
+  methods.
+- **Locked:** Plain `return value` in an Optional-returning function produces a
+  present value; `return null` or `return undefined` produces absence. Authors
+  do not write `Optional.some(...)` or `Optional.none()`.
+- **Locked:** The source surface uses ordinary generic and method-call syntax:
+  `Optional<T>`, `optional.match(...)`, `optional.map(...)`,
+  `optional.andThen(...)`, `optional.unwrapOr(...)`, and `optional.unwrap()`.
+  The earlier `?T`, payload-capture, `orelse`, and `.?` grammar is removed.
 - **Locked:** Optional absence and typed failure are separate concepts.
 - **Locked:** Existing TypeScript `undefined`, optional parameters, and optional
   properties remain supported for TypeScript compatibility.
-- **Open:** The precise conversions between `?T`, `T | null`, and
+- **Open:** The precise conversions between `Optional<T>`, `T | null`, and
   `T | undefined`, including nested optionals, need normative rules.
 
 ## Requirements and dependency injection
 
-- **Locked:** Requirements are named context parameters, for example
-  `uses db: Db, log: Logger`; the names are lexical bindings and service
-  identity is nominal.
+- **Locked:** A capability is an abstract class extending `Context` from
+  `vibelang/context`. The class is both its service contract and nominal key,
+  providing an Effect-inspired model with less generic ceremony.
+- **Locked:** `Capability.context()` is a compiler-recognized library call. It
+  returns the capability instance and adds its class to the enclosing function's
+  inferred requirement row; no `uses` source-language grammar is needed.
+- **Locked:** The inferred context is part of the function's static type. It is
+  not an explicit argument that callers pass by hand.
 - **Locked:** Requirements propagate through callers by inference.
-- **Locked:** Provider composition is imported from `vibelang:provider`, not
+- **Locked:** Provider composition is imported from `vibelang/provider`, not
   expressed as a special `provide { ... }` block.
 - **Locked:** VibeLang uses Effect-like layers for creating implementations and
   providing them to ordinary functions.
@@ -79,14 +124,25 @@ Last reconciled: 2026-08-20.
   and what construction itself requires: `Layer<Provides, Error, Requires>`.
 - **Open:** Layer acquisition, memoization, scoping, override, and disposal APIs
   need to be specified.
-- **Open:** The JS lowering may use compiler-threaded hidden environment
-  parameters; ambient context is not a locked implementation choice.
+- **Open:** Decide whether a provided Layer owns an implicit structured lifetime:
+  leaving the scope would join or cancel all child work before releasing its
+  resources, while explicitly detached work could not borrow scoped
+  capabilities and would need independently owned providers. This is the
+  current recommendation, not yet a locked answer.
+- **Open:** The public declaration encoding of the context row and the JS
+  lowering may use phantom function metadata, compiler-threaded hidden
+  parameters, or ambient context. These choices must not change source calls.
 
 ## Imports and platform dependencies
 
 - **Locked:** JSON has a concise const-import form that needs no handwritten
   declaration or schema and produces a deeply readonly literal type. Existing
   TypeScript JSON imports retain their existing types and runtime behavior.
+- **Locked:** Every non-code or foreign-source import uses standard import
+  attributes to select its loader and mode. Examples include
+  `with { type: "json", mode: "const" }`, `with { type: "text" }`,
+  `with { type: "mdx" }`, and `with { type: "zig" }`. File extensions may
+  provide defaults, but do not define a second import grammar.
 - **Locked:** Markdown and MDX are supported by built-in loaders. MDX is a
   general module format; libraries may supply component vocabularies and
   runtimes for domains such as agent prompts.
@@ -96,9 +152,8 @@ Last reconciled: 2026-08-20.
 - **Direction:** File imports are first-class incremental build nodes. Their
   keys include the input content, loader implementation and options, target,
   and declared transitive dependencies.
-- **Open:** The exact loader registration syntax and the default module shapes
-  for Markdown and MDX remain to be specified. The exact const-JSON import
-  grammar is also open; see `docs/ASSET_LOADERS.md`.
+- **Open:** The exact loader registration API and the default module shapes for
+  Markdown and MDX remain to be specified; see `docs/ASSET_LOADERS.md`.
 - **Locked:** Platform-specific functionality is always represented by strongly
   typed requirements.
 - **Locked:** `process`, `window`, `document`, filesystem, network, and similar
@@ -122,7 +177,9 @@ Last reconciled: 2026-08-20.
 
 ## TypeScript and native classification
 
-- **Locked:** The TypeScript target supports the complete TypeScript language.
+- **Locked:** The TypeScript target accepts and interoperates with complete
+  TypeScript in imported `.ts`/`.tsx` modules. Authored `.vibe` follows the
+  intentionally distinct VibeLang grammar.
 - **Locked:** VibeLang also targets near-native code through LLVM and should
   support Wasm.
 - **Locked:** Features are classified in three ways:
@@ -158,7 +215,18 @@ Last reconciled: 2026-08-20.
 ## Comptime and runtime validation
 
 - **Locked:** Comptime follows Zig: the compiler evaluates code automatically
-  when possible, and explicit `comptime` forces compile-time evaluation.
+  when possible, while an imported compiler intrinsic forces compile-time
+  evaluation.
+- **Locked:** Comptime is not a language keyword. Source imports `comptime` from
+  `vibelang:comptime` and passes it a value or function. The compiler recognizes
+  the resolved binding rather than its local spelling, so aliases work and
+  unrelated functions named `comptime` remain ordinary.
+- **Locked:** `comptime(value)` forces evaluation of the argument during
+  compilation. `comptime(functionValue)` marks and returns a compile-time
+  function; it does not invoke the function merely because it was passed.
+- **Locked:** `vibelang:comptime` is a compiler-owned virtual module. Recognized
+  imports and calls are lowered or erased, and uncompiled execution must fail
+  while loading the virtual module rather than evaluating arguments at runtime.
 - **Locked:** Comptime may generate types.
 - **Locked:** Comptime I/O follows Zig's model. Compiler-known imports/embedding,
   including JSON used to derive types, are supported; arbitrary unavailable
@@ -172,22 +240,35 @@ Last reconciled: 2026-08-20.
 ## Expression-oriented language
 
 - **Locked:** Blocks, `if`, `switch`, `while`, and `for` can be expressions.
-- **Locked:** Expression control flow follows Zig where new syntax is needed,
-  while staying as close to TypeScript as possible.
+- **Locked:** Switches retain TypeScript `case` syntax. In expression position,
+  the selected case's final expression is the switch value.
+- **Locked:** Expression control flow stays as close to TypeScript as possible
+  and borrows from Zig only where TypeScript has no suitable form.
 - **Direction:** Labeled `break` values and loop `else` are part of the design.
-- **Locked:** Throw expressions and declarations in conditionals are adopted
-  early from TC39 work.
+- **Locked:** Declarations in conditionals are adopted early from TC39 work.
+- **Locked:** VibeLang does not add a throw-expression grammar in the initial
+  scope. Ordinary `throw` statements produce Result errors; expression-form
+  throw may be reconsidered when the TC39 proposal is available upstream.
 
 ## Concurrency
 
 - **Locked:** Prefer relevant TC39 concurrency work instead of inventing a fiber
   abstraction.
-- **Locked:** Typed workers/module expressions, source-phase imports, shared
-  structs, governors, bounded unordered async iteration, typed joins such as
-  `await.all`, keyed joins, cancellation, and cross-realm typed failure
-  transport are adopted directions.
+- **Locked:** VibeLang follows TC39's module-expression, source-phase import,
+  shared-struct, concurrency-governor, and cancellation work where it fits.
+  A governor limits fan-out; it does not own child-task lifetimes.
+- **Direction:** VibeLang adds structured, typed joins such as `await.all`.
+  The join owns its operands, cancels siblings after a failure, waits for their
+  cleanup, and combines their success and failure types. There is no separate
+  child-task scope API.
 - **Locked:** Cancellation is visible in typed failures and is provided through
   the dependency model rather than manually threaded tokens.
+- **Locked:** Authored `.vibe` code consumes Promise values only with `await`.
+  Promise instance chaining through `.then()`, `.catch()`, or `.finally()` is a
+  compile error. Imported TypeScript/JavaScript modules retain normal Promise
+  behavior internally.
+- **Locked:** Awaiting a fallible async operation produces its
+  `Result<A, E>`; `await` does not silently unwrap or discard the Result.
 - **Direction:** Promise behavior that prevents efficient or sound native
   compilation may require `TypeScript`; the exact supported Promise subset is
   still open.
@@ -207,13 +288,27 @@ Last reconciled: 2026-08-20.
 - **Locked:** Action input, success, failure, and requirement information comes
   from its function signature. Persistence schemas/codecs are derived by the
   compiler; source code never repeats those types as schema arguments.
-- **Locked:** A Flow is a closed comptime program that emits a statically
-  analyzable execution-plan template from Action calls.
-- **Locked:** Calling `Action.run` while compiling a Flow emits a node rather
-  than performing the operation. Its typed symbolic result creates data edges
-  through ordinary projections and argument passing.
-- **Locked:** A Flow callback disappears after the compiler emits the plan
-  template, schemas, requirements, error set, identities, and debug map.
+- **Locked:** Durable declaration is not a language keyword. Source imports
+  `durable` from `vibelang:flows` and passes it a statically resolvable function.
+  The compiler recognizes the resolved binding rather than its local spelling.
+- **Locked:** `vibelang:flows` is a compiler-owned virtual module. A recognized
+  `durable(...)` call becomes a serializable Flow descriptor referencing emitted
+  Plan IR, not a runtime callback wrapper; uncompiled execution fails while
+  loading the virtual module.
+- **Locked:** A Flow is the closed program produced by lowering the checked
+  syntax, control flow, and data flow of a function passed to `durable(...)`
+  into a statically analyzable execution-plan template.
+- **Locked:** The compiler does not invoke the durable source function with
+  proxies or symbolic JavaScript values to discover its graph. An `Action.run`
+  expression lowers to a plan node and typed symbolic value; Action
+  implementations do not run during template compilation or planning.
+- **Locked:** The durable source function disappears after the compiler emits
+  the plan template, schemas, requirements, error set, identities, and debug
+  map. Plan/preview loads emitted Plan IR without loading or invoking that
+  function or any Action implementation.
+- **Locked:** Durable execution distinguishes template compilation, deployment
+  build, plan/preview, and execution. Unknown runtime branches and fan-out stay
+  explicit in Plan IR during plan/preview.
 - **Locked:** Runtime-dependent control flow is legal only when represented
   explicitly in Plan IR; it may not secretly inspect an Action result while
   constructing the plan.
@@ -302,10 +397,11 @@ Last reconciled: 2026-08-20.
 
 - **Locked:** Adopt early where suitable: module expressions; source-phase
   imports; structs/shared structs; governors; async iterator helpers including
-  unordered operation; `await.all`/`race`/`any`/`allSettled`; keyed joins; throw
-  expressions; declarations in conditionals; discard bindings; Import Text and
-  Import Bytes; cheap stack capture; `Reflect.panic`; cancellation; and a worker
-  failure protocol.
+  unordered operation; `Promise.allKeyed`/`allSettledKeyed`; declarations in
+  conditionals; discard bindings; Import Text and Import Bytes;
+  cheap stack capture; `Reflect.panic`; cancellation; and a worker failure
+  protocol. VibeLang-specific structured join syntax is documented separately
+  and must not be presented as a TC39 API.
 - **Locked:** Capabilities subsume AsyncContext for compiled dependency
   propagation; an interop adapter may exist at TypeScript boundaries.
 - **Locked:** VibeLang owns expression-form control-flow grammar while leaving
@@ -323,6 +419,9 @@ Last reconciled: 2026-08-20.
 
 - **Locked:** Build on the Go compiler now located under `tsc/` in
   `microsoft/TypeScript`, tracking upstream with a minimal diff.
+- **Locked:** The canonical compiler fork is `smithersai/TypeScript`. VibeLang
+  vendors an exact fork revision at `vendor/typescript` as a squashed Git
+  subtree; fork revisions are pinned in `typescript-fork.json`.
 - **Locked:** The fork should make TypeScript extensible/configurable through a
   narrow plugin interface rather than embedding every VibeLang feature directly
   throughout upstream code.
@@ -342,7 +441,7 @@ Last reconciled: 2026-08-20.
   separate build language.
 - **Direction:** The compiler should grow into a Bazel-like incremental build
   machine. Parsing, checking, comptime evaluation, loaders, generated code,
-  custom linters, Flow planning, foreign compilation, bundling, and deployment
+  custom linters, durable Plan IR lowering and analysis, foreign compilation, bundling, and deployment
   partitioning are explicit graph work with content identities and declared
   dependencies.
 - **Open:** The build graph, rule/plugin contract, remote cache/execution
@@ -354,8 +453,10 @@ Last reconciled: 2026-08-20.
 1. Assign every dynamic TypeScript/JavaScript feature to portable,
    `TypeScript`-required, or forbidden.
 2. Finalize checked versus TypeScript-only semantics for `as`.
-3. Specify `?T` interoperability with TypeScript null and undefined unions.
-4. Define `Layer` lifecycle and the lowering of requirement environments.
+3. Specify `Optional<T>` interoperability with TypeScript null and undefined unions.
+4. Decide the implicit child-work rule for provided Layers, then define Layer
+   acquisition, memoization, override, disposal, and requirement-environment
+   lowering.
 5. Resolve the durable execution questions in `docs/DURABLE_EXECUTION.md`, one
    at a time.
 6. Define the shared Plan/expression IR and then map it onto current TypeScript
@@ -365,4 +466,4 @@ Last reconciled: 2026-08-20.
 8. Design the agent library's minimal prompt, turn, execution, and passed-
    function interfaces; this is library work, not language grammar.
 9. Design the compiler's incremental build graph and plugin contracts for
-   generators, linters, foreign tools, Flow planning, and bundle partitioning.
+   generators, linters, foreign tools, durable plan analysis, and bundle partitioning.

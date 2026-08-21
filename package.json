@@ -2,6 +2,133 @@
   "name": "vibelang",
   "version": "0.0.1",
   "description": "VibeLang — a TypeScript superset with typed errors, capability DI, Zig-style comptime, and durable distributed execution. Early design phase.",
+  "type": "module",
+  "main": "./compat/typescript.cjs",
+  "types": "./compat/typescript.d.cts",
+  "exports": {
+    ".": {
+      "types": "./compat/typescript.d.cts",
+      "default": "./compat/typescript.cjs"
+    },
+    "./typescript": {
+      "types": "./compat/typescript.d.cts",
+      "default": "./compat/typescript.cjs"
+    },
+    "./typescript.js": {
+      "types": "./compat/typescript.d.cts",
+      "default": "./compat/typescript.cjs"
+    },
+    "./lib/typescript": {
+      "types": "./compat/typescript.d.cts",
+      "default": "./compat/typescript.cjs"
+    },
+    "./lib/typescript.js": {
+      "types": "./compat/typescript.d.cts",
+      "default": "./compat/typescript.cjs"
+    },
+    "./package.json": "./package.json",
+    "./plugin": {
+      "types": "./compat/plugin.d.cts",
+      "default": "./compat/plugin.cjs"
+    },
+    "./tsserverlibrary": {
+      "types": "./compat/tsserverlibrary.d.cts",
+      "default": "./compat/tsserverlibrary.cjs"
+    },
+    "./lib/tsserverlibrary": {
+      "types": "./compat/tsserverlibrary.d.cts",
+      "default": "./compat/tsserverlibrary.cjs"
+    },
+    "./lib/tsserverlibrary.js": {
+      "types": "./compat/tsserverlibrary.d.cts",
+      "default": "./compat/tsserverlibrary.cjs"
+    },
+    "./vibe": {
+      "types": "./dist/vibe.d.ts",
+      "default": "./dist/vibe.js"
+    },
+    "./provider": {
+      "types": "./dist/provider.d.ts",
+      "default": "./dist/provider.js"
+    },
+    "./context": {
+      "types": "./dist/context.d.ts",
+      "default": "./dist/context.js"
+    },
+    "./result": {
+      "types": "./dist/result.d.ts",
+      "default": "./dist/result.js"
+    },
+    "./optional": {
+      "types": "./dist/optional.d.ts",
+      "default": "./dist/optional.js"
+    },
+    "./language-service": {
+      "types": "./dist/language-service.d.ts",
+      "default": "./dist/language-service.js"
+    },
+    "./unstable/sync": {
+      "types": "./dist/unstable/sync.d.ts",
+      "default": "./dist/unstable/sync.js"
+    },
+    "./unstable/async": {
+      "types": "./dist/unstable/async.d.ts",
+      "default": "./dist/unstable/async.js"
+    },
+    "./unstable/fs": {
+      "types": "./dist/unstable/fs.d.ts",
+      "default": "./dist/unstable/fs.js"
+    },
+    "./unstable/proto": {
+      "types": "./dist/unstable/proto.d.ts",
+      "default": "./dist/unstable/proto.js"
+    },
+    "./unstable/ast": {
+      "types": "./dist/unstable/ast.d.ts",
+      "default": "./dist/unstable/ast.js"
+    },
+    "./unstable/ast/is": {
+      "types": "./dist/unstable/ast-is.d.ts",
+      "default": "./dist/unstable/ast-is.js"
+    },
+    "./unstable/ast/factory": {
+      "types": "./dist/unstable/ast-factory.d.ts",
+      "default": "./dist/unstable/ast-factory.js"
+    },
+    "./unstable/ast/utils": {
+      "types": "./dist/unstable/ast-utils.d.ts",
+      "default": "./dist/unstable/ast-utils.js"
+    },
+    "./unstable/ast/scanner": {
+      "types": "./dist/unstable/ast-scanner.d.ts",
+      "default": "./dist/unstable/ast-scanner.js"
+    },
+    "./unstable/ast/visitor": {
+      "types": "./dist/unstable/ast-visitor.d.ts",
+      "default": "./dist/unstable/ast-visitor.js"
+    },
+    "./unstable/ast/clone": {
+      "types": "./dist/unstable/ast-clone.d.ts",
+      "default": "./dist/unstable/ast-clone.js"
+    }
+  },
+  "bin": {
+    "tsc": "./bin/vibec.js",
+    "tsserver": "./bin/vtsserver.js",
+    "vibe": "./bin/vibe.js",
+    "vibec": "./bin/vibec.js",
+    "vtsc": "./bin/vibec.js",
+    "vtsserver": "./bin/vtsserver.js"
+  },
+  "scripts": {
+    "build": "node node_modules/typescript/lib/tsc.js -p tsconfig.build.json",
+    "check": "node node_modules/typescript/lib/tsc.js -p tsconfig.build.json --noEmit && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && go test ./compiler ./cmd/vibec-go",
+    "test": "npm run build && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && node --test test/*.test.mjs && go test ./compiler ./cmd/vibec-go",
+    "typescript:fork:status": "node scripts/vendor-typescript.mjs status",
+    "typescript:fork:verify": "node scripts/vendor-typescript.mjs verify",
+    "typescript:vendor": "node scripts/vendor-typescript.mjs sync",
+    "prepack": "npm run test"
+  },
   "keywords": [
     "vibelang",
     "typescript",
@@ -22,6 +149,25 @@
   },
   "license": "MIT",
   "files": [
-    "README.md"
-  ]
+    "README.md",
+    "LICENSE",
+    "bin",
+    "compat",
+    "dist",
+    "docs/COMPATIBILITY_API.md",
+    "docs/TYPESCRIPT_FORK.md",
+    "typescript-fork.json",
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "incur": "^0.5.1",
+    "typescript": "7.0.2",
+    "typescript-js": "npm:typescript@5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
 }

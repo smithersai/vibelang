@@ -1,22 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { Cancelled, Cancellation, TaskScope, awaitAll, mapUnordered } from "./index.ts";
+import { Cancelled, Cancellation, awaitAll, mapUnordered } from "./index.ts";
 import { catchFailure, isVibeFailure } from "../runtime/failure.ts";
 
 describe("structured concurrency without fibers", () => {
-  test("TaskScope enforces its governor", async () => {
-    const scope = TaskScope.bounded(2);
-    let active = 0;
-    let maximum = 0;
-    const work = Array.from({ length: 8 }, (_, value) => scope.run(async () => {
-      active++;
-      maximum = Math.max(maximum, active);
-      await Bun.sleep(2);
-      active--;
-      return value * 2;
-    }));
-    expect(await awaitAll(...work)).toEqual([0, 2, 4, 6, 8, 10, 12, 14]);
-    await scope.close();
-    expect(maximum).toBe(2);
+  test("awaitAll preserves tuple order", async () => {
+    const joined = await awaitAll(
+      (async () => { await Bun.sleep(3); return "profile" as const; })(),
+      (async () => { await Bun.sleep(1); return "activity" as const; })(),
+    );
+    expect(joined).toEqual(["profile", "activity"]);
   });
 
   test("cancellation is a branded typed failure", async () => {
@@ -40,13 +32,6 @@ describe("structured concurrency without fibers", () => {
       return delay;
     })) output.push(value);
     expect(output).toEqual([1, 2, 5]);
-  });
-
-  test("scope retains an unawaited child failure until close", async () => {
-    const scope = TaskScope.bounded(1);
-    void scope.run(() => { throw new Error("retained child failure"); });
-    await Bun.sleep(1);
-    await expect(scope.close()).rejects.toThrow("retained child failure");
   });
 
   test("breaking unordered iteration cancels and joins active mappers", async () => {

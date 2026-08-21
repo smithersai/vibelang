@@ -2,7 +2,7 @@
 
 This specification records the accepted semantic model of VibeLang. It is not a final language standard and does not imply a conforming implementation exists.
 
-Last reconciled with the decision ledger: **August 20, 2026**.
+Last reconciled with the decision ledger: **August 21, 2026**.
 
 ## Maturity Labels
 
@@ -45,10 +45,10 @@ When these pages conflict with the ledger, the ledger wins until the specificati
 - [Compatibility](/specification/compatibility) defines the TypeScript superset and target model.
 - [Type System](/specification/type-system) defines function channels, optionals, and portability classification.
 - [Failure Semantics](/specification/failures) defines failures, defects, propagation, and recovery.
-- [Requirements](/specification/requirements) defines capabilities and layer satisfaction.
+- [Requirements](/specification/requirements) defines `Context` capabilities, inferred requirement rows, and layer satisfaction.
 - [Control Flow](/specification/control-flow) defines expression forms and cleanup direction.
-- [Comptime](/specification/comptime) defines phase evaluation and tracked compiler input.
-- [Durable Execution](/specification/durable-execution) defines Actions, Flows, plan compilation, and runtime guarantees.
+- [Comptime](/specification/comptime) defines the imported compiler intrinsic, phase evaluation, and tracked compiler input.
+- [Durable Execution](/specification/durable-execution) defines the imported durable intrinsic, Actions, static Flow lowering, non-executing plan/preview, and runtime guarantees.
 
 ## Known Gaps
 
@@ -56,7 +56,7 @@ The following areas prevent a complete normative grammar and conformance suite:
 
 1. dynamic TypeScript feature classification
 2. assertion and cast semantics
-3. conversions among `?T`, `null`, and `undefined`
+3. conversions among `Optional<T>`, `T | null`, and `T | undefined`
 4. layer lifecycle and lowering
 5. shared checked IR and compiler plugin seams
 6. loader registration and built-in asset module shapes

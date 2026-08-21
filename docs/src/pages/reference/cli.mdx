@@ -35,15 +35,15 @@ The output path replaces `.vibe` with `.ts`. There are no target, output-directo
 
 ## Supported Prototype Syntax
 
-- `error Name { field: type }`
+- TypeScript-compatible `class Name extends Error { ... }` declarations
 - expression-form `try`
-- failure-only `catch |e|`
-- `uses A, B` on function declarations
-- `provide { A: value } { ... }` prototype syntax
+- failure-only postfix `catch (error) { ... }`
+- legacy `uses A, B` function modifiers
+- legacy `provide { A: value } { ... }` blocks
 - single-line if expressions
 
 :::warning
-The prototype's `provide {}` form is not part of the accepted language design. Production provider composition will use `vibelang:provider` layers.
+The prototype's `uses` and `provide {}` forms are obsolete experiments, not accepted VibeLang syntax. The accepted model defines capabilities as abstract `Context` classes, accesses them with the compiler-aware inherited `Capability.context()` method, and supplies implementations through `vibelang/provider` layers.
 :::
 
 ## Planned Toolchain

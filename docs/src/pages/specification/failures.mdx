@@ -1,71 +1,136 @@
-# Failure Semantics [Normative model for declared failures and defects]
+# Failure Semantics [Normative model for Result values and nominal Error classes]
 
-Status: **Locked** for the failure/defect model; exact annotation and matching grammar is **direction**.
+Status: the Result return model, ordinary `Error` subclasses, compiler lifting, and Promise restrictions are **locked**. The complete convenience-method set and declaration encoding are **direction**.
 
-## Categories
+## Result Model
 
-VibeLang distinguishes:
+A function that can complete with a recoverable error MUST return:
 
-- a **typed failure**, declared as part of a function's `E` channel
-- a **defect**, which represents a bug, panic, broken invariant, or unclassified foreign exception
+```ts
+Result<A, E>
+```
 
-Typed failure values MUST be distinguishable from defects at runtime.
+`A` is the success value and `E` is an `Error` subtype or union of `Error` subtypes. A fallible async function MUST return:
 
-## Declared Error Types
+```ts
+Promise<Result<A, E>>
+```
 
-An `error` declaration MUST define a nominal failure type with a stable discriminant and declared payload fields.
+Failure MUST be represented in the ordinary return value. VibeLang MUST NOT encode `E` as an erased `throws` annotation or a second Promise type parameter.
 
-On the TypeScript target, a declared failure MUST behave as an `Error` and MUST carry the VibeLang failure brand.
+## Error Classes
 
-The specific private branding mechanism is not part of the source language contract.
+Any named class extending `Error` MUST be usable as a nominal recoverable error:
 
-## Throw
+```ts
+class NotFound extends Error {
+  constructor(readonly id: string) {
+    super(`Not found: ${id}`)
+  }
+}
+```
 
-Throwing a declared failure MUST add its nominal type to the enclosing inferred failure set unless the failure is handled before leaving the function.
+Authors MUST NOT need a `TaggedError("Name")` factory, `_tag` declaration, or separate error-declaration syntax. The compiler MUST provide stable nominal identity, matching metadata, serialization evidence, and cross-realm transport metadata while preserving ordinary `Error` behavior.
 
-Throwing a defect MUST NOT falsely add a precise declared type to `E`.
+## Compiler Lifting
+
+Inside a function inferred or declared to return `Result<A, E>`:
+
+- `return value` MUST produce the success variant
+- `throw error` MUST produce the error variant and exit the function
+- returning an existing compatible Result MUST preserve it without nesting
+
+Authors MUST NOT need to write `Result.ok(...)` or `Result.err(...)`. Those constructors MUST NOT be part of the ordinary VibeLang authoring API.
+
+A function with no fallible path MUST continue to return its ordinary success type rather than an unnecessary Result.
+
+## Inference and Public Contracts
+
+When a function body has no explicit return annotation, the compiler MUST infer `A` from successful returns and `E` from:
+
+- reachable `throw error` statements
+- propagated `Result.unwrap()` calls
+- existing Results returned from the function
+- foreign exception or rejection boundaries
+
+Public, abstract, ambient, and declaration-only contracts MUST express fallibility directly with `Result<A, E>` or `Promise<Result<A, E>>`.
+
+VibeLang MUST NOT add a `throws` clause, `!T` marker, prefix `try` expression, postfix `catch` expression, or special panic-catch grammar.
 
 ## Propagation
 
-`try expression` MUST:
+`Result.unwrap()` MUST yield the success value or propagate the error variant from the enclosing Result-returning function:
 
-1. evaluate the operand
-2. yield its success value when successful
-3. exit the current function through its failure channel when the operand fails
+```ts
+function displayName(id: string) {
+  const user = findUser(id).unwrap()
+  return user.displayName
+}
+```
 
-The propagated members MUST enter the current function's inferred `E`.
+The compiler MUST include the unwrapped Result's error type in the enclosing function's inferred `E`. The emitted error path MUST return the enclosing error variant rather than throw a recoverable JavaScript exception.
 
-`try await expression` MUST apply the same behavior after awaiting the operand.
+At an explicit non-Result boundary, unsafe extraction MAY throw at runtime and MUST be visually distinct in API naming or diagnostics.
 
-## Recovery
+## Matching and Transformation
 
-A VibeLang catch expression MUST intercept typed failures from its operand. It MUST NOT intercept defects.
+Result values MUST provide compiler-aware operations equivalent in purpose to:
 
-A handler that returns a success value removes the handled member from the resulting failure set. A handler that rethrows a member keeps it in the result.
+```text
+isOk  isError  match  map  mapError  andThen  recover
+tap   tapError unwrap unwrapOr all
+```
 
-## Exhaustiveness
+`match` MUST require both success and error branches. Transformations MUST preserve or correctly combine the Result error type.
 
-When the compiler knows the complete failure set, matching recovery MUST be exhaustive. Missing a reachable failure type MUST be a compile error.
+A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.
 
-An explicit propagation or rethrow arm counts as handling that member for exhaustiveness.
+## Error Prototype
 
-## JavaScript Catch
+Every `Error` instance MUST provide compiler-aware quality-of-life methods:
 
-Existing JavaScript statement-form `try/catch` MUST retain JavaScript semantics on the TypeScript target. It MAY observe both VibeLang failures and defects.
+```text
+is  matches  match  matchPartial  rootCause
+```
 
-VibeLang MUST NOT silently change existing JavaScript catch blocks into failure-only handlers.
+For a statically known error union, `error.match({...})` MUST be exhaustive and MUST narrow each handler argument to its nominal `Error` subclass:
 
-## Async Semantics
+```ts
+error.match({
+  NotFound: (error) => User.guest(error.id),
+  Timeout: (error) => retryAfter(error.ms),
+})
+```
 
-Async rejection MUST preserve typed failure identity. Awaiting a typed rejected operation MUST reintroduce its failure set into the current function.
+Handler selection MUST use compiler-stable nominal identity, not a forgeable user `_tag` or minifier-sensitive constructor name in compiled artifacts.
 
-Cross-realm and durable transports MUST encode declared failures using checked tagged schemas. A receiver MUST NOT treat an unrecognized defect payload as a valid declared failure.
+## Foreign Exceptions
+
+Calling TypeScript, JavaScript, or another foreign implementation that may throw or reject MUST produce a Result in VibeLang. An unknown thrown value MUST be wrapped in `UnhandledException`, which is an `Error` subclass retaining the original cause.
+
+A trusted adapter MAY map the boundary to a more precise `Error` subtype. JSDoc and declaration metadata MAY provide that trusted contract, but MUST NOT cause an actual foreign throw to escape the VibeLang Result boundary.
+
+`Reflect.panic` is reserved for compiler/runtime invariants and MUST bypass recoverable Result handling.
+
+## Promise Semantics
+
+Authored `.vibe` code MUST consume Promise instances only through `await`.
+
+Calls to Promise instance `.then()`, `.catch()`, or `.finally()` MUST be compile errors. Imported TypeScript and JavaScript modules retain ordinary Promise behavior internally.
+
+Awaiting `Promise<Result<A, E>>` MUST produce `Result<A, E>`. `await` MUST NOT automatically unwrap, recover, or discard the Result.
+
+Promise rejection at a VibeLang boundary MUST become an error Result, normally `UnhandledException`, rather than an untyped rejection escaping the declared return contract.
+
+## JavaScript `try/catch`
+
+Ordinary statement-form JavaScript `try/catch` remains valid where JavaScript interoperability requires it. It is not the typed recovery surface for VibeLang Results, and its presence MUST NOT change a function's Result contract implicitly.
 
 ## Cleanup
 
 VibeLang MUST support `defer` and `errdefer`.
 
 - `defer` runs when the containing scope exits.
-- `errdefer` runs when the scope exits through a failure.
+- `errdefer` runs when a Result-returning scope exits through its error variant.
 
-Ordering, async finalization, and precise defect/cancellation interaction require further normative specification.
+Ordering, async finalization, cancellation, and cleanup-error composition require further normative specification.

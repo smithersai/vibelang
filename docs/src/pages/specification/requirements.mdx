@@ -1,34 +1,51 @@
 # Requirements [Normative model for capabilities and provider layers]
 
-Status: **Locked** for capability identity, lexical binding, inference, and layer-based provision. Lifecycle and lowering are **open**.
+Status: **Locked** for capability identity, context access, inference, and layer-based provision. Declaration encoding, lifecycle, and lowering are **open**.
 
 ## Capability Identity
 
-A capability MUST be represented by a nominal class identity.
+A capability MUST be represented by an abstract class extending `Context` from `vibelang/context`.
 
-Two structurally identical capability classes MUST remain different requirements unless the language defines an explicit identity relationship.
+Two structurally identical context subclasses MUST remain different requirements unless the program defines an explicit identity relationship.
 
-An abstract capability MUST require an external implementation. A concrete capability MAY provide its own default implementation.
-
-## Requirement Bindings
-
-A function MAY declare named requirements:
+The abstract class MUST act as both the service contract and its nominal context key:
 
 ```ts
-function f(): A uses db: Database, log: Logger
+import { Context } from "vibelang/context"
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
 ```
 
-Each name MUST create a lexical binding within the function body. The name is local; capability identity comes from its declared nominal type.
+This declaration uses ordinary class syntax. VibeLang MUST NOT add a separate capability declaration form.
 
-The implementation MUST NOT require user code to fetch these values from an untyped service locator.
+## Context Access
+
+A function accesses a service with a library-shaped call:
+
+```ts
+function timestamp(message: string): Entry {
+  const clock = Clock.context()
+  return { message, recordedAt: clock.now() }
+}
+```
+
+`Capability.context()` MUST be an inherited, compiler-recognized call on subclasses of `Context`. It MUST return the receiving capability's instance type and add that class's nominal identity to the enclosing function's inferred `R` row.
+
+The call is intentionally library-shaped: it uses ordinary static method-call syntax and has ordinary runtime behavior after lowering, while the compiler gives it additional static meaning. The receiver MUST identify a `Context` subclass strongly enough for the compiler to record its nominal key.
+
+The context row MUST be part of the function's static type even though it is not written with dedicated function-declaration syntax. Callers MUST NOT pass a context argument by hand.
+
+Lookup MUST remain fully typed. The implementation MUST NOT expose an untyped service locator.
 
 ## Inference
 
-Calling a function with unsatisfied requirements MUST add those capabilities to the caller's `R` row.
+Calling a function with unsatisfied requirements MUST add those capabilities to the caller's `R` row. The source call MUST remain an ordinary call with only the function's declared value arguments.
 
 Requirement inference MUST be transitive through ordinary calls. Duplicate nominal requirements MUST collapse.
 
-An explicit requirement annotation MUST pin and check the inferred row.
+Public declarations MUST preserve the inferred row. Its exact TypeScript declaration encoding is open; a phantom `Context.Function<Fn, R>` representation is a candidate.
 
 ## Platform Requirements
 
@@ -40,7 +57,7 @@ Portability MUST be determined from the satisfied dependency closure, not merely
 
 ## Layer Algebra
 
-Provider composition MUST be expressed by a library imported from `vibelang:provider`. The accepted design MUST NOT rely on a dedicated source-language `provide {}` statement.
+Provider composition MUST be expressed by a library imported from `vibelang/provider`. The accepted design MUST NOT rely on a dedicated source-language `provide {}` statement.
 
 A layer conceptually has the type:
 
@@ -54,9 +71,11 @@ Layer composition MUST track:
 - failures during construction
 - capabilities required for construction
 
+A layer MUST associate each capability's nominal context key with a compatible service instance. Layer APIs are library-shaped; the compiler recognizes their effect on `R` without introducing special provider grammar.
+
 ## Satisfaction
 
-Providing a layer to a callback MUST remove matching capabilities from the callback's unsatisfied requirement row.
+Providing a layer to a computation MUST remove matching capabilities from the computation's unsatisfied requirement row. The provider library MUST establish the runtime scope in which `Capability.context()` resolves those instances.
 
 Layer acquisition failures MUST enter the surrounding failure row. Layer construction requirements MUST remain in the surrounding requirement row unless another layer satisfies them.
 
@@ -70,7 +89,7 @@ Resources acquired by a scoped layer MUST eventually be finalized. Acquisition o
 
 ## Lowering
 
-The TypeScript backend MAY lower requirements through hidden environment parameters, scoped ambient context, or another mechanism that preserves semantics.
+The TypeScript backend MAY lower requirements through hidden environment parameters, scoped ambient context, or another mechanism that preserves semantics and ordinary source-level call syntax.
 
 Ambient runtime context is not a locked implementation choice. The lowering MUST preserve async scope, nesting, failure cleanup, and nominal lookup behavior.
 

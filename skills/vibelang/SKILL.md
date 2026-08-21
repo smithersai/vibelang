@@ -9,39 +9,50 @@ Assume TypeScript knowledge. Start with ordinary TypeScript and apply only the d
 
 ## Essential deltas
 
-- Declare a nominal failure with `error Name { fields }`. Use `!T` to infer an internal function's failure set and `T throws E` to pin a public contract. `try expr` / `try await expr` propagates; `expr catch fallback` recovers. Catch expressions handle typed failures only; defects keep unwinding. Async failures use `Promise<T, E>`.
-- Declare lexical capabilities with `uses name: Type`; requirements propagate through calls. Capabilities are nominal classes. Supply them with `Layer` from `vibelang:provider`, normally `Layer.succeed`, `Layer.merge`, and `Layer.provide`.
+- Declare a nominal failure with a TypeScript `class Name extends Error`. When a function has a body, omit its return annotation to infer both its success type and typed failure set directly from the body; inference needs no marker. Public, abstract, and declaration-only contracts use explicit `T throws E` when failures are part of the contract; async contracts use `Promise<T> throws E`. `try expr` / `try await expr` propagates; `expr catch (error) { ... }` recovers. Catch expressions handle typed failures only; defects keep unwinding.
+- Define a capability as an `abstract class Name extends Context` after importing `Context` from `vibelang/context`. Access it with the inherited static `Name.context()` method. This is an ordinary-looking library call that the compiler recognizes: it returns an instance of `Name` and adds the `Name` class to the current function's inferred requirements channel. Requirements propagate through calls and callers never pass context manually. Supply implementations with `Layer` from `vibelang/provider`, normally `Layer.succeed`, `Layer.merge`, and `Layer.provide`.
 - `?T` is absence, independent of failure. Use `value orelse fallback`, `if (value) |payload| ... else ...`, or `value.?` (defects if absent). Precise interop with `null`/`undefined` is not settled.
-- `if`, `switch`, blocks, and loops may return values. Labeled `break :label value`, loop `else`, throw expressions, `defer`, and `errdefer` follow the current Zig-inspired design.
+- `if`, `switch`, blocks, and loops may return values. Switches use ordinary TypeScript `case` clauses; an expression switch takes the selected case's final expression as its value. Labeled `break :label value`, loop `else`, throw expressions, `defer`, and `errdefer` follow the current expression-oriented design.
+- Join concurrent operations directly with `try await.all(taskA(), taskB())`; the join is structured and unions the operations' typed failure sets. Do not introduce a separate bounded task-scope abstraction. TC39 governors are separate Stage 1 concurrency-limiting work, not structured task ownership.
 - Do not use ambient host facilities such as `process`, filesystem, network, clock, or random in authored VibeLang; model them as capabilities. Runtime use of TS/JS code adds the built-in `TypeScript` requirement and unknown foreign throws add `unknown`; type-only imports do neither.
 
 ```ts
-import { Layer } from "vibelang:provider"
+import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
 
-error NotFound { id: string }
-error DbFailure { message: string }
-
-abstract class Users {
-  abstract find(id: string): Promise<?User, DbFailure>
+class NotFound extends Error {
+  constructor(readonly id: string) { super(`User not found: ${id}`) }
+}
+class DbFailure extends Error {
+  constructor(readonly message: string) { super(message) }
 }
 
-async function getUser(id: string): !User uses users: Users {
+abstract class Users extends Context {
+  abstract find(id: string): Promise<?User> throws DbFailure
+}
+
+async function getUser(id: string) {
+  const users = Users.context()
   const user = try await users.find(id)
-  return user orelse throw NotFound({ id })
+  return user orelse throw new NotFound(id)
 }
 
 const App = Layer.succeed(Users, new SqlUsers())
 await Layer.provide(App, async () => {
-  const user = await getUser("42") catch |e| switch (e) {
-    NotFound => User.guest(),
-    DbFailure => throw e,
+  const user = await getUser("42") catch (error) {
+    switch (error.constructor) {
+      case NotFound:
+        User.guest()
+      case DbFailure:
+        throw error
+    }
   }
 })
 ```
 
 ## Spec discipline
 
-VibeLang is in early design. In this repository, treat `docs/DECISIONS.md` as authoritative; syntax labeled proposed/open is not stable. Prefer current docs over the regex prototype: never emit its obsolete `uses A, B` or special `provide { ... }` syntax. Do not claim compiler support without verifying it.
+VibeLang is in early design. In this repository, treat `docs/DECISIONS.md` as authoritative; syntax labeled proposed/open is not stable. Prefer current docs over the regex prototype: use unannotated function bodies for success and failure inference, never emit a `uses` clause or special `provide { ... }` syntax, and use the compiler-recognized `vibelang/context` API with the `vibelang/provider` library. Do not claim compiler support without verifying it.
 
 Load detail only when needed:
 

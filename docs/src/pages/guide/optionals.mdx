@@ -1,81 +1,83 @@
 # Optionals [Represent absence without turning it into failure]
 
-VibeLang separates a missing value from an operation that failed. Zig-style optionals provide a compact representation for ordinary absence.
+VibeLang's built-in `Optional<T>` is the success-or-absence counterpart to `Result<T, E>`. It uses an ordinary generic type and method calls, so the source remains valid TypeScript-shaped syntax.
 
-:::note Design direction
-Optionals are a locked language requirement, but conversions with TypeScript's `null` and `undefined` unions are not yet fully specified. The syntax on this page shows the current direction.
-:::
-
-## Optional Values
-
-`?T` means that a value is either a `T` or absent:
+## Return an Optional
 
 ```ts
-function findCached(id: string): ?User {
-  return cache.get(id)
+function findCached(id: string): Optional<User> {
+  const user = cache.get(id)
+  if (user === undefined) return undefined
+  return user
 }
 ```
 
-Absence does not add a member to the function's failure channel. It is part of the success value.
+Inside an `Optional<T>`-returning function, the compiler lifts `return value` to present and `return null` or `return undefined` to absent. Returning an existing compatible Optional does not nest it. `Optional.some` and `Optional.none` are therefore not part of the authoring API.
 
-## Provide a Fallback
+Absence is part of the normal value; it does not add an Error to a Result.
 
-Use `orelse` when both branches produce the same value type:
+## Inspect and Transform
 
 ```ts
-const user = findCached(id) orelse try loadUser(id)
+const label = findCached(id).match({
+  some: user => user.displayName,
+  none: () => "Guest",
+})
+
+const email = findCached(id)
+  .map(user => user.email)
+  .filter(email => email.includes("@"))
 ```
 
-The fallback is evaluated only when the left side is absent.
+The built-in methods are:
 
-## Capture the Payload
+- `isSome()`, `isNone()`, `match(...)`
+- `map(...)`, `andThen(...)`, `filter(...)`, `tap(...)`
+- `unwrap()`, `unwrapOr(...)`
+- `toResult(...)`, `toNullable()`
+- `Optional.fromNullable(...)` and `Optional.all(...)`
 
-Conditionals can capture the present value:
+## Propagate Absence
+
+`Optional.unwrap()` is a compiler propagation point inside an Optional-returning function:
 
 ```ts
-const label = if (findCached(id)) |user| {
-  user.displayName
-} else {
-  "Guest"
+function primaryEmail(id: string): Optional<string> {
+  const user = findCached(id).unwrap()
+  return user.emails.at(0)
 }
 ```
 
-Inside the first branch, `user` has type `User`, not `?User`.
+If either Optional is absent, the enclosing function returns absent. In uncompiled JavaScript, `unwrap()` throws `MissingOptionalValue` so missed lowering is visible.
 
-## Assert Presence
-
-Use `.?` when absence would violate an invariant:
+Use `unwrapOr` when a fallback is enough:
 
 ```ts
-const primary = users.first().?
+const user = findCached(id).unwrapOr(() => guestUser)
 ```
 
-An asserted unwrap is intended for impossible absence. It defects when the value is absent; it does not create a recoverable typed failure.
+## Convert Absence to an Error
 
-## Optional or Failure?
-
-Use an optional when absence is an expected result of a successful lookup:
+Use `toResult` when the caller needs structured recovery information:
 
 ```ts
-function lookupHeader(name: string): ?string
+function requireUser(id: string): Result<User, NotFound> {
+  return findCached(id).toResult(() => new NotFound(id))
+}
 ```
 
-Use a typed failure when the caller needs structured recovery information:
+An operation can independently be fallible and return an optional value:
 
 ```ts
-function requireUser(id: string): User throws NotFound
+declare function findUser(
+  id: string,
+): Result<Optional<User>, DatabaseError>
 ```
 
-Use both when the operation can fail independently of finding no value:
-
-```ts
-function findUser(id: string): !?User
-// success: User or absent
-// failure: inferred database failures
-```
+The two layers remain explicit: database failure is in `Result`; a successful lookup with no row is in `Optional`.
 
 ## TypeScript Interoperability
 
-Existing optional properties, optional parameters, `T | null`, and `T | undefined` remain valid on the TypeScript target. VibeLang will define explicit conversions rather than silently changing their meaning.
+Use `Optional.fromNullable(value)` to adapt `T | null | undefined`, and `optional.toNullable()` when passing a value back to a nullable API. Optional properties and parameters keep their normal TypeScript meaning; VibeLang does not reinterpret `property?: T` as `Optional<T>`.
 
-Nested optional behavior and the precise conversion rules remain open specification work. Until those rules are locked, treat `?T` examples as design syntax rather than a stable source contract.
+The language adds no `?T`, `orelse`, `.?`, or payload-capture grammar.

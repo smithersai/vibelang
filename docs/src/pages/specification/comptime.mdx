@@ -1,12 +1,35 @@
 # Comptime [Normative model for deterministic phase evaluation]
 
-Status: phase evaluation, type generation, and tracked input requirements are **locked**. Loader syntax and module shapes are **open**.
+Status: phase evaluation, the compiler-recognized API, type generation, and tracked input requirements are **locked**. Loader API details and module shapes are **open**.
+
+## Compiler-Recognized API
+
+Comptime MUST use ordinary TypeScript call syntax rather than a VibeLang keyword:
+
+```ts
+import { comptime } from "vibelang:comptime"
+```
+
+The compiler MUST recognize the resolved imported binding, not the local identifier text. Aliasing the import MUST preserve its meaning, and an unrelated function named `comptime` MUST remain an ordinary function.
+
+`comptime(value)` MUST require its argument expression to be evaluated during compilation and MUST replace the call with the resulting value or generated artifact.
+
+When the argument is a function, `comptime(functionValue)` MUST return a compile-time function; it MUST NOT invoke the function merely because it was passed to `comptime`. Every call of that function MUST be evaluated during compilation. An immediately called compile-time block therefore uses ordinary call syntax:
+
+```ts
+const routes = comptime(() => {
+  const source = embed("./routes.json")
+  return parseRoutes(source)
+})()
+```
+
+The `vibelang:comptime` specifier is a compiler-owned virtual module. The compiler MUST erase or lower recognized imports and calls. Uncompiled JavaScript execution MUST fail during virtual-module loading rather than provide a fallback that could evaluate `comptime(...)` arguments at runtime.
 
 ## Evaluation Principle
 
 The compiler MAY evaluate code automatically when its inputs and operations are available at compile time.
 
-An explicit `comptime` expression MUST be evaluated during compilation. Compilation MUST fail if the expression cannot be evaluated under the comptime rules.
+An explicit `comptime(...)` call MUST be evaluated during compilation. Compilation MUST fail if the value or any call of a compile-time function cannot be evaluated under the comptime rules.
 
 Comptime evaluation MUST NOT silently defer explicit work to runtime.
 
@@ -40,7 +63,7 @@ Arbitrary unavailable runtime I/O MUST NOT be performed merely because a call oc
 
 ## Target Selection
 
-The compiler MUST expose a typed target value, currently designed as `comptime.target`.
+The imported `comptime` binding MUST expose a typed target value as `comptime.target`.
 
 A target-selected branch resolved at comptime MUST NOT emit unselected runtime code. Target-dependent loaders and derived artifacts MUST include the target in their cache identity.
 
@@ -64,7 +87,13 @@ The toolchain MUST include loaders for JSON, Markdown, and MDX.
 
 VibeLang's const JSON form MUST preserve literal values recursively and expose a deeply readonly type. Existing TypeScript JSON imports MUST retain TypeScript semantics.
 
-The const-import grammar is **open**.
+Non-code inputs MUST select their loader and mode with standard import attributes. Const JSON MUST use the shape:
+
+```ts
+import config from "./config.json" with { type: "json", mode: "const" }
+```
+
+Text, bytes, Markdown, MDX, custom formats, and foreign source modules MUST use the same attribute mechanism with an appropriate `type` string.
 
 Markdown and MDX MUST preserve source locations. Their standard export shapes, JSX runtime selection, component injection, and frontmatter typing are **open**.
 

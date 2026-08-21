@@ -32,9 +32,11 @@ The alternate branch MAY be omitted only where the resulting unit or optional se
 
 ## Switch
 
-An expression switch MUST return the selected arm's value. When the scrutinee is a known closed union, the compiler SHOULD require exhaustiveness.
+Switch syntax MUST use the same `switch`, `case`, `default`, and colon-delimited clauses as TypeScript. VibeLang MUST NOT introduce a separate arrow-arm switch grammar.
 
-Failure-switch syntax MUST preserve room to converge with TC39 pattern matching.
+In expression position, a switch MUST return the selected case's final expression. Expression switches MUST NOT fall through between cases. Statement-position switches MUST retain TypeScript's existing fallthrough and `break` behavior.
+
+When the scrutinee is a known closed union, the compiler SHOULD require an expression switch to be exhaustive.
 
 ## Blocks
 
@@ -58,9 +60,9 @@ The compiler MUST combine reachable break values when determining the labeled ex
 
 The exact treatment of infinite loops, unreachable completion, and nested label selection is not finalized.
 
-## Throw Expressions
+## Throw Statements
 
-VibeLang MUST adopt expression-form throw in a TypeScript-compatible way. Throwing a declared failure MUST affect the enclosing failure row according to [Failure Semantics](/specification/failures).
+The initial language MUST retain ordinary statement-form `throw` and MUST NOT add a VibeLang-specific throw-expression grammar. Inside a fallible function, throwing an `Error` produces the function's Result error variant according to [Failure Semantics](/specification/failures).
 
 ## Declarations in Conditions
 
@@ -68,7 +70,7 @@ VibeLang MUST track relevant TC39 work for declarations in conditionals and SHOU
 
 ## Deferred Cleanup
 
-`defer` MUST register cleanup for scope exit. `errdefer` MUST register cleanup for failure exit.
+`defer` MUST register cleanup for scope exit. `errdefer` MUST register cleanup for a Result error exit.
 
 The language MUST define deterministic ordering for multiple deferred operations. The candidate is last-in, first-out, but this is not yet recorded as locked.
 

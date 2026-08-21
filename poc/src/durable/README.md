@@ -15,8 +15,9 @@ The demo proves:
   implementation (its schema bodies remain explicit stubs);
 - providers install ordinary callbacks and independently select recovery and
   reuse policy;
-- a Flow callback runs once with strict symbolic input/results and disappears
-  into serializable Plan IR;
+- the obsolete POC `Flow.define(...)` callback can record strict symbolic
+  input/results and disappear into serializable Plan IR, validating the IR
+  boundary but not the accepted compiler lowering;
 - projection and argument passing produce data edges, independent Actions run
   concurrently, and explicit parallel, branch, and sequence topology works;
 - deployment building rejects missing/ambiguous/incompatible providers and
@@ -42,6 +43,13 @@ offers no trap for truthiness, strict equality, or its operators. Consequently
 ordinary `if (symbolic)` cannot implement the language contract. `Expr.*` and
 `Flow.branch` in this spike are explicit versions of the expression/branch IR
 that the real VibeLang compiler must lower ordinary source syntax into.
+
+The accepted source API imports `durable` from `vibelang:flows` and passes it an
+inline or otherwise statically resolvable function. Production template
+compilation lowers that function's checked syntax and control flow without
+invoking it. Plan/preview then reads the emitted IR without the source function
+or Action implementations present. Nothing in this POC implements that
+compiler-owned surface.
 
 Deliberate omissions are compiler-derived real schemas/codecs (the descriptor
 marks a canonical-JSON stub), runtime-sized loop/fan-out templates, catch and

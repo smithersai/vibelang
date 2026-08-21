@@ -95,33 +95,38 @@ function propertyName(name: ts.PropertyName): string {
 }
 
 export function parseWithSchema<T>(schema: SchemaNode, input: unknown): T {
-  validate(schema, input, "$input");
-  return input as T;
+  return decode(schema, input, "$input") as T;
 }
 
-function validate(schema: SchemaNode, input: unknown, path: string): void {
+function decode(schema: SchemaNode, input: unknown, path: string): unknown {
   switch (schema.kind) {
-    case "unknown": return;
-    case "null": if (input === null) return; break;
-    case "string": if (typeof input === "string") return; break;
-    case "number": if (typeof input === "number" && Number.isFinite(input)) return; break;
-    case "boolean": if (typeof input === "boolean") return; break;
-    case "literal": if (input === schema.value) return; break;
+    case "unknown": return input;
+    case "null": if (input === null) return input; break;
+    case "string": if (typeof input === "string") return input; break;
+    case "number": if (typeof input === "number" && Number.isFinite(input)) return input; break;
+    case "boolean": if (typeof input === "boolean") return input; break;
+    case "literal": if (input === schema.value) return input; break;
     case "array":
-      if (Array.isArray(input)) {
-        input.forEach((value, index) => validate(schema.element, value, `${path}[${index}]`));
-        return;
+      if (Array.isArray(input) && Object.getPrototypeOf(input) === Array.prototype) {
+        const output: unknown[] = [];
+        for (let index = 0; index < input.length; index++) {
+          if (!Object.hasOwn(input, index)) throw new ValidationFailure(`${path}[${index}]`, describe(schema.element));
+          output.push(decode(schema.element, input[index], `${path}[${index}]`));
+        }
+        return output;
       }
       break;
     case "tuple":
-      if (Array.isArray(input) && input.length === schema.elements.length) {
-        schema.elements.forEach((element, index) => validate(element, input[index], `${path}[${index}]`));
-        return;
+      if (Array.isArray(input) && Object.getPrototypeOf(input) === Array.prototype && input.length === schema.elements.length) {
+        return schema.elements.map((element, index) => {
+          if (!Object.hasOwn(input, index)) throw new ValidationFailure(`${path}[${index}]`, describe(element));
+          return decode(element, input[index], `${path}[${index}]`);
+        });
       }
       break;
     case "union": {
       for (const variant of schema.variants) {
-        try { validate(variant, input, path); return; } catch (error) {
+        try { return decode(variant, input, path); } catch (error) {
           if (!(error instanceof ValidationFailure)) throw error;
         }
       }
@@ -130,14 +135,21 @@ function validate(schema: SchemaNode, input: unknown, path: string): void {
     case "object":
       if (typeof input === "object" && input !== null && !Array.isArray(input)) {
         const object = input as Record<string, unknown>;
+        const prototype = Object.getPrototypeOf(object);
+        if (prototype !== Object.prototype && prototype !== null) break;
+        const output = Object.create(null) as Record<string, unknown>;
         for (const [key, property] of Object.entries(schema.properties)) {
           if (!Object.hasOwn(object, key)) {
             if (property.optional) continue;
             throw new ValidationFailure(`${path}.${key}`, describe(property.schema));
           }
-          validate(property.schema, object[key], `${path}.${key}`);
+          const descriptor = Object.getOwnPropertyDescriptor(object, key);
+          if (!descriptor || descriptor.enumerable !== true || !("value" in descriptor)) {
+            throw new ValidationFailure(`${path}.${key}`, describe(property.schema));
+          }
+          output[key] = decode(property.schema, descriptor.value, `${path}.${key}`);
         }
-        return;
+        return output;
       }
       break;
   }

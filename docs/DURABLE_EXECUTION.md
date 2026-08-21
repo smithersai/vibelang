@@ -12,55 +12,75 @@ not a required user-facing dependency.
 
 - An **Action** is an open runtime implementation behind a closed, durable
   signature.
-- A **Flow** is a closed program which the compiler evaluates at comptime into
-  a typed, target-neutral execution-plan template.
+- A **Flow** is a closed program produced when the compiler lowers the checked
+  body of a function passed to `durable(...)` into a typed, target-neutral
+  execution-plan template.
 - Action implementations are ordinary VibeLang functions/callbacks. Their
-  input, success, typed failure, and requirements are taken from the signature;
-  the compiler derives persistence codecs rather than asking authors to repeat
-  schemas in an Action constructor.
+  success and typed failure are inferred from the body when the return
+  annotation is omitted. Abstract Action signatures use explicit
+  `Result<A, E>` contracts because they have no body. Requirements are inferred
+  from `Capability.context()` calls and transitive callees and remain part of
+  that static type; the compiler derives persistence codecs rather than asking
+  authors to repeat schemas in an Action constructor.
 - Ordinary functions remain ordinary eager functions. Only `Action` and `Flow`
   opt into the durable runtime.
 - A local process, isolate, sandbox, container, and remote machine all use the
   same Action invocation protocol.
 
 ```ts
+import { durable } from "vibelang:flows"
+
 abstract class Compile extends Action<
-  (input: CompileInput) => CompileOutput throws CompileError
+  (input: CompileInput) => Result<CompileOutput, CompileError>
 > {}
 
 abstract class Package extends Action<
-  (input: PackageInput) => Artifact throws PackageError
+  (input: PackageInput) => Result<Artifact, PackageError>
 > {}
 
-const Build = comptime Flow((input: BuildInput) => {
+const Build = durable((input: BuildInput) => {
   const compiled = Compile.run({ source: input.source })
   return Package.run({ code: compiled.code })
 })
 ```
 
-`Compile.run` performs no work while compiling `Build`. It emits an Action
-node. `compiled` is a typed symbolic value and `compiled.code` is a typed
-projection from that node. Passing it to `Package.run` creates the data edge.
+`durable` is an imported compiler intrinsic, not a keyword. The compiler
+recognizes the resolved import binding, so aliases preserve the behavior and an
+unrelated function with the same name remains ordinary. Its argument must be an
+inline function or another function the compiler can resolve statically. The
+call lowers to a serializable Flow descriptor that references the emitted IR,
+not a runtime callback wrapper. Uncompiled JavaScript fails while loading the
+compiler-owned `vibelang:flows` virtual module.
+
+The compiler lowers the function's typed syntax and control-flow graph; it does
+not call the function with proxies to discover the graph. `Compile.run` lowers
+to an Action node. `compiled` is a typed symbolic value and `compiled.code` is
+a typed projection from that node. Passing it to `Package.run` creates the data
+edge. Neither Action implementation runs during compilation or planning.
 
 ## Compilation model
 
-There are three distinct phases:
+There are four distinct phases:
 
-1. **Template compilation.** The compiler invokes the Flow callback once with
-   a symbolic input. It emits Plan IR, schemas, inferred failures and
-   requirements, stable identities, and a source map. The callback itself is
-   not needed at runtime.
+1. **Template compilation.** The compiler lowers the statically resolved
+   function's checked syntax, control flow, and data flow into Plan IR, schemas,
+   inferred failures and requirements, stable identities, and a source map. It
+   never invokes the function. The source function is not needed afterward.
 2. **Deployment build.** Provider layers are resolved. The compiler checks
    their complete dependency closure, partitions implementations into worker
    pools, and emits coordinator and worker artifacts plus a signed manifest.
-3. **Execution.** An execution ID and validated input instantiate the template.
-   The durable scheduler evaluates control nodes and dispatches Action nodes to
-   eligible workers.
+3. **Plan/preview.** Tooling reads the emitted Plan IR, validates and optionally
+   specializes known input, and reports the execution graph. It neither loads
+   nor invokes the durable source function or Action implementations. Unknown
+   branches and runtime-sized fan-out remain explicit templates.
+4. **Execution.** An execution ID and validated input create or resume a run.
+   The durable scheduler evaluates Plan IR control nodes and dispatches ready
+   Action nodes to eligible workers.
 
-This differs usefully from the current `flows` implementation: it currently
-builds a graph by running a JavaScript body with the real payload and retains
-live functions in side tables. VibeLang can emit portable expression IR and
-compiler-stable hashes instead.
+This differs usefully from the prior `flows` implementation: it builds a graph
+by running a JavaScript body and retains live functions in side tables.
+VibeLang instead emits portable expression IR and compiler-stable hashes. Plan
+mode analyzes that emitted artifact; it never executes a Flow source function.
 
 ## Plan IR
 
@@ -91,9 +111,9 @@ Rules:
 - Action calls are ordered by data/control edges, not source position.
   Independent calls may run concurrently. An explicit sequencing construct is
   required when two calls have no data dependency but order matters.
-- The Flow may capture only comptime values. Clock, random, environment,
-  services, I/O, and mutable runtime state are unavailable while constructing
-  the template.
+- The Flow may capture only compiler-known immutable values, including results
+  of `comptime(...)`. Clock, random, environment, services, I/O, and mutable
+  runtime state are unavailable while compiling the template.
 
 ### Scheduling and graph behavior
 
@@ -201,7 +221,7 @@ not reset them.
 
 ## Providers
 
-Provider composition comes from `vibelang:provider`; there is no special
+Provider composition comes from `vibelang/provider`; there is no special
 `provide { ... }` statement. Exact API spelling remains open, but the type
 algebra is:
 
@@ -209,10 +229,30 @@ algebra is:
 Layer<Provides, InitError, Requires>
 ```
 
+Ordinary implementations obtain services through the compiler-recognized
+context library rather than through explicit function parameters:
+
+```ts
+import { Context } from "vibelang/context"
+
+abstract class ArtifactStore extends Context {
+  abstract put(artifact: Artifact): Result<ArtifactRef, ArtifactStoreError>
+}
+
+function publish(artifact: Artifact) {
+  return ArtifactStore.context().put(artifact)
+}
+```
+
+`publish(artifact)` still has one source-level argument. The `ArtifactStore`
+requirement, `ArtifactRef` success type, and `ArtifactStoreError` failure are
+carried in its inferred static function type. A provider layer must satisfy the
+requirement in the deployment closure.
+
 Conceptually:
 
 ```ts
-import { Action, Layer } from "vibelang:provider"
+import { Action, Layer } from "vibelang/provider"
 
 const BuildActions = Layer.merge(
   Action.provide(Compile, compileWithEsbuild, {
@@ -257,7 +297,7 @@ A deployment declares worker pools. A pool has:
 The concrete configuration syntax is still open. Its shape is approximately:
 
 ```ts
-import { Deployment, Layer, Worker } from "vibelang:provider"
+import { Deployment, Layer, Worker } from "vibelang/provider"
 
 export default Deployment.make({
   workers: [
@@ -291,8 +331,9 @@ fails the build if any transitive dependency requires TypeScript.
 An in-process executor is simply the local implementation of the same worker
 protocol. Sandboxing and distribution therefore do not change Flow semantics.
 
-Flow callbacks are never shipped as opaque code. Coordinators evaluate the
-portable Plan/expression IR; workers receive only Action implementations. A
+Durable source functions are never shipped as opaque code. Coordinators
+evaluate the portable Plan/expression IR; workers receive only Action
+implementations. A
 child-Flow boundary may route to another coordinator, region, or deployment
 when its manifest says so.
 

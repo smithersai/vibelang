@@ -1,42 +1,44 @@
 # Capabilities & Layers [Make dependencies visible and provide them by scope]
 
-VibeLang models a dependency as a capability in a function's requirement channel. The function names the dependency it uses; a layer decides how to construct it.
+VibeLang models a dependency as a capability in a function's requirement channel. An Effect-inspired context library defines and accesses services; a layer decides how to construct them.
 
 ## Defining a Capability
 
-A capability is a nominal class:
+A capability is an abstract class extending `Context`:
 
 ```ts
-abstract class Mailer {
-  abstract send(message: Message): !Receipt
+import { Context } from "vibelang/context"
+
+abstract class Mailer extends Context {
+  abstract send(message: Message): Receipt throws MailError
 }
 ```
 
-An abstract class has no default implementation and must be provided. A concrete class can act as its own default implementation.
-
-Nominal identity matters. Two classes with the same methods are still different capabilities.
+The class is both the service contract and its nominal key. Two context classes with the same methods are still different capabilities.
 
 ## Using a Capability
 
-Declare requirements after the function signature:
+Access requirements through the context package:
 
 ```ts
-function welcome(user: User): !Receipt
-  uses mailer: Mailer, clock: Clock {
+function welcome(user: User) {
+  const mailer = Mailer.context()
+  const clock = Clock.context()
   const message = Message.welcome(user, clock.now())
   return try mailer.send(message)
 }
 ```
 
-`mailer` and `clock` are lexical bindings with normal types. Business logic does not call a service locator or read a global container.
+The calls look like an ordinary library API, but inherited `context()` is compiler-aware. The function's inferred context row is `Mailer | Clock`, and each local binding has its capability class type.
 
 ## Requirement Inference
 
 Requirements propagate like failures:
 
 ```ts
-function register(input: Signup): !User {
-  const user = try Users.create(input)
+function register(input: Signup) {
+  const users = Users.context()
+  const user = try users.create(input)
   try welcome(user)
   return user
 }
@@ -46,10 +48,10 @@ If the called functions require `Users`, `Mailer`, and `Clock`, `register` acqui
 
 ## Building a Layer
 
-Provider composition lives in `vibelang:provider`:
+Provider composition lives in `vibelang/provider`:
 
 ```ts
-import { Layer } from "vibelang:provider"
+import { Layer } from "vibelang/provider"
 
 const Production = Layer.merge(
   Layer.succeed(Clock, SystemClock),
@@ -77,7 +79,7 @@ Layer.provide(Production, async () => {
 })
 ```
 
-The provided capabilities are available to ordinary calls inside the scope. A missing `Mailer`, `Clock`, or `Users` is a compile error when the dependency closure is known.
+The provided capabilities are available to ordinary calls inside the scope. A missing `Mailer`, `Clock`, or `Users` is a compile error when the dependency closure is known. Callers do not pass a context argument manually.
 
 ## Testing With Layers
 
@@ -103,7 +105,8 @@ There is no module replacement or global clock patch. The test supplies the prog
 The same mechanism covers host features:
 
 ```ts
-function loadConfig(): !Config uses fs: FileSystem {
+function loadConfig() {
+  const fs = FileSystem.context()
   const text = try fs.readText("app.json")
   return try Config.parse(text)
 }

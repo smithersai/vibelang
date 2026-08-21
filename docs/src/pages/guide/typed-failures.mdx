@@ -1,136 +1,141 @@
-# Typed Failures [Declare, propagate, and recover from expected failures]
+# Results and Errors [Return expected failures as values]
 
-JavaScript lets any function throw any value. VibeLang keeps JavaScript exceptions at runtime while adding a checked channel for failures callers are expected to handle.
+VibeLang uses ordinary TypeScript-shaped code and makes expected failure explicit in the return type. A synchronous fallible function returns `Result<A, E>`; an asynchronous one returns `Promise<Result<A, E>>`.
 
-## Declaring an Error
+## Declare an Error
 
-Use `error` to declare a nominal failure with structured fields:
-
-```ts
-error NotFound { id: string }
-error RateLimited { retryAfter: Duration }
-error Unauthorized {}
-```
-
-Declared errors compile to `_tag`-discriminated `Error` subclasses with a VibeLang failure brand. The tag supports exhaustive matching and the brand keeps failures distinct from defects.
-
-## Inferring a Failure Set
-
-Use `!T` on an internal function when the compiler should infer its failure set:
+Expected failures are normal `Error` subclasses:
 
 ```ts
-function readSettings(path: string): !Settings {
-  const source = try FileSystem.readText(path)
-  return try Settings.parse(source)
+class NotFound extends Error {
+  constructor(readonly id: string) {
+    super(`Not found: ${id}`)
+  }
+}
+
+class RateLimited extends Error {
+  constructor(readonly retryAfter: Duration) {
+    super("Rate limited")
+  }
 }
 ```
 
-If `readText` fails with `FileNotFound | PermissionDenied` and `parse` fails with `InvalidSettings`, the inferred set is:
+No tagged-error factory, special declaration, or `_tag` field is required. The compiler derives stable nominal identity and transport metadata while retaining `instanceof`, `cause`, stack traces, and ordinary JavaScript error behavior.
+
+## Write a Fallible Function
+
+Annotate the ordinary return type with `Result`:
 
 ```ts
-FileNotFound | PermissionDenied | InvalidSettings
+function readSettings(
+  path: string,
+): Result<Settings, FileNotFound | PermissionDenied | InvalidSettings> {
+  const fs = FileSystem.context()
+  const source = fs.readText(path).unwrap()
+  return Settings.parse(source).unwrap()
+}
 ```
 
-The set is a union, so duplicates disappear as failures move through a call graph.
+Inside a `Result`-returning function, VibeLang lowers plain `return value` to the success variant and `throw error` to the error variant. Returning an existing compatible `Result` does not nest it. Consequently source code does not need `Result.ok` or `Result.err`, and those constructors are not part of the authoring API.
 
-## Propagating With `try`
+When a body has no annotation, the compiler infers `A` from returned values and `E` from reachable `Error` throws, returned Results, and `.unwrap()` propagation points.
 
-`try expression` evaluates the expression and returns its success value. A typed failure returns from the current function through its failure channel:
+## Propagate With `.unwrap()`
+
+`Result.unwrap()` is compiler-aware control flow:
 
 ```ts
-function loadApplication(): !Application {
-  const settings = try readSettings("app.json")
+function loadApplication(): Result<Application, ReadSettingsError> {
+  const settings = readSettings("app.json").unwrap()
   return Application.make(settings)
 }
 ```
 
-`try` is visible control flow. It marks the exact call that can leave the function.
+On success it produces the value. On error it returns that error from the enclosing `Result`-returning function. In plain JavaScript without VibeLang lowering, it throws the original error so a missed compiler transform fails visibly.
 
-## Recovering With `catch`
+Results are must-use values. Discarding a Result is a diagnostic unless the code explicitly acknowledges it.
 
-A catch expression transforms a failure into a value or another failure:
+## Inspect and Transform a Result
+
+Use normal methods for value-oriented handling:
 
 ```ts
-const settings = readSettings("app.json") catch Settings.default()
+const label = readSettings("app.json").match({
+  ok: settings => settings.name,
+  error: error => `unavailable: ${error.message}`,
+})
+
+const port = readSettings("app.json")
+  .map(settings => settings.port)
+  .unwrapOr(3000)
 ```
 
-Capture the error when recovery depends on its type or fields:
+The initial quality-of-life surface is:
+
+- `isOk()`, `isError()`, `match(...)`
+- `map(...)`, `mapError(...)`, `andThen(...)`, `recover(...)`
+- `tap(...)`, `tapError(...)`
+- `unwrap()`, `unwrapOr(...)`, `expect(...)`
+- `Result.all(...)`, `Result.try(...)`, and `Result.tryPromise(...)`
+
+`Result.try` and `Result.tryPromise` exist for foreign JavaScript boundaries that may throw or reject. They are not success/error constructors.
+
+## Match Specific Errors
+
+Every `Error` has compiler-supported helpers:
 
 ```ts
-const settings = readSettings("app.json") catch |error| switch (error) {
-  FileNotFound => Settings.default(),
-  PermissionDenied => throw error,
-  InvalidSettings => reportAndExit(error),
+const message = readSettings("app.json").match({
+  ok: settings => `loaded ${settings.name}`,
+  error: error => error.match({
+    FileNotFound: error => `missing ${error.path}`,
+    PermissionDenied: error => `cannot read ${error.path}`,
+    InvalidSettings: error => error.message,
+  }),
+})
+```
+
+For a known error union, `error.match` is exhaustive and narrows each handler argument. `error.matchPartial(handlers, fallback)`, `error.is(Constructor)`, `error.matches(...)`, and `error.rootCause()` support partial matching and inspection. Dispatch uses compiler-provided nominal identity, not a user-maintained string tag.
+
+## Async Functions
+
+`await` unwraps only the Promise. The Result remains visible:
+
+```ts
+async function loadUser(
+  id: string,
+): Promise<Result<User, Timeout | InvalidResponse>> {
+  const http = HttpClient.context()
+  const response = (await http.get(`/users/${id}`)).unwrap()
+  return (await response.json(User)).unwrap()
 }
 ```
 
-The switch must cover every member of the input failure set. Rethrowing a member keeps it in the surrounding expression's failure set; returning a value removes it.
+Authored VibeLang bans Promise instance `.then()`, `.catch()`, and `.finally()`. Use `await`, then handle the resulting `Result`. Imported JavaScript and TypeScript libraries may use ordinary Promise internals behind their boundary.
 
-:::note
-Exact switch-pattern spelling is still being specified. Exhaustiveness over the known failure set is a locked behavior.
-:::
+## Defects and Foreign Exceptions
 
-## Failures and Defects
+Expected domain errors belong in `E`. A failed compiler/runtime invariant uses `Reflect.panic(...)` and is not converted to a Result. An undeclared exception or Promise rejection crossing a foreign boundary becomes `UnhandledException` unless the boundary maps it to a specific `Error` subclass with `Result.try` or `Result.tryPromise`.
 
-A **failure** is expected by the program's domain: a missing record, invalid input, timeout, or rejected request. It belongs in `E`.
-
-A **defect** indicates a bug or broken invariant: an impossible state, failed assertion, or unexpected foreign exception. It does not belong in a declared failure set.
-
-VibeLang catch expressions catch failures only:
-
-```ts
-const value = operation() catch recover
-// A branded typed failure calls recover.
-// A RangeError or panic continues unwinding.
-```
-
-Existing JavaScript `try { } catch { }` keeps its JavaScript behavior and can observe both channels when boundary code genuinely needs that.
-
-## Sync and Async Use One Channel
-
-Promises carry the failure row as `Promise<T, E>`. Awaiting a promise restores that failure to the surrounding function:
-
-```ts
-async function loadUser(id: string): !User {
-  const response = try await HttpClient.get(`/users/${id}`)
-  return try await response.json(User)
-}
-```
-
-There is no separate `.catch()` error model for asynchronous work. `try await` propagates; `await expression catch` recovers.
-
-## Public Failure Contracts
-
-Exported functions state their failures explicitly with `throws`:
-
-```ts
-export function readSettings(path: string): Settings
-  throws FileNotFound | PermissionDenied | InvalidSettings {
-  return try readSettingsInternal(path)
-}
-```
-
-The compiler checks the declared set against the body. Adding a new uncaught failure becomes a public API change instead of silently widening the signature.
-
-## TypeScript Boundaries
-
-When the compiler cannot infer what foreign TypeScript or JavaScript may throw, the boundary contributes `unknown`. You can handle it at the boundary, adapt the API with a precise declaration, or let `unknown` propagate.
-
-Typed failures are optional. Existing code continues to work; precision increases as boundaries are described.
+JavaScript statement-form `try/catch` remains available for low-level interop. It is not the typed recovery API.
 
 ## Cleanup
 
-Use `errdefer` for cleanup that runs only when the scope exits through a failure:
+`errdefer` runs when a scope exits with the error variant:
 
 ```ts
-function replaceFile(path: string, contents: string): !void {
-  const temporary = try FileSystem.createTemp(path)
+function replaceFile(
+  path: string,
+  contents: string,
+): Result<void, FileError> {
+  const fs = FileSystem.context()
+  const temporary = fs.createTemp(path).unwrap()
   defer temporary.close()
-  errdefer FileSystem.remove(temporary.path)
+  errdefer fs.remove(temporary.path)
 
-  try temporary.write(contents)
-  try FileSystem.replace(temporary.path, path)
+  temporary.write(contents).unwrap()
+  fs.replace(temporary.path, path).unwrap()
 }
 ```
 
-`defer` runs on every exit path. `errdefer` runs only for failure exits, making rollback behavior adjacent to resource acquisition.
+`defer` runs on every exit path; `errdefer` runs only for Result-error exits.

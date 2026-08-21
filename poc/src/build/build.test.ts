@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { AssetCompiler, type AssetLoader, ValidationFailure, canonical, deriveSchema, parseWithSchema } from "./index.ts";
@@ -53,6 +53,10 @@ describe("comptime assets and derived schemas", () => {
     const built = await compiler.compile("config.json", { const: true });
     expect(built.module.emittedTypeScript).toContain("as const");
     expect(built.module.value).toEqual({ mode: "prod", ports: [80, 443] });
+    await writeFile(join(root, "hostile.json"), '{"__proto__":{"safe":true}}');
+    const hostile = await compiler.compile("hostile.json", { const: true });
+    expect(Object.hasOwn(hostile.module.value as object, "__proto__")).toBe(true);
+    expect(hostile.module.emittedTypeScript).toContain('["__proto__"]');
   });
 
   test("canonical build identities do not alias undefined with user strings", () => {
@@ -86,11 +90,25 @@ describe("comptime assets and derived schemas", () => {
     const role = deriveSchema('interface Role { role: string; "__proto__": string }', "Role");
     const inherited = Object.create({ role: "admin" }) as Record<string, unknown>;
     Object.defineProperty(inherited, "__proto__", { value: "data", enumerable: true });
-    expect(() => parseWithSchema(role, inherited)).toThrow("$input.role expected string");
+    expect(() => parseWithSchema(role, inherited)).toThrow("$input expected object");
     const valid = JSON.parse('{"role":"admin","__proto__":"data"}') as Record<string, unknown>;
     expect(parseWithSchema<Record<string, unknown>>(role, valid)).toEqual(valid);
     expect(() => deriveSchema("interface Child extends Role { name: string }", "Child"))
       .toThrow("does not support interface inheritance");
+  });
+
+  test("schema decoding rejects sparse arrays and never evaluates accessors", () => {
+    const schema = deriveSchema("interface Input { values: string[]; role: string }", "Input");
+    const sparse = new Array(1);
+    expect(() => parseWithSchema(schema, { values: sparse, role: "admin" })).toThrow("$input.values[0]");
+    let getterCalls = 0;
+    const accessor = { values: ["ok"] } as Record<string, unknown>;
+    Object.defineProperty(accessor, "role", {
+      enumerable: true,
+      get() { getterCalls++; return "admin"; },
+    });
+    expect(() => parseWithSchema(schema, accessor)).toThrow("$input.role");
+    expect(getterCalls).toBe(0);
   });
 
   test("portable cache metadata cannot read dependencies from another project root", async () => {
@@ -174,5 +192,77 @@ describe("comptime assets and derived schemas", () => {
     };
     await expect(new AssetCompiler({ root, cacheDirectory: join(root, ".cache") }).register(invalid).compile("bad.kv"))
       .rejects.toThrow("loader output");
+  });
+
+  test("options are snapshotted and cache envelopes reject poisoned output", async () => {
+    const root = await mkdtemp(join(tmpdir(), "vibelang-loader-snapshot-"));
+    roots.push(root);
+    await writeFile(join(root, "value.kv"), "value");
+    let started!: () => void;
+    let release!: () => void;
+    const didStart = new Promise<void>((resolve) => { started = resolve; });
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    let calls = 0;
+    const loader: AssetLoader = {
+      id: "test:option-snapshot",
+      version: "1",
+      implementationDigest: "option-snapshot-code-v1",
+      extensions: [".kv"],
+      async load(_asset, context) {
+        calls++;
+        const flavor = String(context.options.flavor);
+        if (calls === 1) { started(); await gate; }
+        return {
+          format: "kv", value: flavor,
+          emittedTypeScript: `export default ${JSON.stringify(flavor)}`,
+          declaration: "declare const value: string; export default value",
+          diagnostics: [], spans: [],
+        };
+      },
+    };
+    const cacheDirectory = join(root, ".cache");
+    const compiler = new AssetCompiler({ root, cacheDirectory }).register(loader);
+    const mutable = { flavor: "A" };
+    const pending = compiler.compile("value.kv", mutable);
+    await didStart;
+    mutable.flavor = "B";
+    release();
+    const first = await pending;
+    const second = await compiler.compile("value.kv", { flavor: "B" });
+    expect(first.module.value).toBe("A");
+    expect(second.module.value).toBe("B");
+    expect(second.key).not.toBe(first.key);
+
+    const objectPath = join(cacheDirectory, "objects", `${second.key}.json`);
+    const envelope = JSON.parse(await readFile(objectPath, "utf8")) as {
+      build: { module: { value: unknown } };
+      outputDigest: string;
+    };
+    envelope.build.module.value = "poison";
+    await writeFile(objectPath, JSON.stringify(envelope));
+    const rebuilt = await compiler.compile("value.kv", { flavor: "B" });
+    expect(rebuilt.cacheHit).toBe(false);
+    expect(rebuilt.module.value).toBe("B");
+    expect(calls).toBe(3);
+  });
+
+  test("loader values must be stable JSON before first return and cache", async () => {
+    const root = await mkdtemp(join(tmpdir(), "vibelang-loader-value-"));
+    roots.push(root);
+    await writeFile(join(root, "value.kv"), "value");
+    const exotic: AssetLoader = {
+      id: "test:exotic-value",
+      version: "1",
+      implementationDigest: "exotic-value-code-v1",
+      extensions: [".kv"],
+      load: () => ({
+        format: "kv", value: new Date(0),
+        emittedTypeScript: "export default null",
+        declaration: "declare const value: null; export default value",
+        diagnostics: [], spans: [],
+      }),
+    };
+    await expect(new AssetCompiler({ root, cacheDirectory: join(root, ".cache") }).register(exotic).compile("value.kv"))
+      .rejects.toThrow("Date");
   });
 });

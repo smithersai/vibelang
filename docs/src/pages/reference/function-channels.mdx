@@ -1,26 +1,31 @@
-# Function Channels [Reference for success, failure, and requirement rows]
+# Function Channels [Reference for values, errors, and requirements]
 
-Every VibeLang function conceptually has the type `(A, E, R)`.
+Every VibeLang function is analyzed across three conceptual channels, but all runtime values use ordinary types:
 
-| Parameter | Name | Meaning |
+| Parameter | Meaning | Runtime representation |
 | --- | --- | --- |
-| `A` | Success | returned value |
-| `E` | Failure | declared recoverable failures |
-| `R` | Requirements | capabilities needed to execute |
+| `A` | success value | the success variant of `Result<A, E>` |
+| `E` | expected errors | the error variant of `Result<A, E>` |
+| `R` | required capabilities | compiler-tracked context, provided by Layers |
+
+For an infallible function, the return type remains `A`. For a fallible function it is `Result<A, E>`; for a fallible async function it is `Promise<Result<A, E>>`.
 
 ## Example
 
 ```ts
-function getUser(id: string): !User
-  uses db: Database, log: Logger {
-  const row = try db.find(id)
-  if (row === null) throw NotFound({ id })
+function getUser(
+  id: string,
+): Result<User, DatabaseError | NotFound> {
+  const db = Database.context()
+  const log = Logger.context()
+  const row = db.find(id).unwrap()
+  if (row === null) throw new NotFound(id)
   log.info(`user:${id}`)
   return User.from(row)
 }
 ```
 
-Given `Database.find: Row | null throws DatabaseError`, the inferred channels are:
+The compiler sees:
 
 ```text
 A = User
@@ -30,65 +35,42 @@ R = Database | Logger
 
 ## Composition
 
-A call contributes its uncaught failure members and unsatisfied requirements to the caller.
-
-```ts
-function showUser(id: string): !string {
-  return (try getUser(id)).displayName
-}
-```
-
-`showUser` acquires `getUser`'s `E` and `R` unless it handles or provides them.
-
-## Row Operations
-
 | Operation | Effect on `E` | Effect on `R` |
 | --- | --- | --- |
-| ordinary call | union callee failures | union callee requirements |
-| `try` | propagate callee failures | unchanged |
-| exhaustive `catch` | remove handled members | unchanged |
-| rethrow | keep rethrown member | unchanged |
-| `Layer.provide` | include layer init failure | remove provided capabilities; add layer requirements |
-| `await` | restore promise failure row | unchanged |
+| return a Result | union returned errors | union called requirements |
+| `.unwrap()` | propagate the Result error | unchanged |
+| `Result.match` / `recover` | remove or transform handled errors | unchanged |
+| `throw ErrorSubclass` | add that Error type | unchanged |
+| `Layer.provide` | include layer initialization errors | remove provided capabilities; add layer requirements |
+| `await` | unwrap Promise only; leave Result | unchanged |
 
-Rows behave as sets for inference. Duplicate members collapse.
+Duplicate Error members collapse in unions.
 
-## Annotations
-
-```ts
-function local(): !A
-```
-
-Infers `E` from the body.
+## Public Signatures
 
 ```ts
-export function boundary(): A throws E uses service: R
+export declare function boundary(): Result<A, E>
+export declare function asyncBoundary(): Promise<Result<A, E>>
 ```
 
-Pins public channels and checks the body against them. An annotation does not activate checking; VibeLang functions always have the conceptual channels.
+These are ordinary generic return types, not failure annotations. Context requirements are inferred from `Capability.context()` and retained in VibeLang analysis metadata. The declaration-file representation for `R` remains compiler-owned.
 
-## TypeScript Defaults
+## Inference and Lifting
 
-Legacy TypeScript functions keep their behavior and are conservatively classified where inference is impossible:
+An unannotated implementation may infer both `A` and `E` from its body. Once a function is fallible, plain returns and throws are lowered into Result variants. Returning an existing compatible Result does not produce `Result<Result<A, E>, E>`.
 
-```text
-A = declared TypeScript return type
-E = unknown
-R = TypeScript when runtime TypeScript behavior is used
-```
+No marker opts a function into inference. Public API authors should spell `Result<A, E>` explicitly for stability.
 
-The precise `TypeScript` requirement is attached to runtime use, not type-only imports.
+## TypeScript Boundaries
 
-## Async Functions
+An imported TypeScript function that might throw is adapted to a Result at its declared VibeLang boundary. Unknown exceptions become `UnhandledException` until an adapter maps them to a domain Error. Runtime TypeScript use also adds the built-in `TypeScript` requirement; type-only imports do not.
 
-Async functions expose their failure channel through an enriched promise type:
+## Async Boundary
+
+VibeLang does not add an error generic to Promise. It wraps an ordinary Result:
 
 ```ts
-Promise<A, E>
+Promise<Result<A, E>>
 ```
 
-`await` returns `A` and makes `E` available to the enclosing expression. Runtime output remains compatible with ordinary promises on the TypeScript target.
-
-## Erasure
-
-Failure and requirement annotations erase like TypeScript types. Provider scopes may emit a small environment mechanism. Durable Flows emit an explicit runtime plan. Ordinary function results are never wrapped solely to represent `(A, E, R)`.
+Authored VibeLang uses only `await` for Promise consumption. The compiler rejects `.then`, `.catch`, and `.finally` calls.

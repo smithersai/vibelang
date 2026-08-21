@@ -94,7 +94,7 @@ Actions and Flows make durability compositional:
 - the turn protocol can be a Flow
 - passed functions retain their individual recovery policies
 
-Replay reuses the recorded model response and completed calls. Generated code remains ordinary runtime TypeScript; it is not silently converted into a comptime Flow.
+Replay reuses the recorded model response and completed calls. Generated code remains ordinary runtime TypeScript; it is not silently wrapped in `durable(...)` or converted into a Flow.
 
 ## Building a Custom Agent
 

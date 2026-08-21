@@ -17,14 +17,16 @@ The TypeScript target supports the complete TypeScript language. Native and Wasm
 Host facilities are not unconditional globals in authored `.vibe` code:
 
 ```ts
-function refreshCache(): !void
-  uses clock: Clock, http: HttpClient, fs: FileSystem {
+function refreshCache() {
+  const clock = Clock.context()
+  const http = HttpClient.context()
+  const fs = FileSystem.context()
   const data = try http.get(cacheUrl(clock.today()))
   try fs.writeBytes(cachePath, data.body)
 }
 ```
 
-The program declares exactly what it needs. A deployment supplies implementations that are valid for its target.
+The compiler records exactly what the function needs from its inherited `.context()` calls. Requirements propagate through ordinary callers without context parameters, and a deployment layer supplies implementations valid for its target.
 
 `process`, `window`, `document`, ambient filesystem access, and ambient network access are modeled as requirements rather than universally available globals.
 
@@ -60,27 +62,39 @@ If a transitive call, provider, or dynamic feature requires TypeScript, compilat
 Use `comptime.target` when the implementation differs by output environment:
 
 ```ts
-const FileSystemLive = comptime switch (comptime.target) {
-  "node" => NodeFileSystem,
-  "bun" => BunFileSystem,
-  "deno" => DenoFileSystem,
-  "native" => NativeFileSystem,
-  "wasm" => WasiFileSystem,
+import { comptime } from "vibelang:comptime"
+
+const implementations = {
+  node: NodeFileSystem,
+  bun: BunFileSystem,
+  deno: DenoFileSystem,
+  native: NativeFileSystem,
+  wasm: WasiFileSystem,
 }
+
+const FileSystemLive = comptime(implementations[comptime.target])
 ```
 
 Unselected implementations are not emitted.
 
 ## Foreign Sources
 
-Zig and Rust modules can be compiled to Wasm or native artifacts with generated bindings:
+Zig and Rust source modules import directly, with compiler-generated typed bindings:
 
 ```ts
-import { hashMany } from "./hash.zig"
-import { parse } from "./parser.rs"
+import { hashMany } from './hash.zig'
+import { parse } from './parser.rs'
 ```
 
-The compiler owns toolchain invocation and caching. The import's types, source maps, target, compiler versions, and foreign dependency graph contribute to its cache identity.
+The compiler owns toolchain invocation and caching. The import's types, source maps, selected target, toolchain versions, feature flags, and foreign dependency graph contribute to its cache identity. Whether a source import becomes native code, Wasm, or a TypeScript-runtime bridge is target- and toolchain-driven; the exact selection policy remains open.
+
+The TypeScript target also supports existing Node-API npm packages, including addons built with napi-rs:
+
+```ts
+import { parse } from '@acme/parser-native'
+```
+
+These packages keep their published TypeScript declarations and runtime behavior. Node.js and Bun load their `.node` binaries through Node-API—Bun uses its `napi` loader for `.node`—but that host-specific dependency is not silently portable to native or Wasm targets.
 
 ## Runtime Model
 

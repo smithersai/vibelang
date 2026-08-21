@@ -7,19 +7,19 @@ VibeLang treats compiler-known files as source inputs. Built-in and user-defined
 JSON, Markdown, and MDX work without project configuration in `.vibe` code:
 
 ```ts
-import config from "./config.json"
-import readme from "./README.md"
-import Prompt from "./coding-agent.mdx"
+import config from './config.json' as const
+import systemPrompt from './system.md'
+import Prompt from './coding-agent.mdx'
 ```
 
-The exact Markdown and MDX export shapes are still under design. Both formats preserve source locations so diagnostics can point back to the original asset.
+JSON produces a checked data module, Markdown defaults to its source text as a `string`, and MDX produces a typed component module. Each import is tracked as part of the build graph, and parsed formats preserve source locations for diagnostics.
 
 ## Const JSON
 
 The VibeLang const form gives JSON a deeply readonly, literal-preserving type:
 
 ```ts
-import config from "./config.json" as const
+import config from './config.json' as const
 
 // typeof config is equivalent to:
 // {
@@ -32,13 +32,32 @@ import config from "./config.json" as const
 The concise const-import behavior is accepted, but its exact grammar is not. Existing TypeScript JSON imports must keep their TypeScript meaning.
 :::
 
+TypeScript widens values imported from JSON. To preserve literal values with `as const`, a TypeScript project generally has to move the object into a `.ts` file and export the literal from there. VibeLang keeps configuration in the JSON file while giving the imported value the same deeply readonly, literal-preserving shape.
+
+## Markdown as Prompt Text
+
+A `.md` file has a built-in text loader. Its default export is a string, so an agent or model can use the file directly as a system prompt:
+
+```ts
+import systemPrompt from './prompts/reviewer.md'
+
+const response = try await model.generate({
+  system: systemPrompt,
+  prompt: reviewRequest,
+})
+```
+
+There is no file-reading call or runtime path to deploy. The compiler tracks the Markdown source and embeds or emits it according to the selected target.
+
 ## Custom Loaders
 
 A comptime loader can support another extension:
 
 ```ts
 // Proposed API shape
-comptime loader "*.yaml" = (asset, context) => {
+import { comptime } from "vibelang:comptime"
+
+export default comptime.loader("*.yaml", (asset, context) => {
   const value = parseYaml(asset.text())
   const schema = context.import("./config.schema.json", { const: true })
   const config = validate(schema, value)
@@ -47,8 +66,10 @@ comptime loader "*.yaml" = (asset, context) => {
     export default config
     export type Config = typeof config
   }
-}
+})
 ```
+
+This is a proposed compiler-recognized library API, not a loader keyword. The final loader registration and typed-module builder shapes remain open.
 
 The returned value is a normal checked module. It may contain runtime values, comptime values, and generated types.
 
@@ -73,7 +94,7 @@ This keeps watch mode and remote caches sound.
 
 ## Raw Text and Bytes
 
-Raw acquisition should converge on TC39 Import Text and Import Bytes:
+Markdown uses its built-in string export. Other formats can request raw acquisition through syntax that should converge on TC39 Import Text and Import Bytes:
 
 ```ts
 import source from "./query.sql" with { type: "text" }
@@ -81,6 +102,32 @@ import image from "./logo.png" with { type: "bytes" }
 ```
 
 VibeLang may lower temporary syntax while the proposals evolve, but it does not need competing runtime primitives.
+
+## Rust and Zig Source Modules
+
+Rust and Zig source files import like ordinary modules. The compiler runs the foreign toolchain and generates checked bindings for exported functions:
+
+```ts
+import { tokenize } from './parser.rs'
+import { hashMany } from './hash.zig'
+
+const tokens = tokenize(source)
+const digest = hashMany(chunks)
+```
+
+The selected target and toolchain determine whether an import becomes native code, Wasm, or a TypeScript-runtime bridge. That selection policy is still open, but the source, target, compiler versions, feature flags, and foreign dependency graph are all tracked build inputs.
+
+## Existing Native npm Packages
+
+The TypeScript target also preserves the JavaScript ecosystem's established native interop. A Node-API package—including one produced with napi-rs—remains an ordinary typed npm dependency:
+
+```ts
+import { transform } from '@acme/native-transform'
+
+const output = transform(source)
+```
+
+Node and Bun can load the package's `.node` addon through Node-API; Bun maps `.node` files to its `napi` loader and recommends Node-API as its stable native integration path. VibeLang does not rebuild such a package from source or pretend it is portable to every target. Runtime-specific native packages contribute the corresponding TypeScript host requirement.
 
 ## Common Loader Uses
 
@@ -91,7 +138,8 @@ One loader system covers:
 - image metadata and generated assets
 - embedded Markdown and MDX
 - generated protocol bindings
-- Zig and Rust imports
+- direct Zig and Rust source imports
+- Node-API packages on TypeScript runtimes
 
 Unused runtime exports are tree-shaken. Type-only and comptime-only exports produce no runtime code.
 

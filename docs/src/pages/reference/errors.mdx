@@ -1,92 +1,94 @@
-# Errors [Reference for declared failures, propagation, recovery, and defects]
+# Results and Errors [Reference for expected failure values]
 
-## Declaration
+## Types
 
 ```ts
-error Identifier { FieldList }
+Result<A, E extends Error>
+Promise<Result<A, E>>
 ```
 
-Example:
+`A` is the success type and `E` is the union of expected errors. Async fallible functions wrap the whole Result in an ordinary Promise.
+
+## Error Declaration
 
 ```ts
-error HttpError {
-  status: number
-  url: string
+class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly url: string,
+  ) {
+    super(`HTTP ${status}: ${url}`)
+  }
 }
 ```
 
-Declared error types are nominal. Each runtime value has:
+No special error declaration or tagged-error base is used. The compiler attaches stable nominal identity and transport metadata to ordinary `Error` subclasses.
 
-- normal `Error` behavior
-- a stable discriminant such as `_tag`
-- declared readonly fields
-- an internal VibeLang failure brand
-
-## Throwing
-
-Throwing a declared error adds its type to the surrounding failure set:
+## Function Authoring
 
 ```ts
-throw HttpError({ status: 503, url })
-```
-
-Throwing or receiving an unbranded value is a defect or imprecise foreign failure, not automatically a member of a declared error union.
-
-## Inferred Set
-
-```ts
-function operation(): !Output
-```
-
-`!Output` tells the compiler to infer the union from reachable declared throws and propagated calls.
-
-## Explicit Set
-
-```ts
-function operation(): Output throws ErrorA | ErrorB
-```
-
-The compiler verifies that every reachable typed failure is assignable to the declared set.
-
-## `try`
-
-```ts
-try expression
-try await expression
-```
-
-On success, returns the inner value. On failure, exits through the current function's failure channel.
-
-## `catch`
-
-```ts
-expression catch fallback
-expression catch |binding| handler
-```
-
-The handler receives the typed failure union. A catch expression does not catch defects.
-
-## Exhaustiveness
-
-When a switch handles a failure union, every member must be covered or rethrown:
-
-```ts
-operation() catch |error| switch (error) {
-  NotFound => fallback,
-  Timeout => throw error,
+function operation(): Result<Output, ErrorA | ErrorB> {
+  if (conditionA) throw new ErrorA()
+  if (conditionB) return otherOperation()
+  return new Output()
 }
 ```
 
-An unhandled member is a compile error when the set is known.
+Within a Result-returning function:
 
-## JavaScript `try/catch`
+- `return value` creates the success variant.
+- `throw error` creates the error variant.
+- returning a compatible Result forwards it without nesting.
+- `result.unwrap()` produces the success value or propagates its error.
 
-Existing statement-form JavaScript `try/catch` keeps its ordinary behavior. It may observe typed failures and defects. Code should prefer VibeLang catch expressions when it intends to recover only expected failures.
+There is no failure annotation, prefix propagation expression, postfix catch expression, or public `Result.ok`/`Result.err` constructor.
 
-## Failure Identity Across Realms
+## Result Methods
 
-Worker and durable boundaries transport declared failures using derived tagged codecs. The receiver reconstructs the declared failure identity and fields. Unrecognized exceptions cross as defects according to the boundary protocol.
+| Method | Meaning |
+| --- | --- |
+| `isOk()`, `isError()` | inspect and narrow the variant |
+| `match({ ok, error })` | exhaustively produce a value from either variant |
+| `map`, `mapError` | transform one side |
+| `andThen` | sequence success-dependent work |
+| `recover` | replace an error with a value or Result |
+| `tap`, `tapError` | observe without changing the Result |
+| `unwrap` | compiler propagation point; throws in JS fallback |
+| `unwrapOr`, `expect` | extract with fallback or invariant message |
+| `Result.all` | collect Results, returning the first error |
+| `Result.try`, `Result.tryPromise` | adapt a foreign throwing/rejecting operation |
 
-## Cleanup
+Results are must-use.
 
-`errdefer` runs for a typed-failure exit. The normative interaction with defects and cancellation is not finalized.
+## Error Methods
+
+All Errors expose:
+
+```ts
+error.is(NotFound)
+error.matches(NotFound, Timeout)
+error.match({ NotFound: onMissing, Timeout: onTimeout })
+error.matchPartial({ NotFound: onMissing }, onOther)
+error.rootCause()
+```
+
+The compiler checks `match` exhaustiveness against the known `E` union and narrows each handler. Runtime dispatch uses stable nominal identity. `matchPartial` accepts an explicit fallback. `rootCause` follows standard `Error.cause` links.
+
+## Async
+
+```ts
+async function load(): Promise<Result<Output, Timeout>> {
+  const response = (await request()).unwrap()
+  return response.decode().unwrap()
+}
+```
+
+`await` unwraps the Promise and leaves the Result. Promise instance `.then()`, `.catch()`, and `.finally()` are compile errors in authored VibeLang.
+
+## Foreign Exceptions and Defects
+
+`Result.try` and `Result.tryPromise` convert unknown foreign throws or rejections to `UnhandledException`, or accept a mapper that returns a declared Error subtype. `Reflect.panic(...)` represents an unrecoverable invariant violation and bypasses Result recovery. Statement-form JavaScript `try/catch` is retained only for interop and observes normal JavaScript exceptions.
+
+## Transport
+
+Worker and durable boundaries serialize a declared Error's stable identity, fields, message, cause, and codec version. Unknown foreign exceptions use the boundary's `UnhandledException` representation.

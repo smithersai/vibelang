@@ -36,19 +36,21 @@ For many teams, that trade is worthwhile. VibeLang explores a different trade.
 A compiler can attach the same information to an ordinary function:
 
 ```ts
-async function getUser(id: string): !User
-  uses http: HttpClient {
+async function getUser(id: string) {
+  const http = HttpClient.context()
   const response = try await http.get(`/users/${id}`)
-  if (response.status === 404) throw NotFound({ id })
+  if (response.status === 404) throw new NotFound(id)
   return try response.json(User)
 }
 ```
 
 The function remains eager. Its result is still a `User` or a `Promise`. The compiler infers and checks the extra channels, then erases their type-level representation.
 
-This enables a few things a library cannot do as directly:
+`HttpClient.context()` looks like a library call, but the compiler adds `HttpClient` to the function's static context channel. That requirement propagates through callers until a layer provides it; no caller threads a context argument.
 
-- infer failure and requirement rows through ordinary calls
+This enables a few things an ordinary library cannot do as directly:
+
+- infer failure rows and compiler-aware context requirements through ordinary calls
 - make catch expressions exhaustive
 - preserve one error model across sync and async code
 - generate validators from ordinary types at comptime
@@ -57,7 +59,7 @@ This enables a few things a library cannot do as directly:
 
 ## Why Not Improve TypeScript With Types Alone?
 
-Typed tuples, branded promises, decorators, and conditional types can encode parts of the model. They cannot change JavaScript's throw semantics, make `catch` exhaustive, inject lexical capability bindings, or evaluate type-producing code at compile time.
+Typed tuples, branded promises, decorators, and conditional types can encode parts of the model. They cannot change JavaScript's throw semantics, make `catch` exhaustive, make a library access part of an ordinary function's signature, or evaluate type-producing code at compile time.
 
 VibeLang changes the grammar and checker where language support produces a simpler user model. It lowers back to TypeScript where the host language is already sufficient.
 
@@ -65,7 +67,7 @@ VibeLang changes the grammar and checker where language support produces a simpl
 
 Durable runtimes usually ask developers to repeat information the compiler already knows: input schemas, output schemas, error shapes, dependency declarations, and RPC bindings.
 
-In VibeLang, an Action closes over a typed function signature and a Flow is compiled into a plan. The compiler can derive the boundary codecs, dependency edges, and worker contracts from the same types used by local code.
+In VibeLang, an Action closes over a typed function signature. Passing a statically resolvable function to `durable(...)` asks the compiler to lower its checked body into a Flow plan without invoking it. The compiler can derive the boundary codecs, dependency edges, and worker contracts from the same types used by local code, and plan/preview can analyze the emitted IR without running the Flow or its Actions.
 
 Durability stays opt-in. Ordinary functions do not pay for a scheduler.
 
@@ -74,7 +76,7 @@ Durability stays opt-in. Ordinary functions do not pay for a scheduler.
 VibeLang is designed for TypeScript teams that want:
 
 - checked recoverable failures without result wrappers
-- explicit, transitive dependencies without a container API in business logic
+- explicit, transitive dependencies without threading context arguments through business logic
 - portable services across JavaScript, native, Wasm, and test targets
 - type-driven validation and asset loading
 - durable workflows whose runtime contracts come from source types

@@ -3,10 +3,24 @@
 ## Explicit Form
 
 ```ts
-comptime expression
+import { comptime } from "vibelang:comptime"
+
+const value = comptime(expression)
+const buildFunction = comptime(functionValue)
 ```
 
-Requires `expression` to evaluate during compilation.
+`comptime(expression)` requires the expression to evaluate during compilation. When the argument is a function, the call marks and returns a compile-time function; it does not invoke the function. Calling the returned function requires that call to evaluate during compilation.
+
+For an immediately evaluated block:
+
+```ts
+const value = comptime(() => {
+  // deterministic compile-time work
+  return result
+})()
+```
+
+The compiler recognizes the resolved import identity. Import aliases retain these semantics; unrelated functions named `comptime` do not. `vibelang:comptime` is a compiler-owned virtual module and has no ordinary uncompiled runtime fallback.
 
 Valid result categories include:
 
@@ -14,7 +28,8 @@ Valid result categories include:
 - comptime-only values
 - types
 - typed module descriptions from loaders
-- durable Plan IR through `Flow`
+
+Durable Plan IR is produced separately through `durable(...)`, not by executing a Flow as a compile-time function.
 
 ## Implicit Evaluation
 
@@ -23,6 +38,8 @@ The compiler may evaluate code automatically when all inputs are known. Implicit
 ## Target
 
 ```ts
+import { comptime } from "vibelang:comptime"
+
 comptime.target
 ```
 
@@ -84,7 +101,7 @@ Process-local function identity is insufficient for a portable cache key.
 
 ## Errors
 
-Compilation fails when explicit comptime code:
+Compilation fails when explicit `comptime(...)` code:
 
 - depends on a runtime-only value
 - requests an unavailable capability

@@ -62,6 +62,8 @@ describe("Deno sandbox RPC lifecycle", () => {
       | undefined
     let aborted = false
     let completed = false
+    let markStarted!: () => void
+    const didStart = new Promise<void>((resolve) => { markStarted = resolve })
     const slow = defineFunction<{}, { ok: true }>(
       "(input: {}) => Promise<{ ok: true }>",
       (_input, context) => new Promise((resolve, reject) => {
@@ -71,6 +73,7 @@ describe("Deno sandbox RPC lifecycle", () => {
           callId: context.callId,
           functionName: context.functionName,
         }
+        markStarted()
         const timer = setTimeout(() => {
           completed = true
           resolve({ ok: true })
@@ -82,10 +85,14 @@ describe("Deno sandbox RPC lifecycle", () => {
         }, { once: true })
       }),
     )
+    const waitUntilStarted = defineFunction<{}, null>(
+      "(input: {}) => Promise<null>",
+      async () => { await didStart; return null },
+    )
 
     const execution = await sandbox.execute(
-      "export default functions => { void functions.slow({}); return { done: true } }",
-      { slow },
+      "export default async functions => { void functions.slow({}); await functions.waitUntilStarted({}); return { done: true } }",
+      { slow, waitUntilStarted },
       { sourceDigest: "fire-and-forget", turnId: "turn_fire_and_forget" },
     )
 

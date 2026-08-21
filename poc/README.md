@@ -18,6 +18,10 @@ The individual demos live under `examples/` and can be run directly with Bun.
 The agent sandbox additionally needs Deno; the Zig/Rust demo needs those
 toolchains.
 
+Final spike verification is `56` passing tests, the TypeScript 7 native
+typecheck, the full eight-surface demo, and a negative CLI check that rejects a
+missing `Logger` layer without emitting output.
+
 ## What the spike covers
 
 | Surface | Working proof | Deliberate boundary |
@@ -25,11 +29,11 @@ toolchains.
 | Language + rows | Token-aware `.vibe` lowering, fixed-point failure/requirement inference, pinned rows, exhaustive recovery, and a plain-TypeScript identity gate | Same-file syntactic rows are illustrative; the real TypeScript resolver/checker must own call, scope, provider, and CFG facts |
 | Failures + layers | Invariant failure/defect split, named `uses`, nominal layers, nested and overlapping async scopes | Layer acquisition/disposal, child joining/revocation, and compiler-threaded environments remain open |
 | Optionals + control | Simple `?T`, `orelse`, `.?`, throw and simple if expressions | General blocks/switch/loops and defer forms are rejected until control-flow IR exists |
-| Comptime + assets | JSON/Markdown/MDX/custom loaders keyed by source, target, options, explicit loader-artifact digest, and tracked dependencies; real-path authority and generated-syntax checks | Custom loader callbacks are not hermetically sandboxed; module shapes and explicit artifact-digest plumbing are provisional |
+| Comptime + assets | JSON/Markdown/MDX/custom loaders keyed by immutable option snapshots, source, target, explicit loader-artifact digest, and tracked dependencies; real-path authority, strict JSON IR, generated-syntax checks, and cache-output digests | Custom loader callbacks are not hermetically sandboxed; module shapes and explicit artifact-digest plumbing are provisional |
 | Type reification | TypeScript declaration AST to validator/schema IR with branded validation failures | Uses a TS 5.9 API alias because the TS 7 preview exposes no JavaScript compiler API |
 | Targets + interop | Transitive `TypeScript` requirement/native-pin heuristics; real Zig and Rust to Wasm compilation, calls, tool identity, and common source-dependency invalidation | Native backend, sound symbol/data-flow classification, ABI metadata, and complete foreign dependency discovery are not built |
 | Concurrency | Bounded task scope that retains/joins children, branded cancellation, typed-shaped joins, cancellation-safe completion-order iteration | Module-expression workers, cross-realm codecs, and capability-inferred cancellation are not built |
-| Durable execution | Action contract descriptors, symbolic projections, portable Plan IR, provider/deployment manifests, SQLite journal, deadlines/retries/fencing/replay, and distinct memo/content reuse | Real compiler-derived codecs, hermetic Flow compilation, remote workers, capability enforcement, and signed/tree-shaken artifacts are not built |
+| Durable execution | Action contract descriptors, symbolic projections, portable Plan IR, provider/deployment manifests, SQLite journal, deadlines/retries/fencing/replay, and distinct memo/content reuse | The accepted `durable(...)` source intrinsic and static compiler lowering, real compiler-derived codecs, remote workers, capability enforcement, and signed/tree-shaken artifacts are not built |
 | Coding agent | Asset-backed MDX prompts, fake model/repair loop, generated callable declarations, TS check/policy, fresh zero-permission Deno process, bounded JSON RPC, cancellation, and journal hooks | Signatures/codecs remain explicit, source policy is defense-in-depth rather than a security proof, and container-grade isolation is future work |
 
 ## Important honesty notes
@@ -47,9 +51,12 @@ toolchains.
   shape and dependency-path UX, not sound transitive closure.
 - `Layer` proves overlapping async lookup scopes, not resource lifetime:
   acquisition, structured child ownership, revocation, and disposal are absent.
-- Flow authoring still executes its callback in the host process. It proves the
-  symbolic IR boundary, not comptime hermeticity. Loader callbacks have the same
-  limitation even though their declared inputs and real paths are now tracked.
+- Flow authoring still uses the obsolete `Flow.define(...)` POC API and executes
+  its callback in the host process. The accepted design instead imports
+  `durable` from `vibelang:flows` and statically lowers the passed function's
+  checked body without invoking it. The POC proves only the symbolic IR/runtime
+  boundary. Loader callbacks have a similar hermeticity limitation even though
+  their declared inputs and real paths are now tracked.
 - Durable `capabilityGrant` values are caller-selected protocol metadata in this
   POC; they are neither authenticated nor enforced by a real worker sandbox.
 - The Deno agent process denies OS permissions and obvious realm escape syntax,

@@ -55,20 +55,32 @@ Some dynamic features will be classified as portable, TypeScript-required, or fo
 Wrap a foreign API when you know more than its TypeScript signature expresses:
 
 ```ts
-error ConnectFailed { cause: unknown }
+class ConnectFailed extends Error {
+  constructor(options: { cause: unknown }) {
+    super("Connection failed", options)
+  }
+}
 
 function connect(options: Options): Client throws ConnectFailed {
-  return legacyConnect(options) catch |cause| {
-    throw ConnectFailed({ cause })
+  return legacyConnect(options) catch (cause) {
+    throw new ConnectFailed({ cause })
   }
 }
 ```
 
-The adapter turns an imprecise boundary into a stable VibeLang contract. The exact foreign-catch spelling remains subject to the failure interop specification.
+The adapter turns an imprecise boundary into a stable VibeLang contract while keeping the same postfix catch syntax used elsewhere.
 
 ## Promise Interop
 
-Ordinary promises remain ordinary promises. VibeLang enriches their static form as `Promise<T, E>` and restores `E` when they are awaited.
+Ordinary promises remain `Promise<T>`. For a VibeLang async function, typed failures belong to the function's separate inferred failure channel; they are not a second generic argument on the promise value. Calling or awaiting that function contributes its uncaught failures to the enclosing function in the same way as a synchronous call.
+
+An explicit public async contract writes the ordinary promise return type and the failure set separately:
+
+```ts
+export declare function fetchUser(
+  id: string,
+): Promise<User> throws NotFound | Timeout
+```
 
 Custom thenables, Promise subclassing, and behaviors that depend on JavaScript-specific scheduling may add `TypeScript`. Standard async functions and common promise operations are intended to remain portable.
 

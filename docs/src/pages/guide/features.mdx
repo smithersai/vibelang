@@ -17,10 +17,11 @@ Ordinary function types carry three channels:
 | `R` | required capabilities | `Db | Logger` |
 
 ```ts
-async function getUser(id: string): !User
-  uses db: Db, log: Logger {
+async function getUser(id: string) {
+  const db = Db.context()
+  const log = Logger.context()
   const row = try await db.findUser(id)
-  if (row === null) throw NotFound({ id })
+  if (row === null) throw new NotFound(id)
   log.info(`loaded user:${id}`)
   return User.from(row)
 }
@@ -30,19 +31,32 @@ The compiler infers `(User, NotFound | DbError, Db | Logger)` from the body. No 
 
 ## Typed Failures
 
-An `error` declaration creates a tagged, inspectable failure:
+Expected failures are ordinary TypeScript `Error` subclasses:
 
 ```ts
-error NotFound { id: string }
-error InvalidEmail { input: string }
+class NotFound extends Error {
+  constructor(readonly id: string) {
+    super(`Not found: ${id}`)
+  }
+}
+
+class InvalidEmail extends Error {
+  constructor(readonly input: string) {
+    super(`Invalid email: ${input}`)
+  }
+}
 ```
 
 Use `try` to propagate and a catch expression to recover:
 
 ```ts
-const profile = loadProfile(id) catch |error| switch (error) {
-  NotFound => Profile.guest(),
-  InvalidProfile => throw error,
+const profile = loadProfile(id) catch (error) {
+  switch (error.constructor) {
+    case NotFound:
+      Profile.guest()
+    case InvalidProfile:
+      throw error
+  }
 }
 ```
 
@@ -50,14 +64,17 @@ Catch expressions handle typed failures. Defects continue unwinding. [Learn more
 
 ## Capabilities and Layers
 
-A capability is a nominal service declared with a class. Requirements become lexical bindings through `uses`:
+A capability is an abstract class extending `Context` from `vibelang/context`. The API looks like a library, but service access contributes to the function's inferred context channel:
 
 ```ts
-abstract class Clock {
+import { Context } from "vibelang/context"
+
+abstract class Clock extends Context {
   abstract now(): Instant
 }
 
-function createToken(): Token uses clock: Clock {
+function createToken(): Token {
+  const clock = Clock.context()
   return Token.make({ issuedAt: clock.now() })
 }
 ```
@@ -89,11 +106,13 @@ Labeled breaks yield values from blocks and loops. `defer` and `errdefer` make c
 
 ## Comptime
 
-Code runs at compile time when its inputs are known. Explicit `comptime` requires it:
+Code runs at compile time when its inputs are known. The imported `comptime(...)` compiler intrinsic requires it without adding a keyword:
 
 ```ts
-const schema = comptime JSON.parse(embed("./routes.json"))
-type Routes = comptime deriveRoutes(schema)
+import { comptime } from "vibelang:comptime"
+
+const schema = comptime(JSON.parse(embed("./routes.json")))
+const Routes = comptime(deriveRoutes(schema))
 ```
 
 Comptime is deterministic and dependency-tracked. It can create real types, not only runtime values. [Learn more](/guide/comptime).
@@ -103,8 +122,10 @@ Comptime is deterministic and dependency-tracked. It can create real types, not 
 Ordinary types are available to comptime code, so a validator does not need a parallel schema declaration:
 
 ```ts
+import { comptime } from "vibelang:comptime"
+
 type Signup = { email: string; age: number }
-const SignupSchema = comptime Schema.derive<Signup>()
+const SignupSchema = comptime(Schema.derive<Signup>())
 
 const signup = try SignupSchema.parse(input)
 ```
@@ -113,20 +134,27 @@ Validation failures use the normal typed failure channel. [Learn more](/guide/ru
 
 ## Typed Asset Imports
 
-JSON, Markdown, and MDX are built-in compiler inputs. Custom comptime loaders can turn SQL, GraphQL, YAML, or another format into a typed module.
+JSON, Markdown, and MDX are built-in compiler inputs. Const JSON retains deeply readonly literal types, and Markdown defaults to a string that can be passed directly to an agent or model.
 
 ```ts
-import config from "./config.json"
-import query from "./users.sql"
+import config from './config.json' as const
+import systemPrompt from './prompts/system.md'
+
+const response = try await model.generate({
+  system: systemPrompt,
+  prompt: request,
+})
 ```
 
-Every input becomes an incremental build dependency. [Learn more](/guide/asset-imports).
+Custom comptime loaders can turn SQL, GraphQL, YAML, or another format into a typed module. Every input becomes an incremental build dependency. [Learn more](/guide/asset-imports).
 
 ## Multiple Targets
 
 VibeLang is designed for TypeScript, native, and Wasm output. Platform operations are capabilities, and `comptime.target` chooses implementations without emitting unused targets.
 
 ```ts
+import { comptime } from "vibelang:comptime"
+
 const transport = comptime.target === "browser"
   ? browserTransport
   : socketTransport
@@ -136,14 +164,16 @@ const transport = comptime.target === "browser"
 
 ## Structured Concurrency
 
-VibeLang follows emerging JavaScript concurrency primitives instead of introducing a fiber runtime. Typed workers, bounded task scopes, cancellation, and typed joins share the same failure model.
+VibeLang keeps ordinary async functions instead of introducing a fiber runtime. Typed workers, cancellation, and structured joins share the same failure model:
 
 ```ts
 const [profile, activity] = try await.all(
-  scope.run(() => loadProfile(id)),
-  scope.run(() => loadActivity(id)),
+  loadProfile(id),
+  loadActivity(id),
 )
 ```
+
+TC39 concurrency governors are a separate Stage 1 direction for limiting fan-out, not the ownership model for joined child work.
 
 [Learn more](/guide/concurrency).
 
@@ -152,23 +182,25 @@ const [profile, activity] = try await.all(
 Actions define closed durable boundaries. Flows compile selected calls into a typed execution plan:
 
 ```ts
-const Build = comptime Flow((input: BuildInput) => {
+import { durable } from "vibelang:flows"
+
+const Build = durable((input: BuildInput) => {
   const compiled = Compile.run({ source: input.source })
   return Package.run({ code: compiled.code })
 })
 ```
 
-Retries, persistence, placement, and worker protocols apply only to this explicit program. [Learn more](/guide/durable-execution).
+The compiler lowers the function's checked body without invoking it. Plan mode reads the emitted IR and runs no Action implementation. Retries, persistence, placement, and worker protocols apply only to this explicit program. [Learn more](/guide/durable-execution).
 
 ## Polyglot Imports
 
-Zig and Rust sources are intended to import like ordinary modules. The compiler drives the foreign toolchain, derives typed bindings, and chooses Wasm or native output as appropriate:
+Zig and Rust sources import like ordinary modules. The compiler drives the foreign toolchain, generates typed bindings, and selects an artifact appropriate to the target:
 
 ```ts
-import { hash } from "./simd.zig"
-import { tokenize } from "./parser.rs"
+import { hash } from './simd.zig'
+import { tokenize } from './parser.rs'
 
 const digest = hash(bytes)
 ```
 
-This feature builds on the same loader, comptime, target, and incremental-cache infrastructure as other asset imports.
+On TypeScript runtimes, existing Node-API npm packages—including napi-rs packages—remain ordinary typed dependencies. Direct foreign source builds and prebuilt `.node` addons use the same target-aware dependency graph, but the exact build selection policy remains open.

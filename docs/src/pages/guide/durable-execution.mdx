@@ -26,35 +26,40 @@ Action values crossing a persistence or machine boundary must satisfy `Durable<T
 
 ## Build a Flow
 
-A Flow is a comptime program:
+Import the compiler-recognized `durable` function and pass it a statically resolvable function:
 
 ```ts
-const Build = comptime Flow((input: BuildInput) => {
+import { durable } from "vibelang:flows"
+
+const Build = durable((input: BuildInput) => {
   const compiled = Compile.run({ source: input.source })
   return Package.run({ code: compiled.code })
 })
 ```
 
-During Flow compilation, `Compile.run` does not invoke a compiler. It emits an Action node and returns a typed symbolic value. Accessing `compiled.code` creates a projection, and passing that value to `Package.run` creates a data edge.
+`durable` is ordinary call syntax, not a keyword. The compiler recognizes its resolved import identity, so aliases work and an unrelated function named `durable` remains ordinary. An inline function, declaration, or function-valued constant is accepted when the compiler can resolve it statically; a runtime-selected callback is rejected.
 
-The callback disappears after compilation. The emitted template contains the plan, codecs, inferred failures and requirements, stable identities, and debug map.
+The compiler lowers the function's checked syntax, control flow, and data flow. It does not invoke the function with proxy values. `Compile.run` becomes an Action node and a typed symbolic value. Accessing `compiled.code` creates a projection, and passing that value to `Package.run` creates a data edge. No Action implementation runs during compilation or planning.
+
+The durable source function disappears after compilation. The emitted template contains the plan, codecs, inferred failures and requirements, stable identities, and debug map.
 
 ## Compilation Phases
 
-Durable programs have three distinct phases:
+Durable programs have four distinct phases:
 
-1. **Template compilation** evaluates the Flow with symbolic input and emits target-neutral Plan IR.
+1. **Template compilation** statically lowers the durable function into target-neutral Plan IR without invoking it.
 2. **Deployment build** resolves providers, checks the dependency closure, and partitions coordinator and worker artifacts.
-3. **Execution** validates an input, instantiates the template, and dispatches eligible Action nodes.
+3. **Plan/preview** reads emitted Plan IR, validates and optionally specializes known input, and reports the graph without loading the durable function or dispatching Actions.
+4. **Execution** creates or resumes a durable run and dispatches eligible Action nodes from the Plan IR.
 
-Keeping the phases separate allows one plan to deploy across TypeScript, native, and Wasm workers.
+Keeping the phases separate allows one plan to deploy across TypeScript, native, and Wasm workers. If a branch or runtime-sized fan-out cannot be resolved from preview inputs, plan mode reports the conditional or parameterized template instead of executing source code to guess its shape.
 
 ## Provide Implementations
 
 Actions are abstract capabilities. Layers install ordinary function implementations and their policies:
 
 ```ts
-import { Action, Layer } from "vibelang:provider"
+import { Action, Layer } from "vibelang/provider"
 
 const BuildActions = Layer.merge(
   Action.provide(Compile, compileWithEsbuild, {
@@ -75,7 +80,9 @@ The abstract Action owns the durable contract. A deployment layer chooses its im
 Branches on comptime values reduce normally. Branches on Flow input or Action output emit plan nodes and compile both arms:
 
 ```ts
-const Release = comptime Flow((input: ReleaseInput) => {
+import { durable } from "vibelang:flows"
+
+const Release = durable((input: ReleaseInput) => {
   const tested = Test.run({ source: input.source })
   return if (tested.passed) {
     Deploy.run({ artifact: tested.artifact })
@@ -85,7 +92,7 @@ const Release = comptime Flow((input: ReleaseInput) => {
 })
 ```
 
-Pure operations on symbolic values become portable expression IR. An operation the IR cannot represent is a compile error; it never reads a fake placeholder at comptime.
+Pure operations on symbolic values become portable expression IR. An operation the IR cannot represent is a compile error; the compiler never runs the source against a fake placeholder.
 
 ## Replay and Retry
 

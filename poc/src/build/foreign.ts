@@ -29,6 +29,13 @@ export interface ForeignCompilerOptions {
   rustc?: string;
 }
 
+interface ForeignCacheMetadata {
+  language: ForeignLanguage;
+  compilerVersion: string;
+  functions: ForeignFunction[];
+  wasmDigest: string;
+}
+
 /**
  * Real Zig/Rust -> Wasm execution, with intentionally tiny source-level binding
  * extraction. It proves the tool/build boundary; a production compiler must use
@@ -66,11 +73,22 @@ export class ForeignCompiler {
     const wasmPath = join(this.cacheDirectory, `${key}.wasm`);
     const metadataPath = join(this.cacheDirectory, `${key}.json`);
     if (await exists(wasmPath) && await exists(metadataPath)) {
-      return {
-        language, sourcePath: absolute, compilerVersion, key, cacheHit: true,
-        wasm: new Uint8Array(await readFile(wasmPath)), functions,
-        declaration: declarationFor(functions), dependencies,
-      };
+      try {
+        const wasm = new Uint8Array(await readFile(wasmPath));
+        const metadata = JSON.parse(await readFile(metadataPath, "utf8")) as ForeignCacheMetadata;
+        if (
+          metadata.language === language && metadata.compilerVersion === compilerVersion &&
+          digest(metadata.functions) === digest(functions) && metadata.wasmDigest === wasmDigest(wasm)
+        ) {
+          validateWasmExports(wasm, functions);
+          return {
+            language, sourcePath: absolute, compilerVersion, key, cacheHit: true,
+            wasm, functions, declaration: declarationFor(functions), dependencies,
+          };
+        }
+      } catch {
+        // Corrupt/incompatible local cache objects are ordinary misses.
+      }
     }
 
     const temporaryDirectory = await mkdtemp(join(tmpdir(), "vibelang-foreign-"));
@@ -81,16 +99,33 @@ export class ForeignCompiler {
         : ["--crate-type=cdylib", "--target", "wasm32-unknown-unknown", "-O", absolute, "-o", temporaryWasm];
       await run(tool, args);
       const wasm = new Uint8Array(await readFile(temporaryWasm));
-      const actualExports = WebAssembly.Module.exports(new WebAssembly.Module(wasm)).filter((entry) => entry.kind === "function").map((entry) => entry.name);
-      for (const fn of functions) {
-        if (!actualExports.includes(fn.name)) throw new Error(`compiler did not export ${fn.name}; actual: ${actualExports.join(", ")}`);
-      }
+      validateWasmExports(wasm, functions);
       await mkdir(this.cacheDirectory, { recursive: true });
       await writeAtomic(wasmPath, wasm);
-      await writeAtomic(metadataPath, `${JSON.stringify({ language, compilerVersion, functions }, null, 2)}\n`);
+      await writeAtomic(metadataPath, `${JSON.stringify({
+        language,
+        compilerVersion,
+        functions,
+        wasmDigest: wasmDigest(wasm),
+      } satisfies ForeignCacheMetadata, null, 2)}\n`);
       return { language, sourcePath: absolute, compilerVersion, key, cacheHit: false, wasm, functions, declaration: declarationFor(functions), dependencies };
     } finally {
       await rm(temporaryDirectory, { recursive: true, force: true });
+    }
+  }
+}
+
+function wasmDigest(wasm: Uint8Array): string {
+  return digest(Buffer.from(wasm).toString("base64"));
+}
+
+function validateWasmExports(wasm: Uint8Array, functions: readonly ForeignFunction[]): void {
+  const actualExports = WebAssembly.Module.exports(new WebAssembly.Module(Uint8Array.from(wasm)))
+    .filter((entry) => entry.kind === "function")
+    .map((entry) => entry.name);
+  for (const fn of functions) {
+    if (!actualExports.includes(fn.name)) {
+      throw new Error(`compiler did not export ${fn.name}; actual: ${actualExports.join(", ")}`);
     }
   }
 }

@@ -1,48 +1,567 @@
 ---
+title: VibeLang · A new programming language for Agents
 layout: minimal
-description: TypeScript with typed failures, capability-based dependencies, comptime, and durable execution compiled in.
+description: A TypeScript superset with the language-level primitives for building reliable tools and agents.
 showAskAi: false
-showLogo: false
+showLogo: true
 showOutline: false
 showSidebar: false
 ---
 
-<section className="vibe-hero">
-  <div className="vibe-hero__eyebrow">A new programming language for Agents</div>
-  <h1><span className="vibe-gradient">Vibe</span>Lang</h1>
-  <div className="vibe-hero__tagline">
-    A TypeScript superset with the language-level primitives for building reliable tools and agents.
-  </div>
-  <div className="vibe-actions">
-    <a className="vibe-button vibe-button--primary" href="/introduction/getting-started">Get started</a>
-    <a className="vibe-button" href="/guide/features">Explore the guide</a>
-    <a className="vibe-button" href="https://github.com/smithersai/vibelang">View on GitHub</a>
-  </div>
-</section>
+import { HomePage } from 'vocs'
 
-<section className="vibe-features">
-  <article className="vibe-feature">
-    <h2>Typed by the compiler</h2>
-    <p>Functions say what they return, how they fail, and what they need. The compiler infers the bookkeeping.</p>
-  </article>
-  <article className="vibe-feature">
-    <h2>Ordinary at runtime</h2>
-    <p>No wrapper value and no universal interpreter. VibeLang functions remain eager functions with ordinary stacks.</p>
-  </article>
-  <article className="vibe-feature">
-    <h2>TypeScript by default</h2>
-    <p>Start with valid TypeScript, then add precision where it pays. The TypeScript target preserves existing behavior.</p>
-  </article>
-  <article className="vibe-feature">
-    <h2>Portable by construction</h2>
-    <p>Filesystem, network, clock, and other host features are explicit capabilities with target-specific providers.</p>
-  </article>
-  <article className="vibe-feature">
-    <h2>Compile time is real code</h2>
-    <p>Evaluate deterministic code, derive validators, and generate types without a second schema language.</p>
-  </article>
-  <article className="vibe-feature">
-    <h2>Durable when you ask</h2>
-    <p>Actions and Flows turn selected programs into typed, resumable execution plans without changing ordinary code.</p>
-  </article>
-</section>
+<div className="vibe-home">
+  <div className="vibe-home__art" aria-hidden="true" />
+
+  <section className="vibe-home__hero">
+    <div className="vibe-home__intro">
+      <div className="vibe-home__eyebrow">A new programming language for Agents</div>
+      <h1><span className="vibe-gradient">Vibe</span>Lang</h1>
+      <div className="vibe-home__tagline">
+        A TypeScript superset with the <span>language-level primitives</span> for building <span>reliable tools and agents</span>.
+      </div>
+      <div className="vibe-home__actions">
+        <HomePage.Button href="/introduction/getting-started" variant="accent">Get started</HomePage.Button>
+        <HomePage.Button href="/introduction/why-vibelang">Why VibeLang?</HomePage.Button>
+        <HomePage.Button href="https://github.com/smithersai/vibelang">GitHub</HomePage.Button>
+      </div>
+    </div>
+
+    <div className="vibe-home__try">
+      <div id="vibe-home-install">
+
+  :::code-group{syncKey=""}
+
+  ```bash [npm]
+  npm install --save-dev vibelang
+  npx vibelang init
+  ```
+
+  ```bash [pnpm]
+  pnpm add --save-dev vibelang
+  pnpm exec vibelang init
+  ```
+
+  ```bash [bun]
+  bun add --dev vibelang
+  bunx vibelang init
+  ```
+
+  :::
+
+      </div>
+
+      <div className="vibe-home__stats">
+        <div className="vibe-stat">
+          <span>stage</span>
+          <strong>prealpha</strong>
+        </div>
+        <div className="vibe-stat">
+          <span>license</span>
+          <strong>MIT</strong>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section className="vibe-home__cards">
+    <article className="vibe-home__card">
+      <h2>TypeScript compatible</h2>
+      <div>Import TypeScript packages, use both languages side by side, and compile VibeLang to TypeScript.</div>
+    </article>
+    <article className="vibe-home__card">
+      <h2>Native when ready</h2>
+      <div>Optionally compile to native code—the easiest path from a TypeScript codebase to native performance.</div>
+    </article>
+    <article className="vibe-home__card">
+      <h2>Comptime</h2>
+      <div>Run deterministic code, generate types, and derive validators during compilation.</div>
+    </article>
+    <article className="vibe-home__card">
+      <h2>Durable execution</h2>
+      <div>Compile selected Actions and Flows into typed, resumable execution plans.</div>
+    </article>
+  </section>
+</div>
+
+<article className="vibe-home__content" data-v-content>
+
+## Overview
+
+VibeLang starts with TypeScript, then makes the minimal number of intentional changes needed to supercharge it for building reliable programs in the AI era.
+
+### 99% TypeScript
+
+VibeLang is almost TypeScript. The vast majority of its syntax is indistinguishable from TypeScript. You can import `.ts` files directly and use any TypeScript or JavaScript dependency. On the TypeScript target, VibeLang compiles to ordinary TypeScript that fits into the ecosystem you already use.
+
+:::code-group{syncKey=""}
+
+```ts [VibeLang]
+import { clamp } from "lodash-es"
+
+export function normalizeConfidence(score: number): number {
+  return clamp(score, 0, 1)
+}
+```
+
+```ts [TypeScript]
+import { clamp } from "lodash-es"
+
+export function normalizeConfidence(score: number): number {
+  return clamp(score, 0, 1)
+}
+```
+
+```ts [Effect]
+import { clamp } from "lodash-es"
+
+export function normalizeConfidence(score: number): number {
+  return clamp(score, 0, 1)
+}
+```
+
+:::
+
+For ordinary code, there is nothing to learn or rewrite—the three versions are identical.
+
+### Typesafe Errors as Values
+
+One of VibeLang's only changes to TypeScript is that errors are treated as strongly typed values that must be handled.
+
+:::code-group{syncKey=""}
+
+```ts [VibeLang]
+class NotFound extends Error {
+  constructor(readonly id: string) {
+    super(`User not found: ${id}`)
+  }
+}
+
+function getUser(users: Map<string, User>, id: string) {
+  const user = users.get(id)
+  if (user === undefined) throw new NotFound(id)
+  return user
+}
+
+const user = getUser(users, id) catch (error) {
+  switch (error.constructor) {
+    case NotFound:
+      User.guest()
+  }
+}
+```
+
+```ts [TypeScript]
+class NotFound extends Error {
+  constructor(readonly id: string) {
+    super(`User not found: ${id}`)
+  }
+}
+
+function getUser(users: Map<string, User>, id: string) {
+  const user = users.get(id)
+  if (user === undefined) throw new NotFound(id)
+  return user
+}
+
+let user: User
+try {
+  user = getUser(users, id)
+} catch (error) {
+  if (error instanceof NotFound) user = User.guest()
+  else throw error
+}
+// NotFound is still invisible in getUser's type.
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+class NotFound extends Error {
+  constructor(readonly id: string) {
+    super(`User not found: ${id}`)
+  }
+}
+
+function getUser(users: Map<string, User>, id: string) {
+  const user = users.get(id)
+  return user === undefined
+    ? Effect.fail(new NotFound(id))
+    : Effect.succeed(user)
+}
+
+const user = getUser(users, id).pipe(
+  Effect.catchAll(() => Effect.succeed(User.guest())),
+)
+```
+
+:::
+
+The compiler sees `throw new NotFound(id)` and infers both the `User` success type and the `NotFound` failure type from the function body. The caller must propagate or handle that failure. Inside `catch`, the error is a typed value, so the `switch` must cover the complete failure set.
+
+There is no wrapper value, generator ceremony, or universal effect interpreter. These are still eager functions with ordinary stacks.
+
+### Dependencies in the function signature
+
+VibeLang uses an Effect-inspired context package instead of adding dependency-injection syntax. Its API looks like an ordinary library, but the compiler tracks every accessed service in the function's type signature.
+
+:::code-group{syncKey=""}
+
+```ts [VibeLang]
+import { Context } from "vibelang/context"
+
+abstract class Clock extends Context {
+  abstract now(): Date
+}
+
+abstract class AuditLog extends Context {
+  abstract write(event: AuditEvent): void throws AuditError
+}
+
+function issueToken(user: User) {
+  const clock = Clock.context()
+  const audit = AuditLog.context()
+  const token = Token.create(user, clock.now())
+  try audit.write({ type: "token.issued", userId: user.id })
+  return token
+}
+
+// Inferred context: Clock | AuditLog
+```
+
+```ts [TypeScript]
+interface Clock {
+  now(): Date
+}
+
+interface AuditLog {
+  write(event: AuditEvent): void
+}
+
+function issueToken(
+  user: User,
+  clock: Clock,
+  audit: AuditLog,
+): Token {
+  const token = Token.create(user, clock.now())
+  audit.write({ type: "token.issued", userId: user.id })
+  return token
+}
+```
+
+```ts [Effect]
+import { Context, Effect } from "effect"
+
+class Clock extends Context.Tag("Clock")<
+  Clock,
+  { readonly now: () => Date }
+>() {}
+
+class AuditLog extends Context.Tag("AuditLog")<
+  AuditLog,
+  { readonly write: (event: AuditEvent) => Effect.Effect<void, AuditError> }
+>() {}
+
+function issueToken(
+  user: User,
+): Effect.Effect<Token, AuditError, Clock | AuditLog> {
+  return Effect.gen(function* () {
+    const clock = yield* Clock
+    const audit = yield* AuditLog
+    const token = Token.create(user, clock.now())
+    yield* audit.write({ type: "token.issued", userId: user.id })
+    return token
+  })
+}
+```
+
+:::
+
+The inherited `context()` method is compiler-aware. It adds the capability class to the function's inferred context channel, and that requirement propagates through ordinary calls until a context or layer provides it. The function stays eager and callers never pass a context argument by hand.
+
+### Comptime can produce real types
+
+VibeLang can run deterministic code during compilation—and the result can be a real TypeScript type. Here, a project-defined comptime function turns a tracked model file into a type the rest of the program uses normally.
+
+:::code-group{syncKey=""}
+
+```ts [VibeLang]
+import { comptime } from "vibelang:comptime"
+
+const model = comptime(JSON.parse(embed("./account.model.json")))
+const Account = comptime(deriveType(model))
+
+function displayName(account: Account) {
+  return `${account.name} (${account.plan})`
+}
+```
+
+```ts [TypeScript]
+// TypeScript cannot return a type from an ordinary build-time function.
+// Declare this by hand or add a separate code-generation step.
+type Account = {
+  id: string
+  name: string
+  plan: "free" | "pro"
+}
+
+function displayName(account: Account) {
+  return `${account.name} (${account.plan})`
+}
+```
+
+```ts [Effect]
+import { Schema } from "effect"
+
+const Account = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  plan: Schema.Literal("free", "pro"),
+})
+type Account = typeof Account.Type
+
+function displayName(account: Account) {
+  return `${account.name} (${account.plan})`
+}
+```
+
+:::
+
+Effect can derive a type from an Effect schema, but the schema must become the source of truth. VibeLang comptime can execute an ordinary, project-defined derivation and return a type. The compiler tracks every input, caches the result, and reports a compile error if evaluation depends on runtime state.
+
+### Files become typed modules
+
+Compiler-known files participate in the same type system and incremental build graph. VibeLang takes the direct-import ergonomics of [Bun's loaders](https://bun.sh/docs/bundler/loaders) and extends them with compile-time types and dependency tracking.
+
+#### JSON that keeps its literals
+
+Ordinary TypeScript can import JSON, but values such as strings and numbers are widened. VibeLang's const form preserves the file as a deeply readonly literal value.
+
+:::code-group{syncKey=""}
+
+```ts [VibeLang]
+import config from "./agent.config.json" as const
+
+// "reasoning" — not string
+type Model = typeof config.model
+// readonly ["search", "write"] — not string[]
+type Tools = typeof config.tools
+```
+
+```ts [TypeScript]
+// agent.config.ts
+// Move the data into TypeScript to keep its exact values.
+export const config = {
+  model: "reasoning",
+  tools: ["search", "write"],
+} as const
+```
+
+```ts [Effect]
+// Effect does not change TypeScript's JSON import inference.
+// The exact-value workaround is still a TypeScript source file.
+export const config = {
+  model: "reasoning",
+  tools: ["search", "write"],
+} as const
+```
+
+:::
+
+#### Markdown is a prompt module
+
+A Markdown file imports as a string at compile time. It can go straight into a model request without runtime filesystem access, a raw-loader suffix, or a declaration file.
+
+:::code-group{syncKey=""}
+
+```ts [VibeLang]
+import systemPrompt from "./system.md"
+
+const response = await model.generate({
+  system: systemPrompt,
+  prompt: question,
+})
+```
+
+```ts [TypeScript]
+import { readFile } from "node:fs/promises"
+
+const systemPrompt = await readFile(
+  new URL("./system.md", import.meta.url),
+  "utf8",
+)
+
+const response = await model.generate({
+  system: systemPrompt,
+  prompt: question,
+})
+```
+
+```ts [Effect]
+import { FileSystem } from "@effect/platform"
+import { Effect } from "effect"
+
+const response = Effect.gen(function* () {
+  const fs = yield* FileSystem.FileSystem
+  const system = yield* fs.readFileString("./system.md")
+  return yield* model.generate({ system, prompt: question })
+})
+```
+
+:::
+
+#### Rust and Zig import like source modules
+
+Existing Node-API packages built with napi-rs remain ordinary npm dependencies. Local Rust and Zig sources can also be imported directly; VibeLang drives the foreign compiler and generates checked bindings for the selected TypeScript, native, or Wasm target.
+
+:::code-group{syncKey=""}
+
+```ts [VibeLang]
+import { createCanvas } from "@napi-rs/canvas"
+import { rank } from "./rank.rs"
+import { tokenize } from "./tokenize.zig"
+
+const canvas = createCanvas(512, 512)
+const ranked = rank(tokenize(source))
+```
+
+```ts [TypeScript]
+import { createCanvas } from "@napi-rs/canvas"
+import { rank } from "./native/rank.js"
+
+// napi-rs packages work, but local Rust needs a Cargo build,
+// a generated .node binary, a JS wrapper, and declarations.
+const canvas = createCanvas(512, 512)
+const ranked = rank(tokens)
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+import { rank } from "./native/rank.js"
+
+// Effect can wrap the native call, but it does not build the binding.
+const ranked = Effect.try({
+  try: () => rank(tokens),
+  catch: (cause) => new NativeError({ cause }),
+})
+```
+
+:::
+
+This follows Bun's proven loader model: text files can import as strings, `.node` files use its N-API loader, and [Node-API](https://bun.sh/docs/runtime/node-api) is its stable native boundary. VibeLang adds generated source bindings and records source locations, toolchain versions, and dependency edges so diagnostics, watch mode, and remote caching stay correct across every format.
+
+### Concurrency stays structured
+
+Async functions remain ordinary async functions. A structured join owns its child work and combines success values and typed failure sets without introducing a fiber runtime.
+
+:::code-group{syncKey=""}
+
+```ts [VibeLang]
+const [profile, activity] = try await.all(
+  loadProfile(userId),
+  loadActivity(userId),
+)
+```
+
+```ts [TypeScript]
+const [profile, activity] = await Promise.all([
+  loadProfile(userId),
+  loadActivity(userId),
+])
+// A rejection does not cancel or join the remaining work.
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+const load = Effect.all([
+  loadProfile(userId),
+  loadActivity(userId),
+])
+```
+
+:::
+
+TypeScript's `Promise.all` rejects early while sibling work may continue. VibeLang's join cancels remaining children on failure and waits for their cleanup, so work cannot silently outlive the code responsible for it. Effect provides the same structured guarantee through Effect values and its fiber runtime.
+
+### Make execution durable where it matters
+
+Durability is explicit. Actions define persistence boundaries, while the compiler lowers functions passed to `durable(...)` into typed, resumable execution plans.
+
+:::code-group{syncKey=""}
+
+```ts [VibeLang]
+import { durable } from "vibelang:flows"
+
+abstract class Research extends Action<
+  (input: ResearchInput) => Report throws ResearchFailed
+> {}
+
+abstract class Publish extends Action<
+  (input: PublishInput) => Publication throws PublishFailed
+> {}
+
+const Release = durable((input: ReleaseInput) => {
+  const report = Research.run({ topic: input.topic })
+  return Publish.run({ report })
+})
+```
+
+```ts [TypeScript]
+async function release(input: ReleaseInput) {
+  const report = await research({ topic: input.topic })
+  return publish({ report })
+}
+
+// Persistence, retries, idempotency, and resume state need a
+// workflow SDK or application-specific storage around this function.
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+const release = (input: ReleaseInput) =>
+  Effect.gen(function* () {
+    const report = yield* research({ topic: input.topic })
+    return yield* publish({ report })
+  })
+```
+
+:::
+
+The compiler derives schemas, failure channels, plan edges, and worker contracts. Completed Actions can be replayed after interruption without rerunning work that already succeeded. Effect adds typed composition and retry policies, but an Effect program is not durably journaled across process restarts by itself.
+
+### TypeScript today, native when ready
+
+VibeLang can emit TypeScript for immediate compatibility, then optionally compile portable parts of the same program to native code or Wasm. The compiler checks the complete dependency graph and explains which call, package, or capability still requires the TypeScript runtime.
+
+This gives teams a gradual path to native deployment: start inside an existing TypeScript codebase, move boundaries when they become valuable, and avoid a ground-up rewrite.
+
+## Features
+
+VibeLang is designed to provide these capabilities out of the box:
+
+- **TypeScript compatible** — import TypeScript packages, adopt VibeLang incrementally, and compile back to TypeScript
+- **Optional native compilation** — move from TypeScript to native code gradually instead of committing to a rewrite
+- **Comptime type generation** — derive validators, codecs, and real types without maintaining a parallel schema language
+- **Durable programs** — turn explicit Action and Flow boundaries into persistent, distributed execution plans
+- **Typed failures** — use the same inferred, exhaustive failure model across synchronous and asynchronous functions
+- **Capability-based dependencies** — make databases, clocks, filesystems, and other services visible in function types
+- **Typed asset imports** — load JSON, Markdown, MDX, SQL, GraphQL, Zig, and Rust through compiler-tracked loaders
+- **Structured concurrency** — use typed workers, structured joins, and cancellation without a fiber runtime
+
+## Built for tools and agents
+
+Reliable agents need more than a tool-call protocol. They need explicit authority, recoverable failures, runtime validation, deterministic compilation, and durable work that can resume after interruption.
+
+VibeLang makes those concerns part of one language model. Generated TypeScript runs with an explicit function surface, platform access is capability-based, and Actions or Flows add durability only where the program asks for it.
+
+Read the [Agent Library guide](/guide/agent-library) or start with [Why VibeLang?](/introduction/why-vibelang).
+
+## Help shape the language
+
+VibeLang is in active design. The syntax, compiler architecture, and core semantics are being specified before the production toolchain is built. This is the stage where concrete feedback can change the language at the lowest cost.
+
+Review the [specification](/specification/) or join the project on [GitHub](https://github.com/smithersai/vibelang).
+
+</article>

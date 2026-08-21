@@ -8,7 +8,7 @@ The standard library should:
 
 - operate on ordinary VibeLang values and functions
 - use typed failures for recoverable errors
-- declare platform services as capabilities
+- define platform services as abstract classes extending `Context`
 - work across TypeScript, native, and Wasm where applicable
 - derive schemas and codecs from ordinary types
 - include structured concurrency without a fiber runtime
@@ -48,13 +48,30 @@ Path  Process  Socket  Terminal
 
 Each service can have Node, Bun, Deno, browser, edge, native, WASI, and test implementations where the host supports it.
 
+Services use the same library-shaped declaration and access model as application capabilities:
+
+```ts
+import { Context } from "vibelang/context"
+
+abstract class Clock extends Context {
+  abstract now(): Instant
+}
+
+function timestamp(): Instant {
+  const clock = Clock.context()
+  return clock.now()
+}
+```
+
+The inherited `Clock.context()` method is compiler-aware: it adds `Clock` to `timestamp`'s inferred context channel, while callers continue to use `timestamp()` with no explicit context argument. Layers from `vibelang/provider` supply the target-specific implementation.
+
 ## Concurrency and Streams
 
 ```text
-TaskScope  Governor  Stream  Queue  Semaphore  Channel
+Stream  Queue  Semaphore  Channel
 ```
 
-The library follows typed joins, cancellation, workers, and bounded async iteration rather than introducing Effect-style fibers.
+The library follows typed joins, cancellation, and workers rather than introducing Effect-style fibers or a dedicated task-scope abstraction. TC39 concurrency governors may provide a future limit for async-iterator fan-out, but they are a separate Stage 1 proposal rather than a VibeLang child-task ownership API.
 
 ## Durable Runtime
 

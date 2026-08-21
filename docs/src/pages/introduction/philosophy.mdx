@@ -29,21 +29,21 @@ Runtime machinery exists only where the program asks for it: scoped provider env
 Most bookkeeping should be inferred from the body:
 
 ```ts
-function loadConfig(path: string): !Config {
-  const source = try FileSystem.readText(path)
+function loadConfig(path: string) {
+  const fs = FileSystem.context()
+  const source = try fs.readText(path)
   return try Config.parse(source)
 }
 ```
 
-The compiler follows calls to collect the failure and requirement rows. Exported APIs pin those rows because a public signature is a contract:
+The compiler follows calls to collect failure and context requirement rows. Exported APIs pin their failure contracts and preserve inferred context requirements because a public signature is a contract:
 
 ```ts
-export function loadConfig(path: string): Config
+export declare function loadConfig(path: string): Config
   throws FileNotFound | InvalidConfig
-  uses fs: FileSystem
 ```
 
-Inference keeps local code light. Explicit boundaries keep changes reviewable.
+`FileSystem.context()` is an ordinary-looking inherited API with compiler support. It adds `FileSystem` to the function's inferred context channel. Inference keeps local code light, and callers acquire the same requirement through an ordinary `loadConfig(path)` call without passing context by hand.
 
 ## Platform Is a Dependency
 
@@ -59,7 +59,7 @@ Portability and testability become the same feature.
 
 ## Comptime Is Hermetic
 
-Compile-time code can generate values, types, validators, and execution plans. It cannot silently observe ambient filesystem state, the network, the clock, or random input.
+The compiler-recognized `comptime(...)` API can generate values, types, and validators. It cannot silently observe ambient filesystem state, the network, the clock, or random input. Durable execution plans come from the separate static lowering initiated by `durable(...)`; a Flow is not executed through comptime to discover its graph.
 
 Every external compiler input must enter through a tracked import or loader context. That makes incremental builds reproducible: when an input changes, its dependent work is invalidated; unrelated work remains cached.
 

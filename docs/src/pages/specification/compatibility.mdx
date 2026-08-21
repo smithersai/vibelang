@@ -2,20 +2,20 @@
 
 Status: **Locked**, except where marked.
 
-## Source Superset
+## Source Relationship
 
-1. A valid TypeScript program MUST remain valid VibeLang input for the TypeScript target.
-2. Its observable TypeScript behavior MUST be preserved unless the source opts into VibeLang-specific syntax or APIs.
-3. VibeLang MUST NOT impose a globally sound type system that invalidates TypeScript escape hatches.
-4. Precision MAY be adopted incrementally across files and API boundaries.
+1. `.vibe` MUST use a TypeScript-derived grammar with only explicitly documented differences.
+2. `.ts`, `.tsx`, and JavaScript modules MUST retain their own complete syntax and behavior when imported by VibeLang.
+3. Shared syntax MUST retain TypeScript behavior unless the VibeLang specification explicitly assigns different semantics.
+4. VibeLang MUST NOT impose a globally sound type system that invalidates TypeScript escape hatches on the TypeScript target.
 
 VibeLang source uses the `.vibe` extension. The JSX-capable extension is **open**; `.vibex` is a candidate only.
 
 ## TypeScript Target
 
-The TypeScript target MUST support the complete TypeScript language. VibeLang constructs SHOULD lower into ordinary TypeScript before the stock pipeline finishes checking and emission where feasible.
+The TypeScript target MUST interoperate with the complete TypeScript language in `.ts` and `.tsx` modules. VibeLang constructs SHOULD lower into ordinary TypeScript before the stock pipeline finishes checking and emission where feasible.
 
-Failure and requirement annotations MUST erase where they do not require runtime machinery. The backend MUST NOT wrap every function result merely to encode its static channels.
+Requirement metadata SHOULD erase where it does not require runtime machinery. Result and Optional values have intentional runtime representations; infallible, non-optional functions MUST NOT be wrapped.
 
 ## Runtime TypeScript Dependency
 
@@ -39,7 +39,7 @@ The classification of `Proxy`, prototype APIs, property descriptors, weak refere
 
 ## Host Globals
 
-Platform-specific globals such as `process`, `window`, `document`, filesystem, and network MUST NOT be unconditional globals in authored `.vibe` code. Host functionality MUST be represented by typed requirements.
+Platform-specific globals such as `process`, `window`, `document`, filesystem, and network MUST NOT be unconditional globals in authored `.vibe` code. Host functionality MUST be represented by typed capabilities, normally accessed through the inherited `Capability.context()` method from `vibelang/context`.
 
 Facilities truly present in every supported JavaScript environment MAY be unconditional globals. Host-sensitive operations such as clock and random access MUST still use capabilities.
 

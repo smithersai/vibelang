@@ -1,6 +1,6 @@
 # Comptime [Evaluate deterministic code and produce types during compilation]
 
-VibeLang uses compile-time execution for work that the compiler can prove depends only on compiler-known inputs. Explicit `comptime` requires evaluation and reports an error when the work cannot be completed during the build.
+VibeLang uses compile-time execution for work that the compiler can prove depends only on compiler-known inputs. The imported `comptime(...)` compiler intrinsic requires evaluation and reports an error when the work cannot be completed during the build. It is ordinary call syntax, not a language keyword.
 
 ## Automatic Evaluation
 
@@ -15,24 +15,46 @@ You do not need to mark routine constant folding.
 
 ## Required Evaluation
 
-Use `comptime` when the result must exist during compilation:
+Import `comptime` when the result must exist during compilation:
 
 ```ts
-const routes = comptime parseRoutes(embed("./routes.json"))
+import { comptime } from "vibelang:comptime"
+
+const routes = comptime(parseRoutes(embed("./routes.json")))
 ```
 
 If `parseRoutes` depends on a runtime value or unavailable capability, compilation fails at that expression instead of moving the work silently to runtime.
+
+The compiler recognizes the imported binding, not the word `comptime`. Aliasing the import works; a project function that happens to have the same name is still an ordinary function.
+
+Passing a function marks and returns a compile-time function. It does not call the function immediately:
+
+```ts
+const parseRoutesAtBuild = comptime(parseRoutes)
+const routes = parseRoutesAtBuild(embed("./routes.json"))
+```
+
+Use an ordinary immediate call when a multi-statement compile-time block is convenient:
+
+```ts
+const routes = comptime(() => {
+  const source = embed("./routes.json")
+  return parseRoutes(source)
+})()
+```
 
 ## Generating Types
 
 Comptime values can produce types:
 
 ```ts
-const definition = comptime JSON.parse(embed("./api.json"))
-type Api = comptime deriveApi(definition)
+import { comptime } from "vibelang:comptime"
+
+const definition = comptime(JSON.parse(embed("./api.json")))
+const Api = comptime(deriveApi(definition))
 ```
 
-`Api` is a normal checked type everywhere it is used. Generated declarations participate in editor tooling and diagnostics.
+`Api` is a type-valued compile-time binding and is a normal checked type everywhere it is used. Generated declarations participate in editor tooling and diagnostics.
 
 This removes the usual split between a code generator, its output files, and the build step that must remember to refresh them.
 
@@ -41,15 +63,19 @@ This removes the usual split between a code generator, its output files, and the
 `comptime.target` describes the selected output environment:
 
 ```ts
-const defaultTransport = comptime switch (comptime.target) {
-  "browser" => BrowserTransport,
-  "node" => NodeTransport,
-  "bun" => BunTransport,
-  "deno" => DenoTransport,
-  "edge" => FetchTransport,
-  "native" => NativeTransport,
-  "wasm" => WasiTransport,
+import { comptime } from "vibelang:comptime"
+
+const transports = {
+  browser: BrowserTransport,
+  node: NodeTransport,
+  bun: BunTransport,
+  deno: DenoTransport,
+  edge: FetchTransport,
+  native: NativeTransport,
+  wasm: WasiTransport,
 }
+
+const defaultTransport = comptime(transports[comptime.target])
 ```
 
 Branches for other targets are removed from the artifact. Their implementations do not need to be loadable at runtime.
@@ -59,8 +85,10 @@ Branches for other targets are removed from the artifact. Their implementations 
 Comptime can read source assets through tracked imports and embedding APIs:
 
 ```ts
+import { comptime } from "vibelang:comptime"
 import query from "./find-user.sql"
-const plan = comptime optimize(query)
+
+const plan = comptime(optimize(query))
 ```
 
 The compiler records the asset, loader implementation, options, target, and transitive inputs in its incremental graph.
@@ -85,11 +113,14 @@ Hermetic does not mean isolated from all input. It means every input is declared
 The same function may be callable in both phases when its operations are valid in both:
 
 ```ts
+import { comptime } from "vibelang:comptime"
+
 function slugify(value: string): string {
   return value.trim().toLowerCase().replaceAll(" ", "-")
 }
 
-const route = comptime slugify("Account Settings")
+const slugifyAtBuild = comptime(slugify)
+const route = slugifyAtBuild("Account Settings")
 const userSlug = slugify(form.name)
 ```
 
@@ -110,6 +141,8 @@ Comptime is the shared foundation for:
 - compiling Markdown, MDX, SQL, and GraphQL
 - generating Zig and Rust bindings
 - selecting platform implementations
-- compiling durable Flows into Plan IR
+- supplying compiler-known values captured by durable Flows
+
+Durable Flow lowering is a separate compiler pass initiated by `durable(...)`; it does not execute a Flow through the comptime evaluator.
 
 Each feature uses the same deterministic evaluator and dependency graph instead of inventing a separate code-generation system.

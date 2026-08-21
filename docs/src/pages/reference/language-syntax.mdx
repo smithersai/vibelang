@@ -1,118 +1,96 @@
 # Language Syntax [Quick reference for VibeLang source forms]
 
-This page summarizes current design syntax. **Locked** means the behavior is accepted; **direction** means the spelling or detailed semantics may change.
+VibeLang keeps additions TypeScript-shaped where possible. Compiler-recognized behavior is exposed through imported functions and ordinary generic types instead of new keywords.
 
 ## Source Files
 
 | Form | Status | Meaning |
 | --- | --- | --- |
 | `.vibe` | Locked | VibeLang source file |
-| `.ts` | Locked | TypeScript source with TypeScript behavior |
-| `.vibex` | Open | Candidate JSX-capable VibeLang extension |
+| `.ts` | Locked | imported TypeScript with TypeScript behavior |
+| `.vibex` | Open | candidate JSX-capable VibeLang extension |
 
-## Typed Errors
-
-```ts
-error Name { field: Type }
-```
-
-Declares a nominal, tagged failure type. Runtime instances extend `Error` and carry the VibeLang failure brand.
+## Results and Errors
 
 ```ts
-throw Name({ field: value })
-```
+class Name extends Error {
+  constructor(readonly field: Type) {
+    super("failure message")
+  }
+}
 
-Constructs and throws a declared failure. Constructor spelling is direction; typed failure behavior is locked.
-
-## Function Failure Annotations
-
-```ts
-function inferred(): !Value
-```
-
-Requests compiler inference of the checked failure set.
-
-```ts
-export function publicApi(): Value throws ErrorA | ErrorB
-```
-
-Pins and checks an explicit failure set. Exact grammar is direction.
-
-## Requirements
-
-```ts
-function run(input: Input): !Output
-  uses store: Store, log: Logger
-```
-
-Declares lexical capability bindings. Service identity is nominal; binding names are local.
-
-## Failure Propagation
-
-```ts
-const value = try operation()
-const value = try await asyncOperation()
-```
-
-Returns the success value or propagates the typed failure from the current function.
-
-## Failure Recovery
-
-```ts
-const value = operation() catch fallback
-
-const value = operation() catch |error| switch (error) {
-  ErrorA => recoverA(error),
-  ErrorB => recoverB(error),
+function operation(): Result<Value, Name> {
+  if (failed) throw new Name(value)
+  return value
 }
 ```
 
-Handles declared failures only. Exhaustiveness is checked against the failure set.
+Plain returns and throws are compiler-lifted in a Result-returning function. Propagate a Result with `.unwrap()` and recover with `match`, `recover`, or `error.match`:
+
+```ts
+const value = operation().unwrap()
+
+const label = operation().match({
+  ok: value => render(value),
+  error: error => error.match({ Name: describe }),
+})
+```
+
+An async fallible function returns `Promise<Result<A, E>>`. `await` unwraps only the Promise. Promise `.then`, `.catch`, and `.finally` are banned in authored VibeLang.
 
 ## Optionals
 
 ```ts
-let value: ?T
-const resolved = value orelse fallback
-const required = value.?
+function lookup(): Optional<Value> {
+  if (missing) return undefined
+  return value
+}
+
+const label = lookup().match({
+  some: value => render(value),
+  none: () => "missing",
+})
 ```
 
-`?T` represents `T` or absence. `orelse` supplies a fallback. `.?` asserts presence and defects when absent. Syntax is direction; the optional model is locked.
+Use methods such as `map`, `andThen`, `filter`, `unwrap`, `unwrapOr`, and `toResult`. The compiler lifts plain values and nullish returns in Optional-returning functions.
+
+## Requirements
+
+```ts
+import { Context } from "vibelang/context"
+
+const store = Store.context()
+const log = Logger.context()
+```
+
+`context()` returns a capability instance and adds its nominal identity to the enclosing function's inferred requirement channel. There is no requirement keyword.
 
 ## Expression Control Flow
 
 ```ts
 const value = if (condition) whenTrue else whenFalse
-```
 
-```ts
-const value = switch (input) {
-  PatternA => resultA,
-  PatternB(value) => resultB(value),
+const result = switch (input.kind) {
+  case "a":
+    resultA
+  case "b":
+    resultB(input.value)
 }
 ```
 
-Blocks, `if`, `switch`, `for`, and `while` may produce values.
+Blocks, `if`, `switch`, `for`, and `while` may produce values. Switches use TypeScript `case` clauses, and known finite domains are exhaustiveness-checked.
 
-## Labeled Values
+## Labeled Values and Loop Else
 
 ```ts
 const value = label: {
   break :label result
 }
-```
 
-A labeled `break` yields a value from a block or loop.
-
-## Loop Else
-
-```ts
-const value = label: for (const item of items) {
-  if (matches(item)) break :label item
+const found = search: for (const item of items) {
+  if (matches(item)) break :search item
 } else fallback
 ```
-
-The `else` expression runs when the loop completes without a value break.
 
 ## Cleanup
 
@@ -121,23 +99,45 @@ defer cleanup()
 errdefer rollback()
 ```
 
-`defer` runs on scope exit. `errdefer` runs when the scope exits through a typed failure.
+`defer` runs on scope exit. `errdefer` runs when the scope exits with a Result error.
 
 ## Comptime
 
 ```ts
-const value = comptime expression
-type Generated = comptime expression
+import { comptime } from "vibelang:comptime"
+
+const value = comptime(expression)
+const generatedFunction = comptime(functionValue)
 comptime.target
 ```
 
-Explicit `comptime` requires deterministic compile-time evaluation. Comptime expressions may produce types.
+Passing a value requests deterministic compile-time evaluation. Passing a function marks and returns a compile-time function without invoking it. `comptime` is an imported intrinsic, not a keyword.
 
-## Durable Declarations
+## Durable Functions
 
 ```ts
-abstract class Name extends Action<Signature> {}
-const Name = comptime Flow(callback)
+import { durable } from "vibelang:flows"
+
+const workflow = durable(function workflow(input: Input): Output {
+  return Build.run(input)
+})
 ```
 
-These library/compiler-recognized forms declare durable Actions and compile Flows into Plan IR. Exact API spelling remains open.
+The compiler lowers a statically resolvable durable function to Plan IR without invoking the Flow in plan mode. `durable` is an imported intrinsic, not a keyword.
+
+## Import Attributes
+
+All non-code and foreign-source imports use standard import attributes:
+
+```ts
+import config from "./config.json" with { type: "json" }
+import frozen from "./config.json" with { type: "json", mode: "const" }
+import prompt from "./prompt.md" with { type: "text" }
+import kernel from "./kernel.zig" with { type: "zig" }
+```
+
+Attribute values are strings. Ordinary `.vibe`, `.ts`, and `.js` code imports do not need a `type` attribute.
+
+## Deliberately Absent Syntax
+
+The initial language has no failure clause, prefix propagation syntax, postfix catch expression, special Error declaration, optional type sigil, optional fallback operator, comptime keyword, durable keyword, or separate const-import grammar.

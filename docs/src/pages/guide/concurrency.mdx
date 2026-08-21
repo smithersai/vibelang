@@ -1,9 +1,9 @@
-# Concurrency [Use typed workers and bounded task scopes without a fiber runtime]
+# Concurrency [Use typed workers and structured joins without a fiber runtime]
 
-VibeLang builds structured concurrency from ordinary async functions and emerging TC39 primitives. It does not reinterpret every function as a fiber.
+VibeLang builds structured concurrency around ordinary async functions and typed join expressions. It does not reinterpret every function as a fiber.
 
 :::warning Design direction
-The concurrency model is accepted direction, not implemented syntax. Several primitives depend on active TC39 proposals and may track those proposals as they change.
+Structured joins are VibeLang design direction, not implemented syntax. Concurrency governors are a separate TC39 Stage 1 direction whose API and semantics may change.
 :::
 
 ## Typed Workers
@@ -12,28 +12,28 @@ Module expressions define a statically visible worker surface:
 
 ```ts
 const analytics = spawn module {
-  export function summarize(values: Float64Array): !Summary {
-    return Statistics.summarize(values)
+  export function summarize(
+    values: Float64Array,
+  ): Summary throws InvalidSample {
+    return try Statistics.summarize(values)
   }
 }
 ```
 
 Calls across the worker boundary retain their success and failure types. Values crossing realms need an appropriate structured or shared representation.
 
-## Task Scopes
+## Structured Joins
 
-A task scope owns child work:
+Pass async operations directly to a typed join:
 
 ```ts
-using scope = TaskScope.bounded(8)
-
 const [profile, activity] = try await.all(
-  scope.run(() => loadProfile(id)),
-  scope.run(() => loadActivity(id)),
+  loadProfile(id),
+  loadActivity(id),
 )
 ```
 
-The bound limits active work. Leaving the scope joins or cancels children according to the scope policy, so tasks do not outlive the code responsible for them.
+The join does not produce its value until both operations complete according to its join policy. This is VibeLang's structured child-task direction; exact cancellation and sibling-failure semantics are still being designed. It does not require a separate scope object or wrapper around each call.
 
 ## Typed Joins
 
@@ -41,8 +41,8 @@ Join operations combine success values and failure sets:
 
 ```ts
 const [stats, metadata] = try await.all(
-  scope.run(() => analytics.summarize(samples)),
-  scope.run(() => fetchMetadata(datasetId)),
+  analytics.summarize(samples),
+  fetchMetadata(datasetId),
 )
 ```
 
@@ -55,8 +55,8 @@ The same approach extends to `await.race`, `await.any`, `await.allSettled`, and 
 Cancellation is visible as a typed failure. A cancellation capability is supplied through the requirement system rather than threaded through every call by hand:
 
 ```ts
-async function index(records: AsyncIterable<Record>): !Index
-  uses cancellation: Cancellation {
+async function index(records: AsyncIterable<Record>) {
+  const cancellation = Cancellation.context()
   for await (const record of records) {
     try cancellation.checkpoint()
     // ...
@@ -72,19 +72,19 @@ Shared structs over `SharedArrayBuffer` provide an explicit path for high-throug
 
 The compiler can check the cross-realm layout and failure transport protocol while each backend chooses its most appropriate implementation.
 
-## Async Iteration
+## Limiting Fan-Out
 
-Governors and unordered async iteration provide bounded fan-out:
+TC39's Stage 1 concurrency-control proposal explores governors for limiting concurrent access to a resource or consuming an async iterator with bounded fan-out. Its current API direction includes `CountingGovernor`:
 
 ```ts
-using governor = Governor.concurrency(16)
+const governor = new CountingGovernor(16)
 
-for await (const result of urls.mapUnordered(fetchPage, { governor })) {
-  try index(result)
-}
+try await AsyncIterator.from(urls)
+  .map(fetchPage)
+  .forEach(index, governor)
 ```
 
-Bounds are resources with lexical lifetimes, not global scheduler settings.
+A governor limits how much work may run concurrently. It does not define structured child-task ownership, join failure composition, or task lifetimes. VibeLang intends to track the JavaScript proposal rather than invent a competing governor API.
 
 ## Promises and Native Output
 

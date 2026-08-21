@@ -7,12 +7,14 @@ Static types disappear before untrusted data reaches your program. VibeLang uses
 Start with the application type:
 
 ```ts
+import { comptime } from "vibelang:comptime"
+
 type SignupRequest = {
   email: string
   age: number
 }
 
-const SignupRequestSchema = comptime Schema.derive<SignupRequest>()
+const SignupRequestSchema = comptime(Schema.derive<SignupRequest>())
 ```
 
 The compiler produces a runtime parser whose success type is `SignupRequest`. There is no second schema declaration to keep synchronized.
@@ -22,9 +24,10 @@ The compiler produces a runtime parser whose success type is `SignupRequest`. Th
 External input should remain `unknown` until it is validated:
 
 ```ts
-function handleSignup(body: unknown): !User {
+function handleSignup(body: unknown) {
+  const users = Users.context()
   const request = try SignupRequestSchema.parse(body)
-  return try Users.create(request)
+  return try users.create(request)
 }
 ```
 
@@ -35,6 +38,7 @@ A validation problem is a typed failure. It composes with the same `try`, `catch
 Platform APIs can accept a type or derived schema directly:
 
 ```ts
+const http = HttpClient.context()
 const response = try await http.get("/account")
 const account = try await response.json(Account)
 ```

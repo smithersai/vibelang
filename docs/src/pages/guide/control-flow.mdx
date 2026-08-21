@@ -28,14 +28,17 @@ Statement-form TypeScript `if` remains valid.
 A switch can return a value and can be checked for exhaustiveness:
 
 ```ts
-const message = switch (state) {
-  Loading => "Loading…",
-  Ready(value) => value.title,
-  Failed(error) => error.message,
+const message = switch (state.kind) {
+  case "loading":
+    "Loading…"
+  case "ready":
+    state.value.title
+  case "failed":
+    state.error.message
 }
 ```
 
-VibeLang owns the initial expression-form grammar while leaving room to converge with future TC39 pattern matching.
+The clauses use ordinary TypeScript syntax. In expression position, the selected case's final expression becomes the switch value, so expression switches do not fall through. Statement-position switches keep TypeScript's existing `break` and fallthrough behavior.
 
 ## Blocks and Labeled Breaks
 
@@ -70,7 +73,7 @@ Runtime-sized loops remain ordinary runtime loops. Comptime-known loops may be e
 `throw` can appear where an expression is expected:
 
 ```ts
-const port = config.port ?? throw InvalidConfig({ field: "port" })
+const port = config.port ?? throw new InvalidConfig("port")
 ```
 
 The thrown type enters the function's failure set when it is a declared failure.
@@ -92,8 +95,9 @@ The binding stays scoped to the conditional construct.
 Cleanup belongs next to acquisition:
 
 ```ts
-function write(path: string, contents: string): !void {
-  const file = try FileSystem.open(path, "write")
+function write(path: string, contents: string) {
+  const fs = FileSystem.context()
+  const file = try fs.open(path, "write")
   defer file.close()
   try file.write(contents)
 }
@@ -102,7 +106,8 @@ function write(path: string, contents: string): !void {
 `defer` runs when the current scope exits, regardless of the path. `errdefer` runs only when the scope exits through a typed failure:
 
 ```ts
-const transaction = try Database.begin()
+const database = Database.context()
+const transaction = try database.begin()
 errdefer transaction.rollback()
 try transaction.commit()
 ```

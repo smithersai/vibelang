@@ -1,73 +1,102 @@
-# Type System [Function rows, inference, optionals, and boundary precision]
+# Type System [Result returns, requirements, optionals, and boundary precision]
 
-Status: **Locked**, except optional conversion and annotation grammar details.
+Status: the Result failure model, inferred requirements, and built-in Optional model are **locked**. Optional interop details and the emitted TypeScript representation of requirements remain **open**.
 
 ## Gradual Foundation
 
 VibeLang extends TypeScript's gradual type system. Existing TypeScript escape hatches remain available on the TypeScript target and MAY be restricted by lint policy rather than the language.
 
-Typed failures and requirements are optional precision. They MUST NOT require a separate globally strict mode.
+Recoverable errors and requirements add precision without requiring a separate globally strict mode or an Effect interpreter.
 
 ## Function Type
 
-A function type conceptually contains three channels:
+A VibeLang function has:
 
-```text
-(A, E, R)
+- an ordinary return type, which is `Result<A, E>` when the function can fail
+- an inferred set `R` of nominal capability requirements
+
+Functions MUST remain eager. A Result is an ordinary returned value used only by fallible functions; it is not a universal wrapper around all computation.
+
+## Fallibility Inference
+
+For a function with a body and no return annotation, the compiler MUST infer:
+
+- `A` from successful return paths
+- `E` from reachable Error throws, Result propagation, returned Results, and foreign boundaries
+- `R` from `Capability.context()` calls and transitive callees
+
+A function with non-empty `E` MUST have inferred return type `Result<A, E>`. An async function with non-empty `E` MUST have inferred return type `Promise<Result<A, E>>`.
+
+Plain success returns and Error throws MUST be compiler-lifted as defined by [Failure Semantics](/specification/failures).
+
+## Public Boundaries
+
+Public contracts MUST use ordinary generic type syntax:
+
+```ts
+declare function loadUser(id: string): Result<User, NotFound | Unavailable>
+
+declare function fetchUser(
+  id: string,
+): Promise<Result<User, NotFound | Unavailable>>
 ```
 
-- `A` is the success value.
-- `E` is a set of recoverable failure types.
-- `R` is a set of nominal capability requirements.
+VibeLang MUST NOT add `throws E`, `!T`, or another failure-annotation grammar.
 
-Functions MUST remain ordinary eager functions. The function type MUST NOT imply an `Effect`, `Result`, or other universal runtime wrapper.
+The `R` set MUST be inferred from compiler-recognized context access and preserved in exported declarations. Its emitted TypeScript representation remains open.
 
-## Row Inference
+## Result Composition
 
-The compiler MUST infer `E` and `R` whenever possible, including transitively through ordinary function calls.
+Result types MUST compose without nested `Result<Result<A, E1>, E2>` values when a compatible Result is returned or produced by `andThen`.
 
-Rows compose as sets. Unioning the same nominal member more than once MUST NOT create duplicate obligations.
+Transformations MUST union error types when they can introduce additional errors. Exhaustive recovery MAY remove handled members from `E`.
 
-Handling a failure MAY remove that member from `E`. Providing a capability MAY remove that member from `R`. New failures or provider-construction requirements introduced by those operations MUST propagate normally.
+An ignored Result MUST be a compile error.
 
-## Explicit Boundaries
+## Foreign Boundaries
 
-An explicit failure or requirement annotation pins the inferred row and MUST be checked against the implementation.
+Using a runtime value from a TypeScript or JavaScript module adds the `TypeScript` requirement. A potentially throwing call MUST also return a Result whose error includes `UnhandledException` unless trusted metadata or an adapter supplies a more precise Error type.
 
-Exported APIs SHOULD state their failure and requirement rows explicitly. This is a design rule for stable contracts; the exact enforcement policy is not finalized.
-
-Annotations MUST NOT activate the channel model. Functions conceptually carry channels regardless of whether the author writes them.
-
-## Unknown Foreign Failures
-
-At a TypeScript or JavaScript boundary where failure inference is impossible, `E` MUST conservatively include `unknown`.
-
-An adapter MAY convert the unknown boundary into declared failures. The compiler MUST NOT invent precise foreign failures without a trusted declaration or checked adapter.
+Type-only imports add neither runtime requirement.
 
 ## Async Values
 
-Sync and async code MUST share one failure channel. A promise-like result is statically representable as:
+An infallible async function returns `Promise<A>`. A fallible async function returns `Promise<Result<A, E>>`.
 
 ```ts
-Promise<A, E>
+declare function loadUser(
+  id: string,
+): Promise<Result<User, Unavailable>>
 ```
 
-Awaiting MUST restore `E` to the enclosing expression. Runtime promise compatibility MUST be preserved on the TypeScript target.
+Awaiting the call removes only the Promise layer. The resulting value remains `Result<User, Unavailable>` until it is matched, transformed, returned, or unwrapped.
 
-## Optionals
+Promise instance chaining is unavailable in authored `.vibe`; `.then`, `.catch`, and `.finally` MUST be rejected.
 
-VibeLang MUST provide a Zig-style optional `?T` with:
+## Optional
 
-- an absence value represented by `null` in the current direction
-- payload capture
-- `orelse` fallback
-- asserted unwrap through `.?`
+VibeLang MUST provide a built-in `Optional<T>` value type using ordinary generic and method-call syntax.
 
-Optional absence MUST remain distinct from typed failure.
+An Optional-returning function MUST compiler-lift:
 
-Existing TypeScript optional parameters, optional properties, `undefined`, and nullish unions MUST remain supported for TypeScript compatibility.
+- `return value` to the present variant
+- `return null` or `return undefined` to the absent variant
+- an existing compatible Optional without nesting
 
-Conversions between `?T`, `T | null`, and `T | undefined`, including nested cases, are **open**.
+The ordinary authoring API MUST NOT require `Optional.some(...)` or `Optional.none()`.
+
+Optional values MUST provide operations equivalent in purpose to:
+
+```text
+isSome  isNone  match  map  andThen  filter
+tap     unwrap  unwrapOr  toResult
+```
+
+The earlier `?T`, payload-capture, `orelse`, and `.?` grammar MUST NOT be part of the initial language.
+
+Optional absence MUST remain distinct from a Result error. `Optional<T>` MAY convert explicitly to `Result<T, E>` through `toResult(error)`.
+
+Conversions among `Optional<T>`, `T | null`, `T | undefined`, optional parameters, and optional properties require final boundary rules. `Optional.fromNullable(...)` is the explicit interoperability operation.
 
 ## Reification
 
@@ -75,4 +104,4 @@ Ordinary types MAY be consumed as comptime values. Comptime code MAY derive vali
 
 There MUST NOT be a separate `runtime type` declaration modifier.
 
-At durable boundaries, values MUST have a compiler-known durable codec or an explicit user-supplied codec.
+At durable boundaries, Result and Optional variants and all enclosed values MUST have compiler-known durable codecs or explicit user-supplied codecs.

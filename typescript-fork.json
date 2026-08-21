@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/smithersai/TypeScript.git",
+  "upstreamRepository": "https://github.com/microsoft/TypeScript.git",
+  "vendorPath": "vendor/typescript",
+  "strategy": "git-subtree-squash",
+  "revision": "c087644e82dc3d48cf87e4c5519eeaaea9daf35c",
+  "upstreamBaseline": "c087644e82dc3d48cf87e4c5519eeaaea9daf35c"
+}
