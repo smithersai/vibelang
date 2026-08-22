@@ -26,10 +26,20 @@ export class ValidationFailure extends VibeFailure {
  */
 export function deriveSchema(source: string, typeName: string): SchemaNode {
   const file = ts.createSourceFile("schema.vibe.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const parseDiagnostics = (file as ts.SourceFile & { parseDiagnostics: readonly ts.Diagnostic[] }).parseDiagnostics;
+  if (parseDiagnostics.length > 0) {
+    throw new SyntaxError(`Schema.derive input did not parse: ${parseDiagnostics
+      .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"))
+      .join("; ")}`);
+  }
   const declarations = new Map<string, ts.TypeNode | ts.InterfaceDeclaration>();
   for (const statement of file.statements) {
-    if (ts.isTypeAliasDeclaration(statement)) declarations.set(statement.name.text, statement.type);
-    if (ts.isInterfaceDeclaration(statement)) declarations.set(statement.name.text, statement);
+    if (ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) {
+      if (declarations.has(statement.name.text)) {
+        throw new Error(`Schema.derive found duplicate declaration '${statement.name.text}'`);
+      }
+      declarations.set(statement.name.text, ts.isTypeAliasDeclaration(statement) ? statement.type : statement);
+    }
   }
   const root = declarations.get(typeName);
   if (!root) throw new Error(`type '${typeName}' was not found`);
@@ -42,6 +52,9 @@ export function deriveSchema(source: string, typeName: string): SchemaNode {
         throw new Error(`Schema.derive only supports property signatures (${member.getText(file)})`);
       }
       const name = propertyName(member.name);
+      if (Object.hasOwn(properties, name)) {
+        throw new Error(`Schema.derive found duplicate property '${name}'`);
+      }
       properties[name] = { optional: Boolean(member.questionToken), schema: convert(member.type) };
     }
     return { kind: "object", properties };
@@ -86,7 +99,23 @@ export function deriveSchema(source: string, typeName: string): SchemaNode {
     throw new Error(`Schema.derive does not support ${ts.SyntaxKind[node.kind]} yet`);
   };
 
-  return convert(root);
+  return freezeSchema(convert(root));
+}
+
+function freezeSchema(schema: SchemaNode): SchemaNode {
+  switch (schema.kind) {
+    case "array": freezeSchema(schema.element); break;
+    case "tuple": schema.elements.forEach(freezeSchema); Object.freeze(schema.elements); break;
+    case "union": schema.variants.forEach(freezeSchema); Object.freeze(schema.variants); break;
+    case "object":
+      for (const property of Object.values(schema.properties)) {
+        freezeSchema(property.schema);
+        Object.freeze(property);
+      }
+      Object.freeze(schema.properties);
+      break;
+  }
+  return Object.freeze(schema);
 }
 
 function propertyName(name: ts.PropertyName): string {
@@ -108,19 +137,19 @@ function decode(schema: SchemaNode, input: unknown, path: string): unknown {
     case "literal": if (input === schema.value) return input; break;
     case "array":
       if (Array.isArray(input) && Object.getPrototypeOf(input) === Array.prototype) {
+        assertPlainArray(input, path);
         const output: unknown[] = [];
         for (let index = 0; index < input.length; index++) {
-          if (!Object.hasOwn(input, index)) throw new ValidationFailure(`${path}[${index}]`, describe(schema.element));
-          output.push(decode(schema.element, input[index], `${path}[${index}]`));
+          output.push(decode(schema.element, arrayElement(input, index, path, schema.element), `${path}[${index}]`));
         }
         return output;
       }
       break;
     case "tuple":
       if (Array.isArray(input) && Object.getPrototypeOf(input) === Array.prototype && input.length === schema.elements.length) {
+        assertPlainArray(input, path);
         return schema.elements.map((element, index) => {
-          if (!Object.hasOwn(input, index)) throw new ValidationFailure(`${path}[${index}]`, describe(element));
-          return decode(element, input[index], `${path}[${index}]`);
+          return decode(element, arrayElement(input, index, path, element), `${path}[${index}]`);
         });
       }
       break;
@@ -154,6 +183,23 @@ function decode(schema: SchemaNode, input: unknown, path: string): unknown {
       break;
   }
   throw new ValidationFailure(path, describe(schema));
+}
+
+function assertPlainArray(input: unknown[], path: string): void {
+  for (const key of Reflect.ownKeys(input)) {
+    if (key === "length") continue;
+    if (typeof key !== "string" || !/^(0|[1-9]\d*)$/.test(key) || Number(key) >= input.length) {
+      throw new ValidationFailure(path, "plain array");
+    }
+  }
+}
+
+function arrayElement(input: unknown[], index: number, path: string, schema: SchemaNode): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(input, index);
+  if (!descriptor || descriptor.enumerable !== true || !("value" in descriptor)) {
+    throw new ValidationFailure(`${path}[${index}]`, describe(schema));
+  }
+  return descriptor.value;
 }
 
 function describe(schema: SchemaNode): string {
