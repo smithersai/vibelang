@@ -1,0 +1,5 @@
+class ExpectedFailure extends Error {}
+
+export function testCheckedFailure(): Result<never, ExpectedFailure> {
+  throw new ExpectedFailure("expected test failure")
+}

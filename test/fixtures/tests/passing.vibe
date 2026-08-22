@@ -1,0 +1,10 @@
+class TestFailure extends Error {}
+
+export function testCheckedSuccess(): Result<string, TestFailure> {
+  return "passed"
+}
+
+export async function testAsyncSuccess(): Promise<number> {
+  await Promise.resolve()
+  return 42
+}

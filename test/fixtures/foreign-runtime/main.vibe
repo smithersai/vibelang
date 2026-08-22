@@ -1,0 +1,34 @@
+import type { Label } from "./lib/types-only.ts"
+import { nestedValue, trustedTs, unsafeTs } from "./lib/trusted.ts"
+import { tsxValue } from "./lib/view.tsx"
+import { jsValue } from "./lib/plain.js"
+import { jsxValue } from "./lib/plain-jsx.jsx"
+import { mjsValue } from "./lib/module.mjs"
+import { mtsValue } from "./lib/modern.mts"
+import { dynamicValue } from "./lib/dynamic.ts"
+import { externalValue } from "./lib/external.ts"
+import { ctsValue } from "./lib/legacy.cts"
+import legacyCjs from "./lib/common.cjs"
+
+export function foreignSummary(): Result<string, Panic> {
+  const label: Label = "mixed"
+  const unsafe = unsafeTs("safe input").unwrap()
+  const tsx = tsxValue()
+  const jsx = jsxValue()
+  const cjs = legacyCjs().unwrap()
+  return [
+    label,
+    trustedTs(),
+    unsafe,
+    nestedValue(),
+    tsx,
+    jsValue(),
+    jsx,
+    mjsValue(),
+    mtsValue(),
+    dynamicValue,
+    externalValue(),
+    ctsValue(),
+    cjs,
+  ].join(":")
+}

@@ -1,0 +1,5 @@
+import { foreignSummary } from "./main.vibe"
+
+export function testForeignGraph(): Result<string, Panic> {
+  return foreignSummary().unwrap()
+}

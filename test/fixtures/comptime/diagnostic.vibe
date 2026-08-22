@@ -1,0 +1,13 @@
+import { comptime as staticValue } from "vibelang:comptime"
+
+const config = staticValue(
+  {
+    mode: "diagnostic",
+    enabled: true,
+  },
+)
+
+/** @native */
+export function nativePinned(): number {
+  return eval(config.mode)
+}

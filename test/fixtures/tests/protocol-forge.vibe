@@ -1,0 +1,5 @@
+import { forgeTestProtocol } from "./hostile-process.ts"
+
+export function testProtocolForge(): void {
+  forgeTestProtocol()
+}

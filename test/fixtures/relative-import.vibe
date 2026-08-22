@@ -1,0 +1,3 @@
+import { message } from "./relative-value.mjs"
+
+export const importedMessage = message

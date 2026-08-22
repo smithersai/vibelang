@@ -1,0 +1,5 @@
+import { floodTestOutput } from "./hostile-process.ts"
+
+export function testOutputFlood(): void {
+  floodTestOutput()
+}

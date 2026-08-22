@@ -1,0 +1,5 @@
+function comptime<T>(value: T): T {
+  return value
+}
+
+export const invalid = comptime({ shouldNotCompile: true })

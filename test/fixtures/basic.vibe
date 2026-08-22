@@ -1,0 +1,11 @@
+class InvalidAnswer extends Error {}
+
+function answer(valid: boolean): Result<number, InvalidAnswer> {
+  if (!valid) throw new InvalidAnswer("invalid")
+  return 42
+}
+
+answer(true).match({
+  ok: (value) => `answer=${value}`,
+  error: () => "failed",
+})

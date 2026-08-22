@@ -1,0 +1,4 @@
+export const buildConfig = {
+  message: "comptime cli works",
+  code: 42,
+} as const
