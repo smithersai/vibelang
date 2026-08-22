@@ -1,10 +1,23 @@
 import { join } from "node:path";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
 
 const root = join(import.meta.dir, "..");
+// The language demo uses an async Layer.provide scope. That boundary requires
+// exact Promise-settlement hooks, which Node provides and Bun does not, so Bun
+// only transpiles the bundle and Node executes it; running the generated file
+// directly under Bun exercises the documented fail-closed rejection instead.
+const stagedLanguageDemo = join(mkdtempSync(join(tmpdir(), "vibelang-demo-")), "language-demo.mjs");
 const demos: Array<{ name: string; command: string[] }> = [
   { name: "language compile", command: ["bun", "src/language/cli.ts", "examples/language/demo.vibe"] },
-  { name: "language runtime", command: ["bun", "examples/language/demo.generated.ts"] },
+  {
+    name: "language runtime bundle",
+    command: ["bun", "build", "examples/language/demo.generated.ts", "--target=node", `--outfile=${stagedLanguageDemo}`],
+  },
+  { name: "language runtime", command: ["node", stagedLanguageDemo] },
   { name: "comptime assets + schemas", command: ["bun", "examples/assets/demo.ts"] },
+  { name: "runtime validation", command: ["bun", "examples/validation/demo.ts"] },
+  { name: "platform services", command: ["bun", "examples/platform/demo.ts"] },
   { name: "target classification", command: ["bun", "examples/targets/demo.ts"] },
   { name: "structured concurrency", command: ["bun", "examples/concurrency/demo.ts"] },
   { name: "Zig/Rust imports", command: ["bun", "examples/polyglot/demo.ts"] },
