@@ -1,5 +1,7 @@
 export * from "./assets.ts";
 export * from "./sandboxed-loader.ts";
+export * from "./comptime.ts";
+export * from "./comptime-intrinsic.ts";
 export * from "./foreign.ts";
 export * from "./schema.ts";
 export * from "./schema-derive.ts";
