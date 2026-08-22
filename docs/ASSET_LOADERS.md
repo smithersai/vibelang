@@ -6,11 +6,13 @@ still need design work.
 ## Locked requirements
 
 - VibeLang can import non-code files through comptime loaders.
-- JSON has a concise **const import** form whose value has deeply readonly,
-  literal-preserving types.
-- A direct `.md` import has a default `string` export containing the Markdown
-  source, so it can be passed directly to an API as a prompt. A direct `.mdx`
-  import remains a typed component module.
+- Every non-code or foreign-source import uses standard import attributes. The
+  required string-valued `type` selects its loader; other string attributes
+  configure that loader.
+- JSON uses `with { type: "json" }`. Adding `mode: "const"` produces deeply
+  readonly, literal-preserving types.
+- Markdown with `{ type: "text" }` has a default `string` export containing the
+  source. MDX uses `{ type: "mdx" }` and produces a typed component module.
 - Direct `.rs` and `.zig` imports produce compiler-generated typed bindings and
   tracked foreign build artifacts. Authors do not maintain parallel declaration
   files for those imports.
@@ -34,29 +36,55 @@ still need design work.
 - MDX is a general asset format. Prompt components and code-writing agents are
   library features layered on top of MDX, not special compiler semantics.
 
+## Current POC evidence (non-normative)
+
+The root CLI/package integrates relative static asset imports with runtime
+bindings across project commands. The wider programmatic API under
+`vibelang/build` also discovers attributed asset re-exports, literal dynamic
+imports, and nested loader-generated module graphs through four levels. It
+issues one reconciled generated module per asset, tracks nested dependency
+content in cache identity, and rejects undeclared generated-module edges.
+Those wider forms are not yet wired through the root Vibe emitter/runtime
+graph, so this is programmatic POC evidence rather than a root-CLI claim.
+
+The same POC implements provisional answers for two otherwise open surfaces:
+
+- a project file whose default export is `comptime.loader("type", fn)` can
+  register one lowercase literal loader type. The call is recognized by
+  TypeScript checker identity, the file is never executed in the compiler
+  process, and the lowered loader always executes in the no-permission Deno
+  sandbox. Built-ins take precedence (VCT1310 warning), duplicate project
+  registrations fail closed (VCT1311), and VCT1300–VCT1313 cover rejected
+  registration/identity/sandbox shapes;
+- `{ type: "markdown" }` produces provisional literal-typed frontmatter, body,
+  headings, and raw source exports, while `{ type: "mdx" }` produces a
+  provisional pure-data render tree. MDX expression holes are identifier-only,
+  never-evaluated placeholders.
+
+Neither spelling/module shape is a locked production contract.
+
 ## TypeScript and TC39 compatibility
 
 Existing TypeScript imports keep their TypeScript meaning. In particular,
 VibeLang must not silently make an already-valid TypeScript JSON import readonly
 or change its runtime behavior.
 
-The const form therefore needs opt-in, superset-safe syntax. This is
-illustrative, not yet accepted grammar:
+Const preservation is opt-in through import attributes:
 
 ```typescript
-import config from "./config.json" as const;
+import config from "./config.json" with {
+  type: "json",
+  mode: "const",
+};
 
 // typeof config preserves values as literals:
 // { readonly mode: "production"; readonly ports: readonly [80, 443] }
 ```
 
-Raw source acquisition should converge on TC39 Import Text and Import Bytes
-rather than inventing competing primitives. Asset loaders conceptually consume
-those compiler-provided text or byte inputs, even while the proposals require a
-temporary lowering:
+Raw source acquisition uses the same import-attribute surface as Import Text
+and Import Bytes:
 
 ```typescript
-// Exact standards-track spelling remains subject to TC39.
 import source from "./query.sql" with { type: "text" };
 import image from "./logo.png" with { type: "bytes" };
 ```
@@ -93,30 +121,40 @@ References: [Bun loaders](https://bun.com/docs/bundler/loaders),
 A loader is a compile-time function from a compiler-owned asset and tracked
 loader context to a typed module description. This build-time object is not the
 runtime `Context` imported from `vibelang/context`; using it records incremental
-dependencies and does not add capabilities to a function's `R` row. A possible
-API shape is:
+dependencies and does not add capabilities to a function's `R` row. The
+programmatic POC recognizes this provisional declaration shape:
 
 ```typescript
-// Proposed API only.
 import { comptime } from "vibelang:comptime";
 
-export default comptime.loader("*.yaml", (asset, context) => {
+export default comptime.loader("yaml", async (asset, context) => {
   const value = parseYaml(asset.text());
 
   // Reads through this API become dependency edges automatically.
-  const schema = context.import("./config.schema.json", { const: true });
-  const checked = validate(schema, value);
+  const schema = await context.import("./config.schema.json", {
+    type: "json",
+    mode: "const",
+  });
+  const checked = validate(schema.module.value, value);
 
-  return module {
-    export default checked;
-    export type Config = typeof checked;
+  return {
+    format: "yaml",
+    value: checked,
+    emittedTypeScript: emitLiteralModule(checked),
+    declaration: emitDeclaration(checked),
+    diagnostics: [],
+    spans: [],
   };
 });
 ```
 
-`comptime.loader` is shown as a proposed compiler-recognized library API, not a
-special loader declaration. The final registration and typed-module
-builder API remains open.
+`comptime.loader` is a compiler-recognized library API, not a special loader
+declaration. In the POC, recognition is spelling-blind checker identity; only a
+default export registering one literal lowercase type is accepted, and the
+callback still returns the programmatic
+value/TypeScript/declaration/diagnostic/span result. The final typed-module builder,
+package registration, glob/extension selection, options, and production API
+remain open.
 
 The essential semantics do not depend on this spelling:
 
@@ -164,8 +202,10 @@ types. Objects have readonly properties; arrays preserve their elements as
 readonly tuples. It needs no handwritten schema or declaration file.
 
 ```typescript
-// Candidate spelling; the const-import grammar remains open.
-import config from "./config.json" as const;
+import config from "./config.json" with {
+  type: "json",
+  mode: "const",
+};
 
 // typeof config is:
 // { readonly mode: "production"; readonly ports: readonly [80, 443] }
@@ -177,8 +217,8 @@ runtime representation that is actually needed.
 
 An ordinary JSON import that is already valid TypeScript retains TypeScript's
 existing inferred type and runtime behavior. Const preservation is opt-in. The
-exact const-import grammar and optional schema-validation API remain open; the
-literal-preserving module contract does not.
+optional schema-validation APIs remain open; the literal-preserving module
+contract and import-attribute spelling do not.
 
 ### Markdown
 
@@ -186,22 +226,35 @@ Markdown is available without project configuration. A direct `.md` import
 exports its source as a string by default:
 
 ```typescript
-import systemPrompt from "./system.md";
+import systemPrompt from "./system.md" with { type: "text" };
 
-const response = await model.generate({ prompt: systemPrompt });
+const response = (await model.generate({ prompt: systemPrompt })).unwrap();
 ```
 
 The import is resolved and tracked at compile time, so using the string does not
 perform runtime filesystem I/O. The loader must preserve source locations for
-diagnostics. Additional parsed-document or frontmatter exports remain open.
+diagnostics.
+
+As a provisional programmatic POC contract, `{ type: "markdown" }` (also the
+`.md` extension default) keeps the raw source as its default export and adds
+literal-typed `frontmatter`, `body`, `headings`, and `source`. Headings cover
+ATX headings outside fences and carry authored UTF-16 offsets. Frontmatter is a
+strict bounded YAML subset supporting scalars, scalar lists, and one nested map
+level; ambiguous YAML constructs fail with source locations. The final parsed
+document/frontmatter contract remains open.
 
 ### MDX
 
-MDX is available without project configuration and emits a typed component
-module. JSX-runtime selection, frontmatter typing, component injection, and the
-default export shape remain open. The agent library may define components such
-as `System`, `Context`, and `Instructions`, but the compiler treats them like
-ordinary typed components.
+MDX is available without project configuration and, by design, emits a typed
+component module. The programmatic POC provisionally exports literal-typed
+`frontmatter`, `source`, `body`, `components`, and `expressions`, with a render
+tree as the default. Tree nodes are elements, text, or expression placeholders;
+literal props are admitted, while `{name}` becomes a never-evaluated placeholder
+and broader expressions fail closed. JSX-runtime selection, final component
+injection, and the production default-export contract remain open. The agent
+library may define components such as `System`, `Context`, and `Instructions`,
+but the compiler treats them as library vocabulary rather than language
+semantics.
 
 The `.md` and `.mdx` defaults are intentionally different. Markdown is the
 zero-ceremony string form for prompts and other text consumers. MDX is the
@@ -213,8 +266,8 @@ vocabularies.
 Rust and Zig source files are first-class typed-file imports:
 
 ```typescript
-import { hash } from "./hash.rs";
-import { tokenize } from "./tokenizer.zig";
+import { hash } from "./hash.rs" with { type: "rust" };
+import { tokenize } from "./tokenizer.zig" with { type: "zig" };
 ```
 
 For each direct `.rs` or `.zig` import, the compiler must:
@@ -260,13 +313,17 @@ artifacts through the future foreign-target configuration.
 
 ## Open design questions
 
-1. Final const-JSON import grammar and optional validation API.
-2. Loader declaration and registration syntax, including conflict precedence.
-3. Additional Markdown exports and the MDX component-module contract.
+1. Optional JSON schema-validation APIs.
+2. Final loader declaration/registration and typed-module-builder APIs,
+   including package distribution, glob/extension selectors, options, and
+   whether the POC's built-in-first precedence becomes normative.
+3. Finalization or replacement of the provisional Markdown frontmatter/body/
+   headings exports and MDX render-tree/component-module contract.
 4. Foreign target selection, ABI/binding rules, and toolchain configuration for
    direct Rust and Zig imports.
 5. Whether a loader may emit auxiliary files, and how those outputs are named
    without losing reproducibility.
 6. Cycle rules between code modules and loaded assets.
-7. Sandboxing and resource limits for third-party loader execution.
+7. The final cross-platform isolation/attestation policy beyond the POC's
+   default authenticated, no-permission Deno loader process.
 8. The stable serialized representation for target-neutral typed loader output.

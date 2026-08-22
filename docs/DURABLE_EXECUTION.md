@@ -38,8 +38,10 @@ abstract class Package extends Action<
   (input: PackageInput) => Result<Artifact, PackageError>
 > {}
 
-const Build = durable((input: BuildInput) => {
-  const compiled = Compile.run({ source: input.source })
+const Build = durable(function Build(
+  input: BuildInput,
+): Result<Artifact, CompileError | PackageError> {
+  const compiled = Compile.run({ source: input.source }).unwrap()
   return Package.run({ code: compiled.code })
 })
 ```
@@ -82,6 +84,117 @@ by running a JavaScript body and retains live functions in side tables.
 VibeLang instead emits portable expression IR and compiler-stable hashes. Plan
 mode analyzes that emitted artifact; it never executes a Flow source function.
 
+### Current POC evidence (non-normative)
+
+The executable POC proves a deliberately bounded vertical slice of this model:
+
+- checker-identity resolution lowers a bounded `durable(function)` body with
+  const/literal/input projection, conditional selection, durable sleep, a typed
+  single-delivery external signal, stable-key fan-out, and
+  `Action.run(...).unwrap()` forms without
+  evaluating the author module or an Action implementation;
+- a fan-out body may be a bounded block sequence of at most 16 Action steps
+  whose later inputs project the item and earlier steps' durable results. Step
+  children derive their ids from the template id, item key, and step ordinal;
+  the complete step-0 set commits atomically before any dispatch, and each later
+  step's instantiated input digest commits after the previous step's durable
+  success and before that step can dispatch;
+- a previously compiled Flow can be invoked as an attached child boundary
+  through the provisional `ChildFlow.run(input)` spelling. The child Plan is
+  embedded and digest-pinned in the parent artifact, the child runs as its own
+  execution with its own journal and its own pinned manifest, the parent node
+  suspends without a worker lease, and cancellation or execution failure fences
+  attached descendants inside the same transaction that records the parent
+  outcome. Embedding is structurally acyclic and bounded by an explicit depth
+  budget of 8;
+- provisional compiler-owned `sequential(first, second)` orders two independent
+  Action calls through an explicit durable control edge, with no invented data
+  edge, returning both successes as an ordered tuple;
+- provisional compiler-owned
+  `loopWhile(initial, state => condition, state => Action.run(input), maxRounds)`
+  lowers a runtime-round next-round handoff template. Round child ids derive
+  from the loop node id and round ordinal, each round's input and originating
+  state digests commit before dispatch and only after the previous round's
+  durable success, and exhausting the static literal round budget (at most
+  1,000) commits a durable terminal defect rather than hanging;
+- the Bun executor exposes a provisional typed execution handle:
+  `start(input, { executionId })`, `resume(executionId)`, handle `status()`,
+  `result()`, `cancel(reason?)`, and
+  `signal(signalId, { idempotencyKey, payload })`; `execute` remains the
+  start-and-await convenience. Resume reconstructs the handle from the store's
+  pinned input and terminal results do not rerun;
+- external signal delivery is fail-closed by default. `grantSignal` mints an
+  opaque `vst1_` HMAC-SHA256 sender token bound to one execution and signal
+  under a per-database secret; tokenless delivery requires the explicit
+  `{ unsafeLocalDelivery: true }` opt-in. This is local-trust evidence for one
+  SQLite database, not remote sender authentication, rotation, revocation, or
+  transport authorization;
+- signal delivery, cancellation, execution failure, and timer scheduling notify
+  an in-process wakeup service strictly after COMMIT. Notifications reduce
+  latency only: suspended coordinators re-read persisted state at the earliest
+  timer/deadline or a bounded fallback sweep, so missed or cross-process
+  notifications can delay progress by at most one sweep and cannot change the
+  outcome;
+- Plan artifacts carry a format version. Version 1 is the original bounded node
+  set; version 2 adds the multi-step fan-out encoding, `loop` nodes, and
+  `childFlow` nodes with embedded child Plans. The compiler emits the minimal
+  version each Plan needs, so programs in the older subset still produce
+  byte-identical version-1 artifacts, and a version-1 artifact claiming a
+  version-2 node is rejected rather than reinterpreted;
+- `compileActionContract` derives canonical, type-sensitive Action input,
+  success, and nominal Error payload descriptors before erasure. Generated
+  virtual Action declarations catch wrong inputs and projections, while the
+  coordinator and worker independently validate invocation, success, failure,
+  replay, and cache values. Compiler-produced Plans also carry derived Flow
+  input, projected success, and reachable Action-error schemas that the engine
+  checks before execution creation, terminal commit, and replay;
+- `compileActionImplementationContract` runs the same whole-project row checker
+  over an explicitly closed `.vibe` implementation source set. Its frozen
+  contract pins source/direct-function identity plus inferred `E`/`R`;
+  `provideChecked`, deployment, artifact validation, and the worker gate require
+  an exact capability grant, while the legacy provider path cannot receive
+  nonempty authority;
+- canonical Plan, manifest, route, policy, and invocation envelopes are pinned
+  by digest and validated before use. A versioned, domain-separated Ed25519
+  envelope authenticates the exact Plan and manifest against out-of-band trust
+  roots; the verifier issues an opaque proof that the coordinator consumes
+  before constructing worker transports. The authenticated path permits an
+  implicit local worker only for `in-process-poc`; every other signed sandbox
+  requires an opaque host-issued factory token for that exact sandbox;
+- SQLite transitions co-commit state and journal evidence. A deterministic
+  post-COMMIT crash injector covers every material transition in the current
+  executor, and independent SQLite connections exercise coordinator races and
+  stale-worker fencing. A separate subprocess test sends the coordinator
+  `SIGKILL` after a committed node success and proves a fresh process adopts
+  the WAL-backed result without invoking a poison provider; and
+- the same `DurableWorker` protocol routes either to an in-process worker or to
+  a digest-pinned artifact executing in a fresh no-authority Deno process.
+
+The legacy callback-based `Flow.define`/`Action.define` path remains readable
+with explicitly weaker generic JSON schemas; it is not evidence for compiler
+derivation. This evidence does **not** implement general (unkeyed, unbudgeted)
+loop lowering beyond the bounded `loopWhile` template, nested fan-out, detached
+children, queues/broadcast signals, compensation, recurring or calendar timers,
+custom codecs, or migration. The child boundary is bounded in further ways worth
+stating plainly: signals inside a child Plan are not yet addressable through the
+parent executor's delivery handle, child deployments are derived from the
+parent's worker pools at build time and are not separately signed by the Ed25519
+envelope, and loop budget exhaustion is recorded as a modeled terminal defect,
+deliberately not as an entry in the Flow's nominal Error row.
+Action provider capability grants close a compiler-derived row and
+the recoverable implementation row must equal the Action's nominal failure
+schema, but local callback pairing still does not authenticate lexical closures
+or the bytes of a deployed worker bundle. The crash suite reopens a real SQLite
+file after injected post-commit loss and includes one post-success `SIGKILL`
+checkpoint, but it is not an exhaustive OS-kill or database-fault suite. The
+signed local envelope authenticates the manifest and its pinned
+digests, not freshness, rollback resistance, key revocation/custody, remote
+worker possession, authenticated transport, or sandbox attestation. The
+host-issued transport token prevents silent sandbox-kind downgrade but still
+trusts the host to supply a factory that enforces what it declares. The
+provisional canonical-JSON descriptor and Error envelope do not lock the open
+cross-target wire format.
+
 ## Plan IR
 
 The first Plan IR should contain these semantic nodes:
@@ -89,7 +202,7 @@ The first Plan IR should contain these semantic nodes:
 - constant, input, projection, and pure expression;
 - Action call;
 - parallel join and explicit sequence;
-- branch/switch, typed catch, and completion;
+- branch/switch, Result/Error matching, and completion;
 - parameterized `for`/`while` templates;
 - inline Flow, child Flow, and next-round handoff;
 - durable sleep, external signal, and cancellation boundary;
@@ -127,16 +240,16 @@ Rules:
   is a visible Flow policy; the default remains open.
 - A durable race records its winner before exposing the result. Loser
   cancellation and cleanup are explicit policy.
-- Child Flows are attached by default: they have their own execution identity
-  and journal, and parent cancellation propagates. Detached children require an
-  explicit boundary and lifecycle policy.
+- Child Flows are attached: they have their own execution identity and journal,
+  parent cancellation propagates, and their completion remains owned by the
+  enclosing durable operation. Detached children are unavailable initially.
 
 ## Action contract
 
 Every Action descriptor contains:
 
 - a nominal durable ID and version;
-- derived input, success, and tagged-error schemas;
+- derived input, success, and Error schemas;
 - its inferred `A`, `E`, and Action requirement;
 - implementation and policy digests;
 - source/debug metadata.
@@ -222,12 +335,17 @@ not reset them.
 ## Providers
 
 Provider composition comes from `vibelang/provider`; there is no special
-`provide { ... }` statement. Exact API spelling remains open, but the type
-algebra is:
+`provide { ... }` statement. Exact API spelling remains open. A base dependency
+environment has the type:
 
 ```ts
-Layer<Provides, InitError, Requires>
+Layer<Provides>
 ```
+
+It receives already acquired services and owns neither their resources nor
+their tasks. Action/deployment provider configuration may separately describe
+implementation requirements and policy; that does not turn a base Layer into
+an implicit constructor or supervisor.
 
 Ordinary implementations obtain services through the compiler-recognized
 context library rather than through explicit function parameters:
@@ -267,16 +385,18 @@ const BuildActions = Layer.merge(
 ```
 
 - `Compile.run(...)` adds the nominal `Compile` requirement to the Flow plan.
-- The layer satisfies `Compile` and carries the requirements and initialization
-  failures inferred from `compileWithEsbuild`.
+- The provider satisfies `Compile`; the compiler checks the requirements and
+  Result failures inferred from `compileWithEsbuild` as part of the deployment
+  closure.
 - A deployment build resolves that layer closure. Missing platform services,
   Action implementations, codecs, or target support are build errors with a
   full requirement path.
 - Provider selection is pinned in the deployment manifest. A runtime must not
   silently switch to a semantically different implementation.
-- Layer scope, memoization, acquisition, and disposal apply on the worker that
-  owns the implementation. Secrets are injected there and are not embedded in
-  the plan or bundle.
+- The Layer environment is installed on the worker that owns the implementation.
+  Explicit worker code owns acquisition and disposal with `using`/`defer`;
+  memoization is an Action policy, not a Layer lifetime feature. Secrets are
+  injected on the worker and are not embedded in the plan or bundle.
 
 ## Distributed builds and placement
 
@@ -319,7 +439,7 @@ The build emits:
    Actions and provider closure;
 3. optional target variants of a pool, such as a Node bundle, native binary,
    or Wasm component;
-4. a deployment manifest mapping each Action implementation digest to its
+4. a signed deployment manifest mapping each Action implementation digest to its
    artifact, schemas, requirements, policies, and allowed placement;
 5. source maps and an inspectable plan graph.
 
@@ -327,6 +447,14 @@ The compiler groups compatible Actions into worker-pool artifacts; it does not
 blindly create one bundle per Action. A `TypeScript` requirement forces the
 implementation into a TypeScript-capable pool. A native-pinned implementation
 fails the build if any transitive dependency requires TypeScript.
+
+The signature must cover the canonical Plan and complete manifest, including
+coordinator, worker-artifact, implementation, policy, schema, and grant
+digests. Verification keys come from an out-of-band trust policy; an artifact
+cannot introduce its own authority. A signature establishes provenance and
+integrity of those claims. It does not establish freshness, prevent an
+authorized signer from publishing bad content, attest worker/sandbox state, or
+replace revocation and anti-rollback policy.
 
 An in-process executor is simply the local implementation of the same worker
 protocol. Sandboxing and distribution therefore do not change Flow semantics.
@@ -404,15 +532,39 @@ Exact names are proposed, but long-running execution needs more than
 `execute(input)`:
 
 - `start(input, { executionId })` returns a typed durable handle immediately;
+- `resume(executionId)` re-obtains that handle from persisted execution state;
 - `execute` is the start-and-await convenience form;
 - a handle exposes status, typed result, cancel, and signal operations;
-- external signals carry schemas and idempotency keys;
+- external signals carry idempotency keys and payloads validated against the
+  schema already pinned by the compiler-owned Plan; a sender never supplies
+  schema authority;
 - poll, subscribe, inspect history, fork, and administrative recovery are
   runtime/library APIs over the same persisted execution.
 
 Execution IDs are normally caller-selected. Payload-derived identity is an
 explicit idempotency policy, never an automatic assumption that equal inputs
 mean the same business operation.
+
+The current Bun POC validates this surface with provisional
+`waitSignal<Payload>("literal.identity")` source syntax and the handle methods
+above. `executor.grantSignal(executionId, signalId)` returns a grant containing
+an HMAC sender token; `deliverSignal` requires that token unless the caller
+explicitly passes `{ unsafeLocalDelivery: true }`. Tokens are bound to one
+execution/signal and checked before execution existence is read, but the secret
+is stored in the same SQLite database, so this is a local-trust seam rather
+than remote authentication or authorization.
+
+The POC pins the compiler-derived structural payload schema at initialization,
+journals canonical delivery and consume transitions atomically, and never
+holds a worker lease while waiting. Its external boundary rejects more than
+100,000 durable-JSON nodes/own fields before canonicalization, retains the
+independent 8 MiB canonical-message ceiling, and byte-bounds request identities
+before storage. An in-process post-COMMIT notifier wakes local waiters promptly;
+a persisted-state fallback sweep (250 ms by default, configurable through
+`wakeupSweepMs`) is the correctness path when notification is missed or comes
+from another process. All spellings remain non-normative. Remote signal
+transport and authorization, queues/broadcast, schema migration, and the final
+inspection/administrative API remain open.
 
 ## Security and authority
 
@@ -464,13 +616,20 @@ Replace library limitations with compiler features:
 Resolve these one at a time:
 
 1. Exact semantics and syntax for runtime-sized `for`, `while`, and fan-out,
-   including stable item keys.
+   including stable item keys. The POC now carries a provisional answer: keyed
+   `fanOut(...)` with optional multi-step bodies for the fan-out direction, and
+   a `loopWhile(...)` round template with stable round ordinals and a static
+   literal budget for the sequential direction. The spellings are non-normative
+   and general authored loops still fail closed.
 2. Provider API spelling and the retry/compensation/reuse policy shapes.
 3. Stable Action/Flow ID and version syntax.
 4. Deployment/worker-pool syntax and call-site placement constraints.
 5. Canonical cross-target wire format and custom codec interface.
 6. Code/schema migration rules for in-flight executions.
-7. Explicit sequencing syntax for independent side-effecting Actions.
+7. Explicit sequencing syntax for independent side-effecting Actions. The POC
+   carries a provisional answer: `sequential(first, second)` over exactly two
+   direct `Action.run(...)` calls, lowering to a pure control edge. Wider arity
+   and the final spelling remain open.
 8. Memo scope/generation syntax and whether a later explicit negative-cache
    policy may retain selected typed failures; success-only is the baseline.
 9. Default graph-failure, race-loser, child-cancellation, and resource-fairness

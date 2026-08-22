@@ -1,7 +1,29 @@
 # Coding agent library
 
-Status: proposed library design. This document does not add language syntax.
-The API spelling below is a concrete proposal, not a locked decision.
+Status: proposed production library design. This document does not add
+language syntax. The root package exposes narrower implementation evidence at
+`vibelang/agent`, including a coding-agent loop, in-memory TypeScript checking,
+explicit bindings, and a resource-bounded no-permission Deno subprocess sandbox.
+Its turn journal is now a real SQLite database rather than an in-memory fake:
+rows are digest-checked and hash-chained in append order, each committed
+boundary is one `BEGIN IMMEDIATE` transaction, and a restarted process replays a
+turn from the journal without re-invoking the model or any host function.
+That POC also carries a typed `ModelAdapter` seam — model identity, version, and
+extraction hook flow into turn provenance and every journal row — plus adapters
+that compile a tool's source into a durable Action-backed function. Compiled
+Flows can also be supplied through the programmatic `flowTool(...)` adapter;
+their derived execution ids make a restarted turn join the same durable
+execution and reject call-site input/Plan divergence.
+
+The library's in-repo default model is still scripted. A real Anthropic
+Messages API `ModelAdapter` exists under `poc/examples/agent`, but it is an
+example-only adapter excluded from `poc/tsconfig.emit.json`; its SDK is a POC
+dev dependency and does not enter the published package's dependency closure.
+The sandbox remains process-level rather than a VM or container, nothing is
+attested, journal rows are digest-verified but neither signed nor redacted, and
+the agent journal and durable executor store are linked but not one atomic
+history. The package and API spelling below remain proposals, not locked
+decisions or exact descriptions of the narrower POC API.
 
 ## Decision
 
@@ -25,7 +47,7 @@ VibeLang grammar or type system.
 
 ```ts
 import { CodingAgent, TypeScriptSandbox } from "@vibelang/agent"
-import CodingPrompt from "./coding-agent.mdx"
+import CodingPrompt from "./coding-agent.mdx" with { type: "mdx" }
 
 const Coder = CodingAgent.make({
   model,
@@ -42,14 +64,14 @@ const Coder = CodingAgent.make({
   }
 })
 
-const result = try await Coder.run({ task })
+const result = (await Coder.run({ task })).unwrap()
 ```
 
 The generated source has one entry point and one authority-bearing argument:
 
 ```ts
 export default async function turn(functions: Functions) {
-  const source = await functions.readFile({ path: "src/index.ts" })
+  const source = (await functions.readFile({ path: "src/index.ts" })).unwrap()
   return functions.build({ source })
 }
 ```
@@ -132,6 +154,25 @@ accepted-source digest, call site, and per-site ordinal. Restarting the turn
 returns already-recorded call results. Ambient clock, random, network, and
 filesystem access remain absent; nondeterminism must enter through a passed
 function, normally an Action when it must be replayable.
+
+### Current Flow-adapter evidence (non-normative)
+
+The programmatic POC's `flowTool(target, options)` projects a callable contract
+from a validated compiled Plan, derives an execution id from turn id, accepted
+source digest, exposed function name and per-site ordinal, Flow identity and
+Plan digest, plus input digest, and commits that attachment before starting
+work. Replaying the call re-derives and joins the same execution; committed
+Action results are not repeated. A different input or Plan fails closed as
+journal divergence instead of mutating the pinned execution. Only a terminal
+outcome is replayable; coordinator interruption causes the restarted turn to
+reattach.
+
+This is not a single transaction across the agent journal and durable store.
+A crash after attachment but before durable initialization leaves an attachment
+whose execution is created under the same id on replay. The current adapter
+uses local in-process workers; remote workers, deployment-envelope verification
+at this seam, cross-process coordinator handoff, and stable identities for
+data-dependent loop call sites remain absent.
 
 The journal must record the model/provider version, prompt digest, callable
 surface digest, generated-source digest, compiler version, sandbox image, and

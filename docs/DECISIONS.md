@@ -10,9 +10,10 @@ Status:
 - **Direction** — accepted principle whose detailed spelling or mechanics remain open.
 - **Open** — discussed but not decided.
 
-Last reconciled with the published specification pages: 2026-08-20.
-Latest ledger decisions: 2026-08-21. The specification pages still need to be
-reconciled with the compatibility and foreign-panic decisions below.
+Last reconciled with the published specification pages: 2026-08-21.
+Latest ledger decisions: 2026-08-21. The published specification pages reflect
+the compatibility, foreign-panic, lean Layer, and Promise-lifetime decisions
+below as of that date.
 
 ## Identity and compatibility
 
@@ -72,19 +73,32 @@ reconciled with the compatibility and foreign-panic decisions below.
   initially `is`, `matches`, `match`, `matchPartial`, and `rootCause`.
   `error.match({...})` is exhaustive for a statically known error union and keys
   cases by compiler-stable nominal Error identity.
-- **Locked:** There is no `throws` clause, prefix `try` expression, postfix
-  `catch` expression, `!T` marker, or special panic-catch grammar. Ordinary
-  JavaScript `try/catch` remains available for JavaScript interoperability but
-  is not the typed Result recovery mechanism.
+- **Locked:** There is no general `throws` clause, prefix `try` expression,
+  postfix recovery expression, or `!T` marker. VibeLang does have an explicit
+  way to catch the distinguished `panic` channel; ordinary JavaScript
+  `try/catch` remains available inside imported JavaScript and TypeScript.
 - **Locked:** An unannotated function that reaches `throw error`, unwraps an
   error Result, or returns a Result is inferred as `Result<A, E>`. Public,
   abstract, and declaration-only contracts spell fallibility directly as
   `Result<A, E>`.
-- **Locked:** Foreign exceptions and Promise rejections are caught at the
-  VibeLang boundary and represented as `UnhandledException` in the Result error
-  type unless a trusted adapter maps them to a more precise `Error` subclass.
-- **Locked:** `Reflect.panic` remains the hard defect mechanism for compiler or
-  runtime invariants and is not a recoverable Result error.
+- **Locked:** Every imported JavaScript or TypeScript runtime value is assumed
+  capable of throwing unexpectedly or rejecting, even when its declared return
+  type does not say so. Calling it therefore adds the distinguished, checked
+  `panic` case to the VibeLang failure channel by default. This also covers a
+  foreign implementation violating its declared signature.
+- **Locked:** A caller must propagate that `panic`, explicitly catch it, or call
+  through a trusted adapter that catches and translates it. There is no
+  unchecked direct use of an unannotated JavaScript or TypeScript function.
+- **Locked:** `panic` is available from `vibelang:exceptions` and accepts an
+  optional message or underlying error. `Reflect.panic` and compiler/runtime
+  invariant failures enter the same distinguished channel.
+- **Locked:** The compiler recognizes JSDoc on JavaScript and TypeScript
+  boundaries. `@throws {never}` is a trusted opt-out from the default `panic`
+  case, while `@throws {T}` declares the stated foreign failure channel.
+- **Direction:** Foreign `@throws` annotations are trust claims surfaced in
+  declarations and tooling. Exact rules for overloads, multiple annotations,
+  declaration merging, validation, and generic error types remain to be
+  specified.
 - **Locked:** `defer` and `errdefer` are supported.
 
 ## Optionals and nullability
@@ -100,10 +114,16 @@ reconciled with the compatibility and foreign-panic decisions below.
   `optional.andThen(...)`, `optional.unwrapOr(...)`, and `optional.unwrap()`.
   The earlier `?T`, payload-capture, `orelse`, and `.?` grammar is removed.
 - **Locked:** Optional absence and typed failure are separate concepts.
+- **Locked:** Combined types lift from outside in. In
+  `Result<Optional<A>, E>`, a plain `A` is success/present, a nullish return is
+  success/absent, and an Error throw is the Result error.
 - **Locked:** Existing TypeScript `undefined`, optional parameters, and optional
   properties remain supported for TypeScript compatibility.
-- **Open:** The precise conversions between `Optional<T>`, `T | null`, and
-  `T | undefined`, including nested optionals, need normative rules.
+- **Locked:** `Optional.fromNullable(...)` and `optional.toNullable()` are the
+  explicit interop operations for `T | null | undefined`. Optional properties
+  and parameters keep their TypeScript meaning.
+- **Open:** Nested optional normalization and any additional implicit
+  conversions need normative rules.
 
 ## Requirements and dependency injection
 
@@ -118,31 +138,49 @@ reconciled with the compatibility and foreign-panic decisions below.
 - **Locked:** Requirements propagate through callers by inference.
 - **Locked:** Provider composition is imported from `vibelang/provider`, not
   expressed as a special `provide { ... }` block.
-- **Locked:** VibeLang uses Effect-like layers for creating implementations and
-  providing them to ordinary functions.
-- **Direction:** A layer carries what it provides, how construction can fail,
-  and what construction itself requires: `Layer<Provides, Error, Requires>`.
-- **Open:** Layer acquisition, memoization, scoping, override, and disposal APIs
-  need to be specified.
-- **Open:** Decide whether a provided Layer owns an implicit structured lifetime:
-  leaving the scope would join or cancel all child work before releasing its
-  resources, while explicitly detached work could not borrow scoped
-  capabilities and would need independently owned providers. This is the
-  current recommendation, not yet a locked answer.
+- **Locked:** Layers package and provide implementations to ordinary functions;
+  they are dependency environments, not task supervisors or implicit resource
+  managers.
+- **Locked:** The base public type is exactly `Layer<Provides>`. It receives
+  already-acquired implementations, so initialization failures and construction
+  requirements are not phantom Layer parameters; higher-level provider policy
+  may model those concerns separately.
+- **Locked:** `Layer.provide(layer, body)` keeps the layer environment active
+  until `body` and the Promise it returns settle. It does not discover, register,
+  cancel, or join other Promise work implicitly.
+- **Locked:** Revocation happens at the returned Promise's state transition,
+  before any queued reaction can reuse the environment. The runtime may reject
+  a pre-existing Promise whose earlier observers make that boundary
+  unverifiable; `async () => await existingPromise` is the explicit adapter.
+  A host without a synchronous Promise-settlement hook must fail closed for an
+  async Layer scope rather than leave authority live for an extra microtask.
+- **Locked:** Resource acquisition and finalization are explicit ordinary code,
+  initially using `using`/`defer`. A Layer receives an already acquired service;
+  it does not own that service's lifetime. Resource-owning Layer conveniences
+  may be added later without changing this base rule.
+- **Locked:** Fire-and-forget and detached work are initially unavailable in
+  authored `.vibe`. Every started Promise must be consumed by `await` or by a
+  recognized combinator whose resulting Promise is itself consumed before the
+  enclosing scope exits.
+- **Locked:** Imported JavaScript or TypeScript that starts hidden background
+  work owns that work. APIs needing caller-controlled lifetime must be adapted
+  to expose an explicit completion and/or disposal handle.
+- **Open:** Layer merging, nested override precedence, and requirement-
+  environment lowering still need exact APIs and semantics.
 - **Open:** The public declaration encoding of the context row and the JS
   lowering may use phantom function metadata, compiler-threaded hidden
   parameters, or ambient context. These choices must not change source calls.
 
 ## Imports and platform dependencies
 
-- **Locked:** JSON has a concise const-import form that needs no handwritten
+- **Locked:** JSON `with { type: "json", mode: "const" }` needs no handwritten
   declaration or schema and produces a deeply readonly literal type. Existing
   TypeScript JSON imports retain their existing types and runtime behavior.
 - **Locked:** Every non-code or foreign-source import uses standard import
   attributes to select its loader and mode. Examples include
   `with { type: "json", mode: "const" }`, `with { type: "text" }`,
-  `with { type: "mdx" }`, and `with { type: "zig" }`. File extensions may
-  provide defaults, but do not define a second import grammar.
+  `with { type: "mdx" }`, and `with { type: "zig" }`. File extensions do not
+  create a second implicit loader-selection grammar.
 - **Locked:** Markdown and MDX are supported by built-in loaders. MDX is a
   general module format; libraries may supply component vocabularies and
   runtimes for domains such as agent prompts.
@@ -257,16 +295,18 @@ reconciled with the compatibility and foreign-panic decisions below.
 - **Locked:** VibeLang follows TC39's module-expression, source-phase import,
   shared-struct, concurrency-governor, and cancellation work where it fits.
   A governor limits fan-out; it does not own child-task lifetimes.
-- **Direction:** VibeLang adds structured, typed joins such as `await.all`.
-  The join owns its operands, cancels siblings after a failure, waits for their
-  cleanup, and combines their success and failure types. There is no separate
-  child-task scope API.
+- **Locked:** VibeLang does not add special Promise or join grammar. Static or
+  library combinators start concurrent work, `await` consumes the resulting
+  Promise, and Result combinators collect expected outcomes.
+- **Direction:** A structured-concurrency library combinator may own child
+  lifetimes, cancel siblings, and wait for cleanup without changing the parser.
 - **Locked:** Cancellation is visible in typed failures and is provided through
   the dependency model rather than manually threaded tokens.
-- **Locked:** Authored `.vibe` code consumes Promise values only with `await`.
-  Promise instance chaining through `.then()`, `.catch()`, or `.finally()` is a
-  compile error. Imported TypeScript/JavaScript modules retain normal Promise
-  behavior internally.
+- **Locked:** Authored `.vibe` code must transitively consume every started
+  Promise with `await`: either directly or through a recognized combinator such
+  as `Promise.all` whose result is awaited. Promise instance chaining through
+  `.then()`, `.catch()`, or `.finally()` is a compile error. Imported
+  TypeScript/JavaScript modules retain normal Promise behavior internally.
 - **Locked:** Awaiting a fallible async operation produces its
   `Result<A, E>`; `await` does not silently unwrap or discard the Result.
 - **Direction:** Promise behavior that prevents efficient or sound native
@@ -285,9 +325,10 @@ reconciled with the compatibility and foreign-panic decisions below.
 - **Locked:** An Action implementation is an ordinary function or callback.
   There is no separate Effect value in VibeLang and no Action implementation
   wrapper beyond the policy/provider object that installs the function.
-- **Locked:** Action input, success, failure, and requirement information comes
-  from its function signature. Persistence schemas/codecs are derived by the
-  compiler; source code never repeats those types as schema arguments.
+- **Locked:** Action signatures return `Result<A, E>` or
+  `Promise<Result<A, E>>`; input, success, Error, and requirement information
+  comes from that ordinary function signature. Persistence schemas/codecs are
+  compiler-derived rather than repeated as schema arguments.
 - **Locked:** Durable declaration is not a language keyword. Source imports
   `durable` from `vibelang:flows` and passes it a statically resolvable function.
   The compiler recognizes the resolved binding rather than its local spelling.
@@ -303,7 +344,7 @@ reconciled with the compatibility and foreign-panic decisions below.
   expression lowers to a plan node and typed symbolic value; Action
   implementations do not run during template compilation or planning.
 - **Locked:** The durable source function disappears after the compiler emits
-  the plan template, schemas, requirements, error set, identities, and debug
+  the plan template, schemas, requirements, Result error union, identities, and debug
   map. Plan/preview loads emitted Plan IR without loading or invoking that
   function or any Action implementation.
 - **Locked:** Durable execution distinguishes template compilation, deployment
@@ -400,13 +441,12 @@ reconciled with the compatibility and foreign-panic decisions below.
   unordered operation; `Promise.allKeyed`/`allSettledKeyed`; declarations in
   conditionals; discard bindings; Import Text and Import Bytes;
   cheap stack capture; `Reflect.panic`; cancellation; and a worker failure
-  protocol. VibeLang-specific structured join syntax is documented separately
-  and must not be presented as a TC39 API.
+  protocol. VibeLang does not add Promise or structured-join parser syntax.
 - **Locked:** Capabilities subsume AsyncContext for compiled dependency
   propagation; an interop adapter may exist at TypeScript boundaries.
 - **Locked:** VibeLang owns expression-form control-flow grammar while leaving
   future pattern-matching syntax room to converge with TC39.
-- **Locked:** Forked platform declarations must be audited for typed failures,
+- **Locked:** Forked platform declarations must be audited for Result errors,
   defects, and requirements.
 - **Locked:** Standing rejections include Block Params, reinterpretation of
   existing negated `in`/`instanceof`, partial application that conflicts with
@@ -454,9 +494,8 @@ reconciled with the compatibility and foreign-panic decisions below.
    `TypeScript`-required, or forbidden.
 2. Finalize checked versus TypeScript-only semantics for `as`.
 3. Specify `Optional<T>` interoperability with TypeScript null and undefined unions.
-4. Decide the implicit child-work rule for provided Layers, then define Layer
-   acquisition, memoization, override, disposal, and requirement-environment
-   lowering.
+4. Define Layer merge/override rules and requirement-environment lowering; base
+   Layers do not own resources or child work.
 5. Resolve the durable execution questions in `docs/DURABLE_EXECUTION.md`, one
    at a time.
 6. Define the shared Plan/expression IR and then map it onto current TypeScript
