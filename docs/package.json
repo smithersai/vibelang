@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vocs dev",
     "build": "vocs build",
-    "preview": "vocs preview"
+    "preview": "vocs preview",
+    "deploy": "alchemy deploy --stage prod",
+    "deploy:plan": "alchemy plan --stage prod",
+    "dev:cloudflare": "alchemy dev"
   },
   "dependencies": {
     "react": "^19.2.8",
@@ -15,10 +18,14 @@
     "waku": "1.0.0-beta.6"
   },
   "devDependencies": {
+    "@effect/platform-bun": "^4.0.0-beta.105",
+    "@effect/platform-node": "^4.0.0-beta.105",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.1.0",
+    "alchemy": "^2.0.0-beta.72",
+    "effect": "^4.0.0-beta.105",
     "typescript": "^6.0.2",
     "vite": "^8.2.2"
   }
