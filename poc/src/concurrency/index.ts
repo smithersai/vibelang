@@ -3,6 +3,7 @@ export { Governor } from "./governor.ts";
 export type { ConcurrencyBound, GovernorPermit } from "./governor.ts";
 export * from "./join.ts";
 export * from "./keyed.ts";
+export * from "./worker.ts";
 export {
   CancellationRegistration,
   CancellationSource,
