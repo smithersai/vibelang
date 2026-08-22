@@ -1,4 +1,7 @@
-/** Runtime representation of the language's recoverable failure channel. */
+import { registerErrorType } from "./errors.ts";
+import { panic } from "./panic.ts";
+
+/** Compatibility representation used only by the historical syntax spike. */
 export const VIBE_FAILURE = Symbol.for("vibelang.failure");
 const localFailures = new WeakSet<object>();
 
@@ -9,11 +12,19 @@ export class VibeFailure extends Error {
     super(formatFailure(tag, fields));
     this.name = tag;
     if (fields) {
-      for (const [name, value] of Object.entries(fields)) {
-        if (["_tag", "name", "message", "stack", "__proto__"].includes(name)) {
+      if (Object.getPrototypeOf(fields) !== Object.prototype && Object.getPrototypeOf(fields) !== null) {
+        throw new TypeError("failure payload must be a plain object");
+      }
+      for (const name of Reflect.ownKeys(fields)) {
+        if (typeof name !== "string") throw new TypeError("failure payload cannot contain symbol fields");
+        if (["_tag", "name", "message", "stack", "cause", "__proto__", "is", "matches", "match", "matchPartial", "rootCause"].includes(name)) {
           throw new TypeError(`failure payload field '${name}' is reserved`);
         }
-        Object.defineProperty(this, name, { value, enumerable: true });
+        const descriptor = Object.getOwnPropertyDescriptor(fields, name);
+        if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) {
+          throw new TypeError(`failure payload field '${name}' must be an enumerable data property`);
+        }
+        Object.defineProperty(this, name, { value: descriptor.value, enumerable: true });
       }
     }
     Object.defineProperty(this, "_tag", { value: tag, enumerable: true });
@@ -24,8 +35,14 @@ export class VibeFailure extends Error {
 
 function formatFailure(tag: string, fields?: Record<string, unknown>): string {
   if (!fields || Object.keys(fields).length === 0) return tag;
-  return `${tag} ${JSON.stringify(fields)}`;
+  try {
+    return `${tag} ${JSON.stringify(fields)}`;
+  } catch {
+    return tag;
+  }
 }
+
+registerErrorType(VibeFailure, "vibelang:legacy/VibeFailure@1");
 
 export function isVibeFailure(value: unknown): value is VibeFailure {
   return typeof value === "object" && value !== null && localFailures.has(value);
@@ -34,7 +51,7 @@ export function isVibeFailure(value: unknown): value is VibeFailure {
 /** Optional asserted unwrap. Absence is a defect, not a recoverable failure. */
 export function unwrapOptional<T>(value: T | null | undefined): T {
   if (value === null || value === undefined) {
-    throw new Error("VibeLang defect: asserted optional was absent");
+    panic("VibeLang defect: asserted optional was absent");
   }
   return value;
 }
