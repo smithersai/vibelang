@@ -16,6 +16,14 @@ export {
   compileAndCheckProject,
   compileAndCheckVibe,
 } from "./validate.ts";
+export { formatVibeSource, isFormattedVibeSource, vibeTokenAt } from "./format.ts";
+export type {
+  FormatDiagnostic,
+  FormatDiagnosticCode,
+  FormatOptions,
+  FormatResult,
+  VibeToken,
+} from "./format.ts";
 export type { CompileOptions, CompileResult } from "./compile.ts";
 export type {
   DeclarationEmitResult,
