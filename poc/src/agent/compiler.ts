@@ -1,5 +1,7 @@
 import { basename, dirname, isAbsolute, join, normalize, resolve } from "node:path"
+import { createRequire } from "node:module"
 import * as ts from "typescript-js"
+import { defineComponentIdentity, sha256File, sha256Json } from "./identity.ts"
 import type {
   AgentDiagnostic,
   CompilationResult,
@@ -8,6 +10,60 @@ import type {
 
 const VIRTUAL_ROOT = normalize("/__vibelang_agent__")
 const SANDBOX_POLICY_CODE = 91001
+const FORBIDDEN_RUNTIME_NAMES = Object.freeze([
+  "eval",
+  "Function",
+  "AsyncFunction",
+  "GeneratorFunction",
+  "AsyncGeneratorFunction",
+  "require",
+  "Worker",
+  "SharedWorker",
+  "ShadowRealm",
+])
+const CHECK_SOURCE = [
+  'import turn from "./turn.js"',
+  "type AgentTurn = (functions: Functions) => unknown | Promise<unknown>",
+  "const checkedTurn: AgentTurn = turn",
+  "void checkedTurn",
+  "",
+].join("\n")
+const COMPILER_POLICY = Object.freeze({
+  schema: "vibelang.agent.typescript-policy/v1",
+  typescriptVersion: ts.version,
+  target: "ES2022",
+  module: "ES2022",
+  moduleResolution: "Bundler",
+  lib: ["lib.es2022.d.ts"],
+  types: [],
+  strict: true,
+  skipLibCheck: true,
+  noEmitOnError: true,
+  sourceMap: true,
+  virtualRoot: VIRTUAL_ROOT,
+  checkSource: CHECK_SOURCE,
+  sandboxPolicyCode: SANDBOX_POLICY_CODE,
+  forbiddenRuntimeNames: [...FORBIDDEN_RUNTIME_NAMES],
+  forbiddenSyntax: [
+    "import-declaration",
+    "import-equals",
+    "module-re-export",
+    "import-type",
+    "import-meta",
+    "dynamic-import",
+  ],
+})
+const require = createRequire(import.meta.url)
+const COMPILER_ARTIFACT_DIGEST = sha256Json({
+  implementation: sha256File(new URL(import.meta.url)),
+  typescript: sha256File(require.resolve("typescript-js")),
+  typescriptVersion: ts.version,
+})
+const COMPILER_IDENTITY = defineComponentIdentity({
+  name: "typescript-js/in-memory",
+  artifactDigest: COMPILER_ARTIFACT_DIGEST,
+  configDigest: sha256Json(COMPILER_POLICY),
+})
 
 /**
  * This is an explicit POC execution policy, not a claim that source filtering is
@@ -17,17 +73,7 @@ const SANDBOX_POLICY_CODE = 91001
 function sandboxPolicyDiagnostics(source: string): AgentDiagnostic[] {
   const file = ts.createSourceFile("turn.ts", source, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS)
   const diagnostics: AgentDiagnostic[] = []
-  const forbiddenRuntimeNames = new Set([
-    "eval",
-    "Function",
-    "AsyncFunction",
-    "GeneratorFunction",
-    "AsyncGeneratorFunction",
-    "require",
-    "Worker",
-    "SharedWorker",
-    "ShadowRealm",
-  ])
+  const forbiddenRuntimeNames = new Set(FORBIDDEN_RUNTIME_NAMES)
 
   const report = (node: ts.Node, message: string): void => {
     const position = file.getLineAndCharacterOfPosition(node.getStart(file))
@@ -110,6 +156,8 @@ function diagnosticFromTypeScript(diagnostic: ts.Diagnostic): AgentDiagnostic {
  * compiler needs to grow the equivalent virtual-file API directly.
  */
 export class InMemoryTypeScriptCompiler implements TypeScriptCompiler {
+  readonly identity = COMPILER_IDENTITY
+
   async compile(source: string, callableSurface: string): Promise<CompilationResult> {
     const policyDiagnostics = sandboxPolicyDiagnostics(source)
     const options: ts.CompilerOptions = {
@@ -126,16 +174,7 @@ export class InMemoryTypeScriptCompiler implements TypeScriptCompiler {
     const files = new Map<string, string>([
       [virtualPath("turn.ts"), source],
       [virtualPath("surface.d.ts"), callableSurface],
-      [
-        virtualPath("__check.ts"),
-        [
-          'import turn from "./turn.js"',
-          "type AgentTurn = (functions: Functions) => unknown | Promise<unknown>",
-          "const checkedTurn: AgentTurn = turn",
-          "void checkedTurn",
-          "",
-        ].join("\n"),
-      ],
+      [virtualPath("__check.ts"), CHECK_SOURCE],
     ])
 
     const defaultHost = ts.createCompilerHost(options, true)

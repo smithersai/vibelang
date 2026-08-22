@@ -91,6 +91,8 @@ export async function runAgentDemo(): Promise<{
           if (value === undefined) throw new Error(`missing file: ${path}`)
           return value
         },
+        "read a file from the demo project snapshot",
+        { name: "demo/read-file", config: { backend: "in-memory/v1" } },
       ),
       build: defineFunction<{ source: string }, { digest: string; bytes: number }>(
         "(input: { source: string }) => Promise<{ digest: string; bytes: number }>",
@@ -99,10 +101,14 @@ export async function runAgentDemo(): Promise<{
           await new Promise((resolve) => setTimeout(resolve, 10))
           return { digest: "demo-9f86d081", bytes: source.length }
         },
+        "build a source artifact",
+        { name: "demo/build", config: { builder: "demo/v1" } },
       ),
       echo: defineFunction<{ text: string }, string>(
         "(input: { text: string }) => Promise<string>",
         ({ text }) => text.toUpperCase(),
+        "uppercase text",
+        { name: "demo/echo", config: { locale: "locale-independent" } },
       ),
     },
     journal,

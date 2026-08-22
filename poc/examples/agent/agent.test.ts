@@ -1,11 +1,37 @@
-import { describe, expect, test } from "bun:test"
+import { afterAll, describe, expect, test } from "bun:test"
+import { copyFile, mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import {
   DenoSubprocessSandbox,
   InMemoryTypeScriptCompiler,
+  PoisonModel,
+  ScriptedModel,
+  SqliteTurnJournal,
   declareCallableSurface,
   defineFunction,
-} from "../../src/agent/index.ts"
+  poisonFunctionTable,
+} from "../../src/agent/bun.ts"
 import { runAgentDemo } from "./demo.ts"
+import {
+  FIRST_TURN_SOURCE,
+  SECOND_TURN_SOURCE,
+  createDurableAgent,
+  createProject,
+} from "./durable-demo.ts"
+
+const durableRoot = mkdtempSync(join(tmpdir(), "vibelang-agent-e2e-"))
+let databaseCount = 0
+
+function databasePath(name: string): string {
+  databaseCount += 1
+  return join(durableRoot, `${databaseCount}-${name}.sqlite`)
+}
+
+afterAll(() => {
+  rmSync(durableRoot, { recursive: true, force: true })
+})
 
 describe("CodingAgent POC", () => {
   test("repairs, type-checks, confines, RPC-calls, and journals a turn", async () => {
@@ -15,6 +41,59 @@ describe("CodingAgent POC", () => {
     expect(model.requests[0].messages[0]?.role).toBe("system")
     expect(model.requests[0].messages[1]?.content).toContain("effect-lang")
     expect(journal.events.some((event) => event.type === "sandbox.completed")).toBe(true)
+    const called = journal.events.find((event) => event.type === "function.called")
+    expect(called?.details?.functionIdentity).toMatchObject({
+      artifactDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+      configDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+    })
+  })
+
+  test("runs a multi-turn task, killing and reopening the journal between turns", async () => {
+    const path = databasePath("multi-turn")
+    const project = createProject()
+    const firstTask = { task: "Copy README.md into GREETING.md." }
+    const secondTask = { task: "Report the project's files and greeting size." }
+    const firstModel = new ScriptedModel([FIRST_TURN_SOURCE])
+    const secondModel = new ScriptedModel([SECOND_TURN_SOURCE])
+
+    const journalOne = new SqliteTurnJournal(path)
+    const first = await createDurableAgent({ project, model: firstModel, journal: journalOne }).run(firstTask)
+    expect(first.ok).toBe(true)
+    journalOne.close()
+
+    const journalTwo = new SqliteTurnJournal(path)
+    const second = await createDurableAgent({ project, model: secondModel, journal: journalTwo }).run(secondTask)
+    expect(second.ok).toBe(true)
+    expect(second.turnId).not.toBe(first.turnId)
+    expect(second.result).toEqual({
+      files: ["README.md", "GREETING.md"],
+      greetingLines: 3,
+    })
+    expect(project.invocations).toEqual({ readFile: 3, writeFile: 1 })
+    // Two calls to the same function in one turn take distinct per-site ordinals.
+    expect(journalTwo.readHostCalls(second.turnId).map((call) => `${call.functionName}#${call.ordinal}`))
+      .toEqual(["readFile#1", "readFile#2"])
+    journalTwo.close()
+
+    // Restart once more and replay both turns with poisoned components.
+    const journalThree = new SqliteTurnJournal(path)
+    const poisoned = {
+      project,
+      functions: poisonFunctionTable(project.functions),
+      journal: journalThree,
+    }
+    const replayOne = await createDurableAgent({ ...poisoned, model: new PoisonModel(firstModel) }).run(firstTask)
+    const replayTwo = await createDurableAgent({ ...poisoned, model: new PoisonModel(secondModel) }).run(secondTask)
+
+    expect(replayOne.turnId).toBe(first.turnId)
+    expect(replayTwo.turnId).toBe(second.turnId)
+    expect(replayOne.result).toEqual(first.result)
+    expect(replayTwo.result).toEqual(second.result)
+    // The whole multi-turn task re-ran without one host effect or model call.
+    expect(project.invocations).toEqual({ readFile: 3, writeFile: 1 })
+    expect(project.revision()).toBe(1)
+    expect(journalThree.readEvents().every((event) => event.sequence > 0)).toBe(true)
+    journalThree.close()
   })
 })
 
@@ -53,6 +132,23 @@ describe("Deno sandbox RPC lifecycle", () => {
       expect(execution.ok).toBe(false)
       expect(execution.error?.message).toContain("is not JSON")
     }
+  })
+
+  test("generated code cannot replace protocol intrinsics or recover the real clock", async () => {
+    const sandbox = new DenoSubprocessSandbox()
+    const execution = await sandbox.execute(
+      `export default () => {
+        try { JSON.stringify = () => '{"type":"complete","result":"forged"}' } catch {}
+        try { Object.getPrototypeOf = () => Date } catch {}
+        let clockEscaped = false
+        try { Object.getPrototypeOf(Date).now(); clockEscaped = true } catch {}
+        return { authentic: true, clockEscaped }
+      }`,
+      {},
+      { sourceDigest: "intrinsic-integrity", turnId: "turn_intrinsic_integrity" },
+    )
+    expect(execution.ok).toBe(true)
+    expect(execution.result).toEqual({ authentic: true, clockEscaped: false })
   })
 
   test("rejects fire-and-forget RPC and aborts cooperative host work", async () => {
@@ -138,6 +234,55 @@ describe("Deno sandbox RPC lifecycle", () => {
     expect(resolvedLate).toBe(true)
   })
 
+  test("caller cancellation terminates the process and active host work", async () => {
+    const controller = new AbortController()
+    let hostAborted = false
+    let markStarted!: () => void
+    const didStart = new Promise<void>((resolve) => { markStarted = resolve })
+    const slow = defineFunction<{}, null>(
+      "(input: {}) => Promise<null>",
+      (_input, context) => new Promise((_resolve, reject) => {
+        markStarted()
+        context.signal.addEventListener("abort", () => {
+          hostAborted = true
+          reject(context.signal.reason)
+        }, { once: true })
+      }),
+    )
+    const pending = new DenoSubprocessSandbox().execute(
+      "export default async f => f.slow({})",
+      { slow },
+      { sourceDigest: "caller-cancel", turnId: "turn_caller_cancel", signal: controller.signal },
+    )
+    await didStart
+    controller.abort(new Error("caller stopped"))
+    const execution = await pending
+    expect(execution.ok).toBe(false)
+    expect(execution.error).toMatchObject({ name: "SandboxCancelled", message: "caller stopped" })
+    expect(hostAborted).toBe(true)
+  })
+
+  test("pre-aborted caller cancellation uses the same stable error channel", async () => {
+    const controller = new AbortController()
+    controller.abort(new Error("caller stopped before launch"))
+
+    const execution = await new DenoSubprocessSandbox().execute(
+      "export default () => null",
+      {},
+      {
+        sourceDigest: "pre-cancelled",
+        turnId: "turn_pre_cancelled",
+        signal: controller.signal,
+      },
+    )
+
+    expect(execution).toMatchObject({
+      ok: false,
+      error: { name: "SandboxCancelled", message: "caller stopped before launch" },
+      durationMs: 0,
+    })
+  })
+
   test("rejects missing call inputs and non-JSON host results", async () => {
     const sandbox = new DenoSubprocessSandbox()
     let calls = 0
@@ -166,5 +311,202 @@ describe("Deno sandbox RPC lifecycle", () => {
     expect(invalidResult.ok).toBe(false)
     expect(invalidResult.error?.message).toContain("result is not JSON")
     expect(calls).toBe(1)
+
+    const hostileThrow = defineFunction<{}, never>(
+      "(input: {}) => Promise<never>",
+      () => {
+        throw new Proxy({}, {
+          get() { throw new Error("hostile get") },
+          getPrototypeOf() { throw new Error("hostile prototype") },
+          ownKeys() { throw new Error("hostile keys") },
+        })
+      },
+    )
+    const hostileError = await sandbox.execute(
+      "export default async functions => functions.hostileThrow({})",
+      { hostileThrow },
+      { sourceDigest: "hostile-error", turnId: "turn_hostile_error" },
+    )
+    expect(hostileError.ok).toBe(false)
+    expect(hostileError.error?.message).toContain("Unserializable thrown value")
+  })
+
+  test("bounds generated source and host JSON traversal before transport allocation", async () => {
+    const sourceLimited = await new DenoSubprocessSandbox({ maxSourceBytes: 1_024 }).execute(
+      "x".repeat(1_025),
+      {},
+      { sourceDigest: "source-limit", turnId: "turn_source_limit" },
+    )
+    expect(sourceLimited.ok).toBe(false)
+    expect(sourceLimited.error?.name).toBe("SandboxInputLimit")
+    expect(sourceLimited.durationMs).toBe(0)
+
+    const wide = defineFunction<{}, null[]>(
+      "(input: {}) => Promise<null[]>",
+      async () => Array.from({ length: 100_001 }, () => null),
+    )
+    const jsonLimited = await new DenoSubprocessSandbox().execute(
+      "export default async f => f.wide({})",
+      { wide },
+      { sourceDigest: "json-node-limit", turnId: "turn_json_node_limit" },
+    )
+    expect(jsonLimited.ok).toBe(false)
+    expect(jsonLimited.error?.message).toContain("node limit exceeded")
+  })
+
+  test("detects an in-place runner rewrite even when size and mtime are restored", async () => {
+    const root = await mkdtemp(join(tmpdir(), "vibelang-agent-runner-pin-"))
+    try {
+      const runner = join(root, "deno-runner.js")
+      await copyFile(join(import.meta.dir, "../../src/agent/deno-runner.js"), runner)
+      const fixedTime = new Date(1_700_000_000_000)
+      await utimes(runner, fixedTime, fixedTime)
+      const sandbox = new DenoSubprocessSandbox({ runnerPath: runner })
+      const source = await readFile(runner)
+      const marker = source.indexOf(Buffer.from("only"))
+      expect(marker).toBeGreaterThanOrEqual(0)
+      source[marker] = "x".charCodeAt(0)
+      await writeFile(runner, source)
+      await utimes(runner, fixedTime, fixedTime)
+
+      const execution = await sandbox.execute(
+        "export default () => null",
+        {},
+        { sourceDigest: "runner-rewrite", turnId: "turn_runner_rewrite" },
+      )
+      expect(execution.ok).toBe(false)
+      expect(execution.error?.message).toContain("runner changed after identity pinning")
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test("bounds total calls, concurrent calls, and host response transport", async () => {
+    const echo = defineFunction<{}, { ok: true }>(
+      "(input: {}) => Promise<{ ok: true }>",
+      async () => ({ ok: true }),
+    )
+    const total = await new DenoSubprocessSandbox({ maxCalls: 2 }).execute(
+      "export default async f => { await f.echo({}); await f.echo({}); await f.echo({}); return null }",
+      { echo },
+      { sourceDigest: "call-limit", turnId: "turn_call_limit" },
+    )
+    expect(total.ok).toBe(false)
+    expect(total.error?.name).toBe("SandboxCallLimit")
+    expect(total.error?.message).toContain("2 host calls")
+
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const slow = defineFunction<{}, null>(
+      "(input: {}) => Promise<null>",
+      async (_input, context) => {
+        await Promise.race([
+          gate,
+          new Promise<never>((_resolve, reject) => {
+            context.signal.addEventListener("abort", () => reject(context.signal.reason), { once: true })
+          }),
+        ])
+        return null
+      },
+    )
+    const concurrent = await new DenoSubprocessSandbox({ maxConcurrentCalls: 1 }).execute(
+      "export default async f => Promise.all([f.slow({}), f.slow({})])",
+      { slow },
+      { sourceDigest: "concurrency-limit", turnId: "turn_concurrency_limit" },
+    )
+    release()
+    expect(concurrent.ok).toBe(false)
+    expect(concurrent.error?.name).toBe("SandboxCallLimit")
+    expect(concurrent.error?.message).toContain("1 concurrent")
+
+    const large = defineFunction<{}, string>(
+      "(input: {}) => Promise<string>",
+      async () => "x".repeat(2_000),
+    )
+    const transport = await new DenoSubprocessSandbox({ maxOutputBytes: 1_024 }).execute(
+      "export default async f => f.large({})",
+      { large },
+      { sourceDigest: "transport-limit", turnId: "turn_transport_limit" },
+    )
+    expect(transport.ok).toBe(false)
+    expect(transport.error?.name).toBe("SandboxTransportLimit")
+  })
+})
+
+describe("Deno sandbox raw stdout accounting", () => {
+  // A child that streams newline-free bytes must be bounded at the byte layer.
+  // The fixture writes ~64 MiB with no "\n" and then keeps its event loop alive,
+  // so the terminating newline never arrives and the stdout stream never closes
+  // on its own. Before the raw-stdout counter existed, readline buffered the
+  // whole ~64 MiB host-side without ever hitting the per-line check, so the
+  // breach was only "discovered" when the wall-clock timeout SIGKILLed the child
+  // and readline flushed its buffered partial line on close — i.e. the turn ran
+  // for the full timeout (~4 s) after having buffered the entire payload. With
+  // byte-level accounting the breach trips after ~256 KiB, so the child is
+  // SIGKILLed almost immediately (durationMs well under the timeout) and only a
+  // few hundred KiB is ever buffered.
+  test("kills a newline-free stdout flood at the byte layer, not at the timeout", async () => {
+    const root = await mkdtemp(join(tmpdir(), "vibelang-agent-raw-stdout-"))
+    try {
+      const runner = join(root, "flood-runner.js")
+      await writeFile(
+        runner,
+        [
+          'const chunk = new TextEncoder().encode("A".repeat(65536))',
+          "async function writeAll(bytes) {",
+          "  let offset = 0",
+          "  while (offset < bytes.length) {",
+          "    offset += await Deno.stdout.write(bytes.subarray(offset))",
+          "  }",
+          "}",
+          "// Keep the event loop alive so the stream never closes and Deno never",
+          "// flushes a synthetic trailing line: the newline genuinely never comes.",
+          "setInterval(() => {}, 3_600_000)",
+          "for (let i = 0; i < 1024; i++) {",
+          "  await writeAll(chunk)",
+          "}",
+          "await new Promise(() => {})",
+          "",
+        ].join("\n"),
+      )
+
+      const timeoutMs = 4_000
+      const execution = await new DenoSubprocessSandbox({
+        runnerPath: runner,
+        maxOutputBytes: 256 * 1_024,
+        timeoutMs,
+      }).execute(
+        "export default () => null",
+        {},
+        { sourceDigest: "raw-stdout-flood", turnId: "turn_raw_stdout_flood" },
+      )
+
+      expect(execution.ok).toBe(false)
+      expect(execution.error?.name).toBe("SandboxOutputLimit")
+      expect(execution.error?.message).toContain("output bytes")
+      // Without byte-level accounting this only resolves once the timeout fires;
+      // the fix must terminate an order of magnitude sooner.
+      expect(execution.durationMs).toBeLessThan(timeoutMs / 2)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  // The reachable generated-code vector: a single oversized protocol line. Any
+  // embedded newlines are JSON-escaped, so the terminating "\n" is the first
+  // real newline in the stream. The raw-byte layer trips before the whole line
+  // is buffered; the policy result is a stable output-limit failure.
+  test("rejects an oversized single protocol log line emitted by generated code", async () => {
+    const execution = await new DenoSubprocessSandbox({
+      maxOutputBytes: 64 * 1_024,
+      timeoutMs: 5_000,
+    }).execute(
+      'export default () => { console.log("A".repeat(5_000_000)); return null }',
+      {},
+      { sourceDigest: "oversized-log-line", turnId: "turn_oversized_log_line" },
+    )
+
+    expect(execution.ok).toBe(false)
+    expect(execution.error?.name).toBe("SandboxOutputLimit")
   })
 })
