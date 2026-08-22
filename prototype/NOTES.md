@@ -3,11 +3,12 @@
 Quickest-possible working prototype. Speed was the goal; this is a demo-grade
 lowering pipeline, not a compiler. Run it with `./run.sh` (or `bun run demo`).
 
-This is a historical syntax experiment, not the current design. In particular,
-the accepted language now uses named `uses name: Type` parameters and
-Effect-like layers from `vibelang:provider`; the prototype's special
-`provide { ... }` block remains only because that is what the regex demo
-implemented.
+This is a historical syntax experiment, not the current design. Every custom
+failure, propagation, recovery, optional, `uses`, and `provide` form described
+below is obsolete. Current source uses ordinary `Result<A, E>` and
+`Optional<T>` values, ordinary Error subclasses, method calls such as
+`.unwrap()`/`.match()`, and Context/Layer library APIs. The files remain only as
+evidence about the limits of regex lowering.
 
 ## What it does (all verified working end-to-end)
 
