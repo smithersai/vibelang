@@ -1,4 +1,64 @@
 import ts from "typescript-js";
+import {
+  annotateDeclarationEffects,
+  analyzeProject,
+  analyzeSource,
+  checkEmittedProject,
+  checkEmittedTypeScript,
+  composeSourceMaps,
+  compileAndCheckProject,
+  compileAndCheckVibe,
+  compileProject,
+  compileVibe,
+  DECLARATION_EFFECT_TAG,
+  DECLARATION_EFFECT_VERSION,
+  emitProjectDeclarations,
+  normalizeDeclarationEffectChannels,
+  parseErrors,
+  parseFunctions,
+  readDeclarationEffects,
+} from "../poc/dist/language/index.js";
+
+export {
+  annotateDeclarationEffects,
+  analyzeProject,
+  analyzeSource,
+  checkEmittedProject,
+  checkEmittedTypeScript,
+  composeSourceMaps,
+  compileAndCheckProject,
+  compileAndCheckVibe,
+  compileProject,
+  compileVibe,
+  DECLARATION_EFFECT_TAG,
+  DECLARATION_EFFECT_VERSION,
+  emitProjectDeclarations,
+  normalizeDeclarationEffectChannels,
+  parseErrors,
+  parseFunctions,
+  readDeclarationEffects,
+};
+export type {
+  Analysis,
+  AnalyzeProjectOptions,
+  CheckedCompileOptions,
+  CheckedCompileResult,
+  CheckedProjectCompileResult,
+  CompileProjectOptions,
+  CompileProjectResult,
+  CompiledProjectFile,
+  DeclarationEmitResult,
+  DeclarationOutput,
+  DeclarationSource,
+  CompileOptions as VibeCompileOptions,
+  CompileResult as VibeCompileResult,
+  Diagnostic as VibeDiagnostic,
+  FunctionRows,
+  ProjectAnalysis,
+  ProjectDiagnostic,
+  ProjectFileAnalysis,
+  ProjectSource,
+} from "../poc/dist/language/index.js";
 
 export const version = "0.0.1";
 export const typescriptVersion = ts.version;
@@ -28,7 +88,7 @@ function containsVibeFile(rootNames: readonly string[]): boolean {
   return rootNames.some((fileName) => fileName.endsWith(".vibe") || fileName.endsWith(".vibex"));
 }
 
-/** TypeScript-compatible program creation until the Go frontend accepts `.vibe`. */
+/** TypeScript-compatible Program creation. Use compileVibe for `.vibe` source. */
 export const createProgram: typeof ts.createProgram = ((...args: unknown[]) => {
   const first = args[0];
   const rootNames = Array.isArray(first)
@@ -37,7 +97,9 @@ export const createProgram: typeof ts.createProgram = ((...args: unknown[]) => {
       ? (first as { rootNames: readonly string[] }).rootNames
       : [];
 
-  if (containsVibeFile(rootNames)) throw new NotImplementedError(".vibe parser and checker");
+  if (containsVibeFile(rootNames)) {
+    throw new NotImplementedError("TypeScript-compatible createProgram for .vibe; use analyzeProject or compileAndCheckProject");
+  }
   return (ts.createProgram as (...values: unknown[]) => ts.Program)(...args);
 }) as typeof ts.createProgram;
 
@@ -67,8 +129,3 @@ export interface CompilerExtension {
 export function defineCompilerExtension<T extends CompilerExtension>(extension: T): T {
   return extension;
 }
-
-export function compileVibe(_rootNames: readonly string[], _options: CompilerOptions = {}): never {
-  throw new NotImplementedError("VibeLang compilation");
-}
-

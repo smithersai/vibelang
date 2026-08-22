@@ -8,6 +8,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["test/type-compat.cts"]
+  "include": ["test/type-compat.cts", "test/durable-type-compat.mts"]
 }
-

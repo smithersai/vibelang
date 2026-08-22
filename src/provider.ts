@@ -1,48 +1,63 @@
-import { NotImplementedError } from "./vibe.js";
+import { Layer as RuntimeLayer } from "../poc/dist/runtime/layer.js";
 import type { Context } from "./context.js";
+import type { Result } from "./result.js";
 
 declare const layerVariance: unique symbol;
 declare const actionSignature: unique symbol;
 
-export interface Layer<Provides, Error = never, Requires = never> {
+/** An already-acquired dependency environment; it owns no resources or work. */
+export interface Layer<Provides> {
   readonly [layerVariance]: {
     readonly provides: Provides;
-    readonly error: Error;
-    readonly requires: Requires;
   };
 }
 
+type ProvidesOf<Environment> = Environment extends Layer<infer Provides> ? Provides : never;
+
 export const Layer = {
   succeed<Service extends Context>(
-    _service: abstract new (...args: never[]) => Service,
-    _implementation: Service,
+    service: abstract new (...args: never[]) => Service,
+    implementation: Service,
   ): Layer<Service> {
-    throw new NotImplementedError("Layer.succeed");
+    const succeed = RuntimeLayer.succeed as unknown as (
+      capability: abstract new (...args: never[]) => unknown,
+      value: unknown,
+    ) => unknown;
+    return succeed(service, implementation) as Layer<Service>;
   },
 
-  merge<Layers extends readonly Layer<unknown, unknown, unknown>[]>(
-    ..._layers: Layers
-  ): Layer<unknown, unknown, unknown> {
-    throw new NotImplementedError("Layer.merge");
+  merge<const Layers extends readonly Layer<unknown>[]>(
+    ...layers: Layers
+  ): Layer<ProvidesOf<Layers[number]>> {
+    return RuntimeLayer.merge(
+      ...layers as unknown as Parameters<typeof RuntimeLayer.merge>,
+    ) as unknown as Layer<ProvidesOf<Layers[number]>>;
   },
 
-  provide<Provides, Error, Requires, Value>(
-    _layer: Layer<Provides, Error, Requires>,
-    _body: () => Value,
+  provide<Provides, Value>(
+    layer: Layer<Provides>,
+    body: () => Value,
   ): Value {
-    throw new NotImplementedError("Layer.provide");
+    return RuntimeLayer.provide(
+      layer as unknown as Parameters<typeof RuntimeLayer.provide>[0],
+      body,
+    );
   },
 } as const;
 
-export abstract class Action<Signature extends (...args: never[]) => unknown> {
+type ActionReturn =
+  | Result<unknown, globalThis.Error>
+  | Promise<Result<unknown, globalThis.Error>>;
+
+export abstract class Action<Signature extends (...args: never[]) => ActionReturn> {
   declare readonly [actionSignature]: Signature;
 
   static run(..._args: never[]): never {
-    throw new NotImplementedError("Action.run");
+    throw new Error("Action.run is only valid while the durable Flow compiler is planning a flow");
   }
 
   static provide(..._args: never[]): never {
-    throw new NotImplementedError("Action.provide");
+    throw new Error("Action.provide is not part of the prototype runtime; use vibelang/durable/bun");
   }
 }
 
@@ -52,7 +67,7 @@ export interface Flow<Input, Output> {
 }
 
 export function Flow<Input, Output>(_body: (input: Input) => Output): Flow<Input, Output> {
-  throw new NotImplementedError("Flow compilation");
+  throw new Error("class-style Flow is not implemented; use Flow.define from vibelang/durable/authoring");
 }
 
 export interface Durable<T> {

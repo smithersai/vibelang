@@ -1,7 +1,7 @@
 {
   "name": "vibelang",
   "version": "0.0.1",
-  "description": "VibeLang — a TypeScript superset with typed errors, capability DI, Zig-style comptime, and durable distributed execution. Early design phase.",
+  "description": "VibeLang checked prototype: typed failures, capability contexts, hermetic comptime, targets, and durable plans.",
   "type": "module",
   "main": "./compat/typescript.cjs",
   "types": "./compat/typescript.d.cts",
@@ -46,6 +46,74 @@
     "./vibe": {
       "types": "./dist/vibe.d.ts",
       "default": "./dist/vibe.js"
+    },
+    "./runtime": {
+      "types": "./poc/dist/runtime/index.d.ts",
+      "default": "./poc/dist/runtime/index.js"
+    },
+    "./schema-runtime": {
+      "types": "./poc/dist/build/schema-runtime.d.ts",
+      "default": "./poc/dist/build/schema-runtime.js"
+    },
+    "./exceptions": {
+      "types": "./dist/exceptions.d.ts",
+      "default": "./dist/exceptions.js"
+    },
+    "./language": {
+      "types": "./dist/language.d.ts",
+      "default": "./dist/language.js"
+    },
+    "./build": {
+      "types": "./dist/build.d.ts",
+      "default": "./dist/build.js"
+    },
+    "./targets": {
+      "types": "./dist/targets.d.ts",
+      "default": "./dist/targets.js"
+    },
+    "./agent": {
+      "types": "./dist/agent.d.ts",
+      "default": "./dist/agent.js"
+    },
+    "./agent/bun": {
+      "types": "./poc/dist/agent/bun.d.ts",
+      "default": "./poc/dist/agent/bun.js"
+    },
+    "./concurrency": {
+      "types": "./dist/concurrency.d.ts",
+      "default": "./dist/concurrency.js"
+    },
+    "./concurrency/bun": {
+      "types": "./poc/dist/concurrency/index.d.ts",
+      "default": "./poc/dist/concurrency/index.js"
+    },
+    "./platform": {
+      "types": "./dist/platform.d.ts",
+      "default": "./dist/platform.js"
+    },
+    "./data": {
+      "types": "./dist/data.d.ts",
+      "default": "./dist/data.js"
+    },
+    "./durable/authoring": {
+      "types": "./poc/dist/durable/authoring.d.ts",
+      "default": "./poc/dist/durable/authoring.js"
+    },
+    "./durable/artifact": {
+      "types": "./poc/dist/durable/artifact.d.ts",
+      "default": "./poc/dist/durable/artifact.js"
+    },
+    "./durable": {
+      "types": "./dist/durable.d.ts",
+      "default": "./dist/durable.js"
+    },
+    "./durable/source-compiler": {
+      "types": "./poc/dist/durable/source-compiler.d.ts",
+      "default": "./poc/dist/durable/source-compiler.js"
+    },
+    "./durable/bun": {
+      "types": "./poc/dist/durable/index.d.ts",
+      "default": "./poc/dist/durable/index.js"
     },
     "./provider": {
       "types": "./dist/provider.d.ts",
@@ -121,9 +189,14 @@
     "vtsserver": "./bin/vtsserver.js"
   },
   "scripts": {
-    "build": "node node_modules/typescript/lib/tsc.js -p tsconfig.build.json",
-    "check": "node node_modules/typescript/lib/tsc.js -p tsconfig.build.json --noEmit && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && go test ./compiler ./cmd/vibec-go",
+    "clean:dist": "node scripts/clean-root-dist.mjs",
+    "clean:poc": "node scripts/clean-poc-dist.mjs",
+    "build:poc": "npm run clean:poc && node node_modules/typescript/lib/tsc.js -p poc/tsconfig.emit.json && node scripts/copy-poc-assets.mjs",
+    "build": "npm run clean:dist && npm run build:poc && node node_modules/typescript/lib/tsc.js -p tsconfig.build.json",
+    "check": "npm run build:poc && node node_modules/typescript/lib/tsc.js -p tsconfig.build.json --noEmit && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && go test ./compiler ./cmd/vibec-go",
     "test": "npm run build && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && node --test test/*.test.mjs && go test ./compiler ./cmd/vibec-go",
+    "verify:pack": "node scripts/verify-pack.mjs",
+    "release:verify": "npm test && npm --prefix docs run build && npm run verify:pack",
     "typescript:fork:status": "node scripts/vendor-typescript.mjs status",
     "typescript:fork:verify": "node scripts/vendor-typescript.mjs verify",
     "typescript:vendor": "node scripts/vendor-typescript.mjs sync",
@@ -132,7 +205,7 @@
   "keywords": [
     "vibelang",
     "typescript",
-    "superset",
+    "typescript-shaped",
     "typed-errors",
     "dependency-injection",
     "comptime",
@@ -154,6 +227,7 @@
     "bin",
     "compat",
     "dist",
+    "poc/dist",
     "docs/COMPATIBILITY_API.md",
     "docs/TYPESCRIPT_FORK.md",
     "typescript-fork.json",
@@ -168,6 +242,7 @@
     "typescript-js": "npm:typescript@5.9.3"
   },
   "devDependencies": {
+    "@types/bun": "^1.2.20",
     "@types/node": "^24.0.0"
   }
 }

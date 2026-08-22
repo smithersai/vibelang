@@ -3,11 +3,13 @@ import test from "node:test";
 
 import {
   Result,
-  UnhandledException,
   __resultError,
   __resultSuccess,
   __setErrorIdentity,
+  errorCases,
+  errorIdentity,
 } from "vibelang/result";
+import { Panic } from "vibelang/exceptions";
 import {
   MissingOptionalValue,
   Optional,
@@ -40,7 +42,7 @@ test("Result supports compiler-created variants without public ok/err constructo
 
 test("Result composition preserves errors and supports exhaustive-shaped matching", () => {
   const result = __resultSuccess(3)
-    .andThen((value) => value + 1)
+    .andThen((value) => __resultSuccess(value + 1))
     .andThen(() => __resultError(new Timeout("late")));
 
   assert.equal(
@@ -59,28 +61,33 @@ test("Error prototype helpers use nominal identity and causes", () => {
   assert.equal(missing.is(NotFound), true);
   assert.equal(missing.matches(Timeout, NotFound), true);
   assert.equal(
-    missing.match({
-      "domain/NotFound": (error) => error.id,
-    }),
+    missing.match(errorCases([NotFound, (error) => error.id])),
     "abc",
   );
+  assert.equal(errorIdentity(missing), "domain/NotFound");
 
   const wrapped = new Error("wrapped", { cause: missing });
   assert.equal(wrapped.rootCause(), missing);
 });
 
-test("Result.try and tryPromise turn foreign throws and rejections into errors", async () => {
+test("Result.try and tryPromise preserve unexpected foreign throws as Panic", async () => {
   const synchronous = Result.try(() => {
     throw "bad";
   });
   assert.equal(synchronous.isError(), true);
-  assert.ok(synchronous.error instanceof UnhandledException);
+  assert.equal(
+    synchronous.match({ ok: () => false, error: (error) => error instanceof Panic }),
+    true,
+  );
 
   const asynchronous = await Result.tryPromise(async () => {
     throw new Error("rejected");
   });
   assert.equal(asynchronous.isError(), true);
-  assert.ok(asynchronous.error instanceof UnhandledException);
+  assert.equal(
+    asynchronous.match({ ok: () => false, error: (error) => error instanceof Panic }),
+    true,
+  );
 });
 
 test("Optional provides Result-like operations without public some/none constructors", () => {
