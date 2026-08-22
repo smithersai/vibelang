@@ -1,75 +1,145 @@
-# VibeLang architecture risk spike
+# VibeLang production-architecture POC
 
-This directory is the intentionally quick, disposable proof of concept for the
-current repository specifications. It is broad enough to exercise the risky
-boundaries; it is not a candidate production compiler or runtime.
+This directory is the executable architecture POC for the current VibeLang
+design. It is intentionally narrower than a production compiler, but its
+frontend, runtime, build graph, durable journal, process sandboxes, and CLI
+integration are active implementation evidence rather than archived syntax
+experiments.
 
-## Run it
+> **Source-checkout note:** npm includes this nested README alongside the
+> compiled POC modules, but it does not ship the POC tests, examples, or private
+> workspace. The commands below are maintainer checks for a repository checkout;
+> installed consumers should use the root package exports and `vibe` CLI.
+
+The goal is to exercise the boundaries that are expensive to redesign later.
+Unsupported whole-program, control-flow, deployment, and security properties
+remain explicit limitations; this POC should not be presented as a production
+release or a sound TypeScript replacement.
+
+## Verify it
+
+From this directory:
 
 ```sh
-cd poc
 bun install
 bun test
 bun run check
 bun run demo
 ```
 
-The individual demos live under `examples/` and can be run directly with Bun.
-The agent sandbox additionally needs Deno; the Zig/Rust demo needs those
-toolchains.
+The complete suite and demo need `deno`, `zig`, `rustc`, and `node` on `PATH`.
+Deno is used for the loader/comptime and coding-agent process boundaries; Zig
+and Rust are invoked for the real Wasm build proof. The language runtime demo is
+transpiled by Bun but executed under Node, because its async `Layer.provide`
+scope needs exact Promise-settlement hooks that Bun does not provide — running
+it directly under Bun demonstrates the documented fail-closed rejection instead.
+Verification is command-based rather than tied to a test count, because the
+suite is still growing.
 
-Final spike verification is `56` passing tests, the TypeScript 7 native
-typecheck, the full eight-surface demo, and a negative CLI check that rejects a
-missing `Logger` layer without emitting output.
+The root package integrates the same implementation:
 
-## What the spike covers
+```sh
+cd ..
+npm install
+npm test
+node bin/vibe.js check test/fixtures/basic.vibe --format json
+node bin/vibe.js run test/fixtures/basic.vibe
+```
 
-| Surface | Working proof | Deliberate boundary |
+The root CLI supports `.vibe` check, project compile, run, inspect, bounded test,
+static durable Plan, and doctor paths and delegates ordinary TypeScript/
+JavaScript inputs to TypeScript. Declaration and composed source-map output are
+implemented. Watch, formatter, and language-server paths fail explicitly.
+
+## Implemented surfaces and honest boundaries
+
+| Surface | Working evidence | Deliberate boundary |
 | --- | --- | --- |
-| Language + rows | Token-aware `.vibe` lowering, fixed-point failure/requirement inference, pinned rows, exhaustive recovery, and a plain-TypeScript identity gate | Same-file syntactic rows are illustrative; the real TypeScript resolver/checker must own call, scope, provider, and CFG facts |
-| Failures + layers | Invariant failure/defect split, named `uses`, nominal layers, nested and overlapping async scopes | Layer acquisition/disposal, child joining/revocation, and compiler-threaded environments remain open |
-| Optionals + control | Simple `?T`, `orelse`, `.?`, throw and simple if expressions | General blocks/switch/loops and defer forms are rejected until control-flow IR exists |
-| Comptime + assets | JSON/Markdown/MDX/custom loaders keyed by immutable option snapshots, source, target, explicit loader-artifact digest, and tracked dependencies; real-path authority, strict JSON IR, generated-syntax checks, and cache-output digests | Custom loader callbacks are not hermetically sandboxed; module shapes and explicit artifact-digest plumbing are provisional |
-| Type reification | TypeScript declaration AST to validator/schema IR with branded validation failures | Uses a TS 5.9 API alias because the TS 7 preview exposes no JavaScript compiler API |
-| Targets + interop | Transitive `TypeScript` requirement/native-pin heuristics; real Zig and Rust to Wasm compilation, calls, tool identity, and common source-dependency invalidation | Native backend, sound symbol/data-flow classification, ABI metadata, and complete foreign dependency discovery are not built |
-| Concurrency | Bounded task scope that retains/joins children, branded cancellation, typed-shaped joins, cancellation-safe completion-order iteration | Module-expression workers, cross-realm codecs, and capability-inferred cancellation are not built |
-| Durable execution | Action contract descriptors, symbolic projections, portable Plan IR, provider/deployment manifests, SQLite journal, deadlines/retries/fencing/replay, and distinct memo/content reuse | The accepted `durable(...)` source intrinsic and static compiler lowering, real compiler-derived codecs, remote workers, capability enforcement, and signed/tree-shaken artifacts are not built |
-| Coding agent | Asset-backed MDX prompts, fake model/repair loop, generated callable declarations, TS check/policy, fresh zero-permission Deno process, bounded JSON RPC, cancellation, and journal hooks | Signatures/codecs remain explicit, source policy is defense-in-depth rather than a security proof, and container-grade isolation is future work |
+| Checked `.vibe` frontend | One TypeScript Program for an explicit `.vibe` graph; cross-module fixed-point Error and Context rows including generic success values with concrete rows; `Result`/`Optional` lifting; `.unwrap()` early-return lowering; nominal Error matching; braced `if`/`switch` expressions in proven general placements; labeled block values; labeled loop values with `else`; closed-literal-union switch exhaustiveness; known Layer satisfaction; must-consume checks; foreign panic policy; project TypeScript validation; declarations and composed maps | No type-parameter-dependent row polymorphism, stable Context-row declaration encoding, LSP/incremental integration, or unlabeled loop expressions; order-unpreservable hosts, unstable callees, braceless general-placement branches, unsafe label/loop shapes, and unprovable switch coverage fail closed |
+| JavaScript/TypeScript interop | Checker-resolved foreign values add checked panic unless trusted `@throws {never}` or checked `@throws {ErrorClass}` metadata narrows the boundary; unsafe constructors and unprovable shapes fail closed | Complete arbitrary-heap provenance and whole-ecosystem declaration annotation remain production compiler/data-flow work |
+| Runtime and Layers | Non-forgeable local `Result`/`Optional` identity, strict Result/Optional/Error wire codecs, checked Panic adapters, nominal Error registration, async-safe Context lookup, opaque lean Layers with exact Node Promise-settlement revocation, and bounded cancellation/join helpers | Layers intentionally own neither resources nor child tasks; async scopes reject pre-existing Promises unless adapted with `async () => await promise`, and fail closed on hosts without synchronous settlement hooks |
+| Programmatic standard-library POCs | Source-checkout `poc/src/platform` implements all nine designed Node/test capability services, pure `Path`, plus `Config`, `Duration`, `Instant`, and `Schedule`/`Sleeper`; `poc/src/data` implements `Chunk`, `HashMap`, `HashSet`, `Data`, `Equivalence`, `Hash`, and `Match`; root `vibelang/concurrency` exposes typed workers, keyed combinators, governors, unordered helpers, Cancellation, Stream, Queue, Semaphore, and Channel | Platform/data have no root package export-map entries; non-Node/test hosts, a final standard-library contract, compiler-derived data instances, shared structs, `spawn module` syntax/lowering, rendezvous channels, and production worker sandboxing remain absent |
+| Comptime and assets | Checker-identity bounded evaluation without author-module execution; locals, assignment, `while`/`do-while`/`for`/`for-of`, break/continue, interpreter-owned mutation, deterministic stdlib operations, VCT1012 budgets, `comptime.target`, tracked `embed`, and value-derived type aliases with type-only erasure/VCT1013; root static attributed assets plus programmatic re-exports, literal dynamic imports, and nested generated-module graphs to depth four; literal JSON/Markdown/MDX modules, schemas, custom loaders, cache/provenance, and file-identity authority | Not general JavaScript or implicit evaluation; spread/destructuring, labeled comptime control flow, closures as values, ambient state, and computed/mapped/generic type results fail closed. Widened re-export/dynamic/nested asset graphs are not yet end-to-end root CLI lowering; one incremental graph and shared compiler-owned type descriptors remain open |
+| Third-party build code | Custom registration rejects structurally forged callbacks by default; it accepts `createSandboxedLoader` modules and provisionally recognizes checker-identified project files whose default export is `comptime.loader("type", fn)`. Custom loaders/comptime modules run in fresh Deno processes with no ambient permissions, snapshotted source identity, tracked dependency RPC, strict JSON, time/random denial, timeout, V8 heap, input/output, request, and concurrency limits; built-ins win and duplicate project registrations fail closed | Compiler-owned built-ins run in process, and an explicitly unsafe internal test/migration option remains. Source registration is limited to one lowercase type per real project file; package distribution, globs/extensions, options, and a final typed-module builder remain open. The process boundary is not container/VM isolation, OS-wide resource accounting, or a formal sandbox proof |
+| Targets and foreign source | Checker-symbol portability classification with cross-module propagation; canonical checked single-module IR with matching TypeScript-host/Wasm wire hashes for plain, Optional, and Result exits over `f64`/boolean scalars, intra-module calls, locals and assignment, `if`/`while`/`for` under a fixed loop-fuel budget with a canonical `fuel-exhausted` defect, scalar error payloads, and interned printable-ASCII string literals; real bounded `wat2wasm` plus Zig/Rust-to-Wasm invocation; tool identities, deadlines, output limits, and digests | The portable backend is single-module and rejects imports, recursion, call chains deeper than 32, Context, objects, closures, generics, async, string parameters, string concatenation, and non-ASCII strings; external compilers remain trusted; classification is not complete data-flow analysis; no LLVM/native or general Wasm backend is present |
+| Durable execution | Static checker-identity lowering of a bounded `durable(function)` subset without executing source; conditional, timer, schema-checked external-signal, stable-key fan-out with bounded multi-step bodies, explicit `sequential(...)`, attached child Flow, and budgeted `loopWhile(...)` round nodes; minimal-version Plan format emission; compiler-derived structural Action/Flow codecs and exact implementation failure rows; portable Plan IR; canonical artifacts; Ed25519-signed local coordinator admission; provider/deployment routing; SQLite WAL journal; provisional start/resume/status/result/cancel/signal handles; local-trust HMAC sender tokens with explicit unsafe tokenless opt-in; post-COMMIT wakeups plus a correctness-preserving sweep; restart, retries, deadlines, leases, fencing, cancellation, memo/content reuse, corruption checks, and coordinator races | General unbudgeted loops, nested fan-out, queues/broadcast, detached children, signals addressable inside a child Plan, separately signed child manifests, recurring/calendar timers, tree-shaken bundle attestation, remote transport/authorization and workers, migration policy, revocation/anti-rollback, and distributed coordination remain open |
+| Durable artifact boundary | `compileDurableSource` and `vibe plan` emit canonical Plan bytes; artifact loading reconstructs a compiled Flow without loading the author callback or an Action implementation | Action descriptors are supplied through a temporary pinned binding seam rather than derived from the unified language type descriptor |
+| Deployment authority | Provider policy and deployment manifests pin capability grants; a canonical Ed25519 envelope authenticates the exact manifest under out-of-band trust roots; an opaque proof gates worker construction; non-local signed sandboxes require an exact host-issued transport token; and the local worker rejects invocation grants that differ from route/provider policy | The signature authenticates pinned metadata, not callback closures or emitted bundle bytes; the transport token prevents silent kind downgrade but still trusts its host factory; grants are not installed into a remote/container capability system, and freshness, revocation, anti-rollback, remote transport, and sandbox attestation remain open |
+| Coding agent | Asset-backed MDX prompt, scripted default model/repair loop, generated callable declarations, TypeScript checks, fresh no-permission Deno execution, strict bounded JSON RPC, compiler-derived bounded structural schemas, resource/call/backpressure/cancellation limits, a typed `ModelAdapter` seam, tool-to-Action adapters, compiled-Flow bindings whose derived execution ids join the same execution on replay, and a real SQLite turn journal whose digest-chained rows replay completed calls without invoking the model or host; a real Anthropic adapter exists as an example only | The published package still defaults to `ScriptedModel`; the Anthropic example and SDK are excluded from its dependency closure. Agent and durable journals are separate databases rather than one atomic history; Flow execution is local/in-process and per-site ordinal identity is not stable for data-dependent loops; rows are neither signed nor redacted; schema coverage/evolution and process isolation remain bounded |
+| Package delivery | Root exports include language/runtime/build/target/agent/concurrency and Node-safe/static plus Bun durable surfaces; clean consumers exercise CLI, public types, and runtime APIs; pack verification compares independent tarballs and contents | Publishing/signing and multi-platform release CI remain external operations |
 
-## Important honesty notes
+## Current language frontend
 
-- The official specs and historical `prototype/` were not rewritten for this
-  spike. The old prototype still demonstrates obsolete unnamed `uses` and
-  `provide {}` syntax; this POC follows the current named/layer design.
-- TypeScript 7.0.2 in this workspace is the Go-native preview. Its npm package
-  provides the compiler CLI but not the historical JavaScript compiler API.
-  `typescript-js` 5.9 is scaffolding for the schema and agent experiments only.
-- This is not a fork or plugin for the Go compiler. The token/AST transforms are
-  disposable instruments for discovering where parser, resolver, checked IR,
-  and control-flow hooks are mandatory; they are not evidence of conformance.
-- The target classifier and provider-row checker intentionally prove diagnostic
-  shape and dependency-path UX, not sound transitive closure.
-- `Layer` proves overlapping async lookup scopes, not resource lifetime:
-  acquisition, structured child ownership, revocation, and disposal are absent.
-- Flow authoring still uses the obsolete `Flow.define(...)` POC API and executes
-  its callback in the host process. The accepted design instead imports
-  `durable` from `vibelang:flows` and statically lowers the passed function's
-  checked body without invoking it. The POC proves only the symbolic IR/runtime
-  boundary. Loader callbacks have a similar hermeticity limitation even though
-  their declared inputs and real paths are now tracked.
-- Durable `capabilityGrant` values are caller-selected protocol metadata in this
-  POC; they are neither authenticated nor enforced by a real worker sandbox.
-- The Deno agent process denies OS permissions and obvious realm escape syntax,
-  but source filtering and a language runtime are not a production sandbox. It
-  also lacks OS-enforced memory/CPU/output quotas and transport backpressure.
-- Runtime implementation IDs, loader artifact digests, and temporary Action
-  contract digests are explicitly supplied. Production must derive these from
-  compiler output and actual signed artifact bytes.
-- The foreign graph tracks common Zig/Rust source dependencies for the demo,
-  not every include, package, build-script input, environment fact, or tool file.
-- JSON is a temporary canonical persistence/wire format. The durable runtime's
-  schema fields are marked as compiler-derived stubs rather than pretending
-  runtime TypeScript generics can be reflected.
+`src/language` is the current compiler-shaped frontend POC. Its tests encode
+the accepted TypeScript-shaped syntax and intentional VibeLang divergences.
+They are not obsolete tests and should remain part of the release gate.
 
-See [FINDINGS.md](FINDINGS.md) for the architecture conclusions and proposed
-production roadmap.
+The frontend proves the semantics most likely to affect parser/checker/IR
+architecture:
+
+- expected failures use `Result<A, E>` and ordinary `Error` subclasses;
+- absence uses `Optional<T>` without optional-specific grammar;
+- `.unwrap()` is a checked early exit, not JavaScript exception handling;
+- `Context.context()` contributes a nominal requirement and known Layers
+  satisfy requirements without owning resources or work;
+- plain JavaScript `try/catch` retains JavaScript behavior;
+- every direct untrusted JavaScript/TypeScript boundary can panic, with
+  `@throws` metadata as the explicit trust/narrowing mechanism; and
+- retired custom error/optional/catch syntax and unsupported control-flow
+  lowering receive diagnostics instead of approximate code generation.
+
+See the repository's [checked-frontend notes](https://github.com/smithersai/vibelang/blob/main/poc/src/language/README.md) for its public API,
+lowering details, and exact bounded-project limitations.
+
+## Durable planning: two paths that must not be confused
+
+The POC still contains `Flow.define(...)`, a convenient host callback/proxy DSL
+used to exercise symbolic Plan IR and the local executor. That callback is not
+the accepted language design and is not hermetic compiler lowering.
+
+Separately, the canonical static Plan artifact path is real. The source compiler
+recognizes imported `durable` and Actions by checker identity, lowers a bounded
+function with conditional, timer, keyed fan-out (single-Action or bounded
+multi-step), explicit sequencing, attached child Flow, and budgeted loop-round
+primitives without module evaluation, and emits the same validated
+artifact consumed by deployment execution. `vibe plan` exposes that path. The
+remaining compiler work is broader control-flow lowering, type-derived Action
+contracts, and integration into the common frontend/build graph.
+
+## Security interpretation
+
+The Deno boundaries are meaningful adversarial POC evidence: they use fresh
+processes, deny ambient filesystem/network/environment/process/import
+permissions, constrain V8 heap and wall-clock execution, bound protocol volume
+and concurrency, and validate strict JSON messages. They also close or abort
+in-flight host work on cancellation and protocol failure.
+
+They are not a claim of hostile multi-tenant production confinement. V8 heap
+limits are not total process-memory limits, wall-clock termination is not an OS
+CPU quota, source filtering is not a proof, and there is no container/VM image,
+seccomp profile, remote capability enforcement, or attestation. The signed
+local deployment envelope authenticates the manifest's pinned digests; it does
+not turn the named implementation into an attested bundle.
+
+## Remaining highest-risk work
+
+1. Replace the TypeScript-JS frontend instrument with narrow hooks in the pinned
+   Go TypeScript fork, retaining project/module rows while adding checked
+   control-flow IR, stable row declarations, incremental builds, and editor support.
+2. Integrate compiler-owned comptime/type descriptors with the content-addressed
+   asset, schema, foreign, target, and generated-code rules already exercised.
+3. Expand bounded durable source lowering from its conditional, timer, signal,
+   keyed fan-out, sequencing, child-Flow, and budgeted-loop primitives to
+   general unbudgeted loops, nested fan-out, queues, detached children, and
+   migrations; retire the live host callback path in favor of
+   compiler-emitted worker artifacts.
+4. Bind signed manifests to emitted tree-shaken worker bundles, add protected
+   key custody/revocation/anti-rollback, real remote workers, authenticated
+   capability installation, and multi-machine recovery tests.
+5. Replace sandbox source-policy heuristics and V8-only bounds with audited
+   container/VM confinement and OS-enforced resource controls where the threat
+   model requires hostile-code isolation.
+
+See the repository's [architecture findings](https://github.com/smithersai/vibelang/blob/main/poc/FINDINGS.md)
+and [production-readiness audit](https://github.com/smithersai/vibelang/blob/main/poc/PRODUCTION_READINESS.md)
+for the roadmap and evidence-based release checklist.
