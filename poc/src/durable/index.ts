@@ -29,18 +29,40 @@ export {
   DurableActionDefect,
   DurableActionFailure,
   DurableExecutionAlreadyFailed,
+  DurableExecutionCancelled,
   DurableExecutor,
-  type ExecuteOptions
+  type DurableExecutionHandle,
+  type DurableExecutorOptions,
+  type DurableSignalOptions,
+  type ExecuteOptions,
+  type SignalDeliveryGrant
 } from "./engine.ts"
 export {
+  AuthenticatedCoordinator,
+  AuthenticatedCoordinatorTransportError,
+  createAuthenticatedDurableExecutor,
+  trustWorkerTransport,
+  type AuthenticatedCoordinatorOptions,
+  type AuthenticatedWorkerFactory,
+  type TrustedWorkerTransport
+} from "./authenticated-executor.ts"
+export {
+  collectPoolBundles,
   Deployment,
+  type DurableWorker,
   LocalWorker,
+  manifestWorkerGate,
+  prepareManifestInvocation,
+  type ManifestWorkerGate,
+  type PreparedManifestInvocation,
+  type PreparedWorkerInvocation,
   Provider,
   Worker,
   type ActionExecutionContext,
   type ActionImplementation,
   type ActionProvider,
   type BuiltDeployment,
+  type CheckedProviderOptions,
   type ProviderOptions,
   type ProviderReuse,
   type WorkerPool,
@@ -52,15 +74,38 @@ export {
   validateActionImplementationContract,
   type CompileActionImplementationOptions
 } from "./implementation-contract.ts"
+export { WakeupService } from "./wakeup.ts"
 export {
   ContentIntegrityError,
   DurableStore,
+  SignalDeliveryConflictError,
+  SignalDeliveryRejectedError,
+  SignalDeliveryUnauthorizedError,
+  type MintedSignalToken,
+  type SignalDeliveryAuthorization,
+  type ChildExecutionLink,
+  type ChildExecutionLinkResult,
   type ClaimResult,
+  type CachedSuccessCommit,
   type ExecutionStatus,
+  type FinishExecutionResult,
+  type FanOutMaterializationEntry,
+  type FanOutMaterializationResult,
+  type FanOutStepMaterializationRequest,
+  type FanOutStepMaterializationResult,
+  type LoopRoundMaterializationRequest,
+  type LoopRoundMaterializationResult,
   type JournalEvent,
   type NodeStatus,
+  type SignalContractExpectation,
+  type SignalDeliveryRequest,
+  type SignalDeliveryResult,
+  type SignalInboxState,
+  type SignalPollResult,
   type StoredExecution,
-  type StoredNodeExit
+  type StoredNodeExit,
+  type StableFanOutKey,
+  type TimerScheduleResult
 } from "./store.ts"
 export {
   allPlanNodes,

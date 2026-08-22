@@ -2,20 +2,39 @@ import { randomUUID } from "node:crypto"
 import {
   assertJson,
   canonicalJson,
+  deepFreeze,
   digest,
+  fanOutSteps,
+  type ActionNode,
+  type ChildFlowNode,
   type DeploymentManifest,
+  type FanOutNode,
+  type FanOutStep,
+  type FanOutTemplateExpr,
   fragmentNodeIds,
   type Invocation,
   type JsonValue,
+  type LoopNode,
+  type LoopTemplateExpr,
   type PlanFragment,
   type PlanNode,
   type PlanTemplate,
   type ValueExpr,
   type WorkerExit
 } from "./ir.ts"
-import type { BuiltDeployment } from "./provider.ts"
+import type { BuiltDeployment, DurableWorker, WorkerPool } from "./provider.ts"
 import { LocalWorker } from "./provider.ts"
-import { ContentIntegrityError, DurableStore, type StoredNodeExit } from "./store.ts"
+import {
+  ContentIntegrityError,
+  DurableStore,
+  type ExecutionStatus,
+  type SignalContractExpectation,
+  type SignalDeliveryAuthorization,
+  type SignalDeliveryRequest,
+  type SignalDeliveryResult,
+  type StoredNodeExit
+} from "./store.ts"
+import { validateDurableValue } from "./schema.ts"
 
 export class DurableActionFailure extends Error {
   constructor(
@@ -44,7 +63,14 @@ export class DurableExecutionAlreadyFailed extends Error {
   }
 }
 
-/** Used by the demo to model a coordinator dying after commit but before exposure. */
+export class DurableExecutionCancelled extends Error {
+  constructor(readonly reason: JsonValue) {
+    super("Durable execution was cancelled")
+    this.name = "DurableExecutionCancelled"
+  }
+}
+
+/** Used by tests/demo to model coordinator death after a durable commit. */
 export class CoordinatorCrash extends Error {
   constructor(readonly nodeId: string) {
     super(`Simulated coordinator crash after adopting ${nodeId}`)
@@ -55,20 +81,129 @@ export class CoordinatorCrash extends Error {
 export interface ExecuteOptions {
   readonly executionId: string
   readonly deadline?: number
-  readonly capabilityGrant?: readonly string[]
   readonly leaseMs?: number
+  /**
+   * Fallback sweep interval (ms) for suspended timer/signal waits. The sweep
+   * is the correctness bound — a wait re-reads committed state at least this
+   * often — while same-process wakeup notifications provide the fast path.
+   */
+  readonly wakeupSweepMs?: number
   readonly traceContext?: Readonly<Record<string, string>>
+  /** Runs after the absolute timer wake time is durably committed. */
+  readonly afterTimerScheduled?: (nodeId: string, wakeAt: number) => void | Promise<void>
+  /** Runs once after a signal wait is durably visible and holds no worker lease. */
+  readonly afterSignalWaiting?: (nodeId: string, signalId: string) => void | Promise<void>
+  /** Runs after the complete fan-out key/child set is durably committed. */
+  readonly afterFanOutMaterialized?: (nodeId: string, childNodeIds: readonly string[]) => void | Promise<void>
+  /** Runs after one later fan-out step child is durably materialized and before it is dispatched. */
+  readonly afterFanOutStepMaterialized?: (nodeId: string, childNodeId: string) => void | Promise<void>
+  /** Runs after one loop round is durably materialized and before it is dispatched. */
+  readonly afterLoopRoundMaterialized?: (nodeId: string, childNodeId: string, round: number) => void | Promise<void>
+  /** Runs after a childFlow node's execution linkage is durably committed. */
+  readonly afterChildFlowLinked?: (nodeId: string, childExecutionId: string) => void | Promise<void>
   /** Runs after the durable terminal commit and before the result is exposed. */
   readonly afterNodeAdopted?: (nodeId: string) => void | Promise<void>
 }
 
+export interface DurableExecutorOptions {
+  /** Deployment/runtime seam for process, sandbox, or remote worker transports. */
+  readonly workerFactory?: (
+    pool: WorkerPool,
+    manifest: DeploymentManifest,
+    providers: BuiltDeployment["providers"]
+  ) => DurableWorker
+}
+
+/** Provisional handle-side delivery options: exact fields, no identity authority. */
+export interface DurableSignalOptions {
+  readonly idempotencyKey: string
+  readonly payload: unknown
+}
+
+/**
+ * Provisional minted delivery evidence for exactly one (execution, signal)
+ * pair. `senderToken` is opaque local-trust evidence (HMAC under the store's
+ * persisted secret), not remote-network authentication.
+ */
+export interface SignalDeliveryGrant {
+  readonly executionId: string
+  readonly nodeId: string
+  readonly signalId: string
+  readonly senderToken: string
+}
+
+/**
+ * Provisional typed control handle over one durable execution. Every method
+ * addresses only the handle's own execution id — a handle carries no
+ * cross-execution authority — and a handle can be re-obtained after process
+ * restart from the execution id and store alone via `DurableExecutor.resume`.
+ */
+export interface DurableExecutionHandle<Success = unknown> {
+  readonly executionId: string
+  /** The durable execution status as committed in the store right now. */
+  status(): ExecutionStatus
+  /**
+   * Resolves with the typed Flow success once terminal; rejects with the
+   * typed failure (`DurableActionFailure`/`DurableExecutionAlreadyFailed`),
+   * cancellation, or defect exactly as `execute` would.
+   */
+  result(): Promise<Success>
+  cancel(reason?: JsonValue): void
+  /**
+   * Delivers one external signal to this execution through the authenticated
+   * exact-identity path: the handle mints a sender token bound to its own
+   * (executionId, signalId) and never addresses another execution.
+   */
+  signal(signalId: string, options: DurableSignalOptions): SignalDeliveryResult
+}
+
+const MAX_TIMER_DELAY_MS = 2_147_483_647
+const MAX_FAN_OUT_ITEMS = 10_000
+/**
+ * Default fallback sweep for suspended waits. Deliberately much longer than
+ * the old 25 ms poll: the sweep only bounds how late a wakeup can be when the
+ * in-process notification fast path did not fire (another connection, another
+ * process); it is never the mechanism a same-process wakeup depends on.
+ */
+const DEFAULT_WAKEUP_SWEEP_MS = 250
+
 const delay = (milliseconds: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, Math.max(0, milliseconds)))
+  new Promise((resolve) => setTimeout(resolve, Math.min(MAX_TIMER_DELAY_MS, Math.max(0, milliseconds))))
+
+const delayUntil = async (timestamp: number): Promise<void> => {
+  while (Date.now() < timestamp) {
+    await delay(timestamp - Date.now())
+  }
+}
+
+const cancellationReason = (storedError: JsonValue): JsonValue => {
+  if (
+    storedError !== null && typeof storedError === "object" && !Array.isArray(storedError) &&
+    storedError.category === "cancelled" && Object.hasOwn(storedError, "reason")
+  ) {
+    return storedError.reason
+  }
+  return storedError
+}
+
+const traceContext = (value: unknown): Readonly<Record<string, string>> => {
+  const normalized = assertJson(value ?? {}, "durable trace context")
+  if (
+    normalized === null || Array.isArray(normalized) || typeof normalized !== "object" ||
+    Object.values(normalized).some((entry) => typeof entry !== "string")
+  ) {
+    throw new TypeError("Durable trace context must be an object of strings")
+  }
+  return Object.freeze({ ...normalized }) as Readonly<Record<string, string>>
+}
 
 const pathValue = (value: JsonValue, path: readonly string[], description: string): JsonValue => {
   let current: JsonValue = value
   for (const part of path) {
     if (Array.isArray(current)) {
+      if (!/^(0|[1-9][0-9]*)$/.test(part)) {
+        throw new DurableActionDefect(description, { _tag: "ProjectionDefect", path: [...path] })
+      }
       const index = Number(part)
       if (!Number.isSafeInteger(index) || index < 0 || index >= current.length) {
         throw new DurableActionDefect(description, { _tag: "ProjectionDefect", path: [...path] })
@@ -98,11 +233,97 @@ const numberValue = (value: JsonValue, description: string): number => {
   return value
 }
 
+const timerDurationValue = (value: JsonValue, description: string): number => {
+  const durationMs = numberValue(value, description)
+  if (!Number.isSafeInteger(durationMs) || durationMs < 0) {
+    throw new DurableActionDefect(description, {
+      _tag: "TimerDurationDefect",
+      expected: "non-negative safe integer milliseconds",
+      value
+    })
+  }
+  return durationMs
+}
+
 const stringValue = (value: JsonValue, description: string): string => {
   if (typeof value !== "string") {
     throw new DurableActionDefect(description, { _tag: "ExpressionTypeDefect", expected: "string", value })
   }
   return value
+}
+
+const fanOutKeyValue = (value: JsonValue, description: string): string | number | boolean => {
+  if (
+    (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") ||
+    (typeof value === "number" && (!Number.isFinite(value) || Object.is(value, -0)))
+  ) {
+    throw new DurableActionDefect(description, {
+      _tag: "FanOutKeyDefect",
+      expected: "canonical string, number, or boolean",
+      value
+    })
+  }
+  return value
+}
+
+const instantiateFanOutTemplate = (
+  expression: FanOutTemplateExpr,
+  item: JsonValue,
+  stepResults: readonly JsonValue[],
+  description: string
+): JsonValue => {
+  switch (expression.kind) {
+    case "item": return pathValue(item, expression.path, description)
+    case "step": {
+      const prior = stepResults[expression.step]
+      if (prior === undefined) {
+        throw new DurableActionDefect(description, { _tag: "FanOutStepReferenceDefect", step: expression.step })
+      }
+      return pathValue(prior, expression.path, description)
+    }
+    case "literal": return expression.value
+    case "array": return expression.items.map((entry) => instantiateFanOutTemplate(entry, item, stepResults, description))
+    case "object": return Object.fromEntries(Object.entries(expression.fields)
+      .map(([name, entry]) => [name, instantiateFanOutTemplate(entry, item, stepResults, description)]))
+  }
+}
+
+/**
+ * Pure, deterministic evaluation of a loop template over one durable state
+ * value: identical inputs replay to identical outputs on every coordinator.
+ */
+const evaluateLoopTemplate = (
+  expression: LoopTemplateExpr,
+  state: JsonValue,
+  description: string
+): JsonValue => {
+  switch (expression.kind) {
+    case "state": return pathValue(state, expression.path, description)
+    case "literal": return expression.value
+    case "array": return expression.items.map((entry) => evaluateLoopTemplate(entry, state, description))
+    case "object": return Object.fromEntries(Object.entries(expression.fields)
+      .map(([name, entry]) => [name, evaluateLoopTemplate(entry, state, description)]))
+    case "unary":
+      return !booleanValue(evaluateLoopTemplate(expression.value, state, description), description)
+    case "binary": {
+      const left = evaluateLoopTemplate(expression.left, state, description)
+      if (expression.operator === "and" && !booleanValue(left, description)) return false
+      if (expression.operator === "or" && booleanValue(left, description)) return true
+      const right = evaluateLoopTemplate(expression.right, state, description)
+      switch (expression.operator) {
+        case "eq": return canonicalJson(left) === canonicalJson(right)
+        case "neq": return canonicalJson(left) !== canonicalJson(right)
+        case "gt": return numberValue(left, description) > numberValue(right, description)
+        case "gte": return numberValue(left, description) >= numberValue(right, description)
+        case "lt": return numberValue(left, description) < numberValue(right, description)
+        case "lte": return numberValue(left, description) <= numberValue(right, description)
+        case "and": return booleanValue(left, description) && booleanValue(right, description)
+        case "or": return booleanValue(left, description) || booleanValue(right, description)
+        case "add": return numberValue(left, description) + numberValue(right, description)
+        case "concat": return stringValue(left, description) + stringValue(right, description)
+      }
+    }
+  }
 }
 
 const fromStoredExit = (nodeId: string, exit: StoredNodeExit): JsonValue => {
@@ -115,6 +336,8 @@ const fromStoredExit = (nodeId: string, exit: StoredNodeExit): JsonValue => {
       throw new DurableActionDefect(nodeId, exit.defect)
     case "skipped":
       throw new DurableActionDefect(nodeId, { _tag: "SkippedValueDefect" })
+    case "cancelled":
+      throw new DurableExecutionCancelled(exit.reason)
   }
 }
 
@@ -122,9 +345,23 @@ interface RunContext {
   readonly executionId: string
   readonly input: JsonValue
   readonly deadline: number
-  readonly capabilityGrant: readonly string[]
   readonly leaseMs: number
+  readonly wakeupSweepMs: number
   readonly traceContext: Readonly<Record<string, string>>
+  readonly afterTimerScheduled?: ((nodeId: string, wakeAt: number) => void | Promise<void>) | undefined
+  readonly afterSignalWaiting?: ((nodeId: string, signalId: string) => void | Promise<void>) | undefined
+  readonly afterFanOutMaterialized?: (
+    (nodeId: string, childNodeIds: readonly string[]) => void | Promise<void>
+  ) | undefined
+  readonly afterFanOutStepMaterialized?: (
+    (nodeId: string, childNodeId: string) => void | Promise<void>
+  ) | undefined
+  readonly afterLoopRoundMaterialized?: (
+    (nodeId: string, childNodeId: string, round: number) => void | Promise<void>
+  ) | undefined
+  readonly afterChildFlowLinked?: (
+    (nodeId: string, childExecutionId: string) => void | Promise<void>
+  ) | undefined
   readonly afterNodeAdopted?: ((nodeId: string) => void | Promise<void>) | undefined
   readonly resolutions: Map<string, Promise<JsonValue>>
 }
@@ -133,12 +370,21 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
   readonly owner = randomUUID()
   private readonly nodes = new Map<string, PlanNode>()
   private readonly routes: Map<string, BuiltDeployment<Input, Success>["manifest"]["routes"][number]>
-  private readonly workers = new Map<string, LocalWorker>()
+  private readonly workers = new Map<string, DurableWorker>()
+  private readonly executorOptions: DurableExecutorOptions
+  /** Lazily constructed executors for embedded child Flow deployments, by child Plan digest. */
+  private readonly childExecutors = new Map<string, DurableExecutor<unknown, unknown>>()
+  private readonly activeAttempts = new Map<string, {
+    readonly executionId: string
+    readonly controller: AbortController
+  }>()
 
   constructor(
     readonly deployment: BuiltDeployment<Input, Success>,
-    readonly store: DurableStore
+    readonly store: DurableStore,
+    options: DurableExecutorOptions = {}
   ) {
+    this.executorOptions = options
     this.routes = new Map(deployment.manifest.routes.map((route) => [route.actionId, route]))
     const collect = (fragment: PlanFragment): void => {
       for (const node of fragment.nodes) {
@@ -151,20 +397,85 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       }
     }
     collect(deployment.flow.plan)
+    const workerFactory = options.workerFactory ?? ((pool, manifest, providers) =>
+      new LocalWorker(pool, manifest, providers))
     for (const pool of deployment.pools.values()) {
-      this.workers.set(pool.id, new LocalWorker(pool, deployment.manifest, deployment.providers))
+      const worker = workerFactory(pool, deployment.manifest, deployment.providers)
+      if (worker === null || typeof worker !== "object" || typeof worker.invoke !== "function") {
+        throw new TypeError(`Worker factory returned an invalid transport for pool ${pool.id}`)
+      }
+      this.workers.set(pool.id, worker)
     }
   }
 
   async execute(inputValue: Input, options: ExecuteOptions): Promise<Success> {
-    const input = assertJson(inputValue, "Flow input")
+    if (typeof options.executionId !== "string" || options.executionId.trim() === "") {
+      throw new TypeError("Durable execution id must be non-empty")
+    }
+    const flowSchemas = this.deployment.flow.plan.flowSchemas
+    const checkedFlowSuccess = (
+      value: unknown,
+      label: string,
+      defectName: "FlowSuccessCodecDefect" | "PersistedFlowCodecDefect"
+    ): JsonValue => {
+      if (flowSchemas === undefined) return value as JsonValue
+      try {
+        return validateDurableValue(flowSchemas.success, value, label)
+      } catch (error) {
+        throw new DurableActionDefect("$execution", {
+          name: defectName,
+          message: error instanceof Error ? error.message : `${label} failed its durable codec`
+        })
+      }
+    }
+    const checkedStoredFailure = (value: JsonValue, label: string): JsonValue => {
+      try {
+        if (value === null || typeof value !== "object" || Array.isArray(value) ||
+          canonicalJson(Object.keys(value).sort()) !== canonicalJson(["category", "error"]) ||
+          (value.category !== "failure" && value.category !== "defect")) {
+          throw new TypeError(`${label} has an invalid terminal failure envelope`)
+        }
+        if (value.category === "failure" && flowSchemas?.error !== undefined) {
+          validateDurableValue(flowSchemas.error, value.error, `${label} typed error`)
+        }
+        return value
+      } catch (error) {
+        throw new DurableActionDefect("$execution", {
+          name: "PersistedFlowCodecDefect",
+          message: error instanceof Error ? error.message : `${label} failed its durable codec`
+        })
+      }
+    }
+    let input: JsonValue
+    try {
+      input = flowSchemas === undefined
+        ? assertJson(inputValue, "Flow input")
+        : validateDurableValue(flowSchemas.input, inputValue, "Flow input")
+    } catch (error) {
+      throw new DurableActionDefect("$execution", {
+        name: "FlowInputCodecDefect",
+        message: error instanceof Error ? error.message : "Flow input failed its durable codec"
+      })
+    }
     const requestedDeadline = options.deadline ?? Date.now() + 60_000
     if (!Number.isSafeInteger(requestedDeadline) || requestedDeadline < 0) {
       throw new TypeError("Durable execution deadline must be a non-negative integer timestamp")
     }
-    if (options.leaseMs !== undefined && (!Number.isFinite(options.leaseMs) || options.leaseMs <= 0)) {
-      throw new TypeError("Durable execution leaseMs must be positive")
+    const requestedLeaseMs = options.leaseMs ?? 2_000
+    if (
+      !Number.isSafeInteger(requestedLeaseMs) || requestedLeaseMs <= 0 ||
+      !Number.isSafeInteger(Date.now() + requestedLeaseMs)
+    ) {
+      throw new TypeError("Durable execution leaseMs must be a positive safe integer")
     }
+    const requestedWakeupSweepMs = options.wakeupSweepMs ?? DEFAULT_WAKEUP_SWEEP_MS
+    if (
+      !Number.isSafeInteger(requestedWakeupSweepMs) || requestedWakeupSweepMs <= 0 ||
+      !Number.isSafeInteger(Date.now() + requestedWakeupSweepMs)
+    ) {
+      throw new TypeError("Durable execution wakeupSweepMs must be a positive safe integer")
+    }
+    const normalizedTraceContext = traceContext(options.traceContext)
     const stored = this.store.initializeExecution(
       options.executionId,
       this.deployment.flow.plan,
@@ -172,45 +483,255 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       input,
       requestedDeadline
     )
-    if (stored.status === "completed") return stored.output as Success
-    if (stored.status === "failed") throw new DurableExecutionAlreadyFailed(stored.error!)
+    if (stored.status === "completed") {
+      return checkedFlowSuccess(
+        stored.output,
+        "stored Flow success",
+        "PersistedFlowCodecDefect"
+      ) as Success
+    }
+    if (stored.status === "failed") {
+      throw new DurableExecutionAlreadyFailed(checkedStoredFailure(stored.error!, "stored Flow failure"))
+    }
+    if (stored.status === "cancelled") throw new DurableExecutionCancelled(cancellationReason(stored.error!))
     const context: RunContext = {
       executionId: options.executionId,
       input,
       // A restart cannot silently reset the execution's retry deadline.
       deadline: stored.deadline,
-      capabilityGrant: Object.freeze([...(options.capabilityGrant ?? [])]),
-      leaseMs: options.leaseMs ?? 2_000,
-      traceContext: Object.freeze({ ...(options.traceContext ?? {}) }),
+      leaseMs: requestedLeaseMs,
+      wakeupSweepMs: requestedWakeupSweepMs,
+      traceContext: normalizedTraceContext,
+      afterTimerScheduled: options.afterTimerScheduled,
+      afterSignalWaiting: options.afterSignalWaiting,
+      afterFanOutMaterialized: options.afterFanOutMaterialized,
+      afterFanOutStepMaterialized: options.afterFanOutStepMaterialized,
+      afterLoopRoundMaterialized: options.afterLoopRoundMaterialized,
+      afterChildFlowLinked: options.afterChildFlowLinked,
       afterNodeAdopted: options.afterNodeAdopted,
       resolutions: new Map()
     }
     try {
+      if (Date.now() >= context.deadline) {
+        throw new DurableActionDefect("$execution", {
+          name: "DeadlineExceeded",
+          message: "Persisted execution deadline exceeded before execution or resume"
+        })
+      }
       // Every root declaration runs, even when its value is not the Flow output.
       await Promise.all(this.deployment.flow.plan.nodes.map((node) => this.resolveNode(node.id, context)))
-      const output = await this.evaluate(this.deployment.flow.plan.output, context)
+      let output = await this.evaluate(this.deployment.flow.plan.output, context)
+      output = checkedFlowSuccess(output, "Flow success", "FlowSuccessCodecDefect")
+      if (Date.now() >= context.deadline) {
+        throw new DurableActionDefect("$execution", {
+          name: "DeadlineExceeded",
+          message: "Persisted execution deadline exceeded before terminal commit"
+        })
+      }
       const finished = this.store.completeExecution(options.executionId, output)
-      if (finished.execution.status === "completed") return finished.execution.output as Success
-      throw new DurableExecutionAlreadyFailed(finished.execution.error!)
+      if (finished.execution.status === "completed") {
+        return checkedFlowSuccess(
+          finished.execution.output,
+          "committed Flow success",
+          "PersistedFlowCodecDefect"
+        ) as Success
+      }
+      if (finished.execution.status === "cancelled") {
+        throw new DurableExecutionCancelled(cancellationReason(finished.execution.error!))
+      }
+      throw new DurableExecutionAlreadyFailed(checkedStoredFailure(
+        finished.execution.error!,
+        "concurrent Flow failure"
+      ))
     } catch (error) {
       if (error instanceof CoordinatorCrash) throw error // process death leaves the execution resumable
+      let terminalError = error
+      if (error instanceof DurableActionFailure && flowSchemas?.error !== undefined) {
+        try {
+          validateDurableValue(flowSchemas.error, error.failure, "Flow typed failure")
+        } catch (codecError) {
+          terminalError = new DurableActionDefect(error.nodeId, {
+            name: "FlowFailureCodecDefect",
+            message: codecError instanceof Error
+              ? codecError.message
+              : "Flow failure failed its durable codec"
+          })
+        }
+      }
       let finished
-      if (error instanceof DurableActionFailure) {
-        finished = this.store.failExecution(options.executionId, "failure", error.failure)
-      } else if (error instanceof DurableActionDefect) {
-        finished = this.store.failExecution(options.executionId, "defect", error.defect)
+      if (terminalError instanceof DurableActionFailure) {
+        finished = this.store.failExecution(options.executionId, "failure", terminalError.failure)
+      } else if (terminalError instanceof DurableActionDefect) {
+        finished = this.store.failExecution(options.executionId, "defect", terminalError.defect)
       } else {
         finished = this.store.failExecution(options.executionId, "defect", {
-          name: error instanceof Error ? error.name : "CoordinatorDefect",
-          message: error instanceof Error ? error.message : String(error)
+          name: terminalError instanceof Error ? terminalError.name : "CoordinatorDefect",
+          message: terminalError instanceof Error ? terminalError.message : String(terminalError)
         })
       }
       if (!finished.changed) {
-        if (finished.execution.status === "completed") return finished.execution.output as Success
-        throw new DurableExecutionAlreadyFailed(finished.execution.error!)
+        if (finished.execution.status === "completed") {
+          return checkedFlowSuccess(
+            finished.execution.output,
+            "concurrent Flow success",
+            "PersistedFlowCodecDefect"
+          ) as Success
+        }
+        if (finished.execution.status === "cancelled") {
+          throw new DurableExecutionCancelled(cancellationReason(finished.execution.error!))
+        }
+        throw new DurableExecutionAlreadyFailed(checkedStoredFailure(
+          finished.execution.error!,
+          "concurrent Flow failure"
+        ))
       }
-      throw error
+      throw terminalError
     }
+  }
+
+  cancel(executionId: string, reason: JsonValue = { name: "Cancelled", message: "Cancelled by caller" }): void {
+    // Cancellation is recorded durably (parent and attached children in one
+    // fenced transaction) before live attempts observe the abort.
+    this.store.cancelExecution(executionId, assertJson(reason, "cancellation reason"))
+    this.abortExecutionTree(executionId)
+  }
+
+  private abortExecutionTree(executionId: string): void {
+    for (const attempt of this.activeAttempts.values()) {
+      if (attempt.executionId === executionId) attempt.controller.abort()
+    }
+    for (const link of this.store.listChildExecutions(executionId)) {
+      // An executor this process never constructed has no live attempts here;
+      // the durable cancellation above already fenced its persisted state.
+      this.childExecutors.get(link.planDigest)?.abortExecutionTree(link.childExecutionId)
+    }
+  }
+
+  /**
+   * Provisional external delivery entry point for the signal POC. Delivery is
+   * fail-closed on sender authorization: the default requires a sender token
+   * minted for exactly (executionId, signalId); the tokenless direct path
+   * survives only behind an explicit `unsafeLocalDelivery: true` for
+   * in-process tests/legacy callers. Wire spelling remains non-normative.
+   */
+  deliverSignal(
+    request: SignalDeliveryRequest,
+    authorization: SignalDeliveryAuthorization = {}
+  ): SignalDeliveryResult {
+    const normalized = assertJson(request, "durable signal delivery request")
+    if (
+      normalized === null || Array.isArray(normalized) || typeof normalized !== "object" ||
+      canonicalJson(Object.keys(normalized).sort()) !== canonicalJson([
+        "executionId", "idempotencyKey", "nodeId", "payload", "signalId"
+      ]) || typeof normalized.nodeId !== "string" || typeof normalized.signalId !== "string"
+    ) throw new TypeError("Durable signal delivery request must have exact fields")
+    const safeRequest = normalized as unknown as SignalDeliveryRequest
+    const node = this.nodes.get(safeRequest.nodeId)
+    if (node?.kind !== "signal" || node.signalId !== safeRequest.signalId) {
+      throw new TypeError(`Delivery does not address a signal in this deployment Plan`)
+    }
+    const expectation: SignalContractExpectation = {
+      planDigest: this.deployment.flow.plan.digest,
+      signalId: node.signalId,
+      signalContractDigest: node.signalContractDigest
+    }
+    return this.store.deliverSignal(safeRequest, expectation, authorization)
+  }
+
+  /**
+   * Provisional explicit grant API: mints local-trust delivery evidence for
+   * one (executionId, signalId) pair after checking the signal exists in this
+   * deployment Plan and that execution pinned its contract. The token is
+   * unforgeable without the store secret but is honestly scoped local-trust
+   * evidence, not remote-network authentication.
+   */
+  grantSignal(executionId: string, signalId: string): SignalDeliveryGrant {
+    if (typeof signalId !== "string" || signalId.trim() === "") {
+      throw new TypeError("Durable signal id must be non-empty")
+    }
+    const planNode = [...this.nodes.values()].find(
+      (candidate): candidate is Extract<PlanNode, { readonly kind: "signal" }> =>
+        candidate.kind === "signal" && candidate.signalId === signalId
+    )
+    if (planNode === undefined) {
+      throw new TypeError(`Grant does not address a signal in this deployment Plan`)
+    }
+    const minted = this.store.mintSignalToken(executionId, signalId)
+    if (minted.nodeId !== planNode.id) {
+      throw new ContentIntegrityError(
+        `signal ${executionId}/${signalId} persisted contract disagrees with the coordinator Plan node`
+      )
+    }
+    return Object.freeze({
+      executionId,
+      nodeId: minted.nodeId,
+      signalId,
+      senderToken: minted.senderToken
+    })
+  }
+
+  /**
+   * Provisional start-without-await spelling: begins (or resumes) the durable
+   * execution and immediately returns a typed handle scoped to exactly that
+   * execution id. `execute` remains the start-and-await convenience.
+   */
+  start(inputValue: Input, options: ExecuteOptions): DurableExecutionHandle<Success> {
+    if (typeof options?.executionId !== "string" || options.executionId.trim() === "") {
+      throw new TypeError("Durable execution id must be non-empty")
+    }
+    return this.createHandle(options.executionId, this.execute(inputValue, options))
+  }
+
+  /**
+   * Provisional re-attachment spelling: re-obtains a handle for an existing
+   * durable execution from the execution id and store alone — the pinned,
+   * digest-verified input is read back from the store, so a restarted process
+   * needs no original in-memory state. A terminal execution exposes its
+   * committed outcome without re-running; a running one resumes replay.
+   */
+  resume(
+    executionId: string,
+    options: Omit<ExecuteOptions, "executionId"> = {}
+  ): DurableExecutionHandle<Success> {
+    if (typeof executionId !== "string" || executionId.trim() === "") {
+      throw new TypeError("Durable execution id must be non-empty")
+    }
+    this.store.getExecution(executionId) // fail closed on unknown executions
+    const input = this.store.getExecutionInput(executionId)
+    return this.createHandle(executionId, this.execute(input as Input, { ...options, executionId }))
+  }
+
+  private createHandle(executionId: string, run: Promise<Success>): DurableExecutionHandle<Success> {
+    // A handle owner may never await result(); park the rejection so an
+    // unobserved terminal failure is not an unhandled rejection. result()
+    // still surfaces the original typed error from the same promise.
+    run.catch(() => {})
+    return Object.freeze({
+      executionId,
+      status: (): ExecutionStatus => this.store.getExecution(executionId).status,
+      result: (): Promise<Success> => run,
+      cancel: (reason?: JsonValue): void => {
+        if (reason === undefined) this.cancel(executionId)
+        else this.cancel(executionId, reason)
+      },
+      signal: (signalId: string, options: DurableSignalOptions): SignalDeliveryResult => {
+        if (
+          options === null || typeof options !== "object" || Array.isArray(options) ||
+          Reflect.ownKeys(options).length !== 2 ||
+          !Object.hasOwn(options, "idempotencyKey") || !Object.hasOwn(options, "payload")
+        ) {
+          throw new TypeError("Durable handle signal options must have exactly idempotencyKey and payload")
+        }
+        const grant = this.grantSignal(executionId, signalId)
+        return this.deliverSignal({
+          executionId,
+          nodeId: grant.nodeId,
+          signalId,
+          idempotencyKey: options.idempotencyKey,
+          payload: options.payload
+        }, { senderToken: grant.senderToken })
+      }
+    })
   }
 
   inspect(executionId: string): {
@@ -237,7 +758,11 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     const node = this.nodes.get(nodeId)
     if (node === undefined) throw new Error(`Plan references unknown node ${nodeId}`)
     const recorded = this.store.getNode(context.executionId, nodeId).exit
-    if (recorded !== undefined) return fromStoredExit(nodeId, recorded)
+    if (recorded !== undefined && node.kind !== "signal") {
+      return node.kind === "action"
+        ? this.fromActionStoredExit(node, recorded)
+        : fromStoredExit(nodeId, recorded)
+    }
 
     await Promise.all(node.controlDependencies.map((dependency) => this.resolveNode(dependency, context)))
 
@@ -250,6 +775,16 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         const values = await Promise.all(node.outputs.map((output) => this.evaluate(output, context)))
         return this.commitControlNode(node.id, claim.fencingToken, values, context)
       }
+      case "timer":
+        return this.resolveTimer(node, context)
+      case "signal":
+        return this.resolveSignal(node, context)
+      case "fanout":
+        return this.resolveFanOut(node, context)
+      case "loop":
+        return this.resolveLoop(node, context)
+      case "childFlow":
+        return this.resolveChildFlow(node, context)
       case "branch": {
         const condition = booleanValue(await this.evaluate(node.condition, context), node.id)
         const claim = await this.acquire(node.id, context)
@@ -261,6 +796,464 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         const value = await this.evaluate(chosen.output, context)
         return this.commitControlNode(node.id, claim.fencingToken, value, context)
       }
+    }
+  }
+
+  private fanOutChildAction(
+    node: FanOutNode,
+    step: FanOutStep,
+    stepIndex: number,
+    childId: string,
+    input: JsonValue
+  ): ActionNode {
+    return {
+      kind: "action",
+      id: childId,
+      actionId: step.actionId,
+      actionVersion: step.actionVersion,
+      actionContractDigest: step.actionContractDigest,
+      input: { kind: "literal", value: input },
+      dependencies: [],
+      controlDependencies: [],
+      debug: {
+        label: stepIndex === 0 && !("steps" in node)
+          ? `fanOut:${step.actionId}`
+          : `fanOut:${step.actionId}#${stepIndex}`,
+        ...(node.debug?.callSite === undefined ? {} : { callSite: node.debug.callSite })
+      }
+    }
+  }
+
+  private async resolveFanOut(node: FanOutNode, context: RunContext): Promise<JsonValue> {
+    const steps = fanOutSteps(node)
+    const stepped = "steps" in node
+    const value = await this.evaluate(node.items, context)
+    if (!Array.isArray(value)) {
+      throw new DurableActionDefect(node.id, {
+        _tag: "FanOutItemsDefect",
+        expected: "array",
+        value
+      })
+    }
+    if (value.length > MAX_FAN_OUT_ITEMS) {
+      throw new DurableActionDefect(node.id, {
+        _tag: "FanOutLimitDefect",
+        limit: MAX_FAN_OUT_ITEMS,
+        observed: value.length
+      })
+    }
+
+    const seenKeys = new Set<string>()
+    const children = value.map((item, index) => {
+      const key = fanOutKeyValue(pathValue(item, node.keyPath, `${node.id} key ${index}`), node.id)
+      const canonicalKey = canonicalJson(key)
+      if (seenKeys.has(canonicalKey)) {
+        throw new DurableActionDefect(node.id, {
+          _tag: "FanOutDuplicateKeyDefect",
+          key
+        })
+      }
+      seenKeys.add(canonicalKey)
+      const candidateInput = instantiateFanOutTemplate(steps[0]!.input, item, [], `${node.id} item ${canonicalKey}`)
+      const childId = stepped
+        ? `fan-${digest({ fanOutNodeId: node.id, key, step: 0 })}`
+        : `fan-${digest({ fanOutNodeId: node.id, key })}`
+      const candidateAction = this.fanOutChildAction(node, steps[0]!, 0, childId, candidateInput)
+      // Validate every instantiated input before materializing or dispatching
+      // any child. A hostile artifact therefore cannot create partial external
+      // work by placing one malformed item after otherwise valid items.
+      const input = this.validateActionInput(candidateAction, candidateInput)
+      const action: ActionNode = {
+        ...candidateAction,
+        input: { kind: "literal", value: input }
+      }
+      return { key, item, input, action }
+    })
+
+    let newlyMaterialized = false
+    try {
+      newlyMaterialized = this.store.materializeFanOut(
+        context.executionId,
+        node.id,
+        children.map(({ key, input, action }) => ({
+          key,
+          childNodeId: action.id,
+          inputDigest: digest(input),
+          ...(stepped ? { step: 0 as const } : {})
+        }))
+      ).newlyMaterialized
+    } catch (error) {
+      if (error instanceof CoordinatorCrash) throw error // process death leaves the fan-out resumable
+      if (error instanceof DurableActionDefect) throw error
+      throw new DurableActionDefect(node.id, {
+        name: error instanceof Error ? error.name : "FanOutMaterializationDefect",
+        message: error instanceof Error ? error.message : String(error)
+      })
+    }
+    if (newlyMaterialized) {
+      await context.afterFanOutMaterialized?.(node.id, children.map(({ action }) => action.id))
+    }
+
+    const results = await Promise.all(children.map(async ({ key, item, action }) => {
+      const stepResults: JsonValue[] = []
+      let current = await this.resolveDynamicAction(action, context)
+      stepResults.push(current)
+      for (let stepIndex = 1; stepIndex < steps.length; stepIndex++) {
+        const step = steps[stepIndex]!
+        const canonicalKey = canonicalJson(key)
+        // Later step inputs are reconstructed from the item and the durable
+        // results of earlier steps only, so replay is deterministic; the
+        // persisted digest check below rejects any drift before dispatch.
+        const candidateInput = instantiateFanOutTemplate(
+          step.input,
+          item,
+          stepResults,
+          `${node.id} item ${canonicalKey} step ${stepIndex}`
+        )
+        const childId = `fan-${digest({ fanOutNodeId: node.id, key, step: stepIndex })}`
+        const candidateAction = this.fanOutChildAction(node, step, stepIndex, childId, candidateInput)
+        const input = this.validateActionInput(candidateAction, candidateInput)
+        const stepAction: ActionNode = {
+          ...candidateAction,
+          input: { kind: "literal", value: input }
+        }
+        let newlyMaterializedStep = false
+        try {
+          newlyMaterializedStep = this.store.materializeFanOutStep(context.executionId, node.id, {
+            key,
+            step: stepIndex,
+            childNodeId: childId,
+            inputDigest: digest(input)
+          }).newlyMaterialized
+        } catch (error) {
+          if (error instanceof CoordinatorCrash) throw error // process death leaves the step resumable
+          if (error instanceof DurableActionDefect) throw error
+          throw new DurableActionDefect(node.id, {
+            name: error instanceof Error ? error.name : "FanOutStepMaterializationDefect",
+            message: error instanceof Error ? error.message : String(error)
+          })
+        }
+        if (newlyMaterializedStep) {
+          await context.afterFanOutStepMaterialized?.(node.id, childId)
+        }
+        current = await this.resolveDynamicAction(stepAction, context)
+        stepResults.push(current)
+      }
+      return current
+    }))
+    const claim = await this.acquire(node.id, context)
+    if (claim.kind === "terminal") return fromStoredExit(node.id, claim.exit)
+    return this.commitControlNode(node.id, claim.fencingToken, results, context)
+  }
+
+  /**
+   * A bounded `while`-style next-round handoff. The durable state chain is
+   * rebuilt deterministically from committed round results; each new round's
+   * identity and evidence commit atomically before its Action dispatches, and
+   * budget exhaustion is a durable terminal defect rather than a hang.
+   */
+  private async resolveLoop(node: LoopNode, context: RunContext): Promise<JsonValue> {
+    let state = await this.evaluate(node.initial, context)
+    for (let round = 0; ; round++) {
+      const shouldContinue = booleanValue(
+        evaluateLoopTemplate(node.condition, state, `${node.id} condition round ${round}`),
+        `${node.id} condition round ${round}`
+      )
+      if (!shouldContinue) {
+        const claim = await this.acquire(node.id, context)
+        if (claim.kind === "terminal") return fromStoredExit(node.id, claim.exit)
+        return this.commitControlNode(node.id, claim.fencingToken, state, context)
+      }
+      if (round >= node.maxRounds) {
+        const claim = await this.acquire(node.id, context)
+        if (claim.kind === "terminal") return fromStoredExit(node.id, claim.exit)
+        const defect = {
+          name: "LoopRoundBudgetExhausted",
+          message: `Durable loop ${node.id} exhausted its explicit round budget of ${node.maxRounds}`,
+          maxRounds: node.maxRounds
+        }
+        const committed = this.store.commitFailure(
+          context.executionId,
+          node.id,
+          this.owner,
+          claim.fencingToken,
+          { kind: "defect", defect }
+        )
+        if (!committed) {
+          const winner = this.store.getNode(context.executionId, node.id).exit
+          if (winner !== undefined) return fromStoredExit(node.id, winner)
+          context.resolutions.delete(node.id)
+          return this.resolveNode(node.id, context)
+        }
+        throw new DurableActionDefect(node.id, defect)
+      }
+      const description = `${node.id} round ${round}`
+      const candidateInput = evaluateLoopTemplate(node.body, state, description)
+      const childId = `loop-${digest({ loopNodeId: node.id, round })}`
+      const candidateAction: ActionNode = {
+        kind: "action",
+        id: childId,
+        actionId: node.actionId,
+        actionVersion: node.actionVersion,
+        actionContractDigest: node.actionContractDigest,
+        input: { kind: "literal", value: candidateInput },
+        dependencies: [],
+        controlDependencies: [],
+        debug: {
+          label: `loop:${node.actionId}@${round}`,
+          ...(node.debug?.callSite === undefined ? {} : { callSite: node.debug.callSite })
+        }
+      }
+      const input = this.validateActionInput(candidateAction, candidateInput)
+      const action: ActionNode = { ...candidateAction, input: { kind: "literal", value: input } }
+      let newlyMaterialized = false
+      try {
+        newlyMaterialized = this.store.materializeLoopRound(context.executionId, node.id, {
+          round,
+          childNodeId: childId,
+          inputDigest: digest(input),
+          stateDigest: digest(state)
+        }).newlyMaterialized
+      } catch (error) {
+        if (error instanceof CoordinatorCrash) throw error // process death leaves the round resumable
+        if (error instanceof DurableActionDefect) throw error
+        throw new DurableActionDefect(node.id, {
+          name: error instanceof Error ? error.name : "LoopRoundMaterializationDefect",
+          message: error instanceof Error ? error.message : String(error)
+        })
+      }
+      if (newlyMaterialized) {
+        await context.afterLoopRoundMaterialized?.(node.id, childId, round)
+      }
+      state = await this.resolveDynamicAction(action, context)
+    }
+  }
+
+  private childExecutor(planDigest: string): DurableExecutor<unknown, unknown> | undefined {
+    const existing = this.childExecutors.get(planDigest)
+    if (existing !== undefined) return existing
+    const childDeployment = this.deployment.childDeployments.get(planDigest)
+    if (childDeployment === undefined) return undefined
+    const executor = new DurableExecutor(childDeployment, this.store, this.executorOptions)
+    this.childExecutors.set(planDigest, executor)
+    return executor
+  }
+
+  private async resolveChildFlow(node: ChildFlowNode, context: RunContext): Promise<JsonValue> {
+    const executor = this.childExecutor(node.planDigest)
+    if (executor === undefined) {
+      throw new DurableActionDefect(node.id, {
+        _tag: "DeploymentUnavailable",
+        flowId: node.flowId,
+        planDigest: node.planDigest
+      })
+    }
+    const rawInput = await this.evaluate(node.input, context)
+    // The child's own compiler-derived Flow input schema gates the boundary
+    // before any linkage or child execution row exists.
+    const childSchemas = executor.deployment.flow.plan.flowSchemas
+    let childInput: JsonValue = rawInput
+    if (childSchemas !== undefined) {
+      try {
+        childInput = validateDurableValue(childSchemas.input, rawInput, `${node.flowId} child Flow input`)
+      } catch (error) {
+        return this.commitChildFlowExit(node, context, {
+          kind: "defect",
+          defect: {
+            name: "ChildFlowInputCodecDefect",
+            message: error instanceof Error ? error.message : `${node.flowId} child Flow input failed its durable codec`
+          }
+        })
+      }
+    }
+    // The child execution id is a pure function of the parent execution and
+    // node identity, so a restart resumes the same attached child instead of
+    // spawning a sibling.
+    const childExecutionId = `${context.executionId}::child::${node.id}`
+    let linked
+    try {
+      linked = this.store.registerChildExecution(context.executionId, node.id, childExecutionId, node.planDigest)
+    } catch (error) {
+      if (error instanceof CoordinatorCrash) throw error // process death leaves the parent resumable
+      const recorded = this.store.getNode(context.executionId, node.id).exit
+      if (recorded !== undefined) return fromStoredExit(node.id, recorded)
+      throw new DurableActionDefect(node.id, {
+        name: error instanceof Error ? error.name : "ChildFlowLinkDefect",
+        message: error instanceof Error ? error.message : String(error)
+      })
+    }
+    if (linked.newlyLinked) {
+      await context.afterChildFlowLinked?.(node.id, childExecutionId)
+    }
+    // The parent childFlow node holds no owner or worker lease while the child
+    // runs; it is claimed only for the terminal adoption commit below.
+    let exit: WorkerExit
+    try {
+      const output = await executor.execute(childInput, {
+        executionId: childExecutionId,
+        deadline: context.deadline,
+        leaseMs: context.leaseMs,
+        wakeupSweepMs: context.wakeupSweepMs,
+        traceContext: context.traceContext
+      })
+      exit = { kind: "success", value: output as JsonValue }
+    } catch (error) {
+      if (error instanceof CoordinatorCrash) throw error
+      if (error instanceof DurableActionFailure) {
+        exit = { kind: "failure", error: error.failure }
+      } else if (error instanceof DurableExecutionAlreadyFailed) {
+        const stored = error.storedError
+        if (
+          stored !== null && typeof stored === "object" && !Array.isArray(stored) &&
+          stored.category === "failure" && Object.hasOwn(stored, "error")
+        ) {
+          exit = { kind: "failure", error: stored.error as JsonValue }
+        } else {
+          const defect = {
+            name: "ChildFlowDefect",
+            message: `Child execution ${childExecutionId} failed with a defect`,
+            childDefect: stored !== null && typeof stored === "object" && !Array.isArray(stored) && Object.hasOwn(stored, "error")
+              ? (stored as { readonly error: JsonValue }).error
+              : stored
+          }
+          exit = { kind: "defect", defect }
+        }
+      } else if (error instanceof DurableExecutionCancelled) {
+        const defect = {
+          name: "ChildFlowCancelled",
+          message: `Child execution ${childExecutionId} was cancelled`,
+          reason: error.reason
+        }
+        exit = { kind: "defect", defect }
+      } else if (error instanceof DurableActionDefect) {
+        const defect = {
+          name: "ChildFlowDefect",
+          message: `Child execution ${childExecutionId} node ${error.nodeId} terminated with a defect`,
+          childDefect: error.defect
+        }
+        exit = { kind: "defect", defect }
+      } else {
+        exit = {
+          kind: "defect",
+          defect: {
+            name: error instanceof Error ? error.name : "ChildFlowDefect",
+            message: error instanceof Error ? error.message : String(error)
+          }
+        }
+      }
+    }
+    return this.commitChildFlowExit(node, context, exit)
+  }
+
+  /** Adopts the child's terminal outcome run-locally before exposing it. */
+  private async commitChildFlowExit(
+    node: ChildFlowNode,
+    context: RunContext,
+    exit: WorkerExit
+  ): Promise<JsonValue> {
+    const claim = await this.acquire(node.id, context)
+    if (claim.kind === "terminal") return fromStoredExit(node.id, claim.exit)
+    if (exit.kind === "success") {
+      return this.commitControlNode(node.id, claim.fencingToken, exit.value, context)
+    }
+    const committed = this.store.commitFailure(context.executionId, node.id, this.owner, claim.fencingToken, exit)
+    if (!committed) {
+      const winner = this.store.getNode(context.executionId, node.id).exit
+      if (winner !== undefined) return fromStoredExit(node.id, winner)
+      context.resolutions.delete(node.id)
+      return this.resolveNode(node.id, context)
+    }
+    if (exit.kind === "failure") throw new DurableActionFailure(node.id, exit.error)
+    throw new DurableActionDefect(node.id, exit.defect)
+  }
+
+  private resolveDynamicAction(node: ActionNode, context: RunContext): Promise<JsonValue> {
+    const active = context.resolutions.get(node.id)
+    if (active !== undefined) return active
+    const resolution = (async (): Promise<JsonValue> => {
+      const recorded = this.store.getNode(context.executionId, node.id).exit
+      return recorded === undefined
+        ? this.resolveAction(node, context)
+        : this.fromActionStoredExit(node, recorded)
+    })()
+    context.resolutions.set(node.id, resolution)
+    return resolution
+  }
+
+  private async resolveTimer(
+    node: Extract<PlanNode, { readonly kind: "timer" }>,
+    context: RunContext
+  ): Promise<JsonValue> {
+    const durationMs = timerDurationValue(await this.evaluate(node.durationMs, context), node.id)
+    const scheduled = this.store.scheduleTimer(context.executionId, node.id, durationMs)
+    if (scheduled.kind === "terminal") return fromStoredExit(node.id, scheduled.exit)
+    if (scheduled.newlyScheduled) {
+      await context.afterTimerScheduled?.(node.id, scheduled.wakeAt)
+    }
+
+    while (true) {
+      const recorded = this.store.getNode(context.executionId, node.id).exit
+      if (recorded !== undefined) return fromStoredExit(node.id, recorded)
+      const now = Date.now()
+      if (now >= context.deadline) {
+        return fromStoredExit(node.id, this.store.timeoutNode(
+          context.executionId,
+          node.id,
+          `Persisted execution deadline exceeded while waiting for timer ${node.id}`
+        ))
+      }
+      if (now >= scheduled.wakeAt) {
+        const claim = await this.acquire(node.id, context)
+        if (claim.kind === "terminal") return fromStoredExit(node.id, claim.exit)
+        return this.commitControlNode(node.id, claim.fencingToken, null, context)
+      }
+      // Event-driven suspension: sleep to the exact persisted wake time
+      // (never a fixed poll), bounded by the execution deadline and the
+      // fallback sweep. A same-process wakeup notification (cancellation,
+      // execution failure) ends the sleep early; correctness never depends on
+      // it — committed state is re-read at the sweep boundary at the latest,
+      // and the store's wake_at gate still rejects any early completion.
+      await this.store.wakeups.wait(
+        context.executionId,
+        Math.min(scheduled.wakeAt, context.deadline, now + context.wakeupSweepMs)
+      )
+    }
+  }
+
+  private async resolveSignal(
+    node: Extract<PlanNode, { readonly kind: "signal" }>,
+    context: RunContext
+  ): Promise<JsonValue> {
+    while (true) {
+      const polled = this.store.pollSignal(context.executionId, node.id, {
+        planDigest: this.deployment.flow.plan.digest,
+        signalId: node.signalId,
+        signalContractDigest: node.signalContractDigest
+      })
+      if (polled.kind === "terminal") {
+        if (polled.newlyConsumed) await context.afterNodeAdopted?.(node.id)
+        return fromStoredExit(node.id, polled.exit)
+      }
+      if (polled.newlyWaiting) {
+        await context.afterSignalWaiting?.(node.id, node.signalId)
+      }
+      const now = Date.now()
+      if (now >= context.deadline) {
+        return fromStoredExit(node.id, this.store.timeoutNode(
+          context.executionId,
+          node.id,
+          `Persisted execution deadline exceeded while waiting for signal ${node.signalId}`
+        ))
+      }
+      // Event-driven suspension: the persisted inbox remains the only source
+      // of truth. A same-process delivery/cancellation notification wakes the
+      // wait immediately; a delivery committed through another connection or
+      // process is observed at the fallback sweep boundary at the latest, so
+      // correctness never depends on the notifier.
+      await this.store.wakeups.wait(
+        context.executionId,
+        Math.min(context.deadline, now + context.wakeupSweepMs)
+      )
     }
   }
 
@@ -338,13 +1331,34 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         actionVersion: node.actionVersion
       })
     }
-    const input = await this.evaluate(node.input, context)
+    // Provider-owned memo key functions and worker implementations observe an
+    // immutable snapshot. In particular, a key function cannot mutate payload
+    // bytes after `inputDigest` has been computed.
+    let input: JsonValue
+    try {
+      input = deepFreeze(validateDurableValue(
+        route.schemas.input,
+        await this.evaluate(node.input, context),
+        `${node.actionId} coordinator input`
+      ))
+    } catch (error) {
+      throw new DurableActionDefect(node.id, {
+        name: "InvocationCodecDefect",
+        message: error instanceof Error ? error.message : `${node.actionId} input failed its durable codec`
+      })
+    }
     const inputDigest = digest(input)
     const reuse = provider.reuse
     let reuseIdentity: { readonly kind: "memo" | "content"; readonly key: string; readonly inputDigest: string } | undefined
 
     if (reuse.kind === "memo") {
       const explicitKey = reuse.key(input)
+      if (typeof explicitKey !== "string") {
+        throw new DurableActionDefect(node.id, {
+          name: "MemoKeyDefect",
+          message: `${node.actionId} memo key must return a string`
+        })
+      }
       const memoKey = digest({
         actionId: node.actionId,
         actionVersion: node.actionVersion,
@@ -355,7 +1369,10 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         explicitKey
       })
       const hit = this.store.memoGet(reuse.scope, reuse.generation, memoKey)
-      if (hit !== undefined) return this.adoptCacheHit(node.id, hit, `memo:${reuse.scope}:${reuse.generation}:${memoKey}`, context)
+      if (hit !== undefined) {
+        const checked = this.validateActionSuccess(node, hit)
+        return this.adoptCacheHit(node, checked, `memo:${reuse.scope}:${reuse.generation}:${memoKey}`, context)
+      }
       reuseIdentity = { kind: "memo", key: memoKey, inputDigest }
     } else if (reuse.kind === "content") {
       const contentKey = digest({
@@ -374,17 +1391,20 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         hit = this.store.contentGet(contentKey, inputDigest)
       } catch (error) {
         if (error instanceof ContentIntegrityError) {
-          return this.commitIntegrityDefect(node.id, context, error)
+          return this.commitIntegrityDefect(node, context, error)
         }
         throw error
       }
-      if (hit !== undefined) return this.adoptCacheHit(node.id, hit, `content:${contentKey}`, context)
+      if (hit !== undefined) {
+        const checked = this.validateActionSuccess(node, hit)
+        return this.adoptCacheHit(node, checked, `content:${contentKey}`, context)
+      }
       reuseIdentity = { kind: "content", key: contentKey, inputDigest }
     }
 
     while (true) {
       const acquired = await this.acquire(node.id, context)
-      if (acquired.kind === "terminal") return fromStoredExit(node.id, acquired.exit)
+      if (acquired.kind === "terminal") return this.fromActionStoredExit(node, acquired.exit)
       const recovery = provider.recovery
       if (acquired.stolen && recovery.mode === "manual") {
         const defect = {
@@ -442,7 +1462,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         input,
         deadline: context.deadline,
         downstreamIdempotencyKey: digest({ executionId: context.executionId, nodeId: node.id }),
-        capabilityGrant: context.capabilityGrant,
+        capabilityGrant: route.policy.capabilityGrant,
         lease: { owner: this.owner, expiresAt: acquired.leaseExpiresAt },
         fencingToken: acquired.fencingToken,
         traceContext: context.traceContext
@@ -451,31 +1471,50 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       if (worker === undefined) {
         throw new DurableActionDefect(node.id, { _tag: "WorkerPoolUnavailable", poolId: route.poolId })
       }
+      const abortController = new AbortController()
       const heartbeat = setInterval(() => {
-        this.store.heartbeat(
+        const alive = this.store.heartbeat(
           context.executionId,
           node.id,
           this.owner,
           acquired.fencingToken,
           Date.now() + context.leaseMs
         )
-      }, Math.max(10, Math.floor(context.leaseMs / 3)))
+        if (!alive) abortController.abort()
+      }, Math.max(1, Math.floor(context.leaseMs / 3)))
       heartbeat.unref?.()
       let exit: WorkerExit
-      const abortController = new AbortController()
+      const attemptKey = canonicalJson([context.executionId, node.id, acquired.fencingToken])
+      this.activeAttempts.set(attemptKey, { executionId: context.executionId, controller: abortController })
       let deadlineTimer: ReturnType<typeof setTimeout> | undefined
       try {
         const deadlineExit = new Promise<WorkerExit>((resolve) => {
-          deadlineTimer = setTimeout(() => {
-            abortController.abort()
+          const schedule = (): void => {
+            const remaining = context.deadline - Date.now()
+            if (remaining > 0) {
+              deadlineTimer = setTimeout(schedule, Math.min(MAX_TIMER_DELAY_MS, remaining))
+              return
+            }
             resolve({
               kind: "defect",
               defect: { name: "DeadlineExceeded", message: `Persisted deadline exceeded during ${node.actionId}` }
             })
-          }, Math.max(0, context.deadline - Date.now()))
+            abortController.abort()
+          }
+          schedule()
         })
-        exit = await Promise.race([worker.invoke(invocation, abortController.signal), deadlineExit])
+        const cancelledExit = new Promise<WorkerExit>((resolve) => {
+          abortController.signal.addEventListener("abort", () => resolve({
+            kind: "defect",
+            defect: { name: "InvocationCancelled", message: `Invocation ${node.actionId} was fenced or cancelled` }
+          }), { once: true })
+        })
+        exit = this.validateWorkerExit(
+          node,
+          await Promise.race([worker.invoke(invocation, abortController.signal), deadlineExit, cancelledExit])
+        )
       } finally {
+        this.activeAttempts.delete(attemptKey)
         if (deadlineTimer !== undefined) clearTimeout(deadlineTimer)
         clearInterval(heartbeat)
       }
@@ -496,7 +1535,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           )
           if (result.kind === "lost") {
             const winner = this.store.getNode(context.executionId, node.id).exit
-            if (winner !== undefined) return fromStoredExit(node.id, winner)
+            if (winner !== undefined) return this.fromActionStoredExit(node, winner)
             continue
           }
           canonical = result.value
@@ -514,7 +1553,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
             )
             if (result.kind === "lost") {
               const winner = this.store.getNode(context.executionId, node.id).exit
-              if (winner !== undefined) return fromStoredExit(node.id, winner)
+              if (winner !== undefined) return this.fromActionStoredExit(node, winner)
               continue
             }
             canonical = result.value
@@ -531,13 +1570,14 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
               )
               if (!committed) {
                 const winner = this.store.getNode(context.executionId, node.id).exit
-                if (winner !== undefined) return fromStoredExit(node.id, winner)
+                if (winner !== undefined) return this.fromActionStoredExit(node, winner)
               }
               throw new DurableActionDefect(node.id, defect)
             }
             throw error
           }
         }
+        canonical = this.validateActionSuccess(node, canonical)
         if (!committed) {
           committed = this.store.commitSuccess(
             context.executionId,
@@ -550,7 +1590,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         }
         if (!committed) {
           const winner = this.store.getNode(context.executionId, node.id).exit
-          if (winner !== undefined) return fromStoredExit(node.id, winner)
+          if (winner !== undefined) return this.fromActionStoredExit(node, winner)
           continue
         }
         // Nothing below can observe the value until both state and lifecycle event are durable.
@@ -572,11 +1612,11 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           exit,
           retryAt
         )) {
-          await delay(retryAt - Date.now())
+          await delayUntil(retryAt)
           continue
         }
         const winner = this.store.getNode(context.executionId, node.id).exit
-        if (winner !== undefined) return fromStoredExit(node.id, winner)
+        if (winner !== undefined) return this.fromActionStoredExit(node, winner)
         continue
       }
       const committed = this.store.commitFailure(
@@ -588,7 +1628,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       )
       if (!committed) {
         const winner = this.store.getNode(context.executionId, node.id).exit
-        if (winner !== undefined) return fromStoredExit(node.id, winner)
+        if (winner !== undefined) return this.fromActionStoredExit(node, winner)
         continue
       }
       if (exit.kind === "failure") throw new DurableActionFailure(node.id, exit.error)
@@ -596,43 +1636,185 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     }
   }
 
+  private actionRoute(node: ActionNode): DeploymentManifest["routes"][number] {
+    const route = this.routes.get(node.actionId)
+    if (
+      route === undefined ||
+      route.actionVersion !== node.actionVersion ||
+      route.actionContractDigest !== node.actionContractDigest
+    ) {
+      throw new DurableActionDefect(node.id, {
+        name: "DeploymentUnavailable",
+        message: `No pinned durable contract route for ${node.actionId}`
+      })
+    }
+    return route
+  }
+
+  private validateActionInput(node: ActionNode, value: unknown): JsonValue {
+    const route = this.actionRoute(node)
+    try {
+      return deepFreeze(validateDurableValue(
+        route.schemas.input,
+        value,
+        `${route.actionId} coordinator input`
+      ))
+    } catch (error) {
+      throw new DurableActionDefect(node.id, {
+        name: "InvocationCodecDefect",
+        message: error instanceof Error ? error.message : `${route.actionId} input failed its durable codec`
+      })
+    }
+  }
+
+  private validateActionSuccess(node: ActionNode, value: unknown): JsonValue {
+    const route = this.actionRoute(node)
+    try {
+      return validateDurableValue(route.schemas.success, value, `${route.actionId} coordinator success`)
+    } catch (error) {
+      throw new DurableActionDefect(node.id, {
+        name: "SuccessCodecDefect",
+        message: error instanceof Error ? error.message : `${route.actionId} success failed its durable codec`
+      })
+    }
+  }
+
+  private fromActionStoredExit(node: ActionNode, exit: StoredNodeExit): JsonValue {
+    const route = this.actionRoute(node)
+    try {
+      if (exit.kind === "success") {
+        return fromStoredExit(node.id, { ...exit, value: validateDurableValue(
+          route.schemas.success,
+          exit.value,
+          `${route.actionId} stored success`
+        ) })
+      }
+      if (exit.kind === "failure") {
+        return fromStoredExit(node.id, { ...exit, error: validateDurableValue(
+          route.schemas.error,
+          exit.error,
+          `${route.actionId} stored failure`
+        ) })
+      }
+      return fromStoredExit(node.id, exit)
+    } catch (error) {
+      if (error instanceof DurableActionFailure || error instanceof DurableActionDefect || error instanceof DurableExecutionCancelled) {
+        throw error
+      }
+      throw new DurableActionDefect(node.id, {
+        name: "PersistedCodecDefect",
+        message: error instanceof Error ? error.message : `${route.actionId} stored exit failed its durable codec`
+      })
+    }
+  }
+
+  private validateWorkerExit(node: ActionNode, exit: unknown): WorkerExit {
+    const route = this.actionRoute(node)
+    let observedKind: unknown
+    try {
+      const encoded = assertJson(exit, `${route.actionId} worker exit`)
+      if (encoded === null || typeof encoded !== "object" || Array.isArray(encoded)) {
+        throw new TypeError(`${route.actionId} worker exit must be an object`)
+      }
+      observedKind = encoded.kind
+      if (encoded.kind === "success") {
+        if (canonicalJson(Object.keys(encoded).sort()) !== canonicalJson(["kind", "value"])) {
+          throw new TypeError(`${route.actionId} success exit has invalid fields`)
+        }
+        return {
+          kind: "success",
+          value: validateDurableValue(route.schemas.success, encoded.value, `${route.actionId} worker success`)
+        }
+      }
+      if (encoded.kind === "failure") {
+        if (canonicalJson(Object.keys(encoded).sort()) !== canonicalJson(["error", "kind"])) {
+          throw new TypeError(`${route.actionId} failure exit has invalid fields`)
+        }
+        return {
+          kind: "failure",
+          error: validateDurableValue(route.schemas.error, encoded.error, `${route.actionId} worker failure`)
+        }
+      }
+      if (encoded.kind === "defect") {
+        if (canonicalJson(Object.keys(encoded).sort()) !== canonicalJson(["defect", "kind"])) {
+          throw new TypeError(`${route.actionId} defect exit has invalid fields`)
+        }
+        const defect = encoded.defect
+        if (defect === null || typeof defect !== "object" || Array.isArray(defect)) {
+          throw new TypeError(`${route.actionId} defect payload must be an object`)
+        }
+        const expectedKeys = defect.stack === undefined
+          ? ["message", "name"]
+          : ["message", "name", "stack"]
+        if (
+          canonicalJson(Object.keys(defect).sort()) !== canonicalJson(expectedKeys) ||
+          typeof defect.name !== "string" ||
+          typeof defect.message !== "string" ||
+          (defect.stack !== undefined && typeof defect.stack !== "string")
+        ) {
+          throw new TypeError(`${route.actionId} defect payload has invalid fields`)
+        }
+        return {
+          kind: "defect",
+          defect: {
+            name: defect.name,
+            message: defect.message,
+            ...(defect.stack === undefined ? {} : { stack: defect.stack })
+          }
+        }
+      }
+      throw new TypeError(`${route.actionId} worker exit has an unknown kind`)
+    } catch (error) {
+      return {
+        kind: "defect",
+        defect: {
+          name: observedKind === "success"
+            ? "SuccessCodecDefect"
+            : observedKind === "failure"
+              ? "FailureCodecDefect"
+              : "WorkerProtocolCodecDefect",
+          message: error instanceof Error ? error.message : `${route.actionId} worker exit failed its durable codec`
+        }
+      }
+    }
+  }
+
   private async adoptCacheHit(
-    nodeId: string,
+    node: ActionNode,
     value: JsonValue,
     adoptedFrom: string,
     context: RunContext
   ): Promise<JsonValue> {
-    const adopted = this.store.adoptSuccess(context.executionId, nodeId, value, adoptedFrom)
+    const adopted = this.store.adoptSuccess(context.executionId, node.id, value, adoptedFrom)
     if (!adopted) {
-      const winner = this.store.getNode(context.executionId, nodeId).exit
-      if (winner !== undefined) return fromStoredExit(nodeId, winner)
-      context.resolutions.delete(nodeId)
-      return this.resolveNode(nodeId, context)
+      const winner = this.store.getNode(context.executionId, node.id).exit
+      if (winner !== undefined) return this.fromActionStoredExit(node, winner)
+      return this.resolveAction(node, context)
     }
-    await context.afterNodeAdopted?.(nodeId)
+    await context.afterNodeAdopted?.(node.id)
     return value
   }
 
   private async commitIntegrityDefect(
-    nodeId: string,
+    node: ActionNode,
     context: RunContext,
     error: ContentIntegrityError
   ): Promise<JsonValue> {
-    const acquired = await this.acquire(nodeId, context)
-    if (acquired.kind === "terminal") return fromStoredExit(nodeId, acquired.exit)
+    const acquired = await this.acquire(node.id, context)
+    if (acquired.kind === "terminal") return this.fromActionStoredExit(node, acquired.exit)
     const defect = { name: error.name, message: error.message }
     const committed = this.store.commitFailure(
       context.executionId,
-      nodeId,
+      node.id,
       this.owner,
       acquired.fencingToken,
       { kind: "defect", defect }
     )
     if (!committed) {
-      const winner = this.store.getNode(context.executionId, nodeId).exit
-      if (winner !== undefined) return fromStoredExit(nodeId, winner)
+      const winner = this.store.getNode(context.executionId, node.id).exit
+      if (winner !== undefined) return this.fromActionStoredExit(node, winner)
     }
-    throw new DurableActionDefect(nodeId, defect)
+    throw new DurableActionDefect(node.id, defect)
   }
 
   private async evaluate(expression: ValueExpr, context: RunContext): Promise<JsonValue> {
@@ -654,10 +1836,13 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       case "unary":
         return !booleanValue(await this.evaluate(expression.value, context), expression.operator)
       case "binary": {
-        const [left, right] = await Promise.all([
-          this.evaluate(expression.left, context),
-          this.evaluate(expression.right, context)
-        ])
+        const left = await this.evaluate(expression.left, context)
+        // These are language operators, not graph-level parallelism. Preserve
+        // their short-circuit semantics so an unchosen projection/node is not
+        // evaluated accidentally.
+        if (expression.operator === "and" && !booleanValue(left, "and")) return false
+        if (expression.operator === "or" && booleanValue(left, "or")) return true
+        const right = await this.evaluate(expression.right, context)
         switch (expression.operator) {
           case "eq":
             return canonicalJson(left) === canonicalJson(right)
