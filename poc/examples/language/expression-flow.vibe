@@ -1,0 +1,45 @@
+// Expression-oriented control flow: if/switch values in general placements,
+// labeled block values, and loop expression values with `else`.
+
+class InvalidScore extends Error {
+  constructor(readonly value: number) { super(`score ${value} is out of range`) }
+}
+
+type Grade = "pass" | "fail" | "retry"
+
+function checkedScore(value: number): Result<number, InvalidScore> {
+  if (value < 0 || value > 100) throw new InvalidScore(value)
+  return value
+}
+
+export function describe(grade: Grade): string {
+  return switch (grade) {
+    case "pass": "met the bar"
+    case "fail": "below the bar"
+    case "retry": "resit scheduled"
+  }
+}
+
+export function weighted(score: number, bonus: boolean): Result<number, InvalidScore> {
+  return combine(checkedScore(score).unwrap(), if (bonus) { 10 } else { 0 }, 1)
+}
+
+function combine(base: number, extra: number, scale: number): number {
+  return (base + extra) * scale
+}
+
+export function classify(input: string): string {
+  const kind = verdict: {
+    if (input.length === 0) break :verdict "empty"
+    if (input.length > 8) break :verdict "long"
+    break :verdict "short"
+  }
+  return kind
+}
+
+export function firstPassing(scores: number[]): number {
+  const found = search: for (const score of scores) {
+    if (score >= 60) break :search score
+  } else -1
+  return found
+}

@@ -1,9 +1,12 @@
-import { Layer } from "vibelang:provider"
+import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
 
-abstract class Db { abstract read(): string }
-abstract class Logger { abstract info(message: string): void }
+abstract class Db extends Context { abstract read(): string }
+abstract class Logger extends Context { abstract info(message: string): void }
 
-function needsBoth(): string uses db: Db, log: Logger {
+function needsBoth(): string {
+  const db = Db.context()
+  const log = Logger.context()
   log.info("read")
   return db.read()
 }

@@ -1,570 +1,1624 @@
-import { analyzeSource } from "./analyze";
-import type { Analysis, ErrorDeclaration } from "./model";
-import { applyEdits, matchPair, scanFunctionTail, tokenize, type Edit, type Token } from "./syntax";
+import { basename, dirname, extname, relative, resolve, sep } from "node:path";
+import * as ts from "typescript-js";
+import type { Analysis, AnalyzeOptions, FunctionChannel } from "./model.ts";
+import {
+  composeSourceMaps,
+  createOffsetSourceMap,
+  createPreciseSourceMap,
+  type SourceMapAnchor,
+} from "./source-map.ts";
+import {
+  buildSemanticModel,
+  controlFlowValueHasLocalType,
+  effectiveChannel,
+  expressionShape,
+  isErrorMatchCall,
+  isErrorType,
+  isOptionalUnwrapExpression,
+  isPanicExitCall,
+  isResultUnwrapExpression,
+  type CallEdge,
+  type SemanticFunction,
+  type SemanticModel,
+} from "./semantic.ts";
+import type {
+  ControlFlowExpressionHost,
+  ControlFlowExpressionPlan,
+  ControlFlowValueExit,
+  LabeledBlockPlan,
+  LoopValuePlan,
+  SwitchExpressionClausePlan,
+} from "./control-flow.ts";
 
-export interface CompileOptions {
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+export interface CompileOptions extends AnalyzeOptions {
   /** Import specifier used by generated TypeScript. */
   readonly runtimeImport?: string;
+  /** Display name and source-map source. */
   readonly sourceName?: string;
+  /** Emit a version-3 source map in CompileResult.sourceMap (default true). */
+  readonly sourceMap?: boolean;
+  /** Generated file path, used to keep relative imports correct when moved. */
+  readonly outputFileName?: string;
+  /**
+   * Keep relative authored `.vibe` module specifiers exactly as written instead
+   * of rewriting them to the generated output name. Cross-module analysis is
+   * unaffected; an external bridge that performs its own `.vibe` -> `.js`
+   * rewrite needs the authored text (and therefore the authored columns) intact.
+   * Compiler virtual modules and non-`.vibe` relative specifiers still rewrite.
+   */
+  readonly preserveVibeSpecifiers?: boolean;
+}
+
+/**
+ * @internal Project-level emit bindings resolved once per `compileProject`
+ * call and shared by every lowered module.
+ */
+export interface ProjectEmitBindings {
+  /** Absolute authored/aliased source path -> absolute generated output path. */
+  readonly outputBySource?: ReadonlyMap<string, string>;
+  /** Absolute source paths whose import attributes must not survive emit. */
+  readonly stripImportAttributesForSources?: ReadonlySet<string>;
+  /** Absolute paths of the authored `.vibe` modules in this project. */
+  readonly vibeSourceNames?: ReadonlySet<string>;
 }
 
 export interface CompileResult {
   readonly code: string;
+  readonly sourceMap?: string;
   readonly analysis: Analysis;
 }
 
-interface CompilerHelpers {
-  readonly error: string;
-  readonly catch: string;
-  readonly throw: string;
-  readonly unwrap: string;
-  readonly use: string;
+interface HelperBinding {
+  readonly exported: string;
+  readonly local: string;
+  readonly typeOnly?: boolean;
+}
+
+interface TransformState {
+  readonly model: SemanticModel;
+  readonly factory: ts.NodeFactory;
+  readonly runtimeImport: string;
+  readonly sourceName: string;
+  readonly outputFileName?: string;
+  readonly helpers: Map<string, HelperBinding>;
+  readonly identifiers: Set<string>;
+  readonly errorStarts: ReadonlyMap<number, string>;
+  readonly projectOutputBySource?: ReadonlyMap<string, string>;
+  readonly stripImportAttributesForSources?: ReadonlySet<string>;
+  readonly preserveVibeSpecifiers: boolean;
+  readonly vibeSourceNames?: ReadonlySet<string>;
+  readonly sourceMapOrigins: Map<ts.Node, ts.Node>;
+  /** Lowered switch statements proven unable to complete past their clauses. */
+  readonly nonFallingSwitches: Set<ts.Node>;
+  changed: boolean;
+  temporary: number;
 }
 
 export function compileVibe(source: string, options: CompileOptions = {}): CompileResult {
-  const analysis = analyzeSource(source);
-  const errorNames = new Set(analysis.errors.map((error) => error.name));
-  const helpers = allocateHelpers(source);
-  const providerLayer = importsProviderLayer(source);
-  let code = stripProviderImports(source);
-  code = lowerErrorDeclarations(code, helpers.error);
-  code = lowerErrorConstruction(code, errorNames);
-  code = lowerFunctionChannels(code, helpers.use);
-  code = lowerPromiseErrorRows(code);
-  code = lowerCatchExpressions(code, helpers.catch);
-  code = lowerTryMarkers(code);
-  code = lowerOptionals(code, helpers.unwrap);
-  code = lowerThrowExpressions(code, helpers.throw);
-  code = lowerSimpleIfExpressions(code);
+  const model = buildSemanticModel(source, options);
+  return compileSemanticModel(source, options, model);
+}
 
-  // A plain TypeScript file must remain a plain TypeScript file. In particular,
-  // do not turn scripts into modules or reserve helper names when no VibeLang
-  // lowering was needed.
-  if (code === source) return { code: source, analysis };
-
+/** @internal Shared by the batch project compiler after one checker pass. */
+export function compileSemanticModel(
+  source: string,
+  options: CompileOptions,
+  model: SemanticModel,
+  bindings: ProjectEmitBindings = {},
+): CompileResult {
+  const analysis: Analysis = {
+    errors: model.errors,
+    functions: model.publicFunctions,
+    rows: model.rows,
+    diagnostics: model.diagnostics,
+  };
+  const sourceName = options.sourceName ?? options.fileName ?? "<memory>.vibe";
   const runtimeImport = options.runtimeImport ?? "../runtime/index.ts";
-  const sourceName = options.sourceName ?? "<memory>.vibe";
-  const emittedIdentifiers = new Set(tokenize(code).filter((token) => token.kind === "identifier").map((token) => token.text));
-  const imports = [
-    ["__VSError", helpers.error],
-    ["__vsCatch", helpers.catch],
-    ["__vsThrow", helpers.throw],
-    ["__vsUnwrap", helpers.unwrap],
-    ["__vsUse", helpers.use],
-  ].filter(([, local]) => emittedIdentifiers.has(local!));
-  if (providerLayer) imports.push(["Layer", "Layer"]);
-  const importNames = imports.map(([exported, local]) => exported === local ? exported : `${exported} as ${local}`);
-  const header = `// Generated from ${sourceName} by the VibeLang risk-spike compiler.\n` +
-    (importNames.length > 0
-      ? `import { ${importNames.join(", ")} } from ${JSON.stringify(runtimeImport)};\n\n`
-      : "\n");
-  return { code: header + code, analysis };
-}
-
-function allocateHelpers(source: string): CompilerHelpers {
-  const identifiers = new Set(tokenize(source).filter((token) => token.kind === "identifier").map((token) => token.text));
-  const allocate = (base: string): string => {
-    let candidate = base;
-    let suffix = 0;
-    while (identifiers.has(candidate)) candidate = `${base}$vibe${suffix++ || ""}`;
-    identifiers.add(candidate);
-    return candidate;
+  const identifiers = collectIdentifierTexts(model.sourceFile);
+  const state: TransformState = {
+    model,
+    factory: ts.factory,
+    runtimeImport,
+    sourceName,
+    outputFileName: options.outputFileName && resolve(options.outputFileName),
+    helpers: new Map(),
+    identifiers,
+    // Error spans are published in authored coordinates; the transformer
+    // works on the parsed (recovery-derived) tree.
+    errorStarts: new Map(model.errors.flatMap((error) => {
+      const derived = model.recovery.toDerived(error.start);
+      return derived === undefined ? [] : [[derived, error.name] as const];
+    })),
+    projectOutputBySource: bindings.outputBySource,
+    stripImportAttributesForSources: bindings.stripImportAttributesForSources,
+    preserveVibeSpecifiers: options.preserveVibeSpecifiers === true,
+    vibeSourceNames: bindings.vibeSourceNames,
+    sourceMapOrigins: new Map(),
+    nonFallingSwitches: new Set(),
+    // A recovery-derived parse can never claim byte-identity with authored text.
+    changed: model.recovery.changed,
+    temporary: 0,
   };
-  return {
-    error: allocate("__VSError"),
-    catch: allocate("__vsCatch"),
-    throw: allocate("__vsThrow"),
-    unwrap: allocate("__vsUnwrap"),
-    use: allocate("__vsUse"),
-  };
+
+  reserveBuiltinBindings(state);
+  const transformed = ts.transform(model.sourceFile, [createTransformer(state)]);
+  const transformedFile = transformed.transformed[0] as ts.SourceFile;
+  try {
+    let body: string;
+    let printerSourceMap: string | undefined;
+    if (!state.changed) {
+      body = source;
+    } else if (options.sourceMap === false) {
+      body = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed, removeComments: false }).printFile(transformedFile);
+    } else {
+      ({ code: body, sourceMap: printerSourceMap } = printFileWithSourceMap(transformedFile));
+    }
+
+    const header = emitHelperImport(state);
+    if (header) state.changed = true;
+    const code = state.changed ? header + body : source;
+    let sourceMap: string | undefined;
+    if (options.sourceMap !== false) {
+      const fileName = options.outputFileName ?? basename(sourceName).replace(/\.vibe$/, ".ts");
+      // The printer's provenance describes the parsed (recovery-derived)
+      // text. Build the precise map against that text, then compose it with
+      // the exact derived-to-authored offset map so glue stays unmapped.
+      const generatedToParsed = createPreciseSourceMap({
+        generatedCode: code,
+        generatedBody: body,
+        generatedPrefix: header,
+        source: model.recovery.changed ? model.recovery.parseSource : source,
+        sourceName,
+        fileName,
+        printerSourceMap,
+        anchors: state.changed ? locateSourceMapAnchors(transformedFile, body, state) : undefined,
+        identity: !state.changed,
+      });
+      sourceMap = model.recovery.changed
+        ? composeSourceMaps(
+            generatedToParsed,
+            createOffsetSourceMap({
+              derivedText: model.recovery.parseSource,
+              authoredText: source,
+              runs: model.recovery.verbatim,
+              sourceName,
+              fileName: basename(sourceName),
+            }),
+            fileName,
+          )
+        : generatedToParsed;
+    }
+    return { code, sourceMap, analysis };
+  } finally {
+    transformed.dispose();
+  }
 }
 
-function importsProviderLayer(source: string): boolean {
-  return tokenize(source).some((token) => token.kind === "string" && unquote(token.text) === "vibelang:provider");
-}
-
-function stripProviderImports(source: string): string {
-  const tokens = tokenize(source);
-  const edits: Edit[] = [];
-  for (let index = 0; index < tokens.length; index++) {
-    if (tokens[index]!.text !== "import") continue;
-    let end = index + 1;
-    while (end < tokens.length && tokens[end]!.text !== ";") {
-      const moduleText = tokens[end]!.kind === "string" ? unquote(tokens[end]!.text) : undefined;
-      if (moduleText === "vibelang:provider") {
-        const lineStart = source.lastIndexOf("\n", tokens[index]!.start - 1) + 1;
-        const lineEndIndex = source.indexOf("\n", tokens[end]!.end);
-        const lineEnd = lineEndIndex === -1 ? source.length : lineEndIndex + 1;
-        edits.push({ start: lineStart, end: lineEnd, text: "" });
-        break;
+function createTransformer(state: TransformState): ts.TransformerFactory<ts.SourceFile> {
+  return (context) => {
+    const visit: ts.Visitor = (node) => {
+      if (isFunctionLikeWithBody(node)) return transformFunction(node, state, context, visit);
+      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+        const rewritten = rewriteModuleDeclaration(node, state);
+        if (rewritten) return rewritten;
       }
-      end++;
+      if (ts.isCallExpression(node)) {
+        const rewritten = rewriteDynamicImport(node, state);
+        if (rewritten) return rewritten;
+      }
+      return ts.visitEachChild(node, visit, context);
+    };
+
+    return (sourceFile) => {
+      const statements = lowerStatementSequence(
+        sourceFile.statements,
+        undefined,
+        false,
+        state,
+        context,
+        visit,
+      );
+      return state.factory.updateSourceFile(sourceFile, statements);
+    };
+  };
+}
+
+function transformFunction(
+  node: FunctionLikeWithBody,
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+): ts.FunctionLikeDeclaration {
+  const info = state.model.functionByNode.get(node);
+  if (!info) return ts.visitEachChild(node, visit, context) as ts.FunctionLikeDeclaration;
+
+  let body: ts.ConciseBody;
+  if (ts.isBlock(node.body)) {
+    body = transformBlock(node.body, info, false, state, context, visit);
+  } else {
+    const prologue: ts.Statement[] = [];
+    const panicCall = unwrapPanicCall(node.body, state.model);
+    if (effectiveChannel(info) === "plain" && !panicCall) {
+      body = rewriteExpression(node.body, info, prologue, state, context, visit);
+      if (prologue.length > 0) {
+        body = state.factory.createBlock([...prologue, state.factory.createReturnStatement(body)], true);
+        state.changed = true;
+      }
+    } else {
+      const statements = lowerReturn(node.body, info, state, context, visit);
+      body = state.factory.createBlock(statements, true);
+      state.changed = true;
     }
   }
-  return applyEdits(source, edits);
+  if (ts.isBlock(body) && mayFallThrough(body.statements, state)) {
+    const completion = implicitCompletion(info, state);
+    if (completion) {
+      body = state.factory.updateBlock(body, [...body.statements, completion]);
+      state.changed = true;
+    }
+  }
+
+  if (ts.isFunctionDeclaration(node)) {
+    return state.factory.updateFunctionDeclaration(node, node.modifiers, node.asteriskToken, node.name,
+      node.typeParameters, node.parameters, node.type, body as ts.Block);
+  }
+  if (ts.isFunctionExpression(node)) {
+    return state.factory.updateFunctionExpression(node, node.modifiers, node.asteriskToken, node.name,
+      node.typeParameters, node.parameters, node.type, body as ts.Block);
+  }
+  if (ts.isArrowFunction(node)) {
+    return state.factory.updateArrowFunction(node, node.modifiers, node.typeParameters, node.parameters,
+      node.type, node.equalsGreaterThanToken, body);
+  }
+  if (ts.isMethodDeclaration(node)) {
+    return state.factory.updateMethodDeclaration(node, node.modifiers, node.asteriskToken, node.name,
+      node.questionToken, node.typeParameters, node.parameters, node.type, body as ts.Block);
+  }
+  if (ts.isGetAccessorDeclaration(node)) {
+    return state.factory.updateGetAccessorDeclaration(node, node.modifiers, node.name, node.parameters, node.type, body as ts.Block);
+  }
+  if (ts.isSetAccessorDeclaration(node)) {
+    return state.factory.updateSetAccessorDeclaration(node, node.modifiers, node.name, node.parameters, body as ts.Block);
+  }
+  return state.factory.updateConstructorDeclaration(node, node.modifiers, node.parameters, body as ts.Block);
 }
 
-function lowerErrorDeclarations(source: string, errorHelper: string): string {
-  const analysis = analyzeSource(source);
-  return applyEdits(
-    source,
-    analysis.errors.map((declaration) => ({
-      start: declaration.start,
-      end: declaration.end,
-      text: emitErrorClass(declaration, errorHelper),
-    })),
+function transformBlock(
+  block: ts.Block,
+  owner: SemanticFunction,
+  caughtByJavaScript: boolean,
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+): ts.Block {
+  return state.factory.updateBlock(block,
+    lowerStatementSequence(block.statements, owner, caughtByJavaScript, state, context, visit));
+}
+
+function lowerStatementSequence(
+  sourceStatements: readonly ts.Statement[],
+  owner: SemanticFunction | undefined,
+  caughtByJavaScript: boolean,
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+): ts.Statement[] {
+  const statements: ts.Statement[] = [];
+  for (let index = 0; index < sourceStatements.length; index++) {
+    const statement = sourceStatements[index]!;
+    const controlFlow = state.model.controlFlowPlans.get(statement);
+    if (controlFlow && (controlFlow.kind === "if" || controlFlow.kind === "switch") &&
+      sourceStatements[index + 1] === controlFlow.control) {
+      statements.push(...lowerControlFlowExpression(
+        controlFlow,
+        owner,
+        caughtByJavaScript,
+        state,
+        context,
+        visit,
+      ));
+      index += 1;
+      continue;
+    }
+    if (controlFlow && (controlFlow.kind === "labeled-block" || controlFlow.kind === "loop") &&
+      sourceStatements[index + 1] === controlFlow.host) {
+      statements.push(...lowerLabeledBlockValue(
+        controlFlow,
+        owner,
+        caughtByJavaScript,
+        state,
+        context,
+        visit,
+      ));
+      index += 1;
+      continue;
+    }
+    const plan = ts.isExpressionStatement(statement) ? state.model.deferPlans.get(statement) : undefined;
+    if (plan && owner && sourceStatements[index + 1] === plan.cleanup) {
+      const tail = lowerStatementSequence(
+        sourceStatements.slice(index + 2),
+        owner,
+        caughtByJavaScript,
+        state,
+        context,
+        visit,
+      );
+      const cleanup = lowerStatement(plan.cleanup, owner, caughtByJavaScript, state, context, visit);
+      state.changed = true;
+      if (plan.kind === "defer") {
+        statements.push(state.factory.createTryStatement(
+          state.factory.createBlock(tail, true),
+          undefined,
+          state.factory.createBlock(cleanup, true),
+        ));
+      } else {
+        const result = freshTemporary(state, "errdefer_result");
+        const instrumented = instrumentErrdeferReturns(tail, result, state, context);
+        const inspect = helper(state, "__vsInspectResult");
+        const hasResult = state.factory.createBinaryExpression(
+          result,
+          ts.SyntaxKind.ExclamationEqualsEqualsToken,
+          state.factory.createIdentifier("undefined"),
+        );
+        const isFailure = state.factory.createBinaryExpression(
+          state.factory.createPropertyAccessExpression(
+            state.factory.createCallExpression(state.factory.createIdentifier(inspect), undefined, [result]),
+            "ok",
+          ),
+          ts.SyntaxKind.EqualsEqualsEqualsToken,
+          state.factory.createFalse(),
+        );
+        statements.push(
+          state.factory.createVariableStatement(undefined,
+            state.factory.createVariableDeclarationList([
+              state.factory.createVariableDeclaration(
+                result,
+                undefined,
+                state.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
+                undefined,
+              ),
+            ], ts.NodeFlags.Let)),
+          state.factory.createTryStatement(
+            state.factory.createBlock(instrumented, true),
+            undefined,
+            state.factory.createBlock([
+              state.factory.createIfStatement(
+                state.factory.createBinaryExpression(hasResult, ts.SyntaxKind.AmpersandAmpersandToken, isFailure),
+                state.factory.createBlock(cleanup, true),
+              ),
+            ], true),
+          ),
+        );
+      }
+      return statements;
+    }
+    statements.push(...lowerStatement(statement, owner, caughtByJavaScript, state, context, visit));
+  }
+  return statements;
+}
+
+function lowerControlFlowExpression(
+  plan: Exclude<ControlFlowExpressionPlan, LabeledBlockPlan | LoopValuePlan>,
+  owner: SemanticFunction | undefined,
+  caughtByJavaScript: boolean,
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+): ts.Statement[] {
+  const variableHost = ts.isVariableStatement(plan.host) ? plan.host : undefined;
+  const temporary = variableHost ? freshTemporary(state, `${plan.kind}_value`) : undefined;
+  const lowerExit = (exit: ControlFlowValueExit): ts.Statement[] => {
+    if (ts.isThrowStatement(exit)) {
+      return lowerStatement(exit, owner, caughtByJavaScript, state, context, visit);
+    }
+    const statement = variableHost
+      ? sourceMapAnchor(
+          state.factory.createExpressionStatement(state.factory.createAssignment(temporary!, exit.expression)),
+          exit,
+          state,
+        )
+      : sourceMapAnchor(state.factory.createReturnStatement(exit.expression), exit, state);
+    return lowerStatement(statement, owner, caughtByJavaScript, state, context, visit);
+  };
+  const lowerBranch = (branch: ts.Statement, exit: ControlFlowValueExit): ts.Statement => {
+    if (!ts.isBlock(branch)) return singleStatement(lowerExit(exit), state);
+    const replacement = ts.isThrowStatement(exit)
+      ? exit
+      : variableHost
+        ? sourceMapAnchor(
+            state.factory.createExpressionStatement(state.factory.createAssignment(temporary!, exit.expression)),
+            exit,
+            state,
+          )
+        : sourceMapAnchor(state.factory.createReturnStatement(exit.expression), exit, state);
+    const source = branch.statements.map((statement) => statement === exit ? replacement : statement);
+    return state.factory.updateBlock(
+      branch,
+      lowerStatementSequence(source, owner, caughtByJavaScript, state, context, visit),
+    );
+  };
+
+  const conditionPrologue: ts.Statement[] = [];
+  let control: ts.Statement;
+  if (plan.kind === "if") {
+    const condition = owner
+      ? rewriteExpression(plan.control.expression, owner, conditionPrologue, state, context, visit)
+      : ts.visitEachChild(plan.control.expression, visit, context) as ts.Expression;
+    control = state.factory.updateIfStatement(
+      plan.control,
+      condition,
+      lowerBranch(plan.control.thenStatement, plan.consequent),
+      lowerBranch(plan.control.elseStatement!, plan.alternate),
+    );
+  } else {
+    const discriminant = owner
+      ? rewriteExpression(plan.control.expression, owner, conditionPrologue, state, context, visit)
+      : ts.visitEachChild(plan.control.expression, visit, context) as ts.Expression;
+    const clauses = plan.clauses.map((clausePlan) => lowerSwitchExpressionClause(
+      clausePlan,
+      variableHost,
+      temporary,
+      owner,
+      caughtByJavaScript,
+      state,
+      context,
+      visit,
+    ));
+    control = state.factory.updateSwitchStatement(
+      plan.control,
+      discriminant,
+      state.factory.updateCaseBlock(plan.control.caseBlock, clauses),
+    );
+    if (state.model.exhaustiveSwitches.has(plan.control)) state.nonFallingSwitches.add(control);
+  }
+
+  state.changed = true;
+  if (!variableHost) return [...conditionPrologue, control];
+  const declaration = variableHost.declarationList.declarations[0]!;
+  const temporaryDeclaration = state.factory.createVariableStatement(
+    undefined,
+    state.factory.createVariableDeclarationList([
+      state.factory.createVariableDeclaration(
+        temporary!,
+        undefined,
+        controlFlowTemporaryType(plan, declaration, state),
+        undefined,
+      ),
+    ], ts.NodeFlags.Let),
+  );
+  const completedDeclaration = state.factory.updateVariableDeclaration(
+    declaration,
+    declaration.name,
+    declaration.exclamationToken,
+    declaration.type,
+    temporary,
+  );
+  const completedHost = state.factory.updateVariableStatement(
+    variableHost,
+    variableHost.modifiers,
+    state.factory.updateVariableDeclarationList(variableHost.declarationList, [completedDeclaration]),
+  );
+  return [temporaryDeclaration, ...conditionPrologue, control, completedHost];
+}
+
+/**
+ * Lower a recovered labeled block value: the value join becomes a typed
+ * compiler temporary assigned at every rewritten `break :label value` site,
+ * the labeled statement keeps ordinary TypeScript labeled-break semantics,
+ * and the marker host declaration completes from the temporary. Statements
+ * inside the block go through the full checked lowering, so Result and
+ * Optional exits propagate exactly as in ordinary statement positions.
+ */
+function lowerLabeledBlockValue(
+  plan: LabeledBlockPlan | LoopValuePlan,
+  owner: SemanticFunction | undefined,
+  caughtByJavaScript: boolean,
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+): ts.Statement[] {
+  const temporary = freshTemporary(state, plan.kind === "loop" ? "loop_value" : "label_value");
+  const siteByBlock = new Map(plan.sites.map((site) => [site.block as ts.Node, site]));
+  const replaceSites: ts.Visitor = (node) => {
+    const site = siteByBlock.get(node);
+    if (site) {
+      const assignment = sourceMapAnchor(
+        state.factory.createExpressionStatement(state.factory.createAssignment(temporary, site.value.expression)),
+        site.value,
+        state,
+      );
+      return state.factory.updateBlock(site.block, [assignment, site.jump]);
+    }
+    if (plan.kind === "loop" && node === plan.elseBlock) {
+      // The else block's completion value becomes the no-break assignment.
+      const assignment = sourceMapAnchor(
+        state.factory.createExpressionStatement(
+          state.factory.createAssignment(temporary, plan.elseValue.expression),
+        ),
+        plan.elseValue,
+        state,
+      );
+      return state.factory.updateBlock(plan.elseBlock, [assignment]);
+    }
+    if (isFunctionLikeWithBody(node)) return node;
+    return ts.visitEachChild(node, replaceSites, context);
+  };
+  const replacedBlock = ts.visitNode(plan.control.statement, replaceSites) as ts.Block;
+  const loweredBlock = state.factory.updateBlock(
+    replacedBlock,
+    lowerStatementSequence(replacedBlock.statements, owner, caughtByJavaScript, state, context, visit),
+  );
+  const loweredControl = state.factory.updateLabeledStatement(plan.control, plan.control.label, loweredBlock);
+
+  const declaration = plan.host.declarationList.declarations[0]!;
+  // A nested labeled join can reference another construct's marker, which
+  // the analysis program types as `any`. Emitting that annotation would
+  // erase checking in the output, so such temporaries stay unannotated and
+  // the emitted program's own control-flow inference supplies the precise
+  // union once every marker is gone.
+  const joinType = controlFlowTemporaryType(plan, declaration, state);
+  const temporaryDeclaration = state.factory.createVariableStatement(
+    undefined,
+    state.factory.createVariableDeclarationList([
+      state.factory.createVariableDeclaration(
+        temporary,
+        undefined,
+        typeNodeContainsAny(joinType) ? undefined : joinType,
+        undefined,
+      ),
+    ], ts.NodeFlags.Let),
+  );
+  const completedDeclaration = state.factory.updateVariableDeclaration(
+    declaration,
+    declaration.name,
+    declaration.exclamationToken,
+    declaration.type,
+    temporary,
+  );
+  const completedHost = state.factory.updateVariableStatement(
+    plan.host,
+    plan.host.modifiers,
+    state.factory.updateVariableDeclarationList(plan.host.declarationList, [completedDeclaration]),
+  );
+  state.changed = true;
+  return [temporaryDeclaration, loweredControl, completedHost];
+}
+
+function typeNodeContainsAny(type: ts.TypeNode): boolean {
+  if (type.kind === ts.SyntaxKind.AnyKeyword) return true;
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (node.kind === ts.SyntaxKind.AnyKeyword) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(type, visit);
+  return found;
+}
+
+/**
+ * Do not let the generated join temporary become an implicit/evolving `any`.
+ * An authored annotation is authoritative; otherwise retain the union of the
+ * normal branch value types so the ordinary TypeScript checker can validate
+ * every assignment and all downstream uses.
+ */
+function controlFlowTemporaryType(
+  plan: ControlFlowExpressionPlan,
+  declaration: ts.VariableDeclaration,
+  state: TransformState,
+): ts.TypeNode {
+  const checker = state.model.checker;
+  if (declaration.type) {
+    return checker.typeToTypeNode(
+      checker.getTypeFromTypeNode(declaration.type),
+      plan.host,
+      ts.NodeBuilderFlags.NoTruncation | ts.NodeBuilderFlags.UseStructuralFallback,
+    ) ?? state.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword);
+  }
+  const exits = plan.kind === "if"
+    ? [plan.consequent, plan.alternate]
+    : plan.kind === "switch"
+      ? plan.clauses.map((clause) => clause.exit)
+      : plan.kind === "labeled-block"
+        ? plan.sites.map((site) => site.value)
+        : [...plan.sites.map((site) => site.value), plan.elseValue];
+  const values = exits.flatMap((exit) => ts.isExpressionStatement(exit) ? [exit.expression] : []);
+  if (values.length === 0) return state.factory.createKeywordTypeNode(ts.SyntaxKind.NeverKeyword);
+
+  const types = new Map<string, ts.Type>();
+  let containsLocalType = false;
+  for (const expression of values) {
+    if (controlFlowValueHasLocalType(expression, plan.control, checker)) {
+      containsLocalType = true;
+      continue;
+    }
+    const type = checker.getTypeAtLocation(expression);
+    const key = checker.typeToString(type, plan.host, ts.TypeFormatFlags.NoTruncation);
+    types.set(key, type);
+  }
+  if (containsLocalType) return state.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword);
+  const nodes = [...types.values()].map((type) => checker.typeToTypeNode(
+    type,
+    plan.host,
+    ts.NodeBuilderFlags.NoTruncation | ts.NodeBuilderFlags.UseStructuralFallback,
+  ) ?? state.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword));
+  return nodes.length === 1 ? nodes[0]! : state.factory.createUnionTypeNode(nodes);
+}
+
+function lowerSwitchExpressionClause(
+  plan: SwitchExpressionClausePlan,
+  variableHost: ControlFlowExpressionHost | undefined,
+  temporary: ts.Identifier | undefined,
+  owner: SemanticFunction | undefined,
+  caughtByJavaScript: boolean,
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+): ts.CaseOrDefaultClause {
+  const exit = plan.exit;
+  const replacement = ts.isThrowStatement(exit)
+    ? exit
+    : variableHost
+      ? sourceMapAnchor(
+          state.factory.createExpressionStatement(state.factory.createAssignment(temporary!, exit.expression)),
+          exit,
+          state,
+        )
+      : sourceMapAnchor(state.factory.createReturnStatement(exit.expression), exit, state);
+  const source = plan.clause.statements.map((statement) => statement === exit ? replacement : statement);
+  const lowered = lowerStatementSequence(source, owner, caughtByJavaScript, state, context, visit);
+  if (variableHost && !ts.isThrowStatement(exit)) lowered.push(state.factory.createBreakStatement());
+  if (ts.isCaseClause(plan.clause)) {
+    const casePrologue: ts.Statement[] = [];
+    const expression = owner
+      ? rewriteExpression(plan.clause.expression, owner, casePrologue, state, context, visit)
+      : ts.visitEachChild(plan.clause.expression, visit, context) as ts.Expression;
+    // Case labels cannot execute a statement prologue without changing switch
+    // selection order. Semantic analysis currently rejects exit-producing
+    // expressions there, so this guard remains fail-closed for future changes.
+    if (casePrologue.length > 0) return plan.clause;
+    return state.factory.updateCaseClause(plan.clause, expression, lowered);
+  }
+  return state.factory.updateDefaultClause(plan.clause, lowered);
+}
+
+function instrumentErrdeferReturns(
+  statements: readonly ts.Statement[],
+  result: ts.Identifier,
+  state: TransformState,
+  context: ts.TransformationContext,
+): ts.Statement[] {
+  const instrument: ts.Visitor = (node) => {
+    if (isFunctionLikeWithBody(node)) return node;
+    if (ts.isReturnStatement(node) && node.expression) {
+      const updated = state.factory.updateReturnStatement(node,
+        state.factory.createAssignment(result, node.expression));
+      const origin = state.sourceMapOrigins.get(node);
+      if (origin) state.sourceMapOrigins.set(updated, origin);
+      return updated;
+    }
+    return ts.visitEachChild(node, instrument, context);
+  };
+  return statements.map((statement) => ts.visitNode(statement, instrument) as ts.Statement);
+}
+
+function lowerStatement(
+  statement: ts.Statement,
+  owner: SemanticFunction | undefined,
+  caughtByJavaScript: boolean,
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+): ts.Statement[] {
+  if (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) {
+    const rewritten = rewriteModuleDeclaration(statement, state);
+    if (rewritten) return [rewritten];
+  }
+  if (ts.isFunctionDeclaration(statement) && statement.body) {
+    return [transformFunction(statement as FunctionLikeWithBody, state, context, visit) as ts.FunctionDeclaration];
+  }
+  if (ts.isBlock(statement) && owner) return [transformBlock(statement, owner, caughtByJavaScript, state, context, visit)];
+
+  if (ts.isClassDeclaration(statement)) {
+    const updated = ts.visitEachChild(statement, visit, context) as ts.ClassDeclaration;
+    const name = state.errorStarts.get(statement.getStart(state.model.sourceFile));
+    if (!name || !statement.name) return [updated];
+    state.changed = true;
+    const register = helper(state, "__vsRegisterError");
+    const stableId = stableErrorId(state.sourceName, name);
+    const brand = nominalErrorInterface(statement, stableId, state);
+    return [
+      updated,
+      ...(brand ? [brand] : []),
+      state.factory.createExpressionStatement(state.factory.createCallExpression(
+        state.factory.createIdentifier(register),
+        undefined,
+        [state.factory.createIdentifier(statement.name.text), state.factory.createStringLiteral(stableId)],
+      )),
+    ];
+  }
+
+  if (!owner) return [ts.visitEachChild(statement, visit, context) as ts.Statement];
+
+  if (ts.isVariableStatement(statement)) {
+    const prologue: ts.Statement[] = [];
+    const declarations = statement.declarationList.declarations.map((declaration) => {
+      if (!declaration.initializer) return ts.visitEachChild(declaration, visit, context) as ts.VariableDeclaration;
+      const expression = rewriteExpression(declaration.initializer, owner, prologue, state, context, visit);
+      return state.factory.updateVariableDeclaration(declaration, declaration.name, declaration.exclamationToken,
+        declaration.type, expression);
+    });
+    return [
+      ...prologue,
+      state.factory.updateVariableStatement(statement, statement.modifiers,
+        state.factory.updateVariableDeclarationList(statement.declarationList, declarations)),
+    ];
+  }
+
+  if (ts.isReturnStatement(statement)) return lowerReturn(statement.expression, owner, state, context, visit, statement);
+
+  if (ts.isThrowStatement(statement) && statement.expression) {
+    const prologue: ts.Statement[] = [];
+    const expression = rewriteExpression(statement.expression, owner, prologue, state, context, visit);
+    if (caughtByJavaScript || effectiveChannel(owner) === "plain") {
+      return [...prologue, state.factory.updateThrowStatement(statement, expression)];
+    }
+    state.changed = true;
+    return [...prologue, sourceMapAnchor(
+      state.factory.createReturnStatement(resultFailure(expression, state)),
+      statement,
+      state,
+    )];
+  }
+
+  if (ts.isExpressionStatement(statement)) {
+    const panicCall = unwrapPanicCall(statement.expression, state.model);
+    if (panicCall) {
+      const prologue: ts.Statement[] = [];
+      const failure = lowerPanicValue(panicCall, owner, prologue, state, context, visit);
+      state.changed = true;
+      return [...prologue, sourceMapAnchor(
+        state.factory.createReturnStatement(resultFailure(failure, state)),
+        statement,
+        state,
+      )];
+    }
+    const prologue: ts.Statement[] = [];
+    const expression = rewriteExpression(statement.expression, owner, prologue, state, context, visit);
+    return [...prologue, state.factory.updateExpressionStatement(statement, expression)];
+  }
+
+  if (ts.isIfStatement(statement)) {
+    const prologue: ts.Statement[] = [];
+    const expression = rewriteExpression(statement.expression, owner, prologue, state, context, visit);
+    const thenStatement = singleStatement(lowerStatement(statement.thenStatement, owner, caughtByJavaScript, state, context, visit), state);
+    const elseStatement = statement.elseStatement
+      ? singleStatement(lowerStatement(statement.elseStatement, owner, caughtByJavaScript, state, context, visit), state)
+      : undefined;
+    return [...prologue, state.factory.updateIfStatement(statement, expression, thenStatement, elseStatement)];
+  }
+
+  if (ts.isLabeledStatement(statement)) {
+    return [state.factory.updateLabeledStatement(
+      statement,
+      statement.label,
+      singleStatement(lowerStatement(statement.statement, owner, caughtByJavaScript, state, context, visit), state),
+    )];
+  }
+
+  if (ts.isTryStatement(statement)) {
+    const tryBlock = transformBlock(statement.tryBlock, owner, caughtByJavaScript || Boolean(statement.catchClause), state, context, visit);
+    const catchClause = statement.catchClause
+      ? state.factory.updateCatchClause(statement.catchClause, statement.catchClause.variableDeclaration,
+          transformBlock(statement.catchClause.block, owner, caughtByJavaScript, state, context, visit))
+      : undefined;
+    const finallyBlock = statement.finallyBlock
+      ? transformBlock(statement.finallyBlock, owner, caughtByJavaScript, state, context, visit)
+      : undefined;
+    return [state.factory.updateTryStatement(statement, tryBlock, catchClause, finallyBlock)];
+  }
+
+  if (ts.isWhileStatement(statement)) {
+    const expression = rewriteLoopHeaderExpression(statement.expression, owner, state, context, visit);
+    const body = singleStatement(
+      lowerStatement(statement.statement, owner, caughtByJavaScript, state, context, visit),
+      state,
+    );
+    return [state.factory.updateWhileStatement(statement, expression, body)];
+  }
+
+  if (ts.isDoStatement(statement)) {
+    const body = singleStatement(
+      lowerStatement(statement.statement, owner, caughtByJavaScript, state, context, visit),
+      state,
+    );
+    const expression = rewriteLoopHeaderExpression(statement.expression, owner, state, context, visit);
+    return [state.factory.updateDoStatement(statement, body, expression)];
+  }
+
+  if (ts.isForStatement(statement)) {
+    const prologue: ts.Statement[] = [];
+    let initializer: ts.ForInitializer | undefined;
+    if (statement.initializer && ts.isVariableDeclarationList(statement.initializer)) {
+      const declarations = statement.initializer.declarations.map((declaration) => {
+        const value = declaration.initializer
+          ? rewriteExpression(declaration.initializer, owner, prologue, state, context, visit)
+          : undefined;
+        return state.factory.updateVariableDeclaration(
+          declaration,
+          declaration.name,
+          declaration.exclamationToken,
+          declaration.type,
+          value,
+        );
+      });
+      initializer = state.factory.updateVariableDeclarationList(statement.initializer, declarations);
+    } else if (statement.initializer) {
+      initializer = rewriteExpression(statement.initializer, owner, prologue, state, context, visit);
+    }
+    const condition = statement.condition
+      ? rewriteLoopHeaderExpression(statement.condition, owner, state, context, visit)
+      : undefined;
+    const incrementor = statement.incrementor
+      ? rewriteLoopHeaderExpression(statement.incrementor, owner, state, context, visit)
+      : undefined;
+    const body = singleStatement(
+      lowerStatement(statement.statement, owner, caughtByJavaScript, state, context, visit),
+      state,
+    );
+    return [
+      ...prologue,
+      state.factory.updateForStatement(statement, initializer, condition, incrementor, body),
+    ];
+  }
+
+  if (ts.isForInStatement(statement)) {
+    const expression = rewriteLoopHeaderExpression(statement.expression, owner, state, context, visit);
+    const body = singleStatement(
+      lowerStatement(statement.statement, owner, caughtByJavaScript, state, context, visit),
+      state,
+    );
+    return [state.factory.updateForInStatement(statement, statement.initializer, expression, body)];
+  }
+
+  if (ts.isForOfStatement(statement)) {
+    const expression = rewriteLoopHeaderExpression(statement.expression, owner, state, context, visit);
+    const body = singleStatement(
+      lowerStatement(statement.statement, owner, caughtByJavaScript, state, context, visit),
+      state,
+    );
+    return [state.factory.updateForOfStatement(
+      statement,
+      statement.awaitModifier,
+      statement.initializer,
+      expression,
+      body,
+    )];
+  }
+
+  if (ts.isSwitchStatement(statement)) {
+    const prologue: ts.Statement[] = [];
+    const expression = rewriteExpression(statement.expression, owner, prologue, state, context, visit);
+    const clauses = statement.caseBlock.clauses.map((clause) => {
+      const statements = clause.statements.flatMap((item) => lowerStatement(item, owner, caughtByJavaScript, state, context, visit));
+      return ts.isCaseClause(clause)
+        ? state.factory.updateCaseClause(clause, rewriteExpression(clause.expression, owner, prologue, state, context, visit), statements)
+        : state.factory.updateDefaultClause(clause, statements);
+    });
+    return [...prologue, state.factory.updateSwitchStatement(statement, expression,
+      state.factory.updateCaseBlock(statement.caseBlock, clauses))];
+  }
+
+  const prologue: ts.Statement[] = [];
+  const expressionVisitor: ts.Visitor = (node) => {
+    if (isFunctionLikeWithBody(node)) return transformFunction(node, state, context, visit);
+    if (ts.isExpression(node)) return rewriteExpression(node, owner, prologue, state, context, visit);
+    return ts.visitEachChild(node, expressionVisitor, context);
+  };
+  const updated = ts.visitEachChild(statement, expressionVisitor, context) as ts.Statement;
+  return [...prologue, updated];
+}
+
+function lowerReturn(
+  original: ts.Expression | undefined,
+  owner: SemanticFunction,
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+  statement?: ts.ReturnStatement,
+): ts.Statement[] {
+  const prologue: ts.Statement[] = [];
+  const panicCall = original && unwrapPanicCall(original, state.model);
+  if (panicCall) {
+    const failure = lowerPanicValue(panicCall, owner, prologue, state, context, visit);
+    state.changed = true;
+    return [...prologue, sourceMapAnchor(
+      state.factory.createReturnStatement(resultFailure(failure, state)),
+      statement ?? panicCall,
+      state,
+    )];
+  }
+  const expression = original
+    ? rewriteExpression(original, owner, prologue, state, context, visit)
+    : undefined;
+  const lifted = liftSuccess(expression, original, owner, state);
+  const updated = statement
+    ? state.factory.updateReturnStatement(statement, lifted)
+    : state.factory.createReturnStatement(lifted);
+  return [...prologue, updated];
+}
+
+function liftSuccess(
+  expression: ts.Expression | undefined,
+  original: ts.Expression | undefined,
+  owner: SemanticFunction,
+  state: TransformState,
+): ts.Expression | undefined {
+  const channel = effectiveChannel(owner);
+  if (channel === "plain") return expression;
+  state.changed = true;
+  const originalShape = original ? expressionShape(original, state.model) : undefined;
+  if (channel === "optional") {
+    if (originalShape?.channel === "optional") return expression;
+    return isNullish(original)
+      ? optionalNone(state)
+      : optionalSome(expression ?? state.factory.createIdentifier("undefined"), state);
+  }
+  if (originalShape?.channel === "result" || originalShape?.channel === "result-optional") return expression;
+  if (channel === "result-optional") {
+    const optional = originalShape?.channel === "optional"
+      ? expression!
+      : isNullish(original)
+        ? optionalNone(state)
+        : optionalSome(expression ?? state.factory.createIdentifier("undefined"), state);
+    return resultSuccess(optional, state);
+  }
+  return resultSuccess(expression ?? state.factory.createIdentifier("undefined"), state);
+}
+
+function rewriteExpression(
+  expression: ts.Expression,
+  owner: SemanticFunction,
+  prologue: ts.Statement[],
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+): ts.Expression {
+  if (ts.isCallExpression(expression)) {
+    // A dynamic import has no callee expression to rewrite; lower the
+    // specifier and attributes in place.
+    if (expression.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      return rewriteDynamicImport(expression, state) ?? expression;
+    }
+    if (isResultUnwrapExpression(expression, state.model)) {
+      const property = expression.expression as ts.PropertyAccessExpression;
+      const receiver = rewriteExpression(property.expression, owner, prologue, state, context, visit);
+      const temporary = freshTemporary(state, "result");
+      const inspect = helper(state, "__vsInspectResult");
+      prologue.push(state.factory.createVariableStatement(undefined,
+        state.factory.createVariableDeclarationList([
+          state.factory.createVariableDeclaration(temporary, undefined, undefined,
+            state.factory.createCallExpression(state.factory.createIdentifier(inspect), undefined, [receiver])),
+        ], ts.NodeFlags.Const)));
+      const propagate = sourceMapAnchor(state.factory.createReturnStatement(resultFailure(
+        state.factory.createPropertyAccessExpression(temporary, "error"), state)), expression, state);
+      prologue.push(state.factory.createIfStatement(
+        state.factory.createBinaryExpression(
+          state.factory.createPropertyAccessExpression(temporary, "ok"),
+          ts.SyntaxKind.EqualsEqualsEqualsToken,
+          state.factory.createFalse()),
+        propagate,
+      ));
+      state.changed = true;
+      return state.factory.createPropertyAccessExpression(temporary, "value");
+    }
+
+    if (isOptionalUnwrapExpression(expression, state.model)) {
+      const channel = effectiveChannel(owner);
+      if (channel === "optional" || channel === "result-optional") {
+        const property = expression.expression as ts.PropertyAccessExpression;
+        const receiver = rewriteExpression(property.expression, owner, prologue, state, context, visit);
+        const temporary = freshTemporary(state, "optional");
+        const inspect = helper(state, "__vsInspectOptional");
+        prologue.push(state.factory.createVariableStatement(undefined,
+          state.factory.createVariableDeclarationList([
+            state.factory.createVariableDeclaration(temporary, undefined, undefined,
+              state.factory.createCallExpression(state.factory.createIdentifier(inspect), undefined, [receiver])),
+          ], ts.NodeFlags.Const)));
+        const absent = channel === "optional"
+          ? optionalNone(state)
+          : resultSuccess(optionalNone(state), state);
+        const propagate = sourceMapAnchor(state.factory.createReturnStatement(absent), expression, state);
+        prologue.push(state.factory.createIfStatement(
+          state.factory.createBinaryExpression(
+            state.factory.createPropertyAccessExpression(temporary, "some"),
+            ts.SyntaxKind.EqualsEqualsEqualsToken,
+            state.factory.createFalse()),
+          propagate,
+        ));
+        state.changed = true;
+        return state.factory.createPropertyAccessExpression(temporary, "value");
+      }
+      // No Optional-capable owner: semantic analysis rejects this placement
+      // with VIBE1206, so leave the source untransformed instead of emitting
+      // an early return with different semantics.
+    }
+
+    const called = rewriteExpression(expression.expression, owner, prologue, state, context, visit);
+    const arguments_ = expression.arguments.map((argument) =>
+      rewriteExpression(argument, owner, prologue, state, context, visit));
+    let updated: ts.Expression = state.factory.updateCallExpression(expression, called, expression.typeArguments, arguments_);
+    if (isErrorMatchCall(expression, state.model.checker) && ts.isObjectLiteralExpression(arguments_[0])) {
+      const cases = lowerErrorCases(arguments_[0], state);
+      updated = state.factory.updateCallExpression(expression, called, expression.typeArguments, [cases, ...arguments_.slice(1)]);
+      state.changed = true;
+    }
+    const edge = state.model.callEdges.get(expression);
+    if (edge?.foreign && edge.foreign.kind !== "never" && edge.foreign.lowerable && !edge.authoredBoundary) {
+      updated = wrapForeignCall(updated, edge, state);
+      state.changed = true;
+    }
+    return updated;
+  }
+  if (isFunctionLikeWithBody(expression)) return transformFunction(expression, state, context, visit) as ts.Expression;
+  const expressionVisitor: ts.Visitor = (node) => {
+    if (node === expression) return ts.visitEachChild(node, expressionVisitor, context);
+    if (isFunctionLikeWithBody(node)) return transformFunction(node, state, context, visit);
+    if (ts.isExpression(node)) return rewriteExpression(node, owner, prologue, state, context, visit);
+    return ts.visitEachChild(node, expressionVisitor, context);
+  };
+  return ts.visitEachChild(expression, expressionVisitor, context) as ts.Expression;
+}
+
+/**
+ * A Result unwrap or panic exit needs statements at the exact evaluation
+ * point. Hoisting those statements out of a repeated loop header changes
+ * semantics, so semantic analysis rejects the construct and the emitter leaves
+ * it untouched. Ordinary calls (including foreign calls, whose wrappers are
+ * expressions) can still be rewritten in place.
+ */
+function rewriteLoopHeaderExpression(
+  expression: ts.Expression,
+  owner: SemanticFunction,
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+): ts.Expression {
+  if (containsLoopHeaderExit(expression, state.model)) {
+    return ts.visitEachChild(expression, visit, context) as ts.Expression;
+  }
+  const prologue: ts.Statement[] = [];
+  const result = rewriteExpression(expression, owner, prologue, state, context, visit);
+  // The only current expression lowering that introduces statements is an
+  // unwrap. Keep this guard fail-closed if a future lowering does the same.
+  if (prologue.length > 0) return expression;
+  return result;
+}
+
+function containsLoopHeaderExit(expression: ts.Expression, model: SemanticModel): boolean {
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (node !== expression && isFunctionLikeWithBody(node)) return;
+    if (ts.isCallExpression(node) &&
+      (isResultUnwrapExpression(node, model) || isOptionalUnwrapExpression(node, model) ||
+        isPanicExitCall(node, model))) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(expression);
+  return found;
+}
+
+function lowerPanicValue(
+  call: ts.CallExpression,
+  owner: SemanticFunction,
+  prologue: ts.Statement[],
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+): ts.Expression {
+  const cause = call.arguments[0]
+    ? rewriteExpression(call.arguments[0], owner, prologue, state, context, visit)
+    : state.factory.createIdentifier("undefined");
+  return state.factory.createCallExpression(
+    state.factory.createIdentifier(helper(state, "__vsPanicValue")),
+    undefined,
+    [cause],
   );
 }
 
-function emitErrorClass(declaration: ErrorDeclaration, errorHelper: string): string {
-  const fields = declaration.fieldsSource
-    .split(/[,;\n]/)
-    .map((field) => field.trim())
-    .filter(Boolean)
-    .map((field) => {
-      const match = field.match(/^(?:readonly\s+)?([A-Za-z_$][\w$]*)\s*:\s*(.+)$/s);
-      if (!match) throw new Error(`cannot parse field '${field}' on error ${declaration.name}`);
-      return { name: match[1]!, type: match[2]!.trim() };
-    });
-  const parameter = `{ ${fields.map((field) => `${field.name}: ${field.type}`).join("; ")} }`;
-  return [
-    `class ${declaration.name} extends ${errorHelper} {`,
-    `  declare readonly _tag: ${JSON.stringify(declaration.name)};`,
-    ...fields.map((field) => `  declare readonly ${field.name}: ${field.type};`),
-    fields.length > 0
-      ? `  constructor(fields: ${parameter}) { super(${JSON.stringify(declaration.name)}, fields); }`
-      : `  constructor() { super(${JSON.stringify(declaration.name)}); }`,
-    `}`,
-  ].join("\n");
+function unwrapPanicCall(expression: ts.Expression, model: SemanticModel): ts.CallExpression | undefined {
+  let current = expression;
+  while (ts.isParenthesizedExpression(current)) current = current.expression;
+  return ts.isCallExpression(current) && isPanicExitCall(current, model) ? current : undefined;
 }
 
-function lowerErrorConstruction(source: string, errorNames: ReadonlySet<string>): string {
-  const tokens = tokenize(source);
-  const edits: Edit[] = [];
-  for (let index = 0; index < tokens.length - 2; index++) {
-    if (tokens[index]!.text !== "throw") continue;
-    const candidate = tokens[index + 1]!;
-    if (errorNames.has(candidate.text) && tokens[index + 2]!.text === "(") {
-      edits.push({ start: candidate.start, end: candidate.start, text: "new " });
-    }
-  }
-  return applyEdits(source, edits);
-}
-
-function lowerFunctionChannels(source: string, useHelper: string): string {
-  const tokens = tokenize(source);
-  const edits: Edit[] = [];
-  for (let index = 0; index < tokens.length; index++) {
-    if (tokens[index]!.text !== "function" || tokens[index + 1]?.kind !== "identifier") continue;
-    let parametersOpen = index + 2;
-    while (parametersOpen < tokens.length && tokens[parametersOpen]!.text !== "(") parametersOpen++;
-    if (parametersOpen === tokens.length) continue;
-    const parametersClose = matchPair(tokens, parametersOpen);
-    const tail = scanFunctionTail(tokens, parametersClose);
-    if (!tail) continue;
-    const { bodyOpen, throwsIndex, usesIndex, bangIndex, colonIndex } = tail;
-    const isAsync = tokens.slice(Math.max(0, index - 3), index).some((token) => token.text === "async");
-
-    if (isAsync && colonIndex !== -1) {
-      const rowBoundary = Math.min(
-        ...[throwsIndex, usesIndex, bodyOpen].filter((candidate) => candidate !== -1),
+function lowerErrorCases(object: ts.ObjectLiteralExpression, state: TransformState): ts.Expression {
+  const entries: ts.Expression[] = [];
+  for (const property of object.properties) {
+    if (!property.name || !ts.isIdentifier(property.name)) continue;
+    let handler: ts.Expression | undefined;
+    if (ts.isPropertyAssignment(property)) handler = property.initializer;
+    else if (ts.isMethodDeclaration(property) && property.body) {
+      handler = state.factory.createFunctionExpression(
+        ts.getModifiers(property),
+        property.asteriskToken,
+        undefined,
+        property.typeParameters,
+        property.parameters,
+        property.type,
+        property.body,
       );
-      const typeStartIndex = colonIndex + 1;
-      const firstTypeIndex = bangIndex === typeStartIndex ? typeStartIndex + 1 : typeStartIndex;
-      const typeEndIndex = rowBoundary - 1;
-      if (firstTypeIndex <= typeEndIndex && tokens[firstTypeIndex]!.text !== "Promise") {
-        let returnType = source.slice(tokens[firstTypeIndex]!.start, tokens[typeEndIndex]!.end).trim();
-        if (/^\?[A-Za-z_$]/.test(returnType)) returnType = `${returnType.slice(1)} | null`;
-        edits.push({
-          start: tokens[typeStartIndex]!.start,
-          end: tokens[typeEndIndex]!.end,
-          text: `Promise<${returnType}>`,
-        });
-      } else if (bangIndex !== -1) {
-        edits.push({ start: tokens[bangIndex]!.start, end: tokens[bangIndex]!.end, text: "" });
+    }
+    if (!handler) continue;
+    entries.push(state.factory.createArrayLiteralExpression([
+      state.factory.createIdentifier(property.name.text),
+      handler,
+    ]));
+  }
+  return state.factory.createCallExpression(
+    state.factory.createIdentifier(helper(state, "__vsErrorCases")),
+    undefined,
+    entries,
+  );
+}
+
+function wrapForeignCall(call: ts.Expression, edge: CallEdge, state: TransformState): ts.Expression {
+  const runtime = helper(state, "Result", "__vsResultRuntime");
+  const policy = edge.foreign!;
+  const body = state.factory.createArrowFunction(undefined, undefined, [], undefined,
+    state.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), call);
+  const arguments_: ts.Expression[] = [body];
+  if (policy.kind === "declared" && policy.errorName) {
+    const validate = helper(state, "__vsValidateForeignError");
+    const cause = state.factory.createIdentifier("cause");
+    const path = policy.errorValuePath ?? [policy.errorName];
+    const constructor = path.slice(1).reduce<ts.Expression>(
+      (receiver, member) => state.factory.createPropertyAccessExpression(receiver, member),
+      state.factory.createIdentifier(path[0]!),
+    );
+    arguments_.push(state.factory.createArrowFunction(undefined, undefined, [
+      state.factory.createParameterDeclaration(undefined, undefined, cause),
+    ], undefined, state.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+    state.factory.createCallExpression(state.factory.createIdentifier(validate), undefined,
+      [cause, constructor])));
+  }
+  return state.factory.createCallExpression(
+    state.factory.createPropertyAccessExpression(state.factory.createIdentifier(runtime), policy.async ? "tryPromise" : "try"),
+    undefined,
+    arguments_,
+  );
+}
+
+function implicitCompletion(owner: SemanticFunction, state: TransformState): ts.ReturnStatement | undefined {
+  const channel = effectiveChannel(owner);
+  if (channel === "plain") return undefined;
+  if (channel === "optional") return state.factory.createReturnStatement(optionalNone(state));
+  if (channel === "result-optional") return state.factory.createReturnStatement(resultSuccess(optionalNone(state), state));
+  return state.factory.createReturnStatement(resultSuccess(state.factory.createIdentifier("undefined"), state));
+}
+
+function resultSuccess(value: ts.Expression, state: TransformState): ts.Expression {
+  return state.factory.createCallExpression(state.factory.createIdentifier(helper(state, "__vsResultSuccess")), undefined, [value]);
+}
+
+function resultFailure(value: ts.Expression, state: TransformState): ts.Expression {
+  return state.factory.createCallExpression(state.factory.createIdentifier(helper(state, "__vsResultFailure")), undefined, [value]);
+}
+
+function optionalSome(value: ts.Expression, state: TransformState): ts.Expression {
+  return state.factory.createCallExpression(state.factory.createIdentifier(helper(state, "__vsOptionalSome")), undefined, [value]);
+}
+
+function optionalNone(state: TransformState): ts.Expression {
+  return state.factory.createCallExpression(state.factory.createIdentifier(helper(state, "__vsOptionalNone")), undefined, []);
+}
+
+function helper(state: TransformState, exported: string, preferred = exported, typeOnly = false): string {
+  const existing = state.helpers.get(exported);
+  if (existing) return existing.local;
+  const local = allocateIdentifier(state, preferred);
+  state.helpers.set(exported, { exported, local, typeOnly });
+  return local;
+}
+
+function reserveBuiltinBindings(state: TransformState): void {
+  const used = new Set<string>();
+  const visit = (node: ts.Node): void => {
+    if (ts.isIdentifier(node) && (node.text === "Result" || node.text === "Optional" || node.text === "Panic")) {
+      const symbol = state.model.checker.getSymbolAtLocation(node);
+      if (symbol?.declarations?.some((declaration) => declaration.getSourceFile().fileName.endsWith("__vibelang_frontend_prelude__.d.ts"))) {
+        used.add(node.text);
       }
-    } else if (bangIndex !== -1) {
-      edits.push({ start: tokens[bangIndex]!.start, end: tokens[bangIndex]!.end, text: "" });
     }
-    if (throwsIndex !== -1) {
-      const end = usesIndex === -1 ? tokens[bodyOpen]!.start : tokens[usesIndex]!.start;
-      edits.push({ start: tokens[throwsIndex]!.start, end, text: "" });
-    }
-    if (usesIndex !== -1) {
-      const requirements = parseRequirementSources(source, tokens, usesIndex + 1, bodyOpen);
-      edits.push({ start: tokens[usesIndex]!.start, end: tokens[bodyOpen]!.start, text: " " });
-      edits.push({
-        start: tokens[bodyOpen]!.end,
-        end: tokens[bodyOpen]!.end,
-        text: requirements
-          .map(({ binding, type }) => `\n  const ${binding}: ${type} = ${useHelper}(${type});`)
-          .join(""),
+    ts.forEachChild(node, visit);
+  };
+  visit(state.model.sourceFile);
+  for (const name of used) {
+    state.helpers.set(name, { exported: name, local: name });
+    state.identifiers.add(name);
+  }
+}
+
+function emitHelperImport(state: TransformState): string {
+  if (state.helpers.size === 0) return "";
+  const specifiers = [...state.helpers.values()]
+    .sort((left, right) => compareText(left.exported, right.exported))
+    // A type-only specifier is erased by every TypeScript-to-JavaScript pass,
+    // so a type-only helper never changes the emitted JavaScript.
+    .map(({ exported, local, typeOnly }) =>
+      `${typeOnly ? "type " : ""}${exported === local ? exported : `${exported} as ${local}`}`);
+  return `// Generated from ${state.sourceName} by the VibeLang checked POC.\n` +
+    `import { ${specifiers.join(", ")} } from ${JSON.stringify(state.runtimeImport)};\n`;
+}
+
+interface InternalTextWriter {
+  getText(): string;
+}
+
+interface InternalSourceMapGenerator {
+  toString(): string;
+}
+
+interface TypeScriptPrinterInternals {
+  createTextWriter(newLine: string): InternalTextWriter;
+  createSourceMapGenerator(
+    host: { readonly getCurrentDirectory: () => string; readonly getCanonicalFileName: (fileName: string) => string },
+    file: string,
+    sourceRoot: string,
+    sourcesDirectoryPath: string,
+    options: { readonly inlineSources: boolean; readonly extendedDiagnostics: boolean },
+  ): InternalSourceMapGenerator;
+}
+
+function printFileWithSourceMap(sourceFile: ts.SourceFile): { readonly code: string; readonly sourceMap: string } {
+  const internals = ts as unknown as TypeScriptPrinterInternals;
+  if (typeof internals.createTextWriter !== "function" || typeof internals.createSourceMapGenerator !== "function") {
+    throw new TypeError("typescript-js does not expose the bounded AST source-map printer required by this frontend");
+  }
+  const writer = internals.createTextWriter("\n");
+  const directory = dirname(resolve(sourceFile.fileName));
+  const generator = internals.createSourceMapGenerator({
+    getCurrentDirectory: () => directory,
+    getCanonicalFileName: (fileName) => fileName.replaceAll("\\", "/"),
+  }, basename(sourceFile.fileName).replace(/\.vibe$/, ".ts"), "", directory, {
+    inlineSources: true,
+    extendedDiagnostics: false,
+  });
+  const printer = ts.createPrinter({
+    newLine: ts.NewLineKind.LineFeed,
+    removeComments: false,
+    inlineSources: true,
+  } as ts.PrinterOptions & { readonly inlineSources: boolean }) as ts.Printer & {
+    writeFile(file: ts.SourceFile, writer: InternalTextWriter, generator: InternalSourceMapGenerator): void;
+  };
+  if (typeof printer.writeFile !== "function") {
+    throw new TypeError("typescript-js printer cannot emit AST source-map provenance");
+  }
+  printer.writeFile(sourceFile, writer, generator);
+  return { code: writer.getText(), sourceMap: generator.toString() };
+}
+
+function sourceMapAnchor<T extends ts.Node>(node: T, origin: ts.Node, state: TransformState): T {
+  state.sourceMapOrigins.set(node, origin);
+  return node;
+}
+
+function childNodes(node: ts.Node): readonly ts.Node[] {
+  const children: ts.Node[] = [];
+  ts.forEachChild(node, (child) => { children.push(child); });
+  return children;
+}
+
+function locateSourceMapAnchors(
+  transformed: ts.SourceFile,
+  body: string,
+  state: TransformState,
+): readonly SourceMapAnchor[] {
+  if (state.sourceMapOrigins.size === 0) return [];
+  const emitted = ts.createSourceFile(
+    transformed.fileName.replace(/\.vibe$/, ".generated.ts"),
+    body,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const anchors: SourceMapAnchor[] = [];
+  const pair = (planned: ts.Node, printed: ts.Node): void => {
+    if (planned.kind !== printed.kind) return;
+    const origin = state.sourceMapOrigins.get(planned);
+    if (origin && origin.getSourceFile() === state.model.sourceFile && origin.pos >= 0) {
+      anchors.push({
+        generatedOffset: printed.getStart(emitted),
+        originalOffset: origin.getStart(state.model.sourceFile),
       });
     }
-  }
-  return applyEdits(source, edits);
-}
-
-/** Promise<A, E> carries E only in the VibeLang checker; JavaScript emit keeps
- * the ordinary one-parameter Promise<A> representation. */
-function lowerPromiseErrorRows(source: string): string {
-  const tokens = tokenize(source);
-  const edits: Edit[] = [];
-  for (let index = 0; index < tokens.length - 4; index++) {
-    if (tokens[index]!.text !== "Promise" || tokens[index + 1]!.text !== "<") continue;
-    let angleDepth = 1;
-    let delimiterDepth = 0;
-    let comma = -1;
-    let close = -1;
-    for (let cursor = index + 2; cursor < tokens.length; cursor++) {
-      const text = tokens[cursor]!.text;
-      if (["(", "[", "{"].includes(text)) delimiterDepth++;
-      else if ([")", "]", "}"].includes(text)) delimiterDepth--;
-      else if (delimiterDepth === 0 && text === "<") angleDepth++;
-      else if (delimiterDepth === 0 && text === ">" && --angleDepth === 0) {
-        close = cursor;
-        break;
-      } else if (delimiterDepth === 0 && angleDepth === 1 && text === ",") {
-        comma = cursor;
-      }
+    const plannedChildren = childNodes(planned);
+    const printedChildren = childNodes(printed);
+    if (plannedChildren.length !== printedChildren.length) return;
+    for (let index = 0; index < plannedChildren.length; index++) {
+      if (plannedChildren[index]!.kind !== printedChildren[index]!.kind) return;
     }
-    if (comma !== -1 && close !== -1) {
-      edits.push({ start: tokens[comma]!.start, end: tokens[close]!.start, text: "" });
-      index = close;
+    for (let index = 0; index < plannedChildren.length; index++) {
+      pair(plannedChildren[index]!, printedChildren[index]!);
     }
-  }
-  return applyEdits(source, edits);
-}
-
-function parseRequirementSources(
-  source: string,
-  tokens: readonly Token[],
-  start: number,
-  end: number,
-): Array<{ binding: string; type: string }> {
-  const requirements: Array<{ binding: string; type: string }> = [];
-  let index = start;
-  while (index < end) {
-    const binding = tokens[index];
-    if (!binding || binding.kind !== "identifier" || tokens[index + 1]?.text !== ":") break;
-    const typeStart = index + 2;
-    let cursor = typeStart;
-    const expected: string[] = [];
-    const closeFor: Record<string, string> = { "(": ")", "[": "]", "{": "}", "<": ">" };
-    while (cursor < end) {
-      const text = tokens[cursor]!.text;
-      if (closeFor[text]) expected.push(closeFor[text]!);
-      else if (expected.at(-1) === text) expected.pop();
-      if (text === "," && expected.length === 0) break;
-      cursor++;
-    }
-    const typeEnd = cursor === typeStart ? tokens[typeStart]!.end : tokens[cursor - 1]!.end;
-    requirements.push({
-      binding: binding.text,
-      type: source.slice(tokens[typeStart]!.start, typeEnd).trim(),
-    });
-    index = cursor + 1;
-  }
-  return requirements;
-}
-
-function lowerCatchExpressions(source: string, catchHelper: string): string {
-  let result = source;
-  for (;;) {
-    const lowered = lowerFirstCatch(result, catchHelper);
-    if (!lowered) return result;
-    result = lowered;
-  }
-}
-
-function lowerFirstCatch(source: string, catchHelper: string): string | undefined {
-  const tokens = tokenize(source);
-  for (let catchIndex = 0; catchIndex < tokens.length; catchIndex++) {
-    if (tokens[catchIndex]!.text !== "catch") continue;
-    // Preserve both JavaScript catch spellings: `catch (error) {}` and the
-    // optional-binding form `catch {}`.
-    if (
-      tokens[catchIndex - 1]?.text === "}" &&
-      ["(", "{"].includes(tokens[catchIndex + 1]?.text ?? "")
-    ) continue;
-    const leftEndIndex = catchIndex - 1;
-    if (leftEndIndex < 0) continue;
-    const leftStartIndex = expressionStart(tokens, leftEndIndex);
-    let cursor = catchIndex + 1;
-    let capture = "__failure";
-    if (tokens[cursor]?.text === "|") {
-      if (tokens[cursor + 1]?.kind !== "identifier" || tokens[cursor + 2]?.text !== "|") {
-        throw new Error(`malformed catch capture at offset ${tokens[catchIndex]!.start}`);
-      }
-      capture = tokens[cursor + 1]!.text;
-      cursor += 3;
-    }
-
-    let handler: string;
-    let endOffset: number;
-    if (tokens[cursor]?.text === "switch") {
-      const lowered = lowerCatchSwitch(source, tokens, cursor, capture);
-      handler = lowered.handler;
-      endOffset = lowered.endOffset;
-    } else {
-      const fallbackEnd = expressionEnd(source, tokens, cursor);
-      const fallback = source.slice(tokens[cursor]!.start, fallbackEnd).trim();
-      const asyncPrefix = hasTokenBeforeOffset(tokens, cursor, fallbackEnd, "await") ? "async " : "";
-      handler = fallback.startsWith("throw ")
-        ? `${asyncPrefix}(${capture}: any) => { ${fallback}; }`
-        : `${asyncPrefix}(${capture}: any) => (${fallback})`;
-      endOffset = fallbackEnd;
-    }
-
-    let left = source.slice(tokens[leftStartIndex]!.start, tokens[leftEndIndex]!.end).trim();
-    let awaitPrefix = "";
-    if (/^try\s+/.test(left)) left = left.replace(/^try\s+/, "");
-    if (/^await\s+/.test(left)) {
-      left = left.replace(/^await\s+/, "");
-      awaitPrefix = "await ";
-    }
-    if (/^try\s+/.test(left)) left = left.replace(/^try\s+/, "");
-    const replacement = `${awaitPrefix}${catchHelper}(() => (${left}), ${handler})`;
-    return (
-      source.slice(0, tokens[leftStartIndex]!.start) +
-      replacement +
-      source.slice(endOffset)
-    );
-  }
-  return undefined;
-}
-
-function lowerCatchSwitch(
-  source: string,
-  tokens: readonly Token[],
-  switchIndex: number,
-  capture: string,
-): { handler: string; endOffset: number } {
-  if (tokens[switchIndex + 1]?.text !== "(") throw new Error("catch switch requires a condition");
-  const conditionClose = matchPair(tokens, switchIndex + 1);
-  const bodyOpen = conditionClose + 1;
-  if (tokens[bodyOpen]?.text !== "{") throw new Error("catch switch requires a body");
-  const bodyClose = matchPair(tokens, bodyOpen);
-  const cases: string[] = [];
-  let isAsync = false;
-  let cursor = bodyOpen + 1;
-  while (cursor < bodyClose) {
-    if (tokens[cursor]!.text === ",") {
-      cursor++;
-      continue;
-    }
-    const failure = tokens[cursor];
-    if (!failure || failure.kind !== "identifier" || tokens[cursor + 1]?.text !== "=>") {
-      throw new Error(`malformed catch switch arm at offset ${tokens[cursor]!.start}`);
-    }
-    const armStart = cursor + 2;
-    const armEnd = findArmEnd(tokens, armStart, bodyClose);
-    const expressionEndOffset = armEnd === bodyClose ? tokens[bodyClose]!.start : tokens[armEnd]!.start;
-    const expression = source.slice(tokens[armStart]!.start, expressionEndOffset).trim();
-    isAsync ||= hasTokenBeforeOffset(tokens, armStart, expressionEndOffset, "await");
-    cases.push(
-      expression.startsWith("throw ")
-        ? `case ${JSON.stringify(failure.text)}: ${expression};`
-        : `case ${JSON.stringify(failure.text)}: return (${expression});`,
-    );
-    cursor = armEnd + (tokens[armEnd]?.text === "," ? 1 : 0);
-  }
-  return {
-    handler: `${isAsync ? "async " : ""}(${capture}: any) => { switch (${capture}._tag) { ${cases.join(" ")} default: throw ${capture}; } }`,
-    endOffset: tokens[bodyClose]!.end,
   };
+  pair(transformed, emitted);
+  const byGenerated = new Map<number, SourceMapAnchor>();
+  for (const anchor of anchors) byGenerated.set(anchor.generatedOffset, anchor);
+  return [...byGenerated.values()].sort((left, right) => left.generatedOffset - right.generatedOffset);
 }
 
-function hasTokenBeforeOffset(
-  tokens: readonly Token[],
-  start: number,
-  endOffset: number,
-  text: string,
-): boolean {
-  for (let index = start; index < tokens.length && tokens[index]!.start < endOffset; index++) {
-    if (tokens[index]!.text === text) return true;
+function allocateIdentifier(state: TransformState, preferred: string): string {
+  let candidate = preferred;
+  let suffix = 0;
+  while (state.identifiers.has(candidate)) candidate = `${preferred}$vibe${suffix++ || ""}`;
+  state.identifiers.add(candidate);
+  return candidate;
+}
+
+function freshTemporary(state: TransformState, purpose: string): ts.Identifier {
+  return state.factory.createIdentifier(allocateIdentifier(state, `__vibe_${purpose}_${++state.temporary}`));
+}
+
+function collectIdentifierTexts(sourceFile: ts.SourceFile): Set<string> {
+  const values = new Set<string>();
+  const visit = (node: ts.Node): void => {
+    if (ts.isIdentifier(node)) values.add(node.text);
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return values;
+}
+
+function singleStatement(statements: readonly ts.Statement[], state: TransformState): ts.Statement {
+  if (statements.length === 1) return statements[0]!;
+  state.changed = true;
+  return state.factory.createBlock(statements, true);
+}
+
+function mayFallThrough(statements: readonly ts.Statement[], state: TransformState): boolean {
+  const last = statements.at(-1);
+  if (!last) return true;
+  return statementMayFallThrough(last, state);
+}
+
+function statementMayFallThrough(statement: ts.Statement, state: TransformState): boolean {
+  if (ts.isReturnStatement(statement) || ts.isThrowStatement(statement)) return false;
+  if (ts.isBlock(statement)) return mayFallThrough(statement.statements, state);
+  if (ts.isIfStatement(statement) && statement.elseStatement) {
+    return statementMayFallThrough(statement.thenStatement, state) ||
+      statementMayFallThrough(statement.elseStatement, state);
+  }
+  if (ts.isSwitchStatement(statement)) {
+    // A default-covered or proven-exhaustive switch completes past its
+    // clauses only when some selected clause can; break statements keep the
+    // conservative fall-through answer through the clause check.
+    const clauses = statement.caseBlock.clauses;
+    const covered = state.nonFallingSwitches.has(statement) || clauses.some(ts.isDefaultClause);
+    if (!covered) return true;
+    return clauses.some((clause) => clause.statements.length === 0 || mayFallThrough(clause.statements, state));
+  }
+  if (ts.isTryStatement(statement)) {
+    if (statement.finallyBlock && !mayFallThrough(statement.finallyBlock.statements, state)) return false;
+    const tryFallsThrough = mayFallThrough(statement.tryBlock.statements, state);
+    return statement.catchClause
+      ? tryFallsThrough || mayFallThrough(statement.catchClause.block.statements, state)
+      : tryFallsThrough;
+  }
+  return true;
+}
+
+function isNullish(expression: ts.Expression | undefined): boolean {
+  return !expression || expression.kind === ts.SyntaxKind.NullKeyword ||
+    (ts.isIdentifier(expression) && expression.text === "undefined") ||
+    (ts.isVoidExpression(expression) && ts.isNumericLiteral(expression.expression) && expression.expression.text === "0");
+}
+
+/**
+ * The type-only nominal merge for an authored Error class.
+ *
+ * Two `class X extends Error {}` declarations are the same *structural* type,
+ * so `errorIs(error, X)` cannot subtract a sibling in the else branch. Merging
+ * `interface X extends NominalError<"<stableId>"> {}` alongside the class makes
+ * siblings nominally distinct in the generated program while adding no runtime
+ * member: the brand is a phantom type-only property and the import specifier is
+ * type-only, so the emitted JavaScript is unchanged.
+ *
+ * The brand identity is the same stable id given to `__vsRegisterError`, so the
+ * nominal key and the transport key cannot drift apart.
+ *
+ * Exactly one level of an inheritance chain may carry a brand (TypeScript
+ * requires an inherited brand property to be identical), so a class whose base
+ * is itself an Error class declaration is left unbranded and inherits its
+ * ancestor's brand. Generic Error classes are also left unbranded because the
+ * merged interface would have to restate their type parameter list exactly.
+ */
+function nominalErrorInterface(
+  declaration: ts.ClassDeclaration,
+  stableId: string,
+  state: TransformState,
+): ts.InterfaceDeclaration | undefined {
+  if (!declaration.name || declaration.typeParameters?.length) return undefined;
+  if (hasErrorClassBase(declaration, state.model.checker)) return undefined;
+  const nominal = helper(state, "NominalError", "NominalError", true);
+  const exportModifiers = ts.getModifiers(declaration)
+    ?.filter((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+  return state.factory.createInterfaceDeclaration(
+    exportModifiers?.length ? [state.factory.createModifier(ts.SyntaxKind.ExportKeyword)] : undefined,
+    state.factory.createIdentifier(declaration.name.text),
+    undefined,
+    [state.factory.createHeritageClause(ts.SyntaxKind.ExtendsKeyword, [
+      state.factory.createExpressionWithTypeArguments(
+        state.factory.createIdentifier(nominal),
+        [state.factory.createLiteralTypeNode(state.factory.createStringLiteral(stableId))],
+      ),
+    ])],
+    [],
+  );
+}
+
+/** True when the class extends another Error *class declaration*. */
+function hasErrorClassBase(declaration: ts.ClassDeclaration, checker: ts.TypeChecker): boolean {
+  const heritage = declaration.heritageClauses
+    ?.find((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword);
+  for (const typeNode of heritage?.types ?? []) {
+    let symbol = checker.getSymbolAtLocation(typeNode.expression);
+    if (symbol && (symbol.flags & ts.SymbolFlags.Alias) !== 0) symbol = checker.getAliasedSymbol(symbol);
+    const base = symbol?.declarations?.find(ts.isClassDeclaration);
+    if (base?.name && isErrorType(checker.getTypeAtLocation(base.name), checker)) return true;
   }
   return false;
 }
 
-function lowerTryMarkers(source: string): string {
-  const tokens = tokenize(source);
-  const edits: Edit[] = [];
-  for (let index = 0; index < tokens.length; index++) {
-    if (
-      tokens[index]!.text !== "try" ||
-      tokens[index + 1]?.text === "{" ||
-      tokens[index + 1]?.text === "(" ||
-      tokens[index - 1]?.text === "." ||
-      tokens[index - 1]?.text === "?."
-    ) continue;
-    edits.push({ start: tokens[index]!.start, end: tokens[index]!.end, text: "" });
-  }
-  return applyEdits(source, edits);
+function stableErrorId(sourceName: string, name: string): string {
+  const normalized = sourceName.replace(/[^A-Za-z0-9._/@:+-]/g, "_").replace(/^([^A-Za-z0-9])/, "source_$1");
+  return `vibe:${normalized}:${name}`.slice(0, 256);
 }
 
-function lowerOptionals(source: string, unwrapHelper: string): string {
-  let result = source;
-  let tokens = tokenize(result);
-  let edits: Edit[] = [];
-  for (let index = 0; index < tokens.length; index++) {
-    if (
-      tokens[index]!.text === "orelse" &&
-      isOptionalOperatorLeft(tokens[index - 1]) &&
-      isOptionalOperatorRight(tokens[index + 1])
-    ) {
-      edits.push({ start: tokens[index]!.start, end: tokens[index]!.end, text: "??" });
-    }
-    if (
-      tokens[index]!.text === "?" &&
-      tokens[index - 1]?.text !== "." &&
-      tokens[index + 1]?.kind === "identifier" &&
-      (tokens[index - 1]?.text === ":" || tokens[index - 1]?.text === "!")
-    ) {
-      const type = tokens[index + 1]!;
-      edits.push({ start: tokens[index]!.start, end: type.end, text: `${type.text} | null` });
-    }
-  }
-  result = applyEdits(result, edits);
-
-  // Lower asserted unwraps one at a time because each replacement changes the
-  // token offsets used by the next expression.
-  for (;;) {
-    tokens = tokenize(result);
-    const dot = tokens.findIndex(
-      (token, index) => token.text === "." && ["?", "?."].includes(tokens[index + 1]?.text ?? ""),
-    );
-    if (dot === -1) break;
-    const start = expressionStart(tokens, dot - 1);
-    const expression = result.slice(tokens[start]!.start, tokens[dot - 1]!.end);
-    const preservesFollowingProperty = tokens[dot + 1]!.text === "?.";
-    result =
-      result.slice(0, tokens[start]!.start) +
-      `${unwrapHelper}(${expression})${preservesFollowingProperty ? "." : ""}` +
-      result.slice(tokens[dot + 1]!.end);
-  }
-  return result;
+function isCompilerVirtualModule(name: string): boolean {
+  return name === "vibelang/context" || name === "vibelang/provider" || name === "vibelang:exceptions";
 }
 
-function isOptionalOperatorLeft(token: Token | undefined): boolean {
-  if (!token) return false;
-  return token.kind === "identifier" || token.kind === "number" || token.kind === "string" ||
-    token.kind === "template" || [")", "]", "}"].includes(token.text);
+function rewriteImportSpecifier(name: string, state: TransformState): string {
+  if (isCompilerVirtualModule(name)) return state.runtimeImport;
+  if (!name.startsWith(".") || !state.outputFileName) return name;
+  if (state.preserveVibeSpecifiers && isAuthoredVibeSpecifier(name, state)) return name;
+  const sourceTarget = resolve(dirname(state.model.fileName), name);
+  const projectOutput = projectOutputForSpecifier(sourceTarget, state.projectOutputBySource);
+  let rewritten = relative(dirname(state.outputFileName), projectOutput ?? sourceTarget).split(sep).join("/");
+  if (!rewritten.startsWith(".")) rewritten = `./${rewritten}`;
+  return rewritten;
 }
 
-function isOptionalOperatorRight(token: Token | undefined): boolean {
-  if (!token) return false;
-  return token.kind === "identifier" || token.kind === "number" || token.kind === "string" ||
-    token.kind === "template" || ["(", "[", "{"].includes(token.text);
+/**
+ * A relative specifier the caller authored against a `.vibe` module. The
+ * literal `.vibe` extension is decisive on its own; extensionless and `.js`
+ * spellings are only preserved when they resolve to a supplied `.vibe` source,
+ * so an ordinary TypeScript/JavaScript neighbour still rewrites normally.
+ */
+function isAuthoredVibeSpecifier(name: string, state: TransformState): boolean {
+  if (name.endsWith(".vibe")) return true;
+  if (!state.vibeSourceNames) return false;
+  const sourceTarget = resolve(dirname(state.model.fileName), name);
+  return projectSourceCandidates(sourceTarget)
+    .some((candidate) => candidate.endsWith(".vibe") && state.vibeSourceNames!.has(candidate));
 }
 
-function lowerSimpleIfExpressions(source: string): string {
-  let result = source;
-  for (;;) {
-    const tokens = tokenize(result);
-    let changed = false;
-    for (let index = 0; index < tokens.length; index++) {
-      if (tokens[index]!.text !== "if" || !["=", "return", "=>"].includes(tokens[index - 1]?.text ?? "")) continue;
-      if (tokens[index + 1]?.text !== "(") continue;
-      const conditionClose = matchPair(tokens, index + 1);
-      if (tokens[conditionClose + 1]?.text === "{") continue; // block form: explicitly diagnosed by analysis
-      const elseIndex = findElse(tokens, conditionClose + 1);
-      if (elseIndex === -1 || tokens[elseIndex + 1]?.text === "if" || tokens[elseIndex + 1]?.text === "{") continue;
-      const end = expressionEnd(result, tokens, elseIndex + 1);
-      const condition = result.slice(tokens[index + 1]!.end, tokens[conditionClose]!.start);
-      const whenTrue = result.slice(tokens[conditionClose + 1]!.start, tokens[elseIndex]!.start).trim();
-      const whenFalse = result.slice(tokens[elseIndex + 1]!.start, end).trim();
-      result = result.slice(0, tokens[index]!.start) + `((${condition}) ? (${whenTrue}) : (${whenFalse}))` + result.slice(end);
-      changed = true;
-      break;
-    }
-    if (!changed) return result;
-  }
+function projectOutputForSpecifier(
+  exact: string,
+  outputs: ReadonlyMap<string, string> | undefined,
+): string | undefined {
+  if (!outputs) return undefined;
+  return projectSourceCandidates(exact)
+    .map((candidate) => outputs.get(candidate))
+    .find((candidate) => candidate !== undefined);
 }
 
-function lowerThrowExpressions(source: string, throwHelper: string): string {
-  let result = source;
-  for (;;) {
-    const tokens = tokenize(result);
-    const index = tokens.findIndex(
-      (token, current) =>
-        token.text === "throw" &&
-        ["??", "=>", "=", "(", "[", ","].includes(tokens[current - 1]?.text ?? ""),
-    );
-    if (index === -1) return result;
-    const end = expressionEnd(result, tokens, index + 1);
-    const expression = result.slice(tokens[index + 1]!.start, end).trim();
-    result =
-      result.slice(0, tokens[index]!.start) +
-      `${throwHelper}(${expression})` +
-      result.slice(end);
-  }
+function projectSourceCandidates(exact: string): readonly string[] {
+  const candidates = [exact];
+  if (extname(exact) === "") candidates.push(`${exact}.vibe`, resolve(exact, "index.vibe"));
+  if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.vibe`);
+  return candidates;
 }
 
-function findElse(tokens: readonly Token[], start: number): number {
-  const expected: string[] = [];
-  const closeFor: Record<string, string> = { "(": ")", "[": "]", "{": "}" };
-  for (let index = start; index < tokens.length; index++) {
-    const text = tokens[index]!.text;
-    if (closeFor[text]) expected.push(closeFor[text]!);
-    else if (expected.at(-1) === text) expected.pop();
-    else if (expected.length === 0 && text === "else") return index;
-    else if (expected.length === 0 && [";", ","].includes(text)) return -1;
-  }
-  return -1;
+/**
+ * Static module-graph edges share one specifier-rewrite and import-attribute
+ * policy. `export { default as x } from "./a.json" with { type: "json" }` moves
+ * the same generated asset module an `import` does, so it must be lowered
+ * identically; a generated JavaScript target retains neither form's attributes.
+ */
+function rewriteModuleDeclaration(
+  statement: ts.ImportDeclaration | ts.ExportDeclaration,
+  state: TransformState,
+): ts.Statement | undefined {
+  const moduleSpecifier = statement.moduleSpecifier;
+  if (!moduleSpecifier || !ts.isStringLiteral(moduleSpecifier)) return undefined;
+  const rewritten = rewriteImportSpecifier(moduleSpecifier.text, state);
+  const strip = statement.attributes !== undefined &&
+    shouldStripImportAttributes(moduleSpecifier.text, state);
+  if (rewritten === moduleSpecifier.text && !strip) return undefined;
+  state.changed = true;
+  const specifier = sourceMapAnchor(state.factory.createStringLiteral(rewritten), moduleSpecifier, state);
+  const attributes = strip ? undefined : statement.attributes;
+  return ts.isImportDeclaration(statement)
+    ? state.factory.updateImportDeclaration(
+        statement,
+        statement.modifiers,
+        statement.importClause,
+        specifier,
+        attributes,
+      )
+    : state.factory.updateExportDeclaration(
+        statement,
+        statement.modifiers,
+        statement.isTypeOnly,
+        statement.exportClause,
+        specifier,
+        attributes,
+      );
 }
 
-function expressionStart(tokens: readonly Token[], end: number): number {
-  const expected: string[] = [];
-  const openFor: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
-  for (let index = end; index >= 0; index--) {
-    const text = tokens[index]!.text;
-    if (openFor[text]) expected.push(openFor[text]!);
-    else if (expected.at(-1) === text) expected.pop();
-    else if (expected.length === 0 && ["(", "["].includes(text)) return index + 1;
-    else if (
-      expected.length === 0 &&
-      ["=", ";", ",", "{", "}", ":", "return", "=>"].includes(text)
-    ) {
-      return index + 1;
-    }
-  }
-  return 0;
+/**
+ * `import("./a.json", { with: { type: "json" } })` with a literal specifier and
+ * a literal single-property `with` options object is the only dynamic form the
+ * asset lane admits, so it is the only one lowered here. Anything else keeps
+ * its authored text: a specifier the compiler cannot evaluate must not be
+ * silently repointed at a generated module.
+ */
+function rewriteDynamicImport(call: ts.CallExpression, state: TransformState): ts.CallExpression | undefined {
+  if (call.expression.kind !== ts.SyntaxKind.ImportKeyword) return undefined;
+  const specifier = call.arguments[0];
+  if (!specifier || !ts.isStringLiteral(specifier) || call.arguments.length > 2) return undefined;
+  const rewritten = rewriteImportSpecifier(specifier.text, state);
+  const options = call.arguments[1];
+  const stripTarget = shouldStripImportAttributes(specifier.text, state);
+  // An options object the compiler cannot evaluate may still carry attributes
+  // that must not survive; leave the whole call authored rather than repoint
+  // the specifier while keeping an unanalyzable attribute bag.
+  if (stripTarget && options !== undefined && !isLiteralImportAttributeOptions(options)) return undefined;
+  const strip = stripTarget && options !== undefined;
+  if (rewritten === specifier.text && !strip) return undefined;
+  state.changed = true;
+  const literal = sourceMapAnchor(state.factory.createStringLiteral(rewritten), specifier, state);
+  return state.factory.updateCallExpression(
+    call,
+    call.expression,
+    call.typeArguments,
+    strip ? [literal] : [literal, ...call.arguments.slice(1)],
+  );
 }
 
-function expressionEnd(source: string, tokens: readonly Token[], start: number): number {
-  const expected: string[] = [];
-  const closeFor: Record<string, string> = { "(": ")", "[": "]", "{": "}" };
-  for (let index = start; index < tokens.length; index++) {
-    const text = tokens[index]!.text;
-    if (closeFor[text]) expected.push(closeFor[text]!);
-    else if (expected.at(-1) === text) expected.pop();
-    else if (expected.length === 0 && [";", ",", "}"].includes(text)) return tokens[index]!.start;
-    if (expected.length === 0 && index + 1 < tokens.length) {
-      const gap = source.slice(tokens[index]!.end, tokens[index + 1]!.start);
-      if (gap.includes("\n")) return tokens[index]!.end;
-    }
-  }
-  return source.length;
+function isLiteralImportAttributeOptions(options: ts.Expression | undefined): boolean {
+  if (!options || !ts.isObjectLiteralExpression(options) || options.properties.length !== 1) return false;
+  const property = options.properties[0]!;
+  return ts.isPropertyAssignment(property) &&
+    (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
+    property.name.text === "with" &&
+    ts.isObjectLiteralExpression(property.initializer);
 }
 
-function findArmEnd(tokens: readonly Token[], start: number, bodyClose: number): number {
-  const expected: string[] = [];
-  const closeFor: Record<string, string> = { "(": ")", "[": "]", "{": "}" };
-  for (let index = start; index < bodyClose; index++) {
-    const text = tokens[index]!.text;
-    if (closeFor[text]) expected.push(closeFor[text]!);
-    else if (expected.at(-1) === text) expected.pop();
-    else if (expected.length === 0 && text === ",") return index;
-  }
-  return bodyClose;
+function shouldStripImportAttributes(name: string, state: TransformState): boolean {
+  if (!name.startsWith(".") || !state.stripImportAttributesForSources) return false;
+  const sourceTarget = resolve(dirname(state.model.fileName), name);
+  return projectSourceCandidates(sourceTarget)
+    .some((candidate) => state.stripImportAttributesForSources!.has(candidate));
 }
 
-function findToken(tokens: readonly Token[], start: number, end: number, text: string): number {
-  for (let index = start; index < end; index++) if (tokens[index]!.text === text) return index;
-  return -1;
-}
+type FunctionLikeWithBody = ts.FunctionLikeDeclaration & { readonly body: ts.ConciseBody };
 
-function unquote(text: string): string {
-  return text.slice(1, -1);
+function isFunctionLikeWithBody(node: ts.Node): node is FunctionLikeWithBody {
+  return (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node) ||
+    ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node) ||
+    ts.isConstructorDeclaration(node)) && Boolean(node.body);
 }

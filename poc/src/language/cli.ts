@@ -1,46 +1,32 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
-import { basename, dirname, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, relative, resolve, sep } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import * as ts from "typescript-js";
-import { compileVibe } from "./compile";
+import { compileVibe } from "./compile.ts";
+import { checkEmittedTypeScript } from "./validate.ts";
+export { checkEmittedTypeScript } from "./validate.ts";
 
-export function checkEmittedTypeScript(code: string, fileName: string): readonly ts.Diagnostic[] {
-  const output = resolve(fileName);
-  const options: ts.CompilerOptions = {
-    target: ts.ScriptTarget.ESNext,
-    module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
-    allowImportingTsExtensions: true,
-    noEmit: true,
-    skipLibCheck: true,
-  };
-  const sourceFile = ts.createSourceFile(output, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const host = ts.createCompilerHost(options);
-  const getSourceFile = host.getSourceFile.bind(host);
-  const fileExists = host.fileExists.bind(host);
-  const readFile = host.readFile.bind(host);
-  host.getSourceFile = (name, languageVersion, onError, shouldCreateNewSourceFile) =>
-    resolve(name) === output ? sourceFile : getSourceFile(name, languageVersion, onError, shouldCreateNewSourceFile);
-  host.fileExists = (name) => resolve(name) === output || fileExists(name);
-  host.readFile = (name) => resolve(name) === output ? code : readFile(name);
-  const program = ts.createProgram([output], options, host);
-  return ts.getPreEmitDiagnostics(program, program.getSourceFile(output));
-}
-
-function main(): void {
+export function main(): void {
   const inputArgument = process.argv[2];
   if (!inputArgument || !inputArgument.endsWith(".vibe")) {
-    console.error("usage: bun poc/src/language/cli.ts <input.vibe> [output.ts]");
+    console.error("usage: vibe <input.vibe> [output.ts]");
     process.exit(2);
   }
 
   const input = resolve(inputArgument);
   const output = resolve(process.argv[3] ?? input.replace(/\.vibe$/, ".generated.ts"));
-  const runtime = realpathSync(resolve(import.meta.dir, "../runtime/index.ts"));
-  let runtimeImport = relative(canonicalDirectory(dirname(output)), runtime).split(sep).join("/");
+  const canonicalOutput = resolve(canonicalDirectory(dirname(output)), basename(output));
+  const modulePath = fileURLToPath(import.meta.url);
+  const moduleDirectory = dirname(modulePath);
+  const runtimeExtension = extname(modulePath) === ".js" ? ".js" : ".ts";
+  const runtime = realpathSync(resolve(moduleDirectory, `../runtime/index${runtimeExtension}`));
+  let runtimeImport = relative(dirname(canonicalOutput), runtime).split(sep).join("/");
   if (!runtimeImport.startsWith(".")) runtimeImport = `./${runtimeImport}`;
 
   const result = compileVibe(readFileSync(input, "utf8"), {
+    fileName: input,
+    outputFileName: canonicalOutput,
     runtimeImport,
     sourceName: relative(process.cwd(), input),
   });
@@ -56,7 +42,10 @@ function main(): void {
     process.exit(1);
   }
 
-  const emitDiagnostics = checkEmittedTypeScript(result.code, output)
+  const outputCode = result.sourceMap
+    ? `${result.code.replace(/\s*$/, "")}\n//# sourceMappingURL=${basename(output)}.map\n`
+    : result.code;
+  const emitDiagnostics = checkEmittedTypeScript(outputCode, output)
     .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error);
   for (const diagnostic of emitDiagnostics) {
     const position = diagnostic.file && diagnostic.start !== undefined
@@ -71,7 +60,8 @@ function main(): void {
   if (emitDiagnostics.length > 0) process.exit(1);
 
   mkdirSync(dirname(output), { recursive: true });
-  writeFileSync(output, result.code);
+  writeFileSync(output, outputCode);
+  if (result.sourceMap) writeFileSync(`${output}.map`, result.sourceMap);
   console.log(`vibe: ${relative(process.cwd(), input)} -> ${relative(process.cwd(), output)}`);
   for (const [name, rows] of Object.entries(result.analysis.rows)) {
     console.log(
@@ -92,4 +82,5 @@ function canonicalDirectory(path: string): string {
   return resolve(realpathSync(existing), ...missing);
 }
 
-if (import.meta.main) main();
+const invokedPath = process.argv[1];
+if (invokedPath && pathToFileURL(resolve(invokedPath)).href === import.meta.url) main();

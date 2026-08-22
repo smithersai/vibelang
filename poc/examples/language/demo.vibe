@@ -1,82 +1,68 @@
-import { Layer } from "vibelang:provider"
+import { Context } from "vibelang/context"
+import { Panic, panic } from "vibelang:exceptions"
+import { Layer } from "vibelang/provider"
+import { trustedLog } from "./foreign.ts"
 
-error NotFound { id: number }
-error Timeout { ms: number }
-
-interface User { id: number; name: string }
-
-abstract class Db {
-  abstract find(id: number): Promise<User | null>
+class NotFound extends Error {
+  constructor(readonly id: number) { super(`user ${id} was not found`) }
 }
 
-abstract class Logger {
-  abstract readonly label: string
+class Timeout extends Error {
+  constructor(readonly milliseconds: number) { super(`timed out after ${milliseconds}ms`) }
+}
+
+interface User { readonly id: number; readonly name: string }
+
+abstract class Db extends Context {
+  abstract find(id: number): Promise<Result<Optional<User>, Timeout>>
+}
+
+abstract class Logger extends Context {
   abstract info(message: string): void
 }
 
-async function fetchUser(id: number): !User uses db: Db, log: Logger {
+async function fetchUser(id: number): Promise<Result<User, NotFound | Timeout>> {
+  const db = Db.context()
+  const log = Logger.context()
   log.info(`fetch ${id}`)
-  if (id === 408) throw Timeout({ ms: 250 })
-  const user = try await db.find(id)
-  if (user === null) throw NotFound({ id })
-  return user
+  const candidate = (await db.find(id)).unwrap()
+  return candidate.toResult(new NotFound(id)).unwrap()
 }
 
-// Both the failure row and requirement row are inferred transitively.
-async function displayName(id: number): !string {
-  const user = try await fetchUser(id)
-  return user.name
+function cachedUser(id: number): Optional<User> {
+  if (id === 1) return { id, name: "cached Ada" }
+  return undefined
 }
 
-function cachedUser(id: number): ?User {
-  return id === 1 ? { id: 1, name: "cached Ada" } : null
+function deliberatePanic(enabled: boolean): Result<string, Panic> {
+  if (enabled) panic("demonstration panic")
+  return "safe"
 }
 
-function currentLogger(delay: number): Promise<string> uses log: Logger {
-  return new Promise((resolve) => setTimeout(() => resolve(log.label), delay))
-}
-
-function defect(): string {
-  throw new RangeError("ordinary defect")
-}
-
-const db = {
-  async find(id: number): Promise<User | null> {
-    await new Promise((resolve) => setTimeout(resolve, 2))
-    return id === 1 ? { id, name: "Ada" } : null
+const db: Db = {
+  async find(id: number): Promise<Result<Optional<User>, Timeout>> {
+    if (id === 408) throw new Timeout(250)
+    if (id === 1) return { id, name: "Ada" }
+    return null
   },
 }
 
-const loggerA = { label: "A", info: (message: string) => console.log(`[A] ${message}`) }
-const loggerB = { label: "B", info: (message: string) => console.log(`[B] ${message}`) }
-const App = Layer.merge(Layer.succeed(Db, db), Layer.succeed(Logger, loggerA))
-const Alternate = Layer.succeed(Logger, loggerB)
+const logger: Logger = { info: (message) => trustedLog(`[demo] ${message}`) }
+const App = Layer.merge(Layer.succeed(Db, db), Layer.succeed(Logger, logger))
 
 await Layer.provide(App, async () => {
-  console.log("happy:", await displayName(1))
+  const name = (await fetchUser(1)).match({
+    ok: (user) => user.name,
+    error: (error) => error.match({
+      NotFound: () => "Guest",
+      Timeout: () => "Retry later",
+    }),
+  })
+  trustedLog("loaded:", name)
 
-  const guest = await fetchUser(404) catch |failure| switch (failure) {
-    NotFound => ({ id: -1, name: `guest:${failure.id}` }),
-    Timeout => throw failure,
-  }
-  console.log("catch:", guest.name)
-
-  const cached = cachedUser(1) orelse { id: -1, name: "fallback" }
-  console.log("optional:", cached.name, cachedUser(1).?.name)
-
-  const tier = if (guest.id < 0) "fallback" else "real"
-  console.log("if expression:", tier)
-
-  // Two overlapping async scopes prove capability lookup is not a global stack.
-  const scoped = await Promise.all([
-    Layer.provide(App, () => currentLogger(10)),
-    Layer.provide(Alternate, () => currentLogger(1)),
-  ])
-  console.log("async layers:", scoped.join(","))
-
-  try {
-    defect() catch |failure| "incorrectly swallowed"
-  } catch (error) {
-    console.log("defect escaped:", (error as Error).message)
-  }
+  trustedLog("cached:", cachedUser(1).unwrapOr({ id: -1, name: "Guest" }).name)
+  trustedLog("panic value:", deliberatePanic(false).match({
+    ok: (value) => value,
+    error: () => "recovered panic",
+  }))
 })

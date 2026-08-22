@@ -1,0 +1,45 @@
+// Declarations in conditionals: the binding is scoped to the whole
+// `if`/`else if`/`else` construct and to nothing after it.
+
+class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+const entries = new Map<string, string>([
+  ["ada", "Ada Lovelace"],
+  ["", "anonymous"],
+])
+
+function lookup(key: string): string | null {
+  return entries.get(key) ?? null
+}
+
+function requireEntry(key: string): Result<string, Missing> {
+  if (const found = lookup(key); found !== null) {
+    return found
+  }
+  throw new Missing(key)
+}
+
+// The `else if` chain composes, and every branch sees the bindings declared
+// by the conditions evaluated before it.
+export function describe(key: string): string {
+  if (const name = lookup(key); name !== null) {
+    return `found ${name}`
+  } else if (const fallback = lookup(""); fallback !== null) {
+    return `fell back to ${fallback} for ${key}`
+  } else {
+    return `nothing for ${key}`
+  }
+}
+
+// A conditional declaration is an ordinary statement-safe host, so a
+// `Result.unwrap()` propagation point inside it lowers normally.
+export function initials(key: string): Result<string, Missing> {
+  if (const name = requireEntry(key).unwrap(); name.includes(" ")) {
+    const parts = name.split(" ")
+    return `${parts[0]![0]!}${parts[1]![0]!}`
+  } else {
+    return name.slice(0, 1)
+  }
+}

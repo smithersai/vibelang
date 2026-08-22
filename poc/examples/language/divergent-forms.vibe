@@ -1,0 +1,97 @@
+// Every VibeLang form that stock TypeScript cannot parse, in one module.
+//
+// This is the CLI regression fixture for pre-parse recovery: `vibe check`,
+// `vibe inspect`, `vibe compile`, `vibe run`, and `vibe test` each run passes
+// over authored `.vibe` text before the checked frontend sees it, and each of
+// them has to recover this syntax first.
+//
+//   * `defer` and `errdefer` cleanup markers
+//   * a declaration in a conditional, `if (const x = f(); cond)`
+//   * a value-position `switch`
+//   * a value-position `if` in an argument position
+//   * a labeled block value, `break :label value`
+//   * a loop value with `else`
+
+import { trustedLog } from "./foreign.ts"
+
+class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+type Grade = "pass" | "fail" | "retry"
+
+const events: string[] = []
+
+const entries = new Map<string, number>([["ada", 96], ["bob", 41]])
+
+function lookup(key: string): number | null {
+  return entries.get(key) ?? null
+}
+
+function record(message: string): void {
+  events.push(message)
+}
+
+// `defer` runs on every exit; `errdefer` runs only on the Result error
+// variant, and the condition declares its binding inside the `if` construct.
+export function scoreOf(key: string): Result<number, Missing> {
+  defer record(`scoreOf:${key}:done`)
+  errdefer record(`scoreOf:${key}:failed`)
+  if (const found = lookup(key); found !== null) {
+    return found
+  }
+  throw new Missing(key)
+}
+
+// A `switch` in value position.
+export function describe(grade: Grade): string {
+  return switch (grade) {
+    case "pass": "met the bar"
+    case "fail": "below the bar"
+    case "retry": "resit scheduled"
+  }
+}
+
+function combine(base: number, extra: number): number {
+  return base + extra
+}
+
+// An `if` in value position, as a call argument.
+export function weighted(score: number, bonus: boolean): number {
+  return combine(score, if (bonus) { 10 } else { 0 })
+}
+
+// A labeled block value.
+export function classify(score: number): Grade {
+  const grade = verdict: {
+    if (score >= 60) break :verdict "pass"
+    if (score >= 40) break :verdict "retry"
+    break :verdict "fail"
+  }
+  return grade
+}
+
+// A loop value with an `else` completion value.
+export function firstPassing(scores: number[]): number {
+  const found = search: for (const score of scores) {
+    if (score >= 60) break :search score
+  } else -1
+  return found
+}
+
+export function testDivergentForms(): Result<string, Missing> {
+  const score = scoreOf("ada").unwrap()
+  if (describe(classify(score)) !== "met the bar") throw new Missing("classify")
+  if (weighted(score, false) !== 96) throw new Missing("weighted")
+  if (firstPassing([1, 2, 3]) !== -1) throw new Missing("firstPassing:else")
+  return "ok"
+}
+
+const summary = scoreOf("ada").match({
+  ok: (score) => `ada ${describe(classify(score))} weighted=${weighted(score, true)}`,
+  error: (error) => `ada missing ${error.key}`,
+})
+trustedLog(summary)
+trustedLog(scoreOf("zoe").match({ ok: () => "found", error: (error) => `missing ${error.key}` }))
+trustedLog(`firstPassing=${firstPassing([12, 41, 78])}`)
+trustedLog(`events=${events.join(",")}`)
