@@ -1,0 +1,6 @@
+export class Missing extends Error {}
+
+export function load(valid: boolean): Result<string, Missing> {
+  if (!valid) throw new Missing("missing")
+  return "release project works"
+}

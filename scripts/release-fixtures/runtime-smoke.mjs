@@ -1,0 +1,275 @@
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const require = createRequire(import.meta.url);
+const packagePath = require.resolve("vibelang/package.json");
+const packageMetadata = JSON.parse(readFileSync(packagePath, "utf8"));
+const isBun = typeof globalThis.Bun === "object";
+const loaded = new Map();
+
+/**
+ * Subpaths that only a Bun runtime can evaluate. Each names a module whose body
+ * touches a Bun-only global, so Node must fail closed on it rather than expose a
+ * half-initialized namespace. The platform-neutral half of each subsystem lives
+ * on its own subpath (`vibelang/agent`, `vibelang/durable`, and
+ * `vibelang/concurrency`).
+ */
+const bunOnlyExports = new Map([
+  ["./agent/bun", {
+    reason: "SQLite agent journal and durable Flow tools",
+    recognize: (error) =>
+      error?.code === "ERR_UNSUPPORTED_ESM_URL_SCHEME" || /bun:sqlite|URL scheme/i.test(String(error)),
+  }],
+  ["./durable/bun", {
+    reason: "durable executor",
+    recognize: (error) =>
+      error?.code === "ERR_UNSUPPORTED_ESM_URL_SCHEME" || /bun:sqlite|URL scheme/i.test(String(error)),
+  }],
+  ["./concurrency/bun", {
+    reason: "typed worker host",
+    recognize: (error) => error instanceof ReferenceError && /\bBun\b/.test(String(error)),
+  }],
+]);
+
+for (const exportName of Object.keys(packageMetadata.exports).sort()) {
+  const specifier = exportName === "." ? "vibelang" : `vibelang${exportName.slice(1)}`;
+  if (exportName === "./package.json") {
+    assert.equal(require(specifier).name, "vibelang");
+    continue;
+  }
+  if (bunOnlyExports.has(exportName) && !isBun) {
+    const { reason, recognize } = bunOnlyExports.get(exportName);
+    let rejected = false;
+    try {
+      await import(specifier);
+    } catch (error) {
+      rejected = recognize(error);
+    }
+    assert.equal(rejected, true, `Node must reject the explicitly Bun-only ${reason}`);
+    continue;
+  }
+  const namespace = await import(specifier);
+  assert.equal(typeof namespace, "object", `${specifier} did not produce a module namespace`);
+  loaded.set(exportName, namespace);
+}
+
+const runtime = loaded.get("./runtime");
+const resultFacade = loaded.get("./result");
+const optionalFacade = loaded.get("./optional");
+assert.equal(runtime.Result, resultFacade.Result);
+assert.equal(runtime.Optional, optionalFacade.Optional);
+
+const stringCodec = Object.freeze({
+  encode(value) {
+    assert.equal(typeof value, "string");
+    return value;
+  },
+  decode(value) {
+    if (typeof value !== "string") throw new TypeError("expected string");
+    return value;
+  },
+});
+const resultWire = runtime.encodeResult(runtime.__vsResultSuccess("wire-ok"), stringCodec);
+assert.equal(runtime.decodeResult(resultWire, stringCodec).match({ ok: (value) => value, error: () => "error" }), "wire-ok");
+const optionalWire = runtime.encodeOptional(runtime.__vsOptionalSome("present"), stringCodec);
+assert.equal(runtime.decodeOptional(optionalWire, stringCodec).match({ some: (value) => value, none: () => "none" }), "present");
+
+const language = loaded.get("./language");
+const projectRoot = join(process.cwd(), "virtual-project");
+const project = language.compileProject([
+  {
+    fileName: "service.vibe",
+    source: [
+      "export class Missing extends Error {}",
+      "export function load(valid: boolean): Result<string, Missing> {",
+      "  if (!valid) throw new Missing(\"missing\")",
+      "  return \"release\"",
+      "}",
+    ].join("\n"),
+  },
+  {
+    fileName: "main.vibe",
+    source: [
+      'import { load, type Missing } from "./service.vibe"',
+      "export function run(): Result<string, Missing> { return load(true).unwrap() }",
+    ].join("\n"),
+  },
+], {
+  rootDir: projectRoot,
+  outDir: join(projectRoot, "out"),
+  outputExtension: ".mjs",
+  runtimeImport: "vibelang/runtime",
+  sourceMap: true,
+});
+assert.deepEqual(project.diagnostics, []);
+assert.match(project.files["main.vibe"].code, /\.\/service\.mjs/);
+assert.equal(typeof project.files["main.vibe"].sourceMap, "string");
+
+const declarations = language.emitProjectDeclarations([{
+  fileName: join(projectRoot, "declaration.ts"),
+  code: "export const answer = 42 as const;",
+}]);
+assert.equal(declarations.ok, true, JSON.stringify(declarations.diagnostics));
+assert.match(declarations.outputs[0].code, /answer: 42/);
+
+const identityMap = (file, source, content) => JSON.stringify({
+  version: 3,
+  file,
+  sources: [source],
+  sourcesContent: [content],
+  names: [],
+  mappings: "AAAA",
+});
+const composedMap = JSON.parse(language.composeSourceMaps(
+  identityMap("out.js", "lowered.ts", "const value = 1"),
+  identityMap("lowered.ts", "authored.vibe", "const value = 1"),
+  "out.js",
+));
+assert.deepEqual(composedMap.sources, ["authored.vibe"]);
+assert.deepEqual(composedMap.sourcesContent, ["const value = 1"]);
+
+const durableCompiler = loaded.get("./durable/source-compiler");
+const durableArtifact = loaded.get("./durable/artifact");
+const durable = loaded.get("./durable");
+const durableResult = durableCompiler.compileDurableSource([
+  'import { durable as lower } from "vibelang:flows"',
+  "export const Echo = lower(function Echo(input: { value: string }) {",
+  "  return input.value",
+  "})",
+].join("\n"), {
+  fileName: "flows/echo.ts",
+  flowId: "release/Echo",
+  flowVersion: 1,
+  actions: [],
+});
+assert.equal(durableResult.ok, true, JSON.stringify(durableResult.diagnostics));
+assert.equal(durableArtifact.decodePlanArtifact(durableResult.artifact).digest, durableResult.plan.digest);
+assert.equal(durable.compileDurableSource, durableCompiler.compileDurableSource);
+assert.equal(typeof durable.validateDurableSchema, "function");
+assert.equal("waitSignal" in durable, false);
+assert.equal(durable.MAX_DURABLE_JSON_NODES, 100_000);
+const signingKeyPair = durable.generateDeploymentSigningKeyPair();
+const verificationKey = durable.deploymentVerificationKey(signingKeyPair);
+assert.equal(signingKeyPair.algorithm, "Ed25519");
+assert.equal(verificationKey.algorithm, "Ed25519");
+assert.equal(verificationKey.keyId, signingKeyPair.keyId);
+assert.equal(verificationKey.publicKey, signingKeyPair.publicKey);
+if (isBun) {
+  const durableBun = loaded.get("./durable/bun");
+  assert.equal(durableBun.compileDurableSource, durableCompiler.compileDurableSource);
+  assert.equal(typeof durableBun.SignalDeliveryConflictError, "function");
+  assert.equal(typeof durableBun.SignalDeliveryRejectedError, "function");
+  assert.equal(typeof durableBun.DurableExecutor.prototype.deliverSignal, "function");
+  assert.equal(typeof durableBun.DurableStore.prototype.deliverSignal, "function");
+  assert.equal(typeof durableBun.DurableStore.prototype.pollSignal, "function");
+  assert.equal(typeof durableBun.validateDurableSchema, "function");
+  assert.equal(durableBun.MAX_DURABLE_JSON_NODES, durable.MAX_DURABLE_JSON_NODES);
+  assert.equal("waitSignal" in durableBun, false);
+}
+
+const build = loaded.get("./build");
+const comptimeCache = mkdtempSync(join(tmpdir(), "vibelang-release-comptime-"));
+const comptimeCompiler = new build.ComptimeCompiler({
+  root: process.cwd(),
+  cacheDirectory: comptimeCache,
+  target: isBun ? "bun" : "node",
+});
+const comptimeSource = 'import { comptime as now } from "vibelang:comptime"; export const value = now({ release: true, count: 2 });';
+let comptime;
+try {
+  comptime = await build.compileComptimeIntrinsics({
+    compiler: comptimeCompiler,
+    sources: { "release.vibe": comptimeSource },
+  });
+} finally {
+  rmSync(comptimeCache, { recursive: true, force: true });
+}
+assert.equal(comptime.ok, true, JSON.stringify(comptime.diagnostics));
+assert.equal(comptime.calls[0].value.count, 2);
+assert.equal(comptime.calls[0].value.release, true);
+assert.deepEqual(Object.keys(comptime.calls[0].value), ["count", "release"]);
+assert.doesNotMatch(comptime.loweredSources["release.vibe"], /vibelang:comptime/);
+
+const agent = loaded.get("./agent");
+assert.equal("SqliteTurnJournal" in agent, false);
+assert.equal("flowTool" in agent, false);
+const turn = await new agent.InMemoryTypeScriptCompiler().compile(
+  "export default async function turn(functions: Functions) { void functions; return null }",
+  "interface Functions {}",
+);
+assert.equal(turn.ok, true, JSON.stringify(turn.diagnostics));
+assert.match(turn.javascript, /function turn/);
+if (isBun) {
+  const agentBun = loaded.get("./agent/bun");
+  assert.equal(typeof agentBun.SqliteTurnJournal, "function");
+  assert.equal(typeof agentBun.flowTool, "function");
+  assert.equal(agentBun.InMemoryTypeScriptCompiler, agent.InMemoryTypeScriptCompiler);
+}
+
+const targets = loaded.get("./targets");
+assert.equal(typeof targets.analyzeCompatibilityProject, "function");
+const portableModule = targets.compilePortableModule({
+  moduleId: "release/smoke",
+  source: "export function add(left: number, right: number): number { return left + right }",
+});
+const portableArtifact = targets.encodePortableModuleArtifact(portableModule);
+const portableDecoded = targets.decodePortableModuleArtifact(portableArtifact);
+const portableExecution = targets.executePortableTypeScript(portableDecoded, "add", { left: 20, right: 22 });
+assert.deepEqual(portableExecution.exit, { kind: "success", value: 42 });
+assert.equal(portableDecoded.digest, portableModule.digest);
+assert.match(targets.emitPortableWat(portableDecoded), /\(export "add"\)/);
+
+// The derived-schema runtime is the module every lowered
+// `comptime(Schema.derive<T>())` names, so it must resolve and interpret a
+// descriptor from the installed package alone.
+const schemaRuntime = loaded.get("./schema-runtime");
+const smokeSchema = schemaRuntime.__vsSchema({
+  kind: "object",
+  properties: [
+    { name: "count", optional: false, value: { kind: "number" } },
+    { name: "name", optional: false, value: { kind: "string" } },
+  ],
+});
+assert.equal(smokeSchema.descriptor.kind, "object");
+assert.deepEqual(
+  smokeSchema.parse({ name: "release", count: 1 }).match({ ok: (row) => row, error: () => null }),
+  { count: 1, name: "release" },
+);
+assert.equal(
+  smokeSchema.parse({ name: 1, count: 1 }).match({ ok: () => null, error: (failure) => failure.pointer }),
+  "$.name",
+);
+assert.equal(typeof schemaRuntime.ValidationError, "function");
+
+const platform = loaded.get("./platform");
+assert.equal(platform.Duration.seconds(2).toMillis(), 2_000);
+assert.equal(platform.Path.join("release", "smoke"), "release/smoke");
+assert.equal(typeof platform.NodePlatform, "function");
+assert.equal(typeof platform.InMemoryFileSystem, "function");
+const smokeClock = new platform.TestClock();
+assert.equal(typeof smokeClock.monotonic(), "number");
+
+const data = loaded.get("./data");
+assert.deepEqual([...data.Chunk.of(1, 2, 3)], [1, 2, 3]);
+assert.equal(data.Chunk.of(1, 2, 3).size, 3);
+assert.equal(
+  data.HashMap.of(["answer", 42]).get("answer").match({ some: (value) => value, none: () => null }),
+  42,
+);
+assert.equal(data.HashSet.of("release").has("release"), true);
+assert.equal(data.Data.equals(data.Data.struct({ id: 1 }), data.Data.struct({ id: 1 })), true);
+assert.equal(typeof data.Match.value, "function");
+
+const concurrency = loaded.get("./concurrency");
+assert.equal(typeof concurrency.awaitAll, "function");
+for (const name of ["Queue", "Semaphore", "Channel", "Stream", "Governor", "CancellationSource"]) {
+  assert.equal(typeof concurrency[name], "function", `vibelang/concurrency must export ${name}`);
+}
+assert.equal(typeof concurrency.allKeyed, "function");
+assert.equal("TypedWorker" in concurrency, false, "the Bun worker host stays on vibelang/concurrency/bun");
+assert.deepEqual(await concurrency.awaitAll(Promise.resolve(1), Promise.resolve("two")), [1, "two"]);
+
+console.log(JSON.stringify({ ok: true, runtime: isBun ? "bun" : "node", exports: Object.keys(packageMetadata.exports).length }));
