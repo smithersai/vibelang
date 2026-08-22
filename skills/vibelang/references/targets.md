@@ -12,5 +12,4 @@ VibeLang targets TypeScript/JavaScript, native code through LLVM, and Wasm. Sour
 
 A native pin is a checked assertion over the complete call/provider graph, but its spelling is not settled. Never invent it as stable syntax. Platform APIs must be capabilities, and `comptime.target` may choose implementations.
 
-Direct `.zig` and `.rs` imports are intended to compile to typed native or Wasm bindings with toolchain inputs tracked in the build cache. Treat exact tooling and configuration as evolving design.
-
+Direct `.zig` and `.rs` imports use import attributes such as `with { type: "zig" }` and `with { type: "rust" }`. They are intended to compile to typed native or Wasm bindings with toolchain inputs tracked in the build cache. Treat exact tooling and configuration as evolving design.
