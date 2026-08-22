@@ -1,0 +1,1210 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/contentmapper"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/locale"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/sourcemap"
+	"github.com/microsoft/TypeScript/tsc/internal/spanmap"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+)
+
+var compilerRevision = "unbound"
+var bridgeAPIVersion = "unbound"
+
+type loweredSource struct {
+	Text      string `json:"text"`
+	SourceMap string `json:"sourceMap"`
+}
+
+type sourceFile struct {
+	Path    string         `json:"path"`
+	Kind    string         `json:"kind"`
+	Text    string         `json:"text"`
+	Lowered *loweredSource `json:"lowered"`
+}
+
+type request struct {
+	RootNames []string       `json:"rootNames"`
+	Files     []sourceFile   `json:"files"`
+	Options   map[string]any `json:"options"`
+	Lowering  string         `json:"lowering"`
+}
+
+type span struct {
+	Start  int `json:"start"`
+	Length int `json:"length"`
+}
+
+type diagnostic struct {
+	Code     string `json:"code"`
+	Category string `json:"category"`
+	Message  string `json:"message"`
+	File     string `json:"file,omitempty"`
+	Span     *span  `json:"span,omitempty"`
+	Phase    string `json:"phase,omitempty"`
+}
+
+type artifact struct {
+	Path    string `json:"path"`
+	Content []byte `json:"content"`
+}
+
+type result struct {
+	Diagnostics []diagnostic `json:"diagnostics"`
+	Artifacts   []artifact   `json:"artifacts"`
+	EmitSkipped bool         `json:"emitSkipped"`
+}
+
+type wireError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+type envelope struct {
+	APIVersion       int        `json:"apiVersion"`
+	CompilerRevision string     `json:"compilerRevision"`
+	Result           result     `json:"result"`
+	Error            *wireError `json:"error,omitempty"`
+}
+
+func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--revision" {
+		fmt.Println(compilerRevision)
+		return
+	}
+	apiVersion, err := strconv.Atoi(bridgeAPIVersion)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "invalid embedded bridge API version")
+		os.Exit(1)
+	}
+	response := envelope{APIVersion: apiVersion, CompilerRevision: compilerRevision}
+	decoder := json.NewDecoder(os.Stdin)
+	decoder.DisallowUnknownFields()
+	var input request
+	if err := decoder.Decode(&input); err != nil {
+		response.Result.EmitSkipped = true
+		response.Error = &wireError{Code: "VIBE_GO_PROTOCOL", Message: err.Error()}
+	} else {
+		var extra any
+		if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+			response.Result.EmitSkipped = true
+			response.Error = &wireError{Code: "VIBE_GO_PROTOCOL", Message: "expected one JSON request value"}
+		} else {
+			compiled, err := compile(context.Background(), input)
+			response.Result = compiled
+			if err != nil {
+				response.Error = &wireError{Code: "VIBE_GO_COMPILE", Message: err.Error()}
+			}
+		}
+	}
+	if response.Result.Diagnostics == nil {
+		response.Result.Diagnostics = []diagnostic{}
+	}
+	if response.Result.Artifacts == nil {
+		response.Result.Artifacts = []artifact{}
+	}
+	if err := json.NewEncoder(os.Stdout).Encode(response); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+type identityProject struct{}
+
+func (identityProject) Refresh() error                                 { return nil }
+func (identityProject) Identities() ([]string, error)                  { return []string{"vibelang-poc@1"}, nil }
+func (identityProject) Identity(*contentmapper.Mapper) (string, error) { return "vibelang-poc@1", nil }
+func (identityProject) WatchedFiles() ([]string, error)                { return nil, nil }
+func (identityProject) Diagnostics() []contentmapper.OptionDiagnostic  { return nil }
+func (identityProject) Close() error                                   { return nil }
+func (identityProject) Transform(_ *contentmapper.Mapper, request contentmapper.Request) (contentmapper.Result, error) {
+	segments := []spanmap.Segment(nil)
+	if request.Content != "" {
+		segments = []spanmap.Segment{{
+			VirtualStart:  0,
+			VirtualEnd:    core.TextPos(len(request.Content)),
+			OriginalStart: 0,
+			OriginalEnd:   core.TextPos(len(request.Content)),
+			Kind:          spanmap.KindVerbatim,
+			Features:      spanmap.FeatureAll,
+		}}
+	}
+	return contentmapper.Result{
+		Text:             request.Content,
+		VirtualExtension: ".ts",
+		Mappings:         spanmap.New(segments),
+	}, nil
+}
+
+// mappingPoint is one decoded segment of an authored→lowered source map: a
+// lowered (generated side) position and its optional authored origin. Columns
+// are UTF-16 code units.
+type mappingPoint struct {
+	generatedCharacter int
+	hasSource          bool
+	sourceLine         int
+	sourceCharacter    int
+}
+
+// vibeInput is one authored `.vibe` compiler input together with its lowered
+// TypeScript. In identity mode the lowered text is the authored text and the
+// points describe a line-for-line identity mapping.
+type vibeInput struct {
+	logicalPath   string // request path, e.g. "dir/x.vibe"
+	authoredName  string // virtual authored name, e.g. "/src/dir/x.vibe"
+	loweredName   string // virtual lowered name, e.g. "/src/dir/x.vibe.ts"
+	authoredText  string
+	loweredText   string
+	authoredLines *lineIndex
+	loweredLines  *lineIndex
+	points        [][]mappingPoint // per lowered line, sorted by generatedCharacter
+}
+
+// project is the validated in-memory compilation unit shared by both modes.
+type project struct {
+	external         bool
+	vibeByLogical    map[string]*vibeInput
+	vibeByLowered    map[string]*vibeInput
+	tsTexts          map[string]string // virtual name → text for plain TypeScript inputs
+	logicalByVirtual map[string]string
+	checkedFiles     map[string]string // authored names, identity checked program
+	checkedRoots     []string
+	emitFiles        map[string]string // lowered names, emit/external program
+	emitRoots        []string
+	renames          map[string]string // emitted "/out/..." path → final "/out/..." path
+}
+
+func compile(ctx context.Context, input request) (result, error) {
+	if !bundled.Embedded {
+		return result{EmitSkipped: true}, fmt.Errorf("the pinned compiler was built without embedded TypeScript libraries")
+	}
+	options, err := compilerOptions(input.Options)
+	if err != nil {
+		return result{EmitSkipped: true}, err
+	}
+	project, err := buildProject(input)
+	if err != nil {
+		return result{EmitSkipped: true}, err
+	}
+	if project.external {
+		return compileExternal(ctx, options, project)
+	}
+	return compileIdentity(ctx, options, project)
+}
+
+func buildProject(input request) (*project, error) {
+	external := false
+	switch input.Lowering {
+	case "":
+	case "external":
+		external = true
+	default:
+		return nil, fmt.Errorf("unsupported lowering mode %q", input.Lowering)
+	}
+
+	built := &project{
+		external:         external,
+		vibeByLogical:    make(map[string]*vibeInput),
+		vibeByLowered:    make(map[string]*vibeInput),
+		tsTexts:          make(map[string]string),
+		logicalByVirtual: make(map[string]string),
+		checkedFiles:     make(map[string]string),
+		emitFiles:        make(map[string]string),
+		renames:          make(map[string]string),
+	}
+	claim := func(virtualName string, logicalPath string) error {
+		if _, exists := built.logicalByVirtual[virtualName]; exists {
+			return fmt.Errorf("duplicate compiler input %q", logicalPath)
+		}
+		built.logicalByVirtual[virtualName] = logicalPath
+		return nil
+	}
+	for _, file := range input.Files {
+		authoredName, err := virtualFileName(file.Path)
+		if err != nil {
+			return nil, err
+		}
+		isVibe := strings.HasSuffix(strings.ToLower(file.Path), ".vibe")
+		switch file.Kind {
+		case "vibe":
+			if !isVibe {
+				return nil, fmt.Errorf("file %q has kind %q but not a .vibe extension", file.Path, file.Kind)
+			}
+		case "typescript":
+			if isVibe {
+				return nil, fmt.Errorf("file %q has a .vibe extension but kind %q", file.Path, file.Kind)
+			}
+		default:
+			return nil, fmt.Errorf("unsupported file kind %q for %q", file.Kind, file.Path)
+		}
+		if !isVibe {
+			if file.Lowered != nil {
+				return nil, fmt.Errorf("file %q is not a .vibe file and must not carry lowered content", file.Path)
+			}
+			if err := claim(authoredName, file.Path); err != nil {
+				return nil, err
+			}
+			built.tsTexts[authoredName] = file.Text
+			built.checkedFiles[authoredName] = file.Text
+			built.emitFiles[authoredName] = file.Text
+			continue
+		}
+
+		vibe := &vibeInput{
+			logicalPath:   file.Path,
+			authoredName:  authoredName,
+			loweredName:   authoredName + ".ts",
+			authoredText:  file.Text,
+			authoredLines: newLineIndex(file.Text),
+		}
+		if external {
+			if file.Lowered == nil {
+				return nil, fmt.Errorf("external lowering requires lowered content for .vibe file %q", file.Path)
+			}
+			if file.Lowered.Text == "" {
+				return nil, fmt.Errorf("lowered text for %q is empty", file.Path)
+			}
+			vibe.loweredText = file.Lowered.Text
+			vibe.loweredLines = newLineIndex(vibe.loweredText)
+			if err := decodeSuppliedMap(vibe, file.Lowered.SourceMap); err != nil {
+				return nil, fmt.Errorf("lowered source map for %q: %w", file.Path, err)
+			}
+		} else {
+			if file.Lowered != nil {
+				return nil, fmt.Errorf("file %q carries lowered content but the request does not use \"external\" lowering", file.Path)
+			}
+			vibe.loweredText = file.Text
+			vibe.loweredLines = vibe.authoredLines
+			vibe.points = identityPoints(vibe.authoredLines)
+		}
+		if err := claim(authoredName, file.Path); err != nil {
+			return nil, err
+		}
+		if err := claim(vibe.loweredName, file.Path); err != nil {
+			return nil, err
+		}
+		built.vibeByLogical[file.Path] = vibe
+		built.vibeByLowered[vibe.loweredName] = vibe
+		built.checkedFiles[authoredName] = file.Text
+		built.emitFiles[vibe.loweredName] = vibe.loweredText
+
+		trimmed := file.Path[:len(file.Path)-len(".vibe")]
+		built.renames["/out/"+trimmed+".vibe.js"] = "/out/" + trimmed + ".js"
+		built.renames["/out/"+trimmed+".vibe.js.map"] = "/out/" + trimmed + ".js.map"
+		built.renames["/out/"+trimmed+".vibe.d.ts"] = "/out/" + trimmed + ".d.vibe.ts"
+		built.renames["/out/"+trimmed+".vibe.d.ts.map"] = "/out/" + trimmed + ".d.vibe.ts.map"
+	}
+
+	for _, rootName := range input.RootNames {
+		authoredName, err := virtualFileName(rootName)
+		if err != nil {
+			return nil, err
+		}
+		logical, exists := built.logicalByVirtual[authoredName]
+		if !exists || logical != rootName {
+			return nil, fmt.Errorf("root %q is absent from files", rootName)
+		}
+		built.checkedRoots = append(built.checkedRoots, authoredName)
+		if vibe, ok := built.vibeByLogical[rootName]; ok {
+			built.emitRoots = append(built.emitRoots, vibe.loweredName)
+		} else {
+			built.emitRoots = append(built.emitRoots, authoredName)
+		}
+	}
+	return built, nil
+}
+
+func identityPoints(lines *lineIndex) [][]mappingPoint {
+	points := make([][]mappingPoint, lines.lineCount())
+	for line := range points {
+		points[line] = []mappingPoint{{generatedCharacter: 0, hasSource: true, sourceLine: line, sourceCharacter: 0}}
+	}
+	return points
+}
+
+// suppliedSourceMap is the exact accepted field set for an authored→lowered
+// version-3 source map. Unknown fields are rejected.
+type suppliedSourceMap struct {
+	Version        int       `json:"version"`
+	File           string    `json:"file"`
+	SourceRoot     string    `json:"sourceRoot"`
+	Sources        []string  `json:"sources"`
+	SourcesContent []*string `json:"sourcesContent"`
+	Names          []string  `json:"names"`
+	Mappings       *string   `json:"mappings"`
+}
+
+// decodeSuppliedMap validates an externally supplied authored→lowered source
+// map against the authored and lowered texts and stores its mapping points.
+func decodeSuppliedMap(vibe *vibeInput, mapText string) error {
+	decoder := json.NewDecoder(strings.NewReader(mapText))
+	decoder.DisallowUnknownFields()
+	var parsed suppliedSourceMap
+	if err := decoder.Decode(&parsed); err != nil {
+		return fmt.Errorf("parse: %w", err)
+	}
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		return errors.New("parse: expected one JSON value")
+	}
+	if parsed.Version != 3 {
+		return fmt.Errorf("version must be 3, got %d", parsed.Version)
+	}
+	if parsed.SourceRoot != "" {
+		return fmt.Errorf("sourceRoot must be empty, got %q", parsed.SourceRoot)
+	}
+	if len(parsed.Sources) != 1 {
+		return fmt.Errorf("sources must name exactly the authored file, got %d entries", len(parsed.Sources))
+	}
+	if cleaned := path.Clean(parsed.Sources[0]); cleaned != path.Clean(vibe.logicalPath) {
+		return fmt.Errorf("sources must name the authored file %q, got %q", vibe.logicalPath, parsed.Sources[0])
+	}
+	if parsed.SourcesContent != nil {
+		if len(parsed.SourcesContent) != 1 || parsed.SourcesContent[0] == nil {
+			return errors.New("sourcesContent must be exactly the authored text")
+		}
+		if *parsed.SourcesContent[0] != vibe.authoredText {
+			return errors.New("sourcesContent does not match the supplied authored text")
+		}
+	}
+	if parsed.Mappings == nil {
+		return errors.New("mappings is required")
+	}
+
+	points := make([][]mappingPoint, vibe.loweredLines.lineCount())
+	mappings := sourcemap.DecodeMappings(*parsed.Mappings)
+	for mapping := range mappings.Values() {
+		if mapping.GeneratedLine >= vibe.loweredLines.lineCount() {
+			return fmt.Errorf("mapping targets lowered line %d beyond the lowered text", mapping.GeneratedLine)
+		}
+		if int(mapping.GeneratedCharacter) > vibe.loweredLines.utf16Length(mapping.GeneratedLine) {
+			return fmt.Errorf("mapping targets lowered column %d beyond lowered line %d", mapping.GeneratedCharacter, mapping.GeneratedLine)
+		}
+		point := mappingPoint{generatedCharacter: int(mapping.GeneratedCharacter)}
+		if mapping.IsSourceMapping() {
+			if mapping.SourceIndex != 0 {
+				return fmt.Errorf("mapping source index %d does not name the authored file", mapping.SourceIndex)
+			}
+			if mapping.SourceLine >= vibe.authoredLines.lineCount() {
+				return fmt.Errorf("mapping targets authored line %d beyond the authored text", mapping.SourceLine)
+			}
+			if int(mapping.SourceCharacter) > vibe.authoredLines.utf16Length(mapping.SourceLine) {
+				return fmt.Errorf("mapping targets authored column %d beyond authored line %d", mapping.SourceCharacter, mapping.SourceLine)
+			}
+			point.hasSource = true
+			point.sourceLine = mapping.SourceLine
+			point.sourceCharacter = int(mapping.SourceCharacter)
+		} else if mapping.SourceIndex != sourcemap.MissingSource {
+			return errors.New("mapping has a partial source position")
+		}
+		if mapping.NameIndex != sourcemap.MissingName && (mapping.NameIndex < 0 || int(mapping.NameIndex) >= len(parsed.Names)) {
+			return fmt.Errorf("mapping name index %d is out of range", mapping.NameIndex)
+		}
+		points[mapping.GeneratedLine] = append(points[mapping.GeneratedLine], point)
+	}
+	if err := mappings.Error(); err != nil {
+		return fmt.Errorf("mappings: %w", err)
+	}
+	for _, row := range points {
+		sort.SliceStable(row, func(i, j int) bool { return row[i].generatedCharacter < row[j].generatedCharacter })
+	}
+	vibe.points = points
+	return nil
+}
+
+// mapLoweredPosition maps a lowered (line, UTF-16 column) position to its
+// authored counterpart: the greatest mapping on the same lowered line at or
+// before the column, with the authored column advancing one-for-one within the
+// mapping's run, clamped to the authored line end. Positions on lines without
+// mappings, before the first mapping of their line, or inside a mapping that
+// has no source are unmapped.
+func mapLoweredPosition(vibe *vibeInput, line int, column int) (int, int, bool) {
+	if line < 0 || line >= len(vibe.points) {
+		return 0, 0, false
+	}
+	row := vibe.points[line]
+	index := sort.Search(len(row), func(i int) bool { return row[i].generatedCharacter > column }) - 1
+	if index < 0 {
+		return 0, 0, false
+	}
+	point := row[index]
+	if !point.hasSource {
+		return 0, 0, false
+	}
+	authoredColumn := point.sourceCharacter + (column - point.generatedCharacter)
+	if limit := vibe.authoredLines.utf16Length(point.sourceLine); authoredColumn > limit {
+		authoredColumn = limit
+	}
+	return point.sourceLine, authoredColumn, true
+}
+
+// mapLoweredSpan converts a lowered byte-offset span into an authored span.
+// An unmapped start yields no span; an unmapped end keeps the lowered length,
+// clamped to the authored text.
+func (vibe *vibeInput) mapLoweredSpan(start int, length int) *span {
+	startLine, startColumn := vibe.loweredLines.position(start)
+	authoredLine, authoredColumn, ok := mapLoweredPosition(vibe, startLine, startColumn)
+	if !ok {
+		return nil
+	}
+	authoredStart := vibe.authoredLines.byteOffset(authoredLine, authoredColumn)
+	endLine, endColumn := vibe.loweredLines.position(start + length)
+	if mappedEndLine, mappedEndColumn, endOK := mapLoweredPosition(vibe, endLine, endColumn); endOK {
+		if authoredEnd := vibe.authoredLines.byteOffset(mappedEndLine, mappedEndColumn); authoredEnd >= authoredStart {
+			return &span{Start: authoredStart, Length: authoredEnd - authoredStart}
+		}
+	}
+	if authoredStart+length > len(vibe.authoredText) {
+		length = len(vibe.authoredText) - authoredStart
+	}
+	return &span{Start: authoredStart, Length: length}
+}
+
+func (p *project) convertDiagnostic(item *ast.Diagnostic, phase string) diagnostic {
+	source := item.Source()
+	if source == "" {
+		source = "TS"
+	}
+	converted := diagnostic{
+		Code:     source + strconv.FormatInt(int64(item.Code()), 10),
+		Category: categoryName(item.Category()),
+		Message:  item.Localize(locale.Default),
+		Phase:    phase,
+	}
+	file := item.File()
+	if file == nil {
+		return converted
+	}
+	fileName := file.OriginalFileName()
+	if vibe, ok := p.vibeByLowered[fileName]; ok {
+		converted.File = vibe.logicalPath
+		if item.Pos() >= 0 {
+			converted.Span = vibe.mapLoweredSpan(item.Pos(), item.Len())
+		}
+		return converted
+	}
+	if logical, ok := p.logicalByVirtual[fileName]; ok {
+		converted.File = logical
+	} else {
+		converted.File = strings.TrimPrefix(fileName, "/src/")
+	}
+	if item.Pos() >= 0 {
+		converted.Span = &span{Start: item.Pos(), Length: item.Len()}
+	}
+	return converted
+}
+
+type diagnosticCollector struct {
+	project   *project
+	converted []diagnostic
+	seen      map[string]struct{}
+}
+
+func newDiagnosticCollector(p *project) *diagnosticCollector {
+	return &diagnosticCollector{project: p, converted: make([]diagnostic, 0), seen: make(map[string]struct{})}
+}
+
+func (c *diagnosticCollector) add(phase string, items []*ast.Diagnostic) {
+	for _, item := range items {
+		convertedItem := c.project.convertDiagnostic(item, phase)
+		key := convertedItem.Code + "\x00" + convertedItem.File + "\x00" + convertedItem.Message
+		if convertedItem.Span != nil {
+			key += "\x00" + strconv.Itoa(convertedItem.Span.Start) + "\x00" + strconv.Itoa(convertedItem.Span.Length)
+		}
+		if _, exists := c.seen[key]; exists {
+			continue
+		}
+		c.seen[key] = struct{}{}
+		c.converted = append(c.converted, convertedItem)
+	}
+}
+
+func (c *diagnosticCollector) collectProgram(ctx context.Context, program *compiler.Program) {
+	c.add("parse", program.GetConfigFileParsingDiagnostics())
+	c.add("parse", program.GetSyntacticDiagnostics(ctx, nil))
+	c.add("bind", program.GetBindDiagnostics(ctx, nil))
+	c.add("check", program.GetProgramDiagnostics())
+	c.add("check", program.GetGlobalDiagnostics(ctx))
+	c.add("check", program.GetSemanticDiagnostics(ctx, nil))
+}
+
+// compileIdentity checks authored `.vibe` files through the fork's identity
+// content mapper, emits mapped declarations from that Program, and runs the
+// shared runtime emit pipeline over the (identical) lowered texts.
+func compileIdentity(ctx context.Context, options *core.CompilerOptions, project *project) (result, error) {
+	fs := bundled.WrapFS(vfstest.FromMap(project.checkedFiles, true))
+	mapper := &contentmapper.Mapper{
+		Definition: contentmapper.Definition{Package: "vibelang", Extensions: []string{".vibe"}},
+		Manifest:   contentmapper.Manifest{Name: "vibelang-poc", Version: "1"},
+	}
+	config := &tsoptions.ParsedCommandLine{ParsedConfig: &tsoptions.ParsedOptions{
+		FileNames:       project.checkedRoots,
+		CompilerOptions: options,
+		ContentMappers:  []*contentmapper.Mapper{mapper},
+	}}
+	program := compiler.NewProgram(compiler.ProgramOptions{
+		Config:         config,
+		Host:           compiler.NewCompilerHost("/src", fs, bundled.LibPath(), nil, nil, identityProject{}),
+		SingleThreaded: core.TSTrue,
+	})
+
+	collector := newDiagnosticCollector(project)
+	collector.collectProgram(ctx, program)
+
+	// Upstream deliberately delegates runtime output for content-mapped files
+	// to the mapper/build tool, so this Program only owns declaration emit; the
+	// shared emit pipeline below owns runtime JavaScript for all inputs.
+	artifacts := make([]artifact, 0)
+	if options.Declaration.IsTrue() && !options.NoEmit.IsTrue() {
+		mappedEmit := program.Emit(ctx, compiler.EmitOptions{
+			EmitOnly: compiler.EmitOnlyDts,
+			WriteFile: func(fileName string, text string, _ *compiler.WriteFileData) error {
+				artifacts = append(artifacts, artifact{Path: fileName, Content: []byte(text)})
+				return nil
+			},
+		})
+		collector.add("emit", mappedEmit.Diagnostics)
+	}
+
+	emitSkipped := true
+	runEmit := !options.NoEmit.IsTrue() && (!options.NoEmitOnError.IsTrue() || !hasError(collector.converted))
+	if runEmit {
+		runtimeOptions := options.Clone()
+		// Mapped declarations are emitted by the checked Program above. This
+		// pass owns runtime JavaScript and its source map only.
+		runtimeOptions.Declaration = core.TSFalse
+		runtimeOptions.DeclarationMap = core.TSFalse
+		runtimeOptions.EmitDeclarationOnly = core.TSFalse
+		runtimeOptions.NoEmitOnError = core.TSFalse
+		runtimeArtifacts, runtimeSkipped, err := runEmitProgram(ctx, runtimeOptions, project, collector, "emit")
+		if err != nil {
+			return result{Diagnostics: collector.converted, Artifacts: finishArtifacts(artifacts), EmitSkipped: true}, err
+		}
+		artifacts = append(artifacts, runtimeArtifacts...)
+		emitSkipped = runtimeSkipped
+	}
+	finished := finishArtifacts(artifacts)
+	if err := checkArtifactCollisions(finished); err != nil {
+		return result{Diagnostics: collector.converted, Artifacts: []artifact{}, EmitSkipped: true}, err
+	}
+	return result{Diagnostics: collector.converted, Artifacts: finished, EmitSkipped: emitSkipped}, nil
+}
+
+// compileExternal checks externally lowered TypeScript through one fork
+// Program, maps its diagnostics back to the authored `.vibe` positions, and
+// emits declarations plus runtime JavaScript whose source maps are composed
+// with the supplied authored maps.
+func compileExternal(ctx context.Context, options *core.CompilerOptions, project *project) (result, error) {
+	collector := newDiagnosticCollector(project)
+	checkProgram := newEmitProgram(options, project)
+	collector.collectProgram(ctx, checkProgram)
+
+	emitSkipped := true
+	artifacts := make([]artifact, 0)
+	runEmit := !options.NoEmit.IsTrue() && (!options.NoEmitOnError.IsTrue() || !hasError(collector.converted))
+	if runEmit {
+		raw := make([]artifact, 0)
+		emit := checkProgram.Emit(ctx, compiler.EmitOptions{WriteFile: func(fileName string, text string, _ *compiler.WriteFileData) error {
+			raw = append(raw, artifact{Path: fileName, Content: []byte(text)})
+			return nil
+		}})
+		collector.add("emit", emit.Diagnostics)
+		finalized, err := finalizeEmittedArtifacts(raw, project)
+		if err != nil {
+			return result{Diagnostics: collector.converted, Artifacts: []artifact{}, EmitSkipped: true}, err
+		}
+		artifacts = finalized
+		emitSkipped = emit.EmitSkipped
+	}
+	finished := finishArtifacts(artifacts)
+	if err := checkArtifactCollisions(finished); err != nil {
+		return result{Diagnostics: collector.converted, Artifacts: []artifact{}, EmitSkipped: true}, err
+	}
+	return result{Diagnostics: collector.converted, Artifacts: finished, EmitSkipped: emitSkipped}, nil
+}
+
+func newEmitProgram(options *core.CompilerOptions, project *project) *compiler.Program {
+	fs := bundled.WrapFS(vfstest.FromMap(project.emitFiles, true))
+	return compiler.NewProgram(compiler.ProgramOptions{
+		Config: &tsoptions.ParsedCommandLine{ParsedConfig: &tsoptions.ParsedOptions{
+			FileNames:       project.emitRoots,
+			CompilerOptions: options,
+		}},
+		Host:           compiler.NewCompilerHost("/src", fs, bundled.LibPath(), nil, nil, nil),
+		SingleThreaded: core.TSTrue,
+	})
+}
+
+// runEmitProgram runs a fresh Program over the lowered file set, collecting
+// its diagnostics under the given phase, and finalizes the emitted artifacts.
+func runEmitProgram(ctx context.Context, options *core.CompilerOptions, project *project, collector *diagnosticCollector, phase string) ([]artifact, bool, error) {
+	program := newEmitProgram(options, project)
+	collector.add(phase, program.GetSyntacticDiagnostics(ctx, nil))
+	collector.add(phase, program.GetSemanticDiagnostics(ctx, nil))
+	raw := make([]artifact, 0)
+	emit := program.Emit(ctx, compiler.EmitOptions{WriteFile: func(fileName string, text string, _ *compiler.WriteFileData) error {
+		raw = append(raw, artifact{Path: fileName, Content: []byte(text)})
+		return nil
+	}})
+	collector.add(phase, emit.Diagnostics)
+	finalized, err := finalizeEmittedArtifacts(raw, project)
+	if err != nil {
+		return nil, true, err
+	}
+	return finalized, emit.EmitSkipped, nil
+}
+
+// specifierEdit is one replacement of a `.vibe` import specifier inside an
+// emitted JavaScript file, in pre-edit coordinates.
+type specifierEdit struct {
+	byteStart   int
+	byteEnd     int
+	replacement string
+	line        int
+	utf16Start  int
+	utf16OldEnd int
+	utf16NewLen int
+}
+
+// finalizeEmittedArtifacts rewrites relative `.vibe` import specifiers in
+// emitted JavaScript to their emitted `.js` names, renames `.vibe`-derived
+// outputs to their final artifact names, and composes every emitted source map
+// back to the authored `.vibe` sources.
+func finalizeEmittedArtifacts(raw []artifact, project *project) ([]artifact, error) {
+	editsByCodePath := make(map[string][]specifierEdit)
+	for index := range raw {
+		item := &raw[index]
+		if strings.HasSuffix(item.Path, ".js") {
+			text := string(item.Content)
+			edits, err := planSpecifierEdits(project, item.Path, text)
+			if err != nil {
+				return nil, err
+			}
+			if len(edits) != 0 {
+				editsByCodePath[item.Path] = edits
+				text = applySpecifierEdits(text, edits)
+			}
+			if finalPath, renamed := project.renames[item.Path]; renamed {
+				text = rewriteSourceMapURL(text, path.Base(item.Path)+".map", path.Base(finalPath)+".map")
+			}
+			item.Content = []byte(text)
+			continue
+		}
+		if strings.HasSuffix(item.Path, ".d.ts") {
+			if finalPath, renamed := project.renames[item.Path]; renamed {
+				text := rewriteSourceMapURL(string(item.Content), path.Base(item.Path)+".map", path.Base(finalPath)+".map")
+				item.Content = []byte(text)
+			}
+		}
+	}
+	for index := range raw {
+		item := &raw[index]
+		if !strings.HasSuffix(item.Path, ".map") {
+			continue
+		}
+		codePath := strings.TrimSuffix(item.Path, ".map")
+		finalCodePath := codePath
+		if renamed, ok := project.renames[codePath]; ok {
+			finalCodePath = renamed
+		}
+		composed, err := composeEmittedMap(project, item.Path, string(item.Content), editsByCodePath[codePath], path.Base(finalCodePath))
+		if err != nil {
+			return nil, fmt.Errorf("compose source map %q: %w", item.Path, err)
+		}
+		item.Content = []byte(composed)
+	}
+	finalized := make([]artifact, 0, len(raw))
+	for _, item := range raw {
+		finalPath := item.Path
+		if renamed, ok := project.renames[item.Path]; ok {
+			finalPath = renamed
+		}
+		finalized = append(finalized, artifact{Path: finalPath, Content: item.Content})
+	}
+	return finalized, nil
+}
+
+// planSpecifierEdits parses one emitted JavaScript file with the fork parser
+// and plans deterministic rewrites of relative import specifiers that end in
+// `.vibe` and name a project `.vibe` input.
+func planSpecifierEdits(project *project, artifactPath string, text string) ([]specifierEdit, error) {
+	parsed := parser.ParseSourceFile(ast.SourceFileParseOptions{
+		FileName: artifactPath,
+		Path:     tspath.Path(artifactPath),
+	}, text, core.ScriptKindJS)
+	lines := newLineIndex(text)
+	edits := make([]specifierEdit, 0)
+	for _, literal := range parsed.Imports() {
+		specifier := literal.Text()
+		if !strings.HasPrefix(specifier, "./") && !strings.HasPrefix(specifier, "../") {
+			continue
+		}
+		if !strings.HasSuffix(strings.ToLower(specifier), ".vibe") {
+			continue
+		}
+		resolved := path.Clean(path.Join(path.Dir(artifactPath), specifier))
+		logical := strings.TrimPrefix(resolved, "/out/")
+		if _, known := project.vibeByLogical[logical]; !known {
+			continue
+		}
+		start := scanner.SkipTrivia(text, literal.Pos())
+		end := literal.End()
+		if start < 0 || end > len(text) || end-start < 2 {
+			continue
+		}
+		quoted := text[start:end]
+		quote := quoted[0]
+		if (quote != '"' && quote != '\'' && quote != '`') || quoted[len(quoted)-1] != quote {
+			continue
+		}
+		if quoted[1:len(quoted)-1] != specifier {
+			// The printed literal uses escapes; leave it untouched rather than
+			// guess at its raw form.
+			continue
+		}
+		replacement := string(quote) + specifier[:len(specifier)-len(".vibe")] + ".js" + string(quote)
+		startLine, startColumn := lines.position(start)
+		endLine, endColumn := lines.position(end)
+		if startLine != endLine {
+			continue
+		}
+		edits = append(edits, specifierEdit{
+			byteStart:   start,
+			byteEnd:     end,
+			replacement: replacement,
+			line:        startLine,
+			utf16Start:  startColumn,
+			utf16OldEnd: endColumn,
+			utf16NewLen: utf16Extent(replacement),
+		})
+	}
+	sort.Slice(edits, func(i, j int) bool { return edits[i].byteStart < edits[j].byteStart })
+	return edits, nil
+}
+
+func applySpecifierEdits(text string, edits []specifierEdit) string {
+	var builder strings.Builder
+	previous := 0
+	for _, edit := range edits {
+		builder.WriteString(text[previous:edit.byteStart])
+		builder.WriteString(edit.replacement)
+		previous = edit.byteEnd
+	}
+	builder.WriteString(text[previous:])
+	return builder.String()
+}
+
+func rewriteSourceMapURL(text string, oldName string, newName string) string {
+	return strings.ReplaceAll(text, "//# sourceMappingURL="+oldName, "//# sourceMappingURL="+newName)
+}
+
+// emittedSourceMap is the exact field set the pinned fork emits for a
+// version-3 source map.
+type emittedSourceMap struct {
+	Version        int       `json:"version"`
+	File           string    `json:"file"`
+	SourceRoot     string    `json:"sourceRoot"`
+	Sources        []string  `json:"sources"`
+	Names          []string  `json:"names"`
+	Mappings       string    `json:"mappings"`
+	SourcesContent []*string `json:"sourcesContent"`
+}
+
+// composeEmittedMap composes a fork-emitted source map (generated artifact →
+// lowered virtual file) with each `.vibe` file's authored→lowered map so the
+// final map's sources are the authored `.vibe` files. Generated positions are
+// first shifted across the specifier edits applied to the emitted text.
+// Emitted positions whose lowered position is unmapped in the supplied map
+// stay unmapped. Name entries are deliberately dropped: the authored names are
+// not known to the bridge.
+func composeEmittedMap(project *project, mapPath string, mapText string, edits []specifierEdit, finalFileBase string) (string, error) {
+	decoder := json.NewDecoder(strings.NewReader(mapText))
+	decoder.DisallowUnknownFields()
+	var emitted emittedSourceMap
+	if err := decoder.Decode(&emitted); err != nil {
+		return "", err
+	}
+	if emitted.Version != 3 {
+		return "", fmt.Errorf("emitted source map version %d is not 3", emitted.Version)
+	}
+	mapDirectory := path.Dir(mapPath)
+	generator := sourcemap.NewGenerator(finalFileBase, "", mapDirectory, tspath.ComparePathsOptions{UseCaseSensitiveFileNames: true})
+	includeContent := len(emitted.SourcesContent) != 0
+
+	type sourceTarget struct {
+		vibe  *vibeInput
+		index sourcemap.SourceIndex
+	}
+	targets := make([]sourceTarget, len(emitted.Sources))
+	for index, source := range emitted.Sources {
+		resolved := path.Clean(path.Join(mapDirectory, source))
+		if vibe, ok := project.vibeByLowered[resolved]; ok {
+			generatorIndex := generator.AddSource(vibe.authoredName)
+			if includeContent {
+				if err := generator.SetSourceContent(generatorIndex, vibe.authoredText); err != nil {
+					return "", err
+				}
+			}
+			targets[index] = sourceTarget{vibe: vibe, index: generatorIndex}
+			continue
+		}
+		generatorIndex := generator.AddSource(resolved)
+		if includeContent {
+			content := ""
+			if text, ok := project.tsTexts[resolved]; ok {
+				content = text
+			} else if index < len(emitted.SourcesContent) && emitted.SourcesContent[index] != nil {
+				content = *emitted.SourcesContent[index]
+			}
+			if err := generator.SetSourceContent(generatorIndex, content); err != nil {
+				return "", err
+			}
+		}
+		targets[index] = sourceTarget{index: generatorIndex}
+	}
+
+	editsByLine := make(map[int][]specifierEdit)
+	for _, edit := range edits {
+		editsByLine[edit.line] = append(editsByLine[edit.line], edit)
+	}
+	mappings := sourcemap.DecodeMappings(emitted.Mappings)
+	for mapping := range mappings.Values() {
+		generatedColumn := adjustGeneratedColumn(int(mapping.GeneratedCharacter), editsByLine[mapping.GeneratedLine])
+		if !mapping.IsSourceMapping() {
+			if err := generator.AddGeneratedMapping(mapping.GeneratedLine, core.UTF16Offset(generatedColumn)); err != nil {
+				return "", err
+			}
+			continue
+		}
+		if int(mapping.SourceIndex) >= len(targets) {
+			return "", fmt.Errorf("emitted mapping source index %d is out of range", mapping.SourceIndex)
+		}
+		target := targets[mapping.SourceIndex]
+		if target.vibe == nil {
+			if err := generator.AddSourceMapping(mapping.GeneratedLine, core.UTF16Offset(generatedColumn), target.index, mapping.SourceLine, mapping.SourceCharacter); err != nil {
+				return "", err
+			}
+			continue
+		}
+		authoredLine, authoredColumn, ok := mapLoweredPosition(target.vibe, mapping.SourceLine, int(mapping.SourceCharacter))
+		if !ok {
+			if err := generator.AddGeneratedMapping(mapping.GeneratedLine, core.UTF16Offset(generatedColumn)); err != nil {
+				return "", err
+			}
+			continue
+		}
+		if err := generator.AddSourceMapping(mapping.GeneratedLine, core.UTF16Offset(generatedColumn), target.index, authoredLine, core.UTF16Offset(authoredColumn)); err != nil {
+			return "", err
+		}
+	}
+	if err := mappings.Error(); err != nil {
+		return "", err
+	}
+	composed, err := json.Marshal(generator.RawSourceMap())
+	if err != nil {
+		return "", err
+	}
+	return string(composed), nil
+}
+
+// adjustGeneratedColumn shifts a pre-edit UTF-16 column across the specifier
+// edits applied to its line. Columns inside a replaced span clamp to the
+// replacement start.
+func adjustGeneratedColumn(column int, edits []specifierEdit) int {
+	adjusted := column
+	for _, edit := range edits {
+		if column >= edit.utf16OldEnd {
+			adjusted += edit.utf16NewLen - (edit.utf16OldEnd - edit.utf16Start)
+			continue
+		}
+		if column > edit.utf16Start {
+			adjusted -= column - edit.utf16Start
+		}
+		break
+	}
+	return adjusted
+}
+
+// finishArtifacts trims the virtual output prefix and orders artifacts.
+func finishArtifacts(artifacts []artifact) []artifact {
+	finished := make([]artifact, 0, len(artifacts))
+	for _, item := range artifacts {
+		finished = append(finished, artifact{Path: emittedFileName(item.Path), Content: item.Content})
+	}
+	sort.Slice(finished, func(i, j int) bool { return finished[i].Path < finished[j].Path })
+	return finished
+}
+
+func checkArtifactCollisions(artifacts []artifact) error {
+	seen := make(map[string]struct{}, len(artifacts))
+	for _, item := range artifacts {
+		if _, exists := seen[item.Path]; exists {
+			return fmt.Errorf("emitted artifact path collision at %q", item.Path)
+		}
+		seen[item.Path] = struct{}{}
+	}
+	return nil
+}
+
+func hasError(items []diagnostic) bool {
+	for _, item := range items {
+		if item.Category == "error" {
+			return true
+		}
+	}
+	return false
+}
+
+func compilerOptions(raw map[string]any) (*core.CompilerOptions, error) {
+	options := &core.CompilerOptions{
+		Target:           core.ScriptTargetES2022,
+		Module:           core.ModuleKindESNext,
+		ModuleResolution: core.ModuleResolutionKindBundler,
+		RootDir:          "/src",
+		OutDir:           "/out",
+		Strict:           core.TSTrue,
+		SkipLibCheck:     core.TSTrue,
+		SourceMap:        core.TSTrue,
+		InlineSources:    core.TSTrue,
+		NoEmitOnError:    core.TSTrue,
+	}
+	for name, value := range raw {
+		switch name {
+		case "sourceMap":
+			parsed, err := tristate(value)
+			if err != nil {
+				return nil, optionError(name, err)
+			}
+			options.SourceMap = parsed
+		case "inlineSources":
+			parsed, err := tristate(value)
+			if err != nil {
+				return nil, optionError(name, err)
+			}
+			options.InlineSources = parsed
+		case "declaration":
+			parsed, err := tristate(value)
+			if err != nil {
+				return nil, optionError(name, err)
+			}
+			options.Declaration = parsed
+		case "declarationMap":
+			parsed, err := tristate(value)
+			if err != nil {
+				return nil, optionError(name, err)
+			}
+			options.DeclarationMap = parsed
+		case "noEmitOnError":
+			parsed, err := tristate(value)
+			if err != nil {
+				return nil, optionError(name, err)
+			}
+			options.NoEmitOnError = parsed
+		case "noEmit":
+			parsed, err := tristate(value)
+			if err != nil {
+				return nil, optionError(name, err)
+			}
+			options.NoEmit = parsed
+		case "strict":
+			parsed, err := tristate(value)
+			if err != nil {
+				return nil, optionError(name, err)
+			}
+			options.Strict = parsed
+		case "target":
+			text, ok := value.(string)
+			if !ok {
+				return nil, optionError(name, fmt.Errorf("must be a string"))
+			}
+			switch strings.ToLower(text) {
+			case "es2015":
+				options.Target = core.ScriptTargetES2015
+			case "es2020":
+				options.Target = core.ScriptTargetES2020
+			case "es2022":
+				options.Target = core.ScriptTargetES2022
+			case "esnext":
+				options.Target = core.ScriptTargetESNext
+			default:
+				return nil, optionError(name, fmt.Errorf("unsupported value %q", text))
+			}
+		case "module":
+			text, ok := value.(string)
+			if !ok {
+				return nil, optionError(name, fmt.Errorf("must be a string"))
+			}
+			switch strings.ToLower(text) {
+			case "esnext":
+				options.Module = core.ModuleKindESNext
+				options.ModuleResolution = core.ModuleResolutionKindBundler
+			case "commonjs":
+				options.Module = core.ModuleKindCommonJS
+				options.ModuleResolution = core.ModuleResolutionKindNode10
+			default:
+				return nil, optionError(name, fmt.Errorf("unsupported value %q", text))
+			}
+		default:
+			return nil, fmt.Errorf("unsupported compiler option %q", name)
+		}
+	}
+	if options.DeclarationMap.IsTrue() {
+		options.Declaration = core.TSTrue
+	}
+	return options, nil
+}
+
+func tristate(value any) (core.Tristate, error) {
+	parsed, ok := value.(bool)
+	if !ok {
+		return core.TSUnknown, fmt.Errorf("must be a boolean")
+	}
+	if parsed {
+		return core.TSTrue, nil
+	}
+	return core.TSFalse, nil
+}
+
+func optionError(name string, err error) error {
+	return fmt.Errorf("compiler option %q %w", name, err)
+}
+
+func virtualFileName(logical string) (string, error) {
+	logical = strings.ReplaceAll(logical, "\\", "/")
+	if strings.HasPrefix(logical, "/") || strings.Contains(logical, ":") {
+		return "", fmt.Errorf("compiler input path %q must be relative", logical)
+	}
+	clean := path.Clean(logical)
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
+		return "", fmt.Errorf("compiler input path %q escapes the virtual project", logical)
+	}
+	return "/src/" + clean, nil
+}
+
+func emittedFileName(fileName string) string {
+	fileName = strings.ReplaceAll(fileName, "\\", "/")
+	return strings.TrimPrefix(fileName, "/out/")
+}
+
+func categoryName(category diagnostics.Category) string {
+	switch category {
+	case diagnostics.CategoryWarning:
+		return "warning"
+	case diagnostics.CategoryError:
+		return "error"
+	case diagnostics.CategorySuggestion:
+		return "suggestion"
+	case diagnostics.CategoryMessage:
+		return "message"
+	default:
+		return "error"
+	}
+}
+
+// lineIndex converts between byte offsets and (line, UTF-16 column) positions
+// of one immutable text. Lines split on '\n'; a '\r' before it belongs to the
+// preceding line's content.
+type lineIndex struct {
+	text   string
+	starts []int
+}
+
+func newLineIndex(text string) *lineIndex {
+	starts := []int{0}
+	for offset := 0; offset < len(text); offset++ {
+		if text[offset] == '\n' {
+			starts = append(starts, offset+1)
+		}
+	}
+	return &lineIndex{text: text, starts: starts}
+}
+
+func (index *lineIndex) lineCount() int { return len(index.starts) }
+
+func (index *lineIndex) lineText(line int) string {
+	if line < 0 || line >= len(index.starts) {
+		return ""
+	}
+	start := index.starts[line]
+	end := len(index.text)
+	if line+1 < len(index.starts) {
+		end = index.starts[line+1] - 1
+	}
+	return index.text[start:end]
+}
+
+func (index *lineIndex) utf16Length(line int) int {
+	return utf16Extent(index.lineText(line))
+}
+
+func (index *lineIndex) position(byteOffset int) (line int, utf16Column int) {
+	if byteOffset < 0 {
+		byteOffset = 0
+	}
+	if byteOffset > len(index.text) {
+		byteOffset = len(index.text)
+	}
+	low, high := 0, len(index.starts)-1
+	for low < high {
+		middle := (low + high + 1) / 2
+		if index.starts[middle] <= byteOffset {
+			low = middle
+		} else {
+			high = middle - 1
+		}
+	}
+	return low, utf16Extent(index.text[index.starts[low]:byteOffset])
+}
+
+func (index *lineIndex) byteOffset(line int, utf16Column int) int {
+	if line < 0 {
+		return 0
+	}
+	if line >= len(index.starts) {
+		return len(index.text)
+	}
+	lineText := index.lineText(line)
+	consumed := 0
+	for byteAt, character := range lineText {
+		if consumed >= utf16Column {
+			return index.starts[line] + byteAt
+		}
+		consumed += utf16RuneLen(character)
+	}
+	return index.starts[line] + len(lineText)
+}
+
+func utf16Extent(text string) int {
+	length := 0
+	for _, character := range text {
+		length += utf16RuneLen(character)
+	}
+	return length
+}
+
+func utf16RuneLen(character rune) int {
+	if character > 0xFFFF {
+		return 2
+	}
+	return 1
+}

@@ -1,8 +1,8 @@
-// Package compiler defines VibeLang's initial Go compiler extension contract.
+// Package compiler defines VibeLang's Go compiler extension and process
+// contracts.
 //
-// The current TypeScript compiler keeps its implementation packages under Go's
-// internal visibility boundary. VibeLang therefore cannot import and decorate
-// those packages from a separate module; production parser/checker/emitter
-// integration requires the narrow upstream fork described in the repository
-// architecture docs. This package is the stable-facing scaffold for that work.
+// TypeScript keeps its implementation packages behind Go's internal visibility
+// boundary. NewPinnedFork builds a narrow process bridge inside an exact pinned
+// checkout without modifying it; New remains the dependency-free scaffold
+// until binary distribution and production fork provenance are decided.
 package compiler
