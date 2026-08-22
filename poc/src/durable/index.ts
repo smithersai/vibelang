@@ -74,6 +74,64 @@ export {
   validateActionImplementationContract,
   type CompileActionImplementationOptions
 } from "./implementation-contract.ts"
+export {
+  createDenoIsolatedWorkerArtifact,
+  DenoIsolatedWorker,
+  type DenoIsolatedWorkerArtifact
+} from "./isolated-worker.ts"
+export {
+  buildWorkerPoolBundle,
+  MAX_POOL_BUNDLE_BYTES,
+  validateWorkerPoolBundle,
+  WorkerPoolBundleError,
+  WorkerPoolBundles,
+  type BuildWorkerPoolBundleOptions,
+  type WorkerPoolBundle,
+  type WorkerPoolBundleSelection
+} from "./pool-bundle.ts"
+export { DenoBundleWorker } from "./bundle-worker.ts"
+export {
+  assertWorkerTransportSecret,
+  generateWorkerTransportSecret,
+  REMOTE_HTTP_SANDBOX,
+  signWorkerHttpMessage,
+  validateWorkerHostHandshake,
+  verifyWorkerHttpMessage,
+  WORKER_AUTH_HEADER,
+  WORKER_AUTH_MAX_SKEW_MS,
+  WORKER_HANDSHAKE_PATH,
+  WORKER_HTTP_PROTOCOL,
+  WORKER_INVOKE_PATH,
+  WorkerProtocol,
+  WorkerProtocolError,
+  type WorkerHostHandshake,
+  type WorkerHttpAuthInput
+} from "./worker-protocol.ts"
+export {
+  RemoteHttpWorker,
+  remoteHttpWorkerFactory,
+  type RemoteHttpWorkerOptions
+} from "./remote-worker.ts"
+export {
+  startWorkerHost,
+  type StartedWorkerHost,
+  type StartWorkerHostOptions,
+  type WorkerHostEvent
+} from "./worker-host.ts"
+export {
+  authenticateDeployment,
+  decodeSignedDeploymentArtifact,
+  deploymentVerificationKey,
+  DeploymentSignatureError,
+  encodeSignedDeploymentArtifact,
+  generateDeploymentSigningKeyPair,
+  requireAuthenticatedDeployment,
+  SignedDeployment,
+  type AuthenticatedDeployment,
+  type DeploymentSigningKeyPair,
+  type SignedDeploymentArtifact,
+  type TrustedDeploymentKey
+} from "./signed-deployment.ts"
 export { WakeupService } from "./wakeup.ts"
 export {
   ContentIntegrityError,
