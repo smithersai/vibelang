@@ -8,6 +8,7 @@
     "check": "tsc --noEmit"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
     "@types/bun": "latest",
     "@types/node": "^24.0.0",
     "typescript": "^7.0.2",
