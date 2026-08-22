@@ -115,7 +115,7 @@ Authored VibeLang bans Promise instance `.then()`, `.catch()`, and `.finally()`.
 
 ## Defects and Foreign Exceptions
 
-Expected domain errors belong in `E`. A failed compiler/runtime invariant uses `Reflect.panic(...)` and is not converted to a Result. An undeclared exception or Promise rejection crossing a foreign boundary becomes `UnhandledException` unless the boundary maps it to a specific `Error` subclass with `Result.try` or `Result.tryPromise`.
+Expected domain errors belong in `E`. A failed compiler/runtime invariant uses `Reflect.panic(...)`. Any unannotated TypeScript or JavaScript call adds this distinguished checked `panic` case, including undeclared exceptions, Promise rejections, and signature violations. A caller must propagate it, catch it explicitly, or use a trusted adapter to translate it to a specific `Error` subclass. Trusted `@throws {never}` metadata opts out; `@throws {T}` declares a precise foreign channel. Ordinary Result recovery does not swallow panic implicitly.
 
 JavaScript statement-form `try/catch` remains available for low-level interop. It is not the typed recovery API.
 

@@ -2,6 +2,32 @@
 
 VibeLang uses compile-time execution for work that the compiler can prove depends only on compiler-known inputs. The imported `comptime(...)` compiler intrinsic requires evaluation and reports an error when the work cannot be completed during the build. It is ordinary call syntax, not a language keyword.
 
+:::warning Implementation status
+This page describes the accepted design plus a bounded executable subset. The
+project frontend used by root `check`, `compile`, `run`, and `test` recognizes
+the compiler-owned `vibelang:comptime` and `embed` imports by checker identity.
+Its bounded interpreter supports `const`/`let`, assignment and compound
+assignment, `++`/`--`, blocks, `if`, `while`, `do-while`, classic `for`,
+`for-of`, unlabeled `break`/`continue`, `return`, project-local compile-time
+calls, mutation of interpreter-owned arrays/objects, and a deterministic
+allowlist of JSON/Math/Object/Array/String operations. It also exposes
+`comptime.target`, tracks embedded text, and erases unselected target branches.
+It never evaluates the authored module or leaves an intrinsic for runtime.
+
+Every call tree has explicit step, allocation, call-depth, and string-growth
+budgets; exhaustion is VCT1012 rather than a hang. A top-level
+`const Name = comptime(...)` used in type position emits a matching deep
+readonly literal type alias. If a non-exported binding is used only as a type,
+its runtime const is erased; otherwise the value and type meanings merge.
+Unsupported type production fails closed with VCT1013. This is still an AST
+subset, not general JavaScript: spread, destructuring, `var`, labeled control
+flow, `for-in`, closures as values, arbitrary calls/globals/I/O, and
+switch/try/throw remain unsupported. Automatic evaluation and computed,
+mapped, conditional, or generic type results remain design. The
+`vibelang/build` subpath also exposes the evaluator, provenance, and
+content-addressed cache APIs.
+:::
+
 ## Automatic Evaluation
 
 The compiler may evaluate ordinary code when every input is known and evaluation is useful:
@@ -54,9 +80,20 @@ const definition = comptime(JSON.parse(embed("./api.json")))
 const Api = comptime(deriveApi(definition))
 ```
 
-`Api` is a type-valued compile-time binding and is a normal checked type everywhere it is used. Generated declarations participate in editor tooling and diagnostics.
+In the design, `Api` may be a type-valued compile-time binding and is a normal
+checked type everywhere it is used. Generated declarations participate in
+editor tooling and diagnostics.
 
 This removes the usual split between a code generator, its output files, and the build step that must remember to refresh them.
+
+The bounded implementation now materializes the value-derived case. When a
+top-level comptime binding is referenced as a type, the compiler emits a
+same-named deep readonly literal alias; a type-only, non-exported binding emits
+only that alias, while a value use or export keeps the runtime const too.
+Imported named bindings carry the merged meaning across project files.
+VCT1013 rejects schema-descriptor bindings used as types, JavaScript-family
+declarations, and oversized aliases. Wholly computed/mapped/generic type values
+that are not derived from a canonical runtime value remain future work.
 
 ## Target Selection
 
@@ -86,7 +123,7 @@ Comptime can read source assets through tracked imports and embedding APIs:
 
 ```ts
 import { comptime } from "vibelang:comptime"
-import query from "./find-user.sql"
+import query from "./find-user.sql" with { type: "text" }
 
 const plan = comptime(optimize(query))
 ```

@@ -1,33 +1,18 @@
 # TypeScript Interop [Adopt VibeLang without leaving the JavaScript ecosystem]
 
-The TypeScript target preserves valid TypeScript source and runtime behavior. VibeLang adds precision around that code instead of requiring a rewrite.
+Imported `.ts` and `.js` modules keep their host behavior. A `.vibe` file opts into must-use Results, Optional lifting, Promise-chain restrictions, capability inference, and other VibeLang semantics.
 
-## Existing TypeScript
-
-This function has the same behavior in `.ts` and `.vibe`:
-
-```ts
-export async function readUser(id: string): Promise<User> {
-  const response = await fetch(`/users/${id}`)
-  return response.json()
-}
-```
-
-VibeLang conservatively models inference-impossible failures as `unknown`. Using runtime values from TypeScript or JavaScript also contributes the built-in `TypeScript` requirement.
+VibeLang is intentionally TypeScript-shaped, but `.vibe` is not a syntactic superset of TypeScript. Complete TypeScript remains in imported `.ts`/`.tsx` modules; only explicitly documented shared syntax and behavior carry across.
 
 ## Type-Only Imports
-
-An erased import does not add a runtime requirement:
 
 ```ts
 import type { User } from "./legacy-types"
 ```
 
-Only runtime dependence on the foreign module enters the requirement row.
+An erased import adds no runtime requirement. Runtime use of imported TypeScript or JavaScript adds the built-in `TypeScript` requirement when the implementation is not portable.
 
 ## Exact Host Modules
-
-Direct use of a host module is intended to carry an exact requirement:
 
 ```ts
 import { readFile } from "node:fs/promises"
@@ -35,24 +20,13 @@ import { readFile } from "node:fs/promises"
 // contributes Module<"node:fs/promises">
 ```
 
-That requirement can be satisfied on the TypeScript target or rejected from a native-pinned dependency graph. General application code should prefer portable capabilities such as `FileSystem`.
+Native-pinned code can reject that requirement. Application code should usually depend on a portable `FileSystem` capability instead.
 
-## `any` and Dynamic Features
+## Dynamic Features
 
-VibeLang does not globally ban TypeScript escape hatches:
+`any`, `eval`, unconstrained reflection, Promise subclassing, and custom thenables may require the TypeScript runtime or be forbidden on stricter targets. The complete portability table remains specification work.
 
-```ts
-declare const plugin: any
-plugin.activate()
-```
-
-Using `any` adds the `TypeScript` requirement. `eval` follows the same rule. Linters may discourage both without changing TypeScript compatibility.
-
-Some dynamic features will be classified as portable, TypeScript-required, or forbidden. The complete table is not yet specified.
-
-## Adapting a Boundary
-
-Wrap a foreign API when you know more than its TypeScript signature expresses:
+## Adapt a Throwing Boundary
 
 ```ts
 class ConnectFailed extends Error {
@@ -61,37 +35,46 @@ class ConnectFailed extends Error {
   }
 }
 
-function connect(options: Options): Client throws ConnectFailed {
-  return legacyConnect(options) catch (cause) {
-    throw new ConnectFailed({ cause })
-  }
+function connect(options: Options): Result<Client, ConnectFailed | Panic> {
+  return Result.try(
+    () => legacyConnect(options),
+    cause => new ConnectFailed({ cause }),
+  )
 }
 ```
 
-The adapter turns an imprecise boundary into a stable VibeLang contract while keeping the same postfix catch syntax used elsewhere.
+An unannotated call to `legacyConnect` adds the distinguished checked `panic` case. A compiler-trusted adapter may catch and translate that panic to `ConnectFailed`; the current POC's `Result.try` helper conservatively retains `Panic` in its result type even when a mapper is supplied.
 
-## Promise Interop
-
-Ordinary promises remain `Promise<T>`. For a VibeLang async function, typed failures belong to the function's separate inferred failure channel; they are not a second generic argument on the promise value. Calling or awaiting that function contributes its uncaught failures to the enclosing function in the same way as a synchronous call.
-
-An explicit public async contract writes the ordinary promise return type and the failure set separately:
+## Adapt a Rejecting Promise
 
 ```ts
-export declare function fetchUser(
+async function fetchUser(
   id: string,
-): Promise<User> throws NotFound | Timeout
+): Promise<Result<User, RequestFailed | Panic>> {
+  return await Result.tryPromise(
+    () => legacyFetchUser(id),
+    cause => new RequestFailed({ cause }),
+  )
+}
 ```
 
-Custom thenables, Promise subclassing, and behaviors that depend on JavaScript-specific scheduling may add `TypeScript`. Standard async functions and common promise operations are intended to remain portable.
+Authored VibeLang consumes Promises with `await`, never instance `.then`, `.catch`, or `.finally`. Imported code may use them internally.
+
+At declaration boundaries, trusted `@throws {never}` metadata removes the default panic case and `@throws {T}` declares the stated failure channel. These annotations are trust claims, not proof that a foreign implementation obeys them.
+
+## Nullable Boundaries
+
+```ts
+const user = Optional.fromNullable(legacyLookup(id))
+legacyConsume(user.toNullable())
+```
+
+VibeLang does not reinterpret TypeScript optional properties or null unions. Conversion is explicit at the boundary.
 
 ## Effect Interop
 
-Planned Effect interoperability maps `Effect<A, E, R>` values to VibeLang's function channels and back. This lets a VibeLang module live inside an existing Effect application without discarding typed failures or requirements.
-
-The bridge is planned for milestone M4 and has no stable API yet.
+A future bridge can map `Effect<A, E, R>` to functions returning `Result<A, E>` and using Context requirements, and back again. This API is not yet stable.
 
 ## Native Compatibility
 
-Native output is not a stricter source-language mode. It is a checked property of a dependency graph.
-
-A native pin asks the compiler to prove that no transitive operation, provider, or foreign runtime value requires TypeScript. Diagnostics should show the complete path when that proof fails.
+Native output is a checked property of the complete dependency/provider graph, not a separate source dialect. Diagnostics should report the requirement path that prevents a native build.

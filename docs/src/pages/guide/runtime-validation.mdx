@@ -2,12 +2,26 @@
 
 Static types disappear before untrusted data reaches your program. VibeLang uses comptime to derive runtime validators and codecs from ordinary types.
 
+:::warning Implementation status
+`comptime(Schema.derive<T>())` is implemented as a programmatic POC path, not in
+the root CLI. `Schema` comes from a compiler-owned `vibelang:schema` virtual
+module whose import spelling is provisional. The checker reifies the type
+argument into a bounded structural descriptor grammar — primitives, literals,
+arrays, fixed tuples, unions, and exact objects, under explicit depth, node,
+property, and variant budgets — and everything outside it (`any`, index
+signatures, intersections, functions, classes, enums, recursive types) is
+rejected with a diagnostic rather than silently widened. `parse` returns
+`Result<T, ValidationError>`. Root-CLI wiring is still pending, and the older
+declaration-AST validator spike remains only behind the asset example.
+:::
+
 ## Derive a Schema
 
 Start with the application type:
 
 ```ts
 import { comptime } from "vibelang:comptime"
+import { Schema } from "vibelang:schema"
 
 type SignupRequest = {
   email: string
@@ -24,14 +38,16 @@ The compiler produces a runtime parser whose success type is `SignupRequest`. Th
 External input should remain `unknown` until it is validated:
 
 ```ts
-function handleSignup(body: unknown) {
+function handleSignup(
+  body: unknown,
+): Result<User, ValidationError | CreateUserError> {
   const users = Users.context()
-  const request = try SignupRequestSchema.parse(body)
-  return try users.create(request)
+  const request = SignupRequestSchema.parse(body).unwrap()
+  return users.create(request)
 }
 ```
 
-A validation problem is a typed failure. It composes with the same `try`, `catch`, and exhaustiveness rules as filesystem or domain failures.
+A validation problem is an Error in the Result. It composes with the same propagation, matching, and must-use rules as filesystem or domain failures.
 
 ## Decode at a Boundary
 
@@ -39,8 +55,8 @@ Platform APIs can accept a type or derived schema directly:
 
 ```ts
 const http = HttpClient.context()
-const response = try await http.get("/account")
-const account = try await response.json(Account)
+const response = (await http.get("/account")).unwrap()
+const account = (await response.json(Account)).unwrap()
 ```
 
 The type argument asks the compiler or standard library to use the derived codec. Invalid JSON and structurally invalid data remain distinguishable failures when the API declares them separately.
@@ -50,10 +66,10 @@ The type argument asks the compiler or standard library to use the derived codec
 JSON imported by the compiler is different from runtime JSON:
 
 ```ts
-import config from "./config.json"
+import config from "./config.json" with { type: "json" }
 ```
 
-The compiler has already parsed a known project file, so a handwritten runtime schema is not required merely to establish its shape. The imported value receives a literal-preserving readonly type in VibeLang's const-import form.
+The compiler has already parsed a known project file, so a handwritten runtime schema is not required merely to establish its shape. Add `mode: "const"` to the attributes when deeply readonly literal preservation is required.
 
 Data received over HTTP, from a database, or from a user is still untrusted and should be parsed from `unknown`.
 

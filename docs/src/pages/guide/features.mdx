@@ -1,70 +1,58 @@
 # Features [A tour of the language model]
 
-At the most basic level, writing VibeLang is the same as writing TypeScript. VibeLang adds features where the compiler can provide stronger application guarantees with less runtime ceremony.
+VibeLang starts from TypeScript-shaped source and adds compiler semantics where they make application behavior explicit and statically analyzable.
 
 :::warning Design documentation
-This page describes the intended language. Only a small syntax-lowering prototype exists today. See [Getting Started](/introduction/getting-started#project-status) for implementation status.
+This page describes the intended language. The root package includes a checked,
+file-local `.vibe` frontend and runtime POCs, not a complete or conforming
+whole-project compiler. The examples below are not a list of syntax accepted by
+the current subset.
 :::
 
-## Three-Channel Functions
-
-Ordinary function types carry three channels:
-
-| Channel | Meaning | Example |
-| --- | --- | --- |
-| `A` | value returned on success | `User` |
-| `E` | typed failures | `NotFound | Timeout` |
-| `R` | required capabilities | `Db | Logger` |
+## Values, Errors, and Requirements
 
 ```ts
-async function getUser(id: string) {
+async function getUser(
+  id: string,
+): Promise<Result<User, NotFound | DbError>> {
   const db = Db.context()
   const log = Logger.context()
-  const row = try await db.findUser(id)
-  if (row === null) throw new NotFound(id)
+  const row = (await db.findUser(id)).unwrap()
+  if (row.isNone()) throw new NotFound(id)
+  const user = User.from(row.unwrap())
   log.info(`loaded user:${id}`)
-  return User.from(row)
+  return user
 }
 ```
 
-The compiler infers `(User, NotFound | DbError, Db | Logger)` from the body. No `Effect` or `Result` value is created at runtime.
+`Result<User, NotFound | DbError>` carries success and expected errors as an ordinary value. `Db.context()` and `Logger.context()` add requirements tracked by the compiler. Plain returns and Error throws are lifted inside Result-returning functions.
 
-## Typed Failures
-
-Expected failures are ordinary TypeScript `Error` subclasses:
+## Result and Error APIs
 
 ```ts
-class NotFound extends Error {
-  constructor(readonly id: string) {
-    super(`Not found: ${id}`)
-  }
-}
-
-class InvalidEmail extends Error {
-  constructor(readonly input: string) {
-    super(`Invalid email: ${input}`)
-  }
-}
+const profile = loadProfile(id).match({
+  ok: profile => profile,
+  error: error => error.match({
+    NotFound: () => Profile.guest(),
+    InvalidProfile: error => { throw error },
+  }),
+})
 ```
 
-Use `try` to propagate and a catch expression to recover:
+`Result` supplies transformation, recovery, propagation, and must-use checking. Ordinary Error subclasses receive stable identity plus helpers such as `is`, `matches`, `match`, and `rootCause`. [Learn more](/guide/typed-failures).
+
+## Optionals
 
 ```ts
-const profile = loadProfile(id) catch (error) {
-  switch (error.constructor) {
-    case NotFound:
-      Profile.guest()
-    case InvalidProfile:
-      throw error
-  }
-}
+const user = cache.get(id).match({
+  some: user => user,
+  none: () => guestUser,
+})
 ```
 
-Catch expressions handle typed failures. Defects continue unwinding. [Learn more](/guide/typed-failures).
+Built-in `Optional<T>` keeps absence separate from Result errors and uses ordinary methods instead of new grammar. [Learn more](/guide/optionals).
 
 ## Capabilities and Layers
-
-A capability is an abstract class extending `Context` from `vibelang/context`. The API looks like a library, but service access contributes to the function's inferred context channel:
 
 ```ts
 import { Context } from "vibelang/context"
@@ -79,22 +67,9 @@ function createToken(): Token {
 }
 ```
 
-Layers construct and provide implementations. Requirements flow through callers until a layer satisfies them. [Learn more](/guide/capabilities-and-layers).
-
-## Optionals
-
-Zig-style optionals keep absence separate from failure:
-
-```ts
-const cached: ?User = cache.get(id)
-const user = cached orelse try loadUser(id)
-```
-
-`?T` represents a value that may be absent. It does not add anything to the failure channel. [Learn more](/guide/optionals).
+Layers package already acquired implementations into dependency environments. Resource ownership stays in explicit `using`/`defer` code. Requirements flow through callers until a Layer satisfies them. [Learn more](/guide/capabilities-and-layers).
 
 ## Expression-Oriented Control Flow
-
-Blocks, conditionals, switches, and loops can produce values:
 
 ```ts
 const tier = if (score >= 90) "gold"
@@ -102,11 +77,9 @@ const tier = if (score >= 90) "gold"
   else "bronze"
 ```
 
-Labeled breaks yield values from blocks and loops. `defer` and `errdefer` make cleanup local to acquisition. [Learn more](/guide/control-flow).
+Blocks, conditionals, switches, and loops may produce values. Labeled breaks yield values; `defer` and `errdefer` keep cleanup adjacent to acquisition. [Learn more](/guide/control-flow).
 
 ## Comptime
-
-Code runs at compile time when its inputs are known. The imported `comptime(...)` compiler intrinsic requires it without adding a keyword:
 
 ```ts
 import { comptime } from "vibelang:comptime"
@@ -115,92 +88,57 @@ const schema = comptime(JSON.parse(embed("./routes.json")))
 const Routes = comptime(deriveRoutes(schema))
 ```
 
-Comptime is deterministic and dependency-tracked. It can create real types, not only runtime values. [Learn more](/guide/comptime).
+`comptime` is an imported intrinsic, not a keyword. Evaluation is deterministic and dependency-tracked, and it may create types. [Learn more](/guide/comptime).
 
 ## Runtime Validation
 
-Ordinary types are available to comptime code, so a validator does not need a parallel schema declaration:
-
 ```ts
-import { comptime } from "vibelang:comptime"
-
 type Signup = { email: string; age: number }
 const SignupSchema = comptime(Schema.derive<Signup>())
-
-const signup = try SignupSchema.parse(input)
+const signup = SignupSchema.parse(input).unwrap()
 ```
 
-Validation failures use the normal typed failure channel. [Learn more](/guide/runtime-validation).
+Validation returns an ordinary Result. [Learn more](/guide/runtime-validation).
 
-## Typed Asset Imports
-
-JSON, Markdown, and MDX are built-in compiler inputs. Const JSON retains deeply readonly literal types, and Markdown defaults to a string that can be passed directly to an agent or model.
+## Typed Asset and Foreign Imports
 
 ```ts
-import config from './config.json' as const
-import systemPrompt from './prompts/system.md'
-
-const response = try await model.generate({
-  system: systemPrompt,
-  prompt: request,
-})
+import config from "./config.json" with { type: "json", mode: "const" }
+import systemPrompt from "./prompts/system.md" with { type: "text" }
+import { hash } from "./simd.zig" with { type: "zig" }
 ```
 
-Custom comptime loaders can turn SQL, GraphQL, YAML, or another format into a typed module. Every input becomes an incremental build dependency. [Learn more](/guide/asset-imports).
+All non-code and foreign-source inputs use import attributes. Custom comptime loaders can turn SQL, GraphQL, YAML, or another format into typed modules. [Learn more](/guide/asset-imports).
 
 ## Multiple Targets
 
-VibeLang is designed for TypeScript, native, and Wasm output. Platform operations are capabilities, and `comptime.target` chooses implementations without emitting unused targets.
+VibeLang targets TypeScript, native, and Wasm output. Platform operations are capabilities, and `comptime.target` selects implementations without emitting unused targets. [Learn more](/guide/platforms-and-targets).
+
+## Async and Concurrency
+
+Async fallible work returns `Promise<Result<A, E>>`. Authored `.vibe` consumes Promises only with `await`; Promise instance chaining is banned.
 
 ```ts
-import { comptime } from "vibelang:comptime"
-
-const transport = comptime.target === "browser"
-  ? browserTransport
-  : socketTransport
-```
-
-[Learn more](/guide/platforms-and-targets).
-
-## Structured Concurrency
-
-VibeLang keeps ordinary async functions instead of introducing a fiber runtime. Typed workers, cancellation, and structured joins share the same failure model:
-
-```ts
-const [profile, activity] = try await.all(
+const results = await Promise.all([
   loadProfile(id),
   loadActivity(id),
-)
+])
+const [profile, activity] = Result.all(results).unwrap()
 ```
-
-TC39 concurrency governors are a separate Stage 1 direction for limiting fan-out, not the ownership model for joined child work.
 
 [Learn more](/guide/concurrency).
 
 ## Durable Execution
 
-Actions define closed durable boundaries. Flows compile selected calls into a typed execution plan:
-
 ```ts
 import { durable } from "vibelang:flows"
 
-const Build = durable((input: BuildInput) => {
-  const compiled = Compile.run({ source: input.source })
+const Build = durable(function Build(
+  input: BuildInput,
+): Result<Artifact, CompileError | PackageError> {
+  const compiled = Compile.run({ source: input.source }).unwrap()
   return Package.run({ code: compiled.code })
 })
 ```
 
-The compiler lowers the function's checked body without invoking it. Plan mode reads the emitted IR and runs no Action implementation. Retries, persistence, placement, and worker protocols apply only to this explicit program. [Learn more](/guide/durable-execution).
-
-## Polyglot Imports
-
-Zig and Rust sources import like ordinary modules. The compiler drives the foreign toolchain, generates typed bindings, and selects an artifact appropriate to the target:
-
-```ts
-import { hash } from './simd.zig'
-import { tokenize } from './parser.rs'
-
-const digest = hash(bytes)
-```
-
-On TypeScript runtimes, existing Node-API npm packages—including napi-rs packages—remain ordinary typed dependencies. Direct foreign source builds and prebuilt `.node` addons use the same target-aware dependency graph, but the exact build selection policy remains open.
+The compiler lowers the checked body without invoking it. Plan mode reads emitted IR and runs neither the Flow nor any Action. [Learn more](/guide/durable-execution).

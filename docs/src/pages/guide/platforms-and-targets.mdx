@@ -2,6 +2,16 @@
 
 VibeLang is designed to target TypeScript, native code, and Wasm. Portability is checked through the same requirement system used for application services.
 
+:::warning Implementation status
+The production whole-project compiler, LLVM/native backend, GC, and general
+Wasm backend are not built. The current `vibelang/targets` subpath exposes
+conservative checker-backed classification plus one deliberately bounded
+Vibe-to-portable-IR proof: a single-module subset of scalar and bounded-string
+functions compiles to WAT and real Wasm through `wat2wasm`. `vibelang/build`
+separately invokes a limited Zig/Rust-to-Wasm path. Neither slice emits a
+general native or Wasm VibeLang program.
+:::
+
 ## Target Families
 
 | Target | Intended output | Host examples |
@@ -10,19 +20,55 @@ VibeLang is designed to target TypeScript, native code, and Wasm. Portability is
 | Native | near-native code through LLVM | server, CLI, worker |
 | Wasm | portable WebAssembly | browser, WASI, sandbox |
 
-The TypeScript target supports the complete TypeScript language. Native and Wasm targets classify features according to whether they can be implemented safely and predictably.
+The TypeScript target interoperates with the complete TypeScript language in imported `.ts` and `.tsx` modules. Authored `.vibe` remains an intentionally distinct TypeScript-derived grammar. Native and Wasm targets will classify features according to whether they can be implemented safely and predictably.
+
+## Bounded Portable Backend Proof
+
+The programmatic POC lowers exported, synchronous, non-generic `.vibe` functions
+with `number`/`boolean` parameters and plain, `Optional`, or `Result` returns
+through the TypeScript checker and Vibe row checker into canonical IR. The same
+IR runs in a TypeScript-host evaluator and emits import-free WAT; `wat2wasm`
+produces a real module. Tests compare canonical exits, contract digests, and wire
+digests across both runtimes.
+
+The subset now covers more than straight-line scalar expressions:
+
+- **Intra-module calls** between portable functions in the same module, on all
+  three return channels. Recursion — direct or mutual — is rejected at the call
+  site, and static call chains are capped at 32, so neither runtime can diverge
+  through stack exhaustion.
+- **Locals and statements**: `let`/`const` locals, assignment and compound
+  assignment, statement-form `if`/`else`, and `while`/`for` loops. Loops are
+  bounded by a fuel budget of 1,000,000 loop-condition evaluations per exported
+  invocation; exhaustion produces a canonical `fuel-exhausted` defect exit that
+  is byte-identical in both runtimes rather than a trap, a hang, or a silent
+  divergence.
+- **Scalar error payloads**: Error variants may carry `readonly` scalar fields,
+  which ride the canonical wire exit and survive propagation through callers.
+- **Bounded strings**: immutable printable-ASCII string literals interned into a
+  deduplicated pool, with `===`/`!==`, `.length`, string locals, and
+  string-valued returns. Equality is pooled-identity equality, which is exact
+  only because the value space is closed over content-deduplicated literals.
+
+This is architectural evidence, not the general Wasm backend. Imports, Context,
+objects, closures, generics, async, GC, a host ABI, LLVM, and whole-project
+partitioning all fail closed or remain absent, as do string parameters, string
+concatenation, non-ASCII strings, and string ordering. The selected `wat2wasm`
+executable is a trusted build tool: it is bounded by a deadline and output limits
+and its output is hashed and structurally checked, but it is not sandboxed,
+signed, or toolchain-attested.
 
 ## Platform as Capability
 
 Host facilities are not unconditional globals in authored `.vibe` code:
 
 ```ts
-function refreshCache() {
+function refreshCache(): Result<void, HttpError | FileError> {
   const clock = Clock.context()
   const http = HttpClient.context()
   const fs = FileSystem.context()
-  const data = try http.get(cacheUrl(clock.today()))
-  try fs.writeBytes(cachePath, data.body)
+  const data = http.get(cacheUrl(clock.today())).unwrap()
+  fs.writeBytes(cachePath, data.body).unwrap()
 }
 ```
 
@@ -82,11 +128,11 @@ Unselected implementations are not emitted.
 Zig and Rust source modules import directly, with compiler-generated typed bindings:
 
 ```ts
-import { hashMany } from './hash.zig'
-import { parse } from './parser.rs'
+import { hashMany } from "./hash.zig" with { type: "zig" }
+import { parse } from "./parser.rs" with { type: "rust" }
 ```
 
-The compiler owns toolchain invocation and caching. The import's types, source maps, selected target, toolchain versions, feature flags, and foreign dependency graph contribute to its cache identity. Whether a source import becomes native code, Wasm, or a TypeScript-runtime bridge is target- and toolchain-driven; the exact selection policy remains open.
+The planned compiler owns toolchain invocation and caching. The import's types, source maps, selected target, toolchain versions, feature flags, and foreign dependency graph contribute to its cache identity. Whether a source import becomes native code, Wasm, or a TypeScript-runtime bridge is target- and toolchain-driven; the exact selection policy remains open.
 
 The TypeScript target also supports existing Node-API npm packages, including addons built with napi-rs:
 

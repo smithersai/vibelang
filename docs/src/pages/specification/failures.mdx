@@ -44,6 +44,8 @@ Authors MUST NOT need to write `Result.ok(...)` or `Result.err(...)`. Those cons
 
 A function with no fallible path MUST continue to return its ordinary success type rather than an unnecessary Result.
 
+A `.vibe` function with a reachable recoverable Error exit MUST return or infer a Result. An explicit non-Result return annotation on such a function MUST be a compile error. The distinguished `panic` case is tracked separately from ordinary recoverable Error variants.
+
 ## Inference and Public Contracts
 
 When a function body has no explicit return annotation, the compiler MUST infer `A` from successful returns and `E` from:
@@ -55,7 +57,7 @@ When a function body has no explicit return annotation, the compiler MUST infer 
 
 Public, abstract, ambient, and declaration-only contracts MUST express fallibility directly with `Result<A, E>` or `Promise<Result<A, E>>`.
 
-VibeLang MUST NOT add a `throws` clause, `!T` marker, prefix `try` expression, postfix `catch` expression, or special panic-catch grammar.
+VibeLang MUST NOT add a general `throws` clause, `!T` marker, prefix `try` expression, or postfix Result-recovery expression. Panic MUST be explicitly catchable; the final catch spelling is not fixed by this page.
 
 ## Propagation
 
@@ -106,11 +108,13 @@ Handler selection MUST use compiler-stable nominal identity, not a forgeable use
 
 ## Foreign Exceptions
 
-Calling TypeScript, JavaScript, or another foreign implementation that may throw or reject MUST produce a Result in VibeLang. An unknown thrown value MUST be wrapped in `UnhandledException`, which is an `Error` subclass retaining the original cause.
+Calling any TypeScript, JavaScript, or other foreign runtime implementation MUST add the distinguished checked `panic` case by default. This applies even when the foreign declaration omits throws, and it includes Promise rejection and a runtime implementation violating its declared signature.
 
-A trusted adapter MAY map the boundary to a more precise `Error` subtype. JSDoc and declaration metadata MAY provide that trusted contract, but MUST NOT cause an actual foreign throw to escape the VibeLang Result boundary.
+A caller MUST propagate panic, explicitly catch it, or use a trusted adapter that catches and translates it. `panic` is imported from `vibelang:exceptions` and accepts an optional message or underlying Error.
 
-`Reflect.panic` is reserved for compiler/runtime invariants and MUST bypass recoverable Result handling.
+The compiler MUST recognize trusted JSDoc/declaration metadata at the boundary. `@throws {never}` removes the default panic case; `@throws {T}` declares the stated foreign error channel. These annotations are trust claims and MUST remain visible in declarations and tooling. Exact overload, declaration-merging, generic, and multiple-tag rules remain open.
+
+`Reflect.panic` and compiler/runtime invariant failures enter the same distinguished panic channel. Ordinary Result recovery MUST NOT swallow panic implicitly.
 
 ## Promise Semantics
 
@@ -120,7 +124,7 @@ Calls to Promise instance `.then()`, `.catch()`, or `.finally()` MUST be compile
 
 Awaiting `Promise<Result<A, E>>` MUST produce `Result<A, E>`. `await` MUST NOT automatically unwrap, recover, or discard the Result.
 
-Promise rejection at a VibeLang boundary MUST become an error Result, normally `UnhandledException`, rather than an untyped rejection escaping the declared return contract.
+Promise rejection at an unannotated VibeLang foreign boundary MUST become the checked panic case rather than an untyped rejection escaping the declared contract.
 
 ## JavaScript `try/catch`
 

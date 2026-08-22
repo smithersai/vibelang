@@ -2,10 +2,11 @@ import { defineConfig } from 'vocs/config'
 
 export default defineConfig({
   accentColor: 'light-dark(#646cff, #a5a9ff)',
+  baseUrl: 'https://vibelang.sh',
   checkDeadlinks: true,
   colorScheme: 'light dark',
   description:
-    'VibeLang is TypeScript with typed failures, capability-based dependencies, comptime, and durable execution compiled in.',
+    'VibeLang is TypeScript-shaped code with Result errors, capability-based dependencies, comptime, and durable execution compiled in.',
   editLink: {
     link: 'https://github.com/smithersai/vibelang/edit/main/docs/src/pages/:path',
   },
@@ -30,7 +31,7 @@ export default defineConfig({
       collapsed: false,
       items: [
         { text: 'Features', link: '/guide/features' },
-        { text: 'Typed Failures', link: '/guide/typed-failures' },
+        { text: 'Results & Errors', link: '/guide/typed-failures' },
         { text: 'Capabilities & Layers', link: '/guide/capabilities-and-layers' },
         { text: 'Optionals', link: '/guide/optionals' },
         { text: 'Control Flow', link: '/guide/control-flow' },
@@ -50,7 +51,7 @@ export default defineConfig({
       items: [
         { text: 'Language Syntax', link: '/reference/language-syntax' },
         { text: 'Function Channels', link: '/reference/function-channels' },
-        { text: 'Errors', link: '/reference/errors' },
+        { text: 'Results & Errors', link: '/reference/errors' },
         { text: 'Capabilities', link: '/reference/capabilities' },
         { text: 'Comptime', link: '/reference/comptime' },
         { text: 'Actions & Flows', link: '/reference/actions-and-flows' },
@@ -65,7 +66,7 @@ export default defineConfig({
         { text: 'Status & Conventions', link: '/specification/' },
         { text: 'Compatibility', link: '/specification/compatibility' },
         { text: 'Type System', link: '/specification/type-system' },
-        { text: 'Failure Semantics', link: '/specification/failures' },
+        { text: 'Result Semantics', link: '/specification/failures' },
         { text: 'Requirements', link: '/specification/requirements' },
         { text: 'Control Flow', link: '/specification/control-flow' },
         { text: 'Comptime', link: '/specification/comptime' },

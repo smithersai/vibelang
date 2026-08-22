@@ -1,13 +1,23 @@
-# Standard Library [Planned modules and service categories]
+# Standard Library [Designed modules and current programmatic POC surfaces]
 
-The VibeLang standard library is a product direction, not an implemented API. Module names and signatures on this page are illustrative.
+The VibeLang standard library is a product direction. Module names and signatures on this page are illustrative and are not a root-CLI API.
+
+:::note Implementation status
+The names and signatures on this page remain design, not a promised root-CLI
+standard-library API. The source checkout now has three substantial
+programmatic POCs: `poc/src/platform`, `poc/src/data`, and
+`poc/src/concurrency`. The last is also exposed through the provisional root
+package subpath `vibelang/concurrency`; platform and data do not yet have root
+package export-map entries. These libraries are executable evidence, not
+locked production contracts.
+:::
 
 ## Design Contract
 
 The standard library should:
 
 - operate on ordinary VibeLang values and functions
-- use typed failures for recoverable errors
+- return `Result<A, E>` for recoverable errors
 - define platform services as abstract classes extending `Context`
 - work across TypeScript, native, and Wasm where applicable
 - derive schemas and codecs from ordinary types
@@ -15,13 +25,22 @@ The standard library should:
 
 ## Core Data
 
-Planned areas include:
+Designed areas include:
 
 ```text
-Array  Chunk  HashMap  HashSet  Option  Either  Data  Match
+Array  Chunk  HashMap  HashSet  Optional  Result  Data  Match
 ```
 
 TypeScript-compatible built-ins remain available on the TypeScript target. Portable alternatives should not require wrapper values merely for effect tracking.
+
+The programmatic `poc/src/data` POC implements pure, branded `Chunk`,
+`HashMap`, `HashSet`, and `Data` values; explicit `Equivalence` and `Hash`
+instances and structural registration seams; and a fluent value-level `Match`
+builder with type-directed exhaustiveness. It uses `Optional` for collection
+misses, insertion-order iteration for maps/sets, explicit equivalence/hash
+keying, and copy-on-write rather than a production HAMT. Compiler-derived
+`Equivalence`/`Hash` instances, a released data package, and a final persistent
+collection representation remain absent.
 
 ## Schema and Encoding
 
@@ -29,7 +48,12 @@ TypeScript-compatible built-ins remain available on the TypeScript target. Porta
 Schema  Codec  Json  JsonSchema  Equivalence  Hash
 ```
 
-These artifacts are derived at comptime where possible. Parsing failures use the ordinary error channel.
+These artifacts are derived at comptime where possible. Parsing failures return Results.
+
+The root build POC has bounded checker-derived runtime schemas, and
+`poc/src/data` implements `Equivalence` and `Hash`. A unified standard-library
+`Schema`/`Codec`/`Json`/`JsonSchema` surface and shared compiler-owned type
+descriptors remain absent.
 
 ## Configuration and Time
 
@@ -39,6 +63,15 @@ Config  Duration  Instant  Schedule
 
 Reading environment variables or the wall clock requires a capability. Pure duration arithmetic does not.
 
+`poc/src/platform` implements pure branded `Duration`, transparent validated
+`Instant` arithmetic, and `Config` specs read through `Environment`. It also
+implements immutable `Schedule.fixed`, `spaced`, `exponential`, `recurs`, and
+`upTo` values with `and`/`or`/jitter/capping, plus `Schedule.retry` and
+`Schedule.repeat`. Waiting is explicit through a `Sleeper` capability with
+`SystemSleeper` and `TestSleeper`; `Sleeper` is not yet included in the
+`NodePlatform`/`TestPlatform` bundles, and Schedule values are not durable wire
+values.
+
 ## Platform Services
 
 ```text
@@ -47,6 +80,16 @@ Path  Process  Socket  Terminal
 ```
 
 Each service can have Node, Bun, Deno, browser, edge, native, WASI, and test implementations where the host supports it.
+
+The current programmatic `poc/src/platform` surface implements this roster for
+Node and deterministic tests: `NodeFileSystem`/`InMemoryFileSystem`,
+`FetchHttpClient`/`StubHttpClient`, `SystemClock`/`TestClock`,
+`SystemRandom`/`SeededRandom`, `ProcessEnvironment`/`MapEnvironment`,
+`SystemConsole`/`RecordingConsole`, `NodeProcess`/`TestProcess`,
+`NodeSocket`/`MemorySocket`, and `SystemTerminal`/`ScriptedTerminal`. `Path` is
+instead a pure POSIX/Windows namespace with an explicit `Path.forHost()` seam.
+`NodePlatform` and `TestPlatform.make()` bundle the nine capability services;
+other host families and production resource-management policy remain absent.
 
 Services use the same library-shaped declaration and access model as application capabilities:
 
@@ -71,7 +114,18 @@ The inherited `Clock.context()` method is compiler-aware: it adds `Clock` to `ti
 Stream  Queue  Semaphore  Channel
 ```
 
-The library follows typed joins, cancellation, and workers rather than introducing Effect-style fibers or a dedicated task-scope abstraction. TC39 concurrency governors may provide a future limit for async-iterator fan-out, but they are a separate Stage 1 proposal rather than a VibeLang child-task ownership API.
+The library uses static concurrency combinators, cancellation, and workers rather than introducing Effect-style fibers or parser-level Promise syntax. TC39 concurrency governors may provide a future limit for async-iterator fan-out.
+
+The provisional `poc/src/concurrency` library (also exported as
+`vibelang/concurrency`) implements `Stream`, bounded FIFO `Queue`, fair
+`Semaphore`, small-buffer `Channel`, and cancellation sources/registrations;
+`allKeyed`/`allSettledKeyed`; FIFO `Governor`; completion-ordered
+`mapUnordered`, `filterUnordered`, and `bufferedUnordered`; and typed workers
+through `TypedWorker.spawn`. The helpers contain and join work they start, and
+the queue/stream runners preserve typed cancellation or failure Results.
+`spawn module {}` syntax, compiler-derived worker contracts/codecs,
+SharedArrayBuffer-backed shared structs, zero-capacity rendezvous channels,
+and production worker sandboxing remain absent.
 
 ## Durable Runtime
 
@@ -83,7 +137,11 @@ These APIs connect compiler-derived plans to coordinator and worker runtimes.
 
 ## Agent Library
 
-The separately packaged `@vibelang/agent` is planned to provide MDX prompt rendering, model adapters, TypeScript compilation, sandbox execution, and optional Action/Flow durability adapters.
+The production `@vibelang/agent` package is planned to provide MDX prompt
+rendering, model adapters, TypeScript compilation, sandbox execution, and
+optional Action/Flow durability adapters. The current root package exposes a
+narrower programmatic POC at `vibelang/agent`; it is not the proposed standard
+library contract.
 
 ## Implementation Strategy
 

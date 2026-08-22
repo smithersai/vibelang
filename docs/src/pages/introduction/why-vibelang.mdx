@@ -1,10 +1,8 @@
 # Why VibeLang [Why application structure belongs in the compiler]
 
-TypeScript describes values well, but serious applications need to describe more than values.
+TypeScript describes values well, but serious applications also need to describe expected errors, dependencies, validation boundaries, and durable execution.
 
 ## The Missing Parts
-
-Consider a function that loads a user:
 
 ```ts
 async function getUser(id: string): Promise<User> {
@@ -14,75 +12,56 @@ async function getUser(id: string): Promise<User> {
 }
 ```
 
-Its signature omits the information a caller needs most:
-
-- it may fail for several recoverable reasons
-- it needs an HTTP client and access to a host environment
-- the decoded response is not actually known to be a `User`
-- tests must intercept global behavior or restructure the function
-
-TypeScript cannot infer these facts because its function type has only a success channel.
+The signature hides several facts: the operation can fail, it depends on ambient networking, the response is unvalidated, and tests must intercept global behavior.
 
 ## The Library Answer
 
-Effect systems implemented as libraries can make these facts explicit. They model the program as a value whose type carries a success, failure, and requirement channel. That approach proves the model is useful and can deliver excellent reliability.
-
-It also creates a second execution vocabulary. Application code constructs effect values, composes them with combinators or generators, and eventually hands them to a runtime interpreter. Existing promise-returning libraries cross an adapter boundary.
-
-For many teams, that trade is worthwhile. VibeLang explores a different trade.
+Effect systems implemented as libraries make success, failure, and requirements explicit. That model is valuable, but it introduces a second execution vocabulary and a runtime interpreter.
 
 ## The Compiler Answer
 
-A compiler can attach the same information to an ordinary function:
+VibeLang keeps the useful information in ordinary-looking code while representing expected failure honestly as a value:
 
 ```ts
-async function getUser(id: string) {
+async function getUser(
+  id: string,
+): Promise<Result<User, NotFound | Timeout | InvalidResponse>> {
   const http = HttpClient.context()
-  const response = try await http.get(`/users/${id}`)
+  const response = (await http.get(`/users/${id}`)).unwrap()
   if (response.status === 404) throw new NotFound(id)
-  return try response.json(User)
+  return (await response.json(User)).unwrap()
 }
 ```
 
-The function remains eager. Its result is still a `User` or a `Promise`. The compiler infers and checks the extra channels, then erases their type-level representation.
+The compiler lifts plain success returns and Error throws into Result variants. It also tracks `HttpClient.context()` as a requirement until a Layer provides it. No caller manually threads context.
 
-`HttpClient.context()` looks like a library call, but the compiler adds `HttpClient` to the function's static context channel. That requirement propagates through callers until a layer provides it; no caller threads a context argument.
+Compiler support enables:
 
-This enables a few things an ordinary library cannot do as directly:
+- Result/error inference through ordinary calls
+- exhaustive matching over known Error unions
+- one visible `Promise<Result<A, E>>` model for async failure
+- validators derived from ordinary types at comptime
+- target selection and platform capability checking
+- durable Plan IR lowered statically from checked source
 
-- infer failure rows and compiler-aware context requirements through ordinary calls
-- make catch expressions exhaustive
-- preserve one error model across sync and async code
-- generate validators from ordinary types at comptime
-- select platform implementations and remove dead targets
-- lower new control-flow syntax without runtime combinators
+## Why Result Values?
 
-## Why Not Improve TypeScript With Types Alone?
-
-Typed tuples, branded promises, decorators, and conditional types can encode parts of the model. They cannot change JavaScript's throw semantics, make `catch` exhaustive, make a library access part of an ordinary function's signature, or evaluate type-producing code at compile time.
-
-VibeLang changes the grammar and checker where language support produces a simpler user model. It lowers back to TypeScript where the host language is already sufficient.
+An earlier design erased a separate failure row and required new propagation and catch grammar. Using `Result<A, E>` makes the public contract readable by existing TypeScript tooling and removes most parser changes. Compiler lifting preserves concise bodies, while callers still see and must use the failure value.
 
 ## Why Durable Execution Belongs Here
 
-Durable runtimes usually ask developers to repeat information the compiler already knows: input schemas, output schemas, error shapes, dependency declarations, and RPC bindings.
+Durable runtimes commonly repeat schemas, error shapes, dependencies, and RPC bindings that the compiler already knows. Passing a statically resolvable function to `durable(...)` lets VibeLang lower checked code into Plan IR and derive those boundaries. Planning reads emitted IR; it never executes the Flow or its Actions.
 
-In VibeLang, an Action closes over a typed function signature. Passing a statically resolvable function to `durable(...)` asks the compiler to lower its checked body into a Flow plan without invoking it. The compiler can derive the boundary codecs, dependency edges, and worker contracts from the same types used by local code, and plan/preview can analyze the emitted IR without running the Flow or its Actions.
-
-Durability stays opt-in. Ordinary functions do not pay for a scheduler.
+Durability remains opt-in. Ordinary functions do not pay for a scheduler.
 
 ## When VibeLang Fits
 
-VibeLang is designed for TypeScript teams that want:
+VibeLang is for TypeScript teams that want:
 
-- checked recoverable failures without result wrappers
-- explicit, transitive dependencies without threading context arguments through business logic
-- portable services across JavaScript, native, Wasm, and test targets
+- expected failures as must-use values with concise function bodies
+- explicit transitive dependencies without manual context arguments
+- portable services across JavaScript, native, Wasm, and tests
 - type-driven validation and asset loading
-- durable workflows whose runtime contracts come from source types
+- statically analyzable durable workflows
 
-## When It Does Not
-
-VibeLang is not ready for production use today. It is also a poor fit if your project depends heavily on unconstrained JavaScript reflection and must compile unchanged to native code, or if adopting an established library effect system already solves your needs.
-
-The project is a language-design bet: the strongest application guarantees should feel like part of TypeScript, because the compiler can make them lighter than a library can.
+The project is not production-ready today, and unconstrained JavaScript reflection will remain incompatible with some native or static-analysis guarantees.

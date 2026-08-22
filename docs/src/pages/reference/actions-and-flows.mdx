@@ -11,7 +11,7 @@ abstract class Name extends Action<FunctionSignature> {}
 An Action has:
 
 - a nominal durable identity and version
-- input, success, and tagged-failure schemas
+- input, success, and Error schemas
 - inferred success, failure, and requirement channels
 - implementation and policy digests
 - source and debug metadata
@@ -24,14 +24,16 @@ Schemas and channel rows are derived from `FunctionSignature`.
 Name.run(input)
 ```
 
-Inside Flow compilation, `run` emits a Plan IR node and returns a typed symbolic result. Outside Flow compilation, the runtime dispatches the configured implementation.
+Inside Flow compilation, `run` emits a Plan IR node and returns a typed symbolic Result. Calling `.unwrap()` emits an Error propagation edge. Outside Flow compilation, the runtime dispatches the configured implementation.
 
 ## Flow
 
 ```ts
 import { durable } from "vibelang:flows"
 
-const Name = durable((input: Input) => {
+const Name = durable(function Name(
+  input: Input,
+): Result<Output, ActionError> {
   // Action calls and representable control flow
   return output
 })
@@ -52,7 +54,7 @@ The initial IR includes:
 - constant, input, projection, and pure expression
 - Action call
 - parallel join and explicit sequence
-- branch, switch, typed catch, and completion
+- branch, switch, Result/Error matching, and completion
 - parameterized loop and fan-out templates
 - inline Flow, child Flow, and next-round handoff
 - durable sleep, signal, and cancellation boundary
@@ -66,7 +68,7 @@ Independent nodes may run concurrently.
 
 ## Durable Values
 
-Action inputs, success values, and declared failures must implement:
+Action inputs, success values, and declared Errors must implement:
 
 ```ts
 Durable<T>
@@ -103,6 +105,31 @@ A deployment build may emit:
 - routing and placement manifest
 - derived wire codecs and RPC bindings
 - implementation and policy digests
+
+## Deployment Authentication (bounded POC)
+
+`encodeSignedDeploymentArtifact(plan, manifest, keyPair)` emits a canonical
+Ed25519 envelope. `authenticateDeployment(deployment, bytes, trustedKeys)`
+verifies the signature against out-of-band public keys and matches the complete
+Plan and manifest to the exact locally built deployment.
+
+On the Bun coordinator surface,
+`createAuthenticatedDurableExecutor(authentication, store)` consumes the opaque
+verifier-issued proof before constructing workers. Ordinary object lookalikes
+are rejected at runtime and do not satisfy the public TypeScript type.
+`in-process-poc` is the only sandbox with an implicit local transport. A pool
+signed with any other sandbox must have an opaque token returned by
+`trustWorkerTransport(exactSandbox, factory)`; raw or mismatched factories are
+rejected before any factory is called.
+
+The signature covers coordinator, pool, implementation, policy, schema, and
+capability-grant digests transitively through the manifest. It does not attest
+the live provider callback or its lexical closure, prove the bytes/identity of a
+remote loaded bundle, provide transport or sandbox attestation, or implement
+freshness, anti-rollback, key custody, or proof revocation.
+The transport token proves an explicit process-local host decision and exact
+sandbox routing, not that the host factory genuinely enforces the claimed
+isolation boundary.
 
 ## Open Semantics
 

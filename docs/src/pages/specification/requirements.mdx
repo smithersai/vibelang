@@ -1,6 +1,6 @@
 # Requirements [Normative model for capabilities and provider layers]
 
-Status: **Locked** for capability identity, context access, inference, and layer-based provision. Declaration encoding, lifecycle, and lowering are **open**.
+Status: **Locked** for capability identity, context access, inference, lean layer provision, and lifetime boundaries. Declaration encoding and lowering are **open**.
 
 ## Capability Identity
 
@@ -59,33 +59,35 @@ Portability MUST be determined from the satisfied dependency closure, not merely
 
 Provider composition MUST be expressed by a library imported from `vibelang/provider`. The accepted design MUST NOT rely on a dedicated source-language `provide {}` statement.
 
-A layer conceptually has the type:
+A base layer conceptually has the type:
 
 ```ts
-Layer<Provides, Error, Requires>
+Layer<Provides>
 ```
 
 Layer composition MUST track:
 
 - the nominal capabilities produced
-- failures during construction
-- capabilities required for construction
 
 A layer MUST associate each capability's nominal context key with a compatible service instance. Layer APIs are library-shaped; the compiler recognizes their effect on `R` without introducing special provider grammar.
+
+Resource acquisition and finalization MUST remain explicit ordinary code, initially through `using` or `defer`. A base Layer receives an already acquired service and MUST NOT own that service's lifetime. A future resource-building convenience MAY carry construction failures and requirements without changing the base Layer rule.
 
 ## Satisfaction
 
 Providing a layer to a computation MUST remove matching capabilities from the computation's unsatisfied requirement row. The provider library MUST establish the runtime scope in which `Capability.context()` resolves those instances.
 
-Layer acquisition failures MUST enter the surrounding failure row. Layer construction requirements MUST remain in the surrounding requirement row unless another layer satisfies them.
-
 When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error.
 
 ## Scoping
 
-Provided implementations MUST be scoped to the provided computation. Nested scopes MAY override implementations according to a future explicit precedence rule.
+Provided implementations MUST be scoped to the provided computation. `Layer.provide(layer, body)` MUST keep its environment active through `body` and the Promise returned by `body`, then revoke it. Nested scopes MAY override implementations according to a future explicit precedence rule.
 
-Resources acquired by a scoped layer MUST eventually be finalized. Acquisition order, memoization, sharing, override behavior, and disposal error policy are **open**.
+Promise revocation MUST occur at settlement before queued Promise reactions run. A runtime MAY require the Promise to be created by the provider body, and MUST reject an unverifiable pre-existing Promise or a host that cannot observe settlement synchronously. Authors can establish an unaliased boundary with `async () => await existingPromise`; this adapts the lifetime without making the Layer own the underlying work.
+
+A base Layer MUST NOT discover, register, cancel, or join child work. Fire-and-forget and detached work are initially unavailable in authored `.vibe`; every started Promise MUST be consumed directly by `await` or by a recognized combinator whose resulting Promise is consumed before scope exit.
+
+Imported JavaScript or TypeScript that starts hidden background work owns that work. Caller-controlled background APIs MUST expose explicit completion or disposal handles through their adapters.
 
 ## Lowering
 

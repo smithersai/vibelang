@@ -9,7 +9,7 @@ Status: **Locked**, except where marked.
 3. Shared syntax MUST retain TypeScript behavior unless the VibeLang specification explicitly assigns different semantics.
 4. VibeLang MUST NOT impose a globally sound type system that invalidates TypeScript escape hatches on the TypeScript target.
 
-VibeLang source uses the `.vibe` extension. The JSX-capable extension is **open**; `.vibex` is a candidate only.
+VibeLang MUST NOT be described or tested as a syntactic superset of TypeScript. VibeLang source uses the `.vibe` extension. The JSX-capable extension is **open**; `.vibex` is a candidate only.
 
 ## TypeScript Target
 
@@ -20,6 +20,8 @@ Requirement metadata SHOULD erase where it does not require runtime machinery. R
 ## Runtime TypeScript Dependency
 
 Using a value from TypeScript or JavaScript code MUST add a runtime requirement representing that compatibility boundary. A type-only import MUST NOT add that requirement.
+
+Calling an unannotated foreign runtime value MUST additionally add the checked `panic` case because JavaScript/TypeScript may throw, reject, or violate its declaration. Trusted `@throws {never}` metadata opts out; `@throws {T}` declares a more precise channel. The caller must propagate, explicitly catch, or safely adapt that channel.
 
 The built-in requirement is currently named `TypeScript`.
 

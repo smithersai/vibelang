@@ -1,150 +1,177 @@
 # Asset Imports [Turn project files into typed modules at compile time]
 
-VibeLang treats compiler-known files as source inputs. Built-in and user-defined loaders parse them at comptime, expose typed modules, and join the incremental build graph.
+VibeLang treats compiler-known files as tracked source inputs. Every non-code or foreign-source import uses standard import attributes; the `type` attribute selects a built-in or user-defined loader.
+
+:::warning Implementation status
+The checked POC now integrates one bounded static form into every root CLI
+project command: a relative static import with at least one runtime binding and
+literal `with { type: "..." }` attributes. It generates a compiler-issued
+pure-data module without evaluating the author module, stages deterministic
+JavaScript under `__vibelang_assets__/`, and carries it through checking,
+declaration/source-map emit, cache replay, and `--noEmit`. The emitter removes
+the attributes only after the import is mapped to generated JavaScript.
+
+The broader programmatic source-asset seam exposed by `vibelang/build` now
+discovers asset re-exports, literal dynamic imports, and loader-generated
+module graphs up to depth four. Those forms are issued, cached, and reconciled
+by `compileSourceAssetModules`, but they are not yet wired end to end through
+the root Vibe emitter/runtime graph: root CLI execution still supports the
+static binding form above. Type-only and side-effect asset forms and general
+generated code fail closed.
+
+Programmatic registration rejects ordinary in-process callbacks by default. A
+third-party loader is a `createSandboxedLoader` module or a provisionally
+recognized project file whose default export is
+`comptime.loader("type", fn)`. Recognition uses checker identity, never executes
+the loader file in the compiler process, and runs the lowered function only in
+the bounded no-permission Deno protocol. Compiler-owned built-ins remain in
+process and take precedence; duplicate project registrations fail closed in
+the VCT13xx diagnostic family. These are POC contracts, not final production
+APIs.
+:::
 
 ## Built-In Formats
 
-JSON, Markdown, and MDX work without project configuration in `.vibe` code:
-
 ```ts
-import config from './config.json' as const
-import systemPrompt from './system.md'
-import Prompt from './coding-agent.mdx'
+import config from "./config.json" with { type: "json" }
+import literals from "./config.json" with {
+  type: "json",
+  mode: "const",
+}
+import systemPrompt from "./system.md" with { type: "text" }
+import guide from "./guide.md" with { type: "markdown" }
+import Prompt from "./coding-agent.mdx" with { type: "mdx" }
 ```
 
-JSON produces a checked data module, Markdown defaults to its source text as a `string`, and MDX produces a typed component module. Each import is tracked as part of the build graph, and parsed formats preserve source locations for diagnostics.
+Attribute values are strings, matching JavaScript import-attribute syntax. JSON produces checked data, text produces a string, and MDX produces a typed component module. Parsed formats preserve source locations for diagnostics.
+
+In the current root CLI POC, use a static runtime binding. Missing or legacy
+`assert` attributes, side-effect/type-only forms, asset re-exports/dynamic
+imports at this integration layer, dynamic attributes, paths outside the real
+project root, symbolic or hard-link aliases, conflicting shapes for one asset,
+and code/asset identity overlap are rejected before project output is
+committed. The programmatic seam separately accepts `export { ... } from` and
+`export * as ... from` with literal attributes plus literal
+`import(path, { with: attributes })`; bare `export *`, computed specifiers, and
+nonliteral/spread attributes remain rejected. Authored input is byte-bounded
+before parsing, and file identity is reconciled after loader execution.
+Generated modules admit literal data and declared generated-module edges only;
+prototype-mutating forms and computed typed-array allocations fail closed.
+`vibe inspect` uses the same issued root-CLI asset modules as `check` and
+reports `VIBE_ASSET_IMPORT` with source diagnostics when preflight fails.
+
+The built-in POC module shapes are also narrower than the design contract.
+`{ type: "markdown" }` (and the `.md` extension default in the programmatic
+loader) provisionally exports raw `source` as default plus literal-typed
+`frontmatter`, `body`, and authored-offset ATX `headings`. `{ type: "mdx" }`
+provisionally exports literal-typed frontmatter/source/body metadata and a
+render tree of element, text, and expression-placeholder nodes. MDX `{name}`
+holes are never evaluated; only identifier placeholders are admitted for a
+consumer to substitute. The frontmatter grammar is a strict bounded YAML
+subset, not general YAML.
 
 ## Const JSON
 
-The VibeLang const form gives JSON a deeply readonly, literal-preserving type:
+`mode: "const"` gives JSON a deeply readonly, literal-preserving type:
 
 ```ts
-import config from './config.json' as const
+import config from "./config.json" with {
+  type: "json",
+  mode: "const",
+}
 
-// typeof config is equivalent to:
+// typeof config:
 // {
 //   readonly mode: "production"
 //   readonly ports: readonly [80, 443]
 // }
 ```
 
-:::note
-The concise const-import behavior is accepted, but its exact grammar is not. Existing TypeScript JSON imports must keep their TypeScript meaning.
-:::
-
-TypeScript widens values imported from JSON. To preserve literal values with `as const`, a TypeScript project generally has to move the object into a `.ts` file and export the literal from there. VibeLang keeps configuration in the JSON file while giving the imported value the same deeply readonly, literal-preserving shape.
+A normal `{ type: "json" }` import retains the selected target's ordinary JSON-module widening behavior. There is no separate const-import grammar.
 
 ## Markdown as Prompt Text
 
-A `.md` file has a built-in text loader. Its default export is a string, so an agent or model can use the file directly as a system prompt:
-
 ```ts
-import systemPrompt from './prompts/reviewer.md'
+import systemPrompt from "./prompts/reviewer.md" with { type: "text" }
 
-const response = try await model.generate({
+const response = (await model.generate({
   system: systemPrompt,
   prompt: reviewRequest,
-})
+})).unwrap()
 ```
 
-There is no file-reading call or runtime path to deploy. The compiler tracks the Markdown source and embeds or emits it according to the selected target.
+There is no runtime file path to deploy. The compiler tracks and embeds the Markdown source.
 
 ## Custom Loaders
 
-A comptime loader can support another extension:
-
 ```ts
-// Proposed API shape
+// Provisional programmatic POC registration
 import { comptime } from "vibelang:comptime"
 
-export default comptime.loader("*.yaml", (asset, context) => {
+const loadYaml = async (asset, context) => {
   const value = parseYaml(asset.text())
-  const schema = context.import("./config.schema.json", { const: true })
-  const config = validate(schema, value)
+  const schema = await context.import("./config.schema.json", {
+    type: "json",
+    mode: "const",
+  })
+  const config = validate(schema.module.value, value)
 
-  return module {
-    export default config
-    export type Config = typeof config
+  return {
+    format: "yaml",
+    value: config,
+    emittedTypeScript: emitLiteralModule(config),
+    declaration: emitDeclaration(config),
+    diagnostics: [],
+    spans: [],
   }
-})
+}
+
+export default comptime.loader("yaml", loadYaml)
 ```
 
-This is a proposed compiler-recognized library API, not a loader keyword. The final loader registration and typed-module builder shapes remain open.
+The source-checkout POC auto-discovers that exact default-export shape (or
+accepts loader-file paths explicitly), resolves `comptime.loader` by checker
+identity, erases the compiler-owned import, and sends the loader function to
+the Deno sandbox. One project file registers one lowercase literal `type`;
+built-ins win with VCT1310 warning, duplicate project types are VCT1311, and
+malformed/unsafe registration shapes fail closed as VCT1300–VCT1313. Glob or
+extension selectors, package-distributed loaders, registration options, and a
+final source-level typed-module builder remain proposed. Import attributes are
+the stable selector.
 
-The returned value is a normal checked module. It may contain runtime values, comptime values, and generated types.
+## Tracked Dependencies and Cache Identity
 
-## Tracked Dependencies
-
-Loaders do not read the ambient filesystem. Additional files enter through the loader context:
-
-```ts
-const fragment = context.import("./fragment.graphql")
-```
-
-The compiler records that import as an edge. A loader result is keyed by:
-
-- source bytes
-- loader implementation and package resolution
-- loader options
-- compiler and loader ABI versions
-- selected target
-- every transitive imported asset
-
-This keeps watch mode and remote caches sound.
+Loaders cannot read the ambient filesystem. Additional inputs enter through `context.import(path, attributes)`. A loader result is keyed by source bytes, resolved loader implementation, all attributes, compiler/loader ABI versions, target, and transitive imported assets.
 
 ## Raw Text and Bytes
-
-Markdown uses its built-in string export. Other formats can request raw acquisition through syntax that should converge on TC39 Import Text and Import Bytes:
 
 ```ts
 import source from "./query.sql" with { type: "text" }
 import image from "./logo.png" with { type: "bytes" }
 ```
 
-VibeLang may lower temporary syntax while the proposals evolve, but it does not need competing runtime primitives.
-
-## Rust and Zig Source Modules
-
-Rust and Zig source files import like ordinary modules. The compiler runs the foreign toolchain and generates checked bindings for exported functions:
+## Rust and Zig Source
 
 ```ts
-import { tokenize } from './parser.rs'
-import { hashMany } from './hash.zig'
-
-const tokens = tokenize(source)
-const digest = hashMany(chunks)
+import { tokenize } from "./parser.rs" with { type: "rust" }
+import { hashMany } from "./hash.zig" with { type: "zig" }
 ```
 
-The selected target and toolchain determine whether an import becomes native code, Wasm, or a TypeScript-runtime bridge. That selection policy is still open, but the source, target, compiler versions, feature flags, and foreign dependency graph are all tracked build inputs.
+The planned compiler invokes the foreign toolchain and produces checked bindings. Target, compiler versions, feature attributes, and the foreign dependency graph are tracked inputs.
 
 ## Existing Native npm Packages
 
-The TypeScript target also preserves the JavaScript ecosystem's established native interop. A Node-API package—including one produced with napi-rs—remains an ordinary typed npm dependency:
+An imported npm package is code and uses an ordinary import:
 
 ```ts
-import { transform } from '@acme/native-transform'
-
-const output = transform(source)
+import { transform } from "@acme/native-transform"
 ```
 
-Node and Bun can load the package's `.node` addon through Node-API; Bun maps `.node` files to its `napi` loader and recommends Node-API as its stable native integration path. VibeLang does not rebuild such a package from source or pretend it is portable to every target. Runtime-specific native packages contribute the corresponding TypeScript host requirement.
-
-## Common Loader Uses
-
-One loader system covers:
-
-- SQL and GraphQL compilation
-- YAML and configuration formats
-- image metadata and generated assets
-- embedded Markdown and MDX
-- generated protocol bindings
-- direct Zig and Rust source imports
-- Node-API packages on TypeScript runtimes
-
-Unused runtime exports are tree-shaken. Type-only and comptime-only exports produce no runtime code.
+On Node or Bun, its Node-API addon remains a runtime dependency and contributes the corresponding TypeScript host requirement. VibeLang does not pretend such a package is portable to every target.
 
 ## MDX Is General Purpose
 
-The compiler treats MDX as a typed component module. Libraries may provide component vocabularies for documentation, emails, or model prompts, but those meanings are not part of the language.
-
-The agent library's `<System>`, `<Context>`, and `<Task>` components are ordinary library components layered on the built-in MDX loader.
+The design's `mdx` loader yields a typed component module. The current POC's
+provisional value is a pure-data render tree with never-evaluated expression
+placeholders. Libraries may supply vocabularies for documentation, email, or
+prompts; those meanings are not built into the language.

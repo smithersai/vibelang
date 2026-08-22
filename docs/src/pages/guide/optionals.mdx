@@ -76,6 +76,8 @@ declare function findUser(
 
 The two layers remain explicit: database failure is in `Result`; a successful lookup with no row is in `Optional`.
 
+In a `Result<Optional<T>, E>` body, the compiler lifts from the outside in: a plain value is success/present, a nullish return is success/absent, and a thrown Error is the Result error.
+
 ## TypeScript Interoperability
 
 Use `Optional.fromNullable(value)` to adapt `T | null | undefined`, and `optional.toNullable()` when passing a value back to a nullable API. Optional properties and parameters keep their normal TypeScript meaning; VibeLang does not reinterpret `property?: T` as `Optional<T>`.

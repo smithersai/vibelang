@@ -1,27 +1,21 @@
 # Capabilities [Reference for requirements and layer composition]
 
-## Capability Declaration
+## Declaration and Access
 
 ```ts
 import { Context } from "vibelang/context"
 
 abstract class Service extends Context {
-  abstract operation(input: Input): Output throws ServiceError
+  abstract operation(input: Input): Result<Output, ServiceError>
 }
-```
 
-The abstract class is both the service contract and the nominal capability identity. Implementations extend it as an ordinary TypeScript class.
-
-## Service Access
-
-```ts
-function run() {
+function run(): Result<Output, ServiceError> {
   const service = Service.context()
-  return try service.operation(input)
+  return service.operation(input)
 }
 ```
 
-`Service.context()` returns the service instance and adds `Service` to the function's inferred context row.
+The abstract class is both the service contract and nominal capability identity. `Service.context()` returns its instance and adds `Service` to the enclosing function's inferred requirement channel.
 
 ## Multiple Requirements
 
@@ -30,27 +24,22 @@ function run() {
   const db = Database.context()
   const clock = Clock.context()
   const log = Logger.context()
-  // ...
 }
 ```
 
-The inferred requirement row is `Database | Clock | Logger`. Requirement rows are nominal sets, so duplicates collapse.
+The requirement set is `Database | Clock | Logger`; duplicate nominal identities collapse.
 
 ## Layer Type
 
 ```ts
-Layer<Provides, Error, Requires>
+Layer<Provides>
 ```
 
 | Parameter | Meaning |
 | --- | --- |
-| `Provides` | capabilities made available by the layer |
-| `Error` | failures possible during acquisition |
-| `Requires` | capabilities needed to acquire the layer |
+| `Provides` | capabilities made available by the Layer |
 
 ## Constructors
-
-Current design examples use:
 
 ```ts
 Layer.succeed(Service, implementation)
@@ -58,35 +47,26 @@ Layer.merge(left, right, ...rest)
 Layer.provide(layer, callback)
 ```
 
-These names are API direction, not a stable published package.
+These names are API direction, not a stable published surface.
 
 ## Composition Rules
 
-- `merge` unions provided capabilities and acquisition failures.
-- construction requirements propagate until another layer satisfies them.
-- `provide` removes satisfied requirements from the callback's requirement row.
-- layer acquisition failures enter the provided expression's failure row.
+- `merge` unions provided capabilities.
+- `provide` removes satisfied requirements from the callback's requirement set.
 - a missing capability is a compile error when the closure is statically known.
+
+Provider composition is a library API from `vibelang/provider`; there is no special provider statement syntax.
+
+Base Layers receive already acquired service instances. Acquisition and cleanup are explicit ordinary code, initially with `using` or `defer`; the Layer owns neither the resource nor its finalizer.
 
 ## Platform Services
 
-Standard capabilities include planned services such as:
+Planned standard capabilities include `FileSystem`, `HttpClient`, `Clock`, `Random`, `Environment`, and `Console`. Targets provide live implementations; tests supply deterministic ones.
 
-```text
-FileSystem  HttpClient  Clock  Random  Environment  Console
-```
+## Scope and Open Semantics
 
-Target packages supply live implementations. Tests supply deterministic implementations through the same layer API.
+`Layer.provide(layer, body)` keeps the environment active through `body` and the Promise returned by `body`, then revokes it. A Layer does not supervise or join other work, and authored `.vibe` has no detached Promise path.
 
-## Open Lifecycle Semantics
+The Node runtime observes the exact Promise state transition. The asynchronous body must create its returned Promise during the invocation; adapt a pre-existing Promise with `async () => await promise`. Unsupported hosts and unverifiable Promise provenance fail closed.
 
-The following APIs are not yet specified:
-
-- scoped acquisition and disposal
-- memoization and layer sharing
-- override precedence
-- cycle diagnostics
-- asynchronous acquisition
-- finalizer failure handling
-
-Provider composition is locked as a library API from `vibelang/provider`; a special `provide {}` language statement is not part of the accepted design.
+Merge and nested-override precedence, cycle diagnostics, and requirement-environment lowering remain to be specified.

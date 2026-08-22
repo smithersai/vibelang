@@ -1,60 +1,82 @@
-# Getting Started [Start with TypeScript, then add typed failures and requirements]
+# Getting Started [Start with TypeScript-shaped code, then add Results and requirements]
 
 ## Overview
 
-VibeLang is a programming language built as a true superset of TypeScript on its TypeScript target. A `.vibe` file can begin as ordinary TypeScript and adopt VibeLang features one at a time.
+VibeLang uses a TypeScript-derived frontend. A `.vibe` file opts into VibeLang semantics; imported `.ts` and `.js` files retain their normal behavior.
 
-VibeLang adds four main capabilities:
+The language focuses on:
 
-- typed failures and explicit failure handling
+- expected failures as `Result<A, E>` values
+- absence as built-in `Optional<T>` values
 - capability-based dependency injection
 - deterministic compile-time execution
 - opt-in durable and distributed execution
 
-The result is still ordinary eager code. There is no value wrapper to construct and no universal effect interpreter to run.
+Compiler intrinsics such as `comptime(...)` and `durable(...)` are imported functions rather than keywords.
 
 :::warning
-VibeLang is in the **early design phase**. The repository contains a demo-grade syntax-lowering prototype, not a production compiler. Examples in these docs describe the intended language unless a page says that the prototype supports them today.
+VibeLang is in early implementation. The repository now has a checked,
+bounded project `.vibe` frontend and integrated runtime POCs, but not a
+conforming general-purpose compiler. Documentation examples describe the
+accepted language design unless a page explicitly labels behavior as
+implemented by the current POC.
 :::
 
-## Project Status
-
-The implementation is organized as milestones:
-
-| Milestone | Scope | Status |
-| --- | --- | --- |
-| M0 | Parser and expression-oriented control flow | Prototype only |
-| M1 | Typed failure channel | Design |
-| M2 | Requirements and layers | Design |
-| M3 | Comptime, targets, and loaders | Design |
-| M4 | Effect interoperability | Planned |
-
-The current prototype recognizes a small set of syntax with ordered text transforms. It is useful for testing the feel of the language, but it does not implement the type system described in the guide.
-
-## Run the Prototype
-
-VibeLang is not published as a toolchain yet. To try the working prototype, clone the repository and run its demo with [Bun](https://bun.sh):
+## Build and Verify the Repository
 
 ```bash
 git clone https://github.com/smithersai/vibelang.git
-cd vibelang/prototype
-bun install
-bun run demo
+cd vibelang
+npm install
+npm test
 ```
 
-The demo performs three steps:
+This builds the checked frontend and packaged runtime, checks compatibility
+declarations, runs the Node tests, and runs the Go compiler-contract tests. The
+regex transformer under `prototype/` is historical. The checker-backed frontend
+under `poc/src/language` is the implementation used by the root package and CLI.
 
-1. lowers `examples/demo.vibe` to TypeScript
-2. type-checks the lowered file when TypeScript is installed
-3. runs the generated program with Bun
+## Try the Checked POC
 
-:::note Compatibility note
-The prototype uses regular-expression passes and a synchronous ambient context. It still contains the obsolete `uses` and `provide {}` experiments; neither is part of the accepted language design. Multiline expressions, async capability scopes, compiler-aware capability access, and full error-set checking are not implemented yet.
-:::
+The current frontend can check, compile, inspect, test, and run its supported
+subset across relative `.vibe` imports.
+For example, save this as `answer.vibe`:
 
-## Your First VibeLang Function
+```ts
+class InvalidAnswer extends Error {}
 
-A VibeLang function can expose its failures while the compiler infers its context requirements from ordinary library calls:
+function answer(valid: boolean): Result<number, InvalidAnswer> {
+  if (!valid) throw new InvalidAnswer("invalid")
+  return 42
+}
+
+answer(true).match({
+  ok: value => `answer=${value}`,
+  error: () => "failed",
+})
+```
+
+After `npm test` has built the repository, run:
+
+```bash
+node bin/vibe.js check answer.vibe --format json
+node bin/vibe.js compile answer.vibe --outDir build/vibe --format json
+node bin/vibe.js compile answer.vibe --outDir build/vibe --declaration --sourceMap
+node bin/vibe.js run answer.vibe
+node bin/vibe.js inspect answer.vibe --format json
+node bin/vibe.js doctor --format json
+```
+
+An installed package exposes the same commands through the `vibe` binary. The
+POC can emit `.mjs`, `.d.mts`, and composed JavaScript source maps; rejects
+mixed `.vibe`/TypeScript invocations; and fails on unsupported options,
+colliding outputs, unsafe target pins, or any invalid module before committing
+the project output. Concrete rows propagate across the discovered `.vibe`
+graph. Generic row polymorphism, watch/incremental builds, full foreign-value
+provenance, and the complete control-flow grammar remain outside the bounded
+frontend. See the [CLI reference](/reference/cli) for the exact boundary.
+
+## Accepted Design: Your First Fallible Function
 
 ```ts
 import { Context } from "vibelang/context"
@@ -66,86 +88,75 @@ class NotFound extends Error {
 }
 
 abstract class Users extends Context {
-  abstract find(id: string): User | null
+  abstract find(id: string): Optional<User>
 }
 
-function getUser(id: string) {
+function getUser(id: string): Result<User, NotFound> {
   const users = Users.context()
-  const user = users.find(id)
-  if (user === null) throw new NotFound(id)
-  return user
+  return users.find(id).toResult(() => new NotFound(id))
 }
 ```
 
-Read the inferred function channels from the body:
+The ordinary return type tells the whole story:
 
-- the function accepts an `id`
-- returning `user` makes `User` the success type
-- throwing `NotFound` adds it to the typed failure set
-- `Users.context()` adds `Users` to the function's inferred context channel
+- `User` is the success value.
+- `NotFound` is the expected Error.
+- `Users.context()` adds `Users` to the compiler-inferred requirement channel.
+- `Optional<User>` models a successful lookup with no value.
 
-For this function, the compiler infers `NotFound` as the failure and `Users` as the requirement.
+## Handle or Propagate
 
-## Handle a Failure
-
-Use a catch expression when the caller can recover:
+Handle both Result variants with `match`, then use `error.match` for a known Error union:
 
 ```ts
-const user = getUser("42") catch (error) {
-  switch (error.constructor) {
-    case NotFound:
-      User.guest()
-  }
-}
+const user = getUser("42").match({
+  ok: user => user,
+  error: error => error.match({
+    NotFound: () => User.guest(),
+  }),
+})
 ```
 
-The switch must cover the complete typed failure set. A VibeLang catch expression handles typed failures only. A defect such as an assertion failure or out-of-bounds access continues unwinding.
-
-Use `try` when the current function cannot recover:
+Use `.unwrap()` when the enclosing function returns a compatible Result:
 
 ```ts
-function displayName(id: string) {
-  const user = try getUser(id)
+function displayName(id: string): Result<string, NotFound> {
+  const user = getUser(id).unwrap()
   return user.name
 }
 ```
 
-The compiler adds `getUser`'s failure and context requirement rows to `displayName` automatically. The caller does not accept or forward a context argument.
+Inside a Result-returning body, a plain return is lifted to success and a thrown Error is lifted to error. No explicit success/error constructor is needed.
 
 ## Provide a Capability
-
-Capabilities are constructed and scoped with layers from `vibelang/provider`. The layer satisfies the requirement inferred from `Users.context()`:
 
 ```ts
 import { Layer } from "vibelang/provider"
 
 const App = Layer.succeed(Users, new PostgresUsers(databaseUrl))
 
-Layer.provide(App, () => {
-  const name = try displayName("42")
-  console.log(name)
-})
+const name = Layer.provide(App, () => displayName("42").unwrap())
 ```
 
-Removing the `Users` provider is intended to be a compile error. Tests can provide an in-memory implementation without changing the function under test.
+Removing the `Users` provider is intended to be a compile error. Tests can provide an in-memory implementation without changing application code. A Layer only supplies the environment; resources are acquired and finalized explicitly outside it.
 
-## TypeScript Files
-
-Existing TypeScript keeps its behavior on the TypeScript target:
+## Async Results
 
 ```ts
-// valid TypeScript and valid VibeLang
-export function greet(name: string) {
-  return `Hello, ${name}`
+async function loadUser(
+  id: string,
+): Promise<Result<User, Timeout | NotFound>> {
+  const response = (await HttpClient.context().get(`/users/${id}`)).unwrap()
+  return (await response.json(User)).unwrap()
 }
 ```
 
-Rename the file to `.vibe` when you want to use VibeLang syntax. Interactions with untyped JavaScript or inference-impossible TypeScript boundaries conservatively add `unknown` to the failure channel. Runtime TypeScript values also add the built-in `TypeScript` requirement, making native compatibility visible to callers.
+`await` unwraps the Promise but leaves the Result. Authored VibeLang does not use Promise instance `.then`, `.catch`, or `.finally`.
 
 ## Next Steps
 
-- Read [Features](/guide/features) for a tour of the language.
-- Learn how [typed failures](/guide/typed-failures) propagate and recover.
-- Learn how [capabilities and layers](/guide/capabilities-and-layers) make dependencies visible.
-- Read [Why VibeLang](/introduction/why-vibelang) for the motivation behind the design.
-- Check [Status & Conventions](/specification/) before relying on exact syntax.
+- Tour [Features](/guide/features).
+- Learn [Results and Errors](/guide/typed-failures).
+- Learn [Optionals](/guide/optionals).
+- Learn [Capabilities and Layers](/guide/capabilities-and-layers).
+- Check [Status & Conventions](/specification/) before relying on exact implementation availability.

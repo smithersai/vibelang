@@ -13,8 +13,10 @@ A Flow MUST be declared with ordinary TypeScript call syntax:
 ```ts
 import { durable } from "vibelang:flows"
 
-const Build = durable((input: BuildInput) => {
-  const compiled = Compile.run({ source: input.source })
+const Build = durable(function Build(
+  input: BuildInput,
+): Result<Artifact, CompileError | PackageError> {
+  const compiled = Compile.run({ source: input.source }).unwrap()
   return Package.run({ code: compiled.code })
 })
 ```
@@ -31,7 +33,7 @@ An Action is an abstract runtime operation with:
 
 - an open, replaceable implementation
 - a closed typed function signature
-- compiler-derived input, success, failure, and requirement information
+- compiler-derived input, success, Error, and requirement information
 - compiler-derived persistence schemas or explicit codecs where derivation is impossible
 
 An Action implementation MUST be an ordinary VibeLang function or callback. A fallible implementation returns `Result<A, E>` or `Promise<Result<A, E>>`; compiler lifting allows its body to use plain success returns and Error throws. It MUST NOT require an Effect wrapper or failure annotation.
@@ -56,7 +58,7 @@ A Flow is the closed program produced when the compiler lowers a function passed
 
 The compiler MUST lower the function's checked syntax, control flow, and data flow into Plan IR. It MUST NOT invoke the source function with proxy or symbolic JavaScript values to discover the graph.
 
-An `Action.run` expression inside the lowered function MUST emit a plan node and a typed symbolic result. Neither template compilation nor planning MUST execute the Action implementation.
+An `Action.run` expression inside the lowered function MUST emit a plan node and a typed symbolic Result. Calling `.unwrap()` on it MUST emit the Result error-propagation edge. Neither template compilation nor planning MUST execute the Action implementation.
 
 Property access and argument passing on a symbolic result MUST create typed projections and dependency edges when representable in Plan IR.
 
@@ -87,9 +89,26 @@ Action ordering MUST be determined by data and control edges, not source positio
 
 Programs requiring order without a data dependency MUST use an explicit sequencing construct. The construct's syntax is **open**.
 
+## Durable Suspension and External Signals
+
+Timers and external-signal waits MUST suspend without occupying a worker lease.
+
+An external-signal Plan node MUST own a statically bound identity and a
+compiler-derived durable payload schema. A delivery client MUST NOT supply or
+widen that schema. Delivery MUST address an exact execution and Plan node, carry
+an explicit idempotency key, validate a canonical payload before persistence,
+and commit delivery evidence atomically. Retrying the same key and payload MUST
+be idempotent; a conflicting key or payload for a single-delivery wait MUST fail
+closed. Consumption and the node's terminal result MUST be one durable state
+transition, so restart and concurrent coordinators converge on the same value.
+
+The source spelling, execution-handle API, sender authentication and
+authorization, transport, wakeup mechanism, queues/broadcast, multi-delivery
+semantics, and migration policy remain **open**.
+
 ## Replay
 
-Every completed Action invocation MUST be journaled within its Flow execution, including typed failures and nondeterministic successes.
+Every completed Action invocation MUST be journaled within its Flow execution, including Error Results and nondeterministic successes.
 
 After restart, the same Flow execution MUST observe the committed outcome instead of repeating the completed invocation.
 
@@ -118,6 +137,17 @@ A content key SHOULD include canonical inputs, implementation and policy digests
 
 A deployment build MUST be capable of emitting a coordinator plus separate tree-shaken TypeScript, native, or Wasm worker artifacts and a routing manifest.
 
+The canonical Plan and routing manifest MUST be authenticated before a
+coordinator creates workers. Trust roots MUST be supplied out of band; an
+artifact MUST NOT introduce its own signing authority. The authenticated
+manifest MUST pin coordinator, worker artifact, implementation, policy, schema,
+and capability-grant identities.
+
+Coordinator admission MUST NOT silently substitute a weaker transport or
+sandbox than the authenticated pool declares. Any host transport selected for
+a non-local pool MUST be explicitly bound to that exact authenticated sandbox
+identity before worker construction.
+
 Placement MUST belong to provider or deployment configuration rather than the abstract Action signature. Multiple implementations of one Action MAY target different worker pools or machines.
 
 ## Security
@@ -126,6 +156,13 @@ Workers MUST receive only their declared provider authority. Messages crossing c
 
 Secrets, sandboxing, artifact access, worker authentication, fencing, and attestation are runtime concerns but MUST preserve the compiler-derived Action contract.
 
+A valid manifest signature proves provenance and integrity of the signed claims;
+it MUST NOT be treated as proof of bundle possession, live lexical-closure
+identity, sandbox state, freshness, rollback prevention, or revocation. Those
+properties require separate runtime and key-lifecycle mechanisms.
+An exact host transport binding prevents kind downgrade but is not itself proof
+that the host implementation enforces the named sandbox.
+
 ## Open Questions
 
-The following remain open: stable source IDs, plan loop and fan-out semantics, explicit sequencing, wire encoding, schema migration, deployment syntax, provider selection, and large-artifact reference protocols.
+The following remain open: stable source IDs, plan loop and fan-out semantics, explicit sequencing, external-signal handle/transport syntax, wire encoding, schema migration, deployment syntax, provider selection, and large-artifact reference protocols.

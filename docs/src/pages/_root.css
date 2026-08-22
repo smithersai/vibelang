@@ -122,19 +122,11 @@
   white-space: nowrap;
 }
 
-.vibe-home__try {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  justify-content: space-between;
-  padding-top: 1.25rem;
-}
-
 #vibe-home-install {
   display: flex;
-  flex: 1;
   flex-direction: column;
-  min-height: 170px;
+  margin-top: 1rem;
+  width: 100%;
 }
 
 #vibe-home-install > div,
@@ -146,9 +138,12 @@
 }
 
 #vibe-home-install pre {
-  flex: 1;
   font-size: 0.9rem;
   margin: 0;
+}
+
+.vibe-home__example {
+  min-height: 300px;
 }
 
 .vibe-home__stats {
@@ -310,7 +305,7 @@
     justify-content: center;
   }
 
-  .vibe-home__try {
+  .vibe-home__example {
     margin: 0 auto;
     max-width: 560px;
     padding: 0;
@@ -349,7 +344,7 @@
     font-size: 1.08rem;
   }
 
-  .vibe-home__try {
+  .vibe-home__example {
     display: none;
   }
 

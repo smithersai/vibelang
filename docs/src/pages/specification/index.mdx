@@ -32,7 +32,9 @@ VibeLang defines several distinct subjects of conformance:
 - a **Wasm backend** emits WebAssembly for a declared host contract
 - a **durable runtime** executes compiler-produced Flow plans and Action protocols
 
-No conforming compiler has been released. The repository prototype is not a reference implementation.
+No conforming compiler has been released. The repository's checked frontend is
+implementation evidence for a bounded subset, not a normative reference
+implementation.
 
 ## Source of Truth
 
@@ -42,7 +44,7 @@ When these pages conflict with the ledger, the ledger wins until the specificati
 
 ## Specification Map
 
-- [Compatibility](/specification/compatibility) defines the TypeScript superset and target model.
+- [Compatibility](/specification/compatibility) defines the TypeScript interop boundary and target model.
 - [Type System](/specification/type-system) defines function channels, optionals, and portability classification.
 - [Failure Semantics](/specification/failures) defines failures, defects, propagation, and recovery.
 - [Requirements](/specification/requirements) defines `Context` capabilities, inferred requirement rows, and layer satisfaction.
@@ -56,8 +58,8 @@ The following areas prevent a complete normative grammar and conformance suite:
 
 1. dynamic TypeScript feature classification
 2. assertion and cast semantics
-3. conversions among `Optional<T>`, `T | null`, and `T | undefined`
-4. layer lifecycle and lowering
+3. nested Optional normalization and additional implicit conversions
+4. layer merge/override precedence and requirement-environment lowering
 5. shared checked IR and compiler plugin seams
 6. loader registration and built-in asset module shapes
 7. durable IDs, loops, sequencing, encoding, and migration

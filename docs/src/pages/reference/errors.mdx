@@ -87,8 +87,8 @@ async function load(): Promise<Result<Output, Timeout>> {
 
 ## Foreign Exceptions and Defects
 
-`Result.try` and `Result.tryPromise` convert unknown foreign throws or rejections to `UnhandledException`, or accept a mapper that returns a declared Error subtype. `Reflect.panic(...)` represents an unrecoverable invariant violation and bypasses Result recovery. Statement-form JavaScript `try/catch` is retained only for interop and observes normal JavaScript exceptions.
+Every unannotated foreign runtime call adds the distinguished checked `panic` case, including unexpected throws, rejections, and declaration violations. `@throws {never}` is a trusted opt-out; `@throws {T}` declares a more precise foreign failure channel. `Result.try` and `Result.tryPromise` are adapter helpers: without a trusted translation they preserve panic, while a trusted adapter may catch and map it to a declared Error subtype. `Reflect.panic(...)` and compiler/runtime invariant failures enter the same explicitly catchable panic channel. Ordinary Result recovery does not swallow panic implicitly.
 
 ## Transport
 
-Worker and durable boundaries serialize a declared Error's stable identity, fields, message, cause, and codec version. Unknown foreign exceptions use the boundary's `UnhandledException` representation.
+Worker and durable boundaries serialize a declared Error's stable identity, fields, message, cause, and codec version. Panic transport and explicit recovery must preserve the distinguished channel rather than silently relabeling it as a domain Error.

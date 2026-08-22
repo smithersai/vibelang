@@ -29,6 +29,8 @@ A function with non-empty `E` MUST have inferred return type `Result<A, E>`. An 
 
 Plain success returns and Error throws MUST be compiler-lifted as defined by [Failure Semantics](/specification/failures).
 
+If an explicit return annotation cannot represent a reachable recoverable Error, the compiler MUST reject the function rather than permit an untyped exception path.
+
 ## Public Boundaries
 
 Public contracts MUST use ordinary generic type syntax:
@@ -55,7 +57,7 @@ An ignored Result MUST be a compile error.
 
 ## Foreign Boundaries
 
-Using a runtime value from a TypeScript or JavaScript module adds the `TypeScript` requirement. A potentially throwing call MUST also return a Result whose error includes `UnhandledException` unless trusted metadata or an adapter supplies a more precise Error type.
+Using a runtime value from a TypeScript or JavaScript module adds the `TypeScript` requirement. Every unannotated foreign call MUST also add the distinguished checked `panic` case. Trusted `@throws {never}` metadata removes that default; `@throws {T}` or an adapter may supply a more precise channel.
 
 Type-only imports add neither runtime requirement.
 
@@ -89,14 +91,16 @@ Optional values MUST provide operations equivalent in purpose to:
 
 ```text
 isSome  isNone  match  map  andThen  filter
-tap     unwrap  unwrapOr  toResult
+tap     unwrap  unwrapOr  toResult  toNullable  all
 ```
 
 The earlier `?T`, payload-capture, `orelse`, and `.?` grammar MUST NOT be part of the initial language.
 
 Optional absence MUST remain distinct from a Result error. `Optional<T>` MAY convert explicitly to `Result<T, E>` through `toResult(error)`.
 
-Conversions among `Optional<T>`, `T | null`, `T | undefined`, optional parameters, and optional properties require final boundary rules. `Optional.fromNullable(...)` is the explicit interoperability operation.
+When both layers are declared, lifting MUST follow the written type from outside in. For `Result<Optional<A>, E>`, a plain `A` becomes a successful present value, a nullish return becomes a successful absent value, an existing Optional becomes the Result success, and an Error throw becomes the Result error. Existing compatible Result values MUST still pass through without nesting.
+
+`Optional.fromNullable(...)` MUST explicitly adapt `T | null | undefined`, and `optional.toNullable()` MUST adapt back to `T | null`. Optional properties and parameters MUST keep their TypeScript meaning. Nested optional normalization and any additional implicit conversions remain open.
 
 ## Reification
 

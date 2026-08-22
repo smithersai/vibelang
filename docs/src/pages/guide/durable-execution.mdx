@@ -3,7 +3,20 @@
 Durable execution is opt-in. An **Action** defines a closed persistence boundary, and a **Flow** turns Action calls into a statically analyzable plan.
 
 :::warning Design draft
-The Action and Flow model is accepted, but the runtime and compiler are not implemented. Provider spelling, stable IDs, loop semantics, wire encoding, and deployment APIs remain under design.
+The Action and Flow model is accepted. A bounded compiler-owned
+`durable(...)` lowerer, canonical Plan/manifest validation, SQLite executor,
+local Deno worker, and signed local coordinator-admission path are executable
+under `vibelang/durable/*`. That lowerer now covers conditionals, durable
+timers, one typed external signal, keyed fan-out with bounded multi-step bodies,
+explicit `sequential(...)` ordering, a budgeted `loopWhile(...)` round template,
+and — in the programmatic POC only, not through the CLI — attached child Flows.
+The Bun executor also has provisional `start`/`resume` execution handles,
+HMAC-token-gated signal delivery, and post-COMMIT wakeup notifications backed
+by a correctness-preserving persisted-state sweep.
+General lowering, emitted worker bundles, remote workers, and native/Wasm
+deployment are not implemented. Provider spelling, stable IDs, general loop
+semantics, wire encoding, and deployment APIs remain under design, and the
+control and handle spellings above are provisional.
 :::
 
 ## Define an Action
@@ -12,15 +25,15 @@ An Action closes over one function signature:
 
 ```ts
 abstract class Compile extends Action<
-  (input: CompileInput) => CompileOutput throws CompileError
+  (input: CompileInput) => Result<CompileOutput, CompileError>
 > {}
 
 abstract class Package extends Action<
-  (input: PackageInput) => Artifact throws PackageError
+  (input: PackageInput) => Result<Artifact, PackageError>
 > {}
 ```
 
-The compiler derives the input, success, and tagged-failure codecs from those types. The author does not repeat schemas in an Action constructor.
+The compiler derives the input, success, and Error codecs from those types. The author does not repeat schemas in an Action constructor.
 
 Action values crossing a persistence or machine boundary must satisfy `Durable<T>`. Plain data derives this automatically. Functions, process handles, and other ephemeral values require an explicit durable representation or are rejected.
 
@@ -31,8 +44,10 @@ Import the compiler-recognized `durable` function and pass it a statically resol
 ```ts
 import { durable } from "vibelang:flows"
 
-const Build = durable((input: BuildInput) => {
-  const compiled = Compile.run({ source: input.source })
+const Build = durable(function Build(
+  input: BuildInput,
+): Result<Artifact, CompileError | PackageError> {
+  const compiled = Compile.run({ source: input.source }).unwrap()
   return Package.run({ code: compiled.code })
 })
 ```
@@ -53,6 +68,19 @@ Durable programs have four distinct phases:
 4. **Execution** creates or resumes a durable run and dispatches eligible Action nodes from the Plan IR.
 
 Keeping the phases separate allows one plan to deploy across TypeScript, native, and Wasm workers. If a branch or runtime-sized fan-out cannot be resolved from preview inputs, plan mode reports the conditional or parameterized template instead of executing source code to guess its shape.
+
+The bounded POC can wrap the exact validated Plan and deployment manifest in a
+canonical, domain-separated Ed25519 envelope. Verification uses public keys
+supplied out of band and produces an opaque process-local proof; the
+authenticated coordinator entry point requires that proof before creating a
+worker transport. Only a pool signed as `in-process-poc` can use the implicit
+local worker. Every other sandbox name requires an opaque host-issued transport
+token for that exact name, and all pools are checked before any factory runs.
+This authenticates manifest provenance and every digest it pins. It does not
+attest a live callback's lexical closure or emitted bundle,
+provide freshness/anti-rollback or revocation, or prove what a remote worker
+loaded. The transport token prevents accidental downgrade; the host is still
+trusted to issue it only for a factory that enforces the declared sandbox.
 
 ## Provide Implementations
 
@@ -82,8 +110,10 @@ Branches on comptime values reduce normally. Branches on Flow input or Action ou
 ```ts
 import { durable } from "vibelang:flows"
 
-const Release = durable((input: ReleaseInput) => {
-  const tested = Test.run({ source: input.source })
+const Release = durable(function Release(
+  input: ReleaseInput,
+): Result<Deployment | FailureReport, TestError | DeployError | ReportError> {
+  const tested = Test.run({ source: input.source }).unwrap()
   return if (tested.passed) {
     Deploy.run({ artifact: tested.artifact })
   } else {
@@ -96,7 +126,7 @@ Pure operations on symbolic values become portable expression IR. An operation t
 
 ## Replay and Retry
 
-Every completed Action invocation is journaled for its Flow execution. After a restart, the same execution observes the recorded success or typed failure instead of repeating completed work.
+Every completed Action invocation is journaled for its Flow execution. After a restart, the same execution observes the recorded success or Error Result instead of repeating completed work.
 
 Retry safety is a separate decision:
 
@@ -105,6 +135,70 @@ Retry safety is a separate decision:
 - **irreversible** work does not retry after ambiguity
 
 The safe default is execution-local replay with no ambiguous retry unless the implementation declares how repetition is safe.
+
+## Wait for an External Signal
+
+The bounded POC includes a deliberately provisional single-delivery form:
+
+```ts
+import { durable, waitSignal } from "vibelang:flows"
+
+const Approval = durable(function Approval(input: { requestId: string }) {
+  const decision = waitSignal<{ approved: boolean; ticket: string }>(
+    "approval.decided",
+  )
+  return { requestId: input.requestId, decision: decision }
+})
+```
+
+The compiler puts the literal signal identity and derived payload schema in the
+Plan; the sender does not provide a schema. Execution initialization pins that
+contract. A delivery then addresses the exact execution and node, supplies an
+idempotency key, and persists one canonical schema-checked payload. A duplicate
+of the same key and payload is harmless, while a conflicting key or payload is
+rejected. Waiting uses no worker lease, and delivery/consume journal transitions
+survive restart and coordinator races. The POC rejects more than 100,000
+durable-JSON nodes/own fields before canonicalization and retains the
+independent 8 MiB canonical message limit; request identities are separately
+byte-bounded before storage.
+
+`waitSignal` and the POC delivery APIs are not final spellings. The Bun POC's
+default delivery path requires a `vst1_` HMAC-SHA256 sender token minted by
+`executor.grantSignal(executionId, signalId)` and bound to that execution and
+signal. Forged, cross-execution, wrong-signal, and foreign-database tokens fail
+before execution state is read; tokenless delivery exists only behind explicit
+`{ unsafeLocalDelivery: true }`. The HMAC secret lives in the same SQLite
+database, so this proves a local-trust gate, not remote identity,
+authorization, rotation, or revocation.
+
+Signal delivery, cancellation, failure, and timer scheduling notify local
+waiters strictly after COMMIT. That notifier is only a latency optimization: a
+coordinator re-reads persisted state at the next timer/deadline boundary or a
+bounded fallback sweep (`wakeupSweepMs`, 250 ms by default), so a missed or
+cross-process notification cannot change correctness. Remote transport and
+authorization, queues/broadcast, schema migration, and final public spellings
+remain design work.
+
+## Execution Handles
+
+The Bun programmatic POC exposes the provisional long-running control surface:
+
+- `executor.start(input, { executionId })` starts or resumes work and returns a
+  `DurableExecutionHandle` immediately;
+- `executor.resume(executionId)` reconstructs a handle from the persisted,
+  digest-verified input, including for an already-terminal execution;
+- `handle.status()` reads committed status, `handle.result()` awaits the typed
+  Flow success or the modeled terminal failure, `handle.cancel(reason?)`
+  durably cancels, and
+  `handle.signal(signalId, { idempotencyKey, payload })` performs authenticated
+  handle-scoped delivery; and
+- `executor.execute(...)` remains the start-and-await convenience.
+
+Every method is bound to the handle's execution id; a handle cannot address a
+sibling run. This is executable programmatic POC evidence, not a root CLI
+command or a locked public API. Remote control transport, public principal
+authorization, subscription/history/fork administration, and migration remain
+open.
 
 ## Memoization and Content Caching
 
@@ -115,9 +209,9 @@ Cross-execution reuse has two meanings:
 
 These policies are never interchangeable. A memoized model response must not be promoted to a hermetic shared cache entry.
 
-## Distributed Builds
+## Planned Distributed Builds
 
-A deployment can emit:
+A future deployment build can emit:
 
 - a coordinator artifact
 - several tree-shaken worker artifacts
@@ -131,3 +225,8 @@ Different worker pools can use TypeScript, native, or Wasm implementations of th
 The Action signature describes data, not authority. Worker implementations receive only their declared providers, and coordinator-to-worker messages are validated against derived codecs.
 
 OS isolation, secret delivery, fencing, artifact storage, and worker attestation remain runtime responsibilities built around the compiler-derived contract.
+
+A manifest signature is an admission check, not sandbox attestation. Production
+also needs protected signing-key custody, rotation/revocation and rollback
+policy, authenticated transport, and evidence that a worker actually loaded the
+authorized artifact.

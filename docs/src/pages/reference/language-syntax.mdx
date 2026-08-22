@@ -118,7 +118,9 @@ Passing a value requests deterministic compile-time evaluation. Passing a functi
 ```ts
 import { durable } from "vibelang:flows"
 
-const workflow = durable(function workflow(input: Input): Output {
+const workflow = durable(function workflow(
+  input: Input,
+): Result<Output, BuildError> {
   return Build.run(input)
 })
 ```

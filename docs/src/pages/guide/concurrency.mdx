@@ -1,91 +1,172 @@
-# Concurrency [Use typed workers and structured joins without a fiber runtime]
+# Concurrency [Use async functions and typed workers without a fiber runtime]
 
-VibeLang builds structured concurrency around ordinary async functions and typed join expressions. It does not reinterpret every function as a fiber.
+VibeLang keeps ordinary async functions. Expected async failure is `Promise<Result<A, E>>`, and `await` unwraps only the Promise.
 
-:::warning Design direction
-Structured joins are VibeLang design direction, not implemented syntax. Concurrency governors are a separate TC39 Stage 1 direction whose API and semantics may change.
+:::note Current programmatic POC
+The provisional root package subpath `vibelang/concurrency`, implemented under
+`poc/src/concurrency`, provides typed workers, keyed Promise combinators, FIFO
+governors, completion-ordered async-iterator helpers, cancellation, and
+`Stream`/`Queue`/`Semaphore`/`Channel` primitives. These are ordinary
+TypeScript library APIs; they are not new VibeLang syntax or a final
+standard-library contract.
 :::
 
-## Typed Workers
+## Promise Discipline
 
-Module expressions define a statically visible worker surface:
+Authored `.vibe` code cannot call Promise instance `.then()`, `.catch()`, or `.finally()`. Use `await`, then inspect or propagate the Result:
+
+```ts
+const userResult = await loadUser(id)
+const user = userResult.unwrap()
+```
+
+Imported TypeScript and JavaScript libraries may use Promise chaining internally. Every unannotated foreign call contributes the checked `panic` case, including rejection; `@throws {never}` opts out and `@throws {T}` declares a more precise channel.
+
+## Typed Workers
 
 ```ts
 const analytics = spawn module {
   export function summarize(
     values: Float64Array,
-  ): Summary throws InvalidSample {
-    return try Statistics.summarize(values)
+  ): Result<Summary, InvalidSample> {
+    return Statistics.summarize(values)
   }
 }
 ```
 
-Calls across the worker boundary retain their success and failure types. Values crossing realms need an appropriate structured or shared representation.
+Calls across a worker boundary retain Result types. Values and Errors crossing realms must satisfy the derived transport codec.
 
-## Structured Joins
+:::note Implementation status
+The `spawn module { … }` syntax above is design-stage; no compiler lowering
+exists for it. The behavior it describes is available today as a provisional
+programmatic POC library instead: `TypedWorker.spawn<Contract>(moduleUrl,
+options)` resolves to a handle whose allowlisted methods have the shape
+`(input, options?) => Promise<Result<A, E>>`. The boundary is deliberately
+hardened rather than convenient — an explicit export allowlist, bounded active
+calls with a FIFO queue, per-call and startup timeouts, a message-size ceiling,
+strict canonical Result wire envelopes over a private `MessageChannel` (unknown
+fields, replayed ids, cycles, and non-transportable values fail closed instead of
+falling back to structured clone), and an explicit idempotent `terminate()` that
+rejects outstanding calls with a nominal Error. Nominal Error identity survives
+the round trip only when both realms execute the same codec registration.
+`TYPED_WORKER_API_STATUS` is the literal `"provisional"`.
 
-Pass async operations directly to a typed join:
+Not implemented: `spawn module` syntax and its lowering, compiler-derived
+transport codecs (the POC takes a TypeScript generic plus a runtime allowlist),
+typed-array and transferable codecs, and cooperative cancellation of a
+timed-out in-flight call. A worker module is an isolation realm, not a security
+sandbox.
+:::
+
+## Join Concurrent Operations
+
+Start work with a static or library combinator and consume the Promise with `await`:
 
 ```ts
-const [profile, activity] = try await.all(
+const results = await Promise.all([
   loadProfile(id),
   loadActivity(id),
-)
+])
+
+const [profile, activity] = Result.all(results).unwrap()
 ```
 
-The join does not produce its value until both operations complete according to its join policy. This is VibeLang's structured child-task direction; exact cancellation and sibling-failure semantics are still being designed. It does not require a separate scope object or wrapper around each call.
+`Promise.all` handles Promise scheduling. `Result.all` collects the successful values or returns the first Error. This uses standard call syntax and introduces no special `await.all` grammar.
 
-## Typed Joins
+The Promise returned by a call or combinator owns that task lifetime from the caller's perspective. Every started Promise must ultimately be consumed with `await` before its enclosing scope exits. Authored `.vibe` has no fire-and-forget or detach operation.
 
-Join operations combine success values and failure sets:
+The programmatic POC also exposes keyed joins:
 
 ```ts
-const [stats, metadata] = try await.all(
-  analytics.summarize(samples),
-  fetchMetadata(datasetId),
-)
+const values = await allKeyed({
+  profile: loadProfile(id),
+  activity: loadActivity(id),
+})
+
+const settled = await allSettledKeyed({ profile, activity })
 ```
 
-If the first operation fails with `InvalidSample` and the second with `Timeout`, the join fails with `InvalidSample | Timeout | Cancelled`.
-
-The same approach extends to `await.race`, `await.any`, `await.allSettled`, and keyed joins.
+Both return null-prototype records with the same own enumerable string and
+symbol keys. `allKeyed` rejects on the first Promise-style rejection;
+`allSettledKeyed` records each settlement. Fallible operations compose
+explicitly with `Result.all(Object.values(values))` rather than changing the
+Promise combinators' semantics.
 
 ## Cancellation
 
-Cancellation is visible as a typed failure. A cancellation capability is supplied through the requirement system rather than threaded through every call by hand:
+Cancellation is an expected Error and its source is a capability:
 
 ```ts
-async function index(records: AsyncIterable<Record>) {
+async function index(
+  records: AsyncIterable<Record>,
+): Promise<Result<void, Cancelled>> {
   const cancellation = Cancellation.context()
   for await (const record of records) {
-    try cancellation.checkpoint()
-    // ...
+    cancellation.checkpoint().unwrap()
+    indexRecord(record)
   }
 }
 ```
 
-Callers can distinguish cancellation from timeout or domain failure and decide whether to recover, retry, or propagate it.
+Callers can distinguish cancellation from timeout or domain failure.
+
+In the POC, `Cancellation` remains the `Context` capability used by existing
+joins and retains its parent/child linkage. `CancellationSource` adds manual
+and AbortSignal-linked cancellation; `alreadyCancelled()` and
+`neverCancelled()` supply deterministic tokens; and
+`CancellationRegistration` is an idempotent disposable returned by
+`onCancel`. The adapter helpers are `cancellationSignal`, `cancellationError`,
+`cancellationCheckpoint`, and `onCancellation`. Listener exceptions are
+contained, but a hostile async iterator that ignores both cancellation and
+`return()` cannot be forcibly aborted by JavaScript.
+
+## Streams and Coordination Primitives
+
+The current POC APIs are deliberately bounded:
+
+- `new Queue<T>(capacity)` / `Queue.bounded<T>(capacity)` implement a bounded
+  FIFO MPMC queue. `offer` and `take` suspend with typed
+  `Result<…, QueueClosed | Cancelled>` outcomes; `tryOffer` and `tryTake`
+  distinguish temporary backpressure (`Optional.none`) from permanent closure;
+  `shutdown` lets accepted buffered values drain.
+- `new Semaphore(size)` / `Semaphore.withPermits(size)` provide fair
+  `acquire`, `tryAcquire`, and `withPermit`. Permits release idempotently.
+- `new Channel<T>(capacity = 1)` / `Channel.buffered<T>(capacity)` layer
+  `send`, `receive`, try operations, closing, and draining async iteration over
+  a Queue. This is a small-buffer channel, not a zero-capacity rendezvous
+  channel.
+- `Stream.fromIterable`, `Stream.fromAsyncIterable`, and `Stream.of` build
+  reusable lazy streams. `map`, `filter`, `take`, `drop`, and `scan` are lazy;
+  `mapConcurrent` is completion-ordered and governor-aware; `buffer` retains
+  source order through a bounded Queue; `interrupt` adds cancellation; and
+  `runCollect`, `runForEach`, and `runFold` return typed Results.
+
+Queue and Channel reject `null`/`undefined` elements because their nonblocking
+APIs use `Optional` to represent temporary absence. Internally started Promises
+have rejection containment, and early Stream/iterator exit joins the cleanup
+the helper owns.
 
 ## Shared Data
 
-Shared structs over `SharedArrayBuffer` provide an explicit path for high-throughput worker communication. Ordinary mutable objects are not silently shared between realms.
-
-The compiler can check the cross-realm layout and failure transport protocol while each backend chooses its most appropriate implementation.
+Shared structs over `SharedArrayBuffer` provide an explicit path for high-throughput worker communication. Ordinary mutable objects are not silently shared between realms. The compiler checks cross-realm layout and error transport while each backend selects its implementation. This is design direction: shared structs are not implemented in the typed-worker POC, whose transport copies canonical values.
 
 ## Limiting Fan-Out
 
-TC39's Stage 1 concurrency-control proposal explores governors for limiting concurrent access to a resource or consuming an async iterator with bounded fan-out. Its current API direction includes `CountingGovernor`:
+Concurrency governors limit how much work may run simultaneously; they do not define child ownership or Error composition. A structured library combinator may own, cancel, and join the work it starts, but a Layer never does. VibeLang intends to follow viable JavaScript proposals or standard-library APIs instead of adding parser syntax for throttling.
 
-```ts
-const governor = new CountingGovernor(16)
+The programmatic POC spells this `Governor.withLimit(limit)`. `acquire()`
+returns an idempotently releasable permit and `run(operation)` releases in
+`finally`; admission is FIFO. A `Governor` can be shared by independent helper
+instances. `mapUnordered`, `filterUnordered`, and `bufferedUnordered` accept a
+positive numeric bound or a shared Governor, yield in completion order, cancel
+only their own child token on early exit/failure, and join admitted work before
+closing. `bufferedUnordered` governs concurrent source pulls as well as output.
 
-try await AsyncIterator.from(urls)
-  .map(fetchPage)
-  .forEach(index, governor)
-```
+## Open Semantics
 
-A governor limits how much work may run concurrently. It does not define structured child-task ownership, join failure composition, or task lifetimes. VibeLang intends to track the JavaScript proposal rather than invent a competing governor API.
-
-## Promises and Native Output
-
-Standard async functions remain the basic abstraction. Promise behaviors that cannot be implemented efficiently or soundly on native targets may add the `TypeScript` requirement. The exact supported subset, including custom thenables and Promise subclassing, is still open.
+The POC makes explicit local choices for FIFO admission, first-observed helper
+failure, child cancellation, and cleanup joining, but language-wide sibling
+cancellation, aggregate-error policy, worker ownership, shared-struct layout,
+and custom thenable portability remain specification work. `spawn module {}`
+and shared structs remain unimplemented. A Flow's durable scheduler is a
+separate opt-in runtime, not the execution model for ordinary async code.

@@ -1,54 +1,48 @@
 # Capabilities & Layers [Make dependencies visible and provide them by scope]
 
-VibeLang models a dependency as a capability in a function's requirement channel. An Effect-inspired context library defines and accesses services; a layer decides how to construct them.
+VibeLang models a dependency as a capability in a compiler-tracked requirement channel. A Context class defines and accesses a service; a base Layer packages an already acquired implementation into an environment.
 
-## Defining a Capability
-
-A capability is an abstract class extending `Context`:
+## Define a Capability
 
 ```ts
 import { Context } from "vibelang/context"
 
 abstract class Mailer extends Context {
-  abstract send(message: Message): Receipt throws MailError
+  abstract send(message: Message): Result<Receipt, MailError>
 }
 ```
 
-The class is both the service contract and its nominal key. Two context classes with the same methods are still different capabilities.
+The class is both the service contract and its nominal key. Two Context subclasses with identical methods remain distinct capabilities.
 
-## Using a Capability
-
-Access requirements through the context package:
+## Use a Capability
 
 ```ts
-function welcome(user: User) {
+function welcome(user: User): Result<Receipt, MailError> {
   const mailer = Mailer.context()
   const clock = Clock.context()
   const message = Message.welcome(user, clock.now())
-  return try mailer.send(message)
+  return mailer.send(message)
 }
 ```
 
-The calls look like an ordinary library API, but inherited `context()` is compiler-aware. The function's inferred context row is `Mailer | Clock`, and each local binding has its capability class type.
+The inherited `context()` call returns the instance and adds the class to the enclosing function's inferred requirements. `welcome` requires `Mailer | Clock`.
 
-## Requirement Inference
-
-Requirements propagate like failures:
+## Requirement and Result Composition
 
 ```ts
-function register(input: Signup) {
+function register(
+  input: Signup,
+): Result<User, CreateUserError | MailError> {
   const users = Users.context()
-  const user = try users.create(input)
-  try welcome(user)
+  const user = users.create(input).unwrap()
+  welcome(user).unwrap()
   return user
 }
 ```
 
-If the called functions require `Users`, `Mailer`, and `Clock`, `register` acquires those requirements automatically. Local functions may rely on inference; exported APIs pin the requirement row.
+The compiler propagates `Users`, `Mailer`, and `Clock` through the ordinary calls. `.unwrap()` propagates the Error variants; these are separate from the requirement channel.
 
-## Building a Layer
-
-Provider composition lives in `vibelang/provider`:
+## Build and Provide a Layer
 
 ```ts
 import { Layer } from "vibelang/provider"
@@ -58,32 +52,18 @@ const Production = Layer.merge(
   Layer.succeed(Mailer, new SesMailer(credentials)),
   Layer.succeed(Users, new PostgresUsers(databaseUrl)),
 )
-```
 
-A layer is conceptually typed as:
-
-```ts
-Layer<Provides, InitError, Requires>
-```
-
-Constructing a service can therefore fail or require another service. Those rows are checked while layers compose.
-
-## Providing a Layer
-
-Use `Layer.provide` to satisfy requirements for a scope:
-
-```ts
 Layer.provide(Production, async () => {
-  const user = try await register(input)
+  const user = (await registerAsync(input)).unwrap()
   return user.id
 })
 ```
 
-The provided capabilities are available to ordinary calls inside the scope. A missing `Mailer`, `Clock`, or `Users` is a compile error when the dependency closure is known. Callers do not pass a context argument manually.
+A base layer is conceptually `Layer<Provides>`. It provides service instances; it does not acquire them or own their lifetime. A missing dependency is a compile error when the closure is known.
 
-## Testing With Layers
+Acquire resources in ordinary code and make cleanup explicit with `using` or `defer` before constructing the Layer. Resource-building conveniences may be added later, but they are not part of the base Layer contract.
 
-Tests provide deterministic implementations through the same API:
+## Test With Layers
 
 ```ts
 const Test = Layer.merge(
@@ -93,35 +73,43 @@ const Test = Layer.merge(
 )
 
 Layer.provide(Test, () => {
-  const user = try register(fixture)
+  const user = register(fixture).unwrap()
   expect(RecordingMailer.sent).toHaveLength(1)
+  return user
 })
 ```
 
-There is no module replacement or global clock patch. The test supplies the program's declared requirements.
+No module replacement or global clock patch is needed.
 
 ## Platform Capabilities
 
-The same mechanism covers host features:
-
 ```ts
-function loadConfig() {
+function loadConfig(): Result<AppConfig, FileError | InvalidAppConfig> {
   const fs = FileSystem.context()
-  const text = try fs.readText("app.json")
-  return try Config.parse(text)
+  const text = fs.readTextSync("app.json").unwrap()
+  return parseAppConfig(text)
 }
 ```
 
-Node, Bun, Deno, native, WASI, and tests can provide different `FileSystem` implementations. Target selection and dependency injection share one model.
+Node, Bun, Deno, native, WASI, and tests can provide different implementations of the same platform contracts.
 
-## What Is Still Open
+:::note Implementation status
+The platform capability library exists as a programmatic POC under
+`poc/src/platform`, not as a root-CLI feature. It provides `Clock`, `Random`,
+`Console`, `Environment`, `FileSystem`, and `HttpClient` as Context classes, each
+with a live implementation and a deterministic test double, plus `Layer` bundles
+that provide all six at once. Its I/O operations are asynchronous and return
+`Promise<Result<A, E>>`; every filesystem operation also has a synchronous twin
+with a `Sync` suffix (`readText` / `readTextSync`), which is the form used above.
+On a host where async Layer scopes fail closed — the Bun test host, per the
+scope note below — every capability an async body needs must be resolved before
+its first `await`.
+:::
 
-The layer algebra is accepted, but several lifecycle details remain under design:
+## Scope and Lifetime
 
-- acquisition and disposal ordering
-- memoization and sharing
-- nested overrides
-- scoped resources
-- the exact JavaScript lowering strategy
+`Layer.provide(layer, body)` keeps only the dependency environment active until `body` and the Promise returned by `body` settle. It does not discover, supervise, cancel, or join other Promise work. Every Promise started in authored `.vibe` must be awaited directly or consumed by a recognized combinator whose returned Promise is itself consumed; detached work is unavailable.
 
-The compiler may use hidden environment parameters or a scoped ambient implementation. User code depends on the semantics, not that lowering choice.
+The Node prototype revokes at the Promise's actual state transition, before its queued reactions run. It accepts a Promise created during the body invocation (including an `async` function's Promise), while a pre-existing Promise must be wrapped as `async () => await existingPromise`. This is a lifetime adapter, not task ownership. Async Layer scopes fail closed on hosts without an equivalent synchronous settlement hook; the current Bun test host therefore exercises only synchronous Layer scopes.
+
+Merge and nested-override precedence, cycle diagnostics, and requirement-environment lowering remain under design. Source semantics do not depend on whether the backend uses hidden parameters or a scoped environment.

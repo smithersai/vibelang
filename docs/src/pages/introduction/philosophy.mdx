@@ -1,90 +1,65 @@
-# Project Philosophy [The principles that keep VibeLang small, compatible, and predictable]
+# Project Philosophy [Keep the language familiar, explicit, and analyzable]
 
-VibeLang adds systems-language structure to TypeScript without asking application code to enter a separate programming model.
+## TypeScript-Shaped, With an Explicit Boundary
 
-## A True TypeScript Superset
+Imported `.ts` and `.js` preserve host behavior. A `.vibe` file uses a TypeScript-derived grammar plus VibeLang semantic checks and lowering. This boundary permits must-use Results, Promise-chain restrictions, capability inference, and static durable planning without pretending that all JavaScript already obeys those rules.
 
-TypeScript succeeds because adoption is incremental. VibeLang keeps that property.
+## Expected Failures Are Values
 
-A `.ts` program remains valid on the TypeScript target and keeps its TypeScript behavior. Teams can rename one file at a time, add precise failures to one public boundary, or introduce a capability around one platform service. Precision is opt-in; compatibility is not.
-
-This does not make every TypeScript feature portable to every backend. Instead, the compiler records use of TypeScript-specific runtime behavior as a requirement. A native-pinned function is rejected if that requirement reaches it.
-
-## Compile Structure, Not Wrappers
-
-Libraries can model a computation as a value such as `Effect<A, E, R>`. VibeLang puts the same three channels on ordinary function types:
-
-```text
-A  value returned on success
-E  declared failures
-R  required capabilities
-```
-
-The channels are checked by the compiler and erased where possible. Calling a VibeLang function is still an eager call with an ordinary stack. Async functions still return promises. JavaScript output remains recognizable.
-
-Runtime machinery exists only where the program asks for it: scoped provider environments, workers, or durable Flows all have runtime meaning. Ordinary functions do not become interpreted programs.
-
-## Inference Inside, Declarations at Boundaries
-
-Most bookkeeping should be inferred from the body:
+VibeLang uses `Result<A, E>` and `Promise<Result<A, E>>` as ordinary runtime types. The compiler makes them pleasant to author:
 
 ```ts
-function loadConfig(path: string) {
+function loadConfig(
+  path: string,
+): Result<Config, FileNotFound | InvalidConfig> {
   const fs = FileSystem.context()
-  const source = try fs.readText(path)
-  return try Config.parse(source)
+  const source = fs.readText(path).unwrap()
+  return Config.parse(source).unwrap()
 }
 ```
 
-The compiler follows calls to collect failure and context requirement rows. Exported APIs pin their failure contracts and preserve inferred context requirements because a public signature is a contract:
+Plain success returns and Error throws are lifted into the appropriate variant. `.unwrap()` propagates. Public APIs use normal generic return types, so tools do not need to understand an erased failure annotation.
+
+`Optional<T>` uses the same philosophy for absence: normal type, normal calls, and compiler-assisted lifting without optional-specific grammar.
+
+## Inference Inside, Contracts at Boundaries
+
+The compiler may infer success/error unions and context requirements from a body. Exported APIs should spell their Result return type explicitly. Requirements arise from compiler-recognized `Capability.context()` calls and continue to propagate statically until a Layer supplies them.
+
+## Imported Intrinsics, Not Keywords
+
+Compile-time and durable semantics are anchored by resolved imports:
 
 ```ts
-export declare function loadConfig(path: string): Config
-  throws FileNotFound | InvalidConfig
+import { comptime } from "vibelang:comptime"
+import { durable } from "vibelang:flows"
 ```
 
-`FileSystem.context()` is an ordinary-looking inherited API with compiler support. It adds `FileSystem` to the function's inferred context channel. Inference keeps local code light, and callers acquire the same requirement through an ordinary `loadConfig(path)` call without passing context by hand.
+This keeps code visually close to TypeScript, allows aliases, and avoids reserving words. Import identity—not spelling alone—activates the compiler behavior.
 
 ## Platform Is a Dependency
 
-Filesystem access, network access, clocks, randomness, environment variables, and host globals differ across targets. VibeLang models each as a capability instead of pretending the platform is universal.
-
-That gives one mechanism three jobs:
-
-- production selects the platform implementation
-- tests supply deterministic implementations
-- the compiler checks whether a target can satisfy the program
-
-Portability and testability become the same feature.
+Filesystem, network, clocks, randomness, environment variables, and host globals differ across targets. Modeling them as capabilities gives production configuration, deterministic testing, and portability one mechanism.
 
 ## Comptime Is Hermetic
 
-The compiler-recognized `comptime(...)` API can generate values, types, and validators. It cannot silently observe ambient filesystem state, the network, the clock, or random input. Durable execution plans come from the separate static lowering initiated by `durable(...)`; a Flow is not executed through comptime to discover its graph.
+`comptime(...)` may generate values, types, validators, and loaders, but it cannot silently observe ambient filesystem state, the network, the clock, or randomness. External compiler inputs arrive through tracked imports or loader contexts. Durable planning is separate static lowering initiated by `durable(...)`; a Flow is never run to discover its graph.
 
-Every external compiler input must enter through a tracked import or loader context. That makes incremental builds reproducible: when an input changes, its dependent work is invalidated; unrelated work remains cached.
+## Standard Imports for Non-Code Inputs
+
+Assets and foreign source use import attributes instead of new grammar:
+
+```ts
+import config from "./config.json" with { type: "json", mode: "const" }
+import prompt from "./prompt.mdx" with { type: "mdx" }
+```
+
+The loader and every string-valued attribute become part of the reproducible build node.
 
 ## Backend-Appropriate Compilation
 
-VibeLang does not require every backend to use the same lowering strategy.
-
-The TypeScript backend should preserve the stock TypeScript pipeline wherever possible. Native and Wasm backends may use checked whole-program information, a garbage-collected runtime, and a shared VibeLang IR. Durable deployment builds may partition one program into a coordinator and several worker artifacts.
-
-The semantics stay consistent even when the emitted machinery differs.
+The TypeScript backend should preserve the stock pipeline wherever possible. Native and Wasm backends may use whole-program information and shared checked IR. Durable builds may partition a coordinator and worker artifacts. Semantics remain consistent even when emitted machinery differs.
 
 ## One Toolchain
 
-The long-term toolchain follows Go's product shape: a fast compiler, formatter, language service, test tooling, standard library, and build integration delivered as one coherent distribution.
-
-VibeLang is planned as a minimal-diff fork of the Go-native TypeScript compiler with a narrow plugin host. The goal is to inherit TypeScript's checker and release cadence while keeping VibeLang features isolated enough to evolve deliberately.
-
-## Evolve With the Ecosystem
-
-VibeLang borrows proven ideas instead of renaming them:
-
-- TypeScript supplies the host language and migration path.
-- Effect demonstrates the value of typed failures, requirements, schema, and the failure/defect split.
-- Zig supplies inferred error sets, comptime, and expression-oriented control flow.
-- Go supplies the toolchain ethos.
-- Bun supplies the standard for frictionless foreign-language integration.
-
-The language should converge with TC39 work when that work fits the model. New syntax is reserved for places where TypeScript and JavaScript do not already have a suitable direction.
+The long-term product follows Go's shape: compiler, formatter, language service, tests, standard library, and build integration as one coherent distribution. The implementation is a minimal-diff TypeScript fork with narrow VibeLang seams.
