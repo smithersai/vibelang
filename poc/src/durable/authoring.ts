@@ -3,6 +3,7 @@ import {
   type ActionNode,
   type BinaryOperator,
   type BranchNode,
+  assertJson,
   deepFreeze,
   derivedSchema,
   digest,
@@ -15,8 +16,11 @@ import {
   uniqueSorted,
   type ValueExpr
 } from "./ir.ts"
+import { validateActionContractDescriptor } from "./schema.ts"
 
 export const DurableExpression: unique symbol = Symbol.for("vibelang.poc.durable-expression") as never
+
+const plannedExpressions = new WeakMap<object, ValueExpr>()
 
 interface ExpressionCarrier {
   readonly [DurableExpression]: ValueExpr
@@ -48,6 +52,7 @@ export interface CompiledFlow<Input, Success> {
   readonly id: string
   readonly version: number
   readonly plan: PlanTemplate
+  readonly artifactSource?: "static-plan-artifact"
   readonly __types?: (input: Input) => Success
 }
 
@@ -145,7 +150,7 @@ const unsupportedComputation = (expression: ValueExpr, operation: string): never
 
 const makePlanned = <T>(expression: ValueExpr): Planned<T> => {
   const target = (): never => unsupportedComputation(expression, "function application")
-  return new Proxy(target, {
+  const planned = new Proxy(target, {
     get(_target, key) {
       if (key === DurableExpression) return expression
       if (key === "then") return undefined
@@ -161,36 +166,86 @@ const makePlanned = <T>(expression: ValueExpr): Planned<T> => {
     ownKeys: () => unsupportedComputation(expression, "property enumeration"),
     getOwnPropertyDescriptor: () => unsupportedComputation(expression, "property descriptor inspection")
   }) as unknown as Planned<T>
+  plannedExpressions.set(planned as unknown as object, expression)
+  return planned
 }
 
 const expressionOf = (value: unknown): ValueExpr | undefined => {
   if ((typeof value !== "object" || value === null) && typeof value !== "function") return undefined
-  return (value as Partial<ExpressionCarrier>)[DurableExpression]
+  const trusted = plannedExpressions.get(value as object)
+  if (trusted !== undefined) return trusted
+  const descriptor = Object.getOwnPropertyDescriptor(value, DurableExpression)
+  if (descriptor === undefined) return undefined
+  if (!("value" in descriptor)) {
+    throw new TypeError("A durable expression carrier cannot expose its IR through an accessor")
+  }
+  return descriptor.value as ValueExpr | undefined
 }
 
-export const toValueExpr = (value: unknown): ValueExpr => {
+const MAX_CAPTURE_DEPTH = 256
+
+const toValueExprInner = (value: unknown, seen: Set<object>, depth: number): ValueExpr => {
+  if (depth > MAX_CAPTURE_DEPTH) throw new TypeError("Flow captured value exceeds the durable nesting limit")
   const planned = expressionOf(value)
   if (planned !== undefined) return planned
   if (value === null || typeof value === "string" || typeof value === "boolean" || typeof value === "number") {
-    if (typeof value === "number" && !Number.isFinite(value)) {
-      throw new TypeError("Non-finite numbers cannot enter durable Plan IR")
-    }
-    return { kind: "literal", value }
+    return { kind: "literal", value: assertJson(value, "Flow captured literal") }
   }
-  if (Array.isArray(value)) return { kind: "array", items: value.map(toValueExpr) }
-  if (typeof value === "object") {
+  if (typeof value !== "object") throw new TypeError(`Flow captured non-durable ${typeof value}`)
+  if (seen.has(value)) throw new TypeError("Flow captured a cyclic value")
+  seen.add(value)
+  try {
+    if (Array.isArray(value)) {
+      const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length")
+      const length = lengthDescriptor !== undefined && "value" in lengthDescriptor
+        ? lengthDescriptor.value as number
+        : -1
+      for (const key of Reflect.ownKeys(value)) {
+        if (key === "length") continue
+        if (typeof key !== "string" || !/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= length) {
+          throw new TypeError(`Flow captured an array with unexpected property ${String(key)}`)
+        }
+        const descriptor = Object.getOwnPropertyDescriptor(value, key)!
+        if (!("value" in descriptor) || !descriptor.enumerable) {
+          throw new TypeError(`Flow captured an array accessor or hidden property at index ${key}`)
+        }
+      }
+      const items: ValueExpr[] = []
+      for (let index = 0; index < length; index++) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+        if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable) {
+          throw new TypeError(`Flow captured a sparse or hidden array index ${index}`)
+        }
+        items.push(toValueExprInner(descriptor.value, seen, depth + 1))
+      }
+      return { kind: "array", items }
+    }
     const prototype = Object.getPrototypeOf(value)
     if (prototype !== Object.prototype && prototype !== null) {
       throw new TypeError(`Flow captured non-durable ${prototype?.constructor?.name ?? "object"}`)
     }
-    const fields: Record<string, ValueExpr> = {}
-    for (const key of Object.keys(value).sort()) {
-      fields[key] = toValueExpr((value as Record<string, unknown>)[key])
+    const descriptors = new Map<string, PropertyDescriptor>()
+    for (const key of Reflect.ownKeys(value)) {
+      if (typeof key !== "string") throw new TypeError("Flow captured an object with a symbol property")
+      assertJson(key, "Flow captured object key")
+      const descriptor = Object.getOwnPropertyDescriptor(value, key)!
+      if (!("value" in descriptor) || !descriptor.enumerable) {
+        throw new TypeError(`Flow captured an accessor or hidden property ${key}`)
+      }
+      descriptors.set(key, descriptor)
+    }
+    const fields = Object.create(null) as Record<string, ValueExpr>
+    for (const key of [...descriptors.keys()].sort()) {
+      fields[key] = toValueExprInner(descriptors.get(key)!.value, seen, depth + 1)
     }
     return { kind: "object", fields }
+  } finally {
+    seen.delete(value)
   }
-  throw new TypeError(`Flow captured non-durable ${typeof value}`)
 }
+
+export const toValueExpr = (value: unknown): ValueExpr =>
+  toValueExprInner(value, new Set(), 0)
 
 const binary = <Result>(operator: BinaryOperator, left: unknown, right: unknown): Planned<Result> =>
   makePlanned({ kind: "binary", operator, left: toValueExpr(left), right: toValueExpr(right) })
@@ -209,50 +264,51 @@ export const Expr = {
   not: (value: unknown): Planned<boolean> => makePlanned({ kind: "unary", operator: "not", value: toValueExpr(value) })
 } as const
 
-const defineAction = <Input, Success, Failure = never>(options: {
-  readonly id: string
-  readonly version: number
-}): DurableAction<Input, Success, Failure> => {
-  if (options.id.trim() === "") throw new TypeError("Action id must be non-empty")
-  if (!Number.isSafeInteger(options.version) || options.version < 1) {
-    throw new TypeError(`Action ${options.id} version must be a positive integer`)
-  }
-  const inputSchema = derivedSchema()
-  const successSchema = derivedSchema()
-  const errorSchema = derivedSchema()
-  const contract = {
-    id: options.id,
-    version: options.version,
-    inputSchema,
-    successSchema,
-    errorSchema
-  }
-  const descriptor: ActionDescriptor = deepFreeze({
-    ...contract,
-    contractDigest: digest(contract)
-  })
+const actionFromDescriptor = <Input, Success, Failure = never>(
+  rawDescriptor: ActionDescriptor
+): DurableAction<Input, Success, Failure> => {
+  const descriptor = validateActionContractDescriptor(rawDescriptor)
+  const id = descriptor.id
+  const version = descriptor.version
   return Object.freeze({
     descriptor,
     run(input: PlannedInput<Input>): Planned<Success> {
       const planner = currentPlanner()
       planner.registerAction(descriptor)
       const inputExpression = toValueExpr(input)
-      const id = planner.allocate(options.id)
+      const nodeId = planner.allocate(id)
       const node: ActionNode = {
         kind: "action",
-        id,
-        actionId: options.id,
-        actionVersion: options.version,
+        id: nodeId,
+        actionId: id,
+        actionVersion: version,
         actionContractDigest: descriptor.contractDigest,
         input: inputExpression,
         dependencies: expressionDependencies(inputExpression),
         controlDependencies: planner.controlDependencies,
-        debug: { label: options.id }
+        debug: { label: id }
       }
       planner.nodes.push(node)
-      return makePlanned({ kind: "node", nodeId: id, path: [] })
+      return makePlanned({ kind: "node", nodeId, path: [] })
     }
   })
+}
+
+const defineAction = <Input, Success, Failure = never>(options: {
+  readonly id: string
+  readonly version: number
+}): DurableAction<Input, Success, Failure> => {
+  const id = options.id
+  const version = options.version
+  if (typeof id !== "string" || id.trim() === "") throw new TypeError("Action id must be non-empty")
+  if (!Number.isSafeInteger(version) || version < 1) {
+    throw new TypeError(`Action ${id} version must be a positive integer`)
+  }
+  const inputSchema = derivedSchema("input")
+  const successSchema = derivedSchema("success")
+  const errorSchema = derivedSchema("error")
+  const contract = { id, version, inputSchema, successSchema, errorSchema }
+  return actionFromDescriptor(deepFreeze({ ...contract, contractDigest: digest(contract) }))
 }
 
 const compileFragment = (planner: Planner, body: () => unknown): PlanFragment => {
@@ -265,7 +321,17 @@ const nodeReferences = (node: PlanNode): readonly string[] => {
     ? [node.input]
     : node.kind === "parallel"
       ? node.outputs
-      : [node.condition]
+      : node.kind === "timer"
+        ? [node.durationMs]
+        : node.kind === "signal"
+          ? []
+        : node.kind === "fanout"
+          ? [node.items]
+          : node.kind === "loop"
+            ? [node.initial]
+            : node.kind === "childFlow"
+              ? [node.input]
+              : [node.condition]
   return uniqueSorted([
     ...node.dependencies,
     ...node.controlDependencies,
@@ -388,9 +454,11 @@ const defineFlow = <Input, Success>(
   options: { readonly id: string; readonly version: number },
   callback: (input: Planned<Input>) => PlannedInput<Success>
 ): CompiledFlow<Input, Success> => {
-  if (options.id.trim() === "") throw new TypeError("Flow id must be non-empty")
-  if (!Number.isSafeInteger(options.version) || options.version < 1) {
-    throw new TypeError(`Flow ${options.id} version must be a positive integer`)
+  const id = options.id
+  const version = options.version
+  if (typeof id !== "string" || id.trim() === "") throw new TypeError("Flow id must be non-empty")
+  if (!Number.isSafeInteger(version) || version < 1) {
+    throw new TypeError(`Flow ${id} version must be a positive integer`)
   }
   const shared: SharedPlanningState = { actions: new Map() }
   const planner = new Planner("", shared)
@@ -398,19 +466,19 @@ const defineFlow = <Input, Success>(
   const output = underPlanner(planner, () => callback(input))
   const semantic = {
     formatVersion: 1 as const,
-    flowId: options.id,
-    flowVersion: options.version,
+    flowId: id,
+    flowVersion: version,
     nodes: planner.nodes,
     output: toValueExpr(output),
     requirements: [...shared.actions.keys()].sort(),
-    actions: [...shared.actions.values()].sort((left, right) => left.id.localeCompare(right.id))
+    actions: [...shared.actions.values()].sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
   }
   validateFragmentScope(semantic, new Set())
   const plan: PlanTemplate = deepFreeze({ ...semantic, digest: digest(semantic) })
-  return Object.freeze({ id: options.id, version: options.version, plan })
+  return Object.freeze({ id, version, plan })
 }
 
-export const Action = { define: defineAction } as const
+export const Action = { define: defineAction, fromDescriptor: actionFromDescriptor } as const
 
 export const Flow = {
   define: defineFlow,
@@ -433,4 +501,4 @@ export const fail = <Failure extends JsonValue>(failure: Failure): never => {
 }
 
 export const literal = <Value extends JsonValue>(value: Value): Planned<Value> =>
-  makePlanned({ kind: "literal", value })
+  makePlanned({ kind: "literal", value: deepFreeze(assertJson(value, "durable literal")) as Value })
