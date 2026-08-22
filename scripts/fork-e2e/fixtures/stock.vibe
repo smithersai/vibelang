@@ -1,0 +1,8 @@
+export class OutOfStock extends Error {
+  constructor(readonly sku: string) { super(`${sku} is out of stock`) }
+}
+
+export function reserve(sku: string, wanted: number, available: number): Result<number, OutOfStock> {
+  if (wanted > available) throw new OutOfStock(sku)
+  return available - wanted
+}
