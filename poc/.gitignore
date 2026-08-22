@@ -5,3 +5,4 @@ node_modules/
 *.sqlite-shm
 *.sqlite-wal
 *.generated.ts
+*.generated.ts.map
