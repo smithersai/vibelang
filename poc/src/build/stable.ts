@@ -2,16 +2,35 @@ import { createHash } from "node:crypto";
 
 export type StableJson = null | boolean | number | string | StableJson[] | { [key: string]: StableJson };
 
+const MAX_STABLE_DEPTH = 512;
+const MAX_STABLE_NODES = 1_000_000;
+
+interface CloneState {
+  readonly seen: Set<object>;
+  nodes: number;
+}
+
+/** Locale-independent ordering for values that participate in build identities. */
+export function compareStableStrings(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 /** Clone the only values permitted in build identities and cached loader IR. */
-export function stableClone(value: unknown, path = "value", seen = new Set<object>()): StableJson {
+export function stableClone(value: unknown, path = "value"): StableJson {
+  return cloneStable(value, path, { seen: new Set<object>(), nodes: 0 }, 0);
+}
+
+function cloneStable(value: unknown, path: string, state: CloneState, depth: number): StableJson {
+  if (depth > MAX_STABLE_DEPTH) throw new TypeError(`${path} is not durable JSON: nesting is too deep`);
+  if (++state.nodes > MAX_STABLE_NODES) throw new TypeError(`${path} is not durable JSON: value is too large`);
   if (value === null || typeof value === "boolean" || typeof value === "string") return value;
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new TypeError(`${path} is not durable JSON: non-finite number`);
     return Object.is(value, -0) ? 0 : value;
   }
   if (typeof value !== "object") throw new TypeError(`${path} is not durable JSON: ${typeof value}`);
-  if (seen.has(value)) throw new TypeError(`${path} is not durable JSON: cyclic value`);
-  seen.add(value);
+  if (state.seen.has(value)) throw new TypeError(`${path} is not durable JSON: cyclic value`);
+  state.seen.add(value);
   try {
     if (Array.isArray(value)) {
       if (Object.getPrototypeOf(value) !== Array.prototype) {
@@ -26,7 +45,7 @@ export function stableClone(value: unknown, path = "value", seen = new Set<objec
       const output: StableJson[] = [];
       for (let index = 0; index < value.length; index++) {
         if (!Object.hasOwn(value, index)) throw new TypeError(`${path}[${index}] is not durable JSON: sparse array hole`);
-        output.push(stableClone(value[index], `${path}[${index}]`, seen));
+        output.push(cloneStable(value[index], `${path}[${index}]`, state, depth + 1));
       }
       return output;
     }
@@ -36,17 +55,17 @@ export function stableClone(value: unknown, path = "value", seen = new Set<objec
       throw new TypeError(`${path} is not durable JSON: ${prototype?.constructor?.name ?? "exotic object"}`);
     }
     const output = Object.create(null) as Record<string, StableJson>;
-    for (const key of Reflect.ownKeys(value).sort((left, right) => String(left).localeCompare(String(right)))) {
+    for (const key of Reflect.ownKeys(value).sort((left, right) => compareStableStrings(String(left), String(right)))) {
       if (typeof key !== "string") throw new TypeError(`${path} is not durable JSON: symbol property`);
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
       if (!descriptor || descriptor.enumerable !== true || !("value" in descriptor)) {
         throw new TypeError(`${path}.${key} is not durable JSON: accessor or non-enumerable property`);
       }
-      output[key] = stableClone(descriptor.value, `${path}.${key}`, seen);
+      output[key] = cloneStable(descriptor.value, `${path}.${key}`, state, depth + 1);
     }
     return output;
   } finally {
-    seen.delete(value);
+    state.seen.delete(value);
   }
 }
 

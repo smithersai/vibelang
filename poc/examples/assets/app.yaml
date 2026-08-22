@@ -1,0 +1,11 @@
+# Provisional YAML subset consumed by yaml-loader.ts
+region: us-west
+retries: 3
+verbose: true
+label: "prod: primary"
+limits:
+  cpu: 2
+  memoryMb: 512
+features:
+  - search
+  - replay
