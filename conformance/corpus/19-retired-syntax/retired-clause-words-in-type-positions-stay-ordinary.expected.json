@@ -1,0 +1,11 @@
+{
+  "title": "the retired-grammar sweep MUST NOT reinterpret ordinary TypeScript type syntax: `uses` as a type argument, `throws` as a property name, and `?` in optional members and optional chaining all stay ordinary code",
+  "expect": "output",
+  "stdout": [
+    "3",
+    "3",
+    "0",
+    "-1"
+  ],
+  "notes": "specification/compatibility.mdx, 'Source Relationship': '.sm MUST use a TypeScript-derived grammar with only explicitly documented differences' and 'Shared syntax MUST retain TypeScript behavior unless the Smithers specification explicitly assigns different semantics.' The retired clauses this sweep claims are `T throws E` and `T uses Cap` suffixed to a complete return type, and the retired optional grammar is prefix `?T` and postfix `.?` — none of which is what this program writes. poc/src/language/README.md names `Array<uses>` among the shapes that must stay ordinary and requires 'an identifier operand for a throws/uses clause suffixed to a complete return type'. TypeScript's own `?:` optional property, `??` nullish coalescing, and `?.` optional chaining are shared syntax and keep their TypeScript behavior; a sweep that claimed `?.` as the retired `.?` would break every migrating program that uses optional chaining."
+}

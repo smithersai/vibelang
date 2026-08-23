@@ -1,0 +1,10 @@
+{
+  "title": "the retired-grammar sweep MUST NOT reinterpret ordinary TypeScript: `try`/`catch`/`orelse` as property names, `catch` as a class member, and `!` as negation all stay ordinary code",
+  "expect": "output",
+  "stdout": [
+    "tc7",
+    "true",
+    "member"
+  ],
+  "notes": "specification/compatibility.mdx, 'Source Relationship': 'Shared syntax MUST retain TypeScript behavior unless the Smithers specification explicitly assigns different semantics.' specification/control-flow.mdx, 'Existing TypeScript Forms': 'Adding expression forms MUST NOT reinterpret an existing TypeScript statement in a way that changes observable behavior.' The nine negative cases in this area pin that each retired form IS rejected; this case pins the other half of the same rule, which is the dangerous direction for a textual migration sweep. poc/src/language/README.md states the intended boundary and names these exact shapes: 'Recognition is a grammar property, not token adjacency ... a word used as a property name is never the operator. `{ try: doThing, catch: handleIt }`, `{ orelse: 7 }`, `class A { catch() {} }`, `Array<uses>`, and `{ ok: !failed }` are ordinary code.' A false positive here makes valid TypeScript unwritable in .sm and would silently rewrite a migrating program."
+}

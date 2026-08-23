@@ -22,13 +22,13 @@ import {
 
 export const REMOTE_HTTP_SANDBOX = "remote-http-poc"
 export const WORKER_HTTP_PROTOCOL = 1 as const
-export const WORKER_AUTH_HEADER = "x-vibelang-worker-auth"
-export const WORKER_HANDSHAKE_PATH = "/vibelang/worker/v1/handshake"
-export const WORKER_INVOKE_PATH = "/vibelang/worker/v1/invoke"
+export const WORKER_AUTH_HEADER = "x-smithers-worker-auth"
+export const WORKER_HANDSHAKE_PATH = "/smithers/worker/v1/handshake"
+export const WORKER_INVOKE_PATH = "/smithers/worker/v1/invoke"
 /** Requests and responses older or newer than this are rejected. */
 export const WORKER_AUTH_MAX_SKEW_MS = 120_000
 
-const AUTH_DOMAIN = "vibelang.worker-http.v1"
+const AUTH_DOMAIN = "smithers.worker-http.v1"
 const AUTH_PREFIX = "v1"
 const SECRET_PATTERN = /^[0-9a-f]{64,128}$/
 const HEX_DIGEST = /^[0-9a-f]{64}$/

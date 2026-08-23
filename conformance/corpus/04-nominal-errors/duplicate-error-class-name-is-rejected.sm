@@ -1,0 +1,17 @@
+function outer(): Error {
+  class Missing extends Error {
+    constructor() { super("outer") }
+  }
+  return new Missing()
+}
+
+function inner(): Error {
+  class Missing extends Error {
+    constructor() { super("inner") }
+  }
+  return new Missing()
+}
+
+export function main(): string[] {
+  return [outer().message, inner().message]
+}

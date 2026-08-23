@@ -1,0 +1,16 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Db extends Context { abstract read(): string }
+abstract class Logger extends Context { abstract info(message: string): void }
+
+function needsBoth(): string {
+  const db = Db.context()
+  const log = Logger.context()
+  log.info("read")
+  return db.read()
+}
+
+const OnlyDb = Layer.succeed(Db, { read: () => "value" })
+
+Layer.provide(OnlyDb, () => needsBoth())

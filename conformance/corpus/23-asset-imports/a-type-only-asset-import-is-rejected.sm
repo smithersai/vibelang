@@ -1,0 +1,6 @@
+import type counter from "./counter.json" with { type: "json" }
+
+export function main(): string[] {
+  const value: typeof counter = { count: 1, label: "widgets" }
+  return [value.label]
+}

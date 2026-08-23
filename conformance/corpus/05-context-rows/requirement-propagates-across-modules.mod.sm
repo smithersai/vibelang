@@ -1,0 +1,9 @@
+import { Context } from "smthrs/context"
+
+export abstract class Directory extends Context {
+  abstract lookup(key: string): string
+}
+
+export function read(key: string): string {
+  return Directory.context().lookup(key)
+}

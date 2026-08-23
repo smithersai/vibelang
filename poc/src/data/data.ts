@@ -5,7 +5,7 @@
  * return a deeply frozen, WeakSet-branded value whose equality and hash come
  * from its *shape* rather than its address. The result is still an ordinary
  * object — `point.x` and `pair[0]` read exactly as before, `Array.isArray` is
- * still true for a tuple — so a Data value is a VibeLang value, not a wrapper
+ * still true for a tuple — so a Data value is a Smithers value, not a wrapper
  * that has to be unwrapped before use.
  *
  * **This is the target the compiler will aim at.** The standard library lists

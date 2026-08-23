@@ -1,0 +1,8 @@
+export function describe(enabled: boolean): string {
+  const value = if (enabled) "yes" else "no"
+  return value
+}
+
+export function main(): string[] {
+  return [describe(true), describe(false)]
+}

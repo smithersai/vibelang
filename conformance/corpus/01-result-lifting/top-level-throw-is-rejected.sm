@@ -1,0 +1,7 @@
+export class Boom extends Error {
+  constructor() { super("boom") }
+}
+
+const enabled = true
+
+if (enabled) throw new Boom()

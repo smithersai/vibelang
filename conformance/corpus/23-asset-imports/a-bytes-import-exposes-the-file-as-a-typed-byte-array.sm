@@ -1,0 +1,8 @@
+import logo from "./logo.bin" with { type: "bytes" }
+
+// Same attribute mechanism, a different `type` string, and an extension no
+// built-in claims by itself. The module is a real typed byte array, not a path
+// and not a string.
+export function main(): string[] {
+  return [`${logo.length}`, `${logo[0]}`, `${logo[1]}`, `${logo instanceof Uint8Array}`]
+}

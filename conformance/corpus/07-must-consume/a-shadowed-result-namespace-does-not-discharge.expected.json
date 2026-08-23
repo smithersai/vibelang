@@ -1,0 +1,12 @@
+{
+  "title": "a user's own object spelled Result with a member spelled all does not discharge the must-consume obligation",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1302",
+      "line": 16,
+      "column": 9
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Matching and Transformation': 'A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' `Result.all` discharges the obligation because it is a compiler-owned combinator that collects the Results handed to it; a local object literal collects nothing, so the obligation survives. The reference recognised this site by RAW SPELLING on both halves \u2014 an identifier whose text is `Result` and a member whose text is `all`, with no symbol resolution \u2014 so this exact program compiled clean there and the produced Result was silently discarded. The case file carries an `export`, and that is load-bearing: without one the source is a global script, where a top-level `const Result` MERGES with the ambient declaration instead of shadowing it, and the case would pass without observing the rule. The diagnostic is the bound form (SMITHERS1302, at the binding) because the produced Result has a name; 07-must-consume/result-must-be-consumed pins the unbound form. The positive control is 07-must-consume/the-compiler-owned-result-all-discharges."
+}

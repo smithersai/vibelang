@@ -1,0 +1,28 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string
+}
+
+// Three different routes to the same nominal requirement: a direct access,
+// a second direct access in the same function, and a transitive one.
+function direct(key: string): string {
+  const first = Directory.context()
+  const second = Directory.context()
+  return `${first.lookup(key)}|${second.lookup(key)}`
+}
+
+function transitive(key: string): string {
+  return direct(key).toUpperCase()
+}
+
+function deeper(key: string): string {
+  return `${transitive(key)}!`
+}
+
+const live: Directory = { lookup: (key) => (key === "ada" ? "Ada" : "none") }
+
+export function main(): string[] {
+  return Layer.provide(Layer.succeed(Directory, live), () => [direct("ada"), deeper("zoe")])
+}

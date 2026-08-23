@@ -1,0 +1,20 @@
+{
+  "title": "@throws {Never} is a declared channel that names no resolvable Error class, not the trusted opt-out",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 4,
+      "column": 11
+    },
+    {
+      "code": "SMITHERS1502",
+      "line": 4,
+      "column": 11
+    }
+  ],
+  "typescript": [
+    "capitalized-never.ts"
+  ],
+  "notes": "specification/failures.mdx:115 (Locked): '`@throws {never}` removes the default panic case; `@throws {T}` declares the stated foreign error channel.' The spelling the sentence prints is lowercase, and `Never` is therefore the second form, not the first: a declared channel whose Error constructor has to be resolvable. No class named `Never` is in scope in conformance/support/capitalized-never.ts, so the declaration cannot be reified (SMITHERS1502) and the call keeps its panic policy, leaving an unconsumed Result (SMITHERS1301). A case-insensitive comparison turns the same source into the trusted opt-out with no diagnostic at all, which is the fail-open direction: `probe` would be certified infallible. The lowercase spelling is pinned by 09-foreign-calls/trusted-foreign-call-is-accepted, whose `double` is annotated `@throws {never}` and needs no Result channel, so the pair fixes the case rule from both sides. Both diagnostics are declared because a cascade the language really does produce is part of the contract (conformance/README.md); they share an authored position because both belong to the same call."
+}

@@ -2,10 +2,10 @@
  * Platform-neutral structured concurrency: joins, streams, queues, semaphores,
  * channels, cancellation, keyed combinators, and concurrency governors.
  *
- * The typed worker host stays on `vibelang/concurrency/bun` because its module
+ * The typed worker host stays on `smthrs/concurrency/bun` because its module
  * body installs a Bun worker bootstrap listener (`Bun.isMainThread`) that no
- * other runtime can evaluate. This mirrors the `vibelang/durable` and
- * `vibelang/durable/bun` split.
+ * other runtime can evaluate. This mirrors the `smthrs/durable` and
+ * `smthrs/durable/bun` split.
  */
 export * from "../poc/dist/concurrency/async-iterators.js";
 export { Governor } from "../poc/dist/concurrency/governor.js";

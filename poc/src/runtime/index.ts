@@ -1,10 +1,10 @@
 export {
-  VIBE_FAILURE,
-  VibeFailure,
+  SMITHERS_FAILURE,
+  SmithersFailure,
   __VSError,
   __vsCatch,
   catchFailure,
-  isVibeFailure,
+  isSmithersFailure,
   unwrapOptional,
   __vsUnwrap,
   throwExpression,
@@ -80,3 +80,6 @@ export type { ValueCodec } from "./wire.ts";
 export { RuntimeValues } from "./values.ts";
 export { Context, Layer, __vsUse, isLayer, useCapability } from "./layer.ts";
 export type { CapabilityKey, CapabilityService, Layer as LayerType } from "./layer.ts";
+
+/** Runtime identity for the compiler-checked native pin assertion. */
+export const native = <F>(pinned: F): F => pinned;

@@ -1,0 +1,1938 @@
+diff --git a/packages/typescript/src/api/node/node.generated.ts b/packages/typescript/src/api/node/node.generated.ts
+index d9a80922..c90d02a8 100644
+--- a/packages/typescript/src/api/node/node.generated.ts
++++ b/packages/typescript/src/api/node/node.generated.ts
+@@ -652,6 +652,9 @@ export class RemoteNode extends RemoteNodeBase implements Node {
+     get elseStatement(): RemoteNode | undefined {
+         return this.getNamedChild("elseStatement") as RemoteNode;
+     }
++    get elseValue(): RemoteNode | undefined {
++        return this.getNamedChild("elseValue") as RemoteNode;
++    }
+     get endOfFileToken(): RemoteNode | undefined {
+         return this.getNamedChild("endOfFileToken") as RemoteNode;
+     }
+diff --git a/packages/typescript/src/api/node/protocol.generated.ts b/packages/typescript/src/api/node/protocol.generated.ts
+index 648eabeb..c01a2c54 100644
+--- a/packages/typescript/src/api/node/protocol.generated.ts
++++ b/packages/typescript/src/api/node/protocol.generated.ts
+@@ -6,24 +6,26 @@ export const childProperties: Readonly<Partial<Record<SyntaxKind, readonly (stri
+     [SyntaxKind.QualifiedName]: ["left", "right"],
+     [SyntaxKind.ComputedPropertyName]: ["expression"],
+     [SyntaxKind.Decorator]: ["expression"],
+-    [SyntaxKind.IfStatement]: ["expression", "thenStatement", "elseStatement"],
++    [SyntaxKind.IfStatement]: ["initializer", "expression", "thenStatement", "elseStatement"],
+     [SyntaxKind.DoStatement]: ["statement", "expression"],
+     [SyntaxKind.WhileStatement]: ["expression", "statement"],
+     [SyntaxKind.ForStatement]: ["initializer", "condition", "incrementor", "statement"],
+     [SyntaxKind.ForInStatement]: ["awaitModifier", "initializer", "expression", "statement"],
+     [SyntaxKind.ForOfStatement]: ["awaitModifier", "initializer", "expression", "statement"],
+-    [SyntaxKind.BreakStatement]: ["label"],
++    [SyntaxKind.BreakStatement]: ["label", "value"],
+     [SyntaxKind.ContinueStatement]: ["label"],
+     [SyntaxKind.ReturnStatement]: ["expression"],
+     [SyntaxKind.WithStatement]: ["expression", "statement"],
+     [SyntaxKind.SwitchStatement]: ["expression", "caseBlock"],
+     [SyntaxKind.CaseBlock]: ["clauses"],
+-    [SyntaxKind.CaseClause]: ["expression", "statements"],
+-    [SyntaxKind.DefaultClause]: ["expression", "statements"],
++    [SyntaxKind.CaseClause]: ["expression", "statements", "value"],
++    [SyntaxKind.DefaultClause]: ["expression", "statements", "value"],
+     [SyntaxKind.ThrowStatement]: ["expression"],
+     [SyntaxKind.TryStatement]: ["tryBlock", "catchClause", "finallyBlock"],
+     [SyntaxKind.CatchClause]: ["variableDeclaration", "block"],
+-    [SyntaxKind.LabeledStatement]: ["label", "statement"],
++    [SyntaxKind.DeferStatement]: ["expression"],
++    [SyntaxKind.ErrdeferStatement]: ["expression"],
++    [SyntaxKind.LabeledStatement]: ["label", "statement", "elseValue"],
+     [SyntaxKind.ExpressionStatement]: ["expression"],
+     [SyntaxKind.Block]: ["statements"],
+     [SyntaxKind.VariableStatement]: ["modifiers", "declarationList"],
+@@ -73,6 +75,9 @@ export const childProperties: Readonly<Partial<Record<SyntaxKind, readonly (stri
+     [SyntaxKind.FunctionExpression]: ["modifiers", "asteriskToken", "name", "typeParameters", "parameters", "type", "body"],
+     [SyntaxKind.AsExpression]: ["expression", "type"],
+     [SyntaxKind.SatisfiesExpression]: ["expression", "type"],
++    [SyntaxKind.IfExpression]: ["condition", "whenTrue", "whenFalse"],
++    [SyntaxKind.SwitchExpression]: ["expression", "caseBlock"],
++    [SyntaxKind.LabeledExpression]: ["statement"],
+     [SyntaxKind.ConditionalExpression]: ["condition", "questionToken", "whenTrue", "colonToken", "whenFalse"],
+     [SyntaxKind.PropertyAccessExpression]: ["expression", "questionDotToken", "name"],
+     [SyntaxKind.ElementAccessExpression]: ["expression", "questionDotToken", "argumentExpression"],
+@@ -181,11 +186,12 @@ export const childProperties: Readonly<Partial<Record<SyntaxKind, readonly (stri
+ export const singleChildNodePropertyNames: Readonly<Partial<Record<SyntaxKind, string>>> = {
+     [SyntaxKind.ComputedPropertyName]: "expression",
+     [SyntaxKind.Decorator]: "expression",
+-    [SyntaxKind.BreakStatement]: "label",
+     [SyntaxKind.ContinueStatement]: "label",
+     [SyntaxKind.ReturnStatement]: "expression",
+     [SyntaxKind.CaseBlock]: "clauses",
+     [SyntaxKind.ThrowStatement]: "expression",
++    [SyntaxKind.DeferStatement]: "expression",
++    [SyntaxKind.ErrdeferStatement]: "expression",
+     [SyntaxKind.ExpressionStatement]: "expression",
+     [SyntaxKind.Block]: "statements",
+     [SyntaxKind.VariableDeclarationList]: "declarations",
+@@ -201,6 +207,7 @@ export const singleChildNodePropertyNames: Readonly<Partial<Record<SyntaxKind, s
+     [SyntaxKind.NamedExports]: "elements",
+     [SyntaxKind.PrefixUnaryExpression]: "operand",
+     [SyntaxKind.PostfixUnaryExpression]: "operand",
++    [SyntaxKind.LabeledExpression]: "statement",
+     [SyntaxKind.MetaProperty]: "name",
+     [SyntaxKind.NonNullExpression]: "expression",
+     [SyntaxKind.SpreadElement]: "expression",
+diff --git a/packages/typescript/src/ast/ast.generated.ts b/packages/typescript/src/ast/ast.generated.ts
+index 76ddfe36..9c6946a6 100644
+--- a/packages/typescript/src/ast/ast.generated.ts
++++ b/packages/typescript/src/ast/ast.generated.ts
+@@ -159,6 +159,7 @@ export type KeywordSyntaxKind =
+     | SyntaxKind.BigIntKeyword
+     | SyntaxKind.OverrideKeyword
+     | SyntaxKind.OfKeyword
++    | SyntaxKind.ErrdeferKeyword
+     | SyntaxKind.DeferKeyword;
+ export type ModifierSyntaxKind = SyntaxKind.AbstractKeyword | SyntaxKind.AccessorKeyword | SyntaxKind.AsyncKeyword | SyntaxKind.ConstKeyword | SyntaxKind.DeclareKeyword | SyntaxKind.DefaultKeyword | SyntaxKind.ExportKeyword | SyntaxKind.InKeyword | SyntaxKind.PrivateKeyword | SyntaxKind.ProtectedKeyword | SyntaxKind.PublicKeyword | SyntaxKind.ReadonlyKeyword | SyntaxKind.OutKeyword | SyntaxKind.OverrideKeyword | SyntaxKind.StaticKeyword;
+ export type KeywordTypeSyntaxKind = SyntaxKind.AnyKeyword | SyntaxKind.BigIntKeyword | SyntaxKind.BooleanKeyword | SyntaxKind.IntrinsicKeyword | SyntaxKind.NeverKeyword | SyntaxKind.NumberKeyword | SyntaxKind.ObjectKeyword | SyntaxKind.StringKeyword | SyntaxKind.SymbolKeyword | SyntaxKind.UndefinedKeyword | SyntaxKind.UnknownKeyword | SyntaxKind.VoidKeyword;
+@@ -330,6 +331,7 @@ export type TokenSyntaxKind =
+     | SyntaxKind.BigIntKeyword
+     | SyntaxKind.OverrideKeyword
+     | SyntaxKind.OfKeyword
++    | SyntaxKind.ErrdeferKeyword
+     | SyntaxKind.DeferKeyword;
+ export type JsxTokenSyntaxKind = SyntaxKind.LessThanSlashToken | SyntaxKind.EndOfFile | SyntaxKind.ConflictMarkerTrivia | SyntaxKind.JsxText | SyntaxKind.JsxTextAllWhiteSpaces | SyntaxKind.OpenBraceToken | SyntaxKind.LessThanToken;
+ export type JSDocNodeSyntaxKind =
+@@ -523,6 +525,7 @@ export interface EmptyStatement extends StatementBase {
+ }
+ export interface IfStatement extends StatementBase {
+     readonly kind: SyntaxKind.IfStatement;
++    readonly initializer?: ForInitializer;
+     readonly expression: Expression;
+     readonly thenStatement: Statement;
+     readonly elseStatement?: Statement;
+@@ -544,6 +547,7 @@ export interface ForStatement extends IterationStatementBase {
+ export interface BreakStatement extends StatementBase {
+     readonly kind: SyntaxKind.BreakStatement;
+     readonly label?: Identifier;
++    readonly value?: Expression;
+ }
+ export interface ContinueStatement extends StatementBase {
+     readonly kind: SyntaxKind.ContinueStatement;
+@@ -582,6 +586,14 @@ export interface CatchClause extends NodeBase {
+     readonly variableDeclaration?: VariableDeclaration;
+     readonly block: Block;
+ }
++export interface DeferStatement extends StatementBase {
++    readonly kind: SyntaxKind.DeferStatement;
++    readonly expression: Expression;
++}
++export interface ErrdeferStatement extends StatementBase {
++    readonly kind: SyntaxKind.ErrdeferStatement;
++    readonly expression: Expression;
++}
+ export interface DebuggerStatement extends StatementBase {
+     readonly kind: SyntaxKind.DebuggerStatement;
+ }
+@@ -589,6 +601,7 @@ export interface LabeledStatement extends StatementBase {
+     readonly kind: SyntaxKind.LabeledStatement;
+     readonly label: Identifier;
+     readonly statement: Statement;
++    readonly elseValue?: Expression;
+ }
+ export interface ExpressionStatement extends StatementBase {
+     readonly kind: SyntaxKind.ExpressionStatement;
+@@ -831,6 +844,21 @@ export interface SatisfiesExpression extends ExpressionBase {
+     readonly expression: Expression;
+     readonly type: TypeNode;
+ }
++export interface IfExpression extends ExpressionBase {
++    readonly kind: SyntaxKind.IfExpression;
++    readonly condition: Expression;
++    readonly whenTrue: Expression;
++    readonly whenFalse: Expression;
++}
++export interface SwitchExpression extends ExpressionBase {
++    readonly kind: SyntaxKind.SwitchExpression;
++    readonly expression: Expression;
++    readonly caseBlock: CaseBlock;
++}
++export interface LabeledExpression extends ExpressionBase {
++    readonly kind: SyntaxKind.LabeledExpression;
++    readonly statement: LabeledStatement;
++}
+ export interface ConditionalExpression extends ExpressionBase {
+     readonly kind: SyntaxKind.ConditionalExpression;
+     readonly condition: Expression;
+@@ -1427,11 +1455,13 @@ export interface CaseClause extends NodeBase {
+     readonly kind: SyntaxKind.CaseClause;
+     readonly expression: Expression;
+     readonly statements: NodeArray<Statement>;
++    readonly value?: Expression;
+ }
+ export interface DefaultClause extends NodeBase {
+     readonly kind: SyntaxKind.DefaultClause;
+     readonly expression: Expression;
+     readonly statements: NodeArray<Statement>;
++    readonly value?: Expression;
+ }
+ export interface ObjectBindingPattern extends NodeBase {
+     readonly kind: SyntaxKind.ObjectBindingPattern;
+diff --git a/packages/typescript/src/ast/factory.generated.ts b/packages/typescript/src/ast/factory.generated.ts
+index 787aa591..5a3ec58e 100644
+--- a/packages/typescript/src/ast/factory.generated.ts
++++ b/packages/typescript/src/ast/factory.generated.ts
+@@ -42,6 +42,7 @@ import type {
+     DebuggerStatement,
+     Decorator,
+     DefaultClause,
++    DeferStatement,
+     DeleteExpression,
+     DoStatement,
+     DotDotDotToken,
+@@ -53,6 +54,7 @@ import type {
+     EnumMember,
+     EqualsGreaterThanToken,
+     EqualsToken,
++    ErrdeferStatement,
+     ExclamationToken,
+     ExportAssignment,
+     ExportDeclaration,
+@@ -73,6 +75,7 @@ import type {
+     HeritageClause,
+     HeritageClauseElement,
+     Identifier,
++    IfExpression,
+     IfStatement,
+     ImportAttribute,
+     ImportAttributeName,
+@@ -149,6 +152,7 @@ import type {
+     KeywordExpressionSyntaxKind,
+     KeywordTypeNode,
+     KeywordTypeSyntaxKind,
++    LabeledExpression,
+     LabeledStatement,
+     LeftHandSideExpression,
+     LiteralTypeNode,
+@@ -217,6 +221,7 @@ import type {
+     SpreadElement,
+     Statement,
+     StringLiteral,
++    SwitchExpression,
+     SwitchStatement,
+     SyntaxList,
+     SyntheticExpression,
+@@ -377,6 +382,9 @@ export class NodeObject {
+     get elseStatement(): any {
+         return this._data?.elseStatement;
+     }
++    get elseValue(): any {
++        return this._data?.elseValue;
++    }
+     get endOfFileToken(): any {
+         return this._data?.endOfFileToken;
+     }
+@@ -761,7 +769,7 @@ function cloneNodeData(node: Node): any {
+         case SyntaxKind.Decorator:
+             return { expression: n.expression };
+         case SyntaxKind.IfStatement:
+-            return { expression: n.expression, thenStatement: n.thenStatement, elseStatement: n.elseStatement };
++            return { initializer: n.initializer, expression: n.expression, thenStatement: n.thenStatement, elseStatement: n.elseStatement };
+         case SyntaxKind.DoStatement:
+             return { statement: n.statement, expression: n.expression };
+         case SyntaxKind.WhileStatement:
+@@ -769,7 +777,7 @@ function cloneNodeData(node: Node): any {
+         case SyntaxKind.ForStatement:
+             return { initializer: n.initializer, condition: n.condition, incrementor: n.incrementor, statement: n.statement };
+         case SyntaxKind.BreakStatement:
+-            return { label: n.label };
++            return { label: n.label, value: n.value };
+         case SyntaxKind.ContinueStatement:
+             return { label: n.label };
+         case SyntaxKind.ReturnStatement:
+@@ -786,8 +794,12 @@ function cloneNodeData(node: Node): any {
+             return { tryBlock: n.tryBlock, catchClause: n.catchClause, finallyBlock: n.finallyBlock };
+         case SyntaxKind.CatchClause:
+             return { variableDeclaration: n.variableDeclaration, block: n.block };
++        case SyntaxKind.DeferStatement:
++            return { expression: n.expression };
++        case SyntaxKind.ErrdeferStatement:
++            return { expression: n.expression };
+         case SyntaxKind.LabeledStatement:
+-            return { label: n.label, statement: n.statement };
++            return { label: n.label, statement: n.statement, elseValue: n.elseValue };
+         case SyntaxKind.ExpressionStatement:
+             return { expression: n.expression };
+         case SyntaxKind.Block:
+@@ -890,6 +902,12 @@ function cloneNodeData(node: Node): any {
+             return { expression: n.expression, type: n.type };
+         case SyntaxKind.SatisfiesExpression:
+             return { expression: n.expression, type: n.type };
++        case SyntaxKind.IfExpression:
++            return { condition: n.condition, whenTrue: n.whenTrue, whenFalse: n.whenFalse };
++        case SyntaxKind.SwitchExpression:
++            return { expression: n.expression, caseBlock: n.caseBlock };
++        case SyntaxKind.LabeledExpression:
++            return { statement: n.statement };
+         case SyntaxKind.ConditionalExpression:
+             return { condition: n.condition, questionToken: n.questionToken, whenTrue: n.whenTrue, colonToken: n.colonToken, whenFalse: n.whenFalse };
+         case SyntaxKind.PropertyAccessExpression:
+@@ -1105,9 +1123,9 @@ function cloneNodeData(node: Node): any {
+         case SyntaxKind.ForOfStatement:
+             return { awaitModifier: n.awaitModifier, initializer: n.initializer, expression: n.expression, statement: n.statement };
+         case SyntaxKind.CaseClause:
+-            return { expression: n.expression, statements: n.statements };
++            return { expression: n.expression, statements: n.statements, value: n.value };
+         case SyntaxKind.DefaultClause:
+-            return { expression: n.expression, statements: n.statements };
++            return { expression: n.expression, statements: n.statements, value: n.value };
+         case SyntaxKind.ObjectBindingPattern:
+             return { elements: n.elements };
+         case SyntaxKind.ArrayBindingPattern:
+@@ -1132,6 +1150,7 @@ const forEachChildTable: Record<number, ForEachChildFunction> = {
+     [SyntaxKind.ComputedPropertyName]: (data, cbNode, cbNodes) => visitNode(cbNode, data.expression),
+     [SyntaxKind.Decorator]: (data, cbNode, cbNodes) => visitNode(cbNode, data.expression),
+     [SyntaxKind.IfStatement]: (data, cbNode, cbNodes) =>
++        visitNode(cbNode, data.initializer) ||
+         visitNode(cbNode, data.expression) ||
+         visitNode(cbNode, data.thenStatement) ||
+         visitNode(cbNode, data.elseStatement),
+@@ -1146,7 +1165,9 @@ const forEachChildTable: Record<number, ForEachChildFunction> = {
+         visitNode(cbNode, data.condition) ||
+         visitNode(cbNode, data.incrementor) ||
+         visitNode(cbNode, data.statement),
+-    [SyntaxKind.BreakStatement]: (data, cbNode, cbNodes) => visitNode(cbNode, data.label),
++    [SyntaxKind.BreakStatement]: (data, cbNode, cbNodes) =>
++        visitNode(cbNode, data.label) ||
++        visitNode(cbNode, data.value),
+     [SyntaxKind.ContinueStatement]: (data, cbNode, cbNodes) => visitNode(cbNode, data.label),
+     [SyntaxKind.ReturnStatement]: (data, cbNode, cbNodes) => visitNode(cbNode, data.expression),
+     [SyntaxKind.WithStatement]: (data, cbNode, cbNodes) =>
+@@ -1164,9 +1185,12 @@ const forEachChildTable: Record<number, ForEachChildFunction> = {
+     [SyntaxKind.CatchClause]: (data, cbNode, cbNodes) =>
+         visitNode(cbNode, data.variableDeclaration) ||
+         visitNode(cbNode, data.block),
++    [SyntaxKind.DeferStatement]: (data, cbNode, cbNodes) => visitNode(cbNode, data.expression),
++    [SyntaxKind.ErrdeferStatement]: (data, cbNode, cbNodes) => visitNode(cbNode, data.expression),
+     [SyntaxKind.LabeledStatement]: (data, cbNode, cbNodes) =>
+         visitNode(cbNode, data.label) ||
+-        visitNode(cbNode, data.statement),
++        visitNode(cbNode, data.statement) ||
++        visitNode(cbNode, data.elseValue),
+     [SyntaxKind.ExpressionStatement]: (data, cbNode, cbNodes) => visitNode(cbNode, data.expression),
+     [SyntaxKind.Block]: (data, cbNode, cbNodes) => visitNodes(cbNode, cbNodes, data.statements),
+     [SyntaxKind.VariableStatement]: (data, cbNode, cbNodes) =>
+@@ -1356,6 +1380,14 @@ const forEachChildTable: Record<number, ForEachChildFunction> = {
+     [SyntaxKind.SatisfiesExpression]: (data, cbNode, cbNodes) =>
+         visitNode(cbNode, data.expression) ||
+         visitNode(cbNode, data.type),
++    [SyntaxKind.IfExpression]: (data, cbNode, cbNodes) =>
++        visitNode(cbNode, data.condition) ||
++        visitNode(cbNode, data.whenTrue) ||
++        visitNode(cbNode, data.whenFalse),
++    [SyntaxKind.SwitchExpression]: (data, cbNode, cbNodes) =>
++        visitNode(cbNode, data.expression) ||
++        visitNode(cbNode, data.caseBlock),
++    [SyntaxKind.LabeledExpression]: (data, cbNode, cbNodes) => visitNode(cbNode, data.statement),
+     [SyntaxKind.ConditionalExpression]: (data, cbNode, cbNodes) =>
+         visitNode(cbNode, data.condition) ||
+         visitNode(cbNode, data.questionToken) ||
+@@ -1651,10 +1683,12 @@ const forEachChildTable: Record<number, ForEachChildFunction> = {
+         visitNode(cbNode, data.statement),
+     [SyntaxKind.CaseClause]: (data, cbNode, cbNodes) =>
+         visitNode(cbNode, data.expression) ||
+-        visitNodes(cbNode, cbNodes, data.statements),
++        visitNodes(cbNode, cbNodes, data.statements) ||
++        visitNode(cbNode, data.value),
+     [SyntaxKind.DefaultClause]: (data, cbNode, cbNodes) =>
+         visitNode(cbNode, data.expression) ||
+-        visitNodes(cbNode, cbNodes, data.statements),
++        visitNodes(cbNode, cbNodes, data.statements) ||
++        visitNode(cbNode, data.value),
+     [SyntaxKind.ObjectBindingPattern]: (data, cbNode, cbNodes) => visitNodes(cbNode, cbNodes, data.elements),
+     [SyntaxKind.ArrayBindingPattern]: (data, cbNode, cbNodes) => visitNodes(cbNode, cbNodes, data.elements),
+     [SyntaxKind.JSDocParameterTag]: forEachChildOfJSDocParameterTag,
+@@ -1717,8 +1751,9 @@ export function createEmptyStatement(): EmptyStatement {
+     return new NodeObject(SyntaxKind.EmptyStatement, undefined) as unknown as EmptyStatement;
+ }
+ 
+-export function createIfStatement(expression: Expression, thenStatement: Statement, elseStatement?: Statement): IfStatement {
++export function createIfStatement(initializer: ForInitializer | undefined, expression: Expression, thenStatement: Statement, elseStatement?: Statement): IfStatement {
+     return new NodeObject(SyntaxKind.IfStatement, {
++        initializer,
+         expression,
+         thenStatement,
+         elseStatement,
+@@ -1748,9 +1783,10 @@ export function createForStatement(initializer: ForInitializer | undefined, cond
+     }) as unknown as ForStatement;
+ }
+ 
+-export function createBreakStatement(label?: Identifier): BreakStatement {
++export function createBreakStatement(label?: Identifier, value?: Expression): BreakStatement {
+     return new NodeObject(SyntaxKind.BreakStatement, {
+         label,
++        value,
+     }) as unknown as BreakStatement;
+ }
+ 
+@@ -1807,14 +1843,27 @@ export function createCatchClause(variableDeclaration: VariableDeclaration | und
+     }) as unknown as CatchClause;
+ }
+ 
++export function createDeferStatement(expression: Expression): DeferStatement {
++    return new NodeObject(SyntaxKind.DeferStatement, {
++        expression,
++    }) as unknown as DeferStatement;
++}
++
++export function createErrdeferStatement(expression: Expression): ErrdeferStatement {
++    return new NodeObject(SyntaxKind.ErrdeferStatement, {
++        expression,
++    }) as unknown as ErrdeferStatement;
++}
++
+ export function createDebuggerStatement(): DebuggerStatement {
+     return new NodeObject(SyntaxKind.DebuggerStatement, undefined) as unknown as DebuggerStatement;
+ }
+ 
+-export function createLabeledStatement(label: Identifier, statement: Statement): LabeledStatement {
++export function createLabeledStatement(label: Identifier, statement: Statement, elseValue?: Expression): LabeledStatement {
+     return new NodeObject(SyntaxKind.LabeledStatement, {
+         label,
+         statement,
++        elseValue,
+     }) as unknown as LabeledStatement;
+ }
+ 
+@@ -2253,6 +2302,27 @@ export function createSatisfiesExpression(expression: Expression, type: TypeNode
+     }) as unknown as SatisfiesExpression;
+ }
+ 
++export function createIfExpression(condition: Expression, whenTrue: Expression, whenFalse: Expression): IfExpression {
++    return new NodeObject(SyntaxKind.IfExpression, {
++        condition,
++        whenTrue,
++        whenFalse,
++    }) as unknown as IfExpression;
++}
++
++export function createSwitchExpression(expression: Expression, caseBlock: CaseBlock): SwitchExpression {
++    return new NodeObject(SyntaxKind.SwitchExpression, {
++        expression,
++        caseBlock,
++    }) as unknown as SwitchExpression;
++}
++
++export function createLabeledExpression(statement: LabeledStatement): LabeledExpression {
++    return new NodeObject(SyntaxKind.LabeledExpression, {
++        statement,
++    }) as unknown as LabeledExpression;
++}
++
+ export function createConditionalExpression(condition: Expression, questionToken: QuestionToken, whenTrue: Expression, colonToken: ColonToken, whenFalse: Expression): ConditionalExpression {
+     return new NodeObject(SyntaxKind.ConditionalExpression, {
+         condition,
+@@ -3078,17 +3148,19 @@ export function createForOfStatement(awaitModifier: AwaitKeyword | undefined, in
+     }) as unknown as ForOfStatement;
+ }
+ 
+-export function createCaseClause(expression: Expression, statements: readonly Statement[]): CaseClause {
++export function createCaseClause(expression: Expression, statements: readonly Statement[], value: Expression | undefined): CaseClause {
+     return new NodeObject(SyntaxKind.CaseClause, {
+         expression,
+         statements: createNodeArray(statements),
++        value,
+     }) as unknown as CaseClause;
+ }
+ 
+-export function createDefaultClause(expression: Expression, statements: readonly Statement[]): DefaultClause {
++export function createDefaultClause(expression: Expression, statements: readonly Statement[], value: Expression | undefined): DefaultClause {
+     return new NodeObject(SyntaxKind.DefaultClause, {
+         expression,
+         statements: createNodeArray(statements),
++        value,
+     }) as unknown as DefaultClause;
+ }
+ 
+@@ -3138,8 +3210,8 @@ export function updateDecorator(node: Decorator, expression: LeftHandSideExpress
+     return node.expression !== expression ? createDecorator(expression) : node;
+ }
+ 
+-export function updateIfStatement(node: IfStatement, expression: Expression, thenStatement: Statement, elseStatement?: Statement): IfStatement {
+-    return node.expression !== expression || node.thenStatement !== thenStatement || node.elseStatement !== elseStatement ? createIfStatement(expression, thenStatement, elseStatement) : node;
++export function updateIfStatement(node: IfStatement, initializer: ForInitializer | undefined, expression: Expression, thenStatement: Statement, elseStatement?: Statement): IfStatement {
++    return node.initializer !== initializer || node.expression !== expression || node.thenStatement !== thenStatement || node.elseStatement !== elseStatement ? createIfStatement(initializer, expression, thenStatement, elseStatement) : node;
+ }
+ 
+ export function updateDoStatement(node: DoStatement, statement: Statement, expression: Expression): DoStatement {
+@@ -3154,8 +3226,8 @@ export function updateForStatement(node: ForStatement, initializer: ForInitializ
+     return node.initializer !== initializer || node.condition !== condition || node.incrementor !== incrementor || node.statement !== statement ? createForStatement(initializer, condition, incrementor, statement) : node;
+ }
+ 
+-export function updateBreakStatement(node: BreakStatement, label?: Identifier): BreakStatement {
+-    return node.label !== label ? createBreakStatement(label) : node;
++export function updateBreakStatement(node: BreakStatement, label?: Identifier, value?: Expression): BreakStatement {
++    return node.label !== label || node.value !== value ? createBreakStatement(label, value) : node;
+ }
+ 
+ export function updateContinueStatement(node: ContinueStatement, label?: Identifier): ContinueStatement {
+@@ -3190,8 +3262,16 @@ export function updateCatchClause(node: CatchClause, variableDeclaration: Variab
+     return node.variableDeclaration !== variableDeclaration || node.block !== block ? createCatchClause(variableDeclaration, block) : node;
+ }
+ 
+-export function updateLabeledStatement(node: LabeledStatement, label: Identifier, statement: Statement): LabeledStatement {
+-    return node.label !== label || node.statement !== statement ? createLabeledStatement(label, statement) : node;
++export function updateDeferStatement(node: DeferStatement, expression: Expression): DeferStatement {
++    return node.expression !== expression ? createDeferStatement(expression) : node;
++}
++
++export function updateErrdeferStatement(node: ErrdeferStatement, expression: Expression): ErrdeferStatement {
++    return node.expression !== expression ? createErrdeferStatement(expression) : node;
++}
++
++export function updateLabeledStatement(node: LabeledStatement, label: Identifier, statement: Statement, elseValue?: Expression): LabeledStatement {
++    return node.label !== label || node.statement !== statement || node.elseValue !== elseValue ? createLabeledStatement(label, statement, elseValue) : node;
+ }
+ 
+ export function updateExpressionStatement(node: ExpressionStatement, expression: Expression): ExpressionStatement {
+@@ -3374,6 +3454,18 @@ export function updateSatisfiesExpression(node: SatisfiesExpression, expression:
+     return node.expression !== expression || node.type !== type ? createSatisfiesExpression(expression, type) : node;
+ }
+ 
++export function updateIfExpression(node: IfExpression, condition: Expression, whenTrue: Expression, whenFalse: Expression): IfExpression {
++    return node.condition !== condition || node.whenTrue !== whenTrue || node.whenFalse !== whenFalse ? createIfExpression(condition, whenTrue, whenFalse) : node;
++}
++
++export function updateSwitchExpression(node: SwitchExpression, expression: Expression, caseBlock: CaseBlock): SwitchExpression {
++    return node.expression !== expression || node.caseBlock !== caseBlock ? createSwitchExpression(expression, caseBlock) : node;
++}
++
++export function updateLabeledExpression(node: LabeledExpression, statement: LabeledStatement): LabeledExpression {
++    return node.statement !== statement ? createLabeledExpression(statement) : node;
++}
++
+ export function updateConditionalExpression(node: ConditionalExpression, condition: Expression, questionToken: QuestionToken, whenTrue: Expression, colonToken: ColonToken, whenFalse: Expression): ConditionalExpression {
+     return node.condition !== condition || node.questionToken !== questionToken || node.whenTrue !== whenTrue || node.colonToken !== colonToken || node.whenFalse !== whenFalse ? createConditionalExpression(condition, questionToken, whenTrue, colonToken, whenFalse) : node;
+ }
+@@ -3782,12 +3874,12 @@ export function updateForOfStatement(node: ForOfStatement, awaitModifier: AwaitK
+     return node.awaitModifier !== awaitModifier || node.initializer !== initializer || node.expression !== expression || node.statement !== statement ? createForOfStatement(awaitModifier, initializer, expression, statement) : node;
+ }
+ 
+-export function updateCaseClause(node: CaseClause, expression: Expression, statements: readonly Statement[]): CaseClause {
+-    return node.expression !== expression || node.statements !== statements ? createCaseClause(expression, statements) : node;
++export function updateCaseClause(node: CaseClause, expression: Expression, statements: readonly Statement[], value: Expression | undefined): CaseClause {
++    return node.expression !== expression || node.statements !== statements || node.value !== value ? createCaseClause(expression, statements, value) : node;
+ }
+ 
+-export function updateDefaultClause(node: DefaultClause, expression: Expression, statements: readonly Statement[]): DefaultClause {
+-    return node.expression !== expression || node.statements !== statements ? createDefaultClause(expression, statements) : node;
++export function updateDefaultClause(node: DefaultClause, expression: Expression, statements: readonly Statement[], value: Expression | undefined): DefaultClause {
++    return node.expression !== expression || node.statements !== statements || node.value !== value ? createDefaultClause(expression, statements, value) : node;
+ }
+ 
+ export function updateObjectBindingPattern(node: ObjectBindingPattern, elements: readonly BindingElement[]): ObjectBindingPattern {
+diff --git a/packages/typescript/src/ast/is.generated.ts b/packages/typescript/src/ast/is.generated.ts
+index 2654438f..05a2f936 100644
+--- a/packages/typescript/src/ast/is.generated.ts
++++ b/packages/typescript/src/ast/is.generated.ts
+@@ -68,6 +68,7 @@ import type {
+     Decorator,
+     DefaultClause,
+     DefaultKeyword,
++    DeferStatement,
+     DeleteExpression,
+     DestructuringAssignment,
+     DoStatement,
+@@ -83,6 +84,7 @@ import type {
+     EqualityOperatorOrHigher,
+     EqualsGreaterThanToken,
+     EqualsToken,
++    ErrdeferStatement,
+     ExclamationToken,
+     ExponentiationOperator,
+     ExportAssignment,
+@@ -105,6 +107,7 @@ import type {
+     HeritageClause,
+     HeritageClauseElement,
+     Identifier,
++    IfExpression,
+     IfStatement,
+     ImportAttribute,
+     ImportAttributeName,
+@@ -184,6 +187,7 @@ import type {
+     KeywordExpressionSyntaxKind,
+     KeywordTypeNode,
+     KeywordTypeSyntaxKind,
++    LabeledExpression,
+     LabeledStatement,
+     LiteralExpression,
+     LiteralLikeNode,
+@@ -282,6 +286,7 @@ import type {
+     StringLiteral,
+     StringLiteralLikeNode,
+     SuperExpression,
++    SwitchExpression,
+     SwitchStatement,
+     SyntaxList,
+     SyntheticExpression,
+@@ -511,6 +516,24 @@ export declare namespace isCatchClause {
+ }
+ isCatchClause.Handle = isCatchClause as any;
+ 
++export function isDeferStatement(node: Node): node is DeferStatement {
++    return node.kind === SyntaxKind.DeferStatement;
++}
++
++export declare namespace isDeferStatement {
++    function Handle<T extends NodeHandleLike<Node>>(node: T): node is SpecializeNodeHandle<T, DeferStatement>;
++}
++isDeferStatement.Handle = isDeferStatement as any;
++
++export function isErrdeferStatement(node: Node): node is ErrdeferStatement {
++    return node.kind === SyntaxKind.ErrdeferStatement;
++}
++
++export declare namespace isErrdeferStatement {
++    function Handle<T extends NodeHandleLike<Node>>(node: T): node is SpecializeNodeHandle<T, ErrdeferStatement>;
++}
++isErrdeferStatement.Handle = isErrdeferStatement as any;
++
+ export function isDebuggerStatement(node: Node): node is DebuggerStatement {
+     return node.kind === SyntaxKind.DebuggerStatement;
+ }
+@@ -1036,6 +1059,33 @@ export declare namespace isSatisfiesExpression {
+ }
+ isSatisfiesExpression.Handle = isSatisfiesExpression as any;
+ 
++export function isIfExpression(node: Node): node is IfExpression {
++    return node.kind === SyntaxKind.IfExpression;
++}
++
++export declare namespace isIfExpression {
++    function Handle<T extends NodeHandleLike<Node>>(node: T): node is SpecializeNodeHandle<T, IfExpression>;
++}
++isIfExpression.Handle = isIfExpression as any;
++
++export function isSwitchExpression(node: Node): node is SwitchExpression {
++    return node.kind === SyntaxKind.SwitchExpression;
++}
++
++export declare namespace isSwitchExpression {
++    function Handle<T extends NodeHandleLike<Node>>(node: T): node is SpecializeNodeHandle<T, SwitchExpression>;
++}
++isSwitchExpression.Handle = isSwitchExpression as any;
++
++export function isLabeledExpression(node: Node): node is LabeledExpression {
++    return node.kind === SyntaxKind.LabeledExpression;
++}
++
++export declare namespace isLabeledExpression {
++    function Handle<T extends NodeHandleLike<Node>>(node: T): node is SpecializeNodeHandle<T, LabeledExpression>;
++}
++isLabeledExpression.Handle = isLabeledExpression as any;
++
+ export function isConditionalExpression(node: Node): node is ConditionalExpression {
+     return node.kind === SyntaxKind.ConditionalExpression;
+ }
+diff --git a/packages/typescript/src/ast/visitor.generated.ts b/packages/typescript/src/ast/visitor.generated.ts
+index 00625a29..0c2ace04 100644
+--- a/packages/typescript/src/ast/visitor.generated.ts
++++ b/packages/typescript/src/ast/visitor.generated.ts
+@@ -29,11 +29,13 @@ import type {
+     ContinueStatement,
+     Decorator,
+     DefaultClause,
++    DeferStatement,
+     DeleteExpression,
+     DoStatement,
+     ElementAccessExpression,
+     EnumDeclaration,
+     EnumMember,
++    ErrdeferStatement,
+     ExportAssignment,
+     ExportDeclaration,
+     ExportSpecifier,
+@@ -48,6 +50,7 @@ import type {
+     FunctionTypeNode,
+     GetAccessorDeclaration,
+     HeritageClause,
++    IfExpression,
+     IfStatement,
+     ImportAttribute,
+     ImportAttributes,
+@@ -105,6 +108,7 @@ import type {
+     JsxOpeningElement,
+     JsxSelfClosingElement,
+     JsxSpreadAttribute,
++    LabeledExpression,
+     LabeledStatement,
+     LiteralTypeNode,
+     MappedTypeNode,
+@@ -146,6 +150,7 @@ import type {
+     SourceFile,
+     SpreadAssignment,
+     SpreadElement,
++    SwitchExpression,
+     SwitchStatement,
+     SyntaxList,
+     SyntheticExpression,
+@@ -205,11 +210,13 @@ import {
+     updateContinueStatement,
+     updateDecorator,
+     updateDefaultClause,
++    updateDeferStatement,
+     updateDeleteExpression,
+     updateDoStatement,
+     updateElementAccessExpression,
+     updateEnumDeclaration,
+     updateEnumMember,
++    updateErrdeferStatement,
+     updateExportAssignment,
+     updateExportDeclaration,
+     updateExportSpecifier,
+@@ -224,6 +231,7 @@ import {
+     updateFunctionTypeNode,
+     updateGetAccessorDeclaration,
+     updateHeritageClause,
++    updateIfExpression,
+     updateIfStatement,
+     updateImportAttribute,
+     updateImportAttributes,
+@@ -279,6 +287,7 @@ import {
+     updateJsxOpeningElement,
+     updateJsxSelfClosingElement,
+     updateJsxSpreadAttribute,
++    updateLabeledExpression,
+     updateLabeledStatement,
+     updateLiteralTypeNode,
+     updateMappedTypeNode,
+@@ -318,6 +327,7 @@ import {
+     updateSourceFile,
+     updateSpreadAssignment,
+     updateSpreadElement,
++    updateSwitchExpression,
+     updateSwitchStatement,
+     updateSyntaxList,
+     updateSyntheticExpression,
+@@ -382,6 +392,7 @@ import {
+     isJsxOpeningElement,
+     isJsxOpeningFragment,
+     isJsxTagNameExpression,
++    isLabeledStatement,
+     isLeftHandSideExpression,
+     isMemberName,
+     isModuleBody,
+@@ -527,10 +538,11 @@ const visitEachChildTable: Record<number, VisitEachChildFunction> = {
+         return updateDecorator(node, _expression);
+     },
+     [SyntaxKind.IfStatement]: (node: IfStatement, visitor: Visitor): IfStatement => {
++        const _initializer = visitNode(node.initializer, visitor, isForInitializer);
+         const _expression = visitNode(node.expression, visitor, isExpression);
+         const _thenStatement = visitNode(node.thenStatement, visitor, isStatement);
+         const _elseStatement = visitNode(node.elseStatement, visitor, isStatement);
+-        return updateIfStatement(node, _expression, _thenStatement, _elseStatement);
++        return updateIfStatement(node, _initializer, _expression, _thenStatement, _elseStatement);
+     },
+     [SyntaxKind.DoStatement]: (node: DoStatement, visitor: Visitor): DoStatement => {
+         const _statement = visitNode(node.statement, visitor, isStatement);
+@@ -551,7 +563,8 @@ const visitEachChildTable: Record<number, VisitEachChildFunction> = {
+     },
+     [SyntaxKind.BreakStatement]: (node: BreakStatement, visitor: Visitor): BreakStatement => {
+         const _label = visitNode(node.label, visitor, isIdentifier);
+-        return updateBreakStatement(node, _label);
++        const _value = visitNode(node.value, visitor, isExpression);
++        return updateBreakStatement(node, _label, _value);
+     },
+     [SyntaxKind.ContinueStatement]: (node: ContinueStatement, visitor: Visitor): ContinueStatement => {
+         const _label = visitNode(node.label, visitor, isIdentifier);
+@@ -590,10 +603,19 @@ const visitEachChildTable: Record<number, VisitEachChildFunction> = {
+         const _block = visitNode(node.block, visitor, isBlock);
+         return updateCatchClause(node, _variableDeclaration, _block);
+     },
++    [SyntaxKind.DeferStatement]: (node: DeferStatement, visitor: Visitor): DeferStatement => {
++        const _expression = visitNode(node.expression, visitor, isExpression);
++        return updateDeferStatement(node, _expression);
++    },
++    [SyntaxKind.ErrdeferStatement]: (node: ErrdeferStatement, visitor: Visitor): ErrdeferStatement => {
++        const _expression = visitNode(node.expression, visitor, isExpression);
++        return updateErrdeferStatement(node, _expression);
++    },
+     [SyntaxKind.LabeledStatement]: (node: LabeledStatement, visitor: Visitor): LabeledStatement => {
+         const _label = visitNode(node.label, visitor, isIdentifier);
+         const _statement = visitNode(node.statement, visitor, isStatement);
+-        return updateLabeledStatement(node, _label, _statement);
++        const _elseValue = visitNode(node.elseValue, visitor, isExpression);
++        return updateLabeledStatement(node, _label, _statement, _elseValue);
+     },
+     [SyntaxKind.ExpressionStatement]: (node: ExpressionStatement, visitor: Visitor): ExpressionStatement => {
+         const _expression = visitNode(node.expression, visitor, isExpression);
+@@ -877,6 +899,21 @@ const visitEachChildTable: Record<number, VisitEachChildFunction> = {
+         const _type = visitNode(node.type, visitor, isTypeNode);
+         return updateSatisfiesExpression(node, _expression, _type);
+     },
++    [SyntaxKind.IfExpression]: (node: IfExpression, visitor: Visitor): IfExpression => {
++        const _condition = visitNode(node.condition, visitor, isExpression);
++        const _whenTrue = visitNode(node.whenTrue, visitor, isExpression);
++        const _whenFalse = visitNode(node.whenFalse, visitor, isExpression);
++        return updateIfExpression(node, _condition, _whenTrue, _whenFalse);
++    },
++    [SyntaxKind.SwitchExpression]: (node: SwitchExpression, visitor: Visitor): SwitchExpression => {
++        const _expression = visitNode(node.expression, visitor, isExpression);
++        const _caseBlock = visitNode(node.caseBlock, visitor, isCaseBlock);
++        return updateSwitchExpression(node, _expression, _caseBlock);
++    },
++    [SyntaxKind.LabeledExpression]: (node: LabeledExpression, visitor: Visitor): LabeledExpression => {
++        const _statement = visitNode(node.statement, visitor, isLabeledStatement);
++        return updateLabeledExpression(node, _statement);
++    },
+     [SyntaxKind.ConditionalExpression]: (node: ConditionalExpression, visitor: Visitor): ConditionalExpression => {
+         const _condition = visitNode(node.condition, visitor, isExpression);
+         const _questionToken = visitNode(node.questionToken, visitor, isQuestionToken);
+@@ -1421,12 +1458,14 @@ const visitEachChildTable: Record<number, VisitEachChildFunction> = {
+     [SyntaxKind.CaseClause]: (node: CaseClause, visitor: Visitor): CaseClause => {
+         const _expression = visitNode(node.expression, visitor, isExpression);
+         const _statements = visitNodes(node.statements, visitor);
+-        return updateCaseClause(node, _expression, _statements);
++        const _value = visitNode(node.value, visitor, isExpression);
++        return updateCaseClause(node, _expression, _statements, _value);
+     },
+     [SyntaxKind.DefaultClause]: (node: DefaultClause, visitor: Visitor): DefaultClause => {
+         const _expression = visitNode(node.expression, visitor, isExpression);
+         const _statements = visitNodes(node.statements, visitor);
+-        return updateDefaultClause(node, _expression, _statements);
++        const _value = visitNode(node.value, visitor, isExpression);
++        return updateDefaultClause(node, _expression, _statements, _value);
+     },
+     [SyntaxKind.ObjectBindingPattern]: (node: ObjectBindingPattern, visitor: Visitor): ObjectBindingPattern => {
+         const _elements = visitNodes(node.elements, visitor);
+diff --git a/tsc/internal/api/encoder/decoder_generated.go b/tsc/internal/api/encoder/decoder_generated.go
+index 6532a5a3..1d4e3e29 100644
+--- a/tsc/internal/api/encoder/decoder_generated.go
++++ b/tsc/internal/api/encoder/decoder_generated.go
+@@ -210,6 +210,7 @@ func (d *astDecoder) createChildrenNode(kind ast.Kind, data uint32, childIndices
+ 		ast.KindGlobalKeyword,
+ 		ast.KindOverrideKeyword,
+ 		ast.KindOfKeyword,
++		ast.KindErrdeferKeyword,
+ 		ast.KindDeferKeyword:
+ 		return d.factory.NewToken(kind), nil
+ 	case ast.KindQualifiedName:
+@@ -225,10 +226,11 @@ func (d *astDecoder) createChildrenNode(kind ast.Kind, data uint32, childIndices
+ 		return d.factory.NewEmptyStatement(), nil
+ 	case ast.KindIfStatement:
+ 		it := newChildIter(childIndices)
+-		expression := d.nodeAt(it.nextIf(mask, 0))
+-		thenStatement := d.nodeAt(it.nextIf(mask, 1))
+-		elseStatement := d.nodeAt(it.nextIf(mask, 2))
+-		return d.factory.NewIfStatement(expression, thenStatement, elseStatement), nil
++		initializer := d.nodeAt(it.nextIf(mask, 0))
++		expression := d.nodeAt(it.nextIf(mask, 1))
++		thenStatement := d.nodeAt(it.nextIf(mask, 2))
++		elseStatement := d.nodeAt(it.nextIf(mask, 3))
++		return d.factory.NewIfStatement(initializer, expression, thenStatement, elseStatement), nil
+ 	case ast.KindDoStatement:
+ 		it := newChildIter(childIndices)
+ 		statement := d.nodeAt(it.nextIf(mask, 0))
+@@ -254,7 +256,10 @@ func (d *astDecoder) createChildrenNode(kind ast.Kind, data uint32, childIndices
+ 		statement := d.nodeAt(it.nextIf(mask, 3))
+ 		return d.factory.NewForInOrOfStatement(kind, awaitModifier, initializer, expression, statement), nil
+ 	case ast.KindBreakStatement:
+-		return d.factory.NewBreakStatement(d.singleChild(childIndices)), nil
++		it := newChildIter(childIndices)
++		label := d.nodeAt(it.nextIf(mask, 0))
++		value := d.nodeAt(it.nextIf(mask, 1))
++		return d.factory.NewBreakStatement(label, value), nil
+ 	case ast.KindContinueStatement:
+ 		return d.factory.NewContinueStatement(d.singleChild(childIndices)), nil
+ 	case ast.KindReturnStatement:
+@@ -275,7 +280,8 @@ func (d *astDecoder) createChildrenNode(kind ast.Kind, data uint32, childIndices
+ 		it := newChildIter(childIndices)
+ 		expression := d.nodeAt(it.nextIf(mask, 0))
+ 		statements := d.nodeListAt(it.nextIf(mask, 1))
+-		return d.factory.NewCaseOrDefaultClause(kind, expression, statements), nil
++		value := d.nodeAt(it.nextIf(mask, 2))
++		return d.factory.NewCaseOrDefaultClause(kind, expression, statements, value), nil
+ 	case ast.KindThrowStatement:
+ 		return d.factory.NewThrowStatement(d.singleChild(childIndices)), nil
+ 	case ast.KindTryStatement:
+@@ -289,13 +295,18 @@ func (d *astDecoder) createChildrenNode(kind ast.Kind, data uint32, childIndices
+ 		variableDeclaration := d.nodeAt(it.nextIf(mask, 0))
+ 		block := d.nodeAt(it.nextIf(mask, 1))
+ 		return d.factory.NewCatchClause(variableDeclaration, block), nil
++	case ast.KindDeferStatement:
++		return d.factory.NewDeferStatement(d.singleChild(childIndices)), nil
++	case ast.KindErrdeferStatement:
++		return d.factory.NewErrdeferStatement(d.singleChild(childIndices)), nil
+ 	case ast.KindDebuggerStatement:
+ 		return d.factory.NewDebuggerStatement(), nil
+ 	case ast.KindLabeledStatement:
+ 		it := newChildIter(childIndices)
+ 		label := d.nodeAt(it.nextIf(mask, 0))
+ 		statement := d.nodeAt(it.nextIf(mask, 1))
+-		return d.factory.NewLabeledStatement(label, statement), nil
++		elseValue := d.nodeAt(it.nextIf(mask, 2))
++		return d.factory.NewLabeledStatement(label, statement, elseValue), nil
+ 	case ast.KindExpressionStatement:
+ 		return d.factory.NewExpressionStatement(d.singleChild(childIndices)), nil
+ 	case ast.KindBlock:
+@@ -609,6 +620,19 @@ func (d *astDecoder) createChildrenNode(kind ast.Kind, data uint32, childIndices
+ 		expression := d.nodeAt(it.nextIf(mask, 0))
+ 		typeNode := d.nodeAt(it.nextIf(mask, 1))
+ 		return d.factory.NewSatisfiesExpression(expression, typeNode), nil
++	case ast.KindIfExpression:
++		it := newChildIter(childIndices)
++		condition := d.nodeAt(it.nextIf(mask, 0))
++		whenTrue := d.nodeAt(it.nextIf(mask, 1))
++		whenFalse := d.nodeAt(it.nextIf(mask, 2))
++		return d.factory.NewIfExpression(condition, whenTrue, whenFalse), nil
++	case ast.KindSwitchExpression:
++		it := newChildIter(childIndices)
++		expression := d.nodeAt(it.nextIf(mask, 0))
++		caseBlock := d.nodeAt(it.nextIf(mask, 1))
++		return d.factory.NewSwitchExpression(expression, caseBlock), nil
++	case ast.KindLabeledExpression:
++		return d.factory.NewLabeledExpression(d.singleChild(childIndices)), nil
+ 	case ast.KindConditionalExpression:
+ 		it := newChildIter(childIndices)
+ 		condition := d.nodeAt(it.nextIf(mask, 0))
+diff --git a/tsc/internal/api/encoder/encoder_generated.go b/tsc/internal/api/encoder/encoder_generated.go
+index d3e7599e..d803180a 100644
+--- a/tsc/internal/api/encoder/encoder_generated.go
++++ b/tsc/internal/api/encoder/encoder_generated.go
+@@ -46,7 +46,7 @@ func getChildrenPropertyMask(node *ast.Node) uint8 {
+ 		return (boolToByte(n.Expression != nil) << 0)
+ 	case ast.KindIfStatement:
+ 		n := node.AsIfStatement()
+-		return (boolToByte(n.Expression != nil) << 0) | (boolToByte(n.ThenStatement != nil) << 1) | (boolToByte(n.ElseStatement != nil) << 2)
++		return (boolToByte(n.Initializer != nil) << 0) | (boolToByte(n.Expression != nil) << 1) | (boolToByte(n.ThenStatement != nil) << 2) | (boolToByte(n.ElseStatement != nil) << 3)
+ 	case ast.KindDoStatement:
+ 		n := node.AsDoStatement()
+ 		return (boolToByte(n.Statement != nil) << 0) | (boolToByte(n.Expression != nil) << 1)
+@@ -61,7 +61,7 @@ func getChildrenPropertyMask(node *ast.Node) uint8 {
+ 		return (boolToByte(n.AwaitModifier != nil) << 0) | (boolToByte(n.Initializer != nil) << 1) | (boolToByte(n.Expression != nil) << 2) | (boolToByte(n.Statement != nil) << 3)
+ 	case ast.KindBreakStatement:
+ 		n := node.AsBreakStatement()
+-		return (boolToByte(n.Label != nil) << 0)
++		return (boolToByte(n.Label != nil) << 0) | (boolToByte(n.Value != nil) << 1)
+ 	case ast.KindContinueStatement:
+ 		n := node.AsContinueStatement()
+ 		return (boolToByte(n.Label != nil) << 0)
+@@ -79,7 +79,7 @@ func getChildrenPropertyMask(node *ast.Node) uint8 {
+ 		return (boolToByte(n.Clauses != nil) << 0)
+ 	case ast.KindCaseClause, ast.KindDefaultClause:
+ 		n := node.AsCaseOrDefaultClause()
+-		return (boolToByte(n.Expression != nil) << 0) | (boolToByte(n.Statements != nil) << 1)
++		return (boolToByte(n.Expression != nil) << 0) | (boolToByte(n.Statements != nil) << 1) | (boolToByte(n.Value != nil) << 2)
+ 	case ast.KindThrowStatement:
+ 		n := node.AsThrowStatement()
+ 		return (boolToByte(n.Expression != nil) << 0)
+@@ -89,9 +89,15 @@ func getChildrenPropertyMask(node *ast.Node) uint8 {
+ 	case ast.KindCatchClause:
+ 		n := node.AsCatchClause()
+ 		return (boolToByte(n.VariableDeclaration != nil) << 0) | (boolToByte(n.Block != nil) << 1)
++	case ast.KindDeferStatement:
++		n := node.AsDeferStatement()
++		return (boolToByte(n.Expression != nil) << 0)
++	case ast.KindErrdeferStatement:
++		n := node.AsErrdeferStatement()
++		return (boolToByte(n.Expression != nil) << 0)
+ 	case ast.KindLabeledStatement:
+ 		n := node.AsLabeledStatement()
+-		return (boolToByte(n.Label != nil) << 0) | (boolToByte(n.Statement != nil) << 1)
++		return (boolToByte(n.Label != nil) << 0) | (boolToByte(n.Statement != nil) << 1) | (boolToByte(n.ElseValue != nil) << 2)
+ 	case ast.KindExpressionStatement:
+ 		n := node.AsExpressionStatement()
+ 		return (boolToByte(n.Expression != nil) << 0)
+@@ -230,6 +236,15 @@ func getChildrenPropertyMask(node *ast.Node) uint8 {
+ 	case ast.KindSatisfiesExpression:
+ 		n := node.AsSatisfiesExpression()
+ 		return (boolToByte(n.Expression != nil) << 0) | (boolToByte(n.Type != nil) << 1)
++	case ast.KindIfExpression:
++		n := node.AsIfExpression()
++		return (boolToByte(n.Condition != nil) << 0) | (boolToByte(n.WhenTrue != nil) << 1) | (boolToByte(n.WhenFalse != nil) << 2)
++	case ast.KindSwitchExpression:
++		n := node.AsSwitchExpression()
++		return (boolToByte(n.Expression != nil) << 0) | (boolToByte(n.CaseBlock != nil) << 1)
++	case ast.KindLabeledExpression:
++		n := node.AsLabeledExpression()
++		return (boolToByte(n.Statement != nil) << 0)
+ 	case ast.KindConditionalExpression:
+ 		n := node.AsConditionalExpression()
+ 		return (boolToByte(n.Condition != nil) << 0) | (boolToByte(n.QuestionToken != nil) << 1) | (boolToByte(n.WhenTrue != nil) << 2) | (boolToByte(n.ColonToken != nil) << 3) | (boolToByte(n.WhenFalse != nil) << 4)
+diff --git a/tsc/internal/ast/ast_generated.go b/tsc/internal/ast/ast_generated.go
+index 87c1e59f..4679e037 100644
+--- a/tsc/internal/ast/ast_generated.go
++++ b/tsc/internal/ast/ast_generated.go
+@@ -271,6 +271,8 @@ type (
+ 	ThrowStatementNode                = Node
+ 	TryStatementNode                  = Node
+ 	CatchClauseNode                   = Node
++	DeferStatementNode                = Node
++	ErrdeferStatementNode             = Node
+ 	DebuggerStatementNode             = Node
+ 	LabeledStatementNode              = Node
+ 	ExpressionStatementNode           = Node
+@@ -329,6 +331,9 @@ type (
+ 	FunctionExpressionNode            = Node
+ 	AsExpressionNode                  = Node
+ 	SatisfiesExpressionNode           = Node
++	IfExpressionNode                  = Node
++	SwitchExpressionNode              = Node
++	LabeledExpressionNode             = Node
+ 	ConditionalExpressionNode         = Node
+ 	PropertyAccessExpressionNode      = Node
+ 	ElementAccessExpressionNode       = Node
+@@ -608,7 +613,7 @@ func (node *Token) Clone(f NodeFactoryCoercible) *Node {
+ 
+ func IsToken(node *Node) bool {
+ 	switch node.Kind {
+-	case KindUnknown, KindEndOfFile, KindSingleLineCommentTrivia, KindMultiLineCommentTrivia, KindNewLineTrivia, KindWhitespaceTrivia, KindConflictMarkerTrivia, KindNonTextFileMarkerTrivia, KindNumericLiteral, KindBigIntLiteral, KindStringLiteral, KindJsxText, KindJsxTextAllWhiteSpaces, KindRegularExpressionLiteral, KindNoSubstitutionTemplateLiteral, KindTemplateHead, KindTemplateMiddle, KindTemplateTail, KindOpenBraceToken, KindCloseBraceToken, KindOpenParenToken, KindCloseParenToken, KindOpenBracketToken, KindCloseBracketToken, KindDotToken, KindDotDotDotToken, KindSemicolonToken, KindCommaToken, KindQuestionDotToken, KindLessThanToken, KindLessThanSlashToken, KindGreaterThanToken, KindLessThanEqualsToken, KindGreaterThanEqualsToken, KindEqualsEqualsToken, KindExclamationEqualsToken, KindEqualsEqualsEqualsToken, KindExclamationEqualsEqualsToken, KindEqualsGreaterThanToken, KindPlusToken, KindMinusToken, KindAsteriskToken, KindAsteriskAsteriskToken, KindSlashToken, KindPercentToken, KindPlusPlusToken, KindMinusMinusToken, KindLessThanLessThanToken, KindGreaterThanGreaterThanToken, KindGreaterThanGreaterThanGreaterThanToken, KindAmpersandToken, KindBarToken, KindCaretToken, KindExclamationToken, KindTildeToken, KindAmpersandAmpersandToken, KindBarBarToken, KindQuestionToken, KindColonToken, KindAtToken, KindQuestionQuestionToken, KindBacktickToken, KindHashToken, KindEqualsToken, KindPlusEqualsToken, KindMinusEqualsToken, KindAsteriskEqualsToken, KindAsteriskAsteriskEqualsToken, KindSlashEqualsToken, KindPercentEqualsToken, KindLessThanLessThanEqualsToken, KindGreaterThanGreaterThanEqualsToken, KindGreaterThanGreaterThanGreaterThanEqualsToken, KindAmpersandEqualsToken, KindBarEqualsToken, KindBarBarEqualsToken, KindAmpersandAmpersandEqualsToken, KindQuestionQuestionEqualsToken, KindCaretEqualsToken, KindIdentifier, KindPrivateIdentifier, KindJSDocCommentTextToken, KindBreakKeyword, KindCaseKeyword, KindCatchKeyword, KindClassKeyword, KindConstKeyword, KindContinueKeyword, KindDebuggerKeyword, KindDefaultKeyword, KindDeleteKeyword, KindDoKeyword, KindElseKeyword, KindEnumKeyword, KindExportKeyword, KindExtendsKeyword, KindFalseKeyword, KindFinallyKeyword, KindForKeyword, KindFunctionKeyword, KindIfKeyword, KindImportKeyword, KindInKeyword, KindInstanceOfKeyword, KindNewKeyword, KindNullKeyword, KindReturnKeyword, KindSuperKeyword, KindSwitchKeyword, KindThisKeyword, KindThrowKeyword, KindTrueKeyword, KindTryKeyword, KindTypeOfKeyword, KindVarKeyword, KindVoidKeyword, KindWhileKeyword, KindWithKeyword, KindImplementsKeyword, KindInterfaceKeyword, KindLetKeyword, KindPackageKeyword, KindPrivateKeyword, KindProtectedKeyword, KindPublicKeyword, KindStaticKeyword, KindYieldKeyword, KindAbstractKeyword, KindAccessorKeyword, KindAsKeyword, KindAssertsKeyword, KindAssertKeyword, KindAnyKeyword, KindAsyncKeyword, KindAwaitKeyword, KindBooleanKeyword, KindConstructorKeyword, KindDeclareKeyword, KindGetKeyword, KindImmediateKeyword, KindInferKeyword, KindIntrinsicKeyword, KindIsKeyword, KindKeyOfKeyword, KindModuleKeyword, KindNamespaceKeyword, KindNeverKeyword, KindOutKeyword, KindReadonlyKeyword, KindRequireKeyword, KindNumberKeyword, KindObjectKeyword, KindSatisfiesKeyword, KindSetKeyword, KindStringKeyword, KindSymbolKeyword, KindTypeKeyword, KindUndefinedKeyword, KindUniqueKeyword, KindUnknownKeyword, KindUsingKeyword, KindFromKeyword, KindGlobalKeyword, KindBigIntKeyword, KindOverrideKeyword, KindOfKeyword, KindDeferKeyword:
++	case KindUnknown, KindEndOfFile, KindSingleLineCommentTrivia, KindMultiLineCommentTrivia, KindNewLineTrivia, KindWhitespaceTrivia, KindConflictMarkerTrivia, KindNonTextFileMarkerTrivia, KindNumericLiteral, KindBigIntLiteral, KindStringLiteral, KindJsxText, KindJsxTextAllWhiteSpaces, KindRegularExpressionLiteral, KindNoSubstitutionTemplateLiteral, KindTemplateHead, KindTemplateMiddle, KindTemplateTail, KindOpenBraceToken, KindCloseBraceToken, KindOpenParenToken, KindCloseParenToken, KindOpenBracketToken, KindCloseBracketToken, KindDotToken, KindDotDotDotToken, KindSemicolonToken, KindCommaToken, KindQuestionDotToken, KindLessThanToken, KindLessThanSlashToken, KindGreaterThanToken, KindLessThanEqualsToken, KindGreaterThanEqualsToken, KindEqualsEqualsToken, KindExclamationEqualsToken, KindEqualsEqualsEqualsToken, KindExclamationEqualsEqualsToken, KindEqualsGreaterThanToken, KindPlusToken, KindMinusToken, KindAsteriskToken, KindAsteriskAsteriskToken, KindSlashToken, KindPercentToken, KindPlusPlusToken, KindMinusMinusToken, KindLessThanLessThanToken, KindGreaterThanGreaterThanToken, KindGreaterThanGreaterThanGreaterThanToken, KindAmpersandToken, KindBarToken, KindCaretToken, KindExclamationToken, KindTildeToken, KindAmpersandAmpersandToken, KindBarBarToken, KindQuestionToken, KindColonToken, KindAtToken, KindQuestionQuestionToken, KindBacktickToken, KindHashToken, KindEqualsToken, KindPlusEqualsToken, KindMinusEqualsToken, KindAsteriskEqualsToken, KindAsteriskAsteriskEqualsToken, KindSlashEqualsToken, KindPercentEqualsToken, KindLessThanLessThanEqualsToken, KindGreaterThanGreaterThanEqualsToken, KindGreaterThanGreaterThanGreaterThanEqualsToken, KindAmpersandEqualsToken, KindBarEqualsToken, KindBarBarEqualsToken, KindAmpersandAmpersandEqualsToken, KindQuestionQuestionEqualsToken, KindCaretEqualsToken, KindIdentifier, KindPrivateIdentifier, KindJSDocCommentTextToken, KindBreakKeyword, KindCaseKeyword, KindCatchKeyword, KindClassKeyword, KindConstKeyword, KindContinueKeyword, KindDebuggerKeyword, KindDefaultKeyword, KindDeleteKeyword, KindDoKeyword, KindElseKeyword, KindEnumKeyword, KindExportKeyword, KindExtendsKeyword, KindFalseKeyword, KindFinallyKeyword, KindForKeyword, KindFunctionKeyword, KindIfKeyword, KindImportKeyword, KindInKeyword, KindInstanceOfKeyword, KindNewKeyword, KindNullKeyword, KindReturnKeyword, KindSuperKeyword, KindSwitchKeyword, KindThisKeyword, KindThrowKeyword, KindTrueKeyword, KindTryKeyword, KindTypeOfKeyword, KindVarKeyword, KindVoidKeyword, KindWhileKeyword, KindWithKeyword, KindImplementsKeyword, KindInterfaceKeyword, KindLetKeyword, KindPackageKeyword, KindPrivateKeyword, KindProtectedKeyword, KindPublicKeyword, KindStaticKeyword, KindYieldKeyword, KindAbstractKeyword, KindAccessorKeyword, KindAsKeyword, KindAssertsKeyword, KindAssertKeyword, KindAnyKeyword, KindAsyncKeyword, KindAwaitKeyword, KindBooleanKeyword, KindConstructorKeyword, KindDeclareKeyword, KindGetKeyword, KindImmediateKeyword, KindInferKeyword, KindIntrinsicKeyword, KindIsKeyword, KindKeyOfKeyword, KindModuleKeyword, KindNamespaceKeyword, KindNeverKeyword, KindOutKeyword, KindReadonlyKeyword, KindRequireKeyword, KindNumberKeyword, KindObjectKeyword, KindSatisfiesKeyword, KindSetKeyword, KindStringKeyword, KindSymbolKeyword, KindTypeKeyword, KindUndefinedKeyword, KindUniqueKeyword, KindUnknownKeyword, KindUsingKeyword, KindFromKeyword, KindGlobalKeyword, KindBigIntKeyword, KindOverrideKeyword, KindOfKeyword, KindErrdeferKeyword, KindDeferKeyword:
+ 		return true
+ 	}
+ 	return false
+@@ -819,41 +824,48 @@ func IsEmptyStatement(node *Node) bool {
+ 
+ type IfStatement struct {
+ 	StatementBase
++	LocalsContainerBase
+ 	CompositeBase
++	Initializer   *ForInitializer // Optional
+ 	Expression    *Expression
+ 	ThenStatement *Statement
+ 	ElseStatement *Statement // Optional
+ }
+ 
+-func (f *NodeFactory) NewIfStatement(expression *Expression, thenStatement *Statement, elseStatement *Statement) *Node {
++func (f *NodeFactory) NewIfStatement(initializer *ForInitializer, expression *Expression, thenStatement *Statement, elseStatement *Statement) *Node {
+ 	data := f.ifStatementArena.New()
++	data.Initializer = initializer
+ 	data.Expression = expression
+ 	data.ThenStatement = thenStatement
+ 	data.ElseStatement = elseStatement
+ 	return f.newNode(KindIfStatement, data)
+ }
+ 
+-func (f *NodeFactory) UpdateIfStatement(node *IfStatement, expression *Expression, thenStatement *Statement, elseStatement *Statement) *Node {
+-	if expression != node.Expression || thenStatement != node.ThenStatement || elseStatement != node.ElseStatement {
+-		return updateNode(f.NewIfStatement(expression, thenStatement, elseStatement), node.AsNode(), f.hooks)
++func (f *NodeFactory) UpdateIfStatement(node *IfStatement, initializer *ForInitializer, expression *Expression, thenStatement *Statement, elseStatement *Statement) *Node {
++	if initializer != node.Initializer || expression != node.Expression || thenStatement != node.ThenStatement || elseStatement != node.ElseStatement {
++		return updateNode(f.NewIfStatement(initializer, expression, thenStatement, elseStatement), node.AsNode(), f.hooks)
+ 	}
+ 	return node.AsNode()
+ }
+ 
+ func (node *IfStatement) ForEachChild(v Visitor) bool {
+-	return visit(v, node.Expression) || visit(v, node.ThenStatement) || visit(v, node.ElseStatement)
++	return visit(v, node.Initializer) ||
++		visit(v, node.Expression) ||
++		visit(v, node.ThenStatement) ||
++		visit(v, node.ElseStatement)
+ }
+ 
+ func (node *IfStatement) VisitEachChild(v *NodeVisitor) *Node {
+-	return v.Factory.UpdateIfStatement(node, v.visitNode(node.Expression), v.visitEmbeddedStatement(node.ThenStatement), v.visitEmbeddedStatement(node.ElseStatement))
++	return v.Factory.UpdateIfStatement(node, v.visitNode(node.Initializer), v.visitNode(node.Expression), v.visitEmbeddedStatement(node.ThenStatement), v.visitEmbeddedStatement(node.ElseStatement))
+ }
+ 
+ func (node *IfStatement) Clone(f NodeFactoryCoercible) *Node {
+-	return cloneNode(f.AsNodeFactory().NewIfStatement(node.Expression, node.ThenStatement, node.ElseStatement), node.AsNode(), f.AsNodeFactory().hooks)
++	return cloneNode(f.AsNodeFactory().NewIfStatement(node.Initializer, node.Expression, node.ThenStatement, node.ElseStatement), node.AsNode(), f.AsNodeFactory().hooks)
+ }
+ 
+ func (node *IfStatement) computeSubtreeFacts() SubtreeFacts {
+-	return propagateSubtreeFacts(node.Expression) |
++	return propagateSubtreeFacts(node.Initializer) |
++		propagateSubtreeFacts(node.Expression) |
+ 		propagateSubtreeFacts(node.ThenStatement) |
+ 		propagateSubtreeFacts(node.ElseStatement)
+ }
+@@ -1066,32 +1078,40 @@ func IsForOfStatement(node *Node) bool {
+ 
+ type BreakStatement struct {
+ 	StatementBase
++	CompositeBase
+ 	Label *IdentifierNode // Optional
++	Value *Expression     // Optional
+ }
+ 
+-func (f *NodeFactory) NewBreakStatement(label *IdentifierNode) *Node {
++func (f *NodeFactory) NewBreakStatement(label *IdentifierNode, value *Expression) *Node {
+ 	data := &BreakStatement{}
+ 	data.Label = label
++	data.Value = value
+ 	return f.newNode(KindBreakStatement, data)
+ }
+ 
+-func (f *NodeFactory) UpdateBreakStatement(node *BreakStatement, label *IdentifierNode) *Node {
+-	if label != node.Label {
+-		return updateNode(f.NewBreakStatement(label), node.AsNode(), f.hooks)
++func (f *NodeFactory) UpdateBreakStatement(node *BreakStatement, label *IdentifierNode, value *Expression) *Node {
++	if label != node.Label || value != node.Value {
++		return updateNode(f.NewBreakStatement(label, value), node.AsNode(), f.hooks)
+ 	}
+ 	return node.AsNode()
+ }
+ 
+ func (node *BreakStatement) ForEachChild(v Visitor) bool {
+-	return visit(v, node.Label)
++	return visit(v, node.Label) || visit(v, node.Value)
+ }
+ 
+ func (node *BreakStatement) VisitEachChild(v *NodeVisitor) *Node {
+-	return v.Factory.UpdateBreakStatement(node, v.visitNode(node.Label))
++	return v.Factory.UpdateBreakStatement(node, v.visitNode(node.Label), v.visitNode(node.Value))
+ }
+ 
+ func (node *BreakStatement) Clone(f NodeFactoryCoercible) *Node {
+-	return cloneNode(f.AsNodeFactory().NewBreakStatement(node.Label), node.AsNode(), f.AsNodeFactory().hooks)
++	return cloneNode(f.AsNodeFactory().NewBreakStatement(node.Label, node.Value), node.AsNode(), f.AsNodeFactory().hooks)
++}
++
++func (node *BreakStatement) computeSubtreeFacts() SubtreeFacts {
++	return propagateSubtreeFacts(node.Label) |
++		propagateSubtreeFacts(node.Value)
+ }
+ 
+ func IsBreakStatement(node *Node) bool {
+@@ -1320,38 +1340,41 @@ type CaseOrDefaultClause struct {
+ 	CompositeBase
+ 	Expression          *Expression
+ 	Statements          *StatementList
++	Value               *Expression // Optional
+ 	FallthroughFlowNode *FlowNode
+ }
+ 
+-func (f *NodeFactory) NewCaseOrDefaultClause(kind Kind, expression *Expression, statements *StatementList) *Node {
++func (f *NodeFactory) NewCaseOrDefaultClause(kind Kind, expression *Expression, statements *StatementList, value *Expression) *Node {
+ 	data := &CaseOrDefaultClause{}
+ 	data.Expression = expression
+ 	data.Statements = statements
++	data.Value = value
+ 	return f.newNode(kind, data)
+ }
+ 
+-func (f *NodeFactory) UpdateCaseOrDefaultClause(node *CaseOrDefaultClause, expression *Expression, statements *StatementList) *Node {
+-	if expression != node.Expression || statements != node.Statements {
+-		return updateNode(f.NewCaseOrDefaultClause(node.Kind, expression, statements), node.AsNode(), f.hooks)
++func (f *NodeFactory) UpdateCaseOrDefaultClause(node *CaseOrDefaultClause, expression *Expression, statements *StatementList, value *Expression) *Node {
++	if expression != node.Expression || statements != node.Statements || value != node.Value {
++		return updateNode(f.NewCaseOrDefaultClause(node.Kind, expression, statements, value), node.AsNode(), f.hooks)
+ 	}
+ 	return node.AsNode()
+ }
+ 
+ func (node *CaseOrDefaultClause) ForEachChild(v Visitor) bool {
+-	return visit(v, node.Expression) || visitNodeList(v, node.Statements)
++	return visit(v, node.Expression) || visitNodeList(v, node.Statements) || visit(v, node.Value)
+ }
+ 
+ func (node *CaseOrDefaultClause) VisitEachChild(v *NodeVisitor) *Node {
+-	return v.Factory.UpdateCaseOrDefaultClause(node, v.visitNode(node.Expression), v.visitNodes(node.Statements))
++	return v.Factory.UpdateCaseOrDefaultClause(node, v.visitNode(node.Expression), v.visitNodes(node.Statements), v.visitNode(node.Value))
+ }
+ 
+ func (node *CaseOrDefaultClause) Clone(f NodeFactoryCoercible) *Node {
+-	return cloneNode(f.AsNodeFactory().NewCaseOrDefaultClause(node.Kind, node.Expression, node.Statements), node.AsNode(), f.AsNodeFactory().hooks)
++	return cloneNode(f.AsNodeFactory().NewCaseOrDefaultClause(node.Kind, node.Expression, node.Statements, node.Value), node.AsNode(), f.AsNodeFactory().hooks)
+ }
+ 
+ func (node *CaseOrDefaultClause) computeSubtreeFacts() SubtreeFacts {
+ 	return propagateSubtreeFacts(node.Expression) |
+-		propagateNodeListSubtreeFacts(node.Statements, propagateSubtreeFacts)
++		propagateNodeListSubtreeFacts(node.Statements, propagateSubtreeFacts) |
++		propagateSubtreeFacts(node.Value)
+ }
+ 
+ func IsCaseClause(node *Node) bool {
+@@ -1496,6 +1519,92 @@ func IsCatchClause(node *Node) bool {
+ 	return node.Kind == KindCatchClause
+ }
+ 
++// ──────────────────────────────────────────────────────────────────────
++// DeferStatement
++// ──────────────────────────────────────────────────────────────────────
++
++type DeferStatement struct {
++	StatementBase
++	CompositeBase
++	Expression *Expression
++}
++
++func (f *NodeFactory) NewDeferStatement(expression *Expression) *Node {
++	data := &DeferStatement{}
++	data.Expression = expression
++	return f.newNode(KindDeferStatement, data)
++}
++
++func (f *NodeFactory) UpdateDeferStatement(node *DeferStatement, expression *Expression) *Node {
++	if expression != node.Expression {
++		return updateNode(f.NewDeferStatement(expression), node.AsNode(), f.hooks)
++	}
++	return node.AsNode()
++}
++
++func (node *DeferStatement) ForEachChild(v Visitor) bool {
++	return visit(v, node.Expression)
++}
++
++func (node *DeferStatement) VisitEachChild(v *NodeVisitor) *Node {
++	return v.Factory.UpdateDeferStatement(node, v.visitNode(node.Expression))
++}
++
++func (node *DeferStatement) Clone(f NodeFactoryCoercible) *Node {
++	return cloneNode(f.AsNodeFactory().NewDeferStatement(node.Expression), node.AsNode(), f.AsNodeFactory().hooks)
++}
++
++func (node *DeferStatement) computeSubtreeFacts() SubtreeFacts {
++	return propagateSubtreeFacts(node.Expression)
++}
++
++func IsDeferStatement(node *Node) bool {
++	return node.Kind == KindDeferStatement
++}
++
++// ──────────────────────────────────────────────────────────────────────
++// ErrdeferStatement
++// ──────────────────────────────────────────────────────────────────────
++
++type ErrdeferStatement struct {
++	StatementBase
++	CompositeBase
++	Expression *Expression
++}
++
++func (f *NodeFactory) NewErrdeferStatement(expression *Expression) *Node {
++	data := &ErrdeferStatement{}
++	data.Expression = expression
++	return f.newNode(KindErrdeferStatement, data)
++}
++
++func (f *NodeFactory) UpdateErrdeferStatement(node *ErrdeferStatement, expression *Expression) *Node {
++	if expression != node.Expression {
++		return updateNode(f.NewErrdeferStatement(expression), node.AsNode(), f.hooks)
++	}
++	return node.AsNode()
++}
++
++func (node *ErrdeferStatement) ForEachChild(v Visitor) bool {
++	return visit(v, node.Expression)
++}
++
++func (node *ErrdeferStatement) VisitEachChild(v *NodeVisitor) *Node {
++	return v.Factory.UpdateErrdeferStatement(node, v.visitNode(node.Expression))
++}
++
++func (node *ErrdeferStatement) Clone(f NodeFactoryCoercible) *Node {
++	return cloneNode(f.AsNodeFactory().NewErrdeferStatement(node.Expression), node.AsNode(), f.AsNodeFactory().hooks)
++}
++
++func (node *ErrdeferStatement) computeSubtreeFacts() SubtreeFacts {
++	return propagateSubtreeFacts(node.Expression)
++}
++
++func IsErrdeferStatement(node *Node) bool {
++	return node.Kind == KindErrdeferStatement
++}
++
+ // ──────────────────────────────────────────────────────────────────────
+ // DebuggerStatement
+ // ──────────────────────────────────────────────────────────────────────
+@@ -1525,37 +1634,40 @@ type LabeledStatement struct {
+ 	StatementBase
+ 	Label     *IdentifierNode
+ 	Statement *Statement
++	ElseValue *Expression // Optional
+ }
+ 
+-func (f *NodeFactory) NewLabeledStatement(label *IdentifierNode, statement *Statement) *Node {
++func (f *NodeFactory) NewLabeledStatement(label *IdentifierNode, statement *Statement, elseValue *Expression) *Node {
+ 	data := &LabeledStatement{}
+ 	data.Label = label
+ 	data.Statement = statement
++	data.ElseValue = elseValue
+ 	return f.newNode(KindLabeledStatement, data)
+ }
+ 
+-func (f *NodeFactory) UpdateLabeledStatement(node *LabeledStatement, label *IdentifierNode, statement *Statement) *Node {
+-	if label != node.Label || statement != node.Statement {
+-		return updateNode(f.NewLabeledStatement(label, statement), node.AsNode(), f.hooks)
++func (f *NodeFactory) UpdateLabeledStatement(node *LabeledStatement, label *IdentifierNode, statement *Statement, elseValue *Expression) *Node {
++	if label != node.Label || statement != node.Statement || elseValue != node.ElseValue {
++		return updateNode(f.NewLabeledStatement(label, statement, elseValue), node.AsNode(), f.hooks)
+ 	}
+ 	return node.AsNode()
+ }
+ 
+ func (node *LabeledStatement) ForEachChild(v Visitor) bool {
+-	return visit(v, node.Label) || visit(v, node.Statement)
++	return visit(v, node.Label) || visit(v, node.Statement) || visit(v, node.ElseValue)
+ }
+ 
+ func (node *LabeledStatement) VisitEachChild(v *NodeVisitor) *Node {
+-	return v.Factory.UpdateLabeledStatement(node, v.visitNode(node.Label), v.visitEmbeddedStatement(node.Statement))
++	return v.Factory.UpdateLabeledStatement(node, v.visitNode(node.Label), v.visitEmbeddedStatement(node.Statement), v.visitNode(node.ElseValue))
+ }
+ 
+ func (node *LabeledStatement) Clone(f NodeFactoryCoercible) *Node {
+-	return cloneNode(f.AsNodeFactory().NewLabeledStatement(node.Label, node.Statement), node.AsNode(), f.AsNodeFactory().hooks)
++	return cloneNode(f.AsNodeFactory().NewLabeledStatement(node.Label, node.Statement, node.ElseValue), node.AsNode(), f.AsNodeFactory().hooks)
+ }
+ 
+ func (node *LabeledStatement) computeSubtreeFacts() SubtreeFacts {
+ 	return propagateSubtreeFacts(node.Label) |
+-		propagateSubtreeFacts(node.Statement)
++		propagateSubtreeFacts(node.Statement) |
++		propagateSubtreeFacts(node.ElseValue)
+ }
+ 
+ func IsLabeledStatement(node *Node) bool {
+@@ -4088,6 +4200,145 @@ func IsSatisfiesExpression(node *Node) bool {
+ 	return node.Kind == KindSatisfiesExpression
+ }
+ 
++// ──────────────────────────────────────────────────────────────────────
++// IfExpression
++// ──────────────────────────────────────────────────────────────────────
++
++type IfExpression struct {
++	ExpressionBase
++	CompositeBase
++	Condition *Expression
++	WhenTrue  *Expression
++	WhenFalse *Expression
++}
++
++func (f *NodeFactory) NewIfExpression(condition *Expression, whenTrue *Expression, whenFalse *Expression) *Node {
++	data := &IfExpression{}
++	data.Condition = condition
++	data.WhenTrue = whenTrue
++	data.WhenFalse = whenFalse
++	return f.newNode(KindIfExpression, data)
++}
++
++func (f *NodeFactory) UpdateIfExpression(node *IfExpression, condition *Expression, whenTrue *Expression, whenFalse *Expression) *Node {
++	if condition != node.Condition || whenTrue != node.WhenTrue || whenFalse != node.WhenFalse {
++		return updateNode(f.NewIfExpression(condition, whenTrue, whenFalse), node.AsNode(), f.hooks)
++	}
++	return node.AsNode()
++}
++
++func (node *IfExpression) ForEachChild(v Visitor) bool {
++	return visit(v, node.Condition) || visit(v, node.WhenTrue) || visit(v, node.WhenFalse)
++}
++
++func (node *IfExpression) VisitEachChild(v *NodeVisitor) *Node {
++	return v.Factory.UpdateIfExpression(node, v.visitNode(node.Condition), v.visitNode(node.WhenTrue), v.visitNode(node.WhenFalse))
++}
++
++func (node *IfExpression) Clone(f NodeFactoryCoercible) *Node {
++	return cloneNode(f.AsNodeFactory().NewIfExpression(node.Condition, node.WhenTrue, node.WhenFalse), node.AsNode(), f.AsNodeFactory().hooks)
++}
++
++func (node *IfExpression) computeSubtreeFacts() SubtreeFacts {
++	return propagateSubtreeFacts(node.Condition) |
++		propagateSubtreeFacts(node.WhenTrue) |
++		propagateSubtreeFacts(node.WhenFalse)
++}
++
++func IsIfExpression(node *Node) bool {
++	return node.Kind == KindIfExpression
++}
++
++// ──────────────────────────────────────────────────────────────────────
++// SwitchExpression
++// ──────────────────────────────────────────────────────────────────────
++
++type SwitchExpression struct {
++	ExpressionBase
++	CompositeBase
++	Expression *Expression
++	CaseBlock  *CaseBlockNode
++}
++
++func (f *NodeFactory) NewSwitchExpression(expression *Expression, caseBlock *CaseBlockNode) *Node {
++	data := &SwitchExpression{}
++	data.Expression = expression
++	data.CaseBlock = caseBlock
++	return f.newNode(KindSwitchExpression, data)
++}
++
++func (f *NodeFactory) UpdateSwitchExpression(node *SwitchExpression, expression *Expression, caseBlock *CaseBlockNode) *Node {
++	if expression != node.Expression || caseBlock != node.CaseBlock {
++		return updateNode(f.NewSwitchExpression(expression, caseBlock), node.AsNode(), f.hooks)
++	}
++	return node.AsNode()
++}
++
++func (node *SwitchExpression) ForEachChild(v Visitor) bool {
++	return visit(v, node.Expression) || visit(v, node.CaseBlock)
++}
++
++func (node *SwitchExpression) VisitEachChild(v *NodeVisitor) *Node {
++	return v.Factory.UpdateSwitchExpression(node, v.visitNode(node.Expression), v.visitNode(node.CaseBlock))
++}
++
++func (node *SwitchExpression) Clone(f NodeFactoryCoercible) *Node {
++	return cloneNode(f.AsNodeFactory().NewSwitchExpression(node.Expression, node.CaseBlock), node.AsNode(), f.AsNodeFactory().hooks)
++}
++
++func (node *SwitchExpression) computeSubtreeFacts() SubtreeFacts {
++	return propagateSubtreeFacts(node.Expression) |
++		propagateSubtreeFacts(node.CaseBlock)
++}
++
++func IsSwitchExpression(node *Node) bool {
++	return node.Kind == KindSwitchExpression
++}
++
++// ──────────────────────────────────────────────────────────────────────
++// LabeledExpression
++// ──────────────────────────────────────────────────────────────────────
++
++type LabeledExpression struct {
++	ExpressionBase
++	CompositeBase
++	Statement          *LabeledStatementNode
++	CompletionFlowNode *FlowNode
++}
++
++func (f *NodeFactory) NewLabeledExpression(statement *LabeledStatementNode) *Node {
++	data := &LabeledExpression{}
++	data.Statement = statement
++	return f.newNode(KindLabeledExpression, data)
++}
++
++func (f *NodeFactory) UpdateLabeledExpression(node *LabeledExpression, statement *LabeledStatementNode) *Node {
++	if statement != node.Statement {
++		return updateNode(f.NewLabeledExpression(statement), node.AsNode(), f.hooks)
++	}
++	return node.AsNode()
++}
++
++func (node *LabeledExpression) ForEachChild(v Visitor) bool {
++	return visit(v, node.Statement)
++}
++
++func (node *LabeledExpression) VisitEachChild(v *NodeVisitor) *Node {
++	return v.Factory.UpdateLabeledExpression(node, v.visitNode(node.Statement))
++}
++
++func (node *LabeledExpression) Clone(f NodeFactoryCoercible) *Node {
++	return cloneNode(f.AsNodeFactory().NewLabeledExpression(node.Statement), node.AsNode(), f.AsNodeFactory().hooks)
++}
++
++func (node *LabeledExpression) computeSubtreeFacts() SubtreeFacts {
++	return propagateSubtreeFacts(node.Statement)
++}
++
++func IsLabeledExpression(node *Node) bool {
++	return node.Kind == KindLabeledExpression
++}
++
+ // ──────────────────────────────────────────────────────────────────────
+ // ConditionalExpression
+ // ──────────────────────────────────────────────────────────────────────
+@@ -8721,6 +8972,10 @@ func (n *Node) ForEachChild(v Visitor) bool {
+ 		return n.data.(*TryStatement).ForEachChild(v)
+ 	case KindCatchClause:
+ 		return n.data.(*CatchClause).ForEachChild(v)
++	case KindDeferStatement:
++		return n.data.(*DeferStatement).ForEachChild(v)
++	case KindErrdeferStatement:
++		return n.data.(*ErrdeferStatement).ForEachChild(v)
+ 	case KindLabeledStatement:
+ 		return n.data.(*LabeledStatement).ForEachChild(v)
+ 	case KindExpressionStatement:
+@@ -8815,6 +9070,12 @@ func (n *Node) ForEachChild(v Visitor) bool {
+ 		return n.data.(*AsExpression).ForEachChild(v)
+ 	case KindSatisfiesExpression:
+ 		return n.data.(*SatisfiesExpression).ForEachChild(v)
++	case KindIfExpression:
++		return n.data.(*IfExpression).ForEachChild(v)
++	case KindSwitchExpression:
++		return n.data.(*SwitchExpression).ForEachChild(v)
++	case KindLabeledExpression:
++		return n.data.(*LabeledExpression).ForEachChild(v)
+ 	case KindConditionalExpression:
+ 		return n.data.(*ConditionalExpression).ForEachChild(v)
+ 	case KindPropertyAccessExpression:
+@@ -9116,6 +9377,14 @@ func (n *Node) AsCatchClause() *CatchClause {
+ 	return n.data.(*CatchClause)
+ }
+ 
++func (n *Node) AsDeferStatement() *DeferStatement {
++	return n.data.(*DeferStatement)
++}
++
++func (n *Node) AsErrdeferStatement() *ErrdeferStatement {
++	return n.data.(*ErrdeferStatement)
++}
++
+ func (n *Node) AsDebuggerStatement() *DebuggerStatement {
+ 	return n.data.(*DebuggerStatement)
+ }
+@@ -9348,6 +9617,18 @@ func (n *Node) AsSatisfiesExpression() *SatisfiesExpression {
+ 	return n.data.(*SatisfiesExpression)
+ }
+ 
++func (n *Node) AsIfExpression() *IfExpression {
++	return n.data.(*IfExpression)
++}
++
++func (n *Node) AsSwitchExpression() *SwitchExpression {
++	return n.data.(*SwitchExpression)
++}
++
++func (n *Node) AsLabeledExpression() *LabeledExpression {
++	return n.data.(*LabeledExpression)
++}
++
+ func (n *Node) AsConditionalExpression() *ConditionalExpression {
+ 	return n.data.(*ConditionalExpression)
+ }
+diff --git a/tsc/internal/ast/kind_generated.go b/tsc/internal/ast/kind_generated.go
+index 8c67e794..d64ed648 100644
+--- a/tsc/internal/ast/kind_generated.go
++++ b/tsc/internal/ast/kind_generated.go
+@@ -183,6 +183,7 @@ const (
+ 	KindBigIntKeyword
+ 	KindOverrideKeyword
+ 	KindOfKeyword
++	KindErrdeferKeyword
+ 	KindDeferKeyword // LastKeyword and LastToken and LastContextualKeyword
+ 	// Parse tree nodes
+ 	// Names
+@@ -253,6 +254,9 @@ const (
+ 	KindPostfixUnaryExpression
+ 	KindBinaryExpression
+ 	KindConditionalExpression
++	KindIfExpression
++	KindSwitchExpression
++	KindLabeledExpression
+ 	KindTemplateExpression
+ 	KindYieldExpression
+ 	KindSpreadElement
+@@ -286,6 +290,8 @@ const (
+ 	KindLabeledStatement
+ 	KindThrowStatement
+ 	KindTryStatement
++	KindDeferStatement
++	KindErrdeferStatement
+ 	KindDebuggerStatement
+ 	KindVariableDeclaration
+ 	KindVariableDeclarationList
+@@ -430,11 +436,11 @@ type (
+ 	LiteralSyntaxKind                     = Kind // KindNumericLiteral | KindBigIntLiteral | KindStringLiteral | KindJsxText | KindJsxTextAllWhiteSpaces | KindRegularExpressionLiteral | KindNoSubstitutionTemplateLiteral
+ 	PseudoLiteralSyntaxKind               = Kind // KindTemplateHead | KindTemplateMiddle | KindTemplateTail
+ 	PunctuationSyntaxKind                 = Kind // KindOpenBraceToken | KindCloseBraceToken | KindOpenParenToken | KindCloseParenToken | KindOpenBracketToken | KindCloseBracketToken | KindDotToken | KindDotDotDotToken | KindSemicolonToken | KindCommaToken | KindQuestionDotToken | KindLessThanToken | KindLessThanSlashToken | KindGreaterThanToken | KindLessThanEqualsToken | KindGreaterThanEqualsToken | KindEqualsEqualsToken | KindExclamationEqualsToken | KindEqualsEqualsEqualsToken | KindExclamationEqualsEqualsToken | KindEqualsGreaterThanToken | KindPlusToken | KindMinusToken | KindAsteriskToken | KindAsteriskAsteriskToken | KindSlashToken | KindPercentToken | KindPlusPlusToken | KindMinusMinusToken | KindLessThanLessThanToken | KindGreaterThanGreaterThanToken | KindGreaterThanGreaterThanGreaterThanToken | KindAmpersandToken | KindBarToken | KindCaretToken | KindExclamationToken | KindTildeToken | KindAmpersandAmpersandToken | KindBarBarToken | KindQuestionToken | KindColonToken | KindAtToken | KindQuestionQuestionToken | KindBacktickToken | KindHashToken | KindEqualsToken | KindPlusEqualsToken | KindMinusEqualsToken | KindAsteriskEqualsToken | KindAsteriskAsteriskEqualsToken | KindSlashEqualsToken | KindPercentEqualsToken | KindLessThanLessThanEqualsToken | KindGreaterThanGreaterThanEqualsToken | KindGreaterThanGreaterThanGreaterThanEqualsToken | KindAmpersandEqualsToken | KindBarEqualsToken | KindBarBarEqualsToken | KindAmpersandAmpersandEqualsToken | KindQuestionQuestionEqualsToken | KindCaretEqualsToken
+-	KeywordSyntaxKind                     = Kind // KindBreakKeyword | KindCaseKeyword | KindCatchKeyword | KindClassKeyword | KindConstKeyword | KindContinueKeyword | KindDebuggerKeyword | KindDefaultKeyword | KindDeleteKeyword | KindDoKeyword | KindElseKeyword | KindEnumKeyword | KindExportKeyword | KindExtendsKeyword | KindFalseKeyword | KindFinallyKeyword | KindForKeyword | KindFunctionKeyword | KindIfKeyword | KindImportKeyword | KindInKeyword | KindInstanceOfKeyword | KindNewKeyword | KindNullKeyword | KindReturnKeyword | KindSuperKeyword | KindSwitchKeyword | KindThisKeyword | KindThrowKeyword | KindTrueKeyword | KindTryKeyword | KindTypeOfKeyword | KindVarKeyword | KindVoidKeyword | KindWhileKeyword | KindWithKeyword | KindImplementsKeyword | KindInterfaceKeyword | KindLetKeyword | KindPackageKeyword | KindPrivateKeyword | KindProtectedKeyword | KindPublicKeyword | KindStaticKeyword | KindYieldKeyword | KindAbstractKeyword | KindAccessorKeyword | KindAsKeyword | KindAssertsKeyword | KindAssertKeyword | KindAnyKeyword | KindAsyncKeyword | KindAwaitKeyword | KindBooleanKeyword | KindConstructorKeyword | KindDeclareKeyword | KindGetKeyword | KindImmediateKeyword | KindInferKeyword | KindIntrinsicKeyword | KindIsKeyword | KindKeyOfKeyword | KindModuleKeyword | KindNamespaceKeyword | KindNeverKeyword | KindOutKeyword | KindReadonlyKeyword | KindRequireKeyword | KindNumberKeyword | KindObjectKeyword | KindSatisfiesKeyword | KindSetKeyword | KindStringKeyword | KindSymbolKeyword | KindTypeKeyword | KindUndefinedKeyword | KindUniqueKeyword | KindUnknownKeyword | KindUsingKeyword | KindFromKeyword | KindGlobalKeyword | KindBigIntKeyword | KindOverrideKeyword | KindOfKeyword | KindDeferKeyword
++	KeywordSyntaxKind                     = Kind // KindBreakKeyword | KindCaseKeyword | KindCatchKeyword | KindClassKeyword | KindConstKeyword | KindContinueKeyword | KindDebuggerKeyword | KindDefaultKeyword | KindDeleteKeyword | KindDoKeyword | KindElseKeyword | KindEnumKeyword | KindExportKeyword | KindExtendsKeyword | KindFalseKeyword | KindFinallyKeyword | KindForKeyword | KindFunctionKeyword | KindIfKeyword | KindImportKeyword | KindInKeyword | KindInstanceOfKeyword | KindNewKeyword | KindNullKeyword | KindReturnKeyword | KindSuperKeyword | KindSwitchKeyword | KindThisKeyword | KindThrowKeyword | KindTrueKeyword | KindTryKeyword | KindTypeOfKeyword | KindVarKeyword | KindVoidKeyword | KindWhileKeyword | KindWithKeyword | KindImplementsKeyword | KindInterfaceKeyword | KindLetKeyword | KindPackageKeyword | KindPrivateKeyword | KindProtectedKeyword | KindPublicKeyword | KindStaticKeyword | KindYieldKeyword | KindAbstractKeyword | KindAccessorKeyword | KindAsKeyword | KindAssertsKeyword | KindAssertKeyword | KindAnyKeyword | KindAsyncKeyword | KindAwaitKeyword | KindBooleanKeyword | KindConstructorKeyword | KindDeclareKeyword | KindGetKeyword | KindImmediateKeyword | KindInferKeyword | KindIntrinsicKeyword | KindIsKeyword | KindKeyOfKeyword | KindModuleKeyword | KindNamespaceKeyword | KindNeverKeyword | KindOutKeyword | KindReadonlyKeyword | KindRequireKeyword | KindNumberKeyword | KindObjectKeyword | KindSatisfiesKeyword | KindSetKeyword | KindStringKeyword | KindSymbolKeyword | KindTypeKeyword | KindUndefinedKeyword | KindUniqueKeyword | KindUnknownKeyword | KindUsingKeyword | KindFromKeyword | KindGlobalKeyword | KindBigIntKeyword | KindOverrideKeyword | KindOfKeyword | KindErrdeferKeyword | KindDeferKeyword
+ 	ModifierSyntaxKind                    = Kind // KindAbstractKeyword | KindAccessorKeyword | KindAsyncKeyword | KindConstKeyword | KindDeclareKeyword | KindDefaultKeyword | KindExportKeyword | KindInKeyword | KindPrivateKeyword | KindProtectedKeyword | KindPublicKeyword | KindReadonlyKeyword | KindOutKeyword | KindOverrideKeyword | KindStaticKeyword
+ 	KeywordTypeSyntaxKind                 = Kind // KindAnyKeyword | KindBigIntKeyword | KindBooleanKeyword | KindIntrinsicKeyword | KindNeverKeyword | KindNumberKeyword | KindObjectKeyword | KindStringKeyword | KindSymbolKeyword | KindUndefinedKeyword | KindUnknownKeyword | KindVoidKeyword
+ 	KeywordExpressionSyntaxKind           = Kind // KindNullKeyword | KindTrueKeyword | KindFalseKeyword | KindThisKeyword | KindSuperKeyword | KindImportKeyword
+-	TokenSyntaxKind                       = Kind // KindUnknown | KindEndOfFile | KindSingleLineCommentTrivia | KindMultiLineCommentTrivia | KindNewLineTrivia | KindWhitespaceTrivia | KindConflictMarkerTrivia | KindNonTextFileMarkerTrivia | KindNumericLiteral | KindBigIntLiteral | KindStringLiteral | KindJsxText | KindJsxTextAllWhiteSpaces | KindRegularExpressionLiteral | KindNoSubstitutionTemplateLiteral | KindTemplateHead | KindTemplateMiddle | KindTemplateTail | KindOpenBraceToken | KindCloseBraceToken | KindOpenParenToken | KindCloseParenToken | KindOpenBracketToken | KindCloseBracketToken | KindDotToken | KindDotDotDotToken | KindSemicolonToken | KindCommaToken | KindQuestionDotToken | KindLessThanToken | KindLessThanSlashToken | KindGreaterThanToken | KindLessThanEqualsToken | KindGreaterThanEqualsToken | KindEqualsEqualsToken | KindExclamationEqualsToken | KindEqualsEqualsEqualsToken | KindExclamationEqualsEqualsToken | KindEqualsGreaterThanToken | KindPlusToken | KindMinusToken | KindAsteriskToken | KindAsteriskAsteriskToken | KindSlashToken | KindPercentToken | KindPlusPlusToken | KindMinusMinusToken | KindLessThanLessThanToken | KindGreaterThanGreaterThanToken | KindGreaterThanGreaterThanGreaterThanToken | KindAmpersandToken | KindBarToken | KindCaretToken | KindExclamationToken | KindTildeToken | KindAmpersandAmpersandToken | KindBarBarToken | KindQuestionToken | KindColonToken | KindAtToken | KindQuestionQuestionToken | KindBacktickToken | KindHashToken | KindEqualsToken | KindPlusEqualsToken | KindMinusEqualsToken | KindAsteriskEqualsToken | KindAsteriskAsteriskEqualsToken | KindSlashEqualsToken | KindPercentEqualsToken | KindLessThanLessThanEqualsToken | KindGreaterThanGreaterThanEqualsToken | KindGreaterThanGreaterThanGreaterThanEqualsToken | KindAmpersandEqualsToken | KindBarEqualsToken | KindBarBarEqualsToken | KindAmpersandAmpersandEqualsToken | KindQuestionQuestionEqualsToken | KindCaretEqualsToken | KindIdentifier | KindPrivateIdentifier | KindJSDocCommentTextToken | KindBreakKeyword | KindCaseKeyword | KindCatchKeyword | KindClassKeyword | KindConstKeyword | KindContinueKeyword | KindDebuggerKeyword | KindDefaultKeyword | KindDeleteKeyword | KindDoKeyword | KindElseKeyword | KindEnumKeyword | KindExportKeyword | KindExtendsKeyword | KindFalseKeyword | KindFinallyKeyword | KindForKeyword | KindFunctionKeyword | KindIfKeyword | KindImportKeyword | KindInKeyword | KindInstanceOfKeyword | KindNewKeyword | KindNullKeyword | KindReturnKeyword | KindSuperKeyword | KindSwitchKeyword | KindThisKeyword | KindThrowKeyword | KindTrueKeyword | KindTryKeyword | KindTypeOfKeyword | KindVarKeyword | KindVoidKeyword | KindWhileKeyword | KindWithKeyword | KindImplementsKeyword | KindInterfaceKeyword | KindLetKeyword | KindPackageKeyword | KindPrivateKeyword | KindProtectedKeyword | KindPublicKeyword | KindStaticKeyword | KindYieldKeyword | KindAbstractKeyword | KindAccessorKeyword | KindAsKeyword | KindAssertsKeyword | KindAssertKeyword | KindAnyKeyword | KindAsyncKeyword | KindAwaitKeyword | KindBooleanKeyword | KindConstructorKeyword | KindDeclareKeyword | KindGetKeyword | KindImmediateKeyword | KindInferKeyword | KindIntrinsicKeyword | KindIsKeyword | KindKeyOfKeyword | KindModuleKeyword | KindNamespaceKeyword | KindNeverKeyword | KindOutKeyword | KindReadonlyKeyword | KindRequireKeyword | KindNumberKeyword | KindObjectKeyword | KindSatisfiesKeyword | KindSetKeyword | KindStringKeyword | KindSymbolKeyword | KindTypeKeyword | KindUndefinedKeyword | KindUniqueKeyword | KindUnknownKeyword | KindUsingKeyword | KindFromKeyword | KindGlobalKeyword | KindBigIntKeyword | KindOverrideKeyword | KindOfKeyword | KindDeferKeyword
++	TokenSyntaxKind                       = Kind // KindUnknown | KindEndOfFile | KindSingleLineCommentTrivia | KindMultiLineCommentTrivia | KindNewLineTrivia | KindWhitespaceTrivia | KindConflictMarkerTrivia | KindNonTextFileMarkerTrivia | KindNumericLiteral | KindBigIntLiteral | KindStringLiteral | KindJsxText | KindJsxTextAllWhiteSpaces | KindRegularExpressionLiteral | KindNoSubstitutionTemplateLiteral | KindTemplateHead | KindTemplateMiddle | KindTemplateTail | KindOpenBraceToken | KindCloseBraceToken | KindOpenParenToken | KindCloseParenToken | KindOpenBracketToken | KindCloseBracketToken | KindDotToken | KindDotDotDotToken | KindSemicolonToken | KindCommaToken | KindQuestionDotToken | KindLessThanToken | KindLessThanSlashToken | KindGreaterThanToken | KindLessThanEqualsToken | KindGreaterThanEqualsToken | KindEqualsEqualsToken | KindExclamationEqualsToken | KindEqualsEqualsEqualsToken | KindExclamationEqualsEqualsToken | KindEqualsGreaterThanToken | KindPlusToken | KindMinusToken | KindAsteriskToken | KindAsteriskAsteriskToken | KindSlashToken | KindPercentToken | KindPlusPlusToken | KindMinusMinusToken | KindLessThanLessThanToken | KindGreaterThanGreaterThanToken | KindGreaterThanGreaterThanGreaterThanToken | KindAmpersandToken | KindBarToken | KindCaretToken | KindExclamationToken | KindTildeToken | KindAmpersandAmpersandToken | KindBarBarToken | KindQuestionToken | KindColonToken | KindAtToken | KindQuestionQuestionToken | KindBacktickToken | KindHashToken | KindEqualsToken | KindPlusEqualsToken | KindMinusEqualsToken | KindAsteriskEqualsToken | KindAsteriskAsteriskEqualsToken | KindSlashEqualsToken | KindPercentEqualsToken | KindLessThanLessThanEqualsToken | KindGreaterThanGreaterThanEqualsToken | KindGreaterThanGreaterThanGreaterThanEqualsToken | KindAmpersandEqualsToken | KindBarEqualsToken | KindBarBarEqualsToken | KindAmpersandAmpersandEqualsToken | KindQuestionQuestionEqualsToken | KindCaretEqualsToken | KindIdentifier | KindPrivateIdentifier | KindJSDocCommentTextToken | KindBreakKeyword | KindCaseKeyword | KindCatchKeyword | KindClassKeyword | KindConstKeyword | KindContinueKeyword | KindDebuggerKeyword | KindDefaultKeyword | KindDeleteKeyword | KindDoKeyword | KindElseKeyword | KindEnumKeyword | KindExportKeyword | KindExtendsKeyword | KindFalseKeyword | KindFinallyKeyword | KindForKeyword | KindFunctionKeyword | KindIfKeyword | KindImportKeyword | KindInKeyword | KindInstanceOfKeyword | KindNewKeyword | KindNullKeyword | KindReturnKeyword | KindSuperKeyword | KindSwitchKeyword | KindThisKeyword | KindThrowKeyword | KindTrueKeyword | KindTryKeyword | KindTypeOfKeyword | KindVarKeyword | KindVoidKeyword | KindWhileKeyword | KindWithKeyword | KindImplementsKeyword | KindInterfaceKeyword | KindLetKeyword | KindPackageKeyword | KindPrivateKeyword | KindProtectedKeyword | KindPublicKeyword | KindStaticKeyword | KindYieldKeyword | KindAbstractKeyword | KindAccessorKeyword | KindAsKeyword | KindAssertsKeyword | KindAssertKeyword | KindAnyKeyword | KindAsyncKeyword | KindAwaitKeyword | KindBooleanKeyword | KindConstructorKeyword | KindDeclareKeyword | KindGetKeyword | KindImmediateKeyword | KindInferKeyword | KindIntrinsicKeyword | KindIsKeyword | KindKeyOfKeyword | KindModuleKeyword | KindNamespaceKeyword | KindNeverKeyword | KindOutKeyword | KindReadonlyKeyword | KindRequireKeyword | KindNumberKeyword | KindObjectKeyword | KindSatisfiesKeyword | KindSetKeyword | KindStringKeyword | KindSymbolKeyword | KindTypeKeyword | KindUndefinedKeyword | KindUniqueKeyword | KindUnknownKeyword | KindUsingKeyword | KindFromKeyword | KindGlobalKeyword | KindBigIntKeyword | KindOverrideKeyword | KindOfKeyword | KindErrdeferKeyword | KindDeferKeyword
+ 	JsxTokenSyntaxKind                    = Kind // KindLessThanSlashToken | KindEndOfFile | KindConflictMarkerTrivia | KindJsxText | KindJsxTextAllWhiteSpaces | KindOpenBraceToken | KindLessThanToken
+ 	JSDocNodeSyntaxKind                   = Kind // KindJSDocTypeExpression | KindJSDocNameReference | KindJSDocAllType | KindJSDocNullableType | KindJSDocNonNullableType | KindJSDocOptionalType | KindJSDocVariadicType | KindJSDoc | KindJSDocText | KindJSDocTypeLiteral | KindJSDocSignature | KindJSDocLink | KindJSDocLinkCode | KindJSDocLinkPlain | KindJSDocUnknownTag | KindJSDocAugmentsTag | KindJSDocImplementsTag | KindJSDocDeprecatedTag | KindJSDocPublicTag | KindJSDocPrivateTag | KindJSDocProtectedTag | KindJSDocReadonlyTag | KindJSDocOverrideTag | KindJSDocCallbackTag | KindJSDocOverloadTag | KindJSDocParameterTag | KindJSDocReturnTag | KindJSDocThisTag | KindJSDocTypeTag | KindJSDocTemplateTag | KindJSDocTypedefTag | KindJSDocSeeTag | KindJSDocPropertyTag | KindJSDocThrowsTag | KindJSDocSatisfiesTag | KindJSDocImportTag
+ 	ImportPhaseModifierSyntaxKind         = Kind // KindTypeKeyword | KindDeferKeyword
+diff --git a/tsc/internal/ast/kind_stringer_generated.go b/tsc/internal/ast/kind_stringer_generated.go
+index b80f1ba5..b88c5947 100644
+--- a/tsc/internal/ast/kind_stringer_generated.go
++++ b/tsc/internal/ast/kind_stringer_generated.go
+@@ -1,4 +1,4 @@
+-// Code generated by "stringer -type=Kind -output=kind_stringer_generated.go"; DO NOT EDIT.
++// Code generated by "stringer -type=Kind -output=kind_stringer_generated.go ."; DO NOT EDIT.
+ 
+ package ast
+ 
+@@ -174,197 +174,203 @@ func _() {
+ 	_ = x[KindBigIntKeyword-163]
+ 	_ = x[KindOverrideKeyword-164]
+ 	_ = x[KindOfKeyword-165]
+-	_ = x[KindDeferKeyword-166]
+-	_ = x[KindQualifiedName-167]
+-	_ = x[KindComputedPropertyName-168]
+-	_ = x[KindTypeParameter-169]
+-	_ = x[KindParameter-170]
+-	_ = x[KindDecorator-171]
+-	_ = x[KindPropertySignature-172]
+-	_ = x[KindPropertyDeclaration-173]
+-	_ = x[KindMethodSignature-174]
+-	_ = x[KindMethodDeclaration-175]
+-	_ = x[KindClassStaticBlockDeclaration-176]
+-	_ = x[KindConstructor-177]
+-	_ = x[KindGetAccessor-178]
+-	_ = x[KindSetAccessor-179]
+-	_ = x[KindCallSignature-180]
+-	_ = x[KindConstructSignature-181]
+-	_ = x[KindIndexSignature-182]
+-	_ = x[KindTypePredicate-183]
+-	_ = x[KindTypeReference-184]
+-	_ = x[KindFunctionType-185]
+-	_ = x[KindConstructorType-186]
+-	_ = x[KindTypeQuery-187]
+-	_ = x[KindTypeLiteral-188]
+-	_ = x[KindArrayType-189]
+-	_ = x[KindTupleType-190]
+-	_ = x[KindOptionalType-191]
+-	_ = x[KindRestType-192]
+-	_ = x[KindUnionType-193]
+-	_ = x[KindIntersectionType-194]
+-	_ = x[KindConditionalType-195]
+-	_ = x[KindInferType-196]
+-	_ = x[KindParenthesizedType-197]
+-	_ = x[KindThisType-198]
+-	_ = x[KindTypeOperator-199]
+-	_ = x[KindIndexedAccessType-200]
+-	_ = x[KindMappedType-201]
+-	_ = x[KindLiteralType-202]
+-	_ = x[KindNamedTupleMember-203]
+-	_ = x[KindTemplateLiteralType-204]
+-	_ = x[KindTemplateLiteralTypeSpan-205]
+-	_ = x[KindImportType-206]
+-	_ = x[KindObjectBindingPattern-207]
+-	_ = x[KindArrayBindingPattern-208]
+-	_ = x[KindBindingElement-209]
+-	_ = x[KindArrayLiteralExpression-210]
+-	_ = x[KindObjectLiteralExpression-211]
+-	_ = x[KindPropertyAccessExpression-212]
+-	_ = x[KindElementAccessExpression-213]
+-	_ = x[KindCallExpression-214]
+-	_ = x[KindNewExpression-215]
+-	_ = x[KindTaggedTemplateExpression-216]
+-	_ = x[KindTypeAssertionExpression-217]
+-	_ = x[KindParenthesizedExpression-218]
+-	_ = x[KindFunctionExpression-219]
+-	_ = x[KindArrowFunction-220]
+-	_ = x[KindDeleteExpression-221]
+-	_ = x[KindTypeOfExpression-222]
+-	_ = x[KindVoidExpression-223]
+-	_ = x[KindAwaitExpression-224]
+-	_ = x[KindPrefixUnaryExpression-225]
+-	_ = x[KindPostfixUnaryExpression-226]
+-	_ = x[KindBinaryExpression-227]
+-	_ = x[KindConditionalExpression-228]
+-	_ = x[KindTemplateExpression-229]
+-	_ = x[KindYieldExpression-230]
+-	_ = x[KindSpreadElement-231]
+-	_ = x[KindClassExpression-232]
+-	_ = x[KindOmittedExpression-233]
+-	_ = x[KindExpressionWithTypeArguments-234]
+-	_ = x[KindAsExpression-235]
+-	_ = x[KindNonNullExpression-236]
+-	_ = x[KindMetaProperty-237]
+-	_ = x[KindSyntheticExpression-238]
+-	_ = x[KindSatisfiesExpression-239]
+-	_ = x[KindTemplateSpan-240]
+-	_ = x[KindSemicolonClassElement-241]
+-	_ = x[KindBlock-242]
+-	_ = x[KindEmptyStatement-243]
+-	_ = x[KindVariableStatement-244]
+-	_ = x[KindExpressionStatement-245]
+-	_ = x[KindIfStatement-246]
+-	_ = x[KindDoStatement-247]
+-	_ = x[KindWhileStatement-248]
+-	_ = x[KindForStatement-249]
+-	_ = x[KindForInStatement-250]
+-	_ = x[KindForOfStatement-251]
+-	_ = x[KindContinueStatement-252]
+-	_ = x[KindBreakStatement-253]
+-	_ = x[KindReturnStatement-254]
+-	_ = x[KindWithStatement-255]
+-	_ = x[KindSwitchStatement-256]
+-	_ = x[KindLabeledStatement-257]
+-	_ = x[KindThrowStatement-258]
+-	_ = x[KindTryStatement-259]
+-	_ = x[KindDebuggerStatement-260]
+-	_ = x[KindVariableDeclaration-261]
+-	_ = x[KindVariableDeclarationList-262]
+-	_ = x[KindFunctionDeclaration-263]
+-	_ = x[KindClassDeclaration-264]
+-	_ = x[KindInterfaceDeclaration-265]
+-	_ = x[KindTypeAliasDeclaration-266]
+-	_ = x[KindEnumDeclaration-267]
+-	_ = x[KindModuleDeclaration-268]
+-	_ = x[KindModuleBlock-269]
+-	_ = x[KindCaseBlock-270]
+-	_ = x[KindNamespaceExportDeclaration-271]
+-	_ = x[KindImportEqualsDeclaration-272]
+-	_ = x[KindImportDeclaration-273]
+-	_ = x[KindImportClause-274]
+-	_ = x[KindNamespaceImport-275]
+-	_ = x[KindNamedImports-276]
+-	_ = x[KindImportSpecifier-277]
+-	_ = x[KindExportAssignment-278]
+-	_ = x[KindExportDeclaration-279]
+-	_ = x[KindNamedExports-280]
+-	_ = x[KindNamespaceExport-281]
+-	_ = x[KindExportSpecifier-282]
+-	_ = x[KindMissingDeclaration-283]
+-	_ = x[KindExternalModuleReference-284]
+-	_ = x[KindJsxElement-285]
+-	_ = x[KindJsxSelfClosingElement-286]
+-	_ = x[KindJsxOpeningElement-287]
+-	_ = x[KindJsxClosingElement-288]
+-	_ = x[KindJsxFragment-289]
+-	_ = x[KindJsxOpeningFragment-290]
+-	_ = x[KindJsxClosingFragment-291]
+-	_ = x[KindJsxAttribute-292]
+-	_ = x[KindJsxAttributes-293]
+-	_ = x[KindJsxSpreadAttribute-294]
+-	_ = x[KindJsxExpression-295]
+-	_ = x[KindJsxNamespacedName-296]
+-	_ = x[KindCaseClause-297]
+-	_ = x[KindDefaultClause-298]
+-	_ = x[KindHeritageClause-299]
+-	_ = x[KindCatchClause-300]
+-	_ = x[KindImportAttributes-301]
+-	_ = x[KindImportAttribute-302]
+-	_ = x[KindPropertyAssignment-303]
+-	_ = x[KindShorthandPropertyAssignment-304]
+-	_ = x[KindSpreadAssignment-305]
+-	_ = x[KindEnumMember-306]
+-	_ = x[KindSourceFile-307]
+-	_ = x[KindJSDocTypeExpression-308]
+-	_ = x[KindJSDocNameReference-309]
+-	_ = x[KindJSDocAllType-310]
+-	_ = x[KindJSDocNullableType-311]
+-	_ = x[KindJSDocNonNullableType-312]
+-	_ = x[KindJSDocOptionalType-313]
+-	_ = x[KindJSDocVariadicType-314]
+-	_ = x[KindJSDoc-315]
+-	_ = x[KindJSDocText-316]
+-	_ = x[KindJSDocTypeLiteral-317]
+-	_ = x[KindJSDocSignature-318]
+-	_ = x[KindJSDocLink-319]
+-	_ = x[KindJSDocLinkCode-320]
+-	_ = x[KindJSDocLinkPlain-321]
+-	_ = x[KindJSDocUnknownTag-322]
+-	_ = x[KindJSDocAugmentsTag-323]
+-	_ = x[KindJSDocImplementsTag-324]
+-	_ = x[KindJSDocDeprecatedTag-325]
+-	_ = x[KindJSDocPublicTag-326]
+-	_ = x[KindJSDocPrivateTag-327]
+-	_ = x[KindJSDocProtectedTag-328]
+-	_ = x[KindJSDocReadonlyTag-329]
+-	_ = x[KindJSDocOverrideTag-330]
+-	_ = x[KindJSDocCallbackTag-331]
+-	_ = x[KindJSDocOverloadTag-332]
+-	_ = x[KindJSDocParameterTag-333]
+-	_ = x[KindJSDocReturnTag-334]
+-	_ = x[KindJSDocThisTag-335]
+-	_ = x[KindJSDocTypeTag-336]
+-	_ = x[KindJSDocTemplateTag-337]
+-	_ = x[KindJSDocTypedefTag-338]
+-	_ = x[KindJSDocSeeTag-339]
+-	_ = x[KindJSDocPropertyTag-340]
+-	_ = x[KindJSDocThrowsTag-341]
+-	_ = x[KindJSDocSatisfiesTag-342]
+-	_ = x[KindJSDocImportTag-343]
+-	_ = x[KindSyntaxList-344]
+-	_ = x[KindJSTypeAliasDeclaration-345]
+-	_ = x[KindJSImportDeclaration-346]
+-	_ = x[KindNotEmittedStatement-347]
+-	_ = x[KindPartiallyEmittedExpression-348]
+-	_ = x[KindSyntheticReferenceExpression-349]
+-	_ = x[KindNotEmittedTypeElement-350]
+-	_ = x[KindCount-351]
++	_ = x[KindErrdeferKeyword-166]
++	_ = x[KindDeferKeyword-167]
++	_ = x[KindQualifiedName-168]
++	_ = x[KindComputedPropertyName-169]
++	_ = x[KindTypeParameter-170]
++	_ = x[KindParameter-171]
++	_ = x[KindDecorator-172]
++	_ = x[KindPropertySignature-173]
++	_ = x[KindPropertyDeclaration-174]
++	_ = x[KindMethodSignature-175]
++	_ = x[KindMethodDeclaration-176]
++	_ = x[KindClassStaticBlockDeclaration-177]
++	_ = x[KindConstructor-178]
++	_ = x[KindGetAccessor-179]
++	_ = x[KindSetAccessor-180]
++	_ = x[KindCallSignature-181]
++	_ = x[KindConstructSignature-182]
++	_ = x[KindIndexSignature-183]
++	_ = x[KindTypePredicate-184]
++	_ = x[KindTypeReference-185]
++	_ = x[KindFunctionType-186]
++	_ = x[KindConstructorType-187]
++	_ = x[KindTypeQuery-188]
++	_ = x[KindTypeLiteral-189]
++	_ = x[KindArrayType-190]
++	_ = x[KindTupleType-191]
++	_ = x[KindOptionalType-192]
++	_ = x[KindRestType-193]
++	_ = x[KindUnionType-194]
++	_ = x[KindIntersectionType-195]
++	_ = x[KindConditionalType-196]
++	_ = x[KindInferType-197]
++	_ = x[KindParenthesizedType-198]
++	_ = x[KindThisType-199]
++	_ = x[KindTypeOperator-200]
++	_ = x[KindIndexedAccessType-201]
++	_ = x[KindMappedType-202]
++	_ = x[KindLiteralType-203]
++	_ = x[KindNamedTupleMember-204]
++	_ = x[KindTemplateLiteralType-205]
++	_ = x[KindTemplateLiteralTypeSpan-206]
++	_ = x[KindImportType-207]
++	_ = x[KindObjectBindingPattern-208]
++	_ = x[KindArrayBindingPattern-209]
++	_ = x[KindBindingElement-210]
++	_ = x[KindArrayLiteralExpression-211]
++	_ = x[KindObjectLiteralExpression-212]
++	_ = x[KindPropertyAccessExpression-213]
++	_ = x[KindElementAccessExpression-214]
++	_ = x[KindCallExpression-215]
++	_ = x[KindNewExpression-216]
++	_ = x[KindTaggedTemplateExpression-217]
++	_ = x[KindTypeAssertionExpression-218]
++	_ = x[KindParenthesizedExpression-219]
++	_ = x[KindFunctionExpression-220]
++	_ = x[KindArrowFunction-221]
++	_ = x[KindDeleteExpression-222]
++	_ = x[KindTypeOfExpression-223]
++	_ = x[KindVoidExpression-224]
++	_ = x[KindAwaitExpression-225]
++	_ = x[KindPrefixUnaryExpression-226]
++	_ = x[KindPostfixUnaryExpression-227]
++	_ = x[KindBinaryExpression-228]
++	_ = x[KindConditionalExpression-229]
++	_ = x[KindIfExpression-230]
++	_ = x[KindSwitchExpression-231]
++	_ = x[KindLabeledExpression-232]
++	_ = x[KindTemplateExpression-233]
++	_ = x[KindYieldExpression-234]
++	_ = x[KindSpreadElement-235]
++	_ = x[KindClassExpression-236]
++	_ = x[KindOmittedExpression-237]
++	_ = x[KindExpressionWithTypeArguments-238]
++	_ = x[KindAsExpression-239]
++	_ = x[KindNonNullExpression-240]
++	_ = x[KindMetaProperty-241]
++	_ = x[KindSyntheticExpression-242]
++	_ = x[KindSatisfiesExpression-243]
++	_ = x[KindTemplateSpan-244]
++	_ = x[KindSemicolonClassElement-245]
++	_ = x[KindBlock-246]
++	_ = x[KindEmptyStatement-247]
++	_ = x[KindVariableStatement-248]
++	_ = x[KindExpressionStatement-249]
++	_ = x[KindIfStatement-250]
++	_ = x[KindDoStatement-251]
++	_ = x[KindWhileStatement-252]
++	_ = x[KindForStatement-253]
++	_ = x[KindForInStatement-254]
++	_ = x[KindForOfStatement-255]
++	_ = x[KindContinueStatement-256]
++	_ = x[KindBreakStatement-257]
++	_ = x[KindReturnStatement-258]
++	_ = x[KindWithStatement-259]
++	_ = x[KindSwitchStatement-260]
++	_ = x[KindLabeledStatement-261]
++	_ = x[KindThrowStatement-262]
++	_ = x[KindTryStatement-263]
++	_ = x[KindDeferStatement-264]
++	_ = x[KindErrdeferStatement-265]
++	_ = x[KindDebuggerStatement-266]
++	_ = x[KindVariableDeclaration-267]
++	_ = x[KindVariableDeclarationList-268]
++	_ = x[KindFunctionDeclaration-269]
++	_ = x[KindClassDeclaration-270]
++	_ = x[KindInterfaceDeclaration-271]
++	_ = x[KindTypeAliasDeclaration-272]
++	_ = x[KindEnumDeclaration-273]
++	_ = x[KindModuleDeclaration-274]
++	_ = x[KindModuleBlock-275]
++	_ = x[KindCaseBlock-276]
++	_ = x[KindNamespaceExportDeclaration-277]
++	_ = x[KindImportEqualsDeclaration-278]
++	_ = x[KindImportDeclaration-279]
++	_ = x[KindImportClause-280]
++	_ = x[KindNamespaceImport-281]
++	_ = x[KindNamedImports-282]
++	_ = x[KindImportSpecifier-283]
++	_ = x[KindExportAssignment-284]
++	_ = x[KindExportDeclaration-285]
++	_ = x[KindNamedExports-286]
++	_ = x[KindNamespaceExport-287]
++	_ = x[KindExportSpecifier-288]
++	_ = x[KindMissingDeclaration-289]
++	_ = x[KindExternalModuleReference-290]
++	_ = x[KindJsxElement-291]
++	_ = x[KindJsxSelfClosingElement-292]
++	_ = x[KindJsxOpeningElement-293]
++	_ = x[KindJsxClosingElement-294]
++	_ = x[KindJsxFragment-295]
++	_ = x[KindJsxOpeningFragment-296]
++	_ = x[KindJsxClosingFragment-297]
++	_ = x[KindJsxAttribute-298]
++	_ = x[KindJsxAttributes-299]
++	_ = x[KindJsxSpreadAttribute-300]
++	_ = x[KindJsxExpression-301]
++	_ = x[KindJsxNamespacedName-302]
++	_ = x[KindCaseClause-303]
++	_ = x[KindDefaultClause-304]
++	_ = x[KindHeritageClause-305]
++	_ = x[KindCatchClause-306]
++	_ = x[KindImportAttributes-307]
++	_ = x[KindImportAttribute-308]
++	_ = x[KindPropertyAssignment-309]
++	_ = x[KindShorthandPropertyAssignment-310]
++	_ = x[KindSpreadAssignment-311]
++	_ = x[KindEnumMember-312]
++	_ = x[KindSourceFile-313]
++	_ = x[KindJSDocTypeExpression-314]
++	_ = x[KindJSDocNameReference-315]
++	_ = x[KindJSDocAllType-316]
++	_ = x[KindJSDocNullableType-317]
++	_ = x[KindJSDocNonNullableType-318]
++	_ = x[KindJSDocOptionalType-319]
++	_ = x[KindJSDocVariadicType-320]
++	_ = x[KindJSDoc-321]
++	_ = x[KindJSDocText-322]
++	_ = x[KindJSDocTypeLiteral-323]
++	_ = x[KindJSDocSignature-324]
++	_ = x[KindJSDocLink-325]
++	_ = x[KindJSDocLinkCode-326]
++	_ = x[KindJSDocLinkPlain-327]
++	_ = x[KindJSDocUnknownTag-328]
++	_ = x[KindJSDocAugmentsTag-329]
++	_ = x[KindJSDocImplementsTag-330]
++	_ = x[KindJSDocDeprecatedTag-331]
++	_ = x[KindJSDocPublicTag-332]
++	_ = x[KindJSDocPrivateTag-333]
++	_ = x[KindJSDocProtectedTag-334]
++	_ = x[KindJSDocReadonlyTag-335]
++	_ = x[KindJSDocOverrideTag-336]
++	_ = x[KindJSDocCallbackTag-337]
++	_ = x[KindJSDocOverloadTag-338]
++	_ = x[KindJSDocParameterTag-339]
++	_ = x[KindJSDocReturnTag-340]
++	_ = x[KindJSDocThisTag-341]
++	_ = x[KindJSDocTypeTag-342]
++	_ = x[KindJSDocTemplateTag-343]
++	_ = x[KindJSDocTypedefTag-344]
++	_ = x[KindJSDocSeeTag-345]
++	_ = x[KindJSDocPropertyTag-346]
++	_ = x[KindJSDocThrowsTag-347]
++	_ = x[KindJSDocSatisfiesTag-348]
++	_ = x[KindJSDocImportTag-349]
++	_ = x[KindSyntaxList-350]
++	_ = x[KindJSTypeAliasDeclaration-351]
++	_ = x[KindJSImportDeclaration-352]
++	_ = x[KindNotEmittedStatement-353]
++	_ = x[KindPartiallyEmittedExpression-354]
++	_ = x[KindSyntheticReferenceExpression-355]
++	_ = x[KindNotEmittedTypeElement-356]
++	_ = x[KindCount-357]
+ }
+ 
+-const _Kind_name = "KindUnknownKindEndOfFileKindSingleLineCommentTriviaKindMultiLineCommentTriviaKindNewLineTriviaKindWhitespaceTriviaKindConflictMarkerTriviaKindNonTextFileMarkerTriviaKindNumericLiteralKindBigIntLiteralKindStringLiteralKindJsxTextKindJsxTextAllWhiteSpacesKindRegularExpressionLiteralKindNoSubstitutionTemplateLiteralKindTemplateHeadKindTemplateMiddleKindTemplateTailKindOpenBraceTokenKindCloseBraceTokenKindOpenParenTokenKindCloseParenTokenKindOpenBracketTokenKindCloseBracketTokenKindDotTokenKindDotDotDotTokenKindSemicolonTokenKindCommaTokenKindQuestionDotTokenKindLessThanTokenKindLessThanSlashTokenKindGreaterThanTokenKindLessThanEqualsTokenKindGreaterThanEqualsTokenKindEqualsEqualsTokenKindExclamationEqualsTokenKindEqualsEqualsEqualsTokenKindExclamationEqualsEqualsTokenKindEqualsGreaterThanTokenKindPlusTokenKindMinusTokenKindAsteriskTokenKindAsteriskAsteriskTokenKindSlashTokenKindPercentTokenKindPlusPlusTokenKindMinusMinusTokenKindLessThanLessThanTokenKindGreaterThanGreaterThanTokenKindGreaterThanGreaterThanGreaterThanTokenKindAmpersandTokenKindBarTokenKindCaretTokenKindExclamationTokenKindTildeTokenKindAmpersandAmpersandTokenKindBarBarTokenKindQuestionTokenKindColonTokenKindAtTokenKindQuestionQuestionTokenKindBacktickTokenKindHashTokenKindEqualsTokenKindPlusEqualsTokenKindMinusEqualsTokenKindAsteriskEqualsTokenKindAsteriskAsteriskEqualsTokenKindSlashEqualsTokenKindPercentEqualsTokenKindLessThanLessThanEqualsTokenKindGreaterThanGreaterThanEqualsTokenKindGreaterThanGreaterThanGreaterThanEqualsTokenKindAmpersandEqualsTokenKindBarEqualsTokenKindBarBarEqualsTokenKindAmpersandAmpersandEqualsTokenKindQuestionQuestionEqualsTokenKindCaretEqualsTokenKindIdentifierKindPrivateIdentifierKindJSDocCommentTextTokenKindBreakKeywordKindCaseKeywordKindCatchKeywordKindClassKeywordKindConstKeywordKindContinueKeywordKindDebuggerKeywordKindDefaultKeywordKindDeleteKeywordKindDoKeywordKindElseKeywordKindEnumKeywordKindExportKeywordKindExtendsKeywordKindFalseKeywordKindFinallyKeywordKindForKeywordKindFunctionKeywordKindIfKeywordKindImportKeywordKindInKeywordKindInstanceOfKeywordKindNewKeywordKindNullKeywordKindReturnKeywordKindSuperKeywordKindSwitchKeywordKindThisKeywordKindThrowKeywordKindTrueKeywordKindTryKeywordKindTypeOfKeywordKindVarKeywordKindVoidKeywordKindWhileKeywordKindWithKeywordKindImplementsKeywordKindInterfaceKeywordKindLetKeywordKindPackageKeywordKindPrivateKeywordKindProtectedKeywordKindPublicKeywordKindStaticKeywordKindYieldKeywordKindAbstractKeywordKindAccessorKeywordKindAsKeywordKindAssertsKeywordKindAssertKeywordKindAnyKeywordKindAsyncKeywordKindAwaitKeywordKindBooleanKeywordKindConstructorKeywordKindDeclareKeywordKindGetKeywordKindImmediateKeywordKindInferKeywordKindIntrinsicKeywordKindIsKeywordKindKeyOfKeywordKindModuleKeywordKindNamespaceKeywordKindNeverKeywordKindOutKeywordKindReadonlyKeywordKindRequireKeywordKindNumberKeywordKindObjectKeywordKindSatisfiesKeywordKindSetKeywordKindStringKeywordKindSymbolKeywordKindTypeKeywordKindUndefinedKeywordKindUniqueKeywordKindUnknownKeywordKindUsingKeywordKindFromKeywordKindGlobalKeywordKindBigIntKeywordKindOverrideKeywordKindOfKeywordKindDeferKeywordKindQualifiedNameKindComputedPropertyNameKindTypeParameterKindParameterKindDecoratorKindPropertySignatureKindPropertyDeclarationKindMethodSignatureKindMethodDeclarationKindClassStaticBlockDeclarationKindConstructorKindGetAccessorKindSetAccessorKindCallSignatureKindConstructSignatureKindIndexSignatureKindTypePredicateKindTypeReferenceKindFunctionTypeKindConstructorTypeKindTypeQueryKindTypeLiteralKindArrayTypeKindTupleTypeKindOptionalTypeKindRestTypeKindUnionTypeKindIntersectionTypeKindConditionalTypeKindInferTypeKindParenthesizedTypeKindThisTypeKindTypeOperatorKindIndexedAccessTypeKindMappedTypeKindLiteralTypeKindNamedTupleMemberKindTemplateLiteralTypeKindTemplateLiteralTypeSpanKindImportTypeKindObjectBindingPatternKindArrayBindingPatternKindBindingElementKindArrayLiteralExpressionKindObjectLiteralExpressionKindPropertyAccessExpressionKindElementAccessExpressionKindCallExpressionKindNewExpressionKindTaggedTemplateExpressionKindTypeAssertionExpressionKindParenthesizedExpressionKindFunctionExpressionKindArrowFunctionKindDeleteExpressionKindTypeOfExpressionKindVoidExpressionKindAwaitExpressionKindPrefixUnaryExpressionKindPostfixUnaryExpressionKindBinaryExpressionKindConditionalExpressionKindTemplateExpressionKindYieldExpressionKindSpreadElementKindClassExpressionKindOmittedExpressionKindExpressionWithTypeArgumentsKindAsExpressionKindNonNullExpressionKindMetaPropertyKindSyntheticExpressionKindSatisfiesExpressionKindTemplateSpanKindSemicolonClassElementKindBlockKindEmptyStatementKindVariableStatementKindExpressionStatementKindIfStatementKindDoStatementKindWhileStatementKindForStatementKindForInStatementKindForOfStatementKindContinueStatementKindBreakStatementKindReturnStatementKindWithStatementKindSwitchStatementKindLabeledStatementKindThrowStatementKindTryStatementKindDebuggerStatementKindVariableDeclarationKindVariableDeclarationListKindFunctionDeclarationKindClassDeclarationKindInterfaceDeclarationKindTypeAliasDeclarationKindEnumDeclarationKindModuleDeclarationKindModuleBlockKindCaseBlockKindNamespaceExportDeclarationKindImportEqualsDeclarationKindImportDeclarationKindImportClauseKindNamespaceImportKindNamedImportsKindImportSpecifierKindExportAssignmentKindExportDeclarationKindNamedExportsKindNamespaceExportKindExportSpecifierKindMissingDeclarationKindExternalModuleReferenceKindJsxElementKindJsxSelfClosingElementKindJsxOpeningElementKindJsxClosingElementKindJsxFragmentKindJsxOpeningFragmentKindJsxClosingFragmentKindJsxAttributeKindJsxAttributesKindJsxSpreadAttributeKindJsxExpressionKindJsxNamespacedNameKindCaseClauseKindDefaultClauseKindHeritageClauseKindCatchClauseKindImportAttributesKindImportAttributeKindPropertyAssignmentKindShorthandPropertyAssignmentKindSpreadAssignmentKindEnumMemberKindSourceFileKindJSDocTypeExpressionKindJSDocNameReferenceKindJSDocAllTypeKindJSDocNullableTypeKindJSDocNonNullableTypeKindJSDocOptionalTypeKindJSDocVariadicTypeKindJSDocKindJSDocTextKindJSDocTypeLiteralKindJSDocSignatureKindJSDocLinkKindJSDocLinkCodeKindJSDocLinkPlainKindJSDocUnknownTagKindJSDocAugmentsTagKindJSDocImplementsTagKindJSDocDeprecatedTagKindJSDocPublicTagKindJSDocPrivateTagKindJSDocProtectedTagKindJSDocReadonlyTagKindJSDocOverrideTagKindJSDocCallbackTagKindJSDocOverloadTagKindJSDocParameterTagKindJSDocReturnTagKindJSDocThisTagKindJSDocTypeTagKindJSDocTemplateTagKindJSDocTypedefTagKindJSDocSeeTagKindJSDocPropertyTagKindJSDocThrowsTagKindJSDocSatisfiesTagKindJSDocImportTagKindSyntaxListKindJSTypeAliasDeclarationKindJSImportDeclarationKindNotEmittedStatementKindPartiallyEmittedExpressionKindSyntheticReferenceExpressionKindNotEmittedTypeElementKindCount"
++const _Kind_name = "KindUnknownKindEndOfFileKindSingleLineCommentTriviaKindMultiLineCommentTriviaKindNewLineTriviaKindWhitespaceTriviaKindConflictMarkerTriviaKindNonTextFileMarkerTriviaKindNumericLiteralKindBigIntLiteralKindStringLiteralKindJsxTextKindJsxTextAllWhiteSpacesKindRegularExpressionLiteralKindNoSubstitutionTemplateLiteralKindTemplateHeadKindTemplateMiddleKindTemplateTailKindOpenBraceTokenKindCloseBraceTokenKindOpenParenTokenKindCloseParenTokenKindOpenBracketTokenKindCloseBracketTokenKindDotTokenKindDotDotDotTokenKindSemicolonTokenKindCommaTokenKindQuestionDotTokenKindLessThanTokenKindLessThanSlashTokenKindGreaterThanTokenKindLessThanEqualsTokenKindGreaterThanEqualsTokenKindEqualsEqualsTokenKindExclamationEqualsTokenKindEqualsEqualsEqualsTokenKindExclamationEqualsEqualsTokenKindEqualsGreaterThanTokenKindPlusTokenKindMinusTokenKindAsteriskTokenKindAsteriskAsteriskTokenKindSlashTokenKindPercentTokenKindPlusPlusTokenKindMinusMinusTokenKindLessThanLessThanTokenKindGreaterThanGreaterThanTokenKindGreaterThanGreaterThanGreaterThanTokenKindAmpersandTokenKindBarTokenKindCaretTokenKindExclamationTokenKindTildeTokenKindAmpersandAmpersandTokenKindBarBarTokenKindQuestionTokenKindColonTokenKindAtTokenKindQuestionQuestionTokenKindBacktickTokenKindHashTokenKindEqualsTokenKindPlusEqualsTokenKindMinusEqualsTokenKindAsteriskEqualsTokenKindAsteriskAsteriskEqualsTokenKindSlashEqualsTokenKindPercentEqualsTokenKindLessThanLessThanEqualsTokenKindGreaterThanGreaterThanEqualsTokenKindGreaterThanGreaterThanGreaterThanEqualsTokenKindAmpersandEqualsTokenKindBarEqualsTokenKindBarBarEqualsTokenKindAmpersandAmpersandEqualsTokenKindQuestionQuestionEqualsTokenKindCaretEqualsTokenKindIdentifierKindPrivateIdentifierKindJSDocCommentTextTokenKindBreakKeywordKindCaseKeywordKindCatchKeywordKindClassKeywordKindConstKeywordKindContinueKeywordKindDebuggerKeywordKindDefaultKeywordKindDeleteKeywordKindDoKeywordKindElseKeywordKindEnumKeywordKindExportKeywordKindExtendsKeywordKindFalseKeywordKindFinallyKeywordKindForKeywordKindFunctionKeywordKindIfKeywordKindImportKeywordKindInKeywordKindInstanceOfKeywordKindNewKeywordKindNullKeywordKindReturnKeywordKindSuperKeywordKindSwitchKeywordKindThisKeywordKindThrowKeywordKindTrueKeywordKindTryKeywordKindTypeOfKeywordKindVarKeywordKindVoidKeywordKindWhileKeywordKindWithKeywordKindImplementsKeywordKindInterfaceKeywordKindLetKeywordKindPackageKeywordKindPrivateKeywordKindProtectedKeywordKindPublicKeywordKindStaticKeywordKindYieldKeywordKindAbstractKeywordKindAccessorKeywordKindAsKeywordKindAssertsKeywordKindAssertKeywordKindAnyKeywordKindAsyncKeywordKindAwaitKeywordKindBooleanKeywordKindConstructorKeywordKindDeclareKeywordKindGetKeywordKindImmediateKeywordKindInferKeywordKindIntrinsicKeywordKindIsKeywordKindKeyOfKeywordKindModuleKeywordKindNamespaceKeywordKindNeverKeywordKindOutKeywordKindReadonlyKeywordKindRequireKeywordKindNumberKeywordKindObjectKeywordKindSatisfiesKeywordKindSetKeywordKindStringKeywordKindSymbolKeywordKindTypeKeywordKindUndefinedKeywordKindUniqueKeywordKindUnknownKeywordKindUsingKeywordKindFromKeywordKindGlobalKeywordKindBigIntKeywordKindOverrideKeywordKindOfKeywordKindErrdeferKeywordKindDeferKeywordKindQualifiedNameKindComputedPropertyNameKindTypeParameterKindParameterKindDecoratorKindPropertySignatureKindPropertyDeclarationKindMethodSignatureKindMethodDeclarationKindClassStaticBlockDeclarationKindConstructorKindGetAccessorKindSetAccessorKindCallSignatureKindConstructSignatureKindIndexSignatureKindTypePredicateKindTypeReferenceKindFunctionTypeKindConstructorTypeKindTypeQueryKindTypeLiteralKindArrayTypeKindTupleTypeKindOptionalTypeKindRestTypeKindUnionTypeKindIntersectionTypeKindConditionalTypeKindInferTypeKindParenthesizedTypeKindThisTypeKindTypeOperatorKindIndexedAccessTypeKindMappedTypeKindLiteralTypeKindNamedTupleMemberKindTemplateLiteralTypeKindTemplateLiteralTypeSpanKindImportTypeKindObjectBindingPatternKindArrayBindingPatternKindBindingElementKindArrayLiteralExpressionKindObjectLiteralExpressionKindPropertyAccessExpressionKindElementAccessExpressionKindCallExpressionKindNewExpressionKindTaggedTemplateExpressionKindTypeAssertionExpressionKindParenthesizedExpressionKindFunctionExpressionKindArrowFunctionKindDeleteExpressionKindTypeOfExpressionKindVoidExpressionKindAwaitExpressionKindPrefixUnaryExpressionKindPostfixUnaryExpressionKindBinaryExpressionKindConditionalExpressionKindIfExpressionKindSwitchExpressionKindLabeledExpressionKindTemplateExpressionKindYieldExpressionKindSpreadElementKindClassExpressionKindOmittedExpressionKindExpressionWithTypeArgumentsKindAsExpressionKindNonNullExpressionKindMetaPropertyKindSyntheticExpressionKindSatisfiesExpressionKindTemplateSpanKindSemicolonClassElementKindBlockKindEmptyStatementKindVariableStatementKindExpressionStatementKindIfStatementKindDoStatementKindWhileStatementKindForStatementKindForInStatementKindForOfStatementKindContinueStatementKindBreakStatementKindReturnStatementKindWithStatementKindSwitchStatementKindLabeledStatementKindThrowStatementKindTryStatementKindDeferStatementKindErrdeferStatementKindDebuggerStatementKindVariableDeclarationKindVariableDeclarationListKindFunctionDeclarationKindClassDeclarationKindInterfaceDeclarationKindTypeAliasDeclarationKindEnumDeclarationKindModuleDeclarationKindModuleBlockKindCaseBlockKindNamespaceExportDeclarationKindImportEqualsDeclarationKindImportDeclarationKindImportClauseKindNamespaceImportKindNamedImportsKindImportSpecifierKindExportAssignmentKindExportDeclarationKindNamedExportsKindNamespaceExportKindExportSpecifierKindMissingDeclarationKindExternalModuleReferenceKindJsxElementKindJsxSelfClosingElementKindJsxOpeningElementKindJsxClosingElementKindJsxFragmentKindJsxOpeningFragmentKindJsxClosingFragmentKindJsxAttributeKindJsxAttributesKindJsxSpreadAttributeKindJsxExpressionKindJsxNamespacedNameKindCaseClauseKindDefaultClauseKindHeritageClauseKindCatchClauseKindImportAttributesKindImportAttributeKindPropertyAssignmentKindShorthandPropertyAssignmentKindSpreadAssignmentKindEnumMemberKindSourceFileKindJSDocTypeExpressionKindJSDocNameReferenceKindJSDocAllTypeKindJSDocNullableTypeKindJSDocNonNullableTypeKindJSDocOptionalTypeKindJSDocVariadicTypeKindJSDocKindJSDocTextKindJSDocTypeLiteralKindJSDocSignatureKindJSDocLinkKindJSDocLinkCodeKindJSDocLinkPlainKindJSDocUnknownTagKindJSDocAugmentsTagKindJSDocImplementsTagKindJSDocDeprecatedTagKindJSDocPublicTagKindJSDocPrivateTagKindJSDocProtectedTagKindJSDocReadonlyTagKindJSDocOverrideTagKindJSDocCallbackTagKindJSDocOverloadTagKindJSDocParameterTagKindJSDocReturnTagKindJSDocThisTagKindJSDocTypeTagKindJSDocTemplateTagKindJSDocTypedefTagKindJSDocSeeTagKindJSDocPropertyTagKindJSDocThrowsTagKindJSDocSatisfiesTagKindJSDocImportTagKindSyntaxListKindJSTypeAliasDeclarationKindJSImportDeclarationKindNotEmittedStatementKindPartiallyEmittedExpressionKindSyntheticReferenceExpressionKindNotEmittedTypeElementKindCount"
+ 
+-var _Kind_index = [...]uint16{0, 11, 24, 51, 77, 94, 114, 138, 165, 183, 200, 217, 228, 253, 281, 314, 330, 348, 364, 382, 401, 419, 438, 458, 479, 491, 509, 527, 541, 561, 578, 600, 620, 643, 669, 690, 716, 743, 775, 801, 814, 828, 845, 870, 884, 900, 917, 936, 961, 992, 1034, 1052, 1064, 1078, 1098, 1112, 1139, 1154, 1171, 1185, 1196, 1221, 1238, 1251, 1266, 1285, 1305, 1328, 1359, 1379, 1401, 1432, 1469, 1517, 1541, 1559, 1580, 1613, 1644, 1664, 1678, 1699, 1724, 1740, 1755, 1771, 1787, 1803, 1822, 1841, 1859, 1876, 1889, 1904, 1919, 1936, 1954, 1970, 1988, 2002, 2021, 2034, 2051, 2064, 2085, 2099, 2114, 2131, 2147, 2164, 2179, 2195, 2210, 2224, 2241, 2255, 2270, 2286, 2301, 2322, 2342, 2356, 2374, 2392, 2412, 2429, 2446, 2462, 2481, 2500, 2513, 2531, 2548, 2562, 2578, 2594, 2612, 2634, 2652, 2666, 2686, 2702, 2722, 2735, 2751, 2768, 2788, 2804, 2818, 2837, 2855, 2872, 2889, 2909, 2923, 2940, 2957, 2972, 2992, 3009, 3027, 3043, 3058, 3075, 3092, 3111, 3124, 3140, 3157, 3181, 3198, 3211, 3224, 3245, 3268, 3287, 3308, 3339, 3354, 3369, 3384, 3401, 3423, 3441, 3458, 3475, 3491, 3510, 3523, 3538, 3551, 3564, 3580, 3592, 3605, 3625, 3644, 3657, 3678, 3690, 3706, 3727, 3741, 3756, 3776, 3799, 3826, 3840, 3864, 3887, 3905, 3931, 3958, 3986, 4013, 4031, 4048, 4076, 4103, 4130, 4152, 4169, 4189, 4209, 4227, 4246, 4271, 4297, 4317, 4342, 4364, 4383, 4400, 4419, 4440, 4471, 4487, 4508, 4524, 4547, 4570, 4586, 4611, 4620, 4638, 4659, 4682, 4697, 4712, 4730, 4746, 4764, 4782, 4803, 4821, 4840, 4857, 4876, 4896, 4914, 4930, 4951, 4974, 5001, 5024, 5044, 5068, 5092, 5111, 5132, 5147, 5160, 5190, 5217, 5238, 5254, 5273, 5289, 5308, 5328, 5349, 5365, 5384, 5403, 5425, 5452, 5466, 5491, 5512, 5533, 5548, 5570, 5592, 5608, 5625, 5647, 5664, 5685, 5699, 5716, 5734, 5749, 5769, 5788, 5810, 5841, 5861, 5875, 5889, 5912, 5934, 5950, 5971, 5995, 6016, 6037, 6046, 6059, 6079, 6097, 6110, 6127, 6145, 6164, 6184, 6206, 6228, 6246, 6265, 6286, 6306, 6326, 6346, 6366, 6387, 6405, 6421, 6437, 6457, 6476, 6491, 6511, 6529, 6550, 6568, 6582, 6608, 6631, 6654, 6684, 6716, 6741, 6750}
++var _Kind_index = [...]uint16{0, 11, 24, 51, 77, 94, 114, 138, 165, 183, 200, 217, 228, 253, 281, 314, 330, 348, 364, 382, 401, 419, 438, 458, 479, 491, 509, 527, 541, 561, 578, 600, 620, 643, 669, 690, 716, 743, 775, 801, 814, 828, 845, 870, 884, 900, 917, 936, 961, 992, 1034, 1052, 1064, 1078, 1098, 1112, 1139, 1154, 1171, 1185, 1196, 1221, 1238, 1251, 1266, 1285, 1305, 1328, 1359, 1379, 1401, 1432, 1469, 1517, 1541, 1559, 1580, 1613, 1644, 1664, 1678, 1699, 1724, 1740, 1755, 1771, 1787, 1803, 1822, 1841, 1859, 1876, 1889, 1904, 1919, 1936, 1954, 1970, 1988, 2002, 2021, 2034, 2051, 2064, 2085, 2099, 2114, 2131, 2147, 2164, 2179, 2195, 2210, 2224, 2241, 2255, 2270, 2286, 2301, 2322, 2342, 2356, 2374, 2392, 2412, 2429, 2446, 2462, 2481, 2500, 2513, 2531, 2548, 2562, 2578, 2594, 2612, 2634, 2652, 2666, 2686, 2702, 2722, 2735, 2751, 2768, 2788, 2804, 2818, 2837, 2855, 2872, 2889, 2909, 2923, 2940, 2957, 2972, 2992, 3009, 3027, 3043, 3058, 3075, 3092, 3111, 3124, 3143, 3159, 3176, 3200, 3217, 3230, 3243, 3264, 3287, 3306, 3327, 3358, 3373, 3388, 3403, 3420, 3442, 3460, 3477, 3494, 3510, 3529, 3542, 3557, 3570, 3583, 3599, 3611, 3624, 3644, 3663, 3676, 3697, 3709, 3725, 3746, 3760, 3775, 3795, 3818, 3845, 3859, 3883, 3906, 3924, 3950, 3977, 4005, 4032, 4050, 4067, 4095, 4122, 4149, 4171, 4188, 4208, 4228, 4246, 4265, 4290, 4316, 4336, 4361, 4377, 4397, 4418, 4440, 4459, 4476, 4495, 4516, 4547, 4563, 4584, 4600, 4623, 4646, 4662, 4687, 4696, 4714, 4735, 4758, 4773, 4788, 4806, 4822, 4840, 4858, 4879, 4897, 4916, 4933, 4952, 4972, 4990, 5006, 5024, 5045, 5066, 5089, 5116, 5139, 5159, 5183, 5207, 5226, 5247, 5262, 5275, 5305, 5332, 5353, 5369, 5388, 5404, 5423, 5443, 5464, 5480, 5499, 5518, 5540, 5567, 5581, 5606, 5627, 5648, 5663, 5685, 5707, 5723, 5740, 5762, 5779, 5800, 5814, 5831, 5849, 5864, 5884, 5903, 5925, 5956, 5976, 5990, 6004, 6027, 6049, 6065, 6086, 6110, 6131, 6152, 6161, 6174, 6194, 6212, 6225, 6242, 6260, 6279, 6299, 6321, 6343, 6361, 6380, 6401, 6421, 6441, 6461, 6481, 6502, 6520, 6536, 6552, 6572, 6591, 6606, 6626, 6644, 6665, 6683, 6697, 6723, 6746, 6769, 6799, 6831, 6856, 6865}
+ 
+ func (i Kind) String() string {
+ 	idx := int(i) - 0

@@ -47,7 +47,7 @@ export class WorkerTerminated extends Error {
     this.name = "WorkerTerminated";
   }
 }
-export interface WorkerTerminated extends NominalError<"vibelang:WorkerTerminated@1"> {}
+export interface WorkerTerminated extends NominalError<"smithers:WorkerTerminated@1"> {}
 
 export class WorkerCrashed extends Error {
   readonly context: WorkerCrashContext;
@@ -58,7 +58,7 @@ export class WorkerCrashed extends Error {
     this.context = Object.freeze({ ...context });
   }
 }
-export interface WorkerCrashed extends NominalError<"vibelang:WorkerCrashed@1"> {}
+export interface WorkerCrashed extends NominalError<"smithers:WorkerCrashed@1"> {}
 
 export class WorkerCallTimeout extends Error {
   constructor(
@@ -69,7 +69,7 @@ export class WorkerCallTimeout extends Error {
     this.name = "WorkerCallTimeout";
   }
 }
-export interface WorkerCallTimeout extends NominalError<"vibelang:WorkerCallTimeout@1"> {}
+export interface WorkerCallTimeout extends NominalError<"smithers:WorkerCallTimeout@1"> {}
 
 export class WorkerProtocolError extends Error {
   constructor(message: string) {
@@ -77,7 +77,7 @@ export class WorkerProtocolError extends Error {
     this.name = "WorkerProtocolError";
   }
 }
-export interface WorkerProtocolError extends NominalError<"vibelang:WorkerProtocolError@1"> {}
+export interface WorkerProtocolError extends NominalError<"smithers:WorkerProtocolError@1"> {}
 
 function recordPayload(payload: JsonValue, expected: readonly string[], label: string): Record<string, JsonValue> {
   if (payload === null || Array.isArray(payload) || typeof payload !== "object") {
@@ -87,7 +87,7 @@ function recordPayload(payload: JsonValue, expected: readonly string[], label: s
   return payload;
 }
 
-registerErrorCodec(WorkerTerminated, "vibelang:WorkerTerminated@1", {
+registerErrorCodec(WorkerTerminated, "smithers:WorkerTerminated@1", {
   encode: (error) => ({ message: error.message }),
   decode: (payload) => {
     const value = recordPayload(payload, ["message"], "WorkerTerminated");
@@ -96,7 +96,7 @@ registerErrorCodec(WorkerTerminated, "vibelang:WorkerTerminated@1", {
   },
 });
 
-registerErrorCodec(WorkerCrashed, "vibelang:WorkerCrashed@1", {
+registerErrorCodec(WorkerCrashed, "smithers:WorkerCrashed@1", {
   encode: (error) => ({
     detail: error.context.detail,
     event: error.context.event,
@@ -120,7 +120,7 @@ registerErrorCodec(WorkerCrashed, "vibelang:WorkerCrashed@1", {
   },
 });
 
-registerErrorCodec(WorkerCallTimeout, "vibelang:WorkerCallTimeout@1", {
+registerErrorCodec(WorkerCallTimeout, "smithers:WorkerCallTimeout@1", {
   encode: (error) => ({ callId: error.callId, timeoutMs: error.timeoutMs }),
   decode: (payload) => {
     const value = recordPayload(payload, ["callId", "timeoutMs"], "WorkerCallTimeout");
@@ -131,7 +131,7 @@ registerErrorCodec(WorkerCallTimeout, "vibelang:WorkerCallTimeout@1", {
   },
 });
 
-registerErrorCodec(WorkerProtocolError, "vibelang:WorkerProtocolError@1", {
+registerErrorCodec(WorkerProtocolError, "smithers:WorkerProtocolError@1", {
   encode: (error) => ({ message: error.message }),
   decode: (payload) => {
     const value = recordPayload(payload, ["message"], "WorkerProtocolError");
@@ -142,7 +142,7 @@ registerErrorCodec(WorkerProtocolError, "vibelang:WorkerProtocolError@1", {
 
 // wire.ts intentionally has no dependency back on errors.ts. The worker layer
 // supplies the transport registration needed when codec failures cross realms.
-registerErrorCodec(ValueCodecError, "vibelang:ValueCodecError@1", {
+registerErrorCodec(ValueCodecError, "smithers:ValueCodecError@1", {
   encode: (error) => ({ message: error.message }),
   decode: (payload) => {
     const value = recordPayload(payload, ["message"], "ValueCodecError");
@@ -195,7 +195,7 @@ interface ValidatedOptions {
 }
 
 interface WorkerBootstrap {
-  readonly kind: "vibelang-worker-bootstrap";
+  readonly kind: "smithers-worker-bootstrap";
   readonly version: 1;
   readonly moduleUrl: string;
   readonly functions: readonly string[];
@@ -891,13 +891,13 @@ export class TypedWorker {
     const href = moduleHref(moduleUrl);
     const channel = new MessageChannel();
     const raw = new Worker(new URL(import.meta.url), {
-      name: "vibelang-typed-worker",
+      name: "smithers-typed-worker",
       ref: true,
       type: "module",
     });
     const controller = new WorkerController(raw, channel.port2, href, validated);
     const bootstrap: WorkerBootstrap = {
-      kind: "vibelang-worker-bootstrap",
+      kind: "smithers-worker-bootstrap",
       version: PROTOCOL_VERSION,
       moduleUrl: href,
       functions: validated.functions,
@@ -921,7 +921,7 @@ function bootstrapRecord(value: unknown): value is WorkerBootstrap {
   const keys = Object.keys(record).sort();
   if (keys.join(",") !== "functions,kind,maxMessageBytes,moduleUrl,port,version") return false;
   return (
-    record.kind === "vibelang-worker-bootstrap" &&
+    record.kind === "smithers-worker-bootstrap" &&
     record.version === PROTOCOL_VERSION &&
     typeof record.moduleUrl === "string" &&
     Array.isArray(record.functions) &&
@@ -1040,7 +1040,7 @@ function acceptBootstrap(event: MessageEvent): void {
   const bootstrap = event.data;
   const retained: WorkerBootstrap = {
     functions: [...bootstrap.functions],
-    kind: "vibelang-worker-bootstrap",
+    kind: "smithers-worker-bootstrap",
     maxMessageBytes: bootstrap.maxMessageBytes,
     moduleUrl: bootstrap.moduleUrl,
     port: bootstrap.port,

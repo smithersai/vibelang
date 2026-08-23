@@ -1,0 +1,15 @@
+import { Panic } from "smithers:exceptions"
+import { fetchLength } from "./foreign.ts"
+
+async function read(text: string): Promise<Result<number, Panic>> {
+  return await fetchLength(text)
+}
+
+export async function main(): Promise<string[]> {
+  const settled = await read("abc")
+  const rejected = await read("boom")
+  return [
+    settled.match({ ok: (value) => `ok ${value}`, error: () => "panic" }),
+    rejected.match({ ok: (value) => `ok ${value}`, error: () => "panic" }),
+  ]
+}

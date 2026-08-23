@@ -1,0 +1,236 @@
+package main
+
+// Bound must-consume analysis.
+//
+// The producer rule has two distinct authored forms. A Result/Promise produced
+// directly in an expression is charged at that producer (1301/1402). Once the
+// producer is stored, the declaration consumes the expression syntactically
+// and ownership moves to the resolved binding symbol; if no reference consumes
+// it, the diagnostic belongs on that binding (1302/1403). This is the reference
+// rule, not a rewrite from one diagnostic code to another.
+
+import "github.com/microsoft/TypeScript/tsc/internal/ast"
+
+type boundConsumeKind int
+
+const (
+	boundConsumePlain boundConsumeKind = iota
+	boundConsumeResult
+	boundConsumePromise
+)
+
+func (a *rowAnalysis) boundProducedKind(expression *ast.Node) boundConsumeKind {
+	if expression == nil {
+		return boundConsumePlain
+	}
+	t := a.checker.GetTypeAtLocation(expression)
+	if t != nil && a.checker.GetPromisedTypeOfPromise(t) != nil {
+		return boundConsumePromise
+	}
+	if a.prelude.isResultType(t) {
+		return boundConsumeResult
+	}
+	// Checker types cover declared contracts. The row graph additionally owns
+	// an unannotated authored function whose failures make its lowered return a
+	// Result, so retain that semantic producer shape as well.
+	inner := stripMustConsumeWrappers(expression)
+	if ast.IsCallExpression(inner) {
+		callee := a.resolveCallee(inner)
+		if callee != nil {
+			if ast.HasSyntacticModifier(callee.node, ast.ModifierFlagsAsync) {
+				return boundConsumePromise
+			}
+			if callee.declaredShape.result || len(callee.failures) != 0 {
+				return boundConsumeResult
+			}
+		}
+	}
+	return boundConsumePlain
+}
+
+func stripMustConsumeWrappers(node *ast.Node) *ast.Node {
+	for node != nil {
+		switch node.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression,
+			ast.KindNonNullExpression, ast.KindTypeAssertionExpression:
+			node = node.Expression()
+			continue
+		}
+		return node
+	}
+	return nil
+}
+
+func callContainsArgument(call *ast.Node, argument *ast.Node) bool {
+	if call == nil || !ast.IsCallExpression(call) || call.AsCallExpression().Arguments == nil {
+		return false
+	}
+	for _, candidate := range call.AsCallExpression().Arguments.Nodes {
+		if candidate == argument {
+			return true
+		}
+	}
+	return false
+}
+
+// enclosingCollectionCall finds the call that directly owns a reference
+// through only literal collection/wrapper nodes. Passing a Promise to arbitrary
+// code is not consumption; only a recognized compiler/library combinator can
+// use the returned call here.
+func enclosingCollectionCall(node *ast.Node, allowObject bool) *ast.Node {
+	current := node
+	for current != nil && current.Parent != nil {
+		parent := current.Parent
+		switch parent.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression,
+			ast.KindNonNullExpression, ast.KindTypeAssertionExpression,
+			ast.KindArrayLiteralExpression:
+			current = parent
+			continue
+		case ast.KindObjectLiteralExpression:
+			if allowObject {
+				current = parent
+				continue
+			}
+		}
+		if callContainsArgument(parent, current) {
+			return parent
+		}
+		return nil
+	}
+	return nil
+}
+
+func (a *rowAnalysis) promiseProducerConsumed(node *ast.Node, seen map[*ast.Node]bool) bool {
+	current := node
+	for current != nil && current.Parent != nil {
+		parent := current.Parent
+		switch parent.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression,
+			ast.KindNonNullExpression, ast.KindTypeAssertionExpression:
+			current = parent
+			continue
+		case ast.KindVariableDeclaration:
+			return parent.AsVariableDeclaration().Initializer == current
+		case ast.KindAwaitExpression, ast.KindReturnStatement:
+			return true
+		}
+		if combinator := enclosingCollectionCall(current, true); combinator != nil &&
+			a.prelude.promiseCombinatorCall(combinator) && !seen[combinator] {
+			seen[combinator] = true
+			return a.promiseProducerConsumed(combinator, seen)
+		}
+		return false
+	}
+	return false
+}
+
+func (a *rowAnalysis) boundReferenceConsumes(node *ast.Node, kind boundConsumeKind) bool {
+	current := node
+	for current != nil && current.Parent != nil {
+		parent := current.Parent
+		switch parent.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression,
+			ast.KindNonNullExpression, ast.KindTypeAssertionExpression:
+			current = parent
+			continue
+		case ast.KindReturnStatement:
+			return true
+		}
+		if kind == boundConsumeResult {
+			if ast.IsPropertyAccessExpression(parent) && parent.AsPropertyAccessExpression().Expression == current {
+				if a.prelude.resultInspection(parent) {
+					return true
+				}
+				if parent.Parent != nil && ast.IsCallExpression(parent.Parent) &&
+					parent.Parent.AsCallExpression().Expression == parent && a.prelude.resultConsumerCall(parent.Parent) {
+					return true
+				}
+			}
+			if all := enclosingCollectionCall(current, false); all != nil {
+				member, matched := a.prelude.resultNamespaceCall(all)
+				return matched && member == "all"
+			}
+			return false
+		}
+		if kind == boundConsumePromise {
+			if ast.IsAwaitExpression(parent) {
+				return true
+			}
+			if combinator := enclosingCollectionCall(current, true); combinator != nil &&
+				a.prelude.promiseCombinatorCall(combinator) {
+				return a.promiseProducerConsumed(combinator, make(map[*ast.Node]bool))
+			}
+		}
+		return false
+	}
+	return false
+}
+
+// checkBoundMustConsume follows resolved variable symbols, so same-spelled
+// bindings in nested scopes never share ownership and renamed values behave
+// identically.
+func (a *rowAnalysis) checkBoundMustConsume(files []*ast.SourceFile) {
+	for _, file := range files {
+		references := make(map[*ast.Symbol][]*ast.Node)
+		declarations := make([]*ast.Node, 0)
+		var collect func(*ast.Node) bool
+		collect = func(node *ast.Node) bool {
+			if ast.IsIdentifier(node) {
+				if symbol := a.symbolAt(node); symbol != nil {
+					references[symbol] = append(references[symbol], node)
+				}
+			}
+			if ast.IsVariableDeclaration(node) {
+				declarations = append(declarations, node)
+			}
+			node.ForEachChild(collect)
+			return false
+		}
+		file.AsNode().ForEachChild(collect)
+
+		checked := make(map[*ast.Symbol]bool)
+		for _, node := range declarations {
+			declaration := node.AsVariableDeclaration()
+			name := declaration.Name()
+			if name == nil || !ast.IsIdentifier(name) || declaration.Initializer == nil {
+				continue
+			}
+			kind := a.boundProducedKind(declaration.Initializer)
+			if kind == boundConsumePlain {
+				continue
+			}
+			symbol := a.symbolAt(name)
+			if symbol == nil || checked[symbol] {
+				continue
+			}
+			checked[symbol] = true
+			consumed := false
+			for _, reference := range references[symbol] {
+				if reference != name && a.boundReferenceConsumes(reference, kind) {
+					consumed = true
+					break
+				}
+			}
+			if consumed {
+				continue
+			}
+			if kind == boundConsumeResult {
+				a.report(name, "SMITHERS1302", "Result '"+name.Text()+"' is never consumed")
+			} else {
+				a.report(name, "SMITHERS1403", "Promise '"+name.Text()+"' is never consumed with await or return")
+			}
+		}
+	}
+}
+
+// directPromiseProducer returns the producer expression beneath only
+// transparent wrappers. A binding identifier is deliberately not a producer:
+// its declaration is audited by checkBoundMustConsume instead.
+func directPromiseProducer(node *ast.Node) *ast.Node {
+	producer := stripMustConsumeWrappers(node)
+	if producer != nil && (ast.IsCallExpression(producer) || ast.IsNewExpression(producer)) {
+		return producer
+	}
+	return nil
+}

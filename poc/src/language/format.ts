@@ -2,7 +2,7 @@ import * as ts from "typescript-js";
 import { internalParseDiagnostics } from "./semantic.ts";
 
 /**
- * Deterministic `.vibe` source formatter.
+ * Deterministic `.sm` source formatter.
  *
  * Printer choice, and why neither obvious option was taken:
  *
@@ -13,23 +13,23 @@ import { internalParseDiagnostics } from "./semantic.ts";
  * - A hand-written printer would have to re-derive TypeScript's entire spacing
  *   grammar (type arguments versus `<`, arrow bodies, decorators, optional
  *   chains, JSX) before it could format the ordinary TypeScript that makes up
- *   most of a `.vibe` module.
+ *   most of a `.sm` module.
  *
  * This formatter instead drives the TypeScript *language service* formatter
  * (`getFormattingEditsForDocument`), which is whitespace-only by construction:
  * it never adds, removes, or rewrites a token. That property is exactly the
  * semantic-preservation guarantee the toolchain needs, and it is enforced here
  * rather than assumed. Every result must pass `roundTripRefusal` before it is
- * returned: an identical token and comment stream, an identical VibeLang mask
+ * returned: an identical token and comment stream, an identical Smithers mask
  * plan and parsed AST structure, and unmoved line breaks on every line a mask
- * touches. Anything else is reported as `VIBE1902` and left byte-identical.
+ * touches. Anything else is reported as `SMITHERS1902` and left byte-identical.
  *
- * Stock TypeScript cannot parse several VibeLang forms, so the source is first
+ * Stock TypeScript cannot parse several Smithers forms, so the source is first
  * rewritten into a **length-preserving mask**: each divergent spelling is
  * replaced by parseable text of exactly the same length, with newline positions
  * untouched. Because the mask preserves every offset, formatting edits computed
  * on the masked text apply directly to the authored text; edits that touch a
- * masked span are dropped, so the authored VibeLang spelling survives verbatim
+ * masked span are dropped, so the authored Smithers spelling survives verbatim
  * in its formatted position.
  *
  * | authored                         | masked                        |
@@ -61,13 +61,13 @@ const MAX_REGION_DEPTH = 8;
 
 export type FormatDiagnosticCode =
   /** The source exceeds a formatter budget. */
-  | "VIBE1900"
-  /** The source does not parse after VibeLang masking; nothing is rewritten. */
-  | "VIBE1901"
+  | "SMITHERS1900"
+  /** The source does not parse after Smithers masking; nothing is rewritten. */
+  | "SMITHERS1901"
   /** The formatted result would not round-trip the authored token stream. */
-  | "VIBE1902"
+  | "SMITHERS1902"
   /** The internal parser-diagnostics field is absent, so acceptance is unprovable. */
-  | "VIBE1002";
+  | "SMITHERS1002";
 
 export interface FormatDiagnostic {
   readonly severity: "error";
@@ -82,7 +82,7 @@ export interface FormatDiagnostic {
 }
 
 export interface FormatOptions {
-  /** Reported in diagnostics; also selects the script kind. Defaults to `input.vibe`. */
+  /** Reported in diagnostics; also selects the script kind. Defaults to `input.sm`. */
   readonly fileName?: string;
   /** Spaces per indentation level. Defaults to 2. */
   readonly indentSize?: number;
@@ -796,7 +796,7 @@ function formatSettings(indentSize: number, newLine: string): ts.FormatCodeSetti
     baseIndentSize: 0,
     indentStyle: ts.IndentStyle.Smart,
     newLineCharacter: newLine,
-    // `.vibe` is written without statement semicolons; the formatter must never
+    // `.sm` is written without statement semicolons; the formatter must never
     // introduce or remove one.
     semicolons: ts.SemicolonPreference.Ignore,
     trimTrailingWhitespace: true,
@@ -877,7 +877,7 @@ function shiftForOffset(edits: readonly ts.TextChange[], offset: number): number
 }
 
 /* -------------------------------------------------------------------------- */
-/* Whitespace normalization of VibeLang spellings                              */
+/* Whitespace normalization of Smithers spellings                              */
 /* -------------------------------------------------------------------------- */
 
 interface Replacement {
@@ -893,7 +893,7 @@ interface Replacement {
  * `defer`/`errdefer` marker, `break :label value`, and one space on each side
  * of an `=` that introduces a value construct.
  */
-function normalizeVibeSpelling(source: string, tokens: readonly ScannedToken[]): string {
+function normalizeSmithersSpelling(source: string, tokens: readonly ScannedToken[]): string {
   const replacements: Replacement[] = [];
   const collapse = (start: number, end: number, text: string): void => {
     if (start >= end && text === "") return;
@@ -1016,49 +1016,49 @@ function reindent(text: string, indent: string): string {
 }
 
 /**
- * Format one `.vibe` module. The result is byte-identical to the authored
+ * Format one `.sm` module. The result is byte-identical to the authored
  * source whenever `ok` is false, so a caller can always write `code` back.
  */
-export function formatVibeSource(source: string, options: FormatOptions = {}): FormatResult {
+export function formatSmithersSource(source: string, options: FormatOptions = {}): FormatResult {
   return formatModule(source, options, 0);
 }
 
 function formatModule(source: string, options: FormatOptions, depth: number): FormatResult {
-  const fileName = options.fileName ?? "input.vibe";
+  const fileName = options.fileName ?? "input.sm";
   if (source.length > MAX_FORMAT_BYTES) {
     return failed(source, [diagnostic(
       source,
-      "VIBE1900",
+      "SMITHERS1900",
       `source exceeds the ${MAX_FORMAT_BYTES} UTF-16 unit formatter budget`,
       0,
     )]);
   }
   const indentSize = options.indentSize ?? 2;
   if (!Number.isInteger(indentSize) || indentSize < 1 || indentSize > 8) {
-    throw new TypeError("formatVibeSource indentSize must be an integer between 1 and 8");
+    throw new TypeError("formatSmithersSource indentSize must be an integer between 1 and 8");
   }
   const newLine = options.newLine ?? detectNewLine(source);
 
-  const normalized = normalizeVibeSpelling(source, codeTokens(scanAllTokens(source)));
+  const normalized = normalizeSmithersSpelling(source, codeTokens(scanAllTokens(source)));
   const tokens = codeTokens(scanAllTokens(normalized));
   const plan = planMasks(normalized, tokens);
   if (plan.masks.length > MAX_MASKS) {
     return failed(source, [diagnostic(
-      source, "VIBE1900", `module masks more than ${MAX_MASKS} VibeLang constructs`, 0)]);
+      source, "SMITHERS1900", `module masks more than ${MAX_MASKS} Smithers constructs`, 0)]);
   }
   const masked = applyMasks(normalized, plan.masks);
   if (masked === undefined) {
     return failed(source, [diagnostic(
-      source, "VIBE1901", "VibeLang construct masks overlap, so the module cannot be formatted soundly", 0)]);
+      source, "SMITHERS1901", "Smithers construct masks overlap, so the module cannot be formatted soundly", 0)]);
   }
 
-  const parseName = fileName.endsWith(".vibe") ? `${fileName}.ts` : fileName;
+  const parseName = fileName.endsWith(".sm") ? `${fileName}.ts` : fileName;
   const parsed = ts.createSourceFile(parseName, masked, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const parseDiagnostics = internalParseDiagnostics(parsed);
   if (parseDiagnostics === undefined) {
     return failed(source, [diagnostic(
       source,
-      "VIBE1002",
+      "SMITHERS1002",
       "internal: typescript-js did not expose parser diagnostics, so the formatter cannot prove the module parses and fails closed",
       0,
     )]);
@@ -1067,8 +1067,8 @@ function formatModule(source: string, options: FormatOptions, depth: number): Fo
     const first = parseDiagnostics[0]!;
     return failed(source, [diagnostic(
       source,
-      "VIBE1901",
-      `source does not parse after VibeLang recovery, so it is reported instead of rewritten: ${
+      "SMITHERS1901",
+      `source does not parse after Smithers recovery, so it is reported instead of rewritten: ${
         ts.flattenDiagnosticMessageText(first.messageText, " ")}`,
       Math.min(first.start ?? 0, source.length),
     )]);
@@ -1082,7 +1082,7 @@ function formatModule(source: string, options: FormatOptions, depth: number): Fo
     output = applyEdits(normalized, edits);
   } catch {
     return failed(source, [diagnostic(
-      source, "VIBE1902", "the language service produced overlapping formatting edits", 0)]);
+      source, "SMITHERS1902", "the language service produced overlapping formatting edits", 0)]);
   }
 
   if (depth < MAX_REGION_DEPTH) {
@@ -1108,7 +1108,7 @@ function formatModule(source: string, options: FormatOptions, depth: number): Fo
   output = trimTrailingWhitespace(output, newLine);
 
   const refusal = roundTripRefusal(source, normalized, output, plan, parsed, parseName);
-  if (refusal) return failed(source, [diagnostic(source, "VIBE1902", refusal, 0)]);
+  if (refusal) return failed(source, [diagnostic(source, "SMITHERS1902", refusal, 0)]);
 
   return { ok: true, code: output, changed: output !== source, diagnostics: [] };
 }
@@ -1120,12 +1120,12 @@ function formatModule(source: string, options: FormatOptions, depth: number): Fo
  *
  * 1. The token and comment stream must be identical in kind and text, so no
  *    token, comment, string, template, or regular expression was touched.
- * 2. The masked module must re-mask to the same VibeLang construct plan and
+ * 2. The masked module must re-mask to the same Smithers construct plan and
  *    parse to the same AST structure, so no automatic semicolon and no
  *    restricted production moved. This is what allows the language service to
  *    join a brace onto its header or break a multi-line object literal open:
  *    both are line-break changes that provably do not change the parse.
- * 3. Line-break structure must be preserved on every line a VibeLang mask
+ * 3. Line-break structure must be preserved on every line a Smithers mask
  *    touches, and on the line after it. Stock TypeScript's AST cannot model
  *    `defer`'s same-line cleanup rule or the loop `else` value's line-break
  *    terminator, so those lines keep the strict invariant.
@@ -1152,7 +1152,7 @@ function roundTripRefusal(
   const outputPlan = planMasks(output, outputTokens);
   if (outputPlan.masks.length !== plan.masks.length ||
     outputPlan.masks.some((mask, index) => mask.kind !== plan.masks[index]!.kind)) {
-    return "formatting would change which VibeLang constructs the module contains; it is reported instead of rewritten";
+    return "formatting would change which Smithers constructs the module contains; it is reported instead of rewritten";
   }
   const maskedOutput = applyMasks(output, outputPlan.masks);
   if (maskedOutput === undefined) {
@@ -1161,7 +1161,7 @@ function roundTripRefusal(
   const maskedOutputFile = ts.createSourceFile(
     parseName, maskedOutput, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   if ((internalParseDiagnostics(maskedOutputFile) ?? [{}]).length > 0) {
-    return "the formatted module would not parse after VibeLang recovery; it is reported instead of rewritten";
+    return "the formatted module would not parse after Smithers recovery; it is reported instead of rewritten";
   }
   if (!signaturesMatch(structuralSignature(maskedAuthoredFile), structuralSignature(maskedOutputFile))) {
     return "formatting would change the module's parsed structure; it is reported instead of rewritten";
@@ -1179,13 +1179,13 @@ function roundTripRefusal(
     const authored = authoredStream[index]!;
     if (!sensitiveLines.has(lineOf(authored.start))) continue;
     if (authored.lineBreakBefore === formattedStream[index]!.lineBreakBefore) continue;
-    return `formatting would move a line break next to a VibeLang construct at entry ${index} (${
+    return `formatting would move a line break next to a Smithers construct at entry ${index} (${
       JSON.stringify(authored.text.slice(0, 40))}); the module is reported instead of rewritten`;
   }
   return undefined;
 }
 
-export interface VibeToken {
+export interface SmithersToken {
   readonly kind: ts.SyntaxKind;
   readonly text: string;
   /** UTF-16 offset of the token start, trivia excluded. */
@@ -1200,7 +1200,7 @@ export interface VibeToken {
  * scan the formatter itself uses, so a `${...}` substitution can never make a
  * caller read string content as ordinary tokens.
  */
-export function vibeTokenAt(source: string, offset: number): VibeToken | undefined {
+export function smithersTokenAt(source: string, offset: number): SmithersToken | undefined {
   let previous: ScannedToken | undefined;
   for (const token of codeTokens(scanAllTokens(source))) {
     if (token.start <= offset && offset < token.end) return token;
@@ -1210,8 +1210,8 @@ export function vibeTokenAt(source: string, offset: number): VibeToken | undefin
   return previous?.end === offset ? previous : undefined;
 }
 
-/** True when `source` is already exactly what `formatVibeSource` produces. */
-export function isFormattedVibeSource(source: string, options: FormatOptions = {}): boolean {
-  const result = formatVibeSource(source, options);
+/** True when `source` is already exactly what `formatSmithersSource` produces. */
+export function isFormattedSmithersSource(source: string, options: FormatOptions = {}): boolean {
+  const result = formatSmithersSource(source, options);
   return result.ok && !result.changed;
 }

@@ -1,0 +1,5 @@
+{
+  "title": "an expression switch over a closed literal union that omits a member and has no default is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1716", "line": 4, "column": 10 }]
+}

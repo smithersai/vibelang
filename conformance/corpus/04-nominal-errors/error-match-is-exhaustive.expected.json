@@ -1,0 +1,5 @@
+{
+  "title": "Error.match over the checked failure union dispatches on nominal class identity",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "guest for zoe", "retry after 250ms"]
+}

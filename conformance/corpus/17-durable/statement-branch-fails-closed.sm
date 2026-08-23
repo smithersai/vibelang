@@ -1,0 +1,6 @@
+import { durable as compileFlow } from "smithers:flows"
+
+export const Bad = compileFlow((input: { live: boolean }) => {
+  if (input.live) return "yes"
+  return "no"
+})

@@ -1,0 +1,6 @@
+const chosen = "./config.json"
+
+export async function main(): Promise<string[]> {
+  const loaded = await import(chosen, { with: { type: "json" } })
+  return [loaded.default.mode]
+}

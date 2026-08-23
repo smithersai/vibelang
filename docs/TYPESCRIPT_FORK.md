@@ -1,158 +1,274 @@
-# Vendored TypeScript fork
+# Pinned TypeScript fork
 
-VibeLang's compiler base is the `smithersai/TypeScript` fork. The production
-plan is to vendor a pinned snapshot at `vendor/typescript` with a squashed Git
-subtree, keeping compiler source in every VibeLang checkout without a submodule
-or implicit network dependency. That subtree has not yet been imported.
+> [!IMPORTANT]
+> **Specification drift — read `docs/DECISIONS.md` first.**
+> This document reports what the implementation does. As of 2026-08-23 the
+> specification was substantially reduced and the code has not caught up, so
+> parts of this page describe features the language no longer defines: the
+> expression-form control-flow grammar, `defer`/`errdefer`, labeled value
+> breaks, `Optional<T>`, `.unwrap()` (now postfix `!`), the TypeScript non-null
+> assertion, and the near-native/Wasm targets with their `TypeScript`
+> requirement, feature classification, and portability pin. Where this document
+> and the specification disagree, the specification wins.
 
-The fork repository now exists and `typescript-fork.json` pins its exact
-40-character revision. The full subtree is not present in this working tree;
-the executable bridge POC uses a sparse external checkout of only `tsc`.
+Smithers has two compiler implementations in this repository:
+
+- the TypeScript analysis/lowering instrument under `poc/src/language`, which
+  remains the default for the root `smithers` CLI; and
+- a real Go implementation that runs inside the exact pinned
+  `smithersai/TypeScript` fork and is selected explicitly with `--backend go`.
+
+The Go path is not a wrapper around the TypeScript instrument. It parses and
+checks `.sm` with the fork, makes lowering decisions from fork symbols and
+types, constructs replacement nodes with the fork AST factory, prints with the
+fork printer, and maps diagnostics and artifacts back to authored `.sm` spans.
 
 > **Source-checkout note:** npm ships this provenance document, but it does not
-> ship the repository-only preparation scripts, Go bridge, or future vendored
-> subtree. Commands below are maintainer operations for a source checkout.
+> ship the repository-only preparation scripts, source capsule, Go bridge,
+> forkpatch tooling, or compiler binary. The commands below are maintainer and
+> reviewer operations for a source checkout.
 
 ## Why the fork is required
 
-The TypeScript Go compiler is a nested module under `tsc/`, and its useful
-compiler packages are under `tsc/internal`. Go only permits packages within the
-parent `tsc` module path to import those packages. VibeLang's parser, checker,
-lowering, emitter, and language-service integration must consequently be
-implemented behind a narrow extension interface inside the fork.
+The Go TypeScript compiler is a nested module under `tsc/`, and its parser,
+checker, AST, printer, emitter, and language-service packages live under Go
+`internal` paths. Smithers code outside that parent module cannot import them.
+The repository therefore uses three narrow mechanisms:
 
-The production layout remains:
+| Mechanism | Purpose |
+| --- | --- |
+| `compiler/forkpatch` | Digest-gated changes to fork-owned parser, AST, binder, checker, printer, and tests. |
+| `go build -overlay` from `compiler/forkbridge` | Adds the Smithers bridge implementation to an existing fork package without copying internals into the root module. |
+| Controlled checkout population from `cmd/smithersc/forksrc` | Builds the separate fork-owned foundation command and marker package. |
+
+The root module does not copy TypeScript internals or use a `replace` directive
+to bypass Go's visibility boundary.
+
+## Exact-revision source capsule
+
+The production ledger originally selected a squashed subtree at
+`vendor/typescript`. Measuring the pinned revision showed that a literal import
+would add 65,532 files and 205,979,146 logical bytes (392 MiB allocated on the
+measurement filesystem); `tsc/testdata` alone accounts for 60,190 files and
+155,576,229 bytes. The pre-import Smithers repository had 1,003 tracked files
+and 35,822,782 tracked bytes.
+
+The implemented repository format is therefore an exact-revision source
+capsule rather than an expanded subtree. `vendor/typescript/typescript.bundle`
+is a 34,257,412-byte Git bundle whose `HEAD` is the 40-character revision in
+`typescript-fork.json`. The capsule also carries TypeScript's visible license
+and a file-based proxy for the 21 Go modules selected by the pinned `tsc/go.mod`
+graph. It materializes a clean, editable checkout without a submodule or
+network access.
+
+```sh
+node scripts/prepare-typescript-fork.mjs --cache /path/to/cache
+```
+
+The default sparse profile materializes 757 `tsc` files. Use `--full-tsc` only
+when the upstream test corpus is needed. `--source /path/to/checkout` verifies
+an existing checkout; `--fetch` is an explicit network fallback when the
+repository-only capsule is unavailable. Normal preparation never silently
+fetches.
+
+The source capsule is not an npm distribution payload. The package allowlist
+excludes `vendor/`, the preparation scripts, the Go bridge, and cached compiler
+binaries.
+
+## Reviewable, reversible fork patches
+
+All modifications to fork-owned files are carried as an ordered series under
+`compiler/forkpatch`. `series.json` pins the exact upstream revision, patch
+order, patch-file SHA-256 values, and pre/post-image digests. The tool rejects
+a wrong revision, an altered patch, a dirty or mixed checkout, a missing or
+extra patch, and any post-image divergence.
+
+```sh
+node compiler/forkpatch/forkpatch.mjs status  --checkout /path/to/checkout
+node compiler/forkpatch/forkpatch.mjs apply   --checkout /path/to/checkout
+node compiler/forkpatch/forkpatch.mjs verify  --checkout /path/to/checkout
+node compiler/forkpatch/forkpatch.mjs unapply --checkout /path/to/checkout
+```
+
+Application runs `git apply --check` before each ordered patch and rolls back
+earlier patches if a later patch fails. `unapply` has been measured to restore
+the pinned checkout to a byte-identical pristine tree with an empty Git status.
+Applying the series independently to multiple fresh checkouts also produces
+byte-identical post-images.
+
+The series contains the real Smithers grammar and its fork-owned tests. All
+nine documented surface-grammar forms parse, bind, type-check, and reach the Go
+lowerer in the applied tree. `.sm` nevertheless remains a content-mapper
+extension registered with the fork, not a built-in TypeScript source kind. The
+project has deliberately not crossed that compatibility boundary.
+
+### Upstream health gate
+
+On August 22, 2026, against pinned revision
+`c087644e82dc3d48cf87e4c5519eeaaea9daf35c`, both a pristine checkout and the
+complete applied series passed the same 62/62 Go packages and 130,743 upstream
+testrunner subtests. The package list and outcomes were identical apart from
+timings. Those are upstream-health measurements for that exact revision and
+tree states, not a Smithers conformance score.
+
+The patch series is reviewable in a source checkout, but it is neither vendored
+into the npm distribution nor signed. A digest proves the bytes match this
+repository's manifest; it is not publisher identity, release attestation, or a
+supply-chain signature.
+
+## The Go Smithers implementation
+
+`CompileRequest.Lowering: "internal"` selects the Go implementation. The bridge
+injects compiler-owned prelude and virtual-module declarations into one checked
+fork Program, then lowers with fork AST nodes. It does not perform source-text
+replacement.
+
+The implemented semantic core includes:
+
+- `Result<A, E>` success/error lifting from ordinary `return` and `throw`;
+- `.unwrap()` early propagation with statement-order checks and authored
+  diagnostics;
+- `Optional<A>` lifting, absence propagation, and outside-in
+  `Result<Optional<A>, E>` handling;
+- async `Promise<Result<A, E>>` checking and lowering;
+- nominal error matching resolved by constructor binding identity;
+- compiler diagnostics for must-consume, unsafe propagation, and unsupported
+  placements;
+- all nine Smithers surface-grammar forms, including value-producing control
+  flow and cleanup forms; and
+- both compiler-owned intrinsics: `smithers:comptime` and `smithers:flows`.
+
+The lowering runs before the fork emits ordinary JavaScript, declarations, and
+source maps. Compiler-generated wrappers, temporaries, imports, and Plan data
+are left unmapped; rewritten authored nodes retain authored source ranges.
+Relative `.sm` runtime imports are rewritten to emitted `.js` names, while
+declarations keep `.sm` specifiers beside `.d.sm.ts` artifacts.
+
+### `smithers:comptime` in Go
+
+The Go comptime pass recognizes direct, aliased, and namespace imports by
+resolved declaration identity. Its bounded evaluator supports canonical data,
+project-local constants and pure helpers, branches and loops, interpreter-owned
+array/object mutation, a deterministic standard-library allowlist, hard step /
+allocation / call-depth / string budgets, `comptime.target` branch erasure, and
+value-derived literal type aliases. Retained runtime functions cannot capture
+phase-only operations, and any refusal suppresses all substitutions and emit
+for the request.
+
+Tracked `embed(...)` is recognized but refused because the Go request protocol
+does not yet carry compiler-owned asset bytes. Schema reification, loader
+registration, and the persistent content-addressed comptime cache remain on the
+TypeScript-instrument side. The Go backend fails closed rather than reading the
+ambient filesystem or substituting a runtime placeholder.
+
+### `smithers:flows` in Go
+
+The durable pass recognizes `durable`, `Action`, and Flow helpers by resolved
+identity and lowers a useful checked subset to a static, serializable,
+digest-pinned Plan descriptor. Direct Actions, projections, `.unwrap()`
+propagation edges, conditional expressions, timers, typed signals, and explicit
+`sequential(...)` control edges are supported. The pass walks checked syntax
+and constructs Plan literals; it never invokes the Flow function or an Action
+implementation.
+
+Fan-out, child Flows, general statement control flow, loops, broadcast, queues,
+and unsupported persistence shapes currently produce explicit `SMITHERS41xx`
+diagnostics in the Go backend. The TypeScript durable compiler has a broader
+bounded subset. Exact emitted-byte parity is not claimed; the Go-emitted Plan
+has been validated by the TypeScript `PlanArtifact` validator with matching
+canonical digest recomputation.
+
+## Product CLI selection
+
+The root CLI exposes the Go implementation on three commands:
 
 ```text
-vendor/typescript/             pinned smithersai/TypeScript source
-  tsc/                         upstream Go module
-    cmd/vibec/                 VibeLang compiler entry point (planned)
-    internal/vibelang/         narrow fork-owned extension seam (planned)
-compiler/                      stable root transport/API contracts
-cmd/vibec-go/                  current dependency-free transport scaffold
+smithers check   <inputs...> --backend go
+smithers compile <inputs...> --backend go
+smithers run     <input>     --backend go
 ```
 
-The root module must not copy TypeScript internals or use `replace` directives
-to bypass that boundary. It will invoke the fork-built compiler through the
-process protocol represented by `compiler` until the fork exposes a more
-suitable stable boundary.
+Omitting `--backend`, or writing `--backend js`, selects the TypeScript
+instrument. The Go route never falls back to it. The CLI requires an
+exact-revision checkout whose complete patch series is already applied with no
+post-image divergence, sends one in-memory protocol-v3 request with internal
+lowering selected, and adapts authored UTF-16 diagnostic spans into the same
+one-based report shape as the default path. `run --backend go` executes the
+emitted entry under Node in a temporary ESM project.
 
-## Executable bridge POC
+Preparation failures are structured and actionable: missing checkout, wrong
+revision, pristine/unpatched state, mixed or divergent state, build failure,
+timeout, and protocol mismatch each fail nonzero. No failure changes backend.
+See `docs/src/pages/reference/cli.mdx` for the exact codes and remedies.
 
-`compiler.NewPinnedFork` now proves that boundary against the exact manifest
-revision. It verifies a clean `tsc` tree and uses Go's build overlay support to
-compile a small alternate `cmd/tsc` entry point from `compiler/forkbridge`.
-The overlay is materialized only in a cache directory; no tracked or untracked
-files are written into the TypeScript checkout.
+The conformance corpus is expanding while backend-parity work continues. It is
+a contract, not a census, so this page does not freeze a moving pass total. Use
+`conformance/COVERAGE.md` as the live obligation-to-case matrix and rerun the
+backend harness against the tree being reviewed.
 
-The bridge runs `.vibe` through the fork's real content-mapper, Program,
-diagnostic, and emitter code. Upstream intentionally suppresses runtime
-JavaScript output for content-mapped source because the external mapper/build
-tool owns it. The POC honors that boundary and then owns the mapping back to
-authored positions itself: it composes the emitting Program's source maps with a
-per-file authored-to-lowered map, so every artifact maps to authored `.vibe`
-positions. In identity mode that map is a synthesized per-line identity map; in
-external mode the frontend supplies a real one. Lowered spans with no authored
-origin stay unmapped rather than being attributed to a guessed position, and
-composed maps deliberately carry no `names` entries. Relative `./x.vibe`
-specifiers in emitted runtime JavaScript are rewritten to `./x.js` (declarations
-keep `./x.vibe` beside their `x.d.vibe.ts` naming). See `compiler/README.md` for
-the exact proof and its limits.
+## Direct bridge protocol
 
-Multi-file root sets are supported through both the Go API and the CLI: several
-`.vibe` and `.ts` roots with relative POSIX paths, including subdirectories,
-whose relative imports resolve in the checked and the emitting Program. Every
-project file must be listed in the request; the bridge does not read imports
-from disk, and artifact-name collisions are rejected fail-closed.
-
-### Externally lowered input
-
-The transport is `compiler.APIVersion` 2. `CompileRequest.Lowering: "external"`
-switches the bridge to the mode where an external frontend — the JavaScript POC
-frontend is the intended producer — has already lowered every `.vibe` file. Each
-`.vibe` source then carries its authored text plus a `LoweredSource`: the
-generated TypeScript and a version-3 source map from the authored file to it.
-That supplied map is validated exactly on both sides of the process boundary
-(strict field set, version 3, sources naming exactly the authored file,
-`sourcesContent` matching the authored text when present, decodable VLQ
-mappings, in-range indices, in-bounds positions); a violation is a structured
-lowering diagnostic, never a silent fallback. Diagnostics map back to authored
-`.vibe` spans through the supplied map.
-
-`vibec-go --request request.json` submits one full `CompileRequest` JSON value
-(in-memory files, options, lowering mode) instead of positional disk roots — the
-producer contract for that external frontend. Unknown fields, trailing JSON, or
-an unreadable file are usage errors (exit 64) before any backend is prepared.
-
-None of this changes the vendoring status: the bridge still builds from a sparse
-external checkout through a build overlay, and the cached binary is not signed
-or independently attested. It is a development POC, not a vendored subtree and
-not a production supply-chain boundary.
-
-Use an existing checkout without network access:
+The same backend is directly invocable from a source checkout:
 
 ```sh
-node scripts/prepare-typescript-fork.mjs --source /path/to/checkout
-```
-
-Or explicitly request a sparse, revision-addressed fetch:
-
-```sh
-node scripts/prepare-typescript-fork.mjs --fetch --cache /path/to/cache
-```
-
-The helper never fetches unless `--fetch` is present, and both the helper and
-Go constructor reject stale, dirty `tsc`, or differently pinned sources. This cache
-path is a development POC, not a replacement for the reviewed production fork
-and release-binary provenance described below.
-
-After preparing a checkout, the backend is also available through the actual
-Go compiler command rather than only a Go API or test:
-
-```sh
-go build -o /tmp/vibec-go ./cmd/vibec-go
-/tmp/vibec-go \
+go build -o /tmp/smithersc-go ./cmd/smithersc-go
+/tmp/smithersc-go \
   --fork-checkout /path/to/checkout \
   --fork-cache /path/to/compiler-cache \
-  main.vibe
+  --timeout 5m \
+  main.sm
 ```
 
-Compile attempts return structured diagnostics/artifacts as one `CompileResult`
-JSON object on stdout. Successful emit exits zero; compile, infrastructure, or
-timeout failure exits one; the unselected scaffold exits two; usage errors exit
-64 without JSON. These codes apply to the built binary; `go run` itself masks
-nonzero child codes as exit one and adds its own stderr. Flags must precede root
-names, and the cache must not overlap the checkout. Selection is explicit and
-fail-closed; it never falls back to the JavaScript compatibility compiler.
+Compile attempts return one `CompileResult` JSON object. The command also
+accepts `--request request.json` for one full in-memory protocol request.
+Internal lowering runs the Go implementation above. External lowering remains
+available when another frontend supplies generated TypeScript and a strict
+version-3 source map per `.sm` file; the bridge validates and composes that map
+instead of inventing authored positions.
 
-## Initial import
+Multi-file requests may contain `.sm` and `.ts` roots with relative POSIX paths
+and subdirectories. Every source must be supplied explicitly; the bridge does
+not discover imports from ambient disk. Artifact-name collisions and malformed
+maps fail closed.
 
-1. Confirm the commit in `typescript-fork.json` resolves in the fork.
-2. Commit all current VibeLang work; subtree operations require a clean tree.
-3. Run `npm run typescript:fork:status`.
-4. Run `npm run typescript:vendor`.
+## The separate fork-owned foundation command
 
-The last command imports the pinned source and creates a subtree commit. It
-refuses to replace a partial `vendor/typescript` directory.
+`cmd/smithersc/forksrc` also contains the source for a small fork-owned
+`cmd/smithersc` identity command and `internal/smithers` marker. The controlled
+build temporarily populates those new package paths, builds, removes them, and
+verifies the checkout again. That foundation command proves legal access to
+fork internals and byte-reproducible local builds; it is distinct from the
+`cmd/smithersc-go` bridge and does not itself compile Smithers programs.
 
-## Updating the fork
+```sh
+npm run typescript:fork:verify
+npm run smithersc:build
+npm run smithersc:verify-reproducible
+```
 
-Make compiler changes in `smithersai/TypeScript`, keeping the fork's delta
-small and reviewable. Merge or rebase the upstream changes there, run the
-fork's test suites, and obtain the full 40-character fork commit. Then:
+Its cached binary is local only. It is not signed, attested, published, or
+distributed.
 
-1. Change `revision` in `typescript-fork.json` and commit that lock update.
-2. Run `npm run typescript:vendor` from the clean worktree.
-3. Run `npm run typescript:fork:verify` and the VibeLang test suites.
+## Tooling and remaining boundaries
 
-Do not patch `vendor/typescript` directly in this repository. Land a patch in
-the fork first, then refresh the subtree so fork and vendored history cannot
-drift.
+The working `smithers format` and `smithers lsp` commands currently use the
+TypeScript instrument rather than the Go backend. The formatter delegates to
+the TypeScript language-service formatter and permits whitespace changes only.
+The language server speaks stdio JSON-RPC and implements diagnostics,
+failure/requirement-row hover, definition, and whole-document formatting within
+a bounded relative-`.sm` project closure.
 
-## Packaging and licenses
+The fork work does not imply a native/LLVM backend or a general Wasm backend.
+The current Wasm path is a bounded architectural proof. It also does not turn
+process-level compiler/loader sandboxes into container or VM isolation, or add
+multi-machine coordination to the durable runtime.
 
-The vendored source remains repository-only; it is not copied wholesale into
-the npm tarball. Release packages should eventually contain compiler binaries
-built from the pinned revision plus the existing JavaScript compatibility API.
-The fork must preserve TypeScript's upstream license and notices inside its
-vendored tree.
+## Updating the pin
+
+Update fork-owned compiler changes in reviewable patches against the exact
+revision, then regenerate and verify the series rather than editing capsule
+payloads. Updating the pinned revision requires a clean complete checkout, a
+new source capsule, license verification, forkpatch re-recording, pristine and
+applied upstream health runs, the Smithers test suites, and package-inventory
+checks. A release must separately decide how to distribute and sign compiler
+artifacts; the current repository workflow does neither.

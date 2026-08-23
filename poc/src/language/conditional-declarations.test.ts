@@ -5,9 +5,9 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import * as ts from "typescript-js";
 import { analyzeSource } from "./analyze.ts";
-import { compileVibe } from "./compile.ts";
-import { recoverVibeSyntax } from "./recover.ts";
-import { checkEmittedTypeScript, compileAndCheckVibe } from "./validate.ts";
+import { compileSmithers } from "./compile.ts";
+import { recoverSmithersSyntax } from "./recover.ts";
+import { checkEmittedTypeScript, compileAndCheckSmithers } from "./validate.ts";
 
 const BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const BASE64_VALUE = new Map([...BASE64].map((character, index) => [character, index]));
@@ -65,10 +65,10 @@ function mappedPosition(wire: string, generatedCode: string, generatedOffset: nu
 }
 
 function compileConditional(source: string, name: string, runtimeImport = "../runtime/index.ts") {
-  return compileVibe(source, {
-    fileName: `${import.meta.dir}/${name}.vibe`,
+  return compileSmithers(source, {
+    fileName: `${import.meta.dir}/${name}.sm`,
     outputFileName: `${import.meta.dir}/${name}.generated.ts`,
-    sourceName: `${name}.vibe`,
+    sourceName: `${name}.sm`,
     runtimeImport,
     sourceMap: true,
   });
@@ -86,7 +86,7 @@ async function executeConditional(source: string, name: string) {
     pathToFileURL(`${import.meta.dir}/../runtime/index.ts`).href,
   );
   const javascript = new Bun.Transpiler({ loader: "ts", target: "bun" }).transformSync(executable.code);
-  const directory = await mkdtemp(join(tmpdir(), "vibe-conditional-declarations-"));
+  const directory = await mkdtemp(join(tmpdir(), "smithers-conditional-declarations-"));
   try {
     const modulePath = join(directory, `${name}.mjs`);
     await writeFile(modulePath, javascript);
@@ -136,10 +136,10 @@ export function classify(id: string): string {
 `;
   // Analysis itself is clean, and the scoping is enforced by the acceptance
   // rule: the generated program has no such binding after the construct.
-  const checked = compileAndCheckVibe(source, {
-    fileName: `${import.meta.dir}/conditional-escape.vibe`,
+  const checked = compileAndCheckSmithers(source, {
+    fileName: `${import.meta.dir}/conditional-escape.sm`,
     outputFileName: `${import.meta.dir}/conditional-escape.generated.ts`,
-    sourceName: "conditional-escape.vibe",
+    sourceName: "conditional-escape.sm",
     runtimeImport: "../runtime/index.ts",
     sourceMap: false,
   });
@@ -166,7 +166,7 @@ export function run(id: string): Result<string, Missing> {
   expect(compiled.analysis.rows.run).toEqual({ failures: ["Missing"], requirements: [] });
   // The moved declaration is an ordinary statement-safe unwrap host.
   expect(compiled.code).toContain("__vsInspectResult(lookup(id))");
-  expect(compiled.code).toContain("const found = __vibe_result_1.value;");
+  expect(compiled.code).toContain("const found = __smithers_result_1.value;");
   expect(checkEmittedTypeScript(compiled.code, `${import.meta.dir}/conditional-unwrap.generated.ts`)
     .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)).toEqual([]);
 });
@@ -240,17 +240,17 @@ export function classify(id: string): string {
   ];
   for (const [label, source, fragment] of cases) {
     const analysis = analyzeSource(source);
-    const refused = analysis.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1717");
+    const refused = analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1717");
     expect(refused, label).toHaveLength(1);
     expect(refused[0]!.message, label).toContain(fragment);
     // The authored text is left untouched, so nothing is silently rescoped.
-    expect(recoverVibeSyntax(source).parseSource, label).toBe(source);
+    expect(recoverSmithersSyntax(source).parseSource, label).toBe(source);
   }
 });
 
 test("the conditional-declarations example compiles, checks, and executes", async () => {
   const source = await Bun.file(
-    resolve(import.meta.dir, "../../examples/language/conditional-declarations.vibe"),
+    resolve(import.meta.dir, "../../examples/language/conditional-declarations.sm"),
   ).text();
   const { module } = await executeConditional(source, "conditional-declarations-example");
   expect(module.describe("ada")).toBe("found Ada Lovelace");
@@ -276,7 +276,7 @@ test("ordinary conditionals and semicolons inside them are untouched", () => {
   return "none"
 }
 `;
-  const recovered = recoverVibeSyntax(source);
+  const recovered = recoverSmithersSyntax(source);
   expect(recovered.changed).toBe(false);
   expect(recovered.parseSource).toBe(source);
   expect(analyzeSource(source).diagnostics).toEqual([]);

@@ -4,44 +4,36 @@ Status: **Locked**, except where marked.
 
 ## Source Relationship
 
-1. `.vibe` MUST use a TypeScript-derived grammar with only explicitly documented differences.
-2. `.ts`, `.tsx`, and JavaScript modules MUST retain their own complete syntax and behavior when imported by VibeLang.
-3. Shared syntax MUST retain TypeScript behavior unless the VibeLang specification explicitly assigns different semantics.
-4. VibeLang MUST NOT impose a globally sound type system that invalidates TypeScript escape hatches on the TypeScript target.
+1. `.sm` MUST use a TypeScript-derived grammar with only explicitly documented differences.
+2. `.ts`, `.tsx`, and JavaScript modules MUST retain their own complete syntax and behavior when imported by Smithers.
+3. Shared syntax MUST retain TypeScript behavior unless the Smithers specification explicitly assigns different semantics.
+4. Smithers MUST NOT impose a globally sound type system that invalidates TypeScript escape hatches.
 
-VibeLang MUST NOT be described or tested as a syntactic superset of TypeScript. VibeLang source uses the `.vibe` extension. The JSX-capable extension is **open**; `.vibex` is a candidate only.
+Smithers MUST NOT be described or tested as a syntactic superset of TypeScript. Smithers source uses the `.sm` extension. The JSX-capable extension is **open**; `.smx` is a candidate only.
 
 ## TypeScript Target
 
-The TypeScript target MUST interoperate with the complete TypeScript language in `.ts` and `.tsx` modules. VibeLang constructs SHOULD lower into ordinary TypeScript before the stock pipeline finishes checking and emission where feasible.
+The TypeScript target MUST interoperate with the complete TypeScript language in `.ts` and `.tsx` modules. Smithers constructs SHOULD lower into ordinary TypeScript before the stock pipeline finishes checking and emission where feasible.
 
-Requirement metadata SHOULD erase where it does not require runtime machinery. Result and Optional values have intentional runtime representations; infallible, non-optional functions MUST NOT be wrapped.
+Requirement metadata SHOULD erase where it does not require runtime machinery. Result values have an intentional runtime representation; infallible functions MUST NOT be wrapped.
 
-## Runtime TypeScript Dependency
+## Foreign Boundary
 
-Using a value from TypeScript or JavaScript code MUST add a runtime requirement representing that compatibility boundary. A type-only import MUST NOT add that requirement.
+Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration. Trusted `@throws {never}` metadata opts out; `@throws {T}` declares a more precise channel. The caller must propagate, explicitly catch, or safely adapt that channel.
 
-Calling an unannotated foreign runtime value MUST additionally add the checked `panic` case because JavaScript/TypeScript may throw, reject, or violate its declaration. Trusted `@throws {never}` metadata opts out; `@throws {T}` declares a more precise channel. The caller must propagate, explicitly catch, or safely adapt that channel.
+This is a property of JavaScript, not of a second compilation target, and it is retained independently of everything else on this page.
 
-The built-in requirement is currently named `TypeScript`.
-
-The requirement MUST propagate through callers like any other requirement.
+Smithers has no `TypeScript` requirement. TypeScript is the only target, so every program depends on the JavaScript runtime and a requirement recording that fact would carry no information.
 
 ## Dynamic Features
 
-Every relevant TypeScript or JavaScript runtime feature MUST be assigned one classification:
+`.sm` inherits TypeScript's runtime semantics. There is no portable / `TypeScript`-required / forbidden classification, because there is no second target to be portable to.
 
-1. portable across TypeScript and native targets
-2. valid but contributing the `TypeScript` requirement
-3. forbidden in authored `.vibe` source
-
-Use of `any` and `eval` MUST contribute `TypeScript`; neither is globally forbidden.
-
-The classification of `Proxy`, prototype APIs, property descriptors, weak references, custom thenables, and Promise subclassing is **open**.
+`any` and `eval` remain usable. General Smithers guidance may lint against them; the language does not forbid them.
 
 ## Host Globals
 
-Platform-specific globals such as `process`, `window`, `document`, filesystem, and network MUST NOT be unconditional globals in authored `.vibe` code. Host functionality MUST be represented by typed capabilities, normally accessed through the inherited `Capability.context()` method from `vibelang/context`.
+Platform-specific globals such as `process`, `window`, `document`, filesystem, and network MUST NOT be unconditional globals in authored `.sm` code. Host functionality MUST be represented by typed capabilities, normally accessed through the inherited `Capability.context()` method from `smthrs/context`.
 
 Facilities truly present in every supported JavaScript environment MAY be unconditional globals. Host-sensitive operations such as clock and random access MUST still use capabilities.
 
@@ -53,29 +45,81 @@ Facilities truly present in every supported JavaScript environment MAY be uncond
 Module<"node:fs">
 ```
 
-This is preferred over a coarse platform flag because a provider or target may satisfy one host contract without satisfying another.
+This is preferred over a coarse platform flag because a provider or host may satisfy one host contract without satisfying another. It is a capability concern, not a portability one: `.sm` may be emitted for Node, Bun, Deno, a browser, or an edge runtime, and those hosts differ.
 
-## Native and Wasm Targets
+## Configuration
 
-VibeLang MUST support a near-native target through LLVM and SHOULD support Wasm.
+`.sm` is new source, so there is no legacy `.sm` to grandfather. Soundness settings MUST therefore be mandatory and MUST NOT vary by target: a file that type-checks for the TypeScript target MUST type-check identically for Wasm, so a library author can know whether their code is portable without recompiling under different rules.
 
-The native backend MAY use a garbage-collected runtime. Closures, classes, generics, unions, and async functions MUST NOT be rejected solely because runtime support is required.
+Imported `.ts` and `.tsx` keep their own configuration. The escape-hatch guarantee in this page protects those files, not `.sm`.
 
-Arbitrary dynamic import expressions MUST initially be unavailable in native code. A future finite, statically enumerable import-set implementation MAY make some forms portable.
+### Mandatory
 
-## Native Pin
+| Option | Reason |
+| --- | --- |
+| `strict` | brings `strictNullChecks`, `noImplicitAny`, `useUnknownInCatchVariables`, and the rest |
+| `noUncheckedIndexedAccess` | `arr[2]` MUST be `T \| undefined`; an index is a lookup that can find nothing |
+| `exactOptionalPropertyTypes` | load-bearing now that absence is `T \| undefined`; without it `{ a?: number }` silently accepts `{ a: undefined }` |
+| `isolatedModules` | required for correctness under a per-file bundler transform |
+| `verbatimModuleSyntax` | replaces the deprecated `importsNotUsedAsValues` and `preserveValueImports` |
+| `useDefineForClassFields` | the legacy-off behavior is a footgun |
 
-A native pin MUST be a checked assertion over the complete transitive graph. Compilation MUST fail if any reachable operation or provider requires `TypeScript`.
+`noUncheckedIndexedAccess` is noisy in index loops, because TypeScript cannot prove `for (let i = 0; i < arr.length; i++)` is in bounds. Since `!` no longer asserts non-nullness, those sites MUST use an explicit narrowing or an extraction helper.
 
-The diagnostic SHOULD show the dependency path that introduced the requirement.
+### Forbidden
 
-The exact source spelling of a native pin is **open**.
+Options that upstream has deprecated or removed, and options that select superseded behavior, MUST be rejected rather than ignored: `keyofStringsOnly`, `suppressImplicitAnyIndexErrors`, `suppressExcessPropertyErrors`, `noStrictGenericChecks`, `noImplicitUseStrict`, `out`, `charset`, `importsNotUsedAsValues`, `preserveValueImports`, `experimentalDecorators`, and `emitDecoratorMetadata`.
+
+TypeScript 5.8's `erasableSyntaxOnly` names the TS-only syntax that runtime type-stripping refuses. Smithers treats that set as guidance about which forms are dying.
+
+### Target-Scoped
+
+Emit, module, and library options select output rather than legality, and MAY differ by target: `target`, `lib`, `module`, `moduleResolution`, `jsx`, `downlevelIteration`, `importHelpers`, `esModuleInterop`, `allowSyntheticDefaultImports`. A Wasm target simply has no ES5 downleveling, no DOM lib, and no CommonJS interop, so these are inapplicable there rather than removed.
+
+`skipLibCheck` remains configurable; forcing it off is correct in principle and impractical against real `@types` packages.
+
+## Build Tool Integration
+
+Smithers MUST be usable inside an existing JavaScript build without adopting a Smithers-specific build system. A project already using Vite, Rollup, webpack, esbuild, Rspack, Rolldown, Farm, or the Bun bundler MUST be able to add `.sm` support by installing one plugin.
+
+### Plugin Contract
+
+The integration MUST be published as an [unplugin](https://unplugin.unjs.io) factory, so a single implementation produces a plugin for every supported bundler rather than one hand-maintained adapter per tool.
+
+The plugin MUST:
+
+- resolve `.sm` specifiers, including extensionless imports that a bundler would otherwise resolve only to `.ts` or `.js`
+- accept a file whose contents are `.sm` source and return TypeScript or JavaScript
+- run **before** any other transform in the host tool's pipeline, so every downstream plugin sees ordinary TypeScript and never sees Smithers source
+- emit a source map for every transformed file, so diagnostics, stack traces, and debugger stepping refer to the authored `.sm` file
+- leave `.ts`, `.tsx`, `.js`, and `.jsx` files untouched
+
+The plugin MUST NOT define language semantics. It is a delivery mechanism for the same lowering the compiler performs; a construct MUST NOT behave differently because it was compiled by a bundler rather than by the CLI.
+
+### Checking and Transform Modes
+
+Smithers inference is whole-program: error rows, requirement rows, and must-use analysis cross module boundaries. A per-file bundler transform cannot see that graph.
+
+The plugin MUST therefore support two modes:
+
+1. **Checked** — the plugin drives a Smithers program for the project and reports diagnostics. This is the default.
+2. **Transform-only** — the plugin lowers without whole-program checking, for fast rebuilds, with checking delegated to the CLI or an editor. A transform-only build MUST fail closed on any construct whose lowering depends on information the file alone does not carry, rather than emitting a guess.
+
+Transform-only MUST NOT be presented as a conforming implementation of the language.
+
+### Incrementality
+
+The plugin MUST expose accurate invalidation to the host tool's watch mode. A `.sm` file's transform result depends on its own contents, the contents of the modules it imports whose rows it consumes, comptime inputs, and the target — and every one of those MUST invalidate it.
+
+### Declaration Emit
+
+A library published from `.sm` sources MUST be consumable by ordinary TypeScript projects. The plugin or the CLI MUST be able to emit `.d.ts` declarations that preserve Result contracts and requirement rows.
 
 ## Type Assertions
 
-Assertion semantics are **open**. The current candidate is:
+The TypeScript non-null assertion MUST NOT exist in `.sm`. Postfix `!` is the Result propagation operator ([Failure Semantics](/specification/failures)), and the definite-assignment form `x!: T` MUST also be rejected. Removing the assertion meaning entirely is what makes the operator unambiguous.
+
+`as` assertion semantics are **open**. The current candidate is:
 
 - provably safe assertions erase
 - reifiable assertions may check and defect on failure
-- assertions that cannot be made safe add `TypeScript`
-- native casts MUST NOT reinterpret memory unsafely

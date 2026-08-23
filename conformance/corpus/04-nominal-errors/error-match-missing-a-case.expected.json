@@ -1,0 +1,11 @@
+{
+  "title": "an Error.match that omits a member of the checked failure union is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1253",
+      "line": 18,
+      "column": 35
+    }
+  ]
+}

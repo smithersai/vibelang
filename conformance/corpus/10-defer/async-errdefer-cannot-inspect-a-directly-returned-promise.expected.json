@@ -1,0 +1,12 @@
+{
+  "title": "an async errdefer whose owner returns a Promise directly is rejected: the cleanup decision is due before the Result exists",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1713",
+      "line": 24,
+      "column": 3
+    }
+  ],
+  "notes": "specification/failures.mdx, Cleanup: `errdefer` registers cleanup for a Result ERROR exit only, so it has to inspect the Result to decide whether to run. A directly returned Promise settles after the `finally` that would run the cleanup, so at the moment the decision is due there is nothing to inspect, and the two available guesses are both wrong: skip it, and an error exit loses its cleanup; run it, and a success exit gains one. The compiler refuses and names the remedy. This is a POC LOWERING BOUNDARY rather than a specification sentence, and it is declared as such; it is pinned because the boundary is exactly where two implementations can quietly differ. COVERAGE.md recorded obligation 14.7 as PARTIAL with the reason that isolating SMITHERS1713 needed a narrower program: the neighbouring shapes reach SMITHERS1402 and SMITHERS1712 first and mask it. This is that narrower program — the owner is async, the errdefer cleanup is a plain void call that cannot itself fail, and the only thing wrong with it is that the return hands back an unawaited Promise. The declared position is the RETURN statement, not the `errdefer` marker: the diagnostic is reported on the exit whose value the cleanup could not inspect. No `messageContains` is declared. The two backends legitimately word this diagnostic differently — measured on SMITHERS1503, where the reference says \"only as an expression statement or direct return\" and the fork says \"only as an expression statement or a direct return\" — and conformance/README.md reserves `messageContains` for rules whose PAYLOAD is the promise, which here it is not: the code and the authored position are the whole contract, and a fragment of the sentence around them would be a wording assertion wearing a contract's clothes. Both backends refuse it today, so this case pins current behaviour on both rather than reproducing a live one-sided defect."
+}

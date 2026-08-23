@@ -1,0 +1,7 @@
+{
+  "title": "a type-only asset import is rejected: an asset import is a tracked build edge, not a way to borrow a shape",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS5208", "line": 1, "column": 1 }],
+  "assets": ["counter.json"],
+  "notes": "docs/ASSET_LOADERS.md (Locked): 'A loader produces a normal typed module' and 'The incremental build graph records the source content, loader implementation, loader configuration, target/options, and every transitive input read by the loader.' docs/src/pages/guide/asset-imports.mdx lists 'side-effect/type-only forms' among the shapes that 'fail closed'. A type-only import is erased, so it would take a loader's types without leaving the runtime binding or the build-graph node the same page requires; it is refused instead. poc/src/build/source-assets.ts records SMITHERS5208 ('asset imports require runtime bindings and cannot be type-only or side-effect-only'), reported against the whole import declaration."
+}

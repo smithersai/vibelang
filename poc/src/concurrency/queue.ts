@@ -28,9 +28,9 @@ export class QueueClosed extends Error {
     this.name = "QueueClosed";
   }
 }
-export interface QueueClosed extends NominalError<"vibelang:QueueClosed@1"> {}
+export interface QueueClosed extends NominalError<"smithers:QueueClosed@1"> {}
 
-registerErrorCodec(QueueClosed, "vibelang:QueueClosed@1", {
+registerErrorCodec(QueueClosed, "smithers:QueueClosed@1", {
   encode: (error) => ({ reason: reasonLabel(error.reason) }),
   decode: (payload) => {
     if (

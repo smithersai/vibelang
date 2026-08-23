@@ -1,0 +1,11 @@
+{
+  "title": "unwrap at top level has no owner that can propagate the failure",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1202",
+      "line": 10,
+      "column": 22
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+// The same laundering in the spelling the checker cannot answer: `export *`
+// creates no alias to follow, so only this module's own syntax says what the
+// edge reaches.
+export * from "node:fs"

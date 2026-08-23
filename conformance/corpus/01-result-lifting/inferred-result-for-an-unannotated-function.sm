@@ -1,0 +1,20 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+const entries = new Map<string, string>([["ada", "Ada Lovelace"]])
+
+// Not exported and not annotated: the specification says this is inferred as
+// Result<string, Missing> because its body reaches `throw error`.
+function lookup(key: string) {
+  const found = entries.get(key)
+  if (found === undefined) throw new Missing(key)
+  return found
+}
+
+export function main(): string[] {
+  return [
+    lookup("ada").match({ ok: (value) => value, error: (error) => error.message }),
+    lookup("zoe").match({ ok: (value) => value, error: (error) => error.message }),
+  ]
+}

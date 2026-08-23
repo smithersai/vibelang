@@ -1,0 +1,5 @@
+{
+  "title": "awaiting a Promise<Result> and matching the settled Result consumes both channels",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "no entry for zoe"]
+}

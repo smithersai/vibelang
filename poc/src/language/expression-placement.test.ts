@@ -4,10 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import * as ts from "typescript-js";
-import { compileVibe } from "./compile.ts";
+import { compileSmithers } from "./compile.ts";
 import { analyzeSource } from "./analyze.ts";
 import { checkEmittedTypeScript, compileAndCheckProject } from "./validate.ts";
-import { recoverVibeSyntax } from "./recover.ts";
+import { recoverSmithersSyntax } from "./recover.ts";
 import { __vsInspectResult, __vsInspectOptional } from "../runtime/index.ts";
 
 const BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -84,10 +84,10 @@ function mappedOriginal(
 }
 
 function compilePlacement(source: string, name: string) {
-  const compiled = compileVibe(source, {
-    fileName: `${import.meta.dir}/${name}.vibe`,
+  const compiled = compileSmithers(source, {
+    fileName: `${import.meta.dir}/${name}.sm`,
     outputFileName: `${import.meta.dir}/${name}.generated.ts`,
-    sourceName: `${name}.vibe`,
+    sourceName: `${name}.sm`,
     runtimeImport: "../runtime/index.ts",
   });
   return compiled;
@@ -99,14 +99,14 @@ async function executePlacement(source: string, name: string) {
   expect(checkEmittedTypeScript(compiled.code, `${import.meta.dir}/${name}.generated.ts`)
     .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)
     .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"))).toEqual([]);
-  const executable = compileVibe(source, {
-    fileName: `${import.meta.dir}/${name}.vibe`,
+  const executable = compileSmithers(source, {
+    fileName: `${import.meta.dir}/${name}.sm`,
     outputFileName: `${import.meta.dir}/${name}.generated.ts`,
-    sourceName: `${name}.vibe`,
+    sourceName: `${name}.sm`,
     runtimeImport: pathToFileURL(`${import.meta.dir}/../runtime/index.ts`).href,
   });
   const javascript = new Bun.Transpiler({ loader: "ts", target: "bun" }).transformSync(executable.code);
-  const directory = await mkdtemp(join(tmpdir(), "vibe-expression-placement-"));
+  const directory = await mkdtemp(join(tmpdir(), "smithers-expression-placement-"));
   try {
     const modulePath = join(directory, `${name}.mjs`);
     await writeFile(modulePath, javascript);
@@ -264,22 +264,22 @@ test("order-unsafe placements fail closed with stable diagnostics", () => {
 
   expect(codesOf(`
     function f(active: boolean, gate: number) { const x = gate && (if (active) { 1 } else { 2 }); return x }
-  `)).toContain("VIBE1707");
+  `)).toContain("SMITHERS1707");
   expect(codesOf(`
     function f(active: boolean, pick: boolean) { const x = pick ? (if (active) { 1 } else { 2 }) : 3; return x }
-  `)).toContain("VIBE1707");
+  `)).toContain("SMITHERS1707");
   expect(codesOf(`
     function f(active: boolean) { while (use(if (active) { 1 } else { 0 })) { break } }
     declare function use(v: number): boolean
-  `)).toContain("VIBE1707");
+  `)).toContain("SMITHERS1707");
   expect(codesOf(`
     function f(active: boolean, xs: number[]) { use(...xs, if (active) { 1 } else { 2 }) }
     declare function use(...values: number[]): void
-  `)).toContain("VIBE1707");
+  `)).toContain("SMITHERS1707");
   expect(codesOf(`
     function f(active: boolean) { let x = 1; x += use(if (active) { 1 } else { 2 }); return x }
     declare function use(v: number): number
-  `)).toContain("VIBE1707");
+  `)).toContain("SMITHERS1707");
   expect(codesOf(`
     function f(active: boolean) {
       defer use(if (active) { 1 } else { 2 })
@@ -287,21 +287,21 @@ test("order-unsafe placements fail closed with stable diagnostics", () => {
     }
     declare function use(v: number): void
     declare function work(): void
-  `)).toContain("VIBE1707");
+  `)).toContain("SMITHERS1707");
   expect(codesOf(`
     function f(active: boolean, effect: () => number) {
       const first = effect(), second = use(if (active) { 1 } else { 2 })
       return first + second
     }
     declare function use(v: number): number
-  `)).toContain("VIBE1707");
+  `)).toContain("SMITHERS1707");
   expect(codesOf(`
     function f(active: boolean) {
       const first = 1, second = use(if (active) { first } else { 2 })
       return second
     }
     declare function use(v: number): number
-  `)).toContain("VIBE1707");
+  `)).toContain("SMITHERS1707");
   // A hoisted sibling operand may not read a name the statement declares.
   expect(codesOf(`
     function f(active: boolean) {
@@ -309,29 +309,29 @@ test("order-unsafe placements fail closed with stable diagnostics", () => {
       return second
     }
     declare function use(a: number, b: number): number
-  `)).toContain("VIBE1707");
+  `)).toContain("SMITHERS1707");
 
   // Callee stability is verified, not assumed.
   expect(codesOf(`
     let handler = (value: number): number => value
     export function swap(): void { handler = (value) => value * 2 }
     function f(active: boolean) { const x = handler(if (active) { 1 } else { 2 }); return x }
-  `)).toContain("VIBE1708");
+  `)).toContain("SMITHERS1708");
   expect(codesOf(`
     const api: { run: (value: number) => number } = { run: (value) => value }
     function f(active: boolean) { const x = api.run(if (active) { 1 } else { 2 }); return x }
-  `)).toContain("VIBE1708");
+  `)).toContain("SMITHERS1708");
 
   // Braced branches are required in general expression positions.
   expect(codesOf(`
     function f(active: boolean) { use(if (active) 1 else 2) }
     declare function use(v: number): void
-  `)).toContain("VIBE1709");
+  `)).toContain("SMITHERS1709");
 
   // Placements recovery does not attempt keep the existing fail-closed code.
   expect(codesOf(`
     function f(active: boolean) { let x = 0; x = if (active) { 1 } else { 2 }; return x }
-  `)).toContain("VIBE1702");
+  `)).toContain("SMITHERS1702");
 });
 
 test("statement-position keywords after case labels stay valid and byte-identical", () => {
@@ -342,13 +342,13 @@ export function f(k: number): void {
   branch: if (k) { use(k) }
 }
 `;
-  const recovery = recoverVibeSyntax(source);
+  const recovery = recoverSmithersSyntax(source);
   expect(recovery.changed).toBe(false);
   expect(recovery.diagnostics).toEqual([]);
   const analysis = analyzeSource(source);
   // The label still receives its own diagnostic; the statement `if` after
   // `case foo:` must not be misclassified as a value expression.
-  expect(analysis.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(["VIBE1704"]);
+  expect(analysis.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(["SMITHERS1704"]);
 
   const caseOnly = `declare const foo: number
 declare function use(v: number): void
@@ -356,7 +356,7 @@ export function f(k: number): void {
   switch (k) { case foo: if (k) { use(k) } }
 }
 `;
-  const compiled = compileVibe(caseOnly);
+  const compiled = compileSmithers(caseOnly);
   expect(compiled.analysis.diagnostics).toEqual([]);
   expect(compiled.code).toBe(caseOnly);
 });
@@ -369,7 +369,7 @@ async function f(active: boolean) {
 }
 `;
   const analysis = analyzeSource(source);
-  const ownership = analysis.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1706");
+  const ownership = analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1706");
   expect(ownership).toHaveLength(2);
   const firstTask = source.indexOf("task()", source.indexOf("if (active)"));
   expect(ownership[0]!.start).toBe(firstTask);
@@ -388,7 +388,7 @@ export function f(active: boolean): number {
   expect(compiled.analysis.diagnostics).toEqual([]);
   expect(compiled.sourceMap).toBeDefined();
   const map = JSON.parse(compiled.sourceMap!) as { sources: string[]; sourcesContent: string[] };
-  expect(map.sources).toEqual(["placement-map.vibe"]);
+  expect(map.sources).toEqual(["placement-map.sm"]);
   expect(map.sourcesContent[0]).toBe(source);
 
   // The moved branch value text maps exactly to its authored location.
@@ -405,7 +405,7 @@ export function f(active: boolean): number {
 
   // Compiler glue (the hoisted temporary declaration keyword) is unmapped
   // instead of inheriting a misleading nearby authored position.
-  const hoistedConst = compiled.code.indexOf("const __vibe_operand");
+  const hoistedConst = compiled.code.indexOf("const __smithers_operand");
   expect(hoistedConst).toBeGreaterThan(-1);
   expect(mappedOriginal(compiled.sourceMap!, compiled.code, hoistedConst)).toBeUndefined();
 });
@@ -427,9 +427,9 @@ test("template substitutions never skew downstream construct recognition", () =>
 });
 
 test("the expression-flow example compiles, checks, and executes", async () => {
-  const source = await Bun.file(`${import.meta.dir}/../../examples/language/expression-flow.vibe`).text();
+  const source = await Bun.file(`${import.meta.dir}/../../examples/language/expression-flow.sm`).text();
   const { compiled, module } = await executePlacement(source, "expression-flow-example");
-  expect(compiled.code).toContain("let __vibe_");
+  expect(compiled.code).toContain("let __smithers_");
   expect(module.describe("retry")).toBe("resit scheduled");
   expect(__vsInspectResult(module.weighted(50, true) as any)).toMatchObject({ ok: true, value: 60 });
   expect(__vsInspectResult(module.weighted(500, true) as any).ok).toBe(false);
@@ -442,7 +442,7 @@ test("the expression-flow example compiles, checks, and executes", async () => {
 test("project compilation lowers general placements across modules", () => {
   const checked = compileAndCheckProject([
     {
-      fileName: "choice.vibe",
+      fileName: "choice.sm",
       source: `export function choose(active: boolean): number {
   return combine(1, if (active) { 2 } else { 3 }, 4)
 }
@@ -450,8 +450,8 @@ function combine(a: number, b: number, c: number): number { return a + b + c }
 `,
     },
     {
-      fileName: "main.vibe",
-      source: `import { choose } from "./choice.vibe"
+      fileName: "main.sm",
+      source: `import { choose } from "./choice.sm"
 export function main(): number { return choose(true) }
 `,
     },
@@ -459,5 +459,5 @@ export function main(): number { return choose(true) }
   expect(checked.result.diagnostics).toEqual([]);
   expect(checked.emitDiagnostics).toEqual([]);
   expect(checked.ok).toBe(true);
-  expect(checked.result.files["choice.vibe"]!.code).toContain("let __vibe_if_value_");
+  expect(checked.result.files["choice.sm"]!.code).toContain("let __smithers_if_value_");
 });

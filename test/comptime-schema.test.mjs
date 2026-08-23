@@ -11,24 +11,24 @@ function run(file, args) {
 }
 
 /**
- * Give the compiled project a `node_modules/vibelang` so the emitted
- * `vibelang/schema-runtime` edge resolves exactly the way it does for an
+ * Give the compiled project a `node_modules/smthrs` so the emitted
+ * `smthrs/schema-runtime` edge resolves exactly the way it does for an
  * installed consumer. The CLI deliberately does not redirect that specifier at
  * a local path: a resolvable file would make the frontend read `__vsSchema` as
  * an untrusted foreign module.
  */
 function linkInstalledPackage(root) {
   mkdirSync(join(root, "node_modules"), { recursive: true });
-  symlinkSync(resolve("."), join(root, "node_modules", "vibelang"), process.platform === "win32" ? "junction" : "dir");
+  symlinkSync(resolve("."), join(root, "node_modules", "smthrs"), process.platform === "win32" ? "junction" : "dir");
 }
 
-test("comptime Schema.derive lowers to a resolvable vibelang/schema-runtime edge", async () => {
-  const project = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-schema-")));
+test("comptime Schema.derive lowers to a resolvable smthrs/schema-runtime edge", async () => {
+  const project = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-schema-")));
   const output = join(project, "output");
   try {
-    writeFileSync(join(project, "main.vibe"), [
-      'import { comptime } from "vibelang:comptime"',
-      'import { Schema } from "vibelang:schema"',
+    writeFileSync(join(project, "main.sm"), [
+      'import { comptime } from "smithers:comptime"',
+      'import { Schema } from "smithers:schema"',
       "",
       "export interface Row { name: string; count: number }",
       "",
@@ -36,9 +36,9 @@ test("comptime Schema.derive lowers to a resolvable vibelang/schema-runtime edge
       "",
     ].join("\n"));
 
-    const compiled = run("bin/vibe.js", [
+    const compiled = run("bin/smithers.js", [
       "compile",
-      join(project, "main.vibe"),
+      join(project, "main.sm"),
       "--rootDir",
       project,
       "--outDir",
@@ -54,7 +54,7 @@ test("comptime Schema.derive lowers to a resolvable vibelang/schema-runtime edge
 
     // Both new lowering edit kinds are part of the report the CLI passes
     // through, so a consumer auditing provenance sees them by name.
-    const main = report.files.find((file) => file.input === join(project, "main.vibe"));
+    const main = report.files.find((file) => file.input === join(project, "main.sm"));
     assert.deepEqual(main.comptime.provenance.edits.map((edit) => edit.kind), [
       "schema-runtime-import",
       "remove-import",
@@ -63,18 +63,18 @@ test("comptime Schema.derive lowers to a resolvable vibelang/schema-runtime edge
     ]);
     const importEdit = main.comptime.provenance.edits[0];
     assert.deepEqual([importEdit.authored.start, importEdit.authored.end], [0, 0]);
-    assert.equal(importEdit.mappedOrigin.file, "main.vibe");
+    assert.equal(importEdit.mappedOrigin.file, "main.sm");
 
     const javascript = readFileSync(join(output, "main.mjs"), "utf8");
-    assert.match(javascript, /^import \{ __vsSchema \} from "vibelang\/schema-runtime";/m);
-    assert.doesNotMatch(javascript, /vibelang:schema|Schema\.derive/);
+    assert.match(javascript, /^import \{ __vsSchema \} from "smthrs\/schema-runtime";/m);
+    assert.doesNotMatch(javascript, /smithers:schema|Schema\.derive/);
     // The compiler-owned descriptor, not an author-maintained schema literal.
     assert.match(javascript, /kind: "object"/);
 
     // A declaration must name the package seam, never the checker's machine
     // specific path for the packaged module.
     const declaration = readFileSync(join(output, "main.d.mts"), "utf8");
-    assert.match(declaration, /import\("vibelang\/schema-runtime"\)\.DerivedSchema<Row>/);
+    assert.match(declaration, /import\("smthrs\/schema-runtime"\)\.DerivedSchema<Row>/);
     assert.doesNotMatch(declaration, /poc\/dist\/build\/schema-runtime/);
 
     linkInstalledPackage(project);
@@ -95,11 +95,11 @@ test("comptime Schema.derive lowers to a resolvable vibelang/schema-runtime edge
 });
 
 test("a type-only comptime binding lowers to a type-alias edit and erases its runtime const", () => {
-  const project = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-type-alias-")));
+  const project = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-type-alias-")));
   const output = join(project, "output");
   try {
-    writeFileSync(join(project, "main.vibe"), [
-      'import { comptime } from "vibelang:comptime"',
+    writeFileSync(join(project, "main.sm"), [
+      'import { comptime } from "smithers:comptime"',
       "",
       'const Account = comptime({ id: "string", nested: { flag: true } })',
       "",
@@ -107,9 +107,9 @@ test("a type-only comptime binding lowers to a type-alias edit and erases its ru
       "",
     ].join("\n"));
 
-    const compiled = run("bin/vibe.js", [
+    const compiled = run("bin/smithers.js", [
       "compile",
-      join(project, "main.vibe"),
+      join(project, "main.sm"),
       "--rootDir",
       project,
       "--outDir",
@@ -122,14 +122,14 @@ test("a type-only comptime binding lowers to a type-alias edit and erases its ru
     const report = JSON.parse(compiled.stdout);
     assert.equal(report.ok, true);
 
-    const main = report.files.find((file) => file.input === join(project, "main.vibe"));
+    const main = report.files.find((file) => file.input === join(project, "main.sm"));
     assert.deepEqual(main.comptime.provenance.edits.map((edit) => edit.kind), [
       "remove-import",
       "type-alias",
     ]);
 
     const javascript = readFileSync(join(output, "main.mjs"), "utf8");
-    assert.doesNotMatch(javascript, /const Account|vibelang:comptime/);
+    assert.doesNotMatch(javascript, /const Account|smithers:comptime/);
     assert.match(javascript, /function open/);
 
     const declaration = readFileSync(join(output, "main.d.mts"), "utf8");

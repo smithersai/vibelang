@@ -1,0 +1,11 @@
+import raw from "./reviewer.md" with { type: "text" }
+import settings from "./settings.yaml" with { type: "text" }
+
+// Two files whose extensions suggest two different loaders, both asking for
+// `text`. The attribute decides: `.md` is handed back as its raw source rather
+// than parsed into the Markdown module shape, and `.yaml` — an extension no
+// built-in claims — is read at all only because the attribute named a loader.
+export function main(): string[] {
+  const lines = settings.trimEnd().split("\n")
+  return [`${raw.startsWith("---")}`, lines[0], lines[1]]
+}

@@ -1,7 +1,16 @@
 import { Database } from "bun:sqlite"
 import { Buffer } from "node:buffer"
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto"
-import { validateDeploymentManifest, validatePlanTemplate } from "./artifact.ts"
+import { MAX_CHILD_FLOW_DEPTH, validateDeploymentManifest, validatePlanTemplate } from "./artifact.ts"
+import {
+  assertNodeMigrationCompatible,
+  ExecutionMigratedError,
+  isCommittedNodeStatus,
+  MigrationRejectedError,
+  planExecutionMigration,
+  type ExecutionMigrationEvidence,
+  type MigrationPlan
+} from "./migration.ts"
 import { WakeupService } from "./wakeup.ts"
 import {
   allPlanNodes,
@@ -12,11 +21,32 @@ import {
   type DurableSchema,
   digest,
   type JsonValue,
+  queueContractIdentity,
+  signalContractIdentity,
   type SignalNode,
   type PlanTemplate,
+  type StructuralDurableSchema,
   type WorkerExit
 } from "./ir.ts"
 import { validateDurableSchema, validateDurableValue } from "./schema.ts"
+
+/**
+ * Bound on how many suspended executions one post-COMMIT wakeup fan-out
+ * notifies directly. Notification is a fast path only; anything beyond this
+ * bound converges through each coordinator's persistent fallback sweep.
+ */
+const MAX_WAKEUP_FANOUT = 256
+
+/** One bounded, portable, NUL-free identity string used at every entry point. */
+const assertBoundedIdentity = (label: string, value: unknown, limit: number): string => {
+  if (
+    typeof value !== "string" || value.trim() === "" ||
+    new TextEncoder().encode(value).byteLength > limit || value.includes("\0")
+  ) {
+    throw new TypeError(`Durable ${label} must be a bounded non-empty string`)
+  }
+  return value
+}
 
 export type ExecutionStatus = "running" | "completed" | "failed" | "cancelled"
 export type NodeStatus = "pending" | "running" | "succeeded" | "failed" | "defect" | "skipped" | "cancelled"
@@ -34,6 +64,7 @@ interface ExecutionRow {
   readonly output_digest: string | null
   readonly error_json: string | null
   readonly error_digest: string | null
+  readonly plan_generation?: number
 }
 
 interface NodeRow {
@@ -48,6 +79,7 @@ interface NodeRow {
   readonly retry_at: number | null
   readonly wake_at: number | null
   readonly signal_waiting_at: number | null
+  readonly queue_waiting_at: number | null
   readonly fanout_digest: string | null
   readonly result_json: string | null
   readonly result_digest: string | null
@@ -70,6 +102,8 @@ interface SignalContractRow {
   readonly payload_schema_storage_digest: string
   readonly payload_schema_digest: string
   readonly contract_digest: string
+  /** NULL is the original unicast form; "broadcast" selects the fan-out form. */
+  readonly delivery: string | null
 }
 
 export type SignalInboxState = "pending" | "consumed" | "discarded"
@@ -239,6 +273,99 @@ export interface SignalDeliveryResult {
 export type SignalPollResult =
   | { readonly kind: "waiting"; readonly newlyWaiting: boolean }
   | { readonly kind: "terminal"; readonly exit: StoredNodeExit; readonly newlyConsumed: boolean }
+
+/** One durable enqueue request. Producers never supply schema authority. */
+export interface QueueEnqueueRequest {
+  readonly queueId: string
+  readonly idempotencyKey: string
+  readonly item: unknown
+}
+
+/** Trusted coordinator evidence for a queue; not supplied by a producer. */
+export interface QueueContractExpectation {
+  readonly queueId: string
+  readonly queueContractDigest: string
+}
+
+export interface QueueEnqueueResult {
+  readonly duplicate: boolean
+  readonly sequence: number
+  readonly state: QueueItemState
+  readonly payloadDigest: string
+  readonly itemDigest: string
+}
+
+export type QueueItemState = "pending" | "consumed"
+
+export type QueuePollResult =
+  | { readonly kind: "waiting"; readonly newlyWaiting: boolean }
+  | {
+    readonly kind: "terminal"
+    readonly exit: StoredNodeExit
+    readonly newlyConsumed: boolean
+    readonly sequence?: number
+  }
+
+/** Trusted coordinator evidence for a queue consumer node. */
+export interface QueuePollExpectation {
+  readonly planDigest: string
+  readonly queueId: string
+  readonly queueContractDigest: string
+}
+
+/** One broadcast delivery request; it addresses a signal identity, not a run. */
+export interface BroadcastDeliveryRequest {
+  readonly signalId: string
+  readonly idempotencyKey: string
+  readonly payload: unknown
+}
+
+/** Trusted coordinator evidence for a broadcast signal identity. */
+export interface BroadcastContractExpectation {
+  readonly signalId: string
+  readonly signalContractDigest: string
+}
+
+export interface BroadcastDeliveryResult {
+  readonly duplicate: boolean
+  readonly sequence: number
+  readonly payloadDigest: string
+  readonly deliveryDigest: string
+  /** Subscribed, still-waiting executions entitled to this delivery. */
+  readonly notifiedExecutions: readonly string[]
+}
+
+/** Result of one broadcast retention sweep. */
+export interface BroadcastCollectionResult {
+  readonly examined: number
+  readonly deleted: number
+}
+
+/** Provisional minted producer evidence for one queue identity. */
+export interface MintedQueueToken {
+  readonly queueId: string
+  readonly producerToken: string
+}
+
+/** Provisional minted sender evidence for one broadcast signal identity. */
+export interface MintedBroadcastToken {
+  readonly signalId: string
+  readonly senderToken: string
+}
+
+export class QueueEnqueueConflictError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "QueueEnqueueConflictError"
+  }
+}
+
+export class QueueEnqueueRejectedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "QueueEnqueueRejectedError"
+  }
+}
 
 export class SignalDeliveryConflictError extends Error {
   constructor(message: string) {
@@ -473,6 +600,94 @@ export class DurableStore {
         secret_hex TEXT NOT NULL,
         created_at INTEGER NOT NULL
       );
+      -- Cross-execution registry: one queue identity has exactly one pinned
+      -- compiler-derived item contract, so no producer supplies type authority
+      -- and two Flows cannot disagree about a shared queue's items.
+      CREATE TABLE IF NOT EXISTS durable_queues (
+        queue_id TEXT PRIMARY KEY,
+        item_schema_json TEXT NOT NULL,
+        item_schema_storage_digest TEXT NOT NULL,
+        item_schema_digest TEXT NOT NULL,
+        contract_digest TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS durable_queue_contracts (
+        execution_id TEXT NOT NULL,
+        node_id TEXT NOT NULL,
+        queue_id TEXT NOT NULL,
+        contract_digest TEXT NOT NULL,
+        PRIMARY KEY (execution_id, node_id),
+        FOREIGN KEY (execution_id, node_id) REFERENCES durable_nodes(execution_id, node_id),
+        FOREIGN KEY (queue_id) REFERENCES durable_queues(queue_id)
+      );
+      -- FIFO is commit order: the autoincrement sequence is assigned inside the
+      -- enqueue transaction, so a reader can never observe an out-of-order gap.
+      CREATE TABLE IF NOT EXISTS durable_queue_items (
+        sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+        queue_id TEXT NOT NULL,
+        idempotency_key TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        payload_digest TEXT NOT NULL,
+        schema_digest TEXT NOT NULL,
+        item_digest TEXT NOT NULL,
+        state TEXT NOT NULL,
+        enqueued_at INTEGER NOT NULL,
+        consumed_at INTEGER,
+        consumed_execution_id TEXT,
+        consumed_node_id TEXT,
+        UNIQUE (queue_id, idempotency_key),
+        FOREIGN KEY (queue_id) REFERENCES durable_queues(queue_id)
+      );
+      -- Cross-execution registry for the broadcast signal form. A broadcast
+      -- identity is a different contract from a unicast identity of the same
+      -- name, so ambiguity between the two fails closed here.
+      CREATE TABLE IF NOT EXISTS durable_broadcast_signals (
+        signal_id TEXT PRIMARY KEY,
+        payload_schema_json TEXT NOT NULL,
+        payload_schema_storage_digest TEXT NOT NULL,
+        payload_schema_digest TEXT NOT NULL,
+        contract_digest TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS durable_broadcast_deliveries (
+        sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+        signal_id TEXT NOT NULL,
+        idempotency_key TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        payload_digest TEXT NOT NULL,
+        schema_digest TEXT NOT NULL,
+        delivery_digest TEXT NOT NULL,
+        delivered_at INTEGER NOT NULL,
+        UNIQUE (signal_id, idempotency_key),
+        FOREIGN KEY (signal_id) REFERENCES durable_broadcast_signals(signal_id)
+      );
+      -- The durable subscription point. A waiter is entitled to exactly the
+      -- deliveries committed strictly after its own watermark, so a late
+      -- execution never retro-consumes an old broadcast.
+      CREATE TABLE IF NOT EXISTS durable_broadcast_subscriptions (
+        execution_id TEXT NOT NULL,
+        node_id TEXT NOT NULL,
+        signal_id TEXT NOT NULL,
+        watermark INTEGER NOT NULL,
+        subscribed_at INTEGER NOT NULL,
+        PRIMARY KEY (execution_id, node_id),
+        FOREIGN KEY (execution_id, node_id) REFERENCES durable_nodes(execution_id, node_id)
+      );
+      -- Per-waiter consumption evidence. It is self-sufficient (it carries the
+      -- payload digest) so a delivery may be garbage collected without
+      -- weakening a consumer's later integrity re-verification.
+      CREATE TABLE IF NOT EXISTS durable_broadcast_consumptions (
+        execution_id TEXT NOT NULL,
+        node_id TEXT NOT NULL,
+        signal_id TEXT NOT NULL,
+        sequence INTEGER NOT NULL,
+        idempotency_key TEXT NOT NULL,
+        payload_digest TEXT NOT NULL,
+        delivery_digest TEXT NOT NULL,
+        consumed_at INTEGER NOT NULL,
+        PRIMARY KEY (execution_id, node_id),
+        FOREIGN KEY (execution_id, node_id) REFERENCES durable_nodes(execution_id, node_id)
+      );
     `)
     this.ensureColumn("durable_executions", "input_digest", "TEXT")
     this.ensureColumn("durable_executions", "output_digest", "TEXT")
@@ -483,9 +698,26 @@ export class DurableStore {
     this.ensureColumn("durable_nodes", "wake_at", "INTEGER")
     this.ensureColumn("durable_nodes", "signal_waiting_at", "INTEGER")
     this.ensureColumn("durable_nodes", "fanout_digest", "TEXT")
+    this.ensureColumn("durable_nodes", "queue_waiting_at", "INTEGER")
     this.ensureColumn("durable_journal", "payload_digest", "TEXT")
     this.ensureColumn("durable_journal", "event_digest", "TEXT")
+    // NULL means the original unicast form, so no pre-existing row changes.
+    this.ensureColumn("durable_signal_contracts", "delivery", "TEXT")
+    // 0 means "never migrated"; each applied migration increments it.
+    this.ensureColumn("durable_executions", "plan_generation", "INTEGER NOT NULL DEFAULT 0")
     this.migrateFanOutItemsStepIdentity()
+    this.database.exec(`
+      CREATE INDEX IF NOT EXISTS durable_signal_contracts_signal
+        ON durable_signal_contracts(signal_id);
+      CREATE INDEX IF NOT EXISTS durable_queue_items_head
+        ON durable_queue_items(queue_id, state, sequence);
+      CREATE INDEX IF NOT EXISTS durable_queue_contracts_queue
+        ON durable_queue_contracts(queue_id);
+      CREATE INDEX IF NOT EXISTS durable_broadcast_deliveries_signal
+        ON durable_broadcast_deliveries(signal_id, sequence);
+      CREATE INDEX IF NOT EXISTS durable_broadcast_subscriptions_signal
+        ON durable_broadcast_subscriptions(signal_id, watermark);
+    `)
     this.signalTokenSecret = this.initializeSignalTokenSecret()
   }
 
@@ -553,6 +785,112 @@ export class DurableStore {
     return { nodeId: contract.node_id, senderToken: this.computeSignalToken(executionId, signalId) }
   }
 
+  /** Deterministic HMAC token over exactly one queue identity. */
+  private computeQueueToken(queueId: string): string {
+    const mac = createHmac("sha256", this.signalTokenSecret)
+      .update(canonicalJson({ formatVersion: 1, queueId }))
+      .digest("hex")
+    return `vqt1_${mac}`
+  }
+
+  /** Deterministic HMAC token over exactly one broadcast signal identity. */
+  private computeBroadcastToken(signalId: string): string {
+    const mac = createHmac("sha256", this.signalTokenSecret)
+      .update(canonicalJson({ formatVersion: 1, broadcastSignalId: signalId }))
+      .digest("hex")
+    return `vbt1_${mac}`
+  }
+
+  /**
+   * Mints producer evidence for one queue identity, fail-closed unless some
+   * coordinator already pinned that queue's compiler-derived item contract.
+   * Like the signal token, this is local-trust evidence over one SQLite file,
+   * not remote authentication.
+   */
+  mintQueueToken(queueId: string): MintedQueueToken {
+    assertBoundedIdentity("queue id", queueId, 128)
+    const registry = this.database.query(
+      "SELECT queue_id FROM durable_queues WHERE queue_id=?"
+    ).get(queueId) as { readonly queue_id: string } | null
+    if (registry === null) {
+      throw new QueueEnqueueRejectedError(
+        `Cannot mint a producer token: queue ${queueId} has no pinned item contract`
+      )
+    }
+    return { queueId, producerToken: this.computeQueueToken(queueId) }
+  }
+
+  /** Mints sender evidence for one already-pinned broadcast signal identity. */
+  mintBroadcastToken(signalId: string): MintedBroadcastToken {
+    assertBoundedIdentity("signal id", signalId, 128)
+    const registry = this.database.query(
+      "SELECT signal_id FROM durable_broadcast_signals WHERE signal_id=?"
+    ).get(signalId) as { readonly signal_id: string } | null
+    if (registry === null) {
+      throw new SignalDeliveryRejectedError(
+        `Cannot mint a broadcast sender token: signal ${signalId} has no pinned broadcast contract`
+      )
+    }
+    return { signalId, senderToken: this.computeBroadcastToken(signalId) }
+  }
+
+  /**
+   * Mints delivery evidence for a signal inside an ATTACHED child execution,
+   * gated on the durable parent -> child linkage chain rather than on any new
+   * capability. The caller must already be entitled to `parentExecutionId`; a
+   * child that is not durably attached along `childNodePath` fails closed, so
+   * this widens a parent grant's reach only to executions the parent itself
+   * created.
+   */
+  mintAttachedSignalToken(
+    parentExecutionId: string,
+    childNodePath: readonly string[],
+    signalId: string
+  ): MintedSignalToken & { readonly executionId: string } {
+    assertBoundedIdentity("execution id", parentExecutionId, 512)
+    assertBoundedIdentity("signal id", signalId, 128)
+    if (!Array.isArray(childNodePath) || childNodePath.length === 0 || childNodePath.length > MAX_CHILD_FLOW_DEPTH) {
+      throw new TypeError(
+        `Durable child signal path must name 1..${MAX_CHILD_FLOW_DEPTH} attached childFlow nodes`
+      )
+    }
+    let executionId = parentExecutionId
+    for (const [index, nodeId] of childNodePath.entries()) {
+      assertBoundedIdentity(`child path node id ${index}`, nodeId, 512)
+      const link = this.database.query(
+        "SELECT child_execution_id FROM durable_child_executions WHERE parent_execution_id=? AND node_id=?"
+      ).get(executionId, nodeId) as { readonly child_execution_id: string } | null
+      if (link === null) {
+        throw new SignalDeliveryRejectedError(
+          `Durable execution ${executionId} has no attached child at childFlow node ${nodeId}`
+        )
+      }
+      executionId = link.child_execution_id
+    }
+    const minted = this.mintSignalToken(executionId, signalId)
+    return { executionId, nodeId: minted.nodeId, senderToken: minted.senderToken }
+  }
+
+  /**
+   * Fails closed when a caller addresses an execution that is not pinned to the
+   * caller's Plan. Every mutating coordinator entry point routes through this,
+   * so a coordinator holding a superseded deployment cannot claim, materialize,
+   * link, complete, or fail an execution that has since been migrated.
+   */
+  private assertPinnedPlan(executionId: string, expectedPlanDigest: string | undefined): void {
+    if (expectedPlanDigest === undefined) return
+    if (typeof expectedPlanDigest !== "string" || !/^[0-9a-f]{64}$/.test(expectedPlanDigest)) {
+      throw new TypeError("Durable pinned Plan digest expectation is invalid")
+    }
+    const row = this.database.query(
+      "SELECT plan_digest,plan_generation FROM durable_executions WHERE id=?"
+    ).get(executionId) as { readonly plan_digest: string; readonly plan_generation: number } | null
+    if (row === null) throw new Error(`Unknown durable execution ${executionId}`)
+    if (row.plan_digest !== expectedPlanDigest) {
+      throw new ExecutionMigratedError(executionId, expectedPlanDigest, row.plan_digest, row.plan_generation)
+    }
+  }
+
   /**
    * Fail-closed sender authorization for one delivery. Exactly one evidence
    * field is accepted; a structurally hostile authorization value is a
@@ -562,37 +900,60 @@ export class DurableStore {
    * is timing-safe over fixed-length digests of both candidate and expected.
    */
   private authorizeSignalDelivery(request: SignalDeliveryRequest, authorization: unknown): void {
+    this.authorizeOpaqueToken(
+      authorization,
+      "senderToken",
+      "signal delivery",
+      () => this.computeSignalToken(request.executionId, request.signalId),
+      "Durable signal delivery requires a minted sender token or explicit unsafeLocalDelivery",
+      `Sender token does not authorize signal ${request.signalId} on execution ${request.executionId}`,
+      SignalDeliveryUnauthorizedError
+    )
+  }
+
+  /**
+   * Shared fail-closed evidence check for every opaque local-trust token in
+   * this store. Exactly one evidence field is accepted; a structurally hostile
+   * authorization value is a TypeError, and absent/malformed/mismatched token
+   * evidence is rejected before any state is read, so an unauthorized caller
+   * cannot probe existence. Comparison is timing-safe over fixed-length digests
+   * of both candidate and expected token.
+   */
+  private authorizeOpaqueToken(
+    authorization: unknown,
+    tokenField: "senderToken" | "producerToken",
+    surface: string,
+    expectedToken: () => string,
+    missingMessage: string,
+    mismatchMessage: string,
+    Unauthorized: new (message: string) => Error
+  ): void {
     if (authorization === null || typeof authorization !== "object" || Array.isArray(authorization)) {
-      throw new TypeError("Durable signal delivery authorization must be an object")
+      throw new TypeError(`Durable ${surface} authorization must be an object`)
     }
     const keys = Reflect.ownKeys(authorization)
-    if (keys.some((key) => key !== "senderToken" && key !== "unsafeLocalDelivery")) {
-      throw new TypeError("Durable signal delivery authorization has unknown fields")
+    if (keys.some((key) => key !== tokenField && key !== "unsafeLocalDelivery")) {
+      throw new TypeError(`Durable ${surface} authorization has unknown fields`)
     }
     if (keys.length > 1) {
-      throw new TypeError("Durable signal delivery authorization must supply exactly one evidence field")
+      throw new TypeError(`Durable ${surface} authorization must supply exactly one evidence field`)
     }
     if (keys[0] === "unsafeLocalDelivery") {
       if ((authorization as { readonly unsafeLocalDelivery?: unknown }).unsafeLocalDelivery !== true) {
-        throw new TypeError("Durable signal delivery unsafeLocalDelivery must be exactly true")
+        throw new TypeError(`Durable ${surface} unsafeLocalDelivery must be exactly true`)
       }
       return
     }
-    const candidate: unknown = keys[0] === "senderToken"
-      ? (authorization as { readonly senderToken?: unknown }).senderToken
+    const candidate: unknown = keys[0] === tokenField
+      ? (authorization as Record<string, unknown>)[tokenField]
       : undefined
     if (typeof candidate !== "string" || candidate.length === 0 || candidate.length > 512) {
-      throw new SignalDeliveryUnauthorizedError(
-        "Durable signal delivery requires a minted sender token or explicit unsafeLocalDelivery"
-      )
+      throw new Unauthorized(missingMessage)
     }
-    const expected = this.computeSignalToken(request.executionId, request.signalId)
     const candidateDigest = createHash("sha256").update(candidate, "utf8").digest()
-    const expectedDigest = createHash("sha256").update(expected, "utf8").digest()
+    const expectedDigest = createHash("sha256").update(expectedToken(), "utf8").digest()
     if (!timingSafeEqual(candidateDigest, expectedDigest)) {
-      throw new SignalDeliveryUnauthorizedError(
-        `Sender token does not authorize signal ${request.signalId} on execution ${request.executionId}`
-      )
+      throw new Unauthorized(mismatchMessage)
     }
   }
 
@@ -670,6 +1031,7 @@ export class DurableStore {
   private signalContract(executionId: string, nodeId: string): {
     readonly row: SignalContractRow
     readonly schema: Extract<DurableSchema, { readonly shape: "structural" }>
+    readonly broadcast: boolean
   } {
     const row = this.database.query(
       "SELECT * FROM durable_signal_contracts WHERE execution_id=? AND node_id=?"
@@ -697,13 +1059,139 @@ export class DurableStore {
     if (schema.shape !== "structural" || schema.source !== "compiler-derived") {
       throw new ContentIntegrityError(`signal ${executionId}/${nodeId} does not have a structural compiler schema`)
     }
+    if (row.delivery !== null && row.delivery !== "broadcast") {
+      throw new ContentIntegrityError(`signal ${executionId}/${nodeId} has an unsupported persisted delivery mode`)
+    }
+    const delivery = row.delivery === "broadcast" ? "broadcast" as const : undefined
     if (
       schema.digest !== row.payload_schema_digest ||
-      digest({ signalId: row.signal_id, payloadSchema: schema }) !== row.contract_digest
+      signalContractIdentity(row.signal_id, schema, delivery) !== row.contract_digest
     ) {
       throw new ContentIntegrityError(`signal ${executionId}/${nodeId} contract digest mismatch`)
     }
-    return { row, schema }
+    return { row, schema, broadcast: delivery === "broadcast" }
+  }
+
+  /**
+   * Reads and verifies the queue contract pinned for one consumer node, and the
+   * cross-execution registry row it must agree with. The item schema comes only
+   * from Plan initialization; a producer never supplies type authority.
+   */
+  private queueContract(executionId: string, nodeId: string): {
+    readonly queueId: string
+    readonly contractDigest: string
+    readonly schema: StructuralDurableSchema
+    readonly schemaDigest: string
+  } {
+    const row = this.database.query(
+      "SELECT * FROM durable_queue_contracts WHERE execution_id=? AND node_id=?"
+    ).get(executionId, nodeId) as {
+      readonly queue_id: string
+      readonly contract_digest: string
+    } | null
+    if (row === null) {
+      throw new ContentIntegrityError(`queue ${executionId}/${nodeId} is missing its persisted contract`)
+    }
+    const registry = this.queueRegistry(row.queue_id)
+    if (registry.contractDigest !== row.contract_digest) {
+      throw new ContentIntegrityError(
+        `queue ${executionId}/${nodeId} disagrees with the pinned registry contract for ${row.queue_id}`
+      )
+    }
+    return {
+      queueId: row.queue_id,
+      contractDigest: row.contract_digest,
+      schema: registry.schema,
+      schemaDigest: registry.schemaDigest
+    }
+  }
+
+  /** Verified cross-execution queue registry row for one queue identity. */
+  private queueRegistry(queueId: string): {
+    readonly schema: StructuralDurableSchema
+    readonly schemaDigest: string
+    readonly contractDigest: string
+  } {
+    const row = this.database.query(
+      "SELECT * FROM durable_queues WHERE queue_id=?"
+    ).get(queueId) as {
+      readonly item_schema_json: string
+      readonly item_schema_storage_digest: string
+      readonly item_schema_digest: string
+      readonly contract_digest: string
+    } | null
+    if (row === null) throw new QueueEnqueueRejectedError(`Durable queue ${queueId} has no pinned item contract`)
+    const schema = this.verifiedStoredSchema(
+      row.item_schema_json,
+      row.item_schema_storage_digest,
+      row.item_schema_digest,
+      `queue ${queueId} item schema`
+    )
+    if (queueContractIdentity(queueId, schema) !== row.contract_digest) {
+      throw new ContentIntegrityError(`queue ${queueId} registry contract digest mismatch`)
+    }
+    return { schema, schemaDigest: row.item_schema_digest, contractDigest: row.contract_digest }
+  }
+
+  /** Verified cross-execution broadcast registry row for one signal identity. */
+  private broadcastRegistry(signalId: string): {
+    readonly schema: StructuralDurableSchema
+    readonly schemaDigest: string
+    readonly contractDigest: string
+  } {
+    const row = this.database.query(
+      "SELECT * FROM durable_broadcast_signals WHERE signal_id=?"
+    ).get(signalId) as {
+      readonly payload_schema_json: string
+      readonly payload_schema_storage_digest: string
+      readonly payload_schema_digest: string
+      readonly contract_digest: string
+    } | null
+    if (row === null) {
+      throw new SignalDeliveryRejectedError(`Durable broadcast signal ${signalId} has no pinned contract`)
+    }
+    const schema = this.verifiedStoredSchema(
+      row.payload_schema_json,
+      row.payload_schema_storage_digest,
+      row.payload_schema_digest,
+      `broadcast ${signalId} payload schema`
+    )
+    if (signalContractIdentity(signalId, schema, "broadcast") !== row.contract_digest) {
+      throw new ContentIntegrityError(`broadcast ${signalId} registry contract digest mismatch`)
+    }
+    return { schema, schemaDigest: row.payload_schema_digest, contractDigest: row.contract_digest }
+  }
+
+  /** Decodes and re-verifies one persisted compiler-derived structural schema. */
+  private verifiedStoredSchema(
+    schemaJson: string,
+    storageDigest: string,
+    schemaDigest: string,
+    label: string
+  ): StructuralDurableSchema {
+    let decoded: JsonValue
+    try {
+      decoded = decodeCanonicalJson(schemaJson, label)
+    } catch (error) {
+      throw new ContentIntegrityError(
+        `${label} is corrupt: ${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+    if (digest(decoded) !== storageDigest) {
+      throw new ContentIntegrityError(`${label} failed persisted digest verification`)
+    }
+    let schema: DurableSchema
+    try {
+      schema = validateDurableSchema(decoded, "input", label)
+    } catch (error) {
+      throw new ContentIntegrityError(
+        `${label} is invalid evidence: ${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+    if (schema.shape !== "structural" || schema.source !== "compiler-derived" || schema.digest !== schemaDigest) {
+      throw new ContentIntegrityError(`${label} is not an exact compiler-derived structural schema`)
+    }
+    return schema
   }
 
   private signalInbox(
@@ -803,6 +1291,23 @@ export class DurableStore {
         | ExecutionRow
         | null
       if (existing !== null) {
+        // A coordinator whose Flow identity and input agree but whose pinned
+        // digests do not is a version skew, not corruption. Reporting it as a
+        // migration keeps a superseded coordinator from mistaking a redeploy
+        // for a durable integrity failure.
+        if (
+          existing.flow_id === validatedPlan.flowId &&
+          existing.input_json === inputJson &&
+          existing.input_digest === inputDigest &&
+          (existing.plan_digest !== validatedPlan.digest || existing.manifest_digest !== validatedManifest.digest)
+        ) {
+          throw new ExecutionMigratedError(
+            executionId,
+            validatedPlan.digest,
+            existing.plan_digest,
+            existing.plan_generation ?? 0
+          )
+        }
         if (
           existing.flow_id !== validatedPlan.flowId ||
           existing.plan_digest !== validatedPlan.digest ||
@@ -828,11 +1333,51 @@ export class DurableStore {
         ).run(executionId, node.id, node.kind, now)
         if (node.kind === "signal") {
           const schemaJson = canonicalJson(node.payloadSchema)
+          const broadcast = node.delivery === "broadcast"
+          // Ambiguity between the two delivery forms fails closed in both
+          // directions before any contract row exists for this execution.
+          const registered = this.database.query(
+            "SELECT contract_digest FROM durable_broadcast_signals WHERE signal_id=?"
+          ).get(node.signalId) as { readonly contract_digest: string } | null
+          if (broadcast) {
+            const unicast = this.database.query(
+              `SELECT execution_id FROM durable_signal_contracts
+               WHERE signal_id=? AND (delivery IS NULL OR delivery<>'broadcast') LIMIT 1`
+            ).get(node.signalId) as { readonly execution_id: string } | null
+            if (unicast !== null) {
+              throw new SignalDeliveryConflictError(
+                `Signal identity ${node.signalId} is already pinned as a single-delivery signal by execution ${unicast.execution_id}`
+              )
+            }
+            if (registered === null) {
+              this.database.query(
+                `INSERT INTO durable_broadcast_signals(
+                  signal_id,payload_schema_json,payload_schema_storage_digest,
+                  payload_schema_digest,contract_digest,created_at
+                ) VALUES(?,?,?,?,?,?)`
+              ).run(
+                node.signalId,
+                schemaJson,
+                digest(node.payloadSchema),
+                node.payloadSchema.digest,
+                node.signalContractDigest,
+                now
+              )
+            } else if (registered.contract_digest !== node.signalContractDigest) {
+              throw new SignalDeliveryConflictError(
+                `Broadcast signal ${node.signalId} is already pinned to a different payload contract`
+              )
+            }
+          } else if (registered !== null) {
+            throw new SignalDeliveryConflictError(
+              `Signal identity ${node.signalId} is already pinned as a broadcast identity`
+            )
+          }
           this.database.query(
             `INSERT INTO durable_signal_contracts(
               execution_id,node_id,signal_id,payload_schema_json,payload_schema_storage_digest,
-              payload_schema_digest,contract_digest
-            ) VALUES(?,?,?,?,?,?,?)`
+              payload_schema_digest,contract_digest,delivery
+            ) VALUES(?,?,?,?,?,?,?,?)`
           ).run(
             executionId,
             node.id,
@@ -840,8 +1385,37 @@ export class DurableStore {
             schemaJson,
             digest(node.payloadSchema),
             node.payloadSchema.digest,
-            node.signalContractDigest
+            node.signalContractDigest,
+            broadcast ? "broadcast" : null
           )
+        } else if (node.kind === "queue") {
+          const schemaJson = canonicalJson(node.itemSchema)
+          const registered = this.database.query(
+            "SELECT contract_digest FROM durable_queues WHERE queue_id=?"
+          ).get(node.queueId) as { readonly contract_digest: string } | null
+          if (registered === null) {
+            this.database.query(
+              `INSERT INTO durable_queues(
+                queue_id,item_schema_json,item_schema_storage_digest,
+                item_schema_digest,contract_digest,created_at
+              ) VALUES(?,?,?,?,?,?)`
+            ).run(
+              node.queueId,
+              schemaJson,
+              digest(node.itemSchema),
+              node.itemSchema.digest,
+              node.queueContractDigest,
+              now
+            )
+          } else if (registered.contract_digest !== node.queueContractDigest) {
+            throw new QueueEnqueueConflictError(
+              `Durable queue ${node.queueId} is already pinned to a different item contract`
+            )
+          }
+          this.database.query(
+            `INSERT INTO durable_queue_contracts(execution_id,node_id,queue_id,contract_digest)
+             VALUES(?,?,?,?)`
+          ).run(executionId, node.id, node.queueId, node.queueContractDigest)
         }
       }
       this.emit(executionId, null, "execution_started", {
@@ -888,7 +1462,7 @@ export class DurableStore {
     for (const row of rows) {
       const nodeUpdate = this.database.query(
         `UPDATE durable_nodes SET status='cancelled',error_json=?,error_digest=?,result_json=NULL,
-          result_digest=NULL,owner=NULL,lease_until=NULL,retry_at=NULL,wake_at=NULL,signal_waiting_at=NULL,fence=fence+1,updated_at=?
+          result_digest=NULL,owner=NULL,lease_until=NULL,retry_at=NULL,wake_at=NULL,signal_waiting_at=NULL,queue_waiting_at=NULL,fence=fence+1,updated_at=?
          WHERE execution_id=? AND node_id=? AND status IN ('pending','running')`
       ).run(errorJson, errorDigest, Date.now(), executionId, row.node_id)
       if (nodeUpdate.changes === 1) {
@@ -974,7 +1548,8 @@ export class DurableStore {
   materializeFanOut(
     executionId: string,
     fanOutNodeId: string,
-    entries: readonly FanOutMaterializationEntry[]
+    entries: readonly FanOutMaterializationEntry[],
+    expectedPlanDigest?: string
   ): FanOutMaterializationResult {
     if (typeof fanOutNodeId !== "string" || fanOutNodeId.trim() === "") {
       throw new TypeError("Durable fan-out node id must be non-empty")
@@ -1032,6 +1607,7 @@ export class DurableStore {
     const materializationDigest = digest({ fanOutNodeId, entries: semanticEntries })
 
     const transaction = this.database.transaction((): FanOutMaterializationResult => {
+      this.assertPinnedPlan(executionId, expectedPlanDigest)
       const parent = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id=? AND node_id=?"
       ).get(executionId, fanOutNodeId) as NodeRow | null
@@ -1135,7 +1711,8 @@ export class DurableStore {
   materializeFanOutStep(
     executionId: string,
     fanOutNodeId: string,
-    request: FanOutStepMaterializationRequest
+    request: FanOutStepMaterializationRequest,
+    expectedPlanDigest?: string
   ): FanOutStepMaterializationResult {
     if (typeof fanOutNodeId !== "string" || fanOutNodeId.trim() === "") {
       throw new TypeError("Durable fan-out node id must be non-empty")
@@ -1160,6 +1737,7 @@ export class DurableStore {
     }
     const keyJson = canonicalJson(key)
     const transaction = this.database.transaction((): FanOutStepMaterializationResult => {
+      this.assertPinnedPlan(executionId, expectedPlanDigest)
       const parent = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id=? AND node_id=?"
       ).get(executionId, fanOutNodeId) as NodeRow | null
@@ -1264,7 +1842,8 @@ export class DurableStore {
   materializeLoopRound(
     executionId: string,
     loopNodeId: string,
-    request: LoopRoundMaterializationRequest
+    request: LoopRoundMaterializationRequest,
+    expectedPlanDigest?: string
   ): LoopRoundMaterializationResult {
     if (typeof loopNodeId !== "string" || loopNodeId.trim() === "") {
       throw new TypeError("Durable loop node id must be non-empty")
@@ -1284,6 +1863,7 @@ export class DurableStore {
       throw new TypeError("Durable loop round state digest is invalid")
     }
     const transaction = this.database.transaction((): LoopRoundMaterializationResult => {
+      this.assertPinnedPlan(executionId, expectedPlanDigest)
       const parent = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id=? AND node_id=?"
       ).get(executionId, loopNodeId) as NodeRow | null
@@ -1378,7 +1958,8 @@ export class DurableStore {
     parentExecutionId: string,
     nodeId: string,
     childExecutionId: string,
-    planDigest: string
+    planDigest: string,
+    expectedParentPlanDigest?: string
   ): ChildExecutionLinkResult {
     for (const [label, value] of [
       ["parent execution id", parentExecutionId],
@@ -1399,6 +1980,7 @@ export class DurableStore {
       throw new TypeError("Durable child execution id cannot equal its parent execution id")
     }
     const transaction = this.database.transaction((): ChildExecutionLinkResult => {
+      this.assertPinnedPlan(parentExecutionId, expectedParentPlanDigest)
       const parent = this.database.query(
         "SELECT status FROM durable_executions WHERE id=?"
       ).get(parentExecutionId) as { readonly status: ExecutionStatus } | null
@@ -1655,17 +2237,26 @@ export class DurableStore {
       if (node === null || node.node_kind !== "signal") {
         throw new TypeError(`Unknown durable signal node ${executionId}/${nodeId}`)
       }
-      const contract = this.signalContract(executionId, nodeId).row
+      const { row: contract, broadcast } = this.signalContract(executionId, nodeId)
       const execution = this.database.query(
-        "SELECT plan_digest FROM durable_executions WHERE id=?"
-      ).get(executionId) as { readonly plan_digest: string } | null
+        "SELECT plan_digest,plan_generation FROM durable_executions WHERE id=?"
+      ).get(executionId) as { readonly plan_digest: string; readonly plan_generation: number } | null
+      if (execution === null) throw new Error(`Unknown durable execution ${executionId}`)
+      if (execution.plan_digest !== expectation.planDigest) {
+        throw new ExecutionMigratedError(
+          executionId,
+          expectation.planDigest,
+          execution.plan_digest,
+          execution.plan_generation
+        )
+      }
       if (
-        execution === null || execution.plan_digest !== expectation.planDigest ||
         contract.contract_digest !== expectation.signalContractDigest ||
         contract.signal_id !== expectation.signalId
       ) {
         throw new ContentIntegrityError(`signal ${executionId}/${nodeId} disagrees with the coordinator Plan`)
       }
+      if (broadcast) return this.pollBroadcastSignal(executionId, nodeId, node, contract)
       const inbox = this.database.query(
         "SELECT * FROM durable_signal_inbox WHERE execution_id=? AND node_id=?"
       ).get(executionId, nodeId) as SignalInboxRow | null
@@ -1752,6 +2343,808 @@ export class DurableStore {
   }
 
   /**
+   * The broadcast half of `pollSignal`. Must run inside the caller's open
+   * transaction, which has already checked node kind, pinned Plan digest, and
+   * the coordinator's signal contract.
+   *
+   * A waiter's FIRST poll commits a durable subscription watermark: the highest
+   * delivery sequence that existed at that instant. The node is then entitled
+   * to exactly the deliveries committed strictly after it, so one delivery
+   * satisfies every already-subscribed waiter and a late execution never
+   * retro-consumes an old broadcast. Consumption is one per (execution, node),
+   * committed in the same transaction as the node's terminal success.
+   */
+  private pollBroadcastSignal(
+    executionId: string,
+    nodeId: string,
+    node: NodeRow,
+    contract: SignalContractRow
+  ): SignalPollResult {
+    const consumption = this.database.query(
+      "SELECT * FROM durable_broadcast_consumptions WHERE execution_id=? AND node_id=?"
+    ).get(executionId, nodeId) as {
+      readonly signal_id: string
+      readonly sequence: number
+      readonly payload_digest: string
+      readonly delivery_digest: string
+    } | null
+    const terminal = nodeExit(node)
+    if (terminal !== undefined) {
+      if (terminal.kind === "success") {
+        // The consumption row is self-sufficient evidence: it carries the
+        // payload digest, so retention GC of the delivery row cannot weaken
+        // this re-verification.
+        if (
+          consumption === null || consumption.signal_id !== contract.signal_id ||
+          consumption.payload_digest !== node.result_digest ||
+          digest(terminal.value) !== consumption.payload_digest
+        ) {
+          throw new ContentIntegrityError(
+            `broadcast signal ${executionId}/${nodeId} terminal value disagrees with its consumption record`
+          )
+        }
+      } else if (consumption !== null) {
+        throw new ContentIntegrityError(
+          `broadcast signal ${executionId}/${nodeId} has a consumption record under a non-success exit`
+        )
+      }
+      return { kind: "terminal", exit: terminal, newlyConsumed: false }
+    }
+    if (consumption !== null) {
+      throw new ContentIntegrityError(
+        `broadcast signal ${executionId}/${nodeId} consumed a delivery without a terminal node exit`
+      )
+    }
+    if (
+      node.status !== "pending" || node.owner !== null || node.lease_until !== null ||
+      node.retry_at !== null || node.wake_at !== null || node.attempt !== 0
+    ) {
+      throw new ContentIntegrityError(
+        `broadcast signal ${executionId}/${nodeId} has invalid suspended scheduling state`
+      )
+    }
+    const now = Date.now()
+    const subscription = this.database.query(
+      "SELECT signal_id,watermark FROM durable_broadcast_subscriptions WHERE execution_id=? AND node_id=?"
+    ).get(executionId, nodeId) as { readonly signal_id: string; readonly watermark: number } | null
+    if (subscription === null) {
+      const head = this.database.query(
+        "SELECT COALESCE(MAX(sequence),0) AS watermark FROM durable_broadcast_deliveries WHERE signal_id=?"
+      ).get(contract.signal_id) as { readonly watermark: number }
+      this.database.query(
+        `INSERT INTO durable_broadcast_subscriptions(execution_id,node_id,signal_id,watermark,subscribed_at)
+         VALUES(?,?,?,?,?)`
+      ).run(executionId, nodeId, contract.signal_id, head.watermark, now)
+      const update = this.database.query(
+        `UPDATE durable_nodes SET signal_waiting_at=?,updated_at=?
+         WHERE execution_id=? AND node_id=? AND node_kind='signal' AND status='pending'
+           AND signal_waiting_at IS NULL AND owner IS NULL AND lease_until IS NULL AND attempt=0`
+      ).run(now, now, executionId, nodeId)
+      if (update.changes !== 1) {
+        throw new Error(`Durable broadcast signal ${executionId}/${nodeId} lost its subscription race`)
+      }
+      this.emit(executionId, nodeId, "broadcast_subscribed", {
+        signalId: contract.signal_id,
+        schemaDigest: contract.payload_schema_digest,
+        watermark: head.watermark
+      }, now)
+      return { kind: "waiting", newlyWaiting: true }
+    }
+    if (subscription.signal_id !== contract.signal_id || node.signal_waiting_at === null) {
+      throw new ContentIntegrityError(
+        `broadcast signal ${executionId}/${nodeId} subscription disagrees with its pinned contract`
+      )
+    }
+    const delivery = this.database.query(
+      `SELECT * FROM durable_broadcast_deliveries
+       WHERE signal_id=? AND sequence>? ORDER BY sequence LIMIT 1`
+    ).get(contract.signal_id, subscription.watermark) as {
+      readonly sequence: number
+      readonly signal_id: string
+      readonly idempotency_key: string
+      readonly payload_json: string
+      readonly payload_digest: string
+      readonly schema_digest: string
+      readonly delivery_digest: string
+      readonly delivered_at: number
+    } | null
+    if (delivery === null) return { kind: "waiting", newlyWaiting: false }
+    if (delivery.schema_digest !== contract.payload_schema_digest) {
+      throw new ContentIntegrityError(
+        `broadcast ${contract.signal_id} delivery ${delivery.sequence} was stored under a different payload schema`
+      )
+    }
+    const label = `broadcast ${contract.signal_id} delivery ${delivery.sequence}`
+    const payload = parseJson(delivery.payload_json, delivery.payload_digest, `${label} payload`)
+    const expectedDeliveryDigest = digest({
+      formatVersion: 1,
+      broadcast: true,
+      sequence: delivery.sequence,
+      signalId: delivery.signal_id,
+      idempotencyKey: delivery.idempotency_key,
+      payloadDigest: delivery.payload_digest,
+      schemaDigest: delivery.schema_digest,
+      deliveredAt: delivery.delivered_at
+    })
+    if (delivery.delivery_digest !== expectedDeliveryDigest) {
+      throw new ContentIntegrityError(`${label} digest mismatch`)
+    }
+    const { schema } = this.signalContract(executionId, nodeId)
+    try {
+      validateDurableValue(schema, payload, `${label} payload`)
+    } catch (error) {
+      throw new ContentIntegrityError(
+        `${label} violates its persisted schema: ${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+    this.database.query(
+      `INSERT INTO durable_broadcast_consumptions(
+        execution_id,node_id,signal_id,sequence,idempotency_key,payload_digest,delivery_digest,consumed_at
+      ) VALUES(?,?,?,?,?,?,?,?)`
+    ).run(
+      executionId,
+      nodeId,
+      delivery.signal_id,
+      delivery.sequence,
+      delivery.idempotency_key,
+      delivery.payload_digest,
+      delivery.delivery_digest,
+      now
+    )
+    const succeeded = this.database.query(
+      `UPDATE durable_nodes SET status='succeeded',result_json=?,result_digest=?,error_json=NULL,
+        error_digest=NULL,signal_waiting_at=NULL,updated_at=?
+       WHERE execution_id=? AND node_id=? AND node_kind='signal' AND status='pending'
+         AND owner IS NULL AND lease_until IS NULL AND retry_at IS NULL AND wake_at IS NULL AND attempt=0`
+    ).run(canonicalJson(payload), delivery.payload_digest, now, executionId, nodeId)
+    if (succeeded.changes !== 1) {
+      throw new Error(`Durable broadcast signal ${executionId}/${nodeId} lost its atomic consume race`)
+    }
+    this.emit(executionId, nodeId, "broadcast_consumed", {
+      signalId: delivery.signal_id,
+      sequence: delivery.sequence,
+      idempotencyKey: delivery.idempotency_key,
+      payloadDigest: delivery.payload_digest,
+      deliveryDigest: delivery.delivery_digest,
+      watermark: subscription.watermark
+    }, now)
+    this.emit(executionId, nodeId, "node_succeeded", {
+      attempt: 0,
+      fencingToken: node.fence,
+      resultDigest: delivery.payload_digest,
+      adoptedFrom: null,
+      coordinatorOwned: "broadcast"
+    }, now)
+    return {
+      kind: "terminal",
+      exit: { kind: "success", value: payload, adoptedFrom: null },
+      newlyConsumed: true
+    }
+  }
+
+  /**
+   * Commits one broadcast delivery. Unlike a unicast delivery this addresses a
+   * signal IDENTITY, not one (execution, node) inbox: every execution already
+   * subscribed to that identity becomes entitled to it, and each consumes it
+   * exactly once through its own consumption record. Idempotency is by
+   * (signalId, idempotencyKey); the payload schema comes only from the pinned
+   * broadcast registry, never from the sender.
+   */
+  deliverBroadcast(
+    untrustedRequest: BroadcastDeliveryRequest,
+    untrustedExpectation: BroadcastContractExpectation,
+    authorization: SignalDeliveryAuthorization = {}
+  ): BroadcastDeliveryResult {
+    const normalizedRequest = assertJson(untrustedRequest, "durable broadcast delivery request")
+    if (
+      normalizedRequest === null || Array.isArray(normalizedRequest) || typeof normalizedRequest !== "object" ||
+      canonicalJson(Object.keys(normalizedRequest).sort()) !== canonicalJson([
+        "idempotencyKey", "payload", "signalId"
+      ])
+    ) throw new TypeError("Durable broadcast delivery request must have exact fields")
+    const request = normalizedRequest as unknown as BroadcastDeliveryRequest
+    const normalizedExpectation = assertJson(untrustedExpectation, "durable broadcast contract expectation")
+    if (
+      normalizedExpectation === null || Array.isArray(normalizedExpectation) || typeof normalizedExpectation !== "object" ||
+      canonicalJson(Object.keys(normalizedExpectation).sort()) !== canonicalJson([
+        "signalContractDigest", "signalId"
+      ]) ||
+      typeof normalizedExpectation.signalContractDigest !== "string" ||
+      !/^[0-9a-f]{64}$/.test(normalizedExpectation.signalContractDigest) ||
+      typeof normalizedExpectation.signalId !== "string"
+    ) throw new TypeError("Durable broadcast contract expectation is invalid")
+    const expectation = normalizedExpectation as unknown as BroadcastContractExpectation
+    assertBoundedIdentity("signal id", request.signalId, 128)
+    assertBoundedIdentity("idempotency key", request.idempotencyKey, 512)
+    // Authorization precedes every read, so an unauthorized sender learns
+    // nothing about which broadcast identities exist.
+    this.authorizeOpaqueToken(
+      authorization,
+      "senderToken",
+      "broadcast delivery",
+      () => this.computeBroadcastToken(request.signalId),
+      "Durable broadcast delivery requires a minted sender token or explicit unsafeLocalDelivery",
+      `Sender token does not authorize broadcast signal ${request.signalId}`,
+      SignalDeliveryUnauthorizedError
+    )
+    const transaction = this.database.transaction((): BroadcastDeliveryResult => {
+      const now = Date.now()
+      const registry = this.broadcastRegistry(request.signalId)
+      if (
+        registry.contractDigest !== expectation.signalContractDigest ||
+        expectation.signalId !== request.signalId
+      ) {
+        throw new SignalDeliveryRejectedError(
+          `Broadcast contract does not match the pinned registry for signal ${request.signalId}`
+        )
+      }
+      let payload: JsonValue
+      try {
+        payload = validateDurableValue(registry.schema, request.payload, `broadcast ${request.signalId} payload`)
+      } catch (error) {
+        throw new SignalDeliveryRejectedError(
+          `Broadcast ${request.signalId} payload was rejected: ${error instanceof Error ? error.message : String(error)}`
+        )
+      }
+      const payloadDigest = digest(payload)
+      const existing = this.database.query(
+        "SELECT * FROM durable_broadcast_deliveries WHERE signal_id=? AND idempotency_key=?"
+      ).get(request.signalId, request.idempotencyKey) as {
+        readonly sequence: number
+        readonly payload_digest: string
+        readonly delivery_digest: string
+      } | null
+      if (existing !== null) {
+        if (existing.payload_digest !== payloadDigest) {
+          throw new SignalDeliveryConflictError(
+            `Broadcast ${request.signalId} already delivered a different payload under key ${request.idempotencyKey}`
+          )
+        }
+        return {
+          duplicate: true,
+          sequence: existing.sequence,
+          payloadDigest,
+          deliveryDigest: existing.delivery_digest,
+          notifiedExecutions: []
+        }
+      }
+      const inserted = this.database.query(
+        `INSERT INTO durable_broadcast_deliveries(
+          signal_id,idempotency_key,payload_json,payload_digest,schema_digest,delivery_digest,delivered_at
+        ) VALUES(?,?,?,?,?,'',?)`
+      ).run(
+        request.signalId,
+        request.idempotencyKey,
+        canonicalJson(payload),
+        payloadDigest,
+        registry.schemaDigest,
+        now
+      )
+      const sequence = Number(inserted.lastInsertRowid)
+      const deliveryDigest = digest({
+        formatVersion: 1,
+        broadcast: true,
+        sequence,
+        signalId: request.signalId,
+        idempotencyKey: request.idempotencyKey,
+        payloadDigest,
+        schemaDigest: registry.schemaDigest,
+        deliveredAt: now
+      })
+      this.database.query("UPDATE durable_broadcast_deliveries SET delivery_digest=? WHERE sequence=?")
+        .run(deliveryDigest, sequence)
+      // Exactly the still-waiting subscribers entitled to this delivery. The
+      // list is bounded; anything beyond it converges through the sweep.
+      const waiters = this.database.query(
+        `SELECT DISTINCT s.execution_id AS execution_id
+         FROM durable_broadcast_subscriptions s
+         JOIN durable_nodes n ON n.execution_id=s.execution_id AND n.node_id=s.node_id
+         WHERE s.signal_id=? AND s.watermark<? AND n.status='pending'
+         ORDER BY s.execution_id LIMIT ${MAX_WAKEUP_FANOUT}`
+      ).all(request.signalId, sequence) as readonly { readonly execution_id: string }[]
+      return {
+        duplicate: false,
+        sequence,
+        payloadDigest,
+        deliveryDigest,
+        notifiedExecutions: waiters.map((row) => row.execution_id)
+      }
+    })
+    const result = transaction.immediate()
+    // Strictly after COMMIT: a woken coordinator re-reads its subscription.
+    for (const executionId of result.notifiedExecutions) this.wakeups.notify(executionId)
+    return result
+  }
+
+  /**
+   * Retention sweep for delivered broadcasts.
+   *
+   * RULE: a delivery may be deleted only when it is older than `retentionMs`
+   * AND no live subscription could still claim it — that is, its sequence is at
+   * or below the lowest watermark among every non-terminal subscribed node for
+   * that signal. A signal with no live subscribers has no floor, so its aged
+   * deliveries are collectable. Consumption records are never deleted: they
+   * carry their own payload digest and remain each waiter's durable evidence.
+   */
+  collectBroadcastDeliveries(
+    retentionMs: number,
+    now = Date.now()
+  ): BroadcastCollectionResult {
+    if (!Number.isSafeInteger(retentionMs) || retentionMs < 0 || !Number.isSafeInteger(now) || now < 0) {
+      throw new TypeError("Durable broadcast retention window must use non-negative safe integers")
+    }
+    const transaction = this.database.transaction((): BroadcastCollectionResult => {
+      const aged = this.database.query(
+        "SELECT sequence,signal_id FROM durable_broadcast_deliveries WHERE delivered_at<=? ORDER BY sequence"
+      ).all(now - retentionMs) as readonly { readonly sequence: number; readonly signal_id: string }[]
+      let deleted = 0
+      for (const row of aged) {
+        const floor = this.database.query(
+          `SELECT MIN(s.watermark) AS floor
+           FROM durable_broadcast_subscriptions s
+           JOIN durable_nodes n ON n.execution_id=s.execution_id AND n.node_id=s.node_id
+           WHERE s.signal_id=? AND n.status IN ('pending','running')`
+        ).get(row.signal_id) as { readonly floor: number | null }
+        if (floor.floor !== null && row.sequence > floor.floor) continue
+        this.database.query("DELETE FROM durable_broadcast_deliveries WHERE sequence=?").run(row.sequence)
+        deleted += 1
+      }
+      return { examined: aged.length, deleted }
+    })
+    return transaction.immediate()
+  }
+
+  /**
+   * Appends one item to a durable queue. FIFO order is commit order: the
+   * sequence is assigned inside this transaction. `(queueId, idempotencyKey)`
+   * is the producer's deduplication identity — a repeat with equal payload
+   * bytes adopts the existing item, an unequal payload fails closed. The item
+   * schema comes only from the pinned queue registry.
+   */
+  enqueue(
+    untrustedRequest: QueueEnqueueRequest,
+    untrustedExpectation: QueueContractExpectation,
+    authorization: { readonly producerToken?: string; readonly unsafeLocalDelivery?: true } = {}
+  ): QueueEnqueueResult {
+    const normalizedRequest = assertJson(untrustedRequest, "durable queue enqueue request")
+    if (
+      normalizedRequest === null || Array.isArray(normalizedRequest) || typeof normalizedRequest !== "object" ||
+      canonicalJson(Object.keys(normalizedRequest).sort()) !== canonicalJson([
+        "idempotencyKey", "item", "queueId"
+      ])
+    ) throw new TypeError("Durable queue enqueue request must have exact fields")
+    const request = normalizedRequest as unknown as QueueEnqueueRequest
+    const normalizedExpectation = assertJson(untrustedExpectation, "durable queue contract expectation")
+    if (
+      normalizedExpectation === null || Array.isArray(normalizedExpectation) || typeof normalizedExpectation !== "object" ||
+      canonicalJson(Object.keys(normalizedExpectation).sort()) !== canonicalJson([
+        "queueContractDigest", "queueId"
+      ]) ||
+      typeof normalizedExpectation.queueContractDigest !== "string" ||
+      !/^[0-9a-f]{64}$/.test(normalizedExpectation.queueContractDigest) ||
+      typeof normalizedExpectation.queueId !== "string"
+    ) throw new TypeError("Durable queue contract expectation is invalid")
+    const expectation = normalizedExpectation as unknown as QueueContractExpectation
+    assertBoundedIdentity("queue id", request.queueId, 128)
+    assertBoundedIdentity("idempotency key", request.idempotencyKey, 512)
+    this.authorizeOpaqueToken(
+      authorization,
+      "producerToken",
+      "queue enqueue",
+      () => this.computeQueueToken(request.queueId),
+      "Durable queue enqueue requires a minted producer token or explicit unsafeLocalDelivery",
+      `Producer token does not authorize queue ${request.queueId}`,
+      QueueEnqueueRejectedError
+    )
+    const transaction = this.database.transaction((): QueueEnqueueResult => {
+      const now = Date.now()
+      const registry = this.queueRegistry(request.queueId)
+      if (
+        registry.contractDigest !== expectation.queueContractDigest ||
+        expectation.queueId !== request.queueId
+      ) {
+        throw new QueueEnqueueRejectedError(
+          `Queue contract does not match the pinned registry for queue ${request.queueId}`
+        )
+      }
+      let item: JsonValue
+      try {
+        item = validateDurableValue(registry.schema, request.item, `queue ${request.queueId} item`)
+      } catch (error) {
+        throw new QueueEnqueueRejectedError(
+          `Queue ${request.queueId} item was rejected: ${error instanceof Error ? error.message : String(error)}`
+        )
+      }
+      const payloadDigest = digest(item)
+      const existing = this.database.query(
+        "SELECT * FROM durable_queue_items WHERE queue_id=? AND idempotency_key=?"
+      ).get(request.queueId, request.idempotencyKey) as {
+        readonly sequence: number
+        readonly payload_digest: string
+        readonly item_digest: string
+        readonly state: QueueItemState
+      } | null
+      if (existing !== null) {
+        if (existing.payload_digest !== payloadDigest) {
+          throw new QueueEnqueueConflictError(
+            `Queue ${request.queueId} already holds a different item under key ${request.idempotencyKey}`
+          )
+        }
+        return {
+          duplicate: true,
+          sequence: existing.sequence,
+          state: existing.state,
+          payloadDigest,
+          itemDigest: existing.item_digest
+        }
+      }
+      const inserted = this.database.query(
+        `INSERT INTO durable_queue_items(
+          queue_id,idempotency_key,payload_json,payload_digest,schema_digest,item_digest,state,enqueued_at
+        ) VALUES(?,?,?,?,?,'','pending',?)`
+      ).run(
+        request.queueId,
+        request.idempotencyKey,
+        canonicalJson(item),
+        payloadDigest,
+        registry.schemaDigest,
+        now
+      )
+      const sequence = Number(inserted.lastInsertRowid)
+      const itemDigest = digest({
+        formatVersion: 1,
+        sequence,
+        queueId: request.queueId,
+        idempotencyKey: request.idempotencyKey,
+        payloadDigest,
+        schemaDigest: registry.schemaDigest,
+        enqueuedAt: now
+      })
+      this.database.query("UPDATE durable_queue_items SET item_digest=? WHERE sequence=?")
+        .run(itemDigest, sequence)
+      return { duplicate: false, sequence, state: "pending", payloadDigest, itemDigest }
+    })
+    const result = transaction.immediate()
+    if (!result.duplicate) {
+      // Strictly after COMMIT. Which executions wait on a queue is durable
+      // state, so this read is a fast path only; the sweep is the guarantee.
+      const waiters = this.database.query(
+        `SELECT DISTINCT c.execution_id AS execution_id
+         FROM durable_queue_contracts c
+         JOIN durable_nodes n ON n.execution_id=c.execution_id AND n.node_id=c.node_id
+         WHERE c.queue_id=? AND n.status='pending' AND n.queue_waiting_at IS NOT NULL
+         ORDER BY c.execution_id LIMIT ${MAX_WAKEUP_FANOUT}`
+      ).all(request.queueId) as readonly { readonly execution_id: string }[]
+      for (const row of waiters) this.wakeups.notify(row.execution_id)
+    }
+    return result
+  }
+
+  /**
+   * Poll/consume one queue item without acquiring a worker lease. The head
+   * item's terminal state, the node's success, and the journal evidence all
+   * transition in one `BEGIN IMMEDIATE` transaction, so two coordinators can
+   * never hand the same item to two consumers and a crash between them is
+   * impossible.
+   */
+  pollQueue(
+    executionId: string,
+    nodeId: string,
+    untrustedExpectation: QueuePollExpectation
+  ): QueuePollResult {
+    const normalizedExpectation = assertJson(untrustedExpectation, "durable queue poll expectation")
+    if (
+      normalizedExpectation === null || Array.isArray(normalizedExpectation) || typeof normalizedExpectation !== "object" ||
+      canonicalJson(Object.keys(normalizedExpectation).sort()) !== canonicalJson([
+        "planDigest", "queueContractDigest", "queueId"
+      ]) ||
+      typeof normalizedExpectation.planDigest !== "string" || !/^[0-9a-f]{64}$/.test(normalizedExpectation.planDigest) ||
+      typeof normalizedExpectation.queueContractDigest !== "string" ||
+      !/^[0-9a-f]{64}$/.test(normalizedExpectation.queueContractDigest) ||
+      typeof normalizedExpectation.queueId !== "string"
+    ) throw new TypeError("Durable queue poll expectation is invalid")
+    const expectation = normalizedExpectation as unknown as QueuePollExpectation
+    const transaction = this.database.transaction((): QueuePollResult => {
+      const node = this.database.query(
+        "SELECT * FROM durable_nodes WHERE execution_id=? AND node_id=?"
+      ).get(executionId, nodeId) as NodeRow | null
+      if (node === null || node.node_kind !== "queue") {
+        throw new TypeError(`Unknown durable queue node ${executionId}/${nodeId}`)
+      }
+      const execution = this.database.query(
+        "SELECT plan_digest,plan_generation FROM durable_executions WHERE id=?"
+      ).get(executionId) as { readonly plan_digest: string; readonly plan_generation: number } | null
+      if (execution === null) throw new Error(`Unknown durable execution ${executionId}`)
+      if (execution.plan_digest !== expectation.planDigest) {
+        throw new ExecutionMigratedError(
+          executionId,
+          expectation.planDigest,
+          execution.plan_digest,
+          execution.plan_generation
+        )
+      }
+      const contract = this.queueContract(executionId, nodeId)
+      if (
+        contract.queueId !== expectation.queueId ||
+        contract.contractDigest !== expectation.queueContractDigest
+      ) {
+        throw new ContentIntegrityError(`queue ${executionId}/${nodeId} disagrees with the coordinator Plan`)
+      }
+      const consumed = this.database.query(
+        `SELECT sequence,payload_digest FROM durable_queue_items
+         WHERE consumed_execution_id=? AND consumed_node_id=?`
+      ).get(executionId, nodeId) as {
+        readonly sequence: number
+        readonly payload_digest: string
+      } | null
+      const terminal = nodeExit(node)
+      if (terminal !== undefined) {
+        if (terminal.kind === "success") {
+          if (
+            consumed === null || consumed.payload_digest !== node.result_digest ||
+            digest(terminal.value) !== consumed.payload_digest
+          ) {
+            throw new ContentIntegrityError(
+              `queue ${executionId}/${nodeId} terminal value disagrees with its consumed item`
+            )
+          }
+        } else if (consumed !== null) {
+          throw new ContentIntegrityError(
+            `queue ${executionId}/${nodeId} holds a consumed item under a non-success exit`
+          )
+        }
+        return {
+          kind: "terminal",
+          exit: terminal,
+          newlyConsumed: false,
+          ...(consumed === null ? {} : { sequence: consumed.sequence })
+        }
+      }
+      if (consumed !== null) {
+        throw new ContentIntegrityError(
+          `queue ${executionId}/${nodeId} consumed an item without a terminal node exit`
+        )
+      }
+      if (
+        node.status !== "pending" || node.owner !== null || node.lease_until !== null ||
+        node.retry_at !== null || node.wake_at !== null || node.attempt !== 0
+      ) {
+        throw new ContentIntegrityError(`queue ${executionId}/${nodeId} has invalid suspended scheduling state`)
+      }
+      const now = Date.now()
+      const head = this.database.query(
+        `SELECT * FROM durable_queue_items
+         WHERE queue_id=? AND state='pending' ORDER BY sequence LIMIT 1`
+      ).get(contract.queueId) as {
+        readonly sequence: number
+        readonly queue_id: string
+        readonly idempotency_key: string
+        readonly payload_json: string
+        readonly payload_digest: string
+        readonly schema_digest: string
+        readonly item_digest: string
+        readonly enqueued_at: number
+      } | null
+      if (head === null) {
+        const update = this.database.query(
+          `UPDATE durable_nodes SET queue_waiting_at=?,updated_at=?
+           WHERE execution_id=? AND node_id=? AND node_kind='queue' AND status='pending'
+             AND queue_waiting_at IS NULL AND owner IS NULL AND lease_until IS NULL AND attempt=0`
+        ).run(now, now, executionId, nodeId)
+        if (update.changes === 1) {
+          this.emit(executionId, nodeId, "queue_waiting", {
+            queueId: contract.queueId,
+            schemaDigest: contract.schemaDigest
+          }, now)
+        }
+        return { kind: "waiting", newlyWaiting: update.changes === 1 }
+      }
+      if (head.schema_digest !== contract.schemaDigest) {
+        throw new ContentIntegrityError(
+          `queue ${contract.queueId} item ${head.sequence} was stored under a different item schema`
+        )
+      }
+      const label = `queue ${contract.queueId} item ${head.sequence}`
+      const payload = parseJson(head.payload_json, head.payload_digest, `${label} payload`)
+      const expectedItemDigest = digest({
+        formatVersion: 1,
+        sequence: head.sequence,
+        queueId: head.queue_id,
+        idempotencyKey: head.idempotency_key,
+        payloadDigest: head.payload_digest,
+        schemaDigest: head.schema_digest,
+        enqueuedAt: head.enqueued_at
+      })
+      if (head.item_digest !== expectedItemDigest) {
+        throw new ContentIntegrityError(`${label} digest mismatch`)
+      }
+      try {
+        validateDurableValue(contract.schema, payload, `${label} payload`)
+      } catch (error) {
+        throw new ContentIntegrityError(
+          `${label} violates its persisted schema: ${error instanceof Error ? error.message : String(error)}`
+        )
+      }
+      const claimed = this.database.query(
+        `UPDATE durable_queue_items SET state='consumed',consumed_at=?,consumed_execution_id=?,consumed_node_id=?
+         WHERE sequence=? AND state='pending'`
+      ).run(now, executionId, nodeId, head.sequence)
+      const succeeded = this.database.query(
+        `UPDATE durable_nodes SET status='succeeded',result_json=?,result_digest=?,error_json=NULL,
+          error_digest=NULL,queue_waiting_at=NULL,updated_at=?
+         WHERE execution_id=? AND node_id=? AND node_kind='queue' AND status='pending'
+           AND owner IS NULL AND lease_until IS NULL AND retry_at IS NULL AND wake_at IS NULL AND attempt=0`
+      ).run(canonicalJson(payload), head.payload_digest, now, executionId, nodeId)
+      if (claimed.changes !== 1 || succeeded.changes !== 1) {
+        throw new Error(`Durable queue ${executionId}/${nodeId} lost its atomic consume race`)
+      }
+      this.emit(executionId, nodeId, "queue_item_consumed", {
+        queueId: head.queue_id,
+        sequence: head.sequence,
+        idempotencyKey: head.idempotency_key,
+        payloadDigest: head.payload_digest,
+        itemDigest: head.item_digest
+      }, now)
+      this.emit(executionId, nodeId, "node_succeeded", {
+        attempt: 0,
+        fencingToken: node.fence,
+        resultDigest: head.payload_digest,
+        adoptedFrom: null,
+        coordinatorOwned: "queue"
+      }, now)
+      return {
+        kind: "terminal",
+        exit: { kind: "success", value: payload, adoptedFrom: null },
+        newlyConsumed: true,
+        sequence: head.sequence
+      }
+    })
+    return transaction.immediate()
+  }
+
+  /**
+   * Applies one EXPLICIT, opt-in migration to an in-flight execution.
+   *
+   * The compatibility judgment is re-derived here from the two validated
+   * artifacts and this execution's own durable rows; nothing about it is taken
+   * on the caller's word. Rewriting the pinned digests, fencing every in-flight
+   * attempt, and journaling the migration event all commit in one transaction,
+   * so no state exists in which an execution is half-migrated. Re-applying an
+   * already-applied migration is idempotent, which is what makes a crash
+   * immediately after this COMMIT recoverable.
+   */
+  migrateExecution(executionId: string, migration: MigrationPlan): {
+    readonly applied: boolean
+    readonly fencedNodeIds: readonly string[]
+    readonly generation: number
+  } {
+    assertBoundedIdentity("execution id", executionId, 512)
+    // Rebuild (and thereby revalidate) the migration from its own artifacts.
+    const checked = planExecutionMigration(migration?.from, migration?.to)
+    if (checked.digest !== migration.digest) {
+      throw new MigrationRejectedError(
+        "pinned-digest-mismatch",
+        `Migration digest ${migration.digest} does not match its own artifacts`
+      )
+    }
+    const transaction = this.database.transaction(() => {
+      const row = this.database.query(
+        "SELECT * FROM durable_executions WHERE id=?"
+      ).get(executionId) as ExecutionRow | null
+      if (row === null) {
+        throw new MigrationRejectedError("unknown-execution", `Unknown durable execution ${executionId}`)
+      }
+      const generation = row.plan_generation ?? 0
+      if (row.plan_digest === checked.toPlanDigest && row.manifest_digest === checked.toManifestDigest) {
+        return { applied: false, fencedNodeIds: [] as readonly string[], generation }
+      }
+      if (row.status !== "running") {
+        throw new MigrationRejectedError(
+          "terminal-execution",
+          `Execution ${executionId} is ${row.status} and cannot be migrated`
+        )
+      }
+      if (row.flow_id !== checked.flowId) {
+        throw new MigrationRejectedError(
+          "flow-identity-changed",
+          `Execution ${executionId} runs Flow ${row.flow_id}, not ${checked.flowId}`
+        )
+      }
+      if (row.plan_digest !== checked.fromPlanDigest || row.manifest_digest !== checked.fromManifestDigest) {
+        throw new MigrationRejectedError(
+          "pinned-digest-mismatch",
+          `Execution ${executionId} is not pinned to the migration's source Plan and manifest`
+        )
+      }
+      const nodes = this.database.query(
+        "SELECT node_id,node_kind,status FROM durable_nodes WHERE execution_id=? ORDER BY node_id"
+      ).all(executionId) as readonly {
+        readonly node_id: string
+        readonly node_kind: string | null
+        readonly status: NodeStatus
+      }[]
+      const materializedTemplateIds = [
+        ...(this.database.query(
+          "SELECT DISTINCT fanout_node_id AS id FROM durable_fanout_items WHERE execution_id=?"
+        ).all(executionId) as readonly { readonly id: string }[]),
+        ...(this.database.query(
+          "SELECT DISTINCT loop_node_id AS id FROM durable_loop_rounds WHERE execution_id=?"
+        ).all(executionId) as readonly { readonly id: string }[])
+      ].map((entry) => entry.id)
+      const linkedChildFlowIds = (this.database.query(
+        "SELECT node_id FROM durable_child_executions WHERE parent_execution_id=?"
+      ).all(executionId) as readonly { readonly node_id: string }[]).map((entry) => entry.node_id)
+      const evidence: ExecutionMigrationEvidence = {
+        committedNodeIds: nodes
+          .filter((entry) => isCommittedNodeStatus(entry.status))
+          .map((entry) => entry.node_id),
+        materializedTemplateIds,
+        linkedChildFlowIds
+      }
+      assertNodeMigrationCompatible(checked.from.plan, checked.to.plan, evidence)
+      // The pinned input is re-checked against the target contract from the
+      // persisted bytes, not from anything the caller supplied.
+      const input = parseJson(row.input_json, row.input_digest, `execution ${executionId} input`)
+      const targetInput = checked.to.plan.flowSchemas?.input
+      if (targetInput !== undefined) {
+        try {
+          validateDurableValue(targetInput, input, `execution ${executionId} input`)
+        } catch (error) {
+          throw new MigrationRejectedError(
+            "pinned-input-rejected",
+            `Persisted Flow input does not satisfy the target contract: ${error instanceof Error ? error.message : String(error)}`
+          )
+        }
+      }
+      const now = Date.now()
+      // Fence every live attempt: an attempt admitted under the old pinned code
+      // must not be able to commit under the new one.
+      const fencedNodeIds: string[] = []
+      for (const entry of nodes) {
+        if (entry.status !== "running") continue
+        const fenced = this.database.query(
+          `UPDATE durable_nodes SET status='pending',owner=NULL,lease_until=NULL,retry_at=NULL,
+            fence=fence+1,updated_at=?
+           WHERE execution_id=? AND node_id=? AND status='running'`
+        ).run(now, executionId, entry.node_id)
+        if (fenced.changes === 1) fencedNodeIds.push(entry.node_id)
+      }
+      const applied = this.database.query(
+        `UPDATE durable_executions SET plan_digest=?,manifest_digest=?,plan_generation=plan_generation+1,updated_at=?
+         WHERE id=? AND status='running' AND plan_digest=? AND manifest_digest=?`
+      ).run(
+        checked.toPlanDigest,
+        checked.toManifestDigest,
+        now,
+        executionId,
+        checked.fromPlanDigest,
+        checked.fromManifestDigest
+      )
+      if (applied.changes !== 1) {
+        throw new MigrationRejectedError(
+          "pinned-digest-mismatch",
+          `Execution ${executionId} lost its migration race`
+        )
+      }
+      this.emit(executionId, null, "execution_migrated", {
+        migrationDigest: checked.digest,
+        fromPlanDigest: checked.fromPlanDigest,
+        toPlanDigest: checked.toPlanDigest,
+        fromManifestDigest: checked.fromManifestDigest,
+        toManifestDigest: checked.toManifestDigest,
+        committedNodeIds: evidence.committedNodeIds,
+        fencedNodeIds
+      }, now)
+      return { applied: true, fencedNodeIds: fencedNodeIds as readonly string[], generation: generation + 1 }
+    })
+    const result = transaction.immediate()
+    // Strictly after COMMIT: a stale coordinator suspended on this execution
+    // wakes, re-reads the pinned digest, and abandons without terminalizing it.
+    if (result.applied) this.wakeups.notify(executionId)
+    return result
+  }
+
+  /**
    * Establishes one absolute wake deadline for a timer node. This transaction
    * is the timer's durable suspension point: every coordinator sees the same
    * timestamp after a crash or concurrent resume.
@@ -1815,7 +3208,8 @@ export class DurableStore {
     nodeId: string,
     owner: string,
     leaseMs: number,
-    now = Date.now()
+    now = Date.now(),
+    expectedPlanDigest?: string
   ): ClaimResult {
     if (typeof owner !== "string" || owner.trim() === "") {
       throw new TypeError("Durable node lease owner must be non-empty")
@@ -1828,6 +3222,7 @@ export class DurableStore {
       throw new TypeError("Durable node lease must use safe positive integer timestamps")
     }
     const transaction = this.database.transaction((): ClaimResult => {
+      this.assertPinnedPlan(executionId, expectedPlanDigest)
       const row = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id = ? AND node_id = ?"
       ).get(executionId, nodeId) as NodeRow | null
@@ -1836,6 +3231,9 @@ export class DurableStore {
       if (terminal !== undefined) return { kind: "terminal", exit: terminal }
       if (row.node_kind === "signal") {
         throw new Error(`Durable signal ${executionId}/${nodeId} cannot acquire a worker lease`)
+      }
+      if (row.node_kind === "queue") {
+        throw new Error(`Durable queue ${executionId}/${nodeId} cannot acquire a worker lease`)
       }
       if (row.node_kind === "timer" && row.wake_at === null) {
         throw new Error(`Durable timer ${executionId}/${nodeId} must be scheduled before it can be claimed`)
@@ -2048,11 +3446,18 @@ export class DurableStore {
     return transaction.immediate()
   }
 
-  adoptSuccess(executionId: string, nodeId: string, value: JsonValue, adoptedFrom: string): boolean {
+  adoptSuccess(
+    executionId: string,
+    nodeId: string,
+    value: JsonValue,
+    adoptedFrom: string,
+    expectedPlanDigest?: string
+  ): boolean {
     const normalizedValue = assertJson(value, "adopted durable node success")
     const resultJson = canonicalJson(normalizedValue)
     const resultDigest = digest(normalizedValue)
     const transaction = this.database.transaction(() => {
+      this.assertPinnedPlan(executionId, expectedPlanDigest)
       const update = this.database.query(
         `UPDATE durable_nodes SET
           status='succeeded',result_json=?,result_digest=?,error_json=NULL,error_digest=NULL,adopted_from=?,owner=NULL,lease_until=NULL,
@@ -2099,9 +3504,15 @@ export class DurableStore {
   }
 
   /** Fences a busy/pending attempt when the persisted execution deadline wins. */
-  timeoutNode(executionId: string, nodeId: string, message: string): StoredNodeExit {
+  timeoutNode(
+    executionId: string,
+    nodeId: string,
+    message: string,
+    expectedPlanDigest?: string
+  ): StoredNodeExit {
     const defect = { name: "DeadlineExceeded", message }
     const transaction = this.database.transaction((): StoredNodeExit => {
+      this.assertPinnedPlan(executionId, expectedPlanDigest)
       const existing = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id=? AND node_id=?"
       ).get(executionId, nodeId) as NodeRow | null
@@ -2110,7 +3521,7 @@ export class DurableStore {
       if (terminal !== undefined) return terminal
       const update = this.database.query(
         `UPDATE durable_nodes SET status='defect',error_json=?,error_digest=?,result_json=NULL,result_digest=NULL,
-          owner=NULL,lease_until=NULL,retry_at=NULL,wake_at=NULL,signal_waiting_at=NULL,
+          owner=NULL,lease_until=NULL,retry_at=NULL,wake_at=NULL,signal_waiting_at=NULL,queue_waiting_at=NULL,
           fence=fence+1,updated_at=?
          WHERE execution_id=? AND node_id=? AND status IN ('pending','running')`
       ).run(canonicalJson(defect), digest(defect), Date.now(), executionId, nodeId)
@@ -2134,7 +3545,7 @@ export class DurableStore {
     const transaction = this.database.transaction(() => {
       for (const nodeId of nodeIds) {
         const update = this.database.query(
-          `UPDATE durable_nodes SET status='skipped',owner=NULL,lease_until=NULL,retry_at=NULL,wake_at=NULL,signal_waiting_at=NULL,updated_at=?
+          `UPDATE durable_nodes SET status='skipped',owner=NULL,lease_until=NULL,retry_at=NULL,wake_at=NULL,signal_waiting_at=NULL,queue_waiting_at=NULL,updated_at=?
            WHERE execution_id=? AND node_id=? AND status='pending'`
         ).run(now, executionId, nodeId)
         if (update.changes === 1) {
@@ -2146,11 +3557,16 @@ export class DurableStore {
     transaction.immediate()
   }
 
-  completeExecution(executionId: string, output: JsonValue): FinishExecutionResult {
+  completeExecution(
+    executionId: string,
+    output: JsonValue,
+    expectedPlanDigest?: string
+  ): FinishExecutionResult {
     const normalizedOutput = assertJson(output, "durable execution output")
     const outputJson = canonicalJson(normalizedOutput)
     const outputDigest = digest(normalizedOutput)
     const transaction = this.database.transaction((): FinishExecutionResult => {
+      this.assertPinnedPlan(executionId, expectedPlanDigest)
       const current = this.database.query(
         "SELECT * FROM durable_executions WHERE id=?"
       ).get(executionId) as ExecutionRow | null
@@ -2182,12 +3598,14 @@ export class DurableStore {
   failExecution(
     executionId: string,
     category: "failure" | "defect",
-    error: JsonValue
+    error: JsonValue,
+    expectedPlanDigest?: string
   ): FinishExecutionResult {
     const normalizedError = assertJson(error, `durable execution ${category}`)
     const executionError = { category, error: normalizedError }
     const affected = new Set([executionId])
     const transaction = this.database.transaction(() => {
+      this.assertPinnedPlan(executionId, expectedPlanDigest)
       const update = this.database.query(
         `UPDATE durable_executions SET status='failed',output_json=NULL,output_digest=NULL,
           error_json=?,error_digest=?,updated_at=?

@@ -1,0 +1,11 @@
+const events: string[] = []
+
+function record(message: string): void {
+  events.push(message)
+}
+
+export function label(key: string): string {
+  defer
+    record(`${key}:done`)
+  return key.toUpperCase()
+}

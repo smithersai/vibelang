@@ -19,7 +19,7 @@ import ts from "typescript-js";
 
 const root = resolve(import.meta.dirname, "..");
 const fixtureRoot = resolve(import.meta.dirname, "release-fixtures");
-const temporaryPrefix = "vibelang-release-verify-";
+const temporaryPrefix = "smithers-release-verify-";
 // Canonicalize the workspace base: on macOS os.tmpdir() sits behind the
 // /var -> /private/var symlink, while the installed CLI realpaths inputs and
 // reports /private/var/... paths. Both the workspace and the cleanup guard
@@ -28,7 +28,7 @@ const temporaryBase = realpathSync(tmpdir());
 const temporary = mkdtempSync(join(temporaryBase, temporaryPrefix));
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const bun = process.platform === "win32" ? "bun.exe" : "bun";
-const commandTimeout = Number(process.env.VIBE_VERIFY_TIMEOUT_MS ?? "") || 900_000;
+const commandTimeout = Number(process.env.SMITHERS_VERIFY_TIMEOUT_MS ?? "") || 900_000;
 const releaseAssetCacheIdentities = new Set();
 
 function execute(command, args, cwd, options = {}) {
@@ -430,7 +430,7 @@ function assertPackageManifest(report, generatedFiles) {
 
 function installWithNpm(tarball, consumer) {
   mkdirSync(consumer, { recursive: true });
-  writeFileSync(join(consumer, "package.json"), '{"name":"vibelang-node-release-consumer","private":true,"type":"module"}\n');
+  writeFileSync(join(consumer, "package.json"), '{"name":"smithers-node-release-consumer","private":true,"type":"module"}\n');
   const installed = execute(npm, [
     "install",
     "--ignore-scripts",
@@ -468,7 +468,7 @@ function copyReleaseFixtures(consumer) {
 }
 
 function installedPackageRoot(consumer) {
-  return join(consumer, "node_modules/vibelang");
+  return join(consumer, "node_modules/smthrs");
 }
 
 function assertInstalledPackage(consumer, packedPaths) {
@@ -492,8 +492,8 @@ function assertInstalledPackage(consumer, packedPaths) {
       const linked = join(consumer, "node_modules/.bin", name);
       if ((statSync(linked).mode & 0o111) === 0) throw new Error(`installed bin link is not executable: ${name}`);
     }
-    execute(join(consumer, "node_modules/.bin/vibec"), ["--version"], consumer);
-    execute(join(consumer, "node_modules/.bin/vibe"), ["--help"], consumer);
+    execute(join(consumer, "node_modules/.bin/smithersc"), ["--version"], consumer);
+    execute(join(consumer, "node_modules/.bin/smithers"), ["--help"], consumer);
   }
 }
 
@@ -502,7 +502,7 @@ function writeTypeConsumer(consumer, exportsMap) {
   const imports = [];
   let index = 0;
   for (const exportName of Object.keys(exportsMap).sort()) {
-    const specifier = exportName === "." ? "vibelang" : `vibelang${exportName.slice(1)}`;
+    const specifier = exportName === "." ? "smthrs" : `smthrs${exportName.slice(1)}`;
     if (exportName === "./package.json") {
       imports.push(`import packageMetadata from ${JSON.stringify(specifier)} with { type: "json" };`);
       namespaces.push("packageMetadata");
@@ -529,7 +529,7 @@ function writeTypeConsumer(consumer, exportsMap) {
       resolveJsonModule: true,
       types: [],
       // typescript@7's published unstable api.d.ts uses Symbol.dispose, so
-      // consuming vibelang/unstable/* genuinely requires the disposable lib;
+      // consuming smthrs/unstable/* genuinely requires the disposable lib;
       // everything else stays at ES2022 so the no-skipLibCheck gate remains
       // as strict as before.
       lib: ["ES2022", "DOM", "ESNext.Disposable"],
@@ -541,10 +541,10 @@ function writeTypeConsumer(consumer, exportsMap) {
 }
 
 function verifyCli(consumer) {
-  const cli = join(installedPackageRoot(consumer), "bin/vibe.js");
-  const compilerCli = join(installedPackageRoot(consumer), "bin/vibec.js");
+  const cli = join(installedPackageRoot(consumer), "bin/smithers.js");
+  const compilerCli = join(installedPackageRoot(consumer), "bin/smithersc.js");
   const project = join(consumer, "release-fixtures/project");
-  const main = join(project, "main.vibe");
+  const main = join(project, "main.sm");
   const checked = execute(process.execPath, [cli, "check", main, "--format", "json"], consumer);
   const checkReport = JSON.parse(checked.stdout);
   if (!checkReport.ok || checkReport.files.length !== 2) throw new Error(`installed CLI project check failed: ${checked.stdout}`);
@@ -583,12 +583,12 @@ function verifyCli(consumer) {
     throw new Error("installed CLI reported an invalid source-asset cache identity");
   }
   releaseAssetCacheIdentities.add(assetCacheIdentity);
-  const assetBase = join(output, "__vibelang_assets__", logicalKey);
+  const assetBase = join(output, "__smithers_assets__", logicalKey);
   for (const file of [`${assetBase}.mjs`, `${assetBase}.mjs.map`, `${assetBase}.d.mts`]) {
     if (!statSync(file).isFile()) throw new Error(`installed CLI omitted generated source asset ${file}`);
   }
   const emittedMain = readFileSync(join(output, "main.mjs"), "utf8");
-  if (!emittedMain.includes(`__vibelang_assets__/${logicalKey}.mjs`)) {
+  if (!emittedMain.includes(`__smithers_assets__/${logicalKey}.mjs`)) {
     throw new Error("installed CLI did not rewrite the source-asset import");
   }
   if (/\b(?:with|assert)\s*\{/.test(emittedMain)) {
@@ -615,7 +615,7 @@ function verifyCli(consumer) {
   const failed = execute(process.execPath, [
     cli,
     "compile",
-    join(project, "missing.vibe"),
+    join(project, "missing.sm"),
     "--outDir",
     failedOutput,
     "--format",
@@ -639,7 +639,7 @@ function lstatExists(path) {
 
 function installWithBun(tarball, consumer) {
   mkdirSync(consumer, { recursive: true });
-  writeFileSync(join(consumer, "package.json"), '{"name":"vibelang-bun-release-consumer","private":true,"type":"module"}\n');
+  writeFileSync(join(consumer, "package.json"), '{"name":"smithers-bun-release-consumer","private":true,"type":"module"}\n');
   const installed = execute(bun, ["add", "--ignore-scripts", "--no-save", tarball], consumer);
   rejectWarnings("bun add", `${installed.stdout}\n${installed.stderr}`);
 }
@@ -656,7 +656,7 @@ function safeCleanupAssetCache(identity) {
   if (typeof identity !== "string" || !/^[0-9a-f]{64}$/.test(identity)) {
     throw new Error(`Refusing to remove invalid source-asset cache identity: ${String(identity)}`);
   }
-  const cacheRoot = resolve(tmpdir(), "vibelang-source-asset-cache-v1");
+  const cacheRoot = resolve(tmpdir(), "smithers-source-asset-cache-v1");
   const target = resolve(cacheRoot, identity);
   if (dirname(target) !== cacheRoot || basename(target) !== identity) {
     throw new Error(`Refusing to remove unexpected source-asset cache path: ${target}`);
@@ -719,15 +719,15 @@ try {
   assertInstalledPackage(bunConsumer, secondManifest.paths);
   execute(bun, ["release-fixtures/runtime-smoke.mjs"], bunConsumer);
   const bunChecked = execute(bun, [
-    join(installedPackageRoot(bunConsumer), "bin/vibe.js"),
+    join(installedPackageRoot(bunConsumer), "bin/smithers.js"),
     "check",
-    join(bunConsumer, "release-fixtures/project/main.vibe"),
+    join(bunConsumer, "release-fixtures/project/main.sm"),
     "--format",
     "json",
   ], bunConsumer);
   const bunCheckReport = JSON.parse(bunChecked.stdout);
   const bunCacheIdentity = bunCheckReport.files?.find((file) =>
-    file.input === join(bunConsumer, "release-fixtures/project/main.vibe"))?.assets?.cacheIdentity;
+    file.input === join(bunConsumer, "release-fixtures/project/main.sm"))?.assets?.cacheIdentity;
   if (typeof bunCacheIdentity !== "string" || !/^[0-9a-f]{64}$/.test(bunCacheIdentity)) {
     throw new Error(`installed Bun CLI did not report a valid source-asset cache identity: ${bunChecked.stdout}`);
   }

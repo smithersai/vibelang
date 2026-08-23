@@ -1,0 +1,27 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+import { native } from "smithers:native"
+
+// The subtle case. A nominal capability is target-agnostic: it names a service
+// the native target satisfies with its own Layer, so a pin that reaches one is
+// ACCEPTED and the requirement is merely reported on the row. Only the built-in
+// `TypeScript` requirement and host dependence reject a pin.
+abstract class Digest extends Context {
+  abstract mix(seed: number, byte: number): number
+}
+
+function checksum(input: string): number {
+  let seed = 7
+  for (const character of input) {
+    seed = Digest.context().mix(seed, character.charCodeAt(0))
+  }
+  return seed
+}
+
+native(checksum)
+
+const live: Digest = { mix: (seed, byte) => (seed * 31 + byte) % 65536 }
+
+export function main(): string[] {
+  return Layer.provide(Layer.succeed(Digest, live), () => [String(checksum("smithers"))])
+}

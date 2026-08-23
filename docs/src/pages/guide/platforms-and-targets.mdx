@@ -1,121 +1,51 @@
-# Platforms & Targets [Compile one program without hiding its host dependencies]
+# Hosts [One target, several JavaScript runtimes]
 
-VibeLang is designed to target TypeScript, native code, and Wasm. Portability is checked through the same requirement system used for application services.
+TypeScript is the only compilation target. A `.sm` program emits TypeScript or JavaScript, and the interesting variation is *which JavaScript host* it runs on — Node, Bun, Deno, a browser, or an edge runtime.
 
 :::warning Implementation status
-The production whole-project compiler, LLVM/native backend, GC, and general
-Wasm backend are not built. The current `vibelang/targets` subpath exposes
-conservative checker-backed classification plus one deliberately bounded
-Vibe-to-portable-IR proof: a single-module subset of scalar and bounded-string
-functions compiles to WAT and real Wasm through `wat2wasm`. `vibelang/build`
-separately invokes a limited Zig/Rust-to-Wasm path. Neither slice emits a
-general native or Wasm VibeLang program.
+The production whole-project compiler is not built. The root CLI's TypeScript
+instrument and the opt-in Go backend both lower substantial Smithers semantics
+and emit a bounded multi-module JavaScript project graph.
 :::
 
-## Target Families
+## What Was Removed
 
-| Target | Intended output | Host examples |
-| --- | --- | --- |
-| TypeScript | ordinary TypeScript or JavaScript | Node, Bun, Deno, browser, edge |
-| Native | near-native code through LLVM | server, CLI, worker |
-| Wasm | portable WebAssembly | browser, WASI, sandbox |
+Smithers previously specified a near-native target through LLVM and a Wasm target, and carried machinery to keep programs checkable against both:
 
-The TypeScript target interoperates with the complete TypeScript language in imported `.ts` and `.tsx` modules. Authored `.vibe` remains an intentionally distinct TypeScript-derived grammar. Native and Wasm targets will classify features according to whether they can be implemented safely and predictably.
+| Removed | Why |
+| --- | --- |
+| near-native / LLVM target | specified as a MUST, never implemented, the largest unmet obligation in the repository |
+| Wasm compilation target | a SHOULD with a deliberately bounded proof, not a general backend |
+| the `TypeScript` requirement | with one target, every program has it, so it recorded nothing |
+| portable / `TypeScript`-required / forbidden classification | nothing to be portable *to* |
+| the portability pin | nothing to assert |
 
-## Bounded Portable Backend Proof
+Two things people associate with that machinery are **not** removed:
 
-The programmatic POC lowers exported, synchronous, non-generic `.vibe` functions
-with `number`/`boolean` parameters and plain, `Optional`, or `Result` returns
-through the TypeScript checker and Vibe row checker into canonical IR. The same
-IR runs in a TypeScript-host evaluator and emits import-free WAT; `wat2wasm`
-produces a real module. Tests compare canonical exits, contract digests, and wire
-digests across both runtimes.
+- **The checked `panic` channel** on unannotated foreign calls. It exists because JavaScript can throw, reject, or violate a declaration — not because a second target existed.
+- **Importing Zig and Rust through Wasm.** That is a loader producing a module the JavaScript host calls, not a compilation target. See [Foreign Sources](#foreign-sources).
 
-The subset now covers more than straight-line scalar expressions:
-
-- **Intra-module calls** between portable functions in the same module, on all
-  three return channels. Recursion — direct or mutual — is rejected at the call
-  site, and static call chains are capped at 32, so neither runtime can diverge
-  through stack exhaustion.
-- **Locals and statements**: `let`/`const` locals, assignment and compound
-  assignment, statement-form `if`/`else`, and `while`/`for` loops. Loops are
-  bounded by a fuel budget of 1,000,000 loop-condition evaluations per exported
-  invocation; exhaustion produces a canonical `fuel-exhausted` defect exit that
-  is byte-identical in both runtimes rather than a trap, a hang, or a silent
-  divergence.
-- **Scalar error payloads**: Error variants may carry `readonly` scalar fields,
-  which ride the canonical wire exit and survive propagation through callers.
-- **Bounded strings**: immutable printable-ASCII string literals interned into a
-  deduplicated pool, with `===`/`!==`, `.length`, string locals, and
-  string-valued returns. Equality is pooled-identity equality, which is exact
-  only because the value space is closed over content-deduplicated literals.
-
-This is architectural evidence, not the general Wasm backend. Imports, Context,
-objects, closures, generics, async, GC, a host ABI, LLVM, and whole-project
-partitioning all fail closed or remain absent, as do string parameters, string
-concatenation, non-ASCII strings, and string ordering. The selected `wat2wasm`
-executable is a trusted build tool: it is bounded by a deadline and output limits
-and its output is hashed and structurally checked, but it is not sandboxed,
-signed, or toolchain-attested.
+If a portable target is ever pursued, the classification machinery is what it would need back.
 
 ## Platform as Capability
 
-Host facilities are not unconditional globals in authored `.vibe` code:
+Host functionality is a typed capability rather than an ambient global. `process`, `window`, `document`, filesystem, and network are not in scope in authored `.sm`; they arrive as dependencies.
+
+Only facilities present in every JavaScript environment may be unconditional globals, and host-sensitive operations on otherwise universal objects — clock, random — still need capabilities.
+
+Node, Bun, Deno, browser, edge, and test implementations can satisfy the same capability contract.
+
+## Selecting a Host
+
+Use `comptime.target` when the implementation differs by host:
 
 ```ts
-function refreshCache(): Result<void, HttpError | FileError> {
-  const clock = Clock.context()
-  const http = HttpClient.context()
-  const fs = FileSystem.context()
-  const data = http.get(cacheUrl(clock.today())).unwrap()
-  fs.writeBytes(cachePath, data.body).unwrap()
-}
-```
-
-The compiler records exactly what the function needs from its inherited `.context()` calls. Requirements propagate through ordinary callers without context parameters, and a deployment layer supplies implementations valid for its target.
-
-`process`, `window`, `document`, ambient filesystem access, and ambient network access are modeled as requirements rather than universally available globals.
-
-## Feature Classification
-
-VibeLang classifies TypeScript and JavaScript behavior in three groups:
-
-1. **Portable** — implemented on TypeScript and native targets.
-2. **TypeScript-required** — valid, but adds the built-in `TypeScript` requirement.
-3. **Forbidden** — unavailable in authored `.vibe` code.
-
-For example, `any` and `eval` are valid on the TypeScript target but add `TypeScript`. Type-only imports do not add a runtime requirement.
-
-:::note
-The complete classification table is not finished. `Proxy`, prototype mutation, reflection, weak references, custom thenables, and Promise subclassing still need final assignments.
-:::
-
-## Native Pins
-
-A native pin is a checked assertion that a function's complete dependency graph can run without the `TypeScript` requirement:
-
-```ts
-// Exact modifier spelling is still open.
-native function checksum(bytes: Uint8Array): Digest {
-  return Hash.blake3(bytes)
-}
-```
-
-If a transitive call, provider, or dynamic feature requires TypeScript, compilation fails with the dependency path that introduced it.
-
-## Selecting a Target
-
-Use `comptime.target` when the implementation differs by output environment:
-
-```ts
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 
 const implementations = {
   node: NodeFileSystem,
   bun: BunFileSystem,
   deno: DenoFileSystem,
-  native: NativeFileSystem,
-  wasm: WasiFileSystem,
 }
 
 const FileSystemLive = comptime(implementations[comptime.target])
@@ -132,18 +62,18 @@ import { hashMany } from "./hash.zig" with { type: "zig" }
 import { parse } from "./parser.rs" with { type: "rust" }
 ```
 
-The planned compiler owns toolchain invocation and caching. The import's types, source maps, selected target, toolchain versions, feature flags, and foreign dependency graph contribute to its cache identity. Whether a source import becomes native code, Wasm, or a TypeScript-runtime bridge is target- and toolchain-driven; the exact selection policy remains open.
+These compile to Wasm modules that the JavaScript host loads and calls. Wasm is a library format here, not a target for Smithers code.
 
-The TypeScript target also supports existing Node-API npm packages, including addons built with napi-rs:
+The planned compiler owns toolchain invocation and caching. The import's types, source maps, toolchain versions, feature flags, and foreign dependency graph contribute to its cache identity.
+
+Existing Node-API npm packages also work, including addons built with napi-rs:
 
 ```ts
 import { parse } from '@acme/parser-native'
 ```
 
-These packages keep their published TypeScript declarations and runtime behavior. Node.js and Bun load their `.node` binaries through Node-API—Bun uses its `napi` loader for `.node`—but that host-specific dependency is not silently portable to native or Wasm targets.
+They keep their published TypeScript declarations and runtime behavior. Node and Bun load `.node` binaries through Node-API, so those packages carry a host-specific dependency that not every JavaScript runtime satisfies.
 
 ## Runtime Model
 
-Native output is expected to use a Go-like compiled runtime with garbage collection. Closures, classes, generics, unions, and async functions are not rejected merely because they need runtime support.
-
-Backend-specific lowering is allowed. The source-level failure, requirement, and control-flow semantics remain consistent.
+Closures, classes, generics, unions, and async functions are ordinary. Backend-specific lowering is allowed, while source-level failure, requirement, and control-flow semantics stay consistent.

@@ -7,7 +7,7 @@ import test from "node:test";
 import { pathToFileURL } from "node:url";
 
 /**
- * A minimal LSP client over a real `vibe lsp` subprocess: correctly framed
+ * A minimal LSP client over a real `smithers lsp` subprocess: correctly framed
  * JSON-RPC 2.0 with `Content-Length` headers, exactly as an editor speaks it.
  */
 class LspSession {
@@ -110,7 +110,7 @@ const PASSING = FAILING.replace(
 );
 
 function startServer() {
-  const child = spawn(process.execPath, ["bin/vibe.js", "lsp"], {
+  const child = spawn(process.execPath, ["bin/smithers.js", "lsp"], {
     cwd: process.cwd(),
     stdio: ["pipe", "pipe", "pipe"],
   });
@@ -118,7 +118,7 @@ function startServer() {
 }
 
 async function withServer(body) {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-lsp-")));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-lsp-")));
   const session = startServer();
   try {
     return await body(session, root);
@@ -142,11 +142,11 @@ async function initialize(session, root) {
 
 function open(session, path, text, version = 1) {
   session.notify("textDocument/didOpen", {
-    textDocument: { uri: pathToFileURL(path).href, languageId: "vibe", version, text },
+    textDocument: { uri: pathToFileURL(path).href, languageId: "smithers", version, text },
   });
 }
 
-test("vibe lsp completes the initialize handshake over stdio", async () => {
+test("smithers lsp completes the initialize handshake over stdio", async () => {
   await withServer(async (session, root) => {
     const response = await initialize(session, root);
     assert.equal(response.error, undefined);
@@ -157,7 +157,7 @@ test("vibe lsp completes the initialize handshake over stdio", async () => {
       definitionProvider: true,
       documentFormattingProvider: true,
     });
-    assert.equal(response.result.serverInfo.name, "vibe-lsp");
+    assert.equal(response.result.serverInfo.name, "smithers-lsp");
 
     const shutdown = await session.response(session.request("shutdown"));
     assert.equal(shutdown.result, null);
@@ -166,10 +166,10 @@ test("vibe lsp completes the initialize handshake over stdio", async () => {
   });
 });
 
-test("vibe lsp publishes the exact frontend diagnostic and range, and updates it on change", async () => {
+test("smithers lsp publishes the exact frontend diagnostic and range, and updates it on change", async () => {
   await withServer(async (session, root) => {
     await initialize(session, root);
-    const file = join(root, "failing.vibe");
+    const file = join(root, "failing.sm");
     writeFileSync(file, FAILING);
     const uri = pathToFileURL(file).href;
 
@@ -178,8 +178,8 @@ test("vibe lsp publishes the exact frontend diagnostic and range, and updates it
     assert.deepEqual(first.params.diagnostics, [{
       range: { start: { line: 4, character: 0 }, end: { line: 4, character: 6 } },
       severity: 1,
-      code: "VIBE1102",
-      source: "vibe",
+      code: "SMITHERS1102",
+      source: "smithers",
       message: "exported fallible functions must spell Result<A, E> (or Promise<Result<A, E>>) in their public contract",
     }]);
 
@@ -196,7 +196,7 @@ test("vibe lsp publishes the exact frontend diagnostic and range, and updates it
       contentChanges: [{ text: FAILING }],
     });
     const third = await session.published(uri);
-    assert.deepEqual(third.params.diagnostics.map((entry) => entry.code), ["VIBE1102"]);
+    assert.deepEqual(third.params.diagnostics.map((entry) => entry.code), ["SMITHERS1102"]);
 
     await session.response(session.request("shutdown"));
     session.notify("exit");
@@ -204,10 +204,10 @@ test("vibe lsp publishes the exact frontend diagnostic and range, and updates it
   });
 });
 
-test("vibe lsp hover shows the checked channel and inferred rows", async () => {
+test("smithers lsp hover shows the checked channel and inferred rows", async () => {
   await withServer(async (session, root) => {
     await initialize(session, root);
-    const file = join(root, "domain.vibe");
+    const file = join(root, "domain.sm");
     const source = [
       "export class Missing extends Error {",
       "  constructor(readonly key: string) { super(`missing ${key}`) }",
@@ -230,7 +230,7 @@ test("vibe lsp hover shows the checked channel and inferred rows", async () => {
     assert.equal(
       hover.result.contents.value,
       [
-        "```vibe",
+        "```smithers",
         "export function lookup(key: string): Result<string, Missing>",
         "```",
         "",
@@ -248,11 +248,11 @@ test("vibe lsp hover shows the checked channel and inferred rows", async () => {
   });
 });
 
-test("vibe lsp resolves definitions and formats documents", async () => {
+test("smithers lsp resolves definitions and formats documents", async () => {
   await withServer(async (session, root) => {
     await initialize(session, root);
-    const domain = join(root, "domain.vibe");
-    const app = join(root, "app.vibe");
+    const domain = join(root, "domain.sm");
+    const app = join(root, "app.sm");
     const domainSource = [
       "export class Missing extends Error {",
       "  constructor(readonly key: string) { super(`missing ${key}`) }",
@@ -265,7 +265,7 @@ test("vibe lsp resolves definitions and formats documents", async () => {
       "",
     ].join("\n");
     const appSource = [
-      "import { lookup } from \"./domain.vibe\"",
+      "import { lookup } from \"./domain.sm\"",
       "",
       "export function greet(key:string):Result<string,Missing>{",
       "return `hello ${lookup(key).unwrap()}`",
@@ -291,7 +291,7 @@ test("vibe lsp resolves definitions and formats documents", async () => {
     assert.equal(
       formatting.result[0].newText,
       [
-        "import { lookup } from \"./domain.vibe\"",
+        "import { lookup } from \"./domain.sm\"",
         "",
         "export function greet(key: string): Result<string, Missing> {",
         "  return `hello ${lookup(key).unwrap()}`",
@@ -306,7 +306,7 @@ test("vibe lsp resolves definitions and formats documents", async () => {
   });
 });
 
-test("vibe lsp survives malformed framing and answers unknown methods per protocol", async () => {
+test("smithers lsp survives malformed framing and answers unknown methods per protocol", async () => {
   await withServer(async (session, root) => {
     await initialize(session, root);
 
@@ -321,7 +321,7 @@ test("vibe lsp survives malformed framing and answers unknown methods per protoc
     assert.equal(parse.error.code, -32700);
 
     const unknown = await session.response(session.request("textDocument/references", {
-      textDocument: { uri: pathToFileURL(join(root, "none.vibe")).href },
+      textDocument: { uri: pathToFileURL(join(root, "none.sm")).href },
       position: { line: 0, character: 0 },
       context: { includeDeclaration: true },
     }));
@@ -337,7 +337,7 @@ test("vibe lsp survives malformed framing and answers unknown methods per protoc
   });
 });
 
-test("vibe lsp exits 1 when exit arrives without shutdown", async () => {
+test("smithers lsp exits 1 when exit arrives without shutdown", async () => {
   await withServer(async (session, root) => {
     await initialize(session, root);
     session.notify("exit");
@@ -345,7 +345,7 @@ test("vibe lsp exits 1 when exit arrives without shutdown", async () => {
   });
 });
 
-test("vibe lsp exits 1 when its input stream closes without shutdown", async () => {
+test("smithers lsp exits 1 when its input stream closes without shutdown", async () => {
   await withServer(async (session, root) => {
     await initialize(session, root);
     session.child.stdin.end();

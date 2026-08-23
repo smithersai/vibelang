@@ -1,0 +1,5 @@
+import { parseIntegerUnchecked } from "./foreign.ts"
+
+export function parse(text: string): number {
+  return parseIntegerUnchecked(text)
+}

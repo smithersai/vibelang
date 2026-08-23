@@ -1,0 +1,5 @@
+import { probe } from "./capitalized-never.ts"
+
+export function main(): string[] {
+  return [probe("ada")]
+}

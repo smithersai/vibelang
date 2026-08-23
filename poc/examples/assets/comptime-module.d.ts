@@ -1,5 +1,5 @@
 /**
- * Ambient stand-in for the compiler-owned `"vibelang:comptime"` module so the
+ * Ambient stand-in for the compiler-owned `"smithers:comptime"` module so the
  * example loader file below type-checks under this repository's ordinary
  * `tsc --noEmit` run.
  *
@@ -8,7 +8,7 @@
  * TypeScript checker identity, and the sandbox receives a lowered module with
  * the import erased.
  */
-declare module "vibelang:comptime" {
+declare module "smithers:comptime" {
   export function comptime<T>(value: T): T
   export namespace comptime {
     const target: string

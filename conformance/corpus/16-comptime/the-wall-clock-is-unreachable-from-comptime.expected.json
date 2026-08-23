@@ -1,0 +1,11 @@
+{
+  "title": "comptime evaluation cannot observe the wall clock: the ambient binding is unreachable, not merely unavailable",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VCT1004",
+      "line": 3,
+      "column": 37
+    }
+  ]
+}

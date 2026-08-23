@@ -1,0 +1,12 @@
+{
+  "title": "a re-export is a module edge: re-exporting from an untrusted foreign module needs the same initialization trust claim an import does",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 5,
+      "column": 30
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Runtime TypeScript Dependency' (Locked). A re-export executes the target module's initializer in exactly the way an import does \u2014 that is what the initialization trust claim guards against \u2014 so the rule cannot be attached to the `import` keyword. This is the smallest possible statement of that, and it is here because before this revision ZERO of the corpus's `.sm` files contained a re-export in any area: `export \u2026 from` and `export *` appeared nowhere, so the entire re-export surface of the language was uncontracted. Nothing in the file reads the binding, so the single declared diagnostic is the module-edge rule with no call or property cascade on top of it. Its companion is 21-native-pin/a-pin-reaching-a-host-module-through-a-re-export-is-rejected, which pins what the same edge does to a native pin one module further away. RETIRED MARKER (go, 2026-08-23): the fork used to compile this program clean and run it \u2014 zero diagnostics and `done` on stdout \u2014 where the reference reports SMITHERS1510@5:30 at the re-export. The cause recorded on the marker was that no export declaration was ever examined for a module edge (`grep -n IsExportDeclaration compiler/forkbridge/*.go.txt` returned nothing), so the trust rule was one keyword away from being unenforced. The fork's `staticRuntimeModuleEdge` now owns runtime export declarations as well as imports (compiler/forkbridge/nativepin.go.txt); measured XPASS on go by `node conformance/runner/run.mjs --backend both --jobs 4`."
+}

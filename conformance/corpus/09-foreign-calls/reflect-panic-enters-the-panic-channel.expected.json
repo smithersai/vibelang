@@ -1,0 +1,6 @@
+{
+  "title": "Reflect.panic enters the same distinguished panic channel as panic() from smithers:exceptions",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "panic: no entry for zoe"],
+  "notes": "docs/DECISIONS.md 'Typed failures' (Locked): '`panic` is available from smithers:exceptions and accepts an optional message or underlying error. Reflect.panic and compiler/runtime invariant failures enter the same distinguished channel.' specification/failures.mdx, 'Foreign Exceptions', repeats it normatively. poc/src/language/README.md adds the identification rule: 'panic from the compiler exception module and ambient Reflect.panic are recognized by checker symbol identity. Authored bindings with those spellings are not compiler intrinsics.' 09-foreign-calls/explicit-panic-charges-the-channel pins the imported spelling; this pins the ambient one, and the two must reach the same channel and the same error branch."
+}

@@ -1,0 +1,12 @@
+{
+  "title": "a native pin whose graph reaches the built-in TypeScript requirement through `any` and `eval` fails to compile, and the diagnostic names the dependency path",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS3001",
+      "line": 14,
+      "column": 1
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Native Pin': 'Compilation MUST fail if any reachable operation or provider requires TypeScript. The diagnostic SHOULD show the dependency path that introduced the requirement.' docs/DECISIONS.md 'TypeScript and native classification' (Locked): 'A function explicitly pinned as native is a checked assertion. It is a compile error if any transitive operation or provider requires TypeScript; diagnostics must show the dependency path.' The requirement is contributed by two separate rules 18-typescript-requirement already pins independently (`any` in a signature, and `eval`), so this case measures the pin, not the classification. The diagnostic is reported at the `native(...)` assertion rather than at the declaration, because the assertion is what failed and it may be authored in a different module from the function it names."
+}

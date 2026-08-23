@@ -1,0 +1,23 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function lookup(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+export function main(): string[] {
+  const seen: string[] = []
+  // tap runs only on success, tapError only on failure, and neither may change
+  // the Result they observe.
+  const present = lookup("ada")
+    .tap((value) => { seen.push(`tap ${value}`) })
+    .tapError((error) => { seen.push(`tapError ${error.key}`) })
+    .unwrapOr("none")
+  const absent = lookup("zoe")
+    .tap((value) => { seen.push(`tap ${value}`) })
+    .tapError((error) => { seen.push(`tapError ${error.key}`) })
+    .unwrapOr("none")
+  return [...seen, present, absent]
+}

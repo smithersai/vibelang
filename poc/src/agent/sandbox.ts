@@ -473,7 +473,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
         runnerDigest: this.#runnerPin.digest,
       }),
       configDigest: sha256Json({
-        schema: "vibelang.agent.deno-sandbox/v1",
+        schema: "smithers.agent.deno-sandbox/v1",
         protocol: SANDBOX_PROTOCOL,
         arguments: denoRunArguments(this.#memoryMb, "<pinned-runner>"),
         timeoutMs: this.#timeoutMs,

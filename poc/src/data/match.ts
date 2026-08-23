@@ -5,7 +5,7 @@
  * (docs/src/pages/reference/standard-library.mdx). This module is that entry,
  * and it is deliberately **library-only**: `Match.value(x).when(...).exhaustive()`
  * is a chain of ordinary method calls on ordinary values, with no new grammar
- * behind it. That is the locked position in docs/DECISIONS.md — "VibeLang owns
+ * behind it. That is the locked position in docs/DECISIONS.md — "Smithers owns
  * expression-form control-flow grammar while leaving future pattern-matching
  * syntax room to converge with TC39" — so the useful thing to build today is the
  * *semantics*: what a pattern is, what it narrows to, and what it takes to prove

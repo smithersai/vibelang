@@ -71,7 +71,7 @@ export function defineModelIdentity(options: {
     name: options.name,
     artifactDigest: options.artifactDigest,
     configDigest: sha256Json({
-      schema: "vibelang.agent.model-adapter/v1",
+      schema: "smithers.agent.model-adapter/v1",
       model: modelDescriptorJson(options.model),
       config: options.config ?? null,
     }),
@@ -109,7 +109,7 @@ export function modelResponseJson(response: ModelResponse): Record<string, JsonV
 
 export function modelRequestDigest(request: ModelRequest): string {
   return sha256Json({
-    schema: "vibelang.agent.model-request/v1",
+    schema: "smithers.agent.model-request/v1",
     turnId: request.turnId,
     attempt: request.attempt,
     callableSurface: request.callableSurface,

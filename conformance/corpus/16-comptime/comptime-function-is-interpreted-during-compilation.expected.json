@@ -1,0 +1,8 @@
+{
+  "title": "a compile-time function is interpreted, not invoked at runtime: locals, assignment, for-of, while, break, continue, and container mutation all run during compilation",
+  "expect": "output",
+  "stdout": [
+    "{\"steps\":[3,2,1],\"total\":14,\"widths\":{\"alpha\":5,\"beta\":4,\"delta\":5}}",
+    "10"
+  ]
+}

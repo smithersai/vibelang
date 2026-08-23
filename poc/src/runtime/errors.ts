@@ -1,4 +1,4 @@
-import { Panic, isPanic, panic } from "./panic.ts";
+import { Panic, isPanic, makePanic, panic } from "./panic.ts";
 
 export type ErrorConstructor<E extends Error = Error> = abstract new (...args: any[]) => E;
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
@@ -22,8 +22,8 @@ declare const nominalErrorBrand: unique symbol;
  *
  * ```ts
  * export class FileNotFound extends FileError {}
- * export interface FileNotFound extends NominalError<"vibelang:FileNotFound@1"> {}
- * registerErrorType(FileNotFound, "vibelang:FileNotFound@1");
+ * export interface FileNotFound extends NominalError<"smithers:FileNotFound@1"> {}
+ * registerErrorType(FileNotFound, "smithers:FileNotFound@1");
  * ```
  *
  * Rules:
@@ -60,7 +60,7 @@ export class ErrorCodecError extends Error {
     this.name = "ErrorCodecError";
   }
 }
-export interface ErrorCodecError extends NominalError<"vibelang:ErrorCodecError@1"> {}
+export interface ErrorCodecError extends NominalError<"smithers:ErrorCodecError@1"> {}
 
 export class UnhandledException extends Error {
   constructor(readonly thrown: unknown) {
@@ -68,10 +68,26 @@ export class UnhandledException extends Error {
     this.name = "UnhandledException";
   }
 }
-export interface UnhandledException extends NominalError<"vibelang:UnhandledException@1"> {}
+export interface UnhandledException extends NominalError<"smithers:UnhandledException@1"> {}
+
+/**
+ * A stable Error identity: an ECMAScript identifier alphabet plus the module
+ * path punctuation the compiler mints identities from, bounded at 256 units.
+ *
+ * The letter classes are the Unicode ones on purpose. `class Café extends
+ * Error {}` is an ordinary TypeScript class, and failures.mdx requires that
+ * ANY named class extending `Error` be usable as a nominal recoverable error;
+ * an ASCII-only identity alphabet made the compiler accept such a program and
+ * then throw here while the emitted module was still loading — a clean compile
+ * that cannot run. Widening the alphabet is strictly additive: every identity
+ * the ASCII form admitted still validates, and whitespace, quotes, control
+ * characters, and the other shapes that would break a wire key are still
+ * refused because they are neither ID_Start/ID_Continue nor listed here.
+ */
+const STABLE_ERROR_IDENTITY = /^[\p{ID_Start}0-9$][\p{ID_Continue}$._/@:+-]{0,255}$/u;
 
 function validateIdentity(id: string): void {
-  if (!/^[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,255}$/.test(id)) {
+  if (!STABLE_ERROR_IDENTITY.test(id)) {
     throw new TypeError(`invalid stable Error identity: ${JSON.stringify(id)}`);
   }
 }
@@ -158,7 +174,7 @@ export function errorIdentity(error: unknown): string | undefined {
 export function errorIs<E extends Error>(error: unknown, type: ErrorConstructor<E>): error is E {
   // The constructor is a compiler-resolved nominal key. It need not be in the
   // transport registry: imported TypeScript @throws classes are valid local
-  // identities even when they have no VibeLang wire codec.
+  // identities even when they have no Smithers wire codec.
   if (!isLocalError(error) || !isErrorConstructor(type)) return false;
   return nativeInstanceOf(error, type);
 }
@@ -414,24 +430,24 @@ for (const [type, id] of builtins) {
   });
 }
 
-registerErrorCodec(Panic, "vibelang:Panic@1", {
+registerErrorCodec(Panic, "smithers:Panic@1", {
   encode: (error) => ({ message: error.message }),
   decode: (payload) => new Panic(decodeMessage(payload)),
 });
-registerErrorCodec(ErrorCodecError, "vibelang:ErrorCodecError@1", {
+registerErrorCodec(ErrorCodecError, "smithers:ErrorCodecError@1", {
   encode: messagePayload,
   decode: (payload) => new ErrorCodecError(decodeMessage(payload)),
 });
-registerErrorCodec(UnhandledException, "vibelang:UnhandledException@1", {
+registerErrorCodec(UnhandledException, "smithers:UnhandledException@1", {
   encode: (error) => ({ message: error.message }),
   decode: (payload) => new UnhandledException(decodeMessage(payload)),
 });
 
 /** Trusted lowering helper for a foreign `@throws T` contract. */
-export function __vsValidateForeignError<E extends Error>(cause: unknown, type: ErrorConstructor<E>): E {
-  if (isPanic(cause)) throw cause;
+export function __vsValidateForeignError<E extends Error>(cause: unknown, type: ErrorConstructor<E>): E | Panic {
+  if (isPanic(cause)) return cause;
   if (errorIs(cause, type)) return cause;
-  panic(isLocalError(cause) ? cause : new UnhandledException(cause));
+  return makePanic(isLocalError(cause) ? cause : new UnhandledException(cause));
 }
 
 export { errorCases as __vsErrorCases };

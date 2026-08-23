@@ -2,7 +2,7 @@ import * as ts from "typescript-js";
 import { scanTokens as scanRecoveryTokens } from "./recover.ts";
 
 export interface ControlFlowPlanDiagnostic {
-  readonly code: "VIBE1705" | "VIBE1706" | "VIBE1714" | "VIBE1715" | "VIBE1716";
+  readonly code: "SMITHERS1705" | "SMITHERS1706" | "SMITHERS1714" | "SMITHERS1715" | "SMITHERS1716";
   readonly message: string;
   readonly start: number;
 }
@@ -252,7 +252,7 @@ export function collectControlFlowExpressionPlans(
           if (jump) {
             addDiagnostic(
               jump,
-              "VIBE1706",
+              "SMITHERS1706",
               `${ts.isBreakStatement(jump) ? "break" : "continue"} may not escape a value-producing ${keyword} expression`,
             );
           }
@@ -260,11 +260,11 @@ export function collectControlFlowExpressionPlans(
             const consequent = finalValueExit(control.thenStatement);
             const alternate = control.elseStatement ? finalValueExit(control.elseStatement) : undefined;
             if (!control.elseStatement) {
-              addDiagnostic(control, "VIBE1705", "a value-producing if expression requires an else branch");
+              addDiagnostic(control, "SMITHERS1705", "a value-producing if expression requires an else branch");
             } else if (!consequent) {
-              addDiagnostic(control.thenStatement, "VIBE1705", branchMessage("if"));
+              addDiagnostic(control.thenStatement, "SMITHERS1705", branchMessage("if"));
             } else if (!alternate) {
-              addDiagnostic(control.elseStatement, "VIBE1705", branchMessage("if"));
+              addDiagnostic(control.elseStatement, "SMITHERS1705", branchMessage("if"));
             } else if (!jump) {
               const plan: IfExpressionPlan = { kind: "if", host, control, consequent, alternate };
               byHost.set(host, plan);
@@ -282,7 +282,7 @@ export function collectControlFlowExpressionPlans(
                 : undefined;
               if (!exit) {
                 valid = false;
-                addDiagnostic(clause, "VIBE1705", branchMessage("switch"));
+                addDiagnostic(clause, "SMITHERS1705", branchMessage("switch"));
               } else {
                 clauses.push({ clause, exit });
               }
@@ -291,18 +291,18 @@ export function collectControlFlowExpressionPlans(
               const coverage = checker ? closedUnionCoverage(control, checker) : undefined;
               if (!coverage) {
                 valid = false;
-                addDiagnostic(control, "VIBE1705", "a switch expression requires a default clause until closed-union exhaustiveness is proven");
+                addDiagnostic(control, "SMITHERS1705", "a switch expression requires a default clause until closed-union exhaustiveness is proven");
               } else if (coverage.unprovable) {
                 valid = false;
-                addDiagnostic(control, "VIBE1716", "a closed-union switch expression has non-literal case labels, so exhaustiveness cannot be proven; add a default clause");
+                addDiagnostic(control, "SMITHERS1716", "a closed-union switch expression has non-literal case labels, so exhaustiveness cannot be proven; add a default clause");
               } else if (coverage.missing.length > 0) {
                 valid = false;
-                addDiagnostic(control, "VIBE1716", `a closed-union switch expression must be exhaustive; missing ${coverage.missing.join(", ")}`);
+                addDiagnostic(control, "SMITHERS1716", `a closed-union switch expression must be exhaustive; missing ${coverage.missing.join(", ")}`);
               }
             }
             if (control.caseBlock.clauses.length === 0) {
               valid = false;
-              addDiagnostic(control, "VIBE1705", "a switch expression requires at least one value-producing clause");
+              addDiagnostic(control, "SMITHERS1705", "a switch expression requires at least one value-producing clause");
             }
             if (valid && !jump) {
               const plan: SwitchExpressionPlan = { kind: "switch", host, control, clauses };
@@ -417,7 +417,7 @@ function resolveLabeledPlan(
   addDiagnostic: (node: ts.Node, code: ControlFlowPlanDiagnostic["code"], message: string) => void,
 ): void {
   const control = findLabeledStatementAt(sourceFile, derived.labelStart);
-  if (!control || !ts.isBlock(control.statement)) return; // recovery/parse mismatch: fail closed silently into VIBE1000
+  if (!control || !ts.isBlock(control.statement)) return; // recovery/parse mismatch: fail closed silently into SMITHERS1000
   claimedLabels.add(control);
   const labelName = control.label.text;
 
@@ -433,7 +433,7 @@ function resolveLabeledPlan(
     : undefined;
   if (!host || !hostDeclaration || !hostDeclaration.initializer ||
     !ts.isIdentifier(hostDeclaration.initializer) || hostDeclaration.initializer.text !== derived.markerName) {
-    addDiagnostic(control, "VIBE1714", "internal: a recovered labeled value block lost its host declaration; the construct is rejected");
+    addDiagnostic(control, "SMITHERS1714", "internal: a recovered labeled value block lost its host declaration; the construct is rejected");
     return;
   }
 
@@ -442,12 +442,12 @@ function resolveLabeledPlan(
   for (const valueStart of derived.valueStarts) {
     const site = resolveLabeledSite(control, sourceFile, valueStart, labelName);
     if (!site) {
-      addDiagnostic(control, "VIBE1714", "internal: a recovered labeled break value does not match its rewritten site; the construct is rejected");
+      addDiagnostic(control, "SMITHERS1714", "internal: a recovered labeled break value does not match its rewritten site; the construct is rejected");
       valid = false;
       continue;
     }
     if (functionBoundaryBetween(site.block, control)) {
-      addDiagnostic(site.value, "VIBE1714", "a `break :label value` may not sit inside a nested function body");
+      addDiagnostic(site.value, "SMITHERS1714", "a `break :label value` may not sit inside a nested function body");
       valid = false;
       continue;
     }
@@ -459,7 +459,7 @@ function resolveLabeledPlan(
   if (escaping) {
     addDiagnostic(
       escaping,
-      "VIBE1714",
+      "SMITHERS1714",
       ts.isBreakStatement(escaping) && escaping.label?.text === labelName
         ? "a labeled value block may not complete through a plain `break label`; every exit must carry a value"
         : "a jump may not escape a labeled value block without carrying its value",
@@ -468,7 +468,7 @@ function resolveLabeledPlan(
   }
 
   if (statementMayCompleteNormally(control.statement)) {
-    addDiagnostic(control, "VIBE1714", "a labeled value block may complete without a value; end every path with `break :label value`, a throw, or a return");
+    addDiagnostic(control, "SMITHERS1714", "a labeled value block may complete without a value; end every path with `break :label value`, a throw, or a return");
     valid = false;
   }
 
@@ -509,7 +509,7 @@ function resolveLoopPlan(
   const elseValue = elseBlock && elseBlock.statements.length === 1 ? elseBlock.statements[0] : undefined;
   if (!elseBlock || !elseValue || !ts.isExpressionStatement(elseValue) ||
     elseValue.getStart(sourceFile) !== derived.elseStart) {
-    addDiagnostic(control, "VIBE1715", "internal: a recovered loop else value does not match its rewritten block; the construct is rejected");
+    addDiagnostic(control, "SMITHERS1715", "internal: a recovered loop else value does not match its rewritten block; the construct is rejected");
     return;
   }
 
@@ -525,7 +525,7 @@ function resolveLoopPlan(
     : undefined;
   if (!host || !hostDeclaration || !hostDeclaration.initializer ||
     !ts.isIdentifier(hostDeclaration.initializer) || hostDeclaration.initializer.text !== derived.markerName) {
-    addDiagnostic(control, "VIBE1715", "internal: a recovered loop value lost its host declaration; the construct is rejected");
+    addDiagnostic(control, "SMITHERS1715", "internal: a recovered loop value lost its host declaration; the construct is rejected");
     return;
   }
 
@@ -535,12 +535,12 @@ function resolveLoopPlan(
   for (const valueStart of derived.valueStarts) {
     const site = resolveLabeledSite(control, sourceFile, valueStart, wrapperLabel);
     if (!site) {
-      addDiagnostic(control, "VIBE1715", "internal: a recovered loop break value does not match its rewritten site; the construct is rejected");
+      addDiagnostic(control, "SMITHERS1715", "internal: a recovered loop break value does not match its rewritten site; the construct is rejected");
       valid = false;
       continue;
     }
     if (functionBoundaryBetween(site.block, control)) {
-      addDiagnostic(site.value, "VIBE1715", "a `break :label value` may not sit inside a nested function body");
+      addDiagnostic(site.value, "SMITHERS1715", "a `break :label value` may not sit inside a nested function body");
       valid = false;
       continue;
     }
@@ -550,7 +550,7 @@ function resolveLoopPlan(
   const siteJumps = new Set<ts.BreakStatement>(sites.map((site) => site.jump));
   const escaping = labeledEscapeJump(control, wrapperLabel, siteJumps);
   if (escaping) {
-    addDiagnostic(escaping, "VIBE1715", "a jump may not escape a value loop without carrying its value");
+    addDiagnostic(escaping, "SMITHERS1715", "a jump may not escape a value loop without carrying its value");
     valid = false;
   }
 

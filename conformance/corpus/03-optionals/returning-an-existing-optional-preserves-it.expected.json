@@ -1,0 +1,9 @@
+{
+  "title": "returning an existing compatible Optional from an Optional-returning function preserves it without nesting into `Optional<Optional<T>>`",
+  "expect": "output",
+  "stdout": [
+    "Ada",
+    "absent"
+  ],
+  "notes": "specification/type-system.mdx, 'Optional': 'An Optional-returning function MUST compiler-lift: `return value` to the present variant; `return null` or `return undefined` to the absent variant; **an existing compatible Optional without nesting**.' The corpus already pinned the first two clauses (03/return-lifts-into-optional) and the same no-nesting rule on the Result side (01/returning-an-existing-result-preserves-it, 03/nested-result-normalization-is-rejected); the third Optional clause had no case. It is the clause a lifting pass gets wrong by symmetry with the other two: a rule that wrapped every `return` would turn `relay`'s forwarded Optional into a present value CONTAINING an absent one, and `relay(2).unwrapOr(\"absent\")` would then print an Optional instead of the fallback. Both branches are exercised so a double-wrap is visible on the absent path, where it is silent rather than a type error."
+}

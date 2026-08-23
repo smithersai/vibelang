@@ -19,7 +19,7 @@ import type {
  * replayed through the turn journal.
  */
 const READ_FILE_ACTION = `
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 
 type ReadRequest = { readonly path: string }
 type ReadReply = { readonly path: string; readonly contents: string }
@@ -34,7 +34,7 @@ export abstract class ReadFile extends Action<
 `
 
 const WRITE_FILE_ACTION = `
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 
 type WriteRequest = { readonly path: string; readonly contents: string }
 type WriteReply = { readonly path: string; readonly bytes: number; readonly revision: number }
@@ -89,9 +89,9 @@ export function createProject(
     compileActionTool(
       {
         source: READ_FILE_ACTION,
-        fileName: "agent/read-file.vibe",
+        fileName: "agent/read-file.sm",
         exportName: "ReadFile",
-        id: "vibelang/agent-demo/ReadFile",
+        id: "smthrs/agent-demo/ReadFile",
         version: 1,
         description: "read one file from the project snapshot",
       },
@@ -109,9 +109,9 @@ export function createProject(
   > = compileActionTool(
     {
       source: WRITE_FILE_ACTION,
-      fileName: "agent/write-file.vibe",
+      fileName: "agent/write-file.sm",
       exportName: "WriteFile",
-      id: "vibelang/agent-demo/WriteFile",
+      id: "smthrs/agent-demo/WriteFile",
       version: 1,
       description: "write one file into the project snapshot",
     },

@@ -1,0 +1,5 @@
+{
+  "title": "a defer marker whose cleanup expression is not on the marker line is rejected instead of guessed at",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1710", "line": 8, "column": 3 }]
+}

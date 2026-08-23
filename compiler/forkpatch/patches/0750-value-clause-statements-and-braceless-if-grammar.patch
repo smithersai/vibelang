@@ -1,0 +1,410 @@
+diff --git a/tsc/internal/binder/binder.go b/tsc/internal/binder/binder.go
+index 243d4a16..91ff71cd 100644
+--- a/tsc/internal/binder/binder.go
++++ b/tsc/internal/binder/binder.go
+@@ -2163,6 +2163,15 @@ func (b *Binder) bindCaseBlock(node *ast.Node) {
+ 			}
+ 			b.currentFlow = preCaseFlow
+ 			b.bind(clause)
++			// The flow node control leaves the clause at. A value clause may run
++			// statements before its final expression, and those statements may
++			// diverge (`case "a": throw e`) — in which case the clause produces no
++			// value *and* contributes nothing. checkSwitchExpression reads this back
++			// to tell that apart from a clause that simply has no final expression,
++			// which does complete and therefore contributes `undefined`. It is the
++			// same fact the statement `switch` records here for
++			// NoFallthroughCasesInSwitch: can control leave this clause's body.
++			clause.AsCaseOrDefaultClause().FallthroughFlowNode = b.currentFlow
+ 			b.addAntecedent(postClauseLabel, b.currentFlow)
+ 		}
+ 		if !hasDefault {
+@@ -2939,6 +2948,15 @@ func isStatementCondition(node *ast.Node) bool {
+ 		return node.Parent.AsForStatement().Condition == node
+ 	case ast.KindConditionalExpression:
+ 		return node.Parent.AsConditionalExpression().Condition == node
++	// Smithers: the condition of a value `if`, which is a condition in exactly the
++	// sense this predicate means — isTopLevelLogicalExpression reads it to decide
++	// whether a `&&` / `||` gets its own post-expression flow label INSTEAD of
++	// binding against the enclosing true/false targets. Without this arm
++	// bindIfExpressionFlow sets those targets and the logical expression
++	// immediately discards them, so `if (a !== null && b !== null) { a.length }`
++	// loses its narrowing entirely and reports TS18047 on a correct program.
++	case ast.KindIfExpression:
++		return node.Parent.AsIfExpression().Condition == node
+ 	}
+ 	return false
+ }
+diff --git a/tsc/internal/checker/checker.go b/tsc/internal/checker/checker.go
+index 58d70898..1e011582 100644
+--- a/tsc/internal/checker/checker.go
++++ b/tsc/internal/checker/checker.go
+@@ -11118,8 +11118,25 @@ func (c *Checker) checkSwitchExpression(node *ast.Node, checkMode CheckMode) *Ty
+ 				c.checkTypeComparableTo(caseType, expressionType, clause.Expression(), nil /*headMessage*/)
+ 			}
+ 		}
+-		if value := clause.AsCaseOrDefaultClause().Value; value != nil {
+-			types = append(types, c.checkExpressionEx(value, checkMode))
++		// The clause's leading statements. Nothing in the ordinary statement walk
++		// reaches them — they hang off an expression — and checkSourceElementWorker
++		// has no default arm, so without this call the whole clause body is
++		// silently unchecked and produces zero diagnostics.
++		c.checkSourceElements(clause.Statements())
++		switch {
++		case clause.AsCaseOrDefaultClause().Value != nil:
++			types = append(types, c.checkExpressionEx(clause.AsCaseOrDefaultClause().Value, checkMode))
++		case c.clauseCanCompleteWithoutAValue(clause):
++			// A clause whose body ends in something other than an expression — an
++			// empty clause, or one ending in an `if` statement — completes with no
++			// value, so the switch may produce nothing. That is the same fail-closed
++			// rule a missing `default` gets, expressed in the type system rather
++			// than as a new diagnostic: under `strict` the resulting `T | undefined`
++			// is reported by ordinary assignability at the use site. A clause that
++			// diverges (`case "a": throw e`) never completes and contributes
++			// nothing, which is why this is a reachability question and not a
++			// syntactic one.
++			types = append(types, c.undefinedType)
+ 		}
+ 	}
+ 	// SMITHERS1716: a switch over a closed literal union whose case labels cover
+@@ -11131,12 +11148,28 @@ func (c *Checker) checkSwitchExpression(node *ast.Node, checkMode CheckMode) *Ty
+ 	if firstDefaultClause == nil && !c.isExhaustiveSwitch(node) {
+ 		types = append(types, c.undefinedType)
+ 	}
++	if expr.CaseBlock.Locals() != nil {
++		// A value clause may declare bindings, and the CaseBlock is the block scope
++		// that owns them — ast.IsBlockScope and binder.GetContainerFlags both say so
++		// for KindCaseBlock, so the table exists. Without this registration
++		// noUnusedLocals never looks inside a value `switch` at all.
++		c.registerForUnusedIdentifiersCheck(expr.CaseBlock)
++	}
+ 	if len(types) == 0 {
+ 		return c.undefinedType
+ 	}
+ 	return c.getUnionTypeEx(types, UnionReductionSubtype, nil, nil)
+ }
+ 
++// clauseCanCompleteWithoutAValue reports whether control can reach the end of a
++// value clause that has no final expression. The binder records the flow node
++// control leaves each clause at; a nil node is treated as reachable so that a
++// clause never silently drops out of the union.
++func (c *Checker) clauseCanCompleteWithoutAValue(clause *ast.Node) bool {
++	flowNode := clause.AsCaseOrDefaultClause().FallthroughFlowNode
++	return flowNode == nil || c.isReachableFlowNode(flowNode)
++}
++
+ // checkLabeledExpression types the Smithers expression-position labeled block
+ // and labeled loop values. Its value comes from the `break :label value` exits
+ // that target its own label, plus the loop `else` completion value when there is
+@@ -29659,6 +29692,17 @@ func (c *Checker) getContextualType(node *ast.Node, contextFlags ContextFlags) *
+ 		return c.getContextualTypeForElementExpression(t, elementIndex, len(parent.Elements()), firstSpreadIndex, lastSpreadIndex)
+ 	case ast.KindConditionalExpression:
+ 		return c.getContextualTypeForConditionalOperand(node, contextFlags)
++	// Smithers: the value `if` and the value `switch` select one of several
++	// operands the same way a conditional expression does, so each operand's
++	// contextual type is the construct's own. Without these arms the branches and
++	// clause values are checked with no contextual type at all: a contextually
++	// typed arrow in a branch reports TS7006 on a correct program, an object
++	// literal widens instead of matching a discriminated union, and no diagnostic
++	// anywhere says why.
++	case ast.KindIfExpression:
++		return c.getContextualTypeForIfExpressionOperand(node, contextFlags)
++	case ast.KindCaseClause, ast.KindDefaultClause:
++		return c.getContextualTypeForClauseValue(node, contextFlags)
+ 	case ast.KindTemplateSpan:
+ 		return c.getContextualTypeForSubstitutionExpression(parent.Parent, node)
+ 	case ast.KindParenthesizedExpression:
+@@ -30299,6 +30343,31 @@ func (c *Checker) getContextualTypeForConditionalOperand(node *ast.Node, context
+ 	return nil
+ }
+ 
++// getContextualTypeForIfExpressionOperand answers for a *branch* of a value `if`
++// and for nothing else: the condition is a truthiness position and takes no
++// contextual type, exactly as for a conditional expression.
++func (c *Checker) getContextualTypeForIfExpressionOperand(node *ast.Node, contextFlags ContextFlags) *Type {
++	expr := node.Parent.AsIfExpression()
++	if node == expr.WhenTrue || node == expr.WhenFalse {
++		return c.getContextualType(node.Parent, contextFlags)
++	}
++	return nil
++}
++
++// getContextualTypeForClauseValue answers for the `Value` of a switch-expression
++// clause. It compares against the member rather than answering for any child: a
++// `case` label is a comparison against the scrutinee and has no contextual type,
++// and a statement clause has no value at all, so both must keep answering nil.
++func (c *Checker) getContextualTypeForClauseValue(node *ast.Node, contextFlags ContextFlags) *Type {
++	clause := node.Parent.AsCaseOrDefaultClause()
++	if clause.Value != node {
++		return nil
++	}
++	// clause -> CaseBlock -> the switch. Only the value `switch` ever sets Value,
++	// so the walk is total; a statement clause leaves through the guard above.
++	return c.getContextualType(node.Parent.Parent.Parent, contextFlags)
++}
++
+ func (c *Checker) getContextualTypeForSubstitutionExpression(template *ast.Node, substitutionExpression *ast.Node) *Type {
+ 	if ast.IsTaggedTemplateExpression(template.Parent) {
+ 		return c.getContextualTypeForArgument(template.Parent, substitutionExpression)
+diff --git a/tsc/internal/parser/parser.go b/tsc/internal/parser/parser.go
+index c20dc947..419360ee 100644
+--- a/tsc/internal/parser/parser.go
++++ b/tsc/internal/parser/parser.go
+@@ -95,7 +95,17 @@ type Parser struct {
+ 	// statement level; it is the same position-keyed memo shape upstream already
+ 	// uses for notParenthesizedArrow. -1 means "nowhere".
+ 	labeledExpressionSuppressionPos int
+-	notParenthesizedArrow           collections.Set[int]
++	// Smithers: the one position at which a value-position `if` may take braceless
++	// branches. The specification spells the form `const value = if (c) a else b`,
++	// and a braceless branch is only unambiguous in a host that bounds it — a
++	// variable initializer ends at a `,` or a `;`/ASI. In a general expression
++	// placement (`f(x, if (c) a else b)`) the reference refuses it as SMITHERS1709,
++	// and refusing it here is a grammar decision rather than a diagnostic: with
++	// braces required, there is no node to report on. Keyed on the position the
++	// initializer starts at, exactly like labeledExpressionSuppressionPos, so a
++	// nested expression begins later and is unaffected. -1 means "nowhere".
++	bracelessValueIfPos        int
++	notParenthesizedArrow      collections.Set[int]
+ 	nodeSliceArena             core.Arena[*ast.Node]
+ 	stringSliceArena           core.Arena[string]
+ 	jsdocInfos                 []JSDocInfo
+@@ -328,6 +338,7 @@ func (p *Parser) initializeState(opts ast.SourceFileParseOptions, sourceText str
+ 		p.contextFlags |= ast.NodeFlagsSmithers
+ 	}
+ 	p.labeledExpressionSuppressionPos = -1
++	p.bracelessValueIfPos = -1
+ 	p.scanner.SetText(p.sourceText)
+ 	p.scanner.SetOnError(p.scanError)
+ 	p.scanner.SetLanguageVariant(p.languageVariant)
+@@ -1736,7 +1747,7 @@ func (p *Parser) parseVariableDeclarationWorker(allowExclamation bool) *ast.Node
+ 	typeNode := p.parseTypeAnnotation()
+ 	var initializer *ast.Expression
+ 	if p.token != ast.KindInKeyword && p.token != ast.KindOfKeyword {
+-		initializer = p.parseInitializer()
++		initializer = p.parseVariableInitializer()
+ 	}
+ 	result := p.finishNode(p.factory.NewVariableDeclaration(name, exclamationToken, typeNode, initializer), pos)
+ 	p.withJSDoc(result, jsdoc)
+@@ -1818,6 +1829,22 @@ func (p *Parser) parseInitializer() *ast.Expression {
+ 	return nil
+ }
+ 
++// parseVariableInitializer is parseInitializer for a *variable* declaration, the
++// one host Smithers admits a braceless value `if` in. It is deliberately not
++// parseInitializer itself: a parameter default and a class property initializer
++// go through that function too, and the conformance contract names only the
++// variable initializer.
++func (p *Parser) parseVariableInitializer() *ast.Expression {
++	if !p.parseOptional(ast.KindEqualsToken) {
++		return nil
++	}
++	saved := p.bracelessValueIfPos
++	p.bracelessValueIfPos = p.nodePos()
++	initializer := p.parseAssignmentExpressionOrHigher()
++	p.bracelessValueIfPos = saved
++	return initializer
++}
++
+ func (p *Parser) parseTypeAnnotation() *ast.TypeNode {
+ 	if p.parseOptional(ast.KindColonToken) {
+ 		return p.parseType()
+@@ -5761,7 +5788,7 @@ func (p *Parser) parsePrimaryExpression() *ast.Expression {
+ 		// arm only ever sees an `if` where an expression is required — which is
+ 		// why a construct keyword after `case x:` or a label stays a statement.
+ 		if p.contextFlags&ast.NodeFlagsSmithers != 0 {
+-			return p.parseIfExpression()
++			return p.parseIfExpression(p.nodePos() == p.bracelessValueIfPos)
+ 		}
+ 	case ast.KindSwitchKeyword:
+ 		if p.contextFlags&ast.NodeFlagsSmithers != 0 {
+@@ -5846,30 +5873,47 @@ func (p *Parser) parseLabeledExpression() *ast.Expression {
+ }
+ 
+ // parseIfExpression parses the Smithers value-position
+-// `if ( Expression ) { Expression } else { Expression }`.
++// `if ( Expression ) Branch else Branch`, where a Branch is `{ Expression }`
++// everywhere and additionally a bare AssignmentExpression in the one host that
++// bounds it — a variable initializer, which is how the specification spells the
++// form (`const value = if (condition) consequent else alternate`).
+ //
+-// Both branches are braced and hold exactly one expression. Braces are required
+-// because a braceless branch has no provable extent in expression context
+-// (SMITHERS1709), and the `else` branch is required because a value `if` with no
+-// value branch has no value (SMITHERS1705) — so both fail closed in the grammar
+-// itself rather than needing a diagnostic. `else if` chains by nesting.
+-func (p *Parser) parseIfExpression() *ast.Expression {
++// The `else` branch is required because a value `if` with no value branch has no
++// value (SMITHERS1705), and a braceless branch outside the bounded host is refused by
++// requiring the brace (SMITHERS1709). Both fail closed in the grammar itself rather
++// than needing a diagnostic: neither shape is representable, so there is no node
++// to report on. `else if` chains by nesting, and the chain inherits `braceless`
++// because `const v = if (a) 1 else if (b) 2 else 3` is one bounded initializer.
++func (p *Parser) parseIfExpression(braceless bool) *ast.Expression {
+ 	pos := p.nodePos()
+ 	p.parseExpected(ast.KindIfKeyword)
+ 	p.parseExpected(ast.KindOpenParenToken)
+ 	condition := p.parseExpressionAllowIn()
+ 	p.parseExpected(ast.KindCloseParenToken)
+-	whenTrue := p.parseBracedExpression()
++	whenTrue := p.parseValueIfBranch(braceless)
+ 	p.parseExpected(ast.KindElseKeyword)
+ 	var whenFalse *ast.Expression
+ 	if p.token == ast.KindIfKeyword {
+-		whenFalse = p.parseIfExpression()
++		whenFalse = p.parseIfExpression(braceless)
+ 	} else {
+-		whenFalse = p.parseBracedExpression()
++		whenFalse = p.parseValueIfBranch(braceless)
+ 	}
+ 	return p.finishNode(p.factory.NewIfExpression(condition, whenTrue, whenFalse), pos)
+ }
+ 
++// parseValueIfBranch parses one branch of a value `if`. A branch that starts with
++// `{` is always the braced form, so admitting the braceless one adds no ambiguity
++// and takes nothing away: `if (c) { k } else { j }` keeps meaning what it meant.
++//
++// The braceless branch is an AssignmentExpression, not an Expression, so it stops
++// at a comma and `const a = if (c) x else y, b = 2` still declares two bindings.
++func (p *Parser) parseValueIfBranch(braceless bool) *ast.Expression {
++	if braceless && p.token != ast.KindOpenBraceToken {
++		return p.parseAssignmentExpressionOrHigher()
++	}
++	return p.parseBracedExpression()
++}
++
+ // parseBracedExpression parses `{ Expression }` — the branch body of a value
+ // `if`. The braces are grammar, not a block: the node is the expression itself.
+ func (p *Parser) parseBracedExpression() *ast.Expression {
+@@ -5916,9 +5960,50 @@ func (p *Parser) parseValueCaseOrDefaultClause() *ast.Node {
+ 		p.parseExpected(ast.KindDefaultKeyword)
+ 	}
+ 	p.parseExpected(ast.KindColonToken)
++	statements, value := p.parseValueClauseBody()
++	return p.finishNode(p.factory.NewCaseOrDefaultClause(kind, label, statements, value), pos)
++}
++
++// parseValueClauseBody parses the body of a switch-*expression* clause:
++// zero or more statements followed by the expression that is the clause's value.
++// The specification says the selected case's *final* expression is the switch's
++// value, so `case "pass": record("pass"); "met the bar"` runs the call and then
++// produces the string.
++//
++// The single-expression spelling is tried FIRST, speculatively, and the statement
++// list is only reached when that expression does not run to the end of the
++// clause. The ordering is load-bearing, not an optimisation: parseStatement
++// claims a statement-initial `if`/`switch`/`for`, so `case "a": if (p) { 1 } else
++// { 2 }` is a value `if` only while the expression parse gets the first look.
++//
++// The value is the *expression* of the trailing ExpressionStatement rather than
++// the statement, so it sits in the tree exactly where a single-expression clause
++// puts it and every consumer — the binder's b.bind(clause.Value), the checker's
++// union, ast.IsInExpressionContext — sees one shape rather than two. A clause
++// whose last statement is not an expression (`case "a": throw e`) has no value,
++// which is legal: it diverges, and the checker reads its end-of-clause flow node
++// to decide whether it contributes `undefined`.
++func (p *Parser) parseValueClauseBody() (*ast.NodeList, *ast.Expression) {
++	pos := p.nodePos()
++	state := p.mark()
+ 	value := p.parseExpressionAllowIn()
+ 	p.parseOptional(ast.KindSemicolonToken)
+-	return p.finishNode(p.factory.NewCaseOrDefaultClause(kind, label, p.newNodeList(core.NewTextRange(p.nodePos(), p.nodePos()), nil), value), pos)
++	if len(p.diagnostics) == state.diagnosticsLen && p.isListTerminator(PCSwitchClauseStatements) {
++		return p.newNodeList(core.NewTextRange(pos, pos), nil), value
++	}
++	p.rewind(state)
++	list := p.parseList(PCSwitchClauseStatements, (*Parser).parseStatement)
++	statements := list.Nodes
++	value = nil
++	if n := len(statements); n > 0 && statements[n-1].Kind == ast.KindExpressionStatement {
++		value = statements[n-1].AsExpressionStatement().Expression
++		statements = statements[:n-1]
++	}
++	end := list.End()
++	if value != nil {
++		end = value.Pos()
++	}
++	return p.newNodeList(core.NewTextRange(list.Pos(), end), statements), value
+ }
+ 
+ func (p *Parser) parseParenthesizedExpression() *ast.Expression {
+diff --git a/tsc/internal/printer/printer.go b/tsc/internal/printer/printer.go
+index 290765f8..fef433d6 100644
+--- a/tsc/internal/printer/printer.go
++++ b/tsc/internal/printer/printer.go
+@@ -4599,10 +4599,26 @@ func (p *Printer) emitDefaultClause(node *ast.CaseOrDefaultClause) {
+ 	p.exitNode(node.AsNode(), state)
+ }
+ 
++// emitClauseValue writes a switch-*expression* clause body: the statements the
++// clause runs, then the final expression that is its value.
++//
++// A clause with no Value is written by emitCaseOrDefaultClauseStatements, which
++// is right for both a statement clause and a value clause that diverges
++// (`case "a": throw e`) — reparsing either one recovers the same shape, because
++// parseValueClauseBody only lifts a *trailing expression statement* into Value.
+ func (p *Printer) emitClauseValue(node *ast.CaseOrDefaultClause, colonPos int) {
++	if len(node.Statements.Nodes) == 0 {
++		p.emitToken(ast.KindColonToken, colonPos, WriteKindPunctuation, node.AsNode())
++		p.writeSpace()
++		p.emitExpressionNoASI(node.Value, ast.OperatorPrecedenceLowest)
++		return
++	}
+ 	p.emitToken(ast.KindColonToken, colonPos, WriteKindPunctuation, node.AsNode())
+-	p.writeSpace()
++	p.emitList((*Printer).emitStatement, node.AsNode(), node.Statements, LFCaseOrDefaultClauseStatements)
++	p.increaseIndent()
++	p.writeLine()
+ 	p.emitExpressionNoASI(node.Value, ast.OperatorPrecedenceLowest)
++	p.decreaseIndent()
+ }
+ 
+ func (p *Printer) emitCaseOrDefaultClauseNode(node *ast.CaseOrDefaultClauseNode) {
+diff --git a/tsc/internal/transformers/utilities.go b/tsc/internal/transformers/utilities.go
+index 949fdbda..c8f65d90 100644
+--- a/tsc/internal/transformers/utilities.go
++++ b/tsc/internal/transformers/utilities.go
+@@ -59,14 +59,42 @@ func IsIdentifierReference(name *ast.IdentifierNode, parent *ast.Node) bool {
+ 		ast.KindWithStatement,
+ 		ast.KindReturnStatement,
+ 		ast.KindSwitchStatement,
+-		ast.KindCaseClause,
+ 		ast.KindThrowStatement,
+ 		ast.KindExpressionStatement,
+ 		ast.KindExportAssignment,
+ 		ast.KindPropertyAccessExpression,
+-		ast.KindTemplateSpan:
++		ast.KindTemplateSpan,
++		// Smithers: `defer expr;` / `errdefer expr;`, and the scrutinee of a value
++		// `switch`. Same shape as the arms above: one Expression() member.
++		ast.KindDeferStatement,
++		ast.KindErrdeferStatement,
++		ast.KindSwitchExpression:
+ 		// only an `Expression()` child that can be `Identifier` would be an instance of `IdentifierReference`
+ 		return parent.Expression() == name
++	// Smithers: a clause's case label AND its value. KindCaseClause used to sit in
++	// the Expression()-only list above, which answered false for every clause
++	// value, and KindDefaultClause was in no list at all, so it fell through to
++	// `default: return false`. The consequence is not a diagnostic: this predicate
++	// gates the CommonJS and enum/namespace identifier substitutions, so an
++	// imported or exported binding used as a clause value was emitted verbatim
++	// instead of as `mod_1.name`, producing JavaScript that throws ReferenceError
++	// at run time with a clean compile.
++	case ast.KindCaseClause, ast.KindDefaultClause:
++		clause := parent.AsCaseOrDefaultClause()
++		return clause.Expression == name || clause.Value == name
++	// Smithers: `break :label value`. The label is an identifier too and is a jump
++	// target rather than a reference, so this names the member.
++	case ast.KindBreakStatement:
++		return parent.AsBreakStatement().Value == name
++	// Smithers: the `else` completion value of `label: loop … else value`. Same
++	// shape; the label itself must keep answering false.
++	case ast.KindLabeledStatement:
++		return parent.AsLabeledStatement().ElseValue == name
++	// Smithers: a value `if`. Every operand is a reference, exactly as for the
++	// conditional expression arm below.
++	case ast.KindIfExpression:
++		expr := parent.AsIfExpression()
++		return expr.Condition == name || expr.WhenTrue == name || expr.WhenFalse == name
+ 	case ast.KindVariableDeclaration,
+ 		ast.KindParameter,
+ 		ast.KindBindingElement,

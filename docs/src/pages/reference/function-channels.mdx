@@ -1,6 +1,6 @@
 # Function Channels [Reference for values, errors, and requirements]
 
-Every VibeLang function is analyzed across three conceptual channels, but all runtime values use ordinary types:
+Every Smithers function is analyzed across three conceptual channels, but all runtime values use ordinary types:
 
 | Parameter | Meaning | Runtime representation |
 | --- | --- | --- |
@@ -18,7 +18,7 @@ function getUser(
 ): Result<User, DatabaseError | NotFound> {
   const db = Database.context()
   const log = Logger.context()
-  const row = db.find(id).unwrap()
+  const row = db.find(id)!
   if (row === null) throw new NotFound(id)
   log.info(`user:${id}`)
   return User.from(row)
@@ -38,7 +38,7 @@ R = Database | Logger
 | Operation | Effect on `E` | Effect on `R` |
 | --- | --- | --- |
 | return a Result | union returned errors | union called requirements |
-| `.unwrap()` | propagate the Result error | unchanged |
+| `!` | propagate the Result error | replaces `!` |
 | `Result.match` / `recover` | remove or transform handled errors | unchanged |
 | `throw ErrorSubclass` | add that Error type | unchanged |
 | `Layer.provide` | unchanged | remove provided capabilities |
@@ -53,11 +53,11 @@ export declare function boundary(): Result<A, E>
 export declare function asyncBoundary(): Promise<Result<A, E>>
 ```
 
-These are ordinary generic return types, not failure annotations. Context requirements are inferred from `Capability.context()` and retained in VibeLang analysis metadata. The declaration-file representation for `R` remains compiler-owned.
+These are ordinary generic return types, not failure annotations. Context requirements are inferred from `Capability.context()` and retained in Smithers analysis metadata. The declaration-file representation for `R` remains compiler-owned.
 
-The current POC appends a versioned `@vibeEffects` JSON tag to exported
+The current POC appends a versioned `@smithersEffects` JSON tag to exported
 `.d.mts` declarations. It records sorted `failures` and `requirements` and can
-be decoded with `readDeclarationEffects` from `vibelang/language`. This is an
+be decoded with `readDeclarationEffects` from `smthrs/language`. This is an
 interchange experiment that preserves rows for tooling; it does not lock the
 eventual TypeScript-level representation, overload behavior, or generic row
 encoding. Declaration emission also collapses compiler-generated success/error
@@ -72,14 +72,14 @@ No marker opts a function into inference. Public API authors should spell `Resul
 
 ## TypeScript Boundaries
 
-Every imported TypeScript or JavaScript runtime call adds the distinguished checked `panic` case unless trusted `@throws {never}` metadata opts out or `@throws {T}` declares a more precise channel. The caller must propagate panic, explicitly catch it, or call through a trusted adapter that catches and translates it. Runtime TypeScript use also adds the built-in `TypeScript` requirement; type-only imports do not.
+Every imported TypeScript or JavaScript runtime call adds the distinguished checked `panic` case unless trusted `@throws {never}` metadata opts out or `@throws {T}` declares a more precise channel. The caller must propagate panic, explicitly catch it, or call through a trusted adapter that catches and translates it. 
 
 ## Async Boundary
 
-VibeLang does not add an error generic to Promise. It wraps an ordinary Result:
+Smithers does not add an error generic to Promise. It wraps an ordinary Result:
 
 ```ts
 Promise<Result<A, E>>
 ```
 
-Authored VibeLang uses only `await` for Promise consumption. The compiler rejects `.then`, `.catch`, and `.finally` calls.
+Authored Smithers uses only `await` for Promise consumption. The compiler rejects `.then`, `.catch`, and `.finally` calls.

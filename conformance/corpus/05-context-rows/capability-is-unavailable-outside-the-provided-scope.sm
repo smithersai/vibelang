@@ -1,0 +1,22 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string
+}
+
+function read(key: string): string {
+  return Directory.context().lookup(key)
+}
+
+const live: Directory = { lookup: (key) => (key === "ada" ? "Ada" : "none") }
+
+const inside = Layer.provide(Layer.succeed(Directory, live), () => [read("ada")])
+
+// The environment is scoped to the provided computation. Once Layer.provide has
+// returned, the capability is unsatisfied again.
+const outside = read("ada")
+
+export function main(): string[] {
+  return [...inside, outside]
+}

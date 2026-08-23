@@ -23,7 +23,7 @@ import {
 } from "./index.ts"
 
 const stepContract = compileActionContract(`
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 class StepFailed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -31,7 +31,7 @@ export abstract class Step extends Action<
   (input: { remaining: number; total: number }) => Result<{ remaining: number; total: number }, StepFailed>
 > {}
 `, {
-  fileName: "contracts/loop-step.vibe",
+  fileName: "contracts/loop-step.sm",
   exportName: "Step",
   id: "test/loop/Step",
   version: 1
@@ -51,7 +51,7 @@ const actionBindings = Object.freeze([
 ])
 
 const source = `
-import { durable, loopWhile } from "vibelang:flows"
+import { durable, loopWhile } from "smithers:flows"
 import { Step } from "test:loop-actions"
 
 throw new Error("the authored loop module must never execute")
@@ -67,7 +67,7 @@ export const Countdown = durable(function Countdown(input: { count: number }) {
 `
 
 const compileCountdown = (text = source) => compileDurableSource(text, {
-  fileName: "flows/loop.vibe",
+  fileName: "flows/loop.sm",
   flowId: "test/loop/Countdown",
   flowVersion: 1,
   actions: actionBindings
@@ -146,23 +146,23 @@ test("loopWhile lowers to a format-2 round-budgeted template without evaluating 
 test("unsupported loop spellings and budgets fail closed while raw while-loops stay rejected", () => {
   const fixtures: readonly { readonly text: string; readonly code: string }[] = [
     // captures in the condition template
-    { text: source.replace("state => state.remaining > 0,", "state => input.count > 0,"), code: "VIBE4121" },
+    { text: source.replace("state => state.remaining > 0,", "state => input.count > 0,"), code: "SMITHERS4121" },
     // runtime budget
-    { text: source.replace("\n    5\n", "\n    input.count\n"), code: "VIBE4121" },
+    { text: source.replace("\n    5\n", "\n    input.count\n"), code: "SMITHERS4121" },
     // zero budget
-    { text: source.replace("\n    5\n", "\n    0\n"), code: "VIBE4121" },
+    { text: source.replace("\n    5\n", "\n    0\n"), code: "SMITHERS4121" },
     // budget over the ceiling
-    { text: source.replace("\n    5\n", "\n    1001\n"), code: "VIBE4121" },
+    { text: source.replace("\n    5\n", "\n    1001\n"), code: "SMITHERS4121" },
     // A non-boolean condition is rejected by the typed intrinsic declaration
     // itself before template lowering begins.
-    { text: source.replace("state => state.remaining > 0,", "state => state.remaining,"), code: "VIBE4100" },
+    { text: source.replace("state => state.remaining > 0,", "state => state.remaining,"), code: "SMITHERS4100" },
     // block bodies stay outside the bounded template subset
     {
       text: source.replace(
         "state => Step.run({ remaining: state.remaining, total: state.total }),",
         "state => { return Step.run({ remaining: state.remaining, total: state.total }) },"
       ),
-      code: "VIBE4121"
+      code: "SMITHERS4121"
     }
   ]
   for (const fixture of fixtures) {
@@ -175,7 +175,7 @@ test("unsupported loop spellings and budgets fail closed while raw while-loops s
   // An authored `while` statement still fails closed: only the explicit
   // compiler-owned template creates a durable loop.
   const rawWhile = compileCountdown(`
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 import { Step } from "test:loop-actions"
 export const Countdown = durable(function Countdown(input: { count: number }) {
   while (input.count > 0) { }
@@ -184,7 +184,7 @@ export const Countdown = durable(function Countdown(input: { count: number }) {
 `)
   expect(rawWhile.ok).toBe(false)
   if (rawWhile.ok) throw new Error("expected raw while rejection")
-  expect(rawWhile.diagnostics[0]!.code).toBe("VIBE4107")
+  expect(rawWhile.diagnostics[0]!.code).toBe("SMITHERS4107")
 })
 
 test("forged loop artifacts cannot downgrade the format, widen the budget, or invent operators", () => {
@@ -338,7 +338,7 @@ test("crashes after round materialization and round success resume the chain wit
   if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
   const node = loopNode(compiled.plan)
   const deployment = deploymentFor(compiled.plan, "loop-crash")
-  const directory = mkdtempSync(join(tmpdir(), "vibe-loop-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-loop-"))
   const database = join(directory, "durable.sqlite")
   const round1Child = `loop-${digest({ loopNodeId: node.id, round: 1 })}`
   stepCalls.length = 0
@@ -400,7 +400,7 @@ test("two independent connections converge on one durable round chain", async ()
   const compiled = compileCountdown()
   if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
   const deployment = deploymentFor(compiled.plan, "loop-race")
-  const directory = mkdtempSync(join(tmpdir(), "vibe-loop-race-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-loop-race-"))
   const database = join(directory, "durable.sqlite")
   stepCalls.length = 0
   const storeA = new DurableStore(database)

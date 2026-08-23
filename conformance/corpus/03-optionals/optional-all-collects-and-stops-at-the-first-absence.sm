@@ -1,0 +1,13 @@
+function lookup(id: number): Optional<string> {
+  if (id === 1) return "Ada"
+  return undefined
+}
+
+export function main(): string[] {
+  const every = Optional.all([lookup(1), lookup(1)])
+  const partial = Optional.all([lookup(1), lookup(2), lookup(3)])
+  return [
+    every.match({ some: (values) => values.join(","), none: () => "none" }),
+    partial.match({ some: (values) => values.join(","), none: () => "none" }),
+  ]
+}

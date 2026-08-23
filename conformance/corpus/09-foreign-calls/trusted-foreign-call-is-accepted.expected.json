@@ -1,0 +1,6 @@
+{
+  "title": "a foreign function whose resolved JSDoc declares @throws {never} is trusted and needs no Result channel",
+  "expect": "output",
+  "stdout": ["double(21) = 42"],
+  "typescript": ["foreign.ts"]
+}

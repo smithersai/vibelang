@@ -1,0 +1,22 @@
+const entries = new Map<string, string>([
+  ["ada", "Ada Lovelace"],
+  ["", "anonymous"],
+])
+
+function lookup(key: string): string | null {
+  return entries.get(key) ?? null
+}
+
+export function describe(key: string): string {
+  if (const name = lookup(key); name !== null) {
+    return `found ${name}`
+  } else if (const fallback = lookup(""); fallback !== null) {
+    return `fell back to ${fallback} for ${key}`
+  } else {
+    return `nothing for ${key}`
+  }
+}
+
+export function main(): string[] {
+  return [describe("ada"), describe("zoe")]
+}

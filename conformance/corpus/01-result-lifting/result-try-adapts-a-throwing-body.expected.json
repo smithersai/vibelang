@@ -1,0 +1,7 @@
+{
+  "title": "Result.try adapts a throwing body into a Result whose failure channel keeps Panic",
+  "expect": "output",
+  "stdout": ["41", "panic"],
+  "typescript": ["foreign.ts"],
+  "notes": "poc/src/language/README.md: 'The public Result.try/Result.tryPromise adapters are accepted in authored .sm with their documented Panic-retaining types. The inline callback body is an authored boundary.' specification/failures.mdx requires a caller to 'propagate panic, explicitly catch it, or use a trusted adapter that catches and translates it'; Result.try is that adapter, and the declared Result<number, Panic> is the translated channel. `parseIntegerUnchecked` deliberately carries no @throws claim."
+}

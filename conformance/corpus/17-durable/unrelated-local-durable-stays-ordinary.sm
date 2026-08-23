@@ -1,0 +1,7 @@
+function durable(value: string): string {
+  return `runtime:${value}`
+}
+
+export function main(): string[] {
+  return [durable("local")]
+}

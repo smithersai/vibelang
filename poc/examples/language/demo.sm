@@ -1,0 +1,68 @@
+import { Context } from "smthrs/context"
+import { Panic, panic } from "smithers:exceptions"
+import { Layer } from "smthrs/provider"
+import { trustedLog } from "./foreign.ts"
+
+class NotFound extends Error {
+  constructor(readonly id: number) { super(`user ${id} was not found`) }
+}
+
+class Timeout extends Error {
+  constructor(readonly milliseconds: number) { super(`timed out after ${milliseconds}ms`) }
+}
+
+interface User { readonly id: number; readonly name: string }
+
+abstract class Db extends Context {
+  abstract find(id: number): Promise<Result<Optional<User>, Timeout>>
+}
+
+abstract class Logger extends Context {
+  abstract info(message: string): void
+}
+
+async function fetchUser(id: number): Promise<Result<User, NotFound | Timeout>> {
+  const db = Db.context()
+  const log = Logger.context()
+  log.info(`fetch ${id}`)
+  const candidate = (await db.find(id)).unwrap()
+  return candidate.toResult(new NotFound(id)).unwrap()
+}
+
+function cachedUser(id: number): Optional<User> {
+  if (id === 1) return { id, name: "cached Ada" }
+  return undefined
+}
+
+function deliberatePanic(enabled: boolean): Result<string, Panic> {
+  if (enabled) panic("demonstration panic")
+  return "safe"
+}
+
+const db: Db = {
+  async find(id: number): Promise<Result<Optional<User>, Timeout>> {
+    if (id === 408) throw new Timeout(250)
+    if (id === 1) return { id, name: "Ada" }
+    return null
+  },
+}
+
+const logger: Logger = { info: (message) => trustedLog(`[demo] ${message}`) }
+const App = Layer.merge(Layer.succeed(Db, db), Layer.succeed(Logger, logger))
+
+await Layer.provide(App, async () => {
+  const name = (await fetchUser(1)).match({
+    ok: (user) => user.name,
+    error: (error) => error.match({
+      NotFound: () => "Guest",
+      Timeout: () => "Retry later",
+    }),
+  })
+  trustedLog("loaded:", name)
+
+  trustedLog("cached:", cachedUser(1).unwrapOr({ id: -1, name: "Guest" }).name)
+  trustedLog("panic value:", deliberatePanic(false).match({
+    ok: (value) => value,
+    error: () => "recovered panic",
+  }))
+})

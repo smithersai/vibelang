@@ -1,8 +1,8 @@
 // The native TypeScript 7 preview intentionally does not expose the historical
 // JavaScript compiler API. This alias is temporary POC scaffolding until the Go
-// compiler has a real VibeLang extension/IR seam.
+// compiler has a real Smithers extension/IR seam.
 import * as ts from "typescript-js";
-import { VibeFailure } from "../runtime/failure.ts";
+import { SmithersFailure } from "../runtime/failure.ts";
 
 export type SchemaNode =
   | { kind: "string" | "number" | "boolean" | "null" | "unknown" }
@@ -12,7 +12,7 @@ export type SchemaNode =
   | { kind: "union"; variants: SchemaNode[] }
   | { kind: "object"; properties: Record<string, { optional: boolean; schema: SchemaNode }> };
 
-export class ValidationFailure extends VibeFailure {
+export class ValidationFailure extends SmithersFailure {
   declare readonly _tag: "ValidationFailure";
   constructor(readonly path: string, readonly expected: string) {
     super("ValidationFailure");
@@ -25,7 +25,7 @@ export class ValidationFailure extends VibeFailure {
  * and emit backend-neutral schema IR. The real compiler already owns this AST.
  */
 export function deriveSchema(source: string, typeName: string): SchemaNode {
-  const file = ts.createSourceFile("schema.vibe.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const file = ts.createSourceFile("schema.sm.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const parseDiagnostics = (file as ts.SourceFile & { parseDiagnostics: readonly ts.Diagnostic[] }).parseDiagnostics;
   if (parseDiagnostics.length > 0) {
     throw new SyntaxError(`Schema.derive input did not parse: ${parseDiagnostics

@@ -1,23 +1,19 @@
 # Asset Imports [Turn project files into typed modules at compile time]
 
-VibeLang treats compiler-known files as tracked source inputs. Every non-code or foreign-source import uses standard import attributes; the `type` attribute selects a built-in or user-defined loader.
+Smithers treats compiler-known files as tracked source inputs. Every non-code or foreign-source import uses standard import attributes; the `type` attribute selects a built-in or user-defined loader.
 
 :::warning Implementation status
-The checked POC now integrates one bounded static form into every root CLI
-project command: a relative static import with at least one runtime binding and
-literal `with { type: "..." }` attributes. It generates a compiler-issued
-pure-data module without evaluating the author module, stages deterministic
-JavaScript under `__vibelang_assets__/`, and carries it through checking,
-declaration/source-map emit, cache replay, and `--noEmit`. The emitter removes
-the attributes only after the import is mapped to generated JavaScript.
-
-The broader programmatic source-asset seam exposed by `vibelang/build` now
-discovers asset re-exports, literal dynamic imports, and loader-generated
-module graphs up to depth four. Those forms are issued, cached, and reconciled
-by `compileSourceAssetModules`, but they are not yet wired end to end through
-the root Vibe emitter/runtime graph: root CLI execution still supports the
-static binding form above. Type-only and side-effect asset forms and general
-generated code fail closed.
+The checked POC integrates relative static imports, attributed named/namespace
+re-exports, literal dynamic imports, and loader-generated module graphs through
+four levels into the root CLI project pipeline. It generates compiler-issued
+pure-data modules without evaluating author modules, stages deterministic
+JavaScript under `__smithers_assets__/`, and carries the complete graph through
+semantic binding, checking, declaration/source-map emit, cache replay,
+`--noEmit`, and runtime execution. The emitter removes attributes only after an
+edge is mapped to generated JavaScript. The same forms are available through
+the programmatic `smthrs/build` seam. Type-only and side-effect forms, bare
+star re-exports, nonliteral dynamic imports/attributes, and general generated
+code fail closed.
 
 Programmatic registration rejects ordinary in-process callbacks by default. A
 third-party loader is a `createSandboxedLoader` module or a provisionally
@@ -45,20 +41,19 @@ import Prompt from "./coding-agent.mdx" with { type: "mdx" }
 
 Attribute values are strings, matching JavaScript import-attribute syntax. JSON produces checked data, text produces a string, and MDX produces a typed component module. Parsed formats preserve source locations for diagnostics.
 
-In the current root CLI POC, use a static runtime binding. Missing or legacy
-`assert` attributes, side-effect/type-only forms, asset re-exports/dynamic
-imports at this integration layer, dynamic attributes, paths outside the real
-project root, symbolic or hard-link aliases, conflicting shapes for one asset,
-and code/asset identity overlap are rejected before project output is
-committed. The programmatic seam separately accepts `export { ... } from` and
-`export * as ... from` with literal attributes plus literal
-`import(path, { with: attributes })`; bare `export *`, computed specifiers, and
-nonliteral/spread attributes remain rejected. Authored input is byte-bounded
-before parsing, and file identity is reconciled after loader execution.
+The current root CLI and programmatic seam accept static runtime bindings,
+`export { ... } from` and `export * as ... from` with literal attributes, plus
+literal `import(path, { with: attributes })`. Missing or legacy `assert`
+attributes, side-effect/type-only forms, bare `export *`, computed specifiers,
+nonliteral/spread attributes, paths outside the real project root, symbolic or
+hard-link aliases, conflicting shapes for one asset, and code/asset identity
+overlap are rejected before project output is committed. Authored input is
+byte-bounded before parsing, and file identity is reconciled after loader
+execution.
 Generated modules admit literal data and declared generated-module edges only;
 prototype-mutating forms and computed typed-array allocations fail closed.
-`vibe inspect` uses the same issued root-CLI asset modules as `check` and
-reports `VIBE_ASSET_IMPORT` with source diagnostics when preflight fails.
+`smithers inspect` uses the same issued root-CLI asset modules as `check` and
+reports `SMITHERS_ASSET_IMPORT` with source diagnostics when preflight fails.
 
 The built-in POC module shapes are also narrower than the design contract.
 `{ type: "markdown" }` (and the `.md` extension default in the programmatic
@@ -97,7 +92,7 @@ import systemPrompt from "./prompts/reviewer.md" with { type: "text" }
 const response = (await model.generate({
   system: systemPrompt,
   prompt: reviewRequest,
-})).unwrap()
+}))!
 ```
 
 There is no runtime file path to deploy. The compiler tracks and embeds the Markdown source.
@@ -106,7 +101,7 @@ There is no runtime file path to deploy. The compiler tracks and embeds the Mark
 
 ```ts
 // Provisional programmatic POC registration
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 
 const loadYaml = async (asset, context) => {
   const value = parseYaml(asset.text())
@@ -167,7 +162,7 @@ An imported npm package is code and uses an ordinary import:
 import { transform } from "@acme/native-transform"
 ```
 
-On Node or Bun, its Node-API addon remains a runtime dependency and contributes the corresponding TypeScript host requirement. VibeLang does not pretend such a package is portable to every target.
+On Node or Bun, its Node-API addon remains a runtime dependency and contributes the corresponding TypeScript host requirement. Smithers does not pretend such a package is portable to every target.
 
 ## MDX Is General Purpose
 

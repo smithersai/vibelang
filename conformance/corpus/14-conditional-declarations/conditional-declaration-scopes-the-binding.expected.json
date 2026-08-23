@@ -1,0 +1,6 @@
+{
+  "title": "a declaration in an if header is visible in every branch of the construct and nowhere after it",
+  "expect": "output",
+  "stdout": ["found Ada Lovelace", "fell back to anonymous for zoe"],
+  "notes": "poc/src/language/README.md records else-visibility of the binding as provisional POC evidence matching Go's `if v := f(); cond { } else { }`, not a ratified rule."
+}

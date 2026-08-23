@@ -46,7 +46,7 @@ describe("built-in instances", () => {
   test("every built-in produces an unsigned 32-bit integer", () => {
     const numbers = [0, -0, 1, -1, 2 ** 31, 2 ** 53, -(2 ** 53), 0.1, -0.1, Number.NaN, Infinity, -Infinity];
     for (const value of numbers) expect(isUint32(Hash.number.hash(value))).toBe(true);
-    for (const value of ["", "a", "vibelang", "\u{1f600}"]) expect(isUint32(Hash.string.hash(value))).toBe(true);
+    for (const value of ["", "a", "smithers", "\u{1f600}"]) expect(isUint32(Hash.string.hash(value))).toBe(true);
     for (const value of [true, false]) expect(isUint32(Hash.boolean.hash(value))).toBe(true);
     for (const value of [1, "a", true, undefined, null, 10n, Symbol("s"), {}, [], () => 0]) {
       expect(isUint32(Hash.any.hash(value))).toBe(true);
@@ -65,8 +65,8 @@ describe("built-in instances", () => {
   });
 
   test("a hash is deterministic across calls and instances", () => {
-    expect(Hash.string.hash("vibelang")).toBe(Hash.string.hash("vibelang"));
-    expect(Hash.any.hash("vibelang")).toBe(Hash.string.hash("vibelang"));
+    expect(Hash.string.hash("smithers")).toBe(Hash.string.hash("smithers"));
+    expect(Hash.any.hash("smithers")).toBe(Hash.string.hash("smithers"));
     expect(Hash.any.hash(42)).toBe(Hash.number.hash(42));
     expect(Hash.any.hash(true)).toBe(Hash.boolean.hash(true));
     expect(Hash.boolean.hash(true)).not.toBe(Hash.boolean.hash(false));
@@ -135,7 +135,7 @@ describe("the hash law", () => {
   test("every built-in pairing is lawful over a mixed sample set", () => {
     const numbers = [0, -0, 1, 2, Number.NaN, 0.5, 2 ** 40];
     expect(Hash.checkLaws(Equivalence.number, Hash.number, numbers).isNone()).toBe(true);
-    expect(Hash.checkLaws(Equivalence.string, Hash.string, ["", "a", "a", "vibelang"]).isNone()).toBe(true);
+    expect(Hash.checkLaws(Equivalence.string, Hash.string, ["", "a", "a", "smithers"]).isNone()).toBe(true);
     expect(Hash.checkLaws(Equivalence.boolean, Hash.boolean, [true, false, true]).isNone()).toBe(true);
 
     const mixed: unknown[] = [1, -0, 0, Number.NaN, "a", "a", true, null, undefined, 5n, { x: 1 }, [1]];

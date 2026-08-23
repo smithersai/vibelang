@@ -1,0 +1,6 @@
+{
+  "title": "rootCause walks the whole cause chain to the deepest cause, not just one level",
+  "expect": "output",
+  "stdout": ["top lookup failed / root disk offline"],
+  "notes": "docs/DECISIONS.md 'Typed failures' (Locked) and specification/failures.mdx, 'Error Prototype', require rootCause on every Error instance. 04-nominal-errors/error-root-cause covers the no-cause case, where rootCause returns the error itself. This case covers the chain: three levels deep, so an implementation that returned only `error.cause` would print 'storage unavailable' and fail."
+}

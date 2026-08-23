@@ -1,0 +1,5 @@
+import { absent } from "./importing-a-name-a-module-does-not-export-is-rejected.mod.sm"
+
+export function main(): string[] {
+  return [typeof absent === "function" ? "present" : "absent"]
+}

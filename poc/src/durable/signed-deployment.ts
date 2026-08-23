@@ -31,8 +31,8 @@ const MAX_ENCODED_KEY_BYTES = 512
 const MAX_TRUSTED_DEPLOYMENT_KEYS = 256
 const HEX_DIGEST = /^[0-9a-f]{64}$/
 const BASE64URL = /^[A-Za-z0-9_-]+$/
-const KEY_ID_DOMAIN = Buffer.from("vibelang.ed25519.public-key.v1\0", "utf8")
-const SIGNATURE_DOMAIN = Buffer.from("vibelang.deployment-manifest.v1\0", "utf8")
+const KEY_ID_DOMAIN = Buffer.from("smithers.ed25519.public-key.v1\0", "utf8")
+const SIGNATURE_DOMAIN = Buffer.from("smithers.deployment-manifest.v1\0", "utf8")
 
 export class DeploymentSignatureError extends Error {
   constructor(message: string) {
@@ -59,7 +59,7 @@ export interface TrustedDeploymentKey {
 
 export interface SignedDeploymentArtifact {
   readonly artifactVersion: 1
-  readonly kind: "vibelang.deployment"
+  readonly kind: "smithers.deployment"
   readonly plan: PlanTemplate
   readonly manifest: DeploymentManifest
   readonly signer: {
@@ -77,7 +77,7 @@ export interface SignedDeploymentArtifact {
  * authority boundary; this symbol also prevents an ordinary object literal
  * from accidentally satisfying AuthenticatedDeployment in TypeScript.
  */
-const authenticatedDeploymentBrand: unique symbol = Symbol("vibelang.authenticated-deployment.v1")
+const authenticatedDeploymentBrand: unique symbol = Symbol("smithers.authenticated-deployment.v1")
 
 /**
  * Opaque process-local proof that one concrete BuiltDeployment matched a
@@ -171,7 +171,7 @@ const unsignedEnvelope = (
   signer: SignedDeploymentArtifact["signer"]
 ) => ({
   artifactVersion: 1 as const,
-  kind: "vibelang.deployment" as const,
+  kind: "smithers.deployment" as const,
   plan,
   manifest,
   signer
@@ -325,7 +325,7 @@ export const decodeSignedDeploymentArtifact = (
   const record = exactObject(decoded, "signed deployment artifact", [
     "artifactVersion", "digest", "kind", "manifest", "plan", "signature", "signer"
   ])
-  if (record.artifactVersion !== 1 || record.kind !== "vibelang.deployment") {
+  if (record.artifactVersion !== 1 || record.kind !== "smithers.deployment") {
     return fail("signed deployment artifact has an unsupported kind or version")
   }
   const signerRecord = exactObject(record.signer, "signed deployment signer", ["algorithm", "keyId"])

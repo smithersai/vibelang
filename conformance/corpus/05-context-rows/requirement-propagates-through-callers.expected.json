@@ -1,0 +1,5 @@
+{
+  "title": "a requirement discovered in a callee propagates to every direct static caller",
+  "expect": "output",
+  "stdout": ["Ada@7", "none@7"]
+}

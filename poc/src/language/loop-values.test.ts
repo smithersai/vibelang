@@ -4,30 +4,30 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import * as ts from "typescript-js";
-import { compileVibe } from "./compile.ts";
+import { compileSmithers } from "./compile.ts";
 import { analyzeSource } from "./analyze.ts";
 import { checkEmittedTypeScript } from "./validate.ts";
 import { __vsInspectResult } from "../runtime/index.ts";
 
 async function executeLoops(source: string, name: string) {
-  const compiled = compileVibe(source, {
-    fileName: `${import.meta.dir}/${name}.vibe`,
+  const compiled = compileSmithers(source, {
+    fileName: `${import.meta.dir}/${name}.sm`,
     outputFileName: `${import.meta.dir}/${name}.generated.ts`,
-    sourceName: `${name}.vibe`,
+    sourceName: `${name}.sm`,
     runtimeImport: "../runtime/index.ts",
   });
   expect(compiled.analysis.diagnostics).toEqual([]);
   expect(checkEmittedTypeScript(compiled.code, `${import.meta.dir}/${name}.generated.ts`)
     .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)
     .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"))).toEqual([]);
-  const executable = compileVibe(source, {
-    fileName: `${import.meta.dir}/${name}.vibe`,
+  const executable = compileSmithers(source, {
+    fileName: `${import.meta.dir}/${name}.sm`,
     outputFileName: `${import.meta.dir}/${name}.generated.ts`,
-    sourceName: `${name}.vibe`,
+    sourceName: `${name}.sm`,
     runtimeImport: pathToFileURL(`${import.meta.dir}/../runtime/index.ts`).href,
   });
   const javascript = new Bun.Transpiler({ loader: "ts", target: "bun" }).transformSync(executable.code);
-  const directory = await mkdtemp(join(tmpdir(), "vibe-loop-values-"));
+  const directory = await mkdtemp(join(tmpdir(), "smithers-loop-values-"));
   try {
     const modulePath = join(directory, `${name}.mjs`);
     await writeFile(modulePath, javascript);
@@ -87,7 +87,7 @@ test("loop expression values execute as runtime loops with break and else paths"
 
   // Runtime-sized loops stay ordinary runtime loops; nothing unrolls.
   expect(compiled.code).toContain("for (const value of values)");
-  expect(compiled.code).toMatch(/let __vibe_loop_value_\d+: "three" \| "none";/);
+  expect(compiled.code).toMatch(/let __smithers_loop_value_\d+: "three" \| "none";/);
 
   expect(module.firstEven([1, 3, 4])).toBe(4);
   expect(module.firstEven([1, 3, 5])).toBe(-1);
@@ -140,7 +140,7 @@ test("unsafe loop value shapes fail closed with stable diagnostics", () => {
       }
       return found
     }
-  `)).toContain("VIBE1715");
+  `)).toContain("SMITHERS1715");
   // The else needs a delimitable value expression.
   expect(codesOf(`
     function f(values: number[]): number {
@@ -149,7 +149,7 @@ test("unsafe loop value shapes fail closed with stable diagnostics", () => {
       } else
       return found
     }
-  `)).toContain("VIBE1715");
+  `)).toContain("SMITHERS1715");
   // Statement position has no value destination: the label diagnostic and
   // the stray value-break diagnostic both fail the compile.
   const statementPosition = codesOf(`
@@ -159,8 +159,8 @@ test("unsafe loop value shapes fail closed with stable diagnostics", () => {
       } else 0
     }
   `);
-  expect(statementPosition).toContain("VIBE1704");
-  expect(statementPosition).toContain("VIBE1714");
+  expect(statementPosition).toContain("SMITHERS1704");
+  expect(statementPosition).toContain("SMITHERS1714");
   // A value break may not sit inside a nested function.
   expect(codesOf(`
     function f(values: number[]): number {
@@ -170,7 +170,7 @@ test("unsafe loop value shapes fail closed with stable diagnostics", () => {
       } else -1
       return found
     }
-  `)).toContain("VIBE1715");
+  `)).toContain("SMITHERS1715");
   // A jump may not escape the construct.
   expect(codesOf(`
     function f(values: number[]): number {
@@ -183,7 +183,7 @@ test("unsafe loop value shapes fail closed with stable diagnostics", () => {
       }
       return 0
     }
-  `)).toContain("VIBE1715");
+  `)).toContain("SMITHERS1715");
   // Raw Result values keep the shared ownership gate.
   expect(codesOf(`
     declare function attempt(): Result<number, Error>
@@ -193,7 +193,7 @@ test("unsafe loop value shapes fail closed with stable diagnostics", () => {
       } else attempt()
       return found
     }
-  `)).toContain("VIBE1706");
+  `)).toContain("SMITHERS1706");
 });
 
 test("ordinary labeled loops without value syntax keep existing behavior", () => {
@@ -207,5 +207,5 @@ test("ordinary labeled loops without value syntax keep existing behavior", () =>
       return last
     }
   `);
-  expect(analysis.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(["VIBE1704"]);
+  expect(analysis.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(["SMITHERS1704"]);
 });

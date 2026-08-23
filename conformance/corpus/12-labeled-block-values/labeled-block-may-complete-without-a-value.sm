@@ -1,0 +1,6 @@
+export function classify(score: number): string {
+  const grade = verdict: {
+    if (score >= 60) break :verdict "pass"
+  }
+  return grade
+}

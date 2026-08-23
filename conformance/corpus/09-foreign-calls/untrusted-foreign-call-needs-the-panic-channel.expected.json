@@ -1,0 +1,6 @@
+{
+  "title": "an untrusted foreign call in a function whose contract has no Panic channel is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1101", "line": 3, "column": 1 }],
+  "typescript": ["foreign.ts"]
+}

@@ -1,0 +1,13 @@
+{
+  "title": "following a binding through a project module's re-export does not make that module foreign: a clean named or star re-export chain still satisfies the pin",
+  "expect": "output",
+  "stdout": [
+    "11"
+  ],
+  "modules": [
+    "clean-chain-named.mod.sm",
+    "clean-chain-star.mod.sm",
+    "clean-chain-values.mod.sm"
+  ],
+  "notes": "specification/compatibility.mdx, 'Native Pin', and 'Runtime TypeScript Dependency': only USING a value from TypeScript or JavaScript code adds the requirement. This is the over-correction guard for the laundering rule that 21-native-pin/a-pin-reaching-a-host-module-through-a-re-export-is-rejected pins. The alternative implementation of that rule \u2014 treat any project module containing a foreign edge as foreign, or charge every re-export edge \u2014 is the shape of a fail-open this repository has already shipped in the opposite direction (a whole specifier namespace made requirement-free), and it would turn this program red. Both re-export spellings are exercised: `clean-chain-named.mod.sm` re-exports by name, `clean-chain-star.mod.sm` through `export *`, and the pinned function reads one binding from each. The printed value is arithmetic over both re-exported constants (8 + 1 + 2), so a chain that resolved to the wrong module fails here rather than passing quietly."
+}

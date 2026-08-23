@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "vibelang-risk-spike",
+      "name": "smithers-risk-spike",
       "devDependencies": {
         "@anthropic-ai/sdk": "^0.120.0",
         "@types/bun": "latest",

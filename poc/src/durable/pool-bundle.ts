@@ -21,11 +21,11 @@ import {
  *
  * One worker pool compiles to ONE deterministic JavaScript module containing
  * exactly the pool's selected Action implementations: each implementation's
- * complete checked `.vibe` source closure (the same sources its
+ * complete checked `.sm` source closure (the same sources its
  * `compileActionImplementationContract` projectDigest pins) is lowered by the
  * ordinary project compiler, transpiled module-by-module to a CommonJS-shaped
  * factory, and concatenated with an embedded copy of the capability-free
- * VibeLang runtime subset. The SHA-256 of the exact emitted JavaScript bytes is
+ * Smithers runtime subset. The SHA-256 of the exact emitted JavaScript bytes is
  * the pool's `bundleDigest` inside the deployment manifest, so the Ed25519
  * deployment signature transitively covers the worker bundle bytes.
  *
@@ -46,7 +46,7 @@ export const MAX_POOL_BUNDLE_BYTES = 4 * 1024 * 1024
 const HEX_DIGEST = /^[0-9a-f]{64}$/
 
 /** Marker specifier the lowered modules import compiler helpers from. */
-const RUNTIME_IMPORT_SPECIFIER = "vibelang-worker-bundle-runtime"
+const RUNTIME_IMPORT_SPECIFIER = "smithers-worker-bundle-runtime"
 const RUNTIME_NAMESPACE = "runtime"
 const RUNTIME_INDEX_PATH = "index.ts"
 
@@ -108,8 +108,8 @@ const RUNTIME_SUBSET_FILES = [
 /** Value exports the embedded runtime index provides to lowered modules. */
 const RUNTIME_VALUE_EXPORTS: Readonly<Record<string, readonly string[]>> = Object.freeze({
   "failure.ts": [
-    "VIBE_FAILURE", "VibeFailure", "__VSError", "__vsCatch", "catchFailure",
-    "isVibeFailure", "unwrapOptional", "__vsUnwrap", "throwExpression", "__vsThrow"
+    "SMITHERS_FAILURE", "SmithersFailure", "__VSError", "__vsCatch", "catchFailure",
+    "isSmithersFailure", "unwrapOptional", "__vsUnwrap", "throwExpression", "__vsThrow"
   ],
   "panic.ts": [
     "Panic", "__vsPanic", "__vsPanicValue", "catchPanic", "catchPanicPromise",
@@ -156,25 +156,25 @@ const RUNTIME_INDEX_CJS = [
   `"use strict";`,
   `Object.defineProperty(exports, "__esModule", { value: true });`,
   ...RUNTIME_SUBSET_FILES.map((file, index) =>
-    `const __vibeRuntime${index} = require("./${file}");`),
+    `const __smithersRuntime${index} = require("./${file}");`),
   ...RUNTIME_SUBSET_FILES.flatMap((file, index) =>
     [...RUNTIME_VALUE_EXPORTS[file]!].sort().map((name) =>
-      `exports.${name} = __vibeRuntime${index}.${name};`)),
+      `exports.${name} = __smithersRuntime${index}.${name};`)),
   // Capability machinery is deliberately absent from worker bundles. These
   // stubs keep class declarations loadable while any actual use fails closed.
-  `const __vibeNoCapability = (entry) => {`,
-  `  throw new TypeError("vibelang worker bundle: " + entry + " requires capability authority, ` +
+  `const __smithersNoCapability = (entry) => {`,
+  `  throw new TypeError("smithers worker bundle: " + entry + " requires capability authority, ` +
     `which bundle-executed implementations cannot receive in this POC");`,
   `};`,
-  `class Context { constructor() { __vibeNoCapability("Context"); } ` +
-    `static context() { __vibeNoCapability("Context.context()"); } }`,
-  `class Layer { constructor() { __vibeNoCapability("Layer"); } ` +
-    `static of() { __vibeNoCapability("Layer.of()"); } }`,
+  `class Context { constructor() { __smithersNoCapability("Context"); } ` +
+    `static context() { __smithersNoCapability("Context.context()"); } }`,
+  `class Layer { constructor() { __smithersNoCapability("Layer"); } ` +
+    `static of() { __smithersNoCapability("Layer.of()"); } }`,
   `exports.Context = Context;`,
   `exports.Layer = Layer;`,
-  `exports.__vsUse = () => __vibeNoCapability("__vsUse()");`,
+  `exports.__vsUse = () => __smithersNoCapability("__vsUse()");`,
   `exports.isLayer = () => false;`,
-  `exports.useCapability = () => __vibeNoCapability("useCapability()");`,
+  `exports.useCapability = () => __smithersNoCapability("useCapability()");`,
   ``
 ].join("\n")
 
@@ -212,7 +212,7 @@ const PANIC_REFLECT_PATTERN =
   `const reflectPanic = Object.getOwnPropertyDescriptor(Reflect, "panic");`
 const PANIC_REFLECT_REPLACEMENT =
   `const reflectPanic = { value: panic }; ` +
-  `// vibelang bundle patch: self-contained workers never mutate ambient Reflect`
+  `// smithers bundle patch: self-contained workers never mutate ambient Reflect`
 
 const patchRuntimeSource = (file: string, source: string): string => {
   if (file !== "panic.ts") return source
@@ -256,7 +256,7 @@ const loweredModulePath = (fileName: string): string => {
     .filter((part) => part !== "" && part !== "." && part !== "..")
     .join("/")
   if (normalized === "") return fail(`bundle source has an empty logical file name: ${fileName}`)
-  return normalized.replace(/\.vibe$/, ".ts")
+  return normalized.replace(/\.sm$/, ".ts")
 }
 
 const resolveRelativePath = (fromPath: string, specifier: string): string => {
@@ -379,7 +379,7 @@ const bundleActionFor = (selection: WorkerPoolBundleSelection, poolId: string): 
   const compiled = compileProject(
     retained.sources.map((source) => ({ fileName: source.fileName, source: source.source })),
     {
-      outDir: "/vibelang-pool-bundle-emit",
+      outDir: "/smithers-pool-bundle-emit",
       runtimeImport: RUNTIME_IMPORT_SPECIFIER,
       sourceMap: false,
       ...(retained.rootDir === undefined ? {} : { rootDir: retained.rootDir })
@@ -434,7 +434,7 @@ const bundleActionFor = (selection: WorkerPoolBundleSelection, poolId: string): 
 // ---------------------------------------------------------------------------
 
 const moduleDefinition = (module: BundleModule): string => [
-  `__vibeDefine(${JSON.stringify(module.namespace)}, ${JSON.stringify(module.path)}, ` +
+  `__smithersDefine(${JSON.stringify(module.namespace)}, ${JSON.stringify(module.path)}, ` +
     `function (exports, require, module, Error, EvalError, RangeError, ReferenceError, ` +
     `SyntaxError, TypeError, URIError) {`,
   module.commonJs,
@@ -442,10 +442,10 @@ const moduleDefinition = (module: BundleModule): string => [
 ].join("\n")
 
 const DISPATCH_SOURCE = `
-function __vibeDefect(name, message) {
+function __smithersDefect(name, message) {
   return { kind: "defect", defect: { name: name, message: String(message) } };
 }
-function __vibeThrownDefect(thrown) {
+function __smithersThrownDefect(thrown) {
   try {
     if (thrown !== null && typeof thrown === "object") {
       const name = typeof thrown.name === "string" ? thrown.name : "ThrownDefect";
@@ -458,16 +458,16 @@ function __vibeThrownDefect(thrown) {
           : { name: name, message: message, stack: stack }
       };
     }
-    return __vibeDefect("ThrownDefect", thrown);
+    return __smithersDefect("ThrownDefect", thrown);
   } catch (hostile) {
-    return __vibeDefect("DefectCodecDefect", "thrown value could not be encoded");
+    return __smithersDefect("DefectCodecDefect", "thrown value could not be encoded");
   }
 }
-function __vibeTypedFailure(action, error) {
+function __smithersTypedFailure(action, error) {
   const name = error && error.constructor ? error.constructor.name : undefined;
   const matches = action.errorVariants.filter(function (variant) { return variant.name === name; });
   if (matches.length !== 1) {
-    return __vibeDefect(
+    return __smithersDefect(
       "BundleFailureMappingDefect",
       "bundle could not map failure " + String(name) + " for " + action.actionId
     );
@@ -478,7 +478,7 @@ function __vibeTypedFailure(action, error) {
     const value = error[field.name];
     if (value === undefined) {
       if (!field.optional) {
-        return __vibeDefect(
+        return __smithersDefect(
           "BundleFailureMappingDefect",
           "failure " + variant.name + " is missing payload field " + field.name
         );
@@ -489,34 +489,34 @@ function __vibeTypedFailure(action, error) {
   }
   return { kind: "failure", error: { version: 1, identity: variant.identity, payload: payload } };
 }
-async function __vibeInvokeAction(invocation) {
+async function __smithersInvokeAction(invocation) {
   try {
     if (invocation === null || typeof invocation !== "object" || typeof invocation.actionId !== "string") {
-      return __vibeDefect("BundleInvocationDefect", "bundle invocation must name an actionId");
+      return __smithersDefect("BundleInvocationDefect", "bundle invocation must name an actionId");
     }
-    const action = __vibeActionTable.get(invocation.actionId);
+    const action = __smithersActionTable.get(invocation.actionId);
     if (action === undefined) {
-      return __vibeDefect("RoutingDefect", "bundle has no Action " + invocation.actionId);
+      return __smithersDefect("RoutingDefect", "bundle has no Action " + invocation.actionId);
     }
     if (
       invocation.actionVersion !== action.actionVersion ||
       invocation.actionContractDigest !== action.actionContractDigest
     ) {
-      return __vibeDefect(
+      return __smithersDefect(
         "ManifestVerificationDefect",
         "bundle rejected " + invocation.actionId + " contract identity"
       );
     }
-    const runtime = __vibeLoad("runtime", "index.ts");
+    const runtime = __smithersLoad("runtime", "index.ts");
     let entry;
     try {
-      const moduleExports = __vibeLoad(action.namespace, action.entryModule);
+      const moduleExports = __smithersLoad(action.namespace, action.entryModule);
       entry = moduleExports[action.exportName];
     } catch (loadError) {
-      return __vibeThrownDefect(loadError);
+      return __smithersThrownDefect(loadError);
     }
     if (typeof entry !== "function") {
-      return __vibeDefect(
+      return __smithersDefect(
         "BundleEntryDefect",
         "bundle module " + action.entryModule + " does not export function " + action.exportName
       );
@@ -525,55 +525,55 @@ async function __vibeInvokeAction(invocation) {
     try {
       output = await entry(invocation.input);
     } catch (thrown) {
-      return __vibeThrownDefect(thrown);
+      return __smithersThrownDefect(thrown);
     }
     if (runtime.isResult(output)) {
       const inspected = runtime.__vsInspectResult(output);
       if (inspected.ok) return { kind: "success", value: inspected.value };
       const error = inspected.error;
       if (runtime.isPanic(error)) {
-        return __vibeDefect("Panic", error && error.message ? error.message : "VibeLang panic");
+        return __smithersDefect("Panic", error && error.message ? error.message : "Smithers panic");
       }
-      return __vibeTypedFailure(action, error);
+      return __smithersTypedFailure(action, error);
     }
     return { kind: "success", value: output };
   } catch (unexpected) {
-    return __vibeThrownDefect(unexpected);
+    return __smithersThrownDefect(unexpected);
   }
 }
 `
 
 const LOADER_SOURCE = `
 // Every module resolves the identifier Error to this bundle-local subclass.
-// The Vibe runtime may therefore install its Error convenience methods without
+// The Smithers runtime may therefore install its Error convenience methods without
 // mutating host Error.prototype or colliding with another pool bundle.
-const __vibeHostError = globalThis.Error;
-class __vibeBundleError extends __vibeHostError {}
-function __vibeBuiltinError(name) {
-  return class extends __vibeBundleError {
+const __smithersHostError = globalThis.Error;
+class __smithersBundleError extends __smithersHostError {}
+function __smithersBuiltinError(name) {
+  return class extends __smithersBundleError {
     constructor(...args) {
       super(...args);
       this.name = name;
     }
   };
 }
-const __vibeBundleEvalError = __vibeBuiltinError("EvalError");
-const __vibeBundleRangeError = __vibeBuiltinError("RangeError");
-const __vibeBundleReferenceError = __vibeBuiltinError("ReferenceError");
-const __vibeBundleSyntaxError = __vibeBuiltinError("SyntaxError");
-const __vibeBundleTypeError = __vibeBuiltinError("TypeError");
-const __vibeBundleURIError = __vibeBuiltinError("URIError");
-const __vibeModules = new Map();
-function __vibeDefine(namespace, path, factory) {
-  __vibeModules.set(namespace + "\\u0001" + path, { factory: factory, exports: null, state: "defined" });
+const __smithersBundleEvalError = __smithersBuiltinError("EvalError");
+const __smithersBundleRangeError = __smithersBuiltinError("RangeError");
+const __smithersBundleReferenceError = __smithersBuiltinError("ReferenceError");
+const __smithersBundleSyntaxError = __smithersBuiltinError("SyntaxError");
+const __smithersBundleTypeError = __smithersBuiltinError("TypeError");
+const __smithersBundleURIError = __smithersBuiltinError("URIError");
+const __smithersModules = new Map();
+function __smithersDefine(namespace, path, factory) {
+  __smithersModules.set(namespace + "\\u0001" + path, { factory: factory, exports: null, state: "defined" });
 }
-function __vibeResolveRelative(fromPath, specifier) {
+function __smithersResolveRelative(fromPath, specifier) {
   const parts = fromPath.split("/");
   parts.pop();
   for (const segment of specifier.split("/")) {
     if (segment === "" || segment === ".") continue;
     if (segment === "..") {
-      if (parts.length === 0) throw new Error("vibelang bundle: import escapes the bundle: " + specifier);
+      if (parts.length === 0) throw new Error("smithers bundle: import escapes the bundle: " + specifier);
       parts.pop();
       continue;
     }
@@ -581,35 +581,35 @@ function __vibeResolveRelative(fromPath, specifier) {
   }
   return parts.join("/");
 }
-function __vibeLoad(namespace, path) {
+function __smithersLoad(namespace, path) {
   const key = namespace + "\\u0001" + path;
-  const entry = __vibeModules.get(key);
-  if (entry === undefined) throw new Error("vibelang bundle: unknown module " + namespace + ":" + path);
+  const entry = __smithersModules.get(key);
+  if (entry === undefined) throw new Error("smithers bundle: unknown module " + namespace + ":" + path);
   if (entry.state === "loaded" || entry.state === "loading") return entry.exports;
   entry.state = "loading";
   const moduleObject = { exports: {} };
   entry.exports = moduleObject.exports;
   const localRequire = function (specifier) {
     if (specifier === ${JSON.stringify(RUNTIME_IMPORT_SPECIFIER)}) {
-      return __vibeLoad(${JSON.stringify(RUNTIME_NAMESPACE)}, ${JSON.stringify(RUNTIME_INDEX_PATH)});
+      return __smithersLoad(${JSON.stringify(RUNTIME_NAMESPACE)}, ${JSON.stringify(RUNTIME_INDEX_PATH)});
     }
     if (specifier.startsWith(".")) {
-      return __vibeLoad(namespace, __vibeResolveRelative(path, specifier));
+      return __smithersLoad(namespace, __smithersResolveRelative(path, specifier));
     }
-    throw new Error("vibelang bundle: unsupported import " + specifier);
+    throw new Error("smithers bundle: unsupported import " + specifier);
   };
   entry.factory.call(
     undefined,
     moduleObject.exports,
     localRequire,
     moduleObject,
-    __vibeBundleError,
-    __vibeBundleEvalError,
-    __vibeBundleRangeError,
-    __vibeBundleReferenceError,
-    __vibeBundleSyntaxError,
-    __vibeBundleTypeError,
-    __vibeBundleURIError
+    __smithersBundleError,
+    __smithersBundleEvalError,
+    __smithersBundleRangeError,
+    __smithersBundleReferenceError,
+    __smithersBundleSyntaxError,
+    __smithersBundleTypeError,
+    __smithersBundleURIError
   );
   entry.exports = moduleObject.exports;
   entry.state = "loaded";
@@ -662,10 +662,10 @@ export const buildWorkerPoolBundle = (options: BuildWorkerPoolBundleOptions): Wo
 
   const lines: string[] = [
     `"use strict";`,
-    `// VibeLang tree-shaken worker pool bundle. Format version ${BUNDLE_FORMAT_VERSION}.`,
+    `// Smithers tree-shaken worker pool bundle. Format version ${BUNDLE_FORMAT_VERSION}.`,
     `// This file is content-addressed: its SHA-256 is the pool bundleDigest`,
     `// inside the signed deployment manifest. Do not edit.`,
-    `const __vibeBundleMeta = ${canonicalJson(meta)};`,
+    `const __smithersBundleMeta = ${canonicalJson(meta)};`,
     LOADER_SOURCE.trim()
   ]
   for (const module of runtimeModules()) lines.push(moduleDefinition(module))
@@ -673,11 +673,11 @@ export const buildWorkerPoolBundle = (options: BuildWorkerPoolBundleOptions): Wo
     for (const module of action.modules) lines.push(moduleDefinition(module))
   }
   lines.push(
-    `const __vibeActionTable = new Map(__vibeBundleMeta.actions.map(function (action) { ` +
+    `const __smithersActionTable = new Map(__smithersBundleMeta.actions.map(function (action) { ` +
       `return [action.actionId, action]; }));`,
     DISPATCH_SOURCE.trim(),
-    `export { __vibeInvokeAction };`,
-    `export const __vibePoolBundle = __vibeBundleMeta;`,
+    `export { __smithersInvokeAction };`,
+    `export const __smithersPoolBundle = __smithersBundleMeta;`,
     ``
   )
   const javascript = lines.join("\n")
@@ -738,9 +738,9 @@ export const WorkerPoolBundles = Object.freeze({
 export const bundleInvocationDriver = (invocationJson: string): string => [
   ``,
   `// --- bundle-executing worker driver (appended after digest verification) ---`,
-  `const __vibeInvocation = JSON.parse(${JSON.stringify(invocationJson)});`,
-  `export default async function __vibeWorkerMain() {`,
-  `  return await __vibeInvokeAction(__vibeInvocation);`,
+  `const __smithersInvocation = JSON.parse(${JSON.stringify(invocationJson)});`,
+  `export default async function __smithersWorkerMain() {`,
+  `  return await __smithersInvokeAction(__smithersInvocation);`,
   `}`,
   ``
 ].join("\n")

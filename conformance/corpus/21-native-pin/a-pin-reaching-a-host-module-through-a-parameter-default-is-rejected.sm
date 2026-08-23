@@ -1,0 +1,17 @@
+import { native } from "smithers:native"
+import { readFileSync } from "node:fs"
+
+// The host edge is in plain sight, in a parameter default rather than in the
+// body. A default expression executes inside the function it belongs to on
+// every call that omits the argument, so it is part of that function's graph;
+// an analysis that walks only statement bodies certifies this program with the
+// `node:fs` edge written on the line above the one it examined.
+function pinned(read = readFileSync): number {
+  return typeof read === "function" ? 1 : 0
+}
+
+native(pinned)
+
+export function main(): string[] {
+  return [String(pinned())]
+}

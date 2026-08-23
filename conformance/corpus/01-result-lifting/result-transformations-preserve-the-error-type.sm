@@ -1,0 +1,15 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function lookup(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+export function main(): string[] {
+  const mapped = lookup("ada").map((value) => value.toUpperCase()).unwrapOr("none")
+  const chained = lookup("ada").andThen((value) => lookup(value.slice(0, 3).toLowerCase())).unwrapOr("none")
+  const recovered = lookup("zoe").recover((error) => error.key).unwrapOr("none")
+  return [mapped, chained, recovered]
+}

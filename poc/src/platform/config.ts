@@ -49,7 +49,7 @@ export abstract class ConfigError extends Error {
   }
 }
 
-registerErrorType(ConfigError, "vibelang:ConfigError@1");
+registerErrorType(ConfigError, "smithers:ConfigError@1");
 
 /** The variable is unset and the spec declared no default. */
 export class MissingConfig extends ConfigError {
@@ -58,7 +58,7 @@ export class MissingConfig extends ConfigError {
     this.name = "MissingConfig";
   }
 }
-export interface MissingConfig extends NominalError<"vibelang:MissingConfig@1"> {}
+export interface MissingConfig extends NominalError<"smithers:MissingConfig@1"> {}
 
 /** The variable is set to something this spec cannot read. `reason` never quotes the value. */
 export class InvalidConfig extends ConfigError {
@@ -72,9 +72,9 @@ export class InvalidConfig extends ConfigError {
     this.name = "InvalidConfig";
   }
 }
-export interface InvalidConfig extends NominalError<"vibelang:InvalidConfig@1"> {}
+export interface InvalidConfig extends NominalError<"smithers:InvalidConfig@1"> {}
 
-registerErrorCodec(MissingConfig, "vibelang:MissingConfig@1", {
+registerErrorCodec(MissingConfig, "smithers:MissingConfig@1", {
   encode: (error): JsonValue => ({ variable: error.variable, message: error.message }),
   decode: (payload) => {
     if (
@@ -88,7 +88,7 @@ registerErrorCodec(MissingConfig, "vibelang:MissingConfig@1", {
   },
 });
 
-registerErrorCodec(InvalidConfig, "vibelang:InvalidConfig@1", {
+registerErrorCodec(InvalidConfig, "smithers:InvalidConfig@1", {
   encode: (error): JsonValue => ({ variable: error.variable, reason: error.reason, message: error.message }),
   decode: (payload) => {
     if (

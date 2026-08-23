@@ -1,0 +1,11 @@
+function parse(text: string): Result<number, RangeError> {
+  const value = Number(text)
+  if (Number.isNaN(value)) throw new RangeError(`${text} is not a number`)
+  return value
+}
+
+const first = parse("7").expect("the literal is a number")
+
+export function main(): string[] {
+  return [String(first)]
+}

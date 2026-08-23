@@ -1,0 +1,9 @@
+// `eval` is classified with `any`: it contributes the TypeScript requirement
+// and is not forbidden outright.
+function compute(source: string): string {
+  return `${eval(source)}`
+}
+
+export function main(): string[] {
+  return [compute("1 + 1")]
+}

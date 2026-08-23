@@ -14,11 +14,11 @@ import {
 } from "./schema-derive.ts";
 import type { SchemaDescriptor } from "./schema-runtime.ts";
 import { canonical, compareStableStrings, digest, freezeStable, stableClone, type StableJson } from "./stable.ts";
-import { recoverVibeSyntax, type RecoveredSource } from "../language/recover.ts";
+import { recoverSmithersSyntax, type RecoveredSource } from "../language/recover.ts";
 
-export const COMPTIME_MODULE_SPECIFIER = "vibelang:comptime";
+export const COMPTIME_MODULE_SPECIFIER = "smithers:comptime";
 export const COMPTIME_RUNTIME_ERROR =
-  '"vibelang:comptime" is compiler-only; compile this module before ordinary JavaScript execution';
+  '"smithers:comptime" is compiler-only; compile this module before ordinary JavaScript execution';
 
 /**
  * A loader may expose this source for the compiler-owned virtual module. Its
@@ -110,8 +110,8 @@ export interface ComptimeLoweringEdit {
 }
 
 export interface ComptimeLoweringProvenance {
-  readonly schema: "vibelang.comptime-lowering/v1";
-  readonly frontend: "vibelang-comptime-static@2";
+  readonly schema: "smithers.comptime-lowering/v1";
+  readonly frontend: "smithers-comptime-static@2";
   readonly file: string;
   readonly authoredDigest: string;
   readonly loweredDigest: string;
@@ -140,7 +140,7 @@ export interface ComptimeIntrinsicResult {
 
 export interface CompileComptimeIntrinsicsOptions {
   readonly compiler: ComptimeCompiler;
-  /** Project-relative TypeScript, JavaScript, or `.vibe` source names. */
+  /** Project-relative TypeScript, JavaScript, or `.sm` source names. */
   readonly sources: Readonly<Record<string, string>>;
   /**
    * Module specifier the lowered code uses to reach the derived-schema runtime
@@ -155,7 +155,7 @@ export interface CompileComptimeIntrinsicsOptions {
  * `source` is the AUTHORED text: it is what the lowered file is cut from, what
  * every provenance range and source-map coordinate names, and what the
  * authored digest covers. `file` is parsed from `recovery.parseSource`, the
- * frontend's pre-parse recovery of the same module, because authored VibeLang
+ * frontend's pre-parse recovery of the same module, because authored Smithers
  * diverges from the TypeScript grammar in general expression positions and
  * stock TypeScript cannot parse it. Recovery is not length-preserving, so
  * every node offset is a DERIVED offset: map it with `toAuthoredStart` /
@@ -190,7 +190,7 @@ function toAuthoredEnd(entry: ProjectEntry, end: number): number {
 
 /**
  * Two TypeScript parse errors are the deliberate shapes the checked frontend
- * reads authored VibeLang through, not evidence of unparseable source.
+ * reads authored Smithers through, not evidence of unparseable source.
  *
  * `TS1109` ("Expression expected.") at a control keyword is the bounded
  * initializer host and same-line return recovery: `const t = if (c) { a } else
@@ -269,9 +269,9 @@ interface SourceMapping {
   readonly originalColumn: number;
 }
 
-const VIRTUAL_ROOT = resolve("/vibelang-comptime-project");
-const PRELUDE_NAME = resolve(VIRTUAL_ROOT, "__vibelang_comptime__.d.ts");
-const SCHEMA_PRELUDE_NAME = resolve(VIRTUAL_ROOT, "__vibelang_schema__.d.ts");
+const VIRTUAL_ROOT = resolve("/smithers-comptime-project");
+const PRELUDE_NAME = resolve(VIRTUAL_ROOT, "__smithers_comptime__.d.ts");
+const SCHEMA_PRELUDE_NAME = resolve(VIRTUAL_ROOT, "__smithers_schema__.d.ts");
 const PRELUDE = [
   "export declare function comptime<T>(value: T): T;",
   "export declare namespace comptime { const target: string; }",
@@ -279,7 +279,7 @@ const PRELUDE = [
   "",
 ].join("\n");
 /**
- * The compiler-owned declaration for `"vibelang:comptime"`. `loader-registration.ts`
+ * The compiler-owned declaration for `"smithers:comptime"`. `loader-registration.ts`
  * merges the provisional `comptime.loader` registration surface into this same
  * text so there is one description of the module.
  */
@@ -294,7 +294,7 @@ const MAX_CALL_DEPTH = 64;
 const MAX_COMPTIME_STRING_LENGTH = 1_000_000;
 const MAX_TYPE_ALIAS_TEXT = 100_000;
 /** A declared-but-unassigned `let` local. Reading it is a deterministic error. */
-const UNINITIALIZED: unique symbol = Symbol("vibelang.comptime.uninitialized");
+const UNINITIALIZED: unique symbol = Symbol("smithers.comptime.uninitialized");
 const SOURCE_MAP_BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /**
@@ -331,7 +331,7 @@ export async function compileComptimeIntrinsics(
     importReplacements.set(entry, []);
     markerReplacements.set(entry, []);
     if (entry.recovery.diagnostics.length > 0) {
-      // Recovery refused a recognizably VibeLang construct: name the construct
+      // Recovery refused a recognizably Smithers construct: name the construct
       // instead of reporting the parser's cascade behind it. The offsets these
       // carry are already authored, so they bypass the derived-offset mapping.
       for (const refused of entry.recovery.diagnostics) {
@@ -826,7 +826,7 @@ export async function compileComptimeIntrinsics(
         argumentDigest: digest(item.argument.getText(item.entry.file)),
         // Reification is a distinct intrinsic: its descriptor bytes are the
         // cached value, and the authored type text is part of its identity.
-        ...(item.schema ? { intrinsic: "vibelang:schema/derive@1", typeText: item.schema.typeText } : {}),
+        ...(item.schema ? { intrinsic: "smithers:schema/derive@1", typeText: item.schema.typeText } : {}),
       },
       dependencies: item.dependencies,
     }),
@@ -1272,6 +1272,20 @@ class StaticExpressionEvaluator {
   readonly #phaseSpecificAllowed: boolean[] = [true];
   /** Containers constructed by this evaluation. Everything else is immutable. */
   readonly #owned = new WeakSet<object>();
+  /**
+   * The comptime iteration statements currently executing, innermost last.
+   *
+   * When the step budget is exhausted the innermost loop is what the author
+   * needs to see. The exact sub-expression the step counter happened to land
+   * on is deterministic but arbitrary: it is a function of an internal counter
+   * rather than of program structure, so it moves whenever unrelated earlier
+   * work changes the step total, and it squiggles an expression that is not
+   * itself defective. The construct the author must repair is the loop that
+   * did not terminate. This mirrors the call-depth budget, which already
+   * reports at the offending function rather than at whatever node the
+   * interpreter happened to be evaluating.
+   */
+  readonly #loops: ts.Statement[] = [];
   #callDepth = 0;
   #steps = 0;
   #allocations = 0;
@@ -1477,38 +1491,46 @@ class StaticExpressionEvaluator {
       return selected ? this.#statement(selected) : undefined;
     }
     if (ts.isWhileStatement(statement)) {
-      while (this.#truthy(this.evaluate(statement.expression))) {
-        this.#step(statement);
-        const completion = this.#statement(statement.statement);
-        if (completion?.kind === "return") return completion;
-        if (completion?.kind === "break") break;
-      }
-      return undefined;
-    }
-    if (ts.isDoStatement(statement)) {
-      do {
-        this.#step(statement);
-        const completion = this.#statement(statement.statement);
-        if (completion?.kind === "return") return completion;
-        if (completion?.kind === "break") break;
-      } while (this.#truthy(this.evaluate(statement.expression)));
-      return undefined;
-    }
-    if (ts.isForStatement(statement)) {
-      this.#locals.push(new Map());
-      try {
-        if (statement.initializer) {
-          if (ts.isVariableDeclarationList(statement.initializer)) this.#declare(statement.initializer);
-          else this.evaluate(statement.initializer);
-        }
-        while (statement.condition === undefined || this.#truthy(this.evaluate(statement.condition))) {
+      // The loop is entered before its condition is evaluated: a loop whose
+      // header never becomes false is still that loop's defect.
+      return this.#inLoop(statement, () => {
+        while (this.#truthy(this.evaluate(statement.expression))) {
           this.#step(statement);
           const completion = this.#statement(statement.statement);
           if (completion?.kind === "return") return completion;
           if (completion?.kind === "break") break;
-          if (statement.incrementor) this.evaluate(statement.incrementor);
         }
         return undefined;
+      });
+    }
+    if (ts.isDoStatement(statement)) {
+      return this.#inLoop(statement, () => {
+        do {
+          this.#step(statement);
+          const completion = this.#statement(statement.statement);
+          if (completion?.kind === "return") return completion;
+          if (completion?.kind === "break") break;
+        } while (this.#truthy(this.evaluate(statement.expression)));
+        return undefined;
+      });
+    }
+    if (ts.isForStatement(statement)) {
+      this.#locals.push(new Map());
+      try {
+        return this.#inLoop(statement, () => {
+          if (statement.initializer) {
+            if (ts.isVariableDeclarationList(statement.initializer)) this.#declare(statement.initializer);
+            else this.evaluate(statement.initializer);
+          }
+          while (statement.condition === undefined || this.#truthy(this.evaluate(statement.condition))) {
+            this.#step(statement);
+            const completion = this.#statement(statement.statement);
+            if (completion?.kind === "return") return completion;
+            if (completion?.kind === "break") break;
+            if (statement.incrementor) this.evaluate(statement.incrementor);
+          }
+          return undefined;
+        });
       } finally {
         this.#locals.pop();
       }
@@ -1576,24 +1598,26 @@ class StaticExpressionEvaluator {
     }
     const symbol = resolveSymbol(this.checker, this.checker.getSymbolAtLocation(declaration.name));
     if (!symbol) this.unsupported(declaration.name, "compile-time local binding has no checker identity");
-    const iterable = this.evaluate(statement.expression);
-    const items: Iterable<StableJson> = Array.isArray(iterable)
-      ? iterable
-      : typeof iterable === "string"
-        ? [...iterable]
-        : this.unsupported(statement.expression, "comptime for-of iterates arrays and strings");
-    for (const item of items) {
-      this.#step(statement);
-      this.#locals.push(new Map([[symbol, { value: item, mutable }]]));
-      try {
-        const completion = this.#statement(statement.statement);
-        if (completion?.kind === "return") return completion;
-        if (completion?.kind === "break") break;
-      } finally {
-        this.#locals.pop();
+    return this.#inLoop(statement, () => {
+      const iterable = this.evaluate(statement.expression);
+      const items: Iterable<StableJson> = Array.isArray(iterable)
+        ? iterable
+        : typeof iterable === "string"
+          ? [...iterable]
+          : this.unsupported(statement.expression, "comptime for-of iterates arrays and strings");
+      for (const item of items) {
+        this.#step(statement);
+        this.#locals.push(new Map([[symbol, { value: item, mutable }]]));
+        try {
+          const completion = this.#statement(statement.statement);
+          if (completion?.kind === "return") return completion;
+          if (completion?.kind === "break") break;
+        } finally {
+          this.#locals.pop();
+        }
       }
-    }
-    return undefined;
+      return undefined;
+    });
   }
 
   #binary(node: ts.BinaryExpression): StableJson {
@@ -2172,7 +2196,21 @@ class StaticExpressionEvaluator {
 
   #step(node: ts.Node): void {
     if (++this.#steps > MAX_EVALUATION_STEPS) {
+      const loop = this.#loops.at(-1);
+      if (loop) {
+        this.budget(loop, `a comptime loop did not terminate within the ${MAX_EVALUATION_STEPS} step budget`);
+      }
       this.budget(node, `comptime evaluation exceeded the ${MAX_EVALUATION_STEPS} step budget`);
+    }
+  }
+
+  /** Runs `body` with `statement` as the innermost executing comptime loop. */
+  #inLoop<T>(statement: ts.Statement, body: () => T): T {
+    this.#loops.push(statement);
+    try {
+      return body();
+    } finally {
+      this.#loops.pop();
     }
   }
 
@@ -2217,10 +2255,10 @@ function checkedProject(sources: Readonly<Record<string, string>>): CheckedProje
     if (typeof source !== "string") throw new TypeError(`source ${JSON.stringify(publicName)} must be text`);
     const internalName = safeVirtualName(publicName);
     // The comptime frontend checks the frontend's recovered text so authored
-    // VibeLang expression control flow parses here exactly as it does in the
+    // Smithers expression control flow parses here exactly as it does in the
     // language frontend. `source` stays authored: the lowered file is cut from
     // it, so the module the frontend receives keeps its authored spelling.
-    const recovery = recoverVibeSyntax(source);
+    const recovery = recoverSmithersSyntax(source);
     return {
       publicName,
       internalName,
@@ -2482,16 +2520,16 @@ function resolveVirtualModule(
   const exact = resolve(dirname(containingFile), specifier);
   const candidates = [exact];
   if (!extname(exact)) {
-    for (const extension of [".ts", ".tsx", ".vibe", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"]) {
+    for (const extension of [".ts", ".tsx", ".sm", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"]) {
       candidates.push(`${exact}${extension}`, resolve(exact, `index${extension}`));
     }
-    candidates.push(`${exact}.vibe.ts`, resolve(exact, "index.vibe.ts"));
+    candidates.push(`${exact}.sm.ts`, resolve(exact, "index.sm.ts"));
   }
   if (/\.(?:mjs|cjs|js)$/.test(exact)) {
     const stem = exact.replace(/\.(?:mjs|cjs|js)$/, "");
-    candidates.push(`${stem}.ts`, `${stem}.mts`, `${stem}.cts`, `${stem}.vibe`, `${stem}.vibe.ts`);
+    candidates.push(`${stem}.ts`, `${stem}.mts`, `${stem}.cts`, `${stem}.sm`, `${stem}.sm.ts`);
   }
-  if (exact.endsWith(".vibe")) candidates.push(`${exact}.ts`);
+  if (exact.endsWith(".sm")) candidates.push(`${exact}.ts`);
   return candidates.find((candidate) => files.has(candidate));
 }
 
@@ -2501,9 +2539,9 @@ function safeVirtualName(name: string): string {
   }
   const portable = name.replaceAll("\\", "/").replace(/^\/+/, "");
   // TypeScript will parse an explicitly provided unknown extension but does
-  // not bind its imports. Give `.vibe` an internal `.ts` suffix while keeping
+  // not bind its imports. Give `.sm` an internal `.ts` suffix while keeping
   // the authored name in all public diagnostics and identities.
-  const internal = resolve(VIRTUAL_ROOT, portable.endsWith(".vibe") ? `${portable}.ts` : portable);
+  const internal = resolve(VIRTUAL_ROOT, portable.endsWith(".sm") ? `${portable}.ts` : portable);
   const back = relative(VIRTUAL_ROOT, internal);
   if (back === ".." || back.startsWith(`..${sep}`) || isAbsolute(back)) {
     throw new TypeError(`comptime source name escaped the virtual project: ${name}`);
@@ -2792,8 +2830,8 @@ function lowerFile(
     replacementDigest: digest(replacement.text),
   } satisfies ComptimeLoweringEdit));
   const provenance = Object.freeze({
-    schema: "vibelang.comptime-lowering/v1",
-    frontend: "vibelang-comptime-static@2",
+    schema: "smithers.comptime-lowering/v1",
+    frontend: "smithers-comptime-static@2",
     file: entry.publicName,
     authoredDigest: digest(entry.source),
     loweredDigest: digest(code),
@@ -2807,7 +2845,7 @@ function lowerFile(
     sourcesContent: orderedSources.map((source) => source.source),
     names: [],
     mappings,
-    x_vibelang_comptime: provenance,
+    x_smithers_comptime: provenance,
   });
   if (Buffer.byteLength(sourceMap, "utf8") > MAX_SOURCE_MAP_BYTES) {
     throw new SourceMapGenerationError(
@@ -2817,7 +2855,7 @@ function lowerFile(
     );
   }
   const identity = digest({
-    schema: "vibelang.comptime-lowered-file/v1",
+    schema: "smithers.comptime-lowered-file/v1",
     file: entry.publicName,
     authoredDigest: provenance.authoredDigest,
     loweredDigest: provenance.loweredDigest,

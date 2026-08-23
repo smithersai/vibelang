@@ -1,7 +1,7 @@
 /**
  * `Process`: the running program's own identity and lifetime.
  *
- * `process` is not an ambient global in VibeLang (docs/DECISIONS.md, "Imports
+ * `process` is not an ambient global in Smithers (docs/DECISIONS.md, "Imports
  * and platform dependencies": `process`, `window`, `document`, filesystem, and
  * network "are unavailable as ambient globals ... must be supplied as
  * dependencies"), so reading `argv`, the pid, the working directory, or the host
@@ -236,9 +236,9 @@ export class ProcessExited extends Panic {
     this.name = "ProcessExited";
   }
 }
-export interface ProcessExited extends NominalError<"vibelang:ProcessExited@1"> {}
+export interface ProcessExited extends NominalError<"smithers:ProcessExited@1"> {}
 
-registerErrorCodec(ProcessExited, "vibelang:ProcessExited@1", {
+registerErrorCodec(ProcessExited, "smithers:ProcessExited@1", {
   encode: (error): JsonValue => ({ code: error.code, message: error.message }),
   decode: (payload) => {
     if (
@@ -259,7 +259,7 @@ export interface TestProcessOptions {
   readonly platform?: HostPlatform;
 }
 
-const DEFAULT_TEST_ARGV: readonly string[] = ["/usr/bin/vibe", "/app/main.vibe"];
+const DEFAULT_TEST_ARGV: readonly string[] = ["/usr/bin/smithers", "/app/main.sm"];
 const DEFAULT_TEST_CWD = "/app";
 const DEFAULT_TEST_PID = 4242;
 const DEFAULT_TEST_PLATFORM: HostPlatform = "linux";

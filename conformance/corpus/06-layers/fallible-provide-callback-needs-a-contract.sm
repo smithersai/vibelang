@@ -1,0 +1,18 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : null) }
+
+export const entry = Layer.provide(Layer.succeed(Directory, directory), () => {
+  const found = Directory.context().lookup("zoe")
+  if (found === null) throw new Missing("zoe")
+  return found
+})

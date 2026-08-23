@@ -2,10 +2,10 @@ import { registerErrorType } from "./errors.ts";
 import { panic } from "./panic.ts";
 
 /** Compatibility representation used only by the historical syntax spike. */
-export const VIBE_FAILURE = Symbol.for("vibelang.failure");
+export const SMITHERS_FAILURE = Symbol.for("smithers.failure");
 const localFailures = new WeakSet<object>();
 
-export class VibeFailure extends Error {
+export class SmithersFailure extends Error {
   declare readonly _tag: string;
 
   constructor(tag: string, fields?: Record<string, unknown>) {
@@ -28,7 +28,7 @@ export class VibeFailure extends Error {
       }
     }
     Object.defineProperty(this, "_tag", { value: tag, enumerable: true });
-    Object.defineProperty(this, VIBE_FAILURE, { value: true });
+    Object.defineProperty(this, SMITHERS_FAILURE, { value: true });
     localFailures.add(this);
   }
 }
@@ -42,16 +42,16 @@ function formatFailure(tag: string, fields?: Record<string, unknown>): string {
   }
 }
 
-registerErrorType(VibeFailure, "vibelang:legacy/VibeFailure@1");
+registerErrorType(SmithersFailure, "smithers:legacy/SmithersFailure@1");
 
-export function isVibeFailure(value: unknown): value is VibeFailure {
+export function isSmithersFailure(value: unknown): value is SmithersFailure {
   return typeof value === "object" && value !== null && localFailures.has(value);
 }
 
 /** Optional asserted unwrap. Absence is a defect, not a recoverable failure. */
 export function unwrapOptional<T>(value: T | null | undefined): T {
   if (value === null || value === undefined) {
-    panic("VibeLang defect: asserted optional was absent");
+    panic("Smithers defect: asserted optional was absent");
   }
   return value;
 }
@@ -60,19 +60,19 @@ export function throwExpression(error: unknown): never {
   throw error;
 }
 
-function recoverOrRethrow<R>(error: unknown, recover: (failure: VibeFailure) => R): R {
-  if (isVibeFailure(error)) return recover(error);
+function recoverOrRethrow<R>(error: unknown, recover: (failure: SmithersFailure) => R): R {
+  if (isSmithersFailure(error)) return recover(error);
   throw error;
 }
 
 /**
- * Lowering target for a VibeLang catch expression. It deliberately supports
+ * Lowering target for a Smithers catch expression. It deliberately supports
  * both eager values and promises so the failure/defect split is identical on
  * both sides of an await.
  */
 export function catchFailure<T, R>(
   body: () => T | Promise<T>,
-  recover: (failure: VibeFailure) => R | Promise<R>,
+  recover: (failure: SmithersFailure) => R | Promise<R>,
 ): T | R | Promise<T | R> {
   try {
     const value = body();
@@ -94,6 +94,6 @@ function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
 }
 
 // The spike compiler aliases these imports when source bindings collide.
-export { VibeFailure as __VSError, catchFailure as __vsCatch };
+export { SmithersFailure as __VSError, catchFailure as __vsCatch };
 export { unwrapOptional as __vsUnwrap };
 export { throwExpression as __vsThrow };

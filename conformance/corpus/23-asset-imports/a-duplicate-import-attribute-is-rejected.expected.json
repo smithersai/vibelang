@@ -1,0 +1,15 @@
+{
+  "title": "a duplicate import attribute is rejected rather than resolved last-wins",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS5204",
+      "line": 1,
+      "column": 59
+    }
+  ],
+  "assets": [
+    "counter.json"
+  ],
+  "notes": "specification/comptime.mdx, 'Built-In Formats' (Locked): 'Non-code inputs MUST select their loader and mode with STANDARD import attributes', and docs/ASSET_LOADERS.md (Locked): 'Every non-code or foreign-source import uses standard import attributes. The required string-valued `type` selects its loader.' Standard import attributes are a closed shape, so the rules that keep them one shape belong to the language and not to a particular implementation's parser. `counter.json` really is staged and a JSON loader really is registered, so every one of these programs is refused for its attribute shape alone. The positive control is 23-asset-imports/a-json-import-selects-its-loader-with-an-import-attribute, which is the same file and the same loader with one well-formed `type` and must keep compiling and printing the file's own values. This is the highest-consequence of the four: a last-wins implementation does not merely accept the program, it compiles a JSON file through the `text` loader, so the same source produces a different value on the two implementations with no diagnostic anywhere. The declared position is the SECOND `type`, which is also the one that would have won. `counter.json` is deliberately the asset, so a last-wins backend is observable as a string where an object was authored rather than as an equally-plausible alternative reading."
+}

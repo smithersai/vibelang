@@ -19,7 +19,7 @@ import {
 } from "./index.ts"
 
 const auditContract = compileActionContract(`
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 class AuditFailed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -27,7 +27,7 @@ export abstract class WriteAudit extends Action<
   (input: { message: string }) => Result<{ audited: string }, AuditFailed>
 > {}
 `, {
-  fileName: "contracts/seq-audit.vibe",
+  fileName: "contracts/seq-audit.sm",
   exportName: "WriteAudit",
   id: "test/seq/WriteAudit",
   version: 1
@@ -35,7 +35,7 @@ export abstract class WriteAudit extends Action<
 if (!auditContract.ok) throw new Error(JSON.stringify(auditContract.diagnostics))
 
 const alertContract = compileActionContract(`
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 class AlertFailed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -43,7 +43,7 @@ export abstract class SendAlert extends Action<
   (input: { message: string }) => Result<{ alerted: string }, AlertFailed>
 > {}
 `, {
-  fileName: "contracts/seq-alert.vibe",
+  fileName: "contracts/seq-alert.sm",
   exportName: "SendAlert",
   id: "test/seq/SendAlert",
   version: 1
@@ -59,7 +59,7 @@ const actionBindings = Object.freeze([
 ])
 
 const source = `
-import { durable, sequential } from "vibelang:flows"
+import { durable, sequential } from "smithers:flows"
 import { WriteAudit, SendAlert } from "test:seq-actions"
 
 throw new Error("the authored sequential module must never execute")
@@ -73,7 +73,7 @@ export const Sequenced = durable(function Sequenced(input: { message: string }) 
 `
 
 const compileSequenced = (text = source) => compileDurableSource(text, {
-  fileName: "flows/sequential.vibe",
+  fileName: "flows/sequential.sm",
   flowId: "test/seq/Sequenced",
   flowVersion: 1,
   actions: actionBindings
@@ -143,7 +143,7 @@ test("sequential lowers to a format-1 control edge with no data dependency", () 
 
 test("sequential works in statement position and chains later work after the second Action", () => {
   const compiled = compileSequenced(`
-import { durable, sequential } from "vibelang:flows"
+import { durable, sequential } from "smithers:flows"
 import { WriteAudit, SendAlert } from "test:seq-actions"
 export const Fire = durable(function Fire(input: { message: string }) {
   sequential(WriteAudit.run({ message: input.message }), SendAlert.run({ message: "second" }))
@@ -161,7 +161,7 @@ export const Fire = durable(function Fire(input: { message: string }) {
 
 test("sequential projections and non-Action arguments are handled exactly", () => {
   const projected = compileSequenced(`
-import { durable, sequential } from "vibelang:flows"
+import { durable, sequential } from "smithers:flows"
 import { WriteAudit, SendAlert } from "test:seq-actions"
 export const Projected = durable(function Projected(input: { message: string }) {
   const pair = sequential(
@@ -198,12 +198,12 @@ export const Projected = durable(function Projected(input: { message: string }) 
     const compiled = compileSequenced(fixture)
     expect(compiled.ok).toBe(false)
     if (compiled.ok) throw new Error("expected sequential lowering failure")
-    expect(compiled.diagnostics[0]!.code).toBe("VIBE4119")
+    expect(compiled.diagnostics[0]!.code).toBe("SMITHERS4119")
   }
 
   // A local function named sequential is never an intrinsic.
   const unrelated = compileSequenced(`
-import { durable, sequential as compilerSequential } from "vibelang:flows"
+import { durable, sequential as compilerSequential } from "smithers:flows"
 import { WriteAudit, SendAlert } from "test:seq-actions"
 const sequential = (...values: unknown[]) => values
 export const Sequenced = durable(function Sequenced(input: { message: string }) {
@@ -213,14 +213,14 @@ export const Sequenced = durable(function Sequenced(input: { message: string }) 
 `)
   expect(unrelated.ok).toBe(false)
   if (unrelated.ok) throw new Error("expected unrelated sequential spelling to fail")
-  expect(unrelated.diagnostics[0]!.code).not.toBe("VIBE4119")
+  expect(unrelated.diagnostics[0]!.code).not.toBe("SMITHERS4119")
 })
 
 test("the durable order holds at runtime and across a crash after the first commit", async () => {
   const compiled = compileSequenced()
   if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
   const [firstNode, secondNode] = compiled.plan.nodes
-  const directory = mkdtempSync(join(tmpdir(), "vibe-sequential-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-sequential-"))
   const database = join(directory, "durable.sqlite")
   invocationOrder.length = 0
   alertObservedAuditStatus = ""
@@ -264,7 +264,7 @@ test("two independent connections preserve the explicit order and converge", asy
   const compiled = compileSequenced()
   if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
   const [firstNode] = compiled.plan.nodes
-  const directory = mkdtempSync(join(tmpdir(), "vibe-sequential-race-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-sequential-race-"))
   const database = join(directory, "durable.sqlite")
   invocationOrder.length = 0
   alertObservedAuditStatus = ""

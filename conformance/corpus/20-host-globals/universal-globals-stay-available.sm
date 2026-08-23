@@ -1,0 +1,9 @@
+export function main(): string[] {
+  // Facilities present in every JavaScript environment stay unconditional
+  // globals; only the host-sensitive operations need a capability.
+  const largest = Math.max(2, 7, 5)
+  const encoded = JSON.stringify({ name: "Ada" })
+  const parsed = Number.parseInt("41", 10)
+  const entries = new Map<string, number>([["ada", 1]])
+  return [`${largest}`, encoded, `${parsed}`, `${entries.get("ada")}`]
+}

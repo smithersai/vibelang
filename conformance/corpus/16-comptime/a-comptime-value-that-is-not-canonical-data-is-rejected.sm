@@ -1,0 +1,7 @@
+import { comptime } from "smithers:comptime"
+
+const overflowed = comptime(1 / 0)
+
+export function main(): string[] {
+  return [String(overflowed)]
+}

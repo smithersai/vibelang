@@ -1,0 +1,7 @@
+import { comptime } from "smithers:comptime"
+
+const stamped = comptime({ builtAt: Date.now() })
+
+export function main(): string[] {
+  return [JSON.stringify(stamped)]
+}

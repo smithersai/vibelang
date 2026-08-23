@@ -1,11 +1,11 @@
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 
 /**
  * **Provisional** example of the source-level loader registration candidate for
  * docs/ASSET_LOADERS.md open question 2.
  *
  * The compiler recognizes the default export below by checker identity against
- * `"vibelang:comptime"`, erases the compiler-owned import, and runs only the
+ * `"smithers:comptime"`, erases the compiler-owned import, and runs only the
  * loader function — inside the existing no-permission Deno sandbox, never in
  * the compiler process. `context.import` is the only way additional inputs
  * enter the build, so the schema read here becomes a tracked dependency edge.

@@ -21,7 +21,7 @@ import {
   createProject,
 } from "./durable-demo.ts"
 
-const durableRoot = mkdtempSync(join(tmpdir(), "vibelang-agent-e2e-"))
+const durableRoot = mkdtempSync(join(tmpdir(), "smithers-agent-e2e-"))
 let databaseCount = 0
 
 function databasePath(name: string): string {
@@ -355,7 +355,7 @@ describe("Deno sandbox RPC lifecycle", () => {
   })
 
   test("detects an in-place runner rewrite even when size and mtime are restored", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-agent-runner-pin-"))
+    const root = await mkdtemp(join(tmpdir(), "smithers-agent-runner-pin-"))
     try {
       const runner = join(root, "deno-runner.js")
       await copyFile(join(import.meta.dir, "../../src/agent/deno-runner.js"), runner)
@@ -446,7 +446,7 @@ describe("Deno sandbox raw stdout accounting", () => {
   // SIGKILLed almost immediately (durationMs well under the timeout) and only a
   // few hundred KiB is ever buffered.
   test("kills a newline-free stdout flood at the byte layer, not at the timeout", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-agent-raw-stdout-"))
+    const root = await mkdtemp(join(tmpdir(), "smithers-agent-raw-stdout-"))
     try {
       const runner = join(root, "flood-runner.js")
       await writeFile(

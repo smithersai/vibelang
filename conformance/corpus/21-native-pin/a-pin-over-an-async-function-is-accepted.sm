@@ -1,0 +1,16 @@
+import { native } from "smithers:native"
+
+// `native(fn)` is a checked assertion over a function's dependency graph. It
+// takes a function reference and returns it; it never invokes the argument and
+// never starts concurrent work. An async function whose graph requires nothing
+// TypeScript-specific therefore satisfies the pin exactly as a synchronous one
+// does: an async function is not blocked merely for needing runtime support.
+async function scale(value: number): Promise<number> {
+  return value * 2
+}
+
+native(scale)
+
+export async function main(): Promise<string[]> {
+  return [String(await scale(21))]
+}

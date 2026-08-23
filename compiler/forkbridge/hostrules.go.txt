@@ -1,0 +1,1310 @@
+package main
+
+// Fail-closed frontend rules over authored `.sm` modules.
+//
+// Nothing in this file rewrites a node. Each rule decides whether a program the
+// language forbids reaches emit at all, which is why they live beside the
+// lowering rather than inside it: a lowering that silently accepts what the
+// language rejects is worse than one that refuses honestly.
+//
+//	SMITHERS1601/1602/1603  host globals and host-sensitive operations
+//	SMITHERS1107            class `static {}` initialization blocks
+//	SMITHERS1150            two Error classes with one name in one module
+//	SMITHERS1504            a foreign constructor without `@throws {never}`
+//	SMITHERS1509            a callback escaping into foreign code
+//	SMITHERS1404            an async callback with no proven owner
+//
+// Every decision resolves through the checker's symbols. A spelling is never
+// the authority: a lexical `const Date = …` is an ordinary value wherever it
+// appears, and an aliased import of a foreign export is foreign under any name.
+
+import (
+	"sort"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+)
+
+const (
+	hostModulesLogicalPath = "__smithers_host_modules.d.ts"
+	hostModulesVirtualName = "/src/" + hostModulesLogicalPath
+)
+
+// The pinned fork intentionally carries no ambient @types/node package. This
+// checker-only declaration lets the frontend classify the one host module
+// surface currently in the language contract instead of leaking TS2591. It is
+// still foreign provenance (and deliberately has no @module/@throws trust
+// claim), so the existing SMITHERS1510 rule remains the authority.
+const hostModulesDeclarationText = `
+declare module "node:fs" {
+	export function readFileSync(...arguments: readonly unknown[]): unknown;
+}
+`
+
+// ---------------------------------------------------------------------------
+// Host globals
+// ---------------------------------------------------------------------------
+
+// forbiddenHostGlobals are the platform-specific globals that authored `.sm`
+// may not reach at all.
+//
+// specification/compatibility.mdx, "Host Globals" (Locked): "Platform-specific
+// globals such as process, window, document, filesystem, and network MUST NOT
+// be unconditional globals in authored .sm code. Host functionality MUST be
+// represented by typed capabilities."
+var forbiddenHostGlobals = map[string]struct{}{
+	"process":     {},
+	"window":      {},
+	"document":    {},
+	"console":     {},
+	"fetch":       {},
+	"setTimeout":  {},
+	"setInterval": {},
+	"globalThis":  {},
+}
+
+// hostSensitiveGlobals are the globals that MAY exist in every environment but
+// whose host-sensitive operations still need a capability.
+//
+// specification/compatibility.mdx, "Host Globals" (Locked): "Facilities truly
+// present in every supported JavaScript environment MAY be unconditional
+// globals. Host-sensitive operations such as clock and random access MUST still
+// use capabilities." The rule is therefore per-operation, not per-object:
+// `Math.max` stays available from the same object whose `.random()` does not.
+var hostSensitiveGlobals = map[string]struct{}{
+	"Date":        {},
+	"Math":        {},
+	"performance": {},
+	"crypto":      {},
+}
+
+// ambientAuthorityUse is one host-sensitive operation reached from an ambient
+// global, together with the capability that must carry it instead.
+type ambientAuthorityUse struct {
+	requirement string // "Clock", "Random", or "Host"
+	description string
+	root        *ast.Node
+}
+
+func (a *rowAnalysis) checkHostGlobals(files []*ast.SourceFile) {
+	for _, file := range files {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsIdentifier(node) {
+				a.reportForbiddenHostGlobal(node)
+				for _, use := range a.ambientAuthorityUses(node) {
+					switch use.requirement {
+					case "Clock":
+						a.report(use.root, "SMITHERS1602",
+							"ambient "+use.description+" is unavailable; access it through Clock.context()")
+					case "Random":
+						a.report(use.root, "SMITHERS1603",
+							"ambient "+use.description+" is unavailable; access it through Random.context()")
+					default:
+						a.report(use.root, "SMITHERS1601",
+							"ambient host global '"+use.root.Text()+"' is unavailable; access it through a Context capability")
+					}
+				}
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
+}
+
+// checkWithStatements recognizes the forbidden dynamic-scope construct from
+// its AST node. The stock checker happens to report TS1101 and TS2410 for this
+// shape, but those codes also occur in unrelated TypeScript situations and are
+// never used as the authority for the Smithers classification.
+func (a *rowAnalysis) checkWithStatements(files []*ast.SourceFile) {
+	for _, file := range files {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if node.Kind == ast.KindWithStatement {
+				a.report(node, "SMITHERS3003", "with statements are forbidden in authored .sm code")
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
+}
+
+func (a *rowAnalysis) reportForbiddenHostGlobal(node *ast.Node) {
+	if _, forbidden := forbiddenHostGlobals[node.Text()]; !forbidden {
+		return
+	}
+	if isDeclarationNameIdentifier(node) || isPropertyNameIdentifier(node) || ast.IsPartOfTypeNode(node) {
+		return
+	}
+	if !a.isAmbientGlobalReference(node) {
+		return
+	}
+	a.report(node, "SMITHERS1601",
+		"ambient host global '"+node.Text()+"' is unavailable; access it through a Context capability")
+}
+
+// ambientAuthorityUses reports the capabilities an identifier's use of a
+// host-sensitive global would require. An empty result means the use needs no
+// capability — which is the case for every ordinary member of a universal
+// object, and for every binding that is not the ambient global at all.
+func (a *rowAnalysis) ambientAuthorityUses(node *ast.Node) []ambientAuthorityUse {
+	if _, sensitive := hostSensitiveGlobals[node.Text()]; !sensitive {
+		return nil
+	}
+	// A shorthand property assignment spells a declaration name and a value
+	// reference with one token; `{ Date }` reads the global.
+	declaresName := isDeclarationNameIdentifier(node) &&
+		(node.Parent == nil || !ast.IsShorthandPropertyAssignment(node.Parent))
+	if declaresName || isPropertyNameIdentifier(node) || ast.IsPartOfTypeNode(node) {
+		return nil
+	}
+	if !a.isAmbientGlobalReference(node) {
+		return nil
+	}
+	requirements := ambientRequirementsForRootUse(node)
+	uses := make([]ambientAuthorityUse, 0, len(requirements))
+	for _, requirement := range requirements {
+		description := "randomness"
+		if requirement == "Clock" {
+			description = "wall-clock access"
+			if node.Text() == "performance" {
+				description = "monotonic-clock access"
+			}
+		}
+		uses = append(uses, ambientAuthorityUse{requirement: requirement, description: description, root: node})
+	}
+	return uses
+}
+
+// ambientRequirementsForRootUse decides which members of the global the use
+// reaches. A use that selects one member is judged on that member; a use whose
+// selection cannot be seen statically escapes the whole object and is judged on
+// the object.
+func ambientRequirementsForRootUse(root *ast.Node) []string {
+	parent := root.Parent
+	if parent == nil {
+		return ambientRequirementsForWholeRoot(root.Text())
+	}
+	if ast.IsPropertyAccessExpression(parent) && parent.AsPropertyAccessExpression().Expression == root {
+		return ambientRequirementsForMembers(root.Text(), []string{parent.AsPropertyAccessExpression().Name().Text()})
+	}
+	if ast.IsElementAccessExpression(parent) && parent.AsElementAccessExpression().Expression == root {
+		argument := parent.AsElementAccessExpression().ArgumentExpression
+		if argument != nil && ast.IsStringLiteralLike(argument) {
+			return ambientRequirementsForMembers(root.Text(), []string{argument.Text()})
+		}
+		return ambientRequirementsForWholeRoot(root.Text())
+	}
+	if root.Text() == "Date" {
+		if ast.IsCallExpression(parent) && parent.AsCallExpression().Expression == root {
+			return []string{"Clock"}
+		}
+		if ast.IsNewExpression(parent) && parent.AsNewExpression().Expression == root {
+			// `new Date(fixedInstant)` reads no clock: the instant is authored.
+			arguments := parent.AsNewExpression().Arguments
+			if arguments != nil && len(arguments.Nodes) > 0 {
+				return nil
+			}
+			return []string{"Clock"}
+		}
+	}
+	if ast.IsVariableDeclaration(parent) && parent.AsVariableDeclaration().Initializer == root {
+		name := parent.AsVariableDeclaration().Name()
+		if name != nil && ast.IsObjectBindingPattern(name) {
+			if members, known := bindingMemberNames(name); known {
+				return ambientRequirementsForMembers(root.Text(), members)
+			}
+			return ambientRequirementsForWholeRoot(root.Text())
+		}
+	}
+	return ambientRequirementsForWholeRoot(root.Text())
+}
+
+// ambientRequirementsForWholeRoot judges a use where the whole object escaped,
+// so any of its members could be reached.
+func ambientRequirementsForWholeRoot(root string) []string {
+	switch root {
+	case "Date", "performance":
+		return []string{"Clock"}
+	case "Math":
+		return []string{"Random"}
+	case "crypto":
+		return []string{"Host"}
+	}
+	return nil
+}
+
+func ambientRequirementsForMembers(root string, members []string) []string {
+	seen := make(map[string]bool, 2)
+	for _, member := range members {
+		switch {
+		case root == "Date" && member == "now":
+			seen["Clock"] = true
+		case root == "Date" && member != "parse" && member != "UTC":
+			// Every other `Date` member reaches an instance whose reads are
+			// clock-shaped; `parse` and `UTC` are pure functions of arguments.
+			seen["Clock"] = true
+		case root == "Math" && member == "random":
+			seen["Random"] = true
+		case root == "performance":
+			seen["Clock"] = true
+		case root == "crypto" && (member == "randomUUID" || member == "getRandomValues"):
+			seen["Random"] = true
+		case root == "crypto":
+			seen["Host"] = true
+		}
+	}
+	requirements := make([]string, 0, len(seen))
+	for requirement := range seen {
+		requirements = append(requirements, requirement)
+	}
+	sort.Strings(requirements)
+	return requirements
+}
+
+// bindingMemberNames lists the members an object binding pattern selects.
+// `known` is false when a rest element or a computed name means the selection
+// cannot be read statically, in which case the whole object escapes.
+func bindingMemberNames(pattern *ast.Node) (names []string, known bool) {
+	for _, element := range pattern.AsBindingPattern().Elements.Nodes {
+		binding := element.AsBindingElement()
+		if binding.DotDotDotToken != nil {
+			return nil, false
+		}
+		name := binding.PropertyName
+		if name == nil {
+			name = binding.Name()
+		}
+		if name == nil {
+			return nil, false
+		}
+		switch {
+		case ast.IsIdentifier(name), ast.IsStringLiteralLike(name), name.Kind == ast.KindNumericLiteral:
+			names = append(names, name.Text())
+		case ast.IsComputedPropertyName(name) && ast.IsStringLiteralLike(name.AsComputedPropertyName().Expression):
+			names = append(names, name.AsComputedPropertyName().Expression.Text())
+		default:
+			return nil, false
+		}
+	}
+	return names, true
+}
+
+// isAmbientGlobalReference decides identity, not spelling: the identifier is
+// the host global only when the checker resolves it to nothing at all, or to a
+// symbol whose every declaration lives in a declaration file (the ambient lib).
+//
+// A lexical `const Date = …` in authored `.sm` resolves to a variable
+// declaration in a `.sm` source file, so it is an ordinary value and stays one.
+// An import alias resolves through `SymbolFlagsAlias`, so a re-exported binding
+// that merely happens to be spelled `Math` is not the host global either.
+func (a *rowAnalysis) isAmbientGlobalReference(node *ast.Node) bool {
+	var symbol *ast.Symbol
+	if node.Parent != nil && ast.IsShorthandPropertyAssignment(node.Parent) {
+		symbol = a.checker.GetShorthandAssignmentValueSymbol(node.Parent)
+	} else {
+		symbol = a.checker.GetSymbolAtLocation(node)
+	}
+	if symbol == nil {
+		// The name resolves to nothing in this program. A host global the
+		// ambient lib does not declare (`process` without @types/node) lands
+		// here, and the language answer is the same as for one it does.
+		return true
+	}
+	if symbol.Flags&ast.SymbolFlagsAlias != 0 {
+		return false
+	}
+	if len(symbol.Declarations) == 0 {
+		return true
+	}
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil || !file.IsDeclarationFile {
+			return false
+		}
+	}
+	return true
+}
+
+func isDeclarationNameIdentifier(node *ast.Node) bool {
+	if node.Parent == nil {
+		return false
+	}
+	return ast.IsDeclarationName(node) || ast.IsDeclarationNameOrImportPropertyName(node)
+}
+
+func isPropertyNameIdentifier(node *ast.Node) bool {
+	parent := node.Parent
+	if parent == nil {
+		return false
+	}
+	if ast.IsPropertyAccessExpression(parent) && parent.AsPropertyAccessExpression().Name() == node {
+		return true
+	}
+	switch parent.Kind {
+	case ast.KindPropertyAssignment, ast.KindMethodDeclaration, ast.KindPropertyDeclaration:
+		return parent.Name() == node
+	}
+	return false
+}
+
+// ---------------------------------------------------------------------------
+// Class `static {}` initialization blocks
+// ---------------------------------------------------------------------------
+
+// checkStaticBlocks rejects a class static initialization block.
+//
+// specification/type-system.mdx, "Function Type": a Smithers function has a
+// return type and an inferred requirement set; specification/failures.mdx,
+// "Compiler Lifting", defines lifting only inside functions. A static block
+// runs at module evaluation with no enclosing function channel to carry a
+// Result or a requirement row — the same reason a top-level throw is rejected.
+func (a *rowAnalysis) checkStaticBlocks(files []*ast.SourceFile) {
+	for _, file := range files {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if node.Kind == ast.KindClassStaticBlockDeclaration {
+				a.report(node, "SMITHERS1107",
+					"class `static {}` initialization blocks execute outside every checked function channel and are not analyzed or lowered; use static field initializers or an explicit checked function")
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Duplicate Error class names
+// ---------------------------------------------------------------------------
+
+// checkDuplicateErrorNames rejects two Error classes that share one name inside
+// one module.
+//
+// specification/failures.mdx, "Error Classes", requires the compiler to provide
+// "stable nominal identity, matching metadata, serialization evidence, and
+// cross-realm transport metadata". Row identity is module-qualified, so the
+// same name in two different modules is fine (and stays fine — the scan is
+// per file); two in one module cannot both hold the same stable id.
+func (a *rowAnalysis) checkDuplicateErrorNames(files []*ast.SourceFile) {
+	for _, file := range files {
+		seen := make(map[string]bool)
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsClassDeclaration(node) && node.Name() != nil {
+				heritage := node.ClassLikeData().HeritageClauses
+				if heritage != nil && len(heritage.Nodes) > 0 &&
+					a.isErrorType(a.checker.GetTypeAtLocation(node.Name())) {
+					name := node.Name().Text()
+					if seen[name] {
+						a.report(node.Name(), "SMITHERS1150",
+							"duplicate Error class name '"+name+"' cannot receive a stable module-local identity")
+					} else {
+						seen[name] = true
+					}
+				}
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Foreign boundaries: constructors and escaping callbacks
+// ---------------------------------------------------------------------------
+
+// checkForeignProvenanceEscapes ports the reference's SMITHERS1508 boundary.
+// A callable/object originating in TypeScript can carry hidden execution and
+// panic behavior. Passing it through an unchecked higher-order call, retaining
+// it in mutable storage, or returning it would lose that provenance entirely.
+func (a *rowAnalysis) checkForeignProvenanceEscapes(files []*ast.SourceFile) {
+	for _, file := range files {
+		var visit func(*ast.Node, *functionRows) bool
+		visit = func(node *ast.Node, owner *functionRows) bool {
+			if fn := a.byNode[node]; fn != nil {
+				owner = fn
+			}
+			if ast.IsCallExpression(node) {
+				_, foreign := a.foreignPolicyForCall(node)
+				_, unwrapKind := a.prelude.unwrapCall(node)
+				if !foreign && unwrapKind == unwrapNone && !a.prelude.isPanicCall(node) {
+					arguments := node.AsCallExpression().Arguments
+					if arguments != nil {
+						for _, argument := range arguments.Nodes {
+							if a.containsForeignExecutableValue(argument, make(map[*ast.Symbol]bool)) {
+								a.reportForeignProvenanceEscape(owner, argument,
+									"foreign callable provenance would escape through an unchecked higher-order call; wrap it in a local adapter that owns invocation and exposes an explicit Result/task contract")
+							}
+						}
+					}
+				}
+			}
+			if ast.IsVariableDeclaration(node) {
+				declaration := node.AsVariableDeclaration()
+				list := node.Parent
+				if declaration.Initializer != nil && list != nil && ast.IsVariableDeclarationList(list) &&
+					list.Flags&ast.NodeFlagsConst == 0 &&
+					a.containsForeignExecutableValue(declaration.Initializer, make(map[*ast.Symbol]bool)) {
+					a.reportForeignProvenanceEscape(owner, declaration.Initializer,
+						"a mutable alias cannot retain foreign panic provenance in this POC; use a const local adapter with an explicit Result contract")
+				}
+			}
+			if ast.IsReturnStatement(node) {
+				expression := node.AsReturnStatement().Expression
+				if expression != nil && !ast.IsNewExpression(expression) &&
+					a.containsForeignExecutableValue(expression, make(map[*ast.Symbol]bool)) {
+					a.reportForeignProvenanceEscape(owner, expression,
+						"returning an executable foreign value would lose its panic provenance; return a Smithers-owned adapter with an explicit Result/task contract instead")
+				}
+			}
+			if ast.IsBinaryExpression(node) {
+				binary := node.AsBinaryExpression()
+				if binary.OperatorToken.Kind == ast.KindEqualsToken &&
+					a.containsForeignExecutableValue(binary.Right, make(map[*ast.Symbol]bool)) {
+					a.reportForeignProvenanceEscape(owner, binary.Right,
+						"storing a foreign callable through a mutable/opaque reference loses panic provenance; use an immutable local adapter with an explicit Result contract")
+				}
+			}
+			node.ForEachChild(func(child *ast.Node) bool { return visit(child, owner) })
+			return false
+		}
+		file.AsNode().ForEachChild(func(node *ast.Node) bool { return visit(node, nil) })
+	}
+}
+
+func (a *rowAnalysis) reportForeignProvenanceEscape(owner *functionRows, node *ast.Node, message string) {
+	a.report(node, "SMITHERS1508", message)
+	if owner != nil {
+		addRow(owner.directFailures, a.row(a.prelude.panic))
+	}
+}
+
+func (a *rowAnalysis) containsForeignExecutableValue(expression *ast.Node, seen map[*ast.Symbol]bool) bool {
+	if expression == nil {
+		return false
+	}
+	if a.foreignValueProvenance(expression, make(map[*ast.Symbol]bool)) &&
+		a.foreignTypeCanExecute(a.checker.GetTypeAtLocation(expression)) {
+		return true
+	}
+	switch expression.Kind {
+	case ast.KindParenthesizedExpression, ast.KindAsExpression,
+		ast.KindNonNullExpression, ast.KindTypeAssertionExpression:
+		return a.containsForeignExecutableValue(expression.Expression(), seen)
+	case ast.KindObjectLiteralExpression:
+		for _, property := range expression.AsObjectLiteralExpression().Properties.Nodes {
+			switch {
+			case ast.IsPropertyAssignment(property):
+				if a.containsForeignExecutableValue(property.AsPropertyAssignment().Initializer, copySymbolSet(seen)) {
+					return true
+				}
+			case ast.IsShorthandPropertyAssignment(property):
+				symbol := a.checker.GetShorthandAssignmentValueSymbol(property)
+				if symbol != nil && a.foreignSymbolValueCanExecute(symbol, copySymbolSet(seen)) {
+					return true
+				}
+			case ast.IsSpreadAssignment(property):
+				if a.containsForeignExecutableValue(property.AsSpreadAssignment().Expression, copySymbolSet(seen)) {
+					return true
+				}
+			}
+		}
+	case ast.KindArrayLiteralExpression:
+		for _, element := range expression.AsArrayLiteralExpression().Elements.Nodes {
+			if a.containsForeignExecutableValue(element, copySymbolSet(seen)) {
+				return true
+			}
+		}
+	case ast.KindIdentifier:
+		symbol := a.canonical(a.checker.GetSymbolAtLocation(expression))
+		return a.foreignSymbolValueCanExecute(symbol, seen)
+	}
+	return false
+}
+
+func (a *rowAnalysis) foreignSymbolValueCanExecute(symbol *ast.Symbol, seen map[*ast.Symbol]bool) bool {
+	symbol = a.canonical(symbol)
+	if symbol == nil || seen[symbol] {
+		return false
+	}
+	seen[symbol] = true
+	declaration := variableLikeDeclaration(symbol)
+	return declaration != nil && ast.IsVariableDeclaration(declaration) &&
+		a.containsForeignExecutableValue(declaration.AsVariableDeclaration().Initializer, seen)
+}
+
+func (a *rowAnalysis) foreignTypeCanExecute(t *checker.Type) bool {
+	if t == nil {
+		return false
+	}
+	if t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0 {
+		return true
+	}
+	if t.IsUnion() {
+		for _, part := range t.Types() {
+			if a.foreignTypeCanExecute(part) {
+				return true
+			}
+		}
+		return false
+	}
+	return t.Flags()&checker.TypeFlagsObject != 0 ||
+		len(a.checker.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 ||
+		len(a.checker.GetSignaturesOfType(t, checker.SignatureKindConstruct)) != 0
+}
+
+func copySymbolSet(values map[*ast.Symbol]bool) map[*ast.Symbol]bool {
+	copied := make(map[*ast.Symbol]bool, len(values))
+	for value := range values {
+		copied[value] = true
+	}
+	return copied
+}
+
+// checkForeignBoundaries rejects the two foreign-boundary shapes whose runtime
+// meaning the language does not define.
+//
+// specification/failures.mdx, "Foreign Exceptions": "Calling any TypeScript,
+// JavaScript, or other foreign runtime implementation MUST add the
+// distinguished checked panic case by default … A caller MUST propagate panic,
+// explicitly catch it, or use a trusted adapter."
+//
+//   - A `new Foreign(...)` executes foreign code, and constructor Result
+//     lowering is deferred, so only a checker-resolved `@throws {never}`
+//     constructor is accepted (SMITHERS1504).
+//   - A callback handed to foreign code has no checked invocation count, no
+//     checked lifetime and no checked failure channel, which is also what
+//     specification/requirements.mdx, "Scoping", requires of caller-controlled
+//     background APIs (SMITHERS1509).
+func (a *rowAnalysis) checkForeignBoundaries(files []*ast.SourceFile) {
+	for _, file := range files {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			switch {
+			case ast.IsCallExpression(node):
+				if _, foreign := a.foreignPolicyForCall(node); foreign {
+					arguments := node.AsCallExpression().Arguments
+					if arguments != nil {
+						for _, argument := range arguments.Nodes {
+							if a.containsCallableValue(argument, make(map[*ast.Symbol]bool)) {
+								a.report(argument, "SMITHERS1509",
+									"a callback may escape into foreign code beyond the checked call scope; expose an owned Smithers wrapper/adapter with an explicit Result or structured-task callback policy")
+							}
+						}
+					}
+				}
+			case ast.IsNewExpression(node):
+				a.checkForeignConstruction(node)
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
+}
+
+func (a *rowAnalysis) checkForeignConstruction(node *ast.Node) {
+	expression := node.AsNewExpression().Expression
+	if !a.foreignValueProvenance(expression, make(map[*ast.Symbol]bool)) {
+		return
+	}
+	signature := a.checker.GetResolvedSignature(node)
+	if signature != nil && signature.Declaration() != nil &&
+		isNeverThrowsAnnotation(throwsAnnotation(signature.Declaration())) {
+		return
+	}
+	a.report(node, "SMITHERS1504",
+		"a foreign constructor can execute JavaScript but constructor Result lowering is deferred; expose an annotated factory function or Smithers adapter (only a checker-resolved @throws {never} constructor is accepted)")
+}
+
+func isNeverThrowsAnnotation(annotation string) bool {
+	return annotation == "never"
+}
+
+// containsCallableValue reports whether an argument carries something foreign
+// code could invoke. The type's call/construct signatures are the authority, so
+// a callback reaches this whether it was written inline, passed by name, or
+// nested inside an object or array literal.
+func (a *rowAnalysis) containsCallableValue(expression *ast.Node, seen map[*ast.Symbol]bool) bool {
+	if expression == nil {
+		return false
+	}
+	if ast.IsFunctionExpressionOrArrowFunction(expression) {
+		return true
+	}
+	switch expression.Kind {
+	case ast.KindParenthesizedExpression, ast.KindAsExpression,
+		ast.KindNonNullExpression, ast.KindTypeAssertionExpression:
+		return a.containsCallableValue(expression.Expression(), seen)
+	}
+	if t := a.checker.GetTypeAtLocation(expression); t != nil {
+		if len(a.checker.GetSignaturesOfType(t, checker.SignatureKindCall)) > 0 ||
+			len(a.checker.GetSignaturesOfType(t, checker.SignatureKindConstruct)) > 0 {
+			return true
+		}
+	}
+	switch {
+	case ast.IsObjectLiteralExpression(expression):
+		for _, property := range expression.AsObjectLiteralExpression().Properties.Nodes {
+			switch property.Kind {
+			case ast.KindMethodDeclaration, ast.KindGetAccessor, ast.KindSetAccessor:
+				return true
+			case ast.KindPropertyAssignment:
+				if a.containsCallableValue(property.AsPropertyAssignment().Initializer, seen) {
+					return true
+				}
+			case ast.KindShorthandPropertyAssignment:
+				if a.containsCallableValue(property.Name(), seen) {
+					return true
+				}
+			case ast.KindSpreadAssignment:
+				if a.containsCallableValue(property.AsSpreadAssignment().Expression, seen) {
+					return true
+				}
+			}
+		}
+	case ast.IsArrayLiteralExpression(expression):
+		for _, element := range expression.AsArrayLiteralExpression().Elements.Nodes {
+			if a.containsCallableValue(element, seen) {
+				return true
+			}
+		}
+	case ast.IsIdentifier(expression):
+		symbol := a.canonical(a.checker.GetSymbolAtLocation(expression))
+		if symbol == nil || seen[symbol] {
+			return false
+		}
+		seen[symbol] = true
+		declaration := variableLikeDeclaration(symbol)
+		if declaration != nil && ast.IsVariableDeclaration(declaration) {
+			return a.containsCallableValue(declaration.AsVariableDeclaration().Initializer, seen)
+		}
+	}
+	return false
+}
+
+// foreignValueProvenance reports whether the value an expression produces came
+// out of a TypeScript/JavaScript module rather than out of authored `.sm`.
+//
+// This is provenance, not declaration-file membership. A `.sm` local whose TYPE
+// is an interface declared in a foreign module is still an authored value —
+// specification/compatibility.mdx, "Runtime TypeScript Dependency": "A
+// type-only import MUST NOT add that requirement." Provenance is followed
+// through resolved symbols, so an aliased import is foreign under any spelling.
+func (a *rowAnalysis) foreignValueProvenance(expression *ast.Node, seen map[*ast.Symbol]bool) bool {
+	if expression == nil {
+		return false
+	}
+	if a.assetValueProvenance(expression, make(map[*ast.Symbol]bool)) {
+		// Compiler-owned asset modules are compile-time pure-data edges. Their
+		// values must never acquire JavaScript accessor/call provenance merely
+		// because the checker representation lives outside an authored .sm file.
+		return false
+	}
+	switch expression.Kind {
+	case ast.KindParenthesizedExpression, ast.KindAsExpression,
+		ast.KindNonNullExpression, ast.KindAwaitExpression, ast.KindTypeAssertionExpression:
+		return a.foreignValueProvenance(expression.Expression(), seen)
+	case ast.KindPropertyAccessExpression:
+		return a.foreignValueProvenance(expression.AsPropertyAccessExpression().Expression, seen)
+	case ast.KindElementAccessExpression:
+		return a.foreignValueProvenance(expression.AsElementAccessExpression().Expression, seen)
+	case ast.KindCallExpression:
+		if _, foreign := a.foreignPolicyForCall(expression); foreign {
+			return true
+		}
+		return a.foreignValueProvenance(expression.AsCallExpression().Expression, seen)
+	case ast.KindNewExpression:
+		return a.foreignValueProvenance(expression.AsNewExpression().Expression, seen)
+	case ast.KindIdentifier:
+		symbol := a.canonical(a.checker.GetSymbolAtLocation(expression))
+		if symbol == nil || seen[symbol] {
+			return false
+		}
+		seen[symbol] = true
+		declaration := symbol.ValueDeclaration
+		if declaration == nil {
+			declaration = variableLikeDeclaration(symbol)
+		}
+		if declaration == nil {
+			return false
+		}
+		if a.isForeignDeclaration(declaration) {
+			return true
+		}
+		if ast.IsVariableDeclaration(declaration) {
+			return a.foreignValueProvenance(declaration.AsVariableDeclaration().Initializer, seen)
+		}
+	}
+	return false
+}
+
+func variableLikeDeclaration(symbol *ast.Symbol) *ast.Node {
+	if symbol == nil {
+		return nil
+	}
+	if symbol.ValueDeclaration != nil && ast.IsVariableDeclaration(symbol.ValueDeclaration) {
+		return symbol.ValueDeclaration
+	}
+	for _, declaration := range symbol.Declarations {
+		if ast.IsVariableDeclaration(declaration) {
+			return declaration
+		}
+	}
+	return symbol.ValueDeclaration
+}
+
+// ---------------------------------------------------------------------------
+// Async callback ownership
+// ---------------------------------------------------------------------------
+
+// checkCallbackOwnership rejects an async callback whose Promise nobody owns.
+//
+// docs/DECISIONS.md, "Concurrency" (Locked): "Authored .sm code must
+// transitively consume every started Promise with await: either directly or
+// through a recognized combinator such as Promise.all whose result is awaited."
+// specification/requirements.mdx, "Scoping": "Fire-and-forget and detached work
+// are initially unavailable in authored .sm."
+//
+// An async function value handed to a general higher-order function starts a
+// Promise at a call site the compiler cannot see, so no await can be proven.
+// The two recognized owners are excluded: `Layer.provide`, whose computation
+// the provide call itself carries, and `Result.tryPromise`, which invokes its
+// body exactly once and awaits it.
+func (a *rowAnalysis) checkCallbackOwnership(files []*ast.SourceFile) {
+	for _, file := range files {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsCallExpression(node) {
+				arguments := node.AsCallExpression().Arguments
+				if arguments != nil {
+					for index, argument := range arguments.Nodes {
+						a.checkFallibleCallbackArgument(node, index, argument)
+						a.checkAsyncCallbackArgument(node, index, argument)
+					}
+				}
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
+}
+
+// checkFallibleCallbackArgument rejects a function value that carries a failure
+// row across a callback boundary without declaring one.
+//
+// specification/failures.mdx, "Inference": "Public, abstract, ambient, and
+// declaration-only contracts MUST express fallibility directly with
+// Result<A, E>." An argument position is such a boundary. The callee invokes the
+// function somewhere the compiler cannot see, so the only description of the
+// function's failures that survives the hand-off is the function's own declared
+// type — and a plain `(key: string) => string` has nowhere to put them. Accepted,
+// the typed failure would simply vanish at the edge, which is the one outcome
+// the failure channel exists to prevent.
+//
+// The rule is about the CALLBACK's contract, not the callee's parameter type:
+// annotating the function value with `Result<A, E>` clears it wherever it is
+// passed, and no signature inspection of the receiving function is involved.
+//
+// Two argument positions are excluded because a different rule already owns
+// them, and reporting here as well would double-report the same fact:
+// `Layer.provide`'s computation (SMITHERS2105, in checkOneLayer) and — through
+// the row analysis, which does not charge a foreign call inside an adapter body
+// — `Result.try`/`Result.tryPromise`, where the adapter IS the boundary that
+// converts the throw into the Result.
+func (a *rowAnalysis) checkFallibleCallbackArgument(call *ast.Node, index int, argument *ast.Node) {
+	if a.nativePinCall(call) {
+		// native(fn) stores no callback and invokes nothing; it is a checked
+		// assertion whose runtime behavior is identity.
+		return
+	}
+	callback := a.resolveFunctionReference(argument)
+	if callback == nil {
+		// A parameter, an import, or anything else that is not a checked local
+		// function has no row the compiler computed, so there is nothing here to
+		// prove lost. This is what keeps `keys.map(transform)` — where
+		// `transform` is a parameter — an ordinary call.
+		return
+	}
+	if len(callback.bodyFailures) == 0 || callback.declaredShape.result {
+		return
+	}
+	if index == 1 && a.prelude.layerCall(call, "provide") {
+		return
+	}
+	if a.isDurableIntrinsicCall(call) {
+		// A durable flow body is not a callback at all. The durable frontend
+		// compiles it into a static plan at compile time — it never becomes a
+		// closure handed to code the compiler cannot see — and the plan carries
+		// each step's declared `Result<A, E>` explicitly. The premise of this
+		// rule, that the failure channel disappears at an opaque edge, is false
+		// here, so it is a recognized owner exactly like Layer.provide.
+		return
+	}
+	a.report(argument, "SMITHERS1303",
+		"an inferred-fallible function value cannot cross a callback boundary; add an explicit Result contract or handle its failures before passing it")
+}
+
+// isDurableIntrinsicCall reports whether a call's callee resolves to one of the
+// compiler-owned durable declarations. Identity, not spelling: the intrinsic is
+// recognized by the declaration file its symbol was declared in, so a renamed
+// import (`durable as compileFlow`) is still the intrinsic and a user function
+// named `durable` still is not.
+func (a *rowAnalysis) isDurableIntrinsicCall(call *ast.Node) bool {
+	if call == nil || !ast.IsCallExpression(call) {
+		return false
+	}
+	symbol := a.prelude.resolvedSymbolAt(ast.SkipParentheses(call.AsCallExpression().Expression))
+	if symbol == nil {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		if file := ast.GetSourceFileOfNode(declaration); file != nil && file.FileName() == durableVirtualName {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *rowAnalysis) checkAsyncCallbackArgument(call *ast.Node, index int, argument *ast.Node) {
+	if a.nativePinCall(call) {
+		return
+	}
+	function := argument
+	if !ast.IsFunctionExpressionOrArrowFunction(function) {
+		resolved := a.resolveFunctionReference(argument)
+		if resolved == nil {
+			return
+		}
+		function = resolved.node
+	}
+	if !ast.HasSyntacticModifier(function, ast.ModifierFlagsAsync) {
+		return
+	}
+	// `Layer.provide(layer, async () => …)`: the provide call is the owner, so
+	// long as the Promise it returns is itself consumed.
+	if index == 1 && a.prelude.layerCall(call, "provide") && promiseValueIsConsumed(call) {
+		return
+	}
+	// `Result.tryPromise(async () => …)`: the boundary awaits its own body.
+	if index == 0 && a.isResultBoundaryBody(function) {
+		return
+	}
+	a.report(argument, "SMITHERS1404",
+		"async callback invocation ownership is not proven here; use an explicit structured-concurrency combinator or await/return a recognized Layer.provide computation")
+}
+
+// promiseValueIsConsumed reports whether the Promise a call produces is awaited
+// or returned at the site itself. Anything less is not proof of consumption, so
+// the answer is deliberately conservative.
+func promiseValueIsConsumed(call *ast.Node) bool {
+	current := call
+	for current.Parent != nil {
+		parent := current.Parent
+		switch {
+		case ast.IsParenthesizedExpression(parent), ast.IsAsExpression(parent), ast.IsNonNullExpression(parent):
+			current = parent
+			continue
+		case ast.IsAwaitExpression(parent), ast.IsReturnStatement(parent):
+			return true
+		default:
+			return false
+		}
+	}
+	return false
+}
+
+// ---------------------------------------------------------------------------
+// Jumps that escape a labeled value construct
+// ---------------------------------------------------------------------------
+
+// escapingJump finds the first `break`/`continue` inside a labeled value
+// construct that leaves the construct on a path carrying no value.
+//
+// specification/control-flow.mdx, "Blocks" and "Labeled Break Values": an
+// expression block produces a value "from its final expression or from a
+// labeled value break", and "The compiler MUST combine reachable break values
+// when determining the labeled expression's type." A jump that exits the
+// construct without a value has nothing to combine, so the construct has no
+// statically determined type on that path.
+//
+// The same rule is what rejects a CROSS-CONSTRUCT value break: from the inner
+// construct's point of view, `break :outer value` targets a label the inner
+// construct does not contain, so it escapes. specification/control-flow.mdx,
+// "Loop Else", marks nested label selection **not finalized** (Direction), and
+// fail-closed is the only answer that does not invent the missing semantics.
+//
+// The block and loop forms differ on purpose, and the difference is structural
+// rather than stylistic: a value loop's authored label names the LOOP, which
+// sits inside the construct, so `break label` exits the loop into its `else`
+// completion and is contained. A value block's label IS the construct, so
+// `break label` completes it with no value at all.
+func (l *lowerer) escapingJump(target *ast.Node) *ast.Node {
+	labeled := target.AsLabeledStatement()
+	body := labeled.Statement
+	if body == nil {
+		return nil
+	}
+	isLoop := ast.IsIterationStatement(body, false)
+	var found *ast.Node
+	var walk func(*ast.Node) bool
+	walk = func(node *ast.Node) bool {
+		if found != nil {
+			return true
+		}
+		if ast.IsFunctionLike(node) {
+			// A value break inside a nested function body is refused by its own
+			// rule; a jump there never reaches this construct at runtime.
+			return false
+		}
+		switch node.Kind {
+		case ast.KindBreakStatement, ast.KindContinueStatement:
+			if l.jumpEscapes(node, target, labeled, isLoop) {
+				found = node
+				return true
+			}
+			return false
+		}
+		node.ForEachChild(walk)
+		return false
+	}
+	body.ForEachChild(walk)
+	return found
+}
+
+func (l *lowerer) jumpEscapes(node *ast.Node, target *ast.Node, labeled *ast.LabeledStatement, isLoop bool) bool {
+	var label *ast.Node
+	var value *ast.Node
+	if node.Kind == ast.KindBreakStatement {
+		statement := node.AsBreakStatement()
+		label = statement.Label
+		value = statement.Value
+	} else {
+		label = node.AsContinueStatement().Label
+	}
+
+	if label != nil {
+		resolved := l.resolvedJumpTarget(node)
+		if resolved == target {
+			if value != nil {
+				// This construct's own value break: the whole point of the form.
+				return false
+			}
+			return !isLoop
+		}
+		// A jump to another label is contained only when that label's statement
+		// lies inside this construct.
+		return !isAncestorBefore(node, target, resolved)
+	}
+
+	for current := node.Parent; current != nil && current != target; current = current.Parent {
+		if ast.IsFunctionLike(current) {
+			break
+		}
+		if ast.IsIterationStatement(current, false) {
+			return false
+		}
+		if node.Kind == ast.KindBreakStatement && current.Kind == ast.KindSwitchStatement {
+			return false
+		}
+	}
+	_ = labeled
+	return true
+}
+
+// resolvedJumpTarget answers which labeled statement a jump names, by the same
+// lexical lookup the fork binder performs. Break targets are already resolved
+// once per file as node identity; `continue` carries no value and so is not in
+// that table, and is resolved here.
+func (l *lowerer) resolvedJumpTarget(node *ast.Node) *ast.Node {
+	if node.Kind == ast.KindBreakStatement {
+		return l.breakTargets[node]
+	}
+	label := node.AsContinueStatement().Label
+	if label == nil {
+		return nil
+	}
+	for current := node.Parent; current != nil; current = current.Parent {
+		if ast.IsFunctionLike(current) {
+			return nil
+		}
+		if current.Kind == ast.KindLabeledStatement &&
+			current.AsLabeledStatement().Label.Text() == label.Text() {
+			return current
+		}
+	}
+	return nil
+}
+
+// isAncestorBefore reports whether `candidate` is an ancestor of `node` that is
+// reached before `boundary`.
+func isAncestorBefore(node *ast.Node, boundary *ast.Node, candidate *ast.Node) bool {
+	if candidate == nil {
+		return false
+	}
+	for current := node.Parent; current != nil && current != boundary; current = current.Parent {
+		if current == candidate {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *lowerer) reportEscapingJump(node *ast.Node, target *ast.Node) {
+	isLoop := ast.IsIterationStatement(target.AsLabeledStatement().Statement, false)
+	code := "SMITHERS1715"
+	message := "a jump may not escape a value loop without carrying its value"
+	if !isLoop {
+		code = "SMITHERS1714"
+		message = "a jump may not escape a labeled value block without carrying its value"
+		if node.Kind == ast.KindBreakStatement && node.AsBreakStatement().Label != nil &&
+			node.AsBreakStatement().Value == nil && l.breakTargets[node] == target {
+			message = "a labeled value block may not complete through a plain `break label`; every exit must carry a value"
+		}
+	}
+	if node.Kind == ast.KindBreakStatement && node.AsBreakStatement().Value != nil {
+		// A value-carrying break is anchored at the last character of its
+		// authored value, which is where the reference frontend reports it once
+		// its recovery pass has extracted that value. Reporting the same
+		// position from both implementations is what lets one diagnostics
+		// consumer read either compiler.
+		value := node.AsBreakStatement().Value
+		l.reportAt(value.End()-1, 1, code, message)
+		return
+	}
+	l.report(node, code, message)
+}
+
+// reportAt records a diagnostic at an exact authored offset, for the rules
+// whose contract anchors somewhere other than a node's own start.
+func (l *lowerer) reportAt(start int, length int, code string, message string) {
+	if start < 0 {
+		start = 0
+	}
+	if length < 0 {
+		length = 0
+	}
+	l.reports = append(l.reports, loweringReport{code: code, message: message, start: start, length: length})
+}
+
+// ---------------------------------------------------------------------------
+// Type-only imports
+// ---------------------------------------------------------------------------
+
+// importIsTypeOnly reports whether an import contributes no runtime value.
+//
+// specification/type-system.mdx, "Foreign Boundaries": "Type-only imports add
+// neither runtime requirement." Both spellings count: `import type { T }`, and
+// a named-import list whose every element carries its own `type` marker.
+func importIsTypeOnly(declaration *ast.ImportDeclaration) bool {
+	clause := declaration.ImportClause
+	if clause == nil {
+		// A bare `import "./x.ts"` is exactly a module-initializer edge.
+		return false
+	}
+	if clause.IsTypeOnly() {
+		return true
+	}
+	data := clause.AsImportClause()
+	if data.Name() != nil || data.NamedBindings == nil || !ast.IsNamedImports(data.NamedBindings) {
+		return false
+	}
+	elements := data.NamedBindings.AsNamedImports().Elements
+	if elements == nil || len(elements.Nodes) == 0 {
+		return false
+	}
+	for _, element := range elements.Nodes {
+		if !element.AsImportSpecifier().IsTypeOnly {
+			return false
+		}
+	}
+	return true
+}
+
+// isResultBoundaryBody reports whether a function IS the body argument of
+// `Result.try` / `Result.tryPromise`. The adapter invokes it exactly once
+// inside its own try/catch, so it owns both the throw scope and, for the async
+// form, the callback's lifetime.
+func (a *rowAnalysis) isResultBoundaryBody(node *ast.Node) bool {
+	if !ast.IsFunctionExpressionOrArrowFunction(node) || node.Parent == nil {
+		return false
+	}
+	parent := node.Parent
+	if !ast.IsCallExpression(parent) {
+		return false
+	}
+	arguments := parent.AsCallExpression().Arguments
+	if arguments == nil || len(arguments.Nodes) == 0 || arguments.Nodes[0] != node {
+		return false
+	}
+	_, matched := a.prelude.resultBoundaryCall(parent)
+	return matched
+}
+
+// ---------------------------------------------------------------------------
+// Retired type grammar
+// ---------------------------------------------------------------------------
+
+// checkRetiredTypeGrammar rejects the two retired type markers with the
+// migration diagnostic instead of a raw TypeScript grammar error.
+//
+// specification/type-system.mdx, "Optional" (Locked): "The earlier ?T,
+// payload-capture, orelse, and .? grammar MUST NOT be part of the initial
+// language." specification/failures.mdx, "Inference", and
+// specification/type-system.mdx, "Public Boundaries", both say Smithers MUST
+// NOT add a `!T` failure-annotation grammar.
+//
+// Identity, not a token scan: the fork's parser already recovers `!T` as a
+// JSDoc non-nullable type and `?T` as a JSDoc nullable type, so the retired
+// grammar IS a node kind. A postfix non-null assertion `x!` is a different node
+// and is untouched, and so is the postfix `T!` type form, which is not the
+// retired marker either.
+func (a *rowAnalysis) checkRetiredTypeGrammar(files []*ast.SourceFile) {
+	for _, file := range files {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			switch node.Kind {
+			case ast.KindJSDocNonNullableType:
+				if isPrefixJSDocTypeMarker(node) {
+					a.report(node, "SMITHERS1001", "the `!T` return marker was removed; use Result<T, E>")
+				}
+			case ast.KindJSDocNullableType:
+				if isPrefixJSDocTypeMarker(node) {
+					a.report(node, "SMITHERS1001", "the `?T` type grammar was removed; use Optional<T>")
+				}
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
+}
+
+// isPrefixJSDocTypeMarker separates `!T` from `T!`. The parser uses one node for
+// both and distinguishes them by whether the marker precedes the type, which is
+// the same test the fork's own grammar check performs.
+func isPrefixJSDocTypeMarker(node *ast.Node) bool {
+	inner := node.Type()
+	return inner != nil && node.Pos() != inner.Pos()
+}
+
+// ---------------------------------------------------------------------------
+// Project closure
+// ---------------------------------------------------------------------------
+
+// checkRelativeModuleResolution rejects a relative `.sm` import the supplied
+// project does not contain.
+//
+// specification/requirements.mdx, "Satisfaction": "When the compiler knows the
+// complete closure, an unsatisfied capability MUST be a compile error." Failure
+// and requirement rows are computed over the whole supplied module set, so a
+// module the compiler cannot see means the closure is NOT known. The analysis
+// must say so rather than proceed as though the absent module contributed an
+// empty row — an assumption that would let a real failure or requirement
+// disappear because the file carrying it was missing.
+//
+// The rule is deliberately narrow, and each narrowing is load-bearing:
+//
+//   - Only a RELATIVE specifier. A bare specifier names a package, whose absence
+//     is a packaging question TypeScript already answers.
+//   - Only a `.sm` specifier. A relative `.ts`, `.js`, or asset import is not a
+//     Smithers module and does not carry rows.
+//   - Type-only imports are included. The corpus pins this: the closure the row
+//     analysis needs is the module set, and a type-only edge still names a module
+//     whose Error and Context declarations the rows are built from. Excluding it
+//     would let the one import spelling that produces no value cascade also
+//     silently produce no closure check.
+func (a *rowAnalysis) checkRelativeModuleResolution(files []*ast.SourceFile) {
+	for _, file := range files {
+		for _, statement := range file.Statements.Nodes {
+			if !ast.IsImportDeclaration(statement) {
+				continue
+			}
+			specifier := statement.AsImportDeclaration().ModuleSpecifier
+			if specifier == nil || !ast.IsStringLiteral(specifier) {
+				continue
+			}
+			text := specifier.Text()
+			if !strings.HasPrefix(text, ".") || !strings.HasSuffix(text, ".sm") {
+				continue
+			}
+			// Resolution is the checker's own, so this asks the real module
+			// graph rather than re-deriving path lookup rules that could drift
+			// from it. ResolveExternalModuleName ignores errors, so asking is
+			// free of side effects.
+			if a.checker.ResolveExternalModuleName(specifier) != nil {
+				continue
+			}
+			a.report(specifier, "SMITHERS1801",
+				"relative Smithers module '"+text+"' is not present in the supplied project source set")
+		}
+	}
+}
+
+// checkProjectImportBindings rejects a value binding that does not resolve to
+// an export of the supplied relative Smithers module. The proof is entirely
+// checker-backed: the module is the symbol ResolveExternalModuleName selected,
+// and a binding is valid only when its unaliased/merged symbol is one of that
+// module's unaliased/merged exports. Thus `present as absent` is valid even
+// though the local spelling matches a missing-name example, while an actually
+// unresolved binding is refused with SMITHERS1804 before stock TS2305 can
+// stand in for the language's row-closure rule.
+func (a *rowAnalysis) checkProjectImportBindings(files []*ast.SourceFile) {
+	for _, file := range files {
+		for _, statement := range file.Statements.Nodes {
+			if !ast.IsImportDeclaration(statement) {
+				continue
+			}
+			declaration := statement.AsImportDeclaration()
+			specifier := declaration.ModuleSpecifier
+			if specifier == nil || !ast.IsStringLiteral(specifier) {
+				continue
+			}
+			text := specifier.Text()
+			if !strings.HasPrefix(text, ".") || !strings.HasSuffix(text, ".sm") || declaration.ImportClause == nil {
+				continue
+			}
+			clause := declaration.ImportClause.AsImportClause()
+			if declaration.ImportClause.IsTypeOnly() {
+				continue
+			}
+			module := a.checker.ResolveExternalModuleName(specifier)
+			if module == nil {
+				// SMITHERS1801 owns the absent-module situation.
+				continue
+			}
+			exported := make(map[*ast.Symbol]bool)
+			for _, symbol := range a.checker.GetExportsOfModule(module) {
+				if canonical := a.canonical(symbol); canonical != nil {
+					exported[canonical] = true
+				}
+			}
+			checkBinding := func(binding *ast.Node) {
+				if binding == nil {
+					return
+				}
+				resolved := a.symbolAt(binding)
+				if resolved != nil && exported[resolved] {
+					return
+				}
+				a.report(binding, "SMITHERS1804", "import '"+binding.Text()+"' does not resolve to an exported value in '"+text+"'")
+			}
+			checkBinding(clause.Name())
+			if clause.NamedBindings == nil || !ast.IsNamedImports(clause.NamedBindings) {
+				continue
+			}
+			for _, element := range clause.NamedBindings.AsNamedImports().Elements.Nodes {
+				specifier := element.AsImportSpecifier()
+				if !specifier.IsTypeOnly {
+					checkBinding(specifier.Name())
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,15 @@
+import { Panic } from "smithers:exceptions"
+import { danger } from "./module-init-only.ts"
+
+// `module-init-only.ts` carries the documented module-initialization header
+// and nothing else: `danger` has no `@throws` claim of its own and always
+// throws. The module claim buys the static import, not the call, so the call
+// still charges the panic channel and the throw is observed as a Panic here
+// rather than escaping the program.
+function attempt(): Result<string, Panic> {
+  return danger()
+}
+
+export function main(): string[] {
+  return [attempt().match({ ok: (value) => `ok ${value}`, error: () => "panic" })]
+}

@@ -1,0 +1,22 @@
+export class Disk extends Error {
+  constructor() { super("disk offline") }
+}
+
+export class Storage extends Error {
+  constructor(cause: Error) { super("storage unavailable", { cause }) }
+}
+
+export class Lookup extends Error {
+  constructor(cause: Error) { super("lookup failed", { cause }) }
+}
+
+function load(): Result<string, Lookup> {
+  throw new Lookup(new Storage(new Disk()))
+}
+
+export function main(): string[] {
+  return [load().match({
+    ok: (value) => value,
+    error: (error) => `top ${error.message} / root ${(error.rootCause() as Error).message}`,
+  })]
+}

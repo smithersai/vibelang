@@ -1,0 +1,12 @@
+{
+  "title": "the retired vibelang:flows specifier owns nothing: it is an ordinary unresolvable foreign module, not the durable intrinsic",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 33
+    }
+  ],
+  "notes": "docs/DECISIONS.md (Locked): '`smithers:flows` is a compiler-owned virtual module', and specification/durable-execution.mdx:24: '`durable` is a compiler-recognized function imported from the compiler-owned `smithers:flows` virtual module.' Exactly one specifier is named, so any other spelling is an ordinary module specifier and is subject to the ordinary rules \u2014 here, an unresolvable one, which is an untrusted foreign module edge (SMITHERS1510 at the specifier). The retired spelling is the interesting one because the Go bridge carried it in both `compilerModuleSpecifiers` and `durableModuleSpecifiers`, so this exact program compiled there, contributed no requirement, did not block a native pin, and lowered `durable(...)` into a real digest-pinned Plan \u2014 a language name that no longer exists behaving as the intrinsic. The reference always treated it as foreign. The declared cascade is one diagnostic because nothing here calls the import: `typeof` on each binding observes that the names exist as bindings without adding a foreign-call or top-level-call rule on top of the module rule. Paired with 17-durable/a-single-action-flow-lowers-to-a-static-plan, which is the same shape on the real specifier."
+}

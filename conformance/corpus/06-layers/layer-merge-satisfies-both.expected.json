@@ -1,0 +1,5 @@
+{
+  "title": "Layer.merge of two Layer.succeed providers satisfies both requirements of the provided body",
+  "expect": "output",
+  "stdout": ["Ada@7", "none@7"]
+}

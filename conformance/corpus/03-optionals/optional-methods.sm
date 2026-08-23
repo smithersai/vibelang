@@ -1,0 +1,13 @@
+function lookup(id: number): Optional<string> {
+  if (id === 1) return "Ada"
+  return undefined
+}
+
+export function main(): string[] {
+  return [
+    lookup(1).match({ some: (value) => `some ${value}`, none: () => "none" }),
+    lookup(2).match({ some: (value) => `some ${value}`, none: () => "none" }),
+    lookup(1).map((value) => value.toUpperCase()).unwrapOr("-"),
+    lookup(1).andThen((value) => lookup(value.length)).unwrapOr("-"),
+  ]
+}

@@ -4,7 +4,7 @@
  * The standard library lists `Equivalence` and `Hash` under "Schema and
  * Encoding" (docs/src/pages/reference/standard-library.mdx) as artifacts that
  * are *derived at comptime where possible*. Until the compiler derives them,
- * they are ordinary VibeLang values: an `Equivalence` is an immutable, frozen,
+ * they are ordinary Smithers values: an `Equivalence` is an immutable, frozen,
  * WeakSet-branded wrapper around a comparison function, built the same way
  * `Duration` and the runtime's `Result`/`Optional` are built, so a structural
  * look-alike cannot be passed off as one. Every operation panics on a forgery.
@@ -14,7 +14,7 @@
  * - **SameValueZero for primitives.** `Equivalence.number` (and the `number`
  *   branch of `Equivalence.any`) uses SameValueZero: `NaN` equals `NaN`, and
  *   `-0` equals `+0`. This is the comparison `Array.prototype.includes` and
- *   `Map`/`Set` keys already use, so a VibeLang value behaves the way a
+ *   `Map`/`Set` keys already use, so a Smithers value behaves the way a
  *   TypeScript author expects, and it is a genuine equivalence relation —
  *   `Object.is` is too (it separates the zeroes) but `===` is not, because
  *   `NaN === NaN` is false and reflexivity would fail.
@@ -54,7 +54,7 @@ function equalsOf<T>(instance: Equivalence<T>): EqualsFn {
 }
 
 /**
- * SameValueZero, the equality VibeLang uses for primitives.
+ * SameValueZero, the equality Smithers uses for primitives.
  *
  * `===` everywhere except `NaN`, which is equal to itself so the relation stays
  * reflexive. `+0` and `-0` are the same value, which is what `===` already says.

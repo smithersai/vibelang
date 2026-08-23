@@ -1,0 +1,7 @@
+{
+  "title": "a comptime binding read in type position gains a same-named literal type alias while keeping its value",
+  "expect": "output",
+  "stdout": [
+    "fast:3"
+  ]
+}

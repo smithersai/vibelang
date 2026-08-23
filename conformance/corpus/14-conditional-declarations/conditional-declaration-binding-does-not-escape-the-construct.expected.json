@@ -1,0 +1,12 @@
+{
+  "title": "a conditional declaration's binding does not escape the construct: a later reference is an unresolved name",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "TS2304",
+      "line": 11,
+      "column": 21
+    }
+  ],
+  "notes": "poc/src/language/README.md: 'The synthetic block opens before the if and closes after the last else branch, so the binding is scoped to the conditional construct and to nothing after it ... a reference to the binding AFTER the construct is left to the acceptance rule, where the generated program reports the unresolved name.' EVIDENCE for the stock TypeScript code: the lowering rewrites the construct into `{ const found = lookup(key); if (found !== null) { ... } }`, so `found` on line 11 is genuinely out of scope and the stock checker reports TS2304 'Cannot find name'. specification/control-flow.mdx, 'Blocks': 'A declaration inside an expression block follows ordinary lexical scope.' This case is the fail-closed counterpart of conditional-declaration-binding-is-visible-in-else, and it is only reachable through the emit-check stage."
+}

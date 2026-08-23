@@ -1,0 +1,5 @@
+{
+  "title": "Optional.unwrap() early-returns the absent value from an Optional-returning owner",
+  "expect": "output",
+  "stdout": ["1 -> A", "2 -> -"]
+}

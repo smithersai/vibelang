@@ -1,0 +1,11 @@
+import { config } from "./module-resolution-tag.ts"
+import { settings } from "./split-trust-marker.ts"
+
+// Two modules, two near misses, one rule. Neither file wrote the marker: one
+// wrote `@moduleResolution`, the other split `@throws` from `{never}` across
+// two decorated lines. Both must be refused as untrusted module initializers.
+// Only `typeof` is applied to each binding, so the declared cascade is the
+// trust rule itself and nothing else.
+export function main(): string[] {
+  return [typeof config, typeof settings]
+}

@@ -1,0 +1,7 @@
+{
+  "title": "recover handles a recoverable Error but must not implicitly swallow the distinguished panic channel",
+  "expect": "output",
+  "stdout": ["guest for zoe", "panic survived recover", "41"],
+  "typescript": ["foreign.ts"],
+  "notes": "specification/failures.mdx, 'Foreign Exceptions': 'Reflect.panic and compiler/runtime invariant failures enter the same distinguished panic channel. Ordinary Result recovery MUST NOT swallow panic implicitly.' This is the most dangerous obligation in the whole failure model to get wrong in the fail-open direction: a recover() that caught a Panic would silently convert an invariant violation into a plausible-looking success value. Line 2 is the load-bearing one — an implementation that let recover() handle the Panic would print 'recovered -1'."
+}

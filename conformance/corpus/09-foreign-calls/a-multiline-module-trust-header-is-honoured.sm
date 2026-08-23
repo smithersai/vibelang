@@ -1,0 +1,8 @@
+import { safe } from "./decorated-trust-header.ts"
+
+// The positive control for the trust-marker grammar: the header is real, its
+// two tags sit on their own decorated lines, and the module is trusted. `safe`
+// carries its own `@throws {never}`, so the call needs no Result channel.
+export function main(): string[] {
+  return [safe("ada")]
+}

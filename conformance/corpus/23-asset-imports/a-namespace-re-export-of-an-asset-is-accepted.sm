@@ -1,0 +1,6 @@
+import bundle from "./config.json" with { type: "json" }
+export * as config from "./config.json" with { type: "json" }
+
+export function main(): string[] {
+  return [bundle.mode]
+}

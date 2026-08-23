@@ -3,7 +3,7 @@
  *
  * The authored module below declares one ordinary type and never writes a
  * schema. The comptime frontend resolves `Schema` from the compiler-owned
- * "vibelang:schema" module by checker identity, reifies the type into a
+ * "smithers:schema" module by checker identity, reifies the type into a
  * canonical descriptor, and lowers the call site to a literal schema value
  * bound to the runtime engine. The lowered program is then executed here.
  */
@@ -12,12 +12,12 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { ComptimeCompiler, compileComptimeIntrinsics } from "../../src/build/index.ts";
 
-const root = await mkdtemp(join(tmpdir(), "vibelang-validation-demo-"));
+const root = await mkdtemp(join(tmpdir(), "smithers-validation-demo-"));
 const compiler = new ComptimeCompiler({ root, cacheDirectory: join(root, ".cache"), target: "node" });
 
 const authored = [
-  `import { comptime } from "vibelang:comptime";`,
-  `import { Schema } from "vibelang:schema";`,
+  `import { comptime } from "smithers:comptime";`,
+  `import { Schema } from "smithers:schema";`,
   ``,
   `type SignupRequest = {`,
   `  email: string;`,

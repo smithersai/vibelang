@@ -1,0 +1,7 @@
+{
+  "title": "a throw of an Error subclass in a Result-returning function lifts into the failure variant",
+  "expect": "output",
+  "stdout": [
+    "error Boom: bad value -2"
+  ]
+}

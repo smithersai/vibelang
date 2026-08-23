@@ -1,0 +1,6 @@
+{
+  "title": "the `.?` postfix unwrap operator is retired: use Optional.unwrap()",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1001", "line": 6, "column": 25 }],
+  "notes": "specification/type-system.mdx, 'Optional': 'The earlier ?T, payload-capture, orelse, and .? grammar MUST NOT be part of the initial language.' The receiver is an Optional-typed call, pinning the idiomatic migration spelling that previously crashed source-map generation; the frontend must now reject it at the authored operator location without claiming invalid map provenance."
+}

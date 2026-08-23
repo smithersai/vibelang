@@ -1,0 +1,8 @@
+export function main(): string[] {
+  const chosen = pick: {
+    const candidate = "inner"
+    break :pick `${candidate}-value`
+  }
+  const candidate = "outer"
+  return [chosen, candidate]
+}

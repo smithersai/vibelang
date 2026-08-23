@@ -137,7 +137,7 @@ function assertSyncContract(files: FileSystem, root: string): void {
 const temporaryRoots: string[] = [];
 
 async function temporaryDirectory(): Promise<string> {
-  const root = await nodeFsPromises.mkdtemp(path.join(os.tmpdir(), "vibelang-platform-"));
+  const root = await nodeFsPromises.mkdtemp(path.join(os.tmpdir(), "smithers-platform-"));
   temporaryRoots.push(root);
   return root;
 }

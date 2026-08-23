@@ -1,0 +1,13 @@
+function schedule(items: string[], run: (item: string) => void): void {
+  for (const item of items) run(item)
+}
+
+const seen: string[] = []
+
+export function main(): string[] {
+  schedule(["ada"], async (item) => {
+    await Promise.resolve()
+    seen.push(item)
+  })
+  return seen
+}

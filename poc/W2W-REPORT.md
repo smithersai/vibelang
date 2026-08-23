@@ -1,5 +1,7 @@
 # W2-W Typed Worker Report
 
+> **Historical record.** This report describes work completed before the 2026-08-23 specification reduction. Some features it covers — the expression-form grammar, `defer`/`errdefer`, `Optional<T>`, `.unwrap()`, and the portable/native targets — are no longer part of the language. See `docs/DECISIONS.md`.
+
 Status: provisional library lowering for the concurrency design direction. No `spawn module {}` syntax was added.
 
 ## API surface
@@ -41,7 +43,7 @@ Nominal domain Error identity is preserved when the Error declaration/codec regi
 - Automatic compiler-derived codecs and specialized typed-array/transferable codecs are not implemented; the provisional recursive value codec is intentionally narrower.
 - Worker modules are isolation realms, not security sandboxes. The private transport contains unsolicited public-channel messages, but code in a worker can still consume CPU/memory or use host APIs available to it.
 - Timed-out active functions are not cooperatively cancelled.
-- Contracts are supplied as TypeScript generics plus a runtime function allowlist; runtime schema generation from VibeLang types is future compiler work.
+- Contracts are supplied as TypeScript generics plus a runtime function allowlist; runtime schema generation from Smithers types is future compiler work.
 - Domain Error registration metadata is not automatically split/imported into the caller realm; both realms must execute the corresponding registration.
 
 SOURCE SETTLED

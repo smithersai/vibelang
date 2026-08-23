@@ -1,7 +1,0 @@
-import { durable } from "vibelang:flows"
-import { Compile } from "test:cli-actions"
-
-export const Unsupported = durable(function Unsupported(input: { source: string }) {
-  if (input.source) return Compile.run({ source: input.source })
-  return Compile.run({ source: "fallback" })
-})

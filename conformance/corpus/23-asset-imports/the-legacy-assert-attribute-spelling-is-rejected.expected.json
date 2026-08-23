@@ -1,0 +1,7 @@
+{
+  "title": "the withdrawn `assert { ... }` spelling does not select a loader; only standard import attributes do",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS5202", "line": 1, "column": 38 }],
+  "assets": ["counter.json"],
+  "notes": "specification/comptime.mdx, 'Built-In Formats': 'Non-code inputs MUST select their loader and mode with STANDARD import attributes', and the shape it prints is `with { ... }`. docs/src/pages/guide/asset-imports.mdx lists 'Missing or legacy `assert` attributes' among the forms that 'are rejected before project output is committed'. The distinction matters because `assert { type: \"json\" }` is the withdrawn TC39 spelling that still parses: accepting it would leave two selection grammars in the language, and a program written against the old one would silently keep working. poc/src/build/source-assets.ts records SMITHERS5202, reported at the attribute clause rather than at the whole import. RETIRED MARKER (go, 2026-08-23): the fork used to refuse the legacy spelling as ungrammatical source (observed SMITHERS1000@1:38) rather than as a rejected loader selection, so the refusal would not have survived the clause becoming parseable. It now recovers the `ImportAttributes` node and owns the refusal as SMITHERS5202 at the attribute clause; measured XPASS on go by `node conformance/runner/run.mjs --backend both --jobs 4`."
+}

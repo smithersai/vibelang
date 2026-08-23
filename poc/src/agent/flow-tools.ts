@@ -141,7 +141,7 @@ export function flowTool<Input = JsonValue, Success = JsonValue>(
       : {
         name: options.name ?? flowIdentityName(contract),
         config: {
-          schema: "vibelang.agent.flow-tool/v1",
+          schema: "smithers.agent.flow-tool/v1",
           flowId: contract.flowId,
           flowVersion: contract.flowVersion,
           planDigest: contract.planDigest,

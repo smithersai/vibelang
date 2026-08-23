@@ -1,0 +1,12 @@
+{
+  "title": "a provided capability is unavailable once Layer.provide has returned: the environment is scoped to the provided computation",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2102",
+      "line": 18,
+      "column": 17
+    }
+  ],
+  "notes": "specification/requirements.mdx, 'Scoping': 'Provided implementations MUST be scoped to the provided computation. Layer.provide(layer, body) MUST keep its environment active through body and the Promise returned by body, then revoke it.' The same top-level call succeeds INSIDE the scope on the line above, so this case pins the boundary rather than the absence of a provider \u2014 05-context-rows/unsatisfied-top-level-requirement pins the never-provided case. Fail-closed: a capability that outlived its scope would be ambient authority."
+}

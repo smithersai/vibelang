@@ -1,5 +1,7 @@
 # W2-C2 Concurrency POC Report
 
+> **Historical record.** This report describes work completed before the 2026-08-23 specification reduction. Some features it covers — the expression-form grammar, `defer`/`errdefer`, `Optional<T>`, `.unwrap()`, and the portable/native targets — are no longer part of the language. See `docs/DECISIONS.md`.
+
 ## API surface
 
 - `allKeyed(record)` returns a Promise of a null-prototype record whose values are awaited.

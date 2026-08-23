@@ -8,14 +8,14 @@ import {
   __setErrorIdentity,
   errorCases,
   errorIdentity,
-} from "vibelang/result";
-import { Panic } from "vibelang/exceptions";
+} from "smthrs/result";
+import { Panic } from "smthrs/exceptions";
 import {
   MissingOptionalValue,
   Optional,
   __optionalAbsent,
   __optionalPresent,
-} from "vibelang/optional";
+} from "smthrs/optional";
 
 class NotFound extends Error {
   constructor(id) {

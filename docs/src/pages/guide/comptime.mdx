@@ -1,11 +1,11 @@
 # Comptime [Evaluate deterministic code and produce types during compilation]
 
-VibeLang uses compile-time execution for work that the compiler can prove depends only on compiler-known inputs. The imported `comptime(...)` compiler intrinsic requires evaluation and reports an error when the work cannot be completed during the build. It is ordinary call syntax, not a language keyword.
+Smithers uses compile-time execution for work that the compiler can prove depends only on compiler-known inputs. The imported `comptime(...)` compiler intrinsic requires evaluation and reports an error when the work cannot be completed during the build. It is ordinary call syntax, not a language keyword.
 
 :::warning Implementation status
 This page describes the accepted design plus a bounded executable subset. The
 project frontend used by root `check`, `compile`, `run`, and `test` recognizes
-the compiler-owned `vibelang:comptime` and `embed` imports by checker identity.
+the compiler-owned `smithers:comptime` and `embed` imports by checker identity.
 Its bounded interpreter supports `const`/`let`, assignment and compound
 assignment, `++`/`--`, blocks, `if`, `while`, `do-while`, classic `for`,
 `for-of`, unlabeled `break`/`continue`, `return`, project-local compile-time
@@ -24,8 +24,17 @@ subset, not general JavaScript: spread, destructuring, `var`, labeled control
 flow, `for-in`, closures as values, arbitrary calls/globals/I/O, and
 switch/try/throw remain unsupported. Automatic evaluation and computed,
 mapped, conditional, or generic type results remain design. The
-`vibelang/build` subpath also exposes the evaluator, provenance, and
+`smthrs/build` subpath also exposes the evaluator, provenance, and
 content-addressed cache APIs.
+
+The opt-in Go backend also lowers `smithers:comptime` inside the pinned fork,
+using checker identity and the fork AST factory/printer. Its bounded interpreter
+covers canonical values, local pure helpers, mutation and loops, hard budgets,
+`comptime.target` branch erasure, and value-derived literal types. It refuses
+tracked `embed(...)` because the Go request protocol does not yet carry
+compiler-owned asset bytes; schema reification, loaders, and the persistent
+comptime cache remain TypeScript-instrument surfaces. Refused forms suppress
+emit instead of reaching runtime.
 :::
 
 ## Automatic Evaluation
@@ -44,7 +53,7 @@ You do not need to mark routine constant folding.
 Import `comptime` when the result must exist during compilation:
 
 ```ts
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 
 const routes = comptime(parseRoutes(embed("./routes.json")))
 ```
@@ -74,7 +83,7 @@ const routes = comptime(() => {
 Comptime values can produce types:
 
 ```ts
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 
 const definition = comptime(JSON.parse(embed("./api.json")))
 const Api = comptime(deriveApi(definition))
@@ -100,7 +109,7 @@ that are not derived from a canonical runtime value remain future work.
 `comptime.target` describes the selected output environment:
 
 ```ts
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 
 const transports = {
   browser: BrowserTransport,
@@ -108,8 +117,6 @@ const transports = {
   bun: BunTransport,
   deno: DenoTransport,
   edge: FetchTransport,
-  native: NativeTransport,
-  wasm: WasiTransport,
 }
 
 const defaultTransport = comptime(transports[comptime.target])
@@ -122,7 +129,7 @@ Branches for other targets are removed from the artifact. Their implementations 
 Comptime can read source assets through tracked imports and embedding APIs:
 
 ```ts
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 import query from "./find-user.sql" with { type: "text" }
 
 const plan = comptime(optimize(query))
@@ -150,7 +157,7 @@ Hermetic does not mean isolated from all input. It means every input is declared
 The same function may be callable in both phases when its operations are valid in both:
 
 ```ts
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 
 function slugify(value: string): string {
   return value.trim().toLowerCase().replaceAll(" ", "-")

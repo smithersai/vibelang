@@ -1,0 +1,28 @@
+import { durable as compileFlow, Action, sequential, sleep, waitSignal } from "smithers:flows"
+
+class Lookup extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+class Audit extends Action<(input: { value: string }) => Result<{ saved: boolean }, Error>> {}
+
+export const Build = compileFlow((input: { key: string; live: boolean }) => {
+  const found = Lookup.run({ key: input.key }).unwrap()
+  const selected = input.live ? found.value : "offline"
+  sleep(25)
+  const pair = sequential(
+    Lookup.run({ key: selected }),
+    Audit.run({ value: selected })
+  )
+  const approval = waitSignal<string>("build.approval")
+  return { approval, pair, selected }
+})
+
+export function main(): string[] {
+  const plan = Build.plan
+  return [
+    Build.artifactSource,
+    plan.nodes.map((node) => node.kind).join(","),
+    String(plan.digest.length),
+    String(plan.nodes[1].controlDependencies[0] === plan.nodes[0].id),
+    String(plan.nodes[4].controlDependencies[0] === plan.nodes[3].id),
+    plan.requirements.join(",")
+  ]
+}

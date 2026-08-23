@@ -1,0 +1,6 @@
+{
+  "title": "Result.all collects across concurrent work: awaiting a recognized combinator leaves Results, and collecting them reports the first error",
+  "expect": "output",
+  "stdout": ["Ada Lovelace,Grace Hopper", "no entry for zoe"],
+  "notes": "specification/failures.mdx, 'Promise Semantics': awaiting a Promise<Result<A, E>> yields the Result, which must still be consumed. docs/DECISIONS.md (Locked, Concurrency): every started Promise is consumed 'either directly or through a recognized combinator such as Promise.all whose result is awaited'. specification/failures.mdx, 'Matching and Transformation', requires `all` among the Result operations. Each of those three is separately pinned already; what is new here is the composition, which is how concurrent fallible work is actually written: the Promise channel and the Result channel are collected by different operations, in that order, and neither collapses into the other. The second line is load-bearing for the same reason as in 01/result-all-collects-and-stops-at-the-first-error — two entries fail, and the answer must be the first one regardless of the order the concurrent work settled in."
+}

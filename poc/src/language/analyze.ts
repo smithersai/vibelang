@@ -9,7 +9,7 @@ import type {
 } from "./model.ts";
 import { buildSemanticModel, buildSemanticProject } from "./semantic.ts";
 
-/** Run the TypeScript-backed VibeLang semantic pass without emitting code. */
+/** Run the TypeScript-backed Smithers semantic pass without emitting code. */
 export function analyzeSource(source: string, options: AnalyzeOptions = {}): Analysis {
   const model = buildSemanticModel(source, options);
   return {
@@ -21,7 +21,7 @@ export function analyzeSource(source: string, options: AnalyzeOptions = {}): Ana
 }
 
 /**
- * Analyze direct static calls across an in-memory set of `.vibe` modules.
+ * Analyze direct static calls across an in-memory set of `.sm` modules.
  * This is an analysis API only; project transform/declaration emit is deferred.
  */
 export function analyzeProject(

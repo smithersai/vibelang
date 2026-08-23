@@ -4,17 +4,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import * as ts from "typescript-js";
-import { compileVibe } from "./compile.ts";
+import { compileSmithers } from "./compile.ts";
 import { analyzeSource } from "./analyze.ts";
 import { checkEmittedTypeScript } from "./validate.ts";
-import { recoverVibeSyntax } from "./recover.ts";
+import { recoverSmithersSyntax } from "./recover.ts";
 import { __vsInspectResult } from "../runtime/index.ts";
 
 function compileLabeled(source: string, name: string) {
-  return compileVibe(source, {
-    fileName: `${import.meta.dir}/${name}.vibe`,
+  return compileSmithers(source, {
+    fileName: `${import.meta.dir}/${name}.sm`,
     outputFileName: `${import.meta.dir}/${name}.generated.ts`,
-    sourceName: `${name}.vibe`,
+    sourceName: `${name}.sm`,
     runtimeImport: "../runtime/index.ts",
   });
 }
@@ -25,14 +25,14 @@ async function executeLabeled(source: string, name: string) {
   expect(checkEmittedTypeScript(compiled.code, `${import.meta.dir}/${name}.generated.ts`)
     .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)
     .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"))).toEqual([]);
-  const executable = compileVibe(source, {
-    fileName: `${import.meta.dir}/${name}.vibe`,
+  const executable = compileSmithers(source, {
+    fileName: `${import.meta.dir}/${name}.sm`,
     outputFileName: `${import.meta.dir}/${name}.generated.ts`,
-    sourceName: `${name}.vibe`,
+    sourceName: `${name}.sm`,
     runtimeImport: pathToFileURL(`${import.meta.dir}/../runtime/index.ts`).href,
   });
   const javascript = new Bun.Transpiler({ loader: "ts", target: "bun" }).transformSync(executable.code);
-  const directory = await mkdtemp(join(tmpdir(), "vibe-labeled-values-"));
+  const directory = await mkdtemp(join(tmpdir(), "smithers-labeled-values-"));
   try {
     const modulePath = join(directory, `${name}.mjs`);
     await writeFile(modulePath, javascript);
@@ -102,7 +102,7 @@ test("labeled block values execute with typed joins and authored order", async (
   `, "labeled-execution");
 
   // The inferred join stays a precise literal union in the emitted output.
-  expect(compiled.code).toMatch(/let __vibe_label_value_\d+: "empty" \| "long" \| "short";/);
+  expect(compiled.code).toMatch(/let __smithers_label_value_\d+: "empty" \| "long" \| "short";/);
 
   expect(module.classify("")).toBe("empty");
   expect(module.classify("abcdefg")).toBe("long");
@@ -151,7 +151,7 @@ test("Result exits propagate out of labeled block values", async () => {
 });
 
 test("labeled join types are enforced against authored annotations", () => {
-  const compiled = compileVibe(`
+  const compiled = compileSmithers(`
     function f(k: number): number {
       const value: number = pick: {
         if (k > 0) break :pick k
@@ -160,7 +160,7 @@ test("labeled join types are enforced against authored annotations", () => {
       return value
     }
   `, {
-    fileName: "/virtual/labeled-annotated.vibe",
+    fileName: "/virtual/labeled-annotated.sm",
     outputFileName: "/virtual/labeled-annotated.ts",
   });
   expect(compiled.analysis.diagnostics).toEqual([]);
@@ -183,7 +183,7 @@ test("unsafe labeled value shapes fail closed with stable diagnostics", () => {
       }
       return x
     }
-  `)).toContain("VIBE1714");
+  `)).toContain("SMITHERS1714");
   // A plain labeled break completes without a value.
   expect(codesOf(`
     function f(k: number): number {
@@ -193,7 +193,7 @@ test("unsafe labeled value shapes fail closed with stable diagnostics", () => {
       }
       return x
     }
-  `)).toContain("VIBE1714");
+  `)).toContain("SMITHERS1714");
   // A value break may not sit inside a nested function.
   expect(codesOf(`
     function f(k: number): number {
@@ -203,7 +203,7 @@ test("unsafe labeled value shapes fail closed with stable diagnostics", () => {
       }
       return x
     }
-  `)).toContain("VIBE1714");
+  `)).toContain("SMITHERS1714");
   // A jump may not escape the construct.
   expect(codesOf(`
     function f(values: number[]): number {
@@ -216,7 +216,7 @@ test("unsafe labeled value shapes fail closed with stable diagnostics", () => {
       }
       return 0
     }
-  `)).toContain("VIBE1714");
+  `)).toContain("SMITHERS1714");
   // Statement position has no value destination.
   expect(codesOf(`
     function f(k: number): void {
@@ -224,7 +224,7 @@ test("unsafe labeled value shapes fail closed with stable diagnostics", () => {
         if (k > 0) break :pick k
       }
     }
-  `)).toContain("VIBE1714");
+  `)).toContain("SMITHERS1714");
   // `break :label` requires a delimitable value expression.
   expect(codesOf(`
     function f(k: number): number {
@@ -234,7 +234,7 @@ test("unsafe labeled value shapes fail closed with stable diagnostics", () => {
       }
       return x
     }
-  `)).toContain("VIBE1714");
+  `)).toContain("SMITHERS1714");
   // Raw Result values keep the shared ownership gate.
   expect(codesOf(`
     declare function attempt(): Result<number, Error>
@@ -245,7 +245,7 @@ test("unsafe labeled value shapes fail closed with stable diagnostics", () => {
       }
       return x
     }
-  `)).toContain("VIBE1706");
+  `)).toContain("SMITHERS1706");
 });
 
 test("authored labels and ternary object literals are never reclassified", () => {
@@ -253,10 +253,10 @@ test("authored labels and ternary object literals are never reclassified", () =>
 declare const base: { color: string }
 export const style = active ? base : { color: "red" }
 `;
-  expect(recoverVibeSyntax(ternary).changed).toBe(false);
+  expect(recoverSmithersSyntax(ternary).changed).toBe(false);
   const analysis = analyzeSource(ternary);
   expect(analysis.diagnostics).toEqual([]);
-  const compiled = compileVibe(ternary);
+  const compiled = compileSmithers(ternary);
   expect(compiled.code).toBe(ternary);
 
   // A labeled statement without value breaks keeps its existing diagnostic.
@@ -265,7 +265,7 @@ export const style = active ? base : { color: "red" }
       work: { if (k > 0) break work }
     }
   `);
-  expect(labeled.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(["VIBE1704"]);
+  expect(labeled.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(["SMITHERS1704"]);
 });
 
 test("labeled break values map exactly to authored positions", () => {
@@ -277,15 +277,15 @@ test("labeled break values map exactly to authored positions", () => {
   return kind
 }
 `;
-  const compiled = compileVibe(source, {
-    fileName: "/virtual/labeled-map.vibe",
+  const compiled = compileSmithers(source, {
+    fileName: "/virtual/labeled-map.sm",
     outputFileName: "/virtual/labeled-map.ts",
-    sourceName: "labeled-map.vibe",
+    sourceName: "labeled-map.sm",
   });
   expect(compiled.analysis.diagnostics).toEqual([]);
   expect(compiled.sourceMap).toBeDefined();
   const map = JSON.parse(compiled.sourceMap!) as { sources: string[]; sourcesContent: string[]; mappings: string };
-  expect(map.sources).toEqual(["labeled-map.vibe"]);
+  expect(map.sources).toEqual(["labeled-map.sm"]);
   expect(map.sourcesContent[0]).toBe(source);
   // The value literal survives verbatim in the emitted assignment.
   expect(compiled.code).toContain('"empty"');

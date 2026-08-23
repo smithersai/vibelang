@@ -2,12 +2,11 @@
 
 ## Overview
 
-VibeLang uses a TypeScript-derived frontend. A `.vibe` file opts into VibeLang semantics; imported `.ts` and `.js` files retain their normal behavior.
+Smithers uses a TypeScript-derived frontend. A `.sm` file opts into Smithers semantics; imported `.ts` and `.js` files retain their normal behavior.
 
 The language focuses on:
 
 - expected failures as `Result<A, E>` values
-- absence as built-in `Optional<T>` values
 - capability-based dependency injection
 - deterministic compile-time execution
 - opt-in durable and distributed execution
@@ -15,18 +14,20 @@ The language focuses on:
 Compiler intrinsics such as `comptime(...)` and `durable(...)` are imported functions rather than keywords.
 
 :::warning
-VibeLang is in early implementation. The repository now has a checked,
-bounded project `.vibe` frontend and integrated runtime POCs, but not a
-conforming general-purpose compiler. Documentation examples describe the
-accepted language design unless a page explicitly labels behavior as
-implemented by the current POC.
+Smithers is under active implementation. The root CLI defaults to a checked
+TypeScript instrument, and `check`, `compile`, and `run` also expose an opt-in
+Go implementation inside the pinned TypeScript fork. The two implementations
+are substantial evidence, not a claim that a conforming general-purpose
+compiler or production distribution has been released. Documentation examples
+describe the accepted language design unless a page gives a narrower current
+implementation boundary.
 :::
 
 ## Build and Verify the Repository
 
 ```bash
-git clone https://github.com/smithersai/vibelang.git
-cd vibelang
+git clone https://github.com/smithersai/smithers.git
+cd smithers
 npm install
 npm test
 ```
@@ -39,8 +40,8 @@ under `poc/src/language` is the implementation used by the root package and CLI.
 ## Try the Checked POC
 
 The current frontend can check, compile, inspect, test, and run its supported
-subset across relative `.vibe` imports.
-For example, save this as `answer.vibe`:
+subset across relative `.sm` imports.
+For example, save this as `answer.sm`:
 
 ```ts
 class InvalidAnswer extends Error {}
@@ -59,27 +60,38 @@ answer(true).match({
 After `npm test` has built the repository, run:
 
 ```bash
-node bin/vibe.js check answer.vibe --format json
-node bin/vibe.js compile answer.vibe --outDir build/vibe --format json
-node bin/vibe.js compile answer.vibe --outDir build/vibe --declaration --sourceMap
-node bin/vibe.js run answer.vibe
-node bin/vibe.js inspect answer.vibe --format json
-node bin/vibe.js doctor --format json
+node bin/smithers.js check answer.sm --format json
+node bin/smithers.js check answer.sm --backend go --format json
+node bin/smithers.js compile answer.sm --outDir build/smithers --format json
+node bin/smithers.js compile answer.sm --backend go --outDir build/smithers-go --format json
+node bin/smithers.js compile answer.sm --outDir build/smithers --declaration --sourceMap
+node bin/smithers.js run answer.sm
+node bin/smithers.js run answer.sm --backend go
+node bin/smithers.js inspect answer.sm --format json
+node bin/smithers.js doctor --format json
 ```
 
-An installed package exposes the same commands through the `vibe` binary. The
-POC can emit `.mjs`, `.d.mts`, and composed JavaScript source maps; rejects
-mixed `.vibe`/TypeScript invocations; and fails on unsupported options,
+The Go commands require an exact, forkpatch-applied checkout; the [CLI
+reference](/reference/cli#compiler-backends) gives the preparation and refusal
+rules. Omitting `--backend` selects the TypeScript instrument.
+
+An installed package exposes the same commands through the `smithers` binary.
+The default path can emit `.mjs`, `.d.mts`, and composed JavaScript source maps; rejects
+mixed `.sm`/TypeScript invocations; and fails on unsupported options,
 colliding outputs, unsafe target pins, or any invalid module before committing
-the project output. Concrete rows propagate across the discovered `.vibe`
-graph. Generic row polymorphism, watch/incremental builds, full foreign-value
-provenance, and the complete control-flow grammar remain outside the bounded
-frontend. See the [CLI reference](/reference/cli) for the exact boundary.
+the project output. Concrete rows propagate across the discovered `.sm`
+graph. The Go backend independently lowers Result/Optional semantics, async
+`Promise<Result<...>>`, nominal error matching, both compiler intrinsics, and
+all nine Smithers surface-grammar forms through the fork's checker and printer.
+Generic row polymorphism, watch/incremental builds, full foreign-value
+provenance, and other design-stage surfaces remain outside the current product
+boundary. See the [CLI reference](/reference/cli) for the exact division of
+responsibility.
 
 ## Accepted Design: Your First Fallible Function
 
 ```ts
-import { Context } from "vibelang/context"
+import { Context } from "smthrs/context"
 
 class NotFound extends Error {
   constructor(readonly id: string) {
@@ -88,7 +100,7 @@ class NotFound extends Error {
 }
 
 abstract class Users extends Context {
-  abstract find(id: string): Optional<User>
+  abstract find(id: string): User | undefined
 }
 
 function getUser(id: string): Result<User, NotFound> {
@@ -102,7 +114,7 @@ The ordinary return type tells the whole story:
 - `User` is the success value.
 - `NotFound` is the expected Error.
 - `Users.context()` adds `Users` to the compiler-inferred requirement channel.
-- `Optional<User>` models a successful lookup with no value.
+- `User | undefined` models a successful lookup with no value.
 
 ## Handle or Propagate
 
@@ -117,11 +129,11 @@ const user = getUser("42").match({
 })
 ```
 
-Use `.unwrap()` when the enclosing function returns a compatible Result:
+Use `!` when the enclosing function returns a compatible Result:
 
 ```ts
 function displayName(id: string): Result<string, NotFound> {
-  const user = getUser(id).unwrap()
+  const user = getUser(id)!
   return user.name
 }
 ```
@@ -131,11 +143,11 @@ Inside a Result-returning body, a plain return is lifted to success and a thrown
 ## Provide a Capability
 
 ```ts
-import { Layer } from "vibelang/provider"
+import { Layer } from "smthrs/provider"
 
 const App = Layer.succeed(Users, new PostgresUsers(databaseUrl))
 
-const name = Layer.provide(App, () => displayName("42").unwrap())
+const name = Layer.provide(App, () => displayName("42")!)
 ```
 
 Removing the `Users` provider is intended to be a compile error. Tests can provide an in-memory implementation without changing application code. A Layer only supplies the environment; resources are acquired and finalized explicitly outside it.
@@ -146,17 +158,16 @@ Removing the `Users` provider is intended to be a compile error. Tests can provi
 async function loadUser(
   id: string,
 ): Promise<Result<User, Timeout | NotFound>> {
-  const response = (await HttpClient.context().get(`/users/${id}`)).unwrap()
-  return (await response.json(User)).unwrap()
+  const response = (await HttpClient.context().get(`/users/${id}`))!
+  return (await response.json(User))!
 }
 ```
 
-`await` unwraps the Promise but leaves the Result. Authored VibeLang does not use Promise instance `.then`, `.catch`, or `.finally`.
+`await` unwraps the Promise but leaves the Result. Authored Smithers does not use Promise instance `.then`, `.catch`, or `.finally`.
 
 ## Next Steps
 
 - Tour [Features](/guide/features).
 - Learn [Results and Errors](/guide/typed-failures).
-- Learn [Optionals](/guide/optionals).
 - Learn [Capabilities and Layers](/guide/capabilities-and-layers).
 - Check [Status & Conventions](/specification/) before relying on exact implementation availability.

@@ -1,0 +1,7 @@
+{
+  "title": "a callback passed into foreign code is rejected until an owned adapter defines its invocation and lifetime",
+  "expect": "diagnostics",
+  "typescript": ["foreign.ts"],
+  "diagnostics": [{ "code": "SMITHERS1509", "line": 5, "column": 28 }],
+  "notes": "poc/src/language/README.md: 'Any callback passed into foreign code is rejected until a Smithers-owned Result/task adapter defines its invocation and lifetime.' The underlying locked rule is specification/requirements.mdx, 'Scoping': 'Imported JavaScript or TypeScript that starts hidden background work owns that work. Caller-controlled background APIs MUST expose explicit completion or disposal handles through their adapters.' A callback handed to foreign code has no checked invocation count, no checked lifetime, and no checked failure channel, so it fails closed."
+}

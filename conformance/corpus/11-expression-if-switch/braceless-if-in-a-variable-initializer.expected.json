@@ -1,0 +1,6 @@
+{
+  "title": "the specification's own braceless if-expression spelling is accepted in a variable initializer",
+  "expect": "output",
+  "stdout": ["yes", "no"],
+  "notes": "docs/src/pages/specification/control-flow.mdx writes the if expression as `const value = if (condition) consequent else alternate`. Braceless branches are accepted in this bounded host and refused (SMITHERS1709) in general expression placements, where the recovered extent is not provable."
+}

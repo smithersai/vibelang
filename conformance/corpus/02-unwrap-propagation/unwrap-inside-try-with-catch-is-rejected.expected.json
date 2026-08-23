@@ -1,0 +1,11 @@
+{
+  "title": "an unwrap propagation point inside a try with a catch clause is rejected, because its early return would make the catch path silently dead",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1205",
+      "line": 12,
+      "column": 19
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function lookup(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+export function main(): string[] {
+  // The real combinator, reached by its own declaration: it collects both
+  // Results, so both are consumed — the bound one and the direct one.
+  const found = lookup("ada")
+  return Result.all([found, lookup("ada")]).unwrapOr(["-"])
+}

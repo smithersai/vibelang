@@ -22,7 +22,7 @@ describe("structured concurrency without fibers", () => {
     if (checkpoint.ok) throw new Error("expected cancellation");
     expect(checkpoint.error).toBeInstanceOf(Cancelled);
     expect(checkpoint.error.is(Cancelled)).toBe(true);
-    expect(errorIdentity(checkpoint.error)).toBe("vibelang:Cancelled@1");
+    expect(errorIdentity(checkpoint.error)).toBe("smithers:Cancelled@1");
     const decoded = decodeError(encodeError(checkpoint.error));
     expect(decoded).toBeInstanceOf(Cancelled);
     expect(decoded.message).toBe("test stop");

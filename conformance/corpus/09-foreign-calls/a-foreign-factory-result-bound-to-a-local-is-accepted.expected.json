@@ -1,0 +1,7 @@
+{
+  "title": "the remedy the order-safety diagnostic prescribes really compiles: a foreign factory result bound to a local is callable, and its panic channel survives",
+  "expect": "output",
+  "typescript": ["order-unsafe.ts"],
+  "stdout": ["ok 41", "panic"],
+  "notes": "The acceptance control for a-foreign-factory-result-invoked-before-it-is-unwrapped-is-rejected, and the two files differ only in line 5. SMITHERS1507's own message prescribes this spelling ('assign the checked result, unwrap it, and continue through an explicitly typed local adapter'), so a rule that refused it as well would leave the diagnostic with no reachable remedy and would refuse every use of a foreign factory. It also does work the refusal case cannot: the SECOND printed line is `panic`, from `parse(\"oops\")`, which proves the closure returned by `makeParser` really does throw and really is charged to the distinguished checked panic case (specification/failures.mdx:111, Locked). Without that line the pair would only show that one spelling is refused and another accepted, not that the channel being protected exists at all. `const` is deliberate: SMITHERS1508 refuses a MUTABLE alias of a foreign executable value (semantic.ts:1203-1213), so a `let` here would be refused for a different, real reason and this case would stop being the control it is written to be."
+}

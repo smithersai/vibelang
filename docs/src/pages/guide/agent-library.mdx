@@ -1,22 +1,23 @@
 # Agent Library [Run generated TypeScript with an explicit authority surface]
 
-VibeLang's proposed coding-agent library builds on ordinary TypeScript, typed functions, Actions, Flows, and the built-in MDX loader. It does not add agent-specific language syntax.
+Smithers's proposed coding-agent library builds on ordinary TypeScript, typed functions, Actions, Flows, and the built-in MDX loader. It does not add agent-specific language syntax.
 
 :::warning Proposed production API
-The root package exposes a narrower working POC at `vibelang/agent`: a coding
-agent loop, in-memory TypeScript compiler, explicit function bindings, prompt
-renderers, and a no-permission Deno subprocess sandbox with timeouts and
-resource/output/call limits. Turns are journaled to a real SQLite database whose
-rows are digest-checked and hash-chained in append order, so a restarted process
-replays the same turn — reusing the recorded model response and every recorded
-Action or completed Flow call — instead of re-invoking the model or the host.
-The POC also has a
+The root package exposes a narrower working Node-safe POC at `smthrs/agent`:
+a coding-agent loop, in-memory TypeScript compiler, explicit function bindings,
+prompt renderers, model helpers, Action tools, and a no-permission Deno
+subprocess sandbox with timeouts and resource/output/call limits. The Bun-only
+`smthrs/agent/bun` entry point adds SQLite turn journaling and durable Flow
+tools. Journal rows are digest-checked and hash-chained in append order, so a
+restarted process replays the same turn — reusing the recorded model response
+and every recorded Action or completed Flow call — instead of re-invoking the
+model or the host. The POC also has a
 typed `ModelAdapter` seam carrying model identity and version, and adapters that
-turn a tool's source into a durable Action-backed function. The `@vibelang/agent`
+turn a tool's source into a durable Action-backed function. The `@smithers/agent`
 package name, `CodingAgent.make` spelling, MDX integration, provider adapters,
 and durable turn API shown on this page remain proposed and are not locked.
 
-Compiled Flows are now passable through the programmatic `flowTool(...)`
+Compiled Flows are passable through the Bun-only programmatic `flowTool(...)`
 adapter. Each call derives an execution id from the turn, accepted source,
 function/ordinal, Flow/Plan identity, and input digest; replay therefore joins
 the same durable execution and adopts already-committed Actions rather than
@@ -26,7 +27,7 @@ The in-repo default model remains `ScriptedModel`. A real
 `AnthropicModel implements ModelAdapter` exists under `poc/examples/agent` and
 can call the Anthropic Messages API, but it is example-only: examples are
 excluded from POC emit, the SDK is a POC dev dependency, and neither the adapter
-nor SDK enters the published `vibelang/agent` dependency closure. The sandbox
+nor SDK enters the published `smthrs/agent` dependency closure. The sandbox
 is still a process-level Deno subprocess, not a VM/container, and nothing is
 attested. The agent journal and durable store remain separate databases rather
 than one atomic history; rows are digest-verified but neither signed nor
@@ -40,7 +41,7 @@ handoff are not exercised.
 An agent receives a model, prompt, sandbox, and table of callable functions:
 
 ```ts
-import { CodingAgent, TypeScriptSandbox } from "@vibelang/agent"
+import { CodingAgent, TypeScriptSandbox } from "@smithers/agent"
 import CodingPrompt from "./coding-agent.mdx" with { type: "mdx" }
 
 const Coder = CodingAgent.make({
@@ -57,7 +58,7 @@ const Coder = CodingAgent.make({
   },
 })
 
-const result = (await Coder.run({ task })).unwrap()
+const result = (await Coder.run({ task }))!
 ```
 
 The `functions` object is the generated program's complete authority surface.
@@ -111,7 +112,7 @@ The agent package supplies ordinary MDX components:
 <Task>{task}</Task>
 ```
 
-The VibeLang compiler loads MDX as a typed module. The agent library decides how components become provider messages, attachments, and model-specific payloads.
+The Smithers compiler loads MDX as a typed module. The agent library decides how components become provider messages, attachments, and model-specific payloads.
 
 ## Durable Turns
 

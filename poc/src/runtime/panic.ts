@@ -7,7 +7,7 @@ const localPanics = new WeakSet<object>();
 export class Panic extends Error {
   declare private readonly __panicTypeBrand: void;
 
-  constructor(message = "VibeLang panic", options?: { readonly cause?: unknown }) {
+  constructor(message = "Smithers panic", options?: { readonly cause?: unknown }) {
     super(message, options);
     this.name = "Panic";
     localPanics.add(this);
@@ -22,10 +22,10 @@ export function makePanic(value?: unknown): Panic {
   if (isPanic(value)) return value;
   if (typeof value === "string") return new Panic(value);
   if (value instanceof Error) {
-    return new Panic(value.message ? `VibeLang panic: ${value.message}` : "VibeLang panic", { cause: value });
+    return new Panic(value.message ? `Smithers panic: ${value.message}` : "Smithers panic", { cause: value });
   }
   if (value === undefined) return new Panic();
-  return new Panic("VibeLang panic", { cause: value });
+  return new Panic("Smithers panic", { cause: value });
 }
 
 export function panic(value?: unknown): never {

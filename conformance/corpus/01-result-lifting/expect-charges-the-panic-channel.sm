@@ -1,0 +1,20 @@
+import { Panic } from "smithers:exceptions"
+
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function lookup(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+function force(key: string): Result<string, Panic> {
+  return lookup(key).expect("entry must exist")
+}
+
+export function main(): string[] {
+  const describe = (key: string): string =>
+    force(key).match({ ok: (value) => value, error: () => "panic" })
+  return [describe("ada"), describe("zoe")]
+}

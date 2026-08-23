@@ -22,13 +22,13 @@ test("same-named Errors in different modules keep distinct runtime identities", 
     }
   `;
   const sources = [
-    { fileName: "left.vibe", source: library("left") },
-    { fileName: "nested/right.vibe", source: library("right") },
+    { fileName: "left.sm", source: library("left") },
+    { fileName: "nested/right.sm", source: library("right") },
     {
-      fileName: "main.vibe",
+      fileName: "main.sm",
       source: `
-        import { fail as failLeft, Duplicate as LeftDuplicate } from "./left.vibe"
-        import { fail as failRight, Duplicate as RightDuplicate } from "./nested/right.vibe"
+        import { fail as failLeft, Duplicate as LeftDuplicate } from "./left.sm"
+        import { fail as failRight, Duplicate as RightDuplicate } from "./nested/right.sm"
 
         function label(error: LeftDuplicate | RightDuplicate): string {
           return error.match({
@@ -51,7 +51,7 @@ test("same-named Errors in different modules keep distinct runtime identities", 
     },
   ];
 
-  const root = await mkdtemp(join(tmpdir(), "vibe-qualified-rows-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-qualified-rows-"));
   try {
     const compiled = compileProject(sources, {
       rootDir: root,
@@ -61,13 +61,13 @@ test("same-named Errors in different modules keep distinct runtime identities", 
       runtimeImport: pathToFileURL(RUNTIME).href,
     });
     expect(compiled.diagnostics).toEqual([]);
-    expect(compiled.files["main.vibe"]!.analysis.rows.classify)
+    expect(compiled.files["main.sm"]!.analysis.rows.classify)
       .toEqual({ failures: [], requirements: [] });
 
     // The emitted registration keys are already module-qualified, which is the
     // identity the analysis rows now mirror.
-    expect(compiled.files["left.vibe"]!.code).toContain('"vibe:left.vibe:Duplicate"');
-    expect(compiled.files["nested/right.vibe"]!.code).toContain('"vibe:nested/right.vibe:Duplicate"');
+    expect(compiled.files["left.sm"]!.code).toContain('"smithers:left.sm:Duplicate"');
+    expect(compiled.files["nested/right.sm"]!.code).toContain('"smithers:nested/right.sm:Duplicate"');
 
     const transpiler = new Bun.Transpiler({ loader: "ts", target: "bun" });
     for (const file of Object.values(compiled.files)) {
@@ -75,7 +75,7 @@ test("same-named Errors in different modules keep distinct runtime identities", 
       await writeFile(file.outputFileName, transpiler.transformSync(file.code));
     }
     const module = await import(
-      pathToFileURL(compiled.files["main.vibe"]!.outputFileName).href
+      pathToFileURL(compiled.files["main.sm"]!.outputFileName).href
     ) as Record<string, any>;
 
     // Both classes registered without an identity collision, and the nominal
@@ -91,8 +91,8 @@ test("same-named Errors in different modules keep distinct runtime identities", 
     const [left, right] = module.instances() as [Error, Error];
     // Registration would have thrown at import time on an identity collision;
     // both survive because the module qualifier separates them.
-    expect(errorIdentity(left)).toBe("vibe:left.vibe:Duplicate");
-    expect(errorIdentity(right)).toBe("vibe:nested/right.vibe:Duplicate");
+    expect(errorIdentity(left)).toBe("smithers:left.sm:Duplicate");
+    expect(errorIdentity(right)).toBe("smithers:nested/right.sm:Duplicate");
     expect(left.constructor).not.toBe(right.constructor);
   } finally {
     await rm(root, { recursive: true });

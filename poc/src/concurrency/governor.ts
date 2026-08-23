@@ -57,7 +57,7 @@ export class Governor {
     const execution = this.#run(operation);
     // The returned Promise keeps its original rejection, but the governor's
     // bookkeeping never creates a process-level unhandled rejection if a host
-    // abandons it. VibeLang's checker still requires callers to consume it.
+    // abandons it. Smithers's checker still requires callers to consume it.
     void execution.catch(() => undefined);
     return execution;
   }

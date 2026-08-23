@@ -16,13 +16,13 @@ import { digest } from "./stable.ts"
  * Two rules are not provisional and are enforced here:
  *
  *   - `comptime` is recognized by TypeScript checker identity against the
- *     compiler-owned `"vibelang:comptime"` declaration, never by spelling. An
+ *     compiler-owned `"smithers:comptime"` declaration, never by spelling. An
  *     unrelated local object with a `loader` method never gains authority.
  *   - Recognition is purely AST/checker level. The loader file is NEVER
  *     imported or executed in this process; it only ever runs inside the
  *     existing no-permission Deno sandbox.
  *
- * Because the sandbox cannot resolve `"vibelang:comptime"` (it has no imports
+ * Because the sandbox cannot resolve `"smithers:comptime"` (it has no imports
  * at all), recognition also produces the compiler-lowered module the sandbox
  * receives: the compiler-owned import is erased and the registration call is
  * replaced by the loader function itself. The authored bytes still enter the
@@ -86,12 +86,12 @@ export interface LoaderRegistrationAnalysis {
   readonly diagnostics: readonly LoaderRegistrationDiagnostic[]
 }
 
-const VIRTUAL_ROOT = resolve("/vibelang-loader-project")
-const PRELUDE_NAME = resolve(VIRTUAL_ROOT, "__vibelang_comptime__.d.ts")
+const VIRTUAL_ROOT = resolve("/smithers-loader-project")
+const PRELUDE_NAME = resolve(VIRTUAL_ROOT, "__smithers_comptime__.d.ts")
 /**
  * The registration surface merges into the SAME compiler-owned declaration the
  * comptime lowering frontend uses, so there is one description of
- * `"vibelang:comptime"`. `comptime.loader` is meaningful only in a loader file,
+ * `"smithers:comptime"`. `comptime.loader` is meaningful only in a loader file,
  * which is never a lowered project source, so the lowering pass never sees it.
  */
 const LOADER_PRELUDE = `${COMPTIME_PRELUDE}\n${[

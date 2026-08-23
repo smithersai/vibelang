@@ -1,0 +1,26 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+// Ordinary statement-form try/catch stays valid for JavaScript interop, and its
+// presence must not change this function's declared Result contract: the JS
+// throw is caught by the JS handler, and the Smithers failure still leaves
+// through the Result error variant.
+function lookup(key: string): Result<string, Missing> {
+  let parsed = 0
+  try {
+    parsed = JSON.parse(key === "bad" ? "{" : "41") as number
+  } catch {
+    parsed = -1
+  }
+  if (key === "zoe") throw new Missing(key)
+  return `${key}:${parsed}`
+}
+
+export function main(): string[] {
+  return [
+    lookup("ada").match({ ok: (value) => value, error: (error) => error.message }),
+    lookup("bad").match({ ok: (value) => value, error: (error) => error.message }),
+    lookup("zoe").match({ ok: (value) => value, error: (error) => error.message }),
+  ]
+}

@@ -13,9 +13,9 @@ const text = (bytes: Uint8Array): string => new TextDecoder().decode(bytes);
 
 describe("Json.parse", () => {
   test("returns frozen ordinary JSON and never throws for syntax failures", () => {
-    const parsed = Json.parse('{"name":"vibe","values":[1,true,null]}');
+    const parsed = Json.parse('{"name":"smithers","values":[1,true,null]}');
     const value = parsed.unwrap() as { name: string; values: unknown[] };
-    expect(value).toEqual({ name: "vibe", values: [1, true, null] });
+    expect(value).toEqual({ name: "smithers", values: [1, true, null] });
     expect(Object.isFrozen(value)).toBe(true);
     expect(Object.isFrozen(value.values)).toBe(true);
 

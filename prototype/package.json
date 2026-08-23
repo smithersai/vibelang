@@ -1,9 +1,9 @@
 {
-  "name": "vibelang-prototype",
+  "name": "smithers-prototype",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bun vsc.ts examples/demo.vibe",
+    "build": "bun smithersc.ts examples/demo.sm",
     "demo": "bash run.sh"
   },
   "devDependencies": {

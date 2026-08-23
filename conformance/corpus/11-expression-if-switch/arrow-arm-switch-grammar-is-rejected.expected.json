@@ -1,0 +1,12 @@
+{
+  "title": "an arrow-arm switch clause is not Smithers grammar: switch clauses are colon-delimited, exactly as in TypeScript",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1000",
+      "line": 4,
+      "column": 13
+    }
+  ],
+  "notes": "Obligation: specification/control-flow.mdx, 'Switch': 'Switch syntax MUST use the same `switch`, `case`, `default`, and colon-delimited clauses as TypeScript. Smithers MUST NOT introduce a separate arrow-arm switch grammar.' docs/DECISIONS.md 'Expression-oriented language' (Locked): 'Switches retain TypeScript `case` syntax. In expression position, the selected case's final expression is the switch value.' specification/compatibility.mdx, 'Source Relationship': '`.sm` MUST use a TypeScript-derived grammar with only explicitly documented differences' — an arrow-arm switch is not a documented difference; it is a documented NON-difference. The declared code is `SMITHERS1000` because poc/src/language/README.md defines it as the grammar rule for source the frontend does not claim — 'a retired form the sweep does not claim survives as the grammar rule SMITHERS1000' — and its message is 'source does not match the supported .sm grammar', which is exactly the verdict this program deserves. The positive counterpart 11/switch-case-final-expression-is-the-value pins the colon-delimited form the specification does require. The `js` xfail here is RETIRED: the reference used to accept this program and lower the arrow to a `default:` clause with full value semantics, because TypeScript's parser recovers `default => v` by discarding the arrow and the only surviving signal — its own \"':' expected\" — was inside the ±48-character parse-noise suppression window around the recovered `switch` expression host. poc/src/language/semantic.ts now re-reads the gap between each clause header and its first statement with a scanner and claims a leading `=>` directly, so the MUST NOT holds in expression and statement position alike."
+}

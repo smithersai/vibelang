@@ -1,0 +1,9 @@
+{
+  "title": "Promise instance .catch() is a compile error in authored .sm",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "SMITHERS1401", "line": 6, "column": 22 },
+    { "code": "SMITHERS1402", "line": 6, "column": 22 }
+  ],
+  "notes": "docs/src/pages/specification/failures.mdx 'Promise Semantics' and docs/DECISIONS.md 'Concurrency' require Promise instance .catch() to be rejected by the Promise-discipline rule, not by the retired postfix-catch migration rule. SMITHERS1402 matches the two sibling .then() and .finally() cases: rejecting the chaining spelling leaves the started Promise unconsumed."
+}

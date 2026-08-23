@@ -91,7 +91,7 @@ export class ComptimeCompiler {
     const argumentSnapshot = freezeStable(stableClone(args, "comptime arguments"));
     const from = this.#resolveDirectory(options.from ?? this.#defaultFrom(module.sourcePath));
     const identity = {
-      compiler: "vibelang-comptime-poc@3",
+      compiler: "smithers-comptime-poc@3",
       module: module.id,
       moduleVersion: module.version,
       implementationDigest: module.implementationDigest,
@@ -127,8 +127,8 @@ export class ComptimeCompiler {
     const dependencies = normalizeStaticDependencies(options.dependencies ?? []);
     this.#assertStaticDependencySnapshots(dependencies);
     const identity = {
-      compiler: "vibelang-comptime-static@2",
-      module: "vibelang:comptime/static-json",
+      compiler: "smithers-comptime-static@2",
+      module: "smithers:comptime/static-json",
       target: this.target,
       options: this.options,
       frontendIdentity,
@@ -172,7 +172,7 @@ export class ComptimeCompiler {
     identity: Record<string, unknown>,
     logicalKey: string,
   ): Promise<ComptimeBuild<T>> {
-    const module = "vibelang:comptime/static-json";
+    const module = "smithers:comptime/static-json";
     const indexPath = join(this.cacheDirectory, "comptime-static-index", `${logicalKey}.json`);
     const previous = await readJson<ComptimeIndex>(indexPath);
     if (validIndex(previous) && canonical(previous.dependencies) === canonical(dependencies) &&

@@ -172,7 +172,7 @@ restarted turn completed entirely from the journal.
   interface exists so that a real client is a drop-in;
 - the sandbox is process-level (a no-permission Deno subprocess), not a VM or
   container boundary;
-- attachment is explicit; the VibeLang compiler does not yet wire Action
+- attachment is explicit; the Smithers compiler does not yet wire Action
   descriptors into agent bindings automatically;
 - descriptors are canonical and digest-checked, not signed or branded runtime
   objects; provenance depends on the trusted compiler/build pipeline supplying

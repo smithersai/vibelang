@@ -1,0 +1,12 @@
+export function classify(input: string): string {
+  const kind = verdict: {
+    if (input.length === 0) break :verdict "empty"
+    if (input.length > 8) break :verdict "long"
+    break :verdict "short"
+  }
+  return kind
+}
+
+export function main(): string[] {
+  return [classify(""), classify("ada"), classify("lovelace!!")]
+}

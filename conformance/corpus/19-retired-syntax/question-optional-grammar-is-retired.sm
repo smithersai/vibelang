@@ -1,0 +1,4 @@
+export function lookup(id: number): ?string {
+  if (id === 1) return "Ada"
+  return null
+}

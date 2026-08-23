@@ -1,0 +1,14 @@
+{
+  "title": "a type-only re-export of a name from an untrusted foreign module adds no requirement and needs no trust claim",
+  "expect": "output",
+  "stdout": [
+    "0"
+  ],
+  "modules": [
+    "type-only-reexport.mod.sm"
+  ],
+  "typescript": [
+    "untrusted.ts"
+  ],
+  "notes": "specification/compatibility.mdx, 'Runtime TypeScript Dependency': 'A type-only import MUST NOT add that requirement.' conformance/support/untrusted.ts deliberately carries no @module/@throws {never} initialization claim and documents that a type-only import of its `Settings` interface is still allowed, because it creates no runtime requirement and no module initializer edge. This case pins that the same is true one module away: `type-only-reexport.mod.sm` re-exports the type with `export type { \u2026 } from`, and the pinned function still compiles clean. It is the Locked half of the laundering rule \u2014 the walk that follows a re-binding has to read the type-only spelling on BOTH the import and the export side or it will charge a requirement the specification forbids."
+}

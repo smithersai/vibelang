@@ -1,0 +1,5 @@
+{
+  "title": "errdefer instruments an already-lowered Result return, including the one Result.unwrap() propagation produces",
+  "expect": "output",
+  "stdout": ["192", "no entry for zoe", "zoe:failed"]
+}

@@ -1,6 +1,6 @@
 import { dirname, resolve } from "node:path";
 import * as ts from "typescript-js";
-import { compileVibe, type CompileOptions, type CompileResult } from "./compile.ts";
+import { compileSmithers, type CompileOptions, type CompileResult } from "./compile.ts";
 import {
   compileProject,
   type CompileProjectOptions,
@@ -104,8 +104,8 @@ export function checkEmittedProject(
 }
 
 /** One-call API for integrations which must never accept invalid generated TS. */
-export function compileAndCheckVibe(source: string, options: CheckedCompileOptions): CheckedCompileResult {
-  const result = compileVibe(source, options);
+export function compileAndCheckSmithers(source: string, options: CheckedCompileOptions): CheckedCompileResult {
+  const result = compileSmithers(source, options);
   const emitDiagnostics = result.analysis.diagnostics.some((diagnostic) => diagnostic.severity === "error")
     ? []
     : checkEmittedTypeScript(result.code, options.outputFileName)
@@ -114,7 +114,7 @@ export function compileAndCheckVibe(source: string, options: CheckedCompileOptio
     !result.analysis.diagnostics.some((diagnostic) => diagnostic.severity === "error") };
 }
 
-/** Analyze, lower, and stock-check a complete in-memory `.vibe` module set. */
+/** Analyze, lower, and stock-check a complete in-memory `.sm` module set. */
 export function compileAndCheckProject(
   sources: readonly ProjectSource[],
   options: CompileProjectOptions,

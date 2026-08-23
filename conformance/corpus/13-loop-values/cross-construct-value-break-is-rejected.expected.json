@@ -1,0 +1,12 @@
+{
+  "title": "a value break that escapes the enclosing value construct from inside another one is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1715",
+      "line": 6,
+      "column": 40
+    }
+  ],
+  "notes": "specification/control-flow.mdx, 'Loop Else' (Direction): 'The exact treatment of infinite loops, unreachable completion, and nested label selection is not finalized.' poc/src/language/README.md: 'Cross-construct value breaks (`break :outer` from inside another value construct) are rejected through the same escape rule because nested label selection is not finalized in the specification.' Fail-closed on an unfinalized rule is the correct answer; the alternative is committing the implementation to a label-selection semantics the specification has not chosen."
+}

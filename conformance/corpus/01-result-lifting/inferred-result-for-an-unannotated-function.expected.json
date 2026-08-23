@@ -1,0 +1,5 @@
+{
+  "title": "an unannotated non-exported function that reaches throw is inferred as Result<A, E>",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "no entry for zoe"]
+}

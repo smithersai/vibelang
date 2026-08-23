@@ -19,7 +19,7 @@ import {
 import type { HostCallIdentity, ModelCallIdentity } from "../../src/agent/bun.ts"
 import { FIRST_TURN_SOURCE, createDurableAgent, createProject } from "./durable-demo.ts"
 
-const root = mkdtempSync(join(tmpdir(), "vibelang-agent-journal-"))
+const root = mkdtempSync(join(tmpdir(), "smithers-agent-journal-"))
 let databaseCount = 0
 
 function databasePath(name: string): string {
@@ -188,7 +188,7 @@ describe("SQLite turn journal", () => {
 
 describe("tool to Action adapter", () => {
   const source = `
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 
 type Request = { readonly text: string }
 type Reply = { readonly text: string }
@@ -205,15 +205,15 @@ export abstract class Echo extends Action<
   test("compiles a tool contract, derives the callable surface, and marks it durable", () => {
     let calls = 0
     const echo = compileActionTool<{ readonly text: string }, { readonly text: string }>(
-      { source, exportName: "Echo", id: "vibelang/agent-demo/Echo", version: 3, description: "echo text" },
+      { source, exportName: "Echo", id: "smthrs/agent-demo/Echo", version: 3, description: "echo text" },
       async ({ text }) => {
         calls += 1
         return { text }
       },
     )
 
-    expect(echo.identity.name).toBe("action/vibelang/agent-demo/Echo@3")
-    expect(echo.actionContract?.id).toBe("vibelang/agent-demo/Echo")
+    expect(echo.identity.name).toBe("action/smthrs/agent-demo/Echo@3")
+    expect(echo.actionContract?.id).toBe("smthrs/agent-demo/Echo")
     expect(echo.actionContract?.version).toBe(3)
     expect(echo.signature).toBe('(input: { readonly "text": string }) => Promise<{ readonly "text": string }>')
 
@@ -223,7 +223,7 @@ export abstract class Echo extends Action<
       {
         exposedAs: "echo",
         kind: "action",
-        actionId: "vibelang/agent-demo/Echo",
+        actionId: "smthrs/agent-demo/Echo",
         actionVersion: 3,
         flowId: null,
         flowVersion: null,
@@ -251,7 +251,7 @@ export abstract class Echo extends Action<
     const tool = {
       exposedAs: "echo",
       action: compileActionTool<{ readonly text: string }, { readonly text: string }>(
-        { source, exportName: "Echo", id: "vibelang/agent-demo/Echo", version: 3 },
+        { source, exportName: "Echo", id: "smthrs/agent-demo/Echo", version: 3 },
         async (input) => input,
       ).actionContract!,
       call: async (input: { readonly text: string }) => input,

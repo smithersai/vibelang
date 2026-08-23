@@ -17,7 +17,7 @@ import {
 /**
  * Bounded portable Wasm backend (format 4).
  *
- * Honest scope: this lowers exported, synchronous, non-generic `.vibe`
+ * Honest scope: this lowers exported, synchronous, non-generic `.sm`
  * functions over `number`/`boolean`/portable-string values into a canonical,
  * digest-bound IR that runs in a TypeScript-host evaluator and compiles to
  * import-free WAT via `wat2wasm`, with exact canonical-exit and wire-digest
@@ -25,7 +25,7 @@ import {
  *
  * - Context capabilities as VALUE SERVICES: an author declares
  *   `abstract class Config extends Context { abstract readonly label: string }`
- *   (importing `Context` from the compiler-owned `vibelang/context` module) and
+ *   (importing `Context` from the compiler-owned `smthrs/context` module) and
  *   reads it with the ordinary library-shaped call `Config.context().label`, or
  *   `const config = Config.context()` followed by `config.label`. The enclosing
  *   function's requirement row (`R`) is inferred, propagates transitively
@@ -50,7 +50,7 @@ import {
  *   threads every field through the exported f64 globals — strings as exact
  *   integral i32 memory offsets widened via f64.convert_i32_u); error
  *   identity stays the compiler-derived nominal id
- *   `vibelang.error:<module>#<Name>@1`;
+ *   `smithers.error:<module>#<Name>@1`;
  * - immutable printable-ASCII strings (so UTF-8 bytes, UTF-16 units, and code
  *   points coincide) as literals, PARAMETERS, locals, returns on every
  *   channel, and error payload fields, with `+`/`+=` CONCATENATION,
@@ -78,7 +78,7 @@ import {
  *
  *   source:   `const config = Config.context(); return config.label + name`
  *   IR:       `{ kind: "capability", capability: "Config", field: "label" }`
- *   Wasm:     scalar field  -> `(global.get $__vibe_env_<k>)`
+ *   Wasm:     scalar field  -> `(global.get $__smithers_env_<k>)`
  *             string field  -> `(i32.const <envBase + s * (4 + 4096)>)`
  *   evaluator -> the identical validated environment map, keyed
  *                `"<Capability>.<field>"`.
@@ -89,13 +89,13 @@ import {
  *
  * The DESCRIPTOR of a module's requirement surface is the IR itself:
  * `module.capabilities` carries every required capability's nominal identity
- * (`vibelang.capability:<module>#<Name>@1`) and its exact field row, each
+ * (`smithers.capability:<module>#<Name>@1`) and its exact field row, each
  * function carries its own transitively-closed `requirements`, and both are
  * covered by the contract/function/module digests. The compiled Wasm is bound
  * to that same row two ways: `validateBuild` re-emits the WAT from the IR and
  * compares it byte for byte, and `inspectPortableWasm` requires the module's
  * export surface to be exactly the IR-derived set (functions, payload globals,
- * `__vibe_env_<k>` scalar slots, and `__memory` when memory is needed). A
+ * `__smithers_env_<k>` scalar slots, and `__memory` when memory is needed). A
  * module that exports an environment slot it did not declare — or hides one it
  * did — never reaches execution.
  *
@@ -113,25 +113,25 @@ import {
  *
  * FAIL-CLOSED, loudly, with stable diagnostics:
  *
- * - VIBE5071 rejects any capability member that is not
+ * - SMITHERS5071 rejects any capability member that is not
  *   `abstract readonly name: number|boolean|string` — methods, accessors, and
  *   constructors are the shapes that would need a host callback (`Clock.now()`,
  *   `FileSystem.read()`, `Random.next()`), and they cannot be lowered without
  *   Wasm imports. A portable module therefore cannot require Clock, Random,
  *   FileSystem, or any other host-effect capability at all; it is rejected at
  *   the capability DECLARATION, not silently at the call.
- * - VIBE5070 rejects malformed capability declarations (non-abstract, generic,
+ * - SMITHERS5070 rejects malformed capability declarations (non-abstract, generic,
  *   decorated, empty, over-wide, non-portable field types, duplicate fields).
- * - VIBE5072 rejects every attempt to treat a capability as a value or to
+ * - SMITHERS5072 rejects every attempt to treat a capability as a value or to
  *   fabricate one: `new Config()`, `Config.context()` in a value position,
  *   `Config.context(arg)`, binding it with `let`, re-binding it, annotating it,
  *   or reading an identifier bound to it.
- * - VIBE5073 rejects a bad environment at execution in BOTH runtimes with the
+ * - SMITHERS5073 rejects a bad environment at execution in BOTH runtimes with the
  *   identical message: unknown capability, missing capability, missing or extra
  *   field, wrong value type, or an out-of-domain number/string.
- * - VIBE5033 rejects any disagreement between the lowered row and the row the
- *   independent checked Vibe frontend infers for the same source.
- * - VIBE5050 rejects forged IR: a function that claims a capability it never
+ * - SMITHERS5033 rejects any disagreement between the lowered row and the row the
+ *   independent checked Smithers frontend infers for the same source.
+ * - SMITHERS5050 rejects forged IR: a function that claims a capability it never
  *   reads, reads one it did not declare, declares a row that is not exactly the
  *   transitive closure of its own reads and its callees' rows, or a module that
  *   declares a capability no function requires.
@@ -167,7 +167,7 @@ import {
  *                                  compile-time constant pointers and never
  *                                  writes this region either. Scalar capability
  *                                  fields live in exported mutable globals
- *                                  (`__vibe_env_<k>`) instead, so a module with
+ *                                  (`__smithers_env_<k>`) instead, so a module with
  *                                  only scalar fields needs no memory at all;
  *   [heapBase, heapBase+1MiB)      bump-allocated concat heap, present only
  *                                  when the module concatenates.
@@ -196,7 +196,7 @@ import {
  * -2 string-memory-exhausted; propagation preserves the originating tag.
  *
  * Everything else stays fail-closed: imports other than the single canonical
- * `import { Context } from "vibelang/context"`, capability METHODS and every
+ * `import { Context } from "smthrs/context"`, capability METHODS and every
  * host-effect capability, provider layers, non-ASCII or template literals,
  * string methods beyond `.length` (slice/indexOf/...), string mutation/
  * indexing, cross-invocation string retention, arrays, objects, closures,
@@ -219,15 +219,15 @@ import {
  * memory layout, exports, and defect tags relative to format 2. Format 4 adds
  * the requirement row to every contract digest, adds `capabilities` to the
  * module surface, inserts the environment string region into the memory layout,
- * and adds `__vibe_env_<k>` to the export surface; a v3 module carries no row
+ * and adds `__smithers_env_<k>` to the export surface; a v3 module carries no row
  * at all, so loading one would silently assert "requires nothing" about code
  * whose digests never covered that claim. Both are recompiled, not migrated.
  */
-const PRELUDE_NAME = resolve(process.cwd(), "__vibelang_portable_backend__.d.ts")
-const SOURCE_NAME = resolve(process.cwd(), "__vibelang_portable_module__.vibe.ts")
-const CONTEXT_NAME = resolve(process.cwd(), "__vibelang_portable_context__.d.ts")
+const PRELUDE_NAME = resolve(process.cwd(), "__smithers_portable_backend__.d.ts")
+const SOURCE_NAME = resolve(process.cwd(), "__smithers_portable_module__.sm.ts")
+const CONTEXT_NAME = resolve(process.cwd(), "__smithers_portable_context__.d.ts")
 /** The one module specifier portable source may import, resolved in-process. */
-const CONTEXT_MODULE = "vibelang/context"
+const CONTEXT_MODULE = "smthrs/context"
 const PRELUDE = `
 /** Compiler-only authoring aliases; no declaration here has a runtime value. */
 type Result<Success, Failure extends Error> = Success
@@ -239,7 +239,7 @@ interface String { unwrap(): string }
 /**
  * The compiler-owned capability root. It is an ambient module declaration in a
  * backend-owned file, never a filesystem edge: module resolution is disabled
- * outright in `createCheckedProgram`, so `vibelang/context` can only ever bind
+ * outright in `createCheckedProgram`, so `smthrs/context` can only ever bind
  * to this text.
  */
 const CONTEXT_DECLARATIONS = `
@@ -463,7 +463,7 @@ export interface PortableModuleIR {
 
 export interface PortableModuleArtifact {
   readonly artifactVersion: 1
-  readonly kind: "vibelang.portable-ir"
+  readonly kind: "smithers.portable-ir"
   readonly module: PortableModuleIR
   readonly digest: string
 }
@@ -551,14 +551,14 @@ const validPortableName = (value: unknown): value is string =>
   typeof value === "string" && PORTABLE_NAME.test(value) && !value.startsWith("__")
 
 const errorIdentity = (moduleId: string, name: string): string =>
-  `vibelang.error:${moduleId}#${name}@1`
+  `smithers.error:${moduleId}#${name}@1`
 
 /** Nominal capability identity; structurally identical rows stay distinct. */
 const capabilityIdentity = (moduleId: string, name: string): string =>
-  `vibelang.capability:${moduleId}#${name}@1`
+  `smithers.capability:${moduleId}#${name}@1`
 
 /**
- * The single legal import: `import { Context } from "vibelang/context"`, with
+ * The single legal import: `import { Context } from "smthrs/context"`, with
  * no default binding, no namespace binding, no rename, no type-only marker, and
  * no attributes. Anything else — including a second copy — is an external edge.
  */
@@ -587,14 +587,14 @@ const assertNoExternalSourceEdges = (sourceFile: ts.SourceFile): void => {
     sourceFile.amdDependencies.length !== 0 ||
     sourceFile.hasNoDefaultLib
   ) {
-    throw diagnosticAt(undefined, "VIBE5043", "portable source cannot contain reference directives or external compiler inputs")
+    throw diagnosticAt(undefined, "SMITHERS5043", "portable source cannot contain reference directives or external compiler inputs")
   }
   let contextImports = 0
   const visit = (node: ts.Node): void => {
     for (const tag of ts.getJSDocTags(node)) {
       const visitTag = (tagNode: ts.Node): void => {
         if (ts.isJSDocImportTag(tagNode) || ts.isImportTypeNode(tagNode)) {
-          throw diagnosticAt(tag, "VIBE5043", "portable source cannot contain JSDoc imports or external type edges")
+          throw diagnosticAt(tag, "SMITHERS5043", "portable source cannot contain JSDoc imports or external type edges")
         }
         ts.forEachChild(tagNode, visitTag)
       }
@@ -606,7 +606,7 @@ const assertNoExternalSourceEdges = (sourceFile: ts.SourceFile): void => {
     if (ts.isImportDeclaration(node) && node.parent === sourceFile && isCanonicalContextImport(node)) {
       contextImports += 1
       if (contextImports > 1) {
-        throw diagnosticAt(node, "VIBE5043", `portable source may import ${CONTEXT_MODULE} at most once`)
+        throw diagnosticAt(node, "SMITHERS5043", `portable source may import ${CONTEXT_MODULE} at most once`)
       }
       return
     }
@@ -619,7 +619,7 @@ const assertNoExternalSourceEdges = (sourceFile: ts.SourceFile): void => {
       (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) ||
       (ts.isModuleDeclaration(node) && ts.isStringLiteral(node.name))
     ) {
-      throw diagnosticAt(node, "VIBE5043", `portable source may only import { Context } from "${CONTEXT_MODULE}"`)
+      throw diagnosticAt(node, "SMITHERS5043", `portable source may only import { Context } from "${CONTEXT_MODULE}"`)
     }
     ts.forEachChild(node, visit)
   }
@@ -665,7 +665,7 @@ const createCheckedProgram = (source: string, parsedSourceFile: ts.SourceFile): 
     if (normalized === CONTEXT_NAME) return CONTEXT_DECLARATIONS
     return originalReadFile(name)
   }
-  // No specifier ever resolves to a file. `vibelang/context` binds to the
+  // No specifier ever resolves to a file. `smthrs/context` binds to the
   // ambient declaration above and every other specifier stays unresolved, so
   // portable source can never pull real code (or `node_modules`) into scope.
   host.resolveModuleNames = (moduleNames) => moduleNames.map(() => undefined)
@@ -682,7 +682,7 @@ const valueTypeNode = (node: ts.TypeNode, role: string): PortableValueType => {
   if (node.kind === ts.SyntaxKind.NumberKeyword) return "number"
   if (node.kind === ts.SyntaxKind.BooleanKeyword) return "boolean"
   if (node.kind === ts.SyntaxKind.StringKeyword) return "string"
-  throw diagnosticAt(node, "VIBE5004", `${role} must be exactly number, boolean, or string in the bounded portable backend`)
+  throw diagnosticAt(node, "SMITHERS5004", `${role} must be exactly number, boolean, or string in the bounded portable backend`)
 }
 
 interface ValueBinding {
@@ -761,10 +761,10 @@ const capabilityReference = (
   const capability = symbol && context.capabilitiesBySymbol.get(symbol)
   if (capability === undefined) return undefined
   if (access.name.text !== "context") {
-    throw diagnosticAt(expression, "VIBE5072", `portable capability ${capability.name} is only accessible through ${capability.name}.context()`)
+    throw diagnosticAt(expression, "SMITHERS5072", `portable capability ${capability.name} is only accessible through ${capability.name}.context()`)
   }
   if (expression.arguments.length !== 0 || expression.typeArguments !== undefined) {
-    throw diagnosticAt(expression, "VIBE5072", "portable capability access must be exactly `Capability.context()` with no arguments or type arguments")
+    throw diagnosticAt(expression, "SMITHERS5072", "portable capability access must be exactly `Capability.context()` with no arguments or type arguments")
   }
   // Per the requirements specification the `.context()` CALL is what adds the
   // nominal identity to the enclosing row — reading a field afterwards is not a
@@ -781,7 +781,7 @@ const lowerCapabilityField = (
 ): PortableExpression => {
   const field = capability.fields.find((candidate) => candidate.name === node.name.text)
   if (field === undefined) {
-    throw diagnosticAt(node, "VIBE5071", `portable capability ${capability.name} has no value field '${node.name.text}'; capability methods need host effects and cannot be lowered into an import-free module`)
+    throw diagnosticAt(node, "SMITHERS5071", `portable capability ${capability.name} has no value field '${node.name.text}'; capability methods need host effects and cannot be lowered into an import-free module`)
   }
   context.requirements.add(capability.name)
   return { kind: "capability", valueType: field.valueType, capability: capability.name, field: field.name }
@@ -806,25 +806,25 @@ const lowerCallArguments = (
   depth: number
 ): readonly PortableExpression[] => {
   if (call.arguments.length !== contract.parameters.length) {
-    throw diagnosticAt(call, "VIBE5062", `portable call to ${contract.name} needs exactly ${contract.parameters.length} arguments`)
+    throw diagnosticAt(call, "SMITHERS5062", `portable call to ${contract.name} needs exactly ${contract.parameters.length} arguments`)
   }
   return call.arguments.map((argument, index) => {
     const lowered = lowerExpression(argument, context, depth + 1)
     const expected = contract.parameters[index]!
     if (lowered.valueType !== expected.valueType) {
-      throw diagnosticAt(argument, "VIBE5062", `portable call argument ${expected.name} must be ${expected.valueType}`)
+      throw diagnosticAt(argument, "SMITHERS5062", `portable call argument ${expected.name} must be ${expected.valueType}`)
     }
     return lowered
   })
 }
 
 const lowerExpression = (node: ts.Expression, context: LoweringContext, depth = 0): PortableExpression => {
-  if (depth > MAX_IR_DEPTH) throw diagnosticAt(node, "VIBE5005", "portable expression exceeds the lowering depth limit")
+  if (depth > MAX_IR_DEPTH) throw diagnosticAt(node, "SMITHERS5005", "portable expression exceeds the lowering depth limit")
   const { checker } = context
   if (ts.isParenthesizedExpression(node)) return lowerExpression(node.expression, context, depth + 1)
   if (ts.isNumericLiteral(node)) {
     const value = Number(node.text)
-    if (!Number.isFinite(value)) throw diagnosticAt(node, "VIBE5006", "portable numeric literals must be finite")
+    if (!Number.isFinite(value)) throw diagnosticAt(node, "SMITHERS5006", "portable numeric literals must be finite")
     return { kind: "literal", valueType: "number", value }
   }
   if (node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword) {
@@ -832,7 +832,7 @@ const lowerExpression = (node: ts.Expression, context: LoweringContext, depth = 
   }
   if (ts.isStringLiteral(node)) {
     if (!PORTABLE_STRING_CONTENT.test(node.text) || Buffer.byteLength(node.text, "utf8") > MAX_STRING_BYTES) {
-      throw diagnosticAt(node, "VIBE5067", `portable string literals must be printable ASCII of at most ${MAX_STRING_BYTES} bytes`)
+      throw diagnosticAt(node, "SMITHERS5067", `portable string literals must be printable ASCII of at most ${MAX_STRING_BYTES} bytes`)
     }
     return { kind: "literal", valueType: "string", value: node.text }
   }
@@ -848,13 +848,13 @@ const lowerExpression = (node: ts.Expression, context: LoweringContext, depth = 
       const receiverSymbol = resolvedSymbol(checker, receiver)
       const receiverCapability = receiverSymbol && context.capabilitiesBySymbol.get(receiverSymbol)
       if (receiverCapability !== undefined) {
-        throw diagnosticAt(node, "VIBE5072", `portable capability ${receiverCapability.name} is only accessible through ${receiverCapability.name}.context()`)
+        throw diagnosticAt(node, "SMITHERS5072", `portable capability ${receiverCapability.name} is only accessible through ${receiverCapability.name}.context()`)
       }
     }
     if (node.name.text === "length") {
       const value = lowerExpression(node.expression, context, depth + 1)
       if (value.valueType !== "string") {
-        throw diagnosticAt(node, "VIBE5067", "portable .length requires a portable string receiver")
+        throw diagnosticAt(node, "SMITHERS5067", "portable .length requires a portable string receiver")
       }
       return { kind: "string-length", valueType: "number", value }
     }
@@ -862,14 +862,14 @@ const lowerExpression = (node: ts.Expression, context: LoweringContext, depth = 
   if (ts.isIdentifier(node)) {
     const symbol = resolvedSymbol(checker, node)
     if (symbol !== undefined && context.capabilityBindings.has(symbol)) {
-      throw diagnosticAt(node, "VIBE5072", `portable capability instance '${node.text}' is not a portable value; read one of its declared fields`)
+      throw diagnosticAt(node, "SMITHERS5072", `portable capability instance '${node.text}' is not a portable value; read one of its declared fields`)
     }
     if (symbol !== undefined && context.capabilitiesBySymbol.has(symbol)) {
-      throw diagnosticAt(node, "VIBE5072", `portable capability ${node.text} is only accessible through ${node.text}.context()`)
+      throw diagnosticAt(node, "SMITHERS5072", `portable capability ${node.text} is only accessible through ${node.text}.context()`)
     }
     const binding = symbol && context.bindings.get(symbol)
     if (binding === undefined) {
-      throw diagnosticAt(node, "VIBE5007", `portable expression cannot read '${node.text}' or ambient state`)
+      throw diagnosticAt(node, "SMITHERS5007", `portable expression cannot read '${node.text}' or ambient state`)
     }
     return binding.kind === "parameter"
       ? { kind: "parameter", valueType: binding.valueType, index: binding.index, name: binding.name }
@@ -877,36 +877,36 @@ const lowerExpression = (node: ts.Expression, context: LoweringContext, depth = 
   }
   if (ts.isNewExpression(node)) {
     // Redundant backstop: capabilities are required to be `abstract`, so the
-    // checker already rejects `new Config()` with VIBE5003. This keeps the
+    // checker already rejects `new Config()` with SMITHERS5003. This keeps the
     // fabrication rule stated inside the backend rather than resting on a
     // checker detail.
     const constructed = ts.isIdentifier(node.expression) ? resolvedSymbol(checker, node.expression) : undefined
     if (constructed !== undefined && context.capabilitiesBySymbol.has(constructed)) {
-      throw diagnosticAt(node, "VIBE5072", "portable capabilities cannot be constructed; they are supplied by the host environment")
+      throw diagnosticAt(node, "SMITHERS5072", "portable capabilities cannot be constructed; they are supplied by the host environment")
     }
   }
   if (ts.isCallExpression(node)) {
     if (ts.isPropertyAccessExpression(node.expression)) {
       const receiverCapability = capabilityReference(node.expression.expression, context)
       if (receiverCapability !== undefined) {
-        throw diagnosticAt(node, "VIBE5071", `portable capability ${receiverCapability.name} exposes value fields only; capability method calls need host effects and cannot be lowered into an import-free module`)
+        throw diagnosticAt(node, "SMITHERS5071", `portable capability ${receiverCapability.name} exposes value fields only; capability method calls need host effects and cannot be lowered into an import-free module`)
       }
     }
     if (capabilityReference(node, context) !== undefined) {
-      throw diagnosticAt(node, "VIBE5072", "a portable capability instance must be consumed by reading a declared field or bound with `const`")
+      throw diagnosticAt(node, "SMITHERS5072", "a portable capability instance must be consumed by reading a declared field or bound with `const`")
     }
     if (unwrapReceiverCall(node) !== undefined) {
-      throw diagnosticAt(node, "VIBE5062", "portable unwrap propagation is only supported as `const x = f(...).unwrap()` or `return f(...).unwrap()`")
+      throw diagnosticAt(node, "SMITHERS5062", "portable unwrap propagation is only supported as `const x = f(...).unwrap()` or `return f(...).unwrap()`")
     }
     const direct = portableCallee(node, context)
     if (direct === undefined) {
-      throw diagnosticAt(node, "VIBE5016", "unsupported portable expression: only direct calls to declared portable functions are callable")
+      throw diagnosticAt(node, "SMITHERS5016", "unsupported portable expression: only direct calls to declared portable functions are callable")
     }
     if (direct.contract.name === context.functionName) {
-      throw diagnosticAt(node, "VIBE5061", "recursive portable calls are rejected in the bounded backend")
+      throw diagnosticAt(node, "SMITHERS5061", "recursive portable calls are rejected in the bounded backend")
     }
     if (direct.contract.result.kind !== "plain") {
-      throw diagnosticAt(node, "VIBE5062", `portable ${direct.contract.result.kind === "optional" ? "Optional" : "Result"} call must be consumed as \`const x = f(...).unwrap()\`, \`return f(...).unwrap()\`, or a compatible \`return f(...)\``)
+      throw diagnosticAt(node, "SMITHERS5062", `portable ${direct.contract.result.kind === "optional" ? "Optional" : "Result"} call must be consumed as \`const x = f(...).unwrap()\`, \`return f(...).unwrap()\`, or a compatible \`return f(...)\``)
     }
     const callArguments = lowerCallArguments(direct.call, direct.contract, context, depth)
     context.callEdges.push({ callee: direct.contract.name, node })
@@ -914,15 +914,15 @@ const lowerExpression = (node: ts.Expression, context: LoweringContext, depth = 
   }
   if (ts.isPrefixUnaryExpression(node)) {
     if (node.operator === ts.SyntaxKind.PlusPlusToken || node.operator === ts.SyntaxKind.MinusMinusToken) {
-      throw diagnosticAt(node, "VIBE5009", "portable increment/decrement is only supported as its own statement")
+      throw diagnosticAt(node, "SMITHERS5009", "portable increment/decrement is only supported as its own statement")
     }
     const value = lowerExpression(node.operand, context, depth + 1)
     if (node.operator === ts.SyntaxKind.ExclamationToken) {
-      if (value.valueType !== "boolean") throw diagnosticAt(node, "VIBE5008", "logical not requires boolean")
+      if (value.valueType !== "boolean") throw diagnosticAt(node, "SMITHERS5008", "logical not requires boolean")
       return { kind: "unary", valueType: "boolean", operator: "not", value }
     }
     if (node.operator === ts.SyntaxKind.PlusToken || node.operator === ts.SyntaxKind.MinusToken) {
-      if (value.valueType !== "number") throw diagnosticAt(node, "VIBE5008", "numeric unary operators require number")
+      if (value.valueType !== "number") throw diagnosticAt(node, "SMITHERS5008", "numeric unary operators require number")
       return {
         kind: "unary",
         valueType: "number",
@@ -930,20 +930,20 @@ const lowerExpression = (node: ts.Expression, context: LoweringContext, depth = 
         value
       }
     }
-    throw diagnosticAt(node, "VIBE5009", "unsupported portable unary operator")
+    throw diagnosticAt(node, "SMITHERS5009", "unsupported portable unary operator")
   }
   if (ts.isConditionalExpression(node)) {
     const condition = lowerExpression(node.condition, context, depth + 1)
     const whenTrue = lowerExpression(node.whenTrue, context, depth + 1)
     const whenFalse = lowerExpression(node.whenFalse, context, depth + 1)
     if (condition.valueType !== "boolean" || whenTrue.valueType !== whenFalse.valueType) {
-      throw diagnosticAt(node, "VIBE5010", "portable conditional requires a boolean condition and equal scalar arm types")
+      throw diagnosticAt(node, "SMITHERS5010", "portable conditional requires a boolean condition and equal scalar arm types")
     }
     return { kind: "select", valueType: whenTrue.valueType, condition, whenTrue, whenFalse }
   }
   if (ts.isBinaryExpression(node)) {
     if (assignmentOperator(node.operatorToken.kind) !== undefined) {
-      throw diagnosticAt(node, "VIBE5064", "portable assignment is only supported as its own statement")
+      throw diagnosticAt(node, "SMITHERS5064", "portable assignment is only supported as its own statement")
     }
     const left = lowerExpression(node.left, context, depth + 1)
     const right = lowerExpression(node.right, context, depth + 1)
@@ -973,7 +973,7 @@ const lowerExpression = (node: ts.Expression, context: LoweringContext, depth = 
         return { kind: "binary", valueType: "string", operator: "concat", left, right }
       }
       if (left.valueType !== "number" || right.valueType !== "number") {
-        throw diagnosticAt(node, "VIBE5011", operator === "add"
+        throw diagnosticAt(node, "SMITHERS5011", operator === "add"
           ? "portable + requires two numbers or two portable strings"
           : "portable arithmetic requires number operands")
       }
@@ -983,25 +983,25 @@ const lowerExpression = (node: ts.Expression, context: LoweringContext, depth = 
     if (comparisonOperator !== undefined) {
       const stringOperands = left.valueType === "string" && right.valueType === "string"
       if (!stringOperands && (left.valueType !== "number" || right.valueType !== "number")) {
-        throw diagnosticAt(node, "VIBE5012", "portable ordering requires two numbers or two portable strings")
+        throw diagnosticAt(node, "SMITHERS5012", "portable ordering requires two numbers or two portable strings")
       }
       return { kind: "binary", valueType: "boolean", operator: comparisonOperator, left, right }
     }
     const equalityOperator = equality.get(node.operatorToken.kind)
     if (equalityOperator !== undefined) {
-      if (left.valueType !== right.valueType) throw diagnosticAt(node, "VIBE5013", "portable equality operands must have equal types")
+      if (left.valueType !== right.valueType) throw diagnosticAt(node, "SMITHERS5013", "portable equality operands must have equal types")
       return { kind: "binary", valueType: "boolean", operator: equalityOperator, left, right }
     }
     const logicalOperator = logical.get(node.operatorToken.kind)
     if (logicalOperator !== undefined) {
       if (left.valueType !== "boolean" || right.valueType !== "boolean") {
-        throw diagnosticAt(node, "VIBE5014", "portable logical operators require boolean operands")
+        throw diagnosticAt(node, "SMITHERS5014", "portable logical operators require boolean operands")
       }
       return { kind: "binary", valueType: "boolean", operator: logicalOperator, left, right }
     }
-    throw diagnosticAt(node.operatorToken, "VIBE5015", "unsupported portable binary operator")
+    throw diagnosticAt(node.operatorToken, "SMITHERS5015", "unsupported portable binary operator")
   }
-  throw diagnosticAt(node, "VIBE5016", `unsupported portable expression kind ${ts.SyntaxKind[node.kind]}`)
+  throw diagnosticAt(node, "SMITHERS5016", `unsupported portable expression kind ${ts.SyntaxKind[node.kind]}`)
 }
 
 const assignmentOperator = (kind: ts.SyntaxKind): PortableBinaryOperator | "assign" | undefined => {
@@ -1031,12 +1031,12 @@ const requireMutableLocal = (
 ): ValueBinding => {
   const symbol = resolvedSymbol(context.checker, name)
   if (symbol !== undefined && context.capabilityBindings.has(symbol)) {
-    throw diagnosticAt(node, "VIBE5072", `portable capability binding '${name.text}' cannot be reassigned`)
+    throw diagnosticAt(node, "SMITHERS5072", `portable capability binding '${name.text}' cannot be reassigned`)
   }
   const binding = symbol && context.bindings.get(symbol)
-  if (binding === undefined) throw diagnosticAt(node, "VIBE5064", `portable assignment target '${name.text}' is not a declared local`)
-  if (binding.kind === "parameter") throw diagnosticAt(node, "VIBE5064", "portable parameters are immutable; copy into a `let` local first")
-  if (!binding.mutable) throw diagnosticAt(node, "VIBE5064", `portable const local '${name.text}' cannot be reassigned`)
+  if (binding === undefined) throw diagnosticAt(node, "SMITHERS5064", `portable assignment target '${name.text}' is not a declared local`)
+  if (binding.kind === "parameter") throw diagnosticAt(node, "SMITHERS5064", "portable parameters are immutable; copy into a `let` local first")
+  if (!binding.mutable) throw diagnosticAt(node, "SMITHERS5064", `portable const local '${name.text}' cannot be reassigned`)
   return binding
 }
 
@@ -1048,16 +1048,16 @@ const declareLocal = (
   context: LoweringContext
 ): ValueBinding => {
   if (!validPortableName(name.text)) {
-    throw diagnosticAt(node, "VIBE5063", "portable local names must be plain identifiers without the reserved `__` prefix")
+    throw diagnosticAt(node, "SMITHERS5063", "portable local names must be plain identifiers without the reserved `__` prefix")
   }
   if (context.locals.length >= MAX_LOCALS) {
-    throw diagnosticAt(node, "VIBE5063", `portable functions support at most ${MAX_LOCALS} locals`)
+    throw diagnosticAt(node, "SMITHERS5063", `portable functions support at most ${MAX_LOCALS} locals`)
   }
   const taken = [...context.bindings.values()].some((binding) => binding.name === name.text) ||
     context.capabilityBindingNames.has(name.text)
-  if (taken) throw diagnosticAt(node, "VIBE5063", `portable local '${name.text}' duplicates another parameter or local name`)
+  if (taken) throw diagnosticAt(node, "SMITHERS5063", `portable local '${name.text}' duplicates another parameter or local name`)
   const symbol = resolvedSymbol(context.checker, name)
-  if (symbol === undefined) throw diagnosticAt(name, "VIBE5063", "portable local has no checker identity")
+  if (symbol === undefined) throw diagnosticAt(name, "SMITHERS5063", "portable local has no checker identity")
   const binding: ValueBinding = { kind: "local", index: context.locals.length, name: name.text, valueType, mutable }
   context.locals.push({ name: name.text, valueType, mutable })
   context.bindings.set(symbol, binding)
@@ -1076,38 +1076,38 @@ const lowerPropagatingCall = (
     : portableCallee(receiver, context)
   if (target === undefined) {
     if (receiver !== undefined) {
-      throw diagnosticAt(node, "VIBE5062", "portable unwrap receivers must be direct calls to declared portable functions")
+      throw diagnosticAt(node, "SMITHERS5062", "portable unwrap receivers must be direct calls to declared portable functions")
     }
     return undefined
   }
   const { call, contract } = target
   if (contract.result.kind === "plain") {
     if (receiver !== undefined) {
-      throw diagnosticAt(node, "VIBE5062", "portable unwrap receivers must return Optional or Result")
+      throw diagnosticAt(node, "SMITHERS5062", "portable unwrap receivers must return Optional or Result")
     }
     return undefined
   }
   if (role === "bind" && receiver === undefined) {
-    throw diagnosticAt(node, "VIBE5062", "portable Optional/Result call bindings must unwrap: `const x = f(...).unwrap()`")
+    throw diagnosticAt(node, "SMITHERS5062", "portable Optional/Result call bindings must unwrap: `const x = f(...).unwrap()`")
   }
   if (contract.name === context.functionName) {
-    throw diagnosticAt(node, "VIBE5061", "recursive portable calls are rejected in the bounded backend")
+    throw diagnosticAt(node, "SMITHERS5061", "recursive portable calls are rejected in the bounded backend")
   }
   if (contract.result.kind === "optional" && context.result.kind !== "optional") {
-    throw diagnosticAt(node, "VIBE5062", "portable Optional propagation requires an enclosing Optional-returning function")
+    throw diagnosticAt(node, "SMITHERS5062", "portable Optional propagation requires an enclosing Optional-returning function")
   }
   if (contract.result.kind === "result") {
     if (context.result.kind !== "result") {
-      throw diagnosticAt(node, "VIBE5062", "portable Result propagation requires an enclosing Result-returning function")
+      throw diagnosticAt(node, "SMITHERS5062", "portable Result propagation requires an enclosing Result-returning function")
     }
     const declared = new Set(context.result.errors.map((error) => error.identity))
     const missing = contract.result.errors.find((error) => !declared.has(error.identity))
     if (missing !== undefined) {
-      throw diagnosticAt(node, "VIBE5062", `portable caller's Result row must include propagated error ${missing.name}`)
+      throw diagnosticAt(node, "SMITHERS5062", `portable caller's Result row must include propagated error ${missing.name}`)
     }
   }
   if (role === "tail" && receiver === undefined && contract.result.kind !== context.result.kind) {
-    throw diagnosticAt(node, "VIBE5062", "portable tail return requires the callee and caller channels to match")
+    throw diagnosticAt(node, "SMITHERS5062", "portable tail return requires the callee and caller channels to match")
   }
   const callArguments = lowerCallArguments(call, contract, context, 0)
   context.callEdges.push({ callee: contract.name, node })
@@ -1119,16 +1119,16 @@ const lowerVariableDeclarations = (
   context: LoweringContext
 ): readonly PortableStatement[] => {
   if ((list.flags & ts.NodeFlags.Let) === 0 && (list.flags & ts.NodeFlags.Const) === 0) {
-    throw diagnosticAt(list, "VIBE5063", "portable locals must use let or const")
+    throw diagnosticAt(list, "SMITHERS5063", "portable locals must use let or const")
   }
   const mutable = (list.flags & ts.NodeFlags.Const) === 0
   const lowered: PortableStatement[] = []
   for (const declaration of list.declarations) {
     if (!ts.isIdentifier(declaration.name)) {
-      throw diagnosticAt(declaration, "VIBE5063", "portable locals must be plain identifiers")
+      throw diagnosticAt(declaration, "SMITHERS5063", "portable locals must be plain identifiers")
     }
     if (declaration.initializer === undefined || declaration.exclamationToken !== undefined) {
-      throw diagnosticAt(declaration, "VIBE5063", "portable locals require an initializer")
+      throw diagnosticAt(declaration, "SMITHERS5063", "portable locals require an initializer")
     }
     const declaredName = declaration.name
     const capability = capabilityReference(declaration.initializer, context)
@@ -1136,22 +1136,22 @@ const lowerVariableDeclarations = (
       // A capability binding is compile-time only: it names a service, not a
       // value, so it never becomes a Wasm local or an evaluator slot.
       if (list.declarations.length !== 1) {
-        throw diagnosticAt(declaration, "VIBE5072", "portable capability bindings require a single declarator")
+        throw diagnosticAt(declaration, "SMITHERS5072", "portable capability bindings require a single declarator")
       }
-      if (mutable) throw diagnosticAt(declaration, "VIBE5072", "portable capability bindings must use `const`")
+      if (mutable) throw diagnosticAt(declaration, "SMITHERS5072", "portable capability bindings must use `const`")
       if (declaration.type !== undefined) {
-        throw diagnosticAt(declaration, "VIBE5072", "portable capability bindings cannot carry a type annotation")
+        throw diagnosticAt(declaration, "SMITHERS5072", "portable capability bindings cannot carry a type annotation")
       }
       if (!validPortableName(declaredName.text)) {
-        throw diagnosticAt(declaration, "VIBE5063", "portable capability binding names must be plain identifiers without the reserved `__` prefix")
+        throw diagnosticAt(declaration, "SMITHERS5063", "portable capability binding names must be plain identifiers without the reserved `__` prefix")
       }
       const taken = [...context.bindings.values()].some((binding) => binding.name === declaredName.text) ||
         context.capabilityBindingNames.has(declaredName.text)
       if (taken) {
-        throw diagnosticAt(declaration, "VIBE5063", `portable capability binding '${declaredName.text}' duplicates another parameter, local, or capability name`)
+        throw diagnosticAt(declaration, "SMITHERS5063", `portable capability binding '${declaredName.text}' duplicates another parameter, local, or capability name`)
       }
       const symbol = resolvedSymbol(context.checker, declaredName)
-      if (symbol === undefined) throw diagnosticAt(declaredName, "VIBE5072", "portable capability binding has no checker identity")
+      if (symbol === undefined) throw diagnosticAt(declaredName, "SMITHERS5072", "portable capability binding has no checker identity")
       context.capabilityBindings.set(symbol, capability)
       context.capabilityBindingNames.add(declaredName.text)
       continue
@@ -1160,11 +1160,11 @@ const lowerVariableDeclarations = (
     const propagating = lowerPropagatingCall(declaration.initializer, context, "bind")
     if (propagating !== undefined) {
       if (list.declarations.length !== 1) {
-        throw diagnosticAt(declaration, "VIBE5063", "portable unwrap initializers require a single declarator")
+        throw diagnosticAt(declaration, "SMITHERS5063", "portable unwrap initializers require a single declarator")
       }
       const valueType = propagating.contract.result.valueType
       if (annotated !== undefined && annotated !== valueType) {
-        throw diagnosticAt(declaration, "VIBE5063", `portable local annotation must match the callee's ${valueType} result`)
+        throw diagnosticAt(declaration, "SMITHERS5063", `portable local annotation must match the callee's ${valueType} result`)
       }
       const binding = declareLocal(declaration, declaration.name, valueType, mutable, context)
       lowered.push({
@@ -1179,7 +1179,7 @@ const lowerVariableDeclarations = (
     }
     const value = lowerExpression(declaration.initializer, context)
     if (annotated !== undefined && annotated !== value.valueType) {
-      throw diagnosticAt(declaration, "VIBE5063", `portable local annotation must match its ${value.valueType} initializer`)
+      throw diagnosticAt(declaration, "SMITHERS5063", `portable local annotation must match its ${value.valueType} initializer`)
     }
     const binding = declareLocal(declaration, declaration.name, value.valueType, mutable, context)
     lowered.push({ kind: "let", index: binding.index, name: binding.name, valueType: value.valueType, value })
@@ -1196,24 +1196,24 @@ const lowerAssignmentStatement = (
   if (ts.isBinaryExpression(expression)) {
     const operator = assignmentOperator(expression.operatorToken.kind)
     if (operator === undefined) {
-      throw diagnosticAt(statementExpression, "VIBE5025", "portable expression statements must be assignments or increments")
+      throw diagnosticAt(statementExpression, "SMITHERS5025", "portable expression statements must be assignments or increments")
     }
     const targetNode = skipParens(expression.left)
-    if (!ts.isIdentifier(targetNode)) throw diagnosticAt(expression, "VIBE5064", "portable assignment targets must be local identifiers")
+    if (!ts.isIdentifier(targetNode)) throw diagnosticAt(expression, "SMITHERS5064", "portable assignment targets must be local identifiers")
     const binding = requireMutableLocal(expression, targetNode, context)
     if (unwrapReceiverCall(expression.right) !== undefined) {
-      throw diagnosticAt(expression, "VIBE5062", "portable unwrap results must bind through a new `const`/`let` declaration, not reassignment")
+      throw diagnosticAt(expression, "SMITHERS5062", "portable unwrap results must bind through a new `const`/`let` declaration, not reassignment")
     }
     const right = lowerExpression(expression.right, context)
     if (operator === "assign") {
       if (right.valueType !== binding.valueType) {
-        throw diagnosticAt(expression, "VIBE5064", `portable assignment to '${binding.name}' must produce ${binding.valueType}`)
+        throw diagnosticAt(expression, "SMITHERS5064", `portable assignment to '${binding.name}' must produce ${binding.valueType}`)
       }
       return { kind: "assign", index: binding.index, name: binding.name, valueType: binding.valueType, value: right }
     }
     if (operator === "add" && binding.valueType === "string") {
       if (right.valueType !== "string") {
-        throw diagnosticAt(expression, "VIBE5064", "portable string append (+=) requires a portable string operand")
+        throw diagnosticAt(expression, "SMITHERS5064", "portable string append (+=) requires a portable string operand")
       }
       return {
         kind: "assign",
@@ -1230,7 +1230,7 @@ const lowerAssignmentStatement = (
       }
     }
     if (binding.valueType !== "number" || right.valueType !== "number") {
-      throw diagnosticAt(expression, "VIBE5064", "portable compound assignment requires number operands")
+      throw diagnosticAt(expression, "SMITHERS5064", "portable compound assignment requires number operands")
     }
     return {
       kind: "assign",
@@ -1251,9 +1251,9 @@ const lowerAssignmentStatement = (
     (expression.operator === ts.SyntaxKind.PlusPlusToken || expression.operator === ts.SyntaxKind.MinusMinusToken)
   ) {
     const operand = skipParens(expression.operand)
-    if (!ts.isIdentifier(operand)) throw diagnosticAt(expression, "VIBE5064", "portable increment targets must be local identifiers")
+    if (!ts.isIdentifier(operand)) throw diagnosticAt(expression, "SMITHERS5064", "portable increment targets must be local identifiers")
     const binding = requireMutableLocal(expression, operand, context)
-    if (binding.valueType !== "number") throw diagnosticAt(expression, "VIBE5064", "portable increment requires a number local")
+    if (binding.valueType !== "number") throw diagnosticAt(expression, "SMITHERS5064", "portable increment requires a number local")
     return {
       kind: "assign",
       index: binding.index,
@@ -1268,7 +1268,7 @@ const lowerAssignmentStatement = (
       }
     }
   }
-  throw diagnosticAt(statementExpression, "VIBE5025", "portable expression statements must be assignments or increments")
+  throw diagnosticAt(statementExpression, "SMITHERS5025", "portable expression statements must be assignments or increments")
 }
 
 const lowerForParts = (
@@ -1279,7 +1279,7 @@ const lowerForParts = (
   const lowered: PortableStatement[] = []
   if (statement.initializer !== undefined) {
     if (!ts.isVariableDeclarationList(statement.initializer)) {
-      throw diagnosticAt(statement.initializer, "VIBE5065", "portable for-loop initializers must be let/const declarations")
+      throw diagnosticAt(statement.initializer, "SMITHERS5065", "portable for-loop initializers must be let/const declarations")
     }
     lowered.push(...lowerVariableDeclarations(statement.initializer, context))
   }
@@ -1287,7 +1287,7 @@ const lowerForParts = (
     ? { kind: "literal", valueType: "boolean", value: true }
     : lowerExpression(statement.condition, context)
   if (condition.valueType !== "boolean") {
-    throw diagnosticAt(statement.condition ?? statement, "VIBE5065", "portable loop conditions must be boolean")
+    throw diagnosticAt(statement.condition ?? statement, "SMITHERS5065", "portable loop conditions must be boolean")
   }
   const update: PortableStatement[] = []
   if (statement.incrementor !== undefined) {
@@ -1303,11 +1303,11 @@ const lowerStatements = (
   context: LoweringContext,
   depth: number
 ): LoweredStatements => {
-  if (depth > MAX_IR_DEPTH) throw diagnosticAt(statements[0], "VIBE5017", "portable body exceeds the lowering depth limit")
+  if (depth > MAX_IR_DEPTH) throw diagnosticAt(statements[0], "SMITHERS5017", "portable body exceeds the lowering depth limit")
   const lowered: PortableStatement[] = []
   let completes = true
   for (const statement of statements) {
-    if (!completes) throw diagnosticAt(statement, "VIBE5019", "statements after a terminal portable statement are unreachable/unsupported")
+    if (!completes) throw diagnosticAt(statement, "SMITHERS5019", "statements after a terminal portable statement are unreachable/unsupported")
     if (ts.isEmptyStatement(statement)) continue
     if (ts.isBlock(statement)) {
       const inner = lowerStatements(statement.statements, context, depth + 1)
@@ -1325,7 +1325,7 @@ const lowerStatements = (
     }
     if (ts.isIfStatement(statement)) {
       const condition = lowerExpression(statement.expression, context)
-      if (condition.valueType !== "boolean") throw diagnosticAt(statement.expression, "VIBE5018", "portable if condition must be boolean")
+      if (condition.valueType !== "boolean") throw diagnosticAt(statement.expression, "SMITHERS5018", "portable if condition must be boolean")
       const whenTrue = lowerStatements(statementsOf(statement.thenStatement), context, depth + 1)
       const whenFalse = statement.elseStatement === undefined
         ? { statements: [], completes: true } as LoweredStatements
@@ -1336,7 +1336,7 @@ const lowerStatements = (
     }
     if (ts.isWhileStatement(statement)) {
       const condition = lowerExpression(statement.expression, context)
-      if (condition.valueType !== "boolean") throw diagnosticAt(statement.expression, "VIBE5065", "portable loop conditions must be boolean")
+      if (condition.valueType !== "boolean") throw diagnosticAt(statement.expression, "SMITHERS5065", "portable loop conditions must be boolean")
       const body = lowerStatements(statementsOf(statement.statement), { ...context, loopDepth: context.loopDepth + 1 }, depth + 1)
       lowered.push({ kind: "while", condition, body: body.statements, update: [] })
       continue
@@ -1346,8 +1346,8 @@ const lowerStatements = (
       continue
     }
     if (ts.isBreakStatement(statement) || ts.isContinueStatement(statement)) {
-      if (statement.label !== undefined) throw diagnosticAt(statement, "VIBE5065", "portable loops do not support labels")
-      if (context.loopDepth === 0) throw diagnosticAt(statement, "VIBE5065", "portable break/continue must appear inside a loop")
+      if (statement.label !== undefined) throw diagnosticAt(statement, "SMITHERS5065", "portable loops do not support labels")
+      if (context.loopDepth === 0) throw diagnosticAt(statement, "SMITHERS5065", "portable break/continue must appear inside a loop")
       lowered.push({ kind: ts.isBreakStatement(statement) ? "break" : "continue" })
       completes = false
       continue
@@ -1362,13 +1362,13 @@ const lowerStatements = (
       completes = false
       continue
     }
-    throw diagnosticAt(statement, "VIBE5025", `unsupported portable statement ${ts.SyntaxKind[statement.kind]}`)
+    throw diagnosticAt(statement, "SMITHERS5025", `unsupported portable statement ${ts.SyntaxKind[statement.kind]}`)
   }
   return { statements: lowered, completes }
 }
 
 const lowerReturn = (statement: ts.ReturnStatement, context: LoweringContext): PortableStatement => {
-  if (statement.expression === undefined) throw diagnosticAt(statement, "VIBE5020", "portable return requires a value")
+  if (statement.expression === undefined) throw diagnosticAt(statement, "SMITHERS5020", "portable return requires a value")
   const expression = statement.expression
   const undefinedSymbol = ts.isIdentifier(expression) && expression.text === "undefined"
     ? resolvedSymbol(context.checker, expression)
@@ -1383,13 +1383,13 @@ const lowerReturn = (statement: ts.ReturnStatement, context: LoweringContext): P
   const propagating = lowerPropagatingCall(expression, context, "tail")
   if (propagating !== undefined) {
     if (propagating.contract.result.valueType !== context.result.valueType) {
-      throw diagnosticAt(expression, "VIBE5021", `portable tail call must produce ${context.result.valueType}`)
+      throw diagnosticAt(expression, "SMITHERS5021", `portable tail call must produce ${context.result.valueType}`)
     }
     return { kind: "tail-call", callee: propagating.contract.name, arguments: propagating.arguments }
   }
   const value = lowerExpression(expression, context)
   if (value.valueType !== context.result.valueType) {
-    throw diagnosticAt(expression, "VIBE5021", `portable return must produce ${context.result.valueType}`)
+    throw diagnosticAt(expression, "SMITHERS5021", `portable return must produce ${context.result.valueType}`)
   }
   return context.result.kind === "optional"
     ? { kind: "present", value }
@@ -1398,25 +1398,25 @@ const lowerReturn = (statement: ts.ReturnStatement, context: LoweringContext): P
 
 const lowerThrow = (statement: ts.ThrowStatement, context: LoweringContext): PortableStatement => {
   if (context.result.kind !== "result") {
-    throw diagnosticAt(statement, "VIBE5022", "only a Result-returning portable function may throw a recoverable Error")
+    throw diagnosticAt(statement, "SMITHERS5022", "only a Result-returning portable function may throw a recoverable Error")
   }
   if (!ts.isNewExpression(statement.expression)) {
-    throw diagnosticAt(statement.expression, "VIBE5023", "portable failures require `throw new DeclaredError(...)`")
+    throw diagnosticAt(statement.expression, "SMITHERS5023", "portable failures require `throw new DeclaredError(...)`")
   }
   const symbol = resolvedSymbol(context.checker, statement.expression.expression)
   const variant = symbol && context.errorsBySymbol.get(symbol)
   if (variant === undefined || !context.result.errors.some((error) => error.identity === variant.identity)) {
-    throw diagnosticAt(statement.expression, "VIBE5024", "thrown Error is not in the declared portable Result failure row")
+    throw diagnosticAt(statement.expression, "SMITHERS5024", "thrown Error is not in the declared portable Result failure row")
   }
   const callArguments = statement.expression.arguments ?? []
   if (callArguments.length !== variant.fields.length) {
-    throw diagnosticAt(statement.expression, "VIBE5066", `portable failure ${variant.name} requires exactly ${variant.fields.length} payload arguments`)
+    throw diagnosticAt(statement.expression, "SMITHERS5066", `portable failure ${variant.name} requires exactly ${variant.fields.length} payload arguments`)
   }
   const loweredArguments = callArguments.map((argument, index) => {
     const lowered = lowerExpression(argument, context)
     const field = variant.fields[index]!
     if (lowered.valueType !== field.valueType) {
-      throw diagnosticAt(argument, "VIBE5066", `portable failure payload ${field.name} must be ${field.valueType}`)
+      throw diagnosticAt(argument, "SMITHERS5066", `portable failure payload ${field.name} must be ${field.valueType}`)
     }
     return lowered
   })
@@ -1453,7 +1453,7 @@ const parseErrorPayloadFields = (statement: ts.ClassDeclaration): readonly Porta
     (ts.canHaveModifiers(constructorMember) && (ts.getModifiers(constructorMember) ?? []).length !== 0) ||
     (ts.canHaveDecorators(constructorMember) && (ts.getDecorators(constructorMember) ?? []).length !== 0)
   ) {
-    throw diagnosticAt(statement, "VIBE5035", "portable Error classes may only add one plain constructor of readonly scalar parameter properties")
+    throw diagnosticAt(statement, "SMITHERS5035", "portable Error classes may only add one plain constructor of readonly scalar parameter properties")
   }
   const bodyStatements = constructorMember.body.statements
   const superCall = bodyStatements[0]
@@ -1463,10 +1463,10 @@ const parseErrorPayloadFields = (statement: ts.ClassDeclaration): readonly Porta
     superCall.expression.expression.kind !== ts.SyntaxKind.SuperKeyword ||
     superCall.expression.arguments.length !== 0
   ) {
-    throw diagnosticAt(constructorMember, "VIBE5035", "portable Error constructors must contain exactly `super()`")
+    throw diagnosticAt(constructorMember, "SMITHERS5035", "portable Error constructors must contain exactly `super()`")
   }
   if (constructorMember.parameters.length > MAX_ERROR_FIELDS) {
-    throw diagnosticAt(constructorMember, "VIBE5066", `portable Error payloads support at most ${MAX_ERROR_FIELDS} fields`)
+    throw diagnosticAt(constructorMember, "SMITHERS5066", `portable Error payloads support at most ${MAX_ERROR_FIELDS} fields`)
   }
   const fields: PortableErrorField[] = []
   for (const parameter of constructorMember.parameters) {
@@ -1477,12 +1477,12 @@ const parseErrorPayloadFields = (statement: ts.ClassDeclaration): readonly Porta
       modifiers.length !== 1 || modifiers[0]!.kind !== ts.SyntaxKind.ReadonlyKeyword ||
       !validPortableName(parameter.name.text)
     ) {
-      throw diagnosticAt(parameter, "VIBE5066", "portable Error payload fields must be required `readonly name: number|boolean|string` parameter properties")
+      throw diagnosticAt(parameter, "SMITHERS5066", "portable Error payload fields must be required `readonly name: number|boolean|string` parameter properties")
     }
     fields.push({ name: parameter.name.text, valueType: valueTypeNode(parameter.type, "Error payload field") })
   }
   if (new Set(fields.map((field) => field.name)).size !== fields.length) {
-    throw diagnosticAt(constructorMember, "VIBE5066", "portable Error payload field names must be unique")
+    throw diagnosticAt(constructorMember, "SMITHERS5066", "portable Error payload field names must be unique")
   }
   return fields
 }
@@ -1525,15 +1525,15 @@ const collectDeclaredCapabilities = (
       statement.heritageClauses?.length !== 1 || extendsClauseOf(statement)?.types.length !== 1 ||
       extendsClauseOf(statement)?.types[0]?.typeArguments !== undefined
     ) {
-      throw diagnosticAt(statement, "VIBE5070", "portable capabilities must be non-generic `abstract class Name extends Context` declarations with no decorators and no other heritage")
+      throw diagnosticAt(statement, "SMITHERS5070", "portable capabilities must be non-generic `abstract class Name extends Context` declarations with no decorators and no other heritage")
     }
     if (capabilities.size >= MAX_CAPABILITIES) {
-      throw diagnosticAt(statement, "VIBE5070", `portable modules declare at most ${MAX_CAPABILITIES} capabilities`)
+      throw diagnosticAt(statement, "SMITHERS5070", `portable modules declare at most ${MAX_CAPABILITIES} capabilities`)
     }
     const fields: PortableCapabilityField[] = []
     for (const member of statement.members) {
       if (!ts.isPropertyDeclaration(member)) {
-        throw diagnosticAt(member, "VIBE5071", "portable capabilities expose value fields only; methods, accessors, and constructors need host effects and cannot be lowered into an import-free module")
+        throw diagnosticAt(member, "SMITHERS5071", "portable capabilities expose value fields only; methods, accessors, and constructors need host effects and cannot be lowered into an import-free module")
       }
       const memberModifiers = ts.canHaveModifiers(member) ? ts.getModifiers(member) ?? [] : []
       const memberDecorators = ts.canHaveDecorators(member) ? ts.getDecorators(member) ?? [] : []
@@ -1544,18 +1544,18 @@ const collectDeclaredCapabilities = (
         member.exclamationToken !== undefined || memberDecorators.length !== 0 ||
         memberModifiers.length !== 2 || !kinds.has(ts.SyntaxKind.AbstractKeyword) || !kinds.has(ts.SyntaxKind.ReadonlyKeyword)
       ) {
-        throw diagnosticAt(member, "VIBE5070", "portable capability fields must be `abstract readonly name: number|boolean|string` declarations")
+        throw diagnosticAt(member, "SMITHERS5070", "portable capability fields must be `abstract readonly name: number|boolean|string` declarations")
       }
       fields.push({ name: member.name.text, valueType: valueTypeNode(member.type, "capability field") })
     }
     if (fields.length === 0 || fields.length > MAX_CAPABILITY_FIELDS) {
-      throw diagnosticAt(statement, "VIBE5070", `portable capabilities must declare 1-${MAX_CAPABILITY_FIELDS} value fields`)
+      throw diagnosticAt(statement, "SMITHERS5070", `portable capabilities must declare 1-${MAX_CAPABILITY_FIELDS} value fields`)
     }
     if (new Set(fields.map((field) => field.name)).size !== fields.length) {
-      throw diagnosticAt(statement, "VIBE5070", "portable capability field names must be unique")
+      throw diagnosticAt(statement, "SMITHERS5070", "portable capability field names must be unique")
     }
     const symbol = resolvedSymbol(checker, statement.name)
-    if (symbol === undefined) throw diagnosticAt(statement.name, "VIBE5070", "portable capability class has no checker identity")
+    if (symbol === undefined) throw diagnosticAt(statement.name, "SMITHERS5070", "portable capability class has no checker identity")
     capabilities.set(symbol, {
       name: statement.name.text,
       identity: capabilityIdentity(moduleId, statement.name.text),
@@ -1592,11 +1592,11 @@ const collectDeclaredErrors = (
       heritageSymbol === undefined ||
       heritageSymbol.declarations?.some((declaration) => resolve(declaration.getSourceFile().fileName) === SOURCE_NAME)
     ) {
-      throw diagnosticAt(statement, "VIBE5035", "portable Error classes must be concrete scalar-payload declarations that directly extend the global Error")
+      throw diagnosticAt(statement, "SMITHERS5035", "portable Error classes must be concrete scalar-payload declarations that directly extend the global Error")
     }
     const fields = parseErrorPayloadFields(statement)
     const symbol = resolvedSymbol(checker, statement.name)
-    if (symbol === undefined) throw diagnosticAt(statement.name, "VIBE5036", "portable Error class has no checker identity")
+    if (symbol === undefined) throw diagnosticAt(statement.name, "SMITHERS5036", "portable Error class has no checker identity")
     declaredErrors.set(symbol, {
       name: statement.name.text,
       identity: errorIdentity(moduleId, statement.name.text),
@@ -1618,35 +1618,35 @@ const parseResultContract = (
     return { result: { kind: "plain", valueType: valueTypeNode(type, "return type") }, errorsBySymbol: new Map() }
   }
   if (!ts.isTypeReferenceNode(type)) {
-    throw diagnosticAt(type, "VIBE5026", "portable return type must be a portable value, Optional<value>, or Result<value, Error>")
+    throw diagnosticAt(type, "SMITHERS5026", "portable return type must be a portable value, Optional<value>, or Result<value, Error>")
   }
   if (typeReferenceIdentity(type, checker, "Optional")) {
-    if (type.typeArguments?.length !== 1) throw diagnosticAt(type, "VIBE5027", "Optional requires one portable value argument")
+    if (type.typeArguments?.length !== 1) throw diagnosticAt(type, "SMITHERS5027", "Optional requires one portable value argument")
     return {
       result: { kind: "optional", valueType: valueTypeNode(type.typeArguments[0]!, "Optional value") },
       errorsBySymbol: new Map()
     }
   }
   if (!typeReferenceIdentity(type, checker, "Result") || type.typeArguments?.length !== 2) {
-    throw diagnosticAt(type, "VIBE5028", "portable return type must use the compiler-owned Result/Optional identity")
+    throw diagnosticAt(type, "SMITHERS5028", "portable return type must use the compiler-owned Result/Optional identity")
   }
   const valueType = valueTypeNode(type.typeArguments[0]!, "Result success")
   const resolvedErrors: Array<{ symbol: ts.Symbol } & DeclaredError> = []
   const row = errorTypeNodes(type.typeArguments[1]!)
-  if (row.length > MAX_ERRORS) throw diagnosticAt(type, "VIBE5029", `portable Result rows support at most ${MAX_ERRORS} errors`)
+  if (row.length > MAX_ERRORS) throw diagnosticAt(type, "SMITHERS5029", `portable Result rows support at most ${MAX_ERRORS} errors`)
   for (const errorType of row) {
     if (!ts.isTypeReferenceNode(errorType) || !ts.isIdentifier(errorType.typeName) || errorType.typeArguments) {
-      throw diagnosticAt(errorType, "VIBE5029", "portable Result failures must be a union of local scalar-payload Error classes")
+      throw diagnosticAt(errorType, "SMITHERS5029", "portable Result failures must be a union of local scalar-payload Error classes")
     }
     const symbol = resolvedSymbol(checker, errorType.typeName)
     const error = symbol && declaredErrors.get(symbol)
     if (symbol === undefined || error === undefined) {
-      throw diagnosticAt(errorType, "VIBE5029", "portable Result failure is not a local scalar-payload Error class")
+      throw diagnosticAt(errorType, "SMITHERS5029", "portable Result failure is not a local scalar-payload Error class")
     }
     resolvedErrors.push({ symbol, ...error })
   }
   const identities = resolvedErrors.map((error) => error.identity)
-  if (new Set(identities).size !== identities.length) throw diagnosticAt(type, "VIBE5030", "portable Result failure row has duplicates")
+  if (new Set(identities).size !== identities.length) throw diagnosticAt(type, "SMITHERS5030", "portable Result failure row has duplicates")
   const sorted = [...resolvedErrors].sort((left, right) => left.identity < right.identity ? -1 : left.identity > right.identity ? 1 : 0)
   const variants = sorted.map((error, index) => ({ name: error.name, identity: error.identity, tag: index + 1, fields: error.fields }))
   const byIdentity = new Map(variants.map((variant) => [variant.identity, variant]))
@@ -1710,26 +1710,26 @@ const validateFrontendRows = (
   const error = analysis.diagnostics.find((diagnostic) => diagnostic.severity === "error")
   if (error) {
     throw new PortableBackendError({
-      code: "VIBE5031",
-      message: `checked Vibe frontend rejected portable source: ${error.code} ${error.message}`,
+      code: "SMITHERS5031",
+      message: `checked Smithers frontend rejected portable source: ${error.code} ${error.message}`,
       line: error.line,
       column: error.column
     })
   }
   for (const fn of functions) {
     const row = analysis.rows[fn.name]
-    if (row === undefined) throw fail("VIBE5032", `checked frontend did not expose portable function ${fn.name}`)
+    if (row === undefined) throw fail("SMITHERS5032", `checked frontend did not expose portable function ${fn.name}`)
     // Two independent analyzers must infer the same R row for the same source.
     if (canonicalJson([...row.requirements].sort()) !== canonicalJson([...fn.requirements])) {
       throw fail(
-        "VIBE5033",
+        "SMITHERS5033",
         `portable function ${fn.name} requirement row disagrees with the checked frontend ` +
         `(frontend: ${row.requirements.join(", ") || "none"}; lowered: ${fn.requirements.join(", ") || "none"})`
       )
     }
     const expectedFailures = fn.result.kind === "result" ? fn.result.errors.map((variant) => variant.name).sort() : []
     if (canonicalJson([...row.failures].sort()) !== canonicalJson(expectedFailures)) {
-      throw fail("VIBE5034", `portable function ${fn.name} failure row disagrees with checked frontend`)
+      throw fail("SMITHERS5034", `portable function ${fn.name} failure row disagrees with checked frontend`)
     }
   }
 }
@@ -1798,8 +1798,8 @@ const closeRequirements = <NodeRef>(
 }
 
 /**
- * Lowers a deliberately bounded `.vibe` function subset through a real
- * TypeScript checker plus the Vibe row checker. It parses source but never
+ * Lowers a deliberately bounded `.sm` function subset through a real
+ * TypeScript checker plus the Smithers row checker. It parses source but never
  * imports or evaluates the author module.
  */
 export const compilePortableModule = (options: {
@@ -1807,10 +1807,10 @@ export const compilePortableModule = (options: {
   readonly source: string
 }): PortableModuleIR => {
   if (!validModuleId(options.moduleId)) {
-    return fail("VIBE5001", "portable module id must be a canonical ASCII package/path identity")
+    return fail("SMITHERS5001", "portable module id must be a canonical ASCII package/path identity")
   }
   if (typeof options.source !== "string" || Buffer.byteLength(options.source, "utf8") > MAX_IR_BYTES) {
-    return fail("VIBE5002", `portable source must be UTF-8 text no larger than ${MAX_IR_BYTES} bytes`)
+    return fail("SMITHERS5002", `portable source must be UTF-8 text no larger than ${MAX_IR_BYTES} bytes`)
   }
   const parsedSourceFile = ts.createSourceFile(SOURCE_NAME, options.source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   assertNoExternalSourceEdges(parsedSourceFile)
@@ -1830,7 +1830,7 @@ export const compilePortableModule = (options: {
     const start = diagnostic.start ?? 0
     const position = sourceFile.getLineAndCharacterOfPosition(start)
     throw new PortableBackendError({
-      code: "VIBE5003",
+      code: "SMITHERS5003",
       message: ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
       line: position.line + 1,
       column: position.character + 1
@@ -1841,7 +1841,7 @@ export const compilePortableModule = (options: {
   const declaredErrors = collectDeclaredErrors(sourceFile, checker, options.moduleId)
   const capabilitiesByName = new Map([...declaredCapabilities.values()].map((capability) => [capability.name, capability]))
   if (capabilitiesByName.size !== declaredCapabilities.size) {
-    return fail("VIBE5070", "portable capability names must be unique")
+    return fail("SMITHERS5070", "portable capability names must be unique")
   }
 
   interface StagedFunction {
@@ -1857,7 +1857,7 @@ export const compilePortableModule = (options: {
     // external edge; class declarations were classified above.
     if (ts.isClassDeclaration(statement) || ts.isImportDeclaration(statement)) continue
     if (!ts.isFunctionDeclaration(statement)) {
-      throw diagnosticAt(statement, "VIBE5037", "portable modules may contain only capability classes, scalar-payload Error classes, and exported functions")
+      throw diagnosticAt(statement, "SMITHERS5037", "portable modules may contain only capability classes, scalar-payload Error classes, and exported functions")
     }
     if (
       statement.name === undefined || statement.body === undefined || statement.type === undefined ||
@@ -1867,13 +1867,13 @@ export const compilePortableModule = (options: {
       statement.asteriskToken !== undefined || statement.typeParameters !== undefined ||
       !validPortableName(statement.name.text)
     ) {
-      throw diagnosticAt(statement, "VIBE5038", "portable functions must be named non-generic synchronous exported declarations with explicit returns")
+      throw diagnosticAt(statement, "SMITHERS5038", "portable functions must be named non-generic synchronous exported declarations with explicit returns")
     }
     if (staged.length >= MAX_FUNCTIONS) {
-      throw diagnosticAt(statement, "VIBE5038", `portable modules support at most ${MAX_FUNCTIONS} functions`)
+      throw diagnosticAt(statement, "SMITHERS5038", `portable modules support at most ${MAX_FUNCTIONS} functions`)
     }
     if (statement.parameters.length > MAX_PARAMETERS) {
-      throw diagnosticAt(statement, "VIBE5039", `portable functions support at most ${MAX_PARAMETERS} parameters`)
+      throw diagnosticAt(statement, "SMITHERS5039", `portable functions support at most ${MAX_PARAMETERS} parameters`)
     }
     const parameters: Array<{ name: string; valueType: PortableValueType }> = []
     const parameterSymbols = new Map<ts.Symbol, ValueBinding>()
@@ -1882,11 +1882,11 @@ export const compilePortableModule = (options: {
         !ts.isIdentifier(parameter.name) || parameter.name.text === "this" || parameter.type === undefined || parameter.questionToken ||
         parameter.dotDotDotToken || parameter.initializer || !validPortableName(parameter.name.text)
       ) {
-        throw diagnosticAt(parameter, "VIBE5039", "portable parameters must be required annotated identifiers without defaults")
+        throw diagnosticAt(parameter, "SMITHERS5039", "portable parameters must be required annotated identifiers without defaults")
       }
       const valueType = valueTypeNode(parameter.type, "parameter")
       const symbol = resolvedSymbol(checker, parameter.name)
-      if (symbol === undefined) throw diagnosticAt(parameter.name, "VIBE5040", "portable parameter has no checker identity")
+      if (symbol === undefined) throw diagnosticAt(parameter.name, "SMITHERS5040", "portable parameter has no checker identity")
       const binding: ValueBinding = { kind: "parameter", index, name: parameter.name.text, valueType, mutable: false }
       parameters.push({ name: binding.name, valueType })
       parameterSymbols.set(symbol, binding)
@@ -1894,13 +1894,13 @@ export const compilePortableModule = (options: {
     const parsed = parseResultContract(statement.type, checker, declaredErrors)
     const contract: FunctionContract = { name: statement.name.text, parameters, result: parsed.result }
     const functionSymbol = resolvedSymbol(checker, statement.name)
-    if (functionSymbol === undefined) throw diagnosticAt(statement.name, "VIBE5038", "portable function has no checker identity")
+    if (functionSymbol === undefined) throw diagnosticAt(statement.name, "SMITHERS5038", "portable function has no checker identity")
     contractsBySymbol.set(functionSymbol, contract)
     staged.push({ statement, contract, parameterSymbols, errorsBySymbol: parsed.errorsBySymbol })
   }
-  if (staged.length === 0) return fail("VIBE5041", "portable module exports no functions")
+  if (staged.length === 0) return fail("SMITHERS5041", "portable module exports no functions")
   if (new Set(staged.map((entry) => entry.contract.name)).size !== staged.length) {
-    return fail("VIBE5042", "portable function names must be unique")
+    return fail("SMITHERS5042", "portable function names must be unique")
   }
 
   const loweringEdges = new Map<string, Array<{ callee: string; node: ts.Node }>>()
@@ -1933,7 +1933,7 @@ export const compilePortableModule = (options: {
     }
     const lowered = lowerStatements(entry.statement.body!.statements, context, 0)
     if (lowered.completes) {
-      throw diagnosticAt(entry.statement, "VIBE5017", "portable control-flow path does not return a value")
+      throw diagnosticAt(entry.statement, "SMITHERS5017", "portable control-flow path does not return a value")
     }
     // The IR must be self-describing: a row entry that no `capability`
     // expression backs could never be re-derived from the IR, so an unread
@@ -1944,7 +1944,7 @@ export const compilePortableModule = (options: {
     })
     for (const requirement of requirements) {
       if (!read.has(requirement)) {
-        throw diagnosticAt(entry.statement, "VIBE5072", `portable function ${entry.contract.name} calls ${requirement}.context() but never reads one of its fields; the bounded backend records a requirement only through a field read`)
+        throw diagnosticAt(entry.statement, "SMITHERS5072", `portable function ${entry.contract.name} calls ${requirement}.context() but never reads one of its fields; the bounded backend records a requirement only through a field read`)
       }
     }
     loweringEdges.set(entry.contract.name, callEdges)
@@ -1960,10 +1960,10 @@ export const compilePortableModule = (options: {
   checkCallGraph(
     loweringEdges,
     (edge, path): never => {
-      throw diagnosticAt(edge.node, "VIBE5061", `recursive portable calls are rejected in the bounded backend (${path.join(" -> ")})`)
+      throw diagnosticAt(edge.node, "SMITHERS5061", `recursive portable calls are rejected in the bounded backend (${path.join(" -> ")})`)
     },
     (edge): never => {
-      throw diagnosticAt(edge.node, "VIBE5061", `portable call chains deeper than ${MAX_CALL_DEPTH} are rejected`)
+      throw diagnosticAt(edge.node, "SMITHERS5061", `portable call chains deeper than ${MAX_CALL_DEPTH} are rejected`)
     }
   )
   // Rows close only after the call graph is known acyclic, so requirement
@@ -1991,18 +1991,18 @@ export const compilePortableModule = (options: {
 }
 
 const record = (value: unknown, label: string, keys: readonly string[]): Record<string, unknown> => {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return fail("VIBE5050", `${label} must be an object`)
-  if (canonicalJson(Object.keys(value).sort()) !== canonicalJson([...keys].sort())) return fail("VIBE5050", `${label} has missing or unknown fields`)
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return fail("SMITHERS5050", `${label} must be an object`)
+  if (canonicalJson(Object.keys(value).sort()) !== canonicalJson([...keys].sort())) return fail("SMITHERS5050", `${label} has missing or unknown fields`)
   return value as Record<string, unknown>
 }
 
 const scalar = (value: unknown, label: string): PortableScalarType => {
-  if (value !== "number" && value !== "boolean") return fail("VIBE5050", `${label} has invalid scalar type`)
+  if (value !== "number" && value !== "boolean") return fail("SMITHERS5050", `${label} has invalid scalar type`)
   return value
 }
 
 const portableValue = (value: unknown, label: string): PortableValueType => {
-  if (value !== "number" && value !== "boolean" && value !== "string") return fail("VIBE5050", `${label} has invalid value type`)
+  if (value !== "number" && value !== "boolean" && value !== "string") return fail("SMITHERS5050", `${label} has invalid value type`)
   return value
 }
 
@@ -2038,7 +2038,7 @@ const validateExpression = (
   label: string,
   depth = 0
 ): PortableExpression => {
-  if (depth > MAX_IR_DEPTH) return fail("VIBE5050", `${label} exceeds the expression depth limit`)
+  if (depth > MAX_IR_DEPTH) return fail("SMITHERS5050", `${label} exceeds the expression depth limit`)
   const base = record(value, label, (() => {
     const candidate = value as { kind?: unknown }
     switch (candidate?.kind) {
@@ -2060,31 +2060,31 @@ const validateExpression = (
       (valueType === "number" && (typeof base.value !== "number" || !Number.isFinite(base.value) || Object.is(base.value, -0))) ||
       (valueType === "boolean" && typeof base.value !== "boolean") ||
       (valueType === "string" && !validPortableStringValue(base.value))
-    ) return fail("VIBE5050", `${label} literal does not match its portable value type`)
+    ) return fail("SMITHERS5050", `${label} literal does not match its portable value type`)
     return base as unknown as PortableExpression
   }
   if (base.kind === "string-length") {
     const nested = validateExpression(base.value, context, initialized, `${label}.value`, depth + 1)
     if (valueType !== "number" || nested.valueType !== "string") {
-      return fail("VIBE5050", `${label} string-length operand/type mismatch`)
+      return fail("SMITHERS5050", `${label} string-length operand/type mismatch`)
     }
     return base as unknown as PortableExpression
   }
   if (base.kind === "parameter") {
     if (!Number.isSafeInteger(base.index) || (base.index as number) < 0 || (base.index as number) >= context.parameters.length) {
-      return fail("VIBE5050", `${label} parameter index is invalid`)
+      return fail("SMITHERS5050", `${label} parameter index is invalid`)
     }
     const expected = context.parameters[base.index as number]!
-    if (base.name !== expected.name || valueType !== expected.valueType) return fail("VIBE5050", `${label} parameter identity/type mismatch`)
+    if (base.name !== expected.name || valueType !== expected.valueType) return fail("SMITHERS5050", `${label} parameter identity/type mismatch`)
     return base as unknown as PortableExpression
   }
   if (base.kind === "local") {
     if (!Number.isSafeInteger(base.index) || (base.index as number) < 0 || (base.index as number) >= context.locals.length) {
-      return fail("VIBE5050", `${label} local index is invalid`)
+      return fail("SMITHERS5050", `${label} local index is invalid`)
     }
     const expected = context.locals[base.index as number]!
-    if (base.name !== expected.name || valueType !== expected.valueType) return fail("VIBE5050", `${label} local identity/type mismatch`)
-    if (!initialized.has(base.index as number)) return fail("VIBE5050", `${label} reads local '${expected.name}' before initialization`)
+    if (base.name !== expected.name || valueType !== expected.valueType) return fail("SMITHERS5050", `${label} local identity/type mismatch`)
+    if (!initialized.has(base.index as number)) return fail("SMITHERS5050", `${label} reads local '${expected.name}' before initialization`)
     return base as unknown as PortableExpression
   }
   if (base.kind === "unary") {
@@ -2093,7 +2093,7 @@ const validateExpression = (
       (base.operator === "not" && (valueType !== "boolean" || nested.valueType !== "boolean")) ||
       ((base.operator === "negate" || base.operator === "positive") && (valueType !== "number" || nested.valueType !== "number")) ||
       !["not", "negate", "positive"].includes(base.operator as string)
-    ) return fail("VIBE5050", `${label} unary operator/type mismatch`)
+    ) return fail("SMITHERS5050", `${label} unary operator/type mismatch`)
     return base as unknown as PortableExpression
   }
   if (base.kind === "binary") {
@@ -2111,7 +2111,7 @@ const validateExpression = (
         (left.valueType === "number" || left.valueType === "string")) ||
       (equality.includes(op) && valueType === "boolean" && left.valueType === right.valueType) ||
       (logical.includes(op) && valueType === "boolean" && left.valueType === "boolean" && right.valueType === "boolean")
-    if (!valid) return fail("VIBE5050", `${label} binary operator/type mismatch`)
+    if (!valid) return fail("SMITHERS5050", `${label} binary operator/type mismatch`)
     return base as unknown as PortableExpression
   }
   if (base.kind === "select") {
@@ -2119,34 +2119,34 @@ const validateExpression = (
     const whenTrue = validateExpression(base.whenTrue, context, initialized, `${label}.whenTrue`, depth + 1)
     const whenFalse = validateExpression(base.whenFalse, context, initialized, `${label}.whenFalse`, depth + 1)
     if (condition.valueType !== "boolean" || whenTrue.valueType !== valueType || whenFalse.valueType !== valueType) {
-      return fail("VIBE5050", `${label} select type mismatch`)
+      return fail("SMITHERS5050", `${label} select type mismatch`)
     }
     return base as unknown as PortableExpression
   }
   if (base.kind === "call") {
     validateCallShape(base, context, initialized, label, depth, "plain")
     const contract = context.contracts.get(base.callee as string)!
-    if (valueType !== contract.result.valueType) return fail("VIBE5050", `${label} call result type mismatch`)
+    if (valueType !== contract.result.valueType) return fail("SMITHERS5050", `${label} call result type mismatch`)
     return base as unknown as PortableExpression
   }
   if (base.kind === "capability") {
     if (typeof base.capability !== "string" || typeof base.field !== "string") {
-      return fail("VIBE5050", `${label} capability reference must name a capability and a field`)
+      return fail("SMITHERS5050", `${label} capability reference must name a capability and a field`)
     }
     const capability = context.capabilities.get(base.capability)
-    if (capability === undefined) return fail("VIBE5050", `${label} reads undeclared capability '${base.capability}'`)
+    if (capability === undefined) return fail("SMITHERS5050", `${label} reads undeclared capability '${base.capability}'`)
     // Forged IR cannot widen a function's authority: a capability read that the
     // function's declared row does not cover is rejected outright.
     if (!context.requirements.includes(base.capability)) {
-      return fail("VIBE5050", `${label} reads capability '${base.capability}' outside the function's declared requirement row`)
+      return fail("SMITHERS5050", `${label} reads capability '${base.capability}' outside the function's declared requirement row`)
     }
     const field = capability.fields.find((candidate) => candidate.name === base.field)
-    if (field === undefined) return fail("VIBE5050", `${label} reads unknown field '${base.field}' of capability '${base.capability}'`)
-    if (field.valueType !== valueType) return fail("VIBE5050", `${label} capability field type mismatch`)
+    if (field === undefined) return fail("SMITHERS5050", `${label} reads unknown field '${base.field}' of capability '${base.capability}'`)
+    if (field.valueType !== valueType) return fail("SMITHERS5050", `${label} capability field type mismatch`)
     context.used.add(base.capability)
     return base as unknown as PortableExpression
   }
-  return fail("VIBE5050", `${label} has unsupported expression kind`)
+  return fail("SMITHERS5050", `${label} has unsupported expression kind`)
 }
 
 /** Shared checks for call/bind-call/tail-call callees and arguments. */
@@ -2158,23 +2158,23 @@ const validateCallShape = (
   depth: number,
   expectedKind: "plain" | "propagating"
 ): FunctionContract => {
-  if (typeof base.callee !== "string") return fail("VIBE5050", `${label} callee must be a function name`)
+  if (typeof base.callee !== "string") return fail("SMITHERS5050", `${label} callee must be a function name`)
   const contract = context.contracts.get(base.callee)
-  if (contract === undefined) return fail("VIBE5050", `${label} calls unknown function '${base.callee}'`)
-  if (contract.name === context.selfName) return fail("VIBE5050", `${label} is a rejected recursive call`)
+  if (contract === undefined) return fail("SMITHERS5050", `${label} calls unknown function '${base.callee}'`)
+  if (contract.name === context.selfName) return fail("SMITHERS5050", `${label} is a rejected recursive call`)
   if (expectedKind === "plain" && contract.result.kind !== "plain") {
-    return fail("VIBE5050", `${label} expression calls must target plain functions`)
+    return fail("SMITHERS5050", `${label} expression calls must target plain functions`)
   }
   if (expectedKind === "propagating" && contract.result.kind === "plain") {
-    return fail("VIBE5050", `${label} propagating calls must target Optional/Result functions`)
+    return fail("SMITHERS5050", `${label} propagating calls must target Optional/Result functions`)
   }
   if (!Array.isArray(base.arguments) || base.arguments.length !== contract.parameters.length) {
-    return fail("VIBE5050", `${label} call arity mismatch`)
+    return fail("SMITHERS5050", `${label} call arity mismatch`)
   }
   base.arguments.forEach((argument, index) => {
     const lowered = validateExpression(argument, context, initialized, `${label}.arguments[${index}]`, depth + 1)
     if (lowered.valueType !== contract.parameters[index]!.valueType) {
-      return fail("VIBE5050", `${label} call argument type mismatch`)
+      return fail("SMITHERS5050", `${label} call argument type mismatch`)
     }
   })
   context.edges.push({ callee: contract.name, node: label })
@@ -2188,18 +2188,18 @@ const validatePropagatedRow = (
   label: string
 ): void => {
   if (contract.result.kind === "optional") {
-    if (context.result.kind !== "optional") return fail("VIBE5050", `${label} Optional propagation requires an Optional caller`)
+    if (context.result.kind !== "optional") return fail("SMITHERS5050", `${label} Optional propagation requires an Optional caller`)
     return
   }
   if (contract.result.kind !== "result" || context.result.kind !== "result") {
-    return fail("VIBE5050", `${label} Result propagation requires a Result caller`)
+    return fail("SMITHERS5050", `${label} Result propagation requires a Result caller`)
   }
   const declared = new Map(context.result.errors.map((error) => [error.identity, error]))
   for (const error of contract.result.errors) {
     const target = declared.get(error.identity)
-    if (target === undefined) return fail("VIBE5050", `${label} propagates undeclared error ${error.name}`)
+    if (target === undefined) return fail("SMITHERS5050", `${label} propagates undeclared error ${error.name}`)
     if (canonicalJson({ name: target.name, fields: target.fields }) !== canonicalJson({ name: error.name, fields: error.fields })) {
-      return fail("VIBE5050", `${label} propagated error ${error.name} disagrees between caller and callee rows`)
+      return fail("SMITHERS5050", `${label} propagated error ${error.name} disagrees between caller and callee rows`)
     }
   }
 }
@@ -2216,11 +2216,11 @@ const validateStatements = (
   label: string,
   depth = 0
 ): { readonly statements: readonly PortableStatement[]; readonly completes: boolean } => {
-  if (depth > MAX_IR_DEPTH) return fail("VIBE5050", `${label} exceeds the control-flow depth limit`)
-  if (!Array.isArray(value)) return fail("VIBE5050", `${label} must be a statement array`)
+  if (depth > MAX_IR_DEPTH) return fail("SMITHERS5050", `${label} exceeds the control-flow depth limit`)
+  if (!Array.isArray(value)) return fail("SMITHERS5050", `${label} must be a statement array`)
   let completes = true
   for (const [index, raw] of value.entries()) {
-    if (!completes) return fail("VIBE5050", `${label}[${index}] is unreachable after a terminal statement`)
+    if (!completes) return fail("SMITHERS5050", `${label}[${index}] is unreachable after a terminal statement`)
     completes = validateStatement(raw, context, state, `${label}[${index}]`, depth)
   }
   return { statements: value as readonly PortableStatement[], completes }
@@ -2232,11 +2232,11 @@ const validateSlotTarget = (
   label: string
 ): { readonly index: number; readonly local: PortableLocal } => {
   if (!Number.isSafeInteger(base.index) || (base.index as number) < 0 || (base.index as number) >= context.locals.length) {
-    return fail("VIBE5050", `${label} local slot index is invalid`)
+    return fail("SMITHERS5050", `${label} local slot index is invalid`)
   }
   const local = context.locals[base.index as number]!
   if (base.name !== local.name || base.valueType !== local.valueType) {
-    return fail("VIBE5050", `${label} local slot identity/type mismatch`)
+    return fail("SMITHERS5050", `${label} local slot identity/type mismatch`)
   }
   return { index: base.index as number, local }
 }
@@ -2261,13 +2261,13 @@ const validateStatement = (
   if (kind === "let" || kind === "assign") {
     const { index, local } = validateSlotTarget(base, context, label)
     const expression = validateExpression(base.value, context, state.initialized, `${label}.value`, depth + 1)
-    if (expression.valueType !== local.valueType) return fail("VIBE5050", `${label} slot value type mismatch`)
+    if (expression.valueType !== local.valueType) return fail("SMITHERS5050", `${label} slot value type mismatch`)
     if (kind === "let") {
-      if (state.declared.has(index)) return fail("VIBE5050", `${label} re-declares local slot ${index}`)
+      if (state.declared.has(index)) return fail("SMITHERS5050", `${label} re-declares local slot ${index}`)
       state.declared.add(index)
     } else {
-      if (!local.mutable) return fail("VIBE5050", `${label} assigns to immutable local '${local.name}'`)
-      if (!state.initialized.has(index)) return fail("VIBE5050", `${label} assigns to local '${local.name}' before its declaration`)
+      if (!local.mutable) return fail("SMITHERS5050", `${label} assigns to immutable local '${local.name}'`)
+      if (!state.initialized.has(index)) return fail("SMITHERS5050", `${label} assigns to local '${local.name}' before its declaration`)
     }
     state.initialized.add(index)
     return true
@@ -2276,15 +2276,15 @@ const validateStatement = (
     const { index, local } = validateSlotTarget(base, context, label)
     const contract = validateCallShape(base, context, state.initialized, label, depth, "propagating")
     validatePropagatedRow(contract, context, label)
-    if (local.valueType !== contract.result.valueType) return fail("VIBE5050", `${label} bind-call slot type mismatch`)
-    if (state.declared.has(index)) return fail("VIBE5050", `${label} re-declares local slot ${index}`)
+    if (local.valueType !== contract.result.valueType) return fail("SMITHERS5050", `${label} bind-call slot type mismatch`)
+    if (state.declared.has(index)) return fail("SMITHERS5050", `${label} re-declares local slot ${index}`)
     state.declared.add(index)
     state.initialized.add(index)
     return true
   }
   if (kind === "if") {
     const condition = validateExpression(base.condition, context, state.initialized, `${label}.condition`, depth + 1)
-    if (condition.valueType !== "boolean") return fail("VIBE5050", `${label} condition must be boolean`)
+    if (condition.valueType !== "boolean") return fail("SMITHERS5050", `${label} condition must be boolean`)
     const trueState: FlowState = { ...state, initialized: cloneSet(state.initialized) }
     const falseState: FlowState = { ...state, initialized: cloneSet(state.initialized) }
     const whenTrue = validateStatements(base.whenTrue, context, trueState, `${label}.whenTrue`, depth + 1)
@@ -2300,44 +2300,44 @@ const validateStatement = (
   }
   if (kind === "while") {
     const condition = validateExpression(base.condition, context, state.initialized, `${label}.condition`, depth + 1)
-    if (condition.valueType !== "boolean") return fail("VIBE5050", `${label} condition must be boolean`)
+    if (condition.valueType !== "boolean") return fail("SMITHERS5050", `${label} condition must be boolean`)
     const bodyState: FlowState = { ...state, initialized: cloneSet(state.initialized), loopDepth: state.loopDepth + 1 }
     validateStatements(base.body, context, bodyState, `${label}.body`, depth + 1)
-    if (!Array.isArray(base.update)) return fail("VIBE5050", `${label}.update must be a statement array`)
+    if (!Array.isArray(base.update)) return fail("SMITHERS5050", `${label}.update must be a statement array`)
     const updateState: FlowState = { ...state, initialized: cloneSet(state.initialized), loopDepth: state.loopDepth }
     base.update.forEach((raw, index) => {
-      if ((raw as { kind?: unknown })?.kind !== "assign") return fail("VIBE5050", `${label}.update[${index}] must be an assignment`)
+      if ((raw as { kind?: unknown })?.kind !== "assign") return fail("SMITHERS5050", `${label}.update[${index}] must be an assignment`)
       validateStatement(raw, context, updateState, `${label}.update[${index}]`, depth + 1)
     })
     return true
   }
   if (kind === "break" || kind === "continue") {
-    if (state.loopDepth === 0) return fail("VIBE5050", `${label} break/continue must appear inside a loop`)
+    if (state.loopDepth === 0) return fail("SMITHERS5050", `${label} break/continue must appear inside a loop`)
     return false
   }
   if (kind === "return" || kind === "present") {
     if (kind === "present" ? context.result.kind !== "optional" : context.result.kind === "optional") {
-      return fail("VIBE5050", `${label} exit kind does not match function contract`)
+      return fail("SMITHERS5050", `${label} exit kind does not match function contract`)
     }
     const expression = validateExpression(base.value, context, state.initialized, `${label}.value`, depth + 1)
-    if (expression.valueType !== context.result.valueType) return fail("VIBE5050", `${label} exit scalar type mismatch`)
+    if (expression.valueType !== context.result.valueType) return fail("SMITHERS5050", `${label} exit scalar type mismatch`)
     return false
   }
   if (kind === "absent") {
-    if (context.result.kind !== "optional") return fail("VIBE5050", `${label} absence requires Optional contract`)
+    if (context.result.kind !== "optional") return fail("SMITHERS5050", `${label} absence requires Optional contract`)
     return false
   }
   if (kind === "failure") {
-    if (context.result.kind !== "result") return fail("VIBE5050", `${label} failure requires Result contract`)
+    if (context.result.kind !== "result") return fail("SMITHERS5050", `${label} failure requires Result contract`)
     const variant = context.result.errors.find((error) => error.identity === base.identity)
-    if (variant === undefined || base.tag !== variant.tag) return fail("VIBE5050", `${label} failure identity/tag mismatch`)
+    if (variant === undefined || base.tag !== variant.tag) return fail("SMITHERS5050", `${label} failure identity/tag mismatch`)
     if (!Array.isArray(base.arguments) || base.arguments.length !== variant.fields.length) {
-      return fail("VIBE5050", `${label} failure payload arity mismatch`)
+      return fail("SMITHERS5050", `${label} failure payload arity mismatch`)
     }
     base.arguments.forEach((argument, index) => {
       const expression = validateExpression(argument, context, state.initialized, `${label}.arguments[${index}]`, depth + 1)
       if (expression.valueType !== variant.fields[index]!.valueType) {
-        return fail("VIBE5050", `${label} failure payload type mismatch`)
+        return fail("SMITHERS5050", `${label} failure payload type mismatch`)
       }
     })
     return false
@@ -2345,11 +2345,11 @@ const validateStatement = (
   if (kind === "tail-call") {
     const contract = validateCallShape(base, context, state.initialized, label, depth, "propagating")
     validatePropagatedRow(contract, context, label)
-    if (contract.result.kind !== context.result.kind) return fail("VIBE5050", `${label} tail call channel mismatch`)
-    if (contract.result.valueType !== context.result.valueType) return fail("VIBE5050", `${label} tail call scalar type mismatch`)
+    if (contract.result.kind !== context.result.kind) return fail("SMITHERS5050", `${label} tail call channel mismatch`)
+    if (contract.result.valueType !== context.result.valueType) return fail("SMITHERS5050", `${label} tail call scalar type mismatch`)
     return false
   }
-  return fail("VIBE5050", `${label} has unsupported statement kind`)
+  return fail("SMITHERS5050", `${label} has unsupported statement kind`)
 }
 
 const validateErrorRow = (
@@ -2358,7 +2358,7 @@ const validateErrorRow = (
   label: string
 ): readonly PortableErrorVariant[] => {
   if (!Array.isArray(rawErrors) || rawErrors.length === 0 || rawErrors.length > MAX_ERRORS) {
-    return fail("VIBE5050", `${label} needs 1-${MAX_ERRORS} errors`)
+    return fail("SMITHERS5050", `${label} needs 1-${MAX_ERRORS} errors`)
   }
   const errors = rawErrors.map((rawError, errorIndex) => {
     const error = record(rawError, `${label}[${errorIndex}]`, ["fields", "identity", "name", "tag"])
@@ -2366,26 +2366,26 @@ const validateErrorRow = (
       typeof error.name !== "string" || !validPortableName(error.name) ||
       error.identity !== errorIdentity(moduleId, error.name) ||
       error.tag !== errorIndex + 1
-    ) return fail("VIBE5050", "portable result error identity/tag is invalid")
+    ) return fail("SMITHERS5050", "portable result error identity/tag is invalid")
     if (!Array.isArray(error.fields) || error.fields.length > MAX_ERROR_FIELDS) {
-      return fail("VIBE5050", `portable result error fields must be an array of at most ${MAX_ERROR_FIELDS} entries`)
+      return fail("SMITHERS5050", `portable result error fields must be an array of at most ${MAX_ERROR_FIELDS} entries`)
     }
     const fields = error.fields.map((rawField, fieldIndex) => {
       const field = record(rawField, `${label}[${errorIndex}].fields[${fieldIndex}]`, ["name", "valueType"])
-      if (typeof field.name !== "string" || !validPortableName(field.name)) return fail("VIBE5050", "portable error field name is invalid")
+      if (typeof field.name !== "string" || !validPortableName(field.name)) return fail("SMITHERS5050", "portable error field name is invalid")
       return { name: field.name, valueType: portableValue(field.valueType, "portable error field type") }
     })
     if (new Set(fields.map((field) => field.name)).size !== fields.length) {
-      return fail("VIBE5050", "portable error field names must be unique")
+      return fail("SMITHERS5050", "portable error field names must be unique")
     }
     return { name: error.name, identity: error.identity, tag: error.tag as number, fields }
   })
   if (
     new Set(errors.map((error) => error.name)).size !== errors.length ||
     new Set(errors.map((error) => error.identity)).size !== errors.length
-  ) return fail("VIBE5050", "portable Result error names and identities must be unique")
+  ) return fail("SMITHERS5050", "portable Result error names and identities must be unique")
   if (canonicalJson([...errors].sort((left, right) => left.identity < right.identity ? -1 : 1)) !== canonicalJson(errors)) {
-    return fail("VIBE5050", "portable result errors must be sorted by identity")
+    return fail("SMITHERS5050", "portable result errors must be sorted by identity")
   }
   return errors
 }
@@ -2395,35 +2395,35 @@ const validateCapabilityRow = (
   moduleId: string
 ): readonly PortableCapability[] => {
   if (!Array.isArray(rawCapabilities) || rawCapabilities.length > MAX_CAPABILITIES) {
-    return fail("VIBE5050", `portable module capabilities must be an array of at most ${MAX_CAPABILITIES} entries`)
+    return fail("SMITHERS5050", `portable module capabilities must be an array of at most ${MAX_CAPABILITIES} entries`)
   }
   const capabilities = rawCapabilities.map((rawCapability, index) => {
     const capability = record(rawCapability, `portable capability[${index}]`, ["fields", "identity", "name"])
     if (
       typeof capability.name !== "string" || !validPortableName(capability.name) ||
       capability.identity !== capabilityIdentity(moduleId, capability.name)
-    ) return fail("VIBE5050", "portable capability identity is invalid")
+    ) return fail("SMITHERS5050", "portable capability identity is invalid")
     if (!Array.isArray(capability.fields) || capability.fields.length === 0 || capability.fields.length > MAX_CAPABILITY_FIELDS) {
-      return fail("VIBE5050", `portable capability ${capability.name} must declare 1-${MAX_CAPABILITY_FIELDS} fields`)
+      return fail("SMITHERS5050", `portable capability ${capability.name} must declare 1-${MAX_CAPABILITY_FIELDS} fields`)
     }
     const fields = capability.fields.map((rawField, fieldIndex) => {
       const field = record(rawField, `portable capability[${index}].fields[${fieldIndex}]`, ["name", "valueType"])
-      if (typeof field.name !== "string" || !validPortableName(field.name)) return fail("VIBE5050", "portable capability field name is invalid")
+      if (typeof field.name !== "string" || !validPortableName(field.name)) return fail("SMITHERS5050", "portable capability field name is invalid")
       return { name: field.name, valueType: portableValue(field.valueType, "portable capability field type") }
     })
     if (new Set(fields.map((field) => field.name)).size !== fields.length) {
-      return fail("VIBE5050", `portable capability ${capability.name} field names must be unique`)
+      return fail("SMITHERS5050", `portable capability ${capability.name} field names must be unique`)
     }
     if (canonicalJson([...fields].sort((left, right) => left.name < right.name ? -1 : 1)) !== canonicalJson(fields)) {
-      return fail("VIBE5050", `portable capability ${capability.name} fields must be sorted by name`)
+      return fail("SMITHERS5050", `portable capability ${capability.name} fields must be sorted by name`)
     }
     return { name: capability.name, identity: capability.identity, fields }
   })
   if (new Set(capabilities.map((capability) => capability.name)).size !== capabilities.length) {
-    return fail("VIBE5050", "portable capability names must be unique")
+    return fail("SMITHERS5050", "portable capability names must be unique")
   }
   if (canonicalJson([...capabilities].sort((left, right) => left.name < right.name ? -1 : 1)) !== canonicalJson(capabilities)) {
-    return fail("VIBE5050", "portable capabilities must be sorted by name")
+    return fail("SMITHERS5050", "portable capabilities must be sorted by name")
   }
   return capabilities
 }
@@ -2431,7 +2431,7 @@ const validateCapabilityRow = (
 export const validatePortableModule = (value: unknown): PortableModuleIR => {
   const normalized = assertJson(value, "portable module IR")
   if (Buffer.byteLength(canonicalJson(normalized), "utf8") > MAX_IR_BYTES) {
-    return fail("VIBE5050", `portable module IR exceeds ${MAX_IR_BYTES} bytes`)
+    return fail("SMITHERS5050", `portable module IR exceeds ${MAX_IR_BYTES} bytes`)
   }
   // Version is read before the exact-key check so a genuinely older artifact
   // gets the version diagnostic instead of "missing or unknown fields".
@@ -2439,17 +2439,17 @@ export const validatePortableModule = (value: unknown): PortableModuleIR => {
     ? (normalized as { formatVersion?: unknown }).formatVersion
     : undefined
   if (declaredVersion === 2) {
-    return fail("VIBE5050", "portable module formatVersion 2 predates the format 3 string ABI (memcmp equality, exported memory, defect tags) and cannot be loaded; recompile the source with this backend")
+    return fail("SMITHERS5050", "portable module formatVersion 2 predates the format 3 string ABI (memcmp equality, exported memory, defect tags) and cannot be loaded; recompile the source with this backend")
   }
   if (declaredVersion === 3) {
-    return fail("VIBE5050", "portable module formatVersion 3 predates the format 4 capability environment ABI (requirement rows in contract digests, capability descriptors, environment slots) and cannot be loaded; recompile the source with this backend")
+    return fail("SMITHERS5050", "portable module formatVersion 3 predates the format 4 capability environment ABI (requirement rows in contract digests, capability descriptors, environment slots) and cannot be loaded; recompile the source with this backend")
   }
   const module = record(normalized, "portable module IR", ["capabilities", "digest", "formatVersion", "functions", "moduleId"])
   if (module.formatVersion !== 4 || !validModuleId(module.moduleId)) {
-    return fail("VIBE5050", "portable module identity/version is invalid")
+    return fail("SMITHERS5050", "portable module identity/version is invalid")
   }
   if (!Array.isArray(module.functions) || module.functions.length === 0 || module.functions.length > MAX_FUNCTIONS) {
-    return fail("VIBE5050", `portable module must contain 1-${MAX_FUNCTIONS} functions`)
+    return fail("SMITHERS5050", `portable module must contain 1-${MAX_FUNCTIONS} functions`)
   }
   const capabilities = validateCapabilityRow(module.capabilities, module.moduleId as string)
   const capabilitiesByName = new Map(capabilities.map((capability) => [capability.name, capability]))
@@ -2467,40 +2467,40 @@ export const validatePortableModule = (value: unknown): PortableModuleIR => {
   for (const [index, raw] of module.functions.entries()) {
     const label = `portable function[${index}]`
     const fn = record(raw, label, ["body", "contractDigest", "digest", "locals", "name", "parameters", "requirements", "result"])
-    if (typeof fn.name !== "string" || !validPortableName(fn.name)) return fail("VIBE5050", `${label} name is invalid`)
+    if (typeof fn.name !== "string" || !validPortableName(fn.name)) return fail("SMITHERS5050", `${label} name is invalid`)
     if (!Array.isArray(fn.requirements) || fn.requirements.length > MAX_CAPABILITIES) {
-      return fail("VIBE5050", `${label} requirements must be an array of at most ${MAX_CAPABILITIES} entries`)
+      return fail("SMITHERS5050", `${label} requirements must be an array of at most ${MAX_CAPABILITIES} entries`)
     }
     const requirements = fn.requirements.map((requirement) => {
       if (typeof requirement !== "string" || !capabilitiesByName.has(requirement)) {
-        return fail("VIBE5050", `${label} requires a capability the module does not declare`)
+        return fail("SMITHERS5050", `${label} requires a capability the module does not declare`)
       }
       return requirement
     })
-    if (new Set(requirements).size !== requirements.length) return fail("VIBE5050", `${label} requirement row has duplicates`)
+    if (new Set(requirements).size !== requirements.length) return fail("SMITHERS5050", `${label} requirement row has duplicates`)
     if (canonicalJson([...requirements].sort()) !== canonicalJson(requirements)) {
-      return fail("VIBE5050", `${label} requirement row must be sorted by capability name`)
+      return fail("SMITHERS5050", `${label} requirement row must be sorted by capability name`)
     }
     if (!Array.isArray(fn.parameters) || fn.parameters.length > MAX_PARAMETERS) {
-      return fail("VIBE5050", `${label} parameters must be an array of at most ${MAX_PARAMETERS} entries`)
+      return fail("SMITHERS5050", `${label} parameters must be an array of at most ${MAX_PARAMETERS} entries`)
     }
     const parameters = fn.parameters.map((rawParameter, parameterIndex) => {
       const parameter = record(rawParameter, `${label}.parameters[${parameterIndex}]`, ["name", "valueType"])
-      if (typeof parameter.name !== "string" || !validPortableName(parameter.name)) return fail("VIBE5050", "portable parameter name is invalid")
+      if (typeof parameter.name !== "string" || !validPortableName(parameter.name)) return fail("SMITHERS5050", "portable parameter name is invalid")
       return { name: parameter.name, valueType: portableValue(parameter.valueType, "portable parameter type") }
     })
     if (!Array.isArray(fn.locals) || fn.locals.length > MAX_LOCALS) {
-      return fail("VIBE5050", `${label} locals must be an array of at most ${MAX_LOCALS} entries`)
+      return fail("SMITHERS5050", `${label} locals must be an array of at most ${MAX_LOCALS} entries`)
     }
     const locals = fn.locals.map((rawLocal, localIndex) => {
       const local = record(rawLocal, `${label}.locals[${localIndex}]`, ["mutable", "name", "valueType"])
       if (typeof local.name !== "string" || !validPortableName(local.name) || typeof local.mutable !== "boolean") {
-        return fail("VIBE5050", "portable local declaration is invalid")
+        return fail("SMITHERS5050", "portable local declaration is invalid")
       }
       return { name: local.name, valueType: portableValue(local.valueType, "portable local type"), mutable: local.mutable }
     })
     const names = [...parameters.map((parameter) => parameter.name), ...locals.map((local) => local.name)]
-    if (new Set(names).size !== names.length) return fail("VIBE5050", `${label} parameter/local names must be unique`)
+    if (new Set(names).size !== names.length) return fail("SMITHERS5050", `${label} parameter/local names must be unique`)
     const rawResultKind = fn.result !== null && typeof fn.result === "object"
       ? (fn.result as { kind?: unknown }).kind
       : undefined
@@ -2517,21 +2517,21 @@ export const validatePortableModule = (value: unknown): PortableModuleIR => {
         const shape = canonicalJson({ name: error.name, fields: error.fields })
         const existing = identityShapes.get(error.identity)
         if (existing !== undefined && existing !== shape) {
-          return fail("VIBE5050", `portable error ${error.name} has conflicting payload shapes across rows`)
+          return fail("SMITHERS5050", `portable error ${error.name} has conflicting payload shapes across rows`)
         }
         identityShapes.set(error.identity, shape)
       }
       result = { kind: "result", valueType, errors }
     } else {
-      return fail("VIBE5050", "portable result contract kind is invalid")
+      return fail("SMITHERS5050", "portable result contract kind is invalid")
     }
     const contract: FunctionContract = { name: fn.name, parameters, result }
     // The requirement row is part of the function's static type, so it is
     // inside the contract digest a wire exit is bound to.
     if (typeof fn.contractDigest !== "string" || fn.contractDigest !== digest({ ...contract, requirements })) {
-      return fail("VIBE5050", "portable contract digest mismatch")
+      return fail("SMITHERS5050", "portable contract digest mismatch")
     }
-    if (contracts.has(fn.name)) return fail("VIBE5050", "portable function names must be unique")
+    if (contracts.has(fn.name)) return fail("SMITHERS5050", "portable function names must be unique")
     contracts.set(fn.name, contract)
     stagedFunctions.push({ fn, contract, requirements, locals, label })
   }
@@ -2555,9 +2555,9 @@ export const validatePortableModule = (value: unknown): PortableModuleIR => {
     }
     const state: FlowState = { initialized: new Set(), declared: new Set(), loopDepth: 0 }
     const body = validateStatements(staged.fn.body, context, state, `${staged.label}.body`)
-    if (body.completes) return fail("VIBE5050", `${staged.label} control flow can fall off the function end`)
+    if (body.completes) return fail("SMITHERS5050", `${staged.label} control flow can fall off the function end`)
     for (const [slot] of staged.locals.entries()) {
-      if (!state.declared.has(slot)) return fail("VIBE5050", `${staged.label} local slot ${slot} is never declared`)
+      if (!state.declared.has(slot)) return fail("SMITHERS5050", `${staged.label} local slot ${slot} is never declared`)
     }
     edgesByFunction.set(staged.contract.name, edges)
     directUse.set(staged.contract.name, used)
@@ -2571,14 +2571,14 @@ export const validatePortableModule = (value: unknown): PortableModuleIR => {
       body: body.statements
     }
     if (typeof staged.fn.digest !== "string" || staged.fn.digest !== digest(semantic)) {
-      return fail("VIBE5050", "portable function digest mismatch")
+      return fail("SMITHERS5050", "portable function digest mismatch")
     }
     functions.push({ ...semantic, digest: staged.fn.digest })
   }
   checkCallGraph(
     edgesByFunction,
-    (edge): never => fail("VIBE5050", `${edge.node} participates in a rejected recursive call cycle`),
-    (edge): never => fail("VIBE5050", `${edge.node} exceeds the portable call depth limit of ${MAX_CALL_DEPTH}`)
+    (edge): never => fail("SMITHERS5050", `${edge.node} participates in a rejected recursive call cycle`),
+    (edge): never => fail("SMITHERS5050", `${edge.node} exceeds the portable call depth limit of ${MAX_CALL_DEPTH}`)
   )
   // Every declared row must be EXACTLY the closure of its own reads and its
   // callees' rows: no capability claimed that the closure does not contain
@@ -2589,7 +2589,7 @@ export const validatePortableModule = (value: unknown): PortableModuleIR => {
     const expected = closedRows.get(fn.name) ?? []
     if (canonicalJson([...fn.requirements]) !== canonicalJson([...expected])) {
       return fail(
-        "VIBE5050",
+        "SMITHERS5050",
         `portable function ${fn.name} declares requirement row ${JSON.stringify(fn.requirements)} ` +
         `but its transitive closure is ${JSON.stringify(expected)}`
       )
@@ -2598,39 +2598,39 @@ export const validatePortableModule = (value: unknown): PortableModuleIR => {
   const required = new Set(functions.flatMap((fn) => [...fn.requirements]))
   for (const capability of capabilities) {
     if (!required.has(capability.name)) {
-      return fail("VIBE5050", `portable module declares capability ${capability.name} that no function requires`)
+      return fail("SMITHERS5050", `portable module declares capability ${capability.name} that no function requires`)
     }
   }
   if (canonicalJson([...functions].sort((left, right) => left.name < right.name ? -1 : 1)) !== canonicalJson(functions)) {
-    return fail("VIBE5050", "portable functions must be sorted by name")
+    return fail("SMITHERS5050", "portable functions must be sorted by name")
   }
   if (moduleStringFacts(functions, capabilities).poolBytes > MAX_STRING_POOL_BYTES) {
-    return fail("VIBE5050", `portable string pool exceeds ${MAX_STRING_POOL_BYTES} bytes`)
+    return fail("SMITHERS5050", `portable string pool exceeds ${MAX_STRING_POOL_BYTES} bytes`)
   }
   const semantic = { formatVersion: 4 as const, moduleId: module.moduleId, capabilities, functions }
   if (typeof module.digest !== "string" || !HEX_DIGEST.test(module.digest) || module.digest !== digest(semantic)) {
-    return fail("VIBE5050", "portable module digest mismatch")
+    return fail("SMITHERS5050", "portable module digest mismatch")
   }
   return deepFreeze({ ...semantic, digest: module.digest })
 }
 
 export const encodePortableModuleArtifact = (moduleValue: PortableModuleIR): Uint8Array => {
   const module = validatePortableModule(moduleValue)
-  const identity = { artifactVersion: 1 as const, kind: "vibelang.portable-ir" as const, module }
+  const identity = { artifactVersion: 1 as const, kind: "smithers.portable-ir" as const, module }
   const bytes = encodeCanonicalJson({ ...identity, digest: digest(identity) })
-  if (bytes.byteLength > MAX_IR_BYTES) return fail("VIBE5051", `portable IR artifact exceeds ${MAX_IR_BYTES} bytes`)
+  if (bytes.byteLength > MAX_IR_BYTES) return fail("SMITHERS5051", `portable IR artifact exceeds ${MAX_IR_BYTES} bytes`)
   return bytes
 }
 
 export const decodePortableModuleArtifact = (bytes: Uint8Array | string): PortableModuleIR => {
   const byteLength = typeof bytes === "string" ? Buffer.byteLength(bytes, "utf8") : bytes.byteLength
-  if (byteLength > MAX_IR_BYTES) return fail("VIBE5051", `portable IR artifact exceeds ${MAX_IR_BYTES} bytes`)
+  if (byteLength > MAX_IR_BYTES) return fail("SMITHERS5051", `portable IR artifact exceeds ${MAX_IR_BYTES} bytes`)
   const value = decodeCanonicalJson(bytes, "portable IR artifact")
   const artifact = record(value, "portable IR artifact", ["artifactVersion", "digest", "kind", "module"])
-  if (artifact.artifactVersion !== 1 || artifact.kind !== "vibelang.portable-ir") return fail("VIBE5051", "portable IR artifact kind/version is invalid")
+  if (artifact.artifactVersion !== 1 || artifact.kind !== "smithers.portable-ir") return fail("SMITHERS5051", "portable IR artifact kind/version is invalid")
   const module = validatePortableModule(artifact.module)
-  const identity = { artifactVersion: 1 as const, kind: "vibelang.portable-ir" as const, module }
-  if (artifact.digest !== digest(identity)) return fail("VIBE5051", "portable IR artifact digest mismatch")
+  const identity = { artifactVersion: 1 as const, kind: "smithers.portable-ir" as const, module }
+  if (artifact.digest !== digest(identity)) return fail("SMITHERS5051", "portable IR artifact digest mismatch")
   return module
 }
 
@@ -2882,7 +2882,7 @@ const moduleStringFacts = (
 
 /**
  * One host-supplied environment slot. Scalars become exported mutable globals
- * (`__vibe_env_<globalIndex>`); strings become a fixed record in the reserved
+ * (`__smithers_env_<globalIndex>`); strings become a fixed record in the reserved
  * environment region at `envBase + stringIndex * (4 + MAX_STRING_BYTES)`, which
  * Wasm reads through a compile-time constant pointer.
  */
@@ -2989,9 +2989,9 @@ const inputValues = (
   input: Readonly<Record<string, unknown>>
 ): readonly (number | boolean | string)[] => {
   const normalized = assertJson(input, `portable input for ${fn.name}`)
-  if (normalized === null || typeof normalized !== "object" || Array.isArray(normalized)) return fail("VIBE5052", "portable input must be an object")
+  if (normalized === null || typeof normalized !== "object" || Array.isArray(normalized)) return fail("SMITHERS5052", "portable input must be an object")
   if (canonicalJson(Object.keys(normalized).sort()) !== canonicalJson(fn.parameters.map((parameter) => parameter.name).sort())) {
-    return fail("VIBE5052", `portable input for ${fn.name} has missing or unknown fields`)
+    return fail("SMITHERS5052", `portable input for ${fn.name} has missing or unknown fields`)
   }
   return fn.parameters.map((parameter) => {
     const value = normalized[parameter.name]
@@ -3000,7 +3000,7 @@ const inputValues = (
       (parameter.valueType === "boolean" && typeof value !== "boolean") ||
       (parameter.valueType === "string" && !validPortableStringValue(value))
     ) {
-      return fail("VIBE5052", `portable input ${parameter.name} must be ${parameter.valueType === "string"
+      return fail("SMITHERS5052", `portable input ${parameter.name} must be ${parameter.valueType === "string"
         ? `a printable ASCII string of at most ${MAX_STRING_BYTES} bytes`
         : parameter.valueType}`)
     }
@@ -3019,7 +3019,7 @@ const environmentField = (
     (field.valueType === "boolean" && typeof value !== "boolean") ||
     (field.valueType === "string" && !validPortableStringValue(value))
   ) {
-    return fail("VIBE5073", `portable environment ${capability}.${field.name} must be ${field.valueType === "string"
+    return fail("SMITHERS5073", `portable environment ${capability}.${field.name} must be ${field.valueType === "string"
       ? `a printable ASCII string of at most ${MAX_STRING_BYTES} bytes`
       : field.valueType}`)
   }
@@ -3040,14 +3040,14 @@ const environmentValues = (
 ): ReadonlyMap<string, number | boolean | string> => {
   const normalized = assertJson(environment, `portable environment for ${fn.name}`)
   if (normalized === null || typeof normalized !== "object" || Array.isArray(normalized)) {
-    return fail("VIBE5073", "portable environment must be an object of capability records")
+    return fail("SMITHERS5073", "portable environment must be an object of capability records")
   }
   const supplied = Object.keys(normalized).sort()
   if (canonicalJson(supplied) !== canonicalJson([...fn.requirements])) {
     const missing = fn.requirements.filter((requirement) => !supplied.includes(requirement))
     const unknown = supplied.filter((name) => !fn.requirements.includes(name))
     return fail(
-      "VIBE5073",
+      "SMITHERS5073",
       `portable environment for ${fn.name} does not match its requirement row ${JSON.stringify([...fn.requirements])}` +
       `${missing.length > 0 ? `; missing ${JSON.stringify(missing)}` : ""}` +
       `${unknown.length > 0 ? `; unknown ${JSON.stringify(unknown)}` : ""}`
@@ -3057,14 +3057,14 @@ const environmentValues = (
   const values = new Map<string, number | boolean | string>()
   for (const name of fn.requirements) {
     const capability = byName.get(name)
-    if (capability === undefined) return fail("VIBE5073", `portable environment names capability ${name} the module does not declare`)
+    if (capability === undefined) return fail("SMITHERS5073", `portable environment names capability ${name} the module does not declare`)
     const record = (normalized as Record<string, unknown>)[name]
     if (record === null || typeof record !== "object" || Array.isArray(record)) {
-      return fail("VIBE5073", `portable environment entry ${name} must be an object of its declared fields`)
+      return fail("SMITHERS5073", `portable environment entry ${name} must be an object of its declared fields`)
     }
     const fields = capability.fields.map((field) => field.name).sort()
     if (canonicalJson(Object.keys(record).sort()) !== canonicalJson(fields)) {
-      return fail("VIBE5073", `portable environment entry ${name} has missing or unknown fields; it must supply exactly ${JSON.stringify(fields)}`)
+      return fail("SMITHERS5073", `portable environment entry ${name} has missing or unknown fields; it must supply exactly ${JSON.stringify(fields)}`)
     }
     for (const field of capability.fields) {
       values.set(`${name}.${field.name}`, environmentField(name, field, (record as Record<string, unknown>)[field.name]))
@@ -3113,7 +3113,7 @@ const callPortableFunction = (
   callArguments: readonly (number | boolean | string)[]
 ): InternalExit => {
   const fn = scope.functionsByName.get(name)
-  if (fn === undefined) return fail("VIBE5053", `portable evaluator has no function ${name}`)
+  if (fn === undefined) return fail("SMITHERS5053", `portable evaluator has no function ${name}`)
   // Wasm locals are zero-initialized; mirror that exactly so a validator gap
   // can never let the two runtimes observe different uninitialized values.
   // The string zero value "" matches the pool entry pinned at Wasm offset 0.
@@ -3121,7 +3121,7 @@ const callPortableFunction = (
     local.valueType === "number" ? 0 : local.valueType === "boolean" ? false : "")
   const frame: EvaluationFrame = { parameters: callArguments, locals }
   const outcome = evaluateStatements(fn.body, frame, scope)
-  if (outcome.kind !== "exit") return fail("VIBE5053", `portable function ${name} did not terminate with an exit`)
+  if (outcome.kind !== "exit") return fail("SMITHERS5053", `portable function ${name} did not terminate with an exit`)
   return outcome.exit
 }
 
@@ -3197,7 +3197,7 @@ const failureFieldName = (scope: EvaluationScope, statement: Extract<PortableSta
     const variant = fn.result.errors.find((error) => error.identity === statement.identity)
     if (variant !== undefined) return variant.fields[index]!.name
   }
-  return fail("VIBE5053", `portable failure ${statement.identity} has no declaring row`)
+  return fail("SMITHERS5053", `portable failure ${statement.identity} has no declaring row`)
 }
 
 const evaluateExpression = (
@@ -3214,7 +3214,7 @@ const evaluateExpression = (
       // function can read was already supplied and checked.
       const value = scope.environment.get(`${expression.capability}.${expression.field}`)
       if (value === undefined) {
-        return fail("VIBE5053", `portable evaluator has no environment value for ${expression.capability}.${expression.field}`)
+        return fail("SMITHERS5053", `portable evaluator has no environment value for ${expression.capability}.${expression.field}`)
       }
       return value
     }
@@ -3223,7 +3223,7 @@ const evaluateExpression = (
       const exit = callPortableFunction(scope, expression.callee, expression.arguments.map((argument) => evaluateExpression(argument, frame, scope)))
       if (exit.kind === "value") return exit.value
       if (exit.kind === "defect") throw new PortableDefectSignal(exit.defect)
-      return fail("VIBE5053", "portable plain callee produced a non-value exit")
+      return fail("SMITHERS5053", "portable plain callee produced a non-value exit")
     }
     case "unary": {
       const value = evaluateExpression(expression.value, frame, scope)
@@ -3274,14 +3274,14 @@ const canonicalWireValue = (valueType: PortableValueType, value: unknown, label:
     (valueType === "number" && (typeof value !== "number" || !Number.isFinite(value) || Object.is(value, -0))) ||
     (valueType === "boolean" && typeof value !== "boolean") ||
     (valueType === "string" && !validPortableStringValue(value))
-  ) return fail("VIBE5053", `${label} is outside the canonical scalar wire domain`)
+  ) return fail("SMITHERS5053", `${label} is outside the canonical scalar wire domain`)
   return value as number | boolean | string
 }
 
 const wireExit = (fn: PortableFunctionIR, exit: InternalExit): PortableExecution => {
   let wire: PortableWireExit
   if (exit.kind === "absent") {
-    if (fn.result.kind !== "optional") return fail("VIBE5053", "backend produced absence for non-Optional function")
+    if (fn.result.kind !== "optional") return fail("SMITHERS5053", "backend produced absence for non-Optional function")
     wire = { kind: "absent" }
   } else if (exit.kind === "defect") {
     wire = { kind: "defect", defect: exit.defect }
@@ -3289,10 +3289,10 @@ const wireExit = (fn: PortableFunctionIR, exit: InternalExit): PortableExecution
     const variant = fn.result.kind === "result"
       ? fn.result.errors.find((error) => error.identity === exit.identity)
       : undefined
-    if (variant === undefined) return fail("VIBE5053", "backend produced undeclared failure")
+    if (variant === undefined) return fail("SMITHERS5053", "backend produced undeclared failure")
     const payloadKeys = Object.keys(exit.payload).sort()
     if (canonicalJson(payloadKeys) !== canonicalJson(variant.fields.map((field) => field.name).sort())) {
-      return fail("VIBE5053", "portable failure payload fields do not match the declared variant")
+      return fail("SMITHERS5053", "portable failure payload fields do not match the declared variant")
     }
     const payload: Record<string, number | boolean | string> = {}
     for (const field of variant.fields) {
@@ -3314,7 +3314,7 @@ const wireExit = (fn: PortableFunctionIR, exit: InternalExit): PortableExecution
 }
 
 const selectedFunction = (module: PortableModuleIR, name: string): PortableFunctionIR =>
-  module.functions.find((fn) => fn.name === name) ?? fail("VIBE5054", `portable module has no function ${name}`)
+  module.functions.find((fn) => fn.name === name) ?? fail("SMITHERS5054", `portable module has no function ${name}`)
 
 export const executePortableTypeScript = (
   moduleValue: PortableModuleIR,
@@ -3345,7 +3345,7 @@ export const executePortableTypeScript = (
 const wasmType = (type: PortableValueType): "f64" | "i32" => type === "number" ? "f64" : "i32"
 
 const watFloat = (value: number): string => {
-  if (!Number.isFinite(value) || Object.is(value, -0)) return fail("VIBE5055", "Wasm numeric literal is outside the portable wire domain")
+  if (!Number.isFinite(value) || Object.is(value, -0)) return fail("SMITHERS5055", "Wasm numeric literal is outside the portable wire domain")
   return value.toString()
 }
 
@@ -3388,7 +3388,7 @@ const watExpression = (expression: PortableExpression, context: WatContext): str
       if (expression.valueType === "number") return `(f64.const ${watFloat(expression.value as number)})`
       if (expression.valueType === "string") {
         const offset = context.strings.offsets.get(expression.value as string)
-        if (offset === undefined) return fail("VIBE5055", "portable string literal is missing from the interned pool")
+        if (offset === undefined) return fail("SMITHERS5055", "portable string literal is missing from the interned pool")
         return `(i32.const ${offset})`
       }
       return `(i32.const ${expression.value ? 1 : 0})`
@@ -3399,13 +3399,13 @@ const watExpression = (expression: PortableExpression, context: WatContext): str
     case "capability": {
       const slot = context.env.byKey.get(`${expression.capability}.${expression.field}`)
       if (slot === undefined || slot.valueType !== expression.valueType) {
-        return fail("VIBE5055", `portable capability read ${expression.capability}.${expression.field} has no environment slot`)
+        return fail("SMITHERS5055", `portable capability read ${expression.capability}.${expression.field} has no environment slot`)
       }
       // Scalars live in host-written exported globals; string records live at a
       // fixed environment offset, so the pointer itself is a constant.
       return slot.valueType === "string"
         ? `(i32.const ${envStringOffset(context.layout, slot.stringIndex)})`
-        : `(global.get $__vibe_env_${slot.globalIndex})`
+        : `(global.get $__smithers_env_${slot.globalIndex})`
     }
     case "call": {
       const callee = context.functionsByName.get(expression.callee)!
@@ -3447,7 +3447,7 @@ const watExpression = (expression: PortableExpression, context: WatContext): str
           case "lte": return `(i32.le_s (call $__str_cmp ${left} ${right}) (i32.const 0))`
           case "gt": return `(i32.gt_s (call $__str_cmp ${left} ${right}) (i32.const 0))`
           case "gte": return `(i32.ge_s (call $__str_cmp ${left} ${right}) (i32.const 0))`
-          default: return fail("VIBE5055", "portable string operands reached a non-string operator")
+          default: return fail("SMITHERS5055", "portable string operands reached a non-string operator")
         }
       }
       const prefix = expression.left.valueType === "number" ? "f64" : "i32"
@@ -3549,11 +3549,11 @@ const watStatement = (statement: PortableStatement, context: WatContext, indent:
     case "failure": {
       const variant = context.fn.result.kind === "result"
         ? context.fn.result.errors.find((error) => error.identity === statement.identity)!
-        : fail("VIBE5055", "portable failure outside a Result function")
+        : fail("SMITHERS5055", "portable failure outside a Result function")
       const writes = statement.arguments.map((argument, index) => {
         const field = variant.fields[index]!
         const value = watExpression(argument, context)
-        return `(global.set $__vibe_payload_${index} ${field.valueType === "number" ? value : `(f64.convert_i32_u ${value})`})`
+        return `(global.set $__smithers_payload_${index} ${field.valueType === "number" ? value : `(f64.convert_i32_u ${value})`})`
       })
       return `${writes.join(" ")}${writes.length > 0 ? " " : ""}(return (i32.const ${statement.tag}) ${dummyValue(context.fn.result.valueType)})`
     }
@@ -3665,11 +3665,11 @@ export const emitPortableWat = (moduleValue: PortableModuleIR): string => {
     `  (global $__fuel (mut i32) (i32.const 0))`,
     ...(strings.usesConcat ? [`  (global $__heap (mut i32) (i32.const ${layout.heapBase}))`] : []),
     ...Array.from({ length: payloadSlots }, (_, index) =>
-      `  (global $__vibe_payload_${index} (export "__vibe_payload_${index}") (mut f64) (f64.const 0))`),
+      `  (global $__smithers_payload_${index} (export "__smithers_payload_${index}") (mut f64) (f64.const 0))`),
     // Scalar environment slots: written by the HOST before each invocation and
     // only ever read by compiled code, exactly like the input string region.
     ...env.slots.filter((slot) => slot.globalIndex >= 0).map((slot) =>
-      `  (global $__vibe_env_${slot.globalIndex} (export "__vibe_env_${slot.globalIndex}") (mut ${wasmType(slot.valueType)}) ` +
+      `  (global $__smithers_env_${slot.globalIndex} (export "__smithers_env_${slot.globalIndex}") (mut ${wasmType(slot.valueType)}) ` +
       `(${wasmType(slot.valueType)}.const 0))`),
     ...(strings.used ? [
       // Memory is exported so the host can write string arguments into the
@@ -3705,7 +3705,7 @@ export const emitPortableWat = (moduleValue: PortableModuleIR): string => {
   }).join("\n")
   const helpers = watStringHelpers(strings, layout)
   const wat = `(module\n${globals.join("\n")}\n${helpers.length > 0 ? `${helpers.join("\n")}\n` : ""}${functions}\n)\n`
-  if (Buffer.byteLength(wat, "utf8") > MAX_WAT_BYTES) return fail("VIBE5056", `portable WAT exceeds ${MAX_WAT_BYTES} bytes`)
+  if (Buffer.byteLength(wat, "utf8") > MAX_WAT_BYTES) return fail("SMITHERS5056", `portable WAT exceeds ${MAX_WAT_BYTES} bytes`)
   return wat
 }
 
@@ -3717,7 +3717,7 @@ const validToolIdentity = (value: unknown): value is string =>
   Buffer.byteLength(value, "utf8") <= MAX_TOOL_IDENTITY_BYTES &&
   !/[\u0000-\u001f\u007f]/.test(value)
 
-const inspectPortableWasm = (wasm: Uint8Array, module: PortableModuleIR, code: "VIBE5058" | "VIBE5059"): WebAssembly.Module => {
+const inspectPortableWasm = (wasm: Uint8Array, module: PortableModuleIR, code: "SMITHERS5058" | "SMITHERS5059"): WebAssembly.Module => {
   let compiled: WebAssembly.Module
   try {
     const moduleBytes = Uint8Array.from(wasm)
@@ -3729,14 +3729,14 @@ const inspectPortableWasm = (wasm: Uint8Array, module: PortableModuleIR, code: "
   const exports = WebAssembly.Module.exports(compiled).map((entry) => `${entry.kind}:${entry.name}`).sort()
   const expected = [
     ...module.functions.map((fn) => `function:${fn.name}`),
-    ...Array.from({ length: modulePayloadSlots(module) }, (_, index) => `global:__vibe_payload_${index}`),
+    ...Array.from({ length: modulePayloadSlots(module) }, (_, index) => `global:__smithers_payload_${index}`),
     // The environment surface is the module's requirement descriptor: exactly
     // one exported global per declared scalar capability field, no more and no
     // fewer. A module that opens an environment slot it never declared — or
     // hides one it did — is a forged ABI and never reaches execution.
     ...Array.from(
       { length: moduleEnvLayout(module.capabilities).globalCount },
-      (_, index) => `global:__vibe_env_${index}`
+      (_, index) => `global:__smithers_env_${index}`
     ),
     // Memory is exported exactly when the checked IR uses strings; a module
     // that exports memory without needing it (or hides it while needing it)
@@ -3810,14 +3810,14 @@ export const compilePortableWasm = async (
   const timeoutMs = options.timeoutMs ?? 30_000
   const maxOutputBytes = options.maxOutputBytes ?? 256 * 1024
   if (typeof command !== "string" || command.length === 0 || command.length > 4_096 || command.includes("\0")) {
-    return fail("VIBE5057", "portable Wasm tool command is invalid")
+    return fail("SMITHERS5057", "portable Wasm tool command is invalid")
   }
-  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300_000) return fail("VIBE5057", "portable Wasm timeout is invalid")
-  if (!Number.isSafeInteger(maxOutputBytes) || maxOutputBytes < 1024 || maxOutputBytes > 8 * 1024 * 1024) return fail("VIBE5057", "portable Wasm output limit is invalid")
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300_000) return fail("SMITHERS5057", "portable Wasm timeout is invalid")
+  if (!Number.isSafeInteger(maxOutputBytes) || maxOutputBytes < 1024 || maxOutputBytes > 8 * 1024 * 1024) return fail("SMITHERS5057", "portable Wasm output limit is invalid")
   const wat = emitPortableWat(module)
   const toolVersion = (await runTool(command, ["--version"], timeoutMs, maxOutputBytes)).stdout.trim()
-  if (!validToolIdentity(toolVersion)) return fail("VIBE5057", "wat2wasm returned an invalid tool identity")
-  const directory = await mkdtemp(join(tmpdir(), "vibelang-portable-wasm-"))
+  if (!validToolIdentity(toolVersion)) return fail("SMITHERS5057", "wat2wasm returned an invalid tool identity")
+  const directory = await mkdtemp(join(tmpdir(), "smithers-portable-wasm-"))
   const sourcePath = join(directory, "module.wat")
   const outputPath = join(directory, "module.wasm")
   let wasm: Uint8Array
@@ -3828,18 +3828,18 @@ export const compilePortableWasm = async (
     try {
       outputStat = await lstat(outputPath)
     } catch (error) {
-      return fail("VIBE5058", `wat2wasm did not produce its output file: ${error instanceof Error ? error.message : String(error)}`)
+      return fail("SMITHERS5058", `wat2wasm did not produce its output file: ${error instanceof Error ? error.message : String(error)}`)
     }
     if (!outputStat.isFile() || outputStat.size > MAX_WASM_BYTES) {
-      return fail("VIBE5058", `portable Wasm output must be a regular file no larger than ${MAX_WASM_BYTES} bytes`)
+      return fail("SMITHERS5058", `portable Wasm output must be a regular file no larger than ${MAX_WASM_BYTES} bytes`)
     }
     const bytes = await readFile(outputPath)
-    if (bytes.byteLength > MAX_WASM_BYTES) return fail("VIBE5058", `portable Wasm exceeds ${MAX_WASM_BYTES} bytes`)
+    if (bytes.byteLength > MAX_WASM_BYTES) return fail("SMITHERS5058", `portable Wasm exceeds ${MAX_WASM_BYTES} bytes`)
     wasm = Uint8Array.from(bytes)
   } finally {
     await rm(directory, { recursive: true, force: true })
   }
-  inspectPortableWasm(wasm, module, "VIBE5058")
+  inspectPortableWasm(wasm, module, "SMITHERS5058")
   const watDigest = digest(wat)
   const wasmDigest = binaryDigest(wasm)
   const semantic = {
@@ -3867,23 +3867,23 @@ const WASM_BUILD_KEYS = [
 
 const validateBuild = (value: unknown): { readonly module: PortableModuleIR; readonly wasm: Uint8Array } => {
   if (value === null || typeof value !== "object" || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) {
-    return fail("VIBE5059", "portable Wasm build must be a plain object")
+    return fail("SMITHERS5059", "portable Wasm build must be a plain object")
   }
   const ownKeys = Reflect.ownKeys(value)
   if (
     ownKeys.some((key) => typeof key !== "string") ||
     canonicalJson((ownKeys as string[]).sort()) !== canonicalJson([...WASM_BUILD_KEYS].sort())
-  ) return fail("VIBE5059", "portable Wasm build has missing or unknown fields")
+  ) return fail("SMITHERS5059", "portable Wasm build has missing or unknown fields")
   for (const key of WASM_BUILD_KEYS) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key)
     if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable) {
-      return fail("VIBE5059", "portable Wasm build cannot contain accessors or hidden fields")
+      return fail("SMITHERS5059", "portable Wasm build cannot contain accessors or hidden fields")
     }
   }
   const build = value as PortableWasmBuild
   const module = validatePortableModule(build.module)
   if (!(build.wasm instanceof Uint8Array) || build.wasm.byteLength === 0 || build.wasm.byteLength > MAX_WASM_BYTES) {
-    return fail("VIBE5059", "portable Wasm build binary is invalid")
+    return fail("SMITHERS5059", "portable Wasm build binary is invalid")
   }
   // Snapshot mutable ArrayBuffer-backed bytes once, then hash, inspect, and
   // execute this same copy so concurrent mutation cannot cross validation.
@@ -3893,7 +3893,7 @@ const validateBuild = (value: unknown): { readonly module: PortableModuleIR; rea
     typeof build.wat !== "string" || Buffer.byteLength(build.wat, "utf8") > MAX_WAT_BYTES ||
     build.wat !== emitPortableWat(module) || build.watDigest !== digest(build.wat) ||
     typeof build.wasmDigest !== "string" || !HEX_DIGEST.test(build.wasmDigest) || build.wasmDigest !== binaryDigest(wasm)
-  ) return fail("VIBE5059", "portable Wasm build identity/content mismatch")
+  ) return fail("SMITHERS5059", "portable Wasm build identity/content mismatch")
   const expected = digest({
     formatVersion: 4,
     moduleDigest: module.digest,
@@ -3902,17 +3902,17 @@ const validateBuild = (value: unknown): { readonly module: PortableModuleIR; rea
     watDigest: build.watDigest,
     wasmDigest: build.wasmDigest
   })
-  if (build.digest !== expected) return fail("VIBE5059", "portable Wasm build digest mismatch")
-  inspectPortableWasm(wasm, module, "VIBE5059")
+  if (build.digest !== expected) return fail("SMITHERS5059", "portable Wasm build digest mismatch")
+  inspectPortableWasm(wasm, module, "SMITHERS5059")
   return { module, wasm }
 }
 
 const decodeWasmScalar = (type: PortableScalarType, value: unknown, label: string): number | boolean => {
   if (type === "number") {
-    if (typeof value !== "number") return fail("VIBE5060", `${label} is not an f64 value`)
+    if (typeof value !== "number") return fail("SMITHERS5060", `${label} is not an f64 value`)
     return value
   }
-  if (value !== 0 && value !== 1) return fail("VIBE5060", `${label} is not a canonical i32 boolean`)
+  if (value !== 0 && value !== 1) return fail("SMITHERS5060", `${label} is not a canonical i32 boolean`)
   return value === 1
 }
 
@@ -3928,10 +3928,10 @@ const wasmMemoryView = (
 ): Uint8Array | undefined => {
   if (!strings.used) return undefined
   const exported = instance.exports.__memory
-  if (!(exported instanceof WebAssembly.Memory)) return fail("VIBE5060", "portable Wasm does not export its string memory")
+  if (!(exported instanceof WebAssembly.Memory)) return fail("SMITHERS5060", "portable Wasm does not export its string memory")
   const bytes = new Uint8Array(exported.buffer)
   if (bytes.byteLength < layout.memoryBytes) {
-    return fail("VIBE5060", "portable Wasm memory is smaller than the checked layout requires")
+    return fail("SMITHERS5060", "portable Wasm memory is smaller than the checked layout requires")
   }
   return bytes
 }
@@ -3953,15 +3953,15 @@ const readWasmString = (
   label: string
 ): string => {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
-    return fail("VIBE5060", `${label} is not an i32 string offset`)
+    return fail("SMITHERS5060", `${label} is not an i32 string offset`)
   }
-  if (value + 4 > layout.memoryBytes) return fail("VIBE5060", `${label} string offset is outside exported memory`)
+  if (value + 4 > layout.memoryBytes) return fail("SMITHERS5060", `${label} string offset is outside exported memory`)
   // Reconstruct the u32 with arithmetic, never bitwise `|`: a forged high byte
   // (>= 0x80) in the top position would make an int32 length negative and slip
   // past the bounds check below.
   const length = memory[value]! + memory[value + 1]! * 0x100 + memory[value + 2]! * 0x1_0000 + memory[value + 3]! * 0x100_0000
   if (length < 0 || value + 4 + length > layout.memoryBytes) {
-    return fail("VIBE5060", `${label} string length is outside exported memory`)
+    return fail("SMITHERS5060", `${label} string length is outside exported memory`)
   }
   // latin1 keeps every forged byte distinguishable (no U+FFFD folding) so a
   // non-ASCII byte fails the canonical wire-domain check rather than silently
@@ -3977,7 +3977,7 @@ const decodeWasmValue = (
   label: string
 ): number | boolean | string => {
   if (type !== "string") return decodeWasmScalar(type, value, label)
-  if (memory === undefined) return fail("VIBE5060", `${label} needs exported memory this module does not declare`)
+  if (memory === undefined) return fail("SMITHERS5060", `${label} needs exported memory this module does not declare`)
   return readWasmString(memory, layout, value, label)
 }
 
@@ -3990,9 +3990,9 @@ const decodeWasmPayload = (
 ): Readonly<Record<string, number | boolean | string>> => {
   const payload: Record<string, number | boolean | string> = {}
   for (const [index, field] of variant.fields.entries()) {
-    const exported = instance.exports[`__vibe_payload_${index}`]
+    const exported = instance.exports[`__smithers_payload_${index}`]
     if (!(exported instanceof WebAssembly.Global) || typeof exported.value !== "number") {
-      return fail("VIBE5060", `${label} payload global ${index} is absent`)
+      return fail("SMITHERS5060", `${label} payload global ${index} is absent`)
     }
     const fieldLabel = `${label} payload field ${field.name}`
     // String fields travel as exact integral offsets widened by
@@ -4026,11 +4026,11 @@ const wasmArguments = (
     const parameter = fn.parameters[index]!
     if (parameter.valueType === "number") return value as number
     if (parameter.valueType === "boolean") return value === true ? 1 : 0
-    if (memory === undefined) return fail("VIBE5060", `portable Wasm string argument ${parameter.name} needs exported memory`)
+    if (memory === undefined) return fail("SMITHERS5060", `portable Wasm string argument ${parameter.name} needs exported memory`)
     const offset = layout.inputBase + slot * (4 + MAX_STRING_BYTES)
     slot += 1
     if (offset + 4 + Buffer.byteLength(value as string, "utf8") > layout.inputLimit) {
-      return fail("VIBE5060", `portable Wasm string argument ${parameter.name} does not fit its input slot`)
+      return fail("SMITHERS5060", `portable Wasm string argument ${parameter.name} does not fit its input slot`)
     }
     writeStringRecord(memory, offset, value as string, `portable Wasm string argument ${parameter.name}`)
     return offset
@@ -4040,7 +4040,7 @@ const wasmArguments = (
 /** Write one packed `[u32 length LE][bytes]` record at `offset`. */
 const writeStringRecord = (memory: Uint8Array, offset: number, value: string, label: string): void => {
   const encoded = Buffer.from(value, "utf8")
-  if (offset + 4 + encoded.byteLength > memory.byteLength) return fail("VIBE5060", `${label} does not fit its memory slot`)
+  if (offset + 4 + encoded.byteLength > memory.byteLength) return fail("SMITHERS5060", `${label} does not fit its memory slot`)
   memory[offset] = encoded.byteLength & 0xff
   memory[offset + 1] = (encoded.byteLength >>> 8) & 0xff
   memory[offset + 2] = (encoded.byteLength >>> 16) & 0xff
@@ -4065,13 +4065,13 @@ const writeWasmEnvironment = (
   for (const slot of env.slots) {
     const supplied = values.get(slot.key)
     if (slot.valueType === "string") {
-      if (memory === undefined) return fail("VIBE5060", `portable Wasm environment ${slot.key} needs exported memory`)
+      if (memory === undefined) return fail("SMITHERS5060", `portable Wasm environment ${slot.key} needs exported memory`)
       writeStringRecord(memory, envStringOffset(layout, slot.stringIndex), (supplied ?? "") as string, `portable Wasm environment ${slot.key}`)
       continue
     }
-    const exported = instance.exports[`__vibe_env_${slot.globalIndex}`]
+    const exported = instance.exports[`__smithers_env_${slot.globalIndex}`]
     if (!(exported instanceof WebAssembly.Global)) {
-      return fail("VIBE5060", `portable Wasm environment slot ${slot.key} is absent`)
+      return fail("SMITHERS5060", `portable Wasm environment slot ${slot.key} is absent`)
     }
     exported.value = slot.valueType === "number"
       ? (supplied ?? 0) as number
@@ -4082,14 +4082,14 @@ const writeWasmEnvironment = (
 /** Negative Wasm tags are canonical defects; the tag names which one. */
 const decodeWasmDefect = (tag: number, facts: PortableDefectFacts | undefined): PortableDefect => {
   if (tag === FUEL_DEFECT_TAG) {
-    if (facts?.fuel !== true) return fail("VIBE5060", "portable Wasm returned a fuel defect tag for a loop-free function")
+    if (facts?.fuel !== true) return fail("SMITHERS5060", "portable Wasm returned a fuel defect tag for a loop-free function")
     return "fuel-exhausted"
   }
   if (tag === STRING_DEFECT_TAG) {
-    if (facts?.string !== true) return fail("VIBE5060", "portable Wasm returned a string-memory defect tag for a concat-free function")
+    if (facts?.string !== true) return fail("SMITHERS5060", "portable Wasm returned a string-memory defect tag for a concat-free function")
     return "string-memory-exhausted"
   }
-  return fail("VIBE5060", "portable Wasm returned an unknown defect tag")
+  return fail("SMITHERS5060", "portable Wasm returned an unknown defect tag")
 }
 
 export const executePortableWasm = async (
@@ -4114,10 +4114,10 @@ export const executePortableWasm = async (
     const instantiated = await WebAssembly.instantiate(validated.wasm, {})
     instance = "instance" in instantiated ? instantiated.instance : instantiated
   } catch (error) {
-    return fail("VIBE5060", `portable Wasm instantiation failed: ${error instanceof Error ? error.message : String(error)}`)
+    return fail("SMITHERS5060", `portable Wasm instantiation failed: ${error instanceof Error ? error.message : String(error)}`)
   }
   const exported = instance.exports[fn.name]
-  if (typeof exported !== "function") return fail("VIBE5060", `portable Wasm function ${fn.name} is absent`)
+  if (typeof exported !== "function") return fail("SMITHERS5060", `portable Wasm function ${fn.name} is absent`)
   const memory = wasmMemoryView(instance, strings, layout)
   writeWasmEnvironment(instance, env, layout, memory, environmentSlots)
   const callArguments = wasmArguments(fn, parameters, memory, layout)
@@ -4125,32 +4125,32 @@ export const executePortableWasm = async (
   try {
     raw = Reflect.apply(exported, undefined, callArguments) as unknown
   } catch (error) {
-    return fail("VIBE5060", `portable Wasm invocation failed: ${error instanceof Error ? error.message : String(error)}`)
+    return fail("SMITHERS5060", `portable Wasm invocation failed: ${error instanceof Error ? error.message : String(error)}`)
   }
   const decode = (value: unknown, label: string): number | boolean | string =>
     decodeWasmValue(fn.result.valueType, value, memory, layout, label)
   if (!taggedAbi(fn, defects)) {
     return wireExit(fn, { kind: "value", value: decode(raw, `portable Wasm result for ${fn.name}`) })
   }
-  if (!Array.isArray(raw) || raw.length !== 2 || !Number.isInteger(raw[0])) return fail("VIBE5060", "portable Wasm returned an invalid tagged ABI value")
+  if (!Array.isArray(raw) || raw.length !== 2 || !Number.isInteger(raw[0])) return fail("SMITHERS5060", "portable Wasm returned an invalid tagged ABI value")
   const tag = raw[0] as number
   if (tag < 0) {
     return wireExit(fn, { kind: "defect", defect: decodeWasmDefect(tag, defects.get(fn.name)) })
   }
   if (fn.result.kind === "plain") {
-    if (tag !== 0) return fail("VIBE5060", "portable Wasm returned an invalid plain-function tag")
+    if (tag !== 0) return fail("SMITHERS5060", "portable Wasm returned an invalid plain-function tag")
     return wireExit(fn, { kind: "value", value: decode(raw[1], `portable Wasm result for ${fn.name}`) })
   }
   if (fn.result.kind === "optional") {
     if (tag === 0) return wireExit(fn, { kind: "absent" })
-    if (tag !== 1) return fail("VIBE5060", "portable Wasm returned an invalid Optional tag")
+    if (tag !== 1) return fail("SMITHERS5060", "portable Wasm returned an invalid Optional tag")
     return wireExit(fn, { kind: "value", value: decode(raw[1], `portable Wasm Optional value for ${fn.name}`) })
   }
   if (tag === 0) {
     return wireExit(fn, { kind: "value", value: decode(raw[1], `portable Wasm Result value for ${fn.name}`) })
   }
   const variant = fn.result.errors.find((error) => error.tag === tag)
-  if (variant === undefined) return fail("VIBE5060", "portable Wasm returned an undeclared Result tag")
+  if (variant === undefined) return fail("SMITHERS5060", "portable Wasm returned an undeclared Result tag")
   return wireExit(fn, {
     kind: "failure",
     identity: variant.identity,

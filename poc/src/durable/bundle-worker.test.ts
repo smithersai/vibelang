@@ -28,7 +28,7 @@ const sandbox = (timeoutMs = 8_000): DenoSubprocessSandbox => new DenoSubprocess
 
 const compileAction = (id: string, fileName: string): ActionDescriptor => {
   const compiled = compileActionContract(`
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -80,21 +80,21 @@ ${body}
   })
 }
 
-const FIRST_FILE = "bundle-first.vibe"
-const SECOND_FILE = "bundle-second.vibe"
+const FIRST_FILE = "bundle-first.sm"
+const SECOND_FILE = "bundle-second.sm"
 const First = compileAction("test/bundle-worker/First", FIRST_FILE)
 const Second = compileAction("test/bundle-worker/Second", SECOND_FILE)
 
 const pipelinePlan = () => {
   const compiled = compileDurableSource(`
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 import { First, Second } from "test:bundle-worker-actions"
 export const Pipeline = durable(function Pipeline(input: { value: number }) {
   const first = First.run({ value: input.value }).unwrap()
   return Second.run({ value: first.value })
 })
 `, {
-    fileName: "flows/bundle-worker.vibe",
+    fileName: "flows/bundle-worker.sm",
     flowId: "test/bundle-worker/Pipeline",
     flowVersion: 1,
     actions: [
@@ -174,7 +174,7 @@ test("a bundle-executed typed failure round-trips as the exact durable wire enve
     expect(error).toBeInstanceOf(DurableActionFailure)
     expect((error as DurableActionFailure).failure).toEqual({
       version: 1,
-      identity: "vibe:bundle-first.vibe_Failed@1",
+      identity: "smithers:bundle-first.sm_Failed@1",
       payload: { code: "too-low" }
     })
   }

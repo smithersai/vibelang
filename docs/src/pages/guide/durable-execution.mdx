@@ -6,14 +6,23 @@ Durable execution is opt-in. An **Action** defines a closed persistence boundary
 The Action and Flow model is accepted. A bounded compiler-owned
 `durable(...)` lowerer, canonical Plan/manifest validation, SQLite executor,
 local Deno worker, and signed local coordinator-admission path are executable
-under `vibelang/durable/*`. That lowerer now covers conditionals, durable
+under `smthrs/durable/*`. That lowerer now covers conditionals, durable
 timers, one typed external signal, keyed fan-out with bounded multi-step bodies,
 explicit `sequential(...)` ordering, a budgeted `loopWhile(...)` round template,
 and — in the programmatic POC only, not through the CLI — attached child Flows.
 The Bun executor also has provisional `start`/`resume` execution handles,
 HMAC-token-gated signal delivery, and post-COMMIT wakeup notifications backed
 by a correctness-preserving persisted-state sweep.
-General lowering, emitted worker bundles, remote workers, and native/Wasm
+
+The opt-in Go compiler independently recognizes `smithers:flows` by resolved
+binding identity and lowers a useful checked-AST subset to the same
+digest-validated Plan shape. That subset includes direct Actions, `!`
+propagation edges, projections, conditional expressions, timers, typed signals,
+and explicit `sequential(...)` control edges. It never invokes the Flow or an
+Action implementation. Fan-out, child Flows, general statement control flow,
+looping, broadcast, and queue forms currently fail closed on that backend.
+
+General lowering, emitted worker bundles, and remote
 deployment are not implemented. Provider spelling, stable IDs, general loop
 semantics, wire encoding, and deployment APIs remain under design, and the
 control and handle spellings above are provisional.
@@ -42,12 +51,12 @@ Action values crossing a persistence or machine boundary must satisfy `Durable<T
 Import the compiler-recognized `durable` function and pass it a statically resolvable function:
 
 ```ts
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 
 const Build = durable(function Build(
   input: BuildInput,
 ): Result<Artifact, CompileError | PackageError> {
-  const compiled = Compile.run({ source: input.source }).unwrap()
+  const compiled = Compile.run({ source: input.source })!
   return Package.run({ code: compiled.code })
 })
 ```
@@ -67,7 +76,7 @@ Durable programs have four distinct phases:
 3. **Plan/preview** reads emitted Plan IR, validates and optionally specializes known input, and reports the graph without loading the durable function or dispatching Actions.
 4. **Execution** creates or resumes a durable run and dispatches eligible Action nodes from the Plan IR.
 
-Keeping the phases separate allows one plan to deploy across TypeScript, native, and Wasm workers. If a branch or runtime-sized fan-out cannot be resolved from preview inputs, plan mode reports the conditional or parameterized template instead of executing source code to guess its shape.
+Keeping the phases separate allows one plan to deploy across separate worker artifacts. If a branch or runtime-sized fan-out cannot be resolved from preview inputs, plan mode reports the conditional or parameterized template instead of executing source code to guess its shape.
 
 The bounded POC can wrap the exact validated Plan and deployment manifest in a
 canonical, domain-separated Ed25519 envelope. Verification uses public keys
@@ -87,7 +96,7 @@ trusted to issue it only for a factory that enforces the declared sandbox.
 Actions are abstract capabilities. Layers install ordinary function implementations and their policies:
 
 ```ts
-import { Action, Layer } from "vibelang/provider"
+import { Action, Layer } from "smthrs/provider"
 
 const BuildActions = Layer.merge(
   Action.provide(Compile, compileWithEsbuild, {
@@ -108,12 +117,12 @@ The abstract Action owns the durable contract. A deployment layer chooses its im
 Branches on comptime values reduce normally. Branches on Flow input or Action output emit plan nodes and compile both arms:
 
 ```ts
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 
 const Release = durable(function Release(
   input: ReleaseInput,
 ): Result<Deployment | FailureReport, TestError | DeployError | ReportError> {
-  const tested = Test.run({ source: input.source }).unwrap()
+  const tested = Test.run({ source: input.source })!
   return if (tested.passed) {
     Deploy.run({ artifact: tested.artifact })
   } else {
@@ -141,7 +150,7 @@ The safe default is execution-local replay with no ambiguous retry unless the im
 The bounded POC includes a deliberately provisional single-delivery form:
 
 ```ts
-import { durable, waitSignal } from "vibelang:flows"
+import { durable, waitSignal } from "smithers:flows"
 
 const Approval = durable(function Approval(input: { requestId: string }) {
   const decision = waitSignal<{ approved: boolean; ticket: string }>(
@@ -218,7 +227,7 @@ A future deployment build can emit:
 - derived RPC bindings and schemas
 - a signed routing manifest
 
-Different worker pools can use TypeScript, native, or Wasm implementations of the same Action. Placement belongs to the deployment layer, so the durable signature stays independent of one machine topology.
+Different worker pools can run different implementations of the same Action. Placement belongs to the deployment layer, so the durable signature stays independent of one machine topology.
 
 ## Security Boundary
 

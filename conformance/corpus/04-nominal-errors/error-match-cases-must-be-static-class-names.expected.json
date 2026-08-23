@@ -1,0 +1,9 @@
+{
+  "title": "Error.match cases must be static Error class names so nominal identity can be checked and lowered",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "SMITHERS1252", "line": 20, "column": 35 },
+    { "code": "SMITHERS1253", "line": 20, "column": 35 }
+  ],
+  "notes": "specification/failures.mdx, 'Error Prototype': 'Handler selection MUST use compiler-stable nominal identity, not a forgeable user _tag or minifier-sensitive constructor name in compiled artifacts.' A computed case key resolved from a runtime string is exactly the forgeable form the rule excludes; the cascade also reports the union member the computed key made unprovable."
+}

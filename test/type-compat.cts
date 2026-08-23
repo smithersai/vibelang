@@ -1,14 +1,14 @@
-import ts = require("vibelang");
-import tsAlias = require("vibelang/typescript");
-import initPlugin = require("vibelang/plugin");
-import * as native from "vibelang/unstable/sync";
-import * as ast from "vibelang/unstable/ast";
-import { createPassThroughLanguageService } from "vibelang/language-service";
-import { NotImplementedError, createProgram } from "vibelang/vibe";
-import { Action, Layer, type Durable } from "vibelang/provider";
-import { Context } from "vibelang/context";
-import { Result, type UnhandledException } from "vibelang/result";
-import { Optional } from "vibelang/optional";
+import ts = require("smthrs");
+import tsAlias = require("smthrs/typescript");
+import initPlugin = require("smthrs/plugin");
+import * as native from "smthrs/unstable/sync";
+import * as ast from "smthrs/unstable/ast";
+import { createPassThroughLanguageService } from "smthrs/language-service";
+import { NotImplementedError, createProgram } from "smthrs/smithers";
+import { Action, Layer, type Durable } from "smthrs/provider";
+import { Context } from "smthrs/context";
+import { Result, type UnhandledException } from "smthrs/result";
+import { Optional } from "smthrs/optional";
 
 const options: ts.CompilerOptions = { strict: true, noEmit: true };
 const program: ts.Program = createProgram([], options);

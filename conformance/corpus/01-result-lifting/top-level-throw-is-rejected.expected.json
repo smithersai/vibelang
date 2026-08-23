@@ -1,0 +1,11 @@
+{
+  "title": "a top-level throw cannot be represented as a checked Result",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1511",
+      "line": 7,
+      "column": 14
+    }
+  ]
+}

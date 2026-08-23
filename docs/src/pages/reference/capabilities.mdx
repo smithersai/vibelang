@@ -3,7 +3,7 @@
 ## Declaration and Access
 
 ```ts
-import { Context } from "vibelang/context"
+import { Context } from "smthrs/context"
 
 abstract class Service extends Context {
   abstract operation(input: Input): Result<Output, ServiceError>
@@ -55,9 +55,9 @@ These names are API direction, not a stable published surface.
 - `provide` removes satisfied requirements from the callback's requirement set.
 - a missing capability is a compile error when the closure is statically known.
 
-Provider composition is a library API from `vibelang/provider`; there is no special provider statement syntax.
+Provider composition is a library API from `smthrs/provider`; there is no special provider statement syntax.
 
-Base Layers receive already acquired service instances. Acquisition and cleanup are explicit ordinary code, initially with `using` or `defer`; the Layer owns neither the resource nor its finalizer.
+Base Layers receive already acquired service instances. Acquisition and cleanup are explicit ordinary code, initially with `using`; the Layer owns neither the resource nor its finalizer.
 
 ## Platform Services
 
@@ -65,7 +65,7 @@ Planned standard capabilities include `FileSystem`, `HttpClient`, `Clock`, `Rand
 
 ## Scope and Open Semantics
 
-`Layer.provide(layer, body)` keeps the environment active through `body` and the Promise returned by `body`, then revokes it. A Layer does not supervise or join other work, and authored `.vibe` has no detached Promise path.
+`Layer.provide(layer, body)` keeps the environment active through `body` and the Promise returned by `body`, then revokes it. A Layer does not supervise or join other work, and authored `.sm` has no detached Promise path.
 
 The Node runtime observes the exact Promise state transition. The asynchronous body must create its returned Promise during the invocation; adapt a pre-existing Promise with `async () => await promise`. Unsupported hosts and unverifiable Promise provenance fail closed.
 

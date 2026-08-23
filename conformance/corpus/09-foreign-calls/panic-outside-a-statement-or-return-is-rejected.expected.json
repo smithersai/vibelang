@@ -1,0 +1,12 @@
+{
+  "title": "panic(...) is an exit, not a value: writing it where a value is expected is rejected rather than lowered",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1503",
+      "line": 9,
+      "column": 39
+    }
+  ],
+  "notes": "specification/failures.mdx (Locked): 'A caller MUST propagate panic, explicitly catch it, or use a trusted adapter that catches and translates it. `panic` is imported from `smithers:exceptions` and accepts an optional message or underlying Error.' and 'The distinguished `panic` case is tracked separately from ordinary recoverable Error variants.' `panic(...)` leaves the function through that channel and produces no value, so the conditional it is written inside has no second arm to evaluate to. This is a POC LOWERING BOUNDARY rather than a specification sentence, and it is declared as such: the rule the language locks is that the panic case is distinguished and must be propagated or caught, and the POC narrows the placements it can lower to an expression statement, a direct return, or a concise arrow body (poc/src/language/semantic.ts, `isSimplePanicExit`). It is pinned because a boundary that is not pinned is a boundary the other implementation can put somewhere else, and because the alternative to refusing is worse: a lowering that guessed would have to invent the value of the arm that never returns. 09-foreign-calls/explicit-panic-charges-the-channel is the accepted twin and uses the SUPPORTED placement (`if (key !== \"ada\") panic(...)`, an expression statement), so the pair separates the channel rule from the placement rule. No `messageContains` is declared. The two backends legitimately word this diagnostic differently — measured on SMITHERS1503, where the reference says \"only as an expression statement or direct return\" and the fork says \"only as an expression statement or a direct return\" — and conformance/README.md reserves `messageContains` for rules whose PAYLOAD is the promise, which here it is not: the code and the authored position are the whole contract, and a fragment of the sentence around them would be a wording assertion wearing a contract's clothes. The wording difference above was found BY this case: an earlier draft declared the longer fragment and the fork failed it while agreeing on the code and the position exactly. Before this case, SMITHERS1503 was one of the codes both implementations spell and no case probed. Both backends refuse it today, so this case pins current behaviour on both rather than reproducing a live one-sided defect."
+}

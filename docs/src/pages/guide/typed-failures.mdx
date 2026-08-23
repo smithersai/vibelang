@@ -1,6 +1,6 @@
 # Results and Errors [Return expected failures as values]
 
-VibeLang uses ordinary TypeScript-shaped code and makes expected failure explicit in the return type. A synchronous fallible function returns `Result<A, E>`; an asynchronous one returns `Promise<Result<A, E>>`.
+Smithers uses ordinary TypeScript-shaped code and makes expected failure explicit in the return type. A synchronous fallible function returns `Result<A, E>`; an asynchronous one returns `Promise<Result<A, E>>`.
 
 ## Declare an Error
 
@@ -31,27 +31,27 @@ function readSettings(
   path: string,
 ): Result<Settings, FileNotFound | PermissionDenied | InvalidSettings> {
   const fs = FileSystem.context()
-  const source = fs.readText(path).unwrap()
-  return Settings.parse(source).unwrap()
+  const source = fs.readText(path)!
+  return Settings.parse(source)!
 }
 ```
 
-Inside a `Result`-returning function, VibeLang lowers plain `return value` to the success variant and `throw error` to the error variant. Returning an existing compatible `Result` does not nest it. Consequently source code does not need `Result.ok` or `Result.err`, and those constructors are not part of the authoring API.
+Inside a `Result`-returning function, Smithers lowers plain `return value` to the success variant and `throw error` to the error variant. Returning an existing compatible `Result` does not nest it. Consequently source code does not need `Result.ok` or `Result.err`, and those constructors are not part of the authoring API.
 
-When a body has no annotation, the compiler infers `A` from returned values and `E` from reachable `Error` throws, returned Results, and `.unwrap()` propagation points.
+When a body has no annotation, the compiler infers `A` from returned values and `E` from reachable `Error` throws, returned Results, and `!` propagation points.
 
-## Propagate With `.unwrap()`
+## Propagate With `!`
 
-`Result.unwrap()` is compiler-aware control flow:
+`Result!` is compiler-aware control flow:
 
 ```ts
 function loadApplication(): Result<Application, ReadSettingsError> {
-  const settings = readSettings("app.json").unwrap()
+  const settings = readSettings("app.json")!
   return Application.make(settings)
 }
 ```
 
-On success it produces the value. On error it returns that error from the enclosing `Result`-returning function. In plain JavaScript without VibeLang lowering, it throws the original error so a missed compiler transform fails visibly.
+On success it produces the value. On error it returns that error from the enclosing `Result`-returning function. In plain JavaScript without Smithers lowering, it throws the original error so a missed compiler transform fails visibly.
 
 Results are must-use values. Discarding a Result is a diagnostic unless the code explicitly acknowledges it.
 
@@ -106,12 +106,30 @@ async function loadUser(
   id: string,
 ): Promise<Result<User, Timeout | InvalidResponse>> {
   const http = HttpClient.context()
-  const response = (await http.get(`/users/${id}`)).unwrap()
-  return (await response.json(User)).unwrap()
+  const response = (await http.get(`/users/${id}`))!
+  return (await response.json(User))!
 }
 ```
 
-Authored VibeLang bans Promise instance `.then()`, `.catch()`, and `.finally()`. Use `await`, then handle the resulting `Result`. Imported JavaScript and TypeScript libraries may use ordinary Promise internals behind their boundary.
+Authored Smithers bans Promise instance `.then()`, `.catch()`, and `.finally()`. Use `await`, then handle the resulting `Result`. Imported JavaScript and TypeScript libraries may use ordinary Promise internals behind their boundary.
+
+## Propagation
+
+Postfix `!` propagates a Result error to the caller:
+
+```ts
+const user = findUser(id)!
+```
+
+If the Result is a success, `!` yields the value. If it is an error, the enclosing function returns that error variant — no exception is thrown. This is the job Zig gives `try foo()`, using an operator TypeScript already has, so it costs no grammar.
+
+TypeScript's non-null assertion does not exist in `.sm`. Removing that meaning entirely is what makes the operator unambiguous, and it was an unsound escape hatch most codebases already lint against.
+
+`??` and `?.` are untouched — they still mean exactly what they mean in TypeScript. Failure and absence are separate axes, and both can appear in one expression:
+
+```ts
+const name = findUser(id)!?.nickname ?? "anonymous"
+```
 
 ## Defects and Foreign Exceptions
 
@@ -121,7 +139,7 @@ JavaScript statement-form `try/catch` remains available for low-level interop. I
 
 ## Cleanup
 
-`errdefer` runs when a scope exits with the error variant:
+Scope-exit cleanup uses TC39 explicit resource management, inherited from TypeScript:
 
 ```ts
 function replaceFile(
@@ -129,13 +147,20 @@ function replaceFile(
   contents: string,
 ): Result<void, FileError> {
   const fs = FileSystem.context()
-  const temporary = fs.createTemp(path).unwrap()
-  defer temporary.close()
-  errdefer fs.remove(temporary.path)
+  using temporary = fs.createTemp(path)!
 
-  temporary.write(contents).unwrap()
-  fs.replace(temporary.path, path).unwrap()
+  temporary.write(contents)!
+  fs.replace(temporary.path, path)!
 }
 ```
 
-`defer` runs on every exit path; `errdefer` runs only for Result-error exits.
+Cleanup that should run only on failure goes in the failure path rather than in a dedicated statement form:
+
+```ts
+return temporary
+  .write(contents)
+  .andThen(() => fs.replace(temporary.path, path))
+  .tapError(() => fs.remove(temporary.path))
+```
+
+Smithers previously had `defer` and `errdefer` for this. Both were removed: neither is a TC39 proposal, `using` already covers scope exit, and error-path cleanup is expressible with the Result combinators above. How `using` disposal orders against a compiler-generated `!` early return is [not yet settled](/specification/control-flow).

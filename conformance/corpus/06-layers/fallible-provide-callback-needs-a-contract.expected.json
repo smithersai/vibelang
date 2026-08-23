@@ -1,0 +1,11 @@
+{
+  "title": "a fallible Layer.provide callback must expose an explicit Result contract so its failure channel stays visible",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2105",
+      "line": 14,
+      "column": 73
+    }
+  ]
+}

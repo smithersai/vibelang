@@ -504,11 +504,11 @@ function selectMapping(values: readonly Mapping[] | undefined, column: number): 
 /** Compose an outer generated map through an inner map without inventing provenance. */
 export function composeSourceMaps(
   javascriptToTypeScript: string,
-  typeScriptToVibe: string,
+  typeScriptToSmithers: string,
   outputFileName: string,
 ): string {
   const outer = parsedMap(javascriptToTypeScript, "JavaScript");
-  const inner = parsedMap(typeScriptToVibe, "VibeLang");
+  const inner = parsedMap(typeScriptToSmithers, "Smithers");
   const intermediate = intermediateSourceIndex(outer, inner);
   const innerByLine = new Map<number, Mapping[]>();
   for (const mapping of decodeMappings(inner)) {

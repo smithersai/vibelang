@@ -1,0 +1,4 @@
+export function halve(value: number): Result<number, Error> {
+  if (value < 0) throw "negative"
+  return value / 2
+}

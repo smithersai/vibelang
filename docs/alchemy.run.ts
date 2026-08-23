@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 const docsDir = fileURLToPath(new URL('.', import.meta.url))
 
 export default Alchemy.Stack(
-  'VibeLangDocs',
+  'SmithersDocs',
   {
     providers: Cloudflare.providers(),
     state: Cloudflare.state(),
@@ -19,7 +19,7 @@ export default Alchemy.Stack(
       dev: {
         command: 'npm run dev',
       },
-      domain: 'vibelang.sh',
+      domain: 'docs.smithers.sh',
       workersDev: false,
       assets: {
         htmlHandling: 'drop-trailing-slash',

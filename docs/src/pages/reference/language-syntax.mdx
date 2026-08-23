@@ -1,14 +1,14 @@
-# Language Syntax [Quick reference for VibeLang source forms]
+# Language Syntax [Quick reference for Smithers source forms]
 
-VibeLang keeps additions TypeScript-shaped where possible. Compiler-recognized behavior is exposed through imported functions and ordinary generic types instead of new keywords.
+Smithers keeps additions TypeScript-shaped where possible. Compiler-recognized behavior is exposed through imported functions and ordinary generic types instead of new keywords.
 
 ## Source Files
 
 | Form | Status | Meaning |
 | --- | --- | --- |
-| `.vibe` | Locked | VibeLang source file |
+| `.sm` | Locked | Smithers source file |
 | `.ts` | Locked | imported TypeScript with TypeScript behavior |
-| `.vibex` | Open | candidate JSX-capable VibeLang extension |
+| `.smx` | Open | candidate JSX-capable Smithers extension |
 
 ## Results and Errors
 
@@ -25,10 +25,10 @@ function operation(): Result<Value, Name> {
 }
 ```
 
-Plain returns and throws are compiler-lifted in a Result-returning function. Propagate a Result with `.unwrap()` and recover with `match`, `recover`, or `error.match`:
+Plain returns and throws are compiler-lifted in a Result-returning function. Propagate a Result with postfix `!` — TypeScript's non-null assertion is removed in `.sm`, and `!` takes the role Zig gives `try foo()`. Recover with `match`, `recover`, or `error.match`:
 
 ```ts
-const value = operation().unwrap()
+const value = operation()!
 
 const label = operation().match({
   ok: value => render(value),
@@ -36,28 +36,32 @@ const label = operation().match({
 })
 ```
 
-An async fallible function returns `Promise<Result<A, E>>`. `await` unwraps only the Promise. Promise `.then`, `.catch`, and `.finally` are banned in authored VibeLang.
+An async fallible function returns `Promise<Result<A, E>>`. `await` unwraps only the Promise. Promise `.then`, `.catch`, and `.finally` are banned in authored Smithers.
 
-## Optionals
+## Absence
 
 ```ts
-function lookup(): Optional<Value> {
+function lookup(id: string): User | undefined {
   if (missing) return undefined
-  return value
+  return user
 }
 
-const label = lookup().match({
-  some: value => render(value),
-  none: () => "missing",
-})
+const name = lookup(id)?.name ?? "guest"
 ```
 
-Use methods such as `map`, `andThen`, `filter`, `unwrap`, `unwrapOr`, and `toResult`. The compiler lifts plain values and nullish returns in Optional-returning functions.
+Absence is an ordinary TypeScript union. There is no `Optional<T>` and no optional sigil.
 
+`!` is the error axis and `?.`/`??` are the absence axis, so both can appear in one expression:
+
+```ts
+const nickname = findUser(id)!?.nickname ?? "anonymous"
+```
+
+`arr[2]` is `T | undefined`: `noUncheckedIndexedAccess` is mandatory.
 ## Requirements
 
 ```ts
-import { Context } from "vibelang/context"
+import { Context } from "smthrs/context"
 
 const store = Store.context()
 const log = Logger.context()
@@ -65,46 +69,30 @@ const log = Logger.context()
 
 `context()` returns a capability instance and adds its nominal identity to the enclosing function's inferred requirement channel. There is no requirement keyword.
 
-## Expression Control Flow
+## Control Flow
+
+Control flow is TypeScript's, unchanged. The one addition is declarations in conditionals, adopted early from the TC39 Stage 1 proposal:
 
 ```ts
-const value = if (condition) whenTrue else whenFalse
-
-const result = switch (input.kind) {
-  case "a":
-    resultA
-  case "b":
-    resultB(input.value)
+if (const user = cache.get(id); user !== undefined) {
+  render(user)
 }
 ```
 
-Blocks, `if`, `switch`, `for`, and `while` may produce values. Switches use TypeScript `case` clauses, and known finite domains are exhaustiveness-checked.
-
-## Labeled Values and Loop Else
-
-```ts
-const value = label: {
-  break :label result
-}
-
-const found = search: for (const item of items) {
-  if (matches(item)) break :search item
-} else fallback
-```
+The binding is visible in every branch and out of scope after the construct.
 
 ## Cleanup
 
 ```ts
-defer cleanup()
-errdefer rollback()
+using file = fs.open(path, "write")!
 ```
 
-`defer` runs on scope exit. `errdefer` runs when the scope exits with a Result error.
+Cleanup uses TC39 explicit resource management, inherited from TypeScript. Error-path rollback is written in the failure path.
 
 ## Comptime
 
 ```ts
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 
 const value = comptime(expression)
 const generatedFunction = comptime(functionValue)
@@ -116,7 +104,7 @@ Passing a value requests deterministic compile-time evaluation. Passing a functi
 ## Durable Functions
 
 ```ts
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 
 const workflow = durable(function workflow(
   input: Input,
@@ -138,8 +126,8 @@ import prompt from "./prompt.md" with { type: "text" }
 import kernel from "./kernel.zig" with { type: "zig" }
 ```
 
-Attribute values are strings. Ordinary `.vibe`, `.ts`, and `.js` code imports do not need a `type` attribute.
+Attribute values are strings. Ordinary `.sm`, `.ts`, and `.js` code imports do not need a `type` attribute.
 
 ## Deliberately Absent Syntax
 
-The initial language has no failure clause, prefix propagation syntax, postfix catch expression, special Error declaration, optional type sigil, optional fallback operator, comptime keyword, durable keyword, or separate const-import grammar.
+The initial language has no failure clause, prefix propagation syntax, postfix catch expression, special Error declaration, optional type sigil, optional fallback operator, `Optional<T>`, non-null assertion, comptime keyword, durable keyword, separate const-import grammar, expression-form `if` or `switch`, block expression, labeled break value, loop `else`, labeled block or loop value, arrow-arm switch, throw expression, `defer`, or `errdefer`.

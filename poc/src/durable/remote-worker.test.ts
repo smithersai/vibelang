@@ -51,7 +51,7 @@ const REMOTE_POOL_ID = "remote-http-worker"
 
 const buildFixture = () => {
   const actionContract = compileActionContract(`
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -62,7 +62,7 @@ export abstract class Work extends Action<
     // Nominal durable Error identity includes the logical source file. The
     // Action declaration and implementation closure intentionally use the
     // same logical module name, as a checked real module would.
-    fileName: "remote-work-implementation.vibe",
+    fileName: "remote-work-implementation.sm",
     exportName: "Work",
     id: REMOTE_ACTION_ID,
     version: 1
@@ -73,11 +73,11 @@ export abstract class Work extends Action<
     action: descriptor,
     implementationId: "remote-work-implementation",
     implementationVersion: "1",
-    entryFile: "remote-work-implementation.vibe",
+    entryFile: "remote-work-implementation.sm",
     exportName: "work",
     implementation: hostCallback,
     sources: [{
-      fileName: "remote-work-implementation.vibe",
+      fileName: "remote-work-implementation.sm",
       source: `
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
@@ -106,13 +106,13 @@ export function work(input: { value: number, spinMs: number }): Result<{ value: 
     recovery: { mode: "repeatable", maxAttempts: 4, delayMs: 800 }
   })
   const compiled = compileDurableSource(`
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 import { Work } from "test:remote-http-actions"
 export const RemoteFlow = durable(function RemoteFlow(input: { value: number, spinMs: number }) {
   return Work.run({ value: input.value, spinMs: input.spinMs })
 })
 `, {
-    fileName: "flows/remote-http.vibe",
+    fileName: "flows/remote-http.sm",
     flowId: "test/remote-http/Flow",
     flowVersion: 1,
     actions: [Object.freeze({
@@ -214,7 +214,7 @@ const authenticatedResponse = (
 }
 
 const hostFiles = (source: ReturnType<typeof buildFixture>) => {
-  const directory = mkdtempSync(join(tmpdir(), "vibelang-remote-worker-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-remote-worker-"))
   const bundlePath = join(directory, "pool-bundle.mjs")
   const artifactPath = join(directory, "deployment.json")
   const keysPath = join(directory, "trusted-keys.json")
@@ -246,7 +246,7 @@ const spawnWorkerHost = async (
       "--port", String(port)
     ],
     cwd: process.cwd(),
-    env: { ...process.env, VIBE_WORKER_HOST_SECRET: secret },
+    env: { ...process.env, SMITHERS_WORKER_HOST_SECRET: secret },
     stdin: "ignore",
     stdout: "pipe",
     stderr: "pipe"

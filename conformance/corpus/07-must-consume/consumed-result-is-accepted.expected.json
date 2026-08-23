@@ -1,0 +1,5 @@
+{
+  "title": "match and unwrapOr both consume the Result they are called on",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "Guest"]
+}

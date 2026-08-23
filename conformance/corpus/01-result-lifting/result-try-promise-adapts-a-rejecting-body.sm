@@ -1,0 +1,17 @@
+import { Panic } from "smithers:exceptions"
+import { fetchLength } from "./foreign.ts"
+
+// The async form of the same adapter: a rejection becomes the Panic error
+// variant of the awaited Result rather than an escaping rejection.
+async function measure(text: string): Promise<Result<number, Panic>> {
+  return await Result.tryPromise(() => fetchLength(text))
+}
+
+export async function main(): Promise<string[]> {
+  const present = await measure("abcd")
+  const rejected = await measure("boom")
+  return [
+    present.match({ ok: (value) => `${value}`, error: () => "panic" }),
+    rejected.match({ ok: (value) => `${value}`, error: () => "panic" }),
+  ]
+}

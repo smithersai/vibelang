@@ -1,0 +1,11 @@
+import type { Settings } from "./untrusted.ts"
+
+// `untrusted.ts` deliberately carries no module-initialization trust claim, so
+// a VALUE import of it is rejected (09-foreign-calls/foreign-module-without-a-
+// trust-marker). A TYPE-only import creates no runtime requirement and no
+// initializer edge, so it is accepted.
+const local: Settings = { retries: 3 }
+
+export function main(): string[] {
+  return [`retries ${local.retries}`]
+}

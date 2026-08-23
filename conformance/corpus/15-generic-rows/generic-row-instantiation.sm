@@ -1,0 +1,24 @@
+import { attempt, Timeout } from "./generic-row-instantiation.mod.sm"
+
+export class NotFound extends Error {
+  constructor(readonly id: string) { super(`no record ${id}`) }
+}
+
+export function load(id: string, limit: number): Result<string, NotFound | Timeout> {
+  return attempt(limit, (): Result<string, NotFound> => {
+    if (id === "") throw new NotFound(id)
+    return id
+  }).unwrap()
+}
+
+export function main(): string[] {
+  const describe = (id: string, limit: number): string =>
+    load(id, limit).match({
+      ok: (value) => `ok ${value}`,
+      error: (error) => error.match({
+        NotFound: (failure) => `not found ${failure.id}`,
+        Timeout: () => "timed out",
+      }),
+    })
+  return [describe("ada", 1), describe("", 1), describe("ada", 0)]
+}

@@ -1,0 +1,6 @@
+{
+  "title": "Promise rejection at an unannotated foreign boundary becomes the checked panic case rather than an untyped rejection",
+  "expect": "output",
+  "stdout": ["ok 3", "panic"],
+  "typescript": ["foreign.ts"]
+}

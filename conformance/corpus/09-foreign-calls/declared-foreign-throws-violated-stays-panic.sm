@@ -1,0 +1,27 @@
+import { Panic } from "smithers:exceptions"
+import { parseIntegerLying } from "./foreign.ts"
+
+// The foreign declaration claims `@throws {RangeError}`. A trust claim names a
+// channel; it does not make the foreign implementation honest. When the
+// implementation violates its own claim, the failure must still be delivered
+// through the declared checked channel, as its Panic member.
+function parse(text: string): Result<number, RangeError | Panic> {
+  return parseIntegerLying(text)
+}
+
+export function main(): string[] {
+  return [
+    parse("41").match({
+      ok: (value) => `${value}`,
+      error: (error) => (error instanceof RangeError ? "range" : "panic"),
+    }),
+    parse("boom").match({
+      ok: (value) => `${value}`,
+      error: (error) => error instanceof RangeError
+        ? "range"
+        : error instanceof Panic && error.cause instanceof TypeError
+          ? `panic:${error.cause.message}`
+          : "wrong-panic-payload",
+    }),
+  ]
+}

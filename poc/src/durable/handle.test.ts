@@ -20,7 +20,7 @@ import {
 } from "./index.ts"
 
 const signalSource = `
-import { durable, waitSignal } from "vibelang:flows"
+import { durable, waitSignal } from "smithers:flows"
 
 export const Approval = durable(function Approval(input: { requestId: string }) {
   const decision = waitSignal<{ approved: boolean; ticket: string }>("approval.decided")
@@ -30,7 +30,7 @@ export const Approval = durable(function Approval(input: { requestId: string }) 
 
 const signalFixture = () => {
   const compiled = compileDurableSource(signalSource, {
-    fileName: "flows/handle-approval.vibe.ts",
+    fileName: "flows/handle-approval.sm.ts",
     flowId: "test/handle/Approval",
     flowVersion: 1,
     actions: []
@@ -213,7 +213,7 @@ test("handle.signal delivers through the authenticated exact-identity path witho
 })
 
 test("a handle is re-obtained from executionId and store alone across process restart", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "vibelang-handle-restart-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-handle-restart-"))
   const filename = join(directory, "durable.sqlite")
   const { deployment, node } = signalFixture()
   try {
@@ -255,7 +255,7 @@ test("a handle is re-obtained from executionId and store alone across process re
 })
 
 test("resume exposes a committed terminal outcome without re-running and rejects unknown executions", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "vibelang-handle-resume-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-handle-resume-"))
   const filename = join(directory, "durable.sqlite")
   const calls = { value: 0 }
   const deployment = actionFixture("resume", calls)

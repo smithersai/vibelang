@@ -1,0 +1,7 @@
+function comptime(value: string): string {
+  return value + "!"
+}
+
+export function main(): string[] {
+  return [comptime("runtime")]
+}

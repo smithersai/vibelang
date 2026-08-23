@@ -1,0 +1,6 @@
+{
+  "title": "a foreign @throws {SomeError} contract is trusted enough to be named, and a violated contract still lands in Panic",
+  "expect": "output",
+  "stdout": ["ok 41", "error oops is not an integer"],
+  "typescript": ["foreign.ts"]
+}

@@ -1,0 +1,16 @@
+const entries = new Map<string, string>([["ada", "Ada Lovelace"]])
+
+function lookup(key: string): string | null {
+  return entries.get(key) ?? null
+}
+
+export function describe(key: string): string {
+  if (const found = lookup(key); found !== null) {
+    return `found ${found}`
+  }
+  return `missing ${found}`
+}
+
+export function main(): string[] {
+  return [describe("ada"), describe("zoe")]
+}

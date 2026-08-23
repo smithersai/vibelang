@@ -1,0 +1,30 @@
+import { native } from "smithers:native"
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+// The over-correction guard for a-layer-provide-callback-is-part-of-the-pinned-
+// graph. Entering the callback is only half the rule: what the layer provides
+// must then be REMOVED from the row, so a computation whose every requirement
+// is satisfied inside the scope reaches the pin with nothing left to refuse.
+// An implementation that closed the other case by reporting everything it found
+// inside a provide would turn this program red, and this one is a program the
+// language promises compiles.
+abstract class Config extends Context {
+  abstract retries(): number
+}
+
+const config: Config = { retries: () => 1 }
+
+function reads(): number {
+  return Config.context().retries()
+}
+
+function scoped(): number {
+  return Layer.provide(Layer.succeed(Config, config), () => reads())
+}
+
+native(scoped)
+
+export function main(): string[] {
+  return [String(scoped())]
+}

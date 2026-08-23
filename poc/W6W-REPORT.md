@@ -1,5 +1,7 @@
 # W6-W implementation report
 
+> **Historical record.** This report describes work completed before the 2026-08-23 specification reduction. Some features it covers — the expression-form grammar, `defer`/`errdefer`, `Optional<T>`, `.unwrap()`, and the portable/native targets — are no longer part of the language. See `docs/DECISIONS.md`.
+
 ## Decision
 
 **FINISH.** The interrupted pool-bundle and `remote-http-poc` work now lands as
@@ -31,7 +33,7 @@ Pool bundle format 1 is one UTF-8 ESM JavaScript file. It contains:
 3. exactly the Plan-selected providers' complete retained checked source
    closures, lowered by the normal project compiler and ordered by Action id
    and logical module path; and
-4. an exported Action table plus `__vibeInvokeAction(invocation)`, which resolves
+4. an exported Action table plus `__smithersInvokeAction(invocation)`, which resolves
    the requested `actionId` and returns the durable success/failure/defect
    discriminant.
 
@@ -87,18 +89,18 @@ network call, preserving no-silent-downgrade routing.
 
 Protocol 1 uses two POST endpoints:
 
-- `/vibelang/worker/v1/handshake` advertises deployment, pool, target, sandbox,
+- `/smithers/worker/v1/handshake` advertises deployment, pool, target, sandbox,
   Plan digest, manifest digest, pool artifact digest, bundle digest, and sorted
   Action table. The coordinator re-handshakes for every invocation (coalescing
   concurrent calls only), so a process replacement on the same port cannot
   inherit an earlier host's bundle claim.
-- `/vibelang/worker/v1/invoke` carries exactly one full invocation envelope.
+- `/smithers/worker/v1/invoke` carries exactly one full invocation envelope.
   Coordinator and host both run the shared manifest invocation gate before
   author code. Returned exits are canonicalized and checked against the signed
   route's success/error schemas; the coordinator independently repeats its
   exact WorkerExit validation before persistence.
 
-Every request and response carries `x-vibelang-worker-auth` with HMAC-SHA256
+Every request and response carries `x-smithers-worker-auth` with HMAC-SHA256
 over a domain-separated role, timestamp, method, path, and body SHA-256 under a
 32-64 byte per-deployment shared secret. Verification has a freshness window,
 fixed-format parsing, and timing-safe MAC comparison.

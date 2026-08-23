@@ -60,14 +60,14 @@ export class JsonParseError extends JsonOperationError {
     super("JsonParseError", path, reason);
   }
 }
-export interface JsonParseError extends NominalError<"vibelang:JsonParseError@1"> {}
+export interface JsonParseError extends NominalError<"smithers:JsonParseError@1"> {}
 
 export class JsonEncodeError extends JsonOperationError {
   constructor(path: readonly JsonPathSegment[], reason: string) {
     super("JsonEncodeError", path, reason);
   }
 }
-export interface JsonEncodeError extends NominalError<"vibelang:JsonEncodeError@1"> {}
+export interface JsonEncodeError extends NominalError<"smithers:JsonEncodeError@1"> {}
 
 function errorPayload(error: JsonOperationError): JsonValue {
   return { path: [...error.path], reason: error.reason };
@@ -87,12 +87,12 @@ function decodePayload(payload: JsonValue, Type: new (path: readonly JsonPathSeg
   return new Type(payload.path as JsonPathSegment[], payload.reason);
 }
 
-registerErrorCodec(JsonParseError, "vibelang:JsonParseError@1", {
+registerErrorCodec(JsonParseError, "smithers:JsonParseError@1", {
   encode: errorPayload,
   decode: (payload) => decodePayload(payload, JsonParseError) as JsonParseError,
 });
 
-registerErrorCodec(JsonEncodeError, "vibelang:JsonEncodeError@1", {
+registerErrorCodec(JsonEncodeError, "smithers:JsonEncodeError@1", {
   encode: errorPayload,
   decode: (payload) => decodePayload(payload, JsonEncodeError) as JsonEncodeError,
 });

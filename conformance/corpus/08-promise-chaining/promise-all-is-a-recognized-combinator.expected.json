@@ -1,0 +1,5 @@
+{
+  "title": "Promise.all is a recognized combinator: awaiting its result consumes every started Promise",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "no entry for zoe"]
+}

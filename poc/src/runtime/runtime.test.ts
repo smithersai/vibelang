@@ -210,10 +210,15 @@ describe("hardened Result and Optional runtime", () => {
       ok: () => "bad",
       error: (error) => error.is(NotFound) ? error.id : "unexpected panic",
     })).toBe("mapped");
-    expect(isPanic(catchPanic(
-      () => Result.try(() => { throw new RangeError("wrong contract"); }, (cause) => __vsValidateForeignError(cause, NotFound)),
-      (error) => error,
-    ))).toBe(true);
+    const violatedCause = new RangeError("wrong contract");
+    const violated = Result.try(
+      () => { throw violatedCause; },
+      (cause) => __vsValidateForeignError(cause, NotFound),
+    );
+    expect(violated.match({
+      ok: () => false,
+      error: (error) => isPanic(error) && error.cause === violatedCause && error.rootCause() === violatedCause,
+    })).toBe(true);
 
     const rejected = await Result.tryPromise(async () => { throw "not an Error"; });
     expect(rejected.match({ ok: () => false, error: isPanic })).toBe(true);
@@ -458,7 +463,7 @@ describe("nominal Error identity and transport", () => {
 
     const fake = Object.assign(new Error("fake"), {
       _tag: "NotFound",
-      [Symbol.for("vibelang.failure")]: true,
+      [Symbol.for("smithers.failure")]: true,
     });
     expect(fake.is(NotFound)).toBe(false);
     const crossRealm = runInNewContext(`new (class NotFound extends Error { constructor() { super("same name") } })()` ) as Error;
@@ -497,6 +502,37 @@ describe("nominal Error identity and transport", () => {
     expect(() => decodeError(` {${wire.slice(1)}`)).toThrow("not canonical JSON");
     const foreignError = runInNewContext("new Error('foreign')") as Error;
     expect(() => encodeError(foreignError)).toThrow("only local Error");
+  });
+
+  test("a stable identity spans the TypeScript identifier alphabet and still refuses ill-formed keys", () => {
+    // failures.mdx, "Error Classes": ANY named class extending `Error` MUST be
+    // usable as a nominal recoverable error, and TypeScript identifiers admit
+    // the full Unicode ID_Start/ID_Continue set. An ASCII-only alphabet here
+    // made the compiler accept `class Café extends Error {}` and then throw
+    // while the emitted module was still loading.
+    class Café extends Error {}
+    expect(__vsRegisterError(Café, "smithers:runtime/identity.sm:Café")).toBe(Café);
+    const refused = new Café("no table");
+    expect(errorIdentity(refused)).toBe("smithers:runtime/identity.sm:Café");
+    expect(refused.is(Café)).toBe(true);
+    class Χρόνος extends Error {}
+    expect(__vsRegisterError(Χρόνος, "smithers:runtime/identity.sm:Χρόνος")).toBe(Χρόνος);
+
+    // Widening the letters must not widen the shape: an identity is still a
+    // single wire key with no whitespace, quoting, control characters, or
+    // unbounded length.
+    class Ordinary extends Error {}
+    for (const invalid of [
+      "",
+      "smithers:runtime identity.sm:Ordinary",
+      'smithers:"quoted"',
+      "smithers:new\nline",
+      "smithers:{brace}",
+      "-leading-dash",
+      `smithers:${"x".repeat(256)}`,
+    ]) {
+      expect(() => __vsRegisterError(Ordinary, invalid)).toThrow("invalid stable Error identity");
+    }
   });
 
   test("codec registration rejects collisions and non-JSON output", () => {

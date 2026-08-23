@@ -1,0 +1,9 @@
+{
+  "title": "the `!T` fallible-return marker is retired: use Result<T, E>",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "SMITHERS1001", "line": 5, "column": 38 },
+    { "code": "SMITHERS1101", "line": 5, "column": 1 }
+  ],
+  "notes": "specification/failures.mdx, 'Inference', and specification/type-system.mdx, 'Public Boundaries', both say Smithers MUST NOT add a `!T` failure-annotation grammar. The second diagnostic is the real cascade and is declared rather than filtered: with the retired marker removed the annotation is a bare `string`, which specification/failures.mdx, 'Compiler Lifting', requires to be rejected because it cannot represent the reachable Missing exit."
+}

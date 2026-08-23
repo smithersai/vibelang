@@ -1,4 +1,4 @@
-// Package compiler defines VibeLang's Go compiler extension and process
+// Package compiler defines Smithers's Go compiler extension and process
 // contracts.
 //
 // TypeScript keeps its implementation packages behind Go's internal visibility

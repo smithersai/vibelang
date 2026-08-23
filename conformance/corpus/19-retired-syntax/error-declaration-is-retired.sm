@@ -1,0 +1,5 @@
+error Missing {}
+
+export function main(): string[] {
+  return ["unreachable"]
+}

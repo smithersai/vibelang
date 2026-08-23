@@ -1,0 +1,10 @@
+import { Panic } from "smithers:exceptions"
+import { applyTwice } from "./foreign.ts"
+
+function bump(value: number): Result<number, Panic> {
+  return applyTwice(value, (input) => input + 1)
+}
+
+export function main(): string[] {
+  return [bump(21).match({ ok: (value) => `${value}`, error: () => "panic" })]
+}

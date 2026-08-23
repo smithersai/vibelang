@@ -1,0 +1,7 @@
+{
+  "title": "an explicit comptime(...) value is evaluated during compilation and the call is replaced by the result",
+  "expect": "output",
+  "stdout": [
+    "{\"count\":3,\"keys\":[\"name\",\"major\"],\"mapped\":[\"a\",\"b\",\"g\"],\"nested\":{\"absent\":null,\"even\":true},\"shout\":\"SMITHERS\",\"slug\":\"alpha-beta-gamma\",\"title\":\"smithers v2\"}"
+  ]
+}

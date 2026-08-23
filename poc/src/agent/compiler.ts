@@ -8,7 +8,7 @@ import type {
   TypeScriptCompiler,
 } from "./types.ts"
 
-const VIRTUAL_ROOT = normalize("/__vibelang_agent__")
+const VIRTUAL_ROOT = normalize("/__smithers_agent__")
 const SANDBOX_POLICY_CODE = 91001
 const FORBIDDEN_RUNTIME_NAMES = Object.freeze([
   "eval",
@@ -29,7 +29,7 @@ const CHECK_SOURCE = [
   "",
 ].join("\n")
 const COMPILER_POLICY = Object.freeze({
-  schema: "vibelang.agent.typescript-policy/v1",
+  schema: "smithers.agent.typescript-policy/v1",
   typescriptVersion: ts.version,
   target: "ES2022",
   module: "ES2022",
@@ -152,7 +152,7 @@ function diagnosticFromTypeScript(diagnostic: ts.Diagnostic): AgentDiagnostic {
 
 /**
  * In-memory fallback on TypeScript 5.9's JS API. The installed TypeScript 7
- * native preview intentionally exposes its CLI and version only; VibeLang's
+ * native preview intentionally exposes its CLI and version only; Smithers's
  * compiler needs to grow the equivalent virtual-file API directly.
  */
 export class InMemoryTypeScriptCompiler implements TypeScriptCompiler {

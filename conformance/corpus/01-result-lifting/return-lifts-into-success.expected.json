@@ -1,0 +1,7 @@
+{
+  "title": "a plain return in a Result-returning function lifts into the success variant",
+  "expect": "output",
+  "stdout": [
+    "half 4"
+  ]
+}

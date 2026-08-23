@@ -1,0 +1,6 @@
+{
+  "title": "isOk and isError inspect the variant, and inspecting is a listed way to consume a Result",
+  "expect": "output",
+  "stdout": ["present isOk true", "present isError false", "absent isOk false", "absent isError true"],
+  "notes": "specification/failures.mdx, 'Matching and Transformation', lists isOk and isError first among the required Result operations, and the same section says a program MUST NOT discard a Result without 'returning, matching, transforming, inspecting, or unwrapping it'. This case pins both halves at once: the values are observable, and the program is accepted rather than being reported as a discarded Result."
+}

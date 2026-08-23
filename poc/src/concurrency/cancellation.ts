@@ -13,7 +13,7 @@ import {
 export { JoinCancellation as Cancellation, JoinCancelled as Cancelled };
 
 declare module "./join.ts" {
-  interface Cancelled extends NominalError<"vibelang:Cancelled@1"> {}
+  interface Cancelled extends NominalError<"smithers:Cancelled@1"> {}
 }
 
 export type CancellationInput = JoinCancellation | AbortSignal;

@@ -1,0 +1,12 @@
+{
+  "title": "the `orelse` operator is retired: use Optional.match(), map(), or unwrapOr()",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1001",
+      "line": 7,
+      "column": 26
+    }
+  ],
+  "notes": "specification/type-system.mdx, 'Optional': 'The earlier ?T, payload-capture, orelse, and .? grammar MUST NOT be part of the initial language.' docs/DECISIONS.md 'Optionals and nullability' (Locked) names the replacements: optional.match(...), optional.map(...), optional.unwrapOr(...)."
+}

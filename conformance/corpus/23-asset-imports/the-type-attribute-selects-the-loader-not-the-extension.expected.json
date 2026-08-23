@@ -1,0 +1,7 @@
+{
+  "title": "the type attribute selects the loader; the file extension is not a second, implicit selection grammar",
+  "expect": "output",
+  "stdout": ["true", "retries: 2", "region: us-east-1"],
+  "assets": ["reviewer.md", "settings.yaml"],
+  "notes": "docs/DECISIONS.md (Locked, Asset loaders): file extensions do not create a second implicit loader-selection grammar. specification/comptime.mdx, 'Built-In Formats': 'Non-code inputs MUST select their loader and mode with standard import attributes' and 'Text, bytes, Markdown, MDX, custom formats ... MUST use the same attribute mechanism with an appropriate `type` string.' docs/src/pages/guide/asset-imports.mdx: 'Import attributes are the stable selector.' The `.yaml` line is the load-bearing one: nothing registers a loader for that extension, so the file is readable only because the attribute named `text`. The `.md` line is the other direction: an extension a built-in does claim still yields the loader the attribute asked for. RETIRED MARKER (go, 2026-08-23): neither specifier used to reach a loader on the fork and both were treated as untrusted foreign modules (observed SMITHERS1510@1:17, SMITHERS1510@2:22). The fork now selects the loader from the `type` attribute and never from the extension; measured XPASS on go by `node conformance/runner/run.mjs --backend both --jobs 4`."
+}

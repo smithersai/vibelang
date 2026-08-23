@@ -1,0 +1,25 @@
+export class NotFound extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+export class Timeout extends Error {
+  constructor(readonly milliseconds: number) { super(`timed out after ${milliseconds}ms`) }
+}
+
+function load(key: string): Result<string, NotFound | Timeout> {
+  if (key === "slow") throw new Timeout(250)
+  if (key !== "ada") throw new NotFound(key)
+  return "Ada Lovelace"
+}
+
+const label = "NotFound"
+
+export function main(): string[] {
+  return [load("zoe").match({
+    ok: (value) => value,
+    error: (error) => error.match({
+      [label]: (failure: NotFound) => `guest for ${failure.key}`,
+      Timeout: (failure) => `${failure.milliseconds}`,
+    }),
+  })]
+}

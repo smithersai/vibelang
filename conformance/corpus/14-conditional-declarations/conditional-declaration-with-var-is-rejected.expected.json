@@ -1,0 +1,5 @@
+{
+  "title": "var in a conditional declaration hoists out of the construct and is refused",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1717", "line": 8, "column": 3 }]
+}

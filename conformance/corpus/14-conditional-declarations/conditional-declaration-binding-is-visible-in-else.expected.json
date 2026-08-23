@@ -1,0 +1,6 @@
+{
+  "title": "a conditional declaration's binding is scoped to the whole construct, so it is visible in the else branch",
+  "expect": "output",
+  "stdout": ["found Ada Lovelace", "missing, lookup returned null"],
+  "notes": "poc/src/language/README.md records this explicitly as PROVISIONAL: 'the binding IS visible in else/else if branches, matching Go's `if v := f(); cond { } else { }` and the only scoping the block rewrite can prove — not a ratified language rule.' docs/DECISIONS.md 'Expression-oriented language' (Locked) adopts declarations in conditionals but does not fix the else-visibility question. The case is here so that a deliberate change to the scoping rule is visible rather than silent, and its `notes` say so."
+}

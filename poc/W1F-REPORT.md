@@ -1,5 +1,7 @@
 # W1-F Runtime API Report
 
+> **Historical record.** This report describes work completed before the 2026-08-23 specification reduction. Some features it covers — the expression-form grammar, `defer`/`errdefer`, `Optional<T>`, `.unwrap()`, and the portable/native targets — are no longer part of the language. See `docs/DECISIONS.md`.
+
 ## API audit
 
 No required method names were missing, so no duplicate API methods were added.

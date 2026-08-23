@@ -1,0 +1,6 @@
+{
+  "title": "a base Layer receives an already-acquired service and does not own its lifetime: acquisition and finalization stay ordinary code",
+  "expect": "output",
+  "stdout": ["open db-1", "close db-1", "db-1"],
+  "notes": "specification/requirements.mdx, 'Layer Algebra': 'Resource acquisition and finalization MUST remain explicit ordinary code, initially through `using` or `defer`. A base Layer receives an already acquired service and MUST NOT own that service's lifetime.' docs/DECISIONS.md 'Requirements and dependency injection' (Locked) says the same. The line ORDER is the observation: `open` runs before the layer exists and `close` runs after the scope has ended, and neither is triggered by the Layer."
+}

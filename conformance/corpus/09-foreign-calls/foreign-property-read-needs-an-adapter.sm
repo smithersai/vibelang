@@ -1,0 +1,6 @@
+import { Panic } from "smithers:exceptions"
+import { settings } from "./foreign.ts"
+
+export function main(): Result<string[], Panic> {
+  return [`retries ${settings.retries}`]
+}

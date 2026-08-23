@@ -1,0 +1,7 @@
+{
+  "title": "with { type: \"markdown\" } keeps the raw source as the default export and preserves authored source locations",
+  "expect": "output",
+  "stdout": ["Reviewer", "1:Reviewer | 2:Checklist", "true", "# Reviewer"],
+  "assets": ["reviewer.md"],
+  "notes": "specification/comptime.mdx, 'Built-In Formats': 'The toolchain MUST include loaders for JSON, Markdown, and MDX' and 'Markdown and MDX MUST preserve source locations.' docs/ASSET_LOADERS.md (Locked): a direct `.md` import 'exports its source as a string by default' and 'The loader must preserve source locations for diagnostics.' The last stdout line is the location obligation made observable: slicing the raw source at the offset the loader reported for the first heading must produce that heading's own text. The named `frontmatter`/`headings` exports are recorded by the same page as a PROVISIONAL POC shape ('The final parsed document/frontmatter contract remains open'), so this case pins the two locked halves — raw source by default, offsets that resolve — and reads the provisional exports only as the channel that carries them. RETIRED MARKER (go, 2026-08-23): the `.md` specifier used to reach no loader on the fork and was treated as an untrusted foreign module (observed SMITHERS1510@1:46). The fork now ports the bounded frontmatter subset and reports authored UTF-16 heading offsets, so the offset-resolves line holds there too; measured XPASS on go by `node conformance/runner/run.mjs --backend both --jobs 4`."
+}

@@ -1,0 +1,11 @@
+{
+  "title": "a comptime result that is not canonical JSON data is rejected rather than emitted as a runtime expression",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VCT1005",
+      "line": 3,
+      "column": 29
+    }
+  ]
+}

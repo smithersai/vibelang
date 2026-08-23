@@ -16,7 +16,7 @@ Result<A, E>
 Promise<Result<A, E>>
 ```
 
-Failure MUST be represented in the ordinary return value. VibeLang MUST NOT encode `E` as an erased `throws` annotation or a second Promise type parameter.
+Failure MUST be represented in the ordinary return value. Smithers MUST NOT encode `E` as an erased `throws` annotation or a second Promise type parameter.
 
 ## Error Classes
 
@@ -40,50 +40,98 @@ Inside a function inferred or declared to return `Result<A, E>`:
 - `throw error` MUST produce the error variant and exit the function
 - returning an existing compatible Result MUST preserve it without nesting
 
-Authors MUST NOT need to write `Result.ok(...)` or `Result.err(...)`. Those constructors MUST NOT be part of the ordinary VibeLang authoring API.
+Authors MUST NOT need to write `Result.ok(...)` or `Result.err(...)`. Those constructors MUST NOT be part of the ordinary Smithers authoring API.
 
 A function with no fallible path MUST continue to return its ordinary success type rather than an unnecessary Result.
 
-A `.vibe` function with a reachable recoverable Error exit MUST return or infer a Result. An explicit non-Result return annotation on such a function MUST be a compile error. The distinguished `panic` case is tracked separately from ordinary recoverable Error variants.
+A `.sm` function with a reachable recoverable Error exit MUST return or infer a Result. An explicit non-Result return annotation on such a function MUST be a compile error. The distinguished `panic` case is tracked separately from ordinary recoverable Error variants.
 
 ## Inference and Public Contracts
 
 When a function body has no explicit return annotation, the compiler MUST infer `A` from successful returns and `E` from:
 
 - reachable `throw error` statements
-- propagated `Result.unwrap()` calls
+- propagated `!` operators
 - existing Results returned from the function
 - foreign exception or rejection boundaries
 
 Public, abstract, ambient, and declaration-only contracts MUST express fallibility directly with `Result<A, E>` or `Promise<Result<A, E>>`.
 
-VibeLang MUST NOT add a general `throws` clause, `!T` marker, prefix `try` expression, or postfix Result-recovery expression. Panic MUST be explicitly catchable; the final catch spelling is not fixed by this page.
+Smithers MUST NOT add a general `throws` clause, `!T` type marker, prefix `try` expression, or postfix Result-recovery expression. Panic MUST be explicitly catchable; the final catch spelling is not fixed by this page.
 
 ## Propagation
 
-`Result.unwrap()` MUST yield the success value or propagate the error variant from the enclosing Result-returning function:
+The postfix `!` operator MUST yield the success value or propagate the error variant from the enclosing Result-returning function:
 
 ```ts
 function displayName(id: string) {
-  const user = findUser(id).unwrap()
+  const user = findUser(id)!
   return user.displayName
 }
 ```
 
-The compiler MUST include the unwrapped Result's error type in the enclosing function's inferred `E`. The emitted error path MUST return the enclosing error variant rather than throw a recoverable JavaScript exception.
+This is the role Zig gives `try expr`, using an operator TypeScript already has, so it costs no grammar.
+
+`!` MUST NOT retain TypeScript's non-null assertion meaning in `.sm`. The definite-assignment form `x!: T` MUST also be rejected. Removing the prior meaning entirely is what makes the reuse unambiguous.
+
+`??` and `?.` MUST keep their ordinary nullish semantics and MUST NOT be reinterpreted for failures. Failure and absence are separate axes and MAY appear in one expression:
+
+```ts
+const name = findUser(id)!?.nickname ?? "anonymous"
+```
+
+Here `!` propagates `NotFound`, `?.` handles an absent nickname, and `??` supplies the absence fallback.
+
+The compiler MUST include the propagated Result's error type in the enclosing function's inferred `E`. The emitted error path MUST return the enclosing error variant rather than throw a recoverable JavaScript exception.
 
 At an explicit non-Result boundary, unsafe extraction MAY throw at runtime and MUST be visually distinct in API naming or diagnostics.
 
 ## Matching and Transformation
 
-Result values MUST provide compiler-aware operations equivalent in purpose to:
+Result values MUST provide a quality-of-life API modelled on the
+[better-result](https://github.com/dmmulroy/better-result) library, with
+Smithers's own construction rules.
+
+Inspection and matching:
 
 ```text
-isOk  isError  match  map  mapError  andThen  recover
-tap   tapError unwrap unwrapOr all
+isOk  isError  match
 ```
 
-`match` MUST require both success and error branches. Transformations MUST preserve or correctly combine the Result error type.
+Transformation and sequencing:
+
+```text
+map  mapError  andThen  andThenAsync  flatten
+```
+
+Recovery:
+
+```text
+recover  tryRecover  tryRecoverAsync
+```
+
+Observation, which MUST NOT change the Result:
+
+```text
+tap  tapAsync  tapError  tapErrorAsync  tapBoth  tapBothAsync
+```
+
+Extraction:
+
+```text
+unwrapOr  expect
+```
+
+Collection and adaptation, as statics:
+
+```text
+Result.all  Result.allAsync  Result.partition  Result.partitionAsync
+Result.try  Result.tryPromise  Result.codec
+```
+
+`match` MUST require both success and error branches. Transformations MUST preserve or correctly combine the Result error type. Async variants MUST return a Promise of the Result rather than a nested Result.
+
+Smithers MUST NOT expose `Result.ok`, `Result.err`, or a `TaggedError` factory: ordinary `return`, `throw`, and `class ... extends Error` construct those. Smithers MUST NOT require `Result.gen`/`yield*` do-notation, because postfix `!` already provides propagation.
 
 A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.
 
@@ -110,7 +158,7 @@ Handler selection MUST use compiler-stable nominal identity, not a forgeable use
 
 Calling any TypeScript, JavaScript, or other foreign runtime implementation MUST add the distinguished checked `panic` case by default. This applies even when the foreign declaration omits throws, and it includes Promise rejection and a runtime implementation violating its declared signature.
 
-A caller MUST propagate panic, explicitly catch it, or use a trusted adapter that catches and translates it. `panic` is imported from `vibelang:exceptions` and accepts an optional message or underlying Error.
+A caller MUST propagate panic, explicitly catch it, or use a trusted adapter that catches and translates it. `panic` is imported from `smithers:exceptions` and accepts an optional message or underlying Error.
 
 The compiler MUST recognize trusted JSDoc/declaration metadata at the boundary. `@throws {never}` removes the default panic case; `@throws {T}` declares the stated foreign error channel. These annotations are trust claims and MUST remain visible in declarations and tooling. Exact overload, declaration-merging, generic, and multiple-tag rules remain open.
 
@@ -118,23 +166,27 @@ The compiler MUST recognize trusted JSDoc/declaration metadata at the boundary. 
 
 ## Promise Semantics
 
-Authored `.vibe` code MUST consume Promise instances only through `await`.
+Authored `.sm` code MUST consume Promise instances only through `await`.
 
 Calls to Promise instance `.then()`, `.catch()`, or `.finally()` MUST be compile errors. Imported TypeScript and JavaScript modules retain ordinary Promise behavior internally.
 
 Awaiting `Promise<Result<A, E>>` MUST produce `Result<A, E>`. `await` MUST NOT automatically unwrap, recover, or discard the Result.
 
-Promise rejection at an unannotated VibeLang foreign boundary MUST become the checked panic case rather than an untyped rejection escaping the declared contract.
+Promise rejection at an unannotated Smithers foreign boundary MUST become the checked panic case rather than an untyped rejection escaping the declared contract.
 
 ## JavaScript `try/catch`
 
-Ordinary statement-form JavaScript `try/catch` remains valid where JavaScript interoperability requires it. It is not the typed recovery surface for VibeLang Results, and its presence MUST NOT change a function's Result contract implicitly.
+Ordinary statement-form JavaScript `try/catch` remains valid where JavaScript interoperability requires it. It is not the typed recovery surface for Smithers Results, and its presence MUST NOT change a function's Result contract implicitly.
 
 ## Cleanup
 
-VibeLang MUST support `defer` and `errdefer`.
+Smithers MUST NOT add `defer` or `errdefer`. Scope-exit cleanup uses TC39
+explicit resource management (`using` and `await using`), inherited unchanged
+from TypeScript.
 
-- `defer` runs when the containing scope exits.
-- `errdefer` runs when a Result-returning scope exits through its error variant.
+Cleanup conditioned on the error variant MUST be written explicitly in the
+failure path rather than registered by a dedicated statement form.
 
-Ordering, async finalization, cancellation, and cleanup-error composition require further normative specification.
+Disposal ordering relative to a compiler-generated `!` early return,
+async finalization, cancellation, and cleanup-error composition require further
+normative specification.

@@ -1,0 +1,7 @@
+{
+  "title": "with { type: \"bytes\" } produces a typed byte array through the same attribute mechanism as every other loader",
+  "expect": "output",
+  "stdout": ["9", "83", "77", "true"],
+  "assets": ["logo.bin"],
+  "notes": "docs/ASSET_LOADERS.md (Locked) prints `import image from \"./logo.png\" with { type: \"bytes\" }` alongside the text form, under 'Raw source acquisition uses the same import-attribute surface as Import Text and Import Bytes'. The `instanceof` line is the observation that the module is a real typed array rather than a string or a path. HARNESS LIMIT: `conformance/assets/` files are read and staged as UTF-8 text, so a byte-exact staged asset must be ASCII — this one is. A true binary asset (an actual PNG) cannot be staged today; closing that means a base64 channel through both backends, and it would pin nothing this case does not. RETIRED MARKER (go, 2026-08-23): the `.bin` specifier used to reach no loader on the fork and was treated as an untrusted foreign module. The fork now embeds the staged bytes as a real `Uint8Array`; measured XPASS on go by `node conformance/runner/run.mjs --backend both --jobs 4`, with all four lines identical on both backends."
+}

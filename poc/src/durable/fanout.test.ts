@@ -20,9 +20,9 @@ import {
   type PlanTemplate
 } from "./index.ts"
 
-const ACTION_FILE = "fanout-action.vibe"
+const ACTION_FILE = "fanout-action.sm"
 const compiledAction = compileActionContract(`
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -72,7 +72,7 @@ const implementationContract = compileActionImplementationContract({
 })
 
 const source = `
-import { durable, fanOut } from "vibelang:flows"
+import { durable, fanOut } from "smithers:flows"
 import { Transform } from "test:fanout-actions"
 
 throw new Error("the authored fan-out module must never execute")
@@ -95,7 +95,7 @@ const actionBinding = Object.freeze({
 })
 
 const compileFanOut = (text = source) => compileDurableSource(text, {
-  fileName: "flows/fanout.vibe",
+  fileName: "flows/fanout.sm",
   flowId: "test/fanout/Batch",
   flowVersion: 1,
   actions: [actionBinding]
@@ -175,7 +175,7 @@ test("fanOut rejects index keys, captures, nested templates, and unrelated spell
       "item => fanOut(input.items, nested => nested.id, nested => Transform.run({ id: nested.id, value: nested.value }))"
     ),
     source
-      .replace("import { durable, fanOut } from \"vibelang:flows\"", "import { durable, fanOut as compilerFanOut } from \"vibelang:flows\"\nconst fanOut = (...values: unknown[]) => values")
+      .replace("import { durable, fanOut } from \"smithers:flows\"", "import { durable, fanOut as compilerFanOut } from \"smithers:flows\"\nconst fanOut = (...values: unknown[]) => values")
       .replace("return fanOut(", "void compilerFanOut\n  return fanOut(")
   ]
   for (const fixture of fixtures) {
@@ -186,7 +186,7 @@ test("fanOut rejects index keys, captures, nested templates, and unrelated spell
 
 test("fanOut composes with persisted timers and selected branch fragments", async () => {
   const compiled = compileFanOut(`
-import { durable, fanOut, sleep } from "vibelang:flows"
+import { durable, fanOut, sleep } from "smithers:flows"
 import { Transform } from "test:fanout-actions"
 export const Batch = durable(function Batch(input: {
   run: boolean
@@ -346,7 +346,7 @@ test("a committed keyed child survives coordinator crash and resumes without rei
   const compiled = compileFanOut()
   if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
   const deployment = deploymentFor(compiled.plan, "fanout-restart")
-  const directory = mkdtempSync(join(tmpdir(), "vibe-fanout-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-fanout-"))
   const database = join(directory, "durable.sqlite")
   observedCalls.length = 0
   const input = { items: [{ id: "resume", value: 9 }] }

@@ -184,7 +184,7 @@ describe("Socket", () => {
     expect(client.remote.port).toBe(port);
     expect(server.local.port).toBe(port);
 
-    const payload = "vibe".repeat(4_096);
+    const payload = "smithers".repeat(4_096);
     value(await client.write(encoder.encode(payload)));
     expect(await readExactly(server, payload.length)).toBe(payload);
 

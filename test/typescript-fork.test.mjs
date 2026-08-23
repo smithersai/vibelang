@@ -23,7 +23,7 @@ test("TypeScript fork manifest pins the smithersai fork", () => {
   assert.match(manifest.upstreamBaseline, /^[0-9a-f]{40}$/);
 });
 
-test("TypeScript fork status is machine-readable before and after import", () => {
+test("TypeScript fork capsule status is machine-readable", () => {
   const result = spawnSync(
     process.execPath,
     ["scripts/vendor-typescript.mjs", "status"],
@@ -32,9 +32,13 @@ test("TypeScript fork status is machine-readable before and after import", () =>
 
   assert.equal(result.status, 0, result.stderr);
   const status = JSON.parse(result.stdout);
-  assert.equal(status.configuredRevision, manifest.revision);
-  assert.equal(status.vendorPath, manifest.vendorPath);
-  assert.equal(typeof status.sourcePresent, "boolean");
-  assert.equal(typeof status.compilerModulePresent, "boolean");
+  assert.equal(status.revision, manifest.revision);
+  assert.equal(status.present, true);
+  assert.equal(status.format, "git-bundle+file-go-proxy");
+  assert.equal(status.requestedLedgerStrategy, manifest.strategy);
+  assert.equal(Number.isInteger(status.dependencyModules), true);
+  assert.equal(Number.isInteger(status.payloadFiles), true);
+  assert.equal(Number.isInteger(status.payloadBytes), true);
+  assert.deepEqual(status.errors, []);
   assert.equal(typeof status.synchronized, "boolean");
 });

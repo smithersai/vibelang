@@ -1,0 +1,19 @@
+const entries = new Map<string, string>([["ada", "Ada Lovelace"]])
+
+function lookup(key: string): string | null {
+  return entries.get(key) ?? null
+}
+
+export function describe(key: string): string {
+  if (const name = lookup(key); name !== null) {
+    return `found ${name}`
+  } else {
+    // The binding is scoped to the whole conditional construct, including the
+    // else branch, matching Go's `if v := f(); cond { } else { }`.
+    return `missing, lookup returned ${name}`
+  }
+}
+
+export function main(): string[] {
+  return [describe("ada"), describe("zoe")]
+}

@@ -1,0 +1,11 @@
+{
+  "title": "the module-initialization trust claim is not the first export's own @throws claim: a throwing export still charges the panic channel",
+  "expect": "output",
+  "stdout": [
+    "panic"
+  ],
+  "typescript": [
+    "module-init-only.ts"
+  ],
+  "notes": "specification/compatibility.mdx, 'Runtime TypeScript Dependency' (Locked): 'Calling an unannotated foreign runtime value MUST additionally add the checked `panic` case ... Trusted `@throws {never}` metadata opts out.' specification/failures.mdx:115 (Locked): '`@throws {never}` removes the default panic case.' Those are two different claims about two different things, and conformance/support/module-init-only.ts writes only the first: the module initializer is trusted, `danger` is not annotated at all. Because a file-leading JSDoc is also the leading trivia of the first statement, an implementation that reads `@throws` from that trivia without excluding the `@module` claim reports policy 'never' for `danger` and drops its panic row \u2014 so writing the header the specification prints certifies a function that always throws. This is the highest-value case in the trust-marker set for exactly that reason: its trigger is the documented happy path. The observation is behavioural rather than a diagnostic: `danger` really does throw, so under the fail-open the throw escapes an unwrapped call and the program exits non-zero instead of printing `panic`. Both backends print `panic` today (measured 2026-08-23); the Go fork produced the escaping throw before compiler/forkbridge/lowering.go.txt's `throwsAnnotation` learned to reject a comment carrying the module tag."
+}

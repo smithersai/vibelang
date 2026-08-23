@@ -62,9 +62,9 @@ export class InvalidPath extends Error {
     this.name = "InvalidPath";
   }
 }
-export interface InvalidPath extends NominalError<"vibelang:InvalidPath@1"> {}
+export interface InvalidPath extends NominalError<"smithers:InvalidPath@1"> {}
 
-registerErrorCodec(InvalidPath, "vibelang:InvalidPath@1", {
+registerErrorCodec(InvalidPath, "smithers:InvalidPath@1", {
   encode: (error): JsonValue => ({ path: error.path, reason: error.reason, message: error.message }),
   decode: (payload) => {
     if (

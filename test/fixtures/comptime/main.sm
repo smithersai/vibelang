@@ -1,0 +1,11 @@
+import { comptime as staticValue } from "smithers:comptime"
+import { buildConfig } from "./config.sm"
+
+export const compiled = staticValue(buildConfig)
+
+export class ConfigFailure extends Error {}
+
+export function readCompiled(fail: boolean): Result<string, ConfigFailure> {
+  if (fail) throw new ConfigFailure("failed")
+  return compiled.message
+}

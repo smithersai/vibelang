@@ -1,0 +1,5 @@
+{
+  "title": "returning an existing compatible Result preserves it without nesting",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "no entry for zoe"]
+}

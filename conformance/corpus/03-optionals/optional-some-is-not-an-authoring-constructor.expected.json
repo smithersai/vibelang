@@ -1,0 +1,9 @@
+{
+  "title": "the authoring API omits Optional.some and Optional.none: ordinary return of a value or of null/undefined constructs the variants",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "SMITHERS1201", "line": 2, "column": 24 },
+    { "code": "SMITHERS1201", "line": 3, "column": 10 }
+  ],
+  "notes": "specification/type-system.mdx, 'Optional': 'The ordinary authoring API MUST NOT require Optional.some(...) or Optional.none().' docs/DECISIONS.md 'Optionals and nullability' (Locked) states it as a prohibition: 'Authors do not write Optional.some(...) or Optional.none().' This is the Optional twin of 01-result-lifting/result-ok-is-not-an-authoring-constructor."
+}

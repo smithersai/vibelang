@@ -1,0 +1,5 @@
+{
+  "title": "a produced Result that is never returned, matched, transformed, inspected, or unwrapped is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1301", "line": 11, "column": 3 }]
+}

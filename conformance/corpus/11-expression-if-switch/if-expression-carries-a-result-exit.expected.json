@@ -1,0 +1,5 @@
+{
+  "title": "a value if composes with an unwrap propagation point in the same function",
+  "expect": "output",
+  "stdout": ["100", "90", "score -1 is out of range"]
+}

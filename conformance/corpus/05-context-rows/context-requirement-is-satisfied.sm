@@ -1,0 +1,26 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function requireEntry(key: string): Result<string, Missing> {
+  const directory = Directory.context()
+  const found = directory.lookup(key)
+  if (found === null) throw new Missing(key)
+  return found
+}
+
+const live: Directory = { lookup: (key) => (key === "ada" ? "Ada Lovelace" : null) }
+
+export function main(): string[] {
+  return Layer.provide(Layer.succeed(Directory, live), () => [
+    requireEntry("ada").match({ ok: (value) => value, error: (error) => error.message }),
+    requireEntry("zoe").match({ ok: (value) => value, error: (error) => error.message }),
+  ])
+}

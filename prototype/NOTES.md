@@ -1,4 +1,4 @@
-# VibeLang prototype — NOTES
+# Smithers prototype — NOTES
 
 Quickest-possible working prototype. Speed was the goal; this is a demo-grade
 lowering pipeline, not a compiler. Run it with `./run.sh` (or `bun run demo`).
@@ -14,7 +14,7 @@ evidence about the limits of regex lowering.
 
 - `error Name { field: type }` → class extending `__VSError` (which extends `Error`)
   with `_tag`, declared fields, a fields-object constructor, and the
-  `Symbol.for("vibelang.failure")` brand.
+  `Symbol.for("smithers.failure")` brand.
 - `try expr` in expression position → `__vsTry(() => (expr))` (pass-through; JS
   throw already propagates — the pass just makes the syntax legal).
 - `expr catch |e| fallback` → `__vsCatch(() => expr, (e) => fallback)`. Branded
@@ -32,7 +32,7 @@ evidence about the limits of regex lowering.
 
 ## Shortcuts / hacks taken (deliberately)
 
-1. **No parser.** `vsc.ts` is ~6 ordered regex passes over the raw source plus a
+1. **No parser.** `smithersc.ts` is ~6 ordered regex passes over the raw source plus a
    tiny brace/paren matcher (`matchDelim`) and two expression-boundary
    heuristics (`scanExprBack` / `scanExprFwd`). Expression boundaries are guessed
    by walking until an unbalanced delimiter or a `= , ; { }` / newline at depth 0.
@@ -93,5 +93,5 @@ skip strings.
   stripping it; check `catch |e|` exhaustiveness against the inferred failure set.
 - `AsyncLocalStorage`-backed context; `uses` on arrows/methods; lazy per-reference
   capability resolution (`__ctx().Db`) so unused capabilities don't throw.
-- Source maps, a file watcher, and a bun plugin (`Bun.plugin` onLoad for `.vibe`)
-  so `.vibe` files import directly without a separate transpile step.
+- Source maps, a file watcher, and a bun plugin (`Bun.plugin` onLoad for `.sm`)
+  so `.sm` files import directly without a separate transpile step.

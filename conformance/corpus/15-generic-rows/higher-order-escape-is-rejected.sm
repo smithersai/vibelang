@@ -1,0 +1,8 @@
+import { attempt } from "./higher-order-escape-is-rejected.mod.sm"
+
+export const chosen = attempt
+
+export function run(limit: number): number {
+  const runner = chosen
+  return limit
+}

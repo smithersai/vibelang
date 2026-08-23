@@ -21,7 +21,7 @@ import {
 } from "./index.ts"
 
 const extractContract = compileActionContract(`
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 class ExtractFailed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -29,7 +29,7 @@ export abstract class Extract extends Action<
   (input: { id: string; value: number }) => Result<{ id: string; extracted: number }, ExtractFailed>
 > {}
 `, {
-  fileName: "contracts/steps-extract.vibe",
+  fileName: "contracts/steps-extract.sm",
   exportName: "Extract",
   id: "test/steps/Extract",
   version: 1
@@ -37,7 +37,7 @@ export abstract class Extract extends Action<
 if (!extractContract.ok) throw new Error(JSON.stringify(extractContract.diagnostics))
 
 const publishContract = compileActionContract(`
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 class PublishFailed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -45,7 +45,7 @@ export abstract class Publish extends Action<
   (input: { id: string; amount: number }) => Result<{ id: string; published: number }, PublishFailed>
 > {}
 `, {
-  fileName: "contracts/steps-publish.vibe",
+  fileName: "contracts/steps-publish.sm",
   exportName: "Publish",
   id: "test/steps/Publish",
   version: 1
@@ -72,7 +72,7 @@ const actionBindings = Object.freeze([
 ])
 
 const source = `
-import { durable, fanOut } from "vibelang:flows"
+import { durable, fanOut } from "smithers:flows"
 import { Extract, Publish } from "test:step-actions"
 
 throw new Error("the authored multi-step fan-out module must never execute")
@@ -92,7 +92,7 @@ export const Pipeline = durable(function Pipeline(input: {
 `
 
 const compilePipeline = (text = source) => compileDurableSource(text, {
-  fileName: "flows/fanout-steps.vibe",
+  fileName: "flows/fanout-steps.sm",
   flowId: "test/steps/Pipeline",
   flowVersion: 1,
   actions: actionBindings
@@ -224,7 +224,7 @@ test("a single-step block body stays format-1 flat and byte-compatible with the 
   expect((blockForm.plan.nodes[0] as { actionId?: string }).actionId).toBe(Extract.descriptor.id)
 })
 
-test("unsupported multi-step body forms fail closed with VIBE4117 diagnostics", () => {
+test("unsupported multi-step body forms fail closed with SMITHERS4117 diagnostics", () => {
   const fixtures: readonly { readonly body: string; readonly match?: string }[] = [
     // mutable binding
     { body: "let extracted = Extract.run({ id: item.id, value: item.value }).unwrap()\n      return Publish.run({ id: item.id, amount: 1 })" },
@@ -249,7 +249,7 @@ test("unsupported multi-step body forms fail closed with VIBE4117 diagnostics", 
     const compiled = compilePipeline(text)
     expect(compiled.ok).toBe(false)
     if (compiled.ok) throw new Error(`expected failure for body: ${fixture.body}`)
-    expect(["VIBE4117", "VIBE4110"]).toContain(compiled.diagnostics[0]!.code)
+    expect(["SMITHERS4117", "SMITHERS4110"]).toContain(compiled.diagnostics[0]!.code)
   }
 })
 
@@ -387,7 +387,7 @@ test("crashes after each step boundary resume without reinvoking committed provi
   const compiled = compilePipeline()
   if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
   const deployment = deploymentFor(compiled.plan, "steps-crash")
-  const directory = mkdtempSync(join(tmpdir(), "vibe-fanout-steps-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-fanout-steps-"))
   const database = join(directory, "durable.sqlite")
   const input = { items: [{ id: "resume", value: 4 }] }
   resetCalls()
@@ -465,7 +465,7 @@ test("two independent connections converge on one step pipeline winner", async (
   const compiled = compilePipeline()
   if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
   const deployment = deploymentFor(compiled.plan, "steps-race")
-  const directory = mkdtempSync(join(tmpdir(), "vibe-fanout-steps-race-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-fanout-steps-race-"))
   const database = join(directory, "durable.sqlite")
   const input = { items: [{ id: "x", value: 1 }, { id: "y", value: 2 }] }
   resetCalls()

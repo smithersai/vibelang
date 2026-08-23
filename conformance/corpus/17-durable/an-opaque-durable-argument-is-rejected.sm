@@ -1,0 +1,15 @@
+import { durable } from "smithers:flows"
+
+// A durable Flow is compiled into a Plan before anything runs, so the compiler
+// has to be able to name the function it is compiling. `pick()` chooses one at
+// RUN time, which is the one moment a template compiler is not present for, so
+// there is nothing to lower and nothing to digest. Accepting it is the fail-open
+// direction of the whole durable boundary: it would have to fall back to a
+// runtime callback wrapper, which is the exact shape a Flow descriptor replaces.
+const pick = (): ((input: { key: string }) => { value: string }) => (input) => ({ value: input.key })
+
+export const Flow = durable(pick())
+
+export function main(): string[] {
+  return [Flow.artifactSource]
+}

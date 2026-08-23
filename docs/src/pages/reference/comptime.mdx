@@ -21,12 +21,21 @@ deterministic. General JavaScript, implicit evaluation, re-exported markers,
 spread/destructuring, labeled control flow, closures as values, ambient state,
 and non-value-derived computed/mapped/generic types remain design or fail
 closed.
+
+With `--backend go` on `smithers check`, `compile`, or `run`, the pinned fork
+independently recognizes the same compiler-owned binding and lowers a bounded
+comptime language through its checked AST. It supports canonical values, local helpers,
+loops and interpreter-owned mutation, hard evaluation budgets,
+`comptime.target`, and value-derived literal aliases. It deliberately refuses
+`embed(...)` until tracked asset bytes exist in the Go request protocol, and it
+does not claim the TypeScript instrument's schema reification, loader, or
+persistent-cache surfaces.
 :::
 
 ## Explicit Form
 
 ```ts
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 
 const value = comptime(expression)
 const buildFunction = comptime(functionValue)
@@ -43,7 +52,7 @@ const value = comptime(() => {
 })()
 ```
 
-The compiler recognizes the resolved import identity. Import aliases retain these semantics; unrelated functions named `comptime` do not. `vibelang:comptime` is a compiler-owned virtual module and has no ordinary uncompiled runtime fallback.
+The compiler recognizes the resolved import identity. Import aliases retain these semantics; unrelated functions named `comptime` do not. `smithers:comptime` is a compiler-owned virtual module and has no ordinary uncompiled runtime fallback.
 
 Valid result categories include:
 
@@ -69,7 +78,7 @@ executes work explicitly rooted at the imported `comptime` intrinsic.
 ## Target
 
 ```ts
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 
 comptime.target
 ```
@@ -77,7 +86,7 @@ comptime.target
 Current target vocabulary is direction and includes:
 
 ```text
-node  bun  deno  browser  edge  native  wasm
+node  bun  deno  browser  edge
 ```
 
 A branch resolved from `comptime.target` is eliminated for other targets.

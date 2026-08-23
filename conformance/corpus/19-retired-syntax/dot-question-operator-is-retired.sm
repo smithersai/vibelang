@@ -1,0 +1,8 @@
+function lookup(id: number): Optional<string> {
+  return id === 1 ? "Ada" : null
+}
+
+export function main(): string[] {
+  const name = lookup(1).?
+  return [name]
+}

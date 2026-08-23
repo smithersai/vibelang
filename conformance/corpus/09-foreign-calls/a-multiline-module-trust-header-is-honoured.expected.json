@@ -1,0 +1,11 @@
+{
+  "title": "a real module-initialization header whose tags sit on their own decorated JSDoc lines still confers module trust",
+  "expect": "output",
+  "stdout": [
+    "ADA"
+  ],
+  "typescript": [
+    "decorated-trust-header.ts"
+  ],
+  "notes": "specification/compatibility.mdx, 'Runtime TypeScript Dependency' (Locked): trusted `@throws {never}` metadata opts out of the panic case, and the module-initialization claim is a leading JSDoc rather than a particular byte layout. This is the over-correction guard for 09-foreign-calls/near-miss-trust-markers-do-not-confer-module-trust: the obvious way to refuse `@throws` split from `{never}` is to require the two tags to be adjacent, and that would refuse this file, which is how a real header is written \u2014 tags on their own decorated lines, after a prose summary, with a blank line before the first export. The module claim is honoured (no SMITHERS1510) and `safe` carries its OWN `@throws {never}`, which is why the call needs no Result channel; that separation is the same one 09-foreign-calls/module-init-trust-is-not-a-function-level-throws-claim pins from the other side. This repo has shipped over-corrections while closing retired-syntax and specifier rules before, which is why the refusal and the acceptance are pinned in the same lane."
+}

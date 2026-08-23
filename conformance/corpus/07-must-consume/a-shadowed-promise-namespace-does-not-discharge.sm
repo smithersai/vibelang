@@ -1,0 +1,19 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+async function load(key: string): Promise<Result<string, Missing>> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+// The same shadowing at the Promise combinators. The member is `async`, so its
+// call really does produce a Promise and a discharge test that only asks
+// whether the combinator returned something promise-shaped is satisfied by it.
+const Promise = { async all(values: readonly unknown[]) { return values } }
+
+export async function main(): Promise<string[]> {
+  const started = load("ada")
+  await Promise.all([started])
+  return ["done"]
+}

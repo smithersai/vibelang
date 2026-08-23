@@ -1,0 +1,17 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+const entries = new Map<string, number>([["ada", 96]])
+
+export function scoreOf(key: string): Result<number, Missing> {
+  const found = entries.get(key)
+  if (found === undefined) throw new Missing(key)
+  return found
+}
+
+export function main(): Result<string[], Missing> {
+  const first = scoreOf("ada").unwrap()
+  const second = scoreOf("zoe").unwrap()
+  return [`${first} ${second}`]
+}

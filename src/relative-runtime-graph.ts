@@ -58,8 +58,8 @@ export interface RelativeRuntimeGraph {
     readonly resolutionAliases: readonly string[];
     readonly stripImportAttributes?: boolean;
   }[];
-  /** Rewrite literal dynamic imports which survive Vibe's static-import pass. */
-  readonly rewriteVibeRuntimeCalls: (
+  /** Rewrite literal dynamic imports which survive Smithers's static-import pass. */
+  readonly rewriteSmithersRuntimeCalls: (
     code: string,
     authoredFileName: string,
     outputFileName: string,
@@ -67,7 +67,7 @@ export interface RelativeRuntimeGraph {
 }
 
 export interface RuntimeGraphDiagnostic {
-  readonly code: "VIBE1510";
+  readonly code: "SMITHERS1510";
   readonly severity: "error";
   readonly message: string;
   readonly fileName: string;
@@ -311,13 +311,13 @@ function hasLeadingModuleNoThrowMarker(source: string, fileName: string): boolea
       /@throws\s*\{\s*never\s*\}/i.test(comment));
 }
 
-function resolveVibeSpecifier(containingFile: string, specifier: string): string | undefined {
+function resolveSmithersSpecifier(containingFile: string, specifier: string): string | undefined {
   if (!specifier.startsWith(".")) return undefined;
   const exact = resolve(dirname(containingFile), specifier);
   const candidates: string[] = [];
-  if (exact.endsWith(".vibe")) candidates.push(exact);
-  else if (extname(exact) === "") candidates.push(`${exact}.vibe`, resolve(exact, "index.vibe"));
-  else if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.vibe`);
+  if (exact.endsWith(".sm")) candidates.push(exact);
+  else if (extname(exact) === "") candidates.push(`${exact}.sm`, resolve(exact, "index.sm"));
+  else if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.sm`);
   const match = candidates.find((candidate) => existsSync(candidate));
   return match ? realpathSync(match) : undefined;
 }
@@ -382,22 +382,22 @@ function collisionKey(fileName: string): string {
 export function buildRelativeRuntimeGraph(options: {
   readonly rootDir: string;
   readonly outDir: string;
-  readonly vibeSources: readonly RuntimeGraphSeed[];
-  readonly vibeOutputs: readonly RuntimeOutputReservation[];
+  readonly smithersSources: readonly RuntimeGraphSeed[];
+  readonly smithersOutputs: readonly RuntimeOutputReservation[];
   readonly generatedRuntimeSources?: readonly GeneratedRuntimeSource[];
   readonly budget: RuntimeSourceBudget;
 }): RelativeRuntimeGraph {
   const rootDir = realpathSync(resolve(options.rootDir));
   const outDir = resolve(options.outDir);
-  const vibeByName = new Map(options.vibeSources.map((source) => [resolve(source.fileName), source]));
-  let totalBytes = options.vibeSources.reduce((total, source) => total + source.bytes, 0);
-  let fileCount = options.vibeSources.length;
+  const smithersByName = new Map(options.smithersSources.map((source) => [resolve(source.fileName), source]));
+  let totalBytes = options.smithersSources.reduce((total, source) => total + source.bytes, 0);
+  let fileCount = options.smithersSources.length;
   if (fileCount > options.budget.maximumFiles || totalBytes > options.budget.maximumTotalBytes) {
     throw new TypeError("relative runtime project exceeds its source budget");
   }
 
   const identityOwners = new Map<string, string>();
-  for (const source of options.vibeSources) {
+  for (const source of options.smithersSources) {
     const absolute = resolve(source.fileName);
     const metadata = statSync(absolute);
     const identity = `${metadata.dev}:${metadata.ino}`;
@@ -409,7 +409,7 @@ export function buildRelativeRuntimeGraph(options: {
   }
 
   const outputOwners = new Map<string, string>();
-  for (const reservation of options.vibeOutputs) {
+  for (const reservation of options.smithersOutputs) {
     const output = resolve(reservation.outputFileName);
     const key = collisionKey(output);
     const prior = outputOwners.get(key);
@@ -436,7 +436,7 @@ export function buildRelativeRuntimeGraph(options: {
       throw new TypeError(`compiler-generated runtime source escapes the project root: ${generated.sourceFileName}`);
     }
     if (
-      existsSync(sourceFileName) || vibeByName.has(sourceFileName) ||
+      existsSync(sourceFileName) || smithersByName.has(sourceFileName) ||
       generatedByName.has(sourceFileName) || generatedByAlias.has(sourceFileName)
     ) {
       throw new TypeError(`compiler-generated runtime source collides with a project path: ${sourceFileName}`);
@@ -475,7 +475,7 @@ export function buildRelativeRuntimeGraph(options: {
       if (!isInside(rootDir, alias) || alias === rootDir || alias === sourceFileName) {
         throw new TypeError(`compiler-generated runtime alias escapes or aliases its generated identity: ${alias}`);
       }
-      if (vibeByName.has(alias) || generatedByName.has(alias) || generatedByAlias.has(alias)) {
+      if (smithersByName.has(alias) || generatedByName.has(alias) || generatedByAlias.has(alias)) {
         throw new TypeError(`compiler-generated runtime alias conflicts with another project identity: ${alias}`);
       }
     }
@@ -576,7 +576,7 @@ export function buildRelativeRuntimeGraph(options: {
     }
     const relativeName = displayPath(rootDir, canonical);
     const emittedRelative = relativeName.replace(/\.(?:tsx?|mts|cts|jsx?|mjs|cjs)$/i, outputExtension(canonical));
-    const output = resolve(outDir, "__vibelang_foreign__", emittedRelative);
+    const output = resolve(outDir, "__smithers_foreign__", emittedRelative);
     const outputKey = collisionKey(output);
     const priorOwner = outputOwners.get(outputKey);
     if (priorOwner && priorOwner !== canonical) {
@@ -614,10 +614,10 @@ export function buildRelativeRuntimeGraph(options: {
     containingFile: string,
     containingOutput: string,
     edge: ModuleEdge,
-    fromVibe: boolean,
+    fromSmithers: boolean,
     checkerOnly = false,
   ): ResolvedEdge => {
-    const importerFormat = fromVibe ? "esm" : formatOf(containingFile);
+    const importerFormat = fromSmithers ? "esm" : formatOf(containingFile);
     if (!checkerOnly && !edge.typeOnly && importerFormat === "esm" &&
       (edge.kind === "require" || edge.kind === "import-equals")) {
       throw new TypeError(
@@ -630,18 +630,18 @@ export function buildRelativeRuntimeGraph(options: {
     }
     // A compiler-generated asset module is content the compiler itself wrote at
     // a path it owns, so its exact rewrite map is already known. That is the one
-    // literal dynamic import a Vibe module may spell; every other Vibe dynamic
+    // literal dynamic import a Smithers module may spell; every other Smithers dynamic
     // edge still waits on the frontend.
-    const generated = fromVibe && edge.specifier.startsWith(".")
+    const generated = fromSmithers && edge.specifier.startsWith(".")
       ? generatedByAlias.get(resolve(dirname(containingFile), edge.specifier))
       : undefined;
-    if (fromVibe && !edge.typeOnly && edge.kind === "dynamic-import" && generated === undefined) {
+    if (fromSmithers && !edge.typeOnly && edge.kind === "dynamic-import" && generated === undefined) {
       throw new TypeError(
-        `${containingFile}: Vibe dynamic import is deferred until the frontend can preserve its exact rewrite map`,
+        `${containingFile}: Smithers dynamic import is deferred until the frontend can preserve its exact rewrite map`,
       );
     }
     if (!edge.specifier.startsWith(".")) return edge;
-    if (fromVibe) {
+    if (fromSmithers) {
       if (generated !== undefined) {
         if (edge.typeOnly ||
           (edge.kind !== "import" && edge.kind !== "export" && edge.kind !== "dynamic-import")) {
@@ -656,27 +656,27 @@ export function buildRelativeRuntimeGraph(options: {
           targetOutputFileName: generated.outputFileName,
         };
       }
-      const vibeTarget = resolveVibeSpecifier(containingFile, edge.specifier);
-      if (vibeTarget) {
-        if (!vibeByName.has(vibeTarget)) {
-          throw new TypeError(`relative Vibe dependency was not loaded into the project: ${vibeTarget}`);
+      const smithersTarget = resolveSmithersSpecifier(containingFile, edge.specifier);
+      if (smithersTarget) {
+        if (!smithersByName.has(smithersTarget)) {
+          throw new TypeError(`relative Smithers dependency was not loaded into the project: ${smithersTarget}`);
         }
         if (!edge.typeOnly && (edge.kind === "require" || edge.kind === "import-equals")) {
-          throw new TypeError(`Vibe modules may only load another .vibe module through a static import/export: ${containingFile}`);
+          throw new TypeError(`Smithers modules may only load another .sm module through a static import/export: ${containingFile}`);
         }
-        return { ...edge, targetFileName: vibeTarget };
+        return { ...edge, targetFileName: smithersTarget };
       }
       // Preserve the language frontend's source-located missing-module
-      // diagnostic for an explicitly authored Vibe edge.
-      if (edge.specifier.endsWith(".vibe")) return edge;
+      // diagnostic for an explicitly authored Smithers edge.
+      if (edge.specifier.endsWith(".sm")) return edge;
     }
     const foreign = resolveForeignSpecifier(containingFile, edge.specifier);
     if (!foreign) {
       const graph = edge.typeOnly || checkerOnly ? "checker dependency" : "runtime import";
       throw new TypeError(`${containingFile}: unresolved relative ${graph} ${JSON.stringify(edge.specifier)}`);
     }
-    if (vibeByName.has(foreign.canonical)) {
-      throw new TypeError(`foreign modules may not import a .vibe implementation: ${containingFile}`);
+    if (smithersByName.has(foreign.canonical)) {
+      throw new TypeError(`foreign modules may not import a .sm implementation: ${containingFile}`);
     }
     if (edge.typeOnly || checkerOnly) {
       reserveCheckerDependency(foreign.canonical);
@@ -694,14 +694,14 @@ export function buildRelativeRuntimeGraph(options: {
     };
   };
 
-  for (const source of options.vibeSources) {
+  for (const source of options.smithersSources) {
     const absolute = resolve(source.fileName);
-    const output = options.vibeOutputs.find((candidate) => resolve(candidate.sourceFileName) === absolute)?.outputFileName;
-    if (!output) throw new TypeError(`Vibe runtime output is missing for ${absolute}`);
+    const output = options.smithersOutputs.find((candidate) => resolve(candidate.sourceFileName) === absolute)?.outputFileName;
+    if (!output) throw new TypeError(`Smithers runtime output is missing for ${absolute}`);
     for (const edge of scanEdges(source.source, absolute)) {
       const resolvedEdge = resolveEdge(absolute, resolve(output), edge, true);
       if (resolvedEdge.moduleInitialization && resolvedEdge.targetFileName &&
-        !vibeByName.has(resolvedEdge.targetFileName) && !generatedByName.has(resolvedEdge.targetFileName)) {
+        !smithersByName.has(resolvedEdge.targetFileName) && !generatedByName.has(resolvedEdge.targetFileName)) {
         staticInitializationRoots.add(resolvedEdge.targetFileName);
       }
     }
@@ -778,7 +778,7 @@ export function buildRelativeRuntimeGraph(options: {
   // stays idempotent no matter which stage performed it.
   const emittedOutputs = new Set([
     ...files.map((file) => collisionKey(file.outputFileName)),
-    ...options.vibeOutputs.map((reservation) => collisionKey(resolve(reservation.outputFileName))),
+    ...options.smithersOutputs.map((reservation) => collisionKey(resolve(reservation.outputFileName))),
   ]);
 
   // Only the graph reached through a static edge needs an initialization trust
@@ -807,7 +807,7 @@ export function buildRelativeRuntimeGraph(options: {
       const parsed = ts.createSourceFile(file.fileName, file.source, ts.ScriptTarget.Latest, true, scriptKind(file.fileName));
       const position = parsed.getLineAndCharacterOfPosition(parsed.statements[0]?.getStart(parsed) ?? 0);
       return [{
-        code: "VIBE1510" as const,
+        code: "SMITHERS1510" as const,
         severity: "error" as const,
         message: "foreign module initialization can panic before a checked call boundary; add a leading JSDoc containing both @module and @throws {never}, or load it with dynamic import inside a checked async foreign adapter",
         fileName: file.fileName,
@@ -827,7 +827,7 @@ export function buildRelativeRuntimeGraph(options: {
       resolutionAliases: file.resolutionAliases,
       ...(generatedByName.has(file.fileName) ? { stripImportAttributes: true as const } : {}),
     })),
-    rewriteVibeRuntimeCalls(code, authoredFileName, outputFileName) {
+    rewriteSmithersRuntimeCalls(code, authoredFileName, outputFileName) {
       const calls = scanEdges(code, outputFileName).filter((edge) => edge.kind === "dynamic-import");
       const replacements = calls.flatMap((edge) => {
         if (!edge.specifier.startsWith(".")) return [];

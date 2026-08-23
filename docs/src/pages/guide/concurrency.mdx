@@ -1,23 +1,24 @@
 # Concurrency [Use async functions and typed workers without a fiber runtime]
 
-VibeLang keeps ordinary async functions. Expected async failure is `Promise<Result<A, E>>`, and `await` unwraps only the Promise.
+Smithers keeps ordinary async functions. Expected async failure is `Promise<Result<A, E>>`, and `await` unwraps only the Promise.
 
 :::note Current programmatic POC
-The provisional root package subpath `vibelang/concurrency`, implemented under
-`poc/src/concurrency`, provides typed workers, keyed Promise combinators, FIFO
-governors, completion-ordered async-iterator helpers, cancellation, and
-`Stream`/`Queue`/`Semaphore`/`Channel` primitives. These are ordinary
-TypeScript library APIs; they are not new VibeLang syntax or a final
+The provisional root package subpath `smthrs/concurrency`, implemented under
+`poc/src/concurrency`, provides keyed Promise combinators, FIFO governors,
+completion-ordered async-iterator helpers, cancellation, and
+`Stream`/`Queue`/`Semaphore`/`Channel` primitives. The typed-worker host and its
+Bun bootstrap listener are isolated at `smthrs/concurrency/bun`. These are
+ordinary TypeScript library APIs; they are not new Smithers syntax or a final
 standard-library contract.
 :::
 
 ## Promise Discipline
 
-Authored `.vibe` code cannot call Promise instance `.then()`, `.catch()`, or `.finally()`. Use `await`, then inspect or propagate the Result:
+Authored `.sm` code cannot call Promise instance `.then()`, `.catch()`, or `.finally()`. Use `await`, then inspect or propagate the Result:
 
 ```ts
 const userResult = await loadUser(id)
-const user = userResult.unwrap()
+const user = userResult!
 ```
 
 Imported TypeScript and JavaScript libraries may use Promise chaining internally. Every unannotated foreign call contributes the checked `panic` case, including rejection; `@throws {never}` opts out and `@throws {T}` declares a more precise channel.
@@ -49,6 +50,7 @@ fields, replayed ids, cycles, and non-transportable values fail closed instead o
 falling back to structured clone), and an explicit idempotent `terminate()` that
 rejects outstanding calls with a nominal Error. Nominal Error identity survives
 the round trip only when both realms execute the same codec registration.
+Import this Bun-only surface from `smthrs/concurrency/bun`;
 `TYPED_WORKER_API_STATUS` is the literal `"provisional"`.
 
 Not implemented: `spawn module` syntax and its lowering, compiler-derived
@@ -68,12 +70,12 @@ const results = await Promise.all([
   loadActivity(id),
 ])
 
-const [profile, activity] = Result.all(results).unwrap()
+const [profile, activity] = Result.all(results)!
 ```
 
 `Promise.all` handles Promise scheduling. `Result.all` collects the successful values or returns the first Error. This uses standard call syntax and introduces no special `await.all` grammar.
 
-The Promise returned by a call or combinator owns that task lifetime from the caller's perspective. Every started Promise must ultimately be consumed with `await` before its enclosing scope exits. Authored `.vibe` has no fire-and-forget or detach operation.
+The Promise returned by a call or combinator owns that task lifetime from the caller's perspective. Every started Promise must ultimately be consumed with `await` before its enclosing scope exits. Authored `.sm` has no fire-and-forget or detach operation.
 
 The programmatic POC also exposes keyed joins:
 
@@ -102,7 +104,7 @@ async function index(
 ): Promise<Result<void, Cancelled>> {
   const cancellation = Cancellation.context()
   for await (const record of records) {
-    cancellation.checkpoint().unwrap()
+    cancellation.checkpoint()!
     indexRecord(record)
   }
 }
@@ -127,7 +129,7 @@ The current POC APIs are deliberately bounded:
 - `new Queue<T>(capacity)` / `Queue.bounded<T>(capacity)` implement a bounded
   FIFO MPMC queue. `offer` and `take` suspend with typed
   `Result<…, QueueClosed | Cancelled>` outcomes; `tryOffer` and `tryTake`
-  distinguish temporary backpressure (`Optional.none`) from permanent closure;
+  distinguish temporary backpressure (`undefined`) from permanent closure;
   `shutdown` lets accepted buffered values drain.
 - `new Semaphore(size)` / `Semaphore.withPermits(size)` provide fair
   `acquire`, `tryAcquire`, and `withPermit`. Permits release idempotently.
@@ -152,7 +154,7 @@ Shared structs over `SharedArrayBuffer` provide an explicit path for high-throug
 
 ## Limiting Fan-Out
 
-Concurrency governors limit how much work may run simultaneously; they do not define child ownership or Error composition. A structured library combinator may own, cancel, and join the work it starts, but a Layer never does. VibeLang intends to follow viable JavaScript proposals or standard-library APIs instead of adding parser syntax for throttling.
+Concurrency governors limit how much work may run simultaneously; they do not define child ownership or Error composition. A structured library combinator may own, cancel, and join the work it starts, but a Layer never does. Smithers intends to follow viable JavaScript proposals or standard-library APIs instead of adding parser syntax for throttling.
 
 The programmatic POC spells this `Governor.withLimit(limit)`. `acquire()`
 returns an idempotently releasable permit and `run(operation)` releases in

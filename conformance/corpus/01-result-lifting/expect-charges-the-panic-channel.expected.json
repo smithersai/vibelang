@@ -1,0 +1,5 @@
+{
+  "title": "Result.expect converts the error variant into a panic charged to the enclosing function's Result channel",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "panic"]
+}

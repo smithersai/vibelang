@@ -4,21 +4,21 @@ Status: **Locked** for capability identity, context access, inference, lean laye
 
 ## Capability Identity
 
-A capability MUST be represented by an abstract class extending `Context` from `vibelang/context`.
+A capability MUST be represented by an abstract class extending `Context` from `smthrs/context`.
 
 Two structurally identical context subclasses MUST remain different requirements unless the program defines an explicit identity relationship.
 
 The abstract class MUST act as both the service contract and its nominal context key:
 
 ```ts
-import { Context } from "vibelang/context"
+import { Context } from "smthrs/context"
 
 abstract class Clock extends Context {
   abstract now(): number
 }
 ```
 
-This declaration uses ordinary class syntax. VibeLang MUST NOT add a separate capability declaration form.
+This declaration uses ordinary class syntax. Smithers MUST NOT add a separate capability declaration form.
 
 ## Context Access
 
@@ -51,13 +51,13 @@ Public declarations MUST preserve the inferred row. Its exact TypeScript declara
 
 Platform-sensitive functionality MUST use requirements. This includes filesystem, network, environment, clock, randomness, process, browser document, and comparable host facilities.
 
-A capability MAY have multiple target implementations. For example, `FileSystem` MAY be implemented by Node, Bun, Deno, native, WASI, or a test provider.
+A capability MAY have multiple host implementations. For example, `FileSystem` MAY be implemented by Node, Bun, Deno, or a test provider.
 
-Portability MUST be determined from the satisfied dependency closure, not merely the source module's import path.
+Host suitability MUST be determined from the satisfied dependency closure, not merely the source module's import path.
 
 ## Layer Algebra
 
-Provider composition MUST be expressed by a library imported from `vibelang/provider`. The accepted design MUST NOT rely on a dedicated source-language `provide {}` statement.
+Provider composition MUST be expressed by a library imported from `smthrs/provider`. The accepted design MUST NOT rely on a dedicated source-language `provide {}` statement.
 
 A base layer conceptually has the type:
 
@@ -71,7 +71,7 @@ Layer composition MUST track:
 
 A layer MUST associate each capability's nominal context key with a compatible service instance. Layer APIs are library-shaped; the compiler recognizes their effect on `R` without introducing special provider grammar.
 
-Resource acquisition and finalization MUST remain explicit ordinary code, initially through `using` or `defer`. A base Layer receives an already acquired service and MUST NOT own that service's lifetime. A future resource-building convenience MAY carry construction failures and requirements without changing the base Layer rule.
+Resource acquisition and finalization MUST remain explicit ordinary code, initially through `using`. A base Layer receives an already acquired service and MUST NOT own that service's lifetime. A future resource-building convenience MAY carry construction failures and requirements without changing the base Layer rule.
 
 ## Satisfaction
 
@@ -85,7 +85,7 @@ Provided implementations MUST be scoped to the provided computation. `Layer.prov
 
 Promise revocation MUST occur at settlement before queued Promise reactions run. A runtime MAY require the Promise to be created by the provider body, and MUST reject an unverifiable pre-existing Promise or a host that cannot observe settlement synchronously. Authors can establish an unaliased boundary with `async () => await existingPromise`; this adapts the lifetime without making the Layer own the underlying work.
 
-A base Layer MUST NOT discover, register, cancel, or join child work. Fire-and-forget and detached work are initially unavailable in authored `.vibe`; every started Promise MUST be consumed directly by `await` or by a recognized combinator whose resulting Promise is consumed before scope exit.
+A base Layer MUST NOT discover, register, cancel, or join child work. Fire-and-forget and detached work are initially unavailable in authored `.sm`; every started Promise MUST be consumed directly by `await` or by a recognized combinator whose resulting Promise is consumed before scope exit.
 
 Imported JavaScript or TypeScript that starts hidden background work owns that work. Caller-controlled background APIs MUST expose explicit completion or disposal handles through their adapters.
 
@@ -99,4 +99,4 @@ Ambient runtime context is not a locked implementation choice. The lowering MUST
 
 `TypeScript` is a built-in capability representing runtime dependence on TypeScript/JavaScript-specific behavior.
 
-It MUST propagate and be satisfiable or rejectable like other requirements. A native pin MUST reject any transitive `TypeScript` requirement.
+It MUST propagate and be satisfiable or rejectable like other requirements.

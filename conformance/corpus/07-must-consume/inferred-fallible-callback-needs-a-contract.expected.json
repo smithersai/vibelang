@@ -1,0 +1,12 @@
+{
+  "title": "an inferred-fallible function crossing a general callback boundary must spell an explicit Result contract",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1303",
+      "line": 10,
+      "column": 32
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Inference': 'Public, abstract, ambient, and declaration-only contracts MUST express fallibility directly with Result<A, E>.' A callback handed to a general higher-order function is such a boundary: the callee's parameter type is `(key: string) => string`, which cannot represent the Missing exit, so the failure channel would be lost. poc/src/language/README.md records SMITHERS1303 for exactly this. Fail-closed: accepting it would let a typed failure vanish at a callback edge."
+}

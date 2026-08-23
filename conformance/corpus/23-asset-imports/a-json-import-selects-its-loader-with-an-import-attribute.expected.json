@@ -1,0 +1,7 @@
+{
+  "title": "a JSON file beside the program becomes a typed module selected by with { type: \"json\" }, read at compile time",
+  "expect": "output",
+  "stdout": ["widgets", "3"],
+  "assets": ["counter.json"],
+  "notes": "specification/comptime.mdx, 'Built-In Formats': 'The toolchain MUST include loaders for JSON, Markdown, and MDX.' and 'Non-code inputs MUST select their loader and mode with standard import attributes.' docs/ASSET_LOADERS.md (Locked): 'Every non-code or foreign-source import uses standard import attributes. The required string-valued `type` selects its loader' and 'JSON uses `with { type: \"json\" }`'. The values printed are the file's, so the case fails if the loader is not actually reading conformance/assets/counter.json. RETIRED MARKER (go, 2026-08-23): the fork used to have no source-asset stage and routed this attributed import into its foreign-module rules (observed SMITHERS1506@4:11, SMITHERS1506@4:29, SMITHERS1510@1:21). It now has a JSON loader and a compile-time embedding seam; `node conformance/runner/run.mjs --backend both --jobs 4` scored this case XPASS on go and both backends print the same two lines. Keep the case: it is the row that would notice the loader-selection rule regressing."
+}

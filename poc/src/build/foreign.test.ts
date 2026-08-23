@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ForeignBuild, ForeignCompiler, instantiateForeign } from "./foreign.ts";
 
-const temporary = await mkdtemp(join(tmpdir(), "vibelang-foreign-test-"));
+const temporary = await mkdtemp(join(tmpdir(), "smithers-foreign-test-"));
 afterAll(() => rm(temporary, { recursive: true, force: true }));
 
 test("Zig and Rust imports become cached typed Wasm modules", async () => {
@@ -29,7 +29,7 @@ test("Zig and Rust imports become cached typed Wasm modules", async () => {
 }, 120_000);
 
 test("foreign dependency contents invalidate the graph key", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-deps-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-deps-"));
   try {
     const main = join(root, "main.rs");
     const dependency = join(root, "dep.rs");
@@ -50,7 +50,7 @@ test("foreign dependency contents invalidate the graph key", async () => {
 }, 60_000);
 
 test("foreign compilers consume the exact tracked source snapshot", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-snapshot-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-snapshot-"));
   // Every started compile must settle inside this test even when an assertion
   // throws first: an abandoned compile's rejection would otherwise surface as
   // an unhandled error inside whichever test runs next.
@@ -94,7 +94,7 @@ test("foreign compilers consume the exact tracked source snapshot", async () => 
 }, 60_000);
 
 test("binary Rust includes and path-attributed modules are snapshotted", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-rust-snapshot-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-rust-snapshot-"));
   try {
     const source = join(root, "main.rs");
     await writeFile(join(root, "payload.bin"), new Uint8Array([0xff, 0x00, 0x7f]));
@@ -114,7 +114,7 @@ test("binary Rust includes and path-attributed modules are snapshotted", async (
 }, 60_000);
 
 test("Zig embedded files are content-keyed dependencies", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-zig-embed-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-zig-embed-"));
   try {
     const source = join(root, "main.zig");
     const payload = join(root, "payload.bin");
@@ -137,7 +137,7 @@ test("Zig embedded files are content-keyed dependencies", async () => {
 }, 60_000);
 
 test("foreign source graphs enforce root authority and file-count bounds before tool execution", async () => {
-  const parent = await mkdtemp(join(tmpdir(), "vibelang-foreign-authority-"));
+  const parent = await mkdtemp(join(tmpdir(), "smithers-foreign-authority-"));
   try {
     const root = join(parent, "root");
     await mkdir(root);
@@ -158,7 +158,7 @@ test("foreign source graphs enforce root authority and file-count bounds before 
 });
 
 test("foreign keys include the sanitized explicit environment and executable content identity", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-tool-identity-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-tool-identity-"));
   try {
     const makeTool = async (name: string, flavor: string): Promise<string> => {
       const tool = join(root, name);
@@ -166,7 +166,7 @@ test("foreign keys include the sanitized explicit environment and executable con
         const { spawnSync } = require("node:child_process")
         const flavor = ${JSON.stringify(flavor)}
         if (process.env.HOME !== undefined) { console.error("ambient HOME leaked"); process.exit(91) }
-        if (!process.env.VIBE_TEST_MODE) { console.error("explicit environment missing"); process.exit(92) }
+        if (!process.env.SMITHERS_TEST_MODE) { console.error("explicit environment missing"); process.exit(92) }
         if (process.argv[2] === "version") { console.log("identity-zig-1"); process.exit(0) }
         const result = spawnSync("zig", process.argv.slice(2), { stdio: "inherit", env: process.env })
         if (!flavor) process.exit(93)
@@ -180,13 +180,13 @@ test("foreign keys include the sanitized explicit environment and executable con
     const source = join(root, "main.zig");
     await writeFile(source, "export fn value() i32 { return 42; }\n");
     const first = await new ForeignCompiler({
-      cacheDirectory: join(root, ".cache"), zig: firstTool, environment: { VIBE_TEST_MODE: "one" },
+      cacheDirectory: join(root, ".cache"), zig: firstTool, environment: { SMITHERS_TEST_MODE: "one" },
     }).compile(source, "zig");
     const environmentChanged = await new ForeignCompiler({
-      cacheDirectory: join(root, ".cache"), zig: firstTool, environment: { VIBE_TEST_MODE: "two" },
+      cacheDirectory: join(root, ".cache"), zig: firstTool, environment: { SMITHERS_TEST_MODE: "two" },
     }).compile(source, "zig");
     const toolChanged = await new ForeignCompiler({
-      cacheDirectory: join(root, ".cache"), zig: secondTool, environment: { VIBE_TEST_MODE: "one" },
+      cacheDirectory: join(root, ".cache"), zig: secondTool, environment: { SMITHERS_TEST_MODE: "one" },
     }).compile(source, "zig");
     expect(environmentChanged.key).not.toBe(first.key);
     expect(toolChanged.key).not.toBe(first.key);
@@ -197,7 +197,7 @@ test("foreign keys include the sanitized explicit environment and executable con
 }, 120_000);
 
 test.skipIf(process.platform === "win32")("foreign cache objects cannot be symlinks", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-cache-link-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-cache-link-"));
   try {
     const cache = join(root, ".cache");
     const source = join(root, "main.zig");
@@ -219,7 +219,7 @@ test.skipIf(process.platform === "win32")("foreign cache objects cannot be symli
 }, 60_000);
 
 test("foreign artifacts are size-bounded before loading", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-artifact-limit-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-artifact-limit-"));
   try {
     const tool = join(root, "large-zig");
     await writeFile(tool, `#!/usr/bin/env node
@@ -246,7 +246,7 @@ test("unsupported foreign languages are rejected before any tool or filesystem w
 });
 
 test("sources outside an explicit source root are rejected and sources inside it compile", async () => {
-  const parent = await mkdtemp(join(tmpdir(), "vibelang-foreign-explicit-root-"));
+  const parent = await mkdtemp(join(tmpdir(), "smithers-foreign-explicit-root-"));
   try {
     const authorized = join(parent, "authorized");
     const foreign = join(parent, "elsewhere");
@@ -264,7 +264,7 @@ test("sources outside an explicit source root are rejected and sources inside it
 }, 60_000);
 
 test("foreign sources may not be read out of the compiler cache directory", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-cache-read-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-cache-read-"));
   try {
     const cache = join(root, ".cache");
     await mkdir(cache);
@@ -277,7 +277,7 @@ test("foreign sources may not be read out of the compiler cache directory", asyn
 });
 
 test.skipIf(process.platform === "win32")("symlinked dependencies that escape the source root are rejected", async () => {
-  const parent = await mkdtemp(join(tmpdir(), "vibelang-foreign-symlink-dep-"));
+  const parent = await mkdtemp(join(tmpdir(), "smithers-foreign-symlink-dep-"));
   try {
     const root = join(parent, "root");
     await mkdir(root);
@@ -295,7 +295,7 @@ test.skipIf(process.platform === "win32")("symlinked dependencies that escape th
 });
 
 test("hard-link aliased sources inside one graph are rejected", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-hard-link-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-hard-link-"));
   try {
     await writeFile(join(root, "a.rs"), "pub const VALUE: i32 = 21;\n");
     await link(join(root, "a.rs"), join(root, "b.rs"));
@@ -311,7 +311,7 @@ test("hard-link aliased sources inside one graph are rejected", async () => {
 });
 
 test("oversized cache metadata is never consumed and the cache self-heals", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-metadata-limit-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-metadata-limit-"));
   try {
     const cache = join(root, ".cache");
     const source = join(root, "main.zig");
@@ -330,7 +330,7 @@ test("oversized cache metadata is never consumed and the cache self-heals", asyn
 }, 90_000);
 
 test("foreign tools above the configured byte limit are rejected", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-tool-limit-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-tool-limit-"));
   try {
     const tool = join(root, "fat-zig");
     await writeFile(tool, `#!/usr/bin/env node\n// ${"padding ".repeat(512)}\nconsole.log("fat-zig-1")\n`);
@@ -345,7 +345,7 @@ test("foreign tools above the configured byte limit are rejected", async () => {
 });
 
 test("foreign tool modification between resolution and completion is detected", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-tool-drift-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-tool-drift-"));
   try {
     const tool = join(root, "drifting-zig");
     await writeFile(tool, `#!/usr/bin/env node
@@ -365,7 +365,7 @@ test("foreign tool modification between resolution and completion is detected", 
 }, 30_000);
 
 test("returned foreign builds are isolated clones that cannot corrupt the cache", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-clone-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-clone-"));
   try {
     const source = join(root, "main.zig");
     await writeFile(source, "export fn add(left: i32, right: i32) i32 { return left + right; }\n");
@@ -396,7 +396,7 @@ test("returned foreign builds are isolated clones that cannot corrupt the cache"
 }, 90_000);
 
 test("partial or corrupted cache objects are ordinary misses", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-partial-cache-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-partial-cache-"));
   try {
     const cache = join(root, ".cache");
     const source = join(root, "main.zig");
@@ -418,16 +418,16 @@ test("partial or corrupted cache objects are ordinary misses", async () => {
 }, 120_000);
 
 test.skipIf(process.platform === "win32")("cache paths are canonical and ambient variables stay out of the key", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-canonical-cache-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-canonical-cache-"));
   try {
     const real = join(root, "real");
     await mkdir(real);
     await symlink(real, join(root, "link"));
     const source = join(root, "main.zig");
     await writeFile(source, "export fn value() i32 { return 42; }\n");
-    process.env.VIBE_AMBIENT_NOISE = "one";
+    process.env.SMITHERS_AMBIENT_NOISE = "one";
     const linked = new ForeignCompiler({ cacheDirectory: join(root, "link", "cache") });
-    process.env.VIBE_AMBIENT_NOISE = "two";
+    process.env.SMITHERS_AMBIENT_NOISE = "two";
     const direct = new ForeignCompiler({ cacheDirectory: join(real, "cache") });
     expect(linked.cacheDirectory).toBe(direct.cacheDirectory);
     const built = await linked.compile(source, "zig");
@@ -435,13 +435,13 @@ test.skipIf(process.platform === "win32")("cache paths are canonical and ambient
     expect(hit.cacheHit).toBe(true);
     expect(hit.key).toBe(built.key);
   } finally {
-    delete process.env.VIBE_AMBIENT_NOISE;
+    delete process.env.SMITHERS_AMBIENT_NOISE;
     await rm(root, { recursive: true, force: true });
   }
 }, 60_000);
 
 test("foreign tool processes are killed at the configured deadline", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-foreign-timeout-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-foreign-timeout-"));
   try {
     const tool = join(root, "fake-zig");
     const survivor = join(root, "survivor");

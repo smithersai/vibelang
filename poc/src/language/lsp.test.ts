@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { startVibeLanguageServer } from "./lsp.ts";
+import { startSmithersLanguageServer } from "./lsp.ts";
 
 /* -------------------------------------------------------------------------- */
 /* A minimal LSP client: real Content-Length framing over real streams.        */
@@ -112,7 +112,7 @@ function inProcessServer(): Harness {
   const output = new PassThrough();
   const errorOutput = new PassThrough();
   errorOutput.resume();
-  const handle = startVibeLanguageServer({ input, output, errorOutput });
+  const handle = startSmithersLanguageServer({ input, output, errorOutput });
   const client = new Client((chunk) => { input.write(chunk); }, output);
   return { client, closed: handle.closed };
 }
@@ -151,7 +151,7 @@ export function lookup(key: string): Result<string, Missing> {
 }
 `;
 
-const APP = `import { lookup } from "./domain.vibe"
+const APP = `import { lookup } from "./domain.sm"
 
 export function greet(key: string): Result<string, Missing> {
   return \`hello \${lookup(key).unwrap()}\`
@@ -164,10 +164,10 @@ let domainPath: string;
 let appPath: string;
 
 beforeAll(async () => {
-  workspace = await mkdtemp(join(tmpdir(), "vibelang-lsp-"));
-  failingPath = join(workspace, "failing.vibe");
-  domainPath = join(workspace, "domain.vibe");
-  appPath = join(workspace, "app.vibe");
+  workspace = await mkdtemp(join(tmpdir(), "smithers-lsp-"));
+  failingPath = join(workspace, "failing.sm");
+  domainPath = join(workspace, "domain.sm");
+  appPath = join(workspace, "app.sm");
   await writeFile(failingPath, FAILING, "utf8");
   await writeFile(domainPath, DOMAIN, "utf8");
   await writeFile(appPath, APP, "utf8");
@@ -195,7 +195,7 @@ async function initialize(client: Client): Promise<Message> {
 
 function open(client: Client, path: string, text: string, version = 1): void {
   client.notify("textDocument/didOpen", {
-    textDocument: { uri: uriOf(path), languageId: "vibe", version, text },
+    textDocument: { uri: uriOf(path), languageId: "smithers", version, text },
   });
 }
 
@@ -203,7 +203,7 @@ function open(client: Client, path: string, text: string, version = 1): void {
 /* Tests                                                                       */
 /* -------------------------------------------------------------------------- */
 
-describe("vibe lsp handshake", () => {
+describe("smithers lsp handshake", () => {
   test("publishes its bounded capability set and shuts down cleanly", async () => {
     const { client, closed } = inProcessServer();
     const response = await initialize(client);
@@ -212,7 +212,7 @@ describe("vibe lsp handshake", () => {
       capabilities: Record<string, unknown>;
       serverInfo: { name: string; version: string };
     };
-    expect(result.serverInfo.name).toBe("vibe-lsp");
+    expect(result.serverInfo.name).toBe("smithers-lsp");
     expect(result.capabilities).toEqual({
       positionEncoding: "utf-16",
       // 1 is TextDocumentSyncKind.Full: incremental sync is deliberately absent.
@@ -255,7 +255,7 @@ describe("vibe lsp handshake", () => {
   });
 });
 
-describe("vibe lsp diagnostics", () => {
+describe("smithers lsp diagnostics", () => {
   test("publishes the exact frontend diagnostic and range for an opened module", async () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
@@ -272,8 +272,8 @@ describe("vibe lsp diagnostics", () => {
     expect(diagnostics[0]).toEqual({
       range: { start: { line: 4, character: 0 }, end: { line: 4, character: 6 } },
       severity: 1,
-      code: "VIBE1102",
-      source: "vibe",
+      code: "SMITHERS1102",
+      source: "smithers",
       message: "exported fallible functions must spell Result<A, E> (or Promise<Result<A, E>>) in their public contract",
     });
     client.notify("exit");
@@ -300,7 +300,7 @@ describe("vibe lsp diagnostics", () => {
       contentChanges: [{ text: FAILING }],
     });
     const third = await client.notification("textDocument/publishDiagnostics", uriOf(failingPath));
-    expect((third.params!.diagnostics as { code: string }[]).map((entry) => entry.code)).toEqual(["VIBE1102"]);
+    expect((third.params!.diagnostics as { code: string }[]).map((entry) => entry.code)).toEqual(["SMITHERS1102"]);
     client.notify("exit");
     await closed;
   });
@@ -321,7 +321,7 @@ describe("vibe lsp diagnostics", () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
     const broken = `export function bad(): Result<number, Error> {\n  return "not a number"\n}\n`;
-    const path = join(workspace, "typed.vibe");
+    const path = join(workspace, "typed.sm");
     await writeFile(path, broken, "utf8");
     open(client, path, broken);
     const published = await client.notification("textDocument/publishDiagnostics", uriOf(path));
@@ -336,7 +336,7 @@ describe("vibe lsp diagnostics", () => {
   });
 });
 
-describe("vibe lsp hover", () => {
+describe("smithers lsp hover", () => {
   test("shows the checked channel and the inferred failure and requirement rows", async () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
@@ -349,7 +349,7 @@ describe("vibe lsp hover", () => {
     const contents = (hover.result as { contents: { kind: string; value: string } }).contents;
     expect(contents.kind).toBe("markdown");
     expect(contents.value).toBe(
-      "```vibe\n" +
+      "```smithers\n" +
       "export function lookup(key: string): Result<string, Missing>\n" +
       "```\n" +
       "\n" +
@@ -377,8 +377,8 @@ describe("vibe lsp hover", () => {
   });
 });
 
-describe("vibe lsp definition", () => {
-  test("resolves a project-local symbol across .vibe modules", async () => {
+describe("smithers lsp definition", () => {
+  test("resolves a project-local symbol across .sm modules", async () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
     open(client, appPath, APP);
@@ -408,12 +408,12 @@ describe("vibe lsp definition", () => {
   });
 });
 
-describe("vibe lsp formatting", () => {
+describe("smithers lsp formatting", () => {
   test("returns a whole-document edit produced by the formatter", async () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
     const unformatted = `export function f(value:number):number{\nreturn value*2\n}\n`;
-    const path = join(workspace, "unformatted.vibe");
+    const path = join(workspace, "unformatted.sm");
     await writeFile(path, unformatted, "utf8");
     open(client, path, unformatted);
     const formatting = await client.response(client.request("textDocument/formatting", {
@@ -450,7 +450,7 @@ describe("vibe lsp formatting", () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
     const broken = `export function f(): number {\n  return (1 +\n}\n`;
-    const path = join(workspace, "unparseable.vibe");
+    const path = join(workspace, "unparseable.sm");
     open(client, path, broken);
     const formatting = await client.response(client.request("textDocument/formatting", {
       textDocument: { uri: uriOf(path) },
@@ -462,7 +462,7 @@ describe("vibe lsp formatting", () => {
   });
 });
 
-describe("vibe lsp protocol robustness", () => {
+describe("smithers lsp protocol robustness", () => {
   test("answers an unknown request with MethodNotFound and keeps serving", async () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
@@ -530,14 +530,14 @@ describe("vibe lsp protocol robustness", () => {
   });
 });
 
-describe("vibe lsp as a real subprocess", () => {
+describe("smithers lsp as a real subprocess", () => {
   test("speaks the protocol over stdio and exits 0 after shutdown", async () => {
     const runner = join(workspace, "run-lsp.mjs");
     const lspModule = pathToFileURL(fileURLToPath(new URL("./lsp.ts", import.meta.url))).href;
     await writeFile(
       runner,
-      `import { startVibeLanguageServer } from ${JSON.stringify(lspModule)}\n` +
-      `const handle = startVibeLanguageServer()\n` +
+      `import { startSmithersLanguageServer } from ${JSON.stringify(lspModule)}\n` +
+      `const handle = startSmithersLanguageServer()\n` +
       `process.exit(await handle.closed)\n`,
       "utf8",
     );
@@ -555,7 +555,7 @@ describe("vibe lsp as a real subprocess", () => {
       open(client, failingPath, FAILING);
       const published = await client.notification("textDocument/publishDiagnostics", uriOf(failingPath));
       expect((published.params!.diagnostics as { code: string }[]).map((entry) => entry.code))
-        .toEqual(["VIBE1102"]);
+        .toEqual(["SMITHERS1102"]);
       await client.response(client.request("shutdown"));
       client.notify("exit");
       expect(await exited).toBe(0);

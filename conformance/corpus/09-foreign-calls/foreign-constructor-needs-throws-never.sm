@@ -1,0 +1,11 @@
+import { Panic } from "smithers:exceptions"
+import { Counter } from "./foreign.ts"
+
+function start(): Result<number, Panic> {
+  const counter = new Counter(41)
+  return counter.next()
+}
+
+export function main(): string[] {
+  return [start().match({ ok: (value) => `${value}`, error: () => "panic" })]
+}

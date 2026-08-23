@@ -1,0 +1,6 @@
+{
+  "title": "the `?T` optional type grammar is retired: use Optional<T>",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1001", "line": 1, "column": 37 }],
+  "notes": "specification/type-system.mdx, 'Optional': 'The earlier ?T, payload-capture, orelse, and .? grammar MUST NOT be part of the initial language.' docs/DECISIONS.md 'Optionals and nullability' (Locked) records the same removal."
+}

@@ -1,0 +1,9 @@
+{
+  "title": "non-ASCII string literals and template substitutions survive lowering unchanged, in both the success value and a lifted Error's message",
+  "expect": "output",
+  "stdout": [
+    "café au lait ☕",
+    "no café for zoe"
+  ],
+  "notes": "specification/compatibility.mdx, 'Source Relationship': '`.sm` MUST use a TypeScript-derived grammar with only explicitly documented differences' and 'Shared syntax MUST retain TypeScript behavior unless the Smithers specification explicitly assigns different semantics.' String literals are shared syntax and no documented difference restricts them to ASCII, so a Smithers program's text must survive the lowering byte for byte. This is the baseline of the area: the whole rest of the corpus is pure ASCII, so nothing else in it would notice a lowering that mangled multi-byte source text. `☕` is outside the Basic Multilingual Plane's single-unit range in UTF-8 (three bytes) and `é` is two, which is what makes the pair a real test of a byte-versus-code-unit confusion rather than a Latin-1 one."
+}

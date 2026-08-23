@@ -1,5 +1,7 @@
 # W9-S — Schema and Encoding
 
+> **Historical record.** This report describes work completed before the 2026-08-23 specification reduction. Some features it covers — the expression-form grammar, `defer`/`errdefer`, `Optional<T>`, `.unwrap()`, and the portable/native targets — are no longer part of the language. See `docs/DECISIONS.md`.
+
 Implemented the provisional ordinary-runtime `Schema and Encoding` area in `src/schema/`, with a runnable example at `examples/schema/demo.ts`. Values are frozen and WeakSet-branded where they have runtime identity (`Codec`, `Schema`, and optional Schema field markers). Parse/decode failures use frozen runtime `Result` values; law-helper misses use `Optional`.
 
 ## API inventory

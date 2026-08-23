@@ -5,8 +5,8 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const packageRoot = dirname(require.resolve("vibelang/package.json"));
-const packageMetadata = JSON.parse(readFileSync(require.resolve("vibelang/package.json"), "utf8"));
+const packageRoot = dirname(require.resolve("smthrs/package.json"));
+const packageMetadata = JSON.parse(readFileSync(require.resolve("smthrs/package.json"), "utf8"));
 
 function exportTargets(target, output = []) {
   if (typeof target === "string") {
@@ -36,9 +36,9 @@ test("every declared package export points at a file the package actually ships"
 
 test("the derived-schema runtime resolves under the bare specifier generated code emits", async () => {
   // `comptime(Schema.derive<T>())` lowers to `import { __vsSchema } from
-  // "vibelang/schema-runtime"`, so this subpath is part of the compiler's
+  // "smthrs/schema-runtime"`, so this subpath is part of the compiler's
   // output contract, not a convenience re-export.
-  const schemaRuntime = await import("vibelang/schema-runtime");
+  const schemaRuntime = await import("smthrs/schema-runtime");
   assert.equal(typeof schemaRuntime.__vsSchema, "function");
   assert.equal(schemaRuntime.derivedSchema, schemaRuntime.__vsSchema);
   assert.equal(typeof schemaRuntime.ValidationError, "function");
@@ -75,7 +75,7 @@ test("the derived-schema runtime resolves under the bare specifier generated cod
 });
 
 test("the platform capability library is reachable from the package subpath", async () => {
-  const platform = await import("vibelang/platform");
+  const platform = await import("smthrs/platform");
 
   // One representative from each area the standard library lists, so a missing
   // re-export in the facade fails here rather than in a consumer's build.
@@ -97,7 +97,7 @@ test("the platform capability library is reachable from the package subpath", as
     "NodePlatform",
     "TestPlatform",
   ]) {
-    assert.notEqual(platform[name], undefined, `vibelang/platform must export ${name}`);
+    assert.notEqual(platform[name], undefined, `smthrs/platform must export ${name}`);
   }
 
   assert.equal(platform.Duration.seconds(2).toMillis(), 2_000);
@@ -124,7 +124,7 @@ test("the platform capability library is reachable from the package subpath", as
 });
 
 test("the Core Data slice is reachable from the package subpath", async () => {
-  const data = await import("vibelang/data");
+  const data = await import("smthrs/data");
 
   const chunk = data.Chunk.of(1, 2, 3);
   assert.equal(data.isChunk(chunk), true);
@@ -155,8 +155,8 @@ test("the Core Data slice is reachable from the package subpath", async () => {
   assert.equal(typeof data.Hash.any.hash(chunk), "number");
 });
 
-test("vibelang/concurrency carries the platform-neutral primitives and leaves the worker host on Bun", async () => {
-  const concurrency = await import("vibelang/concurrency");
+test("smthrs/concurrency carries the platform-neutral primitives and leaves the worker host on Bun", async () => {
+  const concurrency = await import("smthrs/concurrency");
 
   for (const name of [
     "Queue",
@@ -167,10 +167,10 @@ test("vibelang/concurrency carries the platform-neutral primitives and leaves th
     "CancellationSource",
     "Cancellation",
   ]) {
-    assert.equal(typeof concurrency[name], "function", `vibelang/concurrency must export ${name}`);
+    assert.equal(typeof concurrency[name], "function", `smthrs/concurrency must export ${name}`);
   }
   for (const name of ["awaitAll", "mapUnordered", "allKeyed", "allSettledKeyed", "bufferedUnordered"]) {
-    assert.equal(typeof concurrency[name], "function", `vibelang/concurrency must export ${name}`);
+    assert.equal(typeof concurrency[name], "function", `smthrs/concurrency must export ${name}`);
   }
 
   assert.deepEqual(await concurrency.awaitAll(Promise.resolve(1), Promise.resolve("two")), [1, "two"]);
@@ -198,20 +198,20 @@ test("vibelang/concurrency carries the platform-neutral primitives and leaves th
   assert.equal("TypedWorker" in concurrency, false);
 });
 
-test("vibelang/concurrency/bun is the Bun-only worker host and fails closed on Node", async () => {
+test("smthrs/concurrency/bun is the Bun-only worker host and fails closed on Node", async () => {
   assert.deepEqual(packageMetadata.exports["./concurrency/bun"], {
     types: "./poc/dist/concurrency/index.d.ts",
     default: "./poc/dist/concurrency/index.js",
   });
 
   if (typeof globalThis.Bun === "object") {
-    const workers = await import("vibelang/concurrency/bun");
+    const workers = await import("smthrs/concurrency/bun");
     assert.equal(typeof workers.TypedWorker, "function");
     return;
   }
   let rejected;
   try {
-    await import("vibelang/concurrency/bun");
+    await import("smthrs/concurrency/bun");
   } catch (error) {
     rejected = error;
   }

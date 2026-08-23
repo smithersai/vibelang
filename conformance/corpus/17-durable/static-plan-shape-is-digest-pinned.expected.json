@@ -1,0 +1,13 @@
+{
+  "title": "durable source becomes a digest-pinned static Plan with explicit data and control edges",
+  "expect": "output",
+  "stdout": [
+    "static-plan-artifact",
+    "action,branch,timer,action,action,signal",
+    "64",
+    "true",
+    "true",
+    "static-plan-shape-is-digest-pinned.sm#Audit,static-plan-shape-is-digest-pinned.sm#Lookup"
+  ],
+  "notes": "Both backends now observe the descriptor marker, node kinds, SHA-256 digest width, unwrap-to-branch control edge, sequential Action edge, and canonical sorted Action requirements. compiler/fork_durable_test.go additionally feeds this Plan shape through the TypeScript PlanArtifact validator. The JS reference previously reported SMITHERS4100 at 7:24 because the standalone compileDurableSource accepted Action contracts only as caller-supplied descriptor bindings, which no in-module Action can provide; poc/src/durable/source-compiler.ts now derives the contract of every same-file `class X extends Action<Signature>` from its own checked program (the shared derivation lives in poc/src/durable/schema.ts, so a derived contract and a pre-compiled one are the same descriptor), and reports the consumed declarations so a consumer can erase them with the compiler-owned import. Descriptor bindings remain optional and are now only for Actions imported from modules this single-source pass cannot see."
+}

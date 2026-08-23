@@ -3,9 +3,9 @@ import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as ts from "typescript-js";
 import { analyzeProject } from "./analyze.ts";
-import { formatVibeSource, vibeTokenAt } from "./format.ts";
+import { formatSmithersSource, smithersTokenAt } from "./format.ts";
 import type {
-  Diagnostic as VibeDiagnostic,
+  Diagnostic as SmithersDiagnostic,
   ProjectAnalysis,
   ProjectFileAnalysis,
   ProjectSource,
@@ -14,26 +14,26 @@ import { compileProject } from "./project-compile.ts";
 import { checkEmittedProject } from "./validate.ts";
 
 /**
- * A bounded but genuine VibeLang language server.
+ * A bounded but genuine Smithers language server.
  *
  * The protocol is implemented directly - JSON-RPC 2.0 over stdio with
  * `Content-Length` framing - so the toolchain gains an editor surface without
  * gaining a dependency. Diagnostics, hover, and definition are all driven by
  * the real frontend (`analyzeProject`, `compileProject`, `checkEmittedProject`),
- * not by a reimplementation, and formatting reuses `formatVibeSource`.
+ * not by a reimplementation, and formatting reuses `formatSmithersSource`.
  *
  * ## Supported
  *
  * - `initialize` / `initialized` / `shutdown` / `exit`
  * - `textDocument/didOpen`, `didChange` (**full** document sync), `didClose`
- * - `textDocument/publishDiagnostics`: VibeLang frontend diagnostics, plus
+ * - `textDocument/publishDiagnostics`: Smithers frontend diagnostics, plus
  *   stock TypeScript diagnostics for the generated modules mapped back to
  *   authored positions through the compiler's own source maps
  * - `textDocument/hover`: a checked function's channel and its inferred failure
  *   and requirement rows, and an authored Error class's fields
- * - `textDocument/definition`: project-local `.vibe` functions, Error classes,
- *   and relative `.vibe` module specifiers
- * - `textDocument/formatting`: `formatVibeSource`, as a single whole-document
+ * - `textDocument/definition`: project-local `.sm` functions, Error classes,
+ *   and relative `.sm` module specifiers
+ * - `textDocument/formatting`: `formatSmithersSource`, as a single whole-document
  *   edit; a module the formatter refuses returns no edits
  *
  * ## Deliberately not supported
@@ -47,14 +47,14 @@ import { checkEmittedProject } from "./validate.ts";
  *   actions, semantic tokens, inlay hints, or call hierarchy.
  * - No file watching. The project is re-read from disk on every edit, bounded
  *   to `MAX_PROJECT_FILES` modules and `MAX_PROJECT_BYTES` total.
- * - Project membership is the transitive relative-`.vibe` import closure of the
+ * - Project membership is the transitive relative-`.sm` import closure of the
  *   open documents, not a glob of the workspace folder.
  * - Definition resolution is by declared name within that closure, not by
  *   checker symbol identity; an ambiguous name resolves to nothing rather than
  *   to a guess.
  */
 
-const SERVER_NAME = "vibe-lsp";
+const SERVER_NAME = "smithers-lsp";
 const SERVER_VERSION = "0.0.1";
 
 /** Largest single JSON-RPC message accepted from the client. */
@@ -129,8 +129,8 @@ interface LoadedProject {
   readonly truncated: boolean;
 }
 
-function isVibePath(path: string): boolean {
-  return extname(path).toLowerCase() === ".vibe";
+function isSmithersPath(path: string): boolean {
+  return extname(path).toLowerCase() === ".sm";
 }
 
 function toPosix(path: string): string {
@@ -167,13 +167,13 @@ function moduleSpecifiers(source: string, fileName: string): readonly string[] {
 }
 
 /** Mirror of the CLI's authored-specifier resolution, including `./x.js` spellings. */
-function resolveVibeImport(containingFile: string, specifier: string): string | undefined {
+function resolveSmithersImport(containingFile: string, specifier: string): string | undefined {
   if (!specifier.startsWith(".")) return undefined;
   const exact = resolve(dirname(containingFile), specifier);
   const candidates: string[] = [];
-  if (exact.endsWith(".vibe")) candidates.push(exact);
-  else if (extname(exact) === "") candidates.push(`${exact}.vibe`, join(exact, "index.vibe"));
-  else if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.vibe`);
+  if (exact.endsWith(".sm")) candidates.push(exact);
+  else if (extname(exact) === "") candidates.push(`${exact}.sm`, join(exact, "index.sm"));
+  else if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.sm`);
   for (const candidate of candidates) {
     try {
       if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
@@ -195,7 +195,7 @@ function readBoundedFile(path: string): string | undefined {
 }
 
 /**
- * The transitive relative-`.vibe` closure of the open documents, with open
+ * The transitive relative-`.sm` closure of the open documents, with open
  * buffers overriding what is on disk.
  */
 function loadProject(
@@ -205,7 +205,7 @@ function loadProject(
   const overrides = new Map<string, string>();
   const pending: string[] = [];
   for (const document of documents.values()) {
-    if (!isVibePath(document.path)) continue;
+    if (!isSmithersPath(document.path)) continue;
     overrides.set(document.path, document.text);
     pending.push(document.path);
   }
@@ -230,7 +230,7 @@ function loadProject(
     }
     collected.set(path, text);
     for (const specifier of moduleSpecifiers(text, path)) {
-      const resolved = resolveVibeImport(path, specifier);
+      const resolved = resolveSmithersImport(path, specifier);
       if (resolved && !collected.has(resolved)) pending.push(resolved);
     }
   }
@@ -398,7 +398,7 @@ function wholeDocumentRange(text: string): LspRange {
 
 /** The token covering `offset`, so a diagnostic gets a real span rather than a caret. */
 function tokenRangeAt(text: string, offset: number): LspRange {
-  const token = vibeTokenAt(text, offset);
+  const token = smithersTokenAt(text, offset);
   if (token && token.start <= offset) {
     return { start: positionAt(text, token.start), end: positionAt(text, token.end) };
   }
@@ -410,7 +410,7 @@ function tokenRangeAt(text: string, offset: number): LspRange {
 
 /** The identifier-shaped token covering `offset`, or undefined. */
 function identifierAt(text: string, offset: number): { text: string; start: number; end: number } | undefined {
-  const token = vibeTokenAt(text, offset);
+  const token = smithersTokenAt(text, offset);
   if (!token || !/^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(token.text)) return undefined;
   return { text: token.text, start: token.start, end: token.end };
 }
@@ -423,7 +423,7 @@ interface PublishedDiagnostic {
   readonly range: LspRange;
   readonly severity: 1 | 2;
   readonly code: string;
-  readonly source: "vibe";
+  readonly source: "smithers";
   readonly message: string;
 }
 
@@ -431,12 +431,12 @@ function severityOf(diagnostic: { readonly severity: "error" | "warning" }): 1 |
   return diagnostic.severity === "error" ? 1 : 2;
 }
 
-function vibeDiagnosticToLsp(text: string, diagnostic: VibeDiagnostic): PublishedDiagnostic {
+function smithersDiagnosticToLsp(text: string, diagnostic: SmithersDiagnostic): PublishedDiagnostic {
   return {
     range: tokenRangeAt(text, diagnostic.start),
     severity: severityOf(diagnostic),
     code: diagnostic.code,
-    source: "vibe",
+    source: "smithers",
     message: diagnostic.message,
   };
 }
@@ -446,7 +446,7 @@ let runtimeImportMemo: { readonly path: string | undefined } | undefined;
 /**
  * Locate the packaged runtime so generated modules type-check against it. When
  * it cannot be found, the generated-TypeScript pass is skipped and only
- * VibeLang frontend diagnostics are published; nothing is reported as an error
+ * Smithers frontend diagnostics are published; nothing is reported as an error
  * that the frontend did not actually find.
  */
 function resolveRuntimeImport(): string | undefined {
@@ -519,9 +519,9 @@ function computeProjectDiagnostics(
       byFile.get(source.fileName)!.push({
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
         severity: 1,
-        code: "VIBE_LSP_PROJECT",
-        source: "vibe",
-        message: `the VibeLang project could not be analyzed: ${message}`,
+        code: "SMITHERS_LSP_PROJECT",
+        source: "smithers",
+        message: `the Smithers project could not be analyzed: ${message}`,
       });
     }
     return { byFile, analysis: undefined, project };
@@ -532,14 +532,14 @@ function computeProjectDiagnostics(
     const text = textByName.get(diagnostic.fileName);
     const bucket = byFile.get(diagnostic.fileName);
     if (text === undefined || !bucket) continue;
-    bucket.push(vibeDiagnosticToLsp(text, diagnostic));
+    bucket.push(smithersDiagnosticToLsp(text, diagnostic));
   }
 
   const hasErrors = analysis.diagnostics.some((diagnostic) => diagnostic.severity === "error");
   const runtimeImport = resolveRuntimeImport();
   if (!hasErrors && runtimeImport !== undefined) {
     try {
-      // `outDir` is the project root so that relative non-`.vibe` imports keep
+      // `outDir` is the project root so that relative non-`.sm` imports keep
       // resolving exactly as authored. Nothing is written: `compileProject` and
       // `checkEmittedProject` are in-memory APIs.
       const compiled = compileProject(project.sources, {
@@ -576,7 +576,7 @@ function computeProjectDiagnostics(
           range: tokenRangeAt(text, offset),
           severity: 1,
           code: `TS${diagnostic.code}`,
-          source: "vibe",
+          source: "smithers",
           message: ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
         });
       }
@@ -590,8 +590,8 @@ function computeProjectDiagnostics(
       bucket.push({
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
         severity: 2,
-        code: "VIBE_LSP_PROJECT_TRUNCATED",
-        source: "vibe",
+        code: "SMITHERS_LSP_PROJECT_TRUNCATED",
+        source: "smithers",
         message: `the project exceeded the language server's ${MAX_PROJECT_FILES}-module / ${MAX_PROJECT_BYTES}-byte bound, so diagnostics are incomplete`,
       });
     }
@@ -640,7 +640,7 @@ function hoverMarkdown(text: string, file: ProjectFileAnalysis, offset: number):
     const signature = text.slice(containing.start, containing.bodyStart).trim().replace(/\s*\{$/u, "");
     const channel = CHANNEL_LABELS[containing.channel] ?? containing.channel;
     const contents = [
-      "```vibe",
+      "```smithers",
       signature,
       "```",
       "",
@@ -662,7 +662,7 @@ function hoverMarkdown(text: string, file: ProjectFileAnalysis, offset: number):
   const error = file.errors.find((declaration) => declaration.start <= offset && offset < declaration.end);
   if (error) {
     const contents = [
-      "```vibe",
+      "```smithers",
       `class ${error.name} extends Error`,
       "```",
       "",
@@ -732,14 +732,14 @@ function definitionAt(
   const path = project.absoluteByName.get(fileName);
   if (!path) return undefined;
 
-  // A relative `.vibe` module specifier jumps to that module.
+  // A relative `.sm` module specifier jumps to that module.
   const parsed = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   for (const statement of parsed.statements) {
     if (!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) continue;
     const specifier = statement.moduleSpecifier;
     if (!specifier || !ts.isStringLiteral(specifier)) continue;
     if (offset < specifier.getStart(parsed) || offset >= specifier.getEnd()) continue;
-    const resolved = resolveVibeImport(path, specifier.text);
+    const resolved = resolveSmithersImport(path, specifier.text);
     if (!resolved) return undefined;
     return {
       uri: pathToFileURL(resolved).href,
@@ -756,10 +756,10 @@ function definitionAt(
     return local;
   }
 
-  // Follow the module's own relative `.vibe` imports before searching wider.
+  // Follow the module's own relative `.sm` imports before searching wider.
   const imported: string[] = [];
   for (const specifier of moduleSpecifiers(text, path)) {
-    const resolved = resolveVibeImport(path, specifier);
+    const resolved = resolveSmithersImport(path, specifier);
     if (!resolved) continue;
     for (const [name, candidate] of project.absoluteByName) {
       if (candidate === resolved) imported.push(name);
@@ -804,7 +804,7 @@ function positionFrom(value: unknown): LspPosition | undefined {
   return { line, character };
 }
 
-export function startVibeLanguageServer(options: LanguageServerOptions = {}): LanguageServerHandle {
+export function startSmithersLanguageServer(options: LanguageServerOptions = {}): LanguageServerHandle {
   const input = options.input ?? process.stdin;
   const output = options.output ?? process.stdout;
   const errorOutput = options.errorOutput ?? process.stderr;
@@ -992,7 +992,7 @@ export function startVibeLanguageServer(options: LanguageServerOptions = {}): La
         const formatOptions = isRecord(params.options) ? params.options : {};
         const tabSize = typeof formatOptions.tabSize === "number" && Number.isInteger(formatOptions.tabSize) &&
           formatOptions.tabSize >= 1 && formatOptions.tabSize <= 8 ? formatOptions.tabSize : 2;
-        const formatted = formatVibeSource(document.text, {
+        const formatted = formatSmithersSource(document.text, {
           fileName: document.path,
           indentSize: tabSize,
         });

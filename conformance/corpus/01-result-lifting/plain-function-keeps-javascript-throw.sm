@@ -1,0 +1,14 @@
+export class Boom extends Error {
+  constructor(readonly value: number) { super(`bad value ${value}`) }
+}
+
+export function main(): string[] {
+  const value = -2
+  try {
+    if (value < 0) throw new Boom(value)
+    return [`half ${value / 2}`]
+  } catch (thrown) {
+    if (thrown instanceof Boom) return [`caught Boom: ${thrown.message}`]
+    return ["caught something else"]
+  }
+}

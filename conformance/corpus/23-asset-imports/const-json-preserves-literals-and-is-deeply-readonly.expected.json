@@ -1,0 +1,7 @@
+{
+  "title": "with { type: \"json\", mode: \"const\" } gives the module a recursively literal-preserving, deeply readonly type",
+  "expect": "output",
+  "stdout": ["production", "80+443", "true"],
+  "assets": ["config.json"],
+  "notes": "specification/comptime.mdx, 'Built-In Formats': 'Smithers's const JSON form MUST preserve literal values recursively and expose a deeply readonly type', with the required attribute shape printed verbatim as `import config from \"./config.json\" with { type: \"json\", mode: \"const\" }`. docs/ASSET_LOADERS.md (Locked) prints the resulting type for this exact file: '{ readonly mode: \"production\"; readonly ports: readonly [80, 443] }'. The `Exactly` alias is the observation: it is invariant, so a widened literal or a lost `readonly` turns it `false` and `const literalPreserving: ... = true` no longer type-checks under the emitted-TypeScript check. The stdout line 'true' is that type-level fact made visible at run time. RETIRED MARKER (go, 2026-08-23): `mode: \"const\"` used to select nothing on the fork (observed SMITHERS1506@17:11, SMITHERS1506@17:24, SMITHERS1510@1:20). The fork now preserves literals recursively and emits a deeply readonly type, so the invariant `Exactly` alias type-checks there too; measured XPASS on go by `node conformance/runner/run.mjs --backend both --jobs 4`."
+}

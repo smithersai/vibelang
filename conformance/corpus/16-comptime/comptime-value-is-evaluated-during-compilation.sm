@@ -1,0 +1,18 @@
+import { comptime as build } from "smithers:comptime"
+
+const source = { name: "smithers", major: 2 }
+const words = ["alpha", "beta", "gamma"]
+
+const manifest = build({
+  title: `${source.name} v${source.major}`,
+  slug: words.join("-"),
+  shout: source.name.toUpperCase(),
+  count: words.length,
+  nested: { even: source.major % 2 === 0, absent: null },
+  mapped: words.map((word: string) => word.slice(0, 1)),
+  keys: Object.keys(source),
+})
+
+export function main(): string[] {
+  return [JSON.stringify(manifest)]
+}

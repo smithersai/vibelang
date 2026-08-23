@@ -1,0 +1,6 @@
+{
+  "title": "the named `uses` requirement clause is retired: requirements come from Capability.context() inference",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1001", "line": 3, "column": 33 }],
+  "notes": "docs/DECISIONS.md 'Requirements and dependency injection' (Locked): 'Capability.context() ... adds its class to the enclosing function's inferred requirement row; no `uses` source-language grammar is needed.' specification/requirements.mdx, 'Context Access': 'The context row MUST be part of the function's static type even though it is not written with dedicated function-declaration syntax.'"
+}

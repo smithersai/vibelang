@@ -1,0 +1,12 @@
+{
+  "title": "module trust is exact, not a prefix: a bare package whose name merely STARTS with the intrinsic letters is an ordinary untrusted foreign module and needs an initialization trust claim",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 24
+    }
+  ],
+  "notes": "poc/src/language/README.md: 'Module trust is exact: only the declared compiler modules `smthrs/context`, `smthrs/provider`, `smithers:exceptions`, `smithers:comptime`, and `smithers:flows` are compiler intrinsics. **Prefixes do not confer trust; every other specifier is an ordinary foreign module.**' This is a fail-open obligation with a supply-chain shape: if trust were granted by prefix, publishing a package named `smithersutils` would be enough to have a `.sm` program treat it as compiler-owned and skip both the module-initialization trust check (SMITHERS1510) and the per-call panic charge. The binding is only INSPECTED, never called, so the declared diagnostic is the module-trust rule alone rather than the SMITHERS1101/1301/1507/1508 foreign-call cascade a call would add on top. The coverage audit that created this area recorded the obligation as unwritable on the grounds that a bare specifier cannot resolve in the harness's flat staging directory and the case would measure resolution failure instead; that is not what happens — SMITHERS1510 is decided lexically from the specifier, so the rule is reached before resolution matters."
+}

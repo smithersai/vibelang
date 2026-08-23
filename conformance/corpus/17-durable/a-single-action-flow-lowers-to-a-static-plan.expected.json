@@ -1,0 +1,10 @@
+{
+  "title": "a genuine smithers:flows import still lowers a one-Action durable function to a digest-pinned static Plan",
+  "expect": "output",
+  "stdout": [
+    "static-plan-artifact",
+    "action",
+    "a-single-action-flow-lowers-to-a-static-plan.sm#Step"
+  ],
+  "notes": "docs/DECISIONS.md (Locked): 'A recognized `durable(...)` call becomes a serializable Flow descriptor referencing emitted Plan IR, not a runtime callback wrapper', and specification/durable-execution.mdx:28. This is the negative direction of 17-durable/the-retired-vibelang-flows-specifier-is-not-compiler-owned, and the two are written as an A/B: the same one-Action durable function, the same Action signature, and only the specifier on line 1 differs. Removing a retired specifier from a compiler-owned table is exactly the edit that can take the real one with it, and this corpus has shipped that class of over-correction before. The three printed lines are the descriptor marker, the lowered node kinds, and the canonical Action requirement \u2014 the requirement carries this case's own file name, so a Plan built from the wrong module would fail here rather than pass quietly. 17-durable/static-plan-shape-is-digest-pinned pins the richer Plan shape; this case exists to be the minimal control for the specifier rule."
+}

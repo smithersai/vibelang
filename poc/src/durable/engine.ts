@@ -19,6 +19,8 @@ import {
   type PlanFragment,
   type PlanNode,
   type PlanTemplate,
+  type QueueNode,
+  type SignalNode,
   type ValueExpr,
   type WorkerExit
 } from "./ir.ts"
@@ -27,13 +29,20 @@ import { LocalWorker } from "./provider.ts"
 import {
   ContentIntegrityError,
   DurableStore,
+  type BroadcastContractExpectation,
+  type BroadcastDeliveryRequest,
+  type BroadcastDeliveryResult,
   type ExecutionStatus,
+  type QueueContractExpectation,
+  type QueueEnqueueRequest,
+  type QueueEnqueueResult,
   type SignalContractExpectation,
   type SignalDeliveryAuthorization,
   type SignalDeliveryRequest,
   type SignalDeliveryResult,
   type StoredNodeExit
 } from "./store.ts"
+import { ExecutionMigratedError, planExecutionMigration, type MigrationPlan } from "./migration.ts"
 import { validateDurableValue } from "./schema.ts"
 
 export class DurableActionFailure extends Error {
@@ -93,6 +102,8 @@ export interface ExecuteOptions {
   readonly afterTimerScheduled?: (nodeId: string, wakeAt: number) => void | Promise<void>
   /** Runs once after a signal wait is durably visible and holds no worker lease. */
   readonly afterSignalWaiting?: (nodeId: string, signalId: string) => void | Promise<void>
+  /** Test seam: fires after a queue consumer durably records that it is waiting. */
+  readonly afterQueueWaiting?: (nodeId: string, queueId: string) => void | Promise<void>
   /** Runs after the complete fan-out key/child set is durably committed. */
   readonly afterFanOutMaterialized?: (nodeId: string, childNodeIds: readonly string[]) => void | Promise<void>
   /** Runs after one later fan-out step child is durably materialized and before it is dispatched. */
@@ -155,6 +166,17 @@ export interface DurableExecutionHandle<Success = unknown> {
    * (executionId, signalId) and never addresses another execution.
    */
   signal(signalId: string, options: DurableSignalOptions): SignalDeliveryResult
+  /**
+   * Delivers to a signal inside an ATTACHED child execution, addressed by the
+   * chain of `childFlow` node ids from this handle's own execution. It mints no
+   * transferable capability: the durable parent -> child linkage is the only
+   * authority, and a child not attached along that path fails closed.
+   */
+  signalChild(
+    childNodePath: readonly string[],
+    signalId: string,
+    options: DurableSignalOptions
+  ): SignalDeliveryResult
 }
 
 const MAX_TIMER_DELAY_MS = 2_147_483_647
@@ -350,6 +372,7 @@ interface RunContext {
   readonly traceContext: Readonly<Record<string, string>>
   readonly afterTimerScheduled?: ((nodeId: string, wakeAt: number) => void | Promise<void>) | undefined
   readonly afterSignalWaiting?: ((nodeId: string, signalId: string) => void | Promise<void>) | undefined
+  readonly afterQueueWaiting?: ((nodeId: string, queueId: string) => void | Promise<void>) | undefined
   readonly afterFanOutMaterialized?: (
     (nodeId: string, childNodeIds: readonly string[]) => void | Promise<void>
   ) | undefined
@@ -368,6 +391,14 @@ interface RunContext {
 
 export class DurableExecutor<Input = unknown, Success = unknown> {
   readonly owner = randomUUID()
+  /**
+   * The exact Plan this coordinator is authorized to advance. Every mutating
+   * store call carries it, so a coordinator holding a superseded deployment
+   * cannot claim, materialize, link, complete, or fail a migrated execution.
+   */
+  private get planDigest(): string {
+    return this.deployment.flow.plan.digest
+  }
   private readonly nodes = new Map<string, PlanNode>()
   private readonly routes: Map<string, BuiltDeployment<Input, Success>["manifest"]["routes"][number]>
   private readonly workers = new Map<string, DurableWorker>()
@@ -504,6 +535,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       traceContext: normalizedTraceContext,
       afterTimerScheduled: options.afterTimerScheduled,
       afterSignalWaiting: options.afterSignalWaiting,
+      afterQueueWaiting: options.afterQueueWaiting,
       afterFanOutMaterialized: options.afterFanOutMaterialized,
       afterFanOutStepMaterialized: options.afterFanOutStepMaterialized,
       afterLoopRoundMaterialized: options.afterLoopRoundMaterialized,
@@ -528,7 +560,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           message: "Persisted execution deadline exceeded before terminal commit"
         })
       }
-      const finished = this.store.completeExecution(options.executionId, output)
+      const finished = this.store.completeExecution(options.executionId, output, this.planDigest)
       if (finished.execution.status === "completed") {
         return checkedFlowSuccess(
           finished.execution.output,
@@ -545,6 +577,10 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       ))
     } catch (error) {
       if (error instanceof CoordinatorCrash) throw error // process death leaves the execution resumable
+      // A coordinator that no longer matches the pinned Plan must abandon the
+      // execution exactly like a dead process: it is emphatically NOT entitled
+      // to record a terminal outcome for work it can no longer interpret.
+      if (error instanceof ExecutionMigratedError) throw error
       let terminalError = error
       if (error instanceof DurableActionFailure && flowSchemas?.error !== undefined) {
         try {
@@ -560,14 +596,24 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       }
       let finished
       if (terminalError instanceof DurableActionFailure) {
-        finished = this.store.failExecution(options.executionId, "failure", terminalError.failure)
+        finished = this.store.failExecution(
+          options.executionId,
+          "failure",
+          terminalError.failure,
+          this.planDigest
+        )
       } else if (terminalError instanceof DurableActionDefect) {
-        finished = this.store.failExecution(options.executionId, "defect", terminalError.defect)
+        finished = this.store.failExecution(
+          options.executionId,
+          "defect",
+          terminalError.defect,
+          this.planDigest
+        )
       } else {
         finished = this.store.failExecution(options.executionId, "defect", {
           name: terminalError instanceof Error ? terminalError.name : "CoordinatorDefect",
           message: terminalError instanceof Error ? terminalError.message : String(terminalError)
-        })
+        }, this.planDigest)
       }
       if (!finished.changed) {
         if (finished.execution.status === "completed") {
@@ -670,6 +716,184 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     })
   }
 
+  /** Finds the exact queue consumer contract this deployment Plan declares. */
+  private queuePlanNode(queueId: string): QueueNode {
+    if (typeof queueId !== "string" || queueId.trim() === "") {
+      throw new TypeError("Durable queue id must be non-empty")
+    }
+    const found = [...this.nodes.values()].filter(
+      (candidate): candidate is QueueNode => candidate.kind === "queue" && candidate.queueId === queueId
+    )
+    if (found.length === 0) {
+      throw new TypeError(`Enqueue does not address a queue in this deployment Plan`)
+    }
+    // Several consumer nodes may share one queue; the Plan validator already
+    // required them to agree on one exact item contract.
+    return found[0]!
+  }
+
+  /** Finds the exact broadcast signal contract this deployment Plan declares. */
+  private broadcastPlanNode(signalId: string): SignalNode {
+    if (typeof signalId !== "string" || signalId.trim() === "") {
+      throw new TypeError("Durable signal id must be non-empty")
+    }
+    const found = [...this.nodes.values()].find(
+      (candidate): candidate is SignalNode =>
+        candidate.kind === "signal" && candidate.signalId === signalId && candidate.delivery === "broadcast"
+    )
+    if (found === undefined) {
+      throw new TypeError(`Delivery does not address a broadcast signal in this deployment Plan`)
+    }
+    return found
+  }
+
+  /**
+   * Provisional producer entry point for a durable queue. Like signal delivery
+   * it is fail-closed by default and requires a token minted by `grantQueue`;
+   * the tokenless path survives only behind explicit `unsafeLocalDelivery`.
+   */
+  enqueue(
+    request: QueueEnqueueRequest,
+    authorization: { readonly producerToken?: string; readonly unsafeLocalDelivery?: true } = {}
+  ): QueueEnqueueResult {
+    const normalized = assertJson(request, "durable queue enqueue request")
+    if (
+      normalized === null || Array.isArray(normalized) || typeof normalized !== "object" ||
+      canonicalJson(Object.keys(normalized).sort()) !== canonicalJson([
+        "idempotencyKey", "item", "queueId"
+      ]) || typeof normalized.queueId !== "string"
+    ) throw new TypeError("Durable queue enqueue request must have exact fields")
+    const node = this.queuePlanNode(normalized.queueId)
+    const expectation: QueueContractExpectation = {
+      queueId: node.queueId,
+      queueContractDigest: node.queueContractDigest
+    }
+    return this.store.enqueue(normalized as unknown as QueueEnqueueRequest, expectation, authorization)
+  }
+
+  /** Mints local-trust producer evidence for one queue this Plan consumes. */
+  grantQueue(queueId: string): { readonly queueId: string; readonly producerToken: string } {
+    const node = this.queuePlanNode(queueId)
+    const minted = this.store.mintQueueToken(node.queueId)
+    return Object.freeze({ queueId: node.queueId, producerToken: minted.producerToken })
+  }
+
+  /**
+   * Provisional broadcast entry point. One delivery satisfies every execution
+   * already subscribed to this signal identity; each adopts it exactly once.
+   */
+  deliverBroadcast(
+    request: BroadcastDeliveryRequest,
+    authorization: SignalDeliveryAuthorization = {}
+  ): BroadcastDeliveryResult {
+    const normalized = assertJson(request, "durable broadcast delivery request")
+    if (
+      normalized === null || Array.isArray(normalized) || typeof normalized !== "object" ||
+      canonicalJson(Object.keys(normalized).sort()) !== canonicalJson([
+        "idempotencyKey", "payload", "signalId"
+      ]) || typeof normalized.signalId !== "string"
+    ) throw new TypeError("Durable broadcast delivery request must have exact fields")
+    const node = this.broadcastPlanNode(normalized.signalId)
+    const expectation: BroadcastContractExpectation = {
+      signalId: node.signalId,
+      signalContractDigest: node.signalContractDigest
+    }
+    return this.store.deliverBroadcast(
+      normalized as unknown as BroadcastDeliveryRequest,
+      expectation,
+      authorization
+    )
+  }
+
+  /**
+   * Delivers a signal to a node inside an ATTACHED child Plan, addressed by the
+   * chain of `childFlow` node ids leading to it.
+   *
+   * Authority derives entirely from the parent: the caller must already hold a
+   * handle to `parentExecutionId`, and the store verifies every hop of the
+   * durable parent -> child linkage before any token exists. No transferable
+   * capability is produced — the minted evidence is consumed inside this call
+   * and never returned — so this widens a parent grant's reach to exactly the
+   * executions that parent itself created, and to nothing else.
+   */
+  private deliverAttachedChildSignal(
+    parentExecutionId: string,
+    childNodePath: readonly string[],
+    signalId: string,
+    options: DurableSignalOptions
+  ): SignalDeliveryResult {
+    if (!Array.isArray(childNodePath) || childNodePath.length === 0) {
+      throw new TypeError("Durable child signal path must name at least one attached childFlow node")
+    }
+    // Resolve the leaf child deployment through the embedded, digest-pinned
+    // child Plans, so the signal contract still comes from compiled evidence.
+    let leaf: DurableExecutor<unknown, unknown> = this as DurableExecutor<unknown, unknown>
+    for (const nodeId of childNodePath) {
+      const childFlowNode = leaf.nodes.get(nodeId)
+      if (childFlowNode?.kind !== "childFlow") {
+        throw new TypeError(`Child signal path node ${nodeId} is not a childFlow node of this Plan`)
+      }
+      const next = leaf.childExecutor(childFlowNode.planDigest)
+      if (next === undefined) {
+        throw new TypeError(`Child Plan ${childFlowNode.planDigest} is not embedded in this deployment`)
+      }
+      leaf = next
+    }
+    const planNode = [...leaf.nodes.values()].find(
+      (candidate): candidate is SignalNode =>
+        candidate.kind === "signal" && candidate.signalId === signalId
+    )
+    if (planNode === undefined) {
+      throw new TypeError(`Delivery does not address a signal in the attached child Plan`)
+    }
+    // The durable linkage chain — not any new authority — is what permits this.
+    const minted = this.store.mintAttachedSignalToken(parentExecutionId, childNodePath, signalId)
+    if (minted.nodeId !== planNode.id) {
+      throw new ContentIntegrityError(
+        `attached child signal ${minted.executionId}/${signalId} disagrees with the embedded child Plan node`
+      )
+    }
+    return this.store.deliverSignal({
+      executionId: minted.executionId,
+      nodeId: planNode.id,
+      signalId,
+      idempotencyKey: options.idempotencyKey,
+      payload: options.payload
+    }, {
+      planDigest: leaf.deployment.flow.plan.digest,
+      signalId: planNode.signalId,
+      signalContractDigest: planNode.signalContractDigest
+    }, { senderToken: minted.senderToken })
+  }
+
+  /** Mints local-trust sender evidence for one broadcast identity in this Plan. */
+  grantBroadcast(signalId: string): { readonly signalId: string; readonly senderToken: string } {
+    const node = this.broadcastPlanNode(signalId)
+    const minted = this.store.mintBroadcastToken(node.signalId)
+    return Object.freeze({ signalId: node.signalId, senderToken: minted.senderToken })
+  }
+
+  /**
+   * Applies an EXPLICIT, opt-in migration of one in-flight execution from the
+   * supplied previous deployment onto THIS executor's deployment. Nothing about
+   * the compatibility judgment is trusted from here: the store re-derives it
+   * inside the applying transaction from both artifacts and the execution's own
+   * durable rows. Applying it twice is idempotent.
+   */
+  migrate(
+    executionId: string,
+    from: {
+      readonly flow: { readonly plan: PlanTemplate }
+      readonly manifest: DeploymentManifest
+    }
+  ): { readonly applied: boolean; readonly fencedNodeIds: readonly string[]; readonly generation: number } {
+    const migration: MigrationPlan = planExecutionMigration(
+      { plan: from?.flow?.plan, manifest: from?.manifest },
+      { plan: this.deployment.flow.plan, manifest: this.deployment.manifest }
+    )
+    return this.store.migrateExecution(executionId, migration)
+  }
+
   /**
    * Provisional start-without-await spelling: begins (or resumes) the durable
    * execution and immediately returns a typed handle scoped to exactly that
@@ -730,6 +954,20 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           idempotencyKey: options.idempotencyKey,
           payload: options.payload
         }, { senderToken: grant.senderToken })
+      },
+      signalChild: (
+        childNodePath: readonly string[],
+        signalId: string,
+        options: DurableSignalOptions
+      ): SignalDeliveryResult => {
+        if (
+          options === null || typeof options !== "object" || Array.isArray(options) ||
+          Reflect.ownKeys(options).length !== 2 ||
+          !Object.hasOwn(options, "idempotencyKey") || !Object.hasOwn(options, "payload")
+        ) {
+          throw new TypeError("Durable handle signal options must have exactly idempotencyKey and payload")
+        }
+        return this.deliverAttachedChildSignal(executionId, childNodePath, signalId, options)
       }
     })
   }
@@ -758,7 +996,10 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     const node = this.nodes.get(nodeId)
     if (node === undefined) throw new Error(`Plan references unknown node ${nodeId}`)
     const recorded = this.store.getNode(context.executionId, nodeId).exit
-    if (recorded !== undefined && node.kind !== "signal") {
+    // Signal and queue nodes always route through their own poll transaction,
+    // even when terminal, so the store re-verifies that the committed value
+    // still agrees with its delivery/consumption evidence.
+    if (recorded !== undefined && node.kind !== "signal" && node.kind !== "queue") {
       return node.kind === "action"
         ? this.fromActionStoredExit(node, recorded)
         : fromStoredExit(nodeId, recorded)
@@ -779,6 +1020,8 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         return this.resolveTimer(node, context)
       case "signal":
         return this.resolveSignal(node, context)
+      case "queue":
+        return this.resolveQueue(node, context)
       case "fanout":
         return this.resolveFanOut(node, context)
       case "loop":
@@ -880,7 +1123,8 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           childNodeId: action.id,
           inputDigest: digest(input),
           ...(stepped ? { step: 0 as const } : {})
-        }))
+        })),
+        this.planDigest
       ).newlyMaterialized
     } catch (error) {
       if (error instanceof CoordinatorCrash) throw error // process death leaves the fan-out resumable
@@ -924,7 +1168,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
             step: stepIndex,
             childNodeId: childId,
             inputDigest: digest(input)
-          }).newlyMaterialized
+          }, this.planDigest).newlyMaterialized
         } catch (error) {
           if (error instanceof CoordinatorCrash) throw error // process death leaves the step resumable
           if (error instanceof DurableActionDefect) throw error
@@ -1013,7 +1257,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           childNodeId: childId,
           inputDigest: digest(input),
           stateDigest: digest(state)
-        }).newlyMaterialized
+        }, this.planDigest).newlyMaterialized
       } catch (error) {
         if (error instanceof CoordinatorCrash) throw error // process death leaves the round resumable
         if (error instanceof DurableActionDefect) throw error
@@ -1072,7 +1316,13 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     const childExecutionId = `${context.executionId}::child::${node.id}`
     let linked
     try {
-      linked = this.store.registerChildExecution(context.executionId, node.id, childExecutionId, node.planDigest)
+      linked = this.store.registerChildExecution(
+        context.executionId,
+        node.id,
+        childExecutionId,
+        node.planDigest,
+        this.planDigest
+      )
     } catch (error) {
       if (error instanceof CoordinatorCrash) throw error // process death leaves the parent resumable
       const recorded = this.store.getNode(context.executionId, node.id).exit
@@ -1199,7 +1449,8 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         return fromStoredExit(node.id, this.store.timeoutNode(
           context.executionId,
           node.id,
-          `Persisted execution deadline exceeded while waiting for timer ${node.id}`
+          `Persisted execution deadline exceeded while waiting for timer ${node.id}`,
+          this.planDigest
         ))
       }
       if (now >= scheduled.wakeAt) {
@@ -1216,6 +1467,41 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       await this.store.wakeups.wait(
         context.executionId,
         Math.min(scheduled.wakeAt, context.deadline, now + context.wakeupSweepMs)
+      )
+    }
+  }
+
+  /**
+   * Suspends on a durable queue without holding a worker lease. The store's
+   * consume transaction is the only place an item changes hands, so this loop
+   * is a pure wait: it never caches, reserves, or partially consumes anything.
+   */
+  private async resolveQueue(node: QueueNode, context: RunContext): Promise<JsonValue> {
+    while (true) {
+      const polled = this.store.pollQueue(context.executionId, node.id, {
+        planDigest: this.planDigest,
+        queueId: node.queueId,
+        queueContractDigest: node.queueContractDigest
+      })
+      if (polled.kind === "terminal") {
+        if (polled.newlyConsumed) await context.afterNodeAdopted?.(node.id)
+        return fromStoredExit(node.id, polled.exit)
+      }
+      if (polled.newlyWaiting) {
+        await context.afterQueueWaiting?.(node.id, node.queueId)
+      }
+      const now = Date.now()
+      if (now >= context.deadline) {
+        return fromStoredExit(node.id, this.store.timeoutNode(
+          context.executionId,
+          node.id,
+          `Persisted execution deadline exceeded while waiting on queue ${node.queueId}`,
+          this.planDigest
+        ))
+      }
+      await this.store.wakeups.wait(
+        context.executionId,
+        Math.min(context.deadline, now + context.wakeupSweepMs)
       )
     }
   }
@@ -1242,7 +1528,8 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         return fromStoredExit(node.id, this.store.timeoutNode(
           context.executionId,
           node.id,
-          `Persisted execution deadline exceeded while waiting for signal ${node.signalId}`
+          `Persisted execution deadline exceeded while waiting for signal ${node.signalId}`,
+          this.planDigest
         ))
       }
       // Event-driven suspension: the persisted inbox remains the only source
@@ -1277,11 +1564,19 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           exit: this.store.timeoutNode(
             context.executionId,
             nodeId,
-            `Persisted execution deadline exceeded while waiting for ${nodeId}`
+            `Persisted execution deadline exceeded while waiting for ${nodeId}`,
+            this.planDigest
           )
         }
       }
-      const claim = this.store.claimNode(context.executionId, nodeId, this.owner, context.leaseMs)
+      const claim = this.store.claimNode(
+        context.executionId,
+        nodeId,
+        this.owner,
+        context.leaseMs,
+        Date.now(),
+        this.planDigest
+      )
       if (claim.kind !== "busy") return claim
       await delay(Math.min(
         25,
@@ -1785,7 +2080,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     adoptedFrom: string,
     context: RunContext
   ): Promise<JsonValue> {
-    const adopted = this.store.adoptSuccess(context.executionId, node.id, value, adoptedFrom)
+    const adopted = this.store.adoptSuccess(context.executionId, node.id, value, adoptedFrom, this.planDigest)
     if (!adopted) {
       const winner = this.store.getNode(context.executionId, node.id).exit
       if (winner !== undefined) return this.fromActionStoredExit(node, winner)

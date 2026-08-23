@@ -1,0 +1,5 @@
+import { helper } from "smithersutils"
+
+export function main(): string[] {
+  return [typeof helper === "function" ? "present" : "absent"]
+}

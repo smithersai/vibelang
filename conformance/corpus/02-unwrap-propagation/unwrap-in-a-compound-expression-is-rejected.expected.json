@@ -1,0 +1,16 @@
+{
+  "title": "unwrap in a placement that would need evaluation-order rewriting is rejected instead of reordered",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1204",
+      "line": 11,
+      "column": 17
+    },
+    {
+      "code": "SMITHERS1204",
+      "line": 11,
+      "column": 43
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "title": "a Layer.provide callback the compiler cannot resolve to a checked local function is rejected: an unsatisfied row cannot be computed from an unknown body",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2103",
+      "line": 18,
+      "column": 10
+    }
+  ],
+  "notes": "specification/requirements.mdx, Satisfaction (Locked): 'Providing a layer to a computation MUST remove matching capabilities from the computation's unsatisfied requirement row,' and 'When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error.' Both sentences are about a row the compiler can see. `body` is a parameter, so the computation's row is whatever an unknown caller supplies, and there is nothing to subtract from and nothing to report as missing. Accepting it would publish an EMPTY unsatisfied row for a body that may require anything, which is the fail-open direction of the satisfaction rule and would silently disable 06-layers/layer-provide-missing-a-capability's obligation for every provide written this way. Refusing is the fail-closed direction and is what the POC does; the rule is a POC boundary in its wording ('in this POC') and a consequence of the Locked sentences in its substance, and it is declared as both. Its neighbour SMITHERS2104 — an opaque LAYER rather than an opaque callback — is already pinned by 06-layers/opaque-layer-is-rejected, and the two are the two halves of 'the compiler knows the complete closure': one is not knowing what is provided, the other is not knowing what is required. The declared position is the `Layer.provide` CALL, because no argument on its own is what is wrong. No `messageContains` is declared. The two backends legitimately word this diagnostic differently — measured on SMITHERS1503, where the reference says \"only as an expression statement or direct return\" and the fork says \"only as an expression statement or a direct return\" — and conformance/README.md reserves `messageContains` for rules whose PAYLOAD is the promise, which here it is not: the code and the authored position are the whole contract, and a fragment of the sentence around them would be a wording assertion wearing a contract's clothes. Before this case, SMITHERS2103 was one of the codes both implementations spell and no case probed. Both backends refuse it today, so this case pins current behaviour on both rather than reproducing a live one-sided defect."
+}

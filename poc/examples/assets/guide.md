@@ -4,7 +4,7 @@ draft: false
 version: 2
 owner:
   team: compiler
-  handle: vibelang
+  handle: smithers
 tags:
   - assets
   - markdown

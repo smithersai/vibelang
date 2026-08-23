@@ -1,0 +1,20 @@
+import { native } from "smithers:native"
+import { readFileSync } from "./cycle-b-host-module.mod.sm"
+
+// The two laundering modules re-export from each other, so a walk that follows
+// bindings must terminate. Terminating is not enough on its own: the foreign
+// edge inside the cycle is still reachable and must still be charged, which is
+// the difference between detecting a cycle and giving up inside one.
+function hostBacked(): number {
+  return typeof readFileSync === "function" ? 1 : 0
+}
+
+function checksum(input: string): number {
+  return input.length + hostBacked()
+}
+
+native(checksum)
+
+export function main(): string[] {
+  return [String(checksum("smithers"))]
+}

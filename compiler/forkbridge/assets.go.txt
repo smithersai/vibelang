@@ -1,0 +1,1968 @@
+package main
+
+// Source-asset import selection and fail-closed admission.
+//
+// An attributed asset is a compiler-owned compile-time edge, not a runtime
+// TypeScript/JavaScript module. This pass runs before row and foreign-boundary
+// analysis so every downstream policy can make that distinction from the same
+// AST identity. Supported built-ins produce checker-only modules and embedded
+// values; unknown loaders stop at an explicit implementation-status diagnostic.
+// Invalid edges receive the language diagnostics the locked contract assigns
+// to their authored nodes.
+
+import (
+	"crypto/sha256"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"path"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+)
+
+const unsupportedAssetLoaderCode = "SMITHERS_GO_ASSET_LOADER_UNSUPPORTED"
+
+var sourceCodeExtensions = map[string]bool{
+	".sm":  true,
+	".ts":  true,
+	".tsx": true,
+	".mts": true,
+	".cts": true,
+	".js":  true,
+	".jsx": true,
+	".mjs": true,
+	".cjs": true,
+}
+
+// isPotentialAssetFilePath classifies an input as non-code. It never selects a
+// loader: the authored `type` attribute does that. This distinction is also the
+// compatibility bridge for protocol-v3 harnesses that had to label non-root
+// assets as "typescript" before the bridge accepted FileKindAsset.
+func isPotentialAssetFilePath(name string) bool {
+	extension := strings.ToLower(path.Ext(strings.ReplaceAll(name, "\\", "/")))
+	return extension != "" && !sourceCodeExtensions[extension]
+}
+
+type assetAttributeSelection struct {
+	token      ast.Kind
+	hasType    bool
+	stringType bool
+	loader     string
+	values     map[string]string
+	issues     []assetAttributeIssue
+}
+
+type assetAttributeIssue struct {
+	node    *ast.Node
+	code    string
+	message string
+}
+
+var assetAttributeNamePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9-]*$`)
+
+// assetAttributes reads the standard import-attribute AST. Attribute names are
+// syntax, not symbol references; string/identifier forms are the two standard
+// static spellings. Invalid and duplicate entries never enter the identity map,
+// and the selected loader is accepted only from a string-literal value.
+func assetAttributes(node *ast.Node) assetAttributeSelection {
+	selection := assetAttributeSelection{values: make(map[string]string)}
+	if node == nil || !ast.IsImportAttributes(node) {
+		return selection
+	}
+	attributes := node.AsImportAttributes()
+	selection.token = attributes.Token
+	if attributes.Attributes == nil {
+		return selection
+	}
+	for _, entryNode := range attributes.Attributes.Nodes {
+		if !ast.IsImportAttribute(entryNode) {
+			continue
+		}
+		entry := entryNode.AsImportAttribute()
+		name := entry.Name()
+		if name == nil || (!ast.IsIdentifier(name) && !ast.IsStringLiteral(name)) ||
+			!assetAttributeNamePattern.MatchString(name.Text()) {
+			issueNode := name
+			if issueNode == nil {
+				issueNode = entryNode
+			}
+			selection.issues = append(selection.issues, assetAttributeIssue{
+				node: issueNode, code: "SMITHERS5203",
+				message: "asset import attribute names must be static identifiers",
+			})
+			continue
+		}
+		attributeName := name.Text()
+		if _, duplicate := selection.values[attributeName]; duplicate {
+			selection.issues = append(selection.issues, assetAttributeIssue{
+				node: name, code: "SMITHERS5204",
+				message: "duplicate asset import attribute '" + attributeName + "'",
+			})
+			continue
+		}
+		if entry.Value == nil || !ast.IsStringLiteral(entry.Value) {
+			issueNode := entry.Value
+			if issueNode == nil {
+				issueNode = entryNode
+			}
+			selection.issues = append(selection.issues, assetAttributeIssue{
+				node: issueNode, code: "SMITHERS5205",
+				message: "asset import attribute '" + attributeName + "' must be a string literal",
+			})
+			continue
+		}
+		selection.values[attributeName] = entry.Value.Text()
+		if attributeName == "type" {
+			selection.hasType = true
+			selection.stringType = true
+			selection.loader = entry.Value.Text()
+		}
+	}
+	return selection
+}
+
+// assetSpecifierTarget resolves only inside the virtual project. It never
+// touches ambient disk state; staged inputs are the complete compiler-owned
+// filesystem for this request.
+func assetSpecifierTarget(importer *ast.SourceFile, specifier string) (string, bool) {
+	if importer == nil || !strings.HasPrefix(specifier, ".") {
+		return "", false
+	}
+	target := path.Clean(path.Join(path.Dir(importer.FileName()), specifier))
+	return target, target != "/src" && strings.HasPrefix(target, "/src/")
+}
+
+func (p *project) hasStagedAsset(importer *ast.SourceFile, specifier string) bool {
+	if p == nil {
+		return false
+	}
+	target, inside := assetSpecifierTarget(importer, specifier)
+	if !inside {
+		return false
+	}
+	_, exists := p.assetByVirtual[target]
+	return exists
+}
+
+func potentialAssetImport(p *project, importer *ast.SourceFile, declaration *ast.ImportDeclaration) bool {
+	if declaration == nil || !ast.IsStringLiteralLike(declaration.ModuleSpecifier) {
+		return false
+	}
+	specifier := declaration.ModuleSpecifier.Text()
+	selection := assetAttributes(declaration.Attributes)
+	if selection.hasType || (strings.HasPrefix(specifier, ".") && isPotentialAssetFilePath(specifier)) {
+		return true
+	}
+	return p != nil && p.hasStagedAsset(importer, specifier)
+}
+
+func assetExportHasRuntimeBindings(declaration *ast.ExportDeclaration) bool {
+	if declaration == nil || declaration.IsTypeOnly || declaration.ExportClause == nil {
+		return false
+	}
+	if ast.IsNamespaceExport(declaration.ExportClause) {
+		return true
+	}
+	if !ast.IsNamedExports(declaration.ExportClause) {
+		return false
+	}
+	elements := declaration.ExportClause.AsNamedExports().Elements
+	if elements == nil || len(elements.Nodes) == 0 {
+		return false
+	}
+	for _, element := range elements.Nodes {
+		if !element.AsExportSpecifier().IsTypeOnly {
+			return true
+		}
+	}
+	return false
+}
+
+func potentialAssetExport(p *project, importer *ast.SourceFile, declaration *ast.ExportDeclaration) bool {
+	if declaration == nil || declaration.ModuleSpecifier == nil || !ast.IsStringLiteralLike(declaration.ModuleSpecifier) {
+		return false
+	}
+	specifier := declaration.ModuleSpecifier.Text()
+	selection := assetAttributes(declaration.Attributes)
+	if selection.hasType || strings.HasPrefix(specifier, ".") && isPotentialAssetFilePath(specifier) {
+		return true
+	}
+	return p != nil && p.hasStagedAsset(importer, specifier)
+}
+
+type dynamicAssetAttributesResult struct {
+	selection  assetAttributeSelection
+	ok         bool
+	hasOptions bool
+}
+
+// dynamicAssetAttributes reads the object-literal spelling used by import().
+// It deliberately does not evaluate expressions: the reference admits exactly
+// one literal `with` property whose value is one literal attribute object.
+func dynamicAssetAttributes(node *ast.Node) dynamicAssetAttributesResult {
+	result := dynamicAssetAttributesResult{
+		selection: assetAttributeSelection{values: make(map[string]string)},
+		ok:        true,
+	}
+	if node == nil || !ast.IsImportCall(node) {
+		return result
+	}
+	call := node.AsCallExpression()
+	count := 0
+	if call.Arguments != nil {
+		count = len(call.Arguments.Nodes)
+	}
+	result.hasOptions = count > 1
+	deferred := func(target *ast.Node) {
+		if target == nil {
+			target = node
+		}
+		result.ok = false
+		result.selection.issues = append(result.selection.issues, assetAttributeIssue{
+			node: target, code: "SMITHERS5218",
+			message: "dynamic asset imports require a literal specifier and a literal `with { ... }` attribute object",
+		})
+	}
+	if count > 2 {
+		deferred(node)
+		return result
+	}
+	if count < 2 {
+		return result
+	}
+	options := call.Arguments.Nodes[1]
+	if !ast.IsObjectLiteralExpression(options) || options.AsObjectLiteralExpression().Properties == nil ||
+		len(options.AsObjectLiteralExpression().Properties.Nodes) != 1 {
+		deferred(options)
+		return result
+	}
+	withProperty := options.AsObjectLiteralExpression().Properties.Nodes[0]
+	if !ast.IsPropertyAssignment(withProperty) {
+		deferred(withProperty)
+		return result
+	}
+	withName := withProperty.Name()
+	if withName == nil || !(ast.IsIdentifier(withName) || ast.IsStringLiteral(withName)) || withName.Text() != "with" {
+		deferred(withProperty)
+		return result
+	}
+	attributes := withProperty.AsPropertyAssignment().Initializer
+	if !ast.IsObjectLiteralExpression(attributes) {
+		deferred(attributes)
+		return result
+	}
+	result.selection.token = ast.KindWithKeyword
+	if attributes.AsObjectLiteralExpression().Properties == nil {
+		return result
+	}
+	for _, property := range attributes.AsObjectLiteralExpression().Properties.Nodes {
+		if !ast.IsPropertyAssignment(property) {
+			deferred(property)
+			continue
+		}
+		name := property.Name()
+		if name == nil || !(ast.IsIdentifier(name) || ast.IsStringLiteral(name)) ||
+			!assetAttributeNamePattern.MatchString(name.Text()) {
+			if name == nil {
+				name = property
+			}
+			result.ok = false
+			result.selection.issues = append(result.selection.issues, assetAttributeIssue{
+				node: name, code: "SMITHERS5203",
+				message: "asset import attribute names must be static identifiers",
+			})
+			continue
+		}
+		attributeName := name.Text()
+		if _, duplicate := result.selection.values[attributeName]; duplicate {
+			result.ok = false
+			result.selection.issues = append(result.selection.issues, assetAttributeIssue{
+				node: name, code: "SMITHERS5204",
+				message: "duplicate asset import attribute '" + attributeName + "'",
+			})
+			continue
+		}
+		value := property.AsPropertyAssignment().Initializer
+		if !ast.IsStringLiteral(value) {
+			result.ok = false
+			result.selection.issues = append(result.selection.issues, assetAttributeIssue{
+				node: value, code: "SMITHERS5205",
+				message: "asset import attribute '" + attributeName + "' must be a string literal",
+			})
+			continue
+		}
+		result.selection.values[attributeName] = value.Text()
+		if attributeName == "type" {
+			result.selection.hasType = true
+			result.selection.stringType = true
+			result.selection.loader = value.Text()
+		}
+	}
+	return result
+}
+
+type sourceAssetSite struct {
+	node               *ast.Node
+	specifierNode      *ast.Node
+	specifier          string
+	selection          assetAttributeSelection
+	potentialAsset     bool
+	hasRuntimeBindings bool
+	hasAttributes      bool
+	attributesOK       bool
+	starExport         bool
+	computedAttributed bool
+}
+
+func (site sourceAssetSite) hasSelectedLoader() bool {
+	return site.attributesOK && site.hasAttributes && site.selection.token == ast.KindWithKeyword &&
+		site.selection.hasType && site.selection.stringType && strings.TrimSpace(site.selection.loader) != ""
+}
+
+// sourceAssetSites enumerates every syntax form owned by the source-asset
+// seam. Static declarations and dynamic import calls then share selection,
+// admission, loader execution, module identity, and lowering state.
+func sourceAssetSites(p *project, file *ast.SourceFile) []sourceAssetSite {
+	if file == nil {
+		return nil
+	}
+	sites := make([]sourceAssetSite, 0)
+	for _, statement := range file.Statements.Nodes {
+		switch {
+		case ast.IsImportDeclaration(statement):
+			declaration := statement.AsImportDeclaration()
+			if declaration.ModuleSpecifier == nil || !ast.IsStringLiteralLike(declaration.ModuleSpecifier) {
+				continue
+			}
+			sites = append(sites, sourceAssetSite{
+				node: statement, specifierNode: declaration.ModuleSpecifier,
+				specifier: declaration.ModuleSpecifier.Text(), selection: assetAttributes(declaration.Attributes),
+				potentialAsset:     potentialAssetImport(p, file, declaration),
+				hasRuntimeBindings: declaration.ImportClause != nil && !importIsTypeOnly(declaration),
+				hasAttributes:      declaration.Attributes != nil, attributesOK: true,
+			})
+		case ast.IsExportDeclaration(statement):
+			declaration := statement.AsExportDeclaration()
+			if declaration.ModuleSpecifier == nil || !ast.IsStringLiteralLike(declaration.ModuleSpecifier) {
+				continue
+			}
+			sites = append(sites, sourceAssetSite{
+				node: statement, specifierNode: declaration.ModuleSpecifier,
+				specifier: declaration.ModuleSpecifier.Text(), selection: assetAttributes(declaration.Attributes),
+				potentialAsset:     potentialAssetExport(p, file, declaration),
+				hasRuntimeBindings: assetExportHasRuntimeBindings(declaration),
+				hasAttributes:      declaration.Attributes != nil, attributesOK: true,
+				starExport: declaration.ExportClause == nil,
+			})
+		}
+	}
+
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsImportCall(node) {
+			call := node.AsCallExpression()
+			attributes := dynamicAssetAttributes(node)
+			site := sourceAssetSite{
+				node: node, selection: attributes.selection,
+				hasRuntimeBindings: true, hasAttributes: attributes.hasOptions,
+				attributesOK: attributes.ok,
+			}
+			if call.Arguments != nil && len(call.Arguments.Nodes) > 0 {
+				site.specifierNode = call.Arguments.Nodes[0]
+				if ast.IsStringLiteral(site.specifierNode) || ast.IsNoSubstitutionTemplateLiteral(site.specifierNode) {
+					site.specifier = site.specifierNode.Text()
+					if attributes.ok {
+						site.potentialAsset = attributes.selection.hasType ||
+							strings.HasPrefix(site.specifier, ".") && isPotentialAssetFilePath(site.specifier) ||
+							p != nil && p.hasStagedAsset(file, site.specifier)
+					}
+				} else if attributes.ok && attributes.hasOptions {
+					site.computedAttributed = true
+				}
+			}
+			sites = append(sites, site)
+		}
+		node.ForEachChild(visit)
+		return false
+	}
+	file.AsNode().ForEachChild(visit)
+	sort.SliceStable(sites, func(left int, right int) bool {
+		return sites[left].node.Pos() < sites[right].node.Pos()
+	})
+	return sites
+}
+
+// legacyAssetAssertionDiagnostics runs while raw parser diagnostics are still
+// available. The fork deliberately parses the withdrawn `assert` clause but
+// emits a syntax diagnostic for it; recognizing the recovered ImportAttributes
+// node lets Smithers own the situation as SMITHERS5202 and suppress that parser
+// cascade without translating a TypeScript diagnostic code.
+func legacyAssetAssertionDiagnostics(p *project, file *ast.SourceFile, logical string) []diagnostic {
+	reports := make([]diagnostic, 0)
+	for _, statement := range file.Statements.Nodes {
+		if !ast.IsImportDeclaration(statement) {
+			continue
+		}
+		declaration := statement.AsImportDeclaration()
+		if declaration.Attributes == nil || declaration.Attributes.AsImportAttributes().Token != ast.KindAssertKeyword ||
+			!potentialAssetImport(p, file, declaration) {
+			continue
+		}
+		start, length := syntaxSpan(declaration.Attributes, file.Text())
+		reports = append(reports, diagnostic{
+			Code: "SMITHERS5202", Category: "error",
+			Message: "asset imports use `with { ... }`; legacy import assertions are unsupported",
+			File:    logical, Span: &span{Start: start, Length: length}, Phase: "parse",
+		})
+	}
+	return reports
+}
+
+type assetImportEdge struct {
+	loader string
+	module *compiledAssetModule
+}
+
+type compiledAssetValue struct {
+	data            ctValue
+	constAssertion  bool
+	declarationType string
+	bytes           []byte
+	isBytes         bool
+}
+
+// compiledAssetModule is the backend-neutral result shared by the generated
+// checker module and the AST lowering. The checker source is never emitted;
+// the lowering embeds these values into the importing module instead.
+type compiledAssetModule struct {
+	loader            string
+	target            string
+	attributes        string
+	defaultValue      *compiledAssetValue
+	defaultExportName string
+	exports           map[string]compiledAssetValue
+}
+
+func assetAttributesKey(values map[string]string) string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var builder strings.Builder
+	for _, key := range keys {
+		builder.WriteString(strconvQuote(key))
+		builder.WriteByte('=')
+		builder.WriteString(strconvQuote(values[key]))
+		builder.WriteByte('\x00')
+	}
+	return builder.String()
+}
+
+func assetModuleKey(target string, attributes string) string {
+	return target + "\x00" + attributes
+}
+
+func assetDeclarationPath(target string) string {
+	extension := path.Ext(target)
+	return strings.TrimSuffix(target, extension) + ".d" + extension + ".ts"
+}
+
+func assetGeneratedPath(target string, attributes string) string {
+	digest := sha256.Sum256([]byte(target + "\x00" + attributes))
+	return path.Join(path.Dir(target), ".smithers-assets", fmt.Sprintf("%x.ts", digest))
+}
+
+func assetDataLiteral(value ctValue) string {
+	switch value.kind {
+	case ctNull:
+		return "null"
+	case ctBool:
+		if value.b {
+			return "true"
+		}
+		return "false"
+	case ctNumber:
+		return ctNumberText(value.n)
+	case ctString:
+		return ctQuote(value.s)
+	case ctArray:
+		parts := make([]string, 0, len(value.arr.items))
+		for _, item := range value.arr.items {
+			parts = append(parts, assetDataLiteral(item))
+		}
+		return "[" + strings.Join(parts, ", ") + "]"
+	case ctObject:
+		keys := append([]string(nil), value.obj.keys...)
+		sortUTF16(keys)
+		parts := make([]string, 0, len(keys))
+		for _, key := range keys {
+			parts = append(parts, "["+ctQuote(key)+"]: "+assetDataLiteral(value.obj.values[key]))
+		}
+		return "{ " + strings.Join(parts, ", ") + " }"
+	default:
+		return "undefined"
+	}
+}
+
+func assetValueSource(value compiledAssetValue) string {
+	if value.isBytes {
+		parts := make([]string, 0, len(value.bytes))
+		for _, item := range value.bytes {
+			parts = append(parts, fmt.Sprintf("%d", item))
+		}
+		return "new Uint8Array([" + strings.Join(parts, ",") + "])"
+	}
+	source := assetDataLiteral(value.data)
+	if value.constAssertion {
+		source += " as const"
+	}
+	return source
+}
+
+func compiledAssetTypeScript(module *compiledAssetModule) string {
+	var builder strings.Builder
+	if module.defaultValue != nil && module.defaultExportName == "" {
+		builder.WriteString("const value = ")
+		builder.WriteString(assetValueSource(*module.defaultValue))
+		builder.WriteString(";\nexport default value;\n")
+	}
+	keys := make([]string, 0, len(module.exports))
+	for key := range module.exports {
+		keys = append(keys, key)
+	}
+	sortUTF16(keys)
+	for _, key := range keys {
+		builder.WriteString("export const ")
+		builder.WriteString(key)
+		builder.WriteString(" = ")
+		builder.WriteString(assetValueSource(module.exports[key]))
+		builder.WriteString(";\n")
+	}
+	if module.defaultExportName != "" {
+		builder.WriteString("export default ")
+		builder.WriteString(module.defaultExportName)
+		builder.WriteString(";\n")
+	}
+	return builder.String()
+}
+
+func compiledAssetDeclaration(module *compiledAssetModule, generatedPath string) string {
+	specifier := "./.smithers-assets/" + path.Base(generatedPath)
+	var builder strings.Builder
+	if module.defaultValue != nil && module.defaultExportName == "" {
+		builder.WriteString("declare const value: ")
+		if module.defaultValue.declarationType != "" {
+			builder.WriteString(module.defaultValue.declarationType)
+		} else {
+			builder.WriteString("typeof import(")
+			builder.WriteString(ctQuote(specifier))
+			builder.WriteString(").default")
+		}
+		builder.WriteString(";\nexport default value;\n")
+	}
+	keys := make([]string, 0, len(module.exports))
+	for key := range module.exports {
+		keys = append(keys, key)
+	}
+	sortUTF16(keys)
+	for _, key := range keys {
+		builder.WriteString("export declare const ")
+		builder.WriteString(key)
+		builder.WriteString(": ")
+		value := module.exports[key]
+		if value.declarationType != "" {
+			builder.WriteString(value.declarationType)
+		} else {
+			builder.WriteString("typeof import(")
+			builder.WriteString(ctQuote(specifier))
+			builder.WriteString(").")
+			builder.WriteString(key)
+		}
+		builder.WriteString(";\n")
+	}
+	if module.defaultExportName != "" {
+		builder.WriteString("export default ")
+		builder.WriteString(module.defaultExportName)
+		builder.WriteString(";\n")
+	}
+	return builder.String()
+}
+
+func compileJSONAsset(target string, source string, selection assetAttributeSelection) (*compiledAssetModule, error) {
+	if !json.Valid([]byte(source)) {
+		return nil, fmt.Errorf("%s: invalid JSON", strings.TrimPrefix(target, "/src/"))
+	}
+	value, err := parseCanonicalJSON(source)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", strings.TrimPrefix(target, "/src/"), err)
+	}
+	mode, hasMode := selection.values["mode"]
+	if hasMode && mode != "const" {
+		return nil, errors.New("JSON asset mode must be 'const' when provided")
+	}
+	loaded := compiledAssetValue{data: value, constAssertion: mode == "const"}
+	return &compiledAssetModule{
+		loader:       "json",
+		target:       target,
+		attributes:   assetAttributesKey(selection.values),
+		defaultValue: &loaded,
+		exports:      make(map[string]compiledAssetValue),
+	}, nil
+}
+
+func compileTextAsset(target string, source string, selection assetAttributeSelection) *compiledAssetModule {
+	loaded := compiledAssetValue{data: ctStringValue(source), declarationType: "string"}
+	return &compiledAssetModule{
+		loader:       "text",
+		target:       target,
+		attributes:   assetAttributesKey(selection.values),
+		defaultValue: &loaded,
+		exports:      make(map[string]compiledAssetValue),
+	}
+}
+
+func compileBytesAsset(target string, source string, selection assetAttributeSelection) *compiledAssetModule {
+	loaded := compiledAssetValue{
+		bytes:           append([]byte(nil), []byte(source)...),
+		isBytes:         true,
+		declarationType: "Uint8Array",
+	}
+	return &compiledAssetModule{
+		loader:       "bytes",
+		target:       target,
+		attributes:   assetAttributesKey(selection.values),
+		defaultValue: &loaded,
+		exports:      make(map[string]compiledAssetValue),
+	}
+}
+
+type assetSourceLine struct {
+	text        string
+	byteOffset  int
+	utf16Offset int
+}
+
+func assetSourceLines(source string) []assetSourceLine {
+	lines := make([]assetSourceLine, 0)
+	byteOffset := 0
+	utf16Offset := 0
+	for {
+		relative := strings.IndexByte(source[byteOffset:], '\n')
+		end := len(source)
+		if relative >= 0 {
+			end = byteOffset + relative
+		}
+		raw := source[byteOffset:end]
+		text := strings.TrimSuffix(raw, "\r")
+		lines = append(lines, assetSourceLine{text: text, byteOffset: byteOffset, utf16Offset: utf16Offset})
+		if relative < 0 {
+			return lines
+		}
+		consumed := source[byteOffset : end+1]
+		byteOffset = end + 1
+		utf16Offset += utf16Extent(consumed)
+	}
+}
+
+var (
+	frontmatterEntryPattern = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_-]*)[ \t]*:(.*)$`)
+	yamlNumberPattern       = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?$`)
+	yamlAmbiguousWord       = regexp.MustCompile(`^(~|[Nn]ull|NULL|[Yy]es|YES|[Nn]o|NO|[Oo]n|ON|[Oo]ff|OFF|True|TRUE|False|FALSE|[-+]?\.(inf|Inf|INF|nan|NaN|NAN))$`)
+	yamlAmbiguousNumber     = regexp.MustCompile(`^[-+]?((0[xXoObB][0-9A-Fa-f_]+)|(([0-9][0-9_]*(\.[0-9_]*)?|\.[0-9][0-9_]*)([eE][-+]?[0-9]+)?))$`)
+	atxHeadingPattern       = regexp.MustCompile(`^ {0,3}(#{1,6})([ \t]+(.*?))?[ \t]*$`)
+	closingHashesPattern    = regexp.MustCompile(`(^|[ \t])#+[ \t]*$`)
+	codeFencePattern        = regexp.MustCompile("^ {0,3}(`{3,}|~{3,})(.*)$")
+)
+
+func parseFrontmatterScalar(text string) (ctValue, error) {
+	if text == "" {
+		return ctValue{}, errors.New("front matter value is empty; write a quoted string for an empty value")
+	}
+	quote := text[0]
+	if quote == '\'' || quote == '"' {
+		if len(text) < 2 || text[len(text)-1] != quote {
+			return ctValue{}, fmt.Errorf("unterminated %s-quoted front matter scalar", map[byte]string{'\'': "single", '"': "double"}[quote])
+		}
+		inner := text[1 : len(text)-1]
+		var builder strings.Builder
+		for index := 0; index < len(inner); {
+			character := inner[index]
+			if quote == '\'' {
+				if character != '\'' {
+					builder.WriteByte(character)
+					index++
+					continue
+				}
+				if index+1 < len(inner) && inner[index+1] == '\'' {
+					builder.WriteByte('\'')
+					index += 2
+					continue
+				}
+				return ctValue{}, errors.New("single-quoted front matter scalars escape a quote as ''")
+			}
+			if character == '"' {
+				return ctValue{}, errors.New("double-quoted front matter scalars must escape an inner quote as \\\"")
+			}
+			if character != '\\' {
+				builder.WriteByte(character)
+				index++
+				continue
+			}
+			if index+1 >= len(inner) {
+				return ctValue{}, errors.New("front matter string ends with an incomplete escape")
+			}
+			switch inner[index+1] {
+			case 'n':
+				builder.WriteByte('\n')
+			case 't':
+				builder.WriteByte('\t')
+			case '"':
+				builder.WriteByte('"')
+			case '\\':
+				builder.WriteByte('\\')
+			default:
+				return ctValue{}, errors.New(`front matter strings support only the \\, \", \n, and \t escapes`)
+			}
+			index += 2
+		}
+		return ctStringValue(builder.String()), nil
+	}
+	if text == "true" {
+		return ctBoolValue(true), nil
+	}
+	if text == "false" {
+		return ctBoolValue(false), nil
+	}
+	if yamlNumberPattern.MatchString(text) {
+		value, err := strconv.ParseFloat(text, 64)
+		if err != nil {
+			return ctValue{}, err
+		}
+		return ctNumberValue(value), nil
+	}
+	if yamlAmbiguousWord.MatchString(text) || yamlAmbiguousNumber.MatchString(text) {
+		return ctValue{}, fmt.Errorf("ambiguous YAML scalar %s; quote it to keep a string", strconvQuote(text))
+	}
+	if strings.ContainsRune(`-?:,[]{}#&*!|>%@`+"`"+`'"`, rune(text[0])) {
+		return ctValue{}, fmt.Errorf("front matter scalars cannot start with %q; quote the value", text[0])
+	}
+	if strings.Contains(text, ": ") || strings.Contains(text, " #") || strings.HasSuffix(text, ":") {
+		return ctValue{}, errors.New("front matter plain scalars cannot contain ': ' or a trailing comment; quote the value")
+	}
+	return ctStringValue(text), nil
+}
+
+type parsedFrontmatter struct {
+	frontmatter ctValue
+	body        string
+	bodyOffset  int
+}
+
+func leadingSpaces(text string) int {
+	count := 0
+	for count < len(text) && text[count] == ' ' {
+		count++
+	}
+	return count
+}
+
+func isListItem(text string) bool {
+	return strings.HasPrefix(text, "-") && (len(text) == 1 || text[1] == ' ')
+}
+
+func parseAssetFrontmatter(source string, target string) (parsedFrontmatter, error) {
+	empty := newCtObject()
+	lines := assetSourceLines(source)
+	if len(lines) == 0 || lines[0].text != "---" {
+		return parsedFrontmatter{frontmatter: empty, body: source, bodyOffset: 0}, nil
+	}
+	closing := -1
+	for index := 1; index < len(lines); index++ {
+		if lines[index].text == "---" {
+			closing = index
+			break
+		}
+	}
+	if closing < 0 {
+		return parsedFrontmatter{}, fmt.Errorf("%s:1:1: unterminated front matter block: expected a closing '---' line", strings.TrimPrefix(target, "/src/"))
+	}
+	bodyByteOffset := len(source)
+	bodyOffset := utf16Extent(source)
+	if closing+1 < len(lines) {
+		bodyByteOffset = lines[closing+1].byteOffset
+		bodyOffset = lines[closing+1].utf16Offset
+	}
+	frontmatter := newCtObject()
+	inner := lines[1:closing]
+	entries := 0
+	budget := func() error {
+		entries++
+		if entries > 256 {
+			return errors.New("front matter exceeds 256 entries")
+		}
+		return nil
+	}
+	for index := 0; index < len(inner); {
+		line := inner[index]
+		trimmed := strings.TrimSpace(line.text)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			index++
+			continue
+		}
+		if strings.ContainsRune(line.text, '\t') {
+			return parsedFrontmatter{}, fmt.Errorf("%s: front matter cannot contain tabs", strings.TrimPrefix(target, "/src/"))
+		}
+		if leadingSpaces(line.text) != 0 {
+			return parsedFrontmatter{}, fmt.Errorf("%s: unexpected front matter indentation: a mapping key starts at column 1", strings.TrimPrefix(target, "/src/"))
+		}
+		matched := frontmatterEntryPattern.FindStringSubmatch(line.text)
+		if matched == nil {
+			return parsedFrontmatter{}, fmt.Errorf("%s: front matter entries must be written as 'key: value'", strings.TrimPrefix(target, "/src/"))
+		}
+		key := matched[1]
+		if frontmatter.obj.has(key) {
+			return parsedFrontmatter{}, fmt.Errorf("%s: duplicate front matter key %s", strings.TrimPrefix(target, "/src/"), strconvQuote(key))
+		}
+		if err := budget(); err != nil {
+			return parsedFrontmatter{}, fmt.Errorf("%s: %w", strings.TrimPrefix(target, "/src/"), err)
+		}
+		rest := matched[2]
+		valueText := strings.TrimSpace(rest)
+		if valueText != "" {
+			value, err := parseFrontmatterScalar(valueText)
+			if err != nil {
+				return parsedFrontmatter{}, fmt.Errorf("%s: %w", strings.TrimPrefix(target, "/src/"), err)
+			}
+			frontmatter.obj.set(key, value)
+			index++
+			continue
+		}
+		cursor := index + 1
+		block := make([]assetSourceLine, 0)
+		for cursor < len(inner) {
+			candidate := inner[cursor]
+			candidateTrimmed := strings.TrimSpace(candidate.text)
+			if candidateTrimmed == "" || strings.HasPrefix(candidateTrimmed, "#") {
+				cursor++
+				continue
+			}
+			if leadingSpaces(candidate.text) == 0 {
+				break
+			}
+			block = append(block, candidate)
+			cursor++
+		}
+		index = cursor
+		if len(block) == 0 {
+			return parsedFrontmatter{}, fmt.Errorf("%s: front matter key %s has no value", strings.TrimPrefix(target, "/src/"), strconvQuote(key))
+		}
+		list := len(block[0].text) >= 3 && strings.HasPrefix(block[0].text, "  -") &&
+			(len(block[0].text) == 3 || block[0].text[3] == ' ')
+		items := make([]ctValue, 0)
+		nested := newCtObject()
+		for _, entry := range block {
+			if strings.ContainsRune(entry.text, '\t') {
+				return parsedFrontmatter{}, fmt.Errorf("%s: front matter cannot contain tabs", strings.TrimPrefix(target, "/src/"))
+			}
+			if leadingSpaces(entry.text) != 2 {
+				return parsedFrontmatter{}, fmt.Errorf("%s: front matter supports one nested level indented by exactly two spaces", strings.TrimPrefix(target, "/src/"))
+			}
+			if err := budget(); err != nil {
+				return parsedFrontmatter{}, fmt.Errorf("%s: %w", strings.TrimPrefix(target, "/src/"), err)
+			}
+			content := entry.text[2:]
+			if list != isListItem(content) {
+				return parsedFrontmatter{}, fmt.Errorf("%s: front matter block for %s mixes list items and mapping entries", strings.TrimPrefix(target, "/src/"), strconvQuote(key))
+			}
+			if list {
+				itemText := strings.TrimSpace(strings.TrimPrefix(content, "-"))
+				item, err := parseFrontmatterScalar(itemText)
+				if err != nil {
+					return parsedFrontmatter{}, fmt.Errorf("%s: %w", strings.TrimPrefix(target, "/src/"), err)
+				}
+				items = append(items, item)
+				continue
+			}
+			entryMatch := frontmatterEntryPattern.FindStringSubmatch(content)
+			if entryMatch == nil {
+				return parsedFrontmatter{}, fmt.Errorf("%s: nested front matter entries must be written as 'key: value'", strings.TrimPrefix(target, "/src/"))
+			}
+			nestedKey := entryMatch[1]
+			if nested.obj.has(nestedKey) {
+				return parsedFrontmatter{}, fmt.Errorf("%s: duplicate front matter key %s.%s", strings.TrimPrefix(target, "/src/"), key, nestedKey)
+			}
+			nestedText := strings.TrimSpace(entryMatch[2])
+			if nestedText == "" {
+				return parsedFrontmatter{}, fmt.Errorf("%s: front matter supports one nested level; a nested value must be a scalar", strings.TrimPrefix(target, "/src/"))
+			}
+			scalar, err := parseFrontmatterScalar(nestedText)
+			if err != nil {
+				return parsedFrontmatter{}, fmt.Errorf("%s: %w", strings.TrimPrefix(target, "/src/"), err)
+			}
+			nested.obj.set(nestedKey, scalar)
+		}
+		if list {
+			frontmatter.obj.set(key, newCtArray(items))
+		} else {
+			frontmatter.obj.set(key, nested)
+		}
+	}
+	return parsedFrontmatter{frontmatter: frontmatter, body: source[bodyByteOffset:], bodyOffset: bodyOffset}, nil
+}
+
+func extractMarkdownHeadings(body string, bodyOffset int) ctValue {
+	headings := make([]ctValue, 0)
+	fence := byte(0)
+	fenceLength := 0
+	for _, line := range assetSourceLines(body) {
+		fenced := codeFencePattern.FindStringSubmatch(line.text)
+		if fence != 0 {
+			if fenced != nil && fenced[1][0] == fence && len(fenced[1]) >= fenceLength && strings.TrimSpace(fenced[2]) == "" {
+				fence = 0
+			}
+			continue
+		}
+		if fenced != nil && !(fenced[1][0] == '`' && strings.ContainsRune(fenced[2], '`')) {
+			fence = fenced[1][0]
+			fenceLength = len(fenced[1])
+			continue
+		}
+		heading := atxHeadingPattern.FindStringSubmatch(line.text)
+		if heading == nil {
+			continue
+		}
+		text := ""
+		if len(heading) > 3 {
+			text = heading[3]
+		}
+		if match := closingHashesPattern.FindStringIndex(text); match != nil {
+			text = text[:match[0]]
+		}
+		text = strings.TrimSpace(text)
+		value := newCtObject()
+		value.obj.set("level", ctNumberValue(float64(len(heading[1]))))
+		value.obj.set("text", ctStringValue(text))
+		value.obj.set("offset", ctNumberValue(float64(bodyOffset+line.utf16Offset+leadingSpaces(line.text))))
+		headings = append(headings, value)
+	}
+	return newCtArray(headings)
+}
+
+func compileMarkdownAsset(target string, source string, selection assetAttributeSelection) (*compiledAssetModule, error) {
+	parsed, err := parseAssetFrontmatter(source, target)
+	if err != nil {
+		return nil, err
+	}
+	sourceValue := compiledAssetValue{data: ctStringValue(source), declarationType: "string"}
+	return &compiledAssetModule{
+		loader:            "markdown",
+		target:            target,
+		attributes:        assetAttributesKey(selection.values),
+		defaultValue:      &sourceValue,
+		defaultExportName: "source",
+		exports: map[string]compiledAssetValue{
+			"frontmatter": {data: parsed.frontmatter, constAssertion: true},
+			"body":        {data: ctStringValue(parsed.body), declarationType: "string"},
+			"headings":    {data: extractMarkdownHeadings(parsed.body, parsed.bodyOffset), constAssertion: true},
+			"source":      sourceValue,
+		},
+	}, nil
+}
+
+type mdxRange struct {
+	start int
+	end   int
+}
+
+type parsedMdxNode struct {
+	kind        string
+	name        string
+	props       ctValue
+	children    []*parsedMdxNode
+	value       string
+	placeholder string
+	offset      int
+}
+
+var (
+	mdxTagNamePattern     = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9._-]*`)
+	mdxAttributePattern   = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.-]*`)
+	mdxClosingTagPattern  = regexp.MustCompile(`^</([A-Za-z][A-Za-z0-9._-]*)[ \t]*>`)
+	mdxPlaceholderPattern = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
+)
+
+func mdxProtectedRanges(body string) []mdxRange {
+	fences := make([]mdxRange, 0)
+	fence := byte(0)
+	fenceLength := 0
+	fenceStart := 0
+	for _, line := range assetSourceLines(body) {
+		matched := codeFencePattern.FindStringSubmatch(line.text)
+		if fence != 0 {
+			if matched != nil && matched[1][0] == fence && len(matched[1]) >= fenceLength && strings.TrimSpace(matched[2]) == "" {
+				fences = append(fences, mdxRange{start: fenceStart, end: line.byteOffset + len(line.text)})
+				fence = 0
+			}
+			continue
+		}
+		if matched != nil && !(matched[1][0] == '`' && strings.ContainsRune(matched[2], '`')) {
+			fence = matched[1][0]
+			fenceLength = len(matched[1])
+			fenceStart = line.byteOffset
+		}
+	}
+	if fence != 0 {
+		fences = append(fences, mdxRange{start: fenceStart, end: len(body)})
+	}
+	spans := make([]mdxRange, 0)
+	fenceIndex := 0
+	for index := 0; index < len(body); {
+		for fenceIndex < len(fences) && fences[fenceIndex].end <= index {
+			fenceIndex++
+		}
+		var next *mdxRange
+		if fenceIndex < len(fences) {
+			next = &fences[fenceIndex]
+		}
+		if next != nil && index >= next.start {
+			index = next.end
+			continue
+		}
+		if body[index] != '`' {
+			_, width := utf8.DecodeRuneInString(body[index:])
+			if width == 0 {
+				width = 1
+			}
+			index += width
+			continue
+		}
+		limit := len(body)
+		if next != nil {
+			limit = next.start
+		}
+		run := 0
+		for index+run < len(body) && body[index+run] == '`' {
+			run++
+		}
+		marker := strings.Repeat("`", run)
+		cursor := index + run
+		close := -1
+		for {
+			found := strings.Index(body[cursor:limit], marker)
+			if found < 0 {
+				break
+			}
+			found += cursor
+			if found+run <= limit && (found+run == len(body) || body[found+run] != '`') {
+				close = found
+				break
+			}
+			cursor = found + run
+			for cursor < len(body) && body[cursor] == '`' {
+				cursor++
+			}
+		}
+		if close < 0 {
+			index += run
+			continue
+		}
+		spans = append(spans, mdxRange{start: index, end: close + run})
+		index = close + run
+	}
+	ranges := append(fences, spans...)
+	sort.Slice(ranges, func(i, j int) bool { return ranges[i].start < ranges[j].start })
+	return ranges
+}
+
+func mdxOffset(body string, bodyOffset int, byteOffset int) int {
+	if byteOffset < 0 {
+		byteOffset = 0
+	}
+	if byteOffset > len(body) {
+		byteOffset = len(body)
+	}
+	return bodyOffset + utf16Extent(body[:byteOffset])
+}
+
+func isMdxWhitespaceAt(body string, index int) (bool, int) {
+	if index >= len(body) {
+		return false, 0
+	}
+	r, width := utf8.DecodeRuneInString(body[index:])
+	return unicode.IsSpace(r) || r == '\uFEFF', width
+}
+
+func parseMdxBody(body string, bodyOffset int, target string) ([]*parsedMdxNode, error) {
+	fail := func(byteOffset int, message string) error {
+		return fmt.Errorf("%s: offset %d: %s", strings.TrimPrefix(target, "/src/"), mdxOffset(body, bodyOffset, byteOffset), message)
+	}
+	root := make([]*parsedMdxNode, 0)
+	stack := make([]*parsedMdxNode, 0)
+	ranges := mdxProtectedRanges(body)
+	rangeIndex := 0
+	nodes := 0
+	textStart := 0
+	var text strings.Builder
+	children := func() *[]*parsedMdxNode {
+		if len(stack) == 0 {
+			return &root
+		}
+		return &stack[len(stack)-1].children
+	}
+	admit := func(byteOffset int) error {
+		nodes++
+		if nodes > 4096 {
+			return fail(byteOffset, "MDX document exceeds 4096 nodes")
+		}
+		return nil
+	}
+	appendText := func(chunk string, start int) {
+		if text.Len() == 0 {
+			textStart = start
+		}
+		text.WriteString(chunk)
+	}
+	flush := func() error {
+		if text.Len() == 0 {
+			return nil
+		}
+		if err := admit(textStart); err != nil {
+			return err
+		}
+		*children() = append(*children(), &parsedMdxNode{
+			kind: "text", value: text.String(), offset: mdxOffset(body, bodyOffset, textStart),
+		})
+		text.Reset()
+		return nil
+	}
+	for index := 0; index < len(body); {
+		for rangeIndex < len(ranges) && ranges[rangeIndex].end <= index {
+			rangeIndex++
+		}
+		if rangeIndex < len(ranges) && index >= ranges[rangeIndex].start {
+			appendText(body[index:ranges[rangeIndex].end], index)
+			index = ranges[rangeIndex].end
+			continue
+		}
+		character := body[index]
+		if character == '{' {
+			relativeEnd := strings.IndexByte(body[index+1:], '}')
+			if relativeEnd < 0 {
+				return nil, fail(index, "unterminated MDX expression: expected '}'")
+			}
+			end := index + 1 + relativeEnd
+			inner := body[index+1 : end]
+			if strings.ContainsRune(inner, '{') {
+				return nil, fail(index, "MDX expression holes cannot nest braces")
+			}
+			placeholder := strings.TrimSpace(inner)
+			if !mdxPlaceholderPattern.MatchString(placeholder) {
+				return nil, fail(index, "an MDX expression hole must name one identifier placeholder; comptime never evaluates the expression")
+			}
+			if err := flush(); err != nil {
+				return nil, err
+			}
+			if err := admit(index); err != nil {
+				return nil, err
+			}
+			*children() = append(*children(), &parsedMdxNode{
+				kind: "expression", placeholder: placeholder, offset: mdxOffset(body, bodyOffset, index),
+			})
+			index = end + 1
+			continue
+		}
+		if character != '<' {
+			_, width := utf8.DecodeRuneInString(body[index:])
+			if width == 0 {
+				width = 1
+			}
+			appendText(body[index:index+width], index)
+			index += width
+			continue
+		}
+		if index+1 < len(body) && body[index+1] == '/' {
+			closing := mdxClosingTagPattern.FindStringSubmatch(body[index:])
+			if closing == nil {
+				return nil, fail(index, "malformed MDX closing tag")
+			}
+			if len(stack) == 0 {
+				return nil, fail(index, "unexpected MDX closing tag </"+closing[1]+">")
+			}
+			open := stack[len(stack)-1]
+			if open.name != closing[1] {
+				return nil, fail(index, "MDX closing tag </"+closing[1]+"> does not match open element <"+open.name+">")
+			}
+			if err := flush(); err != nil {
+				return nil, err
+			}
+			stack = stack[:len(stack)-1]
+			index += len(closing[0])
+			continue
+		}
+		name := mdxTagNamePattern.FindString(body[index+1:])
+		if name == "" {
+			appendText("<", index)
+			index++
+			continue
+		}
+		start := index
+		props := newCtObject()
+		cursor := index + 1 + len(name)
+		selfClosing := false
+		for {
+			for cursor < len(body) {
+				space, width := isMdxWhitespaceAt(body, cursor)
+				if !space {
+					break
+				}
+				cursor += width
+			}
+			if cursor >= len(body) {
+				return nil, fail(start, "unterminated MDX tag <"+name+">")
+			}
+			switch body[cursor] {
+			case '>':
+				cursor++
+				goto tagComplete
+			case '/':
+				if cursor+1 >= len(body) || body[cursor+1] != '>' {
+					return nil, fail(cursor, "expected '/>' to close <"+name+">")
+				}
+				selfClosing = true
+				cursor += 2
+				goto tagComplete
+			}
+			attributeName := mdxAttributePattern.FindString(body[cursor:])
+			if attributeName == "" {
+				return nil, fail(cursor, "invalid attribute in <"+name+">")
+			}
+			if props.obj.has(attributeName) {
+				return nil, fail(cursor, "duplicate attribute "+strconvQuote(attributeName)+" on <"+name+">")
+			}
+			cursor += len(attributeName)
+			probe := cursor
+			for probe < len(body) && (body[probe] == ' ' || body[probe] == '\t') {
+				probe++
+			}
+			if probe >= len(body) || body[probe] != '=' {
+				props.obj.set(attributeName, ctBoolValue(true))
+				continue
+			}
+			cursor = probe + 1
+			for cursor < len(body) && (body[cursor] == ' ' || body[cursor] == '\t') {
+				cursor++
+			}
+			if cursor >= len(body) {
+				return nil, fail(cursor, "attribute "+strconvQuote(attributeName)+" requires a quoted or literal value")
+			}
+			quote := body[cursor]
+			if quote == '\'' || quote == '"' {
+				relativeEnd := strings.IndexByte(body[cursor+1:], quote)
+				if relativeEnd < 0 {
+					return nil, fail(cursor, "unterminated value for attribute "+strconvQuote(attributeName))
+				}
+				end := cursor + 1 + relativeEnd
+				props.obj.set(attributeName, ctStringValue(body[cursor+1:end]))
+				cursor = end + 1
+				continue
+			}
+			if quote == '{' {
+				relativeEnd := strings.IndexByte(body[cursor+1:], '}')
+				if relativeEnd < 0 {
+					return nil, fail(cursor, "unterminated value for attribute "+strconvQuote(attributeName))
+				}
+				end := cursor + 1 + relativeEnd
+				literal := strings.TrimSpace(body[cursor+1 : end])
+				switch {
+				case literal == "true":
+					props.obj.set(attributeName, ctBoolValue(true))
+				case literal == "false":
+					props.obj.set(attributeName, ctBoolValue(false))
+				case yamlNumberPattern.MatchString(literal):
+					value, err := strconv.ParseFloat(literal, 64)
+					if err != nil {
+						return nil, fail(cursor, err.Error())
+					}
+					props.obj.set(attributeName, ctNumberValue(value))
+				default:
+					return nil, fail(cursor, "attribute "+strconvQuote(attributeName)+" must be a literal value; MDX attributes are never evaluated at comptime")
+				}
+				cursor = end + 1
+				continue
+			}
+			return nil, fail(cursor, "attribute "+strconvQuote(attributeName)+" requires a quoted or literal value")
+		}
+	tagComplete:
+		if err := flush(); err != nil {
+			return nil, err
+		}
+		if err := admit(start); err != nil {
+			return nil, err
+		}
+		element := &parsedMdxNode{
+			kind: "element", name: name, props: props, children: make([]*parsedMdxNode, 0),
+			offset: mdxOffset(body, bodyOffset, start),
+		}
+		*children() = append(*children(), element)
+		if !selfClosing {
+			if len(stack) >= 32 {
+				return nil, fail(start, "MDX elements nest deeper than 32")
+			}
+			stack = append(stack, element)
+		}
+		index = cursor
+	}
+	if err := flush(); err != nil {
+		return nil, err
+	}
+	if len(stack) != 0 {
+		open := stack[len(stack)-1]
+		return nil, fmt.Errorf("%s: offset %d: unclosed MDX element <%s>", strings.TrimPrefix(target, "/src/"), open.offset, open.name)
+	}
+	return root, nil
+}
+
+func mdxNodeValue(node *parsedMdxNode) ctValue {
+	value := newCtObject()
+	value.obj.set("kind", ctStringValue(node.kind))
+	switch node.kind {
+	case "text":
+		value.obj.set("value", ctStringValue(node.value))
+	case "expression":
+		value.obj.set("placeholder", ctStringValue(node.placeholder))
+	case "element":
+		value.obj.set("name", ctStringValue(node.name))
+		value.obj.set("props", node.props)
+		children := make([]ctValue, 0, len(node.children))
+		for _, child := range node.children {
+			children = append(children, mdxNodeValue(child))
+		}
+		value.obj.set("children", newCtArray(children))
+	}
+	return value
+}
+
+func collectMdxMetadata(nodes []*parsedMdxNode, components *[]ctValue, expressions *[]ctValue, componentNames map[string]bool) {
+	for _, node := range nodes {
+		if node.kind == "expression" {
+			*expressions = append(*expressions, ctStringValue(node.placeholder))
+		}
+		if node.kind != "element" {
+			continue
+		}
+		if len(node.name) > 0 && node.name[0] >= 'A' && node.name[0] <= 'Z' && !componentNames[node.name] {
+			componentNames[node.name] = true
+			*components = append(*components, ctStringValue(node.name))
+		}
+		collectMdxMetadata(node.children, components, expressions, componentNames)
+	}
+}
+
+func compileMdxAsset(target string, source string, selection assetAttributeSelection) (*compiledAssetModule, error) {
+	parsed, err := parseAssetFrontmatter(source, target)
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := parseMdxBody(parsed.body, parsed.bodyOffset, target)
+	if err != nil {
+		return nil, err
+	}
+	components := make([]ctValue, 0)
+	expressions := make([]ctValue, 0)
+	collectMdxMetadata(nodes, &components, &expressions, make(map[string]bool))
+	treeItems := make([]ctValue, 0, len(nodes))
+	for _, node := range nodes {
+		treeItems = append(treeItems, mdxNodeValue(node))
+	}
+	tree := compiledAssetValue{data: newCtArray(treeItems), constAssertion: true}
+	return &compiledAssetModule{
+		loader:            "mdx",
+		target:            target,
+		attributes:        assetAttributesKey(selection.values),
+		defaultValue:      &tree,
+		defaultExportName: "tree",
+		exports: map[string]compiledAssetValue{
+			"frontmatter": {data: parsed.frontmatter, constAssertion: true},
+			"source":      {data: ctStringValue(source), declarationType: "string"},
+			"body":        {data: ctStringValue(parsed.body), declarationType: "string"},
+			"components":  {data: newCtArray(components), constAssertion: true},
+			"expressions": {data: newCtArray(expressions), constAssertion: true},
+			"tree":        tree,
+		},
+	}, nil
+}
+
+func supportedAssetLoader(loader string) bool {
+	return loader == "json" || loader == "text" || loader == "bytes" || loader == "markdown" || loader == "mdx"
+}
+
+func logicalNameForSourceFile(p *project, file *ast.SourceFile) string {
+	if p != nil && file != nil {
+		if logical, ok := p.logicalByVirtual[file.FileName()]; ok {
+			return logical
+		}
+		if logical, ok := p.logicalByVirtual[file.OriginalFileName()]; ok {
+			return logical
+		}
+	}
+	if file == nil {
+		return ""
+	}
+	return strings.TrimPrefix(file.FileName(), "/src/")
+}
+
+func assetDiagnostic(p *project, file *ast.SourceFile, node *ast.Node, code string, message string) diagnostic {
+	start, length := syntaxSpan(node, file.Text())
+	return diagnostic{
+		Code: code, Category: "error", Message: message,
+		File: logicalNameForSourceFile(p, file), Span: &span{Start: start, Length: length}, Phase: "lower",
+	}
+}
+
+// prepareAssetModules installs checker-only generated sources for supported,
+// admitted imports. It reads only request-staged bytes. Unknown loaders remain
+// absent so checkAssetImports can retain the honest unsupported boundary.
+func prepareAssetModules(p *project, program *compiler.Program) ([]diagnostic, error) {
+	if p == nil || program == nil {
+		return nil, nil
+	}
+	reports := make([]diagnostic, 0)
+	attributesByTarget := make(map[string]string)
+	files := append([]*ast.SourceFile(nil), program.SourceFiles()...)
+	sort.Slice(files, func(i, j int) bool { return files[i].FileName() < files[j].FileName() })
+	for _, file := range files {
+		logical := logicalNameForSourceFile(p, file)
+		if p.smithersByLogical[logical] == nil {
+			continue
+		}
+		for _, site := range sourceAssetSites(p, file) {
+			selection := site.selection
+			if len(selection.issues) > 0 {
+				for _, issue := range selection.issues {
+					reports = append(reports, assetDiagnostic(p, file, issue.node, issue.code, issue.message))
+				}
+				if site.potentialAsset && !site.hasSelectedLoader() {
+					reports = append(reports, assetDiagnostic(p, file, site.node, "SMITHERS5201",
+						"non-code imports require `with { type: \"...\" }`"))
+				}
+				continue
+			}
+			// A computed attributed import is refused by the semantic ownership
+			// pass. It cannot name a module that is safe to prepare here.
+			if site.computedAttributed || !site.potentialAsset {
+				continue
+			}
+			target, inside := assetSpecifierTarget(file, site.specifier)
+			if !inside || !p.hasStagedAsset(file, site.specifier) || !strings.HasPrefix(site.specifier, ".") ||
+				!site.hasRuntimeBindings || !site.hasSelectedLoader() {
+				continue
+			}
+			attributeKey := assetAttributesKey(selection.values)
+			if prior, exists := attributesByTarget[target]; exists && prior != attributeKey {
+				reports = append(reports, assetDiagnostic(p, file, site.node, "SMITHERS5215",
+					"one asset path is imported with conflicting attributes; the bounded module graph requires one canonical shape"))
+				continue
+			}
+			attributesByTarget[target] = attributeKey
+			if !supportedAssetLoader(selection.loader) {
+				continue
+			}
+			key := assetModuleKey(target, attributeKey)
+			if p.assetModules[key] != nil {
+				continue
+			}
+			var module *compiledAssetModule
+			var err error
+			switch selection.loader {
+			case "json":
+				module, err = compileJSONAsset(target, p.assetByVirtual[target], selection)
+			case "text":
+				module = compileTextAsset(target, p.assetByVirtual[target], selection)
+			case "bytes":
+				module = compileBytesAsset(target, p.assetByVirtual[target], selection)
+			case "markdown":
+				module, err = compileMarkdownAsset(target, p.assetByVirtual[target], selection)
+			case "mdx":
+				module, err = compileMdxAsset(target, p.assetByVirtual[target], selection)
+			}
+			if err != nil {
+				reports = append(reports, assetDiagnostic(p, file, site.node, "SMITHERS5213", err.Error()))
+				continue
+			}
+			generatedPath := assetGeneratedPath(target, attributeKey)
+			declarationPath := assetDeclarationPath(target)
+			for _, candidate := range []string{generatedPath, declarationPath} {
+				if _, exists := p.checkedFiles[candidate]; exists {
+					reports = append(reports, assetDiagnostic(p, file, site.node, "SMITHERS5216",
+						"generated asset identity collides with a project path: "+strings.TrimPrefix(candidate, "/src/")))
+					module = nil
+					break
+				}
+			}
+			if module == nil {
+				continue
+			}
+			p.checkedFiles[generatedPath] = compiledAssetTypeScript(module)
+			p.checkedFiles[declarationPath] = compiledAssetDeclaration(module, generatedPath)
+			p.assetModules[key] = module
+		}
+	}
+	sort.SliceStable(reports, func(i, j int) bool {
+		if reports[i].File != reports[j].File {
+			return reports[i].File < reports[j].File
+		}
+		if reports[i].Span.Start != reports[j].Span.Start {
+			return reports[i].Span.Start < reports[j].Span.Start
+		}
+		return reports[i].Code < reports[j].Code
+	})
+	return reports, nil
+}
+
+// checkAssetImports gives every potential source-asset declaration or dynamic
+// import exactly one owner before foreign-module and native-requirement
+// analysis run.
+func (a *rowAnalysis) checkAssetImports(files []*ast.SourceFile) {
+	for _, file := range files {
+		for _, site := range sourceAssetSites(a.project, file) {
+			selection := site.selection
+			if len(selection.issues) > 0 {
+				for _, issue := range selection.issues {
+					a.report(issue.node, issue.code, issue.message)
+				}
+				if site.potentialAsset && !site.hasSelectedLoader() {
+					a.report(site.node, "SMITHERS5201", "non-code imports require `with { type: \"...\" }`")
+				}
+				continue
+			}
+			if site.computedAttributed {
+				// An attributed computed specifier cannot be proven to be code or
+				// resolved as an asset without evaluating author code. It is owned and
+				// refused here; a bare computed import remains an ordinary runtime edge.
+				a.assetImports[site.node] = assetImportEdge{loader: selection.loader}
+				a.report(site.node, "SMITHERS5218",
+					"dynamic asset imports require a literal specifier and a literal `with { ... }` attribute object")
+				continue
+			}
+			if !site.potentialAsset || site.specifierNode == nil {
+				continue
+			}
+			// Record ownership before validating. An invalid asset edge must not
+			// acquire unrelated foreign-module diagnostics as a cascade.
+			edge := assetImportEdge{loader: selection.loader}
+			a.assetImports[site.node] = edge
+
+			if !strings.HasPrefix(site.specifier, ".") {
+				a.report(site.specifierNode, "SMITHERS5207", "asset imports must use a relative path")
+				continue
+			}
+			if site.starExport {
+				a.report(site.node, "SMITHERS5206", "asset re-exports require an explicit named or namespace export")
+				continue
+			}
+			if !site.hasRuntimeBindings {
+				a.report(site.node, "SMITHERS5208", "asset imports require runtime bindings and cannot be type-only or side-effect-only")
+				continue
+			}
+			if !site.hasSelectedLoader() {
+				a.report(site.node, "SMITHERS5201", "non-code imports require `with { type: \"...\" }`")
+				continue
+			}
+			_, inside := assetSpecifierTarget(file, site.specifier)
+			if !inside || !a.project.hasStagedAsset(file, site.specifier) {
+				a.report(site.specifierNode, "SMITHERS5209", "asset must be a staged regular file beneath the project root")
+				continue
+			}
+			target, _ := assetSpecifierTarget(file, site.specifier)
+			module := a.project.assetModules[assetModuleKey(target, assetAttributesKey(selection.values))]
+			if module != nil {
+				edge.module = module
+				a.assetImports[site.node] = edge
+				continue
+			}
+
+			// Selection and admission succeeded. Loader execution and compiler-
+			// issued typed-module generation are intentionally not approximated:
+			// accepting here would emit a runtime file import and lie about the
+			// compile-time contract.
+			a.report(site.node, unsupportedAssetLoaderCode,
+				"the Go backend recognizes this compiler-owned asset edge, but the selected "+
+					strconvQuote(selection.loader)+" loader is not implemented")
+		}
+	}
+}
+
+// strconvQuote is the small deterministic quoting needed in one diagnostic;
+// keeping it local avoids making loader selection depend on message spelling.
+func strconvQuote(value string) string {
+	return `"` + strings.ReplaceAll(value, `"`, `\"`) + `"`
+}
+
+func (a *rowAnalysis) assetImportAtReference(node *ast.Node) *ast.Node {
+	if a == nil || node == nil {
+		return nil
+	}
+	symbol := a.checker.GetSymbolAtLocation(node)
+	if symbol == nil {
+		return nil
+	}
+	for _, declaration := range symbol.Declarations {
+		statement := importDeclarationAncestor(declaration)
+		if statement != nil {
+			if _, asset := a.assetImports[statement]; asset {
+				return statement
+			}
+		}
+	}
+	return nil
+}
+
+// assetValueProvenance follows compiler-owned asset values through bindings so
+// calls/properties on them never fall back into the foreign JavaScript policy.
+func (a *rowAnalysis) assetValueProvenance(expression *ast.Node, seen map[*ast.Symbol]bool) bool {
+	if expression == nil {
+		return false
+	}
+	switch expression.Kind {
+	case ast.KindParenthesizedExpression, ast.KindAsExpression,
+		ast.KindNonNullExpression, ast.KindAwaitExpression, ast.KindTypeAssertionExpression:
+		return a.assetValueProvenance(expression.Expression(), seen)
+	case ast.KindPropertyAccessExpression:
+		return a.assetValueProvenance(expression.AsPropertyAccessExpression().Expression, seen)
+	case ast.KindElementAccessExpression:
+		return a.assetValueProvenance(expression.AsElementAccessExpression().Expression, seen)
+	case ast.KindCallExpression:
+		return a.assetValueProvenance(expression.AsCallExpression().Expression, seen)
+	case ast.KindNewExpression:
+		return a.assetValueProvenance(expression.AsNewExpression().Expression, seen)
+	case ast.KindIdentifier:
+		if a.assetImportAtReference(expression) != nil {
+			return true
+		}
+		// The same compiler-owned edge may be reached through a project
+		// re-export. Reuse the native provenance walk so asset identity cannot
+		// drift from the pin's binding traversal.
+		if _, asset := a.nativeDependenciesForReference(expression); asset {
+			return true
+		}
+		symbol := a.symbolAt(expression)
+		if symbol == nil || seen[symbol] {
+			return false
+		}
+		seen[symbol] = true
+		declaration := variableLikeDeclaration(symbol)
+		if declaration != nil && ast.IsVariableDeclaration(declaration) {
+			return a.assetValueProvenance(declaration.AsVariableDeclaration().Initializer, seen)
+		}
+	}
+	return false
+}
+
+func (l *lowerer) assetImportModule(node *ast.Node) *compiledAssetModule {
+	if l == nil || l.analysis == nil || node == nil {
+		return nil
+	}
+	return l.analysis.assetImports[node].module
+}
+
+func (l *lowerer) compiledAssetValueExpression(value compiledAssetValue) *ast.Node {
+	if value.isBytes {
+		elements := make([]*ast.Node, 0, len(value.bytes))
+		for _, item := range value.bytes {
+			elements = append(elements, l.factory.NewNumericLiteral(fmt.Sprintf("%d", item), ast.TokenFlagsNone))
+		}
+		array := l.factory.NewArrayLiteralExpression(l.factory.NewNodeList(elements), false)
+		return l.factory.NewNewExpression(
+			l.factory.NewIdentifier("Uint8Array"),
+			nil,
+			l.factory.NewNodeList([]*ast.Node{array}),
+		)
+	}
+	expression := l.comptimeValueExpression(value.data)
+	if value.constAssertion {
+		expression = l.factory.NewAsExpression(
+			expression,
+			l.factory.NewTypeReferenceNode(l.factory.NewIdentifier("const"), nil),
+		)
+	}
+	return expression
+}
+
+func (l *lowerer) compiledAssetExport(module *compiledAssetModule, name string) (compiledAssetValue, bool) {
+	if name == "default" && module.defaultValue != nil {
+		return *module.defaultValue, true
+	}
+	value, ok := module.exports[name]
+	return value, ok
+}
+
+func (l *lowerer) compiledAssetNamespace(module *compiledAssetModule, sharedDefault string) *ast.Node {
+	properties := make([]*ast.Node, 0, len(module.exports)+1)
+	if module.defaultValue != nil {
+		value := l.compiledAssetValueExpression(*module.defaultValue)
+		if sharedDefault != "" {
+			value = l.factory.NewIdentifier(sharedDefault)
+		}
+		properties = append(properties, l.factory.NewPropertyAssignment(
+			nil,
+			l.comptimePropertyNameNode("default"),
+			nil,
+			nil,
+			value,
+		))
+	}
+	keys := make([]string, 0, len(module.exports))
+	for key := range module.exports {
+		keys = append(keys, key)
+	}
+	sortUTF16(keys)
+	for _, key := range keys {
+		value := l.compiledAssetValueExpression(module.exports[key])
+		if sharedDefault != "" && key == module.defaultExportName {
+			value = l.factory.NewIdentifier(sharedDefault)
+		}
+		properties = append(properties, l.factory.NewPropertyAssignment(
+			nil,
+			l.comptimePropertyNameNode(key),
+			nil,
+			nil,
+			value,
+		))
+	}
+	return l.factory.NewAsExpression(
+		l.factory.NewObjectLiteralExpression(l.factory.NewNodeList(properties), false),
+		l.factory.NewTypeReferenceNode(l.factory.NewIdentifier("const"), nil),
+	)
+}
+
+// compiledDynamicAssetImport preserves import()'s Promise shape while keeping
+// the compiler-owned asset edge out of the runtime module graph. An async IIFE
+// has no shadowable global dependency. Its optional parameter also gives MDX
+// and Markdown one shared value for a default export that aliases a named
+// export, matching normal module namespace identity within the result.
+func (l *lowerer) compiledDynamicAssetImport(node *ast.Node, module *compiledAssetModule) *ast.Node {
+	parameters := make([]*ast.Node, 0, 1)
+	arguments := make([]*ast.Node, 0, 1)
+	sharedDefault := ""
+	if module.defaultExportName != "" {
+		value, ok := module.exports[module.defaultExportName]
+		if !ok {
+			l.report(node, "SMITHERS5217", "the selected asset loader's default export does not name a generated value")
+		} else {
+			sharedDefault = fmt.Sprintf("%sAsset%d", tempPrefix, l.nextTemp)
+			l.nextTemp++
+			parameters = append(parameters, l.factory.NewParameterDeclaration(
+				nil, nil, l.factory.NewIdentifier(sharedDefault), nil, nil, nil,
+			))
+			arguments = append(arguments, l.compiledAssetValueExpression(value))
+		}
+	}
+	body := l.compiledAssetNamespace(module, sharedDefault)
+	async := l.factory.NewModifierList([]*ast.Node{l.factory.NewToken(ast.KindAsyncKeyword)})
+	loader := l.factory.NewArrowFunction(
+		async,
+		nil,
+		l.factory.NewNodeList(parameters),
+		nil,
+		nil,
+		l.factory.NewToken(ast.KindEqualsGreaterThanToken),
+		body,
+	)
+	return l.factory.NewCallExpression(
+		loader,
+		nil,
+		nil,
+		l.factory.NewNodeList(arguments),
+		ast.NodeFlagsNone,
+	)
+}
+
+func (l *lowerer) lowerDynamicAssetImport(node *ast.Node, module *compiledAssetModule) *ast.Node {
+	lowered := l.compiledDynamicAssetImport(node, module)
+	l.emitContext.AssignSourceMapRange(lowered, node)
+	l.emitContext.SetOriginal(lowered, node)
+	l.impure = true
+	return lowered
+}
+
+func (l *lowerer) assetBindingDeclaration(authoredName *ast.Node, initializer *ast.Node) *ast.Node {
+	return l.assetBindingDeclarationForValue(authoredName, initializer, compiledAssetValue{})
+}
+
+func (l *lowerer) assetBindingDeclarationForValue(authoredName *ast.Node, initializer *ast.Node, value compiledAssetValue) *ast.Node {
+	identifier := l.factory.NewIdentifier(authoredName.Text())
+	// The binding name is the one authored token this generated declaration
+	// truthfully represents. The embedded value comes from the asset file and is
+	// deliberately left unmapped instead of being assigned an invented `.sm`
+	// position.
+	l.emitContext.AssignSourceMapRange(identifier, authoredName)
+	l.emitContext.SetOriginal(identifier, authoredName)
+	var typeNode *ast.Node
+	switch value.declarationType {
+	case "string":
+		typeNode = l.factory.NewKeywordTypeNode(ast.KindStringKeyword)
+	case "Uint8Array":
+		typeNode = l.factory.NewTypeReferenceNode(l.factory.NewIdentifier("Uint8Array"), nil)
+	}
+	return l.factory.NewVariableDeclaration(identifier, nil, typeNode, initializer)
+}
+
+// lowerAssetImport replaces a compiler-owned edge with local const bindings.
+// No original asset specifier, import attribute, or runtime file dependency is
+// retained in the emitted module.
+func (l *lowerer) lowerAssetImport(node *ast.Node, module *compiledAssetModule) *ast.Node {
+	declaration := node.AsImportDeclaration()
+	clause := declaration.ImportClause.AsImportClause()
+	bindings := make([]*ast.Node, 0)
+	sharedDefault := ""
+	if module.defaultExportName != "" {
+		value, ok := module.exports[module.defaultExportName]
+		if !ok {
+			l.report(node, "SMITHERS5217", "the selected asset loader's default export does not name a generated value")
+		} else {
+			sharedDefault = fmt.Sprintf("%sAsset%d", tempPrefix, l.nextTemp)
+			l.nextTemp++
+			bindings = append(bindings, l.factory.NewVariableDeclaration(
+				l.factory.NewIdentifier(sharedDefault), nil, nil, l.compiledAssetValueExpression(value),
+			))
+		}
+	}
+	if name := clause.Name(); name != nil {
+		if module.defaultValue == nil {
+			l.report(name, "SMITHERS5217", "the selected asset loader has no default export")
+		} else {
+			initializer := l.compiledAssetValueExpression(*module.defaultValue)
+			if sharedDefault != "" {
+				initializer = l.factory.NewIdentifier(sharedDefault)
+			}
+			bindings = append(bindings, l.assetBindingDeclarationForValue(name, initializer, *module.defaultValue))
+		}
+	}
+	if named := clause.NamedBindings; named != nil {
+		switch {
+		case ast.IsNamespaceImport(named):
+			bindings = append(bindings, l.assetBindingDeclaration(named.AsNamespaceImport().Name(), l.compiledAssetNamespace(module, sharedDefault)))
+		case ast.IsNamedImports(named):
+			for _, element := range named.AsNamedImports().Elements.Nodes {
+				specifier := element.AsImportSpecifier()
+				if specifier.IsTypeOnly {
+					continue
+				}
+				imported := specifier.Name().Text()
+				if specifier.PropertyName != nil {
+					imported = specifier.PropertyName.Text()
+				}
+				value, ok := l.compiledAssetExport(module, imported)
+				if !ok {
+					l.report(element, "SMITHERS5217", "the selected asset loader has no export named "+strconvQuote(imported))
+					continue
+				}
+				initializer := l.compiledAssetValueExpression(value)
+				if sharedDefault != "" && imported == module.defaultExportName {
+					initializer = l.factory.NewIdentifier(sharedDefault)
+				}
+				bindings = append(bindings, l.assetBindingDeclarationForValue(specifier.Name(), initializer, value))
+			}
+		}
+	}
+	if len(bindings) == 0 {
+		// Admission already excludes side-effect and wholly type-only forms. A
+		// mixed named list may contain only erased type specifiers after a future
+		// grammar extension; keep that situation fail closed rather than emit an
+		// empty statement that loses the tracked edge.
+		l.report(node, "SMITHERS5208", "asset imports require at least one runtime binding")
+		return nil
+	}
+	list := l.factory.NewVariableDeclarationList(l.factory.NewNodeList(bindings), ast.NodeFlagsConst)
+	statement := l.factory.NewVariableStatement(nil, list)
+	l.emitContext.AssignCommentRange(statement, node)
+	return statement
+}
+
+// lowerAssetExport embeds the selected asset values directly into exported
+// declarations. Like the import lowering, it retains no runtime specifier or
+// attribute; the edge was completed before runtime.
+func (l *lowerer) lowerAssetExport(node *ast.Node, module *compiledAssetModule) *ast.Node {
+	declaration := node.AsExportDeclaration()
+	statements := make([]*ast.Node, 0)
+	sharedDefault := ""
+	if module.defaultExportName != "" {
+		value, ok := module.exports[module.defaultExportName]
+		if !ok {
+			l.report(node, "SMITHERS5217", "the selected asset loader's default export does not name a generated value")
+		} else {
+			sharedDefault = fmt.Sprintf("%sAsset%d", tempPrefix, l.nextTemp)
+			l.nextTemp++
+			binding := l.factory.NewVariableDeclaration(
+				l.factory.NewIdentifier(sharedDefault), nil, nil, l.compiledAssetValueExpression(value),
+			)
+			statements = append(statements, l.factory.NewVariableStatement(nil,
+				l.factory.NewVariableDeclarationList(l.factory.NewNodeList([]*ast.Node{binding}), ast.NodeFlagsConst)))
+		}
+	}
+
+	exportedBindings := make([]*ast.Node, 0)
+	addExport := func(authoredName *ast.Node, imported string) {
+		value, ok := l.compiledAssetExport(module, imported)
+		if !ok {
+			l.report(authoredName, "SMITHERS5217", "the selected asset loader has no export named "+strconvQuote(imported))
+			return
+		}
+		initializer := l.compiledAssetValueExpression(value)
+		if sharedDefault != "" && imported == module.defaultExportName {
+			initializer = l.factory.NewIdentifier(sharedDefault)
+		}
+		if authoredName.Text() == "default" {
+			assignment := l.factory.NewExportAssignment(nil, false, nil, initializer)
+			l.emitContext.AssignSourceMapRange(assignment, authoredName)
+			statements = append(statements, assignment)
+			return
+		}
+		exportedBindings = append(exportedBindings,
+			l.assetBindingDeclarationForValue(authoredName, initializer, value))
+	}
+
+	clause := declaration.ExportClause
+	switch {
+	case clause != nil && ast.IsNamespaceExport(clause):
+		name := clause.AsNamespaceExport().Name()
+		exportedBindings = append(exportedBindings,
+			l.assetBindingDeclaration(name, l.compiledAssetNamespace(module, sharedDefault)))
+	case clause != nil && ast.IsNamedExports(clause):
+		for _, element := range clause.AsNamedExports().Elements.Nodes {
+			specifier := element.AsExportSpecifier()
+			if specifier.IsTypeOnly {
+				continue
+			}
+			imported := specifier.Name().Text()
+			if specifier.PropertyName != nil {
+				imported = specifier.PropertyName.Text()
+			}
+			addExport(specifier.Name(), imported)
+		}
+	}
+	if len(exportedBindings) != 0 {
+		modifiers := l.factory.NewModifierList([]*ast.Node{l.factory.NewToken(ast.KindExportKeyword)})
+		list := l.factory.NewVariableDeclarationList(l.factory.NewNodeList(exportedBindings), ast.NodeFlagsConst)
+		statements = append(statements, l.factory.NewVariableStatement(modifiers, list))
+	}
+	if len(statements) == 0 {
+		l.report(node, "SMITHERS5208", "asset re-exports require at least one runtime binding")
+		return nil
+	}
+	for _, statement := range statements {
+		l.emitContext.AssignCommentRange(statement, node)
+	}
+	if len(statements) == 1 {
+		return statements[0]
+	}
+	return l.factory.NewSyntaxList(statements)
+}

@@ -1,0 +1,4 @@
+{
+  "title": "classes, parameter properties, abstract members, and constrained generics",
+  "stdout": ["rectangle 12.00", "circle 12.57", "rectangle", "true true"]
+}

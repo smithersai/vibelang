@@ -1,0 +1,6 @@
+{
+  "title": "an infallible async function returns Promise<A>, so awaiting it yields the value and leaves no Result to consume",
+  "expect": "output",
+  "stdout": ["ADA LOVELACE", "NONE"],
+  "notes": "specification/type-system.mdx, 'Async Values': 'An infallible async function returns Promise<A>.' specification/failures.mdx, 'Compiler Lifting': 'A function with no fallible path MUST continue to return its ordinary success type rather than an unnecessary Result.' specification/compatibility.mdx, 'TypeScript Target': 'infallible, non-optional functions MUST NOT be wrapped.' Calling .toUpperCase() directly on the awaited value is the observation: it only type-checks if the awaited value is a string rather than a Result."
+}

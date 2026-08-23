@@ -175,6 +175,143 @@ const withWasm = (build: PortableWasmBuild, wasm: Uint8Array): PortableWasmBuild
   }
 }
 
+interface DecodedU32 {
+  readonly value: number
+  readonly next: number
+}
+
+interface WasmExportEntry {
+  readonly name: string
+  readonly kind: number
+  readonly index: number
+  readonly nameStart: number
+  readonly nameEnd: number
+}
+
+interface WasmExportSection {
+  readonly sectionStart: number
+  readonly payloadStart: number
+  readonly payloadEnd: number
+  readonly count: number
+  readonly countEnd: number
+  readonly entries: readonly WasmExportEntry[]
+}
+
+const decodeU32 = (bytes: Uint8Array, offset: number): DecodedU32 => {
+  let value = 0
+  let scale = 1
+  for (let width = 0; width < 5; width += 1) {
+    const byte = bytes[offset + width]
+    if (byte === undefined) throw new TypeError("truncated Wasm u32")
+    value += (byte & 0x7f) * scale
+    if ((byte & 0x80) === 0) return { value, next: offset + width + 1 }
+    scale *= 128
+  }
+  throw new TypeError("overlong Wasm u32")
+}
+
+const encodeU32 = (input: number): Uint8Array => {
+  if (!Number.isSafeInteger(input) || input < 0 || input > 0xffff_ffff) {
+    throw new TypeError("Wasm u32 is outside range")
+  }
+  const bytes: number[] = []
+  let value = input
+  do {
+    const payload = value % 128
+    value = Math.floor(value / 128)
+    bytes.push(payload | (value === 0 ? 0 : 0x80))
+  } while (value !== 0)
+  return Uint8Array.from(bytes)
+}
+
+const joinBytes = (...chunks: readonly Uint8Array[]): Uint8Array => {
+  const joined = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.byteLength, 0))
+  let offset = 0
+  for (const chunk of chunks) {
+    joined.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return joined
+}
+
+/** Parse only enough of the binary format to identify the exact export vector. */
+const wasmExportSection = (wasm: Uint8Array): WasmExportSection => {
+  if (wasm.byteLength < 8 || Buffer.from(wasm.subarray(0, 8)).toString("hex") !== "0061736d01000000") {
+    throw new TypeError("not a Wasm 1 binary")
+  }
+  let sectionStart = 8
+  while (sectionStart < wasm.byteLength) {
+    const id = wasm[sectionStart]!
+    const size = decodeU32(wasm, sectionStart + 1)
+    const payloadStart = size.next
+    const payloadEnd = payloadStart + size.value
+    if (payloadEnd > wasm.byteLength) throw new TypeError("truncated Wasm section")
+    if (id !== 7) {
+      sectionStart = payloadEnd
+      continue
+    }
+
+    const count = decodeU32(wasm, payloadStart)
+    let cursor = count.next
+    const entries: WasmExportEntry[] = []
+    for (let entry = 0; entry < count.value; entry += 1) {
+      const nameLength = decodeU32(wasm, cursor)
+      const nameStart = nameLength.next
+      const nameEnd = nameStart + nameLength.value
+      if (nameEnd >= payloadEnd) throw new TypeError("truncated Wasm export name")
+      const name = new TextDecoder("utf-8", { fatal: true }).decode(wasm.subarray(nameStart, nameEnd))
+      const kind = wasm[nameEnd]!
+      const index = decodeU32(wasm, nameEnd + 1)
+      entries.push({ name, kind, index: index.value, nameStart, nameEnd })
+      cursor = index.next
+    }
+    if (cursor !== payloadEnd) throw new TypeError("Wasm export section has trailing bytes")
+    return {
+      sectionStart,
+      payloadStart,
+      payloadEnd,
+      count: count.value,
+      countEnd: count.next,
+      entries
+    }
+  }
+  throw new TypeError("Wasm binary has no export section")
+}
+
+/** Rename one export without changing any section length or non-export byte. */
+const renameWasmExport = (wasm: Uint8Array, name: string, replacement: string): Uint8Array => {
+  const entry = wasmExportSection(wasm).entries.find((candidate) => candidate.name === name)
+  if (!entry) throw new TypeError(`Wasm export ${name} is absent`)
+  const encoded = new TextEncoder().encode(replacement)
+  if (encoded.byteLength !== entry.nameEnd - entry.nameStart) {
+    throw new TypeError("replacement Wasm export name must preserve its encoded length")
+  }
+  const patched = Uint8Array.from(wasm)
+  patched.set(encoded, entry.nameStart)
+  return patched
+}
+
+/** Add a second name for a real function while preserving a valid Wasm module. */
+const addBogusWasmExport = (wasm: Uint8Array, name: string): Uint8Array => {
+  const section = wasmExportSection(wasm)
+  if (section.entries.some((entry) => entry.name === name)) throw new TypeError("bogus export already exists")
+  const target = section.entries.find((entry) => entry.kind === 0)
+  if (!target) throw new TypeError("Wasm binary has no function to alias")
+  const encodedName = new TextEncoder().encode(name)
+  const added = joinBytes(encodeU32(encodedName.byteLength), encodedName, Uint8Array.of(0), encodeU32(target.index))
+  const payload = joinBytes(
+    encodeU32(section.count + 1),
+    wasm.subarray(section.countEnd, section.payloadEnd),
+    added
+  )
+  const replacement = joinBytes(Uint8Array.of(7), encodeU32(payload.byteLength), payload)
+  return joinBytes(
+    wasm.subarray(0, section.sectionStart),
+    replacement,
+    wasm.subarray(section.payloadEnd)
+  )
+}
+
 const rehashFunction = (fn: Record<string, any>): void => {
   const contract = { name: fn.name, parameters: fn.parameters, requirements: fn.requirements, result: fn.result }
   fn.contractDigest = digest(contract)
@@ -254,7 +391,7 @@ test("TypeScript and real Wasm targets agree on plain, Optional, Result, and boo
   expect(executePortableTypeScript(module, "checkedScale", { value: -2, enabled: true }).exit).toEqual({
     kind: "failure",
     error: {
-      identity: "vibelang.error:example/math#Negative@1",
+      identity: "smithers.error:example/math#Negative@1",
       payload: {}
     }
   })
@@ -310,7 +447,7 @@ test("intra-module calls, unwrap propagation, tail returns, locals, loops, and p
 
   expect(executePortableTypeScript(module, "remapped", { value: -4, wide: true }).exit).toEqual({
     kind: "failure",
-    error: { identity: "vibelang.error:example/features#Negative@1", payload: {} }
+    error: { identity: "smithers.error:example/features#Negative@1", payload: {} }
   })
   expect(executePortableTypeScript(module, "quadruple", { value: 3 }).exit).toEqual({ kind: "success", value: 12 })
   expect(executePortableTypeScript(module, "maybeQuarter", { value: -8 }).exit).toEqual({ kind: "absent" })
@@ -320,7 +457,7 @@ test("intra-module calls, unwrap propagation, tail returns, locals, loops, and p
   expect((await executePortableWasm(build, "clampCaller", { value: 26 })).exit).toEqual({
     kind: "failure",
     error: {
-      identity: "vibelang.error:example/features#TooLarge@1",
+      identity: "smithers.error:example/features#TooLarge@1",
       payload: { limit: 10, actual: 13 }
     }
   })
@@ -377,7 +514,7 @@ export function negativeZeroPayload(value: number): Result<number, Flagged> {
   const okWasm = await executePortableWasm(build, "check", { value: 12, strict: true })
   expect(okTs.exit).toEqual({
     kind: "failure",
-    error: { identity: "vibelang.error:example/payload#Flagged@1", payload: { limit: 24, strict: true } }
+    error: { identity: "smithers.error:example/payload#Flagged@1", payload: { limit: 24, strict: true } }
   })
   expect(okWasm).toEqual(okTs)
 
@@ -617,7 +754,7 @@ test("string parameters, concatenation, ordering, and string payloads agree acro
   expect(executePortableTypeScript(module, "sameText", { left: "", right: "" }).exit).toEqual({ kind: "success", value: true })
   expect(executePortableTypeScript(module, "requireName", { name: "" }).exit).toEqual({
     kind: "failure",
-    error: { identity: "vibelang.error:example/string-runtime#Blank@1", payload: { given: "", size: 0 } }
+    error: { identity: "smithers.error:example/string-runtime#Blank@1", payload: { given: "", size: 0 } }
   })
 
   // `text += text` charges 4 + leftBytes + rightBytes per concat, so the
@@ -994,7 +1131,7 @@ test("nominal Error identities and malformed in-memory IR cannot be rehashed int
   })
   const forged = forgedCopy(module)
   const fn = forged.functions[0]
-  fn.result.errors[0].identity = "vibelang.error:other/module#Expected@1"
+  fn.result.errors[0].identity = "smithers.error:other/module#Expected@1"
   fn.body[0].identity = fn.result.errors[0].identity
   rehashModule(forged)
   expect(() => validatePortableModule(forged)).toThrow("error identity/tag is invalid")
@@ -1121,7 +1258,7 @@ test("IR artifacts, inputs, noncanonical outputs, and compiled Wasm fail closed"
   legacy.formatVersion = 2
   rehashModule(legacy)
   expect(() => validatePortableModule(legacy)).toThrow("formatVersion 2 predates the format 3 string ABI")
-  const legacyIdentity = { artifactVersion: 1, kind: "vibelang.portable-ir", module: legacy }
+  const legacyIdentity = { artifactVersion: 1, kind: "smithers.portable-ir", module: legacy }
   expect(() => decodePortableModuleArtifact(
     encodeCanonicalJson({ ...legacyIdentity, digest: digest(legacyIdentity) })
   )).toThrow("formatVersion 2 predates the format 3 string ABI")
@@ -1206,13 +1343,59 @@ test("Wasm validation rejects mutable, forged, and noncanonical ABI builds", asy
   await expect(executePortableWasm(build, "flag", {})).rejects.toThrow("build identity/content mismatch")
 }, 120_000)
 
+test("binary-patched Wasm cannot hide __memory or add a bogus export", async () => {
+  const module = compilePortableModule({
+    moduleId: "abi/forged-exports",
+    source: `export function echo(value: string): string { return value }`
+  })
+  const build = await compilePortableWasm(module)
+  const originalExports = WebAssembly.Module.exports(
+    new WebAssembly.Module(Uint8Array.from(build.wasm).buffer as ArrayBuffer)
+  ).map((entry) => `${entry.kind}:${entry.name}`).sort()
+  expect(originalExports).toEqual(["function:echo", "memory:__memory"])
+
+  // Same-length replacement: the export section remains structurally valid,
+  // but the checked IR's required memory name is no longer present.
+  const hiddenMemory = renameWasmExport(build.wasm, "__memory", "__hidden")
+  expect(WebAssembly.Module.exports(
+    new WebAssembly.Module(hiddenMemory.buffer as ArrayBuffer)
+  ).map((entry) => `${entry.kind}:${entry.name}`).sort()).toEqual([
+    "function:echo", "memory:__hidden"
+  ])
+
+  // Rebuild the export section with a larger vector and section-size LEB. The
+  // new name aliases a real function index, so WebAssembly itself accepts the
+  // binary; only the IR-derived exact-surface check should reject it.
+  const extraExport = addBogusWasmExport(build.wasm, "__bogus")
+  expect(WebAssembly.Module.exports(
+    new WebAssembly.Module(extraExport.buffer as ArrayBuffer)
+  ).map((entry) => `${entry.kind}:${entry.name}`).sort()).toEqual([
+    "function:__bogus", "function:echo", "memory:__memory"
+  ])
+
+  for (const forged of [hiddenMemory, extraExport]) {
+    try {
+      await executePortableWasm(withWasm(build, forged), "echo", { value: "ok" })
+      throw new TypeError("forged Wasm export surface was silently accepted")
+    } catch (error) {
+      expect(error).toBeInstanceOf(PortableBackendError)
+      expect((error as PortableBackendError).diagnostic).toEqual({
+        code: "SMITHERS5059",
+        message: "portable Wasm exports do not match checked IR",
+        line: 1,
+        column: 1
+      })
+    }
+  }
+}, 120_000)
+
 test("the external Wasm tool is killed at the configured deadline", async () => {
   if (process.platform === "win32") return
   const module = compilePortableModule({
     moduleId: "tool/timeout",
     source: `export function value(): number { return 1 }`
   })
-  const directory = await mkdtemp(join(tmpdir(), "vibelang-portable-tool-test-"))
+  const directory = await mkdtemp(join(tmpdir(), "smithers-portable-tool-test-"))
   const command = join(directory, "fake-wat2wasm")
   const symlinkCommand = join(directory, "fake-wat2wasm-symlink")
   try {
@@ -1259,7 +1442,7 @@ if (process.argv[2] === "--version") {
 
 /** Value-service capabilities: the whole environment ABI in one module. */
 const CAPABILITY_SOURCE = `
-import { Context } from "vibelang/context"
+import { Context } from "smthrs/context"
 
 abstract class Config extends Context {
   abstract readonly label: string
@@ -1328,7 +1511,7 @@ test("Context capabilities lower to a host-supplied environment with exact dual-
   expect(module.capabilities).toEqual([
     {
       name: "Config",
-      identity: "vibelang.capability:example/capability#Config@1",
+      identity: "smithers.capability:example/capability#Config@1",
       fields: [
         { name: "label", valueType: "string" },
         { name: "retries", valueType: "number" },
@@ -1337,7 +1520,7 @@ test("Context capabilities lower to a host-supplied environment with exact dual-
     },
     {
       name: "Locale",
-      identity: "vibelang.capability:example/capability#Locale@1",
+      identity: "smithers.capability:example/capability#Locale@1",
       fields: [{ name: "suffix", valueType: "string" }]
     }
   ])
@@ -1365,10 +1548,10 @@ test("Context capabilities lower to a host-supplied environment with exact dual-
   // Two scalar fields become exported mutable globals; the two string fields
   // become fixed records the host writes into the environment region, so their
   // pointers are compile-time constants and never forgeable at runtime.
-  expect(wat).toContain(`(global $__vibe_env_0 (export "__vibe_env_0") (mut f64) (f64.const 0))`)
-  expect(wat).toContain(`(global $__vibe_env_1 (export "__vibe_env_1") (mut i32) (i32.const 0))`)
-  expect(wat).not.toContain("__vibe_env_2")
-  expect(wat).toContain("(global.get $__vibe_env_0)")
+  expect(wat).toContain(`(global $__smithers_env_0 (export "__smithers_env_0") (mut f64) (f64.const 0))`)
+  expect(wat).toContain(`(global $__smithers_env_1 (export "__smithers_env_1") (mut i32) (i32.const 0))`)
+  expect(wat).not.toContain("__smithers_env_2")
+  expect(wat).toContain("(global.get $__smithers_env_0)")
   expect(wat).toContain(`(memory (export "__memory")`)
 
   const build = await compilePortableWasm(module)
@@ -1379,8 +1562,8 @@ test("Context capabilities lower to a host-supplied environment with exact dual-
   expect(WebAssembly.Module.exports(compiled).map((entry) => `${entry.kind}:${entry.name}`).sort()).toEqual([
     "function:bounded", "function:checked", "function:decorated", "function:greet", "function:labelSize",
     "function:maybeRetries", "function:pure", "function:retries", "function:verbose",
-    "global:__vibe_env_0", "global:__vibe_env_1",
-    "global:__vibe_payload_0", "global:__vibe_payload_1",
+    "global:__smithers_env_0", "global:__smithers_env_1",
+    "global:__smithers_payload_0", "global:__smithers_payload_1",
     "memory:__memory"
   ])
 
@@ -1409,7 +1592,7 @@ test("Context capabilities lower to a host-supplied environment with exact dual-
       exit: {
         kind: "failure",
         error: {
-          identity: "vibelang.error:example/capability#TooMany@1",
+          identity: "smithers.error:example/capability#TooMany@1",
           payload: { limit: 3, reason: "hi-" }
         }
       }
@@ -1439,7 +1622,7 @@ test("Context capabilities lower to a host-supplied environment with exact dual-
   // string, so both runtimes defect at the same operation.
   const budget = compilePortableModule({
     moduleId: "example/capability-budget",
-    source: `import { Context } from "vibelang/context"
+    source: `import { Context } from "smthrs/context"
 abstract class Config extends Context { abstract readonly chunk: string }
 export function grow(times: number): string {
   const config = Config.context()
@@ -1460,7 +1643,7 @@ export function grow(times: number): string {
   // module must declare memory even though no string expression exists.
   const unread = compilePortableModule({
     moduleId: "example/capability-unread",
-    source: `import { Context } from "vibelang/context"
+    source: `import { Context } from "smthrs/context"
 abstract class Config extends Context { abstract readonly label: string; abstract readonly retries: number }
 export function value(input: number): number { return Config.context().retries + input }`
   })
@@ -1468,7 +1651,7 @@ export function value(input: number): number { return Config.context().retries +
   // costs a module nothing beyond the slots it actually declares.
   const scalarOnly = compilePortableModule({
     moduleId: "example/capability-scalars",
-    source: `import { Context } from "vibelang/context"
+    source: `import { Context } from "smthrs/context"
 abstract class Flags extends Context { abstract readonly enabled: boolean; abstract readonly scale: number }
 export function value(input: number): number { const f = Flags.context(); return f.enabled ? input * f.scale : input }`
   })
@@ -1477,7 +1660,7 @@ export function value(input: number): number { const f = Flags.context(); return
   expect(WebAssembly.Module.exports(
     new WebAssembly.Module(Uint8Array.from(scalarBuild.wasm).buffer as ArrayBuffer)
   ).map((entry) => `${entry.kind}:${entry.name}`).sort()).toEqual([
-    "function:value", "global:__vibe_env_0", "global:__vibe_env_1"
+    "function:value", "global:__smithers_env_0", "global:__smithers_env_1"
   ])
   const scalarEnvironment = { Flags: { enabled: true, scale: 3 } }
   const scalarHost = executePortableTypeScript(scalarOnly, "value", { input: 4 }, scalarEnvironment)
@@ -1495,7 +1678,7 @@ export function value(input: number): number { const f = Flags.context(); return
 }, 240_000)
 
 test("capability shapes needing host effects fail closed at the declaration", () => {
-  const head = `import { Context } from "vibelang/context"\n`
+  const head = `import { Context } from "smthrs/context"\n`
   const capability = `${head}abstract class Config extends Context { abstract readonly retries: number }\n`
 
   // Clock/Random/FileSystem are exactly the shapes an import-free module cannot
@@ -1585,18 +1768,18 @@ export function value(input: number): number { return input }`
   // The capability root is the only import, in exactly one canonical form.
   expect(() => compilePortableModule({
     moduleId: "hostile/renamed-context",
-    source: `import { Context as Ctx } from "vibelang/context"
+    source: `import { Context as Ctx } from "smthrs/context"
 abstract class Config extends Ctx { abstract readonly retries: number }
 export function value(input: number): number { return Config.context().retries + input }`
   })).toThrow("may only import { Context }")
   expect(() => compilePortableModule({
     moduleId: "hostile/namespace-context",
-    source: `import * as context from "vibelang/context"
+    source: `import * as context from "smthrs/context"
 export function value(input: number): number { return input }`
   })).toThrow("may only import { Context }")
   expect(() => compilePortableModule({
-    moduleId: "hostile/other-vibelang-module",
-    source: `import { Layer } from "vibelang/provider"
+    moduleId: "hostile/other-smithers-module",
+    source: `import { Layer } from "smthrs/provider"
 export function value(input: number): number { return input }`
   })).toThrow("may only import { Context }")
   expect(() => compilePortableModule({
@@ -1608,7 +1791,7 @@ export function value(input: number): number { return input }`
 test("environments are validated against the declared row identically in both runtimes", async () => {
   const module = compilePortableModule({
     moduleId: "example/environment",
-    source: `import { Context } from "vibelang/context"
+    source: `import { Context } from "smthrs/context"
 abstract class Config extends Context {
   abstract readonly label: string
   abstract readonly retries: number
@@ -1665,7 +1848,7 @@ export function pure(input: number): number { return input }`
 test("forged capability rows and forged environment ABIs are rejected", async () => {
   const module = compilePortableModule({
     moduleId: "example/forged-capability",
-    source: `import { Context } from "vibelang/context"
+    source: `import { Context } from "smthrs/context"
 abstract class Config extends Context { abstract readonly retries: number }
 export function value(input: number): number { return Config.context().retries + input }
 export function pure(input: number): number { return input }`
@@ -1713,14 +1896,14 @@ export function pure(input: number): number { return input }`
   expect(() => validatePortableModule(wrongType)).toThrow("capability field type mismatch")
 
   const forgedIdentity = forgedCopy(module)
-  forgedIdentity.capabilities[0].identity = "vibelang.capability:somewhere/else#Config@1"
+  forgedIdentity.capabilities[0].identity = "smithers.capability:somewhere/else#Config@1"
   rehashModule(forgedIdentity)
   expect(() => validatePortableModule(forgedIdentity)).toThrow("capability identity is invalid")
 
   const unsorted = forgedCopy(module)
   unsorted.capabilities.push({
     name: "Alpha",
-    identity: "vibelang.capability:example/forged-capability#Alpha@1",
+    identity: "smithers.capability:example/forged-capability#Alpha@1",
     fields: [{ name: "a", valueType: "number" }]
   })
   unsorted.functions.find((fn: Record<string, any>) => fn.name === "value").requirements = ["Config", "Alpha"]
@@ -1739,7 +1922,7 @@ export function pure(input: number): number { return input }`
   // whose environment slots differ from the checked IR never executes.
   const wider = compilePortableModule({
     moduleId: "example/forged-capability",
-    source: `import { Context } from "vibelang/context"
+    source: `import { Context } from "smthrs/context"
 abstract class Config extends Context { abstract readonly retries: number; abstract readonly extra: number }
 export function value(input: number): number { const c = Config.context(); return c.retries + c.extra + input }
 export function pure(input: number): number { return input }`

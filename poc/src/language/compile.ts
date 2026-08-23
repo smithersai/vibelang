@@ -16,6 +16,7 @@ import {
   isErrorType,
   isOptionalUnwrapExpression,
   isPanicExitCall,
+  isResultExpectExpression,
   isResultUnwrapExpression,
   type CallEdge,
   type SemanticFunction,
@@ -44,13 +45,13 @@ export interface CompileOptions extends AnalyzeOptions {
   /** Generated file path, used to keep relative imports correct when moved. */
   readonly outputFileName?: string;
   /**
-   * Keep relative authored `.vibe` module specifiers exactly as written instead
+   * Keep relative authored `.sm` module specifiers exactly as written instead
    * of rewriting them to the generated output name. Cross-module analysis is
-   * unaffected; an external bridge that performs its own `.vibe` -> `.js`
+   * unaffected; an external bridge that performs its own `.sm` -> `.js`
    * rewrite needs the authored text (and therefore the authored columns) intact.
-   * Compiler virtual modules and non-`.vibe` relative specifiers still rewrite.
+   * Compiler virtual modules and non-`.sm` relative specifiers still rewrite.
    */
-  readonly preserveVibeSpecifiers?: boolean;
+  readonly preserveSmithersSpecifiers?: boolean;
 }
 
 /**
@@ -62,8 +63,8 @@ export interface ProjectEmitBindings {
   readonly outputBySource?: ReadonlyMap<string, string>;
   /** Absolute source paths whose import attributes must not survive emit. */
   readonly stripImportAttributesForSources?: ReadonlySet<string>;
-  /** Absolute paths of the authored `.vibe` modules in this project. */
-  readonly vibeSourceNames?: ReadonlySet<string>;
+  /** Absolute paths of the authored `.sm` modules in this project. */
+  readonly smithersSourceNames?: ReadonlySet<string>;
 }
 
 export interface CompileResult {
@@ -89,8 +90,8 @@ interface TransformState {
   readonly errorStarts: ReadonlyMap<number, string>;
   readonly projectOutputBySource?: ReadonlyMap<string, string>;
   readonly stripImportAttributesForSources?: ReadonlySet<string>;
-  readonly preserveVibeSpecifiers: boolean;
-  readonly vibeSourceNames?: ReadonlySet<string>;
+  readonly preserveSmithersSpecifiers: boolean;
+  readonly smithersSourceNames?: ReadonlySet<string>;
   readonly sourceMapOrigins: Map<ts.Node, ts.Node>;
   /** Lowered switch statements proven unable to complete past their clauses. */
   readonly nonFallingSwitches: Set<ts.Node>;
@@ -98,7 +99,7 @@ interface TransformState {
   temporary: number;
 }
 
-export function compileVibe(source: string, options: CompileOptions = {}): CompileResult {
+export function compileSmithers(source: string, options: CompileOptions = {}): CompileResult {
   const model = buildSemanticModel(source, options);
   return compileSemanticModel(source, options, model);
 }
@@ -116,7 +117,7 @@ export function compileSemanticModel(
     rows: model.rows,
     diagnostics: model.diagnostics,
   };
-  const sourceName = options.sourceName ?? options.fileName ?? "<memory>.vibe";
+  const sourceName = options.sourceName ?? options.fileName ?? "<memory>.sm";
   const runtimeImport = options.runtimeImport ?? "../runtime/index.ts";
   const identifiers = collectIdentifierTexts(model.sourceFile);
   const state: TransformState = {
@@ -135,8 +136,8 @@ export function compileSemanticModel(
     })),
     projectOutputBySource: bindings.outputBySource,
     stripImportAttributesForSources: bindings.stripImportAttributesForSources,
-    preserveVibeSpecifiers: options.preserveVibeSpecifiers === true,
-    vibeSourceNames: bindings.vibeSourceNames,
+    preserveSmithersSpecifiers: options.preserveSmithersSpecifiers === true,
+    smithersSourceNames: bindings.smithersSourceNames,
     sourceMapOrigins: new Map(),
     nonFallingSwitches: new Set(),
     // A recovery-derived parse can never claim byte-identity with authored text.
@@ -162,35 +163,53 @@ export function compileSemanticModel(
     if (header) state.changed = true;
     const code = state.changed ? header + body : source;
     let sourceMap: string | undefined;
-    if (options.sourceMap !== false) {
-      const fileName = options.outputFileName ?? basename(sourceName).replace(/\.vibe$/, ".ts");
-      // The printer's provenance describes the parsed (recovery-derived)
-      // text. Build the precise map against that text, then compose it with
-      // the exact derived-to-authored offset map so glue stays unmapped.
-      const generatedToParsed = createPreciseSourceMap({
-        generatedCode: code,
-        generatedBody: body,
-        generatedPrefix: header,
-        source: model.recovery.changed ? model.recovery.parseSource : source,
-        sourceName,
-        fileName,
-        printerSourceMap,
-        anchors: state.changed ? locateSourceMapAnchors(transformedFile, body, state) : undefined,
-        identity: !state.changed,
-      });
-      sourceMap = model.recovery.changed
-        ? composeSourceMaps(
-            generatedToParsed,
-            createOffsetSourceMap({
-              derivedText: model.recovery.parseSource,
-              authoredText: source,
-              runs: model.recovery.verbatim,
-              sourceName,
-              fileName: basename(sourceName),
-            }),
-            fileName,
-          )
-        : generatedToParsed;
+    // The retired `.?` token makes TypeScript recover an overlapping ternary
+    // tree. Its printer can display that malformed tree for diagnostics, but
+    // the resulting provenance backtracks and is not a valid source map. Honor
+    // correct-or-absent for this rejected spelling while retaining maps for
+    // supported recovered syntax and unrelated diagnostics.
+    const hasRetiredDotQuestion = analysis.diagnostics.some((diagnostic) =>
+      diagnostic.code === "SMITHERS1001" && diagnostic.message.includes("`.?` postfix operator"));
+    if (options.sourceMap !== false && !hasRetiredDotQuestion) {
+      const fileName = options.outputFileName ?? basename(sourceName).replace(/\.sm$/, ".ts");
+      try {
+        // The printer's provenance describes the parsed (recovery-derived)
+        // text. Build the precise map against that text, then compose it with
+        // the exact derived-to-authored offset map so glue stays unmapped.
+        const generatedToParsed = createPreciseSourceMap({
+          generatedCode: code,
+          generatedBody: body,
+          generatedPrefix: header,
+          source: model.recovery.changed ? model.recovery.parseSource : source,
+          sourceName,
+          fileName,
+          printerSourceMap,
+          anchors: state.changed ? locateSourceMapAnchors(transformedFile, body, state) : undefined,
+          identity: !state.changed,
+        });
+        sourceMap = model.recovery.changed
+          ? composeSourceMaps(
+              generatedToParsed,
+              createOffsetSourceMap({
+                derivedText: model.recovery.parseSource,
+                authoredText: source,
+                runs: model.recovery.verbatim,
+                sourceName,
+                fileName: basename(sourceName),
+              }),
+              fileName,
+            )
+          : generatedToParsed;
+      } catch (error) {
+        // Correct-or-absent, same rule the retired `.?` spelling gets above.
+        // A rejected program's printed tree can be malformed enough that its
+        // provenance is not a valid map (`case x => v,` is one such shape), and
+        // a rejected program must still return its diagnostics rather than
+        // taking the whole compile down. An ACCEPTED program has no such
+        // excuse: rethrow so a genuine provenance regression stays loud.
+        if (!analysis.diagnostics.some((diagnostic) => diagnostic.severity === "error")) throw error;
+        sourceMap = undefined;
+      }
     }
     return { code, sourceMap, analysis };
   } finally {
@@ -1020,6 +1039,63 @@ function rewriteExpression(
       return state.factory.createPropertyAccessExpression(temporary, "value");
     }
 
+    if (isResultExpectExpression(expression, state.model) && effectiveChannel(owner).startsWith("result")) {
+      const property = expression.expression as ts.PropertyAccessExpression;
+      const receiver = rewriteExpression(property.expression, owner, prologue, state, context, visit);
+      const receiverTemporary = freshTemporary(state, "expect_receiver");
+      prologue.push(state.factory.createVariableStatement(undefined,
+        state.factory.createVariableDeclarationList([
+          state.factory.createVariableDeclaration(receiverTemporary, undefined, undefined, receiver),
+        ], ts.NodeFlags.Const)));
+
+      // Call arguments are evaluated even when the receiver holds an error.
+      // Bind the message after the receiver and before inspection to preserve
+      // ordinary call evaluation order and ensure it is evaluated exactly once.
+      const message = expression.arguments[0]
+        ? rewriteExpression(expression.arguments[0], owner, prologue, state, context, visit)
+        : state.factory.createIdentifier("undefined");
+      const messageTemporary = freshTemporary(state, "expect_message");
+      prologue.push(state.factory.createVariableStatement(undefined,
+        state.factory.createVariableDeclarationList([
+          state.factory.createVariableDeclaration(messageTemporary, undefined, undefined, message),
+        ], ts.NodeFlags.Const)));
+
+      const resultTemporary = freshTemporary(state, "expect_result");
+      const inspect = helper(state, "__vsInspectResult");
+      prologue.push(state.factory.createVariableStatement(undefined,
+        state.factory.createVariableDeclarationList([
+          state.factory.createVariableDeclaration(resultTemporary, undefined, undefined,
+            state.factory.createCallExpression(state.factory.createIdentifier(inspect), undefined, [receiverTemporary])),
+        ], ts.NodeFlags.Const)));
+      const cause = state.factory.createNewExpression(state.factory.createIdentifier("Error"), undefined, [
+        messageTemporary,
+        state.factory.createObjectLiteralExpression([
+          state.factory.createPropertyAssignment("cause",
+            state.factory.createPropertyAccessExpression(resultTemporary, "error")),
+        ]),
+      ]);
+      const panic = state.factory.createCallExpression(
+        state.factory.createIdentifier(helper(state, "__vsPanicValue")),
+        undefined,
+        [cause],
+      );
+      const propagate = sourceMapAnchor(
+        state.factory.createReturnStatement(resultFailure(panic, state)),
+        expression,
+        state,
+      );
+      prologue.push(state.factory.createIfStatement(
+        state.factory.createBinaryExpression(
+          state.factory.createPropertyAccessExpression(resultTemporary, "ok"),
+          ts.SyntaxKind.EqualsEqualsEqualsToken,
+          state.factory.createFalse(),
+        ),
+        propagate,
+      ));
+      state.changed = true;
+      return state.factory.createPropertyAccessExpression(resultTemporary, "value");
+    }
+
     if (isOptionalUnwrapExpression(expression, state.model)) {
       const channel = effectiveChannel(owner);
       if (channel === "optional" || channel === "result-optional") {
@@ -1047,7 +1123,7 @@ function rewriteExpression(
         return state.factory.createPropertyAccessExpression(temporary, "value");
       }
       // No Optional-capable owner: semantic analysis rejects this placement
-      // with VIBE1206, so leave the source untransformed instead of emitting
+      // with SMITHERS1206, so leave the source untransformed instead of emitting
       // an early return with different semantics.
     }
 
@@ -1078,7 +1154,7 @@ function rewriteExpression(
 }
 
 /**
- * A Result unwrap or panic exit needs statements at the exact evaluation
+ * A Result unwrap/expect or panic exit needs statements at the exact evaluation
  * point. Hoisting those statements out of a repeated loop header changes
  * semantics, so semantic analysis rejects the construct and the emitter leaves
  * it untouched. Ordinary calls (including foreign calls, whose wrappers are
@@ -1109,7 +1185,7 @@ function containsLoopHeaderExit(expression: ts.Expression, model: SemanticModel)
     if (node !== expression && isFunctionLikeWithBody(node)) return;
     if (ts.isCallExpression(node) &&
       (isResultUnwrapExpression(node, model) || isOptionalUnwrapExpression(node, model) ||
-        isPanicExitCall(node, model))) {
+        isResultExpectExpression(node, model) || isPanicExitCall(node, model))) {
       found = true;
       return;
     }
@@ -1237,7 +1313,7 @@ function reserveBuiltinBindings(state: TransformState): void {
   const visit = (node: ts.Node): void => {
     if (ts.isIdentifier(node) && (node.text === "Result" || node.text === "Optional" || node.text === "Panic")) {
       const symbol = state.model.checker.getSymbolAtLocation(node);
-      if (symbol?.declarations?.some((declaration) => declaration.getSourceFile().fileName.endsWith("__vibelang_frontend_prelude__.d.ts"))) {
+      if (symbol?.declarations?.some((declaration) => declaration.getSourceFile().fileName.endsWith("__smithers_frontend_prelude__.d.ts"))) {
         used.add(node.text);
       }
     }
@@ -1248,6 +1324,10 @@ function reserveBuiltinBindings(state: TransformState): void {
     state.helpers.set(name, { exported: name, local: name });
     state.identifiers.add(name);
   }
+  // These checker-only globals become runtime imports in emitted code. Mark
+  // that known output change before choosing identity versus AST-printer maps;
+  // emitHelperImport runs after printing and is too late to make that choice.
+  if (used.size > 0) state.changed = true;
 }
 
 function emitHelperImport(state: TransformState): string {
@@ -1258,7 +1338,7 @@ function emitHelperImport(state: TransformState): string {
     // so a type-only helper never changes the emitted JavaScript.
     .map(({ exported, local, typeOnly }) =>
       `${typeOnly ? "type " : ""}${exported === local ? exported : `${exported} as ${local}`}`);
-  return `// Generated from ${state.sourceName} by the VibeLang checked POC.\n` +
+  return `// Generated from ${state.sourceName} by the Smithers checked POC.\n` +
     `import { ${specifiers.join(", ")} } from ${JSON.stringify(state.runtimeImport)};\n`;
 }
 
@@ -1291,7 +1371,7 @@ function printFileWithSourceMap(sourceFile: ts.SourceFile): { readonly code: str
   const generator = internals.createSourceMapGenerator({
     getCurrentDirectory: () => directory,
     getCanonicalFileName: (fileName) => fileName.replaceAll("\\", "/"),
-  }, basename(sourceFile.fileName).replace(/\.vibe$/, ".ts"), "", directory, {
+  }, basename(sourceFile.fileName).replace(/\.sm$/, ".ts"), "", directory, {
     inlineSources: true,
     extendedDiagnostics: false,
   });
@@ -1327,7 +1407,7 @@ function locateSourceMapAnchors(
 ): readonly SourceMapAnchor[] {
   if (state.sourceMapOrigins.size === 0) return [];
   const emitted = ts.createSourceFile(
-    transformed.fileName.replace(/\.vibe$/, ".generated.ts"),
+    transformed.fileName.replace(/\.sm$/, ".generated.ts"),
     body,
     ts.ScriptTarget.Latest,
     true,
@@ -1362,13 +1442,13 @@ function locateSourceMapAnchors(
 function allocateIdentifier(state: TransformState, preferred: string): string {
   let candidate = preferred;
   let suffix = 0;
-  while (state.identifiers.has(candidate)) candidate = `${preferred}$vibe${suffix++ || ""}`;
+  while (state.identifiers.has(candidate)) candidate = `${preferred}$smithers${suffix++ || ""}`;
   state.identifiers.add(candidate);
   return candidate;
 }
 
 function freshTemporary(state: TransformState, purpose: string): ts.Identifier {
-  return state.factory.createIdentifier(allocateIdentifier(state, `__vibe_${purpose}_${++state.temporary}`));
+  return state.factory.createIdentifier(allocateIdentifier(state, `__smithers_${purpose}_${++state.temporary}`));
 }
 
 function collectIdentifierTexts(sourceFile: ts.SourceFile): Set<string> {
@@ -1483,17 +1563,23 @@ function hasErrorClassBase(declaration: ts.ClassDeclaration, checker: ts.TypeChe
 
 function stableErrorId(sourceName: string, name: string): string {
   const normalized = sourceName.replace(/[^A-Za-z0-9._/@:+-]/g, "_").replace(/^([^A-Za-z0-9])/, "source_$1");
-  return `vibe:${normalized}:${name}`.slice(0, 256);
+  const id = `smithers:${normalized}:${name}`.slice(0, 256);
+  // The class name is carried verbatim, because an Error class name may be any
+  // TypeScript identifier. Never cut a surrogate pair in half doing it: a lone
+  // surrogate is not an identity character and the runtime validator would
+  // refuse the identity while the emitted module was still loading.
+  return /[\uD800-\uDBFF]$/.test(id) ? id.slice(0, -1) : id;
 }
 
 function isCompilerVirtualModule(name: string): boolean {
-  return name === "vibelang/context" || name === "vibelang/provider" || name === "vibelang:exceptions";
+  return name === "smthrs/context" || name === "smthrs/provider" || name === "smithers:exceptions" ||
+    name === "smithers:native";
 }
 
 function rewriteImportSpecifier(name: string, state: TransformState): string {
   if (isCompilerVirtualModule(name)) return state.runtimeImport;
   if (!name.startsWith(".") || !state.outputFileName) return name;
-  if (state.preserveVibeSpecifiers && isAuthoredVibeSpecifier(name, state)) return name;
+  if (state.preserveSmithersSpecifiers && isAuthoredSmithersSpecifier(name, state)) return name;
   const sourceTarget = resolve(dirname(state.model.fileName), name);
   const projectOutput = projectOutputForSpecifier(sourceTarget, state.projectOutputBySource);
   let rewritten = relative(dirname(state.outputFileName), projectOutput ?? sourceTarget).split(sep).join("/");
@@ -1502,17 +1588,17 @@ function rewriteImportSpecifier(name: string, state: TransformState): string {
 }
 
 /**
- * A relative specifier the caller authored against a `.vibe` module. The
- * literal `.vibe` extension is decisive on its own; extensionless and `.js`
- * spellings are only preserved when they resolve to a supplied `.vibe` source,
+ * A relative specifier the caller authored against a `.sm` module. The
+ * literal `.sm` extension is decisive on its own; extensionless and `.js`
+ * spellings are only preserved when they resolve to a supplied `.sm` source,
  * so an ordinary TypeScript/JavaScript neighbour still rewrites normally.
  */
-function isAuthoredVibeSpecifier(name: string, state: TransformState): boolean {
-  if (name.endsWith(".vibe")) return true;
-  if (!state.vibeSourceNames) return false;
+function isAuthoredSmithersSpecifier(name: string, state: TransformState): boolean {
+  if (name.endsWith(".sm")) return true;
+  if (!state.smithersSourceNames) return false;
   const sourceTarget = resolve(dirname(state.model.fileName), name);
   return projectSourceCandidates(sourceTarget)
-    .some((candidate) => candidate.endsWith(".vibe") && state.vibeSourceNames!.has(candidate));
+    .some((candidate) => candidate.endsWith(".sm") && state.smithersSourceNames!.has(candidate));
 }
 
 function projectOutputForSpecifier(
@@ -1527,8 +1613,8 @@ function projectOutputForSpecifier(
 
 function projectSourceCandidates(exact: string): readonly string[] {
   const candidates = [exact];
-  if (extname(exact) === "") candidates.push(`${exact}.vibe`, resolve(exact, "index.vibe"));
-  if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.vibe`);
+  if (extname(exact) === "") candidates.push(`${exact}.sm`, resolve(exact, "index.sm"));
+  if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.sm`);
   return candidates;
 }
 

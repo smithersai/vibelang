@@ -8,6 +8,8 @@ import {
   encodeCanonicalJson,
   expressionDependencies,
   fanOutSteps,
+  queueContractIdentity,
+  signalContractIdentity,
   type ActionDescriptor,
   type ActionImplementationContract,
   type DeploymentManifest,
@@ -17,6 +19,7 @@ import {
   type PlanFragment,
   type PlanNode,
   type PlanTemplate,
+  type StructuralDurableSchema,
   type ValueExpr
 } from "./ir.ts"
 import {
@@ -66,6 +69,18 @@ const nonEmpty = (value: unknown, path: string): string => {
   const out = string(value, path)
   if (out.trim() === "") fail(path, "must be non-empty")
   return out
+}
+
+/** Narrows a validated schema to the exact compiler-derived structural form. */
+const structuralOnly = (
+  value: DurableSchema,
+  path: string,
+  what: string
+): StructuralDurableSchema => {
+  if (value.shape !== "structural" || value.source !== "compiler-derived") {
+    fail(path, `${what} requires an exact compiler-derived structural schema`)
+  }
+  return value as StructuralDurableSchema
 }
 
 const signalIdentity = (value: unknown, path: string): string => {
@@ -260,7 +275,7 @@ const nodeExpressions = (node: PlanNode): readonly ValueExpr[] =>
       ? node.outputs
       : node.kind === "timer"
         ? [node.durationMs]
-        : node.kind === "signal"
+        : node.kind === "signal" || node.kind === "queue"
           ? []
         : node.kind === "fanout"
           ? [node.items]
@@ -308,7 +323,7 @@ const loopTemplateExpression = (
   }
 }
 
-const planNode = (value: unknown, path: string, formatVersion: 1 | 2, nesting = 0): PlanNode => {
+const planNode = (value: unknown, path: string, formatVersion: 1 | 2 | 3, nesting = 0): PlanNode => {
   if (nesting > MAX_EXPRESSION_DEPTH) fail(path, "Plan fragment nesting limit exceeded")
   const record = object(value, path)
   const kind = string(record.kind, `${path}.kind`)
@@ -342,15 +357,40 @@ const planNode = (value: unknown, path: string, formatVersion: 1 | 2, nesting = 
   } else if (kind === "signal") {
     exactKeys(record, path, [
       ...base, "signalId", "payloadSchema", "signalContractDigest"
-    ], optional)
+    ], [...optional, "delivery"])
     const signalId = signalIdentity(record.signalId, `${path}.signalId`)
-    const payloadSchema = schema(record.payloadSchema, "input", `${path}.payloadSchema`)
-    if (payloadSchema.shape !== "structural" || payloadSchema.source !== "compiler-derived") {
-      fail(`${path}.payloadSchema`, "signal payload requires an exact compiler-derived structural schema")
+    const payloadSchema = structuralOnly(
+      schema(record.payloadSchema, "input", `${path}.payloadSchema`),
+      `${path}.payloadSchema`,
+      "signal payload"
+    )
+    // The unicast form must never carry the field at all: an explicit
+    // `delivery: "unicast"` spelling would be a second encoding of one meaning
+    // and would silently change the pinned contract digest of an old Plan.
+    let delivery: "broadcast" | undefined
+    if (record.delivery !== undefined) {
+      if (formatVersion < 3) fail(path, "broadcast signals require Plan format version 3")
+      if (record.delivery !== "broadcast") fail(`${path}.delivery`, "unsupported signal delivery mode")
+      delivery = "broadcast"
     }
     const contractDigest = digestString(record.signalContractDigest, `${path}.signalContractDigest`)
-    if (digest({ signalId, payloadSchema }) !== contractDigest) {
+    if (signalContractIdentity(signalId, payloadSchema, delivery) !== contractDigest) {
       fail(path, "signal contract digest mismatch")
+    }
+  } else if (kind === "queue") {
+    if (formatVersion < 3) fail(path, "durable queue nodes require Plan format version 3")
+    exactKeys(record, path, [
+      ...base, "queueId", "itemSchema", "queueContractDigest"
+    ], optional)
+    const queueId = signalIdentity(record.queueId, `${path}.queueId`)
+    const itemSchema = structuralOnly(
+      schema(record.itemSchema, "input", `${path}.itemSchema`),
+      `${path}.itemSchema`,
+      "queue items"
+    )
+    const contractDigest = digestString(record.queueContractDigest, `${path}.queueContractDigest`)
+    if (queueContractIdentity(queueId, itemSchema) !== contractDigest) {
+      fail(path, "queue contract digest mismatch")
     }
   } else if (kind === "fanout") {
     if (Object.hasOwn(record, "steps")) {
@@ -424,7 +464,7 @@ const planNode = (value: unknown, path: string, formatVersion: 1 | 2, nesting = 
   return node
 }
 
-const fragment = (value: unknown, path: string, formatVersion: 1 | 2, nesting = 0): PlanFragment => {
+const fragment = (value: unknown, path: string, formatVersion: 1 | 2 | 3, nesting = 0): PlanFragment => {
   if (nesting > MAX_EXPRESSION_DEPTH) fail(path, "Plan fragment nesting limit exceeded")
   const record = object(value, path)
   exactKeys(record, path, ["nodes", "output"])
@@ -477,10 +517,10 @@ const validatePlanTemplateInner = (value: unknown, label: string, embedDepth: nu
   exactKeys(record, label, [
     "formatVersion", "flowId", "flowVersion", "nodes", "output", "requirements", "actions", "digest"
   ], ["flowSchemas", "childFlows"])
-  if (record.formatVersion !== 1 && record.formatVersion !== 2) {
+  if (record.formatVersion !== 1 && record.formatVersion !== 2 && record.formatVersion !== 3) {
     fail(`${label}.formatVersion`, "unsupported Plan format")
   }
-  const formatVersion = record.formatVersion as 1 | 2
+  const formatVersion = record.formatVersion as 1 | 2 | 3
   nonEmpty(record.flowId, `${label}.flowId`)
   integer(record.flowVersion, `${label}.flowVersion`, 1)
   const requirements = stringArray(record.requirements, `${label}.requirements`)
@@ -522,6 +562,7 @@ const validatePlanTemplateInner = (value: unknown, label: string, embedDepth: nu
   const descriptors = new Map(actions.map((action) => [action.id, action]))
   const used = new Set<string>()
   const signalIds = new Set<string>()
+  const queueContracts = new Map<string, string>()
   const referencedChildren = new Set<string>()
   const visit = (part: PlanFragment): void => {
     for (const node of part.nodes) {
@@ -557,6 +598,16 @@ const validatePlanTemplateInner = (value: unknown, label: string, embedDepth: nu
           fail(`${label} node ${node.id}`, `duplicate signal identity ${node.signalId}`)
         }
         signalIds.add(node.signalId)
+      } else if (node.kind === "queue") {
+        // Unlike a signal inbox, a queue is shared durable state: several nodes
+        // in one Flow may legitimately consume from it. They must nonetheless
+        // agree on one exact item contract, or the Plan itself is ambiguous
+        // about the queue's persisted schema.
+        const pinned = queueContracts.get(node.queueId)
+        if (pinned !== undefined && pinned !== node.queueContractDigest) {
+          fail(`${label} node ${node.id}`, `conflicting queue contract for ${node.queueId}`)
+        }
+        queueContracts.set(node.queueId, node.queueContractDigest)
       } else if (node.kind === "branch") {
         visit(node.whenTrue)
         visit(node.whenFalse)
@@ -734,14 +785,14 @@ export const validateDeploymentManifest = (value: unknown, plan: PlanTemplate): 
 
 export interface StaticPlanArtifact {
   readonly artifactVersion: 1
-  readonly kind: "vibelang.plan"
+  readonly kind: "smithers.plan"
   readonly plan: PlanTemplate
   readonly digest: string
 }
 
 export const encodePlanArtifact = (planValue: PlanTemplate): Uint8Array => {
   const plan = validatePlanTemplate(planValue)
-  const identity = { artifactVersion: 1 as const, kind: "vibelang.plan" as const, plan }
+  const identity = { artifactVersion: 1 as const, kind: "smithers.plan" as const, plan }
   const bytes = encodeCanonicalJson({ ...identity, digest: digest(identity) })
   if (bytes.byteLength > MAX_ARTIFACT_BYTES) fail("artifact", "size limit exceeded")
   return bytes
@@ -752,9 +803,9 @@ export const decodePlanArtifact = (bytes: Uint8Array | string): PlanTemplate => 
   if (typeof bytes === "string" && new TextEncoder().encode(bytes).byteLength > MAX_ARTIFACT_BYTES) fail("artifact", "size limit exceeded")
   const record = object(decodeCanonicalJson(bytes, "Plan artifact"), "artifact")
   exactKeys(record, "artifact", ["artifactVersion", "kind", "plan", "digest"])
-  if (record.artifactVersion !== 1 || record.kind !== "vibelang.plan") fail("artifact", "unsupported artifact kind/version")
+  if (record.artifactVersion !== 1 || record.kind !== "smithers.plan") fail("artifact", "unsupported artifact kind/version")
   const claimed = digestString(record.digest, "artifact.digest")
-  const identity = { artifactVersion: 1, kind: "vibelang.plan", plan: record.plan }
+  const identity = { artifactVersion: 1, kind: "smithers.plan", plan: record.plan }
   if (digest(identity) !== claimed) fail("artifact.digest", "artifact digest mismatch")
   return validatePlanTemplate(record.plan)
 }

@@ -1,0 +1,6 @@
+import { comptime as staticValue } from "smithers:comptime"
+import { buildConfig } from "./config.sm"
+
+export function testComptimeValue(): number {
+  return staticValue(buildConfig).code
+}

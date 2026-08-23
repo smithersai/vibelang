@@ -21,7 +21,7 @@ export abstract class HttpError extends Error {
   }
 }
 
-registerErrorType(HttpError, "vibelang:HttpError@1");
+registerErrorType(HttpError, "smithers:HttpError@1");
 
 export class InvalidUrl extends HttpError {
   constructor(url: string, message = `Not an absolute http(s) URL: ${url}`, options?: { readonly cause?: unknown }) {
@@ -88,9 +88,9 @@ function decodeUrlPayload(payload: JsonValue): { readonly url: string; readonly 
 type UrlErrorConstructor = new (url: string, message?: string) => HttpError;
 
 const urlErrors: ReadonlyArray<readonly [UrlErrorConstructor, string]> = [
-  [InvalidUrl, "vibelang:InvalidUrl@1"],
-  [RequestFailed, "vibelang:RequestFailed@1"],
-  [MalformedResponse, "vibelang:MalformedResponse@1"],
+  [InvalidUrl, "smithers:InvalidUrl@1"],
+  [RequestFailed, "smithers:RequestFailed@1"],
+  [MalformedResponse, "smithers:MalformedResponse@1"],
 ];
 
 for (const [type, id] of urlErrors) {
@@ -103,7 +103,7 @@ for (const [type, id] of urlErrors) {
   });
 }
 
-registerErrorCodec(RequestTimeout, "vibelang:RequestTimeout@1", {
+registerErrorCodec(RequestTimeout, "smithers:RequestTimeout@1", {
   encode: (error): JsonValue => ({ url: error.url, timeoutMillis: error.timeoutMillis, message: error.message }),
   decode: (payload) => {
     if (
@@ -118,7 +118,7 @@ registerErrorCodec(RequestTimeout, "vibelang:RequestTimeout@1", {
   },
 });
 
-registerErrorCodec(UnexpectedStatus, "vibelang:UnexpectedStatus@1", {
+registerErrorCodec(UnexpectedStatus, "smithers:UnexpectedStatus@1", {
   encode: (error): JsonValue => ({ url: error.url, status: error.status, message: error.message }),
   decode: (payload) => {
     if (

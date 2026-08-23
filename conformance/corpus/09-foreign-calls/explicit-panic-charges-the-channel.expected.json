@@ -1,0 +1,6 @@
+{
+  "title": "panic(...) from smithers:exceptions charges the distinguished checked panic channel of the enclosing function",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "panic: no entry for zoe"],
+  "notes": "specification/failures.mdx, 'Foreign Exceptions': 'panic is imported from smithers:exceptions and accepts an optional message or underlying Error.' docs/DECISIONS.md 'Typed failures' (Locked) says the same. The panic must be visible in the declared Result<string, Panic> channel and reach the caller's match error branch rather than escaping as an untyped throw."
+}

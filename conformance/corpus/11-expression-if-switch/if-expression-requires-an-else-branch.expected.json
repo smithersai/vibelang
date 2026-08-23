@@ -1,0 +1,12 @@
+{
+  "title": "a value-producing if expression requires an else branch",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1705",
+      "line": 2,
+      "column": 17
+    }
+  ],
+  "notes": "specification/control-flow.mdx, 'If': 'An if expression MUST select exactly one reachable branch. When used where a value is required, every normal completion path MUST produce a compatible value.' The same section allows omitting the alternate 'only where the resulting unit or optional semantics are explicitly defined by the final grammar' \u2014 they are not, so the missing else has no defined value and specification/control-flow.mdx, 'Expression Forms', requires a statically determined type. 11-expression-if-switch/statement-if-is-not-reinterpreted-as-an-expression pins that the same shape stays legal in statement position."
+}

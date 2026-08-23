@@ -1,0 +1,6 @@
+{
+  "title": "one Layer.succeed provider satisfies a capability required repeatedly, in one function and transitively through two more",
+  "expect": "output",
+  "stdout": ["Ada|Ada", "NONE|NONE!"],
+  "notes": "specification/requirements.mdx, 'Inference': 'Requirement inference MUST be transitive through ordinary calls. Duplicate nominal requirements MUST collapse.' The de-duplication of the row itself is row text, which this harness does not observe (see conformance/COVERAGE.md, 'Known observation gaps'); what IS observable is its consequence — one provider satisfies every route, and the program is accepted and runs. `deeper` requires Directory only through two intermediate calls, which is the transitivity half."
+}

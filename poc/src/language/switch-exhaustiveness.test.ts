@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import * as ts from "typescript-js";
-import { compileVibe } from "./compile.ts";
+import { compileSmithers } from "./compile.ts";
 import { analyzeSource } from "./analyze.ts";
 import { checkEmittedTypeScript } from "./validate.ts";
 import { __vsInspectResult } from "../runtime/index.ts";
@@ -53,10 +53,10 @@ test("closed-union switch expressions accept proven exhaustiveness without a def
     }
     function double(value: number): number { return value * 2 }
   `;
-  const compiled = compileVibe(source, {
-    fileName: `${import.meta.dir}/switch-exhaustive.vibe`,
+  const compiled = compileSmithers(source, {
+    fileName: `${import.meta.dir}/switch-exhaustive.sm`,
     outputFileName: `${import.meta.dir}/switch-exhaustive.generated.ts`,
-    sourceName: "switch-exhaustive.vibe",
+    sourceName: "switch-exhaustive.sm",
     runtimeImport: "../runtime/index.ts",
   });
   expect(compiled.analysis.diagnostics).toEqual([]);
@@ -64,14 +64,14 @@ test("closed-union switch expressions accept proven exhaustiveness without a def
     .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)
     .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"))).toEqual([]);
 
-  const executable = compileVibe(source, {
-    fileName: `${import.meta.dir}/switch-exhaustive.vibe`,
+  const executable = compileSmithers(source, {
+    fileName: `${import.meta.dir}/switch-exhaustive.sm`,
     outputFileName: `${import.meta.dir}/switch-exhaustive.generated.ts`,
-    sourceName: "switch-exhaustive.vibe",
+    sourceName: "switch-exhaustive.sm",
     runtimeImport: pathToFileURL(`${import.meta.dir}/../runtime/index.ts`).href,
   });
   const javascript = new Bun.Transpiler({ loader: "ts", target: "bun" }).transformSync(executable.code);
-  const directory = await mkdtemp(join(tmpdir(), "vibe-switch-exhaustive-"));
+  const directory = await mkdtemp(join(tmpdir(), "smithers-switch-exhaustive-"));
   try {
     const modulePath = join(directory, "switch.mjs");
     await writeFile(modulePath, javascript);
@@ -101,7 +101,7 @@ test("non-exhaustive closed-union switch expressions fail closed", () => {
       }
     }
   `);
-  const exhaustiveness = missing.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1716");
+  const exhaustiveness = missing.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1716");
   expect(exhaustiveness).toHaveLength(1);
   expect(exhaustiveness[0]!.message).toContain('"failed"');
 
@@ -115,7 +115,7 @@ test("non-exhaustive closed-union switch expressions fail closed", () => {
       }
     }
   `);
-  expect(unprovable.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1716" &&
+  expect(unprovable.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1716" &&
     diagnostic.message.includes("non-literal"))).toBe(true);
 
   // Open scrutinee types keep the existing default requirement.
@@ -127,7 +127,7 @@ test("non-exhaustive closed-union switch expressions fail closed", () => {
       }
     }
   `);
-  expect(open.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1705" &&
+  expect(open.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1705" &&
     diagnostic.message.includes("default"))).toBe(true);
 
   // A default clause remains sufficient for any scrutinee.

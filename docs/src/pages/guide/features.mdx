@@ -1,12 +1,13 @@
 # Features [A tour of the language model]
 
-VibeLang starts from TypeScript-shaped source and adds compiler semantics where they make application behavior explicit and statically analyzable.
+Smithers starts from TypeScript-shaped source and adds compiler semantics where they make application behavior explicit and statically analyzable.
 
 :::warning Design documentation
 This page describes the intended language. The root package includes a checked,
-file-local `.vibe` frontend and runtime POCs, not a complete or conforming
-whole-project compiler. The examples below are not a list of syntax accepted by
-the current subset.
+multi-module TypeScript instrument and an opt-in Go compiler backend inside the
+pinned TypeScript fork. They implement a broad, bounded subset but do not
+constitute a conforming release. The examples below are not a promise that every
+design-stage surface is available on both backends.
 :::
 
 ## Values, Errors, and Requirements
@@ -17,9 +18,9 @@ async function getUser(
 ): Promise<Result<User, NotFound | DbError>> {
   const db = Db.context()
   const log = Logger.context()
-  const row = (await db.findUser(id)).unwrap()
+  const row = (await db.findUser(id))!
   if (row.isNone()) throw new NotFound(id)
-  const user = User.from(row.unwrap())
+  const user = User.from(row!)
   log.info(`loaded user:${id}`)
   return user
 }
@@ -41,21 +42,18 @@ const profile = loadProfile(id).match({
 
 `Result` supplies transformation, recovery, propagation, and must-use checking. Ordinary Error subclasses receive stable identity plus helpers such as `is`, `matches`, `match`, and `rootCause`. [Learn more](/guide/typed-failures).
 
-## Optionals
+## Absence
 
 ```ts
-const user = cache.get(id).match({
-  some: user => user,
-  none: () => guestUser,
-})
+const user = cache.get(id) ?? guestUser
 ```
 
-Built-in `Optional<T>` keeps absence separate from Result errors and uses ordinary methods instead of new grammar. [Learn more](/guide/optionals).
+Absence is an ordinary `T | undefined` union. Smithers adds no `Optional<T>`: TypeScript already expresses absence precisely, and keeping it distinct from `Result` costs nothing.
 
 ## Capabilities and Layers
 
 ```ts
-import { Context } from "vibelang/context"
+import { Context } from "smthrs/context"
 
 abstract class Clock extends Context {
   abstract now(): Instant
@@ -67,22 +65,22 @@ function createToken(): Token {
 }
 ```
 
-Layers package already acquired implementations into dependency environments. Resource ownership stays in explicit `using`/`defer` code. Requirements flow through callers until a Layer satisfies them. [Learn more](/guide/capabilities-and-layers).
+Layers package already acquired implementations into dependency environments. Resource ownership stays in explicit `using` code. Requirements flow through callers until a Layer satisfies them. [Learn more](/guide/capabilities-and-layers).
 
-## Expression-Oriented Control Flow
+## Control Flow
 
 ```ts
-const tier = if (score >= 90) "gold"
-  else if (score >= 60) "silver"
-  else "bronze"
+if (const user = cache.get(id); user !== undefined) {
+  render(user)
+}
 ```
 
-Blocks, conditionals, switches, and loops may produce values. Labeled breaks yield values; `defer` and `errdefer` keep cleanup adjacent to acquisition. [Learn more](/guide/control-flow).
+Control flow is TypeScript's. The one addition is declarations in conditionals, adopted early from TC39. Cleanup uses TC39 `using`. [Learn more](/guide/control-flow).
 
 ## Comptime
 
 ```ts
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 
 const schema = comptime(JSON.parse(embed("./routes.json")))
 const Routes = comptime(deriveRoutes(schema))
@@ -95,7 +93,7 @@ const Routes = comptime(deriveRoutes(schema))
 ```ts
 type Signup = { email: string; age: number }
 const SignupSchema = comptime(Schema.derive<Signup>())
-const signup = SignupSchema.parse(input).unwrap()
+const signup = SignupSchema.parse(input)!
 ```
 
 Validation returns an ordinary Result. [Learn more](/guide/runtime-validation).
@@ -112,18 +110,21 @@ All non-code and foreign-source inputs use import attributes. Custom comptime lo
 
 ## Multiple Targets
 
-VibeLang targets TypeScript, native, and Wasm output. Platform operations are capabilities, and `comptime.target` selects implementations without emitting unused targets. [Learn more](/guide/platforms-and-targets).
+TypeScript is the only compilation target. Platform operations are capabilities,
+and `comptime.target` selects a Node, Bun, Deno, browser, or edge implementation
+without emitting the unused ones. Near-native and Wasm targets were specified
+once and have been withdrawn. [Learn more](/guide/platforms-and-targets).
 
 ## Async and Concurrency
 
-Async fallible work returns `Promise<Result<A, E>>`. Authored `.vibe` consumes Promises only with `await`; Promise instance chaining is banned.
+Async fallible work returns `Promise<Result<A, E>>`. Authored `.sm` consumes Promises only with `await`; Promise instance chaining is banned.
 
 ```ts
 const results = await Promise.all([
   loadProfile(id),
   loadActivity(id),
 ])
-const [profile, activity] = Result.all(results).unwrap()
+const [profile, activity] = Result.all(results)!
 ```
 
 [Learn more](/guide/concurrency).
@@ -131,12 +132,12 @@ const [profile, activity] = Result.all(results).unwrap()
 ## Durable Execution
 
 ```ts
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 
 const Build = durable(function Build(
   input: BuildInput,
 ): Result<Artifact, CompileError | PackageError> {
-  const compiled = Compile.run({ source: input.source }).unwrap()
+  const compiled = Compile.run({ source: input.source })!
   return Package.run({ code: compiled.code })
 })
 ```

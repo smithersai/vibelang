@@ -1,0 +1,5 @@
+{
+  "title": "a started Promise that is never awaited, returned, or handed to a recognized combinator is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1402", "line": 11, "column": 3 }]
+}

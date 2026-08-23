@@ -1,0 +1,21 @@
+// Recognition of a retired form is a GRAMMAR property, not token adjacency.
+// Every spelling below is ordinary TypeScript that merely reuses a retired
+// operator's word, and none of it may be claimed by the migration sweep: a
+// word used as a property name or a class member is never the operator.
+class Handler {
+  catch(): string {
+    return "member"
+  }
+}
+
+export function main(): string[] {
+  const table = { try: "t", catch: "c", orelse: 7 }
+  const failed = false
+  const flags = { ok: !failed }
+  const handler = new Handler()
+  return [
+    `${table.try}${table.catch}${table.orelse}`,
+    `${flags.ok}`,
+    handler.catch(),
+  ]
+}

@@ -1,10 +1,12 @@
 # W5-C Concurrency and Streams POC Report
 
+> **Historical record.** This report describes work completed before the 2026-08-23 specification reduction. Some features it covers — the expression-form grammar, `defer`/`errdefer`, `Optional<T>`, `.unwrap()`, and the portable/native targets — are no longer part of the language. See `docs/DECISIONS.md`.
+
 ## API surface
 
 ### Cancellation
 
-- `Cancellation` and `Cancelled` reuse the constructors already owned by `join.ts`, preserving capability lookup, `instanceof`, mapper cancellation, and the stable `vibelang:Cancelled@1` wire identity.
+- `Cancellation` and `Cancelled` reuse the constructors already owned by `join.ts`, preserving capability lookup, `instanceof`, mapper cancellation, and the stable `smithers:Cancelled@1` wire identity.
 - The shared `Cancellation` prototype now supplies `isCancelled()` and `onCancel(handler)`. `checkpoint()`, `check()`, `whenCancelled()`, parent/child linkage, and the AbortSignal view remain coherent with `join.ts`.
 - `CancellationRegistration` is a frozen, WeakSet-branded, idempotent disposal handle with `dispose()`, `[Symbol.dispose]()`, and `active`.
 - `CancellationSource` is the live manual source. It accepts an optional linked `AbortSignal`, exposes a callable-and-property-compatible signal bridge, cancels once, and can unlink its external signal.
@@ -27,7 +29,7 @@
 - `take(cancellation?)` returns `Promise<Result<T, QueueClosed | Cancelled>>` and suspends while empty.
 - `tryOffer` and `tryTake` return `Optional<Result<...>>`: `None` is temporary backpressure/absence, while `Some(Error(QueueClosed))` preserves permanent shutdown as a typed failure.
 - `shutdown(reason)` is idempotent, settles every pending producer and consumer, rejects future operations, and permits already-accepted buffered values to drain.
-- `QueueClosed` is nominal and registered as `vibelang:QueueClosed@1` with a strict wire codec.
+- `QueueClosed` is nominal and registered as `smithers:QueueClosed@1` with a strict wire codec.
 - `capacity`, `size`, `pendingTakers`, `pendingOfferers`, and `isShutdown` expose queue state.
 
 ### Channel

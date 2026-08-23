@@ -308,7 +308,7 @@ export class AssetCompiler {
     const bytes = await this.#snapshotFile(path, graph);
     const sourceDigest = digest(bytesToStableString(bytes));
     const identity = {
-      compiler: "vibelang-assets@4",
+      compiler: "smithers-assets@4",
       loader: loader.id,
       loaderVersion: loader.version,
       loaderImplementation: loader.implementationDigest,
@@ -884,7 +884,7 @@ function constLiteral(value: StableJson): string {
 }
 
 export const jsonLoader: AssetLoader = {
-  id: "vibelang:builtin/json",
+  id: "smithers:builtin/json",
   version: "1",
   implementationDigest: "builtin-json-poc-v1",
   extensions: [".json"],
@@ -914,7 +914,7 @@ export const jsonLoader: AssetLoader = {
 };
 
 export const textLoader: AssetLoader = {
-  id: "vibelang:builtin/text",
+  id: "smithers:builtin/text",
   version: "1",
   implementationDigest: "builtin-text-poc-v1",
   extensions: [".txt", ".text"],
@@ -933,7 +933,7 @@ export const textLoader: AssetLoader = {
 };
 
 export const bytesLoader: AssetLoader = {
-  id: "vibelang:builtin/bytes",
+  id: "smithers:builtin/bytes",
   version: "1",
   implementationDigest: "builtin-bytes-poc-v1",
   extensions: [],
@@ -1359,7 +1359,7 @@ const dataLiteral = (value: unknown): string => {
 const indentation = (depth: number): string => "  ".repeat(depth);
 
 export const markdownLoader: AssetLoader = {
-  id: "vibelang:builtin/markdown",
+  id: "smithers:builtin/markdown",
   version: "2",
   implementationDigest: "builtin-markdown-poc-v2",
   extensions: [".md"],
@@ -1714,7 +1714,7 @@ function collectMdx(nodes: readonly ParsedNode[], components: string[], expressi
 }
 
 export const mdxLoader: AssetLoader = {
-  id: "vibelang:builtin/mdx",
+  id: "smithers:builtin/mdx",
   version: "2",
   implementationDigest: "builtin-mdx-poc-v2",
   extensions: [".mdx"],

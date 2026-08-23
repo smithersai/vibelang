@@ -1,0 +1,6 @@
+{
+  "title": "Result.all collects every success and reports the first error when one fails",
+  "expect": "output",
+  "stdout": ["Ada Lovelace,Ada Lovelace", "no entry for zoe"],
+  "notes": "specification/failures.mdx, 'Matching and Transformation', lists `all` among the required Result operations. The second line is the load-bearing one: two entries fail, and the collected Result must be the first failure ('no entry for zoe'), not the last. An implementation that folded right-to-left would print 'no entry for nemo' and this case would catch it."
+}

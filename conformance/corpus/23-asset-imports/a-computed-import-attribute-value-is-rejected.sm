@@ -1,0 +1,6 @@
+const kind = "json"
+import counter from "./counter.json" with { type: kind }
+
+export function main(): string[] {
+  return [String(counter.count)]
+}

@@ -1,0 +1,25 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+export class Wrapped extends Error {
+  constructor(readonly original: string) { super(`wrapped: ${original}`) }
+}
+
+function lookup(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+// mapError rewrites the failure channel and must leave the success channel and
+// the success value untouched.
+function rewrapped(key: string): Result<string, Wrapped> {
+  return lookup(key).mapError((error) => new Wrapped(error.key))
+}
+
+export function main(): string[] {
+  return [
+    rewrapped("ada").match({ ok: (value) => value, error: (error) => error.message }),
+    rewrapped("zoe").match({ ok: (value) => value, error: (error) => error.message }),
+  ]
+}

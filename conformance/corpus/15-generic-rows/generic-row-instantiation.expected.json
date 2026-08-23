@@ -1,0 +1,6 @@
+{
+  "title": "a call site instantiates a polymorphic failure-row template with its own type arguments, so the caller's row is exactly the instantiated one",
+  "expect": "output",
+  "stdout": ["ok ada", "not found ", "timed out"],
+  "modules": ["generic-row-instantiation.mod.sm"]
+}

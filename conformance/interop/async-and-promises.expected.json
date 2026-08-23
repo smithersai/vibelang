@@ -1,0 +1,4 @@
+{
+  "title": "async/await, Promise combinators, rejection, and try/catch keep ordinary TypeScript behavior",
+  "stdout": ["1,2,3", "fulfilled,rejected", "caught host failure", "try/catch host failure"]
+}

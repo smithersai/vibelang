@@ -1,0 +1,8 @@
+import { components, expressions, frontmatter } from "./coding-agent.mdx" with { type: "mdx" }
+
+// `target` is an MDX expression hole. Nothing in this program declares it, and
+// the program still compiles and runs: the hole is carried as a named
+// placeholder for a consumer to substitute, never evaluated at comptime.
+export function main(): string[] {
+  return [frontmatter.title, components.join(","), expressions.join(",")]
+}

@@ -52,9 +52,9 @@ export class InvalidInstant extends Error {
     this.name = "InvalidInstant";
   }
 }
-export interface InvalidInstant extends NominalError<"vibelang:InvalidInstant@1"> {}
+export interface InvalidInstant extends NominalError<"smithers:InvalidInstant@1"> {}
 
-registerErrorCodec(InvalidInstant, "vibelang:InvalidInstant@1", {
+registerErrorCodec(InvalidInstant, "smithers:InvalidInstant@1", {
   encode: (error): JsonValue => ({ text: error.text, reason: error.reason, message: error.message }),
   decode: (payload) => {
     if (

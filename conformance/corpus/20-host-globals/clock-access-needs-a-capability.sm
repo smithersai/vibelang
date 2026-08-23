@@ -1,0 +1,4 @@
+export function main(): string[] {
+  const stamp = Date.now()
+  return [`${stamp}`]
+}

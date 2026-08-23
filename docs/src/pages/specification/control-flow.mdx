@@ -1,77 +1,63 @@
-# Control Flow [Normative direction for expression forms and scope exits]
+# Control Flow [Normative model for statements, cleanup, and the one grammar addition]
 
-Status: core expression orientation is **locked**. Labeled values, loop `else`, detailed typing, and some grammar are **direction**.
+Status: **Locked**.
 
 ## Existing TypeScript Forms
 
 Valid TypeScript statement forms MUST retain their TypeScript behavior on the TypeScript target.
 
-Adding expression forms MUST NOT reinterpret an existing TypeScript statement in a way that changes observable behavior.
+Smithers MUST NOT reinterpret an existing TypeScript statement in a way that changes observable behavior.
 
-## Expression Forms
+## No Expression-Form Grammar
 
-The following constructs MUST be usable as expressions:
+Blocks, `if`, `switch`, `while`, and `for` are statements. None MUST be usable as an expression.
 
-- blocks
-- `if`
-- `switch`
-- `while`
-- `for`
+A value-position conditional is a conditional expression (`c ? a : b`). A value-position multi-way choice is a function call, an object lookup, or a conditional chain. TypeScript expresses both today, so neither justifies new grammar.
 
-An expression-form construct MUST have a statically determined success type from its reachable value-producing exits.
+Smithers MUST NOT add:
 
-## If
-
-An if expression MUST select exactly one reachable branch. When used where a value is required, every normal completion path MUST produce a compatible value.
-
-```ts
-const value = if (condition) consequent else alternate
-```
-
-The alternate branch MAY be omitted only where the resulting unit or optional semantics are explicitly defined by the final grammar.
+- `if` or `switch` in expression position, braced or braceless
+- a block in expression position
+- a value-carrying labeled `break`
+- a loop `else` completion value
+- a labeled block or loop value
+- an arrow-arm switch grammar
+- a throw-expression grammar
 
 ## Switch
 
-Switch syntax MUST use the same `switch`, `case`, `default`, and colon-delimited clauses as TypeScript. VibeLang MUST NOT introduce a separate arrow-arm switch grammar.
+`switch` MUST retain TypeScript's `case`, `default`, colon-delimited clauses, fallthrough, and `break` behavior, unchanged.
 
-In expression position, a switch MUST return the selected case's final expression. Expression switches MUST NOT fall through between cases. Statement-position switches MUST retain TypeScript's existing fallthrough and `break` behavior.
-
-When the scrutinee is a known closed union, the compiler SHOULD require an expression switch to be exhaustive.
-
-## Blocks
-
-An expression block MAY produce a value from its final expression or from a labeled value break.
-
-A declaration inside an expression block follows ordinary lexical scope.
-
-## Labeled Break Values
-
-**Direction:** a `break` targeting an expression label MAY carry a value:
-
-```ts
-break :label value
-```
-
-The compiler MUST combine reachable break values when determining the labeled expression's type.
-
-## Loop Else
-
-**Direction:** a loop expression MAY provide an `else` value for the path where the loop completes without breaking to its value label.
-
-The exact treatment of infinite loops, unreachable completion, and nested label selection is not finalized.
+Exhaustiveness over a closed union is a type-level concern and MUST NOT be expressed through new syntax.
 
 ## Throw Statements
 
-The initial language MUST retain ordinary statement-form `throw` and MUST NOT add a VibeLang-specific throw-expression grammar. Inside a fallible function, throwing an `Error` produces the function's Result error variant according to [Failure Semantics](/specification/failures).
+Smithers MUST retain ordinary statement-form `throw`. Inside a fallible function, throwing an `Error` produces the function's Result error variant according to [Failure Semantics](/specification/failures).
+
+Expression-form `throw` MAY be reconsidered when the TC39 proposal reaches TypeScript.
 
 ## Declarations in Conditions
 
-VibeLang MUST track relevant TC39 work for declarations in conditionals and SHOULD adopt it early when compatible with lexical scope and TypeScript parsing.
+This is the only grammar Smithers adds.
 
-## Deferred Cleanup
+```ts
+if (const user = cache.get(id); user !== undefined) {
+  render(user)
+}
+```
 
-`defer` MUST register cleanup for scope exit. `errdefer` MUST register cleanup for a Result error exit.
+The binding MUST be visible in the then branch and in every `else` branch, and MUST be out of scope after the construct.
 
-The language MUST define deterministic ordering for multiple deferred operations. The candidate is last-in, first-out, but this is not yet recorded as locked.
+Smithers adopts this early from the TC39 **Declarations in Conditionals** proposal (Stage 1). It is accepted because it is standards-track: upstream adoption would eventually make the fork patch unnecessary, which is true of no invented form.
 
-Async suspension, defects, cancellation, and cleanup failures require further specification.
+## Cleanup
+
+Smithers MUST NOT add `defer` or `errdefer`. Scope-exit cleanup uses TC39 explicit resource management (`using` and `await using`), which TypeScript already supports and which Smithers inherits unchanged.
+
+Cleanup that must run only on a Result error exit MUST be written explicitly in the failure path — through `mapError`, `recover`, `match`, or an ordinary JavaScript `try`/`catch` at an interop boundary.
+
+Interaction between `using` disposal and compiler-generated early returns from `!` requires further normative specification.
+
+## Grammar Additions in General
+
+A new source form MUST correspond to an active TC39 proposal. Value semantics that TypeScript can already express belong in the type system, the standard library, or a compiler-recognized imported intrinsic.

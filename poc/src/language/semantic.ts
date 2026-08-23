@@ -22,10 +22,15 @@ import {
   type DerivedLabeledValue,
   type DerivedLoopValue,
 } from "./control-flow.ts";
-import { recoverVibeSyntax, scanTokens as scanRecoveryTokens, type RecoveredSource } from "./recover.ts";
+import {
+  recoverSmithersSyntax,
+  scanTokens as scanRecoveryTokens,
+  tokenEndsExpression,
+  type RecoveredSource,
+} from "./recover.ts";
 import { isCompilerIssuedRuntimeSource } from "./runtime-source-authority.ts";
 
-const PRELUDE_NAME = "__vibelang_frontend_prelude__.d.ts";
+const PRELUDE_NAME = "__smithers_frontend_prelude__.d.ts";
 
 function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -33,11 +38,11 @@ function compareText(left: string, right: string): number {
 
 /**
  * Checker-only declarations. They describe the source language surface without
- * making the POC runtime importable from an uncompiled `.vibe` module.
+ * making the POC runtime importable from an uncompiled `.sm` module.
  */
 const PRELUDE = String.raw`
 interface Result<A, E extends Error> {
-  readonly __vibeResult: { readonly success: A; readonly error: E }
+  readonly __smithersResult: { readonly success: A; readonly error: E }
   isOk(): boolean
   isError(): boolean
   match<B>(handlers: { ok(value: A): B; error(error: E): B }): B
@@ -60,7 +65,7 @@ declare const Result: {
 }
 
 interface Optional<A> {
-  readonly __vibeOptional: { readonly value: A }
+  readonly __smithersOptional: { readonly value: A }
   isSome(): boolean
   isNone(): boolean
   match<B>(handlers: { some(value: A): B; none(): B }): B
@@ -89,16 +94,16 @@ interface Error {
   rootCause(): Error
 }
 
-declare module "vibelang/context" {
+declare module "smthrs/context" {
   export abstract class Context {
     static context<C extends abstract new (...args: never[]) => Context>(this: C): InstanceType<C>
   }
 }
 
-declare module "vibelang/provider" {
-  import type { Context } from "vibelang/context"
+declare module "smthrs/provider" {
+  import type { Context } from "smthrs/context"
   export interface Layer<P> {
-    readonly __vibeLayer: { readonly provides: P }
+    readonly __smithersLayer: { readonly provides: P }
   }
   export const Layer: {
     succeed<C extends abstract new (...args: never[]) => Context>(capability: C, implementation: InstanceType<C>): Layer<C>
@@ -107,9 +112,13 @@ declare module "vibelang/provider" {
   }
 }
 
-declare module "vibelang:exceptions" {
+declare module "smithers:exceptions" {
   export { Panic }
   export function panic(cause?: unknown): never
+}
+
+declare module "smithers:native" {
+  export function native<F extends (...args: never[]) => unknown>(pinned: F): F
 }
 `;
 
@@ -191,7 +200,7 @@ export interface SemanticFunction {
 }
 
 export interface SemanticModel {
-  /** The authored `.vibe` text. */
+  /** The authored `.sm` text. */
   readonly source: string;
   /** Pre-parse expression recovery relating authored and parsed text. */
   readonly recovery: RecoveredSource;
@@ -247,7 +256,7 @@ function derivedLoopValues(recovery: RecoveredSource): readonly DerivedLoopValue
 }
 
 export function buildSemanticModel(source: string, options: AnalyzeOptions = {}): SemanticModel {
-  const recovery = recoverVibeSyntax(source);
+  const recovery = recoverSmithersSyntax(source);
   const environment = createProgram(recovery.parseSource, options.fileName);
   const { sourceFile, checker } = environment;
   const pending: PendingDiagnostic[] = [];
@@ -330,7 +339,7 @@ interface ProjectEntry {
   readonly internalName: string;
   /** The parsed (recovery-derived) text; matches sourceFile positions. */
   readonly source: string;
-  /** The authored `.vibe` text. */
+  /** The authored `.sm` text. */
   readonly authoredSource: string;
   readonly recovery: RecoveredSource;
   readonly sourceFile: ts.SourceFile;
@@ -530,8 +539,8 @@ function createProjectProgram(
   const seenDisplayNames = new Set<string>();
   const seenAbsoluteNames = new Set<string>();
   for (const input of inputs) {
-    if (!input.fileName.endsWith(".vibe")) {
-      throw new TypeError(`project source '${input.fileName}' must end in .vibe`);
+    if (!input.fileName.endsWith(".sm")) {
+      throw new TypeError(`project source '${input.fileName}' must end in .sm`);
     }
     if (seenDisplayNames.has(input.fileName)) {
       throw new TypeError(`duplicate project source name '${input.fileName}'`);
@@ -542,7 +551,7 @@ function createProjectProgram(
     }
     seenDisplayNames.add(input.fileName);
     seenAbsoluteNames.add(absoluteName);
-    const recovery = recoverVibeSyntax(input.source);
+    const recovery = recoverSmithersSyntax(input.source);
     staged.push({
       displayName: input.fileName,
       absoluteName,
@@ -592,7 +601,7 @@ function createProjectProgram(
     for (const alias of aliases) seenRuntimeNames.add(alias);
     runtimeStaged.push({
       absoluteName,
-      internalName: `${absoluteName}.__vibelang_generated__.ts`,
+      internalName: `${absoluteName}.__smithers_generated__.ts`,
       source: input.source,
       resolutionAliases: aliases,
       compilerIssued: isCompilerIssuedRuntimeSource(input),
@@ -701,8 +710,8 @@ function resolveProjectSpecifier<T extends { readonly absoluteName: string }>(
   if (!specifier.startsWith(".")) return undefined;
   const exact = resolve(dirname(containingAbsoluteName), specifier);
   const candidates = [exact];
-  if (extname(exact) === "") candidates.push(`${exact}.vibe`, resolve(exact, "index.vibe"));
-  if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.vibe`);
+  if (extname(exact) === "") candidates.push(`${exact}.sm`, resolve(exact, "index.sm"));
+  if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.sm`);
   for (const candidate of candidates) {
     const entry = entries.get(candidate);
     if (entry) return entry;
@@ -844,7 +853,7 @@ function checkProjectImports(
   // re-exports it from somewhere else. The second case is how a generated
   // asset module reaches an authored consumer:
   // `export { default as config } from "./a.json" with { type: "json" }`
-  // resolves to a declaration in the generated module, not in the `.vibe`
+  // resolves to a declaration in the generated module, not in the `.sm`
   // module that re-exports it.
   const exportsByModule = new Map<ts.SourceFile, ReadonlySet<ts.Symbol>>();
   const exportedSymbolsOf = (sourceFile: ts.SourceFile): ReadonlySet<ts.Symbol> => {
@@ -866,12 +875,12 @@ function checkProjectImports(
       const specifier = statement.moduleSpecifier.text;
       const target = resolveProjectSpecifier(entry.absoluteName, specifier, environment.entryByAbsoluteName);
       if (!target) {
-        if (specifier.startsWith(".") && specifier.endsWith(".vibe")) {
+        if (specifier.startsWith(".") && specifier.endsWith(".sm")) {
           diagnostics.push(at(
             statement.moduleSpecifier,
             entry.sourceFile,
-            "VIBE1801",
-            `relative Vibe module '${specifier}' is not present in the analyzeProject source set`,
+            "SMITHERS1801",
+            `relative Smithers module '${specifier}' is not present in the analyzeProject source set`,
           ));
         }
         continue;
@@ -896,7 +905,7 @@ function checkProjectImports(
           diagnostics.push(at(
             binding,
             entry.sourceFile,
-            "VIBE1804",
+            "SMITHERS1804",
             `import '${binding.text}' does not resolve to an exported value in '${target.displayName}'`,
           ));
         }
@@ -929,7 +938,7 @@ function checkDeferredProjectCalls(
           diagnostics.push(at(
             node,
             entry.sourceFile,
-            "VIBE1802",
+            "SMITHERS1802",
             `cross-module function '${target.name}' escapes direct static call analysis; wrap the higher-order use in an explicitly checked local function`,
           ));
         }
@@ -1104,25 +1113,25 @@ function checkTopLevelForeignBoundaries(
 ): void {
   const visit = (node: ts.Node): void => {
     if (node !== sourceFile && isSupportedFunctionLike(node)) return;
-    // Static blocks are rejected wholesale (VIBE1107); avoid duplicate reports.
+    // Static blocks are rejected wholesale (SMITHERS1107); avoid duplicate reports.
     if (ts.isClassStaticBlockDeclaration(node)) return;
     if (ts.isThrowStatement(node)) {
-      diagnostics.push(at(node, sourceFile, "VIBE1511", "a top-level throw cannot be represented as a checked Result; move it into a checked Result-returning function and consume that Result"));
+      diagnostics.push(at(node, sourceFile, "SMITHERS1511", "a top-level throw cannot be represented as a checked Result; move it into a checked Result-returning function and consume that Result"));
     }
     if (ts.isCallExpression(node)) {
       if (callEdges && isResultExpectCall(node, checker, callEdges)) {
-        diagnostics.push(at(node, sourceFile, "VIBE1505", "top-level Result.expect() panics on the error variant and cannot expose that checked panic channel; move it into a checked Result-returning function and consume that Result"));
+        diagnostics.push(at(node, sourceFile, "SMITHERS1505", "top-level Result.expect() panics on the error variant and cannot expose that checked panic channel; move it into a checked Result-returning function and consume that Result"));
       }
       if (callEdges?.get(node)?.callee || resolveLocalCallee(node, checker, functions, functionByNode)) {
         ts.forEachChild(node, visit);
         return;
       }
       if (isPanicCall(node, checker)) {
-        diagnostics.push(at(node, sourceFile, "VIBE1505", "top-level panic cannot be represented as a checked Result; move it into a checked Result-returning function and consume that Result"));
+        diagnostics.push(at(node, sourceFile, "SMITHERS1505", "top-level panic cannot be represented as a checked Result; move it into a checked Result-returning function and consume that Result"));
       } else {
         const policy = foreignPolicy(node, checker, sourceFile, diagnostics);
         if (policy && policy.kind !== "never") {
-          diagnostics.push(at(node, sourceFile, "VIBE1505", "an untrusted foreign call at top level cannot expose its checked panic channel; move it into a checked Result-returning function and consume that Result"));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1505", "an untrusted foreign call at top level cannot expose its checked panic channel; move it into a checked Result-returning function and consume that Result"));
         }
       }
     }
@@ -1154,8 +1163,8 @@ function checkForeignValueBoundaries(
           diagnostics.push(at(
             argument,
             sourceFile,
-            "VIBE1509",
-            "a callback may escape into foreign code beyond the checked call scope; expose an owned Vibe wrapper/adapter with an explicit Result or structured-task callback policy",
+            "SMITHERS1509",
+            "a callback may escape into foreign code beyond the checked call scope; expose an owned Smithers wrapper/adapter with an explicit Result or structured-task callback policy",
           ));
           recordForeignBoundary(owner, { kind: "panic", async: false, lowerable: false });
         }
@@ -1165,7 +1174,7 @@ function checkForeignValueBoundaries(
           diagnostics.push(at(
             argument,
             sourceFile,
-            "VIBE1508",
+            "SMITHERS1508",
             "foreign callable provenance would escape through an unchecked higher-order call; wrap it in a local adapter that owns invocation and exposes an explicit Result/task contract",
           ));
           recordForeignBoundary(owner, { kind: "panic", async: false, lowerable: false });
@@ -1184,7 +1193,7 @@ function checkForeignValueBoundaries(
         diagnostics.push(at(
           node.name,
           sourceFile,
-          "VIBE1506",
+          "SMITHERS1506",
           "destructuring a foreign value can execute untyped accessors and has no expression-safe Result lowering; read it through an annotated getter/factory adapter instead",
         ));
         recordForeignBoundary(owner, { kind: "panic", async: false, lowerable: false });
@@ -1197,7 +1206,7 @@ function checkForeignValueBoundaries(
       diagnostics.push(at(
         node.initializer,
         sourceFile,
-        "VIBE1508",
+        "SMITHERS1508",
         "a mutable alias cannot retain foreign panic provenance in this POC; use a const local adapter with an explicit Result contract",
       ));
       recordForeignBoundary(owner, { kind: "panic", async: false, lowerable: false });
@@ -1220,8 +1229,8 @@ function checkForeignValueBoundaries(
           diagnostics.push(at(
             node,
             sourceFile,
-            "VIBE1504",
-            "a foreign constructor can execute JavaScript but constructor Result lowering is deferred; expose an annotated factory function or Vibe adapter (only a checker-resolved @throws {never} constructor is accepted)",
+            "SMITHERS1504",
+            "a foreign constructor can execute JavaScript but constructor Result lowering is deferred; expose an annotated factory function or Smithers adapter (only a checker-resolved @throws {never} constructor is accepted)",
           ));
           if (owner) addForeignFailures(owner.directFailures, policy);
         }
@@ -1233,8 +1242,8 @@ function checkForeignValueBoundaries(
       diagnostics.push(at(
         node.expression,
         sourceFile,
-        "VIBE1508",
-        "returning an executable foreign value would lose its panic provenance; return a Vibe-owned adapter with an explicit Result/task contract instead",
+        "SMITHERS1508",
+        "returning an executable foreign value would lose its panic provenance; return a Smithers-owned adapter with an explicit Result/task contract instead",
       ));
       recordForeignBoundary(owner, { kind: "panic", async: false, lowerable: false });
     }
@@ -1244,7 +1253,7 @@ function checkForeignValueBoundaries(
       diagnostics.push(at(
         node.right,
         sourceFile,
-        "VIBE1508",
+        "SMITHERS1508",
         "storing a foreign callable through a mutable/opaque reference loses panic provenance; use an immutable local adapter with an explicit Result contract",
       ));
       recordForeignBoundary(owner, { kind: "panic", async: false, lowerable: false });
@@ -1273,8 +1282,8 @@ function checkForeignPropertyAccess(
   diagnostics.push(at(
     access,
     sourceFile,
-    "VIBE1506",
-    "foreign property/accessor evaluation can throw but expression-safe Result lowering is deferred; expose a checker-annotated getter/factory function or a Vibe wrapper adapter",
+    "SMITHERS1506",
+    "foreign property/accessor evaluation can throw but expression-safe Result lowering is deferred; expose a checker-annotated getter/factory function or a Smithers wrapper adapter",
   ));
   if (owner) addForeignFailures(owner.directFailures, policy);
 }
@@ -1330,7 +1339,7 @@ function foreignPolicyFromDeclaration(
   if (!annotation) return { kind: "panic", async, lowerable: false };
   if (annotation === "never") return { kind: "never", async, lowerable: false };
   if (!/^[A-Za-z_$][\w$]*$/.test(annotation)) {
-    diagnostics.push(at(boundary, sourceFile, "VIBE1502", `foreign @throws {${annotation}} is not reifiable in this POC; use one imported Error class constructor`));
+    diagnostics.push(at(boundary, sourceFile, "SMITHERS1502", `foreign @throws {${annotation}} is not reifiable in this POC; use one imported Error class constructor`));
     return { kind: "panic", async, lowerable: false };
   }
   return { kind: "declared", errorName: annotation, async, lowerable: false };
@@ -1435,8 +1444,8 @@ function createProgram(source: string, requestedName?: string): {
 } {
   const requested = requestedName && !requestedName.startsWith("<")
     ? resolve(requestedName)
-    : resolve(process.cwd(), "__vibelang_memory__.vibe");
-  const fileName = requested.endsWith(".vibe") ? `${requested}.ts` : requested;
+    : resolve(process.cwd(), "__smithers_memory__.sm");
+  const fileName = requested.endsWith(".sm") ? `${requested}.ts` : requested;
   const preludeName = resolve(dirname(fileName), PRELUDE_NAME);
   const compilerOptions: ts.CompilerOptions = {
     target: ts.ScriptTarget.ESNext,
@@ -1594,7 +1603,7 @@ function promisedType(type: ts.Type, checker: ts.TypeChecker): ts.Type | undefin
  * name is unique across the analyzed project. When two modules declare the
  * same Error/Context name the identities would collide, so every colliding
  * declaration is serialized as `Name@module/path` instead. The qualifier is the
- * project-relative module path without its `.vibe` extension, which is the same
+ * project-relative module path without its `.sm` extension, which is the same
  * module identity `stableErrorId` already uses for the runtime registration, so
  * the analysis row and the runtime nominal identity cannot drift apart.
  *
@@ -1608,7 +1617,7 @@ interface RowNaming {
 const rowNamingByChecker = new WeakMap<ts.TypeChecker, RowNaming>();
 
 export function moduleRowQualifier(displayName: string): string {
-  return displayName.replace(/\.vibe$/, "").replace(/[^A-Za-z0-9._/-]/g, "_");
+  return displayName.replace(/\.sm$/, "").replace(/[^A-Za-z0-9._/-]/g, "_");
 }
 
 function rowNameForSymbol(
@@ -1709,7 +1718,7 @@ export function isErrorType(type: ts.Type, checker: ts.TypeChecker, seen = new S
   seen.add(type);
   if (type.isUnion()) return type.types.every((part) => isErrorType(part, checker, new Set(seen)));
   // A row-variable type parameter is an Error exactly when it is constrained to
-  // one. An unconstrained parameter stays a non-Error throw (VIBE1103).
+  // one. An unconstrained parameter stays a non-Error throw (SMITHERS1103).
   if ((type.flags & ts.TypeFlags.TypeParameter) !== 0) {
     const constraint = checker.getBaseConstraintOfType(type);
     return constraint !== undefined && constraint !== type && isErrorType(constraint, checker, seen);
@@ -1749,7 +1758,7 @@ function collectFacts(
     if (ts.isThrowStatement(node) && node.expression && !caughtByJavaScript) {
       const thrown = checker.getTypeAtLocation(node.expression);
       if (!isErrorType(thrown, checker)) {
-        diagnostics.push(at(node, sourceFile, "VIBE1103", "recoverable throw values must extend Error; use panic(...) for an unknown defect"));
+        diagnostics.push(at(node, sourceFile, "SMITHERS1103", "recoverable throw values must extend Error; use panic(...) for an unknown defect"));
       } else {
         for (const name of errorNames(thrown, checker)) fn.directFailures.add(name);
       }
@@ -1761,7 +1770,7 @@ function collectFacts(
         fn.directRequirements.add("TypeScript");
       }
       if (isPromiseInstanceChain(node, checker)) {
-        diagnostics.push(at(node, sourceFile, "VIBE1401", "Promise instance .then(), .catch(), and .finally() are unavailable in authored .vibe; consume the Promise with await"));
+        diagnostics.push(at(node, sourceFile, "SMITHERS1401", "Promise instance .then(), .catch(), and .finally() are unavailable in authored .sm; consume the Promise with await"));
       }
 
       const capability = contextRequirement(node, checker);
@@ -1791,7 +1800,7 @@ function collectFacts(
             diagnostics.push(at(
               node,
               sourceFile,
-              "VIBE1806",
+              "SMITHERS1806",
               `instantiating '${callee.name}' here publishes the failure row ${
                 formatSet(instantiation.failures)
               }, which a callback argument's declared ${uncovered.join(" | ")} cannot produce; correct the type arguments or widen the row`,
@@ -1801,7 +1810,7 @@ function collectFacts(
           diagnostics.push(at(
             node,
             sourceFile,
-            "VIBE1803",
+            "SMITHERS1803",
             `the failure row of generic call '${callee.name}' is a template over its type parameters and ${
               instantiation.unresolved.join(" | ")
             } is still unresolved at this call site; supply concrete type arguments or wrap the call in an explicitly checked non-generic function`,
@@ -1824,7 +1833,7 @@ function collectFacts(
       if (panicExit) {
         fn.directFailures.add("Panic");
         if (!isSimplePanicExit(node)) {
-          diagnostics.push(at(node, sourceFile, "VIBE1503", "panic(...) lowering is currently supported only as an expression statement or direct return"));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1503", "panic(...) lowering is currently supported only as an expression statement or direct return"));
         }
       }
       if (foreign) {
@@ -2014,25 +2023,25 @@ function checkFunctionContracts(
     const isResult = fn.declaredShape.channel.startsWith("result");
     const hasFailures = fn.bodyFailures.size > 0;
     if (fn.explicitReturn && !isResult && hasFailures) {
-      diagnostics.push(at(fn.node, fn.node.getSourceFile(), "VIBE1101", `explicit return type cannot represent recoverable failures ${formatSet(fn.bodyFailures)}; use Result<A, E>${fn.async ? " inside Promise" : ""}`));
+      diagnostics.push(at(fn.node, fn.node.getSourceFile(), "SMITHERS1101", `explicit return type cannot represent recoverable failures ${formatSet(fn.bodyFailures)}; use Result<A, E>${fn.async ? " inside Promise" : ""}`));
     }
     if (fn.explicitReturn && isResult) {
       const extra = difference(fn.bodyFailures, fn.declaredShape.failures);
       if (extra.size > 0) {
-        diagnostics.push(at(fn.node, fn.node.getSourceFile(), "VIBE1104", `Result contract omits reachable failures ${formatSet(extra)}`));
+        diagnostics.push(at(fn.node, fn.node.getSourceFile(), "SMITHERS1104", `Result contract omits reachable failures ${formatSet(extra)}`));
       }
     }
     if (fn.exported && hasFailures && !fn.explicitReturn) {
-      diagnostics.push(at(fn.node, fn.node.getSourceFile(), "VIBE1102", "exported fallible functions must spell Result<A, E> (or Promise<Result<A, E>>) in their public contract"));
+      diagnostics.push(at(fn.node, fn.node.getSourceFile(), "SMITHERS1102", "exported fallible functions must spell Result<A, E> (or Promise<Result<A, E>>) in their public contract"));
     }
     if ((ts.isConstructorDeclaration(fn.node) || ts.isGetAccessorDeclaration(fn.node) || ts.isSetAccessorDeclaration(fn.node)) && hasFailures) {
-      diagnostics.push(at(fn.node, fn.node.getSourceFile(), "VIBE1105", "constructors and accessors cannot carry a Result channel in this POC; move the fallible work into an ordinary method"));
+      diagnostics.push(at(fn.node, fn.node.getSourceFile(), "SMITHERS1105", "constructors and accessors cannot carry a Result channel in this POC; move the fallible work into an ordinary method"));
     }
     if (fn.node.asteriskToken && hasFailures) {
-      diagnostics.push(at(fn.node, fn.node.getSourceFile(), "VIBE1106", "fallible generators are deferred until generator/Result control-flow semantics are specified"));
+      diagnostics.push(at(fn.node, fn.node.getSourceFile(), "SMITHERS1106", "fallible generators are deferred until generator/Result control-flow semantics are specified"));
     }
     if (fn.hasResultUnwrap && !isResult && fn.bodyFailures.size === 0) {
-      diagnostics.push(at(fn.node, fn.node.getSourceFile(), "VIBE1202", "Result.unwrap() requires an enclosing Result-returning function"));
+      diagnostics.push(at(fn.node, fn.node.getSourceFile(), "SMITHERS1202", "Result.unwrap() requires an enclosing Result-returning function"));
     }
     // A row that names one of this declaration's own type parameters is a
     // template. Templates are only instantiable through a spelled `Result`
@@ -2047,7 +2056,7 @@ function checkFunctionContracts(
         diagnostics.push(at(
           fn.node,
           fn.node.getSourceFile(),
-          "VIBE1803",
+          "SMITHERS1803",
           `the failure row of generic '${fn.name}' depends on its type parameter${leaked.length > 1 ? "s" : ""} ${
             leaked.join(" | ")
           } but no Result contract spells that row; declare Result<A, ${leaked.join(" | ")}> so each call site can instantiate it`,
@@ -2062,7 +2071,7 @@ function checkNestedChannels(fn: SemanticFunction, checker: ts.TypeChecker, diag
   if (!fn.node.type) return;
   const text = checker.typeToString(checker.getTypeFromTypeNode(fn.node.type));
   if (/Result<\s*Result</.test(text) || /Optional<\s*Optional</.test(text)) {
-    diagnostics.push(at(fn.node.type, fn.node.getSourceFile(), "VIBE1203", "nested Result/Optional normalization is not specified; make the conversion explicit"));
+    diagnostics.push(at(fn.node.type, fn.node.getSourceFile(), "SMITHERS1203", "nested Result/Optional normalization is not specified; make the conversion explicit"));
   }
 }
 
@@ -2105,7 +2114,7 @@ function foreignPolicy(
     diagnostics.push(at(
       call,
       sourceFile,
-      "VIBE1507",
+      "SMITHERS1507",
       "this foreign call/result use is not expression-order-safe in the POC; assign the checked result, unwrap it, and continue through an explicitly typed local adapter",
     ));
   }
@@ -2115,7 +2124,7 @@ function foreignPolicy(
   if (!annotation) return { kind: "panic", async, lowerable };
   if (annotation === "never") return { kind: "never", async, lowerable };
   if (!/^[A-Za-z_$][\w$]*$/.test(annotation)) {
-    diagnostics.push(at(call, sourceFile, "VIBE1502", `foreign @throws {${annotation}} is not reifiable in this POC; use one imported Error class constructor`));
+    diagnostics.push(at(call, sourceFile, "SMITHERS1502", `foreign @throws {${annotation}} is not reifiable in this POC; use one imported Error class constructor`));
     return { kind: "panic", async, lowerable };
   }
   const errorValuePath = foreignErrorValuePath(annotation, declaration, call, checker);
@@ -2123,7 +2132,7 @@ function foreignPolicy(
     diagnostics.push(at(
       call,
       sourceFile,
-      "VIBE1502",
+      "SMITHERS1502",
       `foreign @throws {${annotation}} has no checker-matching Error constructor value in scope; import that Error class (named, aliased, or through a namespace) or provide an adapter`,
     ));
     return { kind: "panic", async, lowerable };
@@ -2412,7 +2421,7 @@ function importOrigin(symbol: ts.Symbol | undefined, checker: ts.TypeChecker): F
   const resolved = unalias(symbol, checker);
   if (resolved?.declarations?.some((declaration) => {
     const file = declaration.getSourceFile();
-    return file.fileName.endsWith(".vibe.ts") || isTrustedCompilerGeneratedRuntime(file);
+    return file.fileName.endsWith(".sm.ts") || isTrustedCompilerGeneratedRuntime(file);
   })) {
     return undefined;
   }
@@ -2430,7 +2439,7 @@ function importOrigin(symbol: ts.Symbol | undefined, checker: ts.TypeChecker): F
     if (importDeclaration && ts.isStringLiteral(importDeclaration.moduleSpecifier)) {
       const moduleName = importDeclaration.moduleSpecifier.text;
       // Only exact compiler intrinsics are trusted; an npm package that merely
-      // starts with the letters "vibelang" (e.g. `vibelangutils`) is foreign.
+      // starts with the letters "smithers" (e.g. `smithersutils`) is foreign.
       if (!isCompilerIntrinsicSpecifier(moduleName)) return { moduleName, namespaceObject, uncheckedResult: false };
     }
   }
@@ -2534,7 +2543,7 @@ function isRuntimeForeignIdentifier(
   const resolved = unalias(symbol, checker);
   if (resolved?.declarations?.some((declaration) => {
     const file = declaration.getSourceFile();
-    return file.fileName.endsWith(".vibe.ts") || isTrustedCompilerGeneratedRuntime(file);
+    return file.fileName.endsWith(".sm.ts") || isTrustedCompilerGeneratedRuntime(file);
   })) {
     return false;
   }
@@ -2594,7 +2603,7 @@ function extendsImportedContext(declaration: ts.ClassDeclaration, checker: ts.Ty
     const symbol = unalias(checker.getSymbolAtLocation(typeNode.expression), checker);
     if (symbol?.getName() === "Context") {
       const moduleName = importedModuleOfExpression(typeNode.expression, checker);
-      if (moduleName === "vibelang/context" || symbol.declarations?.some((item) => isCompilerPrelude(item.getSourceFile()))) return true;
+      if (moduleName === "smthrs/context" || symbol.declarations?.some((item) => isCompilerPrelude(item.getSourceFile()))) return true;
     }
     const base = symbol?.declarations?.find(ts.isClassDeclaration);
     if (base && extendsImportedContext(base, checker)) return true;
@@ -2624,7 +2633,7 @@ function collectLayerBindings(sourceFile: ts.SourceFile, checker: ts.TypeChecker
 function isLayerCall(call: ts.CallExpression, checker: ts.TypeChecker, method: string): boolean {
   if (!ts.isPropertyAccessExpression(call.expression) || call.expression.name.text !== method) return false;
   const moduleName = importedModuleOfExpression(call.expression.expression, checker);
-  if (moduleName === "vibelang/provider") return true;
+  if (moduleName === "smthrs/provider") return true;
   const symbol = unalias(checker.getSymbolAtLocation(call.expression.expression), checker);
   return symbol?.getName() === "Layer" && Boolean(symbol.declarations?.some((item) => isCompilerPrelude(item.getSourceFile())));
 }
@@ -2680,11 +2689,11 @@ function checkLayerSatisfaction(
     checked.add(edge.node);
     const callback = edge.callback ?? edge.callbackReference;
     if (!callback) {
-      diagnostics.push(at(edge.node, sourceFile, "VIBE2103", "Layer.provide callback must resolve to a checked local function in this POC"));
+      diagnostics.push(at(edge.node, sourceFile, "SMITHERS2103", "Layer.provide callback must resolve to a checked local function in this POC"));
       return;
     }
     if (!edge.complete) {
-      diagnostics.push(at(edge.node.arguments[0] ?? edge.node, sourceFile, "VIBE2104", "Layer expression is opaque; this POC cannot prove its provided capability closure"));
+      diagnostics.push(at(edge.node.arguments[0] ?? edge.node, sourceFile, "SMITHERS2104", "Layer expression is opaque; this POC cannot prove its provided capability closure"));
       return;
     }
     const missing = difference(callback.requirements, edge.provided);
@@ -2692,7 +2701,7 @@ function checkLayerSatisfaction(
     // built-in compatibility requirement. Native pins are checked elsewhere.
     missing.delete("TypeScript");
     if (missing.size > 0 && !nearestFunction(edge.node)) {
-      diagnostics.push(at(edge.node, sourceFile, "VIBE2101", `Layer.provide is missing ${formatSet(missing)}`));
+      diagnostics.push(at(edge.node, sourceFile, "SMITHERS2101", `Layer.provide is missing ${formatSet(missing)}`));
     }
   };
   for (const fn of functions) {
@@ -2716,7 +2725,7 @@ function checkLayerSatisfaction(
     if (ts.isCallExpression(node) && !nearestFunction(node)) {
       const callee = resolveLocalCallee(node, checker, functions, functionByNode);
       if (callee && callee.requirements.size > 0 && !isInsideLayerCallback(node, checker)) {
-        diagnostics.push(at(node, sourceFile, "VIBE2102", `top-level call has unsatisfied requirements ${formatSet(callee.requirements)}`));
+        diagnostics.push(at(node, sourceFile, "SMITHERS2102", `top-level call has unsatisfied requirements ${formatSet(callee.requirements)}`));
       }
     }
     ts.forEachChild(node, visit);
@@ -2747,7 +2756,7 @@ function checkCallbackOwnership(
         diagnostics.push(at(
           argument,
           sourceFile,
-          isProvideCallback ? "VIBE2105" : "VIBE1303",
+          isProvideCallback ? "SMITHERS2105" : "SMITHERS1303",
           isProvideCallback
             ? "fallible Layer.provide callbacks need an explicit Result (or Promise<Result>) contract so the provided computation keeps its failure channel"
             : "an inferred-fallible function value cannot cross a callback boundary; add an explicit Result contract or handle its failures before passing it",
@@ -2760,11 +2769,24 @@ function checkCallbackOwnership(
         const ownedBoundaryBody = node.arguments[0] === argument &&
           ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "tryPromise" &&
           isPreludeResultBoundaryCall(node, checker);
-        if (!consumedProvide && !ownedBoundaryBody) {
+        // `native(fn)` is a compile-time assertion over the referenced
+        // function's dependency graph: the intrinsic receives the reference,
+        // checks it, and returns it unchanged. It never invokes the argument,
+        // so no Promise is started and this rule — which DECISIONS
+        // 'Concurrency' and requirements.mdx 'Scoping' both scope to every
+        // STARTED Promise — has nothing to own. Refusing the pin here would
+        // make it inapplicable to EVERY async function, which is the
+        // I/O-shaped code whose portability the pin exists to certify, and
+        // compatibility.mdx 'Native and Wasm Targets' is explicit that async
+        // functions MUST NOT be rejected solely because runtime support is
+        // required. The pin is recognized by prelude symbol identity, so a
+        // locally declared `function native(...)` keeps the ordinary rule.
+        const nativePinSubject = node.arguments[0] === argument && isNativePinCall(node, checker);
+        if (!consumedProvide && !ownedBoundaryBody && !nativePinSubject) {
           diagnostics.push(at(
             argument,
             sourceFile,
-            "VIBE1404",
+            "SMITHERS1404",
             "async callback invocation ownership is not proven here; use an explicit structured-concurrency combinator or await/return a recognized Layer.provide computation",
           ));
         }
@@ -2895,6 +2917,10 @@ function isResultExpectCall(
   return semanticExpressionShape(receiver, checker, callEdges).channel.startsWith("result");
 }
 
+export function isResultExpectExpression(call: ts.CallExpression, model: SemanticModel): boolean {
+  return isResultExpectCall(call, model.checker, model.callEdges);
+}
+
 /** An authored `Result.try(...)` / `Result.tryPromise(...)` call on the prelude `Result` value. */
 function isPreludeResultBoundaryCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
   if (!ts.isPropertyAccessExpression(call.expression)) return false;
@@ -2904,6 +2930,27 @@ function isPreludeResultBoundaryCall(call: ts.CallExpression, checker: ts.TypeCh
   if (!ts.isIdentifier(receiver) || receiver.text !== "Result") return false;
   const symbol = unalias(checker.getSymbolAtLocation(receiver), checker);
   return Boolean(symbol?.declarations?.some((declaration) => isCompilerPrelude(declaration.getSourceFile())));
+}
+
+/**
+ * An authored `native(fn)` pin on the compiler-owned `smithers:native`
+ * intrinsic.
+ *
+ * Authority is checker symbol identity against this analyzer's own prelude —
+ * the same rule `poc/src/targets/classify.ts` applies — so a renamed import or
+ * a namespace read still pins, and a locally declared `function native(...)`,
+ * or a `native` exported by any installed package, resolves elsewhere and pins
+ * nothing.
+ */
+function isNativePinCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
+  const symbol = unalias(checker.getSymbolAtLocation(call.expression), checker);
+  return Boolean(symbol?.declarations?.some((declaration) => {
+    if (!ts.isFunctionDeclaration(declaration) || declaration.name?.text !== "native") return false;
+    if (!isCompilerPrelude(declaration.getSourceFile())) return false;
+    const block = declaration.parent;
+    return ts.isModuleBlock(block) && ts.isModuleDeclaration(block.parent) &&
+      ts.isStringLiteral(block.parent.name) && block.parent.name.text === "smithers:native";
+  }));
 }
 
 /** The inline callback whose body an authored `Result.try`/`tryPromise` boundary owns. */
@@ -2937,7 +2984,7 @@ function checkMustConsume(
     if (ts.isCallExpression(node)) {
       const kind = producedKind(node, checker, callEdges);
       if (kind !== "plain" && !producerConsumed(node, kind, checker, callEdges)) {
-        diagnostics.push(at(node, sourceFile, kind === "result" ? "VIBE1301" : "VIBE1402",
+        diagnostics.push(at(node, sourceFile, kind === "result" ? "SMITHERS1301" : "SMITHERS1402",
           kind === "result"
             ? "Result value is not consumed; return, match, transform, inspect, or unwrap it"
             : "started Promise is not consumed with await, return, or an awaited recognized combinator"));
@@ -2945,14 +2992,14 @@ function checkMustConsume(
     }
     if (ts.isNewExpression(node) && isPromiseType(checker.getTypeAtLocation(node), checker)) {
       if (!producerConsumed(node, "promise", checker, callEdges)) {
-        diagnostics.push(at(node, sourceFile, "VIBE1402", "started Promise is not consumed with await, return, or an awaited recognized combinator"));
+        diagnostics.push(at(node, sourceFile, "SMITHERS1402", "started Promise is not consumed with await, return, or an awaited recognized combinator"));
       }
     }
     if (ts.isAwaitExpression(node)) {
       const awaited = semanticExpressionShape(node.expression, checker, callEdges);
       if (awaited.async && awaited.channel.startsWith("result") &&
         !producerConsumed(node, "result", checker, callEdges)) {
-        diagnostics.push(at(node, sourceFile, "VIBE1301", "await removes only Promise; the resulting Result must still be returned, matched, transformed, inspected, or unwrapped"));
+        diagnostics.push(at(node, sourceFile, "SMITHERS1301", "await removes only Promise; the resulting Result must still be returned, matched, transformed, inspected, or unwrapped"));
       }
     }
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
@@ -2963,7 +3010,7 @@ function checkMustConsume(
         const usages = (references.get(symbol) ?? []).filter((identifier) => identifier !== node.name);
         const consumed = usages.some((identifier) => referenceConsumes(identifier, kind, checker, callEdges));
         if (!consumed) {
-          diagnostics.push(at(node.name, sourceFile, kind === "result" ? "VIBE1302" : "VIBE1403",
+          diagnostics.push(at(node.name, sourceFile, kind === "result" ? "SMITHERS1302" : "SMITHERS1403",
             kind === "result"
               ? `Result '${node.name.text}' is never consumed`
               : `Promise '${node.name.text}' is never consumed with await or return`));
@@ -2977,7 +3024,7 @@ function checkMustConsume(
         variableChecked.add(symbol);
         const usages = (references.get(symbol) ?? []).filter((identifier) => identifier !== node.name);
         if (!usages.some((identifier) => referenceConsumes(identifier, kind, checker, callEdges))) {
-          diagnostics.push(at(node.name, sourceFile, "VIBE1302", `Result parameter '${node.name.text}' is never consumed`));
+          diagnostics.push(at(node.name, sourceFile, "SMITHERS1302", `Result parameter '${node.name.text}' is never consumed`));
         }
       }
     }
@@ -2986,21 +3033,28 @@ function checkMustConsume(
       const info = owner && functionByNode.get(owner);
       if (isResultUnwrap(node, checker, callEdges)) {
         if (!info || (!info.declaredShape.channel.startsWith("result") && info.failures.size === 0)) {
-          diagnostics.push(at(node, sourceFile, "VIBE1202", "Result.unwrap() requires an enclosing Result-returning function"));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1202", "Result.unwrap() requires an enclosing Result-returning function"));
         } else if (isInRepeatedLoopHeader(node)) {
-          diagnostics.push(at(node, sourceFile, "VIBE1703", "Result.unwrap() in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or unwrap inside its body"));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1703", "Result.unwrap() in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or unwrap inside its body"));
         } else if (!isSafeUnwrapPlacement(node)) {
-          diagnostics.push(at(node, sourceFile, "VIBE1204", "Result.unwrap() in this expression would require control-flow-aware evaluation-order rewriting; assign the Result to a local and unwrap it in a simple statement"));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1204", "Result.unwrap() in this expression would require control-flow-aware evaluation-order rewriting; assign the Result to a local and unwrap it in a simple statement"));
         }
       } else if (isOptionalUnwrap(node, checker, callEdges)) {
         const channel = info ? effectiveChannel(info) : undefined;
         if (channel !== "optional" && channel !== "result-optional") {
-          diagnostics.push(at(node, sourceFile, "VIBE1206", "Optional.unwrap() requires an enclosing Optional-returning (or Result<Optional>-returning) function so absence can propagate; use unwrapOr/match or convert with toResult"));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1206", "Optional.unwrap() requires an enclosing Optional-returning (or Result<Optional>-returning) function so absence can propagate; use unwrapOr/match or convert with toResult"));
         } else if (isInRepeatedLoopHeader(node)) {
-          diagnostics.push(at(node, sourceFile, "VIBE1703", "Optional.unwrap() in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or unwrap inside its body"));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1703", "Optional.unwrap() in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or unwrap inside its body"));
         } else if (!isSafeUnwrapPlacement(node)) {
-          diagnostics.push(at(node, sourceFile, "VIBE1204", "Optional.unwrap() in this expression would require control-flow-aware evaluation-order rewriting; assign the Optional to a local and unwrap it in a simple statement"));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1204", "Optional.unwrap() in this expression would require control-flow-aware evaluation-order rewriting; assign the Optional to a local and unwrap it in a simple statement"));
         }
+      }
+    }
+    if (ts.isCallExpression(node) && isResultExpectCall(node, checker, callEdges)) {
+      if (isInRepeatedLoopHeader(node)) {
+        diagnostics.push(at(node, sourceFile, "SMITHERS1703", "Result.expect() in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or expect inside its body"));
+      } else if (!isSafeUnwrapPlacement(node)) {
+        diagnostics.push(at(node, sourceFile, "SMITHERS1204", "Result.expect() in this expression would require control-flow-aware evaluation-order rewriting; assign the Result to a local and expect it in a simple statement"));
       }
     }
     ts.forEachChild(node, visit);
@@ -3045,6 +3099,8 @@ function producerConsumed(
     // returned into the boundary, which awaits/consumes it by contract.
     if (isSupportedFunctionLike(parent) && parent.body === current &&
       isAuthoredResultBoundaryBody(parent, checker)) return true;
+    if (isSupportedFunctionLike(parent) && parent.body === current &&
+      isResultReturningCombinatorCallback(parent, checker, edges)) return true;
     if (kind === "promise" || kind === "promise-result") {
       if (ts.isAwaitExpression(parent)) return true;
       if (isInsideRecognizedPromiseCombinator(current, checker)) return combinatorConsumed(current, checker, edges);
@@ -3052,7 +3108,7 @@ function producerConsumed(
     }
     if (kind === "result") {
       if (isConsumedResultReceiver(current, parent)) return true;
-      if (isInsideResultAll(current)) return true;
+      if (isInsideResultAll(current, checker)) return true;
       return false;
     }
     return false;
@@ -3076,29 +3132,147 @@ function referenceConsumes(
     if (ts.isReturnStatement(parent)) return true;
     if (isSupportedFunctionLike(parent) && parent.body === current &&
       isAuthoredResultBoundaryBody(parent, checker)) return true;
-    if (kind === "result") return isConsumedResultReceiver(current, parent) || isInsideResultAll(current);
+    if (isSupportedFunctionLike(parent) && parent.body === current &&
+      isResultReturningCombinatorCallback(parent, checker, edges)) return true;
+    if (kind === "result") {
+      return isConsumedResultReceiver(current, parent) || isInsideResultAll(current, checker);
+    }
     if (ts.isAwaitExpression(parent)) return true;
     if (isInsideRecognizedPromiseCombinator(current, checker)) return combinatorConsumed(current, checker, edges);
     return false;
   }
 }
 
+/**
+ * The locked receiver surface that discharges a Result ownership obligation.
+ *
+ * Matched by MEMBER SPELLING, and soundly so, because every caller has already
+ * established that the RECEIVER is a compiler-owned Result-channel value. The
+ * only question left is which member of a value that is already the compiler's
+ * was selected. Contrast `isInsideResultAll`, where the receiver is not
+ * established and the spelling test was a real fail-open.
+ *
+ * Declaration identity is not available here, unlike in the Go backend, which
+ * recognizes this surface AFTER lowering where the checker sees a real
+ * `Result<A, E>`. This analyzer runs on the AUTHORED `.sm` source, where a
+ * lifted call still carries its authored success type, and a strict test
+ * demonstrably reports false SMITHERS1301s in two different ways:
+ *
+ *   - the member resolves NOWHERE — `helper("x").unwrap()` on a foreign
+ *     JavaScript import whose declared return type is `number`; and, worse,
+ *   - the member resolves to the WRONG declaration — for an unannotated
+ *     function inferred as `Result<string, Missing>`, `lookup("ada").match(...)`
+ *     resolves to `String.prototype.match` in lib.es5.d.ts, a perfectly real
+ *     symbol that is simply not the compiler's.
+ *
+ * Both are ordinary authored programs; the second is a conformance case. So the
+ * receiver surface stays on spelling, deliberately, and the security property
+ * comes from the receiver precondition rather than from the member name.
+ */
 const RESULT_CONSUMERS = new Set([
   "isOk", "isError", "match", "map", "mapError", "andThen", "recover", "tap", "tapError", "unwrap", "unwrapOr", "expect",
 ]);
 
+// These transformations consume a Result returned by their callback rather
+// than storing it as a nested success value or discarding it. Keep this list
+// narrower than RESULT_CONSUMERS: map/tap callbacks do not flatten Results.
+const RESULT_RETURNING_CALLBACK_CONSUMERS = new Set(["andThen", "recover"]);
+
+/**
+ * Members of the compiler-owned `Result` namespace value that discharge an
+ * obligation for the Results passed to them. `try`/`tryPromise` are excluded:
+ * they ADOPT a throw scope rather than consuming an already-computed Result.
+ */
+const RESULT_NAMESPACE_CONSUMERS = new Set(["all"]);
+
+/**
+ * The prelude declaration a member name resolves to, or undefined when the
+ * member is not declared by this analyzer's own prelude. Authority is checker
+ * symbol identity, so a user object with a same-spelled member resolves to its
+ * own declaration and can never stand in for a compiler-owned combinator.
+ */
+function preludeMemberDeclaration(name: ts.MemberName, checker: ts.TypeChecker): ts.MethodSignature | undefined {
+  const declaration = unalias(checker.getSymbolAtLocation(name), checker)?.declarations
+    ?.find((candidate) => isCompilerPrelude(candidate.getSourceFile()));
+  return declaration !== undefined && ts.isMethodSignature(declaration) && ts.isIdentifier(declaration.name)
+    ? declaration
+    : undefined;
+}
+
+/**
+ * A member of the prelude's `Result` namespace value (`declare const Result`).
+ * `Optional.all` is declared on its own value and never matches here, and
+ * neither does any user object with an `all` member.
+ */
+function isPreludeResultNamespaceMember(
+  name: ts.MemberName,
+  checker: ts.TypeChecker,
+  members: ReadonlySet<string>,
+): boolean {
+  const declaration = preludeMemberDeclaration(name, checker);
+  if (declaration === undefined || !ts.isTypeLiteralNode(declaration.parent)) return false;
+  const owner = declaration.parent.parent;
+  return ts.isVariableDeclaration(owner) && ts.isIdentifier(owner.name) && owner.name.text === "Result" &&
+    members.has((declaration.name as ts.Identifier).text);
+}
+
+function isResultReturningCombinatorCallback(
+  callback: ts.FunctionLikeDeclaration,
+  checker: ts.TypeChecker,
+  edges: ReadonlyMap<ts.CallExpression, CallEdge>,
+): boolean {
+  let current: ts.Node = callback;
+  while (ts.isParenthesizedExpression(current.parent)) current = current.parent;
+  const call = current.parent;
+  if (!ts.isCallExpression(call) || call.arguments[0] !== current ||
+    !ts.isPropertyAccessExpression(call.expression) ||
+    !RESULT_RETURNING_CALLBACK_CONSUMERS.has(call.expression.name.text)) return false;
+  // Receiver precondition, exactly as in `isConsumedResultReceiver`: the
+  // spelling only decides WHICH member of an already-established Result-channel
+  // value was selected.
+  return semanticExpressionShape(call.expression.expression, checker, edges).channel.startsWith("result");
+}
+
 function isConsumedResultReceiver(current: ts.Node, parent: ts.Node): boolean {
-  return ts.isPropertyAccessExpression(parent) && parent.expression === current && RESULT_CONSUMERS.has(parent.name.text) &&
+  return ts.isPropertyAccessExpression(parent) && parent.expression === current &&
+    RESULT_CONSUMERS.has(parent.name.text) &&
     ts.isCallExpression(parent.parent) && parent.parent.expression === parent;
 }
 
-function isInsideResultAll(node: ts.Node): boolean {
+/**
+ * An argument of the compiler-owned `Result.all(...)`.
+ *
+ * Resolved to the prelude's own declaration, never to the spelling `Result`.
+ * This is the one discharge site with NO receiver precondition — nothing else
+ * has established that the callee is the compiler's — so a user's
+ * `const Result = { all: (x) => x }` previously satisfied the obligation and an
+ * unconsumed Result escaped with no SMITHERS1301/SMITHERS1302. The Go backend
+ * resolves the same site through `resultNamespaceCall`, i.e. prelude
+ * declaration identity, and is correct.
+ */
+function isInsideResultAll(node: ts.Node, checker: ts.TypeChecker): boolean {
   let current = node;
   while (ts.isArrayLiteralExpression(current.parent) || ts.isParenthesizedExpression(current.parent)) current = current.parent;
   const parent = current.parent;
   return ts.isCallExpression(parent) && parent.arguments.includes(current as ts.Expression) &&
-    ts.isPropertyAccessExpression(parent.expression) && parent.expression.name.text === "all" &&
-    ts.isIdentifier(parent.expression.expression) && parent.expression.expression.text === "Result";
+    ts.isPropertyAccessExpression(parent.expression) &&
+    isPreludeResultNamespaceMember(parent.expression.name, checker, RESULT_NAMESPACE_CONSUMERS);
+}
+
+/**
+ * The ambient `Promise` global, resolved to its TypeScript library declaration.
+ *
+ * The same rule `isInsideResultAll` applies to the compiler's own `Result`
+ * namespace, for the same reason: this is a discharge site with no receiver
+ * precondition, so the spelling alone decided it. A local
+ * `const Promise = { async all(values) { return values } }` shadows the global,
+ * returns a real Promise — which defeats the `promisedType` test below on its
+ * own — and previously discharged a must-consume Promise obligation.
+ */
+function isAmbientPromiseNamespace(node: ts.Expression, checker: ts.TypeChecker): boolean {
+  if (!ts.isIdentifier(node) || node.text !== "Promise") return false;
+  return Boolean(unalias(checker.getSymbolAtLocation(node), checker)?.declarations
+    ?.some((declaration) => isTypeScriptLibrary(declaration.getSourceFile())));
 }
 
 function isInsideRecognizedPromiseCombinator(node: ts.Node, checker: ts.TypeChecker): boolean {
@@ -3106,7 +3280,7 @@ function isInsideRecognizedPromiseCombinator(node: ts.Node, checker: ts.TypeChec
   while (ts.isArrayLiteralExpression(current.parent) || ts.isObjectLiteralExpression(current.parent) || ts.isParenthesizedExpression(current.parent)) current = current.parent;
   const parent = current.parent;
   if (!ts.isCallExpression(parent) || !parent.arguments.includes(current as ts.Expression) || !ts.isPropertyAccessExpression(parent.expression)) return false;
-  if (!ts.isIdentifier(parent.expression.expression) || parent.expression.expression.text !== "Promise") return false;
+  if (!isAmbientPromiseNamespace(parent.expression.expression, checker)) return false;
   return ["all", "allSettled", "race", "any", "allKeyed", "allSettledKeyed"].includes(parent.expression.name.text) &&
     Boolean(promisedType(checker.getTypeAtLocation(parent), checker));
 }
@@ -3115,7 +3289,7 @@ function combinatorConsumed(node: ts.Node, checker: ts.TypeChecker, edges: Reado
   let current: ts.Node | undefined = node.parent;
   while (current) {
     if (ts.isCallExpression(current) && ts.isPropertyAccessExpression(current.expression) &&
-      ts.isIdentifier(current.expression.expression) && current.expression.expression.text === "Promise") {
+      isAmbientPromiseNamespace(current.expression.expression, checker)) {
       return producerConsumed(current, "promise", checker, edges);
     }
     current = current.parent;
@@ -3199,13 +3373,15 @@ function checkJavaScriptCatchBoundaries(
     if (caughtByJavaScript && ts.isCallExpression(node)) {
       const construct = callEdges.get(node)?.panicExit
         ? "panic(...)"
+        : isResultExpectCall(node, checker, callEdges)
+          ? "Result.expect()"
         : isResultUnwrap(node, checker, callEdges)
           ? "Result.unwrap()"
           : isOptionalUnwrap(node, checker, callEdges)
             ? "Optional.unwrap()"
             : undefined;
       if (construct) {
-        diagnostics.push(at(node, sourceFile, "VIBE1205", `${construct} inside a JavaScript try statement with a catch clause is not lowered because its early-return propagation would silently bypass the catch handler; move the propagation point outside the try or consume the value explicitly`));
+        diagnostics.push(at(node, sourceFile, "SMITHERS1205", `${construct} inside a JavaScript try statement with a catch clause is not lowered because its early-return propagation would silently bypass the catch handler; move the propagation point outside the try or consume the value explicitly`));
       }
     }
     ts.forEachChild(node, (child) => visit(child, caughtByJavaScript));
@@ -3221,7 +3397,7 @@ function checkAuthoredApis(sourceFile: ts.SourceFile, checker: ts.TypeChecker, d
         (owner === "Optional" && ["some", "none"].includes(node.name.text))) {
         const symbol = checker.getSymbolAtLocation(node.expression);
         if (!symbol || symbol.declarations?.some((declaration) => isCompilerPrelude(declaration.getSourceFile()))) {
-          diagnostics.push(at(node, sourceFile, "VIBE1201", `${owner}.${node.name.text} is a compiler hook, not an author-facing constructor; use ordinary return/throw lifting`));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1201", `${owner}.${node.name.text} is a compiler hook, not an author-facing constructor; use ordinary return/throw lifting`));
         }
       }
     }
@@ -3260,7 +3436,7 @@ function checkErrorMatches(sourceFile: ts.SourceFile, checker: ts.TypeChecker, d
       const partial = property.name.text === "matchPartial";
       const handlers = node.arguments[0];
       if (!handlers || !ts.isObjectLiteralExpression(handlers)) {
-        diagnostics.push(at(node, sourceFile, "VIBE1251", `Error.${property.name.text} requires an object literal so nominal cases can be checked and lowered`));
+        diagnostics.push(at(node, sourceFile, "SMITHERS1251", `Error.${property.name.text} requires an object literal so nominal cases can be checked and lowered`));
       } else {
         const actual = new Set<string>();
         let valid = true;
@@ -3275,15 +3451,15 @@ function checkErrorMatches(sourceFile: ts.SourceFile, checker: ts.TypeChecker, d
             valid = false;
           }
         }
-        if (!valid) diagnostics.push(at(handlers, sourceFile, "VIBE1252", "Error match cases must use static Error class names and function handlers"));
+        if (!valid) diagnostics.push(at(handlers, sourceFile, "SMITHERS1252", "Error match cases must use static Error class names and function handlers"));
         if (!partial) {
           const expected = errorNamesOfType(checker.getTypeAtLocation(property.expression), checker);
           const missing = difference(expected, actual);
           const extra = difference(actual, expected);
-          if (missing.size > 0) diagnostics.push(at(handlers, sourceFile, "VIBE1253", `Error.match is not exhaustive; missing ${formatSet(missing)}`));
-          if (extra.size > 0) diagnostics.push(at(handlers, sourceFile, "VIBE1254", `Error.match has cases outside the checked union: ${formatSet(extra)}`));
+          if (missing.size > 0) diagnostics.push(at(handlers, sourceFile, "SMITHERS1253", `Error.match is not exhaustive; missing ${formatSet(missing)}`));
+          if (extra.size > 0) diagnostics.push(at(handlers, sourceFile, "SMITHERS1254", `Error.match has cases outside the checked union: ${formatSet(extra)}`));
         } else if (node.arguments.length !== 2) {
-          diagnostics.push(at(node, sourceFile, "VIBE1255", "Error.matchPartial requires an explicit fallback(error) callback as its second argument"));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1255", "Error.matchPartial requires an explicit fallback(error) callback as its second argument"));
         }
       }
     }
@@ -3299,7 +3475,7 @@ function checkDuplicateErrorNames(sourceFile: ts.SourceFile, checker: ts.TypeChe
       isErrorType(checker.getTypeAtLocation(node.name), checker)) {
       const prior = seen.get(node.name.text);
       if (prior) {
-        diagnostics.push(at(node.name, sourceFile, "VIBE1150", `duplicate Error class name '${node.name.text}' cannot receive a stable module-local identity in this POC`));
+        diagnostics.push(at(node.name, sourceFile, "SMITHERS1150", `duplicate Error class name '${node.name.text}' cannot receive a stable module-local identity in this POC`));
       } else {
         seen.set(node.name.text, node);
       }
@@ -3334,7 +3510,7 @@ function checkDeferStatements(
         diagnostics.push(at(
           node,
           sourceFile,
-          "VIBE1710",
+          "SMITHERS1710",
           `${kind} must be a direct statement in a braced function/block scope; single-statement, case-clause, labeled, and top-level placement is not lowered`,
         ));
       } else {
@@ -3349,7 +3525,7 @@ function checkDeferStatements(
           diagnostics.push(at(
             node,
             sourceFile,
-            "VIBE1710",
+            "SMITHERS1710",
             `${kind} requires one cleanup expression on the same statement line (without a semicolon after ${kind}); block/declaration/missing cleanups are unsupported`,
           ));
         } else {
@@ -3358,7 +3534,7 @@ function checkDeferStatements(
             diagnostics.push(at(
               node,
               sourceFile,
-              "VIBE1711",
+              "SMITHERS1711",
               "errdefer is defined only in a Result (or Promise<Result>) owner because the POC gates cleanup on an emitted Result error variant",
             ));
             valid = false;
@@ -3407,7 +3583,8 @@ function checkDeferCleanup(
     if (node !== expression && isSupportedFunctionLike(node)) return;
     if (ts.isAwaitExpression(node)) awaits.push(node);
     if (ts.isCallExpression(node)) {
-      if (isPanicCall(node, checker) || callEdges.get(node)?.panicExit) {
+      if (isPanicCall(node, checker) || callEdges.get(node)?.panicExit ||
+        isResultExpectCall(node, checker, callEdges)) {
         unsafeChannel = node;
         unsafeReason = "panic exits";
         return;
@@ -3464,7 +3641,7 @@ function checkDeferCleanup(
     diagnostics.push(at(
       unsafeChannel,
       sourceFile,
-      "VIBE1712",
+      "SMITHERS1712",
       `defer cleanup contains ${unsafeReason}; cleanup failure composition is not specified, so handle it in a plain/awaited non-failing adapter before registering cleanup`,
     ));
     return false;
@@ -3504,7 +3681,7 @@ function checkErrdeferTail(
   diagnostics.push(at(
     unsafe,
     sourceFile,
-    "VIBE1713",
+    "SMITHERS1713",
     "async errdefer cannot inspect a directly returned Promise before finally runs; await the Result-producing expression explicitly before returning it",
   ));
   return false;
@@ -3522,7 +3699,7 @@ function checkRemovedAndUnsupportedSyntax(
   const explicitOffsets: number[] = [...recovery.rejectedStarts];
   const removed = (token: ScannedToken, message: string): void => {
     explicitOffsets.push(token.start);
-    diagnostics.push({ severity: "error", code: "VIBE1001", message, start: token.start });
+    diagnostics.push({ severity: "error", code: "SMITHERS1001", message, start: token.start });
   };
   const unsupported = (token: ScannedToken, code: string, message: string): void => {
     explicitOffsets.push(token.start);
@@ -3533,33 +3710,64 @@ function checkRemovedAndUnsupportedSyntax(
     const token = tokens[index]!;
     const previous = tokens[index - 1];
     const next = tokens[index + 1];
-    if (token.text === "error" && next?.kind === ts.SyntaxKind.Identifier && tokens[index + 2]?.text === "{") {
+    if (token.text === "error" && next?.kind === ts.SyntaxKind.Identifier && tokens[index + 2]?.text === "{" &&
+      !hasLineBreakBetween(source, token, next)) {
+      // `error Name {` is a declaration header written on one line. Two
+      // adjacent identifiers with no line terminator between them are never
+      // legal TypeScript, so this cannot claim an ASI-separated statement pair
+      // such as `error` / `Missing` / `{ ... }`.
       removed(token, "the historical `error Name {}` declaration was removed; declare an ordinary `class Name extends Error`");
     }
-    if ((token.text === "throws" || token.text === "uses") && previous?.text !== "." && isBetweenFunctionParametersAndBody(tokens, index)) {
+    if ((token.text === "throws" || token.text === "uses") && previous?.text !== "." &&
+      !isMemberNameOccurrence(tokens, index) && endsReturnType(previous) &&
+      next?.kind === ts.SyntaxKind.Identifier && isBetweenFunctionParametersAndBody(tokens, index)) {
+      // The retired clause is a suffix on a complete return type and names a
+      // right operand (`throws Missing`, `uses Clock`). A type spelled `uses`
+      // inside type arguments or a union — `Array<uses>`, `string | throws` —
+      // has neither shape.
       removed(token, token.text === "throws"
         ? "the `throws` row grammar was removed; declare Result<A, E> in public contracts and let local functions infer it"
         : "the named `uses` grammar was removed; extend Context and call Capability.context()");
     }
-    if (token.text === "!" && previous?.text === ":") {
+    if (token.text === "!" && previous?.text === ":" &&
+      (tokens[index - 2]?.text === ")" || next?.text === "?" ||
+        TYPE_ONLY_KEYWORDS.has(next?.text ?? ""))) {
+      // A return-type colon (`): !string`), the `!?T` pair, or a type-keyword
+      // operand. Without those the `!` is an ordinary logical negation in a
+      // value position — `{ ok: !failed }` and `flag ? a : !b` both put a `!`
+      // directly after a colon and neither is retired grammar.
       removed(token, "the `!T` return marker was removed; use Result<T, E>");
     }
     if (token.text === "?" && (previous?.text === ":" ||
       (previous?.text === "!" && tokens[index - 2]?.text === ":")) && next && /^[A-Za-z_$]/.test(next.text)) {
       removed(token, "the `?T` type grammar was removed; use Optional<T>");
     }
-    if (token.text === "orelse" && previous?.text !== ".") {
+    if (token.text === "orelse" && previous?.text !== "." &&
+      !isMemberNameOccurrence(tokens, index) &&
+      tokenEndsExpression(previous?.kind) && beginsOperand(next)) {
+      // `orelse` is a binary operator, so it needs both operands. `orelse` is
+      // also an ordinary identifier: `const orelse = 1`, `{ orelse }`,
+      // `{ orelse: 7 }`, `String(orelse)`, and `orelse()` are all legal.
       removed(token, "the `orelse` operator was removed; use Optional.match(), map(), or unwrapOr()");
     }
     if (token.text === "." && next?.text === "?") {
       removed(token, "the `.?` postfix operator was removed; use Optional.unwrap()");
     }
-    if (token.text === "try" && next?.text !== "{" && previous?.text !== ".") {
-      // A property access such as the public `Result.try(...)` API is not the
-      // retired prefix-`try` propagation marker.
+    if (token.text === "try" && next?.text !== "{" &&
+      !isMemberNameOccurrence(tokens, index) && beginsOperand(next)) {
+      // The retired prefix marker takes a right operand. `try` is a reserved
+      // word, so every other legal spelling is a property name: the public
+      // `Result.try(...)` API, `{ try: adapt }`, `{ try() {} }`, and
+      // `interface I { try: T }`.
       removed(token, "the prefix `try` propagation marker was removed; use Result.unwrap()");
     }
-    if (token.text === "catch" && previous?.text !== "}") {
+    if (token.text === "catch" && previous?.text !== "}" &&
+      !isMemberNameOccurrence(tokens, index) &&
+      tokenEndsExpression(previous?.kind) && beginsOperand(next)) {
+      // The retired postfix form takes both operands: `compute(k) catch alt`.
+      // Statement-form `try { } catch { }` has no left operand, and a Promise
+      // `.catch(...)` member access is rejected by the Promise discipline
+      // pass, not misreported as retired grammar.
       removed(token, "the postfix catch expression was removed; recover with Result.match() or recover()");
     }
     if ((token.text === "defer" || token.text === "errdefer") && previous?.text !== "." && next?.text !== "(") {
@@ -3571,7 +3779,7 @@ function checkRemovedAndUnsupportedSyntax(
     if (["if", "switch", "for", "while"].includes(token.text) && isExpressionKeyword(source, tokens, index)) {
       if (controlFlow.recoveredKeywordStarts.has(token.start)) {
         // The recovery parser deliberately reports a missing TS expression at
-        // this token. A checked plan owns the construct (or emitted VIBE1705).
+        // this token. A checked plan owns the construct (or emitted SMITHERS1705).
         explicitOffsets.push(token.start);
       } else if (recovery.statementStarts.has(token.start)) {
         // Pre-parse recovery proved this keyword begins an ordinary
@@ -3581,10 +3789,45 @@ function checkRemovedAndUnsupportedSyntax(
         // diagnostic; keep parse-noise suppression without double-reporting.
         explicitOffsets.push(token.start);
       } else {
-        unsupported(token, "VIBE1702", `${token.text} expressions require checked control-flow IR and are not emitted by this POC`);
+        unsupported(token, "SMITHERS1702", `${token.text} expressions require checked control-flow IR and are not emitted by this POC`);
       }
     }
   }
+
+  // Switch clauses are colon-delimited, exactly as in TypeScript. The
+  // specification's Switch section requires the TypeScript `switch`/`case`/
+  // `default` grammar and states that Smithers MUST NOT introduce a separate
+  // arrow-arm switch grammar, so `case x => v` is not a Smithers form in any
+  // position — and neither is a clause with no separator at all.
+  //
+  // TypeScript's parser recovers both by pretending the colon was written,
+  // which leaves the clause textually indistinguishable from `case x: v` in the
+  // tree; the only surviving signal is the parser's own "':' expected", and the
+  // proximity suppression below swallows it whenever the malformed clause is
+  // within 48 characters of a recovered `switch` expression host. That made
+  // acceptance depend on the DISTANCE from the switch keyword: `case "a"
+  // "alpha"` on the first clause of an expression switch compiled and lowered,
+  // while the same shape one clause further down was rejected. Claim the
+  // separator from the clause itself so the rule is positional-independent and
+  // holds in expression and statement position alike.
+  const visitSwitchClauseGrammar = (node: ts.Node): void => {
+    if (ts.isCaseClause(node) || ts.isDefaultClause(node)) {
+      const separator = clauseSeparatorDefect(node, source, sourceFile);
+      if (separator) {
+        explicitOffsets.push(separator.start);
+        diagnostics.push({
+          severity: "error",
+          code: "SMITHERS1000",
+          message: "source does not match the supported .sm grammar: " + (separator.arrow
+            ? "switch clauses are colon-delimited exactly as in TypeScript; there is no arrow-arm switch form"
+            : "a switch `case`/`default` clause must be delimited by `:`"),
+          start: separator.start,
+        });
+      }
+    }
+    ts.forEachChild(node, visitSwitchClauseGrammar);
+  };
+  visitSwitchClauseGrammar(sourceFile);
 
   const parseFailure = parseDiagnosticsFailure(sourceFile);
   if (parseFailure) diagnostics.push(parseFailure);
@@ -3603,18 +3846,18 @@ function checkRemovedAndUnsupportedSyntax(
     if (recovered || explicitOffsets.some((offset) => Math.abs(offset - start) < 48)) continue;
     diagnostics.push({
       severity: "error",
-      code: "VIBE1000",
-      message: `source does not match the supported .vibe grammar: ${message}`,
+      code: "SMITHERS1000",
+      message: `source does not match the supported .sm grammar: ${message}`,
       start,
     });
   }
 
   const visitUnsupportedAst = (node: ts.Node): void => {
     if (ts.isLabeledStatement(node) && !controlFlow.claimedLabels.has(node)) {
-      diagnostics.push(at(node.label, sourceFile, "VIBE1704", "labeled control flow requires label-aware lowering and is not emitted by this POC"));
+      diagnostics.push(at(node.label, sourceFile, "SMITHERS1704", "labeled control flow requires label-aware lowering and is not emitted by this POC"));
     }
     if (ts.isClassStaticBlockDeclaration(node)) {
-      diagnostics.push(at(node, sourceFile, "VIBE1107", "class `static {}` initialization blocks execute outside every checked function channel and are not analyzed or lowered by this POC; use static field initializers or an explicit checked function"));
+      diagnostics.push(at(node, sourceFile, "SMITHERS1107", "class `static {}` initialization blocks execute outside every checked function channel and are not analyzed or lowered by this POC; use static field initializers or an explicit checked function"));
     }
     ts.forEachChild(node, visitUnsupportedAst);
   };
@@ -3622,6 +3865,54 @@ function checkRemovedAndUnsupportedSyntax(
 
   checkHostGlobals(sourceFile, checker, diagnostics);
   checkForeignModuleInitializers(sourceFile, checker, diagnostics);
+}
+
+/**
+ * Where a switch clause's `:` should have been, when something else is written
+ * there instead; `undefined` for every clause the grammar accepts.
+ *
+ * TypeScript's parser reports "':' expected." and then continues as though the
+ * colon had been written, so neither the arrow of `case x => v` nor the absent
+ * separator of `case x v` survives in any node of the tree. Only a rescan of
+ * the gap between the clause header and its first statement recovers them.
+ * Scanning (rather than searching the text) is what keeps `case x /* => *\/: v`
+ * an ordinary clause, and taking only the FIRST significant token is what keeps
+ * an arrow function inside a clause value — `case x: (() => v)()` — and an
+ * arrow type in a nearby annotation out of the rule.
+ */
+function clauseSeparatorDefect(
+  clause: ts.CaseOrDefaultClause,
+  source: string,
+  sourceFile: ts.SourceFile,
+): { readonly start: number; readonly arrow: boolean } | undefined {
+  const headerEnd = ts.isCaseClause(clause)
+    ? clause.expression.end
+    : clause.getStart(sourceFile) + "default".length;
+  const bodyStart = clause.statements.length > 0
+    ? clause.statements[0]!.getStart(sourceFile)
+    : clause.end;
+  if (bodyStart <= headerEnd || bodyStart > source.length) return undefined;
+  const scanner = ts.createScanner(
+    ts.ScriptTarget.Latest,
+    true,
+    ts.LanguageVariant.Standard,
+    source,
+    undefined,
+    headerEnd,
+    bodyStart - headerEnd,
+  );
+  const token = scanner.scan();
+  if (token === ts.SyntaxKind.ColonToken) return undefined;
+  if (token === ts.SyntaxKind.EndOfFileToken) {
+    // Nothing at all between the header and the body: `case "a" "alpha"`. A
+    // clause with no statements is instead one the parser closed at its header
+    // (`case "a"` before the block's `}`), and the parser's own "':' expected"
+    // already reports that one outside any suppression window.
+    return clause.statements.length > 0
+      ? { start: clause.statements[0]!.getStart(sourceFile), arrow: false }
+      : undefined;
+  }
+  return { start: scanner.getTokenStart(), arrow: token === ts.SyntaxKind.EqualsGreaterThanToken };
 }
 
 function checkControlFlowExpressionValues(
@@ -3644,11 +3935,12 @@ function checkControlFlowExpressionValues(
       if (!expression) continue;
       const shape = semanticExpressionShape(expression, checker, callEdges);
       if (shape.async || shape.channel.startsWith("result") ||
-        (ts.isCallExpression(expression) && callEdges.get(expression)?.panicExit === true)) {
+        (ts.isCallExpression(expression) &&
+          (callEdges.get(expression)?.panicExit === true || isResultExpectCall(expression, checker, callEdges)))) {
         diagnostics.push(at(
           expression,
           sourceFile,
-          "VIBE1706",
+          "SMITHERS1706",
           "this control-flow value needs failure/task ownership in the shared expression IR; await or unwrap it before the branch value, or use a throw statement",
         ));
       }
@@ -3656,7 +3948,7 @@ function checkControlFlowExpressionValues(
         diagnostics.push(at(
           expression,
           sourceFile,
-          "VIBE1706",
+          "SMITHERS1706",
           "this branch value exposes a type declared inside the control-flow expression; add an outer structural annotation or move the type declaration outside the expression",
         ));
       }
@@ -3670,7 +3962,7 @@ function checkControlFlowExpressionValues(
           if (unsafe || (node !== caseClause.expression && ts.isFunctionLike(node))) return;
           if (ts.isCallExpression(node) &&
             (isResultUnwrap(node, checker, callEdges) || isOptionalUnwrap(node, checker, callEdges) ||
-              callEdges.get(node)?.panicExit === true)) {
+              isResultExpectCall(node, checker, callEdges) || callEdges.get(node)?.panicExit === true)) {
             unsafe = node;
             return;
           }
@@ -3680,7 +3972,7 @@ function checkControlFlowExpressionValues(
         if (unsafe) diagnostics.push(at(
           unsafe,
           sourceFile,
-          "VIBE1706",
+          "SMITHERS1706",
           "switch expression case labels cannot perform Result propagation or panic exits because their ordered selection cannot emit a statement prologue",
         ));
       }
@@ -3704,7 +3996,7 @@ function verifyOrderAssumptions(
   if (recovery.assumptions.length === 0) return;
   const written = writtenValueTargets(sourceFile, checker);
   const fail = (start: number, message: string): void => {
-    diagnostics.push({ severity: "error", code: "VIBE1708", message, start });
+    diagnostics.push({ severity: "error", code: "SMITHERS1708", message, start });
   };
   const stableIdentifier = (identifier: ts.Identifier, start: number): boolean => {
     const symbol = checker.getSymbolAtLocation(identifier);
@@ -3916,7 +4208,7 @@ export function controlFlowValueHasLocalType(
  * A checked call boundary cannot observe an exception thrown while ESM is
  * linking/evaluating its static dependency graph.  Keep that separate hazard
  * fail-closed: a runtime foreign module must make an explicit, file-leading
- * trust claim before a `.vibe` module can load it statically.
+ * trust claim before a `.sm` module can load it statically.
  *
  * Dynamic import deliberately is not handled here.  A trusted thin foreign
  * module may expose an async function which performs `import()`; its rejection
@@ -3932,7 +4224,7 @@ function checkForeignModuleInitializers(
     if (!edge || isCompilerIntrinsicSpecifier(edge.specifier.text)) continue;
 
     const target = resolvedModuleSourceFile(edge.specifier, checker);
-    if (target && isVibeSemanticSourceFile(target.fileName)) continue;
+    if (target && isSmithersSemanticSourceFile(target.fileName)) continue;
     if (target && !isTypeScriptOrJavaScriptSourceFile(target.fileName)) continue;
     if (target && hasLeadingModuleNoThrowMarker(target)) continue;
 
@@ -3942,7 +4234,7 @@ function checkForeignModuleInitializers(
     diagnostics.push(at(
       edge.specifier,
       sourceFile,
-      "VIBE1510",
+      "SMITHERS1510",
       `foreign module initialization can panic before a checked call boundary; ${detail}; use a type-only import, add the trusted marker, or put dynamic import behind a checked async foreign adapter`,
     ));
   }
@@ -3984,8 +4276,35 @@ function allExportBindingsAreTypeOnly(statement: ts.ExportDeclaration): boolean 
 }
 
 function isCompilerIntrinsicSpecifier(specifier: string): boolean {
-  return specifier === "vibelang" || specifier.startsWith("vibelang/") || specifier.startsWith("vibelang:");
+  return COMPILER_INTRINSIC_SPECIFIERS.has(specifier);
 }
+
+/**
+ * The authoritative set of compiler-owned module specifiers.
+ *
+ * Membership is EXACT. Prefix-matching `smithers:`/`smthrs/` has already been a
+ * fail-open twice in this repository — once in `poc/src/targets/classify.ts`,
+ * whose comment records it, and once in
+ * `poc/src/durable/implementation-contract.ts`, which now consumes this set —
+ * because a specifier that merely begins with an owned prefix is ordinary
+ * foreign code that no registry pins.
+ *
+ * `poc/src/targets/classify.ts` keeps a mirror of this list for the portability
+ * analyzer (plus its provisional `smithers:native` entry). That file is owned by
+ * another lane; consolidating the two is a separate, deliberate change.
+ * `poc/src/language/compile.ts` is NOT a mirror: `isCompilerVirtualModule`
+ * answers a different question — which specifiers the emitter rewrites to the
+ * runtime import — and `smthrs/schema-runtime` deliberately survives emit.
+ */
+export const COMPILER_INTRINSIC_SPECIFIERS: ReadonlySet<string> = new Set([
+  "smthrs/context",
+  "smthrs/provider",
+  "smthrs/schema-runtime",
+  "smithers:exceptions",
+  "smithers:comptime",
+  "smithers:flows",
+  "smithers:native",
+]);
 
 function resolvedModuleSourceFile(
   specifier: ts.StringLiteral,
@@ -3999,8 +4318,8 @@ function resolvedModuleSourceFile(
   return declaration?.getSourceFile();
 }
 
-function isVibeSemanticSourceFile(fileName: string): boolean {
-  return /\.vibe(?:\.ts)?$/i.test(fileName);
+function isSmithersSemanticSourceFile(fileName: string): boolean {
+  return /\.sm(?:\.ts)?$/i.test(fileName);
 }
 
 function isTypeScriptOrJavaScriptSourceFile(fileName: string): boolean {
@@ -4017,7 +4336,7 @@ function hasLeadingModuleNoThrowMarker(sourceFile: ts.SourceFile): boolean {
 
 function isTrustedCompilerGeneratedRuntime(sourceFile: ts.SourceFile): boolean {
   return trustedCompilerRuntimeSourceFiles.has(sourceFile) &&
-    sourceFile.fileName.endsWith(".__vibelang_generated__.ts") &&
+    sourceFile.fileName.endsWith(".__smithers_generated__.ts") &&
     hasLeadingModuleNoThrowMarker(sourceFile);
 }
 
@@ -4041,7 +4360,7 @@ export function parseDiagnosticsFailure(sourceFile: ts.SourceFile): PendingDiagn
   if (internalParseDiagnostics(sourceFile) !== undefined) return undefined;
   return {
     severity: "error",
-    code: "VIBE1002",
+    code: "SMITHERS1002",
     message: "internal: typescript-js did not expose parser diagnostics for this file, so the frontend cannot prove the source matches the supported grammar and fails closed",
     start: 0,
   };
@@ -4051,6 +4370,91 @@ function scanSource(source: string): ScannedToken[] {
   // Template- and regex-aware: a `${...}` substitution must not skew the
   // token stream the removed-syntax and expression-keyword checks rely on.
   return [...scanRecoveryTokens(source)];
+}
+
+/**
+ * Retired-syntax recognition is a GRAMMAR property, not a token-adjacency
+ * property. Every retired operator below takes a right operand, and the binary
+ * and postfix ones additionally take a left operand; a spelling that has
+ * neither shape is a name, not the operator. Testing only the neighbouring
+ * token misreports ordinary code — `{ try: doThing, catch: handleIt }` is a
+ * plain object literal, `{ orelse: 7 }` a plain member, and neither is retired
+ * Smithers grammar.
+ *
+ * The three predicates below are the whole discipline:
+ *
+ * - `beginsOperand`   — could this token start the operator's right operand?
+ * - `tokenEndsExpression` (recover.ts) — did an expression finish to the left?
+ * - `isMemberNameOccurrence` — is the word being used as a property name?
+ *
+ * `try` and `catch` are ECMAScript reserved words, so *every* legal occurrence
+ * of them outside statement-form `try`/`catch` is a property name; the third
+ * predicate is what recognizes those positions.
+ */
+const OPERAND_CANNOT_BEGIN_WITH: ReadonlySet<string> = new Set([
+  ":", ",", ")", "}", "]", ";", "=", "=>", ".", "?", "?.",
+]);
+
+function beginsOperand(token: ScannedToken | undefined): boolean {
+  if (!token || token.kind === ts.SyntaxKind.EndOfFileToken) return false;
+  return !OPERAND_CANNOT_BEGIN_WITH.has(token.text);
+}
+
+/**
+ * Tokens that can precede a member name in an object literal, class body,
+ * interface body, or type literal. A reserved word followed by `(` or `<` at
+ * one of these positions is a method or call signature, never a prefix or
+ * postfix operator.
+ */
+const MEMBER_LIST_BOUNDARIES: ReadonlySet<string> = new Set([
+  "{", "}", ",", ";", "*",
+  "static", "async", "get", "set", "public", "private", "protected",
+  "readonly", "override", "abstract", "declare",
+]);
+
+function isMemberNameOccurrence(tokens: readonly ScannedToken[], index: number): boolean {
+  const previous = tokens[index - 1];
+  const next = tokens[index + 1];
+  // `promise.catch(...)`, `Result.try(...)`, `adapter?.catch`
+  if (previous?.text === "." || previous?.text === "?.") return true;
+  // `{ try: value }`, `interface I { catch: T }`, `const { catch: c } = source`
+  if (next?.text === ":") return true;
+  // `interface I { catch?: T }`, `type T = { try?(): void }`
+  if (next?.text === "?" && (tokens[index + 2]?.text === ":" || tokens[index + 2]?.text === "(")) return true;
+  // `{ try() {} }`, `class C { static catch() {} }`, `type T = { try<A>(): A }`
+  if ((next?.text === "(" || next?.text === "<") &&
+    MEMBER_LIST_BOUNDARIES.has(previous?.text ?? "")) return true;
+  return false;
+}
+
+/**
+ * The retired `throws`/`uses` clause is a suffix on a *complete* return type,
+ * so the token before it must be able to end one. A type name that happens to
+ * be spelled `uses` inside type arguments or a union (`Array<uses>`,
+ * `string | throws`) is preceded by a token that cannot end a type.
+ */
+const TYPE_CANNOT_END_WITH: ReadonlySet<string> = new Set([
+  "<", ",", "|", "&", "(", "[", ":", "?", "=>", ".", "...",
+  "extends", "keyof", "typeof", "readonly", "infer", "new", "is", "asserts",
+]);
+
+function endsReturnType(token: ScannedToken | undefined): boolean {
+  return token !== undefined && !TYPE_CANNOT_END_WITH.has(token.text);
+}
+
+/**
+ * Type-only keyword spellings. `!string` in a value position would be a
+ * logical negation of a variable named `string`; in an annotation it is the
+ * retired `!T` marker. The keyword spelling is what separates the retired
+ * marker from an ordinary `{ ok: !failed }` or `flag ? a : !b`.
+ */
+const TYPE_ONLY_KEYWORDS: ReadonlySet<string> = new Set([
+  "string", "number", "boolean", "bigint", "symbol", "object",
+  "any", "unknown", "never", "void",
+]);
+
+function hasLineBreakBetween(source: string, left: ScannedToken, right: ScannedToken): boolean {
+  return /[\n\r\u2028\u2029]/.test(source.slice(left.end, right.start));
 }
 
 function isBetweenFunctionParametersAndBody(tokens: readonly ScannedToken[], index: number): boolean {
@@ -4095,14 +4499,14 @@ function checkHostGlobals(
     if (ts.isIdentifier(node) && forbiddenHostGlobals.has(node.text) &&
       !isDeclarationName(node) && !isPropertyNameNode(node) && !isInTypePosition(node) &&
       isAmbientGlobalReference(node, checker)) {
-      diagnostics.push(at(node, sourceFile, "VIBE1601", `ambient host global '${node.text}' is unavailable; access it through a Context capability`));
+      diagnostics.push(at(node, sourceFile, "SMITHERS1601", `ambient host global '${node.text}' is unavailable; access it through a Context capability`));
     }
 
     for (const use of sensitive) {
       diagnostics.push(at(
         use.root,
         sourceFile,
-        use.requirement === "Clock" ? "VIBE1602" : use.requirement === "Random" ? "VIBE1603" : "VIBE1601",
+        use.requirement === "Clock" ? "SMITHERS1602" : use.requirement === "Random" ? "SMITHERS1603" : "SMITHERS1601",
         use.requirement === "Host"
           ? "ambient host global 'crypto' is unavailable; access it through a Context capability"
           : `ambient ${use.description} is unavailable; access it through ${use.requirement}.context()`,

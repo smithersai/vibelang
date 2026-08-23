@@ -1,0 +1,15 @@
+import { Panic } from "smithers:exceptions"
+import { parseIntegerUnchecked } from "./foreign.ts"
+
+// Result.try is the public adapter that turns a throwing body into a Result
+// whose failure channel retains the distinguished Panic case.
+function parse(text: string): Result<number, Panic> {
+  return Result.try(() => parseIntegerUnchecked(text))
+}
+
+export function main(): string[] {
+  return [
+    parse("41").match({ ok: (value) => `${value}`, error: () => "panic" }),
+    parse("nope").match({ ok: (value) => `${value}`, error: () => "panic" }),
+  ]
+}

@@ -6,7 +6,7 @@ that ledger says otherwise.
 
 ## Product contract
 
-VibeLang durable execution supersedes the separate `flows` library. The
+Smithers durable execution supersedes the separate `flows` library. The
 existing implementation is prior art and a source of tested runtime machinery,
 not a required user-facing dependency.
 
@@ -15,7 +15,7 @@ not a required user-facing dependency.
 - A **Flow** is a closed program produced when the compiler lowers the checked
   body of a function passed to `durable(...)` into a typed, target-neutral
   execution-plan template.
-- Action implementations are ordinary VibeLang functions/callbacks. Their
+- Action implementations are ordinary Smithers functions/callbacks. Their
   success and typed failure are inferred from the body when the return
   annotation is omitted. Abstract Action signatures use explicit
   `Result<A, E>` contracts because they have no body. Requirements are inferred
@@ -28,7 +28,7 @@ not a required user-facing dependency.
   same Action invocation protocol.
 
 ```ts
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 
 abstract class Compile extends Action<
   (input: CompileInput) => Result<CompileOutput, CompileError>
@@ -41,7 +41,7 @@ abstract class Package extends Action<
 const Build = durable(function Build(
   input: BuildInput,
 ): Result<Artifact, CompileError | PackageError> {
-  const compiled = Compile.run({ source: input.source }).unwrap()
+  const compiled = Compile.run({ source: input.source })!
   return Package.run({ code: compiled.code })
 })
 ```
@@ -52,7 +52,7 @@ unrelated function with the same name remains ordinary. Its argument must be an
 inline function or another function the compiler can resolve statically. The
 call lowers to a serializable Flow descriptor that references the emitted IR,
 not a runtime callback wrapper. Uncompiled JavaScript fails while loading the
-compiler-owned `vibelang:flows` virtual module.
+compiler-owned `smithers:flows` virtual module.
 
 The compiler lowers the function's typed syntax and control-flow graph; it does
 not call the function with proxies to discover the graph. `Compile.run` lowers
@@ -81,7 +81,7 @@ There are four distinct phases:
 
 This differs usefully from the prior `flows` implementation: it builds a graph
 by running a JavaScript body and retains live functions in side tables.
-VibeLang instead emits portable expression IR and compiler-stable hashes. Plan
+Smithers instead emits portable expression IR and compiler-stable hashes. Plan
 mode analyzes that emitted artifact; it never executes a Flow source function.
 
 ### Current POC evidence (non-normative)
@@ -91,7 +91,7 @@ The executable POC proves a deliberately bounded vertical slice of this model:
 - checker-identity resolution lowers a bounded `durable(function)` body with
   const/literal/input projection, conditional selection, durable sleep, a typed
   single-delivery external signal, stable-key fan-out, and
-  `Action.run(...).unwrap()` forms without
+  `Action.run(...)!` forms without
   evaluating the author module or an Action implementation;
 - a fan-out body may be a bounded block sequence of at most 16 Action steps
   whose later inputs project the item and earlier steps' durable results. Step
@@ -149,7 +149,7 @@ The executable POC proves a deliberately bounded vertical slice of this model:
   input, projected success, and reachable Action-error schemas that the engine
   checks before execution creation, terminal commit, and replay;
 - `compileActionImplementationContract` runs the same whole-project row checker
-  over an explicitly closed `.vibe` implementation source set. Its frozen
+  over an explicitly closed `.sm` implementation source set. Its frozen
   contract pins source/direct-function identity plus inferred `E`/`R`;
   `provideChecked`, deployment, artifact validation, and the worker gate require
   an exact capability grant, while the legacy provider path cannot receive
@@ -265,7 +265,7 @@ contract. Plain data derives this automatically. Functions, capabilities,
 process handles, weak references, and other ephemeral values require an
 explicit durable representation or are rejected at the Action boundary.
 `any`/`unknown` require an explicit codec there; this is not a restriction on
-ordinary VibeLang code.
+ordinary Smithers code.
 
 **Proposed:** public Action and Flow declarations have an explicit stable ID.
 Compiler-derived IDs are convenient during development but renaming a symbol
@@ -274,7 +274,7 @@ must not silently change the identity of an in-flight durable operation.
 ### Recovery and cache policy
 
 The current `flows` code compresses several guarantees into one tier enum
-(`sealed`, `compensable`, or `irreversible`). VibeLang separates one invariant
+(`sealed`, `compensable`, or `irreversible`). Smithers separates one invariant
 from three policies:
 
 - **Run-local recording is mandatory.** It is not a cache policy.
@@ -334,7 +334,7 @@ not reset them.
 
 ## Providers
 
-Provider composition comes from `vibelang/provider`; there is no special
+Provider composition comes from `smthrs/provider`; there is no special
 `provide { ... }` statement. Exact API spelling remains open. A base dependency
 environment has the type:
 
@@ -351,7 +351,7 @@ Ordinary implementations obtain services through the compiler-recognized
 context library rather than through explicit function parameters:
 
 ```ts
-import { Context } from "vibelang/context"
+import { Context } from "smthrs/context"
 
 abstract class ArtifactStore extends Context {
   abstract put(artifact: Artifact): Result<ArtifactRef, ArtifactStoreError>
@@ -370,7 +370,7 @@ requirement in the deployment closure.
 Conceptually:
 
 ```ts
-import { Action, Layer } from "vibelang/provider"
+import { Action, Layer } from "smthrs/provider"
 
 const BuildActions = Layer.merge(
   Action.provide(Compile, compileWithEsbuild, {
@@ -394,7 +394,7 @@ const BuildActions = Layer.merge(
 - Provider selection is pinned in the deployment manifest. A runtime must not
   silently switch to a semantically different implementation.
 - The Layer environment is installed on the worker that owns the implementation.
-  Explicit worker code owns acquisition and disposal with `using`/`defer`;
+  Explicit worker code owns acquisition and disposal with `using`;
   memoization is an Action policy, not a Layer lifetime feature. Secrets are
   injected on the worker and are not embedded in the plan or bundle.
 
@@ -417,7 +417,7 @@ A deployment declares worker pools. A pool has:
 The concrete configuration syntax is still open. Its shape is approximately:
 
 ```ts
-import { Deployment, Layer, Worker } from "vibelang/provider"
+import { Deployment, Layer, Worker } from "smthrs/provider"
 
 export default Deployment.make({
   workers: [
@@ -584,10 +584,10 @@ This section governs distributed Action workers. A code-writing agent may use a
 smaller sandbox implemented entirely by its library: generated code is placed
 in an otherwise confined evaluator and receives only explicitly passed
 functions, some of which may invoke Actions or Flows. That agent sandbox adds no
-VibeLang syntax or compiler security model; see
+Smithers syntax or compiler security model; see
 [`AGENT_LIBRARY.md`](AGENT_LIBRARY.md).
 
-## What VibeLang should reuse from `flows`
+## What Smithers should reuse from `flows`
 
 Keep the proven ideas:
 

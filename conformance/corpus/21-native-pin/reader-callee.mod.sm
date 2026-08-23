@@ -1,0 +1,10 @@
+// The callee takes an INTERFACE, so the signature the checker selects for
+// `reader.read()` is a member with no body. The body that runs belongs to
+// whatever class the caller constructed.
+export interface Reader {
+  read(): number
+}
+
+export function run(reader: Reader): number {
+  return reader.read()
+}

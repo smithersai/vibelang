@@ -1,6 +1,6 @@
 /**
  * Deliberately trusted test-only adapter for exercising the CLI child-process
- * envelope after authored `.vibe` ambient authority has been rejected.
+ * envelope after authored `.sm` ambient authority has been rejected.
  *
  * @module
  * @throws {never}
@@ -8,7 +8,7 @@
 
 /** @throws {never} */
 export function forgeTestProtocol(): never {
-  process.stdout.write("\n__VIBELANG_TEST_PROTOCOL_V1__" + JSON.stringify({
+  process.stdout.write("\n__SMITHERS_TEST_PROTOCOL_V1__" + JSON.stringify({
     discovered: 1,
     passed: 1,
     failed: 0,

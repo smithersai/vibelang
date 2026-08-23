@@ -1,0 +1,15 @@
+{
+  "title": "importing a name a supplied `.sm` module does not export fails closed, rather than leaving an unresolved binding whose failure and requirement rows are unknown",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1804",
+      "line": 1,
+      "column": 10
+    }
+  ],
+  "modules": [
+    "importing-a-name-a-module-does-not-export-is-rejected.mod.sm"
+  ],
+  "notes": "poc/src/language/README.md: '`SMITHERS1801`: a relative `.sm` import is absent from the supplied project; **`SMITHERS1804`: a named/default import is not an exported value in that module.**' The sibling half of the rule is already pinned by 15/missing-relative-module-is-rejected (SMITHERS1801, a module that is not there at all); this is the case where the module IS there and the NAME is not. It matters separately because cross-module row propagation is defined over 'checker-resolved direct static calls' — an import that resolves to nothing has no failure row and no requirement row, so accepting it would silently give a call site an empty row instead of an unknown one, and specification/requirements.mdx requires an unsatisfied capability to be a compile error 'when the compiler knows the complete closure'. The module deliberately exports a different function (`present`) so the case measures the missing NAME and not a missing module or an empty file."
+}

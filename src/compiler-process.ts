@@ -12,7 +12,7 @@ export function resolveTypeScriptCompiler(): string {
 
 /**
  * Run the native TypeScript CLI without parsing or normalizing its arguments.
- * This is the compatibility path used by `vibec` and `vtsc`.
+ * This is the compatibility path used by `smithersc`.
  */
 export function runTypeScriptCompiler(
   args: readonly string[],
@@ -26,9 +26,8 @@ export function runTypeScriptCompiler(
 
   if (result.error) throw result.error;
   if (result.signal) {
-    process.stderr.write(`vibec: TypeScript compiler terminated by ${result.signal}\n`);
+    process.stderr.write(`smithersc: TypeScript compiler terminated by ${result.signal}\n`);
     return 1;
   }
   return result.status ?? 1;
 }
-

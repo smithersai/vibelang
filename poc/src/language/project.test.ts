@@ -76,9 +76,9 @@ function mappedPosition(wire: string, generatedCode: string, generatedOffset: nu
   };
 }
 
-describe("checked .vibe project rows", () => {
+describe("checked .sm project rows", () => {
   test("checks foreign module initialization trust per project import", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibe-project-module-init-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-project-module-init-"));
     try {
       await writeFile(join(root, "trusted.ts"), `
         /** @module @throws {never} */
@@ -91,24 +91,24 @@ describe("checked .vibe project rows", () => {
       `);
       const analysis = analyzeProject([
         {
-          fileName: "rejected.vibe",
+          fileName: "rejected.sm",
           source: 'import { value } from "./untrusted.ts"\nexport const copied = value\n',
         },
         {
-          fileName: "accepted.vibe",
+          fileName: "accepted.sm",
           source: 'import { value } from "./trusted.ts"\nexport const copied = value\n',
         },
         {
-          fileName: "types.vibe",
+          fileName: "types.sm",
           source: 'import type { Label } from "./untrusted.ts"\nexport const copied: Label = "type only"\n',
         },
       ], { rootDir: root });
-      expect(analysis.files["rejected.vibe"]!.diagnostics
-        .filter((diagnostic) => diagnostic.code === "VIBE1510")).toHaveLength(1);
-      expect(analysis.files["accepted.vibe"]!.diagnostics
-        .filter((diagnostic) => diagnostic.code === "VIBE1510")).toHaveLength(0);
-      expect(analysis.files["types.vibe"]!.diagnostics
-        .filter((diagnostic) => diagnostic.code === "VIBE1510")).toHaveLength(0);
+      expect(analysis.files["rejected.sm"]!.diagnostics
+        .filter((diagnostic) => diagnostic.code === "SMITHERS1510")).toHaveLength(1);
+      expect(analysis.files["accepted.sm"]!.diagnostics
+        .filter((diagnostic) => diagnostic.code === "SMITHERS1510")).toHaveLength(0);
+      expect(analysis.files["types.sm"]!.diagnostics
+        .filter((diagnostic) => diagnostic.code === "SMITHERS1510")).toHaveLength(0);
     } finally {
       await rm(root, { recursive: true });
     }
@@ -120,7 +120,7 @@ describe("checked .vibe project rows", () => {
       run: { failures: ["Missing"], requirements: ["Clock"] },
     });
     expect(annotated).toBe(
-      '/** @vibeEffects {"version":1,"failures":["Missing"],"requirements":["Clock"]} */\n' + declaration,
+      '/** @smithersEffects {"version":1,"failures":["Missing"],"requirements":["Clock"]} */\n' + declaration,
     );
     expect(readDeclarationEffects(annotated)).toEqual({
       run: { failures: ["Missing"], requirements: ["Clock"] },
@@ -129,13 +129,13 @@ describe("checked .vibe project rows", () => {
       run: { failures: [], requirements: [] },
     })).toThrow("already contains");
     expect(() => readDeclarationEffects(
-      '/** @vibeEffects {"version":1,"failures":["Zed","Alpha"],"requirements":[]} */\n' + declaration,
+      '/** @smithersEffects {"version":1,"failures":["Zed","Alpha"],"requirements":[]} */\n' + declaration,
     )).toThrow("sorted and unique");
     expect(() => readDeclarationEffects(
-      '/** @vibeEffects {"version":2,"failures":[],"requirements":[]} */\n' + declaration,
+      '/** @smithersEffects {"version":2,"failures":[],"requirements":[]} */\n' + declaration,
     )).toThrow("unsupported envelope");
     expect(() => readDeclarationEffects(
-      '/** @vibeEffects {"version":1,"version":1,"failures":[],"requirements":[]} */\n' + declaration,
+      '/** @smithersEffects {"version":1,"version":1,"failures":[],"requirements":[]} */\n' + declaration,
     )).toThrow("canonical encoding");
     expect(() => annotateDeclarationEffects(declaration, {
       run: { failures: ["Missing", "Missing"], requirements: [] },
@@ -210,10 +210,10 @@ describe("checked .vibe project rows", () => {
   test("lowers a checked batch and rewrites authored-module imports to project outputs", () => {
     const sourceSet = [
       {
-        fileName: "src/main.vibe",
+        fileName: "src/main.sm",
         source: `
-          import { Context } from "vibelang/context"
-          import { load, type Missing } from "./service.vibe"
+          import { Context } from "smthrs/context"
+          import { load, type Missing } from "./service.sm"
           abstract class Clock extends Context { abstract now(): number }
           export function run(): Result<string, Missing> {
             Clock.context().now()
@@ -222,7 +222,7 @@ describe("checked .vibe project rows", () => {
         `,
       },
       {
-        fileName: "src/service.vibe",
+        fileName: "src/service.sm",
         source: `
           export class Missing extends Error {}
           export function load(): Result<string, Missing> { throw new Missing() }
@@ -233,19 +233,19 @@ describe("checked .vibe project rows", () => {
       rootDir: "/virtual/batch",
       outDir: "/virtual/output",
       outputExtension: ".mjs",
-      runtimeImport: "vibelang/runtime",
+      runtimeImport: "smthrs/runtime",
       sourceMap: false,
     });
 
     expect(compiled.diagnostics).toHaveLength(0);
-    expect(compiled.files["src/main.vibe"]!.outputFileName).toBe("/virtual/output/src/main.mjs");
-    expect(compiled.files["src/main.vibe"]!.code).toContain('from "./service.mjs"');
-    expect(compiled.files["src/main.vibe"]!.code).toContain("__vsInspectResult");
-    expect(compiled.files["src/main.vibe"]!.analysis.rows.run).toEqual({
+    expect(compiled.files["src/main.sm"]!.outputFileName).toBe("/virtual/output/src/main.mjs");
+    expect(compiled.files["src/main.sm"]!.code).toContain('from "./service.mjs"');
+    expect(compiled.files["src/main.sm"]!.code).toContain("__vsInspectResult");
+    expect(compiled.files["src/main.sm"]!.analysis.rows.run).toEqual({
       failures: ["Missing"],
       requirements: ["Clock"],
     });
-    expect(compiled.files["src/service.vibe"]!.code).toContain("__vsRegisterError");
+    expect(compiled.files["src/service.sm"]!.code).toContain("__vsRegisterError");
 
     const checked = compileAndCheckProject(sourceSet, {
       rootDir: "/virtual/batch",
@@ -267,7 +267,7 @@ describe("checked .vibe project rows", () => {
     const mainDeclaration = declarations.outputs.find((output) => output.fileName.endsWith("main.d.mts"));
     expect(mainDeclaration?.code).toContain('import { type Missing } from "./service.mjs"');
     expect(mainDeclaration?.code).toContain("run(): Result<string, Missing>");
-    expect(mainDeclaration?.code).toContain("@vibeEffects");
+    expect(mainDeclaration?.code).toContain("@smithersEffects");
     expect(readDeclarationEffects(mainDeclaration!.code, mainDeclaration!.fileName).run).toEqual({
       failures: ["Missing"],
       requirements: ["Clock"],
@@ -277,9 +277,9 @@ describe("checked .vibe project rows", () => {
   test("lowers defer tails in a checked multi-module compile", () => {
     const sourceSet = [
       {
-        fileName: "src/main.vibe",
+        fileName: "src/main.sm",
         source: `
-          import { load, type ProjectFailure } from "./service.vibe"
+          import { load, type ProjectFailure } from "./service.sm"
           export let cleanupCount = 0
           export function run(): Result<number, ProjectFailure> {
             defer cleanupCount += 1
@@ -289,7 +289,7 @@ describe("checked .vibe project rows", () => {
         `,
       },
       {
-        fileName: "src/service.vibe",
+        fileName: "src/service.sm",
         source: `
           export class ProjectFailure extends Error {}
           export function load(): Result<number, ProjectFailure> {
@@ -309,7 +309,7 @@ describe("checked .vibe project rows", () => {
     expect(checked.ok).toBe(true);
     expect(checked.result.diagnostics).toHaveLength(0);
     expect(checked.emitDiagnostics).toHaveLength(0);
-    const output = checked.result.files["src/main.vibe"]!.code;
+    const output = checked.result.files["src/main.sm"]!.code;
     expect(output).toContain("try {");
     expect(output).toContain("finally {");
     expect(output).toContain("__vsInspectResult");
@@ -320,11 +320,11 @@ describe("checked .vibe project rows", () => {
   test("propagates Error and Context rows through checker-resolved import aliases", () => {
     const analysis = analyzeProject([
       {
-        fileName: "app.vibe",
+        fileName: "app.sm",
         source: `
-          import { load as applicationLoad } from "./service.vibe"
-          import type { Missing } from "./domain.vibe"
-          import * as domain from "./domain.vibe"
+          import { load as applicationLoad } from "./service.sm"
+          import type { Missing } from "./domain.sm"
+          import * as domain from "./domain.sm"
           export function run(id: number): Result<string, Missing> {
             return applicationLoad(id).unwrap()
           }
@@ -334,9 +334,9 @@ describe("checked .vibe project rows", () => {
         `,
       },
       {
-        fileName: "domain.vibe",
+        fileName: "domain.sm",
         source: `
-          import { Context } from "vibelang/context"
+          import { Context } from "smthrs/context"
           export abstract class Db extends Context { abstract read(id: number): string }
           export class Missing extends Error {}
           export function find(id: number): Result<string, Missing> {
@@ -347,30 +347,30 @@ describe("checked .vibe project rows", () => {
         `,
       },
       {
-        fileName: "service.vibe",
+        fileName: "service.sm",
         source: `
-          import { find as fetch, type Missing } from "./domain.vibe"
+          import { find as fetch, type Missing } from "./domain.sm"
           export function load(id: number): Result<string, Missing> {
             return fetch(id).unwrap()
           }
         `,
       },
-    ], { rootDir: "/virtual/vibe-project" });
+    ], { rootDir: "/virtual/smithers-project" });
 
-    expect(Object.keys(analysis.files)).toEqual(["app.vibe", "domain.vibe", "service.vibe"]);
-    expect(analysis.files["domain.vibe"]!.rows.find).toEqual({ failures: ["Missing"], requirements: ["Db"] });
-    expect(analysis.files["service.vibe"]!.rows.load).toEqual({ failures: ["Missing"], requirements: ["Db"] });
-    expect(analysis.files["app.vibe"]!.rows.run).toEqual({ failures: ["Missing"], requirements: ["Db"] });
-    expect(analysis.files["app.vibe"]!.rows.runNamespace).toEqual({ failures: ["Missing"], requirements: ["Db"] });
+    expect(Object.keys(analysis.files)).toEqual(["app.sm", "domain.sm", "service.sm"]);
+    expect(analysis.files["domain.sm"]!.rows.find).toEqual({ failures: ["Missing"], requirements: ["Db"] });
+    expect(analysis.files["service.sm"]!.rows.load).toEqual({ failures: ["Missing"], requirements: ["Db"] });
+    expect(analysis.files["app.sm"]!.rows.run).toEqual({ failures: ["Missing"], requirements: ["Db"] });
+    expect(analysis.files["app.sm"]!.rows.runNamespace).toEqual({ failures: ["Missing"], requirements: ["Db"] });
     expect(analysis.diagnostics).toHaveLength(0);
   });
 
   test("reaches a fixed point across an import cycle", () => {
     const analysis = analyzeProject([
       {
-        fileName: "a.vibe",
+        fileName: "a.sm",
         source: `
-          import { b, type CycleFailure } from "./b.vibe"
+          import { b, type CycleFailure } from "./b.sm"
           export function a(stop: boolean): Result<number, CycleFailure> {
             if (stop) return 1
             return b(true).unwrap()
@@ -378,9 +378,9 @@ describe("checked .vibe project rows", () => {
         `,
       },
       {
-        fileName: "b.vibe",
+        fileName: "b.sm",
         source: `
-          import { a } from "./a.vibe"
+          import { a } from "./a.sm"
           export class CycleFailure extends Error {}
           export function b(stop: boolean): Result<number, CycleFailure> {
             if (!stop) return a(true).unwrap()
@@ -388,66 +388,66 @@ describe("checked .vibe project rows", () => {
           }
         `,
       },
-    ], { rootDir: "/virtual/vibe-cycle" });
+    ], { rootDir: "/virtual/smithers-cycle" });
 
-    expect(analysis.files["a.vibe"]!.rows.a?.failures).toEqual(["CycleFailure"]);
-    expect(analysis.files["b.vibe"]!.rows.b?.failures).toEqual(["CycleFailure"]);
+    expect(analysis.files["a.sm"]!.rows.a?.failures).toEqual(["CycleFailure"]);
+    expect(analysis.files["b.sm"]!.rows.b?.failures).toEqual(["CycleFailure"]);
     expect(analysis.diagnostics).toHaveLength(0);
   });
 
   test("reports source-located unsatisfied top-level project requirements without a foreign panic", () => {
     const analysis = analyzeProject([
       {
-        fileName: "capability.vibe",
+        fileName: "capability.sm",
         source: `
-          import { Context } from "vibelang/context"
+          import { Context } from "smthrs/context"
           export abstract class Clock extends Context { abstract now(): number }
           export function time(): number { return Clock.context().now() }
         `,
       },
       {
-        fileName: "main.vibe",
-        source: `import { time as currentTime } from "./capability.vibe"
+        fileName: "main.sm",
+        source: `import { time as currentTime } from "./capability.sm"
 currentTime()
 `,
       },
-    ], { rootDir: "/virtual/vibe-unsatisfied" });
+    ], { rootDir: "/virtual/smithers-unsatisfied" });
 
-    const unsatisfied = analysis.diagnostics.find((diagnostic) => diagnostic.code === "VIBE2102");
-    expect(unsatisfied).toMatchObject({ fileName: "main.vibe", line: 2, column: 1 });
+    const unsatisfied = analysis.diagnostics.find((diagnostic) => diagnostic.code === "SMITHERS2102");
+    expect(unsatisfied).toMatchObject({ fileName: "main.sm", line: 2, column: 1 });
     expect(unsatisfied?.message).toContain("Clock");
-    expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1505")).toBe(false);
+    expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1505")).toBe(false);
   });
 
   test("fails closed for missing modules, higher-order escapes, and genuinely polymorphic failure rows", () => {
     const missing = analyzeProject([{
-      fileName: "main.vibe",
-      source: `import { absent } from "./absent.vibe"\nabsent()\n`,
-    }], { rootDir: "/virtual/vibe-missing" });
+      fileName: "main.sm",
+      source: `import { absent } from "./absent.sm"\nabsent()\n`,
+    }], { rootDir: "/virtual/smithers-missing" });
     expect(missing.diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ fileName: "main.vibe", code: "VIBE1801", line: 1 }),
+      expect.objectContaining({ fileName: "main.sm", code: "SMITHERS1801", line: 1 }),
     ]));
 
     const invalidExport = analyzeProject([
-      { fileName: "library.vibe", source: `export const present = 1` },
-      { fileName: "main.vibe", source: `import { absent } from "./library.vibe"\nvoid absent\n` },
-    ], { rootDir: "/virtual/vibe-invalid-export" });
+      { fileName: "library.sm", source: `export const present = 1` },
+      { fileName: "main.sm", source: `import { absent } from "./library.sm"\nvoid absent\n` },
+    ], { rootDir: "/virtual/smithers-invalid-export" });
     expect(invalidExport.diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ fileName: "main.vibe", code: "VIBE1804", line: 1 }),
+      expect.objectContaining({ fileName: "main.sm", code: "SMITHERS1804", line: 1 }),
     ]));
 
     const deferred = analyzeProject([
       {
-        fileName: "library.vibe",
+        fileName: "library.sm",
         source: `
           export class GenericFailure extends Error {}
           export function generic<T>(): Result<T, GenericFailure> { throw new GenericFailure() }
         `,
       },
       {
-        fileName: "consumer.vibe",
+        fileName: "consumer.sm",
         source: `
-          import { generic, type GenericFailure } from "./library.vibe"
+          import { generic, type GenericFailure } from "./library.sm"
           declare function register(callback: () => unknown): void
           register(generic)
           export function direct(): Result<string, GenericFailure> {
@@ -455,18 +455,18 @@ currentTime()
           }
         `,
       },
-    ], { rootDir: "/virtual/vibe-deferred" });
+    ], { rootDir: "/virtual/smithers-deferred" });
     expect(deferred.diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ fileName: "consumer.vibe", code: "VIBE1802" }),
+      expect.objectContaining({ fileName: "consumer.sm", code: "SMITHERS1802" }),
     ]));
-    expect(deferred.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1803")).toBe(false);
-    expect(deferred.files["consumer.vibe"].rows.direct.failures).toEqual(["GenericFailure"]);
+    expect(deferred.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1803")).toBe(false);
+    expect(deferred.files["consumer.sm"].rows.direct.failures).toEqual(["GenericFailure"]);
 
     // A row template the call site cannot instantiate: the caller forwards its
     // own type parameter, so the instantiated error is still deferred.
     const forwarded = analyzeProject([
       {
-        fileName: "library.vibe",
+        fileName: "library.sm",
         source: `
           export function genericFailure<T, E extends Error>(value: T, error: E): Result<T, E> {
             throw error
@@ -474,18 +474,18 @@ currentTime()
         `,
       },
       {
-        fileName: "consumer.vibe",
+        fileName: "consumer.sm",
         source: `
-          import { genericFailure } from "./library.vibe"
+          import { genericFailure } from "./library.sm"
           export function forward<F extends Error>(error: F): Result<string, F> {
             return genericFailure("value", error).unwrap()
           }
         `,
       },
-    ], { rootDir: "/virtual/vibe-forwarded" });
-    const forwardedDeferred = forwarded.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1803");
+    ], { rootDir: "/virtual/smithers-forwarded" });
+    const forwardedDeferred = forwarded.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1803");
     expect(forwardedDeferred).toEqual([
-      expect.objectContaining({ fileName: "consumer.vibe", code: "VIBE1803" }),
+      expect.objectContaining({ fileName: "consumer.sm", code: "SMITHERS1803" }),
     ]);
     expect(forwardedDeferred[0]!.message).toContain("F");
     expect(forwardedDeferred[0]!.message).toContain("still unresolved at this call site");
@@ -493,22 +493,22 @@ currentTime()
     // A row template with no spelled Result contract cannot be instantiated at
     // all; it fails closed on the declaration instead of leaking "E" as a row.
     const uncontracted = analyzeProject([{
-      fileName: "library.vibe",
+      fileName: "library.sm",
       source: `
         export function leak<E extends Error>(error: E) {
           throw error
         }
       `,
-    }], { rootDir: "/virtual/vibe-uncontracted" });
+    }], { rootDir: "/virtual/smithers-uncontracted" });
     expect(uncontracted.diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ fileName: "library.vibe", code: "VIBE1803" }),
+      expect.objectContaining({ fileName: "library.sm", code: "SMITHERS1803" }),
     ]));
   });
 
   test("checks and emits cross-module generic success values when failure and requirement rows are concrete", () => {
     const sourceSet = [
       {
-        fileName: "library.vibe",
+        fileName: "library.sm",
         source: `
           export class GenericFailure extends Error {}
           export function generic<T>(value: T): Result<T, GenericFailure> {
@@ -518,9 +518,9 @@ currentTime()
         `,
       },
       {
-        fileName: "consumer.vibe",
+        fileName: "consumer.sm",
         source: `
-          import { generic, type GenericFailure } from "./library.vibe"
+          import { generic, type GenericFailure } from "./library.sm"
           export function direct(): Result<string, GenericFailure> {
             return generic<string>("value").unwrap()
           }
@@ -537,7 +537,7 @@ currentTime()
     expect(checked.ok).toBe(true);
     expect(checked.result.diagnostics).toHaveLength(0);
     expect(checked.emitDiagnostics).toHaveLength(0);
-    expect(checked.result.files["consumer.vibe"].analysis.rows.direct).toEqual({
+    expect(checked.result.files["consumer.sm"].analysis.rows.direct).toEqual({
       failures: ["GenericFailure"],
       requirements: [],
     });
@@ -545,7 +545,7 @@ currentTime()
 
   test("serializes module-qualified row IDs when nominal names repeat across modules", () => {
     const capability = (kind: string) => `
-      import { Context } from "vibelang/context"
+      import { Context } from "smthrs/context"
       export abstract class Store extends Context { abstract read(): string }
       export class Duplicate extends Error {}
       export function ${kind}(id: string): Result<string, Duplicate> {
@@ -554,13 +554,13 @@ currentTime()
       }
     `;
     const analysis = analyzeProject([
-      { fileName: "left.vibe", source: capability("left") },
-      { fileName: "nested/right.vibe", source: capability("right") },
+      { fileName: "left.sm", source: capability("left") },
+      { fileName: "nested/right.sm", source: capability("right") },
       {
-        fileName: "main.vibe",
+        fileName: "main.sm",
         source: `
-          import { left, Duplicate as LeftDuplicate } from "./left.vibe"
-          import { right, Duplicate as RightDuplicate } from "./nested/right.vibe"
+          import { left, Duplicate as LeftDuplicate } from "./left.sm"
+          import { right, Duplicate as RightDuplicate } from "./nested/right.sm"
           export function both(id: string): Result<string, LeftDuplicate | RightDuplicate> {
             const first = left(id).unwrap()
             const second = right(id).unwrap()
@@ -574,41 +574,41 @@ currentTime()
           }
         `,
       },
-    ], { rootDir: "/virtual/vibe-qualified" });
+    ], { rootDir: "/virtual/smithers-qualified" });
 
     expect(analysis.diagnostics).toEqual([]);
     // Same-named Errors and Contexts in different modules stay distinct rows.
-    expect(analysis.files["main.vibe"]!.rows.both).toEqual({
+    expect(analysis.files["main.sm"]!.rows.both).toEqual({
       failures: ["Duplicate@left", "Duplicate@nested/right"],
       requirements: ["Store@left", "Store@nested/right"],
     });
     // A name that is unique across the project keeps its plain spelling.
-    expect(analysis.files["left.vibe"]!.rows.left!.failures).toEqual(["Duplicate@left"]);
+    expect(analysis.files["left.sm"]!.rows.left!.failures).toEqual(["Duplicate@left"]);
 
     // Exhaustiveness is checked against resolved row identities, so import
     // aliases select the right case and a missing module is still reported.
     const partial = analyzeProject([
-      { fileName: "left.vibe", source: capability("left") },
-      { fileName: "nested/right.vibe", source: capability("right") },
+      { fileName: "left.sm", source: capability("left") },
+      { fileName: "nested/right.sm", source: capability("right") },
       {
-        fileName: "main.vibe",
+        fileName: "main.sm",
         source: `
-          import { Duplicate as LeftDuplicate } from "./left.vibe"
-          import { Duplicate as RightDuplicate } from "./nested/right.vibe"
+          import { Duplicate as LeftDuplicate } from "./left.sm"
+          import { Duplicate as RightDuplicate } from "./nested/right.sm"
           export function describe(error: LeftDuplicate | RightDuplicate): string {
             return error.match({ LeftDuplicate: () => "left" })
           }
         `,
       },
-    ], { rootDir: "/virtual/vibe-qualified-partial" });
-    const missing = partial.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1253");
+    ], { rootDir: "/virtual/smithers-qualified-partial" });
+    const missing = partial.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1253");
     expect(missing).toHaveLength(1);
     expect(missing[0]!.message).toContain("Duplicate@nested/right");
 
     // Qualified identities survive the declaration metadata carrier.
     const annotated = annotateDeclarationEffects(
       "export declare function both(id: string): unknown;\n",
-      { both: analysis.files["main.vibe"]!.rows.both! },
+      { both: analysis.files["main.sm"]!.rows.both! },
     );
     expect(readDeclarationEffects(annotated).both).toEqual({
       failures: ["Duplicate@left", "Duplicate@nested/right"],
@@ -625,7 +625,7 @@ currentTime()
       export default value
     `;
     const compiled = compileProject([{
-      fileName: "main.vibe",
+      fileName: "main.sm",
       source: `
         import config from "./config.json" with { type: "json", mode: "const" }
         export function count(): number { return config.count }
@@ -636,54 +636,54 @@ currentTime()
       outputExtension: ".mjs",
       sourceMap: false,
       additionalRuntimeSources: [issueCompilerRuntimeSource({
-        sourceFileName: "__vibelang_assets__/config.generated.ts",
+        sourceFileName: "__smithers_assets__/config.generated.ts",
         resolutionAliases: ["config.json"],
         source: generated,
       })],
       additionalRuntimeOutputs: [{
-        sourceFileName: "__vibelang_assets__/config.generated.ts",
+        sourceFileName: "__smithers_assets__/config.generated.ts",
         outputFileName: `${outDir}/__assets/config.mjs`,
         resolutionAliases: ["config.json"],
         stripImportAttributes: true,
       }],
     });
     expect(compiled.diagnostics).toHaveLength(0);
-    expect(compiled.files["main.vibe"].code).toContain('from "./__assets/config.mjs"');
-    expect(compiled.files["main.vibe"].code).not.toContain(" with {");
-    expect(compiled.files["main.vibe"].analysis.rows.count).toEqual({ failures: [], requirements: [] });
+    expect(compiled.files["main.sm"].code).toContain('from "./__assets/config.mjs"');
+    expect(compiled.files["main.sm"].code).not.toContain(" with {");
+    expect(compiled.files["main.sm"].analysis.rows.count).toEqual({ failures: [], requirements: [] });
 
     const forged = analyzeProject([{
-      fileName: "main.vibe",
+      fileName: "main.sm",
       source: `import config from "./config.json" with { type: "json" }\nexport const value = config.count`,
     }], {
       rootDir,
       additionalRuntimeSources: [{
-        sourceFileName: "__vibelang_assets__/forged.generated.ts",
+        sourceFileName: "__smithers_assets__/forged.generated.ts",
         resolutionAliases: ["config.json"],
         source: generated,
       }],
     });
-    expect(forged.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1506")).toBe(true);
+    expect(forged.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1506")).toBe(true);
 
     const untrusted = analyzeProject([{
-      fileName: "main.vibe",
+      fileName: "main.sm",
       source: `import config from "./config.json" with { type: "json" }\nexport const value = config`,
     }], {
       rootDir,
       additionalRuntimeSources: [{
-        sourceFileName: "__vibelang_assets__/untrusted.generated.ts",
+        sourceFileName: "__smithers_assets__/untrusted.generated.ts",
         resolutionAliases: ["config.json"],
         source: "export default { count: 3 }",
       }],
     });
-    expect(untrusted.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1510")).toBe(true);
+    expect(untrusted.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1510")).toBe(true);
 
-    expect(() => analyzeProject([{ fileName: "main.vibe", source: "export {}" }], {
+    expect(() => analyzeProject([{ fileName: "main.sm", source: "export {}" }], {
       rootDir,
       additionalRuntimeSources: [{ sourceFileName: "../escape.ts", source: "export {}" }],
     })).toThrow("must be beneath the project root");
 
-    expect(() => analyzeProject([{ fileName: "main.vibe", source: "export {}" }], {
+    expect(() => analyzeProject([{ fileName: "main.sm", source: "export {}" }], {
       rootDir,
       additionalRuntimeSources: [
         { sourceFileName: "same.ts", source: "export const a = 1" },
@@ -693,7 +693,7 @@ currentTime()
   });
 
   test("the lowered generated-asset graph type-checks and runs on a real ESM loader", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibe-asset-graph-exec-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-asset-graph-exec-"));
     try {
       const outDir = join(root, "out");
       const generated = `
@@ -704,12 +704,12 @@ currentTime()
       `;
       const compiled = compileProject([
         {
-          fileName: "assets.vibe",
+          fileName: "assets.sm",
           source: `export { default as config, label } from "./config.json" with { type: "json" }\n`,
         },
         {
-          fileName: "main.vibe",
-          source: `import { config, label } from "./assets.vibe"
+          fileName: "main.sm",
+          source: `import { config, label } from "./assets.sm"
 export function summary(): string { return label + ":" + String(config.count) }
 export async function lazy(): Promise<number> {
   const loaded = await import("./config.json", { with: { type: "json" } })
@@ -723,12 +723,12 @@ export async function lazy(): Promise<number> {
         outputExtension: ".mjs",
         sourceMap: false,
         additionalRuntimeSources: [issueCompilerRuntimeSource({
-          sourceFileName: "__vibelang_assets__/config.generated.ts",
+          sourceFileName: "__smithers_assets__/config.generated.ts",
           resolutionAliases: ["config.json"],
           source: generated,
         })],
         additionalRuntimeOutputs: [{
-          sourceFileName: "__vibelang_assets__/config.generated.ts",
+          sourceFileName: "__smithers_assets__/config.generated.ts",
           outputFileName: join(outDir, "__assets/config.mjs"),
           resolutionAliases: ["config.json"],
           stripImportAttributes: true,
@@ -738,7 +738,7 @@ export async function lazy(): Promise<number> {
 
       // The re-export specifier is repointed at the generated module, so the
       // emitted graph resolves (no TS2307 on the authored `./config.json`).
-      expect(compiled.files["assets.vibe"].code)
+      expect(compiled.files["assets.sm"].code)
         .toBe('export { default as config, label } from "./__assets/config.mjs";\n');
       const emitted = checkEmittedProject([
         ...Object.values(compiled.files).map((file) => ({ fileName: file.outputFileName, code: file.code })),
@@ -792,12 +792,12 @@ export async function lazy(): Promise<number> {
     `;
     const sources = [
       {
-        fileName: "assets.vibe",
+        fileName: "assets.sm",
         source: `export { default as config, label } from "./config.json" with { type: "json" }\n`,
       },
       {
-        fileName: "main.vibe",
-        source: `import { config, label } from "./assets.vibe"
+        fileName: "main.sm",
+        source: `import { config, label } from "./assets.sm"
 export function count(): number { return config.count }
 export function tag(): string { return label }
 export async function lazy(): Promise<number> {
@@ -808,12 +808,12 @@ export async function lazy(): Promise<number> {
       },
     ] as const;
     const runtimeSources = [issueCompilerRuntimeSource({
-      sourceFileName: "__vibelang_assets__/config.generated.ts",
+      sourceFileName: "__smithers_assets__/config.generated.ts",
       resolutionAliases: ["config.json"],
       source: generated,
     })];
     const runtimeOutputs = [{
-      sourceFileName: "__vibelang_assets__/config.generated.ts",
+      sourceFileName: "__smithers_assets__/config.generated.ts",
       outputFileName: `${outDir}/__assets/config.mjs`,
       resolutionAliases: ["config.json"],
       stripImportAttributes: true,
@@ -828,14 +828,14 @@ export async function lazy(): Promise<number> {
       additionalRuntimeOutputs: runtimeOutputs,
     });
     // A binding re-exported from a generated asset module resolves through the
-    // re-exporting `.vibe` module instead of failing closed as VIBE1804.
+    // re-exporting `.sm` module instead of failing closed as SMITHERS1804.
     expect(compiled.diagnostics).toEqual([]);
-    expect(compiled.files["assets.vibe"].code)
+    expect(compiled.files["assets.sm"].code)
       .toBe('export { default as config, label } from "./__assets/config.mjs";\n');
-    expect(compiled.files["main.vibe"].code)
+    expect(compiled.files["main.sm"].code)
       .toContain('await import("./__assets/config.mjs")');
-    expect(compiled.files["main.vibe"].code).not.toContain(" with {");
-    expect(compiled.files["main.vibe"].code).not.toContain("config.json");
+    expect(compiled.files["main.sm"].code).not.toContain(" with {");
+    expect(compiled.files["main.sm"].code).not.toContain("config.json");
 
     // Without a strip policy the authored attributes survive on both forms.
     const kept = compileProject(sources, {
@@ -850,13 +850,13 @@ export async function lazy(): Promise<number> {
         stripImportAttributes: false,
       }],
     });
-    expect(kept.files["assets.vibe"].code).toContain('with { type: "json" }');
-    expect(kept.files["main.vibe"].code).toContain('{ with: { type: "json" } }');
+    expect(kept.files["assets.sm"].code).toContain('with { type: "json" }');
+    expect(kept.files["main.sm"].code).toContain('{ with: { type: "json" } }');
 
     // A dynamic specifier the compiler cannot evaluate keeps its authored text
     // rather than being silently repointed at the generated module.
     const deferred = compileProject([{
-      fileName: "main.vibe",
+      fileName: "main.sm",
       source: `export async function lazy(name: string): Promise<unknown> {
   return import(name, { with: { type: "json" } })
 }
@@ -869,38 +869,38 @@ export async function lazy(): Promise<number> {
       additionalRuntimeSources: runtimeSources,
       additionalRuntimeOutputs: runtimeOutputs,
     });
-    expect(deferred.files["main.vibe"].code).toContain('import(name, { with: { type: "json" } })');
+    expect(deferred.files["main.sm"].code).toContain('import(name, { with: { type: "json" } })');
 
     // A re-export of an untrusted generated module stays fail-closed, and a
-    // binding the target neither declares nor re-exports is still VIBE1804.
+    // binding the target neither declares nor re-exports is still SMITHERS1804.
     const untrusted = analyzeProject([{
-      fileName: "assets.vibe",
+      fileName: "assets.sm",
       source: `export { default as config } from "./config.json" with { type: "json" }\n`,
     }], {
       rootDir,
       additionalRuntimeSources: [{
-        sourceFileName: "__vibelang_assets__/untrusted.generated.ts",
+        sourceFileName: "__smithers_assets__/untrusted.generated.ts",
         resolutionAliases: ["config.json"],
         source: "export default { count: 3 }",
       }],
     });
-    expect(untrusted.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1510")).toBe(true);
+    expect(untrusted.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1510")).toBe(true);
 
     const absent = analyzeProject([
-      { fileName: "assets.vibe", source: `export { default as config } from "./config.json" with { type: "json" }\n` },
-      { fileName: "main.vibe", source: `import { missing } from "./assets.vibe"\nvoid missing\n` },
+      { fileName: "assets.sm", source: `export { default as config } from "./config.json" with { type: "json" }\n` },
+      { fileName: "main.sm", source: `import { missing } from "./assets.sm"\nvoid missing\n` },
     ], { rootDir, additionalRuntimeSources: runtimeSources });
     expect(absent.diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ fileName: "main.vibe", code: "VIBE1804" }),
+      expect.objectContaining({ fileName: "main.sm", code: "SMITHERS1804" }),
     ]));
   });
 
-  test("preserveVibeSpecifiers keeps authored .vibe specifiers with exact source-map columns", () => {
+  test("preserveSmithersSpecifiers keeps authored .sm specifiers with exact source-map columns", () => {
     const rootDir = "/virtual/preserve-specifiers";
     const outDir = "/virtual/preserve-specifiers-output";
     const sources = [
       {
-        fileName: "domain.vibe",
+        fileName: "domain.sm",
         source: `export class NotFound extends Error {}
 export function find(id: string): Result<string, NotFound> {
   if (id === "") throw new NotFound()
@@ -909,43 +909,43 @@ export function find(id: string): Result<string, NotFound> {
 `,
       },
       {
-        fileName: "nested/app.vibe",
-        source: `import { find, type NotFound } from "../domain.vibe"
+        fileName: "nested/app.sm",
+        source: `import { find, type NotFound } from "../domain.sm"
 export function run(id: string): Result<string, NotFound> {
   return find(id).unwrap()
 }
 `,
       },
     ] as const;
-    const shared = { rootDir, outDir, outputExtension: ".mjs", runtimeImport: "vibelang/runtime" } as const;
+    const shared = { rootDir, outDir, outputExtension: ".mjs", runtimeImport: "smthrs/runtime" } as const;
 
     const rewritten = compileProject(sources, { ...shared, sourceMap: false });
-    expect(rewritten.files["nested/app.vibe"].code).toContain('from "../domain.mjs"');
+    expect(rewritten.files["nested/app.sm"].code).toContain('from "../domain.mjs"');
 
-    const preserved = compileProject(sources, { ...shared, sourceMap: true, preserveVibeSpecifiers: true });
-    const code = preserved.files["nested/app.vibe"].code;
-    expect(code).toContain('from "../domain.vibe"');
+    const preserved = compileProject(sources, { ...shared, sourceMap: true, preserveSmithersSpecifiers: true });
+    const code = preserved.files["nested/app.sm"].code;
+    expect(code).toContain('from "../domain.sm"');
     expect(code).not.toContain("domain.mjs");
     // Cross-module analysis is untouched: the row still crosses the import.
-    expect(preserved.files["nested/app.vibe"].analysis.rows.run)
+    expect(preserved.files["nested/app.sm"].analysis.rows.run)
       .toEqual({ failures: ["NotFound"], requirements: [] });
     expect(preserved.diagnostics).toHaveLength(0);
 
     // The preserved specifier keeps character-exact authored provenance.
     const authored = sources[1].source;
-    const generatedOffset = code.indexOf('"../domain.vibe"');
+    const generatedOffset = code.indexOf('"../domain.sm"');
     expect(generatedOffset).toBeGreaterThan(-1);
-    expect(mappedPosition(preserved.files["nested/app.vibe"].sourceMap!, code, generatedOffset))
-      .toEqual({ source: "nested/app.vibe", ...lineColumnAt(authored, authored.indexOf('"../domain.vibe"')) });
+    expect(mappedPosition(preserved.files["nested/app.sm"].sourceMap!, code, generatedOffset))
+      .toEqual({ source: "nested/app.sm", ...lineColumnAt(authored, authored.indexOf('"../domain.sm"')) });
   });
 
-  test("preserveVibeSpecifiers changes emit only; diagnostics and attribute policy are identical", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibe-preserve-specifiers-"));
+  test("preserveSmithersSpecifiers changes emit only; diagnostics and attribute policy are identical", async () => {
+    const root = await mkdtemp(join(tmpdir(), "smithers-preserve-specifiers-"));
     try {
       await writeFile(join(root, "untrusted.ts"), `export const value = "unsafe"\n`);
       const sources = [
         {
-          fileName: "library.vibe",
+          fileName: "library.sm",
           source: `export class Missing extends Error {}
 export class Extra extends Error {}
 export function narrow(id: string): Result<string, Missing> {
@@ -956,9 +956,9 @@ export function narrow(id: string): Result<string, Missing> {
 `,
         },
         {
-          fileName: "main.vibe",
+          fileName: "main.sm",
           source: `import { value } from "./untrusted.ts"
-import { narrow, type Missing } from "./library.vibe"
+import { narrow, type Missing } from "./library.sm"
 export function run(id: string): Result<string, Missing> {
   return narrow(id + value).unwrap()
 }
@@ -967,21 +967,21 @@ export function run(id: string): Result<string, Missing> {
       ] as const;
       const shared = { rootDir: root, outDir: join(root, "out"), outputExtension: ".mjs", sourceMap: false } as const;
       const rewritten = compileProject(sources, shared);
-      const preserved = compileProject(sources, { ...shared, preserveVibeSpecifiers: true });
+      const preserved = compileProject(sources, { ...shared, preserveSmithersSpecifiers: true });
 
-      expect(rewritten.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1510")).toBe(true);
-      expect(rewritten.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1104")).toBe(true);
+      expect(rewritten.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1510")).toBe(true);
+      expect(rewritten.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1104")).toBe(true);
       expect(preserved.diagnostics).toEqual(rewritten.diagnostics);
 
-      // Non-`.vibe` relative specifiers still rewrite under the option.
-      expect(preserved.files["main.vibe"].code).toContain('from "./library.vibe"');
-      expect(preserved.files["main.vibe"].code).toContain('from "../untrusted.ts"');
-      expect(rewritten.files["main.vibe"].code).toContain('from "./library.mjs"');
+      // Non-`.sm` relative specifiers still rewrite under the option.
+      expect(preserved.files["main.sm"].code).toContain('from "./library.sm"');
+      expect(preserved.files["main.sm"].code).toContain('from "../untrusted.ts"');
+      expect(rewritten.files["main.sm"].code).toContain('from "./library.mjs"');
 
       expect(() => compileProject(sources, {
         ...shared,
-        preserveVibeSpecifiers: "yes" as unknown as boolean,
-      })).toThrow("preserveVibeSpecifiers must be a boolean");
+        preserveSmithersSpecifiers: "yes" as unknown as boolean,
+      })).toThrow("preserveSmithersSpecifiers must be a boolean");
     } finally {
       await rm(root, { recursive: true });
     }
@@ -991,8 +991,8 @@ export function run(id: string): Result<string, Missing> {
 describe("callback row and task ownership gates", () => {
   test("rejects inferred-fallible callbacks, including Layer.provide callbacks", () => {
     const analysis = analyzeSource(`
-      import { Context } from "vibelang/context"
-      import { Layer } from "vibelang/provider"
+      import { Context } from "smthrs/context"
+      import { Layer } from "smthrs/provider"
       abstract class Db extends Context { abstract read(): string }
       class CallbackFailure extends Error {}
       declare function register(callback: () => unknown): void
@@ -1001,13 +1001,13 @@ describe("callback row and task ownership gates", () => {
       Layer.provide(DbLive, () => { throw new CallbackFailure() })
     `);
     expect(analysis.diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: "VIBE1303" }),
-      expect.objectContaining({ code: "VIBE2105" }),
+      expect.objectContaining({ code: "SMITHERS1303" }),
+      expect.objectContaining({ code: "SMITHERS2105" }),
     ]));
 
     const explicit = analyzeSource(`
-      import { Context } from "vibelang/context"
-      import { Layer } from "vibelang/provider"
+      import { Context } from "smthrs/context"
+      import { Layer } from "smthrs/provider"
       abstract class Db extends Context { abstract read(): string }
       class CallbackFailure extends Error {}
       const DbLive = Layer.succeed(Db, { read: () => "ok" })
@@ -1017,7 +1017,7 @@ describe("callback row and task ownership gates", () => {
         })
       }
     `);
-    expect(explicit.diagnostics.some((diagnostic) => diagnostic.code === "VIBE2105")).toBe(false);
+    expect(explicit.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS2105")).toBe(false);
   });
 
   test("rejects unowned async callbacks but accepts an awaited Layer computation", () => {
@@ -1025,17 +1025,57 @@ describe("callback row and task ownership gates", () => {
       declare function work(): Promise<number>
       const pending = [1].map(async () => work())
     `);
-    expect(escaped.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1404")).toBe(true);
+    expect(escaped.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1404")).toBe(true);
 
     const owned = analyzeSource(`
-      import { Context } from "vibelang/context"
-      import { Layer } from "vibelang/provider"
+      import { Context } from "smthrs/context"
+      import { Layer } from "smthrs/provider"
       abstract class Db extends Context { abstract read(): string }
       const DbLive = Layer.succeed(Db, { read: () => "ok" })
       async function run(): Promise<number> {
         return Layer.provide(DbLive, async (): Promise<number> => 1)
       }
     `);
-    expect(owned.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1404")).toBe(false);
+    expect(owned.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1404")).toBe(false);
+  });
+
+  test("a native pin asserts over a graph rather than starting one, so an async subject is accepted", () => {
+    // compatibility.mdx, "Native and Wasm Targets": async functions MUST NOT be
+    // rejected solely because runtime support is required. DECISIONS
+    // "Concurrency" and requirements.mdx "Scoping" both scope the unowned-async
+    // rule to every STARTED Promise, and `native(fn)` receives a reference,
+    // checks its transitive graph, and returns it without invoking it.
+    const pinned = analyzeSource(`
+      import { native } from "smithers:native"
+      async function scale(value: number): Promise<number> { return value * 2 }
+      native(scale)
+    `);
+    expect(pinned.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1404")).toBe(false);
+
+    const aliased = analyzeSource(`
+      import { native as pin } from "smithers:native"
+      async function scale(value: number): Promise<number> { return value * 2 }
+      const scaled = pin(scale)
+    `);
+    expect(aliased.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1404")).toBe(false);
+
+    // The exemption is checker symbol identity against the compiler-owned
+    // prelude, never the spelling: an ordinary local `native` owns nothing and
+    // keeps the general rule.
+    const shadowed = analyzeSource(`
+      function native<F>(pinned: F): F { return pinned }
+      async function scale(value: number): Promise<number> { return value * 2 }
+      native(scale)
+    `);
+    expect(shadowed.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1404")).toBe(true);
+
+    // ... and it stays scoped to the pinned argument: importing the pin does
+    // not license an unowned async callback anywhere else in the module.
+    const started = analyzeSource(`
+      import { native } from "smithers:native"
+      declare function work(): Promise<number>
+      const pending = [1].map(async () => work())
+    `);
+    expect(started.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1404")).toBe(true);
   });
 });

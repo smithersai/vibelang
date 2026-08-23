@@ -1,0 +1,12 @@
+import counter from "./counter.json" with { type: "json" }
+
+// Without `mode: "const"` the module keeps the target's ordinary JSON widening
+// and stays mutable, exactly as an already-valid TypeScript JSON import does.
+// Both statements below are compile errors if const preservation leaked into
+// the default form: the first needs `count` to be `number` rather than `3`,
+// and the second needs the property to be writable rather than readonly.
+export function main(): string[] {
+  const widened: number = counter.count
+  counter.count = widened + 1
+  return [`${counter.count}`, counter.label.toUpperCase()]
+}

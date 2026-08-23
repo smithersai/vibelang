@@ -1,0 +1,5 @@
+{
+  "title": "await removes only the Promise; the Result it settles to must still be consumed",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1301", "line": 11, "column": 3 }]
+}

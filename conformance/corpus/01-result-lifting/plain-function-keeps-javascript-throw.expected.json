@@ -1,0 +1,8 @@
+{
+  "title": "a throw caught by an ordinary JavaScript try/catch in the same function keeps JavaScript throw behavior",
+  "expect": "output",
+  "stdout": [
+    "caught Boom: bad value -2"
+  ],
+  "notes": "poc/src/language/README.md: ordinary JavaScript try/catch keeps JavaScript throw behavior; only an *uncaught* recoverable exit lowers to a Result. The throw here never reaches a function boundary, so nothing lifts."
+}

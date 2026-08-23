@@ -1,0 +1,21 @@
+{
+  "title": "@moduleResolution is not @module, and @throws split from {never} across two decorated lines is not the marker",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 24
+    },
+    {
+      "code": "SMITHERS1510",
+      "line": 2,
+      "column": 26
+    }
+  ],
+  "typescript": [
+    "module-resolution-tag.ts",
+    "split-trust-marker.ts"
+  ],
+  "notes": "specification/compatibility.mdx, 'Runtime TypeScript Dependency', and specification/failures.mdx:115 (both Locked) name the marker exactly: `@module` for the module-initialization claim and `@throws {never}` for the opt-out. This case pins the two boundaries that make 'exactly' mean something. `@moduleResolution` is a tag people really write, so a `@module` test with no boundary after the tag name grants trust to a file that claimed none. And a JSDoc decoration between `@throws` and `{never}` means no marker was written, so an implementation that compacts a comment by deleting its `*` characters assembles one the author did not. Each support module is refused independently and both diagnostics are declared, so a fix that closed one boundary and not the other is still visible here. Only `typeof` is applied to each binding: reading a property of an untrusted foreign module would add its own SMITHERS1101/1506 cascade and bury the rule under it. The paired positive is 09-foreign-calls/a-multiline-module-trust-header-is-honoured, which is the same multi-line shape written correctly and must keep compiling."
+}

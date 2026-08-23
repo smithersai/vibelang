@@ -6,9 +6,9 @@ import { join } from "node:path";
 import test from "node:test";
 
 test("public durable compiler lowers and validates a Plan without loading the Bun coordinator", async () => {
-  const durable = await import("vibelang/durable");
-  const directCompiler = await import("vibelang/durable/source-compiler");
-  const { Action } = await import("vibelang/durable/authoring");
+  const durable = await import("smthrs/durable");
+  const directCompiler = await import("smthrs/durable/source-compiler");
+  const { Action } = await import("smthrs/durable/authoring");
 
   assert.equal(typeof durable.compileDurableSource, "function");
   assert.equal(typeof durable.generateDeploymentSigningKeyPair, "function");
@@ -23,7 +23,7 @@ test("public durable compiler lowers and validates a Plan without loading the Bu
     descriptor: Work.descriptor,
   }];
   const source = `
-import { durable as compileFlow } from "vibelang:flows"
+import { durable as compileFlow } from "smithers:flows"
 import { Work as RunWork } from "package-test:actions"
 
 export const Build = compileFlow(function Build(input: { value: number }) {
@@ -31,7 +31,7 @@ export const Build = compileFlow(function Build(input: { value: number }) {
 })
 `;
   const result = durable.compileDurableSource(source, {
-    fileName: "consumer/build.vibe.ts",
+    fileName: "consumer/build.sm.ts",
     flowId: "package-test/Build",
     flowVersion: 1,
     actions,
@@ -43,7 +43,7 @@ export const Build = compileFlow(function Build(input: { value: number }) {
   assert.equal(result.flow.artifactSource, "static-plan-artifact");
 
   const rejected = durable.compileDurableSource(`
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 import { Work } from "package-test:actions"
 export const Build = durable(function Build(input: { value: number }) {
   if (input.value) return Work.run({ value: input.value })
@@ -51,7 +51,7 @@ export const Build = durable(function Build(input: { value: number }) {
 })
 `, { actions });
   assert.equal(rejected.ok, false);
-  assert.equal(rejected.diagnostics[0].code, "VIBE4106");
+  assert.equal(rejected.diagnostics[0].code, "SMITHERS4106");
   assert.equal(rejected.diagnostics[0].line > 0, true);
 });
 
@@ -64,7 +64,7 @@ import {
   encodeSignedDeploymentArtifact,
   generateDeploymentSigningKeyPair,
   PlanArtifact,
-} from "vibelang/durable";
+} from "smthrs/durable";
 import {
   Action,
   createAuthenticatedDurableExecutor,
@@ -72,12 +72,12 @@ import {
   DurableStore,
   Provider,
   Worker,
-} from "vibelang/durable/bun";
+} from "smthrs/durable/bun";
 
 const Work = Action.define({ id: "package-test/Execute", version: 1 });
 let implementationCalls = 0;
 const durableSource = [
-  'import { durable } from "vibelang:flows"',
+  'import { durable } from "smithers:flows"',
   'import { Work } from "package-test:execute-actions"',
   'throw new Error("the durable author module was evaluated")',
   'export const Execute = durable(function Execute(input: { value: number }) {',
@@ -85,7 +85,7 @@ const durableSource = [
   '})',
 ].join("\n");
 const compiled = compileDurableSource(durableSource, {
-  fileName: "consumer/execute.vibe.ts",
+  fileName: "consumer/execute.sm.ts",
   flowId: "package-test/ExecuteFlow",
   actions: [{
     moduleSpecifier: "package-test:execute-actions",
@@ -134,11 +134,11 @@ try {
   store.close();
 }
 `;
-  const directory = mkdtempSync(join(tmpdir(), "vibelang-durable-consumer-"));
+  const directory = mkdtempSync(join(tmpdir(), "smithers-durable-consumer-"));
   try {
     const modules = join(directory, "node_modules");
     mkdirSync(modules);
-    symlinkSync(process.cwd(), join(modules, "vibelang"), process.platform === "win32" ? "junction" : "dir");
+    symlinkSync(process.cwd(), join(modules, "smthrs"), process.platform === "win32" ? "junction" : "dir");
     writeFileSync(join(directory, "package.json"), '{"name":"durable-consumer","private":true,"type":"module"}\n');
     const result = spawnSync("bun", ["-"], {
       cwd: directory,

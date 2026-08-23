@@ -1,0 +1,12 @@
+{
+  "title": "an unbounded comptime loop exhausts the step budget and produces a deterministic diagnostic instead of hanging",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VCT1012",
+      "line": 5,
+      "column": 3
+    }
+  ],
+  "notes": "Line 5 column 3 is the `while` keyword of the loop that did not terminate. The position is anchored at the innermost executing comptime loop rather than at the node the step counter happened to land on (the repeatedly evaluated right-hand `n` at 6:9). Two reasons decided it, neither of them a test convenience. First, the landing site is a function of an internal counter rather than of program structure: it is deterministic for a fixed program but moves whenever unrelated earlier work changes the step total, and it is the same position whether the loop is unbounded or the computation is merely too large. Second, the remedy for an exhausted step budget is always at a loop -- give it a termination condition, or reduce its iteration count -- so the diagnostic must point at the construct the author edits, not at a sub-expression that is not itself defective. The reference already applied this principle to the sibling call-depth budget, which reports at the runaway function rather than at the interpreter's current node; the step budget was the one inconsistent member of the VCT1012 family. No specification text or diagnostic-catalogue entry constrains the position, so the corpus contract governs. The loop is entered before its header is evaluated, so a loop whose condition never becomes false also anchors at the loop. When no loop is executing (unbounded recursion, which reaches the call-depth budget first) the diagnostic still names the offending construct. Both backends now report 5:3: poc/src/build/comptime-intrinsic.ts (StaticExpressionEvaluator #loops / #step) and compiler/forkbridge/comptime.go.txt (comptimeEvaluator.loops / step)."
+}

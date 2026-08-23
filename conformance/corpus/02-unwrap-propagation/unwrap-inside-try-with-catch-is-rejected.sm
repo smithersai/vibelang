@@ -1,0 +1,17 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+export function scoreOf(key: string): Result<number, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return 96
+}
+
+export function main(): Result<string[], Missing> {
+  try {
+    const score = scoreOf("zoe").unwrap()
+    return [`${score}`]
+  } catch {
+    return ["caught"]
+  }
+}

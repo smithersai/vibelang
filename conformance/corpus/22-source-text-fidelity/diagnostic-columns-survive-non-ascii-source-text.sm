@@ -1,0 +1,7 @@
+// The em dash on the next line is one UTF-16 code unit and three UTF-8 bytes.
+// Authored coordinates are code units — a diagnostic reported after it must
+// still name the column a reader counts in an editor, not a byte offset.
+export function main(): string[] {
+  const platform = process.platform
+  return [platform]
+}

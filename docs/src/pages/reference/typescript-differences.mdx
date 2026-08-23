@@ -1,0 +1,185 @@
+# Differences from TypeScript [Every documented divergence, in one list]
+
+Smithers is **not** a syntactic superset of TypeScript. It uses a TypeScript-derived grammar with the explicitly documented differences on this page, and nothing else. `.ts`, `.tsx`, and JavaScript modules keep their complete syntax and behavior when imported.
+
+Every entry below links to the page that defines it. Where the specification marks something **open**, this page says so.
+
+## Syntax Added
+
+One form. It is gated on the `.sm` dialect and is an ordinary syntax error in a `.ts` file.
+
+| Form | Meaning |
+| --- | --- |
+| `if (const x = f(); cond)` | declaration scoped to the whole conditional construct |
+
+Adopted early from the TC39 **Declarations in Conditionals** proposal (Stage 1). It is the only grammar Smithers adds, and it is accepted because it is standards-track — not because it is convenient.
+
+Everything else Smithers does is expressed with ordinary TypeScript syntax: generic types, method calls, and compiler-recognized imported intrinsics. See [Considered and Rejected](#considered-and-rejected) for the forms that were built and then removed.
+
+## Syntax Removed
+
+| Form | Status |
+| --- | --- |
+| Promise `.then` / `.catch` / `.finally` | compile error in authored `.sm` |
+| fire-and-forget Promises | every started Promise must be consumed by `await` or a recognized combinator |
+| ambient host globals | `process`, `window`, `document`, filesystem, and network are not in scope |
+| discarding a `Result` | compile error — Results are must-use |
+| non-null assertion `x!` | removed; `!` now propagates a Result |
+| definite assignment `x!: T` | removed with it |
+
+Imported TypeScript and JavaScript retain ordinary Promise behavior internally.
+
+## Semantics Changed on Shared Syntax
+
+| Construct | Smithers behavior |
+| --- | --- |
+| `return value` | produces the success variant inside a Result-returning function |
+| `throw error` | produces the error variant and exits — not a JavaScript exception |
+| return type inference | a reachable fallible path infers `Result<A, E>` |
+| explicit return annotation | a non-Result annotation on a fallible function is a compile error |
+| calling unannotated TS/JS | adds the distinguished checked `panic` case |
+| `await` | removes only the Promise layer, never unwraps the Result |
+| `any` and `eval` | contribute `TypeScript` rather than being forbidden |
+| `Error` subclasses | gain nominal identity plus `is`, `matches`, `match`, `matchPartial`, `rootCause` |
+| expression `switch` | no fallthrough; statement `switch` keeps TypeScript behavior |
+| expression `switch` over a closed union | must be exhaustive |
+| JavaScript `try` / `catch` | still valid, and never changes a function's Result contract |
+| postfix `!` | propagates a Result error to the caller — Zig's `try foo()`, not an assertion |
+| `??` / `?.` | unchanged nullish semantics; never reinterpreted for failures |
+| `arr[2]` | `T \| undefined` — `noUncheckedIndexedAccess` is mandatory |
+| `{ a?: number }` | does not accept `{ a: undefined }` — `exactOptionalPropertyTypes` is mandatory |
+
+## Built-ins With Compiler Meaning
+
+These add no grammar. The compiler recognizes the resolved binding identity, so an alias keeps the behavior and an unrelated same-named value stays ordinary.
+
+| Binding | Source |
+| --- | --- |
+| `Result<A, E>` | a built-in type; `Result.ok` / `Result.err` are deliberately absent |
+| `expr!` | lowers to an early return of the enclosing error variant; replaces `.unwrap()` |
+| `Capability.context()` | adds a nominal requirement to the inferred requirement row |
+| `comptime(...)` | `smithers:comptime` — an intrinsic, not a keyword |
+| `durable(...)` | `smithers:flows` — an intrinsic, not a keyword |
+| `panic` | `smithers:exceptions` |
+| `@throws {never}` / `@throws {T}` | trusted JSDoc claims at a foreign boundary |
+
+## Files and Imports
+
+| Difference | Detail |
+| --- | --- |
+| source extension | `.sm`. The JSX-capable extension is **open**; `.smx` is a candidate only |
+| non-code imports | always import attributes — `with { type: "json" \| "text" \| "mdx" \| "zig" }` |
+| const JSON | `with { type: "json", mode: "const" }` yields a deeply readonly literal type |
+| loader selection | file extensions never select a loader |
+| compiler-owned specifiers | exactly `smithers`, `smthrs/`, and `smithers:` — a prefix confers no trust |
+| host modules | **Direction:** direct host-module use carries an exact requirement such as `Module<"node:fs">` |
+
+## Considered and Rejected
+
+Most of the language's design pressure went into **not** adding grammar. Each row below is a spelling that was written down, and in several cases actually built, before being replaced by something that parses as ordinary TypeScript.
+
+The rejections are not stylistic. A new keyword or sigil costs a fork grammar patch plus parser recovery, formatter, and language-server work, and it permanently diverges the source language from the TypeScript tooling ecosystem. A generic type or a call expression costs none of that, and the compiler can still give it whatever static meaning it needs by recognizing the resolved binding identity.
+
+### Failures
+
+| Rejected | Shipped instead |
+| --- | --- |
+| `function f(): User !NotFound` — a Zig-style error-union marker | `function f(): Result<User, NotFound>` |
+| `throws E` clause on a signature | the error type lives in the ordinary return type |
+| `const user = try fetchUser(id)` — prefix propagation | `const user = fetchUser(id)!` |
+| `fetchUser(id) catch \|e\| fallback` — postfix recovery | `fetchUser(id).match({ ok, error })` or `.recover(...)` |
+| `error NotFound { id: number }` — a failure declaration form | `class NotFound extends Error { … }` |
+| `TaggedError("NotFound")` factory, or an authored `_tag` field | ordinary subclasses with compiler-supplied nominal identity |
+| a throw-expression grammar | statement `throw` only, pending the TC39 proposal upstream |
+
+`!NotFound`, `try`, `catch |e|`, and `error N { … }` were all implemented in the original regex-lowering prototype. They are retired; the retired-syntax scanner rejects them by name.
+
+### Absence
+
+| Rejected | Shipped instead |
+| --- | --- |
+| `?T` — an optional type sigil | `T \| undefined` |
+| `value orelse fallback` | `value ?? fallback` |
+| `value.?` — an unwrap sigil | `value?.field` |
+| payload-capture binding syntax | ordinary narrowing (`if (v !== undefined)`) |
+
+### Requirements
+
+| Rejected | Shipped instead |
+| --- | --- |
+| `function f(): T uses Db, Logger` — a requirement clause | `const db = Db.context()`, with the row inferred |
+| `provide { Db: db } { … }` — a provider block | ordinary Layer APIs |
+| a dedicated capability declaration form | `abstract class Clock extends Context` |
+
+The requirement row is part of the function's static type even though nothing in the signature spells it.
+
+### Intrinsics
+
+| Rejected | Shipped instead |
+| --- | --- |
+| a `comptime` keyword | `comptime(...)` imported from `smithers:comptime` |
+| a `durable` keyword | `durable(...)` imported from `smithers:flows` |
+
+An imported intrinsic keeps aliases meaningful and leaves an unrelated function of the same name completely ordinary. A keyword can do neither.
+
+### Control flow
+
+Every one of these was implemented — parser, checker, printer, and lowering — and then removed. None corresponded to a TC39 proposal, and TypeScript already expressed each of them.
+
+| Rejected | Shipped instead |
+| --- | --- |
+| `const t = if (c) a else b` | `const t = c ? a : b` |
+| `if` / `switch` in expression position, braced | a ternary, a lookup object, or a conditional chain |
+| `case "pass": record(); "met the bar"` — statements before a clause value | an ordinary `switch` statement |
+| `break :label value` | a `let` assigned on each path |
+| `label: loop else value` | a `let` initialized to the default |
+| `label: { … }` / `label: for (…) { … } else v` as expressions | a function, or a `let` |
+| `defer expr` | `using`, or `finally` |
+| `errdefer expr` | cleanup written in the failure path |
+| arrow-arm switch (`case x => y`) | TypeScript `case` clauses with colons |
+| throw expression | statement `throw`, pending the Stage 2 TC39 proposal |
+| Promise or structured-join grammar | static and library combinators consumed by `await` |
+| a separate const-import grammar | `with { type: "json", mode: "const" }` |
+| a second loader-selection grammar keyed on file extension | import attributes only |
+
+## The Rules
+
+**New grammar requires an active TC39 proposal.** Value semantics TypeScript can already express belong in the type system, the standard library, or a compiler-recognized imported intrinsic — never in the parser.
+
+A keyword or sigil costs a fork grammar patch plus parser recovery, formatter, and language-server work, permanently — and it evicts `.sm` from every tool that parses TypeScript with its own parser: prettier, typescript-eslint, swc, esbuild, oxc, biome, and Bun. That cost lands on the *first* grammar addition, not the tenth. A standards-track form eventually stops costing it, because upstream lands the syntax. An invented one never does.
+
+**Reinterpreting existing syntax requires all three of:**
+
+1. the old meaning is removed entirely, so nothing is ambiguous
+2. the syntax is a type error or no-op in the target position, so no valid program changes behavior
+3. the form is already widely lint-banned, so removal costs real code nothing
+
+`!` is the only form that has met all three. `??` and `?.` fail the first outright — they are load-bearing for absence — which is why failures never touch them.
+
+Each reinterpretation is a per-file dialect divergence that no editor, linter, or formatter flags. One is a memorable rule; six is a different language wearing TypeScript's clothes. The budget is small.
+
+### Free Slots
+
+Syntax that would satisfy the three conditions if a use case ever arises, mostly identified by TypeScript 5.8's `erasableSyntaxOnly` flag:
+
+| Slot | Why it qualifies |
+| --- | --- |
+| `enum` | banned by `erasableSyntaxOnly`; "prefer unions" is standard advice. A closed named set — the natural shape for an error set |
+| `namespace X {}` | banned by `erasableSyntaxOnly`; `no-namespace` is a default lint rule |
+| parameter properties | banned by `erasableSyntaxOnly` |
+| `<T>expr` | legacy assertion, illegal in `.tsx`, universally lint-banned |
+| `import x = require()` / `export =` | pure legacy, banned by `erasableSyntaxOnly` |
+| `label: { … }` as a **statement** | `no-labels` is a default lint rule. Bare labels and `break label` are stock ECMAScript and always parsed; only value-carrying breaks and expression-position labels needed grammar |
+| `yield*` | free if generators are barred from `.sm` |
+
+Deliberately unavailable: `void` (claimed by the TC39 Discard Bindings proposal), `debugger` and `for...in` (real runtime semantics), and `?`, `??`, `?.` (the absence axis).
+
+## Standing Rejections
+
+Recorded in the decision ledger as closed, not merely unbuilt: Block Params, reinterpretation of the existing negated `in` / `instanceof` operators, partial application that conflicts with capability calling conventions, cancelable Promises, the withdrawn Record & Tuple proposal, and distributed-promise / eventual-send designs.
+
+## Related
+
+- [TC39 Proposals](/reference/tc39-proposals) — which proposals Smithers accepts, and at what stage
+- [Language Syntax](/reference/language-syntax) — the same forms with worked examples
+- [Compatibility](/specification/compatibility) — the normative source relationship

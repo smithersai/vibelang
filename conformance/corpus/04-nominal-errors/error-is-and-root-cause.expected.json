@@ -1,0 +1,5 @@
+{
+  "title": "Error.prototype carries the compiler-aware is/matches helpers alongside match",
+  "expect": "output",
+  "stdout": ["is NotFound: true", "matches: true"]
+}

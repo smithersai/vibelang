@@ -1,0 +1,18 @@
+{
+  "title": "an untrusted foreign call's result may not be consumed as a raw value in an expression: the lowered form is a Result, not a number",
+  "expect": "diagnostics",
+  "typescript": ["foreign.ts"],
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 5,
+      "column": 10
+    },
+    {
+      "code": "SMITHERS1507",
+      "line": 5,
+      "column": 10
+    }
+  ],
+  "notes": "specification/failures.mdx:111 (Locked): 'Calling any TypeScript, JavaScript, or other foreign runtime implementation MUST add the distinguished checked `panic` case by default. This applies even when the foreign declaration omits throws.' `parseIntegerUnchecked` omits `@throws`, so `parseIntegerUnchecked(text)` is a `Result<number, Panic>`, and `Result<number, Panic> + 1` is not arithmetic. This is the second, independent branch of the lowerability predicate at poc/src/language/semantic.ts:2110 — `unsafeUse = annotation !== \"never\" && foreignResultIsUsedAsValue(call)` (foreignResultIsUsedAsValue at :2169) — where the first branch is pinned by a-foreign-factory-result-invoked-before-it-is-unwrapped-is-rejected. Two branches, two cases, because an implementation can lose either one without losing the other. BOTH declared diagnostics are the point rather than noise, and they land at the same authored position because the foreign call is the subject of both. SMITHERS1507 says the shape is not expression-order-safe; SMITHERS1301 is the compiler demonstrating WHY, by reporting that it really did produce a Result at 5:10 and that nothing consumed it. A backend that dropped SMITHERS1507 but kept SMITHERS1301 would still be observable here, and so would the reverse. conformance/README.md requires a cascade the language really does produce to be declared in full rather than filtered out; the two backends emit these two in opposite orders and the judge compares the sets, so the order in this file is not a claim. The remedy is the one SMITHERS1507's message names and a-foreign-callable-wrapped-in-a-local-adapter-is-accepted demonstrates: unwrap or match the checked result, then compute."
+}

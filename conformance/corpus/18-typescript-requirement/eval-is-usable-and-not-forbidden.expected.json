@@ -1,0 +1,6 @@
+{
+  "title": "`eval` stays usable in authored .sm: it contributes the TypeScript requirement rather than being globally forbidden",
+  "expect": "output",
+  "stdout": ["2"],
+  "notes": "specification/compatibility.mdx, 'Dynamic Features': 'Use of any and eval MUST contribute TypeScript; neither is globally forbidden.' docs/DECISIONS.md 'TypeScript and native classification' (Locked): '`eval` remains usable but adds the TypeScript requirement.'"
+}

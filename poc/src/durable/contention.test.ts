@@ -143,7 +143,7 @@ process.exit(0)
 
 test("interleaved cross-connection claim/retry/commit cycles stay on modeled results and converge to one winner per node", async () => {
   if (process.platform === "win32") return
-  const directory = mkdtempSync(join(tmpdir(), "vibe-durable-contention-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-durable-contention-"))
   try {
     const database = join(directory, "state.sqlite")
     const executionId = "contended"
@@ -235,7 +235,7 @@ test("interleaved cross-connection claim/retry/commit cycles stay on modeled res
 }, 30_000)
 
 test("a second connection's steal fences out the first connection's in-flight attempt", () => {
-  const directory = mkdtempSync(join(tmpdir(), "vibe-durable-fence-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-durable-fence-"))
   try {
     const database = join(directory, "state.sqlite")
     const executionId = "fenced"

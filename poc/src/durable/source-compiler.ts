@@ -24,18 +24,23 @@ import {
   type PlanFragment,
   type PlanNode,
   type PlanTemplate,
+  type QueueNode,
+  queueContractIdentity,
   type SignalNode,
+  signalContractIdentity,
+  type StructuralDurableSchema,
   type TimerNode,
   type ValueExpr
 } from "./ir.ts"
 import {
   actionDeclarationFromDescriptor,
+  deriveActionContract,
   deriveDurableValueSchema,
   descriptorTypeScript,
   validateActionContractDescriptor
 } from "./schema.ts"
 
-const PROJECT_ROOT = "/vibelang-durable-source-compiler"
+const PROJECT_ROOT = "/smithers-durable-source-compiler"
 const MAX_SOURCE_BYTES = 2 * 1024 * 1024
 const MAX_FAN_OUT_STEPS = 16
 const MAX_CHILD_FLOW_DEPTH = 8
@@ -68,8 +73,31 @@ export interface DurableSourceCompileOptions {
   readonly fileName?: string
   readonly flowId?: string
   readonly flowVersion?: number
-  readonly actions: readonly DurableSourceActionBinding[]
+  /**
+   * Contracts for Actions this source *imports* from other modules, which this
+   * single-source pass cannot see. Actions declared in the compiled source
+   * itself are derived from the checked program and need no binding, so this is
+   * optional and empty is the ordinary case for a self-contained module.
+   */
+  readonly actions?: readonly DurableSourceActionBinding[]
   readonly flows?: readonly DurableSourceFlowBinding[]
+}
+
+/**
+ * One `class X extends Action<Signature>` declaration the compiler consumed
+ * from the compiled source. A consumer that lowers the durable call must erase
+ * these declarations along with the compiler-owned import: their contract has
+ * been captured in the Plan and their base class does not exist at runtime.
+ * Offsets are zero-based UTF-16 indices into the authored source and cover the
+ * whole declaration, including any modifiers.
+ */
+export interface DurableSourceDerivedAction {
+  /** Declared class name. */
+  readonly name: string
+  /** Derived contract id, `<authored file>#<name>`. */
+  readonly id: string
+  readonly start: number
+  readonly end: number
 }
 
 export interface DurableSourceDiagnostic {
@@ -87,6 +115,8 @@ export interface DurableSourceCompileSuccess {
   readonly plan: PlanTemplate
   readonly artifact: Uint8Array
   readonly flow: CompiledFlow<unknown, unknown>
+  /** Compiler-owned Action declarations consumed from the compiled source. */
+  readonly derivedActions: readonly DurableSourceDerivedAction[]
 }
 
 export interface DurableSourceCompileFailure {
@@ -112,8 +142,11 @@ interface CheckedSource {
   readonly fanOutSymbol: ts.Symbol
   readonly sequentialSymbol: ts.Symbol
   readonly loopSymbol: ts.Symbol
+  readonly queueSymbol: ts.Symbol
+  readonly broadcastSymbol: ts.Symbol
   readonly actionsBySymbol: ReadonlyMap<ts.Symbol, ActionDescriptor>
   readonly flowsBySymbol: ReadonlyMap<ts.Symbol, PlanTemplate>
+  readonly derivedActions: readonly DurableSourceDerivedAction[]
   readonly sourceDiagnostics: readonly ts.Diagnostic[]
 }
 
@@ -128,10 +161,20 @@ interface NormalizedModuleBinding {
   readonly virtualPath: string
 }
 
-const normalizeLogicalFileName = (name: string | undefined): string => {
+/**
+ * The caller's file identity with path traversal removed. Derived Action ids
+ * are anchored here rather than on the TypeScript-normalized name, so an Action
+ * declared in `orders.sm` keeps the id `orders.sm#Lookup` that every other
+ * compiler for this language derives for it.
+ */
+const authoredLogicalName = (name: string | undefined): string => {
   const candidate = (name ?? "durable-source.ts").replace(/\\/g, "/")
   const parts = candidate.split("/").filter((part) => part !== "" && part !== "." && part !== "..")
-  const normalized = parts.join("/") || "durable-source.ts"
+  return parts.join("/") || "durable-source.ts"
+}
+
+const normalizeLogicalFileName = (name: string | undefined): string => {
+  const normalized = authoredLogicalName(name)
   return /\.[cm]?tsx?$/.test(normalized) ? normalized : `${normalized}.ts`
 }
 
@@ -145,6 +188,21 @@ const symbolAtExpression = (checker: ts.TypeChecker, expression: ts.Expression):
     return canonicalSymbol(checker, checker.getSymbolAtLocation(expression.name))
   }
   return canonicalSymbol(checker, checker.getSymbolAtLocation(expression))
+}
+
+/**
+ * The local an identifier reads, not the property it may also declare.
+ *
+ * In `{ approval }` the identifier's own symbol is the object literal's
+ * property, so asking for it directly loses the binding the shorthand actually
+ * reads and every shorthand field looks like an uncapturable free variable.
+ */
+const readSymbolAt = (checker: ts.TypeChecker, identifier: ts.Identifier): ts.Symbol | undefined => {
+  const parent = identifier.parent
+  if (parent !== undefined && ts.isShorthandPropertyAssignment(parent) && parent.name === identifier) {
+    return checker.getShorthandAssignmentValueSymbol(parent)
+  }
+  return checker.getSymbolAtLocation(identifier)
 }
 
 const isTypeOnlyReference = (checker: ts.TypeChecker, expression: ts.Expression): boolean => {
@@ -245,9 +303,46 @@ const syntheticDeclarationFor = (exports: ReadonlyMap<string, ModuleExport>): st
 const moduleExportDigest = (moduleExport: ModuleExport): string =>
   moduleExport.kind === "action" ? digest(moduleExport.descriptor) : moduleExport.plan.digest
 
+/**
+ * The compiler-owned `Result` this language already gives every module. It is
+ * global here for the same reason it is global in authored source: an Action
+ * signature spells `Result<Success, Failure>` without importing it.
+ */
+const RESULT_PRELUDE = `
+interface Result<A, E extends Error> {
+  readonly __smithersResult: { readonly success: A; readonly error: E }
+}
+`
+
+/**
+ * The compiler-owned `Action` base. `run` is typed from the subclass's own
+ * declared signature through its constructor type, so `Lookup.run(input)` is
+ * checked against the authored contract exactly the way a caller-supplied
+ * descriptor binding's synthesized declaration is. The phantom member is what
+ * carries the signature into the instance type where inference can reach it;
+ * it is confined to this compiler-owned virtual module.
+ */
+const ACTION_DECLARATION = [
+  "type SmithersActionSignature<Self> =",
+  "  Self extends { prototype: { readonly __smithersActionSignature: infer Signature } } ? Signature : never;",
+  "type SmithersActionInput<Self> =",
+  "  SmithersActionSignature<Self> extends (input: infer Input) => unknown ? Input : never;",
+  "type SmithersActionReturn<Self> =",
+  "  SmithersActionSignature<Self> extends (input: never) => infer Returned ? Returned : never;",
+  "type SmithersAwaited<Returned> = Returned extends Promise<infer Inner> ? Inner : Returned;",
+  "type SmithersActionSuccess<Self> =",
+  "  SmithersAwaited<SmithersActionReturn<Self>> extends",
+  "    { readonly __smithersResult: { readonly success: infer Success } } ? Success : never;",
+  "export declare abstract class Action<Signature extends (input: never) => unknown> {",
+  "  readonly __smithersActionSignature: Signature;",
+  "  static run<Self>(this: Self, input: SmithersActionInput<Self>): { unwrap(): SmithersActionSuccess<Self> };",
+  "}"
+].join("\n")
+
 const checkedSource = (
   source: string,
   logicalFileName: string,
+  actionIdPrefix: string,
   rawBindings: readonly DurableSourceActionBinding[],
   rawFlowBindings: readonly DurableSourceFlowBinding[]
 ): CheckedSource => {
@@ -255,6 +350,7 @@ const checkedSource = (
   // like one of our declarations cannot replace a compiler-owned intrinsic.
   const mainPath = resolve(PROJECT_ROOT, "__input__", logicalFileName)
   const flowsPath = resolve(PROJECT_ROOT, "__virtual__/flows.d.ts")
+  const resultPath = resolve(PROJECT_ROOT, "__virtual__/result.d.ts")
   const normalizedBindings: NormalizedModuleBinding[] = []
   const modules = new Map<string, { path: string; exports: Map<string, ModuleExport> }>()
   const bindExport = (
@@ -267,8 +363,8 @@ const checkedSource = (
     if (typeof moduleSpecifier !== "string" || moduleSpecifier.trim() === "") {
       throw new TypeError(`${label} binding ${index} needs a non-empty module specifier`)
     }
-    if (moduleSpecifier === "vibelang:flows") {
-      throw new TypeError(`${label} bindings cannot replace the compiler-owned vibelang:flows module`)
+    if (moduleSpecifier === "smithers:flows") {
+      throw new TypeError(`${label} bindings cannot replace the compiler-owned smithers:flows module`)
     }
     if (!/^[$A-Z_a-z][$0-9A-Z_a-z]*$/.test(exportName)) {
       throw new TypeError(`${label} binding ${index} has unsupported export name ${JSON.stringify(exportName)}`)
@@ -312,7 +408,9 @@ const checkedSource = (
 
   const virtualSources = new Map<string, string>([
     [mainPath, source],
+    [resultPath, RESULT_PRELUDE],
     [flowsPath, [
+      ACTION_DECLARATION,
       "export declare function durable<Function>(source: Function): unknown;",
       "export declare function sleep(milliseconds: number): null;",
       "/** Provisional source spelling; the compiler-owned Plan contract is normative for this POC. */",
@@ -321,14 +419,18 @@ const checkedSource = (
       "/** Provisional explicit sequencing intrinsic: a durable control edge without a data edge. */",
       "export declare function sequential<First, Second>(first: First, second: Second): readonly [First, Second];",
       "/** Provisional round-budgeted while-style loop template; each round's Action success becomes the next state. */",
-      "export declare function loopWhile<State>(initial: State, condition: (state: State) => boolean, body: (state: State) => { unwrap(): State }, maxRounds: number): State;"
+      "export declare function loopWhile<State>(initial: State, condition: (state: State) => boolean, body: (state: State) => { unwrap(): State }, maxRounds: number): State;",
+      "/** Provisional durable queue consumer; suspends until one item is available and consumes exactly it. */",
+      "export declare function dequeue<Item>(queue: string): Item;",
+      "/** Provisional broadcast wait; one delivery satisfies every already-subscribed execution. */",
+      "export declare function waitBroadcast<Payload>(identity: string): Payload;"
     ].join("\n")],
     ...[...modules.values()].map((module) => [
       module.path,
       syntheticDeclarationFor(module.exports)
     ] as const)
   ])
-  const modulePaths = new Map<string, string>([["vibelang:flows", flowsPath]])
+  const modulePaths = new Map<string, string>([["smithers:flows", flowsPath]])
   for (const [moduleSpecifier, module] of modules) modulePaths.set(moduleSpecifier, module.path)
   const compilerOptions: ts.CompilerOptions = {
     target: ts.ScriptTarget.ESNext,
@@ -372,7 +474,10 @@ const checkedSource = (
   const program = ts.createProgram([...virtualSources.keys()], compilerOptions, host)
   const sourceFile = program.getSourceFile(mainPath)
   const flowsFile = program.getSourceFile(flowsPath)
-  if (sourceFile === undefined || flowsFile === undefined) throw new Error("Durable source compiler failed to create virtual source files")
+  const resultFile = program.getSourceFile(resultPath)
+  if (sourceFile === undefined || flowsFile === undefined || resultFile === undefined) {
+    throw new Error("Durable source compiler failed to create virtual source files")
+  }
   const checker = program.getTypeChecker()
   const durableDeclaration = flowsFile.statements
     .filter(ts.isFunctionDeclaration)
@@ -392,20 +497,38 @@ const checkedSource = (
   const loopDeclaration = flowsFile.statements
     .filter(ts.isFunctionDeclaration)
     .find((declaration) => declaration.name?.text === "loopWhile")
+  const queueDeclaration = flowsFile.statements
+    .filter(ts.isFunctionDeclaration)
+    .find((declaration) => declaration.name?.text === "dequeue")
+  const broadcastDeclaration = flowsFile.statements
+    .filter(ts.isFunctionDeclaration)
+    .find((declaration) => declaration.name?.text === "waitBroadcast")
   const durableSymbol = durableDeclaration?.name && checker.getSymbolAtLocation(durableDeclaration.name)
   const sleepSymbol = sleepDeclaration?.name && checker.getSymbolAtLocation(sleepDeclaration.name)
   const signalSymbol = signalDeclaration?.name && checker.getSymbolAtLocation(signalDeclaration.name)
   const fanOutSymbol = fanOutDeclaration?.name && checker.getSymbolAtLocation(fanOutDeclaration.name)
   const sequentialSymbol = sequentialDeclaration?.name && checker.getSymbolAtLocation(sequentialDeclaration.name)
   const loopSymbol = loopDeclaration?.name && checker.getSymbolAtLocation(loopDeclaration.name)
+  const queueSymbol = queueDeclaration?.name && checker.getSymbolAtLocation(queueDeclaration.name)
+  const broadcastSymbol = broadcastDeclaration?.name && checker.getSymbolAtLocation(broadcastDeclaration.name)
   if (
     durableSymbol === undefined || sleepSymbol === undefined || signalSymbol === undefined ||
-    fanOutSymbol === undefined || sequentialSymbol === undefined || loopSymbol === undefined
+    fanOutSymbol === undefined || sequentialSymbol === undefined || loopSymbol === undefined ||
+    queueSymbol === undefined || broadcastSymbol === undefined
   ) {
     throw new Error("Durable source compiler failed to bind its compiler-owned intrinsics")
   }
   const actionsBySymbol = new Map<ts.Symbol, ActionDescriptor>()
   const flowsBySymbol = new Map<ts.Symbol, PlanTemplate>()
+  const derivedActions = deriveSameFileActions(
+    program,
+    checker,
+    sourceFile,
+    flowsFile,
+    resultFile,
+    actionIdPrefix,
+    actionsBySymbol
+  )
   for (const binding of normalizedBindings) {
     const moduleFile = program.getSourceFile(binding.virtualPath)
     const declaration = moduleFile?.statements
@@ -439,10 +562,97 @@ const checkedSource = (
     fanOutSymbol,
     sequentialSymbol,
     loopSymbol,
+    queueSymbol,
+    broadcastSymbol,
     actionsBySymbol,
     flowsBySymbol,
+    derivedActions,
     sourceDiagnostics
   }
+}
+
+/**
+ * Derives a durable contract for every `class X extends Action<Signature>`
+ * declared in the compiled source, before that declaration is erased.
+ *
+ * This is what makes the standalone API usable without ceremony: a module that
+ * declares its own Actions carries the whole contract in its checked types, so
+ * a caller has nothing to hand-feed. Descriptor bindings remain for Actions the
+ * source *imports*, whose declarations this single-source pass genuinely cannot
+ * see.
+ *
+ * A declaration whose signature is outside the derivable subset is skipped, not
+ * fatal: its `run` calls then find no descriptor and the lowerer reports the
+ * ordinary unsupported-call diagnostic against the authored call site, which is
+ * a better position than the class declaration.
+ */
+const deriveSameFileActions = (
+  program: ts.Program,
+  checker: ts.TypeChecker,
+  sourceFile: ts.SourceFile,
+  flowsFile: ts.SourceFile,
+  resultFile: ts.SourceFile,
+  actionIdPrefix: string,
+  actionsBySymbol: Map<ts.Symbol, ActionDescriptor>
+): readonly DurableSourceDerivedAction[] => {
+  const actionDeclaration = flowsFile.statements.find(ts.isClassDeclaration)
+  const resultDeclaration = resultFile.statements.find(ts.isInterfaceDeclaration)
+  const actionSymbol = actionDeclaration?.name && checker.getSymbolAtLocation(actionDeclaration.name)
+  const resultSymbol = resultDeclaration?.name && checker.getSymbolAtLocation(resultDeclaration.name)
+  const errorConstraint = resultDeclaration?.typeParameters?.[1]?.constraint
+  const errorName = errorConstraint && ts.isTypeReferenceNode(errorConstraint) ? errorConstraint.typeName : undefined
+  const errorSymbol = errorName ? canonicalSymbol(checker, checker.getSymbolAtLocation(errorName)) : undefined
+  if (actionSymbol === undefined || resultSymbol === undefined || errorSymbol === undefined) {
+    throw new Error("Durable source compiler failed to bind its compiler-owned Action contract types")
+  }
+  const logicalNameForSource = (file: ts.SourceFile): string =>
+    file === sourceFile ? actionIdPrefix : authoredLogicalName(program.getSourceFile(file.fileName)?.fileName ?? file.fileName)
+  const derived: DurableSourceDerivedAction[] = []
+  const visit = (node: ts.Node): void => {
+    if (ts.isClassDeclaration(node) && node.name !== undefined) {
+      const extendsAction = (node.heritageClauses ?? [])
+        .filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
+        .flatMap((clause) => [...clause.types])
+        .some((base) => canonicalSymbol(checker, checker.getSymbolAtLocation(base.expression)) === actionSymbol)
+      if (extendsAction) {
+        const name = node.name.text
+        const symbol = checker.getSymbolAtLocation(node.name)
+        if (symbol !== undefined) {
+          try {
+            const descriptor = deriveActionContract({
+              checker,
+              sourceFile,
+              declaration: node,
+              actionSymbol,
+              resultSymbol,
+              errorSymbol,
+              label: name,
+              id: `${actionIdPrefix}#${name}`,
+              version: 1,
+              logicalNameForSource,
+              // A same-file Action may declare the built-in `Error` as its whole
+              // failure channel. That is not a nominal payload this compiler can
+              // describe, but it must not cost the author the input and success
+              // contracts it can describe.
+              weakenUnderivableErrors: true
+            })
+            actionsBySymbol.set(symbol, descriptor)
+            derived.push(Object.freeze({
+              name,
+              id: descriptor.id,
+              start: node.getStart(sourceFile, false),
+              end: node.getEnd()
+            }))
+          } catch {
+            // Left undescribed on purpose; see the doc comment above.
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return Object.freeze(derived)
 }
 
 const unwrapParentheses = (expression: ts.Expression): ts.Expression => {
@@ -487,16 +697,16 @@ const resolvedFunction = (
     call.arguments.length !== 1 || call.typeArguments !== undefined || call.questionDotToken !== undefined ||
     (call.expression.flags & ts.NodeFlags.OptionalChain) !== 0
   ) {
-    return fail(call, "VIBE4103", "durable(...) requires exactly one statically resolvable function argument")
+    return fail(call, "SMITHERS4103", "durable(...) requires exactly one statically resolvable function argument")
   }
   const argument = unwrapParentheses(call.arguments[0])
   if (ts.isFunctionExpression(argument) || ts.isArrowFunction(argument)) return argument
   if (!ts.isIdentifier(argument)) {
-    return fail(argument, "VIBE4103", "durable(...) argument is not an inline or statically resolvable function")
+    return fail(argument, "SMITHERS4103", "durable(...) argument is not an inline or statically resolvable function")
   }
   const symbol = checked.checker.getSymbolAtLocation(argument)
   if (symbol !== undefined && symbolIsAssigned(checked, symbol)) {
-    return fail(argument, "VIBE4103", "durable(...) function binding is assigned and cannot be resolved statically")
+    return fail(argument, "SMITHERS4103", "durable(...) function binding is assigned and cannot be resolved statically")
   }
   const declarations = symbol?.declarations ?? []
   const functions = declarations.filter((declaration): declaration is ts.FunctionDeclaration =>
@@ -511,7 +721,7 @@ const resolvedFunction = (
   })
   const candidates = [...functions, ...variables]
   if (candidates.length !== 1 || candidates[0].getSourceFile() !== checked.sourceFile) {
-    return fail(argument, "VIBE4103", "durable(...) function must resolve uniquely within the compiled source file")
+    return fail(argument, "SMITHERS4103", "durable(...) function must resolve uniquely within the compiled source file")
   }
   return candidates[0]
 }
@@ -657,6 +867,9 @@ const flowSuccessDescriptor = (
       if (node?.kind === "signal") {
         return projectDescriptor(node.payloadSchema.descriptor, expression.path, fail)
       }
+      if (node?.kind === "queue") {
+        return projectDescriptor(node.itemSchema.descriptor, expression.path, fail)
+      }
       if (node?.kind === "fanout") {
         const steps = fanOutSteps(node)
         const lastStep = steps[steps.length - 1]!
@@ -726,7 +939,7 @@ const flowSchemas = (
   const signature = checked.checker.getSignatureFromDeclaration(sourceFunction)
   const parameter = sourceFunction.parameters[0]
   if (signature === undefined || parameter === undefined) {
-    return fail(sourceFunction, "VIBE4110", "compiler could not derive the durable Flow signature")
+    return fail(sourceFunction, "SMITHERS4110", "compiler could not derive the durable Flow signature")
   }
   try {
     const inputType = checked.checker.getTypeAtLocation(parameter)
@@ -765,7 +978,7 @@ const flowSchemas = (
   } catch (error) {
     return fail(
       sourceFunction,
-      "VIBE4110",
+      "SMITHERS4110",
       `durable Flow boundary is not structurally encodable: ${error instanceof Error ? error.message : String(error)}`
     )
   }
@@ -783,6 +996,10 @@ class FunctionLowerer {
   readonly signalIds = new Set<string>()
   /** True once the emitted Plan requires format version 2 features. */
   usesFormatVersion2 = false
+  /** True once the emitted Plan requires format version 3 features. */
+  usesFormatVersion3 = false
+  /** Queue identities used in this Flow, with their derived item contracts. */
+  readonly queueContracts = new Map<string, string>()
   private activeNodes: PlanNode[] = this.nodes
   private sequencingDependency: string | undefined
 
@@ -797,45 +1014,45 @@ class FunctionLowerer {
 
   lower(sourceFunction: ts.FunctionExpression | ts.ArrowFunction | ts.FunctionDeclaration): ValueExpr {
     if (sourceFunction.body === undefined || !ts.isBlock(sourceFunction.body)) {
-      return this.fail(sourceFunction, "VIBE4104", "durable source functions require a block body with an explicit return")
+      return this.fail(sourceFunction, "SMITHERS4104", "durable source functions require a block body with an explicit return")
     }
     if (sourceFunction.asteriskToken !== undefined || ts.getModifiers(sourceFunction)?.some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword)) {
-      return this.fail(sourceFunction, "VIBE4104", "async and generator durable source functions are outside the bounded lowering subset")
+      return this.fail(sourceFunction, "SMITHERS4104", "async and generator durable source functions are outside the bounded lowering subset")
     }
     if (sourceFunction.parameters.length !== 1) {
-      return this.fail(sourceFunction, "VIBE4104", "durable source functions require exactly one input parameter")
+      return this.fail(sourceFunction, "SMITHERS4104", "durable source functions require exactly one input parameter")
     }
     const parameter = sourceFunction.parameters[0]
     if (!ts.isIdentifier(parameter.name) || parameter.initializer !== undefined || parameter.dotDotDotToken !== undefined) {
-      return this.fail(parameter, "VIBE4104", "durable input must be one plain identifier without an initializer")
+      return this.fail(parameter, "SMITHERS4104", "durable input must be one plain identifier without an initializer")
     }
     const inputSymbol = this.checked.checker.getSymbolAtLocation(parameter.name)
-    if (inputSymbol === undefined) return this.fail(parameter, "VIBE4199", "compiler could not resolve the durable input binding")
+    if (inputSymbol === undefined) return this.fail(parameter, "SMITHERS4199", "compiler could not resolve the durable input binding")
     this.values.set(inputSymbol, { kind: "input", path: [] })
 
     let output: ValueExpr | undefined
     for (const statement of sourceFunction.body.statements) {
       if (output !== undefined) {
-        return this.fail(statement, "VIBE4109", "statements after the durable return are not supported")
+        return this.fail(statement, "SMITHERS4109", "statements after the durable return are not supported")
       }
       if (ts.isEmptyStatement(statement)) continue
       if (ts.isVariableStatement(statement)) {
         if (!(statement.declarationList.flags & ts.NodeFlags.Const)) {
-          return this.fail(statement, "VIBE4105", "durable straight-line bindings must use const")
+          return this.fail(statement, "SMITHERS4105", "durable straight-line bindings must use const")
         }
         for (const declaration of statement.declarationList.declarations) {
           if (!ts.isIdentifier(declaration.name) || declaration.initializer === undefined) {
-            return this.fail(declaration, "VIBE4105", "durable const bindings require one identifier and an initializer")
+            return this.fail(declaration, "SMITHERS4105", "durable const bindings require one identifier and an initializer")
           }
           const symbol = this.checked.checker.getSymbolAtLocation(declaration.name)
-          if (symbol === undefined) return this.fail(declaration.name, "VIBE4199", "compiler could not resolve const binding")
+          if (symbol === undefined) return this.fail(declaration.name, "SMITHERS4199", "compiler could not resolve const binding")
           const expression = this.lowerExpression(declaration.initializer, `const:${declaration.name.text}`)
           this.values.set(symbol, expression)
         }
         continue
       }
       if (ts.isReturnStatement(statement)) {
-        if (statement.expression === undefined) return this.fail(statement, "VIBE4109", "durable return requires a value")
+        if (statement.expression === undefined) return this.fail(statement, "SMITHERS4109", "durable return requires a value")
         output = this.lowerExpression(statement.expression, "return", true)
         continue
       }
@@ -847,22 +1064,22 @@ class FunctionLowerer {
         if (lowered !== undefined) continue
         return this.fail(
           statement,
-          "VIBE4108",
+          "SMITHERS4108",
           "only compiler-owned sleep(...) and sequential(...) are supported as durable expression statements"
         )
       }
       if (ts.isIfStatement(statement) || ts.isSwitchStatement(statement)) {
-        return this.fail(statement, "VIBE4106", "runtime branches require explicit Plan branch lowering, which this subset does not guess")
+        return this.fail(statement, "SMITHERS4106", "runtime branches require explicit Plan branch lowering, which this subset does not guess")
       }
       if (
         ts.isForStatement(statement) || ts.isForInStatement(statement) || ts.isForOfStatement(statement) ||
         ts.isWhileStatement(statement) || ts.isDoStatement(statement)
       ) {
-        return this.fail(statement, "VIBE4107", "runtime loops require parameterized Plan templates and are not unrolled by this subset")
+        return this.fail(statement, "SMITHERS4107", "runtime loops require parameterized Plan templates and are not unrolled by this subset")
       }
-      return this.fail(statement, "VIBE4108", `unsupported durable statement ${ts.SyntaxKind[statement.kind]}`)
+      return this.fail(statement, "SMITHERS4108", `unsupported durable statement ${ts.SyntaxKind[statement.kind]}`)
     }
-    if (output === undefined) return this.fail(sourceFunction.body, "VIBE4109", "durable source function must return a value")
+    if (output === undefined) return this.fail(sourceFunction.body, "SMITHERS4109", "durable source function must return a value")
     return output
   }
 
@@ -873,10 +1090,10 @@ class FunctionLowerer {
   ): ValueExpr {
     const expression = unwrapParentheses(expressionValue)
     if (ts.isIdentifier(expression)) {
-      const symbol = this.checked.checker.getSymbolAtLocation(expression)
+      const symbol = readSymbolAt(this.checked.checker, expression)
       const value = symbol && this.values.get(symbol)
       if (value !== undefined) return value
-      return this.fail(expression, "VIBE4110", `unsupported runtime capture ${expression.text}; only input and prior const bindings are available`)
+      return this.fail(expression, "SMITHERS4110", `unsupported runtime capture ${expression.text}; only input and prior const bindings are available`)
     }
     if (expression.kind === ts.SyntaxKind.NullKeyword) return { kind: "literal", value: null }
     if (expression.kind === ts.SyntaxKind.TrueKeyword) return { kind: "literal", value: true }
@@ -886,7 +1103,7 @@ class FunctionLowerer {
     }
     if (ts.isNumericLiteral(expression)) {
       const value = Number(expression.text)
-      if (!Number.isFinite(value)) return this.fail(expression, "VIBE4111", "non-finite numeric literal is not durable")
+      if (!Number.isFinite(value)) return this.fail(expression, "SMITHERS4111", "non-finite numeric literal is not durable")
       return { kind: "literal", value }
     }
     if (
@@ -895,7 +1112,7 @@ class FunctionLowerer {
     ) {
       const value = -Number(expression.operand.text)
       if (!Number.isFinite(value) || Object.is(value, -0)) {
-        return this.fail(expression, "VIBE4111", "non-canonical numeric literal is not durable")
+        return this.fail(expression, "SMITHERS4111", "non-canonical numeric literal is not durable")
       }
       return { kind: "literal", value }
     }
@@ -911,9 +1128,9 @@ class FunctionLowerer {
           name = property.name.text
           initializer = property.name
         } else {
-          return this.fail(property, "VIBE4111", "durable objects do not support spreads, methods, or accessors in this subset")
+          return this.fail(property, "SMITHERS4111", "durable objects do not support spreads, methods, or accessors in this subset")
         }
-        if (Object.hasOwn(fields, name)) return this.fail(property, "VIBE4111", `duplicate durable object field ${name}`)
+        if (Object.hasOwn(fields, name)) return this.fail(property, "SMITHERS4111", `duplicate durable object field ${name}`)
         fields[name] = this.lowerExpression(initializer, `${anchor}.${name}`)
       }
       return { kind: "object", fields }
@@ -921,7 +1138,7 @@ class FunctionLowerer {
     if (ts.isArrayLiteralExpression(expression)) {
       const items = expression.elements.map((element, index) => {
         if (ts.isOmittedExpression(element) || ts.isSpreadElement(element)) {
-          return this.fail(element, "VIBE4111", "durable arrays cannot contain holes or spreads")
+          return this.fail(element, "SMITHERS4111", "durable arrays cannot contain holes or spreads")
         }
         return this.lowerExpression(element, `${anchor}[${index}]`)
       })
@@ -929,17 +1146,17 @@ class FunctionLowerer {
     }
     if (ts.isPropertyAccessExpression(expression)) {
       if (expression.questionDotToken !== undefined) {
-        return this.fail(expression, "VIBE4106", "optional projections require explicit Plan branch lowering")
+        return this.fail(expression, "SMITHERS4106", "optional projections require explicit Plan branch lowering")
       }
       return this.project(this.lowerExpression(expression.expression, anchor), expression.name.text, expression)
     }
     if (ts.isElementAccessExpression(expression)) {
       if (expression.questionDotToken !== undefined) {
-        return this.fail(expression, "VIBE4106", "optional projections require explicit Plan branch lowering")
+        return this.fail(expression, "SMITHERS4106", "optional projections require explicit Plan branch lowering")
       }
       const argument = expression.argumentExpression && unwrapParentheses(expression.argumentExpression)
       const key = argument && (ts.isStringLiteral(argument) || ts.isNumericLiteral(argument)) ? argument.text : undefined
-      if (key === undefined) return this.fail(expression, "VIBE4111", "durable projection keys must be static string or numeric literals")
+      if (key === undefined) return this.fail(expression, "SMITHERS4111", "durable projection keys must be static string or numeric literals")
       return this.project(this.lowerExpression(expression.expression, anchor), key, expression)
     }
     if (ts.isConditionalExpression(expression)) {
@@ -948,6 +1165,10 @@ class FunctionLowerer {
     if (ts.isCallExpression(expression)) {
       const signal = this.lowerSignalCall(expression, anchor)
       if (signal !== undefined) return signal
+      const broadcast = this.lowerBroadcastCall(expression, anchor)
+      if (broadcast !== undefined) return broadcast
+      const queued = this.lowerQueueCall(expression, anchor)
+      if (queued !== undefined) return queued
       const fanOut = this.lowerFanOutCall(expression, anchor)
       if (fanOut !== undefined) return fanOut
       const loop = this.lowerLoopCall(expression, anchor)
@@ -971,22 +1192,22 @@ class FunctionLowerer {
             return lowered
           }
         }
-        return this.fail(expression, "VIBE4112", "unwrap() is supported only directly on an imported Action.run(...) call")
+        return this.fail(expression, "SMITHERS4112", "unwrap() is supported only directly on an imported Action.run(...) call")
       }
       const lowered = this.lowerActionCall(expression, anchor)
       if (lowered !== undefined) {
         if (!allowFinalAction) {
           return this.fail(
             expression,
-            "VIBE4115",
+            "SMITHERS4115",
             "an intermediate Action.run(...) must use .unwrap(); only the final returned Result may remain wrapped"
           )
         }
         return lowered
       }
-      return this.fail(expression, "VIBE4112", "higher-order and dynamic calls are unavailable in durable source lowering")
+      return this.fail(expression, "SMITHERS4112", "higher-order and dynamic calls are unavailable in durable source lowering")
     }
-    return this.fail(expression, "VIBE4111", `unsupported durable expression ${ts.SyntaxKind[expression.kind]}`)
+    return this.fail(expression, "SMITHERS4111", `unsupported durable expression ${ts.SyntaxKind[expression.kind]}`)
   }
 
   private lowerSignalCall(
@@ -1004,7 +1225,7 @@ class FunctionLowerer {
     ) {
       return this.fail(
         call,
-        "VIBE4118",
+        "SMITHERS4118",
         "provisional compiler-owned waitSignal<Payload>(\"identity\") requires one explicit payload type and one static identity"
       )
     }
@@ -1012,7 +1233,7 @@ class FunctionLowerer {
     if (!ts.isStringLiteral(identityExpression) && !ts.isNoSubstitutionTemplateLiteral(identityExpression)) {
       return this.fail(
         call.arguments[0],
-        "VIBE4118",
+        "SMITHERS4118",
         "durable signal identity must be a string literal, not a runtime value"
       )
     }
@@ -1020,12 +1241,12 @@ class FunctionLowerer {
     if (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/.test(signalId)) {
       return this.fail(
         identityExpression,
-        "VIBE4118",
+        "SMITHERS4118",
         "durable signal identity must be 1-128 portable characters"
       )
     }
     if (this.signalIds.has(signalId)) {
-      return this.fail(identityExpression, "VIBE4118", `durable signal identity ${signalId} is duplicated in this Flow`)
+      return this.fail(identityExpression, "SMITHERS4118", `durable signal identity ${signalId} is duplicated in this Flow`)
     }
     let payloadSchema
     try {
@@ -1041,7 +1262,7 @@ class FunctionLowerer {
     } catch (error) {
       return this.fail(
         call.typeArguments[0],
-        "VIBE4118",
+        "SMITHERS4118",
         `durable signal payload is not structurally encodable: ${error instanceof Error ? error.message : String(error)}`
       )
     }
@@ -1061,7 +1282,7 @@ class FunctionLowerer {
     const occurrence = this.occurrences.get(occurrenceKey) ?? 0
     this.occurrences.set(occurrenceKey, occurrence + 1)
     const id = `src-${digest({ ...identity, occurrence }).slice(0, 24)}`
-    if (this.nodeIds.has(id)) return this.fail(call, "VIBE4199", `stable durable node id collision ${id}`)
+    if (this.nodeIds.has(id)) return this.fail(call, "SMITHERS4199", `stable durable node id collision ${id}`)
     this.nodeIds.add(id)
     const position = this.checked.sourceFile.getLineAndCharacterOfPosition(call.getStart(this.checked.sourceFile))
     const node: SignalNode = {
@@ -1074,6 +1295,178 @@ class FunctionLowerer {
       controlDependencies: this.sequencingDependency === undefined ? [] : [this.sequencingDependency],
       debug: {
         label: `signal:${signalId}`,
+        callSite: `${this.logicalFileName}:${position.line + 1}:${position.character + 1}`
+      }
+    }
+    this.activeNodes.push(node)
+    this.sequencingDependency = id
+    return { kind: "node", nodeId: id, path: [] }
+  }
+
+  /**
+   * Shared front half of every compiler-owned single-identity suspension:
+   * exactly one explicit payload type argument and one static string identity,
+   * with the payload schema derived from the checked type, never from a value.
+   */
+  private lowerIdentitySuspension(
+    call: ts.CallExpression,
+    symbol: ts.Symbol,
+    code: string,
+    what: string,
+    spelling: string
+  ): { readonly identity: string; readonly schema: StructuralDurableSchema } | undefined {
+    const callee = unwrapParentheses(call.expression)
+    if (
+      isTypeOnlyReference(this.checked.checker, callee) ||
+      symbolAtExpression(this.checked.checker, callee) !== symbol
+    ) return undefined
+    if (
+      call.arguments.length !== 1 || call.typeArguments?.length !== 1 ||
+      call.questionDotToken !== undefined || (call.expression.flags & ts.NodeFlags.OptionalChain) !== 0
+    ) {
+      return this.fail(
+        call,
+        code,
+        `provisional compiler-owned ${spelling} requires one explicit type argument and one static identity`
+      )
+    }
+    const identityExpression = unwrapParentheses(call.arguments[0])
+    if (!ts.isStringLiteral(identityExpression) && !ts.isNoSubstitutionTemplateLiteral(identityExpression)) {
+      return this.fail(call.arguments[0], code, `durable ${what} identity must be a string literal, not a runtime value`)
+    }
+    const identity = identityExpression.text
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/.test(identity)) {
+      return this.fail(identityExpression, code, `durable ${what} identity must be 1-128 portable characters`)
+    }
+    try {
+      const typeNode = call.typeArguments[0]
+      return {
+        identity,
+        schema: deriveDurableValueSchema(
+          this.checked.checker,
+          this.checked.sourceFile,
+          typeNode,
+          this.checked.checker.getTypeFromTypeNode(typeNode),
+          "input",
+          `${what} ${identity} payload`
+        )
+      }
+    } catch (error) {
+      return this.fail(
+        call.typeArguments[0],
+        code,
+        `durable ${what} payload is not structurally encodable: ${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+  }
+
+  /** Allocates the stable, line-shift tolerant node id for one suspension. */
+  private suspensionNodeId(
+    call: ts.CallExpression,
+    anchor: string,
+    kind: string,
+    identity: Readonly<Record<string, string>>
+  ): string {
+    const semantic = {
+      file: this.logicalFileName,
+      flowId: this.flowId,
+      flowVersion: this.flowVersion,
+      functionName: this.functionName,
+      kind,
+      anchor,
+      ...identity
+    }
+    const occurrenceKey = digest(semantic)
+    const occurrence = this.occurrences.get(occurrenceKey) ?? 0
+    this.occurrences.set(occurrenceKey, occurrence + 1)
+    const id = `src-${digest({ ...semantic, occurrence }).slice(0, 24)}`
+    if (this.nodeIds.has(id)) return this.fail(call, "SMITHERS4199", `stable durable node id collision ${id}`)
+    this.nodeIds.add(id)
+    return id
+  }
+
+  private lowerBroadcastCall(
+    call: ts.CallExpression,
+    anchor: string
+  ): { readonly kind: "node"; readonly nodeId: string; readonly path: readonly string[] } | undefined {
+    const lowered = this.lowerIdentitySuspension(
+      call,
+      this.checked.broadcastSymbol,
+      "SMITHERS4122",
+      "broadcast signal",
+      "waitBroadcast<Payload>(\"identity\")"
+    )
+    if (lowered === undefined) return undefined
+    const { identity: signalId, schema: payloadSchema } = lowered
+    if (this.signalIds.has(signalId)) {
+      return this.fail(call.arguments[0], "SMITHERS4122", `durable signal identity ${signalId} is duplicated in this Flow`)
+    }
+    this.signalIds.add(signalId)
+    this.usesFormatVersion3 = true
+    const signalContractDigest = signalContractIdentity(signalId, payloadSchema, "broadcast")
+    const id = this.suspensionNodeId(call, anchor, "signal", {
+      signalId,
+      signalContractDigest,
+      delivery: "broadcast"
+    })
+    const position = this.checked.sourceFile.getLineAndCharacterOfPosition(call.getStart(this.checked.sourceFile))
+    const node: SignalNode = {
+      kind: "signal",
+      id,
+      signalId,
+      payloadSchema,
+      signalContractDigest,
+      delivery: "broadcast",
+      dependencies: [],
+      controlDependencies: this.sequencingDependency === undefined ? [] : [this.sequencingDependency],
+      debug: {
+        label: `broadcast:${signalId}`,
+        callSite: `${this.logicalFileName}:${position.line + 1}:${position.character + 1}`
+      }
+    }
+    this.activeNodes.push(node)
+    this.sequencingDependency = id
+    return { kind: "node", nodeId: id, path: [] }
+  }
+
+  private lowerQueueCall(
+    call: ts.CallExpression,
+    anchor: string
+  ): { readonly kind: "node"; readonly nodeId: string; readonly path: readonly string[] } | undefined {
+    const lowered = this.lowerIdentitySuspension(
+      call,
+      this.checked.queueSymbol,
+      "SMITHERS4123",
+      "queue",
+      "dequeue<Item>(\"queue.identity\")"
+    )
+    if (lowered === undefined) return undefined
+    const { identity: queueId, schema: itemSchema } = lowered
+    const queueContractDigest = queueContractIdentity(queueId, itemSchema)
+    // Unlike a signal inbox, several consumers of one queue are legitimate;
+    // they must simply agree on one exact item contract.
+    const pinned = this.queueContracts.get(queueId)
+    if (pinned !== undefined && pinned !== queueContractDigest) {
+      return this.fail(
+        call.typeArguments![0],
+        "SMITHERS4123",
+        `durable queue ${queueId} is consumed with two different item types in this Flow`
+      )
+    }
+    this.queueContracts.set(queueId, queueContractDigest)
+    this.usesFormatVersion3 = true
+    const id = this.suspensionNodeId(call, anchor, "queue", { queueId, queueContractDigest })
+    const position = this.checked.sourceFile.getLineAndCharacterOfPosition(call.getStart(this.checked.sourceFile))
+    const node: QueueNode = {
+      kind: "queue",
+      id,
+      queueId,
+      itemSchema,
+      queueContractDigest,
+      dependencies: [],
+      controlDependencies: this.sequencingDependency === undefined ? [] : [this.sequencingDependency],
+      debug: {
+        label: `queue:${queueId}`,
         callSite: `${this.logicalFileName}:${position.line + 1}:${position.character + 1}`
       }
     }
@@ -1095,7 +1488,7 @@ class FunctionLowerer {
       call.arguments.length !== 1 || call.typeArguments !== undefined || call.questionDotToken !== undefined ||
       (call.expression.flags & ts.NodeFlags.OptionalChain) !== 0
     ) {
-      return this.fail(call, "VIBE4116", "compiler-owned sleep(...) requires one statically bound duration argument")
+      return this.fail(call, "SMITHERS4116", "compiler-owned sleep(...) requires one statically bound duration argument")
     }
     const durationMs = this.lowerExpression(call.arguments[0], `${anchor}:duration`)
     if (
@@ -1104,7 +1497,7 @@ class FunctionLowerer {
     ) {
       return this.fail(
         call.arguments[0],
-        "VIBE4116",
+        "SMITHERS4116",
         "durable sleep duration must be a non-negative safe integer number of milliseconds"
       )
     }
@@ -1121,7 +1514,7 @@ class FunctionLowerer {
     const occurrence = this.occurrences.get(occurrenceKey) ?? 0
     this.occurrences.set(occurrenceKey, occurrence + 1)
     const id = `src-${digest({ ...identity, occurrence }).slice(0, 24)}`
-    if (this.nodeIds.has(id)) return this.fail(call, "VIBE4199", `stable durable node id collision ${id}`)
+    if (this.nodeIds.has(id)) return this.fail(call, "SMITHERS4199", `stable durable node id collision ${id}`)
     this.nodeIds.add(id)
     const position = this.checked.sourceFile.getLineAndCharacterOfPosition(call.getStart(this.checked.sourceFile))
     const node: TimerNode = {
@@ -1161,7 +1554,7 @@ class FunctionLowerer {
     ) {
       return this.fail(
         call,
-        "VIBE4119",
+        "SMITHERS4119",
         "compiler-owned sequential(first, second) requires exactly two direct imported Action.run(...) arguments"
       )
     }
@@ -1174,7 +1567,7 @@ class FunctionLowerer {
         ? this.lowerActionCall(unwrapped, `${anchor}:${suffix}`)
         : undefined
       if (lowered === undefined) {
-        return this.fail(argument, "VIBE4119", "sequential(...) arguments must be direct imported Action.run(...) calls")
+        return this.fail(argument, "SMITHERS4119", "sequential(...) arguments must be direct imported Action.run(...) calls")
       }
       return lowered
     }
@@ -1206,14 +1599,14 @@ class FunctionLowerer {
     const childPlan = flowSymbol && this.checked.flowsBySymbol.get(flowSymbol)
     if (childPlan === undefined) return undefined
     if (call.arguments.length !== 1 || call.typeArguments !== undefined) {
-      return this.fail(call, "VIBE4120", `${childPlan.flowId}.run requires exactly one input argument in durable source`)
+      return this.fail(call, "SMITHERS4120", `${childPlan.flowId}.run requires exactly one input argument in durable source`)
     }
     // Inline recursion is structurally impossible (a Plan cannot embed its own
     // digest), and mutual recursion cannot escape this explicit round budget.
     if (childFlowEmbeddingDepth(childPlan) >= MAX_CHILD_FLOW_DEPTH) {
       return this.fail(
         call,
-        "VIBE4120",
+        "SMITHERS4120",
         `child Flow ${childPlan.flowId} exceeds the child-boundary round budget of ${MAX_CHILD_FLOW_DEPTH}`
       )
     }
@@ -1226,7 +1619,7 @@ class FunctionLowerer {
       ) {
         return this.fail(
           call,
-          "VIBE4114",
+          "SMITHERS4114",
           `child Flow ${childPlan.flowId}@${childPlan.flowVersion} resolves to incompatible durable Plans`
         )
       }
@@ -1235,7 +1628,7 @@ class FunctionLowerer {
     for (const action of childPlan.actions) {
       const existing = this.usedActions.get(action.id)
       if (existing !== undefined && existing.contractDigest !== action.contractDigest) {
-        return this.fail(call, "VIBE4114", `Action id ${action.id} resolves to incompatible durable contracts`)
+        return this.fail(call, "SMITHERS4114", `Action id ${action.id} resolves to incompatible durable contracts`)
       }
     }
     for (const action of childPlan.actions) this.usedActions.set(action.id, action)
@@ -1257,7 +1650,7 @@ class FunctionLowerer {
     const occurrence = this.occurrences.get(occurrenceKey) ?? 0
     this.occurrences.set(occurrenceKey, occurrence + 1)
     const id = `src-${digest({ ...identity, occurrence }).slice(0, 24)}`
-    if (this.nodeIds.has(id)) return this.fail(call, "VIBE4199", `stable durable node id collision ${id}`)
+    if (this.nodeIds.has(id)) return this.fail(call, "SMITHERS4199", `stable durable node id collision ${id}`)
     this.nodeIds.add(id)
     const position = this.checked.sourceFile.getLineAndCharacterOfPosition(call.getStart(this.checked.sourceFile))
     const node: ChildFlowNode = {
@@ -1294,7 +1687,7 @@ class FunctionLowerer {
     ) {
       return this.fail(
         expression,
-        "VIBE4117",
+        "SMITHERS4117",
         allowBlock
           ? `durable fanOut ${label} must be one inline, synchronous arrow with one item parameter`
           : `durable fanOut ${label} must be one inline, synchronous expression arrow with one item parameter`
@@ -1307,12 +1700,12 @@ class FunctionLowerer {
     ) {
       return this.fail(
         parameter,
-        "VIBE4117",
+        "SMITHERS4117",
         `durable fanOut ${label} parameter must be one required item identifier`
       )
     }
     const itemSymbol = this.checked.checker.getSymbolAtLocation(parameter.name)
-    if (itemSymbol === undefined) return this.fail(parameter.name, "VIBE4199", "compiler could not bind fanOut item")
+    if (itemSymbol === undefined) return this.fail(parameter.name, "SMITHERS4199", "compiler could not bind fanOut item")
     return { itemSymbol, body: expression.body }
   }
 
@@ -1322,7 +1715,7 @@ class FunctionLowerer {
   ): FanOutTemplateExpr {
     const expression = unwrapParentheses(expressionValue)
     if (ts.isIdentifier(expression)) {
-      const symbol = this.checked.checker.getSymbolAtLocation(expression)
+      const symbol = readSymbolAt(this.checked.checker, expression)
       if (symbol === env.itemSymbol) {
         return { kind: "item", path: [] }
       }
@@ -1330,7 +1723,7 @@ class FunctionLowerer {
       if (bound !== undefined) return bound
       return this.fail(
         expression,
-        "VIBE4117",
+        "SMITHERS4117",
         `durable fanOut templates cannot capture ${expression.text}; use only the current item, earlier steps, and literals`
       )
     }
@@ -1342,7 +1735,7 @@ class FunctionLowerer {
     }
     if (ts.isNumericLiteral(expression)) {
       const value = Number(expression.text)
-      if (!Number.isFinite(value)) return this.fail(expression, "VIBE4117", "fanOut template number is not canonical")
+      if (!Number.isFinite(value)) return this.fail(expression, "SMITHERS4117", "fanOut template number is not canonical")
       return { kind: "literal", value }
     }
     if (
@@ -1351,7 +1744,7 @@ class FunctionLowerer {
     ) {
       const value = -Number(expression.operand.text)
       if (!Number.isFinite(value) || Object.is(value, -0)) {
-        return this.fail(expression, "VIBE4117", "fanOut template number is not canonical")
+        return this.fail(expression, "SMITHERS4117", "fanOut template number is not canonical")
       }
       return { kind: "literal", value }
     }
@@ -1367,9 +1760,9 @@ class FunctionLowerer {
           name = property.name.text
           initializer = property.name
         } else {
-          return this.fail(property, "VIBE4117", "fanOut input objects do not support spreads, methods, or accessors")
+          return this.fail(property, "SMITHERS4117", "fanOut input objects do not support spreads, methods, or accessors")
         }
-        if (Object.hasOwn(fields, name)) return this.fail(property, "VIBE4117", `duplicate fanOut input field ${name}`)
+        if (Object.hasOwn(fields, name)) return this.fail(property, "SMITHERS4117", `duplicate fanOut input field ${name}`)
         fields[name] = this.lowerFanOutTemplate(initializer, env)
       }
       return { kind: "object", fields }
@@ -1377,7 +1770,7 @@ class FunctionLowerer {
     if (ts.isArrayLiteralExpression(expression)) {
       const items = expression.elements.map((element) => {
         if (ts.isOmittedExpression(element) || ts.isSpreadElement(element)) {
-          return this.fail(element, "VIBE4117", "fanOut input arrays cannot contain holes or spreads")
+          return this.fail(element, "SMITHERS4117", "fanOut input arrays cannot contain holes or spreads")
         }
         return this.lowerFanOutTemplate(element, env)
       })
@@ -1385,7 +1778,7 @@ class FunctionLowerer {
     }
     if (ts.isPropertyAccessExpression(expression)) {
       if (expression.questionDotToken !== undefined) {
-        return this.fail(expression, "VIBE4117", "fanOut item keys and inputs cannot use optional projection")
+        return this.fail(expression, "SMITHERS4117", "fanOut item keys and inputs cannot use optional projection")
       }
       return this.projectFanOutTemplate(
         this.lowerFanOutTemplate(expression.expression, env),
@@ -1395,11 +1788,11 @@ class FunctionLowerer {
     }
     if (ts.isElementAccessExpression(expression)) {
       if (expression.questionDotToken !== undefined) {
-        return this.fail(expression, "VIBE4117", "fanOut item keys and inputs cannot use optional projection")
+        return this.fail(expression, "SMITHERS4117", "fanOut item keys and inputs cannot use optional projection")
       }
       const argument = expression.argumentExpression && unwrapParentheses(expression.argumentExpression)
       const key = argument && (ts.isStringLiteral(argument) || ts.isNumericLiteral(argument)) ? argument.text : undefined
-      if (key === undefined) return this.fail(expression, "VIBE4117", "fanOut item projection keys must be static")
+      if (key === undefined) return this.fail(expression, "SMITHERS4117", "fanOut item projection keys must be static")
       return this.projectFanOutTemplate(
         this.lowerFanOutTemplate(expression.expression, env),
         key,
@@ -1408,7 +1801,7 @@ class FunctionLowerer {
     }
     return this.fail(
       expression,
-      "VIBE4117",
+      "SMITHERS4117",
       `unsupported fanOut template expression ${ts.SyntaxKind[expression.kind]}`
     )
   }
@@ -1423,7 +1816,7 @@ class FunctionLowerer {
     if (value.kind === "object" && Object.hasOwn(value.fields, key)) return value.fields[key]
     if (value.kind === "array") {
       if (!/^(0|[1-9][0-9]*)$/.test(key)) {
-        return this.fail(node, "VIBE4117", `cannot project ${JSON.stringify(key)} from this fanOut template`)
+        return this.fail(node, "SMITHERS4117", `cannot project ${JSON.stringify(key)} from this fanOut template`)
       }
       const index = Number(key)
       if (Number.isSafeInteger(index) && index >= 0 && index < value.items.length) return value.items[index]
@@ -1431,7 +1824,7 @@ class FunctionLowerer {
     if (value.kind === "literal" && value.value !== null && typeof value.value === "object") {
       if (Array.isArray(value.value)) {
         if (!/^(0|[1-9][0-9]*)$/.test(key)) {
-          return this.fail(node, "VIBE4117", `cannot project ${JSON.stringify(key)} from this fanOut template`)
+          return this.fail(node, "SMITHERS4117", `cannot project ${JSON.stringify(key)} from this fanOut template`)
         }
         const index = Number(key)
         if (Number.isSafeInteger(index) && index >= 0 && index < value.value.length) {
@@ -1441,7 +1834,7 @@ class FunctionLowerer {
         return { kind: "literal", value: value.value[key] }
       }
     }
-    return this.fail(node, "VIBE4117", `cannot project ${JSON.stringify(key)} from this fanOut template`)
+    return this.fail(node, "SMITHERS4117", `cannot project ${JSON.stringify(key)} from this fanOut template`)
   }
 
   private lowerFanOutCall(
@@ -1459,23 +1852,23 @@ class FunctionLowerer {
     ) {
       return this.fail(
         call,
-        "VIBE4117",
+        "SMITHERS4117",
         "compiler-owned fanOut(items, item => item.key, item => Action.run(input)) requires exactly three static arguments"
       )
     }
 
     const items = this.lowerExpression(call.arguments[0], `${anchor}:items`)
     if (expressionDependencies(items).some((dependency) => this.fanOutNodeIds.has(dependency))) {
-      return this.fail(call.arguments[0], "VIBE4117", "nested fanOut is outside the bounded runtime template subset")
+      return this.fail(call.arguments[0], "SMITHERS4117", "nested fanOut is outside the bounded runtime template subset")
     }
     const keyCallback = this.inlineFanOutCallback(call.arguments[1], "key")
     if (ts.isBlock(keyCallback.body)) {
-      return this.fail(keyCallback.body, "VIBE4117", "durable fanOut key must be one expression arrow")
+      return this.fail(keyCallback.body, "SMITHERS4117", "durable fanOut key must be one expression arrow")
     }
     if (!isStableScalarKeyType(this.checked.checker.getTypeAtLocation(keyCallback.body))) {
       return this.fail(
         keyCallback.body,
-        "VIBE4117",
+        "SMITHERS4117",
         "durable fanOut key must statically be a string, number, or boolean"
       )
     }
@@ -1484,7 +1877,7 @@ class FunctionLowerer {
       bindings: new Map()
     })
     if (key.kind !== "item") {
-      return this.fail(keyCallback.body, "VIBE4117", "durable fanOut key must be a direct projection of the current item")
+      return this.fail(keyCallback.body, "SMITHERS4117", "durable fanOut key must be a direct projection of the current item")
     }
 
     const bodyCallback = this.inlineFanOutCallback(call.arguments[2], "body", true)
@@ -1523,7 +1916,7 @@ class FunctionLowerer {
     const occurrence = this.occurrences.get(occurrenceKey) ?? 0
     this.occurrences.set(occurrenceKey, occurrence + 1)
     const id = `src-${digest({ ...identity, occurrence }).slice(0, 24)}`
-    if (this.nodeIds.has(id)) return this.fail(call, "VIBE4199", `stable durable node id collision ${id}`)
+    if (this.nodeIds.has(id)) return this.fail(call, "SMITHERS4199", `stable durable node id collision ${id}`)
     this.nodeIds.add(id)
     this.fanOutNodeIds.add(id)
     const position = this.checked.sourceFile.getLineAndCharacterOfPosition(call.getStart(this.checked.sourceFile))
@@ -1577,7 +1970,7 @@ class FunctionLowerer {
         ) {
           return this.fail(
             expressionValue,
-            "VIBE4117",
+            "SMITHERS4117",
             "intermediate fanOut steps must be direct imported Action.run(...).unwrap() calls"
           )
         }
@@ -1588,28 +1981,28 @@ class FunctionLowerer {
         runCandidate.expression.name.text !== "run" || runCandidate.questionDotToken !== undefined ||
         runCandidate.expression.questionDotToken !== undefined
       ) {
-        return this.fail(runCandidate, "VIBE4117", "durable fanOut steps must be direct imported Action.run(input) calls")
+        return this.fail(runCandidate, "SMITHERS4117", "durable fanOut steps must be direct imported Action.run(input) calls")
       }
       const actionReference = unwrapParentheses(runCandidate.expression.expression)
       if (isTypeOnlyReference(this.checked.checker, actionReference)) {
-        return this.fail(actionReference, "VIBE4117", "fanOut body Action must be a runtime import")
+        return this.fail(actionReference, "SMITHERS4117", "fanOut body Action must be a runtime import")
       }
       const actionSymbol = symbolAtExpression(this.checked.checker, actionReference)
       const descriptor = actionSymbol && this.checked.actionsBySymbol.get(actionSymbol)
       if (descriptor === undefined) {
-        return this.fail(actionReference, "VIBE4117", "fanOut body must target one compiler-bound Action")
+        return this.fail(actionReference, "SMITHERS4117", "fanOut body must target one compiler-bound Action")
       }
       if (runCandidate.arguments.length !== 1 || runCandidate.typeArguments !== undefined) {
-        return this.fail(runCandidate, "VIBE4117", `${descriptor.id}.run requires exactly one fanOut item input`)
+        return this.fail(runCandidate, "SMITHERS4117", `${descriptor.id}.run requires exactly one fanOut item input`)
       }
       const input = this.lowerFanOutTemplate(runCandidate.arguments[0], env)
       const prior = this.usedActions.get(descriptor.id)
       if (prior !== undefined && prior.contractDigest !== descriptor.contractDigest) {
-        return this.fail(runCandidate, "VIBE4114", `Action id ${descriptor.id} resolves to incompatible durable contracts`)
+        return this.fail(runCandidate, "SMITHERS4114", `Action id ${descriptor.id} resolves to incompatible durable contracts`)
       }
       this.usedActions.set(descriptor.id, descriptor)
       if (steps.length >= MAX_FAN_OUT_STEPS) {
-        return this.fail(runCandidate, "VIBE4117", `fanOut bodies support at most ${MAX_FAN_OUT_STEPS} Action steps`)
+        return this.fail(runCandidate, "SMITHERS4117", `fanOut bodies support at most ${MAX_FAN_OUT_STEPS} Action steps`)
       }
       steps.push({ descriptor, input })
       return steps.length - 1
@@ -1621,20 +2014,20 @@ class FunctionLowerer {
     let returned = false
     for (const statement of body.statements) {
       if (returned) {
-        return this.fail(statement, "VIBE4117", "statements after the fanOut body return are not supported")
+        return this.fail(statement, "SMITHERS4117", "statements after the fanOut body return are not supported")
       }
       if (ts.isEmptyStatement(statement)) continue
       if (ts.isVariableStatement(statement)) {
         if (!(statement.declarationList.flags & ts.NodeFlags.Const)) {
-          return this.fail(statement, "VIBE4117", "fanOut body bindings must use const")
+          return this.fail(statement, "SMITHERS4117", "fanOut body bindings must use const")
         }
         for (const declaration of statement.declarationList.declarations) {
           if (!ts.isIdentifier(declaration.name) || declaration.initializer === undefined) {
-            return this.fail(declaration, "VIBE4117", "fanOut body const bindings require one identifier and an initializer")
+            return this.fail(declaration, "SMITHERS4117", "fanOut body const bindings require one identifier and an initializer")
           }
           const symbol = this.checked.checker.getSymbolAtLocation(declaration.name)
           if (symbol === undefined) {
-            return this.fail(declaration.name, "VIBE4199", "compiler could not resolve fanOut body binding")
+            return this.fail(declaration.name, "SMITHERS4199", "compiler could not resolve fanOut body binding")
           }
           const initializer = unwrapParentheses(declaration.initializer)
           const isUnwrapCall = ts.isCallExpression(initializer) &&
@@ -1651,15 +2044,15 @@ class FunctionLowerer {
       }
       if (ts.isReturnStatement(statement)) {
         if (statement.expression === undefined) {
-          return this.fail(statement, "VIBE4117", "fanOut body must return its final Action.run(...) call")
+          return this.fail(statement, "SMITHERS4117", "fanOut body must return its final Action.run(...) call")
         }
         lowerRun(statement.expression, false)
         returned = true
         continue
       }
-      return this.fail(statement, "VIBE4117", `unsupported fanOut body statement ${ts.SyntaxKind[statement.kind]}`)
+      return this.fail(statement, "SMITHERS4117", `unsupported fanOut body statement ${ts.SyntaxKind[statement.kind]}`)
     }
-    if (!returned) return this.fail(body, "VIBE4117", "fanOut body must return its final Action.run(...) call")
+    if (!returned) return this.fail(body, "SMITHERS4117", "fanOut body must return its final Action.run(...) call")
     return steps
   }
 
@@ -1675,7 +2068,7 @@ class FunctionLowerer {
     ) {
       return this.fail(
         expression,
-        "VIBE4121",
+        "SMITHERS4121",
         `durable loopWhile ${label} must be one inline, synchronous expression arrow with one state parameter`
       )
     }
@@ -1684,10 +2077,10 @@ class FunctionLowerer {
       !ts.isIdentifier(parameter.name) || parameter.initializer !== undefined ||
       parameter.dotDotDotToken !== undefined || parameter.questionToken !== undefined
     ) {
-      return this.fail(parameter, "VIBE4121", `durable loopWhile ${label} parameter must be one required state identifier`)
+      return this.fail(parameter, "SMITHERS4121", `durable loopWhile ${label} parameter must be one required state identifier`)
     }
     const stateSymbol = this.checked.checker.getSymbolAtLocation(parameter.name)
-    if (stateSymbol === undefined) return this.fail(parameter.name, "VIBE4199", "compiler could not bind loop state")
+    if (stateSymbol === undefined) return this.fail(parameter.name, "SMITHERS4199", "compiler could not bind loop state")
     return { stateSymbol, body: expression.body }
   }
 
@@ -1697,12 +2090,12 @@ class FunctionLowerer {
   ): LoopTemplateExpr {
     const expression = unwrapParentheses(expressionValue)
     if (ts.isIdentifier(expression)) {
-      if (this.checked.checker.getSymbolAtLocation(expression) === stateSymbol) {
+      if (readSymbolAt(this.checked.checker, expression) === stateSymbol) {
         return { kind: "state", path: [] }
       }
       return this.fail(
         expression,
-        "VIBE4121",
+        "SMITHERS4121",
         `durable loop templates cannot capture ${expression.text}; use only the current state and literals`
       )
     }
@@ -1714,7 +2107,7 @@ class FunctionLowerer {
     }
     if (ts.isNumericLiteral(expression)) {
       const value = Number(expression.text)
-      if (!Number.isFinite(value)) return this.fail(expression, "VIBE4121", "loop template number is not canonical")
+      if (!Number.isFinite(value)) return this.fail(expression, "SMITHERS4121", "loop template number is not canonical")
       return { kind: "literal", value }
     }
     if (
@@ -1723,7 +2116,7 @@ class FunctionLowerer {
     ) {
       const value = -Number(expression.operand.text)
       if (!Number.isFinite(value) || Object.is(value, -0)) {
-        return this.fail(expression, "VIBE4121", "loop template number is not canonical")
+        return this.fail(expression, "SMITHERS4121", "loop template number is not canonical")
       }
       return { kind: "literal", value }
     }
@@ -1751,9 +2144,9 @@ class FunctionLowerer {
           name = property.name.text
           initializer = property.name
         } else {
-          return this.fail(property, "VIBE4121", "loop templates do not support spreads, methods, or accessors")
+          return this.fail(property, "SMITHERS4121", "loop templates do not support spreads, methods, or accessors")
         }
-        if (Object.hasOwn(fields, name)) return this.fail(property, "VIBE4121", `duplicate loop template field ${name}`)
+        if (Object.hasOwn(fields, name)) return this.fail(property, "SMITHERS4121", `duplicate loop template field ${name}`)
         fields[name] = this.lowerLoopTemplate(initializer, stateSymbol)
       }
       return { kind: "object", fields }
@@ -1761,7 +2154,7 @@ class FunctionLowerer {
     if (ts.isArrayLiteralExpression(expression)) {
       const items = expression.elements.map((element) => {
         if (ts.isOmittedExpression(element) || ts.isSpreadElement(element)) {
-          return this.fail(element, "VIBE4121", "loop template arrays cannot contain holes or spreads")
+          return this.fail(element, "SMITHERS4121", "loop template arrays cannot contain holes or spreads")
         }
         return this.lowerLoopTemplate(element, stateSymbol)
       })
@@ -1769,7 +2162,7 @@ class FunctionLowerer {
     }
     if (ts.isPropertyAccessExpression(expression)) {
       if (expression.questionDotToken !== undefined) {
-        return this.fail(expression, "VIBE4121", "loop templates cannot use optional projection")
+        return this.fail(expression, "SMITHERS4121", "loop templates cannot use optional projection")
       }
       return this.projectLoopTemplate(
         this.lowerLoopTemplate(expression.expression, stateSymbol),
@@ -1779,18 +2172,18 @@ class FunctionLowerer {
     }
     if (ts.isElementAccessExpression(expression)) {
       if (expression.questionDotToken !== undefined) {
-        return this.fail(expression, "VIBE4121", "loop templates cannot use optional projection")
+        return this.fail(expression, "SMITHERS4121", "loop templates cannot use optional projection")
       }
       const argument = expression.argumentExpression && unwrapParentheses(expression.argumentExpression)
       const key = argument && (ts.isStringLiteral(argument) || ts.isNumericLiteral(argument)) ? argument.text : undefined
-      if (key === undefined) return this.fail(expression, "VIBE4121", "loop template projection keys must be static")
+      if (key === undefined) return this.fail(expression, "SMITHERS4121", "loop template projection keys must be static")
       return this.projectLoopTemplate(
         this.lowerLoopTemplate(expression.expression, stateSymbol),
         key,
         expression
       )
     }
-    return this.fail(expression, "VIBE4121", `unsupported loop template expression ${ts.SyntaxKind[expression.kind]}`)
+    return this.fail(expression, "SMITHERS4121", `unsupported loop template expression ${ts.SyntaxKind[expression.kind]}`)
   }
 
   private loopBinaryOperator(expression: ts.BinaryExpression): Extract<LoopTemplateExpr, { kind: "binary" }>["operator"] {
@@ -1807,12 +2200,12 @@ class FunctionLowerer {
         const type = this.checked.checker.getTypeAtLocation(expression)
         if ((type.flags & (ts.TypeFlags.String | ts.TypeFlags.StringLiteral)) !== 0) return "concat"
         if ((type.flags & (ts.TypeFlags.Number | ts.TypeFlags.NumberLiteral)) !== 0) return "add"
-        return this.fail(expression, "VIBE4121", "loop template + must be statically number or string")
+        return this.fail(expression, "SMITHERS4121", "loop template + must be statically number or string")
       }
       default:
         return this.fail(
           expression.operatorToken,
-          "VIBE4121",
+          "SMITHERS4121",
           `unsupported loop template operator ${ts.SyntaxKind[expression.operatorToken.kind]}`
         )
     }
@@ -1827,7 +2220,7 @@ class FunctionLowerer {
     if (value.kind === "object" && Object.hasOwn(value.fields, key)) return value.fields[key]
     if (value.kind === "array") {
       if (!/^(0|[1-9][0-9]*)$/.test(key)) {
-        return this.fail(node, "VIBE4121", `cannot project ${JSON.stringify(key)} from this loop template`)
+        return this.fail(node, "SMITHERS4121", `cannot project ${JSON.stringify(key)} from this loop template`)
       }
       const index = Number(key)
       if (Number.isSafeInteger(index) && index >= 0 && index < value.items.length) return value.items[index]
@@ -1835,7 +2228,7 @@ class FunctionLowerer {
     if (value.kind === "literal" && value.value !== null && typeof value.value === "object") {
       if (Array.isArray(value.value)) {
         if (!/^(0|[1-9][0-9]*)$/.test(key)) {
-          return this.fail(node, "VIBE4121", `cannot project ${JSON.stringify(key)} from this loop template`)
+          return this.fail(node, "SMITHERS4121", `cannot project ${JSON.stringify(key)} from this loop template`)
         }
         const index = Number(key)
         if (Number.isSafeInteger(index) && index >= 0 && index < value.value.length) {
@@ -1845,7 +2238,7 @@ class FunctionLowerer {
         return { kind: "literal", value: value.value[key] }
       }
     }
-    return this.fail(node, "VIBE4121", `cannot project ${JSON.stringify(key)} from this loop template`)
+    return this.fail(node, "SMITHERS4121", `cannot project ${JSON.stringify(key)} from this loop template`)
   }
 
   /**
@@ -1869,7 +2262,7 @@ class FunctionLowerer {
     ) {
       return this.fail(
         call,
-        "VIBE4121",
+        "SMITHERS4121",
         "compiler-owned loopWhile(initial, state => condition, state => Action.run(input), maxRounds) requires exactly four static arguments"
       )
     }
@@ -1880,7 +2273,7 @@ class FunctionLowerer {
       (type.flags & (ts.TypeFlags.Boolean | ts.TypeFlags.BooleanLiteral)) !== 0 ||
       (type.isUnion() && type.types.length > 0 && type.types.every(isBoolean))
     if (!isBoolean(this.checked.checker.getTypeAtLocation(conditionCallback.body))) {
-      return this.fail(conditionCallback.body, "VIBE4121", "durable loopWhile condition must statically be boolean")
+      return this.fail(conditionCallback.body, "SMITHERS4121", "durable loopWhile condition must statically be boolean")
     }
     const condition = this.lowerLoopTemplate(conditionCallback.body, conditionCallback.stateSymbol)
 
@@ -1891,36 +2284,36 @@ class FunctionLowerer {
       body.expression.name.text !== "run" || body.questionDotToken !== undefined ||
       body.expression.questionDotToken !== undefined
     ) {
-      return this.fail(body, "VIBE4121", "durable loopWhile body must be exactly one imported Action.run(input) call")
+      return this.fail(body, "SMITHERS4121", "durable loopWhile body must be exactly one imported Action.run(input) call")
     }
     const actionReference = unwrapParentheses(body.expression.expression)
     if (isTypeOnlyReference(this.checked.checker, actionReference)) {
-      return this.fail(actionReference, "VIBE4121", "loopWhile body Action must be a runtime import")
+      return this.fail(actionReference, "SMITHERS4121", "loopWhile body Action must be a runtime import")
     }
     const actionSymbol = symbolAtExpression(this.checked.checker, actionReference)
     const descriptor = actionSymbol && this.checked.actionsBySymbol.get(actionSymbol)
     if (descriptor === undefined) {
-      return this.fail(actionReference, "VIBE4121", "loopWhile body must target one compiler-bound Action")
+      return this.fail(actionReference, "SMITHERS4121", "loopWhile body must target one compiler-bound Action")
     }
     if (body.arguments.length !== 1 || body.typeArguments !== undefined) {
-      return this.fail(body, "VIBE4121", `${descriptor.id}.run requires exactly one loop state input`)
+      return this.fail(body, "SMITHERS4121", `${descriptor.id}.run requires exactly one loop state input`)
     }
     const bodyTemplate = this.lowerLoopTemplate(body.arguments[0], bodyCallback.stateSymbol)
     const prior = this.usedActions.get(descriptor.id)
     if (prior !== undefined && prior.contractDigest !== descriptor.contractDigest) {
-      return this.fail(body, "VIBE4114", `Action id ${descriptor.id} resolves to incompatible durable contracts`)
+      return this.fail(body, "SMITHERS4114", `Action id ${descriptor.id} resolves to incompatible durable contracts`)
     }
     this.usedActions.set(descriptor.id, descriptor)
 
     const budgetExpression = unwrapParentheses(call.arguments[3])
     if (!ts.isNumericLiteral(budgetExpression)) {
-      return this.fail(call.arguments[3], "VIBE4121", "durable loopWhile round budget must be a static numeric literal")
+      return this.fail(call.arguments[3], "SMITHERS4121", "durable loopWhile round budget must be a static numeric literal")
     }
     const maxRounds = Number(budgetExpression.text)
     if (!Number.isSafeInteger(maxRounds) || maxRounds < 1 || maxRounds > MAX_LOOP_ROUNDS) {
       return this.fail(
         budgetExpression,
-        "VIBE4121",
+        "SMITHERS4121",
         `durable loopWhile round budget must be an integer between 1 and ${MAX_LOOP_ROUNDS}`
       )
     }
@@ -1945,7 +2338,7 @@ class FunctionLowerer {
     const occurrence = this.occurrences.get(occurrenceKey) ?? 0
     this.occurrences.set(occurrenceKey, occurrence + 1)
     const id = `src-${digest({ ...identity, occurrence }).slice(0, 24)}`
-    if (this.nodeIds.has(id)) return this.fail(call, "VIBE4199", `stable durable node id collision ${id}`)
+    if (this.nodeIds.has(id)) return this.fail(call, "SMITHERS4199", `stable durable node id collision ${id}`)
     this.nodeIds.add(id)
     const position = this.checked.sourceFile.getLineAndCharacterOfPosition(call.getStart(this.checked.sourceFile))
     const node: LoopNode = {
@@ -1982,7 +2375,7 @@ class FunctionLowerer {
     if (!isBoolean(conditionType)) {
       return this.fail(
         expression.condition,
-        "VIBE4106",
+        "SMITHERS4106",
         "durable conditional expressions require a statically boolean condition"
       )
     }
@@ -2004,7 +2397,7 @@ class FunctionLowerer {
     const occurrence = this.occurrences.get(occurrenceKey) ?? 0
     this.occurrences.set(occurrenceKey, occurrence + 1)
     const id = `src-${digest({ ...identity, occurrence }).slice(0, 24)}`
-    if (this.nodeIds.has(id)) return this.fail(expression, "VIBE4199", `stable durable node id collision ${id}`)
+    if (this.nodeIds.has(id)) return this.fail(expression, "SMITHERS4199", `stable durable node id collision ${id}`)
     this.nodeIds.add(id)
     const position = this.checked.sourceFile.getLineAndCharacterOfPosition(expression.questionToken.getStart(this.checked.sourceFile))
     const node: BranchNode = {
@@ -2062,12 +2455,12 @@ class FunctionLowerer {
     const descriptor = actionSymbol && this.checked.actionsBySymbol.get(actionSymbol)
     if (descriptor === undefined) return undefined
     if (call.arguments.length !== 1 || call.typeArguments !== undefined) {
-      return this.fail(call, "VIBE4113", `${descriptor.id}.run requires exactly one input argument in durable source`)
+      return this.fail(call, "SMITHERS4113", `${descriptor.id}.run requires exactly one input argument in durable source`)
     }
     const input = this.lowerExpression(call.arguments[0], `${anchor}:input`)
     const prior = this.usedActions.get(descriptor.id)
     if (prior !== undefined && prior.contractDigest !== descriptor.contractDigest) {
-      return this.fail(call, "VIBE4114", `Action id ${descriptor.id} resolves to incompatible durable contracts`)
+      return this.fail(call, "SMITHERS4114", `Action id ${descriptor.id} resolves to incompatible durable contracts`)
     }
     this.usedActions.set(descriptor.id, descriptor)
     const identity = {
@@ -2085,7 +2478,7 @@ class FunctionLowerer {
     const occurrence = this.occurrences.get(occurrenceKey) ?? 0
     this.occurrences.set(occurrenceKey, occurrence + 1)
     const id = `src-${digest({ ...identity, occurrence }).slice(0, 24)}`
-    if (this.nodeIds.has(id)) return this.fail(call, "VIBE4199", `stable durable node id collision ${id}`)
+    if (this.nodeIds.has(id)) return this.fail(call, "SMITHERS4199", `stable durable node id collision ${id}`)
     this.nodeIds.add(id)
     const position = this.checked.sourceFile.getLineAndCharacterOfPosition(call.getStart(this.checked.sourceFile))
     const node: ActionNode = {
@@ -2108,7 +2501,7 @@ class FunctionLowerer {
 
   private propertyName(name: ts.PropertyName): string {
     if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) return name.text
-    return this.fail(name, "VIBE4111", "durable object field names must be static")
+    return this.fail(name, "SMITHERS4111", "durable object field names must be static")
   }
 
   private project(value: ValueExpr, key: string, node: ts.Node): ValueExpr {
@@ -2128,7 +2521,7 @@ class FunctionLowerer {
         return { kind: "literal", value: value.value[key] }
       }
     }
-    return this.fail(node, "VIBE4111", `cannot project ${JSON.stringify(key)} from this durable expression`)
+    return this.fail(node, "SMITHERS4111", `cannot project ${JSON.stringify(key)} from this durable expression`)
   }
 }
 
@@ -2146,7 +2539,7 @@ export const compileDurableSource = (
       return {
         ok: false,
         diagnostics: [Object.freeze({
-          code: "VIBE4101",
+          code: "SMITHERS4101",
           message: "durable source exceeds the compiler input size limit",
           file: logicalFileName,
           line: 1,
@@ -2155,7 +2548,13 @@ export const compileDurableSource = (
         })]
       }
     }
-    const checked = checkedSource(source, logicalFileName, options.actions, options.flows ?? [])
+    const checked = checkedSource(
+      source,
+      logicalFileName,
+      authoredLogicalName(options.fileName),
+      options.actions ?? [],
+      options.flows ?? []
+    )
     sourceFile = checked.sourceFile
     if (checked.sourceDiagnostics.length > 0) {
       const parse = checked.sourceDiagnostics[0]
@@ -2164,7 +2563,7 @@ export const compileDurableSource = (
       return {
         ok: false,
         diagnostics: [Object.freeze({
-          code: "VIBE4100",
+          code: "SMITHERS4100",
           message: ts.flattenDiagnosticMessageText(parse.messageText, "\n"),
           file: logicalFileName,
           line: position.line + 1,
@@ -2177,15 +2576,15 @@ export const compileDurableSource = (
       throw new LoweringFailure(diagnosticAt(logicalFileName, checked.sourceFile, node, code, message))
     }
     const calls = findDurableCalls(checked)
-    if (calls.length === 0) fail(checked.sourceFile, "VIBE4102", "no imported vibelang:flows durable(...) call was found")
-    if (calls.length > 1) fail(calls[1], "VIBE4102", "bounded durable source compilation accepts exactly one durable(...) declaration")
+    if (calls.length === 0) fail(checked.sourceFile, "SMITHERS4102", "no imported smithers:flows durable(...) call was found")
+    if (calls.length > 1) fail(calls[1], "SMITHERS4102", "bounded durable source compilation accepts exactly one durable(...) declaration")
     const call = calls[0]
     const sourceFunction = resolvedFunction(checked, call, fail)
     const declarationName = declarationNameFor(call, sourceFunction)
     const flowId = options.flowId ?? `${logicalFileName}#${declarationName}`
     const flowVersion = options.flowVersion ?? 1
-    if (typeof flowId !== "string" || flowId.trim() === "") fail(call, "VIBE4101", "durable Flow id must be non-empty")
-    if (!Number.isSafeInteger(flowVersion) || flowVersion < 1) fail(call, "VIBE4101", "durable Flow version must be a positive safe integer")
+    if (typeof flowId !== "string" || flowId.trim() === "") fail(call, "SMITHERS4101", "durable Flow id must be non-empty")
+    if (!Number.isSafeInteger(flowVersion) || flowVersion < 1) fail(call, "SMITHERS4101", "durable Flow version must be a positive safe integer")
     const lowerer = new FunctionLowerer(
       checked,
       logicalFileName,
@@ -2203,7 +2602,11 @@ export const compileDurableSource = (
     const schemas = flowSchemas(checked, sourceFunction, output, lowerer.nodes, actions, childFlowsByDigest, fail)
     // The compiler emits the minimal Plan format a program needs so plans in
     // the pre-existing subset keep their exact bytes, digests, and node ids.
-    const formatVersion = lowerer.usesFormatVersion2 ? 2 as const : 1 as const
+    const formatVersion = lowerer.usesFormatVersion3
+      ? 3 as const
+      : lowerer.usesFormatVersion2
+        ? 2 as const
+        : 1 as const
     const semantic = {
       formatVersion,
       flowId,
@@ -2222,7 +2625,11 @@ export const compileDurableSource = (
       diagnostics: [] as const,
       plan,
       artifact,
-      flow: loadCompiledFlow(artifact)
+      flow: loadCompiledFlow(artifact),
+      // Every derived declaration is reported, not only the ones this Flow
+      // used: they all extend the compiler-owned base, which does not survive
+      // the erasure of the compiler-owned import.
+      derivedActions: checked.derivedActions
     })
   } catch (error) {
     if (error instanceof LoweringFailure) return { ok: false, diagnostics: [error.diagnostic] }
@@ -2239,7 +2646,7 @@ export const compileDurableSource = (
         logicalFileName,
         fallback,
         fallback,
-        "VIBE4199",
+        "SMITHERS4199",
         `durable source compiler failed closed: ${error instanceof Error ? error.message : String(error)}`
       )]
     }

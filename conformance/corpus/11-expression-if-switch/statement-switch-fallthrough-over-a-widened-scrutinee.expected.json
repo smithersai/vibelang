@@ -1,0 +1,6 @@
+{
+  "title": "a statement-position switch keeps TypeScript's fallthrough, break, and default behavior exactly",
+  "expect": "output",
+  "stdout": ["a,b,b,d"],
+  "notes": "The promise this pins — statement-position `switch` keeps ordinary TypeScript behavior, unlike the expression-position value `switch` — used to be carried by `statement-switch-keeps-typescript-fallthrough`. That case turned out to be rejected by real TypeScript with TS2678 for an unrelated reason (its scrutinee `\"a\"` has a literal type, so `case \"b\"` is not comparable to it), so it now pins the rejection and this case pins the fallthrough itself over a `string`-typed scrutinee TypeScript accepts. `classify(\"a\")` must fall out of the matched clause into the next one and push both \"a\" and \"b\"; `classify(\"b\")` must stop at its `break`; `classify(\"z\")` must reach `default`. Any implementation that treats a statement `switch` like the expression form — one clause, no fallthrough — produces \"a,b,d\" and fails here."
+}

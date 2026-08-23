@@ -1,0 +1,7 @@
+{
+  "title": "a non-code import with no type attribute is rejected rather than guessed from the file extension",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS5201", "line": 1, "column": 1 }],
+  "assets": ["counter.json"],
+  "notes": "specification/comptime.mdx, 'Built-In Formats': 'Non-code inputs MUST select their loader and mode with standard import attributes.' docs/DECISIONS.md (Locked): the required string-valued `type` selects the loader, and file extensions do not create a second implicit selection grammar. This is the fail-closed direction of that rule: the file exists and a JSON loader is registered, and the import is still refused because nothing named the loader. poc/src/build/source-assets.ts records SMITHERS5201 for it ('non-code imports require `with { type: \"...\" }`'), reported against the whole import declaration. RETIRED MARKER (go, 2026-08-23): with no source-asset stage the fork never asked whether a loader was named and reported its foreign-module rules instead (observed SMITHERS1506@4:11, SMITHERS1510@1:21), so a missing `type` was indistinguishable from a present one. The fork now reports SMITHERS5201 at the import declaration; measured XPASS on go by `node conformance/runner/run.mjs --backend both --jobs 4`."
+}

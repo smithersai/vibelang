@@ -1,0 +1,6 @@
+{
+  "title": "a foreign call with no @throws claim charges the distinguished Panic channel to its caller",
+  "expect": "output",
+  "stdout": ["ok 41", "panic"],
+  "typescript": ["foreign.ts"]
+}

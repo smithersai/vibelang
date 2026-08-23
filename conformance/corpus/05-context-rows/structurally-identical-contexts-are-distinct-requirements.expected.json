@@ -1,0 +1,6 @@
+{
+  "title": "two structurally identical Context subclasses stay different requirements: capability identity is nominal, not shape-based",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS2101", "line": 20, "column": 22 }],
+  "notes": "specification/requirements.mdx, 'Capability Identity': 'Two structurally identical context subclasses MUST remain different requirements unless the program defines an explicit identity relationship.' Reader and Writer here declare the *same* member with the *same* signature, and the layer provides only Reader, so the body's Writer requirement is unsatisfied and specification/requirements.mdx, 'Satisfaction', requires a compile error. 06-layers/layer-provide-missing-a-capability pins the same rule for two structurally DIFFERENT capabilities; this case is what stops an implementation from keying the requirement row structurally. Note the Layer.provide is at module top level, which is where the compiler knows the complete closure — inside a function the unsatisfied requirement instead propagates to the caller's row."
+}

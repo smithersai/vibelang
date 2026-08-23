@@ -1,0 +1,12 @@
+{
+  "title": "`Result.expect()` at module top level is rejected: it converts the error variant into a panic, and at top level there is no enclosing channel that can carry one",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1505",
+      "line": 7,
+      "column": 15
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Propagation': 'At an explicit non-Result boundary, unsafe extraction MAY throw at runtime and MUST be visually distinct in API naming or diagnostics' — module top level is that boundary and the diagnostic is how the boundary is made visible. Same page, 'Foreign Exceptions': 'A caller MUST propagate panic, explicitly catch it, or use a trusted adapter that catches and translates it'; module top level can do none of the three. The positive counterpart 01/expect-charges-the-panic-channel pins that the same call inside a function charges Panic to that function's row, so the pair separates 'expect charges a panic' from 'there is somewhere for the panic to go'. A go xfail here is RETIRED: the fork used to accept this program and run it to exit 0 — the fail-open direction — and now reports SMITHERS1505 at the same authored position as the reference."
+}

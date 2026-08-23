@@ -1,0 +1,7 @@
+{
+  "title": "comptime.target selects one branch during compilation and the unselected branch is not emitted",
+  "expect": "output",
+  "stdout": [
+    "{\"kind\":\"node-http\",\"pollMilliseconds\":1000}"
+  ]
+}

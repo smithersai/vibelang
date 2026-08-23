@@ -1,18 +1,20 @@
 # Runtime Validation [Derive schemas from the types you already use]
 
-Static types disappear before untrusted data reaches your program. VibeLang uses comptime to derive runtime validators and codecs from ordinary types.
+Static types disappear before untrusted data reaches your program. Smithers uses comptime to derive runtime validators and codecs from ordinary types.
 
 :::warning Implementation status
-`comptime(Schema.derive<T>())` is implemented as a programmatic POC path, not in
-the root CLI. `Schema` comes from a compiler-owned `vibelang:schema` virtual
-module whose import spelling is provisional. The checker reifies the type
-argument into a bounded structural descriptor grammar — primitives, literals,
-arrays, fixed tuples, unions, and exact objects, under explicit depth, node,
-property, and variant budgets — and everything outside it (`any`, index
-signatures, intersections, functions, classes, enums, recursive types) is
-rejected with a diagnostic rather than silently widened. `parse` returns
-`Result<T, ValidationError>`. Root-CLI wiring is still pending, and the older
-declaration-AST validator spike remains only behind the asset example.
+`comptime(Schema.derive<T>())` is wired through the root `check`, `compile`,
+`run`, and `test` pipeline. `Schema` comes from the compiler-owned
+`smithers:schema` virtual module, whose import spelling remains provisional.
+The checker reifies the type argument into a bounded structural descriptor
+grammar — primitives, literals, arrays, fixed tuples, unions, and exact
+objects, under explicit depth, node, property, and variant budgets — and
+everything outside it (`any`, index signatures, intersections, functions,
+classes, enums, recursive types) is rejected with a diagnostic rather than
+silently widened. Lowered code imports the published
+`smthrs/schema-runtime` package entry point, and `parse` returns
+`Result<T, ValidationError>`. The older declaration-AST validator spike remains
+only behind the asset example.
 :::
 
 ## Derive a Schema
@@ -20,8 +22,8 @@ declaration-AST validator spike remains only behind the asset example.
 Start with the application type:
 
 ```ts
-import { comptime } from "vibelang:comptime"
-import { Schema } from "vibelang:schema"
+import { comptime } from "smithers:comptime"
+import { Schema } from "smithers:schema"
 
 type SignupRequest = {
   email: string
@@ -42,7 +44,7 @@ function handleSignup(
   body: unknown,
 ): Result<User, ValidationError | CreateUserError> {
   const users = Users.context()
-  const request = SignupRequestSchema.parse(body).unwrap()
+  const request = SignupRequestSchema.parse(body)!
   return users.create(request)
 }
 ```
@@ -55,8 +57,8 @@ Platform APIs can accept a type or derived schema directly:
 
 ```ts
 const http = HttpClient.context()
-const response = (await http.get("/account")).unwrap()
-const account = (await response.json(Account)).unwrap()
+const response = (await http.get("/account"))!
+const account = (await response.json(Account))!
 ```
 
 The type argument asks the compiler or standard library to use the derived codec. Invalid JSON and structurally invalid data remain distinguishable failures when the API declares them separately.
@@ -90,4 +92,4 @@ The derived artifact can be customized where a type alone does not carry enough 
 
 Not every TypeScript type can become a runtime check. Structural data types, tagged unions, tuples, arrays, and supported refinements are natural candidates. Types involving arbitrary functions, erased nominal facts, or unconstrained `any` need an explicit codec or are rejected at a durable boundary.
 
-The exact reification rules are specification work. Native casts must never use a type assertion to reinterpret memory unsafely.
+The exact reification rules are specification work. A cast must never reinterpret memory unsafely.

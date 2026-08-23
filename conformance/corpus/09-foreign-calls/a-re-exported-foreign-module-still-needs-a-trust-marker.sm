@@ -1,0 +1,9 @@
+// A re-export is a module edge like an import: this module runs `node:fs`'s
+// initializer whether or not anything here reads the binding. The trust rule
+// therefore has to own the export spelling too, or the rule is one keyword away
+// from being unenforced.
+export { readFileSync } from "node:fs"
+
+export function main(): string[] {
+  return ["done"]
+}

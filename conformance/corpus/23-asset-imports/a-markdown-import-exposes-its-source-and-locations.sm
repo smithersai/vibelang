@@ -1,0 +1,13 @@
+import guide, { frontmatter, headings } from "./reviewer.md" with { type: "markdown" }
+
+// The default export is the raw source; the parsed shape adds frontmatter and
+// headings, and every heading carries the authored offset it was found at, so
+// a diagnostic reported against this file can be placed.
+export function main(): string[] {
+  return [
+    frontmatter.title,
+    headings.map((heading) => `${heading.level}:${heading.text}`).join(" | "),
+    `${guide.startsWith("---")}`,
+    `${guide.slice(headings[0].offset, headings[0].offset + 10)}`,
+  ]
+}

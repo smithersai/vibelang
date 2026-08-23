@@ -1,0 +1,4 @@
+{
+  "title": "enums (numeric, string, const) and namespaces keep their runtime emit",
+  "stdout": ["1 2 left", "Down", "3", "3,4"]
+}

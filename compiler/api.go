@@ -3,19 +3,23 @@ package compiler
 import "context"
 
 // APIVersion is the version of the compiler transport contract. Version 2
-// added multi-file root sets with relative `.vibe` imports, the externally
+// added multi-file root sets with relative `.sm` imports, the externally
 // lowered request mode (LoweringExternal with per-file LoweredSource), and
-// composed authored source maps in emitted artifacts.
-const APIVersion = 2
+// composed authored source maps in emitted artifacts. Version 3 added
+// LoweringInternal: real Smithers lowering performed in Go inside the pinned
+// fork against its own checker, factory, and printer. Version 4 made lowering
+// mode mandatory and gave identity lowering an explicit wire value, so an
+// omitted field can never silently disable Smithers checks.
+const APIVersion = 4
 
 // FileKind classifies a compiler input without tying extensions to a backend.
 type FileKind string
 
 const (
-	FileKindTypeScript FileKind = "typescript"
-	FileKindVibe       FileKind = "vibe"
-	FileKindVibeJSX    FileKind = "vibe-jsx"
-	FileKindAsset      FileKind = "asset"
+	FileKindTypeScript  FileKind = "typescript"
+	FileKindSmithers    FileKind = "smithers"
+	FileKindSmithersJSX FileKind = "smithers-jsx"
+	FileKindAsset       FileKind = "asset"
 )
 
 // Phase identifies the compiler phase that produced a diagnostic or artifact.
@@ -40,22 +44,30 @@ const (
 	DiagnosticMessage    DiagnosticCategory = "message"
 )
 
-// LoweringMode selects who lowers `.vibe` syntax before TypeScript checking.
+// LoweringMode selects who lowers `.sm` syntax before TypeScript checking.
 type LoweringMode string
 
 const (
-	// LoweringIdentity accepts the TypeScript-shaped subset of VibeLang and
+	// LoweringIdentity accepts the TypeScript-shaped subset of Smithers and
 	// checks it through the fork's identity content mapper. Lowered fields must
-	// be absent.
-	LoweringIdentity LoweringMode = ""
-	// LoweringExternal means an external frontend already lowered every `.vibe`
-	// file. Each FileKindVibe SourceFile must carry a LoweredSource; the bridge
+	// be absent. It is an explicit compatibility/testing route, never a default.
+	LoweringIdentity LoweringMode = "identity"
+	// LoweringExternal means an external frontend already lowered every `.sm`
+	// file. Each FileKindSmithers SourceFile must carry a LoweredSource; the bridge
 	// checks the lowered TypeScript and composes all emitted source maps back to
-	// the authored `.vibe` positions.
+	// the authored `.sm` positions.
 	LoweringExternal LoweringMode = "external"
+	// LoweringInternal lowers Smithers semantics inside the pinned fork, in Go,
+	// against the fork's own parser, checker, node factory, and printer. The
+	// bridge injects a compiler-owned prelude declaring the runtime Result
+	// representation, recognizes it by resolved symbol identity, and rewrites
+	// `throw` and `return` inside Result-returning functions into Result variant
+	// constructions. Lowered fields must be absent: the bridge produces the
+	// lowering and its authored source map itself.
+	LoweringInternal LoweringMode = "internal"
 )
 
-// LoweredSource is the externally produced lowering of one authored `.vibe`
+// LoweredSource is the externally produced lowering of one authored `.sm`
 // file: the generated TypeScript and the version-3 source map from the
 // authored file to that TypeScript.
 //
@@ -89,8 +101,8 @@ type SourceFile struct {
 	Path string   `json:"path"`
 	Kind FileKind `json:"kind"`
 	Text string   `json:"text"`
-	// Lowered carries the external lowering of a FileKindVibe file. It is
-	// required for every `.vibe` file when the request uses LoweringExternal and
+	// Lowered carries the external lowering of a FileKindSmithers file. It is
+	// required for every `.sm` file when the request uses LoweringExternal and
 	// must be absent otherwise.
 	Lowered *LoweredSource `json:"lowered,omitempty"`
 }
@@ -123,8 +135,8 @@ type CompileRequest struct {
 	// path used by editor hosts and by the pinned-fork conformance test.
 	Files   []SourceFile `json:"files,omitempty"`
 	Options Options      `json:"options,omitempty"`
-	// Lowering selects the identity content-mapper path (default) or the
-	// externally lowered path. LoweringExternal requires in-memory Files.
+	// Lowering explicitly selects the internal, identity, or externally lowered
+	// path. The zero value is invalid. LoweringExternal requires in-memory Files.
 	Lowering LoweringMode `json:"lowering,omitempty"`
 }
 

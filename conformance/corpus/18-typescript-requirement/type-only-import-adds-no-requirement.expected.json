@@ -1,0 +1,7 @@
+{
+  "title": "a type-only import of an untrusted foreign module adds no runtime requirement and is accepted",
+  "expect": "output",
+  "stdout": ["retries 3"],
+  "typescript": ["untrusted.ts"],
+  "notes": "specification/compatibility.mdx, 'Runtime TypeScript Dependency': 'Using a value from TypeScript or JavaScript code MUST add a runtime requirement representing that compatibility boundary. A type-only import MUST NOT add that requirement.' specification/type-system.mdx, 'Foreign Boundaries': 'Type-only imports add neither runtime requirement.' This case is the positive half of a matched pair: it imports the SAME module that 09-foreign-calls/foreign-module-without-a-trust-marker imports as a value and gets SMITHERS1510 for. The difference in verdict between the two cases is the whole obligation, and it is observable without reading a requirement row."
+}

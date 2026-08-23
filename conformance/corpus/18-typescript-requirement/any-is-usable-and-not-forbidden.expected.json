@@ -1,0 +1,6 @@
+{
+  "title": "`any` stays usable in authored .sm: it contributes the TypeScript requirement rather than being globally forbidden",
+  "expect": "output",
+  "stdout": ["41", "Ada"],
+  "notes": "specification/compatibility.mdx, 'Dynamic Features': 'Use of any and eval MUST contribute TypeScript; neither is globally forbidden.' docs/DECISIONS.md 'TypeScript and native classification' (Locked): 'Using any adds the TypeScript requirement rather than being globally forbidden.' The TypeScript target satisfies that requirement by construction, so the correct observable behavior is that the program compiles and runs — a compiler that rejected `any` outright would fail this case, and specification/compatibility.mdx §4 forbids invalidating TypeScript escape hatches on the TypeScript target."
+}

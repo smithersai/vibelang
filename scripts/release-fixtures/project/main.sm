@@ -1,0 +1,11 @@
+import { load, type Missing } from "./service.sm"
+import config from "./config.json" with { type: "json", mode: "const" }
+
+export const releaseAssetAnswer: 42 = config.answer
+
+export function run(): Result<string, Missing> {
+  const value = load(true).unwrap()
+  return value + ":" + config.label + ":" + config.answer
+}
+
+run().match({ ok: (value) => value, error: (error) => error.message })

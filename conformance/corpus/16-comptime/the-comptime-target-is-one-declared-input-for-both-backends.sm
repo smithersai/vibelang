@@ -1,0 +1,17 @@
+import { comptime } from "smithers:comptime"
+
+// `comptime.target` is a declared compiler input, not ambient host state, and a
+// target-selected branch folds a different constant into the emitted program.
+// This case reports the target itself rather than branching on one value, so a
+// backend compiled under a different declared target prints a different line
+// instead of quietly taking the same arm.
+const selected = comptime(() => {
+  if (comptime.target === "browser") {
+    return "browser"
+  }
+  return `server:${comptime.target}`
+})()
+
+export function main(): string[] {
+  return [selected]
+}

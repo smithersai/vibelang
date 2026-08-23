@@ -32,7 +32,7 @@ interface CompiledImplementation {
 
 const compileWorkAction = (id: string, fileName: string): ActionDescriptor => {
   const compiled = compileActionContract(`
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -86,13 +86,13 @@ export function work(input: { value: number }): Result<{ value: number }, Failed
 
 const singleActionPlan = (action: ActionDescriptor, flowId: string): PlanTemplate => {
   const compiled = compileDurableSource(`
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 import { Work } from "test:pool-bundle-actions"
 export const Program = durable(function Program(input: { value: number }) {
   return Work.run({ value: input.value })
 })
 `, {
-    fileName: "flows/pool-bundle.vibe",
+    fileName: "flows/pool-bundle.sm",
     flowId,
     flowVersion: 1,
     actions: [Object.freeze({
@@ -106,8 +106,8 @@ export const Program = durable(function Program(input: { value: number }) {
 }
 
 test("identical inputs produce byte-identical bundles with matching digests", () => {
-  const first = compileImplementation("test/bundle/Det", "det-action.vibe", "det-impl", "abc")
-  const second = compileImplementation("test/bundle/Det", "det-action.vibe", "det-impl", "abc")
+  const first = compileImplementation("test/bundle/Det", "det-action.sm", "det-impl", "abc")
+  const second = compileImplementation("test/bundle/Det", "det-action.sm", "det-impl", "abc")
   expect(second.contract.digest).toBe(first.contract.digest)
   const buildFrom = (implementation: CompiledImplementation) => buildWorkerPoolBundle({
     poolId: "det-pool",
@@ -125,8 +125,8 @@ test("identical inputs produce byte-identical bundles with matching digests", ()
 })
 
 test("deployment bundles are tree-shaken to exactly the selected Actions", () => {
-  const used = compileImplementation("test/bundle/Used", "used-action.vibe", "used-impl", "usedmarker")
-  const unused = compileImplementation("test/bundle/Unused", "unused-action.vibe", "unused-impl", "unusedmarker")
+  const used = compileImplementation("test/bundle/Used", "used-action.sm", "used-impl", "usedmarker")
+  const unused = compileImplementation("test/bundle/Unused", "unused-action.sm", "unused-impl", "unusedmarker")
   const plan = singleActionPlan(used.action.descriptor, "test/bundle/UsedFlow")
   const deployment = Deployment.build({
     id: "bundle-tree-shake",
@@ -150,7 +150,7 @@ test("deployment bundles are tree-shaken to exactly the selected Actions", () =>
 })
 
 test("the pool artifact digest changes when only the bundle digest changes", () => {
-  const first = compileImplementation("test/bundle/Art", "art-action.vibe", "art-impl", "one")
+  const first = compileImplementation("test/bundle/Art", "art-action.sm", "art-impl", "one")
   const plan = singleActionPlan(first.action.descriptor, "test/bundle/ArtFlow")
   const flow = PlanArtifact.load(PlanArtifact.encode(plan))
   const withBundle = Deployment.build({
@@ -181,7 +181,7 @@ test("the pool artifact digest changes when only the bundle digest changes", () 
 })
 
 test("bundle emission fails closed on legacy, unauthenticated, and capability-requiring providers", () => {
-  const checked = compileImplementation("test/bundle/Closed", "closed-action.vibe", "closed-impl", "closed")
+  const checked = compileImplementation("test/bundle/Closed", "closed-action.sm", "closed-impl", "closed")
   const plan = singleActionPlan(checked.action.descriptor, "test/bundle/ClosedFlow")
 
   // A legacy provider (no checked contract) cannot join a bundle pool.
@@ -212,19 +212,19 @@ test("bundle emission fails closed on legacy, unauthenticated, and capability-re
   })).toThrow("exact frozen contract")
 
   // A capability-requiring implementation cannot execute inside a bundle.
-  const capabilityDescriptor = compileWorkAction("test/bundle/Cap", "cap-action.vibe")
+  const capabilityDescriptor = compileWorkAction("test/bundle/Cap", "cap-action.sm")
   const capabilityCallback = (input: { value: number }) => ({ value: input.value })
   const capabilityContract = compileActionImplementationContract({
     action: capabilityDescriptor,
     implementationId: "cap-impl",
     implementationVersion: "1",
-    entryFile: "cap-action.vibe",
+    entryFile: "cap-action.sm",
     exportName: "work",
     implementation: capabilityCallback,
     sources: [{
-      fileName: "cap-action.vibe",
+      fileName: "cap-action.sm",
       source: `
-import { Context } from "vibelang/context"
+import { Context } from "smthrs/context"
 class Failed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -248,7 +248,7 @@ export function work(input: { value: number }): Result<{ value: number }, Failed
 })
 
 test("tampered bundle bytes and forged manifests fail closed", () => {
-  const checked = compileImplementation("test/bundle/Tamper", "tamper-action.vibe", "tamper-impl", "tamper")
+  const checked = compileImplementation("test/bundle/Tamper", "tamper-action.sm", "tamper-impl", "tamper")
   const plan = singleActionPlan(checked.action.descriptor, "test/bundle/TamperFlow")
   const deployment = Deployment.build({
     id: "bundle-tamper",

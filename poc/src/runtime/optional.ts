@@ -13,9 +13,9 @@ export class MissingOptionalValue extends Panic {
   }
 }
 /** Nominal brand: keeps `errorIs(error, MissingOptionalValue)` from matching a bare Panic. */
-export interface MissingOptionalValue extends NominalError<"vibelang:MissingOptionalValue@1"> {}
+export interface MissingOptionalValue extends NominalError<"smithers:MissingOptionalValue@1"> {}
 
-registerErrorCodec(MissingOptionalValue, "vibelang:MissingOptionalValue@1", {
+registerErrorCodec(MissingOptionalValue, "smithers:MissingOptionalValue@1", {
   encode: (error) => ({ message: error.message }),
   decode: (payload) => {
     if (

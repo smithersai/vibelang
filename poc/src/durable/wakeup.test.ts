@@ -17,7 +17,7 @@ import {
 } from "./index.ts"
 
 const approvalSource = `
-import { durable, waitSignal } from "vibelang:flows"
+import { durable, waitSignal } from "smithers:flows"
 
 export const Approval = durable(function Approval(input: { requestId: string }) {
   const decision = waitSignal<{ approved: boolean; ticket: string }>("approval.decided")
@@ -27,7 +27,7 @@ export const Approval = durable(function Approval(input: { requestId: string }) 
 
 const signalFixture = () => {
   const compiled = compileDurableSource(approvalSource, {
-    fileName: "flows/wakeup-approval.vibe.ts",
+    fileName: "flows/wakeup-approval.sm.ts",
     flowId: "test/wakeup/Approval",
     flowVersion: 1,
     actions: []
@@ -108,7 +108,7 @@ test("a same-process delivery wakes a suspended signal wait far ahead of the swe
 })
 
 test("a delivery through another connection is observed at the sweep boundary without any notification", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "vibelang-wakeup-sweep-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-wakeup-sweep-"))
   const filename = join(directory, "durable.sqlite")
   const { deployment, node } = signalFixture()
   const storeA = new DurableStore(filename)
@@ -177,7 +177,7 @@ test("a suspended timer sleeps to its exact persisted wake time rather than a po
 })
 
 test("cross-connection cancellation interrupts a long timer wait at the sweep boundary", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "vibelang-wakeup-cancel-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-wakeup-cancel-"))
   const filename = join(directory, "durable.sqlite")
   const { deployment, nodeId } = timerFixture(30_000, "cancel")
   const storeA = new DurableStore(filename)

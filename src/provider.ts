@@ -57,7 +57,7 @@ export abstract class Action<Signature extends (...args: never[]) => ActionRetur
   }
 
   static provide(..._args: never[]): never {
-    throw new Error("Action.provide is not part of the prototype runtime; use vibelang/durable/bun");
+    throw new Error("Action.provide is not part of the prototype runtime; use smthrs/durable/bun");
   }
 }
 
@@ -67,7 +67,7 @@ export interface Flow<Input, Output> {
 }
 
 export function Flow<Input, Output>(_body: (input: Input) => Output): Flow<Input, Output> {
-  throw new Error("class-style Flow is not implemented; use Flow.define from vibelang/durable/authoring");
+  throw new Error("class-style Flow is not implemented; use Flow.define from smthrs/durable/authoring");
 }
 
 export interface Durable<T> {

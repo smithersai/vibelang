@@ -4,10 +4,10 @@ Status: phase evaluation, the compiler-recognized API, type generation, and trac
 
 ## Compiler-Recognized API
 
-Comptime MUST use ordinary TypeScript call syntax rather than a VibeLang keyword:
+Comptime MUST use ordinary TypeScript call syntax rather than a Smithers keyword:
 
 ```ts
-import { comptime } from "vibelang:comptime"
+import { comptime } from "smithers:comptime"
 ```
 
 The compiler MUST recognize the resolved imported binding, not the local identifier text. Aliasing the import MUST preserve its meaning, and an unrelated function named `comptime` MUST remain an ordinary function.
@@ -23,7 +23,7 @@ const routes = comptime(() => {
 })()
 ```
 
-The `vibelang:comptime` specifier is a compiler-owned virtual module. The compiler MUST erase or lower recognized imports and calls. Uncompiled JavaScript execution MUST fail during virtual-module loading rather than provide a fallback that could evaluate `comptime(...)` arguments at runtime.
+The `smithers:comptime` specifier is a compiler-owned virtual module. The compiler MUST erase or lower recognized imports and calls. Uncompiled JavaScript execution MUST fail during virtual-module loading rather than provide a fallback that could evaluate `comptime(...)` arguments at runtime.
 
 ## Evaluation Principle
 
@@ -69,7 +69,7 @@ A target-selected branch resolved at comptime MUST NOT emit unselected runtime c
 
 ## Asset Loaders
 
-VibeLang MUST support comptime loaders for non-code assets.
+Smithers MUST support comptime loaders for non-code assets.
 
 A loader MUST:
 
@@ -85,7 +85,7 @@ A loader MUST NOT use ambient filesystem, network, clock, random, or process acc
 
 The toolchain MUST include loaders for JSON, Markdown, and MDX.
 
-VibeLang's const JSON form MUST preserve literal values recursively and expose a deeply readonly type. Existing TypeScript JSON imports MUST retain TypeScript semantics.
+Smithers's const JSON form MUST preserve literal values recursively and expose a deeply readonly type. Existing TypeScript JSON imports MUST retain TypeScript semantics.
 
 Non-code inputs MUST select their loader and mode with standard import attributes. Const JSON MUST use the shape:
 

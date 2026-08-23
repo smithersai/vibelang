@@ -1,0 +1,5 @@
+{
+  "title": "a labeled block that can complete normally without reaching a break :label value is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1714", "line": 2, "column": 17 }]
+}

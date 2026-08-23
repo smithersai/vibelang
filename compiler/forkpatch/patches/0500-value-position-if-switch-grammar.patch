@@ -1,0 +1,565 @@
+diff --git a/tools/scripts/tsc/ast.json b/tools/scripts/tsc/ast.json
+index ba90a481..81b925df 100644
+--- a/tools/scripts/tsc/ast.json
++++ b/tools/scripts/tsc/ast.json
+@@ -283,6 +283,8 @@
+             "PostfixUnaryExpression",
+             "BinaryExpression",
+             "ConditionalExpression",
++            "IfExpression",
++            "SwitchExpression",
+             "TemplateExpression",
+             "YieldExpression",
+             "SpreadElement",
+@@ -1549,6 +1551,11 @@
+                         "type": "Statement",
+                         "list": "NodeList"
+                     },
++                    {
++                        "name": "Value",
++                        "type": "Expression",
++                        "optional": true
++                    },
+                     {
+                         "name": "FallthroughFlowNode",
+                         "type": "*FlowNode",
+@@ -3057,6 +3064,44 @@
+                     }
+                 ]
+             },
++            "IfExpression": {
++                "generateSubtreeFacts": true,
++                "extends": [
++                    "ExpressionBase",
++                    "CompositeBase"
++                ],
++                "members": [
++                    {
++                        "name": "Condition",
++                        "type": "Expression"
++                    },
++                    {
++                        "name": "WhenTrue",
++                        "type": "Expression"
++                    },
++                    {
++                        "name": "WhenFalse",
++                        "type": "Expression"
++                    }
++                ]
++            },
++            "SwitchExpression": {
++                "generateSubtreeFacts": true,
++                "extends": [
++                    "ExpressionBase",
++                    "CompositeBase"
++                ],
++                "members": [
++                    {
++                        "name": "Expression",
++                        "type": "Expression"
++                    },
++                    {
++                        "name": "CaseBlock",
++                        "type": "CaseBlock"
++                    }
++                ]
++            },
+             "ConditionalExpression": {
+                 "generateSubtreeFacts": true,
+                 "extends": [
+diff --git a/tsc/internal/ast/precedence.go b/tsc/internal/ast/precedence.go
+index bfaaa679..a9275d9b 100644
+--- a/tsc/internal/ast/precedence.go
++++ b/tsc/internal/ast/precedence.go
+@@ -231,6 +231,10 @@ func GetOperatorPrecedence(nodeKind Kind, operatorKind Kind, flags OperatorPrece
+ 		return OperatorPrecedenceAssignment
+ 	case KindConditionalExpression:
+ 		return OperatorPrecedenceConditional
++	// Smithers: a value `if`/`switch` is self-delimiting, so it never needs
++	// parentheses and never forces any onto its operands.
++	case KindIfExpression, KindSwitchExpression:
++		return OperatorPrecedencePrimary
+ 	case KindBinaryExpression:
+ 		switch operatorKind {
+ 		case KindCommaToken:
+diff --git a/tsc/internal/ast/utilities.go b/tsc/internal/ast/utilities.go
+index 07e55af5..4d2cc81e 100644
+--- a/tsc/internal/ast/utilities.go
++++ b/tsc/internal/ast/utilities.go
+@@ -401,7 +401,10 @@ func isLeftHandSideExpressionKind(kind Kind) bool {
+ 		KindPrivateIdentifier, KindRegularExpressionLiteral, KindNumericLiteral, KindBigIntLiteral, KindStringLiteral,
+ 		KindNoSubstitutionTemplateLiteral, KindTemplateExpression, KindFalseKeyword, KindNullKeyword, KindThisKeyword,
+ 		KindTrueKeyword, KindSuperKeyword, KindNonNullExpression, KindExpressionWithTypeArguments, KindMetaProperty,
+-		KindImportKeyword, KindMissingDeclaration:
++		KindImportKeyword, KindMissingDeclaration,
++		// Smithers: value-position `if` and `switch` are brace-delimited and take
++		// no operator, so they are primary expressions like an object literal.
++		KindIfExpression, KindSwitchExpression:
+ 		return true
+ 	}
+ 	return false
+diff --git a/tsc/internal/binder/binder.go b/tsc/internal/binder/binder.go
+index e49960c1..9c18a5c7 100644
+--- a/tsc/internal/binder/binder.go
++++ b/tsc/internal/binder/binder.go
+@@ -1715,6 +1715,10 @@ func (b *Binder) bindChildren(node *ast.Node) {
+ 		b.bindDeleteExpressionFlow(node)
+ 	case ast.KindConditionalExpression:
+ 		b.bindConditionalExpressionFlow(node)
++	case ast.KindIfExpression:
++		b.bindIfExpressionFlow(node)
++	case ast.KindSwitchExpression:
++		b.bindSwitchExpressionFlow(node)
+ 	case ast.KindVariableDeclaration:
+ 		b.bindVariableDeclarationFlow(node)
+ 	case ast.KindPropertyAccessExpression, ast.KindElementAccessExpression:
+@@ -2133,6 +2137,33 @@ func (b *Binder) bindSwitchStatement(node *ast.Node) {
+ }
+ 
+ func (b *Binder) bindCaseBlock(node *ast.Node) {
++	// Smithers: a switch *expression* has no fallthrough, no `break`, and no
++	// statements, so every clause is bound from the same pre-switch flow and each
++	// clause value joins into one exit.
++	//
++	// It deliberately creates no FlowSwitchClause node: those carry the switch
++	// node into checker/flow.go, where six sites read it back with
++	// `AsSwitchStatement()` and would panic on a SwitchExpression. The cost is
++	// that the scrutinee is not narrowed inside a clause value, which is
++	// conservative rather than wrong, and is recorded for the semantic lane.
++	if node.Parent.Kind == ast.KindSwitchExpression {
++		preClauseFlow := b.currentFlow
++		postClauseLabel := b.createBranchLabel()
++		hasDefault := false
++		for _, clause := range node.AsCaseBlock().Clauses.Nodes {
++			hasDefault = hasDefault || clause.Kind == ast.KindDefaultClause
++			b.currentFlow = preClauseFlow
++			b.bind(clause)
++			b.addAntecedent(postClauseLabel, b.currentFlow)
++		}
++		if !hasDefault {
++			// With no default clause the switch can complete without entering any
++			// clause, so control still reaches the code after it.
++			b.addAntecedent(postClauseLabel, preClauseFlow)
++		}
++		b.currentFlow = b.finishFlowLabel(postClauseLabel)
++		return
++	}
+ 	switchStatement := node.Parent
+ 	clauses := node.AsCaseBlock().Clauses.Nodes
+ 	isNarrowingSwitch := switchStatement.Expression().Kind == ast.KindTrueKeyword || isNarrowingExpression(switchStatement.Expression())
+@@ -2371,6 +2402,38 @@ func (b *Binder) bindConditionalExpressionFlow(node *ast.Node) {
+ 	b.hasFlowEffects = b.hasFlowEffects || saveHasFlowEffects
+ }
+ 
++// bindIfExpressionFlow is the value `if`. It is the ConditionalExpression flow
++// shape: the condition narrows into each branch and both branches join into the
++// expression's own exit.
++func (b *Binder) bindIfExpressionFlow(node *ast.Node) {
++	expr := node.AsIfExpression()
++	trueLabel := b.createBranchLabel()
++	falseLabel := b.createBranchLabel()
++	postExpressionLabel := b.createBranchLabel()
++	saveCurrentFlow := b.currentFlow
++	saveHasFlowEffects := b.hasFlowEffects
++	b.hasFlowEffects = false
++	b.bindCondition(expr.Condition, trueLabel, falseLabel)
++	b.currentFlow = b.finishFlowLabel(trueLabel)
++	b.bind(expr.WhenTrue)
++	b.addAntecedent(postExpressionLabel, b.currentFlow)
++	b.currentFlow = b.finishFlowLabel(falseLabel)
++	b.bind(expr.WhenFalse)
++	b.addAntecedent(postExpressionLabel, b.currentFlow)
++	if b.hasFlowEffects {
++		b.currentFlow = b.finishFlowLabel(postExpressionLabel)
++	} else {
++		b.currentFlow = saveCurrentFlow
++	}
++	b.hasFlowEffects = b.hasFlowEffects || saveHasFlowEffects
++}
++
++func (b *Binder) bindSwitchExpressionFlow(node *ast.Node) {
++	expr := node.AsSwitchExpression()
++	b.bind(expr.Expression)
++	b.bind(expr.CaseBlock)
++}
++
+ func (b *Binder) bindVariableDeclarationFlow(node *ast.Node) {
+ 	b.bindEachChild(node)
+ 	if node.Initializer() != nil || ast.IsForInOrOfStatement(node.Parent.Parent) {
+diff --git a/tsc/internal/checker/checker.go b/tsc/internal/checker/checker.go
+index cc286b85..ec0810fb 100644
+--- a/tsc/internal/checker/checker.go
++++ b/tsc/internal/checker/checker.go
+@@ -7940,6 +7940,10 @@ func (c *Checker) checkExpressionWorker(node *ast.Node, checkMode CheckMode) *Ty
+ 		return c.checkBinaryExpression(node, checkMode)
+ 	case ast.KindConditionalExpression:
+ 		return c.checkConditionalExpression(node, checkMode)
++	case ast.KindIfExpression:
++		return c.checkIfExpression(node, checkMode)
++	case ast.KindSwitchExpression:
++		return c.checkSwitchExpression(node, checkMode)
+ 	case ast.KindSpreadElement:
+ 		return c.checkSpreadExpression(node, checkMode)
+ 	case ast.KindOmittedExpression:
+@@ -11070,6 +11074,79 @@ func (c *Checker) checkConditionalExpression(node *ast.Node, checkMode CheckMode
+ 	return c.getUnionTypeEx([]*Type{type1, type2}, UnionReductionSubtype, nil, nil)
+ }
+ 
++// checkIfExpression types the Smithers value `if`. Its type is the union of the
++// two branch values, exactly as for a conditional expression; the `else` branch
++// is required by the grammar, so there is no valueless completion path.
++func (c *Checker) checkIfExpression(node *ast.Node, checkMode CheckMode) *Type {
++	expr := node.AsIfExpression()
++	t := c.checkTruthinessExpression(expr.Condition, checkMode)
++	c.checkTestingKnownTruthyCallableOrAwaitableOrEnumMemberType(expr.Condition, t, expr.WhenTrue)
++	whenTrue := c.checkExpressionEx(expr.WhenTrue, checkMode)
++	whenFalse := c.checkExpressionEx(expr.WhenFalse, checkMode)
++	return c.getUnionTypeEx([]*Type{whenTrue, whenFalse}, UnionReductionSubtype, nil, nil)
++}
++
++// checkSwitchExpression types the Smithers value `switch`. Its type is the union
++// of the clause values, and — with no `default` clause — `undefined`, because
++// the switch may then complete without matching anything.
++//
++// That is the fail-closed rule for a missing value branch, expressed in the type
++// system rather than as a new diagnostic: under `strict` the resulting
++// `T | undefined` is reported by the ordinary assignability rules at whatever
++// the expression is used for.
++func (c *Checker) checkSwitchExpression(node *ast.Node, checkMode CheckMode) *Type {
++	expr := node.AsSwitchExpression()
++	expressionType := c.checkExpression(expr.Expression)
++	clauses := expr.CaseBlock.AsCaseBlock().Clauses.Nodes
++	types := make([]*Type, 0, len(clauses)+1)
++	var firstDefaultClause *ast.Node
++	hasDuplicateDefaultClause := false
++	for _, clause := range clauses {
++		if ast.IsDefaultClause(clause) && !hasDuplicateDefaultClause {
++			if firstDefaultClause == nil {
++				firstDefaultClause = clause
++			} else {
++				c.grammarErrorOnNode(clause, diagnostics.A_default_clause_cannot_appear_more_than_once_in_a_switch_statement)
++				hasDuplicateDefaultClause = true
++			}
++		}
++		if ast.IsCaseClause(clause) {
++			caseType := c.checkExpression(clause.Expression())
++			if !c.isTypeEqualityComparableTo(expressionType, caseType) {
++				c.checkTypeComparableTo(caseType, expressionType, clause.Expression(), nil /*headMessage*/)
++			}
++		}
++		if value := clause.AsCaseOrDefaultClause().Value; value != nil {
++			types = append(types, c.checkExpressionEx(value, checkMode))
++		}
++	}
++	if firstDefaultClause == nil && !c.isExhaustiveSwitchExpression(expressionType, clauses) {
++		types = append(types, c.undefinedType)
++	}
++	if len(types) == 0 {
++		return c.undefinedType
++	}
++	return c.getUnionTypeEx(types, UnionReductionSubtype, nil, nil)
++}
++
++// isExhaustiveSwitchExpression is the value-switch half of SMITHERS1716: a switch
++// over a closed literal union whose case labels cover every member needs no
++// default clause, while an open scrutinee type keeps the requirement.
++//
++// It re-derives the clause types instead of calling getSwitchClauseTypes, which
++// caches per switch *statement* and reads its node back with AsSwitchStatement().
++func (c *Checker) isExhaustiveSwitchExpression(expressionType *Type, clauses []*ast.Node) bool {
++	t := c.getBaseConstraintOrType(expressionType)
++	if !isLiteralType(t) {
++		return false
++	}
++	switchTypes := core.Map(clauses, c.getTypeOfSwitchClause)
++	if len(switchTypes) == 0 || core.Some(switchTypes, isNeitherUnitTypeNorNever) {
++		return false
++	}
++	return c.eachTypeContainedIn(c.mapType(t, c.getRegularTypeOfLiteralType), switchTypes)
++}
++
+ func (c *Checker) checkTruthinessExpression(node *ast.Node, checkMode CheckMode) *Type {
+ 	return c.checkTruthinessOfType(c.checkExpressionEx(node, checkMode), node)
+ }
+diff --git a/tsc/internal/ls/completions.go b/tsc/internal/ls/completions.go
+index 2aef3535..3ea28b7b 100644
+--- a/tsc/internal/ls/completions.go
++++ b/tsc/internal/ls/completions.go
+@@ -6653,7 +6653,7 @@ func (l *LanguageService) getExhaustiveCaseSnippets(
+ 		}
+ 
+ 		newClauses := core.Map(elements, func(element *ast.Node) *ast.CaseOrDefaultClauseNode {
+-			return factory.NewCaseOrDefaultClause(ast.KindCaseClause, element, factory.NewNodeList(nil))
++			return factory.NewCaseOrDefaultClause(ast.KindCaseClause, element, factory.NewNodeList(nil), nil /*value*/)
+ 		})
+ 		newLineChar := l.FormatOptions().NewLineCharacter
+ 		printer := createSnippetPrinter(printer.PrinterOptions{
+diff --git a/tsc/internal/parser/parser.go b/tsc/internal/parser/parser.go
+index dee2d78d..d4c28b03 100644
+--- a/tsc/internal/parser/parser.go
++++ b/tsc/internal/parser/parser.go
+@@ -1444,7 +1444,7 @@ func (p *Parser) parseCaseClause() *ast.Node {
+ 	expression := p.parseExpressionAllowIn()
+ 	p.parseExpected(ast.KindColonToken)
+ 	statements := p.parseList(PCSwitchClauseStatements, (*Parser).parseStatement)
+-	result := p.finishNode(p.factory.NewCaseOrDefaultClause(ast.KindCaseClause, expression, statements), pos)
++	result := p.finishNode(p.factory.NewCaseOrDefaultClause(ast.KindCaseClause, expression, statements, nil /*value*/), pos)
+ 	p.withJSDoc(result, jsdoc)
+ 	return result
+ }
+@@ -1455,7 +1455,7 @@ func (p *Parser) parseDefaultClause() *ast.Node {
+ 	p.parseExpected(ast.KindDefaultKeyword)
+ 	p.parseExpected(ast.KindColonToken)
+ 	statements := p.parseList(PCSwitchClauseStatements, (*Parser).parseStatement)
+-	result := p.finishNode(p.factory.NewCaseOrDefaultClause(ast.KindDefaultClause, nil /*expression*/, statements), pos)
++	result := p.finishNode(p.factory.NewCaseOrDefaultClause(ast.KindDefaultClause, nil /*expression*/, statements, nil /*value*/), pos)
+ 	p.withJSDoc(result, jsdoc)
+ 	return result
+ }
+@@ -5742,10 +5742,98 @@ func (p *Parser) parsePrimaryExpression() *ast.Expression {
+ 		return p.parseTemplateExpression(false /*isTaggedTemplate*/)
+ 	case ast.KindPrivateIdentifier:
+ 		return p.parsePrivateIdentifier()
++	case ast.KindIfKeyword:
++		// Smithers: a value-position `if`. parseStatement claims a
++		// statement-initial `if` before any expression parse is reached, so this
++		// arm only ever sees an `if` where an expression is required — which is
++		// why a construct keyword after `case x:` or a label stays a statement.
++		if p.contextFlags&ast.NodeFlagsSmithers != 0 {
++			return p.parseIfExpression()
++		}
++	case ast.KindSwitchKeyword:
++		if p.contextFlags&ast.NodeFlagsSmithers != 0 {
++			return p.parseSwitchExpression()
++		}
+ 	}
+ 	return p.parseIdentifierWithDiagnostic(diagnostics.Expression_expected, nil)
+ }
+ 
++// parseIfExpression parses the Smithers value-position
++// `if ( Expression ) { Expression } else { Expression }`.
++//
++// Both branches are braced and hold exactly one expression. Braces are required
++// because a braceless branch has no provable extent in expression context
++// (SMITHERS1709), and the `else` branch is required because a value `if` with no
++// value branch has no value (SMITHERS1705) — so both fail closed in the grammar
++// itself rather than needing a diagnostic. `else if` chains by nesting.
++func (p *Parser) parseIfExpression() *ast.Expression {
++	pos := p.nodePos()
++	p.parseExpected(ast.KindIfKeyword)
++	p.parseExpected(ast.KindOpenParenToken)
++	condition := p.parseExpressionAllowIn()
++	p.parseExpected(ast.KindCloseParenToken)
++	whenTrue := p.parseBracedExpression()
++	p.parseExpected(ast.KindElseKeyword)
++	var whenFalse *ast.Expression
++	if p.token == ast.KindIfKeyword {
++		whenFalse = p.parseIfExpression()
++	} else {
++		whenFalse = p.parseBracedExpression()
++	}
++	return p.finishNode(p.factory.NewIfExpression(condition, whenTrue, whenFalse), pos)
++}
++
++// parseBracedExpression parses `{ Expression }` — the branch body of a value
++// `if`. The braces are grammar, not a block: the node is the expression itself.
++func (p *Parser) parseBracedExpression() *ast.Expression {
++	openBracePosition := p.scanner.TokenStart()
++	openBraceParsed := p.parseExpected(ast.KindOpenBraceToken)
++	expression := p.parseExpressionAllowIn()
++	p.parseOptional(ast.KindSemicolonToken)
++	p.parseExpectedMatchingBrackets(ast.KindOpenBraceToken, ast.KindCloseBraceToken, openBraceParsed, openBracePosition)
++	return expression
++}
++
++// parseSwitchExpression parses the Smithers value-position
++// `switch ( Expression ) { case E : Expression ... default : Expression }`.
++//
++// The clauses reuse CaseOrDefaultClause with its Smithers `Value` member set and
++// no statements, so a switch expression carries no fallthrough and no jumps.
++func (p *Parser) parseSwitchExpression() *ast.Expression {
++	pos := p.nodePos()
++	p.parseExpected(ast.KindSwitchKeyword)
++	p.parseExpected(ast.KindOpenParenToken)
++	expression := p.parseExpressionAllowIn()
++	p.parseExpected(ast.KindCloseParenToken)
++	caseBlock := p.parseValueCaseBlock()
++	return p.finishNode(p.factory.NewSwitchExpression(expression, caseBlock), pos)
++}
++
++func (p *Parser) parseValueCaseBlock() *ast.Node {
++	pos := p.nodePos()
++	p.parseExpected(ast.KindOpenBraceToken)
++	clauses := p.parseList(PCSwitchClauses, (*Parser).parseValueCaseOrDefaultClause)
++	p.parseExpected(ast.KindCloseBraceToken)
++	return p.finishNode(p.factory.NewCaseBlock(clauses), pos)
++}
++
++func (p *Parser) parseValueCaseOrDefaultClause() *ast.Node {
++	pos := p.nodePos()
++	kind := ast.KindDefaultClause
++	var label *ast.Expression
++	if p.token == ast.KindCaseKeyword {
++		kind = ast.KindCaseClause
++		p.parseExpected(ast.KindCaseKeyword)
++		label = p.parseExpressionAllowIn()
++	} else {
++		p.parseExpected(ast.KindDefaultKeyword)
++	}
++	p.parseExpected(ast.KindColonToken)
++	value := p.parseExpressionAllowIn()
++	p.parseOptional(ast.KindSemicolonToken)
++	return p.finishNode(p.factory.NewCaseOrDefaultClause(kind, label, p.newNodeList(core.NewTextRange(p.nodePos(), p.nodePos()), nil), value), pos)
++}
++
+ func (p *Parser) parseParenthesizedExpression() *ast.Expression {
+ 	pos := p.nodePos()
+ 	jsdoc := p.jsdocScannerInfo()
+@@ -6328,6 +6416,12 @@ func (p *Parser) isStartOfLeftHandSideExpression() bool {
+ 		return true
+ 	case ast.KindImportKeyword:
+ 		return p.isNextTokenOpenParenOrLessThanOrDot()
++	case ast.KindIfKeyword, ast.KindSwitchKeyword:
++		// Smithers: a value `if`/`switch` starts an expression. Every list-shaped
++		// expression position (arguments, array elements, object property values)
++		// gates on this predicate before parsing, so without it the construct is
++		// rejected as "expression expected" in exactly those placements.
++		return p.contextFlags&ast.NodeFlagsSmithers != 0
+ 	}
+ 	return p.isIdentifier()
+ }
+diff --git a/tsc/internal/printer/printer.go b/tsc/internal/printer/printer.go
+index e08daac9..14c69776 100644
+--- a/tsc/internal/printer/printer.go
++++ b/tsc/internal/printer/printer.go
+@@ -3288,6 +3288,10 @@ func (p *Printer) emitExpression(node *ast.Expression, precedence ast.OperatorPr
+ 		p.emitBinaryExpression(node.AsBinaryExpression())
+ 	case ast.KindConditionalExpression:
+ 		p.emitConditionalExpression(node.AsConditionalExpression())
++	case ast.KindIfExpression:
++		p.emitIfExpression(node.AsIfExpression())
++	case ast.KindSwitchExpression:
++		p.emitSwitchExpression(node.AsSwitchExpression())
+ 	case ast.KindTemplateExpression:
+ 		p.emitTemplateExpression(node.AsTemplateExpression())
+ 	case ast.KindYieldExpression:
+@@ -3641,6 +3645,49 @@ func (p *Printer) emitWithStatement(node *ast.WithStatement) {
+ 	p.exitNode(node.AsNode(), state)
+ }
+ 
++// emitIfExpression writes the Smithers value `if`. Branch braces are grammar
++// rather than blocks, so they are always written back; an `else if` chain is a
++// nested IfExpression and is written without an extra pair.
++func (p *Printer) emitIfExpression(node *ast.IfExpression) {
++	state := p.enterNode(node.AsNode())
++	pos := p.emitToken(ast.KindIfKeyword, node.Pos(), WriteKindKeyword, node.AsNode())
++	p.writeSpace()
++	p.emitToken(ast.KindOpenParenToken, pos, WriteKindPunctuation, node.AsNode())
++	p.emitExpression(node.Condition, ast.OperatorPrecedenceLowest)
++	p.emitToken(ast.KindCloseParenToken, node.Condition.End(), WriteKindPunctuation, node.AsNode())
++	p.writeSpace()
++	p.emitBracedExpression(node.AsNode(), node.WhenTrue)
++	p.writeSpace()
++	p.emitToken(ast.KindElseKeyword, node.WhenTrue.End(), WriteKindKeyword, node.AsNode())
++	p.writeSpace()
++	if node.WhenFalse.Kind == ast.KindIfExpression {
++		p.emitIfExpression(node.WhenFalse.AsIfExpression())
++	} else {
++		p.emitBracedExpression(node.AsNode(), node.WhenFalse)
++	}
++	p.exitNode(node.AsNode(), state)
++}
++
++func (p *Printer) emitBracedExpression(parent *ast.Node, expression *ast.Expression) {
++	p.writePunctuation("{")
++	p.writeSpace()
++	p.emitExpression(expression, ast.OperatorPrecedenceLowest)
++	p.writeSpace()
++	p.writePunctuation("}")
++}
++
++func (p *Printer) emitSwitchExpression(node *ast.SwitchExpression) {
++	state := p.enterNode(node.AsNode())
++	pos := p.emitToken(ast.KindSwitchKeyword, node.Pos(), WriteKindKeyword, node.AsNode())
++	p.writeSpace()
++	p.emitToken(ast.KindOpenParenToken, pos, WriteKindPunctuation, node.AsNode())
++	p.emitExpression(node.Expression, ast.OperatorPrecedenceLowest)
++	p.emitToken(ast.KindCloseParenToken, node.Expression.End(), WriteKindPunctuation, node.AsNode())
++	p.writeSpace()
++	p.emitCaseBlock(node.CaseBlock.AsCaseBlock())
++	p.exitNode(node.AsNode(), state)
++}
++
+ func (p *Printer) emitSwitchStatement(node *ast.SwitchStatement) {
+ 	state := p.enterNode(node.AsNode())
+ 	pos := p.emitToken(ast.KindSwitchKeyword, node.Pos(), WriteKindKeyword, node.AsNode())
+@@ -4514,17 +4561,32 @@ func (p *Printer) emitCaseClause(node *ast.CaseOrDefaultClause) {
+ 	p.emitToken(ast.KindCaseKeyword, node.Pos(), WriteKindKeyword, node.AsNode())
+ 	p.writeSpace()
+ 	p.emitExpression(node.Expression, ast.OperatorPrecedenceLowest)
+-	p.emitCaseOrDefaultClauseStatements(node, node.Expression.End())
++	// Smithers: a switch-expression clause carries a value instead of statements.
++	if node.Value != nil {
++		p.emitClauseValue(node, node.Expression.End())
++	} else {
++		p.emitCaseOrDefaultClauseStatements(node, node.Expression.End())
++	}
+ 	p.exitNode(node.AsNode(), state)
+ }
+ 
+ func (p *Printer) emitDefaultClause(node *ast.CaseOrDefaultClause) {
+ 	state := p.enterNode(node.AsNode())
+ 	pos := p.emitToken(ast.KindDefaultKeyword, node.Pos(), WriteKindKeyword, node.AsNode())
+-	p.emitCaseOrDefaultClauseStatements(node, pos)
++	if node.Value != nil {
++		p.emitClauseValue(node, pos)
++	} else {
++		p.emitCaseOrDefaultClauseStatements(node, pos)
++	}
+ 	p.exitNode(node.AsNode(), state)
+ }
+ 
++func (p *Printer) emitClauseValue(node *ast.CaseOrDefaultClause, colonPos int) {
++	p.emitToken(ast.KindColonToken, colonPos, WriteKindPunctuation, node.AsNode())
++	p.writeSpace()
++	p.emitExpressionNoASI(node.Value, ast.OperatorPrecedenceLowest)
++}
++
+ func (p *Printer) emitCaseOrDefaultClauseNode(node *ast.CaseOrDefaultClauseNode) {
+ 	switch node.Kind {
+ 	case ast.KindCaseClause:
+diff --git a/tsc/internal/transformers/moduletransforms/commonjsmodule.go b/tsc/internal/transformers/moduletransforms/commonjsmodule.go
+index 2deb7ef9..f21119b5 100644
+--- a/tsc/internal/transformers/moduletransforms/commonjsmodule.go
++++ b/tsc/internal/transformers/moduletransforms/commonjsmodule.go
+@@ -1303,6 +1303,7 @@ func (tx *CommonJSModuleTransformer) visitTopLevelNestedCaseOrDefaultClause(node
+ 		node,
+ 		tx.Visitor().VisitNode(node.Expression),
+ 		tx.topLevelNestedVisitor.VisitNodes(node.Statements),
++		tx.Visitor().VisitNode(node.Value),
+ 	)
+ }
+ 
+diff --git a/tsc/internal/ast/ast.go b/tsc/internal/ast/ast.go
+index b1688cec..5ae052ba 100644
+--- a/tsc/internal/ast/ast.go
++++ b/tsc/internal/ast/ast.go
+@@ -361,6 +361,8 @@ func (n *Node) Expression() *Node {
+ 		return n.AsForInOrOfStatement().Expression
+ 	case KindSwitchStatement:
+ 		return n.AsSwitchStatement().Expression
++	case KindSwitchExpression:
++		return n.AsSwitchExpression().Expression
+ 	case KindCaseClause:
+ 		return n.AsCaseOrDefaultClause().Expression
+ 	case KindExpressionStatement:
+@@ -454,6 +456,8 @@ func (m *MutableNode) SetExpression(expr *Node) {
+ 		n.AsForInOrOfStatement().Expression = expr
+ 	case KindSwitchStatement:
+ 		n.AsSwitchStatement().Expression = expr
++	case KindSwitchExpression:
++		n.AsSwitchExpression().Expression = expr
+ 	case KindCaseClause:
+ 		n.AsCaseOrDefaultClause().Expression = expr
+ 	case KindExpressionStatement:

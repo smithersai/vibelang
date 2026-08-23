@@ -1,0 +1,8 @@
+{
+  "title": "what a layer provides is removed from the row it is provided to: a computation whose every requirement is satisfied inside the scope still satisfies a native pin",
+  "expect": "output",
+  "stdout": [
+    "1"
+  ],
+  "notes": "specification/requirements.mdx, 'Satisfaction': 'Providing a layer to a computation MUST remove matching capabilities from the computation's unsatisfied requirement row.' This is the over-correction guard for 21-native-pin/a-layer-provide-callback-is-part-of-the-pinned-graph, and the pair is the whole rule: that case requires the callback to be ENTERED, this one requires what the layer provides to be SUBTRACTED once it has been. Satisfying either alone is easy and wrong — skip the callback and this one passes for the wrong reason, report everything found inside a provide and that one passes for the wrong reason — so the two are only meaningful together and live in one directory. The requirement here is reached through an ordinary call (`reads()` resolves `Config.context()`), which is the case a subtraction implemented only at the provide site loses: specification/requirements.mdx, 'Inference', makes requirement inference transitive, so the row `scoped` sees is the one propagated out of `reads`, and the subtraction has to survive that propagation. The printed `1` is the provided service's own value, so a program that compiled but resolved the capability to something else fails here rather than passing quietly. This is also an `expect: \"output\"` case, so it runs: the layer really establishes the scope in which `Capability.context()` resolves the instance, which is the runtime half of the same sentence."
+}

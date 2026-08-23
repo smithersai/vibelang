@@ -1,0 +1,444 @@
+diff --git a/tools/scripts/tsc/ast.json b/tools/scripts/tsc/ast.json
+index 81b925df..e7922eae 100644
+--- a/tools/scripts/tsc/ast.json
++++ b/tools/scripts/tsc/ast.json
+@@ -285,6 +285,7 @@
+             "ConditionalExpression",
+             "IfExpression",
+             "SwitchExpression",
++            "LabeledExpression",
+             "TemplateExpression",
+             "YieldExpression",
+             "SpreadElement",
+@@ -3102,6 +3103,24 @@
+                     }
+                 ]
+             },
++            "LabeledExpression": {
++                "generateSubtreeFacts": true,
++                "extends": [
++                    "ExpressionBase",
++                    "CompositeBase"
++                ],
++                "members": [
++                    {
++                        "name": "Statement",
++                        "type": "LabeledStatement"
++                    },
++                    {
++                        "name": "CompletionFlowNode",
++                        "type": "*FlowNode",
++                        "goOnly": true
++                    }
++                ]
++            },
+             "ConditionalExpression": {
+                 "generateSubtreeFacts": true,
+                 "extends": [
+diff --git a/tsc/internal/ast/ast.go b/tsc/internal/ast/ast.go
+index 5ae052ba..59127f8a 100644
+--- a/tsc/internal/ast/ast.go
++++ b/tsc/internal/ast/ast.go
+@@ -1030,6 +1030,8 @@ func (n *Node) Statement() *Statement {
+ 		return n.AsWithStatement().Statement
+ 	case KindLabeledStatement:
+ 		return n.AsLabeledStatement().Statement
++	case KindLabeledExpression:
++		return n.AsLabeledExpression().Statement
+ 	}
+ 	panic("Unhandled case in Node.Statement: " + n.Kind.String())
+ }
+diff --git a/tsc/internal/ast/precedence.go b/tsc/internal/ast/precedence.go
+index a9275d9b..df74aeba 100644
+--- a/tsc/internal/ast/precedence.go
++++ b/tsc/internal/ast/precedence.go
+@@ -231,9 +231,10 @@ func GetOperatorPrecedence(nodeKind Kind, operatorKind Kind, flags OperatorPrece
+ 		return OperatorPrecedenceAssignment
+ 	case KindConditionalExpression:
+ 		return OperatorPrecedenceConditional
+-	// Smithers: a value `if`/`switch` is self-delimiting, so it never needs
+-	// parentheses and never forces any onto its operands.
+-	case KindIfExpression, KindSwitchExpression:
++	// Smithers: a value `if`/`switch` and an expression-position labeled block or
++	// loop value are self-delimiting, so they never need parentheses and never
++	// force any onto their operands.
++	case KindIfExpression, KindSwitchExpression, KindLabeledExpression:
+ 		return OperatorPrecedencePrimary
+ 	case KindBinaryExpression:
+ 		switch operatorKind {
+diff --git a/tsc/internal/ast/utilities.go b/tsc/internal/ast/utilities.go
+index 4d2cc81e..640ce53e 100644
+--- a/tsc/internal/ast/utilities.go
++++ b/tsc/internal/ast/utilities.go
+@@ -403,8 +403,10 @@ func isLeftHandSideExpressionKind(kind Kind) bool {
+ 		KindTrueKeyword, KindSuperKeyword, KindNonNullExpression, KindExpressionWithTypeArguments, KindMetaProperty,
+ 		KindImportKeyword, KindMissingDeclaration,
+ 		// Smithers: value-position `if` and `switch` are brace-delimited and take
+-		// no operator, so they are primary expressions like an object literal.
+-		KindIfExpression, KindSwitchExpression:
++		// no operator, so they are primary expressions like an object literal. An
++		// expression-position labeled block or loop value is delimited the same
++		// way, by its own braces.
++		KindIfExpression, KindSwitchExpression, KindLabeledExpression:
+ 		return true
+ 	}
+ 	return false
+@@ -1175,6 +1177,40 @@ func ForEachReturnStatement(body *Node, visitor func(stmt *Node) bool) bool {
+ 	return traverse(body)
+ }
+ 
++// ForEachValueBreakStatement visits every `break :name value` inside body that
++// targets the label `name` — the exits a Smithers expression-position labeled
++// value takes its type from.
++//
++// Traversal stops exactly where the binder's own label resolution stops, so the
++// set it reports is the set that actually reaches the label: a `break` cannot
++// cross a function or class-static-block boundary, and a nested label of the
++// same name captures the breaks below it. It deliberately walks every child
++// rather than an allowlist of statement kinds the way ForEachReturnStatement
++// does, because a value break can sit inside another value construct's block and
++// that block hangs off an expression.
++//
++// Warning: this has the same semantics as the forEach family in that traversal
++// terminates when visitor returns true.
++func ForEachValueBreakStatement(body *Node, name string, visitor func(stmt *Node) bool) bool {
++	var traverse func(*Node) bool
++	traverse = func(node *Node) bool {
++		switch {
++		case IsFunctionLikeOrClassStaticBlockDeclaration(node):
++			return false
++		case node.Kind == KindBreakStatement:
++			breakStatement := node.AsBreakStatement()
++			if breakStatement.Value != nil && breakStatement.Label != nil && breakStatement.Label.Text() == name {
++				return visitor(node)
++			}
++			return false
++		case node.Kind == KindLabeledStatement && node.AsLabeledStatement().Label.Text() == name:
++			return false
++		}
++		return node.ForEachChild(traverse)
++	}
++	return body.ForEachChild(traverse)
++}
++
+ func GetRootDeclaration(node *Node) *Node {
+ 	for node.Kind == KindBindingElement {
+ 		node = node.Parent.Parent
+@@ -1978,7 +2014,15 @@ func IsExpressionNode(node *Node) bool {
+ 		KindClassExpression, KindArrowFunction, KindVoidExpression, KindDeleteExpression, KindTypeOfExpression,
+ 		KindPrefixUnaryExpression, KindPostfixUnaryExpression, KindBinaryExpression, KindConditionalExpression,
+ 		KindSpreadElement, KindTemplateExpression, KindOmittedExpression, KindJsxElement, KindJsxSelfClosingElement,
+-		KindJsxFragment, KindYieldExpression, KindAwaitExpression:
++		KindJsxFragment, KindYieldExpression, KindAwaitExpression,
++		// Smithers: IsExpressionNode is a THIRD enumerated expression-kind switch,
++		// independent of isExpressionKind and isLeftHandSideExpressionKind rather
++		// than delegating to either. Everything that asks "what is the type of the
++		// node under the cursor" goes through it — getTypeOfNode,
++		// getSymbolAtLocation, and the type/symbol baseline writer — so a Smithers
++		// expression missing from here answers with no type at all while still
++		// type-checking correctly, which no diagnostic can reveal.
++		KindIfExpression, KindSwitchExpression, KindLabeledExpression:
+ 		return true
+ 	case KindMetaProperty:
+ 		// `import.defer` in `import.defer(...)` is not an expression
+diff --git a/tsc/internal/binder/binder.go b/tsc/internal/binder/binder.go
+index 9c18a5c7..b88b16be 100644
+--- a/tsc/internal/binder/binder.go
++++ b/tsc/internal/binder/binder.go
+@@ -2229,9 +2229,16 @@ func (b *Binder) bindLabeledStatement(node *ast.Node) {
+ 	// placed between the loop's exit and the exit of the construct, so that
+ 	// everything which merely *ends* the loop flows through it while a value
+ 	// break jumps over it.
++	//
++	// In expression position the same split answers a second question. There the
++	// construct's value comes from its `break :label value` exits, so whether it
++	// can *also* finish without one decides whether its type includes undefined.
++	// That is exactly the reachability of this join point, so the split is made
++	// for a labeled expression too, else value or not.
++	isExpression := node.Parent != nil && node.Parent.Kind == ast.KindLabeledExpression
+ 	breakTarget := postStatementLabel
+ 	var preElseLabel *ast.FlowLabel
+-	if stmt.ElseValue != nil {
++	if stmt.ElseValue != nil || isExpression {
+ 		preElseLabel = b.createBranchLabel()
+ 		breakTarget = preElseLabel
+ 	}
+@@ -2256,7 +2263,15 @@ func (b *Binder) bindLabeledStatement(node *ast.Node) {
+ 		// completion continues to the end of the construct.
+ 		b.addAntecedent(preElseLabel, b.currentFlow)
+ 		b.currentFlow = b.finishFlowLabel(preElseLabel)
+-		b.bind(stmt.ElseValue)
++		if isExpression {
++			// Recorded before the else value is bound, so it answers "did the
++			// labeled statement finish without a value break" and not "is the else
++			// value's own completion reachable".
++			node.Parent.AsLabeledExpression().CompletionFlowNode = b.currentFlow
++		}
++		if stmt.ElseValue != nil {
++			b.bind(stmt.ElseValue)
++		}
+ 	}
+ 	b.addAntecedent(postStatementLabel, b.currentFlow)
+ 	b.currentFlow = b.finishFlowLabel(postStatementLabel)
+diff --git a/tsc/internal/checker/checker.go b/tsc/internal/checker/checker.go
+index ec0810fb..31287e3d 100644
+--- a/tsc/internal/checker/checker.go
++++ b/tsc/internal/checker/checker.go
+@@ -7944,6 +7944,8 @@ func (c *Checker) checkExpressionWorker(node *ast.Node, checkMode CheckMode) *Ty
+ 		return c.checkIfExpression(node, checkMode)
+ 	case ast.KindSwitchExpression:
+ 		return c.checkSwitchExpression(node, checkMode)
++	case ast.KindLabeledExpression:
++		return c.checkLabeledExpression(node, checkMode)
+ 	case ast.KindSpreadElement:
+ 		return c.checkSpreadExpression(node, checkMode)
+ 	case ast.KindOmittedExpression:
+@@ -11147,6 +11149,48 @@ func (c *Checker) isExhaustiveSwitchExpression(expressionType *Type, clauses []*
+ 	return c.eachTypeContainedIn(c.mapType(t, c.getRegularTypeOfLiteralType), switchTypes)
+ }
+ 
++// checkLabeledExpression types the Smithers expression-position labeled block
++// and labeled loop values. Its value comes from the `break :label value` exits
++// that target its own label, plus the loop `else` completion value when there is
++// one; the two exits are already separated in the flow graph, so this only has to
++// read them back.
++//
++// The body is a statement subtree hanging off an expression, so nothing in the
++// ordinary statement walk ever reaches it: without the checkSourceElement call
++// below the whole block is silently unchecked, and checkSourceElementWorker has
++// no default arm to say so.
++func (c *Checker) checkLabeledExpression(node *ast.Node, checkMode CheckMode) *Type {
++	expr := node.AsLabeledExpression()
++	labeled := expr.Statement.AsLabeledStatement()
++	c.checkSourceElement(expr.Statement)
++
++	var types []*Type
++	ast.ForEachValueBreakStatement(labeled.Statement, labeled.Label.Text(), func(breakStatement *ast.Node) bool {
++		t := c.checkExpressionEx(breakStatement.AsBreakStatement().Value, checkMode)
++		types = core.AppendIfUnique(types, t)
++		return false
++	})
++
++	switch {
++	case labeled.ElseValue != nil:
++		// Normal completion, `continue` off the end, an unlabeled `break` and a
++		// plain `break label` all flow into the else value, so it is the value of
++		// every exit a value break does not take.
++		types = core.AppendIfUnique(types, c.checkExpressionEx(labeled.ElseValue, checkMode))
++	case expr.CompletionFlowNode != nil && c.isReachableFlowNode(expr.CompletionFlowNode):
++		// A labeled block that can finish without reaching a value break has no
++		// value on that path. That is the fail-closed rule for a missing value
++		// exit expressed in the type system rather than as a new diagnostic: under
++		// strict, the resulting `T | undefined` is reported by the ordinary
++		// assignability rules wherever the expression is used.
++		types = core.AppendIfUnique(types, c.undefinedType)
++	}
++	if len(types) == 0 {
++		return c.undefinedType
++	}
++	return c.getUnionTypeEx(types, UnionReductionSubtype, nil, nil)
++}
++
+ func (c *Checker) checkTruthinessExpression(node *ast.Node, checkMode CheckMode) *Type {
+ 	return c.checkTruthinessOfType(c.checkExpressionEx(node, checkMode), node)
+ }
+diff --git a/tsc/internal/parser/parser.go b/tsc/internal/parser/parser.go
+index d4c28b03..c20dc947 100644
+--- a/tsc/internal/parser/parser.go
++++ b/tsc/internal/parser/parser.go
+@@ -84,8 +84,18 @@ type Parser struct {
+ 	hasDeprecatedTag            bool
+ 	hasParseError               bool
+ 
+-	identifierCount            int
+-	notParenthesizedArrow      collections.Set[int]
++	identifierCount int
++	// Smithers: the one position at which `Identifier :` must NOT be read as an
++	// expression-position labeled block/loop value. Three productions parse an
++	// expression and then claim a following `:` for themselves — a labeled
++	// statement, a `case` clause label, and the `whenTrue` of a conditional — so
++	// the construct is suppressed for the expression that *starts* at each of
++	// them. Keying on the position rather than on a flag keeps every nested
++	// expression unaffected, which is what makes `f(verdict: { ... })` legal at
++	// statement level; it is the same position-keyed memo shape upstream already
++	// uses for notParenthesizedArrow. -1 means "nowhere".
++	labeledExpressionSuppressionPos int
++	notParenthesizedArrow           collections.Set[int]
+ 	nodeSliceArena             core.Arena[*ast.Node]
+ 	stringSliceArena           core.Arena[string]
+ 	jsdocInfos                 []JSDocInfo
+@@ -317,6 +327,7 @@ func (p *Parser) initializeState(opts ast.SourceFileParseOptions, sourceText str
+ 	if tspath.FileExtensionIsOneOf(opts.FileName, smithersLangExtensions) {
+ 		p.contextFlags |= ast.NodeFlagsSmithers
+ 	}
++	p.labeledExpressionSuppressionPos = -1
+ 	p.scanner.SetText(p.sourceText)
+ 	p.scanner.SetOnError(p.scanError)
+ 	p.scanner.SetLanguageVariant(p.languageVariant)
+@@ -1441,7 +1452,7 @@ func (p *Parser) parseCaseClause() *ast.Node {
+ 	pos := p.nodePos()
+ 	jsdoc := p.jsdocScannerInfo()
+ 	p.parseExpected(ast.KindCaseKeyword)
+-	expression := p.parseExpressionAllowIn()
++	expression := p.parseColonClaimingExpression((*Parser).parseExpressionAllowIn)
+ 	p.parseExpected(ast.KindColonToken)
+ 	statements := p.parseList(PCSwitchClauseStatements, (*Parser).parseStatement)
+ 	result := p.finishNode(p.factory.NewCaseOrDefaultClause(ast.KindCaseClause, expression, statements, nil /*value*/), pos)
+@@ -1608,7 +1619,7 @@ func (p *Parser) parseExpressionOrLabeledStatement() *ast.Statement {
+ 	pos := p.nodePos()
+ 	jsdoc := p.jsdocScannerInfo()
+ 	hasParen := p.token == ast.KindOpenParenToken
+-	expression := p.parseExpression()
++	expression := p.parseColonClaimingExpression((*Parser).parseExpression)
+ 
+ 	if expression.Kind == ast.KindIdentifier && p.parseOptional(ast.KindColonToken) {
+ 		statement := p.parseStatement()
+@@ -4710,7 +4721,9 @@ func (p *Parser) parseConditionalExpressionRest(leftOperand *ast.Expression, pos
+ 	// we do not that for the 'whenFalse' part.
+ 	saveContextFlags := p.contextFlags
+ 	p.setContextFlags(ast.NodeFlagsDisallowInContext, false)
+-	trueExpression := p.parseAssignmentExpressionOrHigherWorker(false /*allowReturnTypeInArrowFunction*/)
++	trueExpression := p.parseColonClaimingExpression(func(p *Parser) *ast.Expression {
++		return p.parseAssignmentExpressionOrHigherWorker(false /*allowReturnTypeInArrowFunction*/)
++	})
+ 	p.contextFlags = saveContextFlags
+ 	colonToken := p.parseExpectedToken(ast.KindColonToken)
+ 	var falseExpression *ast.Expression
+@@ -5755,9 +5768,83 @@ func (p *Parser) parsePrimaryExpression() *ast.Expression {
+ 			return p.parseSwitchExpression()
+ 		}
+ 	}
++	// Smithers: an expression-position labeled block or loop value. It starts with
++	// a plain identifier, so it is checked here rather than in the switch above,
++	// and only after every keyword-initial form has had its turn.
++	if p.contextFlags&ast.NodeFlagsSmithers != 0 && p.isStartOfLabeledExpression() {
++		return p.parseLabeledExpression()
++	}
+ 	return p.parseIdentifierWithDiagnostic(diagnostics.Expression_expected, nil)
+ }
+ 
++// parseColonClaimingExpression parses an expression whose *following* `:` belongs
++// to the enclosing production rather than to the expression. There are exactly
++// three such productions — a labeled statement, a `case` clause label, and the
++// `whenTrue` of a conditional — and they are the only places where `Identifier :`
++// is ambiguous with an expression-position labeled block or loop value. Reading
++// `case a: { … }` or `c ? a : { … }` as a labeled value would break ordinary
++// TypeScript, so the construct is suppressed for the expression that *starts*
++// here, and nowhere else: a nested expression begins at a later position and is
++// unaffected, which is what keeps `f(verdict: { … })` legal at statement level.
++func (p *Parser) parseColonClaimingExpression(parse func(p *Parser) *ast.Expression) *ast.Expression {
++	saved := p.labeledExpressionSuppressionPos
++	p.labeledExpressionSuppressionPos = p.nodePos()
++	expression := parse(p)
++	p.labeledExpressionSuppressionPos = saved
++	return expression
++}
++
++// isStartOfLabeledExpression reports whether the parser is at
++// `Identifier : {` or `Identifier : for|while|do`, the two shapes of an
++// expression-position labeled value. Anything else beginning with an identifier
++// — including every ordinary `a : b` — is left alone.
++func (p *Parser) isStartOfLabeledExpression() bool {
++	if !p.isIdentifier() || p.nodePos() == p.labeledExpressionSuppressionPos {
++		return false
++	}
++	return p.lookAhead(func(p *Parser) bool {
++		if p.nextToken() != ast.KindColonToken {
++			return false
++		}
++		switch p.nextToken() {
++		case ast.KindOpenBraceToken, ast.KindForKeyword, ast.KindWhileKeyword, ast.KindDoKeyword:
++			return true
++		}
++		return false
++	})
++}
++
++// parseLabeledExpression parses the two Smithers expression-position labeled
++// values:
++//
++//	Identifier : Block
++//	Identifier : IterationStatement else AssignmentExpression
++//
++// The node wraps a real LabeledStatement rather than restating it, so the label,
++// the body, and the loop `else` completion value are the nodes that already
++// exist, and the binder and checker functions that already handle them are the
++// ones that run. Two shapes are unrepresentable as a result rather than
++// diagnosable: a value block or value loop with no label (the reference's
++// SMITHERS1702), and a loop value with no `else` completion (SMITHERS1715) — the `else`
++// is required here, unlike in statement position where the loop may simply end.
++func (p *Parser) parseLabeledExpression() *ast.Expression {
++	pos := p.nodePos()
++	label := p.parseIdentifier()
++	p.parseExpected(ast.KindColonToken)
++	// isStartOfLabeledExpression only admits `{`, `for`, `while` and `do`, so this
++	// is a Block or an iteration statement and never anything else.
++	statement := p.parseStatement()
++	var elseValue *ast.Expression
++	if !ast.IsBlock(statement) {
++		p.parseExpected(ast.KindElseKeyword)
++		// An AssignmentExpression, not an Expression: the value must stop at a
++		// comma so the construct composes with argument lists and array literals.
++		elseValue = p.parseAssignmentExpressionOrHigher()
++	}
++	labeled := p.finishNode(p.factory.NewLabeledStatement(label, statement, elseValue), pos)
++	return p.finishNode(p.factory.NewLabeledExpression(labeled), pos)
++}
++
+ // parseIfExpression parses the Smithers value-position
+ // `if ( Expression ) { Expression } else { Expression }`.
+ //
+@@ -5824,7 +5911,7 @@ func (p *Parser) parseValueCaseOrDefaultClause() *ast.Node {
+ 	if p.token == ast.KindCaseKeyword {
+ 		kind = ast.KindCaseClause
+ 		p.parseExpected(ast.KindCaseKeyword)
+-		label = p.parseExpressionAllowIn()
++		label = p.parseColonClaimingExpression((*Parser).parseExpressionAllowIn)
+ 	} else {
+ 		p.parseExpected(ast.KindDefaultKeyword)
+ 	}
+diff --git a/tsc/internal/printer/printer.go b/tsc/internal/printer/printer.go
+index 14c69776..290765f8 100644
+--- a/tsc/internal/printer/printer.go
++++ b/tsc/internal/printer/printer.go
+@@ -3292,6 +3292,8 @@ func (p *Printer) emitExpression(node *ast.Expression, precedence ast.OperatorPr
+ 		p.emitIfExpression(node.AsIfExpression())
+ 	case ast.KindSwitchExpression:
+ 		p.emitSwitchExpression(node.AsSwitchExpression())
++	case ast.KindLabeledExpression:
++		p.emitLabeledExpression(node.AsLabeledExpression())
+ 	case ast.KindTemplateExpression:
+ 		p.emitTemplateExpression(node.AsTemplateExpression())
+ 	case ast.KindYieldExpression:
+@@ -3701,6 +3703,20 @@ func (p *Printer) emitSwitchStatement(node *ast.SwitchStatement) {
+ }
+ 
+ func (p *Printer) emitLabeledStatement(node *ast.LabeledStatement) {
++	p.emitLabeledStatementWorker(node, true /*trailingSemicolon*/)
++}
++
++// emitLabeledExpression writes the Smithers expression-position labeled block or
++// loop value. The node is a wrapper around a real LabeledStatement, so the same
++// emitter writes it — minus the trailing semicolon after a loop `else` value,
++// which belongs to the enclosing statement rather than to an expression.
++func (p *Printer) emitLabeledExpression(node *ast.LabeledExpression) {
++	state := p.enterNode(node.AsNode())
++	p.emitLabeledStatementWorker(node.Statement.AsLabeledStatement(), false /*trailingSemicolon*/)
++	p.exitNode(node.AsNode(), state)
++}
++
++func (p *Printer) emitLabeledStatementWorker(node *ast.LabeledStatement, trailingSemicolon bool) {
+ 	state := p.enterNode(node.AsNode())
+ 	p.emitLabelIdentifier(node.Label.AsIdentifier())
+ 	p.emitToken(ast.KindColonToken, node.Label.End(), WriteKindPunctuation, node.AsNode())
+@@ -3719,7 +3735,9 @@ func (p *Printer) emitLabeledStatement(node *ast.LabeledStatement) {
+ 		p.emitToken(ast.KindElseKeyword, node.Statement.End(), WriteKindKeyword, node.AsNode())
+ 		p.writeSpace()
+ 		p.emitExpressionNoASI(node.ElseValue, ast.OperatorPrecedenceLowest)
+-		p.writeTrailingSemicolon()
++		if trailingSemicolon {
++			p.writeTrailingSemicolon()
++		}
+ 	}
+ 
+ 	p.exitNode(node.AsNode(), state)

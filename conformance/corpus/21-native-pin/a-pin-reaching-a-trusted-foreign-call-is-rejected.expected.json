@@ -1,0 +1,15 @@
+{
+  "title": "a native pin whose graph reaches a TRUSTED foreign call is still rejected: `@throws {never}` removes the panic case, not the `TypeScript` requirement",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS3001",
+      "line": 13,
+      "column": 1
+    }
+  ],
+  "typescript": [
+    "foreign.ts"
+  ],
+  "notes": "Two separate locked sentences meet here, and the case exists because conflating them is the plausible bug. specification/compatibility.mdx, 'Runtime TypeScript Dependency': 'Using a value from TypeScript or JavaScript code MUST add a runtime requirement representing that compatibility boundary,' and separately 'Trusted @throws {never} metadata opts out' — of the panic case named in the sentence before it, not of the requirement named in the sentence above that. specification/compatibility.mdx, 'Native Pin': 'Compilation MUST fail if any reachable operation or provider requires TypeScript.' `foreign.ts`'s `double` is the corpus's fully trusted export (`@throws {never}` on both the module and the function), so 09-foreign-calls/trusted-foreign-call-is-accepted shows the same call compiling clean with no Result wrapper; the only thing that changes here is the pin. This case is also the corpus's first DIRECT observation of obligation 10.1 — the presence of the `TypeScript` requirement in a row — which before the pin existed could only be inferred from consequences."
+}

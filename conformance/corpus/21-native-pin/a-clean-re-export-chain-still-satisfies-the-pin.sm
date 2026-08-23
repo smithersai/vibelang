@@ -1,0 +1,17 @@
+import { native } from "smithers:native"
+import { LIMIT } from "./clean-chain-named.mod.sm"
+import { STEP } from "./clean-chain-star.mod.sm"
+
+// The negative direction of the laundering rule, in both re-export spellings.
+// Following a binding through a project module must not make the module itself
+// foreign: a re-export chain that ends at an ordinary project declaration
+// reaches no host and charges nothing, so the pin still holds.
+function checksum(input: string): number {
+  return input.length + LIMIT + STEP
+}
+
+native(checksum)
+
+export function main(): string[] {
+  return [String(checksum("smithers"))]
+}

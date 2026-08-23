@@ -24,8 +24,22 @@ The demo and focused tests prove:
   exact imported `durable`, `sleep`, `waitSignal`, `fanOut`, and Action symbol identity through
   aliases, and lowers a bounded function subset into the same validated static
   artifact;
+- an Action declared in the compiled source as `class X extends Action<Signature>`
+  needs no ceremony from the caller: `compileDurableSource` derives its contract
+  from its own checked program through the same `deriveActionContract` the
+  standalone contract compiler uses, so a derived descriptor and a separately
+  compiled one are byte-identical for the same declaration. Its id is
+  `<authored file>#<class name>` at version 1. `options.actions` is therefore
+  optional and describes only Actions *imported* from modules this single-source
+  pass cannot see. A success result reports the declarations it consumed in
+  `derivedActions` with their authored ranges: they are compiler-owned contract
+  declarations whose base class does not survive the erasure of the
+  compiler-owned import, so a consumer erases them alongside it. A same-file
+  Action whose failure channel is only the built-in `Error` keeps its structural
+  input/success contract and records the weaker json-value error schema rather
+  than losing the whole declaration;
 - `compileActionImplementationContract` derives an ordinary provider
-  function's transitive failure/requirement rows from a closed checked Vibe
+  function's transitive failure/requirement rows from a closed checked Smithers
   source project. Its recoverable failure row must exactly match the Action's
   compiler-derived nominal Error schema; `Panic` is recorded separately as a
   defect channel and can never impersonate a persisted typed failure.
@@ -150,6 +164,40 @@ The demo and focused tests prove:
   dispatch and only after the previous round's durable success; the Action's
   success becomes the next durable state; and exhausting the explicit literal
   round budget (at most 1,000) is a durable terminal defect, never a hang;
+- provisional compiler-owned `dequeue<Item>("queue.identity")` lowers to a
+  first-class durable QUEUE consumer node (Plan format version 3). A queue is
+  shared, multi-producer durable state with one cross-execution pinned
+  compiler-derived item contract: `enqueue` validates against that registry, not
+  against anything a producer supplies. FIFO order is commit order, enqueue is
+  idempotent by `(queueId, idempotencyKey)`, and the head item's terminal state,
+  the consumer node's success, and the journal evidence all commit in one
+  transaction, so two coordinators can never hand one item to two consumers.
+  A waiting consumer holds no worker lease and holds no reserved item;
+- provisional compiler-owned `waitBroadcast<Payload>("identity")` lowers to the
+  BROADCAST signal form, where one delivery satisfies every already-subscribed
+  execution. A waiter's first poll commits a durable subscription WATERMARK (the
+  highest delivery sequence at that instant) and is then entitled to exactly the
+  deliveries committed after it, so a late execution never retro-consumes an old
+  broadcast. Each waiter adopts a delivery exactly once through its own
+  consumption record, which carries its own payload digest and therefore stays
+  valid after retention collects the delivery row. Broadcast and single-delivery
+  identities are different contracts and fail closed against each other in both
+  directions, at the Plan node and in the cross-execution registry;
+- a parent execution handle can address a signal inside an ATTACHED child Plan
+  with `handle.signalChild([childFlowNodeId, ...], signalId, { idempotencyKey,
+  payload })`. Authority derives entirely from the parent: the store walks the
+  durable parent -> child linkage chain before any evidence exists, the minted
+  token is consumed inside the call and never returned, and a child that is not
+  attached along that exact path fails closed;
+- an in-flight execution can be moved to a new deployment by an EXPLICIT,
+  opt-in `MigrationPlan`. The compatibility judgment is re-derived inside the
+  applying transaction from both artifacts and the execution's own durable rows,
+  never trusted from the caller. Rewriting the pinned digests, fencing every
+  live attempt, and journaling `execution_migrated` are one transaction, and
+  re-applying an already-applied migration is idempotent. Every mutating
+  coordinator entry point now carries the coordinator's Plan digest, so a
+  superseded coordinator abandons a migrated execution instead of terminalizing
+  it;
 - cancellation is persisted atomically with node fencing, while a terminal
   execution failure fences unrelated active work before it can publish shared
   cache state;
@@ -177,8 +225,13 @@ connections.
 material committed boundary, closes the connection, and resumes through a new
 SQLite connection. Its matrix covers initialization, lease claim/fencing,
 retry scheduling, ordinary/memo/content terminal adoption, cache-hit adoption,
-branch skipping, deadline fencing, cancellation, execution failure, and final
-execution completion. Committed provider outcomes are not reinvoked.
+branch skipping, deadline fencing, cancellation, execution failure, final
+execution completion, and the queue/broadcast transitions: `enqueue`, the
+`pollQueue` consume, the `pollSignal` broadcast subscription and consume, and
+`deliverBroadcast`. Committed provider outcomes are not reinvoked, a producer
+retry after a crashed enqueue adopts the committed item instead of adding one,
+and a re-poll after a crashed consume reports `newlyConsumed: false`. The
+migration COMMIT boundary has its own entry in `migration.test.ts`.
 
 `process-crash.test.ts` complements that deterministic matrix with a real
 subprocess boundary: it sends the coordinator `SIGKILL` immediately after
@@ -255,6 +308,50 @@ keeping their outcome, crash injection after linkage, after the child's
 terminal commit, and after parent adoption, a two-connection race with one
 linked child, an executable three-level chain, the depth-9 round-budget
 rejection, and forged-artifact/linkage rejections.
+
+`queue.test.ts` exercises the durable-queue boundary: compiler-derived item
+contracts with stable node ids, dynamic/spoofed/duplicate-typed uses failing
+closed, format-version and forged-schema artifact rejection, lease-free
+suspension with attempt zero, FIFO consumption of exactly one item, idempotent
+and conflicting enqueues, producer-token authorization (missing, tampered,
+conflicting evidence fields, unpinned queue), a two-connection race in which one
+item reaches exactly one of two waiting executions while the loser stays
+suspended holding nothing, cancellation and deadline both ending a wait without
+consuming, crash-after-consume adoption across a fresh SQLite connection,
+restart while waiting, corrupt persisted item/registry/contract state, and two
+Flows disagreeing about one queue's item contract.
+
+`broadcast.test.ts` exercises the fan-out delivery form: contract identity
+distinct from the unicast form (and the unicast encoding refusing to carry the
+field at all, which would move every pre-existing pinned digest), one delivery
+satisfying three subscribed executions with three consumption records, the
+watermark preventing retro-consumption by a late waiter, idempotent and
+conflicting deliveries, sender-token authorization including a unicast token
+failing to authorize a broadcast, ambiguity between the two forms failing closed
+in both directions and on payload disagreement, crash after one waiter's consume
+leaving the others unaffected, a two-connection race on one waiter, retention
+collecting only deliveries no live subscription can still claim while a consumed
+waiter still re-verifies from its own record, and corrupt persisted state.
+
+`migration.test.ts` exercises the in-flight migration boundary: a migrated
+execution resuming committed history under a new Plan with a POISON provider on
+the committed Action, a manifest-only hot fix under a pinned Plan, each
+rejection reason (committed-node semantics, node-set change, Flow identity,
+Flow contract, pinned suspension contract, no-op, pinned-digest mismatch,
+terminal execution, unknown execution), forged/self-inconsistent migration
+artifacts refused before anything commits while edited digest FIELDS are simply
+ignored in favour of re-derived ones, a stale coordinator fenced out of a
+migrated execution without terminalizing it, crash immediately after the
+migration COMMIT converging on one applied migration, and a two-connection race
+with exactly one applied winner.
+
+`child-signal.test.ts` exercises parent-addressed child signals: one-hop and
+two-hop attached paths, delivery journaled against the child execution's own
+node identity, unlinked/wrong-kind/over-long paths and unknown identities
+failing closed, one parent handle unable to reach a sibling parent's child, no
+transferable capability appearing on the handle, a two-connection race
+converging on one committed delivery, and forged child contracts or foreign
+tokens refused before the inbox.
 
 `sequential.test.ts` proves the explicit-order seam: a pure control edge with
 no data dependency, statement and expression positions, tuple projections,
@@ -357,7 +454,7 @@ Plan expression/projections, and unions the structural Error descriptors of
 reachable Actions. These schemas are part of the Plan digest. The coordinator
 checks Flow input before creating an execution, success before terminal commit
 and again on replay, and typed failures before recording the execution failure.
-Unsupported Flow boundary types fail as `VIBE4110`. Legacy `Flow.define`
+Unsupported Flow boundary types fail as `SMITHERS4110`. Legacy `Flow.define`
 artifacts remain readable without falsely claiming this compiler-derived proof.
 
 The bounded descriptor supports canonical JSON scalars and literals, arrays,
@@ -393,13 +490,13 @@ record projections and reject coercion, enumeration, and calls, but JavaScript
 offers no trap for truthiness, strict equality, or its operators. Consequently
 ordinary `if (symbolic)` cannot implement the language contract. `Expr.*` and
 `Flow.branch` in this spike are explicit versions of the expression/branch IR
-that the real VibeLang compiler must lower ordinary source syntax into.
+that the real Smithers compiler must lower ordinary source syntax into.
 
-The accepted source API imports `durable` from `vibelang:flows` and passes it an
+The accepted source API imports `durable` from `smithers:flows` and passes it an
 inline or otherwise statically resolvable function. Template
 compilation lowers that function's checked syntax and control flow without
 invoking it. Plan/preview then reads the emitted IR without the source function
-or Action implementations present. The root `vibe plan` command invokes this
+or Action implementations present. The root `smithers plan` command invokes this
 compiler over a real project without evaluating authored modules. The
 deliberately bounded compiler lowers block-bodied `const` bindings, JSON-shaped
 values, input projections, conditional expressions, imported
@@ -467,23 +564,111 @@ Format version 1 is the original bounded node set with the flat single-Action
 fan-out encoding; every artifact the earlier compiler emitted keeps its exact
 bytes, digests, and node ids, and continues to load. Format version 2 adds the
 multi-step fan-out `steps` encoding, round-budgeted `loop` nodes, and
-`childFlow` nodes with embedded child Plans. The compiler emits the minimal
-version each Plan needs, so programs in the old subset still produce
-byte-identical version-1 artifacts. A version-1 artifact claiming a version-2
-node or field is rejected with an explicit
-"requires Plan format version 2" diagnostic rather than being reinterpreted;
+`childFlow` nodes with embedded child Plans. Format version 3 adds durable
+`queue` consumer nodes and the `delivery: "broadcast"` signal form. The compiler
+emits the minimal version each Plan needs, so programs in the old subset still
+produce byte-identical version-1 and version-2 artifacts. A lower-version
+artifact claiming a higher version's node or field is rejected with an explicit
+"requires Plan format version N" diagnostic rather than being reinterpreted;
 unknown future versions remain "unsupported Plan format".
+
+The unicast signal encoding deliberately never carries a `delivery` field.
+Spelling it `delivery: "unicast"` would be a second encoding of one meaning and
+would silently move the `signalContractDigest` of every Plan emitted before
+version 3, so the validator rejects that spelling outright. Broadcast nodes put
+`delivery: "broadcast"` inside their contract digest, which is exactly what
+makes a broadcast identity incapable of impersonating a single-delivery identity
+of the same name.
+
+## Migration of in-flight executions
+
+An in-flight execution is pinned to a Plan digest, a manifest digest, and its
+compiler-derived schemas. A redeploy never silently reinterprets that history:
+moving an execution to a new deployment requires an explicit `MigrationPlan`
+carrying BOTH complete artifacts, and `DurableStore.migrateExecution` re-derives
+the entire compatibility judgment inside its `BEGIN IMMEDIATE` transaction from
+those artifacts plus the execution's own durable rows. Claimed digest fields on
+the migration value are evidence, not authority; editing them changes nothing.
+
+Rules the system VERIFIES before it applies a migration:
+
+1. the execution exists, is `running`, and is pinned to exactly the migration's
+   source Plan and manifest;
+2. `flowId` is unchanged (`flowVersion` may move);
+3. the complete Flow contract — `flowSchemas.input`, `.success`, and `.error` —
+   is byte-identical, and the PERSISTED input bytes are re-validated against the
+   target input schema;
+4. the static node id set is identical, so no durable node row is orphaned and
+   no declared node lacks a row;
+5. every node keeps its `kind`;
+6. every node holding a durable terminal exit keeps byte-identical semantics
+   (excluding `debug`, which carries no execution semantics and shifts with
+   unrelated edits), so a committed exit can never be reinterpreted;
+7. a template that already materialized dynamic children (fan-out items, loop
+   rounds) or linked a child execution is frozen too, even while that template
+   node is still running, because those durable child identities derive from it;
+8. every `signal` and `queue` contract digest is frozen, committed or not,
+   because the store pins those contracts once at initialization;
+9. the migration changes something: `from` and `to` naming one Plan and one
+   manifest is refused as a no-op.
+
+Applying it is one transaction: every `running` node is fenced back to `pending`
+with an incremented fence so no attempt admitted under the old code can commit
+under the new one, the pinned digests are rewritten, `plan_generation` is
+incremented, and one `execution_migrated` event records both digests, the
+migration digest, the committed node ids, and the fenced node ids. Committed
+history is appended to, never rewritten. Re-applying the same migration returns
+`applied: false`, which is what makes a crash immediately after this COMMIT
+recoverable.
+
+Every mutating coordinator entry point — `claimNode`, `adoptSuccess`,
+`timeoutNode`, `materializeFanOut`, `materializeFanOutStep`,
+`materializeLoopRound`, `registerChildExecution`, `completeExecution`,
+`failExecution`, `pollSignal`, `pollQueue`, and `initializeExecution` — now
+carries the coordinator's own Plan digest and raises `ExecutionMigratedError`
+when it does not match the pinned one. The engine treats that error exactly like
+process death: it rethrows without recording a terminal outcome, because a
+coordinator that can no longer interpret an execution is emphatically not
+entitled to fail it.
+
+Deliberately NOT attempted, and fail-closed rather than guessed:
+
+- topology change — adding or removing Plan nodes, or changing a node's kind;
+- widening or otherwise changing the Flow input/success/error contract;
+- re-pinning a signal payload or queue item schema for a suspension that has not
+  yet been consumed;
+- transforming, backfilling, or reinterpreting committed node results;
+- rewriting committed journal history (migration only appends);
+- migrating a terminal execution, or migrating across Flow identities;
+- implicit migration as a side effect of deployment: it is always explicit and
+  opt-in, and old worker artifacts stay routable until runs finish.
+
+## Durable queue and broadcast retention
+
+A consumed queue item keeps its row, its consumer identity, and its digests as
+durable evidence; nothing collects it. Broadcast deliveries are the one surface
+with a retention rule, because one delivery is shared by every subscriber:
+
+> `collectBroadcastDeliveries(retentionMs, now)` deletes a delivery only when it
+> is older than `retentionMs` AND no live subscription could still claim it —
+> that is, its sequence is at or below the lowest watermark among every
+> non-terminal subscribed node for that signal. A signal with no live subscriber
+> has no floor, so its aged deliveries are collectable.
+
+Consumption records are never collected. Each carries its own payload digest, so
+a waiter that already adopted a delivery still re-verifies its committed value
+after the delivery row is gone.
 
 ## Provisional round-4 control spellings
 
-`sequential(...)`, `ChildFlow.run(...)`, block-bodied fan-out steps, and
-`loopWhile(...)` are provisional source spellings; the persisted node
+`sequential(...)`, `ChildFlow.run(...)`, block-bodied fan-out steps,
+`loopWhile(...)`, `dequeue(...)`, and `waitBroadcast(...)` are provisional
+source spellings; the persisted node
 contracts are the architectural seam, matching the ledger's open spelling
 questions. Deliberate boundaries of this slice: `sequential` accepts exactly
 two direct `Action.run(...)` calls; a child Flow binding must supply a
-compiled Plan with structural Flow schemas, returns the child's success
-directly (no `.unwrap()`), and signals inside a child Plan are not yet
-addressable through the parent executor's delivery handle; child deployments
+compiled Plan with structural Flow schemas and returns the child's success
+directly (no `.unwrap()`); child deployments
 are derived deterministically from the parent's worker pools at build time
 and are not separately signed by the Ed25519 envelope; the loop's condition
 and body are pure canonical-operator templates over one state value, its
@@ -495,16 +680,32 @@ records the parent outcome, so no committed state exists in which a parent is
 terminal while an attached child silently keeps running; live in-process
 attempts additionally observe the abort cooperatively.
 
+A parent handle now reaches signals inside attached child Plans through
+`signalChild([childFlowNodeId, ...], signalId, ...)`, gated on the durable
+linkage chain; detached children are still out of scope, so there is no path to
+an execution the parent did not create.
+
+Queue and broadcast producer evidence reuses the signal-token scheme: HMAC-SHA256
+over exactly one identity under the same per-database secret, timing-safe
+comparison before any state is read, and the `unsafeLocalDelivery: true` escape
+hatch for in-process callers. A unicast token cannot authorize a broadcast and a
+broadcast token cannot authorize a queue, because each is domain-separated. It
+remains honest LOCAL-TRUST evidence over one SQLite file, not remote sender
+authentication. Enqueue and broadcast delivery wake at most 256 suspended
+executions directly after COMMIT; every other waiter converges through the
+persistent fallback sweep, so correctness never depends on that fan-out.
+
 Deliberate omissions are custom codec registration, recursive/generic schema
 representations, and a normative cross-target Error
 wire encoding. Other omissions are general (unkeyed/unbudgeted) loop lowering
 beyond the bounded `loopWhile` template, catch and compensation topology,
-durable queues and detached children, recurring/calendar timers,
+detached children, recurring/calendar timers,
 artifact CAS, remote-machine or TLS transport,
 remote sender authentication and grant rotation/revocation (the sender token
 is local-trust evidence over one SQLite file), a cross-process notification
 bus (the wakeup notifier is in-process; other connections converge via the
-sweep), migration/backfill, and distributed consensus. Local providers still
+sweep), queue priority/visibility-timeout/dead-letter policy, data backfill or
+transformation during migration, and distributed consensus. Local providers still
 run as cooperative host callbacks; the isolated Deno bundle path proves forced
 termination and exact bundle-byte pinning, and may additionally pin the Deno
 runner/runtime identity through signed placement. The signed envelope now

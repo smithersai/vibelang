@@ -1,0 +1,17 @@
+{
+  "title": "a braced-body value loop without an else completion value is rejected: normal loop completion would have no value",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1715",
+      "line": 2,
+      "column": 17
+    },
+    {
+      "code": "SMITHERS1702",
+      "line": 2,
+      "column": 25
+    }
+  ],
+  "notes": "Once the value-loop recovery refuses the construct, the remaining `for` in expression position falls back to the general fail-closed placement rule."
+}

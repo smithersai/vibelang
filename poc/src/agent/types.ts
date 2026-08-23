@@ -331,7 +331,7 @@ export interface AgentRunResult<Result extends JsonValue = JsonValue> {
 }
 
 export interface TurnProvenance {
-  readonly schema: "vibelang.agent.turn/v3"
+  readonly schema: "smithers.agent.turn/v3"
   readonly promptDigest: string
   readonly callableDigest: string
   readonly functionTableDigest: string

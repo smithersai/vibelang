@@ -2,23 +2,23 @@
 
 ## TypeScript-Shaped, With an Explicit Boundary
 
-Imported `.ts` and `.js` preserve host behavior. A `.vibe` file uses a TypeScript-derived grammar plus VibeLang semantic checks and lowering. This boundary permits must-use Results, Promise-chain restrictions, capability inference, and static durable planning without pretending that all JavaScript already obeys those rules.
+Imported `.ts` and `.js` preserve host behavior. A `.sm` file uses a TypeScript-derived grammar plus Smithers semantic checks and lowering. This boundary permits must-use Results, Promise-chain restrictions, capability inference, and static durable planning without pretending that all JavaScript already obeys those rules.
 
 ## Expected Failures Are Values
 
-VibeLang uses `Result<A, E>` and `Promise<Result<A, E>>` as ordinary runtime types. The compiler makes them pleasant to author:
+Smithers uses `Result<A, E>` and `Promise<Result<A, E>>` as ordinary runtime types. The compiler makes them pleasant to author:
 
 ```ts
 function loadConfig(
   path: string,
 ): Result<Config, FileNotFound | InvalidConfig> {
   const fs = FileSystem.context()
-  const source = fs.readText(path).unwrap()
-  return Config.parse(source).unwrap()
+  const source = fs.readText(path)!
+  return Config.parse(source)!
 }
 ```
 
-Plain success returns and Error throws are lifted into the appropriate variant. `.unwrap()` propagates. Public APIs use normal generic return types, so tools do not need to understand an erased failure annotation.
+Plain success returns and Error throws are lifted into the appropriate variant. `!` propagates. Public APIs use normal generic return types, so tools do not need to understand an erased failure annotation.
 
 `Optional<T>` uses the same philosophy for absence: normal type, normal calls, and compiler-assisted lifting without optional-specific grammar.
 
@@ -31,8 +31,8 @@ The compiler may infer success/error unions and context requirements from a body
 Compile-time and durable semantics are anchored by resolved imports:
 
 ```ts
-import { comptime } from "vibelang:comptime"
-import { durable } from "vibelang:flows"
+import { comptime } from "smithers:comptime"
+import { durable } from "smithers:flows"
 ```
 
 This keeps code visually close to TypeScript, allows aliases, and avoids reserving words. Import identity—not spelling alone—activates the compiler behavior.
@@ -58,8 +58,8 @@ The loader and every string-valued attribute become part of the reproducible bui
 
 ## Backend-Appropriate Compilation
 
-The TypeScript backend should preserve the stock pipeline wherever possible. Native and Wasm backends may use whole-program information and shared checked IR. Durable builds may partition a coordinator and worker artifacts. Semantics remain consistent even when emitted machinery differs.
+The TypeScript backend should preserve the stock pipeline wherever possible. Durable builds may partition a coordinator and worker artifacts. Semantics remain consistent even when emitted machinery differs.
 
 ## One Toolchain
 
-The long-term product follows Go's shape: compiler, formatter, language service, tests, standard library, and build integration as one coherent distribution. The implementation is a minimal-diff TypeScript fork with narrow VibeLang seams.
+The long-term product follows Go's shape: compiler, formatter, language service, tests, standard library, and build integration as one coherent distribution. The implementation is a minimal-diff TypeScript fork with narrow Smithers seams.

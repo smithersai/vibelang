@@ -2,7 +2,7 @@ import { dirname, normalize, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import * as ts from "typescript-js"
 import type { ProjectDiagnostic, ProjectSource } from "../language/model.ts"
-import { buildSemanticProjectModels } from "../language/semantic.ts"
+import { buildSemanticProjectModels, COMPILER_INTRINSIC_SPECIFIERS } from "../language/semantic.ts"
 import { compileAndCheckProject } from "../language/validate.ts"
 import {
   assertJson,
@@ -18,7 +18,7 @@ import {
   validateActionContractDescriptor
 } from "./schema.ts"
 
-const COMPILER_IDENTITY = "vibelang-action-implementation-v2" as const
+const COMPILER_IDENTITY = "smithers-action-implementation-v2" as const
 const authenticated = new WeakSet<object>()
 const authenticatedBindings = new WeakMap<Function, Set<string>>()
 
@@ -50,7 +50,7 @@ export interface CompileActionImplementationOptions {
    * or lexical-closure attestation.
    */
   readonly implementation: Function
-  /** Complete checked `.vibe` source closure for the implementation. */
+  /** Complete checked `.sm` source closure for the implementation. */
   readonly sources: readonly ProjectSource[]
   readonly rootDir?: string
 }
@@ -94,12 +94,12 @@ const sortedUniqueStrings = (value: unknown, path: string): readonly string[] =>
 const logicalSourceName = (fileName: string): string => {
   const parts = fileName.replace(/\\/g, "/").split("/")
     .filter((part) => part !== "" && part !== "." && part !== "..")
-  return parts.join("/") || "implementation.vibe"
+  return parts.join("/") || "implementation.sm"
 }
 
 const canonicalCheckedExportDigest = (source: string, path: string): string => {
   const withoutExport = source.replace(/^\s*export\s+(?:default\s+)?/, "")
-  const transpiled = ts.transpileModule(`const __vibeImplementation = (${withoutExport})`, {
+  const transpiled = ts.transpileModule(`const __smithersImplementation = (${withoutExport})`, {
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
       module: ts.ModuleKind.ESNext,
@@ -135,15 +135,26 @@ const assertClosedImports = (sources: readonly ProjectSource[], rootDir: string)
     for (const statement of file.statements) {
       if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue
       const specifier = statement.moduleSpecifier.text
-      if (specifier.startsWith("vibelang/") || specifier.startsWith("vibelang:")) continue
+      // EXACT membership in the frontend's registry, never a prefix test. This
+      // runs immediately before `buildSemanticProjectModels`, so the two must
+      // agree on what is compiler-owned: anything the frontend will treat as
+      // foreign is an external import this contract cannot authenticate.
+      //
+      // The prefix form this replaced let `smthrs/anything` and
+      // `smithers:anything` skip BOTH refusals below. A specifier resolving to
+      // a real installed package under one of those prefixes then produced a
+      // `compiler-derived` contract whose projectDigest never covered that
+      // import edge — the same fail-open `poc/src/targets/classify.ts` records
+      // having fixed for the portability analyzer.
+      if (COMPILER_INTRINSIC_SPECIFIERS.has(specifier)) continue
       if (!specifier.startsWith(".")) {
         throw new ActionImplementationContractError(
           `implementation contract cannot authenticate external import '${specifier}'; bundle and pin it first`
         )
       }
       const exact = normalize(resolve(dirname(resolve(root, source.fileName)), specifier))
-      const candidates = [exact, `${exact}.vibe`, resolve(exact, "index.vibe")]
-      if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.vibe`)
+      const candidates = [exact, `${exact}.sm`, resolve(exact, "index.sm")]
+      if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.sm`)
       if (!candidates.some((candidate) => names.has(candidate))) {
         throw new ActionImplementationContractError(
           `implementation contract source closure is missing relative import '${specifier}' from ${source.fileName}`
@@ -276,7 +287,7 @@ export const assertActionImplementationContractMatchesAction = (
 }
 
 /**
- * Compile the transitive `E`/`R` rows of an exported ordinary Vibe function.
+ * Compile the transitive `E`/`R` rows of an exported ordinary Smithers function.
  * The returned object is frozen, content-addressed, and accepted by
  * `provideChecked` only in the compiler process that issued it. This local
  * callback pairing prevents accidental substitution after issuance, but is
@@ -326,7 +337,7 @@ export const compileActionImplementationContract = (
   const analysis = project.analysis
   if (analysis.diagnostics.length > 0) {
     throw new ActionImplementationContractError(
-      `implementation project did not pass the VibeLang row checker (${analysis.diagnostics.length} diagnostic(s))`,
+      `implementation project did not pass the Smithers row checker (${analysis.diagnostics.length} diagnostic(s))`,
       analysis.diagnostics
     )
   }
@@ -341,7 +352,7 @@ export const compileActionImplementationContract = (
   const model = project.models.get(entryFile)!
   const emitted = compileAndCheckProject(options.sources, {
     ...(options.rootDir === undefined ? {} : { rootDir: options.rootDir }),
-    outDir: resolve(rootDir, ".vibelang-action-implementation-check"),
+    outDir: resolve(rootDir, ".smithers-action-implementation-check"),
     runtimeImport: resolve(dirname(fileURLToPath(import.meta.url)), "../runtime/index.ts"),
     sourceMap: false
   })

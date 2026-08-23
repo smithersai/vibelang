@@ -181,7 +181,7 @@ async function deterministicRun(): Promise<unknown> {
 }
 
 async function liveRun(): Promise<unknown> {
-  const directory = path.join(os.tmpdir(), `vibelang-platform-demo-${Date.now()}`);
+  const directory = path.join(os.tmpdir(), `smithers-platform-demo-${Date.now()}`);
   // Live filesystem, clock, randomness and environment; the network stays stubbed
   // so the demo stays offline and reproducible.
   const layer = nodePlatform({ http: feedRoute() });
@@ -335,7 +335,7 @@ function echoOnce(message: string): Promise<Result<string, SocketError>> {
 /** The four newest services, all deterministic: no host, no terminal, no port. */
 async function servicesRun(): Promise<unknown> {
   const platform = TestPlatform.make({
-    argv: ["/usr/bin/vibe", "report.vibe", "archive/reports/latest.json"],
+    argv: ["/usr/bin/smithers", "report.sm", "archive/reports/latest.json"],
     cwd: "/srv/app",
     pid: 4242,
     platform: "linux",

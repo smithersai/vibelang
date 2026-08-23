@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smithersai/vibelang/compiler"
+	"github.com/smithersai/smithers/compiler"
 )
 
 func TestPinnedForkLockMatchesManifest(t *testing.T) {
@@ -30,10 +30,10 @@ func TestPinnedForkLockMatchesManifest(t *testing.T) {
 	}
 }
 
-func TestPinnedForkParsesChecksEmitsAndMapsVibe(t *testing.T) {
-	checkout := os.Getenv("VIBELANG_TYPESCRIPT_FORK")
+func TestPinnedForkParsesChecksEmitsAndMapsSmithers(t *testing.T) {
+	checkout := os.Getenv("SMITHERS_TYPESCRIPT_FORK")
 	if checkout == "" {
-		t.Skip("set VIBELANG_TYPESCRIPT_FORK to the exact pinned checkout to run the executable fork test")
+		t.Skip("set SMITHERS_TYPESCRIPT_FORK to the exact pinned checkout to run the executable fork test")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
@@ -47,13 +47,14 @@ func TestPinnedForkParsesChecksEmitsAndMapsVibe(t *testing.T) {
 	}
 
 	good, err := backend.Compile(ctx, compiler.CompileRequest{
-		RootNames: []string{"main.vibe"},
+		RootNames: []string{"main.sm"},
 		Files: []compiler.SourceFile{{
-			Path: "main.vibe",
-			Kind: compiler.FileKindVibe,
+			Path: "main.sm",
+			Kind: compiler.FileKindSmithers,
 			Text: "export const answer: number = 42;\n",
 		}},
-		Options: compiler.Options{"sourceMap": true, "inlineSources": true, "declaration": true},
+		Options:  compiler.Options{"sourceMap": true, "inlineSources": true, "declaration": true},
+		Lowering: compiler.LoweringIdentity,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -65,7 +66,7 @@ func TestPinnedForkParsesChecksEmitsAndMapsVibe(t *testing.T) {
 	if !strings.Contains(string(artifacts["main.js"]), "answer = 42") {
 		t.Fatalf("missing TypeScript emitter output: %#v", good.Artifacts)
 	}
-	if !strings.Contains(string(artifacts["main.d.vibe.ts"]), "declare const answer: number") {
+	if !strings.Contains(string(artifacts["main.d.sm.ts"]), "declare const answer: number") {
 		t.Fatalf("missing content-mapped declaration emitter output: %#v", good.Artifacts)
 	}
 	var sourceMap struct {
@@ -76,8 +77,8 @@ func TestPinnedForkParsesChecksEmitsAndMapsVibe(t *testing.T) {
 	if err := json.Unmarshal(artifacts["main.js.map"], &sourceMap); err != nil {
 		t.Fatalf("invalid emitted source map: %v (%q)", err, artifacts["main.js.map"])
 	}
-	if len(sourceMap.Sources) != 1 || !strings.Contains(sourceMap.Sources[0], "main.vibe") {
-		t.Fatalf("source map did not retain authored .vibe identity: %#v", sourceMap)
+	if len(sourceMap.Sources) != 1 || !strings.Contains(sourceMap.Sources[0], "main.sm") {
+		t.Fatalf("source map did not retain authored .sm identity: %#v", sourceMap)
 	}
 	if len(sourceMap.SourcesContent) != 1 || sourceMap.SourcesContent[0] != "export const answer: number = 42;\n" || sourceMap.Mappings == "" {
 		t.Fatalf("source map did not retain authored content/mappings: %#v", sourceMap)
@@ -85,12 +86,13 @@ func TestPinnedForkParsesChecksEmitsAndMapsVibe(t *testing.T) {
 
 	badSource := "export const answer: number = \"not a number\";\n"
 	bad, err := backend.Compile(ctx, compiler.CompileRequest{
-		RootNames: []string{"broken.vibe"},
+		RootNames: []string{"broken.sm"},
 		Files: []compiler.SourceFile{{
-			Path: "broken.vibe",
-			Kind: compiler.FileKindVibe,
+			Path: "broken.sm",
+			Kind: compiler.FileKindSmithers,
 			Text: badSource,
 		}},
+		Lowering: compiler.LoweringIdentity,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -100,7 +102,7 @@ func TestPinnedForkParsesChecksEmitsAndMapsVibe(t *testing.T) {
 	}
 	found := false
 	for _, diagnostic := range bad.Diagnostics {
-		if diagnostic.Code == "TS2322" && diagnostic.File == "broken.vibe" && diagnostic.Span != nil && diagnostic.Span.Start == strings.Index(badSource, "answer") && diagnostic.Span.Length == len("answer") && diagnostic.Phase == compiler.PhaseCheck {
+		if diagnostic.Code == "TS2322" && diagnostic.File == "broken.sm" && diagnostic.Span != nil && diagnostic.Span.Start == strings.Index(badSource, "answer") && diagnostic.Span.Length == len("answer") && diagnostic.Phase == compiler.PhaseCheck {
 			found = true
 		}
 	}
@@ -110,11 +112,11 @@ func TestPinnedForkParsesChecksEmitsAndMapsVibe(t *testing.T) {
 }
 
 func TestPinnedForkRejectsCacheInsideCheckoutBeforeWrite(t *testing.T) {
-	checkout := os.Getenv("VIBELANG_TYPESCRIPT_FORK")
+	checkout := os.Getenv("SMITHERS_TYPESCRIPT_FORK")
 	if checkout == "" {
-		t.Skip("set VIBELANG_TYPESCRIPT_FORK to run the executable fork test")
+		t.Skip("set SMITHERS_TYPESCRIPT_FORK to run the executable fork test")
 	}
-	cacheBase := filepath.Join(checkout, ".vibelang-overlap-test-cache")
+	cacheBase := filepath.Join(checkout, ".smithers-overlap-test-cache")
 	if _, err := os.Stat(cacheBase); !os.IsNotExist(err) {
 		t.Fatalf("test cache path must start absent: %v", err)
 	}
@@ -133,9 +135,9 @@ func TestPinnedForkRejectsCacheInsideCheckoutBeforeWrite(t *testing.T) {
 }
 
 func TestPinnedForkConcurrentColdCachePreparation(t *testing.T) {
-	checkout := os.Getenv("VIBELANG_TYPESCRIPT_FORK")
+	checkout := os.Getenv("SMITHERS_TYPESCRIPT_FORK")
 	if checkout == "" {
-		t.Skip("set VIBELANG_TYPESCRIPT_FORK to run the executable fork test")
+		t.Skip("set SMITHERS_TYPESCRIPT_FORK to run the executable fork test")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()

@@ -1,0 +1,5 @@
+{
+  "title": "ContextSubclass.context() contributes a nominal requirement that a matching Layer satisfies",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "no entry for zoe"]
+}

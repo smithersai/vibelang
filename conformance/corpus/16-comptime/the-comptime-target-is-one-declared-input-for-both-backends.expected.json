@@ -1,0 +1,8 @@
+{
+  "title": "comptime.target reports the target the compilation was given, and both backends are given the same one",
+  "expect": "output",
+  "stdout": [
+    "server:node-es2022"
+  ],
+  "notes": "specification/comptime.mdx: `comptime.target` is a typed, declared compiler input, and target-dependent products include the target in their identity. This case pins two things, and the second one is about the harness rather than the language, which is why it says so here. (1) The language promise: the target a compilation is given is the target `comptime.target` reports, and a target-selected branch is folded at compile time. (2) The harness property: BOTH backends are given the SAME declared target. The specification names no default, so the value is `conformance/runner/corpus.mjs`'s `comptimeTarget` constant \u2014 sent explicitly in the Go request's options and carried into the JS driver's payload. Before that constant existed the JS driver pinned `node-es2022` for its comptime and asset compilers while the Go request sent `options: {}` and the bridge fell back to its own `typescript-node`, so every comptime case was two compilations of two different programs. Nothing caught it: 16-comptime/comptime-target-selects-one-branch branches on `=== \"browser\"` and both defaults take the same arm, which is what a latent divergence in the equality relation looks like. This case reports the target rather than branching on one value precisely so that it cannot go latent again \u2014 if the two backends are ever given different targets, this row prints two different lines and the run reports a divergence. Changing the constant is expected to change this expectation; that is the point of writing the choice down in one place."
+}

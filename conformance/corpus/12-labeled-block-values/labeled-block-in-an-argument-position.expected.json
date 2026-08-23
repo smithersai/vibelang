@@ -1,0 +1,5 @@
+{
+  "title": "a labeled block value is accepted in the same general expression placements a value if is",
+  "expect": "output",
+  "stdout": ["pass!", "fail!"]
+}

@@ -1,0 +1,7 @@
+{
+  "title": "with { type: \"text\" } makes the file's source the module's default export, embedded at compile time",
+  "expect": "output",
+  "stdout": ["You are a careful reviewer.", "Answer with one sentence."],
+  "assets": ["system.txt"],
+  "notes": "specification/comptime.mdx, 'Built-In Formats': 'Text, bytes, Markdown, MDX, custom formats, and foreign source modules MUST use the same attribute mechanism with an appropriate `type` string.' docs/ASSET_LOADERS.md (Locked) prints `import source from \"./query.sql\" with { type: \"text\" }` for raw source acquisition, and for the prompt case: 'The import is resolved and tracked at compile time, so using the string does not perform runtime filesystem I/O.' The printed lines are the file's own bytes, so a loader that returned a path or a stub fails here. RETIRED MARKER (go, 2026-08-23): the `.txt` specifier used to reach no loader on the fork and was treated as an untrusted foreign module (observed SMITHERS1510@1:26). The fork now embeds the staged UTF-8 source as the default export; measured XPASS on go by `node conformance/runner/run.mjs --backend both --jobs 4`."
+}

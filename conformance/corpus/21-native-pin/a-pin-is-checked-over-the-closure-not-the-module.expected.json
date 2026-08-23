@@ -1,0 +1,9 @@
+{
+  "title": "a native pin is checked over the pinned function's dependency closure, not over its module: a TypeScript-requiring sibling the pinned function never calls does not block the pin",
+  "expect": "output",
+  "stdout": [
+    "48010",
+    "2"
+  ],
+  "notes": "specification/requirements.mdx, 'Platform Requirements': 'Portability MUST be determined from the satisfied dependency closure, not merely the source module's import path.' specification/compatibility.mdx, 'Native Pin' scopes the assertion to 'the complete transitive graph' of the pinned function and fails only 'if any REACHABLE operation or provider requires TypeScript'. Module-granular portability is the obvious cheap approximation and it is the wrong one: it would make a native pin impossible in any module that also contains ordinary TypeScript-target code, which is most real modules. `widen` here is byte-identical to the body that a-pin-reaching-typescript-is-rejected uses to FAIL a pin, so the only difference between the two cases is reachability. The counterpart case a-pin-reaching-typescript-transitively-is-rejected pins that reachability is followed to the end of the graph rather than one hop."
+}

@@ -1,0 +1,13 @@
+import { comptime } from "smithers:comptime"
+
+const spun = comptime(() => {
+  let n = 0
+  while (true) {
+    n = n + 1
+  }
+  return n
+})()
+
+export function main(): string[] {
+  return [String(spun)]
+}

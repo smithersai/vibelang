@@ -1,0 +1,8 @@
+type Grade = "pass" | "fail" | "retry"
+
+export function describe(grade: Grade): string {
+  return switch (grade) {
+    case "pass": "met the bar"
+    case "fail": "below the bar"
+  }
+}

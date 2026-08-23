@@ -26,9 +26,9 @@ export class JsonSchemaError extends Error {
     this.reason = reason;
   }
 }
-export interface JsonSchemaError extends NominalError<"vibelang:JsonSchemaError@1"> {}
+export interface JsonSchemaError extends NominalError<"smithers:JsonSchemaError@1"> {}
 
-registerErrorCodec(JsonSchemaError, "vibelang:JsonSchemaError@1", {
+registerErrorCodec(JsonSchemaError, "smithers:JsonSchemaError@1", {
   encode: (error) => ({ schemaPath: [...error.schemaPath], reason: error.reason }),
   decode: (payload) => {
     if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {

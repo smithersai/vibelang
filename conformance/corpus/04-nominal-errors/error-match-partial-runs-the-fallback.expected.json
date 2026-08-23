@@ -1,0 +1,6 @@
+{
+  "title": "matchPartial dispatches a listed nominal case and sends every unlisted failure to the explicit fallback",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "guest for zoe", "fallback timed out after 250ms"],
+  "notes": "docs/DECISIONS.md 'Typed failures' (Locked) lists matchPartial among the compiler-aware Error.prototype methods, and specification/failures.mdx, 'Error Prototype', requires the same set. The negative half of the rule — that the fallback cannot be omitted — is 04-nominal-errors/error-match-partial-needs-a-fallback; this case pins the positive half, including that the listed handler receives its argument narrowed to NotFound (it reads `failure.key`)."
+}

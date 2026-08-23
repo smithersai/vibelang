@@ -1,0 +1,8 @@
+{
+  "title": "a local same-spelled durable function has no compiler-owned Flow identity",
+  "expect": "output",
+  "stdout": [
+    "runtime:local"
+  ],
+  "notes": "The intrinsic authority comes from the exact compiler-owned smithers:flows export, never from the local spelling durable. The JS adapter composes the standalone durable source compiler only when that lexical module edge is present, so this same-spelled local function remains ordinary."
+}

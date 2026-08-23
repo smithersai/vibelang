@@ -1,0 +1,33 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string
+}
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+function read(key: string): string {
+  return Directory.context().lookup(key)
+}
+
+function stamped(key: string): string {
+  return `${read(key)}@${Clock.context().now()}`
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : "none") }
+const clock: Clock = { now: () => 7 }
+
+// The inner scope adds Clock on top of the outer scope's Directory; both are
+// live inside it, and the outer one is still live around it.
+export const lines = Layer.provide(Layer.succeed(Directory, directory), () => [
+  read("ada"),
+  ...Layer.provide(Layer.succeed(Clock, clock), () => [stamped("ada")]),
+  read("zoe"),
+])
+
+export function main(): string[] {
+  return lines
+}

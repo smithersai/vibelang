@@ -1,0 +1,32 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function lookup(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+// returning
+function returned(key: string): Result<string, Missing> {
+  return lookup(key)
+}
+
+// unwrapping
+function unwrapped(key: string): Result<string, Missing> {
+  const name = lookup(key).unwrap()
+  return name.toUpperCase()
+}
+
+export function main(): string[] {
+  return [
+    // matching
+    lookup("ada").match({ ok: (value) => value, error: (error) => error.message }),
+    // transforming
+    lookup("ada").map((value) => value.slice(0, 3)).unwrapOr("-"),
+    // inspecting
+    `${lookup("zoe").isError()}`,
+    returned("ada").unwrapOr("-"),
+    unwrapped("ada").unwrapOr("-"),
+  ]
+}

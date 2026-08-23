@@ -1,0 +1,6 @@
+{
+  "title": "there is no throw-expression grammar: `throw` is a statement, and inside a fallible function it produces the Result error variant",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1000", "line": 6, "column": 49 }],
+  "notes": "specification/control-flow.mdx, 'Throw Statements': 'The initial language MUST retain ordinary statement-form throw and MUST NOT add a Smithers-specific throw-expression grammar.' docs/DECISIONS.md 'Expression-oriented language' (Locked) says the same and defers the expression form to the TC39 proposal. The diagnostic is the grammar rule SMITHERS1000 rather than a migration diagnostic because this form was never part of the language; 01-result-lifting/throw-lifts-into-failure pins the statement form that IS supported."
+}

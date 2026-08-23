@@ -1,0 +1,13 @@
+{
+  "title": "an asset specifier that is not relative is rejected: package resolution is not a compiler-tracked input",
+  "expect": "diagnostics",
+  "assets": ["config.json"],
+  "diagnostics": [
+    {
+      "code": "SMITHERS5207",
+      "line": 1,
+      "column": 20
+    }
+  ],
+  "notes": "docs/ASSET_LOADERS.md (Locked): 'Loaders use compiler-tracked asset imports rather than ambient filesystem, network, clock, or random access. This keeps comptime deterministic and watch mode sound', and 'The incremental build graph records the source content, loader implementation, loader configuration, target/options, and every transitive input read by the loader.' A bare specifier is resolved by package resolution, whose result depends on node_modules layout and a lock file rather than on anything the build graph records — docs/ASSET_LOADERS.md:192 says so in the other direction: 'Loader identity must be stable across machines. Package resolution and its lock ...'. So the fail-open here is not a missing file; it is a compile-time read whose input the graph cannot name. `config.json` IS staged at the project root, so `./config.json` would compile: the case measures the SHAPE of the specifier, exactly as an-asset-path-outside-the-project-root-is-rejected measures the shape of an escaping one, and neither is a case about a missing file. Column 20 is the specifier itself (poc/src/build/source-assets.ts:537 reports on `statement.moduleSpecifier`), which is what distinguishes this from its SMITHERS5206 sibling in the same walk, reported on the whole statement. The attribute is present and well formed, so SMITHERS5201 is not reachable here and the single declared diagnostic is the whole claim."
+}

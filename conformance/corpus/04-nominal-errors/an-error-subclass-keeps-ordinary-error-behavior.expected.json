@@ -1,0 +1,14 @@
+{
+  "title": "the compiler's nominal identity and transport metadata are added WITHOUT changing ordinary Error behavior: `instanceof` up the chain, `message`, the inherited `name`, and a real `stack` all survive",
+  "expect": "output",
+  "stdout": [
+    "true",
+    "true",
+    "true",
+    "true",
+    "no entry for ada",
+    "Error",
+    "string"
+  ],
+  "notes": "specification/failures.mdx, 'Error Classes': 'The compiler MUST provide stable nominal identity, matching metadata, serialization evidence, and cross-realm transport metadata **while preserving ordinary `Error` behavior**.' docs/DECISIONS.md 'Typed failures' (Locked): 'The compiler supplies stable identity and transport metadata **without changing normal `Error` behavior**.' Every other case in area 04 exercises what the compiler ADDS — `match`, `matchPartial`, `is`, `rootCause`, module-qualified identity — and none of them would notice if the additions cost something. This case measures the other half of the same sentence. `missing.name` is asserted to be `\"Error\"` because that is what JavaScript gives a subclass that does not assign `name`; a compiler that helpfully set `name` to the class name, or attached a `_tag`, would be changing observable behavior, and specification/failures.mdx separately forbids requiring a `_tag`. The two-level chain (`Deleted extends NotFound extends Error`) is included because poc/src/language/README.md records that exactly one level of an inheritance chain carries the nominal brand — so a subclass of a branded Error is the shape where `instanceof` could plausibly regress."
+}

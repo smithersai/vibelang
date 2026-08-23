@@ -1,9 +1,0 @@
-import { durable } from "vibelang:flows"
-import { Compile, Package } from "test:cli-actions"
-
-throw new Error("vibe plan evaluated the authored module")
-
-export const Build = durable(function Build(input: { source: string }) {
-  const compiled = Compile.run({ source: input.source }).unwrap()
-  return Package.run({ code: compiled.code })
-})

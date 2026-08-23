@@ -1,0 +1,33 @@
+// Package smithers is the narrow extension seam owned by the Smithers fork.
+//
+// This source is mapped to tsc/internal/smithers at build time. Its logical
+// package path is therefore inside the TypeScript Go module and may import the
+// compiler's internal packages without weakening Go's internal visibility.
+package smithers
+
+import (
+	"fmt"
+
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+)
+
+const ExtensionVersion = "0.1.0-foundation.1"
+
+// ForkRevision is set by the reproducible build gate from
+// typescript-fork.json. A direct, unsupported go build remains visibly
+// unconfigured instead of claiming provenance it did not verify.
+var ForkRevision = "unconfigured"
+
+// Marker reports both compiler identities. Calling core.Version is deliberate:
+// the result proves that this fork-owned package was compiled with, and ran
+// code from, a real TypeScript compiler internal package.
+//
+//go:noinline
+func Marker() string {
+	return fmt.Sprintf(
+		"smithers-extension=%s\ntypescript-fork=%s\ntypescript-core=%s\nfork-internal=github.com/microsoft/TypeScript/tsc/internal/core.Version\n",
+		ExtensionVersion,
+		ForkRevision,
+		core.Version(),
+	)
+}

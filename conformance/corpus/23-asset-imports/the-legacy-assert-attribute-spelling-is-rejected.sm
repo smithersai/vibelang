@@ -1,0 +1,5 @@
+import counter from "./counter.json" assert { type: "json" }
+
+export function main(): string[] {
+  return [counter.label]
+}

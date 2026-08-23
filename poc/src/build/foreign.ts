@@ -209,7 +209,7 @@ export class ForeignCompiler {
       throw new Error(`${basename(absolute)} exceeds ${MAX_FOREIGN_FUNCTIONS} supported foreign exports`);
     }
     const key = digest({
-      rule: "vibelang:foreign-wasm@4",
+      rule: "smithers:foreign-wasm@4",
       language,
       compilerVersion,
       compilerVersionEvidence: digest({ stdout: versionResult.stdout, stderr: versionResult.stderr }),
@@ -253,7 +253,7 @@ export class ForeignCompiler {
       // Corrupt, symlinked, oversized, or incompatible cache objects are ordinary misses.
     }
 
-    const temporaryDirectory = await mkdtemp(join(tmpdir(), "vibelang-foreign-"));
+    const temporaryDirectory = await mkdtemp(join(tmpdir(), "smithers-foreign-"));
     const temporaryWasm = join(temporaryDirectory, "module.wasm");
     try {
       const snapshotRoot = join(temporaryDirectory, "sources");

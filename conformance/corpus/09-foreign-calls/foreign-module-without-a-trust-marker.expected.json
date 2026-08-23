@@ -1,0 +1,20 @@
+{
+  "title": "a statically imported foreign module without a leading @module/@throws {never} initialization claim is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 23
+    },
+    {
+      "code": "SMITHERS1301",
+      "line": 4,
+      "column": 11
+    }
+  ],
+  "typescript": [
+    "untrusted.ts"
+  ],
+  "notes": "The untrusted module's call also loses its Result, so both reports belong to the contract."
+}

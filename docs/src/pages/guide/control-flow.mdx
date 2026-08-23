@@ -1,124 +1,39 @@
-# Expression-Oriented Control Flow [Use conditions, switches, blocks, and loops as values]
+# Control Flow [TypeScript's control flow, plus one standards-track addition]
 
-VibeLang makes common control-flow forms usable as expressions. New syntax follows Zig where TypeScript does not already provide a suitable form.
+Smithers control flow is TypeScript control flow. `if`, `switch`, `for`, `while`, blocks, labels, and `break` all behave exactly as they do in TypeScript, and none of them is an expression.
 
-:::warning Current bounded implementation
-The checked frontend used by the root CLI/package now lowers braced `if` and
-`switch` expressions in general expression positions: call/new arguments,
-array and object members, nested initializers, arrow bodies, spreads, wrappers,
-assignments, returns, throws, conditions, and discriminants where evaluation
-order can be preserved. It also lowers labeled block values (`break :label
-value`), labeled `for`/`while` values with a required `else`, and expression
-switches proven exhaustive over a closed literal union. Typed joins,
-Result/Optional exits, authored diagnostics, and source maps are preserved.
+That is a deliberate reversal of an earlier design. Smithers previously added expression-position `if` and `switch`, labeled block and loop values, a value-carrying `break :label`, a loop `else` completion, and `defer`/`errdefer`. All of it worked, and all of it has been removed, because none corresponded to a TC39 proposal and TypeScript could already express every one of them:
 
-This remains a conservative POC, not unrestricted expression recovery.
-VIBE1707–VIBE1709 fail closed when hoisting cannot preserve order, a callee is
-not provably stable, or a general-placement branch is braceless;
-VIBE1714–VIBE1716 reject unsafe labeled-block shapes, unsafe/missing-`else`
-loop-value shapes, and missing or unprovable switch coverage. VIBE1710–VIBE1713
-remain the separate `defer`/`errdefer` diagnostics. Plain unlabeled loop
-expressions remain unsupported: the implemented loop-value design produces a
-value only through a labeled value break or the loop's `else` completion.
-:::
+| Removed form | What TypeScript already does |
+| --- | --- |
+| `const t = if (c) a else b` | `const t = c ? a : b` |
+| `const t = switch (k) { case "a": x }` | a lookup object, or a conditional chain |
+| `label: { break :label v }` | a function, or a `let` assigned on each path |
+| `label: for (…) { break :label v } else d` | a `let` initialized to the default, assigned in the loop |
+| `defer f()` | `using`, or a `finally` block |
+| `errdefer f()` | cleanup written in the failure path |
 
-## If Expressions
+New grammar is permanent and costs parser, formatter, and language-server work forever. Convenience does not pay for it.
 
-An `if` can produce a value:
+## The One Addition
+
+Declarations in conditionals, adopted early from the TC39 proposal of that name:
 
 ```ts
-const access = if (user.isAdmin) "all" else "limited"
-```
-
-Each reachable branch must produce a compatible type. A block returns its final expression:
-
-```ts
-const price = if (customer.isMember) {
-  const discount = calculateDiscount(customer)
-  subtotal * (1 - discount)
-} else {
-  subtotal
-}
-```
-
-Statement-form TypeScript `if` remains valid.
-
-## Switch Expressions
-
-A switch can return a value and can be checked for exhaustiveness:
-
-```ts
-const message = switch (state.kind) {
-  case "loading":
-    "Loading…"
-  case "ready":
-    state.value.title
-  case "failed":
-    state.error.message
-}
-```
-
-The clauses use ordinary TypeScript syntax. In expression position, the selected case's final expression becomes the switch value, so expression switches do not fall through. Statement-position switches keep TypeScript's existing `break` and fallthrough behavior.
-
-## Blocks and Labeled Breaks
-
-A labeled block can compute a value from an early exit:
-
-```ts
-const result = parse: {
-  if (input.length === 0) break :parse ParseResult.empty()
-  if (!isValid(input)) break :parse ParseResult.invalid(input)
-  break :parse ParseResult.valid(input)
-}
-```
-
-The label makes the destination explicit and allows `break` to carry a value.
-
-## Loop Expressions
-
-Loops can produce a value when a labeled break succeeds:
-
-```ts
-const firstEven = search: for (const value of values) {
-  if (value % 2 === 0) break :search value
-} else -1
-```
-
-The `else` expression runs when the loop completes without breaking to its value label.
-
-Runtime-sized loops remain ordinary runtime loops. Comptime-known loops may be evaluated or unrolled when used from comptime code.
-
-## Throw Statements
-
-VibeLang keeps JavaScript statement-form `throw`; it does not add a throw expression:
-
-```ts
-function readPort(config: Config): Result<number, InvalidConfig> {
-  return if (config.port !== undefined) {
-    config.port
-  } else {
-    throw new InvalidConfig("port")
-  }
-}
-```
-
-Inside a Result-returning function, the compiler lowers the Error to the Result error variant.
-
-## Declarations in Conditions
-
-VibeLang plans to adopt declarations in conditionals from TC39 where appropriate:
-
-```ts
-if (const user = cache.get(id); user !== null) {
+if (const user = cache.get(id); user !== undefined) {
   render(user)
+} else {
+  renderMiss()
 }
 ```
 
-The binding stays scoped to the conditional construct.
+The binding is visible in the then branch and in every `else` branch, and is out of scope after the construct.
 
-## `defer` and `errdefer`
+This is accepted because it is standards-track. It is currently **Stage 1**, the earliest stage, so it remains the single form whose inclusion rests on a proposal that could still change or be withdrawn.
 
-Cleanup belongs next to acquisition:
+## Cleanup
+
+Use TC39 explicit resource management, which TypeScript already supports:
 
 ```ts
 function write(
@@ -126,19 +41,37 @@ function write(
   contents: string,
 ): Result<void, FileError> {
   const fs = FileSystem.context()
-  const file = fs.open(path, "write").unwrap()
-  defer file.close()
-  file.write(contents).unwrap()
+  using file = fs.open(path, "write")!
+  file.write(contents)!
 }
 ```
 
-`defer` runs when the current scope exits, regardless of the path. `errdefer` runs only when the scope exits with a Result error:
+Cleanup that should run only when the function fails goes in the failure path rather than in a dedicated statement:
 
 ```ts
 const database = Database.context()
-const transaction = database.begin().unwrap()
-errdefer transaction.rollback()
-transaction.commit().unwrap()
+const transaction = database.begin()!
+
+return transaction
+  .commit()
+  .tapError(() => transaction.rollback())
 ```
 
-The exact interaction with defects, async suspension, and disposal protocols will be finalized in the normative specification.
+How `using` disposal orders against a compiler-generated `!` early return is not yet settled; see the [specification](/specification/control-flow).
+
+## Throw
+
+Statement-form `throw` is unchanged, and inside a fallible function the compiler lowers the thrown `Error` to the Result error variant:
+
+```ts
+function readPort(config: Config): Result<number, InvalidConfig> {
+  if (config.port === undefined) throw new InvalidConfig("port")
+  return config.port
+}
+```
+
+There is no throw expression. The TC39 proposal is at Stage 2; if it reaches TypeScript, Smithers inherits it rather than inventing it.
+
+## Loops
+
+Loops are statements and produce no value. Runtime-sized loops are ordinary runtime loops; comptime-known loops may be evaluated or unrolled when used from comptime code.

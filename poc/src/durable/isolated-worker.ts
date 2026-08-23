@@ -187,11 +187,11 @@ export class DenoIsolatedWorker implements DurableWorker {
     })
     const invocationBytes = canonicalJson(invocation)
     const javascript = [
-      `const __vibeInvocation = JSON.parse(${JSON.stringify(invocationBytes)});`,
-      `const __vibeHandler = (${this.artifact.functionExpression});`,
-      "export default async function __vibeWorkerMain() {",
-      "  if (typeof __vibeHandler !== 'function') throw new TypeError('Worker artifact must evaluate to a function');",
-      "  return await Reflect.apply(__vibeHandler, undefined, [__vibeInvocation]);",
+      `const __smithersInvocation = JSON.parse(${JSON.stringify(invocationBytes)});`,
+      `const __smithersHandler = (${this.artifact.functionExpression});`,
+      "export default async function __smithersWorkerMain() {",
+      "  if (typeof __smithersHandler !== 'function') throw new TypeError('Worker artifact must evaluate to a function');",
+      "  return await Reflect.apply(__smithersHandler, undefined, [__smithersInvocation]);",
       "}"
     ].join("\n")
     const execution = await this.#sandbox.execute(javascript, {}, {

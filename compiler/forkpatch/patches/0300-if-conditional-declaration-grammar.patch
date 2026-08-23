@@ -1,0 +1,293 @@
+diff --git a/tools/scripts/tsc/ast.json b/tools/scripts/tsc/ast.json
+index c0de95cf..ab8fb5c4 100644
+--- a/tools/scripts/tsc/ast.json
++++ b/tools/scripts/tsc/ast.json
+@@ -1299,9 +1299,15 @@
+                 "generateSubtreeFacts": true,
+                 "extends": [
+                     "StatementBase",
++                    "LocalsContainerBase",
+                     "CompositeBase"
+                 ],
+                 "members": [
++                    {
++                        "name": "Initializer",
++                        "type": "ForInitializer",
++                        "optional": true
++                    },
+                     {
+                         "name": "Expression",
+                         "type": "Expression"
+diff --git a/tsc/internal/ast/ast.go b/tsc/internal/ast/ast.go
+index 213f2b8c..b1688cec 100644
+--- a/tsc/internal/ast/ast.go
++++ b/tsc/internal/ast/ast.go
+@@ -771,6 +771,8 @@ func (n *Node) Initializer() *Node {
+ 		return n.AsForStatement().Initializer
+ 	case KindForInStatement, KindForOfStatement:
+ 		return n.AsForInOrOfStatement().Initializer
++	case KindIfStatement:
++		return n.AsIfStatement().Initializer
+ 	case KindJsxAttribute:
+ 		return n.AsJsxAttribute().Initializer
+ 	}
+@@ -798,6 +800,8 @@ func (m *MutableNode) SetInitializer(initializer *Node) {
+ 		n.AsForStatement().Initializer = initializer
+ 	case KindForInStatement, KindForOfStatement:
+ 		n.AsForInOrOfStatement().Initializer = initializer
++	case KindIfStatement:
++		n.AsIfStatement().Initializer = initializer
+ 	case KindJsxAttribute:
+ 		n.AsJsxAttribute().Initializer = initializer
+ 	default:
+diff --git a/tsc/internal/ast/utilities.go b/tsc/internal/ast/utilities.go
+index 1de21a2e..07e55af5 100644
+--- a/tsc/internal/ast/utilities.go
++++ b/tsc/internal/ast/utilities.go
+@@ -2205,6 +2205,12 @@ func IsBlockScope(node *Node, parentNode *Node) bool {
+ 		// function block is not considered block-scope container
+ 		// see comment in binder.ts: bind(...), case for SyntaxKind.Block
+ 		return !IsFunctionLikeOrClassStaticBlockDeclaration(parentNode)
++	case KindIfStatement:
++		// Smithers: `if (const x = f(); cond)` scopes the binding to the whole
++		// conditional construct, so only such an `if` is a block scope. This must
++		// agree with binder.GetContainerFlags, which decides whether the locals
++		// table is created at all.
++		return node.AsIfStatement().Initializer != nil
+ 	}
+ 	return false
+ }
+diff --git a/tsc/internal/binder/binder.go b/tsc/internal/binder/binder.go
+index 5ced401e..96db76a7 100644
+--- a/tsc/internal/binder/binder.go
++++ b/tsc/internal/binder/binder.go
+@@ -1937,6 +1937,12 @@ func (b *Binder) bindForInOrForOfStatement(node *ast.Node) {
+ 
+ func (b *Binder) bindIfStatement(node *ast.Node) {
+ 	stmt := node.AsIfStatement()
++	// Smithers: the conditional declaration runs before the condition is
++	// evaluated, so it must be bound first — the condition, both branches, and
++	// any narrowing inside them are all computed from the flow it produces.
++	// bindIfStatement binds its children by hand, so an unbound member here is a
++	// silent miscompile rather than a crash.
++	b.bind(stmt.Initializer)
+ 	thenLabel := b.createBranchLabel()
+ 	elseLabel := b.createBranchLabel()
+ 	postIfLabel := b.createBranchLabel()
+@@ -2611,6 +2617,13 @@ func GetContainerFlags(node *ast.Node) ContainerFlags {
+ 		}
+ 	case ast.KindCatchClause, ast.KindForStatement, ast.KindForInStatement, ast.KindForOfStatement, ast.KindCaseBlock:
+ 		return ContainerFlagsIsBlockScopedContainer | ContainerFlagsHasLocals
++	case ast.KindIfStatement:
++		// Smithers: only an `if` that declares a conditional binding is a block
++		// scope. A plain `if` keeps upstream's flags exactly.
++		if node.AsIfStatement().Initializer != nil {
++			return ContainerFlagsIsBlockScopedContainer | ContainerFlagsHasLocals
++		}
++		return ContainerFlagsNone
+ 	case ast.KindBlock:
+ 		if ast.IsFunctionLike(node.Parent) || ast.IsClassStaticBlockDeclaration(node.Parent) {
+ 			return ContainerFlagsNone
+diff --git a/tsc/internal/checker/checker.go b/tsc/internal/checker/checker.go
+index 571d01dc..865fa666 100644
+--- a/tsc/internal/checker/checker.go
++++ b/tsc/internal/checker/checker.go
+@@ -3811,14 +3811,28 @@ func (c *Checker) checkBlock(node *ast.Node) {
+ 
+ func (c *Checker) checkIfStatement(node *ast.Node) {
+ 	c.checkGrammarStatementInAmbientContext(node)
+-	t := c.checkTruthinessExpression(node.Expression(), CheckModeNormal)
+ 	data := node.AsIfStatement()
++	// Smithers: the conditional declaration must be checked here. checkIfStatement
++	// reaches its children by hand and checkSourceElementWorker has no default
++	// arm, so an unchecked initializer is silently NOT type-checked rather than
++	// reported.
++	if data.Initializer != nil {
++		if ast.IsVariableDeclarationList(data.Initializer) {
++			c.checkVariableDeclarationList(data.Initializer)
++		} else {
++			c.checkExpression(data.Initializer)
++		}
++	}
++	t := c.checkTruthinessExpression(node.Expression(), CheckModeNormal)
+ 	c.checkTestingKnownTruthyCallableOrAwaitableOrEnumMemberType(node.Expression(), t, data.ThenStatement)
+ 	c.checkSourceElement(data.ThenStatement)
+ 	if ast.IsEmptyStatement(data.ThenStatement) {
+ 		c.error(data.ThenStatement, diagnostics.The_body_of_an_if_statement_cannot_be_the_empty_statement)
+ 	}
+ 	c.checkSourceElement(data.ElseStatement)
++	if node.Locals() != nil {
++		c.registerForUnusedIdentifiersCheck(node)
++	}
+ }
+ 
+ func (c *Checker) checkTestingKnownTruthyCallableOrAwaitableOrEnumMemberType(condExpr *ast.Node, condType *Type, body *ast.Node) {
+@@ -7158,7 +7172,9 @@ func (c *Checker) checkUnusedIdentifiers(potentiallyUnusedIdentifiers []*ast.Nod
+ 			c.checkUnusedClassMembers(node)
+ 			c.checkUnusedTypeParameters(node)
+ 		case ast.KindSourceFile, ast.KindModuleDeclaration, ast.KindBlock, ast.KindCaseBlock, ast.KindForStatement, ast.KindForInStatement,
+-			ast.KindForOfStatement:
++			ast.KindForOfStatement,
++			// Smithers: an `if` with a conditional declaration owns a locals table.
++			ast.KindIfStatement:
+ 			c.checkUnusedLocalsAndParameters(node)
+ 		case ast.KindConstructor, ast.KindFunctionExpression, ast.KindFunctionDeclaration, ast.KindArrowFunction, ast.KindMethodDeclaration,
+ 			ast.KindGetAccessor, ast.KindSetAccessor:
+diff --git a/tsc/internal/checker/utilities.go b/tsc/internal/checker/utilities.go
+index 69b2362c..eea34cc6 100644
+--- a/tsc/internal/checker/utilities.go
++++ b/tsc/internal/checker/utilities.go
+@@ -186,6 +186,8 @@ func canHaveLocals(node *ast.Node) bool {
+ 	case ast.KindArrowFunction, ast.KindBlock, ast.KindCallSignature, ast.KindCaseBlock, ast.KindCatchClause,
+ 		ast.KindClassStaticBlockDeclaration, ast.KindConditionalType, ast.KindConstructor, ast.KindConstructorType,
+ 		ast.KindConstructSignature, ast.KindForStatement, ast.KindForInStatement, ast.KindForOfStatement, ast.KindFunctionDeclaration,
++		// Smithers: `if (const x = f(); cond)` gives the IfStatement a locals table.
++		ast.KindIfStatement,
+ 		ast.KindFunctionExpression, ast.KindFunctionType, ast.KindGetAccessor, ast.KindIndexSignature,
+ 		ast.KindJSDocSignature, ast.KindMappedType,
+ 		ast.KindMethodDeclaration, ast.KindMethodSignature, ast.KindModuleDeclaration, ast.KindSetAccessor, ast.KindSourceFile,
+diff --git a/tsc/internal/parser/parser.go b/tsc/internal/parser/parser.go
+index 59018f54..4550d1d1 100644
+--- a/tsc/internal/parser/parser.go
++++ b/tsc/internal/parser/parser.go
+@@ -1258,6 +1258,20 @@ func (p *Parser) parseIfStatement() *ast.Node {
+ 	p.parseExpected(ast.KindIfKeyword)
+ 	openParenPosition := p.scanner.TokenStart()
+ 	openParenParsed := p.parseExpected(ast.KindOpenParenToken)
++	// Smithers: `if ( VariableDeclarationList ; Expression )` — a declaration
++	// scoped to the whole conditional construct, as in Go's `if v := f(); cond`.
++	// The binding is visible in the then branch and in every `else`/`else if`
++	// branch, and is out of scope after the construct, because the IfStatement is
++	// itself a block-scoped container. Stock TypeScript cannot parse this form at
++	// all, so it is conflict-free; the lookahead keeps `let` usable as an
++	// ordinary identifier in a condition.
++	var initializer *ast.ForInitializer
++	if p.contextFlags&ast.NodeFlagsSmithers != 0 &&
++		(p.token == ast.KindVarKeyword || p.token == ast.KindLetKeyword || p.token == ast.KindConstKeyword) &&
++		p.lookAhead((*Parser).nextTokenIsBindingIdentifierOrStartOfDestructuring) {
++		initializer = p.parseVariableDeclarationList(true /*inForStatementInitializer*/)
++		p.parseExpected(ast.KindSemicolonToken)
++	}
+ 	expression := p.parseExpressionAllowIn()
+ 	p.parseExpectedMatchingBrackets(ast.KindOpenParenToken, ast.KindCloseParenToken, openParenParsed, openParenPosition)
+ 	thenStatement := p.parseStatement()
+@@ -1265,7 +1279,7 @@ func (p *Parser) parseIfStatement() *ast.Node {
+ 	if p.parseOptional(ast.KindElseKeyword) {
+ 		elseStatement = p.parseStatement()
+ 	}
+-	result := p.finishNode(p.factory.NewIfStatement(expression, thenStatement, elseStatement), pos)
++	result := p.finishNode(p.factory.NewIfStatement(initializer, expression, thenStatement, elseStatement), pos)
+ 	p.withJSDoc(result, jsdoc)
+ 	return result
+ }
+diff --git a/tsc/internal/printer/emitcontext.go b/tsc/internal/printer/emitcontext.go
+index ee483873..c9ea7361 100644
+--- a/tsc/internal/printer/emitcontext.go
++++ b/tsc/internal/printer/emitcontext.go
+@@ -903,6 +903,7 @@ func (c *EmitContext) addDefaultValueAssignmentForInitializer(parameter *ast.Par
+ 	initBlock.Loc = parameter.Loc
+ 	c.AddEmitFlags(initBlock, EFSingleLine|EFNoTrailingSourceMap|EFNoTokenSourceMaps|EFNoComments)
+ 	c.AddInitializationStatement(c.Factory.NewIfStatement(
++		nil, /*initializer*/
+ 		c.Factory.NewTypeCheck(name.Clone(c.Factory), "undefined"),
+ 		initBlock,
+ 		nil,
+diff --git a/tsc/internal/printer/printer.go b/tsc/internal/printer/printer.go
+index a65f33b7..bc60255d 100644
+--- a/tsc/internal/printer/printer.go
++++ b/tsc/internal/printer/printer.go
+@@ -3465,7 +3465,14 @@ func (p *Printer) emitIfStatement(node *ast.IfStatement) {
+ 	state := p.enterNode(node.AsNode())
+ 	pos := p.emitToken(ast.KindIfKeyword, node.Pos(), WriteKindKeyword, node.AsNode())
+ 	p.writeSpace()
+-	p.emitToken(ast.KindOpenParenToken, pos, WriteKindPunctuation, node.AsNode())
++	pos = p.emitToken(ast.KindOpenParenToken, pos, WriteKindPunctuation, node.AsNode())
++	// Smithers: `if (const x = f(); cond)` — the conditional declaration and the
++	// semicolon that separates it from the condition precede the condition.
++	if node.Initializer != nil {
++		p.emitForInitializer(node.Initializer)
++		p.emitToken(ast.KindSemicolonToken, node.Initializer.End(), WriteKindPunctuation, node.AsNode())
++		p.writeSpace()
++	}
+ 	p.emitExpression(node.Expression, ast.OperatorPrecedenceLowest)
+ 	p.emitToken(ast.KindCloseParenToken, node.Expression.End(), WriteKindPunctuation, node.AsNode())
+ 	p.emitEmbeddedStatement(node.AsNode(), node.ThenStatement)
+diff --git a/tsc/internal/transformers/estransforms/esdecorator.go b/tsc/internal/transformers/estransforms/esdecorator.go
+index dc2e6ede..74d21754 100644
+--- a/tsc/internal/transformers/estransforms/esdecorator.go
++++ b/tsc/internal/transformers/estransforms/esdecorator.go
+@@ -2704,7 +2704,7 @@ func (tx *esDecoratorTransformer) createSymbolMetadata(target *ast.Expression, v
+ 		ast.NodeFlagsNone,
+ 	)
+ 
+-	ifStatement := f.NewIfStatement(value, f.NewExpressionStatement(defineProperty), nil)
++	ifStatement := f.NewIfStatement(nil /*initializer*/, value, f.NewExpressionStatement(defineProperty), nil)
+ 	tx.EmitContext().SetEmitFlags(ifStatement, printer.EFSingleLine)
+ 	return ifStatement
+ }
+diff --git a/tsc/internal/transformers/estransforms/forawait.go b/tsc/internal/transformers/estransforms/forawait.go
+index 4d2ddafb..c49aefb9 100644
+--- a/tsc/internal/transformers/estransforms/forawait.go
++++ b/tsc/internal/transformers/estransforms/forawait.go
+@@ -502,6 +502,7 @@ func (tx *forawaitTransformer) transformForAwaitOfStatement(node *ast.ForInOrOfS
+ 		),
+ 	)
+ 	innerIfStatement := f.NewIfStatement(
++		nil, /*initializer*/
+ 		innerIfCondition,
+ 		f.NewExpressionStatement(tx.createDownlevelAwait(callReturn)),
+ 		nil,
+@@ -512,6 +513,7 @@ func (tx *forawaitTransformer) transformForAwaitOfStatement(node *ast.ForInOrOfS
+ 
+ 	// inner finally: if (errorRecord) throw errorRecord.error;
+ 	innerFinallyIf := f.NewIfStatement(
++		nil, /*initializer*/
+ 		errorRecord,
+ 		f.NewThrowStatement(
+ 			f.NewPropertyAccessExpression(errorRecord, nil, f.NewIdentifier("error"), ast.NodeFlagsNone),
+diff --git a/tsc/internal/transformers/estransforms/objectrestspread.go b/tsc/internal/transformers/estransforms/objectrestspread.go
+index 3c0ebae1..51a69167 100644
+--- a/tsc/internal/transformers/estransforms/objectrestspread.go
++++ b/tsc/internal/transformers/estransforms/objectrestspread.go
+@@ -346,7 +346,7 @@ func (ch *objectRestSpreadTransformer) collectObjectRestAssignments(node *ast.No
+ 				ch.EmitContext().AddEmitFlags(block, printer.EFSingleLine|printer.EFNoTrailingSourceMap|printer.EFNoTokenSourceMaps|printer.EFNoComments)
+ 
+ 				typeCheck := ch.Factory().NewTypeCheck(name.Clone(ch.Factory()), "undefined")
+-				statement := ch.Factory().NewIfStatement(typeCheck, block, nil)
++				statement := ch.Factory().NewIfStatement(nil /*initializer*/, typeCheck, block, nil)
+ 				statement.Loc = parameter.Loc
+ 				ch.EmitContext().AddEmitFlags(statement, printer.EFNoTokenSourceMaps|printer.EFNoTrailingSourceMap|printer.EFCustomPrologue|printer.EFNoComments|printer.EFStartOnNewLine)
+ 				results = append(results, statement)
+diff --git a/tsc/internal/transformers/estransforms/using.go b/tsc/internal/transformers/estransforms/using.go
+index 9becbf32..84a47ccc 100644
+--- a/tsc/internal/transformers/estransforms/using.go
++++ b/tsc/internal/transformers/estransforms/using.go
+@@ -743,7 +743,7 @@ func (tx *usingDeclarationTransformer) createDownlevelUsingStatements(bodyStatem
+ 					),
+ 				}), ast.NodeFlagsConst),
+ 			),
+-			tx.Factory().NewIfStatement(result, tx.Factory().NewExpressionStatement(tx.Factory().NewAwaitExpression(result)), nil /*elseStatement*/),
++			tx.Factory().NewIfStatement(nil /*initializer*/, result, tx.Factory().NewExpressionStatement(tx.Factory().NewAwaitExpression(result)), nil /*elseStatement*/),
+ 		}), true /*multiLine*/)
+ 	} else {
+ 		finallyBlock = tx.Factory().NewBlock(tx.Factory().NewNodeList([]*ast.Statement{
+diff --git a/tsc/internal/transformers/moduletransforms/commonjsmodule.go b/tsc/internal/transformers/moduletransforms/commonjsmodule.go
+index 9e7ca97d..38061bae 100644
+--- a/tsc/internal/transformers/moduletransforms/commonjsmodule.go
++++ b/tsc/internal/transformers/moduletransforms/commonjsmodule.go
+@@ -1270,13 +1270,14 @@ func (tx *CommonJSModuleTransformer) visitTopLevelNestedWithStatement(node *ast.
+ // Visits a top-level nested `if` statement as it may contain `var` declarations that are hoisted and may still be
+ // exported with `export {}`.
+ func (tx *CommonJSModuleTransformer) visitTopLevelNestedIfStatement(node *ast.IfStatement) *ast.Node {
++	initializer := tx.Visitor().VisitNode(node.Initializer)
+ 	expression := tx.Visitor().VisitNode(node.Expression)
+ 	thenStatement := tx.topLevelNestedVisitor.VisitEmbeddedStatement(node.ThenStatement)
+ 	if thenStatement == nil {
+ 		thenStatement = tx.Factory().NewBlock(tx.Factory().NewNodeList(nil), false /*multiLine*/)
+ 	}
+ 	elseStatement := tx.topLevelNestedVisitor.VisitEmbeddedStatement(node.ElseStatement)
+-	return tx.Factory().UpdateIfStatement(node, expression, thenStatement, elseStatement)
++	return tx.Factory().UpdateIfStatement(node, initializer, expression, thenStatement, elseStatement)
+ }
+ 
+ // Visits a top-level nested `switch` statement as it may contain `var` declarations that are hoisted and may still be

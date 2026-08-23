@@ -1,0 +1,1389 @@
+package main
+
+// Checked-AST lowering for the compiler-owned durable Flow intrinsic.
+//
+// This unit intentionally has no evaluator. It never calls the source
+// function, an Action implementation, or a compiler intrinsic. The only
+// inputs to the Plan builder are checker symbols/types and authored AST nodes;
+// the only output is a tree of synthesized AST factory nodes containing the
+// canonical, digest-pinned Plan descriptor.
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"math"
+	"path"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+const durableDiagnosticPrefix = "SMITHERS"
+
+const (
+	durableLogicalPath = "__smithers_flows.ts"
+	durableVirtualName = "/src/" + durableLogicalPath
+	durableModuleAlias = "./__smithers_flows"
+	durableModuleBase  = "__smithers_flows.js"
+)
+
+var durableModuleSpecifiers = map[string]bool{
+	"smithers:flows": true,
+}
+
+var durablePortableIdentity = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$`)
+
+// The compiler prelude supplies runtime definitions only so an Action class
+// declaration can survive ordinary module evaluation. A successfully lowered
+// durable(...) call never reaches any of these throwing bodies.
+const durablePreludeText = `
+export interface SmithersCompiledFlow<Input, Success> {
+	readonly id: string;
+	readonly version: number;
+	readonly plan: unknown;
+	readonly artifactSource: "static-plan-artifact";
+	readonly run: (input: Input) => Result<Success, unknown>;
+}
+export abstract class Action<Signature extends (input: any) => Result<any, any>> {
+	declare readonly __smithersActionSignature: Signature;
+	static run<S extends (input: any) => Result<any, any>>(
+		this: { readonly prototype: Action<S> },
+		input: Parameters<S>[0]
+	): ReturnType<S> {
+		throw new Error("compiler-owned Action.run reached runtime without durable lowering");
+	}
+}
+export function durable<Input, Success>(body: (input: Input) => Success): SmithersCompiledFlow<Input, Success> {
+	throw new Error("compiler-owned durable reached runtime without durable lowering");
+}
+export function sleep(durationMs: number): void {
+	throw new Error("compiler-owned sleep reached runtime without durable lowering");
+}
+export function waitSignal<Payload>(identity: string): Payload {
+	throw new Error("compiler-owned waitSignal reached runtime without durable lowering");
+}
+export function fanOut(..._arguments: readonly unknown[]): unknown {
+	throw new Error("compiler-owned fanOut reached runtime without durable lowering");
+}
+export function sequential<First, Second>(first: First, second: Second): readonly [First, Second] {
+	return [first, second] as const;
+}
+export function loopWhile(..._arguments: readonly unknown[]): unknown {
+	throw new Error("compiler-owned loopWhile reached runtime without durable lowering");
+}
+export function dequeue<Item>(identity: string): Item {
+	throw new Error("compiler-owned dequeue reached runtime without durable lowering");
+}
+export function waitBroadcast<Payload>(identity: string): Payload {
+	throw new Error("compiler-owned waitBroadcast reached runtime without durable lowering");
+}
+`
+
+type durableValue struct {
+	ir any
+}
+
+type durableAction struct {
+	id         string
+	descriptor map[string]any
+	inputType  *checker.Type
+	invalid    string
+}
+
+type durableFunctionLowerer struct {
+	owner         *lowerer
+	flowID        string
+	flowVersion   int
+	function      string
+	logicalFile   string
+	values        map[*ast.Symbol]durableValue
+	nodes         []any
+	activeNodes   *[]any
+	sequence      string
+	actions       map[string]durableAction
+	occurrences   map[string]int
+	nodeIDs       map[string]bool
+	signalIDs     map[string]bool
+	inputSchema   map[string]any
+	successSchema map[string]any
+	failed        bool
+}
+
+func durableCode(suffix string) string { return durableDiagnosticPrefix + suffix }
+
+func (l *lowerer) durableCanonicalSymbolAt(node *ast.Node) *ast.Symbol {
+	if node == nil {
+		return nil
+	}
+	symbol := l.checker.GetSymbolAtLocation(node)
+	if node.Parent != nil && ast.IsShorthandPropertyAssignment(node.Parent) {
+		if value := l.checker.GetShorthandAssignmentValueSymbol(node.Parent); value != nil {
+			symbol = value
+		}
+	}
+	if symbol == nil {
+		return nil
+	}
+	if symbol.Flags&ast.SymbolFlagsAlias != 0 {
+		// A type-only alias is never a runtime intrinsic reference, even when
+		// the checker can resolve its target declaration.
+		for _, declaration := range symbol.Declarations {
+			if ast.IsTypeOnlyImportOrExportDeclaration(declaration) {
+				return nil
+			}
+		}
+		if aliased := l.checker.GetAliasedSymbol(symbol); aliased != nil {
+			symbol = aliased
+		}
+	}
+	return l.checker.GetMergedSymbol(symbol)
+}
+
+// durableIntrinsic proves identity by the resolved declaration in the
+// compiler-owned prelude. The use-site spelling is not inspected: renamed
+// imports and namespace-property references resolve to the same symbol, while
+// an authored same-named function resolves elsewhere and is left ordinary.
+func (l *lowerer) durableIntrinsic(node *ast.Node, exported string) bool {
+	symbol := l.durableCanonicalSymbolAt(ast.SkipParentheses(node))
+	if symbol == nil {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file != nil && file.FileName() == durableVirtualName && declarationName(declaration) == exported {
+			return true
+		}
+	}
+	return false
+}
+
+func durableResolvedModule(typeChecker *checker.Checker, specifier *ast.Node) bool {
+	if typeChecker == nil || specifier == nil {
+		return false
+	}
+	symbol := typeChecker.ResolveExternalModuleName(specifier)
+	if symbol == nil {
+		return false
+	}
+	symbol = typeChecker.GetMergedSymbol(symbol)
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file != nil && file.FileName() == durableVirtualName {
+			return true
+		}
+	}
+	return false
+}
+
+func durablePreludeSpecifierFor(virtualName string) string {
+	directory := path.Dir(virtualName)
+	rest := strings.Trim(strings.TrimPrefix(directory, "/src"), "/")
+	if rest == "" {
+		return "./" + durableModuleBase
+	}
+	return strings.Repeat("../", strings.Count(rest, "/")+1) + durableModuleBase
+}
+
+func durableLogicalFile(file *ast.SourceFile) string {
+	if file == nil {
+		return "durable-source.sm"
+	}
+	return strings.TrimPrefix(path.Clean(file.FileName()), "/src/")
+}
+
+func durableDeclarationName(call *ast.Node, function *ast.Node) string {
+	if call != nil && call.Parent != nil && ast.IsVariableDeclaration(call.Parent) {
+		if name := call.Parent.Name(); name != nil && ast.IsIdentifier(name) {
+			return name.Text()
+		}
+	}
+	if function != nil {
+		if name := function.Name(); name != nil && ast.IsIdentifier(name) {
+			return name.Text()
+		}
+	}
+	return "Flow"
+}
+
+func (l *lowerer) resolveDurableFunction(argument *ast.Node) *ast.Node {
+	argument = ast.SkipParentheses(argument)
+	if ast.IsArrowFunction(argument) || ast.IsFunctionExpression(argument) {
+		return argument
+	}
+	symbol := l.durableCanonicalSymbolAt(argument)
+	if symbol == nil {
+		return nil
+	}
+	assigned := false
+	var inspectAssignment func(*ast.Node) bool
+	inspectAssignment = func(node *ast.Node) bool {
+		if ast.IsIdentifier(node) && ast.IsAssignmentTarget(node) && l.durableCanonicalSymbolAt(node) == symbol {
+			assigned = true
+			return true
+		}
+		node.ForEachChild(inspectAssignment)
+		return assigned
+	}
+	l.file.AsNode().ForEachChild(inspectAssignment)
+	if assigned {
+		return nil
+	}
+	var found *ast.Node
+	for _, declaration := range symbol.Declarations {
+		var candidate *ast.Node
+		switch {
+		case ast.IsFunctionDeclaration(declaration) && declaration.Body() != nil:
+			candidate = declaration
+		case ast.IsVariableDeclaration(declaration):
+			if !ast.IsVarConst(declaration) {
+				continue
+			}
+			initializer := declaration.AsVariableDeclaration().Initializer
+			if initializer != nil {
+				initializer = ast.SkipParentheses(initializer)
+				if ast.IsArrowFunction(initializer) || ast.IsFunctionExpression(initializer) {
+					candidate = initializer
+				}
+			}
+		}
+		if candidate == nil || ast.GetSourceFileOfNode(candidate) != l.file {
+			continue
+		}
+		if found != nil && found != candidate {
+			return nil
+		}
+		found = candidate
+	}
+	return found
+}
+
+// lowerDurableCall is the single integration hook used by visitExpression.
+// matched is true only for the resolved compiler-owned durable declaration.
+func (l *lowerer) lowerDurableCall(node *ast.Node) (lowered *ast.Node, matched bool) {
+	if !ast.IsCallExpression(node) {
+		return nil, false
+	}
+	call := node.AsCallExpression()
+	if !l.durableIntrinsic(call.Expression, "durable") {
+		return nil, false
+	}
+	matched = true
+	if call.QuestionDotToken != nil || call.TypeArguments != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 1 {
+		l.report(node, durableCode("4103"), "durable(...) requires exactly one statically resolvable function argument")
+		return node, true
+	}
+	function := l.resolveDurableFunction(call.Arguments.Nodes[0])
+	if function == nil {
+		l.report(call.Arguments.Nodes[0], durableCode("4103"), "durable(...) argument is not an inline or statically resolvable function")
+		return node, true
+	}
+	name := durableDeclarationName(node, function)
+	functionName := name
+	if declared := function.Name(); declared != nil && ast.IsIdentifier(declared) {
+		functionName = declared.Text()
+	}
+	logical := durableLogicalFile(l.file)
+	d := &durableFunctionLowerer{
+		owner:       l,
+		flowID:      logical + "#" + name,
+		flowVersion: 1,
+		function:    functionName,
+		logicalFile: logical,
+		values:      make(map[*ast.Symbol]durableValue),
+		actions:     make(map[string]durableAction),
+		occurrences: make(map[string]int),
+		nodeIDs:     make(map[string]bool),
+		signalIDs:   make(map[string]bool),
+	}
+	d.activeNodes = &d.nodes
+	output, ok := d.lowerFunction(function)
+	if !ok || d.failed {
+		return node, true
+	}
+	plan := d.plan(output)
+	descriptor := map[string]any{
+		"artifactSource": "static-plan-artifact",
+		"id":             d.flowID,
+		"plan":           plan,
+		"version":        d.flowVersion,
+	}
+	return l.durableLiteralExpression(descriptor), true
+}
+
+func (d *durableFunctionLowerer) fail(node *ast.Node, suffix string, message string) (durableValue, bool) {
+	if !d.failed {
+		d.owner.report(node, durableCode(suffix), message)
+		d.failed = true
+	}
+	return durableValue{}, false
+}
+
+func (d *durableFunctionLowerer) lowerFunction(function *ast.Node) (durableValue, bool) {
+	body := function.Body()
+	if body == nil || !ast.IsBlock(body) {
+		return d.fail(function, "4104", "durable source functions require a block body with an explicit return")
+	}
+	if function.BodyData().AsteriskToken != nil || ast.HasSyntacticModifier(function, ast.ModifierFlagsAsync) {
+		return d.fail(function, "4104", "async and generator durable source functions are outside the bounded lowering subset")
+	}
+	parameters := function.Parameters()
+	if len(parameters) != 1 {
+		return d.fail(function, "4104", "durable source functions require exactly one input parameter")
+	}
+	parameter := parameters[0]
+	parameterData := parameter.AsParameterDeclaration()
+	if parameter.Name() == nil || !ast.IsIdentifier(parameter.Name()) || parameterData.Initializer != nil || parameterData.DotDotDotToken != nil {
+		return d.fail(parameter, "4104", "durable input must be one plain identifier without an initializer")
+	}
+	inputSymbol := d.owner.durableCanonicalSymbolAt(parameter.Name())
+	if inputSymbol == nil {
+		return d.fail(parameter, "4199", "compiler could not resolve the durable input binding")
+	}
+	inputDescriptor, err := d.durableTypeDescriptor(d.owner.checker.GetTypeAtLocation(parameter.Name()), parameter, make(map[checker.TypeId]bool), false)
+	if err != nil {
+		return d.fail(parameter, "4110", "durable Flow input is not structurally encodable: "+err.Error())
+	}
+	d.inputSchema = durableStructuralSchema("input", inputDescriptor)
+	d.values[inputSymbol] = durableValue{ir: map[string]any{"kind": "input", "path": []any{}}}
+
+	var output durableValue
+	returned := false
+	for _, statement := range body.AsBlock().Statements.Nodes {
+		if returned {
+			return d.fail(statement, "4109", "statements after the durable return are not supported")
+		}
+		if statement.Kind == ast.KindEmptyStatement {
+			continue
+		}
+		if ast.IsVariableStatement(statement) {
+			list := statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList()
+			if list.AsNode().Flags&ast.NodeFlagsConst == 0 {
+				return d.fail(statement, "4105", "durable straight-line bindings must use const")
+			}
+			for _, declaration := range list.Declarations.Nodes {
+				valueDeclaration := declaration.AsVariableDeclaration()
+				if declaration.Name() == nil || !ast.IsIdentifier(declaration.Name()) || valueDeclaration.Initializer == nil {
+					return d.fail(declaration, "4105", "durable const bindings require one identifier and an initializer")
+				}
+				symbol := d.owner.durableCanonicalSymbolAt(declaration.Name())
+				if symbol == nil {
+					return d.fail(declaration.Name(), "4199", "compiler could not resolve const binding")
+				}
+				value, ok := d.lowerExpression(valueDeclaration.Initializer, "const:"+declaration.Name().Text(), false)
+				if !ok {
+					return durableValue{}, false
+				}
+				d.values[symbol] = value
+			}
+			continue
+		}
+		if statement.Kind == ast.KindReturnStatement {
+			expression := statement.AsReturnStatement().Expression
+			if expression == nil {
+				return d.fail(statement, "4109", "durable return requires a value")
+			}
+			var ok bool
+			output, ok = d.lowerExpression(expression, "return", true)
+			if !ok {
+				return durableValue{}, false
+			}
+			if len(d.actions) == 0 {
+				successDescriptor, err := d.durableTypeDescriptor(d.owner.checker.GetTypeAtLocation(expression), expression, make(map[checker.TypeId]bool), false)
+				if err != nil {
+					return d.fail(expression, "4110", "durable Flow success is not structurally encodable: "+err.Error())
+				}
+				d.successSchema = durableStructuralSchema("success", successDescriptor)
+			}
+			returned = true
+			continue
+		}
+		if statement.Kind == ast.KindExpressionStatement {
+			expression := ast.SkipParentheses(statement.AsExpressionStatement().Expression)
+			if ast.IsCallExpression(expression) {
+				if _, recognized, ok := d.lowerTimer(expression, "sleep"); recognized {
+					if !ok {
+						return durableValue{}, false
+					}
+					continue
+				}
+				if _, recognized, ok := d.lowerSequential(expression, "sequential"); recognized {
+					if !ok {
+						return durableValue{}, false
+					}
+					continue
+				}
+			}
+			return d.fail(statement, "4108", "only compiler-owned sleep(...) and sequential(...) are supported as durable expression statements")
+		}
+		if statement.Kind == ast.KindIfStatement || statement.Kind == ast.KindSwitchStatement {
+			return d.fail(statement, "4106", "runtime branches require explicit Plan branch lowering, which this subset does not guess")
+		}
+		if ast.IsIterationStatement(statement, false) {
+			return d.fail(statement, "4107", "runtime loops require parameterized Plan templates and are not unrolled by this subset")
+		}
+		return d.fail(statement, "4108", "unsupported durable statement "+statement.Kind.String())
+	}
+	if !returned {
+		return d.fail(body, "4109", "durable source function must return a value")
+	}
+	return output, true
+}
+
+func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, allowFinalAction bool) (durableValue, bool) {
+	expression := ast.SkipParentheses(node)
+	if ast.IsIdentifier(expression) {
+		symbol := d.owner.durableCanonicalSymbolAt(expression)
+		if value, ok := d.values[symbol]; ok {
+			return value, true
+		}
+		return d.fail(expression, "4110", "unsupported runtime capture "+expression.Text()+"; only input and prior const bindings are available")
+	}
+	switch expression.Kind {
+	case ast.KindNullKeyword:
+		return durableValue{ir: map[string]any{"kind": "literal", "value": nil}}, true
+	case ast.KindTrueKeyword:
+		return durableValue{ir: map[string]any{"kind": "literal", "value": true}}, true
+	case ast.KindFalseKeyword:
+		return durableValue{ir: map[string]any{"kind": "literal", "value": false}}, true
+	case ast.KindStringLiteral, ast.KindNoSubstitutionTemplateLiteral:
+		return durableValue{ir: map[string]any{"kind": "literal", "value": expression.Text()}}, true
+	case ast.KindNumericLiteral:
+		value, err := strconv.ParseFloat(expression.Text(), 64)
+		if err != nil || math.IsInf(value, 0) || math.IsNaN(value) {
+			return d.fail(expression, "4111", "non-finite numeric literal is not durable")
+		}
+		return durableValue{ir: map[string]any{"kind": "literal", "value": value}}, true
+	case ast.KindPrefixUnaryExpression:
+		prefix := expression.AsPrefixUnaryExpression()
+		if prefix.Operator == ast.KindMinusToken && ast.IsNumericLiteral(prefix.Operand) {
+			value, err := strconv.ParseFloat(prefix.Operand.Text(), 64)
+			value = -value
+			if err != nil || math.IsInf(value, 0) || math.IsNaN(value) || math.Signbit(value) && value == 0 {
+				return d.fail(expression, "4111", "non-canonical numeric literal is not durable")
+			}
+			return durableValue{ir: map[string]any{"kind": "literal", "value": value}}, true
+		}
+	}
+	if ast.IsObjectLiteralExpression(expression) {
+		fields := make(map[string]any)
+		for _, property := range expression.AsObjectLiteralExpression().Properties.Nodes {
+			var name string
+			var initializer *ast.Node
+			switch {
+			case ast.IsPropertyAssignment(property):
+				propertyName := property.Name()
+				if propertyName == nil || !(ast.IsIdentifier(propertyName) || ast.IsStringOrNumericLiteralLike(propertyName)) {
+					return d.fail(property, "4111", "durable object field names must be static")
+				}
+				name = propertyName.Text()
+				initializer = property.AsPropertyAssignment().Initializer
+			case ast.IsShorthandPropertyAssignment(property):
+				name = property.Name().Text()
+				initializer = property.Name()
+			default:
+				return d.fail(property, "4111", "durable objects do not support spreads, methods, or accessors in this subset")
+			}
+			if _, duplicate := fields[name]; duplicate {
+				return d.fail(property, "4111", "duplicate durable object field "+name)
+			}
+			value, ok := d.lowerExpression(initializer, anchor+"."+name, false)
+			if !ok {
+				return durableValue{}, false
+			}
+			fields[name] = value.ir
+		}
+		return durableValue{ir: map[string]any{"fields": fields, "kind": "object"}}, true
+	}
+	if ast.IsArrayLiteralExpression(expression) {
+		items := make([]any, 0, len(expression.AsArrayLiteralExpression().Elements.Nodes))
+		for index, element := range expression.AsArrayLiteralExpression().Elements.Nodes {
+			if element.Kind == ast.KindOmittedExpression || element.Kind == ast.KindSpreadElement {
+				return d.fail(element, "4111", "durable arrays cannot contain holes or spreads")
+			}
+			value, ok := d.lowerExpression(element, fmt.Sprintf("%s[%d]", anchor, index), false)
+			if !ok {
+				return durableValue{}, false
+			}
+			items = append(items, value.ir)
+		}
+		return durableValue{ir: map[string]any{"items": items, "kind": "array"}}, true
+	}
+	if ast.IsPropertyAccessExpression(expression) {
+		access := expression.AsPropertyAccessExpression()
+		if access.QuestionDotToken != nil {
+			return d.fail(expression, "4106", "optional projections require explicit Plan branch lowering")
+		}
+		base, ok := d.lowerExpression(access.Expression, anchor, false)
+		if !ok {
+			return durableValue{}, false
+		}
+		return d.project(base, access.Name().Text(), expression)
+	}
+	if ast.IsElementAccessExpression(expression) {
+		access := expression.AsElementAccessExpression()
+		if access.QuestionDotToken != nil {
+			return d.fail(expression, "4106", "optional projections require explicit Plan branch lowering")
+		}
+		argument := ast.SkipParentheses(access.ArgumentExpression)
+		if argument == nil || !ast.IsStringOrNumericLiteralLike(argument) {
+			return d.fail(expression, "4111", "durable projection keys must be static string or numeric literals")
+		}
+		base, ok := d.lowerExpression(access.Expression, anchor, false)
+		if !ok {
+			return durableValue{}, false
+		}
+		return d.project(base, argument.Text(), expression)
+	}
+	if ast.IsConditionalExpression(expression) {
+		return d.lowerConditional(expression, anchor, allowFinalAction)
+	}
+	if ast.IsCallExpression(expression) {
+		if value, recognized, ok := d.lowerSignal(expression, anchor); recognized {
+			return value, ok
+		}
+		if value, recognized, ok := d.lowerTimer(expression, anchor); recognized {
+			return value, ok
+		}
+		if value, recognized, ok := d.lowerSequential(expression, anchor); recognized {
+			return value, ok
+		}
+		call := expression.AsCallExpression()
+		for _, unsupported := range []struct {
+			name    string
+			suffix  string
+			message string
+		}{
+			{name: "fanOut", suffix: "4117", message: "compiler-owned fanOut requires a bounded stable-key template not implemented by the Go durable subset"},
+			{name: "loopWhile", suffix: "4121", message: "compiler-owned loopWhile requires a bounded loop template not implemented by the Go durable subset"},
+			{name: "waitBroadcast", suffix: "4122", message: "compiler-owned waitBroadcast is not implemented by the Go durable subset"},
+			{name: "dequeue", suffix: "4123", message: "compiler-owned dequeue is not implemented by the Go durable subset"},
+		} {
+			if d.owner.durableIntrinsic(call.Expression, unsupported.name) {
+				return d.fail(expression, unsupported.suffix, unsupported.message)
+			}
+		}
+		if receiver, kind := d.owner.prelude.unwrapCall(expression); kind == unwrapResult {
+			candidate := ast.SkipParentheses(receiver)
+			if ast.IsCallExpression(candidate) {
+				value, recognized, ok := d.lowerAction(candidate, anchor)
+				if recognized {
+					if ok {
+						d.sequence = value.ir.(map[string]any)["nodeId"].(string)
+					}
+					return value, ok
+				}
+			}
+			return d.fail(expression, "4112", "unwrap() is supported only directly on an imported Action.run(...) call")
+		}
+		if value, recognized, ok := d.lowerAction(expression, anchor); recognized {
+			if ok && !allowFinalAction {
+				return d.fail(expression, "4115", "an intermediate Action.run(...) must use .unwrap(); only the final returned Result may remain wrapped")
+			}
+			return value, ok
+		}
+		if d.isChildFlowRun(expression) {
+			return d.fail(expression, "4120", "child Flow embedding is not implemented by the Go durable subset")
+		}
+		return d.fail(expression, "4112", "higher-order and dynamic calls are unavailable in durable source lowering")
+	}
+	return d.fail(expression, "4111", "unsupported durable expression "+expression.Kind.String())
+}
+
+func (d *durableFunctionLowerer) project(value durableValue, key string, node *ast.Node) (durableValue, bool) {
+	record, ok := value.ir.(map[string]any)
+	if !ok {
+		return d.fail(node, "4111", fmt.Sprintf("cannot project %q from this durable expression", key))
+	}
+	kind, _ := record["kind"].(string)
+	switch kind {
+	case "input", "node":
+		pathValue, _ := record["path"].([]any)
+		copyRecord := make(map[string]any, len(record))
+		for name, item := range record {
+			copyRecord[name] = item
+		}
+		copyRecord["path"] = append(append([]any(nil), pathValue...), key)
+		return durableValue{ir: copyRecord}, true
+	case "object":
+		if fields, ok := record["fields"].(map[string]any); ok {
+			if projected, exists := fields[key]; exists {
+				return durableValue{ir: projected}, true
+			}
+		}
+	case "array":
+		index, err := strconv.Atoi(key)
+		if items, ok := record["items"].([]any); ok && err == nil && index >= 0 && index < len(items) {
+			return durableValue{ir: items[index]}, true
+		}
+	}
+	return d.fail(node, "4111", fmt.Sprintf("cannot project %q from this durable expression", key))
+}
+
+func durableBooleanType(t *checker.Type) bool {
+	if t == nil {
+		return false
+	}
+	if t.IsUnion() {
+		if len(t.Types()) == 0 {
+			return false
+		}
+		for _, item := range t.Types() {
+			if !durableBooleanType(item) {
+				return false
+			}
+		}
+		return true
+	}
+	return t.Flags()&(checker.TypeFlagsBoolean|checker.TypeFlagsBooleanLiteral) != 0
+}
+
+func (d *durableFunctionLowerer) lowerConditional(node *ast.Node, anchor string, allowFinalAction bool) (durableValue, bool) {
+	conditional := node.AsConditionalExpression()
+	if !durableBooleanType(d.owner.checker.GetTypeAtLocation(conditional.Condition)) {
+		return d.fail(conditional.Condition, "4106", "durable conditional expressions require a statically boolean condition")
+	}
+	condition, ok := d.lowerExpression(conditional.Condition, anchor+":condition", false)
+	if !ok {
+		return durableValue{}, false
+	}
+	parentNodes := d.activeNodes
+	parentSequence := d.sequence
+	trueNodes := []any{}
+	d.activeNodes = &trueNodes
+	d.sequence = ""
+	whenTrue, ok := d.lowerExpression(conditional.WhenTrue, anchor+":true", allowFinalAction)
+	if !ok {
+		d.activeNodes = parentNodes
+		d.sequence = parentSequence
+		return durableValue{}, false
+	}
+	falseNodes := []any{}
+	d.activeNodes = &falseNodes
+	d.sequence = ""
+	whenFalse, ok := d.lowerExpression(conditional.WhenFalse, anchor+":false", allowFinalAction)
+	d.activeNodes = parentNodes
+	d.sequence = parentSequence
+	if !ok {
+		return durableValue{}, false
+	}
+	identity := map[string]any{
+		"anchor":       anchor,
+		"condition":    condition.ir,
+		"file":         d.logicalFile,
+		"flowId":       d.flowID,
+		"flowVersion":  d.flowVersion,
+		"functionName": d.function,
+		"kind":         "branch",
+	}
+	id, ok := d.stableNodeID(node, identity)
+	if !ok {
+		return durableValue{}, false
+	}
+	branch := map[string]any{
+		"condition":           condition.ir,
+		"controlDependencies": durableControlDependencies(parentSequence),
+		"debug":               d.debug(node, "conditional"),
+		"dependencies":        durableExpressionDependencies(condition.ir),
+		"id":                  id,
+		"kind":                "branch",
+		"whenFalse":           map[string]any{"nodes": falseNodes, "output": whenFalse.ir},
+		"whenTrue":            map[string]any{"nodes": trueNodes, "output": whenTrue.ir},
+	}
+	*d.activeNodes = append(*d.activeNodes, branch)
+	d.sequence = id
+	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true
+}
+
+func (d *durableFunctionLowerer) lowerAction(node *ast.Node, anchor string) (durableValue, bool, bool) {
+	if !ast.IsCallExpression(node) {
+		return durableValue{}, false, false
+	}
+	call := node.AsCallExpression()
+	if !ast.IsPropertyAccessExpression(call.Expression) {
+		return durableValue{}, false, false
+	}
+	access := call.Expression.AsPropertyAccessExpression()
+	if !d.owner.durableIntrinsic(access.Name(), "run") {
+		return durableValue{}, false, false
+	}
+	action, ok := d.actionFor(access.Expression)
+	if !ok {
+		return durableValue{}, false, false
+	}
+	if action.invalid != "" {
+		value, valid := d.fail(access.Expression, "4113", action.invalid)
+		return value, true, valid
+	}
+	if call.QuestionDotToken != nil || access.QuestionDotToken != nil || call.TypeArguments != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 1 {
+		value, valid := d.fail(node, "4113", action.id+".run requires exactly one input argument in durable source")
+		return value, true, valid
+	}
+	argumentType := d.owner.checker.GetTypeAtLocation(call.Arguments.Nodes[0])
+	if action.inputType == nil || argumentType == nil || !d.owner.checker.IsTypeAssignableTo(argumentType, action.inputType) {
+		value, valid := d.fail(call.Arguments.Nodes[0], "4100", action.id+".run input is not assignable to the Action's checked input contract")
+		return value, true, valid
+	}
+	input, valid := d.lowerExpression(call.Arguments.Nodes[0], anchor+":input", false)
+	if !valid {
+		return durableValue{}, true, false
+	}
+	d.actions[action.id] = action
+	identity := map[string]any{
+		"actionContractDigest": action.descriptor["contractDigest"],
+		"actionId":             action.id,
+		"actionVersion":        1,
+		"anchor":               anchor,
+		"file":                 d.logicalFile,
+		"flowId":               d.flowID,
+		"flowVersion":          d.flowVersion,
+		"functionName":         d.function,
+		"input":                input.ir,
+	}
+	id, valid := d.stableNodeID(node, identity)
+	if !valid {
+		return durableValue{}, true, false
+	}
+	actionNode := map[string]any{
+		"actionContractDigest": action.descriptor["contractDigest"],
+		"actionId":             action.id,
+		"actionVersion":        1,
+		"controlDependencies":  durableControlDependencies(d.sequence),
+		"debug":                d.debug(node, action.id),
+		"dependencies":         durableExpressionDependencies(input.ir),
+		"id":                   id,
+		"input":                input.ir,
+		"kind":                 "action",
+	}
+	*d.activeNodes = append(*d.activeNodes, actionNode)
+	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true, true
+}
+
+func (d *durableFunctionLowerer) actionFor(reference *ast.Node) (durableAction, bool) {
+	symbol := d.owner.durableCanonicalSymbolAt(ast.SkipParentheses(reference))
+	declaration := classDeclarationOf(symbol)
+	if symbol == nil || declaration == nil || declaration.ClassLikeData().HeritageClauses == nil {
+		return durableAction{}, false
+	}
+	bound := false
+	var signatureType *checker.Type
+	for _, clauseNode := range declaration.ClassLikeData().HeritageClauses.Nodes {
+		clause := clauseNode.AsHeritageClause()
+		if clause.Token != ast.KindExtendsKeyword || clause.Types == nil {
+			continue
+		}
+		for _, item := range clause.Types.Nodes {
+			if ast.IsExpressionWithTypeArguments(item) && d.owner.durableIntrinsic(item.AsExpressionWithTypeArguments().Expression, "Action") {
+				bound = true
+				typeArguments := item.AsExpressionWithTypeArguments().TypeArguments
+				if typeArguments != nil && len(typeArguments.Nodes) == 1 {
+					signatureType = d.owner.checker.GetTypeFromTypeNode(typeArguments.Nodes[0])
+				}
+			}
+		}
+	}
+	if !bound {
+		return durableAction{}, false
+	}
+	if signatureType == nil {
+		return durableAction{invalid: "Action subclass requires exactly one checked function signature type"}, true
+	}
+	signatures := d.owner.checker.GetSignaturesOfType(signatureType, checker.SignatureKindCall)
+	if len(signatures) != 1 || len(signatures[0].Parameters()) != 1 || signatures[0].HasRestParameter() {
+		return durableAction{invalid: "Action signature must contain exactly one non-rest input parameter"}, true
+	}
+	inputType := d.owner.checker.GetTypeOfSymbolAtLocation(signatures[0].Parameters()[0], declaration)
+	returned := d.owner.checker.GetReturnTypeOfSignature(signatures[0])
+	if promised := d.owner.checker.GetPromisedTypeOfPromise(returned); promised != nil {
+		returned = promised
+	}
+	if inputType == nil || d.owner.analysis == nil {
+		return durableAction{invalid: "compiler could not derive the Action input contract"}, true
+	}
+	successType, _, result := d.owner.analysis.resultArguments(returned)
+	if !result || successType == nil {
+		return durableAction{invalid: "Action signature must return Result<Success, Error>"}, true
+	}
+	file := ast.GetSourceFileOfNode(declaration)
+	logical := durableLogicalFile(file)
+	id := logical + "#" + symbol.Name
+	inputDescriptor, err := d.durableTypeDescriptor(inputType, declaration, make(map[checker.TypeId]bool), false)
+	if err != nil {
+		return durableAction{invalid: "Action input is not structurally encodable: " + err.Error()}, true
+	}
+	successDescriptor, err := d.durableTypeDescriptor(successType, declaration, make(map[checker.TypeId]bool), false)
+	if err != nil {
+		return durableAction{invalid: "Action success is not structurally encodable: " + err.Error()}, true
+	}
+	inputSchema := durableStructuralSchema("input", inputDescriptor)
+	successSchema := durableStructuralSchema("success", successDescriptor)
+	errorSchema := durableLegacySchema("error")
+	contract := map[string]any{
+		"errorSchema":   errorSchema,
+		"id":            id,
+		"inputSchema":   inputSchema,
+		"successSchema": successSchema,
+		"version":       1,
+	}
+	descriptor := durableCopyMap(contract)
+	descriptor["contractDigest"] = durableDigest(contract)
+	return durableAction{id: id, descriptor: descriptor, inputType: inputType}, true
+}
+
+func (d *durableFunctionLowerer) lowerTimer(node *ast.Node, anchor string) (durableValue, bool, bool) {
+	call := node.AsCallExpression()
+	if !d.owner.durableIntrinsic(call.Expression, "sleep") {
+		return durableValue{}, false, false
+	}
+	if call.QuestionDotToken != nil || call.TypeArguments != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 1 {
+		value, ok := d.fail(node, "4116", "compiler-owned sleep(...) requires one statically bound duration argument")
+		return value, true, ok
+	}
+	duration, ok := d.lowerExpression(call.Arguments.Nodes[0], anchor+":duration", false)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	if record, isRecord := duration.ir.(map[string]any); isRecord && record["kind"] == "literal" {
+		number, isNumber := record["value"].(float64)
+		if !isNumber || number < 0 || number > 9007199254740991 || math.Trunc(number) != number {
+			value, valid := d.fail(call.Arguments.Nodes[0], "4116", "durable sleep duration must be a non-negative safe integer number of milliseconds")
+			return value, true, valid
+		}
+	}
+	identity := map[string]any{
+		"anchor":       anchor,
+		"durationMs":   duration.ir,
+		"file":         d.logicalFile,
+		"flowId":       d.flowID,
+		"flowVersion":  d.flowVersion,
+		"functionName": d.function,
+		"kind":         "timer",
+	}
+	id, valid := d.stableNodeID(node, identity)
+	if !valid {
+		return durableValue{}, true, false
+	}
+	timer := map[string]any{
+		"controlDependencies": durableControlDependencies(d.sequence),
+		"debug":               d.debug(node, "sleep"),
+		"dependencies":        durableExpressionDependencies(duration.ir),
+		"durationMs":          duration.ir,
+		"id":                  id,
+		"kind":                "timer",
+	}
+	*d.activeNodes = append(*d.activeNodes, timer)
+	d.sequence = id
+	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true, true
+}
+
+func (d *durableFunctionLowerer) lowerSequential(node *ast.Node, anchor string) (durableValue, bool, bool) {
+	call := node.AsCallExpression()
+	if !d.owner.durableIntrinsic(call.Expression, "sequential") {
+		return durableValue{}, false, false
+	}
+	if call.QuestionDotToken != nil || call.TypeArguments != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 2 {
+		value, ok := d.fail(node, "4119", "compiler-owned sequential(first, second) requires exactly two direct imported Action.run(...) arguments")
+		return value, true, ok
+	}
+	firstExpression := ast.SkipParentheses(call.Arguments.Nodes[0])
+	first, recognized, ok := d.lowerAction(firstExpression, anchor+":first")
+	if !recognized {
+		value, valid := d.fail(call.Arguments.Nodes[0], "4119", "sequential(...) arguments must be direct imported Action.run(...) calls")
+		return value, true, valid
+	}
+	if !ok {
+		return durableValue{}, true, false
+	}
+	d.sequence = first.ir.(map[string]any)["nodeId"].(string)
+	secondExpression := ast.SkipParentheses(call.Arguments.Nodes[1])
+	second, recognized, ok := d.lowerAction(secondExpression, anchor+":second")
+	if !recognized {
+		value, valid := d.fail(call.Arguments.Nodes[1], "4119", "sequential(...) arguments must be direct imported Action.run(...) calls")
+		return value, true, valid
+	}
+	if !ok {
+		return durableValue{}, true, false
+	}
+	d.sequence = second.ir.(map[string]any)["nodeId"].(string)
+	return durableValue{ir: map[string]any{"items": []any{first.ir, second.ir}, "kind": "array"}}, true, true
+}
+
+func (d *durableFunctionLowerer) lowerSignal(node *ast.Node, anchor string) (durableValue, bool, bool) {
+	call := node.AsCallExpression()
+	if !d.owner.durableIntrinsic(call.Expression, "waitSignal") {
+		return durableValue{}, false, false
+	}
+	if call.QuestionDotToken != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 1 || call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
+		value, ok := d.fail(node, "4118", "provisional compiler-owned waitSignal<Payload>(\"identity\") requires one explicit payload type and one static identity")
+		return value, true, ok
+	}
+	identityExpression := ast.SkipParentheses(call.Arguments.Nodes[0])
+	if !ast.IsStringLiteralLike(identityExpression) {
+		value, ok := d.fail(call.Arguments.Nodes[0], "4118", "durable signal identity must be a string literal, not a runtime value")
+		return value, true, ok
+	}
+	signalID := identityExpression.Text()
+	if !durablePortableIdentity.MatchString(signalID) {
+		value, ok := d.fail(identityExpression, "4118", "durable signal identity must be 1-128 portable characters")
+		return value, true, ok
+	}
+	if d.signalIDs[signalID] {
+		value, ok := d.fail(identityExpression, "4118", "durable signal identity "+signalID+" is duplicated in this Flow")
+		return value, true, ok
+	}
+	typeNode := call.TypeArguments.Nodes[0]
+	descriptor, err := d.durableTypeDescriptor(d.owner.checker.GetTypeFromTypeNode(typeNode), typeNode, make(map[checker.TypeId]bool), false)
+	if err != nil {
+		value, ok := d.fail(typeNode, "4118", "durable signal payload is not structurally encodable: "+err.Error())
+		return value, true, ok
+	}
+	payloadSchema := durableStructuralSchema("input", descriptor)
+	contractDigest := durableDigest(map[string]any{"payloadSchema": payloadSchema, "signalId": signalID})
+	identity := map[string]any{
+		"anchor":               anchor,
+		"file":                 d.logicalFile,
+		"flowId":               d.flowID,
+		"flowVersion":          d.flowVersion,
+		"functionName":         d.function,
+		"kind":                 "signal",
+		"signalContractDigest": contractDigest,
+		"signalId":             signalID,
+	}
+	id, ok := d.stableNodeID(node, identity)
+	if !ok {
+		return durableValue{}, true, false
+	}
+	d.signalIDs[signalID] = true
+	signal := map[string]any{
+		"controlDependencies":  durableControlDependencies(d.sequence),
+		"debug":                d.debug(node, "signal:"+signalID),
+		"dependencies":         []any{},
+		"id":                   id,
+		"kind":                 "signal",
+		"payloadSchema":        payloadSchema,
+		"signalContractDigest": contractDigest,
+		"signalId":             signalID,
+	}
+	*d.activeNodes = append(*d.activeNodes, signal)
+	d.sequence = id
+	return durableValue{ir: map[string]any{"kind": "node", "nodeId": id, "path": []any{}}}, true, true
+}
+
+func (d *durableFunctionLowerer) durableTypeDescriptor(t *checker.Type, location *ast.Node, seen map[checker.TypeId]bool, omitUndefined bool) (any, error) {
+	if t == nil {
+		return nil, fmt.Errorf("checker returned no type")
+	}
+	flags := t.Flags()
+	if flags&checker.TypeFlagsUndefined != 0 {
+		if omitUndefined {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("undefined is not a canonical JSON value")
+	}
+	if flags&checker.TypeFlagsNull != 0 {
+		return map[string]any{"kind": "null"}, nil
+	}
+	if flags&checker.TypeFlagsString != 0 {
+		return map[string]any{"kind": "string"}, nil
+	}
+	if flags&checker.TypeFlagsNumber != 0 {
+		return map[string]any{"kind": "number"}, nil
+	}
+	if flags&checker.TypeFlagsBoolean != 0 {
+		return map[string]any{"kind": "boolean"}, nil
+	}
+	if flags&checker.TypeFlagsLiteral != 0 {
+		value := t.AsLiteralType().Value()
+		switch value := value.(type) {
+		case string, bool:
+			return map[string]any{"kind": "literal", "value": value}, nil
+		default:
+			number, err := strconv.ParseFloat(fmt.Sprint(value), 64)
+			if err != nil || math.IsInf(number, 0) || math.IsNaN(number) {
+				return nil, fmt.Errorf("unsupported literal type")
+			}
+			return map[string]any{"kind": "literal", "value": number}, nil
+		}
+	}
+	if t.IsUnion() {
+		variants := make([]any, 0, len(t.Types()))
+		for _, item := range t.Types() {
+			variant, err := d.durableTypeDescriptor(item, location, seen, omitUndefined)
+			if err != nil {
+				return nil, err
+			}
+			if variant != nil {
+				variants = append(variants, variant)
+			}
+		}
+		if len(variants) == 0 {
+			return nil, fmt.Errorf("union has no encodable variants")
+		}
+		return durableCanonicalUnion(variants), nil
+	}
+	if flags&(checker.TypeFlagsAny|checker.TypeFlagsUnknown|checker.TypeFlagsNever|checker.TypeFlagsBigIntLike|checker.TypeFlagsESSymbolLike|checker.TypeFlagsVoid) != 0 {
+		return nil, fmt.Errorf("type is not a canonical JSON persistence type")
+	}
+	if flags&checker.TypeFlagsObject == 0 {
+		return nil, fmt.Errorf("unsupported persistence type")
+	}
+	if seen[t.Id()] {
+		return nil, fmt.Errorf("recursive persistence types are outside the bounded schema subset")
+	}
+	seen[t.Id()] = true
+	defer delete(seen, t.Id())
+	if checker.IsTupleType(t) {
+		arguments := d.owner.checker.GetTypeArguments(t)
+		items := make([]any, 0, len(arguments))
+		for _, argument := range arguments {
+			item, err := d.durableTypeDescriptor(argument, location, seen, false)
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, item)
+		}
+		return map[string]any{"items": items, "kind": "tuple"}, nil
+	}
+	if d.owner.checker.IsArrayType(t) {
+		arguments := d.owner.checker.GetTypeArguments(t)
+		if len(arguments) != 1 {
+			return nil, fmt.Errorf("array element type is unavailable")
+		}
+		element, err := d.durableTypeDescriptor(arguments[0], location, seen, false)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"element": element, "kind": "array"}, nil
+	}
+	if len(d.owner.checker.GetIndexInfosOfType(t)) != 0 || len(d.owner.checker.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 {
+		return nil, fmt.Errorf("index signatures and callable objects are not durable structural records")
+	}
+	properties := append([]*ast.Symbol(nil), d.owner.checker.GetPropertiesOfType(t)...)
+	sort.Slice(properties, func(i, j int) bool { return properties[i].Name < properties[j].Name })
+	fields := make([]any, 0, len(properties))
+	for _, property := range properties {
+		optional := property.Flags&ast.SymbolFlagsOptional != 0
+		propertyType := d.owner.checker.GetTypeOfSymbolAtLocation(property, location)
+		value, err := d.durableTypeDescriptor(propertyType, location, seen, optional)
+		if err != nil {
+			return nil, fmt.Errorf("field %s: %w", property.Name, err)
+		}
+		if value == nil {
+			return nil, fmt.Errorf("field %s has no encodable value type", property.Name)
+		}
+		fields = append(fields, map[string]any{"name": property.Name, "optional": optional, "value": value})
+	}
+	return map[string]any{"fields": fields, "kind": "object"}, nil
+}
+
+func durableCanonicalUnion(variants []any) any {
+	flattened := make([]any, 0, len(variants))
+	for _, variant := range variants {
+		if record, ok := variant.(map[string]any); ok && record["kind"] == "union" {
+			if nested, ok := record["variants"].([]any); ok {
+				flattened = append(flattened, nested...)
+				continue
+			}
+		}
+		flattened = append(flattened, variant)
+	}
+	byCanonical := make(map[string]any, len(flattened))
+	keys := make([]string, 0, len(flattened))
+	for _, variant := range flattened {
+		key := durableCanonicalJSON(variant)
+		if _, exists := byCanonical[key]; !exists {
+			byCanonical[key] = variant
+			keys = append(keys, key)
+		}
+	}
+	sortUTF16(keys)
+	ordered := make([]any, 0, len(keys))
+	for _, key := range keys {
+		ordered = append(ordered, byCanonical[key])
+	}
+	if len(ordered) == 1 {
+		return ordered[0]
+	}
+	return map[string]any{"kind": "union", "variants": ordered}
+}
+
+func (d *durableFunctionLowerer) isChildFlowRun(node *ast.Node) bool {
+	if !ast.IsCallExpression(node) || !ast.IsPropertyAccessExpression(node.AsCallExpression().Expression) {
+		return false
+	}
+	access := node.AsCallExpression().Expression.AsPropertyAccessExpression()
+	return d.owner.durableIntrinsic(access.Name(), "run") && !d.owner.durableIntrinsic(access.Expression, "Action")
+}
+
+func (d *durableFunctionLowerer) stableNodeID(node *ast.Node, identity map[string]any) (string, bool) {
+	occurrenceKey := durableDigest(identity)
+	occurrence := d.occurrences[occurrenceKey]
+	d.occurrences[occurrenceKey] = occurrence + 1
+	withOccurrence := durableCopyMap(identity)
+	withOccurrence["occurrence"] = occurrence
+	id := "src-" + durableDigest(withOccurrence)[:24]
+	if d.nodeIDs[id] {
+		d.fail(node, "4199", "stable durable node id collision "+id)
+		return "", false
+	}
+	d.nodeIDs[id] = true
+	return id, true
+}
+
+func (d *durableFunctionLowerer) debug(node *ast.Node, label string) map[string]any {
+	start := scanner.SkipTrivia(d.owner.file.Text(), node.Pos())
+	line, character := scanner.GetECMALineAndUTF16CharacterOfPosition(d.owner.file, start)
+	return map[string]any{
+		"callSite": fmt.Sprintf("%s:%d:%d", d.logicalFile, line+1, int(character)+1),
+		"label":    label,
+	}
+}
+
+func durableControlDependencies(sequence string) []any {
+	if sequence == "" {
+		return []any{}
+	}
+	return []any{sequence}
+}
+
+func durableExpressionDependencies(value any) []any {
+	set := make(map[string]bool)
+	var visit func(any)
+	visit = func(value any) {
+		switch value := value.(type) {
+		case map[string]any:
+			if value["kind"] == "node" {
+				if id, ok := value["nodeId"].(string); ok {
+					set[id] = true
+				}
+				return
+			}
+			for _, nested := range value {
+				visit(nested)
+			}
+		case []any:
+			for _, nested := range value {
+				visit(nested)
+			}
+		}
+	}
+	visit(value)
+	keys := make([]string, 0, len(set))
+	for key := range set {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	result := make([]any, len(keys))
+	for index, key := range keys {
+		result[index] = key
+	}
+	return result
+}
+
+func durableLegacySchema(role string) map[string]any {
+	semantic := map[string]any{
+		"format":        "canonical-json",
+		"role":          role,
+		"schemaVersion": 1,
+		"shape":         "json-value",
+		"source":        "compiler-derived-poc-stub",
+	}
+	schema := durableCopyMap(semantic)
+	schema["digest"] = durableDigest(semantic)
+	return schema
+}
+
+func durableStructuralSchema(role string, descriptor any) map[string]any {
+	semantic := map[string]any{
+		"descriptor":    descriptor,
+		"format":        "canonical-json",
+		"role":          role,
+		"schemaVersion": 1,
+		"shape":         "structural",
+		"source":        "compiler-derived",
+	}
+	schema := durableCopyMap(semantic)
+	schema["digest"] = durableDigest(semantic)
+	return schema
+}
+
+func (d *durableFunctionLowerer) plan(output durableValue) map[string]any {
+	actionIDs := make([]string, 0, len(d.actions))
+	for id := range d.actions {
+		actionIDs = append(actionIDs, id)
+	}
+	sortUTF16(actionIDs)
+	actions := make([]any, 0, len(actionIDs))
+	requirements := make([]any, 0, len(actionIDs))
+	for _, id := range actionIDs {
+		actions = append(actions, d.actions[id].descriptor)
+		requirements = append(requirements, id)
+	}
+	flowSchemas := map[string]any{
+		"input":   d.inputSchema,
+		"success": d.successSchema,
+	}
+	if d.inputSchema == nil {
+		flowSchemas["input"] = durableLegacySchema("input")
+	}
+	if d.successSchema == nil {
+		flowSchemas["success"] = durableLegacySchema("success")
+	}
+	if len(actions) != 0 {
+		flowSchemas["error"] = durableLegacySchema("error")
+	}
+	semantic := map[string]any{
+		"actions":       actions,
+		"flowId":        d.flowID,
+		"flowSchemas":   flowSchemas,
+		"flowVersion":   d.flowVersion,
+		"formatVersion": 1,
+		"nodes":         d.nodes,
+		"output":        output.ir,
+		"requirements":  requirements,
+	}
+	plan := durableCopyMap(semantic)
+	plan["digest"] = durableDigest(semantic)
+	return plan
+}
+
+func durableCopyMap(source map[string]any) map[string]any {
+	copy := make(map[string]any, len(source)+1)
+	for key, value := range source {
+		copy[key] = value
+	}
+	return copy
+}
+
+// durableCanonicalJSON is byte-compatible with the reference's recursive
+// object-key ordering and JSON.stringify scalar rendering. In particular,
+// JavaScript orders keys by UTF-16 code unit and uses Number::toString rather
+// than Go's UTF-8 ordering and float formatter.
+func durableCanonicalJSON(value any) string {
+	var out strings.Builder
+	durableWriteCanonical(&out, value)
+	return out.String()
+}
+
+func durableWriteCanonical(out *strings.Builder, value any) {
+	switch value := value.(type) {
+	case nil:
+		out.WriteString("null")
+	case bool:
+		if value {
+			out.WriteString("true")
+		} else {
+			out.WriteString("false")
+		}
+	case string:
+		out.WriteString(ctQuote(value))
+	case int:
+		out.WriteString(strconv.Itoa(value))
+	case float64:
+		out.WriteString(ctNumberText(value))
+	case []string:
+		out.WriteByte('[')
+		for index, item := range value {
+			if index != 0 {
+				out.WriteByte(',')
+			}
+			durableWriteCanonical(out, item)
+		}
+		out.WriteByte(']')
+	case []any:
+		out.WriteByte('[')
+		for index, item := range value {
+			if index != 0 {
+				out.WriteByte(',')
+			}
+			durableWriteCanonical(out, item)
+		}
+		out.WriteByte(']')
+	case map[string]any:
+		keys := make([]string, 0, len(value))
+		for key := range value {
+			keys = append(keys, key)
+		}
+		sortUTF16(keys)
+		out.WriteByte('{')
+		for index, key := range keys {
+			if index != 0 {
+				out.WriteByte(',')
+			}
+			out.WriteString(ctQuote(key))
+			out.WriteByte(':')
+			durableWriteCanonical(out, value[key])
+		}
+		out.WriteByte('}')
+	default:
+		panic(fmt.Sprintf("unsupported durable canonical JSON value %T", value))
+	}
+}
+
+func durableDigest(value any) string {
+	sum := sha256.Sum256([]byte(durableCanonicalJSON(value)))
+	return hex.EncodeToString(sum[:])
+}
+
+// durableLiteralExpression recursively materializes Plan data with the fork's
+// AST factory. It deliberately does not parse generated source or splice text.
+func (l *lowerer) durableLiteralExpression(value any) *ast.Node {
+	switch value := value.(type) {
+	case nil:
+		return l.factory.NewKeywordExpression(ast.KindNullKeyword)
+	case bool:
+		if value {
+			return l.factory.NewKeywordExpression(ast.KindTrueKeyword)
+		}
+		return l.factory.NewKeywordExpression(ast.KindFalseKeyword)
+	case string:
+		return l.factory.NewStringLiteral(value, ast.TokenFlagsNone)
+	case int:
+		return l.factory.NewNumericLiteral(strconv.Itoa(value), ast.TokenFlagsNone)
+	case float64:
+		return l.factory.NewNumericLiteral(ctNumberText(value), ast.TokenFlagsNone)
+	case []string:
+		elements := make([]*ast.Node, len(value))
+		for index, item := range value {
+			elements[index] = l.durableLiteralExpression(item)
+		}
+		return l.factory.NewArrayLiteralExpression(l.factory.NewNodeList(elements), false)
+	case []any:
+		elements := make([]*ast.Node, len(value))
+		for index, item := range value {
+			elements[index] = l.durableLiteralExpression(item)
+		}
+		return l.factory.NewArrayLiteralExpression(l.factory.NewNodeList(elements), false)
+	case map[string]any:
+		keys := make([]string, 0, len(value))
+		for key := range value {
+			keys = append(keys, key)
+		}
+		sortUTF16(keys)
+		properties := make([]*ast.Node, 0, len(keys))
+		for _, key := range keys {
+			propertyName := l.factory.NewStringLiteral(key, ast.TokenFlagsNone)
+			if key == "__proto__" {
+				// A quoted __proto__ in an object literal mutates the prototype
+				// instead of defining an own data field. The computed spelling is
+				// still factory-built and preserves the canonical JSON key.
+				propertyName = l.factory.NewComputedPropertyName(propertyName)
+			}
+			properties = append(properties, l.factory.NewPropertyAssignment(
+				nil,
+				propertyName,
+				nil,
+				nil,
+				l.durableLiteralExpression(value[key]),
+			))
+		}
+		return l.factory.NewObjectLiteralExpression(l.factory.NewNodeList(properties), true)
+	default:
+		panic(fmt.Sprintf("unsupported durable literal %T", value))
+	}
+}

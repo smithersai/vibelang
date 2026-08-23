@@ -1,0 +1,7 @@
+{
+  "title": "a context requirement propagates across a module boundary and is satisfied by a Layer provided in the importing module",
+  "expect": "output",
+  "stdout": ["ada -> Ada Lovelace", "zoe -> none"],
+  "modules": ["requirement-propagates-across-modules.mod.sm"],
+  "notes": "specification/requirements.mdx, 'Inference': 'Calling a function with unsatisfied requirements MUST add those capabilities to the caller's R row ... Requirement inference MUST be transitive through ordinary calls.' docs/DECISIONS.md 'Requirements and dependency injection' (Locked): 'Requirements propagate through callers by inference.' 05-context-rows/requirement-propagates-through-callers pins the single-module case; this one pins the cross-module case, which poc/src/language/README.md describes as a separate mechanism (checker-resolved direct static calls across relative imports)."
+}

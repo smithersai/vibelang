@@ -1,0 +1,19 @@
+const names = new Map<number, string>([[1, "Ada"]])
+
+function lookup(id: number): Optional<string> {
+  const found = names.get(id)
+  if (found === undefined) return undefined
+  return found
+}
+
+function initial(id: number): Optional<string> {
+  const name = lookup(id).unwrap()
+  return name.slice(0, 1)
+}
+
+export function main(): string[] {
+  return [
+    `1 -> ${initial(1).unwrapOr("-")}`,
+    `2 -> ${initial(2).unwrapOr("-")}`,
+  ]
+}

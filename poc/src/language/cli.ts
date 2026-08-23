@@ -3,19 +3,19 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from
 import { basename, dirname, extname, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as ts from "typescript-js";
-import { compileVibe } from "./compile.ts";
+import { compileSmithers } from "./compile.ts";
 import { checkEmittedTypeScript } from "./validate.ts";
 export { checkEmittedTypeScript } from "./validate.ts";
 
 export function main(): void {
   const inputArgument = process.argv[2];
-  if (!inputArgument || !inputArgument.endsWith(".vibe")) {
-    console.error("usage: vibe <input.vibe> [output.ts]");
+  if (!inputArgument || !inputArgument.endsWith(".sm")) {
+    console.error("usage: smithers <input.sm> [output.ts]");
     process.exit(2);
   }
 
   const input = resolve(inputArgument);
-  const output = resolve(process.argv[3] ?? input.replace(/\.vibe$/, ".generated.ts"));
+  const output = resolve(process.argv[3] ?? input.replace(/\.sm$/, ".generated.ts"));
   const canonicalOutput = resolve(canonicalDirectory(dirname(output)), basename(output));
   const modulePath = fileURLToPath(import.meta.url);
   const moduleDirectory = dirname(modulePath);
@@ -24,7 +24,7 @@ export function main(): void {
   let runtimeImport = relative(dirname(canonicalOutput), runtime).split(sep).join("/");
   if (!runtimeImport.startsWith(".")) runtimeImport = `./${runtimeImport}`;
 
-  const result = compileVibe(readFileSync(input, "utf8"), {
+  const result = compileSmithers(readFileSync(input, "utf8"), {
     fileName: input,
     outputFileName: canonicalOutput,
     runtimeImport,
@@ -62,7 +62,7 @@ export function main(): void {
   mkdirSync(dirname(output), { recursive: true });
   writeFileSync(output, outputCode);
   if (result.sourceMap) writeFileSync(`${output}.map`, result.sourceMap);
-  console.log(`vibe: ${relative(process.cwd(), input)} -> ${relative(process.cwd(), output)}`);
+  console.log(`smithers: ${relative(process.cwd(), input)} -> ${relative(process.cwd(), output)}`);
   for (const [name, rows] of Object.entries(result.analysis.rows)) {
     console.log(
       `  ${name}: throws ${rows.failures.join(" | ") || "never"}; uses ${rows.requirements.join(" | ") || "nothing"}`,

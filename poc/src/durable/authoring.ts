@@ -18,7 +18,7 @@ import {
 } from "./ir.ts"
 import { validateActionContractDescriptor } from "./schema.ts"
 
-export const DurableExpression: unique symbol = Symbol.for("vibelang.poc.durable-expression") as never
+export const DurableExpression: unique symbol = Symbol.for("smithers.poc.durable-expression") as never
 
 const plannedExpressions = new WeakMap<object, ValueExpr>()
 
@@ -323,7 +323,7 @@ const nodeReferences = (node: PlanNode): readonly string[] => {
       ? node.outputs
       : node.kind === "timer"
         ? [node.durationMs]
-        : node.kind === "signal"
+        : node.kind === "signal" || node.kind === "queue"
           ? []
         : node.kind === "fanout"
           ? [node.items]

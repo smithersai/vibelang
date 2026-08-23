@@ -1,0 +1,8 @@
+{
+  "title": "randomness through the otherwise universal Math global still requires a capability",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "SMITHERS1603", "line": 2, "column": 16 }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals', names clock and random as the host-sensitive operations that MUST still use capabilities even on an otherwise universal object. Math.max in 20-host-globals/universal-globals-stay-available is accepted from the same global, so the rule is per-operation, not per-object."
+}

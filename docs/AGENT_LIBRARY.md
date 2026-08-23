@@ -2,13 +2,14 @@
 
 Status: proposed production library design. This document does not add
 language syntax. The root package exposes narrower implementation evidence at
-`vibelang/agent`, including a coding-agent loop, in-memory TypeScript checking,
-explicit bindings, and a resource-bounded no-permission Deno subprocess sandbox.
-Its turn journal is now a real SQLite database rather than an in-memory fake:
+`smthrs/agent`, including a coding-agent loop, in-memory TypeScript checking,
+explicit bindings, Action tools, and a resource-bounded no-permission Deno
+subprocess sandbox. The Bun-only `smthrs/agent/bun` entry point adds the real
+SQLite turn journal and durable Flow tools. The journal is not an in-memory fake:
 rows are digest-checked and hash-chained in append order, each committed
 boundary is one `BEGIN IMMEDIATE` transaction, and a restarted process replays a
 turn from the journal without re-invoking the model or any host function.
-That POC also carries a typed `ModelAdapter` seam — model identity, version, and
+The POC also carries a typed `ModelAdapter` seam — model identity, version, and
 extraction hook flow into turn provenance and every journal row — plus adapters
 that compile a tool's source into a durable Action-backed function. Compiled
 Flows can also be supplied through the programmatic `flowTool(...)` adapter;
@@ -27,7 +28,7 @@ decisions or exact descriptions of the narrower POC API.
 
 ## Decision
 
-VibeLang's default coding agent writes ordinary TypeScript on every turn. The
+Smithers's default coding agent writes ordinary TypeScript on every turn. The
 generated program runs in a sandbox and receives only an explicit table of
 callable functions. It has no ambient filesystem, network, process,
 environment, module loader, tools, or MCP access.
@@ -41,12 +42,12 @@ durable(...) Flow     -> typed high-level function
 
 An MCP protocol and a tool-calling protocol are adapters, not separate agent
 semantics. The agent loop and sandbox belong to a library/runtime, not to the
-VibeLang grammar or type system.
+Smithers grammar or type system.
 
 ## Proposed exact API
 
 ```ts
-import { CodingAgent, TypeScriptSandbox } from "@vibelang/agent"
+import { CodingAgent, TypeScriptSandbox } from "@smithers/agent"
 import CodingPrompt from "./coding-agent.mdx" with { type: "mdx" }
 
 const Coder = CodingAgent.make({
@@ -64,14 +65,14 @@ const Coder = CodingAgent.make({
   }
 })
 
-const result = (await Coder.run({ task })).unwrap()
+const result = (await Coder.run({ task }))!
 ```
 
 The generated source has one entry point and one authority-bearing argument:
 
 ```ts
 export default async function turn(functions: Functions) {
-  const source = (await functions.readFile({ path: "src/index.ts" })).unwrap()
+  const source = (await functions.readFile({ path: "src/index.ts" }))!
   return functions.build({ source })
 }
 ```
@@ -82,9 +83,9 @@ RPC proxies into the durable executor; a local composition may use ordinary
 closures. Only Action and Flow calls receive durable execution semantics.
 
 This explicit argument is the authority boundary for untrusted generated
-TypeScript, not VibeLang's capability mechanism. Authored VibeLang functions
+TypeScript, not Smithers's capability mechanism. Authored Smithers functions
 obtain capabilities through the inherited `Capability.context()` method from
-`vibelang/context`, and those requirements appear in the function's static
+`smthrs/context`, and those requirements appear in the function's static
 type without adding a source parameter. The sandbox passes `functions`
 deliberately because generated code is otherwise denied ambient authority.
 
@@ -105,7 +106,7 @@ model API without compiler support.
 
 The MDX component named `Context` is prompt markup supplied by the agent
 library. It is unrelated to the `Context` capability base class in
-`vibelang/context`.
+`smthrs/context`.
 
 ## Turn lifecycle
 
@@ -196,12 +197,12 @@ syntax.
 
 ## Library/runtime responsibilities
 
-`@vibelang/agent` owns prompt rendering, the code-writing loop, diagnostic
+`@smithers/agent` owns prompt rendering, the code-writing loop, diagnostic
 repair, model adapters, MCP/tool adapters, sandbox creation, resource limits,
 function-proxy transport, durable turn orchestration, logging, redaction, and
 policy. The initial implementation supports generated TypeScript only; future
 source languages or agent strategies can use the same Action/Flow boundary
-without changing VibeLang.
+without changing Smithers.
 
 The library should expose independently replaceable primitives for prompt
 rendering, model invocation/streaming, turn state, TypeScript extraction and

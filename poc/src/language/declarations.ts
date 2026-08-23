@@ -2,7 +2,7 @@ import { dirname, resolve } from "node:path";
 import * as ts from "typescript-js";
 import type { FunctionRows } from "./model.ts";
 
-export const DECLARATION_EFFECT_TAG = "vibeEffects";
+export const DECLARATION_EFFECT_TAG = "smithersEffects";
 export const DECLARATION_EFFECT_VERSION = 1 as const;
 
 export interface DeclarationSource {

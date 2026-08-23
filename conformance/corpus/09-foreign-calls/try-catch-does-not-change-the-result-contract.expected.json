@@ -1,0 +1,10 @@
+{
+  "title": "ordinary statement-form try/catch stays valid and does not change the enclosing function's Result contract",
+  "expect": "output",
+  "stdout": [
+    "ada:41",
+    "bad:-1",
+    "no entry for zoe"
+  ],
+  "notes": "specification/failures.mdx, 'JavaScript try/catch': 'Ordinary statement-form JavaScript try/catch remains valid where JavaScript interoperability requires it. It is not the typed recovery surface for Smithers Results, and its presence MUST NOT change a function's Result contract implicitly.' The three output lines separate the two channels inside one function: the JSON parse failure is handled by the JavaScript catch and never reaches the Result, while the Missing throw leaves through the declared Result error variant with the try/catch in scope. 02-unwrap-propagation/unwrap-inside-try-with-catch-is-rejected pins the one interaction that is NOT allowed."
+}

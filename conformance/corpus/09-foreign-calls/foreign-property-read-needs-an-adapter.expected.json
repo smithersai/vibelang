@@ -1,0 +1,14 @@
+{
+  "title": "a foreign accessor read whose evaluation order lowering cannot preserve needs an annotated adapter",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1506",
+      "line": 5,
+      "column": 22
+    }
+  ],
+  "typescript": [
+    "foreign.ts"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "title": "a foreign constructor is not lowerable unless its resolved constructor declares @throws {never}",
+  "expect": "diagnostics",
+  "typescript": ["foreign.ts"],
+  "diagnostics": [{ "code": "SMITHERS1504", "line": 5, "column": 19 }],
+  "notes": "specification/failures.mdx, 'Foreign Exceptions': 'Calling any TypeScript, JavaScript, or other foreign runtime implementation MUST add the distinguished checked panic case by default ... A caller MUST propagate panic, explicitly catch it, or use a trusted adapter.' `new Counter(41)` is such a call, and poc/src/language/README.md records that constructor Result lowering is deferred, so the only accepted foreign constructor is one with a checker-resolved @throws {never}. Fail-closed: the alternative would be a foreign constructor whose throw escapes every checked channel."
+}

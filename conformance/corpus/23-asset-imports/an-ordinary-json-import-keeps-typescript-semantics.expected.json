@@ -1,0 +1,7 @@
+{
+  "title": "a JSON import without mode: \"const\" keeps TypeScript's ordinary widened, mutable module semantics",
+  "expect": "output",
+  "stdout": ["4", "WIDGETS"],
+  "assets": ["counter.json"],
+  "notes": "specification/comptime.mdx, 'Built-In Formats': 'Existing TypeScript JSON imports MUST retain TypeScript semantics.' docs/ASSET_LOADERS.md (TypeScript and TC39 compatibility): 'Smithers must not silently make an already-valid TypeScript JSON import readonly or change its runtime behavior. Const preservation is opt-in through import attributes.' This is the negative half of the const case: the same loader, one attribute fewer, and the observation is that the value is still widened and still writable. Mutating the module object is deliberate — a readonly type would reject it at the emitted-TypeScript check. RETIRED MARKER (go, 2026-08-23): the fork used to refuse an already-valid TypeScript JSON import outright (observed SMITHERS1506@9:27, SMITHERS1506@10:3, SMITHERS1506@11:14, SMITHERS1506@11:31, SMITHERS1510@1:21). Its JSON loader now keeps widened, mutable TypeScript inference in ordinary mode; measured XPASS on go by `node conformance/runner/run.mjs --backend both --jobs 4`, with identical stdout on both backends."
+}

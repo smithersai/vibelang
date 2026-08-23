@@ -1,0 +1,7 @@
+{
+  "title": "with { type: \"mdx\" } produces a typed component module whose expression holes are named placeholders, never evaluated",
+  "expect": "output",
+  "stdout": ["Coding Agent", "System,Instructions", "target"],
+  "assets": ["coding-agent.mdx"],
+  "notes": "specification/comptime.mdx, 'Built-In Formats': MDX is one of the loaders the toolchain MUST include and MUST use the same attribute mechanism. docs/ASSET_LOADERS.md (Locked): 'MDX uses `{ type: \"mdx\" }` and produces a typed component module' and 'MDX expression holes are identifier-only, never-evaluated placeholders.' The load-bearing observation is the third line: `target` appears nowhere in this program, yet the module compiles and runs, so the hole was carried as a name rather than resolved or executed. The page marks the exact export shape open ('the production default-export contract remain open'), so this case pins the component vocabulary and the placeholder rule, not the final module shape. RETIRED MARKER (go, 2026-08-23): the `.mdx` specifier used to reach no loader on the fork and was treated as an untrusted foreign module (observed SMITHERS1510@1:54). The fork now produces the same pure-data component module with never-evaluated identifier holes; measured XPASS on go by `node conformance/runner/run.mjs --backend both --jobs 4`."
+}

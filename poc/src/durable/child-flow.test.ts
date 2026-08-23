@@ -25,7 +25,7 @@ import {
 } from "./index.ts"
 
 const doubleContract = compileActionContract(`
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 class DoubleFailed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -33,7 +33,7 @@ export abstract class Double extends Action<
   (input: { value: number }) => Result<{ doubled: number }, DoubleFailed>
 > {}
 `, {
-  fileName: "contracts/child-double.vibe",
+  fileName: "contracts/child-double.sm",
   exportName: "Double",
   id: "test/child/Double",
   version: 1
@@ -41,7 +41,7 @@ export abstract class Double extends Action<
 if (!doubleContract.ok) throw new Error(JSON.stringify(doubleContract.diagnostics))
 
 const stampContract = compileActionContract(`
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 class StampFailed extends Error {
   constructor(readonly code: string) { super(code) }
 }
@@ -49,7 +49,7 @@ export abstract class Stamp extends Action<
   (input: { value: number }) => Result<{ stamped: number }, StampFailed>
 > {}
 `, {
-  fileName: "contracts/child-stamp.vibe",
+  fileName: "contracts/child-stamp.sm",
   exportName: "Stamp",
   id: "test/child/Stamp",
   version: 1
@@ -60,7 +60,7 @@ const Double = Action.fromDescriptor<{ value: number }, { doubled: number }, { c
 const Stamp = Action.fromDescriptor<{ value: number }, { stamped: number }, { code: string }>(stampContract.descriptor)
 
 const childSource = `
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 import { Double } from "test:child-actions"
 
 throw new Error("the authored child Flow module must never execute")
@@ -71,7 +71,7 @@ export const DoubleFlow = durable(function DoubleFlow(input: { value: number }) 
 `
 
 const childCompiled = compileDurableSource(childSource, {
-  fileName: "flows/child-double.vibe",
+  fileName: "flows/child-double.sm",
   flowId: "test/child/DoubleFlow",
   flowVersion: 1,
   actions: [{ moduleSpecifier: "test:child-actions", exportName: "Double", descriptor: Double.descriptor }]
@@ -79,7 +79,7 @@ const childCompiled = compileDurableSource(childSource, {
 if (!childCompiled.ok) throw new Error(JSON.stringify(childCompiled.diagnostics))
 
 const parentSource = `
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 import { DoubleFlow } from "test:child-flows"
 import { Stamp } from "test:child-actions"
 
@@ -92,7 +92,7 @@ export const Parent = durable(function Parent(input: { value: number }) {
 `
 
 const compileParent = (text = parentSource) => compileDurableSource(text, {
-  fileName: "flows/child-parent.vibe",
+  fileName: "flows/child-parent.sm",
   flowId: "test/child/Parent",
   flowVersion: 1,
   actions: [{ moduleSpecifier: "test:child-actions", exportName: "Stamp", descriptor: Stamp.descriptor }],
@@ -181,7 +181,7 @@ test("child Flow calls lower to a pinned, embedded format-2 boundary without eva
   ))
   expect(wrongInput.ok).toBe(false)
   if (wrongInput.ok) throw new Error("expected child Flow input type failure")
-  expect(wrongInput.diagnostics[0]!.code).toBe("VIBE4100")
+  expect(wrongInput.diagnostics[0]!.code).toBe("SMITHERS4100")
 })
 
 test("a child executes as its own pinned attached execution and is adopted before exposure", async () => {
@@ -374,7 +374,7 @@ test("crashes after linkage, child completion, and parent adoption all resume wi
   const node = childFlowNode(compiled.plan)
   const deployment = deploymentFor(compiled.plan, "child-crash")
   const childExecutionId = `child-crash::child::${node.id}`
-  const directory = mkdtempSync(join(tmpdir(), "vibe-child-flow-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-child-flow-"))
   const database = join(directory, "durable.sqlite")
   resetCalls()
   try {
@@ -446,7 +446,7 @@ test("two independent connections converge on one attached child execution", asy
   if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
   const node = childFlowNode(compiled.plan)
   const deployment = deploymentFor(compiled.plan, "child-race")
-  const directory = mkdtempSync(join(tmpdir(), "vibe-child-flow-race-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-child-flow-race-"))
   const database = join(directory, "durable.sqlite")
   resetCalls()
   const storeA = new DurableStore(database)
@@ -474,13 +474,13 @@ test("nested child chains execute as attached executions and stop at the round b
   const chain: PlanTemplate[] = [childCompiled.plan]
   for (let level = 2; level <= 8; level++) {
     const compiled = compileDurableSource(`
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 import { Prev } from "test:chain"
 export const Chain${level} = durable(function Chain${level}(input: { value: number }) {
   return Prev.run({ value: input.value })
 })
 `, {
-      fileName: `flows/chain-${level}.vibe`,
+      fileName: `flows/chain-${level}.sm`,
       flowId: `test/chain/${level}`,
       flowVersion: 1,
       actions: [],
@@ -492,13 +492,13 @@ export const Chain${level} = durable(function Chain${level}(input: { value: numb
   }
   // The ninth level exceeds the child-boundary round budget and fails closed.
   const overBudget = compileDurableSource(`
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 import { Prev } from "test:chain"
 export const Chain9 = durable(function Chain9(input: { value: number }) {
   return Prev.run({ value: input.value })
 })
 `, {
-    fileName: "flows/chain-9.vibe",
+    fileName: "flows/chain-9.sm",
     flowId: "test/chain/9",
     flowVersion: 1,
     actions: [],
@@ -506,7 +506,7 @@ export const Chain9 = durable(function Chain9(input: { value: number }) {
   })
   expect(overBudget.ok).toBe(false)
   if (overBudget.ok) throw new Error("expected the round budget to fail closed")
-  expect(overBudget.diagnostics[0]!.code).toBe("VIBE4120")
+  expect(overBudget.diagnostics[0]!.code).toBe("SMITHERS4120")
   expect(overBudget.diagnostics[0]!.message).toContain("round budget")
 
   // A three-level chain runs as three attached executions.
@@ -557,7 +557,7 @@ test("forged child Flow artifacts and store linkages fail closed", async () => {
 
   // An embedded Plan no node references is rejected.
   const extraChild = compileDurableSource(childSource, {
-    fileName: "flows/child-double.vibe",
+    fileName: "flows/child-double.sm",
     flowId: "test/child/DoubleFlow",
     flowVersion: 2,
     actions: [{ moduleSpecifier: "test:child-actions", exportName: "Double", descriptor: Double.descriptor }]

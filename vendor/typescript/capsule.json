@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "format": "git-bundle+file-go-proxy",
+  "repository": "https://github.com/smithersai/TypeScript.git",
+  "revision": "c087644e82dc3d48cf87e4c5519eeaaea9daf35c",
+  "requestedLedgerStrategy": "git-subtree-squash",
+  "sourceBundle": "typescript.bundle",
+  "dependencyProxy": "go-proxy",
+  "dependencyModules": [
+    {
+      "path": "github.com/Microsoft/go-winio",
+      "version": "v0.6.2"
+    },
+    {
+      "path": "github.com/go-json-experiment/json",
+      "version": "v0.0.0-20260623181947-01eb4420fa68"
+    },
+    {
+      "path": "github.com/google/go-cmp",
+      "version": "v0.7.0"
+    },
+    {
+      "path": "github.com/klauspost/cpuid/v2",
+      "version": "v2.2.10"
+    },
+    {
+      "path": "github.com/mackerelio/go-osstat",
+      "version": "v0.2.7"
+    },
+    {
+      "path": "github.com/matryer/moq",
+      "version": "v0.7.1"
+    },
+    {
+      "path": "github.com/peter-evans/patience",
+      "version": "v0.3.0"
+    },
+    {
+      "path": "github.com/pmezard/go-difflib",
+      "version": "v1.0.1-0.20181226105442-5d4384ee4fb2"
+    },
+    {
+      "path": "github.com/sirupsen/logrus",
+      "version": "v1.9.3"
+    },
+    {
+      "path": "github.com/yuin/goldmark",
+      "version": "v1.4.13"
+    },
+    {
+      "path": "github.com/zeebo/assert",
+      "version": "v1.3.0"
+    },
+    {
+      "path": "github.com/zeebo/xxh3",
+      "version": "v1.1.0"
+    },
+    {
+      "path": "golang.org/x/mod",
+      "version": "v0.37.0"
+    },
+    {
+      "path": "golang.org/x/net",
+      "version": "v0.56.0"
+    },
+    {
+      "path": "golang.org/x/sync",
+      "version": "v0.21.0"
+    },
+    {
+      "path": "golang.org/x/sys",
+      "version": "v0.46.0"
+    },
+    {
+      "path": "golang.org/x/telemetry",
+      "version": "v0.0.0-20260625142307-59b4966ccb57"
+    },
+    {
+      "path": "golang.org/x/term",
+      "version": "v0.44.0"
+    },
+    {
+      "path": "golang.org/x/text",
+      "version": "v0.38.0"
+    },
+    {
+      "path": "golang.org/x/tools",
+      "version": "v0.47.0"
+    },
+    {
+      "path": "gotest.tools/v3",
+      "version": "v3.5.2"
+    }
+  ],
+  "files": {
+    "LICENSE.typescript": "a7d00bfd54525bc694b6e32f64c7ebcf5e6b7ae3657be5cc12767bce74654a47",
+    "go-proxy/github.com/!microsoft/go-winio/@v/list": "cd168fbc331b21b21275f840d14bd55eb4cddb7d01e2d39d16c667e7a9ecbe6e",
+    "go-proxy/github.com/!microsoft/go-winio/@v/v0.6.2.info": "f851debfc3d5f4cd73450511094d8f1696c44fbba440d47233c60bcb8090518f",
+    "go-proxy/github.com/!microsoft/go-winio/@v/v0.6.2.mod": "47fb19990ebb31954f3aa784ff45f4c93a9e86ac3e1297d7ca87c614aeffe2cb",
+    "go-proxy/github.com/!microsoft/go-winio/@v/v0.6.2.zip": "cd007bdb877a578efde2780bf5dd2f57dd557b5b08c3614597b820d0369ebb0f",
+    "go-proxy/github.com/go-json-experiment/json/@v/list": "6352a3a053187586c7d784267abb80704ff0c6c13c818689bea0b7821d0894e9",
+    "go-proxy/github.com/go-json-experiment/json/@v/v0.0.0-20260623181947-01eb4420fa68.info": "c17d06d9fcb5ef5e6faaca03042df5d408780edcd7276de0c8b2ad8c4a4f7ba9",
+    "go-proxy/github.com/go-json-experiment/json/@v/v0.0.0-20260623181947-01eb4420fa68.mod": "64ddb6e13b6f1d3d6fb44c9a938b485b2c2d5c6fe6d897370a3900dff5a4b1f1",
+    "go-proxy/github.com/go-json-experiment/json/@v/v0.0.0-20260623181947-01eb4420fa68.zip": "54e45770eb951a295e9c4613e8ab8dba929fe0e2b404a07d1f63447a895f750a",
+    "go-proxy/github.com/google/go-cmp/@v/list": "22d24eb4aeab009537ebbd099e54562d35ce546add330e4cdecd28ede260c83c",
+    "go-proxy/github.com/google/go-cmp/@v/v0.7.0.info": "635bbe64cceaad0e5bbd897a78cac24ca184ea8c91394443cc30ee35be33f649",
+    "go-proxy/github.com/google/go-cmp/@v/v0.7.0.mod": "31c874a1d2a18e62b0550f823ce7a575c8dec7f8fd9d4fa1959bb12d7f7c0f14",
+    "go-proxy/github.com/google/go-cmp/@v/v0.7.0.zip": "64a9ce046f2c320e3783fba0d1f4a15f8a18f0b009b67bf27f7630919db3f539",
+    "go-proxy/github.com/klauspost/cpuid/v2/@v/list": "2860a075bb69d2b5d9d10a1c1af7e937c750cec1f993912461ab69dda5a1fadc",
+    "go-proxy/github.com/klauspost/cpuid/v2/@v/v2.2.10.info": "8ed11767f58c92182f4738dbdbb13df5196a1e02265e9e2e118e28626f071cb9",
+    "go-proxy/github.com/klauspost/cpuid/v2/@v/v2.2.10.mod": "ff61d47f254f2333bf44a8ff4187a2f2e973693807c10025033bb37143577237",
+    "go-proxy/github.com/klauspost/cpuid/v2/@v/v2.2.10.zip": "db89665fa22cef477dc551b72d49707c516b749c17ed154bf67eb8081ee08dff",
+    "go-proxy/github.com/mackerelio/go-osstat/@v/list": "52a3f5e5d8f8f97eb22767703aa81041e748c1e22297903c8f82c178cee68247",
+    "go-proxy/github.com/mackerelio/go-osstat/@v/v0.2.7.info": "25db2c08d07645b7468c132114b9ee4af841c83def82a24ccaef8f184da91a4c",
+    "go-proxy/github.com/mackerelio/go-osstat/@v/v0.2.7.mod": "3e97d1eb5a7bbe38340fb98da66224605500a6306d2bf284849494a8c0c97592",
+    "go-proxy/github.com/mackerelio/go-osstat/@v/v0.2.7.zip": "0caac3de4d3a63829ed97214fccbc0e0eb7e770c037dc4c8c4dec9e91672f01c",
+    "go-proxy/github.com/matryer/moq/@v/list": "dd5bfb858c63ba44ee33de4e8be272f6bb88529dd80262394bf6088d0b50b305",
+    "go-proxy/github.com/matryer/moq/@v/v0.7.1.info": "146508cd8aed2aadfde342d7d71f18295f16b97546cb87ca4b1844412c28c399",
+    "go-proxy/github.com/matryer/moq/@v/v0.7.1.mod": "6af13809f329d332ba4b71654963f8417af46a831af77d3c7af3fb3705997c78",
+    "go-proxy/github.com/matryer/moq/@v/v0.7.1.zip": "0f1ef0c5e0dfc6392fe42f50a8cd0fd9e0c5f5a0e3bffbb60fd10e243eaaf1b1",
+    "go-proxy/github.com/peter-evans/patience/@v/list": "e1aa68fa2f395e3ff04172a036157f0be07ca26e4cadd01eb721032754de6c71",
+    "go-proxy/github.com/peter-evans/patience/@v/v0.3.0.info": "60cef10c1c77a5b59cd40b50a2ceb9613d8b6769038f82cdf3d9dcd24e7ca367",
+    "go-proxy/github.com/peter-evans/patience/@v/v0.3.0.mod": "cd609513d29c931fa8d135ecb37ae90e7569135484a62bb2db21ec899a8c9777",
+    "go-proxy/github.com/peter-evans/patience/@v/v0.3.0.zip": "c906874fce4ff10415a537779adbad62414240af8e3be1db0170fa50360a5f90",
+    "go-proxy/github.com/pmezard/go-difflib/@v/list": "8a4a12f5e463966472badeaa2ecd872354a107476c36d4c156b1387d5fb5c121",
+    "go-proxy/github.com/pmezard/go-difflib/@v/v1.0.1-0.20181226105442-5d4384ee4fb2.info": "821752bb31ec89f312309ed632ab9c9e644c1d9836df470a77a1c9c06783c147",
+    "go-proxy/github.com/pmezard/go-difflib/@v/v1.0.1-0.20181226105442-5d4384ee4fb2.mod": "74b2e766eb215377864d587badf57e95521f692d2a7860b3c7759093f9c9bec2",
+    "go-proxy/github.com/pmezard/go-difflib/@v/v1.0.1-0.20181226105442-5d4384ee4fb2.zip": "24ff45e356f638a53bd0c89fff961fbeaecfdb0dc5e482ceed0a2230e0e5f3b7",
+    "go-proxy/github.com/sirupsen/logrus/@v/list": "7c254a18363a1c281d1067e37e0bc802c7841b4a2c9c19ade757ed87f4c586f2",
+    "go-proxy/github.com/sirupsen/logrus/@v/v1.9.3.info": "66804503eafcd060846e09292c926f0650908c516016f82c5113fb66ab41c207",
+    "go-proxy/github.com/sirupsen/logrus/@v/v1.9.3.mod": "01e82122d547d1228151a623fe6cacc4d7a9cb318a0f668ce08bb6b67fdb28b1",
+    "go-proxy/github.com/sirupsen/logrus/@v/v1.9.3.zip": "4501f4e6b858bfdd997671fcdd2f647a3178b29b6b4d1344caa7c07517121dd0",
+    "go-proxy/github.com/yuin/goldmark/@v/list": "5e5cba2e006d4c44185bb8f55c5434ed7b9eb984c2b2e739fd8b02cbf8a55e70",
+    "go-proxy/github.com/yuin/goldmark/@v/v1.4.13.info": "b0302ffb76a1b14e08f0f9aeacf7f6fcc4897f5e19cd00543fe3ddd62f2ada71",
+    "go-proxy/github.com/yuin/goldmark/@v/v1.4.13.mod": "ee7fe4466203a01d3ac19adc134cdec99bc6de71992c28f3dd9a74480bff0603",
+    "go-proxy/github.com/yuin/goldmark/@v/v1.4.13.zip": "bb41a602b174345fda392c8ad83fcc93217c285c763699677630be90feb7a5e3",
+    "go-proxy/github.com/zeebo/assert/@v/list": "1c6e945d74b4dc17923055e616b0f50f46d05ba0c4d9d080a481370905d3e614",
+    "go-proxy/github.com/zeebo/assert/@v/v1.3.0.info": "fcc27c13552c0e70b70b739a9e3baf7b9a08507095d74123d7141f752d378c60",
+    "go-proxy/github.com/zeebo/assert/@v/v1.3.0.mod": "cb8cea69ecbc99692af21d44909083f4d962e95dcb7adcb5fd0676b773587e9c",
+    "go-proxy/github.com/zeebo/assert/@v/v1.3.0.zip": "1f01421d74ff37cb8247988155be9e6877d336029bcd887a1d035fd32d7ab6ae",
+    "go-proxy/github.com/zeebo/xxh3/@v/list": "6bf25061d3caea72d34f961997d35aca8c8d960aaddac2413516882e6706c97e",
+    "go-proxy/github.com/zeebo/xxh3/@v/v1.1.0.info": "92c83efb72e704c4578bb6c4b088be03987dade61acf7737fbb009f5971a7846",
+    "go-proxy/github.com/zeebo/xxh3/@v/v1.1.0.mod": "c0ffb54a842e7143f079c321e74206d65f35cb39e19d2a0996cfef914e28c3f4",
+    "go-proxy/github.com/zeebo/xxh3/@v/v1.1.0.zip": "0cd36657902317f81f3d31b217ebaca6f98dfb665f1af611d1db0904a689bcd1",
+    "go-proxy/golang.org/x/mod/@v/list": "0461bdcf839b2bdb1fbca055399f04209b30d94fb7e394faf6cde139373de0f8",
+    "go-proxy/golang.org/x/mod/@v/v0.37.0.info": "4e3c092050646db6a64f7c42c2538fc0323ec7d7e4ffb04bcc1f76141d640e6a",
+    "go-proxy/golang.org/x/mod/@v/v0.37.0.mod": "538472fdf094dd5e49dc40e70468fa931a93c241eba07fb946a98747c94ab4df",
+    "go-proxy/golang.org/x/mod/@v/v0.37.0.zip": "91e8e4e9b74a8706dae808b66538d4ab22befd00c11f34134eb97ff572d52e85",
+    "go-proxy/golang.org/x/net/@v/list": "f7b040b2319928c99a6dd5a3843afbcfa23902102965a5ee4dd17a5786baebaa",
+    "go-proxy/golang.org/x/net/@v/v0.56.0.info": "22e00a93e3744cf8259747dd1779ea5a6e39753ba8606d8a662f69c713f08e73",
+    "go-proxy/golang.org/x/net/@v/v0.56.0.mod": "1072915233a6617a603a36996892ca8aafcc7d8b8dc0f43e7146d83c7ea49c43",
+    "go-proxy/golang.org/x/net/@v/v0.56.0.zip": "bbc975b3ec9cd86892cfc515badc125657e135c00162d0da5de33f6d07930464",
+    "go-proxy/golang.org/x/sync/@v/list": "e059fdcd726d7b488a0f9eb8d7f5f88dfbc9222438ff57c2e68ac9d0ddcd467e",
+    "go-proxy/golang.org/x/sync/@v/v0.21.0.info": "dd274d370d6a4ab1bcdb9cd8fd2fc919d96abda8c7806a85043d56da3cf1d066",
+    "go-proxy/golang.org/x/sync/@v/v0.21.0.mod": "a3e29e76060bd561060454b1fa2bdcd66674f60c9ca93833b8106355e34c603c",
+    "go-proxy/golang.org/x/sync/@v/v0.21.0.zip": "ee65459023de7f24836f6e2123144b5329bd0a4d05a87c3c448509378e2e6be7",
+    "go-proxy/golang.org/x/sys/@v/list": "72c553b4686cb08243d6ba5fb91811958c05cc7c0a3133d027e16b8a8f18f5b8",
+    "go-proxy/golang.org/x/sys/@v/v0.46.0.info": "0cd39036d64b29526b6b6db5d1817ad7005b3924c5b2848bcc96201267eb4312",
+    "go-proxy/golang.org/x/sys/@v/v0.46.0.mod": "57f4393ea18d5446a12363b35c23a616d843fa1669c7121a70a2bc3a9677d665",
+    "go-proxy/golang.org/x/sys/@v/v0.46.0.zip": "36dc83b6bc5884d260cdbd9d09e597b1eed64d15dfdc374ca6e31aef99d533d7",
+    "go-proxy/golang.org/x/telemetry/@v/list": "37d64dd6cf45550a5621affa435bcb4ae78e5a9fdabab6b6d302be181c830637",
+    "go-proxy/golang.org/x/telemetry/@v/v0.0.0-20260625142307-59b4966ccb57.info": "b7bb114392859297ef9a43960f72c0ff3d5661d4d7f344cdb98464898e8f649b",
+    "go-proxy/golang.org/x/telemetry/@v/v0.0.0-20260625142307-59b4966ccb57.mod": "679f3510bb823c2f08c28bd2928cf37ba74663c94a65da8d6301fe30c04c8c9b",
+    "go-proxy/golang.org/x/telemetry/@v/v0.0.0-20260625142307-59b4966ccb57.zip": "0cac4b203e92822b443d210458e3a0d8a5e72e85018238f75f6db5dfe69c3eca",
+    "go-proxy/golang.org/x/term/@v/list": "a2b5132401780f05e549fe94b0e4f7349567082cd85e5ab3ddfa1935b881e308",
+    "go-proxy/golang.org/x/term/@v/v0.44.0.info": "6c55a243f222b8f834f732ca0d25dcbb0f0c38916647064f0a75dadf055656de",
+    "go-proxy/golang.org/x/term/@v/v0.44.0.mod": "c1ed42075fbd1940a6ec34cbb1af6fff240b5c76e7a75599023fa138a112e948",
+    "go-proxy/golang.org/x/term/@v/v0.44.0.zip": "e420c6640012a697d806c2e865df26993c82a9ab1b16d286787cb77fc10062f7",
+    "go-proxy/golang.org/x/text/@v/list": "1f0b6bf4c390a423ed6d191cfd9a9907f7989357b6e7302769b0a6fe9b24123d",
+    "go-proxy/golang.org/x/text/@v/v0.38.0.info": "26133bfbd5bc2257fcfc635b2f20e93c6e6afffeeade8c2e82f3e678709a69ff",
+    "go-proxy/golang.org/x/text/@v/v0.38.0.mod": "5ea8b1f12f8a2eb1617ddedb3051a44f772222f977470d76231cfa95de7b6b01",
+    "go-proxy/golang.org/x/text/@v/v0.38.0.zip": "be98266212ac63cdc78631ae0ff8f783e0f5e47d9b6094c11ffebe43fd0424b3",
+    "go-proxy/golang.org/x/tools/@v/list": "a65f6b69a25cf106d614e2e06bee72e469522f6ca23d8b63c546fa848e5f82ae",
+    "go-proxy/golang.org/x/tools/@v/v0.47.0.info": "bf7788aab8383cb677c6a98fea7c4f9606257a2b4a2f9a2b4a6fe93c1e8d8c3a",
+    "go-proxy/golang.org/x/tools/@v/v0.47.0.mod": "eb46e44850fb4dca48f7b680cac5177682cb0e302b307d4d3dbd7ed9df05fc0f",
+    "go-proxy/golang.org/x/tools/@v/v0.47.0.zip": "143d132b519da1454db967febb65241796805d7c9d4752034341c1376fd3d7f1",
+    "go-proxy/gotest.tools/v3/@v/list": "f0c7dd3aa9858ec44952e81506082a82b465cfa92f5f44d701dfd77c8f036221",
+    "go-proxy/gotest.tools/v3/@v/v3.5.2.info": "529bc32e61dd1a367fabf98e7acd7eef8eb3846b4077ea7be005f5ffdacc00ea",
+    "go-proxy/gotest.tools/v3/@v/v3.5.2.mod": "e9353cd880d398afaacb0ba54e12575213b975f3cd7991d7b42aa3bfe5f6f9d6",
+    "go-proxy/gotest.tools/v3/@v/v3.5.2.zip": "d7c40ae135e4a34dee9ca4847ad18208f138847721e693647b897259287a1d4b",
+    "typescript.bundle": "3e9fc92ab7d64ff35ffbbc5e71e2ac546b2db17d8ff9d60520313576214e787f"
+  }
+}

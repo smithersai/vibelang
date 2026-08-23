@@ -1,0 +1,10 @@
+{
+  "title": "a nested Layer.provide adds its capability on top of the enclosing scope, and the enclosing scope stays live around it",
+  "expect": "output",
+  "stdout": [
+    "Ada",
+    "Ada@7",
+    "none"
+  ],
+  "notes": "specification/requirements.mdx, 'Scoping': 'Provided implementations MUST be scoped to the provided computation. Nested scopes MAY override implementations according to a future explicit precedence rule.' Because that precedence rule is explicitly future work, this case deliberately nests two DIFFERENT capabilities: what is locked is that each scope is active for its own body and that nesting composes additively. The three output lines are, in order, the outer scope before the nested one, the inner scope with both capabilities live, and the outer scope after the nested one has ended."
+}

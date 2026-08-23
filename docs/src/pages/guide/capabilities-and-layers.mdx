@@ -1,11 +1,11 @@
 # Capabilities & Layers [Make dependencies visible and provide them by scope]
 
-VibeLang models a dependency as a capability in a compiler-tracked requirement channel. A Context class defines and accesses a service; a base Layer packages an already acquired implementation into an environment.
+Smithers models a dependency as a capability in a compiler-tracked requirement channel. A Context class defines and accesses a service; a base Layer packages an already acquired implementation into an environment.
 
 ## Define a Capability
 
 ```ts
-import { Context } from "vibelang/context"
+import { Context } from "smthrs/context"
 
 abstract class Mailer extends Context {
   abstract send(message: Message): Result<Receipt, MailError>
@@ -34,18 +34,18 @@ function register(
   input: Signup,
 ): Result<User, CreateUserError | MailError> {
   const users = Users.context()
-  const user = users.create(input).unwrap()
-  welcome(user).unwrap()
+  const user = users.create(input)!
+  welcome(user)!
   return user
 }
 ```
 
-The compiler propagates `Users`, `Mailer`, and `Clock` through the ordinary calls. `.unwrap()` propagates the Error variants; these are separate from the requirement channel.
+The compiler propagates `Users`, `Mailer`, and `Clock` through the ordinary calls. `!` propagates the Error variants; these are separate from the requirement channel.
 
 ## Build and Provide a Layer
 
 ```ts
-import { Layer } from "vibelang/provider"
+import { Layer } from "smthrs/provider"
 
 const Production = Layer.merge(
   Layer.succeed(Clock, SystemClock),
@@ -54,14 +54,14 @@ const Production = Layer.merge(
 )
 
 Layer.provide(Production, async () => {
-  const user = (await registerAsync(input)).unwrap()
+  const user = (await registerAsync(input))!
   return user.id
 })
 ```
 
 A base layer is conceptually `Layer<Provides>`. It provides service instances; it does not acquire them or own their lifetime. A missing dependency is a compile error when the closure is known.
 
-Acquire resources in ordinary code and make cleanup explicit with `using` or `defer` before constructing the Layer. Resource-building conveniences may be added later, but they are not part of the base Layer contract.
+Acquire resources in ordinary code and make cleanup explicit with `using` before constructing the Layer. Resource-building conveniences may be added later, but they are not part of the base Layer contract.
 
 ## Test With Layers
 
@@ -73,7 +73,7 @@ const Test = Layer.merge(
 )
 
 Layer.provide(Test, () => {
-  const user = register(fixture).unwrap()
+  const user = register(fixture)!
   expect(RecordingMailer.sent).toHaveLength(1)
   return user
 })
@@ -86,12 +86,12 @@ No module replacement or global clock patch is needed.
 ```ts
 function loadConfig(): Result<AppConfig, FileError | InvalidAppConfig> {
   const fs = FileSystem.context()
-  const text = fs.readTextSync("app.json").unwrap()
+  const text = fs.readTextSync("app.json")!
   return parseAppConfig(text)
 }
 ```
 
-Node, Bun, Deno, native, WASI, and tests can provide different implementations of the same platform contracts.
+Node, Bun, Deno, browser, edge, and tests can provide different implementations of the same platform contracts.
 
 :::note Implementation status
 The platform capability library exists as a programmatic POC under
@@ -108,7 +108,7 @@ its first `await`.
 
 ## Scope and Lifetime
 
-`Layer.provide(layer, body)` keeps only the dependency environment active until `body` and the Promise returned by `body` settle. It does not discover, supervise, cancel, or join other Promise work. Every Promise started in authored `.vibe` must be awaited directly or consumed by a recognized combinator whose returned Promise is itself consumed; detached work is unavailable.
+`Layer.provide(layer, body)` keeps only the dependency environment active until `body` and the Promise returned by `body` settle. It does not discover, supervise, cancel, or join other Promise work. Every Promise started in authored `.sm` must be awaited directly or consumed by a recognized combinator whose returned Promise is itself consumed; detached work is unavailable.
 
 The Node prototype revokes at the Promise's actual state transition, before its queued reactions run. It accepts a Promise created during the body invocation (including an `async` function's Promise), while a pre-existing Promise must be wrapped as `async () => await existingPromise`. This is a lifetime adapter, not task ownership. Async Layer scopes fail closed on hosts without an equivalent synchronous settlement hook; the current Bun test host therefore exercises only synchronous Layer scopes.
 

@@ -1,0 +1,17 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+async function lookup(key: string): Promise<Result<string, Missing>> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+export async function main(): Promise<string[]> {
+  // The three sibling cases chain directly on the call. The rule is about the
+  // Promise VALUE, not that spelling, so binding it first must not open a way
+  // back to instance chaining.
+  const started = lookup("ada")
+  const outcome = await started.then((settled) => settled)
+  return [outcome.unwrapOr("Guest")]
+}

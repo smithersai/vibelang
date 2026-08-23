@@ -1,0 +1,11 @@
+{
+  "title": "a Layer expression this POC cannot see through is rejected rather than assumed to provide anything",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2104",
+      "line": 19,
+      "column": 36
+    }
+  ]
+}

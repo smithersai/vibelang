@@ -1,0 +1,14 @@
+import { Layer } from "smthrs/provider"
+import { Directory, read } from "./requirement-propagates-across-modules.mod.sm"
+
+// The requirement crosses a module boundary: `describe` never mentions
+// Directory, and still carries its requirement because `read` does.
+function describe(key: string): string {
+  return `${key} -> ${read(key)}`
+}
+
+const live: Directory = { lookup: (key) => (key === "ada" ? "Ada Lovelace" : "none") }
+
+export function main(): string[] {
+  return Layer.provide(Layer.succeed(Directory, live), () => [describe("ada"), describe("zoe")])
+}

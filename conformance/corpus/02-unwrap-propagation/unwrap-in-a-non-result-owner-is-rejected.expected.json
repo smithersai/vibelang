@@ -1,0 +1,11 @@
+{
+  "title": "unwrap in a function whose explicit return type cannot carry the propagated failure is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 10,
+      "column": 1
+    }
+  ]
+}

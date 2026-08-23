@@ -1,0 +1,19 @@
+import { native } from "smithers:native"
+import { keep } from "./storing-callee.mod.sm"
+
+// The over-correction guard for a-callback-a-callee-invokes-is-part-of-the-
+// pinned-graph, and the half that matters more. The two programs are identical
+// at the call; only the callee's body differs. `keep` never invokes what it is
+// handed, so no `eval` is reachable through this graph, the pin holds, and the
+// program compiles and runs. A native pin that failed here would refuse a
+// portable program for something it never does.
+function pinned(): number {
+  const held = keep(() => `${eval("1 + 1")}`.length)
+  return typeof held === "function" ? 1 : 0
+}
+
+native(pinned)
+
+export function main(): string[] {
+  return [String(pinned())]
+}

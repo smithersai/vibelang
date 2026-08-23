@@ -1,2 +1,0 @@
-import { seven } from "./util.vibe"
-export const answer: number = seven + seven;

@@ -1,0 +1,6 @@
+{
+  "title": "tap observes only the success variant, tapError only the error variant, and neither replaces the Result",
+  "expect": "output",
+  "stdout": ["tap Ada Lovelace", "tapError zoe", "Ada Lovelace", "none"],
+  "notes": "specification/failures.mdx, 'Matching and Transformation', requires tap and tapError among the compiler-aware Result operations. The order of the first two lines is the point: the observation on the success path fires and the one on the error path does not, and vice versa; the last two lines prove the observed Result was passed through unchanged."
+}

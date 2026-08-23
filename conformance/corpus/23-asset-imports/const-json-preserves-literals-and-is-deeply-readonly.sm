@@ -1,0 +1,18 @@
+import config from "./config.json" with { type: "json", mode: "const" }
+
+// specification/comptime.mdx prints the type the const form must produce for
+// exactly this file. `Exactly` is invariant in both arguments, so it is `true`
+// only when the loader preserved every literal AND made every level readonly:
+// widening `"production"` to `string`, `[80, 443]` to `number[]`, or dropping a
+// `readonly` all make this alias `false` and the declaration below stops
+// compiling.
+type Exactly<A, B> = (<G>() => G extends A ? 1 : 2) extends (<G>() => G extends B ? 1 : 2) ? true : false
+
+const literalPreserving: Exactly<
+  typeof config,
+  { readonly mode: "production"; readonly ports: readonly [80, 443] }
+> = true
+
+export function main(): string[] {
+  return [config.mode, config.ports.join("+"), `${literalPreserving}`]
+}

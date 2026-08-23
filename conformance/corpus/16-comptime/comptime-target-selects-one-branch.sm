@@ -1,0 +1,12 @@
+import { comptime } from "smithers:comptime"
+
+const transport = comptime(() => {
+  if (comptime.target === "browser") {
+    return { kind: "fetch", pollMilliseconds: 250 }
+  }
+  return { kind: "node-http", pollMilliseconds: 1000 }
+})()
+
+export function main(): string[] {
+  return [JSON.stringify(transport)]
+}

@@ -1,0 +1,13 @@
+{
+  "title": "a foreign callable handed to a local higher-order function is rejected: the checked panic case has no boundary left to attach to",
+  "expect": "diagnostics",
+  "typescript": ["foreign.ts"],
+  "diagnostics": [
+    {
+      "code": "SMITHERS1508",
+      "line": 9,
+      "column": 22
+    }
+  ],
+  "notes": "specification/failures.mdx:111 (Locked): 'Calling any TypeScript, JavaScript, or other foreign runtime implementation MUST add the distinguished checked `panic` case by default.' The rule attaches the channel at a CALL. Here `parseIntegerUnchecked` is never called in this module at all: it is passed by reference to `applyToEach`, which invokes it through the parameter `parse` — an ordinary local binding with no foreign origin, so `foreignValueOrigin` returns undefined there (poc/src/language/semantic.ts:2329-2357, the parameter has no VariableDeclaration to follow) and the invocation inside `applyToEach` is not a foreign call edge. That is the actual defect, and it is why the refusal is at the ARGUMENT rather than at a call: if this compiled, `inputs.map(parse)` would throw a RangeError out of `applyToEach`, past `parseAll`'s declared `Result<number[], Panic>`, with no Result boundary anywhere on the path. The panic case would not have been added — it would have been lost. poc/src/language/README.md:127: 'SMITHERS1508: executable foreign provenance escapes through an unsupported higher-order/return/store boundary', and :487-492 bounds the mechanism honestly ('Foreign provenance is bounded declaration/data flow, not arbitrary heap taint'). `applyToEach` is deliberately a LOCAL function, not a foreign one: passing a callback INTO foreign code is the neighbouring rule SMITHERS1509 and is already pinned by callback-escaping-into-foreign-code-is-rejected, so this case is written to reach the other arm of the same walk (semantic.ts:1159-1181, the `else if (!edge?.panicExit …)` branch). `parseAll` declares `Result<number[], Panic>` so that the escape is the only diagnostic and no missing-channel cascade rides on top of it. Its acceptance twin is a-foreign-callable-wrapped-in-a-local-adapter-is-accepted, which passes the local adapter the diagnostic's own message prescribes."
+}

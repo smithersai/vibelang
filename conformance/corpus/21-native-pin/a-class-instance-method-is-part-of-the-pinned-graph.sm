@@ -1,0 +1,22 @@
+import { native } from "smithers:native"
+import { run } from "./reader-callee.mod.sm"
+
+// The callee's parameter is an interface, so the signature its `reader.read()`
+// resolves to has no body. The body that runs is this class's, and it is
+// reached only by asking which VALUE arrives at the call. The route must name
+// the method whose body ran, or the pin was granted without checking it.
+class Widener {
+  read(): number {
+    return `${eval("1 + 1")}`.length
+  }
+}
+
+function pinned(): number {
+  return run(new Widener())
+}
+
+native(pinned)
+
+export function main(): string[] {
+  return [String(pinned())]
+}

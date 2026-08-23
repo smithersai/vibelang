@@ -1,0 +1,20 @@
+// `Café` is an ordinary TypeScript identifier. Any named class extending Error
+// is a nominal recoverable error, so this class needs no factory, no `_tag`,
+// and no ASCII-only spelling to receive a stable compiler identity.
+export class Café extends Error {
+  constructor(readonly who: string) {
+    super(`no table for ${who}`)
+  }
+}
+
+function seat(who: string): Result<string, Café> {
+  if (who === "ada") return "table 4"
+  throw new Café(who)
+}
+
+export function main(): string[] {
+  return [
+    seat("ada").match({ ok: (table) => table, error: (failure) => failure.message }),
+    seat("zoe").match({ ok: (table) => table, error: (failure) => failure.message }),
+  ]
+}

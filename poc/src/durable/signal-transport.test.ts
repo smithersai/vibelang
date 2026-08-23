@@ -18,7 +18,7 @@ import {
 } from "./index.ts"
 
 const approvalSource = `
-import { durable, waitSignal } from "vibelang:flows"
+import { durable, waitSignal } from "smithers:flows"
 
 export const Approval = durable(function Approval(input: { requestId: string }) {
   const decision = waitSignal<{ approved: boolean; ticket: string }>("approval.decided")
@@ -27,7 +27,7 @@ export const Approval = durable(function Approval(input: { requestId: string }) 
 `
 
 const pairSource = `
-import { durable, waitSignal } from "vibelang:flows"
+import { durable, waitSignal } from "smithers:flows"
 
 export const Pair = durable(function Pair(input: {}) {
   const first = waitSignal<{ value: string }>("pair.first")
@@ -38,7 +38,7 @@ export const Pair = durable(function Pair(input: {}) {
 
 const compileFixture = (source: string, name: string) => {
   const compiled = compileDurableSource(source, {
-    fileName: `flows/${name}.vibe.ts`,
+    fileName: `flows/${name}.sm.ts`,
     flowId: `test/transport/${name}`,
     flowVersion: 1,
     actions: []
@@ -253,7 +253,7 @@ test("minted tokens survive process restart and are identical across live connec
   // The token scheme's only committed boundary is the per-database secret at
   // store initialization: a process may die immediately after minting, and a
   // fresh connection must keep honoring previously issued tokens.
-  const directory = mkdtempSync(join(tmpdir(), "vibelang-token-restart-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-token-restart-"))
   const filename = join(directory, "durable.sqlite")
   const { deployment, nodes: [node] } = compileFixture(approvalSource, "restart")
   try {
@@ -303,7 +303,7 @@ test("tokens minted under a different database secret are rejected", async () =>
 })
 
 test("grant minting and the persisted secret fail closed", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "vibelang-token-secret-"))
+  const directory = mkdtempSync(join(tmpdir(), "smithers-token-secret-"))
   const filename = join(directory, "durable.sqlite")
   const { deployment, nodes: [node] } = compileFixture(approvalSource, "grants")
   try {

@@ -60,7 +60,7 @@ async function* filterUnorderedImpl<Input>(
 
 export interface BufferedUnorderedOptions {
   readonly concurrency: ConcurrencyBound;
-  /** TypeScript adapter escape hatch; authored VibeLang normally uses Cancellation.context(). */
+  /** TypeScript adapter escape hatch; authored Smithers normally uses Cancellation.context(). */
   readonly cancellation?: Cancellation;
 }
 

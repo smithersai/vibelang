@@ -1,5 +1,25 @@
 # Findings and production roadmap
 
+> [!IMPORTANT]
+> **Specification drift — read `docs/DECISIONS.md` and
+> `docs/src/pages/specification/**` first.**
+> This document records implementation and measurement history. On 2026-08-23 the
+> specification was substantially reduced and the code has not caught up, so parts
+> of this document describe obligations the language no longer has:
+>
+> - the expression-form control-flow grammar, `defer`/`errdefer`, labeled value
+>   breaks and loop `else` — grammar is now one form, `if (const x = f(); cond)`
+> - `Optional<T>` — absence is now `T | undefined`
+> - `.unwrap()` — propagation is now postfix `!`, and the TypeScript non-null
+>   assertion is removed from `.sm`
+> - the near-native/LLVM and Wasm compilation targets, the `TypeScript`
+>   requirement, the portable/required/forbidden classification, and the
+>   portability (native) pin — TypeScript is the only target
+>
+> Retained and unaffected: the checked `panic` channel on unannotated foreign
+> calls, and Zig/Rust imports through generated Wasm bindings. Where this document
+> and the specification disagree, the specification wins.
+
 > Current architecture report: this records what the executable POC proves and
 > what it deliberately leaves for production. The decision ledger remains the
 > language contract; this document is implementation evidence and planning
@@ -18,12 +38,28 @@ typed callable boundary rather than a language special case.
 The POC also found four places where a shortcut would create the wrong
 architecture:
 
-1. **The TypeScript 7 extension seam comes first.** The Go-native preview has no
-   JavaScript compiler API, so a language-service plugin or JS transform cannot
-   be the foundation. The exact-revision process bridge now proves upstream
-   content mapping, checking, declaration/runtime emit, diagnostics, and maps
-   without copying `internal` packages; real Vibe lowering still needs narrow
-   fork-owned parser/checker/emitter/IR hooks.
+1. **The TypeScript 7 extension seam comes first — and it turned out to be
+   affordable.** The Go-native preview has no JavaScript compiler API, so a
+   language-service plugin or JS transform cannot be the foundation. That much
+   was right. What the 2026-08-22 compiler push established is that the rest of
+   the pessimism was not: real Smithers lowering runs in Go against the fork's
+   own parser, checker, AST factory and printer with **zero fork changes**
+   (`Program.GetTypeChecker` is public, and returning `ast.KindSyntaxList` from
+   a visitor expands into multiple statements, which is what makes `unwrap`
+   hoisting possible). Surface grammar — all seven forms — cost ~940
+   hand-written lines with upstream tests bit-identical to pristine. Two
+   assumptions were expensive and wrong: that grammar was the point of no return
+   (it is additive and revertible; only making `.sm` a *builtin* extension is
+   one-way, and it is independent of grammar), and that a `reparseList`
+   desugaring could replace real expression grammar (measured: 3 of 10 positions
+   silently wrong, 2 hard panics). The real cost driver is not the compiler's
+   architecture but its **enumerated switches**: `ast.IsStatement`,
+   `ast.IsExpressionNode`, `ast.IsBlockScope`, `binder.GetContainerFlags`,
+   `binder.bindBreakStatement`, the checker's dispatch, and 21 node accessors
+   each restate a kind list, and a missing arm is usually SILENT — one lane
+   measured `defer h.nonExistentMethod()` producing zero diagnostics where the
+   same code outside `defer` produced two. Every new node kind needs a mutation
+   sweep proving each arm's test goes red without it.
 2. **Rows and control flow belong in checked compiler IR.** The shared
    TypeScript Program is enough to prove concrete module-edge propagation,
    statement-safe lowering, and a deliberately narrow lexical-tail
@@ -67,7 +103,7 @@ bundles. Durable Actions now have real
 bounded structural descriptors and validators; only the legacy `Action.define`
 path retains generic JSON-shape stubs. The live semantic frontend remains a
 bounded TypeScript-checker/AST project instrument. The Go bridge now accepts
-externally lowered TypeScript per `.vibe` file and composes real non-identity
+externally lowered TypeScript per `.sm` file and composes real non-identity
 source maps back to authored positions, but it remains an external build overlay
 rather than a landed fork-owned extension, and its cached binary is not signed
 or attested. Those seams expose the intended contracts without hiding the parts
@@ -98,7 +134,7 @@ discovery is representative rather than complete; and the agent sandbox has
 wall-clock, V8 heap, output, call, cancellation, and transport/backpressure
 limits but no container/VM-grade confinement or OS-wide resource accounting.
 Action implementation capability requirements are now checker-derived from an
-explicit closed `.vibe` source project and `provideChecked` requires an exact
+explicit closed `.sm` source project and `provideChecked` requires an exact
 grant. The contract/source/direct-function digests flow through deployment and
 worker validation, while legacy providers cannot receive a nonempty grant.
 This is still local metadata evidence: the compiler-issued contract/callback
@@ -110,8 +146,8 @@ nominal failure schema exactly, while `Panic` remains a distinct defect bit.
 
 | Reproduced failure | POC response | Production implication |
 | --- | --- | --- |
-| Plain TypeScript was accidentally rewritten as Vibe syntax and scripts became modules | Added contextual scanning, conditional helpers, and identity regressions | Imported `.ts`/`.tsx` need a TypeScript conformance gate; `.vibe` needs its own upstream-derived parser tests rather than a renamed-corpus “superset” claim |
-| The upstream Go compiler intentionally suppressed runtime JavaScript for a content-mapped `.vibe` source | Check the mapped Program and emit its declaration, then run the mapper-owned virtual TypeScript through a second upstream Program and rewrite identity source-map ownership | Production must formalize the mapper/build-tool virtual IR and compose non-identity spans; it cannot assume one upstream Program owns both mapped checking and runtime output |
+| Plain TypeScript was accidentally rewritten as Smithers syntax and scripts became modules | Added contextual scanning, conditional helpers, and identity regressions | Imported `.ts`/`.tsx` need a TypeScript conformance gate; `.sm` needs its own upstream-derived parser tests rather than a renamed-corpus “superset” claim |
+| The upstream Go compiler intentionally suppressed runtime JavaScript for a content-mapped `.sm` source | Check the mapped Program and emit its declaration, then run the mapper-owned virtual TypeScript through a second upstream Program and rewrite identity source-map ownership | Production must formalize the mapper/build-tool virtual IR and compose non-identity spans; it cannot assume one upstream Program owns both mapped checking and runtime output |
 | A shared asset cache reused dependency paths from another project; mutable options, changing/repeated reads, unbounded source parsing/graphs, preflight path swaps, invalid UTF-8, hard-link aliases (including a cached dependency relinked to its source), cache self-reads, executable typed-array allocation, prototype-mutating literals, symlinks, loader changes, and poisoned envelopes broke key/output equivalence | Bound source before parsing, snapshot each canonical graph file once, reconcile preflight identity after the loader, carry inode authority into cache validation, enforce file/graph/cache budgets, exclude compiler cache authority, snapshot options, require strict JSON IR, emit safe literals, resolve real paths, key loader artifacts, and verify output digests | One hermetic graph rule ABI must own identity, authority, normalization, budgets, and dependency discovery |
 | A foreign source could escape through `../` or a symbolic alias; ambient environment and same-version compiler shims aliased a key; and cache symlinks escaped bounded reads | Compile only a bounded canonical source snapshot beneath explicit authority, key the sanitized passed environment plus executable content/version/build profile, verify the executable around process use, and make no-follow bounded cache objects ordinary misses | Foreign tool execution must be a first-class graph rule; production dependency and ABI facts must come from compiler metadata, while compiler installations and subordinate tools need an attestation/content policy |
 | Settled/unconsumed async work and early iterator exit could outlive their owner | Make the combinator retain its own children; cancel and join unordered mapping on exit | The returned Promise owns combinator work; authored calls must consume it, while Layers remain environment-only and never supervise tasks |
@@ -120,7 +156,7 @@ nominal failure schema exactly, while `Panic` remains a distinct defect bit.
 | A structural authentication token with `deployment: undefined` passed an `undefined === undefined` WeakMap comparison; a lookalike deployment could add pools; and the authenticated executor silently mapped non-local signed sandboxes to `LocalWorker` | Check proof issuance independently, brand the public type, require the exact `Deployment.build` object, consume it before worker creation, and require an opaque exact-sandbox host token for every non-local transport before invoking any factory | Security tokens and build products need nominal runtime provenance; signed metadata must drive fail-closed routing, while the host transport implementation remains a separate trusted/attested boundary |
 | Generated code returned before host RPC finished, returned non-JSON or traversal-amplifying values, flooded or outlived host RPC, escaped deterministic globals through fresh realms, and could rely on a runner changed in place while restoring size/mtime | Reject unawaited calls, bound source before base64 and JSON depth/nodes before serialization, abort in-flight calls, deny obvious realm creation, content-pin the canonical runtime/runner with ctime-aware revalidation, and use a fresh no-permission process with timeout, V8 heap/output/call limits, cancellation, and write backpressure | Compiler-emitted codecs plus audited container/VM confinement, OS resource limits, race-free artifact launch, and attestation are still required for hostile multi-tenant execution |
 | Runtime failure payloads could overwrite their nominal discriminant | Reserve/freeze identity fields and recognize same-realm instances nominally | Cross-realm failures need an explicit checked codec; a forgeable global symbol is insufficient |
-| `Optional.unwrap()` and `Result.expect()` were recognized by the checker but silently not lowered or charged, so an accepted "plain" function could panic at runtime; top-level `throw`, `static {}` blocks, and panic/unwrap inside a JavaScript `catch` scope were similarly silent; a `vibelangutils` package name inherited compiler trust from a prefix check; and the retired-syntax scanner rejected the documented `Result.try(...)` API | Implement real Optional-unwrap propagation lowering, charge `expect` to the distinguished Panic row, add stable fail-closed diagnostics (`VIBE1002`/`VIBE1107`/`VIBE1205`/`VIBE1206`/`VIBE1511`), require exact `vibelang`/`vibelang/`/`vibelang:` specifiers, and guard the scanner against member access | An independent red-team over the frontend's fail-closed claim is a release gate: every checker-recognized form needs either a lowering or a diagnostic, proven by a test, before the claim is checked |
+| `Optional.unwrap()` and `Result.expect()` were recognized by the checker but silently not lowered or charged, so an accepted "plain" function could panic at runtime; top-level `throw`, `static {}` blocks, and panic/unwrap inside a JavaScript `catch` scope were similarly silent; a `smithersutils` package name inherited compiler trust from a prefix check; and the retired-syntax scanner rejected the documented `Result.try(...)` API | Implement real Optional-unwrap propagation lowering, charge `expect` to the distinguished Panic row, add stable fail-closed diagnostics (`SMITHERS1002`/`SMITHERS1107`/`SMITHERS1205`/`SMITHERS1206`/`SMITHERS1511`), require exact `smithers`/`smthrs/`/`smithers:` specifiers, and guard the scanner against member access | An independent red-team over the frontend's fail-closed claim is a release gate: every checker-recognized form needs either a lowering or a diagnostic, proven by a test, before the claim is checked |
 | All durable SQLite read-then-write transactions were DEFERRED; real two-connection contention reliably produced unretried `SQLITE_BUSY`/`SQLITE_BUSY_SNAPSHOT` (~120 ms, under the 5 s busy timeout) that the engine then recorded as a permanent terminal defect | Convert all 19 store transactions to `BEGIN IMMEDIATE` and add a two-connection interleaved contention/fencing suite | Journal-store liveness under contention is a separate property from atomicity and fencing and needs its own adversarial gate; transient lock conflicts must never become permanent execution outcomes |
 | Sandboxed generated code could stream one enormous newline-free protocol line (for example `console.log` of a multi-megabyte string), and the host buffered it fully (~153 MiB observed) before the per-line output limit fired at timeout | Count raw stdout bytes at the data-event layer against the shared output budget and kill the child on breach | Host-side resource limits must be enforced at the transport byte layer, not after protocol framing |
 | The deterministic package verifier compared the installed CLI's realpathed report paths against a symlinked `os.tmpdir()` workspace, so verification could never pass on default macOS; its copy-overwrite guard was inert and its `npm audit` failure path unreachable | Canonicalize the workspace base with `realpathSync`, enforce `force: false`, and make every nonzero audit exit fail with captured diagnostics | Release verifiers need their own adversarial review and at least one full green run on every supported platform before their checks count as evidence |
@@ -128,11 +164,11 @@ nominal failure schema exactly, while `Panic` remains a distinct defect bit.
 ## Recommended architecture
 
 ```text
-TypeScript/VibeLang frontend (Go)
+TypeScript/Smithers frontend (Go)
   parser + resolver + checker + control-flow graph
                     |
                     v
-        shared checked VibeLang IR
+        shared checked Smithers IR
    A/E/R rows, reified types, symbolic expressions
                     |
         content-addressed build graph
@@ -193,7 +229,7 @@ narrow rule contract.
   descriptors cover bounded canonical JSON shapes and nominal Error payloads;
   recursive types, refinements, functions/capabilities, `any`/`unknown`, and
   custom durable encodings need an explicit shared reification policy.
-- A mixed `.vibe`/TypeScript/JavaScript runtime graph is mechanically feasible
+- A mixed `.sm`/TypeScript/JavaScript runtime graph is mechanically feasible
   without executing imports during build: the CLI now stages a bounded
   ESM/CJS extension matrix and rewrites its relative closure. Production still
   needs package-mode semantics, a representative upstream corpus, stronger
@@ -268,7 +304,7 @@ is a bounded vertical slice that can fail closed beyond its supported subset.
    exact revision, clean-`tsc` verification, content mapper/checker,
    declaration/runtime emit, diagnostics, authored identity maps, and direct
    CLI process now execute. The transform is identity-only, runtime emit uses a
-   second Program, and the fork is neither vendored nor extended with VibeLang
+   second Program, and the fork is neither vendored nor extended with Smithers
    IR. Land reviewed fork-owned lowering, non-identity span composition,
    multi-file/package hosting, rows, and language-service support.
 2. **Extend checked expression/control-flow IR.** The bounded POC now lowers
@@ -322,7 +358,7 @@ is a bounded vertical slice that can fail closed beyond its supported subset.
    then emit a tree-shaken worker bundle and exercise OS-process death around
    the existing SQLite transition matrix.
 7. **Grow the bounded portable backend into the shared backend.** The POC now
-   lowers a bounded single-module `.vibe` subset through both checkers into exact
+   lowers a bounded single-module `.sm` subset through both checkers into exact
    canonical IR, runs that IR in a TypeScript host, emits real import-free Wasm,
    and proves wire-hash agreement without evaluating author source. That subset
    covers plain/Optional/Result returns over `f64` and boolean scalars,
@@ -344,12 +380,12 @@ is a bounded vertical slice that can fail closed beyond its supported subset.
 - Vendor and provenance-check the already pinned `smithersai/TypeScript`
   revision rather than depending on an external sparse checkout/build cache.
 - Replace the identity overlay bridge with reviewed fork-owned hooks that carry
-  the proven `.vibe` project emission, composed non-identity maps, declarations,
+  the proven `.sm` project emission, composed non-identity maps, declarations,
   stable row metadata, and language-service behavior into the upstream seam.
 - Establish narrow hooks for syntax extensions, row metadata, checked IR,
   comptime rules, and generated modules.
 - Gate: keep an upstream TypeScript corpus unchanged in `.ts`/`.tsx` interop
-  tests, plus a separate `.vibe` corpus for documented shared syntax and
+  tests, plus a separate `.sm` corpus for documented shared syntax and
   intentional divergences.
 
 ### P1 — Function rows, failures, and requirements
@@ -374,7 +410,7 @@ is a bounded vertical slice that can fail closed beyond its supported subset.
 
 ### P3 — Plan IR and local durability
 
-- Expand the compiler-owned `vibelang:flows` lowering from the proven static
+- Expand the compiler-owned `smithers:flows` lowering from the proven static
   Action/conditional/timer/typed-signal/stable-key fan-out subset to child
   Flows, general checked loops, multi-step item bodies, and reusable
   cross-module functions without invoking them. Replace the provisional local

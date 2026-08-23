@@ -1,0 +1,8 @@
+async function load(key: string): Promise<string> {
+  return key === "ada" ? "Ada Lovelace" : "none"
+}
+
+export async function main(): Promise<string[]> {
+  const name = await load("ada").catch(() => "fallback")
+  return [name]
+}

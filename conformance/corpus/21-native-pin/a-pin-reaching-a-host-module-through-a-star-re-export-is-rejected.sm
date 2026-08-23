@@ -1,0 +1,20 @@
+import { native } from "smithers:native"
+import { readFileSync } from "./star-reexport-host-module.mod.sm"
+
+// `export * from "node:fs"` is the laundering spelling the checker cannot
+// answer: there is no alias link to follow, because no `node:` module resolves
+// inside the analyzer's virtual project. The edge is still reachable, so the
+// pin must be refused from the target module's own syntax.
+function hostBacked(): number {
+  return typeof readFileSync === "function" ? 1 : 0
+}
+
+function checksum(input: string): number {
+  return input.length + hostBacked()
+}
+
+native(checksum)
+
+export function main(): string[] {
+  return [String(checksum("smithers"))]
+}

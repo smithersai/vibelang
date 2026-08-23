@@ -1,0 +1,12 @@
+{
+  "title": "an async callback with no compiler-recognized owner fails closed rather than losing its Promise",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1404",
+      "line": 8,
+      "column": 21
+    }
+  ],
+  "notes": "docs/DECISIONS.md 'Concurrency' (Locked): 'Authored .sm code must transitively consume every started Promise with await: either directly or through a recognized combinator such as Promise.all whose result is awaited.' specification/requirements.mdx, 'Scoping': 'Fire-and-forget and detached work are initially unavailable in authored .sm; every started Promise MUST be consumed directly by await or by a recognized combinator whose resulting Promise is consumed before scope exit.' An async callback handed to a general higher-order function starts a Promise nobody awaits, so poc/src/language/README.md records SMITHERS1404 for it. This is the callback-shaped sibling of 07-must-consume/promise-must-be-consumed."
+}

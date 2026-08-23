@@ -1,0 +1,4 @@
+interface:
+  display_name: "Smithers"
+  short_description: "Write Smithers as a TypeScript superset"
+  default_prompt: "Use $smithers to write or review this Smithers code."

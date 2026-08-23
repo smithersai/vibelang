@@ -1,16 +1,16 @@
-# Type System [Result returns, requirements, optionals, and boundary precision]
+# Type System [Result returns, requirements, absence, and boundary precision]
 
-Status: the Result failure model, inferred requirements, and built-in Optional model are **locked**. Optional interop details and the emitted TypeScript representation of requirements remain **open**.
+Status: the Result failure model and inferred requirements are **locked**. The emitted TypeScript representation of requirements remains **open**.
 
 ## Gradual Foundation
 
-VibeLang extends TypeScript's gradual type system. Existing TypeScript escape hatches remain available on the TypeScript target and MAY be restricted by lint policy rather than the language.
+Smithers extends TypeScript's gradual type system. Existing TypeScript escape hatches remain available on the TypeScript target and MAY be restricted by lint policy rather than the language.
 
 Recoverable errors and requirements add precision without requiring a separate globally strict mode or an Effect interpreter.
 
 ## Function Type
 
-A VibeLang function has:
+A Smithers function has:
 
 - an ordinary return type, which is `Result<A, E>` when the function can fail
 - an inferred set `R` of nominal capability requirements
@@ -43,7 +43,7 @@ declare function fetchUser(
 ): Promise<Result<User, NotFound | Unavailable>>
 ```
 
-VibeLang MUST NOT add `throws E`, `!T`, or another failure-annotation grammar.
+Smithers MUST NOT add `throws E`, `!T`, or another failure-annotation grammar.
 
 The `R` set MUST be inferred from compiler-recognized context access and preserved in exported declarations. Its emitted TypeScript representation remains open.
 
@@ -57,7 +57,9 @@ An ignored Result MUST be a compile error.
 
 ## Foreign Boundaries
 
-Using a runtime value from a TypeScript or JavaScript module adds the `TypeScript` requirement. Every unannotated foreign call MUST also add the distinguished checked `panic` case. Trusted `@throws {never}` metadata removes that default; `@throws {T}` or an adapter may supply a more precise channel.
+Every unannotated foreign call MUST add the distinguished checked `panic` case, because JavaScript may throw, reject, or violate a declaration. Trusted `@throws {never}` metadata removes that default; `@throws {T}` or an adapter may supply a more precise channel.
+
+There is no `TypeScript` requirement: TypeScript is the only target, so recording that a program depends on the JavaScript runtime would carry no information.
 
 Type-only imports add neither runtime requirement.
 
@@ -73,39 +75,27 @@ declare function loadUser(
 
 Awaiting the call removes only the Promise layer. The resulting value remains `Result<User, Unavailable>` until it is matched, transformed, returned, or unwrapped.
 
-Promise instance chaining is unavailable in authored `.vibe`; `.then`, `.catch`, and `.finally` MUST be rejected.
+Promise instance chaining is unavailable in authored `.sm`; `.then`, `.catch`, and `.finally` MUST be rejected.
 
-## Optional
+## Absence
 
-VibeLang MUST provide a built-in `Optional<T>` value type using ordinary generic and method-call syntax.
+Smithers has no built-in `Optional<T>`. Absence MUST be modelled with TypeScript's existing `T | undefined` (or `T | null`) unions, narrowing, optional chaining, and nullish coalescing.
 
-An Optional-returning function MUST compiler-lift:
-
-- `return value` to the present variant
-- `return null` or `return undefined` to the absent variant
-- an existing compatible Optional without nesting
-
-The ordinary authoring API MUST NOT require `Optional.some(...)` or `Optional.none()`.
-
-Optional values MUST provide operations equivalent in purpose to:
-
-```text
-isSome  isNone  match  map  andThen  filter
-tap     unwrap  unwrapOr  toResult  toNullable  all
+```ts
+declare function findUser(id: string): User | undefined
 ```
 
-The earlier `?T`, payload-capture, `orelse`, and `.?` grammar MUST NOT be part of the initial language.
+TypeScript already expresses absence precisely and every JavaScript consumer already understands it, so a second representation would add a conversion boundary without adding safety.
 
-Optional absence MUST remain distinct from a Result error. `Optional<T>` MAY convert explicitly to `Result<T, E>` through `toResult(error)`.
+Absence MUST remain distinct from failure. A function that can fail returns `Result<A, E>`; a function that can find nothing returns `T | undefined`; a function that can do both returns `Result<A | undefined, E>`.
 
-When both layers are declared, lifting MUST follow the written type from outside in. For `Result<Optional<A>, E>`, a plain `A` becomes a successful present value, a nullish return becomes a successful absent value, an existing Optional becomes the Result success, and an Error throw becomes the Result error. Existing compatible Result values MUST still pass through without nesting.
+The earlier `?T`, payload-capture, `orelse`, and `.?` grammar MUST NOT be part of the language.
 
-`Optional.fromNullable(...)` MUST explicitly adapt `T | null | undefined`, and `optional.toNullable()` MUST adapt back to `T | null`. Optional properties and parameters MUST keep their TypeScript meaning. Nested optional normalization and any additional implicit conversions remain open.
-
+An `Optional<T>` container MAY be reconsidered later as an ordinary standard-library type. It MUST NOT acquire compiler lifting, propagation, or nesting rules if it is.
 ## Reification
 
 Ordinary types MAY be consumed as comptime values. Comptime code MAY derive validators, codecs, equality, hashing, schemas, and generated types.
 
 There MUST NOT be a separate `runtime type` declaration modifier.
 
-At durable boundaries, Result and Optional variants and all enclosed values MUST have compiler-known durable codecs or explicit user-supplied codecs.
+At durable boundaries, Result variants and all enclosed values MUST have compiler-known durable codecs or explicit user-supplied codecs.

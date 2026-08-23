@@ -1,0 +1,11 @@
+{
+  "title": "Layer.provide whose layer does not supply every requirement of its body is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2101",
+      "line": 22,
+      "column": 22
+    }
+  ]
+}

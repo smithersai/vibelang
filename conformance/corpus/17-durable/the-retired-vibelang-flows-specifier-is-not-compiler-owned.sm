@@ -1,0 +1,13 @@
+import { durable, Action } from "vibelang:flows"
+
+// `vibelang:flows` is a retired spelling of the language's own name. It owns
+// nothing: it is an ordinary module specifier that resolves to no module, so
+// the import is an untrusted foreign module edge and not the durable
+// intrinsic. Everything below is the shape a real Flow is written in, so a
+// backend that still routed this specifier to its durable virtual module would
+// compile the program and emit a Plan instead of reporting the edge.
+class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+
+export function main(): string[] {
+  return [typeof durable, typeof Step]
+}

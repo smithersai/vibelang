@@ -10,7 +10,7 @@ import {
 import type { DurableStore } from "./store.ts"
 
 const LOCAL_SANDBOX = "in-process-poc"
-const trustedWorkerTransportBrand: unique symbol = Symbol("vibelang.trusted-worker-transport.v1")
+const trustedWorkerTransportBrand: unique symbol = Symbol("smithers.trusted-worker-transport.v1")
 
 export class AuthenticatedCoordinatorTransportError extends Error {
   constructor(message: string) {

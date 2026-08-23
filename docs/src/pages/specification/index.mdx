@@ -1,8 +1,8 @@
-# Specification Status [How to read the VibeLang design specification]
+# Specification Status [How to read the Smithers design specification]
 
-This specification records the accepted semantic model of VibeLang. It is not a final language standard and does not imply a conforming implementation exists.
+This specification records the accepted semantic model of Smithers. It is not a final language standard and does not imply a conforming implementation exists.
 
-Last reconciled with the decision ledger: **August 21, 2026**.
+Last reconciled with the implementation evidence: **August 23, 2026**.
 
 ## Maturity Labels
 
@@ -24,43 +24,91 @@ Examples are non-normative unless the surrounding text states otherwise.
 
 ## Conformance Targets
 
-VibeLang defines several distinct subjects of conformance:
+Smithers defines several distinct subjects of conformance:
 
-- a **source implementation** parses and checks `.vibe` programs
+- a **source implementation** parses and checks `.sm` programs
 - the **TypeScript backend** preserves TypeScript-compatible source behavior and emits TypeScript/JavaScript artifacts
-- a **native backend** emits near-native code and supplies the VibeLang runtime
-- a **Wasm backend** emits WebAssembly for a declared host contract
 - a **durable runtime** executes compiler-produced Flow plans and Action protocols
 
-No conforming compiler has been released. The repository's checked frontend is
-implementation evidence for a bounded subset, not a normative reference
-implementation.
+No conforming compiler has been released. The repository has two executable
+source implementations: the root CLI's default TypeScript instrument and an
+explicit `--backend go` implementation inside the pinned TypeScript fork. The
+Go path performs real Smithers checking and lowering, including the nine
+surface-grammar forms and bounded implementations of `smithers:comptime` and
+`smithers:flows`. This is implementation evidence, not a normative reference
+implementation. `.sm` is still registered through the content-mapper extension
+rather than being a built-in TypeScript source kind.
+
+### The Implementation Currently Exceeds This Specification
+
+The statements above describe what the code does today, and today the code
+implements more language than this specification defines. Both backends still
+carry, and both are pending removal:
+
+- **eight fork grammar patches** — `defer`/`errdefer`, `break :label value`,
+  loop `else`, value-position `if`/`switch`, braceless value `if`, value-clause
+  statements, and labeled block/loop values. The specification now admits one
+  grammar addition, declarations in conditionals, and forbids the rest.
+- **`Optional<T>`** — its type, its compiler lifting, and its propagation.
+  Absence is now `T | undefined`.
+- **`.unwrap()`** as the propagation spelling, now replaced by postfix `!`.
+- **the TypeScript non-null assertion**, whose token `!` now belongs to Result
+  propagation.
+- **the portable Wasm backend, the `TypeScript` requirement, feature
+  classification, and the portability pin** — all withdrawn with the portable
+  targets. `smthrs/targets` and `smithers inspect`'s portability analysis are
+  the surviving implementation.
+
+Until those are removed, an accepted program is not evidence that the
+specification permits it. Where the two disagree, this specification wins; see
+[Source of Truth](#source-of-truth).
+
+`smithers format` and `smithers lsp` are also implemented. The formatter is a
+whitespace-only adapter over the TypeScript language-service formatter; the
+stdio JSON-RPC server provides diagnostics, failure/requirement-row hover,
+definition lookup, and whole-document formatting within a bounded project
+closure.
 
 ## Source of Truth
 
-During early design, accepted decisions live in the [decision ledger](https://github.com/smithersai/vibelang/blob/main/docs/DECISIONS.md). The [durable execution draft](https://github.com/smithersai/vibelang/blob/main/docs/DURABLE_EXECUTION.md) expands the distributed runtime model.
+During early design, accepted decisions live in the [decision ledger](https://github.com/smithersai/smithers/blob/main/docs/DECISIONS.md). The [durable execution draft](https://github.com/smithersai/smithers/blob/main/docs/DURABLE_EXECUTION.md) expands the distributed runtime model.
 
 When these pages conflict with the ledger, the ledger wins until the specification is updated. A future complete specification will replace that arrangement.
 
 ## Specification Map
 
 - [Compatibility](/specification/compatibility) defines the TypeScript interop boundary and target model.
-- [Type System](/specification/type-system) defines function channels, optionals, and portability classification.
+- [Type System](/specification/type-system) defines function channels, absence, and boundary precision.
 - [Failure Semantics](/specification/failures) defines failures, defects, propagation, and recovery.
 - [Requirements](/specification/requirements) defines `Context` capabilities, inferred requirement rows, and layer satisfaction.
-- [Control Flow](/specification/control-flow) defines expression forms and cleanup direction.
+- [Control Flow](/specification/control-flow) defines the statement model, cleanup, and the one accepted grammar addition.
 - [Comptime](/specification/comptime) defines the imported compiler intrinsic, phase evaluation, and tracked compiler input.
 - [Durable Execution](/specification/durable-execution) defines the imported durable intrinsic, Actions, static Flow lowering, non-executing plan/preview, and runtime guarantees.
 
-## Known Gaps
+## Conformance and Known Gaps
 
-The following areas prevent a complete normative grammar and conformance suite:
+The corpus is a contract, not a census. It changes while coverage and backend
+parity work proceed, so this site does not freeze a scoreboard. The live
+[coverage matrix](https://github.com/smithersai/smithers/blob/main/conformance/COVERAGE.md)
+maps locked and normative obligations to cases and identifies four classes of
+uncovered work:
 
-1. dynamic TypeScript feature classification
-2. assertion and cast semantics
-3. nested Optional normalization and additional implicit conversions
-4. layer merge/override precedence and requirement-environment lowering
-5. shared checked IR and compiler plugin seams
-6. loader registration and built-in asset module shapes
-7. durable IDs, loops, sequencing, encoding, and migration
-8. exact standard-library and agent-library APIs
+1. rules still marked **Open** or **Direction**;
+2. locked features without a settled source spelling;
+3. surfaces absent from both backends; and
+4. properties the current harness cannot observe.
+
+Material implementation limits remain: the CLI defaults to the TypeScript
+instrument; the digest-gated fork patches are not vendored into the
+distribution or signed; compiler/loader sandboxes are process-level rather than
+container or VM isolation; and the durable runtime has no multi-machine
+coordination.
+
+TypeScript is now the only compilation target. The near-native/LLVM target was
+previously specified as a MUST and was the largest unimplemented obligation in
+the repository; Wasm was a SHOULD with a deliberately bounded proof. Both are
+withdrawn, and the machinery that existed to serve them — the `TypeScript`
+requirement, the portable / `TypeScript`-required / forbidden classification,
+and the portability pin — is withdrawn with them, because with one target it
+recorded nothing. The checked `panic` channel on foreign calls is unaffected: it
+exists because JavaScript can throw, not because a second target existed.

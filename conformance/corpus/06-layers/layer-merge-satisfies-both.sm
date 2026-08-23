@@ -1,0 +1,25 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+function stamped(key: string): string {
+  const directory = Directory.context()
+  const clock = Clock.context()
+  return `${directory.lookup(key) ?? "none"}@${clock.now()}`
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : null) }
+const clock: Clock = { now: () => 7 }
+
+const App = Layer.merge(Layer.succeed(Directory, directory), Layer.succeed(Clock, clock))
+
+export function main(): string[] {
+  return Layer.provide(App, () => [stamped("ada"), stamped("zoe")])
+}

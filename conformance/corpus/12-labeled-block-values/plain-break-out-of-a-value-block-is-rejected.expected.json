@@ -1,0 +1,12 @@
+{
+  "title": "a plain `break label` that would complete a value block without its value is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1714",
+      "line": 4,
+      "column": 29
+    }
+  ],
+  "notes": "specification/control-flow.mdx, 'Blocks' and 'Labeled Break Values': an expression block produces a value 'from its final expression or from a labeled value break', and 'The compiler MUST combine reachable break values when determining the labeled expression's type.' A plain `break verdict` is a reachable exit that carries no value, so the construct has no statically determined type on that path \u2014 specification/control-flow.mdx, 'Expression Forms', requires one. Fail-closed: the alternative is a value block that silently yields undefined. 12-labeled-block-values/labeled-block-may-complete-without-a-value pins the fallthrough variant of the same rule."
+}

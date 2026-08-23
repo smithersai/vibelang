@@ -1,0 +1,26 @@
+import { charge, Missing as PaymentsMissing } from "./same-named-errors-in-two-modules.mod.sm"
+
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`directory has no ${key}`) }
+}
+
+function lookup(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+export function main(): string[] {
+  const local = lookup("zoe").match({
+    ok: (value) => value,
+    error: (error) => error.match({ Missing: (failure) => failure.message }),
+  })
+  const remote = charge("zoe").match({
+    ok: (value) => value,
+    error: (error) => error.match({ PaymentsMissing: (failure) => failure.message }),
+  })
+  const distinct = lookup("zoe").match({
+    ok: () => false,
+    error: (error) => error instanceof PaymentsMissing,
+  })
+  return [local, remote, `local error is a payments Missing: ${distinct}`]
+}

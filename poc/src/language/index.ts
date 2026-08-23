@@ -1,5 +1,5 @@
 export { analyzeProject, analyzeSource, parseErrors, parseFunctions } from "./analyze.ts";
-export { compileVibe } from "./compile.ts";
+export { compileSmithers } from "./compile.ts";
 export {
   annotateDeclarationEffects,
   DECLARATION_EFFECT_TAG,
@@ -14,7 +14,7 @@ export {
   checkEmittedProject,
   checkEmittedTypeScript,
   compileAndCheckProject,
-  compileAndCheckVibe,
+  compileAndCheckSmithers,
 } from "./validate.ts";
 export type { CompileOptions, CompileResult } from "./compile.ts";
 export type {
@@ -32,14 +32,14 @@ export type {
   CheckedCompileResult,
   CheckedProjectCompileResult,
 } from "./validate.ts";
-export { formatVibeSource, isFormattedVibeSource, vibeTokenAt } from "./format.ts";
-export { startVibeLanguageServer } from "./lsp.ts";
+export { formatSmithersSource, isFormattedSmithersSource, smithersTokenAt } from "./format.ts";
+export { startSmithersLanguageServer } from "./lsp.ts";
 export type {
   FormatDiagnostic,
   FormatDiagnosticCode,
   FormatOptions,
   FormatResult,
-  VibeToken,
+  SmithersToken,
 } from "./format.ts";
 export type { LanguageServerHandle, LanguageServerOptions } from "./lsp.ts";
 export type {

@@ -1,0 +1,23 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+const seen: string[] = []
+
+export function scoreOf(key: string): Result<number, Missing> {
+  seen.push(key)
+  if (key !== "ada") throw new Missing(key)
+  return 96
+}
+
+export function collect(): Result<string[], Missing> {
+  const first = scoreOf("ada").unwrap()
+  const second = scoreOf("zoe").unwrap()
+  const third = scoreOf("bob").unwrap()
+  return [`${first} ${second} ${third}`]
+}
+
+export function main(): Result<string[], Missing> {
+  const lines = collect().unwrap()
+  return [...lines, `seen ${seen.join(",")}`]
+}

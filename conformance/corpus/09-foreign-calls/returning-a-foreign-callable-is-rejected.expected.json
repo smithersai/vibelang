@@ -1,0 +1,13 @@
+{
+  "title": "returning a foreign callable is rejected even when the returning function declares a Result: a Result around a callable does not carry the callable's own panic channel",
+  "expect": "diagnostics",
+  "typescript": ["foreign.ts"],
+  "diagnostics": [
+    {
+      "code": "SMITHERS1508",
+      "line": 5,
+      "column": 10
+    }
+  ],
+  "notes": "specification/failures.mdx:111 (Locked) attaches the checked panic case to CALLING a foreign implementation. Returning one calls nothing, so there is no boundary at which to attach it, and every future call through the returned value happens in some other module where the value's provenance is no longer visible. poc/src/language/README.md:127 names this arm of the rule ('an unsupported higher-order/return/store boundary'); the emission site is poc/src/language/semantic.ts:1240-1249. The declared return type is deliberately `Result<(text: string) => number, Panic>` and NOT the bare function type. That spelling is what makes the case sharp: an author who has read the diagnostic's advice may reasonably think that declaring a Result discharges the obligation, and it does not, because the Result being declared wraps the DELIVERY of the callable and not its later invocation. The bare-function-type spelling was measured first and produces a second diagnostic — SMITHERS1101@3:1, 'explicit return type cannot represent recoverable failures Panic' — because the escape charges Panic to the owner; that is a true cascade, but it lets a reader believe SMITHERS1508 is a consequence of the missing channel rather than an independent rule, so the Result-declaring spelling is the one that is pinned and the single declared diagnostic is the whole claim. `main` deliberately does not call `chooseParser`. Calling it was measured and is a live backend DIVERGENCE orthogonal to this rule: the reference additionally reports SMITHERS1301 at the use site and the fork does not (measured 2026-08-23, `[SMITHERS1101@3:1, SMITHERS1301@8:14, SMITHERS1508@4:10]` vs `[SMITHERS1101@3:1, SMITHERS1508@4:10]`). That disagreement belongs to whoever owns the must-consume port; importing it into this case would make a case about foreign provenance fail for an unrelated reason."
+}

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const require = createRequire(import.meta.url);
-const packagePath = require.resolve("vibelang/package.json");
+const packagePath = require.resolve("smthrs/package.json");
 const packageMetadata = JSON.parse(readFileSync(packagePath, "utf8"));
 const isBun = typeof globalThis.Bun === "object";
 const loaded = new Map();
@@ -14,8 +14,8 @@ const loaded = new Map();
  * Subpaths that only a Bun runtime can evaluate. Each names a module whose body
  * touches a Bun-only global, so Node must fail closed on it rather than expose a
  * half-initialized namespace. The platform-neutral half of each subsystem lives
- * on its own subpath (`vibelang/agent`, `vibelang/durable`, and
- * `vibelang/concurrency`).
+ * on its own subpath (`smthrs/agent`, `smthrs/durable`, and
+ * `smthrs/concurrency`).
  */
 const bunOnlyExports = new Map([
   ["./agent/bun", {
@@ -35,9 +35,9 @@ const bunOnlyExports = new Map([
 ]);
 
 for (const exportName of Object.keys(packageMetadata.exports).sort()) {
-  const specifier = exportName === "." ? "vibelang" : `vibelang${exportName.slice(1)}`;
+  const specifier = exportName === "." ? "smthrs" : `smthrs${exportName.slice(1)}`;
   if (exportName === "./package.json") {
-    assert.equal(require(specifier).name, "vibelang");
+    assert.equal(require(specifier).name, "smthrs");
     continue;
   }
   if (bunOnlyExports.has(exportName) && !isBun) {
@@ -81,7 +81,7 @@ const language = loaded.get("./language");
 const projectRoot = join(process.cwd(), "virtual-project");
 const project = language.compileProject([
   {
-    fileName: "service.vibe",
+    fileName: "service.sm",
     source: [
       "export class Missing extends Error {}",
       "export function load(valid: boolean): Result<string, Missing> {",
@@ -91,9 +91,9 @@ const project = language.compileProject([
     ].join("\n"),
   },
   {
-    fileName: "main.vibe",
+    fileName: "main.sm",
     source: [
-      'import { load, type Missing } from "./service.vibe"',
+      'import { load, type Missing } from "./service.sm"',
       "export function run(): Result<string, Missing> { return load(true).unwrap() }",
     ].join("\n"),
   },
@@ -101,12 +101,12 @@ const project = language.compileProject([
   rootDir: projectRoot,
   outDir: join(projectRoot, "out"),
   outputExtension: ".mjs",
-  runtimeImport: "vibelang/runtime",
+  runtimeImport: "smthrs/runtime",
   sourceMap: true,
 });
 assert.deepEqual(project.diagnostics, []);
-assert.match(project.files["main.vibe"].code, /\.\/service\.mjs/);
-assert.equal(typeof project.files["main.vibe"].sourceMap, "string");
+assert.match(project.files["main.sm"].code, /\.\/service\.mjs/);
+assert.equal(typeof project.files["main.sm"].sourceMap, "string");
 
 const declarations = language.emitProjectDeclarations([{
   fileName: join(projectRoot, "declaration.ts"),
@@ -125,17 +125,17 @@ const identityMap = (file, source, content) => JSON.stringify({
 });
 const composedMap = JSON.parse(language.composeSourceMaps(
   identityMap("out.js", "lowered.ts", "const value = 1"),
-  identityMap("lowered.ts", "authored.vibe", "const value = 1"),
+  identityMap("lowered.ts", "authored.sm", "const value = 1"),
   "out.js",
 ));
-assert.deepEqual(composedMap.sources, ["authored.vibe"]);
+assert.deepEqual(composedMap.sources, ["authored.sm"]);
 assert.deepEqual(composedMap.sourcesContent, ["const value = 1"]);
 
 const durableCompiler = loaded.get("./durable/source-compiler");
 const durableArtifact = loaded.get("./durable/artifact");
 const durable = loaded.get("./durable");
 const durableResult = durableCompiler.compileDurableSource([
-  'import { durable as lower } from "vibelang:flows"',
+  'import { durable as lower } from "smithers:flows"',
   "export const Echo = lower(function Echo(input: { value: string }) {",
   "  return input.value",
   "})",
@@ -171,18 +171,18 @@ if (isBun) {
 }
 
 const build = loaded.get("./build");
-const comptimeCache = mkdtempSync(join(tmpdir(), "vibelang-release-comptime-"));
+const comptimeCache = mkdtempSync(join(tmpdir(), "smithers-release-comptime-"));
 const comptimeCompiler = new build.ComptimeCompiler({
   root: process.cwd(),
   cacheDirectory: comptimeCache,
   target: isBun ? "bun" : "node",
 });
-const comptimeSource = 'import { comptime as now } from "vibelang:comptime"; export const value = now({ release: true, count: 2 });';
+const comptimeSource = 'import { comptime as now } from "smithers:comptime"; export const value = now({ release: true, count: 2 });';
 let comptime;
 try {
   comptime = await build.compileComptimeIntrinsics({
     compiler: comptimeCompiler,
-    sources: { "release.vibe": comptimeSource },
+    sources: { "release.sm": comptimeSource },
   });
 } finally {
   rmSync(comptimeCache, { recursive: true, force: true });
@@ -191,7 +191,7 @@ assert.equal(comptime.ok, true, JSON.stringify(comptime.diagnostics));
 assert.equal(comptime.calls[0].value.count, 2);
 assert.equal(comptime.calls[0].value.release, true);
 assert.deepEqual(Object.keys(comptime.calls[0].value), ["count", "release"]);
-assert.doesNotMatch(comptime.loweredSources["release.vibe"], /vibelang:comptime/);
+assert.doesNotMatch(comptime.loweredSources["release.sm"], /smithers:comptime/);
 
 const agent = loaded.get("./agent");
 assert.equal("SqliteTurnJournal" in agent, false);
@@ -247,7 +247,11 @@ assert.equal(typeof schemaRuntime.ValidationError, "function");
 const platform = loaded.get("./platform");
 assert.equal(platform.Duration.seconds(2).toMillis(), 2_000);
 assert.equal(platform.Path.join("release", "smoke"), "release/smoke");
-assert.equal(typeof platform.NodePlatform, "function");
+// `NodePlatform` is a ready-made Layer value; `nodePlatform(options)` is the
+// factory that builds one with overrides. Pin both shapes so a regression in
+// either direction is caught.
+assert.equal(typeof platform.NodePlatform, "object");
+assert.equal(typeof platform.nodePlatform, "function");
 assert.equal(typeof platform.InMemoryFileSystem, "function");
 const smokeClock = new platform.TestClock();
 assert.equal(typeof smokeClock.monotonic(), "number");
@@ -266,10 +270,10 @@ assert.equal(typeof data.Match.value, "function");
 const concurrency = loaded.get("./concurrency");
 assert.equal(typeof concurrency.awaitAll, "function");
 for (const name of ["Queue", "Semaphore", "Channel", "Stream", "Governor", "CancellationSource"]) {
-  assert.equal(typeof concurrency[name], "function", `vibelang/concurrency must export ${name}`);
+  assert.equal(typeof concurrency[name], "function", `smthrs/concurrency must export ${name}`);
 }
 assert.equal(typeof concurrency.allKeyed, "function");
-assert.equal("TypedWorker" in concurrency, false, "the Bun worker host stays on vibelang/concurrency/bun");
+assert.equal("TypedWorker" in concurrency, false, "the Bun worker host stays on smthrs/concurrency/bun");
 assert.deepEqual(await concurrency.awaitAll(Promise.resolve(1), Promise.resolve("two")), [1, "two"]);
 
 console.log(JSON.stringify({ ok: true, runtime: isBun ? "bun" : "node", exports: Object.keys(packageMetadata.exports).length }));

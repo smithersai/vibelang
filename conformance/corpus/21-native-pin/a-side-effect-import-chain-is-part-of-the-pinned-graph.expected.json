@@ -1,0 +1,24 @@
+{
+  "title": "what a module's evaluation loads is part of the graph of every function in it, transitively: a side-effect import of a project module that loads a host module fails the pin",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 4,
+      "column": 8
+    },
+    {
+      "code": "SMITHERS3001",
+      "line": 14,
+      "column": 1,
+      "messageContains": "-> loads-host.mod.sm -> node:fs"
+    }
+  ],
+  "modules": ["loads-host.mod.sm"],
+  "xfail": {
+    "backends": ["go"],
+    "reason": "The fork reports the SMITHERS1510 companion at the same position and GRANTS THE PIN. Measured 2026-08-23 through conformance/runner/backend-go.mjs: `[SMITHERS1510@4:8]` where the reference reports `[SMITHERS1510@4:8, SMITHERS3001@14:1]`. It is the TRANSITIVE half of the load graph specifically, and that is measured rather than inferred: handed the same pinned function with `import \"node:fs\"` written directly in its own module, the fork reports `SMITHERS3001 ... native pin failed: Module<\"node:fs\"> is required through main.sm#pinned`. So the fork owns the rule, owns the requirement spelling, and owns the diagnostic; it charges the FIRST link of the load graph and does not walk the chain, which is the same defect the reference had before its own load-graph walk was made transitive. One project module of indirection is enough to hide the edge. The masking is worth reading precisely: this program is still refused on the fork, but by SMITHERS1510 — the initialization-trust rule — and not by the pin. A host module that carried the trust marker would leave the fork with no diagnostic at all, so the pin fail-open here is not made safe by the companion, it is only made quiet.",
+    "doc": "specification/requirements.mdx, 'Platform Requirements' (Locked): 'Portability MUST be determined from the satisfied dependency closure, not merely the source module's import path.' specification/compatibility.mdx, 'Native Pin' (Locked): 'A native pin MUST be a checked assertion over the complete transitive graph.' A side-effect import has no bindings to elide, so evaluating this module evaluates `loads-host.mod.sm`, which loads `node:fs`: the edge is in the closure, one module beyond the importing module's own import path, which is exactly the case the first sentence exists to name."
+  },
+  "notes": "This is the LOAD graph rather than the call graph, and the two are different questions: `pinned` calls nothing and names nothing, and the host edge is contributed by the fact that running any of this module's code first evaluates the module, which evaluates `loads-host.mod.sm`, which loads `node:fs`. It is the transitive half that matters, which is why the chain is two hops: charging only the first link certifies this program, because `main.sm`'s own import list contains no host specifier and `loads-host.mod.sm` contains no pinned function. `messageContains` pins the composed route because a pin refused with an EMPTY route satisfies a code-and-position expectation exactly, and the route is what tells the author which import to delete; the module hop carries no `#name` because a module's evaluation belongs to no function. This is the load-graph sibling of 21-native-pin/a-pin-reaching-a-host-module-through-a-re-export-is-rejected, which laundered a BINDING through a project module; here nothing is bound at all, so no unused-import rule and no tree-shaker would remove it. The SMITHERS1510 companion lands in the auxiliary module at the untrusted host import, declared rather than filtered because a cascade the language really does produce is part of the contract (conformance/README.md)."
+}

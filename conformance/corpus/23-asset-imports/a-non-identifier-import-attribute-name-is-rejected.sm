@@ -1,0 +1,5 @@
+import counter from "./counter.json" with { type: "json", _mode: "const" }
+
+export function main(): string[] {
+  return [String(counter.count)]
+}

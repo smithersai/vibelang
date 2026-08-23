@@ -1,0 +1,5 @@
+declare const Clock: unknown
+
+export function stamp(): number uses Clock {
+  return 7
+}

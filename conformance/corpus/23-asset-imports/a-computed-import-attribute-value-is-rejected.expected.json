@@ -1,0 +1,20 @@
+{
+  "title": "an import attribute value that is an identifier rather than a string literal is rejected, and no loader is then selected",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS5201",
+      "line": 2,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS5205",
+      "line": 2,
+      "column": 51
+    }
+  ],
+  "assets": [
+    "counter.json"
+  ],
+  "notes": "specification/comptime.mdx, 'Built-In Formats' (Locked): 'Non-code inputs MUST select their loader and mode with STANDARD import attributes', and docs/ASSET_LOADERS.md (Locked): 'Every non-code or foreign-source import uses standard import attributes. The required string-valued `type` selects its loader.' Standard import attributes are a closed shape, so the rules that keep them one shape belong to the language and not to a particular implementation's parser. `counter.json` really is staged and a JSON loader really is registered, so every one of these programs is refused for its attribute shape alone. The positive control is 23-asset-imports/a-json-import-selects-its-loader-with-an-import-attribute, which is the same file and the same loader with one well-formed `type` and must keep compiling and printing the file's own values. Import attribute values are string literals; `kind` is an identifier, and it is declared above with the value `\"json\"` precisely so that an implementation which resolved it would find a real loader name and compile. The declared cascade is both halves of the refusal and is exact: the value is refused (SMITHERS5205, at the value) and the import is therefore left with no loader named (SMITHERS5201, at the whole declaration). An implementation that reported only one of the two would leave the other rule unpinned."
+}

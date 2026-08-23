@@ -90,7 +90,7 @@ function structuralSchemaOf(
  */
 export function flowContractDigest(contract: Omit<FlowContract, "contractDigest">): string {
   return sha256Json({
-    schema: "vibelang.agent.flow-contract/v1",
+    schema: "smithers.agent.flow-contract/v1",
     flowId: contract.flowId,
     flowVersion: contract.flowVersion,
     planDigest: contract.planDigest,
@@ -455,7 +455,7 @@ export function declareCallableSurface(functions: AgentFunctionTable): string {
         ? `compiler-derived-flow plan=${flow.planDigest} contract=${flow.contractDigest} input=${flow.inputSchema.digest} output=${flow.successSchema.digest} error=${flow.errorSchema?.digest ?? "none"}`
         : "legacy-json-only"
     return [
-      `  /** @vibeAgentContract ${marker} */`,
+      `  /** @smithersAgentContract ${marker} */`,
       `  readonly ${name}: ${fn.signature};`,
     ]
   })

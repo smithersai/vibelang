@@ -37,7 +37,7 @@
  * `Optional`. Rather than let a stored `null` turn a later lookup into a panic,
  * a Chunk rejects one where it enters — `of`, `from`, `append`, `prepend`, and
  * the result of `map` — so the panic names the insertion that caused it. Model
- * an empty slot with an `Optional` element, the way VibeLang models absence
+ * an empty slot with an `Optional` element, the way Smithers models absence
  * everywhere else.
  */
 

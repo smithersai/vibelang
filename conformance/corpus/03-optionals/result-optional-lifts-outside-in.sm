@@ -1,0 +1,28 @@
+export class Missing extends Error {
+  constructor(readonly id: number) { super(`no record ${id}`) }
+}
+
+const names = new Map<number, string>([[1, "Ada"]])
+
+function find(id: number): Result<Optional<string>, Missing> {
+  if (id < 0) throw new Missing(id)
+  const found = names.get(id)
+  if (found === undefined) return undefined
+  return found
+}
+
+export function main(): string[] {
+  const present = find(1).match({
+    ok: (name) => `ok ${name.unwrapOr("absent")}`,
+    error: (error) => `error ${error.message}`,
+  })
+  const absent = find(2).match({
+    ok: (name) => `ok ${name.unwrapOr("absent")}`,
+    error: (error) => `error ${error.message}`,
+  })
+  const failed = find(-1).match({
+    ok: (name) => `ok ${name.unwrapOr("absent")}`,
+    error: (error) => `error ${error.message}`,
+  })
+  return [present, absent, failed]
+}

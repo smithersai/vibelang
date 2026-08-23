@@ -4,7 +4,7 @@ import { __vsResultFailure, __vsResultSuccess } from "./result.ts";
 /**
  * The construction surface for hand-written library code, and only for it.
  *
- * VibeLang authors never build variants by hand: `return`, `throw`, `?`, and
+ * Smithers authors never build variants by hand: `return`, `throw`, `?`, and
  * `.unwrap()` construct every Result and Optional, which is why the authoring
  * namespaces deliberately omit `Result.ok`, `Result.err`, `Optional.some`, and
  * `Optional.none` (see docs/DECISIONS.md, "Typed failures"). That ban is about
@@ -17,7 +17,7 @@ import { __vsResultFailure, __vsResultSuccess } from "./result.ts";
  * are the very same constructors the compiler emits, so the values it produces
  * are the same frozen, WeakSet-branded, unforgeable instances. It is not
  * re-exported into any author-visible namespace and must never be re-exported
- * under a name a VibeLang author could reach.
+ * under a name a Smithers author could reach.
  *
  * - `success(value)` / `failure(error)` build the two Result variants. A failure
  *   must be a locally constructed or decoded `Error`; anything else panics.

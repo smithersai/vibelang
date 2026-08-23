@@ -1,0 +1,6 @@
+{
+  "title": "the historical `error Name {}` declaration is retired: a nominal error is an ordinary class extending Error",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1001", "line": 1, "column": 1 }],
+  "notes": "specification/failures.mdx, 'Error Classes': 'Authors MUST NOT need a TaggedError(\"Name\") factory, _tag declaration, or separate error-declaration syntax.' docs/DECISIONS.md 'Typed failures' (Locked): 'Any ordinary class extending Error is a nominal recoverable error. Smithers does not require ... separate error-declaration syntax.' The retired form must be rejected with a migration diagnostic rather than silently reinterpreted."
+}

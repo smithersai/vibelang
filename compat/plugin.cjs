@@ -4,7 +4,7 @@
  * TypeScript language-service plugin entry point.
  *
  * This is deliberately a pass-through decorator in M0. Language-service
- * plugins cannot add grammar or checker semantics, so VibeLang support must be
+ * plugins cannot add grammar or checker semantics, so Smithers support must be
  * supplied by the compiler/LSP seam instead of being faked here.
  */
 function init(modules) {
@@ -13,7 +13,7 @@ function init(modules) {
   return {
     create(info) {
       info.project.projectService.logger.info(
-        `[vibelang] compatibility plugin loaded with TypeScript ${ts.version}`,
+        `[smithers] compatibility plugin loaded with TypeScript ${ts.version}`,
       );
 
       const proxy = Object.create(null);

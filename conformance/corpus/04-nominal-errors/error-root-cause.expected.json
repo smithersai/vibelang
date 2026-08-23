@@ -1,0 +1,5 @@
+{
+  "title": "Error.prototype.rootCause is available on a matched failure",
+  "expect": "output",
+  "stdout": ["root no entry for zoe"]
+}

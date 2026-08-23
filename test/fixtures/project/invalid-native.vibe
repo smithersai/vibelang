@@ -1,6 +1,0 @@
-/** @native */
-export function nativePinned(): number {
-  return eval("1")
-}
-
-nativePinned()

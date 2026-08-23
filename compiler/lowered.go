@@ -15,7 +15,9 @@ import (
 // output fails fast with a structured error even without a fork checkout.
 func validateLoweredRequest(request CompileRequest) error {
 	switch request.Lowering {
-	case LoweringIdentity:
+	case "":
+		return errors.New("lowering mode is required")
+	case LoweringIdentity, LoweringInternal:
 		for _, file := range request.Files {
 			if file.Lowered != nil {
 				return fmt.Errorf("file %q carries lowered content but the request does not use %q lowering", file.Path, LoweringExternal)
@@ -27,14 +29,14 @@ func validateLoweredRequest(request CompileRequest) error {
 			return fmt.Errorf("%q lowering requires in-memory files; disk roots cannot carry lowered content", LoweringExternal)
 		}
 		for _, file := range request.Files {
-			if file.Kind != FileKindVibe {
+			if file.Kind != FileKindSmithers {
 				if file.Lowered != nil {
-					return fmt.Errorf("file %q is not a .vibe file and must not carry lowered content", file.Path)
+					return fmt.Errorf("file %q is not a .sm file and must not carry lowered content", file.Path)
 				}
 				continue
 			}
 			if file.Lowered == nil {
-				return fmt.Errorf("%q lowering requires lowered content for .vibe file %q", LoweringExternal, file.Path)
+				return fmt.Errorf("%q lowering requires lowered content for .sm file %q", LoweringExternal, file.Path)
 			}
 			if file.Lowered.Text == "" {
 				return fmt.Errorf("lowered text for %q is empty", file.Path)

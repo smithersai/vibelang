@@ -1,0 +1,6 @@
+// `run` INVOKES the callback it is handed. Its body is visible, so what it does
+// with its parameter is a fact about this program rather than a guess about
+// callbacks in general.
+export function run(callback: () => number): number {
+  return callback()
+}

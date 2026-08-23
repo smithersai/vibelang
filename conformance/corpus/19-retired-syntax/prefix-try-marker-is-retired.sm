@@ -1,0 +1,8 @@
+function compute(key: string): string {
+  return key === "ada" ? "Ada Lovelace" : "Guest"
+}
+
+export function main(): string[] {
+  const name = try compute("ada")
+  return [name]
+}

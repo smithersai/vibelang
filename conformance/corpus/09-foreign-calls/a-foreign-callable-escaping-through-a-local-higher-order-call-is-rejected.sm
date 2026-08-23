@@ -1,0 +1,14 @@
+import { Panic } from "smithers:exceptions"
+import { parseIntegerUnchecked } from "./foreign.ts"
+
+function applyToEach(parse: (text: string) => number, inputs: string[]): number[] {
+  return inputs.map(parse)
+}
+
+function parseAll(inputs: string[]): Result<number[], Panic> {
+  return applyToEach(parseIntegerUnchecked, inputs)
+}
+
+export function main(): string[] {
+  return [parseAll(["41"]).match({ ok: (values) => `ok ${values.length}`, error: () => "panic" })]
+}

@@ -1,0 +1,8 @@
+{
+  "title": "wall-clock access through the otherwise universal Date global still requires a capability",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "SMITHERS1602", "line": 2, "column": 17 }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': 'Facilities truly present in every supported JavaScript environment MAY be unconditional globals. Host-sensitive operations such as clock and random access MUST still use capabilities.' docs/DECISIONS.md repeats it (Locked). Date is universal; Date.now() is host-sensitive, which is exactly the distinction this case pins — 20-host-globals/universal-globals-stay-available pins the other side."
+}

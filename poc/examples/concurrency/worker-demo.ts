@@ -11,9 +11,9 @@ export class InvalidSample extends Error {
     this.name = "InvalidSample";
   }
 }
-export interface InvalidSample extends NominalError<"vibelang:examples/InvalidSample@1"> {}
+export interface InvalidSample extends NominalError<"smithers:examples/InvalidSample@1"> {}
 
-registerErrorCodec(InvalidSample, "vibelang:examples/InvalidSample@1", {
+registerErrorCodec(InvalidSample, "smithers:examples/InvalidSample@1", {
   encode: (error): JsonValue => ({ index: error.index }),
   decode: (payload) => {
     if (

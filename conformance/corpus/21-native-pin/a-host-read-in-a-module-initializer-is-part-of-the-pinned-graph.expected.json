@@ -1,0 +1,19 @@
+{
+  "title": "ambient host authority read by a module-level initializer is part of the graph of every function that reads the binding, and the route names the initializer",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1601",
+      "line": 4,
+      "column": 20
+    },
+    {
+      "code": "SMITHERS3001",
+      "line": 13,
+      "column": 1,
+      "messageContains": "-> initializer-host.mod.sm#pid -> process.pid"
+    }
+  ],
+  "modules": ["initializer-host.mod.sm"],
+  "notes": "specification/compatibility.mdx, 'Native Pin': the assertion is over the COMPLETE TRANSITIVE GRAPH, and 'The diagnostic SHOULD show the dependency path that introduced the requirement.' specification/requirements.mdx, 'Platform Requirements': 'Portability MUST be determined from the satisfied dependency closure, not merely the source module's import path.' A module initializer is in that closure: it runs when the module loads, and reading `pid` loads it. `Host<\"process\">` is poc/src/targets/classify.ts's spelling of the ambient-process dependence, and `blocksNativePin` refuses `TypeScript`, `Module<...>` and `Host<...>` together. The SMITHERS1601 companion lands in the auxiliary module at the ambient read itself, which is 20-host-globals/host-globals-are-unavailable's rule fired one module away; it is declared rather than filtered because a cascade the language really does produce is part of the contract (conformance/README.md). `messageContains` pins the route because a pin refused with an EMPTY route satisfies a code-and-position expectation exactly, and the composed route is the substance: it names the binding whose initializer ran and the ambient read it ran. Before this case existed, no corpus case pinned a requirement reached through a module-level initializer at all, although the analyzer had a dedicated walk for it. Both backends refuse it today, so this case pins current behaviour on both rather than reproducing a live one-sided defect; the historical defect was the reference's (a pin granted over a live `process.pid` read in an initializer), and it could not be reproduced here because reverting poc/src/targets/classify.ts is another lane's work."
+}

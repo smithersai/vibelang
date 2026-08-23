@@ -4,28 +4,28 @@ Status: the core Action/Flow model and distributed-build requirement are **locke
 
 ## Scope
 
-Durable execution MUST be opt-in. Ordinary VibeLang functions MUST remain ordinary eager functions and MUST NOT be executed by the durable scheduler unless selected through an Action or Flow boundary.
+Durable execution MUST be opt-in. Ordinary Smithers functions MUST remain ordinary eager functions and MUST NOT be executed by the durable scheduler unless selected through an Action or Flow boundary.
 
 ## Compiler-Recognized API
 
 A Flow MUST be declared with ordinary TypeScript call syntax:
 
 ```ts
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 
 const Build = durable(function Build(
   input: BuildInput,
 ): Result<Artifact, CompileError | PackageError> {
-  const compiled = Compile.run({ source: input.source }).unwrap()
+  const compiled = Compile.run({ source: input.source })!
   return Package.run({ code: compiled.code })
 })
 ```
 
-`durable` is a compiler-recognized function imported from the compiler-owned `vibelang:flows` virtual module. It is not a language keyword. The compiler MUST recognize the resolved imported binding, so an aliased import preserves durable behavior while an unrelated function named `durable` remains ordinary.
+`durable` is a compiler-recognized function imported from the compiler-owned `smithers:flows` virtual module. It is not a language keyword. The compiler MUST recognize the resolved imported binding, so an aliased import preserves durable behavior while an unrelated function named `durable` remains ordinary.
 
 The argument MUST be an inline function or a function declaration/value that the compiler can resolve statically. Passing an opaque runtime-selected function MUST be a compile error.
 
-The compiler MUST replace a recognized `durable(...)` call with a serializable Flow descriptor referencing the emitted Plan IR. It MUST NOT emit a runtime callback wrapper. Uncompiled JavaScript execution MUST fail during `vibelang:flows` virtual-module loading.
+The compiler MUST replace a recognized `durable(...)` call with a serializable Flow descriptor referencing the emitted Plan IR. It MUST NOT emit a runtime callback wrapper. Uncompiled JavaScript execution MUST fail during `smithers:flows` virtual-module loading.
 
 ## Action
 
@@ -36,7 +36,7 @@ An Action is an abstract runtime operation with:
 - compiler-derived input, success, Error, and requirement information
 - compiler-derived persistence schemas or explicit codecs where derivation is impossible
 
-An Action implementation MUST be an ordinary VibeLang function or callback. A fallible implementation returns `Result<A, E>` or `Promise<Result<A, E>>`; compiler lifting allows its body to use plain success returns and Error throws. It MUST NOT require an Effect wrapper or failure annotation.
+An Action implementation MUST be an ordinary Smithers function or callback. A fallible implementation returns `Result<A, E>` or `Promise<Result<A, E>>`; compiler lifting allows its body to use plain success returns and Error throws. It MUST NOT require an Effect wrapper or failure annotation.
 
 An abstract Action signature has no implementation body from which to infer failures, so a fallible signature MUST state an explicit `Result<A, E>` or `Promise<Result<A, E>>` return type.
 
@@ -58,7 +58,7 @@ A Flow is the closed program produced when the compiler lowers a function passed
 
 The compiler MUST lower the function's checked syntax, control flow, and data flow into Plan IR. It MUST NOT invoke the source function with proxy or symbolic JavaScript values to discover the graph.
 
-An `Action.run` expression inside the lowered function MUST emit a plan node and a typed symbolic Result. Calling `.unwrap()` on it MUST emit the Result error-propagation edge. Neither template compilation nor planning MUST execute the Action implementation.
+An `Action.run` expression inside the lowered function MUST emit a plan node and a typed symbolic Result. Applying `!` to it MUST emit the Result error-propagation edge. Neither template compilation nor planning MUST execute the Action implementation.
 
 Property access and argument passing on a symbolic result MUST create typed projections and dependency edges when representable in Plan IR.
 
@@ -135,7 +135,7 @@ A content key SHOULD include canonical inputs, implementation and policy digests
 
 ## Distributed Deployment
 
-A deployment build MUST be capable of emitting a coordinator plus separate tree-shaken TypeScript, native, or Wasm worker artifacts and a routing manifest.
+A deployment build MUST be capable of emitting a coordinator plus separate tree-shaken TypeScript worker artifacts and a routing manifest.
 
 The canonical Plan and routing manifest MUST be authenticated before a
 coordinator creates workers. Trust roots MUST be supplied out of band; an

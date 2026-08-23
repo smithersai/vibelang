@@ -1,0 +1,8 @@
+{
+  "title": "two Error classes with the same name in one module cannot both receive a stable nominal identity",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "SMITHERS1150", "line": 9, "column": 9 }
+  ],
+  "notes": "specification/failures.mdx, 'Error Classes', requires the compiler to 'provide stable nominal identity, matching metadata, serialization evidence, and cross-realm transport metadata'. poc/src/language/README.md records that stable ids are module/name based, so two same-named Error classes in one module would collide; the fail-closed answer is SMITHERS1150. 04-nominal-errors/same-named-errors-in-two-modules pins the other side: the same name in two *different* modules is fine, because row members are module-qualified."
+}

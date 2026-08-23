@@ -1,0 +1,23 @@
+export class OutOfRange extends Error {
+  constructor(readonly value: number) { super(`score ${value} is out of range`) }
+}
+
+function checked(value: number): Result<number, OutOfRange> {
+  if (value < 0 || value > 100) throw new OutOfRange(value)
+  return value
+}
+
+function combine(base: number, extra: number): number {
+  return base + extra
+}
+
+function weighted(score: number, bonus: boolean): Result<number, OutOfRange> {
+  const base = checked(score).unwrap()
+  return combine(base, if (bonus) { 10 } else { 0 })
+}
+
+export function main(): string[] {
+  const describe = (score: number, bonus: boolean): string =>
+    weighted(score, bonus).match({ ok: (value) => `${value}`, error: (error) => error.message })
+  return [describe(90, true), describe(90, false), describe(-1, true)]
+}

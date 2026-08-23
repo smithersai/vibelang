@@ -1,0 +1,12 @@
+{
+  "title": "a diagnostic reported after non-ASCII source text keeps its authored line and column: positions are UTF-16 code units, not UTF-8 byte offsets",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1601",
+      "line": 5,
+      "column": 20
+    }
+  ],
+  "notes": "conformance/README.md, expectation format: diagnostics are declared '[{ code, line, column }] in **authored** 1-based coordinates'. specification/compatibility.mdx, 'Source Relationship': '`.sm` MUST use a TypeScript-derived grammar with only explicitly documented differences' — TypeScript's own diagnostic positions are UTF-16 code units (`getLineAndCharacterOfPosition` over a UTF-16 string), and no documented difference reassigns them to bytes. Written from the coordinate contract, not from either backend's behavior, and deliberately built on SMITHERS1601 — a rule 20-host-globals/host-globals-are-unavailable already pins at 2:20 in a pure-ASCII file — so this case measures the coordinate and nothing about the rule. A go xfail here is RETIRED: the fork used to report this diagnostic at 5:22, exactly the two extra UTF-8 bytes the em dash on line 2 occupies, and now reports the authored column. Keep the case: it is the only one in the corpus that would notice the byte-offset conversion coming back."
+}

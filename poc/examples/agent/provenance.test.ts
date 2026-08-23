@@ -124,7 +124,7 @@ describe("durable agent component provenance", () => {
     const started = journal.events.find((event) => event.type === "turn.started")
     expect(started?.turnId).toBe(result.turnId)
     expect(started?.details).toMatchObject({
-      schema: "vibelang.agent.turn/v3",
+      schema: "smithers.agent.turn/v3",
       promptDigest: result.provenance.promptDigest,
       callableDigest: result.provenance.callableDigest,
       functionTableDigest: result.provenance.functionTableDigest,

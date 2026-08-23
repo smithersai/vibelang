@@ -1,0 +1,4 @@
+export function main(): string[] {
+  const roll = Math.random()
+  return [`${roll}`]
+}

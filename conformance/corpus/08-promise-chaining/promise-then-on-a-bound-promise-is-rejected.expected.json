@@ -1,0 +1,9 @@
+{
+  "title": "Promise instance .then() stays rejected when the Promise is bound to a variable first",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "SMITHERS1401", "line": 15, "column": 25 },
+    { "code": "SMITHERS1403", "line": 14, "column": 9 }
+  ],
+  "notes": "specification/failures.mdx, 'Promise Semantics': authored .sm consumes Promises only through `await`, and Promise instance `.then()`/`.catch()`/`.finally()` are compile errors. The three existing cases all chain on the call expression, so all three would still pass if the rule were implemented as a syntactic check on `call().then(...)`. This is the false-negative direction: the same Promise, one binding earlier. The second diagnostic is the same consequence the sibling cases record as SMITHERS1402 — docs/DECISIONS.md (Locked, Concurrency) requires every started Promise to be consumed with await, and rejecting the chaining spelling leaves this one unconsumed — reported here against the binding rather than the expression because the Promise has a name. poc/src/language/semantic.ts records SMITHERS1403 for the bound form (\"Promise '<name>' is never consumed with await or return\") and SMITHERS1402 for the unbound one. RETIRED MARKER (go, 2026-08-23): the fork used to report the unbound expression form SMITHERS1402@15:25 where the reference reports SMITHERS1403@14:9 against the binding, because it had not ported the bound/unbound must-consume split. It has now; `node conformance/runner/run.mjs --backend both --jobs 4` scored this case XPASS on go, and both backends now produce the identical pair [SMITHERS1401@15:25, SMITHERS1403@14:9]. The marker is deleted rather than restated, and this case is the only row that would notice the split regressing."
+}

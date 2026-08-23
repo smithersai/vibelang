@@ -36,7 +36,7 @@ import {
   type PublishingSuccess,
 } from "./flow-demo.ts"
 
-const root = mkdtempSync(join(tmpdir(), "vibelang-agent-flow-"))
+const root = mkdtempSync(join(tmpdir(), "smithers-agent-flow-"))
 let databaseCount = 0
 
 function databasePath(name: string): string {
@@ -70,7 +70,7 @@ describe("compiled Flows as agent functions", () => {
       const contract = flowContractFromPlan(publishingFlow.plan)
       expect(publishDocument.flowContract).toEqual(contract)
       expect(publishDocument.actionContract).toBeUndefined()
-      expect(publishDocument.identity.name).toBe("flow/vibelang/agent-flow/Publishing@1")
+      expect(publishDocument.identity.name).toBe("flow/smthrs/agent-flow/Publishing@1")
       expect(isDurableAgentFunction(publishDocument)).toBe(true)
       // The signature is the Plan's compiler-derived Flow input/success types.
       expect(publishDocument.signature).toBe(
@@ -86,7 +86,7 @@ describe("compiled Flows as agent functions", () => {
         {
           exposedAs: "note",
           kind: "action",
-          actionId: "vibelang/agent-flow/Note",
+          actionId: "smthrs/agent-flow/Note",
           actionVersion: 1,
           flowId: null,
           flowVersion: null,
@@ -99,7 +99,7 @@ describe("compiled Flows as agent functions", () => {
           kind: "flow",
           actionId: null,
           actionVersion: null,
-          flowId: "vibelang/agent-flow/Publishing",
+          flowId: "smthrs/agent-flow/Publishing",
           flowVersion: 1,
           planDigest: publishingFlow.plan.digest,
           contractDigest: contract.contractDigest,
@@ -147,7 +147,7 @@ describe("compiled Flows as agent functions", () => {
         sourceDigest: run.sourceDigest!,
         functionName: "publishDocument",
         ordinal: 1,
-        flowId: "vibelang/agent-flow/Publishing",
+        flowId: "smthrs/agent-flow/Publishing",
         flowVersion: 1,
         planDigest: publishingFlow.plan.digest,
         inputDigest: sha256Json({ path: "README.md", target: "PUBLISHED.md" }),
@@ -172,7 +172,7 @@ describe("compiled Flows as agent functions", () => {
       const attached = events.find((event) => event.type === "flow.attached")
       expect(attached?.details).toEqual({
         executionId: expectedExecutionId,
-        flowId: "vibelang/agent-flow/Publishing",
+        flowId: "smthrs/agent-flow/Publishing",
         flowVersion: 1,
         planDigest: publishingFlow.plan.digest,
         inputDigest: sha256Json({ path: "README.md", target: "PUBLISHED.md" }),
@@ -185,7 +185,7 @@ describe("compiled Flows as agent functions", () => {
         functionName: "publishDocument",
         ordinal: 1,
         executionId: expectedExecutionId,
-        flowId: "vibelang/agent-flow/Publishing",
+        flowId: "smthrs/agent-flow/Publishing",
         flowVersion: 1,
         planDigest: publishingFlow.plan.digest,
         inputDigest: sha256Json({ path: "README.md", target: "PUBLISHED.md" }),
@@ -449,7 +449,7 @@ describe("compiled Flows as agent functions", () => {
       sourceDigest: "a".repeat(64),
       functionName: "publishDocument",
       ordinal: 1,
-      flowId: "vibelang/agent-flow/Publishing",
+      flowId: "smthrs/agent-flow/Publishing",
       flowVersion: 1,
       planDigest: publishingFlow.plan.digest,
       inputDigest: sha256Json({ path: "README.md" }),
@@ -477,7 +477,7 @@ describe("compiled Flows as agent functions", () => {
         sourceDigest: "a".repeat(64),
         functionName: "publishDocument",
         ordinal: 1,
-        flowId: "vibelang/agent-flow/Publishing",
+        flowId: "smthrs/agent-flow/Publishing",
         flowVersion: 1,
         planDigest: publishingFlow.plan.digest,
         inputDigest: sha256Json({ path: "README.md" }),

@@ -30,7 +30,7 @@ afterAll(async () => {
 });
 
 async function compiler(): Promise<{ root: string; cache: string; compiler: ComptimeCompiler }> {
-  const root = await mkdtemp(join(tmpdir(), "vibelang-schema-derive-"));
+  const root = await mkdtemp(join(tmpdir(), "smithers-schema-derive-"));
   roots.push(root);
   const cache = join(root, ".cache");
   return { root, cache, compiler: new ComptimeCompiler({ root, cacheDirectory: cache, target: "node" }) };
@@ -539,7 +539,7 @@ describe("comptime Schema.derive reification", () => {
     expect(rejected.length).toBeGreaterThan(0);
   });
 
-  test("lowers .vibe source and records the generated edge in provenance", async () => {
+  test("lowers .sm source and records the generated edge in provenance", async () => {
     const build = await compiler();
     const source = [
       `import { comptime } from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)}`,
@@ -549,17 +549,17 @@ describe("comptime Schema.derive reification", () => {
     ].join("\n");
     const result = await compileComptimeIntrinsics({
       compiler: build.compiler,
-      sources: { "main.vibe": source },
-      schemaRuntimeImport: "vibelang/schema-runtime",
+      sources: { "main.sm": source },
+      schemaRuntimeImport: "smthrs/schema-runtime",
     });
     expect(result.diagnostics).toEqual([]);
-    const lowered = result.loweredFiles!["main.vibe"]!;
-    expect(lowered.code).toContain(`import { ${SCHEMA_RUNTIME_BINDING} } from "vibelang/schema-runtime";`);
+    const lowered = result.loweredFiles!["main.sm"]!;
+    expect(lowered.code).toContain(`import { ${SCHEMA_RUNTIME_BINDING} } from "smthrs/schema-runtime";`);
     expect(lowered.provenance.authoredDigest).toBe(digest(source));
     expect(lowered.provenance.loweredDigest).toBe(digest(lowered.code));
 
     const edge = lowered.provenance.edits.find((edit) => edit.kind === "schema-runtime-import")!;
-    expect(edge.authored).toMatchObject({ file: "main.vibe", start: 0, end: 0 });
+    expect(edge.authored).toMatchObject({ file: "main.sm", start: 0, end: 0 });
     expect(edge.generated.start).toBe(0);
 
     const call = lowered.provenance.edits.find((edit) => edit.kind === "intrinsic-call")!;
@@ -573,7 +573,7 @@ describe("comptime Schema.derive reification", () => {
       mappings: string;
     };
     expect(map.version).toBe(3);
-    expect(map.sources).toEqual(["main.vibe"]);
+    expect(map.sources).toEqual(["main.sm"]);
     expect(map.sourcesContent).toEqual([source]);
     expect(map.mappings.split(";")).toHaveLength(lowered.code.split("\n").length);
   });

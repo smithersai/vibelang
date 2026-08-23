@@ -1,0 +1,12 @@
+{
+  "title": "a durable statement branch is rejected instead of inspecting a symbolic runtime value",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS4106",
+      "line": 4,
+      "column": 3
+    }
+  ],
+  "notes": "The exact authored position is the if token. A condition expression is supported because it becomes a Branch Plan node; a statement branch has no bounded expression output and must fail closed."
+}

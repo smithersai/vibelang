@@ -1,0 +1,5 @@
+import counter from "../counter.json" with { type: "json" }
+
+export function main(): string[] {
+  return [counter.label]
+}

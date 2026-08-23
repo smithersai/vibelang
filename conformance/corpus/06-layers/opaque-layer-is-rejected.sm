@@ -1,0 +1,19 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+function readEntry(key: string): string | null {
+  const directory = Directory.context()
+  return directory.lookup(key)
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : null) }
+
+function buildLayer(): Layer<typeof Directory> {
+  return Layer.succeed(Directory, directory)
+}
+
+export const entry = Layer.provide(buildLayer(), () => readEntry("ada"))

@@ -1,0 +1,13 @@
+{
+  "title": "a loader that cannot build its asset fails the compile at the import, rather than emitting a program that reads the file at runtime",
+  "expect": "diagnostics",
+  "assets": ["truncated.json"],
+  "diagnostics": [
+    {
+      "code": "SMITHERS5213",
+      "line": 1,
+      "column": 1
+    }
+  ],
+  "notes": "docs/ASSET_LOADERS.md (Locked): 'Loading happens during compilation. It does not add `FileSystem` or another runtime platform requirement to the importing program', and 'Loader diagnostics and generated declarations participate in normal type-checking, editor, and source-map behavior.' Those two together mean a loader failure has exactly one place to appear: at the importing statement, at compile time. There is no runtime left to defer it to. `conformance/assets/truncated.json` is a real staged file that is not valid JSON — it ends after a trailing comma — so the JSON loader is genuinely selected, genuinely runs, and genuinely fails, which is the difference between this case and a missing-file case. SMITHERS5213 is the catch-all around the whole asset build (poc/src/build/source-assets.ts:1256-1268): the identity-changed-between-preflight-and-compilation assertion is inside the same `try`, and that half is a race and is not authorable from a corpus case, but this half is, so the code is pinned through the reachable door rather than left uncovered because the other door is shut. No `messageContains` is declared and that is deliberate: the two backends report the underlying parser's own words ('JSON Parse error: Property name must be a string literal' on the reference, 'invalid JSON' on the fork), so the message is a passthrough of a third party's text and is not the contract. What IS the contract is that the compile fails, at this statement, under this rule."
+}

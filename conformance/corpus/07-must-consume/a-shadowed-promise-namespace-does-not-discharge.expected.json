@@ -1,0 +1,12 @@
+{
+  "title": "a user's own object spelled Promise with an async member spelled all does not discharge a started Promise",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1403",
+      "line": 16,
+      "column": 9
+    }
+  ],
+  "notes": "docs/DECISIONS.md (Locked, Concurrency): authored .sm code must transitively consume every started Promise with `await`, a `return`, or a recognized combinator. 'Recognized' has to mean the ambient combinator rather than any member named `all`, or the rule is discharged by spelling. This is the same defect as 07-must-consume/a-shadowed-result-namespace-does-not-discharge at the Promise combinators, and it is here as its own case because the obvious guard does not close it: a type test asking whether the combinator call produced something promise-shaped is satisfied by an `async` member, which is why the shadowing member above is `async`. The `export` is load-bearing for the same script-vs-module reason recorded on the Result case. The positive control is 07-must-consume/the-ambient-promise-all-discharges-a-bound-promise, and 08-promise-chaining/promise-all-is-a-recognized-combinator pins the unbound form."
+}

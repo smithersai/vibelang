@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import * as ts from "typescript-js";
-import { compileVibe } from "./compile.ts";
-import { formatVibeSource, isFormattedVibeSource } from "./format.ts";
+import { compileSmithers } from "./compile.ts";
+import { formatSmithersSource, isFormattedSmithersSource } from "./format.ts";
 import type { Analysis } from "./model.ts";
 
 const exampleDirectory = fileURLToPath(new URL("../../examples/language/", import.meta.url));
@@ -27,7 +27,7 @@ const fixtures: readonly Fixture[] = [
   {
     name: "ordinary TypeScript surface",
     compiles: true,
-    source: `import { Panic } from "vibelang:exceptions"
+    source: `import { Panic } from "smithers:exceptions"
 
 class Invalid extends Error {
   constructor(readonly value: number) { super(\`bad \${value}\`) }
@@ -216,13 +216,13 @@ export function nested(active: boolean): void {
 }
 `,
   },
-  { name: "example: expression-flow.vibe", source: example("expression-flow.vibe"), compiles: true },
+  { name: "example: expression-flow.sm", source: example("expression-flow.sm"), compiles: true },
   {
-    name: "example: conditional-declarations.vibe",
-    source: example("conditional-declarations.vibe"),
+    name: "example: conditional-declarations.sm",
+    source: example("conditional-declarations.sm"),
     compiles: true,
   },
-  { name: "example: demo.vibe", source: example("demo.vibe"), compiles: false },
+  { name: "example: demo.sm", source: example("demo.sm"), compiles: false },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -306,7 +306,7 @@ interface SemanticSnapshot {
 }
 
 function semanticSnapshot(source: string, fileName: string): SemanticSnapshot {
-  const compiled = compileVibe(source, {
+  const compiled = compileSmithers(source, {
     fileName: `/project/${fileName}`,
     outputFileName: `/project/${fileName}.generated.ts`,
     sourceName: fileName,
@@ -326,10 +326,10 @@ function semanticSnapshot(source: string, fileName: string): SemanticSnapshot {
 /* Properties over every fixture                                               */
 /* -------------------------------------------------------------------------- */
 
-describe("vibe format", () => {
+describe("smithers format", () => {
   test("formats every fixture without failing closed", () => {
     for (const fixture of fixtures) {
-      const result = formatVibeSource(fixture.source, { fileName: `${fixture.name}.vibe` });
+      const result = formatSmithersSource(fixture.source, { fileName: `${fixture.name}.sm` });
       expect({ name: fixture.name, ok: result.ok, diagnostics: result.diagnostics })
         .toEqual({ name: fixture.name, ok: true, diagnostics: [] });
     }
@@ -337,20 +337,20 @@ describe("vibe format", () => {
 
   test("is idempotent: format(format(x)) === format(x)", () => {
     for (const fixture of fixtures) {
-      const first = formatVibeSource(fixture.source, { fileName: `${fixture.name}.vibe` });
+      const first = formatSmithersSource(fixture.source, { fileName: `${fixture.name}.sm` });
       expect(first.ok).toBe(true);
-      const second = formatVibeSource(first.code, { fileName: `${fixture.name}.vibe` });
+      const second = formatSmithersSource(first.code, { fileName: `${fixture.name}.sm` });
       expect({ name: fixture.name, ok: second.ok, stable: second.code === first.code })
         .toEqual({ name: fixture.name, ok: true, stable: true });
-      expect(isFormattedVibeSource(first.code, { fileName: `${fixture.name}.vibe` })).toBe(true);
+      expect(isFormattedSmithersSource(first.code, { fileName: `${fixture.name}.sm` })).toBe(true);
     }
   });
 
   test("preserves analysis rows and emitted JavaScript for every fixture", () => {
     for (const fixture of fixtures) {
       if (fixture.compiles !== true) continue;
-      const fileName = "fixture.vibe";
-      const formatted = formatVibeSource(fixture.source, { fileName });
+      const fileName = "fixture.sm";
+      const formatted = formatSmithersSource(fixture.source, { fileName });
       expect(formatted.ok).toBe(true);
       const before = semanticSnapshot(fixture.source, fileName);
       const after = semanticSnapshot(formatted.code, fileName);
@@ -360,7 +360,7 @@ describe("vibe format", () => {
 
   test("preserves every token and comment, and every line-break boundary", () => {
     for (const fixture of fixtures) {
-      const formatted = formatVibeSource(fixture.source, { fileName: `${fixture.name}.vibe` });
+      const formatted = formatSmithersSource(fixture.source, { fileName: `${fixture.name}.sm` });
       expect(formatted.ok).toBe(true);
       // The formatter's own round-trip gate rejects a result whose token or
       // comment stream diverges, so `ok` already proves this; assert the
@@ -375,9 +375,9 @@ describe("vibe format", () => {
 /* Behaviour                                                                   */
 /* -------------------------------------------------------------------------- */
 
-describe("vibe format output", () => {
+describe("smithers format output", () => {
   test("indents and spaces ordinary TypeScript deterministically", () => {
-    const result = formatVibeSource(`export function safe(value:number):Result<number,Error>{\nif(value<0)throw new Error("x")\n   return value\n}\n`);
+    const result = formatSmithersSource(`export function safe(value:number):Result<number,Error>{\nif(value<0)throw new Error("x")\n   return value\n}\n`);
     expect(result.ok).toBe(true);
     expect(result.code).toBe(
       `export function safe(value: number): Result<number, Error> {\n` +
@@ -387,8 +387,8 @@ describe("vibe format output", () => {
     );
   });
 
-  test("restores VibeLang spellings verbatim in their formatted positions", () => {
-    const result = formatVibeSource(
+  test("restores Smithers spellings verbatim in their formatted positions", () => {
+    const result = formatSmithersSource(
       `export function guarded(flag:boolean):Result<number,Error>{\n` +
       `defer   cleanup()\n` +
       `errdefer    rollback()\n` +
@@ -423,7 +423,7 @@ describe("vibe format output", () => {
 
   test("never reflows string, template, or regular expression contents", () => {
     const source = `const a = "two    spaces"\nconst b = \`line\n    indented   tail\`\nconst c = /a  b/g\n`;
-    const result = formatVibeSource(`   ${source}`);
+    const result = formatSmithersSource(`   ${source}`);
     expect(result.ok).toBe(true);
     expect(result.code).toContain(`"two    spaces"`);
     expect(result.code).toContain("`line\n    indented   tail`");
@@ -431,52 +431,52 @@ describe("vibe format output", () => {
   });
 
   test("keeps leading, inline, and trailing comments", () => {
-    const result = formatVibeSource(
+    const result = formatSmithersSource(
       `// leading\nexport function f():void{\n// own line\n   /* inline */ const x=1 // trailing\n}\n`,
     );
     expect(result.ok).toBe(true);
     expect(result.code).toContain("// leading\n");
     expect(result.code).toContain("// own line");
     expect(result.code).toContain("/* inline */ const x = 1 // trailing");
-    expect(formatVibeSource(`export function f():void{\n// own line\nconst x=1\n}\n`).code)
+    expect(formatSmithersSource(`export function f():void{\n// own line\nconst x=1\n}\n`).code)
       .toBe(`export function f(): void {\n  // own line\n  const x = 1\n}\n`);
   });
 
   test("trims trailing whitespace and ends the module with one newline", () => {
-    const result = formatVibeSource(`const a = 1   \nconst b = 2\t\n\n\n`);
+    const result = formatSmithersSource(`const a = 1   \nconst b = 2\t\n\n\n`);
     expect(result.ok).toBe(true);
     expect(result.code).toBe(`const a = 1\nconst b = 2\n`);
   });
 
   test("reports an already-formatted module as unchanged", () => {
-    const formatted = formatVibeSource(example("expression-flow.vibe"));
+    const formatted = formatSmithersSource(example("expression-flow.sm"));
     expect(formatted.ok).toBe(true);
     expect(formatted.changed).toBe(false);
-    expect(formatted.code).toBe(example("expression-flow.vibe"));
+    expect(formatted.code).toBe(example("expression-flow.sm"));
   });
 
   test("the repository's language examples are already formatted", () => {
-    for (const name of ["expression-flow.vibe", "conditional-declarations.vibe", "demo.vibe"]) {
-      expect({ name, formatted: isFormattedVibeSource(example(name), { fileName: name }) })
+    for (const name of ["expression-flow.sm", "conditional-declarations.sm", "demo.sm"]) {
+      expect({ name, formatted: isFormattedSmithersSource(example(name), { fileName: name }) })
         .toEqual({ name, formatted: true });
     }
   });
 
   test("joins a brace or else onto its header when the parse does not change", () => {
-    expect(formatVibeSource(`function f()\n{\n  return 1\n}\n`).code)
+    expect(formatSmithersSource(`function f()\n{\n  return 1\n}\n`).code)
       .toBe(`function f() {\n  return 1\n}\n`);
-    expect(formatVibeSource(`if (a)\n{\n1\n}\nelse\n{\n2\n}\n`).code)
+    expect(formatSmithersSource(`if (a)\n{\n1\n}\nelse\n{\n2\n}\n`).code)
       .toBe(`if (a) {\n  1\n}\nelse {\n  2\n}\n`);
   });
 
   test("keeps every automatic-semicolon boundary exactly where it was", () => {
     const source = `function f() {\n  return\n  1\n}\n`;
-    const result = formatVibeSource(source);
+    const result = formatSmithersSource(source);
     expect(result.ok).toBe(true);
     expect(result.code).toBe(source);
 
     const postfix = `function g(a: number) {\n  a\n  ++a\n  return a\n}\n`;
-    expect(formatVibeSource(postfix).code).toBe(postfix);
+    expect(formatSmithersSource(postfix).code).toBe(postfix);
   });
 
   test("converges: differently indented spellings of one program format alike", () => {
@@ -490,13 +490,13 @@ describe("vibe format output", () => {
     const flattened = canonical.split("\n").map((line) => line.trimStart()).join("\n");
     const overIndented = canonical.split("\n")
       .map((line) => (line === "" ? line : `\t\t${line.trimStart()}`)).join("\n");
-    expect(formatVibeSource(flattened).code).toBe(canonical);
-    expect(formatVibeSource(overIndented).code).toBe(canonical);
-    expect(formatVibeSource(canonical).changed).toBe(false);
+    expect(formatSmithersSource(flattened).code).toBe(canonical);
+    expect(formatSmithersSource(overIndented).code).toBe(canonical);
+    expect(formatSmithersSource(canonical).changed).toBe(false);
   });
 
   test("preserves the module's own newline convention", () => {
-    const result = formatVibeSource(`export function f():void{\r\nconst x=1\r\n}\r\n`);
+    const result = formatSmithersSource(`export function f():void{\r\nconst x=1\r\n}\r\n`);
     expect(result.ok).toBe(true);
     expect(result.code).toBe(`export function f(): void {\r\n  const x = 1\r\n}\r\n`);
   });
@@ -506,41 +506,41 @@ describe("vibe format output", () => {
 /* Fail-closed behaviour                                                       */
 /* -------------------------------------------------------------------------- */
 
-describe("vibe format fail-closed", () => {
+describe("smithers format fail-closed", () => {
   test("never rewrites a module whose masked source does not parse", () => {
     const source = `export function broken(): number {\n  const x = (1 +\n  return x\n`;
-    const result = formatVibeSource(source, { fileName: "broken.vibe" });
+    const result = formatSmithersSource(source, { fileName: "broken.sm" });
     expect(result.ok).toBe(false);
     expect(result.changed).toBe(false);
     expect(result.code).toBe(source);
-    expect(result.diagnostics.map((entry) => entry.code)).toEqual(["VIBE1901"]);
+    expect(result.diagnostics.map((entry) => entry.code)).toEqual(["SMITHERS1901"]);
     expect(result.diagnostics[0]!.line).toBeGreaterThan(0);
     expect(result.diagnostics[0]!.column).toBeGreaterThan(0);
   });
 
-  test("never rewrites retired VibeLang syntax it cannot mask", () => {
+  test("never rewrites retired Smithers syntax it cannot mask", () => {
     const source = `export function legacy(value: number): number {\n  return value orelse 0\n}\n`;
-    const result = formatVibeSource(source, { fileName: "legacy.vibe" });
+    const result = formatSmithersSource(source, { fileName: "legacy.sm" });
     expect(result.ok).toBe(false);
     expect(result.code).toBe(source);
-    expect(result.diagnostics.map((entry) => entry.code)).toEqual(["VIBE1901"]);
+    expect(result.diagnostics.map((entry) => entry.code)).toEqual(["SMITHERS1901"]);
   });
 
   test("refuses a module larger than the formatter budget", () => {
     const source = `const a = 1\n`.repeat(400_000);
-    const result = formatVibeSource(source);
+    const result = formatSmithersSource(source);
     expect(result.ok).toBe(false);
-    expect(result.diagnostics.map((entry) => entry.code)).toEqual(["VIBE1900"]);
+    expect(result.diagnostics.map((entry) => entry.code)).toEqual(["SMITHERS1900"]);
     expect(result.code).toBe(source);
   });
 
   test("rejects an out-of-range indent size", () => {
-    expect(() => formatVibeSource("const a = 1\n", { indentSize: 0 })).toThrow(TypeError);
-    expect(() => formatVibeSource("const a = 1\n", { indentSize: 9 })).toThrow(TypeError);
+    expect(() => formatSmithersSource("const a = 1\n", { indentSize: 0 })).toThrow(TypeError);
+    expect(() => formatSmithersSource("const a = 1\n", { indentSize: 9 })).toThrow(TypeError);
   });
 
   test("formats an empty module to an empty module", () => {
-    const result = formatVibeSource("");
+    const result = formatSmithersSource("");
     expect(result.ok).toBe(true);
     expect(result.code).toBe("");
   });

@@ -133,7 +133,7 @@ export function actionTool<Input, Output>(
       : {
         name: options.name ?? identityName(action),
         config: {
-          schema: "vibelang.agent.action-tool/v1",
+          schema: "smithers.agent.action-tool/v1",
           actionId: action.id,
           actionVersion: action.version,
           config: options.config ?? null,
@@ -143,7 +143,7 @@ export function actionTool<Input, Output>(
 }
 
 /**
- * Compile a tool's Action contract from VibeLang Action source and bind it in
+ * Compile a tool's Action contract from Smithers Action source and bind it in
  * one step. This is the whole tool adapter: nothing about the sandbox, the
  * journal, or the prompt is tool-protocol specific.
  */
@@ -224,7 +224,7 @@ export function flowContractFromPlan(plan: PlanTemplate): FlowContract {
  */
 export function flowExecutionId(identity: Omit<FlowCallIdentity, "executionId">): string {
   return `turnflow_${sha256Json({
-    schema: "vibelang.agent.flow-execution-id/v1",
+    schema: "smithers.agent.flow-execution-id/v1",
     turnId: identity.turnId,
     sourceDigest: identity.sourceDigest,
     functionName: identity.functionName,
@@ -298,7 +298,7 @@ export function callableSurfaceManifest(functions: AgentFunctionTable): Callable
   })
   return Object.freeze({
     digest: sha256Json({
-      schema: "vibelang.agent.callable-manifest/v2",
+      schema: "smithers.agent.callable-manifest/v2",
       entries: entries.map((entry) => ({
         exposedAs: entry.exposedAs,
         kind: entry.kind,

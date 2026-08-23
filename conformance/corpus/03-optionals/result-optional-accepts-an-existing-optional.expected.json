@@ -1,0 +1,10 @@
+{
+  "title": "in a `Result<Optional<A>, E>` function an existing Optional becomes the Result success without being re-wrapped, and both its present and absent variants survive the lift",
+  "expect": "output",
+  "stdout": [
+    "ok Ada",
+    "ok absent",
+    "error no record -1"
+  ],
+  "notes": "specification/type-system.mdx, 'Optional': 'When both layers are declared, lifting MUST follow the written type from outside in. For `Result<Optional<A>, E>`, a plain `A` becomes a successful present value, a nullish return becomes a successful absent value, **an existing Optional becomes the Result success**, and an Error throw becomes the Result error.' The corpus already pinned the first, second and fourth clauses (03/result-optional-lifts-outside-in, which returns a plain `A`, a nullish, and throws); the third clause — a value that is ALREADY an Optional — had no case. It is the clause an outside-in lifter gets wrong, because the returned expression matches the inner layer rather than the outer one: wrapping it as a present value would produce `Result<Optional<Optional<string>>, Missing>` and `load(2)` would print `ok ` followed by a stringified Optional instead of `ok absent`. Both Optional variants are returned through the same path so a double wrap is visible on the absent branch, where the types alone would not catch it."
+}

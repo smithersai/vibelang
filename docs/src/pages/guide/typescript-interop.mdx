@@ -1,8 +1,8 @@
-# TypeScript Interop [Adopt VibeLang without leaving the JavaScript ecosystem]
+# TypeScript Interop [Adopt Smithers without leaving the JavaScript ecosystem]
 
-Imported `.ts` and `.js` modules keep their host behavior. A `.vibe` file opts into must-use Results, Optional lifting, Promise-chain restrictions, capability inference, and other VibeLang semantics.
+Imported `.ts` and `.js` modules keep their host behavior. A `.sm` file opts into must-use Results, Promise-chain restrictions, capability inference, and other Smithers semantics.
 
-VibeLang is intentionally TypeScript-shaped, but `.vibe` is not a syntactic superset of TypeScript. Complete TypeScript remains in imported `.ts`/`.tsx` modules; only explicitly documented shared syntax and behavior carry across.
+Smithers is intentionally TypeScript-shaped, but `.sm` is not a syntactic superset of TypeScript. Complete TypeScript remains in imported `.ts`/`.tsx` modules; only explicitly documented shared syntax and behavior carry across.
 
 ## Type-Only Imports
 
@@ -10,7 +10,7 @@ VibeLang is intentionally TypeScript-shaped, but `.vibe` is not a syntactic supe
 import type { User } from "./legacy-types"
 ```
 
-An erased import adds no runtime requirement. Runtime use of imported TypeScript or JavaScript adds the built-in `TypeScript` requirement when the implementation is not portable.
+A type-only import has no runtime effect. Runtime use of imported TypeScript or JavaScript adds the checked `panic` channel unless the boundary is annotated or adapted.
 
 ## Exact Host Modules
 
@@ -20,7 +20,7 @@ import { readFile } from "node:fs/promises"
 // contributes Module<"node:fs/promises">
 ```
 
-Native-pinned code can reject that requirement. Application code should usually depend on a portable `FileSystem` capability instead.
+Portability-pinned code can reject that requirement. Application code should usually depend on a portable `FileSystem` capability instead.
 
 ## Dynamic Features
 
@@ -58,23 +58,23 @@ async function fetchUser(
 }
 ```
 
-Authored VibeLang consumes Promises with `await`, never instance `.then`, `.catch`, or `.finally`. Imported code may use them internally.
+Authored Smithers consumes Promises with `await`, never instance `.then`, `.catch`, or `.finally`. Imported code may use them internally.
 
 At declaration boundaries, trusted `@throws {never}` metadata removes the default panic case and `@throws {T}` declares the stated failure channel. These annotations are trust claims, not proof that a foreign implementation obeys them.
 
 ## Nullable Boundaries
 
 ```ts
-const user = Optional.fromNullable(legacyLookup(id))
+const user = legacyLookup(id) ?? undefined
 legacyConsume(user.toNullable())
 ```
 
-VibeLang does not reinterpret TypeScript optional properties or null unions. Conversion is explicit at the boundary.
+Smithers does not reinterpret TypeScript optional properties or null unions. They keep their ordinary TypeScript meaning.
 
 ## Effect Interop
 
 A future bridge can map `Effect<A, E, R>` to functions returning `Result<A, E>` and using Context requirements, and back again. This API is not yet stable.
 
-## Native Compatibility
+## Portability
 
-Native output is a checked property of the complete dependency/provider graph, not a separate source dialect. Diagnostics should report the requirement path that prevents a native build.
+Portable output is a checked property of the complete dependency/provider graph, not a separate source dialect. Diagnostics should report the requirement path that prevents a portable build.

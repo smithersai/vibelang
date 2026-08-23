@@ -1,0 +1,16 @@
+import { Panic, panic } from "smithers:exceptions"
+
+// panic(...) is imported from the compiler's exception module and accepts a
+// message or an underlying Error. It charges the distinguished panic channel to
+// the enclosing function's inferred failure row.
+function force(key: string): Result<string, Panic> {
+  if (key !== "ada") panic(`no entry for ${key}`)
+  return "Ada Lovelace"
+}
+
+export function main(): string[] {
+  return [
+    force("ada").match({ ok: (value) => value, error: (error) => `panic: ${error.message}` }),
+    force("zoe").match({ ok: (value) => value, error: (error) => `panic: ${error.message}` }),
+  ]
+}

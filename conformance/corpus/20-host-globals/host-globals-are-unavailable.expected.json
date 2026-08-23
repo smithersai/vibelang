@@ -1,0 +1,9 @@
+{
+  "title": "process, window, and document are not ambient globals in authored .sm; host facilities must arrive as capabilities",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "SMITHERS1601", "line": 2, "column": 20 },
+    { "code": "SMITHERS1601", "line": 3, "column": 17 }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': 'Platform-specific globals such as process, window, document, filesystem, and network MUST NOT be unconditional globals in authored .sm code. Host functionality MUST be represented by typed capabilities.' docs/DECISIONS.md 'Imports and platform dependencies' (Locked) states the same. This is a fail-closed obligation: a compiler that accepted `process.platform` would let a Node-only program claim portability."
+}

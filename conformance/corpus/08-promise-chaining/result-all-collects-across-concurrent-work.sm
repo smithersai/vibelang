@@ -1,0 +1,26 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+async function lookup(key: string): Promise<Result<string, Missing>> {
+  if (key === "ada") return "Ada Lovelace"
+  if (key === "grace") return "Grace Hopper"
+  throw new Missing(key)
+}
+
+export async function main(): Promise<string[]> {
+  // Two channels, in order: Promise.all consumes the started Promises, and
+  // Result.all then collects the Results that awaiting them left behind.
+  const settled = await Promise.all([lookup("ada"), lookup("grace")])
+  const collected = Result.all(settled)
+
+  // Two of the three fail; the collected Result must carry the FIRST failure,
+  // and concurrent settlement order must not change which one that is.
+  const mixed = await Promise.all([lookup("ada"), lookup("zoe"), lookup("nemo")])
+  const partial = Result.all(mixed)
+
+  return [
+    collected.match({ ok: (values) => values.join(","), error: (error) => error.message }),
+    partial.match({ ok: (values) => values.join(","), error: (error) => error.message }),
+  ]
+}

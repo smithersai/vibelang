@@ -1,0 +1,17 @@
+export class NotFound extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function load(key: string): Result<string, NotFound> {
+  if (key !== "ada") throw new NotFound(key)
+  return "Ada Lovelace"
+}
+
+const cases = { NotFound: (failure: NotFound) => `guest for ${failure.key}` }
+
+export function main(): string[] {
+  return [load("ada").match({
+    ok: (value) => value,
+    error: (error) => error.match(cases),
+  })]
+}

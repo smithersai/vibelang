@@ -1,0 +1,5 @@
+{
+  "title": "the while form of a loop value behaves the same way as the for form",
+  "expect": "output",
+  "stdout": ["hit three", "never hit three"]
+}

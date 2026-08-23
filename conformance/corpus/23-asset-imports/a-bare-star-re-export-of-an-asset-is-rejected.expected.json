@@ -1,0 +1,13 @@
+{
+  "title": "`export * from` an asset is rejected: a bare star names nothing the loader can be selected for at compile time",
+  "expect": "diagnostics",
+  "assets": ["config.json"],
+  "diagnostics": [
+    {
+      "code": "SMITHERS5206",
+      "line": 1,
+      "column": 1
+    }
+  ],
+  "notes": "docs/ASSET_LOADERS.md (Locked): 'Every non-code or foreign-source import uses standard import attributes. The required string-valued `type` selects its loader.' Selection is static, so every binding an asset module contributes has to be nameable at compile time; a bare `export *` contributes whatever the generated module happens to export, which is decided by the loader after selection. The same page's POC-evidence section names this spelling directly on the unsupported side — 'Type-only and side-effect forms, bare star re-exports, nonliteral dynamic imports/attributes ... remain unsupported' — while listing 'attributed named/namespace re-exports' on the supported side, and its acceptance twin a-namespace-re-export-of-an-asset-is-accepted pins that other half. The attribute IS present here and the file IS staged, so the case measures the export spelling and nothing else. The diagnostic is at 1:1 because the whole statement is the subject, not the specifier: poc/src/build/source-assets.ts:508-515 reports on `statement`, where its SMITHERS5207 sibling three lines above reports on `statement.moduleSpecifier`. The Go fork words it differently ('asset re-exports require an explicit named or namespace export'); the judge compares codes and authored positions, not wording, which is why the two backends may disagree about how to say a rule and never about whether they have it."
+}

@@ -1,0 +1,13 @@
+{
+  "title": "a foreign factory's result may not be invoked in place: the checked result would sit in callee position before it was unwrapped",
+  "expect": "diagnostics",
+  "typescript": ["order-unsafe.ts"],
+  "diagnostics": [
+    {
+      "code": "SMITHERS1507",
+      "line": 5,
+      "column": 10
+    }
+  ],
+  "notes": "specification/failures.mdx:111 (Locked): 'Calling any TypeScript, JavaScript, or other foreign runtime implementation MUST add the distinguished checked `panic` case by default.' specification/compatibility.mdx:24 adds what the caller owes: 'The caller must propagate, explicitly catch, or safely adapt that channel.' This case is the shape where that MUST cannot be honoured, so the program is refused rather than compiled with the channel dropped. `makeParser` carries `@throws {never}`, so the FACTORY call is total and is not what is refused; the closure it returns carries no claim, so `makeParser()(text)` is a foreign call that must be lowered to a checked Result. The reference states the hazard exactly at poc/src/language/semantic.ts:2168 — 'Prevent emitting `Result.try(() => make())(...)` before the checked result is unwrapped' — i.e. the lowered form would place a Result object in callee position, where the program expects the callable. A backend that lowered this shape would either invoke a Result or evaluate the two calls in the wrong order, and in both cases the panic channel of the inner closure is gone. poc/src/language/README.md:125 names the rule: 'SMITHERS1507: a foreign factory/result is invoked before an expression-safe unwrap/local binding'. This is the `!stableCallee` branch of the lowerability predicate (semantic.ts:2110, isStableForeignCallee at :2156): the callee is itself a call expression and is not a synthetic unwrap. Its `unsafeUse` twin is an-untrusted-foreign-result-used-in-an-expression-is-rejected. Exactly ONE diagnostic is declared and that is load-bearing: the inner `makeParser()` call is at the same authored position (5:10) because a call expression starts where its callee starts, so a backend that charged the trusted factory call as well would be observable here as a second SMITHERS1507 the expectation does not allow. Its acceptance twin is a-foreign-factory-result-bound-to-a-local-is-accepted, which is the same program with the factory result bound to a `const` first: it compiles, runs, and prints `panic` on bad input. The pair brackets the rule — the refusal is keyed to the SHAPE of the expression, not to the module, the factory, or the closure."
+}

@@ -1,0 +1,7 @@
+{
+  "title": "an instantiation may not publish a failure row the callback's own explicit Result contract cannot nominally produce",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1806", "line": 12, "column": 10 }],
+  "modules": ["callback-row-must-be-nominally-covered.mod.sm"],
+  "notes": "Two authored `class X extends Error {}` declarations are the same structural type, so stock assignability cannot reject this; the nominal coverage gate is what keeps the published row sound."
+}

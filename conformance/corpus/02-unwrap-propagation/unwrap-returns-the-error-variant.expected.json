@@ -1,0 +1,7 @@
+{
+  "title": "unwrap on a failure variant returns that same error from the enclosing Result-returning function",
+  "expect": "output",
+  "stdout": [
+    "error Missing: no entry for zoe"
+  ]
+}

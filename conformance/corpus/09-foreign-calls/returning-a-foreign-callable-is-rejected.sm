@@ -1,0 +1,10 @@
+import { Panic } from "smithers:exceptions"
+import { parseIntegerUnchecked } from "./foreign.ts"
+
+function chooseParser(): Result<(text: string) => number, Panic> {
+  return parseIntegerUnchecked
+}
+
+export function main(): string[] {
+  return ["ready"]
+}

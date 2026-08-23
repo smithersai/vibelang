@@ -1,0 +1,5 @@
+{
+  "title": "an open scrutinee keeps the default-clause requirement, and the default supplies the value",
+  "expect": "output",
+  "stdout": ["met the bar", "unknown"]
+}

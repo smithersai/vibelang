@@ -1,0 +1,4 @@
+// The same read as initializer-host.mod.sm, wrapped in a function that is
+// called on the spot. An immediately-invoked function runs where it is written,
+// so it defers nothing and must contribute no hop of its own to the route.
+export const pid = (() => process.pid)()

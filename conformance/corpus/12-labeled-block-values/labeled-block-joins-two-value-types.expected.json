@@ -1,0 +1,6 @@
+{
+  "title": "a labeled value block combines the types of every reachable break value",
+  "expect": "output",
+  "stdout": ["invalid", "42"],
+  "notes": "specification/control-flow.mdx, 'Labeled Break Values': 'The compiler MUST combine reachable break values when determining the labeled expression's type.' The two breaks here carry a string and a number, so the joined type is string | number; the template literal is what makes both reachable exits observable."
+}

@@ -1,0 +1,28 @@
+import { Panic } from "smithers:exceptions"
+import { parseIntegerUnchecked } from "./foreign.ts"
+
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function lookup(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+function parse(text: string): Result<number, Panic> {
+  return Result.try(() => parseIntegerUnchecked(text))
+}
+
+export function main(): string[] {
+  // recover handles an ordinary recoverable Error...
+  const recovered = lookup("zoe").recover((error) => `guest for ${error.key}`)
+  // ...but it must NOT intercept the distinguished panic channel.
+  const panicked = parse("nope").recover(() => -1)
+  const parsed = parse("41").recover(() => -1)
+  return [
+    recovered.match({ ok: (value) => value, error: () => "unreachable" }),
+    panicked.match({ ok: (value) => `recovered ${value}`, error: () => "panic survived recover" }),
+    parsed.match({ ok: (value) => `${value}`, error: () => "panic survived recover" }),
+  ]
+}

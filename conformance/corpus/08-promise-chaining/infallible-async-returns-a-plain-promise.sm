@@ -1,0 +1,12 @@
+// No fallible path, so the function keeps its ordinary success type: it returns
+// Promise<string>, not Promise<Result<string, never>>. Awaiting it yields the
+// string directly, with no Result to consume.
+async function load(key: string): Promise<string> {
+  return key === "ada" ? "Ada Lovelace" : "none"
+}
+
+export async function main(): Promise<string[]> {
+  const present = await load("ada")
+  const absent = await load("zoe")
+  return [present.toUpperCase(), absent.toUpperCase()]
+}

@@ -1,0 +1,7 @@
+import instructions from "./system.txt" with { type: "text" }
+
+// The string is embedded at compile time. Nothing here opens a file, and the
+// program needs no filesystem capability to read it.
+export function main(): string[] {
+  return instructions.trimEnd().split("\n")
+}

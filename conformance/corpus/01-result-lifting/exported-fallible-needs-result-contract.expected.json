@@ -1,0 +1,11 @@
+{
+  "title": "an exported function that can fail must spell its Result contract",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1102",
+      "line": 5,
+      "column": 1
+    }
+  ]
+}

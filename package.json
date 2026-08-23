@@ -1,7 +1,7 @@
 {
-  "name": "vibelang",
+  "name": "smthrs",
   "version": "0.0.1",
-  "description": "VibeLang checked prototype: typed failures, capability contexts, hermetic comptime, targets, and durable plans.",
+  "description": "Smithers checked prototype: typed failures, capability contexts, hermetic comptime, targets, and durable plans.",
   "type": "module",
   "main": "./compat/typescript.cjs",
   "types": "./compat/typescript.d.cts",
@@ -43,9 +43,9 @@
       "types": "./compat/tsserverlibrary.d.cts",
       "default": "./compat/tsserverlibrary.cjs"
     },
-    "./vibe": {
-      "types": "./dist/vibe.d.ts",
-      "default": "./dist/vibe.js"
+    "./smithers": {
+      "types": "./dist/smithers.d.ts",
+      "default": "./dist/smithers.js"
     },
     "./runtime": {
       "types": "./poc/dist/runtime/index.d.ts",
@@ -181,29 +181,30 @@
     }
   },
   "bin": {
-    "tsc": "./bin/vibec.js",
-    "tsserver": "./bin/vtsserver.js",
-    "vibe": "./bin/vibe.js",
-    "vibec": "./bin/vibec.js",
-    "vtsc": "./bin/vibec.js",
-    "vtsserver": "./bin/vtsserver.js"
+    "tsc": "./bin/smithersc.js",
+    "tsserver": "./bin/smithers-tsserver.js",
+    "smithers": "./bin/smithers.js",
+    "smithersc": "./bin/smithersc.js",
+    "smithers-tsserver": "./bin/smithers-tsserver.js"
   },
   "scripts": {
     "clean:dist": "node scripts/clean-root-dist.mjs",
     "clean:poc": "node scripts/clean-poc-dist.mjs",
     "build:poc": "npm run clean:poc && node node_modules/typescript/lib/tsc.js -p poc/tsconfig.emit.json && node scripts/copy-poc-assets.mjs",
     "build": "npm run clean:dist && npm run build:poc && node node_modules/typescript/lib/tsc.js -p tsconfig.build.json",
-    "check": "npm run build:poc && node node_modules/typescript/lib/tsc.js -p tsconfig.build.json --noEmit && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && go test ./compiler ./cmd/vibec-go",
-    "test": "npm run build && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && node --test test/*.test.mjs && go test ./compiler ./cmd/vibec-go",
+    "check": "npm run build:poc && node node_modules/typescript/lib/tsc.js -p tsconfig.build.json --noEmit && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && node scripts/go-test-gate.mjs",
+    "test": "npm run build && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && node scripts/node-test-gate.mjs && node scripts/go-test-gate.mjs",
     "verify:pack": "node scripts/verify-pack.mjs",
     "release:verify": "npm test && npm --prefix docs run build && npm run verify:pack",
     "typescript:fork:status": "node scripts/vendor-typescript.mjs status",
     "typescript:fork:verify": "node scripts/vendor-typescript.mjs verify",
     "typescript:vendor": "node scripts/vendor-typescript.mjs sync",
+    "smithersc:build": "node scripts/build-smithersc.mjs build",
+    "smithersc:verify-reproducible": "node scripts/build-smithersc.mjs verify",
     "prepack": "npm run test"
   },
   "keywords": [
-    "vibelang",
+    "smithers",
     "typescript",
     "typescript-shaped",
     "typed-errors",
@@ -215,10 +216,10 @@
     "zig",
     "language"
   ],
-  "homepage": "https://github.com/smithersai/vibelang#readme",
+  "homepage": "https://github.com/smithersai/smithers#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/smithersai/vibelang.git"
+    "url": "git+https://github.com/smithersai/smithers.git"
   },
   "license": "MIT",
   "files": [

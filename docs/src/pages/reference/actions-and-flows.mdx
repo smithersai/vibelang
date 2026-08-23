@@ -2,6 +2,17 @@
 
 Actions and Flows are design-stage compiler/library primitives. The semantics below are accepted unless marked open.
 
+:::warning Current backend boundary
+The TypeScript durable compiler implements the broader bounded Plan subset used
+by `smithers plan`. The opt-in Go compiler also recognizes `smithers:flows` by
+resolved binding identity and lowers direct Actions, projections,
+`!` propagation, conditional expressions, timers, typed signals, and
+`sequential(...)` into canonical digest-pinned Plan descriptors. It rejects its
+unsupported fan-out, child-Flow, statement-control-flow, loop, broadcast, and
+queue forms before emit. Neither lowerer executes authored Flow or Action code
+during compilation.
+:::
+
 ## Action
 
 ```ts
@@ -24,12 +35,12 @@ Schemas and channel rows are derived from `FunctionSignature`.
 Name.run(input)
 ```
 
-Inside Flow compilation, `run` emits a Plan IR node and returns a typed symbolic Result. Calling `.unwrap()` emits an Error propagation edge. Outside Flow compilation, the runtime dispatches the configured implementation.
+Inside Flow compilation, `run` emits a Plan IR node and returns a typed symbolic Result. Calling `!` emits an Error propagation edge. Outside Flow compilation, the runtime dispatches the configured implementation.
 
 ## Flow
 
 ```ts
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 
 const Name = durable(function Name(
   input: Input,

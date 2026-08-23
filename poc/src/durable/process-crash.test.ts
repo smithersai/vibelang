@@ -30,7 +30,7 @@ const run = async (mode: string, database: string): Promise<{
 
 test("an abrupt coordinator process death after COMMIT replays without invoking the provider", async () => {
   if (process.platform === "win32") return;
-  const directory = mkdtempSync(join(tmpdir(), "vibe-real-process-crash-"));
+  const directory = mkdtempSync(join(tmpdir(), "smithers-real-process-crash-"));
   try {
     const database = join(directory, "state.sqlite");
     const crashed = await run("crash-after-success", database);

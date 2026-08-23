@@ -21,7 +21,7 @@ export class Cancelled extends Error {
   }
 }
 
-registerErrorCodec(Cancelled, "vibelang:Cancelled@1", {
+registerErrorCodec(Cancelled, "smithers:Cancelled@1", {
   encode: (error): JsonValue => ({ reason: reasonLabel(error.reason) }),
   decode: (payload) => {
     if (
@@ -57,7 +57,7 @@ export class Cancellation extends Context {
       : RuntimeValues.success(undefined);
   }
 
-  /** TypeScript compatibility fallback; VibeLang source uses checkpoint(). */
+  /** TypeScript compatibility fallback; Smithers source uses checkpoint(). */
   check(): void {
     const state = __vsInspectResult(this.checkpoint());
     if (!state.ok) throw state.error;
@@ -102,7 +102,7 @@ export type InputSource<T> = Iterable<T> | AsyncIterable<T>;
 
 export interface MapUnorderedOptions {
   readonly concurrency: ConcurrencyBound;
-  /** TypeScript adapter escape hatch; authored VibeLang normally uses Cancellation.context(). */
+  /** TypeScript adapter escape hatch; authored Smithers normally uses Cancellation.context(). */
   readonly cancellation?: Cancellation;
 }
 

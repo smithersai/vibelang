@@ -1,0 +1,11 @@
+{
+  "title": "an Error.match case for a class outside the checked failure union is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1254",
+      "line": 17,
+      "column": 35
+    }
+  ]
+}

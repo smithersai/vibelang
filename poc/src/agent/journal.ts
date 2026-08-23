@@ -15,7 +15,7 @@ import type {
 import { canonicalIdentityJson, componentIdentityJson, sha256Json, sha256Text } from "./identity.ts"
 import { jsonSnapshot, modelDescriptorJson, modelResponseJson, normalizeModelResponse } from "./model.ts"
 
-const JOURNAL_SCHEMA = "vibelang.agent.turn-journal/v1"
+const JOURNAL_SCHEMA = "smithers.agent.turn-journal/v1"
 const MAX_ARTIFACT_BYTES = 16 * 1024 * 1024
 const MAX_ROW_JSON_BYTES = 8 * 1024 * 1024
 const EVENT_TYPES = Object.freeze([

@@ -17,7 +17,7 @@ export abstract class FileError extends Error {
   }
 }
 
-registerErrorType(FileError, "vibelang:FileError@1");
+registerErrorType(FileError, "smithers:FileError@1");
 
 export class FileNotFound extends FileError {
   constructor(path: string, message = `No such file or directory: ${path}`, options?: { readonly cause?: unknown }) {
@@ -92,12 +92,12 @@ function decodePathPayload(payload: JsonValue): { readonly path: string; readonl
 type PathErrorConstructor = new (path: string, message?: string) => FileError;
 
 const pathErrors: ReadonlyArray<readonly [PathErrorConstructor, string]> = [
-  [FileNotFound, "vibelang:FileNotFound@1"],
-  [PermissionDenied, "vibelang:PermissionDenied@1"],
-  [AlreadyExists, "vibelang:AlreadyExists@1"],
-  [NotADirectory, "vibelang:NotADirectory@1"],
-  [IsADirectory, "vibelang:IsADirectory@1"],
-  [DirectoryNotEmpty, "vibelang:DirectoryNotEmpty@1"],
+  [FileNotFound, "smithers:FileNotFound@1"],
+  [PermissionDenied, "smithers:PermissionDenied@1"],
+  [AlreadyExists, "smithers:AlreadyExists@1"],
+  [NotADirectory, "smithers:NotADirectory@1"],
+  [IsADirectory, "smithers:IsADirectory@1"],
+  [DirectoryNotEmpty, "smithers:DirectoryNotEmpty@1"],
 ];
 
 for (const [type, id] of pathErrors) {
@@ -110,7 +110,7 @@ for (const [type, id] of pathErrors) {
   });
 }
 
-registerErrorCodec(FileSystemFailure, "vibelang:FileSystemFailure@1", {
+registerErrorCodec(FileSystemFailure, "smithers:FileSystemFailure@1", {
   encode: (error): JsonValue => ({ path: error.path, code: error.code, message: error.message }),
   decode: (payload) => {
     if (

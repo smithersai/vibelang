@@ -1,0 +1,16 @@
+interface Entry {
+  readonly name: string
+  readonly nickname?: string
+}
+
+function describe(entry: Entry, suffix?: string): string {
+  const nickname = entry.nickname === undefined ? "" : `/${entry.nickname}`
+  return `${entry.name}${nickname}${suffix ?? ""}`
+}
+
+export function main(): string[] {
+  return [
+    describe({ name: "Ada" }),
+    describe({ name: "Ada", nickname: "AL" }, "!"),
+  ]
+}

@@ -1,0 +1,9 @@
+import { durable } from "smithers:flows"
+import { Compile, Package } from "test:cli-actions"
+
+throw new Error("smithers plan evaluated the authored module")
+
+export const Build = durable(function Build(input: { source: string }) {
+  const compiled = Compile.run({ source: input.source }).unwrap()
+  return Package.run({ code: compiled.code })
+})

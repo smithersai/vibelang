@@ -1,0 +1,15 @@
+package checker
+
+// This file is injected into the pinned fork's internal/checker package by the
+// bridge build overlay. The Smithers expression kinds are typed by
+// checkExpressionWorker, while the generic GetTypeAtLocation query does not
+// expose that result for the new kinds. Lowering needs the exact checked type
+// (especially the switch expression's undefined-vs-exhaustive join), so this
+// narrow seam delegates to the fork's own expression checker instead of
+// re-deriving its decision.
+
+import "github.com/microsoft/TypeScript/tsc/internal/ast"
+
+func (c *Checker) SmithersCheckExpression(node *ast.Node) *Type {
+	return c.checkExpression(node)
+}

@@ -1,0 +1,17 @@
+import { native } from "smithers:native"
+import { double } from "./foreign.ts"
+
+// `@throws {never}` is a trust claim about the FAILURE channel only: it removes
+// the checked panic case. It does not stop the value from being a TypeScript
+// runtime value, and using a runtime value from TypeScript adds the built-in
+// `TypeScript` requirement. A native pin rejects any transitive `TypeScript`,
+// so a graph reaching even a fully trusted foreign call fails the assertion.
+function scale(value: number): number {
+  return double(value)
+}
+
+native(scale)
+
+export function main(): string[] {
+  return [String(scale(21))]
+}

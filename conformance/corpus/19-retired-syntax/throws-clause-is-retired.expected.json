@@ -1,0 +1,6 @@
+{
+  "title": "the `throws` row clause is retired: public contracts spell Result<A, E>",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1001", "line": 5, "column": 45 }],
+  "notes": "specification/failures.mdx, 'Inference': 'Smithers MUST NOT add a general throws clause, !T marker, prefix try expression, or postfix Result-recovery expression.' specification/type-system.mdx, 'Public Boundaries', repeats it. Accepting the retired grammar would mean implementing a failure-annotation channel the language explicitly rejected."
+}

@@ -1,0 +1,12 @@
+function lookup(id: number): Optional<string> {
+  if (id === 1) return "Ada"
+  return null
+}
+
+function relay(id: number): Optional<string> {
+  return lookup(id)
+}
+
+export function main(): string[] {
+  return [relay(1).unwrapOr("absent"), relay(2).unwrapOr("absent")]
+}

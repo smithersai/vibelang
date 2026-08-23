@@ -1,0 +1,12 @@
+{
+  "title": "Result.match requires both the success and the error branch",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "TS2345",
+      "line": 11,
+      "column": 31
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Matching and Transformation': 'match MUST require both success and error branches.' EVIDENCE for the stock TypeScript code: the runtime's Result.match signature takes `{ readonly ok: (value: A) => Ok; readonly error: (error: E) => Failure }` (poc/src/runtime/result.ts), so an object literal carrying only `ok` is not assignable and the emitted TypeScript is rejected by the stock checker with TS2345 at the argument. specification/compatibility.mdx \u00a73 makes that the right mechanism: the requirement is expressed in ordinary TypeScript types, so ordinary TypeScript checking enforces it. The diagnostic is reached through the emit-check stage, which is why this case also exercises the second half of the frontend's two-stage acceptance."
+}

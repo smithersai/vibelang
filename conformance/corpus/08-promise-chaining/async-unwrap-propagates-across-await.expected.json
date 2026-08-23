@@ -1,0 +1,6 @@
+{
+  "title": "an async recoverable throw settles the Promise with a failure Result, and unwrap on the awaited value propagates it",
+  "expect": "output",
+  "stdout": ["A", "error no entry for zoe"],
+  "notes": "The Promise never rejects: the failure travels in the Result channel, which is why rejection handling has no place in authored .sm."
+}

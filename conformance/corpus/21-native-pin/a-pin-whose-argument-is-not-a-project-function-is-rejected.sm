@@ -1,0 +1,13 @@
+import { native } from "smithers:native"
+
+// The pin is a CHECKED assertion, so its subject has to be identifiable before
+// anything can be checked about it. A function expression written at the call
+// has no declaration in this project to walk and no name to report a route
+// through, so the assertion is unprovable rather than false. Accepting it is
+// the fail-open shape the pin exists to prevent: a program that carries an
+// assertion nobody checked reads exactly like one that passed.
+native(function () { return 41 })
+
+export function main(): string[] {
+  return ["unreachable"]
+}

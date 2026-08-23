@@ -1,0 +1,6 @@
+{
+  "title": "returning, matching, transforming, inspecting, and unwrapping each satisfy the must-use rule",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "Ada", "true", "Ada Lovelace", "ADA LOVELACE"],
+  "notes": "specification/failures.mdx, 'Matching and Transformation': 'A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' 07-must-consume/result-must-be-consumed pins the negative. This case pins that every one of the five named forms really is accepted — a must-use check that was too strict would reject one of them, which is the failure mode that makes idiomatic code unwritable rather than unsafe."
+}

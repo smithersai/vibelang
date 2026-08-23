@@ -1,0 +1,12 @@
+{
+  "title": "a foreign implementation that violates its own @throws {T} claim still delivers the failure through the declared channel, as Panic",
+  "expect": "output",
+  "stdout": [
+    "41",
+    "panic:the host violated its own contract"
+  ],
+  "typescript": [
+    "foreign.ts"
+  ],
+  "notes": "docs/src/pages/specification/failures.mdx 'Foreign Exceptions' requires a runtime implementation violating its declared signature to enter the distinguished checked Panic channel. docs/DECISIONS.md 'Typed failures' (Locked) repeats that rule. The error branch verifies both nominal Panic identity and that Panic.cause is the original TypeError thrown by the lying implementation. 09-foreign-calls/declared-foreign-throws-is-exposed separately pins the honest half of the @throws {T} contract."
+}

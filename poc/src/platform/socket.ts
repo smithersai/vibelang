@@ -59,7 +59,7 @@ export abstract class SocketError extends Error {
   }
 }
 
-registerErrorType(SocketError, "vibelang:SocketError@1");
+registerErrorType(SocketError, "smithers:SocketError@1");
 
 /** Nothing is listening at the endpoint. */
 export class ConnectionRefused extends SocketError {
@@ -68,7 +68,7 @@ export class ConnectionRefused extends SocketError {
     this.name = "ConnectionRefused";
   }
 }
-export interface ConnectionRefused extends NominalError<"vibelang:ConnectionRefused@1"> {}
+export interface ConnectionRefused extends NominalError<"smithers:ConnectionRefused@1"> {}
 
 /**
  * The connection is gone. Either it was closed abruptly (reset by the peer,
@@ -81,7 +81,7 @@ export class ConnectionClosed extends SocketError {
     this.name = "ConnectionClosed";
   }
 }
-export interface ConnectionClosed extends NominalError<"vibelang:ConnectionClosed@1"> {}
+export interface ConnectionClosed extends NominalError<"smithers:ConnectionClosed@1"> {}
 
 export class SocketTimeout extends SocketError {
   constructor(endpoint: string, message = `Socket timed out: ${endpoint}`, options?: { readonly cause?: unknown }) {
@@ -89,7 +89,7 @@ export class SocketTimeout extends SocketError {
     this.name = "SocketTimeout";
   }
 }
-export interface SocketTimeout extends NominalError<"vibelang:SocketTimeout@1"> {}
+export interface SocketTimeout extends NominalError<"smithers:SocketTimeout@1"> {}
 
 export class AddressInUse extends SocketError {
   constructor(endpoint: string, message = `Address already in use: ${endpoint}`, options?: { readonly cause?: unknown }) {
@@ -97,7 +97,7 @@ export class AddressInUse extends SocketError {
     this.name = "AddressInUse";
   }
 }
-export interface AddressInUse extends NominalError<"vibelang:AddressInUse@1"> {}
+export interface AddressInUse extends NominalError<"smithers:AddressInUse@1"> {}
 
 /** Unread data passed the connection's byte cap; the connection was destroyed. */
 export class ReceiveBufferOverflow extends SocketError {
@@ -110,7 +110,7 @@ export class ReceiveBufferOverflow extends SocketError {
     this.name = "ReceiveBufferOverflow";
   }
 }
-export interface ReceiveBufferOverflow extends NominalError<"vibelang:ReceiveBufferOverflow@1"> {}
+export interface ReceiveBufferOverflow extends NominalError<"smithers:ReceiveBufferOverflow@1"> {}
 
 /** Anything the host reported that has no dedicated nominal case; `code` keeps the errno. */
 export class SocketFailure extends SocketError {
@@ -124,7 +124,7 @@ export class SocketFailure extends SocketError {
     this.name = "SocketFailure";
   }
 }
-export interface SocketFailure extends NominalError<"vibelang:SocketFailure@1"> {}
+export interface SocketFailure extends NominalError<"smithers:SocketFailure@1"> {}
 
 function decodeEndpointPayload(payload: JsonValue): { readonly endpoint: string; readonly message: string } {
   if (
@@ -140,11 +140,11 @@ function decodeEndpointPayload(payload: JsonValue): { readonly endpoint: string;
 type EndpointErrorConstructor = new (endpoint: string, message?: string) => SocketError;
 
 const endpointErrors: ReadonlyArray<readonly [EndpointErrorConstructor, string]> = [
-  [ConnectionRefused, "vibelang:ConnectionRefused@1"],
-  [ConnectionClosed, "vibelang:ConnectionClosed@1"],
-  [SocketTimeout, "vibelang:SocketTimeout@1"],
-  [AddressInUse, "vibelang:AddressInUse@1"],
-  [ReceiveBufferOverflow, "vibelang:ReceiveBufferOverflow@1"],
+  [ConnectionRefused, "smithers:ConnectionRefused@1"],
+  [ConnectionClosed, "smithers:ConnectionClosed@1"],
+  [SocketTimeout, "smithers:SocketTimeout@1"],
+  [AddressInUse, "smithers:AddressInUse@1"],
+  [ReceiveBufferOverflow, "smithers:ReceiveBufferOverflow@1"],
 ];
 
 for (const [type, id] of endpointErrors) {
@@ -157,7 +157,7 @@ for (const [type, id] of endpointErrors) {
   });
 }
 
-registerErrorCodec(SocketFailure, "vibelang:SocketFailure@1", {
+registerErrorCodec(SocketFailure, "smithers:SocketFailure@1", {
   encode: (error): JsonValue => ({ endpoint: error.endpoint, code: error.code, message: error.message }),
   decode: (payload) => {
     if (

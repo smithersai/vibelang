@@ -1,0 +1,294 @@
+package main
+
+// Retired source grammar, and the grammar-mismatch backstop.
+//
+// Smithers has a published list of spellings that were once part of the design
+// and were then retired, plus one spelling (`throw` as an expression) that was
+// never part of it. Every one of them is, by construction, something the fork's
+// parser cannot parse: there is no symbol to resolve and no typed node to
+// inspect, so the only evidence available is the token stream. That is also how
+// the reference frontend recognizes them
+// (`checkRemovedAndUnsupportedSyntax` in poc/src/language/semantic.ts), and this
+// file is a port of that pass.
+//
+// The distinction that matters, and the reason a token sweep here is not a
+// retreat from the symbol-identity discipline the rest of the bridge follows:
+// these rules never decide what a *resolved reference means*. They decide only
+// that a byte sequence is not the supported grammar. A file that parses is never
+// reinterpreted by anything in this file — every rule below fires on tokens the
+// parser itself has already failed, or on a spelling that has no legal reading
+// (`orelse`, `.?`, `error Name {}`).
+//
+// Three properties are load-bearing and are each pinned by a test:
+//
+//   - The guards. `Result.try(...)`, `promise.catch(...)`, statement-form
+//     `try { } catch { }`, and a `.throws`/`.uses` member access are all legal
+//     and must not be reported. Each is excluded by the token immediately before
+//     or after the candidate, exactly as the reference excludes it.
+//   - The scan is template- and regex-aware. Without `${...}` depth tracking a
+//     closing brace inside a template substitution would enter the stream as an
+//     ordinary `}` and flip the statement-form `catch` guard; without slash
+//     re-scanning, regex bodies would enter as arbitrary tokens.
+//   - Suppression. A retired spelling wrecks the parse around it, so reporting
+//     the migration diagnostic AND the parser's cascade would bury the useful
+//     one. Every report suppresses raw parser diagnostics within the reference's
+//     48-character window of its anchor.
+//
+// Anything the sweep does NOT recognize still reaches the author, relabeled as
+// SMITHERS1000: a parser failure in an authored `.sm` file means the source is
+// not the supported grammar, whatever TypeScript called it. That is a phase
+// rule, not a code lookup — the same TS1005 means different things in different
+// places, and none of them is "TS1005".
+
+import (
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+// suppressionWindow is the distance, in bytes, within which a raw parser
+// diagnostic is treated as cascade from a construct the bridge has already
+// reported on. It matches the reference's window so one diagnostics consumer
+// can read either compiler.
+const suppressionWindow = 48
+
+// scannedToken is one token of the authored source, with the same fields the
+// reference's scan produces. `start` excludes leading trivia, so it is directly
+// usable as a diagnostic anchor.
+type scannedToken struct {
+	kind  ast.Kind
+	text  string
+	start int
+	end   int
+}
+
+// scanRetiredTokens produces the token stream the retired-grammar rules read.
+//
+// It is deliberately not the parser: a file containing a retired spelling does
+// not parse, which is the whole reason the spelling is being reported. The two
+// re-scans below are what keep the stream faithful to the source rather than to
+// the scanner's default, context-free guess.
+func scanRetiredTokens(text string) []scannedToken {
+	s := scanner.NewScanner()
+	s.SetText(text)
+	s.SetScriptTarget(core.ScriptTargetLatest)
+	s.SetLanguageVariant(core.LanguageVariantStandard)
+
+	tokens := make([]scannedToken, 0, len(text)/4)
+	// templateBraceDepths records the brace depth at each open template
+	// substitution, so the `}` that closes one is re-scanned as the continuation
+	// of the template instead of entering the stream as a brace.
+	templateBraceDepths := make([]int, 0, 4)
+	braceDepth := 0
+	previousKind := ast.KindUnknown
+	for {
+		kind := s.Scan()
+		if kind == ast.KindEndOfFile {
+			break
+		}
+		if (kind == ast.KindSlashToken || kind == ast.KindSlashEqualsToken) && regularExpressionAllowed(previousKind) {
+			kind = s.ReScanSlashToken()
+		}
+		switch {
+		case kind == ast.KindCloseBraceToken && len(templateBraceDepths) > 0 &&
+			braceDepth == templateBraceDepths[len(templateBraceDepths)-1]:
+			kind = s.ReScanTemplateToken(false)
+			if kind == ast.KindTemplateTail {
+				templateBraceDepths = templateBraceDepths[:len(templateBraceDepths)-1]
+			}
+		case kind == ast.KindOpenBraceToken:
+			braceDepth++
+		case kind == ast.KindCloseBraceToken:
+			braceDepth--
+		}
+		if kind == ast.KindTemplateHead {
+			templateBraceDepths = append(templateBraceDepths, braceDepth)
+		}
+		tokens = append(tokens, scannedToken{kind: kind, text: s.TokenText(), start: s.TokenStart(), end: s.TokenEnd()})
+		previousKind = kind
+	}
+	return tokens
+}
+
+// regularExpressionAllowed reports whether a `/` at this point begins a regular
+// expression rather than a division. The scanner cannot know without the
+// parser's context, and guessing "divide" would let a regex body leak into the
+// stream as arbitrary tokens — a `/[a-z}]/` would contribute a stray brace. The
+// bias is deliberately toward "regex", because a wrong guess there swallows
+// tokens and makes a rule abstain rather than misfire.
+func regularExpressionAllowed(previous ast.Kind) bool {
+	switch previous {
+	case ast.KindUnknown:
+		return true
+	case ast.KindIdentifier, ast.KindPrivateIdentifier,
+		ast.KindNumericLiteral, ast.KindBigIntLiteral, ast.KindStringLiteral,
+		ast.KindNoSubstitutionTemplateLiteral, ast.KindTemplateTail,
+		ast.KindCloseParenToken, ast.KindCloseBracketToken, ast.KindCloseBraceToken,
+		ast.KindPlusPlusToken, ast.KindMinusMinusToken,
+		ast.KindThisKeyword, ast.KindSuperKeyword,
+		ast.KindTrueKeyword, ast.KindFalseKeyword, ast.KindNullKeyword:
+		return false
+	}
+	return true
+}
+
+// retiredHit is one recognized retired spelling: the code to report, the
+// authored byte offset to anchor it at, and the migration message.
+type retiredHit struct {
+	code    string
+	start   int
+	message string
+}
+
+func tokenTextAt(tokens []scannedToken, index int) string {
+	if index < 0 || index >= len(tokens) {
+		return ""
+	}
+	return tokens[index].text
+}
+
+// sweepRetiredSyntax recognizes every retired spelling in one authored file.
+//
+// Each rule is the reference's, including its guards. The rules are
+// independent rather than exclusive: a single token may trip more than one, and
+// the reference reports each, so this does too.
+func sweepRetiredSyntax(text string) []retiredHit {
+	tokens := scanRetiredTokens(text)
+	hits := make([]retiredHit, 0)
+	report := func(token scannedToken, message string) {
+		hits = append(hits, retiredHit{code: "SMITHERS1001", start: token.start, message: message})
+	}
+	for index, token := range tokens {
+		previous := tokenTextAt(tokens, index-1)
+		next := tokenTextAt(tokens, index+1)
+
+		// `error Name {}` — a nominal error is an ordinary class extending
+		// Error. The following identifier and brace are required so an ordinary
+		// variable named `error` is not swept up.
+		if token.text == "error" && index+1 < len(tokens) && tokens[index+1].kind == ast.KindIdentifier &&
+			tokenTextAt(tokens, index+2) == "{" {
+			report(token, "the historical `error Name {}` declaration was removed; declare an ordinary `class Name extends Error`")
+		}
+
+		// `throws` / `uses` row clauses. Both spellings are ordinary
+		// identifiers elsewhere, so the rule fires only between a parameter
+		// list and a body, and never after a `.` (a member access).
+		if (token.text == "throws" || token.text == "uses") && previous != "." &&
+			isBetweenFunctionParametersAndBody(tokens, index) {
+			if token.text == "throws" {
+				report(token, "the `throws` row grammar was removed; declare Result<A, E> in public contracts and let local functions infer it")
+			} else {
+				report(token, "the named `uses` grammar was removed; extend Context and call Capability.context()")
+			}
+		}
+
+		// `orelse`. It is an identifier to the scanner, so a member named
+		// `orelse` is excluded by the preceding `.`, and a property named
+		// `orelse` by the requirement that a right operand follow.
+		if token.text == "orelse" && previous != "." && startsOperand(next) {
+			report(token, "the `orelse` operator was removed; use Optional.match(), map(), or unwrapOr()")
+		}
+
+		// `.?`. The anchor is the DOT, not the question mark: that is where the
+		// reference reports, and the corpus pins the column.
+		if token.text == "." && next == "?" {
+			report(token, "the `.?` postfix operator was removed; use Optional.unwrap()")
+		}
+
+		// Prefix `try`. Three guards, each load-bearing: a following `{` is
+		// statement-form `try { }`, which stays legal; a preceding `.` is the
+		// public `Result.try(...)` adapter, which is a different thing; and the
+		// retired marker is a PREFIX, so an operand must follow it — which is
+		// what keeps a member named `try` in `{ try: … }` an ordinary property.
+		if token.text == "try" && next != "{" && previous != "." && startsOperand(next) {
+			report(token, "the prefix `try` propagation marker was removed; use Result.unwrap()")
+		}
+
+		// Postfix `catch`. The retired form is `<expression> catch <expression>`,
+		// and all four guards follow from that shape: a preceding `}` closes the
+		// block of a statement-form `try { } catch { }`; a preceding `.` is an
+		// ordinary `promise.catch(...)` member access, which the Promise
+		// discipline pass owns (SMITHERS1401) and which must not be misreported
+		// as retired grammar; and the tokens on either side must actually be an
+		// expression end and an operand start, which is what keeps a property or
+		// method named `catch` an ordinary member.
+		if token.text == "catch" && previous != "}" && previous != "." &&
+			endsExpression(tokens, index-1) && startsOperand(next) {
+			report(token, "the postfix catch expression was removed; recover with Result.match() or recover()")
+		}
+	}
+	return hits
+}
+
+// startsOperand reports whether a token could begin the operand a retired
+// prefix or infix operator requires. This is a grammar property, not a
+// heuristic: `orelse`, prefix `try`, and postfix `catch` all take a right
+// operand, so a following `:`, `,`, `)`, `}`, `]`, `;`, or end of file proves
+// the token is not the operator at all — it is a property name, a shorthand, or
+// an argument. Without this the reference's rules report `{ try: … }` and
+// `{ catch: … }`, which are ordinary object members.
+func startsOperand(next string) bool {
+	switch next {
+	case "", ":", ",", ")", "}", "]", ";", "=", "=>", ".", "?":
+		return false
+	}
+	return true
+}
+
+// endsExpression reports whether the token before a postfix operator could be
+// the last token of its left operand. A `{`, `(`, `,`, or an operator cannot,
+// so a `catch` following one of them is a property or method name rather than
+// the retired recovery expression.
+func endsExpression(tokens []scannedToken, index int) bool {
+	if index < 0 || index >= len(tokens) {
+		return false
+	}
+	token := tokens[index]
+	switch token.kind {
+	case ast.KindIdentifier, ast.KindPrivateIdentifier,
+		ast.KindNumericLiteral, ast.KindBigIntLiteral, ast.KindStringLiteral,
+		ast.KindRegularExpressionLiteral,
+		ast.KindNoSubstitutionTemplateLiteral, ast.KindTemplateTail,
+		ast.KindCloseParenToken, ast.KindCloseBracketToken, ast.KindCloseBraceToken,
+		ast.KindExclamationToken,
+		ast.KindThisKeyword, ast.KindSuperKeyword,
+		ast.KindTrueKeyword, ast.KindFalseKeyword, ast.KindNullKeyword,
+		ast.KindUndefinedKeyword:
+		return true
+	}
+	return false
+}
+
+// isBetweenFunctionParametersAndBody reports whether the token at index sits
+// after a function's parameter list and before its body — the only position in
+// which `throws` or `uses` could have been a row clause. Walking backwards
+// bounded (the reference bounds it at 80 tokens) keeps a large file from
+// turning this into a quadratic scan, and stopping at `{`, `;`, or `}` keeps
+// the search inside one declaration.
+func isBetweenFunctionParametersAndBody(tokens []scannedToken, index int) bool {
+	sawClose := false
+	for cursor := index - 1; cursor >= 0 && index-cursor < 80; cursor-- {
+		switch tokens[cursor].text {
+		case "{":
+			return false
+		case ")":
+			sawClose = true
+		case "function":
+			return sawClose
+		case ";", "}":
+			return false
+		}
+	}
+	return false
+}
+
+// grammarMismatchMessage relabels a raw parser failure as the Smithers grammar
+// rule it actually is. The TypeScript text is retained because it is the only
+// description of what the parser choked on, but the CODE is Smithers's: an
+// authored `.sm` file that does not parse is not "missing a semicolon", it is
+// not the supported grammar.
+func grammarMismatchMessage(message string) string {
+	return "source does not match the supported .sm grammar: " + strings.TrimSpace(message)
+}

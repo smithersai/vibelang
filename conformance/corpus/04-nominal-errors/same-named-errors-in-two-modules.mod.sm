@@ -1,0 +1,8 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`payments has no ${key}`) }
+}
+
+export function charge(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "charged"
+}

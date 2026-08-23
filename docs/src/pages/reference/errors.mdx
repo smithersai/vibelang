@@ -39,24 +39,32 @@ Within a Result-returning function:
 - `return value` creates the success variant.
 - `throw error` creates the error variant.
 - returning a compatible Result forwards it without nesting.
-- `result.unwrap()` produces the success value or propagates its error.
+- `result!` produces the success value or propagates its error.
 
 There is no failure annotation, prefix propagation expression, postfix catch expression, or public `Result.ok`/`Result.err` constructor.
 
 ## Result Methods
+
+The API is modelled on [better-result](https://github.com/dmmulroy/better-result).
 
 | Method | Meaning |
 | --- | --- |
 | `isOk()`, `isError()` | inspect and narrow the variant |
 | `match({ ok, error })` | exhaustively produce a value from either variant |
 | `map`, `mapError` | transform one side |
-| `andThen` | sequence success-dependent work |
-| `recover` | replace an error with a value or Result |
-| `tap`, `tapError` | observe without changing the Result |
-| `unwrap` | compiler propagation point; throws in JS fallback |
+| `andThen`, `andThenAsync` | sequence success-dependent work |
+| `flatten` | collapse a nested Result |
+| `recover`, `tryRecover`, `tryRecoverAsync` | replace an error with a value or Result |
+| `tap`, `tapError`, `tapBoth` | observe without changing the Result |
+| `tapAsync`, `tapErrorAsync`, `tapBothAsync` | async observation |
+| `expr!` | compiler propagation point |
 | `unwrapOr`, `expect` | extract with fallback or invariant message |
-| `Result.all` | collect Results, returning the first error |
+| `Result.all`, `Result.allAsync` | collect Results, returning the first error |
+| `Result.partition`, `Result.partitionAsync` | split successes from errors, order preserved |
 | `Result.try`, `Result.tryPromise` | adapt a foreign throwing/rejecting operation |
+| `Result.codec` | boundary-aware serialization and deserialization |
+
+Not provided, because Smithers supplies them another way: `Result.ok` and `Result.err` (use `return` and `throw`), `TaggedError` (use `class ... extends Error`), and `Result.gen`/`yield*` (use `!`).
 
 Results are must-use.
 
@@ -78,12 +86,12 @@ The compiler checks `match` exhaustiveness against the known `E` union and narro
 
 ```ts
 async function load(): Promise<Result<Output, Timeout>> {
-  const response = (await request()).unwrap()
-  return response.decode().unwrap()
+  const response = (await request())!
+  return response.decode()!
 }
 ```
 
-`await` unwraps the Promise and leaves the Result. Promise instance `.then()`, `.catch()`, and `.finally()` are compile errors in authored VibeLang.
+`await` unwraps the Promise and leaves the Result. Promise instance `.then()`, `.catch()`, and `.finally()` are compile errors in authored Smithers.
 
 ## Foreign Exceptions and Defects
 

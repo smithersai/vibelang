@@ -15,9 +15,9 @@ export class FixtureError extends Error {
     this.name = "FixtureError";
   }
 }
-export interface FixtureError extends NominalError<"vibelang:test/FixtureError@1"> {}
+export interface FixtureError extends NominalError<"smithers:test/FixtureError@1"> {}
 
-registerErrorCodec(FixtureError, "vibelang:test/FixtureError@1", {
+registerErrorCodec(FixtureError, "smithers:test/FixtureError@1", {
   encode: (error): JsonValue => ({ code: error.code, message: error.message }),
   decode: (payload) => {
     if (

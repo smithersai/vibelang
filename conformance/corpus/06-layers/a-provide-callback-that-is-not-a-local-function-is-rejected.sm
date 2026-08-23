@@ -1,0 +1,23 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : null) }
+
+// Providing a layer removes matching capabilities from the computation's
+// unsatisfied requirement row, which the compiler can only do if it can see the
+// computation's row. `body` is a parameter, so its row is whatever an unknown
+// caller passes; there is nothing to subtract from and nothing to report as
+// missing. Accepting it would report an empty unsatisfied row for a body that
+// may require anything, which is the fail-open direction of the satisfaction
+// rule: 06-layers/layer-provide-missing-a-capability is what that row is for.
+export function run(body: () => string[]): string[] {
+  return Layer.provide(Layer.succeed(Directory, directory), body)
+}
+
+export function main(): string[] {
+  return run(() => ["ada"])
+}

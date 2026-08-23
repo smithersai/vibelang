@@ -3,14 +3,14 @@ import {
   composeSourceMaps,
   emitProjectDeclarations,
   type ProjectSource,
-} from "vibelang/language";
+} from "smthrs/language";
 import {
   decodeOptional,
   decodeResult,
   encodeOptional,
   encodeResult,
   type ValueCodec,
-} from "vibelang/runtime";
+} from "smthrs/runtime";
 import {
   AssetCompiler,
   ComptimeCompiler,
@@ -18,15 +18,15 @@ import {
   compileSourceAssetModules,
   type ComptimeIntrinsicResult,
   type SourceAssetCompilation,
-} from "vibelang/build";
-import { InMemoryTypeScriptCompiler } from "vibelang/agent";
+} from "smthrs/build";
+import { InMemoryTypeScriptCompiler } from "smthrs/agent";
 import {
   SqliteTurnJournal,
   flowTool,
   type FlowToolTarget,
-} from "vibelang/agent/bun";
-import { decodePlanArtifact } from "vibelang/durable/artifact";
-import { compileDurableSource } from "vibelang/durable/source-compiler";
+} from "smthrs/agent/bun";
+import { decodePlanArtifact } from "smthrs/durable/artifact";
+import { compileDurableSource } from "smthrs/durable/source-compiler";
 import {
   deploymentVerificationKey,
   generateDeploymentSigningKeyPair,
@@ -34,7 +34,7 @@ import {
   type DeploymentSigningKeyPair,
   type SignalNode,
   type TrustedDeploymentKey,
-} from "vibelang/durable";
+} from "smthrs/durable";
 import {
   DurableExecutor,
   DurableStore,
@@ -46,20 +46,20 @@ import {
   type SignalDeliveryResult,
   type SignalInboxState,
   type SignalPollResult,
-} from "vibelang/durable/bun";
+} from "smthrs/durable/bun";
 import {
   compilePortableModule,
   executePortableTypeScript,
   type PortableExecution,
   type PortableModuleIR,
-} from "vibelang/targets";
+} from "smthrs/targets";
 import {
   ValidationError,
   __vsSchema,
   type DerivedSchema,
   type SchemaDescriptor,
-} from "vibelang/schema-runtime";
-import { Chunk, Data, HashMap, Match, type Matcher } from "vibelang/data";
+} from "smthrs/schema-runtime";
+import { Chunk, Data, HashMap, Match, type Matcher } from "smthrs/data";
 import {
   Clock,
   Duration,
@@ -67,7 +67,7 @@ import {
   TestClock,
   type DurationValue,
   type PlatformServices,
-} from "vibelang/platform";
+} from "smthrs/platform";
 import {
   CancellationSource,
   Governor,
@@ -76,10 +76,10 @@ import {
   Stream,
   awaitAll,
   type Channel,
-} from "vibelang/concurrency";
-import type { TypedWorkerHandle } from "vibelang/concurrency/bun";
+} from "smthrs/concurrency";
+import type { TypedWorkerHandle } from "smthrs/concurrency/bun";
 
-const sources: readonly ProjectSource[] = [{ fileName: "main.vibe", source: "export const value = 1" }];
+const sources: readonly ProjectSource[] = [{ fileName: "main.sm", source: "export const value = 1" }];
 const project = compileProject(sources, { rootDir: "/virtual", outDir: "/virtual/out" });
 const declarations = emitProjectDeclarations([{ fileName: "/virtual/main.ts", code: "export const value = 1" }]);
 const map: string = composeSourceMaps(
@@ -99,15 +99,15 @@ decodeOptional(optionalWire, codec);
 declare const compiler: ComptimeCompiler;
 const comptime: Promise<ComptimeIntrinsicResult> = compileComptimeIntrinsics({
   compiler,
-  sources: { "main.vibe": 'import { comptime } from "vibelang:comptime"; comptime(1)' },
+  sources: { "main.sm": 'import { comptime } from "smithers:comptime"; comptime(1)' },
 });
 declare const assetCompiler: AssetCompiler;
 const sourceAssets: Promise<SourceAssetCompilation> = compileSourceAssetModules({
   compiler: assetCompiler,
-  sources: [{ fileName: "/virtual/main.vibe", source: "export const value = 1" }],
+  sources: [{ fileName: "/virtual/main.sm", source: "export const value = 1" }],
 });
 const durable = compileDurableSource(
-  'import { durable } from "vibelang:flows"; export const Flow = durable(function Flow(input: string) { return input })',
+  'import { durable } from "smithers:flows"; export const Flow = durable(function Flow(input: string) { return input })',
   { actions: [] },
 );
 if (durable.ok) decodePlanArtifact(durable.artifact);
@@ -144,7 +144,7 @@ const signalNewlyConsumed: boolean | undefined = signalPoll.kind === "terminal"
 void [SignalDeliveryConflictError, SignalDeliveryRejectedError];
 
 // The derived-schema runtime is the module every lowered
-// `comptime(Schema.derive<T>())` names as `vibelang/schema-runtime`, so an
+// `comptime(Schema.derive<T>())` names as `smthrs/schema-runtime`, so an
 // installed consumer must be able to resolve and type it exactly like this.
 interface ReleaseRow {
   readonly name: string;

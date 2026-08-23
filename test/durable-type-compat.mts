@@ -12,12 +12,12 @@ import {
   type PlanTemplate,
   type SignedDeploymentArtifact,
   type TrustedDeploymentKey,
-} from "vibelang/durable";
-import { compileDurableSource as compileDirectly } from "vibelang/durable/source-compiler";
+} from "smthrs/durable";
+import { compileDurableSource as compileDirectly } from "smthrs/durable/source-compiler";
 
 const options: DurableSourceCompileOptions = { actions: [] };
 const compiled = compileDurableSource(`
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 export const Identity = durable(function Identity(input: unknown) {
   return input
 })

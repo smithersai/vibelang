@@ -1,7 +1,7 @@
 import * as ts from "typescript-js";
 
 /**
- * Pre-parse recovery for VibeLang expression syntax stock TypeScript cannot
+ * Pre-parse recovery for Smithers expression syntax stock TypeScript cannot
  * parse in general expression positions.
  *
  * Strategy: detect expression-position `if`/`switch` value constructs with a
@@ -22,7 +22,7 @@ import * as ts from "typescript-js";
 
 export interface RecoveryDiagnostic {
   readonly severity: "error";
-  readonly code: "VIBE1707" | "VIBE1708" | "VIBE1709" | "VIBE1714" | "VIBE1715" | "VIBE1717";
+  readonly code: "SMITHERS1707" | "SMITHERS1708" | "SMITHERS1709" | "SMITHERS1714" | "SMITHERS1715" | "SMITHERS1717";
   readonly message: string;
   /** UTF-16 offset in the authored source. */
   readonly start: number;
@@ -112,7 +112,7 @@ export interface RecoveredSource {
 
 const MAX_ITERATIONS = 32;
 const MAX_CONSTRUCTS = 256;
-const PROBE_PREFIX = "const __vibe_probe = ";
+const PROBE_PREFIX = "const __smithers_probe = ";
 
 export interface RecoveryToken {
   readonly kind: ts.SyntaxKind;
@@ -157,6 +157,20 @@ export function scanTokens(source: string): readonly Token[] {
     previousKind = kind;
   }
   return tokens;
+}
+
+/**
+ * True when a token of `kind` can be the final token of an expression, so a
+ * following operator would have a left operand. This is exactly the negation
+ * of the regular-expression-allowed decision the scanner already makes: a `/`
+ * starts a regex precisely where no expression has been completed yet.
+ *
+ * `}` is deliberately *not* an expression terminator here. It closes a block
+ * far more often than it closes an object literal, and the retired-syntax pass
+ * relies on that to keep statement-form `try { } catch { }` legal.
+ */
+export function tokenEndsExpression(previous: ts.SyntaxKind | undefined): boolean {
+  return previous !== undefined && !regularExpressionAllowed(previous);
 }
 
 function regularExpressionAllowed(previous: ts.SyntaxKind | undefined): boolean {
@@ -235,7 +249,7 @@ interface LabeledValueDetails {
   /** Present for `label: for/while (...) { ... } else value` loop constructs. */
   readonly loop?: { readonly bodyEnd: number; readonly elseStart: number; readonly elseEnd: number };
   /** Set when the construct is recognizably a value form but unrecoverable. */
-  readonly malformed?: { readonly start: number; readonly code: "VIBE1714" | "VIBE1715"; readonly message: string };
+  readonly malformed?: { readonly start: number; readonly code: "SMITHERS1714" | "SMITHERS1715"; readonly message: string };
 }
 
 interface Candidate {
@@ -331,7 +345,7 @@ function scanLabeledValueBlock(
         end: tokens[closeIndex]!.end,
         malformed: {
           start: tokens[index]!.start,
-          code: "VIBE1714",
+          code: "SMITHERS1714",
           message: "a `break :label` inside a labeled value block needs one value expression ending at `;`, the block end, or a line break",
         },
       };
@@ -352,7 +366,7 @@ function scanLabeledValueBlock(
         end: tokens[closeIndex]!.end,
         malformed: {
           start: tokens[index]!.start,
-          code: "VIBE1714",
+          code: "SMITHERS1714",
           message: "a labeled value block may not shadow its own label inside the block",
         },
       };
@@ -421,7 +435,7 @@ function scanLabeledValueLoop(
         end: tokens[bodyClose]!.end,
         malformed: {
           start: tokens[index]!.start,
-          code: "VIBE1715",
+          code: "SMITHERS1715",
           message: "a `break :label` inside a value loop needs one value expression ending at `;`, the body end, or a line break",
         },
       };
@@ -439,7 +453,7 @@ function scanLabeledValueLoop(
       end: tokens[bodyClose]!.end,
       malformed: {
         start: tokens[labelIndex]!.start,
-        code: "VIBE1715",
+        code: "SMITHERS1715",
         message: "a value loop requires an `else` completion value for the path where no `break :label value` runs",
       },
     };
@@ -455,7 +469,7 @@ function scanLabeledValueLoop(
       end: tokens[bodyClose]!.end,
       malformed: {
         start: elseToken.start,
-        code: "VIBE1715",
+        code: "SMITHERS1715",
         message: "a value loop `else` needs one completion value expression",
       },
     };
@@ -538,7 +552,7 @@ function matchesCandidateKeyword(statement: ts.Statement, keyword: CandidateKeyw
  */
 function probeExtent(source: string, candidate: Candidate): Extent | undefined {
   const probe = PROBE_PREFIX + source.slice(candidate.start);
-  const file = ts.createSourceFile("__vibe_probe__.ts", probe, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const file = ts.createSourceFile("__smithers_probe__.ts", probe, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const control = file.statements[1];
   if (!control) return undefined;
   if (!matchesCandidateKeyword(control, candidate.keyword)) return undefined;
@@ -580,7 +594,7 @@ interface MarkerInfo {
 }
 
 interface Rejection {
-  readonly code: "VIBE1707" | "VIBE1708" | "VIBE1709" | "VIBE1714" | "VIBE1715";
+  readonly code: "SMITHERS1707" | "SMITHERS1708" | "SMITHERS1709" | "SMITHERS1714" | "SMITHERS1715";
   readonly message: string;
   /** Offset in the current iteration source. */
   readonly start: number;
@@ -619,7 +633,7 @@ class IdentifierAllocator {
   }
   allocate(purpose: string): string {
     for (;;) {
-      const candidate = `__vibe_${purpose}_${++this.counter}`;
+      const candidate = `__smithers_${purpose}_${++this.counter}`;
       if (!this.used.has(candidate)) {
         this.used.add(candidate);
         return candidate;
@@ -691,7 +705,7 @@ function statementListOf(node: ts.Node): readonly ts.Statement[] | undefined {
  * Recover the checked expression placements of one authored source. When the
  * source contains none, the authored text passes through byte-identically.
  */
-export function recoverVibeSyntax(authoredSource: string): RecoveredSource {
+export function recoverSmithersSyntax(authoredSource: string): RecoveredSource {
   const initialTokens = scanTokens(authoredSource);
   const allocator = new IdentifierAllocator(initialTokens);
 
@@ -736,7 +750,7 @@ export function recoverVibeSyntax(authoredSource: string): RecoveredSource {
     if (round >= MAX_ITERATIONS || plan.count > MAX_CONSTRUCTS) {
       diagnostics.push({
         severity: "error",
-        code: "VIBE1717",
+        code: "SMITHERS1717",
         message: `conditional-declaration recovery exceeded the ${MAX_CONSTRUCTS} construct / ${MAX_ITERATIONS} round bound of the checked POC`,
         start: 0,
       });
@@ -747,7 +761,7 @@ export function recoverVibeSyntax(authoredSource: string): RecoveredSource {
       for (const rejection of plan.rejections) {
         const start = anchorAt(rejection.start);
         conditionalRejectedAuthored.push(start);
-        diagnostics.push({ severity: "error", code: "VIBE1717", message: rejection.message, start });
+        diagnostics.push({ severity: "error", code: "SMITHERS1717", message: rejection.message, start });
       }
       break;
     }
@@ -771,7 +785,7 @@ export function recoverVibeSyntax(authoredSource: string): RecoveredSource {
     if (editRounds >= MAX_ITERATIONS || classificationRounds > MAX_CONSTRUCTS) {
       diagnostics.push({
         severity: "error",
-        code: "VIBE1707",
+        code: "SMITHERS1707",
         message: "expression construct recovery did not reach a fixed point within the POC iteration bound",
         start: 0,
       });
@@ -782,7 +796,7 @@ export function recoverVibeSyntax(authoredSource: string): RecoveredSource {
     if (result.candidateCount > MAX_CONSTRUCTS) {
       diagnostics.push({
         severity: "error",
-        code: "VIBE1707",
+        code: "SMITHERS1707",
         message: `this module exceeds the ${MAX_CONSTRUCTS} recovered expression-construct bound of the checked POC`,
         start: 0,
       });
@@ -818,7 +832,7 @@ export function recoverVibeSyntax(authoredSource: string): RecoveredSource {
           if (![...rejectedStarts].some((rejected) => Math.abs(rejected - start) < 4096)) {
             diagnostics.push({
               severity: "error",
-              code: "VIBE1714",
+              code: "SMITHERS1714",
               message: "a `break :label value` is only defined inside a labeled block used as a value",
               start: anchorAt(start),
             });
@@ -885,7 +899,7 @@ export function recoverVibeSyntax(authoredSource: string): RecoveredSource {
 
   // A refused conditional declaration keeps its authored text, so its `if`
   // keyword still exists in the derived source. Suppress the parser's grammar
-  // noise there without losing the specific VIBE1717 report.
+  // noise there without losing the specific SMITHERS1717 report.
   for (const authored of conditionalRejectedAuthored) {
     for (const run of authoredIndex) {
       if (authored >= run.authoredStart && authored < run.authoredStart + run.length) {
@@ -998,7 +1012,7 @@ function runIteration(
     const name = allocator.allocate("expr");
     if (name.length > markerLength) {
       rejectHere(
-        "VIBE1707",
+        "SMITHERS1707",
         `this ${candidate.keyword} expression is too short to recover in place`,
         candidate.start,
       );
@@ -1014,7 +1028,7 @@ function runIteration(
 
   const maskedSource = maskedCharacters.join("");
   const maskedFile = ts.createSourceFile(
-    "__vibe_masked__.ts",
+    "__smithers_masked__.ts",
     maskedSource,
     ts.ScriptTarget.Latest,
     true,
@@ -1063,7 +1077,7 @@ function runIteration(
     const node = markerNodes.get(name);
     if (!node) {
       rejectHere(
-        "VIBE1707",
+        "SMITHERS1707",
         `this ${info.extent.keyword} expression placement could not be recovered from the parse`,
         info.extent.start,
       );
@@ -1075,13 +1089,13 @@ function runIteration(
         // so a value-carrying break or loop else is unrecoverable.
         if (info.extent.label?.loop) {
           rejectHere(
-            "VIBE1715",
+            "SMITHERS1715",
             "a value loop with `break :label value` or `else` must be used as a value; a statement-position loop takes plain `break label`",
             info.extent.start,
           );
         } else {
           rejectHere(
-            "VIBE1714",
+            "SMITHERS1714",
             "a `break :label value` requires the labeled block to be used as a value; a statement-position labeled block must use plain `break label`",
             info.extent.start,
           );
@@ -1102,7 +1116,7 @@ function runIteration(
     }
     if (!info.extent.braced) {
       rejectHere(
-        "VIBE1709",
+        "SMITHERS1709",
         `a value ${info.extent.keyword} expression in a general expression position requires braced branches`,
         info.extent.start,
       );
@@ -1151,7 +1165,7 @@ function runIteration(
     if (overlapsRejected || hasParseNoise) {
       for (const info of group) {
         rejectHere(
-          "VIBE1707",
+          "SMITHERS1707",
           `this ${info.extent.keyword} expression shares a statement with unrecoverable syntax, so its evaluation order cannot be checked`,
           info.extent.start,
         );
@@ -1178,7 +1192,7 @@ function runIteration(
         edits: [],
         rejections: [
           {
-            code: "VIBE1707",
+            code: "SMITHERS1707",
             message: "overlapping expression recovery edits cannot preserve checked evaluation order",
             start: ordered[index]!.start,
           },
@@ -1241,7 +1255,7 @@ function locatePlacement(marker: ts.Identifier): Placement {
   for (;;) {
     const parent: ts.Node | undefined = node.parent;
     if (!parent) {
-      return { kind: "reject", code: "VIBE1707", message: "this expression placement has no recoverable containing statement" };
+      return { kind: "reject", code: "SMITHERS1707", message: "this expression placement has no recoverable containing statement" };
     }
     if (ts.isArrowFunction(parent) && parent.body === node && !ts.isBlock(node)) {
       return { kind: "arrow-wrap", body: node as ts.Expression };
@@ -1254,7 +1268,7 @@ function locatePlacement(marker: ts.Identifier): Placement {
         ts.isLabeledStatement(parent)) {
         return {
           kind: "reject",
-          code: "VIBE1707",
+          code: "SMITHERS1707",
           message: "a value expression inside a braceless branch or labeled statement cannot receive checked hoist statements; wrap the branch in braces",
         };
       }
@@ -1275,7 +1289,7 @@ function planHost(
     const index = siblings.indexOf(host);
     if (isDeferMarkerLike(siblings[index - 1])) {
       throw new Reject(
-        "VIBE1707",
+        "SMITHERS1707",
         "a value expression inside a defer/errdefer cleanup cannot receive hoisted statements without breaking cleanup registration",
       );
     }
@@ -1298,7 +1312,7 @@ function planHost(
   const units: EvaluationUnit[] = [];
   const assumptions: StableCalleeAssumption[] = [];
 
-  const reject = (message: string, code: Rejection["code"] = "VIBE1707"): never => {
+  const reject = (message: string, code: Rejection["code"] = "SMITHERS1707"): never => {
     throw new Reject(code, message);
   };
 
@@ -1320,7 +1334,7 @@ function planHost(
     }
     reject(
       "the callee evaluated ahead of this value expression cannot be proven order-stable; bind it to a checked local first",
-      "VIBE1708",
+      "SMITHERS1708",
     );
   };
 
@@ -1610,7 +1624,7 @@ function editsForHostPlan(
     if (units[index]!.kind === "construct") lastConstruct = index;
   }
   if (lastConstruct < 0) {
-    throw new Reject("VIBE1707", "internal: host plan lost its construct");
+    throw new Reject("SMITHERS1707", "internal: host plan lost its construct");
   }
 
   const hoistPieces: EditPiece[] = [];
@@ -1620,7 +1634,7 @@ function editsForHostPlan(
     const unit = units[index]!;
     if (unit.kind === "spread") {
       throw new Reject(
-        "VIBE1707",
+        "SMITHERS1707",
         "a spread evaluated before a value expression cannot be reordered without changing iteration timing",
       );
     }

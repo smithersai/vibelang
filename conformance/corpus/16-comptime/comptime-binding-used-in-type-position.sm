@@ -1,0 +1,11 @@
+import { comptime } from "smithers:comptime"
+
+const Config = comptime({ mode: "fast", retries: 3 })
+
+function describe(value: Config): string {
+  return value.mode + ":" + String(value.retries)
+}
+
+export function main(): string[] {
+  return [describe(Config)]
+}

@@ -1,0 +1,15 @@
+import { comptime as staticValue } from "smithers:comptime"
+import { native } from "smithers:native"
+
+const config = staticValue(
+  {
+    mode: "diagnostic",
+    enabled: true,
+  },
+)
+
+export function nativePinned(): number {
+  return eval(config.mode)
+}
+
+native(nativePinned)

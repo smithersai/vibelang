@@ -22,7 +22,7 @@ import type { ModelRequest, ModelResponse } from "../../src/agent/index.ts"
  * would make this suite red for reasons that have nothing to do with the
  * adapter. Everything else here runs against an injected fake client.
  */
-const LIVE = Boolean(process.env.VIBELANG_LIVE_MODEL) &&
+const LIVE = Boolean(process.env.SMITHERS_LIVE_MODEL) &&
   Boolean(process.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_AUTH_TOKEN)
 
 interface RecordedCall {
@@ -375,7 +375,7 @@ describe("AnthropicModel identity", () => {
 })
 
 describe("AnthropicModel live call", () => {
-  test.if(LIVE)("answers a real request (set VIBELANG_LIVE_MODEL=1 with a credential to run)", async () => {
+  test.if(LIVE)("answers a real request (set SMITHERS_LIVE_MODEL=1 with a credential to run)", async () => {
     const model = new AnthropicModel({ maxTokens: 64 })
     const response = await model.generate({
       turnId: "turn_live",

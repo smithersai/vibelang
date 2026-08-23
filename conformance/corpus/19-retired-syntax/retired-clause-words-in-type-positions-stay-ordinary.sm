@@ -1,0 +1,25 @@
+// The retired `throws` and `uses` clauses were suffixes on a complete return
+// type, and the retired `?T` grammar was a prefix on a type. Ordinary
+// TypeScript that spells those words as type names, or uses `?` for optional
+// chaining and optional members, must keep its TypeScript meaning.
+type uses = number
+
+interface Budget {
+  readonly throws: number
+  readonly retries?: number
+}
+
+function total(counts: Array<uses>): number {
+  return counts.length
+}
+
+export function main(): string[] {
+  const budget: Budget = { throws: 3 }
+  const nested: { inner?: Budget } = {}
+  return [
+    `${total([1, 2, 3])}`,
+    `${budget.throws}`,
+    `${budget.retries ?? 0}`,
+    `${nested.inner?.throws ?? -1}`,
+  ]
+}

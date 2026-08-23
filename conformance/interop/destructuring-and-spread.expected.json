@@ -1,0 +1,4 @@
+{
+  "title": "destructuring defaults, rest and spread, and object rest keep their evaluation semantics",
+  "stdout": ["default:3", "default:5", "10", "10 20-30", "1 {\"b\":2,\"c\":3}", "abc"]
+}

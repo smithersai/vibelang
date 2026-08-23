@@ -1,0 +1,7 @@
+{
+  "title": "an unrelated local function named comptime is never granted compiler authority and runs at runtime",
+  "expect": "output",
+  "stdout": [
+    "runtime!"
+  ]
+}

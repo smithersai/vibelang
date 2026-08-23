@@ -1,4 +1,4 @@
-module github.com/smithersai/vibelang
+module github.com/smithersai/smithers
 
 go 1.24.0
 

@@ -6,7 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 function run(args) {
-  return spawnSync(process.execPath, ["bin/vibe.js", ...args], {
+  return spawnSync(process.execPath, ["bin/smithers.js", ...args], {
     cwd: process.cwd(),
     encoding: "utf8",
   });
@@ -21,7 +21,7 @@ function json(result) {
 }
 
 function withWorkspace(body) {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-format-")));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-format-")));
   try {
     return body(root);
   } finally {
@@ -85,9 +85,9 @@ const FORMATTED = [
   "",
 ].join("\n");
 
-test("vibe format --check reports unformatted files and exits nonzero", () => {
+test("smithers format --check reports unformatted files and exits nonzero", () => {
   withWorkspace((root) => {
-    const file = join(root, "app.vibe");
+    const file = join(root, "app.sm");
     writeFileSync(file, UNFORMATTED);
     const result = run(["format", file, "--check", "--format", "json"]);
     assert.equal(result.status, 1, result.stderr);
@@ -99,9 +99,9 @@ test("vibe format --check reports unformatted files and exits nonzero", () => {
   });
 });
 
-test("vibe format rewrites in place, is idempotent, and restores VibeLang spellings", () => {
+test("smithers format rewrites in place, is idempotent, and restores Smithers spellings", () => {
   withWorkspace((root) => {
-    const file = join(root, "app.vibe");
+    const file = join(root, "app.sm");
     writeFileSync(file, UNFORMATTED);
 
     const first = run(["format", file, "--format", "json"]);
@@ -124,9 +124,9 @@ test("vibe format rewrites in place, is idempotent, and restores VibeLang spelli
   });
 });
 
-test("vibe format --stdout prints raw source and leaves the file alone", () => {
+test("smithers format --stdout prints raw source and leaves the file alone", () => {
   withWorkspace((root) => {
-    const file = join(root, "app.vibe");
+    const file = join(root, "app.sm");
     writeFileSync(file, UNFORMATTED);
     const result = run(["format", file, "--stdout"]);
     assert.equal(result.status, 0, result.stderr);
@@ -135,9 +135,9 @@ test("vibe format --stdout prints raw source and leaves the file alone", () => {
   });
 });
 
-test("vibe format --stdout --format json keeps the machine-readable stream uncontaminated", () => {
+test("smithers format --stdout --format json keeps the machine-readable stream uncontaminated", () => {
   withWorkspace((root) => {
-    const file = join(root, "app.vibe");
+    const file = join(root, "app.sm");
     writeFileSync(file, UNFORMATTED);
     const result = run(["format", file, "--stdout", "--format", "json"]);
     assert.equal(result.status, 0, result.stderr);
@@ -149,7 +149,7 @@ test("vibe format --stdout --format json keeps the machine-readable stream uncon
 });
 
 /**
- * The CLI's asset and portability pre-passes parse authored `.vibe` with stock
+ * The CLI's asset and portability pre-passes parse authored `.sm` with stock
  * TypeScript, so the end-to-end acceptance comparison uses the subset those
  * passes accept. The recovered expression constructs above are covered by the
  * frontend suite (`poc/src/language/format.test.ts`), which compiles the
@@ -172,9 +172,9 @@ const COMPILABLE_UNFORMATTED = [
   "",
 ].join("\n");
 
-test("vibe format preserves checked rows and acceptance for the formatted module", () => {
+test("smithers format preserves checked rows and acceptance for the formatted module", () => {
   withWorkspace((root) => {
-    const file = join(root, "app.vibe");
+    const file = join(root, "app.sm");
     writeFileSync(file, COMPILABLE_UNFORMATTED);
 
     const before = run(["inspect", file, "--format", "json"]);
@@ -204,9 +204,9 @@ test("vibe format preserves checked rows and acceptance for the formatted module
   });
 });
 
-test("vibe format never rewrites a module it cannot format soundly", () => {
+test("smithers format never rewrites a module it cannot format soundly", () => {
   withWorkspace((root) => {
-    const file = join(root, "broken.vibe");
+    const file = join(root, "broken.sm");
     const source = "export function broken(): number {\n  return (1 +\n}\n";
     writeFileSync(file, source);
     const result = run(["format", file, "--format", "json"]);
@@ -214,19 +214,19 @@ test("vibe format never rewrites a module it cannot format soundly", () => {
     const report = json(result);
     assert.equal(report.ok, false);
     assert.equal(report.files[0].ok, false);
-    assert.equal(report.files[0].diagnostics[0].code, "VIBE1901");
+    assert.equal(report.files[0].diagnostics[0].code, "SMITHERS1901");
     assert.ok(report.files[0].diagnostics[0].line > 0);
     assert.equal(readFileSync(file, "utf8"), source, "an unformattable module must stay byte-identical");
   });
 });
 
-test("vibe format rejects unsupported inputs and contradictory flags", () => {
+test("smithers format rejects unsupported inputs and contradictory flags", () => {
   withWorkspace((root) => {
     const jsx = join(root, "component.tsx");
     writeFileSync(jsx, "export const a = 1\n");
     const unsupported = run(["format", jsx, "--format", "json"]);
     assert.equal(unsupported.status, 2, unsupported.stderr);
-    assert.match(unsupported.stdout + unsupported.stderr, /VIBE_FORMAT_ERROR/);
+    assert.match(unsupported.stdout + unsupported.stderr, /SMITHERS_FORMAT_ERROR/);
 
     const contradictory = run(["format", jsx, "--check", "--stdout", "--format", "json"]);
     assert.equal(contradictory.status, 2, contradictory.stderr);
@@ -236,7 +236,7 @@ test("vibe format rejects unsupported inputs and contradictory flags", () => {
   });
 });
 
-test("vibe format also formats ordinary TypeScript sources", () => {
+test("smithers format also formats ordinary TypeScript sources", () => {
   withWorkspace((root) => {
     const file = join(root, "helper.ts");
     writeFileSync(file, "export function add(a:number,b:number):number{return a+b}\n");
@@ -249,7 +249,7 @@ test("vibe format also formats ordinary TypeScript sources", () => {
   });
 });
 
-test("vibe doctor reports the formatter and language server as implemented", () => {
+test("smithers doctor reports the formatter and language server as implemented", () => {
   const result = run(["doctor", "--format", "json"]);
   assert.equal(result.status, 0, result.stderr);
   const report = json(result);

@@ -1,0 +1,7 @@
+{
+  "title": "the local adapter the provenance-escape diagnostic prescribes really compiles, and the panic it owns is still observable at the far end",
+  "expect": "output",
+  "typescript": ["foreign.ts"],
+  "stdout": ["ok 41", "panic"],
+  "notes": "The acceptance control for a-foreign-callable-escaping-through-a-local-higher-order-call-is-rejected. SMITHERS1508's message prescribes exactly this remedy — 'wrap it in a local adapter that owns invocation and exposes an explicit Result/task contract' — so `parseOne` is that adapter and `applyTo` takes `(text: string) => Result<number, Panic>` rather than `(text: string) => number`. Two things are being guarded. First, that higher-order code is not refused in general: a rule that charged SMITHERS1508 for any callable argument would refuse this program too, and the corpus would have no way to tell an over-broad implementation from a correct one. Second, that the adapter is a real remedy rather than a way of hiding the channel — the second printed line is `panic`, produced by `applyTo(parseOne, \"oops\")`, so the RangeError that `parseIntegerUnchecked` throws still arrives at `main` as the distinguished checked panic case (specification/failures.mdx:111, Locked) after crossing the same higher-order boundary the refusal case was refused for. The difference between the two files is exactly the thing the rule is about: who owns the invocation."
+}

@@ -1,0 +1,10 @@
+{
+  "title": "defer and errdefer registrations interleave in one last-in-first-out order, and errdefer runs only on the error exit",
+  "expect": "output",
+  "stdout": [
+    "96",
+    "no entry for zoe",
+    "ada:defer-2,ada:defer-1,zoe:errdefer-2,zoe:defer-2,zoe:errdefer-1,zoe:defer-1"
+  ],
+  "notes": "specification/failures.mdx, 'Cleanup': 'defer runs when the containing scope exits. errdefer runs when a Result-returning scope exits through its error variant.' specification/control-flow.mdx, 'Deferred Cleanup': 'The language MUST define deterministic ordering for multiple deferred operations. The candidate is last-in, first-out, but this is not yet recorded as locked.' The ORDERING half of this case is therefore POC evidence, pinned so a deliberate change is visible rather than silent — the same caveat 10-defer/defer-runs-on-every-exit-in-reverse-order carries. What IS locked is the selection: the success run fires only the two defers, and the failure run fires all four, with each errdefer immediately before the defer registered under it."
+}

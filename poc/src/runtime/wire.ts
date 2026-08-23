@@ -34,7 +34,7 @@ export class ValueCodecError extends Error {
     this.name = "ValueCodecError";
   }
 }
-export interface ValueCodecError extends NominalError<"vibelang:ValueCodecError@1"> {}
+export interface ValueCodecError extends NominalError<"smithers:ValueCodecError@1"> {}
 
 function assertJson(
   value: unknown,

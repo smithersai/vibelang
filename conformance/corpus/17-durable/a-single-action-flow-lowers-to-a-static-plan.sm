@@ -1,0 +1,20 @@
+import { durable, Action } from "smithers:flows"
+
+// The paired positive control: the same durable shape written with the
+// compiler-owned specifier still lowers to a digest-pinned static Plan. The
+// specifier is the only thing that decides, so closing the retired spelling
+// must not cost the real one.
+class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { key: string }) => {
+  const found = Step.run({ key: input.key }).unwrap()
+  return { value: found.value }
+})
+
+export function main(): string[] {
+  return [
+    Flow.artifactSource,
+    Flow.plan.nodes.map((node) => node.kind).join(","),
+    Flow.plan.requirements.join(","),
+  ]
+}

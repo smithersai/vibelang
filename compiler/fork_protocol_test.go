@@ -31,8 +31,9 @@ func TestForkProtocolRejectsTrailingOrIncompleteResponse(t *testing.T) {
 			}
 			backend := &forkCompiler{executable: executable}
 			_, err := backend.Compile(context.Background(), CompileRequest{
-				RootNames: []string{"main.vibe"},
-				Files:     []SourceFile{{Path: "main.vibe", Kind: FileKindVibe, Text: "export {};\n"}},
+				RootNames: []string{"main.sm"},
+				Files:     []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: "export {};\n"}},
+				Lowering:  LoweringIdentity,
 			})
 			if !errors.Is(err, ErrForkProtocol) {
 				t.Fatalf("expected ErrForkProtocol, got %v", err)

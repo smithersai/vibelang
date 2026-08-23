@@ -1,0 +1,12 @@
+{
+  "title": "a relative .sm import that is absent from the supplied project fails closed",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1801",
+      "line": 1,
+      "column": 28
+    }
+  ],
+  "notes": "poc/src/language/README.md: 'SMITHERS1801: a relative .sm import is absent from the supplied project.' The underlying obligation is that failure and requirement rows are computed over the whole supplied module set (specification/requirements.mdx, 'Satisfaction': 'When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error') \u2014 a module the compiler cannot see means the closure is not known, so analysis must fail closed rather than assume an empty row. The import here is type-only so the case reports exactly the missing-module rule and not a foreign-value cascade."
+}

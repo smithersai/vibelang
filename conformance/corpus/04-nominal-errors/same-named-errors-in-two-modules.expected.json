@@ -1,0 +1,10 @@
+{
+  "title": "two modules may declare same-named Errors; each keeps its own nominal identity end to end",
+  "expect": "output",
+  "stdout": [
+    "directory has no zoe",
+    "payments has no zoe",
+    "local error is a payments Missing: false"
+  ],
+  "modules": ["same-named-errors-in-two-modules.mod.sm"]
+}

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   Action,
+  compileDurableSource,
   CoordinatorCrash,
   Deployment,
   DurableActionFailure,
@@ -16,6 +17,8 @@ import {
   type CachedSuccessCommit,
   type ClaimResult,
   type FinishExecutionResult,
+  type QueueNode,
+  type SignalNode,
 } from "./index.ts";
 
 type StoreCommitPoint =
@@ -31,7 +34,12 @@ type StoreCommitPoint =
   | "completeExecution"
   | "failExecution"
   | "cancelExecution"
-  | "timeoutNode";
+  | "timeoutNode"
+  | "enqueue"
+  | "pollQueue"
+  | "deliverBroadcast"
+  | "pollSignal"
+  | "migrateExecution";
 
 /**
  * Models a process disappearing after SQLite has returned from COMMIT but
@@ -62,7 +70,7 @@ const crashAfterCommit = (
 };
 
 const temporaryDatabase = async (body: (filename: string) => Promise<void>): Promise<void> => {
-  const directory = mkdtempSync(join(tmpdir(), "vibe-durable-crash-"));
+  const directory = mkdtempSync(join(tmpdir(), "smithers-durable-crash-"));
   const filename = join(directory, "state.sqlite");
   try {
     await body(filename);
@@ -358,5 +366,149 @@ test("branch skip, deadline fencing, cancellation, and execution failure commits
     expect(failureStore.getExecution("fail").status).toBe("failed");
     failureStore.close();
     resumedStore.close();
+  });
+});
+
+/**
+ * The durable-queue and broadcast transitions added to the matrix. Each is one
+ * `BEGIN IMMEDIATE` transaction that co-commits state and journal evidence, so
+ * a process that dies immediately after COMMIT must find exactly that state on
+ * restart — never a second enqueue, a second consume, or a second delivery.
+ */
+test("durable queue and broadcast commits are restart-visible exactly once", async () => {
+  await temporaryDatabase(async (filename) => {
+    const queueFlow = compileDurableSource(`
+      import { durable, dequeue } from "smithers:flows"
+      export const Q = durable(function Q(input: { worker: string }) {
+        return dequeue<{ jobId: string }>("crash.jobs")
+      })
+    `, { fileName: "flows/crash-queue.sm.ts", flowId: "test/crash/Queue", actions: [] });
+    if (!queueFlow.ok) throw new Error(JSON.stringify(queueFlow.diagnostics));
+    const queueDeployment = Deployment.build({ id: "crash-queue", flow: queueFlow.flow, pools: [] });
+    const queueNode = queueFlow.plan.nodes[0] as QueueNode;
+    const queueExpectation = {
+      planDigest: queueFlow.plan.digest,
+      queueId: queueNode.queueId,
+      queueContractDigest: queueNode.queueContractDigest,
+    };
+    const enqueueRequest = { queueId: "crash.jobs", idempotencyKey: "k-1", item: { jobId: "J1" } };
+    const enqueueExpectation = {
+      queueId: queueNode.queueId,
+      queueContractDigest: queueNode.queueContractDigest,
+    };
+
+    // enqueue: the item and its identity commit together.
+    const enqueueStore = new DurableStore(filename);
+    enqueueStore.initializeExecution("q-run", queueFlow.plan, queueDeployment.manifest, { worker: "w" });
+    expect(() => crashAfterCommit(enqueueStore, "enqueue").enqueue(
+      enqueueRequest,
+      enqueueExpectation,
+      { unsafeLocalDelivery: true },
+    )).toThrow(CoordinatorCrash);
+    enqueueStore.close();
+
+    const afterEnqueue = new DurableStore(filename);
+    expect(afterEnqueue.database.query("SELECT COUNT(*) AS count FROM durable_queue_items").get())
+      .toEqual({ count: 1 });
+    // The producer's retry adopts the committed item instead of adding one.
+    expect(afterEnqueue.enqueue(enqueueRequest, enqueueExpectation, { unsafeLocalDelivery: true }).duplicate)
+      .toBe(true);
+    expect(afterEnqueue.database.query("SELECT COUNT(*) AS count FROM durable_queue_items").get())
+      .toEqual({ count: 1 });
+
+    // pollQueue: item state, node success, and journal evidence are one commit.
+    expect(() => crashAfterCommit(afterEnqueue, "pollQueue", (value) =>
+      (value as { kind?: unknown }).kind === "terminal").pollQueue("q-run", queueNode.id, queueExpectation))
+      .toThrow(CoordinatorCrash);
+    afterEnqueue.close();
+
+    const afterConsume = new DurableStore(filename);
+    expect(afterConsume.getNode("q-run", queueNode.id).exit).toEqual({
+      kind: "success",
+      value: { jobId: "J1" },
+      adoptedFrom: null,
+    });
+    const replayed = afterConsume.pollQueue("q-run", queueNode.id, queueExpectation);
+    expect(replayed).toMatchObject({ kind: "terminal", newlyConsumed: false });
+    expect(afterConsume.journal("q-run").filter((event) => event.type === "queue_item_consumed"))
+      .toHaveLength(1);
+    afterConsume.close();
+
+    const broadcastFlow = compileDurableSource(`
+      import { durable, waitBroadcast } from "smithers:flows"
+      export const B = durable(function B(input: { id: string }) {
+        return waitBroadcast<{ version: string }>("crash.rolled")
+      })
+    `, { fileName: "flows/crash-broadcast.sm.ts", flowId: "test/crash/Broadcast", actions: [] });
+    if (!broadcastFlow.ok) throw new Error(JSON.stringify(broadcastFlow.diagnostics));
+    const broadcastDeployment = Deployment.build({
+      id: "crash-broadcast",
+      flow: broadcastFlow.flow,
+      pools: [],
+    });
+    const signalNode = broadcastFlow.plan.nodes[0] as SignalNode;
+    const signalExpectation = {
+      planDigest: broadcastFlow.plan.digest,
+      signalId: signalNode.signalId,
+      signalContractDigest: signalNode.signalContractDigest,
+    };
+
+    // The subscription watermark is itself a committed boundary.
+    const subscribeStore = new DurableStore(filename);
+    subscribeStore.initializeExecution("b-run", broadcastFlow.plan, broadcastDeployment.manifest, { id: "a" });
+    expect(() => crashAfterCommit(subscribeStore, "pollSignal", (value) =>
+      (value as { newlyWaiting?: unknown }).newlyWaiting === true)
+      .pollSignal("b-run", signalNode.id, signalExpectation)).toThrow(CoordinatorCrash);
+    subscribeStore.close();
+
+    const afterSubscribe = new DurableStore(filename);
+    expect(afterSubscribe.database.query(
+      "SELECT watermark FROM durable_broadcast_subscriptions WHERE execution_id='b-run'",
+    ).get()).toEqual({ watermark: 0 });
+    // Re-polling does not re-subscribe at a new watermark.
+    expect(afterSubscribe.pollSignal("b-run", signalNode.id, signalExpectation))
+      .toEqual({ kind: "waiting", newlyWaiting: false });
+
+    const broadcastRequest = {
+      signalId: "crash.rolled",
+      idempotencyKey: "d-1",
+      payload: { version: "1.0" },
+    };
+    const broadcastExpectation = {
+      signalId: signalNode.signalId,
+      signalContractDigest: signalNode.signalContractDigest,
+    };
+    expect(() => crashAfterCommit(afterSubscribe, "deliverBroadcast").deliverBroadcast(
+      broadcastRequest,
+      broadcastExpectation,
+      { unsafeLocalDelivery: true },
+    )).toThrow(CoordinatorCrash);
+    afterSubscribe.close();
+
+    const afterDeliver = new DurableStore(filename);
+    expect(afterDeliver.database.query("SELECT COUNT(*) AS count FROM durable_broadcast_deliveries").get())
+      .toEqual({ count: 1 });
+    expect(afterDeliver.deliverBroadcast(broadcastRequest, broadcastExpectation, { unsafeLocalDelivery: true })
+      .duplicate).toBe(true);
+
+    // The per-waiter consumption record and the node success are one commit.
+    expect(() => crashAfterCommit(afterDeliver, "pollSignal", (value) =>
+      (value as { newlyConsumed?: unknown }).newlyConsumed === true)
+      .pollSignal("b-run", signalNode.id, signalExpectation)).toThrow(CoordinatorCrash);
+    afterDeliver.close();
+
+    const afterAdopt = new DurableStore(filename);
+    expect(afterAdopt.getNode("b-run", signalNode.id).exit).toEqual({
+      kind: "success",
+      value: { version: "1.0" },
+      adoptedFrom: null,
+    });
+    expect(afterAdopt.pollSignal("b-run", signalNode.id, signalExpectation))
+      .toMatchObject({ kind: "terminal", newlyConsumed: false });
+    expect(afterAdopt.database.query("SELECT COUNT(*) AS count FROM durable_broadcast_consumptions").get())
+      .toEqual({ count: 1 });
+    expect(afterAdopt.journal("b-run").filter((event) => event.type === "broadcast_consumed"))
+      .toHaveLength(1);
+    afterAdopt.close();
   });
 });

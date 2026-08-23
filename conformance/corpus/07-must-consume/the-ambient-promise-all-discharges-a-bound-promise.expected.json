@@ -1,0 +1,8 @@
+{
+  "title": "the ambient Promise.all still discharges a started Promise that has a name",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "docs/DECISIONS.md (Locked, Concurrency): a started Promise is consumed by `await`, a `return`, or a recognized combinator. The over-correction guard for 07-must-consume/a-shadowed-promise-namespace-does-not-discharge, and deliberately the BOUND form, which is the form the shadowing case uses: the two programs differ only in which `Promise` the call resolves to, so a resolution rule that refused the ambient combinator for a named Promise would turn this one red while leaving the shadowing case green. 08-promise-chaining/promise-all-is-a-recognized-combinator pins the unbound form, and 08-promise-chaining/result-all-collects-across-concurrent-work pins the two channels composed."
+}

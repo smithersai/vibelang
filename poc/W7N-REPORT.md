@@ -1,15 +1,17 @@
 # W7-N Integration Report
 
+> **Historical record.** This report describes work completed before the 2026-08-23 specification reduction. Some features it covers — the expression-form grammar, `defer`/`errdefer`, `Optional<T>`, `.unwrap()`, and the portable/native targets — are no longer part of the language. See `docs/DECISIONS.md`.
+
 ## Agent export partition
 
-`vibelang/agent` is Node-safe. It exports the coding agent, compiler, sandbox,
+`smthrs/agent` is Node-safe. It exports the coding agent, compiler, sandbox,
 bindings, fakes (including `MemoryTurnJournal`), identity/model/prompt helpers,
 Action tools, the platform-neutral Flow contract helpers, callable-surface
 helpers, and shared agent types. Its built module has 46 runtime exports and no
 transitive `bun:sqlite` dependency.
 
-`vibelang/agent/bun` is the complete Bun surface. It re-exports every symbol
-from `vibelang/agent` and adds the symbols that moved out of the Node entrypoint:
+`smthrs/agent/bun` is the complete Bun surface. It re-exports every symbol
+from `smthrs/agent` and adds the symbols that moved out of the Node entrypoint:
 
 - `SqliteTurnJournal`, `TurnJournalIntegrityError`, and
   `TurnJournalDivergenceError`
@@ -22,7 +24,7 @@ The Bun surface retains all 50 runtime exports from the former aggregate agent
 entrypoint. The platform-neutral `FlowToolContractError`,
 `DurableFlowInterrupted`, `flowContractFromPlan`, `flowExecutionId`,
 `DurableFlowBinding`, `DeployedFlowExecutor`, `FlowToolTarget`, and
-`FlowToolOptions` remain on `vibelang/agent` and are consequently also available
+`FlowToolOptions` remain on `smthrs/agent` and are consequently also available
 from the Bun superset.
 
 The new package export is:
@@ -43,7 +45,7 @@ import the Bun aggregate entrypoint.
    the executor-dependent `flowTool` implementation into `flow-tools.ts`.
    `tools.ts`, `sandbox.ts`, and `coding-agent.ts` are now transitively Node-safe.
 2. Added the exact declaration-only `NominalError<Identity>` unique-symbol brand
-   to `scripts/fork-e2e/vibe-runtime.ts`.
+   to `scripts/fork-e2e/smithers-runtime.ts`.
 3. Replaced the shipped terminal API's `NodeJS.ReadableStream` and
    `NodeJS.WritableStream` references with local structural input/output
    interfaces covering `on`, `write`, `isTTY`, `columns`, and `rows`. The emitted
@@ -67,10 +69,10 @@ import the Bun aggregate entrypoint.
 - `node --test test/fork-e2e.test.mjs test/package-exports.test.mjs`: 10 pass,
   0 fail.
 - `node --check scripts/verify-pack.mjs`: pass.
-- `import("vibelang/agent")` under Node: pass, 46 runtime exports.
+- `import("smthrs/agent")` under Node: pass, 46 runtime exports.
 - Direct Node import of `poc/dist/agent/index.js`: pass, 46 runtime exports.
-- `import("vibelang/agent/bun")` under Bun: pass, complete 50-export surface.
-- `import("vibelang/agent/bun")` under Node: fails closed with
+- `import("smthrs/agent/bun")` under Bun: pass, complete 50-export surface.
+- `import("smthrs/agent/bun")` under Node: fails closed with
   `ERR_UNSUPPORTED_ESM_URL_SCHEME`, as intended for the explicit Bun subpath.
 
 `npm run verify:pack` was not run, as directed.

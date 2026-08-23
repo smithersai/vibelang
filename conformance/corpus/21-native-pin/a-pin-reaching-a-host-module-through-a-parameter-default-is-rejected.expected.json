@@ -1,0 +1,18 @@
+{
+  "title": "a host-module edge in a parameter default is part of the pinned function's graph",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 2,
+      "column": 30
+    },
+    {
+      "code": "SMITHERS3001",
+      "line": 13,
+      "column": 1,
+      "messageContains": "is required through a-pin-reaching-a-host-module-through-a-parameter-default-is-rejected.sm#pinned"
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Native Pin': the assertion is over the COMPLETE TRANSITIVE GRAPH, so a requirement reached through another module is the same requirement, and 'The diagnostic SHOULD show the dependency path that introduced the requirement.' `Module<\"node:fs\">` is poc/src/targets/classify.ts's concrete spelling of the JavaScript-host dependence that page names, and `blocksNativePin` refuses `TypeScript`, `Module<...>` and `Host<...>` together. `messageContains` pins the route because a pin refused with an empty route satisfies a code-and-position expectation exactly. The SMITHERS1510 companion lands in the auxiliary module, at the edge that reaches `node:fs`, because a re-export runs the target module's initializer exactly as an import does; it is declared rather than filtered because a cascade the language really does produce is part of the contract (conformance/README.md). No laundering module here: the `node:fs` import is on line 2 of the case itself. What hides the edge is the POSITION of the reference \u2014 a default expression, which executes inside `pinned` on every call that omits the argument, and which a body-only walk never visits. Both backends refuse it today, so this case pins current behaviour on both rather than reproducing a live one-sided defect; the historical defect is the reference's, and it could not be reproduced here because reverting poc/src/targets/classify.ts is another lane's work."
+}

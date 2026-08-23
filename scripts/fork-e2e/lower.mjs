@@ -14,7 +14,7 @@
  *     rootDir: string,               // virtual project root of the authored files
  *     outDir: string,                // virtual output root used for import rewriting
  *     runtimeImport: string,         // specifier for the generated runtime helper import
- *     sources: [{ fileName, source }],        // authored `.vibe` modules
+ *     sources: [{ fileName, source }],        // authored `.sm` modules
  *     typeScriptSources: [{ fileName, source }] // checker-visible foreign `.ts` modules
  *   }
  *

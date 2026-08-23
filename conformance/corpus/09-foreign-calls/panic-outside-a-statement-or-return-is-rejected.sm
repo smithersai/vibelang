@@ -1,0 +1,15 @@
+import { Panic, panic } from "smithers:exceptions"
+
+// `panic(...)` is an EXIT, not a value: it leaves the function through the
+// distinguished panic channel and produces nothing for the expression around it
+// to consume. Written where a value is expected it is refused rather than
+// lowered, because a lowering that guessed would have to invent what the
+// conditional evaluates to on the arm that never returns.
+function force(key: string): Result<string, Panic> {
+  const value = key === "ada" ? key : panic(`no entry for ${key}`)
+  return value
+}
+
+export function main(): string[] {
+  return [force("ada").match({ ok: (value) => value, error: (error) => `panic: ${error.message}` })]
+}

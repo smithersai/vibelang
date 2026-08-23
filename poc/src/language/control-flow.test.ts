@@ -5,12 +5,12 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import * as ts from "typescript-js";
 import { collectControlFlowExpressionPlans } from "./control-flow.ts";
-import { compileVibe } from "./compile.ts";
+import { compileSmithers } from "./compile.ts";
 import { checkEmittedTypeScript } from "./validate.ts";
 import { __vsInspectResult } from "../runtime/index.ts";
 
 const collect = (source: string) => {
-  const file = ts.createSourceFile("control.vibe", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const file = ts.createSourceFile("control.sm", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   return { file, plans: collectControlFlowExpressionPlans(source, file) };
 };
 
@@ -91,9 +91,9 @@ test("value control flow fails closed on incomplete normal exits", () => {
   `);
   expect(plans.byHost.size).toBe(0);
   expect(plans.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
-    "VIBE1705",
-    "VIBE1705",
-    "VIBE1705",
+    "SMITHERS1705",
+    "SMITHERS1705",
+    "SMITHERS1705",
   ]);
   expect(plans.diagnostics.map((diagnostic) => diagnostic.message).join("\n")).toContain("else branch");
   expect(plans.diagnostics.map((diagnostic) => diagnostic.message).join("\n")).toContain("default clause");
@@ -115,12 +115,12 @@ test("ordinary statement control flow is never reclassified", () => {
   expect(plans.byHost.size).toBe(0);
   expect(plans.diagnostics).toEqual([]);
   expect(plans.recoveredKeywordStarts.size).toBe(0);
-  expect(compileVibe(`
+  expect(compileSmithers(`
     function automaticSemicolon(active: boolean): void {
       return
       if (active) { 1 } else { 2 }
     }
-  `).analysis.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1702")).toEqual([]);
+  `).analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1702")).toEqual([]);
 });
 
 test("rejects jumps and fallthrough which can bypass an expression value", () => {
@@ -148,9 +148,9 @@ test("rejects jumps and fallthrough which can bypass an expression value", () =>
     }
   `).plans;
   expect(unsafe.byHost.size).toBe(0);
-  expect(unsafe.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1706"))
+  expect(unsafe.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1706"))
     .toHaveLength(2);
-  expect(unsafe.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1705"))
+  expect(unsafe.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1705"))
     .toHaveLength(1);
 
   const contained = collect(`
@@ -244,27 +244,27 @@ test("checked if and switch plans execute once and preserve outer Result exits",
       return value
     }
   `;
-  const compiled = compileVibe(source, {
-    fileName: `${import.meta.dir}/control-execution.vibe`,
+  const compiled = compileSmithers(source, {
+    fileName: `${import.meta.dir}/control-execution.sm`,
     outputFileName: `${import.meta.dir}/control-execution.generated.ts`,
-    sourceName: "control-execution.vibe",
+    sourceName: "control-execution.sm",
     runtimeImport: "../runtime/index.ts",
   });
   expect(compiled.analysis.diagnostics).toEqual([]);
   expect(checkEmittedTypeScript(compiled.code, `${import.meta.dir}/control-execution.generated.ts`)
     .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)).toEqual([]);
-  expect(compiled.code).toContain("let __vibe_if_value_");
-  expect(compiled.code).toContain("let __vibe_switch_value_");
+  expect(compiled.code).toContain("let __smithers_if_value_");
+  expect(compiled.code).toContain("let __smithers_switch_value_");
   expect(compiled.code).toContain("return __vsResultFailure");
 
-  const executable = compileVibe(source, {
-    fileName: `${import.meta.dir}/control-execution.vibe`,
+  const executable = compileSmithers(source, {
+    fileName: `${import.meta.dir}/control-execution.sm`,
     outputFileName: `${import.meta.dir}/control-execution.generated.ts`,
-    sourceName: "control-execution.vibe",
+    sourceName: "control-execution.sm",
     runtimeImport: pathToFileURL(`${import.meta.dir}/../runtime/index.ts`).href,
   });
   const javascript = new Bun.Transpiler({ loader: "ts", target: "bun" }).transformSync(executable.code);
-  const directory = await mkdtemp(join(tmpdir(), "vibe-control-flow-"));
+  const directory = await mkdtemp(join(tmpdir(), "smithers-control-flow-"));
   try {
     const modulePath = join(directory, "control.mjs");
     await writeFile(modulePath, javascript);
@@ -299,7 +299,7 @@ test("checked if and switch plans execute once and preserve outer Result exits",
 });
 
 test("raw Result/Promise branch values fail closed until ownership is in the shared IR", () => {
-  const analysis = compileVibe(`
+  const analysis = compileSmithers(`
     declare function result(): Result<number, Error>
     declare function task(): Promise<number>
     function resultValue(flag: boolean) { return if (flag) result() else result() }
@@ -311,19 +311,19 @@ test("raw Result/Promise branch values fail closed until ownership is in the sha
       }
     }
   `).analysis;
-  expect(analysis.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1706")).toHaveLength(5);
-  expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1706" &&
+  expect(analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1706")).toHaveLength(5);
+  expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1706" &&
     diagnostic.message.includes("case labels"))).toBeTrue();
 });
 
 test("join temporaries preserve authored and inferred branch types", () => {
-  const annotated = compileVibe(`
+  const annotated = compileSmithers(`
     function mismatch(flag: boolean): number {
       const value: number = if (flag) { 1 } else { "wrong" }
       return value
     }
   `, {
-    fileName: "/virtual/annotated-control.vibe",
+    fileName: "/virtual/annotated-control.sm",
     outputFileName: "/virtual/annotated-control.ts",
   });
   expect(annotated.code).toContain(": number;");
@@ -332,22 +332,22 @@ test("join temporaries preserve authored and inferred branch types", () => {
     .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")))
     .toEqual(["Type 'string' is not assignable to type 'number'."]);
 
-  const inferred = compileVibe(`
+  const inferred = compileSmithers(`
     function inferred(flag: boolean) {
       const value = if (flag) { 1 } else { "two" }
       return value
     }
   `, {
-    fileName: "/virtual/inferred-control.vibe",
+    fileName: "/virtual/inferred-control.sm",
     outputFileName: "/virtual/inferred-control.ts",
   });
-  expect(inferred.code).toMatch(/let __vibe_if_value_\d+: 1 \| "two";/);
+  expect(inferred.code).toMatch(/let __smithers_if_value_\d+: 1 \| "two";/);
   expect(checkEmittedTypeScript(inferred.code, "/virtual/inferred-control.ts")
     .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)).toEqual([]);
 });
 
 test("branch-local nominal types fail closed instead of leaking into a generated join", () => {
-  const compiled = compileVibe(`
+  const compiled = compileSmithers(`
     function local(flag: boolean) {
       const value = if (flag) {
         class Left { readonly side = "left" }
@@ -359,12 +359,83 @@ test("branch-local nominal types fail closed instead of leaking into a generated
       return value
     }
   `, {
-    fileName: "/virtual/local-control.vibe",
+    fileName: "/virtual/local-control.sm",
     outputFileName: "/virtual/local-control.ts",
   });
-  expect(compiled.analysis.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1706" &&
+  expect(compiled.analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1706" &&
     diagnostic.message.includes("type declared inside"))).toHaveLength(2);
-  expect(compiled.code).toMatch(/let __vibe_if_value_\d+: unknown;/);
+  expect(compiled.code).toMatch(/let __smithers_if_value_\d+: unknown;/);
   expect(checkEmittedTypeScript(compiled.code, "/virtual/local-control.ts")
     .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)).toEqual([]);
+});
+
+test("switch clauses are colon-delimited and there is no arrow-arm switch grammar", () => {
+  const codes = (source: string) =>
+    compileSmithers(source).analysis.diagnostics.map((entry) => `${entry.code}@${entry.line}:${entry.column}`);
+
+  // control-flow.mdx, "Switch": switch syntax MUST use the same `switch`,
+  // `case`, `default`, and colon-delimited clauses as TypeScript, and Smithers
+  // MUST NOT introduce a separate arrow-arm switch grammar. TypeScript's parser
+  // recovers `default => v` by discarding the arrow, so nothing survives in the
+  // tree; the clause itself has to be re-read to hold the MUST NOT.
+  expect(codes(`export function main(): string[] {
+  const kind: string = "zzz"
+  const label = switch (kind) {
+    default => "other"
+  }
+  return [label]
+}`)).toEqual(["SMITHERS1000@4:13"]);
+
+  // The two clause grammars must not compose inside one switch either, which is
+  // what separates a second grammar from lenient error recovery.
+  expect(codes(`export function main(): string[] {
+  const kind: string = "a"
+  const label = switch (kind) {
+    case "a" => "alpha"
+    default: "other"
+  }
+  return [label]
+}`)).toEqual(["SMITHERS1000@4:14"]);
+
+  // Statement position is the same grammar: rejected at the arrow, exactly once
+  // rather than once from the clause and again from the parser's own message.
+  expect(codes(`export function main(): string[] {
+  const kind: string = "zzz"
+  let out = "none"
+  switch (kind) {
+    default => out = "other"
+  }
+  return [out]
+}`)).toEqual(["SMITHERS1000@5:13"]);
+
+  // A clause with no separator at all is the same defect. It used to depend on
+  // DISTANCE: the parser's own "':' expected" is suppressed within 48
+  // characters of a recovered `switch` expression host, so this first clause
+  // compiled and lowered with an invented colon while the identical shape one
+  // clause further down was rejected. Both positions now report.
+  expect(codes(`export function main(): string[] {
+  const kind: string = "a"
+  const label = switch (kind) {
+    case "a" "alpha"
+    default: "other"
+  }
+  return [label]
+}`)).toEqual(["SMITHERS1000@4:14"]);
+
+  // Over-rejection is its own bug. The required colon form still compiles, an
+  // arrow FUNCTION inside a clause value is ordinary code, an arrow inside a
+  // comment is not a clause separator, and a case label that contains its own
+  // colon still ends at the clause colon.
+  expect(codes(`export function main(): string[] {
+  const kind: string = "a"
+  const flag = true
+  const label = switch (kind) {
+    case "a": (() => "alpha")()
+    case "b" /* => */: "beta"
+    case flag ? "c" : "d": "gamma"
+    case "e" as string: "epsilon"
+    default: "other"
+  }
+  return [label]
+}`)).toEqual([]);
 });

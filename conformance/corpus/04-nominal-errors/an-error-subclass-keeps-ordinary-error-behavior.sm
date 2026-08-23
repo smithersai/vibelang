@@ -1,0 +1,19 @@
+export class NotFound extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+export class Deleted extends NotFound {}
+
+export function main(): string[] {
+  const missing = new NotFound("ada")
+  const gone = new Deleted("zoe")
+  return [
+    `${missing instanceof Error}`,
+    `${missing instanceof NotFound}`,
+    `${gone instanceof NotFound}`,
+    `${gone instanceof Error}`,
+    missing.message,
+    missing.name,
+    typeof missing.stack,
+  ]
+}

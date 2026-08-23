@@ -1,6 +1,6 @@
 /**
  * Platform-neutral durable source compilation and Plan artifact validation.
- * Execution and provider installation remain on `vibelang/durable/bun` because
+ * Execution and provider installation remain on `smthrs/durable/bun` because
  * the POC coordinator persists through Bun's SQLite runtime.
  */
 export {
@@ -48,7 +48,7 @@ export {
 
 /**
  * Canonical Ed25519 deployment envelopes are Node-safe. The coordinator gate
- * itself remains on `vibelang/durable/bun` with the SQLite executor.
+ * itself remains on `smthrs/durable/bun` with the SQLite executor.
  */
 export {
   authenticateDeployment,

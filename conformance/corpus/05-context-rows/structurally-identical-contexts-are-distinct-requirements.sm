@@ -1,0 +1,20 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Reader extends Context {
+  abstract read(key: string): string
+}
+
+// Structurally identical to Reader, and still a different requirement: a
+// capability's identity is nominal, not shape-based.
+abstract class Writer extends Context {
+  abstract read(key: string): string
+}
+
+function readBoth(key: string): string {
+  return `${Reader.context().read(key)}/${Writer.context().read(key)}`
+}
+
+const service: Reader = { read: (key) => key.toUpperCase() }
+
+export const lines = Layer.provide(Layer.succeed(Reader, service), () => [readBoth("ada")])

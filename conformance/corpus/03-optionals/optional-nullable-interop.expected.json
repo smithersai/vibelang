@@ -1,0 +1,9 @@
+{
+  "title": "Optional.fromNullable and optional.toNullable are the explicit interop operations for T | null | undefined",
+  "expect": "output",
+  "stdout": [
+    "present Ada Lovelace",
+    "absent Guest",
+    "toNullable null"
+  ]
+}

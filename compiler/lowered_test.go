@@ -122,14 +122,14 @@ func validExternalRequest() CompileRequest {
 		{{genCol: 0, srcLine: 0, srcCol: 0}, {genCol: 8, srcLine: 0, srcCol: 6}},
 	})
 	return CompileRequest{
-		RootNames: []string{"main.vibe"},
+		RootNames: []string{"main.sm"},
 		Files: []SourceFile{{
-			Path: "main.vibe",
-			Kind: FileKindVibe,
+			Path: "main.sm",
+			Kind: FileKindSmithers,
 			Text: authored,
 			Lowered: &LoweredSource{
 				Text:      lowered,
-				SourceMap: `{"version":3,"sources":["main.vibe"],"names":[],"mappings":"` + mappings + `"}`,
+				SourceMap: `{"version":3,"sources":["main.sm"],"names":[],"mappings":"` + mappings + `"}`,
 			},
 		}},
 		Lowering: LoweringExternal,
@@ -141,15 +141,26 @@ func TestValidateLoweredRequestAcceptsWellFormedInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	identity := CompileRequest{
-		RootNames: []string{"main.vibe"},
-		Files:     []SourceFile{{Path: "main.vibe", Kind: FileKindVibe, Text: "export {};\n"}},
+		RootNames: []string{"main.sm"},
+		Files:     []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: "export {};\n"}},
+		Lowering:  LoweringIdentity,
 	}
 	if err := validateLoweredRequest(identity); err != nil {
 		t.Fatal(err)
 	}
 	// Disk-hydrated identity requests carry no in-memory files.
-	if err := validateLoweredRequest(CompileRequest{RootNames: []string{"main.vibe"}}); err != nil {
+	if err := validateLoweredRequest(CompileRequest{RootNames: []string{"main.sm"}, Lowering: LoweringIdentity}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestValidateLoweredRequestRejectsOmittedMode(t *testing.T) {
+	err := validateLoweredRequest(CompileRequest{RootNames: []string{"main.sm"}})
+	if err == nil || !strings.Contains(err.Error(), "lowering mode is required") {
+		t.Fatalf("omitted lowering mode must fail closed, got %v", err)
+	}
+	if LoweringIdentity == "" {
+		t.Fatal("identity lowering must be an explicit non-empty choice")
 	}
 }
 
@@ -161,7 +172,7 @@ func TestValidateLoweredRequestAcceptsContentAndGeneratedOnlySegments(t *testing
 		{{genCol: 0, srcLine: 0, srcCol: 0}, {genCol: 8, srcLine: 0, srcCol: 6}},
 		{{genCol: 0, generatedOnly: true}},
 	})
-	request.Files[0].Lowered.SourceMap = `{"version":3,"file":"main.vibe.ts","sources":["./main.vibe"],"names":[],"mappings":"` + mappings +
+	request.Files[0].Lowered.SourceMap = `{"version":3,"file":"main.sm.ts","sources":["./main.sm"],"names":[],"mappings":"` + mappings +
 		`","sourcesContent":[` + jsonString(authored) + `]}`
 	if err := validateLoweredRequest(request); err != nil {
 		t.Fatal(err)
@@ -195,7 +206,7 @@ func TestValidateLoweredRequestRejectsMalformedInput(t *testing.T) {
 			detail: "requires in-memory files",
 		},
 		{
-			name: "vibe file without lowered content",
+			name: "smithers file without lowered content",
 			mutate: func(r *CompileRequest) {
 				r.Files[0].Lowered = nil
 			},
@@ -226,77 +237,77 @@ func TestValidateLoweredRequestRejectsMalformedInput(t *testing.T) {
 		{
 			name: "unknown map field",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":"","ignoreList":[]}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":"","ignoreList":[]}`
 			},
 			detail: "parse",
 		},
 		{
 			name: "trailing JSON value",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":""}{}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":""}{}`
 			},
 			detail: "one JSON value",
 		},
 		{
 			name: "wrong version",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":2,"sources":["main.vibe"],"mappings":""}`
+				r.Files[0].Lowered.SourceMap = `{"version":2,"sources":["main.sm"],"mappings":""}`
 			},
 			detail: "version must be 3",
 		},
 		{
 			name: "source root set",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sourceRoot":"/src","sources":["main.vibe"],"mappings":""}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sourceRoot":"/src","sources":["main.sm"],"mappings":""}`
 			},
 			detail: "sourceRoot must be empty",
 		},
 		{
 			name: "sources name a different file",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["other.vibe"],"mappings":""}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["other.sm"],"mappings":""}`
 			},
 			detail: "must name the authored file",
 		},
 		{
 			name: "sources with two entries",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe","main.vibe"],"mappings":""}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm","main.sm"],"mappings":""}`
 			},
 			detail: "exactly the authored file",
 		},
 		{
 			name: "sourcesContent mismatch",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"sourcesContent":["different"],"mappings":""}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"sourcesContent":["different"],"mappings":""}`
 			},
 			detail: "does not match the supplied authored text",
 		},
 		{
 			name: "missing mappings",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"]}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"]}`
 			},
 			detail: "mappings is required",
 		},
 		{
 			name: "invalid VLQ character",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":"AA?A"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":"AA?A"}`
 			},
 			detail: "invalid VLQ character",
 		},
 		{
 			name: "nonzero source index",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":"ACAA"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":"ACAA"}`
 			},
 			detail: "does not name the authored file",
 		},
 		{
 			name: "mapping beyond lowered text",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":";;;AAAA"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":";;;AAAA"}`
 			},
 			detail: "beyond the lowered text",
 		},
@@ -304,7 +315,7 @@ func TestValidateLoweredRequestRejectsMalformedInput(t *testing.T) {
 			name: "mapping beyond lowered line",
 			mutate: func(r *CompileRequest) {
 				mappings := encodeTestMappings([][]testSegment{{{genCol: 400, srcLine: 0, srcCol: 0}}})
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":"` + mappings + `"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":"` + mappings + `"}`
 			},
 			detail: "beyond lowered line",
 		},
@@ -312,7 +323,7 @@ func TestValidateLoweredRequestRejectsMalformedInput(t *testing.T) {
 			name: "mapping beyond authored text",
 			mutate: func(r *CompileRequest) {
 				mappings := encodeTestMappings([][]testSegment{{{genCol: 0, srcLine: 9, srcCol: 0}}})
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":"` + mappings + `"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":"` + mappings + `"}`
 			},
 			detail: "beyond the authored text",
 		},
@@ -320,14 +331,14 @@ func TestValidateLoweredRequestRejectsMalformedInput(t *testing.T) {
 			name: "mapping beyond authored line",
 			mutate: func(r *CompileRequest) {
 				mappings := encodeTestMappings([][]testSegment{{{genCol: 0, srcLine: 0, srcCol: 300}}})
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":"` + mappings + `"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":"` + mappings + `"}`
 			},
 			detail: "beyond authored line",
 		},
 		{
 			name: "name index out of range",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"names":[],"mappings":"AAAAA"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"names":[],"mappings":"AAAAA"}`
 			},
 			detail: "name index",
 		},

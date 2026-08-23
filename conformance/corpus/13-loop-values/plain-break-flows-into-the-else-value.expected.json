@@ -1,0 +1,5 @@
+{
+  "title": "a plain labeled break skips the loop without delivering a value, so control flows into the else value",
+  "expect": "output",
+  "stdout": ["-1", "78"]
+}

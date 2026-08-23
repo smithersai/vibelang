@@ -1,0 +1,10 @@
+import { Panic } from "smithers:exceptions"
+import { makeParser } from "./order-unsafe.ts"
+
+function parse(text: string): Result<number, Panic> {
+  return makeParser()(text)
+}
+
+export function main(): string[] {
+  return [parse("41").match({ ok: (value) => `ok ${value}`, error: () => "panic" })]
+}

@@ -1,0 +1,9 @@
+{
+  "title": "the compiler-owned Result.all still discharges every Result it collects, bound or direct",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace",
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx, 'Matching and Transformation'. The over-correction guard for 07-must-consume/a-shadowed-result-namespace-does-not-discharge: the obvious way to stop a shadowed namespace from discharging is to resolve every consumer through the compiler's own declarations, and doing that to the twelve RECEIVER consumers is measurably wrong \u2014 a member on a lifted call can resolve nowhere, or resolve to an unrelated real declaration such as String.prototype.match, and the strict test then reports a false SMITHERS1301 on correct code. Only the namespace call has no receiver already known to be the compiler's, which is why it is the one that must resolve. This case holds the acceptance side down: one bound Result and one direct Result, both handed to the real `Result.all`, both discharged, and the collected value printed so a combinator that discharged without collecting fails here too."
+}

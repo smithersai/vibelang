@@ -1,6 +1,0 @@
-import { comptime as staticValue } from "vibelang:comptime"
-import { buildConfig } from "./config.vibe"
-
-export function testComptimeValue(): number {
-  return staticValue(buildConfig).code
-}

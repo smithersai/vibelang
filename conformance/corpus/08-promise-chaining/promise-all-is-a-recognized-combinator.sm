@@ -1,0 +1,16 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+async function lookup(key: string): Promise<Result<string, Missing>> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+export async function main(): Promise<string[]> {
+  const settled = await Promise.all([lookup("ada"), lookup("zoe")])
+  return settled.map((outcome) => outcome.match({
+    ok: (value) => value,
+    error: (error) => error.message,
+  }))
+}

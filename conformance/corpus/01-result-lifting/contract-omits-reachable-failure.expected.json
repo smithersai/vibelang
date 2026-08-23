@@ -1,0 +1,11 @@
+{
+  "title": "a Result contract that omits a reachable failure is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1104",
+      "line": 9,
+      "column": 1
+    }
+  ]
+}

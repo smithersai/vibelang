@@ -1,0 +1,11 @@
+function describe(grade: string): string {
+  return switch (grade) {
+    case "pass": "met the bar"
+    case "fail": "below the bar"
+    default: "unknown"
+  }
+}
+
+export function main(): string[] {
+  return [describe("pass"), describe("zzz")]
+}

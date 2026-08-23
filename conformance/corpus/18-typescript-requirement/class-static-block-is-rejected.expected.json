@@ -1,0 +1,12 @@
+{
+  "title": "a class `static {}` initialization block is rejected: it executes outside every checked function channel",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1107",
+      "line": 3,
+      "column": 3
+    }
+  ],
+  "notes": "specification/type-system.mdx, 'Function Type': a Smithers function has an ordinary return type and an inferred requirement set, and specification/failures.mdx, 'Compiler Lifting', defines lifting only inside functions. A static initialization block runs at module evaluation with no enclosing function channel to carry a Result or a requirement row, which is the same reason a top-level throw is rejected (01-result-lifting/top-level-throw-is-rejected, SMITHERS1511). poc/src/language/README.md records SMITHERS1107 for it. Fail-closed: accepting it would let failures and requirements escape the checked channels entirely."
+}

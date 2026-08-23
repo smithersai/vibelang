@@ -1,0 +1,5 @@
+{
+  "title": "map, andThen, and recover are compiler-aware Result transformations that consume the Result they are applied to",
+  "expect": "output",
+  "stdout": ["ADA LOVELACE", "Ada Lovelace", "zoe"]
+}

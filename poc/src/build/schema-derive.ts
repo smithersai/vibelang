@@ -15,10 +15,10 @@ import { canonical, compareStableStrings } from "./stable.ts";
  * reification but has never fixed the import; the POC claims this compiler-owned
  * virtual module so the authoring form can be exercised end to end.
  */
-export const SCHEMA_MODULE_SPECIFIER = "vibelang:schema";
+export const SCHEMA_MODULE_SPECIFIER = "smithers:schema";
 
 export const SCHEMA_RUNTIME_ERROR =
-  '"vibelang:schema" is compiler-only; compile this module before ordinary JavaScript execution';
+  '"smithers:schema" is compiler-only; compile this module before ordinary JavaScript execution';
 
 /**
  * A loader may expose this source for the compiler-owned virtual module. Its
@@ -60,8 +60,8 @@ export const SCHEMA_PRELUDE = [
 /** Reserved local binding the lowered module uses for the runtime engine. */
 export const SCHEMA_RUNTIME_BINDING = "__vsSchema";
 
-/** Default module edge for generated code; mirrors the `vibelang/runtime` seam. */
-export const DEFAULT_SCHEMA_RUNTIME_IMPORT = "vibelang/schema-runtime";
+/** Default module edge for generated code; mirrors the `smthrs/runtime` seam. */
+export const DEFAULT_SCHEMA_RUNTIME_IMPORT = "smthrs/schema-runtime";
 
 /** Bounded POC reification budget. Exceeding any limit fails closed. */
 export const SchemaDerivationLimits = Object.freeze({

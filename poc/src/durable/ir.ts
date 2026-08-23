@@ -129,13 +129,56 @@ export interface TimerNode extends NodeBase {
  *
  * `waitSignal<T>("name")` is a provisional source spelling for this POC. The
  * persisted node contract is the architectural seam, not that spelling.
+ *
+ * `delivery` is absent for the original unicast form — one delivery addressed
+ * to exactly one (execution, node) inbox — so every pre-existing artifact keeps
+ * its exact bytes and `signalContractDigest`. `delivery: "broadcast"`
+ * (Plan format version 3) selects the fan-out form in which one delivery
+ * addressed to the signal identity satisfies every execution subscribed to it,
+ * and it participates in the contract digest, so a broadcast identity can never
+ * be confused with a unicast identity of the same name.
  */
 export interface SignalNode extends NodeBase {
   readonly kind: "signal"
   readonly signalId: string
   readonly payloadSchema: StructuralDurableSchema
   readonly signalContractDigest: string
+  readonly delivery?: "broadcast"
 }
+
+/** Canonical signal contract identity; unicast keeps its original bytes. */
+export const signalContractIdentity = (
+  signalId: string,
+  payloadSchema: StructuralDurableSchema,
+  delivery?: "broadcast"
+): string =>
+  delivery === "broadcast"
+    ? digest({ delivery, signalId, payloadSchema })
+    : digest({ signalId, payloadSchema })
+
+/**
+ * A compiler-owned suspension that consumes exactly one item from a durable,
+ * multi-producer queue (Plan format version 3). The queue identity and the
+ * compiler-derived item schema are part of immutable Plan identity; a producer
+ * supplies neither. Consumption commits the item's terminal state together with
+ * the node's success, so two coordinators can never hand the same item to two
+ * consumers, and a waiting node holds no worker lease.
+ *
+ * `dequeue<Item>("queue.id")` is a provisional source spelling; the persisted
+ * node contract is the architectural seam.
+ */
+export interface QueueNode extends NodeBase {
+  readonly kind: "queue"
+  readonly queueId: string
+  readonly itemSchema: StructuralDurableSchema
+  readonly queueContractDigest: string
+}
+
+/** Canonical queue contract identity shared by consumers and the store. */
+export const queueContractIdentity = (
+  queueId: string,
+  itemSchema: StructuralDurableSchema
+): string => digest({ queueId, itemSchema })
 
 /**
  * A deliberately bounded parameterized expression. It can read only the
@@ -272,6 +315,7 @@ export type PlanNode =
   | ParallelNode
   | TimerNode
   | SignalNode
+  | QueueNode
   | FanOutNode
   | LoopNode
   | ChildFlowNode
@@ -292,12 +336,14 @@ export interface FlowSchemas {
  * Format version 1 is the original bounded node set with the flat fan-out
  * encoding. Format version 2 additionally permits multi-step fan-out `steps`
  * encodings, round-budgeted loop nodes, and child-Flow nodes with embedded
- * child Plans. The compiler emits the minimal version a Plan needs, so
- * pre-existing artifacts remain byte- and digest-stable; a version-1 artifact
- * claiming version-2 features is rejected with an explicit version diagnostic.
+ * child Plans. Format version 3 additionally permits durable `queue` consumer
+ * nodes and the `delivery: "broadcast"` signal form. The compiler emits the
+ * minimal version a Plan needs, so pre-existing artifacts remain byte- and
+ * digest-stable; a lower-version artifact claiming a higher version's feature
+ * is rejected with an explicit version diagnostic.
  */
 export interface PlanTemplate extends PlanFragment {
-  readonly formatVersion: 1 | 2
+  readonly formatVersion: 1 | 2 | 3
   readonly flowId: string
   readonly flowVersion: number
   /** Compiler-derived persistence contract. Absent only on legacy POC artifacts. */
@@ -338,7 +384,7 @@ export interface SerializableProviderPolicy {
 }
 
 /**
- * Serializable evidence emitted by the VibeLang whole-project row pass for one
+ * Serializable evidence emitted by the Smithers whole-project row pass for one
  * concrete Action implementation. The in-memory compiler also authenticates
  * the object before `Provider.provideChecked` accepts it; this shape is the
  * frozen evidence retained in deployment artifacts.
@@ -346,7 +392,7 @@ export interface SerializableProviderPolicy {
 export interface ActionImplementationContract {
   readonly formatVersion: 2
   readonly source: "compiler-derived"
-  readonly compilerIdentity: "vibelang-action-implementation-v2"
+  readonly compilerIdentity: "smithers-action-implementation-v2"
   readonly implementationId: string
   readonly implementationVersion: string
   readonly actionId: string

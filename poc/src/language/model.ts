@@ -60,7 +60,7 @@ export interface AnalyzeOptions {
 
 /** One authored module supplied to the no-write project analyzer. */
 export interface ProjectSource {
-  /** Absolute, or relative to AnalyzeProjectOptions.rootDir. Must end in `.vibe`. */
+  /** Absolute, or relative to AnalyzeProjectOptions.rootDir. Must end in `.sm`. */
   readonly fileName: string;
   readonly source: string;
 }
@@ -70,7 +70,7 @@ export interface AnalyzeProjectOptions {
   readonly rootDir?: string;
   /**
    * Compiler-generated TypeScript modules addressable from authored imports.
-   * They participate in checker resolution but are never parsed as `.vibe`,
+   * They participate in checker resolution but are never parsed as `.sm`,
    * row-analyzed, or emitted by this API. The caller must separately map and
    * emit their exact source identities.
    */

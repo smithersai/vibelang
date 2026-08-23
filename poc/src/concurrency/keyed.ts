@@ -96,7 +96,7 @@ function keyed<Values extends object>(
  * symbol keys. The returned record has a null prototype, matching the TC39
  * Await Dictionary proposal.
  *
- * Fallible VibeLang work composes without changing Promise rejection rules:
+ * Fallible Smithers work composes without changing Promise rejection rules:
  * `Result.all(Object.values(await allKeyed({ profile, activity })))` aggregates
  * the resolved Result values and returns their first typed Error.
  */

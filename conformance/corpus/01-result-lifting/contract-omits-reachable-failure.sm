@@ -1,0 +1,12 @@
+export class Boom extends Error {
+  constructor(readonly value: number) { super(`bad value ${value}`) }
+}
+
+export class Other extends Error {
+  constructor() { super("other") }
+}
+
+export function halve(value: number): Result<number, Other> {
+  if (value < 0) throw new Boom(value)
+  return value / 2
+}

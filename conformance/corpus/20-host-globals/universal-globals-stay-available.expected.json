@@ -1,0 +1,6 @@
+{
+  "title": "Math.max, JSON, Number, and Map stay unconditional globals: the host rule is per-operation, not per-object",
+  "expect": "output",
+  "stdout": ["7", "{\"name\":\"Ada\"}", "41", "1"],
+  "notes": "specification/compatibility.mdx, 'Host Globals': 'Facilities truly present in every supported JavaScript environment MAY be unconditional globals.' docs/DECISIONS.md (Locked): 'Only facilities present in every JavaScript environment may be unconditional globals.' Math.max is reached from the same Math object whose .random() is rejected by 20-host-globals/random-access-needs-a-capability, so this case is what stops an implementation from over-applying the ban to the whole object."
+}

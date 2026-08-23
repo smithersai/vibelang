@@ -1,0 +1,17 @@
+export class NoDrink extends Error {
+  constructor(readonly who: string) {
+    super(`no café for ${who}`)
+  }
+}
+
+function order(who: string): Result<string, NoDrink> {
+  if (who === "ada") return "café au lait ☕"
+  throw new NoDrink(who)
+}
+
+export function main(): string[] {
+  return [
+    order("ada").match({ ok: (drink) => drink, error: (failure) => failure.message }),
+    order("zoe").match({ ok: (drink) => drink, error: (failure) => failure.message }),
+  ]
+}

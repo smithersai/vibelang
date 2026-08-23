@@ -1,0 +1,7 @@
+import type { Entry } from "./absent-module.mod.sm"
+
+const local: Entry = { name: "ada" }
+
+export function main(): string[] {
+  return [local.name]
+}

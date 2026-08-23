@@ -1,0 +1,13 @@
+import { comptime } from "smithers:comptime"
+
+const rolls = comptime(() => {
+  const out: number[] = []
+  for (const _ of [1, 2, 3]) {
+    out.push(Math.random())
+  }
+  return out
+})()
+
+export function main(): string[] {
+  return [JSON.stringify(rolls)]
+}

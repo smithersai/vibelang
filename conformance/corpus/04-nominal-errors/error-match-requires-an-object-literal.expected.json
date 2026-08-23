@@ -1,0 +1,11 @@
+{
+  "title": "Error.match cases must be a static object literal so the nominal cases can be checked and lowered",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1251",
+      "line": 15,
+      "column": 23
+    }
+  ]
+}

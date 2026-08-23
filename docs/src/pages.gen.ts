@@ -13,15 +13,15 @@ type Page =
   | { path: '/guide/control-flow'; render: 'static' }
   | { path: '/guide/durable-execution'; render: 'static' }
   | { path: '/guide/features'; render: 'static' }
-  | { path: '/guide/optionals'; render: 'static' }
   | { path: '/guide/platforms-and-targets'; render: 'static' }
   | { path: '/guide/runtime-validation'; render: 'static' }
   | { path: '/guide/typed-failures'; render: 'static' }
   | { path: '/guide/typescript-interop'; render: 'static' }
   | { path: '/'; render: 'static' }
   | { path: '/introduction/getting-started'; render: 'static' }
+  | { path: '/introduction/overview'; render: 'static' }
   | { path: '/introduction/philosophy'; render: 'static' }
-  | { path: '/introduction/why-vibelang'; render: 'static' }
+  | { path: '/introduction/why-smithers'; render: 'static' }
   | { path: '/reference/actions-and-flows'; render: 'static' }
   | { path: '/reference/capabilities'; render: 'static' }
   | { path: '/reference/cli'; render: 'static' }
@@ -30,6 +30,8 @@ type Page =
   | { path: '/reference/function-channels'; render: 'static' }
   | { path: '/reference/language-syntax'; render: 'static' }
   | { path: '/reference/standard-library'; render: 'static' }
+  | { path: '/reference/tc39-proposals'; render: 'static' }
+  | { path: '/reference/typescript-differences'; render: 'static' }
   | { path: '/specification/compatibility'; render: 'static' }
   | { path: '/specification/comptime'; render: 'static' }
   | { path: '/specification/control-flow'; render: 'static' }

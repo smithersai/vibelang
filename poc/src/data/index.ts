@@ -4,7 +4,7 @@
  * (docs/src/pages/reference/standard-library.mdx, "Core Data" and
  * "Schema and Encoding").
  *
- * Everything here is an ordinary VibeLang value. Nothing in this package is a
+ * Everything here is an ordinary Smithers value. Nothing in this package is a
  * wrapper that exists to track an effect, nothing needs a runtime to run, and
  * nothing needs a capability: these are pure values with value semantics, the
  * way `Duration` is. Operations that can miss answer with an `Optional`, never
@@ -54,7 +54,7 @@ export { Data, isData } from "./data.ts";
 
 // `Match` is the value-level pattern-matching surface. It is deliberately a
 // library and not syntax: docs/DECISIONS.md keeps expression-form
-// pattern-matching grammar open so VibeLang can converge with TC39 later, so
+// pattern-matching grammar open so Smithers can converge with TC39 later, so
 // what exists today is a fluent builder of ordinary method calls whose
 // exhaustiveness is proved by the type system rather than checked at runtime.
 export { Match, MatcherValue, isMatcher } from "./match.ts";

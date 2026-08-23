@@ -1,0 +1,30 @@
+const events: string[] = []
+
+function record(message: string): void {
+  events.push(message)
+}
+
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+async function fetchOne(key: string): Promise<Result<string, Missing>> {
+  if (key !== "ada") throw new Missing(key)
+  return key
+}
+
+// `errdefer` runs only on the error variant, so it has to see the Result before
+// it decides. A directly returned Promise settles AFTER the finally that runs
+// the cleanup, so at the moment the decision is due there is nothing to inspect
+// and the cleanup would either be skipped or run unconditionally. The compiler
+// refuses rather than picking one, and names the remedy: await the
+// Result-producing expression explicitly before returning it.
+async function lookup(key: string): Promise<Result<string, Missing>> {
+  errdefer record("failed")
+  return fetchOne(key)
+}
+
+export async function main(): Promise<string[]> {
+  const found = await lookup("ada")
+  return [found.match({ ok: (value) => value, error: (error) => error.message })]
+}

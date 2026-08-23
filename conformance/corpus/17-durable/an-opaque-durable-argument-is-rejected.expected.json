@@ -1,0 +1,12 @@
+{
+  "title": "a durable(...) argument that is chosen at run time is rejected: a Flow the compiler cannot name is a Flow it cannot compile",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS4103",
+      "line": 11,
+      "column": 29
+    }
+  ],
+  "notes": "specification/durable-execution.mdx:26 (Locked), verbatim: 'The argument MUST be an inline function or a function declaration/value that the compiler can resolve statically. Passing an opaque runtime-selected function MUST be a compile error.' docs/DECISIONS.md (Locked): 'A recognized `durable(...)` call becomes a serializable Flow descriptor referencing emitted Plan IR, not a runtime callback wrapper.' The second sentence is why the first one is a MUST: a compiler that accepted an unresolvable argument would have to keep the function around and call it, which is precisely the runtime callback wrapper the descriptor replaces, and the Flow would then have no Plan, no digest, and nothing for a deployment build to check. This is the fail-closed gate on the whole durable area and it is the exact analogue of 21-native-pin/a-pin-whose-argument-is-not-a-project-function-is-rejected: both compiler-owned intrinsics take one statically resolvable function, and in both areas every other case handed the intrinsic a well-formed argument, so the rejection that makes the static guarantee real was the one thing unpinned. COVERAGE.md named this obligation (20.5) as uncovered and reachable from template compilation, and named SMITHERS4103's family as the largest block of rules both implementations spell and no case probes: the corpus declared exactly ONE durable diagnostic (SMITHERS4106) before this case. The declared position is the ARGUMENT, not the call — the reference reports the unresolvable-argument branch on the node it could not resolve, and the fork reports it at the same node with the same message. The sibling branch of the same code, a `durable(...)` given the wrong number of arguments, is reported at the CALL instead and is left unpinned; it is recorded in COVERAGE.md rather than written, because one case per code per area is the budget this revision worked to. Both backends refuse it today, so this case pins current behaviour on both rather than reproducing a live one-sided defect."
+}

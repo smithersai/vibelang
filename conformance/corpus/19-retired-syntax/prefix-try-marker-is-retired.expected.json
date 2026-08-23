@@ -1,0 +1,6 @@
+{
+  "title": "the prefix `try` propagation marker is retired: use Result.unwrap()",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1001", "line": 6, "column": 16 }],
+  "notes": "specification/failures.mdx, 'Inference': 'Smithers MUST NOT add a general throws clause, !T marker, prefix try expression, or postfix Result-recovery expression.' docs/DECISIONS.md 'Typed failures' (Locked) says the same. The property-access spelling Result.try(...) is a different thing and stays legal; 01-result-lifting/result-try-adapts-a-throwing-body pins it, and the scanner distinguishes them by the preceding '.' token."
+}

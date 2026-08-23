@@ -198,18 +198,18 @@ const loadBundleModule = async (
   // decoding. Invalid UTF-8 fails before the module loader sees the file.
   new TextDecoder("utf-8", { fatal: true }).decode(bundleBytes)
   const loaded = await import(pathToFileURL(absolute).href) as {
-    __vibeInvokeAction?: unknown
-    __vibePoolBundle?: unknown
+    __smithersInvokeAction?: unknown
+    __smithersPoolBundle?: unknown
   }
-  const meta = loaded.__vibePoolBundle as LoadedBundleModule["meta"] | undefined
-  if (typeof loaded.__vibeInvokeAction !== "function" || meta === null || typeof meta !== "object" ||
+  const meta = loaded.__smithersPoolBundle as LoadedBundleModule["meta"] | undefined
+  if (typeof loaded.__smithersInvokeAction !== "function" || meta === null || typeof meta !== "object" ||
     meta.formatVersion !== 1 || meta.poolId !== pool.id ||
     canonicalJson(meta.actionIds) !== canonicalJson(pool.actionIds)) {
     throw new Error(`bundle ${absolute} does not carry the expected pool ${pool.id} module interface`)
   }
   return {
     module: {
-      invoke: loaded.__vibeInvokeAction as LoadedBundleModule["invoke"],
+      invoke: loaded.__smithersInvokeAction as LoadedBundleModule["invoke"],
       meta
     },
     bundleDigest
@@ -483,9 +483,9 @@ const parseCliArguments = (argv: readonly string[]): CliArguments => {
 }
 
 if (import.meta.main) {
-  const secret = process.env["VIBE_WORKER_HOST_SECRET"]
+  const secret = process.env["SMITHERS_WORKER_HOST_SECRET"]
   if (secret === undefined) {
-    console.error("worker host requires the VIBE_WORKER_HOST_SECRET environment variable")
+    console.error("worker host requires the SMITHERS_WORKER_HOST_SECRET environment variable")
     process.exit(2)
   }
   const cli = parseCliArguments(process.argv.slice(2))

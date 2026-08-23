@@ -1,0 +1,9 @@
+// `any` is an escape hatch that contributes the built-in TypeScript
+// requirement; it is deliberately NOT forbidden in authored .sm.
+function widen(value: any): string {
+  return `${value}`
+}
+
+export function main(): string[] {
+  return [widen(41), widen("Ada")]
+}

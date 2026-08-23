@@ -1,0 +1,11 @@
+{
+  "title": "a top-level call whose requirement row is unsatisfied is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2102",
+      "line": 12,
+      "column": 22
+    }
+  ]
+}

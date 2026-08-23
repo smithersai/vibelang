@@ -1,0 +1,7 @@
+{
+  "title": "unwrap propagation is an early return: statements after the failing unwrap never run",
+  "expect": "output",
+  "stdout": [
+    "error Missing: no entry for zoe"
+  ]
+}

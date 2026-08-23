@@ -1,0 +1,10 @@
+export class Registry {
+  static entries: string[] = []
+  static {
+    Registry.entries.push("ada")
+  }
+}
+
+export function main(): string[] {
+  return Registry.entries
+}

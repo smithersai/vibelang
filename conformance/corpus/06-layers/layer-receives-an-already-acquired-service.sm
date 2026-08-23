@@ -1,0 +1,32 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Store extends Context {
+  abstract read(): string
+}
+
+const log: string[] = []
+
+// Acquisition is ordinary code that runs BEFORE the layer exists; the layer
+// receives an already-acquired service and does not own its lifetime.
+function open(name: string): { readonly name: string } {
+  log.push(`open ${name}`)
+  return { name }
+}
+
+const connection = open("db-1")
+const live: Store = { read: () => connection.name }
+
+export const lines = Layer.provide(Layer.succeed(Store, live), () => [Store.context().read()])
+
+// Finalization is ordinary code too, and it runs after the scope, not as part
+// of the layer's own teardown.
+function close(name: string): void {
+  log.push(`close ${name}`)
+}
+
+close(connection.name)
+
+export function main(): string[] {
+  return [...log, ...lines]
+}

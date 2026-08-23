@@ -1,0 +1,42 @@
+{
+  "0100-defer-errdefer-grammar.patch": {
+    "kind": "handwritten",
+    "summary": "defer/errdefer as real statement kinds, plus the NodeFlagsSmithers dialect gate keyed off .sm and .sm.ts file names"
+  },
+  "0200-break-label-value-grammar.patch": {
+    "kind": "handwritten",
+    "summary": "break :label value \u2014 an optional Value member on the existing BreakStatement, with binder ordering and a checker arm"
+  },
+  "0300-if-conditional-declaration-grammar.patch": {
+    "kind": "handwritten",
+    "summary": "if (const x = f(); cond) \u2014 an optional Initializer member on IfStatement plus LocalsContainerBase, so the binding is visible in every else branch and out of scope after the construct"
+  },
+  "0400-loop-else-completion-grammar.patch": {
+    "kind": "handwritten",
+    "summary": "label: loop else value \u2014 an optional ElseValue member on LabeledStatement, with a real extra flow-graph edge so a value break skips the else while normal completion and valueless breaks flow into it"
+  },
+  "0500-value-position-if-switch-grammar.patch": {
+    "kind": "handwritten",
+    "summary": "value-position if/switch as real expression grammar: IfExpression and SwitchExpression node kinds, a Value member on CaseOrDefaultClause, branch joins in the binder, and union typing with closed-literal-union exhaustiveness in the checker"
+  },
+  "0600-labeled-expression-values-grammar.patch": {
+    "kind": "handwritten",
+    "summary": "expression-position labeled block and loop values \u2014 one LabeledExpression kind wrapping the existing LabeledStatement, so both forms reuse the landed label binding, the loop-else flow graph and the value-break member; the type is the join of the break values plus the else completion, and a block that can finish without one carries undefined"
+  },
+  "0700-switch-expression-flow-analysis.patch": {
+    "kind": "handwritten",
+    "summary": "flow analysis for the value switch and for every Smithers member that holds an expression: FlowSwitchClause nodes per clause so the scrutinee narrows inside a clause value, one ast.SwitchClauses accessor shared by both switch kinds at every site a FlowSwitchClause reaches, one exhaustiveness function for both, the clause Value bound at all, preSwitchCaseFlow set for a value switch, IsInExpressionContext arms for defer/errdefer/break-value/loop-else/clause-value, and ForEachReturnStatement descending through expression-position labeled values"
+  },
+  "0750-value-clause-statements-and-braceless-if-grammar.patch": {
+    "kind": "handwritten",
+    "summary": "the last two conformance-corpus gaps, and neither needed a node kind or an AST member: a switch-expression clause may run statements before the final expression that is its value (parsed by trying the single-expression spelling first and falling back to a statement list, so a keyword-initial clause value stays an expression), and a value if may take braceless branches in the one host that bounds them — a variable initializer, keyed on the position it starts at. Plus the three enumerated switches those two forms reached: checker.getContextualType, transformers.IsIdentifierReference and binder.isStatementCondition, all of which switch on the PARENT kind"
+  },
+  "0800-regenerate-ast.patch": {
+    "kind": "generated",
+    "summary": "output of tools/scripts/tsc/generate.ts and the Kind stringer for the six grammar patches above; re-derivable with `verify --regenerate`"
+  },
+  "0900-smithers-grammar-tests.patch": {
+    "kind": "forkowned",
+    "summary": "new fork-owned tests: round-trip, node shape, generic-accessor parity and member-reachability sweeps, dialect gate, checker-arm proofs, conditional-declaration scope and locals, loop-else flow graph, value-expression typing, labeled-value typing and flow graph, the value-break traversal, the ast.IsExpressionNode reachability sweep, value-switch clause narrowing and its bypass edge, the shared exhaustiveness function, the IsInExpressionContext member sweep, return-statement collection through a labeled value and through a value clause, the value-clause body shape and its bounded braceless-if host, clause-statement checking, clause completion totality, clause locals under noUnusedLocals, contextual typing of every value operand, identifier substitution in emitted CommonJS, and compound-condition narrowing in a value if"
+  }
+}

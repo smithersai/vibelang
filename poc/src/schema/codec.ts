@@ -56,9 +56,9 @@ export class DecodeError extends Error {
     this.reason = reason;
   }
 }
-export interface DecodeError extends NominalError<"vibelang:DecodeError@1"> {}
+export interface DecodeError extends NominalError<"smithers:DecodeError@1"> {}
 
-registerErrorCodec(DecodeError, "vibelang:DecodeError@1", {
+registerErrorCodec(DecodeError, "smithers:DecodeError@1", {
   encode: (error): JsonValue => ({ path: [...error.path], reason: error.reason }),
   decode: (payload) => {
     if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {

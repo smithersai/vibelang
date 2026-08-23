@@ -1,0 +1,11 @@
+{
+  "title": "Error.matchPartial requires an explicit fallback so an unmatched failure cannot escape unhandled",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1255",
+      "line": 18,
+      "column": 23
+    }
+  ]
+}

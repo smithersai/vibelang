@@ -1,0 +1,4 @@
+{
+  "title": "private fields, accessors, static initialization blocks, optional chaining, and tagged templates",
+  "stdout": ["hits=5", "0", "1 initialized", "-1", "absent", "a|b|c1,2"]
+}

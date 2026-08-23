@@ -1,0 +1,9 @@
+{
+  "title": "a declaration inside an expression block follows ordinary lexical scope: it is visible to the block's value break and does not leak into or collide with the enclosing scope",
+  "expect": "output",
+  "stdout": [
+    "inner-value",
+    "outer"
+  ],
+  "notes": "specification/control-flow.mdx, 'Blocks': 'An expression block MAY produce a value from its final expression or from a labeled value break. **A declaration inside an expression block follows ordinary lexical scope.**' The second sentence had no case. It is load-bearing for the lowering rather than decorative: poc/src/language/README.md records that a labeled block value is recovered by rewriting `break :label value` into `{ value; break label; }` and placing the labeled statement BEFORE a marker-initialized host declaration — a textual move that hoists the block out of the expression it was written in. A move that also hoisted the block's own `const` would put `candidate` in the enclosing function scope, where the later `const candidate = \"outer\"` is a redeclaration; the same name is reused here on purpose so that leak is an error rather than a silent shadow, and the two distinct printed values show the inner binding was the one the break read."
+}

@@ -5,7 +5,7 @@ import { basename, join } from "node:path";
 import test from "node:test";
 
 // The relative runtime graph is a compiler-internal module with no package
-// subpath: `vibelang/*` deliberately publishes no compiler internals. It is
+// subpath: `smthrs/*` deliberately publishes no compiler internals. It is
 // still root-owned code the CLI composes, so it is exercised from its build
 // output the way the CLI loads it.
 const { buildRelativeRuntimeGraph, transpileRelativeRuntimeGraph } = await import(
@@ -22,11 +22,11 @@ const MARKER = "/** @module @throws {never} */";
 const key = (index) => String(index).repeat(2).padStart(64, "0abcdef");
 
 function workspace(name) {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), `vibelang-graph-${name}-`)));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), `smithers-graph-${name}-`)));
   return { root, outDir: join(root, "output") };
 }
 
-function vibeSeed(root, name, source) {
+function smithersSeed(root, name, source) {
   const fileName = join(root, name);
   mkdirSync(join(fileName, ".."), { recursive: true });
   writeFileSync(fileName, source);
@@ -35,9 +35,9 @@ function vibeSeed(root, name, source) {
 
 function generatedAsset(outDir, logicalKey, source, resolutionAliases = []) {
   return {
-    sourceFileName: `.vibelang-generated/assets/${logicalKey}.ts`,
+    sourceFileName: `.smithers-generated/assets/${logicalKey}.ts`,
     source,
-    outputFileName: join(outDir, "__vibelang_assets__", `${logicalKey}.mjs`),
+    outputFileName: join(outDir, "__smithers_assets__", `${logicalKey}.mjs`),
     resolutionAliases,
   };
 }
@@ -62,16 +62,16 @@ test("a nested generated asset graph rewrites every sibling edge onto the emitte
       return generatedAsset(outDir, logicalKey, source, index === 0 ? ["config.json"] : []);
     });
 
-    const seed = vibeSeed(
+    const seed = smithersSeed(
       root,
-      "main.vibe",
+      "main.sm",
       'import config from "./config.json" with { type: "json" }\nexport const answer = config\n',
     );
     const graph = buildRelativeRuntimeGraph({
       rootDir: root,
       outDir,
-      vibeSources: [seed],
-      vibeOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+      smithersSources: [seed],
+      smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
       generatedRuntimeSources: generated,
       budget: BUDGET,
     });
@@ -91,7 +91,7 @@ test("a nested generated asset graph rewrites every sibling edge onto the emitte
       } else {
         assert.equal(file.rewrittenSource, file.source);
       }
-      assert.equal(file.outputFileName, join(outDir, "__vibelang_assets__", `${logicalKey}.mjs`));
+      assert.equal(file.outputFileName, join(outDir, "__smithers_assets__", `${logicalKey}.mjs`));
     }
 
     for (const output of graph.additionalRuntimeOutputs) {
@@ -108,19 +108,19 @@ test("a nested generated asset graph rewrites every sibling edge onto the emitte
   }
 });
 
-test("a Vibe module may re-export a generated asset", () => {
+test("a Smithers module may re-export a generated asset", () => {
   const { root, outDir } = workspace("re-export");
   try {
-    const seed = vibeSeed(
+    const seed = smithersSeed(
       root,
-      "main.vibe",
+      "main.sm",
       'export { answer } from "./config.json" with { type: "json", mode: "const" }\n',
     );
     const graph = buildRelativeRuntimeGraph({
       rootDir: root,
       outDir,
-      vibeSources: [seed],
-      vibeOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+      smithersSources: [seed],
+      smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
       generatedRuntimeSources: [generatedAsset(
         outDir,
         key(0),
@@ -143,7 +143,7 @@ test("a Vibe module may re-export a generated asset", () => {
 test("a literal dynamic asset import resolves and its emitted specifier is restated once", () => {
   const { root, outDir } = workspace("dynamic");
   try {
-    const seed = vibeSeed(root, "main.vibe", [
+    const seed = smithersSeed(root, "main.sm", [
       "export async function readLater(): Promise<number> {",
       '  const config = await import("./config.json", { with: { type: "json", mode: "const" } })',
       "  return config.default.answer",
@@ -153,8 +153,8 @@ test("a literal dynamic asset import resolves and its emitted specifier is resta
     const graph = buildRelativeRuntimeGraph({
       rootDir: root,
       outDir,
-      vibeSources: [seed],
-      vibeOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+      smithersSources: [seed],
+      smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
       generatedRuntimeSources: [generatedAsset(
         outDir,
         key(0),
@@ -168,22 +168,22 @@ test("a literal dynamic asset import resolves and its emitted specifier is resta
     const authored = seed.fileName;
     const output = join(outDir, "main.mjs");
     const emitted = 'export async function readLater() {\n  const config = await import("./config.json");\n  return config.default.answer;\n}\n';
-    const rewritten = graph.rewriteVibeRuntimeCalls(emitted, authored, output);
-    assert.match(rewritten, new RegExp(`import\\("\\./__vibelang_assets__/${key(0)}\\.mjs"\\)`));
+    const rewritten = graph.rewriteSmithersRuntimeCalls(emitted, authored, output);
+    assert.match(rewritten, new RegExp(`import\\("\\./__smithers_assets__/${key(0)}\\.mjs"\\)`));
 
     // Whichever stage restates the specifier first, running the rewrite again is
     // a no-op rather than an "unresolved dynamic import" failure.
-    assert.equal(graph.rewriteVibeRuntimeCalls(rewritten, authored, output), rewritten);
+    assert.equal(graph.rewriteSmithersRuntimeCalls(rewritten, authored, output), rewritten);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("a Vibe dynamic import that is not a generated asset is still deferred", () => {
+test("a Smithers dynamic import that is not a generated asset is still deferred", () => {
   const { root, outDir } = workspace("deferred");
   try {
     writeFileSync(join(root, "plain.ts"), "export const value = 1\n");
-    const seed = vibeSeed(root, "main.vibe", [
+    const seed = smithersSeed(root, "main.sm", [
       "export async function load(): Promise<number> {",
       '  const module = await import("./plain.ts")',
       "  return module.value",
@@ -194,11 +194,11 @@ test("a Vibe dynamic import that is not a generated asset is still deferred", ()
       () => buildRelativeRuntimeGraph({
         rootDir: root,
         outDir,
-        vibeSources: [seed],
-        vibeOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+        smithersSources: [seed],
+        smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
         budget: BUDGET,
       }),
-      /Vibe dynamic import is deferred/,
+      /Smithers dynamic import is deferred/,
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -208,17 +208,17 @@ test("a Vibe dynamic import that is not a generated asset is still deferred", ()
 test("a type-only edge to a generated asset is rejected", () => {
   const { root, outDir } = workspace("type-only");
   try {
-    const seed = vibeSeed(
+    const seed = smithersSeed(
       root,
-      "main.vibe",
+      "main.sm",
       'import type config from "./config.json" with { type: "json" }\nexport type Config = typeof config\n',
     );
     assert.throws(
       () => buildRelativeRuntimeGraph({
         rootDir: root,
         outDir,
-        vibeSources: [seed],
-        vibeOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+        smithersSources: [seed],
+        smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
         generatedRuntimeSources: [generatedAsset(
           outDir,
           key(0),
@@ -237,12 +237,12 @@ test("a type-only edge to a generated asset is rejected", () => {
 test("a generated asset module may only import a sibling generated module", () => {
   const { root, outDir } = workspace("edges");
   try {
-    const seed = vibeSeed(root, "main.vibe", "export const answer = 1\n");
+    const seed = smithersSeed(root, "main.sm", "export const answer = 1\n");
     const build = (source) => buildRelativeRuntimeGraph({
       rootDir: root,
       outDir,
-      vibeSources: [seed],
-      vibeOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+      smithersSources: [seed],
+      smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
       generatedRuntimeSources: [generatedAsset(outDir, key(0), source)],
       budget: BUDGET,
     });
@@ -267,13 +267,13 @@ test("a generated asset module may only import a sibling generated module", () =
 test("generated asset modules may not form an import cycle", () => {
   const { root, outDir } = workspace("cycle");
   try {
-    const seed = vibeSeed(root, "main.vibe", "export const answer = 1\n");
+    const seed = smithersSeed(root, "main.sm", "export const answer = 1\n");
     assert.throws(
       () => buildRelativeRuntimeGraph({
         rootDir: root,
         outDir,
-        vibeSources: [seed],
-        vibeOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+        smithersSources: [seed],
+        smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
         generatedRuntimeSources: [
           generatedAsset(outDir, key(0), `${MARKER}\nimport child from "./${key(1)}.ts";\nconst value = child;\nexport default value;\n`),
           generatedAsset(outDir, key(1), `${MARKER}\nimport child from "./${key(0)}.ts";\nconst value = child;\nexport default value;\n`),

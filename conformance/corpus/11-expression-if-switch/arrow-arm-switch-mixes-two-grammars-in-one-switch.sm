@@ -1,0 +1,8 @@
+export function main(): string[] {
+  const kind: string = "a"
+  const label = switch (kind) {
+    case "a" => "alpha"
+    default: "other"
+  }
+  return [label]
+}

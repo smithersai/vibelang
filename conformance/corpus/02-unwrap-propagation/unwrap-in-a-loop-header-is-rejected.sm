@@ -1,0 +1,16 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function limit(key: string): Result<number, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return 3
+}
+
+export function count(key: string): Result<number, Missing> {
+  let total = 0
+  for (let index = 0; index < limit(key).unwrap(); index++) {
+    total += index
+  }
+  return total
+}

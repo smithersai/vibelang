@@ -1,0 +1,11 @@
+{
+  "title": "a recoverable throw value must extend Error",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1103",
+      "line": 2,
+      "column": 18
+    }
+  ]
+}

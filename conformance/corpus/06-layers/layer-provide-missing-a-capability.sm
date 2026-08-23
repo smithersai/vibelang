@@ -1,0 +1,22 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+function stamped(key: string): string {
+  const directory = Directory.context()
+  const clock = Clock.context()
+  return `${directory.lookup(key) ?? "none"}@${clock.now()}`
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : null) }
+
+const OnlyDirectory = Layer.succeed(Directory, directory)
+
+export const lines = Layer.provide(OnlyDirectory, () => [stamped("ada")])

@@ -1,0 +1,6 @@
+export function firstPassing(scores: number[]): number {
+  const found = search: for (const score of scores) {
+    if (score >= 60) break :search score
+  }
+  return found
+}

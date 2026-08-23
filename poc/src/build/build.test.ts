@@ -18,7 +18,7 @@ import {
   parseWithSchema,
   stableClone,
 } from "./index.ts";
-import { catchFailure, isVibeFailure } from "../runtime/failure.ts";
+import { catchFailure, isSmithersFailure } from "../runtime/failure.ts";
 import { mdxPrompt } from "../agent/prompt.ts";
 
 const roots: string[] = [];
@@ -30,7 +30,7 @@ afterAll(async () => {
 
 describe("comptime assets and derived schemas", () => {
   test("third-party registration requires an authentic sandbox loader by default", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-loader-authenticity-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-loader-authenticity-"));
     roots.push(root);
     const forged: AssetLoader = {
       id: "test:forged",
@@ -49,7 +49,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("content keys include tracked dependencies and unchanged work hits cache", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-assets-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-assets-"));
     roots.push(root);
     await writeFile(join(root, "data.kv"), "answer=42\n");
     await writeFile(join(root, "shape.txt"), "answer\n");
@@ -85,7 +85,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("one asset build snapshots transitive bytes once and invalidates that snapshot on the next build", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-asset-snapshot-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-asset-snapshot-"));
     roots.push(root);
     await writeFile(join(root, "main.snapshot"), "main");
     await writeFile(join(root, "dependency.txt"), "first");
@@ -118,7 +118,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("asset source, transitive byte/file budgets, UTF-8, hard-link aliases, and cache authority fail closed", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-asset-bounds-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-asset-bounds-"));
     roots.push(root);
     await writeFile(join(root, "oversized.raw"), "x".repeat(33));
     const rawLoader: AssetLoader = {
@@ -233,7 +233,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("cache reads and writes obey the entry budget without changing valid build results", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-asset-cache-bounds-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-asset-cache-bounds-"));
     roots.push(root);
     await writeFile(join(root, "small.cachebound"), "small");
     await writeFile(join(root, "large.cachebound"), "x".repeat(5_000));
@@ -278,7 +278,7 @@ describe("comptime assets and derived schemas", () => {
     expect(calls).toBe(4);
 
     if (process.platform !== "win32") {
-      const outside = await mkdtemp(join(tmpdir(), "vibelang-asset-cache-outside-"));
+      const outside = await mkdtemp(join(tmpdir(), "smithers-asset-cache-outside-"));
       roots.push(outside);
       await writeFile(join(root, "late.cachebound"), "late");
       const lateCache = join(root, ".late-cache");
@@ -291,7 +291,7 @@ describe("comptime assets and derived schemas", () => {
 
   test("cache validation preserves top-level inode authority", async () => {
     if (process.platform === "win32") return;
-    const root = await mkdtemp(join(tmpdir(), "vibelang-asset-cache-inode-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-asset-cache-inode-"));
     roots.push(root);
     await writeFile(join(root, "main.inode"), "same");
     await writeFile(join(root, "dependency.txt"), "same");
@@ -323,7 +323,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("failed dependency probes cannot produce cacheable output", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-assets-negative-dep-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-assets-negative-dep-"));
     roots.push(root);
     await writeFile(join(root, "value.probe"), "value");
     const loader: AssetLoader = {
@@ -350,7 +350,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("const JSON emit preserves literal intent", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-json-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-json-"));
     roots.push(root);
     await writeFile(join(root, "config.json"), '{"mode":"prod","ports":[80,443]}');
     const compiler = new AssetCompiler({ root, cacheDirectory: join(root, ".cache") });
@@ -367,7 +367,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("import-attribute types select text and bytes independently of extension", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-raw-assets-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-raw-assets-"));
     roots.push(root);
     await writeFile(join(root, "query.sql"), "select 1;\n");
     await writeFile(join(root, "image.bin"), new Uint8Array([0, 127, 255]));
@@ -404,8 +404,8 @@ describe("comptime assets and derived schemas", () => {
       throw new Error("expected validation to fail");
     } catch (error) {
       expect(error).toBeInstanceOf(ValidationFailure);
-      expect((error as Record<PropertyKey, unknown>)[Symbol.for("vibelang.failure")]).toBe(true);
-      expect(isVibeFailure(error)).toBe(true);
+      expect((error as Record<PropertyKey, unknown>)[Symbol.for("smithers.failure")]).toBe(true);
+      expect(isSmithersFailure(error)).toBe(true);
     }
     expect(catchFailure(
       () => parseWithSchema(schema, { mode: "broken", retries: 2 }),
@@ -449,7 +449,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("poisoned nested cache keys fail closed instead of becoming cache paths", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-cache-key-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-cache-key-"));
     roots.push(root);
     await writeFile(join(root, "main.parent"), "main");
     await writeFile(join(root, "child.json"), '{"safe":true}');
@@ -485,9 +485,9 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("portable cache metadata cannot read dependencies from another project root", async () => {
-    const firstRoot = await mkdtemp(join(tmpdir(), "vibelang-root-a-"));
-    const secondRoot = await mkdtemp(join(tmpdir(), "vibelang-root-b-"));
-    const sharedCache = await mkdtemp(join(tmpdir(), "vibelang-shared-cache-"));
+    const firstRoot = await mkdtemp(join(tmpdir(), "smithers-root-a-"));
+    const secondRoot = await mkdtemp(join(tmpdir(), "smithers-root-b-"));
+    const sharedCache = await mkdtemp(join(tmpdir(), "smithers-shared-cache-"));
     roots.push(firstRoot, secondRoot, sharedCache);
     for (const root of [firstRoot, secondRoot]) await writeFile(join(root, "main.kv"), "same-source\n");
     await writeFile(join(firstRoot, "dep.txt"), "A");
@@ -516,8 +516,8 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("loader code identity and real filesystem roots are cache authority", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-loader-identity-"));
-    const outside = await mkdtemp(join(tmpdir(), "vibelang-loader-outside-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-loader-identity-"));
+    const outside = await mkdtemp(join(tmpdir(), "smithers-loader-outside-"));
     roots.push(root, outside);
     await writeFile(join(root, "value.kv"), "value");
     await writeFile(join(outside, "secret.txt"), "secret");
@@ -548,7 +548,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("loader registration is snapshotted and commits atomically", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-loader-registration-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-loader-registration-"));
     roots.push(root);
     await writeFile(join(root, "value.snap"), "value");
     await writeFile(join(root, "value.partial"), "value");
@@ -587,7 +587,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("invalid generated loader modules never enter the cache", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-loader-output-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-loader-output-"));
     roots.push(root);
     await writeFile(join(root, "bad.kv"), "bad");
     const invalid: AssetLoader = {
@@ -607,7 +607,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("options are snapshotted and cache envelopes reject poisoned output", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-loader-snapshot-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-loader-snapshot-"));
     roots.push(root);
     await writeFile(join(root, "value.kv"), "value");
     let started!: () => void;
@@ -662,7 +662,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("loader values must be stable JSON before first return and cache", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-loader-value-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-loader-value-"));
     roots.push(root);
     await writeFile(join(root, "value.kv"), "value");
     const exotic: AssetLoader = {
@@ -682,7 +682,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("third-party loaders run without ambient authority through tracked RPC", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-sandboxed-loader-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-sandboxed-loader-"));
     roots.push(root);
     await writeFile(join(root, "value.kv"), "answer=42\n");
     await writeFile(join(root, "shape.txt"), "answer\n");
@@ -728,7 +728,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("sandboxed loaders cannot observe time or ambient files and are killed at limits", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-loader-denied-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-loader-denied-"));
     roots.push(root);
     await writeFile(join(root, "time.bad"), "value");
     const timeModule = join(root, "time-loader.mjs");
@@ -807,7 +807,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("comptime evaluation is hermetic, dependency tracked, and content cached", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-comptime-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-comptime-"));
     roots.push(root);
     await writeFile(join(root, "config.txt"), "alpha\n");
     await writeFile(join(root, "data.json"), '{"answer":42}');
@@ -852,7 +852,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("comptime cache values are bound to their content key", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-comptime-poison-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-comptime-poison-"));
     roots.push(root);
     const modulePath = join(root, "constant.mjs");
     await writeFile(modulePath, `export default () => ({ answer: 42 })`);
@@ -876,7 +876,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("comptime compiler rejects structurally forged host evaluators", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-comptime-forged-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-comptime-forged-"));
     roots.push(root);
     let evaluated = false;
     const fake = {
@@ -889,7 +889,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("sandboxed comptime rejects ambient entropy, exotic values, and request floods", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-comptime-policy-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-comptime-policy-"));
     roots.push(root);
     await writeFile(join(root, "input.txt"), "value");
     const compiler = new ComptimeCompiler({ root, cacheDirectory: join(root, ".cache") });
@@ -938,7 +938,7 @@ describe("comptime assets and derived schemas", () => {
   // markdown document, front matter typing, and the MDX component module open.
 
   test("provisional markdown modules export literal front matter, body, and located headings", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-markdown-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-markdown-"));
     roots.push(root);
     const source = [
       "---",
@@ -949,7 +949,7 @@ describe("comptime assets and derived schemas", () => {
       "# a front matter comment",
       "owner:",
       "  team: compiler",
-      "  handle: vibelang",
+      "  handle: smithers",
       "tags:",
       "  - assets",
       "  - markdown",
@@ -975,14 +975,14 @@ describe("comptime assets and derived schemas", () => {
       headings: readonly { level: number; text: string; offset: number }[];
     };
     expect(built.module.format).toBe("markdown");
-    expect(built.loader).toBe("vibelang:builtin/markdown@2");
+    expect(built.loader).toBe("smithers:builtin/markdown@2");
     expect(value.source).toBe(source);
     expect(value.frontmatter).toEqual({
       title: "Typed assets",
       draft: false,
       version: 3,
       quoted: "a: b # c",
-      owner: { team: "compiler", handle: "vibelang" },
+      owner: { team: "compiler", handle: "smithers" },
       tags: ["assets", "markdown"],
     });
     expect(value.body.startsWith("# Overview\n")).toBe(true);
@@ -1008,7 +1008,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("markdown front matter outside the documented YAML subset is a located diagnostic", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-markdown-frontmatter-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-markdown-frontmatter-"));
     roots.push(root);
     const compiler = new AssetCompiler({ root, cacheDirectory: join(root, ".cache") });
     let counter = 0;
@@ -1071,7 +1071,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("provisional mdx modules emit a render tree whose expression holes stay unevaluated", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-mdx-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-mdx-"));
     roots.push(root);
     const source = [
       "---",
@@ -1096,7 +1096,7 @@ describe("comptime assets and derived schemas", () => {
       expressions: readonly string[];
       tree: readonly unknown[];
     };
-    expect(built.loader).toBe("vibelang:builtin/mdx@2");
+    expect(built.loader).toBe("smithers:builtin/mdx@2");
     expect(value.frontmatter).toEqual({ name: "POC coder" });
     expect(value.components).toEqual(["System", "Context", "Task", "Nested", "Inner"]);
     expect(value.expressions).toEqual(["repository", "task"]);
@@ -1148,7 +1148,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("mdx parse failures carry authored offsets", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-mdx-errors-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-mdx-errors-"));
     roots.push(root);
     const compiler = new AssetCompiler({ root, cacheDirectory: join(root, ".cache") });
     let counter = 0;
@@ -1195,7 +1195,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("markdown and mdx regeneration is byte-identical and admitted as pure data", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-markdown-graph-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-markdown-graph-"));
     roots.push(root);
     await writeFile(join(root, "guide.md"), "---\ntitle: Guide\ncount: 2\n---\n# One\n\ntext\n");
     await writeFile(join(root, "prompt.mdx"), "---\nname: Coder\n---\n<Task>{task}</Task>\n");
@@ -1215,7 +1215,7 @@ describe("comptime assets and derived schemas", () => {
     const graph = await compileSourceAssetModules({
       compiler: new AssetCompiler({ root, cacheDirectory: join(root, ".graph-cache") }),
       sources: [{
-        fileName: "usage.vibe",
+        fileName: "usage.sm",
         source: [
           'import guide from "./guide.md" with { type: "markdown" }',
           'import agentPrompt from "./prompt.mdx" with { type: "mdx" }',
@@ -1237,7 +1237,7 @@ describe("comptime assets and derived schemas", () => {
   });
 
   test("the agent prompt library still renders the built-in mdx module", async () => {
-    const root = await mkdtemp(join(tmpdir(), "vibelang-mdx-agent-"));
+    const root = await mkdtemp(join(tmpdir(), "smithers-mdx-agent-"));
     roots.push(root);
     await writeFile(join(root, "coding-agent.mdx"), [
       "---",

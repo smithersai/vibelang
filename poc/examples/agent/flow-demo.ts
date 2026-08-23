@@ -37,7 +37,7 @@ import type {
  */
 
 const FETCH_ACTION = `
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 
 type FetchRequest = { readonly path: string }
 type FetchReply = { readonly path: string; readonly contents: string }
@@ -52,7 +52,7 @@ export abstract class Fetch extends Action<
 `
 
 const PUBLISH_ACTION = `
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 
 type PublishRequest = { readonly path: string; readonly contents: string }
 type PublishReply = { readonly path: string; readonly bytes: number; readonly revision: number }
@@ -68,7 +68,7 @@ export abstract class Publish extends Action<
 
 /** Two Actions, one data dependency: the second consumes the first's output. */
 const FLOW_SOURCE = `
-import { durable } from "vibelang:flows"
+import { durable } from "smithers:flows"
 import { Fetch, Publish } from "demo:publishing-actions"
 
 export const Publishing = durable(function Publishing(input: { path: string; target: string }) {
@@ -89,17 +89,17 @@ export interface PublishingSuccess {
 }
 
 const fetchContract = compileActionContract(FETCH_ACTION, {
-  fileName: "agent/flow-fetch.vibe",
+  fileName: "agent/flow-fetch.sm",
   exportName: "Fetch",
-  id: "vibelang/agent-flow/Fetch",
+  id: "smthrs/agent-flow/Fetch",
   version: 1,
 })
 if (!fetchContract.ok) throw new Error(JSON.stringify(fetchContract.diagnostics))
 
 const publishContract = compileActionContract(PUBLISH_ACTION, {
-  fileName: "agent/flow-publish.vibe",
+  fileName: "agent/flow-publish.sm",
   exportName: "Publish",
-  id: "vibelang/agent-flow/Publish",
+  id: "smthrs/agent-flow/Publish",
   version: 1,
 })
 if (!publishContract.ok) throw new Error(JSON.stringify(publishContract.diagnostics))
@@ -115,8 +115,8 @@ export const PublishAction = Action.fromDescriptor<
 >(publishContract.descriptor)
 
 const compiled = compileDurableSource(FLOW_SOURCE, {
-  fileName: "agent/publishing.flow.vibe",
-  flowId: "vibelang/agent-flow/Publishing",
+  fileName: "agent/publishing.flow.sm",
+  flowId: "smthrs/agent-flow/Publishing",
   flowVersion: 1,
   actions: [
     {
@@ -179,13 +179,13 @@ export function liveProviders(project: FlowProject): FlowProviders {
       const contents = project.documents.get(path)
       if (contents === undefined) throw new Error(`missing document: ${path}`)
       return { path, contents }
-    }, { implementationId: "vibelang/agent-flow/fetch-live", implementationVersion: "1" }),
+    }, { implementationId: "smthrs/agent-flow/fetch-live", implementationVersion: "1" }),
     publish: Provider.provide(PublishAction, ({ path, contents }) => {
       project.invocations.publish += 1
       project.revision += 1
       project.documents.set(path, contents)
       return { path, bytes: contents.length, revision: project.revision }
-    }, { implementationId: "vibelang/agent-flow/publish-live", implementationVersion: "1" }),
+    }, { implementationId: "smthrs/agent-flow/publish-live", implementationVersion: "1" }),
   }
 }
 
@@ -205,20 +205,20 @@ export function poisonProviders(
   return {
     fetch: poisoned.includes("fetch")
       ? Provider.provide(FetchAction, poison("Fetch"), {
-        implementationId: "vibelang/agent-flow/fetch-live",
+        implementationId: "smthrs/agent-flow/fetch-live",
         implementationVersion: "1",
       })
       : live.fetch,
     publish: poisoned.includes("publish")
       ? Provider.provide(PublishAction, poison("Publish"), {
-        implementationId: "vibelang/agent-flow/publish-live",
+        implementationId: "smthrs/agent-flow/publish-live",
         implementationVersion: "1",
       })
       : live.publish,
   }
 }
 
-export const FLOW_DEPLOYMENT_ID = "vibelang/agent-flow/publishing@1"
+export const FLOW_DEPLOYMENT_ID = "smthrs/agent-flow/publishing@1"
 
 export function buildFlowDeployment(providers: FlowProviders): BuiltDeployment<unknown, unknown> {
   return Deployment.build({
@@ -270,7 +270,7 @@ export function createFlowAgent(options: FlowAgentOptions): CodingAgent<{ task: 
 }
 
 const NOTE_ACTION = `
-import { Action } from "vibelang:flows"
+import { Action } from "smithers:flows"
 
 type NoteRequest = { readonly text: string }
 type NoteReply = { readonly text: string }
@@ -289,9 +289,9 @@ export function noteTool(sink: string[]): AgentFunction<{ readonly text: string 
   return compileActionTool<{ readonly text: string }, { readonly text: string }>(
     {
       source: NOTE_ACTION,
-      fileName: "agent/flow-note.vibe",
+      fileName: "agent/flow-note.sm",
       exportName: "Note",
-      id: "vibelang/agent-flow/Note",
+      id: "smthrs/agent-flow/Note",
       version: 1,
       description: "record a note about the published document",
     },

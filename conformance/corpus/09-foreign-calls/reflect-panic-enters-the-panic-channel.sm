@@ -1,0 +1,15 @@
+import { Panic } from "smithers:exceptions"
+
+// Reflect.panic is the ambient spelling of the same distinguished channel that
+// panic(...) from smithers:exceptions charges.
+function force(key: string): Result<string, Panic> {
+  if (key !== "ada") Reflect.panic(`no entry for ${key}`)
+  return "Ada Lovelace"
+}
+
+export function main(): string[] {
+  return [
+    force("ada").match({ ok: (value) => value, error: (error) => `panic: ${error.message}` }),
+    force("zoe").match({ ok: (value) => value, error: (error) => `panic: ${error.message}` }),
+  ]
+}

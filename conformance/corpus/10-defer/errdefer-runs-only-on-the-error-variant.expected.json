@@ -1,0 +1,5 @@
+{
+  "title": "errdefer runs only when the emitted value is the error variant, while defer runs on both",
+  "expect": "output",
+  "stdout": ["96", "no entry for zoe", "ada:done,zoe:failed,zoe:done"]
+}

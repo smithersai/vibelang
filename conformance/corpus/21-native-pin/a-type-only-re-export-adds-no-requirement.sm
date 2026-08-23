@@ -1,0 +1,16 @@
+import { native } from "smithers:native"
+import type { Settings } from "./type-only-reexport.mod.sm"
+
+// A type-only import adds no runtime requirement, and re-exporting a type from
+// an untrusted foreign module is still type-only: no initializer edge, nothing
+// to charge, and no trust claim required. A laundering walk that followed
+// every re-export edge without reading its type-only-ness would refuse this.
+function describe(value: Settings | undefined): number {
+  return value === undefined ? 0 : 1
+}
+
+native(describe)
+
+export function main(): string[] {
+  return [String(describe(undefined))]
+}

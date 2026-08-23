@@ -1,0 +1,6 @@
+{
+  "title": "a call site that leaves a row variable unresolved because the caller forwards its own type parameter stays fail-closed",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1803", "line": 7, "column": 10 }],
+  "modules": ["unresolved-row-variable-is-rejected.mod.sm"]
+}

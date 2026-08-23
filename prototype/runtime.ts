@@ -1,9 +1,9 @@
-// VibeLang runtime — the tiny ambient-context + failure-branding kernel.
+// Smithers runtime — the tiny ambient-context + failure-branding kernel.
 // Everything here is deliberately minimal; see NOTES.md for shortcuts taken.
 
 /** Well-known brand: anything thrown that carries this symbol is a "failure".
  *  Everything else thrown is a "defect" and must not be swallowed by catch-expressions. */
-export const FAILURE: unique symbol = Symbol.for("vibelang.failure") as any;
+export const FAILURE: unique symbol = Symbol.for("smithers.failure") as any;
 
 /** Base class for lowered `error Name { ... }` declarations.
  *  (Spec says "class extending Error" — declared errors extend this, which extends Error.
@@ -59,5 +59,5 @@ export function __vsUse(name: string): any {
   for (let i = __ctxStack.length - 1; i >= 0; i--) {
     if (name in __ctxStack[i]) return __ctxStack[i][name];
   }
-  throw new Error(`VibeLang defect: capability '${name}' not provided`);
+  throw new Error(`Smithers defect: capability '${name}' not provided`);
 }

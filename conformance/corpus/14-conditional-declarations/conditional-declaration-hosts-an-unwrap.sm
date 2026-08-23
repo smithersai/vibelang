@@ -1,0 +1,26 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+const entries = new Map<string, string>([["ada", "Ada Lovelace"]])
+
+function requireEntry(key: string): Result<string, Missing> {
+  const found = entries.get(key)
+  if (found === undefined) throw new Missing(key)
+  return found
+}
+
+function initials(key: string): Result<string, Missing> {
+  if (const name = requireEntry(key).unwrap(); name.includes(" ")) {
+    const parts = name.split(" ")
+    return `${parts[0]![0]!}${parts[1]![0]!}`
+  } else {
+    return name.slice(0, 1)
+  }
+}
+
+export function main(): string[] {
+  const describe = (key: string): string =>
+    initials(key).match({ ok: (value) => value, error: (error) => error.message })
+  return [describe("ada"), describe("zoe")]
+}

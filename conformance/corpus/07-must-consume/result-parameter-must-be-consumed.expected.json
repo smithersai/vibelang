@@ -1,0 +1,17 @@
+{
+  "title": "a Result parameter that the function body never consumes is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1302",
+      "line": 10,
+      "column": 19
+    },
+    {
+      "code": "SMITHERS1301",
+      "line": 15,
+      "column": 20
+    }
+  ],
+  "notes": "Both reports are the contract: the parameter is never consumed, and the argument handed to it is therefore lost at the call site too."
+}

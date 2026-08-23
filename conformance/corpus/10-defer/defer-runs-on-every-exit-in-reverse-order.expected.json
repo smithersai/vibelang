@@ -1,0 +1,6 @@
+{
+  "title": "defer runs on both the success and the failure exit, and later registrations run first",
+  "expect": "output",
+  "stdout": ["96", "no entry for zoe", "ada:second,ada:first,zoe:second,zoe:first"],
+  "notes": "poc/src/language/README.md records the LIFO nested-finally behavior as POC evidence rather than a locked ordering decision; this case pins the behavior the corpus is written against so a change is visible."
+}

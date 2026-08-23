@@ -220,7 +220,7 @@ assert.throws(
   /missing provider/
 )
 
-const temporary = mkdtempSync(join(tmpdir(), "vibelang-durable-poc-"))
+const temporary = mkdtempSync(join(tmpdir(), "smithers-durable-poc-"))
 const databaseFile = join(temporary, "runtime.sqlite")
 const input: BuildInput = { project: "effect-lang", source: " const answer = 42 ", mode: "release" }
 

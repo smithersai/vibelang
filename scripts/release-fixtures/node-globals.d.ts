@@ -1,8 +1,8 @@
 /**
  * Minimal stand-in for the `@types/node` ambient that a Node consumer supplies.
- * `vibelang/platform` types its terminal streams as `NodeJS.ReadableStream` and
+ * `smthrs/platform` types its terminal streams as `NodeJS.ReadableStream` and
  * `NodeJS.WritableStream`, and `@types/node` is a development dependency that a
- * plain `npm install vibelang` never brings along, so the release type consumer
+ * plain `npm install smthrs` never brings along, so the release type consumer
  * declares the namespace itself rather than weakening `types: []`.
  *
  * Kept deliberately small, exactly like `bun-sqlite.d.ts`: it exists so the

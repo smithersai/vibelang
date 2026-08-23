@@ -1,0 +1,212 @@
+# TC39 Proposals [Where Smithers stands on every active proposal]
+
+Smithers is a TypeScript-derived language, so a standards-track proposal is the cheapest possible source of new syntax: adopting one costs a grammar patch that upstream will eventually make unnecessary, while inventing an equivalent costs the same patch forever. The decision ledger therefore records an explicit adopt-early list, and an explicit set of standing rejections.
+
+This page states a position for every proposal currently at Stage 1, 2, 2.7, or 3.
+
+Exactly one row below is marked **Adopted**. Smithers adds a single source form beyond TypeScript, and it is standards-track. Every other capability is expressed with ordinary TypeScript syntax.
+
+Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals) on **August 23, 2026**. Stages move; re-check before relying on one.
+
+## Status Vocabulary
+
+| Status | Meaning |
+| --- | --- |
+| **Adopted** | implemented in the language today |
+| **Committed** | on the ledger's adopt-early list; not yet built |
+| **Reserved** | deliberately not adopted, but the design accounts for it |
+| **Rejected** | a standing rejection in the ledger |
+| No position | the ledger takes no stance |
+
+"No position" is the honest default. It means the proposal has not been considered, not that it was weighed and dismissed.
+
+## Stage 3
+
+| Proposal | Smithers | Note |
+| --- | --- | --- |
+| Legacy RegExp features in JavaScript | No position |  |
+| Source Phase Imports | Committed | on the adopt-early list |
+| Dynamic Code Brand Checks | No position |  |
+| Deferring Module Evaluation | Reserved | unrelated to cleanup; it is why `defer` is already a keyword in the fork |
+| Non-extensible Applies to Private | No position |  |
+| Import Text | Committed | already expressible as `with { type: "text" }` |
+| iterator chunking | No position |  |
+| Iterator Includes | No position |  |
+| Iterator Join | No position |  |
+| Error Stack Accessor | Committed | the ledger's "cheap stack capture" |
+| RegExp Buffer Boundaries (`\A`, `\z`, `\Z`) | No position |  |
+| Await Dictionary | Committed | the ledger's `Promise.allKeyed` / `allSettledKeyed` |
+
+## Stage 2.7
+
+| Proposal | Smithers | Note |
+| --- | --- | --- |
+| Decorators | No position |  |
+| Decorator Metadata | No position |  |
+| ShadowRealm | No position |  |
+| ESM Phase Imports | No position |  |
+| Immutable ArrayBuffers | No position |  |
+| Import Bytes | Committed | on the adopt-early list |
+
+## Stage 2
+
+| Proposal | Smithers | Note |
+| --- | --- | --- |
+| `function.sent` metaproperty | No position |  |
+| `throw` expressions | Reserved | deliberately deferred — Smithers adds no throw-expression grammar until this lands upstream |
+| Function implementation hiding | No position |  |
+| collection normalization | No position |  |
+| Module Expressions | Committed | on the adopt-early list |
+| Pipeline Operator | No position |  |
+| Destructure Private Fields | No position |  |
+| String.dedent | No position |  |
+| JSON.parseImmutable | No position |  |
+| Module Declarations | No position |  |
+| Symbol Predicates | No position |  |
+| Async Iterator helpers | Committed | including unordered operation |
+| Iterator.range | No position |  |
+| Async Context | Reserved | capabilities subsume it for compiled dependency propagation; an interop adapter may exist at TypeScript boundaries |
+| "Discard" (`void`) Bindings | Committed | on the adopt-early list |
+| Propagate active ScriptOrModule with JobCallback Record | No position |  |
+| Structs: Fixed Layout Objects and Some Synchronization Primitives | Committed | adopted, but sequenced after lower-risk concurrency work |
+| Extractors | No position |  |
+| Deferred Re-exports | No position |  |
+| SeededPRNG | No position |  |
+| `Math.clamp` | No position |  |
+| Native Promise Predicate | No position |  |
+| `Error.captureStackTrace` | Committed | the ledger's "cheap stack capture" |
+| `Object.keysLength` | No position |  |
+| Sync Imports | No position |  |
+| Curtailing the power of "Thenables" | No position |  |
+| Amount | No position |  |
+| Error code property | No position |  |
+| Fused Multiply-Add | No position |  |
+
+## Stage 1
+
+| Proposal | Smithers | Note |
+| --- | --- | --- |
+| `export v from "mod";` statements | No position |  |
+| Observable | No position |  |
+| SES (Secure EcmaScript) | No position |  |
+| `of` and `from` on collection constructors | No position |  |
+| Error stacks | No position |  |
+| `do` expressions | Reserved | the nearest standards-track analog to a value-position block; Smithers has no expression-form control flow and would inherit this rather than invent one |
+| Change `Number.parseInt`/`parseFloat` to not coerce `null`/`undefined`/`NaN` | No position |  |
+| Binary AST | No position |  |
+| First-class protocols | No position |  |
+| Partial application | Rejected | conflicts with capability calling conventions |
+| Cancellation API | Committed | cancellation is visible in typed failures and provided through the dependency model |
+| `String.prototype.codePoints` | No position |  |
+| `Object.freeze` + `Object.seal` syntax | No position |  |
+| Block Params | Rejected | standing rejection |
+| `{BigInt,Number}.fromString` | No position |  |
+| Maximally minimal mixins | No position |  |
+| Collection methods | No position |  |
+| Richer Keys | No position |  |
+| Slice notation | No position |  |
+| Module Keys | No position |  |
+| class Access Expressions | No position |  |
+| Pattern Matching | Reserved | Smithers owns expression-form control-flow grammar while leaving room to converge with this |
+| Dynamic Modules | No position |  |
+| Built In Modules (aka JS Standard Library) | No position |  |
+| uniform parsing of quasi-standard `Date.parse` input | No position |  |
+| IDL for ECMAScript | No position |  |
+| Asset References | No position |  |
+| Freezing prototypes | No position |  |
+| `new.initialize` | No position |  |
+| Private declarations | No position |  |
+| Emitter | No position |  |
+| Reverse iteration | No position |  |
+| Declarations in Conditionals | **Adopted** | shipped as `if (const x = f(); cond)` — **the only grammar Smithers adds**, and a Stage 1 proposal |
+| Readonly Collections | No position |  |
+| Support for Distributed Promise Pipelining | Rejected | standing rejection |
+| Wavy Dot: Syntactic Support for Promise Pipelining | Rejected | standing rejection |
+| OOM Fails Fast | No position |  |
+| Array filtering | No position |  |
+| Async initialization | No position |  |
+| Decimal | No position |  |
+| Preserve Host Virtualizability | No position |  |
+| Legacy reflection features for functions in JavaScript | No position |  |
+| Cryptographically Secure Random Number Generation | No position |  |
+| Compartments | No position |  |
+| Deep Path Properties in Record Literals | No position |  |
+| Restrict subclassing support in built-in methods | No position |  |
+| Array Equality | No position |  |
+| await operations | No position |  |
+| `Array.prototype.unique()` | No position |  |
+| Double-Ended Iterator and Destructuring | No position |  |
+| Standardized Debug | No position |  |
+| Modulus and Additional Integer Math | No position |  |
+| Extensions | No position |  |
+| Grouped Accessors and Auto-Accessors | No position |  |
+| `async do` expressions | Reserved | as `do` expressions |
+| Class Brand Checks | No position |  |
+| Limited ArrayBuffer | No position |  |
+| BigInt Math | No position |  |
+| Get Intrinsic | No position |  |
+| `String.cooked` | No position |  |
+| Call-this operator | No position |  |
+| RegExp Extended Mode and Comments | No position |  |
+| RegExp `\R` Escape | No position |  |
+| Reversible string split | No position |  |
+| Function once | No position |  |
+| Type Annotations | No position |  |
+| Faster Promise adoption | No position |  |
+| RegExp Atomic Operators | No position |  |
+| Policy Maps and Sets | No position |  |
+| Function Memoization | No position |  |
+| Object pick/omit | No position |  |
+| Mass Proxy Revocation | No position |  |
+| Prototype pollution mitigation | No position |  |
+| Class Method Parameter Decorators | No position |  |
+| Optional chaining in assignment LHS | No position |  |
+| DataView get/set Uint8Clamped methods | No position |  |
+| Negated `in` and `instanceof` operators | Rejected | reinterpreting the existing operators is a standing rejection |
+| Locale Extensions | No position |  |
+| Module sync assert | No position |  |
+| Iterator unique | No position |  |
+| Improved Escapes for Template Literals | No position |  |
+| Function and Object Literal Decorators | No position |  |
+| Strict Enforcement of 'using' | Reserved | `using` is the cleanup story; Smithers adds no `defer` statement |
+| Signals | No position |  |
+| Concurrency Control | Committed | the ledger's "governors" — a governor limits fan-out, it does not own child-task lifetimes |
+| Unordered Async Iterator Helpers | Committed | on the adopt-early list |
+| `Array.zip` and `Array.zipKeyed` | No position |  |
+| Stabilize | No position |  |
+| `Composites` | No position |  |
+| Enums | No position |  |
+| `Object.propertyCount` | No position |  |
+| Compare Strings by Codepoint | No position |  |
+| Disposable AsyncContext.Variable | No position |  |
+| More Random Functions | No position |  |
+| Inspector | No position |  |
+| Module Global | No position |  |
+| Bulk-add array elements | No position |  |
+| TypedArray Concat | No position |  |
+| TypedArray Find Within | No position |  |
+| `Object.getNonIndexStringProperties()` | No position |  |
+| Error option `framesAbove` | No position |  |
+| Error option `limit` | No position |  |
+| Alias Accessors | No position |  |
+| Composable Accessors via built-in decorators | No position |  |
+| export all from | No position |  |
+| Comparisons | No position |  |
+| Bigint from exponential | No position |  |
+| Map get and delete | No position |  |
+| Linear Matching | No position |  |
+
+## Already Finished
+
+Smithers depends on several Stage 4 proposals that no longer appear above: import attributes, JSON modules, iterator helpers, and explicit resource management (`using`). `using` is the one worth naming — it is the whole cleanup story, and how its disposal orders against a compiler-generated `!` early return is [not yet settled](/specification/control-flow).
+
+## Not Standards-Track
+
+Two items the ledger lists as TC39 policy have no proposal at any stage: `Reflect.panic` and a worker failure protocol. They are treated as design intent rather than as adoption.
+
+Two more are recorded as rejected because the proposal itself is gone: Record & Tuple was withdrawn, and cancelable Promises never advanced.
+
+## Related
+
+- [Differences from TypeScript](/reference/typescript-differences) — including the syntax we rejected to avoid new grammar
+- [Compatibility](/specification/compatibility) — the normative source relationship

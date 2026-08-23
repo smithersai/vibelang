@@ -6,9 +6,9 @@ export type PluginModuleFactory = ts.server.PluginModuleFactory;
 export type LanguageService = ts.LanguageService;
 export type LanguageServiceHost = ts.LanguageServiceHost;
 
-export interface VibeLanguageServicePlugin extends ts.server.PluginModule {
+export interface SmithersLanguageServicePlugin extends ts.server.PluginModule {
   readonly apiVersion?: 1;
-  getExternalVibeFiles?(project: ts.server.Project): readonly string[];
+  getExternalSmithersFiles?(project: ts.server.Project): readonly string[];
 }
 
 /** Create the standard decorator-shaped pass-through language service. */
@@ -27,4 +27,3 @@ export function createPassThroughLanguageService(info: PluginCreateInfo): Langua
 export function definePlugin<T extends PluginModuleFactory>(factory: T): T {
   return factory;
 }
-

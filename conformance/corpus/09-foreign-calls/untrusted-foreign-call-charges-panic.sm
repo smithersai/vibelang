@@ -1,0 +1,13 @@
+import { Panic } from "smithers:exceptions"
+import { parseIntegerUnchecked } from "./foreign.ts"
+
+function parse(text: string): Result<number, Panic> {
+  return parseIntegerUnchecked(text)
+}
+
+export function main(): string[] {
+  return [
+    parse("41").match({ ok: (value) => `ok ${value}`, error: (error) => `panic ${error.message}` }),
+    parse("oops").match({ ok: (value) => `ok ${value}`, error: () => "panic" }),
+  ]
+}

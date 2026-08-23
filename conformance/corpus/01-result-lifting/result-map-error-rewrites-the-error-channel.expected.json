@@ -1,0 +1,6 @@
+{
+  "title": "mapError replaces the Result error type and leaves a success value untouched",
+  "expect": "output",
+  "stdout": ["Ada Lovelace", "wrapped: zoe"],
+  "notes": "specification/failures.mdx, 'Matching and Transformation', lists mapError among the operations a Result MUST provide, and requires transformations to 'preserve or correctly combine the Result error type'. The declared contract of `rewrapped` is Result<string, Wrapped>: an implementation that let Missing survive mapError would not satisfy it."
+}

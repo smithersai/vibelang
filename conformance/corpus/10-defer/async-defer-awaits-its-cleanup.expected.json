@@ -1,0 +1,9 @@
+{
+  "title": "an async owner's defer awaits its cleanup Promise before the function completes",
+  "expect": "output",
+  "stdout": [
+    "done",
+    "cleanup"
+  ],
+  "notes": "specification/failures.mdx, 'Cleanup': 'defer runs when the containing scope exits', and the same section notes that async finalization needs further specification. poc/src/language/README.md records the bounded shape the POC supports: 'Async owners accept exactly one root await of a plain cleanup Promise.' The observation is the ORDER: `events` already contains 'cleanup' by the time main reads it, so the deferred Promise was awaited rather than left dangling \u2014 which would also violate the every-started-Promise-is-consumed rule."
+}

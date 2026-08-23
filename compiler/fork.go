@@ -4,18 +4,22 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	_ "embed"
+	"embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // PinnedTypeScriptRevision is the exact smithersai/TypeScript revision this
@@ -36,7 +40,9 @@ var (
 
 // ForkConfig locates an exact TypeScript checkout and a disposable/cacheable
 // directory for the bridge binary. CheckoutDirectory is the repository root
-// containing tsc/go.mod, not the tsc directory itself.
+// containing tsc/go.mod, not the tsc directory itself. A pristine checkout is
+// advanced to the embedded forkpatch post-image; an already-applied checkout
+// is accepted only after the same digest gates pass.
 type ForkConfig struct {
 	CheckoutDirectory string
 	CacheDirectory    string
@@ -62,9 +68,88 @@ func (e *ForkError) Unwrap() error { return e.Err }
 //go:embed forkbridge/main.go.txt
 var forkBridgeSource []byte
 
-// NewPinnedFork verifies, builds, and handshakes with a compiler bridge from
-// the exact locked fork revision. The bridge is compiled with Go's overlay
-// facility, so the external checkout remains byte-for-byte untouched.
+//go:embed forkbridge/lowering.go.txt
+var forkLoweringSource []byte
+
+//go:embed forkbridge/checker.go.txt
+var forkCheckerBridgeSource []byte
+
+//go:embed forkbridge/comptime.go.txt
+var forkComptimeSource []byte
+
+//go:embed forkbridge/durable.go.txt
+var forkDurableSource []byte
+
+//go:embed forkbridge/hostrules.go.txt
+var forkHostRulesSource []byte
+
+//go:embed forkbridge/retired.go.txt
+var forkRetiredSyntaxSource []byte
+
+//go:embed forkbridge/nativepin.go.txt
+var forkNativePinSource []byte
+
+//go:embed forkbridge/assets.go.txt
+var forkAssetSource []byte
+
+//go:embed forkbridge/mustconsume.go.txt
+var forkMustConsumeSource []byte
+
+// forkPatchFiles is the exact ordered, digest-gated patch series compiled into
+// this bridge build. Embedding it keeps a distributed smithersc-go binary
+// fail-closed: preparation never depends on finding a mutable repository next
+// to the executable, and changing series.json or any recorded patch changes
+// the bridge cache identity.
+//
+//go:embed forkpatch/series.json forkpatch/patches/*.patch
+var forkPatchFiles embed.FS
+
+type forkPatchManifest struct {
+	SchemaVersion int `json:"schemaVersion"`
+	Revision      string
+	Generator     json.RawMessage `json:"generator"`
+	Patches       []struct {
+		File    string
+		SHA256  string `json:"sha256"`
+		Kind    string `json:"kind"`
+		Summary string `json:"summary"`
+	} `json:"patches"`
+	Generated []string          `json:"generated"`
+	Created   []string          `json:"created"`
+	PreImage  map[string]string `json:"preImage"`
+	PostImage map[string]string `json:"postImage"`
+}
+
+type pinnedForkPatchSeries struct {
+	manifest forkPatchManifest
+	patches  map[string][]byte
+	identity string
+}
+
+// forkBridgeFiles are the Go sources this module owns and injects through the
+// build overlay, keyed by their paths inside the tsc module. main.go replaces
+// the upstream entry point; the lowering joins that package and the checker
+// seam joins the fork's checker package.
+var forkBridgeFiles = []struct {
+	target string
+	source *[]byte
+}{
+	{target: "cmd/tsc/main.go", source: &forkBridgeSource},
+	{target: "cmd/tsc/smitherslowering.go", source: &forkLoweringSource},
+	{target: "cmd/tsc/smitherscomptime.go", source: &forkComptimeSource},
+	{target: "cmd/tsc/smithersdurable.go", source: &forkDurableSource},
+	{target: "cmd/tsc/smithershostrules.go", source: &forkHostRulesSource},
+	{target: "cmd/tsc/smithersretired.go", source: &forkRetiredSyntaxSource},
+	{target: "cmd/tsc/smithersnativepin.go", source: &forkNativePinSource},
+	{target: "cmd/tsc/smithersassets.go", source: &forkAssetSource},
+	{target: "cmd/tsc/smithersmustconsume.go", source: &forkMustConsumeSource},
+	{target: "internal/checker/smithersbridge.go", source: &forkCheckerBridgeSource},
+}
+
+// NewPinnedFork verifies the exact locked fork revision, applies or verifies
+// the embedded digest-gated patch series, then builds and handshakes with that
+// exact compiler. Overlay-owned bridge sources remain outside the checkout;
+// forkpatch-owned upstream modifications remain visible and digest-verifiable.
 func NewPinnedFork(ctx context.Context, config ForkConfig) (Compiler, error) {
 	executable, err := preparePinnedForkBridge(ctx, config)
 	if err != nil {
@@ -157,7 +242,7 @@ func hydrateCompileRequest(request CompileRequest) (CompileRequest, CompileResul
 	if len(request.RootNames) == 0 {
 		result := CompileResult{
 			Diagnostics: []Diagnostic{{
-				Code:     "VIBE0002",
+				Code:     "SMITHERS0002",
 				Category: DiagnosticError,
 				Message:  "the pinned compiler bridge requires at least one root name",
 				Phase:    PhaseParse,
@@ -169,7 +254,7 @@ func hydrateCompileRequest(request CompileRequest) (CompileRequest, CompileResul
 	if err := validateLoweredRequest(request); err != nil {
 		result := CompileResult{
 			Diagnostics: []Diagnostic{{
-				Code:     "VIBE0004",
+				Code:     "SMITHERS0004",
 				Category: DiagnosticError,
 				Message:  err.Error(),
 				Phase:    PhaseLower,
@@ -190,7 +275,7 @@ func hydrateCompileRequest(request CompileRequest) (CompileRequest, CompileResul
 		if err != nil {
 			result := CompileResult{
 				Diagnostics: []Diagnostic{{
-					Code:     "VIBE0003",
+					Code:     "SMITHERS0003",
 					Category: DiagnosticError,
 					Message:  err.Error(),
 					File:     rootName,
@@ -234,11 +319,147 @@ func logicalPathForDiskRoot(name string) (string, error) {
 
 func fileKindForPath(name string) FileKind {
 	switch strings.ToLower(filepath.Ext(name)) {
-	case ".vibe":
-		return FileKindVibe
+	case ".sm":
+		return FileKindSmithers
 	default:
 		return FileKindTypeScript
 	}
+}
+
+func loadPinnedForkPatchSeries() (*pinnedForkPatchSeries, error) {
+	manifestBytes, err := forkPatchFiles.ReadFile("forkpatch/series.json")
+	if err != nil {
+		return nil, fmt.Errorf("read embedded series.json: %w", err)
+	}
+	var manifest forkPatchManifest
+	decoder := json.NewDecoder(bytes.NewReader(manifestBytes))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&manifest); err != nil {
+		return nil, fmt.Errorf("decode embedded series.json: %w", err)
+	}
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("decode embedded series.json: expected one JSON value")
+	}
+	if manifest.SchemaVersion != 1 {
+		return nil, fmt.Errorf("series.json schemaVersion is %d; require 1", manifest.SchemaVersion)
+	}
+	if manifest.Revision != PinnedTypeScriptRevision {
+		return nil, fmt.Errorf("series.json records revision %q; require %q", manifest.Revision, PinnedTypeScriptRevision)
+	}
+	if len(manifest.Patches) == 0 {
+		return nil, errors.New("series.json lists no patches")
+	}
+
+	patches := make(map[string][]byte, len(manifest.Patches))
+	recorded := make(map[string]struct{}, len(manifest.Patches))
+	hasher := sha256.New()
+	hasher.Write(manifestBytes)
+	hasher.Write([]byte{0})
+	for _, entry := range manifest.Patches {
+		if entry.File == "" || path.Clean(entry.File) != entry.File || !strings.HasPrefix(entry.File, "patches/") || strings.Contains(entry.File, "\\") {
+			return nil, fmt.Errorf("series.json contains invalid patch path %q", entry.File)
+		}
+		if _, exists := recorded[entry.File]; exists {
+			return nil, fmt.Errorf("series.json lists %q more than once", entry.File)
+		}
+		recorded[entry.File] = struct{}{}
+		content, err := forkPatchFiles.ReadFile("forkpatch/" + entry.File)
+		if err != nil {
+			return nil, fmt.Errorf("read embedded %s: %w", entry.File, err)
+		}
+		digest := sha256.Sum256(content)
+		if hex.EncodeToString(digest[:]) != entry.SHA256 {
+			return nil, fmt.Errorf("patch file digest mismatch: %s", entry.File)
+		}
+		patches[entry.File] = content
+		hasher.Write([]byte(entry.File))
+		hasher.Write([]byte{0})
+		hasher.Write(content)
+		hasher.Write([]byte{0})
+	}
+	embeddedPatches, err := fs.Glob(forkPatchFiles, "forkpatch/patches/*.patch")
+	if err != nil {
+		return nil, fmt.Errorf("list embedded patches: %w", err)
+	}
+	for _, embeddedPath := range embeddedPatches {
+		name := strings.TrimPrefix(embeddedPath, "forkpatch/")
+		if _, exists := recorded[name]; !exists {
+			return nil, fmt.Errorf("%s is embedded but not listed in series.json", name)
+		}
+	}
+	if len(embeddedPatches) != len(recorded) {
+		return nil, errors.New("series.json patch count does not match the embedded patch set")
+	}
+	if err := validateForkPatchImages(manifest); err != nil {
+		return nil, err
+	}
+	return &pinnedForkPatchSeries{
+		manifest: manifest,
+		patches:  patches,
+		identity: hex.EncodeToString(hasher.Sum(nil)),
+	}, nil
+}
+
+func validateForkPatchImages(manifest forkPatchManifest) error {
+	created := make(map[string]struct{}, len(manifest.Created))
+	for _, name := range manifest.Created {
+		if err := validateForkPatchImagePath(name); err != nil {
+			return fmt.Errorf("series.json created path: %w", err)
+		}
+		if _, exists := created[name]; exists {
+			return fmt.Errorf("series.json lists created path %q more than once", name)
+		}
+		created[name] = struct{}{}
+		if _, exists := manifest.PreImage[name]; exists {
+			return fmt.Errorf("created path %q unexpectedly has a pre-image", name)
+		}
+	}
+	if len(manifest.PreImage) == 0 || len(manifest.PostImage) == 0 {
+		return errors.New("series.json must record non-empty preImage and postImage maps")
+	}
+	for name, digest := range manifest.PreImage {
+		if err := validateForkPatchImage(name, digest); err != nil {
+			return fmt.Errorf("series.json preImage: %w", err)
+		}
+		if _, exists := manifest.PostImage[name]; !exists {
+			return fmt.Errorf("pre-image path %q has no post-image", name)
+		}
+	}
+	for name, digest := range manifest.PostImage {
+		if err := validateForkPatchImage(name, digest); err != nil {
+			return fmt.Errorf("series.json postImage: %w", err)
+		}
+		if _, exists := manifest.PreImage[name]; !exists {
+			if _, exists := created[name]; !exists {
+				return fmt.Errorf("post-image path %q is neither modified nor created", name)
+			}
+		}
+	}
+	for name := range created {
+		if _, exists := manifest.PostImage[name]; !exists {
+			return fmt.Errorf("created path %q has no post-image", name)
+		}
+	}
+	return nil
+}
+
+func validateForkPatchImage(name string, digest string) error {
+	if err := validateForkPatchImagePath(name); err != nil {
+		return err
+	}
+	decoded, err := hex.DecodeString(digest)
+	if err != nil || len(decoded) != sha256.Size || digest != strings.ToLower(digest) {
+		return fmt.Errorf("path %q has invalid SHA-256 %q", name, digest)
+	}
+	return nil
+}
+
+func validateForkPatchImagePath(name string) error {
+	if name == "" || path.Clean(name) != name || path.IsAbs(name) || strings.Contains(name, "\\") {
+		return fmt.Errorf("invalid checkout path %q", name)
+	}
+	return nil
 }
 
 func preparePinnedForkBridge(ctx context.Context, config ForkConfig) (string, error) {
@@ -253,8 +474,9 @@ func preparePinnedForkBridge(ctx context.Context, config ForkConfig) (string, er
 	if err != nil {
 		return "", &ForkError{Op: "locate checkout", Err: errors.Join(ErrForkUnavailable, err)}
 	}
-	if err := verifyPinnedCheckout(ctx, checkout); err != nil {
-		return "", err
+	series, err := loadPinnedForkPatchSeries()
+	if err != nil {
+		return "", &ForkError{Op: "verify patch series", Err: errors.Join(ErrForkUnavailable, err)}
 	}
 
 	cacheBase := config.CacheDirectory
@@ -263,14 +485,21 @@ func preparePinnedForkBridge(ctx context.Context, config ForkConfig) (string, er
 		if err != nil {
 			return "", &ForkError{Op: "locate cache", Err: errors.Join(ErrForkUnavailable, err)}
 		}
-		cacheBase = filepath.Join(cacheBase, "vibelang", "typescript-bridge")
+		cacheBase = filepath.Join(cacheBase, "smithers", "typescript-bridge")
 	}
 	cacheBase, err = resolvePathForCreation(cacheBase)
 	if err != nil {
 		return "", &ForkError{Op: "locate cache", Err: errors.Join(ErrForkUnavailable, err)}
 	}
-	digest := sha256.Sum256(forkBridgeSource)
-	cacheDirectory := filepath.Join(cacheBase, PinnedTypeScriptRevision+"-"+hex.EncodeToString(digest[:8])+"-"+runtime.GOOS+"-"+runtime.GOARCH)
+	hasher := sha256.New()
+	for _, file := range forkBridgeFiles {
+		hasher.Write([]byte(file.target))
+		hasher.Write([]byte{0})
+		hasher.Write(*file.source)
+		hasher.Write([]byte{0})
+	}
+	digest := [sha256.Size]byte(hasher.Sum(nil))
+	cacheDirectory := filepath.Join(cacheBase, PinnedTypeScriptRevision+"-"+series.identity+"-"+hex.EncodeToString(digest[:])+"-"+runtime.GOOS+"-"+runtime.GOARCH)
 	if pathsOverlap(checkout, cacheDirectory) {
 		return "", &ForkError{
 			Op:     "locate cache",
@@ -281,13 +510,21 @@ func preparePinnedForkBridge(ctx context.Context, config ForkConfig) (string, er
 	if err := os.MkdirAll(cacheDirectory, 0o755); err != nil {
 		return "", &ForkError{Op: "create cache", Err: errors.Join(ErrForkUnavailable, err)}
 	}
+	release, err := acquireForkPreparationLock(ctx, filepath.Join(cacheDirectory, "prepare.lock"))
+	if err != nil {
+		return "", &ForkError{Op: "lock preparation", Err: errors.Join(ErrForkUnavailable, err)}
+	}
+	defer release()
+	if err := verifyAndApplyPinnedCheckout(ctx, checkout, cacheDirectory, series); err != nil {
+		return "", err
+	}
 
-	executableName := "vibelang-typescript-bridge"
+	executableName := "smithers-typescript-bridge"
 	if runtime.GOOS == "windows" {
 		executableName += ".exe"
 	}
 	executable := filepath.Join(cacheDirectory, executableName)
-	if revision, _ := bridgeRevision(ctx, executable); revision == PinnedTypeScriptRevision {
+	if bridgeHasIdentity(ctx, executable, series.identity) {
 		return executable, nil
 	}
 
@@ -296,16 +533,21 @@ func preparePinnedForkBridge(ctx context.Context, config ForkConfig) (string, er
 		return "", &ForkError{Op: "create build directory", Err: errors.Join(ErrForkUnavailable, err)}
 	}
 	defer os.RemoveAll(buildDirectory)
-	replacement := filepath.Join(buildDirectory, "main.go")
-	if err := os.WriteFile(replacement, forkBridgeSource, 0o644); err != nil {
-		return "", &ForkError{Op: "materialize overlay", Err: errors.Join(ErrForkUnavailable, err)}
+	replacements := make(map[string]string, len(forkBridgeFiles))
+	for _, file := range forkBridgeFiles {
+		replacement := filepath.Join(buildDirectory, filepath.FromSlash(file.target))
+		if err := os.MkdirAll(filepath.Dir(replacement), 0o755); err != nil {
+			return "", &ForkError{Op: "materialize overlay", Err: errors.Join(ErrForkUnavailable, err)}
+		}
+		if err := os.WriteFile(replacement, *file.source, 0o644); err != nil {
+			return "", &ForkError{Op: "materialize overlay", Err: errors.Join(ErrForkUnavailable, err)}
+		}
+		replacements[filepath.Join(checkout, "tsc", filepath.FromSlash(file.target))] = replacement
 	}
 	overlayPath := filepath.Join(buildDirectory, "overlay.json")
 	overlay := struct {
 		Replace map[string]string `json:"Replace"`
-	}{Replace: map[string]string{
-		filepath.Join(checkout, "tsc", "cmd", "tsc", "main.go"): replacement,
-	}}
+	}{Replace: replacements}
 	overlayJSON, err := json.Marshal(overlay)
 	if err != nil {
 		return "", &ForkError{Op: "encode overlay", Err: errors.Join(ErrForkUnavailable, err)}
@@ -325,7 +567,7 @@ func preparePinnedForkBridge(ctx context.Context, config ForkConfig) (string, er
 		"build",
 		"-trimpath",
 		"-overlay", overlayPath,
-		"-ldflags", "-X main.compilerRevision="+PinnedTypeScriptRevision+" -X main.bridgeAPIVersion="+strconv.Itoa(forkBridgeAPIVersion),
+		"-ldflags", "-X main.compilerRevision="+PinnedTypeScriptRevision+" -X main.compilerPatchSeries="+series.identity+" -X main.bridgeAPIVersion="+strconv.Itoa(forkBridgeAPIVersion),
 		"-o", temporaryExecutable,
 		"./cmd/tsc",
 	)
@@ -346,15 +588,16 @@ func preparePinnedForkBridge(ctx context.Context, config ForkConfig) (string, er
 		}
 	}
 	if err := os.Rename(temporaryExecutable, executable); err != nil {
-		// Another cold-cache builder may have atomically installed the same
-		// revision first. Accept only a successful exact-revision handshake.
-		if revision, _ := bridgeRevision(ctx, executable); revision == PinnedTypeScriptRevision {
+		// Another cold-cache builder may have atomically installed the same exact
+		// build first. Accept only a successful revision-and-series handshake.
+		if bridgeHasIdentity(ctx, executable, series.identity) {
 			return executable, nil
 		}
 		return "", &ForkError{Op: "install bridge", Err: errors.Join(ErrForkUnavailable, err)}
 	}
-	if revision, handshakeErr := bridgeRevision(ctx, executable); revision != PinnedTypeScriptRevision {
-		detail := fmt.Sprintf("bridge reported revision %q", revision)
+	identity, handshakeErr := bridgeBuildIdentity(ctx, executable)
+	if handshakeErr != nil || identity.Revision != PinnedTypeScriptRevision || identity.PatchSeries != series.identity {
+		detail := fmt.Sprintf("bridge reported revision %q patch series %q", identity.Revision, identity.PatchSeries)
 		if handshakeErr != nil {
 			detail += ": " + handshakeErr.Error()
 		}
@@ -405,7 +648,30 @@ func pathContains(parent string, child string) bool {
 	return relative == "." || relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
-func verifyPinnedCheckout(ctx context.Context, checkout string) error {
+func acquireForkPreparationLock(ctx context.Context, directory string) (func(), error) {
+	for {
+		if err := os.Mkdir(directory, 0o700); err == nil {
+			return func() { _ = os.Remove(directory) }, nil
+		} else if !errors.Is(err, os.ErrExist) {
+			return nil, err
+		}
+		timer := time.NewTimer(25 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
+type forkPatchCheckoutState struct {
+	state            string
+	pristineProblems []string
+	appliedProblems  []string
+}
+
+func verifyAndApplyPinnedCheckout(ctx context.Context, checkout string, scratchDirectory string, series *pinnedForkPatchSeries) error {
 	revisionCommand := exec.CommandContext(ctx, "git", "-C", checkout, "rev-parse", "HEAD")
 	revisionBytes, err := revisionCommand.Output()
 	if err != nil {
@@ -418,14 +684,6 @@ func verifyPinnedCheckout(ctx context.Context, checkout string) error {
 			Err:    ErrForkUnavailable,
 		}
 	}
-	statusCommand := exec.CommandContext(ctx, "git", "-C", checkout, "status", "--porcelain", "--untracked-files=all", "--", "tsc")
-	statusBytes, err := statusCommand.Output()
-	if err != nil {
-		return &ForkError{Op: "verify worktree", Err: errors.Join(ErrForkUnavailable, err)}
-	}
-	if status := strings.TrimSpace(string(statusBytes)); status != "" {
-		return &ForkError{Op: "verify worktree", Detail: status, Err: ErrForkUnavailable}
-	}
 	modulePath := filepath.Join(checkout, "tsc", "go.mod")
 	moduleBytes, err := os.ReadFile(modulePath)
 	if err != nil {
@@ -434,7 +692,239 @@ func verifyPinnedCheckout(ctx context.Context, checkout string) error {
 	if !strings.Contains(string(moduleBytes), "module github.com/microsoft/TypeScript/tsc") {
 		return &ForkError{Op: "verify compiler module", Detail: "unexpected tsc/go.mod module path", Err: ErrForkUnavailable}
 	}
+	state, err := classifyForkPatchCheckout(checkout, series.manifest)
+	if err != nil {
+		return &ForkError{Op: "verify patch digests", Err: errors.Join(ErrForkUnavailable, err)}
+	}
+	switch state.state {
+	case "applied":
+		if err := verifyForkPatchWorktree(ctx, checkout, series.manifest, true); err != nil {
+			return &ForkError{Op: "verify patched worktree", Err: errors.Join(ErrForkUnavailable, err)}
+		}
+		return nil
+	case "mixed":
+		return &ForkError{
+			Op: "verify patch digests",
+			Detail: fmt.Sprintf(
+				"checkout is neither pristine nor fully patched (%d pristine-image mismatch(es), %d applied-image mismatch(es)); first divergent path: %s",
+				len(state.pristineProblems), len(state.appliedProblems), firstForkPatchProblem(state),
+			),
+			Err: ErrForkUnavailable,
+		}
+	case "pristine":
+		if err := verifyForkPatchWorktree(ctx, checkout, series.manifest, false); err != nil {
+			return &ForkError{Op: "verify pristine worktree", Err: errors.Join(ErrForkUnavailable, err)}
+		}
+	default:
+		return &ForkError{Op: "verify patch digests", Detail: "unknown checkout state " + state.state, Err: ErrForkUnavailable}
+	}
+
+	patchDirectory, err := os.MkdirTemp(scratchDirectory, "patches-*")
+	if err != nil {
+		return &ForkError{Op: "materialize patch series", Err: errors.Join(ErrForkUnavailable, err)}
+	}
+	defer os.RemoveAll(patchDirectory)
+	patchPaths := make([]string, 0, len(series.manifest.Patches))
+	for index, entry := range series.manifest.Patches {
+		name := filepath.Join(patchDirectory, fmt.Sprintf("%04d.patch", index))
+		if err := os.WriteFile(name, series.patches[entry.File], 0o600); err != nil {
+			return &ForkError{Op: "materialize patch series", Detail: entry.File, Err: errors.Join(ErrForkUnavailable, err)}
+		}
+		patchPaths = append(patchPaths, name)
+	}
+	appliedPatches := make([]string, 0, len(patchPaths))
+	for _, patchPath := range patchPaths {
+		if output, err := runGitApply(ctx, checkout, true, false, []string{patchPath}); err != nil {
+			rollbackForkPatches(ctx, checkout, appliedPatches)
+			return &ForkError{Op: "check patch series", Detail: strings.TrimSpace(output), Err: errors.Join(ErrForkUnavailable, err)}
+		}
+		if output, err := runGitApply(ctx, checkout, false, false, []string{patchPath}); err != nil {
+			rollbackForkPatches(ctx, checkout, appliedPatches)
+			return &ForkError{Op: "apply patch series", Detail: strings.TrimSpace(output), Err: errors.Join(ErrForkUnavailable, err)}
+		}
+		appliedPatches = append(appliedPatches, patchPath)
+	}
+	after, err := classifyForkPatchCheckout(checkout, series.manifest)
+	if err != nil {
+		return &ForkError{Op: "verify applied patch digests", Err: errors.Join(ErrForkUnavailable, err)}
+	}
+	if after.state != "applied" {
+		return &ForkError{
+			Op:     "verify applied patch digests",
+			Detail: "patch command completed but post-image gates do not match; first divergent path: " + firstForkPatchProblem(after),
+			Err:    ErrForkUnavailable,
+		}
+	}
+	if err := verifyForkPatchWorktree(ctx, checkout, series.manifest, true); err != nil {
+		return &ForkError{Op: "verify patched worktree", Err: errors.Join(ErrForkUnavailable, err)}
+	}
 	return nil
+}
+
+func classifyForkPatchCheckout(checkout string, manifest forkPatchManifest) (forkPatchCheckoutState, error) {
+	state := forkPatchCheckoutState{}
+	for name, expected := range manifest.PreImage {
+		matches, err := forkPatchFileMatches(filepath.Join(checkout, filepath.FromSlash(name)), expected)
+		if err != nil {
+			return state, err
+		}
+		if !matches {
+			state.pristineProblems = append(state.pristineProblems, name)
+		}
+	}
+	for _, name := range manifest.Created {
+		_, err := os.Stat(filepath.Join(checkout, filepath.FromSlash(name)))
+		switch {
+		case err == nil:
+			state.pristineProblems = append(state.pristineProblems, name)
+		case errors.Is(err, os.ErrNotExist):
+		default:
+			return state, err
+		}
+	}
+	for name, expected := range manifest.PostImage {
+		matches, err := forkPatchFileMatches(filepath.Join(checkout, filepath.FromSlash(name)), expected)
+		if err != nil {
+			return state, err
+		}
+		if !matches {
+			state.appliedProblems = append(state.appliedProblems, name)
+		}
+	}
+	sort.Strings(state.pristineProblems)
+	sort.Strings(state.appliedProblems)
+	switch {
+	case len(state.pristineProblems) == 0:
+		state.state = "pristine"
+	case len(state.appliedProblems) == 0:
+		state.state = "applied"
+	default:
+		state.state = "mixed"
+	}
+	return state, nil
+}
+
+func forkPatchFileMatches(name string, expected string) (bool, error) {
+	content, err := os.ReadFile(name)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	digest := sha256.Sum256(content)
+	return hex.EncodeToString(digest[:]) == expected, nil
+}
+
+func firstForkPatchProblem(state forkPatchCheckoutState) string {
+	if len(state.appliedProblems) != 0 {
+		return state.appliedProblems[0]
+	}
+	if len(state.pristineProblems) != 0 {
+		return state.pristineProblems[0]
+	}
+	return "unknown"
+}
+
+func verifyForkPatchWorktree(ctx context.Context, checkout string, manifest forkPatchManifest, applied bool) error {
+	command := exec.CommandContext(ctx, "git", "-C", checkout, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+	output, err := command.Output()
+	if err != nil {
+		return err
+	}
+	expected := make(map[string]string)
+	if applied {
+		for name, before := range manifest.PreImage {
+			if manifest.PostImage[name] != before {
+				expected[name] = " M"
+			}
+		}
+		for _, name := range manifest.Created {
+			expected[name] = "??"
+		}
+	}
+	observed := make(map[string]string)
+	for _, record := range bytes.Split(output, []byte{0}) {
+		if len(record) == 0 {
+			continue
+		}
+		if len(record) < 4 || record[2] != ' ' {
+			return fmt.Errorf("unexpected git status record %q", record)
+		}
+		status := string(record[:2])
+		name := filepath.ToSlash(string(record[3:]))
+		if status != " M" && status != "??" {
+			return fmt.Errorf("checkout contains unsupported worktree state %q for %s", status, name)
+		}
+		observed[name] = status
+	}
+	for name, status := range expected {
+		if observed[name] != status {
+			return fmt.Errorf("expected git status %q for %s, got %q", status, name, observed[name])
+		}
+		delete(observed, name)
+	}
+	if len(observed) != 0 {
+		names := make([]string, 0, len(observed))
+		for name := range observed {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		return fmt.Errorf("checkout has unrecorded worktree change %q", names[0])
+	}
+	return nil
+}
+
+func rollbackForkPatches(ctx context.Context, checkout string, applied []string) {
+	for index := len(applied) - 1; index >= 0; index-- {
+		_, _ = runGitApply(ctx, checkout, false, true, []string{applied[index]})
+	}
+}
+
+func runGitApply(ctx context.Context, checkout string, check bool, reverse bool, patchPaths []string) (string, error) {
+	arguments := []string{"-C", checkout, "apply", "--whitespace=nowarn"}
+	if check {
+		arguments = append(arguments, "--check")
+	}
+	if reverse {
+		arguments = append(arguments, "--reverse")
+	}
+	arguments = append(arguments, patchPaths...)
+	command := exec.CommandContext(ctx, "git", arguments...)
+	output, err := command.CombinedOutput()
+	return string(output), err
+}
+
+type forkBridgeBuildIdentity struct {
+	Revision    string `json:"revision"`
+	PatchSeries string `json:"patchSeries"`
+}
+
+func bridgeHasIdentity(ctx context.Context, executable string, patchSeries string) bool {
+	identity, err := bridgeBuildIdentity(ctx, executable)
+	return err == nil && identity.Revision == PinnedTypeScriptRevision && identity.PatchSeries == patchSeries
+}
+
+func bridgeBuildIdentity(ctx context.Context, executable string) (forkBridgeBuildIdentity, error) {
+	var identity forkBridgeBuildIdentity
+	if _, err := os.Stat(executable); err != nil {
+		return identity, err
+	}
+	command := exec.CommandContext(ctx, executable, "--build-identity")
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return identity, fmt.Errorf("%w (%s)", err, strings.TrimSpace(string(output)))
+	}
+	decoder := json.NewDecoder(bytes.NewReader(output))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&identity); err != nil {
+		return identity, err
+	}
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		return identity, errors.New("expected one build identity JSON value")
+	}
+	return identity, nil
 }
 
 func bridgeRevision(ctx context.Context, executable string) (string, error) {

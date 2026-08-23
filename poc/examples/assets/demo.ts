@@ -68,7 +68,7 @@ const graphCompiler = new AssetCompiler({
 const graph = await compileSourceAssetModules({
   compiler: graphCompiler,
   sources: [{
-    fileName: "usage.vibe",
+    fileName: "usage.sm",
     source: [
       'import settings from "./settings.kv" with { type: "kv" }',
       'import guide from "./guide.md" with { type: "markdown" }',
@@ -95,7 +95,7 @@ const sourceRegistered = await compileSourceAssetModules({
   compiler: sourceRegisteredCompiler,
   loaders: ["yaml-loader.ts"],
   sources: [{
-    fileName: "app-config.vibe",
+    fileName: "app-config.sm",
     source: [
       'import config from "./app.yaml" with { type: "yaml" }',
       "export const region = config.region",

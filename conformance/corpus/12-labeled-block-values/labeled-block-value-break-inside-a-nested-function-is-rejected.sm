@@ -1,0 +1,9 @@
+export function classify(scores: number[]): string {
+  const grade = verdict: {
+    scores.forEach((score) => {
+      if (score >= 60) break :verdict "pass"
+    })
+    break :verdict "fail"
+  }
+  return grade
+}

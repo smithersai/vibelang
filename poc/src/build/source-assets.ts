@@ -14,10 +14,10 @@ import {
   issueCompilerRuntimeSource,
   type AdditionalRuntimeSource
 } from "../language/runtime-source-authority.ts"
-import { recoverVibeSyntax, type RecoveredSource } from "../language/recover.ts"
+import { recoverSmithersSyntax, type RecoveredSource } from "../language/recover.ts"
 
 const CODE_EXTENSIONS = new Set([
-  ".vibe", ".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs",
+  ".sm", ".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs",
   ".d.ts", ".d.mts", ".d.cts"
 ])
 const DEFAULT_MAX_ASSET_BYTES = 2 * 1024 * 1024
@@ -184,10 +184,10 @@ const extensionOf = (fileName: string): string => {
 }
 
 /**
- * Authored coordinates for a `.vibe` source file whose asset preflight parses
+ * Authored coordinates for a `.sm` source file whose asset preflight parses
  * the frontend's recovered text instead of the authored text.
  *
- * `recoverVibeSyntax` is not length-preserving: it hoists expression-position
+ * `recoverSmithersSyntax` is not length-preserving: it hoists expression-position
  * `if`/`switch` values and rewrites conditional declarations, so a derived
  * offset is not an authored offset. Every diagnostic this module reports is
  * source-located, so each derived offset is mapped back through the recovery's
@@ -243,7 +243,7 @@ const locate = (file: ts.SourceFile, offset: number): { readonly line: number; r
 const point = (file: ts.SourceFile, node: ts.Node): { readonly line: number; readonly column: number } =>
   locate(file, node.getStart(file))
 
-/** Authored offset of a node parsed from a recovered `.vibe` source. */
+/** Authored offset of a node parsed from a recovered `.sm` source. */
 const authoredStart = (file: ts.SourceFile, node: ts.Node): number => {
   const offset = node.getStart(file)
   const authored = authoredPositions.get(file)
@@ -253,7 +253,7 @@ const authoredStart = (file: ts.SourceFile, node: ts.Node): number => {
 
 /**
  * Two TypeScript parse errors are the deliberate shapes the checked frontend
- * reads authored VibeLang through, not evidence of unparseable source.
+ * reads authored Smithers through, not evidence of unparseable source.
  *
  * `TS1109` ("Expression expected.") at a control keyword is the bounded
  * initializer host and same-line return recovery: `const t = if (c) { a } else
@@ -265,10 +265,10 @@ const authoredStart = (file: ts.SourceFile, node: ts.Node): number => {
  * adjacent expression statements, and the semantic defer pass owns its shape
  * diagnostic and lowering plan.
  *
- * Dropping them never makes this the syntax authority for `.vibe`: a source
- * the frontend cannot parse is still rejected there as VIBE1000 at authored
+ * Dropping them never makes this the syntax authority for `.sm`: a source
+ * the frontend cannot parse is still rejected there as SMITHERS1000 at authored
  * coordinates, and a construct recovery refused outright is reported above by
- * its own VIBE17xx diagnostic.
+ * its own SMITHERS17xx diagnostic.
  */
 const RECOVERY_HOST_KEYWORD = /^(?:if|switch|for|while)\b/
 const CLEANUP_MARKER_KEYWORD = /^(?:defer|errdefer)\b/
@@ -298,22 +298,22 @@ const declaredAttributes = (
 ): Readonly<Record<string, string>> | undefined => {
   if (attributes === undefined) return undefined
   if (attributes.token !== ts.SyntaxKind.WithKeyword) {
-    diagnostics.push(diagnostic(file, attributes, "VIBE5202", "asset imports use `with { ... }`; legacy import assertions are unsupported"))
+    diagnostics.push(diagnostic(file, attributes, "SMITHERS5202", "asset imports use `with { ... }`; legacy import assertions are unsupported"))
     return undefined
   }
   const output = Object.create(null) as Record<string, string>
   for (const entry of attributes.elements) {
     const name = attributeName(entry.name)
     if (name === undefined || !/^[A-Za-z][A-Za-z0-9-]*$/.test(name)) {
-      diagnostics.push(diagnostic(file, entry.name, "VIBE5203", "asset import attribute names must be static identifiers"))
+      diagnostics.push(diagnostic(file, entry.name, "SMITHERS5203", "asset import attribute names must be static identifiers"))
       continue
     }
     if (Object.hasOwn(output, name)) {
-      diagnostics.push(diagnostic(file, entry.name, "VIBE5204", `duplicate asset import attribute '${name}'`))
+      diagnostics.push(diagnostic(file, entry.name, "SMITHERS5204", `duplicate asset import attribute '${name}'`))
       continue
     }
     if (!ts.isStringLiteral(entry.value)) {
-      diagnostics.push(diagnostic(file, entry.value, "VIBE5205", `asset import attribute '${name}' must be a string literal`))
+      diagnostics.push(diagnostic(file, entry.value, "SMITHERS5205", `asset import attribute '${name}' must be a string literal`))
       continue
     }
     output[name] = entry.value.text
@@ -360,7 +360,7 @@ const dynamicImportAttributes = (
     diagnostics.push(diagnostic(
       file,
       target,
-      "VIBE5218",
+      "SMITHERS5218",
       "dynamic asset imports require a literal specifier and a literal `with { ... }` attribute object"
     ))
     return { ok: false }
@@ -383,17 +383,17 @@ const dynamicImportAttributes = (
     const name = attributeName(entry.name)
     if (name === undefined || !/^[A-Za-z][A-Za-z0-9-]*$/.test(name)) {
       ok = false
-      diagnostics.push(diagnostic(file, entry.name, "VIBE5203", "asset import attribute names must be static identifiers"))
+      diagnostics.push(diagnostic(file, entry.name, "SMITHERS5203", "asset import attribute names must be static identifiers"))
       continue
     }
     if (Object.hasOwn(output, name)) {
       ok = false
-      diagnostics.push(diagnostic(file, entry.name, "VIBE5204", `duplicate asset import attribute '${name}'`))
+      diagnostics.push(diagnostic(file, entry.name, "SMITHERS5204", `duplicate asset import attribute '${name}'`))
       continue
     }
     if (!ts.isStringLiteral(entry.initializer)) {
       ok = false
-      diagnostics.push(diagnostic(file, entry.initializer, "VIBE5205", `asset import attribute '${name}' must be a string literal`))
+      diagnostics.push(diagnostic(file, entry.initializer, "SMITHERS5205", `asset import attribute '${name}' must be a string literal`))
       continue
     }
     output[name] = entry.initializer.text
@@ -430,12 +430,12 @@ const collectRequests = (
     }
     if (seenSources.has(importer)) throw new TypeError(`duplicate source asset importer: ${input.fileName}`)
     seenSources.add(importer)
-    // A `.vibe` importer is authored in VibeLang, which diverges from the
+    // A `.sm` importer is authored in Smithers, which diverges from the
     // TypeScript grammar in general expression positions. The preflight runs
     // the frontend's own pre-parse recovery first so those modules reach the
     // same AST the checked frontend sees; a source with no divergent syntax
     // recovers to itself, so this path stays byte-identical for it.
-    const recovery = importer.endsWith(".vibe") ? recoverVibeSyntax(input.source) : undefined
+    const recovery = importer.endsWith(".sm") ? recoverSmithersSyntax(input.source) : undefined
     const sourceFile = ts.createSourceFile(
       importer,
       recovery ? recovery.parseSource : input.source,
@@ -447,7 +447,7 @@ const collectRequests = (
       authoredPositions.set(sourceFile, { recovery, lineStarts: computeLineStarts(recovery.authoredSource) })
     }
     if (recovery !== undefined && recovery.diagnostics.length > 0) {
-      // Recovery refused a recognizably VibeLang construct. The construct is
+      // Recovery refused a recognizably Smithers construct. The construct is
       // named by its own diagnostic at authored coordinates; reporting the
       // parser's cascade on top of it would bury the cause under raw TS noise.
       const lineStarts = computeLineStarts(recovery.authoredSource)
@@ -502,24 +502,24 @@ const collectRequests = (
           continue
         }
         if (!specifier.startsWith(".")) {
-          diagnostics.push(diagnostic(sourceFile, statement.moduleSpecifier, "VIBE5207", "asset imports must use a relative path"))
+          diagnostics.push(diagnostic(sourceFile, statement.moduleSpecifier, "SMITHERS5207", "asset imports must use a relative path"))
           continue
         }
         if (statement.exportClause === undefined) {
           diagnostics.push(diagnostic(
             sourceFile,
             statement,
-            "VIBE5206",
+            "SMITHERS5206",
             "`export * from` an asset is unsupported; re-export the named bindings or a namespace binding"
           ))
           continue
         }
         if (statement.isTypeOnly || allNamedExportsAreTypeOnly(statement.exportClause)) {
-          diagnostics.push(diagnostic(sourceFile, statement, "VIBE5208", "asset imports require runtime bindings and cannot be type-only or side-effect-only"))
+          diagnostics.push(diagnostic(sourceFile, statement, "SMITHERS5208", "asset imports require runtime bindings and cannot be type-only or side-effect-only"))
           continue
         }
         if (attributes === undefined || typeof attributes.type !== "string" || attributes.type.trim() === "") {
-          diagnostics.push(diagnostic(sourceFile, statement, "VIBE5201", "non-code imports require `with { type: \"...\" }`"))
+          diagnostics.push(diagnostic(sourceFile, statement, "SMITHERS5201", "non-code imports require `with { type: \"...\" }`"))
           continue
         }
         record(specifier, attributes, "re-export", statement, statement.moduleSpecifier)
@@ -534,18 +534,18 @@ const collectRequests = (
         continue
       }
       if (!specifier.startsWith(".")) {
-        diagnostics.push(diagnostic(sourceFile, statement.moduleSpecifier, "VIBE5207", "asset imports must use a relative path"))
+        diagnostics.push(diagnostic(sourceFile, statement.moduleSpecifier, "SMITHERS5207", "asset imports must use a relative path"))
         continue
       }
       if (
         statement.importClause === undefined || statement.importClause.isTypeOnly ||
         allNamedImportsAreTypeOnly(statement.importClause)
       ) {
-        diagnostics.push(diagnostic(sourceFile, statement, "VIBE5208", "asset imports require runtime bindings and cannot be type-only or side-effect-only"))
+        diagnostics.push(diagnostic(sourceFile, statement, "SMITHERS5208", "asset imports require runtime bindings and cannot be type-only or side-effect-only"))
         continue
       }
       if (attributes === undefined || typeof attributes.type !== "string" || attributes.type.trim() === "") {
-        diagnostics.push(diagnostic(sourceFile, statement, "VIBE5201", "non-code imports require `with { type: \"...\" }`"))
+        diagnostics.push(diagnostic(sourceFile, statement, "SMITHERS5201", "non-code imports require `with { type: \"...\" }`"))
         continue
       }
       record(specifier, attributes, "import", statement, statement.moduleSpecifier)
@@ -561,7 +561,7 @@ const collectRequests = (
             diagnostics.push(diagnostic(
               sourceFile,
               node,
-              "VIBE5218",
+              "SMITHERS5218",
               "dynamic asset imports require a literal specifier and a literal `with { ... }` attribute object"
             ))
           }
@@ -569,12 +569,12 @@ const collectRequests = (
           if (!isPotentialAsset(specifier, parsed.attributes)) {
             if (specifier.startsWith(".")) recordOrdinaryAlias(importer, specifier)
           } else if (!specifier.startsWith(".")) {
-            diagnostics.push(diagnostic(sourceFile, node.arguments[0]!, "VIBE5207", "asset imports must use a relative path"))
+            diagnostics.push(diagnostic(sourceFile, node.arguments[0]!, "SMITHERS5207", "asset imports must use a relative path"))
           } else if (
             parsed.attributes === undefined || typeof parsed.attributes.type !== "string" ||
             parsed.attributes.type.trim() === ""
           ) {
-            diagnostics.push(diagnostic(sourceFile, node, "VIBE5201", "non-code imports require `with { type: \"...\" }`"))
+            diagnostics.push(diagnostic(sourceFile, node, "SMITHERS5201", "non-code imports require `with { type: \"...\" }`"))
           } else {
             record(specifier, parsed.attributes, "dynamic-import", node, node.arguments[0]!)
           }
@@ -585,7 +585,7 @@ const collectRequests = (
           diagnostics.push(diagnostic(
             sourceFile,
             node,
-            "VIBE5208",
+            "SMITHERS5208",
             "asset modules cannot be imported through a type-only import() query"
           ))
         }
@@ -985,7 +985,7 @@ const registerSourceLoaders = (
       ))
       continue
     }
-    const id = `vibelang:project-loader/${portablePathOf(compiler.root, registration.fileName)}`
+    const id = `smithers:project-loader/${portablePathOf(compiler.root, registration.fileName)}`
     let loader: AssetLoader
     try {
       // Third-party comptime code is never run in process. The compiler-lowered
@@ -1136,7 +1136,7 @@ export const compileSourceAssetModules = async (
       diagnostics.push(diagnostic(
         site.sourceFile,
         site.node,
-        "VIBE5209",
+        "SMITHERS5209",
         error instanceof Error ? error.message : String(error)
       ))
       return undefined
@@ -1147,7 +1147,7 @@ export const compileSourceAssetModules = async (
       diagnostics.push(diagnostic(
         site.sourceFile,
         site.node,
-        "VIBE5215",
+        "SMITHERS5215",
         "one path cannot be both a compiler asset module and an authored/runtime code module"
       ))
       return undefined
@@ -1158,22 +1158,22 @@ export const compileSourceAssetModules = async (
       diagnostics.push(diagnostic(
         site.sourceFile,
         site.node,
-        "VIBE5215",
+        "SMITHERS5215",
         `one file identity cannot be both a compiler asset module and an authored/runtime code module: ${codeOwner} and ${canonical}`
       ))
       return undefined
     }
     const priorIdentity = identityOwners.get(identity)
     if (priorIdentity !== undefined && priorIdentity !== canonical) {
-      diagnostics.push(diagnostic(site.sourceFile, site.node, "VIBE5210", `asset hard-link aliases are forbidden: ${priorIdentity} and ${canonical}`))
+      diagnostics.push(diagnostic(site.sourceFile, site.node, "SMITHERS5210", `asset hard-link aliases are forbidden: ${priorIdentity} and ${canonical}`))
       return undefined
     }
     if (identityOwners.size >= maximumAssets) {
-      diagnostics.push(diagnostic(site.sourceFile, site.node, "VIBE5211", `asset graph exceeds ${maximumAssets} files`))
+      diagnostics.push(diagnostic(site.sourceFile, site.node, "SMITHERS5211", `asset graph exceeds ${maximumAssets} files`))
       return undefined
     }
     if (totalBytes + metadata.size > maximumTotalAssetBytes) {
-      diagnostics.push(diagnostic(site.sourceFile, site.node, "VIBE5212", `asset graph exceeds ${maximumTotalAssetBytes} bytes`))
+      diagnostics.push(diagnostic(site.sourceFile, site.node, "SMITHERS5212", `asset graph exceeds ${maximumTotalAssetBytes} bytes`))
       return undefined
     }
     identityOwners.set(identity, canonical)
@@ -1195,7 +1195,7 @@ export const compileSourceAssetModules = async (
         diagnostics.push(diagnostic(
           request.sourceFile,
           request.node,
-          "VIBE5215",
+          "SMITHERS5215",
           "one asset path is imported with conflicting attributes; the bounded module graph requires one canonical shape"
         ))
       }
@@ -1232,7 +1232,7 @@ export const compileSourceAssetModules = async (
       diagnostics.push(diagnostic(
         site.sourceFile,
         site.node,
-        "VIBE5219",
+        "SMITHERS5219",
         `generated asset module cycle: ${relative(compiler.root, target.canonical).split(sep).join("/")}`
       ))
       return undefined
@@ -1261,7 +1261,7 @@ export const compileSourceAssetModules = async (
       diagnostics.push(diagnostic(
         site.sourceFile,
         site.node,
-        "VIBE5213",
+        "SMITHERS5213",
         error instanceof Error ? error.message : String(error)
       ))
       return undefined
@@ -1270,16 +1270,16 @@ export const compileSourceAssetModules = async (
       diagnostics.push(diagnostic(
         site.sourceFile,
         site.node,
-        "VIBE5214",
+        "SMITHERS5214",
         loaderDiagnostic.message,
         loaderDiagnostic.level
       ))
     }
-    const virtualRelative = `.vibelang-generated/assets/${build.logicalKey}.ts`
+    const virtualRelative = `.smithers-generated/assets/${build.logicalKey}.ts`
     const virtualAbsolute = resolve(compiler.root, virtualRelative)
     const generatedOwner = generatedOwners.get(virtualAbsolute)
     if (existsSync(virtualAbsolute) || (generatedOwner !== undefined && generatedOwner !== target.canonical)) {
-      diagnostics.push(diagnostic(site.sourceFile, site.node, "VIBE5216", `generated asset identity collides with a real path: ${virtualRelative}`))
+      diagnostics.push(diagnostic(site.sourceFile, site.node, "SMITHERS5216", `generated asset identity collides with a real path: ${virtualRelative}`))
       return undefined
     }
     generatedOwners.set(virtualAbsolute, target.canonical)
@@ -1288,7 +1288,7 @@ export const compileSourceAssetModules = async (
     try {
       ({ source, references } = generatedModule(build))
     } catch (error) {
-      diagnostics.push(diagnostic(site.sourceFile, site.node, "VIBE5217", error instanceof Error ? error.message : String(error)))
+      diagnostics.push(diagnostic(site.sourceFile, site.node, "SMITHERS5217", error instanceof Error ? error.message : String(error)))
       return undefined
     }
     issuing.add(target.canonical)
@@ -1298,7 +1298,7 @@ export const compileSourceAssetModules = async (
           diagnostics.push(diagnostic(
             site.sourceFile,
             site.node,
-            "VIBE5219",
+            "SMITHERS5219",
             `generated asset module graph exceeds ${MAX_GENERATED_MODULE_DEPTH} nested levels`
           ))
           return undefined
@@ -1310,7 +1310,7 @@ export const compileSourceAssetModules = async (
           diagnostics.push(diagnostic(
             site.sourceFile,
             site.node,
-            "VIBE5219",
+            "SMITHERS5219",
             `generated asset module references an undeclared asset dependency: ${reference}`
           ))
           return undefined
@@ -1325,7 +1325,7 @@ export const compileSourceAssetModules = async (
           diagnostics.push(diagnostic(
             site.sourceFile,
             site.node,
-            "VIBE5215",
+            "SMITHERS5215",
             "one asset path is imported with conflicting attributes; the bounded module graph requires one canonical shape"
           ))
           return undefined
@@ -1337,7 +1337,7 @@ export const compileSourceAssetModules = async (
           diagnostics.push(diagnostic(
             site.sourceFile,
             site.node,
-            "VIBE5219",
+            "SMITHERS5219",
             `nested asset module did not reproduce its declared identity: ${dependency.path}`
           ))
           return undefined

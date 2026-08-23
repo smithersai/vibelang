@@ -4,6 +4,7 @@ import {
   assertJson,
   canonicalJson,
   deepFreeze,
+  derivedSchema,
   digest,
   structuralSchema,
   type ActionDescriptor,
@@ -14,7 +15,7 @@ import {
   type StructuralDurableSchema
 } from "./ir.ts"
 
-const CONTRACT_ROOT = "/vibelang-durable-contract-compiler"
+const CONTRACT_ROOT = "/smithers-durable-contract-compiler"
 const MAX_SOURCE_BYTES = 2 * 1024 * 1024
 const MAX_DESCRIPTOR_DEPTH = 64
 const MAX_DESCRIPTOR_NODES = 10_000
@@ -24,7 +25,7 @@ const MAX_IDENTITY_LENGTH = 256
 
 const RESULT_PRELUDE = `
 interface Result<A, E extends Error> {
-  readonly __vibeResult: { readonly success: A; readonly error: E }
+  readonly __smithersResult: { readonly success: A; readonly error: E }
 }
 `
 
@@ -35,7 +36,7 @@ export declare abstract class Action<Signature extends (input: any) => any> {
 `
 
 export interface ActionContractDiagnostic {
-  readonly code: "VIBE4200" | "VIBE4201" | "VIBE4202" | "VIBE4203"
+  readonly code: "SMITHERS4200" | "SMITHERS4201" | "SMITHERS4202" | "SMITHERS4203"
   readonly message: string
   readonly file: string
   readonly line: number
@@ -81,9 +82,9 @@ class ContractFailure extends Error {
 const compareText = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0
 
 const logicalFileName = (fileName: string | undefined): string => {
-  const candidate = (fileName ?? "actions.vibe").replace(/\\/g, "/")
+  const candidate = (fileName ?? "actions.sm").replace(/\\/g, "/")
   const parts = candidate.split("/").filter((part) => part !== "" && part !== "." && part !== "..")
-  return parts.join("/") || "actions.vibe"
+  return parts.join("/") || "actions.sm"
 }
 
 const canonicalSymbol = (checker: ts.TypeChecker, symbol: ts.Symbol | undefined): ts.Symbol | undefined => {
@@ -97,10 +98,10 @@ const identifier = (value: string, label: string): string => {
 }
 
 const stableIdentity = (fileName: string, name: string): string => {
-  const raw = `vibe:${fileName}#${name}@1`
+  const raw = `smithers:${fileName}#${name}@1`
   const normalized = raw.replace(/[^A-Za-z0-9._/@:+-]/g, "_")
   if (normalized.length > MAX_IDENTITY_LENGTH) {
-    return `vibe:error/${digest({ fileName, name }).slice(0, 48)}@1`
+    return `smithers:error/${digest({ fileName, name }).slice(0, 48)}@1`
   }
   return normalized
 }
@@ -149,7 +150,7 @@ const createContractProgram = (source: string, fileName: string): ContractProgra
   host.directoryExists = (name) => resolve(name).startsWith(CONTRACT_ROOT) || Boolean(originalDirectoryExists?.(name))
   host.realpath = (name) => virtualSources.has(resolve(name)) ? resolve(name) : (originalRealpath?.(name) ?? resolve(name))
   host.resolveModuleNames = (moduleNames, containingFile) => moduleNames.map((moduleName) => {
-    if (moduleName === "vibelang:flows") {
+    if (moduleName === "smithers:flows") {
       return { resolvedFileName: actionPath, extension: ts.Extension.Dts, isExternalLibraryImport: true }
     }
     return ts.resolveModuleName(moduleName, containingFile, options, host).resolvedModule
@@ -460,7 +461,7 @@ class DescriptorBuilder {
   }
 
   private fail(message: string): never {
-    throw new ContractFailure("VIBE4203", this.anchor, message)
+    throw new ContractFailure("SMITHERS4203", this.anchor, message)
   }
 }
 
@@ -632,6 +633,128 @@ export const validateActionContractDescriptor = (value: unknown): ActionDescript
   return deepFreeze({ ...semantic, contractDigest: record.contractDigest } as ActionDescriptor)
 }
 
+/** Inputs for one checked `class X extends Action<Signature>` declaration. */
+export interface DeriveActionContractOptions {
+  readonly checker: ts.TypeChecker
+  readonly sourceFile: ts.SourceFile
+  readonly declaration: ts.ClassDeclaration
+  /** Symbol of the compiler-owned `Action` base; heritage is matched by identity. */
+  readonly actionSymbol: ts.Symbol
+  /** Symbol of the compiler-owned `Result` interface. */
+  readonly resultSymbol: ts.Symbol
+  /** Symbol of the built-in `Error` type used to recognize nominal failures. */
+  readonly errorSymbol: ts.Symbol
+  /** Name used in diagnostics, normally the declared class name. */
+  readonly label: string
+  readonly id: string
+  readonly version: number
+  readonly logicalNameForSource: (file: ts.SourceFile) => string
+  /**
+   * Allow the ONE weakening `docs/src/pages/specification/durable-execution.mdx`
+   * (Locked) leaves room for: a failure channel that is wholly the built-in
+   * `Error` has no nominal payload this compiler can describe, so it records the
+   * weaker json-value error contract rather than costing the author the input
+   * and success contracts it CAN describe.
+   *
+   * It is not a general "derivation failed, accept anything" switch, and must
+   * never become one. The same page says "`any` and `unknown` MUST require an
+   * explicit codec at the boundary" and "Every value crossing an Action or Flow
+   * persistence boundary MUST satisfy the compiler-checked durable codec
+   * contract" — so `Result<A, any>`, a structural impostor that does not extend
+   * Error, and a payload over the descriptor budgets are all still refused with
+   * this on. Before that narrowing, the durable source compiler ACCEPTED a
+   * declaration the standalone contract compiler refuses, and the two answers
+   * disagreed on identical source.
+   *
+   * The standalone contract compiler leaves this off entirely and fails closed
+   * even for the built-in `Error`.
+   */
+  readonly weakenUnderivableErrors?: boolean
+}
+
+/**
+ * Every constituent of the declared failure channel is the built-in `Error`
+ * itself. Identity, not spelling: a user class named `Error` resolves to its own
+ * declaration and is an ordinary nominal failure this compiler describes.
+ */
+const isWhollyBuiltInErrorChannel = (
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  errorSymbol: ts.Symbol
+): boolean => {
+  const constituents = type.isUnion() ? type.types : [type]
+  return constituents.length > 0 && constituents.every((member) =>
+    (typeReferenceSymbol(member, checker) ?? canonicalSymbol(checker, member.symbol)) === errorSymbol)
+}
+
+/**
+ * @internal The one derivation from a checked Action declaration to a durable
+ * contract descriptor. Both the standalone contract compiler and the durable
+ * source compiler route through it, so the same class produces the same
+ * descriptor whether its contract was compiled ahead of time and supplied as a
+ * binding or derived in place from the checked program.
+ */
+export const deriveActionContract = (options: DeriveActionContractOptions): ActionDescriptor => {
+  const { checker, sourceFile, declaration, actionSymbol, resultSymbol, errorSymbol, label } = options
+  if (typeof options.id !== "string" || options.id.trim() === "") throw new TypeError("Action id must be non-empty")
+  if (!Number.isSafeInteger(options.version) || options.version < 1) {
+    throw new TypeError("Action version must be a positive safe integer")
+  }
+  const actionBases = (declaration.heritageClauses ?? [])
+    .filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
+    .flatMap((clause) => [...clause.types])
+    .filter((base) => canonicalSymbol(checker, checker.getSymbolAtLocation(base.expression)) === actionSymbol)
+  if (actionBases.length !== 1 || actionBases[0].typeArguments?.length !== 1) {
+    throw new ContractFailure("SMITHERS4202", declaration, `${label} must extend the compiler-owned Action with exactly one function signature`)
+  }
+  const signatureNode = actionBases[0].typeArguments[0]
+  const signatureType = checker.getTypeFromTypeNode(signatureNode)
+  const signatures = checker.getSignaturesOfType(signatureType, ts.SignatureKind.Call)
+  if (signatures.length !== 1) {
+    throw new ContractFailure("SMITHERS4202", signatureNode, "Action contract must contain exactly one non-overloaded call signature")
+  }
+  const signature = signatures[0]
+  const parameters = signature.getParameters()
+  const parameterDeclaration = parameters[0]?.valueDeclaration ?? parameters[0]?.declarations?.[0]
+  if (parameters.length !== 1 || parameterDeclaration === undefined ||
+    (ts.isParameter(parameterDeclaration) && (parameterDeclaration.questionToken !== undefined || parameterDeclaration.dotDotDotToken !== undefined))) {
+    throw new ContractFailure("SMITHERS4202", signatureNode, "Action signature requires exactly one required non-rest input parameter")
+  }
+  const inputType = checker.getTypeOfSymbolAtLocation(parameters[0], parameterDeclaration)
+  let returnType = checker.getReturnTypeOfSignature(signature)
+  const promised = promiseArgument(returnType, checker)
+  if (promised !== undefined) {
+    returnType = promised
+    if (promiseArgument(returnType, checker) !== undefined) {
+      throw new ContractFailure("SMITHERS4203", signatureNode, "nested Promise is not a durable Action value")
+    }
+  }
+  const result = resultArguments(returnType, checker, resultSymbol)
+  if (result === undefined) {
+    throw new ContractFailure("SMITHERS4202", signatureNode, "bounded Action contracts must return Result<Success, Error> or Promise<Result<Success, Error>>")
+  }
+  const builder = new DescriptorBuilder(checker, sourceFile, options.logicalNameForSource, signatureNode, errorSymbol)
+  const input = validateDurableTypeDescriptor(builder.value(inputType, `${label} input`))
+  const success = validateDurableTypeDescriptor(builder.value(result[0], `${label} success`))
+  const inputSchema = structuralSchema("input", input)
+  const successSchema = structuralSchema("success", success)
+  let errorSchema: DurableSchema
+  try {
+    errorSchema = structuralSchema("error", validateDurableTypeDescriptor(builder.error(result[1], `${label} error`)))
+  } catch (failure) {
+    // Reachable from BOTH derivation entry points. `compileActionContract`
+    // never sets the option, so this refuses every underivable failure channel
+    // there; the durable source compiler sets it and reaches the weakening only
+    // for the built-in `Error`. Anything else — `any`, a structural impostor, a
+    // payload over budget — is refused on both paths.
+    if (options.weakenUnderivableErrors !== true ||
+      !isWhollyBuiltInErrorChannel(result[1], checker, errorSymbol)) throw failure
+    errorSchema = derivedSchema("error")
+  }
+  const contract = { id: options.id, version: options.version, inputSchema, successSchema, errorSchema }
+  return deepFreeze({ ...contract, contractDigest: digest(contract) } as ActionDescriptor)
+}
+
 export const compileActionContract = (
   source: string,
   options: CompileActionContractOptions
@@ -641,7 +764,7 @@ export const compileActionContract = (
   try {
     if (typeof source !== "string") throw new TypeError("Action contract source must be a string")
     if (new TextEncoder().encode(source).byteLength > MAX_SOURCE_BYTES) {
-      return { ok: false, diagnostics: [diagnosticAt(fileName, sourceFile, sourceFile, "VIBE4201", "Action contract source exceeds the input size limit")] }
+      return { ok: false, diagnostics: [diagnosticAt(fileName, sourceFile, sourceFile, "SMITHERS4201", "Action contract source exceeds the input size limit")] }
     }
     const exportName = identifier(options.exportName, "Action export name")
     if (typeof options.id !== "string" || options.id.trim() === "") throw new TypeError("Action id must be non-empty")
@@ -657,7 +780,7 @@ export const compileActionContract = (
           diagnostic.file === sourceFile && diagnostic.start !== undefined
             ? findNarrowestNode(sourceFile, diagnostic.start)
             : sourceFile,
-          "VIBE4200",
+          "SMITHERS4200",
           ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")
         ))
       }
@@ -676,50 +799,20 @@ export const compileActionContract = (
       .find((symbol) => symbol.getName() === exportName)
     const declaration = canonicalSymbol(checker, exported)?.declarations?.find(ts.isClassDeclaration)
     if (declaration === undefined || declaration.name === undefined) {
-      throw new ContractFailure("VIBE4202", sourceFile, `export ${exportName} must be one abstract class extending compiler-owned Action<Signature>`)
+      throw new ContractFailure("SMITHERS4202", sourceFile, `export ${exportName} must be one abstract class extending compiler-owned Action<Signature>`)
     }
-    const actionBases = (declaration.heritageClauses ?? [])
-      .filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
-      .flatMap((clause) => [...clause.types])
-      .filter((base) => canonicalSymbol(checker, checker.getSymbolAtLocation(base.expression)) === actionSymbol)
-    if (actionBases.length !== 1 || actionBases[0].typeArguments?.length !== 1) {
-      throw new ContractFailure("VIBE4202", declaration, `${exportName} must extend the compiler-owned Action with exactly one function signature`)
-    }
-    const signatureNode = actionBases[0].typeArguments[0]
-    const signatureType = checker.getTypeFromTypeNode(signatureNode)
-    const signatures = checker.getSignaturesOfType(signatureType, ts.SignatureKind.Call)
-    if (signatures.length !== 1) {
-      throw new ContractFailure("VIBE4202", signatureNode, "Action contract must contain exactly one non-overloaded call signature")
-    }
-    const signature = signatures[0]
-    const parameters = signature.getParameters()
-    const parameterDeclaration = parameters[0]?.valueDeclaration ?? parameters[0]?.declarations?.[0]
-    if (parameters.length !== 1 || parameterDeclaration === undefined ||
-      (ts.isParameter(parameterDeclaration) && (parameterDeclaration.questionToken !== undefined || parameterDeclaration.dotDotDotToken !== undefined))) {
-      throw new ContractFailure("VIBE4202", signatureNode, "Action signature requires exactly one required non-rest input parameter")
-    }
-    const inputType = checker.getTypeOfSymbolAtLocation(parameters[0], parameterDeclaration)
-    let returnType = checker.getReturnTypeOfSignature(signature)
-    const promised = promiseArgument(returnType, checker)
-    if (promised !== undefined) {
-      returnType = promised
-      if (promiseArgument(returnType, checker) !== undefined) {
-        throw new ContractFailure("VIBE4203", signatureNode, "nested Promise is not a durable Action value")
-      }
-    }
-    const result = resultArguments(returnType, checker, resultSymbol)
-    if (result === undefined) {
-      throw new ContractFailure("VIBE4202", signatureNode, "bounded Action contracts must return Result<Success, Error> or Promise<Result<Success, Error>>")
-    }
-    const builder = new DescriptorBuilder(checker, sourceFile, () => fileName, signatureNode, errorSymbol)
-    const input = validateDurableTypeDescriptor(builder.value(inputType, `${exportName} input`))
-    const success = validateDurableTypeDescriptor(builder.value(result[0], `${exportName} success`))
-    const failure = validateDurableTypeDescriptor(builder.error(result[1], `${exportName} error`))
-    const inputSchema = structuralSchema("input", input)
-    const successSchema = structuralSchema("success", success)
-    const errorSchema = structuralSchema("error", failure)
-    const contract = { id: options.id, version: options.version, inputSchema, successSchema, errorSchema }
-    const descriptor: ActionDescriptor = deepFreeze({ ...contract, contractDigest: digest(contract) })
+    const descriptor = deriveActionContract({
+      checker,
+      sourceFile,
+      declaration,
+      actionSymbol,
+      resultSymbol,
+      errorSymbol,
+      label: exportName,
+      id: options.id,
+      version: options.version,
+      logicalNameForSource: () => fileName
+    })
     return Object.freeze({
       ok: true,
       diagnostics: [] as const,
@@ -729,7 +822,7 @@ export const compileActionContract = (
   } catch (error) {
     const failure = error instanceof ContractFailure
       ? error
-      : new ContractFailure("VIBE4201", sourceFile, error instanceof Error ? error.message : String(error))
+      : new ContractFailure("SMITHERS4201", sourceFile, error instanceof Error ? error.message : String(error))
     return { ok: false, diagnostics: [diagnosticAt(fileName, sourceFile, failure.node, failure.code, failure.message)] }
   }
 }
