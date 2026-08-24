@@ -19,7 +19,6 @@
 import * as readline from "node:readline";
 import { type JsonValue, type NominalError, registerErrorCodec } from "../runtime/errors.ts";
 import { Context } from "../runtime/layer.ts";
-import { Optional } from "../runtime/optional.ts";
 import { Panic, panic } from "../runtime/panic.ts";
 import { Result, rethrowPanics } from "../runtime/result.ts";
 import { RuntimeValues } from "../runtime/values.ts";
@@ -141,11 +140,11 @@ export abstract class Terminal extends Context {
   abstract isTTY(stream: TerminalStream): boolean;
 
   /**
-   * The terminal's dimensions, absent when the output is not a terminal. One
+   * The terminal's dimensions, `undefined` when the output is not a terminal. One
    * reading returns both numbers so a caller can never mix a stale width with a
    * fresh height across a resize.
    */
-  abstract size(): Optional<TerminalSize>;
+  abstract size(): TerminalSize | undefined;
 
   /**
    * Read one line, without its newline. The prompt, when given, is written to
@@ -246,13 +245,11 @@ export class SystemTerminal extends Terminal {
     return guard("SystemTerminal.isTTY", () => this.#stream(stream).isTTY === true);
   }
 
-  size(): Optional<TerminalSize> {
+  size(): TerminalSize | undefined {
     return guard("SystemTerminal.size", () => {
       const columns = dimension(this.#output.columns);
       const rows = dimension(this.#output.rows);
-      return columns === undefined || rows === undefined
-        ? Optional.fromNullable<TerminalSize>(undefined)
-        : Optional.fromNullable(Object.freeze({ columns, rows }));
+      return columns === undefined || rows === undefined ? undefined : Object.freeze({ columns, rows });
     });
   }
 
@@ -444,8 +441,8 @@ export class ScriptedTerminal extends Terminal {
     return this.#tty[assertStream(stream, "ScriptedTerminal.isTTY")];
   }
 
-  size(): Optional<TerminalSize> {
-    return Optional.fromNullable(this.#size);
+  size(): TerminalSize | undefined {
+    return this.#size;
   }
 
   readLine(prompt?: string): Promise<Result<string, TerminalError>> {

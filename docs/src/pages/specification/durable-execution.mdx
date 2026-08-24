@@ -120,7 +120,11 @@ Recovery safety and cross-execution reuse MUST be independent policy dimensions.
 
 The runtime SHOULD distinguish idempotent, compensable, and irreversible recovery behavior. It MUST NOT retry an ambiguously committed irreversible Action automatically.
 
-The runtime provides at-least-once execution only where retry is allowed. Exactly-once external effects require idempotency, fencing, hermetic sealing, or compensation outside the scheduler's basic guarantee.
+The runtime provides at-least-once execution only where retry is allowed.
+Exactly-once-like external outcomes require a destination-enforced transaction,
+idempotency key, or fencing protocol. Content sealing does not make an external
+effect exactly once, and compensation repairs consequences rather than erasing
+duplicate execution.
 
 ## Reuse
 

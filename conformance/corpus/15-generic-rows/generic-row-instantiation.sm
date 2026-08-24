@@ -8,7 +8,7 @@ export function load(id: string, limit: number): Result<string, NotFound | Timeo
   return attempt(limit, (): Result<string, NotFound> => {
     if (id === "") throw new NotFound(id)
     return id
-  }).unwrap()
+  })!
 }
 
 export function main(): string[] {

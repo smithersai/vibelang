@@ -84,7 +84,7 @@ export const Pipeline = durable(function Pipeline(input: {
     input.items,
     item => item.id,
     item => {
-      const extracted = Extract.run({ id: item.id, value: item.value }).unwrap()
+      const extracted = Extract.run({ id: item.id, value: item.value })!
       return Publish.run({ id: item.id, amount: extracted.extracted })
     }
   )
@@ -227,23 +227,23 @@ test("a single-step block body stays format-1 flat and byte-compatible with the 
 test("unsupported multi-step body forms fail closed with SMITHERS4117 diagnostics", () => {
   const fixtures: readonly { readonly body: string; readonly match?: string }[] = [
     // mutable binding
-    { body: "let extracted = Extract.run({ id: item.id, value: item.value }).unwrap()\n      return Publish.run({ id: item.id, amount: 1 })" },
-    // intermediate step without unwrap is not a template projection
+    { body: "let extracted = Extract.run({ id: item.id, value: item.value })!\n      return Publish.run({ id: item.id, amount: 1 })" },
+    // an intermediate step without postfix propagation is not a template projection
     { body: "const extracted = Extract.run({ id: item.id, value: item.value })\n      return Publish.run({ id: item.id, amount: 1 })" },
     // returning a bound step instead of the final Action.run call
-    { body: "const extracted = Extract.run({ id: item.id, value: item.value }).unwrap()\n      return extracted" },
+    { body: "const extracted = Extract.run({ id: item.id, value: item.value })!\n      return extracted" },
     // statements after the return
     { body: "return Publish.run({ id: item.id, amount: item.value })\n      const late = item.id" },
     // capturing flow state inside the body template
-    { body: "const extracted = Extract.run({ id: item.id, value: input.items.length }).unwrap()\n      return Publish.run({ id: item.id, amount: extracted.extracted })" },
+    { body: "const extracted = Extract.run({ id: item.id, value: input.items.length })!\n      return Publish.run({ id: item.id, amount: extracted.extracted })" },
     // loops stay out of the bounded subset
     { body: "for (const other of [item]) { }\n      return Publish.run({ id: item.id, amount: item.value })" },
     // missing return
-    { body: "const extracted = Extract.run({ id: item.id, value: item.value }).unwrap()" }
+    { body: "const extracted = Extract.run({ id: item.id, value: item.value })!" }
   ]
   for (const fixture of fixtures) {
     const text = source.replace(
-      /const extracted = Extract\.run\(\{ id: item\.id, value: item\.value \}\)\.unwrap\(\)\n {6}return Publish\.run\(\{ id: item\.id, amount: extracted\.extracted \}\)/,
+      /const extracted = Extract\.run\(\{ id: item\.id, value: item\.value \}\)!\n {6}return Publish\.run\(\{ id: item\.id, amount: extracted\.extracted \}\)/,
       fixture.body
     )
     const compiled = compilePipeline(text)

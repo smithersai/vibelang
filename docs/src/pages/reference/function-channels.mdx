@@ -55,14 +55,15 @@ export declare function asyncBoundary(): Promise<Result<A, E>>
 
 These are ordinary generic return types, not failure annotations. Context requirements are inferred from `Capability.context()` and retained in Smithers analysis metadata. The declaration-file representation for `R` remains compiler-owned.
 
-The current POC appends a versioned `@smithersEffects` JSON tag to exported
-`.d.mts` declarations. It records sorted `failures` and `requirements` and can
-be decoded with `readDeclarationEffects` from `smthrs/language`. This is an
-interchange experiment that preserves rows for tooling; it does not lock the
-eventual TypeScript-level representation, overload behavior, or generic row
-encoding. Declaration emission also collapses compiler-generated success/error
-unions into one `Result<A, E>` and splits grouped exported callable bindings so
-each binding keeps its own metadata.
+Declaration artifacts preserve failure and requirement rows for downstream
+Smithers compilation and tooling. Compiler-generated success and Error unions
+are represented as one `Result<A, E>`, and each exported callable retains its
+own channel metadata.
+
+:::note Direction
+The declaration-file encoding, overload behavior, and generic row encoding
+remain compiler-owned and are not yet specified.
+:::
 
 ## Inference and Lifting
 

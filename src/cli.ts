@@ -45,7 +45,6 @@ import {
   compileDurableSource,
   type DurableSourceActionBinding,
 } from "../poc/dist/durable/source-compiler.js";
-import { analyzeCompatibility, analyzeCompatibilityProject } from "../poc/dist/targets/index.js";
 import { resolveTypeScriptCompiler, runTypeScriptCompiler } from "./compiler-process.js";
 import {
   GoBackendFailure,
@@ -516,6 +515,31 @@ function staticModuleSpecifiers(source: string, fileName: string): readonly stri
   return names;
 }
 
+function existingFileIdentity(path: string): string | undefined {
+  if (!existsSync(path)) return undefined;
+  const canonical = realpathSync(path);
+  return statSync(canonical).isFile() ? canonical : undefined;
+}
+
+/**
+ * Resolve one relative specifier written in a `.sm` source to the authored
+ * Smithers module it names, or `undefined` when it names something else (a
+ * foreign module, a package, a host module).
+ *
+ * The resolution must be deterministic: the CLI contract requires failing
+ * closed when a source "cannot be resolved deterministically", and requires
+ * rejecting "aliases that make one file appear under multiple identities".
+ * Taking the first candidate that happens to exist satisfies neither, so both
+ * ways one specifier can denote two modules are rejected here:
+ *
+ *   - two Smithers candidates exist (`./dep` with both `dep.sm` and
+ *     `dep/index.sm`); and
+ *   - a file literally exists at the written path and is not the Smithers
+ *     source the emit-name convention maps it to (`./dep.js` with a real
+ *     `dep.js` beside `dep.sm`). Every other extension already lets the literal
+ *     file win and be checked as foreign, so silently preferring `dep.sm` here
+ *     both shadowed a real module and diverged from its own sibling forms.
+ */
 function resolveAuthoredSmithersImport(containingFile: string, specifier: string): string | undefined {
   if (!specifier.startsWith(".")) return undefined;
   const exact = resolve(dirname(containingFile), specifier);
@@ -523,10 +547,23 @@ function resolveAuthoredSmithersImport(containingFile: string, specifier: string
   if (exact.endsWith(".sm")) candidates.push(exact);
   else if (extname(exact) === "") candidates.push(`${exact}.sm`, join(exact, "index.sm"));
   else if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.sm`);
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) return realpathSync(candidate);
+  const resolved = [...new Set(candidates.map(existingFileIdentity).filter((item) => item !== undefined))];
+  if (resolved.length === 0) return undefined;
+  if (resolved.length > 1) {
+    throw new TypeError(
+      `.sm import ${JSON.stringify(specifier)} in ${containingFile} does not resolve deterministically; ` +
+        `it names more than one source: ${resolved.join(", ")}`,
+    );
   }
-  return undefined;
+  const authored = resolved[0]!;
+  const literal = existingFileIdentity(exact);
+  if (literal !== undefined && literal !== authored) {
+    throw new TypeError(
+      `.sm import ${JSON.stringify(specifier)} in ${containingFile} is ambiguous; ` +
+        `it names the existing file ${literal} and also the Smithers source ${authored}`,
+    );
+  }
+  return authored;
 }
 
 function loadSmithersProject(
@@ -859,26 +896,6 @@ async function compileSmithersFiles(
       line: assetDiagnostic.line,
       column: assetDiagnostic.column,
     });
-  }
-
-  const compatibility = analyzeCompatibilityProject(Object.fromEntries(
-    loweredSources.map((source) => [source.fileName, source.source]),
-  ));
-  for (const diagnostic of compatibility.diagnostics) {
-    const lowered = comptime.loweredFiles[diagnostic.file];
-    if (!lowered) throw new TypeError(`portability diagnostic references unknown project file '${diagnostic.file}'`);
-    const mapped = remapCliDiagnostic(project, lowered.sourceMap, {
-      code: diagnostic.code,
-      severity: diagnostic.severity,
-      message: diagnostic.message,
-      file: resolve(project.rootDir, diagnostic.file),
-      line: diagnostic.line,
-      column: diagnostic.column,
-    });
-    const mappedName = relative(project.rootDir, mapped.file!).split(sep).join("/");
-    const result = results.get(mappedName);
-    if (!result) throw new TypeError(`mapped portability diagnostic references unknown project file '${mappedName}'`);
-    (result.diagnostics as CliDiagnostic[]).push(mapped);
   }
 
   const emittedFiles = compiledFiles;
@@ -1525,10 +1542,47 @@ function createTestRunner(
   ].join("\n");
 }
 
-function executableVersion(command: string, args: readonly string[] = ["--version"]): string | null {
+/**
+ * One probed executable. `doctor` reports whether a component satisfies the
+ * project contract, so "not installed", "installed but failing", "installed but
+ * hung", and "installed but printed no version" cannot collapse into one value:
+ * the first is a missing optional toolchain and the rest are broken
+ * installations that a user must be told about by name.
+ */
+type ExecutableReport =
+  | { readonly available: true; readonly version: string }
+  | {
+    readonly available: false;
+    readonly reason: "absent" | "failed" | "timeout" | "no-version-output";
+    readonly detail?: string;
+  };
+
+function shorten(text: string): string {
+  const first = text.trim().split("\n")[0]?.trim() ?? "";
+  return first.length > 200 ? `${first.slice(0, 200)}…` : first;
+}
+
+function probeExecutable(command: string, args: readonly string[] = ["--version"]): ExecutableReport {
   const child = spawnSync(command, args, { encoding: "utf8", timeout: 2_000 });
-  if (child.status !== 0) return null;
-  return (child.stdout || child.stderr).trim().split("\n")[0] || null;
+  const error = child.error as NodeJS.ErrnoException | undefined;
+  if (error) {
+    if (error.code === "ENOENT") return { available: false, reason: "absent" };
+    if (error.code === "ETIMEDOUT") return { available: false, reason: "timeout" };
+    return { available: false, reason: "failed", detail: shorten(error.message) };
+  }
+  // A timeout kill arrives as a signal with no `error` on some platforms.
+  if (child.signal) return { available: false, reason: "timeout", detail: child.signal };
+  if (child.status !== 0) {
+    return {
+      available: false,
+      reason: "failed",
+      detail: shorten(`exit ${String(child.status)}: ${child.stderr || child.stdout || ""}`),
+    };
+  }
+  // stderr is diagnostic output, never a version banner: a tool that exits 0
+  // while printing only to stderr has not reported a version.
+  const version = shorten(child.stdout ?? "");
+  return version === "" ? { available: false, reason: "no-version-output" } : { available: true, version };
 }
 
 const cli = Cli.create("smithers", { version, description: "Smithers checked prototype toolchain" })
@@ -1686,7 +1740,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
   })
   .command("inspect", {
     args: files,
-    description: "Print checked failure/context rows and conservative portability requirements",
+    description: "Print checked failure and Context requirement rows",
     async run(context) {
       const inputs = requireInputs(context.args.files);
       const nonSmithers = inputs.filter((file) => !isSmithersFile(file));
@@ -1697,7 +1751,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
           message: `smithers inspect currently accepts only .sm files: ${nonSmithers.join(", ")}`,
         });
       }
-      let inspected: Array<{ file: string; language: ReturnType<typeof analyzeSource>; portability: ReturnType<typeof analyzeCompatibility> }>;
+      let inspected: Array<{ file: string; language: ReturnType<typeof analyzeSource> }>;
       try {
         const project = loadSmithersProject(inputs);
         const assetContext = sourceAssetCompilerForProject(project.rootDir);
@@ -1727,7 +1781,6 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
           return {
             file,
             language: language.files[source.fileName],
-            portability: analyzeCompatibility(source.source),
           };
         });
       } catch (error) {
@@ -1738,8 +1791,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
         });
       }
       const ok = inspected.every((item) =>
-        !item.language.diagnostics.some((diagnostic) => diagnostic.severity === "error") &&
-        !item.portability.diagnostics.some((diagnostic) => diagnostic.severity === "error"));
+        !item.language.diagnostics.some((diagnostic) => diagnostic.severity === "error"));
       if (!ok) process.exitCode = 1;
       return { ok, files: inspected };
     },
@@ -2027,18 +2079,38 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
   .command("doctor", {
     description: "Inspect installed backends and implemented prototype surfaces",
     run() {
+      const nativeCompiler = resolveTypeScriptCompiler();
+      const nativeTypeScript = probeExecutable(process.execPath, [nativeCompiler, "--version"]);
+      const packagedRuntime = existsSync(fileURLToPath(new URL("../poc/dist/runtime/index.js", import.meta.url)));
+      // `ok` is derived from the checks this command actually performed. It was
+      // previously the literal `true`, which certified an environment doctor had
+      // never assessed. The required components are the ones no command can work
+      // without; the foreign toolchains below are optional and are reported
+      // without gating the verdict, so a machine with no Zig or Rust is healthy.
+      const required = {
+        nativeTypeScript: nativeTypeScript.available,
+        packagedRuntime,
+      };
+      const failures = Object.entries(required)
+        .filter(([, satisfied]) => !satisfied)
+        .map(([name]) => name);
+      const ok = failures.length === 0;
+      if (!ok) process.exitCode = 1;
       return {
-        ok: true,
+        ok,
+        // Named so a caller can see which required check failed rather than
+        // inferring it. Empty on a healthy environment.
+        unsatisfied: failures,
         smithers: version,
         node: process.version,
-        nativeCompiler: resolveTypeScriptCompiler(),
-        nativeTypeScript: executableVersion(process.execPath, [resolveTypeScriptCompiler(), "--version"]),
+        nativeCompiler,
+        nativeTypeScript,
         javascriptApi: ts.version,
         tools: {
-          deno: executableVersion("deno"),
-          zig: executableVersion("zig", ["version"]),
-          rustc: executableVersion("rustc", ["--version"]),
-          go: executableVersion("go", ["version"]),
+          deno: probeExecutable("deno"),
+          zig: probeExecutable("zig", ["version"]),
+          rustc: probeExecutable("rustc", ["--version"]),
+          go: probeExecutable("go", ["version"]),
         },
         surfaces: {
           smithersCompile: "cross-module prototype with declarations and composed source maps",
@@ -2053,7 +2125,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
           formatter: "idempotent whitespace-only .sm/TypeScript formatter with Smithers construct masking",
           testRunner: "exported zero-argument test* prototype",
         },
-        packagedRuntime: existsSync(fileURLToPath(new URL("../poc/dist/runtime/index.js", import.meta.url))),
+        packagedRuntime,
       };
     },
   });

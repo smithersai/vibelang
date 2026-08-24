@@ -1,6 +1,5 @@
 import { type JsonValue, registerErrorCodec, registerErrorType } from "../runtime/errors.ts";
 import { Context } from "../runtime/layer.ts";
-import { Optional } from "../runtime/optional.ts";
 import { Result, rethrowPanics } from "../runtime/result.ts";
 import { RuntimeValues } from "../runtime/values.ts";
 import { causeDetail } from "./internal.ts";
@@ -167,9 +166,9 @@ export class HttpResponse {
     return this.status >= 200 && this.status < 300;
   }
 
-  /** Header lookup by case-insensitive name. */
-  header(name: string): Optional<string> {
-    return Optional.fromNullable(this.headers.get(name.toLowerCase()));
+  /** Header lookup by case-insensitive name; `undefined` when the header is absent. */
+  header(name: string): string | undefined {
+    return this.headers.get(name.toLowerCase()) ?? undefined;
   }
 
   text(): string {

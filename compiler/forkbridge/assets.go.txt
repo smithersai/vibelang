@@ -1648,9 +1648,9 @@ func (a *rowAnalysis) assetValueProvenance(expression *ast.Node, seen map[*ast.S
 			return true
 		}
 		// The same compiler-owned edge may be reached through a project
-		// re-export. Reuse the native provenance walk so asset identity cannot
-		// drift from the pin's binding traversal.
-		if _, asset := a.nativeDependenciesForReference(expression); asset {
+		// re-export, so the binding walk in smithersnativeprovenance.go answers
+		// the same question one module further away.
+		if a.assetProvenanceThroughBindings(expression) {
 			return true
 		}
 		symbol := a.symbolAt(expression)

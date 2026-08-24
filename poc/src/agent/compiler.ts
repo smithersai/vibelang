@@ -192,8 +192,16 @@ export class InMemoryTypeScriptCompiler implements TypeScriptCompiler {
       getCurrentDirectory: () => VIRTUAL_ROOT,
       directoryExists: (directoryName) => {
         const requested = normalizeRequest(directoryName)
+        // The boundary is the lib directory itself or something under it, never
+        // a sibling that merely shares its name as a prefix: `.../lib` must not
+        // admit `.../libsecret`. This used to be a bare `startsWith` with no
+        // separator while the four read paths below went through `isCompilerLib`,
+        // which has one — so one member of the boundary rule disagreed with the
+        // rest and leaked a directory-existence oracle for siblings of the lib
+        // directory.
+        const libDirectory = normalize(compilerLibDirectory)
         return requested === VIRTUAL_ROOT ||
-          (requested.startsWith(normalize(compilerLibDirectory)) &&
+          ((requested === libDirectory || isCompilerLib(requested)) &&
             (defaultHost.directoryExists?.(requested) ?? true))
       },
       realpath: (fileName) => normalizeRequest(fileName),

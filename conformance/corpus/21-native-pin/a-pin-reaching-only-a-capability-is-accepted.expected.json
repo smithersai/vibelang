@@ -1,8 +1,0 @@
-{
-  "title": "a native pin whose graph reaches an ordinary Context capability is ACCEPTED: a nominal requirement names a service the native target supplies, so it is reported on the row and never rejected",
-  "expect": "output",
-  "stdout": [
-    "48010"
-  ],
-  "notes": "This is the subtle direction of the rule and the one most likely to regress into a fail-closed. specification/compatibility.mdx, 'Native Pin' names exactly one requirement a pin must reject: 'Compilation MUST fail if any reachable operation or provider requires TypeScript.' A nominal capability is not that requirement \u2014 specification/requirements.mdx makes a Context an ordinary row satisfied by whichever Layer the target provides, and guide/platforms-and-targets.mdx classifies portable features as 'implemented on TypeScript and native targets'. Rejecting a pin because it reaches Digest would make the pin unusable for exactly the code it exists to certify. The counterpart negative cases in this area pin the requirements that DO block."
-}

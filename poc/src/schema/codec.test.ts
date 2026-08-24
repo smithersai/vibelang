@@ -4,7 +4,7 @@ import { RuntimeValues, decodeError, encodeError } from "../runtime/index.ts";
 import type { Result } from "../runtime/result.ts";
 import { Codec, CodecValue, DecodeError } from "./codec.ts";
 
-const { failure, present, absent, success } = RuntimeValues;
+const { failure, success } = RuntimeValues;
 
 function errorOf(result: Result<unknown, DecodeError>): DecodeError {
   return result.match({ ok: () => { throw new Error("expected failure"); }, error: (error) => error });
@@ -36,25 +36,35 @@ describe("Codec values", () => {
 
 describe("Codec round-trip laws", () => {
   test("hold for every canonical scalar", () => {
-    expect(Codec.checkRoundTrip(Codec.string, ["", "smithers", "😀"]).isNone()).toBe(true);
-    expect(Codec.checkRoundTrip(Codec.number, [0, -0, 1.25, Number.MAX_VALUE]).isNone()).toBe(true);
-    expect(Codec.checkRoundTrip(Codec.boolean, [true, false]).isNone()).toBe(true);
-    expect(Codec.checkRoundTrip(Codec.null, [null]).isNone()).toBe(true);
-    expect(Codec.checkRoundTrip(Codec.literal("ready"), ["ready"]).isNone()).toBe(true);
+    expect(Codec.checkRoundTrip(Codec.string, ["", "smithers", "😀"])).toBeUndefined();
+    expect(Codec.checkRoundTrip(Codec.number, [0, -0, 1.25, Number.MAX_VALUE])).toBeUndefined();
+    expect(Codec.checkRoundTrip(Codec.boolean, [true, false])).toBeUndefined();
+    expect(Codec.checkRoundTrip(Codec.null, [null])).toBeUndefined();
+    expect(Codec.checkRoundTrip(Codec.literal("ready"), ["ready"])).toBeUndefined();
   });
 
   test("hold for array, tuple, struct, union, nullable, and optional", () => {
     const pair = Codec.tuple(Codec.string, Codec.number);
     const account = Codec.struct({ id: Codec.number, tags: Codec.array(Codec.string), pair });
     const choice = Codec.union(Codec.string, Codec.number, Codec.boolean);
-    expect(Codec.checkRoundTrip(pair, [["a", 1], ["", 0]]).isNone()).toBe(true);
+    expect(Codec.checkRoundTrip(pair, [["a", 1], ["", 0]])).toBeUndefined();
     expect(Codec.checkRoundTrip(account, [
       { id: 1, tags: ["a", "b"], pair: ["x", 2] },
       { id: 2, tags: [], pair: ["y", 0] },
-    ]).isNone()).toBe(true);
-    expect(Codec.checkRoundTrip(choice, ["a", 2, false]).isNone()).toBe(true);
-    expect(Codec.checkRoundTrip(Codec.nullable(Codec.string), [null, "x"]).isNone()).toBe(true);
-    expect(Codec.checkRoundTrip(Codec.optional(Codec.number), [absent(), present(1)]).isNone()).toBe(true);
+    ])).toBeUndefined();
+    expect(Codec.checkRoundTrip(choice, ["a", 2, false])).toBeUndefined();
+    expect(Codec.checkRoundTrip(Codec.nullable(Codec.string), [null, "x"])).toBeUndefined();
+    // `Codec.optional` is a codec over `Domain | undefined`: absence is the
+    // ordinary union member, and a falsy present value stays present.
+    expect(Codec.checkRoundTrip(Codec.optional(Codec.number), [undefined, 1, 0])).toBeUndefined();
+    const numbers = Codec.optional(Codec.number);
+    expect(numbers.decode(undefined).unwrap()).toBeUndefined();
+    expect(numbers.decode(0).unwrap()).toBe(0);
+    expect(numbers.encode(undefined)).toBeUndefined();
+    expect(numbers.encode(0)).toBe(0);
+    expect(numbers.decode("nope" as never).isError()).toBe(true);
+    expect((numbers.decode(undefined).unwrap() ?? -1)).toBe(-1);
+    expect((numbers.decode(0).unwrap() ?? -1)).toBe(0);
   });
 
   test("hold through imap, fallible map, and composition", () => {
@@ -77,16 +87,16 @@ describe("Codec round-trip laws", () => {
       (value): value is boolean => typeof value === "boolean",
     );
     const customUnion = Codec.union(numberWire, booleanWire);
-    expect(Codec.checkRoundTrip(numericText, [0, 1, -42, 1.5]).isNone()).toBe(true);
-    expect(Codec.checkRoundTrip(integer, [0, 1, -42]).isNone()).toBe(true);
-    expect(Codec.checkRoundTrip(composed, [0, 7, -9]).isNone()).toBe(true);
-    expect(Codec.checkRoundTrip(customUnion, [1, false, 2, true]).isNone()).toBe(true);
+    expect(Codec.checkRoundTrip(numericText, [0, 1, -42, 1.5])).toBeUndefined();
+    expect(Codec.checkRoundTrip(integer, [0, 1, -42])).toBeUndefined();
+    expect(Codec.checkRoundTrip(composed, [0, 7, -9])).toBeUndefined();
+    expect(Codec.checkRoundTrip(customUnion, [1, false, 2, true])).toBeUndefined();
     expect(errorOf(integer.decode(1.5)).reason).toBe("expected an integer");
   });
 
   test("the law helper identifies a changed value", () => {
     const lossy = Codec.imap(Codec.string, (value) => value.toLowerCase(), (value: string) => value);
-    expect(Codec.checkRoundTrip(lossy, ["LOUD"]).unwrapOr("")).toBe("round-trip changed sample 0");
+    expect(Codec.checkRoundTrip(lossy, ["LOUD"]) ?? "").toBe("round-trip changed sample 0");
   });
 });
 

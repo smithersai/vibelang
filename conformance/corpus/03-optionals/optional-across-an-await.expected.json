@@ -1,6 +1,0 @@
-{
-  "title": "an async Optional-returning function lifts through Promise<Optional<T>>, and await removes only the Promise layer",
-  "expect": "output",
-  "stdout": ["Ada", "none"],
-  "notes": "specification/type-system.mdx, 'Async Values': 'Awaiting the call removes only the Promise layer.' Combined with the 'Optional' section's lifting rule, `return \"Ada\"` inside Promise<Optional<string>> must reach the caller as a present Optional and `return undefined` as an absent one."
-}

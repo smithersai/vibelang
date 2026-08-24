@@ -1,0 +1,5 @@
+export function main(): string[] {
+  search: while (false) {
+  } else "not found"
+  return ["unreachable"]
+}

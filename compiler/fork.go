@@ -86,8 +86,8 @@ var forkHostRulesSource []byte
 //go:embed forkbridge/retired.go.txt
 var forkRetiredSyntaxSource []byte
 
-//go:embed forkbridge/nativepin.go.txt
-var forkNativePinSource []byte
+//go:embed forkbridge/nativeprovenance.go.txt
+var forkNativeProvenanceSource []byte
 
 //go:embed forkbridge/assets.go.txt
 var forkAssetSource []byte
@@ -140,7 +140,7 @@ var forkBridgeFiles = []struct {
 	{target: "cmd/tsc/smithersdurable.go", source: &forkDurableSource},
 	{target: "cmd/tsc/smithershostrules.go", source: &forkHostRulesSource},
 	{target: "cmd/tsc/smithersretired.go", source: &forkRetiredSyntaxSource},
-	{target: "cmd/tsc/smithersnativepin.go", source: &forkNativePinSource},
+	{target: "cmd/tsc/smithersnativeprovenance.go", source: &forkNativeProvenanceSource},
 	{target: "cmd/tsc/smithersassets.go", source: &forkAssetSource},
 	{target: "cmd/tsc/smithersmustconsume.go", source: &forkMustConsumeSource},
 	{target: "internal/checker/smithersbridge.go", source: &forkCheckerBridgeSource},

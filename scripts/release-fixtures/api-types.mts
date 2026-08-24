@@ -5,9 +5,7 @@ import {
   type ProjectSource,
 } from "smthrs/language";
 import {
-  decodeOptional,
   decodeResult,
-  encodeOptional,
   encodeResult,
   type ValueCodec,
 } from "smthrs/runtime";
@@ -48,12 +46,6 @@ import {
   type SignalPollResult,
 } from "smthrs/durable/bun";
 import {
-  compilePortableModule,
-  executePortableTypeScript,
-  type PortableExecution,
-  type PortableModuleIR,
-} from "smthrs/targets";
-import {
   ValidationError,
   __vsSchema,
   type DerivedSchema,
@@ -90,11 +82,13 @@ const map: string = composeSourceMaps(
 
 const codec: ValueCodec<string> = { encode: (value) => value, decode: (value) => String(value) };
 declare const resultValue: Parameters<typeof encodeResult<string, Error>>[0];
-declare const optionalValue: Parameters<typeof encodeOptional<string>>[0];
 const resultWire = encodeResult(resultValue, codec);
-const optionalWire = encodeOptional(optionalValue, codec);
 decodeResult(resultWire, codec);
-decodeOptional(optionalWire, codec);
+
+// Absence is an ordinary `T | undefined` union after the 2026-08-23 withdrawal
+// of `Optional<T>`, so it needs no codec of its own and none is exported.
+declare const maybeName: string | undefined;
+const name: string = maybeName ?? "anonymous";
 
 declare const compiler: ComptimeCompiler;
 const comptime: Promise<ComptimeIntrinsicResult> = compileComptimeIntrinsics({
@@ -116,15 +110,6 @@ declare const flowTarget: FlowToolTarget;
 flowTool(flowTarget);
 new SqliteTurnJournal();
 
-const portableModule: PortableModuleIR = compilePortableModule({
-  moduleId: "release/types",
-  source: "export function identity(value: number): number { return value }",
-});
-const portableExecution: PortableExecution = executePortableTypeScript(
-  portableModule,
-  "identity",
-  { value: 1 },
-);
 const deploymentSigningKey: DeploymentSigningKeyPair = generateDeploymentSigningKeyPair();
 const trustedDeploymentKey: TrustedDeploymentKey = deploymentVerificationKey(deploymentSigningKey);
 const maximumDurableJsonNodes: number = MAX_DURABLE_JSON_NODES;
@@ -165,9 +150,9 @@ const releaseRowParsed: ReleaseRow | undefined = releaseRowSchema
 const releaseChunk = Chunk.of(1, 2, 3);
 const releaseChunkSize: number = releaseChunk.size;
 const releaseMap = HashMap.of(["answer", 42] as const);
-const releaseMapped: number | undefined = releaseMap
-  .get("answer")
-  .match({ some: (value) => value, none: () => undefined });
+// `get` answers with the value or `undefined`; the annotation is the whole
+// contract now that absence is an ordinary union.
+const releaseMapped: number | undefined = releaseMap.get("answer");
 const releaseData = Data.struct({ id: "release" });
 declare const releaseTag: { readonly kind: "release" } | { readonly kind: "draft" };
 const releaseMatcher: Matcher<typeof releaseTag, { readonly kind: "draft" }, string> = Match
@@ -199,7 +184,6 @@ void [
   map,
   comptime,
   sourceAssets,
-  portableExecution,
   trustedDeploymentKey,
   maximumDurableJsonNodes,
   signalInbox,

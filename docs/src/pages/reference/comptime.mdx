@@ -1,37 +1,5 @@
 # Comptime [Reference for phases, targets, inputs, and evaluation]
 
-:::warning Current bounded implementation
-The project compiler currently lowers checker-resolved direct/aliased/namespace
-`comptime(...)` calls over a bounded static value language. Immediately-called
-or private-const compile-time functions support parameters, `const`/`let`,
-assignment and compound assignment, `++`/`--`, blocks, `if`, `while`,
-`do-while`, classic `for`, `for-of`, unlabeled `break`/`continue`, `return`,
-project-local marked calls, interpreter-owned array/object mutation, and a
-widened deterministic standard-library allowlist. Selected target branches are
-erased, text `embed(...)` inputs are tracked, and retained runtime functions
-have marked call sites replaced with evaluated values.
-
-One call tree is bounded to 1,000,000 evaluation steps, 100,000 allocation
-nodes, 64 nested calls, and 1,000,000 UTF-16 units per string. Any exhaustion
-is VCT1012. A top-level single-declaration comptime const used in type position
-also emits a same-named deep readonly literal alias; a non-exported binding
-used only as a type erases its runtime const. VCT1013 rejects unsupported type
-production. Cache identity, dependencies, source maps, and provenance remain
-deterministic. General JavaScript, implicit evaluation, re-exported markers,
-spread/destructuring, labeled control flow, closures as values, ambient state,
-and non-value-derived computed/mapped/generic types remain design or fail
-closed.
-
-With `--backend go` on `smithers check`, `compile`, or `run`, the pinned fork
-independently recognizes the same compiler-owned binding and lowers a bounded
-comptime language through its checked AST. It supports canonical values, local helpers,
-loops and interpreter-owned mutation, hard evaluation budgets,
-`comptime.target`, and value-derived literal aliases. It deliberately refuses
-`embed(...)` until tracked asset bytes exist in the Go request protocol, and it
-does not claim the TypeScript instrument's schema reification, loader, or
-persistent-cache surfaces.
-:::
-
 ## Explicit Form
 
 ```ts
@@ -61,19 +29,15 @@ Valid result categories include:
 - types
 - typed module descriptions from loaders
 
-The bounded implementation emits runtime-emittable canonical values and can
-materialize their deep readonly literal shape as a same-named type alias. It
-does not materialize arbitrary computed, mapped, conditional, or generic types
-as compile-time results.
+Runtime-emittable canonical values may also define a same-named deep readonly
+literal type. The general model for computed, mapped, conditional, and generic
+type-valued results remains directional.
 
 Durable Plan IR is produced separately through `durable(...)`, not by executing a Flow as a compile-time function.
 
 ## Implicit Evaluation
 
 The compiler may evaluate code automatically when all inputs are known. Implicit evaluation must not change observable runtime semantics.
-
-The current frontend performs ordinary TypeScript constant checking but only
-executes work explicitly rooted at the imported `comptime` intrinsic.
 
 ## Target
 
@@ -83,16 +47,13 @@ import { comptime } from "smithers:comptime"
 comptime.target
 ```
 
-Current target vocabulary is direction and includes:
+The target vocabulary is directional and includes:
 
 ```text
 node  bun  deno  browser  edge
 ```
 
 A branch resolved from `comptime.target` is eliminated for other targets.
-
-The bounded implementation supports this inside an erased compile-time function
-and evaluates only the selected branch.
 
 ## Allowed Inputs
 
@@ -125,13 +86,16 @@ type Loader = (
 ) => TypedModule
 ```
 
-The context records transitive imports and reports structured diagnostics. A
-programmatic source-asset POC provisionally recognizes a project file whose
-default export is `comptime.loader("type", fn)` by checker identity and always
-runs the function in its no-permission Deno loader process. Built-ins take
-precedence and duplicate project registrations fail closed. Package-distributed
-loaders, glob/extension selectors, configuration, the final typed-module
-builder, and the production spelling remain open.
+The context records transitive imports and reports structured diagnostics.
+Loader declarations are resolved by compiler-known identity and execute in a
+hermetic, resource-bounded environment. Built-ins take precedence and duplicate
+registrations fail compilation.
+
+:::note Direction
+`comptime.loader("type", fn)` illustrates registration. Package-distributed
+loaders, glob or extension selectors, configuration, the typed-module builder,
+and final declaration spelling remain open.
+:::
 
 ## Cache Identity
 

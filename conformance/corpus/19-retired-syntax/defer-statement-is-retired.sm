@@ -1,0 +1,6 @@
+export function main(): string[] {
+  defer cleanup()
+  return ["unreachable"]
+}
+
+function cleanup(): void {}

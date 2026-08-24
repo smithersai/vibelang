@@ -1,7 +1,0 @@
-export function main(): string[] {
-  const kind: string = "zzz"
-  const label = switch (kind) {
-    default => "other"
-  }
-  return [label]
-}

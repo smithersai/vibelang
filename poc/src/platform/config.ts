@@ -134,8 +134,8 @@ function stateOf<T>(spec: ConfigSpec<T>): SpecState<T> {
 
 /**
  * A frozen, non-forgeable description of one configuration value. Branded with
- * a module-private `WeakSet`, the same way the runtime brands `Result` and
- * `Optional`, so `Config.read` cannot be handed a structural look-alike.
+ * a module-private `WeakSet`, the same way the runtime brands `Result`, so
+ * `Config.read` cannot be handed a structural look-alike.
  */
 export abstract class ConfigSpecValue<T> {
   /** The environment variable this spec reads. */
@@ -217,10 +217,11 @@ function readBoolean(raw: string): Parsed<boolean> {
 }
 
 function readDuration(raw: string): Parsed<Duration> {
-  return Duration.parse(raw).match({
-    some: (duration) => parsed(duration),
-    none: () => unparsable<Duration>("expected a duration such as 30s, 1h30m, 1500ms, or a whole number of milliseconds"),
-  });
+  const duration = Duration.parse(raw);
+  if (duration === undefined) {
+    return unparsable<Duration>("expected a duration such as 30s, 1h30m, 1500ms, or a whole number of milliseconds");
+  }
+  return parsed(duration);
 }
 
 function readInstant(raw: string): Parsed<Instant> {
@@ -247,14 +248,14 @@ function typedSpec<T>(
 }
 
 function readValue<T>(environment: Environment, state: SpecState<T>): Result<T, ConfigError> {
-  return environment.get(state.variable).match({
-    some: (raw): Result<T, ConfigError> => {
-      const outcome = state.read(raw);
-      return outcome.ok ? success(outcome.value) : failure(new InvalidConfig(state.variable, outcome.reason));
-    },
-    none: (): Result<T, ConfigError> =>
-      state.fallback !== undefined ? success(state.fallback.value) : failure(new MissingConfig(state.variable)),
-  });
+  // An unset variable is absence — `undefined` — read by ordinary narrowing.
+  // A *set* but unparsable variable is a typed failure. The two stay apart.
+  const raw = environment.get(state.variable);
+  if (raw === undefined) {
+    return state.fallback !== undefined ? success(state.fallback.value) : failure(new MissingConfig(state.variable));
+  }
+  const outcome = state.read(raw);
+  return outcome.ok ? success(outcome.value) : failure(new InvalidConfig(state.variable, outcome.reason));
 }
 
 /** Reads one spec. Requires the `Environment` capability. */

@@ -127,14 +127,44 @@ const canonicalCheckedExportDigest = (source: string, path: string): string => {
   return digest({ emittedFunction: printed })
 }
 
+/**
+ * Every syntactic form that names another module. `import ... from` was once
+ * the only form checked, so `export { x } from "pkg"`, `export * from "pkg"`,
+ * `export * as ns from "pkg"`, and `import x = require("pkg")` all reached an
+ * external, unpinned package without ever meeting the closure refusal below —
+ * the same fail-open as the prefix bug, through a different spelling.
+ */
+const moduleSpecifierSites = (file: ts.SourceFile): readonly { readonly specifier: string; readonly node: ts.Node }[] => {
+  const sites: { specifier: string; node: ts.Node }[] = []
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier !== undefined && ts.isStringLiteral(node.moduleSpecifier)
+    ) {
+      sites.push({ specifier: node.moduleSpecifier.text, node })
+    } else if (
+      ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) &&
+      ts.isStringLiteral(node.moduleReference.expression)
+    ) {
+      sites.push({ specifier: node.moduleReference.expression.text, node })
+    } else if (
+      ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments[0] !== undefined && ts.isStringLiteral(node.arguments[0])
+    ) {
+      sites.push({ specifier: (node.arguments[0] as ts.StringLiteral).text, node })
+    }
+    ts.forEachChild(node, visit)
+  }
+  ts.forEachChild(file, visit)
+  return sites
+}
+
 const assertClosedImports = (sources: readonly ProjectSource[], rootDir: string): void => {
   const root = resolve(rootDir)
   const names = new Set(sources.map((source) => resolve(root, source.fileName)))
   for (const source of sources) {
     const file = ts.createSourceFile(source.fileName, source.source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-    for (const statement of file.statements) {
-      if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue
-      const specifier = statement.moduleSpecifier.text
+    for (const { specifier } of moduleSpecifierSites(file)) {
       // EXACT membership in the frontend's registry, never a prefix test. This
       // runs immediately before `buildSemanticProjectModels`, so the two must
       // agree on what is compiler-owned: anything the frontend will treat as
@@ -144,8 +174,10 @@ const assertClosedImports = (sources: readonly ProjectSource[], rootDir: string)
       // `smithers:anything` skip BOTH refusals below. A specifier resolving to
       // a real installed package under one of those prefixes then produced a
       // `compiler-derived` contract whose projectDigest never covered that
-      // import edge — the same fail-open `poc/src/targets/classify.ts` records
-      // having fixed for the portability analyzer.
+      // import edge — the same fail-open the withdrawn portability analyzer
+      // (`poc/src/targets/classify.ts`, deleted 2026-08-23) had recorded
+      // fixing. The file is gone; the hazard is not, so the exact-membership
+      // rule below is the lesson kept.
       if (COMPILER_INTRINSIC_SPECIFIERS.has(specifier)) continue
       if (!specifier.startsWith(".")) {
         throw new ActionImplementationContractError(

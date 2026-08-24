@@ -1,4 +1,3 @@
-import { RuntimeValues, type Optional } from "../runtime/index.ts";
 import {
   Cancellation,
   Cancelled,
@@ -161,11 +160,12 @@ export class Semaphore {
     return pending;
   }
 
-  tryAcquire(): Optional<SemaphorePermit> {
+  /** `undefined` when no permit is free right now — ordinary absence, no container. */
+  tryAcquire(): SemaphorePermit | undefined {
     const state = stateOf(this);
-    if (state.active >= state.size || state.waiters.length > 0) return RuntimeValues.absent();
+    if (state.active >= state.size || state.waiters.length > 0) return undefined;
     state.active += 1;
-    return RuntimeValues.present(this.#permit());
+    return this.#permit();
   }
 
   withPermit<Output>(

@@ -1,5 +1,4 @@
 import { comptime as staticValue } from "smithers:comptime"
-import { native } from "smithers:native"
 
 const config = staticValue(
   {
@@ -8,8 +7,11 @@ const config = staticValue(
   },
 )
 
-export function nativePinned(): number {
-  return eval(config.mode)
+export class Boom extends Error {
+  constructor(readonly mode: string) { super(mode) }
 }
 
-native(nativePinned)
+export function describe(mode: string) {
+  if (mode === config.mode) throw new Boom(mode)
+  return mode
+}

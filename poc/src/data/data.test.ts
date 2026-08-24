@@ -160,7 +160,7 @@ describe("the reference/structural boundary", () => {
     expect(Data.equals(lookAlike, Object.freeze({ x: 1 }))).toBe(false);
     expect(Equivalence.any.equals(value, lookAlike)).toBe(false);
     // Nor can a look-alike be found in a structurally keyed map.
-    expect(HashMap.of<unknown, number>([value, 1]).get(lookAlike).isNone()).toBe(true);
+    expect(HashMap.of<unknown, number>([value, 1]).get(lookAlike)).toBeUndefined();
   });
 });
 
@@ -195,7 +195,7 @@ describe("equals and hash across the package", () => {
   test("a Data value is a usable key in every hashed collection", () => {
     const key = Data.struct({ region: "eu", shard: Data.tuple(1, 2) });
     const twin = Data.struct({ shard: Data.tuple(1, 2), region: "eu" });
-    expect(HashMap.of<unknown, string>([key, "v"]).get(twin).unwrapOr("miss")).toBe("v");
+    expect(HashMap.of<unknown, string>([key, "v"]).get(twin) ?? "miss").toBe("v");
     expect(HashSet.of<unknown>(key).has(twin)).toBe(true);
     expect(HashSet.of<unknown>(key).add(twin).size).toBe(1);
   });
@@ -217,7 +217,7 @@ describe("equals and hash across the package", () => {
       null,
       undefined,
     ];
-    expect(Hash.checkLaws(Equivalence.any, Hash.any, samples).isNone()).toBe(true);
+    expect(Hash.checkLaws(Equivalence.any, Hash.any, samples)).toBeUndefined();
   });
 });
 
@@ -239,7 +239,7 @@ describe("a seeded randomized round-trip", () => {
       expect(left).not.toBe(right);
       expect(Data.equals(left, right)).toBe(true);
       expect(Data.hash(left)).toBe(Data.hash(right));
-      expect(HashMap.of<unknown, string>([left, "hit"]).get(right).unwrapOr("miss")).toBe("hit");
+      expect(HashMap.of<unknown, string>([left, "hit"]).get(right) ?? "miss").toBe("hit");
       expect(HashSet.of<unknown>(left).add(right).size).toBe(1);
       expect(Chunk.of(left).equals(Chunk.of(right))).toBe(true);
     }

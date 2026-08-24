@@ -1,17 +1,8 @@
-# Standard Library [Designed modules and current programmatic POC surfaces]
+# Standard Library [Target modules and design contract]
 
-The Smithers standard library is a product direction. Module names and signatures on this page are illustrative and are not a root-CLI API.
-
-:::note Implementation status
-The names and signatures on this page remain design, not a promised root-CLI
-standard-library API. The source checkout now has three substantial
-programmatic POCs: `poc/src/platform`, `poc/src/data`, and
-`poc/src/concurrency`. Their platform-neutral surfaces are exposed through the
-provisional root package subpaths `smthrs/platform`, `smthrs/data`, and
-`smthrs/concurrency`; the Bun-only typed-worker host is exposed separately as
-`smthrs/concurrency/bun`. These libraries are executable evidence, not locked
-production contracts.
-:::
+The Smithers standard library is a product direction. Module names and
+signatures on this page are illustrative unless a linked specification locks
+them.
 
 ## Design Contract
 
@@ -34,15 +25,10 @@ Array  Chunk  HashMap  HashSet  Result  Data  Match
 
 TypeScript-compatible built-ins remain available. Alternatives should not require wrapper values merely for effect tracking.
 
-The programmatic `poc/src/data` POC implements pure, branded `Chunk`,
-`HashMap`, `HashSet`, and `Data` values; explicit `Equivalence` and `Hash`
-instances and structural registration seams; and a fluent value-level `Match`
-builder with type-directed exhaustiveness. It uses `T | undefined` for collection
-misses, insertion-order iteration for maps/sets, explicit equivalence/hash
-keying, and copy-on-write rather than a production HAMT. This surface is
-available provisionally at `smthrs/data`; compiler-derived
-`Equivalence`/`Hash` instances, a stable data contract, and a final persistent
-collection representation remain absent.
+Collection misses use `T | undefined`. Maps and sets preserve insertion order
+and use explicit `Equivalence` and `Hash` instances where JavaScript identity is
+not the desired key relation. Persistent representation is an internal choice
+and does not change value semantics.
 
 ## Schema and Encoding
 
@@ -52,10 +38,8 @@ Schema  Codec  Json  JsonSchema  Equivalence  Hash
 
 These artifacts are derived at comptime where possible. Parsing failures return Results.
 
-The root build POC has bounded checker-derived runtime schemas, and
-`poc/src/data` implements `Equivalence` and `Hash`. A unified standard-library
-`Schema`/`Codec`/`Json`/`JsonSchema` surface and shared compiler-owned type
-descriptors remain absent.
+The compiler and library share one type descriptor model for Schema, Codec,
+JSON Schema, Equivalence, and Hash derivation.
 
 ## Configuration and Time
 
@@ -65,14 +49,9 @@ Config  Duration  Instant  Schedule
 
 Reading environment variables or the wall clock requires a capability. Pure duration arithmetic does not.
 
-`poc/src/platform` implements pure branded `Duration`, transparent validated
-`Instant` arithmetic, and `Config` specs read through `Environment`. It also
-implements immutable `Schedule.fixed`, `spaced`, `exponential`, `recurs`, and
-`upTo` values with `and`/`or`/jitter/capping, plus `Schedule.retry` and
-`Schedule.repeat`. Waiting is explicit through a `Sleeper` capability with
-`SystemSleeper` and `TestSleeper`; `Sleeper` is not yet included in the
-`NodePlatform`/`TestPlatform` bundles, and Schedule values are not durable wire
-values.
+`Duration`, `Instant`, and `Schedule` are pure values. Waiting is explicit
+through a `Sleeper` capability. Configuration reads use `Environment`; they do
+not read ambient process state.
 
 ## Platform Services
 
@@ -83,16 +62,9 @@ Path  Process  Socket  Terminal
 
 Each service can have Node, Bun, Deno, browser, edge, and test implementations where the host supports it.
 
-The current programmatic `poc/src/platform` surface implements this roster for
-Node and deterministic tests: `NodeFileSystem`/`InMemoryFileSystem`,
-`FetchHttpClient`/`StubHttpClient`, `SystemClock`/`TestClock`,
-`SystemRandom`/`SeededRandom`, `ProcessEnvironment`/`MapEnvironment`,
-`SystemConsole`/`RecordingConsole`, `NodeProcess`/`TestProcess`,
-`NodeSocket`/`MemorySocket`, and `SystemTerminal`/`ScriptedTerminal`. `Path` is
-instead a pure POSIX/Windows namespace with an explicit `Path.forHost()` seam.
-The same provisional surface is exported at `smthrs/platform`.
-`NodePlatform` and `TestPlatform.make()` bundle the nine capability services;
-other host families and production resource-management policy remain absent.
+Each capability includes deterministic test implementations. `Path` is a pure
+POSIX or Windows namespace selected explicitly rather than an ambient host
+read. Platform Layers bundle compatible implementations for a host.
 
 Services use the same library-shaped declaration and access model as application capabilities:
 
@@ -119,18 +91,10 @@ Stream  Queue  Semaphore  Channel
 
 The library uses static concurrency combinators, cancellation, and workers rather than introducing Effect-style fibers or parser-level Promise syntax. TC39 concurrency governors may provide a future limit for async-iterator fan-out.
 
-The provisional `poc/src/concurrency` library is split by host. The Node-safe
-`smthrs/concurrency` entry point implements `Stream`, bounded FIFO `Queue`,
-fair `Semaphore`, small-buffer `Channel`, cancellation sources/registrations,
-`allKeyed`/`allSettledKeyed`, FIFO `Governor`, and completion-ordered
-`mapUnordered`, `filterUnordered`, and `bufferedUnordered`. The
-`smthrs/concurrency/bun` entry point adds typed workers through
-`TypedWorker.spawn` and the Bun bootstrap listener. The helpers contain and
-join work they start, and the queue/stream runners preserve typed cancellation
-or failure Results.
-`spawn module {}` syntax, compiler-derived worker contracts/codecs,
-SharedArrayBuffer-backed shared structs, zero-capacity rendezvous channels,
-and production worker sandboxing remain absent.
+The concurrency library includes typed cancellation, keyed joins, FIFO
+governors, bounded Queue, fair Semaphore, Channel, lazy Stream, and typed worker
+contracts. Helpers contain and join work they start. Queue and Stream runners
+preserve typed cancellation and failure Results.
 
 ## Durable Runtime
 
@@ -142,12 +106,9 @@ These APIs connect compiler-derived plans to coordinator and worker runtimes.
 
 ## Agent Library
 
-The production `@smithers/agent` package is planned to provide MDX prompt
-rendering, model adapters, TypeScript compilation, sandbox execution, and
-optional Action/Flow durability adapters. The current root package exposes a
-narrower Node-safe programmatic POC at `smthrs/agent`; Bun SQLite journaling
-and durable Flow tools are exposed at `smthrs/agent/bun`. Neither is the
-proposed standard-library contract.
+The agent library provides MDX prompt rendering, model adapters, TypeScript
+compilation, sandbox execution, and optional Action and Flow durability
+adapters. Exact packaging remains directional.
 
 ## Implementation Strategy
 

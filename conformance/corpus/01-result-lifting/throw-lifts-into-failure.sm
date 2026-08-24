@@ -8,6 +8,6 @@ export function halve(value: number): Result<number, Boom> {
 }
 
 export function main(): Result<string[], Boom> {
-  const half = halve(-2).unwrap()
+  const half = halve(-2)!
   return [`half ${half}`]
 }

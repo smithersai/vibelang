@@ -1,5 +1,0 @@
-{
-  "title": "a value if on a short-circuit right side is rejected: hoisting it would change the authored evaluation order",
-  "expect": "diagnostics",
-  "diagnostics": [{ "code": "SMITHERS1707", "line": 2, "column": 28 }]
-}

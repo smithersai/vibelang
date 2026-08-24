@@ -1,0 +1,9 @@
+class Holder {
+  value!: string
+}
+
+export function main(): string[] {
+  let local!: string
+  local = "assigned"
+  return [new Holder().value, local]
+}

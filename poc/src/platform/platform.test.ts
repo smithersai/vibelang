@@ -44,7 +44,7 @@ function auditEntry(): AuditEntry {
   const console = Console.context();
   const entry: AuditEntry = {
     at: new Date(clock.now()).toISOString(),
-    region: environment.get("REGION").unwrapOr("unknown"),
+    region: environment.get("REGION") ?? "unknown",
     requestId: [...random.bytes(4)].map((byte) => byte.toString(16).padStart(2, "0")).join(""),
   };
   console.info(`audit ${entry.requestId} in ${entry.region}`);

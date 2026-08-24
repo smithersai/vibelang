@@ -5,7 +5,27 @@ import (
 	"testing"
 )
 
-func compilePinnedNativeProject(t *testing.T, backend Compiler, source string, extras ...SourceFile) CompileResult {
+// Re-export and value-provenance behavior in the pinned fork.
+//
+// This file used to observe all of it through the portability (native) pin,
+// which was the only channel that reported a transitive requirement graph. The
+// pin, the `TypeScript` requirement and the portable/required/forbidden
+// classification were withdrawn from the specification on 2026-08-23, so the
+// pin-only assertions went with them. What is asserted here now is what
+// survived the withdrawal and still depends on the same traversal:
+//
+//   - the module-edge trust rule across re-exports (SMITHERS1510), which
+//     `staticRuntimeModuleEdge` and `nativeExportIsTypeOnly` own;
+//   - compile-time asset identity through a re-export, which
+//     `assetProvenanceThroughBindings` owns;
+//   - the failure channel's invoked-where-defined boundary, which
+//     `nativeInvokedWhereDefined` owns.
+//
+// Each of the three is a survivor of the removal, so each is asserted in BOTH
+// directions: a deletion that quietly stops charging is the failure mode this
+// file exists to catch.
+
+func compileReExportProject(t *testing.T, backend Compiler, source string, extras ...SourceFile) CompileResult {
 	t.Helper()
 	files := append([]SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}}, extras...)
 	result, err := backend.Compile(t.Context(), CompileRequest{
@@ -30,15 +50,6 @@ func diagnosticMessages(result CompileResult, code string) []string {
 	return messages
 }
 
-func requireOnePinPath(t *testing.T, result CompileResult, requirement string, path string) {
-	t.Helper()
-	messages := diagnosticMessages(result, "SMITHERS3001")
-	want := "native pin failed: " + requirement + " is required through " + path
-	if len(messages) != 1 || messages[0] != want {
-		t.Fatalf("SMITHERS3001 messages %#v, want [%q]; all diagnostics %#v", messages, want, result.Diagnostics)
-	}
-}
-
 func requireNoDiagnostic(t *testing.T, result CompileResult, code string) {
 	t.Helper()
 	if messages := diagnosticMessages(result, code); len(messages) != 0 {
@@ -46,168 +57,58 @@ func requireNoDiagnostic(t *testing.T, result CompileResult, code string) {
 	}
 }
 
-func nativeReExportMain(importLine string, leafExpression string) string {
-	return "import { native } from \"smithers:native\"\n" + importLine + "\n" +
-		"function leaf(): number { return " + leafExpression + " }\n" +
-		"function pinned(input: string): number { return input.length + leaf() }\n" +
-		"native(pinned)\n" +
-		"export function main(): string[] { return [String(pinned(\"smithers\"))] }\n"
-}
-
-// The refusal table enumerates every value re-binding spelling from the
-// reference fix. Each row must reach the same host edge and retain both the
-// call path and laundering module in the diagnostic.
-func TestPinnedForkNativePinFollowsEveryReExportBindingForm(t *testing.T) {
+// TestPinnedForkReExportModuleEdgeTrust is the surviving half of what the pin
+// used to observe one module further away: a re-export runs the target
+// module's initializer exactly as an import does, so it needs the same
+// initialization trust claim. specification/compatibility.mdx, "Foreign
+// Boundary". Both directions, because a walk that stopped following
+// re-exports would satisfy the negative automatically.
+func TestPinnedForkReExportModuleEdgeTrust(t *testing.T) {
 	backend, _ := newPinnedTestBackend(t)
-	type testCase struct {
-		name        string
-		importLine  string
-		leaf        string
-		launder     string
-		extras      []SourceFile
-		requirement string
-		terminal    string
-	}
-	cases := []testCase{
-		{
-			name: "named re-export", importLine: `import { read } from "./launder.sm"`,
-			leaf:        `typeof read === "function" ? 1 : 0`,
-			launder:     `export { readFileSync as read } from "node:fs"` + "\n",
-			requirement: `Module<"node:fs">`, terminal: "node:fs",
-		},
-		{
-			name: "star re-export", importLine: `import { readFileSync } from "./launder.sm"`,
-			leaf:        `typeof readFileSync === "function" ? 1 : 0`,
-			launder:     `export * from "node:fs"` + "\n",
-			requirement: `Module<"node:fs">`, terminal: "node:fs",
-		},
-		{
-			name: "namespace re-export", importLine: `import { fs } from "./launder.sm"`,
-			leaf:        `typeof fs.readFileSync === "function" ? 1 : 0`,
-			launder:     `export * as fs from "node:fs"` + "\n",
-			requirement: `Module<"node:fs">`, terminal: "node:fs",
-		},
-		{
-			name: "import then export", importLine: `import { read } from "./launder.sm"`,
-			leaf:        `typeof read === "function" ? 1 : 0`,
-			launder:     "import { readFileSync as read } from \"node:fs\"\nexport { read }\n",
-			requirement: `Module<"node:fs">`, terminal: "node:fs",
-		},
-		{
-			name: "rename through export", importLine: `import { read } from "./launder.sm"`,
-			leaf:        `typeof read === "function" ? 1 : 0`,
-			launder:     "import { readFileSync as local } from \"node:fs\"\nexport { local as read }\n",
-			requirement: `Module<"node:fs">`, terminal: "node:fs",
-		},
-		{
-			name: "value binding", importLine: `import { read } from "./launder.sm"`,
-			leaf:        `typeof read === "function" ? 1 : 0`,
-			launder:     "import * as fs from \"node:fs\"\nexport const read = fs.readFileSync\n",
-			requirement: `Module<"node:fs">`, terminal: "node:fs",
-		},
-		{
-			name: "destructured value binding", importLine: `import { read } from "./launder.sm"`,
-			leaf:        `typeof read === "function" ? 1 : 0`,
-			launder:     "import * as fs from \"node:fs\"\nexport const { readFileSync: read } = fs\n",
-			requirement: `Module<"node:fs">`, terminal: "node:fs",
-		},
-		{
-			name: "default export expression", importLine: `import read from "./launder.sm"`,
-			leaf:        `typeof read === "function" ? 1 : 0`,
-			launder:     "import { readFileSync } from \"node:fs\"\nexport default readFileSync\n",
-			requirement: `Module<"node:fs">`, terminal: "node:fs",
-		},
-		{
-			name: "default as named", importLine: `import { read } from "./launder.sm"`,
-			leaf:    `typeof read === "function" ? 1 : 0`,
-			launder: `export { default as read } from "./foreign.ts"` + "\n",
-			extras: []SourceFile{{Path: "foreign.ts", Kind: FileKindTypeScript,
-				Text: "export default function read(): number { return 1 }\n"}},
-			requirement: "TypeScript", terminal: "./foreign.ts",
-		},
-		{
-			name: "namespace import of launderer", importLine: `import * as laundry from "./launder.sm"`,
-			leaf:        `typeof laundry.read === "function" ? 1 : 0`,
-			launder:     `export { readFileSync as read } from "node:fs"` + "\n",
-			requirement: `Module<"node:fs">`, terminal: "node:fs",
-		},
-		{
-			name: "whole laundering namespace", importLine: `import * as laundry from "./launder.sm"`,
-			leaf:        `typeof laundry === "object" ? 1 : 0`,
-			launder:     `export { readFileSync as read } from "node:fs"` + "\n",
-			requirement: `Module<"node:fs">`, terminal: "node:fs",
-		},
-	}
 
-	for _, testCase := range cases {
-		t.Run(testCase.name, func(t *testing.T) {
-			extras := []SourceFile{{Path: "launder.sm", Kind: FileKindSmithers, Text: testCase.launder}}
-			extras = append(extras, testCase.extras...)
-			result := compilePinnedNativeProject(t, backend,
-				nativeReExportMain(testCase.importLine, testCase.leaf), extras...)
-			requireOnePinPath(t, result, testCase.requirement,
-				"main.sm#pinned -> main.sm#leaf -> launder.sm -> "+testCase.terminal)
-			if len(diagnosticMessages(result, "SMITHERS1510")) != 1 {
-				t.Fatalf("runtime re-export must have one module trust refusal: %#v", result.Diagnostics)
-			}
-		})
-	}
-}
-
-func TestPinnedForkNativePinReExportPathsComposeAndCyclesTerminate(t *testing.T) {
-	backend, _ := newPinnedTestBackend(t)
-	main := nativeReExportMain(`import { read } from "./outer.sm"`, `typeof read === "function" ? 1 : 0`)
-
-	t.Run("two named hops", func(t *testing.T) {
-		result := compilePinnedNativeProject(t, backend, main,
-			SourceFile{Path: "outer.sm", Kind: FileKindSmithers, Text: `export { read } from "./inner.sm"` + "\n"},
-			SourceFile{Path: "inner.sm", Kind: FileKindSmithers, Text: `export { readFileSync as read } from "node:fs"` + "\n"},
+	t.Run("named re-export of an untrusted foreign module is charged", func(t *testing.T) {
+		source := "import { helper } from \"./launder.sm\"\n" +
+			"export function main(): string[] { return [typeof helper] }\n"
+		result := compileReExportProject(t, backend, source,
+			SourceFile{Path: "launder.sm", Kind: FileKindSmithers,
+				Text: "export { helper } from \"./untrusted.ts\"\n"},
+			SourceFile{Path: "untrusted.ts", Kind: FileKindTypeScript,
+				Text: "export function helper(value: number): number { return value + 1 }\n"},
 		)
-		requireOnePinPath(t, result, `Module<"node:fs">`,
-			"main.sm#pinned -> main.sm#leaf -> outer.sm -> inner.sm -> node:fs")
+		if len(diagnosticMessages(result, "SMITHERS1510")) == 0 {
+			t.Fatalf("a re-export of an untrusted foreign module must be charged: %#v", result.Diagnostics)
+		}
 	})
 
-	t.Run("a two-module cycle still reaches its foreign edge", func(t *testing.T) {
-		result := compilePinnedNativeProject(t, backend, main,
-			SourceFile{Path: "outer.sm", Kind: FileKindSmithers,
-				Text: "export { read } from \"./inner.sm\"\nexport const LIMIT = 1\n"},
-			SourceFile{Path: "inner.sm", Kind: FileKindSmithers,
-				Text: "export { LIMIT } from \"./outer.sm\"\nexport { readFileSync as read } from \"node:fs\"\n"},
+	t.Run("type-only re-export is not charged", func(t *testing.T) {
+		source := "import type { Settings } from \"./types.sm\"\n" +
+			"const local: Settings = { size: 3 }\n" +
+			"export function main(): string[] { return [String(local.size)] }\n"
+		result := compileReExportProject(t, backend, source,
+			SourceFile{Path: "types.sm", Kind: FileKindSmithers,
+				Text: "export type { Settings } from \"./foreign.ts\"\n"},
+			SourceFile{Path: "foreign.ts", Kind: FileKindTypeScript,
+				Text: "export interface Settings { readonly size: number }\n"},
 		)
-		requireOnePinPath(t, result, `Module<"node:fs">`,
-			"main.sm#pinned -> main.sm#leaf -> outer.sm -> inner.sm -> node:fs")
-	})
-
-	t.Run("a clean two-module cycle terminates without inventing a requirement", func(t *testing.T) {
-		cleanMain := nativeReExportMain(`import { LIMIT } from "./outer.sm"`, "LIMIT")
-		result := compilePinnedNativeProject(t, backend, cleanMain,
-			SourceFile{Path: "outer.sm", Kind: FileKindSmithers,
-				Text: "export { LIMIT } from \"./inner.sm\"\nexport const STEP = 2\n"},
-			SourceFile{Path: "inner.sm", Kind: FileKindSmithers,
-				Text: "export { STEP } from \"./outer.sm\"\nexport const LIMIT = 1\n"},
-		)
-		requireNoDiagnostic(t, result, "SMITHERS3001")
-	})
-
-	t.Run("a parameter default executes in its function", func(t *testing.T) {
-		source := "import { native } from \"smithers:native\"\n" +
-			"import { readFileSync } from \"node:fs\"\n" +
-			"function pinned(read = readFileSync): number { return typeof read === \"function\" ? 1 : 0 }\n" +
-			"native(pinned)\nexport function main(): string[] { return [\"unreachable\"] }\n"
-		result := compilePinnedNativeProject(t, backend, source)
-		requireOnePinPath(t, result, `Module<"node:fs">`, "main.sm#pinned")
+		if result.EmitSkipped || len(result.Diagnostics) != 0 {
+			t.Fatalf("a type-only re-export adds no runtime module edge: %#v", result.Diagnostics)
+		}
 	})
 }
 
+// TestPinnedForkReExportAcceptanceControls is the negative table: project
+// values, compiler-owned virtual modules, and compile-time assets reached
+// through a re-export are NOT foreign runtime edges. Before the withdrawal
+// this table was written as native pins; the acceptance it measures is
+// unchanged, so it is now measured as an ordinary clean compile plus the
+// emitted artifact.
 func TestPinnedForkReExportAcceptanceControls(t *testing.T) {
 	backend, _ := newPinnedTestBackend(t)
 
 	t.Run("ordinary project values through named and star exports", func(t *testing.T) {
-		source := "import { native } from \"smithers:native\"\n" +
-			"import { LIMIT } from \"./named.sm\"\nimport { STEP } from \"./star.sm\"\n" +
-			"function pinned(input: string): number { return input.length + LIMIT + STEP }\n" +
-			"native(pinned)\nexport function main(): string[] { return [String(pinned(\"x\"))] }\n"
-		result := compilePinnedNativeProject(t, backend, source,
+		source := "import { LIMIT } from \"./named.sm\"\nimport { STEP } from \"./star.sm\"\n" +
+			"export function main(): string[] { return [String(LIMIT + STEP)] }\n"
+		result := compileReExportProject(t, backend, source,
 			SourceFile{Path: "named.sm", Kind: FileKindSmithers, Text: `export { LIMIT } from "./values.sm"` + "\n"},
 			SourceFile{Path: "star.sm", Kind: FileKindSmithers, Text: `export * from "./values.sm"` + "\n"},
 			SourceFile{Path: "values.sm", Kind: FileKindSmithers, Text: "export const LIMIT = 1\nexport const STEP = 2\n"},
@@ -215,45 +116,34 @@ func TestPinnedForkReExportAcceptanceControls(t *testing.T) {
 		if result.EmitSkipped || len(result.Diagnostics) != 0 {
 			t.Fatalf("clean re-exports must compile: %#v", result.Diagnostics)
 		}
-	})
-
-	t.Run("type-only re-export", func(t *testing.T) {
-		source := "import { native } from \"smithers:native\"\n" +
-			"import type { Settings } from \"./types.sm\"\n" +
-			"function pinned(value: Settings | undefined): number { return value === undefined ? 0 : 1 }\n" +
-			"native(pinned)\nexport function main(): string[] { return [String(pinned(undefined))] }\n"
-		result := compilePinnedNativeProject(t, backend, source,
-			SourceFile{Path: "types.sm", Kind: FileKindSmithers, Text: `export type { Settings } from "./foreign.ts"` + "\n"},
-			SourceFile{Path: "foreign.ts", Kind: FileKindTypeScript, Text: "export interface Settings { readonly size: number }\n"},
-		)
-		if result.EmitSkipped || len(result.Diagnostics) != 0 {
-			t.Fatalf("type-only re-export must add no runtime requirement: %#v", result.Diagnostics)
+		if got := runEmittedMain(t, result); got != "3" {
+			t.Fatalf("clean re-export program printed %q", got)
 		}
 	})
 
 	t.Run("compiler-owned virtual modules", func(t *testing.T) {
-		source := "import { native } from \"smithers:native\"\n" +
-			"import { Layer, Context } from \"./compiler.sm\"\n" +
-			"function pinned(): number { void Layer; void Context; return 1 }\n" +
-			"native(pinned)\nexport function main(): string[] { return [String(pinned())] }\n"
-		result := compilePinnedNativeProject(t, backend, source,
+		source := "import { Layer, Context } from \"./compiler.sm\"\n" +
+			"export function main(): string[] { void Layer; void Context; return [\"1\"] }\n"
+		result := compileReExportProject(t, backend, source,
 			SourceFile{Path: "compiler.sm", Kind: FileKindSmithers,
 				Text: "export { Layer } from \"smthrs/provider\"\nexport * from \"smthrs/context\"\n"},
 		)
 		if result.EmitSkipped || len(result.Diagnostics) != 0 {
-			t.Fatalf("compiler-owned re-exports must remain requirement-free: %#v", result.Diagnostics)
+			t.Fatalf("compiler-owned re-exports must remain edge-free: %#v", result.Diagnostics)
 		}
 		if got := runEmittedMain(t, result); got != "1" {
 			t.Fatalf("compiler-owned re-export program printed %q", got)
 		}
 	})
 
+	// This is the case `assetProvenanceThroughBindings` exists for: the asset
+	// arrives one module away, so the direct import lookup cannot answer it and
+	// the binding walk has to. If the walk stopped answering, the specifier
+	// would reach the runtime artifact, which is what the last assertion reads.
 	t.Run("compile-time asset re-export", func(t *testing.T) {
-		source := "import { native } from \"smithers:native\"\n" +
-			"import { config } from \"./asset.sm\"\n" +
-			"function pinned(): number { return config.answer }\n" +
-			"native(pinned)\nexport function main(): string[] { return [String(pinned())] }\n"
-		result := compilePinnedNativeProject(t, backend, source,
+		source := "import { config } from \"./asset.sm\"\n" +
+			"export function main(): string[] { return [String(config.answer)] }\n"
+		result := compileReExportProject(t, backend, source,
 			SourceFile{Path: "asset.sm", Kind: FileKindSmithers,
 				Text: `export { default as config } from "./config.json" with { type: "json", mode: "const" }` + "\n"},
 			SourceFile{Path: "config.json", Kind: FileKindAsset, Text: `{"answer":42}`},
@@ -272,155 +162,36 @@ func TestPinnedForkReExportAcceptanceControls(t *testing.T) {
 	})
 }
 
-func TestPinnedForkNativePinFollowsModuleInitializers(t *testing.T) {
-	backend, _ := newPinnedTestBackend(t)
-	main := nativeReExportMain(`import { pid as read } from "./config.sm"`, "read")
+// TestPinnedForkInvokedWhereDefinedChargesTheFailureChannel is the surviving
+// observation of `nativeInvokedWhereDefined`. The pin used to be its only
+// channel; `collectFacts` is the other one, and it is load-bearing for the
+// failure row rather than for portability: a callable INVOKED where it is
+// written runs, so its `throw` is the enclosing function's failure, and a
+// callable merely DEFINED does not.
+func TestPinnedForkInvokedWhereDefinedChargesTheFailureChannel(t *testing.T) {
+	const boom = "export class Boom extends Error {\n" +
+		"  constructor(readonly value: number) { super(`bad ${value}`) }\n" +
+		"}\n"
 
-	t.Run("ambient host authority", func(t *testing.T) {
-		result := compilePinnedNativeProject(t, backend, main,
-			SourceFile{Path: "config.sm", Kind: FileKindSmithers, Text: "export const pid = process.pid\n"})
-		requireOnePinPath(t, result, `Host<"process">`,
-			"main.sm#pinned -> main.sm#leaf -> config.sm#pid -> process.pid")
+	runFailClosedCases(t, []failClosedCase{
+		{
+			name: "an immediately invoked throw is the enclosing function's failure",
+			source: boom + "\nexport function halve(value: number) {\n" +
+				"  return (() => { if (value < 0) throw new Boom(value); return value / 2 })()\n" +
+				"}\n",
+			reject: []string{"SMITHERS1102@5:1"},
+		},
+		{
+			// The same body, merely DEFINED. If the walk charged it, `halve`
+			// would be fallible and would need the Result contract the case
+			// above reports; a clean compile is the assertion.
+			name: "a callable merely defined is not invoked and charges nothing",
+			source: boom + "\nexport function halve(value: number) {\n" +
+				"  const deferred = () => { if (value < 0) throw new Boom(value); return value / 2 }\n" +
+				"  return typeof deferred\n" +
+				"}\n" +
+				"\nexport function main(): string[] { return [halve(8)] }\n",
+			stdout: "function",
+		},
 	})
-
-	t.Run("destructured ambient host authority", func(t *testing.T) {
-		result := compilePinnedNativeProject(t, backend, main,
-			SourceFile{Path: "config.sm", Kind: FileKindSmithers, Text: "export const { pid } = process\n"})
-		requireOnePinPath(t, result, `Host<"process">`,
-			"main.sm#pinned -> main.sm#leaf -> config.sm#pid -> process")
-	})
-
-	t.Run("default ambient host authority", func(t *testing.T) {
-		defaultMain := nativeReExportMain(`import read from "./config.sm"`, "read")
-		result := compilePinnedNativeProject(t, backend, defaultMain,
-			SourceFile{Path: "config.sm", Kind: FileKindSmithers, Text: "export default process.pid\n"})
-		requireOnePinPath(t, result, `Host<"process">`,
-			"main.sm#pinned -> main.sm#leaf -> config.sm#default -> process.pid")
-	})
-
-	t.Run("an invoked initializer callable executes", func(t *testing.T) {
-		result := compilePinnedNativeProject(t, backend, main,
-			SourceFile{Path: "config.sm", Kind: FileKindSmithers, Text: "export const pid = (() => process.pid)()\n"})
-		requireOnePinPath(t, result, `Host<"process">`,
-			"main.sm#pinned -> main.sm#leaf -> config.sm#pid -> process.pid")
-	})
-
-	t.Run("an invoked initializer composes through a re-export", func(t *testing.T) {
-		outerMain := nativeReExportMain(`import { pid as read } from "./outer.sm"`, "read")
-		result := compilePinnedNativeProject(t, backend, outerMain,
-			SourceFile{Path: "outer.sm", Kind: FileKindSmithers, Text: `export { pid } from "./config.sm"` + "\n"},
-			SourceFile{Path: "config.sm", Kind: FileKindSmithers, Text: "export const pid = (() => process.pid)()\n"},
-		)
-		requireOnePinPath(t, result, `Host<"process">`,
-			"main.sm#pinned -> main.sm#leaf -> outer.sm -> config.sm#pid -> process.pid")
-	})
-
-	t.Run("a merely defined callable stays deferred", func(t *testing.T) {
-		deferredMain := nativeReExportMain(`import { deferred as read } from "./config.sm"`,
-			`typeof read === "function" ? 1 : 0`)
-		result := compilePinnedNativeProject(t, backend, deferredMain,
-			SourceFile{Path: "config.sm", Kind: FileKindSmithers, Text: "export const deferred = () => process.pid\n"})
-		requireNoDiagnostic(t, result, "SMITHERS3001")
-	})
-
-	t.Run("pure and shadowed initializers stay ordinary", func(t *testing.T) {
-		result := compilePinnedNativeProject(t, backend, main,
-			SourceFile{Path: "config.sm", Kind: FileKindSmithers,
-				Text: "const process = { pid: 7 }\nexport const pid = process.pid\n"})
-		if result.EmitSkipped || len(result.Diagnostics) != 0 {
-			t.Fatalf("shadowed initializer must remain ordinary: %#v", result.Diagnostics)
-		}
-	})
-
-	t.Run("Date.parse in an initializer stays pure", func(t *testing.T) {
-		parsedMain := nativeReExportMain(`import { parsed as read } from "./config.sm"`, "read")
-		result := compilePinnedNativeProject(t, backend, parsedMain,
-			SourceFile{Path: "config.sm", Kind: FileKindSmithers,
-				Text: `export const parsed = Date.parse("2020-01-01")` + "\n"})
-		if result.EmitSkipped || len(result.Diagnostics) != 0 {
-			t.Fatalf("pure Date initializer must remain ordinary: %#v", result.Diagnostics)
-		}
-	})
-}
-
-func TestPinnedForkNativePinFollowsInvokedWhereDefinedCallables(t *testing.T) {
-	backend, _ := newPinnedTestBackend(t)
-	type iifeCase struct {
-		name   string
-		prefix string
-		expr   string
-		path   string
-	}
-	cases := []iifeCase{
-		{name: "arrow call", expr: `(() => process.pid)()`},
-		{name: "function expression call", expr: `(function () { return process.pid })()`},
-		{name: "async arrow call", expr: `(async () => process.pid)()`},
-		{name: "call method", expr: `(() => process.pid).call(null)`},
-		{name: "apply method", expr: `(() => process.pid).apply(null)`},
-		{name: "bound result invoked", expr: `(() => process.pid).bind(null)()`},
-		{name: "named function expression", expr: `(function read() { return process.pid })()`},
-		{name: "object literal", expr: `({ pid: (() => process.pid)() })`},
-		{name: "array literal", expr: `[(() => process.pid)()]`},
-		{name: "accumulation after clock", expr: `({ at: Date.now(), pid: (() => process.pid)() })`},
-		{name: "constructor", expr: `new (function (this: { pid?: number }) { this.pid = process.pid })()`},
-		{name: "optional call", expr: `(() => process.pid)?.()`},
-		{name: "tagged template", expr: "((parts: TemplateStringsArray) => process.pid)`x`"},
-	}
-	for _, testCase := range cases {
-		t.Run(testCase.name, func(t *testing.T) {
-			source := "import { native } from \"smithers:native\"\n" + testCase.prefix +
-				"function pinned(): unknown { return " + testCase.expr + " }\n" +
-				"native(pinned)\nexport function main(): string[] { return [\"unreachable\"] }\n"
-			result := compilePinnedNativeProject(t, backend, source)
-			requireOnePinPath(t, result, `Host<"process">`, "main.sm#pinned")
-		})
-	}
-
-	t.Run("call graph inside an IIFE", func(t *testing.T) {
-		source := "import { native } from \"smithers:native\"\n" +
-			"function helper(): number { return process.pid }\n" +
-			"function pinned(): number { return (() => helper())() }\n" +
-			"native(pinned)\nexport function main(): string[] { return [\"unreachable\"] }\n"
-		result := compilePinnedNativeProject(t, backend, source)
-		requireOnePinPath(t, result, `Host<"process">`, "main.sm#pinned -> main.sm#helper")
-	})
-
-	t.Run("foreign module edge inside an IIFE", func(t *testing.T) {
-		source := "import { native } from \"smithers:native\"\n" +
-			"import { readFileSync } from \"node:fs\"\n" +
-			"function pinned(): number { return (() => typeof readFileSync === \"function\" ? 1 : 0)() }\n" +
-			"native(pinned)\nexport function main(): string[] { return [\"unreachable\"] }\n"
-		result := compilePinnedNativeProject(t, backend, source)
-		requireOnePinPath(t, result, `Module<"node:fs">`, "main.sm#pinned")
-	})
-
-	t.Run("eval inside an IIFE", func(t *testing.T) {
-		source := "import { native } from \"smithers:native\"\n" +
-			"function pinned(): unknown { return (() => eval(\"1\"))() }\n" +
-			"native(pinned)\nexport function main(): string[] { return [\"unreachable\"] }\n"
-		result := compilePinnedNativeProject(t, backend, source)
-		requireOnePinPath(t, result, "TypeScript", "main.sm#pinned")
-	})
-
-	negative := []struct {
-		name string
-		expr string
-	}{
-		{name: "callable merely defined", expr: `() => process.pid`},
-		{name: "callable merely bound", expr: `(() => process.pid).bind(null)`},
-		{name: "IIFE inside deferred closure", expr: `() => (() => process.pid)()`},
-		{name: "IIFE returns deferred closure", expr: `(() => () => process.pid)()`},
-		{name: "ordinary boolean negation", expr: `!(() => process.pid)`},
-		{name: "pure date operation", expr: `(() => Date.parse("2020-01-01"))()`},
-		{name: "lexically shadowed parameter", expr: `((process: { pid: number }) => process.pid)({ pid: 7 })`},
-	}
-	for _, testCase := range negative {
-		t.Run(testCase.name, func(t *testing.T) {
-			source := "import { native } from \"smithers:native\"\n" +
-				"function pinned(): unknown { return " + testCase.expr + " }\n" +
-				"native(pinned)\nexport function main(): string[] { return [\"ordinary\"] }\n"
-			result := compilePinnedNativeProject(t, backend, source)
-			requireNoDiagnostic(t, result, "SMITHERS3001")
-		})
-	}
 }

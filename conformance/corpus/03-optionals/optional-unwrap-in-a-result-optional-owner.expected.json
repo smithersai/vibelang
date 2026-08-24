@@ -1,5 +1,0 @@
-{
-  "title": "Optional.unwrap() inside a Result<Optional<T>, E> owner early-returns success(none) rather than a failure",
-  "expect": "output",
-  "stdout": ["ok A", "ok absent", "error no record -1"]
-}

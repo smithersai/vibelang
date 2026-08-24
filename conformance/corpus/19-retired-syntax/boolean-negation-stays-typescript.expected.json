@@ -1,0 +1,6 @@
+{
+  "title": "prefix boolean negation, double negation, and !== retain ordinary TypeScript behavior",
+  "expect": "output",
+  "stdout": ["ok", "true", "true"],
+  "notes": "Prefix ! and !! are distinct parser nodes from postfix propagation, while !== is one comparison token. All three must retain ordinary TypeScript behavior."
+}

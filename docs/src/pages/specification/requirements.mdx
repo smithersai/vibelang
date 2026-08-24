@@ -94,9 +94,3 @@ Imported JavaScript or TypeScript that starts hidden background work owns that w
 The TypeScript backend MAY lower requirements through hidden environment parameters, scoped ambient context, or another mechanism that preserves semantics and ordinary source-level call syntax.
 
 Ambient runtime context is not a locked implementation choice. The lowering MUST preserve async scope, nesting, failure cleanup, and nominal lookup behavior.
-
-## TypeScript Requirement
-
-`TypeScript` is a built-in capability representing runtime dependence on TypeScript/JavaScript-specific behavior.
-
-It MUST propagate and be satisfiable or rejectable like other requirements.

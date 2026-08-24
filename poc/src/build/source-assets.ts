@@ -589,6 +589,31 @@ const collectRequests = (
             "asset modules cannot be imported through a type-only import() query"
           ))
         }
+      } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
+        // `import x = require("...")` and `export import x = require("...")`
+        // are runtime module edges with no place to put import attributes, so
+        // a non-code target can never select a loader through them. Leaving the
+        // form unhandled let a non-code specifier skip the attribute rule every
+        // other import form obeys, and hid a code path from the code/asset
+        // identity reconciliation that stops a generated module shadowing it.
+        const specifier = literalSpecifier(node.moduleReference.expression)
+        if (specifier === undefined) {
+          diagnostics.push(diagnostic(
+            sourceFile,
+            node.moduleReference,
+            "SMITHERS5205",
+            "import-assignment specifiers must be string literals"
+          ))
+        } else if (!isPotentialAsset(specifier, undefined)) {
+          if (specifier.startsWith(".")) recordOrdinaryAlias(importer, specifier)
+        } else {
+          diagnostics.push(diagnostic(
+            sourceFile,
+            node,
+            "SMITHERS5201",
+            "non-code imports require `with { type: \"...\" }`, which an import assignment cannot carry"
+          ))
+        }
       }
       ts.forEachChild(node, visitExpressions)
     }

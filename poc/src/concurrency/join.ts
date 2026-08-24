@@ -147,6 +147,21 @@ export function mapUnordered<Input, Output>(
   }
   const bound = modern ? directBound ? optionsOrMapper as ConcurrencyBound : options!.concurrency : mapperOrConcurrency;
   const governor = governorFrom(bound as ConcurrencyBound, "mapUnordered concurrency");
+  // KNOWN DEFECT (reproduced, not fixed here — the fix is a policy call).
+  // Only the options shape consults the dependency model. The two shorthand
+  // shapes substitute `new Cancellation()`, a fresh root nobody holds a
+  // reference to, so `mapUnordered(inputs, mapper, 2)` silently ignores a
+  // cancellation that the otherwise identical
+  // `mapUnordered(inputs, mapper, { concurrency: 2 })` honors, and keeps
+  // running work the caller already cancelled. `bufferedUnordered` and
+  // `filterUnordered` share the defect; `Stream.mapConcurrent` routes into it
+  // whenever no `cancellation` option is supplied.
+  //
+  // Unifying on `Cancellation.context()` fixes it but makes every shorthand
+  // call panic outside a Layer (measured: 10 existing concurrency tests fail),
+  // which changes a documented public shape. DECISIONS.md lists language-wide
+  // cancellation as Open, so the choice between that and a
+  // "capability if provided" lookup belongs to whoever settles that decision.
   const parent = modern
     ? options
       ? options.cancellation ?? Cancellation.context()

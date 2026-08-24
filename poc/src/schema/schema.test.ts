@@ -172,7 +172,7 @@ describe("Schema-derived Equivalence and Hash", () => {
     expect(Hash.isHash(hash)).toBe(true);
     expect(equivalence.equals(samples[0]!, samples[1]!)).toBe(true);
     expect(hash.hash(samples[0]!)).toBe(hash.hash(samples[1]!));
-    expect(Hash.checkLaws(equivalence, hash, samples).isNone()).toBe(true);
+    expect(Hash.checkLaws(equivalence, hash, samples)).toBeUndefined();
   });
 });
 

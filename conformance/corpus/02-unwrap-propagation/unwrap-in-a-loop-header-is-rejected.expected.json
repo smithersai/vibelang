@@ -1,5 +1,5 @@
 {
-  "title": "an unwrap in a loop header is rejected: per-iteration propagation needs control-flow lowering",
+  "title": "postfix propagation in a loop header is rejected: per-iteration propagation needs control-flow lowering",
   "expect": "diagnostics",
   "diagnostics": [
     {
@@ -8,5 +8,5 @@
       "column": 31
     }
   ],
-  "notes": "poc/src/language/README.md: 'Repeated loop-header unwrap is explicitly rejected' and 'Result.unwrap() in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering.' The underlying obligation is specification/failures.mdx, 'Propagation': 'The emitted error path MUST return the enclosing error variant rather than throw a recoverable JavaScript exception.' A loop header is evaluated once per iteration, so an early-return lowering placed before the loop would change the program's meaning; fail-closed is the only sound answer until a checked control-flow IR exists."
+  "notes": "Postfix propagation in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering. The emitted error path must return the enclosing error variant; hoisting that path in front of a loop would change when it runs, so this placement fails closed."
 }

@@ -6,7 +6,7 @@ import { RuntimeValues } from "../runtime/values.ts";
 import { Clock, TestClock } from "./clock.ts";
 import { Duration, MAX_DURATION_MILLIS } from "./duration.ts";
 import { Random, SeededRandom } from "./random.ts";
-import { TestPlatform } from "./layers.ts";
+import { nodePlatform, TestPlatform } from "./layers.ts";
 import {
   type Operation,
   Schedule,
@@ -595,35 +595,98 @@ describe("Schedule.repeat", () => {
 });
 
 describe("Schedule sleeper resolution", () => {
+  // These two used to merge their own Sleeper into `platform.layer`. The bundle
+  // now carries one, and `Layer.merge` fails closed on a duplicate capability,
+  // so the provided sleeper is read from the bundle instead. The assertions are
+  // unchanged: what is provided is what drives the loop, and an explicit option
+  // still outranks it.
   test("a Sleeper provided by the Layer is used with no option at all", async () => {
     const platform = TestPlatform.make();
-    const provided = TestSleeper.make({ clock: platform.clock });
-    const layer = Layer.merge(platform.layer, Layer.succeed(Sleeper, provided));
     const counter = { calls: 0 };
 
-    await started(layer, () =>
+    await started(platform.layer, () =>
       Schedule.retry(Schedule.spaced(Duration.millis(15)).and(Schedule.recurs(2)), alwaysFails(counter)));
 
-    expect(provided.millis).toEqual([15, 15]);
+    expect(platform.sleeper.millis).toEqual([15, 15]);
     expect(counter.calls).toBe(3);
   });
 
   test("an explicit sleeper outranks the one in the Layer", async () => {
     const platform = TestPlatform.make();
-    const provided = TestSleeper.make({ clock: platform.clock });
     const explicit = TestSleeper.make({ clock: platform.clock });
-    const layer = Layer.merge(platform.layer, Layer.succeed(Sleeper, provided));
     const counter = { calls: 0 };
 
-    await started(layer, () =>
+    await started(platform.layer, () =>
       Schedule.retry(Schedule.spaced(Duration.millis(15)).and(Schedule.recurs(2)), alwaysFails(counter), {
         sleeper: explicit,
       }));
 
     expect(explicit.millis).toEqual([15, 15]);
-    expect(provided.millis).toEqual([]);
+    expect(platform.sleeper.millis).toEqual([]);
     expect(panics(() => Schedule.retry(Schedule.recurs(0), () => success(1), { sleeper: {} as unknown as Sleeper })))
       .toBe(true);
+  });
+
+  test("an unprovided Sleeper fails closed instead of reaching the host timer", async () => {
+    // The driver used to end in `catchPanic(() => Sleeper.context(), () =>
+    // SystemSleeper.make())`, so a scope that provided a Clock but no Sleeper
+    // silently slept on the ambient `globalThis.setTimeout` — including under
+    // TestPlatform, whose TestClock reported frozen time throughout. A host
+    // timer is a capability, so the unprovided case must panic.
+    const clock = TestClock.at("2026-01-01T00:00:00.000Z");
+    const counter = { calls: 0 };
+    const original = globalThis.setTimeout;
+    let ambient = 0;
+    globalThis.setTimeout = ((callback: () => void, delay?: number): unknown => {
+      ambient += 1;
+      return (original as unknown as (cb: () => void, ms?: number) => unknown)(callback, delay);
+    }) as unknown as typeof globalThis.setTimeout;
+
+    let failure: unknown;
+    try {
+      await started(Layer.succeed(Clock, clock), () =>
+        Schedule.retry(Schedule.spaced(Duration.millis(15)).and(Schedule.recurs(2)), alwaysFails(counter)));
+    } catch (error) {
+      failure = error;
+    } finally {
+      globalThis.setTimeout = original;
+    }
+
+    expect(isPanic(failure)).toBe(true);
+    expect((failure as Panic).message).toContain("Sleeper");
+    expect(ambient).toBe(0);
+    // It failed before running the operation even once, not after sleeping.
+    expect(counter.calls).toBe(0);
+  });
+
+  test("the deterministic bundle never reaches a host timer, and the live bundle does", async () => {
+    // The positive direction of the check above, for both shipped bundles.
+    const original = globalThis.setTimeout;
+    let ambient = 0;
+    globalThis.setTimeout = ((callback: () => void, delay?: number): unknown => {
+      ambient += 1;
+      return (original as unknown as (cb: () => void, ms?: number) => unknown)(callback, delay);
+    }) as unknown as typeof globalThis.setTimeout;
+
+    try {
+      const platform = TestPlatform.make();
+      const counter = { calls: 0 };
+      await started(platform.layer, () =>
+        Schedule.retry(Schedule.spaced(Duration.hours(1)).and(Schedule.recurs(2)), alwaysFails(counter)));
+      expect(ambient).toBe(0);
+      expect(platform.sleeper.millis).toEqual([3_600_000, 3_600_000]);
+      expect(platform.clock.monotonic()).toBeGreaterThan(7_100_000);
+
+      ambient = 0;
+      const live = { calls: 0 };
+      await started(nodePlatform({ clock: TestClock.at("2026-01-01T00:00:00.000Z") }), () =>
+        Schedule.retry(Schedule.spaced(Duration.millis(1)).and(Schedule.recurs(2)), alwaysFails(live)));
+      // The live bundle provides SystemSleeper, so it genuinely waits.
+      expect(ambient).toBe(2);
+      expect(live.calls).toBe(3);
+    } finally {
+      globalThis.setTimeout = original;
+    }
   });
 
   test("no ambient timer is touched when a test sleeper drives the loop", async () => {

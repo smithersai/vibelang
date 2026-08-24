@@ -1,5 +1,5 @@
 {
-  "title": "unwrap in a placement that would need evaluation-order rewriting is rejected instead of reordered",
+  "title": "postfix propagation in a placement that would need evaluation-order rewriting is rejected instead of reordered",
   "expect": "diagnostics",
   "diagnostics": [
     {
@@ -10,7 +10,7 @@
     {
       "code": "SMITHERS1204",
       "line": 11,
-      "column": 43
+      "column": 35
     }
   ]
 }

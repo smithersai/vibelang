@@ -11,7 +11,7 @@ export function scoreOf(key: string): Result<number, Missing> {
 }
 
 export function main(): Result<string[], Missing> {
-  const first = scoreOf("ada").unwrap()
-  const second = scoreOf("zoe").unwrap()
+  const first = scoreOf("ada")!
+  const second = scoreOf("zoe")!
   return [`${first} ${second}`]
 }

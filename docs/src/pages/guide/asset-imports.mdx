@@ -2,30 +2,6 @@
 
 Smithers treats compiler-known files as tracked source inputs. Every non-code or foreign-source import uses standard import attributes; the `type` attribute selects a built-in or user-defined loader.
 
-:::warning Implementation status
-The checked POC integrates relative static imports, attributed named/namespace
-re-exports, literal dynamic imports, and loader-generated module graphs through
-four levels into the root CLI project pipeline. It generates compiler-issued
-pure-data modules without evaluating author modules, stages deterministic
-JavaScript under `__smithers_assets__/`, and carries the complete graph through
-semantic binding, checking, declaration/source-map emit, cache replay,
-`--noEmit`, and runtime execution. The emitter removes attributes only after an
-edge is mapped to generated JavaScript. The same forms are available through
-the programmatic `smthrs/build` seam. Type-only and side-effect forms, bare
-star re-exports, nonliteral dynamic imports/attributes, and general generated
-code fail closed.
-
-Programmatic registration rejects ordinary in-process callbacks by default. A
-third-party loader is a `createSandboxedLoader` module or a provisionally
-recognized project file whose default export is
-`comptime.loader("type", fn)`. Recognition uses checker identity, never executes
-the loader file in the compiler process, and runs the lowered function only in
-the bounded no-permission Deno protocol. Compiler-owned built-ins remain in
-process and take precedence; duplicate project registrations fail closed in
-the VCT13xx diagnostic family. These are POC contracts, not final production
-APIs.
-:::
-
 ## Built-In Formats
 
 ```ts
@@ -41,29 +17,21 @@ import Prompt from "./coding-agent.mdx" with { type: "mdx" }
 
 Attribute values are strings, matching JavaScript import-attribute syntax. JSON produces checked data, text produces a string, and MDX produces a typed component module. Parsed formats preserve source locations for diagnostics.
 
-The current root CLI and programmatic seam accept static runtime bindings,
-`export { ... } from` and `export * as ... from` with literal attributes, plus
-literal `import(path, { with: attributes })`. Missing or legacy `assert`
-attributes, side-effect/type-only forms, bare `export *`, computed specifiers,
-nonliteral/spread attributes, paths outside the real project root, symbolic or
-hard-link aliases, conflicting shapes for one asset, and code/asset identity
-overlap are rejected before project output is committed. Authored input is
-byte-bounded before parsing, and file identity is reconciled after loader
-execution.
-Generated modules admit literal data and declared generated-module edges only;
-prototype-mutating forms and computed typed-array allocations fail closed.
-`smithers inspect` uses the same issued root-CLI asset modules as `check` and
-reports `SMITHERS_ASSET_IMPORT` with source diagnostics when preflight fails.
+Static imports, attributed re-exports, and literal dynamic imports participate
+in the same checked project graph. The compiler resolves an asset edge to a
+generated typed module before emit; the asset import itself creates no runtime
+filesystem dependency. Nonliteral specifiers or attributes are rejected where
+the compiler cannot determine the loader and complete dependency graph.
 
-The built-in POC module shapes are also narrower than the design contract.
-`{ type: "markdown" }` (and the `.md` extension default in the programmatic
-loader) provisionally exports raw `source` as default plus literal-typed
-`frontmatter`, `body`, and authored-offset ATX `headings`. `{ type: "mdx" }`
-provisionally exports literal-typed frontmatter/source/body metadata and a
-render tree of element, text, and expression-placeholder nodes. MDX `{name}`
-holes are never evaluated; only identifier placeholders are admitted for a
-consumer to substitute. The frontmatter grammar is a strict bounded YAML
-subset, not general YAML.
+Generated asset modules are deterministic and side-effect free. They may
+contain literal data and explicit edges to other generated modules, but they
+cannot execute arbitrary author code during compilation.
+
+:::note Direction
+The exact `markdown` and `mdx` module shapes remain open. They must preserve
+source locations and expose typed content without evaluating embedded
+expressions during compilation.
+:::
 
 ## Const JSON
 
@@ -100,7 +68,6 @@ There is no runtime file path to deploy. The compiler tracks and embeds the Mark
 ## Custom Loaders
 
 ```ts
-// Provisional programmatic POC registration
 import { comptime } from "smithers:comptime"
 
 const loadYaml = async (asset, context) => {
@@ -124,15 +91,13 @@ const loadYaml = async (asset, context) => {
 export default comptime.loader("yaml", loadYaml)
 ```
 
-The source-checkout POC auto-discovers that exact default-export shape (or
-accepts loader-file paths explicitly), resolves `comptime.loader` by checker
-identity, erases the compiler-owned import, and sends the loader function to
-the Deno sandbox. One project file registers one lowercase literal `type`;
-built-ins win with VCT1310 warning, duplicate project types are VCT1311, and
-malformed/unsafe registration shapes fail closed as VCT1300–VCT1313. Glob or
-extension selectors, package-distributed loaders, registration options, and a
-final source-level typed-module builder remain proposed. Import attributes are
-the stable selector.
+:::note Direction
+`comptime.loader(type, load)` communicates the intended registration model, but
+its exact declaration and discovery mechanism are not locked. Import
+attributes are the stable selector. Loader identity must be resolved without
+executing the declaration in the compiler process, duplicate registrations
+must be diagnosed, and compiler-owned built-ins take precedence.
+:::
 
 ## Tracked Dependencies and Cache Identity
 
@@ -152,7 +117,7 @@ import { tokenize } from "./parser.rs" with { type: "rust" }
 import { hashMany } from "./hash.zig" with { type: "zig" }
 ```
 
-The planned compiler invokes the foreign toolchain and produces checked bindings. Target, compiler versions, feature attributes, and the foreign dependency graph are tracked inputs.
+The compiler invokes the foreign toolchain and produces checked bindings. Host, compiler versions, feature attributes, and the foreign dependency graph are tracked inputs.
 
 ## Existing Native npm Packages
 
@@ -162,11 +127,13 @@ An imported npm package is code and uses an ordinary import:
 import { transform } from "@acme/native-transform"
 ```
 
-On Node or Bun, its Node-API addon remains a runtime dependency and contributes the corresponding TypeScript host requirement. Smithers does not pretend such a package is portable to every target.
+On Node or Bun, its Node-API addon remains a runtime dependency and constrains
+the compatible JavaScript host. Smithers does not treat such a package as
+host-independent.
 
 ## MDX Is General Purpose
 
-The design's `mdx` loader yields a typed component module. The current POC's
-provisional value is a pure-data render tree with never-evaluated expression
-placeholders. Libraries may supply vocabularies for documentation, email, or
-prompts; those meanings are not built into the language.
+The `mdx` loader yields a typed component module. Libraries may supply
+vocabularies for documentation, email, or prompts; those meanings are not
+built into the language. Embedded expressions are not evaluated by the
+compiler merely because an MDX file is imported.

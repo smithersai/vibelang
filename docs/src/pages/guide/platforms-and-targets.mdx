@@ -2,20 +2,14 @@
 
 TypeScript is the only compilation target. A `.sm` program emits TypeScript or JavaScript, and the interesting variation is *which JavaScript host* it runs on — Node, Bun, Deno, a browser, or an edge runtime.
 
-:::warning Implementation status
-The production whole-project compiler is not built. The root CLI's TypeScript
-instrument and the opt-in Go backend both lower substantial Smithers semantics
-and emit a bounded multi-module JavaScript project graph.
-:::
-
 ## What Was Removed
 
 Smithers previously specified a near-native target through LLVM and a Wasm target, and carried machinery to keep programs checkable against both:
 
 | Removed | Why |
 | --- | --- |
-| near-native / LLVM target | specified as a MUST, never implemented, the largest unmet obligation in the repository |
-| Wasm compilation target | a SHOULD with a deliberately bounded proof, not a general backend |
+| near-native / LLVM target | it expands the language around a second runtime and ABI without serving the TypeScript-first product |
+| Wasm compilation target | foreign Wasm modules are useful, but compiling general Smithers programs to Wasm is not part of the product |
 | the `TypeScript` requirement | with one target, every program has it, so it recorded nothing |
 | portable / `TypeScript`-required / forbidden classification | nothing to be portable *to* |
 | the portability pin | nothing to assert |
@@ -24,8 +18,6 @@ Two things people associate with that machinery are **not** removed:
 
 - **The checked `panic` channel** on unannotated foreign calls. It exists because JavaScript can throw, reject, or violate a declaration — not because a second target existed.
 - **Importing Zig and Rust through Wasm.** That is a loader producing a module the JavaScript host calls, not a compilation target. See [Foreign Sources](#foreign-sources).
-
-If a portable target is ever pursued, the classification machinery is what it would need back.
 
 ## Platform as Capability
 
@@ -64,7 +56,7 @@ import { parse } from "./parser.rs" with { type: "rust" }
 
 These compile to Wasm modules that the JavaScript host loads and calls. Wasm is a library format here, not a target for Smithers code.
 
-The planned compiler owns toolchain invocation and caching. The import's types, source maps, toolchain versions, feature flags, and foreign dependency graph contribute to its cache identity.
+The compiler owns toolchain invocation and caching. The import's types, source maps, toolchain versions, feature flags, and foreign dependency graph contribute to its cache identity.
 
 Existing Node-API npm packages also work, including addons built with napi-rs:
 

@@ -1,3 +1,0 @@
-export { readFileSync } from "./cycle-a-host-module.mod.sm"
-
-export const LIMIT = 1

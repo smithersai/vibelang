@@ -7,7 +7,7 @@ import { durable, Action } from "smithers:flows"
 class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
 
 export const Flow = durable((input: { key: string }) => {
-  const found = Step.run({ key: input.key }).unwrap()
+  const found = Step.run({ key: input.key })!
   return { value: found.value }
 })
 

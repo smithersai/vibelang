@@ -93,23 +93,22 @@ function loadConfig(): Result<AppConfig, FileError | InvalidAppConfig> {
 
 Node, Bun, Deno, browser, edge, and tests can provide different implementations of the same platform contracts.
 
-:::note Implementation status
-The platform capability library exists as a programmatic POC under
-`poc/src/platform`, not as a root-CLI feature. It provides `Clock`, `Random`,
-`Console`, `Environment`, `FileSystem`, and `HttpClient` as Context classes, each
-with a live implementation and a deterministic test double, plus `Layer` bundles
-that provide all six at once. Its I/O operations are asynchronous and return
-`Promise<Result<A, E>>`; every filesystem operation also has a synchronous twin
-with a `Sync` suffix (`readText` / `readTextSync`), which is the form used above.
-On a host where async Layer scopes fail closed — the Bun test host, per the
-scope note below — every capability an async body needs must be resolved before
-its first `await`.
-:::
+The standard platform roster includes `Clock`, `Random`, `Console`,
+`Environment`, `FileSystem`, and `HttpClient`. I/O methods return
+`Promise<Result<A, E>>`; operations that have a legitimate synchronous host API
+may also expose an explicit `Sync` variant.
 
 ## Scope and Lifetime
 
 `Layer.provide(layer, body)` keeps only the dependency environment active until `body` and the Promise returned by `body` settle. It does not discover, supervise, cancel, or join other Promise work. Every Promise started in authored `.sm` must be awaited directly or consumed by a recognized combinator whose returned Promise is itself consumed; detached work is unavailable.
 
-The Node prototype revokes at the Promise's actual state transition, before its queued reactions run. It accepts a Promise created during the body invocation (including an `async` function's Promise), while a pre-existing Promise must be wrapped as `async () => await existingPromise`. This is a lifetime adapter, not task ownership. Async Layer scopes fail closed on hosts without an equivalent synchronous settlement hook; the current Bun test host therefore exercises only synchronous Layer scopes.
+The environment remains active until the Promise returned directly by `body`
+settles, including its fulfillment or rejection transition. A Promise created
+before `provide` is outside the scope unless the body explicitly awaits it.
+This is a lifetime boundary, not task ownership.
 
-Merge and nested-override precedence, cycle diagnostics, and requirement-environment lowering remain under design. Source semantics do not depend on whether the backend uses hidden parameters or a scoped environment.
+:::note Direction
+Merge and nested-override precedence, cycle diagnostics, and
+requirement-environment lowering remain under design. Source semantics do not
+depend on whether the compiler uses hidden parameters or a scoped environment.
+:::

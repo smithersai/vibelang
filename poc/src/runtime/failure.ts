@@ -1,5 +1,4 @@
 import { registerErrorType } from "./errors.ts";
-import { panic } from "./panic.ts";
 
 /** Compatibility representation used only by the historical syntax spike. */
 export const SMITHERS_FAILURE = Symbol.for("smithers.failure");
@@ -48,14 +47,6 @@ export function isSmithersFailure(value: unknown): value is SmithersFailure {
   return typeof value === "object" && value !== null && localFailures.has(value);
 }
 
-/** Optional asserted unwrap. Absence is a defect, not a recoverable failure. */
-export function unwrapOptional<T>(value: T | null | undefined): T {
-  if (value === null || value === undefined) {
-    panic("Smithers defect: asserted optional was absent");
-  }
-  return value;
-}
-
 export function throwExpression(error: unknown): never {
   throw error;
 }
@@ -95,5 +86,4 @@ function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
 
 // The spike compiler aliases these imports when source bindings collide.
 export { SmithersFailure as __VSError, catchFailure as __vsCatch };
-export { unwrapOptional as __vsUnwrap };
 export { throwExpression as __vsThrow };

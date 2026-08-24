@@ -15,10 +15,63 @@
 > - the near-native/LLVM and Wasm compilation targets, the `TypeScript`
 >   requirement, the portable/required/forbidden classification, and the
 >   portability (native) pin — TypeScript is the only target
+>   (**this one has now been removed from the code; see the withdrawal record
+>   immediately below**)
 >
 > Retained and unaffected: the checked `panic` channel on unannotated foreign
 > calls, and Zig/Rust imports through generated Wasm bindings. Where this document
 > and the specification disagree, the specification wins.
+
+## Withdrawal record — the portability targets, 2026-08-23
+
+The fourth bullet above is no longer drift. The machinery was removed the same
+day, so every verdict in this page that rests on it is **history, not a live
+measurement**. The rest of the page has not been re-derived against the smaller
+corpus and its per-row prose still describes the tree as it was; read a
+portability row as a record of what was once measured.
+
+**Removed from the corpus:** all 27 cases of `21-native-pin` (plus its 16
+`*.mod.sm` auxiliary modules), `18-typescript-requirement/with-statement-is-forbidden`
+(the only case for the withdrawn *forbidden* classification bucket), and
+`23-asset-imports/an-asset-import-adds-no-runtime-platform-requirement`. Corpus
+size **260 → 231 cases across 22 areas**; both backends re-measured at
+231/231 pass, **0 divergent**, and — because the four `xfail go` markers were all
+in `21-native-pin` — **0 xfail**. Those four were retired rather than fixed: each
+recorded a fork fail-open in granting a pin, and there is no pin to grant.
+
+**Kept, with citations moved rather than the cases deleted:**
+`18/any-is-usable-and-not-forbidden` and `18/eval-is-usable-and-not-forbidden`
+pinned "MUST contribute `TypeScript`"; compatibility.mdx keeps the other half of
+that sentence — "`any` and `eval` remain usable … the language does not forbid
+them" — which is exactly what their observables already measured.
+`18/type-only-import-adds-no-requirement` cited the removed "Runtime TypeScript
+Dependency" section and now cites type-system.mdx "Foreign Boundaries", which
+still says type-only imports add no runtime requirement.
+`18/class-static-block-is-rejected` was never a portability case (SMITHERS1107 is
+a function-channel ownership rule) and the whole of `20-host-globals` is the
+**capability system**, not portability: SMITHERS1601/1602/1603 come from the
+frontend and compatibility.mdx keeps "Host Globals" verbatim. The area directory
+is still named `18-typescript-requirement` for its history; nothing in it pins a
+`TypeScript` requirement any more.
+
+**Coverage LOST, and it is a real regression, not a tidy-up.** §17.11 — "loading
+happens during compilation and adds no runtime platform requirement"
+(ASSET_LOADERS.md, Locked) — was observable *only* through the pin, which was the
+one channel that reported a transitive requirement graph to a `.sm` program. Its
+case is deleted and the obligation is now **uncovered**, with no writable
+replacement: the surviving frontend charges nominal Context capabilities only, so
+a program cannot observe whether a compile-time asset edge contributed a platform
+requirement. It is still asserted at the unit level
+(`compiler/fork_asset_test.go`, and the asset specifier's absence from the
+runtime artifact in `compiler/fork_reexport_test.go`). The same is true of every
+other row below whose observation channel was `SMITHERS3001`.
+
+**Rows superseded by the withdrawal** — read as history: §8.14, §8.21, §10.6,
+§10.6b, §10.7, §10.8, §10.9, §10.10 (its `with` half), §10.11, §10.13, §10.14,
+§10.15–§10.20, §17.11, §22.3, the `messageContains` census, and the entire
+`xfail` register. §10.13's finding stands but is no longer a gap: the LLVM MUST
+was withdrawn rather than implemented, so **F1 is closed by the specification**,
+not by code.
 
 This is the audit that lets someone judge whether "feature complete" is true. It
 walks `docs/DECISIONS.md`'s **Locked** entries and every normative sentence in
@@ -132,24 +185,34 @@ Backend agreement: 256/260 identical observations
 Interop: 6/6 on both backends
 ```
 
-Corpus size: **260 cases across 23 areas** (245 before this revision, 234 before
-that, 211 before that, 196 before that). Per-area counts, re-measured with
+Corpus size: **201 cases across 17 populated areas** after the later 2026-08-23
+grammar, `Optional<T>`, and postfix-propagation revisions. Empty historical
+directories are not counted as areas. Per-area counts, re-measured with
 `for d in conformance/corpus/*/; do echo "$(basename $d) $(ls $d*.expected.json | wc -l)"; done`:
 
 | area | cases | | area | cases | | area | cases |
 | --- | ---: | --- | --- | ---: | --- | --- | ---: |
 | 01-result-lifting | 20 | | 09-foreign-calls | 27 | | 17-durable | 6 |
-| 02-unwrap-propagation | 8 | | 10-defer | 9 | | 18-typescript-requirement | 5 |
-| 03-optionals | 16 | | 11-expression-if-switch | 17 | | 19-retired-syntax | 13 |
-| 04-nominal-errors | 13 | | 12-labeled-block-values | 7 | | 20-host-globals | 4 |
-| 05-context-rows | 7 | | 13-loop-values | 6 | | 21-native-pin | 27 |
-| 06-layers | 7 | | 14-conditional-declarations | 6 | | 22-source-text-fidelity | 3 |
-| 07-must-consume | 11 | | 15-generic-rows | 6 | | 23-asset-imports | 22 |
-| 08-promise-chaining | 10 | | 16-comptime | 10 | | **total** | **260** |
+| 02-unwrap-propagation | 9 | | 14-conditional-declarations | 6 | | 18-typescript-requirement | 4 |
+| 04-nominal-errors | 13 | | 15-generic-rows | 6 | | 19-retired-syntax | 37 |
+| 05-context-rows | 7 | | 16-comptime | 10 | | 20-host-globals | 4 |
+| 06-layers | 7 | | 22-source-text-fidelity | 3 | | 23-asset-imports | 21 |
+| 07-must-consume | 11 | | 08-promise-chaining | 10 | | **total** | **201** |
 
-Supporting files, re-measured: **23** `*.mod.sm` auxiliary modules (17 before),
+Supporting files, re-measured after the withdrawal: **7** `*.mod.sm` auxiliary
+modules (23 before it, 17 before that — 16 of them belonged to `21-native-pin`),
 **8** `conformance/support/*.ts` foreign modules, **8** `conformance/assets/*`
 staged files, **6** `conformance/interop/*.ts`.
+
+```
+JS reference:  201/201 pass, 0 xpass, 0 xfail, 0 unsupported, 0 divergent, 0 unmeasured
+Go fork match: 201/201 match the reference, 0 xpass, 0 xfail, 0 unsupported, 0 divergent, 0 unmeasured
+Backend agreement: 201/201 identical observations
+```
+
+The scoreboard immediately above this paragraph is the **pre-withdrawal**
+measurement and is kept because the rest of the page reasons from it. The block
+here is the post-withdrawal one.
 
 Both backends are at **zero divergences**. The four xfail markers below are not
 divergences; each is a specification obligation with a named, evidenced gap,
@@ -556,9 +619,9 @@ that, and it is the next thing this page's method will have to grow.
 | 2.1 | a fallible function returns `Result<A, E>`; a fallible async one `Promise<Result<A, E>>` | failures.mdx §Result Model | covered | `01/inferred-result-for-an-unannotated-function`, `08/async-unwrap-propagates-across-await` |
 | 2.2 | `return value` produces the success variant | failures.mdx §Compiler Lifting | covered | `01/return-lifts-into-success` |
 | 2.3 | `throw error` produces the error variant and exits | failures.mdx §Compiler Lifting | covered | `01/throw-lifts-into-failure` |
-| 2.4 | returning an existing compatible Result preserves it without nesting | failures.mdx §Compiler Lifting | covered | `01/returning-an-existing-result-preserves-it`, `03/nested-result-normalization-is-rejected` |
+| 2.4 | returning an existing compatible Result preserves it without nesting | failures.mdx §Compiler Lifting | covered | `01/returning-an-existing-result-preserves-it`, `19/result-nesting-remains-rejected` |
 | 2.5 | `Result.ok` / `Result.err` are not authoring API | failures.mdx §Compiler Lifting | covered | `01/result-ok-is-not-an-authoring-constructor` |
-| 2.6 | `Optional.some` / `Optional.none` are not authoring API | type-system.mdx §Optional | covered | `03/optional-some-is-not-an-authoring-constructor` |
+| 2.6 | compiler-owned `Optional<T>` and its constructors are absent | type-system.mdx §Absence | covered | `19/builtin-optional-is-unresolved` |
 | 2.7 | a function with no fallible path is not wrapped in a Result | failures.mdx §Compiler Lifting; compatibility.mdx §TypeScript Target | covered | `01/plain-function-keeps-javascript-throw`, `08/infallible-async-returns-a-plain-promise` |
 | 2.8 | an explicit non-Result annotation over a reachable Error exit is a compile error | failures.mdx §Compiler Lifting; type-system.mdx §Fallibility Inference | covered | `01/contract-omits-reachable-failure`, `19/bang-return-marker-is-retired` |
 | 2.9 | public/abstract/declaration-only contracts spell `Result` directly | failures.mdx §Inference | covered | `01/exported-fallible-needs-result-contract` |
@@ -574,7 +637,7 @@ that, and it is the next thing this page's method will have to grow.
 ## 3. Result combinator surface
 
 failures.mdx §Matching and Transformation requires operations equivalent to
-`isOk isError match map mapError andThen recover tap tapError unwrap unwrapOr all`.
+`isOk isError match map mapError andThen recover tap tapError unwrapOr all`.
 Every member has a case.
 
 | # | obligation | source | status | cases |
@@ -592,17 +655,21 @@ Every member has a case.
 | 3.11 | ordinary Result recovery MUST NOT swallow panic implicitly | failures.mdx §Foreign Exceptions | covered | `09/recover-does-not-swallow-a-panic` |
 | 3.12 | exhaustive recovery MAY remove handled members from `E` | type-system.mdx §Result Composition (MAY) | covered as a MAY | `01/result-transformations-preserve-the-error-type` |
 
-## 4. Propagation (`unwrap`)
+## 4. Propagation (postfix `!`)
 
 | # | obligation | source | status | cases |
 | --- | --- | --- | --- | --- |
-| 4.1 | `unwrap` yields the success value or propagates the error variant | failures.mdx §Propagation | covered | `02/unwrap-returns-the-error-variant`, `02/unwrap-stops-at-the-first-failure` |
-| 4.2 | the unwrapped Result's error type joins the enclosing `E` | failures.mdx §Propagation | covered | `02/unwrap-joins-two-error-types-into-one-row` |
-| 4.3 | the emitted error path returns rather than throwing | failures.mdx §Propagation | covered | `02/unwrap-stops-at-the-first-failure`, `10/errdefer-runs-on-unwrap-propagation` |
-| 4.4 | `unwrap` needs an enclosing Result-returning function | failures.mdx §Propagation | covered | `02/unwrap-at-top-level-is-rejected`, `02/unwrap-in-a-non-result-owner-is-rejected` |
-| 4.5 | an unwrap whose early return would bypass a `catch` is rejected | poc README SMITHERS1205 | covered | `02/unwrap-inside-try-with-catch-is-rejected` |
-| 4.6 | an unwrap in an order-unpreservable expression is rejected | poc README SMITHERS1204 | covered | `02/unwrap-in-a-compound-expression-is-rejected` |
-| 4.7 | an unwrap in a loop header is rejected | poc README SMITHERS1703 | covered | `02/unwrap-in-a-loop-header-is-rejected` |
+| 4.1 | postfix `!` yields the success value or propagates the error variant | failures.mdx §Propagation | covered | `02/unwrap-returns-the-error-variant`, `02/unwrap-stops-at-the-first-failure` |
+| 4.2 | the propagated Result's error type joins the enclosing `E` | failures.mdx §Propagation | covered | `02/unwrap-joins-two-error-types-into-one-row` |
+| 4.3 | the emitted error path returns rather than throwing | failures.mdx §Propagation | covered | `02/unwrap-stops-at-the-first-failure` |
+| 4.4 | postfix `!` needs an enclosing Result-returning function | failures.mdx §Propagation | covered | `02/unwrap-at-top-level-is-rejected`, `02/unwrap-in-a-non-result-owner-is-rejected` |
+| 4.5 | propagation whose early return would bypass a `catch` is rejected | poc README SMITHERS1205 | covered | `02/unwrap-inside-try-with-catch-is-rejected` |
+| 4.6 | propagation in an order-unpreservable expression is rejected | poc README SMITHERS1204 | covered | `02/unwrap-in-a-compound-expression-is-rejected` |
+| 4.7 | propagation in a repeated loop header is rejected | poc README SMITHERS1703 | covered | `02/unwrap-in-a-loop-header-is-rejected` |
+| 4.8 | `Result.unwrap()` is retired, and postfix `!` on a non-Result is not a non-null assertion | failures.mdx §Propagation; compatibility.mdx §Configuration | covered | `19/result-dot-unwrap-is-retired`, `19/non-result-postfix-bang-is-rejected` |
+| 4.9 | `x!: T` definite assignment is removed from `.sm` | compatibility.mdx §Configuration | covered | `19/definite-assignment-bang-is-rejected` |
+| 4.10 | `?.` and `??` remain ordinary nullish operators around propagation | failures.mdx §Propagation | covered | `02/postfix-propagation-keeps-nullish-operators-ordinary`, `19/optional-chaining-and-nullish-coalescing-stay-typescript` |
+| 4.11 | prefix `!`, `!!`, and `!==` retain ordinary TypeScript behavior | compatibility.mdx §Configuration | covered | `19/boolean-negation-stays-typescript` |
 
 ## 5. Nominal errors and `Error.prototype`
 
@@ -620,27 +687,15 @@ Every member has a case.
 | 5.10 | two same-named Error classes in one module cannot both get a stable identity | poc README SMITHERS1150 | covered | `04/duplicate-error-class-name-is-rejected` |
 | 5.11 | serialization evidence and cross-realm transport metadata | failures.mdx §Error Classes | **unwritable** | the harness observes stdout and diagnostics from a single realm. A case would have to serialize an Error, cross a realm boundary, and read the nominal identity back. Closing this needs a corpus expectation kind for a two-realm program (worker or subprocess) on both backends. `poc/src/language/qualified-rows.test.ts` covers the identity round trip as a unit test. |
 
-## 6. Optionals
-
-type-system.mdx §Optional requires `isSome isNone match map andThen filter tap
-unwrap unwrapOr toResult toNullable all`. Every member has a case.
+## 6. Absence and nullability
 
 | # | obligation | source | status | cases |
 | --- | --- | --- | --- | --- |
-| 6.1 | `return value` → present; `return null`/`undefined` → absent | type-system.mdx §Optional | covered | `03/return-lifts-into-optional` |
-| 6.2 | **an existing compatible Optional is returned without nesting** | type-system.mdx §Optional | covered | **`03/returning-an-existing-optional-preserves-it`** — the third clause of the lifting rule, and the one a lifter gets wrong by symmetry with the first two |
-| 6.3 | `match` / `map` / `andThen` / `unwrapOr` | type-system.mdx §Optional | covered | `03/optional-methods` |
-| 6.4 | `filter`, `tap`, `isSome`, `isNone` | type-system.mdx §Optional | covered | `03/optional-filter-tap-and-predicates` |
-| 6.5 | `toResult(error)` converts absence into a Result error | type-system.mdx §Optional | covered | `03/optional-to-result-converts-absence` |
-| 6.6 | `Optional.all` collects | type-system.mdx §Optional | covered | `03/optional-all-collects-and-stops-at-the-first-absence` |
-| 6.7 | `Optional.fromNullable` / `toNullable` interop | DECISIONS Locked; type-system.mdx §Optional | covered | `03/optional-nullable-interop` |
-| 6.8 | `unwrap` propagates absence from an Optional owner, and fails closed without one | poc README SMITHERS1206 | covered | `03/optional-unwrap-propagates-absence`, `03/optional-unwrap-needs-an-optional-owner` |
-| 6.9 | combined types lift outside in (`Result<Optional<A>, E>`): plain `A`, nullish, Error throw | DECISIONS Locked; type-system.mdx §Optional | covered | `03/result-optional-lifts-outside-in`, `03/optional-unwrap-in-a-result-optional-owner` |
-| 6.10 | **and an existing Optional becomes the Result success rather than being re-wrapped** | type-system.mdx §Optional | covered | **`03/result-optional-accepts-an-existing-optional`** — the clause of the outside-in rule where the returned expression matches the *inner* layer |
-| 6.11 | Optional absence stays distinct from a Result error | DECISIONS Locked | covered | `03/optional-to-result-converts-absence`, `03/optional-unwrap-needs-an-optional-owner` |
-| 6.12 | Optional composes with async (`Promise<Optional<T>>`) | type-system.mdx §Async Values + §Optional | covered | `03/optional-across-an-await` |
-| 6.13 | TypeScript optional parameters/properties keep their TypeScript meaning | DECISIONS Locked; type-system.mdx §Optional | covered | `03/typescript-optionals-keep-their-meaning`, **`19/retired-clause-words-in-type-positions-stay-ordinary`** |
-| 6.14 | nested Optional normalization and additional implicit conversions | DECISIONS **Open**; type-system.mdx "remain open" | unwritable | **blocked on an Open decision.** The ledger records this as item 3 of its own unresolved-design-work list; there is no rule to pin. |
+| 6.1 | absence uses ordinary `T | undefined` / `T | null` and narrows ordinarily | type-system.mdx §Absence | covered | `19/undefined-union-narrows-ordinarily` |
+| 6.2 | TypeScript optional parameters and properties keep their meaning | type-system.mdx §Absence | covered | `19/typescript-optionals-keep-their-meaning` |
+| 6.3 | optional chaining and nullish coalescing keep their TypeScript meaning | type-system.mdx §Absence; failures.mdx §Propagation | covered | `19/optional-chaining-and-nullish-coalescing-stay-typescript`, `02/postfix-propagation-keeps-nullish-operators-ordinary` |
+| 6.4 | the withdrawn `?T`, `orelse`, and `.?` grammar remains rejected | specification index removal worklist | covered | `19/question-optional-grammar-is-retired`, `19/orelse-operator-is-retired`, `19/dot-question-operator-is-retired` |
+| 6.5 | compiler-owned `Optional<T>` is absent while user-defined names remain ordinary | specification index removal worklist | covered | `19/builtin-optional-is-unresolved`, `19/user-defined-optional-is-ordinary` |
 
 ## 7. Foreign boundaries and the panic channel
 
@@ -898,7 +953,7 @@ accepted one would be accepting a language Smithers does not have.
 | 17.8 | a non-code import with no `type` attribute is rejected rather than guessed from the extension | comptime.mdx §Built-In Formats; DECISIONS Locked | covered | **`23/an-asset-import-without-a-type-attribute-is-rejected`** (`SMITHERS5201` at the import declaration). The fail-closed direction of 17.1: the file exists and a JSON loader is registered, and the import is still refused because nothing named the loader. |
 | 17.9 | the withdrawn `assert { ... }` spelling does not select a loader | comptime.mdx §Built-In Formats ("**standard** import attributes"); guide/asset-imports.mdx | covered | **`23/the-legacy-assert-attribute-spelling-is-rejected`** (`SMITHERS5202` at the attribute clause). Load-bearing because `assert { type: "json" }` still parses: accepting it would leave two selection grammars in the language. |
 | 17.10 | a type-only asset import, and a specifier that escapes the project root, fail closed | guide/asset-imports.mdx; ASSET_LOADERS.md (Locked) | covered | **`23/a-type-only-asset-import-is-rejected`** (`SMITHERS5208`; an erased import would take a loader's types without leaving the runtime binding or the build-graph node), **`23/an-asset-path-outside-the-project-root-is-rejected`** (`SMITHERS5209` at the specifier). The second measures the *specifier*: a real `counter.json` is staged inside the root and the escaping spelling is refused anyway. The "exists but outside the root" variant cannot be staged — see gap #7. |
-| 17.11 | loading happens during compilation and adds no runtime platform requirement | ASSET_LOADERS.md (Locked) | covered | **`23/an-asset-import-adds-no-runtime-platform-requirement`**. The previous revision recorded this as the most serious finding on the page, with **both** backends contradicting it. **Both markers are retired**: the reference's portability pass now knows which relative imports the source-asset stage owns, and the fork now has a source-asset stage. Measured `XPASS` on both backends before the markers were deleted, and both now print `production/2`. The retirement and the observation it replaces are recorded in the case's own `notes`. |
+| 17.11 | loading happens during compilation and adds no runtime platform requirement | ASSET_LOADERS.md (Locked) | **UNCOVERED since 2026-08-23 — its only observation channel was withdrawn.** The obligation stands; the case is deleted because it observed the rule through a native pin, and no surviving `.sm`-observable channel reports a platform requirement. Unit-level only: `compiler/fork_asset_test.go` and the artifact assertion in `compiler/fork_reexport_test.go`. What follows is the pre-withdrawal record. | **`23/an-asset-import-adds-no-runtime-platform-requirement`** (deleted). The previous revision recorded this as the most serious finding on the page, with **both** backends contradicting it. **Both markers are retired**: the reference's portability pass now knows which relative imports the source-asset stage owns, and the fork now has a source-asset stage. Measured `XPASS` on both backends before the markers were deleted, and both now print `production/2`. The retirement and the observation it replaces are recorded in the case's own `notes`. |
 
 | 17.13 | **`export * from` an asset is rejected; the attributed named/namespace form is not** | ASSET_LOADERS.md (Locked) "The required string-valued `type` selects its loader"; the same page names "bare star re-exports" as unsupported and "attributed named/namespace re-exports" as integrated, in one sentence | covered | **`23/a-bare-star-re-export-of-an-asset-is-rejected`** (`SMITHERS5206` at the statement, 1:1 — its `SMITHERS5207` sibling three lines away in the same walk reports on the *specifier*, which is what distinguishes them) and its acceptance control **`23/a-namespace-re-export-of-an-asset-is-accepted`**. The control is not decoration: the fork's asset discovery and lowering were import-only until this session, so "refuses every asset re-export" was a live way to satisfy the refusal case. |
 | 17.14 | **an asset specifier must be relative** | ASSET_LOADERS.md (Locked) "Loaders use compiler-tracked asset imports rather than ambient filesystem … access"; ":192 Loader identity must be stable across machines. Package resolution and its lock …" | covered | **`23/a-non-relative-asset-specifier-is-rejected`** (`SMITHERS5207` at the specifier). The fail-open is not a missing file — `config.json` **is** staged at the root — but a compile-time read whose input the build graph cannot name, because package resolution depends on `node_modules` layout rather than on anything the graph records. |
@@ -1101,7 +1156,7 @@ sentence coverage much:
 | 20.14 | `any` and `unknown` MUST require an explicit codec at the boundary (`:53`) | **uncovered** | no case |
 | 20.15 | the compiler MUST lower checked syntax, control flow, and data flow into Plan IR, and MUST NOT invoke the source function with proxy or symbolic values to discover the graph (`:59`) | **partial** | `17/static-plan-shape-is-digest-pinned` pins that the Plan exists with the right node kinds and edges. The **MUST NOT proxy-execute** half is not directly observed; it is inferable from the statement-branch rejection (20.19) but nothing asserts it. |
 | 20.16 | an `Action.run` expression MUST emit a plan node and a typed symbolic Result (`:61`) | covered | same case: `plan.nodes.map(node => node.kind)` is asserted exactly |
-| 20.17 | `.unwrap()` on it MUST emit the Result error-propagation **edge** (`:61`) | covered | same case asserts `plan.nodes[1].controlDependencies[0] === plan.nodes[0].id` |
+| 20.17 | postfix `!` on it MUST emit the Result error-propagation **edge** (`:61`) | covered | same case asserts `plan.nodes[1].controlDependencies[0] === plan.nodes[0].id` |
 | 20.18 | neither template compilation nor planning MUST execute the Action implementation (`:61`) | **uncovered** | with no implementation anywhere in the corpus, there is nothing whose non-execution could be observed |
 | 20.19 | property access and argument passing on a symbolic result MUST create typed projections and dependency edges when representable (`:63`) | **partial** | the same case reads `found.value` off a symbolic result and asserts the resulting edges; "when representable in Plan IR" is the qualifier and its unrepresentable side is 20.22 |
 | 20.20 | the durable source function MUST be **removable** after the compiler emits its plan; a planner or coordinator MUST NOT require the source function or a live side table (`:65`) | **partial** | `Build.artifactSource` is asserted, which shows the artifact is self-describing. Nothing removes the source and re-plans, which is what the sentence actually requires. |
@@ -1553,7 +1608,7 @@ coverage.**
 
 | # | locked obligation | status | evidence |
 | --- | --- | --- | --- |
-| F1 | *"Smithers **MUST** support a near-native target through LLVM"* | **no implementation** | `compatibility.mdx:60`. `grep -ril llvm poc/src/ src/ compiler/ cmd/` returns nothing; the string occurs only in prose. This is the single largest unimplemented MUST in the repository and it is the one row 10.13 has always named. It also blocks 20.38 (a deployment build MUST be capable of emitting a **native** worker artifact). |
+| F1 | *"Smithers **MUST** support a near-native target through LLVM"* | **CLOSED 2026-08-23 by withdrawal, not by implementation.** The near-native/LLVM target and the Wasm target were withdrawn from the specification; TypeScript is the only target. This is no longer an unimplemented MUST because it is no longer a MUST. Pre-withdrawal record follows. | `compatibility.mdx:60`. `grep -ril llvm poc/src/ src/ compiler/ cmd/` returns nothing; the string occurs only in prose. This is the single largest unimplemented MUST in the repository and it is the one row 10.13 has always named. It also blocks 20.38 (a deployment build MUST be capable of emitting a **native** worker artifact). |
 | F2 | compiler and loader sandboxes | **process-level, not container or VM isolation** | `specification/index.mdx:83`. No gate measures isolation strength at any level. |
 | F3 | durable runtime coordination | **no multi-machine coordination** | `specification/index.mdx:84`. §20.23–20.28 and 20.38–20.40 are the sentences this makes unreachable; `poc/src/durable/remote-worker.ts` and `isolated-worker.ts` are single-machine. |
 | F4 | fork patches | **neither vendored into the distribution nor signed** | `specification/index.mdx:81-82`; `docs/TYPESCRIPT_FORK.md` records the series as reviewable and digest-gated but not vendored or signed, and `.sm` as still "a content-mapper extension rather than a built-in source kind" (`index.mdx:41-42`). No gate measures any of it. |

@@ -133,8 +133,12 @@ test("the Core Data slice is reachable from the package subpath", async () => {
 
   const map = data.HashMap.of(["answer", 42]);
   assert.equal(data.isHashMap(map), true);
-  assert.equal(map.get("answer").match({ some: (value) => value, none: () => null }), 42);
-  assert.equal(map.get("missing").match({ some: () => "found", none: () => "none" }), "none");
+  // A miss is ordinary absence: `undefined`, read with narrowing and `??`.
+  assert.equal(map.get("answer"), 42);
+  assert.equal(map.get("missing"), undefined);
+  assert.equal(map.get("answer") ?? "none", 42);
+  assert.equal(map.get("missing") ?? "none", "none");
+  assert.equal(map.has("missing"), false);
 
   const set = data.HashSet.of("release");
   assert.equal(data.isHashSet(set), true);

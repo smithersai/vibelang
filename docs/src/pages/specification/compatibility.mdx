@@ -1,4 +1,4 @@
-# Compatibility [Normative direction for TypeScript source and backend portability]
+# Compatibility [Normative contract for TypeScript source and JavaScript hosts]
 
 Status: **Locked**, except where marked.
 
@@ -49,7 +49,10 @@ This is preferred over a coarse platform flag because a provider or host may sat
 
 ## Configuration
 
-`.sm` is new source, so there is no legacy `.sm` to grandfather. Soundness settings MUST therefore be mandatory and MUST NOT vary by target: a file that type-checks for the TypeScript target MUST type-check identically for Wasm, so a library author can know whether their code is portable without recompiling under different rules.
+`.sm` is new source, so there is no legacy `.sm` to grandfather. Soundness
+settings MUST therefore be mandatory and MUST NOT vary by JavaScript host: a
+file's legality cannot change merely because its emitted code runs on Node,
+Bun, Deno, a browser, or an edge runtime.
 
 Imported `.ts` and `.tsx` keep their own configuration. The escape-hatch guarantee in this page protects those files, not `.sm`.
 
@@ -64,7 +67,9 @@ Imported `.ts` and `.tsx` keep their own configuration. The escape-hatch guarant
 | `verbatimModuleSyntax` | replaces the deprecated `importsNotUsedAsValues` and `preserveValueImports` |
 | `useDefineForClassFields` | the legacy-off behavior is a footgun |
 
-`noUncheckedIndexedAccess` is noisy in index loops, because TypeScript cannot prove `for (let i = 0; i < arr.length; i++)` is in bounds. Since `!` no longer asserts non-nullness, those sites MUST use an explicit narrowing or an extraction helper.
+`noUncheckedIndexedAccess` is noisy in index loops, because TypeScript cannot prove `for (let i = 0; i < arr.length; i++)` is in bounds. The idiomatic answer in TypeScript is `arr[i]!`, and that spelling no longer means what it meant: `!` is the Result propagation operator.
+
+**Open.** How an in-bounds index read is spelled is undecided, and it is a language-feel decision rather than a mechanical one. The candidates are an extraction helper in the standard library, mandatory explicit narrowing, or a distinct assertion spelling that is not `!`. Nothing here should be read as settled.
 
 ### Forbidden
 
@@ -72,9 +77,14 @@ Options that upstream has deprecated or removed, and options that select superse
 
 TypeScript 5.8's `erasableSyntaxOnly` names the TS-only syntax that runtime type-stripping refuses. Smithers treats that set as guidance about which forms are dying.
 
-### Target-Scoped
+### Emit-Scoped
 
-Emit, module, and library options select output rather than legality, and MAY differ by target: `target`, `lib`, `module`, `moduleResolution`, `jsx`, `downlevelIteration`, `importHelpers`, `esModuleInterop`, `allowSyntheticDefaultImports`. A Wasm target simply has no ES5 downleveling, no DOM lib, and no CommonJS interop, so these are inapplicable there rather than removed.
+Emit, module, and library options select output rather than core language
+legality, and MAY differ by JavaScript host and artifact: `target`, `lib`,
+`module`, `moduleResolution`, `jsx`, `downlevelIteration`, `importHelpers`,
+`esModuleInterop`, `allowSyntheticDefaultImports`. Host-specific libraries and
+module formats still constrain whether the complete project can run on the
+selected host.
 
 `skipLibCheck` remains configurable; forcing it off is correct in principle and impractical against real `@types` packages.
 

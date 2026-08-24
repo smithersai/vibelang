@@ -7,5 +7,5 @@ export function attempt<A, E extends Error>(
   operation: () => Result<A, E>,
 ): Result<A, E | Timeout> {
   if (limit <= 0) throw new Timeout()
-  return operation().unwrap()
+  return operation()!
 }

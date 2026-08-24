@@ -206,14 +206,14 @@ func TestPinnedForkExplicitPanicChargesTheChannel(t *testing.T) {
 	})
 }
 
-// TestPinnedForkUnwrapInARepeatedLoopHeaderIsRejected separates the two
+// TestPinnedForkPropagationInARepeatedLoopHeaderIsRejected separates the two
 // placement refusals. specification/failures.mdx, "Propagation": "The emitted
 // error path MUST return the enclosing error variant rather than throw a
 // recoverable JavaScript exception." A loop condition or incrementor runs once
 // per iteration, so the guard cannot be hoisted in front of the loop — but a
 // `for` initializer runs exactly once and a loop body is an ordinary statement
 // list, and both must keep working.
-func TestPinnedForkUnwrapInARepeatedLoopHeaderIsRejected(t *testing.T) {
+func TestPinnedForkPropagationInARepeatedLoopHeaderIsRejected(t *testing.T) {
 	const limitModule = "export class Missing extends Error {\n" +
 		"  constructor(readonly key: string) { super(`no entry for ${key}`) }\n" +
 		"}\n" +
@@ -224,11 +224,11 @@ func TestPinnedForkUnwrapInARepeatedLoopHeaderIsRejected(t *testing.T) {
 		"}\n\n"
 	runFailClosedCases(t, []failClosedCase{
 		{
-			name: "an unwrap in a for condition is rejected",
+			name: "postfix propagation in a for condition is rejected",
 			source: limitModule +
 				"export function count(key: string): Result<number, Missing> {\n" +
 				"  let total = 0\n" +
-				"  for (let index = 0; index < limit(key).unwrap(); index++) {\n" +
+				"  for (let index = 0; index < limit(key)!; index++) {\n" +
 				"    total += index\n" +
 				"  }\n" +
 				"  return total\n" +
@@ -236,11 +236,11 @@ func TestPinnedForkUnwrapInARepeatedLoopHeaderIsRejected(t *testing.T) {
 			reject: []string{"SMITHERS1703@12:31"},
 		},
 		{
-			name: "an unwrap in a while condition is rejected",
+			name: "postfix propagation in a while condition is rejected",
 			source: limitModule +
 				"export function count(key: string): Result<number, Missing> {\n" +
 				"  let total = 0\n" +
-				"  while (total < limit(key).unwrap()) {\n" +
+				"  while (total < limit(key)!) {\n" +
 				"    total += 1\n" +
 				"  }\n" +
 				"  return total\n" +
@@ -258,7 +258,7 @@ func TestPinnedForkUnwrapInARepeatedLoopHeaderIsRejected(t *testing.T) {
 			source: limitModule +
 				"export function count(key: string): Result<number, Missing> {\n" +
 				"  let total = 0\n" +
-				"  for (let index = limit(key).unwrap(); index > 0; index--) {\n" +
+				"  for (let index = limit(key)!; index > 0; index--) {\n" +
 				"    total += index\n" +
 				"  }\n" +
 				"  return total\n" +
@@ -266,12 +266,12 @@ func TestPinnedForkUnwrapInARepeatedLoopHeaderIsRejected(t *testing.T) {
 			reject: []string{"SMITHERS1204@12:20"},
 		},
 		{
-			name: "an unwrap in the loop body is an ordinary statement and is accepted",
+			name: "postfix propagation in the loop body is an ordinary statement and is accepted",
 			source: limitModule +
 				"export function count(key: string): Result<number, Missing> {\n" +
 				"  let total = 0\n" +
 				"  for (const step of [1, 2]) {\n" +
-				"    const bound = limit(key).unwrap()\n" +
+				"    const bound = limit(key)!\n" +
 				"    total += step * bound\n" +
 				"  }\n" +
 				"  return total\n" +
@@ -341,13 +341,13 @@ func TestPinnedForkComputedErrorMatchCaseAlsoReportsTheUncoveredMember(t *testin
 
 // TestPinnedForkRetiredTypeGrammarIsReportedAsAMigration pins that the two
 // retired type markers produce the migration diagnostic rather than a raw
-// TypeScript grammar error. specification/type-system.mdx, "Optional"
+// TypeScript grammar error. specification/type-system.mdx, "Absence"
 // (Locked): "The earlier ?T, payload-capture, orelse, and .? grammar MUST NOT
 // be part of the initial language."
 //
-// The accepted rows matter as much: a postfix non-null assertion and a postfix
-// definite-assignment marker are ordinary TypeScript and share the parser's
-// nodes with the retired forms.
+// The negative rows matter as much: `.sm` withdraws both TypeScript postfix
+// non-null assertions and definite-assignment markers to free `!` for Result
+// propagation. Prefix negation, `!==`, `?.`, and `??` remain ordinary.
 func TestPinnedForkRetiredTypeGrammarIsReportedAsAMigration(t *testing.T) {
 	runFailClosedCases(t, []failClosedCase{
 		{
@@ -371,13 +371,35 @@ func TestPinnedForkRetiredTypeGrammarIsReportedAsAMigration(t *testing.T) {
 			reject: []string{"SMITHERS1001@1:37"},
 		},
 		{
-			name: "a postfix non-null assertion is ordinary TypeScript",
+			name: "a postfix non-null assertion is unavailable in smithers",
 			source: "export function main(): string[] {\n" +
 				"  const entries = new Map<string, string>([[\"ada\", \"Ada Lovelace\"]])\n" +
 				"  const found = entries.get(\"ada\")!\n" +
 				"  return [found]\n" +
 				"}\n",
-			stdout: "Ada Lovelace",
+			reject: []string{"SMITHERS1207@3:17"},
+		},
+		{
+			name: "a definite assignment assertion is unavailable in smithers",
+			source: "class Holder {\n" +
+				"  value!: string\n" +
+				"}\n" +
+				"export function main(): string[] {\n" +
+				"  let local!: string\n" +
+				"  local = \"assigned\"\n" +
+				"  return [new Holder().value, local]\n" +
+				"}\n",
+			reject: []string{"SMITHERS1001@2:8", "SMITHERS1001@5:12"},
+		},
+		{
+			name: "prefix bangs comparisons and nullish operators stay ordinary",
+			source: "export function main(): string[] {\n" +
+				"  const failed = false\n" +
+				"  const value: string = [\"smithers\"].join(\"\")\n" +
+				"  const absent: { name?: string } = {}\n" +
+				"  return [String(!failed), String(!!value), String(value !== \"\"), absent?.name ?? \"Guest\"]\n" +
+				"}\n",
+			stdout: "true\ntrue\ntrue\nGuest",
 		},
 	})
 }

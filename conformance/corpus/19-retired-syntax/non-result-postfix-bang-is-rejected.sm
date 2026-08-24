@@ -1,0 +1,5 @@
+export function main(): string[] {
+  const maybe: string | undefined = "Ada"
+  const name = maybe!
+  return [name]
+}

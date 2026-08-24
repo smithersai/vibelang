@@ -2,14 +2,6 @@
 
 Smithers starts from TypeScript-shaped source and adds compiler semantics where they make application behavior explicit and statically analyzable.
 
-:::warning Design documentation
-This page describes the intended language. The root package includes a checked,
-multi-module TypeScript instrument and an opt-in Go compiler backend inside the
-pinned TypeScript fork. They implement a broad, bounded subset but do not
-constitute a conforming release. The examples below are not a promise that every
-design-stage surface is available on both backends.
-:::
-
 ## Values, Errors, and Requirements
 
 ```ts
@@ -19,8 +11,8 @@ async function getUser(
   const db = Db.context()
   const log = Logger.context()
   const row = (await db.findUser(id))!
-  if (row.isNone()) throw new NotFound(id)
-  const user = User.from(row!)
+  if (row === undefined) throw new NotFound(id)
+  const user = User.from(row)
   log.info(`loaded user:${id}`)
   return user
 }

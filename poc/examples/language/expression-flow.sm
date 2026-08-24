@@ -21,7 +21,7 @@ export function describe(grade: Grade): string {
 }
 
 export function weighted(score: number, bonus: boolean): Result<number, InvalidScore> {
-  return combine(checkedScore(score).unwrap(), if (bonus) { 10 } else { 0 }, 1)
+  return combine(checkedScore(score)!, if (bonus) { 10 } else { 0 }, 1)
 }
 
 function combine(base: number, extra: number, scale: number): number {

@@ -114,24 +114,6 @@ func (a *rowAnalysis) checkHostGlobals(files []*ast.SourceFile) {
 	}
 }
 
-// checkWithStatements recognizes the forbidden dynamic-scope construct from
-// its AST node. The stock checker happens to report TS1101 and TS2410 for this
-// shape, but those codes also occur in unrelated TypeScript situations and are
-// never used as the authority for the Smithers classification.
-func (a *rowAnalysis) checkWithStatements(files []*ast.SourceFile) {
-	for _, file := range files {
-		var visit func(*ast.Node) bool
-		visit = func(node *ast.Node) bool {
-			if node.Kind == ast.KindWithStatement {
-				a.report(node, "SMITHERS3003", "with statements are forbidden in authored .sm code")
-			}
-			node.ForEachChild(visit)
-			return false
-		}
-		file.AsNode().ForEachChild(visit)
-	}
-}
-
 func (a *rowAnalysis) reportForbiddenHostGlobal(node *ast.Node) {
 	if _, forbidden := forbiddenHostGlobals[node.Text()]; !forbidden {
 		return
@@ -819,11 +801,6 @@ func (a *rowAnalysis) checkCallbackOwnership(files []*ast.SourceFile) {
 // — `Result.try`/`Result.tryPromise`, where the adapter IS the boundary that
 // converts the throw into the Result.
 func (a *rowAnalysis) checkFallibleCallbackArgument(call *ast.Node, index int, argument *ast.Node) {
-	if a.nativePinCall(call) {
-		// native(fn) stores no callback and invokes nothing; it is a checked
-		// assertion whose runtime behavior is identity.
-		return
-	}
 	callback := a.resolveFunctionReference(argument)
 	if callback == nil {
 		// A parameter, an import, or anything else that is not a checked local
@@ -873,9 +850,6 @@ func (a *rowAnalysis) isDurableIntrinsicCall(call *ast.Node) bool {
 }
 
 func (a *rowAnalysis) checkAsyncCallbackArgument(call *ast.Node, index int, argument *ast.Node) {
-	if a.nativePinCall(call) {
-		return
-	}
 	function := argument
 	if !ast.IsFunctionExpressionOrArrowFunction(function) {
 		resolved := a.resolveFunctionReference(argument)
@@ -918,179 +892,6 @@ func promiseValueIsConsumed(call *ast.Node) bool {
 		}
 	}
 	return false
-}
-
-// ---------------------------------------------------------------------------
-// Jumps that escape a labeled value construct
-// ---------------------------------------------------------------------------
-
-// escapingJump finds the first `break`/`continue` inside a labeled value
-// construct that leaves the construct on a path carrying no value.
-//
-// specification/control-flow.mdx, "Blocks" and "Labeled Break Values": an
-// expression block produces a value "from its final expression or from a
-// labeled value break", and "The compiler MUST combine reachable break values
-// when determining the labeled expression's type." A jump that exits the
-// construct without a value has nothing to combine, so the construct has no
-// statically determined type on that path.
-//
-// The same rule is what rejects a CROSS-CONSTRUCT value break: from the inner
-// construct's point of view, `break :outer value` targets a label the inner
-// construct does not contain, so it escapes. specification/control-flow.mdx,
-// "Loop Else", marks nested label selection **not finalized** (Direction), and
-// fail-closed is the only answer that does not invent the missing semantics.
-//
-// The block and loop forms differ on purpose, and the difference is structural
-// rather than stylistic: a value loop's authored label names the LOOP, which
-// sits inside the construct, so `break label` exits the loop into its `else`
-// completion and is contained. A value block's label IS the construct, so
-// `break label` completes it with no value at all.
-func (l *lowerer) escapingJump(target *ast.Node) *ast.Node {
-	labeled := target.AsLabeledStatement()
-	body := labeled.Statement
-	if body == nil {
-		return nil
-	}
-	isLoop := ast.IsIterationStatement(body, false)
-	var found *ast.Node
-	var walk func(*ast.Node) bool
-	walk = func(node *ast.Node) bool {
-		if found != nil {
-			return true
-		}
-		if ast.IsFunctionLike(node) {
-			// A value break inside a nested function body is refused by its own
-			// rule; a jump there never reaches this construct at runtime.
-			return false
-		}
-		switch node.Kind {
-		case ast.KindBreakStatement, ast.KindContinueStatement:
-			if l.jumpEscapes(node, target, labeled, isLoop) {
-				found = node
-				return true
-			}
-			return false
-		}
-		node.ForEachChild(walk)
-		return false
-	}
-	body.ForEachChild(walk)
-	return found
-}
-
-func (l *lowerer) jumpEscapes(node *ast.Node, target *ast.Node, labeled *ast.LabeledStatement, isLoop bool) bool {
-	var label *ast.Node
-	var value *ast.Node
-	if node.Kind == ast.KindBreakStatement {
-		statement := node.AsBreakStatement()
-		label = statement.Label
-		value = statement.Value
-	} else {
-		label = node.AsContinueStatement().Label
-	}
-
-	if label != nil {
-		resolved := l.resolvedJumpTarget(node)
-		if resolved == target {
-			if value != nil {
-				// This construct's own value break: the whole point of the form.
-				return false
-			}
-			return !isLoop
-		}
-		// A jump to another label is contained only when that label's statement
-		// lies inside this construct.
-		return !isAncestorBefore(node, target, resolved)
-	}
-
-	for current := node.Parent; current != nil && current != target; current = current.Parent {
-		if ast.IsFunctionLike(current) {
-			break
-		}
-		if ast.IsIterationStatement(current, false) {
-			return false
-		}
-		if node.Kind == ast.KindBreakStatement && current.Kind == ast.KindSwitchStatement {
-			return false
-		}
-	}
-	_ = labeled
-	return true
-}
-
-// resolvedJumpTarget answers which labeled statement a jump names, by the same
-// lexical lookup the fork binder performs. Break targets are already resolved
-// once per file as node identity; `continue` carries no value and so is not in
-// that table, and is resolved here.
-func (l *lowerer) resolvedJumpTarget(node *ast.Node) *ast.Node {
-	if node.Kind == ast.KindBreakStatement {
-		return l.breakTargets[node]
-	}
-	label := node.AsContinueStatement().Label
-	if label == nil {
-		return nil
-	}
-	for current := node.Parent; current != nil; current = current.Parent {
-		if ast.IsFunctionLike(current) {
-			return nil
-		}
-		if current.Kind == ast.KindLabeledStatement &&
-			current.AsLabeledStatement().Label.Text() == label.Text() {
-			return current
-		}
-	}
-	return nil
-}
-
-// isAncestorBefore reports whether `candidate` is an ancestor of `node` that is
-// reached before `boundary`.
-func isAncestorBefore(node *ast.Node, boundary *ast.Node, candidate *ast.Node) bool {
-	if candidate == nil {
-		return false
-	}
-	for current := node.Parent; current != nil && current != boundary; current = current.Parent {
-		if current == candidate {
-			return true
-		}
-	}
-	return false
-}
-
-func (l *lowerer) reportEscapingJump(node *ast.Node, target *ast.Node) {
-	isLoop := ast.IsIterationStatement(target.AsLabeledStatement().Statement, false)
-	code := "SMITHERS1715"
-	message := "a jump may not escape a value loop without carrying its value"
-	if !isLoop {
-		code = "SMITHERS1714"
-		message = "a jump may not escape a labeled value block without carrying its value"
-		if node.Kind == ast.KindBreakStatement && node.AsBreakStatement().Label != nil &&
-			node.AsBreakStatement().Value == nil && l.breakTargets[node] == target {
-			message = "a labeled value block may not complete through a plain `break label`; every exit must carry a value"
-		}
-	}
-	if node.Kind == ast.KindBreakStatement && node.AsBreakStatement().Value != nil {
-		// A value-carrying break is anchored at the last character of its
-		// authored value, which is where the reference frontend reports it once
-		// its recovery pass has extracted that value. Reporting the same
-		// position from both implementations is what lets one diagnostics
-		// consumer read either compiler.
-		value := node.AsBreakStatement().Value
-		l.reportAt(value.End()-1, 1, code, message)
-		return
-	}
-	l.report(node, code, message)
-}
-
-// reportAt records a diagnostic at an exact authored offset, for the rules
-// whose contract anchors somewhere other than a node's own start.
-func (l *lowerer) reportAt(start int, length int, code string, message string) {
-	if start < 0 {
-		start = 0
-	}
-	if length < 0 {
-		length = 0
-	}
-	l.reports = append(l.reports, loweringReport{code: code, message: message, start: start, length: length})
 }
 
 // ---------------------------------------------------------------------------
@@ -1154,17 +955,17 @@ func (a *rowAnalysis) isResultBoundaryBody(node *ast.Node) bool {
 // checkRetiredTypeGrammar rejects the two retired type markers with the
 // migration diagnostic instead of a raw TypeScript grammar error.
 //
-// specification/type-system.mdx, "Optional" (Locked): "The earlier ?T,
-// payload-capture, orelse, and .? grammar MUST NOT be part of the initial
-// language." specification/failures.mdx, "Inference", and
+// specification/type-system.mdx, "Absence" (Locked): "The earlier ?T,
+// payload-capture, orelse, and .? grammar MUST NOT be part of the language."
+// specification/failures.mdx, "Inference", and
 // specification/type-system.mdx, "Public Boundaries", both say Smithers MUST
 // NOT add a `!T` failure-annotation grammar.
 //
 // Identity, not a token scan: the fork's parser already recovers `!T` as a
 // JSDoc non-nullable type and `?T` as a JSDoc nullable type, so the retired
-// grammar IS a node kind. A postfix non-null assertion `x!` is a different node
-// and is untouched, and so is the postfix `T!` type form, which is not the
-// retired marker either.
+// grammar IS a node kind. A postfix expression `x!` is a different node and is
+// owned by the propagation pass (or rejected there for a non-Result); the
+// postfix `T!` type form is not this retired prefix marker either.
 func (a *rowAnalysis) checkRetiredTypeGrammar(files []*ast.SourceFile) {
 	for _, file := range files {
 		var visit func(*ast.Node) bool
@@ -1176,7 +977,7 @@ func (a *rowAnalysis) checkRetiredTypeGrammar(files []*ast.SourceFile) {
 				}
 			case ast.KindJSDocNullableType:
 				if isPrefixJSDocTypeMarker(node) {
-					a.report(node, "SMITHERS1001", "the `?T` type grammar was removed; use Optional<T>")
+					a.report(node, "SMITHERS1001", "the `?T` type grammar was removed; use T | undefined")
 				}
 			}
 			node.ForEachChild(visit)

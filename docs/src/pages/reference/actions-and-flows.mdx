@@ -1,17 +1,7 @@
 # Actions & Flows [Reference for durable signatures, planning, and execution]
 
-Actions and Flows are design-stage compiler/library primitives. The semantics below are accepted unless marked open.
-
-:::warning Current backend boundary
-The TypeScript durable compiler implements the broader bounded Plan subset used
-by `smithers plan`. The opt-in Go compiler also recognizes `smithers:flows` by
-resolved binding identity and lowers direct Actions, projections,
-`!` propagation, conditional expressions, timers, typed signals, and
-`sequential(...)` into canonical digest-pinned Plan descriptors. It rejects its
-unsupported fan-out, child-Flow, statement-control-flow, loop, broadcast, and
-queue forms before emit. Neither lowerer executes authored Flow or Action code
-during compilation.
-:::
+Actions and Flows are compiler and library primitives. The semantics below are
+accepted unless marked open.
 
 ## Action
 
@@ -117,30 +107,19 @@ A deployment build may emit:
 - derived wire codecs and RPC bindings
 - implementation and policy digests
 
-## Deployment Authentication (bounded POC)
+## Deployment Authentication
 
-`encodeSignedDeploymentArtifact(plan, manifest, keyPair)` emits a canonical
-Ed25519 envelope. `authenticateDeployment(deployment, bytes, trustedKeys)`
-verifies the signature against out-of-band public keys and matches the complete
-Plan and manifest to the exact locally built deployment.
+A deployment is a canonical signed envelope over the exact Plan, manifest,
+coordinator, worker pools, implementation and policy digests, schemas,
+capability grants, and artifact identities. The coordinator verifies the
+envelope against out-of-band trust roots before it constructs any worker
+transport. A worker pool may use only a transport authorized for its exact
+declared sandbox and placement.
 
-On the Bun coordinator surface,
-`createAuthenticatedDurableExecutor(authentication, store)` consumes the opaque
-verifier-issued proof before constructing workers. Ordinary object lookalikes
-are rejected at runtime and do not satisfy the public TypeScript type.
-`in-process-poc` is the only sandbox with an implicit local transport. A pool
-signed with any other sandbox must have an opaque token returned by
-`trustWorkerTransport(exactSandbox, factory)`; raw or mismatched factories are
-rejected before any factory is called.
-
-The signature covers coordinator, pool, implementation, policy, schema, and
-capability-grant digests transitively through the manifest. It does not attest
-the live provider callback or its lexical closure, prove the bytes/identity of a
-remote loaded bundle, provide transport or sandbox attestation, or implement
-freshness, anti-rollback, key custody, or proof revocation.
-The transport token proves an explicit process-local host decision and exact
-sandbox routing, not that the host factory genuinely enforces the claimed
-isolation boundary.
+The signature authenticates artifact provenance. It does not attest a live
+provider closure, prove what bytes a remote worker loaded, provide transport or
+sandbox attestation, or replace freshness, anti-rollback, key custody,
+rotation, revocation, and principal authorization.
 
 ## Open Semantics
 

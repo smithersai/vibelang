@@ -134,34 +134,34 @@ describe("combine and the collection combinators", () => {
 describe("the hash law", () => {
   test("every built-in pairing is lawful over a mixed sample set", () => {
     const numbers = [0, -0, 1, 2, Number.NaN, 0.5, 2 ** 40];
-    expect(Hash.checkLaws(Equivalence.number, Hash.number, numbers).isNone()).toBe(true);
-    expect(Hash.checkLaws(Equivalence.string, Hash.string, ["", "a", "a", "smithers"]).isNone()).toBe(true);
-    expect(Hash.checkLaws(Equivalence.boolean, Hash.boolean, [true, false, true]).isNone()).toBe(true);
+    expect(Hash.checkLaws(Equivalence.number, Hash.number, numbers)).toBeUndefined();
+    expect(Hash.checkLaws(Equivalence.string, Hash.string, ["", "a", "a", "smithers"])).toBeUndefined();
+    expect(Hash.checkLaws(Equivalence.boolean, Hash.boolean, [true, false, true])).toBeUndefined();
 
     const mixed: unknown[] = [1, -0, 0, Number.NaN, "a", "a", true, null, undefined, 5n, { x: 1 }, [1]];
-    expect(Hash.checkLaws(Equivalence.any, Hash.any, mixed).isNone()).toBe(true);
+    expect(Hash.checkLaws(Equivalence.any, Hash.any, mixed)).toBeUndefined();
     expect(
       Hash.checkLaws(
         Equivalence.array(Equivalence.number),
         Hash.array(Hash.number),
         [[1, 2], [1, 2], [2, 1], []],
-      ).isNone(),
-    ).toBe(true);
+      ),
+    ).toBeUndefined();
   });
 
   test("checkLaws catches a pairing where equal values hash differently", () => {
     // "Equal if within one" is a broken equivalence and is caught first.
     const withinOne = Equivalence.make<number>((left, right) => Math.abs(left - right) <= 1);
-    expect(Hash.checkLaws(withinOne, Hash.number, [0, 1, 2]).unwrapOr("")).toContain("transitive");
+    expect(Hash.checkLaws(withinOne, Hash.number, [0, 1, 2]) ?? "").toContain("transitive");
 
     // A genuine hash-law violation: equality ignores case, the hash does not.
     const caseInsensitive = Equivalence.make<string>((left, right) => left.toLowerCase() === right.toLowerCase());
     const violation = Hash.checkLaws(caseInsensitive, Hash.string, ["a", "A"]);
-    expect(violation.unwrapOr("")).toContain("different hashes");
+    expect(violation ?? "").toContain("different hashes");
 
     // Pairing it with the matching hash restores the law.
     const caseInsensitiveHash = Hash.string.contramap((value: string) => value.toLowerCase());
-    expect(Hash.checkLaws(caseInsensitive, caseInsensitiveHash, ["a", "A", "b"]).isNone()).toBe(true);
+    expect(Hash.checkLaws(caseInsensitive, caseInsensitiveHash, ["a", "A", "b"])).toBeUndefined();
   });
 
   test("checkLaws catches a non-deterministic hash and demands real arguments", () => {
@@ -170,7 +170,7 @@ describe("the hash law", () => {
       counter += 1;
       return counter;
     });
-    expect(Hash.checkLaws(Equivalence.number, drifting, [1]).unwrapOr("")).toContain("deterministic");
+    expect(Hash.checkLaws(Equivalence.number, drifting, [1]) ?? "").toContain("deterministic");
     expect(panics(() => Hash.checkLaws({} as unknown as EquivalenceValue<number>, Hash.number, [1]))).toBe(true);
     expect(panics(() => Hash.checkLaws(Equivalence.number, {} as unknown as HashValue<number>, [1]))).toBe(true);
     expect(panics(() => Hash.checkLaws(Equivalence.number, Hash.number, 1 as unknown as number[]))).toBe(true);
@@ -194,7 +194,7 @@ describe("the hash law", () => {
           samples.push(random.int(0, 2) === 0);
       }
     }
-    expect(Hash.checkLaws(Equivalence.any, Hash.any, samples).isNone()).toBe(true);
+    expect(Hash.checkLaws(Equivalence.any, Hash.any, samples)).toBeUndefined();
     for (const sample of samples) expect(isUint32(Hash.any.hash(sample))).toBe(true);
   });
 });

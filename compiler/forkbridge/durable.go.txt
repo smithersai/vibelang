@@ -543,6 +543,19 @@ func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, 
 	if ast.IsConditionalExpression(expression) {
 		return d.lowerConditional(expression, anchor, allowFinalAction)
 	}
+	if ast.IsNonNullExpression(expression) {
+		candidate := ast.SkipParentheses(expression.AsNonNullExpression().Expression)
+		if ast.IsCallExpression(candidate) {
+			value, recognized, ok := d.lowerAction(candidate, anchor)
+			if recognized {
+				if ok {
+					d.sequence = value.ir.(map[string]any)["nodeId"].(string)
+				}
+				return value, ok
+			}
+		}
+		return d.fail(expression, "4112", "postfix ! is supported only directly on a compiler-bound Action.run(...) Result")
+	}
 	if ast.IsCallExpression(expression) {
 		if value, recognized, ok := d.lowerSignal(expression, anchor); recognized {
 			return value, ok
@@ -568,22 +581,9 @@ func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, 
 				return d.fail(expression, unsupported.suffix, unsupported.message)
 			}
 		}
-		if receiver, kind := d.owner.prelude.unwrapCall(expression); kind == unwrapResult {
-			candidate := ast.SkipParentheses(receiver)
-			if ast.IsCallExpression(candidate) {
-				value, recognized, ok := d.lowerAction(candidate, anchor)
-				if recognized {
-					if ok {
-						d.sequence = value.ir.(map[string]any)["nodeId"].(string)
-					}
-					return value, ok
-				}
-			}
-			return d.fail(expression, "4112", "unwrap() is supported only directly on an imported Action.run(...) call")
-		}
 		if value, recognized, ok := d.lowerAction(expression, anchor); recognized {
 			if ok && !allowFinalAction {
-				return d.fail(expression, "4115", "an intermediate Action.run(...) must use .unwrap(); only the final returned Result may remain wrapped")
+				return d.fail(expression, "4115", "an intermediate Action.run(...) must use postfix !; only the final returned Result may remain wrapped")
 			}
 			return value, ok
 		}

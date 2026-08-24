@@ -72,7 +72,7 @@ import { durable } from "smithers:flows"
 import { Fetch, Publish } from "demo:publishing-actions"
 
 export const Publishing = durable(function Publishing(input: { path: string; target: string }) {
-  const fetched = Fetch.run({ path: input.path }).unwrap()
+  const fetched = Fetch.run({ path: input.path })!
   return Publish.run({ path: input.target, contents: fetched.contents })
 })
 `

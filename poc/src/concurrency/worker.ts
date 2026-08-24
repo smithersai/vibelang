@@ -13,12 +13,9 @@ import {
   isResult,
   type Result,
 } from "../runtime/result.ts";
-import { isOptional } from "../runtime/optional.ts";
 import {
   ValueCodecError,
-  decodeOptional,
   decodeResult,
-  encodeOptional,
   encodeResult,
   type ValueCodec,
 } from "../runtime/wire.ts";
@@ -341,15 +338,6 @@ function boundaryNode(value: unknown, context: CodecContext, depth: number): Jso
         context.nestedDepth = priorDepth;
       }
     }
-    if (isOptional(value)) {
-      const priorDepth = context.nestedDepth;
-      context.nestedDepth = depth + 1;
-      try {
-        return { type: "optional", wire: encodeOptional(value, workerValueCodec) };
-      } finally {
-        context.nestedDepth = priorDepth;
-      }
-    }
     if (isLocalError(value)) return { type: "error", wire: encodeError(value) };
     if (Array.isArray(value)) {
       if (Object.getPrototypeOf(value) !== Array.prototype) throw new ValueCodecError("worker value is not an ordinary array");
@@ -474,17 +462,6 @@ function decodeBoundaryNode(node: JsonValue, depth: number): unknown {
       activeDecodeDepth = depth + 1;
       try {
         return decodeResult(record.wire, workerValueCodec);
-      } finally {
-        activeDecodeDepth = priorDepth;
-      }
-    }
-    case "optional": {
-      codecExactKeys(record, ["type", "wire"]);
-      if (typeof record.wire !== "string") throw new ValueCodecError("worker Optional wire must be a string");
-      const priorDepth = activeDecodeDepth;
-      activeDecodeDepth = depth + 1;
-      try {
-        return decodeOptional(record.wire, workerValueCodec);
       } finally {
         activeDecodeDepth = priorDepth;
       }

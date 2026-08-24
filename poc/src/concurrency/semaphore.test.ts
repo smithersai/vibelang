@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { __vsInspectOptional } from "../runtime/index.ts";
 import {
   CancellationSource,
   Cancelled,
@@ -28,14 +27,18 @@ describe("Semaphore", () => {
 
   test("tryAcquire returns a branded permit only when a slot is immediately available", () => {
     const semaphore = Semaphore.withPermits(1);
-    const acquired = __vsInspectOptional(semaphore.tryAcquire());
-    expect(acquired.some).toBe(true);
-    if (!acquired.some) throw new Error("expected permit");
-    expect(isSemaphorePermit(acquired.value)).toBe(true);
-    expect(Object.isFrozen(acquired.value)).toBe(true);
-    expect(__vsInspectOptional(semaphore.tryAcquire()).some).toBe(false);
-    acquired.value.release();
-    acquired.value.release();
+    // Absence is `undefined`, read by ordinary narrowing.
+    const acquired = semaphore.tryAcquire();
+    expect(acquired).not.toBeUndefined();
+    if (acquired === undefined) throw new Error("expected permit");
+    expect(isSemaphorePermit(acquired)).toBe(true);
+    expect(Object.isFrozen(acquired)).toBe(true);
+    expect(semaphore.tryAcquire()).toBeUndefined();
+    // `?.` and `??` read the absent case exactly as TypeScript does.
+    expect(semaphore.tryAcquire()?.release).toBeUndefined();
+    expect(semaphore.tryAcquire() ?? "none").toBe("none");
+    acquired.release();
+    acquired.release();
     expect(semaphore.availableCount).toBe(1);
   });
 

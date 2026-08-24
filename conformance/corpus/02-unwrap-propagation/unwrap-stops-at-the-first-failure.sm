@@ -11,13 +11,13 @@ export function scoreOf(key: string): Result<number, Missing> {
 }
 
 export function collect(): Result<string[], Missing> {
-  const first = scoreOf("ada").unwrap()
-  const second = scoreOf("zoe").unwrap()
-  const third = scoreOf("bob").unwrap()
+  const first = scoreOf("ada")!
+  const second = scoreOf("zoe")!
+  const third = scoreOf("bob")!
   return [`${first} ${second} ${third}`]
 }
 
 export function main(): Result<string[], Missing> {
-  const lines = collect().unwrap()
+  const lines = collect()!
   return [...lines, `seen ${seen.join(",")}`]
 }

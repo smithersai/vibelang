@@ -95,7 +95,7 @@ test("--backend go fails closed with an actionable code when the checkout is abs
   assert.doesNotMatch(report.message, /fallback/i);
 });
 
-test("JS and Go run backends execute identical Result lifting and unwrap propagation", {
+test("JS and Go run backends execute identical Result lifting and postfix propagation", {
   skip: forkCheckout ? false : missingForkMessage,
 }, (t) => {
   const project = mkdtempSync(join(tmpdir(), "smithers-cli-backend-parity-"));
@@ -109,7 +109,7 @@ test("JS and Go run backends execute identical Result lifting and unwrap propaga
     "  return value + 1",
     "}",
     "function doubled(value: number): Result<number, InvalidScore> {",
-    "  const checked = score(value).unwrap()",
+    "  const checked = score(value)!",
     "  return checked * 2",
     "}",
     "process.stdout.write(doubled(2).match({ ok: (value) => `ok:${value}\\n`, error: (error) => `error:${error.message}\\n` }))",

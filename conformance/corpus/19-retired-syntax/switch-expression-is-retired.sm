@@ -1,0 +1,7 @@
+export function main(): string[] {
+  const value = switch ("a") {
+    case "a": "alpha"
+    default: "other"
+  }
+  return [value]
+}

@@ -154,7 +154,7 @@ export function lookup(key: string): Result<string, Missing> {
 const APP = `import { lookup } from "./domain.sm"
 
 export function greet(key: string): Result<string, Missing> {
-  return \`hello \${lookup(key).unwrap()}\`
+  return \`hello \${lookup(key)!}\`
 }
 `;
 

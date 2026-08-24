@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import type { NominalError } from "../runtime/errors.ts";
-import type { Optional } from "../runtime/optional.ts";
 import { catchPanic, isPanic } from "../runtime/panic.ts";
 import type { Result } from "../runtime/result.ts";
 import { RuntimeValues } from "../runtime/values.ts";
@@ -9,7 +8,7 @@ import { Data } from "./data.ts";
 import { HashMap } from "./hash-map.ts";
 import { Match, MatcherValue } from "./match.ts";
 
-const { absent, present, success, failure } = RuntimeValues;
+const { success, failure } = RuntimeValues;
 
 function panics(body: () => unknown): boolean {
   return isPanic(catchPanic(body, (error) => error));
@@ -62,7 +61,7 @@ declare const event: Event;
 declare const level: "low" | "high";
 declare const mixed: string | number | boolean;
 declare const flag: boolean;
-declare const maybe: Optional<number>;
+declare const maybe: number | undefined;
 declare const attempt: Result<number, TypeError>;
 declare const fault: LeftFault | RightFault;
 declare const anything: unknown;
@@ -172,11 +171,16 @@ function aWidenedPatternNeverSubtracts(): void {
   byLiteral.exhaustive();
 }
 
-function optionalVariantsProveCoverage(): string {
-  const partial = Match.value(maybe).whenSome((found) => found.toFixed(0));
+function absenceIsAnOrdinaryUnionAndProvesCoverage(): string {
+  // `T | undefined` is not a variant scrutinee: an ordinary guard covers the
+  // present case and an ordinary `undefined` literal covers the absent one.
+  const partial = Match.value(maybe).when(
+    (value): value is number => value !== undefined,
+    (found) => found.toFixed(0),
+  );
   // @ts-expect-error the absent case is still unhandled
   partial.exhaustive();
-  return partial.whenNone(() => "none").exhaustive();
+  return partial.when(undefined, () => "none").exhaustive();
 }
 
 function resultVariantsProveCoverage(): string {
@@ -485,16 +489,18 @@ describe("nominal Error arms", () => {
   });
 });
 
-describe("Optional and Result scrutinees", () => {
-  test("whenSome and whenNone cover an Optional between them", () => {
-    const render = (input: Optional<number>): string =>
+describe("`T | undefined` and Result scrutinees", () => {
+  test("an ordinary guard and an `undefined` arm cover a union between them", () => {
+    const render = (input: number | undefined): string =>
       Match.value(input)
-        .whenSome((found) => `got ${found}`)
-        .whenNone(() => "nothing")
+        .when((value): value is number => value !== undefined, (found) => `got ${found}`)
+        .when(undefined, () => "nothing")
         .exhaustive();
 
-    expect(render(present(7))).toBe("got 7");
-    expect(render(absent())).toBe("nothing");
+    expect(render(7)).toBe("got 7");
+    expect(render(undefined)).toBe("nothing");
+    // A falsy *present* value is present. Absence is `undefined`, not falsiness.
+    expect(render(0)).toBe("got 0");
   });
 
   test("whenOk and whenError cover a Result between them", () => {
@@ -509,8 +515,12 @@ describe("Optional and Result scrutinees", () => {
   });
 
   test("arm order does not matter, and the arms are exclusive", () => {
-    expect(Match.value(absent() as Optional<number>).whenNone(() => "none").whenSome(() => "some").exhaustive())
-      .toBe("none");
+    expect(
+      Match.value<number | undefined>(undefined)
+        .when(undefined, () => "none")
+        .when((value): value is number => typeof value === "number", () => "some")
+        .exhaustive(),
+    ).toBe("none");
     expect(
       Match.value(failure(new TypeError("x")) as Result<number, TypeError>)
         .whenError(() => "error")
@@ -520,12 +530,13 @@ describe("Optional and Result scrutinees", () => {
   });
 
   test("a variant arm on the wrong kind of scrutinee is caught at the call site", () => {
-    expect(panics(() => Match.value<unknown>(1).whenSome(() => 0))).toBe(true);
-    expect(panics(() => Match.value<unknown>(1).whenNone(() => 0))).toBe(true);
     expect(panics(() => Match.value<unknown>(1).whenOk(() => 0))).toBe(true);
     expect(panics(() => Match.value<unknown>(1).whenError(() => 0))).toBe(true);
-    expect(panicMessage(() => Match.value<unknown>(present(1)).whenOk(() => 0))).toContain("Result scrutinee");
-    expect(panicMessage(() => Match.value<unknown>(success(1)).whenSome(() => 0))).toContain("Optional scrutinee");
+    expect(panicMessage(() => Match.value<unknown>(undefined).whenOk(() => 0))).toContain("Result scrutinee");
+    // The variant arms that used to exist for the withdrawn container are gone.
+    for (const withdrawn of ["whenSome", "whenNone"]) {
+      expect(withdrawn in (Match.value<unknown>(1) as object)).toBe(false);
+    }
   });
 });
 
@@ -612,7 +623,7 @@ describe("the builder is an immutable value", () => {
 
   test("a missing handler is a programming error, on every arm", () => {
     const built = Match.value<unknown>(1) as unknown as Record<string, (...args: unknown[]) => unknown>;
-    for (const arm of ["when", "whenTag", "whenSome", "whenNone", "whenOk", "whenError", "orElse"]) {
+    for (const arm of ["when", "whenTag", "whenOk", "whenError", "orElse"]) {
       expect(panics(() => built[arm]?.(1, undefined))).toBe(true);
     }
     expect(panics(() => Match.value<unknown>(1).whenInstanceOf(Box, undefined as unknown as () => number))).toBe(true);
@@ -661,7 +672,7 @@ void aBarePredicateProvesNothing;
 void literalTemplatesNarrowAndProveCoverage;
 void aTemplateWithAPredicateLeafProvesNothing;
 void aWidenedPatternNeverSubtracts;
-void optionalVariantsProveCoverage;
+void absenceIsAnOrdinaryUnionAndProvesCoverage;
 void resultVariantsProveCoverage;
 void nominalErrorArmsNarrowAndSubtract;
 void theOutputIsTheUnionOfEveryHandlersResult;

@@ -36,34 +36,6 @@ still need design work.
 - MDX is a general asset format. Prompt components and code-writing agents are
   library features layered on top of MDX, not special compiler semantics.
 
-## Current POC evidence (non-normative)
-
-The root CLI/package and the programmatic `smthrs/build` API integrate
-relative static asset imports, attributed named/namespace re-exports, literal
-dynamic imports, and nested loader-generated module graphs through four levels.
-They issue one reconciled generated module per asset, track nested dependency
-content in cache identity, reject undeclared generated-module edges, resolve
-re-exported bindings semantically, and rewrite the complete graph through the
-Smithers emitter and relative runtime stager. Type-only and side-effect forms, bare
-star re-exports, nonliteral dynamic imports/attributes, and executable generated
-modules outside the admitted pure-data grammar remain unsupported.
-
-The same POC implements provisional answers for two otherwise open surfaces:
-
-- a project file whose default export is `comptime.loader("type", fn)` can
-  register one lowercase literal loader type. The call is recognized by
-  TypeScript checker identity, the file is never executed in the compiler
-  process, and the lowered loader always executes in the no-permission Deno
-  sandbox. Built-ins take precedence (VCT1310 warning), duplicate project
-  registrations fail closed (VCT1311), and VCT1300–VCT1313 cover rejected
-  registration/identity/sandbox shapes;
-- `{ type: "markdown" }` produces provisional literal-typed frontmatter, body,
-  headings, and raw source exports, while `{ type: "mdx" }` produces a
-  provisional pure-data render tree. MDX expression holes are identifier-only,
-  never-evaluated placeholders.
-
-Neither spelling/module shape is a locked production contract.
-
 ## TypeScript and TC39 compatibility
 
 Existing TypeScript imports keep their TypeScript meaning. In particular,
@@ -123,7 +95,7 @@ A loader is a compile-time function from a compiler-owned asset and tracked
 loader context to a typed module description. This build-time object is not the
 runtime `Context` imported from `smthrs/context`; using it records incremental
 dependencies and does not add capabilities to a function's `R` row. The
-programmatic POC recognizes this provisional declaration shape:
+candidate declaration shape is:
 
 ```typescript
 import { comptime } from "smithers:comptime";
@@ -150,12 +122,11 @@ export default comptime.loader("yaml", async (asset, context) => {
 ```
 
 `comptime.loader` is a compiler-recognized library API, not a special loader
-declaration. In the POC, recognition is spelling-blind checker identity; only a
-default export registering one literal lowercase type is accepted, and the
-callback still returns the programmatic
-value/TypeScript/declaration/diagnostic/span result. The final typed-module builder,
-package registration, glob/extension selection, options, and production API
-remain open.
+declaration. Recognition uses resolved checker identity. Loader declarations
+are analyzed but never executed in the compiler process; the loader itself runs
+only inside the hermetic loader environment. The final typed-module builder,
+package registration, glob or extension selection, options, and declaration
+spelling remain open.
 
 The essential semantics do not depend on this spelling:
 
@@ -163,7 +134,7 @@ The essential semantics do not depend on this spelling:
 2. The compiler gives it immutable source text or bytes and a tracked context.
 3. Reads through the context add graph edges recursively.
 4. The result is checked as a module and cached.
-5. Backends emit only the runtime exports actually used by the program; erased
+5. The compiler emits only the runtime exports actually used by the program; erased
    types and comptime-only values produce no runtime code.
 
 A loader result must be representable in checked Smithers IR or supply an
@@ -236,23 +207,18 @@ The import is resolved and tracked at compile time, so using the string does not
 perform runtime filesystem I/O. The loader must preserve source locations for
 diagnostics.
 
-As a provisional programmatic POC contract, `{ type: "markdown" }` (also the
-`.md` extension default) keeps the raw source as its default export and adds
-literal-typed `frontmatter`, `body`, `headings`, and `source`. Headings cover
-ATX headings outside fences and carry authored UTF-16 offsets. Frontmatter is a
-strict bounded YAML subset supporting scalars, scalar lists, and one nested map
-level; ambiguous YAML constructs fail with source locations. The final parsed
-document/frontmatter contract remains open.
+**Direction:** `{ type: "markdown" }` keeps the raw source as its default
+export and exposes typed `frontmatter`, `body`, `headings`, and `source` data
+with authored locations. The final parsed document and frontmatter grammar
+remain open.
 
 ### MDX
 
-MDX is available without project configuration and, by design, emits a typed
-component module. The programmatic POC provisionally exports literal-typed
-`frontmatter`, `source`, `body`, `components`, and `expressions`, with a render
-tree as the default. Tree nodes are elements, text, or expression placeholders;
-literal props are admitted, while `{name}` becomes a never-evaluated placeholder
-and broader expressions fail closed. JSX-runtime selection, final component
-injection, and the production default-export contract remain open. The agent
+MDX is available without project configuration and emits a typed component
+module. **Direction:** the module exposes typed frontmatter and source
+information plus a component/render contract; embedded expressions are never
+evaluated merely by importing the file at compile time. JSX-runtime selection,
+component injection, and the default-export contract remain open. The agent
 library may define components such as `System`, `Context`, and `Instructions`,
 but the compiler treats them as library vocabulary rather than language
 semantics.
@@ -273,7 +239,7 @@ import { tokenize } from "./tokenizer.zig" with { type: "zig" };
 
 For each direct `.rs` or `.zig` import, the compiler must:
 
-1. select a foreign-language adapter for the build target;
+1. select a foreign-language adapter for the JavaScript host and Wasm toolchain;
 2. derive a checked Smithers module interface from the exported foreign
    contract;
 3. generate the necessary typed bindings and foreign artifact;
@@ -286,11 +252,10 @@ The generated interface is the source of truth. Users must not need a parallel
 `.d.ts` file merely to describe the imported symbols. Changes to an exported
 foreign type or function invalidate and recheck Smithers consumers.
 
-The exact configuration for choosing native, Wasm, Node-API, or another
-foreign target is open. ABI layout, ownership, allocation, async callbacks,
-error translation, linking, Rust feature selection, Zig build options, and
-cross-compilation policy also require separate design. Direct source imports
-promise tracked typed bindings, not one fixed ABI for every target.
+Direct Rust and Zig source imports produce Wasm library modules called by the
+JavaScript host. ABI layout, ownership, allocation, async callbacks, error
+translation, linking, Rust feature selection, Zig build options, and
+cross-compilation policy require separate design.
 
 ## Native npm packages on TypeScript runtimes
 
@@ -306,18 +271,16 @@ entry point and `.node` loader select the platform binary. Smithers does not
 recompile the package's Rust source merely because napi-rs produced it, and it
 does not require a direct `.rs` import.
 
-This path is specific to a compatible TypeScript runtime and contributes the
-same TypeScript/platform requirements as any other native npm dependency. It
-does not by itself make the package portable to Smithers's native or Wasm
-backends. A package that wants those targets can additionally publish source or
-artifacts through the future foreign-target configuration.
+This path constrains the compatible JavaScript host like any other native npm
+dependency. It is distinct from direct Rust or Zig source imports compiled to a
+Wasm library module.
 
 ## Open design questions
 
 1. Optional JSON schema-validation APIs.
 2. Final loader declaration/registration and typed-module-builder APIs,
    including package distribution, glob/extension selectors, options, and
-   whether the POC's built-in-first precedence becomes normative.
+   built-in precedence.
 3. Finalization or replacement of the provisional Markdown frontmatter/body/
    headings exports and MDX render-tree/component-module contract.
 4. Foreign target selection, ABI/binding rules, and toolchain configuration for
@@ -325,6 +288,5 @@ artifacts through the future foreign-target configuration.
 5. Whether a loader may emit auxiliary files, and how those outputs are named
    without losing reproducibility.
 6. Cycle rules between code modules and loaded assets.
-7. The final cross-platform isolation/attestation policy beyond the POC's
-   default authenticated, no-permission Deno loader process.
+7. The final cross-platform loader isolation and attestation policy.
 8. The stable serialized representation for target-neutral typed loader output.

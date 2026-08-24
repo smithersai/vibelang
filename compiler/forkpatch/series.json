@@ -10,77 +10,32 @@
   },
   "patches": [
     {
-      "file": "patches/0100-defer-errdefer-grammar.patch",
-      "sha256": "c78f71c7d8e55d05bcfd2fd755010706087b1bb8d43d52c7951117642c285061",
-      "kind": "handwritten",
-      "summary": "defer/errdefer as real statement kinds, plus the NodeFlagsSmithers dialect gate keyed off .sm and .sm.ts file names"
-    },
-    {
-      "file": "patches/0200-break-label-value-grammar.patch",
-      "sha256": "420a7ff490d08e2c0a0848a4c2400b52a39348017226b1548ad4890d50a829ba",
-      "kind": "handwritten",
-      "summary": "break :label value — an optional Value member on the existing BreakStatement, with binder ordering and a checker arm"
-    },
-    {
       "file": "patches/0300-if-conditional-declaration-grammar.patch",
-      "sha256": "4912fc1cfdb8f6677c88478bbd40d6a86e87a0315c4360bb5c320618e5e26acd",
+      "sha256": "642697f1eeda0727543f3de3a1fc6a791280d06b21ffb7623728a0f56802522a",
       "kind": "handwritten",
-      "summary": "if (const x = f(); cond) — an optional Initializer member on IfStatement plus LocalsContainerBase, so the binding is visible in every else branch and out of scope after the construct"
-    },
-    {
-      "file": "patches/0400-loop-else-completion-grammar.patch",
-      "sha256": "7a93b8180881b9edcf38b8d6a03eaaa34cae52ca0e84ee6624d1d5ff2f71961c",
-      "kind": "handwritten",
-      "summary": "label: loop else value — an optional ElseValue member on LabeledStatement, with a real extra flow-graph edge so a value break skips the else while normal completion and valueless breaks flow into it"
-    },
-    {
-      "file": "patches/0500-value-position-if-switch-grammar.patch",
-      "sha256": "a72138664a2b74c4732749e02f7ad9028a17ba6249fc2a49a514e8343e13905e",
-      "kind": "handwritten",
-      "summary": "value-position if/switch as real expression grammar: IfExpression and SwitchExpression node kinds, a Value member on CaseOrDefaultClause, branch joins in the binder, and union typing with closed-literal-union exhaustiveness in the checker"
-    },
-    {
-      "file": "patches/0600-labeled-expression-values-grammar.patch",
-      "sha256": "f4bf65e8bbe877f7eed3530cda0bb60bfe8d3a6e2d0877be6430f0cb32d29d26",
-      "kind": "handwritten",
-      "summary": "expression-position labeled block and loop values — one LabeledExpression kind wrapping the existing LabeledStatement, so both forms reuse the landed label binding, the loop-else flow graph and the value-break member; the type is the join of the break values plus the else completion, and a block that can finish without one carries undefined"
-    },
-    {
-      "file": "patches/0700-switch-expression-flow-analysis.patch",
-      "sha256": "c2e644aff22ffe673e4efe02fd3cb425e3f7809b9cc0d46c6f8398e7ef10b681",
-      "kind": "handwritten",
-      "summary": "flow analysis for the value switch and for every Smithers member that holds an expression: FlowSwitchClause nodes per clause so the scrutinee narrows inside a clause value, one ast.SwitchClauses accessor shared by both switch kinds at every site a FlowSwitchClause reaches, one exhaustiveness function for both, the clause Value bound at all, preSwitchCaseFlow set for a value switch, IsInExpressionContext arms for defer/errdefer/break-value/loop-else/clause-value, and ForEachReturnStatement descending through expression-position labeled values"
-    },
-    {
-      "file": "patches/0750-value-clause-statements-and-braceless-if-grammar.patch",
-      "sha256": "e748dc61594036414b5ff945a6f464fa07a9e4d1a5efcbf2c05048761cb54cd8",
-      "kind": "handwritten",
-      "summary": "the last two conformance-corpus gaps, and neither needed a node kind or an AST member: a switch-expression clause may run statements before the final expression that is its value (parsed by trying the single-expression spelling first and falling back to a statement list, so a keyword-initial clause value stays an expression), and a value if may take braceless branches in the one host that bounds them — a variable initializer, keyed on the position it starts at. Plus the three enumerated switches those two forms reached: checker.getContextualType, transformers.IsIdentifierReference and binder.isStatementCondition, all of which switch on the PARENT kind"
+      "summary": "if (const x = f(); cond) — the .sm dialect gate plus an optional Initializer member on IfStatement and LocalsContainerBase, so the binding is visible in every else branch and out of scope after the construct"
     },
     {
       "file": "patches/0800-regenerate-ast.patch",
-      "sha256": "e3003adc3c298fec369a33d677cee5d651c1827167d99e6bc8b3433863089390",
+      "sha256": "531b433e7a053585dcd440c43f3af4649859898ce921dc61da80a12d696223a4",
       "kind": "generated",
-      "summary": "output of tools/scripts/tsc/generate.ts and the Kind stringer for the six grammar patches above; re-derivable with `verify --regenerate`"
+      "summary": "output of tools/scripts/tsc/generate.ts and the Kind stringer for the surviving conditional-declaration grammar patch; re-derivable with verify --regenerate"
     },
     {
       "file": "patches/0900-smithers-grammar-tests.patch",
-      "sha256": "001d2b93020e19fffd9b36855f17b2a27c39a77310e7af8d78a35c5c1263567f",
+      "sha256": "b6a117c5aa16d7b63ac2d426bd42792909ca882a84611e9e4747342fc3522667",
       "kind": "forkowned",
-      "summary": "new fork-owned tests: round-trip, node shape, generic-accessor parity and member-reachability sweeps, dialect gate, checker-arm proofs, conditional-declaration scope and locals, loop-else flow graph, value-expression typing, labeled-value typing and flow graph, the value-break traversal, the ast.IsExpressionNode reachability sweep, value-switch clause narrowing and its bypass edge, the shared exhaustiveness function, the IsInExpressionContext member sweep, return-statement collection through a labeled value and through a value clause, the value-clause body shape and its bounded braceless-if host, clause-statement checking, clause completion totality, clause locals under noUnusedLocals, contextual typing of every value operand, identifier substitution in emitted CommonJS, and compound-condition narrowing in a value if"
+      "summary": "fork-owned tests for the sole grammar addition: conditional-declaration round-trip and dialect gate, AST child order and block scope, checker reachability, narrowing, branch scope, and unused-local ownership"
     }
   ],
   "generated": [
-    "packages/typescript/src/api/node/node.generated.ts",
     "packages/typescript/src/api/node/protocol.generated.ts",
     "packages/typescript/src/ast/ast.generated.ts",
     "packages/typescript/src/ast/factory.generated.ts",
-    "packages/typescript/src/ast/is.generated.ts",
     "packages/typescript/src/ast/visitor.generated.ts",
     "tsc/internal/api/encoder/decoder_generated.go",
     "tsc/internal/api/encoder/encoder_generated.go",
     "tsc/internal/ast/ast_generated.go",
-    "tsc/internal/ast/kind_generated.go",
     "tsc/internal/ast/kind_stringer_generated.go"
   ],
   "created": [
@@ -88,75 +43,55 @@
     "tsc/internal/printer/smithers_grammar_test.go"
   ],
   "preImage": {
-    "packages/typescript/src/api/node/node.generated.ts": "11e952ab6a05d6d9578f337c546dd71dbc6335cd5d8d3a215aa2f71fa1a75999",
     "packages/typescript/src/api/node/protocol.generated.ts": "2fee4b99e0facefd0c73bfb227cf6cf57c6eaa8c80f695a9c072791316900da6",
     "packages/typescript/src/ast/ast.generated.ts": "38683aaabb7c9c1d669e24ea05fb14b2d1f031eb655765057569bce992867be8",
     "packages/typescript/src/ast/factory.generated.ts": "14f44ef9429a9d103bc45e46172aac660def0dba13e409712a14fd9234e741a9",
-    "packages/typescript/src/ast/is.generated.ts": "5c3759885562f278f4fef54c7b12f64e2150b06c17998bd44abc85fa5c285dc5",
     "packages/typescript/src/ast/visitor.generated.ts": "bff752a888fec75c25daf6b0a7aaf517d044f887a4e3fe3bc14d3cbae55b2f09",
     "tools/scripts/tsc/ast.json": "bd6e75d7b217f97293c7750f0fdb441f0e6d5533075ce42cdb629248278e70d6",
     "tsc/internal/api/encoder/decoder_generated.go": "c7097005a40204ea16a63bf3ad13b5d1940668d1502226befa8a14635da543f8",
     "tsc/internal/api/encoder/encoder_generated.go": "fede44c981f855355f2f13a483d7d3552bce1c1165a6963aed0ef2c19ca8d3d6",
     "tsc/internal/ast/ast.go": "2b7b2dc5a2fe937b9beeec081d1ef900bce487c762800e8667bd66083b26428e",
     "tsc/internal/ast/ast_generated.go": "27d2dc578bc7fc6bc6a977932cfd06ad7406c9185eafc2f4ab260d45ba8c5912",
-    "tsc/internal/ast/flow.go": "6fa8526bbedad06a4e37d8e7957a12cdf8a049daf5bfb7353ffbee4c5cb41d2d",
-    "tsc/internal/ast/kind_generated.go": "e4ad34d87478a6ed4693fb4b984e807ffd1ea75c3990756fc2e07ae52cab34eb",
     "tsc/internal/ast/kind_stringer_generated.go": "c3cdd3cdc865e44c3f6dbb45295556fb6321e5c555c7dfde7c652b2dbefc0a66",
     "tsc/internal/ast/nodeflags.go": "8be5737c5cfe5478fcef3f0b50847d7ca4045157a6d039ffaac658977a181dc2",
-    "tsc/internal/ast/precedence.go": "94a5f9f3e4ce8ac9dc0c46d9253ffe4def40e90618ec226f4209b2e9d436aa7a",
     "tsc/internal/ast/utilities.go": "b1c0c79291a434270dd68addce48731b96cece614d54d0946b0d97b370651a8a",
     "tsc/internal/binder/binder.go": "76c2386454954109ac686502b703aaf6020d2908b3857d64c3eb21f3fc1f1ed0",
     "tsc/internal/checker/checker.go": "cde60c91b34316de028f90a1f95ad03043e8f1db78ab3e128ad487fbeb10385c",
-    "tsc/internal/checker/flow.go": "a8d5fe0e7314132519186598f68f5bdce889a0ba3ed941fcd40ef5b3bc143ae8",
     "tsc/internal/checker/utilities.go": "479994600f9176d03a0f67166e6cc9e58a31b6236bcb724fcfb91c439e0769af",
-    "tsc/internal/ls/completions.go": "3cbfd92777ffe71dcffe8d997e2d4088c7e3e6fcb77957fac8b0e58fe4bc61fb",
     "tsc/internal/parser/parser.go": "ebbd9bb34f30931188c2de74f670d185c3c8db2c7038a18a1beb0f15da22cbc8",
     "tsc/internal/printer/emitcontext.go": "420f0b10319cf45f7e01e1ef88958d1b8c7a357cbc7d054f5a74eaba37894ae7",
-    "tsc/internal/printer/factory.go": "c63403041eacc96b4e92b5d07d9c5aced9390cc34f28f36634126edcb41cb3e4",
     "tsc/internal/printer/printer.go": "55d1a71598381e118df21ca6cdaee98dee1267f26020bb434523eb557c4a80a9",
-    "tsc/internal/scanner/scanner.go": "f37603cc2539d46ec91ffcde812abddf22568d6a603645ba96b9f4e87a42eef2",
     "tsc/internal/transformers/estransforms/esdecorator.go": "a4688a298887bf8ee3c1291fc9766d74a084fcaaedf25991d76081875ea711aa",
     "tsc/internal/transformers/estransforms/forawait.go": "5829a1390005d4affb2a82e0a8f7ebcbdb25b2ad76486846cf0c2b6a603a5f4a",
     "tsc/internal/transformers/estransforms/objectrestspread.go": "36158036c41682a4148384e5ea1fa1cb99f16c2e7df5a0887da3197ff1eafd61",
     "tsc/internal/transformers/estransforms/using.go": "85478efd6eed9fae5d6126990fc346b4776354527afa1ee2aa426747626c5327",
-    "tsc/internal/transformers/moduletransforms/commonjsmodule.go": "093eaffb8a5cf9ecc5de13d7af2bc44275c01597331d1d2fdb56f6061f4cf42a",
-    "tsc/internal/transformers/utilities.go": "b4500c529b7d8524f9d3d59f69d160d9e9504b7c4f11849b57625b11548432b0"
+    "tsc/internal/transformers/moduletransforms/commonjsmodule.go": "093eaffb8a5cf9ecc5de13d7af2bc44275c01597331d1d2fdb56f6061f4cf42a"
   },
   "postImage": {
-    "packages/typescript/src/api/node/node.generated.ts": "672c5f4354ac4073263f2314c8f52f4f1415898848b88cabbdbb1bd2b7cabb9b",
-    "packages/typescript/src/api/node/protocol.generated.ts": "4407da2a27b5969f6e536bdd345f300a00bc05c38f6246edab8baec87bcf3eb8",
-    "packages/typescript/src/ast/ast.generated.ts": "035e0f98bc4e4c4545c70f47f7ae7f89c355e1093ea4618be8baa08ad3bca26a",
-    "packages/typescript/src/ast/factory.generated.ts": "417b6756f0df039450bf68cd63d483ebb2803e83bcd104d13361e6e0dfd361c6",
-    "packages/typescript/src/ast/is.generated.ts": "4f089edfca9b093291121027447a3a9d433997cc42d0669e6ad7fd866f7e1944",
-    "packages/typescript/src/ast/visitor.generated.ts": "f63c7f1f048c71deeb4078a6dd0a5628cc1bfb1c68db7f560512c2a42851da0b",
-    "tools/scripts/tsc/ast.json": "daa1d2f369a02acea97202ecdebc4c3daa80f88e38595dec09fb0dd9fe421ada",
-    "tsc/internal/api/encoder/decoder_generated.go": "1c06ba685db51695b8f8c3659dfecf46fc6ba94536e0826640476469aa938651",
-    "tsc/internal/api/encoder/encoder_generated.go": "ae346aa1969396abf86c0af630ae6414410a0258b040374b80cbd46ef3c4a12e",
-    "tsc/internal/ast/ast.go": "bdd828d33e5504d543e241a77dd34f52e419369045b2fcb1ff667f8d568c0e9c",
-    "tsc/internal/ast/ast_generated.go": "92a250877e383e3bf69f9bc8216f81f5ade809b9dc4f6bc61e133a82800f116c",
-    "tsc/internal/ast/flow.go": "da3fa0407650f687bcee7a82a02f783cb4d8bccc2c0ef5ac1ac47678f6c98694",
-    "tsc/internal/ast/kind_generated.go": "1409b3cf473b6661416e32403926a5fa13bd0575a233cdb4f9da80992944149d",
-    "tsc/internal/ast/kind_stringer_generated.go": "959b404f783853444899ea1e0c575c109a5be3088e78587b886e496039449cf9",
+    "packages/typescript/src/api/node/protocol.generated.ts": "cc36c0628e9da5a60de7001cc14ebff38adea7f5e5a78fb0640360acdc3be035",
+    "packages/typescript/src/ast/ast.generated.ts": "d4e6c597f6f321a97dad63a85108d67b29d27b171f28619fb7cab6aeacce70c8",
+    "packages/typescript/src/ast/factory.generated.ts": "c2d90b6a4d956a358c1f6cb4fba60effb488c77aadba88ae4d0d07f8110cb134",
+    "packages/typescript/src/ast/visitor.generated.ts": "859942141d37dcf8f64e733cd9edb15cc591e41f48fe909efeef0e9d5661a539",
+    "tools/scripts/tsc/ast.json": "f299d66ebadb942d17856773e1250c8310cd484b45248bd8518c885acfea18a1",
+    "tsc/internal/api/encoder/decoder_generated.go": "a106a171cd078fe03aab8d49e786497d210b6d4952eb0c31db15eb1e54328bd2",
+    "tsc/internal/api/encoder/encoder_generated.go": "5df68f7b602c404e5676f4e9b46821d0b0cad887a4c12ec024c6d1592826597e",
+    "tsc/internal/ast/ast.go": "2317f9fdf44928f6b57513047686b683794609445d98b7f440272829c7601e04",
+    "tsc/internal/ast/ast_generated.go": "90be6eeabc24bece6cb0bc96bba9cd3aa66fb5a47e58c58dce12e0ad2b2a9f75",
+    "tsc/internal/ast/kind_stringer_generated.go": "7e5b2b992cde45366a4b7380e78ee033fd99354fd95ba8909a49efaecc1cfa6e",
     "tsc/internal/ast/nodeflags.go": "eaaab3d1187cf03144422098a6e590a78be983a4d41663818bd71f4117caeb12",
-    "tsc/internal/ast/precedence.go": "5b496ff540090ecb7d6527526bff415453f0718ed4bacbb033a6a96e43a88c64",
-    "tsc/internal/ast/utilities.go": "c4c2a64e73e48d297bd78aaac648d00a4c07f3c36f5ec3b3338de0217a5dbffa",
-    "tsc/internal/binder/binder.go": "3d68d91a6f10cb04ba19fd007d9cb035fa2f4db7cc6fabcb37b5abdf270325cb",
-    "tsc/internal/checker/checker.go": "153469ef2c2f5ff6757267c6da06346e5c130491dea743fd38651e069aa757ba",
-    "tsc/internal/checker/flow.go": "d06e74a5593faf7d804e58abc17311ca9ed48aeff689ddaaf8f539589978ff91",
+    "tsc/internal/ast/utilities.go": "5db1fb050a4436f35e8a9978b65bbdefd9dbb421ec3f5b1da3b5183d8bbb1fa3",
+    "tsc/internal/binder/binder.go": "ac4ecfd63124832fe534b20b61e320ab3500036d80ed7ab3aeb2b8bdf5b5b872",
+    "tsc/internal/checker/checker.go": "56db43602e58a0b2133896d4c2f168a5430dcf03f34c8aaaaf1abd5adf14cb4e",
     "tsc/internal/checker/utilities.go": "c0936f7bc3efce6db1127001378c72da3212cf671136e865dd0e14b5ac094de9",
-    "tsc/internal/ls/completions.go": "c4e188cf698c587440c4fffb60d14330b589a86eabc110c3d4f698310bb6a809",
-    "tsc/internal/parser/parser.go": "c117a5ea6fc08362c8e8223ccb50680b771fe69d17d8b33101fe13f3fb40521d",
+    "tsc/internal/parser/parser.go": "0ef536a4feef373e013333c5dfbb7bef158b89bc86f932e41c4d415972166803",
     "tsc/internal/printer/emitcontext.go": "847f497342831031fa564e354db9b0237bddaea83c5e3ab80a1b6d6fb1d77fde",
-    "tsc/internal/printer/factory.go": "5bd4825aac9bb5f93e026038565e60d59368144dc9e6aa6f142c103ee45b3aca",
-    "tsc/internal/printer/printer.go": "22d93fef657407909a1079b7cbc8522214bfbe3763384abcb7f2365fda7294f4",
-    "tsc/internal/scanner/scanner.go": "875dc907194b473fa842760a3234e054040c043f664c811582ac10abfb854a76",
+    "tsc/internal/printer/printer.go": "f75dec9b28d594731dc47b249f846f0190ea74a1bef3ff6e8c028be5c941af3f",
     "tsc/internal/transformers/estransforms/esdecorator.go": "ef96bcd40b1e471b369e76c669a2a848003e305e679857e4af28d96848419b60",
     "tsc/internal/transformers/estransforms/forawait.go": "e77460454cc9cb34096c9a0b58e81c85555f2c8c0f1ff05755e29b94bf2a037c",
     "tsc/internal/transformers/estransforms/objectrestspread.go": "733f2b9e7c93731ec8559a91112a9e52b80cb1b8336a35765b4c5f583ca47994",
     "tsc/internal/transformers/estransforms/using.go": "2e6e359c113840f3e14b73460cf56edbfc926ba3c3e08d7b752c9a930371d240",
-    "tsc/internal/transformers/moduletransforms/commonjsmodule.go": "605793c5aeac07478044980a1735c6cefcd98956aa69ed364d09902d54bb1517",
-    "tsc/internal/transformers/utilities.go": "a0260311031997e01232e66db79dbad02a472a61140db95297a3a3c1c80ced4c",
-    "tsc/internal/checker/smithers_grammar_test.go": "b5cc0c47823eeb4311f296ce0fc7d5f32052da4396e3a698074f366fd3644c3f",
-    "tsc/internal/printer/smithers_grammar_test.go": "0fcfccc9fa256975ce9491a303a16df54d7bb7d4a4039db8565b89a971e0748e"
+    "tsc/internal/transformers/moduletransforms/commonjsmodule.go": "58dc3a587d98d92d38390a40a117a9474094b0287a2fcec159c6081c17151e7b",
+    "tsc/internal/checker/smithers_grammar_test.go": "c6ddecd5c1c3e5102f93578603f899da369279aeaa0fa61db21f7d653825f625",
+    "tsc/internal/printer/smithers_grammar_test.go": "7a2998ff75d15dacd27122881a2e6bdf06a8571fdcfcb5a5339bae304bb1c028"
   }
 }

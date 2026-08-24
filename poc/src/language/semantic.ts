@@ -15,14 +15,6 @@ import type {
   ProjectSource,
 } from "./model.ts";
 import {
-  collectControlFlowExpressionPlans,
-  controlFlowValueExpression,
-  type ControlFlowExpressionPlan,
-  type ControlFlowPlanCollection,
-  type DerivedLabeledValue,
-  type DerivedLoopValue,
-} from "./control-flow.ts";
-import {
   recoverSmithersSyntax,
   scanTokens as scanRecoveryTokens,
   tokenEndsExpression,
@@ -52,7 +44,6 @@ interface Result<A, E extends Error> {
   recover<B>(fn: (error: E) => B): Result<A | B, never>
   tap(fn: (value: A) => unknown): Result<A, E>
   tapError(fn: (error: E) => unknown): Result<A, E>
-  unwrap(): A
   unwrapOr(value: A): A
   expect(message: string): A
 }
@@ -62,25 +53,6 @@ declare const Result: {
   try<A, E extends Error>(body: () => A, mapper: (cause: unknown) => E): Result<A, E | Panic>
   tryPromise<A>(body: () => PromiseLike<A>): Promise<Result<A, Panic>>
   tryPromise<A, E extends Error>(body: () => PromiseLike<A>, mapper: (cause: unknown) => E): Promise<Result<A, E | Panic>>
-}
-
-interface Optional<A> {
-  readonly __smithersOptional: { readonly value: A }
-  isSome(): boolean
-  isNone(): boolean
-  match<B>(handlers: { some(value: A): B; none(): B }): B
-  map<B>(fn: (value: A) => B): Optional<B>
-  andThen<B>(fn: (value: A) => Optional<B>): Optional<B>
-  filter(fn: (value: A) => boolean): Optional<A>
-  tap(fn: (value: A) => unknown): Optional<A>
-  unwrap(): A
-  unwrapOr(value: A): A
-  toResult<E extends Error>(error: E): Result<A, E>
-  toNullable(): A | null
-}
-declare const Optional: {
-  fromNullable<A>(value: A | null | undefined): Optional<A>
-  all<const T extends readonly Optional<unknown>[]>(values: T): Optional<unknown>
 }
 
 declare class Panic extends Error { readonly cause?: unknown }
@@ -117,9 +89,6 @@ declare module "smithers:exceptions" {
   export function panic(cause?: unknown): never
 }
 
-declare module "smithers:native" {
-  export function native<F extends (...args: never[]) => unknown>(pinned: F): F
-}
 `;
 
 export interface TypeShape {
@@ -171,12 +140,6 @@ export interface ProvideEdge {
   readonly complete: boolean;
 }
 
-export interface DeferPlan {
-  readonly kind: "defer" | "errdefer";
-  readonly marker: ts.ExpressionStatement;
-  readonly cleanup: ts.ExpressionStatement;
-}
-
 export interface SemanticFunction {
   readonly node: ts.FunctionLikeDeclaration;
   readonly name: string;
@@ -196,7 +159,7 @@ export interface SemanticFunction {
   readonly expectCalls: ts.CallExpression[];
   /** Inline callbacks of authored `Result.try`/`tryPromise` boundary calls in this body. */
   readonly boundaryCallbacks: SemanticFunction[];
-  hasResultUnwrap: boolean;
+  hasResultPropagation: boolean;
 }
 
 export interface SemanticModel {
@@ -212,10 +175,6 @@ export interface SemanticModel {
   readonly functions: readonly SemanticFunction[];
   readonly functionByNode: ReadonlyMap<ts.Node, SemanticFunction>;
   readonly callEdges: ReadonlyMap<ts.CallExpression, CallEdge>;
-  readonly deferPlans: ReadonlyMap<ts.ExpressionStatement, DeferPlan>;
-  readonly controlFlowPlans: ReadonlyMap<ts.Statement, ControlFlowExpressionPlan>;
-  /** Default-less switch expression plans with proven closed-union coverage. */
-  readonly exhaustiveSwitches: ReadonlySet<ts.SwitchStatement>;
   readonly diagnostics: readonly Diagnostic[];
   readonly errors: readonly ErrorDeclaration[];
   readonly rows: Readonly<Record<string, FunctionRows>>;
@@ -229,50 +188,12 @@ export interface PendingDiagnostic {
   readonly start: number;
 }
 
-/** Map authored labeled-value coordinates into the derived parse tree. */
-function derivedLabeledValues(recovery: RecoveredSource): readonly DerivedLabeledValue[] {
-  const derived: DerivedLabeledValue[] = [];
-  for (const labeled of recovery.labeledValues) {
-    const labelStart = recovery.toDerived(labeled.labelStart);
-    const valueStarts = labeled.valueStarts.map((offset) => recovery.toDerived(offset));
-    if (labelStart === undefined || valueStarts.some((offset) => offset === undefined)) continue;
-    derived.push({ labelStart, markerName: labeled.markerName, valueStarts: valueStarts as number[] });
-  }
-  return derived;
-}
-
-/** Map authored loop-value coordinates into the derived parse tree. */
-function derivedLoopValues(recovery: RecoveredSource): readonly DerivedLoopValue[] {
-  const derived: DerivedLoopValue[] = [];
-  for (const loop of recovery.loopValues) {
-    const loopLabelStart = recovery.toDerived(loop.loopLabelStart);
-    const elseStart = recovery.toDerived(loop.elseStart);
-    const valueStarts = loop.valueStarts.map((offset) => recovery.toDerived(offset));
-    if (loopLabelStart === undefined || elseStart === undefined ||
-      valueStarts.some((offset) => offset === undefined)) continue;
-    derived.push({ loopLabelStart, markerName: loop.markerName, valueStarts: valueStarts as number[], elseStart });
-  }
-  return derived;
-}
-
 export function buildSemanticModel(source: string, options: AnalyzeOptions = {}): SemanticModel {
   const recovery = recoverSmithersSyntax(source);
   const environment = createProgram(recovery.parseSource, options.fileName);
   const { sourceFile, checker } = environment;
   const pending: PendingDiagnostic[] = [];
-  const controlFlow = collectControlFlowExpressionPlans(
-    recovery.parseSource,
-    sourceFile,
-    derivedLabeledValues(recovery),
-    derivedLoopValues(recovery),
-    checker,
-  );
-  for (const diagnostic of controlFlow.diagnostics) {
-    pending.push({ severity: "error", ...diagnostic });
-  }
-
-  checkRemovedAndUnsupportedSyntax(recovery.parseSource, sourceFile, checker, controlFlow, recovery, pending);
-  verifyOrderAssumptions(recovery, sourceFile, checker, pending);
+  checkRemovedAndUnsupportedSyntax(recovery.parseSource, sourceFile, checker, recovery, pending);
 
   const functions = collectFunctions(sourceFile, checker);
   const functionByNode = new Map<ts.Node, SemanticFunction>();
@@ -285,9 +206,7 @@ export function buildSemanticModel(source: string, options: AnalyzeOptions = {})
   }
 
   checkForeignValueBoundaries(sourceFile, checker, pending, callEdges, functionByNode);
-  checkControlFlowExpressionValues(controlFlow, sourceFile, checker, callEdges, pending);
   inferRows(functions, checker, callEdges);
-  const deferPlans = checkDeferStatements(sourceFile, checker, functions, functionByNode, callEdges, pending);
   checkFunctionContracts(functions, checker, pending);
   checkLayerSatisfaction(sourceFile, functions, functionByNode, layerBindings, checker, pending);
   checkCallbackOwnership(sourceFile, functions, functionByNode, callEdges, checker, pending);
@@ -323,9 +242,6 @@ export function buildSemanticModel(source: string, options: AnalyzeOptions = {})
     functions,
     functionByNode,
     callEdges,
-    deferPlans,
-    controlFlowPlans: controlFlow.byHost,
-    exhaustiveSwitches: controlFlow.exhaustiveSwitches,
     diagnostics,
     errors,
     rows,
@@ -365,23 +281,10 @@ export function buildSemanticProjectModels(
   // Nominal row identities must exist before any row member is minted.
   rowNamingByChecker.set(checker, buildRowNaming(environment.entries, checker));
   const pendingByFile = new Map<ts.SourceFile, PendingDiagnostic[]>();
-  const controlFlowByFile = new Map<ts.SourceFile, ControlFlowPlanCollection>();
   for (const entry of environment.entries) {
     const pending: PendingDiagnostic[] = [];
     pendingByFile.set(entry.sourceFile, pending);
-    const controlFlow = collectControlFlowExpressionPlans(
-      entry.source,
-      entry.sourceFile,
-      derivedLabeledValues(entry.recovery),
-      derivedLoopValues(entry.recovery),
-      checker,
-    );
-    controlFlowByFile.set(entry.sourceFile, controlFlow);
-    for (const diagnostic of controlFlow.diagnostics) {
-      pending.push({ severity: "error", ...diagnostic });
-    }
-    checkRemovedAndUnsupportedSyntax(entry.source, entry.sourceFile, checker, controlFlow, entry.recovery, pending);
-    verifyOrderAssumptions(entry.recovery, entry.sourceFile, checker, pending);
+    checkRemovedAndUnsupportedSyntax(entry.source, entry.sourceFile, checker, entry.recovery, pending);
   }
 
   const functions = environment.entries.flatMap((entry) => collectFunctions(entry.sourceFile, checker));
@@ -417,27 +320,11 @@ export function buildSemanticProjectModels(
       callEdges,
       functionByNode,
     );
-    checkControlFlowExpressionValues(
-      controlFlowByFile.get(entry.sourceFile)!,
-      entry.sourceFile,
-      checker,
-      callEdges,
-      pendingByFile.get(entry.sourceFile)!,
-    );
   }
   inferRows(functions, checker, callEdges);
-  const deferPlans = new Map<ts.ExpressionStatement, DeferPlan>();
   for (const entry of environment.entries) {
     const pending = pendingByFile.get(entry.sourceFile)!;
     const fileFunctions = functions.filter((fn) => fn.node.getSourceFile() === entry.sourceFile);
-    for (const [marker, plan] of checkDeferStatements(
-      entry.sourceFile,
-      checker,
-      fileFunctions,
-      functionByNode,
-      callEdges,
-      pending,
-    )) deferPlans.set(marker, plan);
     checkFunctionContracts(fileFunctions, checker, pending);
     checkLayerSatisfaction(entry.sourceFile, functions, functionByNode, layerBindings, checker, pending);
     checkCallbackOwnership(entry.sourceFile, functions, functionByNode, callEdges, checker, pending);
@@ -482,9 +369,6 @@ export function buildSemanticProjectModels(
       functions: fileFunctions,
       functionByNode,
       callEdges,
-      deferPlans,
-      controlFlowPlans: controlFlowByFile.get(entry.sourceFile)!.byHost,
-      exhaustiveSwitches: controlFlowByFile.get(entry.sourceFile)!.exhaustiveSwitches,
       diagnostics: analysis.diagnostics,
       errors: analysis.errors,
       rows: analysis.rows,
@@ -1168,7 +1052,7 @@ function checkForeignValueBoundaries(
           ));
           recordForeignBoundary(owner, { kind: "panic", async: false, lowerable: false });
         }
-      } else if (!edge?.panicExit && !isSyntheticResultUnwrap(node, checker)) {
+      } else if (!edge?.panicExit) {
         for (const argument of node.arguments) {
           if (!containsForeignExecutableValue(argument, checker, callEdges)) continue;
           diagnostics.push(at(
@@ -1297,8 +1181,8 @@ function foreignAccessIsCovered(
   for (let parent = current.parent; parent; current = parent, parent = parent.parent) {
     if (isSupportedFunctionLike(parent)) return false;
     if (ts.isNewExpression(parent) && parent.expression === current) return current === access;
+    if (ts.isNonNullExpression(parent) && parent.expression === current) return true;
     if (ts.isCallExpression(parent)) {
-      if (isSyntheticResultUnwrap(parent, checker) && parent.expression === current) return true;
       const foreign = callEdges.get(parent)?.foreign;
       if (!foreign) return false;
       if (parent.expression === current && current === access) return true;
@@ -1514,7 +1398,7 @@ function collectFunctions(sourceFile: ts.SourceFile, checker: ts.TypeChecker): S
         provides: [],
         expectCalls: [],
         boundaryCallbacks: [],
-        hasResultUnwrap: false,
+        hasResultPropagation: false,
       });
     }
     ts.forEachChild(node, visit);
@@ -1562,16 +1446,12 @@ export function shapeOfType(type: ts.Type, checker: ts.TypeChecker): TypeShape {
   if (name === "Result") {
     const success = arguments_[0];
     const error = arguments_[1];
-    const inner = success ? shapeOfType(success, checker) : undefined;
     return {
-      channel: inner?.channel === "optional" ? "result-optional" : "result",
+      channel: "result",
       async: false,
       failures: error ? errorNames(error, checker) : new Set(["Error"]),
       successType: success,
     };
-  }
-  if (name === "Optional") {
-    return { channel: "optional", async: false, failures: new Set(), successType: arguments_[0] };
   }
   return { channel: "plain", async: false, failures: new Set(), successType: type };
 }
@@ -1850,13 +1730,6 @@ function collectFacts(
         if (callback) fn.boundaryCallbacks.push(callback);
       }
 
-      if (isResultUnwrap(node, checker, callEdges)) {
-        fn.hasResultUnwrap = true;
-        const receiver = (node.expression as ts.PropertyAccessExpression).expression;
-        const shape = semanticExpressionShape(receiver, checker, callEdges);
-        for (const failure of shape.failures) fn.directFailures.add(failure);
-      }
-
       if (isLayerCall(node, checker, "provide")) {
         const layer = node.arguments[0];
         const callback = node.arguments[1];
@@ -1883,6 +1756,34 @@ function collectFacts(
     }
 
     ts.forEachChild(node, (child) => visit(child, caughtByJavaScript));
+  };
+  visit(body);
+  collectResultPropagations(body, fn, checker, callEdges);
+}
+
+/**
+ * Collect postfix propagation only after call edges for the whole function are
+ * available. A foreign or inferred-fallible call still has its authored
+ * TypeScript success type, so inspecting a `NonNullExpression` during the
+ * pre-order call walk would miss exactly the Result shape the semantic graph
+ * supplies.
+ */
+function collectResultPropagations(
+  body: ts.ConciseBody,
+  fn: SemanticFunction,
+  checker: ts.TypeChecker,
+  callEdges: ReadonlyMap<ts.CallExpression, CallEdge>,
+): void {
+  const visit = (node: ts.Node): void => {
+    if (node !== body && isSupportedFunctionLike(node)) return;
+    if (ts.isNonNullExpression(node)) {
+      const shape = semanticExpressionShape(node.expression, checker, callEdges);
+      if (shape.channel.startsWith("result")) {
+        fn.hasResultPropagation = true;
+        for (const failure of shape.failures) fn.directFailures.add(failure);
+      }
+    }
+    ts.forEachChild(node, visit);
   };
   visit(body);
 }
@@ -1939,27 +1840,26 @@ function callPropagates(
   let current: ts.Node = call;
   let parent = current.parent;
   while (parent && (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) ||
-    ts.isTypeAssertionExpression(parent) || ts.isNonNullExpression(parent) || ts.isAwaitExpression(parent))) {
+    ts.isTypeAssertionExpression(parent) || ts.isAwaitExpression(parent))) {
     current = parent;
     parent = parent.parent;
   }
-  if (ts.isPropertyAccessExpression(parent) && parent.expression === current && parent.name.text === "unwrap" &&
-    ts.isCallExpression(parent.parent) && parent.parent.expression === parent) return true;
+  if (parent && ts.isNonNullExpression(parent) && parent.expression === current) return true;
   if (ts.isReturnStatement(parent)) return true;
-  return isReturnedOrUnwrapped(call);
+  return isReturnedOrPropagated(call);
 }
 
-function isReturnedOrUnwrapped(node: ts.Node): boolean {
+function isReturnedOrPropagated(node: ts.Node): boolean {
   let current = node;
   for (;;) {
     const parent = current.parent;
     if (!parent) return false;
-    if (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) || ts.isNonNullExpression(parent) || ts.isAwaitExpression(parent)) {
+    if (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) || ts.isAwaitExpression(parent)) {
       current = parent;
       continue;
     }
     if (ts.isReturnStatement(parent)) return true;
-    return ts.isPropertyAccessExpression(parent) && parent.expression === current && parent.name.text === "unwrap";
+    return ts.isNonNullExpression(parent) && parent.expression === current;
   }
 }
 
@@ -2040,8 +1940,8 @@ function checkFunctionContracts(
     if (fn.node.asteriskToken && hasFailures) {
       diagnostics.push(at(fn.node, fn.node.getSourceFile(), "SMITHERS1106", "fallible generators are deferred until generator/Result control-flow semantics are specified"));
     }
-    if (fn.hasResultUnwrap && !isResult && fn.bodyFailures.size === 0) {
-      diagnostics.push(at(fn.node, fn.node.getSourceFile(), "SMITHERS1202", "Result.unwrap() requires an enclosing Result-returning function"));
+    if (fn.hasResultPropagation && !isResult && fn.bodyFailures.size === 0) {
+      diagnostics.push(at(fn.node, fn.node.getSourceFile(), "SMITHERS1202", "postfix ! propagation requires an enclosing Result-returning function"));
     }
     // A row that names one of this declaration's own type parameters is a
     // template. Templates are only instantiable through a spelled `Result`
@@ -2070,8 +1970,8 @@ function checkFunctionContracts(
 function checkNestedChannels(fn: SemanticFunction, checker: ts.TypeChecker, diagnostics: PendingDiagnostic[]): void {
   if (!fn.node.type) return;
   const text = checker.typeToString(checker.getTypeFromTypeNode(fn.node.type));
-  if (/Result<\s*Result</.test(text) || /Optional<\s*Optional</.test(text)) {
-    diagnostics.push(at(fn.node.type, fn.node.getSourceFile(), "SMITHERS1203", "nested Result/Optional normalization is not specified; make the conversion explicit"));
+  if (/Result<\s*Result</.test(text)) {
+    diagnostics.push(at(fn.node.type, fn.node.getSourceFile(), "SMITHERS1203", "nested Result normalization is not specified; make the conversion explicit"));
   }
 }
 
@@ -2100,7 +2000,6 @@ function foreignPolicy(
   sourceFile: ts.SourceFile,
   diagnostics: PendingDiagnostic[],
 ): ForeignPolicy | undefined {
-  if (isSyntheticResultUnwrap(call, checker)) return undefined;
   const signature = checker.getResolvedSignature(call);
   const declaration = signature?.declaration;
   const origin = foreignValueOrigin(call.expression, checker);
@@ -2115,7 +2014,7 @@ function foreignPolicy(
       call,
       sourceFile,
       "SMITHERS1507",
-      "this foreign call/result use is not expression-order-safe in the POC; assign the checked result, unwrap it, and continue through an explicitly typed local adapter",
+      "this foreign call/result use is not expression-order-safe in the POC; assign the checked result, propagate it with postfix !, and continue through an explicitly typed local adapter",
     ));
   }
 
@@ -2140,43 +2039,32 @@ function foreignPolicy(
   return { kind: "declared", errorName: annotation, errorValuePath, async, lowerable };
 }
 
-function isSyntheticResultUnwrap(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
-  if (!isUnwrapSyntax(call)) return false;
-  const property = call.expression as ts.PropertyAccessExpression;
-  const symbol = unalias(checker.getSymbolAtLocation(property.name), checker);
-  if (symbol?.declarations?.some((declaration) => isCompilerPrelude(declaration.getSourceFile()))) return true;
-  // Real foreign methods named `unwrap` retain their checker symbol and remain
-  // ordinary foreign calls. `any.unwrap()` also lacks a symbol, so the pseudo
-  // operation additionally requires a value produced by an unchecked foreign
-  // call (the value that lowering will actually turn into Result).
-  return !symbol &&
-    foreignValueOrigin(property.expression, checker)?.uncheckedResult === true;
-}
-
 function isStableForeignCallee(expression: ts.Expression, checker: ts.TypeChecker): boolean {
   if (ts.isParenthesizedExpression(expression) || ts.isAsExpression(expression) ||
-    ts.isTypeAssertionExpression(expression) || ts.isNonNullExpression(expression)) {
+    ts.isTypeAssertionExpression(expression)) {
     return isStableForeignCallee(expression.expression, checker);
   }
+  // A postfix propagation boundary turns a checked foreign Result back into
+  // its callable success value. The operator is recognized from its AST kind;
+  // there is no member spelling whose text could be forged or shadowed.
+  if (ts.isNonNullExpression(expression)) return true;
   if (ts.isIdentifier(expression)) return true;
   if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
     return isStableForeignCallee(expression.expression, checker);
   }
-  return ts.isCallExpression(expression) && isSyntheticResultUnwrap(expression, checker);
+  return false;
 }
 
-/** Prevent emitting `Result.try(() => make())(...)` before the checked result is unwrapped. */
+/** Prevent emitting `Result.try(() => make())(...)` before the checked result is propagated. */
 function foreignResultIsUsedAsValue(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
   let current: ts.Node = call;
   let parent = current.parent;
   while (parent && (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) ||
-    ts.isTypeAssertionExpression(parent) || ts.isNonNullExpression(parent) || ts.isAwaitExpression(parent))) {
+    ts.isTypeAssertionExpression(parent) || ts.isAwaitExpression(parent))) {
     current = parent;
     parent = parent.parent;
   }
-  if (ts.isPropertyAccessExpression(parent) && parent.expression === current &&
-    ts.isCallExpression(parent.parent) && parent.parent.expression === parent &&
-    isSyntheticResultUnwrap(parent.parent, checker)) return false;
+  if (parent && ts.isNonNullExpression(parent) && parent.expression === current) return false;
   if (ts.isCallExpression(parent) || ts.isNewExpression(parent)) return true;
   if ((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === current) return true;
   if (ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken && parent.right === current) return true;
@@ -2322,7 +2210,7 @@ interface ForeignValueOrigin {
   readonly moduleName: string;
   /** ESM namespace reads are safe live-binding selection, not user accessors. */
   readonly namespaceObject: boolean;
-  /** The value is the success of a call that will lower to Result and has not been unwrapped. */
+  /** The value is the success of a call that will lower to Result and has not been propagated. */
   readonly uncheckedResult: boolean;
 }
 
@@ -2332,9 +2220,12 @@ function foreignValueOrigin(
   seenSymbols = new Set<ts.Symbol>(),
 ): ForeignValueOrigin | undefined {
   if (ts.isParenthesizedExpression(expression) || ts.isAsExpression(expression) ||
-    ts.isTypeAssertionExpression(expression) || ts.isNonNullExpression(expression) ||
-    ts.isAwaitExpression(expression)) {
+    ts.isTypeAssertionExpression(expression) || ts.isAwaitExpression(expression)) {
     return foreignValueOrigin(expression.expression, checker, seenSymbols);
+  }
+  if (ts.isNonNullExpression(expression)) {
+    const origin = foreignValueOrigin(expression.expression, checker, seenSymbols);
+    return origin && { ...origin, namespaceObject: false, uncheckedResult: false };
   }
 
   if (ts.isIdentifier(expression)) {
@@ -2386,10 +2277,6 @@ function foreignValueOrigin(
   }
 
   if (ts.isCallExpression(expression)) {
-    if (isSyntheticResultUnwrap(expression, checker)) {
-      const receiver = foreignValueOrigin((expression.expression as ts.PropertyAccessExpression).expression, checker, seenSymbols);
-      return receiver && { ...receiver, namespaceObject: false, uncheckedResult: false };
-    }
     const origin = foreignValueOrigin(expression.expression, checker, seenSymbols);
     if (!origin) return undefined;
     const annotation = readThrowsAnnotation(checker.getResolvedSignature(expression)?.declaration, checker);
@@ -2769,20 +2656,7 @@ function checkCallbackOwnership(
         const ownedBoundaryBody = node.arguments[0] === argument &&
           ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "tryPromise" &&
           isPreludeResultBoundaryCall(node, checker);
-        // `native(fn)` is a compile-time assertion over the referenced
-        // function's dependency graph: the intrinsic receives the reference,
-        // checks it, and returns it unchanged. It never invokes the argument,
-        // so no Promise is started and this rule — which DECISIONS
-        // 'Concurrency' and requirements.mdx 'Scoping' both scope to every
-        // STARTED Promise — has nothing to own. Refusing the pin here would
-        // make it inapplicable to EVERY async function, which is the
-        // I/O-shaped code whose portability the pin exists to certify, and
-        // compatibility.mdx 'Native and Wasm Targets' is explicit that async
-        // functions MUST NOT be rejected solely because runtime support is
-        // required. The pin is recognized by prelude symbol identity, so a
-        // locally declared `function native(...)` keeps the ordinary rule.
-        const nativePinSubject = node.arguments[0] === argument && isNativePinCall(node, checker);
-        if (!consumedProvide && !ownedBoundaryBody && !nativePinSubject) {
+        if (!consumedProvide && !ownedBoundaryBody) {
           diagnostics.push(at(
             argument,
             sourceFile,
@@ -2814,8 +2688,23 @@ export function semanticExpressionShape(
   seenSymbols = new Set<ts.Symbol>(),
 ): TypeShape {
   if (ts.isParenthesizedExpression(expression) || ts.isAsExpression(expression) ||
-    ts.isTypeAssertionExpression(expression) || ts.isNonNullExpression(expression)) {
+    ts.isTypeAssertionExpression(expression)) {
     return semanticExpressionShape(expression.expression, checker, callEdges, seenSymbols);
+  }
+  if (ts.isNonNullExpression(expression)) {
+    const operand = semanticExpressionShape(expression.expression, checker, callEdges, seenSymbols);
+    if (operand.channel.startsWith("result")) {
+      return {
+        channel: "plain",
+        async: false,
+        failures: new Set(),
+        successType: operand.successType,
+      };
+    }
+    // The validation pass reports SMITHERS1207 for this removed TypeScript
+    // assertion meaning. Preserve the operand shape here so no later analysis
+    // can accidentally treat the invalid assertion as a successful extraction.
+    return operand;
   }
   if (ts.isAwaitExpression(expression)) {
     const inner = semanticExpressionShape(expression.expression, checker, callEdges, seenSymbols);
@@ -2839,18 +2728,6 @@ export function semanticExpressionShape(
       addForeignFailures(failures, edge.foreign);
       return { channel: "result", async: edge.foreign.async, failures, successType: original.successType };
     }
-    if (isUnwrapSyntax(expression)) {
-      const receiver = (expression.expression as ts.PropertyAccessExpression).expression;
-      const receiverShape = semanticExpressionShape(receiver, checker, callEdges, seenSymbols);
-      if (receiverShape.channel === "result" || receiverShape.channel === "result-optional") {
-        return {
-          channel: receiverShape.channel === "result-optional" ? "optional" : "plain",
-          async: false,
-          failures: new Set(),
-          successType: receiverShape.successType,
-        };
-      }
-    }
   }
   if (ts.isIdentifier(expression)) {
     const symbol = unalias(checker.getSymbolAtLocation(expression), checker);
@@ -2869,38 +2746,29 @@ export function expressionShape(expression: ts.Expression, model: SemanticModel)
   return semanticExpressionShape(expression, model.checker, model.callEdges);
 }
 
-export function isResultUnwrapExpression(call: ts.CallExpression, model: SemanticModel): boolean {
-  if (!isUnwrapSyntax(call)) return false;
-  const receiver = (call.expression as ts.PropertyAccessExpression).expression;
-  return semanticExpressionShape(receiver, model.checker, model.callEdges).channel.startsWith("result");
+export function isResultPropagationExpression(
+  expression: ts.NonNullExpression,
+  model: SemanticModel,
+): boolean {
+  return semanticExpressionShape(expression.expression, model.checker, model.callEdges).channel.startsWith("result");
 }
 
-function isResultUnwrap(
+function isResultPropagation(
+  expression: ts.NonNullExpression,
+  checker: ts.TypeChecker,
+  callEdges: ReadonlyMap<ts.CallExpression, CallEdge>,
+): boolean {
+  return semanticExpressionShape(expression.expression, checker, callEdges).channel.startsWith("result");
+}
+
+function isRetiredResultUnwrap(
   call: ts.CallExpression,
   checker: ts.TypeChecker,
   callEdges: ReadonlyMap<ts.CallExpression, CallEdge>,
 ): boolean {
-  if (!isUnwrapSyntax(call)) return false;
-  const receiver = (call.expression as ts.PropertyAccessExpression).expression;
-  return semanticExpressionShape(receiver, checker, callEdges).channel.startsWith("result");
-}
-
-function isUnwrapSyntax(call: ts.CallExpression): boolean {
-  return ts.isPropertyAccessExpression(call.expression) && call.expression.name.text === "unwrap" && call.arguments.length === 0;
-}
-
-export function isOptionalUnwrapExpression(call: ts.CallExpression, model: SemanticModel): boolean {
-  return isOptionalUnwrap(call, model.checker, model.callEdges);
-}
-
-function isOptionalUnwrap(
-  call: ts.CallExpression,
-  checker: ts.TypeChecker,
-  callEdges: ReadonlyMap<ts.CallExpression, CallEdge>,
-): boolean {
-  if (!isUnwrapSyntax(call)) return false;
-  const receiver = (call.expression as ts.PropertyAccessExpression).expression;
-  return semanticExpressionShape(receiver, checker, callEdges).channel === "optional";
+  if (!ts.isPropertyAccessExpression(call.expression) || call.expression.name.text !== "unwrap" ||
+    call.arguments.length !== 0) return false;
+  return semanticExpressionShape(call.expression.expression, checker, callEdges).channel.startsWith("result");
 }
 
 function isExpectSyntax(call: ts.CallExpression): boolean {
@@ -2930,27 +2798,6 @@ function isPreludeResultBoundaryCall(call: ts.CallExpression, checker: ts.TypeCh
   if (!ts.isIdentifier(receiver) || receiver.text !== "Result") return false;
   const symbol = unalias(checker.getSymbolAtLocation(receiver), checker);
   return Boolean(symbol?.declarations?.some((declaration) => isCompilerPrelude(declaration.getSourceFile())));
-}
-
-/**
- * An authored `native(fn)` pin on the compiler-owned `smithers:native`
- * intrinsic.
- *
- * Authority is checker symbol identity against this analyzer's own prelude —
- * the same rule `poc/src/targets/classify.ts` applies — so a renamed import or
- * a namespace read still pins, and a locally declared `function native(...)`,
- * or a `native` exported by any installed package, resolves elsewhere and pins
- * nothing.
- */
-function isNativePinCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
-  const symbol = unalias(checker.getSymbolAtLocation(call.expression), checker);
-  return Boolean(symbol?.declarations?.some((declaration) => {
-    if (!ts.isFunctionDeclaration(declaration) || declaration.name?.text !== "native") return false;
-    if (!isCompilerPrelude(declaration.getSourceFile())) return false;
-    const block = declaration.parent;
-    return ts.isModuleBlock(block) && ts.isModuleDeclaration(block.parent) &&
-      ts.isStringLiteral(block.parent.name) && block.parent.name.text === "smithers:native";
-  }));
 }
 
 /** The inline callback whose body an authored `Result.try`/`tryPromise` boundary owns. */
@@ -2986,7 +2833,7 @@ function checkMustConsume(
       if (kind !== "plain" && !producerConsumed(node, kind, checker, callEdges)) {
         diagnostics.push(at(node, sourceFile, kind === "result" ? "SMITHERS1301" : "SMITHERS1402",
           kind === "result"
-            ? "Result value is not consumed; return, match, transform, inspect, or unwrap it"
+            ? "Result value is not consumed; return, match, transform, inspect, or propagate it with postfix !"
             : "started Promise is not consumed with await, return, or an awaited recognized combinator"));
       }
     }
@@ -2999,7 +2846,7 @@ function checkMustConsume(
       const awaited = semanticExpressionShape(node.expression, checker, callEdges);
       if (awaited.async && awaited.channel.startsWith("result") &&
         !producerConsumed(node, "result", checker, callEdges)) {
-        diagnostics.push(at(node, sourceFile, "SMITHERS1301", "await removes only Promise; the resulting Result must still be returned, matched, transformed, inspected, or unwrapped"));
+        diagnostics.push(at(node, sourceFile, "SMITHERS1301", "await removes only Promise; the resulting Result must still be returned, matched, transformed, inspected, or propagated with postfix !"));
       }
     }
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
@@ -3028,32 +2875,38 @@ function checkMustConsume(
         }
       }
     }
-    if (ts.isCallExpression(node) && isUnwrapSyntax(node)) {
+    if (ts.isNonNullExpression(node)) {
       const owner = nearestFunction(node);
       const info = owner && functionByNode.get(owner);
-      if (isResultUnwrap(node, checker, callEdges)) {
+      if (isResultPropagation(node, checker, callEdges)) {
         if (!info || (!info.declaredShape.channel.startsWith("result") && info.failures.size === 0)) {
-          diagnostics.push(at(node, sourceFile, "SMITHERS1202", "Result.unwrap() requires an enclosing Result-returning function"));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1202", "postfix ! propagation requires an enclosing Result-returning function"));
         } else if (isInRepeatedLoopHeader(node)) {
-          diagnostics.push(at(node, sourceFile, "SMITHERS1703", "Result.unwrap() in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or unwrap inside its body"));
-        } else if (!isSafeUnwrapPlacement(node)) {
-          diagnostics.push(at(node, sourceFile, "SMITHERS1204", "Result.unwrap() in this expression would require control-flow-aware evaluation-order rewriting; assign the Result to a local and unwrap it in a simple statement"));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1703", "postfix ! propagation in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or propagate inside its body"));
+        } else if (!isSafePropagationPlacement(node)) {
+          diagnostics.push(at(node, sourceFile, "SMITHERS1204", "postfix ! in this expression would require control-flow-aware evaluation-order rewriting; assign the Result to a local and propagate it in a simple statement"));
         }
-      } else if (isOptionalUnwrap(node, checker, callEdges)) {
-        const channel = info ? effectiveChannel(info) : undefined;
-        if (channel !== "optional" && channel !== "result-optional") {
-          diagnostics.push(at(node, sourceFile, "SMITHERS1206", "Optional.unwrap() requires an enclosing Optional-returning (or Result<Optional>-returning) function so absence can propagate; use unwrapOr/match or convert with toResult"));
-        } else if (isInRepeatedLoopHeader(node)) {
-          diagnostics.push(at(node, sourceFile, "SMITHERS1703", "Optional.unwrap() in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or unwrap inside its body"));
-        } else if (!isSafeUnwrapPlacement(node)) {
-          diagnostics.push(at(node, sourceFile, "SMITHERS1204", "Optional.unwrap() in this expression would require control-flow-aware evaluation-order rewriting; assign the Optional to a local and unwrap it in a simple statement"));
-        }
+      } else {
+        diagnostics.push(at(
+          node,
+          sourceFile,
+          "SMITHERS1207",
+          "postfix ! requires a Result operand; TypeScript non-null assertions are unavailable in .sm",
+        ));
       }
+    }
+    if (ts.isCallExpression(node) && isRetiredResultUnwrap(node, checker, callEdges)) {
+      diagnostics.push(at(
+        node,
+        sourceFile,
+        "SMITHERS1206",
+        "Result.unwrap() is no longer the propagation spelling; use postfix !",
+      ));
     }
     if (ts.isCallExpression(node) && isResultExpectCall(node, checker, callEdges)) {
       if (isInRepeatedLoopHeader(node)) {
         diagnostics.push(at(node, sourceFile, "SMITHERS1703", "Result.expect() in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or expect inside its body"));
-      } else if (!isSafeUnwrapPlacement(node)) {
+      } else if (!isSafePropagationPlacement(node)) {
         diagnostics.push(at(node, sourceFile, "SMITHERS1204", "Result.expect() in this expression would require control-flow-aware evaluation-order rewriting; assign the Result to a local and expect it in a simple statement"));
       }
     }
@@ -3089,7 +2942,10 @@ function producerConsumed(
   for (;;) {
     const parent = current.parent;
     if (!parent) return false;
-    if (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) || ts.isTypeAssertionExpression(parent) || ts.isNonNullExpression(parent)) {
+    if (ts.isNonNullExpression(parent) && parent.expression === current) {
+      return kind === "result";
+    }
+    if (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) || ts.isTypeAssertionExpression(parent)) {
       current = parent;
       continue;
     }
@@ -3107,6 +2963,9 @@ function producerConsumed(
       return false;
     }
     if (kind === "result") {
+      if (ts.isPropertyAccessExpression(parent) && parent.expression === current &&
+        ts.isCallExpression(parent.parent) && parent.parent.expression === parent &&
+        isRetiredResultUnwrap(parent.parent, checker, edges)) return true;
       if (isConsumedResultReceiver(current, parent)) return true;
       if (isInsideResultAll(current, checker)) return true;
       return false;
@@ -3125,7 +2984,10 @@ function referenceConsumes(
   for (;;) {
     const parent = current.parent;
     if (!parent) return false;
-    if (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) || ts.isNonNullExpression(parent)) {
+    if (ts.isNonNullExpression(parent) && parent.expression === current) {
+      return kind === "result";
+    }
+    if (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent)) {
       current = parent;
       continue;
     }
@@ -3170,7 +3032,7 @@ function referenceConsumes(
  * comes from the receiver precondition rather than from the member name.
  */
 const RESULT_CONSUMERS = new Set([
-  "isOk", "isError", "match", "map", "mapError", "andThen", "recover", "tap", "tapError", "unwrap", "unwrapOr", "expect",
+  "isOk", "isError", "match", "map", "mapError", "andThen", "recover", "tap", "tapError", "unwrapOr", "expect",
 ]);
 
 // These transformations consume a Result returned by their callback rather
@@ -3201,8 +3063,7 @@ function preludeMemberDeclaration(name: ts.MemberName, checker: ts.TypeChecker):
 
 /**
  * A member of the prelude's `Result` namespace value (`declare const Result`).
- * `Optional.all` is declared on its own value and never matches here, and
- * neither does any user object with an `all` member.
+ * A user object with an `all` member never matches here.
  */
 function isPreludeResultNamespaceMember(
   name: ts.MemberName,
@@ -3301,15 +3162,25 @@ function isPromiseType(type: ts.Type, checker: ts.TypeChecker): boolean {
   return Boolean(promisedType(type, checker));
 }
 
-function isSafeUnwrapPlacement(call: ts.CallExpression): boolean {
-  let current: ts.Node = call;
+function isSafePropagationPlacement(expression: ts.Expression): boolean {
+  let current: ts.Node = expression;
   while (current.parent && !ts.isStatement(current.parent) && !ts.isArrowFunction(current.parent)) {
     const parent = current.parent;
-    if (ts.isParenthesizedExpression(parent) || ts.isAwaitExpression(parent) || ts.isAsExpression(parent) || ts.isNonNullExpression(parent)) {
+    if (ts.isParenthesizedExpression(parent) || ts.isAwaitExpression(parent) || ts.isAsExpression(parent)) {
       current = parent;
       continue;
     }
     if (ts.isPropertyAccessExpression(parent) && parent.expression === current) {
+      current = parent;
+      continue;
+    }
+    // The specification directly requires `result!?.member ?? fallback`.
+    // Only the coalescing left operand is admitted here: hoisting from its
+    // right operand would make conditional work unconditional, and admitting
+    // other compound operators would settle the still-open precedence and
+    // evaluation-order surface by accident.
+    if (ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken &&
+      parent.left === current) {
       current = parent;
       continue;
     }
@@ -3346,7 +3217,7 @@ function isInRepeatedLoopHeader(node: ts.Node): boolean {
 }
 
 /**
- * Panic exits and unwrap propagation lower to early `return` statements. An
+ * Panic exits and postfix propagation lower to early `return` statements. An
  * enclosing JavaScript `try` with a `catch` clause would silently never see
  * them even though the authored text looks catchable, so those placements are
  * hard errors instead of silently dead catch paths.
@@ -3370,16 +3241,20 @@ function checkJavaScriptCatchBoundaries(
       if (node.finallyBlock) visit(node.finallyBlock, caughtByJavaScript);
       return;
     }
+    if (caughtByJavaScript && ts.isNonNullExpression(node) && isResultPropagation(node, checker, callEdges)) {
+      diagnostics.push(at(
+        node,
+        sourceFile,
+        "SMITHERS1205",
+        "postfix ! propagation inside a JavaScript try statement with a catch clause is not lowered because its early return would silently bypass the catch handler; move the propagation point outside the try or consume the value explicitly",
+      ));
+    }
     if (caughtByJavaScript && ts.isCallExpression(node)) {
       const construct = callEdges.get(node)?.panicExit
         ? "panic(...)"
         : isResultExpectCall(node, checker, callEdges)
           ? "Result.expect()"
-        : isResultUnwrap(node, checker, callEdges)
-          ? "Result.unwrap()"
-          : isOptionalUnwrap(node, checker, callEdges)
-            ? "Optional.unwrap()"
-            : undefined;
+          : undefined;
       if (construct) {
         diagnostics.push(at(node, sourceFile, "SMITHERS1205", `${construct} inside a JavaScript try statement with a catch clause is not lowered because its early-return propagation would silently bypass the catch handler; move the propagation point outside the try or consume the value explicitly`));
       }
@@ -3393,8 +3268,7 @@ function checkAuthoredApis(sourceFile: ts.SourceFile, checker: ts.TypeChecker, d
   const visit = (node: ts.Node): void => {
     if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression)) {
       const owner = node.expression.text;
-      if ((owner === "Result" && ["ok", "err", "error", "success"].includes(node.name.text)) ||
-        (owner === "Optional" && ["some", "none"].includes(node.name.text))) {
+      if (owner === "Result" && ["ok", "err", "error", "success"].includes(node.name.text)) {
         const symbol = checker.getSymbolAtLocation(node.expression);
         if (!symbol || symbol.declarations?.some((declaration) => isCompilerPrelude(declaration.getSourceFile()))) {
           diagnostics.push(at(node, sourceFile, "SMITHERS1201", `${owner}.${node.name.text} is a compiler hook, not an author-facing constructor; use ordinary return/throw lifting`));
@@ -3492,206 +3366,54 @@ interface ScannedToken {
   readonly end: number;
 }
 
-function checkDeferStatements(
-  sourceFile: ts.SourceFile,
-  checker: ts.TypeChecker,
-  _functions: readonly SemanticFunction[],
-  functionByNode: ReadonlyMap<ts.Node, SemanticFunction>,
-  callEdges: ReadonlyMap<ts.CallExpression, CallEdge>,
-  diagnostics: PendingDiagnostic[],
-): ReadonlyMap<ts.ExpressionStatement, DeferPlan> {
-  const plans = new Map<ts.ExpressionStatement, DeferPlan>();
-  const visit = (node: ts.Node): void => {
-    if (isDeferMarkerStatement(node)) {
-      const kind = node.expression.text as "defer" | "errdefer";
-      const ownerNode = nearestFunction(node);
-      const owner = ownerNode ? functionByNode.get(ownerNode) : undefined;
-      if (!owner || !ts.isBlock(node.parent)) {
-        diagnostics.push(at(
-          node,
-          sourceFile,
-          "SMITHERS1710",
-          `${kind} must be a direct statement in a braced function/block scope; single-statement, case-clause, labeled, and top-level placement is not lowered`,
-        ));
-      } else {
-        const statements = node.parent.statements;
-        const index = statements.indexOf(node);
-        const cleanup = statements[index + 1];
-        const sameLine = cleanup && sourceFile.getLineAndCharacterOfPosition(node.end).line ===
-          sourceFile.getLineAndCharacterOfPosition(cleanup.getStart(sourceFile)).line;
-        const paired = !node.getText(sourceFile).trimEnd().endsWith(";") && sameLine &&
-          cleanup && ts.isExpressionStatement(cleanup) && !isDeferMarkerStatement(cleanup);
-        if (!paired) {
-          diagnostics.push(at(
-            node,
-            sourceFile,
-            "SMITHERS1710",
-            `${kind} requires one cleanup expression on the same statement line (without a semicolon after ${kind}); block/declaration/missing cleanups are unsupported`,
-          ));
-        } else {
-          let valid = true;
-          if (kind === "errdefer" && !effectiveChannel(owner).startsWith("result")) {
-            diagnostics.push(at(
-              node,
-              sourceFile,
-              "SMITHERS1711",
-              "errdefer is defined only in a Result (or Promise<Result>) owner because the POC gates cleanup on an emitted Result error variant",
-            ));
-            valid = false;
-          }
-          if (!checkDeferCleanup(cleanup.expression, owner, sourceFile, checker, callEdges, diagnostics)) {
-            valid = false;
-          }
-          if (kind === "errdefer" && !checkErrdeferTail(
-            statements.slice(index + 2),
-            owner,
-            sourceFile,
-            checker,
-            callEdges,
-            diagnostics,
-          )) valid = false;
-          if (valid) plans.set(node, { kind, marker: node, cleanup });
-        }
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-  return plans;
+function startsRetiredStatement(previous: string | undefined): boolean {
+  return previous === undefined || previous === "{" || previous === "}" || previous === ";" || previous === ":";
 }
 
-function isDeferMarkerStatement(node: ts.Node): node is ts.ExpressionStatement & { readonly expression: ts.Identifier } {
-  return ts.isExpressionStatement(node) && ts.isIdentifier(node.expression) &&
-    (node.expression.text === "defer" || node.expression.text === "errdefer");
+function startsRetiredValue(tokens: readonly ScannedToken[], index: number): boolean {
+  return ["=", "return", "[", "=>", "?", "+", "-", "*", "/", "%", "&&", "||", "??"]
+    .includes(tokens[index - 1]?.text ?? "");
 }
 
-function checkDeferCleanup(
-  expression: ts.Expression,
-  owner: SemanticFunction,
-  sourceFile: ts.SourceFile,
-  checker: ts.TypeChecker,
-  callEdges: ReadonlyMap<ts.CallExpression, CallEdge>,
-  diagnostics: PendingDiagnostic[],
-): boolean {
-  const awaits: ts.AwaitExpression[] = [];
-  let unsafeChannel: ts.Node | undefined;
-  let unsafeReason: string | undefined;
-  const root = unwrapCleanupParentheses(expression);
-  const awaitedRoot = ts.isAwaitExpression(root) ? unwrapCleanupParentheses(root.expression) : undefined;
-  const visit = (node: ts.Node): void => {
-    if (unsafeChannel) return;
-    if (node !== expression && isSupportedFunctionLike(node)) return;
-    if (ts.isAwaitExpression(node)) awaits.push(node);
-    if (ts.isCallExpression(node)) {
-      if (isPanicCall(node, checker) || callEdges.get(node)?.panicExit ||
-        isResultExpectCall(node, checker, callEdges)) {
-        unsafeChannel = node;
-        unsafeReason = "panic exits";
-        return;
-      }
-      if (isResultUnwrap(node, checker, callEdges)) {
-        unsafeChannel = node;
-        unsafeReason = "Result.unwrap propagation";
-        return;
-      }
-      if (isOptionalUnwrap(node, checker, callEdges)) {
-        unsafeChannel = node;
-        unsafeReason = "Optional.unwrap propagation";
-        return;
-      }
-      const shape = semanticExpressionShape(node, checker, callEdges);
-      if (shape.channel.startsWith("result")) {
-        unsafeChannel = node;
-        unsafeReason = "a Result-producing call";
-        return;
-      }
-      if (shape.async && node !== awaitedRoot) {
-        unsafeChannel = node;
-        unsafeReason = "an unowned Promise-producing call";
-        return;
-      }
-    }
-    if (ts.isNewExpression(node) && promisedType(checker.getTypeAtLocation(node), checker)) {
-      if (node !== awaitedRoot) {
-        unsafeChannel = node;
-        unsafeReason = "an unowned Promise construction";
-        return;
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(expression);
+function isRetiredValueLabel(tokens: readonly ScannedToken[], index: number): boolean {
+  if (tokens[index]?.kind !== ts.SyntaxKind.Identifier || tokens[index + 1]?.text !== ":") return false;
+  const next = tokens[index + 2]?.text;
+  return startsRetiredValue(tokens, index) &&
+    (next === "{" || next === "while" || next === "for" || next === "do");
+}
 
-  const shape = semanticExpressionShape(expression, checker, callEdges);
-  if (!unsafeChannel && shape.channel.startsWith("result")) {
-    unsafeChannel = expression;
-    unsafeReason = "a Result value";
+function matchingTokenBackward(
+  tokens: readonly ScannedToken[],
+  closeIndex: number,
+  open: string,
+  close: string,
+): number {
+  let depth = 0;
+  for (let index = closeIndex; index >= 0; index--) {
+    if (tokens[index]?.text === close) depth++;
+    if (tokens[index]?.text === open && --depth === 0) return index;
   }
-  if (!unsafeChannel && shape.async) {
-    unsafeChannel = expression;
-    unsafeReason = "an unawaited Promise value";
-  }
-  if (!unsafeChannel && awaits.length > 0 && (!owner.async || !ts.isAwaitExpression(root) || awaits.length !== 1)) {
-    unsafeChannel = awaits[0];
-    unsafeReason = owner.async
-      ? "nested/multiple await cleanup whose evaluation order is ambiguous"
-      : "await cleanup in a non-async owner";
-  }
-  if (unsafeChannel) {
-    diagnostics.push(at(
-      unsafeChannel,
-      sourceFile,
-      "SMITHERS1712",
-      `defer cleanup contains ${unsafeReason}; cleanup failure composition is not specified, so handle it in a plain/awaited non-failing adapter before registering cleanup`,
-    ));
+  return -1;
+}
+
+/** Recognize `label: while/for (...) { ... } else value` in statement position. */
+function isRetiredLoopElse(tokens: readonly ScannedToken[], elseIndex: number): boolean {
+  if (tokens[elseIndex]?.text !== "else" || tokens[elseIndex - 1]?.text !== "}") return false;
+  const bodyOpen = matchingTokenBackward(tokens, elseIndex - 1, "{", "}");
+  if (bodyOpen < 2 || tokens[bodyOpen - 1]?.text !== ")") return false;
+  const headerOpen = matchingTokenBackward(tokens, bodyOpen - 1, "(", ")");
+  if (headerOpen < 3 || (tokens[headerOpen - 1]?.text !== "while" && tokens[headerOpen - 1]?.text !== "for")) {
     return false;
   }
-  return true;
-}
-
-function unwrapCleanupParentheses(expression: ts.Expression): ts.Expression {
-  let current = expression;
-  while (ts.isParenthesizedExpression(current) || ts.isAsExpression(current) ||
-    ts.isTypeAssertionExpression(current) || ts.isNonNullExpression(current)) current = current.expression;
-  return current;
-}
-
-function checkErrdeferTail(
-  statements: readonly ts.Statement[],
-  owner: SemanticFunction,
-  sourceFile: ts.SourceFile,
-  checker: ts.TypeChecker,
-  callEdges: ReadonlyMap<ts.CallExpression, CallEdge>,
-  diagnostics: PendingDiagnostic[],
-): boolean {
-  if (!owner.async) return true;
-  let unsafe: ts.ReturnStatement | undefined;
-  const visit = (node: ts.Node): void => {
-    if (unsafe) return;
-    if (isSupportedFunctionLike(node)) return;
-    if (ts.isReturnStatement(node) && node.expression &&
-      semanticExpressionShape(node.expression, checker, callEdges).async) {
-      unsafe = node;
-      return;
-    }
-    ts.forEachChild(node, visit);
-  };
-  for (const statement of statements) visit(statement);
-  if (!unsafe) return true;
-  diagnostics.push(at(
-    unsafe,
-    sourceFile,
-    "SMITHERS1713",
-    "async errdefer cannot inspect a directly returned Promise before finally runs; await the Result-producing expression explicitly before returning it",
-  ));
-  return false;
+  const label = headerOpen - 3;
+  return tokens[headerOpen - 2]?.text === ":" && tokens[label]?.kind === ts.SyntaxKind.Identifier &&
+    !isRetiredValueLabel(tokens, label);
 }
 
 function checkRemovedAndUnsupportedSyntax(
   source: string,
   sourceFile: ts.SourceFile,
   checker: ts.TypeChecker,
-  controlFlow: ControlFlowPlanCollection,
   recovery: RecoveredSource,
   diagnostics: PendingDiagnostic[],
 ): void {
@@ -3701,11 +3423,6 @@ function checkRemovedAndUnsupportedSyntax(
     explicitOffsets.push(token.start);
     diagnostics.push({ severity: "error", code: "SMITHERS1001", message, start: token.start });
   };
-  const unsupported = (token: ScannedToken, code: string, message: string): void => {
-    explicitOffsets.push(token.start);
-    diagnostics.push({ severity: "error", code, message, start: token.start });
-  };
-
   for (let index = 0; index < tokens.length; index++) {
     const token = tokens[index]!;
     const previous = tokens[index - 1];
@@ -3738,9 +3455,13 @@ function checkRemovedAndUnsupportedSyntax(
       // directly after a colon and neither is retired grammar.
       removed(token, "the `!T` return marker was removed; use Result<T, E>");
     }
+    if (token.text === "!" && next?.text === ":" &&
+      (previous?.kind === ts.SyntaxKind.Identifier || previous?.kind === ts.SyntaxKind.PrivateIdentifier)) {
+      removed(token, "the definite-assignment assertion x!: T is unavailable in .sm; initialize or narrow the binding explicitly");
+    }
     if (token.text === "?" && (previous?.text === ":" ||
       (previous?.text === "!" && tokens[index - 2]?.text === ":")) && next && /^[A-Za-z_$]/.test(next.text)) {
-      removed(token, "the `?T` type grammar was removed; use Optional<T>");
+      removed(token, "the `?T` type grammar was removed; use T | undefined");
     }
     if (token.text === "orelse" && previous?.text !== "." &&
       !isMemberNameOccurrence(tokens, index) &&
@@ -3748,10 +3469,10 @@ function checkRemovedAndUnsupportedSyntax(
       // `orelse` is a binary operator, so it needs both operands. `orelse` is
       // also an ordinary identifier: `const orelse = 1`, `{ orelse }`,
       // `{ orelse: 7 }`, `String(orelse)`, and `orelse()` are all legal.
-      removed(token, "the `orelse` operator was removed; use Optional.match(), map(), or unwrapOr()");
+      removed(token, "the `orelse` operator was removed; use nullish coalescing or ordinary narrowing");
     }
     if (token.text === "." && next?.text === "?") {
-      removed(token, "the `.?` postfix operator was removed; use Optional.unwrap()");
+      removed(token, "the `.?` postfix operator was removed; use optional chaining or ordinary narrowing");
     }
     if (token.text === "try" && next?.text !== "{" &&
       !isMemberNameOccurrence(tokens, index) && beginsOperand(next)) {
@@ -3759,7 +3480,7 @@ function checkRemovedAndUnsupportedSyntax(
       // word, so every other legal spelling is a property name: the public
       // `Result.try(...)` API, `{ try: adapt }`, `{ try() {} }`, and
       // `interface I { try: T }`.
-      removed(token, "the prefix `try` propagation marker was removed; use Result.unwrap()");
+      removed(token, "the prefix `try` propagation marker was removed; use postfix !");
     }
     if (token.text === "catch" && previous?.text !== "}" &&
       !isMemberNameOccurrence(tokens, index) &&
@@ -3770,27 +3491,24 @@ function checkRemovedAndUnsupportedSyntax(
       // pass, not misreported as retired grammar.
       removed(token, "the postfix catch expression was removed; recover with Result.match() or recover()");
     }
-    if ((token.text === "defer" || token.text === "errdefer") && previous?.text !== "." && next?.text !== "(") {
-      // TypeScript recovers `defer expr` as two adjacent expression statements.
-      // The semantic defer pass owns the shape diagnostic and lowering plan;
-      // suppress only the parser's expected "unexpected identifier" duplicate.
-      explicitOffsets.push(token.start);
+    if ((token.text === "defer" || token.text === "errdefer") &&
+      startsRetiredStatement(previous?.text) && next?.kind === ts.SyntaxKind.Identifier) {
+      removed(token, token.text === "defer"
+        ? "the defer statement was withdrawn; use an explicit resource-management using declaration"
+        : "the errdefer statement was withdrawn; write cleanup explicitly in the Result failure path");
     }
-    if (["if", "switch", "for", "while"].includes(token.text) && isExpressionKeyword(source, tokens, index)) {
-      if (controlFlow.recoveredKeywordStarts.has(token.start)) {
-        // The recovery parser deliberately reports a missing TS expression at
-        // this token. A checked plan owns the construct (or emitted SMITHERS1705).
-        explicitOffsets.push(token.start);
-      } else if (recovery.statementStarts.has(token.start)) {
-        // Pre-parse recovery proved this keyword begins an ordinary
-        // statement (for example after `case x:`), not a value expression.
-      } else if (recovery.rejectedStarts.has(token.start)) {
-        // Pre-parse recovery already reported a specific placement
-        // diagnostic; keep parse-noise suppression without double-reporting.
-        explicitOffsets.push(token.start);
-      } else {
-        unsupported(token, "SMITHERS1702", `${token.text} expressions require checked control-flow IR and are not emitted by this POC`);
-      }
+    if (token.text === "break" && next?.text === ":" &&
+      tokens[index + 2]?.kind === ts.SyntaxKind.Identifier && beginsOperand(tokens[index + 3])) {
+      removed(token, "the break :label value grammar was withdrawn; labeled breaks do not carry values");
+    }
+    if (isRetiredLoopElse(tokens, index)) {
+      removed(token, "the loop else completion grammar was withdrawn; loops retain TypeScript statement behavior");
+    }
+    if ((token.text === "if" || token.text === "switch") && startsRetiredValue(tokens, index)) {
+      removed(token, `expression-position ${token.text} grammar was withdrawn; use existing TypeScript expressions`);
+    }
+    if (isRetiredValueLabel(tokens, index)) {
+      removed(token, "expression-position labeled block and loop grammar was withdrawn; labels remain statements");
     }
   }
 
@@ -3801,15 +3519,9 @@ function checkRemovedAndUnsupportedSyntax(
   // position — and neither is a clause with no separator at all.
   //
   // TypeScript's parser recovers both by pretending the colon was written,
-  // which leaves the clause textually indistinguishable from `case x: v` in the
-  // tree; the only surviving signal is the parser's own "':' expected", and the
-  // proximity suppression below swallows it whenever the malformed clause is
-  // within 48 characters of a recovered `switch` expression host. That made
-  // acceptance depend on the DISTANCE from the switch keyword: `case "a"
-  // "alpha"` on the first clause of an expression switch compiled and lowered,
-  // while the same shape one clause further down was rejected. Claim the
-  // separator from the clause itself so the rule is positional-independent and
-  // holds in expression and statement position alike.
+  // leaving the recovered clause indistinguishable from `case x: v` in the
+  // tree. Re-read the separator gap so malformed ordinary switches cannot
+  // silently pass through parser recovery.
   const visitSwitchClauseGrammar = (node: ts.Node): void => {
     if (ts.isCaseClause(node) || ts.isDefaultClause(node)) {
       const separator = clauseSeparatorDefect(node, source, sourceFile);
@@ -3834,16 +3546,7 @@ function checkRemovedAndUnsupportedSyntax(
   for (const diagnostic of internalParseDiagnostics(sourceFile) ?? []) {
     const start = diagnostic.start ?? 0;
     const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
-    const recovered = [...controlFlow.byControl.values()].some((plan) => {
-      const controlStart = plan.control.getStart(sourceFile);
-      if (start === controlStart && message === "Expression expected.") return true;
-      if (plan.kind !== "if" || ts.isBlock(plan.control.thenStatement)) return false;
-      if (start === plan.control.thenStatement.getStart(sourceFile) &&
-        message === "Unexpected keyword or identifier.") return true;
-      return Boolean(plan.control.elseStatement && start >= plan.control.thenStatement.end &&
-        start <= plan.control.elseStatement.getStart(sourceFile) && message === "';' expected.");
-    });
-    if (recovered || explicitOffsets.some((offset) => Math.abs(offset - start) < 48)) continue;
+    if (explicitOffsets.some((offset) => Math.abs(offset - start) < 48)) continue;
     diagnostics.push({
       severity: "error",
       code: "SMITHERS1000",
@@ -3853,9 +3556,6 @@ function checkRemovedAndUnsupportedSyntax(
   }
 
   const visitUnsupportedAst = (node: ts.Node): void => {
-    if (ts.isLabeledStatement(node) && !controlFlow.claimedLabels.has(node)) {
-      diagnostics.push(at(node.label, sourceFile, "SMITHERS1704", "labeled control flow requires label-aware lowering and is not emitted by this POC"));
-    }
     if (ts.isClassStaticBlockDeclaration(node)) {
       diagnostics.push(at(node, sourceFile, "SMITHERS1107", "class `static {}` initialization blocks execute outside every checked function channel and are not analyzed or lowered by this POC; use static field initializers or an explicit checked function"));
     }
@@ -3915,294 +3615,6 @@ function clauseSeparatorDefect(
   return { start: scanner.getTokenStart(), arrow: token === ts.SyntaxKind.EqualsGreaterThanToken };
 }
 
-function checkControlFlowExpressionValues(
-  plans: ControlFlowPlanCollection,
-  sourceFile: ts.SourceFile,
-  checker: ts.TypeChecker,
-  callEdges: ReadonlyMap<ts.CallExpression, CallEdge>,
-  diagnostics: PendingDiagnostic[],
-): void {
-  for (const plan of plans.byHost.values()) {
-    const exits = plan.kind === "if"
-      ? [plan.consequent, plan.alternate]
-      : plan.kind === "switch"
-        ? plan.clauses.map((clause) => clause.exit)
-        : plan.kind === "labeled-block"
-          ? plan.sites.map((site) => site.value)
-          : [...plan.sites.map((site) => site.value), plan.elseValue];
-    for (const exit of exits) {
-      const expression = controlFlowValueExpression(exit);
-      if (!expression) continue;
-      const shape = semanticExpressionShape(expression, checker, callEdges);
-      if (shape.async || shape.channel.startsWith("result") ||
-        (ts.isCallExpression(expression) &&
-          (callEdges.get(expression)?.panicExit === true || isResultExpectCall(expression, checker, callEdges)))) {
-        diagnostics.push(at(
-          expression,
-          sourceFile,
-          "SMITHERS1706",
-          "this control-flow value needs failure/task ownership in the shared expression IR; await or unwrap it before the branch value, or use a throw statement",
-        ));
-      }
-      if (controlFlowValueHasLocalType(expression, plan.control, checker)) {
-        diagnostics.push(at(
-          expression,
-          sourceFile,
-          "SMITHERS1706",
-          "this branch value exposes a type declared inside the control-flow expression; add an outer structural annotation or move the type declaration outside the expression",
-        ));
-      }
-    }
-    if (plan.kind === "switch") {
-      for (const clause of plan.clauses) {
-        if (!ts.isCaseClause(clause.clause)) continue;
-        const caseClause = clause.clause;
-        let unsafe: ts.CallExpression | undefined;
-        const visit = (node: ts.Node): void => {
-          if (unsafe || (node !== caseClause.expression && ts.isFunctionLike(node))) return;
-          if (ts.isCallExpression(node) &&
-            (isResultUnwrap(node, checker, callEdges) || isOptionalUnwrap(node, checker, callEdges) ||
-              isResultExpectCall(node, checker, callEdges) || callEdges.get(node)?.panicExit === true)) {
-            unsafe = node;
-            return;
-          }
-          ts.forEachChild(node, visit);
-        };
-        visit(caseClause.expression);
-        if (unsafe) diagnostics.push(at(
-          unsafe,
-          sourceFile,
-          "SMITHERS1706",
-          "switch expression case labels cannot perform Result propagation or panic exits because their ordered selection cannot emit a statement prologue",
-        ));
-      }
-    }
-  }
-}
-
-/**
- * Expression-placement recovery leaves each callee evaluated ahead of a
- * hoisted construct in place, because binding it to a temporary would break
- * `this` and the direct static-call row analysis. That is only sound when the
- * callee value cannot change between the authored fetch point and the derived
- * fetch point, so every assumption is proven here and rejected otherwise.
- */
-function verifyOrderAssumptions(
-  recovery: RecoveredSource,
-  sourceFile: ts.SourceFile,
-  checker: ts.TypeChecker,
-  diagnostics: PendingDiagnostic[],
-): void {
-  if (recovery.assumptions.length === 0) return;
-  const written = writtenValueTargets(sourceFile, checker);
-  const fail = (start: number, message: string): void => {
-    diagnostics.push({ severity: "error", code: "SMITHERS1708", message, start });
-  };
-  const stableIdentifier = (identifier: ts.Identifier, start: number): boolean => {
-    const symbol = checker.getSymbolAtLocation(identifier);
-    if (!symbol) {
-      fail(start, `callee '${identifier.text}' ahead of a recovered value expression cannot be resolved, so its evaluation-order stability is unprovable`);
-      return false;
-    }
-    if (written.symbols.has(symbol)) {
-      fail(start, `callee '${identifier.text}' is reassigned in this module, so evaluating it after a hoisted value expression could observe a different function; bind it to a const first`);
-      return false;
-    }
-    return true;
-  };
-  for (const assumption of recovery.assumptions) {
-    const start = recovery.toDerived(assumption.authoredStart);
-    const last = recovery.toDerived(assumption.authoredEnd - 1);
-    if (start === undefined || last === undefined) {
-      fail(0, "internal: an order-stability assumption lost its source position; the recovered placement is rejected");
-      continue;
-    }
-    const end = last + 1;
-    const node = findNodeWithSpan(sourceFile, start, end);
-    if (!node) {
-      fail(start, "internal: an order-stability assumption does not correspond to a parsed callee; the recovered placement is rejected");
-      continue;
-    }
-    if (ts.isIdentifier(node)) {
-      stableIdentifier(node, start);
-      continue;
-    }
-    if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.name)) {
-      if (ts.isIdentifier(node.expression) && !stableIdentifier(node.expression, start)) continue;
-      if (!ts.isIdentifier(node.expression) && node.expression.kind !== ts.SyntaxKind.ThisKeyword) {
-        fail(start, "the callee receiver ahead of a recovered value expression cannot be proven order-stable");
-        continue;
-      }
-      const member = checker.getSymbolAtLocation(node.name);
-      if (!member || !stableMemberSymbol(member, checker)) {
-        fail(start, `member callee '${node.name.text}' ahead of a recovered value expression is not a provably stable method; bind the receiver and method to checked locals first`);
-        continue;
-      }
-      if (written.memberNames.has(node.name.text)) {
-        fail(start, `member callee '${node.name.text}' is assigned somewhere in this module, so evaluating it after a hoisted value expression could observe a different function`);
-      }
-      continue;
-    }
-    fail(start, "the callee ahead of a recovered value expression has an unsupported shape for order-stability verification");
-  }
-}
-
-function findNodeWithSpan(sourceFile: ts.SourceFile, start: number, end: number): ts.Node | undefined {
-  let found: ts.Node | undefined;
-  const visit = (node: ts.Node): void => {
-    if (node.end < start || node.getStart(sourceFile) > start) return;
-    if (node.getStart(sourceFile) === start && node.end === end) found = node;
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-  return found;
-}
-
-interface WrittenValueTargets {
-  readonly symbols: ReadonlySet<ts.Symbol>;
-  /** Property names assigned through any member expression in this module. */
-  readonly memberNames: ReadonlySet<string>;
-}
-
-const writtenValueTargetsCache = new WeakMap<ts.SourceFile, WrittenValueTargets>();
-
-function writtenValueTargets(sourceFile: ts.SourceFile, checker: ts.TypeChecker): WrittenValueTargets {
-  const cached = writtenValueTargetsCache.get(sourceFile);
-  if (cached) return cached;
-  const symbols = new Set<ts.Symbol>();
-  const memberNames = new Set<string>();
-  const collectTarget = (expression: ts.Expression): void => {
-    if (ts.isParenthesizedExpression(expression)) {
-      collectTarget(expression.expression);
-      return;
-    }
-    if (ts.isIdentifier(expression)) {
-      const symbol = checker.getSymbolAtLocation(expression);
-      if (symbol) symbols.add(symbol);
-      return;
-    }
-    if (ts.isPropertyAccessExpression(expression) && ts.isIdentifier(expression.name)) {
-      memberNames.add(expression.name.text);
-      return;
-    }
-    if (ts.isElementAccessExpression(expression)) return; // dynamic member writes gate members via type checks only
-    if (ts.isArrayLiteralExpression(expression)) {
-      for (const element of expression.elements) {
-        if (ts.isOmittedExpression(element)) continue;
-        if (ts.isSpreadElement(element)) collectTarget(element.expression);
-        else if (ts.isBinaryExpression(element) && element.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-          collectTarget(element.left);
-        } else collectTarget(element);
-      }
-      return;
-    }
-    if (ts.isObjectLiteralExpression(expression)) {
-      for (const property of expression.properties) {
-        if (ts.isPropertyAssignment(property)) collectTarget(property.initializer);
-        else if (ts.isShorthandPropertyAssignment(property)) {
-          const symbol = checker.getShorthandAssignmentValueSymbol(property) ??
-            checker.getSymbolAtLocation(property.name);
-          if (symbol) symbols.add(symbol);
-        } else if (ts.isSpreadAssignment(property)) collectTarget(property.expression);
-      }
-      return;
-    }
-  };
-  const visit = (node: ts.Node): void => {
-    if (ts.isBinaryExpression(node) && assignmentWritesLeft(node.operatorToken.kind)) {
-      collectTarget(node.left);
-    }
-    if ((ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
-      (node.operator === ts.SyntaxKind.PlusPlusToken || node.operator === ts.SyntaxKind.MinusMinusToken)) {
-      collectTarget(node.operand as ts.Expression);
-    }
-    if ((ts.isForInStatement(node) || ts.isForOfStatement(node)) && !ts.isVariableDeclarationList(node.initializer)) {
-      collectTarget(node.initializer as ts.Expression);
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-  const result: WrittenValueTargets = { symbols, memberNames };
-  writtenValueTargetsCache.set(sourceFile, result);
-  return result;
-}
-
-function assignmentWritesLeft(operator: ts.SyntaxKind): boolean {
-  return operator >= ts.SyntaxKind.FirstAssignment && operator <= ts.SyntaxKind.LastAssignment;
-}
-
-function stableMemberSymbol(symbol: ts.Symbol, checker: ts.TypeChecker): boolean {
-  const resolved = (symbol.flags & ts.SymbolFlags.Alias) !== 0 ? checker.getAliasedSymbol(symbol) : symbol;
-  const declarations = resolved.declarations ?? [];
-  if (declarations.length === 0) return false;
-  return declarations.every((declaration) =>
-    ts.isMethodDeclaration(declaration) || ts.isMethodSignature(declaration) ||
-    ts.isFunctionDeclaration(declaration) ||
-    ((ts.isPropertyDeclaration(declaration) || ts.isPropertySignature(declaration)) &&
-      (ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.Readonly) !== 0) ||
-    (ts.isVariableDeclaration(declaration) && (ts.getCombinedNodeFlags(declaration) & ts.NodeFlags.Const) !== 0));
-}
-
-const isNodeWithin = (node: ts.Node, boundary: ts.Node): boolean => {
-  let current: ts.Node | undefined = node;
-  while (current) {
-    if (current === boundary) return true;
-    current = current.parent;
-  }
-  return false;
-};
-
-/** @internal Used by lowering to keep generated join types checker-valid. */
-export function controlFlowValueHasLocalType(
-  expression: ts.Expression,
-  control: ts.IfStatement | ts.SwitchStatement | ts.LabeledStatement,
-  checker: ts.TypeChecker,
-): boolean {
-  const seen = new Set<ts.Type>();
-  const inspect = (type: ts.Type): boolean => {
-    if (seen.has(type)) return false;
-    seen.add(type);
-    if (type.isUnionOrIntersection()) return type.types.some(inspect);
-
-    const symbols = [type.aliasSymbol, type.getSymbol()].filter(
-      (symbol): symbol is ts.Symbol => Boolean(symbol),
-    );
-    const inaccessibleMask = ts.SymbolFlags.Class | ts.SymbolFlags.Interface |
-      ts.SymbolFlags.Enum | ts.SymbolFlags.TypeAlias;
-    if (symbols.some((symbol) => (symbol.flags & inaccessibleMask) !== 0 &&
-      symbol.declarations?.some((declaration) => isNodeWithin(declaration, control)))) return true;
-    if ((type.flags & ts.TypeFlags.UniqueESSymbol) !== 0 && symbols.some((symbol) =>
-      symbol.declarations?.some((declaration) => isNodeWithin(declaration, control)))) return true;
-
-    if (type.aliasTypeArguments?.some(inspect)) return true;
-    if ((type.flags & ts.TypeFlags.Object) !== 0) {
-      const reference = type as ts.TypeReference;
-      if (reference.target && checker.getTypeArguments(reference).some(inspect)) return true;
-    }
-
-    // Anonymous structural values can hide a local nominal type in a field or
-    // signature even though their own generated type literal is name-free.
-    const symbol = type.getSymbol();
-    if (!symbol || symbol.name.startsWith("__")) {
-      for (const property of checker.getPropertiesOfType(type)) {
-        const location = property.valueDeclaration ?? property.declarations?.[0] ?? expression;
-        if (inspect(checker.getTypeOfSymbolAtLocation(property, location))) return true;
-      }
-      for (const signature of [...type.getCallSignatures(), ...type.getConstructSignatures()]) {
-        if (inspect(checker.getReturnTypeOfSignature(signature))) return true;
-        for (const parameter of signature.parameters) {
-          const location = parameter.valueDeclaration ?? parameter.declarations?.[0] ?? expression;
-          if (inspect(checker.getTypeOfSymbolAtLocation(parameter, location))) return true;
-        }
-      }
-      const stringIndex = checker.getIndexTypeOfType(type, ts.IndexKind.String);
-      const numberIndex = checker.getIndexTypeOfType(type, ts.IndexKind.Number);
-      if ((stringIndex && inspect(stringIndex)) || (numberIndex && inspect(numberIndex))) return true;
-    }
-    return false;
-  };
-  return inspect(checker.getTypeAtLocation(expression));
-}
 
 /**
  * A checked call boundary cannot observe an exception thrown while ESM is
@@ -4283,15 +3695,14 @@ function isCompilerIntrinsicSpecifier(specifier: string): boolean {
  * The authoritative set of compiler-owned module specifiers.
  *
  * Membership is EXACT. Prefix-matching `smithers:`/`smthrs/` has already been a
- * fail-open twice in this repository — once in `poc/src/targets/classify.ts`,
- * whose comment records it, and once in
+ * fail-open twice in this repository — once in the withdrawn portability
+ * analyzer (`poc/src/targets/classify.ts`, deleted 2026-08-23 with the
+ * portability pin, whose header recorded it), and once in
  * `poc/src/durable/implementation-contract.ts`, which now consumes this set —
  * because a specifier that merely begins with an owned prefix is ordinary
- * foreign code that no registry pins.
+ * foreign code that no registry pins. The lesson outlived the file: this set is
+ * the one registry, and a second mirror of it is what let the two drift.
  *
- * `poc/src/targets/classify.ts` keeps a mirror of this list for the portability
- * analyzer (plus its provisional `smithers:native` entry). That file is owned by
- * another lane; consolidating the two is a separate, deliberate change.
  * `poc/src/language/compile.ts` is NOT a mirror: `isCompilerVirtualModule`
  * answers a different question — which specifiers the emitter rewrites to the
  * runtime import — and `smthrs/schema-runtime` deliberately survives emit.
@@ -4303,7 +3714,6 @@ export const COMPILER_INTRINSIC_SPECIFIERS: ReadonlySet<string> = new Set([
   "smithers:exceptions",
   "smithers:comptime",
   "smithers:flows",
-  "smithers:native",
 ]);
 
 function resolvedModuleSourceFile(
@@ -4467,16 +3877,6 @@ function isBetweenFunctionParametersAndBody(tokens: readonly ScannedToken[], ind
     if (text === ";" || text === "}") return false;
   }
   return false;
-}
-
-function isExpressionKeyword(source: string, tokens: readonly ScannedToken[], index: number): boolean {
-  const previousToken = tokens[index - 1];
-  const previous = previousToken?.text;
-  if (previous === "return" && /[\n\r\u2028\u2029]/.test(source.slice(previousToken!.end, tokens[index]!.start))) {
-    return false;
-  }
-  if (["=", "return", "=>", ",", "(", "["].includes(previous ?? "")) return true;
-  return previous === ":" && tokens[index - 2]?.kind === ts.SyntaxKind.Identifier;
 }
 
 function checkHostGlobals(

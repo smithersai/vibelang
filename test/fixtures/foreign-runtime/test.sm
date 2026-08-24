@@ -1,5 +1,5 @@
 import { foreignSummary } from "./main.sm"
 
 export function testForeignGraph(): Result<string, Panic> {
-  return foreignSummary().unwrap()
+  return foreignSummary()!
 }

@@ -268,7 +268,8 @@ test("smithers lsp resolves definitions and formats documents", async () => {
       "import { lookup } from \"./domain.sm\"",
       "",
       "export function greet(key:string):Result<string,Missing>{",
-      "return `hello ${lookup(key).unwrap()}`",
+      "const name=lookup(key)!",
+      "return `hello ${name}`",
       "}",
       "",
     ].join("\n");
@@ -278,7 +279,7 @@ test("smithers lsp resolves definitions and formats documents", async () => {
 
     const definition = await session.response(session.request("textDocument/definition", {
       textDocument: { uri: pathToFileURL(app).href },
-      position: { line: 3, character: 17 },
+      position: { line: 3, character: 12 },
     }));
     assert.equal(definition.result.uri, pathToFileURL(domain).href);
     assert.equal(definition.result.range.start.line, 4);
@@ -294,7 +295,8 @@ test("smithers lsp resolves definitions and formats documents", async () => {
         "import { lookup } from \"./domain.sm\"",
         "",
         "export function greet(key: string): Result<string, Missing> {",
-        "  return `hello ${lookup(key).unwrap()}`",
+        "  const name = lookup(key)!",
+        "  return `hello ${name}`",
         "}",
         "",
       ].join("\n"),

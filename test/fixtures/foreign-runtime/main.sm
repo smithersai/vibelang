@@ -12,10 +12,10 @@ import legacyCjs from "./lib/common.cjs"
 
 export function foreignSummary(): Result<string, Panic> {
   const label: Label = "mixed"
-  const unsafe = unsafeTs("safe input").unwrap()
+  const unsafe = unsafeTs("safe input")!
   const tsx = tsxValue()
   const jsx = jsxValue()
-  const cjs = legacyCjs().unwrap()
+  const cjs = legacyCjs()!
   return [
     label,
     trustedTs(),

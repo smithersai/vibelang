@@ -1,0 +1,4 @@
+export function main(): string[] {
+  const value = if (true) { "yes" } else { "no" }
+  return [value]
+}

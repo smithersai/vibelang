@@ -613,8 +613,6 @@ function computeProjectDiagnostics(
 const CHANNEL_LABELS: Readonly<Record<string, string>> = {
   plain: "plain",
   result: "Result",
-  optional: "Optional",
-  "result-optional": "Result<Optional>",
 };
 
 function rowText(members: readonly string[]): string {

@@ -1,6 +1,0 @@
-{
-  "title": "TypeScript optional properties and optional parameters keep their TypeScript meaning and are not rewritten into Optional<T>",
-  "expect": "output",
-  "stdout": ["Ada", "Ada/AL!"],
-  "notes": "specification/type-system.mdx, 'Optional': 'Optional properties and parameters MUST keep their TypeScript meaning.' docs/DECISIONS.md 'Optionals and nullability' (Locked): 'Existing TypeScript undefined, optional parameters, and optional properties remain supported for TypeScript compatibility.' An implementation that lifted `nickname?: string` into Optional<string> would make `entry.nickname === undefined` ill-typed and change the printed output."
-}

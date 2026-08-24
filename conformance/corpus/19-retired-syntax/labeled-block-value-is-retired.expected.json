@@ -1,0 +1,6 @@
+{
+  "title": "the withdrawn expression-position labeled block value is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1001", "line": 2, "column": 17 }],
+  "notes": "specification/control-flow.mdx, No Expression-Form Grammar: blocks and labels remain statement forms."
+}

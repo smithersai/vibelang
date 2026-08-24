@@ -2,7 +2,6 @@ import {
   RuntimeValues,
   registerErrorCodec,
   type NominalError,
-  type Optional,
   type Result,
 } from "../runtime/index.ts";
 import {
@@ -45,7 +44,13 @@ registerErrorCodec(QueueClosed, "smithers:QueueClosed@1", {
 
 export type QueueOperationError = QueueClosed | Cancelled;
 export type QueueResult<Value> = Result<Value, QueueOperationError>;
-export type QueueTryResult<Value> = Optional<Result<Value, QueueClosed>>;
+/**
+ * A non-blocking Queue attempt. `undefined` means the attempt could not proceed
+ * right now (empty on take, full on offer); a Result means it did, and carries
+ * either the value or the closed failure. Absence is the ordinary
+ * `T | undefined` union, not a container (specification/type-system.mdx).
+ */
+export type QueueTryResult<Value> = Result<Value, QueueClosed> | undefined;
 export type QueueCancellation = CancellationInput | CancellationOptions;
 
 interface TakeWaiter<Value> {
@@ -86,7 +91,7 @@ function validateCapacity(capacity: number): void {
 
 function validateElement(value: unknown): void {
   if (value === null || value === undefined) {
-    throw new TypeError("Queue cannot hold null or undefined because tryTake returns Optional");
+    throw new TypeError("Queue cannot hold null or undefined");
   }
 }
 
@@ -211,16 +216,16 @@ export class Queue<Value> {
   tryOffer(value: Value): QueueTryResult<void> {
     validateElement(value);
     const state = stateOf(this);
-    if (state.closed) return RuntimeValues.present(failure(state.closed));
+    if (state.closed) return failure(state.closed);
 
     const taker = oldestActive(state.takers);
     if (taker) {
       settleTake(taker, success(value));
-      return RuntimeValues.present(success(undefined));
+      return success(undefined);
     }
-    if (state.items.length >= state.capacity) return RuntimeValues.absent();
+    if (state.items.length >= state.capacity) return undefined;
     state.items.push(value);
-    return RuntimeValues.present(success(undefined));
+    return success(undefined);
   }
 
   take(options?: QueueCancellation): Promise<QueueResult<Value>> {
@@ -258,10 +263,10 @@ export class Queue<Value> {
     if (state.items.length > 0) {
       const value = state.items.shift() as Value;
       this.#admitOldestOfferer(state);
-      return RuntimeValues.present(success(value));
+      return success(value);
     }
-    if (state.closed) return RuntimeValues.present(failure(state.closed));
-    return RuntimeValues.absent();
+    if (state.closed) return failure(state.closed);
+    return undefined;
   }
 
   shutdown(reason: unknown = "queue closed"): boolean {

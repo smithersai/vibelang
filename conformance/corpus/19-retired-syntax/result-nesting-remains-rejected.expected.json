@@ -1,0 +1,12 @@
+{
+  "title": "with Optional removed, the independent Result rule still rejects an explicit nested Result contract",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1203",
+      "line": 10,
+      "column": 37
+    }
+  ],
+  "notes": "Re-cited from 03-optionals/nested-result-normalization-is-rejected. specification/type-system.mdx, 'Result Composition': Result types compose without nested Result<Result<A, E1>, E2> values. This case has no absence mechanism at all; retaining it proves the Optional withdrawal did not weaken or reinterpret the Result channel."
+}

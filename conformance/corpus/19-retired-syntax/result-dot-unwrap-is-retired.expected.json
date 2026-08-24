@@ -1,0 +1,8 @@
+{
+  "title": "Result.unwrap() is rejected after postfix ! replaces it as propagation spelling",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "SMITHERS1206", "line": 8, "column": 16 }
+  ],
+  "notes": "Result.unwrap() is a retired source spelling, not a second propagation operator."
+}

@@ -1,5 +1,0 @@
-{
-  "title": "Result<Optional<T>, E> lifts outside-in: a value becomes success(some), an absent return becomes success(none), and a throw becomes failure",
-  "expect": "output",
-  "stdout": ["ok Ada", "ok absent", "error no record -1"]
-}

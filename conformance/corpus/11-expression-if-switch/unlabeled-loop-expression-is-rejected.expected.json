@@ -1,5 +1,0 @@
-{
-  "title": "an unlabeled loop in expression position has no defined value-producing exits and stays fail-closed",
-  "expect": "diagnostics",
-  "diagnostics": [{ "code": "SMITHERS1702", "line": 2, "column": 17 }]
-}

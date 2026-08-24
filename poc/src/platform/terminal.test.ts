@@ -60,7 +60,7 @@ function assertTerminalContract(terminal: Terminal, expectations: { readonly tty
   expect(panics(() => terminal.writeError(null as unknown as string))).toBe(true);
 
   const size = terminal.size();
-  expect(size.isSome() || size.isNone()).toBe(true);
+  expect(size === undefined || typeof size.columns === "number").toBe(true);
 }
 
 describe("Terminal", () => {
@@ -76,7 +76,7 @@ describe("Terminal", () => {
     expect(error.text()).toBe("warning\n");
 
     const size = terminal.size();
-    expect(size.unwrapOr({ columns: -1, rows: -1 })).toEqual({ columns: 100, rows: 30 });
+    expect(size ?? { columns: -1, rows: -1 }).toEqual({ columns: 100, rows: 30 });
   });
 
   test("ScriptedTerminal satisfies the contract and records everything", () => {
@@ -85,7 +85,7 @@ describe("Terminal", () => {
     expect(terminal.text()).toBe("progress: done\n");
     expect(terminal.output).toEqual(["progress: ", "done\n"]);
     expect(terminal.errors).toEqual(["warning\n"]);
-    expect(terminal.size().unwrapOr({ columns: -1, rows: -1 })).toEqual({ columns: 100, rows: 30 });
+    expect(terminal.size() ?? { columns: -1, rows: -1 }).toEqual({ columns: 100, rows: 30 });
 
     terminal.clear();
     expect(terminal.output).toEqual([]);
@@ -96,15 +96,17 @@ describe("Terminal", () => {
     const output = recordingStream();
     const live = SystemTerminal.make({ input: recordingStream().stream, output: output.stream, error: output.stream });
     expect(live.isTTY("output")).toBe(false);
-    expect(live.size().isNone()).toBe(true);
+    expect(live.size()).toBeUndefined();
+    expect(live.size()?.columns).toBeUndefined();
 
     // The double defaults the same way a piped process does.
     const scripted = ScriptedTerminal.make();
     expect(scripted.isTTY("output")).toBe(false);
-    expect(scripted.size().isNone()).toBe(true);
+    expect(scripted.size()).toBeUndefined();
 
     scripted.setSize({ columns: 40, rows: 12 });
-    expect(scripted.size().unwrapOr({ columns: -1, rows: -1 })).toEqual({ columns: 40, rows: 12 });
+    expect(scripted.size() ?? { columns: -1, rows: -1 }).toEqual({ columns: 40, rows: 12 });
+    expect(scripted.size()?.columns).toBe(40);
     expect(panics(() => scripted.setSize({ columns: 0, rows: 12 }))).toBe(true);
   });
 
@@ -184,7 +186,7 @@ describe("Terminal", () => {
     const fromTest = Layer.provide(platform.layer, () => Terminal.context());
     expect(fromTest).toBe(platform.terminal);
     expect(fromTest.isTTY("output")).toBe(true);
-    expect(fromTest.size().unwrapOr({ columns: -1, rows: -1 })).toEqual({ columns: 80, rows: 24 });
+    expect(fromTest.size() ?? { columns: -1, rows: -1 }).toEqual({ columns: 80, rows: 24 });
 
     expect(Layer.provide(NodePlatform, () => Terminal.context())).toBeInstanceOf(SystemTerminal);
   });

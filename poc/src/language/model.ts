@@ -11,7 +11,7 @@ export interface ErrorDeclaration extends SourceSpan {
   readonly fieldsSource: string;
 }
 
-export type FunctionChannel = "plain" | "result" | "optional" | "result-optional";
+export type FunctionChannel = "plain" | "result";
 
 /** Public, serializable view of a checked function. */
 export interface FunctionDeclaration extends SourceSpan {

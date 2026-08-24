@@ -1,0 +1,4 @@
+export function main(): string[] {
+  const enabled = true
+  return [enabled ? "yes" : "no"]
+}

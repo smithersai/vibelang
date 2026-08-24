@@ -1,0 +1,17 @@
+function select(key: string): string[] {
+  const events: string[] = []
+  switch (key) {
+    case "a":
+      events.push("a")
+    case "b":
+      events.push("b")
+      break
+    default:
+      events.push("other")
+  }
+  return events
+}
+
+export function main(): string[] {
+  return select("a")
+}

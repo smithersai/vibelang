@@ -42,16 +42,13 @@ On the first run, Alchemy prompts for Cloudflare authentication. It stores deplo
 - Guide pages explain how to use a feature and lead with examples.
 - Reference pages provide compact syntax and API lookup.
 - Specification pages distinguish locked behavior, accepted direction, and open design questions.
-- Design-stage examples must not imply that a feature is available in the current POC.
-- Implementation claims must say whether they describe the root CLI/package,
-  the default TypeScript instrument, the opt-in Go fork backend, a narrower
-  programmatic POC, or planned production behavior. The current CLI boundary
-  is recorded in `src/pages/reference/cli.mdx`.
-- The retired regex transformer under `../prototype` is historical. The checked
-  frontend under `../poc/src/language` is integrated into the root CLI/package
-  and remains its default. A second, explicit backend now performs real
-  Smithers checking and lowering inside the pinned Go TypeScript fork. Neither
-  implementation is a claim that a conforming compiler has been released.
-- Conformance totals move while the corpus and backends are being developed.
-  Prefer a qualitative status and point readers to `../conformance/COVERAGE.md`,
-  or attach any total to its measurement date and exact tree state.
+- All product pages describe target Smithers behavior, including examples and
+  CLI/API reference pages.
+- Do not report repository progress, implementation coverage, POC behavior,
+  backend parity, or production readiness in the product documentation.
+- Use **Locked**, **Direction**, and **Open** to communicate design maturity.
+  Those labels describe confidence in the target contract, not availability.
+- When an exact spelling or mechanism is unsettled, state the target semantics
+  and label the unsettled part rather than substituting implementation behavior.
+- Implementation notes, conformance measurements, and migration worklists live
+  beside the compiler, runtime, or conformance suite—not in this site.

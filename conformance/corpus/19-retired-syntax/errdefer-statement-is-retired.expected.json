@@ -1,0 +1,6 @@
+{
+  "title": "the withdrawn errdefer statement is rejected instead of becoming two ordinary expression statements",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1001", "line": 2, "column": 3 }],
+  "notes": "specification/control-flow.mdx, Cleanup: Smithers MUST NOT add errdefer; Result error cleanup is written explicitly in the failure path."
+}

@@ -11,9 +11,8 @@ function requireEntry(key: string): Result<string, Missing> {
 }
 
 function initials(key: string): Result<string, Missing> {
-  if (const name = requireEntry(key).unwrap(); name.includes(" ")) {
-    const parts = name.split(" ")
-    return `${parts[0]![0]!}${parts[1]![0]!}`
+  if (const name = requireEntry(key)!; name.includes(" ")) {
+    return `${name.charAt(0)}${name.charAt(name.lastIndexOf(" ") + 1)}`
   } else {
     return name.slice(0, 1)
   }

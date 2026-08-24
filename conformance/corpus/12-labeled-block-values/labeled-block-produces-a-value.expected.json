@@ -1,5 +1,0 @@
-{
-  "title": "a labeled block value delimits its value at every break :label and keeps ordinary labeled-break semantics",
-  "expect": "output",
-  "stdout": ["empty", "short", "long"]
-}

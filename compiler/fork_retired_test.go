@@ -11,13 +11,14 @@ import "testing"
 // nearby spelling it must NOT claim, and every one of those pairs is a form a
 // naive implementation gets wrong.
 
-// TestPinnedForkRetiredSyntaxIsAMigrationDiagnostic pins the eight retired
-// source spellings.
+// TestPinnedForkRetiredSyntaxIsAMigrationDiagnostic pins the legacy retired
+// source spellings. The withdrawn control-flow spellings and their near misses
+// are covered exhaustively by conformance/corpus/19-retired-syntax.
 //
 // specification/failures.mdx, "Inference": "Smithers MUST NOT add a general
 // throws clause, !T marker, prefix try expression, or postfix Result-recovery
-// expression." specification/type-system.mdx, "Optional": "The earlier ?T,
-// payload-capture, orelse, and .? grammar MUST NOT be part of the initial
+// expression." specification/type-system.mdx, "Absence": "The earlier ?T,
+// payload-capture, orelse, and .? grammar MUST NOT be part of the
 // language." docs/DECISIONS.md, "Requirements and dependency injection"
 // (Locked), retires the named `uses` clause.
 //
@@ -38,7 +39,7 @@ func TestPinnedForkRetiredSyntaxIsAMigrationDiagnostic(t *testing.T) {
 		},
 		{
 			name: "the orelse operator",
-			source: "function lookup(id: number): Optional<string> {\n" +
+			source: "function lookup(id: number): string | undefined {\n" +
 				"  if (id === 1) return \"Ada\"\n" +
 				"  return undefined\n" +
 				"}\n" +
@@ -77,7 +78,7 @@ func TestPinnedForkRetiredSyntaxIsAMigrationDiagnostic(t *testing.T) {
 			// The anchor is the DOT, not the question mark. A reader who fixed
 			// the column by eye would put it one character later.
 			name: "the .? postfix unwrap operator, anchored at the dot",
-			source: "function lookup(id: number): Optional<string> {\n" +
+			source: "function lookup(id: number): string | undefined {\n" +
 				"  return id === 1 ? \"Ada\" : null\n" +
 				"}\n" +
 				"\n" +
@@ -249,100 +250,20 @@ func TestPinnedForkRetiredSyntaxGuardsSpareTheLegitimateSpellings(t *testing.T) 
 			stdout: "orelse .? try catch throws uses\ncatch 31 throws",
 		},
 		{
-			// The postfix non-null assertion `x!` is not the retired `!T` return
-			// marker, and optional chaining `a?.b` is not the retired `.?`. Both
-			// pairs differ only in token order.
-			name: "postfix ! and optional chaining are not the retired markers",
+			// Prefix bangs, the comparison token, and nullish operators have
+			// parser shapes distinct from postfix propagation and retired `.?`.
+			name: "prefix bangs comparison and nullish operators are not retired markers",
 			source: "export function main(): string[] {\n" +
-				"  const entries = new Map<string, string>([[\"ada\", \"Ada Lovelace\"]])\n" +
-				"  const found = entries.get(\"ada\")!\n" +
+				"  const failed = false\n" +
+				"  const value: string = [\"smithers\"].join(\"\")\n" +
 				"  const absent: { name?: string } = {}\n" +
-				"  return [found, String(absent?.name)]\n" +
+				"  return [String(!failed), String(!!value), String(value !== \"\"), absent?.name ?? \"Guest\"]\n" +
 				"}\n",
-			stdout: "Ada Lovelace\nundefined",
+			stdout: "true\ntrue\ntrue\nGuest",
 		},
 	})
 }
 
-// TestPinnedForkValueIfRequiresAnElseBranch pins the missing-else situation.
-//
-// specification/control-flow.mdx, "If": "An if expression MUST select exactly
-// one reachable branch. When used where a value is required, every normal
-// completion path MUST produce a compatible value." The same section allows
-// omitting the alternate "only where the resulting unit or optional semantics
-// are explicitly defined by the final grammar" — they are not, so an omitted
-// branch has no value at all.
-//
-// The situation is recognized structurally, from a value `if` whose alternate
-// the parser had to synthesize as missing. It is NOT a TypeScript code lookup:
-// the same TS1005 the parser emits here means something different everywhere
-// else, and the third row below is a program where a missing `else` is
-// perfectly legal.
-func TestPinnedForkValueIfRequiresAnElseBranch(t *testing.T) {
-	runFailClosedCases(t, []failClosedCase{
-		{
-			name: "a value if with no else is refused at the if keyword",
-			source: "export function describe(enabled: boolean): string {\n" +
-				"  const value = if (enabled) { \"yes\" }\n" +
-				"  return value\n" +
-				"}\n" +
-				"\n" +
-				"export function main(): string[] {\n" +
-				"  return [describe(true), describe(false)]\n" +
-				"}\n",
-			reject: []string{"SMITHERS1705@2:17"},
-		},
-		{
-			name: "a value if with both branches compiles and selects one",
-			source: "export function describe(enabled: boolean): string {\n" +
-				"  const value = if (enabled) { \"yes\" } else { \"no\" }\n" +
-				"  return value\n" +
-				"}\n" +
-				"\n" +
-				"export function main(): string[] {\n" +
-				"  return [describe(true), describe(false)]\n" +
-				"}\n",
-			stdout: "yes\nno",
-		},
-		{
-			// The identical shape in STATEMENT position keeps its TypeScript
-			// meaning: a statement `if` needs no `else`, and reinterpreting it
-			// would break ordinary control flow.
-			name: "a statement if with no else keeps its TypeScript meaning",
-			source: "export function main(): string[] {\n" +
-				"  const events: string[] = []\n" +
-				"  if (events.length === 0) { events.push(\"first\") }\n" +
-				"  if (events.length === 5) { events.push(\"never\") }\n" +
-				"  events.push(\"second\")\n" +
-				"  return events\n" +
-				"}\n",
-			stdout: "first\nsecond",
-		},
-		{
-			// An `else if` chain is a nested value if, so each link supplies the
-			// alternate of the one before and only the last link's missing
-			// `else` would be refused.
-			name: "an else if chain terminated by an else compiles",
-			source: "export function grade(score: number): string {\n" +
-				"  const label = if (score > 90) { \"high\" } else if (score > 50) { \"mid\" } else { \"low\" }\n" +
-				"  return label\n" +
-				"}\n" +
-				"\n" +
-				"export function main(): string[] {\n" +
-				"  return [grade(95), grade(70), grade(10)]\n" +
-				"}\n",
-			stdout: "high\nmid\nlow",
-		},
-	})
-}
-
-// TestPinnedForkMissingRelativeModuleFailsClosed pins the project-closure rule.
-//
-// specification/requirements.mdx, "Satisfaction": "When the compiler knows the
-// complete closure, an unsatisfied capability MUST be a compile error." A
-// module the compiler cannot see means the closure is NOT known, so proceeding
-// would mean assuming the absent module contributed an empty failure and
-// requirement row — an assumption that silently deletes whatever it carried.
 func TestPinnedForkMissingRelativeModuleFailsClosed(t *testing.T) {
 	const present = "export interface Entry {\n  readonly name: string\n}\n"
 	runFailClosedCases(t, []failClosedCase{

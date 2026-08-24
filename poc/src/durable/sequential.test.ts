@@ -183,10 +183,10 @@ export const Projected = durable(function Projected(input: { message: string }) 
   const fixtures = [
     // literals are not Action calls
     source.replace("WriteAudit.run({ message: input.message }),", "\"not an action\","),
-    // unwrap is not the sequential spelling
+    // postfix propagation is not the sequential spelling
     source.replace(
       "WriteAudit.run({ message: input.message }),",
-      "WriteAudit.run({ message: input.message }).unwrap(),"
+      "WriteAudit.run({ message: input.message })!,"
     ),
     // exactly two arguments
     source.replace(

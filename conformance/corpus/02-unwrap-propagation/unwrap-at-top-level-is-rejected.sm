@@ -7,4 +7,4 @@ export function scoreOf(key: string): Result<number, Missing> {
   return 96
 }
 
-export const score = scoreOf("ada").unwrap()
+export const score = scoreOf("ada")!

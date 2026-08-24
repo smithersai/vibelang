@@ -226,7 +226,6 @@ test("prototype package subpaths expose real compiler and runtime APIs", async (
   const language = await import("smthrs/language");
   const smithers = await import("smthrs/smithers");
   const runtime = await import("smthrs/runtime");
-  const targets = await import("smthrs/targets");
 
   assert.equal(typeof language.compileSmithers, "function");
   assert.equal(typeof language.annotateDeclarationEffects, "function");
@@ -243,7 +242,6 @@ test("prototype package subpaths expose real compiler and runtime APIs", async (
   });
   assert.equal(typeof runtime.panic, "function");
   assert.equal(typeof runtime.Layer.provide, "function");
-  assert.equal(typeof targets.analyzeCompatibility, "function");
 });
 
 test("root Context and Layer subpaths execute the real async environment", async () => {
@@ -419,6 +417,110 @@ test("doctor reports implemented project compiler and test-runner surfaces", () 
   assert.match(report.surfaces.smithersCompile, /source maps/);
   assert.match(report.surfaces.testRunner, /test\*/);
   assert.doesNotMatch(report.surfaces.testRunner, /not implemented/);
+});
+
+test("doctor derives ok from the checks it performed and names each probe outcome", () => {
+  // `ok` used to be the literal `true`, which certified an environment doctor
+  // had never assessed. It must now be derived, and each probe must say which
+  // of absent / failed / timeout / no-version-output it observed rather than
+  // collapsing all four into one value.
+  const result = run("bin/smithers.js", ["doctor", "--format", "json"]);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.ok, true);
+  assert.deepEqual(report.unsatisfied, []);
+  assert.equal(report.nativeTypeScript.available, true);
+  assert.match(report.nativeTypeScript.version, /Version 7\./);
+  assert.equal(report.packagedRuntime, true);
+  for (const [name, probe] of Object.entries(report.tools)) {
+    assert.equal(typeof probe, "object", `${name} probe must be structured, not a bare string or null`);
+    if (probe.available) assert.equal(typeof probe.version, "string");
+    else assert.ok(
+      ["absent", "failed", "timeout", "no-version-output"].includes(probe.reason),
+      `${name} reported an unknown reason: ${probe.reason}`,
+    );
+  }
+});
+
+test("an optional foreign toolchain being absent does not make doctor unhealthy", () => {
+  // The negative direction of the check above: `ok` must not regress into
+  // demanding Zig or Rust, which no command needs.
+  const bare = join(tmpdir(), "smithers-doctor-empty-path");
+  mkdirSync(bare, { recursive: true });
+  try {
+    const result = spawnSync(process.execPath, ["bin/smithers.js", "doctor", "--format", "json"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: { ...process.env, PATH: bare },
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.ok, true);
+    assert.deepEqual(report.unsatisfied, []);
+    for (const [name, probe] of Object.entries(report.tools)) {
+      assert.equal(probe.available, false, `${name} should be unreachable with an empty PATH`);
+      assert.equal(probe.reason, "absent");
+    }
+  } finally {
+    rmSync(bare, { recursive: true, force: true });
+  }
+});
+
+test("a relative .sm import that names two sources is rejected instead of silently choosing one", () => {
+  // `./dep.js` is the emitted name of `./dep.sm`, so it resolves to the
+  // Smithers source. When a real `dep.js` also exists, that one specifier
+  // denotes two different modules; taking the first candidate silently
+  // shadowed a real module and emitted `./dep.mjs` in its place, with
+  // `ok: true` and artifacts written. Every other extension already lets the
+  // literal file win and be checked as foreign.
+  const project = mkdtempSync(join(tmpdir(), "smithers-ambiguous-import-"));
+  try {
+    const source = join(project, "src");
+    mkdirSync(source, { recursive: true });
+    writeFileSync(join(source, "dep.sm"), 'export const NAME: string = "from-dep-sm"\n');
+    writeFileSync(join(source, "main.sm"), 'import { NAME } from "./dep.js"\nexport function main(): string { return NAME }\n');
+
+    // Positive direction: with no literal `dep.js`, the emit-name convention
+    // must keep working exactly as before.
+    const resolved = run("bin/smithers.js", ["check", join(source, "main.sm"), "--format", "json"]);
+    assert.equal(resolved.status, 0, resolved.stderr || resolved.stdout);
+    const resolvedReport = JSON.parse(resolved.stdout);
+    assert.equal(resolvedReport.ok, true);
+    assert.equal(resolvedReport.files.length, 2);
+
+    // Negative direction: a real `dep.js` beside it makes the specifier
+    // ambiguous, and the CLI must fail closed.
+    writeFileSync(join(source, "dep.js"), 'export const NAME = "from-dep-js";\n');
+    const ambiguous = run("bin/smithers.js", ["check", join(source, "main.sm"), "--format", "json"]);
+    assert.equal(ambiguous.status, 2, ambiguous.stdout);
+    assert.match(JSON.parse(ambiguous.stdout).message, /ambiguous/);
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
+test("a relative .sm import matching two Smithers candidates is rejected", () => {
+  // `./dep` matches both `dep.sm` and `dep/index.sm`. Either is a plausible
+  // reading, so neither may be chosen silently.
+  const project = mkdtempSync(join(tmpdir(), "smithers-ambiguous-dir-"));
+  try {
+    const source = join(project, "src");
+    mkdirSync(join(source, "dep"), { recursive: true });
+    writeFileSync(join(source, "dep", "index.sm"), 'export const NAME: string = "from-index"\n');
+    writeFileSync(join(source, "main.sm"), 'import { NAME } from "./dep"\nexport function main(): string { return NAME }\n');
+
+    // Positive direction: the directory form alone still resolves.
+    const directory = run("bin/smithers.js", ["check", join(source, "main.sm"), "--format", "json"]);
+    assert.equal(directory.status, 0, directory.stderr || directory.stdout);
+    assert.equal(JSON.parse(directory.stdout).ok, true);
+
+    writeFileSync(join(source, "dep.sm"), 'export const NAME: string = "from-file"\n');
+    const ambiguous = run("bin/smithers.js", ["check", join(source, "main.sm"), "--format", "json"]);
+    assert.equal(ambiguous.status, 2, ambiguous.stdout);
+    assert.match(JSON.parse(ambiguous.stdout).message, /does not resolve deterministically/);
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
 });
 
 test("smithers plan emits a canonical durable artifact without executing authored code", async () => {
@@ -905,7 +1007,12 @@ test(".sm CLI returns intrinsic diagnostics without writing project outputs", ()
     assert.equal(compiled.status, 1, compiled.stderr || compiled.stdout);
     const report = JSON.parse(compiled.stdout);
     assert.equal(report.ok, false);
-    assert.equal(report.files[0].diagnostics.some((diagnostic) => diagnostic.code === "VCT1002"), true);
+    // VCT1006: the compiler-owned intrinsic value escaping its call site. The
+    // fixture used to be a user's own `function comptime<T>()`, which asserted
+    // a defect as correct behaviour: specification/comptime.mdx requires an
+    // unrelated function named `comptime` to remain an ordinary function, so
+    // that source must compile rather than produce VCT1002.
+    assert.equal(report.files[0].diagnostics.some((diagnostic) => diagnostic.code === "VCT1006"), true);
     assert.deepEqual(readdirSync(output), []);
   } finally {
     rmSync(output, { recursive: true, force: true });
@@ -930,10 +1037,10 @@ test("post-comptime diagnostics map back to authored lines after multiline repla
     ]);
     assert.equal(compiled.status, 1, compiled.stderr || compiled.stdout);
     const report = JSON.parse(compiled.stdout);
-    const diagnostic = report.files[0].diagnostics.find((item) => item.code === "SMITHERS3001");
+    const diagnostic = report.files[0].diagnostics.find((item) => item.code === "SMITHERS1102");
     assert.ok(diagnostic);
     assert.equal(diagnostic.file, input);
-    assert.equal(diagnostic.line, source.slice(0, source.indexOf("native(nativePinned)")).split("\n").length);
+    assert.equal(diagnostic.line, source.slice(0, source.indexOf("export function describe")).split("\n").length);
     assert.equal(diagnostic.column, 1);
     assert.equal(report.files[0].comptime.provenance.edits[1].authored.endLine > 3, true);
     assert.equal(existsSync(join(output, "diagnostic.mjs")), false);
@@ -1089,7 +1196,7 @@ test("foreign module initialization fails closed while a dynamic-import adapter 
     writeFileSync(join(dynamicProject, "main.sm"), `
       import { load } from "./adapter.ts"
       export async function read(): Promise<Result<string, Panic>> {
-        return (await load()).unwrap()
+        return (await load())!
       }
     `);
     writeFileSync(join(dynamicProject, "adapter.ts"), `
@@ -1286,27 +1393,6 @@ test(".sm project compilation fails closed before writing any module", () => {
   }
 });
 
-test(".sm compilation enforces checker-backed native portability pins", () => {
-  const output = mkdtempSync(join(tmpdir(), "smithers-native-pin-"));
-  try {
-    const compiled = run("bin/smithers.js", [
-      "compile",
-      "test/fixtures/project/invalid-native.sm",
-      "--outDir",
-      output,
-      "--format",
-      "json",
-    ]);
-    assert.equal(compiled.status, 1, compiled.stderr || compiled.stdout);
-    const report = JSON.parse(compiled.stdout);
-    assert.equal(report.files[0].diagnostics.some((item) => item.code === "SMITHERS3001"), true);
-    assert.equal(report.files[0].diagnostics.some((item) => item.code === "SMITHERS3006"), false);
-    assert.equal(existsSync(join(output, "invalid-native.mjs")), false);
-  } finally {
-    rmSync(output, { recursive: true, force: true });
-  }
-});
-
 test(".sm compilation rejects colliding outputs before writing", () => {
   const output = mkdtempSync(join(tmpdir(), "smithers-output-collision-"));
   try {
@@ -1371,9 +1457,9 @@ test("inspect does not apply .sm semantics silently to TypeScript files", () => 
   assert.equal(JSON.parse(inspected.stdout).code, "INVALID_INPUT");
 });
 
-// Smithers's expression-oriented control flow (`defer`/`errdefer`, a
-// declaration in a conditional, value-position `if`/`switch`, a labeled block
-// value, and a loop value with `else`) does not parse under stock TypeScript.
+// A declaration in a conditional is Smithers's one grammar addition and does
+// not parse under stock TypeScript. Postfix `!` is then checked as Result
+// propagation rather than TypeScript's non-null assertion.
 // The CLI runs three passes over authored `.sm` text before the checked
 // frontend sees it — the source-asset import preflight, the comptime intrinsic
 // frontend, and the target portability analysis — and every one of them has to
@@ -1395,7 +1481,7 @@ const DIVERGENT_FORMS_OUTPUT = [
   "events=scoreOf:ada:done,scoreOf:zoe:failed,scoreOf:zoe:done",
 ].join("\n");
 
-test("expression-oriented .sm source checks, inspects, compiles, runs, and tests", () => {
+test("conditional declarations and postfix propagation check, inspect, compile, run, and test", () => {
   const root = stageDivergentForms();
   const source = join(root, "divergent-forms.sm");
   const output = join(root, "output");
@@ -1407,17 +1493,19 @@ test("expression-oriented .sm source checks, inspects, compiles, runs, and tests
     assert.deepEqual(checkReport.files[0].diagnostics, []);
     assert.deepEqual(checkReport.files[0].rows.scoreOf, { failures: ["Missing"], requirements: [] });
 
-    // The portability pass builds its own checked Program over the same
-    // authored text. Without recovery it read a shredded AST — stock
-    // TypeScript parses a value-position `if` as an identifier — and the run
-    // never reached it, because the asset preflight had already rejected the
-    // module with the parser's TS1109 cascade.
+    // `inspect` builds a checked Program over the same authored text. Without
+    // recovery it reads a shredded AST — stock TypeScript parses a
+    // value-position `if` as an identifier — and the run never reaches the
+    // rows at all, because the asset preflight has already rejected the module
+    // with the parser's TS1109 cascade. Seeing EVERY authored function is what
+    // proves the recovery ran: a shredded parse loses the ones after the first
+    // divergent form.
     const inspected = run("bin/smithers.js", ["inspect", source, "--format", "json"]);
     assert.equal(inspected.status, 0, inspected.stderr || inspected.stdout);
     const inspection = JSON.parse(inspected.stdout);
     assert.equal(inspection.ok, true);
-    assert.deepEqual(inspection.files[0].portability.diagnostics, []);
-    assert.deepEqual(Object.keys(inspection.files[0].portability.functions).sort(), [
+    assert.deepEqual(inspection.files[0].language.diagnostics, []);
+    assert.deepEqual(inspection.files[0].language.functions.map((item) => item.name).sort(), [
       "classify",
       "combine",
       "describe",
@@ -1444,9 +1532,8 @@ test("expression-oriented .sm source checks, inspects, compiles, runs, and tests
     assert.match(map.sources[0], /divergent-forms\.sm$/);
     assert.equal(map.sourcesContent[0], readFileSync(source, "utf8"));
 
-    // The end-to-end proof: the emitted module executes, and `defer`,
-    // `errdefer`, the labeled block value, and the loop `else` value all
-    // produce the values the authored module names.
+    // The end-to-end proof: the emitted module executes the conditional
+    // declaration, postfix propagation, and ordinary TypeScript control flow.
     const executed = run("bin/smithers.js", ["run", source]);
     assert.equal(executed.status, 0, executed.stderr || executed.stdout);
     assert.equal(executed.stdout.startsWith(`${DIVERGENT_FORMS_OUTPUT}\n`), true, executed.stdout);
@@ -1467,8 +1554,8 @@ test("expression-oriented .sm source checks, inspects, compiles, runs, and tests
 test("pre-pass diagnostics keep authored positions across a recovery rewrite", () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-authored-position-")));
   try {
-    // Recovering the value-position `if` on line 6 hoists a compiler temporary
-    // ahead of its containing statement, so every later construct sits one
+    // Recovering the conditional declaration on line 6 opens a synthetic
+    // scope ahead of its containing statement, so every later construct sits one
     // line further down in the text the pre-passes actually parse. Both
     // diagnostics below must still name the AUTHORED line.
     const source = join(root, "main.sm");
@@ -1481,7 +1568,8 @@ test("pre-pass diagnostics keep authored positions across a recovery rewrite", (
         "}",
         "",
         "export function pick(flag: boolean): number {",
-        "  return combine(if (flag) { 1 } else { 2 })",
+        "  if (const value = combine(flag ? 1 : 2); value > 0) { return value }",
+        "  return 0",
         "}",
         "",
         "export async function load(): Promise<unknown> {",
@@ -1498,80 +1586,35 @@ test("pre-pass diagnostics keep authored positions across a recovery rewrite", (
       code: item.code,
       line: item.line,
       column: item.column,
-    })), [{ code: "SMITHERS5201", line: 10, column: 16 }]);
+    })), [{ code: "SMITHERS5201", line: 11, column: 16 }]);
 
-    // The portability pass reports through the same recovery map.
-    const portable = join(root, "portable.sm");
+    // The same recovery rewrite on a module the checker accepts: the pre-pass
+    // opens a synthetic scope at line 6, and the frontend still cuts
+    // the module from its AUTHORED text, so a file with no comptime call is
+    // byte-identical before and after the pre-passes run.
+    const recovered = join(root, "recovered.sm");
     writeFileSync(
-      portable,
+      recovered,
       [
         "function combine(value: number): number {",
         "  return value",
         "}",
         "",
         "export function pick(flag: boolean): number {",
-        "  return combine(if (flag) { 1 } else { 2 })",
-        "}",
-        "",
-        "export function cast(value: unknown): number {",
-        "  return value as number",
+        "  if (const value = combine(flag ? 1 : 2); value > 0) { return value }",
+        "  return 0",
         "}",
         "",
       ].join("\n"),
     );
-    const portabilityChecked = run("bin/smithers.js", ["check", portable, "--format", "json"]);
-    assert.equal(portabilityChecked.status, 0, portabilityChecked.stderr || portabilityChecked.stdout);
-    const portabilityReport = JSON.parse(portabilityChecked.stdout);
-    assert.deepEqual(portabilityReport.files[0].diagnostics.map((item) => ({
-      code: item.code,
-      severity: item.severity,
-      line: item.line,
-      column: item.column,
-    })), [{ code: "SMITHERS3004", severity: "warning", line: 10, column: 10 }]);
-    // Lowering still cuts the module from its AUTHORED text, so a file with no
-    // comptime call is byte-identical before and after the frontend runs.
+    const recoveredChecked = run("bin/smithers.js", ["check", recovered, "--format", "json"]);
+    assert.equal(recoveredChecked.status, 0, recoveredChecked.stderr || recoveredChecked.stdout);
+    const recoveredReport = JSON.parse(recoveredChecked.stdout);
+    assert.deepEqual(recoveredReport.files[0].diagnostics, []);
     assert.equal(
-      portabilityReport.files[0].comptime.provenance.authoredDigest,
-      portabilityReport.files[0].comptime.provenance.loweredDigest,
+      recoveredReport.files[0].comptime.provenance.authoredDigest,
+      recoveredReport.files[0].comptime.provenance.loweredDigest,
     );
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-test("Smithers syntax the frontend cannot recover fails closed, never as raw TS noise", () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-unrecoverable-")));
-  try {
-    // A value loop with no `else` completion value has no value on the path
-    // where no `break :label value` runs, so recovery refuses it by name.
-    const source = join(root, "loop.sm");
-    writeFileSync(
-      source,
-      [
-        "export function firstPassing(scores: number[]): number {",
-        "  const found = search: for (const score of scores) {",
-        "    if (score >= 60) break :search score",
-        "  }",
-        "  return found",
-        "}",
-        "",
-      ].join("\n"),
-    );
-
-    const checked = run("bin/smithers.js", ["check", source, "--format", "json"]);
-    assert.equal(checked.status, 1, checked.stderr || checked.stdout);
-    const diagnostics = JSON.parse(checked.stdout).files[0].diagnostics;
-    assert.deepEqual(diagnostics.map((item) => ({ code: item.code, line: item.line, column: item.column })), [
-      { code: "SMITHERS1715", line: 2, column: 17 },
-    ]);
-    assert.match(diagnostics[0].message, /requires an `else` completion value/);
-    assert.equal(diagnostics.some((item) => item.code.startsWith("TS")), false);
-
-    const inspected = run("bin/smithers.js", ["inspect", source, "--format", "json"]);
-    assert.equal(inspected.status, 1, inspected.stderr || inspected.stdout);
-    const inspection = JSON.parse(inspected.stdout);
-    assert.equal(inspection.code, "SMITHERS_ASSET_IMPORT");
-    assert.deepEqual(inspection.assets.diagnostics.map((item) => item.code), ["SMITHERS1715"]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

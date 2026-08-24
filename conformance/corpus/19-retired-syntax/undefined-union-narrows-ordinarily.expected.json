@@ -1,0 +1,6 @@
+{
+  "title": "T | undefined narrows with ordinary TypeScript control flow",
+  "expect": "output",
+  "stdout": ["ADA", "absent"],
+  "notes": "specification/type-system.mdx, 'Absence': absence MUST be modelled with T | undefined using ordinary narrowing. This negative test proves removing the container did not remove, lift, or reinterpret the surviving union representation."
+}

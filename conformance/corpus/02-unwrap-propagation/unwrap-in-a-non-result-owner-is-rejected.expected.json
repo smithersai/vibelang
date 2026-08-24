@@ -1,5 +1,5 @@
 {
-  "title": "unwrap in a function whose explicit return type cannot carry the propagated failure is rejected",
+  "title": "postfix propagation in a function whose explicit return type cannot carry the failure is rejected",
   "expect": "diagnostics",
   "diagnostics": [
     {

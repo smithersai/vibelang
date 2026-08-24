@@ -12,8 +12,8 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 
 | Status | Meaning |
 | --- | --- |
-| **Adopted** | implemented in the language today |
-| **Committed** | on the ledger's adopt-early list; not yet built |
+| **Adopted** | part of the Smithers target language |
+| **Committed** | accepted for adopt-early inclusion as its source contract matures |
 | **Reserved** | deliberately not adopted, but the design accounts for it |
 | **Rejected** | a standing rejection in the ledger |
 | No position | the ledger takes no stance |
@@ -27,7 +27,7 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 | Legacy RegExp features in JavaScript | No position |  |
 | Source Phase Imports | Committed | on the adopt-early list |
 | Dynamic Code Brand Checks | No position |  |
-| Deferring Module Evaluation | Reserved | unrelated to cleanup; it is why `defer` is already a keyword in the fork |
+| Deferring Module Evaluation | Reserved | unrelated to cleanup; Smithers reserves room to inherit its eventual syntax |
 | Non-extensible Applies to Private | No position |  |
 | Import Text | Committed | already expressible as `with { type: "text" }` |
 | iterator chunking | No position |  |
@@ -107,7 +107,7 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 | Slice notation | No position |  |
 | Module Keys | No position |  |
 | class Access Expressions | No position |  |
-| Pattern Matching | Reserved | Smithers owns expression-form control-flow grammar while leaving room to converge with this |
+| Pattern Matching | Reserved | Smithers adds no expression-form control-flow grammar, deliberately leaving room to converge with this rather than pre-empting it with an invented form |
 | Dynamic Modules | No position |  |
 | Built In Modules (aka JS Standard Library) | No position |  |
 | uniform parsing of quasi-standard `Date.parse` input | No position |  |
@@ -118,7 +118,7 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 | Private declarations | No position |  |
 | Emitter | No position |  |
 | Reverse iteration | No position |  |
-| Declarations in Conditionals | **Adopted** | shipped as `if (const x = f(); cond)` — **the only grammar Smithers adds**, and a Stage 1 proposal |
+| Declarations in Conditionals | **Adopted** | `if (const x = f(); cond)` — **the only grammar Smithers adds**, and a Stage 1 proposal |
 | Readonly Collections | No position |  |
 | Support for Distributed Promise Pipelining | Rejected | standing rejection |
 | Wavy Dot: Syntactic Support for Promise Pipelining | Rejected | standing rejection |

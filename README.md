@@ -44,76 +44,23 @@ Then set it up in this project: install `smthrs`, scaffold a workflow that
 fits this codebase, run it, and walk me through what each part does.
 ```
 
-## Implementation Status
+## Language Contract
 
-This repository contains two Smithers compiler implementations. The checked
-TypeScript instrument remains the default for `smithers check`, `compile`, and
-`run`. Pass `--backend go` to exercise the opt-in implementation that runs in
-the pinned Go TypeScript fork; it lowers Result and Optional lifting,
-`.unwrap()` propagation, async `Promise<Result<...>>`, nominal error matching,
-the Smithers control-flow grammar, and bounded implementations of both
-`smithers:comptime` and `smithers:flows`.
+Smithers keeps TypeScript syntax and ecosystem compatibility while making
+failures, capabilities, compile-time inputs, and durable work visible to the
+compiler. The target language provides:
 
-> **Specification drift.** As of 2026-08-23 the specification was substantially
-> reduced and the implementation has not caught up. The code still carries the
-> expression-form control-flow grammar, `defer`/`errdefer`, labeled value
-> breaks, `Optional<T>`, `.unwrap()` (now postfix `!`), the TypeScript non-null
-> assertion, and the near-native/Wasm targets with their `TypeScript`
-> requirement, feature classification, and portability pin — none of which the
-> language still defines. See "The Implementation Currently Exceeds This
-> Specification" in `docs/src/pages/specification/index.mdx` for the removal
-> worklist. Where code and specification disagree, the specification wins.
+- typed expected failures with `Result<A, E>` and postfix `!` propagation;
+- compiler-inferred capability requirements satisfied by explicit Layers;
+- deterministic `comptime(...)` evaluation with tracked inputs;
+- compiler-lowered durable Flows made from retryable, idempotent Actions; and
+- a TypeScript-only compilation model with checked JavaScript interop.
 
-The Go implementation also owns typed asset imports end to end — all five
-built-in loaders (`json`, `json` with `mode: "const"`, `text`, `bytes`,
-`markdown`, `mdx`), with the loader selected by the authored import attribute and
-never by file extension, and with asset edges treated as compile-time only so
-they add no runtime platform requirement.
-
-`smithers format` and `smithers lsp` are implemented. The formatter drives the
-TypeScript language-service formatter and changes whitespace only. The stdio
-JSON-RPC language server provides diagnostics, failure/requirement-row hover,
-definition lookup, and whole-document formatting. Both run on the TypeScript
-instrument, not the Go compiler.
-
-The conformance corpus is a contract, not a completeness claim. It is growing
-while backend-parity work continues; use
-[`conformance/COVERAGE.md`](https://github.com/smithersai/smithers/blob/main/conformance/COVERAGE.md)
-as the live obligation and
-case census instead of copying a scoreboard into documentation. That matrix
-also records four kinds of uncovered work: open or directional rules, locked
-features without a settled spelling, surfaces absent from both backends, and
-properties the harness cannot yet observe.
-
-Read a zero-divergence result for what it is. It means the two implementations
-agree on the questions the corpus asks — not that they agree in general. An audit
-that compared their full accepted surface (module specifiers, file extensions,
-import attributes, diagnostic codes, flags, and trust escape hatches) rather than
-running more cases found ten divergences no case could observe, because a corpus
-grown alongside two implementations converges on their intersection. All ten are
-fixed; `conformance/COVERAGE.md` also names the rules that exist in one
-implementation and are probed by no case, which is where this class hides.
-
-Important current boundaries:
-
-- the TypeScript instrument is still the root CLI default;
-- `.sm` is registered through the fork's content-mapper extension, not as a
-  built-in TypeScript source kind;
-- the reviewable fork patch series is not vendored into the distribution or
-  signed;
-- the LLVM and Wasm backends, the `TypeScript` requirement, feature
-  classification, and the portability pin are all implementation of **withdrawn**
-  specification obligations. TypeScript is now the only compilation target;
-  those surfaces are pending removal, not supported features;
-- compiler and loader sandboxes are process boundaries, not container or VM
-  isolation; and
-- the durable runtime has local restart/replay evidence but no multi-machine
-  coordination.
-
-See [the pinned-fork guide](docs/TYPESCRIPT_FORK.md), [the compatibility and
-CLI boundary](docs/COMPATIBILITY_API.md), and [the decision
+The documentation is the product specification, not an implementation status
+report. [Specification Status](https://docs.smithers.sh/specification/) explains
+which rules are locked, directional, or open. The [decision
 ledger](https://github.com/smithersai/smithers/blob/main/docs/DECISIONS.md)
-for the reviewable details.
+records the accepted decisions behind that contract.
 
 ## Learn More
 

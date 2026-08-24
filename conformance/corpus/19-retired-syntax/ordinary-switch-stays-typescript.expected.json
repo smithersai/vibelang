@@ -1,0 +1,6 @@
+{
+  "title": "an ordinary switch statement retains TypeScript fallthrough",
+  "expect": "output",
+  "stdout": ["a", "b"],
+  "notes": "specification/control-flow.mdx, Switch: case/default, colon clauses, fallthrough, and break remain unchanged."
+}

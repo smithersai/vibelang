@@ -2,15 +2,8 @@
 
 Smithers keeps ordinary async functions. Expected async failure is `Promise<Result<A, E>>`, and `await` unwraps only the Promise.
 
-:::note Current programmatic POC
-The provisional root package subpath `smthrs/concurrency`, implemented under
-`poc/src/concurrency`, provides keyed Promise combinators, FIFO governors,
-completion-ordered async-iterator helpers, cancellation, and
-`Stream`/`Queue`/`Semaphore`/`Channel` primitives. The typed-worker host and its
-Bun bootstrap listener are isolated at `smthrs/concurrency/bun`. These are
-ordinary TypeScript library APIs; they are not new Smithers syntax or a final
-standard-library contract.
-:::
+Concurrency helpers are ordinary TypeScript library APIs. Smithers adds no
+fiber runtime or Promise-specific parser syntax.
 
 ## Promise Discipline
 
@@ -37,27 +30,13 @@ const analytics = spawn module {
 
 Calls across a worker boundary retain Result types. Values and Errors crossing realms must satisfy the derived transport codec.
 
-:::note Implementation status
-The `spawn module { … }` syntax above is design-stage; no compiler lowering
-exists for it. The behavior it describes is available today as a provisional
-programmatic POC library instead: `TypedWorker.spawn<Contract>(moduleUrl,
-options)` resolves to a handle whose allowlisted methods have the shape
-`(input, options?) => Promise<Result<A, E>>`. The boundary is deliberately
-hardened rather than convenient — an explicit export allowlist, bounded active
-calls with a FIFO queue, per-call and startup timeouts, a message-size ceiling,
-strict canonical Result wire envelopes over a private `MessageChannel` (unknown
-fields, replayed ids, cycles, and non-transportable values fail closed instead of
-falling back to structured clone), and an explicit idempotent `terminate()` that
-rejects outstanding calls with a nominal Error. Nominal Error identity survives
-the round trip only when both realms execute the same codec registration.
-Import this Bun-only surface from `smthrs/concurrency/bun`;
-`TYPED_WORKER_API_STATUS` is the literal `"provisional"`.
-
-Not implemented: `spawn module` syntax and its lowering, compiler-derived
-transport codecs (the POC takes a TypeScript generic plus a runtime allowlist),
-typed-array and transferable codecs, and cooperative cancellation of a
-timed-out in-flight call. A worker module is an isolation realm, not a security
-sandbox.
+:::note Direction
+`spawn module { … }` communicates the target worker model; its exact syntax is
+not locked. A library form may expose the same contract as
+`TypedWorker.spawn<Contract>(moduleUrl, options)`. The compiler derives the
+export allowlist and transport codecs. The boundary enforces bounded active
+calls, timeouts, message limits, canonical Result envelopes, replay protection,
+and idempotent termination. A worker realm is not by itself a security sandbox.
 :::
 
 ## Join Concurrent Operations
@@ -77,7 +56,7 @@ const [profile, activity] = Result.all(results)!
 
 The Promise returned by a call or combinator owns that task lifetime from the caller's perspective. Every started Promise must ultimately be consumed with `await` before its enclosing scope exits. Authored `.sm` has no fire-and-forget or detach operation.
 
-The programmatic POC also exposes keyed joins:
+Keyed joins preserve names as well as tuple-style joins preserve positions:
 
 ```ts
 const values = await allKeyed({
@@ -112,24 +91,20 @@ async function index(
 
 Callers can distinguish cancellation from timeout or domain failure.
 
-In the POC, `Cancellation` remains the `Context` capability used by existing
-joins and retains its parent/child linkage. `CancellationSource` adds manual
-and AbortSignal-linked cancellation; `alreadyCancelled()` and
-`neverCancelled()` supply deterministic tokens; and
-`CancellationRegistration` is an idempotent disposable returned by
-`onCancel`. The adapter helpers are `cancellationSignal`, `cancellationError`,
-`cancellationCheckpoint`, and `onCancellation`. Listener exceptions are
-contained, but a hostile async iterator that ignores both cancellation and
-`return()` cannot be forcibly aborted by JavaScript.
+`CancellationSource` creates manual and `AbortSignal`-linked cancellation with
+parent/child linkage. Registrations are idempotent disposables. Adapters expose
+an `AbortSignal`, a typed cancellation Error, checkpoints, and listener
+registration. Listener exceptions are contained, but JavaScript cannot forcibly
+abort an iterator that ignores both cancellation and `return()`.
 
 ## Streams and Coordination Primitives
 
-The current POC APIs are deliberately bounded:
+The standard library supplies:
 
 - `new Queue<T>(capacity)` / `Queue.bounded<T>(capacity)` implement a bounded
   FIFO MPMC queue. `offer` and `take` suspend with typed
   `Result<…, QueueClosed | Cancelled>` outcomes; `tryOffer` and `tryTake`
-  distinguish temporary backpressure (`undefined`) from permanent closure;
+  use tagged states to distinguish temporary backpressure from permanent closure;
   `shutdown` lets accepted buffered values drain.
 - `new Semaphore(size)` / `Semaphore.withPermits(size)` provide fair
   `acquire`, `tryAcquire`, and `withPermit`. Permits release idempotently.
@@ -143,20 +118,27 @@ The current POC APIs are deliberately bounded:
   source order through a bounded Queue; `interrupt` adds cancellation; and
   `runCollect`, `runForEach`, and `runFold` return typed Results.
 
-Queue and Channel reject `null`/`undefined` elements because their nonblocking
-APIs use `Optional` to represent temporary absence. Internally started Promises
-have rejection containment, and early Stream/iterator exit joins the cleanup
-the helper owns.
+Nonblocking operations return a tagged result so `null` and `undefined` remain
+valid element values. Internally started Promises contain rejections, and early
+Stream or iterator exit joins the cleanup the helper owns.
 
 ## Shared Data
 
-Shared structs over `SharedArrayBuffer` provide an explicit path for high-throughput worker communication. Ordinary mutable objects are not silently shared between realms. The compiler checks cross-realm layout and error transport while each backend selects its implementation. This is design direction: shared structs are not implemented in the typed-worker POC, whose transport copies canonical values.
+Shared structs over `SharedArrayBuffer` provide an explicit path for
+high-throughput worker communication. Ordinary mutable objects are not silently
+shared between realms. The compiler checks cross-realm layout and Error
+transport.
+
+:::note Direction
+Shared-struct declaration syntax, memory layout, synchronization primitives,
+and host support remain open.
+:::
 
 ## Limiting Fan-Out
 
 Concurrency governors limit how much work may run simultaneously; they do not define child ownership or Error composition. A structured library combinator may own, cancel, and join the work it starts, but a Layer never does. Smithers intends to follow viable JavaScript proposals or standard-library APIs instead of adding parser syntax for throttling.
 
-The programmatic POC spells this `Governor.withLimit(limit)`. `acquire()`
+The library spells this `Governor.withLimit(limit)`. `acquire()`
 returns an idempotently releasable permit and `run(operation)` releases in
 `finally`; admission is FIFO. A `Governor` can be shared by independent helper
 instances. `mapUnordered`, `filterUnordered`, and `bufferedUnordered` accept a
@@ -166,9 +148,10 @@ closing. `bufferedUnordered` governs concurrent source pulls as well as output.
 
 ## Open Semantics
 
-The POC makes explicit local choices for FIFO admission, first-observed helper
-failure, child cancellation, and cleanup joining, but language-wide sibling
-cancellation, aggregate-error policy, worker ownership, shared-struct layout,
-and custom thenable portability remain specification work. `spawn module {}`
-and shared structs remain unimplemented. A Flow's durable scheduler is a
+:::note Direction
+Language-wide sibling cancellation, aggregate-error policy, worker ownership,
+shared-struct layout, and custom thenable handling remain specification work.
+The library primitives above use FIFO admission, first-observed helper failure,
+child cancellation, and cleanup joining. A Flow's durable scheduler is a
 separate opt-in runtime, not the execution model for ordinary async code.
+:::

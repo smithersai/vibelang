@@ -84,11 +84,9 @@ The bounded project/ownership checks use stable codes:
   so grammar acceptance cannot be proven and analysis fails closed.
 - `SMITHERS1107`: class `static {}` initialization blocks are unsupported; they
   execute outside every checked function channel.
-- `SMITHERS1205`: a `panic(...)`, `Result.unwrap()`, or `Optional.unwrap()`
+- `SMITHERS1205`: a `panic(...)` or postfix `!`
   propagation point sits lexically inside a JavaScript `try` with a `catch`
   clause; its early-return lowering would silently bypass the catch handler.
-- `SMITHERS1206`: `Optional.unwrap()` has no enclosing `Optional`-returning (or
-  `Result<Optional>`-returning) function that can propagate absence.
 - `SMITHERS1511`: a top-level `throw` statement cannot be represented as a checked
   Result (mirrors the `SMITHERS1505` top-level panic rule; `SMITHERS1505` also covers
   top-level `Result.expect()`).
@@ -123,64 +121,19 @@ The bounded project/ownership checks use stable codes:
   channel appears at top level.
 - `SMITHERS1506`: a foreign property/accessor read needs an annotated adapter;
   `SMITHERS1507`: a foreign factory/result is invoked before an expression-safe
-  unwrap/local binding.
+  propagation/local binding.
 - `SMITHERS1508`: executable foreign provenance escapes through an unsupported
   higher-order/return/store boundary; `SMITHERS1509`: a callback may escape into
   foreign code outside the checked call scope.
 - `SMITHERS1510`: a statically loaded TypeScript/JavaScript module lacks a leading
   JSDoc module-initialization trust claim containing both `@module` and
   `@throws {never}`. Type-only imports and compiler intrinsics are exempt.
-- `SMITHERS1710`: a `defer`/`errdefer` marker has unsupported placement or no
-  parser-recoverable cleanup expression; `SMITHERS1711`: `errdefer` has no Result
-  owner whose emitted error variant can be inspected.
-- `SMITHERS1712`: cleanup may panic, unwrap, produce a Result/Promise, or otherwise
-  has ambiguous failure composition; `SMITHERS1713`: an async `errdefer` tail
-  directly returns a Promise before its Result can be inspected.
-- `SMITHERS1705`: a recovered value-producing `if`/`switch` lacks a required value
-  branch/default; `SMITHERS1706`: its case label or authored jump would make the
-  checked evaluation order or value join unsafe.
-- `SMITHERS1707`: a value `if`/`switch` expression sits in a placement whose
-  checked evaluation order cannot be preserved by hoisting (short-circuit
-  right sides, conditional branches, loop headers, spreads evaluated earlier,
-  compound assignments, update expressions, optional chains, computed names,
-  defer cleanups, statements whose earlier declarators are effectful or whose
-  declared names a hoisted unit references, braceless single-statement
-  branches, template/tagged-template spans, and recovery bound overflows).
-- `SMITHERS1708`: the callee evaluated ahead of a recovered value expression
-  cannot be proven order-stable. Callees stay in place so `this` binding and
-  direct static-call analysis survive, which is only sound for identifiers
-  never written in the module and single-level members whose declarations are
-  methods/functions/readonly properties/const bindings with no member write
-  anywhere in the module.
-- `SMITHERS1709`: a value `if` expression in a general expression position has a
-  braceless branch; the recovered extent of a braceless branch is not provable
-  in expression context, so general placements require braced branches.
-- `SMITHERS1714`: a labeled block value construct is malformed or unsafe: a
-  `break :label` without a delimitable value, a label shadowed inside its own
-  block, a statement-position labeled block containing value breaks, a value
-  break inside a nested function, a plain `break label` or escaping jump that
-  would complete the block without its value, or a block that may complete
-  normally without reaching any `break :label value`.
-- `SMITHERS1715`: a labeled loop value construct is malformed or unsafe: a
-  braced-body value loop without an `else` completion value, an undelimitable
-  break or else value, a statement-position value loop, a value break inside
-  a nested function, or a jump escaping the loop construct. Cross-construct
-  value breaks (`break :outer` from inside another value construct) are
-  rejected through the same escape rule because nested label selection is not
-  finalized in the specification.
 - `SMITHERS1717`: a conditional declaration
   (`if (const user = cache.get(id); user !== null) { ... }`) has a shape whose
   binding scope is not textually provable: a braceless branch anywhere in the
   `if`/`else if`/`else` chain, `var` (which hoists out of the construct), a
   header without exactly one depth-1 `;`, an empty declaration or condition, or
   an unbalanced chain.
-- `SMITHERS1716`: an expression switch over a checker-known closed literal union
-  (string/number/boolean literal members, including literal enum members by
-  value, matching `===` selection semantics) is missing members and has no
-  default, or its non-literal case labels keep coverage unprovable. A proven
-  fully-covered closed-union expression switch no longer needs a default
-  clause; open scrutinee types keep the `SMITHERS1705` default requirement.
-
 The CLI has the same acceptance rule and does not write output on either class
 of error:
 
@@ -192,11 +145,7 @@ bun poc/examples/language/demo.generated.ts
 bun test poc/src/language/
 ```
 
-The expression-oriented control-flow suites live beside the frontend:
-`control-flow.test.ts` (bounded hosts), `expression-placement.test.ts`
-(general placement recovery), `labeled-values.test.ts`, `loop-values.test.ts`,
-and `switch-exhaustiveness.test.ts`; `examples/language/expression-flow.sm`
-is the executable example. `generic-rows.test.ts` covers polymorphic
+`generic-rows.test.ts` covers polymorphic
 failure/requirement row instantiation, including the adversarial instantiations
 that would publish an unsound row; `qualified-rows.test.ts` executes two modules
 declaring same-named Errors; `nominal-errors.test.ts` covers the type-only
@@ -210,7 +159,7 @@ the API or run the source with Node's TypeScript stripping enabled.
 ## What this POC proves
 
 - Failures are inferred to a fixed point from ordinary `Error` subclasses,
-  throws, calls, checked `panic`, foreign boundaries, and `Result.unwrap()`.
+  throws, calls, checked `panic`, foreign boundaries, and postfix `!`.
   The project API carries failure and Context rows through direct static calls
   across relative imports, aliases, namespace access, cycles, and exported
   arrow functions using checker symbol identity.
@@ -232,14 +181,11 @@ the API or run the source with Node's TypeScript stripping enabled.
   (`SMITHERS1803`), and a generic value that escapes direct static-call analysis
   keeps `SMITHERS1802`.
 - Public fallible functions require explicit `Result<A, E>` contracts. Returns
-  and throws lower to explicit Result constructors, and unwrap lowers to an
+  and throws lower to explicit Result constructors, and postfix `!` lowers to an
   inspected early `return` of the same error.
-- `Optional<T>` and `Result<Optional<T>, E>` returns lift in the specified
-  outside-in order. `Optional.unwrap()` lowers to an inspected early return of
-  the absent value (`none`, or `success(none)` in a `Result<Optional>` owner)
-  in the same statement-safe placements Result unwrap supports; without an
-  Optional-capable owner it is rejected (`SMITHERS1206`) instead of silently
-  compiling to the runtime's missed-lowering throw.
+- Absence uses ordinary `T | undefined` or `T | null` unions. Narrowing,
+  optional chaining, and nullish coalescing retain their TypeScript behavior;
+  the compiler adds no lifting or propagation channel for absence.
 - `Result.expect(...)` consumes the Result but converts its error variant into
   a panic, so it charges the distinguished `Panic` channel to the enclosing
   function's inferred failure row; at top level it is rejected like any other
@@ -256,7 +202,7 @@ the API or run the source with Node's TypeScript stripping enabled.
   are not compiler intrinsics.
 - Imported TypeScript/JavaScript runtime values retain checker-declaration
   provenance through namespace selection, local aliases, immutable object/array
-  storage, methods, and explicitly unwrapped factory results. Supported calls
+  storage, methods, and explicitly propagated factory results. Supported calls
   become `Result.try`/`tryPromise` with `Panic`; checker-resolved `@throws
   {never}` is trusted, while `@throws {SomeError}` validates the foreign value
   and exposes `SomeError | Panic` so a violated contract remains `Panic`.
@@ -309,7 +255,7 @@ the API or run the source with Node's TypeScript stripping enabled.
   left unbranded because the merged interface would have to restate its type
   parameter list.
 - Ordinary JavaScript `try/catch` keeps JavaScript throw behavior. Uncaught
-  recoverable exits lower to Results. `panic(...)` and unwrap propagation
+  recoverable exits lower to Results. `panic(...)` and postfix `!` propagation
   points inside a `try` with a `catch` clause are rejected (`SMITHERS1205`)
   because their early-return lowering would make the catch path silently dead.
 - Module trust is exact: only the declared compiler modules
@@ -318,66 +264,6 @@ the API or run the source with Node's TypeScript stripping enabled.
   do not confer trust; every other specifier is an ordinary foreign module.
 - Top-level `throw` statements (`SMITHERS1511`) and class `static {}` blocks
   (`SMITHERS1107`) fail closed instead of escaping the checked failure channels.
-- Parser-recovered, bare `defer expression` and `errdefer expression` markers
-  are paired only as direct statements in a braced block, with the cleanup on
-  the same statement line. The remaining lexical tail becomes nested
-  `try/finally`: registration occurs only after control reaches the marker,
-  `defer` runs for fallthrough, return, break/continue, and JavaScript throw,
-  and later registrations run first. `errdefer` instruments already-lowered
-  Result returns and runs only when the emitted value is the error variant,
-  including recoverable `throw` and `Result.unwrap()` propagation. Nested
-  function bodies are separate owners. Async owners accept exactly one root
-  `await` of a plain cleanup Promise. This ordering and syntax recovery are POC
-  evidence, not a normative language decision.
-- Function bodies in `if`, `switch`, `try`, and ordinary loop statements are
-  recursively lowered. In variable initializers and same-line returns, bounded
-  nested `if`/`switch` expressions lower through typed join temporaries;
-  Result exits, branch-local nominal types, fallthrough, unsafe case labels,
-  and escaping jumps are checked conservatively. Repeated loop-header unwrap
-  is explicitly rejected.
-- Braced-branch `if`/`switch` expressions are additionally accepted in general
-  expression placements: call/new arguments, array elements and construct
-  spread operands, object property values (with shorthand and pure earlier
-  members), nested initializer expressions and non-short-circuit binary
-  operands, plain identifier assignments' right sides, element receivers and
-  indices, `return`/`throw`/condition/discriminant positions, and arrow
-  concise bodies. A pre-parse pass proves each construct's extent through the
-  parser's own recovery shape, masks it to obtain a clean containing-statement
-  AST, and hoists the construct plus every impure earlier operand into
-  compiler temporaries before the statement, preserving authored evaluation
-  order; the hoisted form is the bounded initializer host the join planner
-  already checks, so typed joins and Result/Optional exits behave identically.
-  Callees are left in place under a checker-verified stability proof
-  (`SMITHERS1708` on failure); order-unpreservable placements are rejected
-  (`SMITHERS1707`, `SMITHERS1709`) and everything else keeps `SMITHERS1702`. Diagnostics
-  and analysis spans are reported in authored coordinates, and source maps
-  compose the printer map with an exact derived-to-authored offset map so
-  moved text keeps character-exact provenance while compiler glue stays
-  unmapped. A construct keyword after `case x:` or a label is now proven to be
-  an ordinary statement instead of misreported as an expression.
-- Labeled block values (`const x = label: { ...; break :label value; ... }`)
-  are recovered by rewriting each `break :label value` into the parseable
-  `{ value; break label; }` form and placing the labeled statement before a
-  marker-initialized host declaration, in the bounded hosts and every general
-  placement above. Only pre-parse-recovered constructs are claimed - authored
-  ternary/object colons and ordinary labeled statements are never
-  reinterpreted, and recognition requires at least one `break :label value`.
-  The lowering assigns a typed join temporary at every site and keeps
-  ordinary TypeScript labeled-break semantics, so unwraps and Result exits
-  inside the block lower exactly as in statement position. When a nested
-  construct makes the analysis-program join `any`-tainted, the temporary is
-  left unannotated and the emitted program's own control-flow inference
-  supplies the precise union. Every reachable exit must carry a value
-  (`SMITHERS1714` otherwise).
-- Loop expression values (`const x = search: for (...) { ... break :search v
-  ... } else fallback`, and the `while` form) wrap the authored labeled loop
-  in a compiler-labeled block whose second statement holds the `else`
-  completion value. Value breaks target the wrapper (skipping the else);
-  plain `break search`, `continue`, and normal loop completion flow into the
-  else value, which is always required. Runtime-sized loops remain ordinary
-  runtime loops - nothing unrolls. The else value ends at `;`, a line break
-  after an expression-ending token, or an enclosing comma/bracket, so the
-  construct composes with argument lists and literals.
 - Declarations in conditionals (`if (const user = cache.get(id); user !== null)
   { ... }`) are recovered before parsing, because stock TypeScript cannot parse
   the form at all. The construct is rewritten into the equivalent scoped shape
@@ -386,7 +272,7 @@ the API or run the source with Node's TypeScript stripping enabled.
   binding is scoped to the conditional construct and to nothing after it. The
   declaration text, the condition, and every branch stay verbatim, so they keep
   character-exact source-map provenance; only the three glue fragments are
-  unmapped. The moved declaration is an ordinary statement, so `Result.unwrap()`
+  unmapped. The moved declaration is an ordinary statement, so postfix `!`
   in a conditional declaration lowers through the existing statement-safe path.
   Provisional semantics, POC evidence rather than a locked decision: the binding
   IS visible in `else`/`else if` branches, matching Go's
@@ -395,14 +281,6 @@ the API or run the source with Node's TypeScript stripping enabled.
   Shapes whose scope is not provable are refused (`SMITHERS1717`) and left byte
   identical; a reference to the binding *after* the construct is left to the
   acceptance rule, where the generated program reports the unresolved name.
-- Expression switches over closed literal unions are checked for
-  exhaustiveness: full literal coverage removes the default-clause
-  requirement, missing members are named in `SMITHERS1716`, and proven-exhaustive
-  lowered switches never receive an unreachable implicit completion. Plain
-  unlabeled `while`/`for` in expression position stays fail-closed
-  (`SMITHERS1702`): the specification defines loop values only through labeled
-  break values and the loop `else`, so an unlabeled loop expression has no
-  defined value-producing exits.
 - Runtime helper aliases avoid collisions with authored identifiers. Plain
   TypeScript requiring no transform remains byte-for-byte unchanged.
 - Every static module-graph edge shares one specifier-rewrite and
@@ -425,14 +303,17 @@ the API or run the source with Node's TypeScript stripping enabled.
   has exact UTF-16 line/column identity mappings. Changed output starts from
   TypeScript-printer AST/original-node provenance and extends a mapping only
   across text proven identical to the authored source; return/throw lifting,
-  multiline unwrap operands, cleanup expressions, and import rewrite token
+  multiline propagation operands, cleanup expressions, and import rewrite token
   starts retain conservative attribution. Helper headers, temporaries,
   wrappers, and other compiler-only text are explicitly unmapped rather than
   inheriting a misleading nearest line. Composition preserves unmapped stops,
   cross-file sources/content, and comptime-style multi-source mappings.
 
 Historical `error`, `throws`, named `uses`, `!T`, `?T`, prefix `try`, postfix
-`catch`, `orelse`, and `.?` spellings are retired and receive migration
+`catch`, `orelse`, `.unwrap()`, TypeScript non-null/definite-assignment assertions,
+`.?`, `defer`, `errdefer`, value-carrying labeled breaks,
+loop `else`, expression-position `if`/`switch`, and labeled block/loop values
+are retired and receive migration
 diagnostics (`SMITHERS1001`); a retired form the sweep does not claim survives
 as the grammar rule `SMITHERS1000`. Recognition is a **grammar** property, not
 token adjacency: each retired operator must have the operands its shape
@@ -441,22 +322,16 @@ and `orelse`, an identifier operand for a `throws`/`uses` clause suffixed to a
 complete return type — and a word used as a property name is never the
 operator. `{ try: doThing, catch: handleIt }`, `{ orelse: 7 }`,
 `class A { catch() {} }`, `Array<uses>`, and `{ ok: !failed }` are ordinary
-code. Unsupported expression placements (short-circuit right sides,
-conditional branches, loop headers, nested assignments, multi-declarator
-initializers past the first, template spans, and the other `SMITHERS1707`/
-`SMITHERS1702` shapes), unlabeled loop expressions, cross-construct value breaks,
-and unsafe defer shapes fail closed instead of receiving a source-text
-approximation.
+code. Ordinary labels, switches, ternaries, `using` declarations, and boolean
+negation are pinned as near misses so the retirement sweep cannot over-correct.
 
 `SMITHERS1000` also owns the switch clause separator. Switch clauses are
 colon-delimited exactly as in TypeScript and there is no arrow-arm switch
 grammar, in expression or statement position, so `case x => v`, `default => v`,
 and a clause with no separator at all (`case x v`) are all rejected. TypeScript's
 parser recovers each of them by pretending the colon was written, leaving a
-clause textually identical to `case x: v` in the tree, and its own
-"':' expected" is suppressed as parse noise within 48 characters of a recovered
-`switch` expression host — which made acceptance depend on the DISTANCE from the
-`switch` keyword. The rule therefore re-reads the gap between each clause header
+clause textually identical to `case x: v` in the tree. The rule therefore
+re-reads the gap between each clause header
 and its first statement with a scanner: the first significant token there must be
 `:`. Only that first token counts, which is what keeps `case x: (() => v)()`,
 `case x /* => */: v`, `case flag ? a : b: v`, and `case x as string: v` ordinary
@@ -487,7 +362,7 @@ This is still a POC, not a sound whole-program compiler:
 - Foreign provenance is bounded declaration/data flow, not arbitrary heap
   taint. Immutable local aliases and literal storage are followed; mutable or
   opaque stores, raw accessor/destructuring paths, executable values returned
-  through local APIs, nested calls before checked unwrap, and callback escape
+  through local APIs, nested calls before checked propagation, and callback escape
   are rejected with `SMITHERS1504`/`SMITHERS1506`-`SMITHERS1509`. A future interop IR can
   replace those gates with order- and ownership-preserving lowering.
 - Layer inference recognizes the concrete built-ins above. Layer acquisition
@@ -496,23 +371,9 @@ This is still a POC, not a sound whole-program compiler:
   expose an explicit Result contract so its channel remains visible.
 - Must-consume checking is checker-backed but deliberately conservative, not a
   path-sensitive ownership analysis.
-- Unwrap lowering supports statement-safe placements. The `if`/`switch` join
-  planner covers the bounded hosts plus the recovered general placements, and
-  labeled block/loop values and closed-union exhaustiveness are implemented
-  through the same pre-parse recovery; repeated loop headers, generators,
-  unlabeled loop expressions, nested label selection across constructs, and
-  the remaining `SMITHERS1702`/`SMITHERS1707` placements still require the production
-  checked IR. The pre-parse recovery is a bounded textual transform (256
-  constructs, 32 edit rounds per module) whose evaluation-order proofs are
-  deliberately conservative; callee stability rests on declaration shape plus
-  a whole-module write scan, not aliasing analysis.
-- Defer is deliberately narrower than a final control-flow IR: markers outside
-  direct braced statement lists, newline-separated or missing/non-expression
-  cleanup, cleanup that can panic/unwrap/return Result or an unowned Promise,
-  and async `errdefer` tails returning an unawaited Promise are diagnostics.
-  Cleanup-error composition is not defined. Only a root awaited plain Promise
-  cleanup is accepted in async owners, and the provisional nested-finally LIFO
-  behavior must not be treated as a locked ordering decision.
+- Postfix `!` lowering supports only statement-safe placements. Repeated loop headers,
+  generators, and evaluation-order-sensitive expression positions remain
+  diagnostics until a production checked IR can represent them.
 - Error match syntax is static object-literal cases only, and stable IDs are
   module/name based. Module qualification uses the project-relative source path,
   so moving or renaming a module changes both its row IDs and its runtime

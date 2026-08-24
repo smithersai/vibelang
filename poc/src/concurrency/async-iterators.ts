@@ -91,6 +91,9 @@ export function bufferedUnordered<Input>(
     directBound ? boundOrOptions as ConcurrencyBound : options!.concurrency,
     "bufferedUnordered concurrency",
   );
+  // KNOWN DEFECT (reproduced, not fixed here). Same shape as the one described
+  // at the matching site in `join.ts`: `bufferedUnordered(source, 2)` ignores a
+  // cancellation that `bufferedUnordered(source, { concurrency: 2 })` honors.
   const parent = options
     ? options.cancellation ?? Cancellation.context()
     : legacyCancellation ?? new Cancellation();

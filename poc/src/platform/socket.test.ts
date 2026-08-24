@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { decodeError, encodeError, errorIs } from "../runtime/errors.ts";
 import { Layer } from "../runtime/layer.ts";
-import type { Optional } from "../runtime/optional.ts";
 import { catchPanic, isPanic } from "../runtime/panic.ts";
 import { type Result, isResult } from "../runtime/result.ts";
 import { NodePlatform, TestPlatform } from "./layers.ts";
@@ -78,7 +77,7 @@ async function readExactly(connection: SocketConnection, count: number): Promise
   let total = 0;
   while (total < count) {
     const chunk = value(await connection.read());
-    const bytes = chunk.unwrapOr(new Uint8Array(0));
+    const bytes = chunk ?? new Uint8Array(0);
     if (bytes.length === 0) break;
     parts.push(bytes);
     total += bytes.length;
@@ -93,11 +92,13 @@ async function readExactly(connection: SocketConnection, count: number): Promise
 }
 
 async function expectEndOfFile(connection: SocketConnection): Promise<void> {
+  // End-of-file is an absent *success*: `undefined`, not a typed failure.
   const first = value(await connection.read());
-  expect(first.isNone()).toBe(true);
+  expect(first).toBeUndefined();
+  expect(first?.length).toBeUndefined();
   // End-of-file is stable: reading again reports the same fact.
   const second = value(await connection.read());
-  expect(second.isNone()).toBe(true);
+  expect(second).toBeUndefined();
 }
 
 /** The contract every Socket implementation satisfies. */
@@ -123,7 +124,7 @@ async function assertSocketContract(socket: Socket): Promise<void> {
   value(await server.write(encoder.encode("x")));
   const settled = await pending;
   expect(isResult(settled)).toBe(true);
-  expect(decoder.decode(value(settled).unwrapOr(new Uint8Array(0)))).toBe("x");
+  expect(decoder.decode(value(settled) ?? new Uint8Array(0))).toBe("x");
 
   // A clean close is an absent read on the peer, not a failure.
   await client.close();
@@ -242,7 +243,7 @@ describe("Socket", () => {
       const settled = await pending;
       expect(isResult(settled)).toBe(true);
       settled.match({
-        ok: (chunk: Optional<Uint8Array>) => expect(chunk.isNone()).toBe(true),
+        ok: (chunk: Uint8Array | undefined) => expect(chunk).toBeUndefined(),
         error: (error) => expect(errorIs(error, SocketError)).toBe(true),
       });
 

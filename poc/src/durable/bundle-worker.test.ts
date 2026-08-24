@@ -90,7 +90,7 @@ const pipelinePlan = () => {
 import { durable } from "smithers:flows"
 import { First, Second } from "test:bundle-worker-actions"
 export const Pipeline = durable(function Pipeline(input: { value: number }) {
-  const first = First.run({ value: input.value }).unwrap()
+  const first = First.run({ value: input.value })!
   return Second.run({ value: first.value })
 })
 `, {

@@ -4,7 +4,7 @@ import config from "./config.json" with { type: "json", mode: "const" }
 export const releaseAssetAnswer: 42 = config.answer
 
 export function run(): Result<string, Missing> {
-  const value = load(true).unwrap()
+  const value = load(true)!
   return value + ":" + config.label + ":" + config.answer
 }
 

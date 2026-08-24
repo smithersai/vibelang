@@ -1,7 +1,7 @@
 import { load, type Missing } from "./service.sm"
 
 export function run(): Result<string, Missing> {
-  return load(true).unwrap()
+  return load(true)!
 }
 
 run().match({ ok: (value) => value, error: (error) => error.message })

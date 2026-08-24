@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { __vsInspectOptional, __vsInspectResult, decodeError, encodeError } from "../runtime/index.ts";
+import { __vsInspectResult, decodeError, encodeError } from "../runtime/index.ts";
 import { CancellationSource, Cancelled, Queue, QueueClosed, isQueue } from "./index.ts";
 
 async function takeValue<Value>(queue: Queue<Value>): Promise<Value> {
@@ -91,18 +91,20 @@ describe("Queue", () => {
 
   test("try operations distinguish temporary misses from permanent closure", () => {
     const queue = new Queue<number>(1);
-    expect(__vsInspectOptional(queue.tryTake()).some).toBe(false);
-    const offered = __vsInspectOptional(queue.tryOffer(1));
-    expect(offered.some).toBe(true);
-    if (offered.some) expect(offered.value.isOk()).toBe(true);
-    expect(__vsInspectOptional(queue.tryOffer(2)).some).toBe(false);
-    const taken = __vsInspectOptional(queue.tryTake());
-    expect(taken.some).toBe(true);
-    if (taken.some) expect(taken.value.unwrap()).toBe(1);
+    // A temporary miss is `undefined`; a permanent closure is a Result error.
+    // The two stay distinguishable without a container.
+    expect(queue.tryTake()).toBeUndefined();
+    const offered = queue.tryOffer(1);
+    expect(offered).not.toBeUndefined();
+    expect(offered?.isOk()).toBe(true);
+    expect(queue.tryOffer(2)).toBeUndefined();
+    const taken = queue.tryTake();
+    if (taken === undefined) throw new Error("expected a value");
+    expect(taken.unwrap()).toBe(1);
     queue.shutdown();
-    const closed = __vsInspectOptional(queue.tryTake());
-    expect(closed.some).toBe(true);
-    if (closed.some) expect(closed.value.isError()).toBe(true);
+    const closed = queue.tryTake();
+    expect(closed).not.toBeUndefined();
+    expect(closed?.isError()).toBe(true);
   });
 
   test("QueueClosed is nominal and wire round-trips", () => {

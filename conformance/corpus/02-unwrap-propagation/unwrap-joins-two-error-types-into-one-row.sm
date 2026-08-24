@@ -17,11 +17,11 @@ function parse(text: string): Result<number, Invalid> {
   return value
 }
 
-// Two unwraps of two different Results: the enclosing failure row is the UNION
+// Two propagations from different Results: the enclosing failure row is the UNION
 // of both error types, and the annotation has to spell both.
 function scoreOf(key: string): Result<number, Missing | Invalid> {
-  const text = lookup(key).unwrap()
-  return parse(text).unwrap()
+  const text = lookup(key)!
+  return parse(text)!
 }
 
 export function main(): string[] {

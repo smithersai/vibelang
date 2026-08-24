@@ -1,6 +1,6 @@
 {
-  "title": "unwrapping two different Results unions both error types into the enclosing function's failure row",
+  "title": "propagating two different Results unions both error types into the enclosing function's failure row",
   "expect": "output",
   "stdout": ["41", "not a number: twelve", "no entry for zoe"],
-  "notes": "specification/failures.mdx, 'Propagation': 'The compiler MUST include the unwrapped Result's error type in the enclosing function's inferred E.' specification/type-system.mdx, 'Fallibility Inference', requires E to be inferred from Result propagation. The three output lines exercise the success path and BOTH members of the union, so an implementation that kept only one arm of the row would fail on one of them."
+  "notes": "The compiler includes each propagated Result's error type in the enclosing inferred E. The three output lines exercise the success path and both members of the union."
 }

@@ -1,7 +1,7 @@
 {
   "name": "smthrs",
   "version": "0.0.1",
-  "description": "Smithers checked prototype: typed failures, capability contexts, hermetic comptime, targets, and durable plans.",
+  "description": "Smithers checked prototype: typed failures, capability contexts, hermetic comptime, and durable plans.",
   "type": "module",
   "main": "./compat/typescript.cjs",
   "types": "./compat/typescript.d.cts",
@@ -67,10 +67,6 @@
       "types": "./dist/build.d.ts",
       "default": "./dist/build.js"
     },
-    "./targets": {
-      "types": "./dist/targets.d.ts",
-      "default": "./dist/targets.js"
-    },
     "./agent": {
       "types": "./dist/agent.d.ts",
       "default": "./dist/agent.js"
@@ -126,10 +122,6 @@
     "./result": {
       "types": "./dist/result.d.ts",
       "default": "./dist/result.js"
-    },
-    "./optional": {
-      "types": "./dist/optional.d.ts",
-      "default": "./dist/optional.js"
     },
     "./language-service": {
       "types": "./dist/language-service.d.ts",

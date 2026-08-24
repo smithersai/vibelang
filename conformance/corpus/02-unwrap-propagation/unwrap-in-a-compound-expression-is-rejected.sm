@@ -8,6 +8,6 @@ export function scoreOf(key: string): Result<number, Missing> {
 }
 
 export function main(): Result<string[], Missing> {
-  const total = scoreOf("ada").unwrap() + scoreOf("bob").unwrap()
+  const total = scoreOf("ada")! + scoreOf("bob")!
   return [`${total}`]
 }

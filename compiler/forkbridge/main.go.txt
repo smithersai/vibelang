@@ -283,8 +283,8 @@ func buildProject(input request) (*project, error) {
 	}
 	if internal {
 		// The compiler-owned prelude is a real project input: it declares the
-		// runtime representation of Result and publishes the Result/Optional
-		// type names globally, so authored `.sm` files import nothing.
+		// runtime representation of Result and publishes the Result type name
+		// globally, so authored `.sm` files import nothing.
 		if err := claim(preludeVirtualName, preludeLogicalPath); err != nil {
 			return nil, err
 		}
@@ -307,17 +307,6 @@ func buildProject(input request) (*project, error) {
 		built.checkedFiles[comptimeVirtualName] = comptimeDeclarationText
 		built.emitFiles[comptimeVirtualName] = comptimeDeclarationText
 		built.checkedRoots = append(built.checkedRoots, comptimeVirtualName)
-
-		// The native pin also has a declaration identity no sibling virtual
-		// module can reach. Successful lowering retargets its runtime import to
-		// the shared prelude's identity export.
-		if err := claim(nativeVirtualName, nativeLogicalPath); err != nil {
-			return nil, err
-		}
-		built.tsTexts[nativeVirtualName] = nativeDeclarationText
-		built.checkedFiles[nativeVirtualName] = nativeDeclarationText
-		built.emitFiles[nativeVirtualName] = nativeDeclarationText
-		built.checkedRoots = append(built.checkedRoots, nativeVirtualName)
 
 		// Checker-only host declarations prevent an absent ambient @types/node
 		// package from preempting Smithers's own host-module diagnostics. The
@@ -353,7 +342,7 @@ func buildProject(input request) (*project, error) {
 			return nil, err
 		}
 		if internal && (authoredName == preludeVirtualName || authoredName == comptimeVirtualName ||
-			authoredName == nativeVirtualName || authoredName == hostModulesVirtualName ||
+			authoredName == hostModulesVirtualName ||
 			authoredName == durableVirtualName) {
 			return nil, fmt.Errorf("compiler input %q collides with the compiler-owned prelude", file.Path)
 		}

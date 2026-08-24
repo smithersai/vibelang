@@ -13,13 +13,12 @@ import {
   __vsResultFailure,
   __vsResultSuccess,
 } from "../runtime/result.ts";
-import { __vsOptionalNone, __vsOptionalSome } from "../runtime/optional.ts";
 import { FixtureError } from "../../examples/concurrency/test-worker.ts";
 
 type FixtureWorker = Pick<typeof import("../../examples/concurrency/test-worker.ts"),
   | "echo"
   | "reflectResult"
-  | "reflectOptional"
+  | "reflectAbsence"
   | "reflectError"
   | "fail"
   | "badOutput"
@@ -67,8 +66,8 @@ describe("provisional typed workers", () => {
     }
   });
 
-  test("round-trips nested Result, Optional, and nominal Error values", async () => {
-    const worker = await spawn(["reflectResult", "reflectOptional", "reflectError", "fail"]);
+  test("round-trips nested Result, `T | undefined`, and nominal Error values", async () => {
+    const worker = await spawn(["reflectResult", "reflectAbsence", "reflectError", "fail"]);
     try {
       const nested = (await worker.reflectResult(__vsResultFailure(new FixtureError("nested")))).unwrap();
       const nestedState = __vsInspectResult(nested);
@@ -76,10 +75,13 @@ describe("provisional typed workers", () => {
       if (nestedState.ok) throw new Error("expected nested failure");
       expect(nestedState.error.is(FixtureError)).toBe(true);
 
-      const some = (await worker.reflectOptional(__vsOptionalSome("present"))).unwrap();
-      const none = (await worker.reflectOptional(__vsOptionalNone())).unwrap();
-      expect(some.unwrap()).toBe("present");
-      expect(none.isNone()).toBe(true);
+      // Absence crosses the boundary as the ordinary `undefined` node.
+      const present = (await worker.reflectAbsence("present")).unwrap();
+      const absent = (await worker.reflectAbsence(undefined)).unwrap();
+      expect(present).toBe("present");
+      expect(absent).toBeUndefined();
+      expect(present?.length).toBe(7);
+      expect(absent ?? "Guest").toBe("Guest");
 
       const errorValue = (await worker.reflectError(new FixtureError("value"))).unwrap();
       expect(errorValue).toBeInstanceOf(FixtureError);

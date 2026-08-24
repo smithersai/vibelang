@@ -1,5 +1,5 @@
 {
-  "title": "a conditional declaration is an ordinary statement-safe host, so an unwrap propagation point inside it lowers normally",
+  "title": "a conditional declaration is a statement-safe host, so postfix propagation inside it lowers normally",
   "expect": "output",
   "stdout": ["AL", "no entry for zoe"]
 }

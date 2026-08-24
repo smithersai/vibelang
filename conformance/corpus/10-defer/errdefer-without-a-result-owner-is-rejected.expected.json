@@ -1,5 +1,0 @@
-{
-  "title": "errdefer needs a Result owner whose emitted error variant it can inspect",
-  "expect": "diagnostics",
-  "diagnostics": [{ "code": "SMITHERS1711", "line": 8, "column": 3 }]
-}

@@ -6,6 +6,7 @@ import { FileSystem, InMemoryFileSystem, NodeFileSystem } from "./filesystem.ts"
 import { FetchHttpClient, HttpClient, StubHttpClient } from "./http.ts";
 import { type HostPlatform, NodeProcess, Process, TestProcess } from "./process.ts";
 import { Random, SeededRandom, SystemRandom } from "./random.ts";
+import { Sleeper, SystemSleeper, TestSleeper } from "./schedule.ts";
 import { MemorySocket, NodeSocket, Socket } from "./socket.ts";
 import { ScriptedTerminal, SystemTerminal, Terminal, type TerminalSize } from "./terminal.ts";
 
@@ -24,7 +25,8 @@ export type PlatformCapability =
   | typeof HttpClient
   | typeof Process
   | typeof Terminal
-  | typeof Socket;
+  | typeof Socket
+  | typeof Sleeper;
 
 export type PlatformLayer = Layer<PlatformCapability>;
 
@@ -44,6 +46,13 @@ export interface PlatformServices {
   readonly process?: Process;
   readonly terminal?: Terminal;
   readonly socket?: Socket;
+  /**
+   * Pausing is a host facility, so it is a capability rather than an ambient
+   * timer. `Schedule.retry`/`repeat` used to fall back to `globalThis.setTimeout`
+   * when no `Sleeper` was provided; carrying one here is what lets that fallback
+   * be deleted without making retries unusable.
+   */
+  readonly sleeper?: Sleeper;
 }
 
 /** Package already constructed services into one environment. */
@@ -62,6 +71,7 @@ export function platformLayer(services: PlatformServices): PlatformLayer {
   if (services.process !== undefined) layers.push(Layer.succeed(Process, services.process));
   if (services.terminal !== undefined) layers.push(Layer.succeed(Terminal, services.terminal));
   if (services.socket !== undefined) layers.push(Layer.succeed(Socket, services.socket));
+  if (services.sleeper !== undefined) layers.push(Layer.succeed(Sleeper, services.sleeper));
   return Layer.merge(...layers);
 }
 
@@ -82,6 +92,7 @@ export function nodePlatform(options: NodePlatformOptions = {}): PlatformLayer {
     process: options.process ?? NodeProcess.make(),
     terminal: options.terminal ?? SystemTerminal.make(),
     socket: options.socket ?? NodeSocket.make(),
+    sleeper: options.sleeper ?? SystemSleeper.make(),
   });
 }
 
@@ -126,6 +137,8 @@ export interface TestPlatformServices {
   readonly process: TestProcess;
   readonly terminal: ScriptedTerminal;
   readonly socket: MemorySocket;
+  /** Records every sleep and advances `clock` instead of waiting on a host timer. */
+  readonly sleeper: TestSleeper;
 }
 
 const DEFAULT_TEST_INSTANT = "2026-01-01T00:00:00.000Z";
@@ -158,6 +171,9 @@ export const TestPlatform = Object.freeze({
     const socket = MemorySocket.make(
       options.maxBufferedBytes === undefined ? {} : { maxBufferedBytes: options.maxBufferedBytes },
     );
+    // Bound to the same TestClock, so a schedule that reads elapsed time sees
+    // the delays it slept without any real time passing.
+    const sleeper = TestSleeper.make({ clock });
     return Object.freeze({
       layer: platformLayer({
         clock,
@@ -169,6 +185,7 @@ export const TestPlatform = Object.freeze({
         process: runningProcess,
         terminal,
         socket,
+        sleeper,
       }),
       clock,
       random,
@@ -179,6 +196,7 @@ export const TestPlatform = Object.freeze({
       process: runningProcess,
       terminal,
       socket,
+      sleeper,
     });
   },
 });

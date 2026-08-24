@@ -1,0 +1,6 @@
+{
+  "title": "the withdrawn braceless value-position if is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1001", "line": 2, "column": 17 }],
+  "notes": "specification/control-flow.mdx expressly forbids braced and braceless if expressions."
+}

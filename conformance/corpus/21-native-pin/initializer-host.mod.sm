@@ -1,4 +1,0 @@
-// A module initializer runs when the module LOADS, so this read really happens:
-// for every importer, before any of them runs a line of its own. There is no
-// function here to walk.
-export const pid = process.pid

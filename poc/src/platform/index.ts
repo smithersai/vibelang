@@ -12,7 +12,7 @@
 export { Clock, SystemClock, TestClock } from "./clock.ts";
 
 // `Duration`, `Instant`, and `ConfigSpec` each export a type and a namespace of
-// the same name, the way the runtime's `Result` and `Optional` do, so one
+// the same name, the way the runtime's `Result` does, so one
 // re-export carries both meanings.
 export { Config, ConfigError, ConfigSpecValue, InvalidConfig, MissingConfig } from "./config.ts";
 export type { ConfigSpec } from "./config.ts";

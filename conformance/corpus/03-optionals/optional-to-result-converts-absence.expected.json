@@ -1,6 +1,0 @@
-{
-  "title": "optional.toResult(error) is the explicit conversion from absence to a typed Result failure",
-  "expect": "output",
-  "stdout": ["Ada", "no entry for 2"],
-  "notes": "specification/type-system.mdx, 'Optional': 'Optional absence MUST remain distinct from a Result error. Optional<T> MAY convert explicitly to Result<T, E> through toResult(error).' docs/DECISIONS.md 'Optionals and nullability' locks the same separation. The conversion being explicit is the promise: an implementation that let an absent Optional silently satisfy a Result contract would print something for line 2 other than the Missing message."
-}

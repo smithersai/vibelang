@@ -382,21 +382,19 @@ export function main(): string[] {
 		t.Fatalf("the authored asset edge reached runtime output:\n%s", ordinaryJS)
 	}
 
-	const pinned = `import { native } from "smithers:native"
-import config from "./config.json" with { type: "json", mode: "const" }
+	const pinned = `import config from "./config.json" with { type: "json", mode: "const" }
 type Exactly<A, B> = (<G>() => G extends A ? 1 : 2) extends (<G>() => G extends B ? 1 : 2) ? true : false
 const literalPreserving: Exactly<
   typeof config,
   { readonly mode: "production"; readonly ports: readonly [80, 443] }
 > = true
 function describe(): string { return ` + "`" + `${config.mode}/${config.ports.length}/${literalPreserving}` + "`" + ` }
-native(describe)
 export function main(): string[] { return [describe()] }
 `
 	asset := SourceFile{Path: "config.json", Kind: FileKindAsset, Text: `{ "mode": "production", "ports": [80, 443] }`}
 	constResult := compileAssetProgram(t, pinned, asset)
 	if constResult.EmitSkipped || len(constResult.Diagnostics) != 0 {
-		t.Fatalf("const JSON native pin must compile with no SMITHERS3001: %#v", constResult.Diagnostics)
+		t.Fatalf("const JSON asset program must compile clean: %#v", constResult.Diagnostics)
 	}
 	if got := runComptimeProgram(t, constResult); got != "production/2/true" {
 		t.Fatalf("const JSON runtime value = %q", got)

@@ -1,0 +1,6 @@
+{
+  "title": "TypeScript optional properties and optional parameters keep their ordinary undefined-based meaning",
+  "expect": "output",
+  "stdout": ["Ada", "Ada/AL!"],
+  "notes": "Re-cited from 03-optionals/typescript-optionals-keep-their-meaning. specification/type-system.mdx, 'Absence': absence uses TypeScript T | undefined or T | null with ordinary narrowing and nullish coalescing. docs/DECISIONS.md, 'Absence and nullability': existing undefined, optional parameters, and optional properties keep their ordinary meaning."
+}

@@ -32,5 +32,5 @@ console.log("codec law", Codec.checkRoundTrip(UserWire, [{
   name: "Ada",
   roles: ["admin"],
   metadata: { team: "compiler" },
-}]).isNone());
+}]) === undefined);
 console.log("json schema", JsonSchema.fromSchema(User));

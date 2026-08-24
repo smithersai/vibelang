@@ -170,39 +170,9 @@ test("emits deterministic exact identity mappings for unchanged source", () => {
   }
 });
 
-test("maps Optional.fromNullable when its runtime namespace import changes output", () => {
+test("rejects retired .? on a nullable call without claiming invalid source-map provenance", () => {
   const source = [
-    'const entries = new Map<string, string>([["ada", "Ada"]])',
-    "export function lookup(key: string): string {",
-    '  return Optional.fromNullable(entries.get(key) ?? null).unwrapOr("Guest")',
-    "}",
-    "",
-  ].join("\n");
-  const result = compileSmithers(source, {
-    fileName: "/virtual/nullable.sm",
-    outputFileName: "/virtual/nullable.generated.ts",
-    sourceName: "src/nullable.sm",
-    runtimeImport: "smthrs/runtime",
-  });
-
-  expect(result.analysis.diagnostics).toHaveLength(0);
-  expect(result.sourceMap).toBeDefined();
-  expect(result.code).toContain('import { Optional } from "smthrs/runtime"');
-  expect(mappedPosition(result.sourceMap!, result.code, result.code.indexOf("Generated"))).toBeUndefined();
-  const generatedCall = result.code.indexOf("Optional.fromNullable");
-  expectExact(
-    result.sourceMap!,
-    result.code,
-    generatedCall,
-    "src/nullable.sm",
-    source,
-    source.indexOf("Optional.fromNullable"),
-  );
-});
-
-test("rejects retired .? on an Optional call without claiming invalid source-map provenance", () => {
-  const source = [
-    "function lookup(id: number): Optional<string> { return id === 1 ? \"Ada\" : null }",
+    "function lookup(id: number): string | undefined { return id === 1 ? \"Ada\" : undefined }",
     "export function main(): string[] {",
     "  const name = lookup(1).?",
     "  return [name]",
@@ -237,7 +207,7 @@ test("maps transformed tokens exactly and leaves helpers and unwrap temporaries 
     "): Result<number, Failure> {",
     "  const unwrapped = leaf(",
     "    value,",
-    "  ).unwrap()",
+    "  )!",
     "  return unwrapped",
     "}",
     "",
@@ -281,103 +251,6 @@ test("maps transformed tokens exactly and leaves helpers and unwrap temporaries 
   expectExact(wire, result.code, inspectedLeaf, "src/transformed.sm", source, source.indexOf("leaf(\n", source.indexOf("const unwrapped")));
   const inspectedArgument = result.code.indexOf("value", inspectedLeaf);
   expectExact(wire, result.code, inspectedArgument, "src/transformed.sm", source, source.indexOf("value,", source.indexOf("const unwrapped")));
-});
-
-test("maps defer cleanups and tail statements while generated control flow stays unmapped", () => {
-  const source = [
-    "class CleanupFailure extends Error {}",
-    "function cleanup(label: string): void {}",
-    "export function run(fail: boolean): Result<number, CleanupFailure> {",
-    '  defer cleanup("always")',
-    '  errdefer cleanup("error")',
-    "  if (fail) throw new CleanupFailure()",
-    "  return 1",
-    "}",
-    "",
-  ].join("\n");
-  const result = compileSmithers(source, {
-    fileName: "/virtual/defer-map.sm",
-    outputFileName: "/virtual/defer-map.generated.ts",
-    sourceName: "src/defer-map.sm",
-    runtimeImport: "smthrs/runtime",
-  });
-  const bodyStart = result.code.indexOf("export function run");
-  const generatedTry = result.code.indexOf("try", bodyStart);
-  const generatedFinally = result.code.indexOf("finally", bodyStart);
-  expect(mappedPosition(result.sourceMap!, result.code, generatedTry)).toBeUndefined();
-  expect(mappedPosition(result.sourceMap!, result.code, generatedFinally)).toBeUndefined();
-  const always = result.code.indexOf('cleanup("always")', bodyStart);
-  const error = result.code.indexOf('cleanup("error")', bodyStart);
-  expectExact(result.sourceMap!, result.code, always, "src/defer-map.sm", source, source.indexOf('cleanup("always")'));
-  expectExact(result.sourceMap!, result.code, error, "src/defer-map.sm", source, source.indexOf('cleanup("error")'));
-  expect(mappedPosition(result.sourceMap!, result.code, result.code.indexOf("__smithers_errdefer_result", bodyStart)))
-    .toBeUndefined();
-});
-
-test("maps value-control branch expressions while join plumbing stays unmapped", () => {
-  const source = [
-    "export function choose(active: boolean, kind: string): number {",
-    "  const first = if (active) {",
-    "    11",
-    "  } else {",
-    "    22",
-    "  }",
-    "  const second = switch (kind) {",
-    '    case "one":',
-    "      first + 1",
-    "    default:",
-    "      first + 2",
-    "  }",
-    "  return second",
-    "}",
-    "",
-  ].join("\n");
-  const result = compileSmithers(source, {
-    fileName: "/virtual/control-map.sm",
-    outputFileName: "/virtual/control-map.ts",
-    sourceName: "src/control-map.sm",
-  });
-
-  const firstTemporary = result.code.indexOf("let __smithers_if_value_");
-  const switchTemporary = result.code.indexOf("let __smithers_switch_value_");
-  expect(mappedPosition(result.sourceMap!, result.code, firstTemporary)).toBeUndefined();
-  expect(mappedPosition(result.sourceMap!, result.code, switchTemporary)).toBeUndefined();
-  expect(mappedPosition(result.sourceMap!, result.code, result.code.indexOf("11", firstTemporary)))
-    .toBeUndefined();
-
-  const firstAssignment = result.code.indexOf("__smithers_if_value_", result.code.indexOf("if (active)"));
-  expectExact(
-    result.sourceMap!,
-    result.code,
-    firstAssignment,
-    "src/control-map.sm",
-    source,
-    source.indexOf("11"),
-  );
-  expect(mappedPosition(result.sourceMap!, result.code, firstAssignment + 1)).toBeUndefined();
-  const generatedEleven = result.code.indexOf("11", firstAssignment);
-  expectExact(result.sourceMap!, result.code, generatedEleven, "src/control-map.sm", source, source.indexOf("11"));
-
-  const switchAssignment = result.code.indexOf("__smithers_switch_value_", result.code.indexOf('case "one"'));
-  expectExact(
-    result.sourceMap!,
-    result.code,
-    switchAssignment,
-    "src/control-map.sm",
-    source,
-    source.indexOf("first + 1"),
-  );
-  const generatedExpression = result.code.indexOf("first + 1", switchAssignment);
-  expectExact(
-    result.sourceMap!,
-    result.code,
-    generatedExpression,
-    "src/control-map.sm",
-    source,
-    source.indexOf("first + 1"),
-  );
-  const generatedBreak = result.code.indexOf("break;", switchAssignment);
-  expect(mappedPosition(result.sourceMap!, result.code, generatedBreak)).toBeUndefined();
 });
 
 test("anchors rewritten import tokens without claiming rewritten columns", () => {

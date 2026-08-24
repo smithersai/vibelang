@@ -41,7 +41,8 @@
  * construction rather than recursing forever.
  *
  * Unlike `Chunk` and `HashMap`, a Data value may hold `null` or `undefined`: no
- * accessor on it returns an `Optional`, so there is no ambiguity to protect.
+ * accessor on it answers a miss with `undefined`, so there is no ambiguity to
+ * protect.
  */
 
 import { panic } from "../runtime/panic.ts";

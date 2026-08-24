@@ -309,3 +309,63 @@ test("tampered bundle bytes and forged manifests fail closed", () => {
   const reEncoded = new TextEncoder().encode(JSON.stringify(decoded))
   expect(() => decodeSignedDeploymentArtifact(reEncoded, trusted)).toThrow()
 })
+
+test("worker bundle self-containment covers re-export edges, not only imports", () => {
+  const descriptor = compileWorkAction("test/bundle/ReExport", "reexport-action.sm")
+  const action = Action.fromDescriptor<{ value: number }, { value: number }, { code: string }>(descriptor)
+  const hostCallback = (): never => {
+    throw new Error("host implementation must not run on the bundle path")
+  }
+  const failedClass = "class Failed extends Error { constructor(readonly code: string) { super(code) } }\n"
+  const workBody = "export function work(input: { value: number }): Result<{ value: number }, Failed> {\n" +
+    '  if (input.value < 0) throw new Failed("neg")\n' +
+    "  return { value: input.value + 1 }\n" +
+    "}\n"
+  const bundleFrom = (implementationId: string, sources: readonly { fileName: string; source: string }[]) =>
+    buildWorkerPoolBundle({
+      poolId: "reexport-pool",
+      target: "typescript-bun",
+      sandbox: "remote-http-poc",
+      selections: [{
+        action: descriptor,
+        contract: compileActionImplementationContract({
+          action: descriptor,
+          implementationId,
+          implementationVersion: "1",
+          entryFile: "reexport-action.sm",
+          exportName: "work",
+          implementation: hostCallback,
+          sources: [...sources]
+        })
+      }]
+    })
+
+  // A compiler-owned specifier legitimately skips the source closure check, so
+  // its lowered re-export edge is the reachable probe of this layer. Before
+  // this rule, `assertBundleImports` only inspected import declarations and a
+  // re-export rode into a bundle this function certifies as self-contained.
+  expect(() => bundleFrom("reexport-runtime", [{
+    fileName: "reexport-action.sm",
+    source: `export { Context } from "smthrs/context"\n${failedClass}${workBody}`
+  }])).toThrow("re-exports the compiler-owned worker bundle runtime")
+
+  // Both directions: ordinary self-contained bundles are unaffected.
+  const single = bundleFrom("reexport-single", [{
+    fileName: "reexport-action.sm",
+    source: `${failedClass}${workBody}`
+  }])
+  expect(single.javascript).not.toContain("smthrs/context")
+  const multi = bundleFrom("reexport-multi", [
+    { fileName: "helper.sm", source: "export function bump(value: number): number { return value + 1 }\n" },
+    {
+      fileName: "reexport-action.sm",
+      source: 'import { bump } from "./helper.sm"\n' + failedClass +
+        "export function work(input: { value: number }): Result<{ value: number }, Failed> {\n" +
+        '  if (input.value < 0) throw new Failed("neg")\n' +
+        "  return { value: bump(input.value) }\n" +
+        "}\n"
+    }
+  ])
+  expect(multi.javascript).toContain("helper.ts")
+  expect(HEX_DIGEST.test(multi.digest)).toBe(true)
+})

@@ -1,5 +1,5 @@
 {
-  "title": "unwrap propagation is an early return: statements after the failing unwrap never run",
+  "title": "postfix propagation is an early return: statements after the failing propagation point never run",
   "expect": "output",
   "stdout": [
     "error Missing: no entry for zoe"

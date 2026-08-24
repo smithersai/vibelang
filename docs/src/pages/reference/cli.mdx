@@ -1,335 +1,227 @@
-# CLI [Current compiler, tooling, and compatibility commands]
+# CLI [Target compiler, tooling, and deployment commands]
 
-The root package includes a working, checker-backed `.sm` toolchain. Its default
-TypeScript instrument discovers relative `.sm` imports plus their bounded
-relative TypeScript/JavaScript runtime graph, checks one project graph, lowers
-every module, validates the generated project, and commits the complete output
-set only after every stage succeeds. An explicit Go backend performs independent
-Smithers checking and lowering inside the pinned TypeScript fork. These are
-reviewable implementations, not a claim that a conforming production release
-exists.
+The `smithers` command operates on one checked project graph. Project commands
+resolve `.sm`, TypeScript, JavaScript, generated asset modules, compiler-known
+inputs, and package declarations before they emit or execute anything.
 
-Before `check`, `compile`, `run`, or `test` performs ordinary Smithers lowering, the
-CLI resolves imported `comptime` calls across the complete discovered project
-and lowers the supported static-value and bounded-function subset without
-importing or executing authored modules. Import aliases, project-local
-constants/helpers, `comptime.target`, and tracked text `embed(...)` are
-checker-resolved. Unsupported dynamic expressions and unrelated local functions
-named `comptime` fail with source-located `VCT1xxx` diagnostics and produce no
-project output.
+Users do not select a compiler implementation or lowering backend. The command
+contract is defined by Smithers semantics and the selected JavaScript host.
 
-Before every project command, including `inspect`, the CLI also discovers
-static relative source assets such as
-`import config from "./config.json" with { type: "json" }`. It runs the selected
-loader without evaluating authored modules, admits only compiler-issued
-pure-data output, and resolves the same generated module in the checker and
-runtime graph. Unsupported import shapes, path/file-identity aliases,
-conflicting attributes, and executable generated output fail closed before any
-project file is committed. `inspect` returns the stable `SMITHERS_ASSET_IMPORT`
-envelope when that preflight fails.
-
-## `.sm` Commands
+## Commands
 
 ```bash
 smithers check src/index.sm
-smithers check src/index.sm --backend go --format json
 smithers compile src/index.sm --outDir build
-smithers compile src/index.sm --outDir build --declaration --sourceMap
 smithers run src/index.sm
-smithers test test/example.sm --timeoutMs 30000 --format json
+smithers test
 smithers inspect src/index.sm --format json
-smithers plan flows/build.sm --bindings actions.json --outFile build.plan.json
-smithers format src/index.sm --check
+smithers plan build/Build.flow.json --input preview.json
+smithers build --outDir dist
+smithers format . --check
 smithers lsp
 smithers doctor --format json
 ```
 
-| Command | Current behavior |
+| Command | Contract |
 | --- | --- |
-| `check` | Checks inferred failure/context rows and validates the generated TypeScript without writing output. |
-| `compile` | Discovers the supplied `.sm` graph and emits `.mjs`, optional `.d.mts`, and optional composed JavaScript source maps. |
-| `run` | Compiles one entry and its local `.sm` dependencies to a temporary project, then runs the entry under Node. Remaining positional arguments are passed to the program. |
-| `test` | Compiles the graph and runs exported, zero-argument `test*` functions in a bounded child process. Sync values, Promises, and checked Results are accepted. |
-| `inspect` | Prints language analysis using the same compiler-issued source-asset modules as the other project commands. Its target-portability analysis is implementation left over from the withdrawn portable targets. |
-| `plan` | Statically lowers one supported `durable(...)` declaration to canonical Plan IR without importing or executing authored code or Action implementations. |
-| `format` | Deterministically formats `.sm` and non-JSX TypeScript/JavaScript files; writes in place by default and supports check and stdout modes. |
-| `lsp` | Runs the bounded Smithers language server as JSON-RPC 2.0 over stdio. |
-| `doctor` | Reports compiler/runtime versions, optional tools, packaged runtime availability, and which POC surfaces are implemented. |
+| `check` | Checks the complete project graph, including failure and requirement rows, without writing output. |
+| `compile` | Emits JavaScript, declarations, source maps, generated asset modules, and compiled Flow templates as requested. |
+| `run` | Checks and executes one application entry on the selected JavaScript host. |
+| `test` | Discovers, checks, and runs the project's tests with deterministic reporting and configured resource limits. |
+| `inspect` | Reports types, failure and requirement rows, compiler-known inputs, generated modules, and Flow metadata without executing the program. |
+| `plan` | Reads compiled Plan IR, validates and optionally specializes preview input, and prints the resulting graph without dispatching Actions. |
+| `build` | Resolves deployment providers and emits coordinator, worker, manifest, codec, and signature inputs for selected Flows. |
+| `format` | Formats supported source files or checks whether they are formatted. |
+| `lsp` | Runs the Smithers language server over stdio. |
+| `doctor` | Reports whether the configured compiler, JavaScript host, foreign toolchains, signing setup, and sandbox providers satisfy the project contract. |
 
-### Compiler backends
+## Project Selection
 
-`check`, `compile`, and `run` accept `--backend js|go`. The default is `js`,
-including when the option is omitted. `--backend js` is the existing checked
-TypeScript analysis and lowering path described on this page; its behavior has
-not changed.
+Commands load project configuration from the nearest Smithers configuration
+file unless `--project` selects one explicitly. An entry path is resolved inside
+that project. Source identity uses canonical project-relative paths; aliases
+that make one file appear under multiple identities are rejected.
 
-`--backend go` is an explicit experimental path for `.sm` inputs. It sends one
-in-memory protocol-v3 request with `lowering: "internal"` to `cmd/smithersc-go`,
-which builds and handshakes with the pinned, forkpatch-applied Go TypeScript
-fork. It never falls back to the JavaScript backend. `run --backend go` writes
-the returned artifacts into an isolated ESM project and actually executes the
-entry under Node. Go `compile` currently preserves the fork's artifact names
-(`.js`, `.js.map`, and `.d.sm.ts`, plus the compiler-owned prelude) rather than
-the JavaScript frontend's provisional `.mjs`/`.d.mts` policy.
+One invocation is atomic. If discovery, loading, checking, lowering, validation,
+or output collision detection fails, no part of the new output set is
+committed.
 
-Both backends return the same `ok`/`files` report shape. Go diagnostics are
-converted from the bridge's authored UTF-16 spans to the same one-based
-`file`/`line`/`column` fields. The Go compiler protocol does not yet publish the
-JavaScript instrument's row, comptime, or source-asset metadata, so its `rows`
-object is currently empty and those optional metadata blocks are absent. With
-an explicit structured format, including `--format json`, `run` captures the
-executed program's streams as `output` and `errorOutput`; program output never
-precedes or contaminates the structured document.
+:::note Direction
+The configuration filename and schema, workspace behavior, default entry
+selection, and exact project-root flags remain to be specified.
+:::
 
-The Go path requires `SMITHERS_TYPESCRIPT_FORK` to name the checkout at the
-revision pinned by `typescript-fork.json`, with the complete forkpatch series
-already applied. If the variable is absent, the CLI also checks the
-revision-named directory under `SMITHERS_TYPESCRIPT_FORK_CACHE`, then
-`/private/tmp/smithers-ts-fork-cache`. Prepare and patch the default checkout
-with:
+## Check
 
 ```bash
-node scripts/prepare-typescript-fork.mjs --fetch --cache /private/tmp/smithers-ts-fork-cache
-node compiler/forkpatch/forkpatch.mjs apply --checkout /private/tmp/smithers-ts-fork-cache/c087644e82dc3d48cf87e4c5519eeaaea9daf35c
-export SMITHERS_TYPESCRIPT_FORK=/private/tmp/smithers-ts-fork-cache/c087644e82dc3d48cf87e4c5519eeaaea9daf35c
+smithers check src/index.sm
+smithers check --project smithers.json --format json
 ```
 
-Backend preparation fails nonzero with a structured code and an exact remedy;
-it never changes backend:
+`check` performs the same graph discovery, asset loading, comptime evaluation,
+Flow lowering, declaration-boundary validation, and semantic checks as
+`compile`, but never emits project artifacts.
 
-| Code | Detection and remedy |
-| --- | --- |
-| `SMITHERS_GO_CHECKOUT_MISSING` | No configured or cached checkout exists. The error prints the prepare, apply, and environment commands. |
-| `SMITHERS_GO_CHECKOUT_REVISION` | Checkout `HEAD` is not the pinned revision. The error points to commands that materialize and patch a fresh cache. |
-| `SMITHERS_GO_CHECKOUT_UNPATCHED` | Forkpatch reports `state: "pristine"`. Run the exact `forkpatch.mjs apply --checkout ...` command in the error. |
-| `SMITHERS_GO_CHECKOUT_DIVERGENT` | Forkpatch reports a mixed, partially patched, or post-image-divergent tree. The CLI refuses to patch over it and prints commands for a fresh checkout. |
-| `SMITHERS_GO_CHECKOUT_INVALID` | The path is not a usable checkout or the offline status verifier cannot validate it. Run the verifier or fresh-checkout command printed in the error. |
-| `SMITHERS_GO_BUILD` / `SMITHERS_GO_TIMEOUT` | Building or preparing the Go bridge fails or times out. The error prints the reproducing `go build` or `go test` command. |
-| `SMITHERS_GO_PROTOCOL` | The command and bridge disagree on their one-JSON-value contract. Rebuild both together with the command printed in the error. |
-
-This backend is not a declaration that the full language has migrated. It does,
-however, contain real Go implementations of Result and Optional lifting,
-`!` propagation, async `Promise<Result<...>>`, nominal error matching,
-all nine Smithers surface-grammar forms, and bounded lowerers for both
-`smithers:comptime` and `smithers:flows`. Those passes use the fork's checked
-AST, node factory, printer, and authored source-map machinery rather than a
-source-text rewrite.
-
-The TypeScript instrument remains the default and still owns broader root-CLI
-composition for source assets, the relative foreign-runtime graph, and metadata
-that the Go protocol does not publish. The conformance corpus is growing while
-backend-parity work continues; it is a contract, not a completeness claim. Use
-the live [coverage matrix](https://github.com/smithersai/smithers/blob/main/conformance/COVERAGE.md)
-instead of a copied scoreboard.
-
-Relative runtime imports and reexports currently accept `.ts`, `.tsx`, `.mts`,
-`.cts`, `.js`, `.jsx`, `.mjs`, and `.cjs`. Static Smithers edges, literal dynamic
-imports in foreign ESM, and literal `require()` in CommonJS are supported;
-dynamic Smithers imports remain deferred until their frontend rewrite can preserve
-an exact source map. Type-only edges are bounded and checker-resolved but are
-not staged for execution. The provisional output policy emits ESM-shaped sources as
-`.mjs` and `.cts`/`.cjs` as `.cjs` beneath the deterministic
-`__smithers_foreign__/` output subtree, rewriting every resolved relative edge
-to that complete staged graph. `.js`, `.jsx`, `.ts`, and `.tsx` are treated as
-ESM in this POC; use `.cjs` or `.cts` for CommonJS. Synchronous CJS-to-ESM
-loading, nonliteral loading, declaration-only runtime targets, ambiguous
-TypeScript substitution, ESM `require`/`import=require`, dynamic import from
-CommonJS output, and unsupported extensions fail closed. Bare package and
-platform imports remain external and resolve from the generated project's
-runtime location; this POC is not a bundler.
-
-Static attributed assets are a separate compiler-owned edge. Their generated
-ESM is emitted under deterministic `__smithers_assets__/` names and participates
-in generated-TypeScript validation, optional `.d.mts`, and optional `.mjs.map`
-output. Import attributes are stripped by the AST emitter only on these mapped
-edges, because Node is loading generated JavaScript rather than the original
-asset. The same end-to-end path supports attributed named/namespace re-exports,
-literal dynamic asset imports, and loader-generated module graphs through four
-levels: semantic re-export binding resolves through the generated module, the
-emitter rewrites each mapped specifier, and the relative runtime graph stages
-and rewrites every generated sibling edge. Type-only and side-effect asset
-forms, bare star re-exports, nonliteral dynamic imports or attributes, and
-general executable generated modules remain deliberately unsupported. Dynamic
-`.sm` imports other than compiler-mapped literal asset imports remain
-deferred.
-
-The default containment root is the common directory of the explicit Smithers
-entries. Use `--rootDir` when a `compile` or `check` entry intentionally imports
-from a wider source tree. Output commits replace the current graph's artifacts
-but do not yet prune stale artifacts left by an older graph; reproducible build
-automation should start from a clean `--outDir`.
-
-This bounded discovery pass is not a runtime sandbox: staged foreign code runs
-with the ordinary Node authority of `run` or the test child process, and bare
-loader packages remain external. Indirectly aliasing `require` is rejected, but
-applications needing runtime confinement still need an actual sandbox policy.
-
-Discovery canonicalizes module identity, requires every runtime source beneath
-the project root, rejects symbolic-link aliases and hard-link duplicates, and
-checks output collisions before lowering. TS/TSX/JSX are transpiled without
-executing authored code. Optional foreign source maps contain the authored
-source and stable line/token information, but columns following a rewritten
-specifier are not yet promised exact. Foreign declaration inference is also a
-bounded integration seam, especially for JSX and CommonJS, rather than the
-final package-emission policy.
-
-For `.sm`, `compile` supports `--outDir`, `--rootDir`, `--noEmit`,
-`--declaration`, and `--sourceMap` (also displayed by help in kebab case).
-Without `--outDir`, output is written beside the source graph. `--declaration`
-emits `.d.mts`; `--sourceMap` composes the Smithers-to-TypeScript and
-TypeScript-to-JavaScript maps back to the authored `.sm` source. When comptime
-lowering is present, composition order is JavaScript to Smithers output, Smithers output
-to comptime-lowered source, then comptime-lowered source to authored source. The
-Smithers map preserves exact positions where provable and semantic token anchors
-across rewrites; compiler-generated text is explicitly unmapped. Consumers
-must therefore treat an unmapped lookup as having no authored position rather
-than borrowing a nearby segment. `--noEmit` cannot be combined with either
-output option. `check` never emits.
-
-Structured command results include each file's stable comptime lowering
-identity, edit provenance, and call cache keys. Provenance remains separate from
-the generic source-map artifact because ordinary version-3 map composition does
-not preserve custom metadata. The content-addressed cache is deterministically
-partitioned by canonical project root under the operating-system temporary
-cache area; it is rejected if it would overlap `--outDir` and is never included
-in the committed output inventory.
-
-All `.sm` source discovery uses fatal UTF-8 decoding. For `compile`, `check`,
-`run`, and `test`, the staged relative runtime graph shares the same default
-resource ceiling: 2 MiB per source, 16 MiB across the discovered graph, and
-1,024 source files. These commands reject the project before analysis when one
-of the bounds is exceeded. The source-asset preflight separately admits at most
-1,024 top-level assets, 2 MiB per top-level asset or generated module, and 16
-MiB across those top-level assets; loader dependencies and cache records have
-their own compiler bounds. `inspect` applies the Smithers-source and source-asset
-preflights but does not construct the emitted relative runtime graph.
-
-Use a structured global output format when another tool consumes the result:
+## Compile
 
 ```bash
-smithers check src/index.sm --format json
+smithers compile src/index.sm \
+  --outDir build \
+  --declaration \
+  --sourceMap
+```
+
+`compile` emits the complete reachable graph. Output paths are deterministic
+and contained by `--outDir`. Relative runtime edges are rewritten to emitted
+artifacts; package and host-module imports remain external unless the project
+selects a bundling integration.
+
+Declarations preserve public Result failures and compiler-inferred requirement
+rows for downstream Smithers consumers. Source maps trace generated JavaScript
+back through Smithers and comptime lowering to authored source. Compiler-created
+text with no authored location remains explicitly unmapped.
+
+## Run
+
+```bash
+smithers run src/index.sm -- arg1 arg2
+```
+
+`run` checks the same graph as `compile`, creates an isolated temporary output
+set, and executes the selected entry on the configured JavaScript host. Text
+after `--` is passed to the program. Runtime code receives the host authority of
+that process; `run` is not a security sandbox.
+
+When structured output is selected, program stdout and stderr are captured in
+separate result fields and never corrupt the command envelope.
+
+## Test
+
+```bash
+smithers test
+smithers test test/account.sm --timeout 30s --format json
+```
+
+The test runner discovers tests according to project configuration, checks all
+selected modules before starting execution, applies per-test time and resource
+limits, and reports nominal Results and unexpected defects separately. Test
+processes receive only the capabilities and host authority configured for the
+test target.
+
+:::note Direction
+Test declaration syntax, discovery conventions, isolation granularity,
+fixtures, watch mode, and coverage integration remain open.
+:::
+
+## Inspect
+
+```bash
+smithers inspect src/index.sm
 smithers inspect src/index.sm --format json
-smithers test test/example.sm --format json
-smithers plan flows/build.sm --bindings actions.json --format json
 ```
 
-The frontend fails closed instead of silently applying TypeScript-only options:
+`inspect` is a read-only semantic query. Its structured output includes the
+resolved project graph, public function channels, capability paths, tracked
+comptime and loader inputs, generated module identities, and compiled Flow and
+Action contracts. It does not classify code for withdrawn non-TypeScript
+targets.
 
-- one invocation cannot mix `.sm` with `.ts` or `.js` inputs
-- unsupported `.sm` flags are errors
-- two inputs that would produce the same output path are rejected before emit
-- relative runtime paths, identities, loading forms, and generated outputs must
-  be unambiguous and contained by the declared project/output roots
-- language, portability, declaration, map, or generated-TypeScript diagnostics
-  prevent the project output set from being written
-- outputs are staged outside their destination before commit
-
-The current analysis propagates concrete failure and Context rows through the
-supplied `.sm` graph, including aliases, namespace calls, and cycles. It does
-support generic success values when their failure/requirement rows are concrete;
-it does not yet implement type-parameter-dependent row polymorphism,
-incremental/watch mode, or every design-stage semantic surface. The separate
-language-server command provides bounded editor integration, but not a watch or
-incremental compiler.
-Unsupported effectful forms receive diagnostics rather than approximate
-transforms.
-
-## Durable Plan Bindings
-
-`smithers plan` needs a JSON file that pins every imported Action to the descriptor
-the deployment expects. The temporary POC seam is:
-
-```json
-{
-  "flowId": "example/Build",
-  "flowVersion": 1,
-  "actions": [
-    {
-      "moduleSpecifier": "example:actions",
-      "exportName": "Compile",
-      "descriptor": { "id": "...", "version": 1, "contractDigest": "...", "inputSchema": {}, "successSchema": {}, "errorSchema": {} }
-    }
-  ]
-}
-```
-
-Descriptors must be complete values produced by the durable API; the abbreviated
-objects above only show the envelope. Unknown fields and invalid descriptors
-fail closed. The compiler resolves imported aliases by TypeScript symbol
-identity, accepts a deliberately bounded static Plan subset with projections,
-Actions, conditionals, one timer, one schema-checked external signal, a
-stable-key fan-out form whose body may be a bounded sequence of Action steps,
-explicit `sequential(...)` ordering, and a budgeted `loopWhile(...)` round
-template, and writes no artifact when lowering fails. Attached child Flows exist
-in the programmatic durable POC but are not reachable from this command, which
-takes no child-Plan bindings. Compiler-derived Action schemas will replace this
-explicit binding seam.
-
-## TypeScript and JavaScript Commands
-
-When `compile` or `check` receives only TypeScript or JavaScript inputs, it
-delegates to the installed native TypeScript 7 compiler. `build` and `init` are
-also raw TypeScript-backend operations:
+## Plan and Build
 
 ```bash
-smithers compile src/index.ts --noEmit
-smithers check src/index.ts --strict
-smithers build --verbose
-smithers init
+smithers plan build/Build.flow.json --input preview.json
+smithers build --flow Build --outDir dist
 ```
 
-For exact raw `tsc` argument compatibility, use `smithersc` or the compatibility
-`tsc` alias. They forward arguments in their original order:
+`plan` consumes emitted Plan IR. It verifies the Flow identity and schema,
+validates optional preview input, specializes only branches known from that
+input, and leaves unknown branches and parameterized fan-out explicit. It never
+imports the durable source function or dispatches an Action.
+
+`build` resolves the selected deployment Layers, validates every Action
+provider and policy, partitions coordinator and worker artifacts, derives wire
+codecs, and emits a canonical deployment manifest. Signing is a separate
+explicit step or configured build policy; an unsigned artifact cannot be
+silently treated as authenticated.
+
+:::note Direction
+The final Plan artifact extension, provider configuration, signing commands,
+deployment profiles, and remote publication workflow remain open.
+:::
+
+## Format
+
+```bash
+smithers format src test
+smithers format . --check
+smithers format src/index.sm --stdout
+```
+
+Formatting is deterministic and semantics-preserving. Files are written
+atomically by default. `--check` performs no writes and exits nonzero when any
+selected file would change; `--stdout` prints one explicitly selected file and
+also performs no writes.
+
+## Language Server
+
+```bash
+smithers lsp
+```
+
+The language server speaks Content-Length-framed JSON-RPC 2.0 over stdin and
+stdout. Its target surface includes diagnostics, completion, hover for public
+function channels, definition, references, rename, signature help, formatting,
+code actions, and semantic navigation across the checked project graph.
+
+Editor behavior must use the same project model and diagnostics as `check`.
+Language-service recovery may return partial editor results, but it cannot make
+invalid code appear valid.
+
+## TypeScript Compatibility Commands
+
+Smithers accepts ordinary `.ts`, `.tsx`, and JavaScript-family modules in the
+same project. For scripts that require exact native TypeScript CLI behavior,
+the distribution exposes a compatibility command:
 
 ```bash
 smithersc --project tsconfig.json --noEmit
 smithersc --build --verbose
 ```
 
-`smithers-tsserver` and the compatibility `tsserver` alias run the TypeScript 5.9
-JavaScript server used by the package compatibility API.
+`smithersc` preserves TypeScript argument ordering, exit behavior, and output.
+It does not enable `.sm` semantics. A `tsc` alias may be installed only when the
+user requests it; Smithers must not unexpectedly replace an existing compiler.
 
-## Formatter and Language Server
-
-`smithers format <files...>` accepts `.sm`, `.ts`, `.mts`, `.cts`, `.js`, `.mjs`,
-and `.cjs`. It drives the TypeScript language-service formatter and admits only
-whitespace edits, then writes changed files atomically in place by default.
-`--check` performs no writes,
-lists unformatted files, and exits nonzero when any input would change.
-`--stdout` performs no writes and prints formatted source; with an explicit
-global structured `--format`, that source is returned inside the result
-envelope. `--indentSize` accepts an integer from 1 through 8 and defaults to 2.
-`--check` and `--stdout` are mutually exclusive. Unsupported extensions and a
-module that cannot be formatted soundly are reported without rewriting it.
-
-`smithers lsp` owns stdin/stdout and speaks Content-Length-framed JSON-RPC 2.0. It
-supports initialize/shutdown/exit, full-document open/change/close sync,
-frontend and source-map-remapped generated-TypeScript diagnostics, hover for a
-checked function's channel and failure/requirement rows (plus Error fields),
-project-local definition, and whole-document formatting. It is intentionally
-limited to the first workspace folder and the bounded transitive
-relative-`.sm` closure of open documents. It has no incremental text sync,
-completion, rename, references, signature help, document symbols, code actions,
-semantic tokens, inlay hints, call hierarchy, or file watching. Definition
-lookup is name-based inside that closure and returns nothing when ambiguous.
-The separate TypeScript language-service plugin remains pass-through.
-
-## Historical Syntax Spike
-
-The transformer under `prototype/` is a retired syntax experiment, not the
-frontend used by `smithers`:
+## Structured Output
 
 ```bash
-cd prototype
-bun smithersc.ts examples/demo.sm
+smithers check src/index.sm --format json
+smithers inspect src/index.sm --format json
+smithers test --format json
 ```
 
-Its expression `try`, postfix `catch`, `uses`, and `provide {}` forms are
-obsolete. Current POC evidence lives under `poc/src/language` and is exposed by
-the root CLI and `smthrs/language` package subpath.
+All commands support a versioned machine-readable result envelope. It contains
+the command status, diagnostics, artifact inventory where relevant, and
+captured program streams where execution occurs. Diagnostics identify authored
+files and UTF-16 source spans and retain structured cause paths for requirements,
+foreign panic, loader inputs, and durable contracts.
 
-## Planned Toolchain
+Human-readable text is the default on an interactive terminal. Automation
+should select a structured format explicitly.
 
-The production distribution is intended to combine compilation, formatting,
-testing, language services, build integration, and foreign toolchain driving.
-Current POC command names and flags are not yet a stable public contract.
+## Exit and Failure Rules
+
+The CLI fails closed when:
+
+- a source, loader, comptime, foreign-toolchain, or generated module cannot be
+  resolved deterministically;
+- a compiler-owned intrinsic is used through an unrecognized identity;
+- an input escapes the declared project root or aliases another input;
+- output paths collide or escape the destination;
+- a resource budget is exceeded;
+- an unsupported option would change semantic meaning; or
+- any diagnostic prevents the requested artifact from being valid.
+
+Warnings never silently downgrade a required check. Resource limits and
+timeouts are configurable within implementation-enforced safety ceilings and
+are included in cache or deployment identity when they affect semantics.

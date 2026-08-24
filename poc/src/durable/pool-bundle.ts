@@ -98,7 +98,6 @@ export const sha256Utf8 = (text: string): string =>
 const RUNTIME_SUBSET_FILES = [
   "errors.ts",
   "failure.ts",
-  "optional.ts",
   "panic.ts",
   "result.ts",
   "values.ts",
@@ -109,7 +108,7 @@ const RUNTIME_SUBSET_FILES = [
 const RUNTIME_VALUE_EXPORTS: Readonly<Record<string, readonly string[]>> = Object.freeze({
   "failure.ts": [
     "SMITHERS_FAILURE", "SmithersFailure", "__VSError", "__vsCatch", "catchFailure",
-    "isSmithersFailure", "unwrapOptional", "__vsUnwrap", "throwExpression", "__vsThrow"
+    "isSmithersFailure", "throwExpression", "__vsThrow"
   ],
   "panic.ts": [
     "Panic", "__vsPanic", "__vsPanicValue", "catchPanic", "catchPanicPromise",
@@ -126,12 +125,8 @@ const RUNTIME_VALUE_EXPORTS: Readonly<Record<string, readonly string[]>> = Objec
     "__vsResultSuccess", "foreignBoundary", "foreignBoundaryPromise", "isResult",
     "rethrowPanics"
   ],
-  "optional.ts": [
-    "MissingOptionalValue", "Optional", "OptionalValue", "__vsInspectOptional",
-    "__vsOptionalNone", "__vsOptionalSome", "isOptional"
-  ],
   "wire.ts": [
-    "ValueCodecError", "decodeOptional", "decodeResult", "encodeOptional", "encodeResult"
+    "ValueCodecError", "decodeResult", "encodeResult"
   ],
   "values.ts": ["RuntimeValues"]
 })
@@ -142,8 +137,8 @@ const RUNTIME_STUB_EXPORTS = ["Context", "Layer", "__vsUse", "isLayer", "useCapa
 /** Type-only names lowered modules may import; erased before execution. */
 const RUNTIME_TYPE_ONLY_EXPORTS = [
   "CapabilityKey", "CapabilityService", "ErrorCase", "ErrorConstructor",
-  "ErrorInstance", "ErrorPayloadCodec", "InspectedOptional", "InspectedResult",
-  "JsonValue", "LayerType", "NominalError", "OptionalType", "ResultType", "ValueCodec"
+  "ErrorInstance", "ErrorPayloadCodec", "InspectedResult",
+  "JsonValue", "LayerType", "NominalError", "ResultType", "ValueCodec"
 ] as const
 
 const RUNTIME_IMPORTABLE_NAMES: ReadonlySet<string> = new Set([
@@ -281,36 +276,66 @@ const assertBundleImports = (
   label: string
 ): void => {
   const sourceFile = ts.createSourceFile(`${label}.ts`, emittedCode, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS)
-  for (const statement of sourceFile.statements) {
-    if (!ts.isImportDeclaration(statement)) continue
-    if (!ts.isStringLiteral(statement.moduleSpecifier)) {
-      return fail(`${label} has a non-literal import specifier`)
-    }
-    const specifier = statement.moduleSpecifier.text
-    if (specifier === RUNTIME_IMPORT_SPECIFIER) {
-      const bindings = statement.importClause?.namedBindings
-      if (statement.importClause?.name !== undefined || bindings === undefined || !ts.isNamedImports(bindings)) {
-        return fail(`${label} must import compiler helpers as named bindings`)
-      }
-      for (const element of bindings.elements) {
-        const imported = (element.propertyName ?? element.name).text
-        if (!RUNTIME_IMPORTABLE_NAMES.has(imported)) {
-          return fail(
-            `${label} imports runtime helper '${imported}' which the embedded worker bundle runtime does not provide`
-          )
-        }
-      }
-      continue
-    }
+  // Every emitted form that names another module, not only `import ... from`.
+  // A re-export (`export { x } from`, `export * from`, `export * as ns from`)
+  // is an identical runtime module edge and used to leave this check entirely,
+  // so an external package could ride into a bundle this function certifies as
+  // self-contained.
+  const checkSpecifier = (specifier: string): void => {
     if (specifier.startsWith(".")) {
       const resolved = resolveRelativePath(modulePath, specifier)
       if (!modulePaths.has(resolved)) {
         return fail(`${label} imports '${specifier}' which is outside the checked source closure`)
       }
-      continue
+      return
     }
     return fail(`${label} imports external module '${specifier}'; worker bundles must be self-contained`)
   }
+  const visit = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node)) {
+      if (!ts.isStringLiteral(node.moduleSpecifier)) {
+        return fail(`${label} has a non-literal import specifier`)
+      }
+      const specifier = node.moduleSpecifier.text
+      if (specifier === RUNTIME_IMPORT_SPECIFIER) {
+        const bindings = node.importClause?.namedBindings
+        if (node.importClause?.name !== undefined || bindings === undefined || !ts.isNamedImports(bindings)) {
+          return fail(`${label} must import compiler helpers as named bindings`)
+        }
+        for (const element of bindings.elements) {
+          const imported = (element.propertyName ?? element.name).text
+          if (!RUNTIME_IMPORTABLE_NAMES.has(imported)) {
+            return fail(
+              `${label} imports runtime helper '${imported}' which the embedded worker bundle runtime does not provide`
+            )
+          }
+        }
+      } else checkSpecifier(specifier)
+    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier !== undefined) {
+      if (!ts.isStringLiteral(node.moduleSpecifier)) {
+        return fail(`${label} has a non-literal import specifier`)
+      }
+      // The embedded runtime is a compiler-owned helper module, never a public
+      // surface a bundled implementation may re-export.
+      if (node.moduleSpecifier.text === RUNTIME_IMPORT_SPECIFIER) {
+        return fail(`${label} re-exports the compiler-owned worker bundle runtime`)
+      }
+      checkSpecifier(node.moduleSpecifier.text)
+    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
+      if (!ts.isStringLiteral(node.moduleReference.expression)) {
+        return fail(`${label} has a non-literal import specifier`)
+      }
+      checkSpecifier(node.moduleReference.expression.text)
+    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      const argument = node.arguments[0]
+      if (argument === undefined || !ts.isStringLiteral(argument)) {
+        return fail(`${label} has a non-literal import specifier`)
+      }
+      checkSpecifier(argument.text)
+    }
+    ts.forEachChild(node, visit)
+  }
+  ts.forEachChild(sourceFile, visit)
 }
 
 interface BundledAction {

@@ -5,8 +5,6 @@ export {
   __vsCatch,
   catchFailure,
   isSmithersFailure,
-  unwrapOptional,
-  __vsUnwrap,
   throwExpression,
   __vsThrow,
 } from "./failure.ts";
@@ -60,20 +58,8 @@ export {
 } from "./result.ts";
 export type { InspectedResult, Result as ResultType } from "./result.ts";
 export {
-  MissingOptionalValue,
-  Optional,
-  OptionalValue,
-  __vsInspectOptional,
-  __vsOptionalNone,
-  __vsOptionalSome,
-  isOptional,
-} from "./optional.ts";
-export type { InspectedOptional, Optional as OptionalType } from "./optional.ts";
-export {
   ValueCodecError,
-  decodeOptional,
   decodeResult,
-  encodeOptional,
   encodeResult,
 } from "./wire.ts";
 export type { ValueCodec } from "./wire.ts";

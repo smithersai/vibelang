@@ -20,7 +20,7 @@ function loadConfig(
 
 Plain success returns and Error throws are lifted into the appropriate variant. `!` propagates. Public APIs use normal generic return types, so tools do not need to understand an erased failure annotation.
 
-`Optional<T>` uses the same philosophy for absence: normal type, normal calls, and compiler-assisted lifting without optional-specific grammar.
+Absence follows the same philosophy taken one step further: there is no `Optional<T>` at all. `T | undefined` with ordinary narrowing, `?.`, and `??` already expresses it precisely, so a second representation would add a conversion boundary without adding safety.
 
 ## Inference Inside, Contracts at Boundaries
 
@@ -39,7 +39,9 @@ This keeps code visually close to TypeScript, allows aliases, and avoids reservi
 
 ## Platform Is a Dependency
 
-Filesystem, network, clocks, randomness, environment variables, and host globals differ across targets. Modeling them as capabilities gives production configuration, deterministic testing, and portability one mechanism.
+Filesystem, network, clocks, randomness, environment variables, and host globals
+differ across JavaScript hosts. Modeling them as capabilities gives deployment
+configuration and deterministic testing one mechanism.
 
 ## Comptime Is Hermetic
 
@@ -56,10 +58,15 @@ import prompt from "./prompt.mdx" with { type: "mdx" }
 
 The loader and every string-valued attribute become part of the reproducible build node.
 
-## Backend-Appropriate Compilation
+## TypeScript Compilation
 
-The TypeScript backend should preserve the stock pipeline wherever possible. Durable builds may partition a coordinator and worker artifacts. Semantics remain consistent even when emitted machinery differs.
+The compiler preserves the stock TypeScript pipeline wherever possible. Durable
+builds may partition coordinator and worker artifacts while keeping one
+source-level contract.
 
 ## One Toolchain
 
-The long-term product follows Go's shape: compiler, formatter, language service, tests, standard library, and build integration as one coherent distribution. The implementation is a minimal-diff TypeScript fork with narrow Smithers seams.
+The product follows Go's shape: compiler, formatter, language service, tests,
+standard library, and build integration as one coherent distribution. Its
+compiler architecture is a minimal-diff TypeScript fork with narrow Smithers
+seams.

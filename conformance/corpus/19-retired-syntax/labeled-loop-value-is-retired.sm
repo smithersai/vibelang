@@ -1,0 +1,5 @@
+export function main(): string[] {
+  const value = search: while (false) {
+  } else "not found"
+  return [value]
+}

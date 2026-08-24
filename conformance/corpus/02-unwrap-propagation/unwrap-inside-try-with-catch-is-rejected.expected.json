@@ -1,5 +1,5 @@
 {
-  "title": "an unwrap propagation point inside a try with a catch clause is rejected, because its early return would make the catch path silently dead",
+  "title": "postfix propagation inside a try with a catch clause is rejected because its early return would make the catch path silently dead",
   "expect": "diagnostics",
   "diagnostics": [
     {

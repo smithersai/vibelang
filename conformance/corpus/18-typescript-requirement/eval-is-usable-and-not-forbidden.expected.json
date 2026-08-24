@@ -1,6 +1,6 @@
 {
-  "title": "`eval` stays usable in authored .sm: it contributes the TypeScript requirement rather than being globally forbidden",
+  "title": "`eval` stays usable in authored .sm: the language does not forbid it",
   "expect": "output",
   "stdout": ["2"],
-  "notes": "specification/compatibility.mdx, 'Dynamic Features': 'Use of any and eval MUST contribute TypeScript; neither is globally forbidden.' docs/DECISIONS.md 'TypeScript and native classification' (Locked): '`eval` remains usable but adds the TypeScript requirement.'"
+  "notes": "specification/compatibility.mdx, 'Dynamic Features': '`any` and `eval` remain usable. General Smithers guidance may lint against them; the language does not forbid them.' WITHDRAWAL (2026-08-23): this case previously pinned the second bucket of the withdrawn portable / `TypeScript`-required / forbidden classification ('`eval` remains usable but adds the TypeScript requirement'). The requirement and the classification are gone; the surviving obligation is that `eval` is not forbidden, which is what the observable already measured. Paired with 18-typescript-requirement/any-is-usable-and-not-forbidden."
 }

@@ -8,7 +8,6 @@ import { NotImplementedError, createProgram } from "smthrs/smithers";
 import { Action, Layer, type Durable } from "smthrs/provider";
 import { Context } from "smthrs/context";
 import { Result, type UnhandledException } from "smthrs/result";
-import { Optional } from "smthrs/optional";
 
 const options: ts.CompilerOptions = { strict: true, noEmit: true };
 const program: ts.Program = createProgram([], options);
@@ -35,9 +34,11 @@ const clock: Clock = Clock.context();
 const clockLayer: Layer<Clock> = Layer.succeed(Clock, new SystemClock());
 const mergedLayer: Layer<Clock | Work> = Layer.merge(clockLayer, workLayer);
 declare const fallible: Result<number, UnhandledException>;
-declare const optional: Optional<number>;
+// Absence is `T | undefined`: no container, and `??` is the reader.
+declare const absent: number | undefined;
 const recovered: number = fallible.unwrapOr(0);
-const defaulted: number = optional.unwrapOr(0);
+const defaulted: number = absent ?? 0;
+const chained: number | undefined = absent?.valueOf();
 
 // Negative space: each line below is an error only while the public types stay
 // strong. If a surface loosens to `any`, the suppression becomes unused and the
@@ -52,8 +53,10 @@ const wrongLayer: Layer<Clock> = Layer.succeed(Clock, { now: () => 42 });
 const wrongProvide: number = Layer.provide(clockLayer, 42);
 // @ts-expect-error unwrapOr on Result<number, _> cannot produce a string
 const wrongRecovered: string = fallible.unwrapOr(0);
-// @ts-expect-error unwrapOr on Optional<number> cannot produce a string
-const wrongDefaulted: string = optional.unwrapOr(0);
+// @ts-expect-error `number | undefined` coalesced with a number is not a string
+const wrongDefaulted: string = absent ?? 0;
+// @ts-expect-error absence must be narrowed before it is used as a number
+const wrongAbsent: number = absent;
 // @ts-expect-error SyntaxKind is an enum, not arbitrary strings
 const wrongKind: ast.SyntaxKind = "Identifier";
 
@@ -77,4 +80,6 @@ void wrongLayer;
 void wrongProvide;
 void wrongRecovered;
 void wrongDefaulted;
+void wrongAbsent;
+void chained;
 void wrongKind;

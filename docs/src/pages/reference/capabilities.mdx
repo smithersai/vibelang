@@ -61,12 +61,18 @@ Base Layers receive already acquired service instances. Acquisition and cleanup 
 
 ## Platform Services
 
-Planned standard capabilities include `FileSystem`, `HttpClient`, `Clock`, `Random`, `Environment`, and `Console`. Targets provide live implementations; tests supply deterministic ones.
+Standard capabilities include `FileSystem`, `HttpClient`, `Clock`, `Random`,
+`Environment`, and `Console`. JavaScript hosts provide live implementations;
+tests supply deterministic ones.
 
 ## Scope and Open Semantics
 
 `Layer.provide(layer, body)` keeps the environment active through `body` and the Promise returned by `body`, then revokes it. A Layer does not supervise or join other work, and authored `.sm` has no detached Promise path.
 
-The Node runtime observes the exact Promise state transition. The asynchronous body must create its returned Promise during the invocation; adapt a pre-existing Promise with `async () => await promise`. Unsupported hosts and unverifiable Promise provenance fail closed.
+The environment remains active through the exact settlement transition of the
+Promise returned by the body. The asynchronous body must create or explicitly
+await that Promise inside the invocation; adapt a pre-existing Promise with
+`async () => await promise`. A host that cannot preserve this scope MUST fail
+closed.
 
 Merge and nested-override precedence, cycle diagnostics, and requirement-environment lowering remain to be specified.

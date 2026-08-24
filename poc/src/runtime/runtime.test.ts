@@ -4,16 +4,11 @@ import {
   Context,
   ErrorCodecError,
   Layer,
-  MissingOptionalValue,
-  Optional,
   Panic,
   Result,
   RuntimeValues,
   __vsErrorCases,
-  __vsInspectOptional,
   __vsInspectResult,
-  __vsOptionalNone,
-  __vsOptionalSome,
   __vsPanicValue,
   __vsRegisterError,
   __vsResultFailure,
@@ -22,21 +17,20 @@ import {
   catchPanic,
   catchPanicPromise,
   decodeError,
-  decodeOptional,
   decodeResult,
   encodeError,
-  encodeOptional,
   encodeResult,
   errorIdentity,
   isLayer,
-  isOptional,
   isPanic,
   isResult,
   registerErrorCodec,
+  registerErrorType,
   rethrowPanics,
   ValueCodecError,
 } from "./index.ts";
-import type { Optional as OptionalType, Result as ResultType } from "./index.ts";
+import type { NominalError, Result as ResultType } from "./index.ts";
+import * as runtimeExports from "./index.ts";
 
 class NotFound extends Error {
   constructor(readonly id: string) {
@@ -64,7 +58,12 @@ registerErrorCodec(NotFound, "test:runtime/NotFound@1", {
 });
 __vsRegisterError(Timeout, "test:runtime/Timeout@1");
 
-describe("hardened Result and Optional runtime", () => {
+/** Stands in for the withdrawn `MissingOptionalValue`: a branded Panic subclass. */
+class BoundaryDefect extends Panic {}
+interface BoundaryDefect extends NominalError<"test:runtime/BoundaryDefect@1"> {}
+registerErrorType(BoundaryDefect, "test:runtime/BoundaryDefect@1");
+
+describe("hardened Result runtime", () => {
   test("Result exposes value operations but no author constructors", () => {
     expect("ok" in Result).toBe(false);
     expect("err" in Result).toBe(false);
@@ -240,152 +239,118 @@ describe("hardened Result and Optional runtime", () => {
     await expect(catchPanicPromise(async () => { throw new RangeError("reject"); }, () => "bad")).rejects.toThrow("reject");
   });
 
-  test("Optional is unforgeable, null-safe, and distinct from Result failure", () => {
-    expect("some" in Optional).toBe(false);
-    expect("none" in Optional).toBe(false);
-    expect(Object.isFrozen(Optional)).toBe(true);
-    expect(Object.keys(Optional).sort()).toEqual(["all", "fromNullable"]);
-    const some: OptionalType<string> = __vsOptionalSome("value");
-    const none = __vsOptionalNone();
-    for (const method of [
-      "isSome", "isNone", "match", "map", "andThen", "filter", "tap", "unwrap",
-      "unwrapOr", "toResult", "toNullable",
-    ] as const) {
-      expect(typeof some[method]).toBe("function");
+  test("absence is an ordinary `T | undefined` union, not a runtime container", () => {
+    // Nothing named Optional survives the runtime's export surface, and no
+    // lowering hook constructs a present/absent variant any more.
+    for (const withdrawn of [
+      "Optional", "OptionalValue", "MissingOptionalValue", "isOptional",
+      "__vsOptionalSome", "__vsOptionalNone", "__vsInspectOptional",
+      "encodeOptional", "decodeOptional",
+    ]) {
+      expect(withdrawn in runtimeExports).toBe(false);
     }
-    expect(isOptional(some)).toBe(true);
-    expect(Object.isFrozen(none)).toBe(true);
-    expect(Optional.fromNullable(undefined).isNone()).toBe(true);
-    expect(some.map((value) => value.length).unwrap()).toBe(5);
-    expect(some.map(() => null).isNone()).toBe(true);
-    expect(none.unwrapOr(() => "fallback")).toBe("fallback");
-    expect(__vsInspectOptional(some)).toEqual({ some: true, value: "value" });
-    expect(__vsInspectOptional(none)).toEqual({ some: false });
-    expect(Optional.all([some, __vsOptionalSome("other")]).unwrap()).toEqual(["value", "other"]);
-    expect(none.toResult(() => new NotFound("none")).match({ ok: () => "bad", error: (error) => error.id })).toBe("none");
-    try {
-      none.unwrap();
-      throw new Error("expected unwrap to fail");
-    } catch (error) {
-      expect(error).toBeInstanceOf(MissingOptionalValue);
-      expect(isPanic(error)).toBe(true);
-    }
-    const forged = Object.create(Object.getPrototypeOf(some));
-    expect(isOptional(forged)).toBe(false);
-    expect(isPanic(catchPanic(() => Optional.all([forged]), (error) => error))).toBe(true);
+
+    // A lookup that can miss answers with the value or `undefined`, and
+    // ordinary narrowing is what reads it.
+    const users = new Map<string, string>([["1", "Ada"]]);
+    const find = (id: string): string | undefined => users.get(id);
+
+    const hit = find("1");
+    if (hit === undefined) throw new Error("expected a hit");
+    expect(hit.toUpperCase()).toBe("ADA");
+    expect(find("2")).toBeUndefined();
+
+    // `?.` and `??` keep their ordinary nullish meaning. They are the absence
+    // axis; `!`/Result propagation is the failure axis (DECISIONS.md).
+    expect(find("1")?.length).toBe(3);
+    expect(find("2")?.length).toBeUndefined();
+    expect(find("1") ?? "Guest").toBe("Ada");
+    expect(find("2") ?? "Guest").toBe("Guest");
+
+    // `??` coalesces only null/undefined, so a falsy *present* value survives.
+    const counts = new Map<string, number>([["zero", 0]]);
+    expect(counts.get("zero") ?? -1).toBe(0);
+    expect(counts.get("missing") ?? -1).toBe(-1);
+    expect(counts.get("zero")?.toFixed(1)).toBe("0.0");
+    expect(counts.get("zero") || -1).toBe(-1); // `||` still differs from `??`
+
+    // `T | null` reads the same way, and both nullish values short-circuit.
+    const findOrNull = (id: string): string | null => users.get(id) ?? null;
+    expect(findOrNull("2") ?? "Guest").toBe("Guest");
+    expect(findOrNull("2")?.length).toBeUndefined();
+    expect(findOrNull("1")?.length).toBe(3);
+
+    // Absence and failure stay separate. A function that can do both returns
+    // `Result<A | undefined, E>`; an absent success is still a success.
+    const lookup = (id: string): ResultType<string | undefined, NotFound> =>
+      id === "boom" ? __vsResultFailure(new NotFound(id)) : __vsResultSuccess(users.get(id));
+    expect(lookup("1").unwrap()).toBe("Ada");
+    expect(lookup("2").unwrap()).toBeUndefined();
+    expect(lookup("2").isOk()).toBe(true);
+    expect(lookup("boom").match({ ok: () => "bad", error: (error) => error.id })).toBe("boom");
+    expect(isResult(lookup("2"))).toBe(true);
+    expect(isResult(undefined)).toBe(false);
   });
 
-  test("Optional methods are branch-lazy and reject invalid chained values", () => {
-    const some = __vsOptionalSome(5);
-    const none = __vsOptionalNone();
-    const inactive = (): never => Reflect.panic("inactive Optional branch ran");
+  test("a user's own type and value named Optional is ordinary code", () => {
+    type Optional<T> = { readonly present: boolean; readonly value?: T };
+    const Optional = {
+      of: <T>(value: T): Optional<T> => ({ present: true, value }),
+      empty: <T>(): Optional<T> => ({ present: false }),
+    };
 
-    expect(some.isSome()).toBe(true);
-    expect(some.isNone()).toBe(false);
-    expect(none.isSome()).toBe(false);
-    expect(none.isNone()).toBe(true);
-    expect(some.match({ some: (value) => value * 2, none: inactive })).toBe(10);
-    expect(none.match({ some: inactive, none: () => "none" })).toBe("none");
-    expect(isPanic(catchPanic(
-      () => some.match({ some: (value: number) => value, none: undefined } as never),
-      (error) => error,
-    ))).toBe(true);
-
-    expect(none.map(inactive)).toBe(none);
-    expect(none.andThen(inactive)).toBe(none);
-    expect(some.andThen((value) => __vsOptionalSome(value + 1)).unwrap()).toBe(6);
-    expect(isPanic(catchPanic(
-      () => some.andThen(() => Object.freeze({}) as never),
-      (error) => error,
-    ))).toBe(true);
-    expect(some.filter((value) => value === 5)).toBe(some);
-    expect(some.filter(() => false)).toBe(none);
-    expect(none.filter(inactive)).toBe(none);
-
-    let observations = 0;
-    expect(some.tap(() => { observations++; })).toBe(some);
-    expect(none.tap(() => { observations++; })).toBe(none);
-    expect(observations).toBe(1);
-    expect(some.unwrapOr(inactive)).toBe(5);
-
-    let errorThunkCalls = 0;
-    expect(some.toResult(() => {
-      errorThunkCalls++;
-      return new NotFound("unused");
-    }).unwrap()).toBe(5);
-    expect(errorThunkCalls).toBe(0);
-    const directError = new NotFound("direct");
-    expect(none.toResult(directError).match({ ok: inactive, error: (error) => error })).toBe(directError);
-    expect(some.toNullable()).toBe(5);
-    expect(none.toNullable()).toBeNull();
-    expect(Optional.fromNullable(0).unwrap()).toBe(0);
-    expect(Optional.fromNullable(null).isNone()).toBe(true);
-
-    let advancedPastNone = false;
-    function* optionals() {
-      yield some;
-      yield none as OptionalType<number>;
-      advancedPastNone = true;
-      yield __vsOptionalSome(7);
-    }
-    expect(Optional.all(optionals())).toBe(none);
-    expect(advancedPastNone).toBe(false);
-
-    const foreignError = runInNewContext("new Error('foreign')") as Error;
-    expect(isPanic(catchPanic(
-      () => none.toResult(foreignError),
-      (error) => error,
-    ))).toBe(true);
+    const mine: Optional<string> = Optional.of("Ada");
+    expect(mine.present).toBe(true);
+    expect(mine.value).toBe("Ada");
+    expect(Optional.empty<string>().value).toBeUndefined();
+    // Ordinary object, no runtime brand and no compiler recognition.
+    expect(Object.keys(mine).sort()).toEqual(["present", "value"]);
+    expect(Object.getPrototypeOf(mine)).toBe(Object.prototype);
+    expect(mine.value?.length).toBe(3);
+    expect(Optional.empty<string>().value ?? "Guest").toBe("Guest");
   });
 });
 
 describe("RuntimeValues library construction surface", () => {
   test("is a frozen namespace over the compiler's own constructors and names nothing author-facing", () => {
     expect(Object.isFrozen(RuntimeValues)).toBe(true);
-    expect(Object.keys(RuntimeValues).sort()).toEqual(["absent", "failure", "present", "success"]);
-    for (const banned of ["ok", "err", "some", "none", "of", "from"]) {
+    expect(Object.keys(RuntimeValues).sort()).toEqual(["failure", "success"]);
+    for (const banned of ["ok", "err", "some", "none", "of", "from", "present", "absent"]) {
       expect(banned in RuntimeValues).toBe(false);
     }
-    // The authoring namespaces stay free of variant constructors (DECISIONS.md).
+    // The authoring namespace stays free of variant constructors (DECISIONS.md),
+    // and absence needs no constructor at all — it is `undefined`.
     expect(Object.keys(Result).sort()).toEqual(["all", "try", "tryPromise"]);
-    expect(Object.keys(Optional).sort()).toEqual(["all", "fromNullable"]);
     expect(RuntimeValues.success).toBe(__vsResultSuccess);
     expect(RuntimeValues.failure).toBe(__vsResultFailure);
-    expect(RuntimeValues.present).toBe(__vsOptionalSome);
-    expect(RuntimeValues.absent).toBe(__vsOptionalNone);
   });
 
   test("produces the same frozen, branded, unforgeable variants as the lowering hooks", () => {
     const success = RuntimeValues.success(2);
     const failure = RuntimeValues.failure(new NotFound("library"));
-    const present = RuntimeValues.present("here");
-    const absent = RuntimeValues.absent();
 
     expect(isResult(success)).toBe(true);
     expect(isResult(failure)).toBe(true);
-    expect(isOptional(present)).toBe(true);
-    expect(isOptional(absent)).toBe(true);
     expect(Object.isFrozen(success)).toBe(true);
     expect(Object.isFrozen(failure)).toBe(true);
-    expect(Object.isFrozen(present)).toBe(true);
-    expect(absent).toBe(__vsOptionalNone());
     expect(Object.getPrototypeOf(success)).toBe(Object.getPrototypeOf(__vsResultSuccess(1)));
-    expect(Object.getPrototypeOf(present)).toBe(Object.getPrototypeOf(__vsOptionalSome(1)));
     expect(success.unwrap()).toBe(2);
     expect(failure.match({ ok: () => "bad", error: (error) => error.id })).toBe("library");
-    expect(present.unwrap()).toBe("here");
-    expect(absent.isNone()).toBe(true);
     expect(encodeResult(success, { encode: (value) => value, decode: (payload) => payload as number }))
       .toBe('{"version":1,"kind":"success","value":2}');
+
+    // An absent success carries `undefined` itself; there is nothing to unwrap.
+    const absent = RuntimeValues.success<string | undefined>(undefined);
+    expect(isResult(absent)).toBe(true);
+    expect(absent.isOk()).toBe(true);
+    expect(absent.unwrap()).toBeUndefined();
+    expect(absent.unwrap() ?? "Guest").toBe("Guest");
   });
 
   test("keeps every construction invariant of the lowering hooks", () => {
     const foreignError = runInNewContext("new Error('foreign realm')") as Error;
     expect(isPanic(catchPanic(() => RuntimeValues.failure(foreignError), (error) => error))).toBe(true);
-    expect(isPanic(catchPanic(() => RuntimeValues.present(null), (error) => error))).toBe(true);
-    expect(isPanic(catchPanic(() => RuntimeValues.present(undefined), (error) => error))).toBe(true);
     expect(isResult(Object.create(Object.getPrototypeOf(RuntimeValues.success(1))))).toBe(false);
-    expect(isOptional(Object.create(Object.getPrototypeOf(RuntimeValues.present(1))))).toBe(false);
   });
 });
 
@@ -404,7 +369,7 @@ describe("rethrowPanics escalates the panic channel out of a typed failure", () 
     const escaped = catchPanic(() => rethrowPanics(__vsResultFailure(raised)), (error) => error);
     expect(escaped).toBe(raised);
 
-    const subclass = new MissingOptionalValue("absent value crossed a boundary");
+    const subclass = new BoundaryDefect("a defect crossed a boundary");
     expect(catchPanic(() => rethrowPanics(__vsResultFailure(subclass)), (error) => error)).toBe(subclass);
 
     const decoded = decodeError(encodeError(new Panic("round-tripped")));
@@ -578,7 +543,7 @@ describe("nominal Error identity and transport", () => {
   });
 });
 
-describe("Result and Optional transport", () => {
+describe("Result transport", () => {
   const recordCodec = {
     encode: (value: { readonly id: string }) => ({ id: value.id }),
     decode: (payload: import("./index.ts").JsonValue) => {
@@ -590,7 +555,7 @@ describe("Result and Optional transport", () => {
     },
   };
 
-  test("round-trips successful, failed, present, and absent envelopes", () => {
+  test("round-trips successful and failed envelopes", () => {
     const successWire = encodeResult(__vsResultSuccess({ id: "ok" }), recordCodec);
     expect(successWire).toBe('{"version":1,"kind":"success","value":{"id":"ok"}}');
     expect(decodeResult(successWire, recordCodec).unwrap()).toEqual({ id: "ok" });
@@ -602,11 +567,18 @@ describe("Result and Optional transport", () => {
       "outside its declared channel",
     );
 
-    const someWire = encodeOptional(__vsOptionalSome({ id: "some" }), recordCodec);
-    expect(decodeOptional(someWire, recordCodec).unwrap()).toEqual({ id: "some" });
-    const noneWire = encodeOptional(__vsOptionalNone(), recordCodec);
-    expect(noneWire).toBe('{"version":1,"kind":"none"}');
-    expect(decodeOptional(noneWire, recordCodec).isNone()).toBe(true);
+    // Absence travels inside the success payload as `T | undefined`, encoded by
+    // the caller's own codec. There is no separate some/none envelope kind.
+    const absenceCodec = {
+      encode: (value: { readonly id: string } | undefined) => (value === undefined ? null : { id: value.id }),
+      decode: (payload: import("./index.ts").JsonValue) =>
+        payload === null ? undefined : recordCodec.decode(payload),
+    };
+    const absentWire = encodeResult(__vsResultSuccess(undefined), absenceCodec);
+    expect(absentWire).toBe('{"version":1,"kind":"success","value":null}');
+    expect(decodeResult(absentWire, absenceCodec).unwrap()).toBeUndefined();
+    const presentWire = encodeResult(__vsResultSuccess({ id: "here" }), absenceCodec);
+    expect(decodeResult(presentWire, absenceCodec).unwrap()).toEqual({ id: "here" });
   });
 
   test("rejects noncanonical, hostile, oversized, and invalid codec data", () => {
@@ -614,10 +586,10 @@ describe("Result and Optional transport", () => {
       '{"kind":"success","version":1,"value":{"id":"ok"}}',
       recordCodec,
     )).toThrow("not canonical JSON");
-    expect(() => decodeOptional('{"version":1,"kind":"none","extra":true}', recordCodec)).toThrow(
+    expect(() => decodeResult('{"version":1,"kind":"success","value":{"id":"ok"},"extra":true}', recordCodec)).toThrow(
       "unexpected fields",
     );
-    expect(() => decodeOptional(`{"version":1,"kind":"some","value":{"id":"${"x".repeat(1_048_576)}"}}`, recordCodec)).toThrow(
+    expect(() => decodeResult(`{"version":1,"kind":"success","value":{"id":"${"x".repeat(1_048_576)}"}}`, recordCodec)).toThrow(
       "wire limit",
     );
 
@@ -636,8 +608,8 @@ describe("Result and Optional transport", () => {
     expect(() => encodeResult(__vsResultSuccess({ id: "unsafe" }), hostileCodec)).toThrow(ValueCodecError);
     expect(getterRan).toBe(false);
 
-    expect(() => decodeOptional(
-      '{"version":1,"kind":"some","value":{"id":1}}',
+    expect(() => decodeResult(
+      '{"version":1,"kind":"success","value":{"id":1}}',
       recordCodec,
     )).toThrow(ValueCodecError);
   });

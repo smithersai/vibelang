@@ -20,11 +20,14 @@ import { readFile } from "node:fs/promises"
 // contributes Module<"node:fs/promises">
 ```
 
-Portability-pinned code can reject that requirement. Application code should usually depend on a portable `FileSystem` capability instead.
+The import constrains the program to a host that supplies that module.
+Application code should usually depend on a `FileSystem` capability instead.
 
 ## Dynamic Features
 
-`any`, `eval`, unconstrained reflection, Promise subclassing, and custom thenables may require the TypeScript runtime or be forbidden on stricter targets. The complete portability table remains specification work.
+`any`, `eval`, unconstrained reflection, Promise subclassing, and custom
+thenables can invalidate Smithers's static guarantees. The compatibility
+specification defines which uses add `panic` and which are rejected.
 
 ## Adapt a Throwing Boundary
 
@@ -35,7 +38,7 @@ class ConnectFailed extends Error {
   }
 }
 
-function connect(options: Options): Result<Client, ConnectFailed | Panic> {
+function connect(options: Options): Result<Client, ConnectFailed> {
   return Result.try(
     () => legacyConnect(options),
     cause => new ConnectFailed({ cause }),
@@ -43,14 +46,16 @@ function connect(options: Options): Result<Client, ConnectFailed | Panic> {
 }
 ```
 
-An unannotated call to `legacyConnect` adds the distinguished checked `panic` case. A compiler-trusted adapter may catch and translate that panic to `ConnectFailed`; the current POC's `Result.try` helper conservatively retains `Panic` in its result type even when a mapper is supplied.
+An unannotated call to `legacyConnect` adds the distinguished checked `panic`
+case. The compiler-trusted `Result.try` adapter contains the call and translates
+the caught value to `ConnectFailed`, so `panic` does not escape this boundary.
 
 ## Adapt a Rejecting Promise
 
 ```ts
 async function fetchUser(
   id: string,
-): Promise<Result<User, RequestFailed | Panic>> {
+): Promise<Result<User, RequestFailed>> {
   return await Result.tryPromise(
     () => legacyFetchUser(id),
     cause => new RequestFailed({ cause }),
@@ -73,8 +78,8 @@ Smithers does not reinterpret TypeScript optional properties or null unions. The
 
 ## Effect Interop
 
-A future bridge can map `Effect<A, E, R>` to functions returning `Result<A, E>` and using Context requirements, and back again. This API is not yet stable.
-
-## Portability
-
-Portable output is a checked property of the complete dependency/provider graph, not a separate source dialect. Diagnostics should report the requirement path that prevents a portable build.
+:::note Direction
+An interop bridge may map `Effect<A, E, R>` to functions returning
+`Result<A, E>` and using Context requirements, and back again. Its API is not
+specified yet.
+:::

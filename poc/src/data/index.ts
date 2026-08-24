@@ -7,9 +7,9 @@
  * Everything here is an ordinary Smithers value. Nothing in this package is a
  * wrapper that exists to track an effect, nothing needs a runtime to run, and
  * nothing needs a capability: these are pure values with value semantics, the
- * way `Duration` is. Operations that can miss answer with an `Optional`, never
- * `undefined`; operations that can fail would answer with a `Result`, and none
- * of these can fail.
+ * way `Duration` is. Operations that can miss answer with `T | undefined` and
+ * are read by ordinary narrowing, `?.`, and `??`; operations that can fail would
+ * answer with a `Result`, and none of these can fail.
  *
  * `Equivalence` and `Hash` are the seam. Today an author builds instances by
  * hand or reaches for the structural defaults (`Equivalence.any`, `Hash.any`,
@@ -25,8 +25,8 @@
  * **This API is provisional.** It is a programmatic POC of the "Core Data"
  * slice, not a released contract: names, signatures, and the internal
  * representations behind them may all move. What is meant to survive is the
- * shape of the thing — pure branded values, `Optional` for a miss, an explicit
- * `Equivalence`/`Hash` pair as the keying seam — because that is what the
+ * shape of the thing — pure branded values, `T | undefined` for a miss, an
+ * explicit `Equivalence`/`Hash` pair as the keying seam — because that is what the
  * compiler-derived instances will plug into.
  */
 
@@ -42,7 +42,7 @@ export { Hash, HashValue, registerStructuralHash } from "./hash.ts";
 export type { StructuralHashRule } from "./hash.ts";
 
 // `Chunk`, `HashMap`, `HashSet`, and `Data` each export a type and a namespace
-// of the same name, the way the runtime's `Result` and `Optional` do, so one
+// of the same name, the way the runtime's `Result` does, so one
 // re-export carries both meanings.
 export { Chunk, ChunkValue, isChunk } from "./chunk.ts";
 
@@ -63,10 +63,8 @@ export type {
   LiteralPattern,
   Matcher,
   NeedsFallback,
-  NoneCase,
   NonExhaustive,
   OkCase,
   Scrutinee,
   ShapePattern,
-  SomeCase,
 } from "./match.ts";

@@ -5,21 +5,11 @@ description: An overview of Smithers's language model, features, and design goal
 
 # Overview
 
-:::warning Implementation and design
-The root package defaults to a checker-backed, multi-module TypeScript
-instrument. `check`, `compile`, and `run` also expose a real, opt-in Go
-implementation inside the pinned TypeScript fork. Both lower substantial
-Smithers semantics, but neither is a conforming production release. TypeScript
-is the only compilation target, and the durable runtime has no multi-machine
-coordination. Unless marked as current behavior, examples below
-describe the accepted design.
-:::
-
 Smithers starts with TypeScript-shaped source, then makes a small set of intentional changes needed to build reliable programs in the AI era.
 
 ### It's (almost) TypeScript
 
-Smithers is not a syntactic superset of TypeScript. Shared syntax keeps TypeScript behavior unless a divergence is explicitly documented, while imported `.ts`, `.tsx`, and JavaScript modules retain their own complete syntax and runtime semantics. On the implemented TypeScript target, `.sm` constructs lower to ordinary TypeScript/JavaScript where feasible.
+Smithers is not a syntactic superset of TypeScript. Shared syntax keeps TypeScript behavior unless a divergence is explicitly documented, while imported `.ts`, `.tsx`, and JavaScript modules retain their own complete syntax and runtime semantics. On the TypeScript target, `.sm` constructs lower to ordinary TypeScript/JavaScript where feasible.
 
 Foreign runtime calls are checked boundaries: an unannotated JavaScript or TypeScript call adds the distinguished `panic` case. Trusted `@throws {never}` metadata opts out and `@throws {T}` declares a more precise channel.
 
@@ -347,7 +337,9 @@ const response = Effect.gen(function* () {
 
 #### Rust and Zig import like source modules
 
-Existing Node-API packages built with napi-rs remain ordinary npm dependencies. The planned loader can also import local Rust and Zig sources, drive the foreign compiler, and generate checked bindings the JavaScript host calls. The current POC demonstrates only a limited Zig/Rust-to-Wasm slice, not the production loader or ABI system.
+Existing Node-API packages built with napi-rs remain ordinary npm dependencies.
+Smithers can also import local Rust and Zig sources, drive the foreign compiler,
+and generate checked Wasm bindings that the JavaScript host calls.
 
 :::code-group{syncKey=""}
 
@@ -424,7 +416,10 @@ Every Promise started in authored `.sm` must ultimately be consumed by `await`, 
 
 ### Make execution durable where it matters
 
-Durability is explicit. Actions define persistence boundaries, while the compiler lowers functions passed to `durable(...)` into typed, resumable execution plans. Distributed execution is a target architecture; the current durable runtime coordinates local processes only.
+Durability is explicit. Actions define persistence boundaries, while the
+compiler lowers functions passed to `durable(...)` into typed, resumable
+execution plans. The runtime coordinates those plans across local or remote
+worker pools without changing their source-level contract.
 
 :::code-group{syncKey=""}
 
@@ -469,15 +464,23 @@ const release = (input: ReleaseInput) =>
 
 :::
 
-The compiler derives success/Error schemas, plan edges, and worker contracts from each Action's Result signature. The current runtime can resume local execution after interruption without rerunning Actions that already succeeded; multi-machine transport and coordination remain unimplemented. Effect adds typed composition and retry policies, but an Effect program is not durably journaled across process restarts by itself.
+The compiler derives success and Error schemas, plan edges, and worker contracts
+from each Action's Result signature. The durable runtime resumes an execution
+after interruption without rerunning Actions whose outcomes are already
+committed, including when coordination and workers run on separate machines.
+Effect adds typed composition and retry policies, but an Effect program is not
+durably journaled across process restarts by itself.
 
 ### Start with TypeScript, stay with TypeScript
 
 Use the TypeScript ecosystem as it is — its packages, tools, and deployment infrastructure. Smithers emits ordinary TypeScript, so adoption is incremental and reversible, and compute-heavy work can call into Zig or Rust through generated Wasm bindings without switching languages.
 
-TypeScript is the only compilation target. Near-native and Wasm targets were specified once, and both are withdrawn: the near-native backend was never built, and the Wasm path was a bounded proof rather than a general backend. The current `.sm` POC checks and emits a bounded multi-module JavaScript project graph. Context lowering and whole-project partitioning are not implemented today.
+TypeScript is the only compilation target. Near-native and general Wasm targets
+are outside the language contract. Wasm remains available as a library format
+for foreign modules called by a JavaScript host.
 
-Teams can adopt Smithers inside an existing TypeScript codebase and change deployment targets when the economics make sense. The language and application architecture stay the same.
+Teams can adopt Smithers inside an existing TypeScript codebase and change
+JavaScript hosts or deployment topologies without changing the language model.
 
 ## Features
 
@@ -486,7 +489,7 @@ Smithers is designed to provide these capabilities out of the box:
 - **TypeScript ecosystem:** import TypeScript packages at an explicit foreign boundary while authored `.sm` keeps its own grammar
 - **Foreign source imports:** call Zig and Rust through generated, typed Wasm bindings without hand-written glue
 - **Comptime type generation:** derive validators, codecs, and real types without maintaining a parallel schema language
-- **Durable programs:** compile code into typed, resumable execution plans; current execution is local and multi-machine coordination is planned
+- **Durable programs:** compile code into typed, resumable execution plans that can coordinate work across machines
 - **Typed Results:** use must-use `Result<A, E>` values and exhaustive Error matching across synchronous and asynchronous functions
 - **Capability-based dependencies:** make databases, clocks, filesystems, and other services visible in function types
 - **Typed asset imports:** load JSON, Markdown, MDX, SQL, GraphQL, Zig, and Rust through compiler-tracked loaders
@@ -502,10 +505,8 @@ Read the [Agent Library guide](/guide/agent-library) or start with [Why Smithers
 
 ## Help shape the language
 
-Smithers is in active design and implementation. The repository already carries
-two compiler paths plus working formatting and language-server commands, while
-the remaining production distribution, backend, and open-design work is kept
-explicit. This is the stage where concrete feedback can still change the
-language at low cost.
+Read the [specification status](/specification/) for the target contract and its
+**Locked**, **Direction**, and **Open** maturity labels. Concrete feedback on
+directional and open decisions can still change the language.
 
 Review the [specification](/specification/) or join the project on [GitHub](https://github.com/smithersai/smithers).

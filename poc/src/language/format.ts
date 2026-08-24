@@ -24,28 +24,19 @@ import { internalParseDiagnostics } from "./semantic.ts";
  * plan and parsed AST structure, and unmoved line breaks on every line a mask
  * touches. Anything else is reported as `SMITHERS1902` and left byte-identical.
  *
- * Stock TypeScript cannot parse several Smithers forms, so the source is first
- * rewritten into a **length-preserving mask**: each divergent spelling is
+ * Stock TypeScript cannot parse the conditional-declaration header, so the
+ * source is first rewritten into a **length-preserving mask**: the declaration is
  * replaced by parseable text of exactly the same length, with newline positions
  * untouched. Because the mask preserves every offset, formatting edits computed
  * on the masked text apply directly to the authored text; edits that touch a
  * masked span are dropped, so the authored Smithers spelling survives verbatim
  * in its formatted position.
  *
- * | authored                         | masked                        |
- * | -------------------------------- | ----------------------------- |
- * | `defer cleanup()`                | `defer;cleanup()`             |
- * | `break :done value`              | `break ;done,value`           |
- * | `} else -1` (loop completion)    | `} void -1`                   |
+ * | authored                         | masked                           |
+ * | -------------------------------- | -------------------------------- |
  * | `if (const u = f(); u !== null)` | `if ($c0           , u !== null)` |
- * | `return switch (x) { ... }`      | `rtn__: switch (x) { ... }`   |
- * | `const v = if (c) { ... }`       | `const v ; if (c) { ... }`    |
- * | `f(a, if (c) { 1 } else { 2 })`  | `f(a, $v0                  )` |
  *
- * The first six masks keep the construct body an ordinary statement, so the
- * language service formats the interior natively. Only value constructs in
- * general expression positions are masked opaquely; their interiors are then
- * formatted by recursion and re-indented into place.
+ * The declaration interior is formatted recursively as an ordinary statement.
  *
  * Everything is fail-closed: a module whose mask does not parse, or whose
  * formatted result would not round-trip its token stream, is reported and left
@@ -56,7 +47,7 @@ import { internalParseDiagnostics } from "./semantic.ts";
 const MAX_FORMAT_BYTES = 4 * 1024 * 1024;
 /** Hard ceiling on masked constructs in one module. */
 const MAX_MASKS = 1024;
-/** Recursion bound for general-placement value constructs. */
+/** Recursion bound for conditional-declaration interiors. */
 const MAX_REGION_DEPTH = 8;
 
 export type FormatDiagnosticCode =
@@ -298,14 +289,7 @@ function signaturesMatch(left: readonly number[], right: readonly number[]): boo
 /* Masks                                                                       */
 /* -------------------------------------------------------------------------- */
 
-type MaskKind =
-  | "defer"
-  | "break-value"
-  | "loop-else"
-  | "conditional-declaration"
-  | "value-initializer"
-  | "value-return"
-  | "value-region";
+type MaskKind = "conditional-declaration";
 
 interface Mask {
   readonly kind: MaskKind;
@@ -317,113 +301,6 @@ interface Mask {
   /** Span no formatting edit may touch. A superset of `[start, end)`. */
   readonly protectStart: number;
   readonly protectEnd: number;
-}
-
-const EXPRESSION_HEAD_KEYWORDS: ReadonlySet<ts.SyntaxKind> = new Set([
-  ts.SyntaxKind.AwaitKeyword,
-  ts.SyntaxKind.ClassKeyword,
-  ts.SyntaxKind.ConstKeyword,
-  ts.SyntaxKind.DeleteKeyword,
-  ts.SyntaxKind.FalseKeyword,
-  ts.SyntaxKind.FunctionKeyword,
-  ts.SyntaxKind.ImportKeyword,
-  ts.SyntaxKind.LetKeyword,
-  ts.SyntaxKind.NewKeyword,
-  ts.SyntaxKind.NullKeyword,
-  ts.SyntaxKind.SuperKeyword,
-  ts.SyntaxKind.ThisKeyword,
-  ts.SyntaxKind.TrueKeyword,
-  ts.SyntaxKind.TypeOfKeyword,
-  ts.SyntaxKind.VarKeyword,
-  ts.SyntaxKind.VoidKeyword,
-  ts.SyntaxKind.YieldKeyword,
-]);
-
-const EXPRESSION_HEAD_LITERALS: ReadonlySet<ts.SyntaxKind> = new Set([
-  ts.SyntaxKind.StringLiteral,
-  ts.SyntaxKind.NumericLiteral,
-  ts.SyntaxKind.BigIntLiteral,
-  ts.SyntaxKind.NoSubstitutionTemplateLiteral,
-  ts.SyntaxKind.TemplateHead,
-  ts.SyntaxKind.RegularExpressionLiteral,
-]);
-
-/**
- * Word spellings that never begin an expression. TypeScript scans many
- * identifier-shaped words as contextual keywords (`defer` itself became one in
- * TypeScript 5.9), so identifier recognition here is by spelling plus this
- * exclusion set rather than by `SyntaxKind.Identifier` alone.
- */
-const NON_EXPRESSION_WORDS: ReadonlySet<string> = new Set([
-  "as", "asserts", "break", "case", "catch", "continue", "default", "do", "else", "enum",
-  "export", "extends", "finally", "for", "if", "in", "infer", "instanceof", "is", "keyof",
-  "of", "out", "readonly", "return", "satisfies", "switch", "throw", "try", "while", "with",
-]);
-
-const IDENTIFIER_WORD = /^[A-Za-z_$][A-Za-z0-9_$]*$/u;
-
-/** True for a token whose spelling can be used as an ordinary identifier. */
-function isIdentifierLike(token: ScannedToken | undefined): boolean {
-  if (!token) return false;
-  if (!IDENTIFIER_WORD.test(token.text)) return false;
-  return token.kind === ts.SyntaxKind.Identifier ||
-    (token.kind >= ts.SyntaxKind.FirstKeyword && token.kind <= ts.SyntaxKind.LastKeyword);
-}
-
-/** A cleanup expression can follow a `defer`/`errdefer` marker only if it starts here. */
-function startsExpression(token: ScannedToken | undefined): boolean {
-  if (!token) return false;
-  if (EXPRESSION_HEAD_LITERALS.has(token.kind) || EXPRESSION_HEAD_KEYWORDS.has(token.kind)) return true;
-  return isIdentifierLike(token) && !NON_EXPRESSION_WORDS.has(token.text);
-}
-
-/** A `defer`/`errdefer` cleanup marker, whatever kind the scanner gave it. */
-function isDeferMarkerWord(token: ScannedToken): boolean {
-  return (token.text === "defer" || token.text === "errdefer") && isIdentifierLike(token);
-}
-
-/** Token kinds after which `if`/`switch`/`label:` can only be a value expression. */
-const VALUE_CONSTRUCT_PREVIOUS: ReadonlySet<ts.SyntaxKind> = new Set([
-  ts.SyntaxKind.CommaToken,
-  ts.SyntaxKind.OpenParenToken,
-  ts.SyntaxKind.OpenBracketToken,
-  ts.SyntaxKind.EqualsGreaterThanToken,
-  ts.SyntaxKind.DotDotDotToken,
-  ts.SyntaxKind.QuestionToken,
-  ts.SyntaxKind.ExclamationToken,
-  ts.SyntaxKind.PlusToken,
-  ts.SyntaxKind.MinusToken,
-  ts.SyntaxKind.AsteriskToken,
-  ts.SyntaxKind.AsteriskAsteriskToken,
-  ts.SyntaxKind.SlashToken,
-  ts.SyntaxKind.PercentToken,
-  ts.SyntaxKind.LessThanToken,
-  ts.SyntaxKind.GreaterThanToken,
-  ts.SyntaxKind.LessThanEqualsToken,
-  ts.SyntaxKind.GreaterThanEqualsToken,
-  ts.SyntaxKind.EqualsEqualsToken,
-  ts.SyntaxKind.ExclamationEqualsToken,
-  ts.SyntaxKind.EqualsEqualsEqualsToken,
-  ts.SyntaxKind.ExclamationEqualsEqualsToken,
-  ts.SyntaxKind.AmpersandToken,
-  ts.SyntaxKind.BarToken,
-  ts.SyntaxKind.CaretToken,
-  ts.SyntaxKind.AmpersandAmpersandToken,
-  ts.SyntaxKind.BarBarToken,
-  ts.SyntaxKind.QuestionQuestionToken,
-  ts.SyntaxKind.AwaitKeyword,
-  ts.SyntaxKind.TypeOfKeyword,
-  ts.SyntaxKind.VoidKeyword,
-]);
-
-function isObjectPropertyColon(tokens: readonly ScannedToken[], colonIndex: number): boolean {
-  const key = tokens[colonIndex - 1];
-  const before = tokens[colonIndex - 2];
-  if (!key || !before) return false;
-  const keyIsName = isIdentifierLike(key) ||
-    key.kind === ts.SyntaxKind.StringLiteral || key.kind === ts.SyntaxKind.NumericLiteral;
-  return keyIsName &&
-    (before.kind === ts.SyntaxKind.OpenBraceToken || before.kind === ts.SyntaxKind.CommaToken);
 }
 
 /** Index of the token closing the group opened at `openIndex`, or -1. */
@@ -446,40 +323,6 @@ function matchingClose(
   return -1;
 }
 
-/** Last token index of `if (...) { ... } [else { ... } | else if ...]`, or -1. */
-function valueIfExtent(tokens: readonly ScannedToken[], index: number): number {
-  const openParen = index + 1;
-  const closeParen = matchingClose(tokens, openParen, ts.SyntaxKind.OpenParenToken, ts.SyntaxKind.CloseParenToken);
-  if (closeParen < 0) return -1;
-  const closeBrace = matchingClose(tokens, closeParen + 1, ts.SyntaxKind.OpenBraceToken, ts.SyntaxKind.CloseBraceToken);
-  if (closeBrace < 0) return -1;
-  if (tokens[closeBrace + 1]?.kind !== ts.SyntaxKind.ElseKeyword) return closeBrace;
-  const afterElse = closeBrace + 2;
-  if (tokens[afterElse]?.kind === ts.SyntaxKind.IfKeyword) return valueIfExtent(tokens, afterElse);
-  return matchingClose(tokens, afterElse, ts.SyntaxKind.OpenBraceToken, ts.SyntaxKind.CloseBraceToken);
-}
-
-/** Last token index of `switch (...) { ... }`, or -1. */
-function valueSwitchExtent(tokens: readonly ScannedToken[], index: number): number {
-  const closeParen = matchingClose(tokens, index + 1, ts.SyntaxKind.OpenParenToken, ts.SyntaxKind.CloseParenToken);
-  if (closeParen < 0) return -1;
-  return matchingClose(tokens, closeParen + 1, ts.SyntaxKind.OpenBraceToken, ts.SyntaxKind.CloseBraceToken);
-}
-
-/** Last token index of `label: { ... }`, or -1. Loop values are not extent-scanned. */
-function labeledBlockExtent(tokens: readonly ScannedToken[], index: number): number {
-  if (!isIdentifierLike(tokens[index])) return -1;
-  if (tokens[index + 1]?.kind !== ts.SyntaxKind.ColonToken) return -1;
-  return matchingClose(tokens, index + 2, ts.SyntaxKind.OpenBraceToken, ts.SyntaxKind.CloseBraceToken);
-}
-
-function isLabeledLoopHead(tokens: readonly ScannedToken[], index: number): boolean {
-  if (!isIdentifierLike(tokens[index])) return false;
-  if (tokens[index + 1]?.kind !== ts.SyntaxKind.ColonToken) return false;
-  const keyword = tokens[index + 2]?.kind;
-  return keyword === ts.SyntaxKind.ForKeyword || keyword === ts.SyntaxKind.WhileKeyword;
-}
-
 /** Same-length filler that keeps every newline at its authored offset. */
 function fillerFor(text: string, head: string): string | undefined {
   if (text.length < head.length) return undefined;
@@ -498,15 +341,6 @@ function isSpaceOrTab(character: string | undefined): boolean {
   return character === " " || character === "\t";
 }
 
-/** Grow a protected span across the horizontal whitespace next to it. */
-function protectAdjacentSpaces(source: string, start: number, end: number): { start: number; end: number } {
-  let protectStart = start;
-  let protectEnd = end;
-  while (protectStart > 0 && isSpaceOrTab(source[protectStart - 1])) protectStart -= 1;
-  while (protectEnd < source.length && isSpaceOrTab(source[protectEnd])) protectEnd += 1;
-  return { start: protectStart, end: protectEnd };
-}
-
 interface MaskPlan {
   readonly masks: readonly Mask[];
   /** Authored spans whose interiors are formatted by recursion. */
@@ -516,183 +350,32 @@ interface MaskPlan {
 function planMasks(source: string, tokens: readonly ScannedToken[]): MaskPlan {
   const masks: Mask[] = [];
   const regions: { start: number; end: number }[] = [];
-  let regionCount = 0;
-
-  const pushRegion = (startToken: number, endToken: number): boolean => {
-    const start = tokens[startToken]!.start;
-    const end = tokens[endToken]!.end;
-    const filler = fillerFor(source.slice(start, end), `$v${regionCount}`);
-    if (filler === undefined) return false;
-    regionCount += 1;
-    masks.push({ kind: "value-region", start, end, text: filler, protectStart: start, protectEnd: end });
-    regions.push({ start, end });
-    return true;
-  };
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]!;
-    const next = tokens[index + 1];
-
-    // `defer expression` / `errdefer expression` -> `defer;expression`
-    if (isDeferMarkerWord(token) &&
-      next !== undefined && startsExpression(next) &&
-      isSpaceOrTab(source[token.end]) &&
-      !LINE_BREAK.test(source.slice(token.end, next.start))) {
-      masks.push({
-        kind: "defer",
-        start: token.end,
-        end: token.end + 1,
-        text: ";",
-        protectStart: token.end,
-        protectEnd: token.end + 1,
-      });
-      continue;
-    }
-
-    // `break :label value` -> `break ;label,value`
-    if (token.kind === ts.SyntaxKind.BreakKeyword &&
-      next?.kind === ts.SyntaxKind.ColonToken &&
-      isIdentifierLike(tokens[index + 2])) {
-      const label = tokens[index + 2]!;
-      const value = tokens[index + 3];
-      if (value && startsExpression(value) && isSpaceOrTab(source[label.end]) &&
-        !LINE_BREAK.test(source.slice(label.end, value.start))) {
-        const colonProtection = protectAdjacentSpaces(source, next.start, next.end);
-        masks.push({
-          kind: "break-value",
-          start: next.start,
-          end: next.end,
-          text: ";",
-          protectStart: colonProtection.start,
-          protectEnd: next.end,
-        });
-        masks.push({
-          kind: "break-value",
-          start: label.end,
-          end: label.end + 1,
-          text: ",",
-          protectStart: label.end,
-          protectEnd: label.end + 1,
-        });
-        index += 2;
-        continue;
-      }
-    }
-
-    // `label: for (...) { ... } else value` -> `... void value`
-    if (isLabeledLoopHead(tokens, index) && !labelIsIfBody(tokens, index)) {
-      const closeParen = matchingClose(
-        tokens, index + 3, ts.SyntaxKind.OpenParenToken, ts.SyntaxKind.CloseParenToken);
-      const closeBrace = closeParen < 0
-        ? -1
-        : matchingClose(tokens, closeParen + 1, ts.SyntaxKind.OpenBraceToken, ts.SyntaxKind.CloseBraceToken);
-      const elseToken = closeBrace < 0 ? undefined : tokens[closeBrace + 1];
-      if (elseToken?.kind === ts.SyntaxKind.ElseKeyword) {
-        masks.push({
-          kind: "loop-else",
-          start: elseToken.start,
-          end: elseToken.end,
-          text: "void",
-          protectStart: elseToken.start,
-          protectEnd: elseToken.end,
-        });
-      }
-    }
-
-    // `if (const x = e; cond)` -> `if ($c0        , cond)`
-    if (token.kind === ts.SyntaxKind.IfKeyword && next?.kind === ts.SyntaxKind.OpenParenToken) {
-      const header = conditionalDeclarationHeader(tokens, index);
-      if (header) {
-        const start = tokens[header.declarationStart]!.start;
-        const end = tokens[header.semicolon]!.end;
-        const filler = fillerFor(source.slice(start, end - 1), `$c${masks.length}`);
-        if (filler !== undefined) {
-          masks.push({
-            kind: "conditional-declaration",
-            start,
-            end,
-            text: `${filler},`,
-            protectStart: start,
-            protectEnd: end,
-          });
-          // The declaration is an ordinary statement in isolation, so its own
-          // interior is formatted by recursion rather than left as authored.
-          regions.push({ start, end });
-        }
-      }
-    }
-
-    const construct = valueConstructAt(tokens, index);
-    if (!construct) continue;
-
-    const previous = tokens[index - 1];
-    // `const x = <value construct>` / `x = <value construct>` -> `const x ; <statement>`
-    if (previous?.kind === ts.SyntaxKind.EqualsToken) {
-      const protection = protectAdjacentSpaces(source, previous.start, previous.end);
-      masks.push({
-        kind: "value-initializer",
-        start: previous.start,
-        end: previous.end,
-        text: ";",
-        protectStart: protection.start,
-        protectEnd: protection.end,
-      });
-      continue;
-    }
-    // `return <value construct>` -> `rtn__: <statement>`
-    if (previous?.kind === ts.SyntaxKind.ReturnKeyword &&
-      !LINE_BREAK.test(source.slice(previous.end, token.start))) {
-      masks.push({
-        kind: "value-return",
-        start: previous.start,
-        end: previous.end,
-        text: "rtn__:",
-        protectStart: previous.start,
-        protectEnd: previous.end,
-      });
-      continue;
-    }
-    if (previous?.kind === ts.SyntaxKind.ThrowKeyword &&
-      !LINE_BREAK.test(source.slice(previous.end, token.start))) {
-      masks.push({
-        kind: "value-return",
-        start: previous.start,
-        end: previous.end,
-        text: "thr__:",
-        protectStart: previous.start,
-        protectEnd: previous.end,
-      });
-      continue;
-    }
-    // Every other placement is masked opaquely and formatted by recursion.
-    if (construct.extent >= 0 && isValuePlacement(tokens, index)) {
-      if (!pushRegion(index, construct.extent)) continue;
-      index = construct.extent;
-    }
+    if (token.kind !== ts.SyntaxKind.IfKeyword ||
+      tokens[index + 1]?.kind !== ts.SyntaxKind.OpenParenToken) continue;
+    const header = conditionalDeclarationHeader(tokens, index);
+    if (!header) continue;
+    const start = tokens[header.declarationStart]!.start;
+    const end = tokens[header.semicolon]!.end;
+    const filler = fillerFor(source.slice(start, end - 1), `$c${masks.length}`);
+    if (filler === undefined) continue;
+    masks.push({
+      kind: "conditional-declaration",
+      start,
+      end,
+      text: `${filler},`,
+      protectStart: start,
+      protectEnd: end,
+    });
+    // The declaration is an ordinary statement in isolation, so its own
+    // interior is formatted by recursion rather than left as authored.
+    regions.push({ start, end });
   }
 
-  const ordered = [...masks].sort((left, right) => left.start - right.start);
-  return { masks: ordered, regions };
+  return { masks, regions };
 }
-
-/** True when a labeled statement is the direct body of an `if`, where `else` is ordinary TypeScript. */
-function labelIsIfBody(tokens: readonly ScannedToken[], index: number): boolean {
-  const previous = tokens[index - 1];
-  if (!previous) return false;
-  if (previous.kind === ts.SyntaxKind.ElseKeyword) return true;
-  if (previous.kind !== ts.SyntaxKind.CloseParenToken) return false;
-  let depth = 0;
-  for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
-    const kind = tokens[cursor]!.kind;
-    if (kind === ts.SyntaxKind.CloseParenToken) depth += 1;
-    else if (kind === ts.SyntaxKind.OpenParenToken) {
-      depth -= 1;
-      if (depth === 0) return tokens[cursor - 1]?.kind === ts.SyntaxKind.IfKeyword;
-    }
-  }
-  return false;
-}
-
 interface ConditionalDeclarationHeader {
   readonly declarationStart: number;
   readonly semicolon: number;
@@ -728,47 +411,6 @@ function conditionalDeclarationHeader(
   }
   if (semicolon < 0 || semicolon <= openParen + 1 || semicolon + 1 >= closeParen) return undefined;
   return { declarationStart: openParen + 1, semicolon };
-}
-
-interface ValueConstruct {
-  /** Last token index of the construct, or -1 when the extent is not provable. */
-  readonly extent: number;
-}
-
-function valueConstructAt(
-  tokens: readonly ScannedToken[],
-  index: number,
-): ValueConstruct | undefined {
-  const token = tokens[index]!;
-  if (token.kind === ts.SyntaxKind.IfKeyword) {
-    if (tokens[index + 1]?.kind !== ts.SyntaxKind.OpenParenToken) return undefined;
-    if (!isValuePlacement(tokens, index)) return undefined;
-    return { extent: valueIfExtent(tokens, index) };
-  }
-  if (token.kind === ts.SyntaxKind.SwitchKeyword) {
-    if (!isValuePlacement(tokens, index)) return undefined;
-    return { extent: valueSwitchExtent(tokens, index) };
-  }
-  if (isIdentifierLike(token) && tokens[index + 1]?.kind === ts.SyntaxKind.ColonToken) {
-    if (!isValuePlacement(tokens, index)) return undefined;
-    if (isLabeledLoopHead(tokens, index)) {
-      // The `else` completion value has no token-provable end, so a loop value
-      // is recognized (its `=` host is still masked) but never masked opaquely.
-      return { extent: -1 };
-    }
-    const extent = labeledBlockExtent(tokens, index);
-    return extent < 0 ? undefined : { extent };
-  }
-  return undefined;
-}
-
-function isValuePlacement(tokens: readonly ScannedToken[], index: number): boolean {
-  const previous = tokens[index - 1];
-  if (!previous) return false;
-  if (previous.kind === ts.SyntaxKind.EqualsToken) return true;
-  if (previous.kind === ts.SyntaxKind.ReturnKeyword || previous.kind === ts.SyntaxKind.ThrowKeyword) return true;
-  if (previous.kind === ts.SyntaxKind.ColonToken) return isObjectPropertyColon(tokens, index - 1);
-  return VALUE_CONSTRUCT_PREVIOUS.has(previous.kind);
 }
 
 function applyMasks(source: string, masks: readonly Mask[]): string | undefined {
@@ -887,11 +529,8 @@ interface Replacement {
 }
 
 /**
- * Canonical spacing for the constructs the mask protects from the language
- * service. The language service can never reach inside a protected span, so
- * these spellings are normalized directly and idempotently: one space after a
- * `defer`/`errdefer` marker, `break :label value`, and one space on each side
- * of an `=` that introduces a value construct.
+ * Canonical spacing inside the conditional-declaration header protected from
+ * the stock TypeScript language service.
  */
 function normalizeSmithersSpelling(source: string, tokens: readonly ScannedToken[]): string {
   const replacements: Replacement[] = [];
@@ -905,30 +544,6 @@ function normalizeSmithersSpelling(source: string, tokens: readonly ScannedToken
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]!;
     const next = tokens[index + 1];
-    if (isDeferMarkerWord(token) &&
-      next && startsExpression(next) && isSpaceOrTab(source[token.end])) {
-      collapse(token.end, next.start, " ");
-      continue;
-    }
-    if (token.kind === ts.SyntaxKind.BreakKeyword &&
-      next?.kind === ts.SyntaxKind.ColonToken &&
-      isIdentifierLike(tokens[index + 2])) {
-      const label = tokens[index + 2]!;
-      const value = tokens[index + 3];
-      collapse(token.end, next.start, " ");
-      collapse(next.end, label.start, "");
-      if (value && startsExpression(value) && isSpaceOrTab(source[label.end])) {
-        collapse(label.end, value.start, " ");
-      }
-      index += 2;
-      continue;
-    }
-    if (token.kind === ts.SyntaxKind.EqualsToken && next && valueConstructAt(tokens, index + 1)) {
-      const previous = tokens[index - 1];
-      if (previous) collapse(previous.end, token.start, " ");
-      collapse(token.end, next.start, " ");
-      continue;
-    }
     if (token.kind === ts.SyntaxKind.IfKeyword && next?.kind === ts.SyntaxKind.OpenParenToken) {
       const header = conditionalDeclarationHeader(tokens, index);
       const following = header ? tokens[header.semicolon + 1] : undefined;
@@ -1125,10 +740,8 @@ function formatModule(source: string, options: FormatOptions, depth: number): Fo
  *    restricted production moved. This is what allows the language service to
  *    join a brace onto its header or break a multi-line object literal open:
  *    both are line-break changes that provably do not change the parse.
- * 3. Line-break structure must be preserved on every line a Smithers mask
- *    touches, and on the line after it. Stock TypeScript's AST cannot model
- *    `defer`'s same-line cleanup rule or the loop `else` value's line-break
- *    terminator, so those lines keep the strict invariant.
+ * 3. Line-break structure must be preserved on every line the Smithers mask
+ *    touches, and on the line after it.
  */
 function roundTripRefusal(
   source: string,

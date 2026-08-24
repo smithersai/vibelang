@@ -59,7 +59,7 @@ function beginReport(): ReportHeader {
 
   const header: ReportHeader = {
     startedAt: new Date(clock.now()).toISOString(),
-    region: environment.get("REGION").unwrapOr("unknown"),
+    region: environment.get("REGION") ?? "unknown",
     runId: [...random.bytes(6)].map((byte) => byte.toString(16).padStart(2, "0")).join(""),
   };
   console.info(`run ${header.runId} started in ${header.region}`);
@@ -313,21 +313,22 @@ function echoOnce(message: string): Promise<Result<string, SocketError>> {
     if (!sent.ok) return __vsResultFailure(sent.error);
     const received = __vsInspectResult(await server.read());
     if (!received.ok) return __vsResultFailure(received.error);
-    const bytes = received.value.unwrapOr(new Uint8Array(0));
+    const bytes = received.value ?? new Uint8Array(0);
     const echoed = __vsInspectResult(await server.write(bytes));
     if (!echoed.ok) return __vsResultFailure(echoed.error);
 
     const back = __vsInspectResult(await client.read());
     if (!back.ok) return __vsResultFailure(back.error);
     await server.close();
-    // The peer closed cleanly, so the next read is an absent value, not an error.
+    // The peer closed cleanly, so the next read is an absent success —
+    // `undefined` — not an error. Absence and failure stay on separate axes.
     const eof = __vsInspectResult(await client.read());
-    const ended = eof.ok && eof.value.isNone();
+    const ended = eof.ok && eof.value === undefined;
 
     await client.close();
     await listener.close();
     return __vsResultSuccess(
-      `${new TextDecoder().decode(back.value.unwrapOr(new Uint8Array(0)))}${ended ? " (clean EOF)" : ""}`,
+      `${new TextDecoder().decode(back.value ?? new Uint8Array(0))}${ended ? " (clean EOF)" : ""}`,
     );
   })();
 }
@@ -352,7 +353,7 @@ async function servicesRun(): Promise<unknown> {
     answer: answer.match({ ok: (value) => value, error: (error) => error.message }),
     prompts: platform.terminal.prompts,
     transcript: platform.terminal.text(),
-    size: platform.terminal.size().unwrapOr({ columns: 0, rows: 0 }),
+    size: platform.terminal.size() ?? { columns: 0, rows: 0 },
     pid: platform.process.pid(),
     echoed: echoed.unwrapOr((error) => error.message),
     // Every port the double handed out has been released.

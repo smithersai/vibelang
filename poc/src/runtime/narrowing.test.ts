@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-  MissingOptionalValue,
   type NominalError,
   Panic,
   decodeError,
@@ -58,6 +57,14 @@ class FamilyLeft extends Family {}
 interface FamilyLeft extends NominalError<"test:narrowing/FamilyLeft@1"> {}
 class FamilyRight extends Family {}
 interface FamilyRight extends NominalError<"test:narrowing/FamilyRight@1"> {}
+
+// --- a branded subclass of the runtime's own Panic channel ---
+// The runtime used to ship one of these (`MissingOptionalValue`, from the
+// withdrawn `Optional<T>` container). The proof below is about the nominal
+// Error brand, not about absence, so the class it needs is declared here.
+class BrandedDefect extends Panic {}
+interface BrandedDefect extends NominalError<"test:narrowing/BrandedDefect@1"> {}
+registerErrorType(BrandedDefect, "test:narrowing/BrandedDefect@1");
 
 // --- one brand per inheritance chain (documented limitation) ---
 class ChainBase extends Error {}
@@ -150,17 +157,17 @@ function anUnbrandedBaseStillMatchesEveryBrandedLeaf(error: FamilyLeft | FamilyR
   return impossible;
 }
 
-function runtimeErrorClassesAreBranded(error: Panic | MissingOptionalValue): void {
-  if (errorIs(error, MissingOptionalValue)) {
-    const missing: MissingOptionalValue = error;
-    void missing;
+function runtimeErrorClassesAreBranded(error: Panic | BrandedDefect): void {
+  if (errorIs(error, BrandedDefect)) {
+    const defect: BrandedDefect = error;
+    void defect;
     return;
   }
   // a bare Panic survives the else branch instead of collapsing to `never`
   const bare: Panic = error;
   void bare;
-  // @ts-expect-error a bare Panic is not a MissingOptionalValue
-  const wrong: MissingOptionalValue = new Panic("bare");
+  // @ts-expect-error a bare Panic is not a BrandedDefect
+  const wrong: BrandedDefect = new Panic("bare");
   void wrong;
 }
 
@@ -197,9 +204,9 @@ describe("nominal Error brands are type-only", () => {
     expect(errorMatches(left)).toBe(false);
     expect(left.matches(BrandedLeft, BrandedThird)).toBe(true);
     expect(left.is(BrandedLeft)).toBe(true);
-    expect(new MissingOptionalValue().is(MissingOptionalValue)).toBe(true);
-    expect(new Panic("bare").is(MissingOptionalValue)).toBe(false);
-    expect(new MissingOptionalValue().is(Panic)).toBe(true);
+    expect(new BrandedDefect("defect").is(BrandedDefect)).toBe(true);
+    expect(new Panic("bare").is(BrandedDefect)).toBe(false);
+    expect(new BrandedDefect("defect").is(Panic)).toBe(true);
 
     // The brand is a phantom: a branded instance carries no extra own state.
     expect(Object.getOwnPropertySymbols(left)).toEqual([]);

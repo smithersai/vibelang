@@ -6,7 +6,7 @@ package main
 // overlay, so it can drive the fork's own parser, binder, checker, node
 // factory, and printer directly. It replaces the identity transform for
 // `LoweringInternal` requests: authored `.sm` statements are rewritten into
-// Result/Optional variant constructions and nominal error dispatch on the real
+// Result variant constructions and nominal error dispatch on the real
 // AST, and the fork's printer emits the lowered TypeScript together with an
 // authored -> lowered source map.
 //
@@ -25,7 +25,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/nodebuilder"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/sourcemap"
@@ -35,14 +34,14 @@ import (
 const (
 	// preludeLogicalPath is the compiler-owned prelude injected into every
 	// internally lowered project. It declares the runtime representation of
-	// `Result` and `Optional`, publishes their type names globally, and
+	// `Result`, publishes its type name globally, and
 	// declares the nominal `Error.match` intrinsic, so authored `.sm` files
 	// never import anything.
 	preludeLogicalPath = "__smithers_prelude.ts"
 	preludeVirtualName = "/src/" + preludeLogicalPath
 	preludeModuleBase  = "__smithers_prelude.js"
 
-	// tempPrefix names the temporaries introduced by `unwrap` propagation, and
+	// tempPrefix names the temporaries introduced by postfix propagation, and
 	// matchPrefix those introduced by nominal error matching.
 	tempPrefix  = "__smithersUnwrapped"
 	matchPrefix = "__smithersMatched"
@@ -58,11 +57,7 @@ var preludeImports = []struct {
 }{
 	{exported: "SmithersOk", local: "__smithersOk"},
 	{exported: "SmithersErr", local: "__smithersErr"},
-	{exported: "SmithersSome", local: "__smithersSome"},
-	{exported: "SmithersNone", local: "__smithersNone"},
 	{exported: "Panic", local: "__smithersPanic"},
-	{exported: "SmithersOptional", local: "__smithersOptionalNamespace"},
-	{exported: "smithersOptional", local: "__smithersOptional"},
 	{exported: "smithersMatchFailed", local: "__smithersMatchFailed"},
 	{exported: "smithersTry", local: "__smithersTry"},
 	{exported: "smithersTryPromise", local: "__smithersTryPromise"},
@@ -79,17 +74,11 @@ func preludeLocalName(exported string) string {
 }
 
 // preludeText is the compiler-owned prelude. The classes are the runtime
-// representation of a Result and an Optional; the `declare global` block
-// publishes the type names authored `.sm` files use without importing
+// representation of a Result; the `declare global` block publishes the type
+// name authored `.sm` files use without importing
 // anything, and declares `Error.match` so nominal matching resolves to a
 // compiler-owned declaration rather than to a spelling.
-const preludeText = `export class SmithersAbsent extends Error {
-    constructor() {
-        super("Optional.unwrap() was called on an absent value");
-        this.name = "SmithersAbsent";
-    }
-}
-export class Panic extends Error {
+const preludeText = `export class Panic extends Error {
 	constructor(readonly cause?: unknown) {
 		super(cause instanceof Error ? cause.message : cause === undefined ? "panic" : String(cause));
 		this.name = "Panic";
@@ -192,46 +181,9 @@ export class SmithersErr<E> {
 	tap(observer: (value: never) => void): SmithersErr<E> { return this; }
 	tapError(observer: (error: E) => void): SmithersErr<E> { observer(this.error); return this; }
 }
-export class SmithersSome<A> {
-    readonly some: true = true;
-    constructor(readonly value: A) { }
-    isSome(): boolean { return true; }
-    isNone(): boolean { return false; }
-    unwrap(): A { return this.value; }
-    unwrapOr(fallback: A | (() => A)): A { return this.value; }
-    match<R>(handlers: { some: (value: A) => R; none: () => R }): R { return handlers.some(this.value); }
-    map<B>(mapper: (value: A) => B): SmithersSome<NonNullable<B>> | SmithersNone { return smithersOptional(mapper(this.value)); }
-    andThen<B>(mapper: (value: A) => SmithersSome<B> | SmithersNone): SmithersSome<B> | SmithersNone { return mapper(this.value); }
-    filter(predicate: (value: A) => boolean): SmithersSome<A> | SmithersNone { return predicate(this.value) ? this : new SmithersNone(); }
-    // tap observes the present variant only and returns the observed Optional
-    // unchanged: specification/type-system.mdx, "Optional", lists tap among the
-    // required operations.
-    tap(observer: (value: A) => void): SmithersSome<A> { observer(this.value); return this; }
-    toNullable(): A | null { return this.value; }
-    toResult<E>(error: E | (() => E)): SmithersOk<A> { return new SmithersOk(this.value); }
-}
-export class SmithersNone {
-    readonly some: false = false;
-    isSome(): boolean { return false; }
-    isNone(): boolean { return true; }
-    unwrap(): never { throw new SmithersAbsent(); }
-    unwrapOr<A>(fallback: A | (() => A)): A { return smithersCall(fallback); }
-    match<R>(handlers: { some: (value: never) => R; none: () => R }): R { return handlers.none(); }
-    map<B>(mapper: (value: never) => B): SmithersNone { return this; }
-    andThen<B>(mapper: (value: never) => SmithersSome<B> | SmithersNone): SmithersNone { return this; }
-    filter(predicate: (value: never) => boolean): SmithersNone { return this; }
-    tap(observer: (value: never) => void): SmithersNone { return this; }
-    toNullable(): null { return null; }
-    toResult<E>(error: E | (() => E)): SmithersErr<E> { return new SmithersErr(smithersCall(error)); }
-}
-export function smithersOptional<A>(value: A): SmithersSome<NonNullable<A>> | SmithersNone {
-    return value === null || value === undefined ? new SmithersNone() : new SmithersSome(value as NonNullable<A>);
-}
 type SmithersAnyResult = SmithersOk<any> | SmithersErr<any>;
-type SmithersAnyOptional = SmithersSome<any> | SmithersNone;
 type SmithersOkValue<R> = R extends SmithersOk<infer A> ? A : never;
 type SmithersErrError<R> = R extends SmithersErr<infer E> ? E : never;
-type SmithersSomeValue<O> = O extends SmithersSome<infer A> ? A : never;
 // smithersResultAll collects every success and STOPS at the first error. The
 // left-to-right scan is the contract, not an implementation detail: with two
 // failing entries the collected Result must carry the first, so a right-to-left
@@ -247,25 +199,6 @@ export function smithersResultAll(results: readonly SmithersAnyResult[]): Smithe
 	}
 	return new SmithersOk(values);
 }
-// smithersOptionalAll is absent as soon as one entry is absent, and stops
-// scanning there for the same reason.
-export function smithersOptionalAll<const O extends readonly SmithersAnyOptional[]>(
-	optionals: O,
-): SmithersSome<SmithersSomeValue<O[number]>[]> | SmithersNone;
-export function smithersOptionalAll(optionals: readonly SmithersAnyOptional[]): SmithersAnyOptional {
-	const values: unknown[] = [];
-	for (const optional of optionals) {
-		if (!optional.some) return optional;
-		values.push(optional.value);
-	}
-	return new SmithersSome(values);
-}
-export const SmithersOptional = Object.freeze({
-	fromNullable<A>(value: A | null | undefined): SmithersSome<NonNullable<A>> | SmithersNone {
-		return smithersOptional(value);
-	},
-	all: smithersOptionalAll,
-});
 type SmithersErrorConstructor<E extends Error = Error> = abstract new (...args: never[]) => E;
 function smithersErrorIs<E extends Error>(error: unknown, type: SmithersErrorConstructor<E>): error is E {
 	if (!(error instanceof Error) || typeof type !== "function") return false;
@@ -314,12 +247,6 @@ export async function smithersTryPromise<A, E extends Error>(body: () => Promise
 	try { return new SmithersOk(await body()); }
 	catch (cause) { return new SmithersErr(expected && cause instanceof expected ? cause : new Panic(cause)); }
 }
-// A native pin is a compile-time assertion and an identity operation at
-// runtime. Authored imports resolve against a distinct declaration module for
-// compiler authority, then the AST lowerer retargets them to this definition.
-export function native<F extends (...args: never[]) => unknown>(pinned: F): F {
-	return pinned;
-}
 declare global {
     type Result<A, E> = SmithersOk<A> | SmithersErr<E>;
     // The author-facing Result namespace carries only the documented
@@ -330,8 +257,6 @@ declare global {
         tryPromise: typeof smithersTryPromise;
         all: typeof smithersResultAll;
     };
-    type Optional<A> = SmithersSome<A> | SmithersNone;
-    const Optional: typeof SmithersOptional;
     // Reflect.panic is the ambient spelling of the same distinguished channel
     // that panic(...) from smithers:exceptions charges. It is declared, never
     // emitted: every reachable use is rewritten into the error variant, and a
@@ -355,7 +280,6 @@ var compilerModuleSpecifiers = []string{
 	"smthrs/provider",
 	"smithers:exceptions",
 	"smithers:comptime",
-	"smithers:native",
 	"smithers:flows",
 }
 
@@ -372,12 +296,6 @@ func configureInternalModules(options *core.CompilerOptions) {
 			// The comptime intrinsic has its own compiler-owned module, so its
 			// exported bindings cannot be reached through any other specifier.
 			paths.Set(specifier, []string{comptimeModuleAlias})
-			continue
-		}
-		if specifier == nativeModuleSpecifier {
-			// Like comptime, the pin has a distinct checker declaration so its
-			// export cannot be reached through a sibling virtual module.
-			paths.Set(specifier, []string{nativeModuleAlias})
 			continue
 		}
 		paths.Set(specifier, []string{"./" + preludeLogicalPath})
@@ -400,17 +318,10 @@ type preludeSymbols struct {
 	resultAlias  *ast.Node // the `Result` TypeAliasDeclaration in the prelude
 	resultSymbol *ast.Symbol
 
-	optionalAlias  *ast.Node // the `Optional` TypeAliasDeclaration in the prelude
-	optionalSymbol *ast.Symbol
-	optionalValue  *ast.Node // the global `Optional` VariableDeclaration in the prelude
+	okClass  *ast.Node // the `SmithersOk` ClassDeclaration
+	errClass *ast.Node // the `SmithersErr` ClassDeclaration
 
-	okClass   *ast.Node // the `SmithersOk` ClassDeclaration
-	errClass  *ast.Node // the `SmithersErr` ClassDeclaration
-	someClass *ast.Node // the `SmithersSome` ClassDeclaration
-	noneClass *ast.Node // the `SmithersNone` ClassDeclaration
-
-	resultUnwrap      map[*ast.Node]struct{} // `unwrap` on the Result variants
-	optionalUnwrap    map[*ast.Node]struct{} // `unwrap` on the Optional variants
+	resultUnwrap      map[*ast.Node]struct{} // retired `unwrap` members on the Result variants
 	matchDecls        map[*ast.Node]struct{} // the global `Error.match` MethodSignature
 	matchPartialDecls map[*ast.Node]struct{} // the global `Error.matchPartial` MethodSignature
 	errorRuntimeDecls map[*ast.Node]struct{} // global Error helpers implemented by prelude side effects
@@ -460,7 +371,6 @@ func loadPreludeSymbols(program *compiler.Program, typeChecker *checker.Checker)
 	symbols := &preludeSymbols{
 		checker:               typeChecker,
 		resultUnwrap:          make(map[*ast.Node]struct{}),
-		optionalUnwrap:        make(map[*ast.Node]struct{}),
 		matchDecls:            make(map[*ast.Node]struct{}),
 		matchPartialDecls:     make(map[*ast.Node]struct{}),
 		errorRuntimeDecls:     make(map[*ast.Node]struct{}),
@@ -492,11 +402,8 @@ func loadPreludeSymbols(program *compiler.Program, typeChecker *checker.Checker)
 	walk = func(node *ast.Node) bool {
 		switch {
 		case ast.IsTypeAliasDeclaration(node):
-			switch declarationName(node) {
-			case "Result":
+			if declarationName(node) == "Result" {
 				symbols.resultAlias = node
-			case "Optional":
-				symbols.optionalAlias = node
 			}
 		case ast.IsClassDeclaration(node):
 			switch declarationName(node) {
@@ -516,12 +423,6 @@ func loadPreludeSymbols(program *compiler.Program, typeChecker *checker.Checker)
 				}
 				collectMembers(node, ast.IsMethodDeclaration, "unwrap", symbols.resultUnwrap)
 				collectMembers(node, ast.IsMethodDeclaration, "expect", symbols.expectDecls)
-			case "SmithersSome":
-				symbols.someClass = node
-				collectMembers(node, ast.IsMethodDeclaration, "unwrap", symbols.optionalUnwrap)
-			case "SmithersNone":
-				symbols.noneClass = node
-				collectMembers(node, ast.IsMethodDeclaration, "unwrap", symbols.optionalUnwrap)
 			case "Panic":
 				panicClass = node
 			case "Context":
@@ -553,10 +454,6 @@ func loadPreludeSymbols(program *compiler.Program, typeChecker *checker.Checker)
 			}
 			return false
 		case ast.IsVariableDeclaration(node):
-			if declarationName(node) == "Optional" && node.AsVariableDeclaration().Initializer == nil {
-				symbols.optionalValue = node
-				return false
-			}
 			if declarationName(node) == "Result" && node.AsVariableDeclaration().Initializer == nil {
 				typeNode := node.AsVariableDeclaration().Type
 				if typeNode != nil && typeNode.Kind == ast.KindTypeLiteral {
@@ -603,13 +500,11 @@ func loadPreludeSymbols(program *compiler.Program, typeChecker *checker.Checker)
 		}
 	}
 
-	if symbols.resultAlias == nil || symbols.optionalAlias == nil ||
-		symbols.okClass == nil || symbols.errClass == nil ||
-		symbols.someClass == nil || symbols.noneClass == nil ||
-		len(symbols.resultUnwrap) != 2 || len(symbols.optionalUnwrap) != 2 ||
+	if symbols.resultAlias == nil || symbols.okClass == nil || symbols.errClass == nil ||
+		len(symbols.resultUnwrap) != 2 ||
 		len(symbols.matchDecls) != 1 || len(symbols.matchPartialDecls) != 1 || len(symbols.errorRuntimeDecls) != 3 ||
 		len(symbols.expectDecls) != 2 || len(symbols.resultConsumerDecls) != 2*len(resultConsumerMembers) ||
-		len(symbols.resultInspectionDecls) != 4 || symbols.optionalValue == nil ||
+		len(symbols.resultInspectionDecls) != 4 ||
 		panicClass == nil || contextClass == nil || len(symbols.contextDecls) != 1 ||
 		len(symbols.panicDecls) != 1 || len(symbols.reflectPanicDecls) != 1 ||
 		errorInterface == nil || len(symbols.layerDecls["succeed"]) != 1 ||
@@ -620,13 +515,12 @@ func loadPreludeSymbols(program *compiler.Program, typeChecker *checker.Checker)
 	}
 	symbols.module = symbols.mergedSymbolAt(preludeFile.AsNode())
 	symbols.resultSymbol = symbols.mergedSymbolAt(symbols.resultAlias.Name())
-	symbols.optionalSymbol = symbols.mergedSymbolAt(symbols.optionalAlias.Name())
 	symbols.error = symbols.mergedSymbolAt(errorInterface.Name())
 	symbols.panic = symbols.mergedSymbolAt(panicClass.Name())
 	symbols.context = symbols.mergedSymbolAt(contextClass.Name())
-	if symbols.module == nil || symbols.resultSymbol == nil || symbols.optionalSymbol == nil ||
+	if symbols.module == nil || symbols.resultSymbol == nil ||
 		symbols.error == nil || symbols.panic == nil || symbols.context == nil {
-		return nil, fmt.Errorf("the compiler-owned prelude's Result/Optional declarations have no symbol")
+		return nil, fmt.Errorf("the compiler-owned prelude's Result declarations have no symbol")
 	}
 	return symbols, nil
 }
@@ -735,20 +629,7 @@ func (s *preludeSymbols) isResultSymbol(symbol *ast.Symbol) bool {
 	return s.isAliasSymbol(symbol, s.resultSymbol, s.resultAlias)
 }
 
-// isOptionalSymbol reports whether a resolved symbol is the prelude's `Optional`.
-func (s *preludeSymbols) isOptionalSymbol(symbol *ast.Symbol) bool {
-	return s.isAliasSymbol(symbol, s.optionalSymbol, s.optionalAlias)
-}
-
-// isOptionalValueReference reports whether an expression identifier resolves
-// to the compiler-owned global Optional namespace. A same-spelled authored
-// value has a different declaration and is deliberately left untouched.
-func (s *preludeSymbols) isOptionalValueReference(node *ast.Node) bool {
-	return node != nil && node.Parent != nil && ast.IsIdentifier(node) && ast.IsExpressionNode(node) &&
-		declaresAnyOf(s.checker.GetSymbolAtLocation(node), s.optionalValue)
-}
-
-// authoredConstructor reports a forbidden author-facing Result/Optional
+// authoredConstructor reports a forbidden author-facing Result
 // variant hook. The owner must resolve to the compiler prelude; spelling is
 // consulted only after that identity proof to select the reserved hook.
 func (s *preludeSymbols) authoredConstructor(node *ast.Node) (string, bool) {
@@ -763,9 +644,6 @@ func (s *preludeSymbols) authoredConstructor(node *ast.Node) (string, bool) {
 	name := access.Name().Text()
 	if s.isResultSymbol(symbol) && (name == "ok" || name == "err" || name == "success" || name == "error") {
 		return "Result." + name, true
-	}
-	if declaresAnyOf(symbol, s.optionalValue) && (name == "some" || name == "none") {
-		return "Optional." + name, true
 	}
 	return "", false
 }
@@ -854,7 +732,7 @@ var resultNamespaceMembers = []string{"try", "tryPromise", "all"}
 // nodes collected there.
 var resultConsumerMembers = []string{
 	"isOk", "isError", "match", "map", "mapError", "andThen",
-	"recover", "tap", "tapError", "unwrap", "unwrapOr", "expect",
+	"recover", "tap", "tapError", "unwrapOr", "expect",
 }
 
 func (s *preludeSymbols) resultConsumerCall(node *ast.Node) bool {
@@ -930,9 +808,6 @@ func (s *preludeSymbols) isCompilerModuleSpecifier(specifier *ast.Node) bool {
 	if comptimeResolvedModule(s.checker, specifier) {
 		return true
 	}
-	if nativeResolvedModule(s.checker, specifier) {
-		return true
-	}
 	if s.module == nil {
 		return false
 	}
@@ -941,8 +816,8 @@ func (s *preludeSymbols) isCompilerModuleSpecifier(specifier *ast.Node) bool {
 }
 
 // isVariantUnion reports whether every constituent of a checker type was
-// declared by one of the prelude's variant classes. This is what recognizes a
-// Result/Optional after narrowing or instantiation has dropped the alias.
+// declared by one of the prelude's variant classes. This recognizes a Result
+// after narrowing or instantiation has dropped the alias.
 func isVariantUnion(t *checker.Type, classes ...*ast.Node) bool {
 	if t == nil {
 		return false
@@ -975,29 +850,18 @@ func (s *preludeSymbols) isResultType(t *checker.Type) bool {
 	return isVariantUnion(t, s.okClass, s.errClass)
 }
 
-// isOptionalType is the same recognition for the prelude's `Optional`.
-func (s *preludeSymbols) isOptionalType(t *checker.Type) bool {
-	if t == nil {
-		return false
-	}
-	if s.isOptionalSymbol(t.Alias().Symbol()) {
-		return true
-	}
-	return isVariantUnion(t, s.someClass, s.noneClass)
-}
-
-// unwrapKind distinguishes the two propagation channels `unwrap` can drive.
+// unwrapKind distinguishes a retired Result `.unwrap()` call from an ordinary
+// same-spelled method. It no longer denotes propagation.
 type unwrapKind int
 
 const (
 	unwrapNone unwrapKind = iota
 	unwrapResult
-	unwrapOptional
 )
 
-// unwrapCall reports whether a call expression is `<result>.unwrap()` or
-// `<optional>.unwrap()`, using the resolved symbol of the property name rather
-// than its spelling, plus the checker's type for the receiver.
+// unwrapCall reports whether a call expression is the retired
+// `<result>.unwrap()` spelling, using the resolved property declaration and
+// Result type identity rather than authored member text.
 func (s *preludeSymbols) unwrapCall(node *ast.Node) (*ast.Node, unwrapKind) {
 	access, ok := s.zeroArgumentMethodCall(node)
 	if !ok {
@@ -1007,24 +871,18 @@ func (s *preludeSymbols) unwrapCall(node *ast.Node) (*ast.Node, unwrapKind) {
 	if symbol == nil {
 		return nil, unwrapNone
 	}
-	result, optional := false, false
+	result := false
 	for _, declaration := range symbol.Declarations {
 		if _, ok := s.resultUnwrap[declaration]; ok {
 			result = true
 		}
-		if _, ok := s.optionalUnwrap[declaration]; ok {
-			optional = true
-		}
 	}
-	if !result && !optional {
+	if !result {
 		return nil, unwrapNone
 	}
 	receiverType := s.checker.GetTypeAtLocation(access.Expression)
 	if result && s.isResultType(receiverType) {
 		return access.Expression, unwrapResult
-	}
-	if optional && s.isOptionalType(receiverType) {
-		return access.Expression, unwrapOptional
 	}
 	return nil, unwrapNone
 }
@@ -1111,12 +969,11 @@ func (s *preludeSymbols) expectCall(node *ast.Node) (*ast.Node, bool) {
 // is derived from the declared return type annotation by resolved symbol
 // identity, and it drives every lift decision inside the body.
 type liftShape struct {
-	async    bool // the declared return type is `Promise<...>` on an async function
-	result   bool // the (awaited) return type is the prelude's Result
-	optional bool // the value channel is the prelude's Optional
+	async  bool // the declared return type is `Promise<...>` on an async function
+	result bool // the (awaited) return type is the prelude's Result
 }
 
-func (s liftShape) lifts() bool { return s.result || s.optional }
+func (s liftShape) lifts() bool { return s.result }
 
 // loweringReport is a Smithers diagnostic raised by the lowering itself, at an
 // authored position. The lowering never approximates: a construct it cannot
@@ -1249,6 +1106,10 @@ type rowAnalysis struct {
 	reports       map[*ast.SourceFile][]loweringReport
 	topProvides   []rowProvideEdge
 	foreignCalls  map[*ast.Node]foreignPolicy
+	// resultPropagations maps each valid postfix `!` AST node to its Result
+	// operand. The parser already represents postfix `!` as NonNullExpression;
+	// the `.sm` semantic pass removes that old meaning and owns every such node.
+	resultPropagations map[*ast.Node]*ast.Node
 	// A policy can be queried by row inference, provenance, top-level checks,
 	// and foreign-boundary checks. Invalid annotation diagnostics are emitted
 	// once per authored call even when several of those passes query it.
@@ -1259,11 +1120,6 @@ type rowAnalysis struct {
 	// so neither a valid asset nor a fail-closed asset refusal can fall through
 	// into foreign-module policy.
 	assetImports map[*ast.Node]assetImportEdge
-	// Native-pin requirements are separate from the nominal runtime row: they
-	// retain a dependency path and include TypeScript/host classifications that
-	// a target assertion must inspect without treating capabilities as blockers.
-	nativeRequirementPaths map[*functionRows]map[string][]string
-	nativePins             map[*functionRows]*ast.Node
 }
 
 func symbolDeclaredBy(symbol *ast.Symbol, declarations map[*ast.Node]struct{}) bool {
@@ -1479,19 +1335,14 @@ func (a *rowAnalysis) declaredFunctionShape(node *ast.Node) (liftShape, rowSet, 
 		return liftShape{}, rows, nil
 	}
 	shape := liftShape{async: async}
-	if success, failure, ok := a.resultArguments(t); ok {
+	if _, failure, ok := a.resultArguments(t); ok {
 		shape.result = true
-		shape.optional = a.prelude.isOptionalType(success)
 		if failures, known := a.rowsOfType(failure); known {
 			addRows(rows, failures)
 		}
 		return shape, rows, failure
 	}
-	shape.optional = a.prelude.isOptionalType(t)
-	if !shape.optional {
-		return liftShape{}, rows, nil
-	}
-	return shape, rows, nil
+	return liftShape{}, rows, nil
 }
 
 const deferredRowFlags = checker.TypeFlagsTypeParameter | checker.TypeFlagsConditional |
@@ -1563,6 +1414,7 @@ func newRowAnalysis(typeChecker *checker.Checker, prelude *preludeSymbols, files
 		rowNames:                 make(map[*ast.Symbol]string),
 		reports:                  make(map[*ast.SourceFile][]loweringReport),
 		foreignCalls:             make(map[*ast.Node]foreignPolicy),
+		resultPropagations:       make(map[*ast.Node]*ast.Node),
 		foreignAnnotationReports: make(map[*ast.Node]bool),
 		foreignOrderReports:      make(map[*ast.Node]bool),
 		assetImports:             make(map[*ast.Node]assetImportEdge),
@@ -1578,6 +1430,7 @@ func newRowAnalysis(typeChecker *checker.Checker, prelude *preludeSymbols, files
 	analysis.checkForeignProvenanceEscapes(files)
 	analysis.collectTopProvides(files)
 	analysis.inferRows()
+	analysis.collectInferredResultPropagations(files)
 	analysis.checkContracts()
 	analysis.checkBoundMustConsume(files)
 	analysis.checkResultParameters(files)
@@ -1590,7 +1443,6 @@ func newRowAnalysis(typeChecker *checker.Checker, prelude *preludeSymbols, files
 	// none of them contributes a row: each one only decides whether a program
 	// the language forbids may reach emit at all.
 	analysis.checkHostGlobals(files)
-	analysis.checkWithStatements(files)
 	analysis.checkStaticBlocks(files)
 	analysis.checkDuplicateErrorNames(files)
 	analysis.checkForeignBoundaries(files)
@@ -1598,7 +1450,6 @@ func newRowAnalysis(typeChecker *checker.Checker, prelude *preludeSymbols, files
 	analysis.checkRetiredTypeGrammar(files)
 	analysis.checkRelativeModuleResolution(files)
 	analysis.checkProjectImportBindings(files)
-	analysis.checkNativePins(files)
 	return analysis
 }
 
@@ -1749,7 +1600,7 @@ func (a *rowAnalysis) resolveCallee(call *ast.Node) *functionRows {
 func (a *rowAnalysis) isForeignDeclaration(node *ast.Node) bool {
 	file := ast.GetSourceFileOfNode(node)
 	if file == nil || file.FileName() == preludeVirtualName || file.FileName() == durableVirtualName ||
-		file.FileName() == comptimeVirtualName || file.FileName() == nativeVirtualName {
+		file.FileName() == comptimeVirtualName {
 		return false
 	}
 	name := strings.ToLower(file.FileName())
@@ -1842,7 +1693,7 @@ func (a *rowAnalysis) foreignPolicyForCall(call *ast.Node) (foreignPolicy, bool)
 	}
 	if orderUnsafe && !a.foreignOrderReports[call] {
 		a.foreignOrderReports[call] = true
-		a.report(call, "SMITHERS1507", "this foreign call/result use is not expression-order-safe in the POC; assign the checked result, unwrap it, and continue through an explicitly typed local adapter")
+		a.report(call, "SMITHERS1507", "this foreign call/result use is not expression-order-safe in the POC; assign the checked result, propagate it with postfix !, and continue through an explicitly typed local adapter")
 	}
 	if annotation == "never" {
 		return foreignPolicy{kind: "never", async: async}, true
@@ -1866,17 +1717,18 @@ func (a *rowAnalysis) stableForeignCallee(expression *ast.Node) bool {
 	}
 	switch expression.Kind {
 	case ast.KindParenthesizedExpression, ast.KindAsExpression,
-		ast.KindNonNullExpression, ast.KindTypeAssertionExpression:
+		ast.KindTypeAssertionExpression:
 		return a.stableForeignCallee(expression.Expression())
+	case ast.KindNonNullExpression:
+		// In `.sm` this AST kind is the checked postfix propagation boundary,
+		// never TypeScript's non-null assertion.
+		return true
 	case ast.KindIdentifier:
 		return true
 	case ast.KindPropertyAccessExpression:
 		return a.stableForeignCallee(expression.AsPropertyAccessExpression().Expression)
 	case ast.KindElementAccessExpression:
 		return a.stableForeignCallee(expression.AsElementAccessExpression().Expression)
-	case ast.KindCallExpression:
-		_, kind := a.prelude.unwrapCall(expression)
-		return kind == unwrapResult
 	}
 	return false
 }
@@ -1887,17 +1739,15 @@ func (a *rowAnalysis) foreignCalleeHasUncheckedResult(expression *ast.Node) bool
 	}
 	switch expression.Kind {
 	case ast.KindParenthesizedExpression, ast.KindAsExpression,
-		ast.KindNonNullExpression, ast.KindTypeAssertionExpression:
+		ast.KindTypeAssertionExpression:
 		return a.foreignCalleeHasUncheckedResult(expression.Expression())
+	case ast.KindNonNullExpression:
+		return false
 	case ast.KindPropertyAccessExpression:
 		return a.foreignCalleeHasUncheckedResult(expression.AsPropertyAccessExpression().Expression)
 	case ast.KindElementAccessExpression:
 		return a.foreignCalleeHasUncheckedResult(expression.AsElementAccessExpression().Expression)
 	case ast.KindCallExpression:
-		if receiver, kind := a.prelude.unwrapCall(expression); kind == unwrapResult {
-			_ = receiver
-			return false
-		}
 		policy, foreign := a.foreignPolicyForCall(expression)
 		return foreign && policy.kind != "never"
 	case ast.KindIdentifier:
@@ -1918,20 +1768,15 @@ func (a *rowAnalysis) foreignResultIsUsedAsValue(call *ast.Node) bool {
 	current := call
 	parent := current.Parent
 	for parent != nil && (ast.IsParenthesizedExpression(parent) || ast.IsAsExpression(parent) ||
-		parent.Kind == ast.KindTypeAssertionExpression || ast.IsNonNullExpression(parent) || ast.IsAwaitExpression(parent)) {
+		parent.Kind == ast.KindTypeAssertionExpression || ast.IsAwaitExpression(parent)) {
 		current = parent
 		parent = parent.Parent
 	}
-	if parent == nil {
+	if parent != nil && ast.IsNonNullExpression(parent) && parent.AsNonNullExpression().Expression == current {
 		return false
 	}
-	if ast.IsPropertyAccessExpression(parent) && parent.AsPropertyAccessExpression().Expression == current &&
-		parent.Parent != nil && ast.IsCallExpression(parent.Parent) &&
-		parent.Parent.AsCallExpression().Expression == parent {
-		_, kind := a.prelude.unwrapCall(parent.Parent)
-		if kind == unwrapResult {
-			return false
-		}
+	if parent == nil {
+		return false
 	}
 	if ast.IsCallExpression(parent) || ast.IsNewExpression(parent) {
 		return true
@@ -1981,21 +1826,19 @@ func (a *rowAnalysis) addForeignFailures(into rowSet, policy foreignPolicy) {
 	}
 }
 
-func callPropagatesFailure(call *ast.Node, prelude *preludeSymbols) bool {
+func callPropagatesFailure(call *ast.Node, _ *preludeSymbols) bool {
 	current := call
 	for current.Parent != nil {
 		parent := current.Parent
 		switch {
 		case ast.IsParenthesizedExpression(parent), ast.IsAsExpression(parent),
-			ast.IsNonNullExpression(parent), ast.IsAwaitExpression(parent):
+			ast.IsAwaitExpression(parent):
 			current = parent
 			continue
+		case ast.IsNonNullExpression(parent) && parent.AsNonNullExpression().Expression == current:
+			return true
 		case ast.IsReturnStatement(parent):
 			return true
-		case ast.IsPropertyAccessExpression(parent) && parent.AsPropertyAccessExpression().Expression == current &&
-			parent.Parent != nil && ast.IsCallExpression(parent.Parent):
-			_, kind := prelude.unwrapCall(parent.Parent)
-			return kind == unwrapResult
 		default:
 			return false
 		}
@@ -2249,14 +2092,6 @@ func (a *rowAnalysis) collectFacts(fn *functionRows) {
 					instantiatedFailures: a.instantiatedFailures(node, callee),
 				})
 			}
-			if receiver, kind := a.prelude.unwrapCall(node); kind == unwrapResult {
-				_, failure, ok := a.resultArguments(a.checker.GetTypeAtLocation(receiver))
-				if ok {
-					if rows, known := a.rowsOfType(failure); known {
-						addRows(fn.directFailures, rows)
-					}
-				}
-			}
 			if policy, foreign := a.foreignPolicyForCall(node); foreign && !fn.resultBoundaryBody {
 				// Inside an authored `Result.try`/`Result.tryPromise` body the
 				// adapter is the catch scope: the foreign call keeps its throw,
@@ -2267,12 +2102,21 @@ func (a *rowAnalysis) collectFacts(fn *functionRows) {
 					if callPropagatesFailure(node, a.prelude) {
 						a.addForeignFailures(fn.directFailures, policy)
 					} else {
-						a.report(node, "SMITHERS1301", "produced Result must be returned, matched, transformed, inspected, or unwrapped")
+						a.report(node, "SMITHERS1301", "produced Result must be returned, matched, transformed, inspected, or propagated with postfix !")
 					}
 				}
 			}
 			if edge, ok := a.provideEdge(node); ok {
 				fn.provides = append(fn.provides, edge)
+			}
+		}
+		if ast.IsNonNullExpression(node) {
+			operand := node.AsNonNullExpression().Expression
+			if _, failure, ok := a.resultArguments(a.checker.GetTypeAtLocation(operand)); ok {
+				a.resultPropagations[node] = operand
+				if rows, known := a.rowsOfType(failure); known {
+					addRows(fn.directFailures, rows)
+				}
 			}
 		}
 		if ast.IsPropertyAccessExpression(node) {
@@ -2311,6 +2155,54 @@ func (a *rowAnalysis) collectFacts(fn *functionRows) {
 		})
 	}
 	visit(body, false)
+}
+
+// collectInferredResultPropagations completes the postfix table after row
+// inference. Explicit Result operands were recorded during collectFacts so
+// their nominal errors could seed inference. This second pass covers a direct
+// call whose authored TypeScript type is still its success type but whose
+// checked Smithers callee or foreign boundary is known to produce a Result.
+func (a *rowAnalysis) collectInferredResultPropagations(files []*ast.SourceFile) {
+	for _, file := range files {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsNonNullExpression(node) {
+				operand := node.AsNonNullExpression().Expression
+				if a.resultPropagationOperand(operand) {
+					a.resultPropagations[node] = operand
+				}
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		visit(file.AsNode())
+	}
+}
+
+func (a *rowAnalysis) resultPropagationOperand(expression *ast.Node) bool {
+	if expression == nil {
+		return false
+	}
+	if a.prelude.isResultType(a.checker.GetTypeAtLocation(expression)) {
+		return true
+	}
+	switch expression.Kind {
+	case ast.KindParenthesizedExpression, ast.KindAsExpression,
+		ast.KindTypeAssertionExpression, ast.KindAwaitExpression:
+		return a.resultPropagationOperand(expression.Expression())
+	case ast.KindCallExpression:
+		if callee := a.resolveCallee(expression); callee != nil {
+			// An async call produces a Promise. The Result becomes available only
+			// after an authored await, so postfix ! on the call itself must fail
+			// closed as a non-Result operand.
+			return !ast.HasSyntacticModifier(callee.node, ast.ModifierFlagsAsync) &&
+				(callee.declaredShape.result || len(callee.failures) != 0)
+		}
+		if policy, foreign := a.foreignCalls[expression]; foreign && policy.kind != "never" {
+			return true
+		}
+	}
+	return false
 }
 
 func symbolDeclarations(symbol *ast.Symbol) []*ast.Node {
@@ -2431,12 +2323,14 @@ func (a *rowAnalysis) checkContracts() {
 	}
 }
 
-func resultParameterReferenceConsumed(node *ast.Node) bool {
+func (a *rowAnalysis) resultParameterReferenceConsumed(node *ast.Node) bool {
 	current := node
 	for current.Parent != nil {
 		parent := current.Parent
 		switch {
-		case ast.IsParenthesizedExpression(parent), ast.IsAsExpression(parent), ast.IsNonNullExpression(parent):
+		case ast.IsNonNullExpression(parent) && parent.AsNonNullExpression().Expression == current:
+			return a.resultPropagations[parent] != nil
+		case ast.IsParenthesizedExpression(parent), ast.IsAsExpression(parent):
 			current = parent
 			continue
 		case ast.IsReturnStatement(parent):
@@ -2471,7 +2365,7 @@ func (a *rowAnalysis) checkResultParameters(files []*ast.SourceFile) {
 				if node != fn.node.Body() && ast.IsFunctionLikeDeclaration(node) {
 					return false
 				}
-				if ast.IsIdentifier(node) && node != name && a.symbolAt(node) == symbol && resultParameterReferenceConsumed(node) {
+				if ast.IsIdentifier(node) && node != name && a.symbolAt(node) == symbol && a.resultParameterReferenceConsumed(node) {
 					consumed = true
 				}
 				node.ForEachChild(visit)
@@ -2480,7 +2374,7 @@ func (a *rowAnalysis) checkResultParameters(files []*ast.SourceFile) {
 			fn.node.Body().ForEachChild(visit)
 			if !consumed {
 				fn.unconsumedParams[index] = true
-				a.report(name, "SMITHERS1302", "Result parameter must be consumed by returning, matching, transforming, inspecting, or unwrapping it")
+				a.report(name, "SMITHERS1302", "Result parameter must be consumed by returning, matching, transforming, inspecting, or propagating it with postfix !")
 			}
 		}
 	}
@@ -2494,7 +2388,7 @@ func (a *rowAnalysis) checkResultParameters(files []*ast.SourceFile) {
 				if callee != nil && arguments != nil {
 					for index := range callee.unconsumedParams {
 						if index < len(arguments.Nodes) && a.prelude.isResultType(a.checker.GetTypeAtLocation(arguments.Nodes[index])) {
-							a.report(arguments.Nodes[index], "SMITHERS1301", "produced Result must be returned, matched, transformed, inspected, or unwrapped")
+							a.report(arguments.Nodes[index], "SMITHERS1301", "produced Result must be returned, matched, transformed, inspected, or propagated with postfix !")
 						}
 					}
 				}
@@ -2571,7 +2465,7 @@ func (a *rowAnalysis) checkTopLevelRequirements(files []*ast.SourceFile) {
 // local callees, and the resolved declaration of a foreign call. A method or
 // function that merely shares one of those names remains ordinary.
 //
-// Result/Optional unwrap are owned by lowerUnwrap (SMITHERS1202/1206), and a
+// Top-level postfix propagation is owned by lowerPropagation (SMITHERS1202), and a
 // top-level throw is owned by visitStatement (SMITHERS1511). Keeping this pass
 // to the Panic-producing call family avoids duplicate or competing diagnoses.
 func (a *rowAnalysis) checkTopLevelCheckedChannels(files []*ast.SourceFile) {
@@ -2625,7 +2519,7 @@ func (a *rowAnalysis) checkCrossModuleEscapes(files []*ast.SourceFile) {
 			if ast.IsIdentifier(node) && !ast.IsPartOfTypeNode(node) &&
 				!ast.IsDeclarationNameOrImportPropertyName(node) {
 				target := a.bySymbol[a.symbolAt(node)]
-				if target != nil && target.file != file && !directCallReference(node) && !a.nativePinArgument(node) {
+				if target != nil && target.file != file && !directCallReference(node) {
 					a.report(node, "SMITHERS1802", "cross-module function '"+target.name+"' escapes direct static call analysis; wrap the higher-order use in an explicitly checked local function")
 				}
 			}
@@ -2815,26 +2709,18 @@ type lowerer struct {
 	pending             []*ast.Node
 	nextTemp            int
 	used                map[string]bool
-	breakTargets        map[*ast.Node]*ast.Node
-	valueBreakJoin      map[*ast.Node]valueBreakJoin
 	reports             []loweringReport
 	needsPreludeRuntime bool
 }
 
-type valueBreakJoin struct {
-	exit   *ast.Node
-	result *ast.Node
-}
-
 func newLowerer(typeChecker *checker.Checker, prelude *preludeSymbols, analysis *rowAnalysis, comptime *comptimeAnalysis) *lowerer {
 	low := &lowerer{
-		emitContext:    printer.NewEmitContext(),
-		checker:        typeChecker,
-		prelude:        prelude,
-		analysis:       analysis,
-		comptime:       comptime,
-		used:           make(map[string]bool),
-		valueBreakJoin: make(map[*ast.Node]valueBreakJoin),
+		emitContext: printer.NewEmitContext(),
+		checker:     typeChecker,
+		prelude:     prelude,
+		analysis:    analysis,
+		comptime:    comptime,
+		used:        make(map[string]bool),
 	}
 	low.factory = low.emitContext.Factory
 	low.visitor = low.emitContext.NewNodeVisitor(low.visit)
@@ -2855,7 +2741,6 @@ var hoistableStatements = map[ast.Kind]struct{}{
 
 func (l *lowerer) transform(file *ast.SourceFile) *ast.SourceFile {
 	l.file = file
-	l.breakTargets = resolveBreakTargetIdentities(file.AsNode())
 	lowered := l.visitor.VisitSourceFile(file)
 	if len(l.used) == 0 && !l.needsPreludeRuntime {
 		return lowered
@@ -2865,58 +2750,6 @@ func (l *lowerer) transform(file *ast.SourceFile) *ast.SourceFile {
 	list := l.factory.NewNodeList(statements)
 	list.Loc = lowered.Statements.Loc
 	return l.factory.UpdateSourceFile(lowered, list, lowered.EndOfFileToken).AsSourceFile()
-}
-
-type lexicalLabel struct {
-	name   string
-	target *ast.Node
-}
-
-// resolveBreakTargetIdentities mirrors ECMAScript's lexical-label lookup once,
-// then records the result as AST node identity for every lowering decision.
-// Labels do not have checker Symbols in the fork; their text is the language's
-// binding key, just as it is in binder.findActiveLabel. Nested functions start
-// a fresh label environment, and a loop else value is outside its own label's
-// active region, matching the fork binder.
-func resolveBreakTargetIdentities(root *ast.Node) map[*ast.Node]*ast.Node {
-	result := make(map[*ast.Node]*ast.Node)
-	var walk func(*ast.Node, []lexicalLabel)
-	walk = func(node *ast.Node, labels []lexicalLabel) {
-		if node == nil {
-			return
-		}
-		if ast.IsFunctionLike(node) {
-			node.ForEachChild(func(child *ast.Node) bool {
-				walk(child, nil)
-				return false
-			})
-			return
-		}
-		if node.Kind == ast.KindLabeledStatement {
-			statement := node.AsLabeledStatement()
-			active := append(labels, lexicalLabel{name: statement.Label.Text(), target: node})
-			walk(statement.Statement, active)
-			walk(statement.ElseValue, labels)
-			return
-		}
-		if node.Kind == ast.KindBreakStatement {
-			label := node.AsBreakStatement().Label
-			if label != nil {
-				for index := len(labels) - 1; index >= 0; index-- {
-					if labels[index].name == label.Text() {
-						result[node] = labels[index].target
-						break
-					}
-				}
-			}
-		}
-		node.ForEachChild(func(child *ast.Node) bool {
-			walk(child, labels)
-			return false
-		})
-	}
-	walk(root, nil)
-	return result
 }
 
 // newPreludeImport builds `import { SmithersOk as __smithersOk, … } from
@@ -3024,13 +2857,6 @@ func (l *lowerer) visit(node *ast.Node) *ast.Node {
 	if node.Kind == ast.KindBlock {
 		return l.visitBlock(node)
 	}
-	if node.Kind == ast.KindDeferStatement || node.Kind == ast.KindErrdeferStatement {
-		// A marker is lowerable only as a direct member of a braced statement
-		// list, where the lexical tail is explicit. Reaching it here means it was
-		// used as an embedded single statement or another unsupported placement.
-		l.report(node, "SMITHERS1710", "defer and errdefer must be direct statements in a braced lexical scope")
-		return l.visitor.VisitEachChild(node)
-	}
 	if ast.IsStatement(node) {
 		return l.visitStatement(node)
 	}
@@ -3045,70 +2871,11 @@ func (l *lowerer) visitBlock(node *ast.Node) *ast.Node {
 	return l.factory.UpdateBlock(block, list, block.MultiLine)
 }
 
-// visitStatementSequence lowers defer registration by consuming the lexical
-// tail after the first marker. Recursing on that tail produces nested
-// try/finally statements, so later registrations run first and a marker that
-// control never reaches registers nothing.
+// visitStatementSequence lowers each statement in source order.
 func (l *lowerer) visitStatementSequence(statements []*ast.Node) []*ast.Node {
 	result := make([]*ast.Node, 0, len(statements))
-	for index, statement := range statements {
-		if statement.Kind != ast.KindDeferStatement && statement.Kind != ast.KindErrdeferStatement {
-			result = appendVisitedStatement(result, l.visit(statement))
-			continue
-		}
-
-		expression := statement.Expression()
-		valid := enclosingFunction(statement) != nil
-		if !valid {
-			l.report(statement, "SMITHERS1710", "defer and errdefer require an enclosing function body")
-		}
-		if expression == nil || ast.NodeIsMissing(expression) || scanner.GetECMALineOfPosition(l.file, scanner.GetTokenPosOfNode(statement, l.file, false)) != scanner.GetECMALineOfPosition(l.file, scanner.GetTokenPosOfNode(expression, l.file, false)) {
-			l.report(statement, "SMITHERS1710", "a defer or errdefer cleanup expression must begin on the marker line")
-			valid = false
-		}
-		if statement.Kind == ast.KindErrdeferStatement && !l.shape.result {
-			l.report(statement, "SMITHERS1711", "errdefer requires an enclosing Result or Promise<Result> owner whose emitted variant can be inspected")
-			valid = false
-		}
-		if !l.deferCleanupIsSound(expression) {
-			valid = false
-		}
-		if statement.Kind == ast.KindErrdeferStatement && l.shape.async && l.errdeferTailReturnsUnawaitedPromise(statements[index+1:]) {
-			valid = false
-		}
-		if !valid {
-			// Leave the unsupported marker itself untouched. Other statements in the
-			// scope still pass through lowering so their diagnostics remain honest;
-			// NoEmitOnError prevents the marker from reaching JavaScript.
-			result = append(result, l.visitor.VisitEachChild(statement))
-			continue
-		}
-
-		tail := l.visitStatementSequence(statements[index+1:])
-		cleanup := l.visitDeferredCleanup(expression)
-		tryBlock := l.factory.NewBlock(l.factory.NewNodeList(tail), true)
-		if statement.Kind == ast.KindDeferStatement {
-			finallyBlock := l.factory.NewBlock(l.factory.NewNodeList(cleanup), true)
-			result = append(result, l.factory.NewTryStatement(tryBlock, nil, finallyBlock))
-			return result
-		}
-
-		settled := l.factory.NewUniqueName("__smithersErrdeferResult")
-		declaration := l.factory.NewVariableDeclaration(settled, nil, nil, nil)
-		declarationList := l.factory.NewVariableDeclarationList(l.factory.NewNodeList([]*ast.Node{declaration}), ast.NodeFlagsLet)
-		result = append(result, l.factory.NewVariableStatement(nil, declarationList))
-		instrumented := l.instrumentErrdeferReturns(tail, settled)
-		tryBlock = l.factory.NewBlock(l.factory.NewNodeList(instrumented), true)
-		hasResult := l.factory.NewStrictInequalityExpression(settled, l.factory.NewVoidZeroExpression())
-		isFailure := l.factory.NewPrefixUnaryExpression(
-			ast.KindExclamationToken,
-			l.factory.NewPropertyAccessExpression(settled, nil, l.factory.NewIdentifier("ok"), ast.NodeFlagsNone),
-		)
-		condition := l.factory.NewLogicalANDExpression(hasResult, isFailure)
-		guard := l.factory.NewIfStatement(nil, condition, l.factory.NewBlock(l.factory.NewNodeList(cleanup), true), nil)
-		finallyBlock := l.factory.NewBlock(l.factory.NewNodeList([]*ast.Node{guard}), true)
-		result = append(result, l.factory.NewTryStatement(tryBlock, nil, finallyBlock))
-		return result
+	for _, statement := range statements {
+		result = appendVisitedStatement(result, l.visit(statement))
 	}
 	return result
 }
@@ -3121,116 +2888,6 @@ func appendVisitedStatement(result []*ast.Node, visited *ast.Node) []*ast.Node {
 		return append(result, visited.AsSyntaxList().Children...)
 	}
 	return append(result, visited)
-}
-
-func (l *lowerer) deferCleanupIsSound(expression *ast.Node) bool {
-	if expression == nil {
-		return false
-	}
-	valueType := l.checker.SmithersCheckExpression(expression)
-	valid := true
-	if l.prelude.isResultType(valueType) {
-		l.report(expression, "SMITHERS1301", "a defer cleanup Result must be consumed instead of discarded")
-		l.report(expression, "SMITHERS1712", "defer cleanup produces a Result whose failure composition is not defined")
-		valid = false
-	}
-	if l.prelude.isOptionalType(valueType) {
-		l.report(expression, "SMITHERS1712", "defer cleanup produces an Optional value whose consumption is ambiguous")
-		valid = false
-	}
-	if valueType != nil && l.checker.GetPromisedTypeOfPromise(valueType) != nil && expression.Kind != ast.KindAwaitExpression {
-		l.report(expression, "SMITHERS1712", "defer cleanup produces an unawaited Promise")
-		valid = false
-	}
-	containsPropagation := false
-	var inspect func(*ast.Node)
-	inspect = func(node *ast.Node) {
-		if node == nil || containsPropagation {
-			return
-		}
-		if _, kind := l.prelude.unwrapCall(node); kind != unwrapNone {
-			containsPropagation = true
-			return
-		}
-		if node != expression && ast.IsFunctionLike(node) {
-			return
-		}
-		node.ForEachChild(func(child *ast.Node) bool {
-			inspect(child)
-			return containsPropagation
-		})
-	}
-	inspect(expression)
-	if containsPropagation {
-		l.report(expression, "SMITHERS1712", "defer cleanup contains propagation whose failure composition is not defined")
-		valid = false
-	}
-	return valid
-}
-
-func (l *lowerer) errdeferTailReturnsUnawaitedPromise(statements []*ast.Node) bool {
-	found := false
-	var inspect func(*ast.Node)
-	inspect = func(node *ast.Node) {
-		if node == nil || found {
-			return
-		}
-		if ast.IsFunctionLike(node) {
-			return
-		}
-		if node.Kind == ast.KindReturnStatement {
-			expression := node.AsReturnStatement().Expression
-			if expression != nil {
-				valueType := l.checker.SmithersCheckExpression(expression)
-				if valueType != nil && l.checker.GetPromisedTypeOfPromise(valueType) != nil && expression.Kind != ast.KindAwaitExpression {
-					l.report(node, "SMITHERS1713", "async errdefer cannot inspect a directly returned Promise before finally runs; await it before returning")
-					found = true
-					return
-				}
-			}
-		}
-		node.ForEachChild(func(child *ast.Node) bool {
-			inspect(child)
-			return found
-		})
-	}
-	for _, statement := range statements {
-		inspect(statement)
-	}
-	return found
-}
-
-func (l *lowerer) visitDeferredCleanup(expression *ast.Node) []*ast.Node {
-	statement := l.factory.NewExpressionStatement(expression)
-	l.emitContext.AssignSourceMapRange(statement, expression)
-	return appendVisitedStatement(nil, l.visitStatement(statement))
-}
-
-func (l *lowerer) instrumentErrdeferReturns(statements []*ast.Node, settled *ast.Node) []*ast.Node {
-	var visitor *ast.NodeVisitor
-	visit := func(node *ast.Node) *ast.Node {
-		if node == nil || ast.IsFunctionLike(node) {
-			return node
-		}
-		if node.Kind == ast.KindReturnStatement {
-			returned := node.AsReturnStatement().Expression
-			if returned == nil {
-				return node
-			}
-			assignment := l.factory.NewAssignmentExpression(settled, returned)
-			updated := l.factory.NewReturnStatement(assignment)
-			l.emitContext.AssignCommentAndSourceMapRanges(updated, node)
-			l.emitContext.SetOriginal(updated, node)
-			return updated
-		}
-		return visitor.VisitEachChild(node)
-	}
-	visitor = l.emitContext.NewNodeVisitor(visit)
-	result := make([]*ast.Node, 0, len(statements))
-	for _, statement := range statements {
-		result = append(result, visitor.VisitNode(statement))
-	}
-	return result
 }
 
 // shapeOf derives the checked return contract from the declared return type
@@ -3255,7 +2912,7 @@ func (l *lowerer) shapeOf(node *ast.Node) liftShape {
 		typeNode = inner
 		shape.async = true
 	}
-	shape.result, shape.optional = l.classifyTypeNode(typeNode)
+	shape.result = l.classifyTypeNode(typeNode)
 	if !shape.lifts() {
 		return liftShape{}
 	}
@@ -3279,32 +2936,18 @@ func (l *lowerer) promiseArgument(typeNode *ast.Node) *ast.Node {
 	return reference.TypeArguments.Nodes[0]
 }
 
-// classifyTypeNode resolves an annotation to the compiler-owned Result and
-// Optional by symbol identity, including the outside-in `Result<Optional<A>, E>`
-// composition.
-func (l *lowerer) classifyTypeNode(typeNode *ast.Node) (result bool, optional bool) {
+// classifyTypeNode resolves an annotation to the compiler-owned Result by
+// symbol identity.
+func (l *lowerer) classifyTypeNode(typeNode *ast.Node) bool {
 	if typeNode == nil || !ast.IsTypeReferenceNode(typeNode) {
-		return false, false
+		return false
 	}
 	reference := typeNode.AsTypeReferenceNode()
 	symbol := l.checker.GetSymbolAtLocation(reference.TypeName)
-	switch {
-	case l.prelude.isResultSymbol(symbol):
-		if reference.TypeArguments != nil && len(reference.TypeArguments.Nodes) > 0 {
-			inner := reference.TypeArguments.Nodes[0]
-			if ast.IsTypeReferenceNode(inner) &&
-				l.prelude.isOptionalSymbol(l.checker.GetSymbolAtLocation(inner.AsTypeReferenceNode().TypeName)) {
-				return true, true
-			}
-		}
-		return true, false
-	case l.prelude.isOptionalSymbol(symbol):
-		return false, true
-	}
-	return false, false
+	return l.prelude.isResultSymbol(symbol)
 }
 
-// lowerConciseBody wraps the expression body of a Result/Optional-returning
+// lowerConciseBody wraps the expression body of a Result-returning
 // arrow function, so `(): Result<A, E> => value` becomes `=> new __smithersOk(value)`.
 // Propagation is not lowered out of a concise body: there is no statement list
 // to hoist the guard into, and the prelude's runtime `unwrap` still applies.
@@ -3394,11 +3037,6 @@ func (l *lowerer) visitStatement(node *ast.Node) *ast.Node {
 		)
 	case node.Kind == ast.KindTryStatement:
 		lowered = l.visitTry(node)
-	case node.Kind == ast.KindLabeledStatement && node.AsLabeledStatement().ElseValue != nil:
-		l.report(node, "SMITHERS1715", "a loop else value is only sound as part of an expression-position labeled loop value")
-		lowered = l.visitor.VisitEachChild(node)
-	case node.Kind == ast.KindBreakStatement && node.AsBreakStatement().Value != nil:
-		lowered = l.lowerValueBreak(node)
 	case node.Kind == ast.KindIfStatement && node.AsIfStatement().Initializer != nil:
 		lowered = l.lowerConditionalDeclaration(node)
 	case node.Kind == ast.KindThrowStatement && !l.guardedByCatch && enclosingFunction(node) == nil:
@@ -3421,32 +3059,6 @@ func (l *lowerer) visitStatement(node *ast.Node) *ast.Node {
 
 	l.restoreScope(saved)
 	return lowered
-}
-
-func (l *lowerer) lowerValueBreak(node *ast.Node) *ast.Node {
-	statement := node.AsBreakStatement()
-	target := l.breakTargets[node]
-	join, active := l.valueBreakJoin[target]
-	if !active {
-		code := "SMITHERS1714"
-		message := "a value break must target its enclosing expression-position labeled block"
-		if target != nil && ast.IsIterationStatement(target.AsLabeledStatement().Statement, false) {
-			code = "SMITHERS1715"
-			message = "a value break must target its enclosing expression-position labeled loop"
-		}
-		// The value is the part that cannot reach a join. Point the refusal at
-		// that authored expression, matching the language diagnostic contract.
-		l.report(statement.Value, code, message)
-		return node
-	}
-	assignment := l.factory.NewAssignmentExpression(join.result, statement.Value)
-	valueStatement := l.factory.NewExpressionStatement(assignment)
-	contents := appendVisitedStatement(nil, l.visitStatement(valueStatement))
-	jump := l.factory.NewBreakStatement(join.exit, nil)
-	l.emitContext.AssignCommentAndSourceMapRanges(jump, node)
-	l.emitContext.SetOriginal(jump, node)
-	contents = append(contents, jump)
-	return l.factory.NewBlock(l.factory.NewNodeList(contents), true)
 }
 
 // declaresSeveralNames reports whether a statement binds more than one name.
@@ -3490,9 +3102,14 @@ func (l *lowerer) reportUnconsumedValue(node *ast.Node) {
 		// is a question this pass does not answer.
 		return
 	}
+	if l.analysis != nil && l.analysis.resultPropagations[expression] != nil {
+		// Postfix propagation consumes the Result even when its success value is
+		// deliberately discarded as an expression statement.
+		return
+	}
 	valueType := l.checker.GetTypeAtLocation(expression)
 	if l.prelude.isResultType(valueType) {
-		l.report(node, "SMITHERS1301", "await removes only Promise; the resulting Result must still be returned, matched, transformed, inspected, or unwrapped")
+		l.report(node, "SMITHERS1301", "await removes only Promise; the resulting Result must still be returned, matched, transformed, inspected, or propagated with postfix !")
 		return
 	}
 	if valueType != nil && l.checker.GetPromisedTypeOfPromise(valueType) != nil {
@@ -3537,19 +3154,19 @@ func (l *lowerer) promiseChainCall(node *ast.Node) bool {
 // order-preserving: a propagation point may only be hoisted while everything
 // evaluated ahead of it in the same statement is effect-free.
 func (l *lowerer) visitExpression(node *ast.Node) *ast.Node {
+	if ast.IsNonNullExpression(node) {
+		if receiver := l.analysis.resultPropagations[node]; receiver != nil {
+			return l.lowerPropagation(node, receiver)
+		}
+		l.report(node, "SMITHERS1207", "postfix ! requires a Result operand; TypeScript non-null assertions are unavailable in .sm")
+		l.impure = true
+		return l.visitor.VisitEachChild(node)
+	}
 	if ast.IsImportCall(node) && l.assetImportModule(node) != nil {
 		return l.lowerDynamicAssetImport(node, l.assetImportModule(node))
 	}
 	if lowered, matched := l.lowerDurableCall(node); matched {
 		return lowered
-	}
-	if l.prelude.isOptionalValueReference(node) {
-		l.used["SmithersOptional"] = true
-		// The alias node itself is synthesized. Its containing property access
-		// retains the authored range, giving the rewritten token only the same
-		// semantic start anchor the bridge uses for other changed tokens rather
-		// than a character-by-character identity claim.
-		return l.factory.NewIdentifier(preludeLocalName("SmithersOptional"))
 	}
 	if hook, ok := l.prelude.authoredConstructor(node); ok {
 		l.report(node, "SMITHERS1201", hook+" is a compiler hook, not an author-facing constructor; use ordinary return/throw lifting")
@@ -3558,20 +3175,13 @@ func (l *lowerer) visitExpression(node *ast.Node) *ast.Node {
 	if lowered, matched := l.lowerResultNamespaceCall(node); matched {
 		return lowered
 	}
-	if node.Kind == ast.KindLabeledExpression {
-		return l.lowerLabeledExpression(node)
-	}
-	if node.Kind == ast.KindIfExpression {
-		return l.lowerIfExpression(node)
-	}
-	if node.Kind == ast.KindSwitchExpression {
-		return l.lowerSwitchExpression(node)
-	}
 	if receiver, ok := l.prelude.expectCall(node); ok {
 		return l.lowerExpect(node, receiver)
 	}
-	if receiver, kind := l.prelude.unwrapCall(node); kind != unwrapNone {
-		return l.lowerUnwrap(node, receiver, kind)
+	if _, kind := l.prelude.unwrapCall(node); kind == unwrapResult {
+		l.report(node, "SMITHERS1206", "Result.unwrap() is no longer the propagation spelling; use postfix !")
+		l.impure = true
+		return l.visitor.VisitEachChild(node)
 	}
 	if receiver, handlers, fallback, kind := l.prelude.matchCall(node); kind != errorMatchNone {
 		return l.lowerMatch(node, receiver, handlers, fallback, kind)
@@ -3616,61 +3226,6 @@ func (l *lowerer) visitExpression(node *ast.Node) *ast.Node {
 // point as a statement sequence hoisted immediately before the containing
 // statement; every value break assigns the join temporary and exits the compiler
 // wrapper, while a loop's normal/plain-break exit assigns ElseValue instead.
-func (l *lowerer) lowerLabeledExpression(node *ast.Node) *ast.Node {
-	expression := node.AsLabeledExpression()
-	target := expression.Statement.AsNode()
-	labeled := expression.Statement.AsLabeledStatement()
-	if escaping := l.escapingJump(target); escaping != nil {
-		l.reportEscapingJump(escaping, target)
-		return node
-	}
-	joinType := l.checker.SmithersCheckExpression(node)
-	if ast.IsBlock(labeled.Statement) && typeIncludesUndefined(joinType) {
-		l.report(node, "SMITHERS1714", "a labeled block value can complete without a value break")
-		return node
-	}
-	if !l.canHoist || l.impure {
-		l.report(node, "SMITHERS1707", "a labeled block/loop value cannot be moved across an earlier observable expression or out of this conditional placement")
-		return node
-	}
-	typeNode := l.checker.TypeToTypeNode(
-		joinType,
-		node,
-		nodebuilder.FlagsNoTruncation|nodebuilder.FlagsUseStructuralFallback,
-		nil,
-	)
-	if typeNode == nil {
-		l.report(node, "SMITHERS1702", "the checker-computed labeled value join type cannot be represented in emitted TypeScript")
-		return node
-	}
-
-	result := l.factory.NewUniqueName("__smithersLabeledValue")
-	exit := l.factory.NewUniqueName("__smithersLabeledValueExit")
-	declaration := l.factory.NewVariableDeclaration(result, nil, typeNode, nil)
-	declarationList := l.factory.NewVariableDeclarationList(l.factory.NewNodeList([]*ast.Node{declaration}), ast.NodeFlagsLet)
-	binding := l.factory.NewVariableStatement(nil, declarationList)
-
-	previous, hadPrevious := l.valueBreakJoin[target]
-	l.valueBreakJoin[target] = valueBreakJoin{exit: exit, result: result}
-	body := l.visitor.VisitEmbeddedStatement(labeled.Statement)
-	if hadPrevious {
-		l.valueBreakJoin[target] = previous
-	} else {
-		delete(l.valueBreakJoin, target)
-	}
-	inner := l.factory.UpdateLabeledStatement(labeled, labeled.Label, body, nil)
-	contents := []*ast.Node{inner}
-	if labeled.ElseValue != nil {
-		assignment := l.factory.NewAssignmentExpression(result, labeled.ElseValue)
-		completion := l.factory.NewExpressionStatement(assignment)
-		contents = appendVisitedStatement(contents, l.visitStatement(completion))
-	}
-	wrapperBlock := l.factory.NewBlock(l.factory.NewNodeList(contents), true)
-	wrapper := l.factory.NewLabeledStatement(exit, wrapperBlock, nil)
-	l.pending = append(l.pending, binding, wrapper)
-	l.impure = false
-	return result
-}
 
 // lowerConditionalDeclaration consumes the fork binder's proved locals scope:
 //
@@ -3726,374 +3281,6 @@ func conditionalDeclarationBranchesAreBraced(node *ast.Node) bool {
 		return true
 	}
 	return conditionalDeclarationBranchesAreBraced(statement.ElseStatement)
-}
-
-func (l *lowerer) lowerIfExpression(node *ast.Node) *ast.Node {
-	if expressionIsInShortCircuitRightSide(node) {
-		l.report(node, "SMITHERS1707", "a value if/switch on a short-circuit right side is not lowered because hoisting would change whether it executes")
-		return l.visitor.VisitEachChild(node)
-	}
-	expression := node.AsIfExpression()
-	condition := l.visitor.VisitNode(expression.Condition)
-	whenTrue := l.withoutHoisting(expression.WhenTrue)
-	whenFalse := l.withoutHoisting(expression.WhenFalse)
-	return l.factory.NewConditionalExpression(
-		condition,
-		l.factory.NewToken(ast.KindQuestionToken),
-		whenTrue,
-		l.factory.NewToken(ast.KindColonToken),
-		whenFalse,
-	)
-}
-
-func expressionIsInShortCircuitRightSide(node *ast.Node) bool {
-	current := node
-	for parent := node.Parent; parent != nil && !ast.IsStatement(parent) && !ast.IsFunctionLike(parent); parent = parent.Parent {
-		if parent.Kind == ast.KindBinaryExpression {
-			binary := parent.AsBinaryExpression()
-			if ast.IsLogicalOrCoalescingBinaryOperator(binary.OperatorToken.Kind) && binary.Right == current {
-				return true
-			}
-		}
-		current = parent
-	}
-	return false
-}
-
-func (l *lowerer) lowerSwitchExpression(node *ast.Node) *ast.Node {
-	expression := node.AsSwitchExpression()
-	if expressionIsInShortCircuitRightSide(node) {
-		l.report(node, "SMITHERS1707", "a value if/switch on a short-circuit right side is not lowered because hoisting would change whether it executes")
-		return l.visitor.VisitEachChild(node)
-	}
-	clauses := expression.CaseBlock.AsCaseBlock().Clauses.Nodes
-	hasDefault := false
-	for _, clause := range clauses {
-		hasDefault = hasDefault || clause.Kind == ast.KindDefaultClause
-	}
-	for _, clause := range clauses {
-		data := clause.AsCaseOrDefaultClause()
-		if data.Value != nil || (data.Statements != nil && len(data.Statements.Nodes) != 0) {
-			continue
-		}
-		// `case "a": case "b": "shared"` reads as label grouping, because the
-		// statement `switch` this shares syntax with does fall through. The
-		// expression form does not, so an empty clause selects nothing and produces
-		// nothing. Reporting it is also what keeps a nil Value out of the
-		// conditional chain below, where it would reach the printer as a branch
-		// that is not there.
-		l.report(clause, "SMITHERS1702", "a switch-expression clause produces no value: it must end in an expression or diverge, and the expression form does not fall through into the next clause")
-		return l.visitor.VisitEachChild(node)
-	}
-	if !hasDefault {
-		// Consume the fork checker's own value-switch result. In particular, its
-		// exhaustive closed-union decision is represented by whether undefined is
-		// present in the checked join type; lowering does not re-derive coverage.
-		resultType := l.checker.SmithersCheckExpression(node)
-		if switchScrutineeIsClosedLiteralUnion(l.checker.SmithersCheckExpression(expression.Expression)) {
-			if typeIncludesUndefined(resultType) {
-				l.report(node, "SMITHERS1716", "a closed-union switch expression must cover every member or provide a default clause")
-				return l.visitor.VisitEachChild(node)
-			}
-		} else {
-			l.report(node, "SMITHERS1705", "a switch expression over an open scrutinee type requires a default value")
-			return l.visitor.VisitEachChild(node)
-		}
-	}
-
-	// A clause is `case <label>: <statements> <final expression>`. The conditional
-	// chain below has nowhere to put <statements>, so a clause that carries any
-	// must be lowered in statement form instead. Reading Value while ignoring
-	// Statements is exactly the fail-open shape this compiler exists to avoid: it
-	// compiles clean, runs, and silently drops the statements.
-	if switchExpressionClausesCarryStatements(clauses) {
-		return l.lowerSwitchExpressionInStatementForm(node, clauses, hasDefault)
-	}
-
-	// The declaration is the only part moved ahead of the containing statement;
-	// scrutinee evaluation remains in the original expression position. A fork-
-	// generated unique name avoids every authored binding without name matching.
-	temporary := l.factory.NewUniqueName("__smithersSwitchValue")
-	declaration := l.factory.NewVariableDeclaration(temporary, nil, nil, nil)
-	declarationList := l.factory.NewVariableDeclarationList(l.factory.NewNodeList([]*ast.Node{declaration}), ast.NodeFlagsLet)
-	l.pending = append(l.pending, l.factory.NewVariableStatement(nil, declarationList))
-
-	visitedScrutinee := l.visitor.VisitNode(expression.Expression)
-	fallback := l.factory.NewVoidZeroExpression()
-	if !hasDefault {
-		joinType := l.checker.TypeToTypeNode(
-			l.checker.SmithersCheckExpression(node),
-			node,
-			nodebuilder.FlagsNoTruncation|nodebuilder.FlagsUseStructuralFallback,
-			nil,
-		)
-		if joinType == nil {
-			l.report(node, "SMITHERS1705", "the checked switch join type cannot be represented in emitted TypeScript")
-			return l.visitor.VisitEachChild(node)
-		}
-		// The fork checker proved this no-default switch exhaustive. The runtime
-		// fallback remains undefined if foreign data violates that checked type;
-		// its assertion carries precisely the checker's join into the output.
-		fallback = l.factory.NewAsExpression(
-			l.factory.NewAsExpression(fallback, l.factory.NewKeywordTypeNode(ast.KindUnknownKeyword)),
-			joinType,
-		)
-	}
-	for _, clause := range clauses {
-		if clause.Kind == ast.KindDefaultClause {
-			fallback = l.withoutHoisting(clause.AsCaseOrDefaultClause().Value)
-		}
-	}
-	for index := len(clauses) - 1; index >= 0; index-- {
-		clause := clauses[index]
-		if clause.Kind != ast.KindCaseClause {
-			continue
-		}
-		data := clause.AsCaseOrDefaultClause()
-		label := l.withoutHoisting(data.Expression)
-		value := l.withoutHoisting(data.Value)
-		condition := l.factory.NewStrictEqualityExpression(temporary, label)
-		fallback = l.factory.NewConditionalExpression(
-			condition,
-			l.factory.NewToken(ast.KindQuestionToken),
-			value,
-			l.factory.NewToken(ast.KindColonToken),
-			fallback,
-		)
-	}
-	assignment := l.factory.NewAssignmentExpression(temporary, visitedScrutinee)
-	return l.factory.NewParenthesizedExpression(l.factory.NewCommaExpression(assignment, fallback))
-}
-
-// switchExpressionClausesCarryStatements reports whether any clause of a value
-// switch runs statements before its final expression. The parser lifts only a
-// *trailing* expression statement into Value, so a non-empty Statements list is
-// exactly the case the conditional-expression chain cannot express.
-func switchExpressionClausesCarryStatements(clauses []*ast.Node) bool {
-	for _, clause := range clauses {
-		statements := clause.AsCaseOrDefaultClause().Statements
-		if statements != nil && len(statements.Nodes) != 0 {
-			return true
-		}
-	}
-	return false
-}
-
-// lowerSwitchExpressionInStatementForm lowers a value `switch` whose clauses run
-// statements. The conditional chain has nowhere to put a statement, so the whole
-// construct is hoisted to statement position immediately before the containing
-// statement — the same move lowerLabeledExpression makes, under the same
-// permission — and rebuilt as an if/else-if chain over a scrutinee temporary:
-//
-//	let __smithersSwitchValue_1;
-//	const __smithersSwitchScrutinee_2 = <scrutinee>;
-//	if (__smithersSwitchScrutinee_2 === <label>) { <statements> __smithersSwitchValue_1 = <value>; }
-//	else if (…) { … }
-//	else { <default statements> __smithersSwitchValue_1 = <default value>; }
-//
-// An if/else chain rather than a real `switch` statement, deliberately:
-//
-//   - it cannot fall through, which is the specification's rule for the
-//     expression form, by construction rather than by emitting `break` glue that
-//     a later edit could drop;
-//   - it does not capture an unlabeled `break` written inside a clause
-//     statement, so such a break keeps whatever target the authored source gave
-//     it instead of silently binding to a synthesized switch;
-//   - it compares with `===`, exactly as the conditional chain does, so the two
-//     spellings of one construct agree instead of the statement-bearing spelling
-//     picking up `switch`'s separate literal-comparability rule;
-//   - every clause statement stays in the enclosing function, so `return`,
-//     `await`, `continue`, and a labeled `break` all still mean what they were
-//     written to mean. An IIFE would change all four, and would also add a call
-//     frame that stack traces and source maps would then have to explain.
-//
-// Evaluation order is the authored order: the scrutinee exactly once, then
-// labels in source order until one matches, then that clause's statements, then
-// its final expression.
-func (l *lowerer) lowerSwitchExpressionInStatementForm(node *ast.Node, clauses []*ast.Node, hasDefault bool) *ast.Node {
-	expression := node.AsSwitchExpression()
-	if !l.canHoist || l.impure {
-		l.report(node, "SMITHERS1707", "a switch expression whose clause runs statements cannot be moved across an earlier observable expression or out of this conditional placement")
-		return l.visitor.VisitEachChild(node)
-	}
-	for _, clause := range clauses {
-		if statement := clauseStatementEscapingBreak(clause.AsCaseOrDefaultClause().Statements); statement != nil {
-			// In the authored text this `break` sits inside a `switch`, so it reads
-			// as ending the construct — but the expression form owes its context a
-			// value and an ended clause has none. Refuse rather than pick silently.
-			l.report(statement, "SMITHERS1702", "an unlabeled break inside a switch-expression clause has no representable target; the expression form must produce a value")
-			return l.visitor.VisitEachChild(node)
-		}
-	}
-
-	var unreachableTail *ast.Node
-	if !hasDefault {
-		joinType := l.checker.TypeToTypeNode(
-			l.checker.SmithersCheckExpression(node),
-			node,
-			nodebuilder.FlagsNoTruncation|nodebuilder.FlagsUseStructuralFallback,
-			nil,
-		)
-		if joinType == nil {
-			l.report(node, "SMITHERS1705", "the checked switch join type cannot be represented in emitted TypeScript")
-			return l.visitor.VisitEachChild(node)
-		}
-		// The fork checker proved this no-default switch exhaustive, so this branch
-		// is unreachable; it carries precisely the checker's join into the output,
-		// exactly as the conditional chain's `void 0` tail does.
-		unreachableTail = l.factory.NewAsExpression(
-			l.factory.NewAsExpression(l.factory.NewVoidZeroExpression(), l.factory.NewKeywordTypeNode(ast.KindUnknownKeyword)),
-			joinType,
-		)
-	}
-
-	result := l.factory.NewUniqueName("__smithersSwitchValue")
-	scrutinee := l.factory.NewUniqueName("__smithersSwitchScrutinee")
-
-	// Visited before the bindings are appended so that anything the scrutinee
-	// itself hoists lands ahead of the binding that reads it.
-	visitedScrutinee := l.visitor.VisitNode(expression.Expression)
-
-	// Clauses are visited in source order — unique-name numbering, prelude use
-	// flags, and report order all follow visit order — and only then assembled
-	// back to front into the chain.
-	labels := make([]*ast.Node, 0, len(clauses))
-	bodies := make([]*ast.Node, 0, len(clauses))
-	var defaultBody *ast.Node
-	for _, clause := range clauses {
-		if clause.Kind == ast.KindDefaultClause {
-			defaultBody = l.switchExpressionClauseBlock(clause, result)
-			continue
-		}
-		// A label is compared before its clause is selected, so it may not hoist
-		// anything: hoisted work would run whether or not the clause is taken.
-		labels = append(labels, l.withoutHoisting(clause.AsCaseOrDefaultClause().Expression))
-		bodies = append(bodies, l.switchExpressionClauseBlock(clause, result))
-	}
-
-	// `default` is the terminal else wherever it was authored: it is selected
-	// only once every case label has failed to match.
-	chain := defaultBody
-	if chain == nil {
-		completion := l.factory.NewExpressionStatement(l.factory.NewAssignmentExpression(result, unreachableTail))
-		chain = l.factory.NewBlock(l.factory.NewNodeList([]*ast.Node{completion}), true)
-	}
-	for index := len(labels) - 1; index >= 0; index-- {
-		condition := l.factory.NewStrictEqualityExpression(scrutinee, labels[index])
-		chain = l.factory.NewIfStatement(nil, condition, bodies[index], chain)
-	}
-
-	resultBinding := l.factory.NewVariableStatement(nil, l.factory.NewVariableDeclarationList(
-		l.factory.NewNodeList([]*ast.Node{l.factory.NewVariableDeclaration(result, nil, nil, nil)}),
-		ast.NodeFlagsLet,
-	))
-	scrutineeDeclaration := l.factory.NewVariableDeclaration(scrutinee, nil, nil, visitedScrutinee)
-	scrutineeBinding := l.factory.NewVariableStatement(nil, l.factory.NewVariableDeclarationList(
-		l.factory.NewNodeList([]*ast.Node{scrutineeDeclaration}),
-		ast.NodeFlagsConst,
-	))
-	l.emitContext.AssignSourceMapRange(scrutineeBinding, expression.Expression)
-
-	l.pending = append(l.pending, resultBinding, scrutineeBinding, chain)
-	// The construct now runs entirely ahead of the containing statement; what is
-	// left in expression position is a temporary read, which observes nothing.
-	l.impure = false
-	return result
-}
-
-// switchExpressionClauseBlock builds the block a selected clause runs: its
-// statements in authored order, then the assignment of its final expression to
-// the join temporary. Each statement goes through the normal statement path, so
-// a propagation temporary it needs is hoisted inside this block — where it runs
-// only when the clause is selected — rather than out of the construct.
-//
-// A clause with no final expression diverges (`case "a": throw e`). The fork
-// checker already reads that clause's end-of-clause flow node when it computes
-// the join, so no assignment is written and no coverage decision is re-derived
-// here.
-func (l *lowerer) switchExpressionClauseBlock(clause *ast.Node, result *ast.Node) *ast.Node {
-	data := clause.AsCaseOrDefaultClause()
-	contents := make([]*ast.Node, 0, 1)
-	if data.Statements != nil {
-		contents = make([]*ast.Node, 0, len(data.Statements.Nodes)+1)
-		for _, statement := range data.Statements.Nodes {
-			contents = appendVisitedStatement(contents, l.visit(statement))
-		}
-	}
-	if data.Value != nil {
-		completion := l.factory.NewExpressionStatement(l.factory.NewAssignmentExpression(result, data.Value))
-		l.emitContext.AssignSourceMapRange(completion, data.Value)
-		contents = appendVisitedStatement(contents, l.visitStatement(completion))
-	}
-	return l.factory.NewBlock(l.factory.NewNodeList(contents), true)
-}
-
-// clauseStatementEscapingBreak finds an unlabeled `break` that would leave a
-// switch-expression clause. The search stops at the constructs that capture such
-// a break on their own — an iteration statement, a nested `switch`, and any
-// function body — so only a break with no target inside the clause is returned.
-func clauseStatementEscapingBreak(statements *ast.StatementList) *ast.Node {
-	if statements == nil {
-		return nil
-	}
-	var found *ast.Node
-	var walk func(node *ast.Node) bool
-	walk = func(node *ast.Node) bool {
-		if node == nil || found != nil {
-			return found != nil
-		}
-		if node.Kind == ast.KindBreakStatement && node.AsBreakStatement().Label == nil {
-			found = node
-			return true
-		}
-		if ast.IsFunctionLike(node) || ast.IsIterationStatement(node, false) || node.Kind == ast.KindSwitchStatement {
-			return false
-		}
-		node.ForEachChild(walk)
-		return found != nil
-	}
-	for _, statement := range statements.Nodes {
-		if walk(statement) {
-			return found
-		}
-	}
-	return nil
-}
-
-func switchScrutineeIsClosedLiteralUnion(value *checker.Type) bool {
-	if value == nil {
-		return false
-	}
-	parts := []*checker.Type{value}
-	if value.IsUnion() {
-		parts = value.Types()
-	}
-	if len(parts) == 0 {
-		return false
-	}
-	for _, part := range parts {
-		if part.Flags()&(checker.TypeFlagsLiteral|checker.TypeFlagsEnumLiteral) == 0 {
-			return false
-		}
-	}
-	return true
-}
-
-func typeIncludesUndefined(value *checker.Type) bool {
-	if value == nil {
-		return true
-	}
-	if value.Flags()&checker.TypeFlagsUndefined != 0 {
-		return true
-	}
-	if value.IsUnion() {
-		for _, part := range value.Types() {
-			if part.Flags()&checker.TypeFlagsUndefined != 0 {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func (l *lowerer) lowerForeignCall(node *ast.Node, policy foreignPolicy) *ast.Node {
@@ -4333,8 +3520,8 @@ func (l *lowerer) lowerThrow(node *ast.Node) *ast.Node {
 	return lowered
 }
 
-// lowerReturn lifts the returned value into the function's declared channels,
-// outside in: the Result wrapper is applied last, around an Optional lift.
+// lowerReturn lifts the returned value into the function's declared Result
+// channel.
 func (l *lowerer) lowerReturn(node *ast.Node) *ast.Node {
 	returned := node.AsReturnStatement().Expression
 	if returned == nil {
@@ -4357,6 +3544,9 @@ func (l *lowerer) lowerReturn(node *ast.Node) *ast.Node {
 func (l *lowerer) liftValue(original *ast.Node, visited *ast.Node) *ast.Node {
 	valueType := l.checker.GetTypeAtLocation(original)
 	if l.shape.result {
+		if l.isPropagationSuccessValue(original) {
+			return l.newVariant("SmithersOk", visited)
+		}
 		if l.analysis != nil {
 			if _, boundary := l.analysis.foreignBoundaryExpression(original); boundary {
 				return visited
@@ -4365,65 +3555,28 @@ func (l *lowerer) liftValue(original *ast.Node, visited *ast.Node) *ast.Node {
 		if l.isResultValue(valueType) {
 			return visited
 		}
-		return l.newVariant("SmithersOk", l.liftOptional(original, visited, valueType))
-	}
-	if l.shape.optional {
-		return l.liftOptional(original, visited, valueType)
+		return l.newVariant("SmithersOk", visited)
 	}
 	return visited
 }
 
-// liftOptional lifts a value into the Optional channel. A statically absent
-// literal becomes the absent variant, a statically present value becomes the
-// present variant, and a value that may or may not be nullish goes through the
-// prelude's runtime constructor rather than being guessed at.
-func (l *lowerer) liftOptional(original *ast.Node, visited *ast.Node, valueType *checker.Type) *ast.Node {
-	if !l.shape.optional {
-		return visited
-	}
-	if l.isOptionalValue(valueType) {
-		return visited
-	}
-	if l.isAbsentLiteral(original) {
-		return l.newVariant("SmithersNone")
-	}
-	if hasNullish(valueType) {
-		return l.newPreludeCall("smithersOptional", visited)
-	}
-	return l.newVariant("SmithersSome", visited)
-}
-
-// isAbsentLiteral reports whether an expression is the `null` literal or the
-// global `undefined`, resolved through the checker's own undefined symbol.
-func (l *lowerer) isAbsentLiteral(node *ast.Node) bool {
-	if node == nil {
+// isPropagationSuccessValue reports that lowering changes this authored
+// Result-shaped expression into its success value. The stock checker still
+// sees NonNullExpression as the Result itself, so liftValue must consult the
+// Smithers side table rather than that stale TypeScript meaning.
+func (l *lowerer) isPropagationSuccessValue(node *ast.Node) bool {
+	if node == nil || l.analysis == nil {
 		return false
 	}
-	if node.Kind == ast.KindNullKeyword {
+	if l.analysis.resultPropagations[node] != nil {
 		return true
 	}
-	if node.Kind == ast.KindIdentifier {
-		symbol := l.checker.GetSymbolAtLocation(node)
-		return symbol != nil && symbol == l.checker.GetUndefinedSymbol()
+	switch node.Kind {
+	case ast.KindParenthesizedExpression, ast.KindAsExpression,
+		ast.KindTypeAssertionExpression:
+		return l.isPropagationSuccessValue(node.Expression())
 	}
 	return false
-}
-
-func hasNullish(t *checker.Type) bool {
-	if t == nil {
-		return true
-	}
-	const mask = checker.TypeFlagsNull | checker.TypeFlagsUndefined | checker.TypeFlagsVoid |
-		checker.TypeFlagsAny | checker.TypeFlagsUnknown
-	if t.IsUnion() {
-		for _, constituent := range t.Types() {
-			if constituent.Flags()&mask != 0 {
-				return true
-			}
-		}
-		return false
-	}
-	return t.Flags()&mask != 0
 }
 
 // isResultValue reports whether an expression's type already satisfies the
@@ -4434,13 +3587,6 @@ func (l *lowerer) isResultValue(t *checker.Type) bool {
 		return true
 	}
 	return l.shape.async && l.prelude.isResultType(l.awaited(t))
-}
-
-func (l *lowerer) isOptionalValue(t *checker.Type) bool {
-	if l.prelude.isOptionalType(t) {
-		return true
-	}
-	return l.shape.async && l.prelude.isOptionalType(l.awaited(t))
 }
 
 func (l *lowerer) awaited(t *checker.Type) *checker.Type {
@@ -4470,17 +3616,6 @@ func (l *lowerer) newPreludeCall(exported string, arguments ...*ast.Node) *ast.N
 	)
 }
 
-// absentReturnValue is the value an Optional propagation point returns when the
-// receiver is absent: the absent variant, wrapped in a success variant when the
-// owner's channel is `Result<Optional<A>, E>`.
-func (l *lowerer) absentReturnValue() *ast.Node {
-	absent := l.newVariant("SmithersNone")
-	if l.shape.result {
-		return l.newVariant("SmithersOk", absent)
-	}
-	return absent
-}
-
 // safeUnwrapPlacement reports whether a propagation point sits where a checked
 // early return preserves the authored evaluation order, and returns the
 // statement its guard would be hoisted in front of. Only wrappers that neither
@@ -4493,8 +3628,13 @@ func safeUnwrapPlacement(call *ast.Node) (*ast.Node, bool) {
 		parent := current.Parent
 		switch {
 		case ast.IsParenthesizedExpression(parent), ast.IsAwaitExpression(parent),
-			ast.IsAsExpression(parent), ast.IsNonNullExpression(parent):
+			ast.IsAsExpression(parent):
 		case ast.IsPropertyAccessExpression(parent) && parent.AsPropertyAccessExpression().Expression == current:
+		case ast.IsBinaryExpression(parent) && parent.AsBinaryExpression().OperatorToken.Kind == ast.KindQuestionQuestionToken &&
+			parent.AsBinaryExpression().Left == current:
+			// The normative `result!?.member ?? fallback` shape is safe because
+			// the propagation point is in the always-evaluated left operand. No
+			// other compound form is admitted while precedence remains open.
 		case ast.IsVariableDeclaration(parent) && parent.AsVariableDeclaration().Initializer == current:
 		case ast.IsVariableDeclarationList(parent) && len(parent.AsVariableDeclarationList().Declarations.Nodes) == 1:
 		default:
@@ -4543,16 +3683,12 @@ func enclosingFunction(node *ast.Node) *ast.Node {
 // propagatedFailureNames names the failures a propagation point would charge to
 // its owner, for the contract diagnostic. The names come from the resolved
 // class symbols of the receiver's error type, never from authored text.
-func (l *lowerer) propagatedFailureNames(call *ast.Node, kind unwrapKind) string {
-	if kind == unwrapOptional {
-		return "absence"
-	}
-	access, ok := l.prelude.zeroArgumentMethodCall(call)
-	if !ok {
+func (l *lowerer) propagatedFailureNames(receiverNode *ast.Node) string {
+	if receiverNode == nil {
 		return "the propagated failure"
 	}
 	names := make([]string, 0, 2)
-	receiver := l.checker.GetTypeAtLocation(access.Expression)
+	receiver := l.checker.GetTypeAtLocation(receiverNode)
 	constituents := []*checker.Type{receiver}
 	if receiver != nil && receiver.IsUnion() {
 		constituents = receiver.Types()
@@ -4582,7 +3718,7 @@ func (l *lowerer) propagatedFailureNames(call *ast.Node, kind unwrapKind) string
 	return strings.Join(names, ", ")
 }
 
-// lowerUnwrap rewrites `<receiver>.unwrap()` into a checked early return:
+// lowerPropagation rewrites `<receiver>!` into a checked early return:
 //
 //	const __smithersUnwrappedN = <receiver>;
 //	if (!__smithersUnwrappedN.ok)
@@ -4594,11 +3730,8 @@ func (l *lowerer) propagatedFailureNames(call *ast.Node, kind unwrapKind) string
 // variant and the extracted value check in the lowered program. Anything that
 // cannot be hoisted while preserving evaluation order is left intact and
 // reported.
-func (l *lowerer) lowerUnwrap(node *ast.Node, receiver *ast.Node, kind unwrapKind) *ast.Node {
-	channel, discriminant := "Result", "ok"
-	if kind == unwrapOptional {
-		channel, discriminant = "Optional", "some"
-	}
+func (l *lowerer) lowerPropagation(node *ast.Node, receiver *ast.Node) *ast.Node {
+	discriminant := "ok"
 	decline := func(target *ast.Node, code string, message string) *ast.Node {
 		l.report(target, code, message)
 		l.impure = true
@@ -4611,12 +3744,7 @@ func (l *lowerer) lowerUnwrap(node *ast.Node, receiver *ast.Node, kind unwrapKin
 		}
 	}
 	switch {
-	case kind == unwrapOptional && !l.shape.optional:
-		// Absence has no contract of its own to widen into: an Optional owner
-		// is either declared or it is not, so the propagation point is the
-		// place to report.
-		return decline(node, "SMITHERS1206", "Optional.unwrap() requires an enclosing Optional-returning (or Result<Optional>-returning) function so absence can propagate")
-	case kind == unwrapResult && !l.shape.result:
+	case !l.shape.result:
 		// A function that *has* an explicit contract which cannot carry the
 		// propagated failure is a contract error at the declaration, which is
 		// where the author has to fix it. With no contract to name at all,
@@ -4628,20 +3756,20 @@ func (l *lowerer) lowerUnwrap(node *ast.Node, receiver *ast.Node, kind unwrapKin
 					return l.visitor.VisitEachChild(node)
 				}
 			}
-			failures := l.propagatedFailureNames(node, kind)
+			failures := l.propagatedFailureNames(receiver)
 			return decline(owner, "SMITHERS1101", "explicit return type cannot represent recoverable failures "+failures+"; use Result<A, E>")
 		}
-		return decline(node, "SMITHERS1202", "Result.unwrap() requires an enclosing Result-returning function")
+		return decline(node, "SMITHERS1202", "postfix ! propagation requires an enclosing Result-returning function")
 	case l.guardedByCatch:
-		return decline(node, "SMITHERS1205", channel+".unwrap() inside a JavaScript try statement with a catch clause is not lowered because its early-return propagation would silently bypass the catch handler; move the propagation point outside the try or consume the value explicitly")
+		return decline(node, "SMITHERS1205", "postfix ! propagation inside a JavaScript try statement with a catch clause is not lowered because its early return would silently bypass the catch handler; move the propagation point outside the try or consume the value explicitly")
 	case isInRepeatedLoopHeader(node):
 		// A loop condition, incrementor, or iteration expression is evaluated
 		// once per iteration, so the early-return guard this propagation lowers
 		// to cannot be hoisted in front of the loop without changing when it
 		// runs. It is a distinct refusal from the general placement rule.
-		return decline(node, "SMITHERS1703", channel+".unwrap() in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or unwrap inside its body")
+		return decline(node, "SMITHERS1703", "postfix ! propagation in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or propagate inside its body")
 	case !safe:
-		return decline(node, "SMITHERS1204", channel+".unwrap() in this expression would require control-flow-aware evaluation-order rewriting; assign the "+channel+" to a local and unwrap it in a simple statement")
+		return decline(node, "SMITHERS1204", "postfix ! in this expression would require control-flow-aware evaluation-order rewriting; assign the Result to a local and propagate it in a simple statement")
 	}
 
 	visitedReceiver := l.visitor.VisitNode(receiver)
@@ -4658,12 +3786,6 @@ func (l *lowerer) lowerUnwrap(node *ast.Node, receiver *ast.Node, kind unwrapKin
 		l.factory.NewPropertyAccessExpression(l.factory.NewIdentifier(name), nil, l.factory.NewIdentifier(discriminant), ast.NodeFlagsNone),
 	)
 	propagated := l.factory.NewIdentifier(name)
-	if kind == unwrapOptional {
-		// An absent Optional propagates the owner's absent value, which is not
-		// the receiver itself: the receiver's absent variant carries no channel
-		// information the owner's contract needs.
-		propagated = l.absentReturnValue()
-	}
 	guard := l.factory.NewIfStatement(nil, condition, l.factory.NewReturnStatement(propagated), nil)
 	l.emitContext.AssignSourceMapRange(guard, node)
 
@@ -5052,22 +4174,11 @@ func adoptGeneratedMappings(smithers *smithersInput, raw *sourcemap.RawSourceMap
 
 // compileInternal is the Go-native lowering pipeline. The authored `.sm` files
 // are parsed and bound by the fork, the fork's checker resolves the prelude's
-// Result/Optional identity and the types the lowering depends on, the fork's
+// Result identity and the types the lowering depends on, the fork's
 // factory builds the replacement nodes, and the fork's printer emits the
 // lowered TypeScript plus its authored source map. The lowered program is then
 // checked and emitted through the same path externally lowered input uses, so
 // every diagnostic and every emitted map lands on authored `.sm` positions.
-func takeSyntaxDiagnostic(items []*ast.Diagnostic, consumed map[*ast.Diagnostic]bool, file *ast.SourceFile, code int32, position int) *ast.Diagnostic {
-	for _, item := range items {
-		if consumed[item] || item.Code() != code || item.Pos() != position || item.File() == nil ||
-			item.File().OriginalFileName() != file.OriginalFileName() {
-			continue
-		}
-		consumed[item] = true
-		return item
-	}
-	return nil
-}
 
 func syntaxSpan(node *ast.Node, text string) (int, int) {
 	if node == nil {
@@ -5081,28 +4192,13 @@ func syntaxSpan(node *ast.Node, text string) (int, int) {
 	return start, length
 }
 
-// recognizeSmithersSyntaxDiagnostics translates only parser failures whose
-// recovery tree proves one of Smithers's deliberately unrepresentable negative
-// constructs. It does not key on a TS code/position pair alone:
-//
-//   - SMITHERS1709 requires a real IfExpression and the paired missing-open/missing-
-//     close brace diagnostics at one of its recovered branch expressions;
-//   - SMITHERS1702 requires a missing variable initializer at the exact position
-//     where the parser recovered a real iteration statement;
-//   - SMITHERS1715 requires a LabeledExpression around an iteration statement whose
-//     ElseValue is missing. Its underlying loop also receives SMITHERS1702.
-//
-// Any raw diagnostic not consumed by those structural proofs is returned
-// untouched, including unrelated TS1005 and TS1109 failures.
+// recognizeSmithersSyntaxDiagnostics gives retired source forms their migration
+// diagnostic, then relabels every other parser failure in an authored .sm file
+// as the general Smithers grammar mismatch. Plain TypeScript files keep native
+// TypeScript diagnostics.
 func recognizeSmithersSyntaxDiagnostics(project *project, program *compiler.Program, items []*ast.Diagnostic) ([]*ast.Diagnostic, []diagnostic) {
-	consumed := make(map[*ast.Diagnostic]bool)
 	recognized := make([]diagnostic, 0)
-	// suppressAt records, per authored file, the anchors of constructs this pass
-	// has already reported on. A retired spelling or a refused value construct
-	// wrecks the parse around itself, so the parser's cascade near one of these
-	// anchors is noise that would bury the diagnostic the author needs.
 	suppressAt := make(map[string][]int)
-	authored := make(map[string]struct{})
 	for _, file := range program.SourceFiles() {
 		logical, ok := project.logicalByVirtual[file.OriginalFileName()]
 		if !ok {
@@ -5111,160 +4207,34 @@ func recognizeSmithersSyntaxDiagnostics(project *project, program *compiler.Prog
 		if !ok {
 			continue
 		}
-		if _, authored := project.smithersByLogical[logical]; !authored {
+		if _, isSmithers := project.smithersByLogical[logical]; !isSmithers {
 			continue
 		}
-		text := file.Text()
-		authored[logical] = struct{}{}
-		// Import assertions are recovered as a real ImportAttributes node even
-		// though the parser also emits its migration error. Asset selection owns
-		// that semantic situation as SMITHERS5202; record its AST-derived anchor
-		// before the general grammar backstop can relabel the parser diagnostic.
 		for _, report := range legacyAssetAssertionDiagnostics(project, file, logical) {
 			recognized = append(recognized, report)
 			if report.Span != nil {
 				suppressAt[logical] = append(suppressAt[logical], report.Span.Start)
 			}
 		}
-		// The retired-grammar sweep runs first and on the raw text, because the
-		// spellings it recognizes are exactly the ones that never reached a
-		// tree. Its anchors then suppress the parser cascade below.
-		for _, hit := range sweepRetiredSyntax(text) {
+		for _, hit := range sweepRetiredSyntax(file.Text()) {
 			recognized = append(recognized, diagnostic{
 				Code: hit.code, Category: "error", Message: hit.message,
 				File: logical, Span: &span{Start: hit.start, Length: 0}, Phase: "parse",
 			})
 			suppressAt[logical] = append(suppressAt[logical], hit.start)
 		}
-		iterationAt := make(map[int]*ast.Node)
-		var indexIterations func(*ast.Node) bool
-		indexIterations = func(node *ast.Node) bool {
-			if ast.IsIterationStatement(node, false) {
-				start, _ := syntaxSpan(node, text)
-				iterationAt[start] = node
-			}
-			node.ForEachChild(indexIterations)
-			return false
-		}
-		file.AsNode().ForEachChild(indexIterations)
-
-		var visit func(*ast.Node) bool
-		visit = func(node *ast.Node) bool {
-			switch node.Kind {
-			case ast.KindIfExpression:
-				expression := node.AsIfExpression()
-				missingBracePair := false
-				for _, branch := range []*ast.Node{expression.WhenTrue, expression.WhenFalse} {
-					if branch == nil || ast.NodeIsMissing(branch) {
-						continue
-					}
-					branchStart := scanner.SkipTrivia(text, branch.Pos())
-					branchEnd := scanner.SkipTrivia(text, branch.End())
-					open := takeSyntaxDiagnostic(items, consumed, file, 1005, branchStart)
-					close := takeSyntaxDiagnostic(items, consumed, file, 1005, branchEnd)
-					if open != nil && close != nil {
-						missingBracePair = true
-						continue
-					}
-					// A single positional match is not enough context. Put it back
-					// unless the complete parser-recovery pair proved the branch.
-					if open != nil {
-						delete(consumed, open)
-					}
-					if close != nil {
-						delete(consumed, close)
-					}
-				}
-				if missingBracePair {
-					start, length := syntaxSpan(node, text)
-					recognized = append(recognized, diagnostic{
-						Code: "SMITHERS1709", Category: "error",
-						Message: "a value if expression in a general expression position requires braced branches",
-						File:    logical, Span: &span{Start: start, Length: length}, Phase: "parse",
-					})
-				}
-				// A value `if` whose alternate is MISSING is the situation the
-				// language calls out: an if expression must select exactly one
-				// reachable branch, and specification/control-flow.mdx, "If",
-				// permits omitting the alternate only where unit or optional
-				// semantics are defined by the grammar — they are not, so the
-				// omitted branch has no value at all. The proof is structural,
-				// not a code lookup: the fork's grammar produces an IfExpression
-				// only in value position, and `parseIfExpression` synthesizes a
-				// missing WhenFalse exactly when the `else` was absent. A
-				// statement-form `if` is a different node entirely and is never
-				// examined here.
-				if expression.WhenFalse == nil || ast.NodeIsMissing(expression.WhenFalse) {
-					start, length := syntaxSpan(node, text)
-					recognized = append(recognized, diagnostic{
-						Code: "SMITHERS1705", Category: "error",
-						Message: "a value-producing if expression requires an else branch",
-						File:    logical, Span: &span{Start: start, Length: length}, Phase: "parse",
-					})
-					suppressAt[logical] = append(suppressAt[logical], start)
-				}
-			case ast.KindLabeledExpression:
-				expression := node.AsLabeledExpression()
-				labeled := expression.Statement.AsLabeledStatement()
-				if ast.IsIterationStatement(labeled.Statement, false) && ast.NodeIsMissing(labeled.ElseValue) {
-					missingPosition := node.End()
-					if labeled.ElseValue != nil {
-						missingPosition = labeled.ElseValue.Pos()
-					}
-					missingPosition = scanner.SkipTrivia(text, missingPosition)
-					if takeSyntaxDiagnostic(items, consumed, file, 1005, missingPosition) != nil {
-						start, length := syntaxSpan(node, text)
-						recognized = append(recognized, diagnostic{
-							Code: "SMITHERS1715", Category: "error",
-							Message: "a labeled loop value requires an else completion value for normal loop completion",
-							File:    logical, Span: &span{Start: start, Length: length}, Phase: "parse",
-						})
-						loopStart, loopLength := syntaxSpan(labeled.Statement, text)
-						recognized = append(recognized, diagnostic{
-							Code: "SMITHERS1702", Category: "error",
-							Message: "the refused loop remains an unsupported loop expression with no defined value-producing exits",
-							File:    logical, Span: &span{Start: loopStart, Length: loopLength}, Phase: "parse",
-						})
-					}
-				}
-			case ast.KindVariableDeclaration:
-				initializer := node.AsVariableDeclaration().Initializer
-				if initializer != nil && ast.NodeIsMissing(initializer) {
-					position := scanner.SkipTrivia(text, initializer.Pos())
-					if loop := iterationAt[position]; loop != nil && takeSyntaxDiagnostic(items, consumed, file, 1109, position) != nil {
-						start, length := syntaxSpan(loop, text)
-						recognized = append(recognized, diagnostic{
-							Code: "SMITHERS1702", Category: "error",
-							Message: "an unlabeled loop expression has no defined value-producing exits",
-							File:    logical, Span: &span{Start: start, Length: length}, Phase: "parse",
-						})
-					}
-				}
-			}
-			node.ForEachChild(visit)
-			return false
-		}
-		file.AsNode().ForEachChild(visit)
 	}
-	remaining := make([]*ast.Diagnostic, 0, len(items)-len(consumed))
+
+	remaining := make([]*ast.Diagnostic, 0, len(items))
 	for _, item := range items {
-		if consumed[item] {
-			continue
-		}
 		logical, ok := authoredLogicalName(project, item.File())
 		if !ok {
-			// A parser failure in a plain TypeScript module of the same project
-			// is a TypeScript failure and keeps its TypeScript identity. Only
-			// authored `.sm` source is held to the Smithers grammar.
 			remaining = append(remaining, item)
 			continue
 		}
 		if withinSuppressionWindow(suppressAt[logical], item.Pos()) {
 			continue
 		}
-		// Nothing above claimed this failure, so the honest reading is the
-		// general one: the authored source is not the supported `.sm` grammar.
-		// The parser's own text is kept as the explanation.
 		converted := project.convertDiagnostic(item, "parse")
 		converted.Code = "SMITHERS1000"
 		converted.Message = grammarMismatchMessage(converted.Message)
@@ -5519,7 +4489,6 @@ func smithersMessage(message string) string {
 	for _, item := range []rule{
 		{variant: "SmithersOk", container: "Result", position: 0, channel: "success"},
 		{variant: "SmithersErr", container: "Result", position: 1, channel: "error"},
-		{variant: "SmithersSome", container: "Optional", position: 0, channel: "value"},
 	} {
 		inner, ok := typeArgument(source, item.variant, 0)
 		if !ok {

@@ -9,27 +9,17 @@ import {
 } from "./source-map.ts";
 import {
   buildSemanticModel,
-  controlFlowValueHasLocalType,
   effectiveChannel,
   expressionShape,
   isErrorMatchCall,
   isErrorType,
-  isOptionalUnwrapExpression,
   isPanicExitCall,
   isResultExpectExpression,
-  isResultUnwrapExpression,
+  isResultPropagationExpression,
   type CallEdge,
   type SemanticFunction,
   type SemanticModel,
 } from "./semantic.ts";
-import type {
-  ControlFlowExpressionHost,
-  ControlFlowExpressionPlan,
-  ControlFlowValueExit,
-  LabeledBlockPlan,
-  LoopValuePlan,
-  SwitchExpressionClausePlan,
-} from "./control-flow.ts";
 
 function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -326,407 +316,10 @@ function lowerStatementSequence(
   context: ts.TransformationContext,
   visit: ts.Visitor,
 ): ts.Statement[] {
-  const statements: ts.Statement[] = [];
-  for (let index = 0; index < sourceStatements.length; index++) {
-    const statement = sourceStatements[index]!;
-    const controlFlow = state.model.controlFlowPlans.get(statement);
-    if (controlFlow && (controlFlow.kind === "if" || controlFlow.kind === "switch") &&
-      sourceStatements[index + 1] === controlFlow.control) {
-      statements.push(...lowerControlFlowExpression(
-        controlFlow,
-        owner,
-        caughtByJavaScript,
-        state,
-        context,
-        visit,
-      ));
-      index += 1;
-      continue;
-    }
-    if (controlFlow && (controlFlow.kind === "labeled-block" || controlFlow.kind === "loop") &&
-      sourceStatements[index + 1] === controlFlow.host) {
-      statements.push(...lowerLabeledBlockValue(
-        controlFlow,
-        owner,
-        caughtByJavaScript,
-        state,
-        context,
-        visit,
-      ));
-      index += 1;
-      continue;
-    }
-    const plan = ts.isExpressionStatement(statement) ? state.model.deferPlans.get(statement) : undefined;
-    if (plan && owner && sourceStatements[index + 1] === plan.cleanup) {
-      const tail = lowerStatementSequence(
-        sourceStatements.slice(index + 2),
-        owner,
-        caughtByJavaScript,
-        state,
-        context,
-        visit,
-      );
-      const cleanup = lowerStatement(plan.cleanup, owner, caughtByJavaScript, state, context, visit);
-      state.changed = true;
-      if (plan.kind === "defer") {
-        statements.push(state.factory.createTryStatement(
-          state.factory.createBlock(tail, true),
-          undefined,
-          state.factory.createBlock(cleanup, true),
-        ));
-      } else {
-        const result = freshTemporary(state, "errdefer_result");
-        const instrumented = instrumentErrdeferReturns(tail, result, state, context);
-        const inspect = helper(state, "__vsInspectResult");
-        const hasResult = state.factory.createBinaryExpression(
-          result,
-          ts.SyntaxKind.ExclamationEqualsEqualsToken,
-          state.factory.createIdentifier("undefined"),
-        );
-        const isFailure = state.factory.createBinaryExpression(
-          state.factory.createPropertyAccessExpression(
-            state.factory.createCallExpression(state.factory.createIdentifier(inspect), undefined, [result]),
-            "ok",
-          ),
-          ts.SyntaxKind.EqualsEqualsEqualsToken,
-          state.factory.createFalse(),
-        );
-        statements.push(
-          state.factory.createVariableStatement(undefined,
-            state.factory.createVariableDeclarationList([
-              state.factory.createVariableDeclaration(
-                result,
-                undefined,
-                state.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
-                undefined,
-              ),
-            ], ts.NodeFlags.Let)),
-          state.factory.createTryStatement(
-            state.factory.createBlock(instrumented, true),
-            undefined,
-            state.factory.createBlock([
-              state.factory.createIfStatement(
-                state.factory.createBinaryExpression(hasResult, ts.SyntaxKind.AmpersandAmpersandToken, isFailure),
-                state.factory.createBlock(cleanup, true),
-              ),
-            ], true),
-          ),
-        );
-      }
-      return statements;
-    }
-    statements.push(...lowerStatement(statement, owner, caughtByJavaScript, state, context, visit));
-  }
-  return statements;
+  return sourceStatements.flatMap((statement) =>
+    lowerStatement(statement, owner, caughtByJavaScript, state, context, visit));
 }
 
-function lowerControlFlowExpression(
-  plan: Exclude<ControlFlowExpressionPlan, LabeledBlockPlan | LoopValuePlan>,
-  owner: SemanticFunction | undefined,
-  caughtByJavaScript: boolean,
-  state: TransformState,
-  context: ts.TransformationContext,
-  visit: ts.Visitor,
-): ts.Statement[] {
-  const variableHost = ts.isVariableStatement(plan.host) ? plan.host : undefined;
-  const temporary = variableHost ? freshTemporary(state, `${plan.kind}_value`) : undefined;
-  const lowerExit = (exit: ControlFlowValueExit): ts.Statement[] => {
-    if (ts.isThrowStatement(exit)) {
-      return lowerStatement(exit, owner, caughtByJavaScript, state, context, visit);
-    }
-    const statement = variableHost
-      ? sourceMapAnchor(
-          state.factory.createExpressionStatement(state.factory.createAssignment(temporary!, exit.expression)),
-          exit,
-          state,
-        )
-      : sourceMapAnchor(state.factory.createReturnStatement(exit.expression), exit, state);
-    return lowerStatement(statement, owner, caughtByJavaScript, state, context, visit);
-  };
-  const lowerBranch = (branch: ts.Statement, exit: ControlFlowValueExit): ts.Statement => {
-    if (!ts.isBlock(branch)) return singleStatement(lowerExit(exit), state);
-    const replacement = ts.isThrowStatement(exit)
-      ? exit
-      : variableHost
-        ? sourceMapAnchor(
-            state.factory.createExpressionStatement(state.factory.createAssignment(temporary!, exit.expression)),
-            exit,
-            state,
-          )
-        : sourceMapAnchor(state.factory.createReturnStatement(exit.expression), exit, state);
-    const source = branch.statements.map((statement) => statement === exit ? replacement : statement);
-    return state.factory.updateBlock(
-      branch,
-      lowerStatementSequence(source, owner, caughtByJavaScript, state, context, visit),
-    );
-  };
-
-  const conditionPrologue: ts.Statement[] = [];
-  let control: ts.Statement;
-  if (plan.kind === "if") {
-    const condition = owner
-      ? rewriteExpression(plan.control.expression, owner, conditionPrologue, state, context, visit)
-      : ts.visitEachChild(plan.control.expression, visit, context) as ts.Expression;
-    control = state.factory.updateIfStatement(
-      plan.control,
-      condition,
-      lowerBranch(plan.control.thenStatement, plan.consequent),
-      lowerBranch(plan.control.elseStatement!, plan.alternate),
-    );
-  } else {
-    const discriminant = owner
-      ? rewriteExpression(plan.control.expression, owner, conditionPrologue, state, context, visit)
-      : ts.visitEachChild(plan.control.expression, visit, context) as ts.Expression;
-    const clauses = plan.clauses.map((clausePlan) => lowerSwitchExpressionClause(
-      clausePlan,
-      variableHost,
-      temporary,
-      owner,
-      caughtByJavaScript,
-      state,
-      context,
-      visit,
-    ));
-    control = state.factory.updateSwitchStatement(
-      plan.control,
-      discriminant,
-      state.factory.updateCaseBlock(plan.control.caseBlock, clauses),
-    );
-    if (state.model.exhaustiveSwitches.has(plan.control)) state.nonFallingSwitches.add(control);
-  }
-
-  state.changed = true;
-  if (!variableHost) return [...conditionPrologue, control];
-  const declaration = variableHost.declarationList.declarations[0]!;
-  const temporaryDeclaration = state.factory.createVariableStatement(
-    undefined,
-    state.factory.createVariableDeclarationList([
-      state.factory.createVariableDeclaration(
-        temporary!,
-        undefined,
-        controlFlowTemporaryType(plan, declaration, state),
-        undefined,
-      ),
-    ], ts.NodeFlags.Let),
-  );
-  const completedDeclaration = state.factory.updateVariableDeclaration(
-    declaration,
-    declaration.name,
-    declaration.exclamationToken,
-    declaration.type,
-    temporary,
-  );
-  const completedHost = state.factory.updateVariableStatement(
-    variableHost,
-    variableHost.modifiers,
-    state.factory.updateVariableDeclarationList(variableHost.declarationList, [completedDeclaration]),
-  );
-  return [temporaryDeclaration, ...conditionPrologue, control, completedHost];
-}
-
-/**
- * Lower a recovered labeled block value: the value join becomes a typed
- * compiler temporary assigned at every rewritten `break :label value` site,
- * the labeled statement keeps ordinary TypeScript labeled-break semantics,
- * and the marker host declaration completes from the temporary. Statements
- * inside the block go through the full checked lowering, so Result and
- * Optional exits propagate exactly as in ordinary statement positions.
- */
-function lowerLabeledBlockValue(
-  plan: LabeledBlockPlan | LoopValuePlan,
-  owner: SemanticFunction | undefined,
-  caughtByJavaScript: boolean,
-  state: TransformState,
-  context: ts.TransformationContext,
-  visit: ts.Visitor,
-): ts.Statement[] {
-  const temporary = freshTemporary(state, plan.kind === "loop" ? "loop_value" : "label_value");
-  const siteByBlock = new Map(plan.sites.map((site) => [site.block as ts.Node, site]));
-  const replaceSites: ts.Visitor = (node) => {
-    const site = siteByBlock.get(node);
-    if (site) {
-      const assignment = sourceMapAnchor(
-        state.factory.createExpressionStatement(state.factory.createAssignment(temporary, site.value.expression)),
-        site.value,
-        state,
-      );
-      return state.factory.updateBlock(site.block, [assignment, site.jump]);
-    }
-    if (plan.kind === "loop" && node === plan.elseBlock) {
-      // The else block's completion value becomes the no-break assignment.
-      const assignment = sourceMapAnchor(
-        state.factory.createExpressionStatement(
-          state.factory.createAssignment(temporary, plan.elseValue.expression),
-        ),
-        plan.elseValue,
-        state,
-      );
-      return state.factory.updateBlock(plan.elseBlock, [assignment]);
-    }
-    if (isFunctionLikeWithBody(node)) return node;
-    return ts.visitEachChild(node, replaceSites, context);
-  };
-  const replacedBlock = ts.visitNode(plan.control.statement, replaceSites) as ts.Block;
-  const loweredBlock = state.factory.updateBlock(
-    replacedBlock,
-    lowerStatementSequence(replacedBlock.statements, owner, caughtByJavaScript, state, context, visit),
-  );
-  const loweredControl = state.factory.updateLabeledStatement(plan.control, plan.control.label, loweredBlock);
-
-  const declaration = plan.host.declarationList.declarations[0]!;
-  // A nested labeled join can reference another construct's marker, which
-  // the analysis program types as `any`. Emitting that annotation would
-  // erase checking in the output, so such temporaries stay unannotated and
-  // the emitted program's own control-flow inference supplies the precise
-  // union once every marker is gone.
-  const joinType = controlFlowTemporaryType(plan, declaration, state);
-  const temporaryDeclaration = state.factory.createVariableStatement(
-    undefined,
-    state.factory.createVariableDeclarationList([
-      state.factory.createVariableDeclaration(
-        temporary,
-        undefined,
-        typeNodeContainsAny(joinType) ? undefined : joinType,
-        undefined,
-      ),
-    ], ts.NodeFlags.Let),
-  );
-  const completedDeclaration = state.factory.updateVariableDeclaration(
-    declaration,
-    declaration.name,
-    declaration.exclamationToken,
-    declaration.type,
-    temporary,
-  );
-  const completedHost = state.factory.updateVariableStatement(
-    plan.host,
-    plan.host.modifiers,
-    state.factory.updateVariableDeclarationList(plan.host.declarationList, [completedDeclaration]),
-  );
-  state.changed = true;
-  return [temporaryDeclaration, loweredControl, completedHost];
-}
-
-function typeNodeContainsAny(type: ts.TypeNode): boolean {
-  if (type.kind === ts.SyntaxKind.AnyKeyword) return true;
-  let found = false;
-  const visit = (node: ts.Node): void => {
-    if (found) return;
-    if (node.kind === ts.SyntaxKind.AnyKeyword) {
-      found = true;
-      return;
-    }
-    ts.forEachChild(node, visit);
-  };
-  ts.forEachChild(type, visit);
-  return found;
-}
-
-/**
- * Do not let the generated join temporary become an implicit/evolving `any`.
- * An authored annotation is authoritative; otherwise retain the union of the
- * normal branch value types so the ordinary TypeScript checker can validate
- * every assignment and all downstream uses.
- */
-function controlFlowTemporaryType(
-  plan: ControlFlowExpressionPlan,
-  declaration: ts.VariableDeclaration,
-  state: TransformState,
-): ts.TypeNode {
-  const checker = state.model.checker;
-  if (declaration.type) {
-    return checker.typeToTypeNode(
-      checker.getTypeFromTypeNode(declaration.type),
-      plan.host,
-      ts.NodeBuilderFlags.NoTruncation | ts.NodeBuilderFlags.UseStructuralFallback,
-    ) ?? state.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword);
-  }
-  const exits = plan.kind === "if"
-    ? [plan.consequent, plan.alternate]
-    : plan.kind === "switch"
-      ? plan.clauses.map((clause) => clause.exit)
-      : plan.kind === "labeled-block"
-        ? plan.sites.map((site) => site.value)
-        : [...plan.sites.map((site) => site.value), plan.elseValue];
-  const values = exits.flatMap((exit) => ts.isExpressionStatement(exit) ? [exit.expression] : []);
-  if (values.length === 0) return state.factory.createKeywordTypeNode(ts.SyntaxKind.NeverKeyword);
-
-  const types = new Map<string, ts.Type>();
-  let containsLocalType = false;
-  for (const expression of values) {
-    if (controlFlowValueHasLocalType(expression, plan.control, checker)) {
-      containsLocalType = true;
-      continue;
-    }
-    const type = checker.getTypeAtLocation(expression);
-    const key = checker.typeToString(type, plan.host, ts.TypeFormatFlags.NoTruncation);
-    types.set(key, type);
-  }
-  if (containsLocalType) return state.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword);
-  const nodes = [...types.values()].map((type) => checker.typeToTypeNode(
-    type,
-    plan.host,
-    ts.NodeBuilderFlags.NoTruncation | ts.NodeBuilderFlags.UseStructuralFallback,
-  ) ?? state.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword));
-  return nodes.length === 1 ? nodes[0]! : state.factory.createUnionTypeNode(nodes);
-}
-
-function lowerSwitchExpressionClause(
-  plan: SwitchExpressionClausePlan,
-  variableHost: ControlFlowExpressionHost | undefined,
-  temporary: ts.Identifier | undefined,
-  owner: SemanticFunction | undefined,
-  caughtByJavaScript: boolean,
-  state: TransformState,
-  context: ts.TransformationContext,
-  visit: ts.Visitor,
-): ts.CaseOrDefaultClause {
-  const exit = plan.exit;
-  const replacement = ts.isThrowStatement(exit)
-    ? exit
-    : variableHost
-      ? sourceMapAnchor(
-          state.factory.createExpressionStatement(state.factory.createAssignment(temporary!, exit.expression)),
-          exit,
-          state,
-        )
-      : sourceMapAnchor(state.factory.createReturnStatement(exit.expression), exit, state);
-  const source = plan.clause.statements.map((statement) => statement === exit ? replacement : statement);
-  const lowered = lowerStatementSequence(source, owner, caughtByJavaScript, state, context, visit);
-  if (variableHost && !ts.isThrowStatement(exit)) lowered.push(state.factory.createBreakStatement());
-  if (ts.isCaseClause(plan.clause)) {
-    const casePrologue: ts.Statement[] = [];
-    const expression = owner
-      ? rewriteExpression(plan.clause.expression, owner, casePrologue, state, context, visit)
-      : ts.visitEachChild(plan.clause.expression, visit, context) as ts.Expression;
-    // Case labels cannot execute a statement prologue without changing switch
-    // selection order. Semantic analysis currently rejects exit-producing
-    // expressions there, so this guard remains fail-closed for future changes.
-    if (casePrologue.length > 0) return plan.clause;
-    return state.factory.updateCaseClause(plan.clause, expression, lowered);
-  }
-  return state.factory.updateDefaultClause(plan.clause, lowered);
-}
-
-function instrumentErrdeferReturns(
-  statements: readonly ts.Statement[],
-  result: ts.Identifier,
-  state: TransformState,
-  context: ts.TransformationContext,
-): ts.Statement[] {
-  const instrument: ts.Visitor = (node) => {
-    if (isFunctionLikeWithBody(node)) return node;
-    if (ts.isReturnStatement(node) && node.expression) {
-      const updated = state.factory.updateReturnStatement(node,
-        state.factory.createAssignment(result, node.expression));
-      const origin = state.sourceMapOrigins.get(node);
-      if (origin) state.sourceMapOrigins.set(updated, origin);
-      return updated;
-    }
-    return ts.visitEachChild(node, instrument, context);
-  };
-  return statements.map((statement) => ts.visitNode(statement, instrument) as ts.Statement);
-}
 
 function lowerStatement(
   statement: ts.Statement,
@@ -984,21 +577,7 @@ function liftSuccess(
   if (channel === "plain") return expression;
   state.changed = true;
   const originalShape = original ? expressionShape(original, state.model) : undefined;
-  if (channel === "optional") {
-    if (originalShape?.channel === "optional") return expression;
-    return isNullish(original)
-      ? optionalNone(state)
-      : optionalSome(expression ?? state.factory.createIdentifier("undefined"), state);
-  }
-  if (originalShape?.channel === "result" || originalShape?.channel === "result-optional") return expression;
-  if (channel === "result-optional") {
-    const optional = originalShape?.channel === "optional"
-      ? expression!
-      : isNullish(original)
-        ? optionalNone(state)
-        : optionalSome(expression ?? state.factory.createIdentifier("undefined"), state);
-    return resultSuccess(optional, state);
-  }
+  if (originalShape?.channel === "result") return expression;
   return resultSuccess(expression ?? state.factory.createIdentifier("undefined"), state);
 }
 
@@ -1010,35 +589,33 @@ function rewriteExpression(
   context: ts.TransformationContext,
   visit: ts.Visitor,
 ): ts.Expression {
+  if (ts.isNonNullExpression(expression) && isResultPropagationExpression(expression, state.model)) {
+    const receiver = rewriteExpression(expression.expression, owner, prologue, state, context, visit);
+    const temporary = freshTemporary(state, "result");
+    const inspect = helper(state, "__vsInspectResult");
+    prologue.push(state.factory.createVariableStatement(undefined,
+      state.factory.createVariableDeclarationList([
+        state.factory.createVariableDeclaration(temporary, undefined, undefined,
+          state.factory.createCallExpression(state.factory.createIdentifier(inspect), undefined, [receiver])),
+      ], ts.NodeFlags.Const)));
+    const propagate = sourceMapAnchor(state.factory.createReturnStatement(resultFailure(
+      state.factory.createPropertyAccessExpression(temporary, "error"), state)), expression, state);
+    prologue.push(state.factory.createIfStatement(
+      state.factory.createBinaryExpression(
+        state.factory.createPropertyAccessExpression(temporary, "ok"),
+        ts.SyntaxKind.EqualsEqualsEqualsToken,
+        state.factory.createFalse()),
+      propagate,
+    ));
+    state.changed = true;
+    return state.factory.createPropertyAccessExpression(temporary, "value");
+  }
   if (ts.isCallExpression(expression)) {
     // A dynamic import has no callee expression to rewrite; lower the
     // specifier and attributes in place.
     if (expression.expression.kind === ts.SyntaxKind.ImportKeyword) {
       return rewriteDynamicImport(expression, state) ?? expression;
     }
-    if (isResultUnwrapExpression(expression, state.model)) {
-      const property = expression.expression as ts.PropertyAccessExpression;
-      const receiver = rewriteExpression(property.expression, owner, prologue, state, context, visit);
-      const temporary = freshTemporary(state, "result");
-      const inspect = helper(state, "__vsInspectResult");
-      prologue.push(state.factory.createVariableStatement(undefined,
-        state.factory.createVariableDeclarationList([
-          state.factory.createVariableDeclaration(temporary, undefined, undefined,
-            state.factory.createCallExpression(state.factory.createIdentifier(inspect), undefined, [receiver])),
-        ], ts.NodeFlags.Const)));
-      const propagate = sourceMapAnchor(state.factory.createReturnStatement(resultFailure(
-        state.factory.createPropertyAccessExpression(temporary, "error"), state)), expression, state);
-      prologue.push(state.factory.createIfStatement(
-        state.factory.createBinaryExpression(
-          state.factory.createPropertyAccessExpression(temporary, "ok"),
-          ts.SyntaxKind.EqualsEqualsEqualsToken,
-          state.factory.createFalse()),
-        propagate,
-      ));
-      state.changed = true;
-      return state.factory.createPropertyAccessExpression(temporary, "value");
-    }
-
     if (isResultExpectExpression(expression, state.model) && effectiveChannel(owner).startsWith("result")) {
       const property = expression.expression as ts.PropertyAccessExpression;
       const receiver = rewriteExpression(property.expression, owner, prologue, state, context, visit);
@@ -1096,37 +673,6 @@ function rewriteExpression(
       return state.factory.createPropertyAccessExpression(resultTemporary, "value");
     }
 
-    if (isOptionalUnwrapExpression(expression, state.model)) {
-      const channel = effectiveChannel(owner);
-      if (channel === "optional" || channel === "result-optional") {
-        const property = expression.expression as ts.PropertyAccessExpression;
-        const receiver = rewriteExpression(property.expression, owner, prologue, state, context, visit);
-        const temporary = freshTemporary(state, "optional");
-        const inspect = helper(state, "__vsInspectOptional");
-        prologue.push(state.factory.createVariableStatement(undefined,
-          state.factory.createVariableDeclarationList([
-            state.factory.createVariableDeclaration(temporary, undefined, undefined,
-              state.factory.createCallExpression(state.factory.createIdentifier(inspect), undefined, [receiver])),
-          ], ts.NodeFlags.Const)));
-        const absent = channel === "optional"
-          ? optionalNone(state)
-          : resultSuccess(optionalNone(state), state);
-        const propagate = sourceMapAnchor(state.factory.createReturnStatement(absent), expression, state);
-        prologue.push(state.factory.createIfStatement(
-          state.factory.createBinaryExpression(
-            state.factory.createPropertyAccessExpression(temporary, "some"),
-            ts.SyntaxKind.EqualsEqualsEqualsToken,
-            state.factory.createFalse()),
-          propagate,
-        ));
-        state.changed = true;
-        return state.factory.createPropertyAccessExpression(temporary, "value");
-      }
-      // No Optional-capable owner: semantic analysis rejects this placement
-      // with SMITHERS1206, so leave the source untransformed instead of emitting
-      // an early return with different semantics.
-    }
-
     const called = rewriteExpression(expression.expression, owner, prologue, state, context, visit);
     const arguments_ = expression.arguments.map((argument) =>
       rewriteExpression(argument, owner, prologue, state, context, visit));
@@ -1154,7 +700,7 @@ function rewriteExpression(
 }
 
 /**
- * A Result unwrap/expect or panic exit needs statements at the exact evaluation
+ * A Result propagation/expect or panic exit needs statements at the exact evaluation
  * point. Hoisting those statements out of a repeated loop header changes
  * semantics, so semantic analysis rejects the construct and the emitter leaves
  * it untouched. Ordinary calls (including foreign calls, whose wrappers are
@@ -1173,7 +719,7 @@ function rewriteLoopHeaderExpression(
   const prologue: ts.Statement[] = [];
   const result = rewriteExpression(expression, owner, prologue, state, context, visit);
   // The only current expression lowering that introduces statements is an
-  // unwrap. Keep this guard fail-closed if a future lowering does the same.
+  // propagation. Keep this guard fail-closed if a future lowering does the same.
   if (prologue.length > 0) return expression;
   return result;
 }
@@ -1183,9 +729,12 @@ function containsLoopHeaderExit(expression: ts.Expression, model: SemanticModel)
   const visit = (node: ts.Node): void => {
     if (found) return;
     if (node !== expression && isFunctionLikeWithBody(node)) return;
+    if (ts.isNonNullExpression(node) && isResultPropagationExpression(node, model)) {
+      found = true;
+      return;
+    }
     if (ts.isCallExpression(node) &&
-      (isResultUnwrapExpression(node, model) || isOptionalUnwrapExpression(node, model) ||
-        isResultExpectExpression(node, model) || isPanicExitCall(node, model))) {
+      (isResultExpectExpression(node, model) || isPanicExitCall(node, model))) {
       found = true;
       return;
     }
@@ -1279,8 +828,6 @@ function wrapForeignCall(call: ts.Expression, edge: CallEdge, state: TransformSt
 function implicitCompletion(owner: SemanticFunction, state: TransformState): ts.ReturnStatement | undefined {
   const channel = effectiveChannel(owner);
   if (channel === "plain") return undefined;
-  if (channel === "optional") return state.factory.createReturnStatement(optionalNone(state));
-  if (channel === "result-optional") return state.factory.createReturnStatement(resultSuccess(optionalNone(state), state));
   return state.factory.createReturnStatement(resultSuccess(state.factory.createIdentifier("undefined"), state));
 }
 
@@ -1290,14 +837,6 @@ function resultSuccess(value: ts.Expression, state: TransformState): ts.Expressi
 
 function resultFailure(value: ts.Expression, state: TransformState): ts.Expression {
   return state.factory.createCallExpression(state.factory.createIdentifier(helper(state, "__vsResultFailure")), undefined, [value]);
-}
-
-function optionalSome(value: ts.Expression, state: TransformState): ts.Expression {
-  return state.factory.createCallExpression(state.factory.createIdentifier(helper(state, "__vsOptionalSome")), undefined, [value]);
-}
-
-function optionalNone(state: TransformState): ts.Expression {
-  return state.factory.createCallExpression(state.factory.createIdentifier(helper(state, "__vsOptionalNone")), undefined, []);
 }
 
 function helper(state: TransformState, exported: string, preferred = exported, typeOnly = false): string {
@@ -1311,7 +850,7 @@ function helper(state: TransformState, exported: string, preferred = exported, t
 function reserveBuiltinBindings(state: TransformState): void {
   const used = new Set<string>();
   const visit = (node: ts.Node): void => {
-    if (ts.isIdentifier(node) && (node.text === "Result" || node.text === "Optional" || node.text === "Panic")) {
+    if (ts.isIdentifier(node) && (node.text === "Result" || node.text === "Panic")) {
       const symbol = state.model.checker.getSymbolAtLocation(node);
       if (symbol?.declarations?.some((declaration) => declaration.getSourceFile().fileName.endsWith("__smithers_frontend_prelude__.d.ts"))) {
         used.add(node.text);
@@ -1499,12 +1038,6 @@ function statementMayFallThrough(statement: ts.Statement, state: TransformState)
   return true;
 }
 
-function isNullish(expression: ts.Expression | undefined): boolean {
-  return !expression || expression.kind === ts.SyntaxKind.NullKeyword ||
-    (ts.isIdentifier(expression) && expression.text === "undefined") ||
-    (ts.isVoidExpression(expression) && ts.isNumericLiteral(expression.expression) && expression.expression.text === "0");
-}
-
 /**
  * The type-only nominal merge for an authored Error class.
  *
@@ -1572,8 +1105,7 @@ function stableErrorId(sourceName: string, name: string): string {
 }
 
 function isCompilerVirtualModule(name: string): boolean {
-  return name === "smthrs/context" || name === "smthrs/provider" || name === "smithers:exceptions" ||
-    name === "smithers:native";
+  return name === "smthrs/context" || name === "smthrs/provider" || name === "smithers:exceptions";
 }
 
 function rewriteImportSpecifier(name: string, state: TransformState): string {

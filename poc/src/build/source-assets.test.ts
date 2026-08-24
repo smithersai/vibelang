@@ -1025,3 +1025,75 @@ describe("nested generated asset module graphs", () => {
     })
   })
 })
+
+describe("import-assignment module references", () => {
+  test("an import assignment cannot smuggle a non-code target past loader selection", async () => {
+    await withRoot(async (root) => {
+      await writeFile(join(root, "config.json"), '{"count":3}\n')
+      // `import x = require("...")` and `export import x = require("...")` are
+      // runtime module edges with nowhere to put import attributes, so they
+      // used to be the one form that reached a non-code file with no loader,
+      // no attribute check, and no incremental dependency edge.
+      for (const [label, source] of [
+        ["import assignment", 'import config = require("./config.json")\nexport { config }'],
+        ["exported import assignment", 'export import config = require("./config.json")']
+      ] as const) {
+        const result = await compileSourceAssetModules({
+          compiler: compilerFor(root, `cache-${label.replaceAll(" ", "-")}`),
+          sources: [{ fileName: "main.ts", source }]
+        })
+        expect(result.ok, label).toBe(false)
+        expect(result.modules, label).toHaveLength(0)
+        expect(result.diagnostics.map((entry) => entry.code), label).toEqual(["SMITHERS5201"])
+      }
+    })
+  })
+
+  test("a code module reached only by import assignment still blocks an asset alias", async () => {
+    await withRoot(async (root) => {
+      await writeFile(join(root, "helper.ts"), "export const bump = (value: number): number => value + 1\n")
+      const shadowed = await compileSourceAssetModules({
+        compiler: compilerFor(root, "cache-shadow"),
+        sources: [
+          { fileName: "main.ts", source: 'import helper = require("./helper.ts")\nexport const n = helper.bump(1)' },
+          { fileName: "other.ts", source: 'import raw from "./helper.ts" with { type: "text" }\nexport { raw }' }
+        ]
+      })
+      expect(shadowed.ok).toBe(false)
+      expect(shadowed.modules).toHaveLength(0)
+      expect(shadowed.diagnostics.some((entry) => entry.code === "SMITHERS5215")).toBe(true)
+    })
+  })
+
+  test("ordinary code import assignments stay legal", async () => {
+    await withRoot(async (root) => {
+      await writeFile(join(root, "helper.ts"), "export const bump = (value: number): number => value + 1\n")
+      await writeFile(join(root, "config.json"), '{"count":3}\n')
+      for (const [label, source] of [
+        ["relative code", 'import helper = require("./helper.ts")\nexport const n = helper.bump(1)'],
+        ["extensionless code", 'import helper = require("./helper")\nexport const n = helper.bump(1)'],
+        ["bare package", 'import ts = require("typescript")\nexport const v = ts.version']
+      ] as const) {
+        const result = await compileSourceAssetModules({
+          compiler: compilerFor(root, `cache-ok-${label.replaceAll(" ", "-")}`),
+          sources: [{ fileName: "main.ts", source }]
+        })
+        expect(result.ok, label).toBe(true)
+        expect(result.diagnostics, label).toHaveLength(0)
+      }
+      // And an attributed asset import beside one still compiles normally.
+      const mixed = await compileSourceAssetModules({
+        compiler: compilerFor(root, "cache-mixed"),
+        sources: [{
+          fileName: "main.ts",
+          source: 'import helper = require("./helper.ts")\n' +
+            'import config from "./config.json" with { type: "json" }\n' +
+            "export const n = helper.bump(config.count)"
+        }]
+      })
+      expect(mixed.ok).toBe(true)
+      expect(mixed.diagnostics).toHaveLength(0)
+      expect(mixed.modules).toHaveLength(1)
+    })
+  })
+})

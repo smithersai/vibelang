@@ -1,0 +1,6 @@
+{
+  "title": "optional chaining and nullish coalescing retain ordinary TypeScript behavior for both null and undefined",
+  "expect": "output",
+  "stdout": ["Ada", "Guest", "Guest"],
+  "notes": "specification/type-system.mdx, 'Absence': absence uses T | undefined or T | null with ordinary optional chaining and nullish coalescing. docs/DECISIONS.md locks that ?? and ?. keep their nullish meaning and are never reinterpreted for failures."
+}

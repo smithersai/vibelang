@@ -23,6 +23,9 @@ func (a *rowAnalysis) boundProducedKind(expression *ast.Node) boundConsumeKind {
 	if expression == nil {
 		return boundConsumePlain
 	}
+	if a.resultPropagations[expression] != nil {
+		return boundConsumePlain
+	}
 	t := a.checker.GetTypeAtLocation(expression)
 	if t != nil && a.checker.GetPromisedTypeOfPromise(t) != nil {
 		return boundConsumePromise
@@ -52,7 +55,7 @@ func stripMustConsumeWrappers(node *ast.Node) *ast.Node {
 	for node != nil {
 		switch node.Kind {
 		case ast.KindParenthesizedExpression, ast.KindAsExpression,
-			ast.KindNonNullExpression, ast.KindTypeAssertionExpression:
+			ast.KindTypeAssertionExpression:
 			node = node.Expression()
 			continue
 		}
@@ -83,7 +86,7 @@ func enclosingCollectionCall(node *ast.Node, allowObject bool) *ast.Node {
 		parent := current.Parent
 		switch parent.Kind {
 		case ast.KindParenthesizedExpression, ast.KindAsExpression,
-			ast.KindNonNullExpression, ast.KindTypeAssertionExpression,
+			ast.KindTypeAssertionExpression,
 			ast.KindArrayLiteralExpression:
 			current = parent
 			continue
@@ -107,7 +110,7 @@ func (a *rowAnalysis) promiseProducerConsumed(node *ast.Node, seen map[*ast.Node
 		parent := current.Parent
 		switch parent.Kind {
 		case ast.KindParenthesizedExpression, ast.KindAsExpression,
-			ast.KindNonNullExpression, ast.KindTypeAssertionExpression:
+			ast.KindTypeAssertionExpression:
 			current = parent
 			continue
 		case ast.KindVariableDeclaration:
@@ -129,9 +132,12 @@ func (a *rowAnalysis) boundReferenceConsumes(node *ast.Node, kind boundConsumeKi
 	current := node
 	for current != nil && current.Parent != nil {
 		parent := current.Parent
+		if ast.IsNonNullExpression(parent) && parent.AsNonNullExpression().Expression == current {
+			return kind == boundConsumeResult && a.resultPropagations[parent] != nil
+		}
 		switch parent.Kind {
 		case ast.KindParenthesizedExpression, ast.KindAsExpression,
-			ast.KindNonNullExpression, ast.KindTypeAssertionExpression:
+			ast.KindTypeAssertionExpression:
 			current = parent
 			continue
 		case ast.KindReturnStatement:

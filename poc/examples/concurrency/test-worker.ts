@@ -1,5 +1,4 @@
 import { registerErrorCodec, type JsonValue, type NominalError } from "../../src/runtime/errors.ts";
-import type { Optional } from "../../src/runtime/optional.ts";
 import {
   __vsResultFailure,
   __vsResultSuccess,
@@ -38,7 +37,8 @@ export function reflectResult(
   return __vsResultSuccess(input);
 }
 
-export function reflectOptional(input: Optional<string>): Result<Optional<string>, never> {
+/** Absence crosses the worker boundary as `T | undefined`, not as a container. */
+export function reflectAbsence(input: string | undefined): Result<string | undefined, never> {
   return __vsResultSuccess(input);
 }
 

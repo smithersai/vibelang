@@ -1,1 +1,0 @@
-export { readFileSync } from "./chain-inner-host-module.mod.sm"

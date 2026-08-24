@@ -1,6 +1,0 @@
-{
-  "title": "a statement-position if keeps TypeScript behavior: braceless branches and a missing else stay legal",
-  "expect": "output",
-  "stdout": ["first", "second"],
-  "notes": "specification/control-flow.mdx, 'Existing TypeScript Forms': 'Valid TypeScript statement forms MUST retain their TypeScript behavior on the TypeScript target. Adding expression forms MUST NOT reinterpret an existing TypeScript statement in a way that changes observable behavior.' specification/compatibility.mdx §3 locks the same rule. This is the control for the two negative if-expression cases: the very shapes those cases reject in value position must stay accepted in statement position."
-}

@@ -1,6 +1,0 @@
-{
-  "title": "Optional carries filter, tap, isSome, and isNone with the meanings the type system page requires",
-  "expect": "output",
-  "stdout": ["Ada", "-", "isSome true", "isNone true", "tap Ada"],
-  "notes": "specification/type-system.mdx, 'Optional', requires operations equivalent in purpose to isSome, isNone, match, map, andThen, filter, tap, unwrap, unwrapOr, toResult, toNullable, all. The single trailing 'tap Ada' line is load-bearing: tap fired on the present value and did not fire on the absent one."
-}

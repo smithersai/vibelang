@@ -1,0 +1,12 @@
+{
+  "title": "Optional<T> is an ordinary unresolved identifier when the program does not declare or import it",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "TS2304",
+      "line": 1,
+      "column": 27
+    }
+  ],
+  "notes": "specification/type-system.mdx, 'Absence': Smithers has no built-in Optional<T>. The diagnostic is the ordinary TypeScript unresolved-name error, proving there is no special-case acceptance, lifting, or hidden compiler prelude declaration."
+}

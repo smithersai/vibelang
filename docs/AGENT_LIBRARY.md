@@ -1,30 +1,8 @@
 # Coding agent library
 
-Status: proposed production library design. This document does not add
-language syntax. The root package exposes narrower implementation evidence at
-`smthrs/agent`, including a coding-agent loop, in-memory TypeScript checking,
-explicit bindings, Action tools, and a resource-bounded no-permission Deno
-subprocess sandbox. The Bun-only `smthrs/agent/bun` entry point adds the real
-SQLite turn journal and durable Flow tools. The journal is not an in-memory fake:
-rows are digest-checked and hash-chained in append order, each committed
-boundary is one `BEGIN IMMEDIATE` transaction, and a restarted process replays a
-turn from the journal without re-invoking the model or any host function.
-The POC also carries a typed `ModelAdapter` seam — model identity, version, and
-extraction hook flow into turn provenance and every journal row — plus adapters
-that compile a tool's source into a durable Action-backed function. Compiled
-Flows can also be supplied through the programmatic `flowTool(...)` adapter;
-their derived execution ids make a restarted turn join the same durable
-execution and reject call-site input/Plan divergence.
-
-The library's in-repo default model is still scripted. A real Anthropic
-Messages API `ModelAdapter` exists under `poc/examples/agent`, but it is an
-example-only adapter excluded from `poc/tsconfig.emit.json`; its SDK is a POC
-dev dependency and does not enter the published package's dependency closure.
-The sandbox remains process-level rather than a VM or container, nothing is
-attested, journal rows are digest-verified but neither signed nor redacted, and
-the agent journal and durable executor store are linked but not one atomic
-history. The package and API spelling below remain proposals, not locked
-decisions or exact descriptions of the narrower POC API.
+Status: **Direction**. This is the target coding-agent library contract and does
+not add language syntax. Package names, exact API spellings, journal format,
+sandbox provider, and model-provider adapters remain open.
 
 ## Decision
 
@@ -44,7 +22,7 @@ An MCP protocol and a tool-calling protocol are adapters, not separate agent
 semantics. The agent loop and sandbox belong to a library/runtime, not to the
 Smithers grammar or type system.
 
-## Proposed exact API
+## Candidate API
 
 ```ts
 import { CodingAgent, TypeScriptSandbox } from "@smithers/agent"
@@ -156,24 +134,19 @@ returns already-recorded call results. Ambient clock, random, network, and
 filesystem access remain absent; nondeterminism must enter through a passed
 function, normally an Action when it must be replayable.
 
-### Current Flow-adapter evidence (non-normative)
+### Flow adapter
 
-The programmatic POC's `flowTool(target, options)` projects a callable contract
-from a validated compiled Plan, derives an execution id from turn id, accepted
-source digest, exposed function name and per-site ordinal, Flow identity and
-Plan digest, plus input digest, and commits that attachment before starting
-work. Replaying the call re-derives and joins the same execution; committed
-Action results are not repeated. A different input or Plan fails closed as
-journal divergence instead of mutating the pinned execution. Only a terminal
-outcome is replayable; coordinator interruption causes the restarted turn to
-reattach.
+`flowTool(target, options)` illustrates a callable adapter projected from a
+validated compiled Plan. It derives an execution identity from the turn,
+accepted-source digest, exposed function and call site, Flow and Plan identity,
+and input digest, then commits that attachment before starting work. Replay
+joins the same execution and reuses committed Action results. A different input
+or Plan fails as journal divergence instead of mutating the pinned execution.
 
-This is not a single transaction across the agent journal and durable store.
-A crash after attachment but before durable initialization leaves an attachment
-whose execution is created under the same id on replay. The current adapter
-uses local in-process workers; remote workers, deployment-envelope verification
-at this seam, cross-process coordinator handoff, and stable identities for
-data-dependent loop call sites remain absent.
+The agent journal and durable store MUST define crash-safe attachment semantics
+even when they cannot share one storage transaction. Deployment-envelope
+verification, remote coordinator handoff, principal authorization, and stable
+identity for data-dependent call sites remain open.
 
 The journal must record the model/provider version, prompt digest, callable
 surface digest, generated-source digest, compiler version, sandbox image, and
@@ -200,8 +173,8 @@ syntax.
 `@smithers/agent` owns prompt rendering, the code-writing loop, diagnostic
 repair, model adapters, MCP/tool adapters, sandbox creation, resource limits,
 function-proxy transport, durable turn orchestration, logging, redaction, and
-policy. The initial implementation supports generated TypeScript only; future
-source languages or agent strategies can use the same Action/Flow boundary
+policy. The Smithers library contract supports generated TypeScript. Other
+source languages or agent strategies may use the same Action and Flow boundary
 without changing Smithers.
 
 The library should expose independently replaceable primitives for prompt

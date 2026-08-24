@@ -1,9 +1,0 @@
-{
-  "title": "a callback whose callee's visible body only returns it is not part of the pinned graph: the pin holds and the program compiles and runs",
-  "expect": "output",
-  "stdout": [
-    "1"
-  ],
-  "modules": ["storing-callee.mod.sm"],
-  "notes": "specification/compatibility.mdx, 'Native Pin' (Locked), makes the assertion one about REACHABLE operations: 'Compilation MUST fail if any reachable operation or provider requires TypeScript.' `keep`'s visible body never invokes its parameter, so the `eval` written in the argument is not a reachable operation of this graph and the pin holds. This is the over-correction guard for 21-native-pin/a-callback-a-callee-invokes-is-part-of-the-pinned-graph and the more important half of that pair: the two programs are syntactically identical at the call site and differ only in what the callee's body does, so a rule about ARGUMENTS answers them both the same way and is wrong about one of them whichever way it answers. The over-correction is not hypothetical — poc/src/targets/classify.ts's header records that this analyzer has shipped one three times — and it is the direction that refuses a PORTABLE program rather than certifying an unportable one, which is why it is easy to ship and hard to notice. TWO THINGS A READER MUST KNOW. First, this case is an `expect: \"output\"` case, so it does not merely compile: the emitted module set survives a stock TypeScript check and the program runs and prints, which is the whole of what the pin promised not to take away. Second, IT PASSES ON A BACKEND THAT IMPLEMENTS NO VALUE FLOW AT ALL, because such a backend enters no callback and therefore charges nothing here either — measured, and it is the fork's current state (see the twin's `xfail`). A negative that is satisfied by doing nothing certifies nothing on its own. It is meaningful only beside its twin, in the same directory, and that is why the two were written together."
-}

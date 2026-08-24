@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { __vsInspectOptional, __vsInspectResult } from "../runtime/index.ts";
+import { __vsInspectResult } from "../runtime/index.ts";
 import { CancellationSource, Channel, QueueClosed, isChannel } from "./index.ts";
 
 describe("Channel", () => {
@@ -55,14 +55,18 @@ describe("Channel", () => {
     expect((await channel.send(7)).isOk()).toBe(true);
   });
 
-  test("try operations expose backpressure through Optional", () => {
+  test("try operations expose backpressure as `undefined`", () => {
     const channel = new Channel<number>(1);
-    expect(__vsInspectOptional(channel.tryReceive()).some).toBe(false);
-    expect(__vsInspectOptional(channel.trySend(1)).some).toBe(true);
-    expect(__vsInspectOptional(channel.trySend(2)).some).toBe(false);
-    const received = __vsInspectOptional(channel.tryReceive());
-    expect(received.some).toBe(true);
-    if (received.some) expect(received.value.unwrap()).toBe(1);
+    expect(channel.tryReceive()).toBeUndefined();
+    expect(channel.trySend(1)).not.toBeUndefined();
+    expect(channel.trySend(2)).toBeUndefined();
+    const received = channel.tryReceive();
+    expect(received).not.toBeUndefined();
+    if (received === undefined) throw new Error("expected a value");
+    expect(received.unwrap()).toBe(1);
+    // A backpressured attempt reads with `?.`/`??` like any nullish value.
+    expect(channel.tryReceive()?.isOk()).toBeUndefined();
+    expect(channel.tryReceive() ?? "empty").toBe("empty");
   });
 
   test("channels are frozen and reject structural forgeries", () => {

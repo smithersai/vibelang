@@ -4,5 +4,5 @@ export function forward<E extends Error>(
   limit: number,
   operation: () => Result<string, E>,
 ): Result<string, E | Timeout> {
-  return attempt(limit, operation).unwrap()
+  return attempt(limit, operation)!
 }

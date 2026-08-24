@@ -1,0 +1,6 @@
+{
+  "title": "the withdrawn break-colon-label-value form is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1001", "line": 3, "column": 5 }],
+  "notes": "specification/control-flow.mdx, No Expression-Form Grammar: Smithers MUST NOT add a value-carrying labeled break."
+}

@@ -1,12 +1,12 @@
 import { Context } from "../runtime/layer.ts";
-import { Optional } from "../runtime/optional.ts";
 
 /**
- * Process environment variables. An absent name is an ordinary `Optional`
- * absence, not a failure: nothing went wrong when a variable is unset.
+ * Process environment variables. An unset name is ordinary absence —
+ * `string | undefined` — not a failure: nothing went wrong when a variable is
+ * unset.
  */
 export abstract class Environment extends Context {
-  abstract get(name: string): Optional<string>;
+  abstract get(name: string): string | undefined;
 
   /** Every defined name, sorted, so listings are stable across implementations. */
   abstract names(): readonly string[];
@@ -18,9 +18,9 @@ export class ProcessEnvironment extends Environment {
     return new ProcessEnvironment();
   }
 
-  get(name: string): Optional<string> {
-    if (name.length === 0) return Optional.fromNullable<string>(undefined);
-    return Optional.fromNullable(process.env[name]);
+  get(name: string): string | undefined {
+    if (name.length === 0) return undefined;
+    return process.env[name];
   }
 
   names(): readonly string[] {
@@ -58,8 +58,8 @@ export class MapEnvironment extends Environment {
     return this;
   }
 
-  get(name: string): Optional<string> {
-    return Optional.fromNullable(this.#values.get(name));
+  get(name: string): string | undefined {
+    return this.#values.get(name);
   }
 
   names(): readonly string[] {

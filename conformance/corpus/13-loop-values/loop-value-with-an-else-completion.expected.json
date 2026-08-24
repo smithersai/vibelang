@@ -1,5 +1,0 @@
-{
-  "title": "a value break delivers the loop's value and normal completion falls into the required else value",
-  "expect": "output",
-  "stdout": ["78", "-1", "-1"]
-}

@@ -74,9 +74,11 @@ async function assertHttpContract(client: HttpClient): Promise<void> {
   expect(response.status).toBe(200);
   expect(response.ok).toBe(true);
   expect(response.text()).toBe(`{"id":1,"name":"ada"}`);
-  expect(response.header("Content-Type").unwrapOr("<none>")).toBe("application/json");
-  expect(response.header("content-type").unwrapOr("<none>")).toBe("application/json");
-  expect(response.header("x-missing").isNone()).toBe(true);
+  expect(response.header("Content-Type") ?? "<none>").toBe("application/json");
+  expect(response.header("content-type") ?? "<none>").toBe("application/json");
+  expect(response.header("x-missing")).toBeUndefined();
+  expect(response.header("x-missing") ?? "<none>").toBe("<none>");
+  expect(response.header("x-missing")?.length).toBeUndefined();
   expect(value(response.json())).toEqual({ id: 1, name: "ada" });
   expect(value(response.ensureOk())).toBe(response);
 
@@ -136,7 +138,7 @@ describe("HttpClient", () => {
     });
 
     const response = value(await client.post(ENDPOINT, { headers: { Authorization: "token" }, body: "payload" }));
-    expect(response.header("x-trace-id").unwrapOr("")).toBe("abc");
+    expect(response.header("x-trace-id") ?? "").toBe("abc");
     expect(seen).toEqual([{
       url: ENDPOINT,
       method: "POST",

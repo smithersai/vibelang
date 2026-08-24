@@ -40,7 +40,7 @@
  */
 
 import { Context } from "../runtime/layer.ts";
-import { type Panic, catchPanic, panic } from "../runtime/panic.ts";
+import { type Panic, panic } from "../runtime/panic.ts";
 import { type Result, isResult, rethrowPanics } from "../runtime/result.ts";
 import { Clock, TestClock } from "./clock.ts";
 // One binding, two meanings — the `Duration` type and its namespace, exactly as
@@ -59,20 +59,17 @@ import { Random } from "./random.ts";
  * Why not a member of `Clock`: `Clock` already has three live implementations
  * and a documented contract of pure *observation* — adding an abstract `sleep`
  * would break every existing implementation and would make a read-only clock
- * double suddenly responsible for scheduling work. Why *optional* rather than a
- * required member of the platform bundle: no existing `PlatformLayer` provides
- * a `Sleeper`, so requiring one would break every already written
- * `Layer.provide`. A driver therefore resolves, in order:
+ * double suddenly responsible for scheduling work. A driver therefore resolves,
+ * in order:
  *
  *   1. an explicit `options.sleeper`,
- *   2. a `Sleeper` provided by the enclosing Layer,
- *   3. `SystemSleeper` over the host timer.
+ *   2. the `Sleeper` provided by the enclosing Layer.
  *
- * Step 3 is the compromise, and it is deliberately the *last* one: it keeps
- * `Schedule.retry` usable from plain TypeScript, and a test that must prove no
- * host timer was touched simply provides a `TestSleeper` and asserts on the
- * ambient `setTimeout` spy. When `layers.ts` can carry a seventh service,
- * `Sleeper` should join the bundle and step 3 should be deleted.
+ * There is no third step. There used to be — `SystemSleeper` over the host
+ * timer — and it meant an unprovided `Sleeper` silently reached
+ * `globalThis.setTimeout` instead of failing closed. `Sleeper` now travels in
+ * the `platformLayer` bundle, so `NodePlatform` supplies a live one and
+ * `TestPlatform` a deterministic one, both explicitly.
  */
 export abstract class Sleeper extends Context {
   /** Resolves after (at least) `duration`. A zero duration still yields. */
@@ -572,21 +569,28 @@ export interface DriverOptions {
   readonly sleeper?: Sleeper;
 }
 
-const DEFAULT_SLEEPER: Sleeper = SystemSleeper.make();
-
 /**
- * The runtime has no "capability if provided" lookup — `useCapability` panics
- * when the key is absent — so an *optional* capability is read by catching that
- * panic. It is safe here because `Sleeper.context()` performs a map lookup and
- * runs no user code, so the only panic it can raise is the missing-capability
- * one this fallback is for.
+ * Resolve the sleeper a driver will use: an explicit `options.sleeper`, else the
+ * `Sleeper` the enclosing Layer provides.
+ *
+ * There is deliberately no third step. This used to end in
+ * `catchPanic(() => Sleeper.context(), () => SystemSleeper.make())`, which
+ * swallowed the missing-capability panic and handed back a live host timer, so
+ * `Schedule.retry` slept on the ambient `globalThis.setTimeout` whenever nobody
+ * had provided a `Sleeper` — including under the deterministic `TestPlatform`
+ * bundle, whose `TestClock` meanwhile reported frozen time. A host timer is
+ * exactly the "host-sensitive operation that still needs a capability" the
+ * decision ledger names, and `layers.ts` states the rule for this package: an
+ * absent optional service stays unprovided so reaching for it fails closed,
+ * rather than resolving a default nobody chose. `Sleeper` is now carried by
+ * `platformLayer`, so both bundles supply one and the unprovided case panics.
  */
 function resolveSleeper(explicit: Sleeper | undefined, caller: string): Sleeper {
   if (explicit !== undefined) {
     if (!(explicit instanceof Sleeper)) panic(`${caller} sleeper option must be a Sleeper`);
     return explicit;
   }
-  return catchPanic(() => Sleeper.context(), () => DEFAULT_SLEEPER);
+  return Sleeper.context();
 }
 
 function elapsedMillisSince(clock: Clock, startMonotonic: number, caller: string): number {

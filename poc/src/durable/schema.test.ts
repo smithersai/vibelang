@@ -258,7 +258,7 @@ test("typed synthetic Action declarations reject wrong inputs and projections", 
     import { durable } from "smithers:flows"
     import { Work } from "test:typed-actions"
     export const Bad = durable(function Bad(input: { value: number }) {
-      const output = Work.run({ value: input.value, pair: ["x", true], modes: ["fast"] }).unwrap()
+      const output = Work.run({ value: input.value, pair: ["x", true], modes: ["fast"] })!
       return output.missing
     })
   `, { fileName: "wrong-projection.sm", flowId: "test/WrongProjection", flowVersion: 1, actions: binding })
@@ -478,7 +478,7 @@ test("static Flow input, success, and failure schemas are derived into Plan IR a
     import { Work } from "test:flow-actions"
     interface Input { readonly value: number }
     export const Checked = durable(function Checked(input: Input) {
-      return Work.run(input).unwrap().value
+      return Work.run(input)!.value
     })
   `, {
     fileName: "flows/checked.sm",
@@ -625,7 +625,7 @@ test("static Flow input, success, and failure schemas are derived into Plan IR a
     import { durable } from "smithers:flows"
     import { Work } from "test:flow-actions"
     export const Unsafe = durable(function Unsafe(input: { callback: () => string }) {
-      return Work.run({ value: 1 }).unwrap().value
+      return Work.run({ value: 1 })!.value
     })
   `, {
     fileName: "flows/unsafe.sm",

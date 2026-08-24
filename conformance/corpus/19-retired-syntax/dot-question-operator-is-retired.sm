@@ -1,5 +1,5 @@
-function lookup(id: number): Optional<string> {
-  return id === 1 ? "Ada" : null
+function lookup(id: number): string | undefined {
+  return id === 1 ? "Ada" : undefined
 }
 
 export function main(): string[] {

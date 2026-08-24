@@ -192,7 +192,7 @@ export function main(): string[] {
 
   test("the retired `orelse` operator is still refused at the operator", () => {
     expect(retired(`
-function lookup(id: number): Optional<string> { return id === 1 ? "Ada" : null }
+function lookup(id: number): string | undefined { return id === 1 ? "Ada" : undefined }
 const name = lookup(1) orelse "Guest"
 `)).toEqual(["SMITHERS1001@3:24"]);
   });
@@ -302,7 +302,7 @@ export function lookup(key: string): !string {
       ["optional type member", `type Rec = { name?: string }`],
       ["ternary chain", `const a = true\nconst c = false\nconst v = a ? "b" : c ? "d" : "e"`],
       ["object value ternary", `const b = true\nconst o = { a: b ? "c" : "d" }`],
-      ["non-null then ternary", `declare const s: { flag?: boolean }\nconst v = s.flag! ? "yes" : "no"`],
+      ["postfix expression is owned by semantic validation", `declare const s: { flag?: boolean }\nconst v = s.flag! ? "yes" : "no"`],
     ];
     for (const [label, body] of rows) {
       expect(`${label}: ${retired(body).join(",")}`).toBe(`${label}: `);
@@ -328,7 +328,7 @@ export function lookup(key: string): !string {
 
   test("the retired `.?` operator is still refused at the dot", () => {
     expect(retired(`
-function lookup(id: number): Optional<string> { return id === 1 ? "Ada" : null }
+function lookup(id: number): string | undefined { return id === 1 ? "Ada" : undefined }
 const name = lookup(1).?
 `)).toEqual(["SMITHERS1001@3:23"]);
   });
@@ -397,7 +397,7 @@ export function lookup(key: string): Result<string, Missing> {
       ["!T on a type member", `type Rec = { name: !string }`],
       ["throws clause on a function declaration", `class Missing extends Error {}\nfunction look(k: string): string throws Missing { return k }`],
       ["uses clause on a function declaration", `declare const Clock: unknown\nfunction stamp(): number uses Clock { return 7 }`],
-      [".? on a call", `declare function lookup(): Optional<string>\nconst v = lookup().?`],
+      [".? on a call", `declare function lookup(): string | undefined\nconst v = lookup().?`],
     ];
     for (const [label, body] of rows) {
       const codes = retired(body);

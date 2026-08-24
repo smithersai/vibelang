@@ -1,0 +1,6 @@
+{
+  "title": "postfix Result propagation composes with ordinary optional chaining and nullish coalescing",
+  "expect": "output",
+  "stdout": ["Ada", "anonymous", "anonymous"],
+  "notes": "specification/failures.mdx locks findUser(id)!?.nickname ?? fallback: postfix ! propagates the Result error, while ?. and ?? retain their ordinary nullish meanings."
+}

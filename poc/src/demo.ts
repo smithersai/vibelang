@@ -18,7 +18,6 @@ const demos: Array<{ name: string; command: string[] }> = [
   { name: "comptime assets + schemas", command: ["bun", "examples/assets/demo.ts"] },
   { name: "runtime validation", command: ["bun", "examples/validation/demo.ts"] },
   { name: "platform services", command: ["bun", "examples/platform/demo.ts"] },
-  { name: "target classification", command: ["bun", "examples/targets/demo.ts"] },
   { name: "structured concurrency", command: ["bun", "examples/concurrency/demo.ts"] },
   { name: "Zig/Rust imports", command: ["bun", "examples/polyglot/demo.ts"] },
   { name: "durable execution", command: ["bun", "examples/durable/demo.ts"] },

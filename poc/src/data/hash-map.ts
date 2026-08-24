@@ -4,8 +4,9 @@
  *
  * A HashMap is an immutable, frozen, WeakSet-branded value. `set` and `remove`
  * return new maps and never touch the receiver, and a lookup that can miss —
- * `get` — returns an `Optional`, never `undefined`, so an absent key and a key
- * bound to a falsy value stay distinguishable without a sentinel.
+ * `get` — returns `V | undefined`. Because `undefined` is refused as a value
+ * (see the policy below), an absent key and a key bound to a falsy value stay
+ * distinguishable; `has` answers the membership question directly.
  *
  * **Keying is explicit.** A map carries an `Equivalence<K>` and a matching
  * `Hash<K>`, the pair whose law (`equals` implies equal hashes) is what makes a
@@ -42,14 +43,13 @@
  * instances, so the common case just works.
  *
  * **No `null`, no `undefined`**, for keys or values — the same policy `Chunk`
- * states, for the same reason: `get` answers with an `Optional`, and the
- * runtime's `Optional` refuses to carry either of them. A rejected entry panics
- * at `set`, where the mistake is, rather than at the lookup that trips over it.
+ * states, for the same reason: `get` answers with `V | undefined`, so a stored
+ * `undefined` would make a miss and a hit indistinguishable. A rejected entry
+ * panics at `set`, where the mistake is, rather than at the lookup that trips
+ * over it.
  */
 
-import type { Optional } from "../runtime/optional.ts";
 import { panic } from "../runtime/panic.ts";
-import { RuntimeValues } from "../runtime/values.ts";
 import {
   type Equivalence,
   Equivalence as EquivalenceNamespace,
@@ -57,8 +57,6 @@ import {
   sameValueZero,
 } from "./equivalence.ts";
 import { type Hash, Hash as HashNamespace, registerStructuralHash } from "./hash.ts";
-
-const { absent, present } = RuntimeValues;
 
 const MAP_SEED = 0x6a09e667;
 
@@ -113,10 +111,10 @@ export abstract class HashMapValue<K, V> {
     return stateOf(this).hash;
   }
 
-  /** Absent when the key is not bound. Expected O(1). */
-  get(key: K): Optional<V> {
+  /** `undefined` when the key is not bound. Expected O(1). */
+  get(key: K): V | undefined {
     const { entry } = locate(stateOf(this), key);
-    return entry === undefined ? absent() : (present(entry.value) as Optional<V>);
+    return entry?.value;
   }
 
   has(key: K): boolean {

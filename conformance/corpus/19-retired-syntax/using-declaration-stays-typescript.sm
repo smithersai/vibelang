@@ -1,0 +1,6 @@
+declare global { interface Disposable {} }
+
+export function main(): string[] {
+  using resource = null
+  return [resource === null ? "using" : "unexpected"]
+}

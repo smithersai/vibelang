@@ -148,14 +148,14 @@ export function classify(id: string): string {
     ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"))).toEqual(["Cannot find name 'user'."]);
 });
 
-test("a conditional declaration composes with Result unwrap lowering", () => {
+test("a conditional declaration composes with Result postfix propagation lowering", () => {
   const compiled = compileConditional(`class Missing extends Error {}
 function lookup(id: string): Result<string, Missing> {
   if (id === "") throw new Missing()
   return id
 }
 export function run(id: string): Result<string, Missing> {
-  if (const found = lookup(id).unwrap(); found.length > 2) {
+  if (const found = lookup(id)!; found.length > 2) {
     return found.toUpperCase()
   } else {
     return found
@@ -164,7 +164,7 @@ export function run(id: string): Result<string, Missing> {
 `, "conditional-unwrap");
   expect(compiled.analysis.diagnostics).toEqual([]);
   expect(compiled.analysis.rows.run).toEqual({ failures: ["Missing"], requirements: [] });
-  // The moved declaration is an ordinary statement-safe unwrap host.
+  // The moved declaration is an ordinary statement-safe propagation host.
   expect(compiled.code).toContain("__vsInspectResult(lookup(id))");
   expect(compiled.code).toContain("const found = __smithers_result_1.value;");
   expect(checkEmittedTypeScript(compiled.code, `${import.meta.dir}/conditional-unwrap.generated.ts`)

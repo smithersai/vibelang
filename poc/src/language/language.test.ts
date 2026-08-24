@@ -8,7 +8,7 @@ import { analyzeSource } from "./analyze.ts";
 import { compileSmithers } from "./compile.ts";
 import { internalParseDiagnostics, parseDiagnosticsFailure } from "./semantic.ts";
 import { checkEmittedTypeScript, compileAndCheckSmithers } from "./validate.ts";
-import { __vsInspectOptional, __vsInspectResult } from "../runtime/index.ts";
+import { __vsInspectResult } from "../runtime/index.ts";
 
 const examples = `${import.meta.dir}/../../examples/language`;
 
@@ -41,7 +41,7 @@ async function executeCase(source: string, name: string) {
   });
   const javascript = new Bun.Transpiler({ loader: "ts", target: "bun" })
     .transformSync(executable.code);
-  const directory = await mkdtemp(join(tmpdir(), "smithers-defer-"));
+  const directory = await mkdtemp(join(tmpdir(), "smithers-language-"));
   const modulePath = join(directory, `${name}.mjs`);
   try {
     await writeFile(modulePath, javascript);
@@ -93,7 +93,7 @@ describe("checked .sm frontend", () => {
     expect(result.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1401")).toBe(true);
   });
 
-  test("infers local Results and emits explicit success, failure, and unwrap branches", () => {
+  test("infers local Results and emits explicit success, failure, and postfix propagation branches", () => {
     const result = compileCase(`
       class Missing extends Error {}
       function leaf(id: number) {
@@ -101,7 +101,7 @@ describe("checked .sm frontend", () => {
         return id
       }
       function root(id: number): Result<number, Missing> {
-        const value = leaf(id).unwrap()
+        const value = leaf(id)!
         return value + 1
       }
     `);
@@ -115,6 +115,44 @@ describe("checked .sm frontend", () => {
     expect(emittedErrors(result.code)).toHaveLength(0);
   });
 
+  test("withdraws Result.unwrap, non-null assertions, and definite assignment", () => {
+    const analysis = analyzeSource(`
+      class Missing extends Error {}
+      class Holder { value!: string }
+      declare function lookup(): Result<string, Missing>
+      function retired(): Result<string, Missing> { return lookup().unwrap() }
+      function nonNull(value: string | undefined): string { return value! }
+    `);
+    expect(analysis.diagnostics.filter((diagnostic) =>
+      ["SMITHERS1001", "SMITHERS1206", "SMITHERS1207"].includes(diagnostic.code),
+    ).map((diagnostic) => diagnostic.code).sort()).toEqual([
+      "SMITHERS1001",
+      "SMITHERS1206",
+      "SMITHERS1207",
+    ]);
+  });
+
+  test("keeps prefix bangs, !==, optional chaining, and nullish coalescing ordinary", () => {
+    const result = compileCase(`
+      class Missing extends Error {}
+      interface Profile { readonly nickname?: string }
+      function findUser(id: number): Result<Profile | undefined, Missing> {
+        if (id < 0) throw new Missing()
+        return id === 0 ? undefined : { nickname: id === 1 ? "Ada" : undefined }
+      }
+      export function main(flag: boolean): Result<string[], Missing> {
+        const name = findUser(1)!?.nickname ?? "anonymous"
+        const absent = findUser(0)!?.nickname ?? "anonymous"
+        const value: string = ["smithers"].join("")
+        return [String(!flag), String(!!value), String(value !== ""), name, absent]
+      }
+    `, "postfix-and-prefix-bang");
+    expect(result.analysis.diagnostics).toHaveLength(0);
+    expect(result.code).toContain("!==");
+    expect(result.code).toContain("??");
+    expect(emittedErrors(result.code, "postfix-and-prefix-bang")).toHaveLength(0);
+  });
+
   test("requires explicit Result contracts only at exported boundaries", () => {
     const local = analyzeSource(`class E extends Error {}; function inferred() { throw new E() }`);
     expect(local.rows.inferred?.failures).toEqual(["E"]);
@@ -122,27 +160,6 @@ describe("checked .sm frontend", () => {
 
     const exported = analyzeSource(`class E extends Error {}; export function inferred() { throw new E() }`);
     expect(exported.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1102")).toBe(true);
-  });
-
-  test("lifts Optional and Result<Optional> from outside in", () => {
-    const result = compileCase(`
-      class Invalid extends Error {}
-      function cached(hit: boolean): Optional<number> {
-        if (hit) return 1
-        return undefined
-      }
-      function parsed(kind: number): Result<Optional<number>, Invalid> {
-        if (kind < 0) throw new Invalid()
-        if (kind === 0) return null
-        return 1
-      }
-    `);
-    expect(result.analysis.diagnostics).toHaveLength(0);
-    expect(result.code).toContain("return __vsOptionalSome(1)");
-    expect(result.code).toContain("return __vsOptionalNone()");
-    expect(result.code).toContain("__vsResultSuccess(__vsOptionalNone())");
-    expect(result.code).toContain("__vsResultSuccess(__vsOptionalSome(1))");
-    expect(emittedErrors(result.code)).toHaveLength(0);
   });
 
   test("lowers the checked panic channel to an Error Result value", () => {
@@ -163,10 +180,10 @@ describe("checked .sm frontend", () => {
       import { ForeignFailure, trustedLength, declaredFailure, untrustedAsync } from "./foreign.ts"
       function trusted(): number { return trustedLength("x") }
       function declared(): Result<string, ForeignFailure | Panic> {
-        return declaredFailure(true).unwrap()
+        return declaredFailure(true)!
       }
       async function unknown(): Promise<Result<string, Panic>> {
-        return (await untrustedAsync("x")).unwrap()
+        return (await untrustedAsync("x"))!
       }
     `, "foreign-boundary");
     expect(result.analysis.rows.trusted).toEqual({ failures: [], requirements: ["TypeScript"] });
@@ -180,7 +197,7 @@ describe("checked .sm frontend", () => {
 
     const omitted = analyzeSource(`
       import { ForeignFailure, declaredFailure } from "./foreign.ts"
-      function wrong(): Result<string, ForeignFailure> { return declaredFailure(true).unwrap() }
+      function wrong(): Result<string, ForeignFailure> { return declaredFailure(true)! }
     `, { fileName: `${examples}/foreign-omitted.sm` });
     expect(omitted.diagnostics.some((diagnostic) =>
       diagnostic.code === "SMITHERS1104" && diagnostic.message.includes("Panic"),
@@ -234,7 +251,7 @@ describe("checked .sm frontend", () => {
 
       const late = analyzeSource(`
         import { trustedCall } from "./late-marker.ts"
-        function call(): Result<number, Panic> { return trustedCall().unwrap() }
+        function call(): Result<number, Panic> { return trustedCall()! }
       `, { fileName: join(directory, "late.sm") });
       expect(late.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1510")).toHaveLength(1);
 
@@ -257,7 +274,7 @@ describe("checked .sm frontend", () => {
         import { panic } from "smithers:exceptions"
         const label: Label | UntrustedLabel = value
         async function deferred(): Promise<Result<unknown, Panic>> {
-          return (await load()).unwrap()
+          return (await load())!
         }
       `, { fileName: join(directory, "accepted.sm") });
       expect(accepted.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1510")).toHaveLength(0);
@@ -277,10 +294,10 @@ describe("checked .sm frontend", () => {
       } from "./foreign-js.js"
       function trustedJs(): number { return trustedJavaScriptLength("x") }
       function declaredJs(): Result<string, JavaScriptFailure | Panic> {
-        return declaredJavaScriptFailure(true).unwrap()
+        return declaredJavaScriptFailure(true)!
       }
       async function unknownJs(): Promise<Result<string, Panic>> {
-        return (await untrustedJavaScriptAsync("x")).unwrap()
+        return (await untrustedJavaScriptAsync("x"))!
       }
     `, "foreign-javascript-boundary");
 
@@ -306,23 +323,23 @@ describe("checked .sm frontend", () => {
 
       function trustedMethod(): string { return foreignClient.trustedMethod("x") }
       function trustedGetter(): string { return foreignClient.safeValue }
-      function realForeignUnwrapMethod(): Result<void, Panic> { foreignAny.unwrap().unwrap() }
+      function realForeignUnwrapMethod(): Result<void, Panic> { foreignAny.unwrap()! }
       function method(): Result<string, Panic> {
-        return clientAlias.untrustedMethod("X").unwrap()
+        return clientAlias.untrustedMethod("X")!
       }
       function declaredMethod(): Result<string, AF | Panic> {
-        return foreignClient.declaredMethod(false).unwrap()
+        return foreignClient.declaredMethod(false)!
       }
       function storedCallable(): Result<string, FF | Panic> {
-        return stored.invoke(false).unwrap()
+        return stored.invoke(false)!
       }
       function generatedCallable(): Result<string, Panic> {
-        const callable: (value: string) => string = makeCallable().unwrap()
-        return callable("x").unwrap()
+        const callable: (value: string) => string = makeCallable()!
+        return callable("x")!
       }
       async function generatedAsyncCallable(): Promise<Result<string, Panic>> {
-        const callable: (value: string) => Promise<string> = (await makeAsyncCallable()).unwrap()
-        return (await callable("x")).unwrap()
+        const callable: (value: string) => Promise<string> = (await makeAsyncCallable())!
+        return (await callable("x"))!
       }
     `, "foreign-provenance");
 
@@ -374,14 +391,14 @@ describe("checked .sm frontend", () => {
         const extracted = foreignClient.untrustedMethod
         return "unused"
       }
-      function nestedFactory(): Result<string, Panic> { return makeCallable()("x").unwrap() }
+      function nestedFactory(): Result<string, Panic> { return makeCallable()("x")! }
       function uncheckedFactoryAlias(): Result<string, Panic> {
         const callable: (value: string) => string = makeCallable()
-        return callable("x").unwrap()
+        return callable("x")!
       }
       function callbacks(): Result<void, Panic> {
-        receiveCallback(() => {}).unwrap()
-        receiveCallbackOptions({ onValue: () => {} }).unwrap()
+        receiveCallback(() => {})!
+        receiveCallbackOptions({ onValue: () => {} })!
         trustedCallbackHost(() => {})
       }
       function localHost(callback: (value: string) => number): number { return callback("x") }
@@ -425,10 +442,10 @@ describe("checked .sm frontend", () => {
   test("applies nested provenance and accessor fail-closed rules to JavaScript imports", () => {
     const compiled = compileCase(`
       import { javaScriptClient, makeJavaScriptCallable } from "./foreign-js.js"
-      function method(): Result<string, Panic> { return javaScriptClient.untrustedMethod("x").unwrap() }
+      function method(): Result<string, Panic> { return javaScriptClient.untrustedMethod("x")! }
       function generated(): Result<string, Panic> {
-        const callable: (value: string) => string = makeJavaScriptCallable().unwrap()
-        return callable("x").unwrap()
+        const callable: (value: string) => string = makeJavaScriptCallable()!
+        return callable("x")!
       }
       function trusted(): string { return javaScriptClient.trustedMethod("x") }
       function safeGetter(): string { return javaScriptClient.safeValue }
@@ -447,8 +464,8 @@ describe("checked .sm frontend", () => {
       } from "./foreign-js.js"
       function getter(): Result<string, JavaScriptAccessFailure | Panic> { return javaScriptClient.dangerousValue }
       function callbacks(): Result<void, Panic> {
-        receiveJavaScriptCallback(() => {}).unwrap()
-        receiveJavaScriptCallbackOptions({ onValue: () => {} }).unwrap()
+        receiveJavaScriptCallback(() => {})!
+        receiveJavaScriptCallbackOptions({ onValue: () => {} })!
       }
     `, { fileName: `${examples}/foreign-javascript-adversarial.sm` });
     expect(rejected.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1506")).toHaveLength(1);
@@ -689,18 +706,6 @@ describe("checked .sm frontend", () => {
     `);
     expect(impostorReceiver.diagnostics.map((diagnostic) => diagnostic.code)).toContain("SMITHERS1302");
 
-    // Optional.all is a different compiler-owned combinator and does not
-    // discharge a Result obligation.
-    const optionalAll = analyzeSource(`
-      declare function mightFail(): Result<number, Error>
-      declare function maybe(): Optional<number>
-      function leak(): Optional<unknown> {
-        const r = mightFail()
-        return Optional.all([maybe(), r as unknown as Optional<number>])
-      }
-    `);
-    expect(optionalAll.diagnostics.map((diagnostic) => diagnostic.code)).toContain("SMITHERS1302");
-
     // The genuine combinator still discharges, through the array literal and
     // through a binding that names the same compiler-owned namespace value.
     const genuine = analyzeSource(`
@@ -731,7 +736,7 @@ describe("checked .sm frontend", () => {
       function recover(): Result<number, never> { return mightFail().recover(() => 0) }
       function tap(): Result<number, Missing> { return mightFail().tap(() => undefined) }
       function tapError(): Result<number, Missing> { return mightFail().tapError(() => undefined) }
-      function unwrap(): number { return mightFail().unwrap() }
+      function unwrap(): number { return mightFail()! }
       function unwrapOr(): number { return mightFail().unwrapOr(0) }
       function expect_(): number { return mightFail().expect("required") }
     `);
@@ -746,7 +751,7 @@ describe("checked .sm frontend", () => {
     const lifted = analyzeSource(`
       class Missing extends Error {}
       function fallible(): number { throw new Missing() }
-      function use(): number { return fallible().unwrap() }
+      function use(): number { return fallible()! }
     `);
     expect(lifted.diagnostics.filter((diagnostic) =>
       diagnostic.code === "SMITHERS1301" || diagnostic.code === "SMITHERS1302",
@@ -818,153 +823,18 @@ describe("checked .sm frontend", () => {
     )).toBe(true);
   });
 
-  test("fails closed on expression control-flow and unsafe unwrap placement", () => {
+  test("rejects retired expression control-flow without rejecting ordinary labels", () => {
     const result = analyzeSource(`
       declare function value(): Result<number, Error>
       function assign(flag: boolean) { let x = 0; x = if (flag) { 1 } else { 2 }; return x }
-      function complex(): Result<number, Error> { return 1 + value().unwrap() }
+      function complex(): Result<number, Error> { return 1 + value()! }
       function labeled(flag: boolean) { outer: while (flag) break outer }
     `);
     expect(result.diagnostics.map((diagnostic) => diagnostic.code))
-      .toEqual(expect.arrayContaining(["SMITHERS1702", "SMITHERS1704", "SMITHERS1204"]));
-    // A labeled loop is an ordinary statement: it must receive only the
-    // label diagnostic, never the expression-keyword misclassification.
+      .toEqual(expect.arrayContaining(["SMITHERS1001", "SMITHERS1204"]));
+    // A labeled loop is an ordinary TypeScript statement and stays accepted.
     const labeledLine = result.diagnostics.filter((diagnostic) => diagnostic.line === 5);
-    expect(labeledLine.map((diagnostic) => diagnostic.code)).toEqual(["SMITHERS1704"]);
-  });
-
-  test("executes defer and errdefer lexical tails with provisional LIFO semantics", async () => {
-    const { result, module } = await executeCase(`
-      export class CleanupFailure extends Error {}
-      export const events: string[] = []
-      function failed(): Result<number, CleanupFailure> { throw new CleanupFailure() }
-
-      export function success(): Result<number, CleanupFailure> {
-        defer events.push("always")
-        errdefer events.push("error")
-        return 1
-      }
-      export function failure(kind: "return" | "throw" | "unwrap"): Result<number, CleanupFailure> {
-        defer events.push("always:" + kind)
-        errdefer events.push("error:" + kind)
-        if (kind === "return") return failed()
-        if (kind === "throw") throw new CleanupFailure()
-        return failed().unwrap()
-      }
-      export function registrationAfterEarlyReturn(early: boolean): number {
-        if (early) return 0
-        defer events.push("registered")
-        return 1
-      }
-      export function fallthrough(): void {
-        defer events.push("fallthrough")
-      }
-      export function nested(returnInside: boolean): number {
-        defer events.push("outer")
-        {
-          defer events.push("inner")
-          if (returnInside) return 1
-        }
-        return 2
-      }
-      export function nestedFunctionOwner(): Result<void, CleanupFailure> {
-        errdefer events.push("outer-nested-error")
-        const inner = (): Result<number, CleanupFailure> => {
-          throw new CleanupFailure()
-        }
-        inner().isError()
-      }
-      export function loopExits(): void {
-        for (let index = 0; index < 3; index++) {
-          defer events.push("loop" + index)
-          if (index === 0) continue
-          break
-        }
-      }
-      export function caughtJavaScriptThrow(): void {
-        try {
-          {
-            defer events.push("js-finally")
-            throw "ordinary JavaScript throw"
-          }
-        } catch { events.push("js-caught") }
-      }
-      async function asyncCleanup(value: string): Promise<void> {
-        await Promise.resolve()
-        events.push(value)
-      }
-      export async function asyncDefer(): Promise<number> {
-        defer await asyncCleanup("async")
-        return 3
-      }
-      export async function asyncErrdefer(): Promise<Result<number, CleanupFailure>> {
-        errdefer await asyncCleanup("async-error")
-        throw new CleanupFailure()
-      }
-    `, "defer-execution");
-
-    expect(result.analysis.diagnostics).toHaveLength(0);
-    expect(emittedErrors(result.code, "defer-execution")).toHaveLength(0);
-    expect(module.events).toEqual([]);
-
-    expect(__vsInspectResult(module.success()).ok).toBe(true);
-    expect(module.events.splice(0)).toEqual(["always"]);
-    for (const kind of ["return", "throw", "unwrap"] as const) {
-      expect(__vsInspectResult(module.failure(kind)).ok).toBe(false);
-      expect(module.events.splice(0)).toEqual([`error:${kind}`, `always:${kind}`]);
-    }
-    expect(module.registrationAfterEarlyReturn(true)).toBe(0);
-    expect(module.events.splice(0)).toEqual([]);
-    expect(module.registrationAfterEarlyReturn(false)).toBe(1);
-    expect(module.events.splice(0)).toEqual(["registered"]);
-    module.fallthrough();
-    expect(module.events.splice(0)).toEqual(["fallthrough"]);
-    expect(module.nested(true)).toBe(1);
-    expect(module.events.splice(0)).toEqual(["inner", "outer"]);
-    expect(module.nested(false)).toBe(2);
-    expect(module.events.splice(0)).toEqual(["inner", "outer"]);
-    expect(__vsInspectResult(module.nestedFunctionOwner()).ok).toBe(true);
-    expect(module.events.splice(0)).toEqual([]);
-    module.loopExits();
-    expect(module.events.splice(0)).toEqual(["loop0", "loop1"]);
-    module.caughtJavaScriptThrow();
-    expect(module.events.splice(0)).toEqual(["js-finally", "js-caught"]);
-    expect(await module.asyncDefer()).toBe(3);
-    expect(module.events.splice(0)).toEqual(["async"]);
-    expect(__vsInspectResult(await module.asyncErrdefer()).ok).toBe(false);
-    expect(module.events.splice(0)).toEqual(["async-error"]);
-  });
-
-  test("fails closed on ambiguous defer cleanup, placement, and async Result exits", () => {
-    const result = analyzeSource(`
-      import { panic } from "smithers:exceptions"
-      class CleanupFailure extends Error {}
-      function plainCleanup(): void {}
-      function resultCleanup(): Result<void, CleanupFailure> { throw new CleanupFailure() }
-      async function promiseCleanup(): Promise<void> {}
-      async function promisedResult(): Promise<Result<number, CleanupFailure>> { throw new CleanupFailure() }
-
-      function missing(): void { defer; }
-      function declarationCleanup(): void { defer const value = 1 }
-      function singleStatement(flag: boolean): void { if (flag) defer plainCleanup() }
-      function plainErrdefer(): void { errdefer plainCleanup(); return }
-      function resultChannel(): Result<number, CleanupFailure> { defer resultCleanup(); return 1 }
-      function unwrapCleanup(): Result<number, CleanupFailure> { defer resultCleanup().unwrap(); return 1 }
-      function panicCleanup(): Result<number, Panic> { defer panic(); return 1 }
-      function promiseChannel(): number { defer promiseCleanup(); return 1 }
-      function syncAwait(): number { defer await promiseCleanup(); return 1 }
-      async function asyncTail(): Promise<Result<number, CleanupFailure>> {
-        errdefer await promiseCleanup()
-        return promisedResult()
-      }
-    `);
-    const codes = result.diagnostics.map((diagnostic) => diagnostic.code);
-    expect(codes.filter((code) => code === "SMITHERS1710").length).toBeGreaterThanOrEqual(3);
-    expect(codes).toContain("SMITHERS1711");
-    expect(codes.filter((code) => code === "SMITHERS1712").length).toBeGreaterThanOrEqual(5);
-    expect(codes).toContain("SMITHERS1713");
-    expect(result.diagnostics.filter((diagnostic) => diagnostic.code.startsWith("SMITHERS171"))
-      .every((diagnostic) => diagnostic.line > 0 && diagnostic.column > 0)).toBe(true);
+    expect(labeledLine).toEqual([]);
   });
 
   test("preserves JavaScript try/catch while lifting uncaught Error exits", () => {
@@ -987,11 +857,11 @@ describe("checked .sm frontend", () => {
       function next(): Result<number, Failure> { return 1 }
       function loop(active: boolean): Result<number, Failure> {
         while (active) {
-          const value = next().unwrap()
+          const value = next()!
           if (value > 0) throw new Failure()
           return value
         }
-        for (let index = next().unwrap(); index < 2; index++) {
+        for (let index = next()!; index < 2; index++) {
           if (index === 1) return index
         }
         return 0
@@ -1008,7 +878,7 @@ describe("checked .sm frontend", () => {
       class Failure extends Error {}
       declare function next(): Result<boolean, Failure>
       function bad(): Result<void, Failure> {
-        while (next().unwrap()) {}
+        while (next()!) {}
       }
     `);
     expect(unsupported.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1703")).toBe(true);
@@ -1050,82 +920,6 @@ describe("checked .sm frontend", () => {
     expect(map.version).toBe(3);
     expect(map.sources).toEqual(["examples/language/mapped.sm"]);
     expect(map.sourcesContent).toEqual([source]);
-  });
-
-  test("lowers Optional.unwrap() absence propagation in Optional and Result<Optional> owners", async () => {
-    const { result, module } = await executeCase(`
-      export function findCached(id: number): Optional<string> {
-        if (id === 1) return "ada@example.test"
-        return undefined
-      }
-      export function primaryEmail(id: number): Optional<string> {
-        const email = findCached(id).unwrap()
-        return email.toUpperCase()
-      }
-      export class MissingDirectory extends Error {}
-      export function guarded(id: number): Result<Optional<string>, MissingDirectory> {
-        if (id < 0) throw new MissingDirectory()
-        const email = findCached(id).unwrap()
-        return email
-      }
-    `, "optional-unwrap");
-
-    expect(result.analysis.diagnostics).toHaveLength(0);
-    expect(result.analysis.rows.primaryEmail).toEqual({ failures: [], requirements: [] });
-    expect(result.analysis.rows.guarded?.failures).toEqual(["MissingDirectory"]);
-    expect(result.code).toContain("__vsInspectOptional(findCached(id))");
-    expect(result.code).toContain("return __vsOptionalNone()");
-    expect(result.code).toContain("return __vsResultSuccess(__vsOptionalNone())");
-    expect(emittedErrors(result.code, "optional-unwrap")).toHaveLength(0);
-
-    expect(__vsInspectOptional(module.primaryEmail(1))).toEqual({ some: true, value: "ADA@EXAMPLE.TEST" });
-    expect(__vsInspectOptional(module.primaryEmail(2))).toEqual({ some: false });
-    const present = __vsInspectResult(module.guarded(1));
-    expect(present.ok).toBe(true);
-    expect(__vsInspectOptional((present as { value: any }).value)).toEqual({ some: true, value: "ada@example.test" });
-    const absent = __vsInspectResult(module.guarded(2));
-    expect(absent.ok).toBe(true);
-    expect(__vsInspectOptional((absent as { value: any }).value)).toEqual({ some: false });
-    expect(__vsInspectResult(module.guarded(-1)).ok).toBe(false);
-  });
-
-  test("rejects Optional.unwrap() without an Optional-capable owner instead of compiling it verbatim", () => {
-    const plain = analyzeSource(`
-      declare function findCached(id: number): Optional<string>
-      function broken(id: number): string { return findCached(id).unwrap() }
-    `);
-    expect(plain.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1206")).toHaveLength(1);
-
-    const resultOwner = analyzeSource(`
-      class Missing extends Error {}
-      declare function findCached(id: number): Optional<string>
-      function alsoBroken(id: number): Result<string, Missing> {
-        if (id < 0) throw new Missing()
-        return findCached(id).unwrap()
-      }
-    `);
-    expect(resultOwner.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1206")).toHaveLength(1);
-
-    const topLevel = analyzeSource(`
-      declare function findCached(id: number): Optional<string>
-      const value = findCached(1).unwrap()
-    `);
-    expect(topLevel.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1206")).toHaveLength(1);
-
-    const placements = analyzeSource(`
-      declare function next(): Optional<boolean>
-      declare function maybeNumber(): Optional<number>
-      function loop(): Optional<boolean> {
-        while (next().unwrap()) {}
-        return false
-      }
-      function complex(): Optional<number> { return 1 + maybeNumber().unwrap() }
-      function cleanup(): Optional<number> { defer maybeNumber().unwrap(); return 1 }
-    `);
-    const codes = placements.diagnostics.map((diagnostic) => diagnostic.code);
-    expect(codes).toContain("SMITHERS1703");
-    expect(codes).toContain("SMITHERS1204");
-    expect(codes).toContain("SMITHERS1712");
   });
 
   test("charges the distinguished Panic channel for Result.expect()", () => {
@@ -1240,7 +1034,7 @@ describe("checked .sm frontend", () => {
 
       const source = `
         import { helper } from "smithersutils"
-        function use(): Result<number, Panic> { return helper("x").unwrap() }
+        function use(): Result<number, Panic> { return helper("x")! }
       `;
       const analysis = analyzeSource(source, { fileName: join(directory, "case.sm") });
       expect(analysis.diagnostics).toHaveLength(0);
@@ -1266,37 +1060,32 @@ describe("checked .sm frontend", () => {
     }
   });
 
-  test("fails closed on panic and unwrap propagation inside a JavaScript try with a catch clause", () => {
+  test("fails closed on panic and Result postfix propagation inside a JavaScript try with a catch clause", () => {
     const analysis = analyzeSource(`
       import { panic } from "smithers:exceptions"
       class Missing extends Error {}
       declare function load(): Result<number, Missing>
-      declare function maybe(): Optional<number>
       function caughtPanic(): Result<void, Panic> {
         try { panic("boom") } catch { return }
       }
       function caughtUnwrap(): Result<number, Missing> {
-        try { return load().unwrap() } catch { return 0 }
-      }
-      function caughtOptional(): Optional<number> {
-        try { return maybe().unwrap() } catch { return undefined }
+        try { return load()! } catch { return 0 }
       }
       function finallyOnly(): Result<number, Missing> {
-        try { return load().unwrap() } finally { }
+        try { return load()! } finally { }
       }
       function nestedOwner(): Result<number, Missing> {
         try {
-          const inner = (): Result<number, Missing> => load().unwrap()
+          const inner = (): Result<number, Missing> => load()!
           return inner()
         } catch { return 0 }
       }
     `);
     const catches = analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1205");
-    expect(catches).toHaveLength(3);
+    expect(catches).toHaveLength(2);
     expect(catches.map((diagnostic) => diagnostic.message.split(" ")[0])).toEqual([
       "panic(...)",
-      "Result.unwrap()",
-      "Optional.unwrap()",
+      "postfix",
     ]);
   });
 

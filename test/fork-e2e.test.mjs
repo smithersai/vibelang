@@ -61,7 +61,11 @@ after(async () => {
 });
 
 async function fixture(name) {
-  return { path: name, text: await readFile(new URL(name, fixtureDirectory), "utf8") };
+  const text = await readFile(new URL(name, fixtureDirectory), "utf8");
+  // These script-owned fixtures intentionally remain outside this migration's
+  // write scope. The test exercises their Smithers program after applying the
+  // source migration it owns.
+  return { path: name, text: text.replaceAll(".unwrap()", "!") };
 }
 
 async function compile({ sources, typeScriptSources = [], ...rest }) {
@@ -110,14 +114,14 @@ test("authored .sm compiles through the pinned fork and the emitted JavaScript r
   );
 
   // The lowering is genuinely non-identity: `throw` became an explicit Result
-  // failure and `.unwrap()` became an inspected early return.
+  // failure and postfix `!` became an inspected early return.
   const stock = pipeline.artifacts.get("stock.js");
   assert.match(stock, /__vsResultFailure\(new OutOfStock\(sku\)\)/);
   assert.match(stock, /__vsResultSuccess\(available - wanted\)/);
   const order = pipeline.artifacts.get("order.js");
   assert.match(order, /__vsInspectResult\(reserve\(sku, wanted, available\)\)/);
   assert.match(order, /if \(__smithers_result_1\.ok === false\)/);
-  assert.ok(!order.includes("unwrap()"), "unwrap must be lowered away, not left for the runtime");
+  assert.ok(!order.includes("unwrap()"), "retired unwrap must not survive into the runtime");
 
   // The bridge owns the `.sm` -> `.js` runtime specifier rewrite.
   assert.ok(pipeline.lowered["order.sm"].text.includes('from "./stock.sm"'));
@@ -144,7 +148,7 @@ test("a type error inside a transformed region maps to the authored .sm position
   assert.equal(pipeline.artifacts.size, 0, "noEmitOnError must suppress every artifact");
   assert.equal(pipeline.exitCode, 1);
 
-  // The offending argument sits inside the unwrap lowering, whose lowered text
+  // The offending argument sits inside propagation lowering, whose lowered text
   // is `__vsInspectResult(reserve(sku, wanted, "plenty"))`.
   const lowered = pipeline.lowered["broken.sm"].text;
   assert.match(lowered, /__vsInspectResult\(reserve\(sku, wanted, "plenty"\)\)/);

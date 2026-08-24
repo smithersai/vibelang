@@ -7,12 +7,6 @@ import {
   type NominalError,
 } from "./errors.ts";
 import {
-  __vsInspectOptional,
-  __vsOptionalNone,
-  __vsOptionalSome,
-  type Optional,
-} from "./optional.ts";
-import {
   __vsInspectResult,
   __vsResultFailure,
   __vsResultSuccess,
@@ -22,7 +16,7 @@ import {
 const MAX_WIRE_BYTES = 1_048_576;
 const MAX_JSON_DEPTH = 64;
 
-/** A compiler-derived codec for the successful/present payload of an envelope. */
+/** A compiler-derived codec for the successful payload of an envelope. */
 export interface ValueCodec<T> {
   readonly encode: (value: T) => JsonValue;
   readonly decode: (payload: JsonValue) => T;
@@ -212,31 +206,4 @@ export function decodeResult<A, E extends Error>(
     }
   }
   return __vsResultFailure(error as E);
-}
-
-export function encodeOptional<A>(optional: Optional<A>, codec: ValueCodec<A>): string {
-  const inspected = __vsInspectOptional(optional);
-  if (!inspected.some) return `{"version":1,"kind":"none"}`;
-  const payload = encodedPayload(codec, inspected.value);
-  return finishWire(`{"version":1,"kind":"some","value":${stringifyJson(payload)}}`);
-}
-
-export function decodeOptional<A>(wire: string, codec: ValueCodec<A>): Optional<A> {
-  const envelope = parseWire(wire);
-  if (envelope.version !== 1 || (envelope.kind !== "some" && envelope.kind !== "none")) {
-    throw new ValueCodecError("encoded Optional has an unsupported envelope");
-  }
-  if (envelope.kind === "none") {
-    exactKeys(envelope, ["version", "kind"]);
-    assertCanonical(wire, `{"version":1,"kind":"none"}`);
-    return __vsOptionalNone();
-  }
-  exactKeys(envelope, ["version", "kind", "value"]);
-  const canonical = `{"version":1,"kind":"some","value":${stringifyJson(envelope.value)}}`;
-  assertCanonical(wire, canonical);
-  const value = decodedPayload(codec, envelope.value);
-  if (value === null || value === undefined) {
-    throw new ValueCodecError("decoded Optional present value cannot be null or undefined");
-  }
-  return __vsOptionalSome(value);
 }

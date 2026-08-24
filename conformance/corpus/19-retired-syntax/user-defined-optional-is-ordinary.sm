@@ -1,0 +1,16 @@
+type Optional<T> = { readonly present: boolean; readonly value: T | undefined }
+
+const Optional = {
+  some<T>(value: T): Optional<T> { return { present: true, value } },
+  none<T>(): Optional<T> { return { present: false, value: undefined } },
+}
+
+function lookup(hit: boolean): Optional<string> {
+  return hit ? Optional.some("Ada") : Optional.none<string>()
+}
+
+export function main(): string[] {
+  const present = lookup(true)
+  const absent = lookup(false)
+  return [present.value ?? "Guest", absent.value ?? "Guest"]
+}

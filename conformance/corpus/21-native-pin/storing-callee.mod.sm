@@ -1,6 +1,0 @@
-// `keep` STORES the callback and hands it back. Nothing in its visible body
-// invokes it, so nothing the callback would do has run. It is the twin of
-// invoking-callee.mod.sm and differs from it in exactly one expression.
-export function keep(callback: () => number): () => number {
-  return callback
-}

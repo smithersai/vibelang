@@ -18,17 +18,17 @@ describe("construction and lookup", () => {
   test("of, empty, make, and fromIterable agree", () => {
     const map = HashMap.of<string, number>(["a", 1], ["b", 2]);
     expect(map.size).toBe(2);
-    expect(map.get("a").unwrapOr(-1)).toBe(1);
+    expect(map.get("a") ?? -1).toBe(1);
     expect(HashMap.empty<string, number>().size).toBe(0);
     expect(HashMap.empty<string, number>().isEmpty()).toBe(true);
-    expect(HashMap.fromIterable([["a", 1] as const]).get("a").unwrapOr(-1)).toBe(1);
-    expect(HashMap.make<string, number>(Equivalence.string, Hash.string, [["a", 1]]).get("a").unwrapOr(-1)).toBe(1);
+    expect(HashMap.fromIterable([["a", 1] as const]).get("a") ?? -1).toBe(1);
+    expect(HashMap.make<string, number>(Equivalence.string, Hash.string, [["a", 1]]).get("a") ?? -1).toBe(1);
     expect(
       HashMap.fromIterable([["a", 1] as const], { equivalence: Equivalence.string, hash: Hash.string })
-        .get("a").unwrapOr(-1),
+        .get("a") ?? -1,
     ).toBe(1);
     // Later entries win.
-    expect(HashMap.of<string, number>(["a", 1], ["a", 2]).get("a").unwrapOr(-1)).toBe(2);
+    expect(HashMap.of<string, number>(["a", 1], ["a", 2]).get("a") ?? -1).toBe(2);
     expect(HashMap.of<string, number>(["a", 1], ["a", 2]).size).toBe(1);
     expect(HashMap.isHashMap(map)).toBe(true);
     expect(HashMap.isHashMap(new Map())).toBe(false);
@@ -36,19 +36,24 @@ describe("construction and lookup", () => {
     expect(Object.prototype.toString.call(map)).toBe("[object HashMap]");
   });
 
-  test("a miss is an Optional absence, never undefined", () => {
+  test("a miss is `undefined`, and a falsy bound value is still present", () => {
     const map = HashMap.of<string, number>(["a", 1]);
-    expect(map.get("a").isSome()).toBe(true);
-    expect(map.get("zzz").isNone()).toBe(true);
+    expect(map.get("a")).not.toBeUndefined();
+    expect(map.get("zzz")).toBeUndefined();
     expect(map.has("a")).toBe(true);
     expect(map.has("zzz")).toBe(false);
-    expect(HashMap.empty<string, number>().get("a").isNone()).toBe(true);
-    // A falsy bound value is still present, which is the point of the Optional.
+    expect(HashMap.empty<string, number>().get("a")).toBeUndefined();
+    // `??` coalesces only nullish values, so a falsy binding survives it.
     const falsy = HashMap.of<string, number | string | boolean>(["zero", 0], ["empty", ""], ["no", false]);
-    expect(falsy.get("zero").isSome()).toBe(true);
-    expect(falsy.get("zero").unwrapOr("miss")).toBe(0);
-    expect(falsy.get("empty").isSome()).toBe(true);
-    expect(falsy.get("no").isSome()).toBe(true);
+    expect(falsy.get("zero")).not.toBeUndefined();
+    expect(falsy.get("zero") ?? "miss").toBe(0);
+    expect(falsy.get("empty")).not.toBeUndefined();
+    expect(falsy.get("no")).not.toBeUndefined();
+    expect(falsy.get("empty") ?? "miss").toBe("");
+    expect(falsy.get("no") ?? "miss").toBe(false);
+    expect(falsy.get("nope") ?? "miss").toBe("miss");
+    // `||` would have swallowed all three; `??` is the absence operator.
+    expect(falsy.get("zero") || "miss").toBe("miss");
   });
 
   test("bad arguments panic", () => {
@@ -76,9 +81,9 @@ describe("immutability and branding", () => {
 
     expect(added.size).toBe(3);
     expect(removed.size).toBe(1);
-    expect(replaced.get("a").unwrapOr(-1)).toBe(10);
+    expect(replaced.get("a") ?? -1).toBe(10);
     expect(base.size).toBe(2);
-    expect(base.get("a").unwrapOr(-1)).toBe(1);
+    expect(base.get("a") ?? -1).toBe(1);
     expect(base.has("c")).toBe(false);
     expect(added).not.toBe(base);
     expect(removed).not.toBe(base);
@@ -142,29 +147,29 @@ describe("hash collisions", () => {
       .set("c", 3);
 
     expect(map.size).toBe(3);
-    expect(map.get("a").unwrapOr(-1)).toBe(1);
-    expect(map.get("b").unwrapOr(-1)).toBe(2);
-    expect(map.get("c").unwrapOr(-1)).toBe(3);
-    expect(map.get("d").isNone()).toBe(true);
+    expect(map.get("a") ?? -1).toBe(1);
+    expect(map.get("b") ?? -1).toBe(2);
+    expect(map.get("c") ?? -1).toBe(3);
+    expect(map.get("d")).toBeUndefined();
 
     // Removing the middle of a shared bucket leaves the others alone.
     const smaller = map.remove("b");
     expect(smaller.size).toBe(2);
-    expect(smaller.get("a").unwrapOr(-1)).toBe(1);
-    expect(smaller.get("b").isNone()).toBe(true);
-    expect(smaller.get("c").unwrapOr(-1)).toBe(3);
+    expect(smaller.get("a") ?? -1).toBe(1);
+    expect(smaller.get("b")).toBeUndefined();
+    expect(smaller.get("c") ?? -1).toBe(3);
     // ...and the original still has it.
-    expect(map.get("b").unwrapOr(-1)).toBe(2);
+    expect(map.get("b") ?? -1).toBe(2);
 
     // Overwriting inside a shared bucket touches only that key.
     const updated = map.set("b", 20);
-    expect(updated.get("a").unwrapOr(-1)).toBe(1);
-    expect(updated.get("b").unwrapOr(-1)).toBe(20);
-    expect(updated.get("c").unwrapOr(-1)).toBe(3);
+    expect(updated.get("a") ?? -1).toBe(1);
+    expect(updated.get("b") ?? -1).toBe(20);
+    expect(updated.get("c") ?? -1).toBe(3);
 
     // Emptying the bucket entirely.
     expect(map.remove("a").remove("b").remove("c").size).toBe(0);
-    expect(map.remove("a").remove("b").remove("c").get("a").isNone()).toBe(true);
+    expect(map.remove("a").remove("b").remove("c").get("a")).toBeUndefined();
   });
 
   test("a partially colliding hash behaves the same as a perfect one", () => {
@@ -172,8 +177,8 @@ describe("hash collisions", () => {
     let map = HashMap.make<number, string>(Equivalence.number, byRemainder);
     for (let index = 0; index < 30; index += 1) map = map.set(index, `v${index}`);
     expect(map.size).toBe(30);
-    for (let index = 0; index < 30; index += 1) expect(map.get(index).unwrapOr("miss")).toBe(`v${index}`);
-    expect(map.get(30).isNone()).toBe(true);
+    for (let index = 0; index < 30; index += 1) expect(map.get(index) ?? "miss").toBe(`v${index}`);
+    expect(map.get(30)).toBeUndefined();
     expect([...map.keys()]).toEqual(Array.from({ length: 30 }, (_, index) => index));
   });
 });
@@ -184,36 +189,36 @@ describe("structural and custom keys", () => {
     const twin = Data.struct({ shard: 3, region: "us-east" });
     const map = HashMap.of<unknown, string>([key, "first"], [Chunk.of(1, 2), "second"]);
 
-    expect(map.get(twin).unwrapOr("miss")).toBe("first");
-    expect(map.get(Chunk.of(1).append(2)).unwrapOr("miss")).toBe("second");
-    expect(map.get(Data.struct({ region: "us-west", shard: 3 })).isNone()).toBe(true);
+    expect(map.get(twin) ?? "miss").toBe("first");
+    expect(map.get(Chunk.of(1).append(2)) ?? "miss").toBe("second");
+    expect(map.get(Data.struct({ region: "us-west", shard: 3 }))).toBeUndefined();
     expect(map.set(twin, "replaced").size).toBe(2);
-    expect(map.set(twin, "replaced").get(key).unwrapOr("miss")).toBe("replaced");
+    expect(map.set(twin, "replaced").get(key) ?? "miss").toBe("replaced");
 
     // A plain object key is a reference key, per the documented boundary.
     const plain = { region: "us-east" };
     const plainMap = HashMap.of<unknown, string>([plain, "by reference"]);
-    expect(plainMap.get(plain).unwrapOr("miss")).toBe("by reference");
-    expect(plainMap.get({ region: "us-east" }).isNone()).toBe(true);
+    expect(plainMap.get(plain) ?? "miss").toBe("by reference");
+    expect(plainMap.get({ region: "us-east" })).toBeUndefined();
   });
 
   test("a custom Equivalence/Hash pair keys the map, and the pair must be lawful", () => {
     const caseInsensitive = Equivalence.make<string>((left, right) => left.toLowerCase() === right.toLowerCase());
     const caseInsensitiveHash = Hash.string.contramap((value: string) => value.toLowerCase());
-    expect(Hash.checkLaws(caseInsensitive, caseInsensitiveHash, ["a", "A", "b"]).isNone()).toBe(true);
+    expect(Hash.checkLaws(caseInsensitive, caseInsensitiveHash, ["a", "A", "b"])).toBeUndefined();
 
     const map = HashMap.make<string, number>(caseInsensitive, caseInsensitiveHash, [["Alpha", 1]]);
-    expect(map.get("alpha").unwrapOr(-1)).toBe(1);
-    expect(map.get("ALPHA").unwrapOr(-1)).toBe(1);
+    expect(map.get("alpha") ?? -1).toBe(1);
+    expect(map.get("ALPHA") ?? -1).toBe(1);
     expect(map.set("ALPHA", 2).size).toBe(1);
     expect(map.keyEquivalence).toBe(caseInsensitive);
     expect(map.keyHash).toBe(caseInsensitiveHash);
 
     // The law is not decoration: pairing that equality with the raw string hash
     // makes an equal key unreachable, which is exactly what checkLaws reports.
-    expect(Hash.checkLaws(caseInsensitive, Hash.string, ["a", "A"]).isSome()).toBe(true);
+    expect(Hash.checkLaws(caseInsensitive, Hash.string, ["a", "A"])).not.toBeUndefined();
     const broken = HashMap.make<string, number>(caseInsensitive, Hash.string, [["Alpha", 1]]);
-    expect(broken.get("alpha").isNone()).toBe(true);
+    expect(broken.get("alpha")).toBeUndefined();
   });
 });
 
@@ -260,7 +265,7 @@ describe("structural equality", () => {
       HashMap.of<string, number>(["b", 2], ["a", 1]),
       HashMap.of<string, number>(["a", 2]),
     ];
-    expect(Hash.checkLaws(Equivalence.any, Hash.any, samples).isNone()).toBe(true);
+    expect(Hash.checkLaws(Equivalence.any, Hash.any, samples)).toBeUndefined();
   });
 });
 
@@ -288,10 +293,10 @@ describe("a seeded randomized round-trip", () => {
 
       expect(map.size).toBe(model.size);
       expect([...map.entries()]).toEqual([...model.entries()]);
-      for (const [key, value] of model) expect(map.get(key).unwrapOr("miss")).toBe(value);
+      for (const [key, value] of model) expect(map.get(key) ?? "miss").toBe(value);
       for (let key = 0; key < 20; key += 1) {
         expect(map.has(key)).toBe(model.has(key));
-        if (!model.has(key)) expect(map.get(key).isNone()).toBe(true);
+        if (!model.has(key)) expect(map.get(key)).toBeUndefined();
       }
       // Rebuilding from the same entries lands on an equal map with an equal hash.
       const rebuilt = HashMap.make<number, string>(Equivalence.number, narrow, model.entries());

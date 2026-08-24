@@ -4,7 +4,7 @@ class Lookup extends Action<(input: { key: string }) => Result<{ value: string }
 class Audit extends Action<(input: { value: string }) => Result<{ saved: boolean }, Error>> {}
 
 export const Build = compileFlow((input: { key: string; live: boolean }) => {
-  const found = Lookup.run({ key: input.key }).unwrap()
+  const found = Lookup.run({ key: input.key })!
   const selected = input.live ? found.value : "offline"
   sleep(25)
   const pair = sequential(

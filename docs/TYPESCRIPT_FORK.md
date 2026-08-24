@@ -1,274 +1,187 @@
-# Pinned TypeScript fork
+# Pinned TypeScript fork architecture
 
-> [!IMPORTANT]
-> **Specification drift — read `docs/DECISIONS.md` first.**
-> This document reports what the implementation does. As of 2026-08-23 the
-> specification was substantially reduced and the code has not caught up, so
-> parts of this page describe features the language no longer defines: the
-> expression-form control-flow grammar, `defer`/`errdefer`, labeled value
-> breaks, `Optional<T>`, `.unwrap()` (now postfix `!`), the TypeScript non-null
-> assertion, and the near-native/Wasm targets with their `TypeScript`
-> requirement, feature classification, and portability pin. Where this document
-> and the specification disagree, the specification wins.
+Status: **Locked** for the minimal-diff pinned-fork strategy; **Direction** for
+the exact repository, release, and update mechanics.
 
-Smithers has two compiler implementations in this repository:
+Smithers is built as one production compiler based on a pinned TypeScript fork.
+The CLI, language server, formatter, bundler integration, and programmatic API
+share that semantic core. Users do not select between competing Smithers
+backends.
 
-- the TypeScript analysis/lowering instrument under `poc/src/language`, which
-  remains the default for the root `smithers` CLI; and
-- a real Go implementation that runs inside the exact pinned
-  `smithersai/TypeScript` fork and is selected explicitly with `--backend go`.
+## Why a fork is required
 
-The Go path is not a wrapper around the TypeScript instrument. It parses and
-checks `.sm` with the fork, makes lowering decisions from fork symbols and
-types, constructs replacement nodes with the fork AST factory, prints with the
-fork printer, and maps diagnostics and artifacts back to authored `.sm` spans.
+Smithers needs integration points that a source transform cannot provide
+soundly:
 
-> **Source-checkout note:** npm ships this provenance document, but it does not
-> ship the repository-only preparation scripts, source capsule, Go bridge,
-> forkpatch tooling, or compiler binary. The commands below are maintainer and
-> reviewer operations for a source checkout.
+- `.sm` parsing and recovery, including the one adopted grammar addition;
+- checker-owned failure and requirement rows across module boundaries;
+- postfix `!` as Result propagation rather than non-null assertion;
+- must-use Result and Promise-consumption analysis;
+- resolved-identity recognition for compiler-owned modules;
+- type-valued comptime results and generated module symbols;
+- static Flow lowering from checked control and data flow;
+- declaration metadata, source maps, language-service queries, and diagnostics;
+  and
+- atomic whole-project emission after all generated artifacts validate.
 
-## Why the fork is required
+A per-file transform cannot own those semantics. It may deliver already defined
+lowering into a bundler, but the forked compiler remains authoritative.
 
-The Go TypeScript compiler is a nested module under `tsc/`, and its parser,
-checker, AST, printer, emitter, and language-service packages live under Go
-`internal` paths. Smithers code outside that parent module cannot import them.
-The repository therefore uses three narrow mechanisms:
+## Minimal-diff rule
 
-| Mechanism | Purpose |
+Fork changes MUST be narrow, reviewable, and assigned to one of these seams:
+
+| Seam | Smithers responsibility |
 | --- | --- |
-| `compiler/forkpatch` | Digest-gated changes to fork-owned parser, AST, binder, checker, printer, and tests. |
-| `go build -overlay` from `compiler/forkbridge` | Adds the Smithers bridge implementation to an existing fork package without copying internals into the root module. |
-| Controlled checkout population from `cmd/smithersc/forksrc` | Builds the separate fork-owned foundation command and marker package. |
+| source kind and parser | recognize `.sm`, reject retired syntax, and parse declarations in conditionals |
+| binder and checker | nominal Result/Error behavior, failure rows, requirement rows, must-use rules, and intrinsic identity |
+| flow analysis | Result propagation, Promise consumption, capability paths, and durable representability |
+| comptime | deterministic evaluation, type production, tracked inputs, and generated modules |
+| durable lowering | lower checked functions to Plan IR without invoking them |
+| emitter | lower Smithers semantics, preserve module behavior, and emit declarations and source maps |
+| language service | expose the same symbols, rows, diagnostics, navigation, and edits as the compiler |
 
-The root module does not copy TypeScript internals or use a `replace` directive
-to bypass Go's visibility boundary.
+Smithers MUST NOT copy large TypeScript subsystems into parallel packages or
+maintain a second parser/checker as the product path. An upstreamable generic
+hook is preferred when it can preserve the same semantics without weakening
+the contract.
 
-## Exact-revision source capsule
+## Source pin and provenance
 
-The production ledger originally selected a squashed subtree at
-`vendor/typescript`. Measuring the pinned revision showed that a literal import
-would add 65,532 files and 205,979,146 logical bytes (392 MiB allocated on the
-measurement filesystem); `tsc/testdata` alone accounts for 60,190 files and
-155,576,229 bytes. The pre-import Smithers repository had 1,003 tracked files
-and 35,822,782 tracked bytes.
+Every Smithers compiler release pins one immutable upstream TypeScript revision.
+The repository vendors that revision at `vendor/typescript` as a squashed Git
+subtree. The source distribution includes:
 
-The implemented repository format is therefore an exact-revision source
-capsule rather than an expanded subtree. `vendor/typescript/typescript.bundle`
-is a 34,257,412-byte Git bundle whose `HEAD` is the 40-character revision in
-`typescript-fork.json`. The capsule also carries TypeScript's visible license
-and a file-based proxy for the 21 Go modules selected by the pinned `tsc/go.mod`
-graph. It materializes a clean, editable checkout without a submodule or
-network access.
+- the exact upstream revision;
+- upstream license material;
+- an ordered Smithers patch manifest;
+- cryptographic digests of every patch and expected pre/post image;
+- the selected Go or JavaScript dependency graph, as applicable; and
+- reproducible instructions for materializing the review tree.
 
-```sh
-node scripts/prepare-typescript-fork.mjs --cache /path/to/cache
-```
+Normal compiler builds MUST NOT fetch unpinned source implicitly. A network
+fallback is explicit, verifies the revision and content, and produces the same
+review tree as the offline source material.
 
-The default sparse profile materializes 757 `tsc` files. Use `--full-tsc` only
-when the upstream test corpus is needed. `--source /path/to/checkout` verifies
-an existing checkout; `--fetch` is an explicit network fallback when the
-repository-only capsule is unavailable. Normal preparation never silently
-fetches.
+## Patch discipline
 
-The source capsule is not an npm distribution payload. The package allowlist
-excludes `vendor/`, the preparation scripts, the Go bridge, and cached compiler
-binaries.
+Fork patches are an ordered series rather than undocumented edits to a vendored
+tree. Tooling MUST:
 
-## Reviewable, reversible fork patches
+1. verify the exact upstream revision and pristine pre-image;
+2. verify patch identities and order;
+3. refuse a dirty, partially applied, or divergent checkout;
+4. apply or unapply transactionally;
+5. verify the complete post-image; and
+6. reproduce byte-identical results from independent clean materializations.
 
-All modifications to fork-owned files are carried as an ordered series under
-`compiler/forkpatch`. `series.json` pins the exact upstream revision, patch
-order, patch-file SHA-256 values, and pre/post-image digests. The tool rejects
-a wrong revision, an altered patch, a dirty or mixed checkout, a missing or
-extra patch, and any post-image divergence.
+A source digest proves content identity, not publisher identity. Release
+signatures and provenance attestations are separate requirements.
 
-```sh
-node compiler/forkpatch/forkpatch.mjs status  --checkout /path/to/checkout
-node compiler/forkpatch/forkpatch.mjs apply   --checkout /path/to/checkout
-node compiler/forkpatch/forkpatch.mjs verify  --checkout /path/to/checkout
-node compiler/forkpatch/forkpatch.mjs unapply --checkout /path/to/checkout
-```
+## One compiler pipeline
 
-Application runs `git apply --check` before each ordered patch and rolls back
-earlier patches if a later patch fails. `unapply` has been measured to restore
-the pinned checkout to a byte-identical pristine tree with an empty Git status.
-Applying the series independently to multiple fresh checkouts also produces
-byte-identical post-images.
-
-The series contains the real Smithers grammar and its fork-owned tests. All
-nine documented surface-grammar forms parse, bind, type-check, and reach the Go
-lowerer in the applied tree. `.sm` nevertheless remains a content-mapper
-extension registered with the fork, not a built-in TypeScript source kind. The
-project has deliberately not crossed that compatibility boundary.
-
-### Upstream health gate
-
-On August 22, 2026, against pinned revision
-`c087644e82dc3d48cf87e4c5519eeaaea9daf35c`, both a pristine checkout and the
-complete applied series passed the same 62/62 Go packages and 130,743 upstream
-testrunner subtests. The package list and outcomes were identical apart from
-timings. Those are upstream-health measurements for that exact revision and
-tree states, not a Smithers conformance score.
-
-The patch series is reviewable in a source checkout, but it is neither vendored
-into the npm distribution nor signed. A digest proves the bytes match this
-repository's manifest; it is not publisher identity, release attestation, or a
-supply-chain signature.
-
-## The Go Smithers implementation
-
-`CompileRequest.Lowering: "internal"` selects the Go implementation. The bridge
-injects compiler-owned prelude and virtual-module declarations into one checked
-fork Program, then lowers with fork AST nodes. It does not perform source-text
-replacement.
-
-The implemented semantic core includes:
-
-- `Result<A, E>` success/error lifting from ordinary `return` and `throw`;
-- `.unwrap()` early propagation with statement-order checks and authored
-  diagnostics;
-- `Optional<A>` lifting, absence propagation, and outside-in
-  `Result<Optional<A>, E>` handling;
-- async `Promise<Result<A, E>>` checking and lowering;
-- nominal error matching resolved by constructor binding identity;
-- compiler diagnostics for must-consume, unsafe propagation, and unsupported
-  placements;
-- all nine Smithers surface-grammar forms, including value-producing control
-  flow and cleanup forms; and
-- both compiler-owned intrinsics: `smithers:comptime` and `smithers:flows`.
-
-The lowering runs before the fork emits ordinary JavaScript, declarations, and
-source maps. Compiler-generated wrappers, temporaries, imports, and Plan data
-are left unmapped; rewritten authored nodes retain authored source ranges.
-Relative `.sm` runtime imports are rewritten to emitted `.js` names, while
-declarations keep `.sm` specifiers beside `.d.sm.ts` artifacts.
-
-### `smithers:comptime` in Go
-
-The Go comptime pass recognizes direct, aliased, and namespace imports by
-resolved declaration identity. Its bounded evaluator supports canonical data,
-project-local constants and pure helpers, branches and loops, interpreter-owned
-array/object mutation, a deterministic standard-library allowlist, hard step /
-allocation / call-depth / string budgets, `comptime.target` branch erasure, and
-value-derived literal type aliases. Retained runtime functions cannot capture
-phase-only operations, and any refusal suppresses all substitutions and emit
-for the request.
-
-Tracked `embed(...)` is recognized but refused because the Go request protocol
-does not yet carry compiler-owned asset bytes. Schema reification, loader
-registration, and the persistent content-addressed comptime cache remain on the
-TypeScript-instrument side. The Go backend fails closed rather than reading the
-ambient filesystem or substituting a runtime placeholder.
-
-### `smithers:flows` in Go
-
-The durable pass recognizes `durable`, `Action`, and Flow helpers by resolved
-identity and lowers a useful checked subset to a static, serializable,
-digest-pinned Plan descriptor. Direct Actions, projections, `.unwrap()`
-propagation edges, conditional expressions, timers, typed signals, and explicit
-`sequential(...)` control edges are supported. The pass walks checked syntax
-and constructs Plan literals; it never invokes the Flow function or an Action
-implementation.
-
-Fan-out, child Flows, general statement control flow, loops, broadcast, queues,
-and unsupported persistence shapes currently produce explicit `SMITHERS41xx`
-diagnostics in the Go backend. The TypeScript durable compiler has a broader
-bounded subset. Exact emitted-byte parity is not claimed; the Go-emitted Plan
-has been validated by the TypeScript `PlanArtifact` validator with matching
-canonical digest recomputation.
-
-## Product CLI selection
-
-The root CLI exposes the Go implementation on three commands:
+The target pipeline is:
 
 ```text
-smithers check   <inputs...> --backend go
-smithers compile <inputs...> --backend go
-smithers run     <input>     --backend go
+project resolution
+  -> parse and bind
+  -> TypeScript and Smithers checking
+  -> asset/loading graph
+  -> comptime evaluation and generated types/modules
+  -> failure, requirement, and Promise-consumption analysis
+  -> durable Plan lowering
+  -> Smithers semantic lowering
+  -> generated-project validation
+  -> declaration, JavaScript, source-map, and Plan emission
+  -> atomic artifact commit
 ```
 
-Omitting `--backend`, or writing `--backend js`, selects the TypeScript
-instrument. The Go route never falls back to it. The CLI requires an
-exact-revision checkout whose complete patch series is already applied with no
-post-image divergence, sends one in-memory protocol-v3 request with internal
-lowering selected, and adapts authored UTF-16 diagnostic spans into the same
-one-based report shape as the default path. `run --backend go` executes the
-emitted entry under Node in a temporary ESM project.
+Later phases may request earlier information through explicit compiler APIs,
+but they MUST NOT reparse source text heuristically or execute authored modules
+to rediscover semantic facts.
 
-Preparation failures are structured and actionable: missing checkout, wrong
-revision, pristine/unpatched state, mixed or divergent state, build failure,
-timeout, and protocol mismatch each fail nonzero. No failure changes backend.
-See `docs/src/pages/reference/cli.mdx` for the exact codes and remedies.
+The compiler keeps authored source positions through every lowering. Generated
+text without an authored origin remains unmapped. Diagnostics and editor
+navigation use checker symbol identity, not name-based approximations.
 
-The conformance corpus is expanding while backend-parity work continues. It is
-a contract, not a census, so this page does not freeze a moving pass total. Use
-`conformance/COVERAGE.md` as the live obligation-to-case matrix and rerun the
-backend harness against the tree being reviewed.
+## `.sm` source identity
 
-## Direct bridge protocol
+`.sm` is a first-class compiler source kind. Its module resolution, project
+references, incremental invalidation, declaration emit, watch behavior, and
+language-service participation follow TypeScript's project model with the
+explicit Smithers differences in the specification.
 
-The same backend is directly invocable from a source checkout:
+Imported `.ts`, `.tsx`, and JavaScript-family files retain their native language
+semantics. The Smithers checker attaches boundary facts when values cross from
+those modules; it does not reinterpret their bodies as `.sm`.
 
-```sh
-go build -o /tmp/smithersc-go ./cmd/smithersc-go
-/tmp/smithersc-go \
-  --fork-checkout /path/to/checkout \
-  --fork-cache /path/to/compiler-cache \
-  --timeout 5m \
-  main.sm
-```
+## Toolchain integration
 
-Compile attempts return one `CompileResult` JSON object. The command also
-accepts `--request request.json` for one full in-memory protocol request.
-Internal lowering runs the Go implementation above. External lowering remains
-available when another frontend supplies generated TypeScript and a strict
-version-3 source map per `.sm` file; the bridge validates and composes that map
-instead of inventing authored positions.
+The same compiler package powers:
 
-Multi-file requests may contain `.sm` and `.ts` roots with relative POSIX paths
-and subdirectories. Every source must be supplied explicitly; the bridge does
-not discover imports from ambient disk. Artifact-name collisions and malformed
-maps fail closed.
+- `smithers check`, `compile`, `run`, `test`, `inspect`, `plan`, and `build`;
+- the Smithers language server;
+- the deterministic formatter and parser recovery used by editors;
+- the unplugin bundler integration; and
+- the programmatic project and build APIs.
 
-## The separate fork-owned foundation command
+Tooling may use different execution modes, but it cannot define a second
+language. Formatting preserves semantics. Editor recovery cannot make a program
+buildable. Transform-only bundler mode cannot approximate whole-program facts.
 
-`cmd/smithersc/forksrc` also contains the source for a small fork-owned
-`cmd/smithersc` identity command and `internal/smithers` marker. The controlled
-build temporarily populates those new package paths, builds, removes them, and
-verifies the checkout again. That foundation command proves legal access to
-fork internals and byte-reproducible local builds; it is distinct from the
-`cmd/smithersc-go` bridge and does not itself compile Smithers programs.
+## Upstream health gate
 
-```sh
-npm run typescript:fork:verify
-npm run smithersc:build
-npm run smithersc:verify-reproducible
-```
+For both the pristine pin and the fully applied Smithers patch series, the
+update process runs:
 
-Its cached binary is local only. It is not signed, attested, published, or
-distributed.
+- the complete selected upstream unit and integration suites;
+- parser, checker, emitter, declaration, source-map, and language-service tests;
+- the Smithers conformance corpus;
+- clean and incremental project builds;
+- patch apply/unapply and reproducibility checks; and
+- package, license, and artifact inventory checks.
 
-## Tooling and remaining boundaries
-
-The working `smithers format` and `smithers lsp` commands currently use the
-TypeScript instrument rather than the Go backend. The formatter delegates to
-the TypeScript language-service formatter and permits whitespace changes only.
-The language server speaks stdio JSON-RPC and implements diagnostics,
-failure/requirement-row hover, definition, and whole-document formatting within
-a bounded relative-`.sm` project closure.
-
-The fork work does not imply a native/LLVM backend or a general Wasm backend.
-The current Wasm path is a bounded architectural proof. It also does not turn
-process-level compiler/loader sandboxes into container or VM isolation, or add
-multi-machine coordination to the durable runtime.
+Any upstream regression introduced by the patch series blocks the pin update.
+Passing upstream tests does not by itself establish Smithers conformance; the
+two suites protect different contracts.
 
 ## Updating the pin
 
-Update fork-owned compiler changes in reviewable patches against the exact
-revision, then regenerate and verify the series rather than editing capsule
-payloads. Updating the pinned revision requires a clean complete checkout, a
-new source capsule, license verification, forkpatch re-recording, pristine and
-applied upstream health runs, the Smithers test suites, and package-inventory
-checks. A release must separately decide how to distribute and sign compiler
-artifacts; the current repository workflow does neither.
+A pin update is a reviewed compiler migration, not a dependency-bot version
+bump. It requires:
+
+1. materializing and verifying the new pristine upstream revision;
+2. replaying or rewriting every fork seam against that revision;
+3. recording new pre/post images and patch digests;
+4. reviewing upstream syntax, checker, emitter, module-resolution, and API
+   changes for Smithers semantic impact;
+5. running both upstream and Smithers health gates;
+6. regenerating source provenance and license inventories; and
+7. documenting any observable source, diagnostic, declaration, or artifact
+   migration.
+
+When upstream adopts a Smithers patch's generic capability, the Smithers patch
+shrinks or disappears. Compatibility shims have an explicit removal condition.
+
+## Release contract
+
+Compiler releases include signed artifacts, source provenance, an SBOM, the
+exact TypeScript pin, the Smithers patch manifest, and reproducible verification
+instructions. The distribution verifies its own compiler/runtime ABI match and
+fails closed on mixed versions.
+
+Compiler process isolation, loader sandboxing, durable worker attestation, and
+deployment signing are separate security boundaries. A signed compiler does not
+automatically make code it compiles or workers it launches trustworthy.
+
+## Open decisions
+
+1. Whether release artifacts include the complete vendored tree or a verified
+   pruned representation of the same source.
+2. Supported platforms and whether the compiler ships as native binaries, a
+   JavaScript package, or both.
+3. Upstream pin cadence and support window for older pins.
+4. Patch-series tooling and manifest schema.
+5. Reproducible-build environment, signing system, SBOM format, and attestation
+   publication.
+6. Which generic fork seams should be proposed upstream.

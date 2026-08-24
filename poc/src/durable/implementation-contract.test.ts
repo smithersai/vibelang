@@ -505,8 +505,7 @@ test("only exactly-named compiler-owned specifiers escape the implementation clo
     "smthrs/schema-runtime",
     "smithers:exceptions",
     "smithers:comptime",
-    "smithers:flows",
-    "smithers:native"
+    "smithers:flows"
   ]) {
     expect(() => compileWithImport(specifier, `owned-${specifier}`))
       .not.toThrow("cannot authenticate external import")
@@ -570,5 +569,99 @@ test("a resolvable near-miss specifier cannot certify a closure that never cover
     })).toThrow("cannot authenticate external import 'smthrs/context-evil'")
   } finally {
     await rm(directory, { recursive: true })
+  }
+})
+
+test("every module-referencing form meets the implementation closure check", async () => {
+  // `import ... from` was the only form `assertClosedImports` inspected, so a
+  // re-export or an import assignment reached an external, unpinned package and
+  // still produced a `compiler-derived` contract whose projectDigest never
+  // covered that edge — the prefix fail-open again, through another spelling.
+  const directory = await mkdtemp(join(tmpdir(), "smithers-closure-forms-"))
+  try {
+    const packageDirectory = join(directory, "node_modules", "evil-pkg")
+    await mkdir(packageDirectory, { recursive: true })
+    await writeFile(
+      join(packageDirectory, "package.json"),
+      JSON.stringify({ name: "evil-pkg", version: "1.0.0", types: "index.d.ts" })
+    )
+    // The trusted foreign-module JSDoc, so nothing downstream refuses this
+    // package for an unrelated reason and hides the closure result.
+    await writeFile(join(packageDirectory, "index.d.ts"), [
+      "/** @module @throws {never} */",
+      "",
+      "/** @throws {never} */",
+      "export declare function exfiltrate(value: number): number;",
+      ""
+    ].join("\n"))
+
+    const { Work } = defineProgram("closure-forms")
+    const body = "export function checkedImplementation(input: { value: number }) {\n" +
+      "  return { value: input.value }\n" +
+      "}\n"
+    const compileWith = (label: string, prelude: string) => compileActionImplementationContract({
+      action: Work.descriptor,
+      implementationId: `closure-form-${label}`,
+      implementationVersion: "1",
+      entryFile: "implementation.sm",
+      rootDir: directory,
+      exportName: "checkedImplementation",
+      implementation: checkedImplementation,
+      sources: [{ fileName: "implementation.sm", source: `${prelude}\n${body}` }]
+    })
+
+    for (const [label, prelude] of [
+      ["import", 'import { exfiltrate } from "evil-pkg"'],
+      ["named-re-export", 'export { exfiltrate } from "evil-pkg"'],
+      ["star-re-export", 'export * from "evil-pkg"'],
+      ["namespace-re-export", 'export * as evil from "evil-pkg"'],
+      ["import-equals", 'import evil = require("evil-pkg")'],
+      ["dynamic-import", 'const pending = import("evil-pkg")']
+    ] as const) {
+      expect(() => compileWith(label, prelude), label)
+        .toThrow("cannot authenticate external import 'evil-pkg'")
+    }
+
+    // A relative specifier that is absent from the closure is refused through
+    // exactly the same forms.
+    for (const [label, prelude] of [
+      ["missing-import", 'import { helper } from "./absent.sm"'],
+      ["missing-re-export", 'export { helper } from "./absent.sm"'],
+      ["missing-star-re-export", 'export * from "./absent.sm"'],
+      ["missing-import-equals", 'import absent = require("./absent.sm")']
+    ] as const) {
+      expect(() => compileWith(label, prelude), label)
+        .toThrow("source closure is missing relative import './absent.sm'")
+    }
+  } finally {
+    await rm(directory, { recursive: true })
+  }
+
+  // Both directions: an in-closure relative re-export is ordinary checked code
+  // and must still certify.
+  const { Work: Local } = defineProgram("closure-forms-local")
+  const implementationBody = `
+    export function checkedImplementation(input: { value: number }) {
+      return { value: input.value }
+    }
+  `
+  for (const [label, prelude, extra] of [
+    ["named", 'export { LIMIT } from "./constants.sm"', "export const LIMIT = 3\n"],
+    ["star", 'export * from "./constants.sm"', "export const LIMIT = 3\n"],
+    ["type-only", 'export type { Value } from "./constants.sm"', "export type Value = { value: number }\n"]
+  ] as const) {
+    const contract = compileActionImplementationContract({
+      action: Local.descriptor,
+      implementationId: `closure-form-local-${label}`,
+      implementationVersion: "1",
+      entryFile: "implementation.sm",
+      exportName: "checkedImplementation",
+      implementation: checkedImplementation,
+      sources: [
+        { fileName: "constants.sm", source: extra },
+        { fileName: "implementation.sm", source: `${prelude}\n${implementationBody}` }
+      ]
+    })
+    expect(contract.source, label).toBe("compiler-derived")
   }
 })

@@ -21,7 +21,6 @@
 
 import { type JsonValue, type NominalError, registerErrorCodec } from "../runtime/errors.ts";
 import { Context } from "../runtime/layer.ts";
-import { Optional } from "../runtime/optional.ts";
 import { Panic, panic } from "../runtime/panic.ts";
 import { Result, rethrowPanics } from "../runtime/result.ts";
 import { causeDetail } from "./internal.ts";
@@ -344,8 +343,8 @@ export class TestProcess extends Process {
   }
 
   /** The first requested exit code, if the program asked to exit at all. */
-  exitCode(): Optional<number> {
-    return this.#exits.length === 0 ? Optional.fromNullable<number>(undefined) : Optional.fromNullable(this.#exits[0]);
+  exitCode(): number | undefined {
+    return this.#exits[0];
   }
 
   /** Records the code, then panics with {@link ProcessExited}; it never returns. */

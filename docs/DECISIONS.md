@@ -1,8 +1,8 @@
 # Smithers decision ledger
 
-This is the concise source of truth for decisions made during early design. It
-records direction, not complete normative semantics; `SPEC.md` will eventually
-replace it.
+This ledger records accepted design decisions. Together with the published
+specification pages and linked design drafts, it forms the Smithers product
+specification.
 
 Status:
 
@@ -10,10 +10,17 @@ Status:
 - **Direction** — accepted principle whose detailed spelling or mechanics remain open.
 - **Open** — discussed but not decided.
 
-Last reconciled with the published specification pages: 2026-08-21.
-Latest ledger decisions: 2026-08-21. The published specification pages reflect
-the compatibility, foreign-panic, lean Layer, and Promise-lifetime decisions
-below as of that date.
+Last reconciled with the published specification pages: 2026-08-23.
+Latest ledger decisions: 2026-08-23.
+
+This ledger is the tie-breaker over the published specification pages
+(`specification/index.mdx` §Source of Truth), so it must never be staler than
+they are. The 2026-08-23 revision reduced the language substantially: grammar
+cut to one form (`if (const x = f(); cond)`), postfix `!` replacing `.unwrap()`
+with the TypeScript non-null assertion removed, `Optional<T>` withdrawn in
+favour of `T | undefined`, and TypeScript established as the only compilation
+target with the near-native/LLVM and Wasm targets, the `TypeScript` requirement,
+feature classification, and the portability pin all withdrawn.
 
 ## Identity and compatibility
 
@@ -23,7 +30,8 @@ below as of that date.
   imply a stricter or sounder language mode.
 - **Locked:** Smithers is not a syntactic superset of TypeScript. `.sm` has an
   intentionally TypeScript-derived grammar with a small set of deliberate,
-  important differences such as failure handling and expression control flow.
+  documented differences such as Result propagation and declarations in
+  conditionals.
 - **Locked:** Smithers can directly import TypeScript and JavaScript modules.
   `.ts`, `.tsx`, and JavaScript sources retain their own syntax and semantics;
   they are interoperability inputs, not source that must parse as `.sm`.
@@ -50,8 +58,6 @@ below as of that date.
   compiler-aware context types preserve `R` in editor and declaration
   signatures.
 - **Locked:** Smithers does not introduce an Effect-style fiber runtime.
-- **Direction:** If a compiled target is ever built it would have a Go-like runtime with garbage
-  collection, while the TypeScript target lowers to ordinary TypeScript/JS.
 
 ## Typed failures
 
@@ -225,7 +231,7 @@ below as of that date.
   dependency. Type-only imports do not create runtime requirements.
 - **Direction:** Direct host-module usage carries an exact module requirement,
   such as `Module<"node:fs">`, rather than only a coarse platform bit.
-- **Locked:** A capability may have different implementations by target. A
+- **Locked:** A capability may have different implementations by JavaScript host. A
   filesystem requirement can be supplied by Node, Bun, Deno, or a test
   implementation when available.
 - **Locked:** Importing Zig and Rust through generated, strongly typed Wasm
@@ -259,6 +265,14 @@ below as of that date.
   may lint against them; the language does not forbid them.
 - **Locked:** Arbitrary dynamic import expressions remain available, since there
   is no target that cannot resolve them.
+- **Open:** How an in-bounds index read is spelled, now that
+  `noUncheckedIndexedAccess` is mandatory and `arr[i]!` means Result
+  propagation rather than a non-null assertion. `arr[i]!` was extremely common,
+  so every index read in a loop needs a new spelling. Candidates: a standard
+  library extraction helper; mandatory explicit narrowing, which is correct but
+  verbose enough that people will fight it; or a distinct assertion spelling
+  that is not `!`. This is a language-feel decision and should not be settled by
+  whoever reaches it first.
 - **Open:** Type assertion semantics need a final decision. Current candidate:
   safe assertions erase, and reifiable assertions may check and defect on
   failure. The TypeScript non-null assertion is already removed, because `!` is
@@ -333,9 +347,9 @@ below as of that date.
   TypeScript/JavaScript modules retain normal Promise behavior internally.
 - **Locked:** Awaiting a fallible async operation produces its
   `Result<A, E>`; `await` does not silently unwrap or discard the Result.
-- **Direction:** Promise behavior that prevents efficient or sound
-  compilation may require `TypeScript`; the exact supported Promise subset is
-  still open.
+- **Direction:** Promise subclasses, custom thenables, and other behavior that
+  prevents sound consumption or lifetime analysis may be rejected in `.sm`;
+  the exact supported Promise subset is still open.
 
 ## Durable execution
 
@@ -378,7 +392,7 @@ below as of that date.
   explicitly in Plan IR; it may not secretly inspect an Action result while
   constructing the plan.
 - **Locked:** Durable Actions and Flow executions can run across processes,
-  sandboxes, and machines. Deployment builds can emit multiple TypeScript,
+  sandboxes, and machines. Deployment builds can emit multiple TypeScript
   worker artifacts plus a coordinator and routing manifest.
 - **Direction:** Placement belongs to provider/deployment layers rather than
   the abstract Action, allowing multiple target and location implementations
@@ -468,8 +482,11 @@ below as of that date.
   protocol. Smithers does not add Promise or structured-join parser syntax.
 - **Locked:** Capabilities subsume AsyncContext for compiled dependency
   propagation; an interop adapter may exist at TypeScript boundaries.
-- **Locked:** Smithers owns expression-form control-flow grammar while leaving
-  future pattern-matching syntax room to converge with TC39.
+- **Locked:** Smithers does not own expression-form control-flow grammar. See
+  [Control flow](#control-flow): blocks, `if`, `switch`, `while`, and `for` are
+  TypeScript statements. Room is deliberately left for future pattern-matching
+  syntax to converge with TC39 rather than being pre-empted by an invented
+  form.
 - **Locked:** Forked platform declarations must be audited for Result errors,
   defects, and requirements.
 - **Locked:** Standing rejections include Block Params, reinterpretation of
@@ -492,16 +509,16 @@ below as of that date.
 - **Locked:** The TypeScript backend lowers Smithers constructs into TypeScript
   before the ordinary TypeScript pipeline completes checking and emission where
   feasible.
-- **Direction:** Content mappers are useful for the earliest prototype and
-  editor support, but a production compiler likely requires a shared checked
-  Smithers IR.
+- **Direction:** Delivery hooks such as content mappers may feed `.sm` source
+  into the compiler, but semantic phases share one checked Smithers IR rather
+  than parallel frontend models.
 - **Open:** The exact compiler seams and plugin ABI require an architecture
-  audit of current upstream TypeScript.
+  audit of the pinned upstream TypeScript revision.
 - **Locked:** The toolchain should follow Go's batteries-included model:
   compiler, formatter, test tooling, language service, and build integration in
   one coherent distribution.
 - **Locked:** `.sm` soundness configuration is mandatory and identical on every
-  target: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
+  JavaScript host: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
   `isolatedModules`, `verbatimModuleSyntax`, and `useDefineForClassFields`.
   Making soundness target-conditional would mean a file valid for TypeScript is
   inconsistent across builds. Imported `.ts` keeps its own configuration.
@@ -551,16 +568,16 @@ below as of that date.
 
 ## Immediate unresolved design work
 
-2. Finalize checked versus TypeScript-only semantics for `as`.
-4. Define Layer merge/override rules and requirement-environment lowering; base
+1. Finalize checked versus TypeScript-only semantics for `as`.
+2. Define Layer merge/override rules and requirement-environment lowering; base
    Layers do not own resources or child work.
-5. Resolve the durable execution questions in `docs/DURABLE_EXECUTION.md`, one
+3. Resolve the durable execution questions in `docs/DURABLE_EXECUTION.md`, one
    at a time.
-6. Define the shared Plan/expression IR and then map it onto current TypeScript
+4. Define the shared Plan/expression IR and then map it onto the pinned TypeScript
    compiler seams.
-7. Specify the comptime loader registration API and the built-in Markdown/MDX
+5. Specify the comptime loader registration API and the built-in Markdown/MDX
    module shapes.
-8. Design the agent library's minimal prompt, turn, execution, and passed-
+6. Design the agent library's minimal prompt, turn, execution, and passed-
    function interfaces; this is library work, not language grammar.
-9. Design the compiler's incremental build graph and plugin contracts for
+7. Design the compiler's incremental build graph and plugin contracts for
    generators, linters, foreign tools, durable plan analysis, and bundle partitioning.

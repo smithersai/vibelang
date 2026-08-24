@@ -1,0 +1,6 @@
+{
+  "title": "a program's own type and value named Optional work as ordinary TypeScript declarations",
+  "expect": "output",
+  "stdout": ["Ada", "Guest"],
+  "notes": "specification/type-system.mdx, 'Absence': there is no built-in Optional<T>, while an ordinary standard-library container may be reconsidered without compiler rules. The same principle means a user declaration with that spelling is neither reserved nor rewritten. This is the negative test for over-correcting the built-in withdrawal into a name ban."
+}

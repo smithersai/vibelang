@@ -14,7 +14,7 @@ function returned(key: string): Result<string, Missing> {
 
 // unwrapping
 function unwrapped(key: string): Result<string, Missing> {
-  const name = lookup(key).unwrap()
+  const name = lookup(key)!
   return name.toUpperCase()
 }
 

@@ -93,7 +93,7 @@ class Lookup extends Action<(input: { key: string }) => Result<{ value: string }
 class Audit extends Action<(input: { value: string }) => Result<{ saved: boolean }, Error>> {}
 
 export const Build = compileFlow((input: { key: string; live: boolean }) => {
-    const found = Lookup.run({ key: input.key }).unwrap()
+    const found = Lookup.run({ key: input.key })!
     const selected = input.live ? found.value : "offline"
     sleep(25)
     const pair = sequential(
@@ -149,7 +149,7 @@ export function main(): string {
 		}
 	}
 	if len(plan.Nodes[1].ControlDependencies) != 1 || plan.Nodes[1].ControlDependencies[0] != plan.Nodes[0].ID {
-		t.Fatalf("unwrap did not become the branch control edge: %#v", plan.Nodes[:2])
+		t.Fatalf("postfix propagation did not become the branch control edge: %#v", plan.Nodes[:2])
 	}
 	if len(plan.Nodes[4].ControlDependencies) != 1 || plan.Nodes[4].ControlDependencies[0] != plan.Nodes[3].ID {
 		t.Fatalf("sequential did not pin the second Action: %#v", plan.Nodes[3:5])

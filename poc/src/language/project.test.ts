@@ -217,7 +217,7 @@ describe("checked .sm project rows", () => {
           abstract class Clock extends Context { abstract now(): number }
           export function run(): Result<string, Missing> {
             Clock.context().now()
-            return load().unwrap()
+            return load()!
           }
         `,
       },
@@ -274,49 +274,6 @@ describe("checked .sm project rows", () => {
     });
   });
 
-  test("lowers defer tails in a checked multi-module compile", () => {
-    const sourceSet = [
-      {
-        fileName: "src/main.sm",
-        source: `
-          import { load, type ProjectFailure } from "./service.sm"
-          export let cleanupCount = 0
-          export function run(): Result<number, ProjectFailure> {
-            defer cleanupCount += 1
-            errdefer cleanupCount += 10
-            return load().unwrap()
-          }
-        `,
-      },
-      {
-        fileName: "src/service.sm",
-        source: `
-          export class ProjectFailure extends Error {}
-          export function load(): Result<number, ProjectFailure> {
-            throw new ProjectFailure()
-          }
-        `,
-      },
-    ] as const;
-    const checked = compileAndCheckProject(sourceSet, {
-      rootDir: "/virtual/defer-project",
-      outDir: "/virtual/defer-output",
-      outputExtension: ".mjs",
-      runtimeImport: resolve(import.meta.dir, "../runtime/index.ts"),
-      sourceMap: false,
-    });
-
-    expect(checked.ok).toBe(true);
-    expect(checked.result.diagnostics).toHaveLength(0);
-    expect(checked.emitDiagnostics).toHaveLength(0);
-    const output = checked.result.files["src/main.sm"]!.code;
-    expect(output).toContain("try {");
-    expect(output).toContain("finally {");
-    expect(output).toContain("__vsInspectResult");
-    expect(output).not.toContain("defer cleanupCount");
-    expect(output).not.toContain("errdefer cleanupCount");
-  });
-
   test("propagates Error and Context rows through checker-resolved import aliases", () => {
     const analysis = analyzeProject([
       {
@@ -326,10 +283,10 @@ describe("checked .sm project rows", () => {
           import type { Missing } from "./domain.sm"
           import * as domain from "./domain.sm"
           export function run(id: number): Result<string, Missing> {
-            return applicationLoad(id).unwrap()
+            return applicationLoad(id)!
           }
           export function runNamespace(id: number): Result<string, domain.Missing> {
-            return domain.find(id).unwrap()
+            return domain.find(id)!
           }
         `,
       },
@@ -351,7 +308,7 @@ describe("checked .sm project rows", () => {
         source: `
           import { find as fetch, type Missing } from "./domain.sm"
           export function load(id: number): Result<string, Missing> {
-            return fetch(id).unwrap()
+            return fetch(id)!
           }
         `,
       },
@@ -365,6 +322,74 @@ describe("checked .sm project rows", () => {
     expect(analysis.diagnostics).toHaveLength(0);
   });
 
+  // The withdrawal tripwire. On 2026-08-23 the portability pin, the `TypeScript`
+  // requirement, the portable/required/forbidden classification and the portable
+  // Wasm backend were withdrawn, and `poc/src/targets/classify.ts` — which
+  // computed a SECOND requirement row of its own to decide the pin — was
+  // deleted with them. The rows below are the FRONTEND's and always were, but
+  // that is exactly the kind of thing a removal lane assumes rather than
+  // measures. Each assertion here names one survivor the withdrawal could have
+  // taken with it, in one program, so a future deletion that quietly weakens the
+  // capability system fails here rather than passing silently.
+  test("the capability system survives the portability withdrawal", async () => {
+    const root = await mkdtemp(join(tmpdir(), "smithers-withdrawal-survivors-"));
+    try {
+      await writeFile(join(root, "foreign.ts"), `
+        export function readSetting(key: string): string { return key }
+      `);
+      const analysis = analyzeProject([
+        {
+          fileName: "main.sm",
+          source: [
+            'import { Context } from "smthrs/context"',
+            'import { Layer } from "smthrs/provider"',
+            'import { readSetting } from "./foreign.ts"',
+            "export abstract class Config extends Context { abstract get(key: string): string }",
+            "export abstract class Clock extends Context { abstract now(): number }",
+            "",
+            "// 1. a nominal capability is charged to the row that reads it, and",
+            "//    propagates through an ordinary call.",
+            'export function mode(): string { return Config.context().get("mode") }',
+            "export function describe(): string { return mode() }",
+            "",
+            "// 2. two capabilities compose, and Layer provision SUBTRACTS the one",
+            "//    it provides while leaving the one it does not.",
+            'export function stamped(): string { return String(Clock.context().now()) + ":" + mode() }',
+            "const clock: Clock = { now: () => 7 }",
+            "export function scoped(): string[] {",
+            "  return Layer.provide(Layer.succeed(Clock, clock), () => [stamped()])",
+            "}",
+            "",
+            "// 3. an unannotated foreign call still charges the checked panic",
+            "//    channel, because JavaScript can throw. This one is the survivor",
+            "//    most easily mistaken for portability machinery.",
+            'export function read(): Result<string, Panic> { return readSetting("mode") }',
+            "",
+          ].join("\n"),
+        },
+      ], { rootDir: root });
+
+      const rows = analysis.files["main.sm"]!.rows;
+      // Context rows are still computed and still propagate through calls.
+      expect(rows.mode!.requirements).toEqual(["Config"]);
+      expect(rows.describe!.requirements).toEqual(["Config"]);
+      expect(rows.stamped!.requirements).toEqual(["Clock", "Config"]);
+
+      // Layer provision still subtracts exactly what it provides.
+      expect(rows.scoped!.requirements).toEqual(["Config"]);
+
+      // The checked panic channel is still charged on an unannotated foreign call.
+      expect(rows.read!.failures).toEqual(["Panic"]);
+
+      // And the withdrawn machinery is gone rather than merely unused: no
+      // portability diagnostic reaches a caller of the frontend any more.
+      expect(analysis.diagnostics.filter((diagnostic) => diagnostic.code.startsWith("SMITHERS30")))
+        .toEqual([]);
+    } finally {
+      await rm(root, { recursive: true });
+    }
+  });
+
   test("reaches a fixed point across an import cycle", () => {
     const analysis = analyzeProject([
       {
@@ -373,7 +398,7 @@ describe("checked .sm project rows", () => {
           import { b, type CycleFailure } from "./b.sm"
           export function a(stop: boolean): Result<number, CycleFailure> {
             if (stop) return 1
-            return b(true).unwrap()
+            return b(true)!
           }
         `,
       },
@@ -383,7 +408,7 @@ describe("checked .sm project rows", () => {
           import { a } from "./a.sm"
           export class CycleFailure extends Error {}
           export function b(stop: boolean): Result<number, CycleFailure> {
-            if (!stop) return a(true).unwrap()
+            if (!stop) return a(true)!
             throw new CycleFailure()
           }
         `,
@@ -451,7 +476,7 @@ currentTime()
           declare function register(callback: () => unknown): void
           register(generic)
           export function direct(): Result<string, GenericFailure> {
-            return generic<string>().unwrap()
+            return generic<string>()!
           }
         `,
       },
@@ -478,7 +503,7 @@ currentTime()
         source: `
           import { genericFailure } from "./library.sm"
           export function forward<F extends Error>(error: F): Result<string, F> {
-            return genericFailure("value", error).unwrap()
+            return genericFailure("value", error)!
           }
         `,
       },
@@ -522,7 +547,7 @@ currentTime()
         source: `
           import { generic, type GenericFailure } from "./library.sm"
           export function direct(): Result<string, GenericFailure> {
-            return generic<string>("value").unwrap()
+            return generic<string>("value")!
           }
         `,
       },
@@ -562,8 +587,8 @@ currentTime()
           import { left, Duplicate as LeftDuplicate } from "./left.sm"
           import { right, Duplicate as RightDuplicate } from "./nested/right.sm"
           export function both(id: string): Result<string, LeftDuplicate | RightDuplicate> {
-            const first = left(id).unwrap()
-            const second = right(id).unwrap()
+            const first = left(id)!
+            const second = right(id)!
             return first + second
           }
           export function describe(error: LeftDuplicate | RightDuplicate): string {
@@ -912,7 +937,7 @@ export function find(id: string): Result<string, NotFound> {
         fileName: "nested/app.sm",
         source: `import { find, type NotFound } from "../domain.sm"
 export function run(id: string): Result<string, NotFound> {
-  return find(id).unwrap()
+  return find(id)!
 }
 `,
       },
@@ -960,7 +985,7 @@ export function narrow(id: string): Result<string, Missing> {
           source: `import { value } from "./untrusted.ts"
 import { narrow, type Missing } from "./library.sm"
 export function run(id: string): Result<string, Missing> {
-  return narrow(id + value).unwrap()
+  return narrow(id + value)!
 }
 `,
         },
@@ -1037,45 +1062,5 @@ describe("callback row and task ownership gates", () => {
       }
     `);
     expect(owned.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1404")).toBe(false);
-  });
-
-  test("a native pin asserts over a graph rather than starting one, so an async subject is accepted", () => {
-    // compatibility.mdx, "Native and Wasm Targets": async functions MUST NOT be
-    // rejected solely because runtime support is required. DECISIONS
-    // "Concurrency" and requirements.mdx "Scoping" both scope the unowned-async
-    // rule to every STARTED Promise, and `native(fn)` receives a reference,
-    // checks its transitive graph, and returns it without invoking it.
-    const pinned = analyzeSource(`
-      import { native } from "smithers:native"
-      async function scale(value: number): Promise<number> { return value * 2 }
-      native(scale)
-    `);
-    expect(pinned.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1404")).toBe(false);
-
-    const aliased = analyzeSource(`
-      import { native as pin } from "smithers:native"
-      async function scale(value: number): Promise<number> { return value * 2 }
-      const scaled = pin(scale)
-    `);
-    expect(aliased.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1404")).toBe(false);
-
-    // The exemption is checker symbol identity against the compiler-owned
-    // prelude, never the spelling: an ordinary local `native` owns nothing and
-    // keeps the general rule.
-    const shadowed = analyzeSource(`
-      function native<F>(pinned: F): F { return pinned }
-      async function scale(value: number): Promise<number> { return value * 2 }
-      native(scale)
-    `);
-    expect(shadowed.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1404")).toBe(true);
-
-    // ... and it stays scoped to the pinned argument: importing the pin does
-    // not license an unowned async callback anywhere else in the module.
-    const started = analyzeSource(`
-      import { native } from "smithers:native"
-      declare function work(): Promise<number>
-      const pending = [1].map(async () => work())
-    `);
-    expect(started.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1404")).toBe(true);
   });
 });

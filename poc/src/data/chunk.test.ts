@@ -29,24 +29,32 @@ describe("construction and reading", () => {
     expect(Object.prototype.toString.call(Chunk.of(1))).toBe("[object Chunk]");
   });
 
-  test("a miss is an Optional absence, never undefined", () => {
+  test("a miss is `undefined`, read by ordinary narrowing, `?.`, and `??`", () => {
     const chunk = Chunk.of("a", "b", "c");
-    expect(chunk.get(0).unwrapOr("miss")).toBe("a");
-    expect(chunk.get(2).unwrapOr("miss")).toBe("c");
-    expect(chunk.get(3).isNone()).toBe(true);
-    expect(chunk.get(-1).isNone()).toBe(true);
-    expect(chunk.head().unwrapOr("miss")).toBe("a");
-    expect(chunk.last().unwrapOr("miss")).toBe("c");
+    const first = chunk.get(0);
+    if (first === undefined) throw new Error("expected an element");
+    expect(first.toUpperCase()).toBe("A"); // narrowed to string
+    expect(chunk.get(0) ?? "miss").toBe("a");
+    expect(chunk.get(2) ?? "miss").toBe("c");
+    expect(chunk.get(3)).toBeUndefined();
+    expect(chunk.get(-1)).toBeUndefined();
+    expect(chunk.head() ?? "miss").toBe("a");
+    expect(chunk.last() ?? "miss").toBe("c");
 
     const empty = Chunk.empty<string>();
-    expect(empty.get(0).isNone()).toBe(true);
-    expect(empty.head().isNone()).toBe(true);
-    expect(empty.last().isNone()).toBe(true);
+    expect(empty.get(0)).toBeUndefined();
+    expect(empty.head()).toBeUndefined();
+    expect(empty.last()).toBeUndefined();
 
     // A non-integer index is a programming error, not a miss.
     expect(panics(() => chunk.get(1.5))).toBe(true);
     expect(panics(() => chunk.get(Number.NaN))).toBe(true);
     expect(panics(() => chunk.get("0" as unknown as number))).toBe(true);
+
+    // `?.` and `??` keep their ordinary nullish meaning on a miss.
+    expect(chunk.get(0)?.length).toBe(1);
+    expect(chunk.get(3)?.length).toBeUndefined();
+    expect(chunk.get(3) ?? "miss").toBe("miss");
   });
 
   test("null and undefined are rejected where they enter", () => {
@@ -186,15 +194,15 @@ describe("equality and hashing", () => {
 
   test("the built-in pairing and a custom element pairing are both lawful", () => {
     const samples = [Chunk.empty<number>(), Chunk.of(1), Chunk.of(1), Chunk.of(1, 2), Chunk.of(2, 1), Chunk.of(1).append(2)];
-    expect(Hash.checkLaws(Equivalence.any, Hash.any, samples).isNone()).toBe(true);
-    expect(Hash.checkLaws(Chunk.equivalence<number>(), Chunk.hash<number>(), samples).isNone()).toBe(true);
+    expect(Hash.checkLaws(Equivalence.any, Hash.any, samples)).toBeUndefined();
+    expect(Hash.checkLaws(Chunk.equivalence<number>(), Chunk.hash<number>(), samples)).toBeUndefined();
 
     const caseInsensitive = Equivalence.make<string>((left, right) => left.toLowerCase() === right.toLowerCase());
     const caseInsensitiveHash = Hash.string.contramap((value: string) => value.toLowerCase());
     const words = [Chunk.of("a", "b"), Chunk.of("A", "B"), Chunk.of("c")];
     expect(
-      Hash.checkLaws(Chunk.equivalence(caseInsensitive), Chunk.hash(caseInsensitiveHash), words).isNone(),
-    ).toBe(true);
+      Hash.checkLaws(Chunk.equivalence(caseInsensitive), Chunk.hash(caseInsensitiveHash), words),
+    ).toBeUndefined();
     expect(Chunk.equivalence(caseInsensitive).equals(Chunk.of("a"), Chunk.of("A"))).toBe(true);
     expect(Chunk.equivalence<string>().equals(Chunk.of("a"), Chunk.of("A"))).toBe(false);
 
@@ -209,16 +217,16 @@ describe("the representation", () => {
     let chunk = Chunk.empty<number>();
     for (let index = 0; index < 20_000; index += 1) chunk = chunk.append(index);
     expect(chunk.size).toBe(20_000);
-    expect(chunk.get(0).unwrapOr(-1)).toBe(0);
-    expect(chunk.get(19_999).unwrapOr(-1)).toBe(19_999);
+    expect(chunk.get(0) ?? -1).toBe(0);
+    expect(chunk.get(19_999) ?? -1).toBe(19_999);
     expect(chunk.reduce((total, value) => total + value, 0)).toBe((19_999 * 20_000) / 2);
   });
 
   test("a prepend chain and a concat tree both read back in order", () => {
     let chunk = Chunk.empty<number>();
     for (let index = 0; index < 1_000; index += 1) chunk = chunk.prepend(index);
-    expect(chunk.get(0).unwrapOr(-1)).toBe(999);
-    expect(chunk.get(999).unwrapOr(-1)).toBe(0);
+    expect(chunk.get(0) ?? -1).toBe(999);
+    expect(chunk.get(999) ?? -1).toBe(0);
 
     let tree = Chunk.empty<number>();
     for (let index = 0; index < 100; index += 1) tree = tree.concat(Chunk.of(index, index));
@@ -268,9 +276,9 @@ describe("a seeded randomized round-trip", () => {
       expect(chunk.equals(Chunk.from(model))).toBe(true);
       expect(Hash.any.hash(chunk)).toBe(Hash.any.hash(Chunk.from(model)));
       for (let index = 0; index < model.length; index += 1) {
-        expect(chunk.get(index).unwrapOr(-1)).toBe(model[index] as number);
+        expect(chunk.get(index) ?? -1).toBe(model[index] as number);
       }
-      expect(chunk.get(model.length).isNone()).toBe(true);
+      expect(chunk.get(model.length)).toBeUndefined();
     }
   });
 });

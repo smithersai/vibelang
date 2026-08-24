@@ -8,7 +8,8 @@
  * `Chunk`, `HashMap`, `HashSet`, and `Data` are pure the way `Duration` is.
  * The two rules worth watching for as you read:
  *
- *   1. A lookup that can miss answers with an `Optional`, never `undefined`.
+ *   1. A lookup that can miss answers with `T | undefined`, read by ordinary
+ *      narrowing, `?.`, and `??`.
  *   2. Equality and hashing come from one seam, `Equivalence` + `Hash`, and
  *      obey one law: equal values hash equal.
  */
@@ -22,7 +23,6 @@ import {
   HashSet,
   Match,
 } from "../../src/data/index.ts";
-import { RuntimeValues } from "../../src/runtime/values.ts";
 
 function heading(title: string): void {
   console.log(`\n── ${title} ${"─".repeat(Math.max(0, 58 - title.length))}`);
@@ -42,11 +42,11 @@ console.log("size          ", readings.size);
 console.log("total         ", readings.reduce((total, value) => total + value, 0));
 console.log("first two     ", readings.take(2).toArray());
 
-// A hit and a miss, both answered with an Optional.
-console.log("get(1)        ", readings.get(1).unwrapOr("absent"));
-console.log("get(99)       ", readings.get(99).unwrapOr("absent"));
-console.log("head / last   ", readings.head().unwrapOr("absent"), readings.last().unwrapOr("absent"));
-console.log("empty.head()  ", Chunk.empty<number>().head().unwrapOr("absent"));
+// A hit and a miss, both answered by the same `T | undefined` union.
+console.log("get(1)        ", readings.get(1) ?? "absent");
+console.log("get(99)       ", readings.get(99) ?? "absent");
+console.log("head / last   ", readings.head() ?? "absent", readings.last() ?? "absent");
+console.log("empty.head()  ", Chunk.empty<number>().head() ?? "absent");
 
 // The receiver is never touched, and the array it hands back is frozen.
 const base = Chunk.of("a", "b");
@@ -70,7 +70,7 @@ const plain = { region: "us-east", index: 3 };
 console.log("plain vs plain", Data.equals(plain, { region: "us-east", index: 3 }));
 
 // ---------------------------------------------------------------------------
-heading("HashMap: structural keys, Optional lookups");
+heading("HashMap: structural keys, `T | undefined` lookups");
 
 const placement = HashMap.of<unknown, string>(
   [shard, "primary"],
@@ -78,9 +78,9 @@ const placement = HashMap.of<unknown, string>(
 );
 
 // A structurally equal key finds the same entry, though it is a different object.
-console.log("by twin key   ", placement.get(sameShard).unwrapOr("absent"));
-console.log("by rebuilt    ", placement.get(Chunk.of("eu").append("west")).unwrapOr("absent"));
-console.log("miss          ", placement.get(Data.struct({ region: "ap", index: 0 })).unwrapOr("absent"));
+console.log("by twin key   ", placement.get(sameShard) ?? "absent");
+console.log("by rebuilt    ", placement.get(Chunk.of("eu").append("west")) ?? "absent");
+console.log("miss          ", placement.get(Data.struct({ region: "ap", index: 0 })) ?? "absent");
 
 // set/remove return new maps; iteration is insertion order, never hash order.
 const counts = HashMap.of<string, number>(["b", 1], ["a", 2], ["c", 3]);
@@ -92,7 +92,7 @@ console.log("original      ", [...counts.entries()]);
 const caseInsensitive = Equivalence.make<string>((left, right) => left.toLowerCase() === right.toLowerCase());
 const caseInsensitiveHash = Hash.string.contramap((value: string) => value.toLowerCase());
 const headers = HashMap.make<string, string>(caseInsensitive, caseInsensitiveHash, [["Content-Type", "text/plain"]]);
-console.log("header lookup ", headers.get("CONTENT-TYPE").unwrapOr("absent"));
+console.log("header lookup ", headers.get("CONTENT-TYPE") ?? "absent");
 
 // ---------------------------------------------------------------------------
 heading("HashSet: membership by shape");
@@ -118,16 +118,16 @@ heading("The law: equal values hash equal");
 // `Hash.checkLaws` answers with an absence when a pairing is lawful, and with a
 // description of the first violation when it is not.
 const samples = ["Alpha", "alpha", "beta", "BETA"];
-console.log("lawful pair   ", Hash.checkLaws(caseInsensitive, caseInsensitiveHash, samples).unwrapOr("lawful"));
-console.log("broken pair   ", Hash.checkLaws(caseInsensitive, Hash.string, samples).unwrapOr("lawful"));
+console.log("lawful pair   ", Hash.checkLaws(caseInsensitive, caseInsensitiveHash, samples) ?? "lawful");
+console.log("broken pair   ", Hash.checkLaws(caseInsensitive, Hash.string, samples) ?? "lawful");
 
 // That is not a formality. A map keyed by the broken pair cannot find its key.
 const broken = HashMap.make<string, string>(caseInsensitive, Hash.string, [["Alpha", "one"]]);
-console.log("broken lookup ", broken.get("alpha").unwrapOr("unreachable"));
+console.log("broken lookup ", broken.get("alpha") ?? "unreachable");
 
 // The structural defaults are lawful over everything in this file.
 const everything: unknown[] = [1, -0, 0, Number.NaN, "a", true, shard, sameShard, readings, counts, running];
-console.log("defaults      ", Hash.checkLaws(Equivalence.any, Hash.any, everything).unwrapOr("lawful"));
+console.log("defaults      ", Hash.checkLaws(Equivalence.any, Hash.any, everything) ?? "lawful");
 
 // ---------------------------------------------------------------------------
 heading("Match: pattern matching without new syntax");
@@ -179,15 +179,15 @@ console.log("Data is exact ", Match.value<unknown>(Data.struct({ x: 1, y: 2 }))
   .orElse(() => "not equal in whole")
   .run());
 
-// An Optional or Result scrutinee gets variant arms instead, and the same
-// exhaustiveness proof applies to them.
-const { present, absent } = RuntimeValues;
-const describeOptional = (value: ReturnType<typeof present<number>>): string =>
+// A Result scrutinee gets variant arms; absence needs none, because
+// `T | undefined` is an ordinary union an ordinary arm already covers — and the
+// same exhaustiveness proof applies either way.
+const describeAbsence = (value: number | undefined): string =>
   Match.value(value)
-    .whenSome((found) => `present: ${found}`)
-    .whenNone(() => "absent")
+    .when((found): found is number => found !== undefined, (found) => `present: ${found}`)
+    .when(undefined, () => "absent")
     .exhaustive();
 
-console.log("optional      ", describeOptional(present(7)), "/", describeOptional(absent()));
+console.log("absence       ", describeAbsence(7), "/", describeAbsence(undefined), "/", describeAbsence(0));
 
 console.log();

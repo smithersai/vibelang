@@ -1,6 +1,0 @@
-{
-  "title": "a counted `for` loop is a value expression through a labeled break value and an else completion",
-  "expect": "output",
-  "stdout": ["3", "-1"],
-  "notes": "specification/control-flow.mdx, 'Expression Forms', lists `for` among the constructs that MUST be usable as expressions, and 'Loop Else' (Direction) supplies the value for the non-breaking completion. 13-loop-values covers the for-of and while forms; this is the counted C-style header, whose per-iteration update expression is the part a lowering is most likely to lose."
-}

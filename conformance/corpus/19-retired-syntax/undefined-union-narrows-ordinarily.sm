@@ -1,0 +1,8 @@
+function describe(value: string | undefined): string {
+  if (value === undefined) return "absent"
+  return value.toUpperCase()
+}
+
+export function main(): string[] {
+  return [describe("Ada"), describe(undefined)]
+}

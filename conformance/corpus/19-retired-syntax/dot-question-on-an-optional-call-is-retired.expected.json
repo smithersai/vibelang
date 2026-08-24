@@ -1,5 +1,5 @@
 {
-  "title": "the retired `.?` operator applied directly to an Optional-returning CALL reports its migration diagnostic, which is the spelling a migrating program actually contains",
+  "title": "the retired `.?` operator applied directly to a nullable call reports its migration diagnostic",
   "expect": "diagnostics",
   "diagnostics": [
     {
@@ -8,5 +8,5 @@
       "column": 25
     }
   ],
-  "notes": "specification/type-system.mdx, 'Optional': 'The earlier `?T`, payload-capture, `orelse`, and `.?` grammar MUST NOT be part of the initial language.' docs/DECISIONS.md 'Optionals and nullability' (Locked) names `optional.unwrap()` as the replacement. The sibling case 19/dot-question-operator-is-retired applies `.?` to a plain local binding; this case applies it to `lookup(1)`, a call whose declared type is `Optional<string>`. The two are separated deliberately, because the call form used to be the one that could not be pinned at all: the coverage audit that created this area recorded it as a reference defect — `compileProject` with `sourceMap: true` threw `source map generated columns must not backtrack`, a crash which conformance/runner/judge.mjs classifies `unmeasured` and which an `xfail` marker cannot absorb. That crash is fixed; both backends now report SMITHERS1001 at the operator. Rejecting retired grammar is a fail-closed obligation, so the spelling a migrating user is most likely to write is the one that most needs a case."
+  "notes": "specification/type-system.mdx, 'Absence': the earlier ?T, payload-capture, orelse, and .? grammar MUST NOT be part of the language; T | undefined with ordinary narrowing and optional chaining is the replacement model. This call form previously exposed a source-map backtracking crash, so both backends must still report SMITHERS1001 at the operator while leaving the nullable return type ordinary."
 }

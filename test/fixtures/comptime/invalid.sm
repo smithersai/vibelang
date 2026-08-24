@@ -1,5 +1,3 @@
-function comptime<T>(value: T): T {
-  return value
-}
+import { comptime as staticValue } from "smithers:comptime"
 
-export const invalid = comptime({ shouldNotCompile: true })
+export const invalid = staticValue

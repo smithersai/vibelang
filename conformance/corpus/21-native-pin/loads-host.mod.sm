@@ -1,4 +1,0 @@
-// A side-effect import has no bindings to elide, so importing this module
-// evaluates it, and evaluating it loads `node:fs`. Nothing declared here is
-// named anywhere else in the project.
-import "node:fs"

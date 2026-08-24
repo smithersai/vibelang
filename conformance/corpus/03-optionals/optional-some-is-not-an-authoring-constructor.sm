@@ -1,4 +1,0 @@
-export function lookup(id: number): Optional<string> {
-  if (id !== 1) return Optional.none()
-  return Optional.some("Ada")
-}

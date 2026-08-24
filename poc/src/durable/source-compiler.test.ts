@@ -41,7 +41,7 @@ throw new Error("compilation evaluated the authored module")
 
 function build(input: { source: string }) {
   const request = { source: input.source }
-  const compiled = C.run(request).unwrap()
+  const compiled = C.run(request)!
   const packageInput = { code: compiled.code }
   return P.run(packageInput)
 }
@@ -215,8 +215,8 @@ import { durable } from "smithers:flows"
 import { Work } from "test:branch-actions"
 export const Branch = durable(function Branch(input: { value: number; chooseInput: boolean }) {
   return (input.chooseInput
-    ? Work.run({ value: input.value }).unwrap()
-    : Work.run({ value: 0 }).unwrap()).value
+    ? Work.run({ value: input.value })!
+    : Work.run({ value: 0 })!).value
 })
 `, {
     fileName: "flows/structural-branch.sm",
@@ -255,7 +255,7 @@ import * as Flows from "smithers:flows"
 import * as Actions from "test:source-actions"
 
 export const Build = Flows.durable(function Build(input: { source: string }) {
-  const compiled = Actions.Compile.run({ source: input.source }).unwrap()
+  const compiled = Actions.Compile.run({ source: input.source })!
   return Actions.Package.run({ code: compiled.code })
 })
 `)
@@ -266,13 +266,13 @@ export const Build = Flows.durable(function Build(input: { source: string }) {
   ])
 })
 
-test("unwrap creates a sequencing edge even when its success value is ignored", () => {
+test("postfix propagation creates a sequencing edge even when its success value is ignored", () => {
   const result = compileRepresentative(`
 import { durable } from "smithers:flows"
 import { Compile as C, Package as P } from "test:source-actions"
 
 export const Build = durable(function Build(input: { source: string }) {
-  const checked = C.run({ source: input.source }).unwrap()
+  const checked = C.run({ source: input.source })!
   const packageInput = { code: "constant" }
   return P.run(packageInput)
 })
@@ -464,7 +464,7 @@ class Lookup extends Action<(input: { key: string }) => Result<{ value: string }
 class Audit extends Action<(input: { value: string }) => Result<{ saved: boolean }, Error>> {}
 
 export const Build = durable((input: { key: string }) => {
-  const found = Lookup.run({ key: input.key }).unwrap()
+  const found = Lookup.run({ key: input.key })!
   const pair = sequential(Lookup.run({ key: found.value }), Audit.run({ value: found.value }))
   return { found, pair }
 })

@@ -1,0 +1,15 @@
+interface Profile { readonly name: string }
+
+function lookup(id: number): Profile | null | undefined {
+  if (id === 1) return { name: "Ada" }
+  if (id === 2) return null
+  return undefined
+}
+
+export function main(): string[] {
+  return [
+    lookup(1)?.name ?? "Guest",
+    lookup(2)?.name ?? "Guest",
+    lookup(3)?.name ?? "Guest",
+  ]
+}

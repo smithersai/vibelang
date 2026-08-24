@@ -193,11 +193,14 @@ func TestPinnedCLIProcessCompilesInternallyLoweredRequest(t *testing.T) {
 		"    }\n" +
 		"    return n;\n" +
 		"}\n" +
-		"export function cached(hit: boolean): Optional<number> {\n" +
+		"export function cached(hit: boolean): number | undefined {\n" +
 		"    if (hit) {\n" +
 		"        return 1;\n" +
 		"    }\n" +
 		"    return undefined;\n" +
+		"}\n" +
+		"export function label(hit: boolean): string {\n" +
+		"    return cached(hit)?.toFixed(0) ?? \"none\";\n" +
 		"}\n" +
 		"export async function fetched(n: number): Promise<Result<number, Boom>> {\n" +
 		"    return n;\n" +
@@ -234,18 +237,36 @@ func TestPinnedCLIProcessCompilesInternallyLoweredRequest(t *testing.T) {
 		t.Fatalf("the authored throw survived lowering: %q", contents["main.js"])
 	}
 	// Every channel the Go lowering owns survives the process boundary: the
-	// Result variants, the Optional variants, the async Result lift, and the
-	// constructor-keyed nominal error dispatch.
+	// Result variants, the async Result lift, and the constructor-keyed nominal
+	// error dispatch.
 	for _, lowered := range []string{
 		"return new __smithersErr(new Boom());",
 		"return new __smithersOk(n);",
-		"return new __smithersSome(1);",
-		"return new __smithersNone();",
 		"error instanceof Boom ?",
 		"error instanceof Late ?",
 	} {
 		if !strings.Contains(contents["main.js"], lowered) {
 			t.Fatalf("lowered form %q missing: %q", lowered, contents["main.js"])
+		}
+	}
+	// Absence is `number | undefined`, an ordinary TypeScript union the lowering
+	// must leave completely alone, and `?.`/`??` keep their ordinary nullish
+	// meaning rather than being reinterpreted for failures.
+	for _, untouched := range []string{
+		"function cached(hit)",
+		"return 1;",
+		"return undefined;",
+		"?.toFixed(0)",
+		`?? "none"`,
+	} {
+		if !strings.Contains(contents["main.js"], untouched) {
+			t.Fatalf("ordinary absence form %q was rewritten: %q", untouched, contents["main.js"])
+		}
+	}
+	// The withdrawn Optional container has no lowering left to emit.
+	for _, withdrawn := range []string{"__smithersSome", "__smithersNone", "__smithersOptional"} {
+		if strings.Contains(contents["main.js"], withdrawn) {
+			t.Fatalf("withdrawn Optional lowering %q reappeared: %q", withdrawn, contents["main.js"])
 		}
 	}
 	if strings.Contains(contents["main.js"], ".match(") {

@@ -1,4 +1,4 @@
-function lookup(id: number): Optional<string> {
+function lookup(id: number): string | undefined {
   if (id === 1) return "Ada"
   return undefined
 }

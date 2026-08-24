@@ -138,23 +138,23 @@ describe("the equivalence laws", () => {
   const samples = [0, -0, 1, 2, Number.NaN, 3];
 
   test("every built-in instance is lawful over a mixed sample set", () => {
-    expect(Equivalence.checkLaws(Equivalence.number, samples).isNone()).toBe(true);
-    expect(Equivalence.checkLaws(Equivalence.string, ["a", "b", "a", ""]).isNone()).toBe(true);
-    expect(Equivalence.checkLaws(Equivalence.boolean, [true, false, true]).isNone()).toBe(true);
-    expect(Equivalence.checkLaws(Equivalence.any, [1, "1", true, Number.NaN, { x: 1 }, [1]]).isNone()).toBe(true);
-    expect(Equivalence.checkLaws(Equivalence.reference, samples).isNone()).toBe(true);
+    expect(Equivalence.checkLaws(Equivalence.number, samples)).toBeUndefined();
+    expect(Equivalence.checkLaws(Equivalence.string, ["a", "b", "a", ""])).toBeUndefined();
+    expect(Equivalence.checkLaws(Equivalence.boolean, [true, false, true])).toBeUndefined();
+    expect(Equivalence.checkLaws(Equivalence.any, [1, "1", true, Number.NaN, { x: 1 }, [1]])).toBeUndefined();
+    expect(Equivalence.checkLaws(Equivalence.reference, samples)).toBeUndefined();
   });
 
   test("checkLaws names the law that broke", () => {
     const notReflexive = Equivalence.make<number>((left, right) => left !== right);
-    expect(Equivalence.checkLaws(notReflexive, [1, 2]).unwrapOr("")).toContain("reflexive");
+    expect(Equivalence.checkLaws(notReflexive, [1, 2]) ?? "").toContain("reflexive");
 
     const notSymmetric = Equivalence.make<number>((left, right) => left <= right);
-    expect(Equivalence.checkLaws(notSymmetric, [1, 2]).unwrapOr("")).toContain("symmetric");
+    expect(Equivalence.checkLaws(notSymmetric, [1, 2]) ?? "").toContain("symmetric");
 
     // "within one" is reflexive and symmetric, but 0 ~ 1 and 1 ~ 2 without 0 ~ 2.
     const notTransitive = Equivalence.make<number>((left, right) => Math.abs(left - right) <= 1);
-    expect(Equivalence.checkLaws(notTransitive, [0, 1, 2]).unwrapOr("")).toContain("transitive");
+    expect(Equivalence.checkLaws(notTransitive, [0, 1, 2]) ?? "").toContain("transitive");
   });
 
   test("checkLaws demands real arguments", () => {
@@ -167,7 +167,7 @@ describe("the equivalence laws", () => {
     const pool = ["alpha", "beta", "gamma", 1, 2, Number.NaN, true, false, -0, 0];
     const samples: unknown[] = [];
     for (let index = 0; index < 40; index += 1) samples.push(pool[random.int(0, pool.length)]);
-    expect(Equivalence.checkLaws(Equivalence.any, samples).isNone()).toBe(true);
+    expect(Equivalence.checkLaws(Equivalence.any, samples)).toBeUndefined();
   });
 });
 

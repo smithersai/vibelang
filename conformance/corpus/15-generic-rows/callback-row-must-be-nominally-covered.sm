@@ -12,5 +12,5 @@ export function unsound(id: string): Result<string, NotFound | Timeout> {
   return attempt<string, NotFound>(1, (): Result<string, Conflict> => {
     if (id === "x") throw new Conflict(id)
     return id
-  }).unwrap()
+  })!
 }

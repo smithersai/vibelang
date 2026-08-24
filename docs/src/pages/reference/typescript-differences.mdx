@@ -76,13 +76,15 @@ These add no grammar. The compiler recognizes the resolved binding identity, so 
 
 ## Considered and Rejected
 
-Most of the language's design pressure went into **not** adding grammar. Each row below is a spelling that was written down, and in several cases actually built, before being replaced by something that parses as ordinary TypeScript.
+Most of the language's design pressure went into **not** adding grammar. Each
+row below is a spelling that was considered before being replaced by something
+that parses as ordinary TypeScript.
 
 The rejections are not stylistic. A new keyword or sigil costs a fork grammar patch plus parser recovery, formatter, and language-server work, and it permanently diverges the source language from the TypeScript tooling ecosystem. A generic type or a call expression costs none of that, and the compiler can still give it whatever static meaning it needs by recognizing the resolved binding identity.
 
 ### Failures
 
-| Rejected | Shipped instead |
+| Rejected | Smithers contract |
 | --- | --- |
 | `function f(): User !NotFound` — a Zig-style error-union marker | `function f(): Result<User, NotFound>` |
 | `throws E` clause on a signature | the error type lives in the ordinary return type |
@@ -92,11 +94,12 @@ The rejections are not stylistic. A new keyword or sigil costs a fork grammar pa
 | `TaggedError("NotFound")` factory, or an authored `_tag` field | ordinary subclasses with compiler-supplied nominal identity |
 | a throw-expression grammar | statement `throw` only, pending the TC39 proposal upstream |
 
-`!NotFound`, `try`, `catch |e|`, and `error N { … }` were all implemented in the original regex-lowering prototype. They are retired; the retired-syntax scanner rejects them by name.
+`!NotFound`, `try`, `catch |e|`, and `error N { … }` are retired spellings and
+MUST be rejected.
 
 ### Absence
 
-| Rejected | Shipped instead |
+| Rejected | Smithers contract |
 | --- | --- |
 | `?T` — an optional type sigil | `T \| undefined` |
 | `value orelse fallback` | `value ?? fallback` |
@@ -105,7 +108,7 @@ The rejections are not stylistic. A new keyword or sigil costs a fork grammar pa
 
 ### Requirements
 
-| Rejected | Shipped instead |
+| Rejected | Smithers contract |
 | --- | --- |
 | `function f(): T uses Db, Logger` — a requirement clause | `const db = Db.context()`, with the row inferred |
 | `provide { Db: db } { … }` — a provider block | ordinary Layer APIs |
@@ -115,7 +118,7 @@ The requirement row is part of the function's static type even though nothing in
 
 ### Intrinsics
 
-| Rejected | Shipped instead |
+| Rejected | Smithers contract |
 | --- | --- |
 | a `comptime` keyword | `comptime(...)` imported from `smithers:comptime` |
 | a `durable` keyword | `durable(...)` imported from `smithers:flows` |
@@ -124,9 +127,10 @@ An imported intrinsic keeps aliases meaningful and leaves an unrelated function 
 
 ### Control flow
 
-Every one of these was implemented — parser, checker, printer, and lowering — and then removed. None corresponded to a TC39 proposal, and TypeScript already expressed each of them.
+None of these corresponds to an adopted TC39 proposal, and TypeScript already
+expresses each operation without new grammar.
 
-| Rejected | Shipped instead |
+| Rejected | Smithers contract |
 | --- | --- |
 | `const t = if (c) a else b` | `const t = c ? a : b` |
 | `if` / `switch` in expression position, braced | a ternary, a lookup object, or a conditional chain |

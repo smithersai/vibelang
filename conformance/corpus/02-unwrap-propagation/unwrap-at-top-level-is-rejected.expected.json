@@ -1,5 +1,5 @@
 {
-  "title": "unwrap at top level has no owner that can propagate the failure",
+  "title": "postfix propagation at top level has no owner that can propagate the failure",
   "expect": "diagnostics",
   "diagnostics": [
     {

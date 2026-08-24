@@ -3,7 +3,7 @@
  * "Core Data" list (docs/src/pages/reference/standard-library.mdx).
  *
  * A Chunk is an immutable, frozen, WeakSet-branded value, like `Duration` and
- * the runtime's `Result`/`Optional`. Every operation returns a new Chunk and
+ * the runtime's `Result`. Every operation returns a new Chunk and
  * leaves the receiver untouched, so a Chunk expression is pure and its result
  * is worth keeping — dropping it on the floor accomplishes nothing.
  *
@@ -32,22 +32,17 @@
  * values, `HashMap` keys, and each other. `Chunk.equivalence(item)` builds an
  * instance over a chosen element comparison instead.
  *
- * **No `null`, no `undefined`.** Those are exactly the two values the runtime's
- * `Optional` refuses to carry, and `Chunk.get`/`head`/`last` answer with an
- * `Optional`. Rather than let a stored `null` turn a later lookup into a panic,
- * a Chunk rejects one where it enters — `of`, `from`, `append`, `prepend`, and
- * the result of `map` — so the panic names the insertion that caused it. Model
- * an empty slot with an `Optional` element, the way Smithers models absence
- * everywhere else.
+ * **No `null`, no `undefined`.** `Chunk.get`/`head`/`last` answer with
+ * `T | undefined`, where `undefined` means "no element at that index". A stored
+ * `null` or `undefined` would make that answer ambiguous, so a Chunk rejects one
+ * where it enters — `of`, `from`, `append`, `prepend`, and the result of `map` —
+ * so the panic names the insertion that caused it. Model an empty slot with an
+ * element type that has its own absent member.
  */
 
-import type { Optional } from "../runtime/optional.ts";
 import { panic } from "../runtime/panic.ts";
-import { RuntimeValues } from "../runtime/values.ts";
 import { type Equivalence, Equivalence as EquivalenceNamespace, registerStructuralEquivalence } from "./equivalence.ts";
 import { type Hash, Hash as HashNamespace, registerStructuralHash } from "./hash.ts";
-
-const { absent, present } = RuntimeValues;
 
 const CHUNK_SEED = 0x517cc1b7;
 
@@ -141,19 +136,19 @@ export abstract class ChunkValue<T> {
     return stateOf(this).node.size === 0;
   }
 
-  /** Absent for any index outside `[0, size)`. A non-integer index is a programming error and panics. */
-  get(index: number): Optional<T> {
+  /** `undefined` for any index outside `[0, size)`. A non-integer index is a programming error and panics. */
+  get(index: number): T | undefined {
     if (typeof index !== "number" || !Number.isInteger(index)) panic("Chunk.get requires an integer index");
     const state = stateOf(this);
-    if (index < 0 || index >= state.node.size) return absent();
-    return present(materialize(this)[index]) as Optional<T>;
+    if (index < 0 || index >= state.node.size) return undefined;
+    return materialize(this)[index];
   }
 
-  head(): Optional<T> {
+  head(): T | undefined {
     return this.get(0);
   }
 
-  last(): Optional<T> {
+  last(): T | undefined {
     return this.get(stateOf(this).node.size - 1);
   }
 
@@ -183,7 +178,7 @@ export abstract class ChunkValue<T> {
     return makeChunk(arrayNode(materialize(this).filter((item, index) => predicate(item, index))));
   }
 
-  /** The callback must return a Chunk; anything else is a programming error, exactly as in `Optional.andThen`. */
+  /** The callback must return a Chunk; anything else is a programming error. */
   flatMap<B>(project: (item: T, index: number) => Chunk<B>): Chunk<B> {
     if (typeof project !== "function") panic("Chunk.flatMap requires a function");
     let node: Node<B> = EMPTY_NODE as Node<B>;

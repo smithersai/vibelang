@@ -1,6 +1,0 @@
-{
-  "title": "an expression switch selects exactly one clause value and does not fall through",
-  "expect": "output",
-  "stdout": ["met the bar", "below the bar", "resit scheduled"],
-  "notes": "specification/control-flow.mdx, 'Switch': 'In expression position, a switch MUST return the selected case's final expression. Expression switches MUST NOT fall through between cases. Statement-position switches MUST retain TypeScript's existing fallthrough and break behavior.' None of the clauses here carries a `break`, which in a STATEMENT switch would fall through: 11-expression-if-switch/statement-switch-fallthrough-over-a-widened-scrutinee prints 'a,b,b,d' for exactly that shape. An implementation that lowered the expression form through statement semantics would return the last clause's value for every input and print 'resit scheduled' three times."
-}

@@ -1,0 +1,6 @@
+{
+  "title": "the ordinary TypeScript conditional expression remains the value-position conditional",
+  "expect": "output",
+  "stdout": ["yes"],
+  "notes": "specification/control-flow.mdx names the ternary expression as the supported value-position conditional."
+}

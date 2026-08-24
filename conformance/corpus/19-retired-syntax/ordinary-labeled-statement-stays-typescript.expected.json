@@ -1,0 +1,6 @@
+{
+  "title": "an ordinary labeled statement and valueless labeled break keep TypeScript behavior",
+  "expect": "output",
+  "stdout": ["before"],
+  "notes": "The retired forms carry a colon after break or occur in value position; an ordinary TypeScript label remains legal."
+}

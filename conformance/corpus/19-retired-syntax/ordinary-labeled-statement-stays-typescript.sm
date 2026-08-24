@@ -1,0 +1,9 @@
+export function main(): string[] {
+  const events: string[] = []
+  done: {
+    events.push("before")
+    break done
+    events.push("after")
+  }
+  return events
+}

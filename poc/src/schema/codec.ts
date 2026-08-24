@@ -6,17 +6,15 @@
  */
 import {
   RuntimeValues,
-  isOptional,
   isResult,
   registerErrorCodec,
   type JsonValue,
   type NominalError,
 } from "../runtime/index.ts";
-import type { Optional } from "../runtime/optional.ts";
 import type { Result } from "../runtime/result.ts";
 import { isPanic, panic } from "../runtime/panic.ts";
 
-const { absent, failure, present, success } = RuntimeValues;
+const { failure, success } = RuntimeValues;
 
 export type DecodePathSegment = string | number;
 
@@ -431,38 +429,25 @@ function nullable<Domain, Wire>(codec: Codec<Domain, Wire>): Codec<Domain | null
   return union(codec as CodecValue<any, any>, nullCodec) as Codec<Domain | null, Wire | null>;
 }
 
-function optional<Domain, Wire>(codec: Codec<Domain, Wire>): Codec<Optional<NonNullable<Domain>>, Wire | undefined> {
+/**
+ * A codec over `Domain | undefined`. Absence is the ordinary union member and
+ * travels as a missing/`undefined` wire value; there is no container to build
+ * (specification/type-system.mdx, "Absence").
+ */
+function optional<Domain, Wire>(codec: Codec<Domain, Wire>): Codec<Domain | undefined, Wire | undefined> {
   const child = stateOf(codec);
   return local({
-    encode: (value) => {
-      if (!isOptional(value)) throw new TypeError("Codec.optional.encode expected an Optional");
-      return value.match({
-        none: () => undefined,
-        some: (item) => {
-          if (item === null || item === undefined) throw new TypeError("Codec.optional cannot encode a nullish present value");
-          return child.encode(item) as Wire;
-        },
-      });
-    },
+    encode: (value) => (value === undefined ? undefined : child.encode(value) as Wire),
     decode: (wire) => {
-      if (wire === undefined) return success(absent());
-      return child.decode(wire).andThen((value) => value === null || value === undefined
-        ? fail([], "optional codec decoded a nullish present value")
-        : success(present(value))) as Result<Optional<NonNullable<Domain>>, DecodeError>;
+      if (wire === undefined) return success(undefined);
+      return child.decode(wire) as Result<Domain | undefined, DecodeError>;
     },
-    accepts: (value) => isOptional(value) && value.match({ none: () => true, some: child.accepts }),
+    accepts: (value) => value === undefined || child.accepts(value),
   });
 }
 
 function roundTripEqual(left: unknown, right: unknown, seen = new WeakMap<object, object>()): boolean {
   if (left === right || (left !== left && right !== right)) return true;
-  if (isOptional(left) || isOptional(right)) {
-    if (!isOptional(left) || !isOptional(right)) return false;
-    return left.match({
-      none: () => right.isNone(),
-      some: (value) => right.match({ none: () => false, some: (other) => roundTripEqual(value, other, seen) }),
-    });
-  }
   if (left === null || right === null || typeof left !== "object" || typeof right !== "object") return false;
   if (seen.get(left) === right) return true;
   seen.set(left, right);
@@ -477,8 +462,8 @@ function roundTripEqual(left: unknown, right: unknown, seen = new WeakMap<object
     key === rightKeys[index] && roundTripEqual(left[key], right[key], seen));
 }
 
-/** Returns the first law violation, or absence when every sample round-trips. */
-function checkRoundTrip<Domain, Wire>(codec: Codec<Domain, Wire>, samples: readonly Domain[]): Optional<string> {
+/** Returns the first law violation, or `undefined` when every sample round-trips. */
+function checkRoundTrip<Domain, Wire>(codec: Codec<Domain, Wire>, samples: readonly Domain[]): string | undefined {
   const state = stateOf(codec);
   if (!Array.isArray(samples)) panic("Codec.checkRoundTrip requires an array of samples");
   for (let index = 0; index < samples.length; index += 1) {
@@ -486,21 +471,21 @@ function checkRoundTrip<Domain, Wire>(codec: Codec<Domain, Wire>, samples: reado
     try {
       wire = state.encode(samples[index]);
     } catch (cause) {
-      return present(`encode threw at sample ${index}: ${cause instanceof Error ? cause.message : String(cause)}`);
+      return `encode threw at sample ${index}: ${cause instanceof Error ? cause.message : String(cause)}`;
     }
     let decoded: Result<unknown, DecodeError>;
     try {
       decoded = state.decode(wire);
     } catch (cause) {
       if (isPanic(cause)) throw cause;
-      return present(`decode threw at sample ${index}: ${cause instanceof Error ? cause.message : String(cause)}`);
+      return `decode threw at sample ${index}: ${cause instanceof Error ? cause.message : String(cause)}`;
     }
     if (decoded.isError()) {
-      return present(decoded.match({ ok: () => "", error: (error) => `decode failed at sample ${index}: ${error.message}` }));
+      return decoded.match({ ok: () => "", error: (error) => `decode failed at sample ${index}: ${error.message}` });
     }
-    if (!roundTripEqual(samples[index], decoded.unwrap())) return present(`round-trip changed sample ${index}`);
+    if (!roundTripEqual(samples[index], decoded.unwrap())) return `round-trip changed sample ${index}`;
   }
-  return absent();
+  return undefined;
 }
 
 export function isCodec(value: unknown): value is Codec<unknown, unknown> {

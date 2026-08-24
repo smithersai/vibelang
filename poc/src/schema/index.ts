@@ -2,9 +2,9 @@
  * The provisional "Schema and Encoding" standard-library slice.
  *
  * These are immutable ordinary values: no runtime service and no effect
- * wrapper is involved. Recoverable parse/decode failures are Results; optional
- * values and law-check misses use Optional. Names and signatures remain POC
- * surface and may change before the standard library is settled.
+ * wrapper is involved. Recoverable parse/decode failures are Results; absent
+ * values and law-check misses are `T | undefined`. Names and signatures remain
+ * POC surface and may change before the standard library is settled.
  */
 
 export { Codec, CodecValue, DecodeError, isCodec } from "./codec.ts";

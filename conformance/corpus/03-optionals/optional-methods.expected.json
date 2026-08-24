@@ -1,5 +1,0 @@
-{
-  "title": "Optional carries the ordinary method surface: match, map, andThen, unwrapOr",
-  "expect": "output",
-  "stdout": ["some Ada", "none", "ADA", "-"]
-}

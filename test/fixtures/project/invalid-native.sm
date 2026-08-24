@@ -1,7 +1,0 @@
-import { native } from "smithers:native"
-
-export function nativePinned(): number {
-  return eval("1")
-}
-
-native(nativePinned)

@@ -9,7 +9,7 @@ function limit(key: string): Result<number, Missing> {
 
 export function count(key: string): Result<number, Missing> {
   let total = 0
-  for (let index = 0; index < limit(key).unwrap(); index++) {
+  for (let index = 0; index < limit(key)!; index++) {
     total += index
   }
   return total

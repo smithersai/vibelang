@@ -1,0 +1,18 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+interface Profile { readonly nickname?: string }
+
+function findUser(key: string): Result<Profile | undefined, Missing> {
+  if (key === "missing") throw new Missing(key)
+  if (key === "nobody") return undefined
+  return key === "ada" ? { nickname: "Ada" } : {}
+}
+
+export function main(): Result<string[], Missing> {
+  const named = findUser("ada")!?.nickname ?? "anonymous"
+  const unnamed = findUser("grace")!?.nickname ?? "anonymous"
+  const absent = findUser("nobody")!?.nickname ?? "anonymous"
+  return [named, unnamed, absent]
+}

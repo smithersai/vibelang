@@ -1,7 +1,0 @@
-function combine(base: number, extra: number): number {
-  return base + extra
-}
-
-export function weighted(score: number, bonus: boolean): number {
-  return combine(score, if (bonus) 10 else 0)
-}

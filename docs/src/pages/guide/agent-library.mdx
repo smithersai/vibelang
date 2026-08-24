@@ -1,39 +1,13 @@
 # Agent Library [Run generated TypeScript with an explicit authority surface]
 
-Smithers's proposed coding-agent library builds on ordinary TypeScript, typed functions, Actions, Flows, and the built-in MDX loader. It does not add agent-specific language syntax.
+Smithers's coding-agent library builds on ordinary TypeScript, typed functions,
+Actions, Flows, and the built-in MDX loader. It does not add agent-specific
+language syntax.
 
-:::warning Proposed production API
-The root package exposes a narrower working Node-safe POC at `smthrs/agent`:
-a coding-agent loop, in-memory TypeScript compiler, explicit function bindings,
-prompt renderers, model helpers, Action tools, and a no-permission Deno
-subprocess sandbox with timeouts and resource/output/call limits. The Bun-only
-`smthrs/agent/bun` entry point adds SQLite turn journaling and durable Flow
-tools. Journal rows are digest-checked and hash-chained in append order, so a
-restarted process replays the same turn — reusing the recorded model response
-and every recorded Action or completed Flow call — instead of re-invoking the
-model or the host. The POC also has a
-typed `ModelAdapter` seam carrying model identity and version, and adapters that
-turn a tool's source into a durable Action-backed function. The `@smithers/agent`
-package name, `CodingAgent.make` spelling, MDX integration, provider adapters,
-and durable turn API shown on this page remain proposed and are not locked.
-
-Compiled Flows are passable through the Bun-only programmatic `flowTool(...)`
-adapter. Each call derives an execution id from the turn, accepted source,
-function/ordinal, Flow/Plan identity, and input digest; replay therefore joins
-the same durable execution and adopts already-committed Actions rather than
-starting a second run. The attachment row is checked for input/Plan divergence.
-
-The in-repo default model remains `ScriptedModel`. A real
-`AnthropicModel implements ModelAdapter` exists under `poc/examples/agent` and
-can call the Anthropic Messages API, but it is example-only: examples are
-excluded from POC emit, the SDK is a POC dev dependency, and neither the adapter
-nor SDK enters the published `smthrs/agent` dependency closure. The sandbox
-is still a process-level Deno subprocess, not a VM/container, and nothing is
-attested. The agent journal and durable store remain separate databases rather
-than one atomic history; rows are digest-verified but neither signed nor
-redacted, so call inputs are stored verbatim. Remote Flow workers, deployment
-signature verification at the agent seam, and cross-process coordinator
-handoff are not exercised.
+:::note Direction
+The library contract is accepted, while the package name, constructor names,
+MDX component vocabulary, provider adapters, journal format, and durable-turn
+API remain open. Names on this page communicate the intended shape.
 :::
 
 ## Define a Coding Agent
@@ -92,7 +66,10 @@ JSON tool calling is an adapter, not the fundamental execution model. A tool is 
 
 ## Sandboxing
 
-The sandbox begins without ambient filesystem, network, process, environment, module loading, or host-object access. The host grants authority only by passing a function. The current bounded implementation rejects generated source before base64 transport when it exceeds its configured byte limit, caps JSON traversal by depth and node count before serialization, and revalidates the content-pinned Deno executable and runner before launch.
+The sandbox begins without ambient filesystem, network, process, environment,
+module loading, or host-object access. The host grants authority only by
+passing a function. It enforces configured source, value-graph, output, call,
+time, and memory limits before crossing the host boundary.
 
 Removing Node or DOM declarations improves diagnostics, but types are not the security boundary. The runtime sandbox must enforce isolation, resource limits, cancellation, and output bounds.
 
@@ -126,16 +103,17 @@ Actions and Flows make durability compositional:
 
 Replay reuses the recorded model response and completed calls. Generated code remains ordinary runtime TypeScript; it is not silently wrapped in `durable(...)` or converted into a Flow.
 
-In the programmatic POC, `flowTool({ plan, execute })` (or a compatible
-`DurableExecutor`) derives the generated callable signature and wire codec from
-the Plan's Flow input/success schemas. It commits a call-site attachment, starts
-or joins the derived execution id, and records only terminal outcomes. If a
-coordinator interruption escapes without a terminal commit, the call is not
-recorded as completed; replay reattaches to the same execution instead. A
-completed recorded Flow call is served from the agent journal without touching
-the executor. Per-site identity is function name plus ordinal, so the proof is
-stable for straight-line generated code and does not solve data-dependent loop
-call-site identity.
+`flowTool({ plan, execute })` illustrates the durable adapter. It derives the
+generated callable signature and wire codec from the Flow's input and success
+schemas, attaches each call to a deterministic execution identity, starts or
+joins that execution, and records only terminal outcomes. Replay reattaches to
+an interrupted execution and reuses a completed recorded outcome.
+
+:::note Direction
+Stable call-site identity for data-dependent generated control flow, atomicity
+between the agent journal and durable store, remote coordinator handoff,
+authorization, signing, and redaction policy remain to be specified.
+:::
 
 ## Building a Custom Agent
 

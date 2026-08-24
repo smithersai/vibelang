@@ -1,6 +1,0 @@
-{
-  "title": "Optional.all collects every present value and is absent as soon as one entry is absent",
-  "expect": "output",
-  "stdout": ["Ada,Ada", "none"],
-  "notes": "specification/type-system.mdx, 'Optional', lists `all` among the required Optional operations."
-}

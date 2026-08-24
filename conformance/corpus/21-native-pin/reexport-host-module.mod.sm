@@ -1,4 +1,0 @@
-// The laundering module. It re-exports a host-module binding under its own
-// name, so the importer sees an ordinary relative project specifier and the
-// `node:fs` edge appears in no import list but this one.
-export { readFileSync } from "node:fs"

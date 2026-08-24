@@ -6,7 +6,7 @@
  * are *derived at comptime where possible*. Until the compiler derives them,
  * they are ordinary Smithers values: an `Equivalence` is an immutable, frozen,
  * WeakSet-branded wrapper around a comparison function, built the same way
- * `Duration` and the runtime's `Result`/`Optional` are built, so a structural
+ * `Duration` and the runtime's `Result` are built, so a structural
  * look-alike cannot be passed off as one. Every operation panics on a forgery.
  *
  * Policies, all deliberate and all tested:
@@ -29,18 +29,14 @@
  *
  * The structural seam is `registerStructuralEquivalence`. It is deliberately
  * *not* a member of the frozen `Equivalence` namespace, the same way the
- * runtime keeps `__vsOptionalSome` out of `Optional`: registering a rule is a
+ * runtime keeps `__vsResultSuccess` out of `Result`: registering a rule is a
  * library-construction act, not an authoring one. Each module that defines a
  * branded structural type registers its own rule when it loads, and a value of
  * that type cannot exist unless its module loaded, so the seam is always
  * complete for the values a caller can actually hold.
  */
 
-import type { Optional } from "../runtime/optional.ts";
 import { panic } from "../runtime/panic.ts";
-import { RuntimeValues } from "../runtime/values.ts";
-
-const { absent, present } = RuntimeValues;
 
 type EqualsFn = (left: unknown, right: unknown) => boolean;
 
@@ -221,21 +217,21 @@ function struct<const Fields extends Readonly<Record<string, EquivalenceValue<ne
  * The equivalence laws, checked against a sample set.
  *
  * An `Equivalence` must be reflexive (`a ~ a`), symmetric (`a ~ b` implies
- * `b ~ a`), and transitive (`a ~ b` and `b ~ c` imply `a ~ c`). Absence means
- * every sample obeys them; a present value describes the first violation.
+ * `b ~ a`), and transitive (`a ~ b` and `b ~ c` imply `a ~ c`). `undefined`
+ * means every sample obeys them; a string describes the first violation.
  * Transitivity is checked over every triple, so keep sample sets small.
  */
-function checkLaws<T>(equivalence: Equivalence<T>, samples: readonly T[]): Optional<string> {
+function checkLaws<T>(equivalence: Equivalence<T>, samples: readonly T[]): string | undefined {
   const equals = requireEquivalence(equivalence, "Equivalence.checkLaws");
   if (!Array.isArray(samples)) panic("Equivalence.checkLaws requires an array of samples");
 
   for (let index = 0; index < samples.length; index += 1) {
-    if (!equals(samples[index], samples[index])) return present(`not reflexive at sample ${index}`);
+    if (!equals(samples[index], samples[index])) return `not reflexive at sample ${index}`;
   }
   for (let left = 0; left < samples.length; left += 1) {
     for (let right = 0; right < samples.length; right += 1) {
       if (equals(samples[left], samples[right]) !== equals(samples[right], samples[left])) {
-        return present(`not symmetric for samples ${left} and ${right}`);
+        return `not symmetric for samples ${left} and ${right}`;
       }
     }
   }
@@ -244,12 +240,12 @@ function checkLaws<T>(equivalence: Equivalence<T>, samples: readonly T[]): Optio
       if (!equals(samples[a], samples[b])) continue;
       for (let c = 0; c < samples.length; c += 1) {
         if (equals(samples[b], samples[c]) && !equals(samples[a], samples[c])) {
-          return present(`not transitive for samples ${a}, ${b}, and ${c}`);
+          return `not transitive for samples ${a}, ${b}, and ${c}`;
         }
       }
     }
   }
-  return absent();
+  return undefined;
 }
 
 export const Equivalence = Object.freeze({

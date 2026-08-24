@@ -1,8 +1,8 @@
 diff --git a/tools/scripts/tsc/ast.json b/tools/scripts/tsc/ast.json
-index c0de95cf..ab8fb5c4 100644
+index 3c85511b..0fd30989 100644
 --- a/tools/scripts/tsc/ast.json
 +++ b/tools/scripts/tsc/ast.json
-@@ -1299,9 +1299,15 @@
+@@ -1296,9 +1296,15 @@
                  "generateSubtreeFacts": true,
                  "extends": [
                      "StatementBase",
@@ -19,10 +19,10 @@ index c0de95cf..ab8fb5c4 100644
                          "name": "Expression",
                          "type": "Expression"
 diff --git a/tsc/internal/ast/ast.go b/tsc/internal/ast/ast.go
-index 213f2b8c..b1688cec 100644
+index 07b0fdc6..c9c6e36a 100644
 --- a/tsc/internal/ast/ast.go
 +++ b/tsc/internal/ast/ast.go
-@@ -771,6 +771,8 @@ func (n *Node) Initializer() *Node {
+@@ -767,6 +767,8 @@ func (n *Node) Initializer() *Node {
  		return n.AsForStatement().Initializer
  	case KindForInStatement, KindForOfStatement:
  		return n.AsForInOrOfStatement().Initializer
@@ -31,7 +31,7 @@ index 213f2b8c..b1688cec 100644
  	case KindJsxAttribute:
  		return n.AsJsxAttribute().Initializer
  	}
-@@ -798,6 +800,8 @@ func (m *MutableNode) SetInitializer(initializer *Node) {
+@@ -794,6 +796,8 @@ func (m *MutableNode) SetInitializer(initializer *Node) {
  		n.AsForStatement().Initializer = initializer
  	case KindForInStatement, KindForOfStatement:
  		n.AsForInOrOfStatement().Initializer = initializer
@@ -40,11 +40,32 @@ index 213f2b8c..b1688cec 100644
  	case KindJsxAttribute:
  		n.AsJsxAttribute().Initializer = initializer
  	default:
+diff --git a/tsc/internal/ast/nodeflags.go b/tsc/internal/ast/nodeflags.go
+index 2c808601..89424c38 100644
+--- a/tsc/internal/ast/nodeflags.go
++++ b/tsc/internal/ast/nodeflags.go
+@@ -45,6 +45,7 @@ const (
+ 	NodeFlagsPossiblyContainsDeprecatedTag NodeFlags = 1 << 26 // Set during parse if comment text contains '@deprecated'; must confirm via JSDoc lookup
+ 	NodeFlagsUnreachable                   NodeFlags = 1 << 27 // If node is unreachable according to the binder
+ 	NodeFlagsReparserTransformedLiteral    NodeFlags = 1 << 28 // If node was transformed during parsing, making its' naive text source not match the AST
++	NodeFlagsSmithers                      NodeFlags = 1 << 29 // If node was parsed in a Smithers file (enables Smithers-only grammar)
+ 
+ 	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
+ 	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing
+@@ -54,7 +55,7 @@ const (
+ 	NodeFlagsReachabilityAndEmitFlags = NodeFlagsReachabilityCheckFlags | NodeFlagsHasAsyncFunctions
+ 
+ 	// Parsing context flags
+-	NodeFlagsContextFlags NodeFlags = NodeFlagsDisallowInContext | NodeFlagsDisallowConditionalTypesContext | NodeFlagsYieldContext | NodeFlagsDecoratorContext | NodeFlagsAwaitContext | NodeFlagsJavaScriptFile | NodeFlagsInWithStatement | NodeFlagsAmbient
++	NodeFlagsContextFlags NodeFlags = NodeFlagsDisallowInContext | NodeFlagsDisallowConditionalTypesContext | NodeFlagsYieldContext | NodeFlagsDecoratorContext | NodeFlagsAwaitContext | NodeFlagsJavaScriptFile | NodeFlagsInWithStatement | NodeFlagsAmbient | NodeFlagsSmithers
+ 
+ 	// Exclude these flags when parsing a Type
+ 	NodeFlagsTypeExcludesFlags NodeFlags = NodeFlagsYieldContext | NodeFlagsAwaitContext
 diff --git a/tsc/internal/ast/utilities.go b/tsc/internal/ast/utilities.go
-index 1de21a2e..07e55af5 100644
+index 42058ea2..c7f8cf68 100644
 --- a/tsc/internal/ast/utilities.go
 +++ b/tsc/internal/ast/utilities.go
-@@ -2205,6 +2205,12 @@ func IsBlockScope(node *Node, parentNode *Node) bool {
+@@ -2203,6 +2203,12 @@ func IsBlockScope(node *Node, parentNode *Node) bool {
  		// function block is not considered block-scope container
  		// see comment in binder.ts: bind(...), case for SyntaxKind.Block
  		return !IsFunctionLikeOrClassStaticBlockDeclaration(parentNode)
@@ -58,7 +79,7 @@ index 1de21a2e..07e55af5 100644
  	return false
  }
 diff --git a/tsc/internal/binder/binder.go b/tsc/internal/binder/binder.go
-index 5ced401e..96db76a7 100644
+index 38769558..bc6b7967 100644
 --- a/tsc/internal/binder/binder.go
 +++ b/tsc/internal/binder/binder.go
 @@ -1937,6 +1937,12 @@ func (b *Binder) bindForInOrForOfStatement(node *ast.Node) {
@@ -74,7 +95,7 @@ index 5ced401e..96db76a7 100644
  	thenLabel := b.createBranchLabel()
  	elseLabel := b.createBranchLabel()
  	postIfLabel := b.createBranchLabel()
-@@ -2611,6 +2617,13 @@ func GetContainerFlags(node *ast.Node) ContainerFlags {
+@@ -2603,6 +2609,13 @@ func GetContainerFlags(node *ast.Node) ContainerFlags {
  		}
  	case ast.KindCatchClause, ast.KindForStatement, ast.KindForInStatement, ast.KindForOfStatement, ast.KindCaseBlock:
  		return ContainerFlagsIsBlockScopedContainer | ContainerFlagsHasLocals
@@ -89,10 +110,10 @@ index 5ced401e..96db76a7 100644
  		if ast.IsFunctionLike(node.Parent) || ast.IsClassStaticBlockDeclaration(node.Parent) {
  			return ContainerFlagsNone
 diff --git a/tsc/internal/checker/checker.go b/tsc/internal/checker/checker.go
-index 571d01dc..865fa666 100644
+index 2a4ead50..f376a895 100644
 --- a/tsc/internal/checker/checker.go
 +++ b/tsc/internal/checker/checker.go
-@@ -3811,14 +3811,28 @@ func (c *Checker) checkBlock(node *ast.Node) {
+@@ -3809,14 +3809,28 @@ func (c *Checker) checkBlock(node *ast.Node) {
  
  func (c *Checker) checkIfStatement(node *ast.Node) {
  	c.checkGrammarStatementInAmbientContext(node)
@@ -122,7 +143,7 @@ index 571d01dc..865fa666 100644
  }
  
  func (c *Checker) checkTestingKnownTruthyCallableOrAwaitableOrEnumMemberType(condExpr *ast.Node, condType *Type, body *ast.Node) {
-@@ -7158,7 +7172,9 @@ func (c *Checker) checkUnusedIdentifiers(potentiallyUnusedIdentifiers []*ast.Nod
+@@ -7140,7 +7154,9 @@ func (c *Checker) checkUnusedIdentifiers(potentiallyUnusedIdentifiers []*ast.Nod
  			c.checkUnusedClassMembers(node)
  			c.checkUnusedTypeParameters(node)
  		case ast.KindSourceFile, ast.KindModuleDeclaration, ast.KindBlock, ast.KindCaseBlock, ast.KindForStatement, ast.KindForInStatement,
@@ -134,7 +155,7 @@ index 571d01dc..865fa666 100644
  		case ast.KindConstructor, ast.KindFunctionExpression, ast.KindFunctionDeclaration, ast.KindArrowFunction, ast.KindMethodDeclaration,
  			ast.KindGetAccessor, ast.KindSetAccessor:
 diff --git a/tsc/internal/checker/utilities.go b/tsc/internal/checker/utilities.go
-index 69b2362c..eea34cc6 100644
+index 69b2362c..7b18b4db 100644
 --- a/tsc/internal/checker/utilities.go
 +++ b/tsc/internal/checker/utilities.go
 @@ -186,6 +186,8 @@ func canHaveLocals(node *ast.Node) bool {
@@ -147,10 +168,31 @@ index 69b2362c..eea34cc6 100644
  		ast.KindJSDocSignature, ast.KindMappedType,
  		ast.KindMethodDeclaration, ast.KindMethodSignature, ast.KindModuleDeclaration, ast.KindSetAccessor, ast.KindSourceFile,
 diff --git a/tsc/internal/parser/parser.go b/tsc/internal/parser/parser.go
-index 59018f54..4550d1d1 100644
+index 8b53a39b..83a0415f 100644
 --- a/tsc/internal/parser/parser.go
 +++ b/tsc/internal/parser/parser.go
-@@ -1258,6 +1258,20 @@ func (p *Parser) parseIfStatement() *ast.Node {
+@@ -288,6 +288,10 @@ func ParseIsolatedEntityName(text string) *ast.EntityName {
+ 	return core.IfElse(p.token == ast.KindEndOfFile && len(p.diagnostics) == 0, entityName, nil)
+ }
+ 
++// smithersLangExtensions selects the Smithers dialect. .sm.ts covers the
++// content-mapper virtual file name produced by contentmapper.ParseResult.
++var smithersLangExtensions = []string{".sm", ".sm.ts"}
++
+ func (p *Parser) initializeState(opts ast.SourceFileParseOptions, sourceText string, scriptKind core.ScriptKind) {
+ 	if scriptKind == core.ScriptKindUnknown {
+ 		panic("ScriptKind must be specified when parsing source file: " + opts.FileName)
+@@ -310,6 +314,9 @@ func (p *Parser) initializeState(opts ast.SourceFileParseOptions, sourceText str
+ 	default:
+ 		p.contextFlags = ast.NodeFlagsNone
+ 	}
++	if tspath.FileExtensionIsOneOf(opts.FileName, smithersLangExtensions) {
++		p.contextFlags |= ast.NodeFlagsSmithers
++	}
+ 	p.scanner.SetText(p.sourceText)
+ 	p.scanner.SetOnError(p.scanError)
+ 	p.scanner.SetLanguageVariant(p.languageVariant)
+@@ -1243,6 +1250,20 @@ func (p *Parser) parseIfStatement() *ast.Node {
  	p.parseExpected(ast.KindIfKeyword)
  	openParenPosition := p.scanner.TokenStart()
  	openParenParsed := p.parseExpected(ast.KindOpenParenToken)
@@ -171,7 +213,7 @@ index 59018f54..4550d1d1 100644
  	expression := p.parseExpressionAllowIn()
  	p.parseExpectedMatchingBrackets(ast.KindOpenParenToken, ast.KindCloseParenToken, openParenParsed, openParenPosition)
  	thenStatement := p.parseStatement()
-@@ -1265,7 +1279,7 @@ func (p *Parser) parseIfStatement() *ast.Node {
+@@ -1250,7 +1271,7 @@ func (p *Parser) parseIfStatement() *ast.Node {
  	if p.parseOptional(ast.KindElseKeyword) {
  		elseStatement = p.parseStatement()
  	}
@@ -193,7 +235,7 @@ index ee483873..c9ea7361 100644
  		initBlock,
  		nil,
 diff --git a/tsc/internal/printer/printer.go b/tsc/internal/printer/printer.go
-index a65f33b7..bc60255d 100644
+index 6f038678..35791350 100644
 --- a/tsc/internal/printer/printer.go
 +++ b/tsc/internal/printer/printer.go
 @@ -3465,7 +3465,14 @@ func (p *Printer) emitIfStatement(node *ast.IfStatement) {

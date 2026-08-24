@@ -1,0 +1,6 @@
+{
+  "title": "an ordinary explicit-resource-management using declaration remains supported",
+  "expect": "output",
+  "stdout": ["using"],
+  "notes": "specification/control-flow.mdx, Cleanup: scope-exit cleanup uses TC39 explicit resource management inherited from TypeScript."
+}

@@ -7,8 +7,8 @@
  *
  * A Duration is an immutable, frozen, non-forgeable value: its milliseconds live
  * in a module-private `WeakMap` and every instance is registered in a
- * module-private `WeakSet`, exactly the way `Result` and `Optional` brand theirs
- * in ../runtime. A structural look-alike therefore cannot be passed off as a
+ * module-private `WeakSet`, exactly the way `Result` brands its own values in
+ * ../runtime. A structural look-alike therefore cannot be passed off as a
  * Duration; every operation panics on one.
  *
  * Policies, all deliberate and all tested:
@@ -28,12 +28,9 @@
  */
 
 import type { JsonValue } from "../runtime/errors.ts";
-import type { Optional } from "../runtime/optional.ts";
 import { panic } from "../runtime/panic.ts";
-import { RuntimeValues } from "../runtime/values.ts";
 import type { ValueCodec } from "../runtime/wire.ts";
 
-const { absent, present } = RuntimeValues;
 
 /** The widest span whose millisecond arithmetic is still exact. */
 export const MAX_DURATION_MILLIS = Number.MAX_SAFE_INTEGER;
@@ -193,32 +190,32 @@ const COMPONENT = /(\d+(?:\.\d+)?)(ms|s|m|h|d)\s*/g;
  *
  * Absence rather than a failure: a parser has no name to blame, so the caller
  * that does — `Config.duration` — is the one that builds the nominal error.
- * Unparsable text, sub-millisecond totals, and out-of-range totals are all
- * absences. Only a non-string argument panics.
+ * Unparsable text, sub-millisecond totals, and out-of-range totals all answer
+ * `undefined`. Only a non-string argument panics.
  */
-function parse(text: string): Optional<Duration> {
+function parse(text: string): Duration | undefined {
   if (typeof text !== "string") panic("Duration.parse requires a string");
   const trimmed = text.trim();
-  if (trimmed.length === 0) return absent();
+  if (trimmed.length === 0) return undefined;
   const negative = trimmed.startsWith("-");
   const body = negative || trimmed.startsWith("+") ? trimmed.slice(1).trim() : trimmed;
-  if (body.length === 0) return absent();
+  if (body.length === 0) return undefined;
 
   let total: number;
   if (BARE_MILLIS.test(body)) {
     total = Number(body);
   } else {
-    if (!COMPOUND.test(body)) return absent();
+    if (!COMPOUND.test(body)) return undefined;
     total = 0;
     COMPONENT.lastIndex = 0;
     for (let match = COMPONENT.exec(body); match !== null; match = COMPONENT.exec(body)) {
       const size = UNIT_MILLIS[match[2] as string];
-      if (size === undefined) return absent();
+      if (size === undefined) return undefined;
       total += Number(match[1]) * size;
     }
   }
-  if (!Number.isFinite(total) || !Number.isInteger(total) || total > MAX_DURATION_MILLIS) return absent();
-  return present(makeDuration(negative ? -total : total));
+  if (!Number.isFinite(total) || !Number.isInteger(total) || total > MAX_DURATION_MILLIS) return undefined;
+  return makeDuration(negative ? -total : total);
 }
 
 function decodeMillis(payload: JsonValue): number {
@@ -239,7 +236,7 @@ function decodeMillis(payload: JsonValue): number {
  * The canonical wire form, `{"millis": <integer>}`.
  *
  * The runtime has no registry for *value* codecs the way it has one for Error
- * identities — `encodeResult`/`encodeOptional` take the codec as an argument —
+ * identities — `encodeResult` takes the codec as an argument —
  * so this is exported explicitly and handed to those functions at the boundary.
  * `decode` throws (rather than panicking) so a malformed payload surfaces as the
  * runtime's `ValueCodecError`, like every other codec failure.

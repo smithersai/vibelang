@@ -9,7 +9,7 @@ export function scoreOf(key: string): Result<number, Missing> {
 
 export function main(): Result<string[], Missing> {
   try {
-    const score = scoreOf("zoe").unwrap()
+    const score = scoreOf("zoe")!
     return [`${score}`]
   } catch {
     return ["caught"]

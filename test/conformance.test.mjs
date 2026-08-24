@@ -79,13 +79,15 @@ test("the runner notices a broken expectation", { skip: skipJs, timeout: 300_000
     expectation: { ...testCase.expectation, ...expectation },
   });
 
-  const output = pick("11-expression-if-switch/switch-expression-produces-a-value");
+  const output = pick("01-result-lifting/return-lifts-into-success");
   const diagnostics = pick("02-unwrap-propagation/unwrap-at-top-level-is-rejected");
   // The case whose emitted TypeScript the stock checker rejects. Declaring it
   // as an output case is exactly the false pretense the harness used to accept:
   // if `checkEmittedProject` is ever dropped from the JS backend again, this
   // row goes green and this assertion goes red.
-  const emitCheck = pick("11-expression-if-switch/statement-switch-keeps-typescript-fallthrough");
+  const emitCheck = pick(
+    "14-conditional-declarations/conditional-declaration-binding-does-not-escape-the-construct",
+  );
 
   const report = await runConformance({
     backend: "js",
@@ -110,7 +112,7 @@ test("the runner notices a broken expectation", { skip: skipJs, timeout: 300_000
   const emitRow = report.cases.find((entry) => entry.id.startsWith(emitCheck.id));
   assert.match(
     emitRow.results.js.detail,
-    /TS2678/,
+    /TS2304/,
     "the JS backend must type-check the emitted TypeScript, not just lower it",
   );
 });

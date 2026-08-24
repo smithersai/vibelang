@@ -1,0 +1,6 @@
+{
+  "title": "the withdrawn value-position switch is rejected",
+  "expect": "diagnostics",
+  "diagnostics": [{ "code": "SMITHERS1001", "line": 2, "column": 17 }],
+  "notes": "specification/control-flow.mdx, No Expression-Form Grammar: value-position multi-way choice uses existing TypeScript expressions or library calls."
+}

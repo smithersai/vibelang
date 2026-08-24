@@ -70,8 +70,8 @@
  * whose *type* is only callable once the arms have consumed the whole scrutinee
  * union. The builder threads a `Remaining` type parameter that starts as the
  * scrutinee's type and shrinks with each arm that can prove coverage — a type
- * guard, a literal, a tag, a class, a fully literal template, or an
- * `Optional`/`Result` variant arm. When `Remaining` is `never`, `.exhaustive`
+ * guard, a literal, a tag, a class, a fully literal template, or a
+ * `Result` variant arm. When `Remaining` is `never`, `.exhaustive`
  * is `() => Output`. When it is not, `.exhaustive` is an object type whose
  * single property name spells out the problem and which has no call signature,
  * so `.exhaustive()` fails to compile.
@@ -95,7 +95,6 @@
  */
 
 import { type ErrorConstructor, errorIs } from "../runtime/errors.ts";
-import { type Optional, type OptionalValue, isOptional } from "../runtime/optional.ts";
 import { panic } from "../runtime/panic.ts";
 import { type Result, type ResultValue, isResult } from "../runtime/result.ts";
 import { Data, isData } from "./data.ts";
@@ -108,24 +107,19 @@ const MAX_TEMPLATE_DEPTH = 32;
 // The scrutinee's case union
 // ---------------------------------------------------------------------------
 
-declare const someBrand: unique symbol;
-declare const noneBrand: unique symbol;
 declare const okBrand: unique symbol;
 declare const failureBrand: unique symbol;
 
 /**
- * The four case markers are type-level only: no value of these types is ever
- * constructed. They stand in for the variants of an `Optional` or `Result`
- * scrutinee so that `.whenSome()`/`.whenNone()` (and `.whenOk()`/`.whenError()`)
- * can subtract a variant from what is left to cover, exactly the way `.whenTag()`
- * subtracts a member of a discriminated union.
+ * The two case markers are type-level only: no value of these types is ever
+ * constructed. They stand in for the variants of a `Result` scrutinee so that
+ * `.whenOk()`/`.whenError()` can subtract a variant from what is left to cover,
+ * exactly the way `.whenTag()` subtracts a member of a discriminated union.
+ *
+ * Absence needs no marker. A `T | undefined` scrutinee is an ordinary union, so
+ * `.when(undefined, ...)` and a type guard already cover both of its members
+ * (specification/type-system.mdx, "Absence").
  */
-export interface SomeCase<T> {
-  readonly [someBrand]: T;
-}
-export interface NoneCase {
-  readonly [noneBrand]: true;
-}
 export interface OkCase<A> {
   readonly [okBrand]: A;
 }
@@ -133,21 +127,21 @@ export interface FailureCase<E> {
   readonly [failureBrand]: E;
 }
 
-type AnyCase = SomeCase<unknown> | NoneCase | OkCase<unknown> | FailureCase<Error>;
+type AnyCase = OkCase<unknown> | FailureCase<Error>;
 
 /**
- * What `Match.value(x)` starts out owing coverage for. An `Optional` or `Result`
- * scrutinee becomes its case union; everything else is itself.
+ * What `Match.value(x)` starts out owing coverage for. A `Result` scrutinee
+ * becomes its case union; everything else — `T | undefined` included — is
+ * itself, and is matched as the ordinary union it is.
  *
- * The checks are non-distributive (`[In] extends [...]`) on purpose: a union
- * that merely *contains* an `Optional` is matched as an ordinary value, because
- * `.whenSome()` on it could not say which member it had unwrapped.
+ * The check is non-distributive (`[In] extends [...]`) on purpose: a union that
+ * merely *contains* a `Result` is matched as an ordinary value, because
+ * `.whenOk()` on it could not say which member it had unwrapped.
  */
-export type Scrutinee<In> = [In] extends [OptionalValue<infer T>] ? SomeCase<T> | NoneCase
-  : [In] extends [ResultValue<infer A, infer E extends Error>] ? OkCase<A> | FailureCase<E>
+export type Scrutinee<In> = [In] extends [ResultValue<infer A, infer E extends Error>]
+  ? OkCase<A> | FailureCase<E>
   : In;
 
-type SomeOf<Remaining> = Remaining extends SomeCase<infer T> ? T : never;
 type OkOf<Remaining> = Remaining extends OkCase<infer A> ? A : never;
 type FailureOf<Remaining> = Remaining extends FailureCase<infer E> ? E : never;
 
@@ -495,30 +489,6 @@ export abstract class MatcherValue<Input, Remaining, Output, Fallback extends bo
       matches: (subject) => isObjectLike(subject) && key in subject && sameValueZero(subject[key], tag),
       invoke: (subject) => body(subject as never),
     }, false) as Matcher<Input, SubtractTag<Remaining, Key, Tag>, Output | R, Fallback>;
-  }
-
-  /** The present branch of an `Optional` scrutinee, handed the value inside. */
-  whenSome<R>(
-    handler: (value: SomeOf<Remaining>) => R,
-  ): Matcher<Input, Exclude<Remaining, SomeCase<unknown>>, Output | R, Fallback> {
-    const body = requireHandler(handler, "Match.whenSome");
-    const scrutinee = stateOf(this as object).scrutinee;
-    if (!isOptional(scrutinee)) panic("Match.whenSome requires an Optional scrutinee");
-    return extend(this as object, {
-      matches: (subject) => (subject as Optional<unknown>).isSome(),
-      invoke: (subject) => (subject as Optional<unknown>).match({ some: (value) => body(value as never), none: unreachable }),
-    }, false) as Matcher<Input, Exclude<Remaining, SomeCase<unknown>>, Output | R, Fallback>;
-  }
-
-  /** The absent branch of an `Optional` scrutinee. There is no value to hand over. */
-  whenNone<R>(handler: () => R): Matcher<Input, Exclude<Remaining, NoneCase>, Output | R, Fallback> {
-    const body = requireHandler(handler, "Match.whenNone");
-    const scrutinee = stateOf(this as object).scrutinee;
-    if (!isOptional(scrutinee)) panic("Match.whenNone requires an Optional scrutinee");
-    return extend(this as object, {
-      matches: (subject) => (subject as Optional<unknown>).isNone(),
-      invoke: () => body(undefined as never),
-    }, false) as Matcher<Input, Exclude<Remaining, NoneCase>, Output | R, Fallback>;
   }
 
   /** The success branch of a `Result` scrutinee, handed the value inside. */

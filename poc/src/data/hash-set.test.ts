@@ -177,7 +177,7 @@ describe("structural equality", () => {
       HashSet.of(2, 1),
       HashSet.of(1, 2, 3),
     ];
-    expect(Hash.checkLaws(Equivalence.any, Hash.any, samples).isNone()).toBe(true);
+    expect(Hash.checkLaws(Equivalence.any, Hash.any, samples)).toBeUndefined();
   });
 
   test("sets nest inside Data values and inside each other", () => {

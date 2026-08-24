@@ -25,7 +25,7 @@ const LIBRARY = `
     operation: () => Result<A, E>,
   ): Result<A, E | Timeout> {
     if (limit <= 0) throw new Timeout()
-    return operation().unwrap()
+    return operation()!
   }
 `;
 
@@ -75,7 +75,7 @@ test("instantiates a cross-module row template through inferred type arguments a
           return attempt(limit, (): Result<string, NotFound> => {
             if (id === "") throw new NotFound()
             return id
-          }).unwrap()
+          })!
         }
       `,
     },
@@ -122,7 +122,7 @@ test("instantiates explicit type arguments, nested calls, and async templates", 
           return attempt<string, NotFound>(1, (): Result<string, NotFound> => {
             if (id === "") throw new NotFound()
             return id
-          }).unwrap()
+          })!
         }
         export function nested(id: string): Result<string, Conflict | NotFound | Timeout> {
           return attempt(1, (): Result<string, Conflict | NotFound | Timeout> => {
@@ -130,8 +130,8 @@ test("instantiates explicit type arguments, nested calls, and async templates", 
               if (id === "") throw new NotFound()
               if (id === "x") throw new Conflict()
               return id
-            }).unwrap()
-          }).unwrap()
+            })!
+          })!
         }
       `,
     },
@@ -142,7 +142,7 @@ test("instantiates explicit type arguments, nested calls, and async templates", 
         export async function guard<A, E extends Error>(
           operation: () => Result<A, E>,
         ): Promise<Result<A, E | Deadline>> {
-          return operation().unwrap()
+          return operation()!
         }
       `,
     },
@@ -155,7 +155,7 @@ test("instantiates explicit type arguments, nested calls, and async templates", 
           return (await guard((): Result<number, Broken> => {
             if (flag) throw new Broken()
             return 1
-          })).unwrap()
+          }))!
         }
       `,
     },
@@ -189,7 +189,7 @@ test("carries concrete Context requirements of a row template through instantiat
         export class Timeout extends Error {}
         export function timed<A, E extends Error>(operation: () => Result<A, E>): Result<A, E | Timeout> {
           if (Clock.context().now() < 0) throw new Timeout()
-          return operation().unwrap()
+          return operation()!
         }
       `,
     },
@@ -202,7 +202,7 @@ test("carries concrete Context requirements of a row template through instantiat
           return timed((): Result<string, NotFound> => {
             if (id === "") throw new NotFound()
             return id
-          }).unwrap()
+          })!
         }
       `,
     },
@@ -235,14 +235,14 @@ test("keeps each call site's instantiation separate and reaches the propagation 
           return id
         }
         export function left(id: string): Result<string, NotFound | Timeout> {
-          return attempt(1, (): Result<string, NotFound> => { return missing(id) }).unwrap()
+          return attempt(1, (): Result<string, NotFound> => { return missing(id) })!
         }
         export function right(id: string): Result<string, Conflict | Timeout> {
-          return attempt(1, (): Result<string, Conflict> => { return conflicting(id) }).unwrap()
+          return attempt(1, (): Result<string, Conflict> => { return conflicting(id) })!
         }
         export function both(id: string): Result<string, Conflict | NotFound | Timeout> {
-          const first = left(id).unwrap()
-          const second = right(id).unwrap()
+          const first = left(id)!
+          const second = right(id)!
           return first + second
         }
       `,
@@ -271,7 +271,7 @@ test("a widened type argument widens the row instead of silently keeping the nar
           return attempt<string, Error>(1, (): Result<string, NotFound> => {
             if (id === "") throw new NotFound()
             return id
-          }).unwrap()
+          })!
         }
       `,
     },
@@ -297,7 +297,7 @@ test("rejects an explicit type argument that would narrow a callback's real row"
           return attempt<string, NotFound>(1, (): Result<string, Conflict> => {
             if (id === "x") throw new Conflict()
             return id
-          }).unwrap()
+          })!
         }
       `,
     },
@@ -354,10 +354,10 @@ test("fails closed for higher-order escape and for a still-deferred instantiatio
       source: `
         import { pick, type FailureFor } from "./library.sm"
         export function resolved(): Result<string, FailureFor<string>> {
-          return pick("value").unwrap()
+          return pick("value")!
         }
         export function forwarded<T>(value: T): Result<T, FailureFor<T>> {
-          return pick(value).unwrap()
+          return pick(value)!
         }
       `,
     },
@@ -382,7 +382,7 @@ test("emits declaration metadata carrying the instantiated row, not the template
           return attempt(1, (): Result<string, NotFound> => {
             if (id === "") throw new NotFound()
             return id
-          }).unwrap()
+          })!
         }
       `,
     },
@@ -420,13 +420,13 @@ test("module-local generic calls instantiate without a project pass", () => {
     class Timeout extends Error {}
     class NotFound extends Error {}
     function attempt<A, E extends Error>(operation: () => Result<A, E>): Result<A, E | Timeout> {
-      return operation().unwrap()
+      return operation()!
     }
     export function load(id: string): Result<string, NotFound | Timeout> {
       return attempt((): Result<string, NotFound> => {
         if (id === "") throw new NotFound()
         return id
-      }).unwrap()
+      })!
     }
   `);
   expect(analysis.diagnostics).toEqual([]);

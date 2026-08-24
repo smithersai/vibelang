@@ -1,5 +1,0 @@
-{
-  "title": "a braced value if is accepted in a call-argument placement and keeps authored evaluation order",
-  "expect": "output",
-  "stdout": ["100", "90"]
-}

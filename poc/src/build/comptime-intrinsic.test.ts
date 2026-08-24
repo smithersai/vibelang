@@ -412,24 +412,25 @@ describe("compiler-facing comptime intrinsic", () => {
 
   test("spelling alone never grants intrinsic authority", async () => {
     const build = await compiler();
+    // Spelling grants nothing: the local `comptime` is never evaluated at
+    // compile time and no call is recorded. It is also not *refused* — see the
+    // class test below — because the specification requires an unrelated
+    // function named comptime to remain an ordinary function.
     const local = await compileComptimeIntrinsics({
       compiler: build.compiler,
       sources: { "local.ts": "function comptime(value: unknown) { return value; }\ncomptime(1);" },
     });
-    expect(local.ok).toBe(false);
     expect(local.calls).toEqual([]);
-    expect(local.loweredSources).toBeUndefined();
-    expect(local.diagnostics).toEqual([expect.objectContaining({
-      code: ComptimeIntrinsicDiagnosticCode.UnrelatedIdentity,
-      file: "local.ts",
-      line: 2,
-      column: 1,
-    })]);
+    expect(local.loweredSources!["local.ts"])
+      .toBe("function comptime(value: unknown) { return value; }\ncomptime(1);");
 
+    // The one genuinely unbound spelling still reports, because a call to a
+    // name that resolves to nothing is not a valid program under any reading.
     const missing = await compileComptimeIntrinsics({
       compiler: build.compiler,
       sources: { "missing.ts": "\ncomptime(1);" },
     });
+    expect(missing.ok).toBe(false);
     expect(missing.diagnostics).toEqual([expect.objectContaining({
       code: ComptimeIntrinsicDiagnosticCode.MissingIdentity,
       file: "missing.ts",
@@ -438,22 +439,63 @@ describe("compiler-facing comptime intrinsic", () => {
     })]);
   });
 
-  test("wrong-module aliases and namespaces fail checker identity", async () => {
+  test("every binding form of an unrelated comptime stays an ordinary function", async () => {
     const build = await compiler();
-    const helper = "export function comptime(value: unknown) { return value; }";
+    // specification/comptime.mdx: "The compiler MUST recognize the resolved
+    // imported binding, not the local identifier text ... an unrelated function
+    // named `comptime` MUST remain an ordinary function." Each source below is
+    // one binding form of that rule; none may be rewritten or refused.
+    const sources: Record<string, string> = {
+      "helper.ts": "export function comptime(value: unknown) { return value; }",
+      "reexport.ts": `export { comptime } from "./helper.js";`,
+      // local declaration forms
+      "declaration.ts": "function comptime(value: unknown) { return value; }\nexport const a = comptime(1);",
+      "generic.ts": "function comptime<T>(value: T): T { return value; }\nexport const b = comptime({ ok: true });",
+      "arrow.ts": "const comptime = (value: unknown) => value;\nexport const c = comptime(1);",
+      "shadow.ts": "export function run() { function comptime(v: unknown) { return v; } return comptime(1); }",
+      "parameter.ts": "export function run(comptime: (v: unknown) => unknown) { return comptime(1); }",
+      // member forms
+      "member.ts": "const tools = { comptime(v: unknown) { return v; } };\nexport const d = tools.comptime(1);",
+      "method.ts": "class T { comptime(v: unknown) { return v; } }\nexport const e = new T().comptime(1);",
+      // import forms from an ordinary module that happens to export `comptime`
+      "named.ts": `import { comptime } from "./helper.js";\nexport const f = comptime(1);`,
+      "alias.ts": `import { comptime as now } from "./helper.js";\nexport const g = now(1);`,
+      "namespace.ts": `import * as other from "./helper.js";\nexport const h = other.comptime(1);`,
+      "chained.ts": `import { comptime } from "./reexport.js";\nexport const i = comptime(1);`,
+    };
+    const result = await compileComptimeIntrinsics({ compiler: build.compiler, sources });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.ok).toBe(true);
+    expect(result.calls).toEqual([]);
+    // Nothing was rewritten: every authored byte survives lowering.
+    expect(result.loweredSources).toEqual(sources);
+  });
+
+  test("resolved intrinsic identity still wins over every unrelated binding in the same project", async () => {
+    const build = await compiler();
+    // The negative direction of the class test: an unrelated `comptime` in one
+    // file must not stop the real intrinsic from lowering in another, and the
+    // real intrinsic must still lower when it is itself aliased or shadowed
+    // nowhere near its import.
     const result = await compileComptimeIntrinsics({
       compiler: build.compiler,
       sources: {
-        "helper.ts": helper,
-        "named.ts": `import { comptime as now } from "./helper.js";\nnow(1);`,
-        "namespace.ts": `import * as other from "./helper.js";\nother.comptime(1);`,
+        "helper.ts": "export function comptime(value: unknown) { return value; }",
+        "ordinary.ts": `import { comptime } from "./helper.js";\nexport const a = comptime(1);`,
+        "direct.ts": `import { comptime } from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)};\nexport const b = comptime({ real: 1 });`,
+        "aliased.ts": `import { comptime as ct } from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)};\nexport const c = ct({ real: 2 });`,
+        "namespaced.ts":
+          `import * as ct from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)};\nexport const d = ct.comptime({ real: 3 });`,
       },
     });
-    expect(result.ok).toBe(false);
-    expect(result.diagnostics.map(({ code, file }) => ({ code, file }))).toEqual([
-      { code: ComptimeIntrinsicDiagnosticCode.UnrelatedIdentity, file: "named.ts" },
-      { code: ComptimeIntrinsicDiagnosticCode.UnrelatedIdentity, file: "namespace.ts" },
-    ]);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.ok).toBe(true);
+    expect(result.calls.map((call) => call.file).sort()).toEqual(["aliased.ts", "direct.ts", "namespaced.ts"]);
+    expect(result.loweredSources!["ordinary.ts"])
+      .toBe(`import { comptime } from "./helper.js";\nexport const a = comptime(1);`);
+    expect(result.loweredSources!["direct.ts"]).toContain(`{["real"]:1}`);
+    expect(result.loweredSources!["aliased.ts"]).toContain(`{["real"]:2}`);
+    expect(result.loweredSources!["namespaced.ts"]).toContain(`{["real"]:3}`);
   });
 
   test("dynamic syntax is never executed and any frontend error prevents cache writes", async () => {
@@ -1177,3 +1219,49 @@ describe("type-producing comptime", () => {
     ]);
   });
 });
+
+test("a compiler-owned virtual module is erased, so no other module form may reach it", async () => {
+  const build = await compiler();
+  // Recognition already followed resolved checker identity, but erasure only
+  // covered `import ... from`. These forms therefore survived lowering as a
+  // runtime edge to a module that has no runtime existence, and the import
+  // assignment additionally kept its intrinsic authority while doing so.
+  for (const specifier of [COMPTIME_MODULE_SPECIFIER, SCHEMA_MODULE_SPECIFIER]) {
+    const quoted = JSON.stringify(specifier);
+    const expected = specifier === SCHEMA_MODULE_SPECIFIER
+      ? ComptimeIntrinsicDiagnosticCode.SchemaImportShape
+      : ComptimeIntrinsicDiagnosticCode.UnsupportedUse;
+    for (const [label, source] of [
+      ["star re-export", `export * from ${quoted};`],
+      ["namespace re-export", `export * as owned from ${quoted};`],
+      ["import assignment", `import owned = require(${quoted});\nexport const y = 1;`],
+      ["exported import assignment", `export import owned = require(${quoted});\nexport const y = 1;`],
+      ["dynamic import", `export const pending = import(${quoted});`],
+    ] as const) {
+      const result = await compileComptimeIntrinsics({
+        compiler: build.compiler,
+        sources: { "misuse.ts": source },
+      });
+      expect(result.ok, `${specifier} ${label}`).toBe(false);
+      expect(result.loweredSources, `${specifier} ${label}`).toBeUndefined();
+      expect(result.diagnostics.map((entry) => entry.code), `${specifier} ${label}`).toContain(expected);
+    }
+  }
+
+  // Both directions: every import form that legitimately reaches the intrinsic
+  // still compiles, still evaluates, and still erases its import.
+  for (const [label, source, calls] of [
+    ["named", `import { comptime } from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)};\nexport const x = comptime(1 + 1);`, 1],
+    ["aliased", `import { comptime as ct } from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)};\nexport const x = ct(1 + 1);`, 1],
+    ["namespace", `import * as owned from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)};\nexport const x = owned.comptime(1 + 1);`, 1],
+    ["side effect", `import ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)};\nexport const y = 1;`, 0],
+  ] as const) {
+    const result = await compileComptimeIntrinsics({
+      compiler: build.compiler,
+      sources: { "ok.ts": source },
+    });
+    expect(result.ok, label).toBe(true);
+    expect(result.calls, label).toHaveLength(calls);
+    expect(result.loweredSources!["ok.ts"], label).not.toContain(COMPTIME_MODULE_SPECIFIER);
+  }
+})

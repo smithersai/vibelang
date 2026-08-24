@@ -335,7 +335,12 @@ const ACTION_DECLARATION = [
   "    { readonly __smithersResult: { readonly success: infer Success } } ? Success : never;",
   "export declare abstract class Action<Signature extends (input: never) => unknown> {",
   "  readonly __smithersActionSignature: Signature;",
-  "  static run<Self>(this: Self, input: SmithersActionInput<Self>): { unwrap(): SmithersActionSuccess<Self> };",
+  // The standalone durable checker has no Smithers semantic type hook. Its
+  // compiler-owned declaration therefore presents Action.run as the success
+  // type plus undefined: upstream TypeScript removes only that sentinel at a
+  // postfix `!`, while the durable lowerer below still validates the operand
+  // by the Action binding's checker identity before emitting Plan IR.
+  "  static run<Self>(this: Self, input: SmithersActionInput<Self>): SmithersActionSuccess<Self> | undefined;",
   "}"
 ].join("\n")
 
@@ -419,7 +424,7 @@ const checkedSource = (
       "/** Provisional explicit sequencing intrinsic: a durable control edge without a data edge. */",
       "export declare function sequential<First, Second>(first: First, second: Second): readonly [First, Second];",
       "/** Provisional round-budgeted while-style loop template; each round's Action success becomes the next state. */",
-      "export declare function loopWhile<State>(initial: State, condition: (state: State) => boolean, body: (state: State) => { unwrap(): State }, maxRounds: number): State;",
+      "export declare function loopWhile<State>(initial: State, condition: (state: State) => boolean, body: (state: State) => State | undefined, maxRounds: number): State;",
       "/** Provisional durable queue consumer; suspends until one item is available and consumes exactly it. */",
       "export declare function dequeue<Item>(queue: string): Item;",
       "/** Provisional broadcast wait; one delivery satisfies every already-subscribed execution. */",
@@ -1162,6 +1167,21 @@ class FunctionLowerer {
     if (ts.isConditionalExpression(expression)) {
       return this.lowerConditionalExpression(expression, anchor, allowFinalAction)
     }
+    if (ts.isNonNullExpression(expression)) {
+      const candidate = unwrapParentheses(expression.expression)
+      if (ts.isCallExpression(candidate)) {
+        const lowered = this.lowerActionCall(candidate, anchor)
+        if (lowered !== undefined) {
+          this.sequencingDependency = lowered.nodeId
+          return lowered
+        }
+      }
+      return this.fail(
+        expression,
+        "SMITHERS4112",
+        "postfix ! is supported only directly on a compiler-bound Action.run(...) Result"
+      )
+    }
     if (ts.isCallExpression(expression)) {
       const signal = this.lowerSignalCall(expression, anchor)
       if (signal !== undefined) return signal
@@ -1179,28 +1199,13 @@ class FunctionLowerer {
       if (sequenced !== undefined) return sequenced
       const childFlow = this.lowerChildFlowCall(expression, anchor)
       if (childFlow !== undefined) return childFlow
-      if (
-        ts.isPropertyAccessExpression(expression.expression) && expression.expression.name.text === "unwrap" &&
-        expression.arguments.length === 0 && expression.typeArguments === undefined &&
-        expression.questionDotToken === undefined && expression.expression.questionDotToken === undefined
-      ) {
-        const candidate = unwrapParentheses(expression.expression.expression)
-        if (ts.isCallExpression(candidate)) {
-          const lowered = this.lowerActionCall(candidate, anchor)
-          if (lowered !== undefined) {
-            this.sequencingDependency = lowered.nodeId
-            return lowered
-          }
-        }
-        return this.fail(expression, "SMITHERS4112", "unwrap() is supported only directly on an imported Action.run(...) call")
-      }
       const lowered = this.lowerActionCall(expression, anchor)
       if (lowered !== undefined) {
         if (!allowFinalAction) {
           return this.fail(
             expression,
             "SMITHERS4115",
-            "an intermediate Action.run(...) must use .unwrap(); only the final returned Result may remain wrapped"
+            "an intermediate Action.run(...) must use postfix !; only the final returned Result may remain wrapped"
           )
         }
         return lowered
@@ -1669,7 +1674,7 @@ class FunctionLowerer {
     }
     this.activeNodes.push(node)
     // A child boundary is an effectful sub-program; later source expressions
-    // observe its completion like an unwrapped Action.
+    // observe its completion like a propagated Action.
     this.sequencingDependency = id
     return { kind: "node", nodeId: id, path: [] }
   }
@@ -1950,7 +1955,7 @@ class FunctionLowerer {
    * Lowers a fan-out body into its ordered per-item Action steps. An
    * expression body is exactly one Action.run(template) call. A block body is
    * a bounded straight-line sequence: const bindings that are either pure
-   * template projections or `Action.run(template).unwrap()` steps, ending with
+   * template projections or `Action.run(template)!` steps, ending with
    * a returned final Action.run(template) call.
    */
   private lowerFanOutBody(
@@ -1958,23 +1963,18 @@ class FunctionLowerer {
     env: FanOutTemplateEnv
   ): readonly { readonly descriptor: ActionDescriptor; readonly input: FanOutTemplateExpr }[] {
     const steps: { descriptor: ActionDescriptor; input: FanOutTemplateExpr }[] = []
-    const lowerRun = (expressionValue: ts.Expression, requireUnwrap: boolean): number => {
+    const lowerRun = (expressionValue: ts.Expression, requirePropagation: boolean): number => {
       const expression = unwrapParentheses(expressionValue)
       let runCandidate: ts.Expression = expression
-      if (requireUnwrap) {
-        if (
-          !ts.isCallExpression(expression) || !ts.isPropertyAccessExpression(expression.expression) ||
-          expression.expression.name.text !== "unwrap" || expression.arguments.length !== 0 ||
-          expression.typeArguments !== undefined || expression.questionDotToken !== undefined ||
-          expression.expression.questionDotToken !== undefined
-        ) {
+      if (requirePropagation) {
+        if (!ts.isNonNullExpression(expression)) {
           return this.fail(
             expressionValue,
             "SMITHERS4117",
-            "intermediate fanOut steps must be direct imported Action.run(...).unwrap() calls"
+            "intermediate fanOut steps must be direct compiler-bound Action.run(...)! expressions"
           )
         }
-        runCandidate = unwrapParentheses(expression.expression.expression)
+        runCandidate = unwrapParentheses(expression.expression)
       }
       if (
         !ts.isCallExpression(runCandidate) || !ts.isPropertyAccessExpression(runCandidate.expression) ||
@@ -2030,10 +2030,7 @@ class FunctionLowerer {
             return this.fail(declaration.name, "SMITHERS4199", "compiler could not resolve fanOut body binding")
           }
           const initializer = unwrapParentheses(declaration.initializer)
-          const isUnwrapCall = ts.isCallExpression(initializer) &&
-            ts.isPropertyAccessExpression(initializer.expression) &&
-            initializer.expression.name.text === "unwrap"
-          if (isUnwrapCall) {
+          if (ts.isNonNullExpression(initializer)) {
             const stepIndex = lowerRun(initializer, true)
             env.bindings.set(symbol, { kind: "step", step: stepIndex, path: [] })
           } else {

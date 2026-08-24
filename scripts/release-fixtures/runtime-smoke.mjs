@@ -58,9 +58,19 @@ for (const exportName of Object.keys(packageMetadata.exports).sort()) {
 
 const runtime = loaded.get("./runtime");
 const resultFacade = loaded.get("./result");
-const optionalFacade = loaded.get("./optional");
 assert.equal(runtime.Result, resultFacade.Result);
-assert.equal(runtime.Optional, optionalFacade.Optional);
+
+// The specification withdrew `Optional<T>` and the portability pin on
+// 2026-08-23. Absence is an ordinary `T | undefined` union and there is no
+// second compilation target, so neither subpath may reach a consumer. This is
+// the only gate that installs a real tarball, so it is the only place the
+// withdrawal can be checked as a shipped fact rather than a source diff.
+for (const withdrawn of ["./optional", "./targets"]) {
+  assert.equal(loaded.has(withdrawn), false, `${withdrawn} is withdrawn but still exported`);
+}
+for (const withdrawn of ["Optional", "encodeOptional", "decodeOptional", "__vsOptionalSome"]) {
+  assert.equal(withdrawn in runtime, false, `runtime still exports withdrawn ${withdrawn}`);
+}
 
 const stringCodec = Object.freeze({
   encode(value) {
@@ -74,8 +84,11 @@ const stringCodec = Object.freeze({
 });
 const resultWire = runtime.encodeResult(runtime.__vsResultSuccess("wire-ok"), stringCodec);
 assert.equal(runtime.decodeResult(resultWire, stringCodec).match({ ok: (value) => value, error: () => "error" }), "wire-ok");
-const optionalWire = runtime.encodeOptional(runtime.__vsOptionalSome("present"), stringCodec);
-assert.equal(runtime.decodeOptional(optionalWire, stringCodec).match({ some: (value) => value, none: () => "none" }), "present");
+// Absence crosses the wire as the ordinary union it now is: a present value
+// round-trips, and `undefined` stays `undefined` without a container.
+const presentWire = runtime.encodeResult(runtime.__vsResultSuccess("present"), stringCodec);
+assert.equal(runtime.decodeResult(presentWire, stringCodec).match({ ok: (value) => value, error: () => "error" }), "present");
+assert.equal(undefined ?? "absent", "absent");
 
 const language = loaded.get("./language");
 const projectRoot = join(process.cwd(), "virtual-project");
@@ -94,7 +107,7 @@ const project = language.compileProject([
     fileName: "main.sm",
     source: [
       'import { load, type Missing } from "./service.sm"',
-      "export function run(): Result<string, Missing> { return load(true).unwrap() }",
+      "export function run(): Result<string, Missing> { return load(true)! }",
     ].join("\n"),
   },
 ], {
@@ -209,19 +222,6 @@ if (isBun) {
   assert.equal(agentBun.InMemoryTypeScriptCompiler, agent.InMemoryTypeScriptCompiler);
 }
 
-const targets = loaded.get("./targets");
-assert.equal(typeof targets.analyzeCompatibilityProject, "function");
-const portableModule = targets.compilePortableModule({
-  moduleId: "release/smoke",
-  source: "export function add(left: number, right: number): number { return left + right }",
-});
-const portableArtifact = targets.encodePortableModuleArtifact(portableModule);
-const portableDecoded = targets.decodePortableModuleArtifact(portableArtifact);
-const portableExecution = targets.executePortableTypeScript(portableDecoded, "add", { left: 20, right: 22 });
-assert.deepEqual(portableExecution.exit, { kind: "success", value: 42 });
-assert.equal(portableDecoded.digest, portableModule.digest);
-assert.match(targets.emitPortableWat(portableDecoded), /\(export "add"\)/);
-
 // The derived-schema runtime is the module every lowered
 // `comptime(Schema.derive<T>())` names, so it must resolve and interpret a
 // descriptor from the installed package alone.
@@ -259,10 +259,10 @@ assert.equal(typeof smokeClock.monotonic(), "number");
 const data = loaded.get("./data");
 assert.deepEqual([...data.Chunk.of(1, 2, 3)], [1, 2, 3]);
 assert.equal(data.Chunk.of(1, 2, 3).size, 3);
-assert.equal(
-  data.HashMap.of(["answer", 42]).get("answer").match({ some: (value) => value, none: () => null }),
-  42,
-);
+// A lookup that can miss now answers with the value or `undefined`, read by
+// ordinary narrowing rather than a container. Both directions are pinned.
+assert.equal(data.HashMap.of(["answer", 42]).get("answer") ?? null, 42);
+assert.equal(data.HashMap.of(["answer", 42]).get("absent") ?? null, null);
 assert.equal(data.HashSet.of("release").has("release"), true);
 assert.equal(data.Data.equals(data.Data.struct({ id: 1 }), data.Data.struct({ id: 1 })), true);
 assert.equal(typeof data.Match.value, "function");

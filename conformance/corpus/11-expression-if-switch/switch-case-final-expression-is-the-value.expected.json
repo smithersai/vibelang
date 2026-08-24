@@ -1,5 +1,0 @@
-{
-  "title": "in expression position a case's final expression is the switch value, and earlier statements in the clause still run",
-  "expect": "output",
-  "stdout": ["met the bar", "resit scheduled", "pass,retry"]
-}

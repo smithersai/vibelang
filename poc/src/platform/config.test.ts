@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { decodeError, encodeError, errorIs } from "../runtime/errors.ts";
 import { Layer } from "../runtime/layer.ts";
-import { type Optional } from "../runtime/optional.ts";
 import { catchPanic, isPanic } from "../runtime/panic.ts";
 import type { Result } from "../runtime/result.ts";
 import { Config, ConfigError, ConfigSpecValue, InvalidConfig, MissingConfig } from "./config.ts";
@@ -35,7 +34,7 @@ class CountingEnvironment extends Environment {
     super();
   }
 
-  get(name: string): Optional<string> {
+  get(name: string): string | undefined {
     this.reads.push(name);
     return this.inner.get(name);
   }

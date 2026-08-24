@@ -35,7 +35,7 @@ class Invalid extends Error {
 
 interface Row { readonly id: number; readonly label: string }
 
-export function pick<T extends Row>(rows: readonly T[], id: number): Optional<T> {
+export function pick<T extends Row>(rows: readonly T[], id: number): T | undefined {
   return rows.find((row) => row.id === id)
 }
 
@@ -58,46 +58,6 @@ if(value<0)throw new Invalid(value)
 `,
   },
   {
-    name: "defer and errdefer markers",
-    compiles: true,
-    source: `class CleanupFailure extends Error {}
-
-function cleanup(): void {}
-function rollback(): void {}
-
-export function guarded(flag: boolean): Result<number, CleanupFailure> {
-  defer   cleanup()
-  errdefer     rollback()
-  if (flag) throw new CleanupFailure()
-  return 1
-}
-`,
-  },
-  {
-    name: "labeled block values",
-    compiles: true,
-    source: `export function classify(input: string): string {
-  const kind=verdict:{
-if(input.length===0)break :verdict "empty"
-if(input.length>8)break:verdict  "long"
-break :verdict "short"
-}
-  return kind
-}
-`,
-  },
-  {
-    name: "loop values with an else completion",
-    compiles: true,
-    source: `export function firstPassing(scores: number[]): number {
-  const found=search:for(const score of scores){
-if(score>=60)break :search score
-}else -1
-  return found
-}
-`,
-  },
-  {
     name: "conditional declarations",
     compiles: true,
     source: `function lookup(key: string): string | null { return key === "" ? null : key }
@@ -110,36 +70,6 @@ return fallback
 }else{
 return "nothing"
 }
-}
-`,
-  },
-  {
-    name: "value switch in return position",
-    compiles: true,
-    source: `type Grade = "pass" | "fail" | "retry"
-
-export function describe(grade: Grade): string {
-  return switch(grade){
-case "pass":"met the bar"
-case "fail":"below the bar"
-case "retry":"resit scheduled"
-}
-}
-`,
-  },
-  {
-    name: "value if in a general expression placement",
-    compiles: true,
-    source: `function combine(base: number, extra: number, scale: number): number {
-  return (base + extra) * scale
-}
-
-export function weighted(score: number, bonus: boolean): number {
-  return combine(score,   if (bonus) {
-10
-} else {
-0
-},   1)
 }
 `,
   },
@@ -208,21 +138,10 @@ export function usesSlash(a: number, b: number): number { return a / b }
 `,
   },
   {
-    name: "nested value construct inside a defer cleanup",
-    compiles: false,
-    source: `function use(value: number): void {}
-export function nested(active: boolean): void {
-  defer use(if (active) { 1 } else { 2 })
-}
-`,
-  },
-  { name: "example: expression-flow.sm", source: example("expression-flow.sm"), compiles: true },
-  {
     name: "example: conditional-declarations.sm",
     source: example("conditional-declarations.sm"),
     compiles: true,
   },
-  { name: "example: demo.sm", source: example("demo.sm"), compiles: false },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -387,40 +306,6 @@ describe("smithers format output", () => {
     );
   });
 
-  test("restores Smithers spellings verbatim in their formatted positions", () => {
-    const result = formatSmithersSource(
-      `export function guarded(flag:boolean):Result<number,Error>{\n` +
-      `defer   cleanup()\n` +
-      `errdefer    rollback()\n` +
-      `const kind=verdict:{\n` +
-      `break:verdict   "short"\n` +
-      `}\n` +
-      `const found=search:for(const s of [1]){\n` +
-      `break :search s\n` +
-      `}else -1\n` +
-      `if(const v=read();v!==null){ return v }\n` +
-      `return switch(kind){\ncase "short":found\n}\n` +
-      `}\n`,
-    );
-    expect(result.ok).toBe(true);
-    expect(result.code).toBe(
-      `export function guarded(flag: boolean): Result<number, Error> {\n` +
-      `  defer cleanup()\n` +
-      `  errdefer rollback()\n` +
-      `  const kind = verdict: {\n` +
-      `    break :verdict "short"\n` +
-      `  }\n` +
-      `  const found = search: for (const s of [1]) {\n` +
-      `    break :search s\n` +
-      `  } else -1\n` +
-      `  if (const v = read(); v !== null) { return v }\n` +
-      `  return switch (kind) {\n` +
-      `    case "short": found\n` +
-      `  }\n` +
-      `}\n`,
-    );
-  });
-
   test("never reflows string, template, or regular expression contents", () => {
     const source = `const a = "two    spaces"\nconst b = \`line\n    indented   tail\`\nconst c = /a  b/g\n`;
     const result = formatSmithersSource(`   ${source}`);
@@ -449,14 +334,14 @@ describe("smithers format output", () => {
   });
 
   test("reports an already-formatted module as unchanged", () => {
-    const formatted = formatSmithersSource(example("expression-flow.sm"));
+    const formatted = formatSmithersSource(example("conditional-declarations.sm"));
     expect(formatted.ok).toBe(true);
     expect(formatted.changed).toBe(false);
-    expect(formatted.code).toBe(example("expression-flow.sm"));
+    expect(formatted.code).toBe(example("conditional-declarations.sm"));
   });
 
   test("the repository's language examples are already formatted", () => {
-    for (const name of ["expression-flow.sm", "conditional-declarations.sm", "demo.sm"]) {
+    for (const name of ["conditional-declarations.sm"]) {
       expect({ name, formatted: isFormattedSmithersSource(example(name), { fileName: name }) })
         .toEqual({ name, formatted: true });
     }
@@ -477,22 +362,6 @@ describe("smithers format output", () => {
 
     const postfix = `function g(a: number) {\n  a\n  ++a\n  return a\n}\n`;
     expect(formatSmithersSource(postfix).code).toBe(postfix);
-  });
-
-  test("converges: differently indented spellings of one program format alike", () => {
-    const canonical = `export function classify(input: string): string {\n` +
-      `  const kind = verdict: {\n` +
-      `    if (input.length === 0) break :verdict "empty"\n` +
-      `    break :verdict "short"\n` +
-      `  }\n` +
-      `  return kind\n` +
-      `}\n`;
-    const flattened = canonical.split("\n").map((line) => line.trimStart()).join("\n");
-    const overIndented = canonical.split("\n")
-      .map((line) => (line === "" ? line : `\t\t${line.trimStart()}`)).join("\n");
-    expect(formatSmithersSource(flattened).code).toBe(canonical);
-    expect(formatSmithersSource(overIndented).code).toBe(canonical);
-    expect(formatSmithersSource(canonical).changed).toBe(false);
   });
 
   test("preserves the module's own newline convention", () => {

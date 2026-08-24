@@ -50,8 +50,8 @@ func TestPinnedForkDiagnosticSpansUseUTF16(t *testing.T) {
 }
 
 // TestPinnedForkTopLevelCheckedChannelsFailClosed audits the complete
-// Panic-charging call family at module evaluation. Result/Optional unwrap,
-// throw, requirements, and defer/errdefer have separate focused tests; these
+// Panic-charging call family at module evaluation. Result unwrap,
+// throw and requirements have separate focused tests; these
 // rows cover the previously missing expect, explicit panic, and foreign-call
 // paths together with symbol-identity negatives.
 func TestPinnedForkTopLevelCheckedChannelsFailClosed(t *testing.T) {
@@ -117,17 +117,6 @@ export function main(): string[] { return [first, second] }
 // name-spelling matcher cannot handle soundly.
 func TestPinnedForkSpecDerivedDiagnosticSituations(t *testing.T) {
 	runFailClosedCases(t, []failClosedCase{
-		{
-			name: "with statement is the forbidden AST construct",
-			source: `export function main(): string[] {
-  const scope = { value: "x" }
-  with (scope) {
-    return ["seen"]
-  }
-}
-`,
-			reject: []string{"SMITHERS3003@3:3"},
-		},
 		{
 			name: "with as a property name is ordinary TypeScript syntax",
 			source: `const scope = { with: "ordinary" }

@@ -579,9 +579,13 @@ export const deriveDurableErrorSchema = (
 export const actionDeclarationFromDescriptor = (exportName: string, descriptor: ActionDescriptor): string => {
   identifier(exportName, "Action export name")
   if (descriptor.inputSchema.shape !== "structural" || descriptor.successSchema.shape !== "structural") {
-    return `export declare const ${exportName}: { run(input: unknown): { unwrap(): unknown } };`
+    // A legacy json-value descriptor carries no static shape to expose. `any`
+    // is confined to this compiler-owned declaration; the durable lowerer
+    // still resolves the Action binding and validates its descriptor before a
+    // postfix propagation point can enter Plan IR.
+    return `export declare const ${exportName}: { run(input: unknown): any | undefined };`
   }
-  return `export declare const ${exportName}: { run(input: ${descriptorTypeScript(descriptor.inputSchema.descriptor)}): { unwrap(): ${descriptorTypeScript(descriptor.successSchema.descriptor)} } };`
+  return `export declare const ${exportName}: { run(input: ${descriptorTypeScript(descriptor.inputSchema.descriptor)}): ${descriptorTypeScript(descriptor.successSchema.descriptor)} | undefined };`
 }
 
 const validateSchemaContract = (value: JsonValue, role: DurableSchema["role"], path: string): DurableSchema => {

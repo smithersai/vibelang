@@ -1,8 +1,0 @@
-{
-  "title": "a native pin over a graph that reaches no TypeScript requirement and no host dependence adds no diagnostic and the program compiles and runs",
-  "expect": "output",
-  "stdout": [
-    "48010"
-  ],
-  "notes": "specification/compatibility.mdx, 'Native Pin': 'A native pin MUST be a checked assertion over the complete transitive graph. Compilation MUST fail if any reachable operation or provider requires TypeScript.' The positive half of that sentence: a graph with no reachable TypeScript requirement satisfies the assertion, so the pin is silent. docs/DECISIONS.md leaves the spelling Open; this area proposes the imported-intrinsic form `native(fn)` from \"smithers:native\", the shape the same ledger locks for comptime ('Comptime is not a language keyword ... The compiler recognizes the resolved binding rather than its local spelling')."
-}

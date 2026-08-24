@@ -69,7 +69,7 @@ describe("Process", () => {
   test("TestProcess.exit records the code and never returns", () => {
     const runningProcess = TestProcess.make();
     expect(runningProcess.exits).toEqual([]);
-    expect(runningProcess.exitCode().isNone()).toBe(true);
+    expect(runningProcess.exitCode()).toBeUndefined();
 
     let reachedAfterExit = false;
     const raised = panicOf(() => {
@@ -81,12 +81,12 @@ describe("Process", () => {
     expect(errorIs(raised, ProcessExited)).toBe(true);
     expect((raised as ProcessExited).code).toBe(3);
     expect(runningProcess.exits).toEqual([3]);
-    expect(runningProcess.exitCode().unwrapOr(-1)).toBe(3);
+    expect(runningProcess.exitCode() ?? -1).toBe(3);
 
     catchPanic(() => runningProcess.exit(), () => undefined);
     expect(runningProcess.exits).toEqual([3, 0]);
     // The first request is the one that would have terminated the program.
-    expect(runningProcess.exitCode().unwrapOr(-1)).toBe(3);
+    expect(runningProcess.exitCode() ?? -1).toBe(3);
   });
 
   test("ProcessExited is a panic, not a recoverable failure, and survives the wire", () => {

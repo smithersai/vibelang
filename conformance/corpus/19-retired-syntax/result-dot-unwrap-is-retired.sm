@@ -1,0 +1,10 @@
+class Missing extends Error {}
+
+function lookup(): Result<string, Missing> {
+  return "Ada"
+}
+
+export function main(): Result<string[], Missing> {
+  const name = lookup().unwrap()
+  return [name]
+}

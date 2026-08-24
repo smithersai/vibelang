@@ -70,9 +70,10 @@ A declared diagnostic has no `file` field. Both backends record one on the
 observation, and `--json` prints it, but the judge compares code, line, and
 column only. A multi-module case therefore declares a companion diagnostic in an
 auxiliary module by its authored line and column *in that module* — see
+`05-context-rows/requirement-propagates-across-modules`, whose companion module
+carries its own declared positions. (The example this paragraph used to give was
 `21-native-pin/a-pin-reaching-a-host-module-through-a-re-export-is-rejected`,
-whose `SMITHERS1510` is at `4:30` of `reexport-host-module.mod.sm` while its
-`SMITHERS3001` is at `17:1` of the case itself.
+deleted with the portability withdrawal on 2026-08-23.)
 
 Two consequences worth knowing before writing one. Give each `*.mod.sm` a name
 distinctive enough to read in a route (they share one flat directory with every
@@ -90,8 +91,11 @@ Message *wording* is not the contract — it legitimately differs between the tw
 backends, and `compareObservations` still diffs codes and positions only. But
 some rules carry a payload that is the whole promise. The native pin is the one
 this was added for: *"The diagnostic SHOULD show the dependency path that
-introduced the requirement"* (`specification/compatibility.mdx`, Native Pin). A
-pin refused with an **empty** route satisfies a code-and-position expectation
+introduced the requirement"*. **That rule was withdrawn on 2026-08-23 with the
+portability targets, and every case that declared `messageContains` was in
+`21-native-pin`, so the corpus currently declares none.** The mechanism stays,
+because the reasoning that justified it is not specific to the pin. A
+pin refused with an **empty** route satisfied a code-and-position expectation
 exactly, so the route would be unpinned — and "an empty result matching an empty
 expectation" is a fail-open in the harness rather than in a backend.
 
@@ -277,9 +281,9 @@ output for either one finds the rows and the tally.
 `divergent`**, because the marker says the specification and the backend were
 already known to disagree. So `0 divergent` does **not** mean "no backend
 accepts a program the language forbids" — it means "no *unrecorded* one does",
-and the `xfail` count is where the recorded ones live. All four markers in the
-corpus today are of exactly that shape, and three of the four are programs the
-fork compiles, certifies as native-portable and **runs**. Read the two numbers
+and the `xfail` count is where the recorded ones live. The corpus carries **no
+markers today**, so `0 divergent` and `0 xfail` currently mean the same thing;
+that is a property of this moment, not of the scoreboard. Read the two numbers
 together or the first one flatters.
 
 `unmeasured` never merges into any other bucket. A crashed or refusing backend
@@ -355,21 +359,20 @@ compile — through the real backend, and requires the runner to score all three
 
 ## Current `xfail`s
 
-**Four markers, four findings, all `go`, all in `21-native-pin`.** Every one is
-the fail-open direction — the fork accepts a program the language requires it to
-refuse — and every one was written from the documentation before it was run.
+**None.** The four markers this section listed were all `go`, all in
+`21-native-pin`, and all in the fail-open direction: the fork granted a native
+pin over a program the language required it to refuse. The portability pin, the
+`TypeScript` requirement and the portable/required/forbidden classification were
+withdrawn from the specification on 2026-08-23 and removed from both backends,
+so area 21 is deleted and the four markers were **retired rather than fixed** —
+a defect in granting a certification is moot once the certification does not
+exist. Their evidence is preserved in the withdrawal record at the top of
+[`COVERAGE.md`](./COVERAGE.md) and in the checkpoint branch
+`poc/pre-withdrawal-checkpoint`.
 
-| case | backends | what the implementation does |
-| --- | --- | --- |
-| `21-native-pin/a-callback-a-callee-invokes-is-part-of-the-pinned-graph` | go | **accepts, grants the pin, and runs it** (exit 0, prints `1`) where the reference reports `SMITHERS3001` with the route `… #pinned -> invoking-callee.mod.sm#run`. The fork charges `eval` in the pinned body, inside an immediately-invoked function expression, and inside a `Layer.provide` callback; what it never does is ask which VALUE reaches a call whose selected signature is a parameter's function type, so a callback handed to an ordinary visible callee is not entered. Its acceptance twin `a-callback-a-callee-only-stores-still-satisfies-the-pin` passes there **for the wrong reason** — a backend that enters no callback satisfies a negative automatically — which is why the pair must be read together. |
-| `21-native-pin/a-class-instance-method-is-part-of-the-pinned-graph` | go | **accepts, grants the pin, and runs it.** The same missing question in its other spelling: the callee's parameter is an interface, so the signature the checker selects has no body, and the body that runs belongs to the class the caller constructed. The reference reports the whole route `… -> reader-callee.mod.sm#run -> …#read`. |
-| `21-native-pin/a-layer-cannot-subtract-a-requirement-that-blocks-the-pin` | go | **accepts, grants the pin, and runs it** — and this is a subtraction defect rather than a missing walk, separated by two probes: the byte-identical program with the capability class renamed `Config` is refused by the fork, and a `Layer.provide` callback reading `process.pid` is refused too. The only thing that changes is the identifier on the capability class, so an author can obtain a native pin over `eval` by writing `abstract class TypeScript extends Context` and handing it to `Layer.succeed`. `compatibility.mdx` §Native Pin names providers explicitly: "Compilation MUST fail if any reachable operation **or provider** requires TypeScript." |
-| `21-native-pin/a-side-effect-import-chain-is-part-of-the-pinned-graph` | go | reports the `SMITHERS1510` trust companion at the same position and **grants the pin**. It is the transitive half of the module load graph specifically: handed the same pinned function with `import "node:fs"` written directly in its own module, the fork reports the pin failure correctly. One project module of indirection hides the edge. This program is still refused — by the trust rule, not by the pin — so a host module carrying the trust marker would leave the fork with no diagnostic at all. |
-
-Each entry carries its full doc citation and evidence in the expectation's
-`xfail.reason` / `xfail.doc`, and all four are summarized with the rest of the
-audit in [`COVERAGE.md`](./COVERAGE.md). None is a divergence: each is a backend
-disagreeing with the *specification*, recorded rather than smoothed over.
+A marker is still the right answer for a backend that contradicts the
+specification: write the case from the documentation, record the citation in
+`xfail.reason` / `xfail.doc`, and never soften the expectation instead.
 
 **All four were only writable because the reference had just been fixed.** Every
 one of these classes was a live *reference* fail-open within the last day, closed
@@ -425,10 +428,11 @@ used to accept a top-level `Result.expect(...)` and run it),
 `22-source-text-fidelity/diagnostic-columns-survive-non-ascii-source-text` (the
 fork used to report diagnostic columns as UTF-8 byte offsets), and four `js`
 markers — the two `11-expression-if-switch` arrow-arm cases,
-`21-native-pin/a-pin-over-an-async-function-is-accepted`, and
+`21-native-pin/a-pin-over-an-async-function-is-accepted` (deleted with the
+portability withdrawal), and
 `22-source-text-fidelity/a-non-ascii-error-class-name-is-a-nominal-error`. All of
-them now pass on both backends. Keep every one of those cases: they are the only
-rows that would notice any of those defects returning.
+the surviving ones now pass on both backends. Keep every one of those cases: they
+are the only rows that would notice any of those defects returning.
 
 ## Harness self-tests
 

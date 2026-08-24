@@ -149,6 +149,73 @@ func tokenTextAt(tokens []scannedToken, index int) string {
 	return tokens[index].text
 }
 
+func startsRetiredStatement(previous string) bool {
+	switch previous {
+	case "", "{", "}", ";", ":":
+		return true
+	}
+	return false
+}
+
+func startsRetiredValue(tokens []scannedToken, index int) bool {
+	switch tokenTextAt(tokens, index-1) {
+	case "=", "return", "[", "=>", "?", "+", "-", "*", "/", "%", "&&", "||", "??":
+		return true
+	}
+	return false
+}
+
+func isRetiredValueLabel(tokens []scannedToken, index int) bool {
+	if index < 0 || index+2 >= len(tokens) || tokens[index].kind != ast.KindIdentifier ||
+		tokenTextAt(tokens, index+1) != ":" {
+		return false
+	}
+	next := tokenTextAt(tokens, index+2)
+	return startsRetiredValue(tokens, index) &&
+		(next == "{" || next == "while" || next == "for" || next == "do")
+}
+
+func matchingTokenBackward(tokens []scannedToken, closeIndex int, open string, close string) int {
+	depth := 0
+	for index := closeIndex; index >= 0; index-- {
+		switch tokens[index].text {
+		case close:
+			depth++
+		case open:
+			depth--
+			if depth == 0 {
+				return index
+			}
+		}
+	}
+	return -1
+}
+
+// isRetiredLoopElse recognizes label: while/for (...) { ... } else value.
+// Expression-position labels are reported once at the label itself.
+func isRetiredLoopElse(tokens []scannedToken, elseIndex int) bool {
+	if tokenTextAt(tokens, elseIndex) != "else" || tokenTextAt(tokens, elseIndex-1) != "}" {
+		return false
+	}
+	bodyOpen := matchingTokenBackward(tokens, elseIndex-1, "{", "}")
+	if bodyOpen < 2 || tokenTextAt(tokens, bodyOpen-1) != ")" {
+		return false
+	}
+	headerOpen := matchingTokenBackward(tokens, bodyOpen-1, "(", ")")
+	if headerOpen < 3 {
+		return false
+	}
+	loop := tokenTextAt(tokens, headerOpen-1)
+	if loop != "while" && loop != "for" {
+		return false
+	}
+	label := headerOpen - 3
+	if tokenTextAt(tokens, headerOpen-2) != ":" || tokens[label].kind != ast.KindIdentifier {
+		return false
+	}
+	return !isRetiredValueLabel(tokens, label)
+}
+
 // sweepRetiredSyntax recognizes every retired spelling in one authored file.
 //
 // Each rule is the reference's, including its guards. The rules are
@@ -163,6 +230,33 @@ func sweepRetiredSyntax(text string) []retiredHit {
 	for index, token := range tokens {
 		previous := tokenTextAt(tokens, index-1)
 		next := tokenTextAt(tokens, index+1)
+
+		if (token.text == "defer" || token.text == "errdefer") &&
+			startsRetiredStatement(previous) && index+1 < len(tokens) &&
+			tokens[index+1].kind == ast.KindIdentifier {
+			if token.text == "defer" {
+				report(token, "the defer statement was withdrawn; use an explicit resource-management using declaration")
+			} else {
+				report(token, "the errdefer statement was withdrawn; write cleanup explicitly in the Result failure path")
+			}
+		}
+
+		if token.text == "break" && next == ":" && index+3 < len(tokens) &&
+			tokens[index+2].kind == ast.KindIdentifier && startsOperand(tokenTextAt(tokens, index+3)) {
+			report(token, "the break :label value grammar was withdrawn; labeled breaks do not carry values")
+		}
+
+		if isRetiredLoopElse(tokens, index) {
+			report(token, "the loop else completion grammar was withdrawn; loops retain TypeScript statement behavior")
+		}
+
+		if (token.text == "if" || token.text == "switch") && startsRetiredValue(tokens, index) {
+			report(token, "expression-position "+token.text+" grammar was withdrawn; use existing TypeScript expressions")
+		}
+
+		if isRetiredValueLabel(tokens, index) {
+			report(token, "expression-position labeled block and loop grammar was withdrawn; labels remain statements")
+		}
 
 		// `error Name {}` — a nominal error is an ordinary class extending
 		// Error. The following identifier and brace are required so an ordinary
@@ -188,13 +282,18 @@ func sweepRetiredSyntax(text string) []retiredHit {
 		// `orelse` is excluded by the preceding `.`, and a property named
 		// `orelse` by the requirement that a right operand follow.
 		if token.text == "orelse" && previous != "." && startsOperand(next) {
-			report(token, "the `orelse` operator was removed; use Optional.match(), map(), or unwrapOr()")
+			report(token, "the `orelse` operator was removed; use nullish coalescing or ordinary narrowing")
+		}
+
+		if token.text == "!" && next == ":" && index > 0 &&
+			(tokens[index-1].kind == ast.KindIdentifier || tokens[index-1].kind == ast.KindPrivateIdentifier) {
+			report(token, "the definite-assignment assertion x!: T is unavailable in .sm; initialize or narrow the binding explicitly")
 		}
 
 		// `.?`. The anchor is the DOT, not the question mark: that is where the
 		// reference reports, and the corpus pins the column.
 		if token.text == "." && next == "?" {
-			report(token, "the `.?` postfix operator was removed; use Optional.unwrap()")
+			report(token, "the `.?` postfix operator was removed; use optional chaining or ordinary narrowing")
 		}
 
 		// Prefix `try`. Three guards, each load-bearing: a following `{` is
@@ -203,7 +302,7 @@ func sweepRetiredSyntax(text string) []retiredHit {
 		// retired marker is a PREFIX, so an operand must follow it — which is
 		// what keeps a member named `try` in `{ try: … }` an ordinary property.
 		if token.text == "try" && next != "{" && previous != "." && startsOperand(next) {
-			report(token, "the prefix `try` propagation marker was removed; use Result.unwrap()")
+			report(token, "the prefix `try` propagation marker was removed; use postfix !")
 		}
 
 		// Postfix `catch`. The retired form is `<expression> catch <expression>`,

@@ -8,7 +8,7 @@ async function lookup(key: string): Promise<Result<string, Missing>> {
 }
 
 async function initial(key: string): Promise<Result<string, Missing>> {
-  const name = (await lookup(key)).unwrap()
+  const name = (await lookup(key))!
   return name.slice(0, 1)
 }
 

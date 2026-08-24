@@ -19,9 +19,11 @@
  * - **`read` is a byte-stream read, not a message read.** It returns whatever
  *   has arrived — one chunk, several coalesced, or part of one. TCP has no
  *   frames; a protocol on top of this must do its own framing.
- * - **Absence is end-of-file.** `read` yields `Optional` absent exactly once the
- *   peer has closed cleanly and every buffered byte has been handed over. An
- *   abrupt close is `ConnectionClosed`, which is a different fact.
+ * - **Absence is end-of-file.** `read` succeeds with `undefined` exactly once
+ *   the peer has closed cleanly and every buffered byte has been handed over.
+ *   That is the `Result<A | undefined, E>` shape: end-of-file is an absent
+ *   success, while an abrupt close is `ConnectionClosed`, a typed failure. The
+ *   two are different facts and stay on different axes.
  * - **`read` is not reentrant, and says so at the call site.** A second
  *   concurrent `read` panics synchronously rather than rejecting later, the way
  *   `TestSleeper.sleep` panics on a bad argument.
@@ -35,13 +37,12 @@
 import * as net from "node:net";
 import { type JsonValue, type NominalError, registerErrorCodec, registerErrorType } from "../runtime/errors.ts";
 import { Context } from "../runtime/layer.ts";
-import type { Optional } from "../runtime/optional.ts";
 import { panic } from "../runtime/panic.ts";
 import type { Result } from "../runtime/result.ts";
 import { RuntimeValues } from "../runtime/values.ts";
 import { causeDetail, errnoCode } from "./internal.ts";
 
-const { absent, failure, present, success } = RuntimeValues;
+const { failure, success } = RuntimeValues;
 
 // ---------------------------------------------------------------------------
 // Failure channel
@@ -216,10 +217,10 @@ export interface SocketConnection {
   /** Send bytes. Resolves once the host has taken them. */
   write(bytes: Uint8Array): Promise<Result<void, SocketError>>;
   /**
-   * Receive whatever bytes have arrived. Absent means a clean end-of-file: the
-   * peer closed and nothing is left buffered. Not reentrant.
+   * Receive whatever bytes have arrived. An `undefined` success means a clean
+   * end-of-file: the peer closed and nothing is left buffered. Not reentrant.
    */
-  read(): Promise<Result<Optional<Uint8Array>, SocketError>>;
+  read(): Promise<Result<Uint8Array | undefined, SocketError>>;
   /** Close this end. Idempotent; resolves once the host has released it. */
   close(): Promise<void>;
 }
@@ -308,7 +309,7 @@ function endpointOf(host: string, port: number): string {
   return `${host}:${port}`;
 }
 
-type ReadResult = Result<Optional<Uint8Array>, SocketError>;
+type ReadResult = Result<Uint8Array | undefined, SocketError>;
 
 /**
  * The byte-bounded receive buffer both implementations share, so the live and
@@ -383,10 +384,10 @@ class Inbox {
       }
       this.#chunks.length = 0;
       this.#buffered = 0;
-      return success(present(joined));
+      return success(joined);
     }
     if (this.#error !== undefined) return failure(this.#error);
-    if (this.#ended) return success(absent());
+    if (this.#ended) return success(undefined);
     if (this.#closed) return failure(new ConnectionClosed(this.#endpoint));
     return undefined;
   }
@@ -511,7 +512,7 @@ class NodeSocketConnection implements SocketConnection {
     });
   }
 
-  read(): Promise<Result<Optional<Uint8Array>, SocketError>> {
+  read(): Promise<Result<Uint8Array | undefined, SocketError>> {
     return this.#inbox.read("SocketConnection.read");
   }
 
@@ -736,7 +737,7 @@ class MemoryConnection implements SocketConnection {
     return Promise.resolve(success(undefined));
   }
 
-  read(): Promise<Result<Optional<Uint8Array>, SocketError>> {
+  read(): Promise<Result<Uint8Array | undefined, SocketError>> {
     return this.#inbox.read("SocketConnection.read");
   }
 

@@ -119,21 +119,22 @@ describe("Duration", () => {
       ["  45s  ", 45_000],
     ];
     for (const [text, millis] of cases) {
-      expect(Duration.parse(text).unwrapOr(Duration.millis(-1)).toMillis()).toBe(millis);
+      expect((Duration.parse(text) ?? Duration.millis(-1)).toMillis()).toBe(millis);
     }
 
     // toString/parse round-trip over a span that uses every unit.
     const mixed = Duration.millis(90_061_001);
     expect(mixed.toString()).toBe("1d1h1m1s1ms");
-    expect(Duration.parse(mixed.toString()).unwrapOr(Duration.zero).equals(mixed)).toBe(true);
+    expect((Duration.parse(mixed.toString()) ?? Duration.zero).equals(mixed)).toBe(true);
     expect(Duration.zero.toString()).toBe("0ms");
     expect(mixed.negated().toString()).toBe("-1d1h1m1s1ms");
-    expect(Duration.parse(mixed.negated().toString()).unwrapOr(Duration.zero).toMillis()).toBe(-90_061_001);
+    expect((Duration.parse(mixed.negated().toString()) ?? Duration.zero).toMillis()).toBe(-90_061_001);
   });
 
-  test("unparsable text is an absence, not a failure or a panic", () => {
+  test("unparsable text is `undefined`, not a failure or a panic", () => {
     for (const text of ["", "   ", "abc", "30x", "s30", "1h30", "-", "0.0001s", "1e3ms", "1,5s", "9007199254740993"]) {
-      expect(Duration.parse(text).isNone()).toBe(true);
+      expect(Duration.parse(text)).toBeUndefined();
+      expect(Duration.parse(text)?.toMillis()).toBeUndefined();
     }
     // Only a non-string argument is a programming error.
     expect(panics(() => Duration.parse(30 as unknown as string))).toBe(true);

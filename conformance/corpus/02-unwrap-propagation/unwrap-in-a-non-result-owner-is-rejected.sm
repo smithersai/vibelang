@@ -8,6 +8,6 @@ export function scoreOf(key: string): Result<number, Missing> {
 }
 
 export function main(): string[] {
-  const score = scoreOf("ada").unwrap()
+  const score = scoreOf("ada")!
   return [`${score}`]
 }

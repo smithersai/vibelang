@@ -2,30 +2,11 @@
 
 Durable execution is opt-in. An **Action** defines a closed persistence boundary, and a **Flow** turns Action calls into a statically analyzable plan.
 
-:::warning Design draft
-The Action and Flow model is accepted. A bounded compiler-owned
-`durable(...)` lowerer, canonical Plan/manifest validation, SQLite executor,
-local Deno worker, and signed local coordinator-admission path are executable
-under `smthrs/durable/*`. That lowerer now covers conditionals, durable
-timers, one typed external signal, keyed fan-out with bounded multi-step bodies,
-explicit `sequential(...)` ordering, a budgeted `loopWhile(...)` round template,
-and — in the programmatic POC only, not through the CLI — attached child Flows.
-The Bun executor also has provisional `start`/`resume` execution handles,
-HMAC-token-gated signal delivery, and post-COMMIT wakeup notifications backed
-by a correctness-preserving persisted-state sweep.
-
-The opt-in Go compiler independently recognizes `smithers:flows` by resolved
-binding identity and lowers a useful checked-AST subset to the same
-digest-validated Plan shape. That subset includes direct Actions, `!`
-propagation edges, projections, conditional expressions, timers, typed signals,
-and explicit `sequential(...)` control edges. It never invokes the Flow or an
-Action implementation. Fan-out, child Flows, general statement control flow,
-looping, broadcast, and queue forms currently fail closed on that backend.
-
-General lowering, emitted worker bundles, and remote
-deployment are not implemented. Provider spelling, stable IDs, general loop
-semantics, wire encoding, and deployment APIs remain under design, and the
-control and handle spellings above are provisional.
+:::note Direction
+The Action and Flow model is accepted. Provider spelling, stable persisted
+identities, general loop and fan-out rules, wire encoding, external-control
+authorization, and deployment APIs remain under design. Names for those
+directional surfaces communicate intent rather than final spelling.
 :::
 
 ## Define an Action
@@ -78,18 +59,16 @@ Durable programs have four distinct phases:
 
 Keeping the phases separate allows one plan to deploy across separate worker artifacts. If a branch or runtime-sized fan-out cannot be resolved from preview inputs, plan mode reports the conditional or parameterized template instead of executing source code to guess its shape.
 
-The bounded POC can wrap the exact validated Plan and deployment manifest in a
-canonical, domain-separated Ed25519 envelope. Verification uses public keys
-supplied out of band and produces an opaque process-local proof; the
-authenticated coordinator entry point requires that proof before creating a
-worker transport. Only a pool signed as `in-process-poc` can use the implicit
-local worker. Every other sandbox name requires an opaque host-issued transport
-token for that exact name, and all pools are checked before any factory runs.
-This authenticates manifest provenance and every digest it pins. It does not
-attest a live callback's lexical closure or emitted bundle,
-provide freshness/anti-rollback or revocation, or prove what a remote worker
-loaded. The transport token prevents accidental downgrade; the host is still
-trusted to issue it only for a factory that enforces the declared sandbox.
+Deployment artifacts use a canonical, domain-separated signed envelope. The
+coordinator verifies the exact Plan, manifest, implementation, policy, schema,
+capability-grant, and artifact digests before constructing a worker transport.
+Worker pools may use only a transport authorized for their declared sandbox and
+placement.
+
+A signature authenticates artifact provenance; it does not attest a live
+callback, prove what a remote worker loaded, or supply freshness, rollback
+protection, revocation, key custody, or sandbox isolation. Those controls are
+separate deployment responsibilities.
 
 ## Provide Implementations
 
@@ -147,7 +126,7 @@ The safe default is execution-local replay with no ambiguous retry unless the im
 
 ## Wait for an External Signal
 
-The bounded POC includes a deliberately provisional single-delivery form:
+The single-delivery signal form is:
 
 ```ts
 import { durable, waitSignal } from "smithers:flows"
@@ -162,35 +141,25 @@ const Approval = durable(function Approval(input: { requestId: string }) {
 
 The compiler puts the literal signal identity and derived payload schema in the
 Plan; the sender does not provide a schema. Execution initialization pins that
-contract. A delivery then addresses the exact execution and node, supplies an
-idempotency key, and persists one canonical schema-checked payload. A duplicate
-of the same key and payload is harmless, while a conflicting key or payload is
-rejected. Waiting uses no worker lease, and delivery/consume journal transitions
-survive restart and coordinator races. The POC rejects more than 100,000
-durable-JSON nodes/own fields before canonicalization and retains the
-independent 8 MiB canonical message limit; request identities are separately
-byte-bounded before storage.
+contract. A delivery addresses the exact execution and signal, supplies an
+idempotency key, authenticates the sender's authority, and persists one
+canonical schema-checked payload. Repeating the same key and payload is
+harmless; a conflicting reuse is rejected. Waiting holds no worker lease, and
+delivery and consumption survive restart and coordinator races.
 
-`waitSignal` and the POC delivery APIs are not final spellings. The Bun POC's
-default delivery path requires a `vst1_` HMAC-SHA256 sender token minted by
-`executor.grantSignal(executionId, signalId)` and bound to that execution and
-signal. Forged, cross-execution, wrong-signal, and foreign-database tokens fail
-before execution state is read; tokenless delivery exists only behind explicit
-`{ unsafeLocalDelivery: true }`. The HMAC secret lives in the same SQLite
-database, so this proves a local-trust gate, not remote identity,
-authorization, rotation, or revocation.
+Signal delivery, cancellation, failure, and timer scheduling notify waiters
+only after the state transition commits. Notifications are a latency
+optimization; a coordinator must recover from missed or cross-process
+notifications by re-reading persisted state.
 
-Signal delivery, cancellation, failure, and timer scheduling notify local
-waiters strictly after COMMIT. That notifier is only a latency optimization: a
-coordinator re-reads persisted state at the next timer/deadline boundary or a
-bounded fallback sweep (`wakeupSweepMs`, 250 ms by default), so a missed or
-cross-process notification cannot change correctness. Remote transport and
-authorization, queues/broadcast, schema migration, and final public spellings
-remain design work.
+:::note Direction
+The `waitSignal` spelling, sender authorization protocol, payload limits,
+queues and broadcast, schema migration, and remote transport remain open.
+:::
 
 ## Execution Handles
 
-The Bun programmatic POC exposes the provisional long-running control surface:
+The long-running control surface provides:
 
 - `executor.start(input, { executionId })` starts or resumes work and returns a
   `DurableExecutionHandle` immediately;
@@ -204,10 +173,12 @@ The Bun programmatic POC exposes the provisional long-running control surface:
 - `executor.execute(...)` remains the start-and-await convenience.
 
 Every method is bound to the handle's execution id; a handle cannot address a
-sibling run. This is executable programmatic POC evidence, not a root CLI
-command or a locked public API. Remote control transport, public principal
-authorization, subscription/history/fork administration, and migration remain
-open.
+sibling run.
+
+:::note Direction
+The exact method names, remote control transport, principal authorization,
+subscriptions, history and fork administration, and migration remain open.
+:::
 
 ## Memoization and Content Caching
 
@@ -218,9 +189,9 @@ Cross-execution reuse has two meanings:
 
 These policies are never interchangeable. A memoized model response must not be promoted to a hermetic shared cache entry.
 
-## Planned Distributed Builds
+## Distributed Builds
 
-A future deployment build can emit:
+A deployment build emits:
 
 - a coordinator artifact
 - several tree-shaken worker artifacts

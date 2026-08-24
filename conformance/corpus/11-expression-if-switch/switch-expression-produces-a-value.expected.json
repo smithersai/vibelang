@@ -1,5 +1,0 @@
-{
-  "title": "a switch in value position over a fully covered closed literal union produces a value with no default clause",
-  "expect": "output",
-  "stdout": ["met the bar", "below the bar", "resit scheduled"]
-}

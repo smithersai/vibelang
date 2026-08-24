@@ -32,6 +32,13 @@ export const COMPTIME_RUNTIME_GUARD_SOURCE =
 export const ComptimeIntrinsicDiagnosticCode = Object.freeze({
   Syntax: "VCT1000",
   MissingIdentity: "VCT1001",
+  /**
+   * Retired and never emitted. It reported a call whose callee was *spelled*
+   * `comptime` but resolved elsewhere; the specification requires exactly that
+   * program to keep compiling as an ordinary function, so the check was a
+   * fail-closed defect. The code is kept reserved so the number is not recycled
+   * with a different meaning, and must not be reintroduced.
+   */
   UnrelatedIdentity: "VCT1002",
   Arity: "VCT1003",
   UnsupportedExpression: "VCT1004",
@@ -313,7 +320,6 @@ export async function compileComptimeIntrinsics(
   const markerReplacements = new Map<ProjectEntry, Replacement[]>();
   const allowedCompilerNodes = new Set<ts.Node>();
   const namespaceImportSymbols = new Set<ts.Symbol>();
-  const candidateNames = new Map<ProjectEntry, Set<string>>();
   const projectFiles = new Set(project.entries.map((item) => item.file));
   const entryByFile = new Map(project.entries.map((item) => [item.file, item] as const));
   const markedFunctions = new Map<ts.Symbol, StaticFunctionBinding>();
@@ -327,7 +333,6 @@ export async function compileComptimeIntrinsics(
   const schemaRuntimeImport = options.schemaRuntimeImport ?? DEFAULT_SCHEMA_RUNTIME_IMPORT;
 
   for (const entry of project.entries) {
-    candidateNames.set(entry, new Set(["comptime"]));
     importReplacements.set(entry, []);
     markerReplacements.set(entry, []);
     if (entry.recovery.diagnostics.length > 0) {
@@ -362,7 +367,6 @@ export async function compileComptimeIntrinsics(
     collectImports(
       entry,
       project.checker,
-      candidateNames.get(entry)!,
       namespaceImportSymbols,
       importReplacements.get(entry)!,
       diagnostics,
@@ -686,14 +690,25 @@ export async function compileComptimeIntrinsics(
           return;
         }
 
-        if (looksLikeComptimeCall(node.expression, candidateNames.get(entry)!)) {
-          const code = symbol
-            ? ComptimeIntrinsicDiagnosticCode.UnrelatedIdentity
-            : ComptimeIntrinsicDiagnosticCode.MissingIdentity;
-          const message = symbol
-            ? `call does not resolve to the compiler intrinsic imported from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)}`
-            : `comptime call has no imported compiler identity from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)}`;
-          diagnostics.push(diagnosticForNode(entry, node.expression, code, message));
+        // Recognition is by resolved binding, never by spelling. A call that
+        // reaches here resolved to something other than the intrinsic, so by
+        // specification it is an ordinary function and is left untouched: a
+        // user's own `comptime`, an unrelated import of that name, an alias of
+        // one, a method, a parameter, or a local shadow.
+        //
+        // The one remaining report is the genuinely unbound case, where
+        // `comptime(...)` names nothing at all. That is never a valid program
+        // in any reading, so pointing at the missing import classifies nothing
+        // real by spelling; it only chooses a better message than the
+        // unresolved-identifier cascade would give.
+        if (!symbol && ts.isIdentifier(node.expression) && node.expression.text === "comptime" &&
+          project.checker.getSymbolAtLocation(node.expression) === undefined) {
+          diagnostics.push(diagnosticForNode(
+            entry,
+            node.expression,
+            ComptimeIntrinsicDiagnosticCode.MissingIdentity,
+            `comptime call has no imported compiler identity from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)}`,
+          ));
         }
       });
     }
@@ -2385,14 +2400,69 @@ function checkedProject(sources: Readonly<Record<string, string>>): CheckedProje
   return { checker, entries: fileEntries, intrinsicSymbol, embedSymbol, schemaSymbol, deriveSymbol };
 }
 
+const isCompilerOwnedVirtualModule = (specifier: string): boolean =>
+  specifier === COMPTIME_MODULE_SPECIFIER || specifier === SCHEMA_MODULE_SPECIFIER;
+
+/**
+ * Recognition follows resolved checker identity, but erasure follows syntax, so
+ * the two have to enumerate the same set of module-referencing forms. Only
+ * `import ... from` was erased, which left `export * from`, `export * as`,
+ * `import x = require(...)`, and dynamic `import(...)` naming a compiler-owned
+ * virtual module intact in lowered output — and the import-assignment form
+ * still resolved to the intrinsic, so a call through it was replaced while its
+ * unerasable runtime module edge survived. A compiler-owned virtual module has
+ * no runtime existence, so every one of those forms fails closed instead.
+ *
+ * A pure type query (`typeof import("smithers:comptime")`) is deliberately not
+ * listed: it lives in type space, emits no module edge, and grants no value.
+ */
+function refuseVirtualModuleRuntimeEdges(
+  entry: ProjectEntry,
+  diagnostics: ComptimeIntrinsicDiagnostic[],
+): void {
+  const refuse = (node: ts.Node, specifier: string): void => {
+    diagnostics.push(diagnosticForNode(
+      entry,
+      node,
+      specifier === SCHEMA_MODULE_SPECIFIER
+        ? ComptimeIntrinsicDiagnosticCode.SchemaImportShape
+        : ComptimeIntrinsicDiagnosticCode.UnsupportedUse,
+      `the compiler-owned module ${JSON.stringify(specifier)} is erased during lowering, so it can only be ` +
+      "reached through an ordinary import declaration",
+    ));
+  };
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isExportDeclaration(node) && node.moduleSpecifier !== undefined &&
+      ts.isStringLiteral(node.moduleSpecifier) && isCompilerOwnedVirtualModule(node.moduleSpecifier.text)
+    ) {
+      refuse(node, node.moduleSpecifier.text);
+    } else if (
+      ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) &&
+      ts.isStringLiteral(node.moduleReference.expression) &&
+      isCompilerOwnedVirtualModule(node.moduleReference.expression.text)
+    ) {
+      refuse(node, node.moduleReference.expression.text);
+    } else if (
+      ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments[0] !== undefined && ts.isStringLiteral(node.arguments[0]) &&
+      isCompilerOwnedVirtualModule(node.arguments[0].text)
+    ) {
+      refuse(node, node.arguments[0].text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(entry.file, visit);
+}
+
 function collectImports(
   entry: ProjectEntry,
   checker: ts.TypeChecker,
-  candidates: Set<string>,
   namespaceSymbols: Set<ts.Symbol>,
   replacements: Replacement[],
   diagnostics: ComptimeIntrinsicDiagnostic[],
 ): void {
+  refuseVirtualModuleRuntimeEdges(entry, diagnostics);
   for (const statement of entry.file.statements) {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
     const clause = statement.importClause;
@@ -2412,7 +2482,6 @@ function collectImports(
     });
     if (!clause) continue;
     if (clause.name) {
-      if (clause.name.text === "comptime") candidates.add(clause.name.text);
       if (exact) diagnostics.push(diagnosticForNode(
         entry,
         clause.name,
@@ -2423,7 +2492,6 @@ function collectImports(
     if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
       for (const element of clause.namedBindings.elements) {
         const imported = element.propertyName?.text ?? element.name.text;
-        if (imported === "comptime") candidates.add(element.name.text);
         if (exact && (!["comptime", "embed"].includes(imported) || clause.isTypeOnly || element.isTypeOnly)) {
           diagnostics.push(diagnosticForNode(
             entry,
@@ -2615,11 +2683,6 @@ function comptimeRootFor(
 function looksLikeSchemaDerive(expression: ts.Expression): expression is ts.CallExpression {
   return ts.isCallExpression(expression) && ts.isPropertyAccessExpression(expression.expression) &&
     expression.expression.name.text === "derive" && (expression.typeArguments?.length ?? 0) > 0;
-}
-
-function looksLikeComptimeCall(expression: ts.LeftHandSideExpression, candidateNames: ReadonlySet<string>): boolean {
-  if (ts.isIdentifier(expression)) return candidateNames.has(expression.text);
-  return ts.isPropertyAccessExpression(expression) && expression.name.text === "comptime";
 }
 
 function unwrapExpression(node: ts.Expression): ts.Expression {

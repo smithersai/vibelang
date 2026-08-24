@@ -1,0 +1,8 @@
+{
+  "title": "postfix ! on a non-Result is rejected rather than treated as a non-null assertion",
+  "expect": "diagnostics",
+  "diagnostics": [
+    { "code": "SMITHERS1207", "line": 3, "column": 16 }
+  ],
+  "notes": "The specification removes TypeScript non-null assertions from .sm and does not assign non-Result postfix ! another meaning, so the compiler fails closed."
+}

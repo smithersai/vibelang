@@ -41,12 +41,8 @@
  * branded structural type.
  */
 
-import type { Optional } from "../runtime/optional.ts";
 import { panic } from "../runtime/panic.ts";
-import { RuntimeValues } from "../runtime/values.ts";
 import { type Equivalence, Equivalence as EquivalenceNamespace } from "./equivalence.ts";
-
-const { absent, present } = RuntimeValues;
 
 const UINT32_MAX = 0xffffffff;
 
@@ -290,31 +286,31 @@ function struct<const Fields extends Readonly<Record<string, HashValue<never>>>>
  *
  * Runs `Equivalence.checkLaws` first — a broken equivalence relation makes the
  * hash law meaningless — then asserts that the hash is deterministic and that
- * **equal values hash equal**. Absence means the pairing is lawful over these
- * samples; a present value describes the first violation.
+ * **equal values hash equal**. `undefined` means the pairing is lawful over
+ * these samples; a string describes the first violation.
  */
-function checkLaws<T>(equivalence: Equivalence<T>, hash: Hash<T>, samples: readonly T[]): Optional<string> {
+function checkLaws<T>(equivalence: Equivalence<T>, hash: Hash<T>, samples: readonly T[]): string | undefined {
   if (!EquivalenceNamespace.isEquivalence(equivalence)) panic("Hash.checkLaws requires an Equivalence value");
   const equals = (left: T, right: T): boolean => equivalence.equals(left, right);
   const hashValue = requireHash(hash, "Hash.checkLaws");
   if (!Array.isArray(samples)) panic("Hash.checkLaws requires an array of samples");
 
   const equivalenceViolation = EquivalenceNamespace.checkLaws(equivalence, samples);
-  if (equivalenceViolation.isSome()) return equivalenceViolation;
+  if (equivalenceViolation !== undefined) return equivalenceViolation;
 
   for (let index = 0; index < samples.length; index += 1) {
     if (hashValue(samples[index]) !== hashValue(samples[index])) {
-      return present(`hash is not deterministic at sample ${index}`);
+      return `hash is not deterministic at sample ${index}`;
     }
   }
   for (let left = 0; left < samples.length; left += 1) {
     for (let right = left + 1; right < samples.length; right += 1) {
       if (equals(samples[left] as T, samples[right] as T) && hashValue(samples[left]) !== hashValue(samples[right])) {
-        return present(`equal samples ${left} and ${right} have different hashes`);
+        return `equal samples ${left} and ${right} have different hashes`;
       }
     }
   }
-  return absent();
+  return undefined;
 }
 
 export const Hash = Object.freeze({
