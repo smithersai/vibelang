@@ -202,3 +202,39 @@ test("the bridge refuses a request that omits the lowering mode", { concurrency:
     assert.deepEqual(identity.codes, [], "identity lowering applies no Smithers rule");
   });
 });
+
+/**
+ * A run that measured nothing must not report itself as green.
+ *
+ * This is the harness's instance of the failure mode the Node and Go gates
+ * each grew a census to refuse: with no case selected, every bucket is
+ * legitimately zero, `verifyCounts` is satisfied by arithmetic over no rows,
+ * and the table reads `0/0 pass`. Exit 0 there is a claim about a corpus that
+ * was never consulted. Like the lowering assertion above, it cannot be a
+ * corpus case: it is a property of the runner's own reporting, and the corpus
+ * is precisely what is absent.
+ *
+ * Both directions, because the useful gate is the one that still measures: a
+ * filter that selects a real case must still succeed.
+ */
+test("a run that measured nothing is refused rather than reported as green", { concurrency: 1 }, async (t) => {
+  const runner = join(repositoryRoot, "conformance", "runner", "run.mjs");
+  const measure = (filter) =>
+    run(process.execPath, [runner, "--backend", "js", "--filter", filter, "--quiet"], {
+      cwd: repositoryRoot,
+      timeout: 300_000,
+    });
+
+  await t.test("a filter that matches no case is exit 2, not exit 0", async () => {
+    const empty = await measure("zzz-no-corpus-case-has-this-in-its-id");
+    assert.equal(empty.status, 2, `expected the empty run to be refused: ${empty.stderr || empty.stdout}`);
+    assert.match(empty.stderr, /no case was measured/);
+    assert.match(empty.stderr, /matched nothing/);
+  });
+
+  await t.test("a filter that selects a real case still passes", async () => {
+    const measured = await measure("01-result-lifting/return-lifts-into-success");
+    assert.equal(measured.status, 0, measured.stderr || measured.stdout);
+    assert.match(measured.stdout, /JS reference: {2}1\/1 pass/);
+  });
+});

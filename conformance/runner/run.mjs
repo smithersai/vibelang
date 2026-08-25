@@ -538,13 +538,41 @@ async function main(argv) {
     if (report.backends.js && !report.backends.js.available) return 2;
   }
   if (options.backend === "go" && report.backends.go && !report.backends.go.available) return 2;
+
+  // A run that measured nothing is not a green run, it is an absent one. With
+  // `--filter` matching no case (or a corpus that failed to load) every bucket
+  // is legitimately zero, every integrity check is satisfied by arithmetic on
+  // no rows, and the runner printed `0/0 pass` and exited 0 — the same "green
+  // without doing the work" shape the Node and Go gates each had to grow a
+  // census to refuse. It is checked after the availability tests above so an
+  // unprepared backend still reports itself rather than being described as an
+  // empty corpus.
+  const measured = (report.summary.js?.total ?? 0) + (report.summary.go?.total ?? 0) +
+    (report.summary.jsInterop?.total ?? 0) + (report.summary.goInterop?.total ?? 0);
+  if (measured === 0) {
+    process.stderr.write(
+      "conformance: no case was measured, so this run is not a measurement" +
+        `${options.filter ? ` (--filter ${JSON.stringify(options.filter)} matched nothing)` : ""}\n`,
+    );
+    return 2;
+  }
   if (options.reportOnly) return 0;
   const jsFailures = (report.summary.js?.fail ?? 0) + (report.summary.jsInterop?.fail ?? 0);
+  const goFailures = (report.summary.go?.fail ?? 0) + (report.summary.goInterop?.fail ?? 0);
   if (options.backend === "js" || options.backend === "both") {
     if (jsFailures > 0) return 1;
   }
-  if (options.backend === "go") {
-    return (report.summary.go?.fail ?? 0) > 0 ? 1 : 0;
+  // `--backend both` used to gate on the reference alone: the `go` arm below was
+  // reached only by `--backend go`, so a run that measured both backends fell
+  // through to `return 0` no matter how many Go cases failed or how far the two
+  // backends had drifted apart. That is the "green without doing the work" shape
+  // this repository has now found four times — a Go step that skipped 143 records
+  // and printed `ok`, a `node --test` glob that exited 0 having run nothing, a
+  // `doctor` that returned a hardcoded `ok: true`, and this. It mattered: the
+  // exit code was quoted as evidence of zero divergences while `fail` on the Go
+  // side is exactly how a divergence is recorded (see DIVERGENCE_STATUS above).
+  if (options.backend === "go" || options.backend === "both") {
+    if (goFailures > 0) return 1;
   }
   return 0;
 }
