@@ -67,9 +67,9 @@ Imported `.ts` and `.tsx` keep their own configuration. The escape-hatch guarant
 | `verbatimModuleSyntax` | replaces the deprecated `importsNotUsedAsValues` and `preserveValueImports` |
 | `useDefineForClassFields` | the legacy-off behavior is a footgun |
 
-`noUncheckedIndexedAccess` is noisy in index loops, because TypeScript cannot prove `for (let i = 0; i < arr.length; i++)` is in bounds. The idiomatic answer in TypeScript is `arr[i]!`, and that spelling no longer means what it meant: `!` is the Result propagation operator.
+`noUncheckedIndexedAccess` is noisy in index loops, because TypeScript cannot prove `for (let i = 0; i < arr.length; i++)` is in bounds. An index read is `T | undefined` and MUST be narrowed, or read through an extraction helper.
 
-**Open.** How an in-bounds index read is spelled is undecided, and it is a language-feel decision rather than a mechanical one. The candidates are an extraction helper in the standard library, mandatory explicit narrowing, or a distinct assertion spelling that is not `!`. Nothing here should be read as settled.
+`arr[i]!` does not silently change meaning. Postfix `!` requires a `Result` operand, and `T | undefined` is not one, so the expression is a type error rather than an ambiguity. It compiles only when `arr` holds Results, where it means what `!` means everywhere else.
 
 ### Forbidden
 

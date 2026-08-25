@@ -265,14 +265,6 @@ feature classification, and the portability pin all withdrawn.
   may lint against them; the language does not forbid them.
 - **Locked:** Arbitrary dynamic import expressions remain available, since there
   is no target that cannot resolve them.
-- **Open:** How an in-bounds index read is spelled, now that
-  `noUncheckedIndexedAccess` is mandatory and `arr[i]!` means Result
-  propagation rather than a non-null assertion. `arr[i]!` was extremely common,
-  so every index read in a loop needs a new spelling. Candidates: a standard
-  library extraction helper; mandatory explicit narrowing, which is correct but
-  verbose enough that people will fight it; or a distinct assertion spelling
-  that is not `!`. This is a language-feel decision and should not be settled by
-  whoever reaches it first.
 - **Open:** Type assertion semantics need a final decision. Current candidate:
   safe assertions erase, and reifiable assertions may check and defect on
   failure. The TypeScript non-null assertion is already removed, because `!` is

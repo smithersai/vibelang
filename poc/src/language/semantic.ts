@@ -48,7 +48,14 @@ interface Result<A, E extends Error> {
   expect(message: string): A
 }
 declare const Result: {
-  all<const T extends readonly Result<unknown, Error>[]>(values: T): Result<unknown, Error>
+  // The failure channel is the union of the collected Results' own failures.
+  // Widening it to \`Error\` made an ordinary \`Result.all([...])!\` propagate a
+  // failure named \`Error\` into its caller's contract, which then reported
+  // SMITHERS1104 for a failure the program cannot actually produce.
+  // specification/failures.mdx: transformations "MUST preserve or correctly
+  // combine the Result error type"; the runtime declaration in
+  // poc/src/runtime/result.ts already combines it precisely.
+  all<const T extends readonly Result<unknown, Error>[]>(values: T): Result<unknown, T[number]["__smithersResult"]["error"]>
   try<A>(body: () => A): Result<A, Panic>
   try<A, E extends Error>(body: () => A, mapper: (cause: unknown) => E): Result<A, E | Panic>
   tryPromise<A>(body: () => PromiseLike<A>): Promise<Result<A, Panic>>
@@ -2706,7 +2713,12 @@ export function semanticExpressionShape(
   }
   if (ts.isNonNullExpression(expression)) {
     const operand = semanticExpressionShape(expression.expression, checker, callEdges, seenSymbols);
-    if (operand.channel.startsWith("result")) {
+    // `!` extracts from a Result. `Promise<Result<A, E>>` is a Promise, not a
+    // Result — type-system.mdx: "Awaiting the call removes only the Promise
+    // layer" — so `!` alone cannot extract from one, and treating it as an
+    // extraction would hand the caller a plain value that is really an
+    // un-awaited Promise.
+    if (operand.channel.startsWith("result") && !operand.async) {
       return {
         channel: "plain",
         async: false,
@@ -2763,15 +2775,25 @@ export function isResultPropagationExpression(
   expression: ts.NonNullExpression,
   model: SemanticModel,
 ): boolean {
-  return semanticExpressionShape(expression.expression, model.checker, model.callEdges).channel.startsWith("result");
+  return isResultPropagation(expression, model.checker, model.callEdges);
 }
 
+/**
+ * Postfix `!` propagates only from a `Result` operand.
+ *
+ * `Promise<Result<A, E>>` is not one: compatibility.mdx locks "postfix `!`
+ * requires a `Result` operand", and type-system.mdx locks that `await` is what
+ * removes the Promise layer. `(await lookup(k))!` is the spelling that works;
+ * `lookup(k)!` is a non-Result operand and is refused with SMITHERS1207, the
+ * same way every other non-Result operand is.
+ */
 function isResultPropagation(
   expression: ts.NonNullExpression,
   checker: ts.TypeChecker,
   callEdges: ReadonlyMap<ts.CallExpression, CallEdge>,
 ): boolean {
-  return semanticExpressionShape(expression.expression, checker, callEdges).channel.startsWith("result");
+  const shape = semanticExpressionShape(expression.expression, checker, callEdges);
+  return shape.channel.startsWith("result") && !shape.async;
 }
 
 function isRetiredResultUnwrap(
@@ -2849,7 +2871,7 @@ function checkMustConsume(
   const visit = (node: ts.Node): void => {
     if (ts.isCallExpression(node)) {
       const kind = producedKind(node, checker, callEdges);
-      if (kind !== "plain" && !producerConsumed(node, kind, checker, callEdges)) {
+      if (kind !== "plain" && !producerConsumed(node, kind, checker, callEdges, references)) {
         diagnostics.push(at(node, sourceFile, kind === "result" ? "SMITHERS1301" : "SMITHERS1402",
           kind === "result"
             ? "Result value is not consumed; return, match, transform, inspect, or propagate it with postfix !"
@@ -2857,14 +2879,14 @@ function checkMustConsume(
       }
     }
     if (ts.isNewExpression(node) && isPromiseType(checker.getTypeAtLocation(node), checker)) {
-      if (!producerConsumed(node, "promise", checker, callEdges)) {
+      if (!producerConsumed(node, "promise", checker, callEdges, references)) {
         diagnostics.push(at(node, sourceFile, "SMITHERS1402", "started Promise is not consumed with await, return, or an awaited recognized combinator"));
       }
     }
     if (ts.isAwaitExpression(node)) {
       const awaited = semanticExpressionShape(node.expression, checker, callEdges);
       if (awaited.async && awaited.channel.startsWith("result") &&
-        !producerConsumed(node, "result", checker, callEdges)) {
+        !producerConsumed(node, "result", checker, callEdges, references)) {
         diagnostics.push(at(node, sourceFile, "SMITHERS1301", "await removes only Promise; the resulting Result must still be returned, matched, transformed, inspected, or propagated with postfix !"));
       }
     }
@@ -2874,7 +2896,7 @@ function checkMustConsume(
       if (symbol && kind !== "plain" && !variableChecked.has(symbol)) {
         variableChecked.add(symbol);
         const usages = (references.get(symbol) ?? []).filter((identifier) => identifier !== node.name);
-        const consumed = usages.some((identifier) => referenceConsumes(identifier, kind, checker, callEdges));
+        const consumed = usages.some((identifier) => referenceConsumes(identifier, kind, checker, callEdges, references));
         if (!consumed) {
           diagnostics.push(at(node.name, sourceFile, kind === "result" ? "SMITHERS1302" : "SMITHERS1403",
             kind === "result"
@@ -2889,7 +2911,7 @@ function checkMustConsume(
       if (symbol && kind === "result" && !variableChecked.has(symbol)) {
         variableChecked.add(symbol);
         const usages = (references.get(symbol) ?? []).filter((identifier) => identifier !== node.name);
-        if (!usages.some((identifier) => referenceConsumes(identifier, kind, checker, callEdges))) {
+        if (!usages.some((identifier) => referenceConsumes(identifier, kind, checker, callEdges, references))) {
           diagnostics.push(at(node.name, sourceFile, "SMITHERS1302", `Result parameter '${node.name.text}' is never consumed`));
         }
       }
@@ -2951,46 +2973,224 @@ function collectReferences(sourceFile: ts.SourceFile, checker: ts.TypeChecker): 
   return result;
 }
 
+/**
+ * The container literal a value in `current` is STORED INTO, or undefined.
+ *
+ * Array and tuple elements, spreads of either kind, and object-literal property
+ * values. A shorthand property (`{ r }`) is an identifier reference and reaches
+ * the same place through `referenceConsumes`.
+ */
+function containerLiteralFor(current: ts.Node, parent: ts.Node): ts.Expression | undefined {
+  if (ts.isArrayLiteralExpression(parent)) return parent;
+  if (ts.isPropertyAssignment(parent) && parent.initializer === current &&
+    ts.isObjectLiteralExpression(parent.parent)) return parent.parent;
+  if (ts.isSpreadElement(parent) && ts.isArrayLiteralExpression(parent.parent)) return parent.parent;
+  if (ts.isSpreadAssignment(parent) && ts.isObjectLiteralExpression(parent.parent)) return parent.parent;
+  return undefined;
+}
+
+/**
+ * Whether a type still carries a must-consume channel — a Result or a started
+ * Promise — somewhere inside it.
+ *
+ * This is what decides whether a container literal really STORES the value it
+ * was handed. `return [make("ada")]` from a `Result<number, Missing>[]`
+ * function stores it: the array's own type carries the channel, so ownership
+ * moves to the array. `return [shout("hello")]` from a `string[]` function
+ * does NOT: `shout` is an untrusted foreign call the compiler LIFTS to
+ * `Result<string, Panic>` while its declaration still says `string`, so the
+ * array's type is `string[]` and the checked failure is dropped on the way in.
+ * That is a discard however it is spelled, and it stays SMITHERS1301
+ * (09-foreign-calls/foreign-module-without-a-trust-marker pins it).
+ *
+ * Imprecision here is fail-closed in both directions: a false answer refuses at
+ * the element, a true answer keeps the obligation alive and refuses unless a
+ * real consumption follows.
+ */
+function holdsProducedChannel(type: ts.Type, checker: ts.TypeChecker, depth = 0): boolean {
+  if (depth > 3) return false;
+  if (type.isUnion() || type.isIntersection()) {
+    return type.types.some((member) => holdsProducedChannel(member, checker, depth + 1));
+  }
+  const shape = shapeOfType(type, checker);
+  if (shape.channel.startsWith("result") || shape.async) return true;
+  if (checker.isArrayType(type) || checker.isTupleType(type) || checker.isArrayLikeType(type)) {
+    return typeArguments(type, checker).some((argument) => holdsProducedChannel(argument, checker, depth + 1));
+  }
+  // Only object LITERAL shapes are scanned member by member. A nominal class
+  // or interface instance is never the container literal this test is asked
+  // about, and walking every member of one (`Console`, a DOM type) would cost
+  // far more than the answer is worth. Not scanning it answers "no", which is
+  // the refusing direction.
+  if ((type.flags & ts.TypeFlags.Object) === 0) return false;
+  if (((type as ts.ObjectType).objectFlags & ts.ObjectFlags.Anonymous) === 0) return false;
+  return checker.getPropertiesOfType(type)
+    .some((property) => holdsProducedChannel(checker.getTypeOfSymbol(property), checker, depth + 1));
+}
+
+/** Shared state for one ownership walk. */
+interface OwnershipWalk {
+  readonly kind: ProducedKind;
+  readonly checker: ts.TypeChecker;
+  readonly edges: ReadonlyMap<ts.CallExpression, CallEdge>;
+  /** True for the walk that starts at the producer, false for a reference. */
+  readonly fromProducer: boolean;
+  /** Bindings already followed, so a self-referential chain terminates. */
+  readonly seen: Set<ts.Symbol>;
+  /** Identifier occurrences by symbol; absent when the caller has no index. */
+  readonly references?: ReadonlyMap<ts.Symbol, readonly ts.Identifier[]>;
+}
+
+/**
+ * Does the obligation on a produced Result/Promise get discharged from here?
+ *
+ * The specification's rule is that a Result MUST NOT be *silently discarded*
+ * "without returning, matching, transforming, inspecting, or unwrapping it"
+ * (failures.mdx) and that "an ignored Result MUST be a compile error"
+ * (type-system.mdx). Neither forwarding a value nor storing it is a discard, so
+ * the walk climbs to whichever enclosing value the produced value BECOMES and
+ * lets that value's position answer. Two kinds of climb:
+ *
+ *   FORWARDING — the enclosing expression IS the value: parentheses,
+ *   `as`/`satisfies`/`<T>` assertions, either branch of a conditional, and the
+ *   concise body of an arrow (which is a `return` spelled without the keyword;
+ *   the braced form has always discharged here). Kind and obligation unchanged.
+ *
+ *   STORAGE — the value is placed into a container literal that really carries
+ *   the channel (`holdsProducedChannel`). Ownership moves to the container,
+ *   which is a COLLECTION of Results rather than a Result, so `!` and the
+ *   receiver consumers no longer apply to it; `collection` records the
+ *   transfer and `collectionConsumed` decides the collection's fate. This is
+ *   what specification compatibility.mdx promises when it says `arr[i]!`
+ *   "compiles only when `arr` holds Results": building the array is not the
+ *   discard, and reading an element back out with `!` is the consumption.
+ *
+ * A stored collection does NOT escape by being bound: `bindingConsumes` walks
+ * the binding's own references, so `const arr = [make()]` that is never
+ * consumed is still refused at the element positions, exactly as before.
+ */
+function ownershipConsumed(start: ts.Node, held: boolean, walk: OwnershipWalk): boolean {
+  const { kind, checker, edges } = walk;
+  let current: ts.Node = start;
+  let collection = held;
+  for (;;) {
+    const parent = current.parent;
+    if (!parent) return false;
+
+    if (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) ||
+      ts.isSatisfiesExpression(parent) || ts.isTypeAssertionExpression(parent)) {
+      current = parent;
+      continue;
+    }
+    if (ts.isConditionalExpression(parent) && (parent.whenTrue === current || parent.whenFalse === current)) {
+      current = parent;
+      continue;
+    }
+    if (ts.isNonNullExpression(parent) && parent.expression === current) {
+      // `!` discharges a Result by extracting from it. On anything else — a
+      // collection, or an un-awaited `Promise<Result<…>>` — it extracts
+      // nothing (SMITHERS1207 reports that separately), so the value passes
+      // through unchanged and its position still has to answer.
+      if (!collection && kind === "result") return true;
+      current = parent;
+      continue;
+    }
+
+    // Storage transfers ownership only when the container really stores the
+    // channel; see `holdsProducedChannel`. When it does not, nothing moved and
+    // the ordinary rules below decide, exactly as they did before this walk
+    // understood containers at all.
+    const container = containerLiteralFor(current, parent);
+    if (container && holdsProducedChannel(checker.getTypeAtLocation(container), checker)) {
+      current = container;
+      collection = true;
+      continue;
+    }
+
+    if (ts.isReturnStatement(parent)) return true;
+    // A concise arrow body is a return: the obligation lands on this
+    // function's contract and therefore on its callers.
+    if (isSupportedFunctionLike(parent) && parent.body === current) return true;
+
+    if (ts.isVariableDeclaration(parent) && parent.initializer === current) {
+      if (collection) return bindingConsumes(parent, walk);
+      // Binding a Result names it; the binding's own SMITHERS1302 check then
+      // owns it. Re-binding a Result THROUGH a reference discharges nothing,
+      // which is why only the producer walk stops here.
+      if (walk.fromProducer) return true;
+    } else if (collection) {
+      return collectionConsumed(current, parent, walk);
+    } else if (kind === "promise" || kind === "promise-result") {
+      if (ts.isAwaitExpression(parent)) return true;
+      if (isInsideRecognizedPromiseCombinator(current, checker)) {
+        return combinatorConsumed(current, checker, edges, walk.references);
+      }
+    } else if (kind === "result") {
+      if (walk.fromProducer && memberSelection(parent)?.receiver === current &&
+        ts.isCallExpression(parent.parent) && parent.parent.expression === parent &&
+        isRetiredResultUnwrap(parent.parent, checker, edges)) return true;
+      if (isConsumedResultReceiver(current, parent)) return true;
+      if (isInsideResultAll(current, checker)) return true;
+    }
+    return false;
+  }
+}
+
+/**
+ * A collection of Results reached a binding: the obligation follows the
+ * binding, so at least one of its references must consume it.
+ *
+ * A destructuring pattern scatters the elements into bindings this analysis
+ * does not track, so the obligation stays where it is rather than being
+ * silently released.
+ */
+function bindingConsumes(declaration: ts.VariableDeclaration, walk: OwnershipWalk): boolean {
+  if (!ts.isIdentifier(declaration.name) || !walk.references) return false;
+  const symbol = unalias(walk.checker.getSymbolAtLocation(declaration.name), walk.checker);
+  if (!symbol || walk.seen.has(symbol)) return false;
+  walk.seen.add(symbol);
+  return (walk.references.get(symbol) ?? []).some((identifier) =>
+    identifier !== declaration.name && ownershipConsumed(identifier, true, { ...walk, fromProducer: false }));
+}
+
+/**
+ * The discharge surface for a COLLECTION that holds Results or Promises.
+ *
+ * Deliberately narrow: only the sites the specification settles. A recognized
+ * collection combinator (`Result.all`, the ambient `Promise` combinators) owns
+ * everything handed to it, and reading a held value back out puts the
+ * obligation onto the value that was read — which is exactly the `arr[i]!`
+ * spelling compatibility.mdx promises compiles. Everything else — `arr.length`,
+ * `for (const r of arr)`, handing the array to a user function — still refuses,
+ * unchanged from before this rule existed, because no specification sentence
+ * says what consuming a collection means at those sites.
+ */
+function collectionConsumed(current: ts.Node, parent: ts.Node, walk: OwnershipWalk): boolean {
+  const { checker, edges } = walk;
+  if (isInsideResultAll(current, checker)) return true;
+  if (isInsideRecognizedPromiseCombinator(current, checker)) {
+    return combinatorConsumed(current, checker, edges, walk.references);
+  }
+  if ((!ts.isPropertyAccessExpression(parent) && !ts.isElementAccessExpression(parent)) ||
+    parent.expression !== current) return false;
+  const shape = semanticExpressionShape(parent, checker, edges);
+  if (shape.channel.startsWith("result")) {
+    const kind: ProducedKind = shape.async ? "promise-result" : "result";
+    return ownershipConsumed(parent, false, { ...walk, kind, fromProducer: false });
+  }
+  return holdsProducedChannel(checker.getTypeAtLocation(parent), checker) &&
+    ownershipConsumed(parent, true, walk);
+}
+
 function producerConsumed(
   expression: ts.Expression,
   kind: ProducedKind,
   checker: ts.TypeChecker,
   edges: ReadonlyMap<ts.CallExpression, CallEdge>,
+  references?: ReadonlyMap<ts.Symbol, readonly ts.Identifier[]>,
 ): boolean {
-  let current: ts.Node = expression;
-  for (;;) {
-    const parent = current.parent;
-    if (!parent) return false;
-    if (ts.isNonNullExpression(parent) && parent.expression === current) {
-      return kind === "result";
-    }
-    if (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) || ts.isTypeAssertionExpression(parent)) {
-      current = parent;
-      continue;
-    }
-    if (ts.isVariableDeclaration(parent) && parent.initializer === current) return true;
-    if (ts.isReturnStatement(parent)) return true;
-    // The concise body of an authored Result.try/tryPromise callback is
-    // returned into the boundary, which awaits/consumes it by contract.
-    if (isSupportedFunctionLike(parent) && parent.body === current &&
-      isAuthoredResultBoundaryBody(parent, checker)) return true;
-    if (isSupportedFunctionLike(parent) && parent.body === current &&
-      isResultReturningCombinatorCallback(parent, checker, edges)) return true;
-    if (kind === "promise" || kind === "promise-result") {
-      if (ts.isAwaitExpression(parent)) return true;
-      if (isInsideRecognizedPromiseCombinator(current, checker)) return combinatorConsumed(current, checker, edges);
-      return false;
-    }
-    if (kind === "result") {
-      if (ts.isPropertyAccessExpression(parent) && parent.expression === current &&
-        ts.isCallExpression(parent.parent) && parent.parent.expression === parent &&
-        isRetiredResultUnwrap(parent.parent, checker, edges)) return true;
-      if (isConsumedResultReceiver(current, parent)) return true;
-      if (isInsideResultAll(current, checker)) return true;
-      return false;
-    }
-    return false;
-  }
+  return ownershipConsumed(expression, false,
+    { kind, checker, edges, fromProducer: true, seen: new Set(), references });
 }
 
 function referenceConsumes(
@@ -2998,30 +3198,10 @@ function referenceConsumes(
   kind: ProducedKind,
   checker: ts.TypeChecker,
   edges: ReadonlyMap<ts.CallExpression, CallEdge>,
+  references?: ReadonlyMap<ts.Symbol, readonly ts.Identifier[]>,
 ): boolean {
-  let current: ts.Node = identifier;
-  for (;;) {
-    const parent = current.parent;
-    if (!parent) return false;
-    if (ts.isNonNullExpression(parent) && parent.expression === current) {
-      return kind === "result";
-    }
-    if (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent)) {
-      current = parent;
-      continue;
-    }
-    if (ts.isReturnStatement(parent)) return true;
-    if (isSupportedFunctionLike(parent) && parent.body === current &&
-      isAuthoredResultBoundaryBody(parent, checker)) return true;
-    if (isSupportedFunctionLike(parent) && parent.body === current &&
-      isResultReturningCombinatorCallback(parent, checker, edges)) return true;
-    if (kind === "result") {
-      return isConsumedResultReceiver(current, parent) || isInsideResultAll(current, checker);
-    }
-    if (ts.isAwaitExpression(parent)) return true;
-    if (isInsideRecognizedPromiseCombinator(current, checker)) return combinatorConsumed(current, checker, edges);
-    return false;
-  }
+  return ownershipConsumed(identifier, false,
+    { kind, checker, edges, fromProducer: false, seen: new Set(), references });
 }
 
 /**
@@ -3054,10 +3234,16 @@ const RESULT_CONSUMERS = new Set([
   "isOk", "isError", "match", "map", "mapError", "andThen", "recover", "tap", "tapError", "unwrapOr", "expect",
 ]);
 
-// These transformations consume a Result returned by their callback rather
-// than storing it as a nested success value or discarding it. Keep this list
-// narrower than RESULT_CONSUMERS: map/tap callbacks do not flatten Results.
-const RESULT_RETURNING_CALLBACK_CONSUMERS = new Set(["andThen", "recover"]);
+// A callback that RETURNS a Result used to need its own recognized-combinator
+// list here, because only `andThen`/`recover` flatten what their callback
+// returns. That list only ever governed the CONCISE arrow spelling: the braced
+// `(v) => { return lookup(v) }` has always discharged through the ordinary
+// return rule, in every callback position, so the two spellings of the same
+// function disagreed. The ownership walk now treats a concise body as the
+// return it is, which is what makes them agree. The residual — returning an
+// unconsumed Result into a callback whose contract discards it, such as
+// `forEach` — is unchanged by that, predates it in the braced spelling, and is
+// a rule about `return` rather than about arrow syntax.
 
 /**
  * Members of the compiler-owned `Result` namespace value that discharge an
@@ -3094,23 +3280,6 @@ function isPreludeResultNamespaceMember(
   const owner = declaration.parent.parent;
   return ts.isVariableDeclaration(owner) && ts.isIdentifier(owner.name) && owner.name.text === "Result" &&
     members.has((declaration.name as ts.Identifier).text);
-}
-
-function isResultReturningCombinatorCallback(
-  callback: ts.FunctionLikeDeclaration,
-  checker: ts.TypeChecker,
-  edges: ReadonlyMap<ts.CallExpression, CallEdge>,
-): boolean {
-  let current: ts.Node = callback;
-  while (ts.isParenthesizedExpression(current.parent)) current = current.parent;
-  const call = current.parent;
-  if (!ts.isCallExpression(call) || call.arguments[0] !== current ||
-    !ts.isPropertyAccessExpression(call.expression) ||
-    !RESULT_RETURNING_CALLBACK_CONSUMERS.has(call.expression.name.text)) return false;
-  // Receiver precondition, exactly as in `isConsumedResultReceiver`: the
-  // spelling only decides WHICH member of an already-established Result-channel
-  // value was selected.
-  return semanticExpressionShape(call.expression.expression, checker, edges).channel.startsWith("result");
 }
 
 function isConsumedResultReceiver(current: ts.Node, parent: ts.Node): boolean {
@@ -3168,12 +3337,17 @@ function isInsideRecognizedPromiseCombinator(node: ts.Node, checker: ts.TypeChec
     Boolean(promisedType(checker.getTypeAtLocation(parent), checker));
 }
 
-function combinatorConsumed(node: ts.Node, checker: ts.TypeChecker, edges: ReadonlyMap<ts.CallExpression, CallEdge>): boolean {
+function combinatorConsumed(
+  node: ts.Node,
+  checker: ts.TypeChecker,
+  edges: ReadonlyMap<ts.CallExpression, CallEdge>,
+  references?: ReadonlyMap<ts.Symbol, readonly ts.Identifier[]>,
+): boolean {
   let current: ts.Node | undefined = node.parent;
   while (current) {
     const selection = ts.isCallExpression(current) ? calleeSelection(current) : undefined;
     if (selection && isAmbientPromiseNamespace(selection.receiver, checker)) {
-      return producerConsumed(current as ts.CallExpression, "promise", checker, edges);
+      return producerConsumed(current as ts.CallExpression, "promise", checker, edges, references);
     }
     current = current.parent;
   }
