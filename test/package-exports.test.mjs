@@ -222,3 +222,39 @@ test("smthrs/concurrency/bun is the Bun-only worker host and fails closed on Nod
   assert.equal(rejected instanceof ReferenceError, true, "Node must refuse the Bun-only worker host");
   assert.match(String(rejected), /\bBun\b/);
 });
+
+/**
+ * The package deliberately publishes `tsc` and `tsserver` — it is a drop-in
+ * TypeScript compiler, and dropping in is the point. But npm resolves a bin
+ * collision silently: with both `smthrs` and `typescript` installed it links
+ * exactly one `tsc` into `node_modules/.bin`, by alphabetical package name,
+ * with no warning and no trace of the loser. `smthrs` sorts first, so the
+ * default outcome is that a consumer's `tsc` quietly stops being the
+ * TypeScript they pinned.
+ *
+ * A deliberate hazard has to be a documented one, and the only file the
+ * package ships where a consumer will read it is `README.md`. This test is the
+ * link between the two: publish a colliding bin name and the shipped README
+ * has to say so. Scope the names later and the obligation lapses on its own.
+ */
+test("a bin name that collides with another package is documented in the shipped README", () => {
+  const colliding = { tsc: "typescript", tsserver: "typescript" };
+  const published = Object.keys(packageMetadata.bin ?? {}).filter((name) => name in colliding);
+  assert.ok(
+    packageMetadata.files.includes("README.md"),
+    "the README has to be shipped for it to be where a consumer sees this",
+  );
+  const readme = readFileSync(join(packageRoot, "README.md"), "utf8");
+  for (const name of published) {
+    assert.match(
+      readme,
+      new RegExp(`\`${name}\``),
+      `package.json publishes the bin \`${name}\`, which collides with the ${colliding[name]} ` +
+        "package; the shipped README must name it",
+    );
+  }
+  if (published.length > 0) {
+    assert.match(readme, /node_modules\/\.bin/, "the README must say where the collision happens");
+    assert.match(readme, /\btypescript\b/, "the README must name the package it collides with");
+  }
+});

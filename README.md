@@ -34,6 +34,20 @@ If you are not using JavaScript, you can install the CLI globally.
 curl -fsSL https://install.smithers.sh | bash
 ```
 
+### `tsc` and `tsserver` are claimed on purpose
+
+Smithers is a drop-in TypeScript compiler, so it publishes `tsc` and `tsserver`
+alongside `smithers`, `smithersc`, and `smithers-tsserver`. If a project depends
+on both `smthrs` and `typescript`, the two packages claim the same two names and
+npm links exactly one of them into `node_modules/.bin` — the alphabetically
+first package name, which is `smthrs`. There is no warning, and the losing
+package's binary is simply absent, so `tsc` in a script silently becomes the
+Smithers compiler rather than the TypeScript version the project pinned.
+
+Depend on only one of the two, or call the unambiguous names — `smithersc` and
+`smithers-tsserver` for Smithers, `node node_modules/typescript/lib/tsc.js` for
+stock TypeScript.
+
 ## Get Started
 
 Paste this into whatever agent you use — Claude Code, Codex, Cursor, anything:
