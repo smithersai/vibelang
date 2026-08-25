@@ -325,7 +325,7 @@ export async function main(): Promise<string[]> {
 	}
 }
 
-func TestPinnedForkOrdinaryDynamicCodeImportsRemainRuntimeEdges(t *testing.T) {
+func TestPinnedForkDynamicCodeImportsUseConservativeFrontendRefusal(t *testing.T) {
 	code := SourceFile{
 		Path: "code.ts", Kind: FileKindTypeScript,
 		Text: "/** @module @throws {never} */\nexport const value = \"runtime-code\"\n",
@@ -335,28 +335,32 @@ func TestPinnedForkOrdinaryDynamicCodeImportsRemainRuntimeEdges(t *testing.T) {
   return [loaded.value]
 }
 `, code)
-	if literal.EmitSkipped || len(literal.Diagnostics) != 0 {
-		t.Fatalf("ordinary literal dynamic code import must compile clean: %#v", literal.Diagnostics)
+	if codes := requireDiagnosticCodes(literal); codes != "SMITHERS1510" {
+		t.Fatalf("literal dynamic code import diagnostics = %s, want SMITHERS1510: %#v", codes, literal.Diagnostics)
 	}
-	if got := runEmittedMain(t, literal); got != "runtime-code" {
-		t.Fatalf("ordinary dynamic code import printed %q", got)
-	}
-	if emitted := mainText(t, literal); !strings.Contains(emitted, "import(") || !strings.Contains(emitted, "code") {
-		t.Fatalf("ordinary dynamic code import was not retained as a runtime edge:\n%s", emitted)
+	if !literal.EmitSkipped || len(literal.Artifacts) != 0 {
+		t.Fatalf("a refused literal dynamic module edge emitted artifacts: %v", artifactPaths(literal.Artifacts))
 	}
 
 	computed := compileAssetProgram(t, `const chosen = "./code.ts"
 export function load(): Promise<unknown> { return import(chosen) }
 export function main(): string[] { return ["not loaded"] }
 `, code)
-	if computed.EmitSkipped || len(computed.Diagnostics) != 0 {
-		t.Fatalf("a bare computed dynamic code import must remain available: %#v", computed.Diagnostics)
+	if codes := requireDiagnosticCodes(computed); codes != "SMITHERS1510" {
+		t.Fatalf("computed dynamic code import diagnostics = %s, want SMITHERS1510: %#v", codes, computed.Diagnostics)
 	}
-	if got := runComptimeProgram(t, computed); got != "not loaded" {
-		t.Fatalf("computed dynamic code control printed %q", got)
+	if !computed.EmitSkipped || len(computed.Artifacts) != 0 {
+		t.Fatalf("a refused computed dynamic module edge emitted artifacts: %v", artifactPaths(computed.Artifacts))
 	}
-	if emitted := mainText(t, computed); !strings.Contains(emitted, "import(") || !strings.Contains(emitted, "chosen") {
-		t.Fatalf("bare computed dynamic import was rewritten or erased:\n%s", emitted)
+
+	static := compileAssetProgram(t, `import { value } from "./code.ts"
+export function main(): string[] { return [value] }
+`, code)
+	if static.EmitSkipped || len(static.Diagnostics) != 0 {
+		t.Fatalf("the trusted static import control must compile clean: %#v", static.Diagnostics)
+	}
+	if got := runEmittedMain(t, static); got != "runtime-code" {
+		t.Fatalf("trusted static import printed %q", got)
 	}
 }
 

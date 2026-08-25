@@ -71,6 +71,59 @@ func TestPinnedForkUnboundProducerAcceptanceControls(t *testing.T) {
 	}
 }
 
+func TestPinnedForkDynamicCodeImportsFailClosed(t *testing.T) {
+	const trusted = "/** @module @throws {never} */\nexport const value = \"trusted\"\n"
+	const untrusted = "export const value = \"untrusted\"\n"
+	const projectModule = "export const value = \"project\"\n"
+	cases := []struct {
+		name    string
+		source  string
+		modules []SourceFile
+		needle  string
+	}{
+		{
+			name:    "untrusted foreign literal",
+			source:  "export async function main(): Promise<string[]> {\n  const loaded = await import(\"./foreign.ts\")\n  return [loaded.value]\n}\n",
+			modules: []SourceFile{{Path: "foreign.ts", Kind: FileKindTypeScript, Text: untrusted}},
+			needle:  "\"./foreign.ts\"",
+		},
+		{
+			name:    "trusted foreign literal is conservatively deferred too",
+			source:  "export async function main(): Promise<string[]> {\n  const loaded = await import(\"./foreign.ts\")\n  return [loaded.value]\n}\n",
+			modules: []SourceFile{{Path: "foreign.ts", Kind: FileKindTypeScript, Text: trusted}},
+			needle:  "\"./foreign.ts\"",
+		},
+		{
+			name:    "project module literal",
+			source:  "export async function main(): Promise<string[]> {\n  const loaded = await import(\"./helper.sm\")\n  return [loaded.value]\n}\n",
+			modules: []SourceFile{{Path: "helper.sm", Kind: FileKindSmithers, Text: projectModule}},
+			needle:  "\"./helper.sm\"",
+		},
+		{
+			name:    "computed specifier",
+			source:  "const chosen = \"./foreign.ts\"\nexport async function main(): Promise<string[]> {\n  const loaded = await import(chosen)\n  return [loaded.value]\n}\n",
+			modules: []SourceFile{{Path: "foreign.ts", Kind: FileKindTypeScript, Text: trusted}},
+			needle:  "chosen",
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			files := append([]SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: testCase.source}}, testCase.modules...)
+			result := compileInternalSource(t, files)
+			observed := formatDiagnosticPositions(t, files, result)
+			start := strings.LastIndex(testCase.source, testCase.needle)
+			if start < 0 {
+				t.Fatalf("test bug: %q is absent", testCase.needle)
+			}
+			line, column := lineColumnOfOffset(testCase.source, start)
+			want := "SMITHERS1510@" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
+			if strings.Join(observed, " ") != want {
+				t.Fatalf("dynamic import diagnostics = %v, want %s; raw %#v", observed, want, result.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestPinnedForkContextReceiversResolveByTypeIdentity(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -174,6 +227,13 @@ function lookup(): Result<string, Missing> { return "ada" }
 			source: resultPrelude + "async function checked(): Promise<Result<string, Missing>> { return \"ada\" }\n" +
 				"export async function main(): Promise<Result<string[], Missing>> {\n  const value = checked()!\n  return [value]\n}\n",
 			reject: []string{"SMITHERS1402@5:17"},
+		},
+		{
+			name:    "untrusted initializer suppresses foreign call cascades",
+			support: "export function read(): string { return \"value\" }\n",
+			source: "import { read } from \"./foreign.ts\"\n" +
+				"export function main(): string[] {\n  const value = read()\n  return [value]\n}\n",
+			reject: []string{"SMITHERS1510@1:22"},
 		},
 	}
 	runFailClosedCases(t, cases)

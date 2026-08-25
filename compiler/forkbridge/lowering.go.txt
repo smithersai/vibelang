@@ -1158,7 +1158,8 @@ type rowAnalysis struct {
 	// dynamic import call. Potential asset edges are recorded before validation
 	// so neither a valid asset nor a fail-closed asset refusal can fall through
 	// into foreign-module policy.
-	assetImports map[*ast.Node]assetImportEdge
+	assetImports          map[*ast.Node]assetImportEdge
+	refusedForeignModules map[*ast.SourceFile]bool
 }
 
 func symbolDeclaredBy(symbol *ast.Symbol, declarations map[*ast.Node]struct{}) bool {
@@ -1458,9 +1459,12 @@ func newRowAnalysis(typeChecker *checker.Checker, prelude *preludeSymbols, files
 		foreignAnnotationReports: make(map[*ast.Node]bool),
 		foreignOrderReports:      make(map[*ast.Node]bool),
 		assetImports:             make(map[*ast.Node]assetImportEdge),
+		refusedForeignModules:    make(map[*ast.SourceFile]bool),
 	}
 	analysis.buildRowNames(files)
 	analysis.checkAssetImports(files)
+	analysis.checkDynamicModuleImports(files)
+	analysis.checkForeignModuleTrust(files)
 	analysis.collectFunctions(files)
 	analysis.checkNestedResultContracts()
 	analysis.collectLayerBindings(files)
@@ -1479,7 +1483,6 @@ func newRowAnalysis(typeChecker *checker.Checker, prelude *preludeSymbols, files
 	analysis.checkTopLevelRequirements(files)
 	analysis.checkTopLevelCheckedChannels(files)
 	analysis.checkCrossModuleEscapes(files)
-	analysis.checkForeignModuleTrust(files)
 	// Fail-closed frontend rules (smithershostrules.go). They run last because
 	// none of them contributes a row: each one only decides whether a program
 	// the language forbids may reach emit at all.
@@ -1716,6 +1719,12 @@ func (a *rowAnalysis) foreignPolicyForCall(call *ast.Node) (foreignPolicy, bool)
 	}
 	signature := a.checker.GetResolvedSignature(call)
 	if signature == nil || signature.Declaration() == nil || !a.isForeignDeclaration(signature.Declaration()) {
+		return foreignPolicy{}, false
+	}
+	if file := ast.GetSourceFileOfNode(signature.Declaration()); file != nil && a.refusedForeignModules[file] {
+		// The module edge already fails closed before emit. Charging a wrapped
+		// call or a recoverable failure behind that refused initializer only
+		// adds cascade diagnostics and diverges from the reference observation.
 		return foreignPolicy{}, false
 	}
 	returned := a.checker.GetReturnTypeOfSignature(signature)
@@ -2706,6 +2715,53 @@ func (a *rowAnalysis) staticRuntimeModuleEdge(statement *ast.Node) *ast.Node {
 	return specifier
 }
 
+func (a *rowAnalysis) foreignModuleSource(specifier *ast.Node) *ast.SourceFile {
+	if specifier == nil {
+		return nil
+	}
+	module := a.checker.ResolveExternalModuleName(specifier)
+	if module == nil {
+		return nil
+	}
+	for _, declaration := range module.Declarations {
+		if a.isForeignDeclaration(declaration) {
+			return ast.GetSourceFileOfNode(declaration)
+		}
+	}
+	return nil
+}
+
+// checkDynamicModuleImports deliberately establishes the conservative base
+// shared with the reference frontend: dynamic code-module imports are deferred
+// until both backends can enforce one exact rewrite/trust policy. Compiler-owned
+// dynamic asset imports are excluded because checkAssetImports already owns and
+// erases those edges before runtime.
+func (a *rowAnalysis) checkDynamicModuleImports(files []*ast.SourceFile) {
+	for _, file := range files {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsImportCall(node) {
+				if _, asset := a.assetImports[node]; asset {
+					return false
+				}
+				target := node
+				call := node.AsCallExpression()
+				if call.Arguments != nil && len(call.Arguments.Nodes) != 0 {
+					target = call.Arguments.Nodes[0]
+					if moduleFile := a.foreignModuleSource(target); moduleFile != nil {
+						a.refusedForeignModules[moduleFile] = true
+					}
+				}
+				a.report(target, "SMITHERS1510", "dynamic module import is deferred until the compiler can preserve one checked module-initialization trust boundary; use a static trusted import or a checked async foreign adapter")
+				return false
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
+}
+
 func (a *rowAnalysis) checkForeignModuleTrust(files []*ast.SourceFile) {
 	for _, file := range files {
 		for _, statement := range file.Statements.Nodes {
@@ -2729,15 +2785,9 @@ func (a *rowAnalysis) checkForeignModuleTrust(files []*ast.SourceFile) {
 				a.report(specifier, "SMITHERS1510", "foreign module initialization can panic before a checked call boundary; the module could not be resolved to a declaration carrying a leading @module and @throws {never} trust claim")
 				continue
 			}
-			var target *ast.SourceFile
-			for _, moduleDeclaration := range module.Declarations {
-				candidate := ast.GetSourceFileOfNode(moduleDeclaration)
-				if candidate != nil && a.isForeignDeclaration(moduleDeclaration) {
-					target = candidate
-					break
-				}
-			}
+			target := a.foreignModuleSource(specifier)
 			if target != nil && !trustedForeignModule(target) {
+				a.refusedForeignModules[target] = true
 				a.report(specifier, "SMITHERS1510", "statically loaded TypeScript/JavaScript module does not declare a leading @module and @throws {never} initialization trust claim")
 			}
 		}

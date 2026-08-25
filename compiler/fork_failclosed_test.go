@@ -660,7 +660,7 @@ export interface Settings {
 				"export function main(): string[] {\n" +
 				"  return [shout(\"ada\")]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1301@4:11", "SMITHERS1510@1:23"},
+			reject: []string{"SMITHERS1510@1:23"},
 		},
 	})
 }

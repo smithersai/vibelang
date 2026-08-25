@@ -1534,6 +1534,13 @@ func (a *rowAnalysis) checkAssetImports(files []*ast.SourceFile) {
 	for _, file := range files {
 		for _, site := range sourceAssetSites(a.project, file) {
 			selection := site.selection
+			if ast.IsImportCall(site.node) && (site.potentialAsset || site.hasAttributes || site.computedAttributed) {
+				// Dynamic asset syntax stays owned by this pass even when its
+				// literal attribute grammar is invalid. The module-import refusal
+				// must not add an unrelated SMITHERS1510 cascade to a 52xx asset
+				// diagnostic.
+				a.assetImports[site.node] = assetImportEdge{loader: selection.loader}
+			}
 			if len(selection.issues) > 0 {
 				for _, issue := range selection.issues {
 					a.report(issue.node, issue.code, issue.message)
