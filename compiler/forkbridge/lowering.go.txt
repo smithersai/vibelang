@@ -629,19 +629,56 @@ func (s *preludeSymbols) isResultSymbol(symbol *ast.Symbol) bool {
 	return s.isAliasSymbol(symbol, s.resultSymbol, s.resultAlias)
 }
 
+// memberSelection gives dotted access and literal element access one semantic
+// representation. In TypeScript, x.member and x["member"] select the same
+// resolved property and execute the same call. Compiler-owned members must
+// therefore never depend on which of those two authored spellings was used.
+// A computed, non-literal key is deliberately not guessed here; ordinary
+// checker diagnostics own keys that cannot be resolved to a declared member.
+type memberSelection struct {
+	receiver *ast.Node
+	name     *ast.Node
+}
+
+func selectMember(node *ast.Node) (memberSelection, bool) {
+	if node == nil {
+		return memberSelection{}, false
+	}
+	if ast.IsPropertyAccessExpression(node) {
+		access := node.AsPropertyAccessExpression()
+		return memberSelection{receiver: access.Expression, name: access.Name()}, true
+	}
+	if ast.IsElementAccessExpression(node) {
+		access := node.AsElementAccessExpression()
+		name := ast.SkipParentheses(access.ArgumentExpression)
+		if name != nil && ast.IsStringLiteralLike(name) {
+			return memberSelection{receiver: access.Expression, name: name}, true
+		}
+	}
+	return memberSelection{}, false
+}
+
+func (s *preludeSymbols) memberSymbol(selection memberSelection) *ast.Symbol {
+	symbol := s.checker.GetSymbolAtLocation(selection.name)
+	if symbol == nil && selection.receiver != nil && selection.name != nil {
+		symbol = s.checker.GetPropertyOfType(s.checker.GetTypeAtLocation(selection.receiver), selection.name.Text())
+	}
+	return symbol
+}
+
 // authoredConstructor reports a forbidden author-facing Result
 // variant hook. The owner must resolve to the compiler prelude; spelling is
 // consulted only after that identity proof to select the reserved hook.
 func (s *preludeSymbols) authoredConstructor(node *ast.Node) (string, bool) {
-	if node == nil || !ast.IsPropertyAccessExpression(node) {
+	selection, selected := selectMember(node)
+	if !selected {
 		return "", false
 	}
-	access := node.AsPropertyAccessExpression()
-	if !ast.IsIdentifier(access.Expression) {
+	if !ast.IsIdentifier(selection.receiver) {
 		return "", false
 	}
-	symbol := s.checker.GetSymbolAtLocation(access.Expression)
-	name := access.Name().Text()
+	symbol := s.checker.GetSymbolAtLocation(selection.receiver)
+	name := selection.name.Text()
 	if s.isResultSymbol(symbol) && (name == "ok" || name == "err" || name == "success" || name == "error") {
 		return "Result." + name, true
 	}
@@ -657,10 +694,11 @@ func (s *preludeSymbols) resultNamespaceCall(node *ast.Node) (string, bool) {
 		return "", false
 	}
 	expression := node.AsCallExpression().Expression
-	if expression == nil || !ast.IsPropertyAccessExpression(expression) {
+	selection, selected := selectMember(expression)
+	if !selected {
 		return "", false
 	}
-	symbol := s.checker.GetSymbolAtLocation(expression.AsPropertyAccessExpression().Name())
+	symbol := s.memberSymbol(selection)
 	for _, member := range resultNamespaceMembers {
 		if symbolDeclaredBy(symbol, s.resultNamespaceDecls[member]) {
 			return member, true
@@ -694,11 +732,11 @@ func (s *preludeSymbols) isPanicCall(node *ast.Node) bool {
 		return false
 	}
 	expression := node.AsCallExpression().Expression
-	if expression != nil && ast.IsPropertyAccessExpression(expression) {
+	if selection, selected := selectMember(expression); selected {
 		// The member name carries the declaration: the receiver `Reflect` is
 		// the ambient lib namespace the prelude augments, so asking the receiver
 		// would prove nothing about which `panic` was selected.
-		return symbolDeclaredBy(s.resolvedSymbolAt(expression.AsPropertyAccessExpression().Name()), s.reflectPanicDecls)
+		return symbolDeclaredBy(s.resolvedSymbolAt(selection.name), s.reflectPanicDecls)
 	}
 	return symbolDeclaredBy(s.resolvedSymbolAt(expression), s.panicDecls)
 }
@@ -740,18 +778,20 @@ func (s *preludeSymbols) resultConsumerCall(node *ast.Node) bool {
 		return false
 	}
 	expression := node.AsCallExpression().Expression
-	if expression == nil || !ast.IsPropertyAccessExpression(expression) {
+	selection, selected := selectMember(expression)
+	if !selected {
 		return false
 	}
-	symbol := s.checker.GetSymbolAtLocation(expression.AsPropertyAccessExpression().Name())
+	symbol := s.memberSymbol(selection)
 	return symbolDeclaredBy(symbol, s.resultConsumerDecls)
 }
 
 func (s *preludeSymbols) resultInspection(node *ast.Node) bool {
-	if node == nil || !ast.IsPropertyAccessExpression(node) {
+	selection, selected := selectMember(node)
+	if !selected {
 		return false
 	}
-	symbol := s.checker.GetSymbolAtLocation(node.AsPropertyAccessExpression().Name())
+	symbol := s.memberSymbol(selection)
 	return symbolDeclaredBy(symbol, s.resultInspectionDecls)
 }
 
@@ -760,10 +800,11 @@ func (s *preludeSymbols) promiseCombinatorCall(node *ast.Node) bool {
 		return false
 	}
 	expression := node.AsCallExpression().Expression
-	if expression == nil || !ast.IsPropertyAccessExpression(expression) {
+	selection, selected := selectMember(expression)
+	if !selected {
 		return false
 	}
-	symbol := s.checker.GetSymbolAtLocation(expression.AsPropertyAccessExpression().Name())
+	symbol := s.memberSymbol(selection)
 	for _, name := range []string{"all", "allSettled", "race", "any", "allKeyed", "allSettledKeyed"} {
 		if symbolDeclaredBy(symbol, s.promiseCombinatorDecls[name]) {
 			return s.checker.GetPromisedTypeOfPromise(s.checker.GetTypeAtLocation(node)) != nil
@@ -789,10 +830,11 @@ var resultNamespaceExports = map[string]string{
 // implementation. The resolved declaration, not the property spelling, is the
 // authority, so unrelated user methods do not pull in or depend on the prelude.
 func (s *preludeSymbols) isErrorRuntimeMember(node *ast.Node) bool {
-	if node == nil || !ast.IsPropertyAccessExpression(node) {
+	selection, selected := selectMember(node)
+	if !selected {
 		return false
 	}
-	return symbolDeclaredBy(s.checker.GetSymbolAtLocation(node.AsPropertyAccessExpression().Name()), s.errorRuntimeDecls)
+	return symbolDeclaredBy(s.memberSymbol(selection), s.errorRuntimeDecls)
 }
 
 // isCompilerModuleSpecifier recognizes a compiler-owned virtual module by the
@@ -863,11 +905,11 @@ const (
 // `<result>.unwrap()` spelling, using the resolved property declaration and
 // Result type identity rather than authored member text.
 func (s *preludeSymbols) unwrapCall(node *ast.Node) (*ast.Node, unwrapKind) {
-	access, ok := s.zeroArgumentMethodCall(node)
+	selection, ok := s.zeroArgumentMethodCall(node)
 	if !ok {
 		return nil, unwrapNone
 	}
-	symbol := s.checker.GetSymbolAtLocation(access.Name())
+	symbol := s.memberSymbol(selection)
 	if symbol == nil {
 		return nil, unwrapNone
 	}
@@ -880,25 +922,22 @@ func (s *preludeSymbols) unwrapCall(node *ast.Node) (*ast.Node, unwrapKind) {
 	if !result {
 		return nil, unwrapNone
 	}
-	receiverType := s.checker.GetTypeAtLocation(access.Expression)
+	receiverType := s.checker.GetTypeAtLocation(selection.receiver)
 	if result && s.isResultType(receiverType) {
-		return access.Expression, unwrapResult
+		return selection.receiver, unwrapResult
 	}
 	return nil, unwrapNone
 }
 
-func (s *preludeSymbols) zeroArgumentMethodCall(node *ast.Node) (*ast.PropertyAccessExpression, bool) {
+func (s *preludeSymbols) zeroArgumentMethodCall(node *ast.Node) (memberSelection, bool) {
 	if !ast.IsCallExpression(node) {
-		return nil, false
+		return memberSelection{}, false
 	}
 	call := node.AsCallExpression()
 	if call.Arguments == nil || len(call.Arguments.Nodes) != 0 {
-		return nil, false
+		return memberSelection{}, false
 	}
-	if !ast.IsPropertyAccessExpression(call.Expression) {
-		return nil, false
-	}
-	return call.Expression.AsPropertyAccessExpression(), true
+	return selectMember(call.Expression)
 }
 
 type errorMatchKind int
@@ -918,11 +957,11 @@ func (s *preludeSymbols) matchCall(node *ast.Node) (receiver *ast.Node, handlers
 		return nil, nil, nil, errorMatchNone
 	}
 	call := node.AsCallExpression()
-	if !ast.IsPropertyAccessExpression(call.Expression) {
+	selection, selected := selectMember(call.Expression)
+	if !selected {
 		return nil, nil, nil, errorMatchNone
 	}
-	access := call.Expression.AsPropertyAccessExpression()
-	symbol := s.checker.GetSymbolAtLocation(access.Name())
+	symbol := s.memberSymbol(selection)
 	if symbol == nil {
 		return nil, nil, nil, errorMatchNone
 	}
@@ -946,7 +985,7 @@ func (s *preludeSymbols) matchCall(node *ast.Node) (receiver *ast.Node, handlers
 	if call.Arguments != nil && len(call.Arguments.Nodes) > 1 {
 		fallback = call.Arguments.Nodes[1]
 	}
-	return access.Expression, handlers, fallback, kind
+	return selection.receiver, handlers, fallback, kind
 }
 
 func (s *preludeSymbols) expectCall(node *ast.Node) (*ast.Node, bool) {
@@ -954,15 +993,15 @@ func (s *preludeSymbols) expectCall(node *ast.Node) (*ast.Node, bool) {
 		return nil, false
 	}
 	call := node.AsCallExpression()
-	if call.Arguments == nil || len(call.Arguments.Nodes) != 1 || !ast.IsPropertyAccessExpression(call.Expression) {
+	selection, selected := selectMember(call.Expression)
+	if call.Arguments == nil || len(call.Arguments.Nodes) != 1 || !selected {
 		return nil, false
 	}
-	access := call.Expression.AsPropertyAccessExpression()
-	if !symbolDeclaredBy(s.checker.GetSymbolAtLocation(access.Name()), s.expectDecls) ||
-		!s.isResultType(s.checker.GetTypeAtLocation(access.Expression)) {
+	if !symbolDeclaredBy(s.memberSymbol(selection), s.expectDecls) ||
+		!s.isResultType(s.checker.GetTypeAtLocation(selection.receiver)) {
 		return nil, false
 	}
-	return access.Expression, true
+	return selection.receiver, true
 }
 
 // liftShape is the checked return contract of the function being lowered. It
@@ -1139,14 +1178,15 @@ func (s *preludeSymbols) layerCall(node *ast.Node, method string) bool {
 		return false
 	}
 	call := node.AsCallExpression()
-	if !ast.IsPropertyAccessExpression(call.Expression) {
+	selection, selected := selectMember(call.Expression)
+	if !selected {
 		return false
 	}
 	declarations := s.layerDecls[method]
 	if len(declarations) == 0 {
 		return false
 	}
-	symbol := s.checker.GetSymbolAtLocation(call.Expression.AsPropertyAccessExpression().Name())
+	symbol := s.memberSymbol(selection)
 	return symbolDeclaredBy(symbol, declarations)
 }
 
@@ -1155,14 +1195,14 @@ func (s *preludeSymbols) contextCall(node *ast.Node) *ast.Node {
 		return nil
 	}
 	call := node.AsCallExpression()
-	if call.Arguments == nil || len(call.Arguments.Nodes) != 0 || !ast.IsPropertyAccessExpression(call.Expression) {
+	selection, selected := selectMember(call.Expression)
+	if call.Arguments == nil || len(call.Arguments.Nodes) != 0 || !selected {
 		return nil
 	}
-	access := call.Expression.AsPropertyAccessExpression()
-	if !symbolDeclaredBy(s.checker.GetSymbolAtLocation(access.Name()), s.contextDecls) {
+	if !symbolDeclaredBy(s.memberSymbol(selection), s.contextDecls) {
 		return nil
 	}
-	return access.Expression
+	return selection.receiver
 }
 
 func (a *rowAnalysis) canonical(symbol *ast.Symbol) *ast.Symbol {
@@ -1935,8 +1975,8 @@ func (a *rowAnalysis) classReferenceSymbol(expression *ast.Node) *ast.Symbol {
 		return nil
 	}
 	location := expression
-	if ast.IsPropertyAccessExpression(expression) {
-		location = expression.AsPropertyAccessExpression().Name()
+	if selection, selected := selectMember(expression); selected {
+		location = selection.name
 	}
 	return a.symbolAt(location)
 }
@@ -3126,15 +3166,15 @@ func (l *lowerer) promiseChainCall(node *ast.Node) bool {
 		return false
 	}
 	call := node.AsCallExpression()
-	if !ast.IsPropertyAccessExpression(call.Expression) {
+	selection, selected := selectMember(call.Expression)
+	if !selected {
 		return false
 	}
-	access := call.Expression.AsPropertyAccessExpression()
-	receiver := l.checker.GetTypeAtLocation(access.Expression)
+	receiver := l.checker.GetTypeAtLocation(selection.receiver)
 	if receiver == nil || l.checker.GetPromisedTypeOfPromise(receiver) == nil {
 		return false
 	}
-	symbol := l.checker.GetSymbolAtLocation(access.Name())
+	symbol := l.prelude.memberSymbol(selection)
 	if symbol == nil {
 		return false
 	}
@@ -3209,8 +3249,8 @@ func (l *lowerer) visitExpression(node *ast.Node) *ast.Node {
 	}
 	if l.promiseChainCall(node) {
 		l.report(node, "SMITHERS1401", "Promise instance .then(), .catch(), and .finally() are unavailable in authored .sm; consume the Promise with await")
-		access := node.AsCallExpression().Expression.AsPropertyAccessExpression()
-		if producer := directPromiseProducer(access.Expression); producer != nil {
+		selection, _ := selectMember(node.AsCallExpression().Expression)
+		if producer := directPromiseProducer(selection.receiver); producer != nil {
 			l.report(producer, "SMITHERS1402", "started Promise is not consumed with await, return, or an awaited recognized combinator")
 		}
 	}
