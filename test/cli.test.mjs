@@ -1093,7 +1093,7 @@ test(".sm stages and executes a bounded mixed TypeScript/JavaScript runtime grap
     assert.equal(report.ok, true);
     assert.deepEqual(report.files[0].rows.foreignSummary, {
       failures: ["Panic"],
-      requirements: ["TypeScript"],
+      requirements: [],
     });
 
     const coldTree = snapshotTree(output);

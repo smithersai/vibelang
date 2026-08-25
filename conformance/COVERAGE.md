@@ -73,6 +73,48 @@ other row below whose observation channel was `SMITHERS3001`.
 was withdrawn rather than implemented, so **F1 is closed by the specification**,
 not by code.
 
+## Withdrawal record — the `TypeScript` requirement member, 2026-08-24
+
+The record above removed the portability half. It did **not** reach the
+frontend's own requirement rows, which are a different code path in
+`poc/src/language/semantic.ts` and kept charging a `TypeScript` requirement at
+eight sites. That reached users directly: `smithers compile` printed
+`requirements[1]: TypeScript` on ordinary functions, and `smithers run` refused
+an ordinary program with `SMITHERS2102 top-level call has unsatisfied
+requirements TypeScript`. No gate caught it, and the corpus could not: no case
+made a top-level call into a function that imported a foreign module, which is
+the one shape where the member is observable. The two backends had **silently
+disagreed** about it since the portability removal — the Go bridge stopped
+computing it then, the JS reference did not.
+
+**Only the member was withdrawn.** The requirement-row mechanism, nominal
+`Context` rows, `Layer` provision and subtraction, `Clock`/`Random`/`Host`
+charging for ambient host globals, transitive propagation, durable contract
+derivation, and `SMITHERS2102` itself are the capability system and are
+untouched.
+
+**Added to the corpus**, all three passing on both backends with 0 divergent:
+
+- `18-typescript-requirement/a-trusted-foreign-import-adds-no-requirement` — the
+  acceptance direction, observed through a top-level call, which is legal only
+  when the callee's row is empty. Measured divergent before the fix
+  (`SMITHERS2102@15:1`, `SMITHERS2102@16:1` on the JS reference; the Go fork
+  already passed).
+- `18-typescript-requirement/a-provided-capability-row-closes-completely-around-a-foreign-import`
+  — the reduced reproduction: one capability provided by a layer plus a trusted
+  foreign import, with a top-level call. Also measured divergent before the fix
+  (`SMITHERS2102@29:17` on the JS reference).
+- `05-context-rows/an-unsatisfied-top-level-requirement-names-exactly-the-capability`
+  — the refusal direction, with `messageContains` on the capability's own name.
+  The removal direction is trivially satisfiable by a frontend that stopped
+  charging requirements altogether, so the refusal is pinned in the same lane.
+
+`18/any-is-usable-and-not-forbidden` and `18/eval-is-usable-and-not-forbidden`
+kept their observables; only their in-source comments, which still described the
+withdrawn charge, were corrected. **§10.1 and §10.5 below are now history in
+both directions**: their obligations were withdrawn on 2026-08-23 and the
+implementation caught up on 2026-08-24.
+
 This is the audit that lets someone judge whether "feature complete" is true. It
 walks `docs/DECISIONS.md`'s **Locked** entries and every normative sentence in
 `docs/src/pages/specification/*`, and records, for each obligation, whether the
@@ -185,19 +227,21 @@ Backend agreement: 256/260 identical observations
 Interop: 6/6 on both backends
 ```
 
-Corpus size: **201 cases across 17 populated areas** after the later 2026-08-23
-grammar, `Optional<T>`, and postfix-propagation revisions. Empty historical
-directories are not counted as areas. Per-area counts, re-measured with
+Corpus size: **204 cases across 17 populated areas** after the later 2026-08-23
+grammar, `Optional<T>`, and postfix-propagation revisions and the 2026-08-24
+removal of the `TypeScript` requirement member (three cases added; see the
+second withdrawal record above). Empty historical directories are not counted as
+areas. Per-area counts, re-measured with
 `for d in conformance/corpus/*/; do echo "$(basename $d) $(ls $d*.expected.json | wc -l)"; done`:
 
 | area | cases | | area | cases | | area | cases |
 | --- | ---: | --- | --- | ---: | --- | --- | ---: |
 | 01-result-lifting | 20 | | 09-foreign-calls | 27 | | 17-durable | 6 |
-| 02-unwrap-propagation | 9 | | 14-conditional-declarations | 6 | | 18-typescript-requirement | 4 |
+| 02-unwrap-propagation | 9 | | 14-conditional-declarations | 6 | | 18-typescript-requirement | 6 |
 | 04-nominal-errors | 13 | | 15-generic-rows | 6 | | 19-retired-syntax | 37 |
-| 05-context-rows | 7 | | 16-comptime | 10 | | 20-host-globals | 4 |
+| 05-context-rows | 8 | | 16-comptime | 10 | | 20-host-globals | 4 |
 | 06-layers | 7 | | 22-source-text-fidelity | 3 | | 23-asset-imports | 21 |
-| 07-must-consume | 11 | | 08-promise-chaining | 10 | | **total** | **201** |
+| 07-must-consume | 11 | | 08-promise-chaining | 10 | | **total** | **204** |
 
 Supporting files, re-measured after the withdrawal: **7** `*.mod.sm` auxiliary
 modules (23 before it, 17 before that — 16 of them belonged to `21-native-pin`),
@@ -205,9 +249,9 @@ modules (23 before it, 17 before that — 16 of them belonged to `21-native-pin`
 staged files, **6** `conformance/interop/*.ts`.
 
 ```
-JS reference:  201/201 pass, 0 xpass, 0 xfail, 0 unsupported, 0 divergent, 0 unmeasured
-Go fork match: 201/201 match the reference, 0 xpass, 0 xfail, 0 unsupported, 0 divergent, 0 unmeasured
-Backend agreement: 201/201 identical observations
+JS reference:  204/204 pass, 0 xpass, 0 xfail, 0 unsupported, 0 divergent, 0 unmeasured
+Go fork match: 204/204 match the reference, 0 xpass, 0 xfail, 0 unsupported, 0 divergent, 0 unmeasured
+Backend agreement: 204/204 identical observations
 ```
 
 The scoreboard immediately above this paragraph is the **pre-withdrawal**

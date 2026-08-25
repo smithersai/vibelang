@@ -93,14 +93,21 @@ some rules carry a payload that is the whole promise. The native pin is the one
 this was added for: *"The diagnostic SHOULD show the dependency path that
 introduced the requirement"*. **That rule was withdrawn on 2026-08-23 with the
 portability targets, and every case that declared `messageContains` was in
-`21-native-pin`, so the corpus currently declares none.** The mechanism stays,
-because the reasoning that justified it is not specific to the pin. A
-pin refused with an **empty** route satisfied a code-and-position expectation
-exactly, so the route would be unpinned — and "an empty result matching an empty
-expectation" is a fail-open in the harness rather than in a backend.
+`21-native-pin`.** The mechanism stays, because the reasoning that justified it
+is not specific to the pin. A pin refused with an **empty** route satisfied a
+code-and-position expectation exactly, so the route would be unpinned — and "an
+empty result matching an empty expectation" is a fail-open in the harness rather
+than in a backend.
 
-Declare the smallest fragment that carries the promise (`"-> launder.mod.sm ->
-node:fs"`), never the sentence around it.
+The corpus declares exactly one today:
+`05-context-rows/an-unsatisfied-top-level-requirement-names-exactly-the-capability`
+declares the capability's own name on its `SMITHERS2102`, for the same reason —
+the code and position alone would be satisfied by a refusal naming the *wrong*
+requirement, which is precisely the defect removed on 2026-08-24.
+
+Declare the smallest fragment that carries the promise (`"Label"`, not the
+sentence around it, and not a row rendering — the JS reference prints `Label`
+where the Go fork prints `{Label}`).
 
 ### Acceptance is the frontend's own acceptance, in ordered stages
 

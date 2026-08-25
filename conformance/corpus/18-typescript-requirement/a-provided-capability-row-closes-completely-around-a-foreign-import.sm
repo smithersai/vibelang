@@ -1,0 +1,33 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+import { double } from "./foreign.ts"
+
+// `report` reads ONE nominal capability and calls ONE trusted foreign
+// function, so its requirement row is exactly `Scale`. `run` provides `Scale`,
+// and Layer provision subtracts exactly what it provides — so `run`'s own row
+// closes completely and the TOP-LEVEL call to `run` is satisfied.
+//
+// Both halves of that sentence are under test. If Layer provision stopped
+// subtracting, `run` would still require `Scale` and SMITHERS2102 would fire;
+// if a foreign import contributed a requirement no layer can provide, `run`
+// would carry that residue and SMITHERS2102 would fire for it instead.
+
+abstract class Scale extends Context {
+  abstract factor(): number
+}
+
+function report(value: number): string {
+  return `${double(value) * Scale.context().factor()}`
+}
+
+const live: Scale = { factor: () => 10 }
+
+function run(): string[] {
+  return Layer.provide(Layer.succeed(Scale, live), () => [report(2), report(3)])
+}
+
+const results = run()
+
+export function main(): string[] {
+  return results
+}

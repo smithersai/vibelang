@@ -1,0 +1,7 @@
+{
+  "title": "a capability row containing a foreign import closes completely once the one capability it names is provided",
+  "expect": "output",
+  "stdout": ["40", "60"],
+  "typescript": ["foreign.ts"],
+  "notes": "specification/requirements.mdx, 'Satisfaction': 'Providing a layer to a computation MUST remove matching capabilities from the computation's unsatisfied requirement row', and specification/compatibility.mdx, 'TypeScript Target': 'Smithers has no `TypeScript` requirement.' This is the reproduction that found the 2026-08-24 defect, reduced: a program that mixes a Context capability with a trusted foreign import used to leave `TypeScript` in the row after `Layer.provide` subtracted `Scale`, because no layer can provide a member the language does not define — so the top-level call was refused with SMITHERS2102 for a requirement that no longer existed. It is deliberately written so that BOTH directions fail loudly: dropping Layer subtraction leaves `Scale`, and re-introducing a built-in member leaves that member. Paired with 06-layers/layer-provide-missing-a-capability, which pins the refusal when a layer genuinely does not close the row."
+}

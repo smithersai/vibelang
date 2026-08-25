@@ -1,5 +1,5 @@
-// `any` is an escape hatch that contributes the built-in TypeScript
-// requirement; it is deliberately NOT forbidden in authored .sm.
+// `any` is an escape hatch, and it is deliberately NOT forbidden in authored
+// .sm. It contributes no requirement: Smithers has no `TypeScript` requirement.
 function widen(value: any): string {
   return `${value}`
 }

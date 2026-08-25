@@ -1108,7 +1108,6 @@ function checkForeignValueBoundaries(
           checker,
           diagnostics,
         );
-        owner?.directRequirements.add("TypeScript");
         if (policy.kind !== "never") {
           diagnostics.push(at(
             node,
@@ -1161,7 +1160,6 @@ function checkForeignPropertyAccess(
 
   const policy = foreignAccessPolicy(access, sourceFile, checker, diagnostics);
   if (foreignAccessIsCovered(access, callEdges, checker) && policy.kind !== "declared") return;
-  owner?.directRequirements.add("TypeScript");
   if (policy.kind === "never") return;
   diagnostics.push(at(
     access,
@@ -1231,7 +1229,6 @@ function foreignPolicyFromDeclaration(
 
 function recordForeignBoundary(owner: SemanticFunction | undefined, policy: ForeignPolicy): void {
   if (!owner) return;
-  owner.directRequirements.add("TypeScript");
   addForeignFailures(owner.directFailures, policy);
 }
 
@@ -1379,8 +1376,6 @@ function collectFunctions(sourceFile: ts.SourceFile, checker: ts.TypeChecker): S
       usedNames.set(baseName, count + 1);
       const name = count === 0 ? baseName : `${baseName}#${count + 1}`;
       const declaredShape = functionShape(node, checker);
-      const signatureUsesAny = Boolean(node.type && containsSyntaxKind(node.type, ts.SyntaxKind.AnyKeyword)) ||
-        node.parameters.some((parameter) => containsSyntaxKind(parameter, ts.SyntaxKind.AnyKeyword));
       functions.push({
         node,
         name,
@@ -1392,7 +1387,7 @@ function collectFunctions(sourceFile: ts.SourceFile, checker: ts.TypeChecker): S
         directFailures: new Set(declaredShape.channel.startsWith("result") ? declaredShape.failures : []),
         bodyFailures: new Set(),
         failures: new Set(declaredShape.channel.startsWith("result") ? declaredShape.failures : []),
-        directRequirements: new Set(signatureUsesAny ? ["TypeScript"] : []),
+        directRequirements: new Set(),
         requirements: new Set(),
         calls: [],
         provides: [],
@@ -1626,8 +1621,6 @@ function collectFacts(
   const visit = (node: ts.Node, caughtByJavaScript = false): void => {
     if (node !== body && isSupportedFunctionLike(node)) return;
 
-    if (node.kind === ts.SyntaxKind.AnyKeyword) fn.directRequirements.add("TypeScript");
-
     if (ts.isTryStatement(node)) {
       visit(node.tryBlock, caughtByJavaScript || Boolean(node.catchClause));
       if (node.catchClause) visit(node.catchClause.block, caughtByJavaScript);
@@ -1645,10 +1638,6 @@ function collectFacts(
     }
 
     if (ts.isCallExpression(node)) {
-      if (ts.isIdentifier(node.expression) && node.expression.text === "eval" &&
-        !checker.getSymbolAtLocation(node.expression)?.declarations?.some((declaration) => declaration.getSourceFile() === sourceFile)) {
-        fn.directRequirements.add("TypeScript");
-      }
       if (isPromiseInstanceChain(node, checker)) {
         diagnostics.push(at(node, sourceFile, "SMITHERS1401", "Promise instance .then(), .catch(), and .finally() are unavailable in authored .sm; consume the Promise with await"));
       }
@@ -1716,10 +1705,7 @@ function collectFacts(
           diagnostics.push(at(node, sourceFile, "SMITHERS1503", "panic(...) lowering is currently supported only as an expression statement or direct return"));
         }
       }
-      if (foreign) {
-        fn.directRequirements.add("TypeScript");
-        if (propagatesFailure && !authoredBoundary) addForeignFailures(fn.directFailures, foreign);
-      }
+      if (foreign && propagatesFailure && !authoredBoundary) addForeignFailures(fn.directFailures, foreign);
 
       if (isExpectSyntax(node)) fn.expectCalls.push(node);
       if (isPreludeResultBoundaryCall(node, checker)) {
@@ -1749,10 +1735,6 @@ function collectFacts(
       if (shape.channel.startsWith("result")) {
         for (const failure of shape.failures) fn.directFailures.add(failure);
       }
-    }
-
-    if (ts.isIdentifier(node) && isRuntimeForeignIdentifier(node, checker, sourceFile)) {
-      fn.directRequirements.add("TypeScript");
     }
 
     ts.forEachChild(node, (child) => visit(child, caughtByJavaScript));
@@ -2418,25 +2400,6 @@ function objectLiteralMember(
   return undefined;
 }
 
-function isRuntimeForeignIdentifier(
-  node: ts.Identifier,
-  checker: ts.TypeChecker,
-  sourceFile: ts.SourceFile,
-): boolean {
-  if (isDeclarationName(node) || isInTypePosition(node) || isPropertyNameNode(node)) return false;
-  const moduleName = importedModuleOfExpression(node, checker);
-  if (!moduleName || isCompilerIntrinsicSpecifier(moduleName)) return false;
-  const symbol = checker.getSymbolAtLocation(node);
-  const resolved = unalias(symbol, checker);
-  if (resolved?.declarations?.some((declaration) => {
-    const file = declaration.getSourceFile();
-    return file.fileName.endsWith(".sm.ts") || isTrustedCompilerGeneratedRuntime(file);
-  })) {
-    return false;
-  }
-  return Boolean(symbol?.declarations?.some((declaration) => declaration.getSourceFile() === sourceFile));
-}
-
 function isCompilerPrelude(file: ts.SourceFile): boolean {
   return file.fileName.endsWith(PRELUDE_NAME);
 }
@@ -2583,10 +2546,12 @@ function checkLayerSatisfaction(
       diagnostics.push(at(edge.node.arguments[0] ?? edge.node, sourceFile, "SMITHERS2104", "Layer expression is opaque; this POC cannot prove its provided capability closure"));
       return;
     }
+    // Requirement rows are nominal `Context` capabilities only. There is no
+    // built-in member to exempt here: `TypeScript` was withdrawn as a
+    // requirement (specification/compatibility.mdx, "TypeScript Target", and
+    // specification/type-system.mdx), so what is left after subtracting the
+    // layer's provided closure is exactly the unprovided capabilities.
     const missing = difference(callback.requirements, edge.provided);
-    // This POC emits the TypeScript backend, which itself satisfies the
-    // built-in compatibility requirement. Native pins are checked elsewhere.
-    missing.delete("TypeScript");
     if (missing.size > 0 && !nearestFunction(edge.node)) {
       diagnostics.push(at(edge.node, sourceFile, "SMITHERS2101", `Layer.provide is missing ${formatSet(missing)}`));
     }
@@ -4008,13 +3973,6 @@ function isAmbientGlobalReference(identifier: ts.Identifier, checker: ts.TypeChe
   if (symbol.flags & ts.SymbolFlags.Alias) return false;
   const declarations = symbol.declarations ?? [];
   return declarations.length === 0 || declarations.every((declaration) => declaration.getSourceFile().isDeclarationFile);
-}
-
-function containsSyntaxKind(node: ts.Node, kind: ts.SyntaxKind): boolean {
-  if (node.kind === kind) return true;
-  let found = false;
-  ts.forEachChild(node, (child) => { if (!found && containsSyntaxKind(child, kind)) found = true; });
-  return found;
 }
 
 function nearestFunction(node: ts.Node): ts.FunctionLikeDeclaration | undefined {

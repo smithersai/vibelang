@@ -186,9 +186,9 @@ describe("checked .sm frontend", () => {
         return (await untrustedAsync("x"))!
       }
     `, "foreign-boundary");
-    expect(result.analysis.rows.trusted).toEqual({ failures: [], requirements: ["TypeScript"] });
-    expect(result.analysis.rows.declared).toEqual({ failures: ["ForeignFailure", "Panic"], requirements: ["TypeScript"] });
-    expect(result.analysis.rows.unknown).toEqual({ failures: ["Panic"], requirements: ["TypeScript"] });
+    expect(result.analysis.rows.trusted).toEqual({ failures: [], requirements: [] });
+    expect(result.analysis.rows.declared).toEqual({ failures: ["ForeignFailure", "Panic"], requirements: [] });
+    expect(result.analysis.rows.unknown).toEqual({ failures: ["Panic"], requirements: [] });
     expect(result.code).toContain("Result.try(() => declaredFailure(true)");
     expect(result.code).toContain("__vsValidateForeignError(cause, ForeignFailure)");
     expect(result.code).toContain("Result.tryPromise(() => untrustedAsync(\"x\"))");
@@ -301,12 +301,12 @@ describe("checked .sm frontend", () => {
       }
     `, "foreign-javascript-boundary");
 
-    expect(result.analysis.rows.trustedJs).toEqual({ failures: [], requirements: ["TypeScript"] });
+    expect(result.analysis.rows.trustedJs).toEqual({ failures: [], requirements: [] });
     expect(result.analysis.rows.declaredJs).toEqual({
       failures: ["JavaScriptFailure", "Panic"],
-      requirements: ["TypeScript"],
+      requirements: [],
     });
-    expect(result.analysis.rows.unknownJs).toEqual({ failures: ["Panic"], requirements: ["TypeScript"] });
+    expect(result.analysis.rows.unknownJs).toEqual({ failures: ["Panic"], requirements: [] });
     expect(result.code).not.toContain("Result.try(() => trustedJavaScriptLength");
     expect(result.code).toContain("Result.try(() => declaredJavaScriptFailure(true)");
     expect(result.code).toContain("__vsValidateForeignError(cause, JavaScriptFailure)");
@@ -344,20 +344,20 @@ describe("checked .sm frontend", () => {
     `, "foreign-provenance");
 
     expect(result.analysis.diagnostics).toHaveLength(0);
-    expect(result.analysis.rows.trustedMethod).toEqual({ failures: [], requirements: ["TypeScript"] });
-    expect(result.analysis.rows.trustedGetter).toEqual({ failures: [], requirements: ["TypeScript"] });
-    expect(result.analysis.rows.realForeignUnwrapMethod).toEqual({ failures: ["Panic"], requirements: ["TypeScript"] });
-    expect(result.analysis.rows.method).toEqual({ failures: ["Panic"], requirements: ["TypeScript"] });
+    expect(result.analysis.rows.trustedMethod).toEqual({ failures: [], requirements: [] });
+    expect(result.analysis.rows.trustedGetter).toEqual({ failures: [], requirements: [] });
+    expect(result.analysis.rows.realForeignUnwrapMethod).toEqual({ failures: ["Panic"], requirements: [] });
+    expect(result.analysis.rows.method).toEqual({ failures: ["Panic"], requirements: [] });
     expect(result.analysis.rows.declaredMethod).toEqual({
       failures: ["AccessFailure", "Panic"],
-      requirements: ["TypeScript"],
+      requirements: [],
     });
     expect(result.analysis.rows.storedCallable).toEqual({
       failures: ["ForeignFailure", "Panic"],
-      requirements: ["TypeScript"],
+      requirements: [],
     });
-    expect(result.analysis.rows.generatedCallable).toEqual({ failures: ["Panic"], requirements: ["TypeScript"] });
-    expect(result.analysis.rows.generatedAsyncCallable).toEqual({ failures: ["Panic"], requirements: ["TypeScript"] });
+    expect(result.analysis.rows.generatedCallable).toEqual({ failures: ["Panic"], requirements: [] });
+    expect(result.analysis.rows.generatedAsyncCallable).toEqual({ failures: ["Panic"], requirements: [] });
     expect(result.code).toContain("Result.try(() => clientAlias.untrustedMethod(\"X\"))");
     expect(result.code).toContain("Result.try(() => foreignAny.unwrap())");
     expect(result.code).toContain("Result.try(() => stored.invoke(false)");
@@ -432,9 +432,9 @@ describe("checked .sm frontend", () => {
     expect(analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1504")).toHaveLength(2);
     expect(analysis.rows.getter).toEqual({
       failures: ["AccessFailure", "Panic"],
-      requirements: ["TypeScript"],
+      requirements: [],
     });
-    expect(analysis.rows.trustedConstructor).toEqual({ failures: [], requirements: ["TypeScript"] });
+    expect(analysis.rows.trustedConstructor).toEqual({ failures: [], requirements: [] });
     expect(analysis.rows.declaredConstructor?.failures).toEqual(["AccessFailure", "Panic"]);
     expect(analysis.rows.unrelatedLocalLookalike).toEqual({ failures: [], requirements: [] });
   });
@@ -1038,7 +1038,7 @@ describe("checked .sm frontend", () => {
       `;
       const analysis = analyzeSource(source, { fileName: join(directory, "case.sm") });
       expect(analysis.diagnostics).toHaveLength(0);
-      expect(analysis.rows.use).toEqual({ failures: ["Panic"], requirements: ["TypeScript"] });
+      expect(analysis.rows.use).toEqual({ failures: ["Panic"], requirements: [] });
 
       const compiled = compileSmithers(source, {
         fileName: join(directory, "case.sm"),
@@ -1106,9 +1106,9 @@ describe("checked .sm frontend", () => {
     expect(result.analysis.diagnostics).toHaveLength(0);
     expect(result.analysis.rows.connect).toEqual({
       failures: ["ConnectFailed", "Panic"],
-      requirements: ["TypeScript"],
+      requirements: [],
     });
-    expect(result.analysis.rows.fetchRemote).toEqual({ failures: ["Panic"], requirements: ["TypeScript"] });
+    expect(result.analysis.rows.fetchRemote).toEqual({ failures: ["Panic"], requirements: [] });
     expect(result.code).not.toContain("Result.try(() => Result.try");
     expect(result.code).not.toContain("Result.tryPromise(() => Result.tryPromise");
     expect(emittedErrors(result.code, "authored-result-try")).toHaveLength(0);

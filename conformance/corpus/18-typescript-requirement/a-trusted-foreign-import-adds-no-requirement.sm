@@ -1,0 +1,20 @@
+import { double } from "./foreign.ts"
+
+// `double` carries its own `@throws {never}`, so the call needs no Result
+// channel — and importing a foreign module contributes no requirement either.
+// `scale` therefore has an EMPTY requirement row, which is what makes the two
+// TOP-LEVEL calls below legal without any provider in sight: SMITHERS2102
+// refuses a top-level call whose callee's row is non-empty.
+
+const scaled: string[] = []
+
+function scale(value: number): void {
+  scaled.push(`${double(value)}`)
+}
+
+scale(20)
+scale(21)
+
+export function main(): string[] {
+  return scaled
+}

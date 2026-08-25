@@ -1,0 +1,7 @@
+{
+  "title": "importing a trusted foreign module adds no requirement, so a top-level call into the importing function is satisfied",
+  "expect": "output",
+  "stdout": ["40", "42"],
+  "typescript": ["foreign.ts"],
+  "notes": "specification/compatibility.mdx, 'TypeScript Target': 'Smithers has no `TypeScript` requirement. TypeScript is the only target, so every program depends on the JavaScript runtime and a requirement recording that fact would carry no information.' specification/type-system.mdx says the same. This is the acceptance direction of the 2026-08-24 removal of the `TypeScript` requirement member from the frontend: `poc/src/language/semantic.ts` used to charge it at eight sites — foreign calls, foreign constructors, foreign property reads, foreign identifier references, `any` in a signature, `any` in a body, an `eval` call, and every recorded foreign boundary — and the row reached users directly, printing `requirements[1]: TypeScript` from `smithers compile` and raising SMITHERS2102 from `smithers run` for exactly this program shape. The observable is chosen so that it fails if the member returns: a top-level call is legal only when its callee's row is empty. Paired with 18-typescript-requirement/a-provided-capability-row-closes-completely-around-a-foreign-import, which pins the same fact through Layer subtraction, and with 05-context-rows/an-unsatisfied-top-level-requirement-names-exactly-the-capability, which pins that SMITHERS2102 itself survives and names only nominal capabilities."
+}

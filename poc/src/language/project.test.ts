@@ -390,6 +390,107 @@ describe("checked .sm project rows", () => {
     }
   });
 
+  test("the withdrawn TypeScript requirement is gone and every surviving row still charges", async () => {
+    // 2026-08-24. `Smithers has no `TypeScript` requirement` (specification/
+    // compatibility.mdx, "TypeScript Target"; specification/type-system.mdx says
+    // the same), but the frontend still computed one at eight sites and it
+    // reached users: `smithers compile` printed `requirements[1]: TypeScript`
+    // and `smithers run` refused an ordinary program with SMITHERS2102.
+    //
+    // Only the MEMBER was withdrawn. The requirement-row mechanism, nominal
+    // Context rows, Layer subtraction, and SMITHERS2102 are the capability
+    // system and they stay — so this test asserts both directions in one
+    // program, because the removal direction is trivially satisfiable by a
+    // frontend that stopped charging requirements altogether.
+    const root = await mkdtemp(join(tmpdir(), "smithers-no-typescript-requirement-"));
+    try {
+      await writeFile(join(root, "host.ts"), [
+        "/**",
+        " * @module",
+        " * @throws {never}",
+        " */",
+        "",
+        "/** @throws {never} */",
+        "export function write(line: string): string { return line }",
+        "",
+        "/** No claim at all: every call must still charge the Panic channel. */",
+        "export function risky(line: string): string { return line }",
+        "",
+      ].join("\n"));
+
+      const withLayer = [
+        'import { Context } from "smthrs/context"',
+        'import { Layer } from "smthrs/provider"',
+        'import { write, risky } from "./host.ts"',
+        "export abstract class Logger extends Context { abstract info(message: string): void }",
+        "",
+        "// 1. a trusted foreign call charges nothing at all: no failure channel",
+        "//    (it is `@throws {never}`) and no requirement.",
+        "export function shout(word: string): string { return write(word) }",
+        "",
+        "// 2. `any` in a signature, `any` in a body, and a call to `eval` are",
+        "//    usable and contribute no requirement — the three condition sites",
+        "//    that were only ever about portability.",
+        "export function widen(value: any): string { const loose: any = value; return `${loose}` }",
+        "export function evaluate(source: string): string { return `${eval(source)}` }",
+        "",
+        "// 3. an UNANNOTATED foreign call still charges the checked Panic",
+        "//    channel. Only the requirement half of that site was withdrawn.",
+        "export function unchecked(word: string): Result<string, Panic> { return risky(word) }",
+        "",
+        "// 4. the row a foreign import must not widen: `greet` requires exactly",
+        "//    `Logger`, and Layer.provide subtracts exactly that and no more.",
+        "export function greet(name: string): string { Logger.context().info(name); return write(name) }",
+        "const logger: Logger = { info: () => {} }",
+        'export function scoped(): string { return Layer.provide(Layer.succeed(Logger, logger), () => greet("ada")) }',
+        "",
+        "// 5. and therefore a top-level call into a foreign-importing function",
+        "//    is legal, which is the exact program the defect refused.",
+        'shout("ada")',
+        "",
+      ].join("\n");
+
+      const analysis = analyzeProject([{ fileName: "main.sm", source: withLayer }], { rootDir: root });
+      const rows = analysis.files["main.sm"]!.rows;
+
+      // Removal direction: no row anywhere names the withdrawn member.
+      for (const [name, row] of Object.entries(rows)) {
+        expect([name, row.requirements.includes("TypeScript")]).toEqual([name, false]);
+      }
+      expect(rows.shout!).toEqual({ failures: [], requirements: [] });
+      expect(rows.widen!).toEqual({ failures: [], requirements: [] });
+      expect(rows.evaluate!).toEqual({ failures: [], requirements: [] });
+
+      // Survivor direction: the foreign Panic channel, the nominal Context row,
+      // and Layer subtraction all still charge exactly what they charged.
+      expect(rows.unchecked!.failures).toEqual(["Panic"]);
+      expect(rows.unchecked!.requirements).toEqual([]);
+      expect(rows.greet!.requirements).toEqual(["Logger"]);
+      expect(rows.scoped!.requirements).toEqual([]);
+      expect(analysis.diagnostics).toEqual([]);
+
+      // And SMITHERS2102 is untouched: drop the layer and the same program is
+      // refused, naming the capability and nothing else.
+      const withoutLayer = analyzeProject([{
+        fileName: "main.sm",
+        source: [
+          'import { Context } from "smthrs/context"',
+          'import { write } from "./host.ts"',
+          "export abstract class Logger extends Context { abstract info(message: string): void }",
+          "export function greet(name: string): string { Logger.context().info(name); return write(name) }",
+          'greet("ada")',
+          "",
+        ].join("\n"),
+      }], { rootDir: root });
+      const unsatisfied = withoutLayer.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS2102");
+      expect(unsatisfied).toHaveLength(1);
+      expect(unsatisfied[0]!.message).toContain("Logger");
+      expect(unsatisfied[0]!.message).not.toContain("TypeScript");
+    } finally {
+      await rm(root, { recursive: true });
+    }
+  });
+
   test("reaches a fixed point across an import cycle", () => {
     const analysis = analyzeProject([
       {

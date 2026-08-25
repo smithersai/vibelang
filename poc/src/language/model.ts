@@ -42,7 +42,7 @@ export interface Diagnostic {
 export interface FunctionRows {
   /** Error class names, plus the distinguished `panic` foreign boundary. */
   readonly failures: readonly string[];
-  /** Nominal Context subclass names, plus built-in requirements. */
+  /** Nominal `Context` subclass names. There are no built-in members. */
   readonly requirements: readonly string[];
 }
 

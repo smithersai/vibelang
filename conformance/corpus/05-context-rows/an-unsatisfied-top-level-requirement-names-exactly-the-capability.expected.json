@@ -1,0 +1,14 @@
+{
+  "title": "a top-level call whose row still holds an unprovided capability is refused, and the refusal names that capability",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2102",
+      "line": 31,
+      "column": 24,
+      "messageContains": "Label"
+    }
+  ],
+  "typescript": ["foreign.ts"],
+  "notes": "specification/requirements.mdx, 'Satisfaction': 'When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error.' This is the negative direction of the 2026-08-24 removal of the `TypeScript` requirement member: only the member was withdrawn, never the requirement-row mechanism or SMITHERS2102, and this case fails if the refusal itself is weakened while removing it. The declared `messageContains` is the capability's own name because that is the promise here — the backends legitimately format a row differently (`Label` versus `{Label}`), so the smallest fragment carrying the obligation is the nominal name. Two capabilities are required and one is provided, so the case simultaneously pins that Layer provision subtracts exactly what it provides and no more. The acceptance direction — an empty row after the same subtraction — is 18-typescript-requirement/a-provided-capability-row-closes-completely-around-a-foreign-import."
+}

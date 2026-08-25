@@ -1,0 +1,31 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+import { double } from "./foreign.ts"
+
+// `report` requires TWO nominal capabilities and calls one trusted foreign
+// function. `run` provides only `Scale`, so exactly `Label` survives the
+// subtraction and the top-level call is refused for it — by name.
+//
+// This is the refusal half of the pair whose acceptance half lives in
+// 18-typescript-requirement. SMITHERS2102 is load-bearing and stays; what it
+// may report is nominal `Context` capabilities and nothing else.
+
+abstract class Scale extends Context {
+  abstract factor(): number
+}
+
+abstract class Label extends Context {
+  abstract prefix(): string
+}
+
+function report(value: number): string {
+  return `${Label.context().prefix()}${double(value) * Scale.context().factor()}`
+}
+
+const live: Scale = { factor: () => 10 }
+
+function run(): string[] {
+  return Layer.provide(Layer.succeed(Scale, live), () => [report(2)])
+}
+
+export const results = run()
