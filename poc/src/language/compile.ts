@@ -10,6 +10,7 @@ import {
 import {
   buildSemanticModel,
   effectiveChannel,
+  expectReceiver,
   expressionShape,
   isErrorMatchCall,
   isErrorType,
@@ -617,8 +618,10 @@ function rewriteExpression(
       return rewriteDynamicImport(expression, state) ?? expression;
     }
     if (isResultExpectExpression(expression, state.model) && effectiveChannel(owner).startsWith("result")) {
-      const property = expression.expression as ts.PropertyAccessExpression;
-      const receiver = rewriteExpression(property.expression, owner, prologue, state, context, visit);
+      // `r.expect(m)` and `r["expect"](m)` select the same member, so the
+      // receiver is read through the shared member-selection helper rather
+      // than by asserting one of the two access node kinds.
+      const receiver = rewriteExpression(expectReceiver(expression)!, owner, prologue, state, context, visit);
       const receiverTemporary = freshTemporary(state, "expect_receiver");
       prologue.push(state.factory.createVariableStatement(undefined,
         state.factory.createVariableDeclarationList([

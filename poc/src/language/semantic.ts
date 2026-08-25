@@ -2062,9 +2062,10 @@ function foreignResultIsUsedAsValue(call: ts.CallExpression, checker: ts.TypeChe
 }
 
 function isPanicCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
-  if (ts.isPropertyAccessExpression(call.expression) && ts.isIdentifier(call.expression.expression) &&
-    call.expression.expression.text === "Reflect" && call.expression.name.text === "panic") {
-    const symbol = checker.getSymbolAtLocation(call.expression.expression);
+  const selection = calleeSelection(call);
+  if (selection && ts.isIdentifier(selection.receiver) &&
+    selection.receiver.text === "Reflect" && selection.name === "panic") {
+    const symbol = checker.getSymbolAtLocation(selection.receiver);
     return Boolean(symbol?.declarations?.length) &&
       !symbol!.declarations!.some((declaration) => declaration.getSourceFile() === call.getSourceFile()) &&
       symbol!.declarations!.some((declaration) => isCompilerPrelude(declaration.getSourceFile()) || isTypeScriptLibrary(declaration.getSourceFile()));
@@ -2420,6 +2421,50 @@ function isPropertyNameNode(node: ts.Identifier): boolean {
     ((ts.isPropertyAssignment(parent) || ts.isMethodDeclaration(parent) || ts.isPropertyDeclaration(parent)) && parent.name === node);
 }
 
+/** One member selection: `receiver.name` or, identically, `receiver["name"]`. */
+export interface MemberSelection {
+  readonly receiver: ts.Expression;
+  readonly name: string;
+  /** The node that spells the member; where a symbol for it resolves. */
+  readonly nameNode: ts.Node;
+}
+
+/**
+ * The member a `.name` or `["name"]` access selects.
+ *
+ * `x["m"]` is the SAME member access as `x.m` in TypeScript semantics — same
+ * resolved property symbol, same emitted call — so every compiler-recognized
+ * member has to be recognized through both spellings or the computed spelling
+ * is a hole. Both directions matter: recognizing only the dotted spelling let
+ * `Clock["context"]()` compile with an empty requirement row and panic at
+ * runtime, and let `Layer["provide"]` skip its capability check; it also
+ * reported false must-consume errors for `result["match"]({...})` and
+ * `Result["all"]([...])`, which discharge the obligation exactly as the dotted
+ * spellings do.
+ *
+ * A NON-literal key (`Clock[key]()`, `Clock["cont" + "ext"]()`) is deliberately
+ * not a selection here. It selects no statically known member, so there is
+ * nothing to recognize; the stock TypeScript check over the emitted module
+ * refuses it (TS7053, measured) because a compiler-owned receiver has no string
+ * index signature. `ts.isStringLiteralLike` is the same literal test the
+ * ambient-authority recognizer already uses for `Date["now"]()`.
+ */
+export function memberSelection(node: ts.Node): MemberSelection | undefined {
+  if (ts.isPropertyAccessExpression(node)) {
+    return { receiver: node.expression, name: node.name.text, nameNode: node.name };
+  }
+  if (ts.isElementAccessExpression(node) && node.argumentExpression &&
+    ts.isStringLiteralLike(node.argumentExpression)) {
+    return { receiver: node.expression, name: node.argumentExpression.text, nameNode: node.argumentExpression };
+  }
+  return undefined;
+}
+
+/** The member selection of a call's callee, when the callee selects a member. */
+function calleeSelection(call: ts.CallExpression): MemberSelection | undefined {
+  return memberSelection(call.expression);
+}
+
 function isInTypePosition(node: ts.Node): boolean {
   let current: ts.Node | undefined = node;
   while (current?.parent) {
@@ -2432,10 +2477,11 @@ function isInTypePosition(node: ts.Node): boolean {
 }
 
 function contextRequirement(call: ts.CallExpression, checker: ts.TypeChecker): string | undefined {
-  if (!ts.isPropertyAccessExpression(call.expression) || call.expression.name.text !== "context" || call.arguments.length !== 0) {
+  const selection = calleeSelection(call);
+  if (!selection || selection.name !== "context" || call.arguments.length !== 0) {
     return undefined;
   }
-  const receiver = call.expression.expression;
+  const receiver = selection.receiver;
   const type = checker.getTypeAtLocation(receiver);
   const symbol = type.getSymbol() ?? (ts.isIdentifier(receiver) ? unalias(checker.getSymbolAtLocation(receiver), checker) : undefined);
   const declaration = symbol?.declarations?.find(ts.isClassDeclaration);
@@ -2462,9 +2508,10 @@ function extendsImportedContext(declaration: ts.ClassDeclaration, checker: ts.Ty
 }
 
 function isPromiseInstanceChain(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
-  if (!ts.isPropertyAccessExpression(call.expression)) return false;
-  if (!["then", "catch", "finally"].includes(call.expression.name.text)) return false;
-  return Boolean(promisedType(checker.getTypeAtLocation(call.expression.expression), checker));
+  const selection = calleeSelection(call);
+  if (!selection) return false;
+  if (!["then", "catch", "finally"].includes(selection.name)) return false;
+  return Boolean(promisedType(checker.getTypeAtLocation(selection.receiver), checker));
 }
 
 function collectLayerBindings(sourceFile: ts.SourceFile, checker: ts.TypeChecker): Map<ts.Symbol, ts.Expression> {
@@ -2481,10 +2528,11 @@ function collectLayerBindings(sourceFile: ts.SourceFile, checker: ts.TypeChecker
 }
 
 function isLayerCall(call: ts.CallExpression, checker: ts.TypeChecker, method: string): boolean {
-  if (!ts.isPropertyAccessExpression(call.expression) || call.expression.name.text !== method) return false;
-  const moduleName = importedModuleOfExpression(call.expression.expression, checker);
+  const selection = calleeSelection(call);
+  if (!selection || selection.name !== method) return false;
+  const moduleName = importedModuleOfExpression(selection.receiver, checker);
   if (moduleName === "smthrs/provider") return true;
-  const symbol = unalias(checker.getSymbolAtLocation(call.expression.expression), checker);
+  const symbol = unalias(checker.getSymbolAtLocation(selection.receiver), checker);
   return symbol?.getName() === "Layer" && Boolean(symbol.declarations?.some((item) => isCompilerPrelude(item.getSourceFile())));
 }
 
@@ -2502,7 +2550,7 @@ function resolveLayerExpression(
     seen.add(symbol);
     return resolveLayerExpression(initializer, checker, bindings, seen);
   }
-  if (!ts.isCallExpression(expression) || !ts.isPropertyAccessExpression(expression.expression)) {
+  if (!ts.isCallExpression(expression) || !calleeSelection(expression)) {
     return { values: new Set(), complete: false };
   }
   if (isLayerCall(expression, checker, "succeed")) {
@@ -2619,7 +2667,7 @@ function checkCallbackOwnership(
         // Result.tryPromise invokes its body exactly once and awaits it, so
         // the boundary itself owns the async callback's lifetime.
         const ownedBoundaryBody = node.arguments[0] === argument &&
-          ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "tryPromise" &&
+          calleeSelection(node)?.name === "tryPromise" &&
           isPreludeResultBoundaryCall(node, checker);
         if (!consumedProvide && !ownedBoundaryBody) {
           diagnostics.push(at(
@@ -2731,13 +2779,18 @@ function isRetiredResultUnwrap(
   checker: ts.TypeChecker,
   callEdges: ReadonlyMap<ts.CallExpression, CallEdge>,
 ): boolean {
-  if (!ts.isPropertyAccessExpression(call.expression) || call.expression.name.text !== "unwrap" ||
-    call.arguments.length !== 0) return false;
-  return semanticExpressionShape(call.expression.expression, checker, callEdges).channel.startsWith("result");
+  const selection = calleeSelection(call);
+  if (!selection || selection.name !== "unwrap" || call.arguments.length !== 0) return false;
+  return semanticExpressionShape(selection.receiver, checker, callEdges).channel.startsWith("result");
 }
 
 function isExpectSyntax(call: ts.CallExpression): boolean {
-  return ts.isPropertyAccessExpression(call.expression) && call.expression.name.text === "expect";
+  return calleeSelection(call)?.name === "expect";
+}
+
+/** @internal The receiver of an `expect` call, for the lowering pass. */
+export function expectReceiver(call: ts.CallExpression): ts.Expression | undefined {
+  return isExpectSyntax(call) ? calleeSelection(call)!.receiver : undefined;
 }
 
 function isResultExpectCall(
@@ -2745,9 +2798,9 @@ function isResultExpectCall(
   checker: ts.TypeChecker,
   callEdges: ReadonlyMap<ts.CallExpression, CallEdge>,
 ): boolean {
-  if (!isExpectSyntax(call)) return false;
-  const receiver = (call.expression as ts.PropertyAccessExpression).expression;
-  return semanticExpressionShape(receiver, checker, callEdges).channel.startsWith("result");
+  const selection = calleeSelection(call);
+  if (!selection || selection.name !== "expect") return false;
+  return semanticExpressionShape(selection.receiver, checker, callEdges).channel.startsWith("result");
 }
 
 export function isResultExpectExpression(call: ts.CallExpression, model: SemanticModel): boolean {
@@ -2756,10 +2809,11 @@ export function isResultExpectExpression(call: ts.CallExpression, model: Semanti
 
 /** An authored `Result.try(...)` / `Result.tryPromise(...)` call on the prelude `Result` value. */
 function isPreludeResultBoundaryCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
-  if (!ts.isPropertyAccessExpression(call.expression)) return false;
-  const method = call.expression.name.text;
+  const selection = calleeSelection(call);
+  if (!selection) return false;
+  const method = selection.name;
   if (method !== "try" && method !== "tryPromise") return false;
-  const receiver = call.expression.expression;
+  const receiver = selection.receiver;
   if (!ts.isIdentifier(receiver) || receiver.text !== "Result") return false;
   const symbol = unalias(checker.getSymbolAtLocation(receiver), checker);
   return Boolean(symbol?.declarations?.some((declaration) => isCompilerPrelude(declaration.getSourceFile())));
@@ -3018,7 +3072,7 @@ const RESULT_NAMESPACE_CONSUMERS = new Set(["all"]);
  * symbol identity, so a user object with a same-spelled member resolves to its
  * own declaration and can never stand in for a compiler-owned combinator.
  */
-function preludeMemberDeclaration(name: ts.MemberName, checker: ts.TypeChecker): ts.MethodSignature | undefined {
+function preludeMemberDeclaration(name: ts.Node, checker: ts.TypeChecker): ts.MethodSignature | undefined {
   const declaration = unalias(checker.getSymbolAtLocation(name), checker)?.declarations
     ?.find((candidate) => isCompilerPrelude(candidate.getSourceFile()));
   return declaration !== undefined && ts.isMethodSignature(declaration) && ts.isIdentifier(declaration.name)
@@ -3031,7 +3085,7 @@ function preludeMemberDeclaration(name: ts.MemberName, checker: ts.TypeChecker):
  * A user object with an `all` member never matches here.
  */
 function isPreludeResultNamespaceMember(
-  name: ts.MemberName,
+  name: ts.Node,
   checker: ts.TypeChecker,
   members: ReadonlySet<string>,
 ): boolean {
@@ -3060,8 +3114,9 @@ function isResultReturningCombinatorCallback(
 }
 
 function isConsumedResultReceiver(current: ts.Node, parent: ts.Node): boolean {
-  return ts.isPropertyAccessExpression(parent) && parent.expression === current &&
-    RESULT_CONSUMERS.has(parent.name.text) &&
+  const selection = memberSelection(parent);
+  return selection !== undefined && selection.receiver === current &&
+    RESULT_CONSUMERS.has(selection.name) &&
     ts.isCallExpression(parent.parent) && parent.parent.expression === parent;
 }
 
@@ -3080,9 +3135,10 @@ function isInsideResultAll(node: ts.Node, checker: ts.TypeChecker): boolean {
   let current = node;
   while (ts.isArrayLiteralExpression(current.parent) || ts.isParenthesizedExpression(current.parent)) current = current.parent;
   const parent = current.parent;
-  return ts.isCallExpression(parent) && parent.arguments.includes(current as ts.Expression) &&
-    ts.isPropertyAccessExpression(parent.expression) &&
-    isPreludeResultNamespaceMember(parent.expression.name, checker, RESULT_NAMESPACE_CONSUMERS);
+  if (!ts.isCallExpression(parent) || !parent.arguments.includes(current as ts.Expression)) return false;
+  const selection = calleeSelection(parent);
+  return selection !== undefined &&
+    isPreludeResultNamespaceMember(selection.nameNode, checker, RESULT_NAMESPACE_CONSUMERS);
 }
 
 /**
@@ -3105,18 +3161,19 @@ function isInsideRecognizedPromiseCombinator(node: ts.Node, checker: ts.TypeChec
   let current = node;
   while (ts.isArrayLiteralExpression(current.parent) || ts.isObjectLiteralExpression(current.parent) || ts.isParenthesizedExpression(current.parent)) current = current.parent;
   const parent = current.parent;
-  if (!ts.isCallExpression(parent) || !parent.arguments.includes(current as ts.Expression) || !ts.isPropertyAccessExpression(parent.expression)) return false;
-  if (!isAmbientPromiseNamespace(parent.expression.expression, checker)) return false;
-  return ["all", "allSettled", "race", "any", "allKeyed", "allSettledKeyed"].includes(parent.expression.name.text) &&
+  if (!ts.isCallExpression(parent) || !parent.arguments.includes(current as ts.Expression)) return false;
+  const selection = calleeSelection(parent);
+  if (!selection || !isAmbientPromiseNamespace(selection.receiver, checker)) return false;
+  return ["all", "allSettled", "race", "any", "allKeyed", "allSettledKeyed"].includes(selection.name) &&
     Boolean(promisedType(checker.getTypeAtLocation(parent), checker));
 }
 
 function combinatorConsumed(node: ts.Node, checker: ts.TypeChecker, edges: ReadonlyMap<ts.CallExpression, CallEdge>): boolean {
   let current: ts.Node | undefined = node.parent;
   while (current) {
-    if (ts.isCallExpression(current) && ts.isPropertyAccessExpression(current.expression) &&
-      isAmbientPromiseNamespace(current.expression.expression, checker)) {
-      return producerConsumed(current, "promise", checker, edges);
+    const selection = ts.isCallExpression(current) ? calleeSelection(current) : undefined;
+    if (selection && isAmbientPromiseNamespace(selection.receiver, checker)) {
+      return producerConsumed(current as ts.CallExpression, "promise", checker, edges);
     }
     current = current.parent;
   }
@@ -3231,12 +3288,13 @@ function checkJavaScriptCatchBoundaries(
 
 function checkAuthoredApis(sourceFile: ts.SourceFile, checker: ts.TypeChecker, diagnostics: PendingDiagnostic[]): void {
   const visit = (node: ts.Node): void => {
-    if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression)) {
-      const owner = node.expression.text;
-      if (owner === "Result" && ["ok", "err", "error", "success"].includes(node.name.text)) {
-        const symbol = checker.getSymbolAtLocation(node.expression);
+    const selection = memberSelection(node);
+    if (selection && ts.isIdentifier(selection.receiver)) {
+      const owner = selection.receiver.text;
+      if (owner === "Result" && ["ok", "err", "error", "success"].includes(selection.name)) {
+        const symbol = checker.getSymbolAtLocation(selection.receiver);
         if (!symbol || symbol.declarations?.some((declaration) => isCompilerPrelude(declaration.getSourceFile()))) {
-          diagnostics.push(at(node, sourceFile, "SMITHERS1201", `${owner}.${node.name.text} is a compiler hook, not an author-facing constructor; use ordinary return/throw lifting`));
+          diagnostics.push(at(node, sourceFile, "SMITHERS1201", `${owner}.${selection.name} is a compiler hook, not an author-facing constructor; use ordinary return/throw lifting`));
         }
       }
     }
@@ -3246,9 +3304,9 @@ function checkAuthoredApis(sourceFile: ts.SourceFile, checker: ts.TypeChecker, d
 }
 
 export function isErrorMatchCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
-  if (!ts.isPropertyAccessExpression(call.expression) ||
-    !["match", "matchPartial"].includes(call.expression.name.text)) return false;
-  return isErrorType(checker.getTypeAtLocation(call.expression.expression), checker);
+  const selection = calleeSelection(call);
+  if (!selection || !["match", "matchPartial"].includes(selection.name)) return false;
+  return isErrorType(checker.getTypeAtLocation(selection.receiver), checker);
 }
 
 /**
@@ -3271,11 +3329,11 @@ function errorCaseRowName(label: ts.Identifier, location: ts.Node, checker: ts.T
 function checkErrorMatches(sourceFile: ts.SourceFile, checker: ts.TypeChecker, diagnostics: PendingDiagnostic[]): void {
   const visit = (node: ts.Node): void => {
     if (ts.isCallExpression(node) && isErrorMatchCall(node, checker)) {
-      const property = node.expression as ts.PropertyAccessExpression;
-      const partial = property.name.text === "matchPartial";
+      const selected = memberSelection(node.expression)!.name;
+      const partial = selected === "matchPartial";
       const handlers = node.arguments[0];
       if (!handlers || !ts.isObjectLiteralExpression(handlers)) {
-        diagnostics.push(at(node, sourceFile, "SMITHERS1251", `Error.${property.name.text} requires an object literal so nominal cases can be checked and lowered`));
+        diagnostics.push(at(node, sourceFile, "SMITHERS1251", `Error.${selected} requires an object literal so nominal cases can be checked and lowered`));
       } else {
         const actual = new Set<string>();
         let valid = true;
@@ -3292,7 +3350,8 @@ function checkErrorMatches(sourceFile: ts.SourceFile, checker: ts.TypeChecker, d
         }
         if (!valid) diagnostics.push(at(handlers, sourceFile, "SMITHERS1252", "Error match cases must use static Error class names and function handlers"));
         if (!partial) {
-          const expected = errorNamesOfType(checker.getTypeAtLocation(property.expression), checker);
+          const expected = errorNamesOfType(
+            checker.getTypeAtLocation(memberSelection(node.expression)!.receiver), checker);
           const missing = difference(expected, actual);
           const extra = difference(actual, expected);
           if (missing.size > 0) diagnostics.push(at(handlers, sourceFile, "SMITHERS1253", `Error.match is not exhaustive; missing ${formatSet(missing)}`));
