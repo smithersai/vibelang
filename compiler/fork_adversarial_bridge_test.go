@@ -3,6 +3,7 @@ package compiler
 import (
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -67,6 +68,40 @@ func TestPinnedForkUnboundProducerAcceptanceControls(t *testing.T) {
 	requireCleanCompile(t, result)
 	if got := runEmittedMain(t, result); got != "owned\ncomma\nada\nada\nand\nor\n2" {
 		t.Fatalf("acceptance controls printed %q", got)
+	}
+}
+
+func TestPinnedForkContextReceiversResolveByTypeIdentity(t *testing.T) {
+	cases := []struct {
+		name    string
+		binding string
+		receive string
+	}{
+		{name: "const alias", binding: "const Chronometer = Clock", receive: "Chronometer.context()"},
+		{name: "typed alias", binding: "const Chronometer: typeof Clock = Clock", receive: "Chronometer.context()"},
+		{name: "alias chain", binding: "const First = Clock\nconst Chronometer = First", receive: "Chronometer.context()"},
+		{name: "flow-stable let alias", binding: "let Chronometer = Clock", receive: "Chronometer.context()"},
+		{name: "object property alias", binding: "const clocks = { Clock }", receive: "clocks.Clock.context()"},
+		{name: "parenthesized receiver", receive: "(Clock).context()"},
+		{name: "as-wrapped receiver", receive: "(Clock as typeof Clock).context()"},
+		{name: "literal computed context", receive: "Clock[\"context\"]()"},
+		{name: "template-literal computed context", receive: "Clock[`context`]()"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			source := "import { Context } from \"smthrs/context\"\n" +
+				"abstract class Clock extends Context { abstract now(): number }\n" + testCase.binding + "\n" +
+				"function timestamp(): number { return " + testCase.receive + ".now() }\n" +
+				"export const stamped = [`${timestamp()}`]\n"
+			files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}}
+			result := compileInternalSource(t, files)
+			call := strings.LastIndex(source, "timestamp()")
+			line, column := lineColumnOfOffset(source, call)
+			want := "SMITHERS2102@" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
+			if got := strings.Join(formatDiagnosticPositions(t, files, result), " "); got != want {
+				t.Fatalf("context diagnostics = %s, want %s; raw %#v", got, want, result.Diagnostics)
+			}
+		})
 	}
 }
 

@@ -1975,6 +1975,15 @@ func (a *rowAnalysis) classReferenceSymbol(expression *ast.Node) *ast.Symbol {
 	if expression == nil {
 		return nil
 	}
+	// A local value alias (`const Chronometer = Clock`) has its own binding
+	// symbol, but its checker type is still the nominal class constructor. The
+	// type symbol is therefore the authoritative identity for capability rows;
+	// this also handles typed aliases, alias chains, and property-held aliases.
+	if valueType := a.checker.GetTypeAtLocation(expression); valueType != nil {
+		if symbol := a.canonical(valueType.Symbol()); symbol != nil && a.extendsContext(symbol) {
+			return symbol
+		}
+	}
 	location := expression
 	if selection, selected := selectMember(expression); selected {
 		location = selection.name
