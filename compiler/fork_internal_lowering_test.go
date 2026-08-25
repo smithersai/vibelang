@@ -877,8 +877,9 @@ console.log(JSON.stringify({
 
 // TestPinnedForkInternalLoweringKeepsAwaitOrdering pins the one ordering that
 // matters for the async channel: postfix `!` binds before `await`, so
-// `await f(x)!` applies propagation to the Promise rather than its Result and
-// is rejected as a non-Result operand.
+// `await f(x)!` leaves the Promise producer un-awaited at that boundary. The
+// actionable root diagnostic is the unconsumed producer, without a secondary
+// non-Result-operand cascade.
 func TestPinnedForkInternalLoweringKeepsAwaitOrdering(t *testing.T) {
 	authored := `export class Boom extends Error { }
 
@@ -894,7 +895,7 @@ export async function bad(kind: number): Promise<Result<number, Boom>> {
 	if !result.EmitSkipped || len(result.Artifacts) != 0 {
 		t.Fatalf("an unlowerable await must suppress emit: %v", artifactPaths(result.Artifacts))
 	}
-	diagnostic := requireDiagnostic(t, result, "SMITHERS1207", "order.sm", "requires a Result operand")
+	diagnostic := requireDiagnostic(t, result, "SMITHERS1402", "order.sm", "started Promise is not consumed")
 	wantStart := strings.Index(authored, "fetched(kind)!")
 	if diagnostic.Span == nil || diagnostic.Span.Start != wantStart {
 		t.Fatalf("the rejection must land on the authored postfix expression at %d: %#v", wantStart, diagnostic.Span)
@@ -1215,7 +1216,7 @@ export async function chained(key: string): Promise<string> {
 		needle string
 	}{
 		{code: "SMITHERS1205", detail: "silently bypass the catch handler", needle: "lookup(key)!"},
-		{code: "SMITHERS1301", detail: "must still be returned", needle: "lookup(key);\n    return \"done\";"},
+		{code: "SMITHERS1301", detail: "Result value is not consumed", needle: "lookup(key);\n    return \"done\";"},
 		{code: "SMITHERS1402", detail: "started Promise is not consumed", needle: "fetched(key);\n    return \"done\";"},
 		{code: "SMITHERS1401", detail: "unavailable in authored .sm", needle: "fetched(key).then("},
 	} {

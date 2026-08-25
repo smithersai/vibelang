@@ -1474,6 +1474,7 @@ func newRowAnalysis(typeChecker *checker.Checker, prelude *preludeSymbols, files
 	analysis.checkContracts()
 	analysis.checkBoundMustConsume(files)
 	analysis.checkResultParameters(files)
+	analysis.checkUnboundMustConsume(files)
 	analysis.checkLayers()
 	analysis.checkTopLevelRequirements(files)
 	analysis.checkTopLevelCheckedChannels(files)
@@ -2370,12 +2371,15 @@ func (a *rowAnalysis) resultParameterReferenceConsumed(node *ast.Node) bool {
 		switch {
 		case ast.IsNonNullExpression(parent) && parent.AsNonNullExpression().Expression == current:
 			return a.resultPropagations[parent] != nil
-		case ast.IsParenthesizedExpression(parent), ast.IsAsExpression(parent):
+		case ast.IsParenthesizedExpression(parent), ast.IsAsExpression(parent), parent.Kind == ast.KindSatisfiesExpression:
 			current = parent
 			continue
 		case ast.IsReturnStatement(parent):
 			return true
-		case ast.IsPropertyAccessExpression(parent) && parent.AsPropertyAccessExpression().Expression == current:
+		case func() bool {
+			selection, selected := selectMember(parent)
+			return selected && selection.receiver == current
+		}():
 			// Inspecting a discriminant/property or invoking a Result operation
 			// consumes the value at this boundary.
 			return true
@@ -3021,8 +3025,6 @@ func (l *lowerer) visitStatement(node *ast.Node) *ast.Node {
 	l.impure = false
 	l.pending = nil
 
-	l.reportUnconsumedValue(node)
-
 	var lowered *ast.Node
 	switch {
 	case ast.IsImportDeclaration(node) && l.assetImportModule(node) != nil:
@@ -3129,34 +3131,6 @@ func (l *lowerer) visitTry(node *ast.Node) *ast.Node {
 	return l.factory.UpdateTryStatement(try, tryBlock, catchClause, finallyBlock)
 }
 
-// reportUnconsumedValue refuses a statement that discards a Result or a started
-// Promise. A dropped Result silently loses a checked failure, and a dropped
-// Promise silently loses the work it started, so both fail closed.
-func (l *lowerer) reportUnconsumedValue(node *ast.Node) {
-	if node.Kind != ast.KindExpressionStatement {
-		return
-	}
-	expression := node.AsExpressionStatement().Expression
-	if expression == nil || expression.Kind == ast.KindBinaryExpression {
-		// An assignment stores the value; whether the binding is later consumed
-		// is a question this pass does not answer.
-		return
-	}
-	if l.analysis != nil && l.analysis.resultPropagations[expression] != nil {
-		// Postfix propagation consumes the Result even when its success value is
-		// deliberately discarded as an expression statement.
-		return
-	}
-	valueType := l.checker.GetTypeAtLocation(expression)
-	if l.prelude.isResultType(valueType) {
-		l.report(node, "SMITHERS1301", "await removes only Promise; the resulting Result must still be returned, matched, transformed, inspected, or propagated with postfix !")
-		return
-	}
-	if valueType != nil && l.checker.GetPromisedTypeOfPromise(valueType) != nil {
-		l.report(node, "SMITHERS1402", "started Promise is not consumed with await, return, or an awaited recognized combinator")
-	}
-}
-
 // promiseChainCall reports whether a call is `<promise>.then/catch/finally(…)`.
 // The receiver must be a promise by the checker's own definition, and the
 // property must be that promise type's own member, resolved through the
@@ -3198,6 +3172,14 @@ func (l *lowerer) visitExpression(node *ast.Node) *ast.Node {
 		if receiver := l.analysis.resultPropagations[node]; receiver != nil {
 			return l.lowerPropagation(node, receiver)
 		}
+		if producer := directPromiseProducer(node.AsNonNullExpression().Expression); producer != nil &&
+			l.checker.GetPromisedTypeOfPromise(l.checker.GetTypeAtLocation(producer)) != nil {
+			// The unbound producer analysis reports the missing await at the
+			// Promise call. Adding SMITHERS1207 here would be a consequence-only
+			// cascade for the same authored mistake.
+			l.impure = true
+			return l.visitor.VisitEachChild(node)
+		}
 		l.report(node, "SMITHERS1207", "postfix ! requires a Result operand; TypeScript non-null assertions are unavailable in .sm")
 		l.impure = true
 		return l.visitor.VisitEachChild(node)
@@ -3232,6 +3214,14 @@ func (l *lowerer) visitExpression(node *ast.Node) *ast.Node {
 			// the expression-position SMITHERS1503 as well would obscure the
 			// actionable fact that module evaluation has no checked channel.
 			return l.visitor.VisitEachChild(node)
+		}
+		if owner := enclosingFunction(node); l.analysis != nil && owner != nil {
+			if fn := l.analysis.byNode[owner]; fn != nil && fn.hasContractError {
+				// The declaration-level contract diagnostic is the actionable root
+				// cause; no emit occurs, so a lowering-placement cascade adds no
+				// information and diverges from the reference.
+				return l.visitor.VisitEachChild(node)
+			}
 		}
 		// A panic that reached here is not one of the two exit positions
 		// lowerPanicExit defines. Leaving it would keep the prelude's runtime

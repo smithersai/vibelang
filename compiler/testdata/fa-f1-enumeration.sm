@@ -1,0 +1,34 @@
+class Missing extends Error {}
+function lookup(): Result<string, Missing> { return "ada" }
+async function work(): Promise<string> { return "ada" }
+async function checkedWork(): Promise<Result<string, Missing>> { return "ada" }
+function ignore(_value: unknown): void {}
+function tag(_parts: TemplateStringsArray, _value: unknown): string { return "tagged" }
+const flag = true
+
+function resultParenthesized(): void { (lookup()) }
+function resultAs(): void { lookup() as unknown }
+function resultAssertion(): void { <unknown>lookup() }
+function resultSatisfies(): void { lookup() satisfies Result<string, Missing> }
+function resultTypeof(): void { typeof lookup() }
+function resultTaggedTemplate(): void { tag`${lookup()}` }
+function resultObjectProperty(): void { ({ value: lookup() }) }
+function resultObjectSpread(): void { ({ ...lookup() }) }
+function resultCallArgument(): void { ignore(lookup()) }
+function resultCommaRight(): void { (0, lookup()) }
+function resultLogicalOr(): void { flag || lookup() }
+function resultIfCondition(): void { if (lookup()) {} }
+function resultSwitchDiscriminant(): void { switch (lookup()) { default: break } }
+function resultWhileCondition(): void { while (lookup()) { break } }
+function resultDoCondition(): void { do {} while (lookup()) }
+function resultForCondition(): void { for (; lookup();) { break } }
+function resultForIncrementor(): void { for (; false; lookup()) {} }
+
+async function promiseObjectProperty(): Promise<void> { ({ value: work() }) }
+async function promiseCallArgument(): Promise<void> { ignore(work()) }
+async function promiseLogicalOr(): Promise<void> { flag || work() }
+async function promiseForInitializer(): Promise<void> { for (work(); false;) {} }
+async function promiseNewVoid(): Promise<void> { void new Promise<string>((resolve) => resolve("ada")) }
+async function awaitedResultDiscard(): Promise<void> { await checkedWork() }
+
+export function main(): string[] { return ["not emitted"] }

@@ -1,0 +1,14 @@
+class Missing extends Error {}
+function lookup(): Result<string, Missing> { return "ada" }
+function side(): number { return 1 }
+
+export function main(): string[] {
+  let assigned = "initial"
+  assigned = "owned"
+  const commaOwned = (side(), "comma")
+  const gathered = Result.all([lookup(), lookup()]).unwrapOr([])
+  const andValue = true && "and"
+  const orValue = false || "or"
+  const ordinaryComma = (side(), 2)
+  return [assigned, commaOwned, ...gathered, andValue, orValue, `${ordinaryComma}`]
+}

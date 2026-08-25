@@ -26,6 +26,16 @@ func (a *rowAnalysis) boundProducedKind(expression *ast.Node) boundConsumeKind {
 	if a.resultPropagations[expression] != nil {
 		return boundConsumePlain
 	}
+	if ast.IsNonNullExpression(expression) {
+		// A postfix ! directly on a Promise is an invalid attempted Result
+		// propagation. The producer walk reports the actionable missing-await
+		// error at the Promise producer; ownership must not move to the binding
+		// behind that invalid wrapper and become the stale SMITHERS1403 verdict.
+		operand := expression.AsNonNullExpression().Expression
+		if t := a.checker.GetTypeAtLocation(operand); t != nil && a.checker.GetPromisedTypeOfPromise(t) != nil {
+			return boundConsumePlain
+		}
+	}
 	t := a.checker.GetTypeAtLocation(expression)
 	if t != nil && a.checker.GetPromisedTypeOfPromise(t) != nil {
 		return boundConsumePromise
@@ -55,13 +65,184 @@ func stripMustConsumeWrappers(node *ast.Node) *ast.Node {
 	for node != nil {
 		switch node.Kind {
 		case ast.KindParenthesizedExpression, ast.KindAsExpression,
-			ast.KindTypeAssertionExpression:
+			ast.KindTypeAssertionExpression, ast.KindSatisfiesExpression:
 			node = node.Expression()
 			continue
 		}
 		return node
 	}
 	return nil
+}
+
+func (a *rowAnalysis) awaitedResultProducer(node *ast.Node) bool {
+	if node == nil || !ast.IsAwaitExpression(node) {
+		return false
+	}
+	if a.prelude.isResultType(a.checker.GetTypeAtLocation(node)) {
+		return true
+	}
+	operand := stripMustConsumeWrappers(node.AsAwaitExpression().Expression)
+	if operand == nil || !ast.IsCallExpression(operand) {
+		return false
+	}
+	callee := a.resolveCallee(operand)
+	return callee != nil && ast.HasSyntacticModifier(callee.node, ast.ModifierFlagsAsync) &&
+		(callee.declaredShape.result || len(callee.failures) != 0)
+}
+
+// unboundProducerConsumed follows ownership outward from the producer rather
+// than classifying the statement that happens to contain it. This makes every
+// value-position container obey the same rule: wrappers and the value-bearing
+// right side of comma preserve ownership, a declaration/return/assignment
+// receives it, and every other operator or container discards it unless it is
+// one of the compiler-recognized consumers below.
+func (a *rowAnalysis) unboundProducerConsumed(node *ast.Node, kind boundConsumeKind, seen map[*ast.Node]bool) bool {
+	current := node
+	for current != nil && current.Parent != nil {
+		parent := current.Parent
+		if ast.IsNonNullExpression(parent) && parent.AsNonNullExpression().Expression == current {
+			return kind == boundConsumeResult && a.resultPropagations[parent] != nil
+		}
+		switch parent.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression,
+			ast.KindTypeAssertionExpression, ast.KindSatisfiesExpression:
+			current = parent
+			continue
+		case ast.KindVariableDeclaration:
+			return parent.AsVariableDeclaration().Initializer == current
+		case ast.KindReturnStatement:
+			return true
+		case ast.KindArrowFunction:
+			return parent.Body() == current
+		case ast.KindBinaryExpression:
+			binary := parent.AsBinaryExpression()
+			if isAssignmentOperator(binary.OperatorToken.Kind) {
+				return binary.Right == current
+			}
+			if binary.OperatorToken.Kind == ast.KindCommaToken && binary.Right == current {
+				current = parent
+				continue
+			}
+			return false
+		case ast.KindArrayLiteralExpression:
+			// Result ownership may move into an array value: the specification's
+			// locked arr[i]! example depends on that. A discarded array still
+			// reaches an expression statement below and is refused.
+			if kind == boundConsumeResult {
+				current = parent
+				continue
+			}
+		}
+
+		if kind == boundConsumePromise {
+			if ast.IsAwaitExpression(parent) {
+				return true
+			}
+			if combinator := enclosingCollectionCall(current, true); combinator != nil &&
+				a.prelude.promiseCombinatorCall(combinator) && !seen[combinator] {
+				seen[combinator] = true
+				return a.unboundProducerConsumed(combinator, boundConsumePromise, seen)
+			}
+			return false
+		}
+
+		if kind == boundConsumeResult {
+			if selection, selected := selectMember(parent); selected && selection.receiver == current {
+				if a.prelude.resultInspection(parent) {
+					return true
+				}
+				if parent.Parent != nil && ast.IsCallExpression(parent.Parent) &&
+					parent.Parent.AsCallExpression().Expression == parent {
+					// An unannotated fallible authored function still has its
+					// checker-inferred success type at the call site. Once this walk
+					// has semantically proved the receiver is a Result producer, the
+					// locked consumer spelling is sound authority for that receiver.
+					if a.prelude.resultConsumerCall(parent.Parent) || resultConsumerSpelling(selection.name.Text()) {
+						return true
+					}
+					if selection.name.Text() == "unwrap" {
+						// The retired spelling is owned by SMITHERS1206. It does not
+						// need a consequence-only SMITHERS1301 at the same producer.
+						return true
+					}
+				}
+			}
+			if ast.IsCallExpression(parent) && callContainsArgument(parent, current) {
+				callee := a.resolveCallee(parent)
+				if callee != nil {
+					for index, argument := range parent.AsCallExpression().Arguments.Nodes {
+						if argument == current && callee.unconsumedParams[index] {
+							// checkResultParameters reports this exact argument once.
+							return true
+						}
+					}
+				}
+			}
+			if all := enclosingCollectionCall(current, false); all != nil {
+				member, matched := a.prelude.resultNamespaceCall(all)
+				return matched && member == "all"
+			}
+		}
+		return false
+	}
+	return false
+}
+
+func resultConsumerSpelling(name string) bool {
+	for _, candidate := range resultConsumerMembers {
+		if name == candidate {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *rowAnalysis) checkUnboundMustConsume(files []*ast.SourceFile) {
+	for _, file := range files {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsFunctionLikeDeclaration(node) && node.Parent != nil && ast.IsCallExpression(node.Parent) {
+				call := node.Parent
+				arguments := call.AsCallExpression().Arguments
+				if arguments != nil && len(arguments.Nodes) != 0 && arguments.Nodes[0] == node {
+					signature := a.checker.GetResolvedSignature(call)
+					if signature != nil && signature.Declaration() != nil {
+						declaration := signature.Declaration()
+						file := ast.GetSourceFileOfNode(declaration)
+						if file != nil && file.FileName() == durableVirtualName && declarationName(declaration) == "durable" {
+							// The durable frontend consumes this callback as checked AST
+							// and replaces it with a static plan. Its Action Results never
+							// exist as runtime values for ordinary must-consume analysis.
+							return false
+						}
+					}
+				}
+			}
+			if ast.IsAwaitExpression(node) && a.awaitedResultProducer(node) &&
+				!a.unboundProducerConsumed(node, boundConsumeResult, make(map[*ast.Node]bool)) {
+				a.report(node, "SMITHERS1301", "await removes only Promise; the resulting Result must still be returned, matched, transformed, inspected, or propagated with postfix !")
+			}
+			if ast.IsCallExpression(node) || ast.IsNewExpression(node) {
+				if ast.IsImportCall(node) {
+					if _, asset := a.assetImports[node]; !asset {
+						// The dynamic-module trust refusal is the root diagnostic.
+						return false
+					}
+				}
+				kind := a.boundProducedKind(node)
+				if kind != boundConsumePlain && !a.unboundProducerConsumed(node, kind, make(map[*ast.Node]bool)) {
+					if kind == boundConsumeResult {
+						a.report(node, "SMITHERS1301", "Result value is not consumed; return, match, transform, inspect, or propagate it with postfix !")
+					} else {
+						a.report(node, "SMITHERS1402", "started Promise is not consumed with await, return, or an awaited recognized combinator")
+					}
+				}
+			}
+			node.ForEachChild(visit)
+			return false
+		}
+		file.AsNode().ForEachChild(visit)
+	}
 }
 
 func callContainsArgument(call *ast.Node, argument *ast.Node) bool {
@@ -110,7 +291,7 @@ func (a *rowAnalysis) promiseProducerConsumed(node *ast.Node, seen map[*ast.Node
 		parent := current.Parent
 		switch parent.Kind {
 		case ast.KindParenthesizedExpression, ast.KindAsExpression,
-			ast.KindTypeAssertionExpression:
+			ast.KindTypeAssertionExpression, ast.KindSatisfiesExpression:
 			current = parent
 			continue
 		case ast.KindVariableDeclaration:
@@ -137,20 +318,25 @@ func (a *rowAnalysis) boundReferenceConsumes(node *ast.Node, kind boundConsumeKi
 		}
 		switch parent.Kind {
 		case ast.KindParenthesizedExpression, ast.KindAsExpression,
-			ast.KindTypeAssertionExpression:
+			ast.KindTypeAssertionExpression, ast.KindSatisfiesExpression:
 			current = parent
 			continue
 		case ast.KindReturnStatement:
 			return true
 		}
 		if kind == boundConsumeResult {
-			if ast.IsPropertyAccessExpression(parent) && parent.AsPropertyAccessExpression().Expression == current {
+			if selection, selected := selectMember(parent); selected && selection.receiver == current {
 				if a.prelude.resultInspection(parent) {
 					return true
 				}
 				if parent.Parent != nil && ast.IsCallExpression(parent.Parent) &&
-					parent.Parent.AsCallExpression().Expression == parent && a.prelude.resultConsumerCall(parent.Parent) {
-					return true
+					parent.Parent.AsCallExpression().Expression == parent {
+					if a.prelude.resultConsumerCall(parent.Parent) || resultConsumerSpelling(selection.name.Text()) {
+						return true
+					}
+					if selection.name.Text() == "unwrap" {
+						return true
+					}
 				}
 			}
 			if all := enclosingCollectionCall(current, false); all != nil {
