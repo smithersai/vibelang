@@ -1619,3 +1619,71 @@ test("pre-pass diagnostics keep authored positions across a recovery rewrite", (
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+/**
+ * "No rows" and "rows unknown" must never print as the same thing.
+ *
+ * The reporting layer used to fail open in exactly one direction: every path
+ * that had not computed rows still emitted `rows: {}`, which is the positive
+ * claim that the file requires no capability and can fail with nothing. The
+ * assertions below pin both directions — a computed empty row set stays an
+ * empty row set, and a run that stopped before the row analysis says so and
+ * omits the key entirely, so a programmatic reader gets `undefined` rather
+ * than a fabricated answer.
+ */
+test("the check report distinguishes an empty row set from rows it never computed", () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-rows-")));
+  try {
+    const populated = join(root, "populated.sm");
+    writeFileSync(populated, [
+      'import { Context } from "smthrs/context"',
+      "",
+      "abstract class Clock extends Context {",
+      "  abstract now(): number",
+      "}",
+      "",
+      "export class Missing extends Error {}",
+      "",
+      "export function stamp(flag: boolean): Result<number, Missing> {",
+      "  const clock = Clock.context()",
+      "  if (flag) throw new Missing()",
+      "  return clock.now()",
+      "}",
+      "",
+    ].join("\n"));
+    const populatedReport = JSON.parse(run("bin/smithers.js", ["check", populated, "--format", "json"]).stdout);
+    assert.deepEqual(populatedReport.files[0].rows.stamp, { failures: ["Missing"], requirements: ["Clock"] });
+    assert.equal(populatedReport.files[0].rowsUnavailable, undefined);
+
+    // A module with no authored function has no rows to report. That is a
+    // measured answer, and it must keep printing as one.
+    const bare = join(root, "bare.sm");
+    writeFileSync(bare, "export const value = 1\n");
+    const bareChecked = run("bin/smithers.js", ["check", bare, "--format", "json"]);
+    assert.equal(bareChecked.status, 0, bareChecked.stderr || bareChecked.stdout);
+    const bareReport = JSON.parse(bareChecked.stdout);
+    assert.deepEqual(bareReport.files[0].rows, {});
+    assert.equal(bareReport.files[0].rowsUnavailable, undefined);
+
+    // The source-asset stage refuses this module, so the row analysis never
+    // runs. Reporting `{}` here would answer a question nobody measured.
+    const unmeasured = join(root, "unmeasured.sm");
+    writeFileSync(unmeasured, [
+      'import missing from "./absent.txt" with { type: "text" }',
+      "",
+      "export function describe(): string {",
+      "  return missing",
+      "}",
+      "",
+    ].join("\n"));
+    const unmeasuredChecked = run("bin/smithers.js", ["check", unmeasured, "--format", "json"]);
+    assert.equal(unmeasuredChecked.status, 1, unmeasuredChecked.stderr || unmeasuredChecked.stdout);
+    const unmeasuredReport = JSON.parse(unmeasuredChecked.stdout);
+    assert.equal(unmeasuredReport.files[0].rows, undefined);
+    assert.match(unmeasuredReport.files[0].rowsUnavailable, /rows were not computed/);
+    assert.match(unmeasuredReport.files[0].rowsUnavailable, /source-asset/);
+    assert.ok(unmeasuredReport.files[0].diagnostics.length > 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

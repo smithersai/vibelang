@@ -49,6 +49,7 @@ import { resolveTypeScriptCompiler, runTypeScriptCompiler } from "./compiler-pro
 import {
   GoBackendFailure,
   invokeGoBackend,
+  resolveGoDiagnosticFile,
   type GoBackendDiagnostic,
 } from "./go-backend.js";
 import {
@@ -104,11 +105,36 @@ interface CliDiagnostic {
   readonly column?: number;
 }
 
+/**
+ * Why a result carries no `rows` key.
+ *
+ * An empty row map is a positive claim — "this file requires nothing and can
+ * fail with nothing" — and a run that never computed rows must not be able to
+ * make it. The two states are therefore different keys, not two spellings of
+ * the same key: `rows: {}` says none, an absent `rows` plus `rowsUnavailable`
+ * says unknown and names the reason. A programmatic consumer that reads
+ * `result.rows` gets `undefined` rather than a fabricated empty answer.
+ */
+const GO_BACKEND_ROWS_UNAVAILABLE =
+  "the go backend does not report requirement rows: the Go CompileResult protocol carries " +
+  "diagnostics, artifacts, and emitSkipped only, so this run observed no rows at all. " +
+  "Remedy: re-run with --backend js to observe rows.";
+
+function rowsNotComputed(stage: string): string {
+  return `requirement rows were not computed: the ${stage} stage reported errors before the row analysis ran`;
+}
+
 interface SmithersFileResult {
   readonly input: string;
   readonly output?: string;
   readonly diagnostics: readonly CliDiagnostic[];
-  readonly rows: Readonly<Record<string, { readonly failures: readonly string[]; readonly requirements: readonly string[] }>>;
+  /**
+   * Requirement and checked-failure rows per authored function. Present only
+   * when this run actually computed them; see `rowsUnavailable`.
+   */
+  readonly rows?: Readonly<Record<string, { readonly failures: readonly string[]; readonly requirements: readonly string[] }>>;
+  /** Set exactly when `rows` is absent, naming why the rows are unknown. */
+  readonly rowsUnavailable?: string;
   readonly declarations?: readonly string[];
   readonly sourceMap?: string;
   readonly assets?: {
@@ -713,7 +739,7 @@ async function compileSmithersFiles(
     return project.sources.map((source) => ({
       input: resolve(project.rootDir, source.fileName),
       diagnostics: diagnostics.get(source.fileName)!,
-      rows: {},
+      rowsUnavailable: rowsNotComputed("source-asset"),
       declarations: [],
       assets: { cacheIdentity: assetCacheIdentity, modules: [] },
     }));
@@ -745,7 +771,7 @@ async function compileSmithersFiles(
             column: diagnostic.column,
           }))
         : [],
-      rows: {},
+      rowsUnavailable: rowsNotComputed("runtime-graph"),
       declarations: [],
     }));
   }
@@ -790,7 +816,7 @@ async function compileSmithersFiles(
     return project.sources.map((source) => ({
       input: resolve(project.rootDir, source.fileName),
       diagnostics: diagnostics.get(source.fileName)!,
-      rows: {},
+      rowsUnavailable: rowsNotComputed("comptime"),
       declarations: [],
     }));
   }
@@ -1226,10 +1252,19 @@ function compileGoSmithersFiles(
   });
 
   const diagnostics = new Map(project.sources.map((source) => [source.fileName, [] as CliDiagnostic[]]));
+  const requestSources = new Set(diagnostics.keys());
   for (const diagnostic of compiled.diagnostics) {
+    // A name the request never sent fails closed inside `resolveGoDiagnosticFile`
+    // rather than landing on whichever source happens to be first. A diagnostic
+    // that names no file at all is project-level: it goes in the first bucket so
+    // it is still reported and still gates, and `formatGoDiagnostic` leaves its
+    // `file` unset, so it never claims to come from that file's source.
+    const logicalName = resolveGoDiagnosticFile(diagnostic.file, requestSources);
     const formatted = formatGoDiagnostic(project, byLogicalName, diagnostic);
-    const target = diagnostic.file ? diagnostics.get(diagnostic.file) : undefined;
-    (target ?? diagnostics.values().next().value)?.push(formatted);
+    const target = logicalName === undefined
+      ? diagnostics.values().next().value
+      : diagnostics.get(logicalName);
+    target?.push(formatted);
   }
   const hasError = [...diagnostics.values()].some((items) =>
     items.some((diagnostic) => diagnostic.severity === "error"));
@@ -1261,7 +1296,7 @@ function compileGoSmithersFiles(
       input: resolve(project.rootDir, source.fileName),
       output: options.emit !== false && !finalHasError && emitted ? emitted.fileName : undefined,
       diagnostics: diagnostics.get(source.fileName)!,
-      rows: {},
+      rowsUnavailable: GO_BACKEND_ROWS_UNAVAILABLE,
       declarations: options.emit !== false && !finalHasError &&
         artifacts.some((artifact) => artifact.logicalName === declarationName)
         ? [resolve(outDir, declarationName)]

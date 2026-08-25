@@ -160,7 +160,22 @@ test("both backend JSON reports keep authored diagnostic positions and one repor
     assert.equal(report.ok, false);
     assert.equal(report.files[0].input, canonicalSource);
     assert.equal(Array.isArray(report.files[0].diagnostics), true);
-    assert.equal(typeof report.files[0].rows, "object");
+    // Rows are the one observation the two backends cannot be compared on, so
+    // the report must say which of the two claims it is making. "Unknown" and
+    // "none" were the same bytes until F7: the Go path hardcoded `rows: {}`,
+    // which reads as the positive claim that the file requires nothing.
+    if (backend === "js") {
+      assert.equal(typeof report.files[0].rows, "object");
+      assert.equal(report.files[0].rowsUnavailable, undefined, "a backend that reports rows must not also claim they are unavailable");
+    } else {
+      assert.equal(
+        report.files[0].rows,
+        undefined,
+        "the Go backend has no rows channel, so it must not present an empty row set as an answer",
+      );
+      assert.match(report.files[0].rowsUnavailable, /go backend does not report requirement rows/);
+      assert.match(report.files[0].rowsUnavailable, /--backend js/);
+    }
     const authored = report.files[0].diagnostics.find((diagnostic) =>
       diagnostic.file === canonicalSource && diagnostic.line !== undefined && diagnostic.column !== undefined);
     assert.ok(authored, `${backend} did not report an authored position: ${result.stdout}`);
@@ -197,5 +212,55 @@ test("--backend go rejects a pristine unpatched checkout with the exact apply re
     report.message,
     `The pinned TypeScript fork checkout is pristine but unpatched. Remedy: run ` +
       `\`node compiler/forkpatch/forkpatch.mjs apply --checkout '${pristine}'\`.`,
+  );
+});
+
+/**
+ * A Go diagnostic is attributed by the name the request actually sent.
+ *
+ * The CLI used to group Go diagnostics with
+ * `diagnostics.get(diagnostic.file) ?? diagnostics.values().next().value`, so a
+ * diagnostic naming a file the request never contained landed on the *first*
+ * source with a position computed from a different file's text. Pointing a
+ * reader at the wrong file is worse than pointing them nowhere, and it is
+ * indistinguishable in the report from a real diagnostic in that file.
+ *
+ * `resolveGoDiagnosticFile` is unit-tested here rather than driven through the
+ * backend because no authored program can produce the bad input: the CLI sends
+ * every project source and the fork answers about those, so an unrecognised
+ * name means the protocol has already been broken. Both directions are pinned —
+ * a correctly attributed diagnostic must still land on its real file, and a
+ * project-level diagnostic must still be reported rather than refused.
+ */
+test("a Go diagnostic is attributed to the request source it names, or to none", async () => {
+  const { GoBackendFailure, resolveGoDiagnosticFile } = await import("../dist/go-backend.js");
+  const sources = new Set(["main.sm", "nested/helper.sm"]);
+
+  // The ordinary case, and the one a fail-closed guard must not break.
+  assert.equal(resolveGoDiagnosticFile("main.sm", sources), "main.sm");
+  assert.equal(resolveGoDiagnosticFile("nested/helper.sm", sources), "nested/helper.sm");
+
+  // Project-level: no file, so no file is claimed.
+  assert.equal(resolveGoDiagnosticFile(undefined, sources), undefined);
+  assert.equal(resolveGoDiagnosticFile("", sources), undefined);
+
+  // The defect: a name the request never sent used to become "main.sm".
+  assert.throws(
+    () => resolveGoDiagnosticFile("elsewhere.sm", sources),
+    (error) => {
+      assert.ok(error instanceof GoBackendFailure);
+      assert.equal(error.code, "SMITHERS_GO_PROTOCOL");
+      assert.match(error.message, /"elsewhere\.sm"/);
+      assert.match(error.message, /not one of the 2 source file\(s\)/);
+      assert.match(error.message, /"main\.sm"/);
+      return true;
+    },
+  );
+
+  // A near miss is still a miss: an absolute path is not the logical name the
+  // request sent, and silently accepting one would reopen the same hole.
+  assert.throws(
+    () => resolveGoDiagnosticFile("/tmp/project/main.sm", sources),
+    { code: "SMITHERS_GO_PROTOCOL" },
   );
 });

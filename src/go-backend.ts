@@ -77,6 +77,43 @@ export class GoBackendFailure extends Error {
   }
 }
 
+/**
+ * Decide which request source a Go diagnostic belongs to.
+ *
+ * Three cases, and only one of them used to be handled. A diagnostic that
+ * names a file in the request belongs to that file. A diagnostic that names no
+ * file at all is a project-level diagnostic and stays unattached — the caller
+ * reports it without claiming it came from any particular source. A diagnostic
+ * that names a file the request never sent is neither: it is a protocol
+ * violation, because the backend is describing a source the CLI did not give
+ * it and cannot map a position into.
+ *
+ * The CLI used to fall back to the *first* source file for both of the last two
+ * cases, so an unknown file name silently became "an error in your first
+ * file", at a line and column computed from nothing. A diagnostic pointing at
+ * the wrong file is worse than one pointing nowhere: it sends a reader to
+ * correct source. This fails closed instead, with the same
+ * `SMITHERS_GO_PROTOCOL` code the rest of this module uses for a backend whose
+ * answer does not fit the request that was sent.
+ *
+ * @returns the request's logical name for the diagnostic, or `undefined` when
+ *          the diagnostic is project-level and belongs to no single file.
+ */
+export function resolveGoDiagnosticFile(
+  file: string | undefined,
+  requestSources: ReadonlySet<string>,
+): string | undefined {
+  if (file === undefined || file === "") return undefined;
+  if (requestSources.has(file)) return file;
+  const known = [...requestSources].sort().map((name) => JSON.stringify(name)).join(", ");
+  throw new GoBackendFailure(
+    "SMITHERS_GO_PROTOCOL",
+    `The Go compiler reported a diagnostic against ${JSON.stringify(file)}, which is not one of the ` +
+    `${requestSources.size} source file(s) the request sent (${known || "none"}). ` +
+    "Remedy: run `npm run build` to rebuild the CLI and Go request producer together.",
+  );
+}
+
 function shellQuote(value: string): string {
   return `'${value.replaceAll("'", `'"'"'`)}'`;
 }
