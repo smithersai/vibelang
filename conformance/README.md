@@ -14,8 +14,16 @@ node conformance/runner/run.mjs --backend js      # the reference; a real gate
 node conformance/runner/run.mjs --backend go      # the migration target
 node conformance/runner/run.mjs --backend both    # run both and diff them
 node --test test/conformance.test.mjs             # gate JS, measure Go
-node --test conformance/runner/selftest.mjs       # assert the REQUEST, not the language
+node --test conformance/runner/selftest.mjs       # assert the HARNESS, not the language
 ```
+
+`selftest.mjs` is also run by `scripts/node-test-gate.mjs`, so `npm test` covers
+it. That is new as of 2026-08-26: it had been listed here as a manual command
+and run by no gate at all, which meant its assertions — the ones written for
+exactly the defects a differential corpus cannot see — were green and idle on
+every release. It is listed in that gate's `EXTERNAL_TEST_FILES` rather than
+discovered, and the gate refuses to start if the file is not where the list says
+it is, so it cannot quietly drop out again.
 
 ## Layout
 
@@ -99,15 +107,126 @@ code-and-position expectation exactly, so the route would be unpinned — and "a
 empty result matching an empty expectation" is a fail-open in the harness rather
 than in a backend.
 
-The corpus declares exactly one today:
-`05-context-rows/an-unsatisfied-top-level-requirement-names-exactly-the-capability`
-declares the capability's own name on its `SMITHERS2102`, for the same reason —
-the code and position alone would be satisfied by a refusal naming the *wrong*
-requirement, which is precisely the defect removed on 2026-08-24.
+The corpus declares **thirty-three** today (2026-08-27, second revision), and the count in this
+paragraph had gone stale twice before it was re-derived — so re-derive it by
+parsing the expectations rather than grepping, because the word also appears in
+`notes` prose:
+
+```sh
+python3 -c 'import json,pathlib;print(sum(1 for p in pathlib.Path("conformance/corpus").rglob("*.expected.json") for d in json.loads(p.read_text()).get("diagnostics") or [] if "messageContains" in d))'
+```
+
+The distribution, re-derived the same way (`05-context-rows` 16, `06-layers` 3,
+`09-foreign-calls` 8, `17-durable` 6):
+
+**Nineteen are in `05-context-rows` and `06-layers`**, and all nineteen name a
+capability. **Eight of those sixteen landed on 2026-08-27**, with the round-6 backlog cases, and they are listed here rather than described one by one because they are all the same use: a case that declares MANY diagnostics of one code at many positions is satisfied by code and position alone whatever capability the row actually named, so one fragment on the first diagnostic holds the whole set to the right capability. They are `05-context-rows/every-spelling-of-a-coercion-member-charges-the-same-row` (sixteen `SMITHERS2102`s), `…/a-computed-member-name-is-charged-to-the-scope-that-evaluates-it` (twelve), `…/a-parenthesised-ambient-coercion-callee-charges-the-same-row` (four), `…/a-toString-returning-an-object-falls-through-to-valueOf` (two), `…/an-invocation-with-no-call-expression-still-charges-its-row` (six), `…/a-coercion-row-is-not-subtracted-by-the-wrong-layer`, `06-layers/a-wrapped-layer-missing-a-capability-names-it` and `06-layers/a-laundering-assertion-does-not-change-which-capability-a-layer-provides`. The last three are the ones where the fragment carries the most: each is a single `SMITHERS2101` whose code and position are satisfied by a refusal naming the capability that WAS supplied, which is exactly what a backend computing the provided and required sets the wrong way round would say. All eight were verified enforced by mutating the declared name to the wrong capability and watching both backends print the message diff; two of them (`a-wrapped-layer-missing-a-capability-names-it`, `a-coercion-row-is-not-subtracted-by-the-wrong-layer`) are recorded with that mutation in their own notes.
+The oldest is `an-unsatisfied-top-level-requirement-names-exactly-the-capability`,
+which declares the capability's own name on its `SMITHERS2102` — the code and
+position alone would be satisfied by a refusal naming the *wrong* requirement,
+which is precisely the defect removed on 2026-08-24. The newest three are the
+accessor-row cases added on 2026-08-25, where the risk is the same shape:
+`06-layers/layer-provide-missing-a-capability-an-accessor-introduces` requires
+two capabilities and is provided one, so a refusal naming the capability that
+*was* supplied would satisfy code and position exactly. All three were verified
+enforced by mutating the declared name to the wrong capability, watching both
+backends print the message diff, and restoring it.
+
+A seventh is `09-foreign-calls/miscased-trust-markers-do-not-confer-module-trust`,
+which declares the marker the author has to write (`@module and @throws {never}`)
+on the first of its three `SMITHERS1510`s. Code and position alone would be
+satisfied by a refusal for some unrelated reason — a leading comment above the
+JSDoc produces exactly that, which is why those support files have none — and
+that is a case passing while observing nothing. Also verified by mutating the
+fragment red and back.
+
+Two more are
+`09-foreign-calls/unwrap-or-cannot-reach-a-panicking-plain-return-type` and
+`09-foreign-calls/recover-cannot-reach-a-panicking-plain-return-type`, and they
+show the mechanism used on a **stock TypeScript** code rather than a Smithers
+one. Each declares a `TS2339` and the fragment
+`'unwrapOr' does not exist on type 'string'`. That fragment carries two promises
+at once: the recovery member is unreachable, **and** the receiver kept its plain
+type instead of being widened into a Result. Code and position alone would be
+satisfied by a `TS2339` about some other member on some other type, which is a
+different program passing the same expectation. Verified to be enforced rather
+than assumed: changing the declared type in the fragment from `'string'` to
+`'Result'` turns the case red on both backends with the message diff printed,
+and restoring it turns it green. Both backends emit this message
+byte-identically, because it is TypeScript's own.
+
+**The newest two, added 2026-08-26, are a deliberate pair and show a use the
+list above did not yet carry: a fragment that tells two cases apart from each
+other.** `09-foreign-calls/a-never-claim-followed-by-a-declared-channel-is-refused`
+and `…/a-declared-channel-followed-by-a-never-claim-is-refused-identically` are
+the same two `@throws` claims in opposite source order, and their whole content
+is that the verdict is the same either way — so their declared diagnostic sets
+are identical, `SMITHERS1502@4:10` and `SMITHERS1101@3:1` in both. Code and
+position therefore cannot observe that each case saw *its own* program: one
+refusal would satisfy both, and `SMITHERS1502` covers a **second** rule (the
+`@throws {never}` marker on an async binding) that fires at exactly this shape of
+position. Each declares the two claims in the order its own source writes them —
+`({never} and {TypeError})` and `({TypeError} and {never})` — which is the
+evidence that the rule read *every* tag on the declaration rather than the first,
+the defect the pair exists to pin; a backend that had read only the first would
+still produce `SMITHERS1502` at column 10. The fragment names this program's
+claims, not the rule, and it differs between the two cases, which is what makes
+it legitimate under the worked counter-example below. Verified enforced by
+swapping each case's fragment for the other's: both turn red on both backends
+with the message diff printed, and both expectation files were restored
+byte-identically (sha256 compared before and after).
+
+**The newest six, added later on 2026-08-26, are the largest single group and
+show the same use at a position where THREE expressions start at once.** They are
+the `SMITHERS4111` cases in `17-durable` — `a-logical-or-fallback-on-a-durable-input-is-rejected`,
+`a-nullish-coalescing-fallback…`, `strict-equality-against…`, `an-in-test-on…`,
+`typeof-on…` and `logical-negation-of…`. Each program passes one operator
+expression into an Action argument, and at the declared authored column the
+identifier, the projection over it, and the operator expression over *that* all
+begin. Code and position alone are therefore satisfied by a backend that refused
+the **identifier** and never looked at the operator — a different program passing
+the same expectation. The fragment is the SyntaxKind this program actually wrote
+(`BinaryExpression`, `TypeOfExpression`, `PrefixUnaryExpression`), which is a
+property of the source and not a name for the rule, and it differs across the
+six. The smallest fragment carrying it is the **bare kind name**, because the two
+backends word the sentence differently: the reference prints
+`unsupported durable expression BinaryExpression` and the fork prints
+`unsupported durable expression KindBinaryExpression`, so `BinaryExpression` is a
+substring of both — measured on both backends rather than assumed. Verified
+enforced by mutating each fragment to a different, plausible SyntaxKind
+(`Identifier`, `StringLiteral`, and the two unary cases swapped for
+`BinaryExpression`): all six turn red on both backends with the message diff
+printed, and all six expectation files were restored byte-identically (sha256
+compared before and after).
 
 Declare the smallest fragment that carries the promise (`"Label"`, not the
 sentence around it, and not a row rendering — the JS reference prints `Label`
 where the Go fork prints `{Label}`).
+
+**A worked example of when NOT to declare one**, because it is the shape that
+tempts you and the count above is two lower than it would otherwise be. The two compiler-owned
+prelude cases added on 2026-08-25 —
+`01-result-lifting/the-compiler-owned-prelude-is-not-reachable-by-a-path` and
+`…/a-star-re-export-of-the-compiler-owned-prelude-is-refused` — each declare one
+`SMITHERS1510`, the same code the seventh case above declares *with* a fragment.
+They declare none, and the reason was measured rather than assumed:
+
+```
+js  foreign module initialization can panic before a checked call boundary;
+    './__smithers_prelude.ts' could not be resolved to a module carrying a leading
+    JSDoc containing both @module and @throws {never}; …
+go  statically loaded TypeScript/JavaScript module does not declare a leading
+    @module and @throws {never} initialization trust claim
+```
+
+The fragment that would carry *those* cases' promise is the **specifier** — they
+are about the path, not the marker — and only one backend prints it. The one
+fragment the two messages share is `@module and @throws {never}`, which would
+pass on both and is exactly the forbidden use: it **names the rule**. It is the
+right fragment for `09/miscased-trust-markers…`, whose subject *is* the marker's
+spelling, and the wrong one there. A fragment that would go green on both
+backends is not sufficient reason to declare it; ask what a wrong-but-plausible
+refusal would say, and declare the fragment only if it would differ.
 
 ### Acceptance is the frontend's own acceptance, in ordered stages
 
@@ -161,9 +280,10 @@ the emitted program:
 
 ```js
 import * as program from "./<case>.js";
+import { <identityAccessor> as __smithersIdentityOf } from "<the backend's own module>";
 // string[]            -> printed one line each
 // Result success      -> the success value is normalized and printed
-// Result failure      -> one line, "error <ClassName>: <message>"
+// Result failure      -> one line, "error <identity>: <message>"
 ```
 
 The two backends represent a Result differently at runtime — the JS instrument
@@ -173,6 +293,36 @@ while the Go fork's internal lowering returns its prelude's `SmithersOk`/`Smithe
 Normalizing the *representation* is what makes one declared expectation
 legitimately comparable across two implementations. Nothing in the harness
 normalizes the *semantics* under test.
+
+**The failure line names the compiler-stable identity, not the constructor.**
+Until 2026-08-25 it printed `error.constructor.name`, and
+`specification/failures.mdx` §Error Prototype names exactly that as the wrong
+key: "Handler selection MUST use compiler-stable nominal identity, not a
+forgeable user `_tag` or minifier-sensitive constructor name in compiled
+artifacts." The cost was not cosmetic. §Error Classes puts four obligations on
+the compiler — stable nominal identity, matching metadata, serialization
+evidence, and cross-realm transport metadata — the Go fork implemented exactly
+one of them, and **no corpus case could see that in either direction**, because
+`constructor.name` reads `Missing` on a backend that mints an identity and
+`Missing` on a backend that mints none. Identity is a representation difference
+of the same kind as the Result shape, so it is normalized the same way: each
+backend hands `harnessText` its own accessor — `errorIdentity` from the POC
+runtime for `js`, `smithersErrorIdentity` from the emitted
+`__smithers_prelude.js` for `go` — read from the same module instance the
+program registered into. The *value* is not normalized; it is the thing under
+test, and the two backends have to mint it identically to satisfy one `stdout`
+line (`04-nominal-errors/a-nominal-error-identity-names-its-declaring-module`).
+The accessor is a required argument, and `runner/selftest.mjs` holds that
+invariant, because a backend that quietly stopped supplying one would fall back
+to the constructor name for every case at once. An Error the compiler never
+registered has no identity and does fall back — that fallback cannot be mistaken
+for an identity, because every identity contains a `:` and no constructor name
+does.
+
+What this does **not** reach is encode, decode, and an actual realm crossing.
+`.sm` has no sanctioned path to the transport surface on either backend, and the
+two backends' transport surfaces are different modules at different paths, so no
+single `typescript:` support module can reach both. See `COVERAGE.md` §5.11.
 
 Cases avoid ambient host globals (`.sm` refuses them, `SMITHERS1601`) and therefore
 avoid `console.log`. Where a case genuinely needs foreign values — the
@@ -260,6 +410,73 @@ smithersai/TypeScript checkout; emitted JavaScript is executed by node. Wiring
 only check and emit it — that measures the JS instrument again, and could never
 show whether the Go implementation has the semantics.
 
+### Neither backend is the shipped product
+
+Read the two entries above again and notice what is missing from both: `smithers`.
+The corpus is routinely quoted as "the language contract", and a green scoreboard
+is routinely read as a statement about the compiler people run. It is not one.
+
+The JS reference reaches the frontend through `conformance/runner/js-lower.mjs`,
+a driver that exists only here. That driver turns the source-asset stage on **only
+when a case ships assets** (`backend-js.mjs`: "A non-empty list is also what turns
+the source-asset stage on"), skips the comptime frontend entirely for a case with
+no `smithers:comptime` / `smithers:schema` edge, and implements **its own durable
+pipeline** (`js-lower.mjs:62-127`, `:286-337`) — it locates the `durable(...)` call
+site by hand, runs `compileDurableSource`, splices in the static Plan descriptor
+and erases the `smithers:flows` import, all before `compileProject` sees anything.
+
+`bin/smithers.js` does none of that in that order. `src/cli.ts:753-777` runs a
+source-asset preflight and a runtime-graph resolver over **every** `.sm` before the
+semantic stage, runs comptime unconditionally, and has no durable stage in `check`
+or `run` at all — `compileDurableSource` is reached only from
+`smithers plan --bindings` (`src/cli.ts:1940+`), which lowers one file and neither
+checks nor runs the program.
+
+So "493 cases, 0 divergent" is a statement about `compileProject` plus
+`js-lower.mjs`. Measured against the CLI, **52 of 493 cases disagree**, and every
+one of them is recorded, with which side is wrong, in
+`conformance/product-divergence.json`. The corpus grew from 424 to 438 on
+2026-08-26 without the divergence set moving, which is the expected shape: the
+fourteen new cases pin rules the CLI and the oracle already agreed on.
+
+Read the 48 with its buckets, not as one number. The one that would be alarming
+— **the product ACCEPTING what the corpus refuses — is 0**: no corpus green
+certifies a rule the shipped compiler fails to enforce. Eight are the product
+refusing what the corpus accepts, and forty are both refusing at a different code
+or position.
+
+    node scripts/oracle-differential.mjs             # gate: measured set must equal the record
+    node scripts/oracle-differential.mjs --jobs 8    # ~1 minute at 6-8 jobs
+    node scripts/oracle-differential.mjs --filter 17-durable
+    node scripts/oracle-differential.mjs --update    # re-measure, then REVIEW THE DIFF
+
+The gate stages each case byte-for-byte the way `backend-js.mjs` stages it, runs
+`node bin/smithers.js check <entry> --format json`, and judges the answer with the
+corpus's own relation — diagnostic code plus authored line and column, as a sorted
+multiset, exactly as `judge.mjs` compares them. A case whose expectation is
+`output` is required only to be **accepted**: `smithers run` executes an emitted
+module directly and never calls the `main()` this harness calls, so the gate does
+not claim to compare printed output. The harness still owns that half.
+
+It fails in **both** directions. A case that diverges and is not in the record is
+a new divergence. A case in the record that no longer diverges is a fixed one
+whose row must be deleted, so the file cannot decay into a list of things that
+used to be broken. A row whose divergence changed shape is reported as both.
+`conformance/runner/selftest.mjs` additionally gates the record's integrity for
+free on every run: a row naming a deleted case, a duplicate, or a row that
+`--update` regenerated and nobody gave a verdict to is a failure there.
+
+The three directions the record distinguishes, worst first:
+
+| `direction` | meaning | today |
+| --- | --- | --- |
+| `product-accepts` | the corpus requires a refusal and the CLI **compiled the program**. A green corpus row is certifying a rule the shipped compiler does not enforce. | **0** |
+| `product-refuses` | the corpus certifies a program that compiles and runs, and the CLI cannot process it | 8 |
+| `both-refuse` | both refuse, with a different code or a different position — the corpus row rests on a diagnostic no user ever sees | 40 |
+
+`product-accepts` being empty is the reason this is a recorded divergence rather
+than a stop-the-line defect, and `selftest.mjs` asserts it stays empty.
+
 ### Verdicts
 
 | status | meaning |
@@ -288,10 +505,68 @@ output for either one finds the rows and the tally.
 `divergent`**, because the marker says the specification and the backend were
 already known to disagree. So `0 divergent` does **not** mean "no backend
 accepts a program the language forbids" — it means "no *unrecorded* one does",
-and the `xfail` count is where the recorded ones live. The corpus carries **no
-markers today**, so `0 divergent` and `0 xfail` currently mean the same thing;
-that is a property of this moment, not of the scoreboard. Read the two numbers
-together or the first one flatters.
+and the `xfail` count is where the recorded ones live. So `0 divergent` and
+`0 xfail` do not mean the same thing here, and reading only the first number
+would once have reported a green tree over a fork that compiled and ran a
+program discarding two checked failures. Read the two numbers together or the
+first one flatters.
+
+**There is now a third number, and it is the one to read first.** Every run
+prints `Markers holding a fail-open: N` — the count of marked backends that
+accepted, compiled and *ran* a case the corpus requires them to reject, derived
+from the observations already in hand and naming each row when it is non-zero.
+`0 divergent` plus `Markers holding a fail-open: 0` is the statement people
+have been reading `0 divergent` alone as, and only the pair of them says it.
+
+**The count in this paragraph was two revisions stale when it was corrected on
+2026-08-25**: it said "eight markers today, two of them fail-opens" while the
+register below listed thirteen and recorded that both fail-opens had been
+retired. The lesson is the one this file keeps repeating about its own tables, so
+the number is no longer restated here — **`## Current `xfail`s` below is the one
+place the count lives**, and it is derived by parsing the expectations:
+
+```sh
+python3 -c 'import json,pathlib;print(sum(1 for p in pathlib.Path("conformance/corpus").rglob("*.expected.json") if json.loads(p.read_text()).get("xfail")))'
+```
+
+The reasoning above stands whatever that number is, and it is the reasoning that
+matters: a marker can hold a fail-open, so the two numbers must be read together.
+
+**Whether any marker holds one right now is not restated here either, for exactly
+the same reason the count is not**, and the sentence that used to stand in this
+spot is the worked example. It read "None of the markers holds one today", it was
+true when written, it silently became false on 2026-08-26 when a fail-open marker
+landed — and the revision that added that marker corrected the register at the
+bottom of this file and left this sentence alone, so for one day the page asserted
+both. Then the fail-open was closed and the *correction* went stale in turn.
+
+**So it is no longer written down anywhere. The run derives it and prints it**,
+on every invocation, including when it is zero:
+
+```
+Markers holding a fail-open: 0 (no marked backend accepts and runs a program the corpus requires it to reject)
+```
+
+It costs no extra measurement — the predicate is the case's own `expect:
+"diagnostics"` (the language requires this program to be rejected) met with an
+observation of `kind: "output"` (the backend ran it) on a backend the case marks
+`xfail`, and both halves are already in hand when the verdict is scored. A
+non-zero count names each row and its exit code. This is exactly the number that
+was wrong twice, and it is now the one thing on this page that cannot be: it is
+derived from the same observations the table prints. **Verified non-vacuous
+rather than assumed:** run against a reconstructed pre-fix tree where four of
+today's markers did hold fail-opens, the same code prints `Markers holding a
+fail-open: 4` and names all four.
+
+A marked `expect: "output"` case is deliberately not counted — those are the
+accepted-and-wrong class further down, which the language does not require any
+backend to reject. That is a real and harder class, and folding it in here would
+inflate a number that must stay meaningful.
+
+The **direction column** of `## Current `xfail`s` still carries the finer
+judgement — fail-closed, divergent position, documentation gap,
+accepted-and-wrong — and that half is prose, so it can still go stale. Update it
+in the same edit that changes a marker.
 
 `unmeasured` never merges into any other bucket. A crashed or refusing backend
 scored as `unsupported` reads as migration progress that did not happen, and a
@@ -331,9 +606,20 @@ compile — through the real backend, and requires the runner to score all three
 | code | meaning |
 | --- | --- |
 | 0 | the backends asked to gate were green |
-| 1 | a verdict failure (suppressed by `--report-only`) |
-| 2 | a case could not be measured, or a requested backend could not be prepared |
+| 1 | a verdict failure on a backend asked to gate (suppressed by `--report-only`) |
+| 2 | a case could not be measured, a requested backend could not be prepared, or **no case was measured at all** |
 | 3 | a harness-integrity failure |
+| 64 | a usage error — an unknown option, or a `--backend` that is not `js`/`go`/`both` |
+
+**`--backend both` gates on BOTH backends, the fork included.** A Go verdict
+failure exits 1 even when the reference is entirely green — measured, not
+asserted: a case scored `js pass / go FAIL` under `--backend both` exits 1, and
+the same run under `--report-only` exits 0. It did not always: `--backend both`
+used to reach `return 0` however far the two backends had drifted, because the
+`go` arm was reached only by `--backend go`. That is worth knowing when reading
+any older claim that quotes this runner's exit code as evidence about the fork,
+and it is why the exit code is listed here beside `0 divergent` and the marker
+line rather than instead of them.
 
 ## Using this harness as a fork implementer
 
@@ -366,40 +652,226 @@ compile — through the real backend, and requires the runner to score all three
 
 ## Current `xfail`s
 
-**None.** The four markers this section listed were all `go`, all in
-`21-native-pin`, and all in the fail-open direction: the fork granted a native
-pin over a program the language required it to refuse. The portability pin, the
-`TypeScript` requirement and the portable/required/forbidden classification were
-withdrawn from the specification on 2026-08-23 and removed from both backends,
-so area 21 is deleted and the four markers were **retired rather than fixed** —
-a defect in granting a certification is moot once the certification does not
-exist. Their evidence is preserved in the withdrawal record at the top of
-[`COVERAGE.md`](./COVERAGE.md) and in the checkpoint branch
-`poc/pre-withdrawal-checkpoint`.
+**Eighteen, as of 2026-08-26 (second revision that day).** Sixteen name `go`,
+three name `js`, and one of those names both. **None of the eighteen is a
+fail-open**, and that is a change from earlier the same day: the one fail-open
+this table has carried since 2026-08-25 —
+`09-foreign-calls/a-foreign-index-signature-read-is-refused-on-one-backend-only`
+— was closed, and its marker survives in the **fail-closed** direction because
+the fork now refuses the program at the reference's position and only the row
+charge is still missing. Every expectation below is written from the
+documentation and none was softened.
 
-A marker is still the right answer for a backend that contradicts the
-specification: write the case from the documentation, record the citation in
-`xfail.reason` / `xfail.doc`, and never soften the expectation instead.
+**Do not read that sentence as durable — read the run instead.** It has now been
+wrong in both directions inside twenty-four hours: the register asserted no
+marker held a fail-open while one did, was corrected, and the correction went
+stale within the day when the fail-open closed. So the fail-open half of it is no
+longer a claim this file makes: `run.mjs` derives it from the observations it
+already has and prints `Markers holding a fail-open: N` on every run, naming each
+row when N is non-zero. If this paragraph and that line ever disagree, **the line
+is right and this paragraph is the stale copy.** The rest of the direction column
+is still a hand-maintained judgement; whoever changes a marker's direction
+changes it in the same edit.
 
-**All four were only writable because the reference had just been fixed.** Every
-one of these classes was a live *reference* fail-open within the last day, closed
-in `poc/src/targets/classify.ts` by five consecutive lanes, and pinned by no case
-at all. Writing the cases is what turned "the reference used to be wrong here"
-into "the fork is wrong here now" — which is the whole argument for writing a
-case for a rule both implementations already claim to have.
+Read the direction column carefully, because the fourth revision introduced a
+direction the table had not carried before. Until then every marker was
+fail-closed, a position disagreement, or a documentation gap — all of them
+programs at least one backend refuses. Three of that revision's five new markers
+were **accepted-and-wrong-at-run-time**: the program compiles clean and then
+either selects the wrong handler or dies while it is still loading. That is not a
+fail-open by this table's definition, because the language does not require any
+of those three programs to be rejected. It is worse to *find*, though, for the
+same reason: nothing refuses it, so nothing but a case that runs the program can
+report it. All three are `expect: "output"` cases for exactly that reason.
 
-There are no `unsupported` rows either.
+**The fifth revision retired the wrong-handler one of those three** — the only
+one a fix could close, since the other two await a sentence rather than an
+implementation — and wrote five more `output` cases around it, because the fix
+closed a whole class of forgeries and one case can only observe one member of a
+class. Two of the eighteen remain in the accepted-and-wrong direction.
+
+**The first 2026-08-26 revision added three and retired none.** All three came
+out of the foreign-boundary work: two are diagnostic-set divergences on the same
+pre-existing union handling and retire together, and the third was the fail-open.
+None of the three is caused by that work — each was re-measured on a tree with
+none of it applied and reproduced identically there, which is what lets them be
+called pre-existing rather than assumed to be.
+
+**The second 2026-08-26 revision added three more, retired none, and moved one
+row's direction.** The three additions —
+`…/a-foreign-index-signature-read-through-an-element-access-needs-an-adapter`,
+`…/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter` and
+`…/destructuring-a-foreign-value-runs-its-accessors` — are the same single
+omission as the two row-charge rows above them and retire with those; all five
+now say so. The row that moved is the fail-open, and the way it moved is worth
+the paragraph. The lane that closed it deleted the fork's second gate — the one
+that asked where the **member** was declared — so the property rule now asks the
+**receiver's** provenance alone, which is what the fork's own comment had claimed
+the rule was all along. A correct verdict resting on a stale reason is a shape
+this repository has hit before, and it is exactly why the three new rows exist:
+the fail-open case alone could not tell a rule that reads the receiver from a
+rule that happens to refuse `keyed.width`. The element-access spelling, a member
+declared only in `lib.es5.d.ts`, and a binding pattern with no member expression
+at all are the three shapes that can. On the pre-fix tree the fork **compiled,
+ran and exited 0** on all three; it now refuses all three at the reference's
+positions. That is why they arrive as markers rather than as passes: the refusal
+they pin is present, and only the `SMITHERS1101` row charge is not.
+
+| case | backend | direction | what the backend does instead |
+| --- | --- | --- | --- |
+| `04-nominal-errors/an-ambient-error-declaration-is-not-registered` | **js** | **accepted, cannot run** | emits `__vsRegisterError(Ambient, …)` for a `declare class`, which introduces no runtime binding, so the accepted program dies while the emitted module is still loading with `ReferenceError: Ambient is not defined`, exit 1. The fork skips ambient declarations at the registration site only — `SMITHERS1150` is unchanged, so two same-named ambient Error classes still collide — and runs. The one place the two backends deliberately differ. |
+| `04-nominal-errors/a-function-local-error-class-cannot-be-declared-twice` | **js + go** | **accepted, cannot run — a shared latent defect** | both compile clean, run the first call, and die on the second with the identical `TypeError: stable Error identity …:Inner is already registered`. Each invocation mints a new constructor claiming the same module-local identity. A **documentation gap**: either such a class is ordinary TypeScript whose behaviour `.sm` keeps, or it cannot receive a stable identity — `SMITHERS1150`'s own sentence — and the compiler must refuse it, in which case the *case* is retired rather than an implementation fixed. The marker does not pick a side. |
+| `09-foreign-calls/a-callback-handed-to-an-untrusted-host-is-still-rejected` | go | fail-closed (missing row charge) | reports the declared `SMITHERS1301` and `SMITHERS1509` but not the `SMITHERS1101`: its `checkForeignBoundaries` reports without charging Panic to the enclosing row, where the reference calls `recordForeignBoundary` beside its report. **Both backends refuse the program**, so this is a diagnostic-set divergence and not a soundness one. Localized rather than guessed: the fork charges the row correctly for the neighbouring `SMITHERS1508`, which `09-foreign-calls/a-foreign-callable-handed-to-a-trusted-binding-is-still-rejected` declares and passes on both. |
+| `09-foreign-calls/a-module-trust-claim-is-not-a-call-site-opt-out` | go | fail-closed (missing row charge) | the same omission on the same rule, reached through a module that carries only the initialization claim. The two retire together. |
+| `02-unwrap-propagation/postfix-bang-in-a-labeled-statement-body-is-accepted` | **js** | fail-closed | accepts the placement, as the rule requires, then lowers it into TypeScript the stock emit check rejects with `TS2322`. A reference lowering defect, and the one row in the whole 2026-08-25 divergence set where the fork is right. |
+| `02-unwrap-propagation/postfix-bang-in-a-concise-arrow-body-is-accepted` | go | fail-closed | `SMITHERS1204`. Its placement walk treats an arrow function as a *rejection* where "Accepted Placements" condition 1 makes it a **stop**. Closing it needs the fork to synthesise a block body for the arrow — a lowering feature, not a table entry. |
+| `07-must-consume/a-fallible-callback-in-a-map-argument-needs-a-contract` | go | fail-closed (extra) | reports the declared `SMITHERS1303` **and adds** `SMITHERS1204` for the `!` in the concise arrow body. Same defect as the row above; the two retire together. |
+| `07-must-consume/a-result-parameter-is-consumed-by-an-unwrap-inside-a-callback` | go | fail-closed | `SMITHERS1302` on a Result **parameter** that is consumed by `entry!` one line later inside a callback. The fork accepts the byte-equivalent program with a **local binding** instead, so it is inconsistent with itself about the same consumption site. |
+| `09-foreign-calls/an-untrusted-foreign-result-bound-to-a-name-is-charged-at-the-binding` | go | divergent position | `SMITHERS1301` at the *call* where the reference reports `SMITHERS1302` at the *binding*. Both refuse; they disagree about where. The fork's foreign-lift reporter does not know about bindings, so it cannot apply the bound/unbound split its own must-consume analysis applies everywhere else. |
+| `09-foreign-calls/a-bare-panic-type-resolves-without-an-import` | go | **documentation gap** | adds `SMITHERS1104` because it does not resolve a bare `Panic` type. **Neither backend should be changed on the strength of this marker** — no sentence says whether the type `Panic` is ambient. The marker records the question at the place it bites. |
+| `01-result-lifting/a-stringified-result-carries-its-own-type-tag` | go | **documentation gap** | prints `[object Object]` where the reference prints `[object Result]`, because the fork's emitted prelude classes declare no `Symbol.toStringTag`. Deliberately pinned: **any** case that stringifies a Result will diverge on this, and it is far better found on purpose here than as a mystery line inside an unrelated case. |
+| `09-foreign-calls/a-fallible-getter-in-an-argument-still-needs-a-contract` | go | **documentation gap** | reports only `SMITHERS1303@8:19` where the reference reports `SMITHERS1105@8:19` beside it, because **the fork implements no `SMITHERS1105` and no `SMITHERS1106` at all** — neither code exists anywhere in it. **Both backends refuse the program**, so this is not a fail-open; they disagree only about how loudly. The specification names neither code, so the marker records the asymmetry instead of picking a side. |
+| `09-foreign-calls/an-untrusted-union-return-is-an-executable-foreign-value-on-one-backend-only` | go | fail-closed (missing extra) | reports `SMITHERS1301@5:23` alone and omits the `SMITHERS1508@6:10` the reference reports for returning a value whose type has a foreign `Promise` constituent (`string \| Promise<string>`). **Both backends refuse the program.** The binding carries no `@throws` claim of any kind, which is the point of the case: it is the control that localizes the row below to `containsForeignExecutableValue`'s union handling rather than to any trust rule. |
+| `09-foreign-calls/a-trusted-union-with-a-promise-constituent-keeps-its-rejection-channel` | go | fail-closed (missing extra) | the same omitted `SMITHERS1508@6:10`, on the same union shape, with a `@throws {never}` marker added. Both backends report `SMITHERS1502` at the same position, so the refusal the case exists to pin is identical and only the cascade differs. The two rows retire together, and the row above is the evidence that the cause is the union handling and not the marker. |
+| `09-foreign-calls/a-foreign-index-signature-read-is-refused-on-one-backend-only` | go | fail-closed (missing row charge) — **was FAIL-OPEN until 2026-08-26** | reports `SMITHERS1506@4:17` — the reference's code at the reference's position — and **refuses the program**; it omits the `SMITHERS1101@3:1`, because its property rule reports without charging Panic to the enclosing row. Same omission as the two row-charge rows above and the three below; all six retire together. **What this row used to say, and why the change matters more than the row does:** until 2026-08-26 the fork compiled this program with zero diagnostics, ran it and exited 0 printing `3`. Its property rule reached a member through that member's declarations, an index-signature member has none, and an empty declaration list was treated as nothing to object to — so a foreign accessor could run inside a function whose row read `failures: []`. That gate is gone and the rule now asks the receiver's provenance alone. The case's own name still says "on one backend only", which is now half true; see its `notes` for why the name is kept. |
+| `09-foreign-calls/a-foreign-index-signature-read-through-an-element-access-needs-an-adapter` | go | fail-closed (missing row charge) | reports `SMITHERS1506@4:17` and refuses the program; omits the `SMITHERS1101@3:1`. The deliberate pair of the row above — `keyed["width"]` against `keyed.width` — and the pair is the only thing in the corpus that can tell a receiver-keyed rule from one keyed on `ts.PropertyAccessExpression`. On the pre-fix tree the fork compiled this, ran it and exited 0 printing `3`. |
+| `09-foreign-calls/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter` | go | fail-closed (missing row charge) | reports `SMITHERS1506@4:17` and refuses the program; omits the `SMITHERS1101@3:1`. `constructor` is declared only in `lib.es5.d.ts`, which is why this row is the one that shows the member's declaring **file** was never the question either: a foreign object may serve `constructor`, `length` or `toString` from a throwing getter. On the pre-fix tree the fork compiled this, ran it and exited 0 printing `false`. |
+| `09-foreign-calls/destructuring-a-foreign-value-runs-its-accessors` | go | fail-closed (missing row charge) | reports `SMITHERS1506@4:9` — at the binding **pattern**, agreeing with the reference on the position as well as the code — and refuses the program; omits the `SMITHERS1101@3:1`. A property read with no property-access node to see, which is why it is a separate row from the two above. On the pre-fix tree the fork compiled this, ran it and exited 0 printing `3`. |
+
+**Sixteen of the eighteen pin current behaviour rather than a regression**, and
+each says so in its own `reason`. Only the two arrow-body rows are a live
+over-reach in a rule that moved; the position row, the parameter row, the **six**
+row-charge rows, the two union rows and the four documentation
+gaps are all pre-existing and were newly *measured* rather than newly caused. The
+distinction is load-bearing: "a gap the fork has not reached yet", "a rule the
+fork had and lost last night", and "a question the specification never answered"
+call for three different repairs.
+
+**The six row-charge rows are one omission, not six**, and they are listed
+separately on purpose: each names a different way to reach it — a callback handed
+to an untrusted host, a module-level trust claim, an index-signature read spelled
+with a dot, the same read spelled with an element access, a member declared only
+by the standard library, and a binding pattern. One row would have been enough to
+track the omission and not enough to notice if a fix closed only one spelling.
+They retire in one edit or the fix was partial.
+
+**Four of the eighteen are the documentation, not a backend.** For those the marker
+does not pick a side: it names both observations, says which sentence is missing,
+and states the condition under which the *case* should be retired instead of an
+implementation "fixed". That is the required shape whenever the documentation
+does not settle a disagreement — say so inside the marker rather than choosing
+quietly.
+
+The `SMITHERS1105` row is the newest of the three and was invisible until the
+fourth revision, for a reason worth repeating: those two codes are ones the **reference
+implements, the fork does not, and no case probed**. A rule in that state
+produces no divergence in either direction, ever, so nothing in the corpus could
+report it. It surfaced only because the panic non-widening rule removed
+`SMITHERS1101` from the *panicking* half of the accessor/generator class, leaving
+the ordinary-`Error` half exposed as the residual. Closing a rule made an
+unmeasured one visible; that is the ordinary shape of progress, and the cost of
+recording it is one marker.
+
+A marker is the right answer for a backend that contradicts the specification:
+write the case from the documentation, record the citation in `xfail.reason` /
+`xfail.doc`, and never soften the expectation instead.
+
+There are no `unsupported` rows.
 `23-asset-imports/a-type-only-asset-import-is-rejected` was the last one — the
 fork reported a stock `TS2857` where the reference reports `SMITHERS5208` — and
 it now owns that refusal under its own code. Read that zero precisely:
 `unsupported` was never the dangerous bucket, because it means "no rule of my
-own here yet", which is loud and honest. The dangerous bucket is the fork
-accepting and running a program the language requires it to refuse, and that is
-what the four markers above hold.
+own here yet", which is loud and honest. The dangerous bucket is a backend
+accepting and running a program the language requires it to refuse, and **no
+marker holds one as of the second 2026-08-26 revision**: the one that did —
+`09-foreign-calls/a-foreign-index-signature-read-is-refused-on-one-backend-only`
+— was closed, and its row moved to fail-closed rather than being retired.
+
+**This spot has now been wrong twice in a day, once in each direction, and that
+is the durable lesson rather than the current value.** For a day it said no
+marker held a fail-open while one did; then it was corrected; then the fail-open
+closed and the correction was stale by morning. Both errors have the same cause,
+and it is not carelessness: the fact was written down in two places (here and the
+direction column) and hand-maintained in both, so an edit that touched one left
+the other asserting the opposite. **The fix was to stop writing it down.**
+`run.mjs` now derives it and prints `Markers holding a fail-open: N` on every
+run, from the same observations the table prints — a marked backend whose
+observation is `kind: "output"` on a case whose `expect` is `"diagnostics"` — and
+names each row when N is non-zero. Read that line; this paragraph is prose about
+it and inherits the staleness the line cannot have.
+
+What does not change with the value: `0 divergent` means "no *unrecorded* backend
+accepts a program the language forbids", never "none does". A full run reporting
+`0 divergent` and exit 0 is compatible with a compile-clean fail-open sitting
+inside it under a marker, because a marker is where a recorded one lives — the
+first 2026-08-26 revision was the worked example, and the fact that the example
+lasted less than a day does not make it hypothetical. Read `0 divergent`, the
+`xfail` count and the direction column together.
+
+**And now read the direction column for a second thing.** The fourth 2026-08-25
+corpus revision added three markers on programs that *are* accepted and run and
+are nevertheless wrong: two die at load or on the second call, and one silently
+selected the wrong handler. **That last one is retired as of the fifth revision**
+— the only one of the three a fix could close — so two remain. None of them is a
+fail-open, because the language requires none of them to be rejected — which is
+exactly why they are the hardest class to find. A fail-open is discovered by a case that declares a diagnostic; an
+accepted-and-wrong program is discovered only by a case that runs it and reads
+what it printed. If a later revision reports `0 divergent` and a shrinking
+`xfail` count, that is still no statement about this class unless the corpus
+grew `output` cases to look for it.
 
 **Retired markers** are not restated here; the retirement is recorded in the
 case's own `notes` so the history travels with the case rather than with this
 list, which is how an earlier version of this table went four entries stale.
+
+The second 2026-08-26 revision retired **none** and added **three**, all `go`,
+all in the row-charge class, all described in the table above — and it moved one
+existing row out of the **FAIL-OPEN** direction into fail-closed without retiring
+it, which is a movement this list had not recorded before. The three additions
+were each demonstrated **failing against a reconstructed pre-fix tree** rather
+than merely pinned: the fork compiled, ran and exited 0 on all three there. The
+pre-fix tree was verified to be the right tree before it was trusted — it differs
+from the working tree in exactly the four files the closing lane touched, carries
+none of the symbols that lane introduced, and still contains the deleted
+member-declaration gate.
+
+The first 2026-08-26 revision retired **none** and added **three**, all `go`, all
+described in the table above and all re-measured on a pre-change tree before
+being called pre-existing.
+
+The revision before it retired **one**, `go`:
+`04-nominal-errors/a-case-class-that-lies-about-instanceof-must-not-capture-a-sibling`,
+where the fork used to compile the program clean, run it, and print `timeout`
+where the reference prints `notfound:k` — the wrong-handler member of the
+accepted-and-wrong class above. It scored `XPASS` in one
+`--backend both --jobs 4` run and was re-measured with `--filter … --json`
+(identical `stdout` and `agreement.agree: true` on both backends) before the
+marker was deleted; what the fork used to do is in the case's own `notes`.
+**Retiring it was the smaller half of the work.** The fix — a nominal brand
+merged beside each Error class, then the compiler's own predicate in place of
+`instanceof` — closed a whole class of forgeries at once, and one case observes
+one member of a class, so five more `output` cases were written from the same
+sentence: `matchPartial` with a lying case class, a class that **denies** its own
+instances (which used to abort the fork with `non-exhaustive Error match`), a
+class whose **base** lies (a static member is inherited), and a lying
+`@throws {T}` admitting an unrelated throw into a declared foreign channel — plus
+two that pin what the fix *costs*, since the sound predicate narrows by
+assignability and can over-subtract a sibling to `never`. A marker retired on a
+class-wide fix without those leaves every other spelling free to reopen unseen.
+
+Two revisions ago **all eight** markers its predecessor listed were retired — seven `go`
+and one `js`, **including both fail-opens** — in a single measurement. Every one
+scored `XPASS` in one `--backend both --jobs 4` run before its marker was
+deleted, and each case's `notes` now carries what the backend used to do and what
+changed. Two of the eight are worth knowing about here because they were the
+dangerous ones: `07-must-consume/an-array-literal-of-results-that-is-never-consumed-is-refused`,
+where the fork compiled and ran a program that discarded two checked failures at
+run time with nothing reported before or during execution; and
+`09-foreign-calls/a-dynamic-import-of-an-untrusted-foreign-module-is-refused`,
+where the reference initialized a foreign module with no trust claim through
+`import()` while refusing the byte-identical static edge. Neither is a rule
+either backend had to invent — both were rules it already claimed to have and
+did not reach in one spelling, which is exactly what a case is for.
 
 The revision that pinned the portability analyzer retired the one marker its
 predecessor left: `23-asset-imports/a-non-literal-dynamic-asset-import-is-rejected`,
@@ -453,6 +925,21 @@ unable to see. Every case travels through one `CompileRequest`, so **a field
 that request always sets the same way is a field no case can vary, and a field
 it omits is a code path no case can reach.**
 
+It now holds two subjects, and the second one arrived by the first one's own
+logic. Beyond the request shape, it asserts that the judge's comptime code alias
+is **scoped to the fork**: the Go port numbers its comptime rules `SMITHERS19xx`
+where the reference frontend uses `VCT10xx`, but the reference *also* spells
+`SMITHERS1900`/`1901`/`1902` — there the formatter's mask-budget,
+overlapping-mask and overlapping-edit rules. While the translation was
+unconditional it applied to the reference too, folding two unrelated rules onto
+one contract code, and the pre-fix judge was measured returning `pass` for a
+case declaring the comptime rule `VCT1001` against a reference emitting the
+formatter's `SMITHERS1901`. No corpus case could reach it — the formatter is
+only reachable through `smithers format`, never `compileProject` — which is
+exactly why it belongs here and not in the corpus. `auditVerdict` now reports a
+harness-integrity failure if a reference observation ever carries a
+`SMITHERS19xx`, so the collision cannot go live unnoticed.
+
 The worked example is `lowering`. `compiler.LoweringIdentity` used to be the
 empty string — the zero value of `LoweringMode` — and `cmd/smithersc-go` built
 its positional request with no `Lowering` field, so every positional invocation
@@ -492,7 +979,10 @@ full evidence, the Go `unsupported` rows, and the documentation conflicts.
 It carries **two** code-set subtractions, and the second one is the one to read
 first. The older section finds rules the reference implements and the fork does
 not — five codes today. The newer one finds rules **both** implementations spell
-and no case probes — **twenty-seven** codes today — which is strictly worse,
+and no case probes — **nineteen** codes today (this sentence said twenty-seven for three
+revisions after that figure was superseded by the corrected derivation on the page
+itself; re-derived 2026-08-27 with the page's own commands and unchanged at
+nineteen) — which is strictly worse,
 because a reference-only rule at least produces a divergence the moment someone
 writes a case, while a shared unprobed rule produces nothing in either direction,
 ever.
