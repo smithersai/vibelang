@@ -1,0 +1,507 @@
+{
+  "schema": "smithers.product-divergence/v1",
+  "measuredBy": "scripts/oracle-differential.mjs",
+  "purpose": "Every corpus case where `node bin/smithers.js check` disagrees with the case's declared expectation. The conformance runner measures two BACKENDS; neither is the shipped CLI, so this file is the written record of how far the product is from the contract the corpus is quoted as stating. `direction` product-accepts is the dangerous one \u2014 the corpus requires a refusal and the product compiled it. `verdict` says which side is wrong; `decision-needed` rows may not be moved by either side until the decisions ledger owner settles them. A row disappears when the divergence is FIXED, never when it is tolerated. The `total` field records the corpus size at the last revision and is DESCRIPTIVE, not a gate: it has gone stale twice (424 -> 438 -> 465) simply because the corpus grows, and gating on its equality would train re-baselining rather than catch anything. The gate is the divergence SET.",
+  "total": 498,
+  "divergent": 55,
+  "divergences": [
+    {
+      "id": "01-result-lifting/a-star-re-export-of-the-compiler-owned-prelude-is-refused",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@1:15",
+      "product": "SMITHERS_PROJECT_ERROR: a-star-re-export-of-the-compiler-owned-prelude-is-refused.sm: unresolved relative runtime import \"./__smithers_prelude.ts\"",
+      "verdict": "product-wrong",
+      "cause": "runtime-graph-refuses-before-the-semantic-stage",
+      "note": "src/cli.ts:753-777 runs buildRelativeRuntimeGraph before the semantic stage and returns as soon as it has anything to say. Here it does not even produce a diagnostic: it throws a TypeError that backendFailure (src/cli.ts:1418-1432) turns into a code-less, position-less SMITHERS_PROJECT_ERROR, so the rule the corpus pins is never reached. Both sides refuse the program, so this is a diagnostic-identity divergence, not a safety hole. The corpus states the contract correctly; the fix is for the graph to defer an edge it cannot resolve to the semantic stage instead of aborting the run."
+    },
+    {
+      "id": "01-result-lifting/the-compiler-owned-prelude-is-not-reachable-by-a-path",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@1:23",
+      "product": "SMITHERS_PROJECT_ERROR: the-compiler-owned-prelude-is-not-reachable-by-a-path.sm: unresolved relative runtime import \"./__smithers_prelude.ts\"",
+      "verdict": "product-wrong",
+      "cause": "runtime-graph-refuses-before-the-semantic-stage",
+      "note": "src/cli.ts:753-777 runs buildRelativeRuntimeGraph before the semantic stage and returns as soon as it has anything to say. Here it does not even produce a diagnostic: it throws a TypeError that backendFailure (src/cli.ts:1418-1432) turns into a code-less, position-less SMITHERS_PROJECT_ERROR, so the rule the corpus pins is never reached. Both sides refuse the program, so this is a diagnostic-identity divergence, not a safety hole. The corpus states the contract correctly; the fix is for the graph to defer an edge it cannot resolve to the semantic stage instead of aborting the run."
+    },
+    {
+      "id": "02-unwrap-propagation/postfix-bang-in-a-labeled-statement-body-is-accepted",
+      "direction": "product-refuses",
+      "corpus": "ACCEPTED",
+      "product": "TS2322@postfix-bang-in-a-labeled-statement-body-is-accepted.mjs:22:5",
+      "verdict": "product-wrong",
+      "cause": "reference-labeled-statement-lowering-defect-shared-by-the-product",
+      "note": "This row is NOT a product-vs-oracle pipeline divergence: the CLI and the JS reference backend now give the identical answer, TS2322 on the emitted module, and the corpus already records that answer as this case's xfail(js). The corpus is right about the language rule (specification/failures.mdx, 'Accepted Placements'; the Go fork compiles this program and prints 'Ada Lovelace'), and the reference's labeled-statement lowering \u2014 which the product shares \u2014 is the defect. Retire this row together with the case's xfail(js) marker. Before the src/cli.ts fix in this lane the CLI answered 'diagnostic source map has no mapping for 22:5' and reported no diagnostic at all, so it was strictly worse than the oracle rather than equal to it.",
+      "xfailBackends": "js"
+    },
+    {
+      "id": "09-foreign-calls/a-bare-panic-type-resolves-without-an-import",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@1:23",
+      "product": "SMITHERS1510@untrusted.ts:4:1",
+      "verdict": "product-wrong",
+      "cause": "duplicate-SMITHERS1510-implementation-in-the-runtime-graph",
+      "note": "SMITHERS1510 has TWO implementations in this product. The semantic rule (poc/src/language/semantic.ts:5409-5439) anchors it on the import SPECIFIER in the authored .sm, which is the position the corpus pins. src/relative-runtime-graph.ts:946-961 re-implements the same contract code with a different message and deliberately anchors it at the FOREIGN module's first statement (parsed.statements[0]), in a file the author may not own. The CLI reaches the graph first and returns immediately, so the graph's spelling is the only one a user ever sees, and every diagnostic the semantic stage would have paired with it (the SMITHERS1301/SMITHERS1302 for the Result the untrusted call discards) is suppressed along with it. That suppression-behind-a-refused-module-edge is the exact shape this corpus retired from the Go fork on 2026-08-25 (see the notes on foreign-module-without-a-trust-marker); it is still live in the shipped CLI. The corpus is right on both the position and the pairing.",
+      "xfailBackends": "go"
+    },
+    {
+      "id": "09-foreign-calls/a-block-comment-holding-the-trust-marker-does-not-confer-module-trust",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@1:26, SMITHERS1510@2:25",
+      "product": "SMITHERS1510@block-comment-trust-marker.ts:2:1, SMITHERS1510@nested-jsdoc-block-comment-trust-marker.ts:2:1",
+      "verdict": "product-wrong",
+      "cause": "duplicate-SMITHERS1510-implementation-in-the-runtime-graph",
+      "note": "ADDED 2026-08-27 with the round-7 corpus pass. Same shape and same cause as the six rows already in this bucket: `SMITHERS1510` has two independent implementations \u2014 `poc/src/language/semantic.ts` reports at the authored `.sm` import site, while the CLI's `src/relative-runtime-graph.ts` walks the graph and reports at the foreign module's own position. Both refuse, so nothing is accepted that should not be; only the position differs. These three cases pin trust-marker spellings that USED to confer trust and no longer do (a `//` line comment, a plain and a nested `/* */` block comment, and NBSP whitespace), each measured before the fix running an untrusted foreign initializer on a program reporting ok: true. Recorded rather than re-baselined: the corpus lane that wrote the cases deliberately left this gate failing rather than edit the record it does not own. product-ACCEPTS remains 0."
+    },
+    {
+      "id": "09-foreign-calls/a-computed-dynamic-import-specifier-is-refused",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@2:31",
+      "product": "SMITHERS_PROJECT_ERROR: a-computed-dynamic-import-specifier-is-refused.sm:2:31: module specifier must be a string literal",
+      "verdict": "decision-needed",
+      "cause": "dynamic-import-lock-vs-corpus-vs-product",
+      "note": "THE LEDGER OWNER MUST SETTLE THIS; no lane should move either side first. docs/DECISIONS.md, Locked (line 296 in the current working tree, line 266 at HEAD \u2014 the file is modified uncommitted by another lane, so both citations are correct against their own tree) reads 'Arbitrary dynamic import expressions remain available, since there is no target that cannot resolve them.' Two separable questions fall out of it. (1) Does the lock permit the REFUSALS the corpus pins? poc/src/language/semantic.ts:5397-5408 reads the lock as narrow \u2014 a dynamic import of a project module or of a TRUSTED foreign module is ordinary, an untrusted or unresolvable one is SMITHERS1510 \u2014 and the corpus encodes exactly that reading. The sentence itself reads absolute. (2) Regardless of (1), the shipped CLI refuses EVERY dynamic import, including the two the corpus certifies as compiling and running, with a code-less SMITHERS_PROJECT_ERROR from src/relative-runtime-graph.ts:784: 'Smithers dynamic import is deferred until the frontend can preserve its exact rewrite map'. On question (2) the product contradicts the lock and the corpus together, whichever way (1) is settled. This row is the computed-specifier form: the product refuses it earlier still, at src/relative-runtime-graph.ts:292 ('module specifier must be a string literal'), again as a code-less SMITHERS_PROJECT_ERROR rather than the SMITHERS1510 the corpus pins."
+    },
+    {
+      "id": "09-foreign-calls/a-dynamic-import-of-a-host-package-is-refused",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@2:27",
+      "product": "SMITHERS_PROJECT_ERROR: a-dynamic-import-of-a-host-package-is-refused.sm: Smithers dynamic import is deferred until the frontend can preserve its exact rewrite map",
+      "verdict": "decision-needed",
+      "cause": "dynamic-import-lock-vs-corpus-vs-product",
+      "note": "THE LEDGER OWNER MUST SETTLE THIS; no lane should move either side first. docs/DECISIONS.md, Locked (line 296 in the current working tree, line 266 at HEAD \u2014 the file is modified uncommitted by another lane, so both citations are correct against their own tree) reads 'Arbitrary dynamic import expressions remain available, since there is no target that cannot resolve them.' Two separable questions fall out of it. (1) Does the lock permit the REFUSALS the corpus pins? poc/src/language/semantic.ts:5397-5408 reads the lock as narrow \u2014 a dynamic import of a project module or of a TRUSTED foreign module is ordinary, an untrusted or unresolvable one is SMITHERS1510 \u2014 and the corpus encodes exactly that reading. The sentence itself reads absolute. (2) Regardless of (1), the shipped CLI refuses EVERY dynamic import, including the two the corpus certifies as compiling and running, with a code-less SMITHERS_PROJECT_ERROR from src/relative-runtime-graph.ts:784: 'Smithers dynamic import is deferred until the frontend can preserve its exact rewrite map'. On question (2) the product contradicts the lock and the corpus together, whichever way (1) is settled."
+    },
+    {
+      "id": "09-foreign-calls/a-dynamic-import-of-a-project-module-is-not-a-foreign-module-edge",
+      "direction": "product-refuses",
+      "corpus": "ACCEPTED",
+      "product": "SMITHERS_PROJECT_ERROR: a-dynamic-import-of-a-project-module-is-not-a-foreign-module-edge.sm: Smithers dynamic import is deferred until the frontend can preserve its exact rewrite map",
+      "verdict": "decision-needed",
+      "cause": "dynamic-import-lock-vs-corpus-vs-product",
+      "note": "THE LEDGER OWNER MUST SETTLE THIS; no lane should move either side first. docs/DECISIONS.md, Locked (line 296 in the current working tree, line 266 at HEAD \u2014 the file is modified uncommitted by another lane, so both citations are correct against their own tree) reads 'Arbitrary dynamic import expressions remain available, since there is no target that cannot resolve them.' Two separable questions fall out of it. (1) Does the lock permit the REFUSALS the corpus pins? poc/src/language/semantic.ts:5397-5408 reads the lock as narrow \u2014 a dynamic import of a project module or of a TRUSTED foreign module is ordinary, an untrusted or unresolvable one is SMITHERS1510 \u2014 and the corpus encodes exactly that reading. The sentence itself reads absolute. (2) Regardless of (1), the shipped CLI refuses EVERY dynamic import, including the two the corpus certifies as compiling and running, with a code-less SMITHERS_PROJECT_ERROR from src/relative-runtime-graph.ts:784: 'Smithers dynamic import is deferred until the frontend can preserve its exact rewrite map'. On question (2) the product contradicts the lock and the corpus together, whichever way (1) is settled."
+    },
+    {
+      "id": "09-foreign-calls/a-dynamic-import-of-a-trusted-foreign-module-is-accepted",
+      "direction": "product-refuses",
+      "corpus": "ACCEPTED",
+      "product": "SMITHERS_PROJECT_ERROR: a-dynamic-import-of-a-trusted-foreign-module-is-accepted.sm: Smithers dynamic import is deferred until the frontend can preserve its exact rewrite map",
+      "verdict": "decision-needed",
+      "cause": "dynamic-import-lock-vs-corpus-vs-product",
+      "note": "THE LEDGER OWNER MUST SETTLE THIS; no lane should move either side first. docs/DECISIONS.md, Locked (line 296 in the current working tree, line 266 at HEAD \u2014 the file is modified uncommitted by another lane, so both citations are correct against their own tree) reads 'Arbitrary dynamic import expressions remain available, since there is no target that cannot resolve them.' Two separable questions fall out of it. (1) Does the lock permit the REFUSALS the corpus pins? poc/src/language/semantic.ts:5397-5408 reads the lock as narrow \u2014 a dynamic import of a project module or of a TRUSTED foreign module is ordinary, an untrusted or unresolvable one is SMITHERS1510 \u2014 and the corpus encodes exactly that reading. The sentence itself reads absolute. (2) Regardless of (1), the shipped CLI refuses EVERY dynamic import, including the two the corpus certifies as compiling and running, with a code-less SMITHERS_PROJECT_ERROR from src/relative-runtime-graph.ts:784: 'Smithers dynamic import is deferred until the frontend can preserve its exact rewrite map'. On question (2) the product contradicts the lock and the corpus together, whichever way (1) is settled."
+    },
+    {
+      "id": "09-foreign-calls/a-dynamic-import-of-an-untrusted-foreign-module-is-refused",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@2:32",
+      "product": "SMITHERS_PROJECT_ERROR: a-dynamic-import-of-an-untrusted-foreign-module-is-refused.sm: Smithers dynamic import is deferred until the frontend can preserve its exact rewrite map",
+      "verdict": "decision-needed",
+      "cause": "dynamic-import-lock-vs-corpus-vs-product",
+      "note": "THE LEDGER OWNER MUST SETTLE THIS; no lane should move either side first. docs/DECISIONS.md, Locked (line 296 in the current working tree, line 266 at HEAD \u2014 the file is modified uncommitted by another lane, so both citations are correct against their own tree) reads 'Arbitrary dynamic import expressions remain available, since there is no target that cannot resolve them.' Two separable questions fall out of it. (1) Does the lock permit the REFUSALS the corpus pins? poc/src/language/semantic.ts:5397-5408 reads the lock as narrow \u2014 a dynamic import of a project module or of a TRUSTED foreign module is ordinary, an untrusted or unresolvable one is SMITHERS1510 \u2014 and the corpus encodes exactly that reading. The sentence itself reads absolute. (2) Regardless of (1), the shipped CLI refuses EVERY dynamic import, including the two the corpus certifies as compiling and running, with a code-less SMITHERS_PROJECT_ERROR from src/relative-runtime-graph.ts:784: 'Smithers dynamic import is deferred until the frontend can preserve its exact rewrite map'. On question (2) the product contradicts the lock and the corpus together, whichever way (1) is settled."
+    },
+    {
+      "id": "09-foreign-calls/a-line-comment-holding-the-trust-marker-does-not-confer-module-trust",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@1:24",
+      "product": "SMITHERS1510@line-comment-trust-marker.ts:2:1",
+      "verdict": "product-wrong",
+      "cause": "duplicate-SMITHERS1510-implementation-in-the-runtime-graph",
+      "note": "ADDED 2026-08-27 with the round-7 corpus pass. Same shape and same cause as the six rows already in this bucket: `SMITHERS1510` has two independent implementations \u2014 `poc/src/language/semantic.ts` reports at the authored `.sm` import site, while the CLI's `src/relative-runtime-graph.ts` walks the graph and reports at the foreign module's own position. Both refuse, so nothing is accepted that should not be; only the position differs. These three cases pin trust-marker spellings that USED to confer trust and no longer do (a `//` line comment, a plain and a nested `/* */` block comment, and NBSP whitespace), each measured before the fix running an untrusted foreign initializer on a program reporting ok: true. Recorded rather than re-baselined: the corpus lane that wrote the cases deliberately left this gate failing rather than edit the record it does not own. product-ACCEPTS remains 0."
+    },
+    {
+      "id": "09-foreign-calls/a-trust-marker-does-not-travel-through-a-trusted-module",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@1:24",
+      "product": "SMITHERS1510@miscased-relay-target.ts:2:1",
+      "verdict": "product-wrong",
+      "cause": "duplicate-SMITHERS1510-implementation-in-the-runtime-graph",
+      "note": "ADDED 2026-08-27 with the reached-module-closure fix. Twelfth row in this bucket and the same cause: `SMITHERS1510` has two independent implementations -- `poc/src/language/semantic.ts` reports at the authored `.sm` import site (column 24 here), while the CLI's `src/relative-runtime-graph.ts` walks the graph and reports at the reached foreign module's own first statement. Both refuse; only the position differs, and product-ACCEPTS stays 0. WHAT THESE THREE CASES ARE: until this fix, a foreign module reached at depth >= 2 was never checked for the module-initialization trust marker by EITHER semantic pass -- `checkForeignModuleInitializers` and the fork's `checkForeignModuleTrust` both iterated only the authored file's own statements. Measured with a runtime oracle, an unmarked module behind a properly marked relay compiled clean and RAN its initializer at depths 2 through 5, through cycles and diamonds. The product was already covered, by the CLI graph alone; the language rule was not, which is why no corpus case could be written before and why these three could only land once both backends walked the closure."
+    },
+    {
+      "id": "09-foreign-calls/an-async-function-returning-an-untrusted-foreign-result-charges-both",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1301@4:11, SMITHERS1510@1:23",
+      "product": "SMITHERS1510@untrusted.ts:4:1",
+      "verdict": "product-wrong",
+      "cause": "duplicate-SMITHERS1510-implementation-in-the-runtime-graph",
+      "note": "SMITHERS1510 has TWO implementations in this product. The semantic rule (poc/src/language/semantic.ts:5409-5439) anchors it on the import SPECIFIER in the authored .sm, which is the position the corpus pins. src/relative-runtime-graph.ts:946-961 re-implements the same contract code with a different message and deliberately anchors it at the FOREIGN module's first statement (parsed.statements[0]), in a file the author may not own. The CLI reaches the graph first and returns immediately, so the graph's spelling is the only one a user ever sees, and every diagnostic the semantic stage would have paired with it (the SMITHERS1301/SMITHERS1302 for the Result the untrusted call discards) is suppressed along with it. That suppression-behind-a-refused-module-edge is the exact shape this corpus retired from the Go fork on 2026-08-25 (see the notes on foreign-module-without-a-trust-marker); it is still live in the shipped CLI. The corpus is right on both the position and the pairing."
+    },
+    {
+      "id": "09-foreign-calls/an-unmarked-module-behind-a-trusted-relay-is-refused",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@1:24",
+      "product": "SMITHERS1510@unmarked-relay-target.ts:1:1",
+      "verdict": "product-wrong",
+      "cause": "duplicate-SMITHERS1510-implementation-in-the-runtime-graph",
+      "note": "ADDED 2026-08-27 with the reached-module-closure fix. Twelfth row in this bucket and the same cause: `SMITHERS1510` has two independent implementations -- `poc/src/language/semantic.ts` reports at the authored `.sm` import site (column 24 here), while the CLI's `src/relative-runtime-graph.ts` walks the graph and reports at the reached foreign module's own first statement. Both refuse; only the position differs, and product-ACCEPTS stays 0. WHAT THESE THREE CASES ARE: until this fix, a foreign module reached at depth >= 2 was never checked for the module-initialization trust marker by EITHER semantic pass -- `checkForeignModuleInitializers` and the fork's `checkForeignModuleTrust` both iterated only the authored file's own statements. Measured with a runtime oracle, an unmarked module behind a properly marked relay compiled clean and RAN its initializer at depths 2 through 5, through cycles and diamonds. The product was already covered, by the CLI graph alone; the language rule was not, which is why no corpus case could be written before and why these three could only land once both backends walked the closure."
+    },
+    {
+      "id": "09-foreign-calls/an-untrusted-foreign-result-bound-to-a-name-is-charged-at-the-binding",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1302@4:9, SMITHERS1510@1:23",
+      "product": "SMITHERS1510@untrusted.ts:4:1",
+      "verdict": "product-wrong",
+      "cause": "duplicate-SMITHERS1510-implementation-in-the-runtime-graph",
+      "note": "SMITHERS1510 has TWO implementations in this product. The semantic rule (poc/src/language/semantic.ts:5409-5439) anchors it on the import SPECIFIER in the authored .sm, which is the position the corpus pins. src/relative-runtime-graph.ts:946-961 re-implements the same contract code with a different message and deliberately anchors it at the FOREIGN module's first statement (parsed.statements[0]), in a file the author may not own. The CLI reaches the graph first and returns immediately, so the graph's spelling is the only one a user ever sees, and every diagnostic the semantic stage would have paired with it (the SMITHERS1301/SMITHERS1302 for the Result the untrusted call discards) is suppressed along with it. That suppression-behind-a-refused-module-edge is the exact shape this corpus retired from the Go fork on 2026-08-25 (see the notes on foreign-module-without-a-trust-marker); it is still live in the shipped CLI. The corpus is right on both the position and the pairing.",
+      "xfailBackends": "go"
+    },
+    {
+      "id": "09-foreign-calls/exotic-whitespace-in-the-trust-marker-does-not-confer-module-trust",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@1:24",
+      "product": "SMITHERS1510@nbsp-trust-marker.ts:2:1",
+      "verdict": "product-wrong",
+      "cause": "duplicate-SMITHERS1510-implementation-in-the-runtime-graph",
+      "note": "ADDED 2026-08-27 with the round-7 corpus pass. Same shape and same cause as the six rows already in this bucket: `SMITHERS1510` has two independent implementations \u2014 `poc/src/language/semantic.ts` reports at the authored `.sm` import site, while the CLI's `src/relative-runtime-graph.ts` walks the graph and reports at the foreign module's own position. Both refuse, so nothing is accepted that should not be; only the position differs. These three cases pin trust-marker spellings that USED to confer trust and no longer do (a `//` line comment, a plain and a nested `/* */` block comment, and NBSP whitespace), each measured before the fix running an untrusted foreign initializer on a program reporting ok: true. Recorded rather than re-baselined: the corpus lane that wrote the cases deliberately left this gate failing rather than edit the record it does not own. product-ACCEPTS remains 0."
+    },
+    {
+      "id": "09-foreign-calls/foreign-module-without-a-trust-marker",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1301@4:11, SMITHERS1510@1:23",
+      "product": "SMITHERS1510@untrusted.ts:4:1",
+      "verdict": "product-wrong",
+      "cause": "duplicate-SMITHERS1510-implementation-in-the-runtime-graph",
+      "note": "SMITHERS1510 has TWO implementations in this product. The semantic rule (poc/src/language/semantic.ts:5409-5439) anchors it on the import SPECIFIER in the authored .sm, which is the position the corpus pins. src/relative-runtime-graph.ts:946-961 re-implements the same contract code with a different message and deliberately anchors it at the FOREIGN module's first statement (parsed.statements[0]), in a file the author may not own. The CLI reaches the graph first and returns immediately, so the graph's spelling is the only one a user ever sees, and every diagnostic the semantic stage would have paired with it (the SMITHERS1301/SMITHERS1302 for the Result the untrusted call discards) is suppressed along with it. That suppression-behind-a-refused-module-edge is the exact shape this corpus retired from the Go fork on 2026-08-25 (see the notes on foreign-module-without-a-trust-marker); it is still live in the shipped CLI. The corpus is right on both the position and the pairing."
+    },
+    {
+      "id": "09-foreign-calls/miscased-trust-markers-do-not-confer-module-trust",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@1:24, SMITHERS1510@2:26, SMITHERS1510@3:25",
+      "product": "SMITHERS1510@miscased-module-tag.ts:2:1, SMITHERS1510@miscased-never-module.ts:5:1, SMITHERS1510@miscased-throws-tag.ts:2:1",
+      "verdict": "product-wrong",
+      "cause": "duplicate-SMITHERS1510-implementation-in-the-runtime-graph",
+      "note": "ADDED 2026-08-27, and its ABSENCE was the interesting part. This case was not listed before, which read as agreement between the product and the corpus. It was agreement for a stale reason: the CLI's runtime graph carried its own case-INSENSITIVE copy of the trust-marker predicate (src/relative-runtime-graph.ts:362-363 had /i where the other three implementations deliberately do not), so it ACCEPTED all three miscased modules, and the separate semantic pass refused at the .sm import site -- which happens to be the position the corpus declares. Right answer, wrong mechanism: moving the untrusted module one edge further away made the rule disappear entirely, and a runtime oracle measured an untrusted foreign initializer executing on a program reporting ok: true. With the /i flags removed the graph now refuses on its own, at the foreign module's own position rather than at the authored import site, so the case joins the sibling row `near-miss-trust-markers-do-not-confer-module-trust` it always belonged beside. Both sides refuse; the positions differ because SMITHERS1510 still has two independent implementations (poc/src/language/semantic.ts and src/relative-runtime-graph.ts), which is recorded as a known-open item entangled with the dynamic-import decision. product-ACCEPTS remains 0."
+    },
+    {
+      "id": "09-foreign-calls/module-trust-does-not-travel-two-hops",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@1:24",
+      "product": "SMITHERS1510@unmarked-relay-target.ts:1:1",
+      "verdict": "product-wrong",
+      "cause": "duplicate-SMITHERS1510-implementation-in-the-runtime-graph",
+      "note": "ADDED 2026-08-27 with the reached-module-closure fix. Twelfth row in this bucket and the same cause: `SMITHERS1510` has two independent implementations -- `poc/src/language/semantic.ts` reports at the authored `.sm` import site (column 24 here), while the CLI's `src/relative-runtime-graph.ts` walks the graph and reports at the reached foreign module's own first statement. Both refuse; only the position differs, and product-ACCEPTS stays 0. WHAT THESE THREE CASES ARE: until this fix, a foreign module reached at depth >= 2 was never checked for the module-initialization trust marker by EITHER semantic pass -- `checkForeignModuleInitializers` and the fork's `checkForeignModuleTrust` both iterated only the authored file's own statements. Measured with a runtime oracle, an unmarked module behind a properly marked relay compiled clean and RAN its initializer at depths 2 through 5, through cycles and diamonds. The product was already covered, by the CLI graph alone; the language rule was not, which is why no corpus case could be written before and why these three could only land once both backends walked the closure."
+    },
+    {
+      "id": "09-foreign-calls/near-miss-trust-markers-do-not-confer-module-trust",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1510@1:24, SMITHERS1510@2:26",
+      "product": "SMITHERS1510@module-resolution-tag.ts:2:1, SMITHERS1510@split-trust-marker.ts:6:1",
+      "verdict": "product-wrong",
+      "cause": "duplicate-SMITHERS1510-implementation-in-the-runtime-graph",
+      "note": "SMITHERS1510 has TWO implementations in this product. The semantic rule (poc/src/language/semantic.ts:5409-5439) anchors it on the import SPECIFIER in the authored .sm, which is the position the corpus pins. src/relative-runtime-graph.ts:946-961 re-implements the same contract code with a different message and deliberately anchors it at the FOREIGN module's first statement (parsed.statements[0]), in a file the author may not own. The CLI reaches the graph first and returns immediately, so the graph's spelling is the only one a user ever sees, and every diagnostic the semantic stage would have paired with it (the SMITHERS1301/SMITHERS1302 for the Result the untrusted call discards) is suppressed along with it. That suppression-behind-a-refused-module-edge is the exact shape this corpus retired from the Go fork on 2026-08-25 (see the notes on foreign-module-without-a-trust-marker); it is still live in the shipped CLI. The corpus is right on both the position and the pairing."
+    },
+    {
+      "id": "17-durable/a-conditional-expression-on-a-non-boolean-durable-input-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4106@12:10",
+      "product": "TS2307@1:33, TS2339@12:29, TS2339@12:57",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/a-do-while-loop-in-durable-source-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4107@11:3",
+      "product": "TS2307@1:33, TS2339@12:18",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/a-logical-or-fallback-on-a-durable-input-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4111@10:25",
+      "product": "TS2307@1:33, TS2339@10:16",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/a-nullish-coalescing-fallback-on-a-durable-input-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4111@10:25",
+      "product": "TS2307@1:33, TS2339@10:16",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/a-plain-projection-reaches-the-plan-as-an-input-expression",
+      "direction": "product-refuses",
+      "corpus": "ACCEPTED",
+      "product": "TS2307@1:33, TS2339@12:16, TS7006@24:21",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/a-single-action-flow-lowers-to-a-static-plan",
+      "direction": "product-refuses",
+      "corpus": "ACCEPTED",
+      "product": "SMITHERS1207@10:17",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/a-statement-branch-holding-an-action-in-each-arm-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4106@13:3",
+      "product": "TS2307@1:33, TS2339@14:18, TS2339@16:17",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/an-actions-failure-channel-mints-one-identity-per-error-class",
+      "direction": "product-refuses",
+      "corpus": "ACCEPTED",
+      "product": "TS2307@1:33, TS2339@20:15, TS7006@30:41, TS7006@35:32, TS7006@39:15, TS7006@40:24, TS7006@41:30",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/an-in-test-on-a-durable-input-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4111@9:25",
+      "product": "TS2307@1:33, TS2339@9:16",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/an-opaque-durable-argument-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4103@11:29",
+      "product": "TS2307@1:25",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/an-optional-projection-on-a-durable-input-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4106@11:25",
+      "product": "TS2307@1:33, TS2339@11:16",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/array-isarray-on-a-durable-input-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4112@9:25",
+      "product": "TS2307@1:33, TS2339@9:16",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/logical-negation-of-a-durable-input-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4111@10:25",
+      "product": "TS2307@1:33, TS2339@10:16",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/object-is-on-a-durable-input-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4112@9:25",
+      "product": "TS2307@1:33, TS2339@9:16",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/statement-branch-fails-closed",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4106@4:3",
+      "product": "TS2307@1:40",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/static-plan-shape-is-digest-pinned",
+      "direction": "product-refuses",
+      "corpus": "ACCEPTED",
+      "product": "SMITHERS1207@7:17",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/strict-equality-against-a-durable-input-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4111@10:25",
+      "product": "TS2307@1:33, TS2339@10:16",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/two-error-classes-whose-durable-identities-collide-are-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4112@20:10",
+      "product": "TS2307@1:33, TS2339@20:15",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/two-error-classes-with-distinct-durable-identities-compile",
+      "direction": "product-refuses",
+      "corpus": "ACCEPTED",
+      "product": "TS2307@1:33, TS2339@20:15",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/typeof-on-a-durable-input-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4111@10:25",
+      "product": "TS2307@1:33, TS2339@10:16",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "19-retired-syntax/braceless-if-expression-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@2:17",
+      "product": "TS1005@2:33",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/dot-question-on-an-optional-call-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@7:25",
+      "product": "TS1003@7:26, TS1109@8:3",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/dot-question-operator-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@6:25",
+      "product": "TS1003@6:26, TS1109@7:3",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/error-declaration-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@1:1",
+      "product": "TS1434@1:1, TS1434@1:7",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/labeled-block-value-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@2:17",
+      "product": "TS1005@2:23, TS1005@4:3",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/labeled-loop-value-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@2:17",
+      "product": "TS1005@2:23, TS1128@3:5, TS1389@2:25",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/loop-else-completion-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@3:5",
+      "product": "TS1128@3:5",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/orelse-operator-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@7:26",
+      "product": "TS1005@7:26, TS1005@7:33",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/postfix-catch-expression-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@6:31",
+      "product": "TS1005@6:31, TS1005@6:37",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/prefix-try-marker-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@6:16",
+      "product": "TS1005@6:20, TS1109@6:16",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/throw-is-not-an-expression",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1000@6:49",
+      "product": "TS1109@6:49",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/throws-clause-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@5:45",
+      "product": "TS1144@5:45, TS1434@5:52",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/uses-clause-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@3:33",
+      "product": "TS1144@3:33, TS1434@3:38",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "19-retired-syntax/value-carrying-labeled-break-is-retired",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1001@3:5",
+      "product": "TS1003@3:11, TS1434@3:12",
+      "verdict": "product-wrong",
+      "cause": "asset-preflight-short-circuits-before-the-retired-syntax-sweep",
+      "note": "The migration message is the entire point of this area, and it is unreachable through the CLI. The retired-syntax sweep that mints SMITHERS1000/SMITHERS1001 lives in the semantic stage (poc/src/language/semantic.ts:5181-5192, called from buildSemanticModel at :253 and the project walk at :345). The CLI's first stage is the source-asset preflight, which consults recoverSmithersSyntax and, when recovery has nothing to say about the construct \u2014 which is exactly the case for RETIRED grammar \u2014 falls through to the raw TypeScript parse cascade (poc/src/build/source-assets.ts:449-476) and reports that. src/cli.ts:724-746 then returns on !sourceAssets.ok, so the sweep never runs. Confirmed by the CLI's own report line: 'requirement rows were not computed: the source-asset stage reported errors before the row analysis ran'. Both sides refuse; the corpus states the contract correctly."
+    },
+    {
+      "id": "20-host-globals/the-node-global-scope-is-refused",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS1601@2:17, SMITHERS1601@3:16, SMITHERS1601@4:16, SMITHERS1601@5:19, SMITHERS1601@6:21, SMITHERS1601@7:21, SMITHERS1601@8:16, SMITHERS1601@9:16",
+      "product": "SMITHERS_PROJECT_ERROR: the-node-global-scope-is-refused.sm:4:16: require may not be aliased or accessed indirectly",
+      "verdict": "product-wrong",
+      "cause": "runtime-graph-refuses-before-the-semantic-stage",
+      "note": "src/cli.ts:753-777 runs buildRelativeRuntimeGraph before the semantic stage and returns as soon as it has anything to say. Here it does not even produce a diagnostic: it throws a TypeError that backendFailure (src/cli.ts:1418-1432) turns into a code-less, position-less SMITHERS_PROJECT_ERROR, so the rule the corpus pins is never reached. Both sides refuse the program, so this is a diagnostic-identity divergence, not a safety hole. The corpus states the contract correctly; the fix is for the graph to defer an edge it cannot resolve to the semantic stage instead of aborting the run. Here the thrown message is 'require may not be aliased or accessed indirectly' and the corpus pins eight SMITHERS1601 reports, one per host global the module names. COVERAGE.md row 9.1b calls this case 'the backend-agreement pin for the ambient name environment', and the shipped compiler cannot reproduce a single one of the eight."
+    }
+  ]
+}
