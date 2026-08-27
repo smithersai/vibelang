@@ -48,6 +48,13 @@ interface ErrorRegistration<E extends Error = Error> {
   readonly id: string;
   readonly type: ErrorConstructor<E>;
   codec?: ErrorPayloadCodec<E>;
+  /**
+   * True when `codec` was derived by {@link __vsRegisterError} rather than
+   * supplied by an author. A derived codec is a default, so an explicit
+   * `registerErrorCodec` for the same type replaces it instead of colliding;
+   * two explicit codecs still collide.
+   */
+  derivedCodec?: boolean;
 }
 
 const registrationsByType = new WeakMap<Function, ErrorRegistration<any>>();
@@ -134,9 +141,106 @@ export function registerErrorType<E extends Error>(type: ErrorConstructor<E>, id
   return type;
 }
 
-/** Trusted compiler hook emitted once after each named Error class. */
+/**
+ * Trusted compiler hook emitted once after each named Error class.
+ *
+ * It supplies both halves of the obligation in specification/failures.mdx,
+ * "Error Classes": "The compiler MUST provide stable nominal identity, matching
+ * metadata, **serialization evidence, and cross-realm transport metadata**
+ * while preserving ordinary `Error` behavior." Identity and matching metadata
+ * come from {@link registerErrorType}; the transport half is the derived codec
+ * installed here.
+ *
+ * Deriving it is what specification/durable-execution.mdx, "Durable Boundary",
+ * asks for: "Plain data SHOULD derive the contract automatically. Functions,
+ * capabilities, process handles, and other ephemeral values MUST be rejected
+ * unless they define an explicit durable representation." The derivation reads
+ * the error's own enumerable data properties and lets {@link encodeError}'s
+ * existing `assertJson` refuse everything else with a located
+ * {@link ErrorCodecError}, so an ephemeral field is a diagnostic rather than a
+ * silently dropped one.
+ *
+ * `registerErrorType` deliberately keeps its identity-only meaning: the MUST is
+ * on the *compiler*, and a hand-written TypeScript module that asks for an
+ * identity has not asked the compiler for anything.
+ */
 export function __vsRegisterError<E extends Error>(type: ErrorConstructor<E>, id: string): ErrorConstructor<E> {
-  return registerErrorType(type, id);
+  registerErrorType(type, id);
+  const registration = registrationsByType.get(type) as ErrorRegistration<E> | undefined;
+  if (registration && !registration.codec) {
+    registration.codec = Object.freeze({
+      encode: (error: E) => derivedErrorPayload(error),
+      decode: (payload: JsonValue) => derivedErrorInstance(type, payload) as E,
+    });
+    registration.derivedCodec = true;
+  }
+  return type;
+}
+
+/**
+ * The compiler-derived transport payload: `message` plus every own enumerable
+ * data property.
+ *
+ * Own enumerable data properties are exactly the fields ordinary class syntax
+ * produces — `constructor(readonly path: string)`, a field initializer, and the
+ * `this.name = "X"` assignment a hand-written Error class makes. `message` is
+ * added by name because JavaScript defines it non-enumerably, and `stack` is
+ * excluded by name because it is host-specific text, not data.
+ *
+ * Nothing is validated here. `encodeError` runs `assertJson` over the result,
+ * so a field holding a function, a capability, a handle, a cycle, or a symbol
+ * key produces `ErrorCodecError` naming the exact path.
+ */
+function derivedErrorPayload(error: Error): JsonValue {
+  // A null prototype keeps an own `__proto__` field as data. Into `{}` the same
+  // assignment would go through the setter `Object.prototype` defines for that
+  // name, and the field would be dropped from the wire with no diagnostic —
+  // the opposite of what this codec promises above. `assertJson` and
+  // `stringifyJson` both accept a null-prototype object, and the payload is
+  // wire data rather than a value handed back to a caller, so nothing here
+  // needs the ordinary prototype. Plain assignment is safe below for the same
+  // reason: a null-prototype object inherits no setter to trip.
+  const payload: Record<string, JsonValue> = Object.create(null) as Record<string, JsonValue>;
+  payload.message = error.message;
+  for (const key of Object.keys(error)) {
+    if (key === "message" || key === "stack") continue;
+    const descriptor = Object.getOwnPropertyDescriptor(error, key);
+    if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) continue;
+    payload[key] = descriptor.value as JsonValue;
+  }
+  return payload;
+}
+
+/**
+ * Rebuild an instance from a derived payload without running the constructor.
+ *
+ * The constructor's parameter list is not part of the wire contract — an author
+ * may spell `constructor(readonly path: string, readonly reason: string)` or
+ * take an options object — so calling it would make transport depend on a
+ * signature the payload does not carry. `Object.create(type.prototype)` is what
+ * keeps `instanceof`, the prototype identity `decodeError` re-checks, and every
+ * inherited method intact while depending on nothing but the class.
+ */
+function derivedErrorInstance(type: ErrorConstructor, payload: JsonValue): Error {
+  const record = parseRecord(payload, "$.payload");
+  if (typeof record.message !== "string") throw new ErrorCodecError("$.payload.message must be a string");
+  const decoded = Object.create(type.prototype) as Error;
+  Object.defineProperty(decoded, "message", {
+    value: record.message, writable: true, enumerable: false, configurable: true,
+  });
+  for (const key of Object.keys(record)) {
+    if (key === "message") continue;
+    Object.defineProperty(decoded, key, {
+      value: record[key], writable: true, enumerable: true, configurable: true,
+    });
+  }
+  // A decoded error crossed a realm boundary, so it has no local call site to
+  // report. `stack` stays a string, which is what ordinary Error behavior gives
+  // a reader, rather than becoming `undefined` only for decoded values.
+  Object.defineProperty(decoded, "stack", {
+    value: `${decoded.name}: ${record.message}`, writable: true, enumerable: false, configurable: true,
+  });
+  return decoded;
 }
 
 export function registerErrorCodec<E extends Error>(
@@ -146,7 +250,7 @@ export function registerErrorCodec<E extends Error>(
 ): ErrorConstructor<E> {
   registerErrorType(type, id);
   const registration = registrationsByType.get(type) as ErrorRegistration<E>;
-  if (registration.codec && registration.codec !== codec) {
+  if (registration.codec && registration.codec !== codec && !registration.derivedCodec) {
     throw new TypeError(`Error codec for ${id} is already registered`);
   }
   if (typeof codec?.encode !== "function" || typeof codec.decode !== "function") {
@@ -155,6 +259,7 @@ export function registerErrorCodec<E extends Error>(
   // Snapshot callbacks so later mutation of a registration object cannot
   // silently change a stable transport identity.
   registration.codec = Object.freeze({ encode: codec.encode, decode: codec.decode });
+  registration.derivedCodec = false;
   return type;
 }
 
