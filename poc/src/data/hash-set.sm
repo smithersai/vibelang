@@ -1,0 +1,251 @@
+/**
+ * `HashSet<T>`: the unordered-membership collection from the standard library's
+ * "Core Data" list (docs/src/pages/reference/standard-library.mdx).
+ *
+ * A HashSet is an immutable, frozen, WeakSet-branded value that carries an
+ * `Equivalence<T>`/`Hash<T>` pair exactly the way `HashMap` does, and is built
+ * on one: the set holds a `HashMap<T, true>`, so membership, collision
+ * behaviour, copy-on-write cost, and the "no `null`, no `undefined`" policy are
+ * literally the map's, tested once and reused rather than reimplemented.
+ *
+ * Complexity follows from that: `has` is expected O(1), `size` is O(1), `add`
+ * and `remove` are O(n) copies (and return the receiver when nothing would
+ * change), and `union`/`intersection`/`difference` are O(n + m) lookups over
+ * O(n) copies.
+ *
+ * **Iteration order is insertion order.** `union` yields the receiver's
+ * elements first and then the elements of `other` that were not already
+ * present; `intersection` and `difference` keep the receiver's order. All three
+ * keep the *receiver's* keying instances.
+ *
+ * **Structural equality** matches `HashMap`: two sets are equal under
+ * `Equivalence.any` when they share the same `Equivalence` and `Hash`
+ * instances, have the same size, and contain the same elements. Order is not
+ * part of it, so the structural hash is a commutative fold.
+ */
+
+import { panic } from "smithers:exceptions";
+import { type Equivalence, Equivalence as EquivalenceNamespace, registerStructuralEquivalence } from "./equivalence.sm";
+import { type Hash, Hash as HashNamespace, registerStructuralHash } from "./hash.sm";
+import { type HashMap, HashMap as HashMapNamespace } from "./hash-map.sm";
+
+const SET_SEED = 0xbb67ae85;
+
+const maps = new WeakMap<object, HashMap<unknown, true>>();
+const localSets = new WeakSet<object>();
+
+function mapOf<T>(set: HashSet<T>): HashMap<T, true> {
+  const map = maps.get(set as object);
+  if (map === undefined || !localSets.has(set as object)) panic("forged HashSet value");
+  return map as unknown as HashMap<T, true>;
+}
+
+export abstract class HashSetValue<T> {
+  /** O(1). */
+  get size(): number {
+    return mapOf(this).size;
+  }
+
+  isEmpty(): boolean {
+    return mapOf(this).size === 0;
+  }
+
+  /** The `Equivalence` this set keys by; part of its identity under structural equality. */
+  get elementEquivalence(): Equivalence<T> {
+    return mapOf(this).keyEquivalence;
+  }
+
+  /** The `Hash` this set keys by; part of its identity under structural equality. */
+  get elementHash(): Hash<T> {
+    return mapOf(this).keyHash;
+  }
+
+  /** Expected O(1). */
+  has(element: T): boolean {
+    return mapOf(this).has(element);
+  }
+
+  /** A new set containing `element`. Adding one that is already present returns the receiver. */
+  add(element: T): HashSet<T> {
+    return fromMap(mapOf(this).set(element, true));
+  }
+
+  /** A new set without `element`. Removing an absent one returns the receiver. */
+  remove(element: T): HashSet<T> {
+    return fromMap(mapOf(this).remove(element));
+  }
+
+  /** Everything in either set. Receiver's elements first, then the new ones from `other`. */
+  union(other: HashSet<T>): HashSet<T> {
+    if (!isHashSet(other)) panic("HashSet.union requires a HashSet");
+    let map = mapOf(this);
+    for (const element of mapOf(other as HashSet<T>).keys()) map = map.set(element, true);
+    return fromMap(map);
+  }
+
+  /** Everything in both sets, in the receiver's order. */
+  intersection(other: HashSet<T>): HashSet<T> {
+    if (!isHashSet(other)) panic("HashSet.intersection requires a HashSet");
+    const right = other as HashSet<T>;
+    let map = mapOf(this);
+    for (const element of [...mapOf(this).keys()]) {
+      if (!right.has(element)) map = map.remove(element);
+    }
+    return fromMap(map);
+  }
+
+  /** Everything in the receiver that is not in `other`, in the receiver's order. */
+  difference(other: HashSet<T>): HashSet<T> {
+    if (!isHashSet(other)) panic("HashSet.difference requires a HashSet");
+    const right = other as HashSet<T>;
+    let map = mapOf(this);
+    for (const element of [...mapOf(this).keys()]) {
+      if (right.has(element)) map = map.remove(element);
+    }
+    return fromMap(map);
+  }
+
+  /** Membership is decided by `other`'s equivalence, since `other` is the one doing the containing. */
+  isSubsetOf(other: HashSet<T>): boolean {
+    if (!isHashSet(other)) panic("HashSet.isSubsetOf requires a HashSet");
+    const right = other as HashSet<T>;
+    for (const element of mapOf(this).keys()) {
+      if (!right.has(element)) return false;
+    }
+    return true;
+  }
+
+  /** Elements in insertion order. */
+  values(): IterableIterator<T> {
+    return mapOf(this).keys();
+  }
+
+  toArray(): readonly T[] {
+    return Object.freeze([...mapOf(this).keys()]);
+  }
+
+  /** Same keying instances, same size, same elements. */
+  equals(other: HashSet<T>): boolean {
+    if (!isHashSet(other)) return false;
+    return setEquals(this as unknown as HashSet<unknown>, other as HashSet<unknown>);
+  }
+
+  [Symbol.iterator](): IterableIterator<T> {
+    return this.values();
+  }
+
+  toString(): string {
+    return `HashSet(${mapOf(this).size})`;
+  }
+
+  get [Symbol.toStringTag](): string {
+    return "HashSet";
+  }
+}
+
+export type HashSet<T> = HashSetValue<T>;
+
+class LocalHashSet<T> extends HashSetValue<T> {
+  constructor(map: HashMap<T, true>) {
+    super();
+    maps.set(this, map as unknown as HashMap<unknown, true>);
+    localSets.add(this);
+    Object.freeze(this);
+  }
+}
+
+const setsByMap = new WeakMap<object, HashSet<unknown>>();
+
+/**
+ * One set per backing map. `add`/`remove`/`union` return the receiver's map
+ * unchanged when nothing would change, and this keeps the *set* identical too,
+ * so `set.add(existing) === set` holds and callers can skip work on identity.
+ */
+function fromMap<T>(map: HashMap<T, true>): HashSet<T> {
+  const existing = setsByMap.get(map as object);
+  if (existing !== undefined) return existing as unknown as HashSet<T>;
+  const set = new LocalHashSet(map);
+  setsByMap.set(map as object, set as unknown as HashSet<unknown>);
+  return set;
+}
+
+export function isHashSet(value: unknown): value is HashSet<unknown> {
+  return typeof value === "object" && value !== null && localSets.has(value);
+}
+
+function setEquals(left: HashSet<unknown>, right: HashSet<unknown>): boolean {
+  if (left === right) return true;
+  const leftMap = mapOf(left);
+  const rightMap = mapOf(right);
+  if (leftMap.keyEquivalence !== rightMap.keyEquivalence || leftMap.keyHash !== rightMap.keyHash) return false;
+  if (leftMap.size !== rightMap.size) return false;
+  for (const element of leftMap.keys()) {
+    if (!rightMap.has(element)) return false;
+  }
+  return true;
+}
+
+function setHash(set: HashSet<unknown>): number {
+  const map = mapOf(set);
+  const hash = map.keyHash;
+  // Commutative: order is observable but not part of equality.
+  let accumulator = 0;
+  for (const element of map.keys()) accumulator = (accumulator + hash.hash(element)) >>> 0;
+  return HashNamespace.combine(SET_SEED, HashNamespace.combine(HashNamespace.number.hash(map.size), accumulator));
+}
+
+registerStructuralEquivalence({
+  name: "HashSet",
+  matches: isHashSet,
+  equals: (left, right) => setEquals(left as HashSet<unknown>, right as HashSet<unknown>),
+});
+
+registerStructuralHash({
+  name: "HashSet",
+  matches: isHashSet,
+  hash: (value) => setHash(value as HashSet<unknown>),
+});
+
+/** An empty set keyed structurally: primitives, `Data` values, `Chunk`s, and nested collections. */
+function empty<T>(): HashSet<T> {
+  return fromMap(HashMapNamespace.empty<T, true>());
+}
+
+/** An empty set keyed by an explicit `Equivalence`/`Hash` pair, which must obey the hash law. */
+function make<T>(equivalence: Equivalence<T>, hash: Hash<T>, elements?: Iterable<T>): HashSet<T> {
+  if (!EquivalenceNamespace.isEquivalence(equivalence)) panic("HashSet.make requires an Equivalence value");
+  if (!HashNamespace.isHash(hash)) panic("HashSet.make requires a Hash value");
+  return addAll(fromMap(HashMapNamespace.make<T, true>(equivalence, hash)), elements);
+}
+
+function addAll<T>(set: HashSet<T>, elements: Iterable<T> | undefined): HashSet<T> {
+  if (elements === undefined) return set;
+  if (elements === null || typeof (elements as Iterable<T>)[Symbol.iterator] !== "function") {
+    panic("HashSet requires an iterable of elements");
+  }
+  let result = set;
+  for (const element of elements) result = result.add(element);
+  return result;
+}
+
+/** A structurally keyed set from literal elements. */
+function of<T>(...elements: readonly T[]): HashSet<T> {
+  return addAll(empty<T>(), elements);
+}
+
+/** A set from any iterable; pass `options` to key it explicitly. */
+function fromIterable<T>(
+  elements: Iterable<T>,
+  options?: { readonly equivalence: Equivalence<T>; readonly hash: Hash<T> },
+): HashSet<T> {
+  if (options === undefined) return addAll(empty<T>(), elements);
+  return make<T>(options.equivalence, options.hash, elements);
+}
+
+export const HashSet = Object.freeze({
+  empty,
+  make,
+  of,
+  fromIterable,
+  isHashSet,
+});

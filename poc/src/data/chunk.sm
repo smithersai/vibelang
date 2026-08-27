@@ -1,0 +1,346 @@
+/**
+ * `Chunk<T>`: the immutable indexed sequence from the standard library's
+ * "Core Data" list (docs/src/pages/reference/standard-library.mdx).
+ *
+ * A Chunk is an immutable, frozen, WeakSet-branded value, like `Duration` and
+ * the runtime's `Result`. Every operation returns a new Chunk and
+ * leaves the receiver untouched, so a Chunk expression is pure and its result
+ * is worth keeping — dropping it on the floor accomplishes nothing.
+ *
+ * **Representation.** A Chunk is a small persistent tree over frozen arrays:
+ *
+ *     Empty | Array(items) | Concat(left, right)
+ *
+ * `append`, `prepend`, and `concat` allocate one `Concat` node and are O(1).
+ * Anything that has to look at elements — `get`, `head`, `last`, iteration,
+ * `map`, `toArray` — first *materializes* the tree into one frozen array,
+ * caches that array, and collapses the node to a single `Array` node. So a
+ * batch of appends costs O(1) each, the first read after them costs O(n), and
+ * every read after that is O(1). Amortized over a build-then-read cycle — the
+ * shape almost every pipeline has — appends are O(1) and indexing is O(1).
+ *
+ * That is the honest complexity story, and it is deliberately a simple one:
+ * this is a correctness-first POC representation, not an RRB-tree. The API is
+ * the part that must survive; the representation can be replaced underneath it
+ * without moving a single call site.
+ *
+ * **Order.** Iteration, `toArray`, and index positions are always the sequence
+ * order — the order elements were placed, never a hash order.
+ *
+ * **Equality.** Two Chunks are equal when they have the same length and their
+ * elements are equal under `Equivalence.any`, so Chunks nest inside `Data`
+ * values, `HashMap` keys, and each other. `Chunk.equivalence(item)` builds an
+ * instance over a chosen element comparison instead.
+ *
+ * **No `null`, no `undefined`.** `Chunk.get`/`head`/`last` answer with
+ * `T | undefined`, where `undefined` means "no element at that index". A stored
+ * `null` or `undefined` would make that answer ambiguous, so a Chunk rejects one
+ * where it enters — `of`, `from`, `append`, `prepend`, and the result of `map` —
+ * so the panic names the insertion that caused it. Model an empty slot with an
+ * element type that has its own absent member.
+ */
+
+import { panic } from "smithers:exceptions";
+import { type Equivalence, Equivalence as EquivalenceNamespace, registerStructuralEquivalence } from "./equivalence.sm";
+import { type Hash, Hash as HashNamespace, registerStructuralHash } from "./hash.sm";
+
+const CHUNK_SEED = 0x517cc1b7;
+
+type Node<T> =
+  | { readonly kind: "empty"; readonly size: 0 }
+  | { readonly kind: "array"; readonly size: number; readonly items: readonly T[] }
+  | { readonly kind: "concat"; readonly size: number; readonly left: Node<T>; readonly right: Node<T> };
+
+/**
+ * The cached materialization is the one mutable field in the package. It is
+ * unobservable: it never changes what a Chunk *is*, only how quickly the next
+ * read answers. The Chunk instance itself is still frozen.
+ */
+interface ChunkState<T> {
+  node: Node<T>;
+  items: readonly T[] | undefined;
+}
+
+const states = new WeakMap<object, ChunkState<unknown>>();
+const localChunks = new WeakSet<object>();
+
+const EMPTY_NODE: Node<never> = Object.freeze({ kind: "empty", size: 0 } as const);
+
+function stateOf<T>(chunk: Chunk<T>): ChunkState<T> {
+  const state = states.get(chunk as object);
+  if (state === undefined || !localChunks.has(chunk as object)) panic("forged Chunk value");
+  return state as ChunkState<T>;
+}
+
+/** Every element that enters a Chunk passes through here. See the "No `null`" policy above. */
+function checkedItems<T>(items: readonly T[], caller: string): readonly T[] {
+  for (const item of items) {
+    if (item === null || item === undefined) panic(`${caller} cannot hold null or undefined`);
+  }
+  return items;
+}
+
+function arrayNode<T>(items: readonly T[]): Node<T> {
+  if (items.length === 0) return EMPTY_NODE as Node<T>;
+  return Object.freeze({ kind: "array", size: items.length, items: Object.freeze(items) } as const);
+}
+
+function concatNode<T>(left: Node<T>, right: Node<T>): Node<T> {
+  if (left.size === 0) return right;
+  if (right.size === 0) return left;
+  return Object.freeze({ kind: "concat", size: left.size + right.size, left, right } as const);
+}
+
+/**
+ * Flatten the tree with an explicit stack. A long chain of appends produces a
+ * deep spine, and a recursive walk would blow the call stack on it; the stack
+ * here is an ordinary array, so depth costs heap rather than frames.
+ */
+function flatten<T>(root: Node<T>): T[] {
+  const output: T[] = new Array<T>(root.size);
+  let index = 0;
+  const pending: Node<T>[] = [root];
+  while (pending.length > 0) {
+    const node = pending.pop() as Node<T>;
+    if (node.kind === "empty") continue;
+    if (node.kind === "array") {
+      for (const item of node.items) {
+        output[index] = item;
+        index += 1;
+      }
+      continue;
+    }
+    // Right first, so the left subtree pops — and therefore lands — first.
+    pending.push(node.right);
+    pending.push(node.left);
+  }
+  return output;
+}
+
+function materialize<T>(chunk: Chunk<T>): readonly T[] {
+  const state = stateOf(chunk);
+  if (state.items !== undefined) return state.items;
+  const items = Object.freeze(flatten(state.node));
+  state.items = items;
+  state.node = arrayNode(items);
+  return items;
+}
+
+export abstract class ChunkValue<T> {
+  /** Element count. O(1); never materializes. */
+  get size(): number {
+    return stateOf(this).node.size;
+  }
+
+  isEmpty(): boolean {
+    return stateOf(this).node.size === 0;
+  }
+
+  /** `undefined` for any index outside `[0, size)`. A non-integer index is a programming error and panics. */
+  get(index: number): T | undefined {
+    if (typeof index !== "number" || !Number.isInteger(index)) panic("Chunk.get requires an integer index");
+    const state = stateOf(this);
+    if (index < 0 || index >= state.node.size) return undefined;
+    return materialize(this)[index];
+  }
+
+  head(): T | undefined {
+    return this.get(0);
+  }
+
+  last(): T | undefined {
+    return this.get(stateOf(this).node.size - 1);
+  }
+
+  /** O(1): allocates one node, copies nothing. */
+  append(item: T): Chunk<T> {
+    return makeChunk(concatNode(stateOf(this).node, arrayNode(checkedItems([item], "Chunk.append"))));
+  }
+
+  /** O(1): allocates one node, copies nothing. */
+  prepend(item: T): Chunk<T> {
+    return makeChunk(concatNode(arrayNode(checkedItems([item], "Chunk.prepend")), stateOf(this).node));
+  }
+
+  /** O(1): allocates one node, copies nothing. */
+  concat(other: Chunk<T>): Chunk<T> {
+    if (!isChunk(other)) panic("Chunk.concat requires a Chunk");
+    return makeChunk(concatNode(stateOf(this).node, stateOf(other as Chunk<T>).node));
+  }
+
+  map<B>(project: (item: T, index: number) => B): Chunk<B> {
+    if (typeof project !== "function") panic("Chunk.map requires a function");
+    return makeChunk(arrayNode(checkedItems(materialize(this).map((item, index) => project(item, index)), "Chunk.map")));
+  }
+
+  filter(predicate: (item: T, index: number) => boolean): Chunk<T> {
+    if (typeof predicate !== "function") panic("Chunk.filter requires a function");
+    return makeChunk(arrayNode(materialize(this).filter((item, index) => predicate(item, index))));
+  }
+
+  /** The callback must return a Chunk; anything else is a programming error. */
+  flatMap<B>(project: (item: T, index: number) => Chunk<B>): Chunk<B> {
+    if (typeof project !== "function") panic("Chunk.flatMap requires a function");
+    let node: Node<B> = EMPTY_NODE as Node<B>;
+    const items = materialize(this);
+    for (let index = 0; index < items.length; index += 1) {
+      const produced = project(items[index] as T, index);
+      if (!isChunk(produced)) panic("Chunk.flatMap callback did not return a Chunk");
+      node = concatNode(node, stateOf(produced as Chunk<B>).node);
+    }
+    return makeChunk(node);
+  }
+
+  reduce<B>(reducer: (accumulator: B, item: T, index: number) => B, initial: B): B {
+    if (typeof reducer !== "function") panic("Chunk.reduce requires a function");
+    let accumulator = initial;
+    const items = materialize(this);
+    for (let index = 0; index < items.length; index += 1) {
+      accumulator = reducer(accumulator, items[index] as T, index);
+    }
+    return accumulator;
+  }
+
+  /** The first `count` elements. `count` is clamped to `[0, size]`. */
+  take(count: number): Chunk<T> {
+    if (typeof count !== "number" || !Number.isInteger(count)) panic("Chunk.take requires an integer count");
+    return this.slice(0, Math.max(count, 0));
+  }
+
+  /** Everything after the first `count` elements. `count` is clamped to `[0, size]`. */
+  drop(count: number): Chunk<T> {
+    if (typeof count !== "number" || !Number.isInteger(count)) panic("Chunk.drop requires an integer count");
+    return this.slice(Math.max(count, 0));
+  }
+
+  /** `Array.prototype.slice` semantics, negative indices included. */
+  slice(start?: number, end?: number): Chunk<T> {
+    return makeChunk(arrayNode(materialize(this).slice(start, end)));
+  }
+
+  /** The materialized sequence. The returned array is frozen; copy it if you need a mutable one. */
+  toArray(): readonly T[] {
+    return materialize(this);
+  }
+
+  /** Length and element-wise equality under `Equivalence.any`. */
+  equals(other: Chunk<T>): boolean {
+    if (!isChunk(other)) return false;
+    return chunkEquals(this as Chunk<unknown>, other as Chunk<unknown>, anyEquals);
+  }
+
+  [Symbol.iterator](): IterableIterator<T> {
+    return materialize(this)[Symbol.iterator]();
+  }
+
+  toString(): string {
+    return `Chunk(${materialize(this).length})`;
+  }
+
+  get [Symbol.toStringTag](): string {
+    return "Chunk";
+  }
+}
+
+export type Chunk<T> = ChunkValue<T>;
+
+class LocalChunk<T> extends ChunkValue<T> {
+  constructor(node: Node<T>) {
+    super();
+    states.set(this, { node, items: node.kind === "array" ? node.items : undefined } as ChunkState<unknown>);
+    localChunks.add(this);
+    Object.freeze(this);
+  }
+}
+
+function makeChunk<T>(node: Node<T>): Chunk<T> {
+  if (node.size === 0) return EMPTY_CHUNK as Chunk<T>;
+  return new LocalChunk(node);
+}
+
+const EMPTY_CHUNK: Chunk<never> = new LocalChunk<never>(EMPTY_NODE);
+
+export function isChunk(value: unknown): value is Chunk<unknown> {
+  return typeof value === "object" && value !== null && localChunks.has(value);
+}
+
+function anyEquals(left: unknown, right: unknown): boolean {
+  return EquivalenceNamespace.any.equals(left, right);
+}
+
+function chunkEquals(
+  left: Chunk<unknown>,
+  right: Chunk<unknown>,
+  recurse: (left: unknown, right: unknown) => boolean,
+): boolean {
+  if (left === right) return true;
+  const leftItems = materialize(left);
+  const rightItems = materialize(right);
+  if (leftItems.length !== rightItems.length) return false;
+  for (let index = 0; index < leftItems.length; index += 1) {
+    if (!recurse(leftItems[index], rightItems[index])) return false;
+  }
+  return true;
+}
+
+function chunkHash(chunk: Chunk<unknown>, recurse: (value: unknown) => number): number {
+  const items = materialize(chunk);
+  let accumulator = HashNamespace.combine(CHUNK_SEED, HashNamespace.number.hash(items.length));
+  for (const item of items) accumulator = HashNamespace.combine(accumulator, recurse(item));
+  return accumulator;
+}
+
+registerStructuralEquivalence({
+  name: "Chunk",
+  matches: isChunk,
+  equals: (left, right, recurse) => chunkEquals(left as Chunk<unknown>, right as Chunk<unknown>, recurse),
+});
+
+registerStructuralHash({
+  name: "Chunk",
+  matches: isChunk,
+  hash: (value, recurse) => chunkHash(value as Chunk<unknown>, recurse),
+});
+
+function empty<T>(): Chunk<T> {
+  return EMPTY_CHUNK as Chunk<T>;
+}
+
+function of<T>(...items: readonly T[]): Chunk<T> {
+  return makeChunk(arrayNode(checkedItems(items.slice(), "Chunk.of")));
+}
+
+function from<T>(items: Iterable<T>): Chunk<T> {
+  if (isChunk(items)) return items as unknown as Chunk<T>;
+  if (items === null || items === undefined || typeof (items as Iterable<T>)[Symbol.iterator] !== "function") {
+    panic("Chunk.from requires an iterable");
+  }
+  return makeChunk(arrayNode(checkedItems([...items], "Chunk.from")));
+}
+
+/** Element-wise equality over a chosen element comparison. */
+function equivalence<T>(item: Equivalence<T> = EquivalenceNamespace.any as Equivalence<T>): Equivalence<Chunk<T>> {
+  if (!EquivalenceNamespace.isEquivalence(item)) panic("Chunk.equivalence requires an Equivalence value");
+  return EquivalenceNamespace.make<Chunk<T>>((left, right) => {
+    if (!isChunk(left) || !isChunk(right)) panic("Chunk.equivalence compares Chunk values");
+    return chunkEquals(left as Chunk<unknown>, right as Chunk<unknown>, (a, b) => item.equals(a as T, b as T));
+  });
+}
+
+/** The hash matching `Chunk.equivalence` over the same element instance. */
+function hash<T>(item: Hash<T> = HashNamespace.any as Hash<T>): Hash<Chunk<T>> {
+  if (!HashNamespace.isHash(item)) panic("Chunk.hash requires a Hash value");
+  return HashNamespace.make<Chunk<T>>((chunk) => {
+    if (!isChunk(chunk)) panic("Chunk.hash hashes Chunk values");
+    return chunkHash(chunk as Chunk<unknown>, (value) => item.hash(value as T));
+  });
+}
+
+export const Chunk = Object.freeze({
+  empty,
+  of,
+  from,
+  isChunk,
+  equivalence,
+  hash,
+});
