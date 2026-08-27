@@ -1,0 +1,11 @@
+{
+  "title": "a module exporting a function named match, called qualified through a namespace import, is the module's own function",
+  "expect": "output",
+  "stdout": [
+    "own"
+  ],
+  "modules": [
+    "a-module-member-named-match-is-the-modules-own.mod.sm"
+  ],
+  "notes": "The third receiver kind in the round-7 heritage class, and the one that shows the blast radius was whole projects rather than one expression shape: a MODULE NAMESPACE object is an `Object` type that is neither a class nor an interface, so `import * as lib` followed by `lib.match()` reached the same walk. Measured before the fix: the reference frontend crashed with `Debug Failure. type must be class or interface`, exit 2 — so ANY project with a module exporting a function named `match`, called qualified, could not be compiled at all. The Go fork ran it. specification/compatibility.mdx §4 (Locked) forbids invalidating TypeScript's escape hatches, and a namespace import of a project module is ordinary TypeScript that `.sm` keeps. This case is written with a `*.mod.sm` rather than a foreign `typescript` module on purpose: an authored Smithers module keeps the whole program inside the language, so nothing about the trust boundary or the foreign-call rules is mixed into it. Its siblings, which reach the same walk through a value rather than a namespace, are 01-result-lifting/an-object-literal-with-a-match-method-is-not-result-match and 01-result-lifting/a-frozen-object-with-a-match-method-compiles; the name-independent route is 01-result-lifting/a-thrown-object-literal-is-not-a-recoverable-error."
+}

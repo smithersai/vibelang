@@ -1,0 +1,12 @@
+{
+  "title": "Result[\"ok\"](...) is the same withdrawn authoring constructor as Result.ok(...)",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1201",
+      "line": 2,
+      "column": 17
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Result Composition': 'Smithers MUST NOT expose `Result.ok`, `Result.err`, or a `TaggedError` factory: ordinary `return`, `throw`, and `class ... extends Error` construct those.' A literal element access is the same member access as the dotted spelling: same resolved property symbol, same emitted call. A recognizer that tests only for a PropertyAccessExpression is recognition-by-syntactic-form, and the computed spelling escapes every rule it owns. REVIEW-fable-1.md F4 measured `Clock[\"context\"]()` compiling and PANICKING AT RUNTIME on BOTH backends, which is why only a specification-derived case can hold this closed: the differential oracle is structurally blind to a defect the two implementations share. 01-result-lifting/result-ok-is-not-an-authoring-constructor pins the dotted spelling. Before the fix the language rule did not fire and the program failed closed only because the emitted TypeScript drew TS7053."
+}

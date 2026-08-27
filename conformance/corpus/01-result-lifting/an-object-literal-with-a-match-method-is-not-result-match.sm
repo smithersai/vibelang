@@ -1,0 +1,6 @@
+const KEY = "match"
+
+export function main(): string[] {
+  const own = { match: () => "matched" }
+  return [own.match(), own["match"](), own[KEY]()]
+}

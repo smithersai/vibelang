@@ -1,0 +1,16 @@
+{
+  "title": "converting a Result to a string yields its own type tag rather than a bare object tag",
+  "expect": "output",
+  "stdout": [
+    "[object Result]",
+    "Ada Lovelace"
+  ],
+  "notes": "A DELIBERATE PIN OF AN UNSPECIFIED DIFFERENCE, written so it is found on purpose rather than discovered as a mystery inside some later case. conformance/README.md, 'How an output case is observed', records that the two backends represent a Result differently at run time and that the harness duck-types both into the same printed lines — 'Normalizing the representation is what makes one declared expectation legitimately comparable across two implementations.' A program that stringifies a Result reaches AROUND that normalization and observes the representation directly, so ANY corpus case that does so will diverge until this is settled. The reference runtime declares `get [Symbol.toStringTag]() { return \"Result\" }`; the fork's emitted prelude classes declare none, so the same program prints `[object Object]` there. NO SPECIFICATION SENTENCE COVERS THIS, which the marker states plainly. The second line is here on purpose: it proves the Result is still an ordinary must-use value that is consumed by unwrapping it, so the case cannot be satisfied by a backend that made `String(found)` itself a consumption.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "the fork's emitted prelude classes (SmithersOk/SmithersErr) declare no Symbol.toStringTag, so this program prints `[object Object]` on the first line where the reference prints `[object Result]`. The fix is one line on each side and NEITHER LANE HAS TAKEN IT, for a stated reason: adding it to the fork changes the prelude text and therefore the emitted bytes of every Go-compiled program, which would destroy the byte-for-byte emit comparison the convergence work is judged on, for a cosmetic gain. MEASURED, not inferred — the difference was found by the CONV lane while classifying ten probes that printed differently, four of which were accepted and executed on both backends and differed ONLY in `String(result)`. Retire this marker by giving the fork's prelude the tag; retire the CASE instead if the ledger decides the runtime tag is not part of the language contract. What must not happen is that it stays unwritten and reappears as an unexplained one-line diff in an unrelated case.",
+    "doc": "None — and that is the finding. specification/* says nothing about a Result's runtime string tag. conformance/README.md is what makes it corpus-relevant: the harness normalizes the two runtime representations for every OTHER observation, so this is the one channel through which the difference is visible to a case at all."
+  }
+}

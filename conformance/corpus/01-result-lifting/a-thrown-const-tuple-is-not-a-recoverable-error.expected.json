@@ -1,0 +1,12 @@
+{
+  "title": "throwing a const tuple is refused by the same rule as throwing an object literal: a recoverable throw value must extend Error",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1103",
+      "line": 2,
+      "column": 3
+    }
+  ],
+  "notes": "THE ONLY CASE IN THE CORPUS THAT PINS THE SECOND CRASH MODE, which is why it is written separately from 01-result-lifting/a-thrown-object-literal-is-not-a-recoverable-error even though the two declare the same code at the same position over programs one token apart. specification/failures.mdx (Locked): the recoverable channel carries `Error` subclasses; 01-result-lifting/throw-must-extend-error is the original spelling of the same rule. Measured before the round-7 fix, the Error-heritage walk failed on this program with a `TypeError` rather than the `Debug Failure` its object-literal sibling produced, and the difference is not cosmetic — the two faults are on adjacent lines of TypeScript's own `getBaseTypes` and a guard can close one and leave the other. `Debug.fail(\"type must be class or interface\")` is the explicit failure arm; the `TypeError` comes from the UNGUARDED `type.symbol.flags` dereference one line earlier, which a type with NO SYMBOL AT ALL reaches first. A tuple reference is exactly such a type: its `Tuple` object flag lives on its target, not on itself. THE NEIGHBOURING CONTROL IS WHAT MAKES THIS SHARP: `throw [1]` was SOUND throughout, before the fix and after, because `number[]` is a reference whose symbol IS the `Array` interface and therefore satisfies the real precondition. So the corpus could have carried an array-throw case forever and never seen this. Two other operands reached the same symbol-less fault, a `readonly [number]` annotation and a named tuple `[a: number]`. The guard that closes it is the exact negation of the checker's own two failure conditions, applied at ONE shared helper rather than at each call site, because a second walk — the one that reads a row constituent's nominal ancestry — was independently reachable through a structurally-Error-shaped type alias and would otherwise have been left live. The Go fork reported SMITHERS1103 at this position all along. The declared position is the `throw` statement, not the operand, matching 01-result-lifting/throw-must-extend-error."
+}

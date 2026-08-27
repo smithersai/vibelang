@@ -1,0 +1,8 @@
+{
+  "title": "a frozen object with a member named match is an ordinary object: the call compiles and its own method runs",
+  "expect": "output",
+  "stdout": [
+    "frozen"
+  ],
+  "notes": "The deliberate second receiver kind beside 01-result-lifting/an-object-literal-with-a-match-method-is-not-result-match, and it is not a duplicate of it. `Object.freeze(x)` returns `Readonly<T>`, a MAPPED type: unlike a plain object literal it DOES carry a symbol, so a guard written as 'the type has no symbol, so it has no heritage' answers correctly on the literal and wrongly here. The precondition the two share is the one that matters — a type must be a CLASS or an INTERFACE before its base types can be read — and a mapped type is neither. Measured before the round-7 fix: the reference frontend crashed with `Debug Failure. type must be class or interface`, exit 2, on this program as on its literal sibling; the Go fork ran both. TypeScript's own `getBaseTypes` has exactly three arms — a tuple, a symbol flagged Class or Interface, and `Debug.fail` — and the walk that called it guarded only on the Object type flag, which an object literal, a type alias, a mapped `Record`, an anonymous function type, a `Proxy`, an instantiated type parameter, a module namespace object and a tuple reference all carry. specification/compatibility.mdx §4 (Locked) forbids invalidating TypeScript's escape hatches, and `Object.freeze` is ordinary TypeScript. This is an `expect: \"output\"` case, so the frozen object's own method actually runs; the corpus's real `Result.match` is unaffected and is pinned by 01-result-lifting/result-match-requires-both-branches."
+}

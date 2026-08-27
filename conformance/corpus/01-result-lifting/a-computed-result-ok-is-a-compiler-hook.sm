@@ -1,0 +1,4 @@
+export function main(): string[] {
+  const value = Result["ok"]("Ada Lovelace")
+  return [`${value}`]
+}

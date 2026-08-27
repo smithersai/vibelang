@@ -1,0 +1,12 @@
+{
+  "title": "export * from the compiler's own emitted prelude is refused at the module edge, where no binding rule can see it",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 15
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Compiler Lifting' (Locked): the Result constructors \"MUST NOT be part of the ordinary Smithers authoring API\"; specification/compatibility.mdx, 'Runtime TypeScript Dependency' (Locked) supplies SMITHERS1510 for the untrusted module edge. `export *` names NOTHING, so no rule that decides by resolved binding can see it — only the module edge can, and that is the whole reason this case is filed beside 01-result-lifting/the-compiler-owned-prelude-is-not-reachable-by-a-path rather than assumed to follow from it. It is also the spelling that would launder the prelude through a project `.mod.sm` into a consumer importing ordinary-looking names, so a rule attached to the `import` keyword leaves the interesting route open. 09-foreign-calls/a-re-exported-foreign-module-still-needs-a-trust-marker makes the same argument for an ordinary foreign module and records that the fork examined no export declaration at all until 2026-08-23; this case is that rule pointed at the compiler's own emitted file. The Go fork accepted this program until 2026-08-25. Code and position only, deliberately, and for the reason measured on its sibling: the two backends reach SMITHERS1510 here by different branches and word it differently (the reference names the specifier, the fork does not), so the only fragment they share is `@module and @throws {never}` — which names the rule rather than the payload, the one use conformance/README.md forbids. See the sibling case's notes for both full messages."
+}

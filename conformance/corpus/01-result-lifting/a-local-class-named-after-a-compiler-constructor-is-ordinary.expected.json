@@ -1,0 +1,9 @@
+{
+  "title": "an author's own class that shares a name with a compiler Result constructor is an ordinary value",
+  "expect": "output",
+  "stdout": [
+    "guest",
+    "mine"
+  ],
+  "notes": "specification/failures.mdx, 'Compiler Lifting' (Locked): \"Authors MUST NOT need to write `Result.ok(...)` or `Result.err(...)`. Those constructors MUST NOT be part of the ordinary Smithers authoring API.\" The sentence names THE CONSTRUCTORS — the resolved compiler-owned symbols — and not a spelling, so a name is not a reserved word and an author's own `SmithersOk` is an ordinary class. Without this case a later lane could satisfy 01-result-lifting/the-compiler-owned-prelude-is-not-reachable-by-a-path, 01-result-lifting/a-star-re-export-of-the-compiler-owned-prelude-is-refused and 01-result-lifting/result-ok-is-not-an-authoring-constructor by refusing the token `SmithersOk` wherever it appears, which would refuse this program and is the cheapest wrong implementation of the rule. The area already makes exactly this kind of promise elsewhere — 20-host-globals/an-owned-binding-named-after-a-host-global-in-a-shorthand-is-ordinary — and the name chosen here is the Go fork's own success constructor, so the case is pointed at a real symbol rather than a hypothetical one. Line 1 is present so the program also exercises genuine compiler-constructed lifting in the same module as the look-alike: the rule has to separate two things that appear side by side, not merely two files."
+}

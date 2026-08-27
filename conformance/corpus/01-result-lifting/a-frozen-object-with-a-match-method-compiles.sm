@@ -1,0 +1,4 @@
+export function main(): string[] {
+  const own = Object.freeze({ match: () => "frozen" })
+  return [own.match()]
+}

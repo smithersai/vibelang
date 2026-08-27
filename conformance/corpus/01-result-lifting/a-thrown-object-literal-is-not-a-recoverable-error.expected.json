@@ -1,0 +1,12 @@
+{
+  "title": "throwing an object literal is refused for the same reason as throwing a string: a recoverable throw value must extend Error",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1103",
+      "line": 2,
+      "column": 3
+    }
+  ],
+  "notes": "specification/failures.mdx (Locked): the recoverable channel carries `Error` subclasses, and anything else is a defect that belongs in the distinguished panic channel; 01-result-lifting/throw-must-extend-error pins the identical SMITHERS1103 for `throw \"negative\"`. THE REASON THIS CASE EXISTS SEPARATELY IS THAT THE RULE COULD NOT RUN. Measured before the round-7 fix: this three-line program CRASHED the reference frontend with `Debug Failure. type must be class or interface`, exit 2, because deciding whether a thrown value is an Error climbs its base types and the walk that did so called `checker.getBaseTypes` on a type that is neither a class nor an interface. `throw { code: 1 }` contains no `match`, no capability, no foreign edge and no wrapper — it is about as ordinary as a program gets — and it took the compiler down. Seventeen throw operands were measured crashing: an object literal, the same `as const`, an arrow, a function expression, `Object.freeze`, a `Proxy`, a getter object, values typed by an alias, an indexed access, a `Record`, a cast through `unknown`, a union of two literals, a type parameter, a `satisfies` expression, and the same inside a nested arrow and inside a class method — while `throw \"x\"`, `throw [1]`, `throw new Date()` and `throw 1` were sound throughout, which is exactly why no existing case saw it. THE FIX INVENTED NO DIAGNOSTIC: every crashing operand already had this rule waiting for it, and the crash was preventing it from running. The Go fork reported SMITHERS1103 at this position all along, so the reference converged onto the fork's answer. Its sibling 01-result-lifting/a-thrown-const-tuple-is-not-a-recoverable-error pins the OTHER crash mode, which is a different fault from the same line. The declared position is the `throw` statement, not the operand, matching 01-result-lifting/throw-must-extend-error."
+}

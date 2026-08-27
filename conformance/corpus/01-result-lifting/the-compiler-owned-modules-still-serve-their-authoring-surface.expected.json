@@ -1,0 +1,10 @@
+{
+  "title": "closing the prelude to authors leaves the sanctioned compiler-owned modules serving Context, Layer and panic exactly as before",
+  "expect": "output",
+  "stdout": [
+    "guest",
+    "at:1700000000000",
+    "defect:Panic"
+  ],
+  "notes": "This is the over-correction guard for 01-result-lifting/the-compiler-owned-prelude-is-not-reachable-by-a-path, 01-result-lifting/a-star-re-export-of-the-compiler-owned-prelude-is-refused and 01-result-lifting/result-ok-is-not-an-authoring-constructor. A rule that refused everything reachable through a compiler-owned module would satisfy every refusal in that set while removing `Context`, `Layer` and `panic` from the language, so the promise those three cases pin is only half a promise without this one. It is an `output` case and not a `diagnostics` one for exactly that reason: the program has to RUN, and each line is a different sanctioned surface behind a different specifier — specification/failures.mdx 'Compiler Lifting' (Locked) for `return` lifting into the success variant and `throw` into the failure variant, 'Foreign Exceptions' (Locked) for `panic` imported from `smithers:exceptions` and for `Result.try` observing it as the distinguished checked Panic rather than swallowing it, and specification/requirements.mdx for `Context.context()` reached inside `Layer.provide`. Line 3 also re-states the panic non-widening rule from the same page: `refuse()` keeps its plain `string` return type while aborting. The distinction the rule actually draws is by resolved SYMBOL, not by specifier: 01-result-lifting/a-local-class-named-after-a-compiler-constructor-is-ordinary is the other half of that, and the two are what stop the constructor rule from being implemented as a token filter."
+}
