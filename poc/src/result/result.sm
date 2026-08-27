@@ -1,0 +1,123 @@
+/**
+ * The `smthrs/result` combinator surface, authored in Smithers.
+ *
+ * This is the first library source in the repository written in the language
+ * rather than in TypeScript. It deliberately uses the authoring primitives the
+ * specification locks — a `Result` return contract, postfix `!` propagation,
+ * ordinary `Error` subclasses, and ordinary loops and narrowing — and never the
+ * `__vs*` lowering hooks, which are compiler-owned and unspellable in `.sm`.
+ *
+ * Scope note, honest rather than aspirational: this file carries the half of
+ * `docs/src/pages/specification/failures.mdx`'s combinator list that `.sm` can
+ * express today. Every combinator that must *read the error out of a failed
+ * Result* — `mapError`, `recover`, `tryRecover`, `tryRecoverAsync`, the
+ * `tapError`/`tapBoth` family, and `flatten` — is absent because the language
+ * provides no error-extraction form. `!` extracts the success value and
+ * propagates the error; there is no dual operator, and re-`throw`ing inside a
+ * `match` error branch is currently mis-lowered (see the lane report). Those
+ * members remain in the TypeScript runtime until the language grows the form.
+ */
+
+/** Apply `mapper` to a success value; propagate the failure unchanged. */
+export function map<A, B, E extends Error>(
+  result: Result<A, E>,
+  mapper: (value: A) => B,
+): Result<B, E> {
+  const value = result!
+  return mapper(value)
+}
+
+/** Sequence a second fallible step, combining both failure channels. */
+export function andThen<A, B, E extends Error, F extends Error>(
+  result: Result<A, E>,
+  mapper: (value: A) => Result<B, F>,
+): Result<B, E | F> {
+  const value = result!
+  const next = mapper(value)!
+  return next
+}
+
+/** Sequence an async fallible step onto a settled Result. */
+export async function andThenAsync<A, B, E extends Error, F extends Error>(
+  result: Result<A, E>,
+  mapper: (value: A) => Promise<Result<B, F>>,
+): Promise<Result<B, E | F>> {
+  const value = result!
+  const next = (await mapper(value))!
+  return next
+}
+
+/** Observe a success value without changing the outcome. */
+export function tap<A, E extends Error>(
+  result: Result<A, E>,
+  observer: (value: A) => void,
+): Result<A, E> {
+  const value = result!
+  observer(value)
+  return value
+}
+
+/** Observe a success value with async work, without changing the outcome. */
+export async function tapAsync<A, E extends Error>(
+  result: Result<A, E>,
+  observer: (value: A) => Promise<void>,
+): Promise<Result<A, E>> {
+  const value = result!
+  await observer(value)
+  return value
+}
+
+/** Collect every success value, short-circuiting on the first failure. */
+export function all<A, E extends Error>(
+  results: Iterable<Result<A, E>>,
+): Result<readonly A[], E> {
+  const values: A[] = []
+  for (const result of results) {
+    const value = result!
+    values.push(value)
+  }
+  return values
+}
+
+/** Await each pending Result in order, short-circuiting on the first failure. */
+export async function allAsync<A, E extends Error>(
+  pending: Iterable<Promise<Result<A, E>>>,
+): Promise<Result<readonly A[], E>> {
+  const values: A[] = []
+  for (const promise of pending) {
+    const value = (await promise)!
+    values.push(value)
+  }
+  return values
+}
+
+/** Every success and every failure, in source order, with no short-circuit. */
+export function partition<A, E extends Error>(
+  results: Iterable<Result<A, E>>,
+): { readonly values: readonly A[]; readonly errors: readonly E[] } {
+  const values: A[] = []
+  const errors: E[] = []
+  for (const result of results) {
+    result.match({
+      ok: (value) => values.push(value),
+      error: (error) => errors.push(error),
+    })
+  }
+  return { values, errors }
+}
+
+/** `partition` over pending Results, awaited in order. */
+export async function partitionAsync<A, E extends Error>(
+  pending: Iterable<Promise<Result<A, E>>>,
+): Promise<{ readonly values: readonly A[]; readonly errors: readonly E[] }> {
+  const values: A[] = []
+  const errors: E[] = []
+  for (const promise of pending) {
+    const result = await promise
+    result.match({
+      ok: (value) => values.push(value),
+      error: (error) => errors.push(error),
+    })
+  }
+  return { values, errors }
+}
