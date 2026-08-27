@@ -1,0 +1,9 @@
+{
+  "title": "an array of started Promises bound to a name is consumed by awaiting the ambient Promise.all",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace",
+    "unknown"
+  ],
+  "notes": "specification/failures.mdx, 'Promise Semantics': 'Authored `.sm` code MUST consume Promise instances only through `await`.' 'Calls to Promise instance `.then()`, `.catch()`, or `.finally()` MUST be compile errors.' docs/DECISIONS.md (Locked, Concurrency) requires every started Promise to be consumed with await. Storing started Promises in an array and handing the array to `Promise.all` is the ordinary concurrent spelling; the inline form `await Promise.all([work(), work()])` was already accepted, and binding the array one line earlier must not change the answer. The refusal direction is the sibling case below. RETIRED 2026-08-25, the `go` marker: the fork's container transfer is no longer Result-only, and it now recognises the ambient Promise combinators as discharging a BOUND collection, not only an inline one. The refusal twin 08-promise-chaining/a-bound-promise-array-that-is-never-awaited-is-refused still reports both SMITHERS1402s on both backends. Measured XPASS on both backends before the marker was deleted."
+}

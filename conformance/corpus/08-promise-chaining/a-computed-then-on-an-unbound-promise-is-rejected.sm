@@ -1,0 +1,7 @@
+async function work(): Promise<number> {
+  return 7
+}
+export async function main(): Promise<string[]> {
+  const doubled = await work()["then"]((n: number) => n * 2)
+  return [`${doubled}`]
+}

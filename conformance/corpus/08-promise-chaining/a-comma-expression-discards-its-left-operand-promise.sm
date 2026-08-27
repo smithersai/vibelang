@@ -1,0 +1,7 @@
+async function work(): Promise<number> {
+  return 7
+}
+export async function main(): Promise<string[]> {
+  const value = (work(), "done")
+  return [value]
+}

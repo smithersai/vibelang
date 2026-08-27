@@ -1,0 +1,17 @@
+{
+  "title": "postfix ! on an un-awaited Promise<Result<A, E>> is a non-Result operand, and the Promise still needs its await",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1403",
+      "line": 11,
+      "column": 9
+    },
+    {
+      "code": "SMITHERS1207",
+      "line": 11,
+      "column": 16
+    }
+  ],
+  "notes": "specification/compatibility.mdx:72: 'Postfix `!` requires a `Result` operand.' specification/failures.mdx, 'Promise Semantics': 'Awaiting `Promise<Result<A, E>>` MUST produce `Result<A, E>`' — so `await` is what removes the Promise layer and an un-awaited `Promise<Result<A, E>>` is not a Result operand, exactly like `T | undefined`. SMITHERS1207 is that violation and is the diagnostic that tells the author to write `(await lookup(k))!`. `!` does not consume a Promise, so the value flows into the binding and the binding carries the unconsumed-Promise obligation — reported as SMITHERS1403 against the named binding, which is the bound/unbound split 08-promise-chaining/promise-then-on-a-bound-promise-is-rejected already pins. RETIRED 2026-08-25, the `go` marker: both halves of the fork's carve-out for `!`-on-a-Promise were deleted — the one that suppressed SMITHERS1207 during lowering, and the one that stopped ownership from reaching the binding — so the fork now reports the operand violation and the unconsumed started Promise, at the same positions as the reference. specification/failures.mdx, 'Accepted Placements' settled the argument outright in the meantime: condition 5 requires the operand's provenance to be a Result, and 'A rejected placement MUST be a diagnostic, never a silent lowering', which is exactly what the carve-out did. 02-unwrap-propagation/an-unawaited-promise-bang-forwarded-into-a-return-reports-only-the-operand is the deliberate other half of this pair — the same violation without a surviving Promise obligation. Measured XPASS on both backends before the marker was deleted."
+}

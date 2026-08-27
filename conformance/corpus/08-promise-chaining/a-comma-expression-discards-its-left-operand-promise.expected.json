@@ -1,0 +1,12 @@
+{
+  "title": "the left operand of a comma expression abandons the Promise it started",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1402",
+      "line": 5,
+      "column": 18
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Promise Semantics': 'Authored `.sm` code MUST consume Promise instances only through `await`.' docs/DECISIONS.md (Locked, Concurrency): every started Promise MUST be consumed. REVIEW-fable-1.md F1 measured this exact program COMPILING, EMITTING AND RUNNING on the Go fork with zero diagnostics: the checked value was discarded at runtime, which is the loss the rule exists to prevent. The fork's unbound must-consume rule fired only when an expression statement's own expression typed as Result or Promise, so every container and operator position was invisible to it."
+}

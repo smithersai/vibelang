@@ -1,0 +1,17 @@
+{
+  "title": "an array of started Promises that is never awaited is refused at each started Promise",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1402",
+      "line": 6,
+      "column": 20
+    },
+    {
+      "code": "SMITHERS1402",
+      "line": 6,
+      "column": 35
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Promise Semantics': 'Authored `.sm` code MUST consume Promise instances only through `await`.' 'Calls to Promise instance `.then()`, `.catch()`, or `.finally()` MUST be compile errors.' The over-correction guard for the case above: reading `started.length` is not consuming the work it holds, and fire-and-forget concurrency stays refused. Both started Promises are charged, at the calls that started them."
+}

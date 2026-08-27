@@ -1,0 +1,17 @@
+{
+  "title": "Promise instance chaining stays rejected when .then is spelled as a literal element access",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1403",
+      "line": 6,
+      "column": 9
+    },
+    {
+      "code": "SMITHERS1401",
+      "line": 7,
+      "column": 25
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Promise Semantics': 'Authored `.sm` code MUST consume Promise instances only through `await`.' 'Calls to Promise instance `.then()`, `.catch()`, or `.finally()` MUST be compile errors.' A literal element access is the same member access as the dotted spelling: same resolved property symbol, same emitted call. A recognizer that tests only for a PropertyAccessExpression is recognition-by-syntactic-form, and the computed spelling escapes every rule it owns. REVIEW-fable-1.md F4 measured `Clock[\"context\"]()` compiling and PANICKING AT RUNTIME on BOTH backends, which is why only a specification-derived case can hold this closed: the differential oracle is structurally blind to a defect the two implementations share. 08-promise-chaining/promise-then-on-a-bound-promise-is-rejected pins the dotted spelling of this exact program; the two must agree. The reference happened to fail closed here through its conservative promise-consumption net (SMITHERS1402/1403 fired while SMITHERS1401 did not), which is luck rather than the rule: the rule that says instance chaining is a compile error was not firing at all."
+}
