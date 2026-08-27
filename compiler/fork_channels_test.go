@@ -248,13 +248,20 @@ func TestPinnedForkPropagationInARepeatedLoopHeaderIsRejected(t *testing.T) {
 			reject: []string{"SMITHERS1703@12:18"},
 		},
 		{
-			// A `for` initializer runs exactly once, so it is NOT a repeated
-			// header and must not draw SMITHERS1703. It still draws the general
-			// placement refusal SMITHERS1204, because this lowering has nowhere
-			// to hoist the guard: the declaration lives inside the loop header.
-			// The JS reference does lower this form, so the two implementations
-			// differ here in the SAFE direction — recorded, not papered over.
-			name: "a for initializer is a placement refusal, not a repeated-header one",
+			// A `for` INITIALIZER runs exactly once, so it is neither a repeated
+			// header nor an unhoistable placement: the guard is hoisted in front
+			// of the whole `for`, which is where the initializer would have run.
+			// specification/failures.mdx, "Accepted Placements", names this form
+			// directly — "That is why `if (r!)`, `switch (r!)`, and
+			// `for (let i = r!; …)` are accepted while every expression-nested
+			// position is not."
+			//
+			// This case previously asserted SMITHERS1204 and recorded, in its own
+			// comment, that "the JS reference does lower this form, so the two
+			// implementations differ here in the SAFE direction". They no longer
+			// differ. The condition and incrementor rows above are what keep the
+			// repeated-header refusal from being widened along with it.
+			name: "a for initializer runs once and is lowered",
 			source: limitModule +
 				"export function count(key: string): Result<number, Missing> {\n" +
 				"  let total = 0\n" +
@@ -262,8 +269,48 @@ func TestPinnedForkPropagationInARepeatedLoopHeaderIsRejected(t *testing.T) {
 				"    total += index\n" +
 				"  }\n" +
 				"  return total\n" +
+				"}\n" +
+				"\n" +
+				"export function main(): string[] {\n" +
+				"  return [count(\"ada\").match({ ok: (value) => `${value}`, error: (error) => error.key })]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1204@12:20"},
+			stdout: "6",
+		},
+		{
+			// The failure path of the same form: the hoisted guard returns the
+			// error variant before the loop ever starts.
+			name: "a for initializer propagates its failure before the loop starts",
+			source: limitModule +
+				"export function count(key: string): Result<number, Missing> {\n" +
+				"  let total = 0\n" +
+				"  for (let index = limit(key)!; index > 0; index--) {\n" +
+				"    total += index\n" +
+				"  }\n" +
+				"  return total\n" +
+				"}\n" +
+				"\n" +
+				"export function main(): string[] {\n" +
+				"  return [count(\"zoe\").match({ ok: (value) => `${value}`, error: (error) => error.key })]\n" +
+				"}\n",
+			stdout: "zoe",
+		},
+		{
+			// The sibling statement kind the same specification sentence names.
+			// A `switch` discriminant is evaluated exactly once, before any
+			// clause, so the guard hoists in front of the `switch`.
+			name: "a switch discriminant is evaluated once and is lowered",
+			source: limitModule +
+				"export function describe(key: string): Result<string, Missing> {\n" +
+				"  switch (limit(key)!) {\n" +
+				"    case 3: return \"three\"\n" +
+				"    default: return \"other\"\n" +
+				"  }\n" +
+				"}\n" +
+				"\n" +
+				"export function main(): string[] {\n" +
+				"  return [describe(\"ada\").match({ ok: (value) => value, error: (error) => error.key })]\n" +
+				"}\n",
+			stdout: "three",
 		},
 		{
 			name: "postfix propagation in the loop body is an ordinary statement and is accepted",

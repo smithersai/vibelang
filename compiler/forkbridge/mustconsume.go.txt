@@ -9,7 +9,10 @@ package main
 // it, the diagnostic belongs on that binding (1302/1403). This is the reference
 // rule, not a rewrite from one diagnostic code to another.
 
-import "github.com/microsoft/TypeScript/tsc/internal/ast"
+import (
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+)
 
 type boundConsumeKind int
 
@@ -23,19 +26,23 @@ func (a *rowAnalysis) boundProducedKind(expression *ast.Node) boundConsumeKind {
 	if expression == nil {
 		return boundConsumePlain
 	}
-	if a.resultPropagations[expression] != nil {
+	// A transparent wrapper is not the value. `const name = (lookup(k)!)` binds
+	// the same extracted success value `const name = lookup(k)!` does, so the
+	// propagation side table must be consulted through the wrapper rather than
+	// at whatever node the parentheses happen to put on top.
+	if a.resultPropagations[stripMustConsumeWrappers(expression)] != nil {
 		return boundConsumePlain
 	}
-	if ast.IsNonNullExpression(expression) {
-		// A postfix ! directly on a Promise is an invalid attempted Result
-		// propagation. The producer walk reports the actionable missing-await
-		// error at the Promise producer; ownership must not move to the binding
-		// behind that invalid wrapper and become the stale SMITHERS1403 verdict.
-		operand := expression.AsNonNullExpression().Expression
-		if t := a.checker.GetTypeAtLocation(operand); t != nil && a.checker.GetPromisedTypeOfPromise(t) != nil {
-			return boundConsumePlain
-		}
-	}
+	// Postfix ! on an un-awaited Promise<Result<A, E>> is NOT a Result
+	// extraction — specification/failures.mdx, "Promise Semantics": "Awaiting
+	// Promise<Result<A, E>> MUST produce Result<A, E>", so `await` is what
+	// removes the Promise layer and `!` alone extracts nothing. The operand
+	// violation is reported by SMITHERS1207 (specification/compatibility.mdx:72,
+	// "Postfix ! requires a Result operand"); the Promise itself passes through
+	// the invalid wrapper unchanged and the value that receives it still owes an
+	// await. When that receiver is a NAME, the obligation belongs on the name —
+	// the bound/unbound split both backends already agree on for
+	// 08-promise-chaining/promise-then-on-a-bound-promise-is-rejected.
 	t := a.checker.GetTypeAtLocation(expression)
 	if t != nil && a.checker.GetPromisedTypeOfPromise(t) != nil {
 		return boundConsumePromise
@@ -46,8 +53,14 @@ func (a *rowAnalysis) boundProducedKind(expression *ast.Node) boundConsumeKind {
 	// Checker types cover declared contracts. The row graph additionally owns
 	// an unannotated authored function whose failures make its lowered return a
 	// Result, so retain that semantic producer shape as well.
+	// A TAGGED TEMPLATE is an invocation, so it has the shape of what its tag
+	// hands back: `` tag`bad` `` where `tag` returns `Result<string, Boom>` drops
+	// a Result on the floor exactly as `tag(parts)` does, and must-consume has to
+	// see it. `new` is deliberately not here: a constructor cannot legally carry
+	// a Result channel (SMITHERS1105), so the only obligation it can produce is
+	// the Promise one the checker type above already answers.
 	inner := stripMustConsumeWrappers(expression)
-	if ast.IsCallExpression(inner) {
+	if ast.IsCallExpression(inner) || ast.IsTaggedTemplateExpression(inner) {
 		callee := a.resolveCallee(inner)
 		if callee != nil {
 			if ast.HasSyntacticModifier(callee.node, ast.ModifierFlagsAsync) {
@@ -82,7 +95,7 @@ func (a *rowAnalysis) awaitedResultProducer(node *ast.Node) bool {
 		return true
 	}
 	operand := stripMustConsumeWrappers(node.AsAwaitExpression().Expression)
-	if operand == nil || !ast.IsCallExpression(operand) {
+	if operand == nil || (!ast.IsCallExpression(operand) && !ast.IsTaggedTemplateExpression(operand)) {
 		return false
 	}
 	callee := a.resolveCallee(operand)
@@ -90,30 +103,239 @@ func (a *rowAnalysis) awaitedResultProducer(node *ast.Node) bool {
 		(callee.declaredShape.result || len(callee.failures) != 0)
 }
 
-// unboundProducerConsumed follows ownership outward from the producer rather
-// than classifying the statement that happens to contain it. This makes every
-// value-position container obey the same rule: wrappers and the value-bearing
-// right side of comma preserve ownership, a declaration/return/assignment
-// receives it, and every other operator or container discards it unless it is
-// one of the compiler-recognized consumers below.
+// containerLiteralFor returns the container literal a value was placed into, or
+// nil when `parent` is not a container position for `current`.
+//
+// An object spread's OPERAND is followed (`[...base]` carries whatever `base`
+// carried), but an object literal's own spread assignment is a container
+// position exactly as a property assignment is.
+func containerLiteralFor(current *ast.Node, parent *ast.Node) *ast.Node {
+	switch parent.Kind {
+	case ast.KindArrayLiteralExpression:
+		return parent
+	case ast.KindSpreadElement:
+		if parent.Parent != nil && ast.IsArrayLiteralExpression(parent.Parent) {
+			return parent.Parent
+		}
+	case ast.KindPropertyAssignment:
+		if parent.AsPropertyAssignment().Initializer == current &&
+			parent.Parent != nil && ast.IsObjectLiteralExpression(parent.Parent) {
+			return parent.Parent
+		}
+	case ast.KindSpreadAssignment:
+		if parent.Parent != nil && ast.IsObjectLiteralExpression(parent.Parent) {
+			return parent.Parent
+		}
+	}
+	return nil
+}
+
+// holdsProducedChannel reports whether a type still carries a must-consume
+// channel — a Result or a started Promise — somewhere inside it.
+//
+// This is what decides whether a container literal really STORES the value it
+// was handed. `return [lookup("ada")]` from a `Result<string, Missing>[]`
+// function stores it: the array's own type carries the channel, so ownership
+// moves to the array. `return [shout("hello")]` from a `string[]` function does
+// NOT: `shout` is an untrusted foreign call the compiler LIFTS to
+// `Result<string, Panic>` while its declaration still says `string`, so the
+// array's type is `string[]` and the checked failure is dropped on the way in.
+// That is a discard however it is spelled
+// (09-foreign-calls/foreign-module-without-a-trust-marker pins it).
+//
+// Imprecision here is fail-closed in both directions: a false answer refuses at
+// the element, a true answer keeps the obligation alive and refuses unless a
+// real consumption follows.
+func (a *rowAnalysis) holdsProducedChannel(t *checker.Type, depth int) bool {
+	return a.heldChannel(t, depth) != boundConsumePlain
+}
+
+// heldChannel reports WHICH must-consume channel a type still carries, or
+// boundConsumePlain for none. holdsProducedChannel is this same walk read as a
+// yes/no.
+//
+// The answer has to name the channel because it is asked at BOTH ends of an
+// ownership transfer and the two ends need the same diagnostic: a container of
+// Results is a SMITHERS1301 when it is dropped and a container of started
+// Promises is a SMITHERS1402, exactly as the direct producers are.
+//
+// A started Promise wins over a Result inside it (`Promise<Result<A, E>>` is a
+// Promise) because `await` is what removes the Promise layer, and the un-awaited
+// value is the more urgent obligation — specification/type-system.mdx,
+// "Awaiting the call removes only the Promise layer".
+func (a *rowAnalysis) heldChannel(t *checker.Type, depth int) boundConsumeKind {
+	if t == nil || depth > 3 {
+		return boundConsumePlain
+	}
+	if t.IsUnion() || t.IsIntersection() {
+		for _, part := range t.Types() {
+			if held := a.heldChannel(part, depth+1); held != boundConsumePlain {
+				return held
+			}
+		}
+		return boundConsumePlain
+	}
+	if a.checker.GetPromisedTypeOfPromise(t) != nil {
+		return boundConsumePromise
+	}
+	if a.prelude.isResultType(t) {
+		return boundConsumeResult
+	}
+	if _, _, ok := a.resultArguments(t); ok {
+		return boundConsumeResult
+	}
+	if checker.IsTupleType(t) || a.checker.IsArrayType(t) {
+		for _, argument := range a.checker.GetTypeArguments(t) {
+			if held := a.heldChannel(argument, depth+1); held != boundConsumePlain {
+				return held
+			}
+		}
+		return boundConsumePlain
+	}
+	// Only object LITERAL shapes are scanned member by member. A nominal class
+	// or interface instance is never the container literal this test is asked
+	// about, and walking every member of one would cost far more than the answer
+	// is worth. Not scanning it answers "no", which is the refusing direction.
+	if t.Flags()&checker.TypeFlagsObject == 0 || t.ObjectFlags()&checker.ObjectFlagsAnonymous == 0 {
+		return boundConsumePlain
+	}
+	for _, property := range a.checker.GetPropertiesOfType(t) {
+		if held := a.heldChannel(a.checker.GetTypeOfSymbol(property), depth+1); held != boundConsumePlain {
+			return held
+		}
+	}
+	return boundConsumePlain
+}
+
+// heldObligation reports the obligation a PRODUCER hands its receiver as a
+// CONTAINER — a value that is not itself a Result or a started Promise but still
+// holds one — or boundConsumePlain when it hands none.
+//
+// This is the receiving half of the transfer ownershipConsumed performs when a
+// `return` discharges a stored collection. That discharge is only sound if
+// somebody is charged on the other side, and until this existed nobody was:
+// boundProducedKind answers "plain" for `readonly Result<A, E>[]`, so a callee
+// that moved its Results into a container and returned them had its obligation
+// cancelled and the caller never inherited it. A `save(2)` that throws could
+// have its failure never reach the row, never be consumed, and the program exit
+// 0 reporting success — on both backends.
+//
+// It is deliberately the COMPLEMENT of the transfer rule rather than a widening
+// of it. 07-must-consume/a-lifted-call-stored-into-a-plainly-typed-array-is-still-a-discard
+// pins that a store transfers ownership only when the CONTAINER'S OWN TYPE still
+// carries the channel; this asks the same question of the value a call hands
+// back, so a call whose declared type has dropped the channel is charged at the
+// element as it always was, never here.
+//
+// Three producers are excluded, each because charging them would double-report
+// one mistake or contradict a settled site: a value that IS a Result or a
+// `Promise<Result>` (already charged at this very position); a started Promise
+// that was never consumed (likewise); and a recognized `Promise` combinator,
+// which collectionConsumed already defines as OWNING everything handed to it —
+// 07-must-consume/the-ambient-promise-all-discharges-a-bound-promise pins that
+// `await Promise.all([started])` followed by `.map(consume)` is a complete
+// program.
+func (a *rowAnalysis) heldObligation(node *ast.Node) boundConsumeKind {
+	kind := a.boundProducedKind(node)
+	if kind == boundConsumeResult {
+		return boundConsumePlain
+	}
+	carried := a.checker.GetTypeAtLocation(node)
+	if kind == boundConsumePromise {
+		if !a.unboundProducerConsumed(node, kind, make(map[*ast.Node]bool)) {
+			return boundConsumePlain
+		}
+		if a.prelude.promiseCombinatorCall(node) {
+			return boundConsumePlain
+		}
+		promised := a.checker.GetPromisedTypeOfPromise(carried)
+		if promised == nil {
+			return boundConsumePlain
+		}
+		// `Promise<Result<A, E>>` is the direct promise-result producer the rule
+		// above already charges; only a promise of a CONTAINER reaches here.
+		if _, _, ok := a.resultArguments(promised); ok {
+			return boundConsumePlain
+		}
+		carried = promised
+	}
+	return a.heldChannel(carried, 0)
+}
+
+type ownershipWalk struct {
+	kind boundConsumeKind
+	// fromProducer is true for the walk that starts at the producer and false
+	// for the walk that starts at a reference to a binding.
+	fromProducer bool
+	seen         map[*ast.Node]bool
+	seenBindings map[*ast.Symbol]bool
+}
+
 func (a *rowAnalysis) unboundProducerConsumed(node *ast.Node, kind boundConsumeKind, seen map[*ast.Node]bool) bool {
+	return a.ownershipConsumed(node, false, ownershipWalk{
+		kind: kind, fromProducer: true, seen: seen, seenBindings: make(map[*ast.Symbol]bool),
+	})
+}
+
+// ownershipConsumed follows ownership outward from a produced Result/Promise, or
+// from a reference that already holds one, rather than classifying the statement
+// that happens to contain it.
+//
+// The specification's rule is that a Result MUST NOT be silently discarded
+// "without returning, matching, transforming, inspecting, or unwrapping it"
+// (specification/failures.mdx:136) and that "an ignored Result MUST be a compile
+// error" (specification/type-system.mdx:56). Neither FORWARDING a value nor
+// STORING it is a discard, so the walk climbs to whichever enclosing value the
+// produced value BECOMES and lets that value's position answer. Two kinds of
+// climb:
+//
+//	FORWARDING — the enclosing expression IS the value: parentheses,
+//	`as`/`satisfies`/`<T>`, either branch of a conditional, the value-bearing
+//	right side of a comma, the concise body of an arrow (a `return` spelled
+//	without the keyword), and postfix `!` on anything `!` cannot extract from.
+//	Kind and obligation unchanged.
+//
+//	STORAGE — the value is placed into a container literal whose own type really
+//	carries the channel (holdsProducedChannel). Ownership moves to the container,
+//	which is a COLLECTION of Results rather than a Result, so `!` and the
+//	receiver consumers no longer apply to it; `collection` records the transfer
+//	and collectionConsumed decides the collection's fate. This is what
+//	specification/compatibility.mdx:72 promises when it says `arr[i]!` "compiles
+//	only when `arr` holds Results": building the array is not the discard, and
+//	reading an element back out is the consumption.
+//
+// A stored collection does NOT escape by being bound: bindingConsumes walks the
+// binding's own references, so `const arr = [lookup("ada")]` that is never
+// consumed is still refused at the element positions.
+func (a *rowAnalysis) ownershipConsumed(node *ast.Node, collection bool, walk ownershipWalk) bool {
 	current := node
 	for current != nil && current.Parent != nil {
 		parent := current.Parent
 		if ast.IsNonNullExpression(parent) && parent.AsNonNullExpression().Expression == current {
-			return kind == boundConsumeResult && a.resultPropagations[parent] != nil
+			// `!` discharges a Result by extracting from it. On a COLLECTION, or
+			// on an un-awaited Promise<Result<A, E>>, it extracts nothing —
+			// SMITHERS1207 reports that operand violation separately — so the
+			// value passes through unchanged and its position still has to answer.
+			if !collection && walk.kind == boundConsumeResult && a.resultPropagations[parent] != nil {
+				return true
+			}
+			current = parent
+			continue
 		}
 		switch parent.Kind {
 		case ast.KindParenthesizedExpression, ast.KindAsExpression,
 			ast.KindTypeAssertionExpression, ast.KindSatisfiesExpression:
 			current = parent
 			continue
-		case ast.KindVariableDeclaration:
-			return parent.AsVariableDeclaration().Initializer == current
-		case ast.KindReturnStatement:
-			return true
-		case ast.KindArrowFunction:
-			return parent.Body() == current
+		case ast.KindConditionalExpression:
+			// A branch IS the value the whole conditional becomes. The condition
+			// position is not, and falls through to the discard below.
+			conditional := parent.AsConditionalExpression()
+			if conditional.WhenTrue == current || conditional.WhenFalse == current {
+				current = parent
+				continue
+			}
+			return false
 		case ast.KindBinaryExpression:
 			binary := parent.AsBinaryExpression()
 			if isAssignmentOperator(binary.OperatorToken.Kind) {
@@ -124,30 +346,67 @@ func (a *rowAnalysis) unboundProducerConsumed(node *ast.Node, kind boundConsumeK
 				continue
 			}
 			return false
-		case ast.KindArrayLiteralExpression:
-			// Result ownership may move into an array value: the specification's
-			// locked arr[i]! example depends on that. A discarded array still
-			// reaches an expression statement below and is refused.
-			if kind == boundConsumeResult {
-				current = parent
-				continue
-			}
 		}
 
-		if kind == boundConsumePromise {
+		// `await` removes only the Promise layer. A COLLECTION that was waiting
+		// inside one is still owed afterwards — specification/type-system.mdx says
+		// exactly this of `Promise<Result<A, E>>`: "Awaiting the call removes only
+		// the Promise layer" — so the obligation forwards to the awaited value's
+		// position instead of ending at the await. A Result or a Promise in its own
+		// right does NOT come here: awaiting one of those is a discharge and is
+		// decided by the kind-specific rules below, unchanged.
+		if collection && ast.IsAwaitExpression(parent) && parent.AsAwaitExpression().Expression == current {
+			current = parent
+			continue
+		}
+
+		if container := containerLiteralFor(current, parent); container != nil &&
+			a.holdsProducedChannel(a.checker.GetTypeAtLocation(container), 0) {
+			current = container
+			collection = true
+			continue
+		}
+
+		switch parent.Kind {
+		case ast.KindReturnStatement:
+			return !collection || a.transferReachesCaller(parent)
+		case ast.KindArrowFunction:
+			if parent.Body() == current {
+				return !collection || a.transferReachesCaller(parent)
+			}
+		case ast.KindVariableDeclaration:
+			if parent.AsVariableDeclaration().Initializer != current {
+				return false
+			}
+			if collection {
+				return a.bindingConsumes(parent, walk)
+			}
+			// Binding a Result names it, and the binding's own SMITHERS1302/1403
+			// check then owns it. Re-binding THROUGH a reference discharges
+			// nothing, which is why only the producer walk stops here.
+			return walk.fromProducer
+		}
+
+		if collection {
+			return a.collectionConsumed(current, parent, walk)
+		}
+
+		if walk.kind == boundConsumePromise {
 			if ast.IsAwaitExpression(parent) {
 				return true
 			}
 			if combinator := enclosingCollectionCall(current, true); combinator != nil &&
-				a.prelude.promiseCombinatorCall(combinator) && !seen[combinator] {
-				seen[combinator] = true
-				return a.unboundProducerConsumed(combinator, boundConsumePromise, seen)
+				a.prelude.promiseCombinatorCall(combinator) && !walk.seen[combinator] {
+				walk.seen[combinator] = true
+				return a.ownershipConsumed(combinator, false, ownershipWalk{
+					kind: boundConsumePromise, fromProducer: false, seen: walk.seen, seenBindings: walk.seenBindings,
+				})
 			}
 			return false
 		}
 
-		if kind == boundConsumeResult {
-			if selection, selected := selectMember(parent); selected && selection.receiver == current {
+		if walk.kind == boundConsumeResult {
+			if selection, selected := a.prelude.selectMember(parent); selected && selection.receiver == current {
 				if a.prelude.resultInspection(parent) {
 					return true
 				}
@@ -157,17 +416,17 @@ func (a *rowAnalysis) unboundProducerConsumed(node *ast.Node, kind boundConsumeK
 					// checker-inferred success type at the call site. Once this walk
 					// has semantically proved the receiver is a Result producer, the
 					// locked consumer spelling is sound authority for that receiver.
-					if a.prelude.resultConsumerCall(parent.Parent) || resultConsumerSpelling(selection.name.Text()) {
+					if a.prelude.resultConsumerCall(parent.Parent) || resultConsumerSpelling(selection.text) {
 						return true
 					}
-					if selection.name.Text() == "unwrap" {
+					if selection.text == "unwrap" {
 						// The retired spelling is owned by SMITHERS1206. It does not
 						// need a consequence-only SMITHERS1301 at the same producer.
 						return true
 					}
 				}
 			}
-			if ast.IsCallExpression(parent) && callContainsArgument(parent, current) {
+			if walk.fromProducer && ast.IsCallExpression(parent) && callContainsArgument(parent, current) {
 				callee := a.resolveCallee(parent)
 				if callee != nil {
 					for index, argument := range parent.AsCallExpression().Arguments.Nodes {
@@ -184,6 +443,129 @@ func (a *rowAnalysis) unboundProducerConsumed(node *ast.Node, kind boundConsumeK
 			}
 		}
 		return false
+	}
+	return false
+}
+
+// transferReachesCaller answers whether returning this COLLECTION actually hands
+// the obligation to the caller.
+//
+// A `return` is not a discharge; it is a TRANSFER, and a transfer conserves the
+// obligation only when the value that leaves is one the receiving side is
+// charged for. For a Result or a Promise that is automatic — the caller's own
+// SMITHERS1301/1402 is charged at the call. For a container it is a question,
+// and it is the SAME question heldObligation asks of the call: does the type the
+// caller receives still carry a must-consume channel?
+//
+// Asking one predicate at both ends is what makes the two halves agree by
+// construction. `function f(): unknown { return [make()] }` is the shape that
+// proves it matters: the array literal really does hold the channel, so the
+// store transfers, but `unknown` is what the caller sees and no rule can charge
+// it — the obligation would leave the callee and arrive nowhere, which is
+// precisely the laundering this pair of rules exists to stop.
+//
+// A signature that cannot be resolved answers true, keeping the acceptance this
+// rule had before it existed: a refusal that cannot be justified is the
+// over-correcting direction.
+func (a *rowAnalysis) transferReachesCaller(node *ast.Node) bool {
+	for current := node; current != nil; current = current.Parent {
+		if !ast.IsFunctionLike(current) {
+			continue
+		}
+		signatures := a.checker.GetSignaturesOfType(a.checker.GetTypeAtLocation(current), checker.SignatureKindCall)
+		if len(signatures) == 0 {
+			return true
+		}
+		return a.holdsProducedChannel(a.checker.GetReturnTypeOfSignature(signatures[0]), 0)
+	}
+	return false
+}
+
+// bindingConsumes answers for a COLLECTION that reached a binding: the
+// obligation follows the binding, so at least one of its references must consume
+// it.
+//
+// A destructuring pattern scatters the elements into bindings this analysis does
+// not track, so the obligation stays where it is rather than being silently
+// released.
+func (a *rowAnalysis) bindingConsumes(declaration *ast.Node, walk ownershipWalk) bool {
+	name := declaration.AsVariableDeclaration().Name()
+	if name == nil || !ast.IsIdentifier(name) {
+		return false
+	}
+	symbol := a.symbolAt(name)
+	if symbol == nil || walk.seenBindings[symbol] {
+		return false
+	}
+	walk.seenBindings[symbol] = true
+	for _, reference := range a.identifierReferences(ast.GetSourceFileOfNode(declaration), symbol) {
+		if reference == name {
+			continue
+		}
+		if a.ownershipConsumed(reference, true, ownershipWalk{
+			kind: walk.kind, fromProducer: false, seen: walk.seen, seenBindings: walk.seenBindings,
+		}) {
+			return true
+		}
+	}
+	return false
+}
+
+// collectionConsumed is the discharge surface for a COLLECTION that holds
+// Results or Promises.
+//
+// Deliberately narrow: only the sites the specification settles. A recognized
+// collection combinator (`Result.all`, the ambient Promise combinators) owns
+// everything handed to it, and reading a held value back out puts the obligation
+// onto the value that was read — which is exactly the `arr[i]!` spelling
+// specification/compatibility.mdx:72 promises compiles. Everything else —
+// `arr.length`, `for (const r of arr)`, handing the array to a user function —
+// still refuses, because no specification sentence says what consuming a
+// collection means at those sites. The reference frontend refuses the identical
+// set; the two are deliberately the same rule.
+func (a *rowAnalysis) collectionConsumed(current *ast.Node, parent *ast.Node, walk ownershipWalk) bool {
+	if all := enclosingCollectionCall(current, false); all != nil {
+		if member, matched := a.prelude.resultNamespaceCall(all); matched && member == "all" {
+			return true
+		}
+	}
+	if combinator := enclosingCollectionCall(current, true); combinator != nil &&
+		a.prelude.promiseCombinatorCall(combinator) && !walk.seen[combinator] {
+		walk.seen[combinator] = true
+		return a.ownershipConsumed(combinator, false, ownershipWalk{
+			kind: boundConsumePromise, fromProducer: false, seen: walk.seen, seenBindings: walk.seenBindings,
+		})
+	}
+	if !isMemberRead(current, parent) {
+		return false
+	}
+	readType := a.checker.GetTypeAtLocation(parent)
+	// Only a RESULT read leaves the collection: the value that came out is a
+	// Result again and answers as one. Anything else that still holds a channel
+	// — a nested collection, or a started Promise read out of a container — stays
+	// a collection, so its fate is decided by this same narrow surface. That is
+	// the reference frontend's rule exactly, and keeping it identical is the
+	// point: `{ first: work(k) }` then `await started.first` is refused on both
+	// backends, and whether storing a started Promise in an object and awaiting
+	// it through the property should discharge is a specification question
+	// neither backend may answer on its own.
+	if _, _, ok := a.resultArguments(readType); ok {
+		return a.ownershipConsumed(parent, false, ownershipWalk{
+			kind: boundConsumeResult, fromProducer: false, seen: walk.seen, seenBindings: walk.seenBindings,
+		})
+	}
+	return a.holdsProducedChannel(readType, 0) && a.ownershipConsumed(parent, true, walk)
+}
+
+// isMemberRead reports a property or element read whose RECEIVER is `current`.
+// Unlike selectMember this accepts a non-literal key, because reading `arr[i]`
+// out of a collection is the consumption regardless of how the index is spelled.
+func isMemberRead(current *ast.Node, parent *ast.Node) bool {
+	if ast.IsPropertyAccessExpression(parent) {
+		return parent.AsPropertyAccessExpression().Expression == current
+	}
+	if ast.IsElementAccessExpression(parent) {
+		return parent.AsElementAccessExpression().Expression == current
 	}
 	return false
 }
@@ -222,7 +604,12 @@ func (a *rowAnalysis) checkUnboundMustConsume(files []*ast.SourceFile) {
 				!a.unboundProducerConsumed(node, boundConsumeResult, make(map[*ast.Node]bool)) {
 				a.report(node, "SMITHERS1301", "await removes only Promise; the resulting Result must still be returned, matched, transformed, inspected, or propagated with postfix !")
 			}
-			if ast.IsCallExpression(node) || ast.IsNewExpression(node) {
+			// A tagged template is an invocation and drops whatever its tag hands
+			// back; see boundProducedKind. Keying this walk on call/`new` alone made
+			// `` tag`bad` `` discard a `Result<string, Boom>` in silence while the
+			// identical `tag(parts)` was refused, in a function body and at top
+			// level alike.
+			if isInvocationExpression(node) {
 				if ast.IsImportCall(node) {
 					if _, asset := a.assetImports[node]; !asset {
 						// The dynamic-module trust refusal is the root diagnostic.
@@ -235,6 +622,32 @@ func (a *rowAnalysis) checkUnboundMustConsume(files []*ast.SourceFile) {
 						a.report(node, "SMITHERS1301", "Result value is not consumed; return, match, transform, inspect, or propagate it with postfix !")
 					} else {
 						a.report(node, "SMITHERS1402", "started Promise is not consumed with await, return, or an awaited recognized combinator")
+					}
+				}
+				// The receiving half of a container transfer; see heldObligation. A
+				// producer that hands back a CONTAINER of Results or started Promises
+				// is charged for it exactly as one that hands back a Result is, and
+				// the same bindingConsumes/collectionConsumed surface decides its
+				// fate — so `Result.all(pack())` and `pack()[0]!` stay clean while
+				// `pack().length` and a bound `const arr = pack()` nobody reads out of
+				// are refused.
+				// The container-transfer half stays on call/`new`, exactly as the
+				// reference leaves it: no rule yet says a tagged template may hand
+				// back a collection of Results, and widening it here would change
+				// which programs this rule accepts rather than which spellings of
+				// one program it sees.
+				if held := a.heldObligation(node); held != boundConsumePlain &&
+					(ast.IsCallExpression(node) || ast.IsNewExpression(node)) {
+					consumed := a.ownershipConsumed(node, true, ownershipWalk{
+						kind: held, fromProducer: true,
+						seen: make(map[*ast.Node]bool), seenBindings: make(map[*ast.Symbol]bool),
+					})
+					if !consumed {
+						if held == boundConsumeResult {
+							a.report(node, "SMITHERS1301", "this call hands back a collection of Results that is not consumed; read one back out with postfix !, pass the collection to Result.all, or return it")
+						} else {
+							a.report(node, "SMITHERS1402", "this call hands back started Promises that are not consumed; await a recognized Promise combinator over the collection, or return it")
+						}
 					}
 				}
 			}
@@ -285,94 +698,48 @@ func enclosingCollectionCall(node *ast.Node, allowObject bool) *ast.Node {
 	return nil
 }
 
-func (a *rowAnalysis) promiseProducerConsumed(node *ast.Node, seen map[*ast.Node]bool) bool {
-	current := node
-	for current != nil && current.Parent != nil {
-		parent := current.Parent
-		switch parent.Kind {
-		case ast.KindParenthesizedExpression, ast.KindAsExpression,
-			ast.KindTypeAssertionExpression, ast.KindSatisfiesExpression:
-			current = parent
-			continue
-		case ast.KindVariableDeclaration:
-			return parent.AsVariableDeclaration().Initializer == current
-		case ast.KindAwaitExpression, ast.KindReturnStatement:
-			return true
-		}
-		if combinator := enclosingCollectionCall(current, true); combinator != nil &&
-			a.prelude.promiseCombinatorCall(combinator) && !seen[combinator] {
-			seen[combinator] = true
-			return a.promiseProducerConsumed(combinator, seen)
-		}
-		return false
-	}
-	return false
-}
-
+// boundReferenceConsumes is the same ownership walk, started at a reference to
+// a named Result/Promise rather than at its producer. The one difference is the
+// variable-declaration case: re-binding a value through a reference discharges
+// nothing, so only the producer walk stops there.
 func (a *rowAnalysis) boundReferenceConsumes(node *ast.Node, kind boundConsumeKind) bool {
-	current := node
-	for current != nil && current.Parent != nil {
-		parent := current.Parent
-		if ast.IsNonNullExpression(parent) && parent.AsNonNullExpression().Expression == current {
-			return kind == boundConsumeResult && a.resultPropagations[parent] != nil
-		}
-		switch parent.Kind {
-		case ast.KindParenthesizedExpression, ast.KindAsExpression,
-			ast.KindTypeAssertionExpression, ast.KindSatisfiesExpression:
-			current = parent
-			continue
-		case ast.KindReturnStatement:
-			return true
-		}
-		if kind == boundConsumeResult {
-			if selection, selected := selectMember(parent); selected && selection.receiver == current {
-				if a.prelude.resultInspection(parent) {
-					return true
-				}
-				if parent.Parent != nil && ast.IsCallExpression(parent.Parent) &&
-					parent.Parent.AsCallExpression().Expression == parent {
-					if a.prelude.resultConsumerCall(parent.Parent) || resultConsumerSpelling(selection.name.Text()) {
-						return true
-					}
-					if selection.name.Text() == "unwrap" {
-						return true
-					}
-				}
-			}
-			if all := enclosingCollectionCall(current, false); all != nil {
-				member, matched := a.prelude.resultNamespaceCall(all)
-				return matched && member == "all"
-			}
-			return false
-		}
-		if kind == boundConsumePromise {
-			if ast.IsAwaitExpression(parent) {
-				return true
-			}
-			if combinator := enclosingCollectionCall(current, true); combinator != nil &&
-				a.prelude.promiseCombinatorCall(combinator) {
-				return a.promiseProducerConsumed(combinator, make(map[*ast.Node]bool))
-			}
-		}
-		return false
-	}
-	return false
+	return a.ownershipConsumed(node, false, ownershipWalk{
+		kind: kind, fromProducer: false, seen: make(map[*ast.Node]bool), seenBindings: make(map[*ast.Symbol]bool),
+	})
 }
 
-// checkBoundMustConsume follows resolved variable symbols, so same-spelled
-// bindings in nested scopes never share ownership and renamed values behave
-// identically.
-func (a *rowAnalysis) checkBoundMustConsume(files []*ast.SourceFile) {
-	for _, file := range files {
-		references := make(map[*ast.Symbol][]*ast.Node)
-		declarations := make([]*ast.Node, 0)
+// identifierReferences indexes every identifier occurrence in one file by its
+// resolved symbol, so same-spelled bindings in nested scopes never share
+// ownership and renamed values behave identically. The index is built once per
+// file and shared by checkBoundMustConsume and the collection ownership walk.
+func (a *rowAnalysis) identifierReferences(file *ast.SourceFile, symbol *ast.Symbol) []*ast.Node {
+	if file == nil || symbol == nil {
+		return nil
+	}
+	index, built := a.fileReferences[file]
+	if !built {
+		index = make(map[*ast.Symbol][]*ast.Node)
 		var collect func(*ast.Node) bool
 		collect = func(node *ast.Node) bool {
 			if ast.IsIdentifier(node) {
-				if symbol := a.symbolAt(node); symbol != nil {
-					references[symbol] = append(references[symbol], node)
+				if resolved := a.symbolAt(node); resolved != nil {
+					index[resolved] = append(index[resolved], node)
 				}
 			}
+			node.ForEachChild(collect)
+			return false
+		}
+		file.AsNode().ForEachChild(collect)
+		a.fileReferences[file] = index
+	}
+	return index[symbol]
+}
+
+func (a *rowAnalysis) checkBoundMustConsume(files []*ast.SourceFile) {
+	for _, file := range files {
+		declarations := make([]*ast.Node, 0)
+		var collect func(*ast.Node) bool
+		collect = func(node *ast.Node) bool {
 			if ast.IsVariableDeclaration(node) {
 				declarations = append(declarations, node)
 			}
@@ -398,7 +765,7 @@ func (a *rowAnalysis) checkBoundMustConsume(files []*ast.SourceFile) {
 			}
 			checked[symbol] = true
 			consumed := false
-			for _, reference := range references[symbol] {
+			for _, reference := range a.identifierReferences(file, symbol) {
 				if reference != name && a.boundReferenceConsumes(reference, kind) {
 					consumed = true
 					break

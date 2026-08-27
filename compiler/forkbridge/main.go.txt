@@ -986,7 +986,28 @@ func planSpecifierEdits(project *project, artifactPath string, text string) ([]s
 		})
 	}
 	sort.Slice(edits, func(i, j int) bool { return edits[i].byteStart < edits[j].byteStart })
-	return edits, nil
+	// SourceFile.Imports() can name one specifier more than once. The fork's
+	// ForEachDynamicImportOrRequireCall finds candidate dynamic imports by
+	// scanning the RAW TEXT for the substring "import"/"require" and resolving
+	// the node at each hit, so every occurrence of those letters INSIDE a
+	// dynamic import's own specifier resolves back to the same call and appends
+	// the same literal again. A module whose file name merely contains the
+	// letters "import" therefore produced two identical edits, and
+	// applySpecifierEdits — which walks the sorted edits with one rising cursor
+	// — panicked with `slice bounds out of range` and took the whole compile
+	// down. Overlapping specifier spans are impossible in a well-formed plan, so
+	// keeping the first of each overlapping run is both the crash fix and the
+	// correct rewrite.
+	deduplicated := edits[:0]
+	previousEnd := -1
+	for _, edit := range edits {
+		if edit.byteStart < previousEnd {
+			continue
+		}
+		deduplicated = append(deduplicated, edit)
+		previousEnd = edit.byteEnd
+	}
+	return deduplicated, nil
 }
 
 func applySpecifierEdits(text string, edits []specifierEdit) string {

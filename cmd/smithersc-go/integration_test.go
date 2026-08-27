@@ -239,15 +239,27 @@ func TestPinnedCLIProcessCompilesInternallyLoweredRequest(t *testing.T) {
 	// Every channel the Go lowering owns survives the process boundary: the
 	// Result variants, the async Result lift, and the constructor-keyed nominal
 	// error dispatch.
+	//
+	// The dispatch is spelled as the compiler's own predicate rather than as a
+	// bare `instanceof`, and the negative assertion below is the load-bearing
+	// half. specification/failures.mdx, "Error Prototype": "Handler selection
+	// MUST use compiler-stable nominal identity, not a forgeable user `_tag` or
+	// minifier-sensitive constructor name in compiled artifacts." `instanceof`
+	// consults the right operand's `Symbol.hasInstance`, which any class may
+	// install, so the spelling this asserts is the whole rule — not a detail of
+	// how the same dispatch happens to be printed.
 	for _, lowered := range []string{
 		"return new __smithersErr(new Boom());",
 		"return new __smithersOk(n);",
-		"error instanceof Boom ?",
-		"error instanceof Late ?",
+		"__smithersErrorIs(error, Boom) ?",
+		"__smithersErrorIs(error, Late) ?",
 	} {
 		if !strings.Contains(contents["main.js"], lowered) {
 			t.Fatalf("lowered form %q missing: %q", lowered, contents["main.js"])
 		}
+	}
+	if strings.Contains(contents["main.js"], " instanceof ") {
+		t.Fatalf("handler selection must not be lowered to a forgeable instanceof: %q", contents["main.js"])
 	}
 	// Absence is `number | undefined`, an ordinary TypeScript union the lowering
 	// must leave completely alone, and `?.`/`??` keep their ordinary nullish

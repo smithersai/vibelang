@@ -597,7 +597,14 @@ export function inspect(): string[] {
 		{Path: "errors.sm", Kind: FileKindSmithers, Text: errorAPI},
 	})
 	texts := requireCleanCompile(t, result)
-	if !strings.Contains(texts["errors.js"], `import "./__smithers_prelude.js";`) {
+	// The promise is the module EDGE: `Error.prototype.is`/`matches`/`rootCause`
+	// are installed by the prelude's initialization, so the emitted module must
+	// import the prelude for them to exist at all. It used to be spelled as a
+	// bare side-effect import here because this file referenced no named prelude
+	// export; now it also registers its two Error classes, so the same edge is
+	// spelled as a named import — which evaluates the module identically. Both
+	// spellings satisfy the promise; no import at all does not.
+	if !strings.Contains(texts["errors.js"], `"./__smithers_prelude.js";`) {
 		t.Fatalf("Error prototype helpers must pull in the prelude side effect:\n%s", texts["errors.js"])
 	}
 	observed := executeEmitted(t, result.Artifacts, `import { inspect } from "./errors.js";
@@ -877,9 +884,20 @@ console.log(JSON.stringify({
 
 // TestPinnedForkInternalLoweringKeepsAwaitOrdering pins the one ordering that
 // matters for the async channel: postfix `!` binds before `await`, so
-// `await f(x)!` leaves the Promise producer un-awaited at that boundary. The
-// actionable root diagnostic is the unconsumed producer, without a secondary
-// non-Result-operand cascade.
+// `await f(x)!` applies `!` to a `Promise<Result<A, E>>`.
+//
+// That operand is not a Result. specification/compatibility.mdx:72 —
+// "Postfix `!` requires a `Result` operand" — with specification/failures.mdx,
+// "Promise Semantics": "Awaiting `Promise<Result<A, E>>` MUST produce
+// `Result<A, E>`", so `await` is what removes the Promise layer. SMITHERS1207 is
+// that violation, and it is the diagnostic that names the fix — `(await f(x))!`.
+// specification/failures.mdx, "Accepted Placements", forbids the alternative
+// outright: "A rejected placement MUST be a diagnostic, never a silent
+// lowering."
+//
+// This test previously asserted a lone SMITHERS1402 at the producer and called
+// the 1207 a cascade. The reference reports SMITHERS1207 here and always did;
+// both backends now agree on this exact program.
 func TestPinnedForkInternalLoweringKeepsAwaitOrdering(t *testing.T) {
 	authored := `export class Boom extends Error { }
 
@@ -895,7 +913,7 @@ export async function bad(kind: number): Promise<Result<number, Boom>> {
 	if !result.EmitSkipped || len(result.Artifacts) != 0 {
 		t.Fatalf("an unlowerable await must suppress emit: %v", artifactPaths(result.Artifacts))
 	}
-	diagnostic := requireDiagnostic(t, result, "SMITHERS1402", "order.sm", "started Promise is not consumed")
+	diagnostic := requireDiagnostic(t, result, "SMITHERS1207", "order.sm", "postfix ! requires a Result operand")
 	wantStart := strings.Index(authored, "fetched(kind)!")
 	if diagnostic.Span == nil || diagnostic.Span.Start != wantStart {
 		t.Fatalf("the rejection must land on the authored postfix expression at %d: %#v", wantStart, diagnostic.Span)
@@ -965,19 +983,29 @@ func TestPinnedForkInternalLoweringDispatchesNominalErrorMatch(t *testing.T) {
 	if strings.Contains(emitted, ".match(") {
 		t.Fatalf("the authored match survived lowering:\n%s", emitted)
 	}
+	// The cases are keyed on the resolved class binding, and the selection is
+	// the compiler's own predicate rather than a bare `instanceof`.
+	// specification/failures.mdx, "Error Prototype": "Handler selection MUST use
+	// compiler-stable nominal identity, not a forgeable user `_tag` or
+	// minifier-sensitive constructor name in compiled artifacts." `instanceof`
+	// consults the RIGHT operand's `Symbol.hasInstance`, which any class may
+	// install, so the negative assertion below is not stylistic: it is the rule.
 	for _, lowered := range []string{
-		"error instanceof Missing ?",
-		"error instanceof Timeout ?",
+		"__smithersErrorIs(error, Missing) ?",
+		"__smithersErrorIs(error, Timeout) ?",
 		"__smithersMatchFailed(error)",
 	} {
 		if !strings.Contains(emitted, lowered) {
 			t.Fatalf("missing constructor-keyed case %q:\n%s", lowered, emitted)
 		}
 	}
+	if strings.Contains(emitted, " instanceof ") {
+		t.Fatalf("handler selection must not be lowered to a forgeable instanceof:\n%s", emitted)
+	}
 
 	// The dispatch maps back to the authored match expression.
 	parsedMap, points := decodeEmittedMap(t, texts["main.js.map"])
-	loweredLine, loweredColumn := positionOf(t, emitted, "error instanceof Missing")
+	loweredLine, loweredColumn := positionOf(t, emitted, "__smithersErrorIs(error, Missing)")
 	authoredLine, authoredColumn := positionOf(t, matchMainSource, "error.match({")
 	if len(parsedMap.Sources) != 1 || !hasMapping(points, loweredLine, loweredColumn, authoredLine, authoredColumn) {
 		t.Fatalf("the lowered dispatch does not map to the authored match at %d:%d", authoredLine, authoredColumn)

@@ -71,15 +71,37 @@ func TestPinnedForkUnboundProducerAcceptanceControls(t *testing.T) {
 	}
 }
 
+// TestPinnedForkDynamicCodeImportsFailClosed pins the module-initialization
+// trust rule on the DYNAMIC spelling of a module edge.
+//
+// The rule the diagnostic names is about foreign module initialization — an ESM
+// initializer can panic before any checked call boundary exists — and that
+// hazard is identical however the edge is spelled, so an untrusted foreign
+// module is refused through `import()` exactly as through `import ... from`.
+// It is equally not a licence to refuse dynamic import as such:
+// docs/DECISIONS.md:266 is Locked that "arbitrary dynamic import expressions
+// remain available", and a project `.sm` module crosses no foreign boundary at
+// all. Refusing a TRUSTED foreign module would answer the open ledger question
+// (DECISIONS.md:266 versus the SMITHERS1510 model) by fiat, which this rule may
+// not do; a module that carries the claim carries it through either spelling.
+//
+// This test previously asserted the blanket refusal, and the reference frontend
+// previously had the mirror-image defect: it accepted every dynamic edge,
+// including an untrusted foreign one. Both backends now implement this exact
+// rule, and the corpus pair
+// 09-foreign-calls/a-dynamic-import-of-a-project-module-is-not-a-foreign-module-edge
+// and .../a-dynamic-import-of-an-untrusted-foreign-module-is-refused holds both
+// directions closed.
 func TestPinnedForkDynamicCodeImportsFailClosed(t *testing.T) {
 	const trusted = "/** @module @throws {never} */\nexport const value = \"trusted\"\n"
 	const untrusted = "export const value = \"untrusted\"\n"
 	const projectModule = "export const value = \"project\"\n"
 	cases := []struct {
-		name    string
-		source  string
-		modules []SourceFile
-		needle  string
+		name     string
+		source   string
+		modules  []SourceFile
+		needle   string
+		accepted bool
 	}{
 		{
 			name:    "untrusted foreign literal",
@@ -88,16 +110,16 @@ func TestPinnedForkDynamicCodeImportsFailClosed(t *testing.T) {
 			needle:  "\"./foreign.ts\"",
 		},
 		{
-			name:    "trusted foreign literal is conservatively deferred too",
-			source:  "export async function main(): Promise<string[]> {\n  const loaded = await import(\"./foreign.ts\")\n  return [loaded.value]\n}\n",
-			modules: []SourceFile{{Path: "foreign.ts", Kind: FileKindTypeScript, Text: trusted}},
-			needle:  "\"./foreign.ts\"",
+			name:     "trusted foreign literal keeps its claim through the dynamic spelling",
+			source:   "export async function main(): Promise<string[]> {\n  const loaded = await import(\"./foreign.ts\")\n  return [loaded.value]\n}\n",
+			modules:  []SourceFile{{Path: "foreign.ts", Kind: FileKindTypeScript, Text: trusted}},
+			accepted: true,
 		},
 		{
-			name:    "project module literal",
-			source:  "export async function main(): Promise<string[]> {\n  const loaded = await import(\"./helper.sm\")\n  return [loaded.value]\n}\n",
-			modules: []SourceFile{{Path: "helper.sm", Kind: FileKindSmithers, Text: projectModule}},
-			needle:  "\"./helper.sm\"",
+			name:     "project module literal is not a foreign module edge",
+			source:   "export async function main(): Promise<string[]> {\n  const loaded = await import(\"./helper.sm\")\n  return [loaded.value]\n}\n",
+			modules:  []SourceFile{{Path: "helper.sm", Kind: FileKindSmithers, Text: projectModule}},
+			accepted: true,
 		},
 		{
 			name:    "computed specifier",
@@ -111,6 +133,13 @@ func TestPinnedForkDynamicCodeImportsFailClosed(t *testing.T) {
 			files := append([]SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: testCase.source}}, testCase.modules...)
 			result := compileInternalSource(t, files)
 			observed := formatDiagnosticPositions(t, files, result)
+			if testCase.accepted {
+				requireCleanCompile(t, result)
+				if got := runEmittedMain(t, result); got == "" {
+					t.Fatalf("accepted dynamic import printed nothing; diagnostics %v", observed)
+				}
+				return
+			}
 			start := strings.LastIndex(testCase.source, testCase.needle)
 			if start < 0 {
 				t.Fatalf("test bug: %q is absent", testCase.needle)
@@ -121,6 +150,28 @@ func TestPinnedForkDynamicCodeImportsFailClosed(t *testing.T) {
 				t.Fatalf("dynamic import diagnostics = %v, want %s; raw %#v", observed, want, result.Diagnostics)
 			}
 		})
+	}
+}
+
+// TestPinnedForkSpecifierRewriteSurvivesImportInAModuleName is the regression
+// pin for a crash, not a diagnostic.
+//
+// SourceFile.Imports() can name one specifier more than once: the fork's
+// ForEachDynamicImportOrRequireCall finds candidate dynamic imports by scanning
+// the RAW TEXT for "import"/"require" and resolving the node at each hit, so a
+// module whose FILE NAME contains those letters made every occurrence inside the
+// specifier resolve back to the same call. planSpecifierEdits then produced two
+// identical edits and applySpecifierEdits panicked with `slice bounds out of
+// range`, taking the whole compile down with no diagnostic at all.
+func TestPinnedForkSpecifierRewriteSurvivesImportInAModuleName(t *testing.T) {
+	files := []SourceFile{
+		{Path: "main.sm", Kind: FileKindSmithers, Text: "export async function main(): Promise<string[]> {\n  const helper = await import(\"./an-import-named-helper.sm\")\n  return [helper.greet(\"ada\")]\n}\n"},
+		{Path: "an-import-named-helper.sm", Kind: FileKindSmithers, Text: "export function greet(name: string): string {\n  return `hello ${name}`\n}\n"},
+	}
+	result := compileInternalSource(t, files)
+	requireCleanCompile(t, result)
+	if got := runEmittedMain(t, result); got != "hello ada" {
+		t.Fatalf("emitted program printed %q, want %q", got, "hello ada")
 	}
 }
 
@@ -217,23 +268,90 @@ function lookup(): Result<string, Missing> { return "ada" }
 			reject: []string{"SMITHERS1301@4:4"},
 		},
 		{
-			name: "panic contract error has no lowering cascade",
+			// specification/failures.mdx §Panic Does Not Widen a Return Type:
+			// "Calling `panic(...)` MUST NOT force a function's return type to
+			// widen into `Result<A, Panic>`." This case previously declared
+			// SMITHERS1101 here and was the twin of the corpus case
+			// 09-foreign-calls/a-panic-in-an-if-body-still-needs-the-panic-channel.
+			// Both are retired by that rule: `main` keeps `string[]` and runs.
+			name: "a panic in an if body keeps a plain return type",
 			source: "import { panic } from \"smithers:exceptions\"\n" +
 				"export function main(): string[] {\n  if (false) panic(\"unreachable\")\n  return [\"done\"]\n}\n",
-			reject: []string{"SMITHERS1101@2:1"},
+			stdout: "done",
 		},
 		{
-			name: "postfix bang on an unawaited Promise reports the producer",
+			// The cascade property the retired case was written for, on a shape
+			// where a contract error genuinely exists: a recoverable `throw`
+			// charges SMITHERS1101 at the declaration, and a panic written where
+			// a VALUE is expected still charges its own placement refusal. The
+			// reference reports both, so the fork must too.
+			name: "a contract error does not suppress a panic placement refusal",
+			source: "import { panic } from \"smithers:exceptions\"\n" +
+				"class Missing extends Error {}\n" +
+				"export function main(): string[] {\n" +
+				"  if (false) throw new Missing()\n" +
+				"  const value = false ? \"a\" : panic(\"unreachable\")\n" +
+				"  return [value]\n}\n",
+			reject: []string{"SMITHERS1101@3:1", "SMITHERS1503@5:31"},
+		},
+		{
+			// specification/compatibility.mdx:72 — "Postfix `!` requires a `Result`
+			// operand" — with specification/failures.mdx, "Promise Semantics":
+			// "Awaiting `Promise<Result<A, E>>` MUST produce `Result<A, E>`". So
+			// `await` is what removes the Promise layer, and an un-awaited
+			// `Promise<Result<A, E>>` is a non-Result operand exactly like
+			// `T | undefined`. specification/failures.mdx, "Accepted Placements",
+			// settles what to do about it: "A rejected placement MUST be a
+			// diagnostic, never a silent lowering", and it names non-Result
+			// provenance as one of the separately diagnosed conditions.
+			// SMITHERS1207 is also the only diagnostic that names the fix —
+			// `(await checked())!`.
+			//
+			// This case previously asserted a lone SMITHERS1402 at the producer,
+			// suppressing the 1207. That answer and the reference's were swapped by
+			// two lanes correcting toward each other's pre-correction state; the
+			// specification did not move.
+			// 08-promise-chaining/postfix-bang-on-an-unawaited-promise-result-is-not-a-result-operand
+			// pins the pair on both backends.
+			name: "postfix bang on an unawaited Promise is a non-Result operand",
 			source: resultPrelude + "async function checked(): Promise<Result<string, Missing>> { return \"ada\" }\n" +
 				"export async function main(): Promise<Result<string[], Missing>> {\n  const value = checked()!\n  return [value]\n}\n",
-			reject: []string{"SMITHERS1402@5:17"},
+			reject: []string{"SMITHERS1207@5:17"},
 		},
 		{
-			name:    "untrusted initializer suppresses foreign call cascades",
+			// The same violation with the Promise left genuinely unconsumed. `!`
+			// extracts nothing from a Promise, so the value flows into the binding
+			// and the BINDING carries the missing-await obligation — SMITHERS1403
+			// against the name, which is the bound/unbound split both backends
+			// already agree on in
+			// 08-promise-chaining/promise-then-on-a-bound-promise-is-rejected.
+			// Above, `return [value]` transfers the binding into a container the
+			// return consumes, so only the operand violation remains; here the
+			// template span consumes nothing.
+			name: "an unawaited Promise behind a bang still owes its await at the binding",
+			source: resultPrelude + "async function checked(): Promise<Result<string, Missing>> { return \"ada\" }\n" +
+				"export async function main(): Promise<Result<string[], Missing>> {\n  const value = checked()!\n  return [`${value}`]\n}\n",
+			reject: []string{"SMITHERS1403@5:9", "SMITHERS1207@5:17"},
+		},
+		{
+			// A refused module edge does NOT excuse the calls behind it.
+			// specification/type-system.mdx:60 — "Every unannotated foreign call
+			// MUST add the distinguished checked `panic` case" — and :56 — "An
+			// ignored Result MUST be a compile error" — are conditioned on nothing
+			// but the call being unannotated.
+			//
+			// The control that proves it is not a cascade is
+			// 09-foreign-calls/the-never-annotation-is-case-sensitive: the identical
+			// call in the identical shape over a module carrying a GENUINE trust
+			// header is charged SMITHERS1301 at the identical position, and passes
+			// on both backends. So the second diagnostic survives fixing the first
+			// and is a second authored defect, not a consequence of the first.
+			// Suppressing it handed back one error and hid another.
+			name:    "an untrusted initializer does not excuse the foreign calls behind it",
 			support: "export function read(): string { return \"value\" }\n",
 			source: "import { read } from \"./foreign.ts\"\n" +
 				"export function main(): string[] {\n  const value = read()\n  return [value]\n}\n",
-			reject: []string{"SMITHERS1510@1:22"},
+			reject: []string{"SMITHERS1510@1:22", "SMITHERS1301@3:17"},
 		},
 	}
 	runFailClosedCases(t, cases)

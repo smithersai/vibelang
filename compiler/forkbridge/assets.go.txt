@@ -1634,13 +1634,23 @@ func (a *rowAnalysis) assetImportAtReference(node *ast.Node) *ast.Node {
 
 // assetValueProvenance follows compiler-owned asset values through bindings so
 // calls/properties on them never fall back into the foreign JavaScript policy.
+//
+// It walks the same wrappers `foreignValueProvenance` walks, and it must:
+// this is the carve-out that runs FIRST inside that walk, so any wrapper the
+// foreign walk can see through and this one cannot turns a compiler-owned
+// pure-data edge into a foreign JavaScript one. Type-only wrappers therefore
+// come from `typeOnlyWrapperOperand` (THE ONE TABLE, lowering.go) rather than
+// from a fourth copy of the same case list, and `await`/`!` keep their own
+// branch here exactly as they do there.
 func (a *rowAnalysis) assetValueProvenance(expression *ast.Node, seen map[*ast.Symbol]bool) bool {
 	if expression == nil {
 		return false
 	}
+	if operand := typeOnlyWrapperOperand(expression); operand != nil {
+		return a.assetValueProvenance(operand, seen)
+	}
 	switch expression.Kind {
-	case ast.KindParenthesizedExpression, ast.KindAsExpression,
-		ast.KindNonNullExpression, ast.KindAwaitExpression, ast.KindTypeAssertionExpression:
+	case ast.KindNonNullExpression, ast.KindAwaitExpression:
 		return a.assetValueProvenance(expression.Expression(), seen)
 	case ast.KindPropertyAccessExpression:
 		return a.assetValueProvenance(expression.AsPropertyAccessExpression().Expression, seen)

@@ -263,6 +263,144 @@ func TestPinnedForkHostGlobalsNeedCapabilities(t *testing.T) {
 	})
 }
 
+// TestPinnedForkHostGlobalAllowlist pins the inversion of the host-global rule
+// from a spelling denylist to an allowlist over the ECMAScript-262 global
+// object.
+//
+// The rule used to be eight forbidden names matched against a map, and
+// everything else the ambient environment publishes was accepted. Measured,
+// 22 of 38 sibling globals compiled clean and ran: `self`/`top`/`parent`/
+// `frames` alias the global object in every DOM and worker host and bypassed
+// all eight at once; `XMLHttpRequest`/`WebSocket`/`EventSource`/`Worker` are
+// the network and thread authority specification/compatibility.mdx names in
+// the same sentence as `process`; `navigator`/`location`/`localStorage`/
+// `sessionStorage` are host identity and host-persistent state; and the Node
+// global scope was reachable even though the compiler emits ESM, where
+// `__dirname`, `__filename`, `module`, and `exports` do not exist at all.
+//
+// The accepting rows are the load-bearing half. An allowlist that is too narrow
+// takes the whole standard library with it, so the ECMAScript global object is
+// exercised here too and the emitted program is required to still run.
+func TestPinnedForkHostGlobalAllowlist(t *testing.T) {
+	runFailClosedCases(t, []failClosedCase{
+		{
+			name: "globalThis aliases are refused",
+			source: "export function main(): string[] {\n" +
+				"  const alias = self\n" +
+				"  const frame = top\n" +
+				"  const outer = parent\n" +
+				"  const list = frames\n" +
+				"  return [`${typeof alias}`, `${typeof frame}`, `${typeof outer}`, `${typeof list}`]\n" +
+				"}\n",
+			reject: []string{"SMITHERS1601@2:17", "SMITHERS1601@3:17", "SMITHERS1601@4:17", "SMITHERS1601@5:16"},
+		},
+		{
+			name: "network and thread globals are refused",
+			source: "export function main(): string[] {\n" +
+				"  const request = XMLHttpRequest\n" +
+				"  const socket = WebSocket\n" +
+				"  const events = EventSource\n" +
+				"  const thread = Worker\n" +
+				"  return [`${typeof request}`, `${typeof socket}`, `${typeof events}`, `${typeof thread}`]\n" +
+				"}\n",
+			reject: []string{"SMITHERS1601@2:19", "SMITHERS1601@3:18", "SMITHERS1601@4:18", "SMITHERS1601@5:18"},
+		},
+		{
+			name: "host identity and host-persistent state are refused",
+			source: "export function main(): string[] {\n" +
+				"  const agent = navigator\n" +
+				"  const here = location\n" +
+				"  const durable = localStorage\n" +
+				"  const session = sessionStorage\n" +
+				"  return [`${typeof agent}`, `${typeof here}`, `${typeof durable}`, `${typeof session}`]\n" +
+				"}\n",
+			reject: []string{"SMITHERS1601@2:17", "SMITHERS1601@3:16", "SMITHERS1601@4:19", "SMITHERS1601@5:19"},
+		},
+		{
+			name: "the Node global scope and the CommonJS module wrapper are refused",
+			source: "export function main(): string[] {\n" +
+				"  const bytes = Buffer\n" +
+				"  const root = global\n" +
+				"  const load = require\n" +
+				"  const wrapper = module\n" +
+				"  const published = exports\n" +
+				"  const directory = __dirname\n" +
+				"  const file = __filename\n" +
+				"  const soon = setImmediate\n" +
+				"  return [`${typeof bytes}`, `${typeof root}`, `${typeof load}`, `${typeof wrapper}`,\n" +
+				"    `${typeof published}`, `${typeof directory}`, `${typeof file}`, `${typeof soon}`]\n" +
+				"}\n",
+			reject: []string{
+				"SMITHERS1601@2:17", "SMITHERS1601@3:16", "SMITHERS1601@4:16", "SMITHERS1601@5:19",
+				"SMITHERS1601@6:21", "SMITHERS1601@7:21", "SMITHERS1601@8:16", "SMITHERS1601@9:16",
+			},
+		},
+		{
+			name: "scheduling and structured clone are refused",
+			source: "export function main(): string[] {\n" +
+				"  const soon = queueMicrotask\n" +
+				"  const cancel = clearTimeout\n" +
+				"  const stop = clearInterval\n" +
+				"  const copy = structuredClone\n" +
+				"  return [`${typeof soon}`, `${typeof cancel}`, `${typeof stop}`, `${typeof copy}`]\n" +
+				"}\n",
+			reject: []string{"SMITHERS1601@2:16", "SMITHERS1601@3:18", "SMITHERS1601@4:16", "SMITHERS1601@5:16"},
+		},
+		{
+			// The `new Date(instant)` exemption is about the RUNTIME arity, and
+			// argument NODES are not it: `new Date(...[])` is one syntactic
+			// argument and zero actual ones, so it reads the clock.
+			name: "a spread argument does not prove new Date received an instant",
+			source: "export function main(): string[] {\n" +
+				"  const instant: readonly number[] = []\n" +
+				"  return [`${new Date(...(instant as [number])).getTime()}`]\n" +
+				"}\n",
+			reject: []string{"SMITHERS1602@3:18"},
+		},
+		{
+			// `new Intl.DateTimeFormat("en").format()` formats *now*, through a
+			// global the rule did not model at all. Charging the constructor
+			// fails closed: which call reads the clock depends on the arity of a
+			// call on an instance, and `resolvedOptions().timeZone` reads the
+			// host zone with no call at all.
+			name: "constructing Intl.DateTimeFormat is a clock read",
+			source: "export function main(): string[] {\n" +
+				"  return [new Intl.DateTimeFormat(\"en-US\").format()]\n" +
+				"}\n",
+			reject: []string{"SMITHERS1602@2:15"},
+		},
+		{
+			name: "the rest of Intl needs no capability",
+			source: "export function main(): string[] {\n" +
+				"  return [...Intl.getCanonicalLocales(\"EN-us\"), new Intl.NumberFormat(\"en-US\").format(1)]\n" +
+				"}\n",
+			stdout: "en-US\n1",
+		},
+		{
+			name: "the ECMAScript global object stays available",
+			source: "export function main(): string[] {\n" +
+				"  const values = new Map<string, number>([[\"ada\", 1]])\n" +
+				"  const unique = new Set<number>([1, 1, 2])\n" +
+				"  const bytes = new Uint8Array([1, 2, 3])\n" +
+				"  return [`${Object.keys({ a: 1 }).length}`, `${Array.of(1, 2).length}`,\n" +
+				"    `${values.get(\"ada\")}`, `${unique.size}`, `${bytes.length}`,\n" +
+				"    `${Number.parseFloat(\"1.5\")}`, `${Reflect.has({ a: 1 }, \"a\")}`,\n" +
+				"    `${parseInt(\"41\", 10)}`, `${JSON.stringify({ n: 1 })}`, `${Symbol.iterator.toString()}`]\n" +
+				"}\n",
+			stdout: "1\n2\n1\n2\n3\n1.5\ntrue\n41\n{\"n\":1}\nSymbol(Symbol.iterator)",
+		},
+		{
+			name: "a local binding of a refused name is an ordinary value",
+			source: "export function main(): string[] {\n" +
+				"  const self = { id: 1 }\n" +
+				"  const navigator = \"n\"\n" +
+				"  return [`${self.id}`, navigator]\n" +
+				"}\n",
+			stdout: "1\nn",
+		},
+	})
+}
+
 // TestPinnedForkHostGlobalRuleResolvesBySymbolNotSpelling is the identity
 // evidence for the two loudest rules. A binding is the host global only when
 // the checker resolves it to the ambient lib (or to nothing at all); a lexical
@@ -653,6 +791,14 @@ export interface Settings {
 			stdout: "retries 4",
 		},
 		{
+			// Two independent defects, not one and a cascade. The module edge has no
+			// trust claim (SMITHERS1510), AND the unannotated foreign call lifts to
+			// `Result<string, Panic>` which this `string[]` return drops
+			// (SMITHERS1301) — specification/type-system.mdx:60 and :56, neither of
+			// which is conditioned on the trust of the edge the call arrived
+			// through. 09-foreign-calls/the-never-annotation-is-case-sensitive is
+			// the control: the same call shape over a module with a genuine trust
+			// header is charged SMITHERS1301 at the same position on both backends.
 			name:    "a value import of the same module still needs the trust claim",
 			support: untrusted,
 			source: "import { shout } from \"./foreign.ts\"\n" +
@@ -660,7 +806,7 @@ export interface Settings {
 				"export function main(): string[] {\n" +
 				"  return [shout(\"ada\")]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1510@1:23"},
+			reject: []string{"SMITHERS1510@1:23", "SMITHERS1301@4:11"},
 		},
 	})
 }

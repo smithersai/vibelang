@@ -325,6 +325,17 @@ export async function main(): Promise<string[]> {
 	}
 }
 
+// TestPinnedForkDynamicCodeImportsUseConservativeFrontendRefusal pins the
+// boundary between a dynamic CODE import and a dynamic ASSET import, and the
+// trust condition on the code side.
+//
+// A dynamic asset import is owned by the source-asset pass and keeps its precise
+// 52xx diagnostics. A dynamic code import carries the module-initialization
+// trust question: an untrusted or unresolvable target is refused, and a target
+// that carries the leading `@module` / `@throws {never}` claim carries it
+// through the dynamic spelling exactly as through the static one. Refusing a
+// module that HAS the claim would answer the open ledger question
+// (docs/DECISIONS.md:266 versus the SMITHERS1510 model) by fiat.
 func TestPinnedForkDynamicCodeImportsUseConservativeFrontendRefusal(t *testing.T) {
 	code := SourceFile{
 		Path: "code.ts", Kind: FileKindTypeScript,
@@ -335,11 +346,27 @@ func TestPinnedForkDynamicCodeImportsUseConservativeFrontendRefusal(t *testing.T
   return [loaded.value]
 }
 `, code)
-	if codes := requireDiagnosticCodes(literal); codes != "SMITHERS1510" {
-		t.Fatalf("literal dynamic code import diagnostics = %s, want SMITHERS1510: %#v", codes, literal.Diagnostics)
+	if codes := requireDiagnosticCodes(literal); codes != "" {
+		t.Fatalf("a TRUSTED literal dynamic code import must be accepted, got %s: %#v", codes, literal.Diagnostics)
 	}
-	if !literal.EmitSkipped || len(literal.Artifacts) != 0 {
-		t.Fatalf("a refused literal dynamic module edge emitted artifacts: %v", artifactPaths(literal.Artifacts))
+	if literal.EmitSkipped || len(literal.Artifacts) == 0 {
+		t.Fatalf("an accepted dynamic module edge must emit: %v", artifactPaths(literal.Artifacts))
+	}
+
+	untrustedCode := SourceFile{
+		Path: "code.ts", Kind: FileKindTypeScript,
+		Text: "export const value = \"runtime-code\"\n",
+	}
+	untrusted := compileAssetProgram(t, `export async function main(): Promise<string[]> {
+  const loaded = await import("./code.ts")
+  return [loaded.value]
+}
+`, untrustedCode)
+	if codes := requireDiagnosticCodes(untrusted); codes != "SMITHERS1510" {
+		t.Fatalf("untrusted literal dynamic code import diagnostics = %s, want SMITHERS1510: %#v", codes, untrusted.Diagnostics)
+	}
+	if !untrusted.EmitSkipped || len(untrusted.Artifacts) != 0 {
+		t.Fatalf("a refused literal dynamic module edge emitted artifacts: %v", artifactPaths(untrusted.Artifacts))
 	}
 
 	computed := compileAssetProgram(t, `const chosen = "./code.ts"
