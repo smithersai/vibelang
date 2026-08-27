@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -9,7 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 
 const repositoryRoot = process.cwd();
@@ -263,4 +264,215 @@ test("a Go diagnostic is attributed to the request source it names, or to none",
     () => resolveGoDiagnosticFile("/tmp/project/main.sm", sources),
     { code: "SMITHERS_GO_PROTOCOL" },
   );
+});
+
+/**
+ * Foreign `.ts`/`.js` dependencies reach the Go request.
+ *
+ * **Why here, and not anywhere else that already looked green.** The Go request
+ * is built in `compileGoSmithersFiles`, and only the CLI builds it. Nothing else
+ * in the repository walks that code path: `poc/src/platform/platform.sm.test.ts`
+ * calls `compileAndCheckProject` from `poc/src/language`, which is the reference
+ * frontend in-process and never produces a Go request at all; and the
+ * conformance corpus stages its foreign `.ts` through
+ * `conformance/runner/backend-go.mjs`, which assembles its own request from the
+ * case's `typescript` list. Both are therefore structurally blind to what the
+ * CLI sends. So "531/531 Go gate, 364 conformance cases, 0 divergent" was true
+ * at the same time as `--backend go` being unable to compile a single `.sm` that
+ * imports a foreign `.ts` — the whole ported platform standard library and the
+ * repository's own `poc/examples/language/demo.sm` included. The request used to
+ * be `project.sources.map(... kind: "smithers" ...)` over a walk that collects
+ * only `.sm`, so the `"typescript"` kind the protocol has always declared was
+ * produced by nothing, `ResolveExternalModuleName` returned nil, and every
+ * foreign import was refused with SMITHERS1510 — the right code for the wrong
+ * reason.
+ *
+ * This file is the location that can see it: it spawns `bin/smithers.js` against
+ * a real on-disk project, which is the only way the request producer runs, and
+ * it is discovered by `scripts/node-test-gate.mjs` like every other
+ * `test/*.test.mjs`.
+ *
+ * **Both directions are asserted, because the fail-open is the real hazard.**
+ * Making foreign modules resolve is exactly the change that could turn a
+ * genuine trust refusal into an acceptance: before staging, an untrusted module
+ * was refused because nothing resolved, which is safe by accident. So the
+ * untrusted cases below assert the *reason* — the message must name the missing
+ * `@module`/`@throws {never}` claim and must not say the module could not be
+ * resolved — and the transitive case pins the one an unstaged backend cannot
+ * reach on its own.
+ */
+function writeProject(t, name, files) {
+  const root = mkdtempSync(join(tmpdir(), `smithers-cli-foreign-${name}-`));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  for (const [relativeName, text] of Object.entries(files)) {
+    const target = join(root, relativeName);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, text);
+  }
+  return root;
+}
+
+function checkedByBothBackends(entry) {
+  const observed = new Map();
+  for (const backend of ["js", "go"]) {
+    const result = runSmithers(["check", entry, "--backend", backend, "--format", "json"], {
+      SMITHERS_TYPESCRIPT_FORK: forkCheckout,
+    });
+    observed.set(backend, { status: result.status, report: parsedPureJson(result) });
+  }
+  return observed;
+}
+
+const TRUSTED = "/** @module @throws {never} */\n";
+
+test("--backend go stages the foreign dependencies a .sm project imports", {
+  skip: forkCheckout ? false : missingForkMessage,
+}, (t) => {
+  // One project, several members of the class at once: a direct `./x.ts`, a
+  // foreign module that imports another foreign module, a foreign module two
+  // `.sm` files share, a `.sm` that is itself imported doing the importing, a
+  // type-only edge, a namespace-free re-export, and an asset beside a foreign
+  // import. Each was independently measured broken before staging.
+  const root = writeProject(t, "resolves", {
+    "main.sm": [
+      `import { top } from "./chain.ts"`,
+      `import { shared } from "./shared.ts"`,
+      `import { fromLib } from "./lib.sm"`,
+      `import type { Shape } from "./shapes.ts"`,
+      `import label from "./label.json" with { type: "json" }`,
+      `export function main(shape: Shape): string {`,
+      `  return top + shared + fromLib() + shape.name + label.name`,
+      `}`,
+      ``,
+    ].join("\n"),
+    "lib.sm": [
+      `import { shared } from "./shared.ts"`,
+      `export function fromLib(): string { return shared }`,
+      ``,
+    ].join("\n"),
+    "chain.ts": `${TRUSTED}import { bottom } from "./bottom.ts";\nexport const top = bottom + "-top";\n`,
+    "bottom.ts": `${TRUSTED}export const bottom = "bottom";\n`,
+    "shared.ts": `${TRUSTED}export const shared = "shared";\n`,
+    "shapes.ts": `export interface Shape { readonly name: string }\n`,
+    "label.json": `{ "name": "label" }\n`,
+  });
+
+  const observed = checkedByBothBackends(join(root, "main.sm"));
+  for (const [backend, { status, report }] of observed) {
+    assert.equal(
+      status,
+      0,
+      `${backend} refused a project whose every foreign edge is trusted: ${JSON.stringify(report, null, 2)}`,
+    );
+    assert.equal(report.ok, true);
+    assert.deepEqual(report.files.flatMap((file) => file.diagnostics), []);
+  }
+});
+
+test("--backend go refuses an untrusted foreign module for its trust claim, not for failing to resolve", {
+  skip: forkCheckout ? false : missingForkMessage,
+}, (t) => {
+  const root = writeProject(t, "untrusted", {
+    "main.sm": `import { value } from "./untrusted.ts"\nexport function main(): string { return value }\n`,
+    "untrusted.ts": `export const value = "untrusted";\n`,
+  });
+
+  const observed = checkedByBothBackends(join(root, "main.sm"));
+  for (const [backend, { status, report }] of observed) {
+    assert.equal(status, 1, `${backend} accepted an untrusted foreign module`);
+    assert.equal(report.ok, false);
+    const refusals = report.files.flatMap((file) => file.diagnostics)
+      .filter((diagnostic) => diagnostic.code === "SMITHERS1510");
+    assert.equal(refusals.length, 1, `${backend}: ${JSON.stringify(report, null, 2)}`);
+    // The distinction this whole test exists for. "Could not be resolved" is
+    // what the backend said before the sources were staged, and it is not a
+    // trust verdict: it would have been said just as loudly about a module that
+    // carries the claim.
+    assert.match(refusals[0].message, /@module and @throws \{never\}/);
+    assert.doesNotMatch(refusals[0].message, /could not be resolved/);
+    assert.equal(realpathSync(refusals[0].file), realpathSync(join(root, "untrusted.ts")));
+  }
+  assert.deepEqual(observed.get("go").report, observed.get("js").report);
+});
+
+test("--backend go still refuses a foreign graph that is untrusted transitively", {
+  skip: forkCheckout ? false : missingForkMessage,
+}, (t) => {
+  // The fail-open staging could have opened. The fork's own module-trust check
+  // reads the edges an authored `.sm` spells, so a facade that carries the claim
+  // and re-exports a module that does not is trusted from that side alone;
+  // importing the facade still evaluates the untrusted module. The relative
+  // runtime graph computes the transitive static-initialization closure, and the
+  // CLI stops on it before either backend runs.
+  const root = writeProject(t, "transitive", {
+    "main.sm": `import { value } from "./facade.ts"\nexport function main(): string { return value }\n`,
+    "facade.ts": `${TRUSTED}export { value } from "./untrusted.ts";\n`,
+    "untrusted.ts": `export const value = "untrusted";\n`,
+  });
+
+  const observed = checkedByBothBackends(join(root, "main.sm"));
+  for (const [backend, { status, report }] of observed) {
+    assert.equal(status, 1, `${backend} accepted a transitively untrusted foreign graph`);
+    const refusals = report.files.flatMap((file) => file.diagnostics)
+      .filter((diagnostic) => diagnostic.code === "SMITHERS1510");
+    assert.equal(refusals.length, 1, `${backend}: ${JSON.stringify(report, null, 2)}`);
+    assert.equal(realpathSync(refusals[0].file), realpathSync(join(root, "untrusted.ts")));
+  }
+  assert.deepEqual(observed.get("go").report, observed.get("js").report);
+});
+
+test("--backend go refuses a foreign dependency outside the project root", {
+  skip: forkCheckout ? false : missingForkMessage,
+}, (t) => {
+  // The project root is inferred from the single input, so it is `project/` and
+  // `../escaped.ts` is outside it. Reusing the reference walk is what makes this
+  // refusal reach the Go path at all: it used to answer with SMITHERS1510 for
+  // the unresolved module instead, which named neither the escape nor the file.
+  const root = writeProject(t, "escape", {
+    "escaped.ts": `${TRUSTED}export const value = "escaped";\n`,
+    "project/main.sm": `import { value } from "../escaped.ts"\nexport function main(): string { return value }\n`,
+  });
+
+  for (const backend of ["js", "go"]) {
+    const result = runSmithers(["check", join(root, "project/main.sm"), "--backend", backend, "--format", "json"], {
+      SMITHERS_TYPESCRIPT_FORK: forkCheckout,
+    });
+    assert.equal(result.status, 2, `${backend} admitted a dependency outside the project root`);
+    const report = parsedPureJson(result);
+    assert.equal(report.code, "SMITHERS_PROJECT_ERROR");
+    assert.match(report.message, /outside the project root/);
+  }
+});
+
+test("a .sm project with no foreign dependency compiles identically on both backends", {
+  skip: forkCheckout ? false : missingForkMessage,
+}, (t) => {
+  // The control for the staging change: a request that gains no staged sources
+  // must be the request it always was. Two `.sm` files, one importing the other,
+  // so the walk runs and produces an empty foreign set rather than never running.
+  const root = writeProject(t, "none", {
+    "main.sm": [
+      `import { doubled, InvalidScore } from "./helper.sm"`,
+      `export function main(value: number): Result<number, InvalidScore> {`,
+      `  const checked = doubled(value)!`,
+      `  return checked + 1`,
+      `}`,
+      ``,
+    ].join("\n"),
+    "helper.sm": [
+      `export class InvalidScore extends Error {}`,
+      `export function doubled(value: number): Result<number, InvalidScore> {`,
+      `  if (value < 0) throw new InvalidScore("negative")`,
+      `  return value * 2`,
+      `}`,
+      ``,
+    ].join("\n"),
+  });
+
+  const observed = checkedByBothBackends(join(root, "main.sm"));
+  for (const [backend, { status, report }] of observed) {
+    assert.equal(status, 0, `${backend}: ${JSON.stringify(report, null, 2)}`);
+    assert.equal(report.ok, true);
+    assert.deepEqual(report.files.flatMap((file) => file.diagnostics), []);
+  }
 });

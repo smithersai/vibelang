@@ -32,7 +32,13 @@ const GO_PROCESS_BUFFER = 128 * 1024 * 1024;
 
 export interface GoBackendSourceFile {
   readonly path: string;
-  readonly kind: "smithers" | "typescript";
+  /**
+   * `"smithers"` is authored `.sm`; `"typescript"` is a foreign `.ts`/`.js`
+   * dependency the checker must see; `"asset"` is a non-code project file the
+   * backend's own asset pass reads. All three are declared by `compiler/api.go`
+   * and accepted by the bridge.
+   */
+  readonly kind: "smithers" | "typescript" | "asset";
   readonly text: string;
 }
 

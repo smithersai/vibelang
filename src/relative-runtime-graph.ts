@@ -46,10 +46,35 @@ export interface RelativeRuntimeFile {
   readonly resolutionAliases: readonly string[];
 }
 
+/**
+ * One project file this walk reached and read, addressed the way a backend that
+ * builds its own program needs it: the canonical path, the project-relative name,
+ * and the authored bytes. No output is implied — a staged source is an *input*
+ * another compiler has to be told about, not something this graph will emit.
+ */
+export interface StagedProjectSource {
+  readonly fileName: string;
+  readonly displayName: string;
+  readonly source: string;
+}
+
 export interface RelativeRuntimeGraph {
   readonly files: readonly RelativeRuntimeFile[];
   /** Fail-closed trust failures for statically evaluated foreign modules. */
   readonly diagnostics: readonly RuntimeGraphDiagnostic[];
+  /**
+   * Foreign sources the checker must see but the runtime never loads: a
+   * `import type` edge, and any `.d.ts`/`.ts` reached only through one. They
+   * carry no output and no initialization trust obligation, which is why they
+   * are absent from `files` — but a backend that assembles its own program must
+   * still be handed them or the type they name resolves to nothing.
+   */
+  readonly checkerDependencies: readonly StagedProjectSource[];
+  /**
+   * Non-code project files a Smithers source named as an asset, present only
+   * when the caller asked for `assetSpecifiers: "stage"`. See that option.
+   */
+  readonly stagedAssets: readonly StagedProjectSource[];
   readonly fileCount: number;
   readonly totalBytes: number;
   readonly additionalRuntimeOutputs: readonly {
@@ -97,6 +122,13 @@ interface ModuleEdge {
   readonly typeOnly: boolean;
   /** True when evaluating the importing module immediately evaluates this edge. */
   readonly moduleInitialization: boolean;
+  /**
+   * True when the edge carries a `with { ... }` attribute bag. An attribute bag
+   * selects a loader, and the loader — not the extension — decides whether the
+   * target is code or an asset, so this is the one spelling that makes
+   * `./thing.ts` an asset.
+   */
+  readonly attributes: boolean;
 }
 
 interface LoadedForeignFile {
@@ -227,7 +259,161 @@ function location(sourceFile: ts.SourceFile, position: number): string {
   return `${sourceFile.fileName}:${point.line + 1}:${point.character + 1}`;
 }
 
-function scanEdges(source: string, fileName: string): readonly ModuleEdge[] {
+function hasExportModifier(statement: ts.Statement): boolean {
+  return ts.canHaveModifiers(statement) &&
+    (ts.getModifiers(statement) ?? []).some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+}
+
+/** The value names one module-scope statement introduces, when they are plain identifiers. */
+function declaredValueNames(statement: ts.Statement): readonly string[] {
+  if (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) {
+    return statement.name ? [statement.name.text] : [];
+  }
+  if (ts.isVariableStatement(statement)) {
+    return statement.declarationList.declarations
+      .flatMap((declaration) => ts.isIdentifier(declaration.name) ? [declaration.name.text] : []);
+  }
+  return [];
+}
+
+/**
+ * Decide which edges of one module are evaluated while that module is being
+ * evaluated. The answer defaults to *yes*, and "no" has to be proven.
+ *
+ * This is the flag that decides which reached modules must carry the
+ * initialization trust marker, so an edge misclassified as deferred is an
+ * untrusted foreign initializer running with no diagnostic. Until 2026-08-27
+ * the two questionable arms answered a different question and defaulted the
+ * wrong way: every `import()` was declared not to be initialization, and
+ * `require` asked only "is this lexically inside some function". Six spellings
+ * were measured checking clean and running the untrusted initializer —
+ * `const m = await import(…)`, `const p = import(…); void p`,
+ * `await (async () => (await import(…)).x)()`, `const l = (() => require(…))()`,
+ * a named local function called at module scope, and an object getter read at
+ * module scope. "Lexically inside a function" is not the question; "can module
+ * evaluation reach this" is.
+ *
+ * The proof this walk accepts is deliberately narrow, because it has no
+ * checker and no cross-module information — a function defers its body only
+ * when module-scope code cannot get hold of the function value at all:
+ *
+ * - the function literal must *be* a module-scope `function`/`class` member
+ *   declaration, or the entire initializer of a module-scope `const`/`let`/`var`
+ *   binding — anything else (an IIFE, an array element, an object property, an
+ *   argument) hands the value to module-scope code, which may call it;
+ * - that declaration must be exported, so the module is written to be driven
+ *   from outside; and
+ * - none of the names it declares may be mentioned by module-scope code, since
+ *   a mention is enough to call it.
+ *
+ * Everything else is an initialization edge. That deliberately refuses some
+ * genuinely deferred shapes — a method reached only through a non-exported
+ * factory, `module.exports = { load: () => require(…) }`, a lazily read
+ * property of an exported object literal — and the escape hatch for each is the
+ * one the diagnostic already names: mark the reached module, or load it through
+ * a checked async foreign adapter. Refusing a deferred edge asks for a marker;
+ * admitting an initialization edge runs untrusted code, so the asymmetry is the
+ * whole point.
+ *
+ * Note also that only a function's BODY and its parameter defaults are
+ * evaluated when it is called. Its decorators, computed member name and type
+ * annotations are evaluated where the function is written, so an edge sitting
+ * in one of those is at module scope even though it is lexically "inside a
+ * function", and the climb below keeps walking outward for exactly that case.
+ */
+function moduleInitializationClassifier(sourceFile: ts.SourceFile): (node: ts.Node) => boolean {
+  let moduleScopeValueNames: Set<string> | undefined;
+  const exportedByClause = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isExportDeclaration(statement) || statement.isTypeOnly || statement.moduleSpecifier) continue;
+    if (!statement.exportClause || !ts.isNamedExports(statement.exportClause)) continue;
+    for (const element of statement.exportClause.elements) {
+      if (!element.isTypeOnly) exportedByClause.add((element.propertyName ?? element.name).text);
+    }
+  }
+
+  const collectModuleScopeUses = (): Set<string> => {
+    const names = new Set<string>();
+    const visit = (node: ts.Node): void => {
+      // A type position is erased before anything runs, and an import or export
+      // clause names a binding rather than calling it.
+      if (ts.isTypeNode(node) || ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node) ||
+        ts.isImportDeclaration(node) || ts.isImportEqualsDeclaration(node) || ts.isExportDeclaration(node)) return;
+      if (ts.isIdentifier(node)) {
+        const parent = node.parent as ts.Node & { readonly name?: ts.Node; readonly propertyName?: ts.Node };
+        // `{ load }` is a reference written in name position; every other
+        // `name`/`propertyName` slot is a declaration or a member label.
+        if (ts.isShorthandPropertyAssignment(parent) ||
+          (parent.name !== node && parent.propertyName !== node)) names.add(node.text);
+        return;
+      }
+      const body = (node as ts.Node & { readonly body?: ts.Node }).body;
+      ts.forEachChild(node, (child) => {
+        if (ts.isFunctionLike(node) && child === body) return;
+        visit(child);
+      });
+    };
+    visit(sourceFile);
+    return names;
+  };
+
+  const provablyDeferred = new Map<ts.Node, boolean>();
+  const isProvablyDeferred = (fn: ts.Node): boolean => {
+    const cached = provablyDeferred.get(fn);
+    if (cached !== undefined) return cached;
+    provablyDeferred.set(fn, false);
+    const parent = fn.parent as ts.Node | undefined;
+    let statement: ts.Node | undefined;
+    if (ts.isFunctionDeclaration(fn)) statement = fn;
+    else if (parent && ts.isClassDeclaration(parent)) statement = parent;
+    else if (parent && ts.isVariableDeclaration(parent) && parent.initializer === fn && ts.isIdentifier(parent.name)) {
+      statement = parent.parent.parent;
+    }
+    if (!statement || !statement.parent || !ts.isSourceFile(statement.parent)) return false;
+    const declaration = statement as ts.Statement;
+    const names = declaredValueNames(declaration);
+    if (!hasExportModifier(declaration) && !names.some((name) => exportedByClause.has(name))) return false;
+    moduleScopeValueNames ??= collectModuleScopeUses();
+    const answer = !names.some((name) => moduleScopeValueNames!.has(name));
+    provablyDeferred.set(fn, answer);
+    return answer;
+  };
+
+  return (node: ts.Node): boolean => {
+    let child: ts.Node = node;
+    let current: ts.Node | undefined = node.parent;
+    while (current) {
+      if (ts.isFunctionLike(current)) {
+        const container = current as ts.SignatureDeclaration & { readonly body?: ts.Node };
+        const evaluatedOnCall = child === container.body ||
+          (ts.isParameter(child) && container.parameters.indexOf(child) >= 0);
+        if (evaluatedOnCall && isProvablyDeferred(current)) return false;
+      }
+      child = current;
+      current = current.parent;
+    }
+    return true;
+  };
+}
+
+/**
+ * @param deferComputedDynamicSpecifier
+ *   Report no edge for `import(expression)` instead of refusing the module.
+ *
+ *   A computed dynamic specifier is refused by the language on both backends —
+ *   `09-foreign-calls/a-computed-dynamic-import-specifier-is-refused` and
+ *   `23-asset-imports/a-non-literal-dynamic-asset-import-is-rejected` pin it —
+ *   so dropping the edge cannot admit anything. What it changes is *who*
+ *   reports it and where. On the reference path the asset pass runs before this
+ *   walk and reports it against the import site; a backend that runs its own
+ *   asset pass afterwards needs the walk to leave the refusal to it rather than
+ *   pre-empt it with a project-level abort that names no location.
+ */
+function scanEdges(
+  source: string,
+  fileName: string,
+  deferComputedDynamicSpecifier = false,
+): readonly ModuleEdge[] {
   const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, scriptKind(fileName));
   const edges: ModuleEdge[] = [];
   const add = (
@@ -235,9 +421,11 @@ function scanEdges(source: string, fileName: string): readonly ModuleEdge[] {
     expression: ts.Expression,
     typeOnly: boolean,
     moduleInitialization: boolean,
+    attributes = false,
   ): void => {
     const specifier = literalText(expression);
     if (specifier === undefined) {
+      if (kind === "dynamic-import" && deferComputedDynamicSpecifier) return;
       throw new TypeError(`${location(sourceFile, expression.getStart(sourceFile))}: module specifier must be a string literal`);
     }
     edges.push({
@@ -247,24 +435,18 @@ function scanEdges(source: string, fileName: string): readonly ModuleEdge[] {
       end: expression.end,
       typeOnly,
       moduleInitialization,
+      attributes,
     });
   };
-  const isInsideFunction = (node: ts.Node): boolean => {
-    let current: ts.Node | undefined = node.parent;
-    while (current) {
-      if (ts.isFunctionLike(current)) return true;
-      current = current.parent;
-    }
-    return false;
-  };
+  const isModuleInitializationEdge = moduleInitializationClassifier(sourceFile);
   const visit = (node: ts.Node): void => {
     if (ts.isImportDeclaration(node)) {
       const typeOnly = Boolean(node.importClause?.isTypeOnly ||
         (node.importClause && allNamedImportsAreTypeOnly(node.importClause)));
-      add("import", node.moduleSpecifier, typeOnly, !typeOnly);
+      add("import", node.moduleSpecifier, typeOnly, !typeOnly, node.attributes !== undefined);
     } else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
       const typeOnly = node.isTypeOnly || allNamedExportsAreTypeOnly(node);
-      add("export", node.moduleSpecifier, typeOnly, !typeOnly);
+      add("export", node.moduleSpecifier, typeOnly, !typeOnly, node.attributes !== undefined);
     } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
       const expression = node.moduleReference.expression;
       if (!expression) throw new TypeError(`${location(sourceFile, node.getStart(sourceFile))}: import=require needs a literal`);
@@ -284,12 +466,20 @@ function scanEdges(source: string, fileName: string): readonly ModuleEdge[] {
           `${location(sourceFile, attributes.getStart(sourceFile))}: dynamic import attributes must be an object literal`,
         );
       }
-      add("dynamic-import", node.arguments[0]!, false, false);
+      // A dynamic import is a module-initialization edge whenever module
+      // evaluation reaches it. `buildRelativeRuntimeGraph` used to justify a
+      // blanket `false` here with "a subtree reached solely through import()
+      // rejects its Promise and is therefore handled by the ordinary checked
+      // async foreign-call boundary" — which is true of a `.sm` doing the
+      // import, and false of a FOREIGN module doing `await import(…)` at its
+      // own module scope, where the load is part of module evaluation and there
+      // is no checked call boundary anywhere near it.
+      add("dynamic-import", node.arguments[0]!, false, isModuleInitializationEdge(node), attributes !== undefined);
     } else if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "require") {
       if (node.arguments.length !== 1) {
         throw new TypeError(`${location(sourceFile, node.getStart(sourceFile))}: require must have one string literal`);
       }
-      add("require", node.arguments[0]!, false, !isInsideFunction(node));
+      add("require", node.arguments[0]!, false, isModuleInitializationEdge(node));
     } else if (ts.isIdentifier(node) && node.text === "require" &&
       !(ts.isCallExpression(node.parent) && node.parent.expression === node)) {
       throw new TypeError(
@@ -302,13 +492,90 @@ function scanEdges(source: string, fileName: string): readonly ModuleEdge[] {
   return edges.sort((left, right) => left.start - right.start || left.end - right.end);
 }
 
-function hasLeadingModuleNoThrowMarker(source: string, fileName: string): boolean {
+/**
+ * The module-initialization trust marker, matched the way every other
+ * implementation of this rule matches it.
+ *
+ * There are four walks over this one marker — `poc/src/language/semantic.ts`
+ * (twice), `compiler/forkbridge/lowering.go.txt`, and this file — and this is
+ * the only one that reaches a module at depth two or more, because
+ * `checkForeignModuleInitializers` iterates the authored `.sm`'s own statements
+ * and the fork's `checkForeignModuleTrust` does the same. A form this walk
+ * accepts and the other three refuse is therefore not a cosmetic divergence: it
+ * is trust granted at a position no other walk inspects. Until 2026-08-27 this
+ * site carried `/i` on both patterns while the other three deliberately did
+ * not, and eight miscasings — `@MODULE`, `@Module`, `@mOdUlE`, `@THROWS`,
+ * `@Throws`, `{Never}`, `{NEVER}`, `{nEvEr}` — were refused directly and
+ * accepted transitively, with the untrusted initializer measured running.
+ *
+ * Three properties are load-bearing, and all three are chosen to agree with
+ * `exactModuleMarker`/`exactThrowsNeverMarker` in the fork byte for byte:
+ *
+ * 1. **Exact case.** specification/failures.mdx, Foreign Exceptions (Locked):
+ *    "`@throws {never}` removes the default panic case; `@throws {T}` declares
+ *    the stated foreign error channel." Those are two productions of one
+ *    syntax, separated only by the spelling inside the braces. `T` is a
+ *    TypeScript type name and TypeScript type identity is case-sensitive, so
+ *    `Never` is the second production and never the first. Folding case merges
+ *    them and converts a channel the compiler could not reify into the trusted
+ *    opt-out, which is the fail-open direction. A JSDoc tag name is not
+ *    case-folded by the parser either, so `@THROWS` and `@MODULE` are not the
+ *    tags the specification names.
+ * 2. **JSDoc whitespace is `[ \t\r\n]`, not `\s`.** `\s` also matches U+00A0,
+ *    U+000B, U+000C and U+FEFF, and `isJSDocWhitespace` in the fork accepts
+ *    exactly four bytes. `{<NBSP>never<NBSP>}` names a type whose spelling is
+ *    not `never`, so by the same two-productions argument the accepting side
+ *    was the wrong one.
+ * 3. **The comment must be a JSDoc comment the scanner produced**, not a `/**`
+ *    substring of the leading text. Scanning raw text for a `/**`-to-close-
+ *    delimiter span honours a marker the parser attaches to nothing: a `//`
+ *    line comment whose text happens to contain the marker is one line comment
+ *    and no JSDoc, and a plain `/*` block comment whose text contains the
+ *    marker is one block comment and no JSDoc, and both used to confer trust
+ *    here. The scanner's comment kind, plus the fork's own test that the
+ *    comment opens with two asterisks and is not the empty `/**` form, is what
+ *    separates a JSDoc from a block comment — and it is asked of the scanner
+ *    rather than of a regular expression over raw bytes. The parser's attached
+ *    `jsDoc` array is deliberately NOT the source: TypeScript attaches only the
+ *    LAST block before a statement, which loses the header of every module
+ *    written as "module header, then the first export's own doc comment", and
+ *    its JSDoc parser strips a `*` decoration inside a tag, which would grant
+ *    trust to `conformance/support/split-trust-marker.ts`.
+ *
+ * The boundary after `@module` stays: `@moduleResolution` is a tag people
+ * really write and it claims nothing.
+ *
+ * This is a deliberate mirror of `JSDOC_SPACE`/`MODULE_MARKER`/
+ * `THROWS_NEVER_MARKER`/`leadingJSDocComments` in `poc/src/language/semantic.ts`,
+ * kept structurally identical so the two diff cleanly. It cannot be an import:
+ * the dependency runs root -> `poc/dist`, and the reference does not export
+ * this predicate. If one side moves, move the other in the same shape.
+ */
+const JSDOC_SPACE = "[ \\t\\r\\n]";
+const MODULE_MARKER = new RegExp(`@module(?:${JSDOC_SPACE}|\\*|$)`);
+const THROWS_NEVER_MARKER = new RegExp(
+  `@throws${JSDOC_SPACE}*\\{${JSDOC_SPACE}*never${JSDOC_SPACE}*\\}`,
+);
+
+function leadingJSDocComments(source: string, fileName: string): readonly string[] {
   const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, scriptKind(fileName));
-  const first = sourceFile.statements[0];
-  const leading = source.slice(0, first?.getStart(sourceFile) ?? source.length);
-  return (leading.match(/\/\*\*[\s\S]*?\*\//g) ?? [])
-    .some((comment) => /@module(?:\s|\*|$)/i.test(comment) &&
-      /@throws\s*\{\s*never\s*\}/i.test(comment));
+  const anchor = sourceFile.statements[0];
+  const limit = anchor?.getStart(sourceFile) ?? source.length;
+  const comments: string[] = [];
+  for (const range of ts.getLeadingCommentRanges(source, anchor?.getFullStart() ?? 0) ?? []) {
+    if (range.kind !== ts.SyntaxKind.MultiLineCommentTrivia || range.end > limit) continue;
+    const comment = source.slice(range.pos, range.end);
+    // `/**/` is an empty block comment, not a JSDoc; this is the same test
+    // TypeScript's own scanner makes.
+    if (!comment.startsWith("/**") || comment.startsWith("/**/")) continue;
+    comments.push(comment);
+  }
+  return comments;
+}
+
+function hasLeadingModuleNoThrowMarker(source: string, fileName: string): boolean {
+  return leadingJSDocComments(source, fileName)
+    .some((comment) => MODULE_MARKER.test(comment) && THROWS_NEVER_MARKER.test(comment));
 }
 
 function resolveSmithersSpecifier(containingFile: string, specifier: string): string | undefined {
@@ -385,6 +652,24 @@ export function buildRelativeRuntimeGraph(options: {
   readonly smithersSources: readonly RuntimeGraphSeed[];
   readonly smithersOutputs: readonly RuntimeOutputReservation[];
   readonly generatedRuntimeSources?: readonly GeneratedRuntimeSource[];
+  /**
+   * What to do with a relative specifier a Smithers source spells as an asset.
+   *
+   * `"reject"` (the default) is the reference path: it compiles assets *before*
+   * this walk and hands the results in as `generatedRuntimeSources`, so by the
+   * time an asset specifier reaches `resolveEdge` it already resolves to a
+   * generated module. Anything still unresolved there is a genuinely missing
+   * import and must fail.
+   *
+   * `"stage"` is for a backend that runs its own asset pass over the raw bytes
+   * and therefore has no generated modules to hand in. The specifier is not
+   * resolved as code; the file behind it is read and reported in
+   * `stagedAssets`, and a specifier naming nothing readable is left alone
+   * rather than refused, because deciding whether a missing or unreadable asset
+   * is an error belongs to that backend's own asset pass, which reports it
+   * against the import site instead of aborting the whole project.
+   */
+  readonly assetSpecifiers?: "reject" | "stage";
   readonly budget: RuntimeSourceBudget;
 }): RelativeRuntimeGraph {
   const rootDir = realpathSync(resolve(options.rootDir));
@@ -559,10 +844,71 @@ export function buildRelativeRuntimeGraph(options: {
   const staticInitializationRoots = new Set<string>();
   const targetAliases = new Map<string, Set<string>>();
   const resolvedOutputByAlias = new Map<string, string>();
+  const stagedAssetByName = new Map<string, StagedProjectSource>();
+
+  /**
+   * Read one asset the caller asked to have staged, or decline.
+   *
+   * Declining is the fail-closed answer, not a shrug: the caller only reaches
+   * here with `assetSpecifiers: "stage"`, which means it has an asset pass of
+   * its own that reports a missing, unreadable, escaping, or over-budget asset
+   * against the import site. Aborting the whole project here would replace that
+   * located diagnostic with a thrown project error.
+   */
+  const reserveAsset = (canonical: string): void => {
+    if (stagedAssetByName.has(canonical)) return;
+    if (!isInside(rootDir, canonical) || canonical === rootDir) return;
+    if (smithersByName.has(canonical) || generatedByName.has(canonical) || generatedByAlias.has(canonical)) {
+      throw new TypeError(`relative asset dependency conflicts with a project code identity: ${canonical}`);
+    }
+    if (foreignByName.has(canonical) || pendingRuntime.has(canonical) ||
+      pendingChecker.has(canonical) || checkerOnlyFiles.has(canonical)) {
+      throw new TypeError(`relative dependency is loaded both as code and as an asset: ${canonical}`);
+    }
+    let snapshot: ReturnType<typeof readBoundedUtf8>;
+    try {
+      if (!existsSync(canonical) || lstatSync(canonical).isSymbolicLink()) return;
+      snapshot = readBoundedUtf8(canonical, options.budget.maximumFileBytes);
+    } catch {
+      // Unreadable, over budget, or not UTF-8 — the wire protocol carries text,
+      // so there is nothing to stage. The importing backend still sees the
+      // import and refuses it there.
+      return;
+    }
+    if (fileCount >= options.budget.maximumFiles) return;
+    if (totalBytes + snapshot.bytes > options.budget.maximumTotalBytes) return;
+    fileCount += 1;
+    totalBytes += snapshot.bytes;
+    stagedAssetByName.set(canonical, {
+      fileName: canonical,
+      displayName: displayPath(rootDir, canonical),
+      source: snapshot.source,
+    });
+  };
+
+  /**
+   * True when a Smithers source spelled this edge as an asset rather than as code.
+   *
+   * Project code is never an asset however it is spelled, so `.sm`, a foreign
+   * source extension, and a declaration file are all excluded before the two
+   * asset spellings are considered — an extensionless specifier included, since
+   * that is how a `.sm` sibling is named. Getting that order wrong classified
+   * `./helper.sm` as an asset, because `.sm` is not a *foreign* extension.
+   */
+  const namesAnAsset = (edge: ModuleEdge, literal: string): boolean => {
+    if (options.assetSpecifiers !== "stage") return false;
+    const extension = extensionOf(literal);
+    if (extension === "" || extension === ".sm" || DECLARATION_PATTERN.test(literal)) return false;
+    if (FOREIGN_EXTENSIONS.has(extension)) return edge.attributes;
+    return true;
+  };
 
   const reserveForeign = (canonical: string, alias: string): string => {
     if (!isInside(rootDir, canonical) || canonical === rootDir) {
       throw new TypeError(`relative runtime dependency is outside the project root: ${canonical}`);
+    }
+    if (stagedAssetByName.has(canonical)) {
+      throw new TypeError(`relative dependency is loaded both as code and as an asset: ${canonical}`);
     }
     const extension = extensionOf(canonical);
     if (generatedByAlias.has(alias) || generatedByName.has(canonical)) {
@@ -627,6 +973,19 @@ export function buildRelativeRuntimeGraph(options: {
     }
     if (!checkerOnly && !edge.typeOnly && importerFormat === "cjs" && edge.kind === "dynamic-import") {
       throw new TypeError(`${containingFile}: dynamic import from bounded CJS output is not yet supported`);
+    }
+    // An asset specifier is not a module edge, so it is answered before every
+    // rule below that describes one — the same position the reference path's
+    // `generatedByAlias` hit occupies, and for the same reason: an asset has
+    // already been resolved by an asset pass, and neither the Smithers dynamic
+    // import deferral nor the foreign-code resolver has anything to say about
+    // it. This is reached only under `assetSpecifiers: "stage"`.
+    if (fromSmithers && edge.specifier.startsWith(".")) {
+      const literal = resolve(dirname(containingFile), edge.specifier);
+      if (namesAnAsset(edge, literal)) {
+        reserveAsset(literal);
+        return edge;
+      }
     }
     // A compiler-generated asset module is content the compiler itself wrote at
     // a path it owns, so its exact rewrite map is already known. That is the one
@@ -698,7 +1057,7 @@ export function buildRelativeRuntimeGraph(options: {
     const absolute = resolve(source.fileName);
     const output = options.smithersOutputs.find((candidate) => resolve(candidate.sourceFileName) === absolute)?.outputFileName;
     if (!output) throw new TypeError(`Smithers runtime output is missing for ${absolute}`);
-    for (const edge of scanEdges(source.source, absolute)) {
+    for (const edge of scanEdges(source.source, absolute, options.assetSpecifiers === "stage")) {
       const resolvedEdge = resolveEdge(absolute, resolve(output), edge, true);
       if (resolvedEdge.moduleInitialization && resolvedEdge.targetFileName &&
         !smithersByName.has(resolvedEdge.targetFileName) && !generatedByName.has(resolvedEdge.targetFileName)) {
@@ -781,9 +1140,16 @@ export function buildRelativeRuntimeGraph(options: {
     ...options.smithersOutputs.map((reservation) => collisionKey(resolve(reservation.outputFileName))),
   ]);
 
-  // Only the graph reached through a static edge needs an initialization trust
-  // claim. A subtree reached solely through import() rejects its Promise and is
-  // therefore handled by the ordinary checked async foreign-call boundary.
+  // Only the graph module evaluation actually reaches needs an initialization
+  // trust claim, and `moduleInitialization` is what decides that, one edge at a
+  // time, in `scanEdges`. Its default is "initialization" and "deferred" is the
+  // case that must be proven — see `moduleInitializationClassifier` for the
+  // proof it accepts. The flag is read here and at the `.sm` seed loop above;
+  // on a `.sm` edge it is inert, because a Smithers dynamic import either
+  // resolves to a compiler-generated asset (never a trust root) or is refused
+  // outright a few lines into `resolveEdge`. It is foreign modules — reached at
+  // depth one and beyond, where no other implementation of this rule looks —
+  // whose edges this classification actually governs.
   const initializationRequired = new Set<string>();
   const initializationPending = [...staticInitializationRoots].sort(compareText);
   while (initializationPending.length > 0) {
@@ -819,6 +1185,12 @@ export function buildRelativeRuntimeGraph(options: {
   return {
     files,
     diagnostics,
+    checkerDependencies: [...checkerOnlyFiles].sort(compareText).map((fileName) => ({
+      fileName,
+      displayName: displayPath(rootDir, fileName),
+      source: snapshots.get(fileName)!.source,
+    })),
+    stagedAssets: [...stagedAssetByName.keys()].sort(compareText).map((fileName) => stagedAssetByName.get(fileName)!),
     fileCount,
     totalBytes,
     additionalRuntimeOutputs: files.map((file) => ({
