@@ -1,0 +1,13 @@
+import { durable, Action } from "smithers:flows"
+
+// A conditional expression IS representable — 17-durable/static-plan-shape-is-
+// digest-pinned lowers one into a Branch node — but only when its condition is a
+// statically boolean value. A `string` condition would have to be coerced, and
+// the coercion is the inspection Plan IR has no node for, so the branch that
+// makes the Plan wrong is exactly the one where an Action lives in each arm.
+class Fetch extends Action<(input: { v: string }) => Result<{ value: string }, Error>> {}
+class Cached extends Action<(input: { v: string }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  return input.mode ? Fetch.run({ v: "live" }) : Cached.run({ v: "cold" })
+})

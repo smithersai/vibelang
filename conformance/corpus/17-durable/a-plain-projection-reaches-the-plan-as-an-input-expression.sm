@@ -1,0 +1,30 @@
+import { durable, Action } from "smithers:flows"
+
+// The paired positive control for the refusal cases in this area. Their programs
+// are all this program with one operator inserted, so without this one the
+// refusals could be about the shared boilerplate rather than about the operator.
+// It also observes the Plan's own value expression: a projection of a durable
+// input must reach the Plan as an explicit `input` expression carrying its path,
+// never as whatever a stand-in object happened to evaluate to.
+class Fetch extends Action<(input: { v: string }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  return Fetch.run({ v: input.mode })
+})
+
+export function main(): string[] {
+  const plan = Flow.plan
+  const node = plan.nodes[0]
+  if (node.kind !== "action") return ["the only plan node is not an action node"]
+  const argument = node.input
+  if (argument.kind !== "object") return ["the action input is not an object expression"]
+  const projected = argument.fields.v
+  return [
+    Flow.artifactSource,
+    plan.nodes.map((each) => each.kind).join(","),
+    argument.kind,
+    projected.kind,
+    projected.kind === "input" ? projected.path.join(".") : "the field is not an input projection",
+    plan.requirements.join(",")
+  ]
+}

@@ -1,0 +1,11 @@
+import { durable, Action } from "smithers:flows"
+
+// `typeof` reads the runtime type tag of a symbolic value. A lowering that
+// discovered the graph by calling the source function with a proxy would answer
+// this from the proxy's own JavaScript type rather than from the program, which
+// is the technique the specification forbids outright.
+class Fetch extends Action<(input: { v: string }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  return Fetch.run({ v: typeof input.mode })
+})

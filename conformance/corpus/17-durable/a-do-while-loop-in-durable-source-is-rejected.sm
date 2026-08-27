@@ -1,0 +1,14 @@
+import { durable, Action } from "smithers:flows"
+
+// A loop is refused under its own rule, not the branch rule, because the repair
+// is different: a runtime loop needs a parameterized Plan template, where a
+// runtime branch needs explicit branch lowering. `do`/`while` is the form whose
+// body runs before its condition is ever read, so a lowering that unrolled one
+// pass would produce a Plan that looks complete and has no loop node in it.
+class Fetch extends Action<(input: { v: string }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  do {
+    return Fetch.run({ v: "live" })
+  } while (input.mode)
+})

@@ -1,0 +1,12 @@
+{
+  "title": "a durable statement branch is refused even when each arm calls a different Action, so no Action can be silently dropped from the Plan",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS4106",
+      "line": 13,
+      "column": 3
+    }
+  ],
+  "notes": "17-durable/statement-branch-fails-closed already pins this code and rule on a branch whose arms return plain strings; accepting THAT program would lose a string. This is the expensive member of the same class and it was unpinned: each arm calls a different Action, so a lowering that folded the condition would emit a Plan containing one action node and drop the other — and a Plan is what every downstream digest, manifest and artifact signature is computed over, so the dropped Action is invisible from that point on. Written as a second case rather than by editing the first, because the first one's value is that it is minimal. specification/durable-execution.mdx:71 (Flow Purity): 'Runtime-dependent control flow MUST be represented explicitly in Plan IR. The compiler MUST reject an operation that would inspect a symbolic value without a corresponding IR representation.' specification/durable-execution.mdx:59 (Flow): 'The compiler MUST lower the function's checked syntax, control flow, and data flow into Plan IR. It MUST NOT invoke the source function with proxy or symbolic JavaScript values to discover the graph.' The declared position is the start of the expression or statement the lowering could not represent, which is where both backends anchor the durable-subset rules the corpus already pins (17-durable/statement-branch-fails-closed anchors SMITHERS4106 on its `if` token). Written from the two sentences above rather than from an implementation: the second one is the rule, and the first one names the technique — discovery by proxy — that turns a refusal into a silently folded Plan. This case pins CURRENT behaviour on the normative `.sm` path; it was not failing before the durable lane's fix, because that fix hardened the RUNTIME authoring guard (`poc/src/durable/authoring.ts`), a different entry point, and the `.sm` path already failed closed on this form. Its value is the other direction: the `.sm` rule was unpinned for this form, so a lowering that started folding it would have been observed by nothing."
+}

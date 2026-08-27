@@ -1,0 +1,11 @@
+import { durable, Action } from "smithers:flows"
+
+// `??` is the sibling of `||`: it asks a symbolic input whether it is null or
+// undefined. It is written as its own case because a lowering that special-cased
+// only `||` would leave this one folding, and the two operators reach different
+// branches of a checked-syntax walk.
+class Fetch extends Action<(input: { v: string }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  return Fetch.run({ v: input.mode ?? "fallback" })
+})

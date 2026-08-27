@@ -1,0 +1,10 @@
+import { durable, Action } from "smithers:flows"
+
+// The sibling of `Array.isArray` on a different host namespace. Both are refused
+// for being calls the Plan cannot name, and neither is answerable by inspecting
+// a stand-in object: a proxy-driven lowering answers both from the proxy.
+class Fetch extends Action<(input: { v: boolean }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  return Fetch.run({ v: Object.is(input.mode, "ready") })
+})

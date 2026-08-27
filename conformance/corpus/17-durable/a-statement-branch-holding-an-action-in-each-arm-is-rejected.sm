@@ -1,0 +1,17 @@
+import { durable, Action } from "smithers:flows"
+
+// 17-durable/statement-branch-fails-closed pins the same rule on a branch whose
+// arms hold no Action at all, so the only thing lost by accepting it is the
+// wrong string. This is the expensive member of the class: each arm calls a
+// different Action, so a lowering that folded the condition would emit a Plan
+// containing ONE action node and silently drop the other — a Plan that is not
+// the program that was written, reaching every downstream digest and signature.
+class Fetch extends Action<(input: { v: string }) => Result<{ value: string }, Error>> {}
+class Cached extends Action<(input: { v: string }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  if (input.mode) {
+    return Fetch.run({ v: "live" })
+  }
+  return Cached.run({ v: "cold" })
+})

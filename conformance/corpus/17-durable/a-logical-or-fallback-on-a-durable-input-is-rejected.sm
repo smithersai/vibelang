@@ -1,0 +1,11 @@
+import { durable, Action } from "smithers:flows"
+
+// `||` asks a symbolic input whether it is truthy. Plan IR has no node that
+// represents "the left operand if truthy, otherwise the right", so there is
+// nothing for the lowering to emit and the operation has to be refused at the
+// expression the compiler cannot represent.
+class Fetch extends Action<(input: { v: string }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  return Fetch.run({ v: input.mode || "fallback" })
+})

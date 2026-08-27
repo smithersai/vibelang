@@ -1,0 +1,12 @@
+{
+  "title": "`Array.isArray` applied to a durable input is refused as a call the Plan cannot name",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS4112",
+      "line": 9,
+      "column": 25
+    }
+  ],
+  "notes": "A host predicate over a symbolic value is refused under the dynamic-call rule rather than the unsupported-expression rule, and the two codes being different is itself part of the contract: the repair differs (an operator has no representation at all, where a call could in principle become an Action). Pinning it under SMITHERS4112 alongside the six SMITHERS4111 operator cases is what keeps a backend from collapsing the family onto one code. Answered by evaluation it folds to `false`, silently. specification/durable-execution.mdx:71 (Flow Purity): 'Runtime-dependent control flow MUST be represented explicitly in Plan IR. The compiler MUST reject an operation that would inspect a symbolic value without a corresponding IR representation.' specification/durable-execution.mdx:59 (Flow): 'The compiler MUST lower the function's checked syntax, control flow, and data flow into Plan IR. It MUST NOT invoke the source function with proxy or symbolic JavaScript values to discover the graph.' The declared position is the start of the expression or statement the lowering could not represent, which is where both backends anchor the durable-subset rules the corpus already pins (17-durable/statement-branch-fails-closed anchors SMITHERS4106 on its `if` token). Written from the two sentences above rather than from an implementation: the second one is the rule, and the first one names the technique — discovery by proxy — that turns a refusal into a silently folded Plan. This case pins CURRENT behaviour on the normative `.sm` path; it was not failing before the durable lane's fix, because that fix hardened the RUNTIME authoring guard (`poc/src/durable/authoring.ts`), a different entry point, and the `.sm` path already failed closed on this form. Its value is the other direction: the `.sm` rule was unpinned for this form, so a lowering that started folding it would have been observed by nothing."
+}

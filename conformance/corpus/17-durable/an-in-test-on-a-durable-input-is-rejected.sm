@@ -1,0 +1,10 @@
+import { durable, Action } from "smithers:flows"
+
+// `in` interrogates the key set of a symbolic value. It is the one operator in
+// this family whose symbolic operand is on the right, so a walk that only
+// checked the left-hand side of a binary expression would miss it.
+class Fetch extends Action<(input: { v: boolean }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  return Fetch.run({ v: "mode" in input })
+})

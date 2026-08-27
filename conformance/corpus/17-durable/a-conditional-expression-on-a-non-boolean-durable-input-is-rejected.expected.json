@@ -1,0 +1,12 @@
+{
+  "title": "a conditional expression whose condition is not statically boolean is refused, even though a boolean one lowers to a Branch node",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS4106",
+      "line": 12,
+      "column": 10
+    }
+  ],
+  "notes": "This is the case that has to be read against 17-durable/static-plan-shape-is-digest-pinned, which lowers `input.live ? found.value : \"offline\"` into a real `branch` node and prints it. A conditional expression is therefore NOT categorically unrepresentable — the promise is narrower and easier to lose: the condition must already be a boolean, because coercing a `string` to one is the inspection of a symbolic value that has no IR node. Each arm here calls a DIFFERENT Action, so a lowering that coerced the condition would emit a Plan with one action node where the program has two. specification/durable-execution.mdx:71 (Flow Purity): 'Runtime-dependent control flow MUST be represented explicitly in Plan IR. The compiler MUST reject an operation that would inspect a symbolic value without a corresponding IR representation.' specification/durable-execution.mdx:59 (Flow): 'The compiler MUST lower the function's checked syntax, control flow, and data flow into Plan IR. It MUST NOT invoke the source function with proxy or symbolic JavaScript values to discover the graph.' The declared position is the start of the expression or statement the lowering could not represent, which is where both backends anchor the durable-subset rules the corpus already pins (17-durable/statement-branch-fails-closed anchors SMITHERS4106 on its `if` token). Written from the two sentences above rather than from an implementation: the second one is the rule, and the first one names the technique — discovery by proxy — that turns a refusal into a silently folded Plan. This case pins CURRENT behaviour on the normative `.sm` path; it was not failing before the durable lane's fix, because that fix hardened the RUNTIME authoring guard (`poc/src/durable/authoring.ts`), a different entry point, and the `.sm` path already failed closed on this form. Its value is the other direction: the `.sm` rule was unpinned for this form, so a lowering that started folding it would have been observed by nothing."
+}

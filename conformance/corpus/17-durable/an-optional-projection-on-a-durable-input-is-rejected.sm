@@ -1,0 +1,12 @@
+import { durable, Action } from "smithers:flows"
+
+// `?.` is a branch wearing the syntax of a projection: it reads the member only
+// when the receiver is neither null nor undefined. A plain `.` projection IS
+// representable and is lowered into a typed projection edge, so the promise here
+// is that the optional form is told apart from the plain one rather than being
+// waved through with it.
+class Fetch extends Action<(input: { v: number }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  return Fetch.run({ v: input.mode?.length })
+})

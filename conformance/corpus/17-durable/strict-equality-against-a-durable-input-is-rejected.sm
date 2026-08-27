@@ -1,0 +1,11 @@
+import { durable, Action } from "smithers:flows"
+
+// `===` compares a symbolic value against a literal. This is the form that is
+// most likely to be answered wrongly rather than refused: a proxy-driven
+// lowering compares the proxy object against the string and folds the whole
+// comparison to `false`, which type-checks and leaves no trace in the Plan.
+class Fetch extends Action<(input: { v: boolean }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  return Fetch.run({ v: input.mode === "ready" })
+})

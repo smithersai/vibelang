@@ -1,0 +1,11 @@
+import { durable, Action } from "smithers:flows"
+
+// `!` is the smallest possible truthiness inspection of a symbolic value, and it
+// is the unary shape rather than the binary one: a walk that only rejected
+// binary operators would let it through and fold the whole expression to a
+// constant boolean.
+class Fetch extends Action<(input: { v: boolean }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  return Fetch.run({ v: !input.mode })
+})

@@ -1,0 +1,10 @@
+import { durable, Action } from "smithers:flows"
+
+// A host predicate applied to a symbolic value is a call the lowering cannot
+// represent, not an operator. It is refused as a dynamic call at the callee
+// rather than as an unsupported expression, so the two rules are pinned apart.
+class Fetch extends Action<(input: { v: boolean }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { mode: string }) => {
+  return Fetch.run({ v: Array.isArray(input.mode) })
+})
