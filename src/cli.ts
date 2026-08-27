@@ -378,11 +378,35 @@ function decodeSourceMapVlq(segment: string, start: number): readonly [number, n
   return [(value & 1) === 1 ? -magnitude : magnitude, index];
 }
 
+/**
+ * Map one generated position back onto authored coordinates, or report that the
+ * map does not anchor it.
+ *
+ * `undefined` — not a thrown error — is the answer for a generated position the
+ * map does not cover. A diagnostic the compiler has already decided to report is
+ * not the place to discover that a lowering emitted an unmapped line: throwing
+ * there destroys the whole run, so the program is refused with a bare
+ * `SMITHERS_PROJECT_ERROR` envelope and NONE of its diagnostics, which is
+ * strictly less than the compiler already knew. The conformance JS backend
+ * settled this same question the other way years of habit ago
+ * (`conformance/runner/backend-js.mjs`, `authoredPosition`: "anything else ... keep
+ * the generated position and say so with `mapped: false`"), and the product now
+ * matches it. Measured on
+ * `02-unwrap-propagation/postfix-bang-in-a-labeled-statement-body-is-accepted`,
+ * where the reference's labeled-statement lowering emits TypeScript the stock
+ * checker rejects at a generated line the map does not anchor: before this, the
+ * CLI answered `diagnostic source map has no mapping for 22:5` and reported no
+ * diagnostic at all.
+ *
+ * Only the unanchored position is softened. A map that names a file outside the
+ * project is still a integrity failure and still throws below, because that one
+ * says the map itself is describing a different program.
+ */
 function originalSourcePosition(sourceMap: string, line: number, column: number): {
   readonly source: string;
   readonly line: number;
   readonly column: number;
-} {
+} | undefined {
   if (!Number.isSafeInteger(line) || !Number.isSafeInteger(column) || line < 0 || column < 0) {
     throw new TypeError("diagnostic has an invalid generated source position");
   }
@@ -445,7 +469,7 @@ function originalSourcePosition(sourceMap: string, line: number, column: number)
     }
     if (generatedLine >= line) break;
   }
-  if (!selected) throw new TypeError(`diagnostic source map has no mapping for ${line + 1}:${column + 1}`);
+  if (!selected) return undefined;
   return {
     source: parsed.sources[selected.source] as string,
     line: selected.originalLine,
@@ -460,6 +484,10 @@ function remapCliDiagnostic(
 ): CliDiagnostic {
   if (diagnostic.line === undefined || diagnostic.column === undefined) return diagnostic;
   const mapped = originalSourcePosition(sourceMap, diagnostic.line - 1, diagnostic.column - 1);
+  // The map does not anchor this generated position. Report the diagnostic where
+  // the compiler found it rather than dropping the whole run; see
+  // `originalSourcePosition`.
+  if (!mapped) return diagnostic;
   const source = project.sources.find((candidate) => candidate.fileName === mapped.source);
   if (!source) throw new TypeError(`diagnostic source map references unknown project file '${mapped.source}'`);
   return {
@@ -1233,14 +1261,111 @@ function compileGoSmithersFiles(
 ): readonly SmithersFileResult[] {
   const project = loadSmithersProject(inputNames, options.rootDir);
   const outDir = canonicalFuturePath(resolve(options.outDir ?? project.rootDir));
-  const byLogicalName = new Map(project.sources.map((source) => [source.fileName, source]));
+  /**
+   * A Smithers project is not a list of `.sm` files.
+   *
+   * `loadSmithersProject` walks `.sm` imports only, so the request used to
+   * consist entirely of `kind: "smithers"` sources and the `"typescript"` kind
+   * the protocol has always declared was never produced by anything. Every
+   * `.sm` module that imports a foreign `./x.ts` therefore failed to resolve it
+   * and was refused with SMITHERS1510 — the right code for the wrong reason,
+   * since "the module could not be resolved" is not "the module is untrusted".
+   *
+   * The dependency set was already being computed: `buildRelativeRuntimeGraph`
+   * is the reference backend's own walk, and it resolves, bounds, and refuses
+   * these edges (a symlink alias, a hard-link alias, an escape from the project
+   * root, an ambiguous specifier, a budget overrun). Reusing it rather than
+   * writing a second walk is what makes the two backends agree on which files
+   * are in the project and refuse the same shapes for the same reasons.
+   *
+   * What is taken from it is the dependency set, plus the one verdict that
+   * belongs to project loading rather than to a backend — see the trust check
+   * immediately below. Everything else the fork decides for itself, from the
+   * same bytes.
+   */
+  const dependencies = buildRelativeRuntimeGraph({
+    rootDir: project.rootDir,
+    outDir,
+    smithersSources: project.runtimeSeeds,
+    smithersOutputs: project.runtimeSeeds.map((source) => ({
+      sourceFileName: source.fileName,
+      // The Go emit renames `x.sm.js` to `x.js`, so those are the paths whose
+      // collisions this walk should be checking.
+      outputFileName: resolve(outDir, relative(project.rootDir, source.fileName).replace(/\.sm$/, ".js")),
+    })),
+    // The fork runs its own asset pass over raw bytes, so there are no
+    // pre-compiled asset modules to hand in and the asset files themselves are
+    // what it needs staged.
+    assetSpecifiers: "stage",
+    budget: DEFAULT_SMITHERS_PROJECT_BUDGET,
+  });
+  /**
+   * The foreign initialization-trust verdict is a project-loading verdict, and
+   * it stops both backends at the same place for the same reason.
+   *
+   * The walk computes the *transitive* static-initialization closure: a trusted
+   * facade that re-exports an untrusted module is refused at the untrusted
+   * module, because importing the facade evaluates it. That closure is a
+   * property of the project, not of a backend, and the reference path already
+   * stops here rather than compiling (`compileSmithersFiles`, the identical
+   * early return).
+   *
+   * Mirroring it is what keeps staging from being a fail-open. Before the
+   * sources were staged, an untrusted foreign graph was refused on this backend
+   * only because nothing resolved — the right code for the wrong reason, and
+   * accidentally safe. Staging removes that accident: the fork's own edge check
+   * covers the edges an authored `.sm` spells, so a *directly* untrusted import
+   * is still refused, but nothing on that side walks foreign-to-foreign edges,
+   * so a transitively untrusted graph would have started compiling clean. This
+   * return keeps the answer the reference's, at the reference's position, so
+   * the two backends agree on the same bytes instead of one of them relaxing.
+   */
+  if (dependencies.diagnostics.length > 0) {
+    return project.sources.map((source, index): SmithersFileResult => ({
+      input: resolve(project.rootDir, source.fileName),
+      diagnostics: index === 0
+        ? dependencies.diagnostics.map((diagnostic): CliDiagnostic => ({
+            code: diagnostic.code,
+            severity: diagnostic.severity,
+            message: diagnostic.message,
+            file: diagnostic.fileName,
+            line: diagnostic.line,
+            column: diagnostic.column,
+          }))
+        : [],
+      rowsUnavailable: rowsNotComputed("runtime-graph"),
+      declarations: [],
+    }));
+  }
+  // `dependencies.files` holds only foreign modules here: the generated asset
+  // modules that otherwise share that list are produced from
+  // `generatedRuntimeSources`, which this request never supplies.
+  const stagedSources = [
+    ...[...dependencies.files, ...dependencies.checkerDependencies].map((file) => ({
+      path: file.displayName,
+      kind: "typescript" as const,
+      text: file.source,
+    })),
+    ...dependencies.stagedAssets.map((file) => ({
+      path: file.displayName,
+      kind: "asset" as const,
+      text: file.source,
+    })),
+  ];
+  const byLogicalName = new Map([
+    ...project.sources.map((source) => [source.fileName, source] as const),
+    ...stagedSources.map((file) => [file.path, { fileName: file.path, source: file.text }] as const),
+  ]);
   const compiled = invokeGoBackend({
     rootNames: project.sources.map((source) => source.fileName),
-    files: project.sources.map((source) => ({
-      path: source.fileName,
-      kind: "smithers" as const,
-      text: source.source,
-    })),
+    files: [
+      ...project.sources.map((source) => ({
+        path: source.fileName,
+        kind: "smithers" as const,
+        text: source.source,
+      })),
+      ...stagedSources,
+    ],
     options: {
       noEmit: options.emit === false,
       noEmitOnError: true,
@@ -1252,18 +1377,27 @@ function compileGoSmithersFiles(
   });
 
   const diagnostics = new Map(project.sources.map((source) => [source.fileName, [] as CliDiagnostic[]]));
-  const requestSources = new Set(diagnostics.keys());
+  const requestSources = new Set(byLogicalName.keys());
   for (const diagnostic of compiled.diagnostics) {
     // A name the request never sent fails closed inside `resolveGoDiagnosticFile`
     // rather than landing on whichever source happens to be first. A diagnostic
     // that names no file at all is project-level: it goes in the first bucket so
     // it is still reported and still gates, and `formatGoDiagnostic` leaves its
     // `file` unset, so it never claims to come from that file's source.
+    //
+    // A diagnostic against a staged foreign or asset source is neither: the
+    // request did send that file, and `formatGoDiagnostic` names it and locates
+    // it in its own text, but the report is keyed by `.sm` input and a foreign
+    // file is not one. It joins the first bucket for the same reason a
+    // project-level diagnostic does — so that it is still reported and still
+    // gates. Dropping it would let a real error inside a staged `.ts` vanish
+    // and the compile read clean, which is exactly what an unbucketed
+    // `diagnostics.get(...)` used to do the moment anything but `.sm` was sent.
     const logicalName = resolveGoDiagnosticFile(diagnostic.file, requestSources);
     const formatted = formatGoDiagnostic(project, byLogicalName, diagnostic);
-    const target = logicalName === undefined
-      ? diagnostics.values().next().value
-      : diagnostics.get(logicalName);
+    const target = logicalName !== undefined && diagnostics.has(logicalName)
+      ? diagnostics.get(logicalName)
+      : diagnostics.values().next().value;
     target?.push(formatted);
   }
   const hasError = [...diagnostics.values()].some((items) =>
@@ -1530,6 +1664,29 @@ function createTestRunner(
   return [
     `import { __vsInspectResult, isResult } from ${JSON.stringify(runtimeUrl)}`,
     `const modules = ${JSON.stringify(modules)}`,
+    // A generator function is the one callable shape whose body does not run
+    // when it is called: `f()` allocates an iterator and returns. Nothing here
+    // drives that iterator, so before this refusal existed the runner counted
+    // such a test in `discovered`, counted it in `passed`, and printed
+    // `ok: true` for a body that never executed — a gate certifying work it
+    // never did, in the shipped product's own test runner.
+    //
+    // Two spellings, so two checks. The export may *be* a generator function
+    // (measured: `function*`, `async function*`, a bound generator, a Proxy
+    // over one, and a generator method pulled off a class all report
+    // `[object GeneratorFunction]` / `[object AsyncGeneratorFunction]`, because
+    // a bound function inherits its target's prototype and a Proxy forwards the
+    // `Symbol.toStringTag` read); or it may be an ordinary or `async` function
+    // that *returns* a generator object, which the tag on the function cannot
+    // see and only the returned value reveals.
+    //
+    // Refused rather than driven: what it would mean to run such a test — one
+    // `next()`, exhaustion, which yielded value is the result — is unspecified,
+    // and inventing a semantics here would be a second guess on top of the
+    // first. This refuses in the same place and the same style as the arity
+    // check below, so the author is told, by name, that the test did not run.
+    "const GENERATOR_FUNCTION_TAGS = new Set(['[object GeneratorFunction]', '[object AsyncGeneratorFunction]'])",
+    "const GENERATOR_VALUE_TAGS = new Set(['[object Generator]', '[object AsyncGenerator]'])",
     "let passed = 0",
     "let failed = 0",
     "let discovered = 0",
@@ -1547,12 +1704,28 @@ function createTestRunner(
     "  }",
     "  for (const name of Object.keys(namespace).sort()) {",
     "    const test = namespace[name]",
-    "    if (!/^test(?:$|[A-Z0-9_])/.test(name) || typeof test !== 'function') continue",
+    // `test*`, as the command description and `doctor` both say it: every
+    // export whose name begins with `test`. The predicate was
+    // `/^test(?:$|[A-Z0-9_])/`, an undocumented camel-case boundary rule, and
+    // every name it rejected was `continue`d — not run, not counted in
+    // `discovered`, and named nowhere in the report. `tests` (the likeliest
+    // accidental spelling), `testfoo`, `test$` and `testEcole` were all dropped
+    // in silence, so a file whose five tests included one matching name
+    // reported green. Nothing downstream could see it either: `discovered` is
+    // cross-checked only against `passed` and `tests.length`, never against how
+    // many `test*` exports the module has.
+    "    if (!/^test/.test(name) || typeof test !== 'function') continue",
     "    discovered += 1",
     "    const label = `${moduleLabel}#${name}`",
     "    try {",
     "      if (test.length !== 0) throw new TypeError('exported Smithers test functions must take zero arguments')",
+    "      if (GENERATOR_FUNCTION_TAGS.has(Object.prototype.toString.call(test))) {",
+    "        throw new TypeError('exported Smithers test functions must not be generator functions: calling one allocates an iterator and runs none of the body')",
+    "      }",
     "      const value = await test()",
+    "      if (GENERATOR_VALUE_TAGS.has(Object.prototype.toString.call(value))) {",
+    "        throw new TypeError('an exported Smithers test function must not return a generator: its body has not run')",
+    "      }",
     "      if (isResult(value)) {",
     "        const inspected = __vsInspectResult(value)",
     "        if (!inspected.ok) throw inspected.error",
@@ -2001,7 +2174,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
       timeoutMs: z.number().int().min(100).max(300_000).default(30_000)
         .describe("Maximum time for the isolated test process"),
     }),
-    description: "Compile and run exported zero-argument test* functions",
+    description: "Compile and run exported zero-argument test* functions (every exported function whose name begins with test; generator functions are refused)",
     async run(context) {
       const inputs = context.args.files;
       if (!inputs || inputs.length === 0) {
@@ -2158,7 +2331,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
           durableExecutor: "Bun-only subpath: smthrs/durable/bun",
           languageServer: "stdio LSP: diagnostics, hover rows, definition, formatting; one workspace folder, full-document sync",
           formatter: "idempotent whitespace-only .sm/TypeScript formatter with Smithers construct masking",
-          testRunner: "exported zero-argument test* prototype",
+          testRunner: "exported zero-argument test* prototype: every exported function whose name begins with test, generator functions refused",
         },
         packagedRuntime,
       };
