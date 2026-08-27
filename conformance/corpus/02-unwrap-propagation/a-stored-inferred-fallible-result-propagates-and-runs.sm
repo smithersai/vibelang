@@ -1,0 +1,20 @@
+export class Boom extends Error {
+  constructor(readonly text: string) { super(`no ${text}`) }
+}
+
+function inferred(text: string) {
+  if (text === "bad") throw new Boom(text)
+  return text.length
+}
+
+function outer(text: string): Result<number, Boom> {
+  const stored = inferred(text)
+  return stored!
+}
+
+export function main(): string[] {
+  return [
+    outer("ok").match({ ok: (value) => `ok ${value}`, error: (error) => `boom ${error.message}` }),
+    outer("bad").match({ ok: (value) => `ok ${value}`, error: (error) => `boom ${error.message}` }),
+  ]
+}

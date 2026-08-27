@@ -1,0 +1,8 @@
+{
+  "title": "postfix ! is accepted in a for initializer with a single declarator, which runs once before the loop",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx, 'Accepted Placements': 'A `!` on a Result operand MUST be accepted if and only if all five hold', condition 1 being that every enclosing node out to the nearest statement or arrow function is one of exactly seven forms. 'That is why `if (r!)`, `switch (r!)`, and `for (let i = r!; …)` are accepted while every expression-nested position is not.' The initializer of a `for` runs exactly once, before the loop, which is what distinguishes it from the condition and the incrementor — those repeat, and 02-unwrap-propagation/unwrap-in-a-loop-header-is-rejected pins them as SMITHERS1703. Condition 1's sixth form also requires exactly one declarator, so this is deliberately the single-declarator spelling."
+}

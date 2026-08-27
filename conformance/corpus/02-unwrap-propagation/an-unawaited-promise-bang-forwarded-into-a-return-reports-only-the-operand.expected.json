@@ -1,0 +1,12 @@
+{
+  "title": "postfix ! on an un-awaited Promise<Result> reports the operand violation alone when the value is forwarded into the return",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1207",
+      "line": 5,
+      "column": 17
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Accepted Placements', condition 5: 'The operand's checker-derived provenance MUST be a Result.' specification/compatibility.mdx:72: 'Postfix `!` requires a `Result` operand.' A `Promise<Result<A, E>>` is not one — 'Awaiting `Promise<Result<A, E>>` MUST produce `Result<A, E>`' names `await` as the layer-removing operator. Deliberately a PAIR with 08-promise-chaining/postfix-bang-on-an-unawaited-promise-result-is-not-a-result-operand: the same violation with and without a surviving unconsumed-Promise obligation. There the started Promise reaches a binding nothing awaits and SMITHERS1403 is charged beside the SMITHERS1207; here the value is forwarded into the return, so the operand violation is the whole answer. Two diagnostics in one case and one in the other is the contract, and declaring both cases is what stops an implementation from answering the second question in place of the first."
+}

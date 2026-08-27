@@ -1,0 +1,12 @@
+class Boom extends Error {}
+class Calm extends Error {}
+
+function inferred(text: string) {
+  if (text === "bad") throw new Boom("bad")
+  return text.length
+}
+
+export function outer(): Result<number, Calm> {
+  const stored = inferred("bad")
+  return stored!
+}

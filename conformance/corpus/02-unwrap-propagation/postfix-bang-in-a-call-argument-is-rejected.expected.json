@@ -1,0 +1,12 @@
+{
+  "title": "postfix ! is rejected in a call argument at any nesting depth",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1204",
+      "line": 13,
+      "column": 17
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Accepted Placements': 'A `!` on a Result operand MUST be accepted if and only if all five hold', condition 1 being that every enclosing node out to the nearest statement or arrow function is one of exactly seven forms. The section's own worked example: '`f(r!)` // rejected — call argument, at any nesting depth'. A call argument is not one of the seven forms, and it is the commonest shape in the language, so it is the one most likely to be quietly admitted by an implementation that reads the rule as a list of shapes rather than as a walk. That section also states, normatively, that 'A rejected placement MUST be a diagnostic, never a silent lowering.' This case is one of the rows that enforces it: the silent lowering is the EASY outcome here, because TypeScript's own non-null assertion means something in this position and the emitted program would compile and run. A backend that lowered it silently would be scored `fail` for accepting and running a program the language rejects, not scored `pass` for staying quiet."
+}

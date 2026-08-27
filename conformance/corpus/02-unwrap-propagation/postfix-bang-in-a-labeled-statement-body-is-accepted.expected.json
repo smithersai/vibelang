@@ -1,0 +1,15 @@
+{
+  "title": "postfix ! is accepted inside a labeled statement's block, which is an ordinary statement position",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx, 'Accepted Placements': 'A `!` on a Result operand MUST be accepted if and only if all five hold', condition 1 being that every enclosing node out to the nearest statement or arrow function is one of exactly seven forms. The `!` here is the initializer of a single-declarator variable statement, which is condition 1's sixth form, and the walk stops at that statement immediately. A label wraps a statement; it does not put the declaration into an expression position, so nothing about it can change the placement verdict. This is the ONE row in the 2026-08-25 divergence set where the Go fork is right and the JS reference is wrong, which is why it is written from the rule and marked against the reference rather than the other way round.",
+  "xfail": {
+    "backends": [
+      "js"
+    ],
+    "reason": "the reference ACCEPTS the placement, as the rule requires, and then lowers it into TypeScript that the stock emitted-module check rejects with TS2322 — so the case fails at the emit-check stage rather than at the language stage. That is a reference-side lowering defect, fail-closed, and it is not about the placement rule at all: the fork compiles this program and prints `Ada Lovelace`. PRE-EXISTING and measured rather than assumed — the CONV lane's 510-row emit byte-comparison shows no reference emit changed on 2026-08-25 except one dynamic-import case, and this program's behaviour is identical before and after. Reproduction: `<scratchpad>/conv/probes/stmt04-labeled-statement/main.sm`. Retire this marker when the reference's labeled-statement lowering hoists the guard into the labeled block rather than around it.",
+    "doc": "specification/failures.mdx, 'Accepted Placements': a single-declarator variable declaration is one of the seven admitted forms and the walk stops at that statement; nothing in the section conditions the verdict on an enclosing label."
+  }
+}

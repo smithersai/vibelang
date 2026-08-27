@@ -1,0 +1,8 @@
+{
+  "title": "postfix ! is accepted as a switch discriminant, which is evaluated once before any clause",
+  "expect": "output",
+  "stdout": [
+    "yes"
+  ],
+  "notes": "specification/failures.mdx, 'Accepted Placements': 'A `!` on a Result operand MUST be accepted if and only if all five hold', condition 1 being that every enclosing node out to the nearest statement or arrow function is one of exactly seven forms. 'That is why `if (r!)`, `switch (r!)`, and `for (let i = r!; …)` are accepted while every expression-nested position is not.' The discriminant runs exactly once before any clause is selected, so hoisting the propagation guard above the switch preserves the authored evaluation order, which is the whole justification the section gives for the rule. The Go fork refused this form with SMITHERS1204 until 2026-08-25 because its hoistable-statement set listed only variable, return, expression, throw and if statements."
+}

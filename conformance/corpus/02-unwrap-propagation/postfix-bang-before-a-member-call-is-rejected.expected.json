@@ -1,0 +1,12 @@
+{
+  "title": "postfix ! before a member CALL is rejected, because the allowance ends when the member is called",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1204",
+      "line": 11,
+      "column": 16
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Accepted Placements': 'A `!` on a Result operand MUST be accepted if and only if all five hold', condition 1 being that every enclosing node out to the nearest statement or arrow function is one of exactly seven forms. The section's own worked example: '`r!.trim()` // rejected — the allowance ends when the member is called', listed immediately under '`r!.length` // accepted'. It is one of the two consequences the section says are 'easy to get wrong and MUST be read from the rule rather than guessed', and it is the far commoner shape of the two. The accepted twin is postfix-bang-as-a-property-access-object-is-accepted, which is the identical program with `.length` in place of `.trim()`. That section also states, normatively, that 'A rejected placement MUST be a diagnostic, never a silent lowering.' This case is one of the rows that enforces it: the silent lowering is the EASY outcome here, because TypeScript's own non-null assertion means something in this position and the emitted program would compile and run. A backend that lowered it silently would be scored `fail` for accepting and running a program the language rejects, not scored `pass` for staying quiet."
+}

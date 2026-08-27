@@ -1,0 +1,8 @@
+{
+  "title": "postfix ! is accepted as the object of a property access",
+  "expect": "output",
+  "stdout": [
+    "12"
+  ],
+  "notes": "specification/failures.mdx, 'Accepted Placements': 'A `!` on a Result operand MUST be accepted if and only if all five hold', condition 1 being that every enclosing node out to the nearest statement or arrow function is one of exactly seven forms. Condition 1's fourth form is 'a property access, where the `!` expression is the object', and the section gives `r!.length` as a worked example marked 'accepted — property access with the ! as object'. The section flags this pair as 'easy to get wrong and MUST be read from the rule rather than guessed': the sibling cases postfix-bang-before-a-member-call-is-rejected and postfix-bang-before-an-element-access-is-rejected are the two neighbours a reader mistakes for this one."
+}

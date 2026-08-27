@@ -1,0 +1,12 @@
+{
+  "title": "storing an inferred-fallible call in a local before propagating it does not hide the failure from the contract",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1104",
+      "line": 9,
+      "column": 1
+    }
+  ],
+  "notes": "specification/failures.mdx (Locked): a function's declared `E` MUST cover every failure reachable through it; 01-result-lifting/contract-omits-reachable-failure pins the same SMITHERS1104 at the same authored position where the propagated call is written inline. This case stores it in a local first, which is the most ordinary spelling in the language and was the one that did not work. MEASURED BEFORE THE ROUND-7 FIX: the reference reported NO Smithers diagnostic, published the row `[\"Calm\"]`, and the program was refused by the stock TypeScript check of the emitted module with an unmapped TS2322; the Go fork refused it with a self-contradicting pair, SMITHERS1302 for a Result the binding was not consuming and SMITHERS1207 saying the `!` had no Result to propagate — two rules disagreeing about the same value. TWO EDGES HAVE TO EXIST FOR THIS TO WORK AND THEY MUST AGREE: `stored!` must be recognized as a propagation of the CALL through the binding, and the enclosing row must then be charged with what that call can fail with. Recognizing one without the other is worse than recognizing neither — a backend that accepted `stored!` as a propagation without charging the row would COMPILE this program, publishing `Result<number, Calm>` over a body that can only produce `Boom`, which is a fail-open in the contract itself. Both backends now answer both questions from the same call that decides whether the binding holds a Result at all, so the pair cannot disagree again. `Calm` is declared and never thrown deliberately, so the contract is well-formed and merely names the wrong failure. Its sibling is 02-unwrap-propagation/a-satisfies-wrapped-propagation-charges-the-contract, and the acceptance half of both is 02-unwrap-propagation/a-stored-inferred-fallible-result-propagates-and-runs, which is the same shape with a correct contract and must compile AND RUN."
+}

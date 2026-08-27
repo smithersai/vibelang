@@ -1,0 +1,8 @@
+{
+  "title": "postfix ! is accepted as the LEFT operand of ??",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx, 'Accepted Placements': 'A `!` on a Result operand MUST be accepted if and only if all five hold', condition 1 being that every enclosing node out to the nearest statement or arrow function is one of exactly seven forms. Condition 1's fifth form is 'a `??` binary expression, where the `!` expression is the left operand', and the section's worked examples record '`r! ?? \"fallback\"` // accepted — ! is the left operand'. The left operand is evaluated first and unconditionally, so hoisting the propagation guard above the whole expression preserves the authored order; the right operand is not, which is what the rejected twin postfix-bang-as-a-nullish-right-operand-is-rejected pins."
+}

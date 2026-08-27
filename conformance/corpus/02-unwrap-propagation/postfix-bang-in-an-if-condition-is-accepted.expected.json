@@ -1,0 +1,8 @@
+{
+  "title": "postfix ! is accepted as the whole condition of an if statement, because the placement walk stops at the nearest statement",
+  "expect": "output",
+  "stdout": [
+    "yes"
+  ],
+  "notes": "specification/failures.mdx, 'Accepted Placements': 'A `!` on a Result operand MUST be accepted if and only if all five hold', condition 1 being that every enclosing node out to the nearest statement or arrow function is one of exactly seven forms. The section names this form outright: 'Because the walk stops at the nearest statement, any construct whose child is directly a statement position admits a `!`. That is why `if (r!)`, `switch (r!)`, and `for (let i = r!; …)` are accepted while every expression-nested position is not.' This is the first of the three the sentence names; the switch and for-initializer siblings sit beside it. Read together with 02-unwrap-propagation/unwrap-in-a-compound-expression-is-rejected, which is the same operand one syntactic step further in."
+}

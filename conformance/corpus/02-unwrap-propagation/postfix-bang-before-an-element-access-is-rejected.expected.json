@@ -1,0 +1,12 @@
+{
+  "title": "postfix ! before an element access is rejected, because element access is not property access",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1204",
+      "line": 11,
+      "column": 19
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Accepted Placements': 'A `!` on a Result operand MUST be accepted if and only if all five hold', condition 1 being that every enclosing node out to the nearest statement or arrow function is one of exactly seven forms. The section's own worked example: '`r![0]` // rejected — element access is not property access', beside '`r!.length` // accepted'. Condition 1 admits 'a property access, where the `!` expression is the object' and nothing else in that family, so the distinction is in the rule rather than in a table of shapes. specification/compatibility.mdx:72 approaches the same boundary from the other side — `arr[i]!` compiles when `arr` holds Results, which is `!` APPLIED TO an element read, not an element read applied to a `!`. That section also states, normatively, that 'A rejected placement MUST be a diagnostic, never a silent lowering.' This case is one of the rows that enforces it: the silent lowering is the EASY outcome here, because TypeScript's own non-null assertion means something in this position and the emitted program would compile and run. A backend that lowered it silently would be scored `fail` for accepting and running a program the language rejects, not scored `pass` for staying quiet."
+}

@@ -1,0 +1,7 @@
+class Missing extends Error {}
+function lookup(): Result<string, Missing> { return "ada" }
+async function checked(): Promise<Result<string, Missing>> { return "ada" }
+export async function main(): Promise<Result<string[], Missing>> {
+  const value = checked()!
+  return [value]
+}

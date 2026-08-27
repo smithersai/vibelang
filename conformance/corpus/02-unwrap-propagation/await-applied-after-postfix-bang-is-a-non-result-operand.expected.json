@@ -1,0 +1,12 @@
+{
+  "title": "await lookup(k)! applies ! to the un-awaited Promise, whose provenance is not a Result",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1207",
+      "line": 11,
+      "column": 22
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Accepted Placements', condition 5: 'The operand's checker-derived provenance MUST be a Result.' specification/compatibility.mdx:72: 'Postfix `!` requires a `Result` operand.' specification/failures.mdx, 'Promise Semantics': 'Awaiting `Promise<Result<A, E>>` MUST produce `Result<A, E>`' — so `await` is the operator that removes the Promise layer, and `await lookup(k)!` binds the `!` to the Promise, not to the Result inside it. `await` IS one of condition 1's seven forms, so the placement is fine and only the provenance is wrong; SMITHERS1207 is the diagnostic that names the fix, which is `(await lookup(k))!`. The accepted spelling is pinned by 08-promise-chaining and by 02-unwrap-propagation/unwrap-returns-the-error-variant. Exactly one diagnostic is declared: no unconsumed-Promise obligation survives, because the `await` consumes it."
+}

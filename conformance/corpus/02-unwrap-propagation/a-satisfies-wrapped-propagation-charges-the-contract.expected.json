@@ -1,0 +1,12 @@
+{
+  "title": "a satisfies wrapper does not hide a propagation from the row: the contract still has to name the failure the propagated call can produce",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1104",
+      "line": 9,
+      "column": 1
+    }
+  ],
+  "notes": "specification/failures.mdx (Locked): a function's declared `E` MUST cover every failure reachable through it; 01-result-lifting/contract-omits-reachable-failure pins the same SMITHERS1104 at the same authored position for the unwrapped spelling. `outer` declares `Result<number, Calm>` and the only failure it can produce is `Boom`. THE SPELLING IS THE CASE. `satisfies` is a TYPE-ONLY wrapper: it checks a type without changing the value or widening it, so `(f() satisfies unknown)!` propagates exactly what `f()!` propagates. MEASURED BEFORE THE ROUND-7 FIX: the reference reported NO Smithers diagnostic, published the row `[\"Calm\"]` — a row naming a failure the body cannot produce, while omitting the one it can — and the program was then refused by the stock TypeScript check of the emitted module with an unmapped TS2322. That is three failures in one: a wrong published row, a missed rule, and a refusal that points at generated code. `as` and `<T>` were already handled and `satisfies` was not, in three separate walks that each restated the wrapper table by hand; the fix routes all three through the one table. `Calm` is declared and never thrown deliberately, so the declared contract is well-formed and the only thing wrong with it is that it names the wrong failure — a case whose contract were merely empty could be satisfied by a backend that had noticed nothing at all. Its sibling 02-unwrap-propagation/a-stored-inferred-fallible-result-charges-the-contract is the same program with the wrapper replaced by a local binding, and the acceptance half of both is 02-unwrap-propagation/a-stored-inferred-fallible-result-propagates-and-runs."
+}
