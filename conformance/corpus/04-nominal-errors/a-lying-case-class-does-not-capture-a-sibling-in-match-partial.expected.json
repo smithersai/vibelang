@@ -1,0 +1,8 @@
+{
+  "title": "matchPartial selects a handler on nominal identity too: a lying Symbol.hasInstance must not capture a sibling's error before the fallback",
+  "expect": "output",
+  "stdout": [
+    "fallback:not found k"
+  ],
+  "notes": "specification/failures.mdx, 'Error Prototype' (Locked): \"Handler selection MUST use compiler-stable nominal identity, not a forgeable user `_tag` or minifier-sensitive constructor name in compiled artifacts.\" The sentence is about handler SELECTION, and `matchPartial` selects a handler exactly as `match` does — it is the second spelling of one lowering, not a second rule. This case is the sibling of 04-nominal-errors/a-case-class-that-lies-about-instanceof-must-not-capture-a-sibling, which pins the `match` spelling; filing only that one would let this one reopen silently, because a fix applied at a single lowering site satisfies whichever spelling was filed and nothing observes the other. The fallback is what makes the observation sharp: a genuine `NotFound` is not a listed case, so the ONLY correct answer is the fallback, and the forged answer `timeout` is a listed handler receiving a value that is not its own. The Go fork printed `timeout` here until 2026-08-25, for the same reason and at the same site as the `match` case: `lowerMatch` emitted a bare `error instanceof CaseClass` chain and `instanceof` consults the RIGHT operand's `Symbol.hasInstance`."
+}

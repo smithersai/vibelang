@@ -1,0 +1,12 @@
+{
+  "title": "error[\"match\"]({...}) is the same compiler-recognized call as error.match and is still exhaustiveness-checked",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1253",
+      "line": 17,
+      "column": 38
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Error Prototype': 'For a statically known error union, `error.match({...})` MUST be exhaustive and MUST narrow each handler argument to its nominal `Error` subclass.' A literal element access is the same member access as the dotted spelling: same resolved property symbol, same emitted call. A recognizer that tests only for a PropertyAccessExpression is recognition-by-syntactic-form, and the computed spelling escapes every rule it owns. REVIEW-fable-1.md F4 measured `Clock[\"context\"]()` compiling and PANICKING AT RUNTIME on BOTH backends, which is why only a specification-derived case can hold this closed: the differential oracle is structurally blind to a defect the two implementations share. The union is `Missing | Timeout` and only `Missing` is handled. Before the fix the language rule did not fire at all; the program failed closed only because the emitted TypeScript happened to draw TS2353, i.e. a language MUST was enforced by an accident of lowering."
+}

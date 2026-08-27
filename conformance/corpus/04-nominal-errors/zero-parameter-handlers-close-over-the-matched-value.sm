@@ -1,0 +1,16 @@
+import { Missing as PaymentsMissing } from "./zero-parameter-handlers-close-over-the-matched-value.mod.sm"
+
+export class Missing extends Error {
+  constructor(readonly key: string) { super("local " + key) }
+}
+
+export function classify(error: Missing | PaymentsMissing): string {
+  return error.match({
+    Missing: () => "local:" + error.key,
+    PaymentsMissing: () => "remote:" + error.key,
+  })
+}
+
+export function main(): string[] {
+  return [classify(new Missing("zoe")), classify(new PaymentsMissing("zoe"))]
+}

@@ -1,0 +1,10 @@
+export function makeInner(): Error {
+  class Inner extends Error {
+    constructor() { super("inner") }
+  }
+  return new Inner()
+}
+
+export function main(): string[] {
+  return [makeInner().message, makeInner().message]
+}

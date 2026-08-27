@@ -1,0 +1,10 @@
+{
+  "title": "a class member with a computed name is ordinary TypeScript and needs no Smithers rule",
+  "expect": "output",
+  "stdout": [
+    "computed method",
+    "computed static field",
+    "false"
+  ],
+  "notes": "specification/compatibility.mdx, 'Source Relationship': `.ts` and `.sm` keep ordinary TypeScript syntax and behavior, so none of these four spellings needs a rule of its own. What they need is not to take a backend down. Before 2026-08-25 the Go bridge PANICKED on any of them — `panic: Unhandled case in Node.Text: *ast.ComputedPropertyName`, from a single unguarded name read used only to render a diagnostic — and a crashed backend is scored `unmeasured`: a failure to measure rather than a measurement, and the one outcome a differential harness cannot score. All four spellings are in one class on purpose, because any one of them reaches the same read."
+}

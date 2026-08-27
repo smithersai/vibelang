@@ -1,0 +1,13 @@
+const KEY = "dynamic"
+
+export class Widget {
+  static [Symbol.hasInstance](value: unknown): boolean { return false }
+  [KEY](): string { return "computed method" }
+  get [Symbol.toStringTag](): string { return "Widget" }
+  static readonly [KEY]: string = "computed static field"
+}
+
+export function main(): string[] {
+  const widget = new Widget()
+  return [widget[KEY](), Widget[KEY], `${({}) instanceof Widget}`]
+}

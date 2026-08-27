@@ -1,0 +1,10 @@
+{
+  "title": "Error.prototype.is and .matches select on nominal identity, not on a user-installed Symbol.hasInstance",
+  "expect": "output",
+  "stdout": [
+    "false",
+    "true",
+    "false"
+  ],
+  "notes": "specification/failures.mdx, 'Error Prototype' (Locked): \"Handler selection MUST use compiler-stable nominal identity, not a forgeable user `_tag` or minifier-sensitive constructor name in compiled artifacts.\" Line 2 of the expected output is the load-bearing one: a rule that answered `false` to everything would satisfy lines 1 and 3 while having removed `is` entirely. Before 2026-08-25 the Go fork printed `true`, `true`, `true` — its `smithersErrorIs` used a bare `instanceof`, so a class installing a lying `Symbol.hasInstance` captured a genuine sibling's error. It now routes through `Function.prototype[Symbol.hasInstance]`, matching the reference. The `match` dispatch is still forgeable on the fork; that is 04-nominal-errors/a-case-class-that-lies-about-instanceof-must-not-capture-a-sibling, filed red."
+}

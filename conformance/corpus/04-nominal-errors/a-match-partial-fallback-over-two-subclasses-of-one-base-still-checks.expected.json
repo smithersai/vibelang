@@ -1,0 +1,9 @@
+{
+  "title": "a matchPartial fallback over two subclasses of one Error base still type-checks and still receives the unlisted sibling",
+  "expect": "output",
+  "stdout": [
+    "left:a",
+    "fallback:r b"
+  ],
+  "notes": "specification/failures.mdx, 'Error Prototype' (Locked) lists `matchPartial` among the compiler-aware Error methods and requires handler selection on compiler-stable nominal identity; 'Error Classes' (Locked) requires that identity while preserving ordinary Error behavior — and ordinary Error behavior includes a subclass hierarchy. This case pins the residual the nominal brand CANNOT close, as a working program rather than as prose. TypeScript requires a merged interface's inherited members to be identical to its base class's, so exactly one level of a chain may carry a brand: measured as `TS2320 — Named property '[B]' of types 'Base' and 'N<\"base\" | \"sub\">' are not identical` when both a base and its subclass are branded. Two subclasses therefore share their ancestor's brand and stay mutually assignable ON BOTH BACKENDS, which means a selection predicate that narrows by assignability can subtract `Right` from the fallback's view of the scrutinee. The reference records the same limitation for itself in poc/src/runtime/narrowing.test.ts. The second line is the load-bearing one: `Right` is not a listed case, so it must reach the fallback AND the fallback body must be allowed to read `Error.prototype.message` on it — a fallback collapsed to `never` fails to compile rather than answering wrongly, so this case's failure mode is a red compile and not a wrong string. 04-nominal-errors/error-match-partial-runs-the-fallback pins the same dispatch over two UNRELATED classes and would stay green through this defect, because unrelated classes with different fields do not subtract each other."
+}

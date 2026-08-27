@@ -1,0 +1,17 @@
+{
+  "title": "a function-local Error class is ordinary TypeScript and constructing one twice is an ordinary program",
+  "expect": "output",
+  "stdout": [
+    "inner",
+    "inner"
+  ],
+  "xfail": {
+    "backends": [
+      "js",
+      "go"
+    ],
+    "reason": "BOTH backends compile this with zero diagnostics, run the first call, and then die on the second with the identical message `TypeError: stable Error identity smithers:<module>:Inner is already registered`. Each invocation creates a NEW constructor claiming the SAME module-local identity, and the registry is right to refuse two constructors for one identity — but the program was accepted. This is a documentation gap and the marker deliberately does not pick a side. Two repairs are available and no sentence chooses between them: either a function-local Error class is ordinary TypeScript whose behavior compatibility.mdx says `.sm` keeps, in which case the registry must tolerate per-call constructors; or it cannot receive a stable module-local identity — which is SMITHERS1150's own sentence — in which case the compiler must refuse it at compile time and this case is RETIRED rather than fixed. Filing it is how a shared latent defect that neither backend can report about itself stops being invisible.",
+    "doc": "specification/failures.mdx#error-classes"
+  },
+  "notes": "specification/compatibility.mdx, 'Source Relationship': ordinary TypeScript syntax keeps its behavior in Smithers. specification/failures.mdx, 'Error Classes': \"Any named class extending `Error` MUST be usable as a nominal recoverable error\" and the compiler MUST provide stable nominal identity for it. The two sentences collide here and the specification never says which yields, which is exactly what the marker records."
+}

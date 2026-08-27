@@ -1,0 +1,19 @@
+export class Denier extends Error {
+  static [Symbol.hasInstance](value: unknown): boolean { return false }
+  constructor(readonly key: string) { super("denier " + key) }
+}
+
+export class NotFound extends Error {
+  constructor(readonly key: string) { super("not found " + key) }
+}
+
+export function classify(error: NotFound | Denier): string {
+  return error.match({
+    Denier: (failure) => "denier:" + failure.key,
+    NotFound: (failure) => "notfound:" + failure.key,
+  })
+}
+
+export function main(): string[] {
+  return [classify(new Denier("k"))]
+}

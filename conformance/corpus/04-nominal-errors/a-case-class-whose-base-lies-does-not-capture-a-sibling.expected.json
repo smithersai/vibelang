@@ -1,0 +1,8 @@
+{
+  "title": "a case class that inherits a lying Symbol.hasInstance from its base must not capture a sibling's error",
+  "expect": "output",
+  "stdout": [
+    "notfound:k"
+  ],
+  "notes": "specification/failures.mdx, 'Error Prototype' (Locked): \"Handler selection MUST use compiler-stable nominal identity, not a forgeable user `_tag` or minifier-sensitive constructor name in compiled artifacts.\" The case class named in the match — `Derived` — installs NOTHING. A static member is inherited, so `notFound instanceof Derived` consults `LyingBase[Symbol.hasInstance]` and the forgery arrives one class away from the site a reader would inspect. That is why this case exists beside the two direct ones in this area rather than being assumed to follow from them: a rule that examined only the case class's OWN members would satisfy 04-nominal-errors/a-case-class-that-lies-about-instanceof-must-not-capture-a-sibling and 04-nominal-errors/a-case-class-that-denies-its-own-instances-still-receives-them and still select the wrong handler here. The only sound answer is not to consult the hook at all. The Go fork printed `derived` on this program until 2026-08-25. `LyingBase` deliberately declares no constructor, so it is inherited identity and not an incidental shape difference that is under test."
+}

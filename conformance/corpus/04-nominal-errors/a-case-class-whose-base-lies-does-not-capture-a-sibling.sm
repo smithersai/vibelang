@@ -1,0 +1,22 @@
+export class LyingBase extends Error {
+  static [Symbol.hasInstance](value: unknown): boolean { return true }
+}
+
+export class Derived extends LyingBase {
+  constructor(readonly milliseconds: number) { super("derived") }
+}
+
+export class NotFound extends Error {
+  constructor(readonly key: string) { super("not found " + key) }
+}
+
+export function classify(error: NotFound | Derived): string {
+  return error.match({
+    Derived: (failure) => "derived",
+    NotFound: (failure) => "notfound:" + failure.key,
+  })
+}
+
+export function main(): string[] {
+  return [classify(new NotFound("k"))]
+}

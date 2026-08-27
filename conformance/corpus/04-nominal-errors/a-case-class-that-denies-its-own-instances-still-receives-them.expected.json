@@ -1,0 +1,8 @@
+{
+  "title": "a case class that installs a Symbol.hasInstance denying its own instances still receives them: an exhaustive match stays total",
+  "expect": "output",
+  "stdout": [
+    "denier:k"
+  ],
+  "notes": "specification/failures.mdx, 'Error Prototype' (Locked): \"Handler selection MUST use compiler-stable nominal identity, not a forgeable user `_tag` or minifier-sensitive constructor name in compiled artifacts\", together with the same section's requirement that `error.match({...})` MUST be exhaustive for a statically known union. This is the OTHER direction of the same forgeable hook and the sharper one. A lying `Symbol.hasInstance` can capture what is not its own — 04-nominal-errors/a-case-class-that-lies-about-instanceof-must-not-capture-a-sibling records that — or DENY what is, and denial turns a match the compiler proved total into a runtime abort: every arm of the lowered chain answers false and control falls off the end. One predicate fix closes both directions, and only two cases can prove it did; a fix tested against capture alone leaves denial open, and denial is worse, because the compiler has already certified exhaustiveness by the time it fails. The Go fork CRASHED on this program until 2026-08-25 with `TypeError: non-exhaustive Error match`, exit 1 — an accepted program that cannot run, which nothing but an `output` case that executes it can report."
+}

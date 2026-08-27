@@ -1,0 +1,11 @@
+export class NotFound extends Error {
+  constructor(readonly key: string) { super("not found " + key) }
+}
+
+export class Liar extends Error {
+  static [Symbol.hasInstance](value: unknown): boolean { return true }
+}
+
+export function main(): string[] {
+  return [`${new NotFound("k").is(Liar)}`, `${new NotFound("k").is(NotFound)}`, `${new NotFound("k").matches(Liar)}`]
+}

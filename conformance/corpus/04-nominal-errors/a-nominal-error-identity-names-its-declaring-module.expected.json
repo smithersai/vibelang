@@ -1,0 +1,11 @@
+{
+  "title": "a nominal Error's compiler-stable identity names the module that declared it, not the module that imported it",
+  "expect": "output",
+  "stdout": [
+    "error smithers:a-nominal-error-identity-names-its-declaring-module.mod.sm:Missing: no entry for zoe"
+  ],
+  "modules": [
+    "a-nominal-error-identity-names-its-declaring-module.mod.sm"
+  ],
+  "notes": "specification/failures.mdx, 'Error Classes' (Locked): \"Authors MUST NOT need a `TaggedError(\"Name\")` factory, `_tag` declaration, or separate error-declaration syntax. The compiler MUST provide stable nominal identity, matching metadata, serialization evidence, and cross-realm transport metadata while preserving ordinary `Error` behavior.\" 'Error Prototype' adds that the identity must be compiler-stable rather than a \"minifier-sensitive constructor name\". This case reads the identity itself: the harness's failure line prints what the backend's own identity accessor returns, so the declared stdout IS the identity string, and the two backends have to mint it identically to satisfy one expectation. It names the declaring `.mod.sm` while the class is thrown, propagated and returned entirely from the importing module — identity follows the declaration, not the import. Until the harness change of 2026-08-25 this was structurally unobservable: the failure line printed `error.constructor.name`, which reads `Missing` on a backend that mints an identity and `Missing` on a backend that mints none, and three of 'Error Classes'' four obligations were absent from the Go fork with no case able to report it in either direction. Cross-realm ENCODE and DECODE are still not expressible here: `.sm` has no sanctioned path to the transport surface on either backend, and the two backends' transport surfaces are different modules at different paths, so no single `typescript:` support module can reach both. That gap is recorded in conformance/COVERAGE.md."
+}

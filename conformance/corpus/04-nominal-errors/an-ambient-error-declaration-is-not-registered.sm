@@ -1,0 +1,11 @@
+declare class Ambient extends Error {
+  readonly key: string
+}
+
+export function describe(error: Ambient): string {
+  return error.key
+}
+
+export function main(): string[] {
+  return ["ok"]
+}

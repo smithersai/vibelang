@@ -1,0 +1,19 @@
+export class NotFound extends Error {
+  constructor(readonly key: string) { super("not found " + key) }
+}
+
+export class Timeout extends Error {
+  static [Symbol.hasInstance](value: unknown): boolean { return true }
+  constructor(readonly ms: number) { super("timeout " + ms) }
+}
+
+export function classify(error: NotFound | Timeout): string {
+  return error.match({
+    Timeout: (failure) => "timeout",
+    NotFound: (failure) => "notfound:" + failure.key,
+  })
+}
+
+export function main(): string[] {
+  return [classify(new NotFound("k"))]
+}

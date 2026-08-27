@@ -1,0 +1,17 @@
+export abstract class Family extends Error {}
+
+export class Left extends Family {
+  constructor(readonly key: string) { super("l " + key) }
+}
+
+export class Right extends Family {
+  constructor(readonly key: string) { super("r " + key) }
+}
+
+export function classify(error: Left | Right): string {
+  return error.matchPartial({ Left: (failure) => "left:" + failure.key }, (rest) => "fallback:" + rest.message)
+}
+
+export function main(): string[] {
+  return [classify(new Left("a")), classify(new Right("b"))]
+}

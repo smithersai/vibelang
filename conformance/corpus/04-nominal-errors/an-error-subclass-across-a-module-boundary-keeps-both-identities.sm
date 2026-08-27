@@ -1,0 +1,8 @@
+import { FileError } from "./an-error-subclass-across-a-module-boundary-keeps-both-identities.mod.sm"
+
+export class FileNotFound extends FileError {}
+
+export function main(): string[] {
+  const error = new FileNotFound("/tmp/x")
+  return [`${error.is(FileError)}`, `${error.is(FileNotFound)}`, error.message]
+}

@@ -1,0 +1,15 @@
+{
+  "title": "an ambient Error declaration introduces no runtime binding, so nothing may be emitted that names it",
+  "expect": "output",
+  "stdout": [
+    "ok"
+  ],
+  "xfail": {
+    "backends": [
+      "js"
+    ],
+    "reason": "The reference compiles this with zero diagnostics and then the emitted module dies while it is still loading: `ReferenceError: Ambient is not defined`, exit 1. It emits `__vsRegisterError(Ambient, \"smithers:...:Ambient\")` for an ambient class declaration, and an ambient declaration introduces no runtime binding, so the registration is a reference to nothing. A clean compile that cannot run is the failure mode this is filed against. The Go fork skips ambient declarations at the registration site only — its SMITHERS1150 duplicate-name refusal is unchanged, so an ambient class still reserves its identity and two same-named ambient Error classes still collide — and prints `ok`. This is the one place the two backends deliberately differ. Retire the marker when the reference stops emitting a registration for a declaration that has no runtime binding.",
+    "doc": "specification/failures.mdx#error-classes"
+  },
+  "notes": "specification/failures.mdx, 'Error Classes': \"The compiler MUST provide stable nominal identity, matching metadata, serialization evidence, and cross-realm transport metadata while preserving ordinary `Error` behavior.\" The obligation is about classes the compiler emits; `declare class` emits nothing, and the last clause — preserving ordinary behavior — is violated outright by a program that cannot load."
+}

@@ -1,0 +1,13 @@
+{
+  "title": "an Error subclass declared in one module and based in another satisfies both nominal identities",
+  "expect": "output",
+  "stdout": [
+    "true",
+    "true",
+    "file /tmp/x"
+  ],
+  "modules": [
+    "an-error-subclass-across-a-module-boundary-keeps-both-identities.mod.sm"
+  ],
+  "notes": "specification/failures.mdx, 'Error Classes': the compiler MUST provide stable nominal identity for any named class extending `Error`. The subclass takes its own identity naming THIS module and the base keeps the one naming its declaring module, so the two are distinct and a value is nominally both. Identity follows the declaring module rather than the spelling that reaches the consumer, which is what 04-nominal-errors/a-nominal-error-identity-names-its-declaring-module observes directly now that a failure line carries the identity; this case pins the behaviour those identities implement."
+}

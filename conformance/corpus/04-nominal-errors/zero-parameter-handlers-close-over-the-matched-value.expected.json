@@ -1,0 +1,12 @@
+{
+  "title": "a match handler that takes no parameter and closes over the matched value still type-checks, for two same-named Errors from two modules",
+  "expect": "output",
+  "stdout": [
+    "local:zoe",
+    "remote:zoe"
+  ],
+  "modules": [
+    "zero-parameter-handlers-close-over-the-matched-value.mod.sm"
+  ],
+  "notes": "specification/failures.mdx, 'Error Prototype' (Locked) requires `error.match({...})` to narrow each handler argument to its nominal Error subclass, and 'Error Classes' (Locked) requires the compiler to provide stable NOMINAL identity — which is what makes two same-named classes from two modules distinct types and not merely distinct wire keys. This is the case that keeps the nominal brand honest, and it is the one a later lane is most likely to break, because nothing about it looks like it is about forgery at all. A handler with no parameter has nothing to annotate, so its body is checked against whatever the case's own selection predicate left the matched value; a type predicate narrows its else branch by ASSIGNABILITY, and two structurally identical Error classes are assignable to each other, so the first case subtracts its sibling and the second body reads a member of `never`. Measured on this exact program with the fork's brand removed: `TS2339 Property 'key' does not exist on type 'never'` — an accepted-and-correct program that stops compiling. The reference accepts it because its `match` is a runtime loop rather than a narrowing chain, so the reference cannot notice a regression here and this case is the only thing that can. Two same-named classes in two modules are the shape that makes it visible; 04-nominal-errors/same-named-errors-in-two-modules pins the identities themselves and would stay green through exactly this defect, because every one of its handlers takes a parameter."
+}
