@@ -1,0 +1,12 @@
+{
+  "title": "the new Date(instant) exemption is about runtime arity: a spread of an empty array supplies no instant and reads the clock",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1602",
+      "line": 3,
+      "column": 18
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': 'Host-sensitive operations such as clock and random access MUST still use capabilities.' The exemption counted syntactic argument NODES, and `new Date(...[])` is one node and zero arguments, so it constructed the current time and ran — clean on both backends. 20-host-globals/clock-access-needs-a-capability pins the plain read and this pins the exemption's boundary; the complementary acceptance is that `new Date(instant)` with a real argument is still clean, which 20-host-globals/value-instanceof-date-is-a-prototype-test-not-a-clock-read carries as an `output` case built on `new Date(0)`."
+}

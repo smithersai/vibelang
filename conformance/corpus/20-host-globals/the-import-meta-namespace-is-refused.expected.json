@@ -1,0 +1,27 @@
+{
+  "title": "import.meta is host authority and is refused in an authored .sm module, in every property spelling and as a bare value",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1601",
+      "line": 2,
+      "column": 10
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 6,
+      "column": 10
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 10,
+      "column": 10
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 14,
+      "column": 10
+    }
+  ],
+  "notes": "specification/compatibility.mdx and the host-global rule this area is built on: ambient host authority is unavailable in `.sm`, and `poc/src/language/README.md`'s ALWAYS_FORBIDDEN list exists so that 'whether a @types package happens to be installed cannot decide whether `process` is legal'. ECMA-262 delegates the properties of `import.meta` to the host through HostGetImportMetaProperties, which makes it host authority by that list's own criterion — and the rule never saw it, because `import.meta` is a META-PROPERTY and carries no identifier for an identifier-keyed rule to match. The consequence was measured, not argued: `import.meta.url` compiled with `requirements: []` on both backends and the reference lane RAN it, printing the host filesystem path out of a program the language says cannot read the host. `__dirname` is refused BY NAME in this same area while its exact ESM equivalent compiled. WHY FOUR SPELLINGS IN ONE CASE: this area's existing cases are multi-diagnostic for the same reason (`the-node-global-scope-is-refused` declares eight), and the four here are not four instances of one shape. `url` is the plain property read. `resolve(...)` is a CALL that reaches host module resolution rather than a value. `dirname` and `filename` are the two that were a live BACKEND DIVERGENCE before 2026-08-26 — the reference accepted them and the fork answered `TS2339` — so they are the two whose green here is also the closing of a divergence, and dropping them for brevity would drop that evidence. All four are declared at column 10, which is the `import` keyword of the meta-property: the refusal is the namespace, not the property selected off it, which is what makes a fifth spelling nobody enumerated refuse too. WHAT THIS DELIBERATELY DOES NOT PIN: `messageContains`. The message names the refused construct, and a wrong-but-plausible refusal at this position would be one naming some other host global — but the two backends word the sentence differently and the smallest shared fragment that would carry the promise is the rule's own name, which the README's worked counter-example gives as the forbidden use. It also does not pin `import.meta` inside an IMPORTED `.ts` module, which stays accepted on both backends because `.ts` modules keep their own complete syntax and behaviour (compatibility.mdx, 'Source Relationship'); that control needs a support module and this lane could not add one — it is recorded as unwritten rather than quietly skipped. VERIFIED LOAD-BEARING, not assumed: mutating the third declared line from 10 to 11 turns the case red on BOTH backends with the position diff printed, and the file was restored byte-identically (sha256 7cbc7409c61fb395f4f3d2c11c6ed19b129555ee48ef9730ff870f829f8deb36 before and after). The paired positive control is `the-other-meta-property-stays-available`, which uses `new.target` — the OTHER meta-property, the language's own, reading nothing from the host — and must keep compiling and RUNNING, so a rule that refuses `ts.SyntaxKind.MetaProperty` rather than the `import` keyword token turns that case red."
+}

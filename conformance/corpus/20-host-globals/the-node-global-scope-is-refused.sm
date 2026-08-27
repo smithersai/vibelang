@@ -1,0 +1,12 @@
+export function main(): string[] {
+  const bytes = Buffer
+  const root = global
+  const load = require
+  const wrapper = module
+  const published = exports
+  const directory = __dirname
+  const file = __filename
+  const soon = setImmediate
+  return [`${typeof bytes}`, `${typeof root}`, `${typeof load}`, `${typeof wrapper}`,
+    `${typeof published}`, `${typeof directory}`, `${typeof file}`, `${typeof soon}`]
+}

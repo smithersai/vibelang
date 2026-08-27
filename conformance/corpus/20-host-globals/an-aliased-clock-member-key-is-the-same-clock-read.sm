@@ -1,0 +1,7 @@
+const NOW = "now"
+
+export function stamp(): string {
+  return String(Date[NOW]())
+}
+
+export const values = [stamp()]

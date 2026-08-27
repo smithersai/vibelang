@@ -1,0 +1,9 @@
+export function platform(): string {
+  return String(new Function("return process.platform")())
+}
+
+export function indirect(): string {
+  return String((Reflect.construct(Function, ["return process.platform"]) as () => string)())
+}
+
+export const values = [platform(), indirect()]

@@ -1,0 +1,7 @@
+export function main(): string[] {
+  const request = XMLHttpRequest
+  const socket = WebSocket
+  const events = EventSource
+  const thread = Worker
+  return [`${typeof request}`, `${typeof socket}`, `${typeof events}`, `${typeof thread}`]
+}

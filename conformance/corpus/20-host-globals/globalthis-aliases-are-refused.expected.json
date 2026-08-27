@@ -1,0 +1,27 @@
+{
+  "title": "self, top, parent, and frames are aliases of the global object and are refused exactly as globalThis is",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1601",
+      "line": 2,
+      "column": 17
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 3,
+      "column": 17
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 4,
+      "column": 17
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 5,
+      "column": 16
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': 'Platform-specific globals such as process, window, document, filesystem, and network MUST NOT be unconditional globals in authored .sm code.' These four are the same object under four DOM and worker spellings, so accepting them accepts every name 20-host-globals/host-globals-are-unavailable refuses — `self.fetch(...)` compiled clean while `fetch(...)` did not. This is the case that makes the rule an allowlist rather than a spelling table: the four names are refused because they are not in the ECMAScript-262 global object, not because they were added to a list."
+}

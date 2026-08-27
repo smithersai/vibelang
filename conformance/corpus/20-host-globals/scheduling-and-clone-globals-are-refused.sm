@@ -1,0 +1,7 @@
+export function main(): string[] {
+  const soon = queueMicrotask
+  const cancel = clearTimeout
+  const stop = clearInterval
+  const copy = structuredClone
+  return [`${typeof soon}`, `${typeof cancel}`, `${typeof stop}`, `${typeof copy}`]
+}

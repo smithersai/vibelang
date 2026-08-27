@@ -1,0 +1,12 @@
+{
+  "title": "Date[NOW]() with a const-aliased key selects the same member as Date.now() and still requires a capability",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1602",
+      "line": 4,
+      "column": 17
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals' (Locked): 'Host-sensitive operations such as clock and random access MUST still use capabilities.' 20-host-globals/clock-access-needs-a-capability pins the dotted spelling and 20-host-globals/a-computed-date-now-is-refused pins the string-literal element access. This is the third spelling of the same member: a key that is a `const` binding of a string literal. It resolves to the same property symbol, so it is the same host-sensitive operation. THE REASON THIS CASE IS SEPARATE FROM ITS TWO NEIGHBOURS is that the rule was rewritten in round 7 to ask the checker for the key's string-literal TYPE rather than to test the key's SYNTAX, and a type-based answer covers strictly more spellings in BOTH directions — so both directions need a pin. This is the direction that must stay refused. The direction that must stay accepted is 20-host-globals/an-aliased-pure-member-key-needs-no-capability, which was measured being over-refused on the Go fork by the walk this case's rule shares. The far boundary — a key whose type widens to `string`, which names no member at all — is 20-host-globals/a-widening-string-key-escapes-the-whole-object on this side and 05-context-rows/a-non-literal-computed-capability-access-has-no-statically-known-member on the capability side. `NOW` is declared at module scope rather than inside the function so that the key is resolved across a scope boundary, which is where a walk that reads only the local initializer would stop."
+}

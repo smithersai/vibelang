@@ -1,0 +1,27 @@
+{
+  "title": "host identity and host-persistent state are host facilities: navigator, location, localStorage, sessionStorage",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1601",
+      "line": 2,
+      "column": 17
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 3,
+      "column": 16
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 4,
+      "column": 19
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 5,
+      "column": 19
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': host functionality MUST be represented by typed capabilities. `navigator.userAgent` read the host's identity with zero diagnostics, no capability, and no layer; `localStorage` is host-persistent state, which is the same class of authority as a filesystem. reference/capabilities.mdx, 'Platform Services', is where these belong."
+}

@@ -1,0 +1,9 @@
+{
+  "title": "Date[PARSE] and Math[MAX] with const-aliased keys are pure members and stay unconditional, exactly as the dotted spellings do",
+  "expect": "output",
+  "stdout": [
+    "1577836800000",
+    "7"
+  ],
+  "notes": "THE OVER-CORRECTION GUARD for the key rule, and it is pinning a measured defect rather than a hypothetical one. specification/compatibility.mdx, 'Host Globals' (Locked): 'Facilities truly present in every supported JavaScript environment MAY be unconditional globals. Host-sensitive operations such as clock and random access MUST still use capabilities.' The rule is per-OPERATION, not per-object — 20-host-globals/universal-globals-stay-available pins that for `Math.max` beside `Math.random`. This case pins it for the aliased-key spelling of the same two members. MEASURED BEFORE THE ROUND-7 FIX: the Go fork refused `Date[PARSE](...)` with SMITHERS1602 and `Math[MAX](...)` with SMITHERS1603, while the reference ran both. The cause is the fail-CLOSED direction of exactly the drift 20-host-globals/an-aliased-clock-member-key-is-the-same-clock-read pins the fail-open direction of: the ambient-authority walk carried its own key test, an unresolved key fell through to the whole-ROOT arm, and the whole-root arm charges every member of the object. So one helper answering 'which member does this select?' two different ways produced a missed clock read on one side and a refused `Date.parse` on the other, and only a pair of cases can hold both closed. Both backends now run this program. The two members are chosen deliberately: `Date.parse` and `Math.max` are the exempt siblings of `Date.now` and `Math.random`, so this case and its refusing neighbour differ in the member and in nothing else. The instant is a fixed authored string, so the printed value is stable and reads no clock."
+}

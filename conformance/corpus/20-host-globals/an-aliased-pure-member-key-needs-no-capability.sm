@@ -1,0 +1,6 @@
+const PARSE = "parse"
+const MAX = "max"
+
+export function main(): string[] {
+  return [`${Date[PARSE]("2020-01-01T00:00:00.000Z")}`, `${Math[MAX](2, 7, 5)}`]
+}

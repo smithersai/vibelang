@@ -1,0 +1,4 @@
+export function main(): string[] {
+  const instant: readonly number[] = []
+  return [`${new Date(...(instant as [number])).getTime()}`]
+}

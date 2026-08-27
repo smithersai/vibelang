@@ -1,0 +1,15 @@
+import { Context } from "smthrs/context"
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+class ForgedClock extends Clock {
+  now(): number {
+    return Date.now()
+  }
+}
+
+export function main(): string[] {
+  return [`${new ForgedClock().now()}`]
+}

@@ -1,0 +1,9 @@
+{
+  "title": "the right operand of instanceof selects a prototype and reads no host state",
+  "expect": "output",
+  "stdout": [
+    "true",
+    "false"
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': \"Facilities truly present in every supported JavaScript environment MAY be unconditional globals. Host-sensitive operations such as clock and random access MUST still use capabilities.\" The rule is therefore per-OPERATION, not per-object — the same distinction 20-host-globals/universal-globals-stay-available pins for `Math.max` beside `Math.random`. `Date.parse`, `Date.UTC` and `new Date(<authored instant>)` were already exempt on exactly that reasoning; `instanceof` selects a prototype and reads no clock, and the form was simply missed. Both backends charged SMITHERS1602 here until 2026-08-25. `new Date(0)` on line 2 is the already-exempt authored-instant form and doubles as this case's own control. The refusal half is 20-host-globals/the-date-constructor-in-a-value-position-is-still-charged."
+}

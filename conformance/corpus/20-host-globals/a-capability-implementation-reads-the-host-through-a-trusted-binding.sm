@@ -1,0 +1,22 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+import { wallClockMillis } from "./trusted-binding.ts"
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+class SystemClock extends Clock {
+  now(): number {
+    return wallClockMillis()
+  }
+}
+
+function stamp(label: string): string {
+  const clock = Clock.context()
+  return `${label}@${clock.now()}`
+}
+
+export function main(): string[] {
+  return [Layer.provide(Layer.succeed(Clock, new SystemClock()), () => stamp("live"))]
+}

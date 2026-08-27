@@ -1,0 +1,12 @@
+{
+  "title": "only the right operand of instanceof is exempt: the Date object in a value position keeps its requirement",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1602",
+      "line": 2,
+      "column": 31
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': host-sensitive operations MUST use capabilities. The exemption granted by 20-host-globals/value-instanceof-date-is-a-prototype-test-not-a-clock-read is narrow on purpose — it covers the position where the object is only a prototype selector. Put the same object in a value position and every member of it, `now()` included, is one property access away, so the requirement stands. Without this case the exemption could be widened from 'the right operand of instanceof' to 'any mention of Date' and nothing would notice."
+}

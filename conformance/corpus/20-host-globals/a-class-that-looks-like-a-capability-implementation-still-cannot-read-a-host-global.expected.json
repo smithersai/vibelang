@@ -1,0 +1,12 @@
+{
+  "title": "extending a Context subclass buys a class no exemption from the host-global rule",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1602",
+      "line": 9,
+      "column": 12
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals' (Locked): \"Platform-specific globals such as `process`, `window`, `document`, filesystem, and network MUST NOT be unconditional globals in authored `.sm` code. Host functionality MUST be represented by typed capabilities, normally accessed through the inherited `Capability.context()` method.\" The scope is authored `.sm`, with no carve-out for the file that implements the capability. reference/capabilities.mdx, 'Platform Services': \"JavaScript hosts provide live implementations; tests supply deterministic ones.\" compatibility.mdx, 'Source Relationship': `.ts` modules \"MUST retain their own complete syntax and behavior when imported by Smithers.\" This is the over-correction guard for 20-host-globals/a-capability-implementation-reads-the-host-through-a-trusted-binding: the two programs differ only in whether the `Date.now()` lives in `.sm` or in the trusted `.ts` binding. Being a real `Context` subclass, being the declared capability's implementation shape, and being named like one all buy nothing, because the rule never consults any of them — the refusal is unconditional, so there is nothing for a non-implementation to claim. If a future lane ever adds an implementation-side opt-out, this case is what stops it from being claimable by ordinary code."
+}

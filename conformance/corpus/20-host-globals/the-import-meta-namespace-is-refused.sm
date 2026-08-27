@@ -1,0 +1,15 @@
+export function whereAmI(): string {
+  return import.meta.url
+}
+
+export function resolveIt(specifier: string): string {
+  return import.meta.resolve(specifier)
+}
+
+export function directory(): string {
+  return import.meta.dirname
+}
+
+export function fileName(): string {
+  return import.meta.filename
+}

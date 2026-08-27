@@ -1,0 +1,22 @@
+export function main(): string[] {
+  const values = new Map<string, number>([["ada", 1]])
+  const unique = new Set<number>([1, 1, 2])
+  const bytes = new Uint8Array([1, 2, 3])
+  return [
+    `${Object.keys({ a: 1 }).length}`,
+    `${Array.of(1, 2).length}`,
+    `${values.get("ada")}`,
+    `${unique.size}`,
+    `${bytes.length}`,
+    `${Number.parseFloat("1.5")}`,
+    `${Reflect.has({ a: 1 }, "a")}`,
+    `${Symbol.iterator.toString()}`,
+    `${typeof Promise.resolve}`,
+    `${new RangeError("x").name}`,
+    `${parseInt("41", 10)}`,
+    `${isFinite(1)}`,
+    `${encodeURIComponent("a b")}`,
+    `${JSON.stringify({ n: 1 })}`,
+    `${BigInt(2) + BigInt(3)}`,
+  ]
+}

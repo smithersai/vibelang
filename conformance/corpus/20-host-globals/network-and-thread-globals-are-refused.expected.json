@@ -1,0 +1,27 @@
+{
+  "title": "the network and thread globals are unavailable; fetch was never the only one",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1601",
+      "line": 2,
+      "column": 19
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 3,
+      "column": 18
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 4,
+      "column": 18
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 5,
+      "column": 18
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals', names 'filesystem, and network' in the prohibition, and docs/DECISIONS.md (Locked) repeats it. `fetch` was the only network global the rule knew; `WebSocket` is a live global on Node 22, and all four grant the same authority an HttpClient capability exists to carry. 20-host-globals/host-globals-are-unavailable pins `process` and `document`; this pins the half of the sentence that had no case at all."
+}

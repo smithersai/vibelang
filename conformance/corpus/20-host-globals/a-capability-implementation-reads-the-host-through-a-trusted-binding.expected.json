@@ -1,0 +1,11 @@
+{
+  "title": "a capability's live implementation may be authored in .sm as long as the host read lives in a trusted binding",
+  "expect": "output",
+  "stdout": [
+    "live@1700000000000"
+  ],
+  "typescript": [
+    "trusted-binding.ts"
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals' (Locked): \"Platform-specific globals such as `process`, `window`, `document`, filesystem, and network MUST NOT be unconditional globals in authored `.sm` code. Host functionality MUST be represented by typed capabilities, normally accessed through the inherited `Capability.context()` method.\" The scope is authored `.sm`, with no carve-out for the file that implements the capability. reference/capabilities.mdx, 'Platform Services': \"JavaScript hosts provide live implementations; tests supply deterministic ones.\" compatibility.mdx, 'Source Relationship': `.ts` modules \"MUST retain their own complete syntax and behavior when imported by Smithers.\" Read together, those three sentences settle a question that looks open: the implementation side is not unaddressed, it is ASSIGNED. The one place a host global must be reachable is a TypeScript module, which is precisely where the prohibition does not apply — so the opt-out is the module boundary and no implementation-side opt-out claimable from `.sm` is needed or wanted. The whole capability lifecycle closes in `.sm` here: the abstract capability, its live implementation, the Layer that supplies it, and the consumer that reads it through `Clock.context()`. Its over-correction guard is 20-host-globals/a-class-that-looks-like-a-capability-implementation-still-cannot-read-a-host-global, which is the SAME program with the host read moved into the `.sm`."
+}

@@ -1,0 +1,7 @@
+export function main(): string[] {
+  const agent = navigator
+  const here = location
+  const durable = localStorage
+  const session = sessionStorage
+  return [`${typeof agent}`, `${typeof here}`, `${typeof durable}`, `${typeof session}`]
+}

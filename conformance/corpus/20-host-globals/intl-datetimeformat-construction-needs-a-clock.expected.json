@@ -1,0 +1,12 @@
+{
+  "title": "Intl.DateTimeFormat().format() with no instant formats *now*, so constructing the formatter needs Clock",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1602",
+      "line": 2,
+      "column": 15
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': clock access MUST use a capability. `Intl` was not an ambient root the rule modelled at all, so this read the wall clock with zero diagnostics on both backends. The requirement is charged at CONSTRUCTION rather than at the call that reads the clock, and that is deliberate and fail-closed: which call reads it depends on the arity of a call on an instance (`format()` formats now, `format(instant)` does not), and `resolvedOptions().timeZone` reads the host time zone with no call at all. The complementary acceptance is 20-host-globals/intl-locale-formatting-is-not-a-clock-read, which keeps the rule per-operation rather than per-object."
+}

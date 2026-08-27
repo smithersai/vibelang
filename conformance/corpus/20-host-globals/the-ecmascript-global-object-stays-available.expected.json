@@ -1,0 +1,22 @@
+{
+  "title": "the ECMAScript-262 global object stays unconditionally available: the prohibition is an allowlist over it, not a ban on globals",
+  "expect": "output",
+  "stdout": [
+    "1",
+    "2",
+    "1",
+    "2",
+    "3",
+    "1.5",
+    "true",
+    "Symbol(Symbol.iterator)",
+    "function",
+    "RangeError",
+    "41",
+    "true",
+    "a%20b",
+    "{\"n\":1}",
+    "5"
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': 'Facilities truly present in every supported JavaScript environment MAY be unconditional globals.' docs/DECISIONS.md (Locked) restates it. 20-host-globals/universal-globals-stay-available covers four names; this covers the breadth an allowlist has to carry, because the failure mode of inverting a denylist is an allowlist that is too narrow, and a narrow one takes the whole `.sm` standard library (poc/src/data/**, poc/src/platform/**, poc/src/result/result.sm) with it. Every constructor, function property, and other property of ECMA-262 clause 19 that an author actually writes is exercised here."
+}

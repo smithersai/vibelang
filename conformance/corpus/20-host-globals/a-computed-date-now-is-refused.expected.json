@@ -1,0 +1,12 @@
+{
+  "title": "Date[\"now\"]() is the same host-sensitive access as Date.now() and still requires a capability",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1602",
+      "line": 2,
+      "column": 14
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': 'Facilities truly present in every supported JavaScript environment MAY be unconditional globals. Host-sensitive operations such as clock and random access MUST still use capabilities.' 20-host-globals/clock-access-needs-a-capability pins the dotted spelling. This is a regression pin rather than a fix: the ambient-authority recognizer already tested for a string literal element access, which is why the host-global table was the one family the computed-access defect never reached — and it is the precedent the rest of the family was fixed to follow, so it is worth a row that would notice it being dropped."
+}

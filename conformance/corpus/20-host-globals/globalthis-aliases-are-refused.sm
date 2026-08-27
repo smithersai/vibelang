@@ -1,0 +1,7 @@
+export function main(): string[] {
+  const alias = self
+  const frame = top
+  const outer = parent
+  const list = frames
+  return [`${typeof alias}`, `${typeof frame}`, `${typeof outer}`, `${typeof list}`]
+}

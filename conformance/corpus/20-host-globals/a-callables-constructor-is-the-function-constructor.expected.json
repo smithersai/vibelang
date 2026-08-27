@@ -1,0 +1,12 @@
+{
+  "title": "the constructor of any callable IS the Function constructor, so selecting it is dynamic code evaluation and is refused",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1604",
+      "line": 2,
+      "column": 33
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals' (Locked): platform-specific globals such as `process` MUST NOT be unconditional globals in authored `.sm`. This case is the spelling that reaches the Function constructor WITHOUT NAMING IT: every callable inherits `constructor` from `Function.prototype`, so `(function () {}).constructor` is the same object `new Function(...)` uses, and `Function.prototype.constructor` is the same read one step further along. Measured before the rule landed, on BOTH backends: this program compiled with zero diagnostics and printed the host platform. A rule that only refuses reads of the IDENTIFIERS `eval` and `Function` therefore closes 20-host-globals/eval-reaches-the-host-namespace and its neighbours and leaves this open, which is why the rule has a second arm keyed on the RECEIVER's type: a `constructor` selection whose receiver has call or construct signatures. THE COST OF THAT ARM IS REAL AND IS PINNED IN THE OTHER DIRECTION, because `constructor` is an ordinary member on every ordinary object. 20-host-globals/the-function-type-and-prototype-test-stay-available reads `({ a: 1 }).constructor` and must keep compiling and running; a class instance, an array, a string, a `Map` instance, an `Error` instance and a user object with its own `constructor` member were all measured accepted and running on both backends after the fix. The receiver here is a function expression, which is the one thing those are not. 09-foreign-calls/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter also reads `constructor`, off an object literal, and is untouched by this rule. The open specification question this family inherits is recorded in 18-typescript-requirement/eval-cannot-be-described-by-a-row-and-is-refused."
+}

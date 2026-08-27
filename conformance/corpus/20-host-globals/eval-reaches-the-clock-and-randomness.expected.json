@@ -1,0 +1,17 @@
+{
+  "title": "eval reads the wall clock and the random source without charging either capability, so both reads of eval are refused",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1604",
+      "line": 2,
+      "column": 17
+    },
+    {
+      "code": "SMITHERS1604",
+      "line": 6,
+      "column": 17
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals' (Locked): 'Host-sensitive operations such as clock and random access MUST still use capabilities.' 20-host-globals/clock-access-needs-a-capability pins `Date.now()` as SMITHERS1602 and 20-host-globals/random-access-needs-a-capability pins `Math.random()` as SMITHERS1603. This case is the pair of them written through a string. Measured before the rule landed, on BOTH backends: `eval(\"Date.now()\")` printed a real epoch millisecond value and `eval(\"Math.random()\")` a real random number, each with `requirements: []` — the capability the MUST names was not charged, not merely charged to the wrong row. That is the exact shape of failure the two neighbouring cases exist to prevent, reached one quotation mark away from them. BOTH reads are declared rather than one, so a fix that closed the clock spelling and left randomness open is still visible here; the two live in separate functions for the same reason (one row each, so neither report can be a cascade of the other). The declared column is the `eval` identifier in both, because the rule is on the read — see 20-host-globals/eval-reaches-the-host-namespace for why, and 18-typescript-requirement/eval-cannot-be-described-by-a-row-and-is-refused for the open specification question this family inherits."
+}

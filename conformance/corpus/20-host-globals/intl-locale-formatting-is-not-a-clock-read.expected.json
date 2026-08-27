@@ -1,0 +1,9 @@
+{
+  "title": "Intl minus the clock-reading member: number formatting and locale canonicalisation need no capability",
+  "expect": "output",
+  "stdout": [
+    "en-US",
+    "1"
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals': the rule is per-operation, not per-object. This is to `Intl` what 20-host-globals/universal-globals-stay-available is to `Math` — without it, adding `Intl` as an ambient root could be over-applied to the whole object and nothing would notice."
+}

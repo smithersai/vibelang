@@ -1,0 +1,12 @@
+{
+  "title": "an identifier the program declares nowhere is an ordinary unresolved name, not an ambient host global",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "TS2304",
+      "line": 2,
+      "column": 14
+    }
+  ],
+  "notes": "The host-global rule reaches names the ambient environment actually publishes, plus the canonical host globals by name. It deliberately does NOT claim every unresolved identifier: a SMITHERS error preempts the TypeScript check entirely, so answering a typo with 'ambient host global ... is unavailable' would replace the diagnostic that names the real problem. 19-retired-syntax/builtin-optional-is-unresolved pins the same shape for a TYPE name; this pins it for a VALUE, which is the position the allowlist reads. The TS code is declared rather than a SMITHERS one because that is the claim: TypeScript's own unresolved-name error, and nothing of Smithers's. Both backends report TS2304 at this position, from different stages — the reference from its stock check of the emitted module, mapped back through the compiler's own source map by conformance/runner/backend-js.mjs, and the fork from its single pipeline. That staging difference is pre-existing and is why this case was confirmed on both backends rather than assumed from the type-name one."
+}

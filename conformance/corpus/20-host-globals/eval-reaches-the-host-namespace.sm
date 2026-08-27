@@ -1,0 +1,5 @@
+export function platform(): string {
+  return String(eval("process.platform"))
+}
+
+export const named = [platform()]

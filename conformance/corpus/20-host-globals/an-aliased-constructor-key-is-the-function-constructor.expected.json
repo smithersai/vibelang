@@ -1,0 +1,12 @@
+{
+  "title": "a const-aliased element-access key selects the same constructor member as the dotted spelling, so it is the same dynamic code evaluation",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1604",
+      "line": 4,
+      "column": 33
+    }
+  ],
+  "notes": "The intersection of two round-7 rules, and the only case that shows either of them is TOTAL. 20-host-globals/a-callables-constructor-is-the-function-constructor pins the dotted spelling; this pins it reached through `const KEY = \"constructor\"`. A member-selection helper that tests the key's SYNTAX (is it a string literal?) answers 'no member' here and the dynamic-code arm never runs, so the escape is open again one alias away from a rule that just closed. The fix was to ask the checker for the key's string-literal TYPE, which is where TypeScript itself draws the line — 05-context-rows/a-const-alias-context-key-charges-the-same-row pins the same helper from the capability side, and 05-context-rows/a-non-literal-computed-capability-access-has-no-statically-known-member pins the far boundary, where a widening `string` names no member and is a stock TS7053. THE OVER-CORRECTION THIS RULE ALMOST SHIPPED IS PINNED SEPARATELY, because the same helper feeds the host-global walk: `Date[PARSE]` and `Math[MAX]` were measured REFUSED on the fork by a key test that had drifted the other way, and 20-host-globals/an-aliased-pure-member-key-needs-no-capability requires both to compile and run. specification/compatibility.mdx, 'Host Globals' (Locked) is the sentence behind the refusal; the open specification question this family inherits is recorded in 18-typescript-requirement/eval-cannot-be-described-by-a-row-and-is-refused."
+}

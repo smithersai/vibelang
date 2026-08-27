@@ -1,0 +1,13 @@
+// `new.target` is the language's own meta-property: it reads nothing from the
+// host and ECMA-262 delegates none of it to one. Only `import.meta` is host
+// authority, so the two meta-property spellings must not be refused together.
+class Tracked {
+  readonly constructed: boolean
+  constructor() {
+    this.constructed = new.target === Tracked
+  }
+}
+
+export function main(): string[] {
+  return [`${new Tracked().constructed}`]
+}

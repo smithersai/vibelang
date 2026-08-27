@@ -1,0 +1,12 @@
+{
+  "title": "a key whose type widens to string names no member, so the requirement is charged for the whole host object rather than escaping it",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1602",
+      "line": 2,
+      "column": 14
+    }
+  ],
+  "notes": "THE FAIL-CLOSED BOUNDARY of the key rule, and the reason the rule can be keyed on the checker's answer at all. specification/compatibility.mdx, 'Host Globals' (Locked): 'Host-sensitive operations such as clock and random access MUST still use capabilities.' `\"now\" as string` widens the key's type out of the string-literal domain, so the member-selection helper answers 'no statically known member'. The question this case settles is what happens NEXT, because there are two possible answers and only one of them is safe: charge nothing (the member is unknown, so nothing is host-sensitive) or charge the ROOT (the member is unknown, so any member of `Date` could be the one being read). It charges the root. The declared column is the `Date` identifier rather than a member name, which is the observable difference between the two answers. Without this case a rule keyed on the checker's key type has an unpinned edge, and the fail-open reading of it — an unresolved key selects nothing to object to — is precisely the shape of the round-7 `context` defect, where a key the recognizer could not resolve silently dropped the capability row and the program panicked at run time. Note that the sibling boundary on the CAPABILITY side answers differently and correctly so: 05-context-rows/a-non-literal-computed-capability-access-has-no-statically-known-member is a stock TS7053, because `Clock` is a class with no string index signature while `DateConstructor` has members reachable by a `string` key. Two different receivers, two different answers, both fail-closed."
+}

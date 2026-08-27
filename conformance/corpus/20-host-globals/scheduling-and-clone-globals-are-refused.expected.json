@@ -1,0 +1,27 @@
+{
+  "title": "the scheduling siblings of setTimeout, and structuredClone, are the same host authority",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1601",
+      "line": 2,
+      "column": 16
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 3,
+      "column": 18
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 4,
+      "column": 16
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 5,
+      "column": 16
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals'. `setTimeout` and `setInterval` were refused while `queueMicrotask`, `clearTimeout`, and `clearInterval` were not, which is the exact shape of a denylist rather than a rule. `structuredClone` additionally detaches an ArrayBuffer through `{ transfer: [...] }`, which falsifies poc/src/platform/host.ts's `fillRandomBytes` `@throws {never}` claim, because `getRandomValues` throws on a detached view."
+}

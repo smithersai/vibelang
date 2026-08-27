@@ -1,0 +1,6 @@
+export function platform(): string {
+  const make = (function () {}).constructor as (body: string) => () => string
+  return String(make("return process.platform")())
+}
+
+export const values = [platform()]

@@ -1,0 +1,4 @@
+export function main(): string[] {
+  const constructor: object = Date as unknown as object
+  return [`${constructor instanceof Function}`]
+}

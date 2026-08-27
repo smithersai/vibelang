@@ -1,0 +1,47 @@
+{
+  "title": "the Node global scope and the CommonJS module wrapper are host facilities, and four of them do not exist in the emitted ESM at all",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1601",
+      "line": 2,
+      "column": 17
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 3,
+      "column": 16
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 4,
+      "column": 16
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 5,
+      "column": 19
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 6,
+      "column": 21
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 7,
+      "column": 21
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 8,
+      "column": 16
+    },
+    {
+      "code": "SMITHERS1601",
+      "line": 9,
+      "column": 16
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals'. This case is also the backend-agreement pin for the ambient name environment: the reference frontend runs against the installed @types packages and the pinned fork carries none, so before the rule was inverted `Buffer`/`require`/`module` were clean here and TS2591 there, and `global`/`exports`/`__dirname`/`__filename`/`setImmediate` were clean here and TS2304 there. A corpus case cannot see that divergence unless the language itself answers, which is why these names are refused BY NAME rather than left to whichever ambient lib is installed. `__dirname`, `__filename`, `module`, and `exports` are worse than unportable: the compiler emits ESM, where they are a guaranteed ReferenceError inside a function whose row reads `failures: []`."
+}

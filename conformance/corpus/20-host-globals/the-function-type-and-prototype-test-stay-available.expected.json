@@ -1,0 +1,10 @@
+{
+  "title": "Function stays a usable type annotation, instanceof Function stays a prototype test, and an ordinary object's constructor stays an ordinary member",
+  "expect": "output",
+  "stdout": [
+    "true",
+    "true",
+    "function"
+  ],
+  "notes": "THE ACCEPTANCE GUARD FOR THE WHOLE DYNAMIC-CODE FAMILY, and it is not optional: without it the rule that 20-host-globals/eval-reaches-the-host-namespace and its four siblings pin can be widened from 'a read that reaches the evaluator' to 'any mention of Function' and every one of them stays green. specification/compatibility.mdx, 'Dynamic Features' (Locked): '`any` and `eval` remain usable. General Smithers guidance may lint against them; the language does not forbid them.' The narrow rule keeps a defensible reading of that sentence alive — the NAME resolves; the OPERATION is refused — and this case is where that narrowness is observable. Each of the three lines is a spelling that must not be mistaken for dynamic code evaluation. `callback: Function` is a TYPE POSITION and evaluates nothing. `f instanceof Function` selects a prototype and reads no host state; it is the same exemption 20-host-globals/value-instanceof-date-is-a-prototype-test-not-a-clock-read grants `Date`, and the RIGHT operand of `instanceof` is carved out of the identifier arm for exactly this reason. `({ a: 1 }).constructor` is the second arm's boundary: the arm asks whether the RECEIVER has call or construct signatures, an object literal has none, so an ordinary `constructor` read stays ordinary. Measured on both backends after the rule landed, a class instance, an array, a string, a `Map` instance, an `Error` instance (`e.constructor.name` reads `Boom`) and a user object with its own `constructor` member all compile and run; a function expression, an arrow, a function declaration, a class VALUE and `Map` itself are refused. This case is an `expect: \"output\"` and therefore actually RUNS the program: an over-refusal here fails to compile, and a rule that silently stopped charging would still print the same three lines, which is why the refusal half is pinned by its own cases rather than by this one."
+}

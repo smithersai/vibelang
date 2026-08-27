@@ -1,0 +1,9 @@
+export function stamp(): string {
+  return String(eval("Date.now()"))
+}
+
+export function roll(): string {
+  return String(eval("Math.random()"))
+}
+
+export const values = [stamp(), roll()]

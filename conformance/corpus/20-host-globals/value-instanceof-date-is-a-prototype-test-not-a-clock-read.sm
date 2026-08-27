@@ -1,0 +1,5 @@
+export function main(): string[] {
+  const authored: unknown = new Date(0)
+  const text: unknown = "not a date"
+  return [`${authored instanceof Date}`, `${text instanceof Date}`]
+}

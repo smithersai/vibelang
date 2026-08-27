@@ -1,0 +1,8 @@
+function accepts(callback: Function): boolean {
+  return typeof callback === "function"
+}
+
+export function main(): string[] {
+  const f = (): number => 1
+  return [`${accepts(f)}`, `${f instanceof Function}`, `${typeof ({ a: 1 }).constructor}`]
+}

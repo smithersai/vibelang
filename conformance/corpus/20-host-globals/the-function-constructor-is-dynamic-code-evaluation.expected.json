@@ -1,0 +1,17 @@
+{
+  "title": "the Function constructor compiles a string into code exactly as eval does, whether it is reached with new or through Reflect.construct",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1604",
+      "line": 2,
+      "column": 21
+    },
+    {
+      "code": "SMITHERS1604",
+      "line": 6,
+      "column": 36
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals' (Locked): platform-specific globals such as `process` MUST NOT be unconditional globals in authored `.sm`. `new Function(body)` compiles `body` in the host's own global scope, so it reaches `process` for the same reason `eval` does and is refused by the same rule for the same reason. Measured before the rule landed, on BOTH backends: both lines here compiled with zero diagnostics and printed the host platform. THE SECOND LINE IS THE POINT OF THE CASE. `Reflect.construct(Function, [...])` never writes the `new` keyword, so a rule keyed on `NewExpression` closes line 2 and leaves line 6 open — and the value it returns is the same compiled function. `Reflect.apply(Function, undefined, [...])` was measured escaping the same way. The rule is therefore on the READ of the `Function` identifier, which is what both lines share and what the declared columns name: line 2 at the `Function` argument of `new`, line 6 at the `Function` argument of `Reflect.construct`. Both reads are declared so a partial fix stays visible. THE ACCEPTANCE HALF IS NOT OPTIONAL AND IS PINNED SEPARATELY: `Function` stays a usable type annotation and `x instanceof Function` stays a prototype test, in 20-host-globals/the-function-type-and-prototype-test-stay-available. Without that case this rule can be widened to 'any mention of Function' and nothing notices. The open specification question this family inherits is recorded in 18-typescript-requirement/eval-cannot-be-described-by-a-row-and-is-refused."
+}

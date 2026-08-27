@@ -1,0 +1,12 @@
+{
+  "title": "eval reaches process.platform, a global .sm may not have unconditionally, so the read of eval is refused",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1604",
+      "line": 2,
+      "column": 17
+    }
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals' (Locked): 'Platform-specific globals such as `process`, `window`, `document`, filesystem, and network MUST NOT be unconditional globals in authored `.sm` code.' 20-host-globals/host-globals-are-unavailable pins that sentence for the direct spelling, `process.platform`, which is SMITHERS1601. This case pins the SAME sentence for the spelling that reached the same value with no diagnostic at all. Measured before the rule landed, on BOTH backends: `eval(\"process.platform\")` compiled with `failures: []` and `requirements: []`, ran, and printed the host platform. A ban that any string can walk around is not a ban, and the differential oracle was structurally blind to it because both implementations shared the hole. THE RULE IS ON THE READ, NOT THE CALL, which is why the declared column is the `eval` identifier rather than the call's open paren: twenty of twenty-two measured escape spellings reach the callee through a read (an alias, `(0, eval)`, a shorthand `{ eval }`, `Reflect.apply(Function, ...)`), so a rule keyed on the call site closes one spelling and none of the others. `Date` already draws the line in exactly this place — 20-host-globals/the-date-constructor-in-a-value-position-is-still-charged refuses the OBJECT in a value position, not only `Date.now()`. THIS CASE INHERITS AN OPEN SPECIFICATION QUESTION: `compatibility.mdx` §Dynamic Features still says '`any` and `eval` remain usable... the language does not forbid them', and the full argument for why a `MUST NOT` outranks that permission — plus the fact that the sentence needs amending — is recorded once, in 18-typescript-requirement/eval-cannot-be-described-by-a-row-and-is-refused, rather than restated here. The name still resolves; only the operation is refused. The acceptance guard for that narrowness is 20-host-globals/the-function-type-and-prototype-test-stay-available."
+}
