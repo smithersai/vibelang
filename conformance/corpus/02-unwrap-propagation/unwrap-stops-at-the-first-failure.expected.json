@@ -2,6 +2,7 @@
   "title": "postfix propagation is an early return: statements after the failing propagation point never run",
   "expect": "output",
   "stdout": [
-    "error Missing: no entry for zoe"
-  ]
+    "error smithers:unwrap-stops-at-the-first-failure.sm:Missing: no entry for zoe"
+  ],
+  "notes": "The failure line carries the compiler-stable nominal identity rather than the constructor name; specification/failures.mdx, 'Error Prototype', and conformance/runner/harness.mjs record why. Before 2026-08-25 this line read `error Missing: no entry for zoe`, which was indistinguishable from 02-unwrap-propagation/unwrap-returns-the-error-variant's line for a different module's identically-named class."
 }

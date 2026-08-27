@@ -2,6 +2,7 @@
   "title": "postfix propagation on a failure variant returns that same error from the enclosing Result-returning function",
   "expect": "output",
   "stdout": [
-    "error Missing: no entry for zoe"
-  ]
+    "error smithers:unwrap-returns-the-error-variant.sm:Missing: no entry for zoe"
+  ],
+  "notes": "The failure line carries the compiler-stable nominal identity rather than the constructor name; specification/failures.mdx, 'Error Prototype', and conformance/runner/harness.mjs record why. Before 2026-08-25 this line read `error Missing: no entry for zoe`. The identity names this module, which is also what keeps it distinct from 02-unwrap-propagation/unwrap-stops-at-the-first-failure's identically-named `Missing`: two same-named Error classes in two modules are two identities, and both backends agree on both."
 }

@@ -2,6 +2,7 @@
   "title": "a throw of an Error subclass in a Result-returning function lifts into the failure variant",
   "expect": "output",
   "stdout": [
-    "error Boom: bad value -2"
-  ]
+    "error smithers:throw-lifts-into-failure.sm:Boom: bad value -2"
+  ],
+  "notes": "The failure line carries the compiler-stable nominal identity because that is what specification/failures.mdx, 'Error Prototype', says is the key: \"Handler selection MUST use compiler-stable nominal identity, not a forgeable user `_tag` or minifier-sensitive constructor name in compiled artifacts.\" Until 2026-08-25 the shared harness printed `error.constructor.name` — the very thing that sentence names as the wrong key — and this line read `error Boom: bad value -2`. Both backends now mint `smithers:<module path>:<Class>` and produce this line byte-identically. That agreement is the point: three of the four obligations in 'Error Classes' (stable nominal identity, serialization evidence, cross-realm transport metadata) were absent from the Go fork and no corpus case could see it, because `constructor.name` is `Boom` whether or not an identity exists. See conformance/runner/harness.mjs."
 }

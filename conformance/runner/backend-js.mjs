@@ -34,6 +34,17 @@ const lowerDriver = join(repositoryRoot, "conformance", "runner", "js-lower.mjs"
 const runtimeImport = join(repositoryRoot, "poc", "src", "runtime", "index.ts");
 const schemaRuntimeImport = join(repositoryRoot, "poc", "src", "build", "schema-runtime.ts");
 
+/**
+ * This backend's compiler-stable Error identity accessor, for the shared
+ * harness's failure line.
+ *
+ * The module is the very specifier the emitted program imports its runtime
+ * helpers from (`compile.ts` writes `runtimeImport` into every emitted module),
+ * so the harness reads the registry `__vsRegisterError` populated rather than a
+ * second, empty instance of it. See `conformance/runner/harness.mjs`.
+ */
+const identityAccessor = { module: runtimeImport, name: "errorIdentity" };
+
 export const jsBackend = {
   name: "js",
   label: "JS instrument (poc/src/language)",
@@ -177,7 +188,7 @@ export async function runJsCase(testCase, { keepDirectory = false } = {}) {
       await writeFile(join(directory, fileName.replace(/\.sm$/, ".ts")), compiled.code);
     }
     const entryModule = `./${testCase.entry.replace(/\.sm$/, ".ts")}`;
-    await writeFile(join(directory, "conformance-harness.ts"), harnessText(entryModule));
+    await writeFile(join(directory, "conformance-harness.ts"), harnessText(entryModule, identityAccessor));
 
     const executed = await run("bun", [join(directory, "conformance-harness.ts")], { cwd: directory });
     if (executed.error) {

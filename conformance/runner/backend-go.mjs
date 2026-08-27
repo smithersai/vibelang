@@ -28,6 +28,19 @@ import { harnessText } from "./harness.mjs";
 import { run, mapPool } from "./process.mjs";
 import { splitLines } from "./backend-js.mjs";
 
+/**
+ * This backend's compiler-stable Error identity accessor, for the shared
+ * harness's failure line.
+ *
+ * The fork injects `__smithers_prelude.ts` into every internally lowered
+ * project and emits it beside the program, and a root-level emitted module
+ * imports it as `./__smithers_prelude.js` — so the harness, which is written
+ * into the same emit directory as the entry module, names it the same way and
+ * reads the registry the emitted `smithersRegisterError` calls populated. See
+ * `conformance/runner/harness.mjs`.
+ */
+const identityAccessor = { module: "./__smithers_prelude.js", name: "smithersErrorIdentity" };
+
 export const goBackend = {
   name: "go",
   label: "Go fork + verified forkpatch series (cmd/smithersc-go, lowering: internal)",
@@ -215,7 +228,7 @@ export async function runGoCase(context, testCase) {
     }
     await writeFile(join(emitDirectory, "package.json"), `${JSON.stringify({ type: "module" })}\n`);
     const entryModule = `./${testCase.entry.replace(/\.sm$/, ".js")}`;
-    await writeFile(join(emitDirectory, "conformance-harness.mjs"), harnessText(entryModule));
+    await writeFile(join(emitDirectory, "conformance-harness.mjs"), harnessText(entryModule, identityAccessor));
 
     const executed = await run(process.execPath, [join(emitDirectory, "conformance-harness.mjs")], {
       cwd: emitDirectory,
