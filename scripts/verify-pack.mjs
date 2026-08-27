@@ -28,7 +28,31 @@ const temporaryBase = realpathSync(tmpdir());
 const temporary = mkdtempSync(join(temporaryBase, temporaryPrefix));
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const bun = process.platform === "win32" ? "bun.exe" : "bun";
-const commandTimeout = Number(process.env.SMITHERS_VERIFY_TIMEOUT_MS ?? "") || 900_000;
+/**
+ * Per-command timeout, raised 900_000 -> 2_400_000 on 2026-08-27, and the reason
+ * is worth keeping because it will recur.
+ *
+ * This gate shells out to `npm run prepack`, which is `npm test`, which runs
+ * every suite gate in sequence. On 2026-08-27 `scripts/poc-test-gate.mjs` joined
+ * that chain — 2,252 tests that until then no gate ran at all — and the budget
+ * went from roughly 13 minutes to roughly 18: node 184s + poc 304s + go ~560s,
+ * on top of two clean builds. The 15-minute ceiling was no longer above it, and
+ * this gate died with `spawnSync npm ETIMEDOUT` while every suite it was waiting
+ * on was green.
+ *
+ * That failure mode is the dangerous one for a release gate: the tarball
+ * verification never ran, and the message says nothing about packaging. The
+ * cheapest way to make it pass again would have been to drop the new suite back
+ * out of `npm test`, which is precisely backwards.
+ *
+ * So the budget is declared with real headroom rather than trimmed to fit, and
+ * it stays a genuine limit — a hung `npm` still fails the gate instead of
+ * hanging a release forever. `SMITHERS_VERIFY_TIMEOUT_MS` overrides it for a
+ * slower machine. If a suite is added to `npm test` again, check this number:
+ * the suites grew ~4x in one day, and a timeout is only a safety net while it
+ * sits above the work it is netting.
+ */
+const commandTimeout = Number(process.env.SMITHERS_VERIFY_TIMEOUT_MS ?? "") || 2_400_000;
 const releaseAssetCacheIdentities = new Set();
 
 function execute(command, args, cwd, options = {}) {
