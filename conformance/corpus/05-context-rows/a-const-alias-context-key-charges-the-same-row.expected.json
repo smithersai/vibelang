@@ -1,0 +1,13 @@
+{
+  "title": "Capability[KEY]() with a const-aliased key is the same compiler-recognized call as Capability.context() and charges the same nominal row",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2102",
+      "line": 13,
+      "column": 28,
+      "messageContains": "Clock"
+    }
+  ],
+  "notes": "specification/requirements.mdx:34 (Locked): '`Capability.context()` MUST be an inherited, compiler-recognized call on subclasses of `Context`. It MUST return the receiving capability's instance type and add that class's nominal identity to the enclosing function's inferred `R` row.' :36: 'The receiver MUST identify a `Context` subclass strongly enough for the compiler to record its nominal key.' :80: 'When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error.' 05-context-rows/a-computed-context-access-charges-the-same-row pins the string-literal element access on the same program. This case changes ONE THING: the key is a `const` binding of that literal instead of the literal itself. MEASURED BEFORE THE ROUND-7 FIX, on BOTH backends: this program compiled with `requirements: []` and PANICKED at run time with `capability 'Clock' was not provided`. The row did not name the wrong capability; it was empty. That is the whole reason this spelling needs its own case rather than being assumed to follow its neighbour: a recognizer that tests the key's SYNTAX answers 'no member' here, the capability access is not recognized, and every rule that reads the row is then reading a row a real access is missing from. Seven spellings were measured failing open this way in the reference and five in the fork, so a family of cases is the only thing that can hold the class closed; the other two landed with this one are 05-context-rows/a-parenthesised-context-key-charges-the-same-row and 05-context-rows/a-satisfies-wrapped-context-key-charges-the-same-row. `KEY` is declared at module scope, so the key is resolved across a scope boundary. THE ACCEPTANCE HALF is 05-context-rows/an-aliased-context-key-is-subtracted-by-its-layer, which supplies the layer and requires the program to RUN: this case alone cannot tell 'charges Clock' from 'charges something', and a row charged to the wrong key would still be unsatisfied here. The declared messageContains is the capability's own name, for the reason 05-context-rows/an-unsatisfied-top-level-requirement-names-exactly-the-capability records."
+}

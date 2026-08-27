@@ -1,0 +1,20 @@
+{
+  "title": "thirteen receiver spellings that DO identify one capability keep their acceptance and their row, and the program runs under a layer providing exactly that capability",
+  "expect": "output",
+  "stdout": [
+    "ADA",
+    "ADA",
+    "ADA",
+    "ADA",
+    "ADA",
+    "ADA",
+    "ADA",
+    "ADA",
+    "ADA",
+    "ADA",
+    "ADA",
+    "ADA",
+    "ADA"
+  ],
+  "notes": "specification/requirements.mdx, 'Context Access': 'The receiver MUST identify a `Context` subclass strongly enough for the compiler to record its nominal key.' This is the other direction of `SMITHERS2106`, and it is a single case with thirteen receivers rather than thirteen cases because the failure it guards against is one over-correction, not thirteen: a rule that refuses an ambiguous receiver can very easily refuse a receiver it merely does not RECOGNIZE, and this repository has shipped six over-corrections. Every line here identifies exactly one capability, so every one must both compile and read Reader at run time — and the layer provides Reader alone, so a receiver charging nothing panics and a receiver charging some other key is refused. Thirteen identical outputs is a weak-looking expectation carrying a strong one: each line had to reach the capability. The specific spellings are chosen to hit each mechanism the refusal rule uses, so that a fix which over-fires anywhere turns THIS case red rather than passing quietly: the direct call and a `const` ALIAS (the alias must resolve through the binding, which is the same const-initializer follow the ambiguity rule uses to catch `const c = flag ? Reader : Writer`); parentheses and an optional chain and an optional CALL and a literal element access (spelling variants that must not be recognition-by-syntactic-form); TWO conditional receivers whose branches agree — `(flag ? Reader : Reader)` and `(flag ? Reader : Alias)` — which are the exact shape `a-ternary-receiver-does-not-identify-one-capability` refuses, differing only in that the branches name one class, so a branch walk that refuses every `?:` turns this red; an object-property receiver; a `capability: typeof Reader` PARAMETER, which is the form the generic case's notes explicitly decline to refuse; `(Reader as any)`, which must record the CORRECT row rather than be refused — a type assertion changes the type and never the value, so the operand is asked first and the cast is not a blanket refusal; `(opaque as typeof Reader)` over an `unknown`, which is the same rule reached from the other side, where the ASSERTED type is the only evidence there is; and a function returning `typeof Reader`. WHAT THIS DELIBERATELY DOES NOT PIN: a SUBCLASS receiver. `SubReader.context()` charges `[SubReader]` and would need a second layer, and the subtyping question around it is a recorded open residual on both backends; folding it in here would make this case's green depend on a question the specification has not answered. It also does not pin any row by inspection — no corpus expectation can read a row — only that all thirteen are subtracted by one `Layer.succeed(Reader, service)`, which is the observable form of the same statement. VERIFIED LOAD-BEARING, not assumed: mutating the thirteenth declared stdout line from `ADA` to `ADX` turns the case red on BOTH backends with the stdout diff printed, and the expectation was restored byte-identically (sha256 45974592261fb5d327daf11dbfc3d8456b62952d57f3a8b94446e7b155065a7d before and after). The thirteenth line is the one mutated on purpose: the runner compares the printed lines in order and by count, so a mutation at the END is the one that also demonstrates the last receiver is measured rather than truncated away."
+}

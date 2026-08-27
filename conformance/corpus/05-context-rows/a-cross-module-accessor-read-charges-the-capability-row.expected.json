@@ -1,0 +1,11 @@
+{
+  "title": "a cross-module get-accessor read is an ordinary call and its capability requirement travels to the reader",
+  "expect": "output",
+  "stdout": [
+    "7"
+  ],
+  "modules": [
+    "a-cross-module-accessor-read-charges-the-capability-row.mod.sm"
+  ],
+  "notes": "specification/requirements.mdx, 'Inference': \"Requirement inference MUST be transitive through ordinary calls.\" specification/type-system.mdx, 'Fallibility Inference': R is inferred from `Capability.context()` calls and transitive callees. Reading a get-accessor CALLS the accessor — there is no syntax that names one without running it — so an accessor access is an ordinary call and charges the accessor's requirement row. Before 2026-08-25 both backends reported SMITHERS1802 on this read — the accessor was the one corner of the accessor class anything refused — while the requirement row was silently DROPPED everywhere. This case is coverage rather than a discriminating gate: a *satisfied* Layer.provide runs whether or not the row travelled. The gate is 06-layers/layer-provide-missing-a-capability-an-accessor-introduces, which is the only shape that distinguishes 'the accessor's row travels' from 'the accessor's row vanishes'. Keep the two together."
+}

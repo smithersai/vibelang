@@ -1,0 +1,50 @@
+import { Context } from "smthrs/context"
+
+// The same six positions as `an-invocation-with-no-call-expression-still-charges-its-row`,
+// spelled over callees that reach no capability. Every one must record an empty
+// row, and the oracle is the run time: no layer is installed anywhere in this
+// file, so a form that is charged anyway aborts instead of printing its line.
+abstract class Db extends Context {
+  abstract read(): string
+}
+
+// Reachable, and deliberately never reached by anything below.
+function unused(): string { return Db.context().read() }
+
+function tag(parts: TemplateStringsArray): string { return parts[0] + "T" }
+function throughATaggedTemplate(): string { return tag`x` }
+
+class Constructed {
+  readonly value: string
+  constructor() { this.value = "C" }
+}
+function throughANewExpression(): string { return new Constructed().value }
+
+class Base {
+  readonly value: string
+  constructor() { this.value = "B" }
+}
+class Derived extends Base {}
+function throughAnImplicitSuperConstructor(): string { return new Derived().value }
+
+const plainArray = ["a", "b"]
+function throughForOf(): string {
+  let out = ""
+  for (const part of plainArray) out += part
+  return out
+}
+function throughASpread(): string { return [...plainArray].join("") }
+
+function* delegating(): Generator<string> { yield* plainArray }
+function throughYieldStar(): string { return [...delegating()].join("") }
+
+export function main(): string[] {
+  return [
+    throughATaggedTemplate(),
+    throughANewExpression(),
+    throughAnImplicitSuperConstructor(),
+    throughForOf(),
+    throughASpread(),
+    throughYieldStar(),
+  ]
+}

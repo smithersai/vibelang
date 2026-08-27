@@ -1,0 +1,7 @@
+import { stamp } from "./a-top-level-accessor-read-has-unsatisfied-requirements.mod.sm"
+
+const recorded = stamp().value
+
+export function main(): string[] {
+  return [`${recorded}`]
+}

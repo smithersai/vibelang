@@ -1,0 +1,12 @@
+import { Layer } from "smthrs/provider"
+import { Clock, Stamp, stamp } from "./a-cross-module-accessor-read-charges-the-capability-row.mod.sm"
+
+function readStamp(source: Stamp): number {
+  return source.value
+}
+
+const clock: Clock = { now: () => 7 }
+
+export function main(): string[] {
+  return Layer.provide(Layer.succeed(Clock, clock), () => [`${readStamp(stamp())}`])
+}

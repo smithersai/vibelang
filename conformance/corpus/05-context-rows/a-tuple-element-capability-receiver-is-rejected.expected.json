@@ -1,0 +1,12 @@
+{
+  "title": "a capability read through a non-literal index into a tuple of capabilities identifies no single nominal key and is refused",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2106",
+      "line": 14,
+      "column": 8
+    }
+  ],
+  "notes": "specification/requirements.mdx, 'Context Access': 'The receiver MUST identify a `Context` subclass strongly enough for the compiler to record its nominal key.' `registry[index]` with `index: 0 | 1` is a capability REGISTRY read — the shape a real program reaches for when it wants to pick a capability at run time — and it identifies two keys, so it is refused. This case is not redundant with the union-typed parameter beside it: the union there is written by the author in a type annotation, while here the union is SYNTHESIZED by an indexed access over an `as const` tuple, and an implementation that only inspects declared parameter types never sees it. On the pre-fix tree both backends recorded an empty row and certified the function. It is also the case that keeps the neighbouring `a-non-literal-computed-capability-access-has-no-statically-known-member` honest: that one pins a computed MEMBER (`Reader[key]()`, which stock TS7053 already refuses), and this one pins a computed RECEIVER, which nothing refused. Reader and Writer are structurally different here, so no subtype reduction occurs and the indexed access really does deliver a two-constituent union to the rule. WHAT THIS DELIBERATELY DOES NOT PIN: the message (SMITHERS2106 carries no payload — see the ternary case's notes), and the LITERAL-index spelling `registry[0].context()`, which resolves to exactly one class and is ACCEPTED on both backends; refusing every indexed receiver would be an over-correction and is the reason the index here is a parameter rather than a constant. VERIFIED LOAD-BEARING, not assumed: mutating the declared column from 8 to 10 turns the case red on BOTH backends with the position diff printed, and the file was restored byte-identically (sha256 e10fc74281cc7e8df4c783631b200ff6a35a3c17667486a548b6b9847595edb9 before and after)."
+}

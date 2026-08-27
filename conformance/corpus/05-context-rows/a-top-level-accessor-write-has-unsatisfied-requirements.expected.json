@@ -1,0 +1,16 @@
+{
+  "title": "writing a set-accessor is the same ordinary call as reading a get-accessor and carries the same requirement",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2102",
+      "line": 4,
+      "column": 1,
+      "messageContains": "Clock"
+    }
+  ],
+  "modules": [
+    "a-top-level-accessor-write-has-unsatisfied-requirements.mod.sm"
+  ],
+  "notes": "specification/requirements.mdx, 'Inference': \"Requirement inference MUST be transitive through ordinary calls.\" specification/type-system.mdx, 'Fallibility Inference': R is inferred from `Capability.context()` calls and transitive callees. Reading a get-accessor CALLS the accessor — there is no syntax that names one without running it — so an accessor access is an ordinary call and charges the accessor's requirement row. The write direction is the half that was never refused by anything: both backends ACCEPTED this program with the capability silently dropped, which is a live fail-open rather than a false positive. It is paired with a-top-level-accessor-read-has-unsatisfied-requirements deliberately, because a fix that reached only the read direction would leave the direction nothing was watching. An assignment is an assignment, so the refusal is reported at the start of the statement rather than at the member name."
+}

@@ -1,0 +1,13 @@
+{
+  "title": "a non-literal computed key selects no statically known member, so it is a type error rather than a compiler-recognized capability access",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "TS7053",
+      "line": 8,
+      "column": 10,
+      "messageContains": "implicitly has an 'any' type"
+    }
+  ],
+  "notes": "The boundary of the computed-member family pinned by 05-context-rows/a-computed-context-access-charges-the-same-row and the nine cases with it. Those recognize `Clock[\"context\"]()` because a LITERAL element access resolves to the same property symbol as `Clock.context()` — same member, same emitted call. A non-literal key resolves to nothing statically, so no recognizer may claim it, and the question this case answers is what happens instead: it fails closed, but through the stock TypeScript check of the EMITTED module rather than through any Smithers rule. `Clock` is a class with no string index signature, so indexing it with a `string` is TS7053 under `noImplicitAny` (which `strict` brings, and specification/compatibility.mdx lists `strict` as required). The `messageContains` is declared because the code alone would be satisfied by any implicit-any report, and what is being pinned is that the receiver has no such member to select. EVIDENCE, and the reason this case exists: FB-report.md §7.3 recorded this path as unpinnable — \"not expressible as an `expect: \\\"diagnostics\\\"` corpus case, so no case can pin it in the current harness\". It is expressible. Measured 2026-08-25 with `node conformance/runner/run.mjs --backend both --filter`: both backends report TS7053 at 8:10 and agree. A `TS` code here is exactly what the harness documents it for — Smithers keeps TypeScript's behavior on syntax it shares — and the emit-check audit in judge.mjs refuses to satisfy this expectation unless the emitted-TypeScript stage actually ran."
+}

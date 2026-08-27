@@ -1,0 +1,13 @@
+import { Context } from "smthrs/context"
+
+abstract class Reader extends Context {
+  abstract read(key: string): string
+}
+
+abstract class Writer extends Context {
+  abstract write(line: string): void
+}
+
+export function readAny(capability: typeof Reader | typeof Writer): void {
+  void capability.context()
+}

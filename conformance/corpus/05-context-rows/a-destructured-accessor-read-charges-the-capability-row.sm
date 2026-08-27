@@ -1,0 +1,14 @@
+import { Layer } from "smthrs/provider"
+import { Clock, Stamp, stamp } from "./a-destructured-accessor-read-charges-the-capability-row.mod.sm"
+
+function readStamp(source: Stamp): string {
+  const { value } = source
+  const { value: again } = source
+  return `${value}/${again}`
+}
+
+const clock: Clock = { now: () => 7 }
+
+export function main(): string[] {
+  return Layer.provide(Layer.succeed(Clock, clock), () => [readStamp(stamp())])
+}

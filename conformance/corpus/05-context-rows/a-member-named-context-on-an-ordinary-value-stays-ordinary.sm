@@ -1,0 +1,38 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Reader extends Context {
+  abstract read(key: string): string
+}
+
+// A TYPE position naming the compiler-recognized member is not a detached
+// reference to it: nothing is read and no callable value escapes.
+type ContextReader = typeof Reader.context
+
+function describe(read: ContextReader | null): string {
+  return read === null ? "type-only" : "value"
+}
+
+// An ordinary object and an ordinary class whose member happens to be spelled
+// `context` are not capabilities, so detaching that member stays ordinary.
+const holder = { context: () => "held" }
+
+class Registry {
+  static context(): string {
+    return "static"
+  }
+}
+
+const service: Reader = { read: (key) => key.toUpperCase() }
+
+export function main(): string[] {
+  const detachedFromObject = holder.context
+  const detachedFromClass = Registry.context
+  return Layer.provide(Layer.succeed(Reader, service), () => [
+    Reader.context().read("ada"),
+    detachedFromObject(),
+    detachedFromClass(),
+    `${Reflect.get(holder, "context") !== undefined}`,
+    describe(null),
+  ])
+}

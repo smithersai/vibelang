@@ -1,0 +1,45 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Db extends Context {
+  abstract read(): string
+}
+
+const arrowValueOf = { valueOf: (): number => Db.context().read().length }
+const functionExpressionToString = { toString: function (): string { return Db.context().read() } }
+function referenceImpl(): number { return Db.context().read().length }
+const referenceProperty = { valueOf: referenceImpl }
+const valueOf = (): number => Db.context().read().length
+const shorthandProperty = { valueOf }
+class ArrowField {
+  valueOf = (): number => Db.context().read().length
+}
+const classArrowField = new ArrowField()
+const computedName = { toString(): string { return Db.context().read() } }
+
+function viaArrow(): number { return Number(arrowValueOf) }
+function viaFunctionExpression(): string { return `${functionExpressionToString}` }
+function viaReference(): number { return Number(referenceProperty) }
+function viaShorthand(): number { return Number(shorthandProperty) }
+function viaClassArrowField(): number { return Number(classArrowField) }
+function viaComputedName(): number {
+  const shape = { [computedName as unknown as string]: 1 }
+  return Object.keys(shape).length
+}
+function viaParenthesisedNumber(): number { return (Number)(arrowValueOf) }
+function viaParenthesisedString(): string { return (String)(functionExpressionToString) }
+
+const db: Db = { read: () => "DBX" }
+
+export function main(): string[] {
+  return Layer.provide(Layer.succeed(Db, db), () => [
+    `${viaArrow()}`,
+    viaFunctionExpression(),
+    `${viaReference()}`,
+    `${viaShorthand()}`,
+    `${viaClassArrowField()}`,
+    `${viaComputedName()}`,
+    `${viaParenthesisedNumber()}`,
+    viaParenthesisedString(),
+  ])
+}

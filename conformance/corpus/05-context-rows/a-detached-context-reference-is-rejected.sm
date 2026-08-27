@@ -1,0 +1,9 @@
+import { Context } from "smthrs/context"
+
+abstract class Reader extends Context {
+  abstract read(key: string): string
+}
+
+export function readDetached(key: string): string {
+  return (Reflect.apply(Reader.context, Reader, []) as Reader).read(key)
+}

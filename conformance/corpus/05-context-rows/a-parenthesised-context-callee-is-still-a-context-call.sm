@@ -1,0 +1,31 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Reader extends Context {
+  abstract read(key: string): string
+}
+
+function wrap(value: string): string { return `[${value}]` }
+
+function direct(key: string): string { return Reader.context().read(key) }
+function parenthesisedCallee(key: string): string { return (Reader.context)().read(key) }
+function doublyParenthesisedCallee(key: string): string { return ((Reader.context))().read(key) }
+function parenthesisedCalleeInATemplate(key: string): string { return `${(Reader.context)().read(key)}` }
+function parenthesisedCalleeInAnArgument(key: string): string { return wrap((Reader.context)().read(key)) }
+function parenthesisedCalleeInsideANestedFunction(key: string): string {
+  const inner = (): string => (Reader.context)().read(key)
+  return inner()
+}
+
+const service: Reader = { read: (key) => key.toUpperCase() }
+
+export function main(): string[] {
+  return Layer.provide(Layer.succeed(Reader, service), () => [
+    direct("ada"),
+    parenthesisedCallee("ada"),
+    doublyParenthesisedCallee("ada"),
+    parenthesisedCalleeInATemplate("ada"),
+    parenthesisedCalleeInAnArgument("ada"),
+    parenthesisedCalleeInsideANestedFunction("ada"),
+  ])
+}

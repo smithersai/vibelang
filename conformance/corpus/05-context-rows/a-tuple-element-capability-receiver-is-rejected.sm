@@ -1,0 +1,15 @@
+import { Context } from "smthrs/context"
+
+abstract class Reader extends Context {
+  abstract read(key: string): string
+}
+
+abstract class Writer extends Context {
+  abstract write(line: string): void
+}
+
+const registry = [Reader, Writer] as const
+
+export function readAny(index: 0 | 1): void {
+  void registry[index].context()
+}

@@ -1,0 +1,100 @@
+import { Context } from "smthrs/context"
+
+// `named` has a toString that reads Db. Using it as a COMPUTED MEMBER NAME
+// coerces it, and a computed name is evaluated by the scope that builds the
+// object or the class — never by the member it names, which may never run at
+// all. Every function below is charged Db; none of the members is.
+abstract class Db extends Context {
+  abstract read(): string
+}
+
+const named = { toString(): string { return Db.context().read() } }
+
+function objectLiteralMethod(): number {
+  const shape = { [named as unknown as string]() { return 1 } }
+  return Object.keys(shape).length
+}
+
+function objectLiteralGetter(): number {
+  const shape = { get [named as unknown as string](): number { return 1 } }
+  return Object.keys(shape).length
+}
+
+function objectLiteralSetter(): number {
+  const shape = { set [named as unknown as string](value: number) { } }
+  return Object.keys(shape).length
+}
+
+function objectLiteralAsyncMethod(): number {
+  const shape = { async [named as unknown as string](): Promise<number> { return 1 } }
+  return Object.keys(shape).length
+}
+
+function objectLiteralGeneratorMethod(): number {
+  const shape = { *[named as unknown as string](): Generator<number> { yield 1 } }
+  return Object.keys(shape).length
+}
+
+function classMethod(): number {
+  class Shape {
+    [named as unknown as string]() { return 1 }
+  }
+  return Object.keys(new Shape()).length
+}
+
+function classGetter(): number {
+  class Shape {
+    get [named as unknown as string](): number { return 1 }
+  }
+  return Object.keys(new Shape()).length
+}
+
+function classStaticMethod(): number {
+  class Shape {
+    static [named as unknown as string]() { return 1 }
+  }
+  return Object.keys(Shape).length
+}
+
+function classAsyncMethod(): number {
+  class Shape {
+    async [named as unknown as string](): Promise<number> { return 1 }
+  }
+  return Object.keys(new Shape()).length
+}
+
+// The three below are the CONTROLS: computed names whose value is not a
+// function, so there is no member boundary to attribute the coercion to and
+// both backends already charged them. They are what identify the cause of the
+// nine above as the function boundary rather than the computed name itself.
+function computedNameOnAnArrowValue(): number {
+  const shape = { [named as unknown as string]: (): number => 1 }
+  return Object.keys(shape).length
+}
+
+function computedNameOnALiteralValue(): number {
+  const shape = { [named as unknown as string]: 1 }
+  return Object.keys(shape).length
+}
+
+function computedNameOnAClassField(): number {
+  class Shape {
+    [named as unknown as string]: number = 1
+  }
+  return Object.keys(new Shape()).length
+}
+
+export const charged = [
+  objectLiteralMethod(),
+  objectLiteralGetter(),
+  objectLiteralSetter(),
+  objectLiteralAsyncMethod(),
+  objectLiteralGeneratorMethod(),
+  classMethod(),
+  classGetter(),
+  classStaticMethod(),
+  classAsyncMethod(),
+  computedNameOnAnArrowValue(),
+  computedNameOnALiteralValue(),
+  computedNameOnAClassField(),
+]

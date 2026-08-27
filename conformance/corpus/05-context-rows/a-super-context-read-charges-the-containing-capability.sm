@@ -1,0 +1,19 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+// `super.context()` inside a STATIC invokes the inherited static with `this`
+// bound to Registry, so the capability the runtime looks up is Registry — never
+// the Directory that the checker's type for `super` names.
+abstract class Registry extends Directory {
+  static first(): string | null {
+    return super.context().lookup("ada")
+  }
+}
+
+const live: Directory = { lookup: (key) => (key === "ada" ? "Ada Lovelace" : null) }
+
+export const lines = Layer.provide(Layer.succeed(Directory, live), () => [`${Registry.first()}`])

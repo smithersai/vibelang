@@ -1,0 +1,44 @@
+import { Context } from "smthrs/context"
+
+// Six positions where the language invokes a function the author never wrote a
+// call expression for. Each callee reads Db, so each caller carries the row and
+// each top-level call is refused for it.
+abstract class Db extends Context {
+  abstract read(): string
+}
+
+function tag(parts: TemplateStringsArray): string { return parts[0] + Db.context().read() }
+function throughATaggedTemplate(): string { return tag`x` }
+
+class Constructed {
+  readonly value: string
+  constructor() { this.value = Db.context().read() }
+}
+function throughANewExpression(): string { return new Constructed().value }
+
+class Base {
+  readonly value: string
+  constructor() { this.value = Db.context().read() }
+}
+class Derived extends Base {}
+function throughAnImplicitSuperConstructor(): string { return new Derived().value }
+
+const authoredIterable = { *[Symbol.iterator](): Generator<string> { yield Db.context().read() } }
+function throughForOf(): string {
+  let out = ""
+  for (const part of authoredIterable) out += part
+  return out
+}
+function throughASpread(): string { return [...authoredIterable].join("") }
+
+function* delegating(): Generator<string> { yield* authoredIterable }
+function throughYieldStar(): string { return [...delegating()].join("") }
+
+export const charged = [
+  throughATaggedTemplate(),
+  throughANewExpression(),
+  throughAnImplicitSuperConstructor(),
+  throughForOf(),
+  throughASpread(),
+  throughYieldStar(),
+]

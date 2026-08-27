@@ -1,0 +1,7 @@
+import { Context } from "smthrs/context"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+export const entry = Directory.context().lookup("ada")

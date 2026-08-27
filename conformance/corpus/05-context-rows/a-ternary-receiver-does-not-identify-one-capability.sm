@@ -1,0 +1,21 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Reader extends Context {
+  abstract read(key: string): string
+}
+
+// Structurally identical to Reader on purpose: TypeScript subtype-reduces the
+// union of the two branches to its first constituent, so nothing in the
+// receiver's TYPE remembers Writer.
+abstract class Writer extends Context {
+  abstract read(key: string): string
+}
+
+function readEither(useReader: boolean, key: string): string {
+  return (useReader ? Reader : Writer).context().read(key)
+}
+
+const service: Reader = { read: (key) => key.toUpperCase() }
+
+export const line = Layer.provide(Layer.succeed(Reader, service), () => readEither(false, "ada"))

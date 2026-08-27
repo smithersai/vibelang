@@ -1,0 +1,14 @@
+import { Context } from "smthrs/context"
+
+abstract class Reader extends Context {
+  abstract read(key: string): string
+}
+
+function take(accessor: () => Reader): string {
+  return accessor().read("ada")
+}
+
+export function asAnArgument(): string { return take(Reader.context) }
+export function asAParenthesisedArgument(): string { return take((Reader.context)) }
+export function throughAConstAlias(): string { const accessor = Reader.context; return accessor().read("ada") }
+export function throughCall(): string { return Reader.context.call(Reader).read("ada") }

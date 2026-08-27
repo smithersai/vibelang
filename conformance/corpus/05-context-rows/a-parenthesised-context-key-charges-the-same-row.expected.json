@@ -1,0 +1,13 @@
+{
+  "title": "a parenthesised element-access key selects the same context member and charges the same nominal row",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2102",
+      "line": 11,
+      "column": 28,
+      "messageContains": "Clock"
+    }
+  ],
+  "notes": "specification/requirements.mdx:34, :36 and :80 (Locked), cited in full in 05-context-rows/a-computed-context-access-charges-the-same-row, which pins the bare string-literal key on the identical program. This case adds one pair of parentheses. Parentheses are not a member-selection construct — TypeScript resolves `Clock[(\"context\")]` to exactly the property symbol `Clock[\"context\"]` resolves to — so a recognizer that answers differently is answering about the source text rather than about the program. MEASURED BEFORE THE ROUND-7 FIX: the reference accepted this program with `requirements: []` and it PANICKED at run time with `capability 'Clock' was not provided`; the Go fork was already correct here, because its own key test happened to skip parentheses first. THE ASYMMETRY IS WHY THIS CASE EXISTS SEPARATELY FROM ITS TWO SIBLINGS: a defect present in one backend and absent in the other is the one shape the differential oracle CAN see, and it saw nothing, because no case named this spelling. Both backends now resolve the key through the checker's string-literal type of the key expression, which subsumes parentheses rather than special-casing them, and both report identically here. Landed together with 05-context-rows/a-const-alias-context-key-charges-the-same-row and 05-context-rows/a-satisfies-wrapped-context-key-charges-the-same-row; the acceptance half of the family is 05-context-rows/an-aliased-context-key-is-subtracted-by-its-layer. The declared messageContains is the capability's own name, for the reason 05-context-rows/an-unsatisfied-top-level-requirement-names-exactly-the-capability records."
+}

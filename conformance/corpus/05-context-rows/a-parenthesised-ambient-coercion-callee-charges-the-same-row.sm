@@ -1,0 +1,27 @@
+import { Context } from "smthrs/context"
+
+// `Number(x)` and `String(x)` run the object's coercion protocol, so they
+// charge the object's member row to the caller. Wrapping the CALLEE in
+// parentheses changes nothing about which function is called.
+abstract class Db extends Context {
+  abstract read(): string
+}
+
+const numberish = { valueOf(): number { return Db.context().read().length } }
+const stringish = { toString(): string { return Db.context().read() } }
+
+function parenthesisedNumber(): number { return (Number)(numberish) }
+function parenthesisedString(): string { return (String)(stringish) }
+
+// The unparenthesised twins are the attribution controls: they are what say
+// the two above are charged for being `Number` and `String`, not for being
+// parenthesised.
+function directNumber(): number { return Number(numberish) }
+function directString(): string { return String(stringish) }
+
+export const charged = [
+  parenthesisedNumber(),
+  parenthesisedString(),
+  directNumber(),
+  directString(),
+]

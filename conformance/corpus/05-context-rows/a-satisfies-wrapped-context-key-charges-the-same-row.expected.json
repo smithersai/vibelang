@@ -1,0 +1,13 @@
+{
+  "title": "a satisfies-wrapped element-access key keeps its literal type, selects the same context member, and charges the same nominal row",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2102",
+      "line": 11,
+      "column": 28,
+      "messageContains": "Clock"
+    }
+  ],
+  "notes": "specification/requirements.mdx:34, :36 and :80 (Locked), cited in full in 05-context-rows/a-computed-context-access-charges-the-same-row, which pins the bare string-literal key on the identical program. This case wraps the key in `satisfies string`. THE SPELLING IS CHOSEN FOR WHAT DISTINGUISHES IT FROM ITS OWN NEAR MISS, and that is the point of the case: `satisfies` CHECKS a type without WIDENING to it, so `\"context\" satisfies string` still has the literal type `\"context\"` and still resolves to one property symbol, whereas `\"context\" as string` widens and resolves to none. The corpus pins the second half of that sentence too, from the host-global side, in 20-host-globals/a-widening-string-key-escapes-the-whole-object. An implementation that treated the two operators alike would either miss this access (fail-open, the round-7 defect: measured accepted with `requirements: []` and PANICKING at run time with `capability 'Clock' was not provided`, on BOTH backends) or refuse the widening one for the wrong reason. Asking the checker for the key's string-literal TYPE answers both correctly with one question, which is why the fix is one helper rather than a list of wrapper kinds — `satisfies` was measured to be the wrapper both implementations' hand-written key tests had missed, in this rule and in three others in the same file. Landed together with 05-context-rows/a-const-alias-context-key-charges-the-same-row and 05-context-rows/a-parenthesised-context-key-charges-the-same-row; the acceptance half of the family is 05-context-rows/an-aliased-context-key-is-subtracted-by-its-layer. The declared messageContains is the capability's own name, for the reason 05-context-rows/an-unsatisfied-top-level-requirement-names-exactly-the-capability records."
+}

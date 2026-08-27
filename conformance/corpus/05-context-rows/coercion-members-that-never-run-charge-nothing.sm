@@ -1,0 +1,74 @@
+import { Context } from "smthrs/context"
+
+// Seven programs that put a capability-reading coercion member within reach of
+// a coercion and must still record an EMPTY row, because in each of them the
+// member does not run. Every one of them compiles and RUNS with no layer at
+// all, which is the observable form of "the row is empty": a charged row would
+// be an unsatisfied top-level requirement and the program would be refused.
+abstract class Db extends Context {
+  abstract read(): string
+}
+
+// A module-scope `Number` and `String`. Nothing else in this file may use the
+// ambient ones, which is why every number below is stringified by a template.
+function Number(value: unknown): number { return 0 }
+function String(value: unknown): string { return "" }
+
+// 1. `valueOf` reads Db, but a template literal is a STRING hint, and
+//    OrdinaryToPrimitive with a string hint calls `toString` first. This
+//    object's `toString` is Object.prototype's, which reads nothing, and it
+//    returns a primitive, so the walk stops there and `valueOf` never runs.
+const stringHintOperand = { valueOf: (): number => { return Db.context().read().length } }
+function atAStringHint(): string { return `${stringHintOperand}` }
+
+// 2. `Symbol.toPrimitive` is consulted before either of the others, so a
+//    Db-reading `valueOf` AND a Db-reading `toString` are both unreachable.
+const shadowedByToPrimitive = {
+  [Symbol.toPrimitive]: (hint: string): number => hint.length - hint.length + 1,
+  valueOf: (): number => Db.context().read().length,
+  toString: (): string => Db.context().read(),
+}
+function toPrimitiveShadowsBoth(): number { return +shadowedByToPrimitive }
+
+// 3 and 4. A LOCAL binding spelled `Number` / `String` is an ordinary call. The
+//    parentheses are deliberate: they are the spelling that made the ambient
+//    rule visible in the first place, so the shadow has to be refused at the
+//    same spelling it is granted at.
+const localNumberOperand = { valueOf: (): number => Db.context().read().length }
+function localNumberShadow(): number { return (Number)(localNumberOperand) }
+
+const localStringOperand = { toString: (): string => Db.context().read() }
+function localStringShadow(): string { return (String)(localStringOperand) }
+
+// 5. Reading the member without calling it is a property read of a function
+//    value, not an invocation.
+const held = { valueOf: (): number => Db.context().read().length }
+function readingWithoutCalling(): number {
+  const member = held.valueOf
+  return member === null ? 1 : 0
+}
+
+// 6. A tagged template hands its substitutions to the TAG unconverted; the
+//    language does not coerce them.
+const taggedOperand = { toString(): string { return Db.context().read() } }
+/** @throws {never} */
+function tag(parts: TemplateStringsArray, value: unknown): string { return parts[0] + typeof value }
+function taggedSubstitution(): string { return tag`x${taggedOperand}` }
+
+// 7. A computed member name whose value is an ordinary string coerces nothing.
+function computedNameReadingNothing(): number {
+  const shape = { ["k"]: 1 }
+  return Object.keys(shape).length
+}
+
+export function main(): string[] {
+  return [
+    atAStringHint(),
+    `${toPrimitiveShadowsBoth()}`,
+    `${localNumberShadow()}`,
+    `[${localStringShadow()}]`,
+    `${readingWithoutCalling()}`,
+    taggedSubstitution(),
+    `${computedNameReadingNothing()}`,
+  ]
+}

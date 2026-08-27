@@ -1,0 +1,18 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+const Chronometer = Clock
+
+function timestamp(): number {
+  return Chronometer.context().now()
+}
+
+const live: Clock = { now: () => 7 }
+
+export function main(): string[] {
+  return Layer.provide(Layer.succeed(Clock, live), () => [`${timestamp()}`])
+}

@@ -1,0 +1,13 @@
+{
+  "title": "a capability read through a local alias of the Context subclass charges that subclass's nominal row",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2102",
+      "line": 13,
+      "column": 28,
+      "messageContains": "Clock"
+    }
+  ],
+  "notes": "specification/requirements.mdx:36: 'The receiver MUST identify a `Context` subclass strongly enough for the compiler to record its nominal key.' :80: 'When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error.' A `const` alias identifies the class by checker identity, which is as strong as identification gets; a recognizer that requires the receiver to be a direct identifier reference is recognition-by-syntactic-form. REVIEW-fable-1.md F3 measured the Go fork accepting this program with an EMPTY requirement row and the emitted program panicking at runtime with `Panic: unsatisfied Context requirement`. The declared messageContains is the capability's own name because an empty row, or a row naming the local binding `Chronometer` instead of the capability, would satisfy a code-and-position expectation exactly."
+}

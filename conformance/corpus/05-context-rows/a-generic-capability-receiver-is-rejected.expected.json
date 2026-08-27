@@ -1,0 +1,12 @@
+{
+  "title": "a type-parameter receiver is refused even when its constraint names exactly one capability, because a subclass is still substitutable for it",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2106",
+      "line": 8,
+      "column": 8
+    }
+  ],
+  "notes": "specification/requirements.mdx, 'Context Access': 'The receiver MUST identify a `Context` subclass strongly enough for the compiler to record its nominal key.' `C extends typeof Reader` names one class and still identifies no key, and that is the whole point of this case: it is the member of the ambiguity class where a plausible implementation is MOST tempted to accept. The constraint looks like an answer — read it and record `Reader` — and it is the wrong answer, because every subclass of Reader satisfies the constraint and `specification/requirements.mdx, 'Capability Identity'` makes capability identity nominal, so `readAny(SubReader)` reads SubReader while the row would say Reader. That is the same misattribution shape `a-ternary-receiver-does-not-identify-one-capability` pins with a runtime panic behind it, arriving through a different door. On the pre-fix tree both backends recorded an empty row and certified the function. WHAT THIS CASE DELIBERATELY DOES NOT PIN, and it is the honest half: it does NOT claim that `typeof Reader` covers `typeof SubReader` in general. A non-generic `capability: typeof Reader` parameter is ACCEPTED and charges `[Reader]` on both backends, and calling it with a subclass is a known-open residual recorded by the lanes that closed this rule — the specification settles neither, and refusing the non-generic form would contradict `sound-capability-receivers-keep-their-row-and-run`, which pins it accepted. So the line this case draws is exactly where the two implementations agree it is: a TYPE PARAMETER never pins a key, an instantiated constructor type does. Nor does it pin the message: SMITHERS2106's sentence carries no payload (see the ternary case's notes). VERIFIED LOAD-BEARING, not assumed: mutating the declared line from 8 to 7 turns the case red on BOTH backends with the position diff printed, and the file was restored byte-identically (sha256 67708e468685a407dfa0d02fb8aa13bdb6c982b37c193ee2c49fb2a716fec65f before and after)."
+}

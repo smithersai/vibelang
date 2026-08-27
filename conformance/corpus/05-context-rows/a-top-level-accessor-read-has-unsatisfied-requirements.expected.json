@@ -1,0 +1,16 @@
+{
+  "title": "a top-level accessor read carries the accessor's unsatisfied capability and is refused by name",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2102",
+      "line": 3,
+      "column": 18,
+      "messageContains": "Clock"
+    }
+  ],
+  "modules": [
+    "a-top-level-accessor-read-has-unsatisfied-requirements.mod.sm"
+  ],
+  "notes": "specification/requirements.mdx, 'Inference': \"Requirement inference MUST be transitive through ordinary calls.\" specification/type-system.mdx, 'Fallibility Inference': R is inferred from `Capability.context()` calls and transitive callees. Reading a get-accessor CALLS the accessor — there is no syntax that names one without running it — so an accessor access is an ordinary call and charges the accessor's requirement row. specification/requirements.mdx, 'Satisfaction': \"When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error.\" A top-level accessor read is a top-level call, so it is refused exactly as a top-level method call with the same row is. Before 2026-08-25 the reference reported SMITHERS1802 here — the wrong code with the right instinct — and the Go fork accepted the program outright. `messageContains` names the capability because code and position alone are satisfied by a refusal naming the WRONG requirement; the bare nominal name is declared rather than a row rendering, which the two backends legitimately format differently."
+}

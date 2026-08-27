@@ -1,0 +1,38 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Reader extends Context {
+  abstract read(key: string): string
+}
+
+const Alias = Reader
+const registry = { reader: Reader }
+const opaque: unknown = Reader
+
+function viaParameter(capability: typeof Reader, key: string): string {
+  return capability.context().read(key)
+}
+
+function readEveryWay(flag: boolean, key: string): string[] {
+  return [
+    Reader.context().read(key),
+    Alias.context().read(key),
+    (Reader).context().read(key),
+    Reader?.context().read(key),
+    Reader.context?.().read(key),
+    Reader["context"]().read(key),
+    (flag ? Reader : Reader).context().read(key),
+    (flag ? Reader : Alias).context().read(key),
+    registry.reader.context().read(key),
+    viaParameter(Reader, key),
+    `${(Reader as any).context().read(key)}`,
+    (opaque as typeof Reader).context().read(key),
+    ((): typeof Reader => Reader)().context().read(key),
+  ]
+}
+
+const service: Reader = { read: (key) => key.toUpperCase() }
+
+export function main(): string[] {
+  return Layer.provide(Layer.succeed(Reader, service), () => readEveryWay(true, "ada"))
+}

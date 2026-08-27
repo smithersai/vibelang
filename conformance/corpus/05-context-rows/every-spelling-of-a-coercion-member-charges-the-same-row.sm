@@ -1,0 +1,95 @@
+import { Context } from "smthrs/context"
+
+// One capability, read only from inside a coercion member. No `from*` function
+// below names Db or calls anything that does: the only route from a top-level
+// call to the Db row is the unary `+`, which runs the object's `valueOf`.
+abstract class Db extends Context {
+  abstract read(): string
+}
+
+const arrowProperty = { valueOf: (): number => { return Db.context().read().length } }
+function fromArrowProperty(): number { return +arrowProperty }
+
+const functionExpressionProperty = { valueOf: function (): number { return Db.context().read().length } }
+function fromFunctionExpressionProperty(): number { return +functionExpressionProperty }
+
+const computedKeyStringLiteralArrow = { ["valueOf"]: (): number => { return Db.context().read().length } }
+function fromComputedKeyStringLiteralArrow(): number { return +computedKeyStringLiteralArrow }
+
+const KEY = "valueOf"
+const computedKeyConstBindingArrow = { [KEY]: (): number => { return Db.context().read().length } }
+function fromComputedKeyConstBindingArrow(): number { return +computedKeyConstBindingArrow }
+
+function declaredImpl(): number { return Db.context().read().length }
+const functionDeclarationReference = { valueOf: declaredImpl }
+function fromFunctionDeclarationReference(): number { return +functionDeclarationReference }
+
+const valueOf = (): number => { return Db.context().read().length }
+const shorthandProperty = { valueOf }
+function fromShorthandProperty(): number { return +shorthandProperty }
+
+class ArrowField {
+  valueOf = (): number => { return Db.context().read().length }
+}
+const classArrowField = new ArrowField()
+function fromClassArrowField(): number { return +classArrowField }
+
+const nestedHolder = { inner: { valueOf: (): number => { return Db.context().read().length } } }
+const nestedProperty = nestedHolder.inner
+function fromNestedProperty(): number { return +nestedProperty }
+
+const aliasBase = { valueOf(): number { return Db.context().read().length } }
+const constAlias = aliasBase
+function fromConstAlias(): number { return +constAlias }
+
+const getterReturningAFunction = { get valueOf() { return (): number => { return Db.context().read().length } } }
+function fromGetterReturningAFunction(): number { return +getterReturningAFunction }
+
+// The six below are the CONTROLS: spellings both backends already charged
+// before 2026-08-27. They are what make this case an equality rather than a
+// list — the promise is that the ten above answer the same as these six.
+const methodShorthand = { valueOf(): number { return Db.context().read().length } }
+function fromMethodShorthand(): number { return +methodShorthand }
+
+class PrototypeMethod {
+  valueOf(): number { return Db.context().read().length }
+}
+const classMethod = new PrototypeMethod()
+function fromClassMethod(): number { return +classMethod }
+
+const computedKeyStringLiteral = { ["valueOf"](): number { return Db.context().read().length } }
+function fromComputedKeyStringLiteral(): number { return +computedKeyStringLiteral }
+
+class InheritedBase {
+  valueOf(): number { return Db.context().read().length }
+}
+class InheritedDerived extends InheritedBase {}
+const inheritedFromABaseClass = new InheritedDerived()
+function fromInheritedFromABaseClass(): number { return +inheritedFromABaseClass }
+
+const spreadSource = { valueOf(): number { return Db.context().read().length } }
+const prototypeObjectSpread = { ...spreadSource }
+function fromPrototypeObjectSpread(): number { return +prototypeObjectSpread }
+
+const assignSource = { valueOf(): number { return Db.context().read().length } }
+const objectAssign = Object.assign({}, assignSource)
+function fromObjectAssign(): number { return +objectAssign }
+
+export const charged = [
+  fromArrowProperty(),
+  fromFunctionExpressionProperty(),
+  fromComputedKeyStringLiteralArrow(),
+  fromComputedKeyConstBindingArrow(),
+  fromFunctionDeclarationReference(),
+  fromShorthandProperty(),
+  fromClassArrowField(),
+  fromNestedProperty(),
+  fromConstAlias(),
+  fromGetterReturningAFunction(),
+  fromMethodShorthand(),
+  fromClassMethod(),
+  fromComputedKeyStringLiteral(),
+  fromInheritedFromABaseClass(),
+  fromPrototypeObjectSpread(),
+  fromObjectAssign(),
+]

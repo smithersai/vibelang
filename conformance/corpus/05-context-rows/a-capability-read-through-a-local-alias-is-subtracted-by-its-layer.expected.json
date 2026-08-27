@@ -1,0 +1,8 @@
+{
+  "title": "the row an aliased capability read charges is the same nominal row a Layer for that capability subtracts",
+  "expect": "output",
+  "stdout": [
+    "7"
+  ],
+  "notes": "specification/requirements.mdx:34: '`Capability.context()` ... MUST return the receiving capability's instance type and add that class's nominal identity to the enclosing function's inferred `R` row.' The acceptance half of 05-context-rows/a-capability-read-through-a-local-alias-charges-the-row, and it pins something the refusal cannot: that the alias charges the row under the CAPABILITY's nominal key rather than under the local binding's name. If the alias were recorded as a distinct requirement named `Chronometer`, `Layer.succeed(Clock, live)` would not subtract it and this program would be refused for an unsatisfied capability; if the alias charged nothing at all, the program would compile and panic at runtime instead of printing `7`. Reading the alias through the layer proves the resolved key, which no diagnostic position can."
+}

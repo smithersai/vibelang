@@ -1,0 +1,13 @@
+{
+  "title": "Capability[\"context\"]() is the same compiler-recognized call as Capability.context() and charges the same nominal row",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2102",
+      "line": 11,
+      "column": 28,
+      "messageContains": "Clock"
+    }
+  ],
+  "notes": "specification/requirements.mdx:34: '`Capability.context()` MUST be an inherited, compiler-recognized call on subclasses of `Context`. It MUST return the receiving capability's instance type and add that class's nominal identity to the enclosing function's inferred `R` row.' :36: 'The receiver MUST identify a `Context` subclass strongly enough for the compiler to record its nominal key.' :80: 'When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error.' A literal element access is the same member access as the dotted spelling: same resolved property symbol, same emitted call. A recognizer that tests only for a PropertyAccessExpression is recognition-by-syntactic-form, and the computed spelling escapes every rule it owns. REVIEW-fable-1.md F4 measured `Clock[\"context\"]()` compiling and PANICKING AT RUNTIME on BOTH backends, which is why only a specification-derived case can hold this closed: the differential oracle is structurally blind to a defect the two implementations share. The declared messageContains is the capability's own name, for the reason 05-context-rows/an-unsatisfied-top-level-requirement-names-exactly-the-capability records: a refusal that names the WRONG requirement, or an empty row, satisfies a code-and-position expectation exactly."
+}

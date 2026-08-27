@@ -1,0 +1,11 @@
+import { Context } from "smthrs/context"
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+function timestamp(): number {
+  return Clock[("context")]().now()
+}
+
+export const stamped = [`${timestamp()}`]

@@ -1,0 +1,27 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Db extends Context {
+  abstract read(): string
+}
+
+abstract class Log extends Context {
+  abstract write(): string
+}
+
+const arrowValueOf = { valueOf: (): number => Db.context().read().length }
+const functionExpressionToString = { toString: function (): string { return Db.context().read() } }
+const valueOf = (): number => Db.context().read().length
+const shorthandProperty = { valueOf }
+
+function viaArrow(): number { return Number(arrowValueOf) }
+function viaFunctionExpression(): string { return `${functionExpressionToString}` }
+function viaShorthand(): number { return Number(shorthandProperty) }
+
+const log: Log = { write: () => "L" }
+
+export const lines = Layer.provide(Layer.succeed(Log, log), () => [
+  `${viaArrow()}`,
+  viaFunctionExpression(),
+  `${viaShorthand()}`,
+])

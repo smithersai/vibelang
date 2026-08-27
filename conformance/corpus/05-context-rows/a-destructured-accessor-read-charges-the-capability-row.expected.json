@@ -1,0 +1,7 @@
+{
+  "title": "destructuring a get-accessor, named or renamed, is the same ordinary call and charges the same capability row",
+  "expect": "output",
+  "stdout": ["7/7"],
+  "modules": ["a-destructured-accessor-read-charges-the-capability-row.mod.sm"],
+  "notes": "specification/requirements.mdx, 'Inference': \"Requirement inference MUST be transitive through ordinary calls.\" specification/type-system.mdx, 'Fallibility Inference': R is inferred from `Capability.context()` calls and transitive callees. Reading a get-accessor CALLS the accessor — there is no syntax that names one without running it — so an accessor access is an ordinary call and charges the accessor's requirement row. The destructured spelling is the one an implementation is most likely to miss, because the read has no property-access node: `const { value } = source` runs the accessor exactly as `source.value` does. Both spellings are here on purpose, because before 2026-08-25 they disagreed with each other about one call: the plain form compiled with the capability silently dropped while the RENAMED form was refused with SMITHERS1802 on both backends. Only the renamed half goes red against the pre-fix compiler, so a case carrying just the plain form would pin nothing here. The discriminating gate for whether the row actually travels is 06-layers/layer-provide-missing-a-capability-an-accessor-introduces; this case is its coverage twin for the destructured spelling."
+}

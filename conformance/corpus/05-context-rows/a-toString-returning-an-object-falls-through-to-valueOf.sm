@@ -1,0 +1,27 @@
+import { Context } from "smthrs/context"
+
+// The other fall-through direction of OrdinaryToPrimitive. A string hint calls
+// `toString` first — but `toString` here returns an OBJECT, which is not a
+// primitive, so the walk continues to `valueOf`. `valueOf` reads Db, so the row
+// is charged even though the position is a string one.
+abstract class Db extends Context {
+  abstract read(): string
+}
+
+const objectReturningToString = {
+  toString(): object { return {} },
+  valueOf(): number { return Db.context().read().length },
+}
+
+const objectReturningToStringArrow = {
+  toString: (): object => ({}),
+  valueOf: (): number => Db.context().read().length,
+}
+
+function throughATemplate(): string { return `${objectReturningToString}` }
+function throughATemplateArrow(): string { return `${objectReturningToStringArrow}` }
+
+export const charged = [
+  throughATemplate(),
+  throughATemplateArrow(),
+]

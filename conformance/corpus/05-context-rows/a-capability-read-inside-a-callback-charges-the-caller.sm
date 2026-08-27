@@ -1,0 +1,16 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Reader extends Context {
+  abstract read(key: string): string
+}
+
+function readAll(keys: readonly string[]): string[] {
+  return keys.map((key) => Reader.context().read(key))
+}
+
+const service: Reader = { read: (key) => key.toUpperCase() }
+
+export function main(): string[] {
+  return Layer.provide(Layer.succeed(Reader, service), () => readAll(["ada", "zoe"]))
+}

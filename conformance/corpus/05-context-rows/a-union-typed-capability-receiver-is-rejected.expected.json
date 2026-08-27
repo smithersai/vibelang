@@ -1,0 +1,12 @@
+{
+  "title": "a receiver whose declared type is a union of two capability constructors identifies no single nominal key and is refused",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2106",
+      "line": 12,
+      "column": 8
+    }
+  ],
+  "notes": "specification/requirements.mdx, 'Context Access': 'The receiver MUST identify a `Context` subclass strongly enough for the compiler to record its nominal key.' A parameter typed `typeof Reader | typeof Writer` identifies exactly two, and which one the read reaches is decided by the caller at run time. On the pre-fix tree both backends recorded an EMPTY row here and certified the function, so `readAny(Writer)` executed a capability read from a function whose declared requirement row named nothing at all. This is the TYPE-level member of the ambiguity class and it is a separate case from the ternary one on purpose: the ternary is caught by reading the receiver's syntax, this one only by reading the receiver's TYPE and requiring every constituent to agree. An implementation that closed one and not the other would leave the other wide open, and one case cannot tell which half is present. The two capabilities are structurally DIFFERENT here (`read` vs `write`), which is the other half of the pairing: it means no subtype reduction takes place, so the union really does arrive at the rule with both constituents intact, and the case measures the union rule itself rather than TypeScript's reduction of it. WHAT THIS DELIBERATELY DOES NOT PIN: the message (SMITHERS2106's sentence carries no payload — see the ternary case's notes for the full reasoning), and any claim about a union of a class with ITS OWN SUBCLASS, which is refused for a different reason and is left to the implementations' own tests. `void` on the call is there so the case pins the receiver rule and not a must-consume or unused-expression rule. VERIFIED LOAD-BEARING, not assumed: mutating the declared code from SMITHERS2106 to SMITHERS2102 turns the case red on BOTH backends with the code diff printed, and the file was restored byte-identically (sha256 7ee9885ac8226d1275569914d7ed471c9ecb03fa49168f7bb188a81a9f048084 before and after). The paired positive control is `sound-capability-receivers-keep-their-row-and-run`, which reads through a `capability: typeof Reader` parameter — a SINGLE-constituent constructor type — and must keep compiling and running, so an over-correction that refuses every constructor-typed parameter turns that case red."
+}

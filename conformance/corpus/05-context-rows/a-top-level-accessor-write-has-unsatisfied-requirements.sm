@@ -1,0 +1,8 @@
+import { stamp } from "./a-top-level-accessor-write-has-unsatisfied-requirements.mod.sm"
+
+const holder = stamp()
+holder.mark = 1
+
+export function main(): string[] {
+  return ["ok"]
+}
