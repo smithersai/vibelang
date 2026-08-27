@@ -38,6 +38,14 @@
 > patched fork. The four that do not are the four negative cases whose
 > `expected.json` says `expect: "diagnostics"`, i.e. the grammar refusing them is
 > the contract.**
+>
+> **Do not quote the `poc/examples/language/*.sm` diagnostic tables in §8.7 and
+> §9.8 as coverage.** They count the *fork's* parse of seven forms, six of which
+> the language has since retired; §9.8's "Zero." is a zero against a grammar the
+> current language rejects. `expression-flow.sm`, one of the four files those
+> tables read over, has been deleted for demonstrating only retired constructs.
+> §8.7.1 carries what the surviving fixtures measure today, through
+> `smithers check`.
 
 Status: **executed spike, measured numbers, source settled.** Everything below was
 produced by building and running the pinned fork revision
@@ -930,6 +938,16 @@ nothing lowers them yet.
 
 ### 8.7 What grammar remains
 
+> **HISTORICAL — six of the seven forms below have since been RETIRED from the
+> language, and this table's fixture measurements MUST NOT be quoted as
+> coverage.** Everything in §8 and §9 measures a *fork of `tsc`* against a
+> grammar the Smithers language no longer has. Only `if (const x = f(); cond)`
+> survives; `defer`/`errdefer`, `break :label value`, loop `else`, value-position
+> `if`/`switch`, the labeled block value and the labeled loop value are all
+> pinned as **rejected** by `conformance/corpus/19-retired-syntax/`
+> (`SMITHERS1001`), per `specification/control-flow.mdx`, "No Expression-Form
+> Grammar". See §8.7.1 for what the fixtures measure today.
+
 | form | status |
 |---|---|
 | `defer` / `errdefer` | landed, +124 |
@@ -940,20 +958,25 @@ nothing lowers them yet.
 | **labeled block value in expression position** (`const k = verdict: { … break :verdict v … }`) | **not started** |
 | **labeled loop value in expression position** (`const f = search: for (…) { … } else −1`) | **not started** |
 
-That list is measured, not guessed. Running the POC's own divergent-syntax
-fixtures through the patched `tsc` as `.sm.ts` and counting only syntactic
-(TS1xxx) diagnostics:
+That list was measured, not guessed, **against the grammar as it stood on the
+day**. Running the POC's own divergent-syntax fixtures through the patched `tsc`
+as `.sm.ts` and counting only syntactic (TS1xxx) diagnostics gave, at that time:
 
-| fixture | lines | syntactic diagnostics |
+| fixture (as it stood then) | lines | syntactic diagnostics |
 |---|---|---|
 | `poc/examples/language/demo.sm` | 68 | **0** |
 | `poc/examples/language/conditional-declarations.sm` | 45 | **0** |
 | `poc/examples/language/divergent-forms.sm` | 97 | 7 |
 | `poc/examples/language/expression-flow.sm` | 45 | 7 |
 
-All 14 are the same two constructs — `const kind = verdict: { … }` and
-`const found = search: for (…) { … } else -1`. Nothing else in the reference
-corpus fails to parse.
+All 14 were the same two constructs — `const kind = verdict: { … }` and
+`const found = search: for (…) { … } else -1` — and nothing else in the fixture
+set failed to parse *the fork's grammar*.
+
+Both `divergent-forms.sm` and `expression-flow.sm` were fixtures **for forms that
+have since been withdrawn**, so neither row describes a file that exists in the
+shape it was measured in. `divergent-forms.sm` was ported to current syntax and
+`expression-flow.sm` was deleted; see §8.7.1.
 
 The two outstanding forms are the same construct in a different position: the
 statement form of each is landed, and only the expression placement is missing.
@@ -963,6 +986,41 @@ already exists — not a new node kind each.
 
 Still open and independent of grammar: **lowering**. All five forms reach
 JavaScript verbatim.
+
+### 8.7.1 What those fixtures measure today
+
+The table above and the one in §9.8 count diagnostics from the *patched fork*,
+not from Smithers. The fork's grammar and the language's grammar are no longer
+the same thing, so neither table says anything about current coverage. Six of
+the seven forms are retired; the fixtures were cleaned up to match.
+
+`poc/examples/language/expression-flow.sm` **has been deleted.** Every construct
+it demonstrated is now retired or rejected — the value-position `switch` and the
+braced value-position `if`
+(`19-retired-syntax/{switch-expression,braced-if-expression}-is-retired`), the
+expression-position labeled block value and labeled loop value with `else`
+(`19-retired-syntax/{labeled-block-value,labeled-loop-value,loop-else-completion}-is-retired`),
+and `combine(checkedScore(score)!, …)`, a postfix `!` in a call argument
+(`02-unwrap-propagation/postfix-bang-in-a-call-argument-is-rejected`,
+`SMITHERS1204`). It did not `check`: 18 `TS1xxx` parse diagnostics, and the
+formatter refused it with `SMITHERS1901`. Each replacement the corpus names is
+ordinary TypeScript, and `divergent-forms.sm` already demonstrates every one of
+them under the same four function names (`describe`, `weighted`, `classify`,
+`firstPassing`), so a port would have produced a duplicate of a file that already
+exists.
+
+The surviving fixture set, measured through `smithers check`, which is the tool
+the language contract is defined against:
+
+| fixture | lines | `smithers check` | formatter |
+|---|---|---|---|
+| `poc/examples/language/demo.sm` | 69 | `ok: true`, **0** diagnostics | accepted, idempotent |
+| `poc/examples/language/conditional-declarations.sm` | 44 | `ok: true`, **0** diagnostics | accepted, idempotent |
+| `poc/examples/language/divergent-forms.sm` | 83 | `ok: true`, **0** diagnostics | accepted, idempotent |
+
+Between them they demonstrate the one surviving grammar addition,
+`if (const x = f(); cond)`, and postfix `!` Result propagation in the placements
+the specification accepts. No example in the tree demonstrates a retired form.
 
 ---
 
@@ -1151,31 +1209,46 @@ value `if`.
 > Two corpus cases did not parse; §10.8 found them and §11 closed them. The
 > table below is still true of what it measured, and that is the point: it was
 > the wrong thing to measure.**
+>
+> **Corrected again, and more sharply: six of the seven forms below are now
+> RETIRED, so the "Zero." reading is a measurement of a grammar the language
+> rejects and MUST NOT be quoted as coverage.** The zero counts the *fork's*
+> parse of forms that `conformance/corpus/19-retired-syntax/` now pins as
+> `SMITHERS1001` errors. `poc/examples/language/expression-flow.sm`, one of the
+> four files it reads over, has been deleted — every construct in it is retired
+> or rejected, and it did not `check` (18 `TS1xxx`) nor format
+> (`SMITHERS1901`). §8.7.1 carries the current measurement of the surviving
+> fixtures through `smithers check`, which is what current coverage means.
 
 The POC's own divergent-syntax fixtures through the patched `tsc` as `.sm.ts`,
-counting only syntactic (TS1xxx) diagnostics:
+counting only syntactic (TS1xxx) diagnostics, **as the files and the fork stood
+on the day**:
 
-| fixture | lines | §8 | now |
+| fixture (as it stood then) | lines | §8 | then |
 |---|---|---|---|
 | `poc/examples/language/demo.sm` | 68 | 0 | **0** |
 | `poc/examples/language/conditional-declarations.sm` | 45 | 0 | **0** |
 | `poc/examples/language/divergent-forms.sm` | 97 | 7 | **0** |
-| `poc/examples/language/expression-flow.sm` | 45 | 7 | **0** |
+| `poc/examples/language/expression-flow.sm` (deleted) | 45 | 7 | **0** |
 
-**Zero.** The 26 diagnostics that remain across the four files are all TS2304 /
-TS2307 / TS2339 / TS7006 for `Result`, `smthrs/context`, `smithers:exceptions`
-and the other standard-library names that have no TypeScript declarations in this
-harness. Not one is a grammar error.
+**Zero — against the fork's grammar of the day, which is not the language's.**
+The 26 diagnostics that remained across the four files were all TS2304 / TS2307 /
+TS2339 / TS7006 for `Result`, `smthrs/context`, `smithers:exceptions` and the
+other standard-library names that have no TypeScript declarations in this
+harness; not one was a grammar error. What the number does not say is that six of
+the seven forms it cleared were later withdrawn: today the same four files would
+be a very different measurement, and two of them no longer exist in the shape
+measured here. For the current numbers see §8.7.1.
 
-| form | status |
-|---|---|
-| `defer` / `errdefer` | landed, +124 |
-| `break :label value` | landed, +53 |
-| `if (const x = f(); cond)` | landed, +80 |
-| loop `else` | landed, +81 |
-| value-position `if` / `switch` | landed, +359 |
-| labeled block value in expression position | landed |
-| labeled loop value in expression position | landed, +245 for the pair |
+| form | status | today |
+|---|---|---|
+| `defer` / `errdefer` | landed, +124 | **retired** |
+| `break :label value` | landed, +53 | **retired** |
+| `if (const x = f(); cond)` | landed, +80 | **survives — the only one** |
+| loop `else` | landed, +81 | **retired** |
+| value-position `if` / `switch` | landed, +359 | **retired** |
+| labeled block value in expression position | landed | **retired** |
+| labeled loop value in expression position | landed, +245 for the pair | **retired** |
 
 Still open and independent of grammar: **lowering**. All seven forms reach
 JavaScript verbatim.
