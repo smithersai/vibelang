@@ -20,7 +20,17 @@ export class ProcessEnvironment extends Environment {
 
   get(name: string): string | undefined {
     if (name.length === 0) return undefined;
-    return process.env[name];
+    // `process.env[name]` inherits from `Object.prototype` on every host this
+    // POC runs on, so `constructor`, `toString`, `valueOf`, `hasOwnProperty`
+    // and their siblings answer with a function, and `__proto__` answers with
+    // an object, from a method declared `string | undefined`. `names()` never
+    // lists any of them, so the value could only ever be an inherited member
+    // rather than a variable. Reading the own descriptor gives this
+    // implementation the same policy `MapEnvironment` states below: a variable
+    // named `__proto__` or `constructor` behaves like any other name, and one
+    // that is unset is ordinary absence.
+    const value: unknown = Object.getOwnPropertyDescriptor(process.env, name)?.value;
+    return typeof value === "string" ? value : undefined;
   }
 
   names(): readonly string[] {

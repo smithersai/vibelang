@@ -147,6 +147,27 @@ describe("HttpClient", () => {
     }]);
   });
 
+  test("FetchHttpClient keeps a response header named __proto__", async () => {
+    // `_` is an ordinary HTTP header token character, so a server may send a
+    // header literally named `__proto__`. Collecting it with
+    // `headers[name] = value` would route it through the accessor
+    // `Object.prototype` defines for that name and drop it before
+    // `HttpResponse` ever sees it.
+    const client = FetchHttpClient.make({
+      fetch: fakeFetch(() => ({
+        status: 200,
+        headers: JSON.parse(`{"__proto__":"hijacked","Constructor":"ordinary","X-Trace-Id":"abc"}`) as Record<string, string>,
+        body: "ok",
+      })),
+    });
+
+    const response = value(await client.get(ENDPOINT));
+    expect(response.header("__proto__") ?? "<absent>").toBe("hijacked");
+    expect(response.header("constructor") ?? "<absent>").toBe("ordinary");
+    expect(response.header("x-trace-id") ?? "<absent>").toBe("abc");
+    expect([...response.headers.keys()].sort()).toEqual(["__proto__", "constructor", "x-trace-id"]);
+  });
+
   test("a transport rejection becomes RequestFailed and a hang becomes RequestTimeout", async () => {
     const failing = FetchHttpClient.make({
       fetch: async () => {

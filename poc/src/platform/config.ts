@@ -288,7 +288,20 @@ function readAll<const Specs extends Readonly<Record<string, ConfigSpec<any>>>>(
       error: (error: ConfigError) => ({ ok: false as const, error }),
     });
     if (!inspected.ok) return failure(inspected.error);
-    values[key] = inspected.value;
+    // `values[key] = ...` would route the declared name `__proto__` through the
+    // setter `Object.prototype` defines for it, dropping the field from a
+    // `Result` that reports success — and, for an object-valued spec such as
+    // `Config.duration`, making the read value the record's prototype instead.
+    // `environment.ts` states the policy for this exact name and honours it with
+    // a `Map`; defining the property honours it here without making the record
+    // a null-prototype object callers cannot print. The descriptor is the one
+    // plain assignment would have produced, so ordinary names are unchanged.
+    Object.defineProperty(values, key, {
+      value: inspected.value,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   }
   return success(values as { -readonly [Key in keyof Specs]: SpecValue<Specs[Key]> });
 }

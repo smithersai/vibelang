@@ -205,6 +205,38 @@ describe("Config", () => {
     expect(withEnvironment(SETTINGS, () => Config.readAll({})).unwrapOr(undefined)).toEqual({});
   });
 
+  test("readAll keeps a variable named __proto__ like any other name", () => {
+    // `environment.ts` states that policy for this exact name and honours it
+    // with a `Map`. Writing the collected record with `values[key] = …` would
+    // not: the assignment goes through the accessor `Object.prototype` defines
+    // for `__proto__`, so the declared field would be missing from a `Result`
+    // that reports success — and for an object-valued spec such as
+    // `Config.duration` the read value would become the record's prototype,
+    // handing back a record whose inherited `Duration` methods panic.
+    const hostile = MapEnvironment.of({ PROTO: "5m", ORDINARY: "yes" });
+    const record = withEnvironment(hostile, () =>
+      Config.readAll({
+        ["__proto__"]: Config.duration("PROTO"),
+        ["constructor"]: Config.string("ORDINARY"),
+        ordinary: Config.string("ORDINARY"),
+      })).match({
+        ok: (value) => value,
+        error: (error) => {
+          throw error;
+        },
+      });
+
+    expect(Object.keys(record).sort()).toEqual(["__proto__", "constructor", "ordinary"]);
+    expect(Object.getPrototypeOf(record) === Object.prototype).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(record, "__proto__")).toBe(true);
+    expect((record["__proto__"] as Duration).equals(Duration.minutes(5))).toBe(true);
+    expect(record["constructor"]).toBe("yes");
+    expect(record.ordinary).toBe("yes");
+    // Ordinary names keep exactly the descriptor a plain assignment produced.
+    expect(Object.getOwnPropertyDescriptor(record, "ordinary"))
+      .toEqual({ value: "yes", writable: true, enumerable: true, configurable: true });
+  });
+
   test("readAll short-circuits on the first failure, like Result.all", () => {
     const counting = new CountingEnvironment(SETTINGS);
     const result = withEnvironment(counting, () =>

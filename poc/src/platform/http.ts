@@ -303,7 +303,14 @@ export class FetchHttpClient extends HttpClient {
           // The body is drained here so the response handed to callers owns no
           // stream that could outlive the surrounding scope.
           const text = await response.text();
-          const headers: Record<string, string> = {};
+          // `_` is an ordinary HTTP header token character, so a response may
+          // carry a header literally named `__proto__`. Into `{}` that
+          // assignment would go through the setter `Object.prototype` defines
+          // for the name and the header would be dropped; a null prototype
+          // keeps it as data. `HttpResponse.of` copies this into a `Map`
+          // immediately, which is why the accumulator does not need an
+          // ordinary prototype.
+          const headers: Record<string, string> = Object.create(null) as Record<string, string>;
           response.headers.forEach((value, name) => {
             headers[name.toLowerCase()] = value;
           });

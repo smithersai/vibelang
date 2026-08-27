@@ -63,6 +63,31 @@ describe("Environment", () => {
     expect(MapEnvironment.empty().names()).toEqual([]);
   });
 
+  test("ProcessEnvironment answers a prototype-shaped name like any other name", () => {
+    // `process.env` inherits from `Object.prototype` on the hosts this POC
+    // runs on, so `process.env[name]` answers `constructor`, `toString` and
+    // their siblings with a function and `__proto__` with an object — from a
+    // method declared `string | undefined`. `names()` lists none of them, so
+    // an inherited member is never a variable.
+    const environment: Environment = ProcessEnvironment.make();
+    for (const inherited of ["__proto__", "constructor", "toString", "valueOf", "hasOwnProperty"]) {
+      expect([inherited, environment.get(inherited)]).toEqual([inherited, undefined]);
+      expect([inherited, environment.names().includes(inherited)]).toEqual([inherited, false]);
+    }
+
+    // ... and a real variable under one of those names is an ordinary variable.
+    // The cast is only to write a name `ProcessEnv` types as `Function`.
+    const variables = process.env as unknown as Record<string, string | undefined>;
+    variables["constructor"] = "real-value";
+    try {
+      expect(environment.get("constructor") ?? "<absent>").toBe("real-value");
+      expect(environment.names()).toContain("constructor");
+    } finally {
+      delete variables["constructor"];
+    }
+    expect(environment.get("constructor")).toBeUndefined();
+  });
+
   test("Environment resolves through a Layer under its nominal key", () => {
     const environment = MapEnvironment.of({ REGION: "us-east-1" });
     const region = (): string => Environment.context().get("REGION") ?? "unknown";
