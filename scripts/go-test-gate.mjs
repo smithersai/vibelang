@@ -32,6 +32,30 @@ async function preparationRemedy({ ignoreConfiguredFork = false } = {}) {
   return requestedFork ? `unset SMITHERS_TYPESCRIPT_FORK; ${prepare}` : prepare;
 }
 
+/**
+ * Per-package test-binary timeout, declared rather than inherited.
+ *
+ * `go test` defaults to 10 minutes when `-timeout` is omitted. On 2026-08-26
+ * `./compiler` measured **551s against that 600s default** — 49 seconds of
+ * headroom on a suite that had grown from 494 tests to 1009 in a single day. A
+ * lane hit it: its new test file added 25s, the binary panicked at 600s, and
+ * **every one of the ~1100 tests had passed**. It then trimmed the file to 7.4s
+ * to get under the ceiling, which is tuning a test for the clock rather than for
+ * what it proves.
+ *
+ * That is the worst failure mode this gate can have. A timeout panic prints a
+ * stack trace and exits non-zero while the census shows nothing failing, so it
+ * reads as a catastrophic regression when it is only the clock — and the
+ * cheapest way to make it green again is to delete coverage.
+ *
+ * An omitted flag whose implicit default is also a legal value is a shape this
+ * repository has already recorded as a fail-open twice (`LoweringMode`'s empty
+ * string; `conformance/runner/selftest.mjs` running under no gate). So the
+ * budget is written down and generous — and it is still a real limit, not a
+ * disabled one: a genuine hang fails the gate rather than hanging CI forever.
+ */
+const GO_TEST_TIMEOUT = "30m";
+
 function testKey(event) {
   return `${event.Package}\0${event.Test}`;
 }
@@ -96,7 +120,7 @@ async function main() {
   }
 
   process.stdout.write(`Go fork test preflight: SMITHERS_TYPESCRIPT_FORK=${checkout}\n`);
-  const child = spawn("go", ["test", "-count=1", "-json", ...goPackages], {
+  const child = spawn("go", ["test", "-count=1", "-json", `-timeout=${GO_TEST_TIMEOUT}`, ...goPackages], {
     cwd: repositoryRoot,
     env: { ...process.env, SMITHERS_TYPESCRIPT_FORK: checkout },
     stdio: ["ignore", "pipe", "inherit"],
