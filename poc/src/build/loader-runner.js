@@ -107,13 +107,65 @@ function deny(name) {
   return () => { throw new Error(`${name} is unavailable in a hermetic comptime loader`); };
 }
 
+/**
+ * The loader module is evaluated from a `data:` URL, but every frame beneath it
+ * belongs to this file and carries its absolute host path. A loader that reads
+ * `error.stack` — its own, or one of the `deny(...)` errors above — therefore
+ * observed where the toolchain happens to be checked out, which is host state
+ * the implementation digest cannot see. Only `data:` frames name the loader
+ * itself; everything else is redacted to one stable token. Installed before
+ * `Error` is frozen below, so a loader can neither replace nor remove it.
+ */
+const stackFrame = (frame) => {
+  try {
+    const file = frame.getFileName();
+    const shown = typeof file === "string" && file.startsWith("data:") ? file : "smithers:loader-runner";
+    const name = frame.getFunctionName();
+    const position = `${shown}:${String(frame.getLineNumber())}:${String(frame.getColumnNumber())}`;
+    return typeof name === "string" && name !== "" ? `\n    at ${name} (${position})` : `\n    at ${position}`;
+  } catch {
+    return "\n    at smithers:loader-runner";
+  }
+};
+defineProperty(Error, "prepareStackTrace", {
+  value: (error, frames) => {
+    let text = `${String(error?.name ?? "Error")}: ${String(error?.message ?? "")}`;
+    if (isArray(frames)) for (let index = 0; index < frames.length; index++) text += stackFrame(frames[index]);
+    return text;
+  },
+  configurable: false,
+  writable: false,
+});
+
 const RealDate = Date;
 const parseDate = RealDate.parse.bind(RealDate);
 const utcDate = RealDate.UTC.bind(RealDate);
+/**
+ * The subset of the ECMA-262 Date Time String Format whose result does not
+ * depend on the host time zone: a date-only form (which the specification fixes
+ * to UTC) or a date-time carrying an explicit offset. Every other spelling —
+ * `2020-01-01T00:00:00`, `Jan 1 2020`, `2020/01/01` — is interpreted in the
+ * host's local time zone, so the same loader produced different bytes on
+ * different machines under one implementation digest.
+ */
+const OFFSET_QUALIFIED_DATE =
+  /^(?:[+-]\d{6}|\d{4})(?:-\d{2}(?:-\d{2})?)?(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$/;
+function hermeticParseDate(value) {
+  const text = String(value);
+  if (!OFFSET_QUALIFIED_DATE.test(text)) {
+    throw new Error(
+      "Date.parse is available in a hermetic comptime loader only for an ISO-8601 date " +
+      "(YYYY, YYYY-MM, YYYY-MM-DD) or a date-time with an explicit UTC offset " +
+      "(YYYY-MM-DDTHH:mm[:ss[.sss]] followed by Z or +HH:mm); every other spelling is " +
+      "interpreted in the host time zone",
+    );
+  }
+  return parseDate(text);
+}
 function HermeticDate() { throw new Error("Date construction is unavailable in a hermetic comptime loader"); }
 defineProperties(HermeticDate, {
   now: { value: deny("Date.now"), configurable: false, writable: false },
-  parse: { value: parseDate, configurable: false, writable: false },
+  parse: { value: hermeticParseDate, configurable: false, writable: false },
   UTC: { value: utcDate, configurable: false, writable: false },
 });
 freeze(HermeticDate.prototype);

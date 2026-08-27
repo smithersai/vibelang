@@ -1,6 +1,7 @@
 import { extname, isAbsolute, relative, resolve, sep } from "node:path"
 import * as ts from "typescript-js"
 import { COMPTIME_MODULE_SPECIFIER, COMPTIME_PRELUDE } from "./comptime-intrinsic.ts"
+import { SANDBOX_MODULE_EXTENSIONS, sandboxModuleKind } from "./sandboxed-loader.ts"
 import { digest } from "./stable.ts"
 
 /* --------------------------------------------------------------------------
@@ -83,6 +84,15 @@ export interface LoaderRegistration {
 export interface LoaderRegistrationAnalysis {
   readonly ok: boolean
   readonly registration?: LoaderRegistration
+  /**
+   * The default export resolved, by checker identity, to the compiler-owned
+   * `comptime.loader`. Until that holds, the file has not claimed to be a
+   * loader at all and a caller that only *guessed* it might be one — the
+   * spelling trigger below — must treat a failure as "not a loader" rather
+   * than as a broken loader. Once it holds, every later failure is the
+   * author's, and is a hard error for discovered and declared files alike.
+   */
+  readonly identified: boolean
   readonly diagnostics: readonly LoaderRegistrationDiagnostic[]
 }
 
@@ -102,7 +112,23 @@ const LOADER_PRELUDE = `${COMPTIME_PRELUDE}\n${[
   "",
 ].join("\n")}`
 
-const LOADER_EXTENSIONS = new Set([".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"])
+/**
+ * A registration file is admitted exactly when the sandbox can execute it, so
+ * this set is derived from that one predicate rather than restated. It used to
+ * advertise `.cts` and `.cjs`, which the sandbox has never been able to run:
+ * it evaluates one ES module and has no CommonJS at all.
+ */
+const LOADER_EXTENSIONS = new Set(SANDBOX_MODULE_EXTENSIONS)
+
+/**
+ * A project file may register a loader when it *names* one of the formats the
+ * sandbox can execute. The extension alone is not enough to decide that:
+ * `extname` reports `.ts` for `a.d.ts`, a declaration file with no emit, which
+ * therefore passed this gate and failed much later with a raw
+ * "Debug Failure. Output generation failed".
+ */
+const isLoaderFileName = (fileName: string): boolean =>
+  sandboxModuleKind(fileName) !== undefined && LOADER_EXTENSIONS.has(extname(fileName).toLowerCase())
 /** Same shape `AssetCompiler` requires of an import-attribute `type`. */
 const LOADER_TYPE = /^[a-z][a-z0-9-]*$/
 const GLOB_CHARACTER = /[*?[\]{}]/
@@ -128,10 +154,8 @@ const aliasTarget = (checker: ts.TypeChecker, symbol: ts.Symbol | undefined): ts
   return current
 }
 
-const scriptKindFor = (fileName: string): ts.ScriptKind => {
-  const extension = extname(fileName).toLowerCase()
-  return extension === ".js" || extension === ".mjs" || extension === ".cjs" ? ts.ScriptKind.JS : ts.ScriptKind.TS
-}
+const scriptKindFor = (fileName: string): ts.ScriptKind =>
+  sandboxModuleKind(fileName) === "javascript" ? ts.ScriptKind.JS : ts.ScriptKind.TS
 
 const unwrap = (node: ts.Expression): ts.Expression => {
   let current = node
@@ -164,6 +188,11 @@ const applyReplacements = (source: string, replacements: readonly Replacement[])
  * Cheap spelling-only trigger for auto-discovery. It selects candidate files
  * from a project's authored sources without granting any authority: every
  * candidate still has to survive checker-identity recognition below.
+ *
+ * It also imposes no liability. A guess is not a claim, so a candidate that
+ * fails before `LoaderRegistrationAnalysis.identified` holds is simply not a
+ * loader; only a file the author *declared* as one turns that into a build
+ * error. See `registerSourceLoaders` in `source-assets.ts`.
  */
 export const looksLikeLoaderRegistration = (source: string, fileName = "candidate.ts"): boolean => {
   if (typeof source !== "string" || !source.includes(COMPTIME_MODULE_SPECIFIER)) return false
@@ -172,8 +201,17 @@ export const looksLikeLoaderRegistration = (source: string, fileName = "candidat
   return file.statements.some((statement) => {
     if (!ts.isExportAssignment(statement) || statement.isExportEquals === true) return false
     const expression = unwrap(statement.expression)
-    return ts.isCallExpression(expression) && ts.isPropertyAccessExpression(expression.expression) &&
-      expression.expression.name.text === "loader"
+    if (!ts.isCallExpression(expression)) return false
+    // Unwrapped and widened to exactly the callee shapes recognition below can
+    // resolve. A trigger narrower than the rule would silently skip a real
+    // registration; a trigger wider than it costs nothing, because a candidate
+    // that does not reach `identified` is dropped rather than blamed.
+    const callee = unwrap(expression.expression)
+    if (ts.isPropertyAccessExpression(callee)) return callee.name.text === "loader"
+    if (ts.isElementAccessExpression(callee)) {
+      return ts.isStringLiteralLike(callee.argumentExpression) && callee.argumentExpression.text === "loader"
+    }
+    return ts.isIdentifier(callee) && callee.text === "loader"
   })
 }
 
@@ -288,6 +326,7 @@ export const recognizeLoaderRegistration = (
     throw new TypeError("loader registration recognition requires fileName and source strings")
   }
   const diagnostics: LoaderRegistrationDiagnostic[] = []
+  let identified = false
   const done = (registration?: LoaderRegistration): LoaderRegistrationAnalysis => {
     diagnostics.sort((left, right) => left.line - right.line || left.column - right.column ||
       (left.code < right.code ? -1 : left.code > right.code ? 1 : 0))
@@ -295,6 +334,7 @@ export const recognizeLoaderRegistration = (
     return Object.freeze({
       ok,
       registration: ok ? registration : undefined,
+      identified,
       diagnostics: Object.freeze(diagnostics),
     })
   }
@@ -305,7 +345,7 @@ export const recognizeLoaderRegistration = (
     at(1, 1, LoaderRegistrationDiagnosticCode.ModuleShape, `a comptime loader file exceeds ${MAX_LOADER_SOURCE_BYTES} bytes`)
     return done()
   }
-  if (!LOADER_EXTENSIONS.has(extname(fileName).toLowerCase())) {
+  if (!isLoaderFileName(fileName)) {
     at(
       1,
       1,
@@ -412,13 +452,18 @@ export const recognizeLoaderRegistration = (
     return done()
   }
 
-  // 3. Checker identity, never spelling.
-  const callee = exported.expression
+  // 3. Checker identity, never spelling. The callee is unwrapped exactly the
+  //    way the export expression above already is, so `(comptime.loader)(...)`
+  //    and `(comptime?.loader)(...)` are judged on what they resolve to rather
+  //    than reported as having no compiler identity at all.
+  const callee = unwrap(exported.expression)
   const calleeName = ts.isPropertyAccessExpression(callee)
     ? callee.name
-    : ts.isIdentifier(callee)
-      ? callee
-      : undefined
+    : ts.isElementAccessExpression(callee)
+      ? callee.argumentExpression
+      : ts.isIdentifier(callee)
+        ? callee
+        : undefined
   const calleeSymbol = calleeName === undefined
     ? undefined
     : aliasTarget(checked.checker, checked.checker.getSymbolAtLocation(calleeName))
@@ -442,11 +487,30 @@ export const recognizeLoaderRegistration = (
     )
     return done()
   }
-  if (exported.questionDotToken !== undefined || (exported.typeArguments?.length ?? 0) > 0) {
+  // The default export is now known to be the compiler-owned `comptime.loader`.
+  // Everything below is a malformed registration, not a file that turned out
+  // not to be a loader.
+  identified = true
+  // `a?.b(c)` carries its `questionDotToken` on the property access, not on the
+  // call, so testing only `exported.questionDotToken` accepted half of the
+  // optional-chain family under a message that says it rejects it.
+  const optionalCallee =
+    ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee) || ts.isCallExpression(callee)
+      ? callee.questionDotToken !== undefined
+      : false
+  if (exported.questionDotToken !== undefined || optionalCallee || (exported.typeArguments?.length ?? 0) > 0) {
     located(
       exported,
       LoaderRegistrationDiagnosticCode.CallShape,
       "comptime.loader is called directly, without optional chaining or explicit type arguments"
+    )
+    return done()
+  }
+  if (ts.isElementAccessExpression(callee)) {
+    located(
+      callee,
+      LoaderRegistrationDiagnosticCode.CallShape,
+      "the registration is written as comptime.loader(...); an element-access spelling is not recognized"
     )
     return done()
   }
@@ -491,7 +555,12 @@ export const recognizeLoaderRegistration = (
   // 5. The loader function must be inline or a same-file declaration, so the
   //    lowered sandbox module is a byte-for-byte slice of authored source.
   const functionArgument = exported.arguments[1]!
-  const resolvedFunction = resolveLoaderFunction(functionArgument, file, checked.checker)
+  const resolvedFunction = resolveLoaderFunction(
+    functionArgument,
+    file,
+    checked.checker,
+    exportAssignment.getStart(file)
+  )
   if (resolvedFunction.ok === false) {
     located(functionArgument, LoaderRegistrationDiagnosticCode.LoaderFunction, resolvedFunction.message)
     return done()
@@ -557,7 +626,9 @@ const topLevelStatement = (node: ts.Node, file: ts.SourceFile): boolean =>
 const resolveLoaderFunction = (
   argument: ts.Expression,
   file: ts.SourceFile,
-  checker: ts.TypeChecker
+  checker: ts.TypeChecker,
+  /** Start of the export assignment the lowering replaces with `export default <name>;`. */
+  registrationStart: number
 ): { readonly ok: true; readonly text: string } | { readonly ok: false; readonly message: string } => {
   const expression = unwrap(argument)
   const rejectGenerator = (node: ts.ArrowFunction | ts.FunctionExpression | ts.FunctionDeclaration): boolean =>
@@ -592,13 +663,34 @@ const resolveLoaderFunction = (
     return { ok: false, message: `${expression.text} is not a const-bound loader function` }
   }
   const list = declaration.parent
+  // An exact declaration form, not a bit test: `ts.NodeFlags.AwaitUsing` is
+  // `Const | Using`, so `flags & Const` accepted `await using load = …` and
+  // deferred the refusal into an opaque `Object not disposable` crash inside the
+  // lowered sandbox module. A loader is always initialized with a function
+  // expression below, and a function is never disposable, so no legitimate
+  // registration is lost by naming the one form this check means.
+  const declarationForm = ts.isVariableDeclarationList(list)
+    ? list.flags & (ts.NodeFlags.Const | ts.NodeFlags.Let | ts.NodeFlags.Using)
+    : undefined
   if (
-    !ts.isVariableDeclarationList(list) || (list.flags & ts.NodeFlags.Const) === 0 || list.declarations.length !== 1 ||
+    declarationForm !== ts.NodeFlags.Const || !ts.isVariableDeclarationList(list) || list.declarations.length !== 1 ||
     !ts.isVariableStatement(list.parent) || !topLevelStatement(list.parent, file)
   ) {
     return {
       ok: false,
       message: `${expression.text} must be one top-level single-declaration const in this loader file`,
+    }
+  }
+  // A `const` does not hoist. The lowering emits `export default <name>;` where
+  // the registration stood, so a declaration below it compiled clean and then
+  // died in the sandbox on `Cannot access '<name>' before initialization`. The
+  // `function` branch above needs no such check because declarations do hoist.
+  if (list.parent.getStart(file) > registrationStart) {
+    return {
+      ok: false,
+      message:
+        `${expression.text} is declared after the registration; a const-bound loader must be declared ` +
+        "above it, because the lowered sandbox module evaluates the reference in place",
     }
   }
   const initializer = declaration.initializer === undefined ? undefined : unwrap(declaration.initializer)

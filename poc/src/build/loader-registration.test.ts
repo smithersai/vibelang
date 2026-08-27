@@ -176,6 +176,21 @@ describe("provisional comptime.loader registration recognition", () => {
     expect(analysis.diagnostics[0]!.code).toBe(LoaderRegistrationDiagnosticCode.LoaderFunction)
   })
 
+  test("accepts only `const`, including against `await using`", () => {
+    // `ts.NodeFlags.AwaitUsing` is `Const | Using`, so a `flags & Const` test
+    // admitted `await using load = …` and deferred the refusal into an opaque
+    // `Object not disposable` crash inside the lowered sandbox module. A loader
+    // is always initialized with a function expression, and a function is never
+    // disposable, so no legitimate registration depends on the wider test.
+    expect(recognize(loaderSource()).ok).toBe(true)
+    for (const form of ["let load =", "var load =", "using load =", "await using load ="]) {
+      const analysis = recognize(loaderSource().replace("const load =", form))
+      expect([form, analysis.ok]).toEqual([form, false])
+      expect([form, analysis.diagnostics[0]!.code])
+        .toEqual([form, LoaderRegistrationDiagnosticCode.LoaderFunction])
+    }
+  })
+
   test("rejects a second registration in the same file", () => {
     const analysis = recognize([
       'import { comptime } from "smithers:comptime"',
@@ -258,6 +273,106 @@ describe("provisional comptime.loader registration recognition", () => {
       'const r = { loader: (t: string, f: unknown) => f }\nexport default r.loader("yaml", () => 1)\n',
       "main.ts"
     )).toBe(false)
+    // The trigger must not be narrower than the rule: a real registration
+    // written with a wrapped or element-access callee still has to be selected,
+    // or it would be skipped in silence instead of judged.
+    for (const call of [
+      'comptime.loader("yaml", load)',
+      '(comptime.loader)("yaml", load)',
+      'comptime?.loader("yaml", load)',
+      'comptime["loader"]("yaml", load)',
+    ]) {
+      expect(looksLikeLoaderRegistration(
+        `import { comptime } from "smithers:comptime"\n${LOADER_BODY}\nexport default ${call}\n`,
+        "yaml-loader.ts"
+      )).toBe(true)
+    }
+  })
+
+  test("the callee is judged on what it resolves to, and only one spelling is accepted", () => {
+    const registration = (call: string): string =>
+      ['import { comptime } from "smithers:comptime"', "", LOADER_BODY, `export default ${call}`, ""].join("\n")
+    // `a?.b(c)` carries its optional token on the property access, not on the
+    // call, so half the optional-chain family used to be accepted by the rule
+    // whose own message says it rejects optional chaining.
+    for (const call of [
+      'comptime?.loader("yaml", load)',
+      'comptime.loader?.("yaml", load)',
+      'comptime?.loader?.("yaml", load)',
+      '(comptime?.loader)("yaml", load)',
+      'comptime.loader<never, never, never>("yaml", load)',
+      'comptime["loader"]("yaml", load)',
+    ]) {
+      const analysis = recognize(registration(call))
+      expect(analysis.ok).toBe(false)
+      // Each one now reports the shape it actually violates, not "no imported
+      // compiler identity".
+      expect(codes(analysis.diagnostics as SourceAssetDiagnostic[]))
+        .toEqual([LoaderRegistrationDiagnosticCode.CallShape])
+      // Identity resolved, so this is a malformed registration and stays a
+      // hard error even when the file was only discovered by spelling.
+      expect(analysis.identified).toBe(true)
+    }
+    for (const call of ['comptime.loader("yaml", load)', '(comptime.loader)("yaml", load)']) {
+      const analysis = recognize(registration(call))
+      expect(analysis.diagnostics).toHaveLength(0)
+      expect(analysis.ok).toBe(true)
+      expect(analysis.identified).toBe(true)
+      expect(analysis.registration!.sandboxSource).toContain("export default load;")
+    }
+  })
+
+  test("a const-bound loader declared after the registration is rejected, unlike a hoisted function", () => {
+    const withBinding = (binding: string, before: boolean): string => {
+      const declaration = `${binding} load = (asset: { text(): string }) => ({
+  format: "yaml", value: asset.text(),
+  emittedTypeScript: "const value = 1;\\nexport default value;\\n",
+  declaration: "declare const value: number;\\nexport default value;\\n",
+  diagnostics: [], spans: [],
+})`
+      const call = 'export default comptime.loader("yaml", load)'
+      return ['import { comptime } from "smithers:comptime"', ...(before ? [declaration, call] : [call, declaration]), ""].join("\n")
+    }
+    // The lowering emits `export default load;` where the registration stood,
+    // so a `const` below it compiled clean and died in the sandbox on
+    // "Cannot access 'load' before initialization".
+    const after = recognize(withBinding("const", false))
+    expect(after.ok).toBe(false)
+    expect(codes(after.diagnostics as SourceAssetDiagnostic[]))
+      .toEqual([LoaderRegistrationDiagnosticCode.LoaderFunction])
+    expect(after.diagnostics[0]!.message).toContain("declared after the registration")
+    expect(recognize(withBinding("const", true)).ok).toBe(true)
+    // A function declaration hoists, so position genuinely does not matter.
+    const hoisted = (before: boolean): string => {
+      const declaration = `function load(asset: { text(): string }) { return {
+  format: "yaml", value: asset.text(),
+  emittedTypeScript: "const value = 1;\\nexport default value;\\n",
+  declaration: "declare const value: number;\\nexport default value;\\n",
+  diagnostics: [], spans: [],
+} }`
+      const call = 'export default comptime.loader("yaml", load)'
+      return ['import { comptime } from "smithers:comptime"', ...(before ? [declaration, call] : [call, declaration]), ""].join("\n")
+    }
+    expect(recognize(hoisted(true)).ok).toBe(true)
+    expect(recognize(hoisted(false)).ok).toBe(true)
+    // `let`/`var` stay rejected on their own grounds, either side.
+    for (const binding of ["let", "var"]) {
+      for (const before of [true, false]) expect(recognize(withBinding(binding, before)).ok).toBe(false)
+    }
+  })
+
+  test("only the extensions the sandbox can evaluate are admitted", () => {
+    // `.cts` and `.cjs` were advertised and could never run: the sandbox
+    // evaluates one ES module from a `data:` URL and has no CommonJS at all.
+    for (const extension of [".cts", ".cjs", ".tsx", ".d.ts", ".sm", ".json"]) {
+      const analysis = recognize(loaderSource(), `yaml-loader${extension}`)
+      expect(analysis.ok).toBe(false)
+      expect(analysis.identified).toBe(false)
+      expect(codes(analysis.diagnostics as SourceAssetDiagnostic[]))
+        .toEqual([LoaderRegistrationDiagnosticCode.ModuleShape])
+      expect(analysis.diagnostics[0]!.message).toBe("a comptime loader file must be one of .ts, .mts, .js, .mjs")
+    }
+    for (const extension of [".ts", ".mts"]) expect(recognize(loaderSource(), `yaml-loader${extension}`).ok).toBe(true)
   })
 })
 
@@ -357,6 +472,68 @@ describe("source-registered loaders in the asset preflight", () => {
       expect(result.modules).toHaveLength(1)
       expect(result.modules[0]!.dependencies.map((dependency) => dependency.path)).toEqual(["required.json"])
       expect(result.modules[0]!.source).toContain('["region"]: "us-west"')
+    })
+  }, 30_000)
+
+  test("a discovered file that is not a loader is not a loader, and a declared one still is", async () => {
+    // The spelling trigger is a guess. A guess that turns out wrong must not
+    // make an ordinary project file a fatal VCT13xx: every one of these is a
+    // legitimate module that happens to mention the compiler-owned specifier
+    // and default-export a call on some local `loader`.
+    const localRegistry = [
+      'import { comptime } from "smithers:comptime"',
+      "const registry = { loader: (type: string, fn: unknown) => ({ type, fn }) }",
+      'const mode = comptime("release")',
+      "export default registry.loader(mode, () => 1)",
+      ""
+    ].join("\n")
+    const notLoaders: readonly (readonly [string, string])[] = [
+      ["main.sm", localRegistry],
+      ["plugins.ts", localRegistry],
+      ["plugins.mts", localRegistry],
+      ["plugins2.ts", localRegistry.replace("registry.loader(mode", "registry?.loader(mode")],
+      ["plugins.js", '// see "smithers:comptime"\nconst r = { loader: (t, f) => f }\nexport default r.loader("yaml", () => 1)\n'],
+      ["plugins3.ts", 'import { comptime } from "smithers:comptime"\nimport { registry } from "./registry.ts"\nvoid comptime\nexport default registry.loader("yaml", () => 1)\n'],
+    ]
+    for (const [fileName, source] of notLoaders) {
+      await withRoot(async (root) => {
+        await writeFile(join(root, "registry.ts"), "export const registry = { loader: (t: string, f: unknown) => f }\n")
+        await writeFile(join(root, fileName), source)
+        const result = await compileSourceAssetModules({
+          compiler: compilerFor(root),
+          sources: [{ fileName, source }]
+        })
+        expect(codes(result.diagnostics)).toEqual([])
+        expect(result.ok).toBe(true)
+      })
+    }
+    // Declaring the path is the author asserting it *is* a loader, so the same
+    // file keeps every diagnostic.
+    await withRoot(async (root) => {
+      await writeFile(join(root, "plugins.ts"), localRegistry)
+      const result = await compileSourceAssetModules({
+        compiler: compilerFor(root),
+        loaders: ["plugins.ts"],
+        sources: [{ fileName: "plugins.ts", source: localRegistry }]
+      })
+      expect(result.ok).toBe(false)
+      expect(codes(result.diagnostics)).toContain(LoaderRegistrationDiagnosticCode.UnrelatedIdentity)
+    })
+    // And a discovered file that really *is* a registration keeps its
+    // diagnostics too: identity resolved, so the fault is the author's.
+    await withRoot(async (root) => {
+      await writeFile(join(root, "app.yaml"), "region: us-west\n")
+      const malformed = loaderSource("*.yaml")
+      await writeFile(join(root, "yaml-loader.ts"), malformed)
+      const result = await compileSourceAssetModules({
+        compiler: compilerFor(root),
+        sources: [
+          { fileName: "main.sm", source: authored() },
+          { fileName: "yaml-loader.ts", source: malformed }
+        ]
+      })
+      expect(result.ok).toBe(false)
+      expect(codes(result.diagnostics)).toContain(LoaderRegistrationDiagnosticCode.LoaderType)
     })
   }, 30_000)
 

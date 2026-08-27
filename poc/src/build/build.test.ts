@@ -16,6 +16,9 @@ import {
   deriveSchema,
   digest,
   parseWithSchema,
+  SANDBOX_MODULE_EXTENSIONS,
+  sandboxExecutionIdentity,
+  sandboxModuleKind,
   stableClone,
 } from "./index.ts";
 import { catchFailure, isSmithersFailure } from "../runtime/failure.ts";
@@ -413,6 +416,52 @@ describe("comptime assets and derived schemas", () => {
     )).toBe("ValidationFailure");
   });
 
+  test("derivation resolves names by binding and admits every literal it can represent", () => {
+    // `null` in type position is a LiteralTypeNode, never a bare NullKeyword,
+    // so the `{ kind: "null" }` arm used to be unreachable and `null` was
+    // unsupported despite `decode` already handling it.
+    expect(deriveSchema("type T = { a: null }", "T"))
+      .toEqual({ kind: "object", properties: { a: { optional: false, schema: { kind: "null" } } } });
+    expect(parseWithSchema<{ a: null }>(deriveSchema("type T = { a: null }", "T"), { a: null })).toEqual({ a: null });
+    expect(() => parseWithSchema(deriveSchema("type T = { a: null }", "T"), { a: 0 })).toThrow("$input.a expected null");
+    expect(deriveSchema('type T = { a: string | null }', "T"))
+      .toEqual({
+        kind: "object",
+        properties: { a: { optional: false, schema: { kind: "union", variants: [{ kind: "string" }, { kind: "null" }] } } },
+      });
+
+    // A same-file declaration outranks the built-in spelling; the built-in
+    // interpretation is the fallback, not the first test.
+    expect(deriveSchema("type T = { a: Array<string> }", "T"))
+      .toEqual({ kind: "object", properties: { a: { optional: false, schema: { kind: "array", element: { kind: "string" } } } } });
+    expect(deriveSchema("type Array = { fake: string }\ntype T = { a: Array }", "T"))
+      .toEqual({
+        kind: "object",
+        properties: {
+          a: { optional: false, schema: { kind: "object", properties: { fake: { optional: false, schema: { kind: "string" } } } } },
+        },
+      });
+    expect(() => deriveSchema("interface Array<X> { fake: X }\ntype T = { a: Array<string> }", "T"))
+      .toThrow("cannot resolve 'X'");
+
+    // Negative literals reify; non-finite ones fail closed the way the
+    // checker-based derivation in `schema-derive.ts` already did, instead of
+    // producing a literal whose value is `Infinity`.
+    expect(deriveSchema("type T = { a: -1 }", "T"))
+      .toEqual({ kind: "object", properties: { a: { optional: false, schema: { kind: "literal", value: -1 } } } });
+    expect(deriveSchema("type T = { a: -0 }", "T"))
+      .toEqual({ kind: "object", properties: { a: { optional: false, schema: { kind: "literal", value: 0 } } } });
+    expect(() => deriveSchema("type T = { a: 1e400 }", "T")).toThrow("non-finite numeric literal");
+    expect(() => deriveSchema("type T = { a: -1e400 }", "T")).toThrow("non-finite numeric literal");
+
+    // Everything outside the supported set still fails closed.
+    for (const source of [
+      "type T = { a: ReadonlyArray<string> }",
+      "type T = { a: Record<string, string> }",
+      "type T = { a: undefined }",
+    ]) expect(() => deriveSchema(source, "T")).toThrow();
+  });
+
   test("derived schemas require own fields and preserve hostile property names", () => {
     const role = deriveSchema('interface Role { role: string; "__proto__": string }', "Role");
     const inherited = Object.create({ role: "admin" }) as Record<string, unknown>;
@@ -804,6 +853,159 @@ describe("comptime assets and derived schemas", () => {
     });
     await expect(new AssetCompiler({ root, cacheDirectory: join(root, ".loop-cache") })
       .register(loopLoader).compile("loop.hang")).rejects.toThrow("timed out");
+  });
+
+  test("the sandbox pins its environment and admits only time-zone-independent dates", async () => {
+    const root = await mkdtemp(join(tmpdir(), "smithers-loader-tz-"));
+    roots.push(root);
+    await writeFile(join(root, "value.tz"), "value");
+    const modulePath = join(root, "tz-loader.mjs");
+    // Every form here is fixed by ECMA-262 to UTC or to an explicit offset.
+    await writeFile(modulePath, `export default () => {
+      const value = {
+        utc: Date.parse("2020-01-01T00:00:00Z"),
+        offset: Date.parse("2020-01-01T00:00:00+09:00"),
+        dateOnly: Date.parse("2020-01-01"),
+        yearMonth: Date.parse("2020-01"),
+        year: Date.parse("2020"),
+        millis: Date.parse("2020-01-01T00:00:00.123Z"),
+      }
+      return {
+        format: "tz", value,
+        emittedTypeScript: "export default " + JSON.stringify(value),
+        declaration: "declare const value: Record<string, number>; export default value",
+        diagnostics: [], spans: [],
+      }
+    }`);
+    const loader = createSandboxedLoader({
+      id: "test:tz", version: "1", extensions: [".tz"], modulePath,
+    });
+    const expected = {
+      utc: 1577836800000, offset: 1577804400000, dateOnly: 1577836800000,
+      yearMonth: 1577836800000, year: 1577836800000, millis: 1577836800123,
+    };
+    const compileUnder = async (timeZone: string, cache: string): Promise<unknown> => {
+      const previous = process.env.TZ;
+      process.env.TZ = timeZone;
+      try {
+        return (await new AssetCompiler({ root, cacheDirectory: join(root, cache) })
+          .register(loader).compile("value.tz")).module.value;
+      } finally {
+        if (previous === undefined) delete process.env.TZ; else process.env.TZ = previous;
+      }
+    };
+    // The child no longer inherits the host environment, so the same loader
+    // produces the same bytes wherever it runs. Before, these two disagreed
+    // while `implementationDigest` stayed byte-identical.
+    expect(await compileUnder("UTC", ".tz-utc")).toEqual(expected);
+    expect(await compileUnder("Asia/Tokyo", ".tz-tokyo")).toEqual(expected);
+
+    // Every host-time-zone-dependent spelling is denied the way `Date.now` is.
+    for (const spelling of ["2020-01-01T00:00:00", "Jan 1 2020 00:00:00", "2020/01/01", "nonsense"]) {
+      const badPath = join(root, `bad-${Buffer.from(spelling).toString("hex")}.mjs`);
+      await writeFile(badPath, `export default () => Date.parse(${JSON.stringify(spelling)})`);
+      await expect(new AssetCompiler({ root, cacheDirectory: join(root, `.tz-${Buffer.from(spelling).toString("hex")}`) })
+        .register(createSandboxedLoader({ id: "test:tz-bad", version: "1", extensions: [".tz"], modulePath: badPath }))
+        .compile("value.tz")).rejects.toThrow("Date.parse is available in a hermetic comptime loader only");
+    }
+
+    // `--deny-env` stops the loader from reading `Deno.env`; it never stopped
+    // the runtime from reading its own. `DENO_V8_FLAGS` reaches the child as
+    // real V8 flags — `--expose-gc` hands a loader observable garbage
+    // collection — so the environment is pinned by allowlist rather than
+    // inherited.
+    const gcPath = join(root, "gc-loader.mjs");
+    await writeFile(gcPath, `export default () => {
+      const value = { gc: typeof globalThis.gc, deno: typeof globalThis.Deno }
+      return {
+        format: "tz", value,
+        emittedTypeScript: "export default " + JSON.stringify(value),
+        declaration: "declare const value: Record<string, string>; export default value",
+        diagnostics: [], spans: [],
+      }
+    }`);
+    const previousFlags = process.env.DENO_V8_FLAGS;
+    process.env.DENO_V8_FLAGS = "--expose-gc";
+    try {
+      const gcResult = await new AssetCompiler({ root, cacheDirectory: join(root, ".tz-gc") })
+        .register(createSandboxedLoader({ id: "test:tz-gc", version: "1", extensions: [".tz"], modulePath: gcPath }))
+        .compile("value.tz");
+      expect(gcResult.module.value).toEqual({ gc: "undefined", deno: "undefined" });
+    } finally {
+      if (previousFlags === undefined) delete process.env.DENO_V8_FLAGS;
+      else process.env.DENO_V8_FLAGS = previousFlags;
+    }
+
+    // A stack trace named this repository's absolute path, which is host state
+    // no digest could see. Only the loader's own `data:` frames survive.
+    const stackPath = join(root, "stack-loader.mjs");
+    await writeFile(stackPath, `export default () => {
+      const frames = []
+      try { Date.now() } catch (error) { frames.push(String(error.stack)) }
+      try { null.x } catch (error) { frames.push(String(error.stack)) }
+      const value = { leaks: frames.join("|").includes("file://") || frames.join("|").includes("loader-runner.js") }
+      return {
+        format: "tz", value,
+        emittedTypeScript: "export default " + JSON.stringify(value),
+        declaration: "declare const value: { readonly leaks: boolean }; export default value",
+        diagnostics: [], spans: [],
+      }
+    }`);
+    const stackResult = await new AssetCompiler({ root, cacheDirectory: join(root, ".tz-stack") })
+      .register(createSandboxedLoader({ id: "test:tz-stack", version: "1", extensions: [".tz"], modulePath: stackPath }))
+      .compile("value.tz");
+    expect(stackResult.module.value).toEqual({ leaks: false });
+
+    // The mechanism that hid all of this: the sandbox identity now carries the
+    // environment the child is given, so two sandboxes that could disagree
+    // cannot share a cache key.
+    const identity = sandboxExecutionIdentity();
+    expect(identity.environment).toEqual({ TZ: "UTC", LC_ALL: "C", LANG: "C" });
+    expect(digest(identity)).not.toBe(digest({ ...identity, environment: { ...identity.environment, TZ: "Asia/Tokyo" } }));
+    expect(digest(identity)).not.toBe(digest({ runnerDigest: identity.runnerDigest, runtimeVersion: identity.runtimeVersion }));
+  });
+
+  test("the sandbox executes exactly the module formats it can evaluate", async () => {
+    const root = await mkdtemp(join(tmpdir(), "smithers-loader-kind-"));
+    roots.push(root);
+    await writeFile(join(root, "value.fmt"), "value");
+    const body = (typed: boolean): string => `export default (${typed ? "asset: unknown" : "asset"}) => {
+      const value = { ok: true }
+      return {
+        format: "fmt", value,
+        emittedTypeScript: "export default " + JSON.stringify(value),
+        declaration: "declare const value: { readonly ok: boolean }; export default value",
+        diagnostics: [], spans: [],
+      }
+    }`;
+    // One predicate decides this for `validateSandboxSource`, the transpile
+    // step, and `LOADER_EXTENSIONS` alike. `.cts`/`.cjs` name CommonJS, which
+    // the sandbox has none of; `.tsx` needs a JSX transform it never requests;
+    // `.d.ts` has no emit. All four used to pass every compile-time gate.
+    expect(SANDBOX_MODULE_EXTENSIONS).toEqual([".ts", ".mts", ".js", ".mjs"]);
+    for (const [name, typed] of [
+      ["a.ts", true], ["a.mts", true], ["a.js", false], ["a.mjs", false],
+      // A case-insensitive predicate: this used to reach Deno as raw TypeScript.
+      ["a.TS", true], ["noextension", false],
+    ] as const) {
+      const modulePath = join(root, name);
+      await writeFile(modulePath, body(typed));
+      const result = await new AssetCompiler({ root, cacheDirectory: join(root, `.c-${name}`) })
+        .register(createSandboxedLoader({ id: `test:fmt-${name}`, version: "1", extensions: [".fmt"], modulePath }))
+        .compile("value.fmt");
+      expect(result.module.value).toEqual({ ok: true });
+    }
+    for (const name of ["a.cts", "a.cjs", "a.tsx", "a.d.ts"]) {
+      const modulePath = join(root, name);
+      await writeFile(modulePath, body(name.endsWith("ts")));
+      expect(() => createSandboxedLoader({ id: `test:fmt-${name}`, version: "1", extensions: [".fmt"], modulePath }))
+        .toThrow("no format the zero-permission sandbox can evaluate");
+      expect(() => createSandboxedComptimeModule({ id: `test:fmt-${name}`, version: "1", modulePath }))
+        .toThrow("no format the zero-permission sandbox can evaluate");
+    }
+    expect(sandboxModuleKind("Loader.MTS")).toBe("typescript");
+    expect(sandboxModuleKind("/x/y.d.mts")).toBeUndefined();
+    expect(sandboxModuleKind("/x/y.cjs")).toBeUndefined();
   });
 
   test("comptime evaluation is hermetic, dependency tracked, and content cached", async () => {

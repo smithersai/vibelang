@@ -387,6 +387,69 @@ describe("checked source asset imports", () => {
       expect(result.diagnostics.some((entry) => entry.message.includes("literal byte array"))).toBe(true)
     })
   })
+
+  test("admits only `const` declarations, including against `await using`", async () => {
+    // `ts.NodeFlags.AwaitUsing` is `Const | Using`, so a `flags & Const` test
+    // admits `await using`. It is an immutable binding, but not inert data: it
+    // evaluates a `Symbol.asyncDispose` lookup and a top-level await inside a
+    // module this compiler stamps `@throws {never}`, throws
+    // `TypeError: Object not disposable` under Bun, and is a SyntaxError under
+    // the declared engine. This grammar is the containment boundary for loader
+    // output, so it names the form it accepts.
+    const forms: readonly (readonly [string, string, boolean])[] = [
+      ["const", "const value = 1;\nexport default value;\n", true],
+      ["export const", "export const value = 1;\nexport default value;\n", true],
+      ["multi const", "const a = 1, value = 2;\nexport default value;\n", true],
+      ["let", "let value = 1;\nexport default value;\n", false],
+      ["var", "var value = 1;\nexport default value;\n", false],
+      ["export let", "export let value = 1;\nexport default value;\n", false],
+      ["using", "using value = null;\nexport default value;\n", false],
+      ["await using", "await using value = {};\nexport default value;\n", false],
+      ["await using null", "await using value = null;\nexport default value;\n", false],
+      ["const then await using", "const first = 1;\nawait using value = null;\nexport default value;\n", false]
+    ]
+    for (const [label, emitted, admitted] of forms) {
+      await withRoot(async (root) => {
+        await writeFile(join(root, "shape.evil"), "ignored\n")
+        const loader: AssetLoader = {
+          id: "test:declaration-form",
+          version: "1",
+          implementationDigest: `declaration-form-${label}`,
+          extensions: [".evil"],
+          types: ["evil"],
+          load: () => ({
+            format: "evil",
+            value: null,
+            emittedTypeScript: emitted,
+            declaration: "declare const value: unknown;\nexport default value;\n",
+            diagnostics: [],
+            spans: []
+          })
+        }
+        const compiler = new AssetCompiler({
+          root,
+          cacheDirectory: join(root, ".declaration-cache"),
+          unsafeAllowInProcessLoadersForTests: true
+        }).register(loader)
+        const result = await compileSourceAssetModules({
+          compiler,
+          sources: [{
+            fileName: "main.sm",
+            source: 'import shape from "./shape.evil" with { type: "evil" }\nexport { shape }\n'
+          }]
+        })
+        expect([label, result.ok]).toEqual([label, admitted])
+        if (admitted) {
+          expect(result.modules[0]?.source).toContain("@throws {never}")
+        } else {
+          expect(result.diagnostics).toContainEqual(expect.objectContaining({
+            code: "SMITHERS5217",
+            message: expect.stringContaining("asset bindings must be const")
+          }))
+        }
+      })
+    }
+  })
 })
 
 describe("asset re-exports and literal dynamic asset imports", () => {

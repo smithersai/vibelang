@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { readFileSync, realpathSync, statSync } from "node:fs";
+import { extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
 import { once } from "node:events";
@@ -15,6 +16,77 @@ import type { StableJson } from "./stable.ts";
 
 const LOADER_PROTOCOL_VERSION = 1;
 const authenticAssetLoaders = new WeakSet<object>();
+
+/**
+ * What the sandbox does with a module of this name — the one question every
+ * caller used to answer for itself, three different ways.
+ *
+ * `loader-runner.js` evaluates exactly one ES module, from a
+ * `data:text/javascript` URL, and resolves no imports at all. So a filename
+ * that *declares* CommonJS (`.cts`, `.cjs`) can never run there — `ts.transpileModule`
+ * derives its emitted module kind from the extension and hands back
+ * `exports.default = …`, which dies on `exports is not defined` — a `.tsx` file
+ * would need a JSX transform the transpile step does not request, and a `.d.ts`
+ * file has no emit. Those return `undefined` and fail closed at the boundary
+ * instead of passing every compile-time gate and dying in the sandbox.
+ */
+export type SandboxModuleKind = "typescript" | "javascript";
+
+const SANDBOX_TYPESCRIPT_EXTENSIONS = Object.freeze([".ts", ".mts"]);
+const SANDBOX_JAVASCRIPT_EXTENSIONS = Object.freeze([".js", ".mjs"]);
+
+/** Every filename extension the sandbox can execute, lowercase. */
+export const SANDBOX_MODULE_EXTENSIONS: readonly string[] = Object.freeze([
+  ...SANDBOX_TYPESCRIPT_EXTENSIONS,
+  ...SANDBOX_JAVASCRIPT_EXTENSIONS,
+]);
+
+export function sandboxModuleKind(fileName: string): SandboxModuleKind | undefined {
+  if (typeof fileName !== "string") return undefined;
+  const base = (fileName.replaceAll("\\", "/").split("/").pop() ?? "").toLowerCase();
+  // `extname` reports `.ts` for a declaration file, which has no emit.
+  if (/\.d\.[cm]?tsx?$/.test(base)) return undefined;
+  const extension = extname(base);
+  if (SANDBOX_TYPESCRIPT_EXTENSIONS.includes(extension)) return "typescript";
+  if (SANDBOX_JAVASCRIPT_EXTENSIONS.includes(extension)) return "javascript";
+  // A module path with no extension at all reaches the sandbox as authored.
+  if (extension === "") return "javascript";
+  return undefined;
+}
+
+/**
+ * The environment the sandbox process is given, pinned rather than inherited.
+ *
+ * `--deny-env` stops the *loader* from reading `Deno.env`; it does not stop the
+ * runtime from reading its own environment. `TZ` reaches `Date.parse` and every
+ * locale-sensitive builtin, and `DENO_V8_FLAGS` injects arbitrary V8 flags into
+ * the sandbox — both changed observable loader output while
+ * `implementationDigest` stayed byte-identical, which is cache poisoning across
+ * machines. Pinning by allowlist keeps whichever variable nobody has thought of
+ * yet from becoming the next one, and the pin is folded into the sandbox
+ * identity below so it is part of every cache key it produces.
+ */
+const SANDBOX_ENVIRONMENT: Readonly<Record<string, string>> = Object.freeze({
+  TZ: "UTC",
+  LC_ALL: "C",
+  LANG: "C",
+});
+
+/**
+ * Only what the child needs to start. `PATH` resolves a bare `deno` command
+ * name; the Windows entries are what `CreateProcess` itself requires. None of
+ * them is observable from inside the sandbox, so none belongs in the digest.
+ */
+const SANDBOX_INHERITED_ENVIRONMENT = Object.freeze(["PATH", "SystemRoot", "ComSpec", "PATHEXT"]);
+
+function sandboxEnvironment(): Record<string, string> {
+  const environment: Record<string, string> = { ...SANDBOX_ENVIRONMENT };
+  for (const key of SANDBOX_INHERITED_ENVIRONMENT) {
+    const value = process.env[key];
+    if (typeof value === "string") environment[key] = value;
+  }
+  return environment;
+}
 
 /** Reject structurally forged loaders at the compiler trust boundary. */
 export function assertSandboxedLoader(loader: AssetLoader): void {
@@ -100,7 +172,7 @@ export function createSandboxedLoader(options: SandboxedLoaderOptions): AssetLoa
     Math.floor(maxInputBytes * 3 / 4),
     options.loweredSource,
   );
-  const { originalSource, executable, source, exportName } = compiled;
+  const { kind, originalSource, executable, source, exportName } = compiled;
   const sandbox = inspectSandbox(denoPath, runnerPath);
 
   const loader = Object.freeze({
@@ -114,7 +186,10 @@ export function createSandboxedLoader(options: SandboxedLoaderOptions): AssetLoa
       // Only a compiler-lowered registration contributes this field, so an
       // ordinary sandboxed loader keeps the identity it already had.
       ...(options.loweredSource === undefined ? {} : { lowered: executable }),
-      compiler: source === executable ? "javascript" : `typescript@${ts.version}`,
+      // Labelled from the module kind, not from whether the transpile happened
+      // to be an identity transform: a TypeScript loader whose emit equals its
+      // source still depends on `ts.version` and must carry it.
+      compiler: kind === "typescript" ? `typescript@${ts.version}` : "javascript",
       exportName,
       sandbox,
       limits: { timeoutMs, memoryMb, maxOutputBytes, maxInputBytes, maxRequests, maxConcurrentRequests },
@@ -190,7 +265,7 @@ export function createSandboxedComptimeModule(
   const implementationDigest = digest({
     protocol: LOADER_PROTOCOL_VERSION,
     source: compiled.originalSource,
-    compiler: compiled.source === compiled.executable ? "javascript" : `typescript@${ts.version}`,
+    compiler: compiled.kind === "typescript" ? `typescript@${ts.version}` : "javascript",
     exportName: compiled.exportName,
     sandbox: inspectSandbox(denoPath, runnerPath),
     limits: { timeoutMs, memoryMb, maxOutputBytes, maxInputBytes, maxRequests, maxConcurrentRequests },
@@ -229,6 +304,7 @@ function compileSandboxedModule(
   loweredSource?: string,
 ): {
   modulePath: string;
+  kind: SandboxModuleKind;
   /** Authored bytes. Always part of the implementation digest. */
   originalSource: string;
   /** Text actually compiled and executed: the lowering when one was supplied. */
@@ -238,6 +314,13 @@ function compileSandboxedModule(
 } {
   if (typeof modulePathInput !== "string") throw new TypeError("sandboxed module path must be a string");
   const modulePath = realpathSync(modulePathInput);
+  const kind = sandboxModuleKind(modulePath);
+  if (kind === undefined) {
+    throw new TypeError(
+      `sandboxed module '${modulePath}' has no format the zero-permission sandbox can evaluate; ` +
+      `it evaluates one ES module and resolves no imports, so use one of ${SANDBOX_MODULE_EXTENSIONS.join(", ")}`,
+    );
+  }
   const metadata = statSync(modulePath);
   if (!metadata.isFile() || metadata.size > maxSourceBytes) {
     throw new Error(`sandboxed module source exceeds ${maxSourceBytes} bytes or is not a regular file`);
@@ -254,20 +337,18 @@ function compileSandboxedModule(
     }
     executable = loweredSource;
   }
-  validateSandboxSource(executable, modulePath);
-  const source = /\.(?:cts|mts|ts)$/.test(modulePath)
-    ? transpileLoader(executable, modulePath)
-    : executable;
+  validateSandboxSource(executable, modulePath, kind);
+  const source = kind === "typescript" ? transpileLoader(executable, modulePath) : executable;
   const exportName = exportNameInput;
   if (typeof exportName !== "string") throw new TypeError("sandboxed module export name must be a string");
   if (!/^[$A-Z_a-z][$\w]*$/.test(exportName) && exportName !== "default") {
     throw new TypeError(`invalid module export name '${exportName}'`);
   }
-  return { modulePath, originalSource, executable, source, exportName };
+  return { modulePath, kind, originalSource, executable, source, exportName };
 }
 
-function validateSandboxSource(source: string, fileName: string): void {
-  const scriptKind = /\.[cm]?tsx?$/.test(fileName) ? ts.ScriptKind.TS : ts.ScriptKind.JS;
+function validateSandboxSource(source: string, fileName: string, kind: SandboxModuleKind): void {
+  const scriptKind = kind === "typescript" ? ts.ScriptKind.TS : ts.ScriptKind.JS;
   const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, scriptKind);
   const diagnostics = (file as ts.SourceFile & { parseDiagnostics: readonly ts.Diagnostic[] }).parseDiagnostics;
   if (diagnostics.length > 0) {
@@ -321,12 +402,24 @@ function validateLimits(
   }
 }
 
-const sandboxIdentityCache = new Map<string, Readonly<{ runnerDigest: string; runtimeVersion: string }>>();
+/**
+ * Everything about the execution sandbox that a comptime result can depend on:
+ * the runner bytes, the runtime build, and the environment the child is given.
+ * It is folded whole into `implementationDigest`, so two sandboxes that could
+ * produce different bytes cannot share one cache key.
+ */
+export interface SandboxExecutionIdentity {
+  readonly runnerDigest: string;
+  readonly runtimeVersion: string;
+  readonly environment: Readonly<Record<string, string>>;
+}
 
-function inspectSandbox(
-  denoPath: string,
-  runnerPath: string,
-): Readonly<{ runnerDigest: string; runtimeVersion: string }> {
+const sandboxIdentityCache = new Map<string, SandboxExecutionIdentity>();
+
+export function sandboxExecutionIdentity(
+  denoPath = "deno",
+  runnerPath = fileURLToPath(new URL("./loader-runner.js", import.meta.url)),
+): SandboxExecutionIdentity {
   const runnerDigest = digest(readFileSync(runnerPath, "utf8"));
   const cacheKey = `${denoPath}\0${runnerDigest}`;
   const cached = sandboxIdentityCache.get(cacheKey);
@@ -340,14 +433,24 @@ function inspectSandbox(
   if (probe.status !== 0 || !probe.stdout.trim()) {
     throw new Error(`sandbox runtime '${denoPath}' did not report a version`);
   }
-  const identity = Object.freeze({ runnerDigest, runtimeVersion: probe.stdout.trim() });
+  const identity: SandboxExecutionIdentity = Object.freeze({
+    runnerDigest,
+    runtimeVersion: probe.stdout.trim(),
+    environment: SANDBOX_ENVIRONMENT,
+  });
   sandboxIdentityCache.set(cacheKey, identity);
   return identity;
 }
 
+const inspectSandbox = sandboxExecutionIdentity;
+
 function transpileLoader(source: string, fileName: string): string {
   const output = ts.transpileModule(source, {
-    fileName,
+    // `transpileModule` derives the emitted module kind from the *file
+    // extension* and silently overrides `ModuleKind.ESNext`. The sandbox only
+    // ever evaluates an ES module, so the transpile is handed a synthetic ESM
+    // name and the authored name is used only in the diagnostics below.
+    fileName: "smithers-sandboxed-loader.mts",
     reportDiagnostics: true,
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
@@ -405,7 +508,7 @@ async function executeSandboxedModule(options: ExecutionOptions): Promise<Stable
     "--deny-ffi",
     "--deny-import",
     options.runnerPath,
-  ], { stdio: ["pipe", "pipe", "pipe"] });
+  ], { stdio: ["pipe", "pipe", "pipe"], env: sandboxEnvironment() });
   const closed = new Promise<[number | null, NodeJS.Signals | null]>((resolveClose) => {
     child.once("close", (code, signal) => resolveClose([code, signal]));
   });

@@ -72,13 +72,22 @@ export function deriveSchema(source: string, typeName: string): SchemaNode {
       case ts.SyntaxKind.NumberKeyword: return { kind: "number" };
       case ts.SyntaxKind.BooleanKeyword: return { kind: "boolean" };
       case ts.SyntaxKind.UnknownKeyword: return { kind: "unknown" };
-      case ts.SyntaxKind.NullKeyword: return { kind: "null" };
     }
     if (ts.isLiteralTypeNode(node)) {
       if (node.literal.kind === ts.SyntaxKind.TrueKeyword) return { kind: "literal", value: true };
       if (node.literal.kind === ts.SyntaxKind.FalseKeyword) return { kind: "literal", value: false };
-      if (ts.isStringLiteral(node.literal) || ts.isNumericLiteral(node.literal)) {
-        return { kind: "literal", value: ts.isNumericLiteral(node.literal) ? Number(node.literal.text) : node.literal.text };
+      // `null` in type position is a LiteralTypeNode wrapping a NullLiteral,
+      // never a bare NullKeyword TypeNode, so the keyword switch above could
+      // never reach it and `{ kind: "null" }` was dead from derivation down.
+      if (node.literal.kind === ts.SyntaxKind.NullKeyword) return { kind: "null" };
+      if (ts.isStringLiteral(node.literal)) return { kind: "literal", value: node.literal.text };
+      if (ts.isNumericLiteral(node.literal)) return { kind: "literal", value: numericLiteral(node.literal.text, false) };
+      // A negative numeric literal type is a prefix minus over the literal.
+      if (
+        ts.isPrefixUnaryExpression(node.literal) && node.literal.operator === ts.SyntaxKind.MinusToken &&
+        ts.isNumericLiteral(node.literal.operand)
+      ) {
+        return { kind: "literal", value: numericLiteral(node.literal.operand.text, true) };
       }
     }
     if (ts.isArrayTypeNode(node)) return { kind: "array", element: convert(node.elementType) };
@@ -87,9 +96,16 @@ export function deriveSchema(source: string, typeName: string): SchemaNode {
     if (ts.isTypeLiteralNode(node)) return convertMembers(node.members);
     if (ts.isTypeReferenceNode(node)) {
       const name = node.typeName.getText(file);
-      if (name === "Array" && node.typeArguments?.length === 1) return { kind: "array", element: convert(node.typeArguments[0]) };
       const declaration = declarations.get(name);
-      if (!declaration) throw new Error(`Schema.derive cannot resolve '${name}'`);
+      // The author's own declaration wins over the built-in spelling. Testing
+      // `name === "Array"` first shadowed a same-file `Array` even though the
+      // correct binding was already resolved one line down.
+      if (!declaration) {
+        if (name === "Array" && node.typeArguments?.length === 1) {
+          return { kind: "array", element: convert(node.typeArguments[0]) };
+        }
+        throw new Error(`Schema.derive cannot resolve '${name}'`);
+      }
       if (visiting.has(name)) throw new Error(`recursive durable schema '${name}' needs an explicit representation`);
       visiting.add(name);
       const result = convert(declaration);
@@ -116,6 +132,20 @@ function freezeSchema(schema: SchemaNode): SchemaNode {
       break;
   }
   return Object.freeze(schema);
+}
+
+/**
+ * Mirrors `schema-derive.ts`, which rejects a non-finite numeric literal and
+ * normalizes `-0` to `0`. Without the guard `type T = { a: 1e400 }` derived a
+ * literal whose value was `Infinity` — a schema node no encoder can round-trip.
+ */
+function numericLiteral(text: string, negative: boolean): number {
+  const magnitude = Number(text);
+  if (!Number.isFinite(magnitude)) {
+    throw new Error(`Schema.derive does not support the non-finite numeric literal '${negative ? "-" : ""}${text}'`);
+  }
+  const value = negative ? -magnitude : magnitude;
+  return value === 0 ? 0 : value;
 }
 
 function propertyName(name: ts.PropertyName): string {

@@ -204,7 +204,12 @@ function convertObject(
     const seen = new Set<string>();
     for (const symbol of symbols) {
       const name = symbol.getName();
-      if (name.startsWith("__@")) unsupported("a symbol-keyed property");
+      // `getName()` unescapes, so an authored string key literally spelled
+      // `"__@x"` arrived here indistinguishable from a symbol key. The escaped
+      // name is what actually separates them: TypeScript escapes a leading
+      // `__` to `___`, so the author's key becomes `___@x` while a real
+      // symbol-keyed property keeps its `__@` marker.
+      if (String(symbol.escapedName).startsWith("__@")) unsupported("a symbol-keyed property");
       if (symbol.flags & (ts.SymbolFlags.Method | ts.SymbolFlags.Function)) {
         unsupported(`property ${JSON.stringify(name)}, which is a method`);
       }

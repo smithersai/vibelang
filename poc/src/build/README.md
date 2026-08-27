@@ -353,6 +353,39 @@ purely AST/checker level, and execution happens only inside the existing
 no-permission Deno sandbox. Built-in loaders stay in process; a custom loader is
 always sandboxed.
 
+### The hermeticity boundary
+
+`loader-runner.js` denies the ambient globals; three channels are closed outside
+it, because a denylist inside the process cannot see them.
+
+- **The child's environment is pinned, not inherited.** `--deny-env` stops the
+  *loader* from reading `Deno.env`; it never stopped the runtime from reading its
+  own. `TZ` reached `Date.parse` and every locale-sensitive builtin, and
+  `DENO_V8_FLAGS` injected arbitrary V8 flags (`--expose-gc` alone hands a loader
+  observable garbage collection). The sandbox is spawned with `TZ=UTC`,
+  `LC_ALL=C`, `LANG=C` and an allowlist of only what the process needs to start.
+- **`Date.parse` accepts only time-zone-independent spellings** — a date-only
+  ISO-8601 form, which the specification fixes to UTC, or a date-time with an
+  explicit offset. `2020-01-01T00:00:00`, `Jan 1 2020` and `2020/01/01` are
+  interpreted in the host's local time zone and are denied the way `Date.now` is.
+- **Stack traces name no host path.** The loader module runs from a `data:` URL,
+  but every frame beneath it belonged to `loader-runner.js` and carried its
+  absolute path, so `error.stack` reported where the toolchain happens to be
+  checked out. `Error.prepareStackTrace` is installed before `Error` is frozen and
+  keeps only `data:` frames, redacting the rest to `smithers:loader-runner`.
+
+`sandboxExecutionIdentity()` is the record folded whole into every
+`implementationDigest`: runner digest, runtime version, and the pinned
+environment. The environment belongs there because the first two could not
+distinguish two sandboxes that produced different bytes.
+
+Residual and deliberately not closed: the maximum recursion depth a loader can
+reach is the host thread's stack size (pinning it with `--stack-size` would
+change how deep a legitimate loader may recurse), and `WebAssembly` is reachable
+— including a `Memory({ shared: true })` whose buffer is a real
+`SharedArrayBuffer` — though with no threads and `Atomics` denied it exposes no
+measured nondeterminism.
+
 Because the sandbox resolves no modules at all, recognition also produces the
 lowered module the sandbox receives: the compiler-owned import is erased and the
 registration statement becomes `export default <the loader function>`, which is
@@ -368,7 +401,15 @@ Discovery has two entry points. `compileSourceAssetModules` accepts a
 auto-discovers any file in `sources` that spells the registration. The
 auto-discovery trigger is spelling-only (a `"smithers:comptime"` mention plus a
 default-exported `*.loader(...)` call) and grants nothing; every candidate still
-has to survive checker-identity recognition. Because the sandbox snapshots the
+has to survive checker-identity recognition.
+
+It also imposes nothing. A guess is not a claim, so an auto-discovered candidate
+that fails **before** its default export resolves to the compiler-owned
+`comptime.loader` — `LoaderRegistrationAnalysis.identified` — is simply not a
+loader and is dropped without diagnostics; an ordinary project file cannot be
+made a build error by spelling. A file named in `loaders:` is the author
+asserting it *is* one and keeps every diagnostic, and so does a discovered file
+that does resolve to `comptime.loader` and is merely malformed. Because the sandbox snapshots the
 file on disk, a registration must be a real project file: an in-memory-only
 source, or a compiled source that disagrees with the bytes on disk, fails
 closed. Loader files also participate in the same code/asset file-identity
@@ -395,7 +436,7 @@ diagnostic located in the authored importer.
 | Code | Meaning |
 | --- | --- |
 | `VCT1300` | the loader file does not parse |
-| `VCT1301` | module shape: a non-comptime import, import-equals, re-export, dynamic import, a file that is not real/regular/inside the root, a non-`.ts`/`.js` family extension, or an oversized file |
+| `VCT1301` | module shape: a non-comptime import, import-equals, re-export, dynamic import, a file that is not real/regular/inside the root, a name the sandbox cannot evaluate (`.ts`, `.mts`, `.js`, `.mjs` only — the sandbox evaluates one ES module and has no CommonJS, so `.cts`/`.cjs` are not loader files and `.d.ts` has no emit), or an oversized file |
 | `VCT1302` | registration shape: not exactly one `export default`, an `export =`, or a default export that is not a call |
 | `VCT1303` | the call does not resolve to `comptime.loader` from `"smithers:comptime"` |
 | `VCT1304` | the call has no imported compiler identity at all |

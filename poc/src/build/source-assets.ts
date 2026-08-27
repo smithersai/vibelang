@@ -815,7 +815,17 @@ const assertSafeGeneratedModule = (
   for (const statement of sourceFile.statements) {
     if (ts.isImportDeclaration(statement)) continue
     if (ts.isVariableStatement(statement)) {
-      if ((statement.declarationList.flags & ts.NodeFlags.Const) === 0) {
+      // An exact declaration form, not a bit test. `ts.NodeFlags.AwaitUsing` is
+      // `Const | Using`, so `flags & Const` admits `await using`, which is an
+      // immutable binding — the meaning that test carries everywhere else — but
+      // not inert data: it evaluates a `Symbol.asyncDispose` lookup and a
+      // top-level await inside a module this compiler stamps `@throws {never}`,
+      // and it is a SyntaxError under the declared engine. This grammar is the
+      // containment boundary for loader output, so it must name the one form it
+      // accepts rather than test one bit of it.
+      const declarationForm = statement.declarationList.flags &
+        (ts.NodeFlags.Const | ts.NodeFlags.Let | ts.NodeFlags.Using)
+      if (declarationForm !== ts.NodeFlags.Const) {
         throw new TypeError("compiler-generated asset bindings must be const")
       }
       for (const declaration of statement.declarationList.declarations) {
@@ -978,6 +988,14 @@ const registerSourceLoaders = (
       continue
     }
     const analysis = recognizeLoaderRegistration({ fileName: candidate.canonical, source: text })
+    // An auto-discovered candidate was selected by a text trigger, not by the
+    // author. Until recognition proves the default export really is the
+    // compiler-owned `comptime.loader`, the honest verdict is "this is not a
+    // loader", so it is dropped rather than turned into a fatal VCT13xx. A
+    // declared loader path is the author asserting otherwise, and keeps every
+    // diagnostic; so does a discovered file that *is* a registration and is
+    // merely malformed.
+    if (candidate.explicit === false && analysis.identified === false) continue
     for (const entry of analysis.diagnostics) diagnostics.push({ ...entry })
     const registration = analysis.registration
     if (registration === undefined) continue
