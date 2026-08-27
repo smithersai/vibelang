@@ -133,6 +133,32 @@ describe("Stream", () => {
     if (!result.ok) expect(result.error).toBe(failure);
   });
 
+  test("buffer carries absent elements like every other operator", async () => {
+    // buffer is the one operator that routes elements through a Queue. An
+    // element must never vanish, or change the stream's failure channel,
+    // because of its value.
+    const absent: readonly (string | null | undefined)[] = ["a", undefined, null, "d"];
+    const source = () => Stream.fromIterable<string | null | undefined>(absent);
+    for (const build of [
+      (stream: Stream<string | null | undefined>) => stream.buffer(1),
+      (stream: Stream<string | null | undefined>) => stream.buffer(4),
+      (stream: Stream<string | null | undefined>) => stream.map((value) => value).buffer(2),
+      (stream: Stream<string | null | undefined>) => stream.buffer(2).map((value) => value),
+    ]) {
+      const result = __vsInspectResult(await build(source()).runCollect());
+      expect(result.ok).toBe(true);
+      if (result.ok) expect([...result.value]).toEqual([...absent]);
+    }
+
+    // Every lazy operator already agreed; keep them in the same assertion so a
+    // future divergence is caught here rather than only in buffer.
+    expect((await source().map((value) => value).runCollect()).unwrap()).toEqual([...absent]);
+    expect((await source().filter(() => true).runCollect()).unwrap()).toEqual([...absent]);
+    expect((await source().take(4).runCollect()).unwrap()).toEqual([...absent]);
+    expect((await source().mapConcurrent(async (value) => value, 2).runCollect()).unwrap())
+      .toEqual(expect.arrayContaining([...absent]));
+  });
+
   test("early buffered break closes its source and waits for return cleanup", async () => {
     let nextValue = 0;
     let cleanupJoined = false;

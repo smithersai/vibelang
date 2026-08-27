@@ -89,12 +89,6 @@ function validateCapacity(capacity: number): void {
   }
 }
 
-function validateElement(value: unknown): void {
-  if (value === null || value === undefined) {
-    throw new TypeError("Queue cannot hold null or undefined");
-  }
-}
-
 function cancellationFrom(options: QueueCancellation | undefined): CancellationInput | undefined {
   if (options === undefined) return undefined;
   if (options instanceof Cancellation || options instanceof AbortSignal) return options;
@@ -144,7 +138,16 @@ function failure<ErrorType extends Error>(error: ErrorType): Result<never, Error
   return RuntimeValues.failure(error);
 }
 
-/** A bounded, FIFO, multi-producer/multi-consumer asynchronous queue. */
+/**
+ * A bounded, FIFO, multi-producer/multi-consumer asynchronous queue.
+ *
+ * `null` and `undefined` are ordinary elements. Emptiness is carried by the
+ * buffer's length and by the outer `undefined` of `QueueTryResult`, never by an
+ * element's value, so absence never has to be encoded out of the element type
+ * (`specification/type-system.mdx`; `guide/concurrency.mdx`: "Nonblocking
+ * operations return a tagged result so `null` and `undefined` remain valid
+ * element values").
+ */
 export class Queue<Value> {
   constructor(capacity: number) {
     validateCapacity(capacity);
@@ -173,7 +176,6 @@ export class Queue<Value> {
   get isShutdown(): boolean { return stateOf(this).closed !== undefined; }
 
   offer(value: Value, options?: QueueCancellation): Promise<QueueResult<void>> {
-    validateElement(value);
     const cancellation = cancellationFrom(options);
     const state = stateOf(this);
     if (state.closed) return Promise.resolve(failure(state.closed));
@@ -214,7 +216,6 @@ export class Queue<Value> {
    * allowing shutdown to remain distinct from temporary backpressure.
    */
   tryOffer(value: Value): QueueTryResult<void> {
-    validateElement(value);
     const state = stateOf(this);
     if (state.closed) return failure(state.closed);
 
@@ -231,15 +232,21 @@ export class Queue<Value> {
   take(options?: QueueCancellation): Promise<QueueResult<Value>> {
     const cancellation = cancellationFrom(options);
     const state = stateOf(this);
+    // Same precedence as `offer`: first the refusal this Queue can never take
+    // back (closed with nothing left to drain), then the caller's cancellation
+    // checkpoint, and only then the non-blocking fast path. Reading the buffer
+    // ahead of the checkpoint would let a cancelled consumer keep consuming —
+    // the values are removed from the Queue and delivered to a caller that has
+    // already asked to stop, which no later cancellation can undo.
+    if (state.closed && state.items.length === 0) return Promise.resolve(failure(state.closed));
+    if (cancellation) {
+      const cancelled = cancellationError(cancellation);
+      if (cancelled) return Promise.resolve(failure(cancelled));
+    }
     if (state.items.length > 0) {
       const value = state.items.shift() as Value;
       this.#admitOldestOfferer(state);
       return Promise.resolve(success(value));
-    }
-    if (state.closed) return Promise.resolve(failure(state.closed));
-    if (cancellation) {
-      const cancelled = cancellationError(cancellation);
-      if (cancelled) return Promise.resolve(failure(cancelled));
     }
 
     const pending = new Promise<QueueResult<Value>>((resolve) => {

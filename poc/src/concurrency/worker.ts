@@ -26,7 +26,25 @@ const MAX_VALUE_DEPTH = 64;
 const DEFAULT_MAX_CONCURRENCY = 8;
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_STARTUP_TIMEOUT_MS = 10_000;
-const RESERVED_FUNCTION_NAMES = new Set(["__proto__", "constructor", "prototype", "terminate", "then"]);
+/**
+ * Derived, never hand-maintained. Two disjoint hazards, each taken from the
+ * shape of the object it protects rather than from a remembered list of names:
+ *
+ * - `createHandle` defines `terminate` on the handle, and `TypedWorker.spawn`
+ *   returns that handle through a Promise, so a `then` property would hijack
+ *   the caller's `await`. `prototype` is refused for the same shape reason.
+ * - `serveWorker` resolves a contract name against the imported module
+ *   namespace, whose prototype chain includes `Object.prototype`. Every own
+ *   name there therefore reads back as a function nobody exported. Deriving the
+ *   names keeps the deny list correct when the host adds another member; the
+ *   own-property test in `serveWorker` is the structural half of the same fix.
+ */
+const RESERVED_FUNCTION_NAMES: ReadonlySet<string> = new Set<string>([
+  "terminate",
+  "then",
+  "prototype",
+  ...Object.getOwnPropertyNames(Object.prototype),
+]);
 
 /** The library API is intentionally provisional while `spawn module {}` remains design direction. */
 export const TYPED_WORKER_API_STATUS = "provisional" as const;
@@ -564,6 +582,14 @@ function eventDetail(event: ErrorEvent): string {
   return `${event.message || "uncaught worker error"}${location}`;
 }
 
+function responseValidationError(cause: unknown): WorkerProtocolError {
+  return cause instanceof WorkerProtocolError
+    ? cause
+    : new WorkerProtocolError(
+      `worker response validation failed: ${cause instanceof Error ? cause.message : "unknown error"}`,
+    );
+}
+
 class WorkerController {
   readonly #raw: Worker;
   readonly #port: MessagePort;
@@ -708,12 +734,7 @@ class WorkerController {
       }
       this.#acceptCallMessage(message);
     } catch (cause) {
-      this.#fail(
-        cause instanceof WorkerProtocolError
-          ? cause
-          : new WorkerProtocolError(`worker response validation failed: ${cause instanceof Error ? cause.message : "unknown error"}`),
-        true,
-      );
+      this.#fail(responseValidationError(cause), true);
     }
   }
 
@@ -763,14 +784,29 @@ class WorkerController {
     job.timer = undefined;
     try {
       if (!job.consumerSettled) {
-        job.consumerSettled = true;
-        if (message.kind === "result") {
-          if (typeof message.payload !== "string") throw new WorkerProtocolError("worker Result payload must be a string");
-          job.resolve(decodeResult(message.payload, workerValueCodec));
-        } else {
-          if (typeof message.error !== "string") throw new WorkerProtocolError("worker fault Error must be a string");
-          job.reject(decodeError(message.error));
+        // Decode before claiming the settlement. The job has already left both
+        // #queue and #active, so #settleAll can no longer reach it: if a decode
+        // throws after `consumerSettled` is set, nothing — not #fail, not
+        // terminate() — can ever settle the caller's Promise again. Deciding
+        // the outcome first, and rejecting the caller on the way out, keeps a
+        // response the host cannot decode from leaking that Promise forever.
+        let outcome: { readonly ok: true; readonly value: Result<unknown, Error> } | { readonly ok: false; readonly error: Error };
+        try {
+          if (message.kind === "result") {
+            if (typeof message.payload !== "string") throw new WorkerProtocolError("worker Result payload must be a string");
+            outcome = { ok: true, value: decodeResult(message.payload, workerValueCodec) };
+          } else {
+            if (typeof message.error !== "string") throw new WorkerProtocolError("worker fault Error must be a string");
+            outcome = { ok: false, error: decodeError(message.error) };
+          }
+        } catch (cause) {
+          job.consumerSettled = true;
+          job.reject(responseValidationError(cause));
+          throw cause;
         }
+        job.consumerSettled = true;
+        if (outcome.ok) job.resolve(outcome.value);
+        else job.reject(outcome.error);
       }
     } finally {
       this.#drain();
@@ -932,6 +968,10 @@ async function serveWorker(bootstrap: WorkerBootstrap): Promise<void> {
     const loaded = await import(moduleUrl) as Record<string, unknown>;
     const exports = new Map<string, (input: unknown) => unknown>();
     for (const name of functions) {
+      // An own-property test, not a plain read: `loaded[name]` walks the module
+      // namespace's prototype chain, so an inherited member would bind as if the
+      // module had exported it and answer calls with silent wrong data.
+      if (!Object.hasOwn(loaded, name)) throw new TypeError(`worker module does not export function ${name}`);
       const implementation = loaded[name];
       if (typeof implementation !== "function") throw new TypeError(`worker module does not export function ${name}`);
       exports.set(name, implementation as (input: unknown) => unknown);

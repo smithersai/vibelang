@@ -107,6 +107,71 @@ describe("Queue", () => {
     expect(closed?.isError()).toBe(true);
   });
 
+  test("carries null and undefined as ordinary elements", async () => {
+    // The try-operations tag their outcome, so emptiness is never confused with
+    // an element that happens to be absent. Absence must therefore stay inside
+    // the element type instead of being encoded out of it.
+    const queue = new Queue<string | null | undefined>(3);
+    expect((await queue.offer("x")).isOk()).toBe(true);
+    expect((await queue.offer(undefined)).isOk()).toBe(true);
+    expect((await queue.offer(null)).isOk()).toBe(true);
+    expect(queue.size).toBe(3);
+    expect(await takeValue(queue)).toBe("x");
+    expect(await takeValue(queue)).toBeUndefined();
+    expect(await takeValue(queue)).toBeNull();
+    expect(queue.size).toBe(0);
+
+    // A present `undefined` still reads back as a Result, so the outer
+    // `undefined` keeps meaning "empty right now" and nothing else.
+    expect(queue.tryTake()).toBeUndefined();
+    expect(queue.tryOffer(undefined)?.isOk()).toBe(true);
+    const taken = queue.tryTake();
+    if (taken === undefined) throw new Error("a buffered undefined must read back as a Result");
+    expect(taken.unwrap()).toBeUndefined();
+
+    const handoff = new Queue<undefined>(1);
+    const waiting = handoff.take();
+    await handoff.offer(undefined);
+    expect((await waiting).unwrap()).toBeUndefined();
+  });
+
+  test("take observes an already-cancelled token before draining a buffered value", async () => {
+    const queue = new Queue<number>(2);
+    await queue.offer(1);
+    const cancellation = new CancellationSource();
+    cancellation.cancel("consumer left");
+
+    const result = __vsInspectResult(await queue.take(cancellation));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toBeInstanceOf(Cancelled);
+    // The value must not have been consumed on the cancelled caller's behalf.
+    expect(queue.size).toBe(1);
+    expect(await takeValue(queue)).toBe(1);
+
+    // Its sibling already behaved this way, and both stay usable uncancelled.
+    const live = new CancellationSource();
+    expect((await queue.offer(2, live)).isOk()).toBe(true);
+    expect((await queue.take(live)).unwrap()).toBe(2);
+  });
+
+  test("shutdown drain and closed refusal keep their precedence over cancellation", async () => {
+    const drained = new Queue<number>(2);
+    await drained.offer(1);
+    drained.shutdown("bye");
+    // Documented: shutdown lets accepted buffered values drain.
+    expect(await takeValue(drained)).toBe(1);
+    expect((await drained.take()).unwrapOr((error) => error)).toBeInstanceOf(QueueClosed);
+
+    const cancellation = new CancellationSource();
+    cancellation.cancel("consumer left");
+    const empty = new Queue<number>(1);
+    empty.shutdown("bye");
+    // Closed-with-nothing-to-drain is the refusal this Queue can never take
+    // back, so it outranks the cancellation checkpoint on both halves.
+    expect((await empty.take(cancellation)).unwrapOr((error) => error)).toBeInstanceOf(QueueClosed);
+    expect((await empty.offer(1, cancellation)).unwrapOr((error) => error)).toBeInstanceOf(QueueClosed);
+  });
+
   test("QueueClosed is nominal and wire round-trips", () => {
     const decoded = decodeError(encodeError(new QueueClosed("wire close")));
     expect(decoded).toBeInstanceOf(QueueClosed);

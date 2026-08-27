@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   TypedWorker,
   WorkerCallTimeout,
@@ -212,6 +215,94 @@ describe("provisional typed workers", () => {
     const failure = await rejection(TypedWorker.spawn<MissingContract>(fixtureUrl, { functions: ["absent"] }));
     expect(failure).toBeInstanceOf(WorkerCrashed);
     expect(failure.message).toContain("does not export function absent");
+  });
+
+  test("a name reachable on the module namespace's prototype is not an export", async () => {
+    // `loaded[name]` used to be a plain read, so an inherited member bound as if
+    // the module had exported it: `toString` answered "[object Undefined]" and
+    // `isPrototypeOf` answered `false`, both silent wrong data. Every own name
+    // of Object.prototype is in the class, so the deny list is derived from it
+    // rather than remembered, and the worker realm additionally requires an own
+    // property. Names the fixture really does export are unaffected.
+    for (const name of Object.getOwnPropertyNames(Object.prototype)) {
+      const refused = await rejection(TypedWorker.spawn(fixtureUrl, { functions: [name] }));
+      expect(refused.message).toContain("invalid typed worker function name");
+    }
+    for (const name of ["terminate", "then", "prototype"]) {
+      const refused = await rejection(TypedWorker.spawn(fixtureUrl, { functions: [name] }));
+      expect(refused.message).toContain("invalid typed worker function name");
+    }
+    const worker = await spawn(["echo", "reflectAbsence"]);
+    try {
+      expect((await worker.echo("still fine")).unwrap()).toBe("still fine");
+    } finally {
+      await worker.terminate();
+    }
+  });
+
+  test("a response the host cannot decode rejects the caller instead of leaking its Promise", async () => {
+    // A Promise that never settles is worse than a rejection: nothing upstream
+    // can time out, log, or retry it, and neither #fail nor terminate() can
+    // reach a job that has already left both #queue and #active. Every await
+    // below therefore carries a deadline — a leak would hang a plain await
+    // rather than fail it.
+    const directory = await mkdtemp(join(tmpdir(), "smithers-worker-codec-"));
+    try {
+      const modulePath = join(directory, "realm-only.ts");
+      await writeFile(modulePath, [
+        `import { registerErrorCodec } from ${JSON.stringify(new URL("../runtime/errors.ts", import.meta.url).href)};`,
+        `import { __vsResultFailure } from ${JSON.stringify(new URL("../runtime/result.ts", import.meta.url).href)};`,
+        "export class RealmOnlyError extends Error {",
+        "  constructor(readonly code: string) { super(`realm-only: ${code}`); this.name = \"RealmOnlyError\"; }",
+        "}",
+        "registerErrorCodec(RealmOnlyError as never, \"smithers:test/RealmOnly@1\", {",
+        "  encode: (error: RealmOnlyError) => ({ code: error.code }),",
+        "  decode: () => { throw new TypeError(\"unreachable in this realm\"); },",
+        "});",
+        "export function ok(input: string): string { return `ok:${input}`; }",
+        "export function faults(code: string): never { throw new RealmOnlyError(code); }",
+        "export function failedResult(code: string) { return __vsResultFailure(new RealmOnlyError(code)); }",
+        "",
+      ].join("\n"));
+      const moduleUrl = new URL(`file://${modulePath}`);
+
+      interface RealmOnlyContract {
+        ok(input: string): string;
+        faults(code: string): never;
+        failedResult(code: string): never;
+      }
+
+      for (const method of ["faults", "failedResult"] as const) {
+        const worker = await TypedWorker.spawn<RealmOnlyContract>(moduleUrl, {
+          functions: ["ok", "faults", "failedResult"],
+          timeoutMs: 60_000,
+        });
+        const undecodable = worker[method]("boom");
+        const settlement = await Promise.race([
+          undecodable.then(() => "resolved", (cause: unknown) => cause),
+          Bun.sleep(2_000).then(() => "LEAKED"),
+        ]);
+        expect(settlement).toBeInstanceOf(WorkerProtocolError);
+        await worker.terminate();
+      }
+
+      // The undecodable response is a protocol violation, so the controller
+      // still fails the worker; a healthy sibling issued before it settles.
+      const worker = await TypedWorker.spawn<RealmOnlyContract>(moduleUrl, {
+        functions: ["ok", "faults", "failedResult"],
+        timeoutMs: 60_000,
+      });
+      const sibling = worker.ok("sibling");
+      const undecodable = worker.faults("boom");
+      const both = await Promise.race([
+        Promise.allSettled([sibling, undecodable]),
+        Bun.sleep(2_000).then(() => "LEAKED" as const),
+      ]);
+      expect(both).not.toBe("LEAKED");
+      await worker.terminate();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   test("round-trips successful Result input explicitly", async () => {
