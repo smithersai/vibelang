@@ -185,7 +185,7 @@
     "build:poc": "npm run clean:poc && node node_modules/typescript/lib/tsc.js -p poc/tsconfig.emit.json && node scripts/copy-poc-assets.mjs",
     "build": "npm run clean:dist && npm run build:poc && node node_modules/typescript/lib/tsc.js -p tsconfig.build.json",
     "check": "npm run build:poc && node node_modules/typescript/lib/tsc.js -p tsconfig.build.json --noEmit && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && node scripts/go-test-gate.mjs",
-    "test": "npm run build && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && node scripts/node-test-gate.mjs && node scripts/go-test-gate.mjs",
+    "test": "npm run build && node node_modules/typescript/lib/tsc.js -p tsconfig.compat.json && node scripts/node-test-gate.mjs && node scripts/poc-test-gate.mjs && node scripts/go-test-gate.mjs",
     "verify:pack": "node scripts/verify-pack.mjs",
     "release:verify": "npm test && npm --prefix docs run build && npm run verify:pack",
     "typescript:fork:status": "node scripts/vendor-typescript.mjs status",
