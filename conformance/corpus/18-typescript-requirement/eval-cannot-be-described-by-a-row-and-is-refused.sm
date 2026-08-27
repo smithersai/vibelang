@@ -1,0 +1,10 @@
+// `eval` runs a string as code in the host's own scope, so no row can describe
+// what it reads, throws, or requires. The name still resolves; the operation is
+// refused.
+function compute(source: string): string {
+  return `${eval(source)}`
+}
+
+export function main(): string[] {
+  return [compute("1 + 1")]
+}

@@ -428,11 +428,13 @@ describe("checked .sm project rows", () => {
         "//    (it is `@throws {never}`) and no requirement.",
         "export function shout(word: string): string { return write(word) }",
         "",
-        "// 2. `any` in a signature, `any` in a body, and a call to `eval` are",
-        "//    usable and contribute no requirement — the three condition sites",
-        "//    that were only ever about portability.",
+        "// 2. `any` in a signature and `any` in a body are usable and",
+        "//    contribute no requirement — two of the three condition sites that",
+        "//    were only ever about portability. The third, `eval`, is asserted",
+        "//    separately below: it is refused as ambient host authority",
+        "//    (SMITHERS1604) rather than charged a requirement, so it cannot",
+        "//    live in a program this test needs to check clean.",
         "export function widen(value: any): string { const loose: any = value; return `${loose}` }",
-        "export function evaluate(source: string): string { return `${eval(source)}` }",
         "",
         "// 3. an UNANNOTATED foreign call still charges the checked Panic",
         "//    channel. Only the requirement half of that site was withdrawn.",
@@ -459,7 +461,6 @@ describe("checked .sm project rows", () => {
       }
       expect(rows.shout!).toEqual({ failures: [], requirements: [] });
       expect(rows.widen!).toEqual({ failures: [], requirements: [] });
-      expect(rows.evaluate!).toEqual({ failures: [], requirements: [] });
 
       // Survivor direction: the foreign Panic channel, the nominal Context row,
       // and Layer subtraction all still charge exactly what they charged.
@@ -486,6 +487,23 @@ describe("checked .sm project rows", () => {
       expect(unsatisfied).toHaveLength(1);
       expect(unsatisfied[0]!.message).toContain("Logger");
       expect(unsatisfied[0]!.message).not.toContain("TypeScript");
+
+      // The third condition site. `eval` used to charge the withdrawn
+      // `TypeScript` requirement; when that member went, it charged nothing at
+      // all — and `eval("process.platform")` then returned `darwin` from a
+      // function whose row read `failures: [] requirements: []`. The withdrawal
+      // is still complete (no row anywhere names `TypeScript`), and the site is
+      // now owned by the host-global rule instead. See
+      // language/host-global-allowlist.test.ts for the full class and both
+      // directions.
+      const evaluated = analyzeProject([{
+        fileName: "main.sm",
+        source: "export function evaluate(source: string): string { return `${eval(source)}` }\n",
+      }], { rootDir: root });
+      expect(evaluated.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(["SMITHERS1604"]);
+      for (const [, message] of evaluated.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.message])) {
+        expect(message).not.toContain("TypeScript");
+      }
     } finally {
       await rm(root, { recursive: true });
     }

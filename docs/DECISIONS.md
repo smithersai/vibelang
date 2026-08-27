@@ -96,6 +96,36 @@ feature classification, and the portability pin all withdrawn.
 - **Direction:** Each reinterpretation is a per-file dialect divergence that no
   editor, linter, or formatter will flag. The cost scales badly, so the budget
   is small and each use must earn its place.
+- **Locked:** `smthrs/result` and the Smithers runtime are compiler-owned and are
+  not required to be authored in Smithers. This is structural, not a
+  convenience: `result` is the lowering target, so emitted code imports it and
+  authoring it in the language whose lowering depends on it is circular. The
+  compiler links it, `!`/`expect` are rejected inside it, and its public API is
+  instance methods, which `.sm` cannot author because `this` is never a Result
+  operand. A standard library written in Smithers may exclude these modules
+  without being incomplete.
+- **Open:** Whether Smithers gains an **error-extraction form**. The language
+  currently has no way to get the error value out of a Result — `!` propagates
+  it and `match` is callable but not authorable — so `tryRecover`, `tapError`,
+  `mapError`, `partition`'s error half, and `flatten` cannot be written in
+  Smithers. This is a real language feature with a spelling to choose, and it is
+  the root of most of the unauthorable API surface.
+- **Locked:** Which expression placements accept `!` is now normative; see
+  [Failure Semantics](/specification/failures) §Accepted Placements. The rule is
+  five conditions, the first being that every node enclosing the `!` up to the
+  nearest statement or arrow is one of seven forms. It explains rather than
+  enumerates: the walk stops at the nearest statement, which is why `if (r!)`
+  and `switch (r!)` are accepted and every expression-nested position is not.
+  Measured over 115 cases; 34 accepted forms.
+- **Locked:** Calling `panic(...)` does not widen a return type into
+  `Result<A, Panic>`. This follows from the existing rules rather than being a
+  new decision: panic is tracked separately from ordinary recoverable Error
+  variants, and ordinary Result recovery must not swallow it. `E` is the
+  expected-error channel and a panic is not an expected error, so forcing the
+  widening puts the panic where `unwrapOr`/`recover`/`match` consume it. A
+  function that validates an argument or refuses a forgery must be able to abort
+  with a plain return type. An author may still annotate `Result<A, Panic>`
+  explicitly; the prohibition is on the compiler forcing it.
 - **Locked:** Result values are must-use: a Result must be returned, awaited when
   wrapped in a Promise, matched, transformed, explicitly inspected, or
   propagated with `!`. Silently discarding one is a compile error.

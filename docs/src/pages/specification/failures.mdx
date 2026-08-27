@@ -86,6 +86,52 @@ The compiler MUST include the propagated Result's error type in the enclosing fu
 
 At an explicit non-Result boundary, unsafe extraction MAY throw at runtime and MUST be visually distinct in API naming or diagnostics.
 
+### Accepted Placements
+
+`!` is not accepted in every expression position. The lowering emits an early return, so a placement is sound only where that return preserves the authored evaluation order — the same constraint that governed the withdrawn expression-form grammar.
+
+A `!` on a Result operand MUST be accepted if and only if all five hold.
+
+**1. Placement.** Walking outward from the `!` expression, every enclosing node until the nearest statement or arrow function MUST be one of exactly seven forms:
+
+- a parenthesized expression
+- an `await` expression
+- an `as` expression
+- a property access, where the `!` expression is the **object**
+- a `??` binary expression, where the `!` expression is the **left** operand
+- a variable declaration whose initializer is the `!`, in a list with **exactly one** declarator
+- a variable declaration list with **exactly one** declarator
+
+**2.** The `!` MUST NOT be in a repeated loop header.
+**3.** The enclosing function MUST declare a Result channel or infer a non-empty failure set.
+**4.** The `!` MUST NOT be inside a `try` block that has a `catch` clause.
+**5.** The operand's checker-derived provenance MUST be a Result.
+
+Because the walk stops at the nearest **statement**, any construct whose child is directly a statement position admits a `!`. That is why `if (r!)`, `switch (r!)`, and `for (let i = r!; …)` are accepted while every expression-nested position is not.
+
+Two consequences are easy to get wrong and MUST be read from the rule rather than guessed:
+
+```ts
+r!.length        // accepted — property access with the ! as object
+r!.trim()        // rejected — the allowance ends when the member is called
+r![0]            // rejected — element access is not property access
+r! ?? "fallback" // accepted — ! is the left operand
+maybe ?? r!      // rejected — ! is the right operand
+f(r!)            // rejected — call argument, at any nesting depth
+```
+
+A rejected placement MUST be a diagnostic, never a silent lowering. Four distinct conditions refuse a `!` and a reader MUST NOT expect one code to cover them: placement, repeated loop header, no enclosing Result channel, presence of a `catch`, and non-Result provenance are separately diagnosed.
+
+Three further contracts disqualify the **enclosing member** from hosting any `!` rather than rejecting the placement: getters and constructors, generators, and class static blocks.
+
+## Compiler-Owned Modules
+
+`smthrs/result` and the Smithers runtime are **compiler-owned** and MUST NOT be required to be authored in Smithers.
+
+The reason is structural rather than a matter of convenience. `smthrs/result` is the lowering target: emitted code imports it, so authoring it in the language whose lowering depends on it is circular. The compiler links it directly, `!` and `expect` are rejected inside it, and its public API is instance methods — which `.sm` cannot author, because `this` is never a Result operand.
+
+A standard library written in Smithers MAY therefore exclude these modules without being incomplete.
+
 ## Matching and Transformation
 
 Result values MUST provide a quality-of-life API modelled on the
@@ -129,6 +175,14 @@ Result.all  Result.allAsync  Result.partition  Result.partitionAsync
 Result.try  Result.tryPromise  Result.codec
 ```
 
+### Authorability
+
+The API above is the contract Smithers programs may *call*. It is not a claim that every member can be *authored* in Smithers.
+
+Members that must inspect a failure value — `tryRecover`, `tapError`, `mapError`, and the error half of `partition` — are not authorable today, because the language has no form that extracts the error from a Result: `!` propagates it and `match` is a method `.sm` can call but not define. `flatten` is likewise unauthorable, because `!` marks its own output as a plain value without checking, so a `Result<Result<A, E>, E>` cannot be unwrapped one level.
+
+**Open.** Whether Smithers gains an error-extraction form is undecided. It is a real language feature with a spelling to choose, not an oversight, and it is the root of most of the unauthorable members. Until it is decided, these members are supplied by the compiler-owned runtime.
+
 `match` MUST require both success and error branches. Transformations MUST preserve or correctly combine the Result error type. Async variants MUST return a Promise of the Result rather than a nested Result.
 
 Smithers MUST NOT expose `Result.ok`, `Result.err`, or a `TaggedError` factory: ordinary `return`, `throw`, and `class ... extends Error` construct those. Smithers MUST NOT require `Result.gen`/`yield*` do-notation, because postfix `!` already provides propagation.
@@ -163,6 +217,16 @@ A caller MUST propagate panic, explicitly catch it, or use a trusted adapter tha
 The compiler MUST recognize trusted JSDoc/declaration metadata at the boundary. `@throws {never}` removes the default panic case; `@throws {T}` declares the stated foreign error channel. These annotations are trust claims and MUST remain visible in declarations and tooling. Exact overload, declaration-merging, generic, and multiple-tag rules remain open.
 
 `Reflect.panic` and compiler/runtime invariant failures enter the same distinguished panic channel. Ordinary Result recovery MUST NOT swallow panic implicitly.
+
+### Panic Does Not Widen a Return Type
+
+Calling `panic(...)` MUST NOT force a function's return type to widen into `Result<A, Panic>`.
+
+This follows from the two rules above rather than being a new decision. Panic is *tracked separately from ordinary recoverable Error variants*, and ordinary Result recovery *MUST NOT swallow it*. `E` is the expected-error channel; a panic is by definition not an expected error. Requiring a panicking function to return `Result<A, Panic>` places the panic inside `E`, where `unwrapOr`, `recover`, and `match` consume it as an ordinary failure — which is precisely what this page forbids, and it silently removes the panic from the caller's channel.
+
+A function that validates an argument, refuses a forgery, or asserts an invariant MUST therefore be able to abort with `panic(...)` while keeping a plain return type.
+
+An author MAY still annotate `Result<A, Panic>` explicitly to materialize a panic as a value; that is how panic is made explicitly catchable. The prohibition is on the compiler *forcing* that widening, not on an author choosing it.
 
 ## Promise Semantics
 

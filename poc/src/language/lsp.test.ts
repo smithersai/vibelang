@@ -171,6 +171,10 @@ beforeAll(async () => {
   await writeFile(failingPath, FAILING, "utf8");
   await writeFile(domainPath, DOMAIN, "utf8");
   await writeFile(appPath, APP, "utf8");
+  // Real asset bytes for the stage-agreement tests below: the source-asset
+  // stage reads the file, so a stub would not exercise it.
+  await writeFile(join(workspace, "system.txt"), "You are a careful reviewer.\nAnswer with one sentence.\n", "utf8");
+  await writeFile(join(workspace, "logo.bin"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
 });
 
 afterAll(async () => {
@@ -333,6 +337,122 @@ describe("smithers lsp diagnostics", () => {
     expect(diagnostics[0]!.range.start.line).toBe(1);
     client.notify("exit");
     await closed;
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Agreement with `smithers check`                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The language server used to run the row pass and the generated-TypeScript
+ * pass but neither of the two compile stages that come before them, so it
+ * judged a program the compiler never sees. Both directions are pinned here:
+ * a valid program must publish NOTHING, and a refused one must publish the same
+ * rule `smithers check` prints - not a later stage's guess about it.
+ */
+describe("smithers lsp stage agreement with the compiler", () => {
+  async function publishedFor(name: string, text: string): Promise<{ code: string; line: number; character: number }[]> {
+    const { client, closed } = inProcessServer();
+    await initialize(client);
+    const path = join(workspace, name);
+    await writeFile(path, text, "utf8");
+    open(client, path, text);
+    const published = await client.notification("textDocument/publishDiagnostics", uriOf(path));
+    client.notify("exit");
+    await closed;
+    return (published.params!.diagnostics as {
+      code: string;
+      range: { start: { line: number; character: number } };
+    }[]).map((entry) => ({
+      code: entry.code,
+      line: entry.range.start.line,
+      character: entry.range.start.character,
+    }));
+  }
+
+  test("a valid comptime program is clean, not TS2307 on the compiler-owned module", async () => {
+    // Without the comptime stage the emitted module still imported
+    // `smithers:comptime`, which no resolver answers, so a program `check`
+    // accepts lit up red in an editor.
+    expect(await publishedFor(
+      "lsp-comptime-valid.sm",
+      `import { comptime } from "smithers:comptime"\nexport const v: number = comptime(1 + 1)\n`,
+    )).toEqual([]);
+  });
+
+  test("comptime refusals publish the comptime rule, not a later stage's stand-in", async () => {
+    // Previously SMITHERS1603 (a host-sensitive global) - true of the lowered
+    // program and not what the compiler reports about this one.
+    expect(await publishedFor(
+      "lsp-comptime-nondeterminism.sm",
+      `import { comptime } from "smithers:comptime"\nexport const leak = comptime(Math.random())\n`,
+    )).toEqual([{ code: "VCT1004", line: 1, character: 29 }]);
+
+    // Previously TS2307, for the same reason as the valid case above.
+    expect(await publishedFor(
+      "lsp-comptime-imposter.sm",
+      "import { comptime } from \"smithers:comptime\"\nexport const v = comptime`1 + 1`\n",
+    )).toEqual([{ code: "VCT1006", line: 1, character: 17 }]);
+  });
+
+  test("a valid asset import is clean, not five errors led by SMITHERS1510", async () => {
+    // Without the source-asset stage the row pass saw `./system.txt` as an
+    // untrusted foreign module and charged the whole panic-channel cascade:
+    // SMITHERS1510 + 1101 + 1301 + 1507 + 1508 on a green corpus program.
+    expect(await publishedFor(
+      "lsp-asset-text.sm",
+      `import instructions from "./system.txt" with { type: "text" }\n` +
+      `export function main(): string[] { return instructions.trimEnd().split("\\n") }\n`,
+    )).toEqual([]);
+
+    // A loader whose type TypeScript cannot resolve on its own. The generated
+    // module has to reach the stock checker, or this is TS2307.
+    expect(await publishedFor(
+      "lsp-asset-bytes.sm",
+      `import logo from "./logo.bin" with { type: "bytes" }\n` +
+      "export function main(): string[] { return [`${logo.length}`] }\n",
+    )).toEqual([]);
+  });
+
+  test("asset refusals publish the asset rule at the asset stage's own position", async () => {
+    // Previously SMITHERS1510 - a different rule, about a different thing.
+    expect(await publishedFor(
+      "lsp-asset-absolute.sm",
+      `import text from "/etc/hosts" with { type: "text" }\nexport const v = text\n`,
+    )).toEqual([{ code: "SMITHERS5207", line: 0, character: 17 }]);
+
+    expect(await publishedFor(
+      "lsp-asset-no-attribute.sm",
+      `import text from "./system.txt"\nexport const v = text\n`,
+    )).toEqual([{ code: "SMITHERS5201", line: 0, character: 0 }]);
+  });
+
+  test("the stages did not displace the diagnostics that already worked", async () => {
+    // The other direction. Each of these was correct before the stages were
+    // added and has to stay correct: a frontend row rule, a host-global rule,
+    // a compiler-owned module that is lowered by the emitter rather than by a
+    // stage, and a program with no compiler-owned construct at all.
+    expect(await publishedFor(
+      "lsp-plain-failure.sm",
+      `class NotFound extends Error {}\nexport function f(id: number) { if (id < 0) throw new NotFound(); return id }\n`,
+    )).toEqual([{ code: "SMITHERS1102", line: 1, character: 0 }]);
+
+    expect(await publishedFor(
+      "lsp-host-global.sm",
+      `export function f(): number { return process.pid }\n`,
+    )).toEqual([{ code: "SMITHERS1601", line: 0, character: 37 }]);
+
+    expect(await publishedFor(
+      "lsp-exceptions.sm",
+      `import { panic } from "smithers:exceptions"\n` +
+      `export function f(x: boolean): string { if (x) panic("no"); return "y" }\n`,
+    )).toEqual([]);
+
+    expect(await publishedFor(
+      "lsp-ordinary.sm",
+      `export function double(n: number): number { return n * 2 }\n`,
+    )).toEqual([]);
   });
 });
 

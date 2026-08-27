@@ -427,7 +427,17 @@ describe("checked .sm frontend", () => {
 
     expect(analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1506")).toHaveLength(2);
     expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1507")).toBe(true);
-    expect(analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1509")).toHaveLength(3);
+    // WHICH of the three callback sites is refused, not how many. The two
+    // UNTRUSTED hosts (`receiveCallback`, `receiveCallbackOptions`) keep
+    // SMITHERS1509; `trustedCallbackHost` carries `@throws {never}` and does
+    // not, because specification/compatibility.mdx §Foreign Boundary makes the
+    // panic case a property of the CALL and says the trust claim "opts out" of
+    // it — a claim the binding makes about everything that call does, including
+    // invoking the listener it was handed.
+    expect(analysis.diagnostics
+      .filter((diagnostic) => diagnostic.code === "SMITHERS1509")
+      .map((diagnostic) => `${diagnostic.line}:${diagnostic.column}`))
+      .toEqual(["26:25", "27:32"]);
     expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1508")).toBe(true);
     expect(analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1504")).toHaveLength(2);
     expect(analysis.rows.getter).toEqual({

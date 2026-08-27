@@ -1,7 +1,13 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as ts from "typescript-js";
+import { AssetCompiler } from "../build/assets.ts";
+import { ComptimeCompiler } from "../build/comptime.ts";
+import { compileComptimeIntrinsics } from "../build/comptime-intrinsic.ts";
+import { compileSourceAssetModules, type CompiledSourceAssetModule } from "../build/source-assets.ts";
+import { digest } from "../build/stable.ts";
 import { analyzeProject } from "./analyze.ts";
 import { formatSmithersSource, smithersTokenAt } from "./format.ts";
 import type {
@@ -11,6 +17,7 @@ import type {
   ProjectSource,
 } from "./model.ts";
 import { compileProject } from "./project-compile.ts";
+import { composeSourceMaps } from "./source-map.ts";
 import { checkEmittedProject } from "./validate.ts";
 
 /**
@@ -19,16 +26,45 @@ import { checkEmittedProject } from "./validate.ts";
  * The protocol is implemented directly - JSON-RPC 2.0 over stdio with
  * `Content-Length` framing - so the toolchain gains an editor surface without
  * gaining a dependency. Diagnostics, hover, and definition are all driven by
- * the real frontend (`analyzeProject`, `compileProject`, `checkEmittedProject`),
- * not by a reimplementation, and formatting reuses `formatSmithersSource`.
+ * the real frontend, not by a reimplementation, and formatting reuses
+ * `formatSmithersSource`.
+ *
+ * ## Verdict agreement with `smithers check`
+ *
+ * A diagnostic an editor shows and a diagnostic the compiler reports must be
+ * the same diagnostic: a false error in an editor makes correct code look
+ * broken, and a rule name that does not match the one `check` prints
+ * misdescribes the program. So `computeProjectDiagnostics` runs the CLI's
+ * compile stages in the CLI's order and stops where the CLI stops -
+ *
+ *   1. source assets  (`compileSourceAssetModules`)
+ *   2. comptime       (`compileComptimeIntrinsics`)
+ *   3. rows           (`analyzeProject`)
+ *   4. generated TypeScript (`compileProject` + `checkEmittedProject`)
+ *
+ * - each earlier stage's refusal is published on its own, exactly as the CLI
+ *   returns without running the later ones. Skipping stage 1 or 2 does not
+ *   merely lose their diagnostics: it makes the later stages judge a program
+ *   the compiler never sees, so a valid asset import drew SMITHERS1510 (an
+ *   untrusted foreign module) and a valid `comptime(...)` drew TS2307. The
+ *   deviations that remain are listed below.
+ *
+ * Both stages are content-addressed and answer from a cache under the system
+ * temporary directory, in the language server's own namespace so that an editor
+ * session can never write into a cache a `smithers build` is reading. Measured
+ * on a one-module project: the asset stage costs under a millisecond when the
+ * project imports no asset, and the comptime stage costs about as much as
+ * `analyzeProject` itself, because it builds a TypeScript program of its own.
  *
  * ## Supported
  *
  * - `initialize` / `initialized` / `shutdown` / `exit`
  * - `textDocument/didOpen`, `didChange` (**full** document sync), `didClose`
- * - `textDocument/publishDiagnostics`: Smithers frontend diagnostics, plus
+ * - `textDocument/publishDiagnostics`: source-asset (`SMITHERS52xx`) and
+ *   comptime (`VCT1xxx`) stage diagnostics, Smithers frontend diagnostics, plus
  *   stock TypeScript diagnostics for the generated modules mapped back to
- *   authored positions through the compiler's own source maps
+ *   authored positions through the compiler's own source maps - composed with
+ *   the comptime lowering's map when a file was actually lowered
  * - `textDocument/hover`: a checked function's channel and its inferred failure
  *   and requirement rows, and an authored Error class's fields
  * - `textDocument/definition`: project-local `.sm` functions, Error classes,
@@ -49,6 +85,32 @@ import { checkEmittedProject } from "./validate.ts";
  *   to `MAX_PROJECT_FILES` modules and `MAX_PROJECT_BYTES` total.
  * - Project membership is the transitive relative-`.sm` import closure of the
  *   open documents, not a glob of the workspace folder.
+ * - **The runtime-graph resolver does not run here, and cannot.** The CLI runs
+ *   `buildRelativeRuntimeGraph` between the asset stage and the comptime stage;
+ *   it lives in the ROOT package (`src/relative-runtime-graph.ts`), which
+ *   imports `poc/dist`, so a module inside `poc/src` cannot reach it without
+ *   inverting the dependency. Its absence is visible in three places, all
+ *   measured against the corpus: a foreign relative `.ts` neighbour draws
+ *   `SMITHERS1510` at the authored import rather than at the foreign module's
+ *   own first line; a dynamic import is judged by the semantic stage alone; and
+ *   an unresolvable relative runtime edge does not abort the run. In every one
+ *   of those the CLI answers `SMITHERS_PROJECT_ERROR` or a foreign-file
+ *   position and the corpus declares what this server publishes - see
+ *   `conformance/product-divergence.json`, causes
+ *   `runtime-graph-refuses-before-the-semantic-stage`,
+ *   `duplicate-SMITHERS1510-implementation-in-the-runtime-graph` and
+ *   `dynamic-import-lock-vs-corpus-vs-product`.
+ * - **Rows are analyzed on the AUTHORED text, not the comptime-lowered text.**
+ *   The CLI analyzes what the comptime stage produced; doing the same here
+ *   would put every row diagnostic, hover, and definition in lowered
+ *   coordinates and require a second source-map hop to get back. Only the
+ *   generated-TypeScript pass reads the lowered text, because that pass already
+ *   owns a map. Measured equal on the corpus: all 10 `16-comptime` cases
+ *   publish exactly what `smithers check` reports.
+ * - Hover and definition are synchronous replies and do not run the compile
+ *   stages. They reuse the asset modules the last diagnostics pass produced for
+ *   the same buffers; a hover that races the very first pass analyzes without
+ *   them, which can only lose an asset module's type, never invent an error.
  * - Definition resolution is by declared name within that closure, not by
  *   checker symbol identity; an ambiguous name resolves to nothing rather than
  *   to a guess.
@@ -123,8 +185,23 @@ interface OpenDocument {
 
 interface LoadedProject {
   readonly rootDir: string;
+  /**
+   * `rootDir` with every symlink in it resolved, which is the form the compile
+   * stages work in: `AssetCompiler` and `ComptimeCompiler` both `realpathSync`
+   * their root, and `smithers check` canonicalizes its inputs the same way
+   * before it resolves anything. A macOS temporary directory is the everyday
+   * case - `/var/folders/...` and `/private/var/folders/...` name one directory
+   * - and mixing the two spellings made a generated asset module unreachable
+   * from the module that imports it and threw away every stage diagnostic as
+   * "outside the project".
+   *
+   * `absoluteByName` deliberately keeps the UNRESOLVED path: it is the identity
+   * the editor sent in the document URI, and a reply under any other spelling
+   * is a reply about a file the client does not believe it opened.
+   */
+  readonly canonicalRootDir: string;
   readonly sources: readonly ProjectSource[];
-  /** Project-relative source name -> absolute path. */
+  /** Project-relative source name -> absolute path, as the client spells it. */
   readonly absoluteByName: ReadonlyMap<string, string>;
   readonly truncated: boolean;
 }
@@ -250,7 +327,14 @@ function loadProject(
     absoluteByName.set(name, path);
   }
   if (sources.length === 0) return undefined;
-  return { rootDir, sources, absoluteByName, truncated };
+  let canonicalRootDir = rootDir;
+  try {
+    canonicalRootDir = realpathSync(rootDir);
+  } catch {
+    // A root that cannot be resolved is used as spelled; the stages will
+    // report their own failure rather than the language server inventing one.
+  }
+  return { rootDir, canonicalRootDir, sources, absoluteByName, truncated };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -441,6 +525,171 @@ function smithersDiagnosticToLsp(text: string, diagnostic: SmithersDiagnostic): 
   };
 }
 
+/**
+ * A stage diagnostic anchored by 1-based line and column rather than by offset,
+ * which is the shape both compile stages report.
+ */
+function stageDiagnosticToLsp(
+  text: string,
+  diagnostic: {
+    readonly code: string;
+    readonly severity: "error" | "warning";
+    readonly message: string;
+    readonly line: number;
+    readonly column: number;
+  },
+): PublishedDiagnostic {
+  const offset = offsetAt(text, { line: diagnostic.line - 1, character: diagnostic.column - 1 });
+  return {
+    range: tokenRangeAt(text, offset),
+    severity: severityOf(diagnostic),
+    code: diagnostic.code,
+    source: "smithers",
+    message: diagnostic.message,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Compile stages that run before the row pass                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The compile stages `smithers check` runs before the row pass, in its order.
+ *
+ * Both are content-addressed and cache into the system temporary directory, so
+ * an unchanged buffer costs a cache lookup rather than a re-evaluation. The
+ * cache namespace is the language server's own: an editor session can never
+ * write into a cache a `smithers build` is reading.
+ */
+interface StagedProject {
+  /** Compiler-generated asset modules the checker must be able to resolve. */
+  readonly assetModules: readonly CompiledSourceAssetModule[];
+  /**
+   * Where each generated asset module is placed in the emitted tree, so that
+   * `compileProject` rewrites `./system.txt` to the generated module and the
+   * stock checker resolves it. Without the rewrite the emitted module still
+   * names the raw asset, which TypeScript cannot resolve at all: a valid bytes,
+   * Markdown or MDX import drew TS2307, and a JSON import drew the widened
+   * types of TypeScript's own `resolveJsonModule` instead of the loader's.
+   */
+  readonly assetOutputs: readonly {
+    readonly sourceFileName: string;
+    readonly outputFileName: string;
+    readonly resolutionAliases: readonly string[];
+    readonly stripImportAttributes: true;
+  }[];
+  /** Comptime-lowered text per project-relative source name. */
+  readonly loweredSources: readonly ProjectSource[];
+  /** Lowered-to-authored map per source name; absent when nothing was lowered. */
+  readonly loweringMaps: ReadonlyMap<string, string>;
+}
+
+/** Compiler-owned directory the generated asset modules are addressed under. */
+const GENERATED_ASSET_DIRECTORY = "__smithers_assets__";
+
+type StageOutcome =
+  | { readonly ok: true; readonly staged: StagedProject }
+  /** The stage refused. The CLI publishes exactly these and runs nothing later. */
+  | { readonly ok: false; readonly byFile: ReadonlyMap<string, PublishedDiagnostic[]> };
+
+function stageCacheDirectory(kind: "source-asset" | "comptime", rootDir: string): string {
+  const identity = digest({
+    schema: `smithers.lsp-${kind}-cache/v1`,
+    projectRoot: rootDir,
+    target: "node-es2022",
+    frontend: LSP_FRONTEND,
+  });
+  return resolve(tmpdir(), `smithers-lsp-${kind}-cache-v1`, identity);
+}
+
+const LSP_FRONTEND = "smithers-lsp@1";
+
+/**
+ * Run the source-asset and comptime stages over the loaded project. A refusal
+ * from either is returned on its own, because that is exactly what the CLI
+ * publishes: `compileSmithersFiles` returns the stage's diagnostics without
+ * reaching the row pass, so a language server that ran the row pass anyway
+ * would publish a rule `check` never prints.
+ */
+async function stageProject(
+  project: LoadedProject,
+  byFileTemplate: () => Map<string, PublishedDiagnostic[]>,
+  textByName: ReadonlyMap<string, string>,
+  log: (message: string) => void,
+): Promise<StageOutcome> {
+  const assetCompiler = new AssetCompiler({
+    root: project.canonicalRootDir,
+    cacheDirectory: stageCacheDirectory("source-asset", project.canonicalRootDir),
+    target: "node-es2022",
+    options: { frontend: LSP_FRONTEND },
+  });
+  const assets = await compileSourceAssetModules({
+    compiler: assetCompiler,
+    sources: project.sources,
+  });
+  if (!assets.ok) {
+    const byFile = byFileTemplate();
+    for (const diagnostic of assets.diagnostics) {
+      // The stage answers in its own canonical root, which is the one place
+      // these two spellings of the project root have to be reconciled.
+      const name = toPosix(relative(assetCompiler.root, resolve(assetCompiler.root, diagnostic.fileName)));
+      const text = textByName.get(name);
+      const bucket = byFile.get(name);
+      if (text === undefined || !bucket) {
+        log(`source-asset diagnostic names a file outside the project: ${diagnostic.fileName}`);
+        continue;
+      }
+      bucket.push(stageDiagnosticToLsp(text, diagnostic));
+    }
+    return { ok: false, byFile };
+  }
+
+  const comptime = await compileComptimeIntrinsics({
+    compiler: new ComptimeCompiler({
+      root: project.canonicalRootDir,
+      cacheDirectory: stageCacheDirectory("comptime", project.canonicalRootDir),
+      target: "node-es2022",
+      options: { frontend: LSP_FRONTEND },
+    }),
+    sources: Object.fromEntries(project.sources.map((source) => [source.fileName, source.source])),
+  });
+  if (!comptime.ok || !comptime.loweredFiles) {
+    const byFile = byFileTemplate();
+    for (const diagnostic of comptime.diagnostics) {
+      const text = textByName.get(diagnostic.file);
+      const bucket = byFile.get(diagnostic.file);
+      if (text === undefined || !bucket) {
+        log(`comptime diagnostic names a file outside the project: ${diagnostic.file}`);
+        continue;
+      }
+      bucket.push(stageDiagnosticToLsp(text, diagnostic));
+    }
+    return { ok: false, byFile };
+  }
+
+  const lowered = comptime.loweredFiles;
+  const loweringMaps = new Map<string, string>();
+  const loweredSources = project.sources.map((source) => {
+    const file = lowered[source.fileName];
+    if (!file) throw new TypeError(`comptime lowering omitted project file '${source.fileName}'`);
+    // A file with no comptime construct lowers to itself, and then the
+    // frontend's own map already lands on authored coordinates. Only a file
+    // whose text actually moved needs the second hop.
+    if (file.code !== source.source) loweringMaps.set(source.fileName, file.sourceMap);
+    return { fileName: source.fileName, source: file.code };
+  });
+  const assetOutputs = assets.modules.map((module) => ({
+    sourceFileName: resolve(project.canonicalRootDir, module.sourceFileName),
+    outputFileName: resolve(project.canonicalRootDir, GENERATED_ASSET_DIRECTORY, `${module.logicalKey}.ts`),
+    resolutionAliases: module.resolutionAliases.map((alias) => resolve(project.canonicalRootDir, alias)),
+    stripImportAttributes: true as const,
+  }));
+  return {
+    ok: true,
+    staged: { assetModules: assets.modules, assetOutputs, loweredSources, loweringMaps },
+  };
+}
+
 let runtimeImportMemo: { readonly path: string | undefined } | undefined;
 
 /**
@@ -470,26 +719,64 @@ function resolveRuntimeImport(): string | undefined {
 let analysisMemo: {
   readonly rootDir: string;
   readonly sources: readonly ProjectSource[];
+  readonly assetModules: readonly CompiledSourceAssetModule[];
   readonly analysis: ProjectAnalysis;
 } | undefined;
+
+function sameSources(
+  cached: { readonly rootDir: string; readonly sources: readonly ProjectSource[] } | undefined,
+  project: LoadedProject,
+): boolean {
+  return cached !== undefined && cached.rootDir === project.rootDir &&
+    cached.sources.length === project.sources.length &&
+    cached.sources.every((source, index) =>
+      source.fileName === project.sources[index]!.fileName &&
+      source.source === project.sources[index]!.source);
+}
 
 /**
  * Diagnostics, hover, and definition all need the same whole-project pass, and
  * an editor asks for them against the same buffers. Keying the memo on the
  * exact source set keeps every reply consistent with the diagnostics on screen
  * and keeps hover from paying for a second analysis of unchanged text.
+ *
+ * `assetModules` is part of the identity, not just an input: an analysis run
+ * before the asset stage had produced the generated modules sees an asset
+ * import as an unresolved foreign module, and reusing that for hover would
+ * contradict the diagnostics on screen.
  */
-function analyzeProjectMemoized(project: LoadedProject): ProjectAnalysis {
+function analyzeProjectMemoized(
+  project: LoadedProject,
+  assetModules: readonly CompiledSourceAssetModule[],
+): ProjectAnalysis {
   const cached = analysisMemo;
-  if (cached && cached.rootDir === project.rootDir && cached.sources.length === project.sources.length &&
-    cached.sources.every((source, index) =>
-      source.fileName === project.sources[index]!.fileName &&
-      source.source === project.sources[index]!.source)) {
-    return cached.analysis;
+  if (sameSources(cached, project) && cached!.assetModules.length === assetModules.length &&
+    cached!.assetModules.every((module, index) => module === assetModules[index])) {
+    return cached!.analysis;
   }
-  const analysis = analyzeProject(project.sources, { rootDir: project.rootDir });
-  analysisMemo = { rootDir: project.rootDir, sources: project.sources, analysis };
+  const analysis = analyzeProject(project.sources, {
+    rootDir: project.canonicalRootDir,
+    additionalRuntimeSources: assetModules,
+  });
+  analysisMemo = { rootDir: project.rootDir, sources: project.sources, assetModules, analysis };
   return analysis;
+}
+
+/**
+ * The asset modules the most recent diagnostics pass produced for this exact
+ * source set. Hover and definition are synchronous replies and must not run the
+ * compile stages themselves; reusing the last pass's modules keeps them
+ * consistent with what is on screen. A miss (a hover that raced the first
+ * diagnostics pass) analyzes without them rather than blocking.
+ */
+let stagedAssetMemo: {
+  readonly rootDir: string;
+  readonly sources: readonly ProjectSource[];
+  readonly assetModules: readonly CompiledSourceAssetModule[];
+} | undefined;
+
+function stagedAssetModulesFor(project: LoadedProject): readonly CompiledSourceAssetModule[] {
+  return sameSources(stagedAssetMemo, project) ? stagedAssetMemo!.assetModules : [];
 }
 
 interface ProjectDiagnostics {
@@ -499,24 +786,24 @@ interface ProjectDiagnostics {
   readonly project: LoadedProject | undefined;
 }
 
-function computeProjectDiagnostics(
+async function computeProjectDiagnostics(
   documents: ReadonlyMap<string, OpenDocument>,
   workspaceRoot: string | undefined,
   log: (message: string) => void,
-): ProjectDiagnostics {
+): Promise<ProjectDiagnostics> {
   const project = loadProject(documents, workspaceRoot);
   if (!project) return { byFile: new Map(), analysis: undefined, project: undefined };
-  const byFile = new Map<string, PublishedDiagnostic[]>();
-  for (const source of project.sources) byFile.set(source.fileName, []);
-
-  let analysis: ProjectAnalysis;
-  try {
-    analysis = analyzeProjectMemoized(project);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    log(`analyzeProject failed: ${message}`);
-    for (const source of project.sources) {
-      byFile.get(source.fileName)!.push({
+  const freshByFile = (): Map<string, PublishedDiagnostic[]> => {
+    const buckets = new Map<string, PublishedDiagnostic[]>();
+    for (const source of project.sources) buckets.set(source.fileName, []);
+    return buckets;
+  };
+  const textByName = new Map(project.sources.map((source) => [source.fileName, source.source] as const));
+  const projectFailure = (stage: string, message: string): ProjectDiagnostics => {
+    log(`${stage} failed: ${message}`);
+    const buckets = freshByFile();
+    for (const bucket of buckets.values()) {
+      bucket.push({
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
         severity: 1,
         code: "SMITHERS_LSP_PROJECT",
@@ -524,10 +811,31 @@ function computeProjectDiagnostics(
         message: `the Smithers project could not be analyzed: ${message}`,
       });
     }
-    return { byFile, analysis: undefined, project };
+    return { byFile: buckets, analysis: undefined, project };
+  };
+
+  let outcome: StageOutcome;
+  try {
+    outcome = await stageProject(project, freshByFile, textByName, log);
+  } catch (error) {
+    return projectFailure("compile stages", error instanceof Error ? error.message : String(error));
+  }
+  if (!outcome.ok) return { byFile: outcome.byFile, analysis: undefined, project };
+  const staged = outcome.staged;
+  stagedAssetMemo = {
+    rootDir: project.rootDir,
+    sources: project.sources,
+    assetModules: staged.assetModules,
+  };
+
+  const byFile = freshByFile();
+  let analysis: ProjectAnalysis;
+  try {
+    analysis = analyzeProjectMemoized(project, staged.assetModules);
+  } catch (error) {
+    return projectFailure("analyzeProject", error instanceof Error ? error.message : String(error));
   }
 
-  const textByName = new Map(project.sources.map((source) => [source.fileName, source.source] as const));
   for (const diagnostic of analysis.diagnostics) {
     const text = textByName.get(diagnostic.fileName);
     const bucket = byFile.get(diagnostic.fileName);
@@ -542,18 +850,27 @@ function computeProjectDiagnostics(
       // `outDir` is the project root so that relative non-`.sm` imports keep
       // resolving exactly as authored. Nothing is written: `compileProject` and
       // `checkEmittedProject` are in-memory APIs.
-      const compiled = compileProject(project.sources, {
-        rootDir: project.rootDir,
-        outDir: project.rootDir,
+      // The generated modules are cut from the COMPTIME-LOWERED text, exactly as
+      // the CLI cuts them, so `comptime(...)` is already the value it evaluated
+      // to and the compiler-owned `smithers:comptime` import is gone. Checking
+      // the authored text instead reported TS2307 on a program `check` accepts.
+      const compiled = compileProject(staged.loweredSources, {
+        rootDir: project.canonicalRootDir,
+        outDir: project.canonicalRootDir,
         outputExtension: ".ts",
         runtimeImport,
         sourceMap: true,
+        additionalRuntimeSources: staged.assetModules,
+        additionalRuntimeOutputs: staged.assetOutputs,
       });
       const emitted = Object.values(compiled.files);
-      const checked = checkEmittedProject(emitted.map((file) => ({
-        fileName: file.outputFileName,
-        code: file.code,
-      })));
+      const checked = checkEmittedProject([
+        ...emitted.map((file) => ({ fileName: file.outputFileName, code: file.code })),
+        ...staged.assetModules.map((module, index) => ({
+          fileName: staged.assetOutputs[index]!.outputFileName,
+          code: module.source,
+        })),
+      ]);
       for (const diagnostic of checked) {
         if (diagnostic.category !== ts.DiagnosticCategory.Error) continue;
         if (!diagnostic.file || diagnostic.start === undefined) continue;
@@ -561,9 +878,15 @@ function computeProjectDiagnostics(
         const owner = emitted.find((file) => resolve(file.outputFileName) === generatedName);
         if (!owner?.sourceMap) continue;
         const generated = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+        // Generated -> lowered is the frontend's own map. Lowered -> authored is
+        // the comptime map, and only files whose text actually moved carry one.
+        const loweringMap = staged.loweringMaps.get(owner.fileName);
         let mapped: OriginalPosition | undefined;
         try {
-          mapped = originalPosition(owner.sourceMap, generated.line, generated.character);
+          const toAuthored = loweringMap === undefined
+            ? owner.sourceMap
+            : composeSourceMaps(owner.sourceMap, loweringMap, owner.outputFileName);
+          mapped = originalPosition(toAuthored, generated.line, generated.character);
         } catch {
           mapped = undefined;
         }
@@ -843,8 +1166,18 @@ export function startSmithersLanguageServer(options: LanguageServerOptions = {})
     resolveClosed(code);
   };
 
-  const refreshDiagnostics = (): void => {
-    const computed = computeProjectDiagnostics(documents, workspaceRoot, log);
+  /**
+   * The compile stages are asynchronous, so a refresh is too. Chaining them
+   * keeps publication in edit order: two overlapping passes could otherwise
+   * publish an older buffer's diagnostics last, which is the one way a
+   * language server can show an error for text that is no longer on screen.
+   */
+  let refreshQueue: Promise<void> = Promise.resolve();
+
+  const publishDiagnostics = async (): Promise<void> => {
+    if (finished) return;
+    const computed = await computeProjectDiagnostics(documents, workspaceRoot, log);
+    if (finished) return;
     const nextUris = new Set<string>();
     if (computed.project) {
       for (const [fileName, diagnostics] of computed.byFile) {
@@ -874,6 +1207,12 @@ export function startSmithersLanguageServer(options: LanguageServerOptions = {})
     for (const uri of nextUris) publishedUris.add(uri);
   };
 
+  const refreshDiagnostics = (): void => {
+    refreshQueue = refreshQueue.then(publishDiagnostics).catch((error: unknown) => {
+      log(`publishing diagnostics failed: ${error instanceof Error ? error.message : String(error)}`);
+    });
+  };
+
   const analysisFor = (path: string): {
     project: LoadedProject;
     analysis: ProjectAnalysis;
@@ -887,7 +1226,7 @@ export function startSmithersLanguageServer(options: LanguageServerOptions = {})
     }
     if (fileName === undefined) return undefined;
     try {
-      return { project, analysis: analyzeProjectMemoized(project), fileName };
+      return { project, analysis: analyzeProjectMemoized(project, stagedAssetModulesFor(project)), fileName };
     } catch (error) {
       log(`analyzeProject failed: ${error instanceof Error ? error.message : String(error)}`);
       return undefined;

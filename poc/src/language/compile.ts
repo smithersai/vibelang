@@ -394,6 +394,7 @@ function lowerStatement(
   if (ts.isExpressionStatement(statement)) {
     const panicCall = unwrapPanicCall(statement.expression, state.model);
     if (panicCall) {
+      if (!panicMaterializes(owner)) return throwPanic(panicCall, owner, state, context, visit, statement);
       const prologue: ts.Statement[] = [];
       const failure = lowerPanicValue(panicCall, owner, prologue, state, context, visit);
       state.changed = true;
@@ -550,6 +551,9 @@ function lowerReturn(
   const prologue: ts.Statement[] = [];
   const panicCall = original && unwrapPanicCall(original, state.model);
   if (panicCall) {
+    if (!panicMaterializes(owner)) {
+      return throwPanic(panicCall, owner, state, context, visit, statement ?? panicCall);
+    }
     const failure = lowerPanicValue(panicCall, owner, prologue, state, context, visit);
     state.changed = true;
     return [...prologue, sourceMapAnchor(
@@ -621,7 +625,8 @@ function rewriteExpression(
       // `r.expect(m)` and `r["expect"](m)` select the same member, so the
       // receiver is read through the shared member-selection helper rather
       // than by asserting one of the two access node kinds.
-      const receiver = rewriteExpression(expectReceiver(expression)!, owner, prologue, state, context, visit);
+      const receiver = rewriteExpression(
+        expectReceiver(expression, state.model.checker)!, owner, prologue, state, context, visit);
       const receiverTemporary = freshTemporary(state, "expect_receiver");
       prologue.push(state.factory.createVariableStatement(undefined,
         state.factory.createVariableDeclarationList([
@@ -763,6 +768,49 @@ function lowerPanicValue(
     undefined,
     [cause],
   );
+}
+
+/**
+ * Whether a `panic(...)` exit inside `owner` becomes a Result *value* or stays
+ * an unwinding throw.
+ *
+ * `specification/failures.mdx` §Panic Does Not Widen a Return Type: "An author
+ * MAY still annotate `Result<A, Panic>` explicitly to materialize a panic as a
+ * value; that is how panic is made explicitly catchable. The prohibition is on
+ * the compiler *forcing* that widening, not on an author choosing it."
+ *
+ * So the materialization is keyed on the channel this function actually
+ * publishes naming `Panic` — an authored `Result<A, Panic>` annotation, or an
+ * inferred row that already carries `Panic` from a foreign boundary. It is NOT
+ * keyed on "the function returns some Result", because
+ * `function force(k: string): Result<string, Missing>` publishes `Missing` as
+ * its expected-error channel; materializing a panic into that channel would put
+ * a `Panic` where a caller's exhaustive `match` believes only `Missing` can
+ * appear. That shape is `D03`/`D04` in the lane probe: before this change the
+ * annotated half was caught by SMITHERS1104 while the INFERRED half compiled
+ * clean and emitted `__vsResultFailure(__vsPanicValue(...))` into a row of
+ * `["Missing","Panic"]`.
+ *
+ * Everywhere else the panic lowers to `throw __vsPanicValue(...)`, which is
+ * exactly what the runtime `panic()` does and what `catchPanic` catches, and is
+ * the same shape an ordinary `throw` already takes in a plain-channel function.
+ */
+function panicMaterializes(owner: SemanticFunction): boolean {
+  return effectiveChannel(owner) !== "plain" && owner.failures.has("Panic");
+}
+
+function throwPanic(
+  panicCall: ts.CallExpression,
+  owner: SemanticFunction,
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+  anchor: ts.Node,
+): ts.Statement[] {
+  const prologue: ts.Statement[] = [];
+  const failure = lowerPanicValue(panicCall, owner, prologue, state, context, visit);
+  state.changed = true;
+  return [...prologue, sourceMapAnchor(state.factory.createThrowStatement(failure), anchor, state)];
 }
 
 function unwrapPanicCall(expression: ts.Expression, model: SemanticModel): ts.CallExpression | undefined {

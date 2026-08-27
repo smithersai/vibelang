@@ -1,9 +1,0 @@
-// `eval` is treated like `any`: usable, not forbidden outright, and
-// contributing no requirement of its own.
-function compute(source: string): string {
-  return `${eval(source)}`
-}
-
-export function main(): string[] {
-  return [compute("1 + 1")]
-}
