@@ -1,0 +1,15 @@
+{
+  "title": "a cross-module tagged-template callee stays fail-closed because no requirement row is attributed to it",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1802",
+      "line": 4,
+      "column": 11
+    }
+  ],
+  "modules": [
+    "a-tagged-template-callee-is-rejected.mod.sm"
+  ],
+  "notes": "specification/requirements.mdx, 'Inference': \"Calling a function with unsatisfied requirements MUST add those capabilities to the caller's R row ... Requirement inference MUST be transitive through ordinary calls.\" specification/compatibility.mdx, 'Transform-Only Builds': a build \"MUST fail closed on any construct whose lowering depends on information the file alone does not carry, rather than emitting a guess\" — the only normative anchor SMITHERS1802 has. Read together: SMITHERS1802 refuses a cross-module function that becomes a VALUE, because a value has no attributable requirement row; it must not refuse an ordinary CALL, because an ordinary call is precisely what a row is required to travel through. A tagged template invokes `tag`, so on the reading above it ought to be an ordinary call — but it is not a CallExpression, no call edge is built for it on either backend, and the callee's requirement row is therefore charged NOWHERE. Verified by measurement rather than assumed. Fail-closed is the correct answer for as long as that is true: the honest fix is to attribute the row, which means teaching fact collection a new entry point on both backends and would tighten programs that compile today. This case pins that the 2026-08-25 relaxation of ordinary calls did not reach here, and it is the case a later lane must deliberately flip when it does."
+}

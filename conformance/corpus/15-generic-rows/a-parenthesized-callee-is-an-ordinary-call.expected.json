@@ -1,0 +1,11 @@
+{
+  "title": "parentheses around a cross-module callee do not turn the call into a value escape",
+  "expect": "output",
+  "stdout": [
+    "0"
+  ],
+  "modules": [
+    "a-parenthesized-callee-is-an-ordinary-call.mod.sm"
+  ],
+  "notes": "specification/requirements.mdx, 'Inference': \"Calling a function with unsatisfied requirements MUST add those capabilities to the caller's R row ... Requirement inference MUST be transitive through ordinary calls.\" specification/compatibility.mdx, 'Transform-Only Builds': a build \"MUST fail closed on any construct whose lowering depends on information the file alone does not carry, rather than emitting a guess\" — the only normative anchor SMITHERS1802 has. Read together: SMITHERS1802 refuses a cross-module function that becomes a VALUE, because a value has no attributable requirement row; it must not refuse an ordinary CALL, because an ordinary call is precisely what a row is required to travel through. Both backends reported SMITHERS1802 at 4:14 here, and both already charged the callee's requirement row through the parentheses (a parenthesized callee with an unsatisfied requirement reports SMITHERS2102), so the refusal was pure noise. The relaxation stops at parentheses: an `as`-cast callee `(f as () => number)()` charges no row on either backend and stays refused."
+}

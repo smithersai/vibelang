@@ -1,0 +1,14 @@
+export interface Rule {
+  readonly name: string
+  readonly matches: (value: unknown) => boolean
+}
+
+const rules: Rule[] = []
+
+export function register(rule: Rule): void {
+  rules.push(rule)
+}
+
+export function count(): number {
+  return rules.length
+}

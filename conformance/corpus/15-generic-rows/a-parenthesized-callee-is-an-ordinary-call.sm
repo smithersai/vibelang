@@ -1,0 +1,5 @@
+import { count } from "./a-parenthesized-callee-is-an-ordinary-call.mod.sm"
+
+export function main(): string[] {
+  return [`${(count)()}`]
+}

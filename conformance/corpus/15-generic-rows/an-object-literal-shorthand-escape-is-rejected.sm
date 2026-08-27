@@ -1,0 +1,7 @@
+import { count } from "./an-object-literal-shorthand-escape-is-rejected.mod.sm"
+
+const table = { count }
+
+export function main(): string[] {
+  return [`${table.count()}`]
+}

@@ -1,0 +1,11 @@
+{
+  "title": "a top-level call to an imported function is an ordinary call, not a value escape",
+  "expect": "output",
+  "stdout": [
+    "2"
+  ],
+  "modules": [
+    "a-top-level-cross-module-call-is-an-ordinary-call.mod.sm"
+  ],
+  "notes": "specification/requirements.mdx, 'Inference': \"Calling a function with unsatisfied requirements MUST add those capabilities to the caller's R row ... Requirement inference MUST be transitive through ordinary calls.\" specification/compatibility.mdx, 'Transform-Only Builds': a build \"MUST fail closed on any construct whose lowering depends on information the file alone does not carry, rather than emitting a guess\" — the only normative anchor SMITHERS1802 has. Read together: SMITHERS1802 refuses a cross-module function that becomes a VALUE, because a value has no attributable requirement row; it must not refuse an ordinary CALL, because an ordinary call is precisely what a row is required to travel through. This is the poc/src/data/** shape: a module self-registering with an imported seam at load time. The reference collected call edges per function BODY, so a call at module top level had no edge and was refused with SMITHERS1802 at 7:1 and 8:1 while the Go fork accepted both — a backend divergence as well as a false positive. The identical SAME-module call was never refused, and every hazard a top-level call can carry (SMITHERS1301, 1302, 2102, 1505) is reported by a rule that resolves the callee independently and fires identically for both."
+}

@@ -1,0 +1,7 @@
+import { count } from "./a-re-exported-binding-is-not-an-escape.mod.sm"
+
+export { count }
+
+export function main(): string[] {
+  return [`${count()}`]
+}

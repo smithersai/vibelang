@@ -1,0 +1,9 @@
+import { count } from "./a-parameter-default-callee-is-rejected.mod.sm"
+
+export function total(seen: number = count()): number {
+  return seen
+}
+
+export function main(): string[] {
+  return [`${total()}`]
+}

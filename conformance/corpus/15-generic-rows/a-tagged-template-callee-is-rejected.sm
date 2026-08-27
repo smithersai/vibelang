@@ -1,0 +1,5 @@
+import { tag } from "./a-tagged-template-callee-is-rejected.mod.sm"
+
+export function main(): string[] {
+  return [tag`x`]
+}

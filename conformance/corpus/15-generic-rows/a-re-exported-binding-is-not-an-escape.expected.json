@@ -1,0 +1,11 @@
+{
+  "title": "re-exporting an imported function names a binding rather than producing a value that escapes analysis",
+  "expect": "output",
+  "stdout": [
+    "0"
+  ],
+  "modules": [
+    "a-re-exported-binding-is-not-an-escape.mod.sm"
+  ],
+  "notes": "specification/requirements.mdx, 'Inference': \"Calling a function with unsatisfied requirements MUST add those capabilities to the caller's R row ... Requirement inference MUST be transitive through ordinary calls.\" specification/compatibility.mdx, 'Transform-Only Builds': a build \"MUST fail closed on any construct whose lowering depends on information the file alone does not carry, rather than emitting a guess\" — the only normative anchor SMITHERS1802 has. Read together: SMITHERS1802 refuses a cross-module function that becomes a VALUE, because a value has no attributable requirement row; it must not refuse an ordinary CALL, because an ordinary call is precisely what a row is required to travel through. `export { count }` is an export *declaration* naming a binding, not an expression producing a value, and a requirement crosses a two-hop re-export chain intact. The reference reported SMITHERS1802 at 3:10 while the Go fork accepted it. `export default f` is an *expression* export and remains refused on both backends; that question is not settled by any sentence and is deliberately left where it was."
+}

@@ -1,0 +1,12 @@
+import { register, count } from "./a-top-level-cross-module-call-is-an-ordinary-call.mod.sm"
+
+function isThing(value: unknown): boolean {
+  return typeof value === "object" && value !== null
+}
+
+register({ name: "Thing", matches: isThing })
+register({ name: "Text", matches: (value) => typeof value === "string" })
+
+export function main(): string[] {
+  return [`${count()}`]
+}

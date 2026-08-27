@@ -1,0 +1,15 @@
+{
+  "title": "a cross-module callee in a parameter default stays fail-closed because no requirement row is attributed to it",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1802",
+      "line": 3,
+      "column": 38
+    }
+  ],
+  "modules": [
+    "a-parameter-default-callee-is-rejected.mod.sm"
+  ],
+  "notes": "specification/requirements.mdx, 'Inference': \"Calling a function with unsatisfied requirements MUST add those capabilities to the caller's R row ... Requirement inference MUST be transitive through ordinary calls.\" specification/compatibility.mdx, 'Transform-Only Builds': a build \"MUST fail closed on any construct whose lowering depends on information the file alone does not carry, rather than emitting a guess\" — the only normative anchor SMITHERS1802 has. Read together: SMITHERS1802 refuses a cross-module function that becomes a VALUE, because a value has no attributable requirement row; it must not refuse an ordinary CALL, because an ordinary call is precisely what a row is required to travel through. A parameter default is walked by neither the function-body pass nor the top-level passes, so the callee's requirement row is charged nowhere — measured, not assumed. The Go fork ACCEPTED this before 2026-08-25 while the reference refused it: a fork fail-open, now closed by making the fork ask whether the call site is analyzed rather than whether it looks syntactically like a call."
+}

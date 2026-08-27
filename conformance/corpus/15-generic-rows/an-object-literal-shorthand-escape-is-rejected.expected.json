@@ -1,0 +1,15 @@
+{
+  "title": "an object-literal shorthand carrying a cross-module function is the same value escape as the explicit spelling",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1802",
+      "line": 3,
+      "column": 17
+    }
+  ],
+  "modules": [
+    "an-object-literal-shorthand-escape-is-rejected.mod.sm"
+  ],
+  "notes": "specification/requirements.mdx, 'Inference': \"Calling a function with unsatisfied requirements MUST add those capabilities to the caller's R row ... Requirement inference MUST be transitive through ordinary calls.\" specification/compatibility.mdx, 'Transform-Only Builds': a build \"MUST fail closed on any construct whose lowering depends on information the file alone does not carry, rather than emitting a guess\" — the only normative anchor SMITHERS1802 has. Read together: SMITHERS1802 refuses a cross-module function that becomes a VALUE, because a value has no attributable requirement row; it must not refuse an ordinary CALL, because an ordinary call is precisely what a row is required to travel through. `{ count }` and `{ count: count }` build the identical value, and the explicit spelling was always refused while the shorthand compiled on BOTH backends — a live fail-open, closed on 2026-08-25. The shorthand's own symbol is the object literal's *property*, not the imported function, which is the same lookup divergence SMITHERS1303 had to close. This is one of the four guards that would go red if a later lane widened the relaxation into 'any identifier that looks like a call is fine'."
+}
