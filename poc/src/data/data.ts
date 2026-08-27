@@ -85,7 +85,24 @@ function convert(value: unknown, pending: Set<object>): unknown {
     }
     const source = value as Record<string, unknown>;
     const target: Record<string, unknown> = {};
-    for (const key of Object.keys(source)) target[key] = convert(source[key], pending);
+    // `target[key] = ...` would route an own `__proto__` key through the setter
+    // `Object.prototype` defines for that name: an object or `null` value would
+    // become the result's prototype and every other value would be discarded,
+    // and either way the field would vanish from `Object.keys`, from
+    // `dataEquals`, and from `dataHash` -- which is exactly the `Hash` law
+    // violation that makes a key silently unreachable in a `HashMap`. Defining
+    // the property stores `__proto__` as ordinary data, and unlike a
+    // null-prototype accumulator it leaves the result an ordinary object, so
+    // `String(value)`, `value.toString()` and `value.hasOwnProperty` keep
+    // working on a value this module promises reads "exactly as before".
+    for (const key of Object.keys(source)) {
+      Object.defineProperty(target, key, {
+        value: convert(source[key], pending),
+        enumerable: true,
+        writable: false,
+        configurable: false,
+      });
+    }
     return brand(Object.freeze(target));
   } finally {
     pending.delete(value);

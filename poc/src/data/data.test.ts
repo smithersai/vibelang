@@ -88,6 +88,55 @@ describe("construction", () => {
     expect(panics(() => Data.struct(inherited))).toBe(true);
   });
 
+  test("an own `__proto__` key is ordinary data, not a prototype assignment", () => {
+    // `target.__proto__ = v` goes through the accessor `Object.prototype`
+    // defines for that name, which drops the field and — for an object or
+    // `null` value — makes it the result's prototype instead. Every value kind
+    // has to land as an ordinary own field, or two distinct records collapse
+    // into one `HashMap` key and one of them becomes unreachable.
+    const cases: readonly (readonly [string, string])[] = [
+      ["object", '{"a":1,"__proto__":{"tag":"A"}}'],
+      ["string", '{"a":1,"__proto__":"A"}'],
+      ["null", '{"a":1,"__proto__":null}'],
+      ["number", '{"a":1,"__proto__":7}'],
+    ];
+    for (const [kind, json] of cases) {
+      const value = Data.struct(JSON.parse(json) as Record<string, unknown>);
+      expect([kind, Object.keys(value).sort()]).toEqual([kind, ["__proto__", "a"]]);
+      expect([kind, Object.getPrototypeOf(value) === Object.prototype]).toEqual([kind, true]);
+      expect([kind, JSON.parse(JSON.stringify(value))]).toEqual([kind, JSON.parse(json)]);
+    }
+
+    // The sibling name is an ordinary data property on `Object.prototype`, so
+    // it never had the hazard; it is pinned here so the two stay together.
+    expect(Object.keys(Data.struct(JSON.parse('{"a":1,"constructor":"C"}')))).toEqual(["a", "constructor"]);
+
+    // Records differing only in that field stay distinct all the way through
+    // equality, hashing, and every hashed collection.
+    const left = Data.struct(JSON.parse('{"a":1,"__proto__":{"tag":"A"}}') as Record<string, unknown>);
+    const right = Data.struct(JSON.parse('{"a":1,"__proto__":{"tag":"B"}}') as Record<string, unknown>);
+    expect(Data.equals(left, right)).toBe(false);
+    expect(Data.hash(left) === Data.hash(right)).toBe(false);
+    const keyed = HashMap.of<unknown, string>([left, "left"]).set(right, "right");
+    expect([keyed.size, keyed.get(left), keyed.get(right)]).toEqual([2, "left", "right"]);
+    expect(HashSet.of<unknown>(left).add(right).size).toBe(2);
+
+    // ... while two renderings of the same shape remain one value, and the
+    // result is still an ordinary object rather than a null-prototype one.
+    const again = Data.struct(JSON.parse('{"__proto__":{"tag":"A"},"a":1}') as Record<string, unknown>);
+    expect(Data.equals(left, again)).toBe(true);
+    expect(Data.hash(left)).toBe(Data.hash(again));
+    expect(String(left)).toBe("[object Object]");
+    expect(Object.isFrozen(left)).toBe(true);
+
+    // Nested and tuple members go through the same conversion.
+    const nested = Data.struct({ inner: JSON.parse('{"__proto__":{"z":9},"k":1}') as Record<string, unknown> });
+    expect(Object.keys(nested.inner as object).sort()).toEqual(["__proto__", "k"]);
+    expect(Object.getPrototypeOf(nested.inner as object) === Object.prototype).toBe(true);
+    const member = Data.tuple(JSON.parse('{"__proto__":"T"}') as Record<string, unknown>)[0] as object;
+    expect(Object.keys(member)).toEqual(["__proto__"]);
+  });
+
   test("a non-plain input and a cycle both panic", () => {
     expect(panics(() => Data.struct([1, 2] as unknown as Record<string, unknown>))).toBe(true);
     expect(panics(() => Data.struct(null as unknown as Record<string, unknown>))).toBe(true);
