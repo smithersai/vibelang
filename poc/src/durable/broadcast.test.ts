@@ -262,11 +262,13 @@ test("broadcast delivery is idempotent by key, fails closed on conflict, and req
     { signalId: "deploy.rolled", idempotencyKey: "x", payload: { version: "2.0" } },
     { senderToken: tamper(senderToken) }
   )).toThrow(SignalDeliveryUnauthorizedError)
-  // A unicast token for the same identity does not authorize a broadcast.
-  expect(() => executor.deliverBroadcast(
-    { signalId: "deploy.rolled", idempotencyKey: "x", payload: { version: "2.0" } },
-    { senderToken: store.mintSignalToken("auth-run", "deploy.rolled").senderToken }
-  )).toThrow(SignalDeliveryUnauthorizedError)
+  // A unicast token for a broadcast identity cannot even be minted: the mint is
+  // where the two delivery forms are discriminated, so the token that would have
+  // authorized a unicast inbox write against this node never exists.
+  expect(() => store.mintSignalToken("auth-run", "deploy.rolled"))
+    .toThrow(SignalDeliveryRejectedError)
+  expect(() => executor.grantSignal("auth-run", "deploy.rolled"))
+    .toThrow(/does not address a signal in this deployment Plan/)
   expect(() => store.mintBroadcastToken("unknown.signal")).toThrow(SignalDeliveryRejectedError)
   expect(() => executor.deliverBroadcast(
     { signalId: "unknown.signal", idempotencyKey: "x", payload: { version: "2.0" } },
@@ -316,6 +318,139 @@ test("single-delivery and broadcast identities can never be confused", () => {
   ).execute({ service: "b" }, { executionId: "amb-f", deadline: Date.now() + 200 }))
     .toThrow(SignalDeliveryConflictError)
   third.close()
+})
+
+test("a single-delivery send can never be addressed at a broadcast node, and both forms still arrive", async () => {
+  const { deployment, node } = fixture("cross-form-delivery")
+  const store = new DurableStore()
+  const executor = new DurableExecutor(deployment, store)
+  const handle = executor.start({ service: "a" }, {
+    executionId: "x-run",
+    deadline: Date.now() + 20_000
+  })
+  await waitFor(() => subscribed(store, "x-run"), "the broadcast subscription")
+
+  // The mint is the gate that makes every other unicast entry point reachable,
+  // so it fails first and by itself.
+  expect(() => store.mintSignalToken("x-run", "deploy.rolled"))
+    .toThrow(SignalDeliveryRejectedError)
+  expect(() => executor.grantSignal("x-run", "deploy.rolled"))
+    .toThrow(/does not address a signal in this deployment Plan/)
+  expect(() => handle.signal("deploy.rolled", { idempotencyKey: "k1", payload: { version: "1.0" } }))
+    .toThrow(/does not address a signal in this deployment Plan/)
+  expect(() => executor.deliverSignal({
+    executionId: "x-run",
+    nodeId: node.id,
+    signalId: "deploy.rolled",
+    idempotencyKey: "k1",
+    payload: { version: "1.0" }
+  }, { unsafeLocalDelivery: true })).toThrow(/does not address a signal in this deployment Plan/)
+
+  // The load-bearing gate is the store's, not the coordinator's: a caller that
+  // supplies the node's own (broadcast) contract expectation directly — which
+  // agrees with the persisted row, so the digest defence never engages — is
+  // still refused. Without this the payload is journaled `signal_delivered` and
+  // then discarded forever, because `pollBroadcastSignal` never reads the inbox.
+  expect(() => store.deliverSignal({
+    executionId: "x-run",
+    nodeId: node.id,
+    signalId: "deploy.rolled",
+    idempotencyKey: "k1",
+    payload: { version: "1.0" }
+  }, {
+    planDigest: deployment.flow.plan.digest,
+    signalId: node.signalId,
+    signalContractDigest: node.signalContractDigest
+  }, { unsafeLocalDelivery: true })).toThrow(SignalDeliveryRejectedError)
+
+  // Nothing was recorded as delivered, and no orphan inbox row survives.
+  expect(store.journal("x-run").some((event) => event.type === "signal_delivered")).toBe(false)
+  expect(store.database.query("SELECT COUNT(*) AS count FROM durable_signal_inbox").get())
+    .toEqual({ count: 0 })
+  expect(store.getNode("x-run", node.id).status).toBe("pending")
+
+  // BOTH DIRECTIONS. The legitimate broadcast still fans out and is consumed...
+  const delivered = executor.deliverBroadcast(
+    { signalId: "deploy.rolled", idempotencyKey: "real", payload: { version: "2.0" } },
+    { senderToken: executor.grantBroadcast("deploy.rolled").senderToken }
+  )
+  expect(delivered.notifiedExecutions).toEqual(["x-run"])
+  expect(await handle.result()).toMatchObject({ service: "a", notice: { version: "2.0" } })
+  store.close()
+
+  // ... and a genuinely single-delivery node still mints, grants, and receives
+  // exactly the delivery the broadcast node just refused.
+  const unicast = compile(unicastSource, "Single", "test/source/Single")
+  const unicastNode = allPlanNodes(unicast.plan).find(
+    (candidate): candidate is SignalNode => candidate.kind === "signal"
+  )!
+  const unicastStore = new DurableStore()
+  const unicastHandle = new DurableExecutor(
+    Deployment.build({ id: "cross-form-unicast", flow: unicast.flow, pools: [] }),
+    unicastStore
+  ).start({ service: "b" }, { executionId: "u-run", deadline: Date.now() + 20_000 })
+  await waitFor(
+    () => unicastStore.journal("u-run").some((event) => event.type === "signal_waiting"),
+    "the single-delivery wait"
+  )
+  expect(unicastStore.mintSignalToken("u-run", "deploy.rolled").nodeId).toBe(unicastNode.id)
+  expect(unicastHandle.signal("deploy.rolled", { idempotencyKey: "k", payload: { version: "3.0" } }).duplicate)
+    .toBe(false)
+  expect(await unicastHandle.result()).toMatchObject({ version: "3.0" })
+  unicastStore.close()
+})
+
+test("the attached-child single-delivery chain refuses a broadcast child node too", async () => {
+  // `handle.signalChild` -> `deliverAttachedChildSignal` -> `mintAttachedSignalToken`
+  // is a second, separately spelled unicast entry point, and it reaches a child
+  // execution the caller never held a handle to. It must discriminate exactly
+  // like the direct chain.
+  const child = compile(source, "Rollout", "test/source/ChildRollout")
+  const parent = compileDurableSource(`
+import { durable } from "smithers:flows"
+import { Rollout } from "test:flows"
+export const Top = durable(function Top(input: { service: string }) {
+  return Rollout.run({ service: input.service })
+})
+`, {
+    fileName: "flows/top.sm.ts",
+    flowId: "test/source/Top",
+    flowVersion: 1,
+    actions: [],
+    flows: [{ moduleSpecifier: "test:flows", exportName: "Rollout", plan: child.plan }]
+  })
+  if (!parent.ok) throw new Error(JSON.stringify(parent.diagnostics))
+  const childFlowNode = parent.plan.nodes.find((candidate) => candidate.kind === "childFlow")!
+  const broadcastNode = allPlanNodes(child.plan).find(
+    (candidate): candidate is SignalNode => candidate.kind === "signal"
+  )!
+
+  const store = new DurableStore()
+  const handle = new DurableExecutor(
+    Deployment.build({ id: "attached-broadcast", flow: parent.flow, pools: [] }),
+    store
+  ).start({ service: "a" }, { executionId: "T", deadline: Date.now() + 20_000 })
+  handle.result().catch(() => {})
+  const childExecutionId = `T::child::${childFlowNode.id}`
+  await waitFor(() => subscribed(store, childExecutionId), "the attached child's subscription")
+
+  expect(() => handle.signalChild([childFlowNode.id], "deploy.rolled", {
+    idempotencyKey: "k",
+    payload: { version: "1.0" }
+  })).toThrow(/does not address a signal in the attached child Plan/)
+  expect(() => store.mintAttachedSignalToken("T", [childFlowNode.id], "deploy.rolled"))
+    .toThrow(SignalDeliveryRejectedError)
+  expect(store.database.query("SELECT COUNT(*) AS count FROM durable_signal_inbox").get())
+    .toEqual({ count: 0 })
+
+  // BOTH DIRECTIONS: the real broadcast still reaches the attached child.
+  expect(store.deliverBroadcast(
+    { signalId: "deploy.rolled", idempotencyKey: "real", payload: { version: "9.9" } },
+    { signalId: "deploy.rolled", signalContractDigest: broadcastNode.signalContractDigest },
+    { senderToken: store.mintBroadcastToken("deploy.rolled").senderToken }
+  ).notifiedExecutions).toEqual([childExecutionId])
+  expect(await handle.result()).toMatchObject({ notice: { version: "9.9" } })
+  store.close()
 })
 
 test("a crash after one waiter's broadcast consume leaves the other waiters unaffected", async () => {

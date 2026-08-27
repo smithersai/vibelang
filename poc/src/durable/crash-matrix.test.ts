@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -7,39 +7,92 @@ import {
   compileDurableSource,
   CoordinatorCrash,
   Deployment,
+  digest,
   DurableActionFailure,
   DurableExecutor,
   DurableStore,
   fail,
   Flow,
+  PlanArtifact,
   Provider,
   Worker,
   type CachedSuccessCommit,
   type ClaimResult,
   type FinishExecutionResult,
+  type ActionDescriptor,
+  type PlanNode,
   type QueueNode,
   type SignalNode,
 } from "./index.ts";
 
-type StoreCommitPoint =
-  | "initializeExecution"
-  | "claimNode"
-  | "scheduleRetry"
-  | "commitSuccess"
-  | "commitMemoSuccess"
-  | "commitContentSuccess"
-  | "adoptSuccess"
-  | "commitFailure"
-  | "skipNodes"
-  | "completeExecution"
-  | "failExecution"
-  | "cancelExecution"
-  | "timeoutNode"
-  | "enqueue"
-  | "pollQueue"
-  | "deliverBroadcast"
-  | "pollSignal"
-  | "migrateExecution";
+/**
+ * Every `BEGIN IMMEDIATE` transaction site on a `DurableStore` INSTANCE, i.e.
+ * every point at which "the process disappears after COMMIT returns" is a state
+ * this matrix has to model.
+ *
+ * This list is DERIVED, not hand-maintained: `storeTransactionSites()` below
+ * re-parses `store.ts`, and the gate at the bottom of this file fails when a
+ * transaction site appears that is in neither this list nor
+ * `CONSTRUCTION_TRANSACTION_SITES`. The previous hand-maintained union named 18
+ * points where the store had 28; one of the ten it silently omitted was
+ * `materializeFanOut`, and that uncovered crash state was exactly the
+ * precondition for a migration defect that permanently poisoned an execution.
+ */
+const STORE_COMMIT_POINTS = [
+  "adoptSuccess",
+  "cancelExecution",
+  "claimNode",
+  "collectBroadcastDeliveries",
+  "commitContentSuccess",
+  "commitFailure",
+  "commitMemoSuccess",
+  "commitSuccess",
+  "completeExecution",
+  "contentCommit",
+  "deliverBroadcast",
+  "deliverSignal",
+  "enqueue",
+  "failExecution",
+  "initializeExecution",
+  "materializeFanOut",
+  "materializeFanOutStep",
+  "materializeLoopRound",
+  "memoCommit",
+  "migrateExecution",
+  "pollQueue",
+  "pollSignal",
+  "registerChildExecution",
+  "scheduleRetry",
+  "scheduleTimer",
+  "skipNodes",
+  "timeoutNode",
+] as const;
+
+/**
+ * Transaction sites that run while the store is being constructed. They are not
+ * commit points for this matrix because no instance exists yet to proxy; a
+ * crash there leaves an unopened database, which the next constructor rebuilds.
+ */
+const CONSTRUCTION_TRANSACTION_SITES = ["constructor", "initializeSignalTokenSecret"] as const;
+
+type StoreCommitPoint = typeof STORE_COMMIT_POINTS[number];
+
+/**
+ * Commit points this file does NOT crash after, each with the reason. Keeping
+ * the gap explicit is the point: the previous union expressed the same gap by
+ * omitting the names entirely, which is how it went unnoticed.
+ */
+const UNCOVERED_COMMIT_POINTS: Readonly<Record<string, string>> = {
+  collectBroadcastDeliveries: "operator retention sweep, not a coordinator transition (broadcast.test.ts)",
+  contentCommit: "cross-execution cache write with no coordinator caller; commitContentSuccess is the engine path",
+  deliverSignal: "producer-side write; covered for the broadcast form via deliverBroadcast",
+  memoCommit: "cross-execution cache write with no coordinator caller; commitMemoSuccess is the engine path",
+  migrateExecution: "exercised in migration.test.ts, which owns the migration fixtures",
+  registerChildExecution: "exercised in child-flow.test.ts, which owns the parent/child Plan fixtures",
+};
+
+/** Commit points actually crashed after by this file, recorded at run time. */
+const exercisedCommitPoints = new Set<StoreCommitPoint>();
 
 /**
  * Models a process disappearing after SQLite has returned from COMMIT but
@@ -52,6 +105,7 @@ const crashAfterCommit = (
   point: StoreCommitPoint,
   committed: (result: unknown) => boolean = () => true,
 ): DurableStore => {
+  exercisedCommitPoints.add(point);
   let armed = true;
   return new Proxy(store, {
     get(target, property) {
@@ -67,6 +121,31 @@ const crashAfterCommit = (
       };
     },
   });
+};
+
+const RESERVED_WORDS = new Set([
+  "if", "for", "while", "switch", "catch", "return", "throw", "else", "do", "try",
+  "function", "const", "let", "var", "new", "await", "typeof", "get", "set",
+]);
+
+/**
+ * Re-derives the store's transaction sites from its own source: every member of
+ * `class DurableStore` whose body contains a `.immediate()` call.
+ */
+const storeTransactionSites = (): readonly string[] => {
+  const lines = readFileSync(new URL("./store.ts", import.meta.url), "utf8").split("\n");
+  const start = lines.findIndex((line) => /^export class DurableStore\b/.test(line));
+  if (start < 0) throw new Error("DurableStore class declaration not found in store.ts");
+  const sites = new Set<string>();
+  let member = "<class body>";
+  for (let index = start + 1; index < lines.length; index++) {
+    const line = lines[index]!;
+    if (line === "}") break; // the class body closes at column 0
+    const declaration = /^ {2}(?:private |protected |static |readonly )*([A-Za-z_$][\w$]*)\s*(?:<[^(]*>)?\(/.exec(line);
+    if (declaration !== null && !RESERVED_WORDS.has(declaration[1]!)) member = declaration[1]!;
+    if (line.includes(".immediate()")) sites.add(member);
+  }
+  return [...sites].sort();
 };
 
 const temporaryDatabase = async (body: (filename: string) => Promise<void>): Promise<void> => {
@@ -511,4 +590,251 @@ test("durable queue and broadcast commits are restart-visible exactly once", asy
       .toHaveLength(1);
     afterAdopt.close();
   });
+});
+
+/**
+ * Builds a deployment straight from Plan IR. The templating commit points below
+ * need fan-out, multi-step fan-out, loop, and timer nodes, and authoring them
+ * through the source compiler would cost more fixture than the crash they are
+ * here to model.
+ */
+const rawDeployment = (options: {
+  readonly id: string;
+  readonly formatVersion: 1 | 2;
+  readonly nodes: readonly PlanNode[];
+  readonly outputNodeId: string;
+  readonly actions?: readonly ActionDescriptor[];
+  readonly providers?: readonly Parameters<typeof Worker.pool>[1]["providers"][number][];
+}) => {
+  const semantic = {
+    formatVersion: options.formatVersion,
+    flowId: `test/CrashMatrix/${options.id}`,
+    flowVersion: 1,
+    nodes: options.nodes,
+    output: { kind: "node" as const, nodeId: options.outputNodeId, path: [] as readonly string[] },
+    requirements: (options.actions ?? []).map((descriptor) => descriptor.id),
+    actions: options.actions ?? [],
+  };
+  const plan = PlanArtifact.validate({ ...semantic, digest: digest(semantic) });
+  const flow = PlanArtifact.load<Record<string, never>, unknown>(PlanArtifact.encode(plan));
+  return Deployment.build({
+    id: options.id,
+    flow,
+    pools: (options.providers ?? []).length === 0
+      ? []
+      : [Worker.pool("local", { target: "typescript-bun", providers: options.providers! })],
+  });
+};
+
+const Fan = Action.define<{ id: string; step: number }, { id: string; step: number }>({
+  id: "test/CrashMatrix/Fan",
+  version: 1,
+});
+const Countdown = Action.define<{ remaining: number }, { remaining: number }>({
+  id: "test/CrashMatrix/Countdown",
+  version: 1,
+});
+
+/**
+ * The templating commit points: each writes the complete dynamic child identity
+ * set (or one round/step of it) in one transaction BEFORE any child can run, so
+ * a process that dies immediately after COMMIT must resume onto exactly those
+ * children — never a second, differently-keyed set.
+ */
+test("fan-out, fan-out step, loop round, and timer commits are restart-visible exactly once", async () => {
+  const fanCalls: string[] = [];
+  const FanLive = Provider.provide(Fan, ({ id, step }) => {
+    fanCalls.push(`${id}:${step}`);
+    return { id, step };
+  }, { implementationId: "crash-fan", implementationVersion: "1" });
+
+  // 1. materializeFanOut — the whole key -> child identity set is one commit.
+  await temporaryDatabase(async (filename) => {
+    const deployment = rawDeployment({
+      id: "crash-fanout",
+      formatVersion: 1,
+      outputNodeId: "n-fan",
+      actions: [Fan.descriptor],
+      providers: [FanLive],
+      nodes: [{
+        kind: "fanout",
+        id: "n-fan",
+        items: { kind: "literal", value: [{ id: "a" }, { id: "b" }] },
+        keyPath: ["id"],
+        actionId: Fan.descriptor.id,
+        actionVersion: Fan.descriptor.version,
+        actionContractDigest: Fan.descriptor.contractDigest,
+        input: { kind: "object", fields: { id: { kind: "item", path: ["id"] }, step: { kind: "literal", value: 0 } } },
+        dependencies: [],
+        controlDependencies: [],
+      }],
+    });
+    const firstStore = new DurableStore(filename);
+    await expect(new DurableExecutor(deployment, crashAfterCommit(firstStore, "materializeFanOut")).execute(
+      {},
+      { executionId: "fan", leaseMs: 100 },
+    )).rejects.toBeInstanceOf(CoordinatorCrash);
+    firstStore.close();
+
+    const resumed = new DurableStore(filename);
+    expect(await new DurableExecutor(deployment, resumed).execute({}, { executionId: "fan", leaseMs: 100 }))
+      .toEqual([{ id: "a", step: 0 }, { id: "b", step: 0 }]);
+    expect(resumed.journal("fan").filter((event) => event.type === "fanout_materialized")).toHaveLength(1);
+    expect(fanCalls.sort()).toEqual(["a:0", "b:0"]);
+    resumed.close();
+  });
+
+  // 2. materializeFanOutStep — one later step of one committed key.
+  fanCalls.length = 0;
+  await temporaryDatabase(async (filename) => {
+    const step = (ordinal: number) => ({
+      actionId: Fan.descriptor.id,
+      actionVersion: Fan.descriptor.version,
+      actionContractDigest: Fan.descriptor.contractDigest,
+      input: {
+        kind: "object",
+        fields: {
+          id: ordinal === 0 ? { kind: "item", path: ["id"] } : { kind: "step", step: ordinal - 1, path: ["id"] },
+          step: { kind: "literal", value: ordinal },
+        },
+      },
+    });
+    const deployment = rawDeployment({
+      id: "crash-fanout-step",
+      formatVersion: 2,
+      outputNodeId: "n-fan",
+      actions: [Fan.descriptor],
+      providers: [FanLive],
+      nodes: [{
+        kind: "fanout",
+        id: "n-fan",
+        items: { kind: "literal", value: [{ id: "a" }] },
+        keyPath: ["id"],
+        steps: [step(0), step(1)],
+        dependencies: [],
+        controlDependencies: [],
+      } as unknown as PlanNode],
+    });
+    const firstStore = new DurableStore(filename);
+    await expect(new DurableExecutor(deployment, crashAfterCommit(firstStore, "materializeFanOutStep")).execute(
+      {},
+      { executionId: "step", leaseMs: 100 },
+    )).rejects.toBeInstanceOf(CoordinatorCrash);
+    firstStore.close();
+
+    const resumed = new DurableStore(filename);
+    expect(await new DurableExecutor(deployment, resumed).execute({}, { executionId: "step", leaseMs: 100 }))
+      .toEqual([{ id: "a", step: 1 }]);
+    expect(resumed.journal("step").filter((event) => event.type === "fanout_step_materialized")).toHaveLength(1);
+    expect(fanCalls).toEqual(["a:0", "a:1"]);
+    resumed.close();
+  });
+
+  // 3. materializeLoopRound — one round's child identity and handoff state.
+  const loopCalls: number[] = [];
+  await temporaryDatabase(async (filename) => {
+    const deployment = rawDeployment({
+      id: "crash-loop",
+      formatVersion: 2,
+      outputNodeId: "n-loop",
+      actions: [Countdown.descriptor],
+      providers: [Provider.provide(Countdown, ({ remaining }) => {
+        loopCalls.push(remaining);
+        return { remaining: remaining - 1 };
+      }, { implementationId: "crash-loop", implementationVersion: "1" })],
+      nodes: [{
+        kind: "loop",
+        id: "n-loop",
+        initial: { kind: "literal", value: { remaining: 3 } },
+        condition: {
+          kind: "binary",
+          operator: "gt",
+          left: { kind: "state", path: ["remaining"] },
+          right: { kind: "literal", value: 0 },
+        },
+        actionId: Countdown.descriptor.id,
+        actionVersion: Countdown.descriptor.version,
+        actionContractDigest: Countdown.descriptor.contractDigest,
+        body: { kind: "object", fields: { remaining: { kind: "state", path: ["remaining"] } } },
+        maxRounds: 5,
+        dependencies: [],
+        controlDependencies: [],
+      } as unknown as PlanNode],
+    });
+    const firstStore = new DurableStore(filename);
+    await expect(new DurableExecutor(deployment, crashAfterCommit(firstStore, "materializeLoopRound")).execute(
+      {},
+      { executionId: "loop", leaseMs: 100 },
+    )).rejects.toBeInstanceOf(CoordinatorCrash);
+    firstStore.close();
+
+    const resumed = new DurableStore(filename);
+    expect(await new DurableExecutor(deployment, resumed).execute({}, { executionId: "loop", leaseMs: 100 }))
+      .toEqual({ remaining: 0 });
+    expect(resumed.journal("loop").filter((event) => event.type === "loop_round_materialized")).toHaveLength(3);
+    expect(loopCalls).toEqual([3, 2, 1]);
+    resumed.close();
+  });
+
+  // 4. scheduleTimer — the absolute wake deadline is committed exactly once,
+  //    and a restart adopts it instead of computing a fresh one.
+  await temporaryDatabase(async (filename) => {
+    const deployment = rawDeployment({
+      id: "crash-timer",
+      formatVersion: 1,
+      outputNodeId: "n-timer",
+      nodes: [{
+        kind: "timer",
+        id: "n-timer",
+        durationMs: { kind: "literal", value: 5 },
+        dependencies: [],
+        controlDependencies: [],
+      }],
+    });
+    const firstStore = new DurableStore(filename);
+    await expect(new DurableExecutor(
+      deployment,
+      crashAfterCommit(firstStore, "scheduleTimer", (result) =>
+        (result as { newlyScheduled?: unknown }).newlyScheduled === true),
+    ).execute({}, { executionId: "timer", leaseMs: 100 })).rejects.toBeInstanceOf(CoordinatorCrash);
+    const committedWakeAt = firstStore.getNode("timer", "n-timer").wakeAt;
+    expect(committedWakeAt).toBeGreaterThan(0);
+    firstStore.close();
+
+    const resumed = new DurableStore(filename);
+    expect(await new DurableExecutor(deployment, resumed).execute({}, { executionId: "timer", leaseMs: 100 }))
+      .toBeNull();
+    expect(resumed.journal("timer").filter((event) => event.type === "timer_scheduled")).toHaveLength(1);
+    expect(resumed.journal("timer").find((event) => event.type === "timer_scheduled")?.payload)
+      .toMatchObject({ wakeAt: committedWakeAt });
+    resumed.close();
+  });
+});
+
+/**
+ * The gate that makes this matrix's coverage legible. It is declared last so
+ * every `crashAfterCommit` above has already registered.
+ */
+test("the crash matrix's commit-point union is derived from the store's transaction sites", () => {
+  // 1. No transaction site can exist that this file has never classified.
+  expect(storeTransactionSites()).toEqual(
+    [...STORE_COMMIT_POINTS, ...CONSTRUCTION_TRANSACTION_SITES].sort(),
+  );
+  // 2. Every classified commit point is a real, callable store method, so a
+  //    rename cannot leave a dead name behind.
+  const store = new DurableStore();
+  for (const point of STORE_COMMIT_POINTS) {
+    expect(typeof (store as unknown as Record<string, unknown>)[point], point).toBe("function");
+  }
+  store.close();
+  // 3. The coverage claim is checked against what actually ran, in both
+  //    directions: an uncovered point may not silently appear, and a point
+  //    listed as uncovered may not silently be covered.
+  expect([...exercisedCommitPoints].sort()).toEqual(
+    STORE_COMMIT_POINTS.filter((point) => !(point in UNCOVERED_COMMIT_POINTS)).slice().sort(),
+  );
+  for (const point of Object.keys(UNCOVERED_COMMIT_POINTS)) {
+    expect(STORE_COMMIT_POINTS, `${point} is not a store commit point`)
+      .toContain(point as StoreCommitPoint);
+  }
 });

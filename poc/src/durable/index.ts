@@ -246,6 +246,7 @@ export {
 export {
   actionDeclarationFromDescriptor,
   compileActionContract,
+  decodeWorkerExit,
   durableErrorPayload,
   DurableCodecError,
   DurableContractCompiler,
@@ -255,7 +256,8 @@ export {
   validateDurableValue,
   type ActionContractDiagnostic,
   type CompileActionContractOptions,
-  type CompileActionContractResult
+  type CompileActionContractResult,
+  type WorkerExitSurface
 } from "./schema.ts"
 export {
   compileDurableSource,

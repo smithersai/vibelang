@@ -49,12 +49,23 @@ const fixture = (
 
 const text = (bytes: Uint8Array): string => new TextDecoder().decode(bytes)
 
+/**
+ * Every fixture Plan here is recorded by `Flow.define`, so it carries
+ * `provenance: "proxy-recorded"` and signing it is a deliberate, acknowledged
+ * act. The default refusal is covered by its own test below rather than being
+ * silently opted out of everywhere.
+ */
+const encodeFixtureArtifact = (
+  ...args: Parameters<typeof encodeSignedDeploymentArtifact>
+): Uint8Array =>
+  encodeSignedDeploymentArtifact(args[0], args[1], args[2], { allowUnverifiedPlanProvenance: true })
+
 test("Ed25519 signs and authenticates the exact Plan and deployment manifest", () => {
   const deployment = fixture()
   const keyPair = generateDeploymentSigningKeyPair()
   const verificationKey = deploymentVerificationKey(keyPair)
-  const first = encodeSignedDeploymentArtifact(deployment.flow.plan, deployment.manifest, keyPair)
-  const second = encodeSignedDeploymentArtifact(deployment.flow.plan, deployment.manifest, keyPair)
+  const first = encodeFixtureArtifact(deployment.flow.plan, deployment.manifest, keyPair)
+  const second = encodeFixtureArtifact(deployment.flow.plan, deployment.manifest, keyPair)
 
   // Ed25519 and canonical encoding make identical build evidence byte-identical.
   expect(text(second)).toBe(text(first))
@@ -75,7 +86,7 @@ test("runtime deployment authentication is exact and its proof is not structural
   const otherDeployment = fixture("different-runtime-deployment")
   const keyPair = generateDeploymentSigningKeyPair()
   const verificationKey = deploymentVerificationKey(keyPair)
-  const artifact = encodeSignedDeploymentArtifact(deployment.flow.plan, deployment.manifest, keyPair)
+  const artifact = encodeFixtureArtifact(deployment.flow.plan, deployment.manifest, keyPair)
 
   expect(() => authenticateDeployment(otherDeployment, artifact, [verificationKey])).toThrow(
     "runtime deployment manifest does not match"
@@ -106,7 +117,7 @@ test("the authenticated coordinator gate runs before any worker factory", async 
   const deployment = fixture()
   const keyPair = generateDeploymentSigningKeyPair()
   const verificationKey = deploymentVerificationKey(keyPair)
-  const artifact = encodeSignedDeploymentArtifact(deployment.flow.plan, deployment.manifest, keyPair)
+  const artifact = encodeFixtureArtifact(deployment.flow.plan, deployment.manifest, keyPair)
   const authentication = authenticateDeployment(deployment, artifact, [verificationKey])
   const store = new DurableStore()
 
@@ -127,7 +138,7 @@ test("authenticated coordinator routing fails closed on signed sandbox mismatch"
   const deployment = fixture("signed-nonlocal", "deno-no-authority")
   const keyPair = generateDeploymentSigningKeyPair()
   const verificationKey = deploymentVerificationKey(keyPair)
-  const artifact = encodeSignedDeploymentArtifact(deployment.flow.plan, deployment.manifest, keyPair)
+  const artifact = encodeFixtureArtifact(deployment.flow.plan, deployment.manifest, keyPair)
   const authentication = authenticateDeployment(deployment, artifact, [verificationKey])
   let factoryCalls = 0
   const wrongTransport = trustWorkerTransport("process", (pool, manifest, providers) => {
@@ -183,7 +194,7 @@ test("recomputing every unkeyed digest cannot forge a trusted deployment", () =>
   const deployment = fixture()
   const keyPair = generateDeploymentSigningKeyPair()
   const verificationKey = deploymentVerificationKey(keyPair)
-  const encoded = encodeSignedDeploymentArtifact(deployment.flow.plan, deployment.manifest, keyPair)
+  const encoded = encodeFixtureArtifact(deployment.flow.plan, deployment.manifest, keyPair)
   const forged = JSON.parse(text(encoded)) as Record<string, any>
 
   forged.manifest.deploymentId = "attacker-controlled"
@@ -202,7 +213,7 @@ test("an artifact cannot introduce its own signing authority", () => {
   const deployment = fixture()
   const trusted = generateDeploymentSigningKeyPair()
   const attacker = generateDeploymentSigningKeyPair()
-  const attackerArtifact = encodeSignedDeploymentArtifact(
+  const attackerArtifact = encodeFixtureArtifact(
     deployment.flow.plan,
     deployment.manifest,
     attacker
@@ -221,7 +232,7 @@ test("trust roots, signing key pairs, signatures, and canonical envelopes fail c
   const deployment = fixture()
   const keyPair = generateDeploymentSigningKeyPair()
   const verificationKey = deploymentVerificationKey(keyPair)
-  const encoded = encodeSignedDeploymentArtifact(deployment.flow.plan, deployment.manifest, keyPair)
+  const encoded = encodeFixtureArtifact(deployment.flow.plan, deployment.manifest, keyPair)
 
   const mismatchedTrustRoot = {
     ...verificationKey,
@@ -232,7 +243,7 @@ test("trust roots, signing key pairs, signatures, and canonical envelopes fail c
   )
 
   const another = generateDeploymentSigningKeyPair()
-  expect(() => encodeSignedDeploymentArtifact(
+  expect(() => encodeFixtureArtifact(
     deployment.flow.plan,
     deployment.manifest,
     { ...keyPair, privateKey: another.privateKey }
@@ -288,7 +299,7 @@ test("the Ed25519 signature is domain separated and key encodings are exact", ()
   const deployment = fixture()
   const keyPair = generateDeploymentSigningKeyPair()
   const verificationKey = deploymentVerificationKey(keyPair)
-  const encoded = encodeSignedDeploymentArtifact(deployment.flow.plan, deployment.manifest, keyPair)
+  const encoded = encodeFixtureArtifact(deployment.flow.plan, deployment.manifest, keyPair)
   const wrongDomain = JSON.parse(text(encoded)) as Record<string, any>
   const { digest: _oldDigest, signature: _oldSignature, ...unsigned } = wrongDomain
   const privateKey = createPrivateKey({
@@ -341,8 +352,8 @@ test("trust-set rotation is explicit and does not pretend to revoke issued proce
   const nextKey = generateDeploymentSigningKeyPair()
   const oldTrust = deploymentVerificationKey(oldKey)
   const nextTrust = deploymentVerificationKey(nextKey)
-  const oldArtifact = encodeSignedDeploymentArtifact(deployment.flow.plan, deployment.manifest, oldKey)
-  const nextArtifact = encodeSignedDeploymentArtifact(deployment.flow.plan, deployment.manifest, nextKey)
+  const oldArtifact = encodeFixtureArtifact(deployment.flow.plan, deployment.manifest, oldKey)
+  const nextArtifact = encodeFixtureArtifact(deployment.flow.plan, deployment.manifest, nextKey)
 
   expect(decodeSignedDeploymentArtifact(oldArtifact, [oldTrust, nextTrust]).signer.keyId).toBe(oldKey.keyId)
   expect(decodeSignedDeploymentArtifact(nextArtifact, [oldTrust, nextTrust]).signer.keyId).toBe(nextKey.keyId)

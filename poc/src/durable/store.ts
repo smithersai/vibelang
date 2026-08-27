@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite"
 import { Buffer } from "node:buffer"
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto"
 import { MAX_CHILD_FLOW_DEPTH, validateDeploymentManifest, validatePlanTemplate } from "./artifact.ts"
+import { DurableExecutionCancelled } from "./errors.ts"
 import {
   assertNodeMigrationCompatible,
   ExecutionMigratedError,
@@ -757,10 +758,18 @@ export class DurableStore {
   /**
    * Provisional grant seam: mints an opaque sender token bound to exactly
    * (executionId, signalId), fail-closed unless that execution pinned a
-   * contract for that signal at initialization. The token is stateless — no
-   * grant row is persisted, so minting itself commits nothing — and it is
-   * honestly local-trust evidence, not remote-network authentication: any
-   * principal with read access to the database can derive the same secret.
+   * SINGLE-DELIVERY contract for that signal at initialization. The token is
+   * stateless — no grant row is persisted, so minting itself commits nothing —
+   * and it is honestly local-trust evidence, not remote-network authentication:
+   * any principal with read access to the database can derive the same secret.
+   *
+   * The `delivery IS NULL` filter is load-bearing, not cosmetic. A broadcast
+   * node pins its contract in the very same table, and this token is the
+   * evidence `deliverSignal` — the unicast form, which writes
+   * `durable_signal_inbox` — checks. Minting it for a broadcast node would
+   * authorize a delivery that `pollBroadcastSignal` never reads, so the payload
+   * would be journaled as delivered and then discarded forever. A sender that
+   * means to reach a broadcast identity must mint through `mintBroadcastToken`.
    */
   mintSignalToken(executionId: string, signalId: string): MintedSignalToken {
     for (const [label, value, limit] of [
@@ -775,11 +784,12 @@ export class DurableStore {
       }
     }
     const contract = this.database.query(
-      "SELECT node_id FROM durable_signal_contracts WHERE execution_id=? AND signal_id=?"
+      `SELECT node_id FROM durable_signal_contracts
+       WHERE execution_id=? AND signal_id=? AND delivery IS NULL`
     ).get(executionId, signalId) as { readonly node_id: string } | null
     if (contract === null) {
       throw new SignalDeliveryRejectedError(
-        `Cannot mint a sender token: execution ${executionId} has no pinned contract for signal ${signalId}`
+        `Cannot mint a sender token: execution ${executionId} has no pinned single-delivery contract for signal ${signalId}`
       )
     }
     return { nodeId: contract.node_id, senderToken: this.computeSignalToken(executionId, signalId) }
@@ -1321,6 +1331,41 @@ export class DurableStore {
         }
         return existing
       }
+      // An attached child is linked (`registerChildExecution`) and created (here)
+      // in two different transactions, so between them a parent cancellation or
+      // failure walks `durable_child_executions` and finds no execution row to
+      // fence — `cancelDescendantExecutions` updates zero rows, journals nothing,
+      // and does not recurse. Creating the child anyway would start an execution
+      // under a parent that already has a durable terminal outcome: its Actions
+      // would really run, and nothing would ever cancel it, because a terminal
+      // parent cannot be cancelled a second time.
+      //
+      // Both reads below are inside this insert's own BEGIN IMMEDIATE, so the
+      // window is closed from the other side: either this transaction observes
+      // the parent's terminal status and refuses to create the child, or the
+      // child row exists before the parent terminates and the propagation finds
+      // a real row to fence. That also covers a coordinator that dies between
+      // the two calls and resumes long afterwards, which reordering them would
+      // not. `completed` and `failed` are refused for the same reason as
+      // `cancelled`: the parent's outcome is already durable either way.
+      const parentLink = this.database.query(
+        "SELECT parent_execution_id FROM durable_child_executions WHERE child_execution_id=?"
+      ).get(executionId) as { readonly parent_execution_id: string } | null
+      if (parentLink !== null) {
+        const parent = this.database.query(
+          "SELECT status FROM durable_executions WHERE id=?"
+        ).get(parentLink.parent_execution_id) as { readonly status: ExecutionStatus } | null
+        if (parent === null || parent.status !== "running") {
+          throw new DurableExecutionCancelled({
+            name: "ParentExecutionTerminated",
+            message:
+              `Durable execution ${executionId} is attached to ${parentLink.parent_execution_id}, which is ` +
+              `${parent === null ? "missing" : parent.status} and can no longer own a running child`,
+            parentExecutionId: parentLink.parent_execution_id,
+            parentStatus: parent === null ? null : parent.status
+          })
+        }
+      }
       this.database.query(
         `INSERT INTO durable_executions(
           id,flow_id,plan_digest,manifest_digest,input_json,input_digest,deadline,status,created_at,updated_at
@@ -1476,11 +1521,25 @@ export class DurableStore {
 
   /**
    * Must run inside an open transaction. Parent termination is recorded before
-   * this propagation runs; committing both in one transaction leaves no
-   * intermediate state in which a durable parent outcome exists while an
-   * attached child execution silently keeps running. Each execution still has
-   * exactly one durable winner: a child that already completed or failed
-   * keeps its terminal outcome.
+   * this propagation runs, and committing both in one transaction means no
+   * child execution that ALREADY EXISTS can be left running behind a durable
+   * parent outcome. Each execution still has exactly one durable winner: a child
+   * that already completed or failed keeps its terminal outcome.
+   *
+   * What this alone does NOT cover, and what closes it: a link row is committed
+   * by `registerChildExecution` before the child's execution row exists, so this
+   * walk can find a link whose `durable_executions` row has not been inserted
+   * yet. The `UPDATE` below then changes zero rows — it fences nothing, journals
+   * nothing, and (before the guard described here existed) the child went on to
+   * run to completion under a terminated parent, unrecoverably, because
+   * re-cancelling an already-terminal parent is a no-op.
+   *
+   * That half of the invariant is enforced from the other side, in
+   * `initializeExecution`: a new execution row that is already linked to a
+   * parent refuses to be created unless that parent is still `running`, inside
+   * the same `BEGIN IMMEDIATE` as its own insert. So either the child row exists
+   * and this propagation fences it, or the child never starts. Do not weaken
+   * either half on the assumption that a link implies an execution row.
    */
   private cancelDescendantExecutions(executionId: string, reason: JsonValue, visited: Set<string>): void {
     const links = this.database.query(
@@ -2110,7 +2169,21 @@ export class DurableStore {
           `Unknown durable signal node ${request.executionId}/${request.nodeId}`
         )
       }
-      const { row: contract, schema } = this.signalContract(request.executionId, request.nodeId)
+      const { row: contract, schema, broadcast } = this.signalContract(request.executionId, request.nodeId)
+      // The two delivery forms have two different durable representations. A
+      // broadcast node is served by `pollBroadcastSignal`, which reads
+      // `durable_broadcast_deliveries` and never looks at `durable_signal_inbox`
+      // — so an inbox row written here would be journaled as `signal_delivered`
+      // and then never consumed by anything, and the waiting Flow would hang to
+      // its deadline. Refusing is the only honest answer: the sender is told the
+      // delivery did not happen, and `deliverBroadcast` is the form that reaches
+      // this node. `mintSignalToken` already fails closed for the same reason;
+      // this is the second, independent gate on the same discrimination.
+      if (broadcast) {
+        throw new SignalDeliveryRejectedError(
+          `Signal ${request.executionId}/${request.nodeId} is a broadcast node and must be delivered with deliverBroadcast`
+        )
+      }
       if (execution.plan_digest !== expectation.planDigest || expectation.signalId !== request.signalId) {
         throw new SignalDeliveryRejectedError(
           `Signal Plan contract does not match ${request.executionId}/${request.nodeId}`
@@ -3063,9 +3136,17 @@ export class DurableStore {
         readonly node_kind: string | null
         readonly status: NodeStatus
       }[]
+      // A fan-out's committed evidence is its `fanout_digest`, not its child
+      // rows: `materializeFanOut` writes the digest and the item rows in one
+      // transaction, and a fan-out over an EMPTY collection writes the digest
+      // with zero rows. Deriving this from the rows would leave exactly that
+      // node invisible here, let a migration change its `items` expression, and
+      // strand the execution on the `ContentIntegrityError` the next resume
+      // raises when it re-derives a different entry set.
       const materializedTemplateIds = [
         ...(this.database.query(
-          "SELECT DISTINCT fanout_node_id AS id FROM durable_fanout_items WHERE execution_id=?"
+          `SELECT node_id AS id FROM durable_nodes
+           WHERE execution_id=? AND node_kind='fanout' AND fanout_digest IS NOT NULL`
         ).all(executionId) as readonly { readonly id: string }[]),
         ...(this.database.query(
           "SELECT DISTINCT loop_node_id AS id FROM durable_loop_rounds WHERE execution_id=?"
@@ -3074,12 +3155,21 @@ export class DurableStore {
       const linkedChildFlowIds = (this.database.query(
         "SELECT node_id FROM durable_child_executions WHERE parent_execution_id=?"
       ).all(executionId) as readonly { readonly node_id: string }[]).map((entry) => entry.node_id)
+      // Same shape for a scheduled timer: `wake_at` is a committed absolute
+      // deadline derived from the old `durationMs`, and `scheduleTimer` never
+      // recomputes it, so a migration that changed the duration would apply and
+      // then do nothing. Refusing it is the honest answer.
+      const scheduledTimerIds = (this.database.query(
+        `SELECT node_id FROM durable_nodes
+         WHERE execution_id=? AND node_kind='timer' AND wake_at IS NOT NULL`
+      ).all(executionId) as readonly { readonly node_id: string }[]).map((entry) => entry.node_id)
       const evidence: ExecutionMigrationEvidence = {
         committedNodeIds: nodes
           .filter((entry) => isCommittedNodeStatus(entry.status))
           .map((entry) => entry.node_id),
         materializedTemplateIds,
-        linkedChildFlowIds
+        linkedChildFlowIds,
+        scheduledTimerIds
       }
       assertNodeMigrationCompatible(checked.from.plan, checked.to.plan, evidence)
       // The pinned input is re-checked against the target contract from the
@@ -3148,12 +3238,18 @@ export class DurableStore {
    * Establishes one absolute wake deadline for a timer node. This transaction
    * is the timer's durable suspension point: every coordinator sees the same
    * timestamp after a crash or concurrent resume.
+   *
+   * The deadline is durable state derived from the caller's Plan, so this
+   * carries the same pinned-Plan expectation as every other mutating entry
+   * point: a coordinator whose deployment was superseded cannot install a wake
+   * time computed from a `durationMs` the execution is no longer pinned to.
    */
   scheduleTimer(
     executionId: string,
     nodeId: string,
     durationMs: number,
-    now = Date.now()
+    now = Date.now(),
+    expectedPlanDigest?: string
   ): TimerScheduleResult {
     if (
       !Number.isSafeInteger(durationMs) || durationMs < 0 ||
@@ -3163,6 +3259,7 @@ export class DurableStore {
       throw new TypeError("Durable timer duration and wake timestamp must be non-negative safe integers")
     }
     const transaction = this.database.transaction((): TimerScheduleResult => {
+      this.assertPinnedPlan(executionId, expectedPlanDigest)
       const row = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id = ? AND node_id = ?"
       ).get(executionId, nodeId) as NodeRow | null
@@ -3540,9 +3637,44 @@ export class DurableStore {
     return transaction.immediate()
   }
 
-  skipNodes(executionId: string, nodeIds: readonly string[], branchId: string): void {
+  /**
+   * Commits the terminal `skipped` exit for the branch fragment this attempt
+   * did not take.
+   *
+   * `skipped` has no inverse transition, so this write is held to the same
+   * discipline as every other terminal one: it carries the coordinator's pinned
+   * Plan digest, and it requires the branch node to still be exactly this
+   * attempt — running, owned by this caller, at this fencing token. A migration
+   * rewrites the pinned digest AND fences every running node, so a coordinator
+   * whose deployment was superseded inside the `acquire` → `skipNodes` window
+   * is refused here instead of stranding the execution on a `skipped` node the
+   * new Plan needs.
+   *
+   * Returns false when the branch attempt is no longer live; nothing is written
+   * in that case, so the caller must re-resolve rather than assume the skip.
+   */
+  skipNodes(
+    executionId: string,
+    nodeIds: readonly string[],
+    branchId: string,
+    owner: string,
+    fencingToken: number,
+    expectedPlanDigest?: string
+  ): boolean {
+    if (typeof owner !== "string" || owner.trim() === "") {
+      throw new TypeError("Durable branch skip owner must be non-empty")
+    }
+    if (!Number.isSafeInteger(fencingToken) || fencingToken < 0) {
+      throw new TypeError("Durable branch skip fencing token must be a non-negative safe integer")
+    }
     const now = Date.now()
-    const transaction = this.database.transaction(() => {
+    const transaction = this.database.transaction((): boolean => {
+      this.assertPinnedPlan(executionId, expectedPlanDigest)
+      const branch = this.database.query(
+        `SELECT node_id FROM durable_nodes
+         WHERE execution_id=? AND node_id=? AND status='running' AND owner=? AND fence=?`
+      ).get(executionId, branchId, owner, fencingToken) as { readonly node_id: string } | null
+      if (branch === null) return false
       for (const nodeId of nodeIds) {
         const update = this.database.query(
           `UPDATE durable_nodes SET status='skipped',owner=NULL,lease_until=NULL,retry_at=NULL,wake_at=NULL,signal_waiting_at=NULL,queue_waiting_at=NULL,updated_at=?
@@ -3553,8 +3685,9 @@ export class DurableStore {
           this.emit(executionId, nodeId, "node_skipped", { branchId }, now)
         }
       }
+      return true
     })
-    transaction.immediate()
+    return transaction.immediate()
   }
 
   completeExecution(

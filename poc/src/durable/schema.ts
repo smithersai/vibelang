@@ -8,11 +8,13 @@ import {
   digest,
   structuralSchema,
   type ActionDescriptor,
+  type ActionRouteManifest,
   type DurableObjectField,
   type DurableSchema,
   type DurableTypeDescriptor,
   type JsonValue,
-  type StructuralDurableSchema
+  type StructuralDurableSchema,
+  type WorkerExit
 } from "./ir.ts"
 
 const CONTRACT_ROOT = "/smithers-durable-contract-compiler"
@@ -224,6 +226,19 @@ const descriptorKey = (descriptor: DurableTypeDescriptor): string => canonicalJs
 class DescriptorBuilder {
   private nodes = 0
   private readonly active = new Set<ts.Type>()
+  /**
+   * Every nominal Error identity this schema has already claimed, and the one
+   * class declaration that claimed it. `stableIdentity` is a function of
+   * (logical source file, class name) only, so it is NOT injective over class
+   * declarations: sibling namespaces, a namespaced class beside a top-level one
+   * of the same name, and two names that normalize to the same identity (`$X`
+   * and `_X`) all collide. A failure channel holding a collision is not
+   * describable on the wire — the emitted worker bundle maps a returned failure
+   * by class name, so two variants sharing a name are unmappable, and two names
+   * sharing an identity emit indistinguishable envelopes. Claiming identities
+   * here fails that closed at contract-compile time instead.
+   */
+  private readonly claimedErrorIdentities = new Map<string, ts.ClassDeclaration>()
 
   constructor(
     private readonly checker: ts.TypeChecker,
@@ -368,10 +383,33 @@ class DescriptorBuilder {
     if (!this.extendsError(declaration, new Set())) {
       this.fail(`${path} ${declaration.name.text} does not extend Error`)
     }
+    const identity = stableIdentity(this.logicalNameForSource(declaration.getSourceFile()), declaration.name.text)
+    const claimant = this.claimedErrorIdentities.get(identity)
+    if (claimant === undefined) {
+      this.claimedErrorIdentities.set(identity, declaration)
+    } else if (claimant !== declaration) {
+      // Keyed on the class DECLARATION, not on the identity string, so the rule
+      // is exactly "two different classes". The narrower key costs nothing and
+      // cannot refuse a contract the identity-only test would accept.
+      //
+      // It is not what keeps `Failed | Failed`, a type alias, or an
+      // import-equals alias compiling: the checker collapses those to one union
+      // constituent, so `error` is only entered once and this line is not
+      // reached. It is here for `deriveDurableErrorSchema`, whose `errorTypes`
+      // parameter is a plain array that may legitimately name one class twice
+      // — that already deduplicates descriptors afterwards and must not start
+      // refusing instead.
+      this.fail(
+        `${path} declares Error ${declaration.name.text}, which shares durable failure identity ${identity} ` +
+        `with a different Error class ${claimant.name?.text ?? "(anonymous)"}; nominal failure identity is ` +
+        `(logical source file, class name), so these two classes cannot be told apart on the wire — rename one ` +
+        `of them or declare it in its own module`
+      )
+    }
     const payload = this.errorPayload(declaration, path, depth + 1, new Set())
     return {
       kind: "error",
-      identity: stableIdentity(this.logicalNameForSource(declaration.getSourceFile()), declaration.name.text),
+      identity,
       name: declaration.name.text,
       payload
     }
@@ -1004,6 +1042,114 @@ export const validateDurableValue = (schema: DurableSchema, value: unknown, labe
   const descriptor = validateDurableTypeDescriptor(schema.descriptor)
   validateValueInner(descriptor, normalized, label, 0)
   return deepFreeze(normalized)
+}
+
+/**
+ * Names the transport a `WorkerExit` arrived over. This is the only thing the
+ * two decode boundaries legitimately differ on, so it is the only parameter.
+ */
+export interface WorkerExitSurface {
+  /** Appears in every diagnostic as `${actionId} ${label} exit`. */
+  readonly label: string
+  /** Defect name used when `kind` is neither `"success"` nor `"failure"`. */
+  readonly protocolDefectName: string
+}
+
+/**
+ * The one `WorkerExit` decoder.
+ *
+ * Both boundaries that admit a worker's exit — the coordinator
+ * (`engine.ts`) and the bundle worker host (`worker-host.ts`) — route through
+ * here, so a shape learned at one is learned at both. They previously spelled
+ * this walk out twice, verbatim; the duplication is the shape that has diverged
+ * repeatedly in this repository, and the two copies had in fact already
+ * diverged on the canonical size limit (see the note on `canonicalJson` below).
+ *
+ * Never throws: an exit that fails any check becomes a defect exit, because a
+ * throw here would escape the coordinator's per-attempt handling.
+ */
+export const decodeWorkerExit = (
+  route: ActionRouteManifest,
+  value: unknown,
+  surface: WorkerExitSurface
+): WorkerExit => {
+  const label = `${route.actionId} ${surface.label}`
+  let observedKind: unknown
+  try {
+    const encoded = assertJson(value, `${label} exit`)
+    // The canonical encoding's independent 8 MiB limit belongs at this
+    // boundary. Every downstream use of an exit canonicalizes it (store commit,
+    // digest, memo reuse), so an over-size exit admitted here does not survive
+    // — it throws later, outside this try, as an uncaught store error instead
+    // of the clean protocol defect this decoder exists to produce. The bundle
+    // host got this right by construction (it normalized through
+    // `decodeCanonicalJson(encodeCanonicalJson(...))`); the coordinator, which
+    // normalized with a bare `assertJson`, admitted it.
+    canonicalJson(encoded)
+    if (encoded === null || typeof encoded !== "object" || Array.isArray(encoded)) {
+      throw new TypeError(`${label} exit must be an object`)
+    }
+    observedKind = encoded.kind
+    if (encoded.kind === "success") {
+      if (canonicalJson(Object.keys(encoded).sort()) !== canonicalJson(["kind", "value"])) {
+        throw new TypeError(`${label} success exit has invalid fields`)
+      }
+      return {
+        kind: "success",
+        value: validateDurableValue(route.schemas.success, encoded.value, `${label} success`)
+      }
+    }
+    if (encoded.kind === "failure") {
+      if (canonicalJson(Object.keys(encoded).sort()) !== canonicalJson(["error", "kind"])) {
+        throw new TypeError(`${label} failure exit has invalid fields`)
+      }
+      return {
+        kind: "failure",
+        error: validateDurableValue(route.schemas.error, encoded.error, `${label} failure`)
+      }
+    }
+    if (encoded.kind === "defect") {
+      if (canonicalJson(Object.keys(encoded).sort()) !== canonicalJson(["defect", "kind"])) {
+        throw new TypeError(`${label} defect exit has invalid fields`)
+      }
+      const defect = encoded.defect
+      if (defect === null || typeof defect !== "object" || Array.isArray(defect)) {
+        throw new TypeError(`${label} defect payload must be an object`)
+      }
+      const expectedKeys = defect.stack === undefined
+        ? ["message", "name"]
+        : ["message", "name", "stack"]
+      if (
+        canonicalJson(Object.keys(defect).sort()) !== canonicalJson(expectedKeys) ||
+        typeof defect.name !== "string" ||
+        typeof defect.message !== "string" ||
+        (defect.stack !== undefined && typeof defect.stack !== "string")
+      ) {
+        throw new TypeError(`${label} defect payload has invalid fields`)
+      }
+      return {
+        kind: "defect",
+        defect: {
+          name: defect.name,
+          message: defect.message,
+          ...(defect.stack === undefined ? {} : { stack: defect.stack })
+        }
+      }
+    }
+    throw new TypeError(`${label} exit has an unknown kind`)
+  } catch (error) {
+    return {
+      kind: "defect",
+      defect: {
+        name: observedKind === "success"
+          ? "SuccessCodecDefect"
+          : observedKind === "failure"
+            ? "FailureCodecDefect"
+            : surface.protocolDefectName,
+        message: error instanceof Error ? error.message : `${label} exit failed its durable codec`
+      }
+    }
+  }
 }
 
 export const durableErrorPayload = (

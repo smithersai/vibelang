@@ -137,7 +137,9 @@ export const RemoteFlow = durable(function RemoteFlow(input: { value: number, sp
   const artifactBytes = encodeSignedDeploymentArtifact(
     deployment.flow.plan,
     deployment.manifest,
-    keyPair
+    keyPair,
+    // This fixture's Plan is Flow.define-recorded; signing it is deliberate.
+    { allowUnverifiedPlanProvenance: true }
   )
   const authentication = authenticateDeployment(deployment, artifactBytes, [verificationKey])
   const bundle = deployment.bundles.get(REMOTE_POOL_ID)

@@ -18,6 +18,7 @@ import {
   deepFreeze,
   digest,
   encodeCanonicalJson,
+  PLAN_PROVENANCE_PROXY_RECORDED,
   type DeploymentManifest,
   type PlanTemplate
 } from "./ir.ts"
@@ -218,16 +219,45 @@ const signingKey = (raw: DeploymentSigningKeyPair): {
   }
 }
 
+export interface SignDeploymentOptions {
+  /**
+   * Sign a Plan that declares `provenance: "proxy-recorded"` — one recorded by
+   * running an authoring callback rather than compiled from source.
+   *
+   * A signature is a claim that the artifact is what the author wrote.
+   * `Flow.define` refuses every unrepresentable operation it can account for,
+   * but `handle || fallback` and `handle ?? fallback` consume the handle
+   * legitimately while dropping the fallback, and JavaScript exposes no trap
+   * that could see it. Such a Plan may be a faithful record — nothing here can
+   * establish that it is. Passing `true` moves that assertion to the caller and
+   * keeps the marker in the signed bytes so a verifier still sees it.
+   */
+  readonly allowUnverifiedPlanProvenance?: boolean
+}
+
 /**
  * Produces one canonical, self-contained deployment artifact. The public trust
  * root is deliberately absent: verifiers must receive it out of band.
+ *
+ * Refuses by default to sign a Plan whose construction could not be verified.
+ * An honest refusal is worth more than a signature over a Plan that may have
+ * silently lost a branch; see `SignDeploymentOptions` for the explicit opt-in.
  */
 export const encodeSignedDeploymentArtifact = (
   planValue: PlanTemplate,
   manifestValue: DeploymentManifest,
-  keyPair: DeploymentSigningKeyPair
+  keyPair: DeploymentSigningKeyPair,
+  options: SignDeploymentOptions = {}
 ): Uint8Array => {
   const plan = validatePlanTemplate(planValue)
+  if (plan.provenance === PLAN_PROVENANCE_PROXY_RECORDED && options.allowUnverifiedPlanProvenance !== true) {
+    return fail(
+      `Plan ${plan.flowId} declares provenance "${PLAN_PROVENANCE_PROXY_RECORDED}": it was recorded by running an ` +
+        "authoring callback behind a Proxy, and JavaScript offers no trap for `||`/`??` fallbacks over a symbolic " +
+        "value, so its construction cannot be verified here. Compile the Flow from source for a verified Plan, or " +
+        "pass { allowUnverifiedPlanProvenance: true } to assert it deliberately. Refusing to sign an unverified Plan."
+    )
+  }
   const manifest = validateDeploymentManifest(manifestValue, plan)
   const key = signingKey(keyPair)
   const unsigned = unsignedEnvelope(plan, manifest, key.signer)

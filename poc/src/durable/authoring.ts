@@ -11,6 +11,7 @@ import {
   type JsonValue,
   type ParallelNode,
   type PlanFragment,
+  PLAN_PROVENANCE_PROXY_RECORDED,
   type PlanNode,
   type PlanTemplate,
   uniqueSorted,
@@ -28,7 +29,15 @@ interface ExpressionCarrier {
 
 /**
  * A value that exists at execution time but not while the Flow callback runs.
- * Object fields remain projectable, while computation requires Expr helpers.
+ *
+ * Object fields remain projectable. Every other consumption must go through an
+ * `Expr.*` helper, `Flow.branch`, or an Action input, because a Proxy cannot
+ * observe the operations JavaScript performs without a trap — ToBoolean (`if`,
+ * `?:`, `while`, `!`, `&&`, `||`, `??`), `===`/`==`, `typeof`, `instanceof`,
+ * `Array.isArray`, and `Object.is`. Those do not throw; they constant-fold. See
+ * `unconsumedSymbolicValues` below for the fail-closed detector that turns the
+ * fold into a plan-time error, and `PLAN_PROVENANCE_PROXY_RECORDED` for the
+ * residual forms it provably cannot see.
  */
 export type Planned<T> =
   & ExpressionCarrier
@@ -102,7 +111,9 @@ const underPlanner = <T>(planner: Planner, body: () => T): T => {
   planners.push(planner)
   try {
     const result = body()
-    if (result instanceof Promise) {
+    // Order matters: a symbolic value refuses prototype inspection, so it must
+    // be recognized as symbolic before `instanceof` is allowed to ask.
+    if (expressionOf(result) === undefined && result instanceof Promise) {
       throw new TypeError("A Flow callback is comptime and must be synchronous; Actions emit nodes without awaiting")
     }
     return result
@@ -148,7 +159,68 @@ const unsupportedComputation = (expression: ValueExpr, operation: string): never
   )
 }
 
-const makePlanned = <T>(expression: ValueExpr): Planned<T> => {
+/**
+ * Fail-closed detection of the operations a Proxy provably cannot trap.
+ *
+ * A Proxy can refuse coercion, enumeration, calls, construction, and symbol
+ * access. It can refuse nothing that JavaScript performs without consulting a
+ * trap: ToBoolean returns `true` for every object (ECMA-262 7.1.2), `===`/`==`
+ * on objects is reference identity, `typeof` reads only [[Call]], and
+ * `Array.isArray`/`Object.is` read internal slots. `if (handle.ok)` therefore
+ * takes the true arm, `handle && x` folds to `x`, and the untaken Action is
+ * dropped from the Plan with no diagnostic. The compiled `.sm` path refuses the
+ * same programs with SMITHERS4106/4107/4111; this is the authoring path's
+ * equivalent refusal.
+ *
+ * It is not a trap — it is an accounting rule. Every *derived* symbolic value
+ * (a projection, or an `Expr.*` result) exists only to be placed into the Plan,
+ * so it must reach `toValueExpr` before the Flow closes. A value that was read
+ * and never reached the Plan was consumed by an operation this module could not
+ * see, and the Plan that would be emitted is not the program that was written.
+ *
+ * Root handles (the Flow input, an Action/branch/parallel node result, a
+ * `literal`) are exempt: discarding one is meaningful and harmless, because the
+ * node it names is already in the Plan.
+ */
+interface PendingSymbolic {
+  readonly expression: ValueExpr
+  readonly derivation: string
+}
+
+const openSymbolicScopes: Array<Map<object, PendingSymbolic>> = []
+
+const trackDerived = (handle: object, expression: ValueExpr, derivation: string): void => {
+  openSymbolicScopes.at(-1)?.set(handle, { expression, derivation })
+}
+
+/** A symbolic value that reached the Plan, or that was projected further, is accounted for. */
+const markSymbolicConsumed = (handle: object): void => {
+  for (let index = openSymbolicScopes.length - 1; index >= 0; index -= 1) {
+    if (openSymbolicScopes[index]!.delete(handle)) return
+  }
+}
+
+const UNTRAPPABLE_OPERATIONS =
+  "truthiness (`if`, `?:`, `while`, `!`, `&&`, `||`, `??`, `Boolean`), `===`/`==`, " +
+  "`typeof`, `instanceof`, `Array.isArray`, or `Object.is`"
+
+const reportUnconsumedSymbolic = (flowId: string, pending: Map<object, PendingSymbolic>): never => {
+  const listed = [...pending.values()]
+    .map((entry) => `  - ${plannedDescription(entry.expression)} (${entry.derivation})`)
+    .sort()
+  throw new TypeError(
+    `Flow ${flowId} read ${pending.size} symbolic value(s) that never reached the Plan:\n` +
+      `${listed.join("\n")}\n` +
+      `JavaScript offers no trap for ${UNTRAPPABLE_OPERATIONS}, so one of those operations ` +
+      "consumed the value and silently constant-folded it — the Plan that would be recorded is not " +
+      "the program that was written, and the arm that was folded away is absent from plan.nodes, " +
+      "plan.requirements, and any signature over them. Express the decision in Plan IR with " +
+      "Flow.branch(Expr.*, whenTrue, whenFalse), or pass the value into an Action input. " +
+      "Refusing to emit an unverifiable Plan."
+  )
+}
+
+const makePlanned = <T>(expression: ValueExpr, derivation?: string): Planned<T> => {
   const target = (): never => unsupportedComputation(expression, "function application")
   const planned = new Proxy(target, {
     get(_target, key) {
@@ -158,15 +230,29 @@ const makePlanned = <T>(expression: ValueExpr): Planned<T> => {
         return () => unsupportedComputation(expression, String(key))
       }
       if (typeof key === "symbol") return unsupportedComputation(expression, `symbol property ${String(key)}`)
-      return makePlanned(projection(expression, key))
+      // Projecting is a legitimate use of the parent; the obligation moves to the child.
+      markSymbolicConsumed(planned as unknown as object)
+      return makePlanned(projection(expression, key), `projected from ${plannedDescription(expression)}`)
     },
     apply: () => unsupportedComputation(expression, "function application"),
     construct: () => unsupportedComputation(expression, "construction"),
     has: () => unsupportedComputation(expression, "property existence"),
     ownKeys: () => unsupportedComputation(expression, "property enumeration"),
-    getOwnPropertyDescriptor: () => unsupportedComputation(expression, "property descriptor inspection")
+    getOwnPropertyDescriptor: () => unsupportedComputation(expression, "property descriptor inspection"),
+    // Without these the default forwards to the callable target: a `delete` or
+    // an assignment silently succeeds and is lost, and `Object.getPrototypeOf`
+    // / `instanceof` answer about `Function.prototype` rather than refusing.
+    // Every mutation of a symbolic value is unrepresentable in Plan IR.
+    set: () => unsupportedComputation(expression, "property assignment"),
+    defineProperty: () => unsupportedComputation(expression, "property definition"),
+    deleteProperty: () => unsupportedComputation(expression, "property deletion"),
+    getPrototypeOf: () => unsupportedComputation(expression, "prototype inspection"),
+    setPrototypeOf: () => unsupportedComputation(expression, "prototype assignment"),
+    preventExtensions: () => unsupportedComputation(expression, "extension prevention"),
+    isExtensible: () => unsupportedComputation(expression, "extensibility inspection")
   }) as unknown as Planned<T>
   plannedExpressions.set(planned as unknown as object, expression)
+  if (derivation !== undefined) trackDerived(planned as unknown as object, expression, derivation)
   return planned
 }
 
@@ -187,7 +273,11 @@ const MAX_CAPTURE_DEPTH = 256
 const toValueExprInner = (value: unknown, seen: Set<object>, depth: number): ValueExpr => {
   if (depth > MAX_CAPTURE_DEPTH) throw new TypeError("Flow captured value exceeds the durable nesting limit")
   const planned = expressionOf(value)
-  if (planned !== undefined) return planned
+  if (planned !== undefined) {
+    // Reaching the Plan discharges the value's accounting obligation.
+    markSymbolicConsumed(value as object)
+    return planned
+  }
   if (value === null || typeof value === "string" || typeof value === "boolean" || typeof value === "number") {
     return { kind: "literal", value: assertJson(value, "Flow captured literal") }
   }
@@ -248,7 +338,7 @@ export const toValueExpr = (value: unknown): ValueExpr =>
   toValueExprInner(value, new Set(), 0)
 
 const binary = <Result>(operator: BinaryOperator, left: unknown, right: unknown): Planned<Result> =>
-  makePlanned({ kind: "binary", operator, left: toValueExpr(left), right: toValueExpr(right) })
+  makePlanned({ kind: "binary", operator, left: toValueExpr(left), right: toValueExpr(right) }, `Expr.${operator}`)
 
 export const Expr = {
   eq: (left: unknown, right: unknown): Planned<boolean> => binary("eq", left, right),
@@ -261,7 +351,8 @@ export const Expr = {
   or: (left: unknown, right: unknown): Planned<boolean> => binary("or", left, right),
   add: (left: unknown, right: unknown): Planned<number> => binary("add", left, right),
   concat: (left: unknown, right: unknown): Planned<string> => binary("concat", left, right),
-  not: (value: unknown): Planned<boolean> => makePlanned({ kind: "unary", operator: "not", value: toValueExpr(value) })
+  not: (value: unknown): Planned<boolean> =>
+    makePlanned({ kind: "unary", operator: "not", value: toValueExpr(value) }, "Expr.not")
 } as const
 
 const actionFromDescriptor = <Input, Success, Failure = never>(
@@ -462,16 +553,31 @@ const defineFlow = <Input, Success>(
   }
   const shared: SharedPlanningState = { actions: new Map() }
   const planner = new Planner("", shared)
-  const input = makePlanned<Input>({ kind: "input", path: [] })
-  const output = underPlanner(planner, () => callback(input))
-  const semantic = {
-    formatVersion: 1 as const,
-    flowId: id,
-    flowVersion: version,
-    nodes: planner.nodes,
-    output: toValueExpr(output),
-    requirements: [...shared.actions.keys()].sort(),
-    actions: [...shared.actions.values()].sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
+  const pending = new Map<object, PendingSymbolic>()
+  openSymbolicScopes.push(pending)
+  let semantic: Omit<PlanTemplate, "digest">
+  try {
+    const input = makePlanned<Input>({ kind: "input", path: [] })
+    const output = underPlanner(planner, () => callback(input))
+    semantic = {
+      formatVersion: 1 as const,
+      flowId: id,
+      flowVersion: version,
+      nodes: planner.nodes,
+      output: toValueExpr(output),
+      // This Plan was recorded by *running* the callback behind a Proxy. The
+      // detector above refuses every unrepresentable operation it can observe,
+      // but `handle || fallback` and `handle ?? fallback` consume the handle
+      // legitimately while silently dropping the fallback, and no runtime value
+      // in JavaScript can see that. The construction is therefore not verified,
+      // and the artifact says so rather than letting a verifier infer otherwise.
+      provenance: PLAN_PROVENANCE_PROXY_RECORDED,
+      requirements: [...shared.actions.keys()].sort(),
+      actions: [...shared.actions.values()].sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
+    }
+    if (pending.size > 0) reportUnconsumedSymbolic(id, pending)
+  } finally {
+    openSymbolicScopes.pop()
   }
   validateFragmentScope(semantic, new Set())
   const plan: PlanTemplate = deepFreeze({ ...semantic, digest: digest(semantic) })

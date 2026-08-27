@@ -8,6 +8,7 @@ import {
   encodeCanonicalJson,
   expressionDependencies,
   fanOutSteps,
+  PLAN_PROVENANCE_PROXY_RECORDED,
   queueContractIdentity,
   signalContractIdentity,
   type ActionDescriptor,
@@ -516,7 +517,12 @@ const validatePlanTemplateInner = (value: unknown, label: string, embedDepth: nu
   const record = object(assertJson(value, "Plan template"), label)
   exactKeys(record, label, [
     "formatVersion", "flowId", "flowVersion", "nodes", "output", "requirements", "actions", "digest"
-  ], ["flowSchemas", "childFlows"])
+  ], ["flowSchemas", "provenance", "childFlows"])
+  // An unverified-construction marker is fail-closed: an unknown spelling is a
+  // Plan this build cannot reason about, not a Plan to trust by default.
+  if (record.provenance !== undefined && record.provenance !== PLAN_PROVENANCE_PROXY_RECORDED) {
+    fail(`${label}.provenance`, "unsupported Plan provenance marker")
+  }
   if (record.formatVersion !== 1 && record.formatVersion !== 2 && record.formatVersion !== 3) {
     fail(`${label}.formatVersion`, "unsupported Plan format")
   }

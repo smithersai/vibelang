@@ -54,7 +54,12 @@ The demo and focused tests prove:
   authority;
 - the legacy-boundary POC `Flow.define(...)` callback can record strict symbolic
   input/results and disappear into serializable Plan IR, validating the IR
-  boundary independently of the accepted compiler lowering;
+  boundary independently of the accepted compiler lowering. It records
+  *strictly*, not *completely*: it refuses every unrepresentable operation it can
+  account for, but `handle || fallback` and `handle ?? fallback` are invisible to
+  any runtime guard, so its Plans are stamped `provenance: "proxy-recorded"` and
+  are not signable without an explicit assertion. A Plan whose construction must
+  be verified comes from the source compiler;
 - projection and argument passing produce data edges, independent Actions run
   concurrently, and explicit parallel, branch, and sequence topology works;
 - deployment building rejects missing/ambiguous/incompatible providers and
@@ -491,6 +496,32 @@ offers no trap for truthiness, strict equality, or its operators. Consequently
 ordinary `if (symbolic)` cannot implement the language contract. `Expr.*` and
 `Flow.branch` in this spike are explicit versions of the expression/branch IR
 that the real Smithers compiler must lower ordinary source syntax into.
+
+That finding used to end there, and the untrappable forms therefore *folded
+silently*: `if (compiled.ok) { … } return Rollback.run(…)` recorded a Plan with
+`Rollback` absent from `nodes`, from `requirements`, and from every signature
+over them, with no diagnostic and no type error. `Flow.define` now refuses them
+instead, by accounting rather than by trapping. Every **derived** symbolic value
+— a projection, an `Expr.*` result — exists only to be placed into the Plan, so
+it must reach `toValueExpr` before the Flow closes; one that was read and never
+arrived was consumed by an operation this module could not see, and the Flow
+fails closed naming the value. Root handles (the Flow input, an
+Action/branch/parallel result, a `literal`) are exempt, because the node they
+name is already in the Plan and discarding one is harmless. `set`,
+`defineProperty`, `deleteProperty`, and the prototype traps are refused too:
+without them the Proxy's callable target absorbed a `delete` or an assignment
+silently, and answered `instanceof` about `Function.prototype`.
+
+Two forms remain, and they are not closeable at runtime by any means:
+`handle || fallback` and `handle ?? fallback` **consume** the handle — it is the
+expression's result — while discarding the fallback, and no JavaScript value can
+observe ToBoolean or a nullish test. A Plan recorded this way therefore carries
+`provenance: "proxy-recorded"` inside its digested bytes, and
+`SignedDeployment.encode` refuses to sign it unless the caller passes
+`{ allowUnverifiedPlanProvenance: true }`. A verifier reads the marker instead of
+inferring "recorded by proxy" from the absence of `flowSchemas`. The compiled
+`.sm` path needs none of this: it refuses the same programs statically with
+`SMITHERS4106`/`SMITHERS4107`/`SMITHERS4111` and its Plans carry no marker.
 
 The accepted source API imports `durable` from `smithers:flows` and passes it an
 inline or otherwise statically resolvable function. Template

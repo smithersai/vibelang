@@ -35,7 +35,7 @@ import {
   assertWorkerTransportSecret,
   type WorkerHostHandshake
 } from "./worker-protocol.ts"
-import { validateDurableValue } from "./schema.ts"
+import { decodeWorkerExit, validateDurableValue, type WorkerExitSurface } from "./schema.ts"
 
 /**
  * The POC remote worker host: one process, one signed deployment, one pool,
@@ -113,70 +113,14 @@ const defect = (name: string, message: string): WorkerExit => ({
   defect: { name, message }
 })
 
-const validateBundleExit = (route: ActionRouteManifest, value: unknown): WorkerExit => {
-  let observedKind: unknown
-  try {
-    const exit = value === undefined ? undefined : decodeCanonicalJson(
-      encodeCanonicalJson(value),
-      `${route.actionId} bundle exit`
-    )
-    if (exit === null || typeof exit !== "object" || Array.isArray(exit)) {
-      throw new TypeError(`${route.actionId} bundle exit must be an object`)
-    }
-    observedKind = exit.kind
-    if (exit.kind === "success") {
-      if (canonicalJson(Object.keys(exit).sort()) !== canonicalJson(["kind", "value"])) {
-        throw new TypeError(`${route.actionId} success exit has invalid fields`)
-      }
-      return {
-        kind: "success",
-        value: validateDurableValue(route.schemas.success, exit.value, `${route.actionId} bundle success`)
-      }
-    }
-    if (exit.kind === "failure") {
-      if (canonicalJson(Object.keys(exit).sort()) !== canonicalJson(["error", "kind"])) {
-        throw new TypeError(`${route.actionId} failure exit has invalid fields`)
-      }
-      return {
-        kind: "failure",
-        error: validateDurableValue(route.schemas.error, exit.error, `${route.actionId} bundle failure`)
-      }
-    }
-    if (exit.kind !== "defect" ||
-      canonicalJson(Object.keys(exit).sort()) !== canonicalJson(["defect", "kind"])) {
-      throw new TypeError(`${route.actionId} bundle exit has an unknown kind or invalid fields`)
-    }
-    const payload = exit.defect
-    if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
-      throw new TypeError(`${route.actionId} defect payload must be an object`)
-    }
-    const expected = payload.stack === undefined
-      ? ["message", "name"]
-      : ["message", "name", "stack"]
-    if (canonicalJson(Object.keys(payload).sort()) !== canonicalJson(expected) ||
-      typeof payload.name !== "string" || typeof payload.message !== "string" ||
-      (payload.stack !== undefined && typeof payload.stack !== "string")) {
-      throw new TypeError(`${route.actionId} defect payload has invalid fields`)
-    }
-    return {
-      kind: "defect",
-      defect: {
-        name: payload.name,
-        message: payload.message,
-        ...(payload.stack === undefined ? {} : { stack: payload.stack })
-      }
-    }
-  } catch (error) {
-    return defect(
-      observedKind === "success"
-        ? "SuccessCodecDefect"
-        : observedKind === "failure"
-          ? "FailureCodecDefect"
-          : "BundleProtocolDefect",
-      error instanceof Error ? error.message : `${route.actionId} bundle exit failed its durable codec`
-    )
-  }
+/** Names this host's bundle transport to the shared exit decoder. */
+const BUNDLE_EXIT_SURFACE: WorkerExitSurface = {
+  label: "bundle",
+  protocolDefectName: "BundleProtocolDefect"
 }
+
+const validateBundleExit = (route: ActionRouteManifest, value: unknown): WorkerExit =>
+  decodeWorkerExit(route, value, BUNDLE_EXIT_SURFACE)
 
 const loadBundleModule = async (
   bundlePath: string,

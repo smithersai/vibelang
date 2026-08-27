@@ -1,22 +1,34 @@
 import { expect, test } from "bun:test"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import {
   Action,
+  buildWorkerPoolBundle,
   compileActionContract,
+  compileActionImplementationContract,
   compileDurableSource,
+  decodeWorkerExit,
   Deployment,
+  digest,
   DurableActionDefect,
   DurableExecutor,
   DurableStore,
   fail,
   Flow,
   Provider,
+  structuralSchema,
   validatePlanTemplate,
   Worker,
   type ActionDescriptor,
+  type ActionRouteManifest,
   durableErrorPayload,
+  type DurableSchema,
   type DurableTypeDescriptor,
-  type WorkerExit
+  type WorkerExit,
+  type WorkerExitSurface
 } from "./index.ts"
+import { derivedSchema } from "./ir.ts"
 
 const representativeContract = `
 import { Action } from "smithers:flows"
@@ -683,4 +695,361 @@ test("the underivable-failure refusal is reachable and is what the standalone co
 
   // A nominal failure class still derives a structural contract.
   expect(refusalFor("Failure")).toEqual({ ok: true, shape: "structural" })
+})
+
+const COLLIDE_FILE = "contracts/collide.sm"
+
+const compileCollisionContract = (body: string, id: string, fileName = COLLIDE_FILE) =>
+  compileActionContract(
+    `import { Action } from "smithers:flows"\n${body}`,
+    { fileName, exportName: "Work", id, version: 1 }
+  )
+
+/**
+ * Build the real worker pool bundle for one contract and EXECUTE it, returning
+ * what each invocation actually produced. A compile-only assertion cannot see
+ * this defect: the broken contract type-checked, built, and only then proved
+ * unable to report the failure it declared.
+ */
+const runDeclaredFailures = async (
+  descriptor: ActionDescriptor,
+  implementationSource: string,
+  modes: readonly string[]
+): Promise<readonly unknown[]> => {
+  const contract = compileActionImplementationContract({
+    action: descriptor,
+    implementationId: "schema-collision",
+    implementationVersion: "1",
+    entryFile: COLLIDE_FILE,
+    exportName: "work",
+    implementation: ((input: { mode: string }) => {
+      if (input.mode !== "ok") fail({ version: 1, identity: "unused", payload: {} })
+      return { value: 1 }
+    }) as never,
+    sources: [{ fileName: COLLIDE_FILE, source: implementationSource }]
+  })
+  const bundle = buildWorkerPoolBundle({
+    poolId: "schema-collision-pool",
+    target: "typescript-bun",
+    sandbox: "remote-http-poc",
+    selections: [{ action: descriptor, contract }]
+  })
+  const directory = mkdtempSync(join(tmpdir(), "smithers-schema-collision-"))
+  try {
+    const modulePath = join(directory, `${digest({ javascript: bundle.javascript }).slice(0, 16)}.mjs`)
+    writeFileSync(modulePath, bundle.javascript, "utf8")
+    const loaded = await import(modulePath)
+    const outcomes: unknown[] = []
+    for (const mode of modes) {
+      outcomes.push(await loaded.__smithersInvokeAction({
+        schemaVersion: 1,
+        executionId: "schema-collision",
+        nodeId: "n1",
+        attempt: 1,
+        actionId: descriptor.id,
+        actionVersion: descriptor.version,
+        actionContractDigest: descriptor.contractDigest,
+        input: { mode },
+        deadline: Date.now() + 10_000,
+        downstreamIdempotencyKey: digest({ mode }),
+        capabilityGrant: [],
+        lease: { owner: "test", expiresAt: Date.now() + 10_000 },
+        fencingToken: 1,
+        traceContext: {}
+      }))
+    }
+    return outcomes
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+}
+
+test("distinct Error classes may not collapse onto one durable failure identity, and an accepted contract still emits every failure it declares", async () => {
+  // `stableIdentity` is a function of (logical source file, class name) ONLY.
+  // Every spelling below smuggles two DIFFERENT Error classes into one failure
+  // channel under one identity. Each was accepted before this guard existed.
+  const collisions = [
+    ["sibling namespaces, different payloads", `
+namespace Left  { export class Failed extends Error { constructor(readonly code: string) { super(code) } } }
+namespace Right { export class Failed extends Error { constructor(readonly reason: string) { super(reason) } } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Left.Failed | Right.Failed>> {}`],
+    ["sibling namespaces, identical payloads", `
+namespace Left  { export class Failed extends Error { constructor(readonly code: string) { super(code) } } }
+namespace Right { export class Failed extends Error { constructor(readonly code: string) { super(code) } } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Left.Failed | Right.Failed>> {}`],
+    ["top-level class beside a same-named namespaced one", `
+class Failed extends Error { constructor(readonly code: string) { super(code) } }
+namespace N { export class Failed extends Error { constructor(readonly reason: string) { super(reason) } } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Failed | N.Failed>> {}`],
+    ["nested namespaces", `
+namespace A { export namespace B { export class Failed extends Error { constructor(readonly code: string) { super(code) } } } }
+namespace C { export class Failed extends Error { constructor(readonly reason: string) { super(reason) } } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, A.B.Failed | C.Failed>> {}`],
+    ["a subclass shadowing its own base class name", `
+class Failed extends Error { constructor(readonly code: string) { super(code) } }
+const Base = Failed
+namespace N { export class Failed extends Base { constructor(readonly reason: string) { super(reason) } } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Failed | N.Failed>> {}`],
+    // Distinct NAMES, one identity: `stableIdentity` normalizes every character
+    // outside [A-Za-z0-9._/@:+-] to `_`, so `$Failed` and `_Failed` are one
+    // identity. This spelling was not merely unimplementable — it built, ran,
+    // and emitted two different payloads under a single wire identity.
+    ["two names that normalize to one identity", `
+class $Failed extends Error { constructor(readonly code: string) { super(code) } }
+class _Failed extends Error { constructor(readonly reason: string) { super(reason) } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, $Failed | _Failed>> {}`]
+  ] as const
+
+  for (const [label, body] of collisions) {
+    const compiled = compileCollisionContract(body, `test/schema/collide/${label}`)
+    expect(compiled.ok, label).toBe(false)
+    if (compiled.ok) throw new Error(`expected ${label} to fail closed`)
+    expect(compiled.diagnostics.length, label).toBe(1)
+    expect(compiled.diagnostics[0].code, label).toBe("SMITHERS4203")
+    expect(compiled.diagnostics[0].message, label).toContain("shares durable failure identity")
+    expect(compiled.diagnostics[0].file, label).toBe(COLLIDE_FILE)
+    // Located, not file-scoped: the diagnostic lands on the Action signature
+    // that declares the colliding failure channel, not on the whole file.
+    const lines = `import { Action } from "smithers:flows"\n${body}`.split("\n")
+    expect(lines[compiled.diagnostics[0].line - 1], label).toContain("extends Action")
+  }
+
+  // The EXECUTED half. `$Failed | _Failed` is the one collision spelling that
+  // survives every downstream gate — the implementation closure holds two
+  // differently-named classes, so the nominal failure schema matches and a
+  // bundle builds. Before the guard this ran and returned two different
+  // payloads under ONE identity, which is a wrong answer no compile-time
+  // assertion can see. If the refusal is ever relaxed, this executes the bundle
+  // and fails on the identity that comes back.
+  const normalizing = compileCollisionContract(`
+class $Failed extends Error { constructor(readonly code: string) { super(code) } }
+class _Failed extends Error { constructor(readonly reason: string) { super(reason) } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, $Failed | _Failed>> {}`,
+    "test/schema/collide/executed")
+  if (normalizing.ok) {
+    const outcomes = await runDeclaredFailures(normalizing.descriptor, `
+class $Failed extends Error { constructor(readonly code: string) { super(code) } }
+class _Failed extends Error { constructor(readonly reason: string) { super(reason) } }
+export function work(input: { mode: string }): Result<{ value: number }, $Failed | _Failed> {
+  if (input.mode === "dollar") throw new $Failed("boom")
+  if (input.mode === "under") throw new _Failed("bang")
+  return { value: 1 }
+}`, ["dollar", "under"])
+    const identities = outcomes.map((outcome) => (outcome as { error?: { identity?: string } }).error?.identity)
+    expect(new Set(identities).size, `two declared Error classes must not share a wire identity: ${JSON.stringify(outcomes)}`)
+      .toBe(identities.length)
+  }
+
+  // BOTH DIRECTIONS, by execution: a contract whose failures have distinct
+  // identities still compiles, still builds, and still delivers each declared
+  // typed failure with its own identity and payload.
+  const accepted = compileCollisionContract(`
+class NotFound extends Error { constructor(readonly path: string) { super(path) } }
+class Denied extends Error { constructor(readonly who: string) { super(who) } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, NotFound | Denied>> {}`,
+    "test/schema/collide/accepted")
+  expect(accepted.ok).toBe(true)
+  if (!accepted.ok) throw new Error(accepted.diagnostics.map((diagnostic) => diagnostic.message).join("\n"))
+  expect(await runDeclaredFailures(accepted.descriptor, `
+class NotFound extends Error { constructor(readonly path: string) { super(path) } }
+class Denied extends Error { constructor(readonly who: string) { super(who) } }
+export function work(input: { mode: string }): Result<{ value: number }, NotFound | Denied> {
+  if (input.mode === "missing") throw new NotFound("/tmp/x")
+  if (input.mode === "denied") throw new Denied("root")
+  return { value: 1 }
+}`, ["missing", "denied", "ok"])).toEqual([
+    { kind: "failure", error: { version: 1, identity: `smithers:${COLLIDE_FILE}_NotFound@1`, payload: { path: "/tmp/x" } } },
+    { kind: "failure", error: { version: 1, identity: `smithers:${COLLIDE_FILE}_Denied@1`, payload: { who: "root" } } },
+    { kind: "success", value: { value: 1 } }
+  ])
+})
+
+test("one Error class reached through several spellings is not a collision", () => {
+  // The guard keys on the class DECLARATION, not on the identity string alone,
+  // so every way of naming one class twice must still compile. Refusing these
+  // would be the over-correction.
+  const benign = [
+    ["the same class twice in one union", `
+class Failed extends Error { constructor(readonly code: string) { super(code) } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Failed | Failed>> {}`, 1],
+    ["a class and a type alias of it", `
+class Failed extends Error { constructor(readonly code: string) { super(code) } }
+type Alias = Failed
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Failed | Alias>> {}`, 1],
+    ["a namespaced class and an import-equals alias of it", `
+namespace N { export class Failed extends Error { constructor(readonly code: string) { super(code) } } }
+import Aliased = N.Failed
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, N.Failed | Aliased>> {}`, 1],
+    ["a namespaced class as the only failure", `
+namespace N { export class Failed extends Error { constructor(readonly code: string) { super(code) } } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, N.Failed>> {}`, 1],
+    ["two differently-named namespaced classes", `
+namespace Left  { export class Failed extends Error { constructor(readonly code: string) { super(code) } } }
+namespace Right { export class Denied extends Error { constructor(readonly reason: string) { super(reason) } } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Left.Failed | Right.Denied>> {}`, 2],
+    ["a subclass declared beside its parent under a distinct name", `
+class Base extends Error { constructor(readonly code: string) { super(code) } }
+class Derived extends Base { constructor(code: string, readonly extra: number) { super(code) } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Base | Derived>> {}`, 2],
+    ["a leading-underscore class name", `
+class _Failed extends Error { constructor(readonly code: string) { super(code) } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, _Failed>> {}`, 1]
+  ] as const
+
+  for (const [label, body, expectedIdentities] of benign) {
+    const compiled = compileCollisionContract(body, `test/schema/benign/${label}`)
+    expect(compiled.ok, label).toBe(true)
+    if (!compiled.ok) throw new Error(`${label}: ${compiled.diagnostics.map((d) => d.message).join("\n")}`)
+    const identities = new Set(
+      [...JSON.stringify(compiled.descriptor.errorSchema).matchAll(/"identity":"([^"]*)"/g)].map((match) => match[1])
+    )
+    expect(identities.size, label).toBe(expectedIdentities)
+  }
+
+  // Two same-named classes in DIFFERENT logical files stay distinct: identity
+  // is (file, name), and the file half is what separates them.
+  const first = compileCollisionContract(`
+class Failed extends Error { constructor(readonly code: string) { super(code) } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Failed>> {}`,
+    "test/schema/file-a/Work", "contracts/a.sm")
+  const second = compileCollisionContract(`
+class Failed extends Error { constructor(readonly code: string) { super(code) } }
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Failed>> {}`,
+    "test/schema/file-b/Work", "contracts/b.sm")
+  expect(first.ok && second.ok).toBe(true)
+  if (!first.ok || !second.ok) throw new Error("expected both single-file contracts to compile")
+  expect(JSON.stringify(first.descriptor.errorSchema)).toContain("smithers:contracts/a.sm_Failed@1")
+  expect(JSON.stringify(second.descriptor.errorSchema)).toContain("smithers:contracts/b.sm_Failed@1")
+  expect(first.descriptor.errorSchema.digest).not.toBe(second.descriptor.errorSchema.digest)
+})
+
+// ---------------------------------------------------------------------------
+// One WorkerExit decoder, two surfaces.
+//
+// `engine.ts#validateWorkerExit` and `worker-host.ts#validateBundleExit` used to
+// spell this whole walk out twice. They agreed on every shape but one: the
+// coordinator normalized with a bare `assertJson`, which has no size limit, so
+// it ADMITTED an exit over the canonical 8 MiB bound that the bundle host
+// refused. An admitted over-size exit does not survive — `commitSuccess`
+// canonicalizes it — so the coordinator turned a clean protocol defect into an
+// uncaught store error. These tests pin both directions of the merge.
+const exitRoute = (success: DurableSchema, error: DurableSchema): ActionRouteManifest => ({
+  actionId: "test/schema/ExitAction",
+  actionVersion: 1,
+  actionContractDigest: "contract-digest",
+  poolId: "pool",
+  artifactDigest: "artifact-digest",
+  implementationDigest: "implementation-digest",
+  implementationContract: null,
+  policyDigest: "policy-digest",
+  policy: { retry: null, timeoutMs: null } as unknown as ActionRouteManifest["policy"],
+  schemas: { input: derivedSchema("input"), success, error }
+})
+
+const WORKER: WorkerExitSurface = { label: "worker", protocolDefectName: "WorkerProtocolCodecDefect" }
+const BUNDLE: WorkerExitSurface = { label: "bundle", protocolDefectName: "BundleProtocolDefect" }
+
+test("decodeWorkerExit accepts every well-formed exit and preserves the defect payload", () => {
+  const route = exitRoute(derivedSchema("success"), derivedSchema("error"))
+  for (const surface of [WORKER, BUNDLE]) {
+    expect(decodeWorkerExit(route, { kind: "success", value: { a: 1 } }, surface))
+      .toEqual({ kind: "success", value: { a: 1 } })
+    expect(decodeWorkerExit(route, { kind: "success", value: null }, surface))
+      .toEqual({ kind: "success", value: null })
+    expect(decodeWorkerExit(route, { kind: "failure", error: { code: "E" } }, surface))
+      .toEqual({ kind: "failure", error: { code: "E" } })
+    // both defect-payload key sets: the two-element and the three-element one
+    expect(decodeWorkerExit(route, { kind: "defect", defect: { name: "N", message: "M" } }, surface))
+      .toEqual({ kind: "defect", defect: { name: "N", message: "M" } })
+    expect(decodeWorkerExit(route, { kind: "defect", defect: { name: "N", message: "M", stack: "S" } }, surface))
+      .toEqual({ kind: "defect", defect: { name: "N", message: "M", stack: "S" } })
+    // an absent stack must not become a present `stack: undefined` key
+    expect("stack" in (decodeWorkerExit(route, { kind: "defect", defect: { name: "N", message: "M" } }, surface) as {
+      defect: Record<string, unknown>
+    }).defect).toBe(false)
+  }
+})
+
+test("decodeWorkerExit refuses every malformed exit and never throws", () => {
+  const route = exitRoute(derivedSchema("success"), derivedSchema("error"))
+  const refused: readonly (readonly [string, unknown, string])[] = [
+    ["extra key on success", { kind: "success", value: 1, extra: 2 }, "SuccessCodecDefect"],
+    ["missing value", { kind: "success" }, "SuccessCodecDefect"],
+    ["extra key on failure", { kind: "failure", error: 1, extra: 2 }, "FailureCodecDefect"],
+    ["failure carrying value", { kind: "failure", value: 1 }, "FailureCodecDefect"],
+    ["extra key on defect exit", { kind: "defect", defect: { name: "N", message: "M" }, extra: 1 }, "PROTOCOL"],
+    ["extra key in defect payload", { kind: "defect", defect: { name: "N", message: "M", extra: 1 } }, "PROTOCOL"],
+    ["defect payload with a non-string name", { kind: "defect", defect: { name: 42, message: "M" } }, "PROTOCOL"],
+    ["defect payload with a non-string message", { kind: "defect", defect: { name: "N", message: 42 } }, "PROTOCOL"],
+    ["defect payload with a non-string stack", { kind: "defect", defect: { name: "N", message: "M", stack: 1 } }, "PROTOCOL"],
+    ["defect payload missing name", { kind: "defect", defect: { message: "M" } }, "PROTOCOL"],
+    ["defect payload that is null", { kind: "defect", defect: null }, "PROTOCOL"],
+    ["defect payload that is an array", { kind: "defect", defect: [] }, "PROTOCOL"],
+    ["unknown kind", { kind: "other", value: 1 }, "PROTOCOL"],
+    ["missing kind", { value: 1 }, "PROTOCOL"],
+    ["null", null, "PROTOCOL"],
+    ["undefined", undefined, "PROTOCOL"],
+    ["an array", [], "PROTOCOL"],
+    ["a string", "success", "PROTOCOL"],
+    ["a class instance", new Error("hostile"), "PROTOCOL"],
+    // Non-durable JSON is refused while the exit is being normalized, i.e.
+    // before `kind` has been read, so it is a protocol defect and not a
+    // success-codec one. Both original decoders agreed on this.
+    ["a non-finite success value", { kind: "success", value: Number.NaN }, "PROTOCOL"],
+    ["an undefined success value", { kind: "success", value: undefined }, "PROTOCOL"],
+    ["a cyclic success value", (() => { const a: Record<string, unknown> = { kind: "success" }; a.value = a; return a })(), "PROTOCOL"]
+  ]
+  for (const surface of [WORKER, BUNDLE]) {
+    for (const [label, value, expected] of refused) {
+      const exit = decodeWorkerExit(route, value, surface)
+      const name = expected === "PROTOCOL" ? surface.protocolDefectName : expected
+      expect(exit.kind, `${surface.label}: ${label}`).toBe("defect")
+      expect(exit.kind === "defect" && exit.defect.name, `${surface.label}: ${label}`).toBe(name)
+    }
+  }
+  // A prototype-polluted exit keeps `__proto__` as data, so it is an extra key,
+  // not a hijacked prototype: refused, and nothing is mutated.
+  const polluted: Record<string, unknown> = {}
+  Object.defineProperty(polluted, "__proto__", { value: "polluted", enumerable: true, writable: true, configurable: true })
+  polluted.kind = "success"
+  polluted.value = 1
+  const exit = decodeWorkerExit(route, polluted, WORKER)
+  expect(exit).toMatchObject({ kind: "defect", defect: { name: "SuccessCodecDefect" } })
+  expect(({} as Record<string, unknown>).polluted).toBeUndefined()
+})
+
+test("decodeWorkerExit refuses an exit over the canonical 8 MiB bound at BOTH surfaces", () => {
+  const route = exitRoute(derivedSchema("success"), derivedSchema("error"))
+  const oversize = "x".repeat(9 * 1024 * 1024)
+  for (const surface of [WORKER, BUNDLE]) {
+    for (const value of [
+      { kind: "success", value: oversize },
+      { kind: "failure", error: oversize },
+      { kind: "defect", defect: { name: "N", message: oversize } }
+    ]) {
+      const exit = decodeWorkerExit(route, value, surface)
+      expect(exit, `${surface.label}: ${value.kind}`).toMatchObject({
+        kind: "defect",
+        defect: { name: surface.protocolDefectName }
+      })
+      expect(exit.kind === "defect" && exit.defect.message).toContain("canonical message size limit")
+    }
+  }
+  // and the bound is not so tight that an ordinary large exit is refused
+  expect(decodeWorkerExit(route, { kind: "success", value: "y".repeat(1024 * 1024) }, WORKER).kind).toBe("success")
+})
+
+test("decodeWorkerExit applies the route's structural schemas to success and failure", () => {
+  const route = exitRoute(
+    structuralSchema("success", { kind: "string" } as DurableTypeDescriptor),
+    structuralSchema("error", { kind: "number" } as DurableTypeDescriptor)
+  )
+  for (const surface of [WORKER, BUNDLE]) {
+    expect(decodeWorkerExit(route, { kind: "success", value: "ok" }, surface)).toEqual({ kind: "success", value: "ok" })
+    expect(decodeWorkerExit(route, { kind: "success", value: 1 }, surface))
+      .toMatchObject({ kind: "defect", defect: { name: "SuccessCodecDefect" } })
+    expect(decodeWorkerExit(route, { kind: "failure", error: 1 }, surface)).toEqual({ kind: "failure", error: 1 })
+    expect(decodeWorkerExit(route, { kind: "failure", error: "no" }, surface))
+      .toMatchObject({ kind: "defect", defect: { name: "FailureCodecDefect" } })
+  }
 })

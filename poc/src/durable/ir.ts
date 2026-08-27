@@ -342,12 +342,35 @@ export interface FlowSchemas {
  * digest-stable; a lower-version artifact claiming a higher version's feature
  * is rejected with an explicit version diagnostic.
  */
+/**
+ * How a Plan's control flow was established.
+ *
+ * `"proxy-recorded"` means the Plan was recorded by *running* an authoring
+ * callback with a Proxy standing in for each symbolic value. JavaScript offers
+ * no trap for ToBoolean, `&&`/`||`/`??`, `typeof`, `===`, `Array.isArray`, or
+ * `Object.is`, so such a callback's control flow cannot be verified at record
+ * time. `authoring.ts` refuses every form it can account for, but a Plan
+ * carrying this marker still has an *unverified construction* and must not be
+ * mistaken for one the source compiler checked.
+ *
+ * Absence means the Plan came from a path without that limitation — the `.sm`
+ * source compiler, which fails closed on the same programs with
+ * SMITHERS4106/4107/4111 — or from an artifact predating this marker. Absence
+ * is therefore not a positive claim of verification, only the lack of a
+ * negative one; see `signed-deployment.ts` for the trust decision.
+ */
+export type PlanProvenance = "proxy-recorded"
+
+export const PLAN_PROVENANCE_PROXY_RECORDED = "proxy-recorded" as const satisfies PlanProvenance
+
 export interface PlanTemplate extends PlanFragment {
   readonly formatVersion: 1 | 2 | 3
   readonly flowId: string
   readonly flowVersion: number
   /** Compiler-derived persistence contract. Absent only on legacy POC artifacts. */
   readonly flowSchemas?: FlowSchemas
+  /** Present only when the Plan's construction could not be statically verified. */
+  readonly provenance?: PlanProvenance
   readonly requirements: readonly string[]
   readonly actions: readonly ActionDescriptor[]
   /** Embedded, digest-pinned Plans instantiated by childFlow nodes (format version 2). */

@@ -344,6 +344,73 @@ test("parent cancellation is recorded with child propagation, and completed chil
   }
 })
 
+test("a parent that terminates inside the linkage window never lets its child start", async () => {
+  const compiled = compileParent()
+  if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
+  const node = childFlowNode(compiled.plan)
+
+  // `registerChildExecution` COMMITs the link row and `initializeExecution`
+  // COMMITs the child execution row in two different transactions.
+  // `afterChildFlowLinked` is the documented seam between them, and it is the
+  // whole window: `cancelDescendantExecutions` walks the link table and finds
+  // no `durable_executions` row to fence, so before this was closed the child
+  // ran its Actions to completion under a terminated parent — unrecoverably,
+  // because re-cancelling an already-terminal parent is a no-op.
+  for (const [label, terminate] of [
+    ["cancelled", (store: DurableStore, executor: DurableExecutor<{ value: number }, unknown>, id: string) => {
+      executor.cancel(id, { name: "OperatorCancel", message: "stop" })
+    }],
+    // `failExecution` reaches the identical helper through the identical
+    // `if (update.changes === 1)` guard, so it has the identical window.
+    ["failed", (store: DurableStore, _executor: DurableExecutor<{ value: number }, unknown>, id: string) => {
+      store.failExecution(id, "defect", { name: "OperatorDefect", message: "stop" })
+    }]
+  ] as const) {
+    const executionId = `child-window-${label}`
+    const childExecutionId = `${executionId}::child::${node.id}`
+    const store = new DurableStore()
+    resetCalls()
+    const executor = new DurableExecutor(deploymentFor(compiled.plan, executionId), store)
+    try {
+      const running = executor.execute({ value: 11 }, {
+        executionId,
+        afterChildFlowLinked(linkedNodeId, linkedChildId) {
+          expect(linkedNodeId).toBe(node.id)
+          expect(linkedChildId).toBe(childExecutionId)
+          // The link is committed and the child execution row does not exist.
+          expect(store.listChildExecutions(executionId)).toHaveLength(1)
+          expect(() => store.getExecution(childExecutionId)).toThrow(/Unknown durable execution/)
+          terminate(store, executor, executionId)
+        }
+      })
+      await expect(running).rejects.toBeInstanceOf(Error)
+      expect(store.getExecution(executionId).status).toBe(label)
+      // The child was never created, so no Action of it ever ran and there is
+      // no execution left behind that nothing can cancel.
+      expect(() => store.getExecution(childExecutionId)).toThrow(/Unknown durable execution/)
+      expect(store.journal(childExecutionId)).toEqual([])
+      expect(doubleCalls).toEqual([])
+      expect(stampCalls).toEqual([])
+    } finally {
+      store.close()
+    }
+  }
+
+  // BOTH DIRECTIONS: the guard is on a terminated parent, not on being a child.
+  // An ordinary attached child still starts, runs, and completes, and a nested
+  // grandchild still starts under it.
+  const store = new DurableStore()
+  resetCalls()
+  try {
+    expect(await new DurableExecutor(deploymentFor(compiled.plan, "child-window-ok"), store)
+      .execute({ value: 4 }, { executionId: "child-window-ok" })).toEqual({ stamped: 108 })
+    expect(doubleCalls).toEqual([4])
+    expect(store.getExecution(`child-window-ok::child::${node.id}`).status).toBe("completed")
+  } finally {
+    store.close()
+  }
+})
+
 type StoreCommitPoint = "registerChildExecution" | "completeExecution"
 
 const crashAfterCommit = (

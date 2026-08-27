@@ -498,7 +498,10 @@ function __smithersTypedFailure(action, error) {
     );
   }
   const variant = matches[0];
-  const payload = {};
+  // A null prototype keeps a declared payload field named "__proto__" as data:
+  // into {} the assignment below would go through Object.prototype's setter for
+  // that name and the field would leave the wire silently.
+  const payload = Object.create(null);
   for (const field of variant.fields) {
     const value = error[field.name];
     if (value === undefined) {

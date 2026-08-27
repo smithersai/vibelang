@@ -43,49 +43,30 @@ import {
   type StoredNodeExit
 } from "./store.ts"
 import { ExecutionMigratedError, planExecutionMigration, type MigrationPlan } from "./migration.ts"
-import { validateDurableValue } from "./schema.ts"
+import { decodeWorkerExit, validateDurableValue, type WorkerExitSurface } from "./schema.ts"
+import {
+  CoordinatorCrash,
+  DurableActionDefect,
+  DurableActionFailure,
+  DurableExecutionAlreadyFailed,
+  DurableExecutionCancelled
+} from "./errors.ts"
 
-export class DurableActionFailure extends Error {
-  constructor(
-    readonly nodeId: string,
-    readonly failure: JsonValue
-  ) {
-    super(`Durable Action ${nodeId} failed with a typed failure`)
-    this.name = "DurableActionFailure"
-  }
-}
-
-export class DurableActionDefect extends Error {
-  constructor(
-    readonly nodeId: string,
-    readonly defect: JsonValue
-  ) {
-    super(`Durable Action ${nodeId} terminated with a defect`)
-    this.name = "DurableActionDefect"
-  }
-}
-
-export class DurableExecutionAlreadyFailed extends Error {
-  constructor(readonly storedError: JsonValue) {
-    super("Durable execution already has a terminal failure")
-    this.name = "DurableExecutionAlreadyFailed"
-  }
-}
-
-export class DurableExecutionCancelled extends Error {
-  constructor(readonly reason: JsonValue) {
-    super("Durable execution was cancelled")
-    this.name = "DurableExecutionCancelled"
-  }
-}
-
-/** Used by tests/demo to model coordinator death after a durable commit. */
-export class CoordinatorCrash extends Error {
-  constructor(readonly nodeId: string) {
-    super(`Simulated coordinator crash after adopting ${nodeId}`)
-    this.name = "CoordinatorCrash"
-  }
-}
+/**
+ * The coordinator failure identities. They are defined in `./errors.ts` — a
+ * leaf module with no store dependency — so a caller that only needs to
+ * recognize one (the agent sandbox deciding whether a failure is replayable)
+ * can import it without dragging `bun:sqlite` in through `./store.ts`. They
+ * are re-exported here because this is where callers of the executor expect
+ * to find them, and the identity is the same class either way.
+ */
+export {
+  CoordinatorCrash,
+  DurableActionDefect,
+  DurableActionFailure,
+  DurableExecutionAlreadyFailed,
+  DurableExecutionCancelled
+} from "./errors.ts"
 
 export interface ExecuteOptions {
   readonly executionId: string
@@ -188,6 +169,12 @@ const MAX_FAN_OUT_ITEMS = 10_000
  * process); it is never the mechanism a same-process wakeup depends on.
  */
 const DEFAULT_WAKEUP_SWEEP_MS = 250
+
+/** Names the coordinator's own worker transport to the shared exit decoder. */
+const WORKER_EXIT_SURFACE: WorkerExitSurface = {
+  label: "worker",
+  protocolDefectName: "WorkerProtocolCodecDefect"
+}
 
 const delay = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, Math.min(MAX_TIMER_DELAY_MS, Math.max(0, milliseconds))))
@@ -393,8 +380,15 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
   readonly owner = randomUUID()
   /**
    * The exact Plan this coordinator is authorized to advance. Every mutating
-   * store call carries it, so a coordinator holding a superseded deployment
-   * cannot claim, materialize, link, complete, or fail a migrated execution.
+   * store call carries it — including the two that write durable state without
+   * holding a per-attempt fence of their own, the branch skip (terminal) and
+   * the timer schedule (an absolute wake deadline) — so a coordinator holding a
+   * superseded deployment cannot claim, materialize, link, skip, schedule,
+   * complete, or fail a migrated execution. The only deliberate exceptions are
+   * `cancelExecution`, where operator intent outranks the pinned Plan, and the
+   * cross-execution producer calls (`enqueue`, `deliverSignal`,
+   * `deliverBroadcast`), which carry the consumer's contract expectation
+   * instead because they are not scoped to this coordinator's Plan.
    */
   private get planDigest(): string {
     return this.deployment.flow.plan.digest
@@ -673,8 +667,15 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     ) throw new TypeError("Durable signal delivery request must have exact fields")
     const safeRequest = normalized as unknown as SignalDeliveryRequest
     const node = this.nodes.get(safeRequest.nodeId)
-    if (node?.kind !== "signal" || node.signalId !== safeRequest.signalId) {
-      throw new TypeError(`Delivery does not address a signal in this deployment Plan`)
+    // `delivery === undefined` is the single-delivery form. A broadcast node is
+    // reached only through `deliverBroadcast`; addressing one here would write
+    // an inbox row `pollBroadcastSignal` never reads. The store refuses it too —
+    // this check exists so the coordinator refuses it earlier, with a message
+    // that names the actual mistake.
+    if (node?.kind !== "signal" || node.signalId !== safeRequest.signalId || node.delivery !== undefined) {
+      throw new TypeError(
+        `Delivery does not address a signal in this deployment Plan; a broadcast signal is reached with deliverBroadcast`
+      )
     }
     const expectation: SignalContractExpectation = {
       planDigest: this.deployment.flow.plan.digest,
@@ -697,10 +698,14 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     }
     const planNode = [...this.nodes.values()].find(
       (candidate): candidate is Extract<PlanNode, { readonly kind: "signal" }> =>
-        candidate.kind === "signal" && candidate.signalId === signalId
+        candidate.kind === "signal" && candidate.signalId === signalId && candidate.delivery === undefined
     )
     if (planNode === undefined) {
-      throw new TypeError(`Grant does not address a signal in this deployment Plan`)
+      // A broadcast node in this Plan is deliberately not a match: this grant
+      // mints unicast sender evidence, and `grantBroadcast` is its counterpart.
+      throw new TypeError(
+        `Grant does not address a signal in this deployment Plan; a broadcast signal is granted with grantBroadcast`
+      )
     }
     const minted = this.store.mintSignalToken(executionId, signalId)
     if (minted.nodeId !== planNode.id) {
@@ -841,10 +846,14 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     }
     const planNode = [...leaf.nodes.values()].find(
       (candidate): candidate is SignalNode =>
-        candidate.kind === "signal" && candidate.signalId === signalId
+        candidate.kind === "signal" && candidate.signalId === signalId && candidate.delivery === undefined
     )
     if (planNode === undefined) {
-      throw new TypeError(`Delivery does not address a signal in the attached child Plan`)
+      // Same discrimination as `deliverSignal`/`grantSignal`: an attached child's
+      // broadcast node is not addressable through the unicast inbox either.
+      throw new TypeError(
+        `Delivery does not address a signal in the attached child Plan; a broadcast signal is reached with deliverBroadcast`
+      )
     }
     // The durable linkage chain — not any new authority — is what permits this.
     const minted = this.store.mintAttachedSignalToken(parentExecutionId, childNodePath, signalId)
@@ -1034,7 +1043,18 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         if (claim.kind === "terminal") return fromStoredExit(node.id, claim.exit)
         const chosen = condition ? node.whenTrue : node.whenFalse
         const skipped = condition ? node.whenFalse : node.whenTrue
-        this.store.skipNodes(context.executionId, fragmentNodeIds(skipped), node.id)
+        // The skip is a terminal write, so it is fenced and pinned exactly like
+        // the branch's own success commit: a migration landing inside this
+        // `acquire` boundary must not be able to skip a node the new Plan needs.
+        const owned = this.store.skipNodes(
+          context.executionId,
+          fragmentNodeIds(skipped),
+          node.id,
+          this.owner,
+          claim.fencingToken,
+          this.planDigest
+        )
+        if (!owned) return this.reresolveLostAttempt(node.id, context)
         await Promise.all(chosen.nodes.map((child) => this.resolveNode(child.id, context)))
         const value = await this.evaluate(chosen.output, context)
         return this.commitControlNode(node.id, claim.fencingToken, value, context)
@@ -1435,7 +1455,13 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     context: RunContext
   ): Promise<JsonValue> {
     const durationMs = timerDurationValue(await this.evaluate(node.durationMs, context), node.id)
-    const scheduled = this.store.scheduleTimer(context.executionId, node.id, durationMs)
+    const scheduled = this.store.scheduleTimer(
+      context.executionId,
+      node.id,
+      durationMs,
+      Date.now(),
+      this.planDigest
+    )
     if (scheduled.kind === "terminal") return fromStoredExit(node.id, scheduled.exit)
     if (scheduled.newlyScheduled) {
       await context.afterTimerScheduled?.(node.id, scheduled.wakeAt)
@@ -1586,6 +1612,17 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     }
   }
 
+  /**
+   * An attempt that lost its fence wrote nothing. Adopt whatever the winner
+   * committed, or start the node over from the durable state that now exists.
+   */
+  private reresolveLostAttempt(nodeId: string, context: RunContext): Promise<JsonValue> {
+    const winner = this.store.getNode(context.executionId, nodeId).exit
+    if (winner !== undefined) return Promise.resolve(fromStoredExit(nodeId, winner))
+    context.resolutions.delete(nodeId)
+    return this.resolveNode(nodeId, context)
+  }
+
   private async commitControlNode(
     nodeId: string,
     fencingToken: number,
@@ -1600,12 +1637,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       value,
       null
     )
-    if (!committed) {
-      const winner = this.store.getNode(context.executionId, nodeId).exit
-      if (winner !== undefined) return fromStoredExit(nodeId, winner)
-      context.resolutions.delete(nodeId)
-      return this.resolveNode(nodeId, context)
-    }
+    if (!committed) return this.reresolveLostAttempt(nodeId, context)
     await context.afterNodeAdopted?.(nodeId)
     return value
   }
@@ -2004,74 +2036,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
   }
 
   private validateWorkerExit(node: ActionNode, exit: unknown): WorkerExit {
-    const route = this.actionRoute(node)
-    let observedKind: unknown
-    try {
-      const encoded = assertJson(exit, `${route.actionId} worker exit`)
-      if (encoded === null || typeof encoded !== "object" || Array.isArray(encoded)) {
-        throw new TypeError(`${route.actionId} worker exit must be an object`)
-      }
-      observedKind = encoded.kind
-      if (encoded.kind === "success") {
-        if (canonicalJson(Object.keys(encoded).sort()) !== canonicalJson(["kind", "value"])) {
-          throw new TypeError(`${route.actionId} success exit has invalid fields`)
-        }
-        return {
-          kind: "success",
-          value: validateDurableValue(route.schemas.success, encoded.value, `${route.actionId} worker success`)
-        }
-      }
-      if (encoded.kind === "failure") {
-        if (canonicalJson(Object.keys(encoded).sort()) !== canonicalJson(["error", "kind"])) {
-          throw new TypeError(`${route.actionId} failure exit has invalid fields`)
-        }
-        return {
-          kind: "failure",
-          error: validateDurableValue(route.schemas.error, encoded.error, `${route.actionId} worker failure`)
-        }
-      }
-      if (encoded.kind === "defect") {
-        if (canonicalJson(Object.keys(encoded).sort()) !== canonicalJson(["defect", "kind"])) {
-          throw new TypeError(`${route.actionId} defect exit has invalid fields`)
-        }
-        const defect = encoded.defect
-        if (defect === null || typeof defect !== "object" || Array.isArray(defect)) {
-          throw new TypeError(`${route.actionId} defect payload must be an object`)
-        }
-        const expectedKeys = defect.stack === undefined
-          ? ["message", "name"]
-          : ["message", "name", "stack"]
-        if (
-          canonicalJson(Object.keys(defect).sort()) !== canonicalJson(expectedKeys) ||
-          typeof defect.name !== "string" ||
-          typeof defect.message !== "string" ||
-          (defect.stack !== undefined && typeof defect.stack !== "string")
-        ) {
-          throw new TypeError(`${route.actionId} defect payload has invalid fields`)
-        }
-        return {
-          kind: "defect",
-          defect: {
-            name: defect.name,
-            message: defect.message,
-            ...(defect.stack === undefined ? {} : { stack: defect.stack })
-          }
-        }
-      }
-      throw new TypeError(`${route.actionId} worker exit has an unknown kind`)
-    } catch (error) {
-      return {
-        kind: "defect",
-        defect: {
-          name: observedKind === "success"
-            ? "SuccessCodecDefect"
-            : observedKind === "failure"
-              ? "FailureCodecDefect"
-              : "WorkerProtocolCodecDefect",
-          message: error instanceof Error ? error.message : `${route.actionId} worker exit failed its durable codec`
-        }
-      }
-    }
+    return decodeWorkerExit(this.actionRoute(node), exit, WORKER_EXIT_SURFACE)
   }
 
   private async adoptCacheHit(
