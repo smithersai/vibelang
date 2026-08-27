@@ -1,0 +1,134 @@
+import { Context } from "smthrs/context";
+import { writeStandardError, writeStandardOut } from "./host.ts";
+
+export type ConsoleLevel = "info" | "warn" | "error";
+
+export interface ConsoleEntry {
+  readonly level: ConsoleLevel;
+  readonly message: string;
+}
+
+/**
+ * Diagnostic output. The ambient `console` global is a host facility, so writing
+ * a line is a capability rather than an unconditional import.
+ */
+export abstract class Console extends Context {
+  abstract info(message: string): void;
+  abstract warn(message: string): void;
+  abstract error(message: string): void;
+}
+
+/** Minimal structural view of the Node streams this service writes to. */
+export interface OutputStream {
+  write(chunk: string): unknown;
+}
+
+export interface SystemConsoleOptions {
+  readonly out?: OutputStream;
+  readonly err?: OutputStream;
+}
+
+/**
+ * The host's own standard streams behind the published `OutputStream` contract.
+ *
+ * `process.stdout` cannot be named here — specification/compatibility.mdx,
+ * "Host Globals", forbids a host global in authored `.sm` and has no
+ * implementation-side carve-out. The route is the module boundary: these two
+ * classes are Smithers-owned adapters, and the single host write per operation
+ * lives in ./host.ts, which is ordinary TypeScript and keeps its own semantics.
+ *
+ * They are `OutputStream` implementations rather than a returned host object
+ * because a trusted binding that *returns* a host object is refused
+ * (`SMITHERS1508`): a trust claim clears the panic channel for the call, while
+ * the returned value stays foreign.
+ */
+class StandardOutStream implements OutputStream {
+  write(chunk: string): unknown {
+    return writeStandardOut(chunk);
+  }
+}
+
+class StandardErrorStream implements OutputStream {
+  write(chunk: string): unknown {
+    return writeStandardError(chunk);
+  }
+}
+
+/**
+ * One instance each, resolved at module scope, so `SystemConsole.make()` hands
+ * back the same stream object on every call the way `process.stdout` did.
+ */
+const STANDARD_OUT: OutputStream = new StandardOutStream();
+const STANDARD_ERROR: OutputStream = new StandardErrorStream();
+
+/**
+ * Node/Bun live implementation. `info` goes to stdout; `warn` and `error` go to
+ * stderr so a piped stdout stays a clean data channel.
+ */
+export class SystemConsole extends Console {
+  readonly #out: OutputStream;
+  readonly #err: OutputStream;
+
+  private constructor(out: OutputStream, err: OutputStream) {
+    super();
+    this.#out = out;
+    this.#err = err;
+  }
+
+  static make(options: SystemConsoleOptions = {}): SystemConsole {
+    return new SystemConsole(options.out ?? STANDARD_OUT, options.err ?? STANDARD_ERROR);
+  }
+
+  info(message: string): void {
+    this.#out.write(`${message}\n`);
+  }
+
+  warn(message: string): void {
+    this.#err.write(`${message}\n`);
+  }
+
+  error(message: string): void {
+    this.#err.write(`${message}\n`);
+  }
+}
+
+/** Deterministic implementation that captures every entry in order. */
+export class RecordingConsole extends Console {
+  readonly #entries: ConsoleEntry[] = [];
+
+  private constructor() {
+    super();
+  }
+
+  static make(): RecordingConsole {
+    return new RecordingConsole();
+  }
+
+  get entries(): readonly ConsoleEntry[] {
+    return this.#entries.slice();
+  }
+
+  /** Messages in order, optionally narrowed to one level. */
+  messages(level?: ConsoleLevel): readonly string[] {
+    return this.#entries
+      .filter((entry) => level === undefined || entry.level === level)
+      .map((entry) => entry.message);
+  }
+
+  clear(): this {
+    this.#entries.length = 0;
+    return this;
+  }
+
+  info(message: string): void {
+    this.#entries.push(Object.freeze({ level: "info", message }));
+  }
+
+  warn(message: string): void {
+    this.#entries.push(Object.freeze({ level: "warn", message }));
+  }
+
+  error(message: string): void {
+    this.#entries.push(Object.freeze({ level: "error", message }));
+  }
+}
