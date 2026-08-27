@@ -131,6 +131,63 @@ describe("Duration", () => {
     expect((Duration.parse(mixed.negated().toString()) ?? Duration.zero).toMillis()).toBe(-90_061_001);
   });
 
+  test("every construction path yields the same zero, negative zero included", () => {
+    // `Object.is` and reciprocal arithmetic are the two readings that can tell
+    // `-0` from `0`; `toString`, `equals`, `isZero` and the codec cannot, which
+    // is why a `-0` leaking out of one constructor stayed invisible.
+    const zeros: ReadonlyArray<readonly [string, Duration]> = [
+      ["Duration.zero", Duration.zero],
+      ["millis(-0)", Duration.millis(-0)],
+      ["seconds(-0)", Duration.seconds(-0)],
+      ["minutes(-0)", Duration.minutes(-0)],
+      ["hours(-0)", Duration.hours(-0)],
+      ["days(-0)", Duration.days(-0)],
+      ["millis(0).negated()", Duration.millis(0).negated()],
+      ["millis(0).times(-1)", Duration.millis(0).times(-1)],
+      ["millis(0).plus(millis(-0))", Duration.millis(0).plus(Duration.millis(-0))],
+      ["millis(0).minus(millis(0))", Duration.millis(0).minus(Duration.millis(0))],
+      ["codec.decode({millis:-0})", Duration.codec.decode({ millis: -0 })],
+      // `parse` validates its own input and never reaches `checkedMillis`, so
+      // every negative spelling of zero used to come back as `-0` here.
+      ...(["-0", "-0ms", "-0s", "-0m", "-0h", "-0d", "-0.0ms", "-0.000s", "-0ms0ms", "-0h0m0s", " -0 "] as const)
+        .map((text) => [`parse(${JSON.stringify(text)})`, Duration.parse(text)!] as const),
+    ];
+    for (const [label, duration] of zeros) {
+      expect(duration).toBeDefined();
+      expect(`${label}: ${Object.is(duration.toMillis(), -0)}`).toBe(`${label}: false`);
+      expect(`${label}: ${1 / duration.toMillis()}`).toBe(`${label}: ${Number.POSITIVE_INFINITY}`);
+      expect(duration.toMillis()).toBe(0);
+      expect(duration.equals(Duration.zero)).toBe(true);
+      expect(duration.isZero()).toBe(true);
+      expect(duration.isNegative()).toBe(false);
+      expect(duration.toString()).toBe("0ms");
+      expect(Duration.codec.encode(duration)).toEqual({ millis: 0 });
+    }
+
+    // The other direction: normalizing zero must not have flattened any sign
+    // or magnitude that a Duration is required to carry.
+    expect(Duration.millis(-1).toMillis()).toBe(-1);
+    expect(Duration.millis(0).minus(Duration.millis(1)).toMillis()).toBe(-1);
+    expect(Duration.parse("-1ms")!.toMillis()).toBe(-1);
+    expect(Duration.parse("-1h30m")!.toMillis()).toBe(-5_400_000);
+    expect(Duration.millis(MAX_DURATION_MILLIS).negated().toMillis()).toBe(-MAX_DURATION_MILLIS);
+    expect(Duration.millis(-1).isNegative()).toBe(true);
+    expect(Duration.millis(-1).toString()).toBe("-1ms");
+  });
+
+  test("parse still refuses everything the panicking gate refuses", () => {
+    // `parse` bypasses `checkedMillis` by design - it answers absence rather
+    // than panicking - so it has to enforce the same range, integer, and
+    // finiteness properties itself. This pins that it does.
+    expect(Duration.parse(String(MAX_DURATION_MILLIS))!.toMillis()).toBe(MAX_DURATION_MILLIS);
+    expect(Duration.parse(`-${MAX_DURATION_MILLIS}`)!.toMillis()).toBe(-MAX_DURATION_MILLIS);
+    expect(Duration.parse(String(MAX_DURATION_MILLIS + 1))).toBeUndefined();
+    expect(Duration.parse(`-${MAX_DURATION_MILLIS + 1}`)).toBeUndefined();
+    expect(Duration.parse("0.5ms")).toBeUndefined();
+    expect(Duration.parse("-0.5ms")).toBeUndefined();
+    expect(Duration.parse("9007199254740991ms1ms")).toBeUndefined();
+  });
+
   test("unparsable text is `undefined`, not a failure or a panic", () => {
     for (const text of ["", "   ", "abc", "30x", "s30", "1h30", "-", "0.0001s", "1e3ms", "1,5s", "9007199254740993"]) {
       expect(Duration.parse(text)).toBeUndefined();

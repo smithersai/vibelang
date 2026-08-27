@@ -50,15 +50,22 @@ function millisOf(duration: Duration): number {
 }
 
 /**
- * The single gate every Duration millisecond value passes through. `-0` is
- * normalized to `0` so equality, rendering, and the wire codec are canonical.
+ * The gate every path that PANICS on an unusable millisecond value passes
+ * through: the five unit constructors, the four arithmetic operations, and the
+ * `Instant`/`Schedule` seam.
+ *
+ * It is deliberately not the only path to a Duration. `parse` answers absence
+ * rather than panicking and the wire codec answers its own failure, so both
+ * validate their own input and construct directly. Canonicalization therefore
+ * cannot live here - it lives in `makeDuration`, which every path really does
+ * share.
  */
 function checkedMillis(millis: number, caller: string): number {
   if (typeof millis !== "number" || Number.isNaN(millis)) panic(`${caller} requires a number of milliseconds, not NaN`);
   if (!Number.isFinite(millis)) panic(`${caller} requires a finite number of milliseconds`);
   if (!Number.isInteger(millis)) panic(`${caller} requires a whole number of milliseconds`);
   if (Math.abs(millis) > MAX_DURATION_MILLIS) panic(`${caller} overflowed the representable duration range`);
-  return millis === 0 ? 0 : millis;
+  return millis;
 }
 
 export abstract class DurationValue {
@@ -138,8 +145,20 @@ class LocalDuration extends DurationValue {
   }
 }
 
+/**
+ * The single construction point: every Duration in this module is minted here,
+ * so this is where the value is made canonical. `-0` is normalized to `0` so
+ * that equality, rendering, the wire codec, `Object.is`, and reciprocal
+ * arithmetic all agree on what zero is.
+ *
+ * The normalization used to sit in `checkedMillis` instead, which reads like
+ * the same thing and is not: `parse` and the codec's `decode` validate their
+ * own input and never call it, so `Duration.parse("-0").toMillis()` was `-0`
+ * while `Duration.millis(-0).toMillis()` was `0`, and `1 / d.toMillis()` was
+ * `-Infinity` on one and `Infinity` on the other.
+ */
 function makeDuration(millis: number): Duration {
-  return new LocalDuration(millis);
+  return new LocalDuration(millis === 0 ? 0 : millis);
 }
 
 const ZERO: Duration = makeDuration(0);
