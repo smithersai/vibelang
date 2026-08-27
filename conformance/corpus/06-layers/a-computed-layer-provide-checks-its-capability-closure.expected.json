@@ -1,0 +1,12 @@
+{
+  "title": "Layer[\"provide\"] is the same compiler-recognized call as Layer.provide and still checks its capability closure",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2101",
+      "line": 16,
+      "column": 24
+    }
+  ],
+  "notes": "specification/requirements.mdx:80: 'When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error.' A literal element access is the same member access as the dotted spelling: same resolved property symbol, same emitted call. A recognizer that tests only for a PropertyAccessExpression is recognition-by-syntactic-form, and the computed spelling escapes every rule it owns. REVIEW-fable-1.md F4 measured `Clock[\"context\"]()` compiling and PANICKING AT RUNTIME on BOTH backends, which is why only a specification-derived case can hold this closed: the differential oracle is structurally blind to a defect the two implementations share. The body requires `Clock` and `Label`; the layer supplies only `Clock`, so `Label` survives the subtraction. Under the syntactic recognizer the whole `Layer.provide` check was skipped and the program compiled with an unprovided capability — this is a member of the same class as the Context headline, found by enumerating the family rather than fixing the two names the review reported."
+}

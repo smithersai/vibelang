@@ -1,0 +1,16 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+abstract class Label extends Context {
+  abstract text(): string
+}
+
+function stamp(): string {
+  return `${Clock.context().now()}${Label.context().text()}`
+}
+
+export const stamped = Layer["provide"](Layer.succeed(Clock, { now: () => 1 }), () => [stamp()])

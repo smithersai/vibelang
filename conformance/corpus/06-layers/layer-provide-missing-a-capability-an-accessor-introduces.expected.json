@@ -1,0 +1,16 @@
+{
+  "title": "a Layer.provide is refused for a capability that only a cross-module accessor read introduces",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS2101",
+      "line": 15,
+      "column": 22,
+      "messageContains": "Clock"
+    }
+  ],
+  "modules": [
+    "layer-provide-missing-a-capability-an-accessor-introduces.mod.sm"
+  ],
+  "notes": "specification/requirements.mdx, 'Inference': \"Requirement inference MUST be transitive through ordinary calls.\" specification/type-system.mdx, 'Fallibility Inference': R is inferred from `Capability.context()` calls and transitive callees. Reading a get-accessor CALLS the accessor — there is no syntax that names one without running it — so an accessor access is an ordinary call and charges the accessor's requirement row. specification/requirements.mdx, 'Satisfaction': \"When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error.\" This is the load-bearing case of the accessor set and must not be dropped for brevity: `describe` requires Label directly and Clock only through `source.value`, the layer supplies Label alone, and before 2026-08-25 this program compiled with ZERO diagnostics on both backends and aborted at run time. It is the only shape that discriminates 'the accessor's row travels' from 'the accessor's row vanishes', because a satisfied provide runs either way. `messageContains` is the capability the layer does not supply — Clock, not Label — so a refusal naming the wrong one cannot satisfy it."
+}

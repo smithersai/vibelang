@@ -1,0 +1,17 @@
+{
+  "title": "a postfix ! on a layer is not in the wrapper table: it is refused as an unavailable operator and the layer under it stays opaque",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1207",
+      "line": 23,
+      "column": 39
+    },
+    {
+      "code": "SMITHERS2104",
+      "line": 23,
+      "column": 39
+    }
+  ],
+  "notes": "specification/type-system.mdx and the propagation rule behind `SMITHERS1207`: postfix `!` in `.sm` is Result propagation and requires a Result operand; TypeScript's non-null assertion meaning is not available. A Layer is not a Result, so the operator is refused — and the layer expression underneath it is then not something the resolver may read through, so `SMITHERS2104` fires at the same position. WHY THIS CASE IS SEPARATE FROM THE ACCEPTING WRAPPER CASE, and why that separation is the point: `!` LOOKS like the other four wrappers. It is postfix, it is one token, and in TypeScript it is erased exactly like `as`. The 2026-08-27 wrapper fix had to add `satisfies`, `as`, `<T>` and parentheses to one table and had to leave `!` out of it, and 'which spellings are in the table' is a decision no other case in the corpus records. Folding `!` into `a-layer-through-a-type-only-wrapper-is-the-same-layer` would have made that case's green depend on a question this one exists to answer, so `!` is deliberately absent there and is the entire content here. WHAT THIS CASE PINS: both codes, at the authored position, as a set. The two backends report them in OPPOSITE ORDER — the reference prints `SMITHERS1207` first, the fork prints `SMITHERS2104` first — and the judge compares a sorted multiset, so the case is legitimately identical on both. That ordering difference is recorded here rather than worked around, because a future reader diffing raw backend output will see it and should know it is expected. The cascade is declared IN FULL rather than filtered: 'which diagnostics fire' is part of the contract, and a backend that stopped emitting the opacity verdict once the operator was refused would be quietly deciding that an unreadable layer is acceptable when it appears under an already-refused operator. WHAT IT DELIBERATELY DOES NOT PIN: the messages. Neither code carries a payload that is the promise — `SMITHERS1207`'s sentence names the operator and `SMITHERS2104`'s names no capability — and both are worded differently on the two backends. VERIFIED LOAD-BEARING, not assumed: mutating the declared code `SMITHERS1207` to `SMITHERS1206` — a neighbouring propagation code, so the mutation is plausible rather than nonsense — turns the case red on BOTH backends with the diagnostic diff printed, and the file was restored byte-identically (sha256 ae177862fdf1bce0377245cc7d7713dc74a997ab0c0622c1c0f4c0fad6eeeee2 before and after, that digest being this file's content at the moment the mutation ran — the sentence recording it is appended afterwards, so the shipped file necessarily hashes differently). The paired positive control is `a-layer-through-a-type-only-wrapper-is-the-same-layer`: `!` must stay OUT of that table, and a lane that adds it to make some other program compile turns this case red rather than passing silently."
+}

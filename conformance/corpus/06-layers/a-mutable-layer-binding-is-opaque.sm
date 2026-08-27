@@ -1,0 +1,34 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+function entry(key: string): string {
+  return Directory.context().lookup(key) ?? "none"
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : null) }
+const clock: Clock = { now: () => 7 }
+
+// Each of the three bindings below is initialised with a Directory layer and
+// then reassigned — twice in this file, once from inside a function — to a
+// Clock layer. Reading the initializer would certify a capability the runtime
+// registry does not hold by the time `Layer.provide` runs.
+let reassignedLet: Layer<typeof Directory> | Layer<typeof Clock> = Layer.succeed(Directory, directory)
+reassignedLet = Layer.succeed(Clock, clock)
+
+var reassignedVar: Layer<typeof Directory> | Layer<typeof Clock> = Layer.succeed(Directory, directory)
+reassignedVar = Layer.succeed(Clock, clock)
+
+let reassignedInAHelper: Layer<typeof Directory> | Layer<typeof Clock> = Layer.succeed(Directory, directory)
+function swap(): void { reassignedInAHelper = Layer.succeed(Clock, clock) }
+
+export const fromLet = Layer.provide(reassignedLet, () => entry("ada"))
+export const fromVar = Layer.provide(reassignedVar, () => entry("ada"))
+export const fromHelper = Layer.provide(reassignedInAHelper, () => entry("zoe"))

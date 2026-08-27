@@ -1,0 +1,38 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+function entry(key: string): string {
+  return Directory.context().lookup(key) ?? "none"
+}
+
+function stamped(key: string): string {
+  return `${entry(key)}@${Clock.context().now()}`
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : null) }
+const clock: Clock = { now: () => 7 }
+
+// The wrapper is on the const's INITIALIZER, not on the argument: the resolver
+// has to follow the binding and then strip, not strip and then follow.
+const WrappedAtInitializer = Layer.succeed(Directory, directory) satisfies Layer<typeof Directory>
+
+export function main(): string[] {
+  return [
+    Layer.provide(Layer.succeed(Directory, directory) satisfies Layer<typeof Directory>, () => entry("ada")),
+    Layer.provide(Layer.succeed(Directory, directory) as Layer<typeof Directory>, () => entry("ada")),
+    Layer.provide(<Layer<typeof Directory>>Layer.succeed(Directory, directory), () => entry("zoe")),
+    Layer.provide(Layer.succeed(Directory, directory) as unknown as Layer<typeof Directory>, () => entry("ada")),
+    Layer.provide(WrappedAtInitializer, () => entry("ada")),
+    Layer.provide(Layer.merge(Layer.succeed(Directory, directory) satisfies Layer<typeof Directory>, Layer.succeed(Clock, clock)), () => stamped("ada")),
+    Layer.provide(Layer.succeed((Directory), directory), () => entry("ada")),
+    Layer.provide(Layer.succeed(Directory satisfies typeof Directory, directory), () => entry("zoe")),
+  ]
+}

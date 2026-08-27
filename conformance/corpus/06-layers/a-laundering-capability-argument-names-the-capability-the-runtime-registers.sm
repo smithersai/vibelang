@@ -1,0 +1,29 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+function entry(key: string): string {
+  return Directory.context().lookup(key) ?? "none"
+}
+
+function stamped(key: string): string {
+  return `${entry(key)}@${Clock.context().now()}`
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : null) }
+const clock: Clock = { now: () => 7 }
+
+// The TYPE says `typeof Directory`; the VALUE the runtime registers is `Clock`.
+// A resolver that reads the asserted type certifies a Directory that is never
+// provided, and the program panics reading it.
+export const app = Layer.provide(
+  Layer.succeed(Clock as unknown as typeof Directory, directory),
+  () => entry("ada"),
+)

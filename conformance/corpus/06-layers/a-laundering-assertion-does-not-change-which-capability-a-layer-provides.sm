@@ -1,0 +1,23 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+function entry(key: string): string {
+  return Directory.context().lookup(key) ?? "none"
+}
+
+function stamped(key: string): string {
+  return `${entry(key)}@${Clock.context().now()}`
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : null) }
+const clock: Clock = { now: () => 7 }
+
+export const laundered = Layer.provide(Layer.succeed(Clock, clock) as unknown as Layer<typeof Directory>, () => entry("ada"))

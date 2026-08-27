@@ -1,0 +1,30 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+function entry(key: string): string {
+  return Directory.context().lookup(key) ?? "none"
+}
+
+function stamped(key: string): string {
+  return `${entry(key)}@${Clock.context().now()}`
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : null) }
+const clock: Clock = { now: () => 7 }
+
+const useDirectory: boolean = Boolean(1)
+
+let swapped: Layer<typeof Directory> | Layer<typeof Clock> = Layer.succeed(Directory, directory) satisfies Layer<typeof Directory> | Layer<typeof Clock>
+swapped = Layer.succeed(Clock, clock)
+
+export const fromReassigned = Layer.provide(swapped, () => entry("ada"))
+
+export const fromConditional = Layer.provide((useDirectory ? Layer.succeed(Directory, directory) : Layer.succeed(Clock, clock)) satisfies Layer<typeof Directory> | Layer<typeof Clock>, () => entry("zoe"))

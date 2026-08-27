@@ -1,0 +1,15 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+import { Stamp, stamp } from "./layer-provide-missing-a-capability-an-accessor-introduces.mod.sm"
+
+abstract class Label extends Context {
+  abstract text(): string
+}
+
+function describe(source: Stamp): string {
+  return `${Label.context().text()}${source.value}`
+}
+
+const label: Label = { text: () => "t" }
+
+export const lines = Layer.provide(Layer.succeed(Label, label), () => [describe(stamp())])

@@ -1,0 +1,36 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+function entry(key: string): string {
+  return Directory.context().lookup(key) ?? "none"
+}
+
+function stamped(key: string): string {
+  return `${entry(key)}@${Clock.context().now()}`
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : null) }
+const clock: Clock = { now: () => 7 }
+
+// A value alias for the capability: its own binding symbol, and no class
+// declaration of its own, so a resolver that asks for a class DECLARATION at
+// this identifier finds none.
+const Store = Directory
+
+export function main(): string[] {
+  return [
+    Layer.provide(Layer.succeed(<any>Directory, directory), () => entry("ada")),
+    Layer.provide(Layer.succeed(Directory as any, directory), () => entry("zoe")),
+    Layer.provide(Layer.succeed(Store, directory), () => entry("ada")),
+    Layer.provide(Layer.succeed(Store as any, directory), () => entry("zoe")),
+    Layer.provide(Layer.merge(Layer.succeed(<any>Directory, directory), Layer.succeed(Clock, clock)), () => stamped("ada")),
+  ]
+}

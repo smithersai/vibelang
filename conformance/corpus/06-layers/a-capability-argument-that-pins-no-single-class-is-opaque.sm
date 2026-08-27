@@ -1,0 +1,38 @@
+import { Context } from "smthrs/context"
+import { Layer } from "smthrs/provider"
+
+abstract class Directory extends Context {
+  abstract lookup(key: string): string | null
+}
+
+abstract class Clock extends Context {
+  abstract now(): number
+}
+
+function entry(key: string): string {
+  return Directory.context().lookup(key) ?? "none"
+}
+
+function stamped(key: string): string {
+  return `${entry(key)}@${Clock.context().now()}`
+}
+
+const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : null) }
+const clock: Clock = { now: () => 7 }
+
+// Structurally identical to `Directory`, and a DIFFERENT nominal key.
+abstract class Journal extends Context {
+  abstract lookup(key: string): string | null
+}
+
+const useJournal: boolean = false
+
+export const both = Layer.provide(
+  Layer.succeed(useJournal ? Directory : Clock, directory as never),
+  () => entry("ada"),
+)
+
+export const twin = Layer.provide(
+  Layer.succeed(useJournal ? Directory : Journal, directory as never),
+  () => entry("ada"),
+)
