@@ -1,0 +1,21 @@
+import { panic } from "smithers:exceptions"
+
+export function testCamelBoundary(): number {
+  return 1
+}
+
+export function tests(): number {
+  return 2
+}
+
+export function testfoo(): number {
+  return 3
+}
+
+export function test$dollar(): number {
+  return 4
+}
+
+export function testÉcole(): void {
+  panic("lowercase-continuation test did not merely get discovered, it ran")
+}

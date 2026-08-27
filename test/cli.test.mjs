@@ -408,6 +408,98 @@ test("smithers test rejects ambiguous discovery and bounds hostile test processe
   }
 });
 
+// A generator function is the one callable shape whose body does not run when
+// it is called. `smithers test` used to call it, see a generator object that is
+// not a `Result`, and record `ok: true` — so a test whose body was a single
+// `panic` was counted in `discovered`, counted in `passed`, and certified. Ten
+// spellings reached that blind spot and every one of them is pinned here, each
+// with a body that throws a marker if it ever executes: the assertion cannot be
+// satisfied by a body that quietly ran.
+test("smithers test refuses every generator shape instead of certifying an unrun body", () => {
+  const result = run("bin/smithers.js", [
+    "test",
+    "test/fixtures/tests/generator-shapes.sm",
+    "--format",
+    "json",
+  ]);
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.ok, false);
+  assert.deepEqual({
+    discovered: report.discovered,
+    passed: report.passed,
+    failed: report.failed,
+  }, { discovered: 11, passed: 0, failed: 11 });
+
+  const byName = new Map(report.tests.map((item) => [item.name.split("#")[1], item]));
+  // The function *is* a generator: the tag on the callable is what catches a
+  // plain `function*`, an `async function*`, a bound one, a `Proxy` over one,
+  // and a generator method taken off a class instance.
+  for (const name of [
+    "testGeneratorFunction",
+    "testAsyncGeneratorFunction",
+    "testRawGenerator",
+    "testRawAsyncGenerator",
+    "testBoundGenerator",
+    "testProxiedGenerator",
+    "testClassGeneratorMethod",
+  ]) {
+    const entry = byName.get(name);
+    assert.ok(entry, `${name} was not discovered`);
+    assert.equal(entry.ok, false, `${name} was certified without running`);
+    assert.match(entry.error, /must not be generator functions/);
+    assert.doesNotMatch(entry.error, /BODY RAN/);
+  }
+  // The function merely *returns* a generator, which the tag on the callable
+  // cannot see: only the returned value reveals it.
+  for (const name of ["testReturnsGenerator", "testAsyncReturnsGenerator", "testArrowReturnsGenerator"]) {
+    const entry = byName.get(name);
+    assert.ok(entry, `${name} was not discovered`);
+    assert.equal(entry.ok, false, `${name} was certified without running`);
+    assert.match(entry.error, /must not return a generator/);
+    assert.doesNotMatch(entry.error, /BODY RAN/);
+  }
+  // The other direction: an ordinary method pulled off a class instance is not
+  // a generator, so it must still be called and its throw must still be the
+  // reported failure. A refusal that swallowed this row would be an
+  // over-correction.
+  const control = byName.get("testClassOrdinaryMethodStillRuns");
+  assert.ok(control);
+  assert.equal(control.ok, false);
+  assert.match(control.error, /EXOTIC BODY RAN: ordinaryMethod/);
+});
+
+// `test*` is what the command description, `doctor` and the reference docs all
+// promise. The predicate was `/^test(?:$|[A-Z0-9_])/`, an undocumented
+// camel-case boundary rule, and every name it rejected was dropped in silence:
+// not run, not counted, named nowhere. `testÉcole` panics, so this pins that
+// the widened names are *executed* and not merely counted.
+test("smithers test discovers every test-prefixed export, not only camel-case ones", () => {
+  const result = run("bin/smithers.js", [
+    "test",
+    "test/fixtures/tests/discovery-names.sm",
+    "--format",
+    "json",
+  ]);
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  const report = JSON.parse(result.stdout);
+  assert.deepEqual({
+    discovered: report.discovered,
+    passed: report.passed,
+    failed: report.failed,
+  }, { discovered: 5, passed: 4, failed: 1 });
+  assert.deepEqual(report.tests.map((item) => item.name.split("#")[1]).sort(), [
+    "test$dollar",
+    "testCamelBoundary",
+    "testfoo",
+    "tests",
+    "testÉcole",
+  ].sort());
+  const ran = report.tests.find((item) => item.name.endsWith("#testÉcole"));
+  assert.equal(ran.ok, false);
+  assert.match(ran.error, /it ran/);
+});
+
 test("doctor reports implemented project compiler and test-runner surfaces", () => {
   const result = run("bin/smithers.js", ["doctor", "--format", "json"]);
   assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -417,6 +509,11 @@ test("doctor reports implemented project compiler and test-runner surfaces", () 
   assert.match(report.surfaces.smithersCompile, /source maps/);
   assert.match(report.surfaces.testRunner, /test\*/);
   assert.doesNotMatch(report.surfaces.testRunner, /not implemented/);
+  // `test*` is glob notation, and for six rounds it was a camel-case boundary
+  // rule that nothing stated. The surface has to name the rule it implements,
+  // and the one shape it refuses, or the promise is wider than the code.
+  assert.match(report.surfaces.testRunner, /name begins with test/);
+  assert.match(report.surfaces.testRunner, /generator functions refused/);
 });
 
 test("doctor derives ok from the checks it performed and names each probe outcome", () => {

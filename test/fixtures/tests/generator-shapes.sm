@@ -1,0 +1,33 @@
+import { panic } from "smithers:exceptions"
+import {
+  arrowReturnsGenerator,
+  asyncReturnsGenerator,
+  boundGenerator,
+  classGeneratorMethod,
+  classOrdinaryMethod,
+  proxiedGenerator,
+  rawAsyncGenerator,
+  rawGenerator,
+  returnsGenerator,
+} from "./exotic-callables.ts"
+
+export function* testGeneratorFunction(): Generator<string> {
+  panic("GENERATOR BODY RAN")
+  yield "unreachable"
+}
+
+export async function* testAsyncGeneratorFunction(): AsyncGenerator<string> {
+  panic("ASYNC GENERATOR BODY RAN")
+  yield "unreachable"
+}
+
+export const testRawGenerator = rawGenerator
+export const testRawAsyncGenerator = rawAsyncGenerator
+export const testBoundGenerator = boundGenerator
+export const testProxiedGenerator = proxiedGenerator
+export const testClassGeneratorMethod = classGeneratorMethod
+export const testReturnsGenerator = returnsGenerator
+export const testAsyncReturnsGenerator = asyncReturnsGenerator
+export const testArrowReturnsGenerator = arrowReturnsGenerator
+
+export const testClassOrdinaryMethodStillRuns = classOrdinaryMethod
