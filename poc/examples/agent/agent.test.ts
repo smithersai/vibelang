@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, test } from "bun:test"
-import { copyFile, mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises"
+import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, unlink, utimes, writeFile } from "node:fs/promises"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -180,10 +180,14 @@ describe("Deno sandbox RPC lifecycle", () => {
           reject(context.signal.reason)
         }, { once: true })
       }),
+      undefined,
+      { implementationId: "test/agent/fire-and-forget-slow", implementationVersion: "1" },
     )
     const waitUntilStarted = defineFunction<{}, null>(
       "(input: {}) => Promise<null>",
       async () => { await didStart; return null },
+      undefined,
+      { implementationId: "test/agent/wait-until-started", implementationVersion: "1" },
     )
 
     const execution = await sandbox.execute(
@@ -219,6 +223,8 @@ describe("Deno sandbox RPC lifecycle", () => {
           resolve({ ok: true })
         }, 75)
       }),
+      undefined,
+      { implementationId: "test/agent/timeout-slow", implementationVersion: "1" },
     )
 
     const execution = await sandbox.execute(
@@ -248,6 +254,8 @@ describe("Deno sandbox RPC lifecycle", () => {
           reject(context.signal.reason)
         }, { once: true })
       }),
+      undefined,
+      { implementationId: "test/agent/caller-cancel-slow", implementationVersion: "1" },
     )
     const pending = new DenoSubprocessSandbox().execute(
       "export default async f => f.slow({})",
@@ -292,6 +300,8 @@ describe("Deno sandbox RPC lifecycle", () => {
         calls += 1
         return undefined
       },
+      undefined,
+      { implementationId: "test/agent/invalid-result", implementationVersion: "1" },
     )
 
     const missingInput = await sandbox.execute(
@@ -321,6 +331,8 @@ describe("Deno sandbox RPC lifecycle", () => {
           ownKeys() { throw new Error("hostile keys") },
         })
       },
+      undefined,
+      { implementationId: "test/agent/hostile-throw", implementationVersion: "1" },
     )
     const hostileError = await sandbox.execute(
       "export default async functions => functions.hostileThrow({})",
@@ -344,6 +356,8 @@ describe("Deno sandbox RPC lifecycle", () => {
     const wide = defineFunction<{}, null[]>(
       "(input: {}) => Promise<null[]>",
       async () => Array.from({ length: 100_001 }, () => null),
+      undefined,
+      { implementationId: "test/agent/wide-result", implementationVersion: "1" },
     )
     const jsonLimited = await new DenoSubprocessSandbox().execute(
       "export default async f => f.wide({})",
@@ -385,6 +399,8 @@ describe("Deno sandbox RPC lifecycle", () => {
     const echo = defineFunction<{}, { ok: true }>(
       "(input: {}) => Promise<{ ok: true }>",
       async () => ({ ok: true }),
+      undefined,
+      { implementationId: "test/agent/call-limit-echo", implementationVersion: "1" },
     )
     const total = await new DenoSubprocessSandbox({ maxCalls: 2 }).execute(
       "export default async f => { await f.echo({}); await f.echo({}); await f.echo({}); return null }",
@@ -408,6 +424,8 @@ describe("Deno sandbox RPC lifecycle", () => {
         ])
         return null
       },
+      undefined,
+      { implementationId: "test/agent/concurrency-limit-slow", implementationVersion: "1" },
     )
     const concurrent = await new DenoSubprocessSandbox({ maxConcurrentCalls: 1 }).execute(
       "export default async f => Promise.all([f.slow({}), f.slow({})])",
@@ -422,6 +440,8 @@ describe("Deno sandbox RPC lifecycle", () => {
     const large = defineFunction<{}, string>(
       "(input: {}) => Promise<string>",
       async () => "x".repeat(2_000),
+      undefined,
+      { implementationId: "test/agent/transport-limit-large", implementationVersion: "1" },
     )
     const transport = await new DenoSubprocessSandbox({ maxOutputBytes: 1_024 }).execute(
       "export default async f => f.large({})",
@@ -508,5 +528,120 @@ describe("Deno sandbox raw stdout accounting", () => {
 
     expect(execution.ok).toBe(false)
     expect(execution.error?.name).toBe("SandboxOutputLimit")
+  })
+})
+
+/**
+ * The pinned artifacts are identified by *one* canonical path each, so the
+ * value that is digested, the value that is re-verified, and the value that is
+ * spawned cannot be different files. The in-place-rewrite case above covers a
+ * mutation of the pinned file; these cover a mutation of the *path to* it,
+ * which is the half that used to be pinned at the realpath and spawned at the
+ * unresolved path.
+ */
+describe("Deno sandbox runner path canonicalization", () => {
+  const runnerSource = (tag: string) => [
+    "const runtime = globalThis.Deno",
+    "const enc = new TextEncoder()",
+    'const reader = runtime.stdin.readable.pipeThrough(new TextDecoderStream()).getReader()',
+    'let buf = ""',
+    "async function readLine() {",
+    "  for (;;) {",
+    '    const i = buf.indexOf("\\n")',
+    "    if (i >= 0) { const l = buf.slice(0, i); buf = buf.slice(i + 1); return l }",
+    "    const n = await reader.read()",
+    "    if (n.done) return undefined",
+    "    buf += n.value",
+    "  }",
+    "}",
+    'async function send(m) { await runtime.stdout.write(enc.encode(JSON.stringify(m) + "\\n")) }',
+    "await readLine()",
+    `await send({ type: "complete", result: { ranRunner: ${JSON.stringify(tag)} } })`,
+    "runtime.exit(0)",
+    "",
+  ].join("\n")
+
+  test("runs the pinned runner after the symlink it was named through is repointed", async () => {
+    const root = await mkdtemp(join(tmpdir(), "smithers-agent-runner-symlink-"))
+    try {
+      await writeFile(join(root, "honest.js"), runnerSource("HONEST"))
+      await writeFile(join(root, "evil.js"), runnerSource("EVIL"))
+      await symlink(join(root, "honest.js"), join(root, "runner.js"))
+
+      const sandbox = new DenoSubprocessSandbox({ runnerPath: join(root, "runner.js") })
+      // Repointing the link leaves the pinned realpath untouched, so identity
+      // verification has nothing to complain about. The spawn must still use
+      // the file that was pinned.
+      await unlink(join(root, "runner.js"))
+      await symlink(join(root, "evil.js"), join(root, "runner.js"))
+
+      const execution = await sandbox.execute(
+        "export default () => null",
+        {},
+        { sourceDigest: "runner-symlink", turnId: "turn_runner_symlink" },
+      )
+      expect(execution.ok).toBe(true)
+      expect(execution.result).toEqual({ ranRunner: "HONEST" })
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test("runs the pinned runner after a symlinked parent directory is repointed", async () => {
+    const root = await mkdtemp(join(tmpdir(), "smithers-agent-runner-dirlink-"))
+    try {
+      await mkdir(join(root, "good"))
+      await mkdir(join(root, "bad"))
+      await writeFile(join(root, "good", "runner.js"), runnerSource("HONEST"))
+      await writeFile(join(root, "bad", "runner.js"), runnerSource("EVIL"))
+      await symlink(join(root, "good"), join(root, "live"))
+
+      const sandbox = new DenoSubprocessSandbox({ runnerPath: join(root, "live", "runner.js") })
+      await unlink(join(root, "live"))
+      await symlink(join(root, "bad"), join(root, "live"))
+
+      const execution = await sandbox.execute(
+        "export default () => null",
+        {},
+        { sourceDigest: "runner-dirlink", turnId: "turn_runner_dirlink" },
+      )
+      expect(execution.ok).toBe(true)
+      expect(execution.result).toEqual({ ranRunner: "HONEST" })
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  // `path.resolve` and both Node's and Bun's `realpath` collapse ".."
+  // lexically; the kernel does not when the preceding segment is a symlink. A
+  // canonical path that names a different file than the caller's path opens is
+  // refused rather than digested and executed.
+  test("refuses a path whose canonical form is a different file", async () => {
+    const root = await mkdtemp(join(tmpdir(), "smithers-agent-runner-dotdot-"))
+    try {
+      await mkdir(join(root, "real"))
+      await mkdir(join(root, "real", "sub"))
+      await mkdir(join(root, "a"))
+      await writeFile(join(root, "real", "runner.js"), runnerSource("HONEST"))
+      await writeFile(join(root, "a", "runner.js"), runnerSource("EVIL"))
+      await symlink(join(root, "real", "sub"), join(root, "a", "link"))
+
+      // Built by concatenation: join() would collapse ".." before the sandbox
+      // ever saw the segment under test.
+      expect(() => new DenoSubprocessSandbox({ runnerPath: `${root}/a/link/../runner.js` }))
+        .toThrow(/is a different file/)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test("rejects a runner path that names a directory", async () => {
+    const root = await mkdtemp(join(tmpdir(), "smithers-agent-runner-slash-"))
+    try {
+      await writeFile(join(root, "runner.js"), runnerSource("HONEST"))
+      expect(() => new DenoSubprocessSandbox({ runnerPath: `${join(root, "runner.js")}/` })).toThrow()
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 })

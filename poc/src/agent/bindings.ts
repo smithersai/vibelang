@@ -25,8 +25,22 @@ const IDENTIFIER = /^[A-Za-z_$][\w$]*$/
 const SHA256 = /^[a-f0-9]{64}$/
 
 export interface DefineFunctionOptions {
-  /** Stable implementation name; defaults to the JavaScript function name. */
+  /** Stable binding name; defaults to the declared implementation id. */
   readonly name?: string
+  /**
+   * Declared identity of the host callback — *which* implementation this is.
+   *
+   * It is required (unless a fully explicit `identity` is supplied) for the
+   * same reason `ActionProvider` requires it in `../durable/provider.ts`: a
+   * JavaScript function object carries no resolvable identity. `toString()`
+   * cannot see the state the callback captures, so two deployments over
+   * different projects produce byte-identical source text. Deriving identity
+   * from that text makes them one component, and a durable journal will answer
+   * one deployment's call with the other's recorded result.
+   */
+  readonly implementationId?: string
+  /** Declared version of that implementation; bump it when behavior changes. */
+  readonly implementationVersion?: string
   /** Closure/configuration data that affects behavior but is absent from toString(). */
   readonly config?: JsonValue
   /** Fully explicit identity for build systems that already hash their artifact. */
@@ -221,6 +235,44 @@ export function agentFunctionContractIdentity(fn: AgentFunction<any, any>): Json
   return { mode: "legacy-json-only" }
 }
 
+/**
+ * The deployment's declaration of *which* implementation a host callback is.
+ *
+ * This is deliberately the same rule `makeProvider` applies in
+ * `../durable/provider.ts` — "needs explicit implementation identity and
+ * version" — and for the same reason. A durable journal answers a replayed
+ * call from a recording keyed by component identity, so identity must be a
+ * *claim the deployment makes*, never something the library sniffs off the
+ * function object. `Function.prototype.toString()` sees only source text: it
+ * is blind to captured closure state, and it is the constant
+ * `"function x() { [native code] }"` for every bound function. Both make two
+ * behaviourally different deployments indistinguishable.
+ *
+ * The declaration is folded into the binding's `configDigest`; the source-text
+ * digest remains in `artifactDigest` as a strictly additional discriminator
+ * (it can split an identity that should have been split, but it can no longer
+ * be the only thing keeping two deployments apart).
+ */
+function declaredImplementation(options: DefineFunctionOptions): {
+  readonly implementationId: string
+  readonly implementationVersion: string
+} {
+  const { implementationId, implementationVersion } = options
+  if (
+    typeof implementationId !== "string" || implementationId.trim() === "" ||
+    typeof implementationVersion !== "string" || implementationVersion.trim() === ""
+  ) {
+    throw new TypeError(
+      "Agent function needs explicit implementation identity and version " +
+        "(implementationId + implementationVersion), or a fully explicit identity. " +
+        "A host callback's identity cannot be derived from its source text: " +
+        "toString() cannot see the state the callback captures, so two different " +
+        "deployments would share a turn id and replay each other's recorded results.",
+    )
+  }
+  return { implementationId: implementationId.trim(), implementationVersion: implementationVersion.trim() }
+}
+
 export function defineFunction<Input, Output>(
   signature: string,
   invoke: (input: Input, context: AgentFunctionContext) => Awaitable<Output>,
@@ -236,8 +288,15 @@ export function defineFunction<Input, Output>(
   if (description !== undefined && typeof description !== "string") {
     throw new TypeError("Agent function description must be a string")
   }
-  if (options.identity && (options.name !== undefined || options.config !== undefined)) {
-    throw new TypeError("Explicit AgentFunction identity cannot be combined with name/config")
+  if (
+    options.identity && (
+      options.name !== undefined || options.config !== undefined ||
+      options.implementationId !== undefined || options.implementationVersion !== undefined
+    )
+  ) {
+    throw new TypeError(
+      "Explicit AgentFunction identity cannot be combined with name/config/implementation identity",
+    )
   }
   if (options.actionContract !== undefined && options.flowContract !== undefined) {
     throw new TypeError("An agent function carries either an Action contract or a Flow contract, never both")
@@ -252,12 +311,16 @@ export function defineFunction<Input, Output>(
   if (required !== undefined && stableSignature !== required) {
     throw new TypeError("Agent function signature does not exactly match its compiler-derived contract")
   }
+  const declared = options.identity ? undefined : declaredImplementation(options)
   const identity = options.identity
     ? snapshotComponentIdentity(options.identity, "AgentFunction identity")
     : defineComponentIdentity({
-        name: options.name ?? `agent-function/${invoke.name || "anonymous"}`,
+        name: options.name ?? declared!.implementationId,
         artifactDigest: functionArtifactDigest(invoke),
         configDigest: sha256Json({
+          schema: "smithers.agent.binding-identity/v2",
+          implementationId: declared!.implementationId,
+          implementationVersion: declared!.implementationVersion,
           signature: stableSignature,
           description: description ?? null,
           config: options.config ?? null,

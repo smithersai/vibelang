@@ -294,6 +294,8 @@ export function noteTool(sink: string[]): AgentFunction<{ readonly text: string 
       id: "smthrs/agent-flow/Note",
       version: 1,
       description: "record a note about the published document",
+      implementationId: "demo/agent-flow/note-sink",
+      implementationVersion: "1",
     },
     async ({ text }) => {
       sink.push(text)
@@ -307,6 +309,8 @@ export function publishingTool(
 ): AgentFunction<PublishingInput, PublishingSuccess> {
   return flowTool<PublishingInput, PublishingSuccess>(target, {
     description: "fetch a document and publish it, as one durable execution",
+    implementationId: "demo/agent-flow/publishing",
+    implementationVersion: "1",
   })
 }
 

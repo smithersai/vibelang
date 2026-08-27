@@ -38,6 +38,13 @@ export interface ActionTool<Input = JsonValue, Output = JsonValue> {
   readonly description?: string
   /** Binding identity name; defaults to `action/<id>@<version>`. */
   readonly name?: string
+  /**
+   * Declared identity of the host callback. Required unless `identity` is
+   * given: the Action contract says *what* the tool is, this says *which
+   * implementation of it* this deployment bound. See `DefineFunctionOptions`.
+   */
+  readonly implementationId?: string
+  readonly implementationVersion?: string
   readonly config?: JsonValue
   readonly identity?: ComponentIdentity
 }
@@ -121,8 +128,15 @@ export function actionTool<Input, Output>(
   call: (input: Input, context: AgentFunctionContext) => Awaitable<Output>,
   options: Omit<ActionTool<Input, Output>, "exposedAs" | "action" | "call"> = {},
 ): AgentFunction<Input, Output> {
-  if (options.identity !== undefined && (options.name !== undefined || options.config !== undefined)) {
-    throw new TypeError("An explicit ActionTool identity cannot be combined with name/config")
+  if (
+    options.identity !== undefined && (
+      options.name !== undefined || options.config !== undefined ||
+      options.implementationId !== undefined || options.implementationVersion !== undefined
+    )
+  ) {
+    throw new TypeError(
+      "An explicit ActionTool identity cannot be combined with name/config/implementation identity",
+    )
   }
   return defineActionFunction<Input, Output>(
     action,
@@ -132,6 +146,10 @@ export function actionTool<Input, Output>(
       ? { identity: options.identity }
       : {
         name: options.name ?? identityName(action),
+        ...(options.implementationId === undefined ? {} : { implementationId: options.implementationId }),
+        ...(options.implementationVersion === undefined
+          ? {}
+          : { implementationVersion: options.implementationVersion }),
         config: {
           schema: "smithers.agent.action-tool/v1",
           actionId: action.id,
@@ -253,6 +271,12 @@ export interface FlowToolOptions {
   readonly description?: string
   /** Binding identity name; defaults to `flow/<id>@<version>`. */
   readonly name?: string
+  /**
+   * Declared identity of the wiring that starts or joins the Plan. Required
+   * unless `identity` is given. See `DefineFunctionOptions`.
+   */
+  readonly implementationId?: string
+  readonly implementationVersion?: string
   readonly config?: JsonValue
   readonly identity?: ComponentIdentity
 }

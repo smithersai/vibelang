@@ -67,6 +67,7 @@ const implementationTwo = (_input: null): string => "two"
 interface TurnOptions {
   readonly task?: string
   readonly implementation?: (input: null) => string
+  readonly implementationId?: string
   readonly functionConfig?: JsonValue
   readonly modelConfig?: JsonValue
   readonly modelVersion?: ModelDescriptor
@@ -81,7 +82,12 @@ async function runTurn(options: TurnOptions = {}) {
     "(input: null) => string",
     options.implementation ?? implementationOne,
     "return a stable test value",
-    { name: "agent-function/test-value", config: options.functionConfig ?? null },
+    {
+      name: "agent-function/test-value",
+      implementationId: options.implementationId ?? "test/agent/stable-value",
+      implementationVersion: "1",
+      config: options.functionConfig ?? null,
+    },
   )
   const agent = CodingAgent.make<{ task: string }, string>({
     model: new ScriptedModel([generatedSource], {
@@ -107,6 +113,7 @@ describe("durable agent component provenance", () => {
     const variants = await Promise.all([
       runTurn({ task: "different task" }),
       runTurn({ implementation: implementationTwo }),
+      runTurn({ implementationId: "test/agent/stable-value-other-deployment" }),
       runTurn({ functionConfig: { revision: 2 } }),
       runTurn({ modelConfig: { temperature: 1 } }),
       runTurn({ modelVersion: { provider: "scripted", name: "scripted", version: "2" } }),
@@ -164,13 +171,23 @@ describe("AgentFunction table snapshots", () => {
       "(input: null) => string",
       implementationOne,
       undefined,
-      { name: "agent-function/snapshot", config: null },
+      {
+        name: "agent-function/snapshot",
+        implementationId: "test/agent/snapshot-one",
+        implementationVersion: "1",
+        config: null,
+      },
     )
     const second = defineFunction<null, string>(
       "(input: null) => string",
       implementationTwo,
       undefined,
-      { name: "agent-function/snapshot", config: null },
+      {
+        name: "agent-function/snapshot",
+        implementationId: "test/agent/snapshot-two",
+        implementationVersion: "1",
+        config: null,
+      },
     )
     const table: AgentFunctionTable = { value: first }
     const model = new ScriptedModel([generatedSource])
@@ -197,7 +214,9 @@ describe("AgentFunction table snapshots", () => {
       enumerable: true,
       get() {
         tableGetterCalled = true
-        return defineFunction("(input: null) => string", implementationOne)
+        return defineFunction("(input: null) => string", implementationOne, undefined, {
+          implementationId: "test/agent/hostile", implementationVersion: "1",
+        })
       },
     })
     const common = {

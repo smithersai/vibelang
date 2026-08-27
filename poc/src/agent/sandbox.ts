@@ -1,6 +1,5 @@
 import { spawn, spawnSync } from "node:child_process"
 import { realpathSync, statSync } from "node:fs"
-import { resolve as resolvePath } from "node:path"
 import { fileURLToPath } from "node:url"
 import { createInterface } from "node:readline"
 import { once } from "node:events"
@@ -19,7 +18,12 @@ import {
   agentFunctionContractIdentity,
   snapshotFunctionTable,
 } from "./bindings.ts"
-import { isDurableAgentFunction } from "./tools.ts"
+import { DurableFlowInterrupted, isDurableAgentFunction } from "./tools.ts"
+// Identity only, from the leaf module that defines it. `../durable/engine.ts`
+// re-exports the same class, but reaching it that way pulls `./store.ts` and
+// its `bun:sqlite` import onto this graph — and this module ships on the
+// Node-loadable `smthrs/agent`, which must not name a Bun-only specifier.
+import { CoordinatorCrash } from "../durable/errors.ts"
 import { validateDurableValue } from "../durable/schema.ts"
 import {
   componentIdentityJson,
@@ -71,29 +75,77 @@ const MAX_AGENT_JSON_DEPTH = 128
 const MAX_AGENT_JSON_NODES = 100_000
 const MAX_SERIALIZED_ERROR_TEXT = 65_536
 const MAX_SERIALIZED_ERROR_FIELDS = 256
+/** Bound on how long `execute()` waits for in-flight host calls to commit. */
+const HOST_CALL_DRAIN_MS = 5_000
+
 /**
- * Control-plane outcomes. They describe how this process was torn down, not
- * what the host callback decided, so they are never committed as a replayable
- * result: a restarted turn must be free to call the function again.
+ * A control-plane teardown: it describes how *this process* was torn down, not
+ * what the host callback decided, so it is never committed as a replayable
+ * result — a restarted turn must be free to call the function again.
+ *
+ * This is a brand, not a name. It replaces the hand-maintained set of teardown
+ * spellings that `SandboxProtocolError` was missing from: every teardown is
+ * raised through `abortHostCalls`, the sole writer of a turn's abort
+ * controller, so a new teardown automatically (a) aborts every in-flight host
+ * call and (b) carries this brand. There is no list left for a new member to
+ * go missing from. `name` stays a free string because it is the caller-visible
+ * `SerializedError.name`, but no decision is keyed on its spelling.
  */
-const NON_REPLAYABLE_FAILURES = new Set([
-  "AbortError",
-  "SandboxCancelled",
-  "SandboxTimeout",
-  "SandboxCallLimit",
-  "SandboxOutputLimit",
-  "SandboxTransportLimit",
-  "SandboxChannelClosed",
-  "SandboxClosed",
-  "SandboxFailed",
-  "SandboxSpawnError",
-  "SandboxInitializationError",
+class SandboxControlPlaneError extends Error {
+  constructor(name: string, message: string) {
+    super(message)
+    this.name = name
+  }
+}
+
+/** A recorded host-call outcome that is not a well-formed replayable result. */
+class AgentReplayIntegrityError extends Error {
+  constructor(functionName: string, reason: string) {
+    super(`${functionName} replayed recording is not a well-formed host-call outcome: ${reason}`)
+    this.name = "AgentReplayIntegrityError"
+  }
+}
+
+/**
+ * The only failures still recognized by spelling. Both are raised by a durable
+ * coordinator that may live in another process, so they can reach this catch
+ * as a deserialized payload with no class to match. Everything raised inside
+ * this process is matched by identity instead — see `isNonReplayableFailure`.
+ */
+const CROSS_PROCESS_NON_REPLAYABLE = new Set([
   // A durable execution that lost its coordinator is still resumable: the
   // restarted turn must re-attach to the same execution id rather than be
   // answered from a recording of the interruption.
   "DurableFlowInterrupted",
   "CoordinatorCrash",
 ])
+
+/**
+ * Whether a failed host call must stay out of the replay record.
+ *
+ * Decided by identity, never by the spelling of `error.name` — a tool that
+ * surfaces its HTTP client's `AbortError`, or any other value that merely
+ * spells a control-plane name, is an ordinary deterministic tool failure and
+ * must be recorded so a restart is answered from the recording instead of
+ * repeating the call.
+ *
+ * `signal.aborted` is the structural half: if this turn's control plane tore
+ * the call down, nothing that escapes it is a host-callback decision, whatever
+ * the tool re-threw. It fails toward re-invoking the host, which is the
+ * direction the contract names ("a restarted turn must be free to call the
+ * function again").
+ */
+function isNonReplayableFailure(error: unknown, signal: AbortSignal): boolean {
+  if (signal.aborted) return true
+  if (error instanceof SandboxControlPlaneError) return true
+  if (error instanceof AgentReplayIntegrityError) return true
+  if (error instanceof DurableFlowInterrupted || error instanceof CoordinatorCrash) return true
+  const object = error !== null && (typeof error === "object" || typeof error === "function")
+    ? error as object
+    : undefined
+  const name = object === undefined ? undefined : errorDataProperty(object, "name")
+  return typeof name === "string" && CROSS_PROCESS_NON_REPLAYABLE.has(name)
+}
 
 function fileFingerprint(path: string): string {
   const value = statSync(path, { bigint: true })
@@ -103,8 +155,31 @@ function fileFingerprint(path: string): string {
   return [value.dev, value.ino, value.size, value.mtimeNs, value.ctimeNs].join(":")
 }
 
+/** Whether two paths name the same file, following symlinks. */
+function sameFile(left: string, right: string): boolean {
+  const a = statSync(left, { bigint: true })
+  const b = statSync(right, { bigint: true })
+  return a.dev === b.dev && a.ino === b.ino
+}
+
 function pinFile(path: string): PinnedFile {
-  const absolute = realpathSync(resolvePath(path))
+  // `realpath` alone, deliberately: `path.resolve` collapses ".." *lexically*,
+  // which is not what the kernel does when the preceding segment is a symlink,
+  // so pre-resolving would pin a different file than the caller's path names.
+  // `realpath` also resolves a relative path against cwd.
+  const absolute = realpathSync(path)
+  // ...and then prove it. Node's and Bun's `realpath` normalize ".." lexically
+  // too, so the canonical path can still name a different file than the one
+  // the kernel opens for `path`. Everything downstream — the digest, the
+  // fingerprint recheck, and the spawn — uses `absolute`, so if it is not the
+  // same file the caller asked for, refuse to pin rather than silently attest
+  // and execute the wrong one. Comparing device+inode is exact and needs no
+  // assumption about how any particular runtime spells a path.
+  if (!sameFile(path, absolute)) {
+    throw new Error(
+      `Cannot pin '${path}': its canonical path '${absolute}' is a different file`,
+    )
+  }
   return Object.freeze({
     path: absolute,
     digest: sha256File(absolute),
@@ -148,6 +223,18 @@ function pinDenoRuntime(requestedPath: string): DenoRuntimePin {
     throw new Error(`Unable to pin Deno runtime '${requestedPath}': incomplete identity probe`)
   }
   const file = pinFile(candidate.execPath)
+  // The binary that answered the identity probe must be the binary that gets
+  // spawned. `execPath` is a *self-report*: Deno normalizes argv[0] lexically
+  // before reporting it, so for a path whose ".." segment follows a symlinked
+  // directory the kernel executes one file while the report names another —
+  // and it is the report that would be digested, pinned, and launched from
+  // then on. A bare command name is a PATH lookup with nothing to compare
+  // against, which is the only case that keeps trusting the self-report.
+  if (/[\\/]/.test(requestedPath) && !sameFile(requestedPath, file.path)) {
+    throw new Error(
+      `Unable to pin Deno runtime '${requestedPath}': it is not the same file as the '${candidate.execPath}' it reports`,
+    )
+  }
   const result = Object.freeze({
     ...file,
     denoVersion: candidate.version.deno,
@@ -314,6 +401,58 @@ function serializeError(error: unknown): SerializedError {
   return { name, message, ...(stack === undefined ? {} : { stack }), fields }
 }
 
+/**
+ * Revalidate a recorded failure before it re-enters the sandbox.
+ *
+ * Every live failure crosses the boundary as `serializeError`'s output, so
+ * this asserts exactly that shape and re-applies exactly those bounds. It is
+ * therefore the identity function on any recording this sandbox itself wrote
+ * — a recording accepted live can never be rejected on replay — while a
+ * corrupted or drifted row (a non-string `name`, an unbounded `message`,
+ * non-JSON `fields`) fails closed instead of being injected into a real Error
+ * inside the child.
+ */
+function replayedSerializedError(value: unknown, functionName: string): SerializedError {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new AgentReplayIntegrityError(functionName, "recorded error is not an object")
+  }
+  const record = value as Record<string, unknown>
+  if (typeof record.name !== "string") {
+    throw new AgentReplayIntegrityError(functionName, "recorded error name is not a string")
+  }
+  if (typeof record.message !== "string") {
+    throw new AgentReplayIntegrityError(functionName, "recorded error message is not a string")
+  }
+  if (record.stack !== undefined && typeof record.stack !== "string") {
+    throw new AgentReplayIntegrityError(functionName, "recorded error stack is not a string")
+  }
+  let fields: Record<string, JsonValue> | undefined
+  if (record.fields !== undefined) {
+    let normalized: JsonValue
+    try {
+      normalized = jsonValue(record.fields, "Replayed error fields")
+    } catch (error) {
+      throw new AgentReplayIntegrityError(
+        functionName,
+        `recorded error fields are not JSON: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+    if (normalized === null || typeof normalized !== "object" || Array.isArray(normalized)) {
+      throw new AgentReplayIntegrityError(functionName, "recorded error fields are not an object")
+    }
+    if (Object.keys(normalized).length > MAX_SERIALIZED_ERROR_FIELDS) {
+      throw new AgentReplayIntegrityError(functionName, "recorded error carries too many fields")
+    }
+    fields = normalized
+  }
+  return {
+    name: record.name.slice(0, MAX_SERIALIZED_ERROR_TEXT),
+    message: record.message.slice(0, MAX_SERIALIZED_ERROR_TEXT),
+    ...(record.stack === undefined ? {} : { stack: (record.stack as string).slice(0, MAX_SERIALIZED_ERROR_TEXT) }),
+    ...(fields === undefined ? {} : { fields }),
+  }
+}
+
 class AgentRpcContractError extends Error {
   readonly phase: "input" | "output"
   readonly contractDigest: string
@@ -373,13 +512,16 @@ function cancelledError(reason: unknown): SerializedError {
 
 function abortError(signal: AbortSignal): Error {
   try {
+    // `abortHostCalls` is the only writer of this signal, so the reason is
+    // already a branded control-plane error and is propagated unchanged.
     if (signal.reason instanceof Error) return signal.reason
   } catch { /* hostile cancellation reason */ }
-  const error = new Error(signal.reason === undefined
-    ? "Sandbox host call aborted"
-    : boundedText(signal.reason, "Sandbox host call aborted"))
-  error.name = "AbortError"
-  return error
+  return new SandboxControlPlaneError(
+    "AbortError",
+    signal.reason === undefined
+      ? "Sandbox host call aborted"
+      : boundedText(signal.reason, "Sandbox host call aborted"),
+  )
 }
 
 function abortable<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -421,8 +563,16 @@ export interface DenoSubprocessSandboxOptions {
 export class DenoSubprocessSandbox implements TypeScriptSandbox {
   readonly kind = "deno-subprocess/no-permissions"
   readonly identity
-  readonly #denoPath: string
-  readonly #runnerPath: string
+  /**
+   * The two pinned artifacts. There is deliberately no second copy of either
+   * path: the value that is hashed, the value that is re-verified, and the
+   * value that is spawned are the same field. A path that is checked in one
+   * representation and executed in another is the whole bug class this shape
+   * removes — `pinFile` canonicalizes with `realpath`, so any alias the caller
+   * supplied (a symlink, a symlink chain, a symlinked parent directory, a
+   * lexically-collapsed `..` segment, a relative path, a trailing slash, a
+   * case-insensitive filename alias) is resolved exactly once, here.
+   */
   readonly #runtimePin: DenoRuntimePin
   readonly #runnerPin: PinnedFile
   readonly #timeoutMs: number
@@ -434,11 +584,9 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
 
   constructor(options: DenoSubprocessSandboxOptions = {}) {
     this.#runtimePin = pinDenoRuntime(options.denoPath ?? "deno")
-    this.#denoPath = this.#runtimePin.path
-    this.#runnerPath = resolvePath(
+    this.#runnerPin = pinFile(
       options.runnerPath ?? fileURLToPath(new URL("./deno-runner.js", import.meta.url)),
     )
-    this.#runnerPin = pinFile(this.#runnerPath)
     this.#timeoutMs = options.timeoutMs ?? 30_000
     this.#memoryMb = options.memoryMb ?? 128
     this.#maxSourceBytes = options.maxSourceBytes ?? 512 * 1024
@@ -540,9 +688,11 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
     const functionNames = Object.keys(stableFunctions)
 
     return new Promise((resolve) => {
+      // Spawn the exact values `verifyPinnedFile` just checked, not a second
+      // representation of them.
       const child = spawn(
-        this.#denoPath,
-        denoRunArguments(this.#memoryMb, this.#runnerPath),
+        this.#runtimePin.path,
+        denoRunArguments(this.#memoryMb, this.#runnerPin.path),
         { stdio: ["pipe", "pipe", "pipe"] },
       )
 
@@ -564,12 +714,58 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
       const hostCalls = new Map<number, Promise<void>>()
       const hostAbort = new AbortController()
       let writeTail: Promise<boolean> = Promise.resolve(true)
+      // A durable commit that was attempted and did not land. The host effect
+      // already happened, so the turn cannot be reported as finished: a caller
+      // that mistook this for a completed turn would repeat an irreversible
+      // effect on the next restart with nothing in the journal to stop it.
+      let commitFailure: SerializedError | undefined
+      const onCommitFailure = (functionName: string, ordinal: number, cause: SerializedError): void => {
+        commitFailure ??= {
+          name: "SandboxJournalCommitFailed",
+          message: `Durable commit for ${functionName}#${ordinal} failed, so this turn is not replayable: ${cause.message}`,
+          fields: { causeName: cause.name, functionName, ordinal },
+        }
+      }
 
+      /**
+       * Settle the turn only once every in-flight host call has finished its
+       * durable commit. `abortHostCalls` has already fired by every call site
+       * below, so an outstanding call unwinds at once; the grace bound exists
+       * only so a journal that never settles cannot wedge the turn.
+       */
+      const settle = (execution: SandboxExecution): void => {
+        const finish = (): void => {
+          resolve(commitFailure === undefined || !execution.ok ? execution : {
+            ok: false,
+            error: commitFailure,
+            logs: execution.logs,
+            stderr: execution.stderr,
+            durationMs: execution.durationMs,
+          })
+        }
+        const pending = [...hostCalls.values()]
+        if (pending.length === 0) {
+          finish()
+          return
+        }
+        let graceTimer: ReturnType<typeof setTimeout> | undefined
+        const grace = new Promise<void>((graceDone) => {
+          graceTimer = setTimeout(graceDone, HOST_CALL_DRAIN_MS)
+          graceTimer.unref?.()
+        })
+        void Promise.race([Promise.allSettled(pending).then(() => undefined), grace]).then(() => {
+          if (graceTimer !== undefined) clearTimeout(graceTimer)
+          finish()
+        })
+      }
+
+      // The sole writer of `hostAbort`. Every teardown goes through here, which
+      // is what makes "control-plane outcomes are never replayed" closed by
+      // construction rather than a list of names somebody has to remember to
+      // extend.
       const abortHostCalls = (name: string, message: string): void => {
         if (hostAbort.signal.aborted) return
-        const error = new Error(message)
-        error.name = name
-        hostAbort.abort(error)
+        hostAbort.abort(new SandboxControlPlaneError(name, message))
       }
 
       const onExternalAbort = (): void => {
@@ -742,6 +938,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
             options,
             hostAbort.signal,
             writeResponse,
+            onCommitFailure,
           )
           hostCalls.set(message.id, call)
           void call.finally(() => hostCalls.delete(message.id))
@@ -765,7 +962,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
         abortHostCalls("SandboxSpawnError", "Sandbox process failed to start")
         clearTimeout(timer)
         options.signal?.removeEventListener("abort", onExternalAbort)
-        resolve({
+        settle({
           ok: false,
           error: serializeError(error),
           logs,
@@ -782,7 +979,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
         clearTimeout(timer)
         options.signal?.removeEventListener("abort", onExternalAbort)
         if (outputLimited) {
-          resolve({
+          settle({
             ok: false,
             error: {
               name: "SandboxOutputLimit",
@@ -795,7 +992,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
           return
         }
         if (policyFailure) {
-          resolve({
+          settle({
             ok: false,
             error: policyFailure,
             logs,
@@ -805,7 +1002,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
           return
         }
         if (timedOut) {
-          resolve({
+          settle({
             ok: false,
             error: {
               name: "SandboxTimeout",
@@ -818,7 +1015,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
           return
         }
         if (terminal?.type === "complete") {
-          resolve({
+          settle({
             ok: true,
             result: terminal.result,
             logs,
@@ -827,7 +1024,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
           })
           return
         }
-        resolve({
+        settle({
           ok: false,
           error:
             terminal?.type === "failed"
@@ -848,6 +1045,7 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
     options: SandboxExecuteOptions,
     signal: AbortSignal,
     writeResponse: (message: unknown) => Promise<boolean>,
+    onCommitFailure: (functionName: string, ordinal: number, cause: SerializedError) => void,
   ): Promise<void> {
     const binding = Object.hasOwn(functions, call.name) ? functions[call.name] : undefined
     const journal = options.journal
@@ -896,15 +1094,21 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
       if (signal.aborted) throw abortError(signal)
 
       // A completed call recorded under this identity is returned without
-      // re-invoking the host, and is revalidated against the contract before
-      // it re-enters the sandbox so a corrupted or drifted recording cannot
-      // bypass the codec.
+      // re-invoking the host, and is revalidated before it re-enters the
+      // sandbox so a corrupted or drifted recording cannot bypass the codec:
+      // a recorded success against the contract's success schema, a recorded
+      // failure against the shape `serializeError` guarantees for every live
+      // failure. The failure branch is deliberately *not* checked against
+      // `errorSchema` — a live failure is not either (README.md:184-186), and
+      // validating only on replay would make a recording that was accepted
+      // once fail the second time.
       if (recall !== undefined && record !== undefined) {
         const recorded = await recall(identity)
-        if (recorded !== undefined) {
+        if (recorded !== undefined && recorded !== null) {
           if (recorded.outcome === "failure") {
-            await this.#journalCompletion(journal, identity, false, "replay", recorded.error.message)
-            await writeResponse({ id: call.id, ok: false, error: recorded.error })
+            const replayedError = replayedSerializedError(recorded.error, call.name)
+            await this.#journalCompletion(journal, identity, false, "replay", replayedError.message)
+            await writeResponse({ id: call.id, ok: false, error: replayedError })
             return
           }
           const replayedResult = validateFunctionContract(binding, "output", recorded.output, call.name)
@@ -932,17 +1136,30 @@ export class DenoSubprocessSandbox implements TypeScriptSandbox {
       const result = validateFunctionContract(binding, "output", transportedResult, call.name)
       // Commit before the generated program can observe the result: a restart
       // between the effect and its record must not repeat the side effect.
-      if (record !== undefined) await record(identity, { outcome: "success", output: result })
+      // `execute()` waits for this commit before it settles the turn.
+      if (record !== undefined) {
+        try {
+          await record(identity, { outcome: "success", output: result })
+        } catch (error) {
+          // The host effect already happened and only the record was lost.
+          // Rewriting that as a committed *failure* would answer every restart
+          // `ok:false` for a call that succeeded, so the loss is surfaced to
+          // the caller instead — never swallowed, never inverted.
+          onCommitFailure(call.name, ordinal, serializeError(error))
+        }
+      }
       await this.#journalCompletion(journal, identity, true, "live")
       await writeResponse({ id: call.id, ok: true, result })
     } catch (error) {
       const serialized = serializeError(error)
       try {
-        if (record !== undefined && identity !== undefined && !NON_REPLAYABLE_FAILURES.has(serialized.name)) {
+        if (record !== undefined && identity !== undefined && !isNonReplayableFailure(error, signal)) {
           await record(identity, { outcome: "failure", error: serialized })
         }
-      } catch {
-        // A journal write failure must not strand the generated call.
+      } catch (recordError) {
+        // A journal write failure must not strand the generated call, but it
+        // must not be invisible either: the turn is no longer replayable.
+        onCommitFailure(call.name, ordinal, serializeError(recordError))
       }
       try {
         await journal?.append({

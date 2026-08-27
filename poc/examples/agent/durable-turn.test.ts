@@ -1,9 +1,11 @@
 import { afterAll, describe, expect, test } from "bun:test"
 import { Database } from "bun:sqlite"
 import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import {
+  DenoSubprocessSandbox,
   PoisonModel,
   ScriptedModel,
   SqliteTurnJournal,
@@ -205,7 +207,15 @@ export abstract class Echo extends Action<
   test("compiles a tool contract, derives the callable surface, and marks it durable", () => {
     let calls = 0
     const echo = compileActionTool<{ readonly text: string }, { readonly text: string }>(
-      { source, exportName: "Echo", id: "smthrs/agent-demo/Echo", version: 3, description: "echo text" },
+      {
+        source,
+        exportName: "Echo",
+        id: "smthrs/agent-demo/Echo",
+        version: 3,
+        description: "echo text",
+        implementationId: "test/agent/echo-text",
+        implementationVersion: "1",
+      },
       async ({ text }) => {
         calls += 1
         return { text }
@@ -217,7 +227,12 @@ export abstract class Echo extends Action<
     expect(echo.actionContract?.version).toBe(3)
     expect(echo.signature).toBe('(input: { readonly "text": string }) => Promise<{ readonly "text": string }>')
 
-    const legacy = defineFunction<null, null>("(input: null) => Promise<null>", async () => null)
+    const legacy = defineFunction<null, null>(
+      "(input: null) => Promise<null>",
+      async () => null,
+      undefined,
+      { implementationId: "test/agent/legacy-null", implementationVersion: "1" },
+    )
     const manifest = callableSurfaceManifest({ echo, legacy })
     expect(manifest.entries).toEqual([
       {
@@ -251,10 +266,19 @@ export abstract class Echo extends Action<
     const tool = {
       exposedAs: "echo",
       action: compileActionTool<{ readonly text: string }, { readonly text: string }>(
-        { source, exportName: "Echo", id: "smthrs/agent-demo/Echo", version: 3 },
+        {
+          source,
+          exportName: "Echo",
+          id: "smthrs/agent-demo/Echo",
+          version: 3,
+          implementationId: "test/agent/echo",
+          implementationVersion: "1",
+        },
         async (input) => input,
       ).actionContract!,
       call: async (input: { readonly text: string }) => input,
+      implementationId: "test/agent/echo",
+      implementationVersion: "1",
     }
     expect(Object.keys(actionToolTable([tool]))).toEqual(["echo"])
     expect(() => actionToolTable([tool, tool])).toThrow("exposed twice")
@@ -455,7 +479,12 @@ export default async function turn(functions: Functions) {
         return { note, call: calls }
       },
       "legacy JSON-only binding",
-      { name: "demo/stamp", config: null },
+      {
+        name: "demo/stamp",
+        implementationId: "test/agent/stamp",
+        implementationVersion: "1",
+        config: null,
+      },
     )
     const source = `
 export default async function turn(functions: Functions) {
@@ -487,5 +516,257 @@ export default async function turn(functions: Functions) {
     expect(reopened.readEvents(replay.turnId).find((event) => event.type === "function.called")?.details)
       .toMatchObject({ durable: false })
     reopened.close()
+  })
+})
+
+/**
+ * What may be committed as a replayable host-call result.
+ *
+ * The rule is the docblock's: a control-plane teardown describes how *this
+ * process* was torn down, not what the host callback decided, so it is never
+ * recorded — a restarted turn must be free to call the function again. It is
+ * enforced by the identity of the thrown value and by the turn's abort signal,
+ * never by the spelling of `error.name`, so these tests pin both directions:
+ * every teardown stays out of the record, and an ordinary tool failure that
+ * merely *spells* a teardown name stays in it.
+ */
+describe("replayable host-call outcomes", () => {
+  const source = `
+import { Action } from "smithers:flows"
+
+type Request = { readonly path: string }
+type Reply = { readonly path: string; readonly contents: string }
+
+class Rejected extends Error {
+  constructor(readonly path: string) { super(path) }
+}
+
+export abstract class ReadFile extends Action<
+  (input: Request) => Promise<Result<Reply, Rejected>>
+> {}
+`
+
+  function tool(
+    call: (input: { readonly path: string }) => Promise<{ readonly path: string; readonly contents: string }>,
+  ) {
+    return compileActionTool<{ readonly path: string }, { readonly path: string; readonly contents: string }>(
+      {
+        source,
+        exportName: "ReadFile",
+        id: "smthrs/agent-replay/ReadFile",
+        version: 1,
+        implementationId: "test/agent/replay-read-file",
+        implementationVersion: "1",
+      },
+      call,
+    )
+  }
+
+  const TURN_SOURCE =
+    'export default async (f) => { try { return { ok: true, v: await f.readFile({ path: "README.md" }) } } ' +
+    "catch (e) { return { ok: false, name: e.name } } }"
+
+  test("a protocol-violation teardown is not committed, and the restart re-invokes the host", async () => {
+    const runnerRoot = await mkdtemp(join(tmpdir(), "smithers-agent-teardown-"))
+    try {
+      // A runner that answers the init handshake, issues one host call, and
+      // then violates the protocol while that call is still in flight.
+      const runner = join(runnerRoot, "protocol-runner.js")
+      await writeFile(runner, [
+        "const enc = new TextEncoder()",
+        "const reader = Deno.stdin.readable.pipeThrough(new TextDecoderStream()).getReader()",
+        'let buf = ""',
+        "async function readLine() {",
+        "  for (;;) {",
+        '    const i = buf.indexOf("\\n")',
+        "    if (i >= 0) { const l = buf.slice(0, i); buf = buf.slice(i + 1); return l }",
+        "    const n = await reader.read()",
+        "    if (n.done) return undefined",
+        "    buf += n.value",
+        "  }",
+        "}",
+        'async function send(m) { await Deno.stdout.write(enc.encode(JSON.stringify(m) + "\\n")) }',
+        "await readLine()",
+        'await send({ type: "call", id: 1, name: "readFile", input: { path: "README.md" } })',
+        "await new Promise((r) => setTimeout(r, 150))",
+        'await send({ type: "totally-unknown-protocol-message" })',
+        "await new Promise((r) => setTimeout(r, 5_000))",
+        "",
+      ].join("\n"))
+
+      let invocations = 0
+      const functions = {
+        readFile: tool(async ({ path }) => {
+          invocations += 1
+          await new Promise((resolve) => setTimeout(resolve, 400))
+          return { path, contents: "# hello" }
+        }),
+      }
+      const journal = new SqliteTurnJournal(databasePath("teardown"))
+      const turnId = "turn_teardown"
+      const sourceDigest = sha256Text("teardown")
+      try {
+        const torn = await new DenoSubprocessSandbox({ runnerPath: runner, timeoutMs: 10_000 })
+          .execute(TURN_SOURCE, functions, { turnId, sourceDigest, journal })
+        expect(torn.ok).toBe(false)
+        expect(torn.error?.name).toBe("SandboxProtocolError")
+        expect(invocations).toBe(1)
+        // The teardown is not a host-callback decision, so nothing replayable
+        // was committed for the call site.
+        expect(journal.readHostCalls(turnId)).toEqual([])
+
+        // The restarted turn is free to call the function again, and succeeds.
+        const restarted = await new DenoSubprocessSandbox({ timeoutMs: 10_000 })
+          .execute(TURN_SOURCE, functions, { turnId, sourceDigest, journal })
+        expect(restarted.ok).toBe(true)
+        expect(restarted.result).toEqual({ ok: true, v: { path: "README.md", contents: "# hello" } })
+        expect(invocations).toBe(2)
+        expect(journal.readHostCalls(turnId)).toHaveLength(1)
+      } finally {
+        journal.close()
+      }
+    } finally {
+      await rm(runnerRoot, { recursive: true, force: true })
+    }
+  })
+
+  test.each([
+    ["ToolFailure"],
+    // Every one of these merely *spells* a control-plane name. They are
+    // ordinary deterministic tool failures and must replay like any other.
+    ["AbortError"],
+    ["SandboxTimeout"],
+    ["SandboxCancelled"],
+    ["SandboxProtocolError"],
+    ["SandboxClosed"],
+    ["SandboxCallLimit"],
+  ])("records a deterministic tool failure named %s and replays it", async (name) => {
+    let invocations = 0
+    const functions = {
+      readFile: tool(async () => {
+        invocations += 1
+        const error = new Error("this tool always fails the same way")
+        error.name = name
+        throw error
+      }),
+    }
+    const journal = new SqliteTurnJournal(databasePath(`spelling-${name}`))
+    const turnId = "turn_spelling"
+    const sourceDigest = sha256Text(`spelling-${name}`)
+    try {
+      for (const attempt of [1, 2]) {
+        const execution = await new DenoSubprocessSandbox({ timeoutMs: 10_000 })
+          .execute(TURN_SOURCE, functions, { turnId, sourceDigest, journal })
+        expect(execution.ok).toBe(true)
+        expect(execution.result).toEqual({ ok: false, name })
+        expect(attempt).toBeGreaterThan(0)
+      }
+      expect(invocations).toBe(1)
+      const recorded = journal.readHostCalls(turnId)
+      expect(recorded).toHaveLength(1)
+      expect(recorded[0].call).toMatchObject({ outcome: "failure", error: { name } })
+    } finally {
+      journal.close()
+    }
+  })
+
+  test("settles only after the durable commit lands, and never inverts a lost commit", async () => {
+    const functions = {
+      readFile: tool(async ({ path }) => ({ path, contents: "sent" })),
+    }
+    const turnId = "turn_commit"
+
+    // A store whose write is slow enough that an unawaited commit would land
+    // after the caller had already finalized the turn.
+    const backing = new SqliteTurnJournal(databasePath("commit-slow"))
+    try {
+      const slow = {
+        append: (event: Parameters<SqliteTurnJournal["append"]>[0]) => { backing.append(event) },
+        recallHostCall: (identity: HostCallIdentity) => backing.recallHostCall(identity),
+        recordHostCall: async (
+          identity: HostCallIdentity,
+          outcome: Parameters<SqliteTurnJournal["recordHostCall"]>[1],
+        ) => {
+          await new Promise((resolve) => setTimeout(resolve, 250))
+          backing.recordHostCall(identity, outcome)
+        },
+      }
+      const execution = await new DenoSubprocessSandbox({ timeoutMs: 10_000 })
+        .execute(TURN_SOURCE, functions, { turnId, sourceDigest: sha256Text("commit-slow"), journal: slow })
+      expect(execution.ok).toBe(true)
+      // Committed before execute() resolved, not after.
+      expect(backing.readHostCalls(turnId)).toHaveLength(1)
+      // ...and the append-order chain is causally possible.
+      expect(backing.readEvents(turnId).map((event) => event.type))
+        .toEqual(["function.called", "function.completed"])
+    } finally {
+      backing.close()
+    }
+
+    // A store that rejects the success commit. The host effect already
+    // happened, so it must not be rewritten as a committed *failure*, and the
+    // caller must not be told the turn finished.
+    const rejecting = new SqliteTurnJournal(databasePath("commit-reject"))
+    try {
+      const store = {
+        append: (event: Parameters<SqliteTurnJournal["append"]>[0]) => { rejecting.append(event) },
+        recallHostCall: (identity: HostCallIdentity) => rejecting.recallHostCall(identity),
+        recordHostCall: () => { throw new Error("durable store is unreachable") },
+      }
+      const execution = await new DenoSubprocessSandbox({ timeoutMs: 10_000 })
+        .execute(TURN_SOURCE, functions, { turnId, sourceDigest: sha256Text("commit-reject"), journal: store })
+      expect(execution.ok).toBe(false)
+      expect(execution.error?.name).toBe("SandboxJournalCommitFailed")
+      expect(execution.error?.message).toContain("durable store is unreachable")
+      expect(rejecting.readHostCalls(turnId)).toEqual([])
+    } finally {
+      rejecting.close()
+    }
+  })
+
+  test.each([
+    ["a non-string name", { name: 1, message: "m" }],
+    ["a non-string message", { name: "X", message: { nested: true } }],
+    ["a null error", null],
+    ["a non-object error", "just a string"],
+    ["non-JSON fields", { name: "X", message: "m", fields: { bad: () => 1 } }],
+  ])("fails closed on a replayed failure with %s", async (_label, error) => {
+    const functions = { readFile: tool(async ({ path }) => ({ path, contents: "live" })) }
+    const corrupted = {
+      append: () => {},
+      recallHostCall: () => ({ outcome: "failure", error }) as never,
+      recordHostCall: () => {},
+    }
+    const execution = await new DenoSubprocessSandbox({ timeoutMs: 10_000 })
+      .execute(TURN_SOURCE, functions, {
+        turnId: "turn_corrupt",
+        sourceDigest: sha256Text("corrupt"),
+        journal: corrupted,
+      })
+    expect(execution.ok).toBe(true)
+    expect(execution.result).toEqual({ ok: false, name: "AgentReplayIntegrityError" })
+  })
+
+  test("bounds a replayed failure exactly as a live one is bounded", async () => {
+    const functions = { readFile: tool(async ({ path }) => ({ path, contents: "live" })) }
+    const oversized = {
+      append: () => {},
+      recallHostCall: () => ({
+        outcome: "failure",
+        error: { name: "Rejected", message: "Q".repeat(400_000), fields: {} },
+      }) as never,
+      recordHostCall: () => {},
+    }
+    const execution = await new DenoSubprocessSandbox({
+      timeoutMs: 10_000,
+      maxOutputBytes: 4 * 1024 * 1024,
+    }).execute(
+      'export default async (f) => { try { await f.readFile({ path: "README.md" }); return { len: -1 } } ' +
+      "catch (e) { return { len: e.message.length } } }",
+      functions,
+      { turnId: "turn_bound", sourceDigest: sha256Text("bound"), journal: oversized },
+    )
+    expect(execution.ok).toBe(true)
+    expect(execution.result).toEqual({ len: 65_536 })
   })
 })

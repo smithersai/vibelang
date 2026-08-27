@@ -56,13 +56,20 @@ const implementation = async (
     ? { kind: "text", value: input.path }
     : { kind: "total", value: input.amount }
 
+const DECLARED = { implementationId: "test/agent/host-operation", implementationVersion: "1" } as const
+
 describe("compiler-derived AgentFunction RPC contracts", () => {
   test("derives the callable surface and pins the complete Action contract identity", async () => {
     const first = defineActionFunction(
       contract(),
       implementation,
       "perform a checked operation",
-      { name: "agent-function/checked", config: null },
+      {
+        name: "agent-function/checked",
+        implementationId: "test/agent/checked",
+        implementationVersion: "1",
+        config: null,
+      },
     )
     const second = defineActionFunction(
       contract(
@@ -71,7 +78,12 @@ describe("compiler-derived AgentFunction RPC contracts", () => {
       ),
       implementation,
       "perform a checked operation",
-      { name: "agent-function/checked", config: null },
+      {
+        name: "agent-function/checked",
+        implementationId: "test/agent/checked",
+        implementationVersion: "1",
+        config: null,
+      },
     )
 
     expect(first.signature).toBe(second.signature)
@@ -107,22 +119,22 @@ describe("compiler-derived AgentFunction RPC contracts", () => {
   test("rejects tampered or non-compiler schema envelopes before sandbox launch", () => {
     const descriptor = structuredClone(contract())
     ;(descriptor.inputSchema as { digest: string }).digest = "0".repeat(64)
-    expect(() => defineActionFunction(descriptor, implementation))
+    expect(() => defineActionFunction(descriptor, implementation, undefined, DECLARED))
       .toThrow("input schema digest mismatch")
 
     expect(() => defineFunction(
       "(input: string) => Promise<string>",
       async (input: string) => input,
       undefined,
-      { actionContract: contract() },
+      { ...DECLARED, actionContract: contract() },
     )).toThrow("signature does not exactly match")
 
-    const checked = defineActionFunction(contract(), implementation)
+    const checked = defineActionFunction(contract(), implementation, undefined, DECLARED)
     expect(() => functionTableIdentity({
       operation: { ...checked, signature: "(input: null) => Promise<null>" },
     })).toThrow("signature does not exactly match")
 
-    const legacy = defineFunction("(input: null) => Promise<null>", async () => null)
+    const legacy = defineFunction("(input: null) => Promise<null>", async () => null, undefined, DECLARED)
     expect(declareCallableSurface({ legacy })).toContain("@smithersAgentContract legacy-json-only")
   })
 
@@ -134,6 +146,8 @@ describe("compiler-derived AgentFunction RPC contracts", () => {
         invocations += 1
         return { kind: "text" as const, value: input.path }
       },
+      undefined,
+      DECLARED,
     )
     const journal = new MemoryTurnJournal()
     const execution = await new DenoSubprocessSandbox().execute(
@@ -178,6 +192,8 @@ describe("compiler-derived AgentFunction RPC contracts", () => {
         invocations += 1
         return { kind: "total", value: String(amount) }
       },
+      undefined,
+      DECLARED,
     )
     const execution = await new DenoSubprocessSandbox().execute(
       `export default async functions => {
@@ -217,6 +233,8 @@ describe("compiler-derived AgentFunction RPC contracts", () => {
           reject(context.signal.reason)
         }, { once: true })
       }),
+      undefined,
+      DECLARED,
     )
     const pending = new DenoSubprocessSandbox().execute(
       `export default async functions => functions.operation({ kind: "count", amount: 1 })`,

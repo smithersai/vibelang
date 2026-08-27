@@ -92,7 +92,12 @@ export async function runAgentDemo(): Promise<{
           return value
         },
         "read a file from the demo project snapshot",
-        { name: "demo/read-file", config: { backend: "in-memory/v1" } },
+        {
+          name: "demo/read-file",
+          implementationId: "demo/read-file",
+          implementationVersion: "1",
+          config: { backend: "in-memory/v1" },
+        },
       ),
       build: defineFunction<{ source: string }, { digest: string; bytes: number }>(
         "(input: { source: string }) => Promise<{ digest: string; bytes: number }>",
@@ -102,13 +107,23 @@ export async function runAgentDemo(): Promise<{
           return { digest: "demo-9f86d081", bytes: source.length }
         },
         "build a source artifact",
-        { name: "demo/build", config: { builder: "demo/v1" } },
+        {
+          name: "demo/build",
+          implementationId: "demo/build",
+          implementationVersion: "1",
+          config: { builder: "demo/v1" },
+        },
       ),
       echo: defineFunction<{ text: string }, string>(
         "(input: { text: string }) => Promise<string>",
         ({ text }) => text.toUpperCase(),
         "uppercase text",
-        { name: "demo/echo", config: { locale: "locale-independent" } },
+        {
+          name: "demo/echo",
+          implementationId: "demo/echo",
+          implementationVersion: "1",
+          config: { locale: "locale-independent" },
+        },
       ),
     },
     journal,

@@ -71,8 +71,15 @@ export function flowTool<Input = JsonValue, Success = JsonValue>(
   target: FlowToolTarget,
   options: FlowToolOptions = {},
 ): AgentFunction<Input, Success> {
-  if (options.identity !== undefined && (options.name !== undefined || options.config !== undefined)) {
-    throw new TypeError("An explicit FlowTool identity cannot be combined with name/config")
+  if (
+    options.identity !== undefined && (
+      options.name !== undefined || options.config !== undefined ||
+      options.implementationId !== undefined || options.implementationVersion !== undefined
+    )
+  ) {
+    throw new TypeError(
+      "An explicit FlowTool identity cannot be combined with name/config/implementation identity",
+    )
   }
   const { plan, execute } = flowTargetOf(target)
   const contract = flowContractFromPlan(plan)
@@ -140,6 +147,10 @@ export function flowTool<Input = JsonValue, Success = JsonValue>(
       ? { identity: options.identity }
       : {
         name: options.name ?? flowIdentityName(contract),
+        ...(options.implementationId === undefined ? {} : { implementationId: options.implementationId }),
+        ...(options.implementationVersion === undefined
+          ? {}
+          : { implementationVersion: options.implementationVersion }),
         config: {
           schema: "smithers.agent.flow-tool/v1",
           flowId: contract.flowId,

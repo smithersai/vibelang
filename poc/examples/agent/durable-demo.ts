@@ -3,6 +3,7 @@ import {
   DenoSubprocessSandbox,
   InMemoryTypeScriptCompiler,
   compileActionTool,
+  sha256Json,
   textPrompt,
 } from "../../src/agent/index.ts"
 import type {
@@ -80,10 +81,17 @@ export interface DurableProject {
 
 export function createProject(
   seed: Readonly<Record<string, string>> = { "README.md": "# tiny durable project\n" },
+  options: { readonly projectId?: string } = {},
 ): DurableProject {
   const files = new Map(Object.entries(seed))
   const invocations = { readFile: 0, writeFile: 0 }
   let revision = 0
+  // The tools below close over `files`, `invocations`, and `revision`. None of
+  // that is visible to `Function.prototype.toString()`, so the deployment has
+  // to say which project it is: two `createProject` calls are two different
+  // implementations of the same Action contract, and a turn journal keyed on a
+  // shared identity would answer one project's readFile with the other's file.
+  const projectId = options.projectId ?? `snapshot-${sha256Json(seed).slice(0, 16)}`
 
   const readFile: AgentFunction<{ readonly path: string }, { readonly path: string; readonly contents: string }> =
     compileActionTool(
@@ -94,6 +102,8 @@ export function createProject(
         id: "smthrs/agent-demo/ReadFile",
         version: 1,
         description: "read one file from the project snapshot",
+        implementationId: `demo/agent-project/${projectId}/read-file`,
+        implementationVersion: "1",
       },
       async ({ path }) => {
         invocations.readFile += 1
@@ -114,6 +124,8 @@ export function createProject(
       id: "smthrs/agent-demo/WriteFile",
       version: 1,
       description: "write one file into the project snapshot",
+      implementationId: `demo/agent-project/${projectId}/write-file`,
+      implementationVersion: "1",
     },
     async ({ path, contents }) => {
       invocations.writeFile += 1

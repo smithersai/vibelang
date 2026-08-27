@@ -35,6 +35,36 @@ for a compiler-checked boundary. `defineFunction` can also accept a validated
 descriptor through `options.actionContract`, though `defineActionFunction` is
 preferred because it avoids separately maintaining the signature string.
 
+### Binding identity is declared, never recognised from source text
+
+Every binding needs either a fully explicit `identity` or an explicit
+`implementationId` + `implementationVersion`. This is the same requirement
+`makeProvider` enforces in `../durable/provider.ts` ("needs explicit
+implementation identity and version"), and it exists for the same reason: a
+JavaScript function object carries no resolvable identity.
+`Function.prototype.toString()` sees source text only. It cannot see the state
+a closure captures, and it is the constant `"function x() { [native code] }"`
+for every bound function — so two deployments of the same code over different
+projects are byte-identical to it. Deriving identity from that text made them
+one component, and because the turn id folds in every binding identity, the
+turn journal answered one deployment's Action call with the *other*
+deployment's recorded result.
+
+The declaration is what separates deployments; it is folded into the binding's
+`configDigest`. The source-text digest stays in `artifactDigest` as a strictly
+additional discriminator — it can still split two bindings that should have
+been split (an edited body without a version bump), but it is no longer the
+only thing keeping two deployments apart. The Action or Flow contract says
+*what* a tool is; the implementation identity says *which implementation of it*
+this deployment bound. `createProject` in `examples/agent/durable-demo.ts` is
+the worked example: it declares one implementation identity per project
+snapshot, so two projects are two deployments and neither replays the other.
+
+Two deployments that declare the *same* implementation identity do still share
+replay — that is the restart path `examples/agent/durable-turn.test.ts`
+exercises, and it is now a claim the deployment makes rather than an accident
+of formatting.
+
 ## Tool to Action adapter
 
 `tools.ts` is the `tool or MCP operation -> typed Action -> generated-code
@@ -96,6 +126,25 @@ outcome — anything that escapes the executor without a terminal commit becomes
 `DurableFlowInterrupted`, which the sandbox refuses to record, so the restarted
 turn re-attaches to the same execution id.
 
+## Runtime boundary
+
+This directory straddles two published subpaths. `index.ts` is `smthrs/agent`,
+which a consumer must be able to `import` under **Node**; `bun.ts` adds
+`journal.ts` and `flow-tools.ts` and is `smthrs/agent/bun`, which may reach
+`bun:sqlite`. Nothing in the `index.ts` closure may name a Bun-only specifier,
+directly or transitively, or the subpath fails to load under Node with
+`ERR_UNSUPPORTED_ESM_URL_SCHEME`.
+
+The trap is that `../durable/engine.ts` imports `../durable/store.ts`, which
+imports `bun:sqlite`. So a module on the Node side — `sandbox.ts` is the one
+that needs it — takes the coordinator failure *identities* from the leaf
+`../durable/errors.ts`, never from `engine.ts`, even though `engine.ts`
+re-exports the same classes. The executor itself is only ever imported from
+`flow-tools.ts`, on the Bun side.
+
+`src/durable/runtime-boundary.test.ts` walks this graph from `package.json` and
+fails if any runtime-neutral subpath reaches a runtime-specific specifier.
+
 ## Durable turn journal
 
 `SqliteTurnJournal` (`journal.ts`) is a real `bun:sqlite` database — its own
@@ -135,12 +184,27 @@ Replay semantics:
   recording raises `TurnJournalDivergenceError` instead of answering;
 - a Flow call site attached to a durable execution re-derives and re-joins that
   same execution after a crash, and fails closed on a divergent input or Plan;
-- control-plane failures (timeout, cancellation, call/transport limits, channel
-  teardown, and a durable execution that lost its coordinator) are never
-  committed as replayable results, so a restarted turn is free to call the
-  function again; and
+- control-plane failures (timeout, cancellation, call/transport limits, protocol
+  violations, channel teardown, and a durable execution that lost its
+  coordinator) are never committed as replayable results, so a restarted turn is
+  free to call the function again. This is decided by the *identity* of the
+  thrown value and by whether the turn's abort signal fired — never by the
+  spelling of `error.name`, so a tool that surfaces its HTTP client's
+  `AbortError` still records an ordinary replayable failure. Every teardown is
+  raised through the one function that owns the abort controller, which is what
+  keeps the rule closed by construction instead of resting on a list of names;
+  `DurableFlowInterrupted` and `CoordinatorCrash` are the only two still matched
+  by name, because a remote coordinator can deliver them with no class attached;
 - a host result is committed before the generated program can observe it, so a
   crash between the effect and its record cannot repeat the side effect.
+  `execute()` does not settle until every in-flight host call has finished that
+  commit, and a commit that is attempted and fails is reported as
+  `SandboxJournalCommitFailed` rather than being swallowed or rewritten into a
+  committed failure; and
+- a recorded failure is revalidated on replay against the shape every live
+  failure has, so a corrupted row cannot inject an unbounded message or
+  non-JSON fields into the child. It is deliberately not checked against
+  `errorSchema`, because a live failure is not either.
 
 `MemoryTurnJournal` remains the observation-only fake: it records events and
 artifacts but implements none of the recall/record pairs, which is exactly how
@@ -165,6 +229,27 @@ rather than a replay of the old one.
 `PoisonModel` impersonates another adapter's identity and version but fails if
 it is invoked at all; with `poisonFunctionTable` it is how the tests prove a
 restarted turn completed entirely from the journal.
+
+### Terminal reasons and the failure taxonomy
+
+`ModelResponse.finishReason` carries the provider's terminal reason verbatim
+(`anthropic-model.ts` maps `stop_reason` straight through). Of the Messages API
+set, only `end_turn` means "the model finished what it was asked for".
+`max_tokens`, `stop_sequence`, `pause_turn` and `tool_use` all stop the reply
+short of a module, and `refusal` replaces it with a decline. The turn loop
+therefore does not extract, compile, or store those bytes as the turn's
+`generated-source` artifact: `refusal` ends the turn as `ModelRefusal` without
+spending the repair budget on a request the model already declined, and the
+other four become `ModelResponseIncomplete` with a repair turn that names the
+real reason. A reason this list does not know is treated as complete, so an
+adapter with a different vocabulary keeps working.
+
+`run.error.name` therefore names the failure that actually happened —
+`TypeCheckError`, `GeneratedSourceTooLarge`, `ModelResponseIncomplete`, or
+`ModelRefusal`. `maxSourceBytes` is checked before anything is written to the
+journal or echoed back to the model, so the bound bounds what reaches the
+journal; and `turn.started` is closed by exactly one `turn.completed` on every
+path, emitted from `run()`'s single exit point rather than from each `return`.
 
 ## Current bounded scope
 
@@ -191,8 +276,14 @@ restarted turn completed entirely from the journal.
   host-side JSON snapshot has independent 128-level/100,000-node traversal
   bounds before transport serialization;
 - the real Deno executable and runner are canonical-path, content-digest pinned.
-  Their device/inode/size/mtime/ctime fingerprint is rechecked before every
-  launch and changed artifacts are rehashed and rejected;
+  Each is canonicalized once with `realpath` and stored in exactly one field, so
+  the path that is hashed, the path that is re-verified, and the path that is
+  spawned cannot be different files: a symlink, a symlinked parent directory, a
+  lexically-collapsed `..` segment, a relative path, a trailing slash, or a
+  case-insensitive filename alias all resolve before pinning rather than after
+  verification. Their device/inode/size/mtime/ctime fingerprint is rechecked
+  before every launch and changed artifacts are rehashed and rejected. The
+  window between that recheck and `spawn` remains an unclosed POC TOCTOU;
 - cancellation, call limits, transport limits, and sandbox process confinement
   remain independent of schema validation and of replay;
 - a passed Flow runs on in-process workers through a locally built deployment;

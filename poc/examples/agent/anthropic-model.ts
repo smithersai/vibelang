@@ -363,7 +363,12 @@ if (import.meta.main) {
       "(input: { text: string }) => Promise<string>",
       ({ text }) => text.toUpperCase(),
       "uppercase text",
-      { name: "demo/echo", config: null },
+      {
+        name: "demo/echo",
+        implementationId: "demo/echo",
+        implementationVersion: "1",
+        config: null,
+      },
     ),
   })
   const response = await model.generate({
