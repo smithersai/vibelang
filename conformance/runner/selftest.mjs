@@ -66,10 +66,14 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { buildBridgeBinary, locateForkCheckout } from "../../scripts/fork-e2e.mjs";
-import { loweringMode, loweringModes, repositoryRoot } from "./corpus.mjs";
+import { auditBaseline, classify, corpusAnswer, VERDICTS } from "../../scripts/oracle-differential.mjs";
+import { loadCorpus, loweringMode, loweringModes, repositoryRoot } from "./corpus.mjs";
+import { harnessText } from "./harness.mjs";
+import { auditVerdict, compareObservations, judge } from "./judge.mjs";
 import { run } from "./process.mjs";
 
 const backendGoPath = fileURLToPath(new URL("./backend-go.mjs", import.meta.url));
+const backendJsPath = fileURLToPath(new URL("./backend-js.mjs", import.meta.url));
 
 test("the harness never sends an implicit lowering mode", () => {
   // The exact shape of the original defect: a zero value that is also a legal
@@ -185,10 +189,21 @@ test("the bridge refuses a request that omits the lowering mode", { concurrency:
 
   await t.test("the mode the harness sends really does apply Smithers rules", async () => {
     const internal = await send(loweringMode);
-    assert.deepEqual(
-      internal.codes,
-      ["SMITHERS1301", "SMITHERS1510"],
-      "internal lowering must refuse an untrusted static foreign module edge",
+    // This file asserts how the harness ASKS its question; what the language
+    // ANSWERS belongs to a corpus case. Until 2026-08-25 this assertion was
+    // `deepEqual(codes, ["SMITHERS1301", "SMITHERS1510"])`, which quietly made
+    // it both — and when the fork stopped reporting the SMITHERS1301 for the
+    // Result the untrusted call discards, this request-shape test went red for
+    // a language disagreement it does not own. That disagreement is now pinned
+    // where it belongs, by `09-foreign-calls/foreign-module-without-a-trust-marker`
+    // and its `xfail` (go), which states the whole argument and would report
+    // XPASS the moment the fork agrees again. What THIS test needs is only that
+    // the mode the harness sends applies Smithers rules at all — the module
+    // trust refusal on a program that is valid TypeScript — against the subtest
+    // below, where identity lowering applies none of them.
+    assert.ok(
+      internal.codes.includes("SMITHERS1510"),
+      `internal lowering must refuse an untrusted static foreign module edge; got [${internal.codes.join(", ")}]`,
     );
   });
 
@@ -200,6 +215,119 @@ test("the bridge refuses a request that omits the lowering mode", { concurrency:
     const identity = await send("identity");
     assert.equal(identity.status, 0, "identity lowering compiles the TypeScript-shaped subset");
     assert.deepEqual(identity.codes, [], "identity lowering applies no Smithers rule");
+  });
+});
+
+/**
+ * A failure line must observe the compiler-stable Error identity, and each
+ * backend must supply its own accessor for it.
+ *
+ * This is the same shape as the `lowering` assertion above: something the
+ * harness sets the same way for every case, and therefore something no case can
+ * vary. Until 2026-08-25 `describeError` printed `error.constructor.name`, which
+ * `specification/failures.mdx` ("Error Prototype") names as precisely the wrong
+ * key — "compiler-stable nominal identity, not a forgeable user `_tag` or
+ * minifier-sensitive constructor name". The cost was measured, not theoretical:
+ * three of the four obligations in "Error Classes" were missing from the Go fork
+ * and **no corpus case could see it in either direction**, because
+ * `constructor.name` reads `Boom` on a backend that mints an identity and `Boom`
+ * on a backend that mints none.
+ *
+ * A corpus case cannot hold this. The corpus can pin one identity *string* — and
+ * `01-result-lifting/throw-lifts-into-failure` now does — but it cannot see the
+ * harness silently stop asking for one, because a backend that fell back to the
+ * constructor name would leave every case that does not declare an identity
+ * green. So the invariant lives here, in three parts: the accessor is required,
+ * each backend passes its own, and the fallback is reachable but cannot be
+ * mistaken for an identity.
+ */
+test("a failure line is observed by identity, and each backend supplies its own accessor", async (t) => {
+  await t.test("the accessor is required rather than defaulted", () => {
+    assert.throws(() => harnessText("./main.js"), /identity accessor/);
+    assert.throws(() => harnessText("./main.js", { module: "", name: "errorIdentity" }), /identity accessor/);
+    assert.throws(() => harnessText("./main.js", { module: "./p.js", name: "" }), /identity accessor/);
+    assert.throws(() => harnessText("./main.js", "errorIdentity"), /identity accessor/);
+  });
+
+  await t.test("both backends pass one, and they are not the same one", () => {
+    // Comments are stripped first, for the same reason the lowering check
+    // strips them: this file and both backends explain the mechanism in prose.
+    const strip = (path) =>
+      readFileSync(path, "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/(^|[^:])\/\/.*$/gm, "$1");
+    for (const [label, path] of [["js", backendJsPath], ["go", backendGoPath]]) {
+      const source = strip(path);
+      assert.match(
+        source,
+        /harnessText\([^)]*,\s*identityAccessor\)/,
+        `backend-${label}.mjs must hand the shared harness its identity accessor`,
+      );
+      assert.equal(
+        (source.match(/const identityAccessor = \{/g) ?? []).length,
+        1,
+        `backend-${label}.mjs must declare exactly one identity accessor`,
+      );
+      assert.equal(
+        (source.match(/harnessText\(/g) ?? []).length,
+        1,
+        `backend-${label}.mjs must build the harness in exactly one place`,
+      );
+    }
+    // The two backends read *different* modules under *different* names. A
+    // single hard-coded specifier would resolve on one backend and not the
+    // other, and the whole reason this is a parameter is that the two
+    // implementations spell one concept differently — the same reason the
+    // Result representation is normalized rather than assumed.
+    assert.match(strip(backendJsPath), /name: "errorIdentity"/);
+    assert.match(strip(backendGoPath), /name: "smithersErrorIdentity"/);
+    assert.match(strip(backendGoPath), /module: "\.\/__smithers_prelude\.js"/);
+  });
+
+  await t.test("the identity is preferred, and the fallback cannot be mistaken for one", async () => {
+    // Executed rather than pattern-matched: the harness is a program, and what
+    // matters is the line it prints. Two runs of the real `harnessText` output,
+    // differing only in what the accessor returns.
+    const directory = await mkdtemp(join(tmpdir(), "smithers-conformance-selftest-harness-"));
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    await writeFile(join(directory, "package.json"), `${JSON.stringify({ type: "module" })}\n`);
+    await writeFile(
+      join(directory, "program.js"),
+      [
+        "class Boom extends Error {}",
+        "export function main() {",
+        '  return { ok: false, error: new Boom("bad value -2") };',
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const observe = async (accessorBody) => {
+      await writeFile(join(directory, "identity.js"), `export function identityOf(error) {\n${accessorBody}\n}\n`);
+      await writeFile(
+        join(directory, "harness.mjs"),
+        harnessText("./program.js", { module: "./identity.js", name: "identityOf" }),
+      );
+      const executed = await run(process.execPath, [join(directory, "harness.mjs")], { cwd: directory });
+      assert.equal(executed.status, 0, executed.stderr);
+      return executed.stdout.trim();
+    };
+
+    assert.equal(
+      await observe('  return "smithers:program.sm:Boom";'),
+      "error smithers:program.sm:Boom: bad value -2",
+      "a registered Error must be observed by its compiler-stable identity",
+    );
+    assert.equal(
+      await observe("  return undefined;"),
+      "error Boom: bad value -2",
+      "an Error the compiler never registered falls back to the constructor name",
+    );
+    // The fallback is reachable, so it has to be unmistakable. Every identity
+    // the two compilers mint contains a ":" and no JavaScript constructor name
+    // can, so a case declaring an identity can never be satisfied by the
+    // fallback and vice versa.
+    assert.ok(!"Boom".includes(":"));
   });
 });
 
@@ -236,5 +364,183 @@ test("a run that measured nothing is refused rather than reported as green", { c
     const measured = await measure("01-result-lifting/return-lifts-into-success");
     assert.equal(measured.status, 0, measured.stderr || measured.stdout);
     assert.match(measured.stdout, /JS reference: {2}1\/1 pass/);
+  });
+});
+
+/**
+ * The `SMITHERS19xx` range means two different things in the two
+ * implementations, and the judge translates it for exactly one of them.
+ *
+ * The Go comptime port numbers its rules `SMITHERS19xx` where the reference
+ * frontend uses `VCT10xx`, last two digits one-for-one, so the judge
+ * canonicalizes the fork's spelling at the contract boundary. The reference
+ * ALSO spells `SMITHERS1900`/`1901`/`1902` — and there they are the formatter's
+ * mask-budget, overlapping-mask and overlapping-edit rules
+ * (`poc/src/language/format.ts:646`, `:667`, `:700`), unrelated to comptime.
+ *
+ * While that translation was unconditional it applied to the reference too, so
+ * a reference formatter failure was rewritten onto a live comptime code and a
+ * case declaring `VCT1001` could be satisfied by `SMITHERS1901` — the judge
+ * scoring an agreement it had never checked. Measured before the fix: `judge`
+ * returned `pass` for exactly that pair.
+ *
+ * No corpus case can reach it today (the formatter is only reachable through
+ * the `smithers format` subcommand, never through `compileProject`, and no case
+ * declares a `SMITHERS19xx` code), which is precisely why it needs an assertion
+ * rather than a corpus case: it is a property of the harness, invisible to a
+ * differential oracle over authored programs, and it would go live silently.
+ */
+test("the comptime code alias is scoped to the fork", async (t) => {
+  const diagnostics = (code) => ({
+    kind: "diagnostics",
+    stage: "compile",
+    stages: ["compile"],
+    diagnostics: [{ code, line: 1, column: 1, message: "probe" }],
+  });
+  const declaring = (code) => ({
+    id: "probe",
+    expectation: { expect: "diagnostics", diagnostics: [{ code, line: 1, column: 1 }] },
+  });
+
+  await t.test("the fork's comptime spelling is still translated", () => {
+    assert.equal(judge(declaring("VCT1004"), diagnostics("SMITHERS1904"), "go").status, "pass");
+  });
+
+  await t.test("a reference formatter code does not satisfy a comptime case", () => {
+    assert.equal(judge(declaring("VCT1001"), diagnostics("SMITHERS1901"), "js").status, "fail");
+  });
+
+  await t.test("the same literal code on both backends is not agreement", () => {
+    // Two different rules that happen to share a number must not compare equal.
+    assert.equal(compareObservations(diagnostics("SMITHERS1901"), diagnostics("SMITHERS1901")).agree, false);
+  });
+
+  await t.test("a reference SMITHERS19xx is a harness-integrity failure", () => {
+    const violations = auditVerdict(
+      declaring("VCT1001"),
+      diagnostics("SMITHERS1901"),
+      { status: "pass" },
+      { name: "js", requiredStages: {} },
+    );
+    assert.ok(
+      violations.some((text) => text.includes("collides")),
+      `expected a code-space collision violation, saw: ${JSON.stringify(violations)}`,
+    );
+  });
+
+  // The over-correction guard: scoping the alias must not disturb any code
+  // outside the contested range, on either backend.
+  await t.test("ordinary codes are untouched on both backends", () => {
+    for (const backend of ["js", "go"]) {
+      assert.equal(judge(declaring("SMITHERS4112"), diagnostics("SMITHERS4112"), backend).status, "pass");
+    }
+    assert.deepEqual(
+      auditVerdict(
+        declaring("SMITHERS4112"),
+        diagnostics("SMITHERS4112"),
+        { status: "pass" },
+        { name: "js", requiredStages: {} },
+      ).filter((text) => text.includes("collides")),
+      [],
+    );
+  });
+});
+
+/**
+ * The recorded product-vs-oracle divergence must stay a live record.
+ *
+ * `conformance/runner/run.mjs` measures two BACKENDS. Neither of them is
+ * `bin/smithers.js`: the JS reference reaches the frontend through
+ * `conformance/runner/js-lower.mjs`, which turns the source-asset stage on only
+ * for a case that ships assets, skips comptime for a case with no
+ * compiler-owned edge, and runs a durable source pass of its own; the shipped
+ * CLI runs an asset preflight and a runtime-graph resolver over every `.sm`
+ * before the semantic stage and has no durable stage in `check` at all. So
+ * "424 cases, 0 divergent" is a statement about `compileProject` plus
+ * `js-lower.mjs`, and `conformance/product-divergence.json` is the written
+ * record of everything that statement does not cover.
+ *
+ * `scripts/oracle-differential.mjs` gates that record by re-measuring it, and it
+ * spawns one process per case, so it is not something every test run pays for.
+ * These assertions are the part that costs nothing and still stops the record
+ * from rotting: a row naming a case somebody deleted, a row regenerated by
+ * `--update` and never given a verdict, or a duplicate would all leave the file
+ * looking authoritative while describing a corpus that no longer exists.
+ *
+ * The differential's own equality relation is asserted here too. It has to be
+ * the corpus's relation — code plus authored line and column, and `expect:
+ * "output"` meaning the product must accept — or the gate would be measuring the
+ * product against a contract of its own invention.
+ */
+test("the recorded product-vs-oracle divergence is a live record", async (t) => {
+  const baselinePath = join(repositoryRoot, "conformance", "product-divergence.json");
+  const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
+  const cases = loadCorpus({});
+
+  await t.test("every row names a case that still exists, once, with a reviewed verdict", () => {
+    assert.deepEqual(auditBaseline(baseline, cases), []);
+  });
+
+  await t.test("a row for a deleted case is refused", () => {
+    const violations = auditBaseline(
+      { divergences: [{ id: "17-durable/no-such-case", direction: "both-refuse", corpus: "a", product: "b", verdict: "product-wrong", cause: "c" }] },
+      cases,
+    );
+    assert.ok(violations.some((text) => text.includes("no such corpus case")), JSON.stringify(violations));
+  });
+
+  await t.test("a regenerated row that was never reviewed is refused", () => {
+    // `--update` writes `unreviewed` for any row it cannot carry a judgement
+    // onto. That value exists precisely so a re-measured baseline cannot pass
+    // unread, which is the failure mode a baseline file invites.
+    const row = { ...baseline.divergences[0], verdict: "unreviewed", cause: "unreviewed" };
+    const violations = auditBaseline({ divergences: [row] }, cases);
+    assert.ok(violations.some((text) => text.includes("never reviewed")), JSON.stringify(violations));
+    assert.ok(VERDICTS.includes("unreviewed"));
+  });
+
+  await t.test("the differential judges by the corpus's own relation, not one of its own", () => {
+    // Code AND authored position, exactly as `judge.mjs` compares them, and in
+    // the same sorted spelling — a differential that compared codes only would
+    // score `SMITHERS1510@1:23` and `SMITHERS1510@4:1` as agreement.
+    assert.equal(
+      corpusAnswer({ expect: "diagnostics", diagnostics: [{ code: "SMITHERS1510", line: 1, column: 23 }] }),
+      "SMITHERS1510@1:23",
+    );
+    assert.equal(
+      corpusAnswer({
+        expect: "diagnostics",
+        diagnostics: [
+          { code: "SMITHERS1510", line: 1, column: 23 },
+          { code: "SMITHERS1301", line: 4, column: 11 },
+        ],
+      }),
+      "SMITHERS1301@4:11, SMITHERS1510@1:23",
+    );
+    // An `output` case is required to be ACCEPTED. `smithers run` executes an
+    // emitted module directly and never calls the `main()` the conformance
+    // harness calls, so the gate does not claim to compare printed output; the
+    // harness still owns that half.
+    assert.equal(corpusAnswer({ expect: "output", stdout: ["x"] }), "ACCEPTED");
+  });
+
+  await t.test("the dangerous direction is the one the corpus cannot see", () => {
+    // A product that ACCEPTS what the corpus refuses is the case where a green
+    // scoreboard row certifies a rule the shipped compiler does not enforce.
+    assert.equal(classify({ expect: "diagnostics", diagnostics: [] }, "ACCEPTED"), "product-accepts");
+    assert.equal(classify({ expect: "diagnostics", diagnostics: [] }, "SMITHERS1510@1:1"), "both-refuse");
+    assert.equal(classify({ expect: "output", stdout: [] }, "SMITHERS1207@1:1"), "product-refuses");
+    assert.equal(classify({ expect: "output", stdout: [] }, "ACCEPTED"), undefined);
+  });
+
+  await t.test("no recorded row claims the product accepts a program the corpus refuses", () => {
+    // If this ever fires, the divergence stopped being a reporting difference
+    // and became a hole in what the language enforces. It is asserted rather
+    // than merely printed because the whole point of the record is that this
+    // bucket stays empty.
+    assert.deepEqual(
+      baseline.divergences.filter((row) => row.direction === "product-accepts").map((row) => row.id),
+      [],
+    );
   });
 });

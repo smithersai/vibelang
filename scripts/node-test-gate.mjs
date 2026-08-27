@@ -22,6 +22,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -182,13 +183,44 @@ export async function runNodeTestFiles({ testFiles, cwd = repositoryRoot, stdio 
   }
 }
 
+/**
+ * Test files that belong to this gate but do not live in `test/`.
+ *
+ * `conformance/runner/selftest.mjs` holds the assertions about the conformance
+ * *harness* rather than about the language — the class of defect a differential
+ * oracle over authored programs is structurally blind to, such as the request
+ * shape that let `smithersc-go` report clean compiles on programs it must
+ * refuse. It sits beside the runner it tests, which is the right place for it,
+ * but until 2026-08-26 that also meant **no gate ran it at all**: it appeared
+ * only as a command in `conformance/README.md`, so nineteen green assertions
+ * were doing nothing on every `npm test`.
+ *
+ * Listed here rather than bolted onto `discoverTestFiles`, which stays a plain
+ * description of `test/`, so it inherits the census and the skip-is-a-refusal
+ * policy exactly like every other file in this gate.
+ */
+const EXTERNAL_TEST_FILES = ["conformance/runner/selftest.mjs"];
+
 async function main() {
   const testDirectory = join(repositoryRoot, "test");
-  const testFiles = await discoverTestFiles(testDirectory);
-  if (testFiles.length === 0) {
+  const discovered = await discoverTestFiles(testDirectory);
+  if (discovered.length === 0) {
     process.stderr.write("Node test gate failed: test/ contains no *.test.mjs files.\n");
     return 1;
   }
+
+  // A listed file that has moved must stop the gate, not quietly drop out of
+  // it. Silently running one fewer file is the exact failure this gate exists
+  // to refuse.
+  const missing = EXTERNAL_TEST_FILES.filter((file) => !existsSync(join(repositoryRoot, file)));
+  if (missing.length > 0) {
+    process.stderr.write(
+      `Node test gate failed: ${missing.join(", ")} is listed in EXTERNAL_TEST_FILES but does not ` +
+        "exist. Update the list rather than letting the gate run one fewer file.\n",
+    );
+    return 1;
+  }
+  const testFiles = [...discovered, ...EXTERNAL_TEST_FILES];
 
   process.stdout.write(`Node test preflight: running ${testFiles.length} test files.\n`);
   const completed = await runNodeTestFiles({ testFiles });
