@@ -22,17 +22,45 @@
  *   --fork-checkout <dir>   pinned smithersai/TypeScript checkout
  *
  * Exit code: non-zero when a backend the caller asked to gate on has failures.
- * The Go backend never sets a non-zero exit on its own while `--backend both`
- * is in use: the migration's baseline is a measurement, not a gate.
+ * **`--backend both` gates on BOTH backends**, including the fork: a Go verdict
+ * failure exits 1 even when the reference is entirely green. Measured, not
+ * asserted — a case scored `js pass / go FAIL` under `--backend both` exits 1,
+ * and the same run under `--report-only` exits 0.
  *
- * Three things are NOT verdicts and are never suppressed by `--report-only`,
- * because each of them means the numbers printed cannot be trusted:
+ * This paragraph said the opposite until 2026-08-26, and it is worth knowing why
+ * rather than just that it was fixed. `--backend both` really did fall through
+ * to `return 0` no matter how many Go cases diverged; the `go` arm below was
+ * reached only by `--backend go`. When that was corrected, the exit-code
+ * computation was edited and **this header was not**, so the file documented
+ * behaviour it no longer had — and it documented it *flatteringly*, which is the
+ * dangerous direction. A reader who trusted it would conclude the exit code
+ * carries no information about the fork, which is precisely the misreading that
+ * let two backends produce different requirement rows for the same program for a
+ * full day while the scoreboard read zero divergences. If you change an exit
+ * path, change this block in the same edit.
+ *
+ * FOUR things are NOT verdicts and are never suppressed by `--report-only`,
+ * because each of them means the numbers printed cannot be trusted. All four are
+ * checked *before* the `--report-only` short-circuit, which is what makes that
+ * sentence true rather than intended:
  *
  *   exit 3  a harness-integrity failure — a verdict that was not backed by the
  *           checks it claims (see `auditVerdict`), or a summary whose counts do
  *           not add up to the rows that were rendered
- *   exit 2  a case the harness could not measure at all, or a backend that was
- *           asked for and could not be prepared
+ *   exit 2  a case the harness could not measure at all; or a backend that was
+ *           asked for and could not be prepared; or a run in which NO case was
+ *           measured at all — `--filter` matching nothing used to print
+ *           `0/0 pass` and exit 0, which is green without doing the work.
+ *           `runner/selftest.mjs` holds that last one.
+ *
+ * (The list said "three" and named the first two of the exit-2 conditions; the
+ * empty-run check was added later and never joined it. Counted again here from
+ * the code below rather than from the previous sentence.)
+ *
+ * A fifth code is not a verdict either and is not about the corpus at all:
+ *
+ *   exit 64 a usage error — an unknown option, or a `--backend` value that is
+ *           not js/go/both. Printed with the help text, before any case runs.
  *
  * That separation is deliberate. A missing check and a crashed backend both
  * *raise* a score if they are quietly absorbed into an existing bucket, so they
@@ -314,6 +342,45 @@ function verifyCounts(report) {
   return violations;
 }
 
+/**
+ * Which `xfail` markers hold a **fail-open** — a backend that accepts, compiles
+ * and RUNS a program the corpus requires it to reject.
+ *
+ * This is derived, and it is derived because the hand-maintained copies of it
+ * were wrong twice inside one day: `conformance/README.md` asserted that no
+ * marker held a fail-open while one did, was corrected, and the correction was
+ * stale by the next morning when that fail-open closed. The fact was written
+ * down in two Markdown paragraphs and maintained in neither reliably.
+ *
+ * Nothing here is a new measurement. Every input is already in hand by the time
+ * a verdict is scored: the case's own `expect`, and the observation the backend
+ * produced. The predicate is exactly the README's definition of the class —
+ * `expect: "diagnostics"` (the language requires this program to be rejected)
+ * met with `kind: "output"` (the backend ran it instead) on a backend the case
+ * marks `xfail`, so the run scored it `xfail` rather than `divergent` and the
+ * headline `0 divergent` says nothing about it.
+ *
+ * A marked `expect: "output"` case is deliberately NOT counted. Those are the
+ * accepted-and-wrong class — a program the language does not require anyone to
+ * reject, which is a different and harder-to-find thing, and calling it a
+ * fail-open would inflate this number with rows that can never leave it.
+ *
+ * The exit code is not part of the predicate: a program that is accepted and
+ * then crashes is still a rule that failed open. It is reported beside the row
+ * so the two are distinguishable by eye.
+ */
+function failOpenMarkers(report, backend) {
+  const holding = [];
+  for (const entry of report.cases) {
+    const result = entry.results[backend];
+    if (result?.status !== "xfail") continue;
+    if (entry.expect !== "diagnostics") continue;
+    if (result.observation?.kind !== "output") continue;
+    holding.push({ id: entry.id, exitCode: result.observation.exitCode });
+  }
+  return holding;
+}
+
 function summarize(report, { wantJs, wantGo }) {
   const summary = {};
   if (wantJs && report.backends.js?.available) {
@@ -330,6 +397,13 @@ function summarize(report, { wantJs, wantGo }) {
       agreed: report.cases.filter((entry) => entry.agreement?.agree).length,
     };
   }
+  // Derived for whichever backends ran, and always present when one did, so
+  // "no marker holds a fail-open" is a printed measurement rather than a
+  // sentence somebody has to remember to update.
+  const failOpen = {};
+  if (summary.js) failOpen.js = failOpenMarkers(report, "js");
+  if (summary.go) failOpen.go = failOpenMarkers(report, "go");
+  if (summary.js || summary.go) summary.failOpenMarkers = failOpen;
   return summary;
 }
 
@@ -435,6 +509,24 @@ function renderTable(report, { wantJs, wantGo, quiet }) {
   if (summary.agreement) {
     lines.push(`Backend agreement: ${summary.agreement.agreed}/${summary.agreement.compared} identical observations`);
   }
+  if (summary.failOpenMarkers) {
+    // Printed on every run, including when it is zero. `0 divergent` is silent
+    // about a fail-open that carries a marker — that is what a marker means —
+    // so this line is the one that is not, and it is derived from the same
+    // observations the table above prints rather than from any document.
+    const holding = Object.entries(summary.failOpenMarkers).flatMap(([backend, rows]) =>
+      rows.map((row) => ({ backend, ...row })),
+    );
+    lines.push(
+      `Markers holding a fail-open: ${holding.length}` +
+        (holding.length === 0
+          ? " (no marked backend accepts and runs a program the corpus requires it to reject)"
+          : ""),
+    );
+    for (const row of holding) {
+      lines.push(`  ${row.backend}: ${row.id} — accepted and ran (exit ${row.exitCode})`);
+    }
+  }
   if (summary.jsInterop?.total) {
     lines.push(`Interop (js):  ${summary.jsInterop.pass}/${summary.jsInterop.total} pass, ${classBreakdown(summary.jsInterop)}`);
   }
@@ -482,10 +574,13 @@ const HELP = `usage: node conformance/runner/run.mjs [options]
 
 exit codes
   0  the backends asked to gate were green
-  1  a verdict failure (suppressed by --report-only)
-  2  a case could not be measured, or a requested backend could not be prepared
+  1  a verdict failure on a backend asked to gate (suppressed by --report-only).
+     --backend both gates on BOTH: a Go failure exits 1 with the reference green
+  2  a case could not be measured, a requested backend could not be prepared, or
+     no case was measured at all
   3  a harness-integrity failure: a verdict not backed by the checks it claims,
      or a summary whose counts disagree with the rows
+  64 a usage error (unknown option, or a --backend that is not js/go/both)
 `;
 
 async function main(argv) {

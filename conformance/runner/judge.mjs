@@ -20,16 +20,41 @@
  * frontend's `VCT10xx` rules, preserving the final two digits one-for-one.
  * Canonicalize that documented spelling difference at the contract boundary;
  * raw observations in the JSON report retain the backend's actual code.
+ *
+ * SCOPED TO THE FORK ON PURPOSE, and the scope is the whole point. The
+ * reference ALSO spells `SMITHERS1900`, `SMITHERS1901` and `SMITHERS1902`, and
+ * there they are unrelated FORMATTER rules — mask budget, overlapping masks,
+ * and overlapping language-service edits (`poc/src/language/format.ts:646`,
+ * `:667`, `:700`) — not comptime rules. Aliasing unconditionally rewrote those
+ * three onto `VCT1000`/`VCT1001`/`VCT1002`, which are live comptime rules in
+ * the same reference (`poc/src/build/comptime-intrinsic.ts:33-42`: Syntax,
+ * MissingIdentity, UnrelatedIdentity). That folded two unrelated rules onto one
+ * contract code, so a case declaring the comptime rule could have been
+ * satisfied by the formatter failure and scored as agreement — the judge
+ * certifying something it had not checked, which is the exact class the corpus
+ * exists to catch.
+ *
+ * It was latent, not live: the formatter is reachable only through the
+ * `smithers format` subcommand (`src/cli.ts:1505`) and never through
+ * `compileProject`, which is the only path the harness observes, and no case
+ * declares a `SMITHERS19xx` code. `auditReferenceCodeSpace` below keeps it that
+ * way by failing the harness loudly if a reference observation ever carries one.
  */
-function contractDiagnosticCode(code) {
+function contractDiagnosticCode(code, backend) {
+  if (backend !== "go") return code;
   const comptimeAlias = /^SMITHERS19(\d{2})$/.exec(code);
   return comptimeAlias ? `VCT10${comptimeAlias[1]}` : code;
 }
 
-function sortDiagnostics(list) {
+/**
+ * Declared expectations are written in contract spelling already, so they are
+ * canonicalized as `"contract"` — never aliased — and only a backend's own
+ * observation is translated into that space.
+ */
+function sortDiagnostics(list, backend = "contract") {
   return [...list]
     .map((item) => ({
-      code: contractDiagnosticCode(item.code),
+      code: contractDiagnosticCode(item.code, backend),
       line: item.line,
       column: item.column,
       // Carried through the sort so a declared `messageContains` can be checked
@@ -49,14 +74,14 @@ function sortDiagnostics(list) {
     );
 }
 
-function formatDiagnostics(list) {
-  return sortDiagnostics(list)
+function formatDiagnostics(list, backend = "contract") {
+  return sortDiagnostics(list, backend)
     .map((item) => `${item.code}@${item.line}:${item.column}`)
     .join(", ");
 }
 
 /** True when the observation is exactly what the case declares. */
-function matches(expectation, observation) {
+function matches(expectation, observation, backend) {
   if (expectation.expect === "output") {
     if (observation.kind !== "output") {
       return { ok: false, detail: describeMismatch(expectation, observation) };
@@ -79,7 +104,7 @@ function matches(expectation, observation) {
     return { ok: false, detail: describeMismatch(expectation, observation) };
   }
   const expected = sortDiagnostics(expectation.diagnostics);
-  const actual = sortDiagnostics(observation.diagnostics);
+  const actual = sortDiagnostics(observation.diagnostics, backend);
   const same =
     expected.length === actual.length &&
     expected.every(
@@ -91,7 +116,7 @@ function matches(expectation, observation) {
   if (!same) {
     return {
       ok: false,
-      detail: `diagnostics [${formatDiagnostics(observation.diagnostics)}] != [${formatDiagnostics(expectation.diagnostics)}]`,
+      detail: `diagnostics [${formatDiagnostics(observation.diagnostics, backend)}] != [${formatDiagnostics(expectation.diagnostics)}]`,
     };
   }
   // The codes and positions line up. A case may additionally claim that a
@@ -157,7 +182,7 @@ export function judge(testCase, observation, backend) {
     return { status: "unmeasured", detail: observation.reason ?? `the backend returned ${observation.kind}` };
   }
 
-  const verdict = matches(expectation, observation);
+  const verdict = matches(expectation, observation, backend);
   if (expectedToFail) {
     return verdict.ok
       ? { status: "xpass", detail: "the cited gap appears to be fixed; retire the xfail" }
@@ -168,6 +193,33 @@ export function judge(testCase, observation, backend) {
     return { status: "unsupported", detail: verdict.detail };
   }
   return { status: "fail", detail: verdict.detail };
+}
+
+/**
+ * The `SMITHERS19xx` code range means two different things in the two
+ * implementations: comptime rules in the Go fork, formatter rules in the
+ * reference. `contractDiagnosticCode` therefore translates the range for the
+ * fork only, which is correct exactly as long as the reference never emits one
+ * on the observed path — today it cannot, because the formatter lives behind
+ * the `smithers format` subcommand and the harness only ever drives
+ * `compileProject`.
+ *
+ * That is a property of the current wiring, not a law, so it is checked rather
+ * than assumed. If a reference observation ever carries a `SMITHERS19xx`, the
+ * two code spaces have collided and any verdict involving it is unsafe: report
+ * it as a harness-integrity failure (`run.mjs` exit 3) instead of scoring the
+ * case. The fix at that point is to renumber one of the two rule families, not
+ * to widen the alias.
+ */
+function auditReferenceCodeSpace(observation, backend, label) {
+  if (backend.name === "go" || observation.kind !== "diagnostics") return [];
+  return (observation.diagnostics ?? [])
+    .filter((item) => /^SMITHERS19\d{2}$/.test(item.code ?? ""))
+    .map((item) =>
+      `${label}: the reference emitted ${item.code}, which collides with the Go fork's comptime ` +
+      `alias range (SMITHERS19xx -> VCT10xx). In the reference that range is the formatter's, so ` +
+      `no verdict over it can be trusted until one of the two families is renumbered.`,
+    );
 }
 
 /**
@@ -190,6 +242,8 @@ export function auditVerdict(testCase, observation, verdict, backend) {
   const expectation = testCase.expectation;
   const label = `${backend.name}: ${testCase.id}`;
   const stages = observation.stages ?? [];
+
+  violations.push(...auditReferenceCodeSpace(observation, backend, label));
 
   if (verdict.status === "unmeasured") return violations;
   if (stages.length === 0) {
@@ -246,8 +300,16 @@ export function auditVerdict(testCase, observation, verdict, backend) {
   return violations;
 }
 
-/** Compare the two backends' raw observations, independently of the expectation. */
-export function compareObservations(left, right) {
+/**
+ * Compare the two backends' raw observations, independently of the expectation.
+ *
+ * `left` is always the JS reference and `right` the Go fork (`run.mjs` builds
+ * them from `observations.js` / `observations.go`), and each side is translated
+ * into contract spelling under its OWN backend identity. Canonicalizing both
+ * sides as one backend would apply the fork's comptime alias to the reference,
+ * where `SMITHERS19xx` means a formatter rule — see `contractDiagnosticCode`.
+ */
+export function compareObservations(left, right, leftBackend = "js", rightBackend = "go") {
   if (left.kind !== right.kind) return { agree: false, detail: `${left.kind} vs ${right.kind}` };
   if (left.kind === "output") {
     const same =
@@ -259,8 +321,8 @@ export function compareObservations(left, right) {
       : { agree: false, detail: `${JSON.stringify(left.stdout)} vs ${JSON.stringify(right.stdout)}` };
   }
   if (left.kind === "diagnostics") {
-    const a = formatDiagnostics(left.diagnostics);
-    const b = formatDiagnostics(right.diagnostics);
+    const a = formatDiagnostics(left.diagnostics, leftBackend);
+    const b = formatDiagnostics(right.diagnostics, rightBackend);
     return a === b ? { agree: true, detail: "" } : { agree: false, detail: `[${a}] vs [${b}]` };
   }
   return { agree: false, detail: `${left.reason ?? left.kind} vs ${right.reason ?? right.kind}` };
