@@ -1,0 +1,9 @@
+import { measure } from "./newline-inside-trust-marker.ts"
+
+// The positive control for the whitespace class: newlines and ordinary spaces
+// sit between the braces and `never`, and both are JSDoc whitespace, so the
+// module claim is honoured. `measure` carries its own `@throws {never}`, so
+// the call needs no Result channel.
+export function main(): string[] {
+  return [`${measure("abc")}`]
+}

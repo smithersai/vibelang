@@ -1,0 +1,10 @@
+const KEY = "panic"
+
+export function guarded(ok: boolean): string {
+  if (!ok) Reflect[KEY]("forged value")
+  return "real"
+}
+
+export function main(): string[] {
+  return [guarded(true)]
+}

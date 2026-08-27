@@ -1,0 +1,20 @@
+{
+  "title": "interpolating a foreign value calls its `Symbol.toPrimitive`/`toString`, so a template literal is a foreign call",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1506",
+      "line": 4,
+      "column": 14
+    }
+  ],
+  "typescript": [
+    "implicit-invocation-host.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" The coercion protocol is the third of the three the position predicate recognises. Interpolation looks like formatting and is a method call on a foreign object; `${x}` runs `x[Symbol.toPrimitive]()` or `x.toString()`, both of which the foreign module owns. The complementary acceptance is 09-foreign-calls/a-trusted-bindings-string-may-still-be-interpolated-and-iterated, which keeps the rule from widening to a trusted binding's primitive."
+}

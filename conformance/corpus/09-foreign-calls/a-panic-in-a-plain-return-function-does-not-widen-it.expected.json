@@ -1,0 +1,8 @@
+{
+  "title": "an ordinary function declaration with a declared plain return type may abort with panic(...)",
+  "expect": "output",
+  "stdout": [
+    "real"
+  ],
+  "notes": "specification/failures.mdx §Panic Does Not Widen a Return Type: 'Calling `panic(...)` MUST NOT force a function's return type to widen into `Result<A, Panic>`.' and 'A function that validates an argument, refuses a forgery, or asserts an invariant MUST therefore be able to abort with `panic(...)` while keeping a plain return type.' docs/DECISIONS.md carries the matching Locked entry ('Calling `panic(...)` does not widen a return type into `Result<A, Panic>` … the prohibition is on the compiler forcing it'). `E` is the expected-error channel (reference/function-channels.mdx) and a panic is not an expected error, so a construct that aborts with `panic(...)` keeps whatever return type it declares. This is the base form of the whole section and the shape the rule was reported against: a function that validates its argument and refuses a forgery. Before the rule landed both backends reported SMITHERS1101 on `guarded`'s declaration and SMITHERS1301 at the call, and the program did not compile. It is the first case to go red if a later change puts an authored panic back into the recoverable failure row."
+}

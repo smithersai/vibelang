@@ -1,0 +1,26 @@
+import { panic } from "smithers:exceptions"
+
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+// No return annotation. The inferred failure row is the ORDINARY recoverable
+// channel and nothing else: `Missing` is an expected error and the panic is not,
+// so the panic must not be materialized into the same row.
+function force(key: string) {
+  if (key === "") panic("empty key")
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+function describe(key: string): string {
+  return force(key).match({ ok: (value) => value, error: (error) => `missing: ${error.message}` })
+}
+
+export function main(): string[] {
+  return [
+    describe("ada"),
+    describe("zoe"),
+    Result.try(() => describe("")).match({ ok: (value) => value, error: (error) => `panic: ${error.message}` }),
+  ]
+}

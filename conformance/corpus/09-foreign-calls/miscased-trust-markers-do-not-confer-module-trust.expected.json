@@ -1,0 +1,28 @@
+{
+  "title": "@throws {Never}, @MODULE, and @THROWS are near misses, not the module-initialization trust marker",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 24,
+      "messageContains": "@module and @throws {never}"
+    },
+    {
+      "code": "SMITHERS1510",
+      "line": 2,
+      "column": 26
+    },
+    {
+      "code": "SMITHERS1510",
+      "line": 3,
+      "column": 25
+    }
+  ],
+  "typescript": [
+    "miscased-never-module.ts",
+    "miscased-module-tag.ts",
+    "miscased-throws-tag.ts"
+  ],
+  "notes": "specification/failures.mdx, 'Foreign Exceptions' (Locked): \"The compiler MUST recognize trusted JSDoc/declaration metadata at the boundary. `@throws {never}` removes the default panic case; `@throws {T}` declares the stated foreign error channel.\" specification/compatibility.mdx, 'Foreign Boundary' (Locked), says it in the same shape. The text needs no separate sentence saying 'case sensitive': the one sentence gives TWO productions of one syntax, and the only thing distinguishing them is the spelling inside the braces. `T` is a TypeScript type name and TypeScript type identity is case-sensitive, so `Never` is a legal, distinct, user-definable type name falling under the SECOND production — never the first. A case-insensitive comparison MERGES the two productions: the same source text becomes simultaneously the trusted opt-out and channel `Never`, and the implementation silently picks the opt-out. That is the fail-open direction, and it converts a channel the compiler could not reify into a certificate of infallibility. A JSDoc tag NAME is not case-folded by TypeScript's own JSDoc parser either, so `@THROWS` and `@MODULE` are not the tags the specification names. 09-foreign-calls/the-never-annotation-is-case-sensitive already fixes this rule at the CALL boundary; this is the MODULE half, and the asymmetry between them was an implementation gap rather than a second rule. The module half is the more dangerous one: at the call boundary a miscased annotation still leaves SMITHERS1502 and SMITHERS1301 behind, whereas at the module boundary the marker's only job is to SUPPRESS SMITHERS1510, so folding case there admits an unchecked foreign initializer to run before any checked call boundary exists, with no diagnostic at all. Until 2026-08-25 all three of these files were accepted on both backends, and so were `@Module`, `@mOdUlE`, `@NEVER`, `@nEvEr` and `@Throws` — the real class is every casing of the three tokens `module`, `throws` and `never`. Each module is refused independently and all three diagnostics are declared, so a fix that closed one boundary and not the others is still visible here. The declared messageContains is the marker the author has to write, because code and position alone are satisfied by a refusal for some unrelated reason — a leading comment above the JSDoc would produce exactly that, which is why these support files have none. The paired positives already exist and must keep passing: 09-foreign-calls/a-multiline-module-trust-header-is-honoured and 09-foreign-calls/module-init-trust-is-not-a-function-level-throws-claim."
+}

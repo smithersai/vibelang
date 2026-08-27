@@ -1,0 +1,20 @@
+{
+  "title": "`for…of` over a foreign value calls its `Symbol.iterator`, so the loop is a foreign call and the enclosing row keeps the panic case",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1506",
+      "line": 5,
+      "column": 23
+    }
+  ],
+  "typescript": [
+    "implicit-invocation-host.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" A `for…of` head is such a call: the language invokes `iterable[Symbol.iterator]()` and then `next()` on whatever that returns, and both are members the foreign module supplies. There is no call expression to lower, which is exactly why this was fail-open — the machinery was keyed on `ts.CallExpression`/`ts.NewExpression`, so `main` compiled with a row reading `failures: []` while the foreign iterator threw straight out of it. poc/src/language/README.md registers the closure under `SMITHERS1506` as ONE predicate over an expression's position (`implicitInvocationProtocol`) rather than a list of reporting sites."
+}

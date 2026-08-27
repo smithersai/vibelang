@@ -1,0 +1,11 @@
+{
+  "title": "the same overload set, called so that it resolves to the MARKED signature, is still trusted and still runs",
+  "expect": "output",
+  "stdout": [
+    "value"
+  ],
+  "typescript": [
+    "throws-claims.ts"
+  ],
+  "notes": "The acceptance for one-marked-overload-does-not-trust-the-unmarked-one, over the identical import and the identical symbol: only the argument differs. Resolving per signature could have been implemented by simply distrusting every overloaded symbol, which would refuse this program too and would satisfy the refusal case perfectly. This is the case that tells the two implementations apart. DIRECTION, NOT LOCKED \u2014 and this case says so rather than claiming an obligation it does not have. docs/DECISIONS.md carries `@throws` overload resolution, multiple annotations and declaration merging as a **Direction** entry: \"Exact rules for overloads, multiple annotations, declaration merging, validation, and generic error types remain to be specified\", and conformance/COVERAGE.md 7.16 records that surface as unwritable for exactly that reason. What IS Locked is the default and its direction: compatibility.mdx \u00a7Foreign Boundary makes the panic case a MUST on every unannotated foreign call, and DECISIONS.md (Locked) makes `@throws {never}` \"a trusted opt-out from the default `panic` case\" \u2014 one claim, about one call. A claim the compiler cannot reduce to a single usable answer for the call in front of it therefore does not opt out, and the MUST stands. This case pins that fail-closed reading and the implementations' chosen behaviour, which BOTH BACKENDS AGREE ON; it does not settle the Direction entry. If the specification later chooses a different rule, THIS CASE IS REWRITTEN \u2014 it is not evidence against the new sentence."
+}

@@ -1,0 +1,12 @@
+{
+  "title": "a dynamic import whose specifier is computed cannot be shown to reach a trusted target, so it is refused",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 2,
+      "column": 31
+    }
+  ],
+  "notes": "The module-initialization trust claim is read off the resolved target's own declaration text, so a specifier that is not a literal resolves to no target and no claim can be found. Refusing it is the fail-closed answer and the only available one: the alternative is to admit an edge whose target is unknown until run time, which is precisely the hazard SMITHERS1510 names. This is the boundary of the dynamic-import family — the three literal-specifier targets are pinned beside it — and it is the form the reference used to compile and then die on at run time. 23-asset-imports/a-non-literal-dynamic-asset-import-is-rejected is the same principle for the asset loader, which is deliberately excluded from this rule on both backends."
+}

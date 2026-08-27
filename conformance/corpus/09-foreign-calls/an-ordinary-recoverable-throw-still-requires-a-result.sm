@@ -1,0 +1,10 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+// CONTROL: an ordinary recoverable Error exit is NOT a panic. failures.mdx
+// still requires a Result contract for it.
+export function guarded(key: string): string {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}

@@ -1,0 +1,16 @@
+{
+  "title": "the trust marker written inside a // line comment is not a leading JSDoc and confers no module-initialization trust",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 24,
+      "messageContains": "@module and @throws {never}"
+    }
+  ],
+  "typescript": [
+    "line-comment-trust-marker.ts"
+  ],
+  "notes": "specification/compatibility.mdx, 'Runtime TypeScript Dependency' (Locked), and specification/failures.mdx:115: 'The compiler MUST recognize trusted JSDoc/declaration metadata at the boundary.' The word is JSDoc. A `//` comment is a different token kind and can hold no tags, so a file whose only `/**` is inside one has written no metadata at the boundary at all. MEASURED BEFORE THE ROUND-7 FIX, ON ALL THREE IMPLEMENTATIONS AT ONCE — the reference, the Go fork, and the CLI's runtime graph: this module was TRUSTED, the untrusted initializer was observed RUNNING under a runtime oracle, and there was no diagnostic. The cause was the same in each: a substring search for `/**` over the leading TEXT, which cannot distinguish a comment from a comment's content. The fix is to let the SCANNER classify the comment kind, which is why this case and 09-foreign-calls/a-block-comment-holding-the-trust-marker-does-not-confer-module-trust land together: they are the two ways to hand a text search a `/**` that no JSDoc comment produced. THIS IS THE CLASS OF DEFECT THE DIFFERENTIAL ORACLE IS BLIND TO. Both backends shared it, so the corpus reported 0 divergent over it for as long as it existed, and the codes involved were already covered — SMITHERS1510 is pinned by five other cases. What no case named was this SPELLING. The obvious repair is worse than the defect and was measured to be: reading the PARSER's attached JSDoc tags instead disagrees with the scanner on 21 of the 75 marker-carrying files in this repository, because TypeScript attaches only the LAST block before a statement — conformance/support/foreign.ts, this corpus's own trusted module, would silently have become untrusted, and conformance/support/split-trust-marker.ts would have been GRANTED trust because the JSDoc parser strips the `*` decoration this corpus relies on it not assembling across. The paired positives that must keep passing are 09-foreign-calls/a-multiline-module-trust-header-is-honoured and 09-foreign-calls/ordinary-whitespace-in-the-trust-marker-still-confers-module-trust. The declared messageContains is the marker the author has to write, for the reason 09-foreign-calls/miscased-trust-markers-do-not-confer-module-trust records: code and position alone are satisfied by a refusal for some unrelated reason, which is why nothing sits above the JSDoc in the support file."
+}

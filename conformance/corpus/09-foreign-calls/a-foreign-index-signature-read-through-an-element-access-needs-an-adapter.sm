@@ -1,0 +1,6 @@
+import { keyed } from "./implicit-invocation-host.ts"
+
+export function main(): string[] {
+  const width = keyed["width"]
+  return [String(width ?? 0)]
+}

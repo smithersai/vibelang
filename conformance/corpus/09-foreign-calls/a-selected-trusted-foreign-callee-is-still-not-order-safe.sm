@@ -1,0 +1,20 @@
+import { double } from "./foreign.ts"
+
+// `double` carries `@throws {never}`, so calling it is outside the panic
+// channel. That is a claim about the CALL, not about every expression the
+// callee can be reached through: selecting the callee with an operator puts a
+// foreign call inside a subexpression whose evaluation order lowering cannot
+// preserve, and the trust marker does not make that order safe.
+function localDouble(value: number): number { return value * 2 }
+const pick: boolean = Boolean(1)
+
+// Clean: the callee is named, or named through a parenthesis.
+function direct(): number { return double(2) }
+function parenthesised(): number { return (double)(3) }
+
+// Refused: the callee is selected.
+function selectedByNullish(): number { return (double ?? localDouble)(2) }
+function selectedByOr(): number { return (double || localDouble)(2) }
+function selectedByAnd(): number { return (localDouble && double)(2) }
+function selectedByTernary(): number { return (pick ? double : localDouble)(2) }
+function selectedByComma(): number { return ((localDouble, double))(2) }

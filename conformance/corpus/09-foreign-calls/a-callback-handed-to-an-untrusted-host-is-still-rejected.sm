@@ -1,0 +1,7 @@
+import { onSignalUnsafe } from "./callback-host.ts"
+
+export function main(): string[] {
+  const sink: string[] = []
+  onSignalUnsafe("SIGINT", (name) => { sink.push(name) })
+  return sink
+}

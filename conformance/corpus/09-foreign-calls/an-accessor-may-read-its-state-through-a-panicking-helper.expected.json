@@ -1,0 +1,8 @@
+{
+  "title": "a class getter may read its state through a helper that aborts with panic(...)",
+  "expect": "output",
+  "stdout": [
+    "3"
+  ],
+  "notes": "specification/failures.mdx §Panic Does Not Widen a Return Type: 'Calling `panic(...)` MUST NOT force a function's return type to widen into `Result<A, Panic>`.' and 'A function that validates an argument, refuses a forgery, or asserts an invariant MUST therefore be able to abort with `panic(...)` while keeping a plain return type.' docs/DECISIONS.md carries the matching Locked entry ('Calling `panic(...)` does not widen a return type into `Result<A, Panic>` … the prohibition is on the compiler forcing it'). `E` is the expected-error channel (reference/function-channels.mdx) and a panic is not an expected error, so a construct that aborts with `panic(...)` keeps whatever return type it declares. This is the shape that used to produce a contradiction with no legal spelling: the helper widened to Result<State, Panic>, so the accessor inherited a Result, so SMITHERS1101 demanded the accessor declare one and SMITHERS1105 ('constructors and accessors cannot carry a Result channel in this POC') forbade it, on the same line at the same time. The panic no longer enters the row, so the helper keeps `State`, the accessor keeps `number`, and the program runs. Note that SMITHERS1105 is untouched by this rule and still fires for an accessor with an ORDINARY recoverable failure on the reference — see 09-foreign-calls/a-fallible-getter-in-an-argument-still-needs-a-contract, where the two backends disagree."
+}

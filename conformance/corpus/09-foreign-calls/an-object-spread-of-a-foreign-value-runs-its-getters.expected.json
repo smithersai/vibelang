@@ -1,0 +1,20 @@
+{
+  "title": "object spread enumerates a foreign value's own getters, so it invokes foreign code and keeps the panic case",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1506",
+      "line": 4,
+      "column": 23
+    }
+  ],
+  "typescript": [
+    "implicit-invocation-host.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" This is the enumeration protocol rather than the iteration one: `{ ...x }` reads every own enumerable property, and a getter is arbitrary foreign code. 09-foreign-calls/foreign-property-read-needs-an-adapter already pins the getter read that a property-access node spells; this pins the one that no property-access node spells at all, which is why it was fail-open while that one was not."
+}

@@ -1,0 +1,8 @@
+{
+  "title": "an async function may abort with panic(...) and keeps Promise<plain> rather than Promise<Result<A, Panic>>",
+  "expect": "output",
+  "stdout": [
+    "real"
+  ],
+  "notes": "specification/failures.mdx §Panic Does Not Widen a Return Type: 'Calling `panic(...)` MUST NOT force a function's return type to widen into `Result<A, Panic>`.' and 'A function that validates an argument, refuses a forgery, or asserts an invariant MUST therefore be able to abort with `panic(...)` while keeping a plain return type.' docs/DECISIONS.md carries the matching Locked entry ('Calling `panic(...)` does not widen a return type into `Result<A, Panic>` … the prohibition is on the compiler forcing it'). `E` is the expected-error channel (reference/function-channels.mdx) and a panic is not an expected error, so a construct that aborts with `panic(...)` keeps whatever return type it declares. specification/failures.mdx §Promise Semantics says 'Awaiting Promise<Result<A, E>> MUST produce Result<A, E>', so widening an async function's return type does not merely change one signature: it changes what every `await` of it yields, and the awaited value then becomes a must-use Result at each call site. Measured SMITHERS1101 before the rule landed. The `await` here is the executed half."
+}

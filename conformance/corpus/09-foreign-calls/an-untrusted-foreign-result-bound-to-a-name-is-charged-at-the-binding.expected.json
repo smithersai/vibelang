@@ -1,0 +1,27 @@
+{
+  "title": "a lifted untrusted foreign Result bound to a name is charged at the binding, which is where the bound/unbound split puts it everywhere else",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 23
+    },
+    {
+      "code": "SMITHERS1302",
+      "line": 4,
+      "column": 9
+    }
+  ],
+  "typescript": [
+    "untrusted.ts"
+  ],
+  "notes": "specification/type-system.mdx:60 and :56, as for the sibling cases: the untrusted call lifts to `Result<string, Panic>` and the binding discards it. The subject of this case is WHERE. Smithers distinguishes an unbound producer (SMITHERS1301, charged at the call) from a bound Result nothing ever consumes (SMITHERS1302, charged at the binding), and 07-must-consume/result-must-be-consumed and 07-must-consume/result-parameter-must-be-consumed pin that split for authored code. A foreign call is not exempt from it. This divergence became VISIBLE only when the cascade suppression that had been hiding the whole second diagnostic was removed, which is the ordinary shape of a fix: it does not create the defect underneath, it stops concealing it.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "the fork reports SMITHERS1301@4:16 — the unbound code, at the call — where the reference reports SMITHERS1302@4:9 at the binding. Both refuse the program and both are right about WHAT is wrong; they disagree about where, and a diagnostics case is exact in code and position, so this is a real divergence rather than a wording difference. Cause, from source: the fork's foreign-lift reporter does not know about bindings, so it cannot apply the bound/unbound split its own must-consume analysis applies everywhere else — the fork agrees with the reference on that split for authored producers (08-promise-chaining/promise-then-on-a-bound-promise-is-rejected passes on both). PRE-EXISTING, and measured rather than inferred: `<scratchpad>/conv/probes/fc04-untrusted-call-bound/main.sm` on both backends. Retire this marker when the fork routes the foreign lift through the same ownership walk as an authored producer.",
+    "doc": "specification/type-system.mdx:56 ('An ignored Result MUST be a compile error') with the bound/unbound split the corpus pins in 07-must-consume/result-must-be-consumed (SMITHERS1301 at an unbound producer) and 07-must-consume/result-parameter-must-be-consumed (SMITHERS1302 at a binding)."
+  }
+}

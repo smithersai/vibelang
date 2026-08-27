@@ -1,0 +1,15 @@
+{
+  "title": "@THROWS is not the @throws tag, so the call carries the default panic case and no annotation to reify",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 4,
+      "column": 11
+    }
+  ],
+  "typescript": [
+    "upper-throws-tag.ts"
+  ],
+  "notes": "specification/failures.mdx, 'Foreign Exceptions' (Locked): \"The compiler MUST recognize trusted JSDoc/declaration metadata at the boundary. `@throws {never}` removes the default panic case; `@throws {T}` declares the stated foreign error channel.\" specification/compatibility.mdx, 'Foreign Boundary' (Locked), says it in the same shape. The text needs no separate sentence saying 'case sensitive': the one sentence gives TWO productions of one syntax, and the only thing distinguishing them is the spelling inside the braces. `T` is a TypeScript type name and TypeScript type identity is case-sensitive, so `Never` is a legal, distinct, user-definable type name falling under the SECOND production — never the first. A case-insensitive comparison MERGES the two productions: the same source text becomes simultaneously the trusted opt-out and channel `Never`, and the implementation silently picks the opt-out. That is the fail-open direction, and it converts a channel the compiler could not reify into a certificate of infallibility. A JSDoc tag NAME is not case-folded by TypeScript's own JSDoc parser either, so `@THROWS` and `@MODULE` are not the tags the specification names. 09-foreign-calls/the-never-annotation-is-case-sensitive covers the BRACE CONTENT at this boundary; this case covers the TAG NAME, and the two behave differently in a way worth pinning. `@throws {Never}` is still an annotation, so it reports SMITHERS1502 for a channel whose Error constructor cannot be resolved, alongside the SMITHERS1301 for the unconsumed Result. `@THROWS {never}` yields NO annotation, so there is nothing to reify and nothing to complain about — only the default panic case and the Result it leaves unconsumed. That means the tag-name half fails more quietly than the brace half, and a case declaring 1502 would have been wrong here. This boundary was already correct on both backends; the case pins it so a future tag-name comparison cannot quietly become case-insensitive the way the module-boundary one had."
+}

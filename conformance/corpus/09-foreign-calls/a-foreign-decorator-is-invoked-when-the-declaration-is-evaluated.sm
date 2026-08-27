@@ -1,0 +1,8 @@
+import { boomDecorator } from "./implicit-invocation-host.ts"
+
+@boomDecorator
+class Decorated {}
+
+export function main(): string[] {
+  return [typeof Decorated]
+}

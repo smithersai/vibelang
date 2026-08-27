@@ -1,0 +1,24 @@
+import { panic } from "smithers:exceptions"
+
+type State = { readonly size: number }
+const states = new WeakMap<object, State>()
+
+function stateOf(value: object): State {
+  const state = states.get(value)
+  if (!state) panic("forged receiver")
+  return state
+}
+
+export class Box {
+  constructor(size: number) {
+    states.set(this, { size })
+  }
+  get size(): number {
+    const state = stateOf(this)
+    return state.size
+  }
+}
+
+export function main(): string[] {
+  return [`${new Box(3).size}`]
+}

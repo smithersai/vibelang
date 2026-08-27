@@ -1,0 +1,12 @@
+{
+  "title": "a panic(...) at module top level is still refused: there is no return type for the non-widening rule to keep",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1505",
+      "line": 3,
+      "column": 1
+    }
+  ],
+  "notes": "specification/failures.mdx \u00a7Panic Does Not Widen a Return Type is about a FUNCTION's return type: 'Calling panic(...) MUST NOT force a function's return type to widen into Result<A, Panic>.' Module initialization is not a function and has no return type to keep, so the rule has no purchase here and the refusal stands. SMITHERS1505 is a LOWERING BOUNDARY of the same family as SMITHERS1107 (a class static initializer block, pinned by 09-foreign-calls/a-panic-in-a-static-initializer-block-is-still-refused) and SMITHERS1511 (a top-level throw): moving it means teaching the lowerer to emit a top-level panic, not relaxing a rule. Measured SMITHERS1505@3:1 identically on both backends before and after the panic non-widening rule landed \u2014 UNCHANGED, which is the point of the case. This is the SECOND of the two forms in the panic class that the rule deliberately did not move, and until this revision neither had a corpus case, so a later lane widening the rule into 'panic is legal everywhere' would have broken nothing here. ONE HONEST CAVEAT, recorded rather than hidden: the diagnostic's own message text argues from the reasoning the specification just abolished ('cannot be represented as a checked Result'). The refusal is still right for a different reason than the one it gives. No messageContains is declared, deliberately \u2014 the text is the part that should change, and pinning it would freeze the wrong argument into the contract. If a later revision teaches the lowerer to emit a top-level panic, this case is rewritten to the accepted direction, not deleted."
+}

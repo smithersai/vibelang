@@ -1,0 +1,32 @@
+{
+  "title": "a union with a `Promise` constituent still carries a rejection channel, so `@throws {never}` on it is refused",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 5,
+      "column": 23
+    },
+    {
+      "code": "SMITHERS1502",
+      "line": 5,
+      "column": 23
+    },
+    {
+      "code": "SMITHERS1508",
+      "line": 6,
+      "column": 10
+    }
+  ],
+  "typescript": [
+    "throws-claims.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" `string | Promise<string>` is a shape the narrow lowering predicate answers 'no' for and that can still reject, so the trust question is asked through a deliberately wider predicate than the one that drives lowering. The control that localizes the extra `SMITHERS1508` is 09-foreign-calls/an-untrusted-union-return-is-an-executable-foreign-value-on-one-backend-only: it carries no marker at all and produces the same divergence, so the divergence belongs to the pre-existing union handling and not to the trust rule.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "the fork reports [SMITHERS1301@5:23, SMITHERS1502@5:23] and omits the SMITHERS1508@6:10 that the reference reports for returning a value whose type has a foreign `Promise` constituent. BOTH BACKENDS REFUSE THE PROGRAM and both name SMITHERS1502 at the same position, so this is a diagnostic-set divergence and not a soundness one — the refusal this case exists to pin is identical on both. The divergence is PRE-EXISTING and belongs to `containsForeignExecutableValue`'s union handling, not to the `@throws {never}` trust rule: the sibling case an-untrusted-union-return-is-an-executable-foreign-value-on-one-backend-only carries no `@throws` marker anywhere, reproduces exactly the same asymmetry, and reproduces it on an unmodified tree. The two retire together.",
+    "doc": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\""
+  }
+}

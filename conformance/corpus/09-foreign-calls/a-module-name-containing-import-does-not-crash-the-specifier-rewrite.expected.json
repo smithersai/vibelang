@@ -1,0 +1,11 @@
+{
+  "title": "a project module whose own filename contains the letters `import` compiles and runs",
+  "expect": "output",
+  "stdout": [
+    "hello ada"
+  ],
+  "modules": [
+    "a-module-name-containing-import-does-not-crash-the-specifier-rewrite.mod.sm"
+  ],
+  "notes": "A regression pin for a crash rather than for a language rule, and it belongs in the corpus because the crash produced NO DIAGNOSTIC AT ALL — the fork's bridge died and the compile returned nothing. Root cause: the fork located candidate dynamic imports by scanning the raw source text for the substring `import`/`require` and resolving the node at each hit, so every occurrence of those letters INSIDE A SPECIFIER resolved back to the same call and appended the same literal to the file's import list again; the duplicate produced two identical specifier edits and the single rising cursor that applies them panicked with `slice bounds out of range`. That hazard was hidden for as long as the fork refused every dynamic import, and became reachable the moment the refusal was narrowed to foreign targets. This case is the STATIC sibling — static imports never double-counted — and 09-foreign-calls/a-dynamic-import-of-a-project-module-is-not-a-foreign-module-edge, whose own module file is named the same way, is the dynamic one. Neither is about `import()`; both are about a filename."
+}

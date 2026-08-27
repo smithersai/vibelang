@@ -1,0 +1,27 @@
+{
+  "title": "selecting a foreign constructor, foreign object or foreign tag with ??, ||, &&, a ternary, a comma, a const binding or a cast leaves it foreign, and every spelling is refused at the same rule as the direct one",
+  "expect": "diagnostics",
+  "typescript": ["foreign.ts", "implicit-invocation-host.ts"],
+  "diagnostics": [
+    { "code": "SMITHERS1504", "line": 15, "column": 39 },
+    { "code": "SMITHERS1504", "line": 16, "column": 34 },
+    { "code": "SMITHERS1504", "line": 17, "column": 35 },
+    { "code": "SMITHERS1504", "line": 18, "column": 39 },
+    { "code": "SMITHERS1504", "line": 19, "column": 37 },
+    { "code": "SMITHERS1504", "line": 20, "column": 79 },
+    { "code": "SMITHERS1506", "line": 22, "column": 33 },
+    { "code": "SMITHERS1506", "line": 23, "column": 28 },
+    { "code": "SMITHERS1506", "line": 24, "column": 29 },
+    { "code": "SMITHERS1506", "line": 25, "column": 33 },
+    { "code": "SMITHERS1506", "line": 26, "column": 31 },
+    { "code": "SMITHERS1506", "line": 27, "column": 75 },
+    { "code": "SMITHERS1506", "line": 28, "column": 46 },
+    { "code": "SMITHERS1101", "line": 30, "column": 1 },
+    { "code": "SMITHERS1504", "line": 30, "column": 40 },
+    { "code": "SMITHERS1101", "line": 31, "column": 1 },
+    { "code": "SMITHERS1504", "line": 31, "column": 35 },
+    { "code": "SMITHERS1101", "line": 32, "column": 1 },
+    { "code": "SMITHERS1504", "line": 32, "column": 40 }
+  ],
+  "notes": "specification/compatibility.mdx, 'Foreign Boundary': 'Calling an unannotated foreign runtime value MUST add the checked panic case, because JavaScript and TypeScript may throw, reject, or violate a declaration.' Whether a value is foreign is a property of where it came from, not of the operator that selected it. `??`, `||`, `&&`, a conditional, a comma, a `const` that holds the result and a cast over it are all ways of naming one of two operands, and if either operand can be the foreign one the answer must be the foreign one. WHY THIS CASE EXISTS: the operand walk behind this rule knew the ternary and the comma and did not know `??`, `||` or `&&`, so a foreign constructor, property or tag hidden behind a nullish coalesce was accepted and its throw escaped every checked channel. The class is wide — three rules times seven selector spellings — and it is one case because it is one walk: the fix was a single table, and a regression in it moves all nineteen rows together. EVERY SELECTOR PAIRS A FOREIGN OPERAND WITH A LOCAL ONE, and that is the design choice that makes the case observe anything. With two foreign operands the diagnostic fires whichever branch the walk looked at, and the case would be green while testing nothing. Here the local alternate is on the RIGHT for `??`, `||`, the ternary and the comma, and on the LEFT for `&&` — so a walk that reads only one side is wrong on at least one row whichever side it picks. `propCastOverTheSelection` adds a cast on top of a selection, which is the composition a rule that handles each separately can still lose. WHAT THIS CASE PINS AND WHAT IT DOES NOT: three rules at nineteen authored positions, as a sorted multiset — the two backends emit them in different orders. No `messageContains` is declared: `SMITHERS1504` and `SMITHERS1506` carry fixed remediation sentences that name no part of this program, and the fork and the reference word `SMITHERS1506` completely differently, so any fragment common to both would be a name for the rule. The three `SMITHERS1101`s on the tag rows are declared in full rather than filtered — those functions carry an explicit `: string` return that cannot represent the panic case they acquire — while the constructor and property functions deliberately have no explicit return type, because with one the two backends disagree about `SMITHERS1101` and this case is written to be identical on both without an `xfail`. It also does not pin a selected foreign CALLEE, which is refused at a different rule (`SMITHERS1507`) even when the callee is trusted; that is `a-selected-trusted-foreign-callee-is-still-not-order-safe`. VERIFIED LOAD-BEARING, not assumed: mutating the declared column on line 17 — the `&&` row, the one whose foreign operand is on the RIGHT — from 35 to 34 (the column its `||` sibling reports) turns the case red on BOTH backends with the position diff printed, and the file was restored byte-identically (sha256 0c8f8f081fa82d9b95a29dd1cb6598c56d2f5ff1be2d190adefc720cf954e9a0 before and after, that digest being this file's content at the moment the mutation ran — the sentence recording it is appended afterwards, so the shipped file necessarily hashes differently). The paired positive control is `selectors-over-local-and-trusted-values-stay-clean`, where the same five selectors over two LOCAL objects and over a trusted foreign tag must compile and RUN."
+}

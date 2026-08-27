@@ -1,0 +1,15 @@
+{
+  "title": "a foreign decorator is a foreign call: it is invoked when the declaration it decorates is evaluated",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1504",
+      "line": 3,
+      "column": 1
+    }
+  ],
+  "typescript": [
+    "implicit-invocation-host.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" poc/src/language/README.md names the decorator as the third spelling that reaches `SMITHERS1504` with no call expression at all. The diagnostic is charged at the decorator and no `SMITHERS1101` accompanies it because the invocation happens as the module is evaluated rather than inside any function's row — which is also why it is worse than an ordinary unchecked call: there is no enclosing contract that could have carried the channel. These are ECMAScript decorators, not the legacy TypeScript ones: specification/compatibility.mdx §Configuration lists `experimentalDecorators` and `emitDecoratorMetadata` among the FORBIDDEN options."
+}

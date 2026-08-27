@@ -1,0 +1,5 @@
+import { environmentNamesArray } from "./object-binding.ts"
+
+export function names(): readonly string[] {
+  return environmentNamesArray()
+}

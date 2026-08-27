@@ -1,0 +1,20 @@
+{
+  "title": "a coercing operator applied to a foreign value runs its `valueOf`, so unary `+` is a foreign call",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1506",
+      "line": 4,
+      "column": 11
+    }
+  ],
+  "typescript": [
+    "implicit-invocation-host.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" One operator stands for the whole coercing family — prefix `+`/`-`/`~`, the loose comparisons, `+` with a string, a compound assignment, `instanceof`'s right operand, `in`'s left operand, a computed key and an element-access key — because they reach the rule through the same position predicate and not through separate branches. The deliberate exclusions are the operators that coerce nothing: `if (x)` and `x ? a : b` run ToBoolean, `x === 1` and `switch (x)` are strict, and none of those invokes user code."
+}

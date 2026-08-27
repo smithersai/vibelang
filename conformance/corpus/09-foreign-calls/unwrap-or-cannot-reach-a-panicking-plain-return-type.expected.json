@@ -1,0 +1,13 @@
+{
+  "title": "unwrapOr cannot reach a panic, because a panicking function publishes no Result to recover from",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "TS2339",
+      "line": 11,
+      "column": 26,
+      "messageContains": "'unwrapOr' does not exist on type 'string'"
+    }
+  ],
+  "notes": "MANDATORY GUARD, and the direct enforcement of specification/failures.mdx: 'Ordinary Result recovery MUST NOT swallow panic implicitly.' \u00a7Panic Does Not Widen a Return Type gives the reasoning in the same words: 'Requiring a panicking function to return Result<A, Panic> places the panic inside E, where unwrapOr, recover, and match consume it as an ordinary failure \u2014 which is precisely what this page forbids.' The declared code is the stock TypeScript member-resolution error rather than a SMITHERS rule, and that is the point: the recovery surface does not exist, so there is nothing for a language rule to refuse. This case declares a TS code, so per conformance/README.md it must record the evidence: the position and the code were measured identically on BOTH backends (js TS2339@11:26, go TS2339@11:26), and the message fragment is declared because code and position alone would also be satisfied by a TS2339 about some other member \u2014 the whole promise is that `unwrapOr` specifically is unreachable. It is the first case to go red if a later change widens this rule into 'a panic is not tracked' or restores the forced Result. Its accepted twin is 09-foreign-calls/only-an-explicit-boundary-observes-a-panic-from-a-plain-function, which shows what an author writes instead."
+}

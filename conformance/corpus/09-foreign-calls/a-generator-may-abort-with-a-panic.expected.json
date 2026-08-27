@@ -1,0 +1,8 @@
+{
+  "title": "a generator may abort with panic(...) and keeps its declared Generator return type",
+  "expect": "output",
+  "stdout": [
+    "real"
+  ],
+  "notes": "specification/failures.mdx §Panic Does Not Widen a Return Type: 'Calling `panic(...)` MUST NOT force a function's return type to widen into `Result<A, Panic>`.' and 'A function that validates an argument, refuses a forgery, or asserts an invariant MUST therefore be able to abort with `panic(...)` while keeping a plain return type.' docs/DECISIONS.md carries the matching Locked entry ('Calling `panic(...)` does not widen a return type into `Result<A, Panic>` … the prohibition is on the compiler forcing it'). `E` is the expected-error channel (reference/function-channels.mdx) and a panic is not an expected error, so a construct that aborts with `panic(...)` keeps whatever return type it declares. The generator form had the same shape of contradiction the accessor did: the widening demanded a Result and SMITHERS1106 ('fallible generators are deferred until generator/Result control-flow semantics are specified') forbade one, so the reference reported SMITHERS1101 and SMITHERS1106 together and the Go fork reported SMITHERS1101 (it implements no SMITHERS1106 — see 09-foreign-calls/a-fallible-getter-in-an-argument-still-needs-a-contract for the pinned form of that asymmetry). SMITHERS1106 itself is untouched: a generator that reaches an ordinary `throw` still draws it on the reference."
+}

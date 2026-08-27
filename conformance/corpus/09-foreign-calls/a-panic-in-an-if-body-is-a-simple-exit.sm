@@ -1,0 +1,8 @@
+import { panic, Panic } from "smithers:exceptions"
+
+export function main(): Result<string[], Panic> {
+  const flag = false
+  if (flag) panic("unreachable")
+  if (flag) { panic("unreachable") }
+  return ["done"]
+}

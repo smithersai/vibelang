@@ -1,0 +1,20 @@
+{
+  "title": "a @throws {never} claim covers the call's panic channel, not the provenance of an object the call returns",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1508",
+      "line": 4,
+      "column": 10
+    }
+  ],
+  "typescript": [
+    "object-binding.ts"
+  ],
+  "notes": "specification/compatibility.mdx, 'Foreign Boundary' (Locked): \"Calling an unannotated foreign runtime value MUST add the checked `panic` case ... Trusted `@throws {never}` metadata opts out.\" The subject of that sentence is the CALL. Nothing on that page extends the claim to the methods of a value the call hands back, and a `@throws {never}` factory can legitimately return a handle whose methods throw — so returning an executable foreign value out of `.sm` is refused for losing its panic provenance. This is deliberately a case about a question that is OPEN rather than one that is settled: whether the trust claim should reach the returned type is undecided, and the acceptance direction that works today is 09-foreign-calls/a-trusted-binding-filling-a-smithers-owned-buffer-is-accepted. Without that pair, a lane narrowing the rule cannot tell an intended acceptance from a regression."
+}

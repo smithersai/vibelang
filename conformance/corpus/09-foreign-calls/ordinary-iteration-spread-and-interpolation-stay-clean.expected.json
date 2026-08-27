@@ -1,0 +1,8 @@
+{
+  "title": "iteration, object spread, array spread and interpolation over authored values invoke nothing foreign and stay clean",
+  "expect": "output",
+  "stdout": [
+    "6/4/2"
+  ],
+  "notes": "The position predicate behind `SMITHERS1506` asks whether evaluating an expression *here* invokes an arbitrary method on the value it holds, and then requires the value to have foreign provenance before it refuses anything. This case is the over-correction guard for all three protocols at once: an author who never touches a foreign module must see no diagnostic from a rule about foreign modules. It is an `output` case rather than a `diagnostics` one because the promise is that the program still compiles AND runs — a rule that refused these forms would be caught by the compile, and a lowering that broke them would only be caught by the execution."
+}

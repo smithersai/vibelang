@@ -1,0 +1,9 @@
+export class Missing extends Error {}
+
+function apply(handlers: { transform: unknown }): string {
+  return String(handlers.transform)
+}
+
+export function main(): string[] {
+  return [apply({ get transform() { throw new Missing() } })]
+}

@@ -1,0 +1,5 @@
+import { stringy } from "./implicit-invocation-host.ts"
+
+export function main(): number {
+  return +stringy
+}

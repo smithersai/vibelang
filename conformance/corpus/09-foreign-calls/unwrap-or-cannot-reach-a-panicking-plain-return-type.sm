@@ -1,0 +1,12 @@
+import { panic } from "smithers:exceptions"
+
+function guarded(ok: boolean): string {
+  if (!ok) panic("forged value")
+  return "real"
+}
+
+export function main(): string[] {
+  // `guarded` publishes `string`, not `Result<string, Panic>`. There is no
+  // ordinary Result recovery surface here for the panic to be swallowed by.
+  return [guarded(false).unwrapOr("fallback")]
+}

@@ -1,0 +1,12 @@
+import { Panic } from "smithers:exceptions"
+
+const KEY = "panic"
+
+function force(key: string): Result<string, Panic> {
+  const value = key === "ada" ? key : Reflect[KEY](`no entry for ${key}`)
+  return value
+}
+
+export function main(): string[] {
+  return [force("ada").match({ ok: (value) => value, error: (error) => `panic: ${error.message}` })]
+}

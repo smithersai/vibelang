@@ -1,0 +1,5 @@
+import { declaredFirst } from "./throws-claims.ts"
+
+export function main(): string {
+  return declaredFirst()
+}

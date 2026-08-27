@@ -1,0 +1,16 @@
+{
+  "title": "JSDoc whitespace is exactly space, tab, carriage return and newline: a NO-BREAK SPACE inside the braces makes @throws { never } a declared channel, not the opt-out",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 24,
+      "messageContains": "@module and @throws {never}"
+    }
+  ],
+  "typescript": [
+    "nbsp-trust-marker.ts"
+  ],
+  "notes": "specification/failures.mdx:115 (Locked): '`@throws {never}` removes the default panic case; `@throws {T}` declares the stated foreign error channel.' The same reasoning 09-foreign-calls/miscased-trust-markers-do-not-confer-module-trust records for `{Never}` decides this: one sentence gives TWO productions of one syntax, and the only thing distinguishing them is the spelling inside the braces. ` never ` is not the spelling `never`. It is a legal, distinct TypeScript type name, so it falls under the SECOND production, and treating it as the first MERGES the two — converting a channel the compiler could not reify into a certificate of infallibility, with no diagnostic at all. THE MECHANISM IS A REGEX CHARACTER CLASS, which is why this is a spelling and not a code. `\\s` in JavaScript matches U+00A0, U+000C, U+000B, U+FEFF and every Unicode space separator; JSDoc's own whitespace class is `[ \\t\\r\\n]`. Eight spellings were measured diverging BETWEEN the two backends before round 7 — NO-BREAK SPACE inside the braces and after `@module`, FORM FEED, VERTICAL TAB, BOM, EN SPACE, IDEOGRAPHIC SPACE and LINE SEPARATOR — with the reference TRUSTING all eight and their initializers RUNNING while the fork refused all eight. The reference moved to the fork's narrower class. That divergence is the reason to prefer this case's direction over the reverse: the fork's answer is the one the sentence supports, and the narrowness IS the rule rather than an implementation limit. THE ACCEPTANCE HALF IS NOT OPTIONAL and is 09-foreign-calls/ordinary-whitespace-in-the-trust-marker-still-confers-module-trust, which puts newlines and ordinary spaces in the same position and requires the module to stay trusted; without it the class could be narrowed to 'exactly one space' and nothing would notice. The declared messageContains is the marker the author has to write, for the reason 09-foreign-calls/miscased-trust-markers-do-not-confer-module-trust records; nothing sits above the JSDoc in the support file, for the same reason."
+}

@@ -1,0 +1,13 @@
+import { panic } from "smithers:exceptions"
+
+function fail(message: string): never { panic(message) }
+function refuse(ok: boolean): void { if (!ok) fail("forged") }
+
+export function guarded(ok: boolean): string {
+  refuse(ok)
+  return "real"
+}
+
+export function main(): string[] {
+  return [guarded(true)]
+}

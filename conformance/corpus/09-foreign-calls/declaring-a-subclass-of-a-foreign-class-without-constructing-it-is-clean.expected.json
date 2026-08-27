@@ -1,0 +1,11 @@
+{
+  "title": "an `extends` clause alone runs no constructor: declaring a subclass of a foreign class is not a foreign call",
+  "expect": "output",
+  "stdout": [
+    "function"
+  ],
+  "typescript": [
+    "implicit-invocation-host.ts"
+  ],
+  "notes": "A heritage clause evaluates the base expression and sets a prototype; it invokes nothing. The byte-identical program one line different — 09-foreign-calls/constructing-a-subclass-of-a-foreign-class-runs-the-base-constructor — is refused, and that is the whole boundary. This shape has already caught one over-correction: a first draft of the rule charged the clause, which broke 17-durable/the-retired-vibelang-flows-specifier-is-not-compiler-owned, a case that declares a subclass of an unresolvable foreign `Action` and never constructs it. That case pins the boundary only as a side effect of pinning something else; this one pins it on purpose."
+}

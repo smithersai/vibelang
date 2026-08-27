@@ -1,0 +1,16 @@
+import { panic } from "smithers:exceptions"
+
+export class Box {
+  read(ok: boolean): string {
+    if (!ok) panic("forged")
+    return "real"
+  }
+  static make(ok: boolean): Box {
+    if (!ok) panic("forged")
+    return new Box()
+  }
+}
+
+export function main(): string[] {
+  return [Box.make(true).read(true)]
+}

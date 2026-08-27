@@ -1,0 +1,12 @@
+{
+  "title": "Reflect[KEY](...) with a const-aliased key is still the panic intrinsic, so writing it where a value is expected is refused rather than lowered",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1503",
+      "line": 6,
+      "column": 39
+    }
+  ],
+  "notes": "docs/DECISIONS.md 'Typed failures' (Locked) and specification/failures.mdx:219: '`Reflect.panic` and compiler/runtime invariant failures enter the same distinguished panic channel.' 09-foreign-calls/panic-outside-a-statement-or-return-is-rejected pins the identical refusal, at the identical shape of position, for the imported `panic(...)`; 09-foreign-calls/reflect-panic-enters-the-panic-channel pins the ambient spelling reaching the same channel. This case is the ambient spelling reached through a const-aliased element-access key, and it exists because THAT COMBINATION WAS A LIVE FAIL-OPEN. Measured on the Go fork after the member-key rule was widened to resolve aliased keys and before the panic recognizer was routed through the same resolution: this exact program COMPILED, RAN, and printed `ok` — the panic recognizer asked for the symbol of the node that SPELLS the member, which on `Reflect[KEY]` is the symbol of `KEY`, so it saw no panic call at all and the conditional was lowered as if both arms produced a value. The reference reported SMITHERS1503. That is a defect the widening of one rule created in another, which is the argument for resolving 'which member does this select?' in ONE place: nine rules read that answer, and the eight that were already correct stayed correct only because they had been routed through the shared helper. THE ACCEPTANCE HALF IS 09-foreign-calls/an-aliased-reflect-panic-key-is-still-a-panic-exit, and it is not optional in either direction: the same non-recognition was measured turning a plain-return function that aborts through the aliased key into a stock TS2355 (a function with a declared return type that returns nothing), so this rule can fail by refusing as easily as by accepting. No messageContains is declared, for the reason 09-foreign-calls/panic-outside-a-statement-or-return-is-rejected records: the two backends legitimately word SMITHERS1503 differently, and the code and authored position are the whole contract here."
+}

@@ -1,0 +1,15 @@
+{
+  "title": "a dynamic import of a foreign module carrying no initialization trust claim is refused at its specifier",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 2,
+      "column": 32
+    }
+  ],
+  "typescript": [
+    "untrusted.ts"
+  ],
+  "notes": "poc/src/language/README.md:128 states the rule this case is written from: 'SMITHERS1510: a statically loaded TypeScript/JavaScript module lacks a leading JSDoc module-initialization trust claim containing both `@module` and `@throws {never}`.' The hazard the rule names is that a foreign module's initializer runs before any call boundary exists, so it cannot be caught by a call wrapper — and that hazard is a property of the module edge, not of the keyword that spells it. 09-foreign-calls/foreign-module-without-a-trust-marker pins the static spelling of this identical edge to the identical module; 09-foreign-calls/trusted-foreign-call-is-accepted and 09-foreign-calls/a-multiline-module-trust-header-is-honoured pin the acceptance direction, where a module that carries the claim is imported and called. REVIEW-fable-1.md F2 measured the Go fork emitting a runtime `import(\"node:fs\")` and running it with zero diagnostics; that half is now closed, and this case is what keeps it closed. RETIRED 2026-08-25, the `js` marker — the one that ran the other way. The reference used to compile and RUN a foreign module with no trust claim reached through `import()` while refusing the byte-identical static edge to the same module, so two entry points into one frontend disagreed and only the CLI path was safe. The reference now applies the module-initialization rule to the dynamic edge, and the fork applies it only to foreign targets, so both arrive at the same narrow rule from opposite directions. The ledger question underneath is still open and this case still does not answer it: docs/DECISIONS.md:296 is Locked that 'arbitrary dynamic import expressions remain available', and 09-foreign-calls/a-dynamic-import-of-a-trusted-foreign-module-is-accepted deliberately pins only that a TRUSTED module keeps its claim through the dynamic spelling. If the ledger exempts dynamic edges, retire this case rather than 'fixing' the reference. Measured XPASS on both backends before the marker was deleted."
+}

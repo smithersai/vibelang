@@ -1,0 +1,14 @@
+import { registerAll } from "./callback-host.ts"
+
+class Bad extends Error {}
+
+function fallible(value: string): Result<string, Bad> {
+  if (value === "") throw new Bad("empty")
+  return value
+}
+
+export function main(): string[] {
+  const sink: string[] = []
+  registerAll([(value) => { sink.push(fallible(value)!) }])
+  return sink
+}

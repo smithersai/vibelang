@@ -1,0 +1,8 @@
+import { Panic } from "smithers:exceptions"
+
+export function guarded(ok: boolean): string {
+  if (!ok) throw new Panic("forged value")
+  return "real"
+}
+
+export function main(): string[] { return [guarded(true)] }

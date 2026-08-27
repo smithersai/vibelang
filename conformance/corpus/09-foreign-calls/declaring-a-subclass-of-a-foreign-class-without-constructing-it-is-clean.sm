@@ -1,0 +1,7 @@
+import { BoomBase } from "./implicit-invocation-host.ts"
+
+class Derived extends BoomBase {}
+
+export function main(): string[] {
+  return [typeof Derived]
+}

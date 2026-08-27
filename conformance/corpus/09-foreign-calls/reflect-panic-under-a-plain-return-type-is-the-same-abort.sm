@@ -1,0 +1,8 @@
+export function guarded(ok: boolean): string {
+  if (!ok) Reflect.panic("forged value")
+  return "real"
+}
+
+export function main(): string[] {
+  return [guarded(true)]
+}

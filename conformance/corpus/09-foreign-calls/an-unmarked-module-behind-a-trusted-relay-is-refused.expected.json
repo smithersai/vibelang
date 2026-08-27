@@ -1,0 +1,17 @@
+{
+  "title": "a module that wrote no trust marker at all is still refused when a properly marked relay is the one that loads it",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 24,
+      "messageContains": "@module and @throws {never}"
+    }
+  ],
+  "typescript": [
+    "trusted-relay-to-unmarked-target.ts",
+    "unmarked-relay-target.ts"
+  ],
+  "notes": "specification/failures.mdx, 'Foreign Exceptions' (Locked): foreign module initialization is untrusted unless the module declares the marker. 09-foreign-calls/foreign-module-without-a-trust-marker pins that at depth one; this is the same rule one edge out, and it is the SIMPLEST shape the seven-round fail-open took: an entirely unmarked module, reached by an ordinary `export { x } from` in a relay that carries the marker correctly. Written as well as 09-foreign-calls/a-trust-marker-does-not-travel-through-a-trusted-module rather than instead of it, because the two failures look identical from outside and are not the same defect: there the marker did not MATCH, here the closure did not ASK. A round-7 review recorded the wrong one of the two as the blocker, so the corpus now separates them permanently. The 2026-08-27 measurement is the evidence this is not hypothetical: with a module-scope oracle in conformance/support/unmarked-relay-target.ts's position, both backends compiled this program clean and printed the untrusted initializer's announcement before `main` ran. The declared position is the authored import specifier, the only text in this file its author can change, matching 09-foreign-calls/miscased-trust-markers-do-not-confer-module-trust and 09-foreign-calls/near-miss-trust-markers-do-not-confer-module-trust. The declared messageContains is the marker the author has to write, and is verbatim in both backends' otherwise-differently-worded messages. The support module is SHARED with 09-foreign-calls/a-deferred-foreign-loader-needs-no-marker-behind-it, which must ACCEPT the very same unmarked file because the only edge to it there is a proven-deferred `import()`: an implementation that answers by file identity instead of by edge kind cannot pass both. Only `typeof` is applied to the binding, so the declared cascade is the trust rule and nothing else. The depth sibling is 09-foreign-calls/module-trust-does-not-travel-two-hops, which reaches this same file through two marked relays instead of one."
+}

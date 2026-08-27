@@ -1,0 +1,27 @@
+{
+  "title": "a foreign property reached through an index signature needs an annotated adapter whether it is spelled with a dot or with an element access",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1506",
+      "line": 4,
+      "column": 17
+    }
+  ],
+  "typescript": [
+    "implicit-invocation-host.ts"
+  ],
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "Measured on 2026-08-26: the fork reports the declared SMITHERS1506 at the identical position (4:17) and REFUSES the program, and omits the SMITHERS1101 the reference reports at the function declaration, because its property rule reports without charging Panic to the enclosing row. Both backends refuse this program, so this is a diagnostic-set divergence and not a fail-open. It is the same standing gap already recorded on 09-foreign-calls/a-callback-handed-to-an-untrusted-host-is-still-rejected and 09-foreign-calls/a-module-trust-claim-is-not-a-call-site-opt-out, and all of these retire together when the fork's foreign reporter charges the caller's panic row the way its foreign-provenance reporter already does. PRE-EXISTING with respect to this case: the omission was measured on the sibling cases before this program existed, and the receiver-only property rule this case pins is present and correct on the fork — it reports the element-access spelling at the same position as the dotted one, which is the whole content of the case. Not closed here deliberately: a row that gains Panic changes lowering, which would move emitted bytes across the corpus for a difference that is fail-closed in both directions.",
+    "doc": "specification/compatibility.mdx#foreign-boundary"
+  },
+  "notes": "specification/compatibility.mdx, 'Foreign Boundary' (Locked): 'Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.' A getter reached through an index signature is such a call. THE DELIBERATE PAIR of 09-foreign-calls/a-foreign-index-signature-read-is-refused-on-one-backend-only: the same read off the same value, `keyed[\"width\"]` here against `keyed.width` there. Two cases rather than one because the rule under test is that the refusal follows the RECEIVER's provenance and not the spelling: a rule keyed on `ts.PropertyAccessExpression` refuses the dotted case and admits this one, and the pair is the only thing that can see the difference. The declared SMITHERS1101 at the function declaration is the same row charge every other foreign read in this area declares, and it is why this case carries an xfail for `go`."
+}

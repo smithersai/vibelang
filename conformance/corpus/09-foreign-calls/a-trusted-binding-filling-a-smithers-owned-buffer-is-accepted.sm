@@ -1,0 +1,7 @@
+import { fillBytes } from "./object-binding.ts"
+
+export function main(): string[] {
+  const target = new Uint8Array(4)
+  fillBytes(target)
+  return [`${target.length}`, `${target[0]}`, `${target[3]}`]
+}

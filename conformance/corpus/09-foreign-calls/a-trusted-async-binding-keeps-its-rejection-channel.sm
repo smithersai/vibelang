@@ -1,0 +1,5 @@
+import { giveAsync } from "./throws-claims.ts"
+
+export async function main(): Promise<string> {
+  return await giveAsync()
+}

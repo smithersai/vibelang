@@ -1,0 +1,17 @@
+{
+  "title": "a contract error on the enclosing declaration does not suppress the panic placement refusal",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 5,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1503",
+      "line": 7,
+      "column": 31
+    }
+  ],
+  "notes": "Two independent obligations in one program, and the case exists because one backend used to hide the second behind the first. SMITHERS1101 is the ordinary recoverable `throw` on line 6 needing a Result contract; SMITHERS1503 is the placement rule — `panic(...)` is an exit, not a value, and a ternary arm is a value position (09-foreign-calls/panic-outside-a-statement-or-return-is-rejected pins that rule on its own). The Go fork suppressed SMITHERS1503 whenever the enclosing declaration already carried a contract error, on the stated ground that reporting it would diverge from the reference; the reference reports it. That suppression was invisible while every panicking function had a contract error, and became a live one-shape disagreement the moment panic stopped producing one. Both backends now report exactly this pair. Declaring both is the whole point: a `diagnostics` case is exact, so a backend that suppresses either one turns this red. No messageContains is declared, for the reason recorded in 09-foreign-calls/panic-outside-a-statement-or-return-is-rejected — the two backends legitimately word SMITHERS1503 differently and the code with its authored position is the whole contract."
+}

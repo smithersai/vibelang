@@ -1,0 +1,10 @@
+import { panic } from "smithers:exceptions"
+
+function guarded(ok: boolean): string {
+  if (!ok) panic("forged value")
+  return "real"
+}
+
+export function main(): string[] {
+  return [guarded(false).recover(() => "fallback")]
+}

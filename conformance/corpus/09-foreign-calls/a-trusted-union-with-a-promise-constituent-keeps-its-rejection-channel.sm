@@ -1,0 +1,7 @@
+import { Panic } from "smithers:exceptions"
+import { giveUnionPromise } from "./throws-claims.ts"
+
+export async function main(): Promise<Result<string, Panic>> {
+  const value = await giveUnionPromise()
+  return value
+}

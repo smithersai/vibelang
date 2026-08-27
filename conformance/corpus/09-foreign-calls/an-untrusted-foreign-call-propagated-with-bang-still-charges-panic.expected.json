@@ -1,0 +1,15 @@
+{
+  "title": "the FOREIGN panic channel is untouched by the non-widening rule: an untrusted foreign call in a plain-return function is still refused",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    }
+  ],
+  "typescript": [
+    "foreign.ts"
+  ],
+  "notes": "MANDATORY GUARD, and the scope boundary of the whole section. specification/failures.mdx §Foreign Exceptions: 'Calling any TypeScript, JavaScript, or other foreign runtime implementation MUST add the distinguished checked panic case by default' and 'A caller MUST propagate panic, explicitly catch it, or use a trusted adapter'. docs/DECISIONS.md:291 keeps that Locked and independent. §Panic Does Not Widen a Return Type is scoped to an AUTHORED `panic(...)` call; it does not say a foreign call stops producing a Result, and the whole 09-foreign-calls area, the must-consume analysis over lifted foreign results, and the `@throws {never}` opt-out all rest on the foreign call producing one. `main` declares `string[]`, so it has no channel to propagate the lifted foreign failure into. 09-foreign-calls/untrusted-foreign-call-needs-the-panic-channel is the same obligation in the `return` spelling; this is the postfix-`!` spelling, and the two are written separately because a regression that stopped charging the foreign channel could reach one propagation form without the other. Note that the section's own reasoning (a panic in E is consumable by unwrapOr/recover/match) applies verbatim to the foreign channel, which this case pins as STILL widening. That tension is real, it is recorded as an open ledger question, and it is deliberately not settled by this corpus: if the ledger extends the rule to the foreign boundary, this case and its sibling are rewritten together."
+}

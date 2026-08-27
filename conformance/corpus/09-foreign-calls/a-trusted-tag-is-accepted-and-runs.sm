@@ -1,0 +1,5 @@
+import { trustedTag } from "./throws-claims.ts"
+
+export function main(): string[] {
+  return [trustedTag`hello`]
+}

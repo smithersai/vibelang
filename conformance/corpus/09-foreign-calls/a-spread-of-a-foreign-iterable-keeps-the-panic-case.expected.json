@@ -1,0 +1,20 @@
+{
+  "title": "an array spread of a foreign value runs its `Symbol.iterator` exactly as `for…of` does, and is refused for the same reason",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1506",
+      "line": 4,
+      "column": 14
+    }
+  ],
+  "typescript": [
+    "implicit-invocation-host.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" Spread and `for…of` are the same protocol under two spellings, and `[...x]`, `f(...x)` and `new C(...x)` are one node kind. This case exists beside the `for…of` one on purpose: the defect class kept reopening because each newly noticed sibling was closed at its own site while the siblings nobody thought of stayed silently fail-open. Two cases over one predicate is the cheapest evidence that the answer is total over the grammar rather than a remembered list."
+}

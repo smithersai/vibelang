@@ -1,0 +1,7 @@
+import { onSignalModuleOnly } from "./module-only-host.ts"
+
+export function main(): string[] {
+  const sink: string[] = []
+  onSignalModuleOnly("SIGINT", (name) => { sink.push(name) })
+  return sink
+}

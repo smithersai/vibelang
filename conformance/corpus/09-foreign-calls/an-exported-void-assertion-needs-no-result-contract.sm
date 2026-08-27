@@ -1,0 +1,10 @@
+import { panic } from "smithers:exceptions"
+
+export function assertPositive(value: number): void {
+  if (value <= 0) panic("value must be positive")
+}
+
+export function main(): string[] {
+  assertPositive(1)
+  return ["ok"]
+}

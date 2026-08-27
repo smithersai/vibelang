@@ -1,0 +1,20 @@
+{
+  "title": "a trust claim speaks for its own call, not for the panic provenance of a callable minted elsewhere",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1508",
+      "line": 5,
+      "column": 22
+    }
+  ],
+  "typescript": [
+    "callback-host.ts"
+  ],
+  "notes": "specification/compatibility.mdx, 'Foreign Boundary' (Locked): \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration. Trusted `@throws {never}` metadata opts out; `@throws {T}` declares a more precise channel.\" The subject of that sentence is the CALL, so the claim covers what the call does with an argument it was handed. specification/requirements.mdx, 'Scoping' (Locked), assigns the deferred half elsewhere: \"Imported JavaScript or TypeScript that starts hidden background work owns that work. Caller-controlled background APIs MUST expose explicit completion or disposal handles through their adapters.\" And specification/failures.mdx, 'Panic Does Not Widen a Return Type', is why the third reading — that the callback must independently be panic-free — is not available at all: every `.sm` function may abort with `panic(...)` while keeping a plain return type, so panic-freedom is not spellable and a rule demanding it would admit nothing. THIS IS THE FAIL-OPEN GUARD, and the most important case in this set. Before 2026-08-25 SMITHERS1509 claimed every callable argument at every foreign call and therefore covered this program too; a fix that merely SUPPRESSED SMITHERS1509 for trusted calls would have left it with no diagnostic at all. The refusal had to be transferred to the neighbouring rule whose charter actually covers it — `@throws {never}` on `onSignal` says nothing about a callable `getHandler` minted in another module, which is SMITHERS1508's subject — and the enclosing row still carries the real Panic, which is the co-reported SMITHERS1101. If a future lane ever narrows SMITHERS1508, this case is what stops the hole from reopening."
+}

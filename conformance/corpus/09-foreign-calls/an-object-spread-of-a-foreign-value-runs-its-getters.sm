@@ -1,0 +1,6 @@
+import { spreadable } from "./implicit-invocation-host.ts"
+
+export function main(): number {
+  const copied = { ...spreadable }
+  return copied.a
+}

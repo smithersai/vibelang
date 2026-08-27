@@ -1,0 +1,13 @@
+{
+  "title": "a trusted binding that fills a Smithers-owned buffer keeps its acceptance, because no foreign value is returned",
+  "expect": "output",
+  "stdout": [
+    "4",
+    "1",
+    "4"
+  ],
+  "typescript": [
+    "object-binding.ts"
+  ],
+  "notes": "specification/compatibility.mdx, 'Foreign Boundary': a trusted `@throws {never}` claim opts the call out of the checked panic case. Here it does exactly that and nothing else is in play: the buffer is constructed in `.sm`, the binding writes into it, and nothing foreign crosses back. This is the acceptance control for 09-foreign-calls/a-trusted-binding-returning-an-object-still-loses-foreign-provenance and the spelling a host binding can use today, at a cost of one line per site. The bytes are asserted, not just the length, so a binding that was accepted without ever running would not satisfy this."
+}

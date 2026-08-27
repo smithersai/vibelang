@@ -1,0 +1,18 @@
+import { trustedTag, giveString } from "./throws-claims.ts"
+
+// `satisfies` checks an expression against a type and leaves the expression's
+// own type — and therefore the declaration the checker resolves — untouched. So
+// the `@throws {never}` marker on `trustedTag` survives every pure `satisfies`
+// spelling, and all five of these are clean.
+function sat1(): string { return (trustedTag satisfies (strings: TemplateStringsArray) => string)`x` }
+function sat2(): string { return ((trustedTag satisfies (strings: TemplateStringsArray) => string) satisfies (strings: TemplateStringsArray) => string)`x` }
+function sat3(): string { return (((trustedTag) satisfies (strings: TemplateStringsArray) => string))`x` }
+function sat4(): string { const held = trustedTag satisfies (strings: TemplateStringsArray) => string; return held`x` }
+function sat5(): string { return (giveString satisfies () => string)() }
+
+// `as` and a type ANNOTATION do change the resolved declaration: what the
+// checker resolves is now the bare function type written here, and that type
+// carries no marker. The trust is gone and the tag is an untrusted foreign one.
+function viaAs(): string { return (trustedTag as (strings: TemplateStringsArray) => string)`x` }
+function viaAnnotation(): string { const held: (strings: TemplateStringsArray) => string = trustedTag; return held`x` }
+function viaSatisfiesThenAs(): string { return ((trustedTag satisfies (strings: TemplateStringsArray) => string) as (strings: TemplateStringsArray) => string)`x` }

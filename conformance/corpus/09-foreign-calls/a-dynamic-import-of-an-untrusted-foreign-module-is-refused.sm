@@ -1,0 +1,4 @@
+export async function main(): Promise<string[]> {
+  const foreign = await import("./untrusted.ts")
+  return [`${typeof foreign.shout}`]
+}

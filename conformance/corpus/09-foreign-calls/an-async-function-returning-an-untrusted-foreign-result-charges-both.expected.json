@@ -1,0 +1,20 @@
+{
+  "title": "an async function returning a lifted untrusted foreign Result is charged the module refusal and the discarded Result, exactly as the synchronous form is",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 23
+    },
+    {
+      "code": "SMITHERS1301",
+      "line": 4,
+      "column": 11
+    }
+  ],
+  "typescript": [
+    "untrusted.ts"
+  ],
+  "notes": "specification/type-system.mdx:60: 'Every unannotated foreign call MUST add the distinguished checked `panic` case, because JavaScript may throw, reject, or violate a declaration.' :56: 'An ignored Result MUST be a compile error.' Neither MUST is conditioned on the trust of the module edge the call arrived through, and neither is conditioned on whether the enclosing function is async. The async spelling of 09-foreign-calls/foreign-module-without-a-trust-marker, written because a suppression that hides the second diagnostic behind an already-refused module edge hides it in EVERY spelling, and enumerating the class is what showed four broken forms where one had been reported. The decisive control that this is a second authored defect rather than a cascade is 09-foreign-calls/the-never-annotation-is-case-sensitive: the identical call shape over a module with a genuine trust header is charged SMITHERS1301 at the identical position and passes on both backends."
+}

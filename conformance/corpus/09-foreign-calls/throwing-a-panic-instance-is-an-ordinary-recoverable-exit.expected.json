@@ -1,0 +1,17 @@
+{
+  "title": "throw new Panic(...) is an ordinary recoverable throw and still widens — it is not a third spelling of the distinguished channel",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1301",
+      "line": 8,
+      "column": 44
+    }
+  ],
+  "notes": "MANDATORY GUARD on the BOUNDARY of the rule rather than on the rule. specification/failures.mdx and docs/DECISIONS.md (Locked) name exactly two spellings of the distinguished channel: '`panic` is imported from `smithers:exceptions`' and '`Reflect.panic` and compiler/runtime invariant failures enter the same distinguished channel'. `throw new Panic(...)` is neither. It is the recoverable-Error form applied to a class that happens to extend Error, so the checker charges it exactly as it charges any other throw, `guarded` needs a Result contract, and the unconsumed Result at the call is SMITHERS1301. Measured identically on both backends before and after the rule landed. This is a real foot-gun — an author who writes it gets a `Panic` value inside `E`, which is the arrangement §Panic Does Not Widen a Return Type argues against — and whether it should become a third spelling is an open specification question, recorded here rather than answered. The case pins today's answer so that a change of mind has to be deliberate: if the sentence is added, this case is REWRITTEN to the accepted direction, not deleted. Meanwhile the runtime backstop still holds: 09-foreign-calls/recover-does-not-swallow-a-panic shows recover refusing to swallow a Panic even when one is sitting in E."
+}

@@ -1,0 +1,8 @@
+{
+  "title": "panic(...) inside an if body is an ordinary expression statement, braced or not, when the contract carries Panic",
+  "expect": "output",
+  "stdout": [
+    "done"
+  ],
+  "notes": "specification/failures.mdx, 'Foreign Exceptions': '`panic` is imported from `smithers:exceptions` and accepts an optional message or underlying Error.' 09-foreign-calls/panic-outside-a-statement-or-return-is-rejected pins the refusal: SMITHERS1503 says `panic` is supported only as an expression statement or a direct return. The body of an `if` IS an expression statement, in both the braceless and the braced spelling, so both lines here are legal and the program simply runs. REVIEW-fable-1.md F6 measured the Go fork adding a SMITHERS1503 the reference does not report — a rule firing on the shape it exists to permit."
+}

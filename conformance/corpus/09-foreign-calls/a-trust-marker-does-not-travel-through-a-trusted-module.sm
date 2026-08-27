@@ -1,0 +1,10 @@
+import { config } from "./trusted-relay-to-miscased-target.ts"
+
+// The relay this line names carries the trust marker in exactly the spelling
+// the specification prints. The module IT re-exports from writes `@MODULE`,
+// which is not a tag at all, so the reached module makes no claim and its
+// initializer runs first. Only `typeof` is applied to the binding, so the
+// declared diagnostic is the trust rule itself and nothing else.
+export function main(): string[] {
+  return [typeof config]
+}

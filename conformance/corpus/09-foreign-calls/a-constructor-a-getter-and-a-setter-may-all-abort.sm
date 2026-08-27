@@ -1,0 +1,23 @@
+import { panic } from "smithers:exceptions"
+
+export class Box {
+  private stored = 0
+  constructor(size: number) {
+    if (size < 0) panic("negative size")
+    this.stored = size
+  }
+  get size(): number {
+    if (this.stored < 0) panic("forged")
+    return this.stored
+  }
+  set size(value: number) {
+    if (value < 0) panic("negative")
+    this.stored = value
+  }
+}
+
+export function main(): string[] {
+  const box = new Box(2)
+  box.size = 5
+  return [`${box.size}`]
+}

@@ -1,0 +1,8 @@
+{
+  "title": "a panic two helpers deep leaves every caller on the chain with a plain return type",
+  "expect": "output",
+  "stdout": [
+    "real"
+  ],
+  "notes": "specification/failures.mdx §Panic Does Not Widen a Return Type: 'Calling `panic(...)` MUST NOT force a function's return type to widen into `Result<A, Panic>`.' and 'A function that validates an argument, refuses a forgery, or asserts an invariant MUST therefore be able to abort with `panic(...)` while keeping a plain return type.' docs/DECISIONS.md carries the matching Locked entry ('Calling `panic(...)` does not widen a return type into `Result<A, Panic>` … the prohibition is on the compiler forcing it'). `E` is the expected-error channel (reference/function-channels.mdx) and a panic is not an expected error, so a construct that aborts with `panic(...)` keeps whatever return type it declares. The one-hop and two-hop cases are worth writing separately from the direct one because the old defect propagated: a widened callee forced its caller to widen, so a single `panic(...)` at the bottom of a call chain rewrote every contract above it. Measured before the rule landed as SMITHERS1101 on `fail` plus SMITHERS1301 at the call inside `refuse`. `refuse` declares `void` and `fail` declares `never`; neither may be forced to a Result."
+}

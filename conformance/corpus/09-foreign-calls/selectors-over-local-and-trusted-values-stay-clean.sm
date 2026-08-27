@@ -1,0 +1,32 @@
+import { double } from "./foreign.ts"
+import { trustedTag } from "./throws-claims.ts"
+
+const first = { retries: 3 }
+const second = { retries: 9 }
+function localTag(parts: TemplateStringsArray): string { return "L" }
+const pick: boolean = Boolean(1)
+
+function nullishOverLocals(): number { return (first ?? second).retries }
+function orOverLocals(): number { return (first || second).retries }
+function andOverLocals(): number { return (first && second).retries }
+function ternaryOverLocals(): number { return (pick ? first : second).retries }
+
+function trustedTagThroughNullish(): string { return (trustedTag ?? localTag)`a` }
+function trustedTagThroughOr(): string { return (trustedTag || localTag)`a` }
+function trustedTagThroughTernary(): string { return (pick ? trustedTag : localTag)`a` }
+function trustedCalleeDirect(): number { return double(2) }
+function trustedCalleeParenthesised(): number { return (double)(3) }
+
+export function main(): string[] {
+  return [
+    `${nullishOverLocals()}`,
+    `${orOverLocals()}`,
+    `${andOverLocals()}`,
+    `${ternaryOverLocals()}`,
+    trustedTagThroughNullish(),
+    trustedTagThroughOr(),
+    trustedTagThroughTernary(),
+    `${trustedCalleeDirect()}`,
+    `${trustedCalleeParenthesised()}`,
+  ]
+}

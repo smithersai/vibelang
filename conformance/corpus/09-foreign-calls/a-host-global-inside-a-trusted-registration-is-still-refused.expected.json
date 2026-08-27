@@ -1,0 +1,15 @@
+{
+  "title": "being the argument of a trusted binding buys a callback body no ambient authority",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1602",
+      "line": 5,
+      "column": 47
+    }
+  ],
+  "typescript": [
+    "callback-host.ts"
+  ],
+  "notes": "specification/compatibility.mdx, 'Host Globals' (Locked): \"Host-sensitive operations such as clock and random access MUST still use capabilities.\" The host-global check never consults the enclosing call, so the acceptance granted by 09-foreign-calls/a-callback-registered-through-a-trusted-binding-is-accepted adds no opt-out that ordinary code could claim — the only thing that rule reads is a JSDoc `@throws` tag on a FOREIGN declaration, which authored `.sm` cannot write about itself. The third of the three guards, and the one that matters most: it is the ambient-authority direction."
+}

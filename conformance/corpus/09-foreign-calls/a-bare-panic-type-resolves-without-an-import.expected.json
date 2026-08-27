@@ -1,0 +1,22 @@
+{
+  "title": "the Panic type may be named in a contract without importing it, and the untrusted module edge is then the whole answer",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 23
+    }
+  ],
+  "typescript": [
+    "untrusted.ts"
+  ],
+  "notes": "The subject is the bare type name `Panic`, not the module edge. `Result` itself is ambient in `.sm` — every case in this corpus writes `Result<A, E>` with no import — and specification/type-system.mdx:60 makes `panic` the distinguished checked case that EVERY unannotated foreign call adds, so a contract that spells the channel the compiler itself charges must be able to name it. Here the contract does spell it and the call propagates with `!`, so nothing is discarded and the untrusted module edge is the only defect left. THE SPECIFICATION DOES NOT SETTLE THIS and the note says so rather than picking a side quietly: specification/failures.mdx describes `panic` as imported from `smithers:exceptions` and says nothing about whether the TYPE `Panic` is ambient. C1 met the same divergence as an accident of another case's imports and left it unpinned for that reason; it is pinned here as its own subject, with the marker recording that the fork is arguably right and that a specification sentence — not an implementation change — is what should settle it.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "the fork does not resolve a bare `Panic` type and adds SMITHERS1104@3:1 ('contract omits reachable failures'), so it reports [SMITHERS1510@1:23, SMITHERS1104@3:1] where the reference reports the module refusal alone. The fork's position is defensible: nothing in specification/failures.mdx states that `Panic` is an ambient type, and if it is not, then this contract genuinely omits the channel. NEITHER BACKEND SHOULD BE CHANGED ON THE STRENGTH OF THIS MARKER. It records a documentation gap at the place it bites, so that the next lane to touch either side finds the question already written down instead of rediscovering it from a diagnostic. MEASURED on both backends: `<scratchpad>/conv/probes/fc03-untrusted-call-propagated/main.sm`. If the specification says `Panic` is ambient, the fork moves; if it says it must be imported, this case is REWRITTEN to import it and the marker is retired.",
+    "doc": "specification/type-system.mdx:60 ('Every unannotated foreign call MUST add the distinguished checked `panic` case') establishes that the compiler charges the channel; no sentence in specification/failures.mdx states whether the type naming it is ambient or must be imported. That is the gap."
+  }
+}

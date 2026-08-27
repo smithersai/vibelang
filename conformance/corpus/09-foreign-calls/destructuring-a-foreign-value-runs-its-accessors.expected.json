@@ -1,0 +1,27 @@
+{
+  "title": "destructuring a foreign value runs its accessors, so the binding pattern needs an annotated adapter exactly as a property access does",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1506",
+      "line": 4,
+      "column": 9
+    }
+  ],
+  "typescript": [
+    "implicit-invocation-host.ts"
+  ],
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "Measured on 2026-08-26: the fork reports the declared SMITHERS1506 at the identical position (4:9) and REFUSES the program, and omits the SMITHERS1101 the reference reports at the function declaration, because its property rule reports without charging Panic to the enclosing row. Both backends refuse this program, so this is a diagnostic-set divergence and not a fail-open. Same standing gap as 09-foreign-calls/a-callback-handed-to-an-untrusted-host-is-still-rejected; they retire together. The rule this case exists to pin — that a binding PATTERN over a foreign value is a foreign read, at the pattern's own position — is present and correct on the fork, which agrees with the reference on the position as well as the code.",
+    "doc": "specification/compatibility.mdx#foreign-boundary"
+  },
+  "notes": "specification/compatibility.mdx, 'Foreign Boundary' (Locked): 'Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.' `const { width } = keyed` is a property read with no property-access node to see — the same shape as the implicit-invocation protocols this support module exists for, one level down. The diagnostic is declared at the PATTERN (column 9), not at the initializer, because the pattern is what names the members that will be read: a destructuring of three names is three reads, and the position has to belong to the form that decides how many. Third of a set with 09-foreign-calls/a-foreign-index-signature-read-through-an-element-access-needs-an-adapter and 09-foreign-calls/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter; between them they cover a member with no declaration, a member declared only by the standard library, and a read with no member expression at all, which is the coverage that makes 'ask the receiver' a total answer rather than a list of spellings."
+}

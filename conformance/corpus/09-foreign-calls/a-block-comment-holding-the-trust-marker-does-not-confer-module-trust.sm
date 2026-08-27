@@ -1,0 +1,10 @@
+import { settings } from "./block-comment-trust-marker.ts"
+import { options } from "./nested-jsdoc-block-comment-trust-marker.ts"
+
+// Two block comments, one rule: a JSDoc comment opens with `/**`, and neither
+// of these does. The first writes one asterisk; the second opens at `/*` and
+// merely CONTAINS `/**`. Only `typeof` is applied to each binding, so the
+// declared diagnostics are the trust rule itself and nothing else.
+export function main(): string[] {
+  return [typeof settings, typeof options]
+}

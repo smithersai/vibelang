@@ -1,0 +1,5 @@
+import { shout } from "./untrusted.ts"
+
+export async function main(): Promise<string[]> {
+  return [shout("hello")]
+}

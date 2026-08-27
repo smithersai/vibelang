@@ -1,0 +1,10 @@
+import { panic } from "smithers:exceptions"
+
+export function* items(ok: boolean): Generator<string> {
+  if (!ok) panic("forged")
+  yield "real"
+}
+
+export function main(): string[] {
+  return [...items(true)]
+}

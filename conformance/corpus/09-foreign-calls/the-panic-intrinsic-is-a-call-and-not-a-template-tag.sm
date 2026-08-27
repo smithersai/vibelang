@@ -1,0 +1,37 @@
+import { panic } from "smithers:exceptions"
+
+// The panic intrinsic reached through a `const` value alias is still the panic
+// intrinsic; so is the parenthesised spelling and the ambient `Reflect.panic`.
+const abort = panic
+
+function force(key: string): string {
+  if (key !== "ada") {
+    panic`no entry`
+  }
+  return key
+}
+
+function forceAliased(key: string): string {
+  if (key !== "ada") {
+    abort`no entry`
+  }
+  return key
+}
+
+function forceWrapped(key: string): string {
+  if (key !== "ada") {
+    (panic satisfies typeof panic)`no entry`
+  }
+  return key
+}
+
+function forceAmbient(key: string): string {
+  if (key !== "ada") {
+    Reflect.panic`no entry`
+  }
+  return key
+}
+
+export function main(): string[] {
+  return [force("ada"), forceAliased("ada"), forceWrapped("ada"), forceAmbient("ada")]
+}

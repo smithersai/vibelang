@@ -1,0 +1,11 @@
+import { Panic } from "smithers:exceptions"
+import { declaredAsync } from "./throws-claims.ts"
+
+async function read(): Promise<Result<string, TypeError | Panic>> {
+  return await declaredAsync()
+}
+
+export async function main(): Promise<string[]> {
+  const rejected = await read()
+  return [rejected.match({ ok: (value) => `ok ${value}`, error: (error) => `error ${error.message}` })]
+}

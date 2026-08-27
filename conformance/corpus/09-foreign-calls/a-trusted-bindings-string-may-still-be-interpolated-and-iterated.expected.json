@@ -1,0 +1,12 @@
+{
+  "title": "a trusted binding's `string` may still be interpolated and iterated, because `String.prototype`'s protocol members belong to the language and not to the foreign module",
+  "expect": "output",
+  "stdout": [
+    "s",
+    "1"
+  ],
+  "typescript": [
+    "throws-claims.ts"
+  ],
+  "notes": "poc/src/language/README.md, on `SMITHERS1506`: 'Two gates keep it from widening: the value must have foreign provenance, and `foreignValueCanExecute` must be true, so a trusted binding's `string` may still be interpolated, iterated and spread because `String.prototype`'s protocol members are the language's, not the module's.' Provenance alone is not sufficient — this value came out of a foreign module and is still safe to coerce — so this case pins the second gate specifically. Without it, the narrowest correct reading of the rule and a much broader wrong one are indistinguishable."
+}

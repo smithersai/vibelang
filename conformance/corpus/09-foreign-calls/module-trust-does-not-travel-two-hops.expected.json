@@ -1,0 +1,18 @@
+{
+  "title": "two properly marked relays in front of an unmarked initializer are still not a trust claim for it — depth is not a bound on the rule",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 24,
+      "messageContains": "@module and @throws {never}"
+    }
+  ],
+  "typescript": [
+    "trusted-relay-to-trusted-middle.ts",
+    "trusted-relay-middle.ts",
+    "unmarked-relay-target.ts"
+  ],
+  "notes": "specification/failures.mdx, 'Foreign Exceptions' (Locked). The two cases in front of this one fix the rule at depth two; this one fixes that the rule is over the reached-module CLOSURE and not over a second hard-coded level. It reaches exactly the same conformance/support/unmarked-relay-target.ts that 09-foreign-calls/an-unmarked-module-behind-a-trusted-relay-is-refused reaches, through one extra properly marked relay, and conformance/support/trusted-relay-middle.ts is deliberately character-for-character identical to conformance/support/trusted-relay-to-unmarked-target.ts apart from its comment — so the ONLY difference between the two programs is the number of marked hops, and the two verdicts must be the same. An implementation that answers depth one and depth two by unrolling the check twice passes the sibling and fails here, which is the specific shape the pair is built to catch; a breadth-first walk over the closure passes both by construction. Both backends were measured on 2026-08-27 running the unmarked initializer at depth three (and at depth five, on the fork's own matrix) before the fix. The message at this depth additionally names the intermediate relay in a parenthesized 'through ...' clause on both backends, which is the dependency path the rule's diagnostic should show; the case does not declare that clause because it prints an internal staged file name that legitimately differs between the backends (the reference's generated `.ts.__smithers_generated__.ts` name against the fork's virtual `/src/` path), and message wording is not the contract. The declared messageContains is the marker the author has to write, verbatim on both. Only `typeof` is applied to the binding. The over-correction guards that must keep passing are 09-foreign-calls/a-marked-chain-confers-trust-at-every-depth — a marked chain still compiles and RUNS at every depth — and 09-foreign-calls/a-deferred-foreign-loader-needs-no-marker-behind-it."
+}

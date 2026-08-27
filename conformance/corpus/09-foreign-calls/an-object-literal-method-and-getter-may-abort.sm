@@ -1,0 +1,15 @@
+import { panic } from "smithers:exceptions"
+
+const box = {
+  read(ok: boolean): string {
+    if (!ok) panic("forged")
+    return "real"
+  },
+  get label(): string {
+    panic("no label")
+  },
+}
+
+export function main(): string[] {
+  return [box.read(true)]
+}

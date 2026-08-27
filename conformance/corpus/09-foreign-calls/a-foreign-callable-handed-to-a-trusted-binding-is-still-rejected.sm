@@ -1,0 +1,7 @@
+import { onSignal, getHandler } from "./callback-host.ts"
+
+export function main(): string[] {
+  const handler = getHandler()
+  onSignal("SIGINT", handler)
+  return []
+}

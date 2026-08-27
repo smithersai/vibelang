@@ -1,0 +1,4 @@
+export async function main(chosen: string): Promise<string[]> {
+  const picked = await import(chosen)
+  return [`${typeof picked}`]
+}

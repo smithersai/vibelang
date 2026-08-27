@@ -1,0 +1,11 @@
+{
+  "title": "two IDENTICAL `@throws` claims on one declaration are redundant rather than contradictory, and still trust the call",
+  "expect": "output",
+  "stdout": [
+    "ok"
+  ],
+  "typescript": [
+    "throws-claims.ts"
+  ],
+  "notes": "poc/src/language/README.md, `SMITHERS1502`, refuses a declaration carrying more than one DISTINCT `@throws` claim. Duplicating the same claim states one thing twice and contradicts nothing, so the call is still trusted and still runs. The obvious wrong implementation of the contradiction rule counts tags rather than distinct claims, and it would refuse this program while satisfying both order cases above; this is the case that separates them. DIRECTION, NOT LOCKED \u2014 and this case says so rather than claiming an obligation it does not have. docs/DECISIONS.md carries `@throws` overload resolution, multiple annotations and declaration merging as a **Direction** entry: \"Exact rules for overloads, multiple annotations, declaration merging, validation, and generic error types remain to be specified\", and conformance/COVERAGE.md 7.16 records that surface as unwritable for exactly that reason. What IS Locked is the default and its direction: compatibility.mdx \u00a7Foreign Boundary makes the panic case a MUST on every unannotated foreign call, and DECISIONS.md (Locked) makes `@throws {never}` \"a trusted opt-out from the default `panic` case\" \u2014 one claim, about one call. A claim the compiler cannot reduce to a single usable answer for the call in front of it therefore does not opt out, and the MUST stands. This case pins that fail-closed reading and the implementations' chosen behaviour, which BOTH BACKENDS AGREE ON; it does not settle the Direction entry. If the specification later chooses a different rule, THIS CASE IS REWRITTEN \u2014 it is not evidence against the new sentence."
+}

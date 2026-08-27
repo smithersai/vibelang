@@ -1,0 +1,11 @@
+{
+  "title": "an UNMARKED async foreign binding still charges exactly the panic case and nothing more: refusing the marker did not change the unmarked spelling",
+  "expect": "output",
+  "stdout": [
+    "panic"
+  ],
+  "typescript": [
+    "throws-claims.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" This is the control for a-trusted-async-binding-keeps-its-rejection-channel. Making `@throws {never}` on an async binding a refusal could have been implemented by charging something extra everywhere, and nothing in a refusal-only corpus would have noticed. Here the same module, the same rejection, and no marker: the row is exactly `Panic`, the contract that names it is accepted, and the program runs. `Panic` is imported rather than named bare because a bare `Panic` type adds SMITHERS1104 on the fork — the divergence 09-foreign-calls/a-bare-panic-type-resolves-without-an-import already records."
+}

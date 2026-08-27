@@ -1,0 +1,5 @@
+import { probe } from "./upper-throws-tag.ts"
+
+export function main(): string[] {
+  return [probe("ada")]
+}

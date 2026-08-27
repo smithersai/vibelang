@@ -1,0 +1,12 @@
+import { panic } from "smithers:exceptions"
+
+// A library invariant failure: the receiver is a forgery. The function keeps a
+// plain return type; the panic aborts rather than widening the contract.
+function guarded(ok: boolean): string {
+  if (!ok) panic("forged value")
+  return "real"
+}
+
+export function main(): string[] {
+  return [guarded(true)]
+}

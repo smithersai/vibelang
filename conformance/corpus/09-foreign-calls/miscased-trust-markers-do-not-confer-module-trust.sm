@@ -1,0 +1,10 @@
+import { config } from "./miscased-never-module.ts"
+import { settings } from "./miscased-module-tag.ts"
+import { options } from "./miscased-throws-tag.ts"
+
+// Three near misses, one rule: the trust marker is matched with the exact
+// case the specification prints. Only `typeof` is applied to each binding,
+// so the declared diagnostics are the trust rule itself and nothing else.
+export function main(): string[] {
+  return [typeof config, typeof settings, typeof options]
+}

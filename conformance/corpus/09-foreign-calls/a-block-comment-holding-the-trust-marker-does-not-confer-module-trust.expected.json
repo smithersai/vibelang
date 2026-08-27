@@ -1,0 +1,22 @@
+{
+  "title": "a one-asterisk block comment is not a JSDoc, and neither is a block comment whose content begins /**; neither confers module trust",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 26,
+      "messageContains": "@module and @throws {never}"
+    },
+    {
+      "code": "SMITHERS1510",
+      "line": 2,
+      "column": 25
+    }
+  ],
+  "typescript": [
+    "block-comment-trust-marker.ts",
+    "nested-jsdoc-block-comment-trust-marker.ts"
+  ],
+  "notes": "specification/compatibility.mdx, 'Runtime TypeScript Dependency' (Locked), and specification/failures.mdx:115: 'The compiler MUST recognize trusted JSDoc/declaration metadata at the boundary.' The two modules are the two halves of one boundary, and they are in one case because a fix that closes either one alone is a fix that still reads the leading text as a string. THE FIRST MODULE was already refused by all three implementations before round 7 — `/* @module @throws {never} */` contains no `/**` for a substring scan to find — and it had NO CASE. It is declared here as the positive control that makes the second one mean something: without it, 'the comment kind is what matters' is pinned only where the two spellings differ, and a fix could satisfy the second by testing for the LITERAL PREFIX `/*` with the wrong arity and still be a text search. THE SECOND MODULE is the defect. `/* /** @module @throws {never} */` is one ordinary block comment that ends at the first `*/`; the scanner never emits a JSDoc token for it. Measured before the fix, on ALL THREE implementations — reference, Go fork, and the CLI's runtime graph — this module was TRUSTED and its initializer was observed RUNNING under a runtime oracle, with no diagnostic. Both diagnostics are declared, so a partial fix stays visible here. The JSDoc test the implementations now share is the scanner's own: a multi-line comment whose text starts `/**` and is not the empty `/**/`, which is literally the condition TypeScript's own scanner spells. Its sibling spelling is 09-foreign-calls/a-line-comment-holding-the-trust-marker-does-not-confer-module-trust, and the reason the obvious repair (parsed JSDoc tags) is worse than the defect is recorded there with its measurement. The paired positives that must keep passing are 09-foreign-calls/a-multiline-module-trust-header-is-honoured and 09-foreign-calls/ordinary-whitespace-in-the-trust-marker-still-confers-module-trust; `/**/` followed by a real marker was also measured still trusted. The declared messageContains sits on the first diagnostic, for the reason 09-foreign-calls/miscased-trust-markers-do-not-confer-module-trust records; nothing sits above either JSDoc in the support files, for the same reason."
+}

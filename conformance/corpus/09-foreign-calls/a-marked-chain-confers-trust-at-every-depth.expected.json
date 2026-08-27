@@ -1,0 +1,12 @@
+{
+  "title": "a chain of properly marked foreign modules still compiles and runs — the closure refuses an unmarked initializer, not a transitive edge",
+  "expect": "output",
+  "stdout": [
+    "object"
+  ],
+  "typescript": [
+    "trusted-relay-to-trusted-target.ts",
+    "trusted-relay-target.ts"
+  ],
+  "notes": "THE OVER-CORRECTION GUARD for the reached-module closure, and this repository has shipped ten over-corrections, so the guard lands in the same revision as the three refusals. specification/failures.mdx, 'Foreign Exceptions' (Locked): `@throws {never}` REMOVES the default panic case, so a module that writes the marker is trusted and a `.sm` may import it. Nothing in that rule is conditioned on how far the module sits from the authored import, which is why the three refusal cases beside this one must not be satisfiable by refusing every transitive edge. conformance/support/trusted-relay-to-trusted-target.ts is the same shape as conformance/support/trusted-relay-to-unmarked-target.ts and the only difference between this program and 09-foreign-calls/an-unmarked-module-behind-a-trusted-relay-is-refused is whether the module at the end of the edge wrote the marker — so an implementation that reads 'transitive' where the rule says 'unmarked' fails exactly here. It is an `expect: \"output\"` case rather than a clean-compile case ON PURPOSE: a diagnostics assertion cannot tell 'trusted' from 'silently dropped', and the emitted program printing `object` is the evidence that conformance/support/trusted-relay-target.ts's initializer really was evaluated and its `config` really reached `main`. The first attempt at the reference fix seeded the closure from every trusted depth-one target and turned poc/src/language/capability-seams.test.ts red, because poc/src/runtime/result.ts and poc/src/runtime/panic.ts deliberately carry NO marker and that unmarkedness is the prelude forgery guarantee; that class of over-correction is a compiler-internal edge this case cannot reach, and the seam test remains its pin. What this case pins is the authored-program half. Its deferral counterpart is 09-foreign-calls/a-deferred-foreign-loader-needs-no-marker-behind-it, and the depth-one positives that must also keep passing are 09-foreign-calls/a-multiline-module-trust-header-is-honoured and 09-foreign-calls/ordinary-whitespace-in-the-trust-marker-still-confers-module-trust."
+}

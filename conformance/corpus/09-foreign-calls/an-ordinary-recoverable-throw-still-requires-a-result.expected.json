@@ -1,0 +1,12 @@
+{
+  "title": "an ordinary recoverable throw still requires a Result contract — the non-widening rule is scoped to panic",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 7,
+      "column": 1
+    }
+  ],
+  "notes": "MANDATORY GUARD, and the control the whole section depends on. specification/failures.mdx: 'A function whose body can produce a recoverable failure MUST return or infer Result<A, E>', and docs/DECISIONS.md (Locked) says the same for an unannotated function that reaches `throw error`. §Panic Does Not Widen a Return Type is scoped to `panic(...)` and derives itself from the fact that panic is tracked SEPARATELY from ordinary recoverable Error variants; if `throw new Missing(...)` stopped widening too, the derivation would have no premise left and the recoverable channel would be deleted outright. Measured SMITHERS1101@7:1 identically on both backends before and after the rule landed — unchanged, which is the evidence that the rule was implemented at the panic and not at the widening. This case is a `diagnostics` case and therefore exact in both directions: a backend that stopped reporting it, and a backend that added a second diagnostic, both turn it red."
+}

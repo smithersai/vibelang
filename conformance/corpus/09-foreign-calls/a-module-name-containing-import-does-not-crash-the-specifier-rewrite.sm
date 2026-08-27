@@ -1,0 +1,5 @@
+import { greet } from "./a-module-name-containing-import-does-not-crash-the-specifier-rewrite.mod.sm"
+
+export function main(): string[] {
+  return [greet("ada")]
+}

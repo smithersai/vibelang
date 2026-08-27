@@ -1,0 +1,30 @@
+import { double } from "./foreign.ts"
+import { trustedTag, giveString } from "./throws-claims.ts"
+
+// A LOCAL object. Nothing about it is foreign, so no wrapper around it may
+// introduce a foreign-boundary refusal.
+const local = { retries: 3 }
+
+function ordinarySatisfies(): number { return (local satisfies { readonly retries: number }).retries }
+function ordinaryCast(): number { return (local as { readonly retries: number }).retries }
+function ordinaryAnnotation(): number { const held: { readonly retries: number } = local; return held.retries }
+
+// Trusted foreign declarations reached through `satisfies` and through a
+// parenthesis. The marker survives both, so the calls stay outside the panic
+// channel and the values reach ordinary checked code.
+function trustedCalleeThroughSatisfies(): number { return (double satisfies (value: number) => number)(2) }
+function trustedCalleeParenthesised(): number { return (double)(3) }
+function trustedTagThroughSatisfies(): string { return (trustedTag satisfies (strings: TemplateStringsArray) => string)`a` }
+function trustedStringThroughSatisfies(): string { return (giveString satisfies () => string)() }
+
+export function main(): string[] {
+  return [
+    `${ordinarySatisfies()}`,
+    `${ordinaryCast()}`,
+    `${ordinaryAnnotation()}`,
+    `${trustedCalleeThroughSatisfies()}`,
+    `${trustedCalleeParenthesised()}`,
+    trustedTagThroughSatisfies(),
+    trustedStringThroughSatisfies(),
+  ]
+}

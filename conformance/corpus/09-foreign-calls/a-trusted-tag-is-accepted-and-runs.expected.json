@@ -1,0 +1,11 @@
+{
+  "title": "a template tag whose resolved signature declares `@throws {never}` is trusted and runs, so the tagged-template rule did not widen",
+  "expect": "output",
+  "stdout": [
+    "hello"
+  ],
+  "typescript": [
+    "throws-claims.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" 'Trusted `@throws {never}` metadata opts out.' This is the acceptance that pairs with 09-foreign-calls/a-foreign-tagged-template-is-a-call-with-no-call-expression. A refusal rule with no acceptance beside it can be satisfied by refusing everything, and the tagged-template spelling is a form no earlier case exercised in either direction."
+}

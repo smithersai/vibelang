@@ -1,0 +1,9 @@
+{
+  "title": "a panic leaves a plain-return function by unwinding, and only an explicit boundary turns it back into a value",
+  "expect": "output",
+  "stdout": [
+    "real",
+    "panic: forged value"
+  ],
+  "notes": "specification/failures.mdx §Panic Does Not Widen a Return Type: 'Calling `panic(...)` MUST NOT force a function's return type to widen into `Result<A, Panic>`.' and 'A function that validates an argument, refuses a forgery, or asserts an invariant MUST therefore be able to abort with `panic(...)` while keeping a plain return type.' docs/DECISIONS.md carries the matching Locked entry ('Calling `panic(...)` does not widen a return type into `Result<A, Panic>` … the prohibition is on the compiler forcing it'). `E` is the expected-error channel (reference/function-channels.mdx) and a panic is not an expected error, so a construct that aborts with `panic(...)` keeps whatever return type it declares. This is the executed proof of the mechanism the whole section rests on, and it is the reason the section is not merely a relaxation. specification/failures.mdx: 'Ordinary Result recovery MUST NOT swallow panic implicitly', and 'An author MAY still annotate Result<A, Panic> explicitly to materialize a panic as a value; that is how panic is made explicitly catchable.' Line 1 shows the ordinary return still works; line 2 shows the abort is observable ONLY because Result.try was written. 09-foreign-calls/unwrap-or-cannot-reach-a-panicking-plain-return-type and 09-foreign-calls/recover-cannot-reach-a-panicking-plain-return-type are the other direction: the implicit recovery surfaces are not merely wrong to use here, they do not exist. This is also the only corpus shape that can observe the abort at all, because the harness has no 'aborts at runtime' expectation kind."
+}

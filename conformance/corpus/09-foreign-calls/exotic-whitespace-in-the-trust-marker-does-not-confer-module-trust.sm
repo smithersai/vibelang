@@ -1,0 +1,9 @@
+import { limits } from "./nbsp-trust-marker.ts"
+
+// The braces of the opt-out are separated from `never` by U+00A0 NO-BREAK
+// SPACE, which is not JSDoc whitespace, so the braces hold a type whose
+// spelling is not `never`. Only `typeof` is applied to the binding, so the
+// declared diagnostic is the trust rule itself and nothing else.
+export function main(): string[] {
+  return [typeof limits]
+}

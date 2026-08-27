@@ -1,0 +1,5 @@
+import { iterable } from "./implicit-invocation-host.ts"
+
+export function main(): number {
+  return [...iterable].length
+}

@@ -1,0 +1,11 @@
+{
+  "title": "a foreign module that carries the module-initialization trust claim keeps it when the edge is spelled dynamically",
+  "expect": "output",
+  "stdout": [
+    "function"
+  ],
+  "typescript": [
+    "foreign.ts"
+  ],
+  "notes": "poc/src/language/README.md's module-initialization rule and SMITHERS1510 exist because a foreign ESM initializer can fail before any checked call boundary exists. The hazard is a property of the TARGET, not of the syntax of the edge: a module carrying a leading `@module` / `@throws {never}` claim has answered that question, and re-spelling `import` as `import()` does not un-answer it. The deliberate PAIR with 09-foreign-calls/a-dynamic-import-of-an-untrusted-foreign-module-is-refused and 09-foreign-calls/a-dynamic-import-of-a-project-module-is-not-a-foreign-module-edge, which pin the other two targets. Read all three together: the rule is about the target's trust, in every spelling. This case deliberately says NOTHING about whether the dynamic edge should exist at all — docs/DECISIONS.md:296 is Locked that 'arbitrary dynamic import expressions remain available' while the SMITHERS1510 model would refuse untrusted targets however they are reached, and that ledger question stays open. If it is settled against dynamic foreign edges, retire this case rather than reinterpreting it."
+}

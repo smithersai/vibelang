@@ -1,0 +1,8 @@
+{
+  "title": "Reflect.panic under a plain return type is the same abort as the imported panic(...)",
+  "expect": "output",
+  "stdout": [
+    "real"
+  ],
+  "notes": "specification/failures.mdx §Panic Does Not Widen a Return Type: 'Calling `panic(...)` MUST NOT force a function's return type to widen into `Result<A, Panic>`.' and 'A function that validates an argument, refuses a forgery, or asserts an invariant MUST therefore be able to abort with `panic(...)` while keeping a plain return type.' docs/DECISIONS.md carries the matching Locked entry ('Calling `panic(...)` does not widen a return type into `Result<A, Panic>` … the prohibition is on the compiler forcing it'). `E` is the expected-error channel (reference/function-channels.mdx) and a panic is not an expected error, so a construct that aborts with `panic(...)` keeps whatever return type it declares. docs/DECISIONS.md (Locked) and specification/failures.mdx both say 'Reflect.panic and compiler/runtime invariant failures enter the same distinguished channel', so the non-widening rule reaches the ambient spelling too or the two spellings are not the same channel. 09-foreign-calls/reflect-panic-enters-the-panic-channel is the annotated twin and is unchanged: with Result<A, Panic> spelled, Reflect.panic still materializes into the error branch. Measured SMITHERS1101 before the rule landed. The Go fork additionally needed a lowering change for this form, because its prelude declares `Reflect.panic` and never installs it, so a non-materializing call left in place aborted with a TypeError instead of a Panic."
+}

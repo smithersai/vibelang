@@ -1,0 +1,17 @@
+{
+  "title": "a properly marked relay does not lend its module-initialization trust to the @MODULE near miss it re-exports from",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 1,
+      "column": 24,
+      "messageContains": "@module and @throws {never}"
+    }
+  ],
+  "typescript": [
+    "trusted-relay-to-miscased-target.ts",
+    "miscased-relay-target.ts"
+  ],
+  "notes": "specification/failures.mdx, 'Foreign Exceptions' (Locked), and specification/compatibility.mdx, 'Foreign Boundary' (Locked): the compiler MUST recognize the trusted module-initialization marker at the boundary, and `@throws {never}` is what removes the default panic case. This is the DEPTH half of that rule, and until 2026-08-27 it did not exist in either implementation. 09-foreign-calls/miscased-trust-markers-do-not-confer-module-trust already pins that `@MODULE` is not `@module` when the authored `.sm` imports the miscased file DIRECTLY. Move that same file one edge away — behind a relay whose own marker is the exact documented spelling — and both backends accepted it and, measured with a module-scope oracle, RAN its initializer. Two independent lanes measured that on 2026-08-27 (22 fail-open cells on the reference, all executing; 21 on the fork) and closed it; this case is what makes the closure catchable, because before it landed NO case in the 493-case corpus exercised a foreign edge at depth two or more at all, and the corpus reported `0 divergent` throughout the seven rounds the defect survived. The declared position is the AUTHORED import specifier, which is the only text in this file its author can change, and it is the same anchor 09-foreign-calls/miscased-trust-markers-do-not-confer-module-trust and 09-foreign-calls/near-miss-trust-markers-do-not-confer-module-trust already declare. The declared messageContains is the marker the author has to write: code and position alone are satisfied by a refusal for some unrelated reason, and the whole risk here is a refusal for the WRONG reason, since the relay's own marker is correct and an implementation that misread it would refuse at the same line and column. The fragment is verbatim in both backends' messages, whose wording otherwise differs (the reference says 'a leading JSDoc containing both', the fork 'a leading ... initialization trust claim'), which is why the case names the fragment and not the sentence. Its separated sibling is 09-foreign-calls/an-unmarked-module-behind-a-trusted-relay-is-refused, which is the same shape with NO marker rather than a miscased one: together they say the closure asked the question AND got the right answer, where either alone is satisfied by a closure that refuses everything transitive. The over-correction guards that must keep passing are 09-foreign-calls/a-marked-chain-confers-trust-at-every-depth and 09-foreign-calls/a-deferred-foreign-loader-needs-no-marker-behind-it; this repository has shipped ten over-corrections, so they land in the same revision. Only `typeof` is applied to the binding, so reading a property of an untrusted foreign module adds no SMITHERS1101/1506 cascade to bury the rule under."
+}

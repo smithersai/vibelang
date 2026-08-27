@@ -1,0 +1,10 @@
+import { Panic } from "smithers:exceptions"
+import { lookup, Chosen } from "./lying-channel.ts"
+
+export function run(key: string): Result<string, Chosen | Panic> {
+  return lookup(key)
+}
+
+export function main(): string[] {
+  return [run("k").match({ ok: (value) => "ok:" + value, error: (failure) => "error:" + failure.name })]
+}

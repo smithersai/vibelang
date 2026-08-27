@@ -1,0 +1,21 @@
+{
+  "title": "the same two contradictory `@throws` claims in the opposite source order give the same verdict at the same position",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1502",
+      "line": 4,
+      "column": 10,
+      "messageContains": "({TypeError} and {never})"
+    }
+  ],
+  "typescript": [
+    "throws-claims.ts"
+  ],
+  "notes": "The pair with a-never-claim-followed-by-a-declared-channel-is-refused, and the pair IS the promise: source order is not a semantic. poc/src/language/README.md, `SMITHERS1502`: 'taking the first tag made `{never}` then `{TypeError}` trust the binding AND drop the declared channel, while the identical pair in the opposite order refused it \u2014 the same two claims must not give opposite verdicts, and only one order failed closed.' Either case alone can be satisfied by a rule that reads only the first tag, so only the two together pin symmetry. If one of these ever goes red without the other, the reading order has come back. The SMITHERS1502 declares a `messageContains` because code and position alone cannot tell these two cases apart: their diagnostic sets are byte-identical, so one refusal would satisfy both, and SMITHERS1502 covers a SECOND rule (the async/Promise marker) that fires at exactly this shape of position. The fragment is the two claims IN SOURCE ORDER, which is the evidence that the rule read every tag on the declaration rather than the first one \u2014 reading only the first is the defect this pair exists to pin, and a refusal that had read only the first would still be a SMITHERS1502 at column 10. It is not a fragment that names the rule: it names this program's own two claims, and it differs between the two cases. Both backends emit this message byte-identically. DIRECTION, NOT LOCKED \u2014 and this case says so rather than claiming an obligation it does not have. docs/DECISIONS.md carries `@throws` overload resolution, multiple annotations and declaration merging as a **Direction** entry: \"Exact rules for overloads, multiple annotations, declaration merging, validation, and generic error types remain to be specified\", and conformance/COVERAGE.md 7.16 records that surface as unwritable for exactly that reason. What IS Locked is the default and its direction: compatibility.mdx \u00a7Foreign Boundary makes the panic case a MUST on every unannotated foreign call, and DECISIONS.md (Locked) makes `@throws {never}` \"a trusted opt-out from the default `panic` case\" \u2014 one claim, about one call. A claim the compiler cannot reduce to a single usable answer for the call in front of it therefore does not opt out, and the MUST stands. This case pins that fail-closed reading and the implementations' chosen behaviour, which BOTH BACKENDS AGREE ON; it does not settle the Direction entry. If the specification later chooses a different rule, THIS CASE IS REWRITTEN \u2014 it is not evidence against the new sentence."
+}

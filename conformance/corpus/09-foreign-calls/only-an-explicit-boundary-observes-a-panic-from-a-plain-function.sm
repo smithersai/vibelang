@@ -1,0 +1,17 @@
+import { panic } from "smithers:exceptions"
+
+// `guarded` keeps a plain return type: the panic is not in its expected-error
+// channel, so it leaves the function by unwinding. `Result.try` is the explicit
+// boundary that turns that unwind into a value; nothing implicit does.
+function guarded(ok: boolean): string {
+  if (!ok) panic("forged value")
+  return "real"
+}
+
+export function main(): string[] {
+  const caught = Result.try(() => guarded(false))
+  return [
+    guarded(true),
+    caught.match({ ok: (value) => value, error: (error) => `panic: ${error.message}` }),
+  ]
+}

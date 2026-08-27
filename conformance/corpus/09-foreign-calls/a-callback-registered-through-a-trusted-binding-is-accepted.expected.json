@@ -1,0 +1,11 @@
+{
+  "title": "a callback handed to a trusted @throws {never} binding is accepted, because the claim is about the call",
+  "expect": "output",
+  "stdout": [
+    "saw SIGINT"
+  ],
+  "typescript": [
+    "callback-host.ts"
+  ],
+  "notes": "specification/compatibility.mdx, 'Foreign Boundary' (Locked): \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration. Trusted `@throws {never}` metadata opts out; `@throws {T}` declares a more precise channel.\" The subject of that sentence is the CALL, so the claim covers what the call does with an argument it was handed. specification/requirements.mdx, 'Scoping' (Locked), assigns the deferred half elsewhere: \"Imported JavaScript or TypeScript that starts hidden background work owns that work. Caller-controlled background APIs MUST expose explicit completion or disposal handles through their adapters.\" And specification/failures.mdx, 'Panic Does Not Widen a Return Type', is why the third reading — that the callback must independently be panic-free — is not available at all: every `.sm` function may abort with `panic(...)` while keeping a plain return type, so panic-freedom is not spellable and a rule demanding it would admit nothing. This is the only route in the language for `process.on`, `setTimeout`, `socket.on` or `readline`: until 2026-08-25 SMITHERS1509 claimed EVERY callable argument at EVERY foreign call, so routing a host registration through a binding produced the same refusal the binding existed to remove. The paired refusal is 09-foreign-calls/a-callback-handed-to-an-untrusted-host-is-still-rejected, which is the same program against the untrusted export of the SAME module — so nothing but the marker can be doing the work. The stdout is produced by the listener, so a registration that was accepted without ever running would not satisfy this."
+}

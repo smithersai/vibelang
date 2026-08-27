@@ -1,0 +1,12 @@
+{
+  "title": "a panic(...) inside a class static initializer block is still refused",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1107",
+      "line": 4,
+      "column": 3
+    }
+  ],
+  "notes": "A class static initializer block is refused wholesale by SMITHERS1107 \u2014 the refusal is about the construct, not about what is inside it, so it is untouched by specification/failures.mdx \u00a7Panic Does Not Widen a Return Type. That is exactly why it is worth a case: the panic non-widening rule removed SMITHERS1101 from every OTHER member of a class (methods, accessors, constructors, generators, object-literal members \u2014 see 09-foreign-calls/a-constructor-a-getter-and-a-setter-may-all-abort and its siblings), and a static block looks like one more member of that list while being governed by a different rule. Measured SMITHERS1107@4:3 identically on both backends before and after the rule landed \u2014 UNCHANGED. Its pair is 09-foreign-calls/a-top-level-panic-is-still-refused; both are lowering boundaries rather than specification sentences, both are pinned because an unpinned boundary is one the other implementation can put somewhere else, and both are rewritten to the accepted direction rather than deleted if the lowerer ever learns to emit a panic in these positions."
+}

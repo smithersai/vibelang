@@ -1,0 +1,8 @@
+{
+  "title": "an instance method and a static method may each abort with panic(...) while keeping a plain return type",
+  "expect": "output",
+  "stdout": [
+    "real"
+  ],
+  "notes": "specification/failures.mdx §Panic Does Not Widen a Return Type: 'Calling `panic(...)` MUST NOT force a function's return type to widen into `Result<A, Panic>`.' and 'A function that validates an argument, refuses a forgery, or asserts an invariant MUST therefore be able to abort with `panic(...)` while keeping a plain return type.' docs/DECISIONS.md carries the matching Locked entry ('Calling `panic(...)` does not widen a return type into `Result<A, Panic>` … the prohibition is on the compiler forcing it'). `E` is the expected-error channel (reference/function-channels.mdx) and a panic is not an expected error, so a construct that aborts with `panic(...)` keeps whatever return type it declares. Methods are a separate form from function declarations in the checker and were separately broken: both drew SMITHERS1101 at the method's own position before the rule landed. The static factory is the load-bearing half — a factory forced to return Result<Box, Panic> cannot be chained, which is what the executed `Box.make(true).read(true)` here demonstrates is legal again."
+}

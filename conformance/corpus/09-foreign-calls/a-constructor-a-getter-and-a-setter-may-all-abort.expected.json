@@ -1,0 +1,8 @@
+{
+  "title": "a constructor, a getter and a setter may each abort with panic(...) — the three members that can carry no Result channel at all",
+  "expect": "output",
+  "stdout": [
+    "5"
+  ],
+  "notes": "specification/failures.mdx §Panic Does Not Widen a Return Type: 'Calling `panic(...)` MUST NOT force a function's return type to widen into `Result<A, Panic>`.' and 'A function that validates an argument, refuses a forgery, or asserts an invariant MUST therefore be able to abort with `panic(...)` while keeping a plain return type.' docs/DECISIONS.md carries the matching Locked entry ('Calling `panic(...)` does not widen a return type into `Result<A, Panic>` … the prohibition is on the compiler forcing it'). `E` is the expected-error channel (reference/function-channels.mdx) and a panic is not an expected error, so a construct that aborts with `panic(...)` keeps whatever return type it declares. These are exactly the members SMITHERS1105 forbids a Result channel to, so before the rule landed each of them had a panic it could not legally express: the reference reported SMITHERS1105 and the fork, which implements no SMITHERS1105, reported nothing for the constructor and setter at all. Argument validation in a constructor is the single most common place an invariant is asserted, and it was the form with the least workable alternative. All three are executed here: the constructor validates, the setter validates, and the getter reads back the value the setter stored."
+}

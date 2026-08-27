@@ -1,0 +1,10 @@
+import { config } from "./trusted-relay-to-trusted-target.ts"
+
+// THE OVER-CORRECTION GUARD. Both modules on this chain wrote the marker, so
+// the program compiles and RUNS: an implementation that refuses a transitive
+// foreign edge because it is transitive, rather than because the module it
+// reaches made no claim, fails here. It is an `expect: "output"` case so the
+// reached module's initializer really is evaluated.
+export function main(): string[] {
+  return [typeof config]
+}

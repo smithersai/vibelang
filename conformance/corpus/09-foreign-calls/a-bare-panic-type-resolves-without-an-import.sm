@@ -1,0 +1,6 @@
+import { shout } from "./untrusted.ts"
+
+export function main(): Result<string[], Panic> {
+  const loud = shout("hello")!
+  return [loud]
+}

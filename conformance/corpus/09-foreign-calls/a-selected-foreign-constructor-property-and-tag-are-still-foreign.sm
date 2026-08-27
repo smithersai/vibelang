@@ -1,0 +1,32 @@
+import { Counter, settings } from "./foreign.ts"
+import { tag } from "./implicit-invocation-host.ts"
+
+// Local alternates. Every selector below pairs a FOREIGN operand with a local
+// one, so a rule that looked at only one branch has a branch it could look at
+// and be wrong: the answer must be the foreign one whichever side it sits on.
+class LocalCounter {
+  constructor(readonly start: number) {}
+}
+const localSettings = { retries: 0 }
+function localTag(parts: TemplateStringsArray): string { return parts[0] }
+
+const pick: boolean = Boolean(1)
+
+function ctorNullish() { const made = new (Counter ?? LocalCounter)(1); return "made" }
+function ctorOr() { const made = new (Counter || LocalCounter)(1); return "made" }
+function ctorAnd() { const made = new (LocalCounter && Counter)(1); return "made" }
+function ctorTernary() { const made = new (pick ? Counter : LocalCounter)(1); return "made" }
+function ctorComma() { const made = new ((LocalCounter, Counter))(1); return "made" }
+function ctorConstHeld() { const held = Counter ?? LocalCounter; const made = new held(1); return "made" }
+
+function propNullish() { return (settings ?? localSettings).retries }
+function propOr() { return (settings || localSettings).retries }
+function propAnd() { return (localSettings && settings).retries }
+function propTernary() { return (pick ? settings : localSettings).retries }
+function propComma() { return ((localSettings, settings)).retries }
+function propConstHeld() { const held = settings ?? localSettings; return held.retries }
+function propCastOverTheSelection() { return ((settings ?? localSettings) as { readonly retries: number }).retries }
+
+function tagNullish(): string { return (tag ?? localTag)`x` }
+function tagOr(): string { return (tag || localTag)`x` }
+function tagTernary(): string { return (pick ? tag : localTag)`x` }

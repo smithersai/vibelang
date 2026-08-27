@@ -1,0 +1,37 @@
+import { panic } from "smithers:exceptions"
+
+// The NAME stays resolvable and only the tag OPERATION is refused: `panic` is
+// still importable, still callable, and still assignable, and an unrelated tag
+// that happens to be named `panic` is an ordinary tagged template.
+const abort = panic
+
+/** @throws {never} */
+function panicTag(parts: TemplateStringsArray): string {
+  return parts.join("|")
+}
+
+const local = { panic: (parts: TemplateStringsArray): string => parts.join("/") }
+
+function force(key: string): string {
+  if (key !== "ada") {
+    panic(`no entry for ${key}`)
+  }
+  return key
+}
+
+function forceAliased(key: string): string {
+  if (key !== "ada") {
+    abort(`no entry for ${key}`)
+  }
+  return key
+}
+
+export function main(): string[] {
+  return [
+    force("ada"),
+    forceAliased("ada"),
+    panicTag`a`,
+    local.panic`b`,
+    String.raw`c`,
+  ]
+}

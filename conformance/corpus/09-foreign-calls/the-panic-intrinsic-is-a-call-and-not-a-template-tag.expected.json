@@ -1,0 +1,27 @@
+{
+  "title": "panic in a tag position is not a lowerable panic exit: the bare identifier, a const alias, a satisfies wrapper and the ambient Reflect.panic member are each refused at the authored tag",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1503",
+      "line": 9,
+      "column": 5
+    },
+    {
+      "code": "SMITHERS1503",
+      "line": 16,
+      "column": 5
+    },
+    {
+      "code": "SMITHERS1503",
+      "line": 23,
+      "column": 5
+    },
+    {
+      "code": "SMITHERS1503",
+      "line": 30,
+      "column": 5
+    }
+  ],
+  "notes": "specification/failures.mdx (Locked): 'A caller MUST propagate panic, explicitly catch it, or use a trusted adapter that catches and translates it. `panic` is imported from `smithers:exceptions` and accepts an optional message or underlying Error.' and '`Reflect.panic` and compiler/runtime invariant failures enter the same distinguished panic channel.' A tagged template is a CALL WITH NO CALL EXPRESSION: the argument the runtime hands the tag is a `TemplateStringsArray`, not the string the author wrote. This is a POC LOWERING BOUNDARY rather than a specification sentence and is declared as such, at the code that boundary already carries — `SMITHERS1503`, the same code `panic-outside-a-statement-or-return-is-rejected` declares for the same boundary in the conditional-arm position (`poc/src/language/semantic.ts`, `isSimplePanicExit`). The shape of the answer is `SMITHERS1604`'s settled rule, refuse the OPERATION and leave the NAME resolvable, which is why this case has an acceptance guard rather than standing alone. WHY THIS CASE EXISTS: **before 2026-08-27 BOTH backends accepted all four of these programs**, so there was no divergence to report and a 498-case corpus reporting `0 divergent` was blind to the whole family. The fork lowered `` Reflect.panic`no entry` `` into a runtime `TypeError: Reflect.panic is not a function` — a panic intrinsic turned into a host crash by the compiler that was supposed to recognize it. WHY THESE FOUR SPELLINGS AND NO TWO SHARE A MECHANISM: the bare identifier `panic`; a `const` value alias, which needs the binding step; a `satisfies` wrapper, which needs the type-only-wrapper table; and the ambient `Reflect.panic` member, which is a different leaf test entirely and is the spelling the fork compiled into the `TypeError`. **A rule keyed on the identifier `panic` closes one of the four**, and a rule keyed on the NAME closes them all and takes ordinary code with it — which is what `an-ordinary-tagged-template-is-not-the-panic-intrinsic` is for, and why it is a first-class half of this pair rather than filler. WHAT THIS CASE DOES NOT PIN: no `messageContains` is declared, for the reason its `SMITHERS1503` sibling records — the two backends legitimately word this diagnostic differently and the code plus the authored position are the whole contract. It does not pin a MULTI-PART tagged panic: `` panic`a${x}b` `` is TypeScript's own `TS2554` arity error on both backends, so the only reachable tagged panic is substitution-free. And it deliberately does not hold the PARENTHESISED tag, `` (panic)`no entry` `` — MEASURED here rather than assumed, with a throwaway case run through this same harness: both backends refuse it at `SMITHERS1503`, at the same authored position, with the same message. So the tag walk agrees on parentheses even though `isPanicCall` does not — the fix lane recorded that the reference does not look through them at the CALL form and the fork does — and a fifth spelling would be a spelling nobody measured in the PRE-fix state, weakening the one thing this case is evidence for. It is recorded here so the next reader does not have to re-run it. VERIFIED LOAD-BEARING, not assumed: mutating the FOURTH diagnostic's column from 5 to 13 — from the start of the tag expression to the start of the identifier `panic` inside `Reflect.panic`, which is exactly where a rule keyed on that identifier rather than on the tag would report — turns the case red on BOTH backends with `[SMITHERS1503@9:5, SMITHERS1503@16:5, SMITHERS1503@23:5, SMITHERS1503@30:5] != [SMITHERS1503@9:5, SMITHERS1503@16:5, SMITHERS1503@23:5, SMITHERS1503@30:13]` printed on each. The fourth row is mutated because it is the ambient-member spelling, the one the fork compiled into a runtime `TypeError: Reflect.panic is not a function`. The expectation was restored byte-identically (sha256 0ba94770ea8ff78d206a0b7cb72e296f755d41fba223402790c1ffb2b938c73b before and after, that digest being this file's content at the moment the mutation ran — this sentence is appended afterwards, so the shipped file necessarily hashes differently). The mutator refuses to run at all unless the case is green on BOTH backends first AND its search string occurs exactly once in the file; both refusals were exercised against this case rather than assumed, because a search string that matches nothing mutates nothing and comes back green."
+}

@@ -1,0 +1,11 @@
+{
+  "title": "a satisfies wrapper around an untrusted foreign call does not erase its foreign provenance: the lifted result still propagates, and the program runs",
+  "expect": "output",
+  "stdout": [
+    "ok 41"
+  ],
+  "typescript": [
+    "foreign.ts"
+  ],
+  "notes": "THE OVER-REFUSAL GUARD for the round-7 wrapper work, on the boundary where the corpus already distinguishes `satisfies` from `as`. specification/failures.mdx §Foreign Exceptions (Locked): an untrusted foreign call adds the distinguished checked panic case, and the caller MUST propagate it — which is exactly what `!` does here into `Result<number, Panic>`. 09-foreign-calls/an-as-or-an-annotation-erases-a-trust-marker-where-satisfies-does-not already pins the reason the operator matters: `as` and an annotation replace the type the trust claim was attached to, while `satisfies` CHECKS without replacing, so the foreign provenance survives it. MEASURED BEFORE THE FIX: the reference refused this program with SMITHERS1507 — a foreign result used as a value — because its foreign-result walk did not know `satisfies` and stopped at the wrapper, and the Go fork refused it with SMITHERS1301 plus SMITHERS1207. Both were wrong in the SAME direction as each other and in the opposite direction from the sibling defect the wrapper work closed, which is what makes the pair worth landing together: 02-unwrap-propagation/a-satisfies-wrapped-propagation-charges-the-contract requires a `satisfies`-wrapped propagation to be REFUSED when the contract omits the failure, and this case requires the identical wrapper to be ACCEPTED and RUN when the contract names it. One table now answers both, so a fix to either direction that regressed the other is visible in one run. The `as` spelling is deliberately NOT written here: a type wrapper whose annotation the lowered Result does not satisfy is refused by the stock check of the emitted module, which is pre-existing behaviour and a different subject. This is an `expect: \"output\"` case, so the trusted-module edge, the lift, the propagation and the `match` all actually run."
+}

@@ -1,0 +1,27 @@
+{
+  "title": "a member whose only declaration is in the standard library still needs an adapter when it is read off a foreign value, because the declaring file was never the question",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1506",
+      "line": 4,
+      "column": 17
+    }
+  ],
+  "typescript": [
+    "implicit-invocation-host.ts"
+  ],
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "Measured on 2026-08-26: the fork reports the declared SMITHERS1506 at the identical position (4:17) and REFUSES the program, and omits the SMITHERS1101 the reference reports at the function declaration, because its property rule reports without charging Panic to the enclosing row. Both backends refuse this program, so this is a diagnostic-set divergence and not a fail-open. Same standing gap as 09-foreign-calls/a-callback-handed-to-an-untrusted-host-is-still-rejected; they retire together. The rule this case exists to pin — that the member's DECLARING FILE is not consulted — is present and correct on the fork: `constructor` is declared only in `lib.es5.d.ts` and the read is refused anyway.",
+    "doc": "specification/compatibility.mdx#foreign-boundary"
+  },
+  "notes": "specification/compatibility.mdx, 'Foreign Boundary' (Locked): 'Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.' `constructor` is declared in `lib.es5.d.ts` and nowhere in the imported module, so a rule that decides by asking where the member is DECLARED admits this read; nothing whatever stops a foreign object from serving `constructor`, `length` or `toString` from a throwing getter or a `Proxy` trap, and `lib.es5.d.ts` is a description of a shape, never a trust claim about a particular object. This case and 09-foreign-calls/a-foreign-index-signature-read-through-an-element-access-needs-an-adapter are the two halves of the same argument: a member with NO declarations, and a member whose declaration is in a file the author is inclined to trust. Asking the receiver one question answers both. The receiver here is `spreadable`, whose own `a` getter throws, which is what makes the object a real hazard rather than a hypothetical one."
+}

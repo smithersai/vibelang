@@ -1,0 +1,6 @@
+import { shout } from "./untrusted.ts"
+
+export function main(): string[] {
+  const loud = shout("hello")
+  return ["done"]
+}

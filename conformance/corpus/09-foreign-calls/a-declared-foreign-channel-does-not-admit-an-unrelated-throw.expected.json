@@ -1,0 +1,11 @@
+{
+  "title": "a foreign @throws {T} channel admits only T's instances: a T that lies about instanceof does not widen it, and the unrelated throw stays Panic",
+  "expect": "output",
+  "stdout": [
+    "error:Panic"
+  ],
+  "typescript": [
+    "lying-channel.ts"
+  ],
+  "notes": "specification/failures.mdx, 'Foreign Exceptions': \"`@throws {T}` declares the stated foreign error channel\", and a \"runtime implementation violating its declared signature\" MUST enter the distinguished checked panic channel; 'Error Prototype' (Locked) supplies the mechanism half — selection MUST NOT run on a forgeable hook. This is the CONSTRUCTION half of that forgery and it is not a `match` at all: `@throws {T}` names the class whose instances the boundary admits into the declared recoverable channel, so a boundary testing admission with a bare `instanceof` lets a lying `T` admit ANY thrown value, and the Result then carries a failure that never came from `T` — the checked channel means nothing while still type-checking. The Go fork printed `error:Panic` only after 2026-08-25; before that its `smithersTry` used `cause instanceof expected` and it printed `error:RangeError`, i.e. a RangeError delivered as the declared recoverable `Chosen` member. `.name` is the right observable here precisely because it separates those two answers. The acceptance controls are already in this area and are what stop a rule that admits NOTHING from satisfying this case: 09-foreign-calls/declared-foreign-throws-is-exposed pins an honest `@throws {RangeError}` whose RangeError must still be admitted, and 09-foreign-calls/declared-foreign-throws-violated-stays-panic pins the same violated-contract direction with an honest `T`, where a bare `instanceof` already answers correctly. Read together, the three say: the declared channel admits exactly the declared class's instances, decided on nominal identity."
+}

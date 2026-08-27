@@ -1,0 +1,5 @@
+import { readValue } from "./throws-claims.ts"
+
+export function main(): string[] {
+  return [readValue(1)]
+}

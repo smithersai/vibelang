@@ -1,0 +1,15 @@
+{
+  "title": "a trust claim belongs to the resolved signature, so a marker on one overload does not certify the overload a call actually resolves to",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    }
+  ],
+  "typescript": [
+    "throws-claims.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" poc/src/language/README.md, `SMITHERS1502`: 'A trust claim belongs to the resolved signature, never to the symbol \u2026 Overload signatures are separate declarations of one symbol, so the old `symbol.declarations.flatMap(getJSDocTags).find(throws)` let one marked overload certify the unmarked, throwing overload a call actually resolved to.' Here the string overload is the dangerous one and is documented as throwing; the marker sits on the numeric overload. Nothing in the call's own text distinguishes it from a trusted call, which is what makes this the hardest half of the class to see by reading. DIRECTION, NOT LOCKED \u2014 and this case says so rather than claiming an obligation it does not have. docs/DECISIONS.md carries `@throws` overload resolution, multiple annotations and declaration merging as a **Direction** entry: \"Exact rules for overloads, multiple annotations, declaration merging, validation, and generic error types remain to be specified\", and conformance/COVERAGE.md 7.16 records that surface as unwritable for exactly that reason. What IS Locked is the default and its direction: compatibility.mdx \u00a7Foreign Boundary makes the panic case a MUST on every unannotated foreign call, and DECISIONS.md (Locked) makes `@throws {never}` \"a trusted opt-out from the default `panic` case\" \u2014 one claim, about one call. A claim the compiler cannot reduce to a single usable answer for the call in front of it therefore does not opt out, and the MUST stands. This case pins that fail-closed reading and the implementations' chosen behaviour, which BOTH BACKENDS AGREE ON; it does not settle the Direction entry. If the specification later chooses a different rule, THIS CASE IS REWRITTEN \u2014 it is not evidence against the new sentence."
+}

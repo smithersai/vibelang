@@ -1,0 +1,20 @@
+{
+  "title": "constructing an authored subclass of a foreign class runs the foreign base constructor through an implicit `super(...)`",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 5,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1504",
+      "line": 6,
+      "column": 18
+    }
+  ],
+  "typescript": [
+    "implicit-invocation-host.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" 09-foreign-calls/foreign-constructor-needs-throws-never pins the direct `new Foreign()`; this pins the spelling that reaches the same constructor with the foreign name nowhere near the `new`. The requirement is charged on the CONSTRUCTION and not on the `extends` clause, and that distinction is load-bearing rather than decorative — see the acceptance case beside this one."
+}

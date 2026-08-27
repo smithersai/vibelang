@@ -1,0 +1,10 @@
+import { config } from "./deferred-loader-relay.ts"
+
+// THE OVER-CORRECTION GUARD for the deferral proof. The relay is marked and
+// the module behind it is not, but the only edge to it is an `import()` inside
+// an exported `async function` body that nothing calls, so the relay's
+// initialization loads nothing and there is no initializer to certify. It is
+// an `expect: "output"` case so the relay really is evaluated.
+export function main(): string[] {
+  return [typeof config]
+}

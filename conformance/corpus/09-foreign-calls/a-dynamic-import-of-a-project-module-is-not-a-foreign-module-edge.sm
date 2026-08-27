@@ -1,0 +1,4 @@
+export async function main(): Promise<string[]> {
+  const helper = await import("./a-dynamic-import-of-a-project-module-is-not-a-foreign-module-edge.mod.sm")
+  return [helper.greet("ada")]
+}

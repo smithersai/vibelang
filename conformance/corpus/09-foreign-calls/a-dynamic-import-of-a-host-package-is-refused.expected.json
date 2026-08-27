@@ -1,0 +1,12 @@
+{
+  "title": "a dynamic import of a host package is a foreign module edge and needs the same trust claim",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1510",
+      "line": 2,
+      "column": 27
+    }
+  ],
+  "notes": "`node:fs` is a foreign module with no leading `@module` / `@throws {never}` claim, and nothing about `import()` changes that. specification/compatibility.mdx and the SMITHERS1510 rule condition the refusal on the target, so a host package reached dynamically is refused exactly as one reached statically is — 09-foreign-calls/a-bare-package-with-the-intrinsic-letters-is-foreign pins the static half of the same idea. The reference compiled and RAN this program until 2026-08-25, which is the second of the three dynamic-edge fail-opens that closure found where one had been reported."
+}

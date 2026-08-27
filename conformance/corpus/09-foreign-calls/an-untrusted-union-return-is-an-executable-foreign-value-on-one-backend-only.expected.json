@@ -1,0 +1,27 @@
+{
+  "title": "returning a value whose type has a foreign `Promise` constituent is an escape of executable foreign provenance",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 5,
+      "column": 23
+    },
+    {
+      "code": "SMITHERS1508",
+      "line": 6,
+      "column": 10
+    }
+  ],
+  "typescript": [
+    "throws-claims.ts"
+  ],
+  "notes": "poc/src/language/README.md, `SMITHERS1508`: 'executable foreign provenance escapes through an unsupported higher-order/return/store boundary.' This case carries NO `@throws` marker anywhere, which is its whole job: it is the control for a-trusted-union-with-a-promise-constituent-keeps-its-rejection-channel, and it localizes that case's extra SMITHERS1508 to the pre-existing union handling in `containsForeignExecutableValue` rather than to the trust rule. Two cases that diverge for one shared reason are worth more than one case that diverges for a reason nobody isolated.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "the fork reports [SMITHERS1301@5:23] alone and does not report SMITHERS1508@6:10 for the returned union. BOTH BACKENDS REFUSE THE PROGRAM; they disagree about how loudly. This is PRE-EXISTING and reproduces on a tree with none of the recent foreign-boundary work applied — the binding carries no `@throws` claim of any kind, so no trust rule is involved. It is recorded here rather than left inside the trusted-union case so that the shared cause has a case of its own; the two retire together.",
+    "doc": "specification/compatibility.mdx, \"Foreign Boundary\": the panic case is a property of calling an unannotated foreign runtime value, and a foreign `Promise` that leaves the function un-awaited carries that call out with it."
+  }
+}

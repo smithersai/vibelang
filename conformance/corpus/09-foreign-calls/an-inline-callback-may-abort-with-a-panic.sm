@@ -1,0 +1,8 @@
+import { panic } from "smithers:exceptions"
+
+export function main(): string[] {
+  return ["ada"].map((key: string): string => {
+    if (key !== "ada") panic("forged")
+    return key
+  })
+}

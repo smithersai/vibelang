@@ -1,0 +1,11 @@
+{
+  "title": "a dynamic import of another module in the same project is an ordinary import, not a foreign module edge",
+  "expect": "output",
+  "stdout": [
+    "hello ada"
+  ],
+  "modules": [
+    "a-dynamic-import-of-a-project-module-is-not-a-foreign-module-edge.mod.sm"
+  ],
+  "notes": "docs/DECISIONS.md:266 (Locked): 'Arbitrary dynamic import expressions remain available, since there is no target that cannot resolve them.' The over-correction guard for 09-foreign-calls/a-dynamic-import-of-an-untrusted-foreign-module-is-refused, and the reason that case is written as narrowly as it is. The obvious way to close an untrusted dynamic module edge is to refuse every dynamic module edge, and this program shows what that costs: a `.sm` module importing a `.sm` module in its own project has no foreign boundary and no initializer trust question at all. The two cases together say exactly what the evidence supports — the trust rule must not be escapable by re-spelling the edge, and it must not swallow edges it was never about — and neither of them settles the open ledger question of whether a TRUSTED foreign module may be reached dynamically, which no case here pins in either direction. RETIRED 2026-08-25, the `go` marker: the fork's blanket refusal of every dynamic import was narrowed to the rule's actual subject — an untrusted or unresolvable FOREIGN target — so a `.sm` module importing a `.sm` module in its own project is ordinary again. Narrowing it also made a latent crash reachable and it was fixed at the same time: this case's own module file is named `…-dynamic-import-of-a-project-module-…`, and the fork located candidate dynamic imports by scanning the raw source text for the letters `import`, so every occurrence INSIDE THE SPECIFIER resolved back to the same call, duplicated the import entry, produced two identical specifier edits, and panicked with `slice bounds out of range` — taking the compile down with no diagnostic at all. 09-foreign-calls/a-module-name-containing-import-does-not-crash-the-specifier-rewrite is the static sibling of that regression pin. Measured XPASS on both backends before the marker was deleted."
+}

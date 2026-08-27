@@ -1,0 +1,4 @@
+export async function main(): Promise<string[]> {
+  const trusted = await import("./foreign.ts")
+  return [`${typeof trusted.double}`]
+}

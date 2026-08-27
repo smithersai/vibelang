@@ -1,0 +1,7 @@
+import { iterable } from "./implicit-invocation-host.ts"
+
+export function main(): number {
+  let total = 0
+  for (const value of iterable) total += value
+  return total
+}

@@ -1,0 +1,10 @@
+import { config } from "./trusted-relay-to-unmarked-target.ts"
+
+// The relay is properly marked; the module it re-exports from wrote no marker
+// at all. Evaluating the relay evaluates that module first, so the trust claim
+// on the relay certifies an initializer the relay does not own. Only `typeof`
+// is applied to the binding, so the declared diagnostic is the trust rule
+// itself and nothing else.
+export function main(): string[] {
+  return [typeof config]
+}

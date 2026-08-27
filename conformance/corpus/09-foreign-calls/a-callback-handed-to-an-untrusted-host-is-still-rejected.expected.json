@@ -1,0 +1,32 @@
+{
+  "title": "an untrusted foreign call still refuses a callback, and still charges the caller's panic row",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1301",
+      "line": 5,
+      "column": 3
+    },
+    {
+      "code": "SMITHERS1509",
+      "line": 5,
+      "column": 28
+    }
+  ],
+  "typescript": [
+    "callback-host.ts"
+  ],
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "The fork reports only SMITHERS1301 and SMITHERS1509 and does not charge Panic to the enclosing row, so it omits the SMITHERS1101 the reference reports at the function declaration. The reference's SMITHERS1509 reporter calls `recordForeignBoundary(owner, panic)` beside its report; the fork's `checkForeignBoundaries` reports the diagnostic without touching the row. PRE-EXISTING and found by measuring rather than introduced by the argument-position fix: it reproduces on the unmodified tree, and the fork charges the row correctly for the NEIGHBOURING rule — 09-foreign-calls/a-foreign-callable-handed-to-a-trusted-binding-is-still-rejected declares the same SMITHERS1101 and passes on both backends, which is what localizes the defect to the SMITHERS1509 path alone. BOTH BACKENDS STILL REFUSE THIS PROGRAM, so this is a diagnostic-set divergence and not a fail-open. It was invisible until this case existed because no corpus case handed a callback to an untrusted host from inside a function with a plain return type. Retire the marker when the fork's foreign-boundary reporter charges the caller's panic row the way its foreign-provenance reporter already does.",
+    "doc": "specification/compatibility.mdx#foreign-boundary"
+  },
+  "notes": "specification/compatibility.mdx, 'Foreign Boundary' (Locked): \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration. Trusted `@throws {never}` metadata opts out; `@throws {T}` declares a more precise channel.\" The subject of that sentence is the CALL, so the claim covers what the call does with an argument it was handed. specification/requirements.mdx, 'Scoping' (Locked), assigns the deferred half elsewhere: \"Imported JavaScript or TypeScript that starts hidden background work owns that work. Caller-controlled background APIs MUST expose explicit completion or disposal handles through their adapters.\" And specification/failures.mdx, 'Panic Does Not Widen a Return Type', is why the third reading — that the callback must independently be panic-free — is not available at all: every `.sm` function may abort with `panic(...)` while keeping a plain return type, so panic-freedom is not spellable and a rule demanding it would admit nothing. This is the over-correction guard for 09-foreign-calls/a-callback-registered-through-a-trusted-binding-is-accepted: the two programs differ only in which export of one module they call. The declared SMITHERS1101 is the reason this case carries an xfail: see the marker."
+}

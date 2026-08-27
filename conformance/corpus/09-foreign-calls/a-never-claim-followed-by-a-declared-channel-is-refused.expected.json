@@ -1,0 +1,21 @@
+{
+  "title": "a declaration carrying two contradictory `@throws` claims is refused: `{never}` first",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1502",
+      "line": 4,
+      "column": 10,
+      "messageContains": "({never} and {TypeError})"
+    }
+  ],
+  "typescript": [
+    "throws-claims.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" `@throws {never}` says the call cannot fail and `@throws {TypeError}` says how it does; one declaration cannot mean both, so neither claim is usable and the call keeps the panic case. THIS CASE MEANS LITTLE ALONE and is one half of a deliberate pair \u2014 read it with a-declared-channel-followed-by-a-never-claim-is-refused-identically, which is the same two claims in the opposite source order. The SMITHERS1502 declares a `messageContains` because code and position alone cannot tell these two cases apart: their diagnostic sets are byte-identical, so one refusal would satisfy both, and SMITHERS1502 covers a SECOND rule (the async/Promise marker) that fires at exactly this shape of position. The fragment is the two claims IN SOURCE ORDER, which is the evidence that the rule read every tag on the declaration rather than the first one \u2014 reading only the first is the defect this pair exists to pin, and a refusal that had read only the first would still be a SMITHERS1502 at column 10. It is not a fragment that names the rule: it names this program's own two claims, and it differs between the two cases. Both backends emit this message byte-identically. DIRECTION, NOT LOCKED \u2014 and this case says so rather than claiming an obligation it does not have. docs/DECISIONS.md carries `@throws` overload resolution, multiple annotations and declaration merging as a **Direction** entry: \"Exact rules for overloads, multiple annotations, declaration merging, validation, and generic error types remain to be specified\", and conformance/COVERAGE.md 7.16 records that surface as unwritable for exactly that reason. What IS Locked is the default and its direction: compatibility.mdx \u00a7Foreign Boundary makes the panic case a MUST on every unannotated foreign call, and DECISIONS.md (Locked) makes `@throws {never}` \"a trusted opt-out from the default `panic` case\" \u2014 one claim, about one call. A claim the compiler cannot reduce to a single usable answer for the call in front of it therefore does not opt out, and the MUST stands. This case pins that fail-closed reading and the implementations' chosen behaviour, which BOTH BACKENDS AGREE ON; it does not settle the Direction entry. If the specification later chooses a different rule, THIS CASE IS REWRITTEN \u2014 it is not evidence against the new sentence."
+}

@@ -1,0 +1,11 @@
+{
+  "title": "`@throws {T}` on an async binding declares a channel rather than removing one, so it is still honoured",
+  "expect": "output",
+  "stdout": [
+    "error declared-async"
+  ],
+  "typescript": [
+    "throws-claims.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" 'Trusted `@throws {never}` metadata opts out; `@throws {T}` declares a more precise channel.' Only the OPT-OUT is unusable on an async binding, because only the opt-out claims a channel is absent. `@throws {TypeError}` adds a name beside the panic case and loses nothing, so it must keep working — this is the boundary of the refusal, and without it a rule that refused every `@throws` tag on an async binding would look correct."
+}

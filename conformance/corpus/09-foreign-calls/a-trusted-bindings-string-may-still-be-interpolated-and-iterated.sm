@@ -1,0 +1,5 @@
+import { giveString } from "./throws-claims.ts"
+
+export function main(): string[] {
+  return [`${giveString()}`, String([...giveString()].length)]
+}

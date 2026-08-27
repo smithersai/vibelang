@@ -1,0 +1,9 @@
+import { config } from "./line-comment-trust-marker.ts"
+
+// The marker's exact text is present in the file, inside a `//` line comment.
+// A line comment is not a JSDoc comment, so no claim was made. Only `typeof`
+// is applied to the binding, so the declared diagnostic is the trust rule
+// itself and nothing else.
+export function main(): string[] {
+  return [typeof config]
+}

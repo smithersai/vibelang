@@ -1,0 +1,11 @@
+{
+  "title": "newlines and ordinary spaces between the braces and never are JSDoc whitespace, so the module-initialization claim still holds",
+  "expect": "output",
+  "stdout": [
+    "3"
+  ],
+  "typescript": [
+    "newline-inside-trust-marker.ts"
+  ],
+  "notes": "THE OVER-CORRECTION GUARD for the whitespace class, and this repository has shipped nine over-corrections, so the guard lands in the same revision as the refusal. specification/failures.mdx:115 (Locked): '`@throws {never}` removes the default panic case.' 09-foreign-calls/exotic-whitespace-in-the-trust-marker-does-not-confer-module-trust narrows the whitespace between `@throws`, the braces and `never` to exactly `[ \\t\\r\\n]`; the obvious way to implement that narrowing is to demand the exact byte sequence `@throws {never}`, which would refuse this file. Newline and space are IN the class, so `@throws {\\n   never\\n   }` is the marker, written across three lines. THE FILE IS DELIBERATELY WRITTEN WITHOUT A `*` DECORATION on the two inner lines, and that is the second thing this case pins: a decoration between `@throws` and `{never}` is the split-marker near miss that conformance/support/split-trust-marker.ts and 09-foreign-calls/near-miss-trust-markers-do-not-confer-module-trust require to be REFUSED, so the two cases together say that JSDoc whitespace is honoured and JSDoc decoration is not assembled across. An implementation that compacts a comment by deleting its `*` characters passes this case and fails that one. `measure` carries its own function-level `@throws {never}`, because the module claim never doubles as one — 09-foreign-calls/module-init-trust-is-not-a-function-level-throws-claim pins that separation from the other side — which is why this program has a plain return type and no Result channel. It is an `expect: \"output\"` case, so the trusted module's initializer actually runs; tabs inside the braces, a compact one-line header, a header preceded by an ordinary `//` note, and a marker in the second of two leading JSDoc blocks were all measured still trusted on both backends beside it. Its multi-line sibling is 09-foreign-calls/a-multiline-module-trust-header-is-honoured."
+}

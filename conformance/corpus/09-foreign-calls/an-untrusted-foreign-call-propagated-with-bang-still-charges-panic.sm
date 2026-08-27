@@ -1,0 +1,6 @@
+import { parseIntegerUnchecked } from "./foreign.ts"
+
+export function main(): string[] {
+  const parsed = parseIntegerUnchecked("41")!
+  return [`${parsed}`]
+}

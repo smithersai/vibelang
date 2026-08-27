@@ -1,0 +1,10 @@
+import { panic } from "smithers:exceptions"
+
+async function guarded(ok: boolean): Promise<string> {
+  if (!ok) panic("forged")
+  return "real"
+}
+
+export async function main(): Promise<string[]> {
+  return [await guarded(true)]
+}

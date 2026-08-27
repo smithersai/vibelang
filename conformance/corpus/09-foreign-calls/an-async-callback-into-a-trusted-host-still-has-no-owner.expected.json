@@ -1,0 +1,15 @@
+{
+  "title": "a trust claim does not give started async work an owner",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1404",
+      "line": 5,
+      "column": 22
+    }
+  ],
+  "typescript": [
+    "callback-host.ts"
+  ],
+  "notes": "specification/requirements.mdx, 'Scoping' (Locked): \"Imported JavaScript or TypeScript that starts hidden background work owns that work. Caller-controlled background APIs MUST expose explicit completion or disposal handles through their adapters.\" An async callback handed to a synchronous registration starts work nobody waits for, and the marker on the callee says nothing about it — the claim is that the CALL does not throw, not that a promise the callback returns is anyone's. The second of the three guards that keep 09-foreign-calls/a-callback-registered-through-a-trusted-binding-is-accepted narrow."
+}

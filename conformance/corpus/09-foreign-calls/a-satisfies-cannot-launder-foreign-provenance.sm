@@ -1,0 +1,25 @@
+import { Counter, settings } from "./foreign.ts"
+import { tag } from "./implicit-invocation-host.ts"
+
+// A local object of the same shape. It is the alternate in `propVsALocal`
+// below, and it is what makes that row observe anything: with a FOREIGN
+// alternate the row would pass vacuously, because the other branch is foreign
+// too and either one of them could be the reason for the refusal.
+const localSettings = { retries: 0 }
+
+function ctorDirect() { const counter = new Counter(1); return "made" }
+function ctorSatisfies() { const counter = new (Counter satisfies typeof Counter)(1); return "made" }
+function ctorSatisfiesThenAs() { const counter = new ((Counter satisfies typeof Counter) as typeof Counter)(1); return "made" }
+function ctorConstHeld() { const held = Counter satisfies typeof Counter; const counter = new held(1); return "made" }
+
+function propDirect() { return settings.retries }
+function propSatisfies() { return (settings satisfies { readonly retries: number }).retries }
+function propSatisfiesThenAs() { return ((settings satisfies { readonly retries: number }) as { readonly retries: number }).retries }
+function propConstHeld() { const held = settings satisfies { readonly retries: number }; return held.retries }
+function propDoubleAlias() { const first = settings satisfies { readonly retries: number }; const second = first; return second.retries }
+function propVsALocal() { return ((settings satisfies { readonly retries: number }) ?? localSettings).retries }
+function propComma() { return ((localSettings, (settings satisfies { readonly retries: number }))).retries }
+
+function tagDirect(): string { return tag`x` }
+function tagSatisfies(): string { return (tag satisfies (strings: TemplateStringsArray) => string)`x` }
+function tagConstHeld(): string { const held = tag satisfies (strings: TemplateStringsArray) => string; return held`x` }

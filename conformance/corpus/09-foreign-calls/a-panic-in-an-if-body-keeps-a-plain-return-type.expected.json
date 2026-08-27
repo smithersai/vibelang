@@ -1,0 +1,8 @@
+{
+  "title": "panic(...) in an if body does not widen the enclosing return type",
+  "expect": "output",
+  "stdout": [
+    "done"
+  ],
+  "notes": "specification/failures.mdx §Panic Does Not Widen a Return Type: 'Calling panic(...) MUST NOT force a function's return type to widen into Result<A, Panic>. ... A function that validates an argument, refuses a forgery, or asserts an invariant MUST therefore be able to abort with panic(...) while keeping a plain return type.' docs/DECISIONS.md carries the matching Locked entry. This case previously declared SMITHERS1101 here under the name a-panic-in-an-if-body-still-needs-the-panic-channel; the rule follows from two MUSTs the page already carried (the panic case is tracked separately from ordinary recoverable Error variants, and ordinary Result recovery MUST NOT swallow panic implicitly), so the old expectation encoded the contradiction rather than the rule. Both backends were measured accepting and running this program with exit 0 and stdout [\"done\"] before the expectation was rewritten, and the old expectation was the single red row in the corpus on both of them. 09-foreign-calls/a-panic-in-an-if-body-is-a-simple-exit remains its annotated twin and must not change: the same program with `Result<string[], Panic>` spelled on the contract still compiles and still materializes the panic, which is the MAY half of the same section. The SMITHERS1503 placement obligation the old note recorded is unaffected and still pinned by 09-foreign-calls/panic-outside-a-statement-or-return-is-rejected and by 09-foreign-calls/a-contract-error-does-not-suppress-a-panic-placement-refusal."
+}

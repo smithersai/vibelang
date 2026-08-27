@@ -1,0 +1,20 @@
+{
+  "title": "the trust claim does not absorb the callback's own inferred failure channel",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1303",
+      "line": 12,
+      "column": 16
+    },
+    {
+      "code": "SMITHERS1204",
+      "line": 12,
+      "column": 39
+    }
+  ],
+  "typescript": [
+    "callback-host.ts"
+  ],
+  "notes": "poc/src/language/README.md: \"SMITHERS1303: an inferred-fallible function crosses a general callback boundary without an explicit Result contract.\" The callback ownership check never consults the boundary's trust, so it fires identically at a trusted call, an untrusted call, and a local higher-order call. This is one of the three cases that make the acceptance in 09-foreign-calls/a-callback-registered-through-a-trusted-binding-is-accepted narrow: the trust claim covers the call's panic channel and nothing else. The callback's own inferred Result channel, its started async work, and its body's authority are each owned by a rule that never reads the marker."
+}

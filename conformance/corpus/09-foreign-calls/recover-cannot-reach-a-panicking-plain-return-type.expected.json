@@ -1,0 +1,13 @@
+{
+  "title": "recover cannot reach a panic, because a panicking function publishes no Result to recover from",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "TS2339",
+      "line": 9,
+      "column": 26,
+      "messageContains": "'recover' does not exist on type 'string'"
+    }
+  ],
+  "notes": "The second of the three recovery surfaces specification/failures.mdx \u00a7Panic Does Not Widen a Return Type names by name ('unwrapOr, recover, and match'), written as its own case because a rule can hold for one member and not another \u2014 they are three different members on the Result API surface (reference/standard-library.mdx) and nothing makes them move together. 09-foreign-calls/recover-does-not-swallow-a-panic is the OTHER half of the recover obligation and must be read beside this one: there the function DOES publish Result<number, Panic>, the recover call is well-typed, and the runtime still refuses to let it swallow the Panic. Together they say the recovery surface is unreachable when it is not spelled and inert when it is. This case declares a TS code, so per conformance/README.md the evidence is recorded: measured identically on both backends (js TS2339@9:26, go TS2339@9:26). The message fragment is declared for the same reason as the unwrapOr case \u2014 code and position alone do not say WHICH member was unreachable. The third member, `match`, is deliberately not written as a case: on a plain `string` receiver it resolves to String.prototype.match and produces a cascade of stock TypeScript codes (TS2322/TS2769/TS7006) that is a fact about the JavaScript standard library rather than about this rule."
+}

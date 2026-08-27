@@ -1,0 +1,20 @@
+{
+  "title": "the refusal is about the returned `Promise`, not about the `async` keyword: a `Promise`-returning binding marked `@throws {never}` is refused identically",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1101",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "code": "SMITHERS1502",
+      "line": 4,
+      "column": 16
+    }
+  ],
+  "typescript": [
+    "throws-claims.ts"
+  ],
+  "notes": "specification/compatibility.mdx, \"Foreign Boundary\": \"Calling an unannotated foreign runtime value MUST add the checked `panic` case, because JavaScript and TypeScript may throw, reject, or violate a declaration.\" `async` is sugar for returning a `Promise`, so a rule that keyed on the keyword would leave the sugar-free spelling fail-open — and this is the shape the next platform binding actually takes (a trusted `readFile` or `fetch` declared in a `.d.ts` returns `Promise<T>` and is not written `async`). The pair of cases is the evidence that the rule asks about the rejection channel rather than about a syntax."
+}
