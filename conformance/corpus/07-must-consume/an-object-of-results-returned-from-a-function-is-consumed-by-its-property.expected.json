@@ -1,0 +1,8 @@
+{
+  "title": "an object of Results returned across a function boundary is consumed by reading the property back out",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' Returning the container IS one of the five named forms, and the caller then discharges the held Result by unwrapping it. This is the cross-function spelling of container ownership: the producer, the container and the consumption are in three different places, which is where an analysis that re-asks its question only at the producer's own statement gets it wrong."
+}

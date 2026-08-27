@@ -1,0 +1,25 @@
+export class Boom extends Error {
+  constructor() { super("boom") }
+}
+
+function tag(parts: TemplateStringsArray): Result<string, Boom> {
+  if (parts[0] === "bad") throw new Boom()
+  return "ok"
+}
+
+function matched(): string {
+  return tag`fine`.match({ ok: (value) => value, error: () => "boom" })
+}
+
+function matchedOnTheFailingSide(): string {
+  return tag`bad`.match({ ok: (value) => value, error: () => "boom" })
+}
+
+function bound(): string {
+  const produced = tag`fine`
+  return produced.match({ ok: (value) => value, error: () => "boom" })
+}
+
+export function main(): string[] {
+  return [matched(), matchedOnTheFailingSide(), bound()]
+}

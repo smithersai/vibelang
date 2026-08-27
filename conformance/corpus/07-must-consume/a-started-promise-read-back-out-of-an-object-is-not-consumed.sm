@@ -1,0 +1,13 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+async function work(key: string): Promise<string> {
+  return key === "ada" ? "Ada Lovelace" : "unknown"
+}
+
+export async function main(): Promise<string[]> {
+  const started = { first: work("ada") }
+  const settled = await started.first
+  return [settled]
+}

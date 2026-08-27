@@ -1,0 +1,17 @@
+{
+  "title": "an array literal of Results bound to a name and never consumed is still refused, at the element positions",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 11,
+      "column": 18
+    },
+    {
+      "code": "SMITHERS1301",
+      "line": 11,
+      "column": 33
+    }
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' The over-correction guard for 07-must-consume/an-array-literal-of-results-is-consumed-through-an-index-read: the obvious way to make `arr[i]!` compile is to stop charging array elements at all, and that would silently discard both Results here. Ownership transfers to the container, so the container's own fate decides — and this container is never consumed. The two diagnostics stay at the producers because that is where the ignored Results are. RETIRED 2026-08-25, the `go` marker, and it was the most dangerous row on the board: the fork compiled and ran this program, exit 0, discarding two checked failures at run time with nothing reported before or during execution. The fork now re-asks its question after the transfer — a stored collection does not escape by being bound, and at least one reference to the binding must consume it — with the transfer itself gated on the container's own type still carrying a Result or a started Promise (the guard 07-must-consume/a-lifted-call-stored-into-a-plainly-typed-array-is-still-a-discard pins). Measured XPASS on both backends before the marker was deleted."
+}

@@ -1,0 +1,8 @@
+{
+  "title": "a concise arrow body returning a Result is a return, exactly as the braced spelling always was",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' Returning is one of the five named consumption forms, and `(k) => lookup(k)` is a return spelled without the keyword. The braced form `(k) => { return lookup(k) }` has always been accepted; only the concise spelling was charged SMITHERS1301, which made two spellings of one function disagree. That is a syntax accident rather than a safety property."
+}

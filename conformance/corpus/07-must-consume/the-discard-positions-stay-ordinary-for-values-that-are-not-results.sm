@@ -1,0 +1,13 @@
+export function main(): string[] {
+  const lines: string[] = []
+  void lines.push("void")
+  const throughComma = (lines.push("comma"), "comma value")
+  const flag = true
+  const anded = flag && "and"
+  const ored = false || "or"
+  const spelled = `${anded}${ored}`
+  const widened = 1 as unknown
+  const held = [1, 2, 3]
+  for (let index = 0; index < 1; index += 1) lines.push("for")
+  return [...lines, throughComma, spelled, `${typeof widened}`, `${held.length}`]
+}

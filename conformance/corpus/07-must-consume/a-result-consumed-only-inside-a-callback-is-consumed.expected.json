@@ -1,0 +1,8 @@
+{
+  "title": "a bound Result whose only consumption is an unwrap inside a callback body is consumed",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' The sentence names five ACTS, and conditions none of them on which function body the act is written in. `entry` is unwrapped, so it is consumed; that the unwrap happens inside a callback the same statement creates changes nothing about it. The over-correction guard for the whole container-and-binding ownership rewrite: an analysis that re-asks its question only at statements of the binding's own function would report this program as a discard. Written as the local-binding half of a deliberate pair with a-result-parameter-is-consumed-by-an-unwrap-inside-a-callback, which is the identical consumption site reached from a PARAMETER instead — the two together locate a live divergence exactly, because the fork agrees here and not there."
+}

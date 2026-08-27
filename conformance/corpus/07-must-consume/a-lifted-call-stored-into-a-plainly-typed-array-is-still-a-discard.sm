@@ -1,0 +1,12 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function risky(key: string) {
+  if (key !== "ada") throw new Missing(key)
+  return 1
+}
+
+export function main(): number[] {
+  return [risky("ada")]
+}

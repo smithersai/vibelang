@@ -1,0 +1,12 @@
+{
+  "title": "a parenthesized discard is charged at the call that produced the Result, not at the parenthesis",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 11,
+      "column": 4
+    }
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' Parentheses forward a value, so the parenthesized expression is the same Result the call produced and the diagnostic belongs at the producer. REVIEW-fable-1.md F6 measured the reference at column 4 (the call) and the Go fork at column 3 (the parenthesis) — an invisible red row until a case named the column."
+}

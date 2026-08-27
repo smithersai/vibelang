@@ -1,0 +1,12 @@
+{
+  "title": "an inferred-fallible callback reaching a consumer as an argument to a `new` expression must spell a Result contract",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1303",
+      "line": 11,
+      "column": 29
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Inference and Public Contracts': 'Public, abstract, ambient, and declaration-only contracts MUST express fallibility directly with `Result<A, E>` or `Promise<Result<A, E>>`.' A callback boundary is a VALUE edge, not an argument position: the callee invokes a function it received inside an object literal, an array literal, a parenthesis, a cast or a `new` argument list exactly as it invokes one passed directly. Fail-closed matters here because the accepting behaviour is silent and wrong rather than loud and wrong — R1FIX executed this class before the fix and measured `isOk() === true` with a `Result` sitting in the SUCCESS payload, with zero language diagnostics and zero emitted-TypeScript diagnostics. A constructor is a consumer. Both backends' callback visitors walked CALL expressions only, so a `new` argument list was a position the rule NEVER VISITED on either side — not a position where it answered wrongly, a position where it was never asked. R1FIX named it on the reference and the CONV lane found it identically unvisited in the fork."
+}

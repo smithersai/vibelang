@@ -1,0 +1,9 @@
+{
+  "title": "Result.all over a bound array discharges every element, and the collected Result is then propagated",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace",
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' The ordinary spelling of collecting several Results. 07-must-consume/the-compiler-owned-result-all-discharges pins the inline form; this one pins the BOUND form, where the array is stored first and `Result.all` reaches it through the binding. It also pins the lifting half: `Result.all(arr)!` is bound to a `const` with no annotation and then returned, which the Go fork rejected with a stock TS2322 until 2026-08-25 because its lifting consulted the Smithers side table for a DIRECT `!` only and the stale TypeScript meaning of the `!` leaked one edge further out, through the binding's inferred type."
+}

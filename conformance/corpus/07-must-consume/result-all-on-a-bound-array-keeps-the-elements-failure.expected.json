@@ -1,0 +1,8 @@
+{
+  "title": "Result.all over a bound array discharges its elements and collects the elements' own failure type",
+  "expect": "output",
+  "stdout": [
+    "2"
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' specification/failures.mdx, 'Matching and Transformation': 'Transformations MUST preserve or correctly combine the Result error type.' Two promises in one case, because they failed together: the bound array must be discharged by handing it to the real `Result.all` (the reference charged SMITHERS1301 at both elements), and the collected failure must be the elements' own `Missing` rather than a widened `Error` (the reference's analyzer prelude declared `Result<unknown, Error>`, so `Result.all([...])!` propagated a failure the program cannot produce and drew SMITHERS1104 against a contract that names `Missing`). The success value is printed, so a combinator that discharged without collecting fails here too."
+}

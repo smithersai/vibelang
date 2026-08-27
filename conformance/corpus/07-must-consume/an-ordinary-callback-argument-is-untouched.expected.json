@@ -1,0 +1,8 @@
+{
+  "title": "an ordinary callback argument that cannot fail is untouched by the callback-contract rule",
+  "expect": "output",
+  "stdout": [
+    "ADA"
+  ],
+  "notes": "The plainest over-correction guard in the family: the same consumer, the same object-literal argument position, the same loose parameter type, and a callback with no failure at all. Every refusal in this family is charged on the callback's inferred failure set being non-empty, so a rule that charged on POSITION rather than on the value's channel would refuse this program too. It runs."
+}

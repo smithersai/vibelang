@@ -1,0 +1,8 @@
+{
+  "title": "either branch of a conditional expression forwards its Result to the value the conditional becomes",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' Forwarding is not discarding: a branch of a conditional is the value the whole expression becomes, and here that value is bound and unwrapped. The discard direction is 07-must-consume/a-discarded-conditional-charges-both-branch-producers, which must stay refused. RETIRED 2026-08-25, the `go` marker: the fork's ownership walk now forwards through a conditional expression when the producer is in the whenTrue or whenFalse position, so a branch is the value the conditional becomes rather than a discard. The condition position still falls through to the discard, which is why 07-must-consume/a-discarded-conditional-charges-both-branch-producers and 07-must-consume/a-result-in-a-ternary-condition-is-discarded both still refuse. Measured XPASS on both backends before the marker was deleted."
+}

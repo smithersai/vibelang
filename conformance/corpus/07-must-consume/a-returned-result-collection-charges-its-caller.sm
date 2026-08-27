@@ -1,0 +1,17 @@
+export class SaveFailed extends Error {
+  constructor(readonly id: number) { super(`record ${id} was not saved`) }
+}
+
+function save(id: number): Result<number, SaveFailed> {
+  if (id === 2) throw new SaveFailed(id)
+  return id
+}
+
+function saveAll(): readonly Result<number, SaveFailed>[] {
+  return [save(1), save(2), save(3)]
+}
+
+export function main(): string[] {
+  const outcomes = saveAll()
+  return [`saved ${outcomes.length} records`]
+}

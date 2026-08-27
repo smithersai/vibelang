@@ -1,0 +1,8 @@
+{
+  "title": "a satisfies expression forwards the Result it checks rather than discarding it",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' `satisfies` checks a value against a type and evaluates to that same value, so it is a forwarding position exactly like parentheses and `as`. It was simply missing from the reference's transparent-wrapper list, which made an ordinary annotated program unwritable."
+}

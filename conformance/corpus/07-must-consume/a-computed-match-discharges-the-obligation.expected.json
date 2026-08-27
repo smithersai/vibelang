@@ -1,0 +1,8 @@
+{
+  "title": "result[\"match\"]({...}) consumes the Result exactly as result.match({...}) does",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' The acceptance half of the computed-member family, and the reason recognition was the right fix rather than failing closed on computed access: `x[\"m\"]` and `x.m` are one member access, so making them agree closes `Clock[\"context\"]()` AND removes the false SMITHERS1302 the reference reported here. A fix that only failed closed would have left this program rejected."
+}

@@ -1,0 +1,12 @@
+{
+  "title": "a return discharges a stored collection only when the enclosing function's return type still carries the channel, so `: unknown` cannot launder the obligation out of the callee",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 11,
+      "column": 11
+    }
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' Returning IS one of the five named forms, but only because a return hands the value to a caller who is then charged in turn. `pack(): unknown` hands it to a type no rule can charge: nothing downstream of `const opaque = pack()` can be asked whether it holds a Result, so if the `return` discharged here the failure would leave the language's sight entirely. The refusal therefore lands INSIDE the callee, at the element that produced the Result (line 11, column 11), not at the caller — which is what tells this case apart from 07-must-consume/a-returned-result-collection-charges-its-caller, where the return type does carry the channel and the caller is the charged party. This is the case that keeps the two halves of the transfer rule symmetric: a return discharges exactly when the caller inherits, and the caller inherits exactly when the return discharged. Retire it only together with that rule. DEMONSTRATED AGAINST THE PRE-FIX TREE: without the return-type gate both backends compiled this program, ran it and exited 0 printing `false`."
+}

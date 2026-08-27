@@ -1,0 +1,12 @@
+{
+  "title": "awaiting a Promise of a Result collection removes only the Promise layer, so the collection inside still charges its caller",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 15,
+      "column": 26
+    }
+  ],
+  "notes": "specification/failures.mdx:237: 'Awaiting `Promise<Result<A, E>>` MUST produce `Result<A, E>`. `await` MUST NOT automatically unwrap, recover, or discard the Result.' specification/failures.mdx:190: 'A Result MUST be treated as a must-use value.' The async spelling of 07-must-consume/a-returned-result-collection-charges-its-caller, and it is a separate case because `await` is a separate step in the walk: the awaited value's type is `readonly Result<string, Missing>[]`, so removing the Promise layer must leave the collection still owed rather than discharging it. The diagnostic is SMITHERS1301 and not SMITHERS1402: the Promise here IS consumed, by the `await`, and what survives it is the Result channel. Declared at column 26 — the `pack()` call, not the `await` and not the binding. DEMONSTRATED AGAINST THE PRE-FIX TREE: without the `await` forwarding step for collections both backends compiled this, ran it and exited 0 printing `1`."
+}

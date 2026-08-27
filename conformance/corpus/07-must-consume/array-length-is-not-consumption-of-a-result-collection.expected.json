@@ -1,0 +1,12 @@
+{
+  "title": "reading .length off an array of Results is not consumption, so both element producers are still charged",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 11,
+      "column": 16
+    }
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' Storing a Result in a container is not a discard — it moves the question to the container — and the container discharges it only by giving the Result back. `arr.length` reads a number; no Result leaves the array and none of the five named consumption forms happens to it. The accepted twin is 07-must-consume/an-array-literal-of-results-is-consumed-through-an-index-read, which is the identical program reading `arr[0]!` instead. The guard that keeps a BOUND container from escaping the walk: until 2026-08-25 the Go fork compiled and ran this program, discarding the checked failure at runtime."
+}

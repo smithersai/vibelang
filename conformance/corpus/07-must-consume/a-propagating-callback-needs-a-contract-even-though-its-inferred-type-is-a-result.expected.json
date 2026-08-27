@@ -1,0 +1,12 @@
+{
+  "title": "a callback whose only Result-ness comes from a postfix ! still owes a spelled contract, because the checker's inferred type is the abolished meaning of !",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1303",
+      "line": 15,
+      "column": 22
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Inference and Public Contracts': 'Public, abstract, ambient, and declaration-only contracts MUST express fallibility directly with `Result<A, E>` or `Promise<Result<A, E>>`.' This member of the callback-contract class sits in the DIRECT argument position the rule already walked, so it is invisible to the reading that the defect was 'only object literals'. Its cause is the other half of that defect: specification/failures.mdx, 'Propagation' abolishes TypeScript's non-null-assertion meaning for `!` in `.sm`, but the stock checker still computes `const value = lookup(\"ada\")!` as though `value` had the Result's own type, so an unannotated callback that merely PROPAGATES appears to the checker to RETURN a Result. Reading that inferred type as if it were a spelled contract silences the rule on exactly the shape it exists to refuse. The narrow repair — an inferred Result return qualifies as a contract only when the abolished `!` meaning did not manufacture it — is what keeps a-callback-forwarding-an-existing-result-needs-no-annotation accepted; the obvious stronger rule (always require an explicit annotation) breaks that case, 01-result-lifting/result-transformations-preserve-the-error-type, and two 08-promise-chaining cases. That is R1FIX's STOP-2, measured rather than argued. The Go fork never had this hole, because its declared shape is derived from a spelled annotation only and never from the checker's inferred type; both backends report the same diagnostic at the same position today."
+}

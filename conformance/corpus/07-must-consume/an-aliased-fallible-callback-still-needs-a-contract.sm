@@ -1,0 +1,35 @@
+export class Boom extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+type Transform = (key: string) => unknown
+
+function apply(key: string, transform: Transform): string {
+  return String(transform(key))
+}
+
+const fallible = (key: string) => {
+  if (key !== "ada") throw new Boom(key)
+  return "Ada Lovelace"
+}
+
+const holder = { transform: fallible }
+
+export function direct(): string {
+  return apply("ada", fallible)
+}
+
+export function throughAnAlias(): string {
+  const alias = fallible
+  return apply("ada", alias)
+}
+
+export function throughADoubleAlias(): string {
+  const first = fallible
+  const second = first
+  return apply("ada", second)
+}
+
+export function throughAnObjectProperty(): string {
+  return apply("ada", holder.transform)
+}

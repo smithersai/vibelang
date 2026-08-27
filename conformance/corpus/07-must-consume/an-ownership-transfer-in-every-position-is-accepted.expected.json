@@ -1,0 +1,11 @@
+{
+  "title": "binding, returning, the value side of a comma, and a collected array each transfer ownership and are accepted",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace",
+    "Ada Lovelace",
+    "Ada Lovelace",
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' The over-correction guard for the seven discard spellings pinned beside it. A rule that starts at the producer and walks outward through every container position is one wrong step away from charging ordinary code: a bound Result that IS later consumed, a plain `return`, a comma whose value is used, and an array handed to `Result.all` are all ownership transfers, not discards. This repository has shipped six over-corrections; a corpus that only pins refusals invites the seventh."
+}

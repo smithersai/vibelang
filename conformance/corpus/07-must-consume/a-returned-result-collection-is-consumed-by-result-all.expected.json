@@ -1,0 +1,9 @@
+{
+  "title": "a Result collection returned across a function boundary is discharged by collecting it with the compiler-owned Result.all",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace",
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:190 names five discharging forms — 'returning, matching, transforming, inspecting, or unwrapping'. The over-correction guard for 07-must-consume/a-returned-result-collection-charges-its-caller: charging the caller of a container-returning callee must not make the container unconsumable once it gets there. `Result.all(pack())!` collects the returned collection and propagates it, so the obligation the call created is discharged at the same expression. Without this case the obvious over-fix — charge the receiver and provide no way to discharge it — would be green. It is the cross-function spelling of 07-must-consume/the-compiler-owned-result-all-discharges."
+}

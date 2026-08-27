@@ -1,0 +1,12 @@
+{
+  "title": "a returned collection of started Promises charges its caller under the Promise rule, so the receiving rule names which channel it found rather than answering yes or no",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1402",
+      "line": 14,
+      "column": 19
+    }
+  ],
+  "notes": "specification/requirements.mdx:88: 'Fire-and-forget and detached work are initially unavailable in authored `.sm`; every started Promise MUST be consumed directly by `await` or by a recognized combinator whose resulting Promise is consumed before scope exit.' `startAll()` starts two Promises, moves them into a container and returns it; `main` reads `.length` and lets scope exit, so two started Promises are detached. The declared code is the point of the case. It is the SMITHERS1402 twin of 07-must-consume/a-returned-result-collection-charges-its-caller and is what distinguishes a predicate that reports WHICH must-consume channel a returned value holds from one that only answers whether it holds any: a boolean predicate would have to pick one code for both shapes, and reporting SMITHERS1301 for a container of Promises names a failure channel that is not there. The accepted twin is 07-must-consume/the-ambient-promise-all-discharges-a-bound-promise, where a recognized combinator owns everything handed to it. DEMONSTRATED AGAINST THE PRE-FIX TREE: both backends compiled this program, ran it and exited 0 printing `2`."
+}

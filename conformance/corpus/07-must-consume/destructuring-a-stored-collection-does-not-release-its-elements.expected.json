@@ -1,0 +1,12 @@
+{
+  "title": "destructuring an array literal of Results does not discharge the element producer",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 11,
+      "column": 20
+    }
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' A destructuring pattern scatters elements into bindings the ownership analysis does not track, so the obligation stays where it was rather than being silently forgiven. Both backends agree, and the program is otherwise entirely reasonable — it narrows the element and unwraps it two lines later — so this is a case where the language is stricter than an author expects and the corpus says so on purpose rather than by omission. Recorded as unpinned in C1 §6.5 and pinned here at the currently-agreed answer; if the ledger decides a destructured element carries its own obligation, retire this case rather than softening it."
+}

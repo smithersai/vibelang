@@ -1,0 +1,8 @@
+{
+  "title": "an object literal holding a Result is consumed by reading the property back out with postfix !",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' Storing a Result in a container is not a discard — it moves the question to the container — and reading the held value back out puts the obligation on the value that was read. The array spelling of the same rule is the specification's own example (compatibility.mdx:72); an object property is the same transfer, and the reference charged SMITHERS1301 at the property value before 2026-08-25. RETIRED 2026-08-25, the `go` marker: the fork's container-transfer rule now recognises object-literal property assignment and object-literal spread assignment alongside array literals and array spread elements, so both containers transfer ownership instead of one transferring and the other discarding. Measured XPASS on both backends before the marker was deleted."
+}

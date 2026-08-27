@@ -1,0 +1,12 @@
+{
+  "title": "an array literal of Results in an expression statement discards every Result it holds",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 11,
+      "column": 4
+    }
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' REVIEW-fable-1.md F1 measured this spelling (`[lookup(\"ada\")]` as a statement) COMPILING AND RUNNING on the Go fork: the checked failure was discarded at runtime, which is the exact loss the rule exists to prevent. It is also the container half of F5 — the same walk that lets a consumed array pass has to keep refusing an unconsumed one."
+}

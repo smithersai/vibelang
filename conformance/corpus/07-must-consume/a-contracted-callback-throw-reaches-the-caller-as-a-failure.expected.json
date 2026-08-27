@@ -1,0 +1,9 @@
+{
+  "title": "a callback that spells its Result contract delivers its throw to the caller as a failure, and its ordinary return as a lifted success",
+  "expect": "output",
+  "stdout": [
+    "failed: negative -4",
+    "ok: 42"
+  ],
+  "notes": "The mandatory acceptance half of the callback-contract family: the same intent as a-fallible-callback-inside-an-object-literal-argument-needs-a-contract, written the way specification/failures.mdx, 'Inference and Public Contracts' asks for it. It proves BOTH directions in one executed program — the declared failure arrives as a failure carrying the authored error class (`failed: negative -4`), and the plain return is lifted to a plain success (`ok: 42`) rather than nested inside a second Result. R1FIX executed it before and after its fix; the pre-fix reference produced `isOk() === true` with a `Result` in the success payload for the refused spelling, and this line is what that program should have printed. It is also the case that would go red if a later lane fixed the emit and re-accepted the refused shapes: the invariant asserted here is that whichever spellings the rule admits, running them delivers the declared failure through the failure channel."
+}

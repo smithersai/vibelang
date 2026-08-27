@@ -1,0 +1,16 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+class Runner {
+  constructor(readonly transform: (key: string) => unknown) {}
+  run(key: string): string { return String(this.transform(key)) }
+}
+
+export function main(): string[] {
+  const runner = new Runner((key) => {
+    if (key !== "ada") throw new Missing(key)
+    return "Ada Lovelace"
+  })
+  return [runner.run("ada")]
+}

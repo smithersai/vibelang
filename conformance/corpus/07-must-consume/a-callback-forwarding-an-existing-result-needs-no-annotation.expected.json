@@ -1,0 +1,8 @@
+{
+  "title": "a callback that forwards an existing Result needs no annotation, because its inferred contract is true",
+  "expect": "output",
+  "stdout": [
+    "ADA LOVELACE"
+  ],
+  "notes": "The over-correction guard for the whole callback-contract family, and it is not filler. specification/failures.mdx, 'Inference and Public Contracts' lists 'existing Results returned from the function' as one of the sources the compiler MUST infer `E` from, so a callback that returns a Result it received introduces no nesting and states nothing false. R1FIX measured the obvious stronger rule — require `explicitReturn && declaredShape.result`, which is what the prose of the sibling refusals literally says — and it goes red here AND on 01-result-lifting/result-transformations-preserve-the-error-type AND on two 08-promise-chaining cases. That is R1FIX's STOP-2 and the seventh over-correction this codebase has caught by measuring. Do not weaken this case to make a stricter rule pass."
+}

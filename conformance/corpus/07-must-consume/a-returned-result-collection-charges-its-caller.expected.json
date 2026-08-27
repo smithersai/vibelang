@@ -1,0 +1,12 @@
+{
+  "title": "a call whose value is not itself a Result but still holds one charges its caller, so a collection of Results returned across a function boundary cannot vanish",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 15,
+      "column": 20
+    }
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' A `return` is a TRANSFER, not a discharge: it moves the obligation to the caller, and the sentence above is only satisfied if the caller is then charged. `saveAll()` is charged nowhere in its own body — returning the container is one of the five named forms — so the whole promise rests on `main` being charged at line 15, where `outcomes.length` reads a number and no Result leaves the array. This is the cross-function twin of 07-must-consume/array-length-is-not-consumption-of-a-result-collection, whose identical `.length` read INSIDE one function was already refused; the only difference is a function boundary, and a boundary is not a consumption form. DEMONSTRATED AGAINST THE PRE-FIX TREE, not merely pinned: on a reconstructed tree without `heldObligation` both backends compiled this program, ran it, and exited 0 printing `saved 3 records` while the checked `SaveFailed` thrown by `save(2)` was created and dropped. The value is charged at the CALL rather than at the binding because the call is where the container reaches a receiver."
+}

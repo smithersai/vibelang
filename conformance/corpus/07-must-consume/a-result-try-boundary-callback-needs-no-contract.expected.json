@@ -1,0 +1,8 @@
+{
+  "title": "a Result.try boundary callback is a checked boundary and needs no Result contract of its own",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "`Result.try` is the authored boundary whose entire purpose is to convert a callback's throw into a Result, so requiring the callback to already BE Result-returning would make the constructor unusable. The acceptance half that stops the callback-contract rule from being widened over the one callback shape that owns its own throw scope. R1FIX records the adjacent defect this does NOT pin (a throw written directly in a `Result.try` callback still draws SMITHERS1303 on the reference, because the fact collector's throw branch never consults the authored boundary) — pre-existing, unchanged, and deliberately left unpinned here rather than encoded as correct."
+}

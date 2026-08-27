@@ -1,0 +1,16 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function apply(key: string, handlers: ((key: string) => unknown)[]): string {
+  const first = handlers[0]
+  return first === undefined ? "none" : String(first(key))
+}
+
+export function main(): string[] {
+  const one = (key: string) => {
+    if (key !== "ada") throw new Missing(key)
+    return "Ada Lovelace"
+  }
+  return [apply("ada", [...[one]])]
+}

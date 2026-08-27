@@ -1,0 +1,25 @@
+export class Negative extends Error {
+  constructor(readonly value: number) { super(`negative ${value}`) }
+}
+
+function apply(value: number, transform: (n: number) => Result<number, Negative>): Result<number, Negative> {
+  const mapped = transform(value)!
+  return mapped
+}
+
+function doubleOrFail(value: number): Result<number, Negative> {
+  const out = apply(value, (n): Result<number, Negative> => {
+    if (n < 0) throw new Negative(n)
+    return n * 2
+  })
+  return out
+}
+
+export function main(): string[] {
+  const failed = doubleOrFail(-4)
+  const succeeded = doubleOrFail(21)
+  return [
+    failed.match({ ok: (v) => `ok: ${v}`, error: (e) => `failed: ${e.message}` }),
+    succeeded.match({ ok: (v) => `ok: ${v}`, error: (e) => `failed: ${e.message}` }),
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "title": "Result[\"all\"]([...]) discharges every Result it collects exactly as Result.all([...]) does",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace",
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' The namespace half of the acceptance direction: the reference reported two false SMITHERS1301 here before the computed spelling was recognized. 07-must-consume/a-shadowed-result-namespace-does-not-discharge holds the other side — a namespace that is NOT the compiler's own must not discharge, whichever way it is spelled."
+}

@@ -1,0 +1,12 @@
+{
+  "title": "interpolating a Result into a template literal is not one of the consumption forms",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 9,
+      "column": 6
+    }
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' Stringifying a Result inspects nothing: `inspecting` in the specification's list means the Result API's own predicates (`isOk`, `isError`), not coercion to text, which reads a runtime representation the language deliberately leaves unspecified. REVIEW-fable-1.md F1 measured this exact program COMPILING, EMITTING AND RUNNING on the Go fork with zero diagnostics: the checked value was discarded at runtime, which is the loss the rule exists to prevent. The fork's unbound must-consume rule fired only when an expression statement's own expression typed as Result or Promise, so every container and operator position was invisible to it."
+}

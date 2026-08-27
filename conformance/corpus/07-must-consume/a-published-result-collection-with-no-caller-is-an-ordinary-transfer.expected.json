@@ -1,0 +1,8 @@
+{
+  "title": "an exported function that returns a Result collection to a caller this module does not contain is an ordinary transfer, exactly as an exported function returning one Result is",
+  "expect": "output",
+  "stdout": [
+    "published"
+  ],
+  "notes": "specification/failures.mdx:190 lists 'returning' first among the five discharging forms, and it does not condition that on the return type's arity: a library may publish `Result<A, E>[]` exactly as it may publish `Result<A, E>`. THE SHARPEST OF THE THREE ACCEPTANCE GUARDS, and neither of the others substitutes for it. The obvious way to close 07-must-consume/a-returned-result-collection-charges-its-caller is to refuse the CALLEE — to say that moving Results into a container and returning it is itself the discard — and that reading passes both other guards, because both of them call `pack()` and consume what comes back. Only a published collection with no caller in the file can see it, and refusing this program would refuse every library that returns a collection of Results. Read it beside 07-must-consume/a-collection-laundered-through-an-opaque-return-type-is-still-a-discard, which is the same callee with a return type that drops the channel: the pair is what fixes the boundary between a transfer and a discard at the RETURN TYPE rather than at the shape of the returned expression."
+}

@@ -1,0 +1,10 @@
+{
+  "title": "an ordinary computed property access on a plain object stays an ordinary TypeScript operation",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace",
+    "Grace Hopper",
+    "Ada Lovelace"
+  ],
+  "notes": "The over-correction guard for the whole computed-member family. Recognizing `x[\"name\"]` as a member access must not turn every element access into a compiler-owned call: `table[\"alpha\"]` on a plain object is an ordinary property read, and so is `table[key]` through a binding. This repository has shipped six over-corrections; a corpus that only pins refusals invites the seventh. The non-literal key is deliberate — a computed key that names no statically known member is not a selection at all, and nothing in the recognizers may claim it."
+}

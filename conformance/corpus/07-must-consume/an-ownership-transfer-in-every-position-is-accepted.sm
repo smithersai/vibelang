@@ -1,0 +1,20 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function lookup(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+function forwarded(key: string): Result<string, Missing> {
+  return lookup(key)
+}
+
+export function main(): string[] {
+  const collected: string[] = []
+  const owned = lookup("ada")
+  const throughComma = (collected.push(owned.unwrapOr("-")), lookup("ada").unwrapOr("-"))
+  const gathered = Result.all([lookup("ada"), forwarded("ada")]).unwrapOr(["-"])
+  return [...collected, throughComma, ...gathered]
+}

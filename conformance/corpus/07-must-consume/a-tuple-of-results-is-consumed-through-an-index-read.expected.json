@@ -1,0 +1,9 @@
+{
+  "title": "a tuple-typed array of Results is consumed through an index read, like the array literal",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace",
+    "Ada Lovelace"
+  ],
+  "notes": "specification/compatibility.mdx:72 (the worked example this case is written from): '`arr[i]!` does not silently change meaning. Postfix `!` requires a `Result` operand, and `T | undefined` is not one, so the expression is a type error rather than an ambiguity. It compiles only when `arr` holds Results, where it means what `!` means everywhere else.' The annotated tuple type is the point: the container's declared type still carries the Result channel, so the transfer is real rather than a fiction. The negative half of that distinction is 09-foreign-calls/foreign-module-without-a-trust-marker, where a LIFTED foreign Result goes into a plainly-typed `string[]` and the channel is dropped on the way in — there the array does not hold the channel and the Result is genuinely discarded."
+}

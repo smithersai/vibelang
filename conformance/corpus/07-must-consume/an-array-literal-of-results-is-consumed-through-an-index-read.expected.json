@@ -1,0 +1,9 @@
+{
+  "title": "an array literal of Results is consumed by reading an element back out with postfix !",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace",
+    "Ada Lovelace"
+  ],
+  "notes": "specification/compatibility.mdx:72 (the worked example this case is written from): '`arr[i]!` does not silently change meaning. Postfix `!` requires a `Result` operand, and `T | undefined` is not one, so the expression is a type error rather than an ambiguity. It compiles only when `arr` holds Results, where it means what `!` means everywhere else.' This is the specification's own worked example, written as a program. Building the array is not the discard: ownership moves to the container, and reading an element back out is where the obligation lands. REVIEW-fable-1.md F5 measured the reference REJECTING this exact shape with two SMITHERS1301 at the element positions while the Go fork accepted and ran it — a false rejection of the one spelling the specification promises compiles. The refusal direction is pinned by the two sibling cases below, so a fix that simply stopped charging array elements fails those."
+}

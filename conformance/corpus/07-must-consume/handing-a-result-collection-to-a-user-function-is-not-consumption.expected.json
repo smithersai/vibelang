@@ -1,0 +1,12 @@
+{
+  "title": "passing an array of Results to another function is not consumption of the Results inside it",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 13,
+      "column": 16
+    }
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' The obligation travels with the Result, not with the array, and handing the array to `count` neither returns, matches, transforms, inspects nor unwraps anything inside it. The narrow set of things that DO discharge a stored collection is deliberately small and identical on both backends — `Result.all`, the ambient Promise combinators, and reading a held Result back out — and this case is the boundary of it. If the ledger ever decides that an annotated `Result<…>[]` parameter transfers the obligation to the callee, this is the case to retire; nothing in the specification says so today."
+}

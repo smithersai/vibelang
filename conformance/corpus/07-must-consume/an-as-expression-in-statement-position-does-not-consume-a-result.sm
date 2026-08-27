@@ -1,0 +1,11 @@
+export class Missing extends Error {
+  constructor() { super("missing") }
+}
+function lookup(key: string): Result<number, Missing> {
+  if (key !== "ada") throw new Missing()
+  return 96
+}
+export function main(): string[] {
+  lookup("ada") as unknown
+  return ["done"]
+}

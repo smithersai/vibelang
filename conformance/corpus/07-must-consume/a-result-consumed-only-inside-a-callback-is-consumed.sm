@@ -1,0 +1,18 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function lookup(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+function run(handler: () => Result<string, Missing>): Result<string, Missing> {
+  return handler()!
+}
+
+export function main(): Result<string[], Missing> {
+  const entry = lookup("ada")
+  const chosen = run((): Result<string, Missing> => { const value = entry!; return value })!
+  return [chosen]
+}

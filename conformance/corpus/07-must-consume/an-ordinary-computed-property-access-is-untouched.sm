@@ -1,0 +1,5 @@
+export function main(): string[] {
+  const table = { alpha: "Ada Lovelace", beta: "Grace Hopper" }
+  const key = "alpha"
+  return [table["alpha"], table["beta"], table[key]]
+}

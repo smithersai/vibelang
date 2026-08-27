@@ -1,0 +1,12 @@
+{
+  "title": "a started Promise stored in an object literal is not discharged by awaiting the property it was read back out of",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1402",
+      "line": 10,
+      "column": 28
+    }
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' specification/failures.mdx, 'Promise Semantics': 'Authored `.sm` code MUST consume Promise instances only through `await`.' The container-ownership rule that discharges a stored collection is deliberately RESULT-ONLY: only a Result read leaves a container. A started Promise read back out through its property and awaited is arguably the better language answer — the Promise genuinely is awaited — but no specification sentence says what consuming a collection means for a Promise, and the CONV lane measured itself introducing exactly this as a NEW divergence in the permissive direction before reverting it. This case pins the currently-agreed answer on both backends so the question is visible rather than latent. IT IS THE CASE TO RETIRE, not to argue around, if the ledger decides that awaiting a stored Promise through its property discharges it. 07-must-consume/the-ambient-promise-all-discharges-a-bound-promise and 08-promise-chaining/a-bound-promise-array-is-consumed-by-promise-all pin the forms that DO discharge."
+}

@@ -1,0 +1,8 @@
+{
+  "title": "a Result held two object levels deep is consumed by reading it back out through the property chain",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' The acceptance direction of container ownership, one level deeper than 07-must-consume/an-object-literal-holding-a-result-is-consumed-through-its-property. Reading the held value back out with `bag.inner.found!` is an unwrap, which is one of the five named consumption forms, so the store was a transfer and not a discard. Nesting does not change that; a rule that only looked one level down would refuse this program."
+}

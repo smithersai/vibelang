@@ -1,0 +1,19 @@
+{
+  "title": "a fallible arrow handed to Array.prototype.map owes a Result contract like any other callback argument",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1303",
+      "line": 11,
+      "column": 29
+    }
+  ],
+  "notes": "specification/failures.mdx, 'Inference and Public Contracts': 'Public, abstract, ambient, and declaration-only contracts MUST express fallibility directly with `Result<A, E>` or `Promise<Result<A, E>>`.' A callback boundary is a VALUE edge, not an argument position: the callee invokes a function it received inside an object literal, an array literal, a parenthesis, a cast or a `new` argument list exactly as it invokes one passed directly. Fail-closed matters here because the accepting behaviour is silent and wrong rather than loud and wrong — R1FIX executed this class before the fix and measured `isOk() === true` with a `Result` sitting in the SUCCESS payload, with zero language diagnostics and zero emitted-TypeScript diagnostics. `.map(() => lookup(\"ada\")!)` is the shape an author reaches for first, and it is the shape where accepting silently is worst: the propagation returns from the CALLBACK, not from the enclosing function, so the failure never reaches the author's declared channel and the array is populated with Results. Until 2026-08-25 the reference accepted this program, precisely because the abolished `!` meaning manufactured an inferred Result contract that silenced the rule — the same cause as a-propagating-callback-needs-a-contract-even-though-its-inferred-type-is-a-result, in the most ordinary spelling. Both backends now report SMITHERS1303 here.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "the fork reports the SMITHERS1303 correctly and ADDS SMITHERS1204@11:35 for the `!` in the concise arrow body. The extra diagnostic is the same fork-side placement over-reach pinned by 02-unwrap-propagation/postfix-bang-in-a-concise-arrow-body-is-accepted: `safeUnwrapPlacement` treats an arrow function as a rejection where 'Accepted Placements' condition 1 makes it a STOP. A diagnostics case is exact in both directions, so an extra true-in-spirit diagnostic is still a divergence, and declaring it here would pin the over-reach as contract. MEASURED on both backends: `<scratchpad>/conv/probes/bang11-concise-arrow-in-map/main.sm`. Retire this marker together with the 02-unwrap-propagation one — they are one defect.",
+    "doc": "specification/failures.mdx, 'Accepted Placements', condition 1: the walk runs 'until the nearest statement or arrow function'."
+  }
+}

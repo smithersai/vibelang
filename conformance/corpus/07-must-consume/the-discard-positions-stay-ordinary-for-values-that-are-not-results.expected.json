@@ -1,0 +1,14 @@
+{
+  "title": "void, comma, logical operators, template spans, as, array literals and for initializers stay ordinary TypeScript for ordinary values",
+  "expect": "output",
+  "stdout": [
+    "void",
+    "comma",
+    "for",
+    "comma value",
+    "andor",
+    "number",
+    "3"
+  ],
+  "notes": "The second over-correction guard for the must-consume walk, and the one that would catch the widest damage. Every syntactic position the rule learned to visit — `void`, both operands of a comma, `&&`, `||`, a template span, an `as` expression, an array literal in statement position, and a `for` initializer — appears here holding a value that is neither a Result nor a started Promise, and the program compiles and runs. A walk that charges by POSITION rather than by what the position holds turns each of these ordinary lines into an error; nothing in specification/failures.mdx or specification/type-system.mdx says anything about a value that is not a Result."
+}

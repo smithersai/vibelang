@@ -1,0 +1,8 @@
+{
+  "title": "a Result collection returned across a function boundary is discharged by reading an element back out and unwrapping it",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' The second over-correction guard for 07-must-consume/a-returned-result-collection-charges-its-caller, and it is not a duplicate of the Result.all one: `pack()[0]!` never binds the container at all, so it exercises the index-read discharge on an UNBOUND returned collection, where the Result.all case exercises a recognized collector on a bound argument. It is the cross-function spelling of 07-must-consume/an-array-literal-of-results-is-consumed-through-an-index-read, whose refusing twin (`.length` instead of `[0]!`) is 07-must-consume/array-length-is-not-consumption-of-a-result-collection."
+}

@@ -1,0 +1,17 @@
+{
+  "title": "a conditional expression discarded as a statement charges each branch's producer, not the statement",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 12,
+      "column": 10
+    },
+    {
+      "code": "SMITHERS1301",
+      "line": 12,
+      "column": 26
+    }
+  ],
+  "notes": "specification/failures.mdx:136: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' Two Results are ignored, so there are two obligations; the conditional statement is not itself a Result and cannot carry one. REVIEW-fable-1.md F6 measured the divergence this pins: the reference reports both producers while the Go fork reported one diagnostic at the statement (10,3). The position is the substance here — a rule that reports the containing statement cannot say which producer was dropped when only one branch is at fault."
+}

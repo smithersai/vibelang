@@ -1,0 +1,10 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+export function main(): string[] {
+  const adapted = Result.try(() => {
+    return "Ada Lovelace"
+  })
+  return [adapted.unwrapOr("none")]
+}

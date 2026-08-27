@@ -1,0 +1,12 @@
+{
+  "title": "a Result used as a ternary CONDITION is discarded, unlike a Result in either branch",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 11,
+      "column": 16
+    }
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' A conditional's BRANCHES are the value the conditional becomes, so forwarding through one is not a discard — 07-must-consume/a-conditional-branch-forwards-its-result. Its CONDITION is not: the Result is coerced to a boolean and thrown away, and none of the five named forms happens to it. The two cases are the same syntax with opposite verdicts, which is what makes the forwarding rule a rule about position within the conditional rather than a blanket exemption for conditionals. 07-must-consume/a-discarded-conditional-charges-both-branch-producers is the third corner: forwarding into a discarded conditional charges both producers."
+}

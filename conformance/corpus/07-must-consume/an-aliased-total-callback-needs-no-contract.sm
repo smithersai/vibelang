@@ -1,0 +1,32 @@
+type Transform = (key: string) => unknown
+
+function apply(key: string, transform: Transform): string {
+  return String(transform(key))
+}
+
+const total = (key: string) => key.toUpperCase()
+
+const holder = { transform: total }
+
+function direct(): string {
+  return apply("ada", total)
+}
+
+function throughAnAlias(): string {
+  const alias = total
+  return apply("bob", alias)
+}
+
+function throughADoubleAlias(): string {
+  const first = total
+  const second = first
+  return apply("cyd", second)
+}
+
+function throughAnObjectProperty(): string {
+  return apply("dee", holder.transform)
+}
+
+export function main(): string[] {
+  return [direct(), throughAnAlias(), throughADoubleAlias(), throughAnObjectProperty()]
+}

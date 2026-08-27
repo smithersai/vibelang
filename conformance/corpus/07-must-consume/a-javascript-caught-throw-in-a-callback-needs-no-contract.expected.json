@@ -1,0 +1,8 @@
+{
+  "title": "a throw a JavaScript catch handles inside the callback creates no failure channel to carry",
+  "expect": "output",
+  "stdout": [
+    "Ada Lovelace"
+  ],
+  "notes": "specification/failures.mdx, 'JavaScript try/catch': 'Ordinary statement-form JavaScript try/catch remains valid where JavaScript interoperability requires it. It is not the typed recovery surface for Smithers Results, and its presence MUST NOT change a function's Result contract implicitly.' A throw that is caught inside the callback never crosses the boundary, so there is no channel the consumer's type could fail to carry. The refusal twin is a-try-finally-callback-still-carries-its-throw-across-the-boundary, which is the same program with `finally` in place of `catch`: one line apart and opposite verdicts, which is the pair that shows the rule is reading the escaping channel rather than the presence of a `try`."
+}

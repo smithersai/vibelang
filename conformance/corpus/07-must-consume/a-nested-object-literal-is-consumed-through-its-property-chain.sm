@@ -1,0 +1,14 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function lookup(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+export function main(): Result<string[], Missing> {
+  const bag = { inner: { found: lookup("ada") } }
+  const name = bag.inner.found!
+  return [name]
+}

@@ -1,0 +1,12 @@
+{
+  "title": "a lifted fallible call stored into a plainly typed array is a discard, because the array does not hold the channel",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1301",
+      "line": 11,
+      "column": 11
+    }
+  ],
+  "notes": "specification/failures.mdx:190: 'A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.' specification/type-system.mdx:56: 'An ignored Result MUST be a compile error.' specification/failures.mdx, 'Inference and Public Contracts' infers `E` from 'reachable `throw error` statements', so `risky` returns `Result<number, Missing>` even though its declaration says `number`. The array's own type is therefore `number[]`: it does not carry the channel, the store is a fiction, and the Result is dropped. THIS IS THE GUARD that stops container literals from being made unconditionally transparent — a store transfers ownership only when the container's own type still carries a Result or a started Promise. It is the authored twin of 09-foreign-calls/foreign-module-without-a-trust-marker, where the same shape arises from a lifted FOREIGN call, and the CONV lane records that this case is what caught an attempt to widen the transfer rule too far. Do not weaken it."
+}
