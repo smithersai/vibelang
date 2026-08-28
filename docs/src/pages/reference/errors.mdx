@@ -121,7 +121,13 @@ plain array erases the panic/domain distinction that recovery is required to
 preserve.
 
 `flatten` and `tapBoth` are no longer in this section: both moved to the table
-above. See the note there, and **(SA-7)**, for the remaining Go-fork gap.
+above, and as of 2026-08-28 there is no Go-fork gap left behind them — the fork's
+own copy of the discharge set declares both, its two prelude classes implement
+both, and the `xfail(go)` markers on
+`01-result-lifting/result-flatten-collapses-one-level-of-nesting` and
+`01-result-lifting/result-tap-both-observes-whichever-variant-is-active` are
+retired. See the note there. **(SA-7)** now records only the ten members this
+section gives reasons for.
 
 ## Error Methods
 
