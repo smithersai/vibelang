@@ -199,7 +199,24 @@ The API above is the contract Smithers programs may *call*. It is not a claim th
 
 Members that must inspect a failure value — `tryRecover`, `tapError`, `mapError`, and the error half of `partition` — are not authorable today, because the language has no form that extracts the error from a Result: `!` propagates it and `match` is a method `.sm` can call but not define. `flatten` is likewise unauthorable, because `!` marks its own output as a plain value without checking, so a `Result<Result<A, E>, E>` cannot be unwrapped one level.
 
-**Open.** Whether Smithers gains an error-extraction form is undecided. It is a real language feature with a spelling to choose, not an oversight, and it is the root of most of the unauthorable members. Until it is decided, these members are supplied by the compiler-owned runtime.
+**Open.** Whether Smithers gains an error-extraction form is undecided. It is a real language feature with a spelling to choose, not an oversight, and it is the root of most of the unauthorable members.
+
+**Implementation status, measured 2026-08-28.** The sentence that stood here —
+"until it is decided, these members are supplied by the compiler-owned runtime" —
+was false, so record the gap rather than assert the fix. The list above is a
+`direction` obligation on an implementation, and this one does not yet meet it.
+Callable from authored `.sm` today: `isOk isError match map mapError andThen
+recover tap tapError unwrapOr expect`, plus the statics `Result.all Result.try
+Result.tryPromise`. The other twelve names above resolve nowhere, and the failure
+is not the obvious one — a Result member outside the recognized set does not
+report an unknown property, it fails the must-use walk and is refused as
+`SMITHERS1301`. `flatten` and `tapBoth` exist on the runtime
+(`poc/src/runtime/result.ts`) and are reachable from foreign TypeScript through
+`smthrs/result`, but the checker's Result surface does not declare them, so
+authored `.sm` cannot call them either. See
+[Results and Errors](/reference/errors) §Deliberately absent for the per-member
+reasoning, including why the async mirror is blocked on the must-use ownership
+walk rather than on the runtime.
 
 `match` MUST require both success and error branches. Transformations MUST preserve or correctly combine the Result error type. Async variants MUST return a Promise of the Result rather than a nested Result.
 

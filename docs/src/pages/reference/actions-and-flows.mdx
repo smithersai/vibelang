@@ -28,9 +28,18 @@ Name.run(input)
 Inside a Flow body, `run` emits a **journaled effect request** bearing a stable
 site identity and the derived codecs for its input and answer, and evaluates to
 an ordinary `Result`. Applying `!` to that Result emits the ordinary failure
-exit; it carries no durable-specific meaning. Outside a Flow, the runtime
-dispatches the configured implementation directly. Neither compilation nor
+exit; it carries no durable-specific meaning. Neither compilation nor
 inspection executes an Action implementation.
+
+Outside a Flow, `run` **refuses**. There is no direct-dispatch path: it throws
+`Action.run and durable control helpers are valid only while compiling a Flow`
+(`poc/src/durable/authoring.ts`), and the platform-neutral facade
+`smthrs/provider` throws its own equivalent. This is deliberate rather than
+unfinished — an Action that executed without a journal would produce an effect
+the coordinator cannot replay, deduplicate, or attribute to a site identity, so
+the refusal is what keeps the recovery and reuse policies below meaningful. To
+run an Action's implementation on its own, call the implementation function; to
+run it durably, call it from a Flow.
 
 ## Flow
 
@@ -146,21 +155,49 @@ marker, or partition syntax is added. See
 
 ## Recovery Policy
 
-| Policy | Ambiguous retry behavior |
+A provider declares `recovery: { mode, maxAttempts, retryTypedFailures?, delayMs? }`.
+`mode` is validated against exactly these three values, and the default when a
+provider omits the policy is `{ mode: "manual", maxAttempts: 1 }` — the
+conservative one.
+
+| `mode` | Ambiguous retry behavior |
 | --- | --- |
-| idempotent | may repeat |
-| compensable | may repeat with compensation |
-| irreversible | does not repeat automatically |
+| `repeatable` | may repeat; repeating is harmless at the destination |
+| `downstream-deduplicated` | may repeat; the destination absorbs the duplicate through an idempotency key, transaction, or fencing token |
+| `manual` | does not repeat automatically; an operator decides |
 
 Completed invocations are journaled for execution-local replay regardless of reuse policy.
 
+These are **not** the three classes named in
+[Durable Execution](/specification/durable-execution) §Recovery, and the
+difference is not one of spelling. That section's SHOULD is a taxonomy of the
+*effect* — idempotent, compensable, irreversible. This table is a grant of
+*permission to the runtime*, which is what a provider can actually declare and
+what a Plan artifact serializes. `repeatable` does correspond to the spec's
+"idempotent". The other two do not line up:
+
+- **`compensable` is unimplemented.** Compensation is repair after the fact, and
+  it needs somewhere to register the compensating Action. There is no such
+  facility: catch and compensation topology is a recorded deliberate omission in
+  `poc/src/durable/README.md`. `downstream-deduplicated` is a different
+  mechanism — the repeat has no *additional* effect because the destination
+  discards it — and it is the one that exists.
+- **`irreversible` classifies the effect; `manual` names who resolves the
+  ambiguity.** A reversible effect can still warrant `manual`, so the
+  implemented value is the weaker and safer claim.
+
+Reconciling the specification's taxonomy with the implemented permissions is
+open; the reference states what a provider may declare today.
+
 ## Reuse Policy
 
-| Policy | Cross-execution behavior |
+A provider declares `reuse` as a tagged union; `kind` is the serialized tag.
+
+| `kind` | Cross-execution behavior |
 | --- | --- |
-| execution-only | no reuse outside the execution |
-| memoized | first committed acceptable outcome for an explicit key |
-| content | reproducible equivalent result from a complete content key |
+| `execution` | no reuse outside the execution |
+| `memo` | first committed acceptable outcome for an explicit key; carries `scope`, `generation`, and `keyVersion` |
+| `content` | reproducible equivalent result from a complete content key; optional `invalidationSalt` |
 
 Memoization does not imply determinism or hermeticity.
 

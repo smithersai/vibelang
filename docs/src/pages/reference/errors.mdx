@@ -47,26 +47,60 @@ There is no failure annotation, prefix propagation expression, postfix catch exp
 
 The API is modelled on [better-result](https://github.com/dmmulroy/better-result).
 
+This table is the **complete** set of members an authored `.sm` program may call
+on a Result. It is not a subset of a larger library surface: a member that is not
+listed here does not discharge the must-use obligation, so calling one is
+reported as `SMITHERS1301` ("Result value is not consumed") rather than as an
+unknown property.
+
 | Method | Meaning |
 | --- | --- |
 | `isOk()`, `isError()` | inspect and narrow the variant |
 | `match({ ok, error })` | exhaustively produce a value from either variant |
 | `map`, `mapError` | transform one side |
-| `andThen`, `andThenAsync` | sequence success-dependent work |
-| `flatten` | collapse a nested Result |
-| `recover`, `tryRecover`, `tryRecoverAsync` | replace an error with a value or Result |
-| `tap`, `tapError`, `tapBoth` | observe without changing the Result |
-| `tapAsync`, `tapErrorAsync`, `tapBothAsync` | async observation |
+| `andThen` | sequence success-dependent work |
+| `recover` | replace an error with a value or a Result |
+| `tap`, `tapError` | observe without changing the Result |
 | `expr!` | compiler propagation point |
 | `unwrapOr`, `expect` | extract with fallback or invariant message |
-| `Result.all`, `Result.allAsync` | collect Results, returning the first error |
-| `Result.partition`, `Result.partitionAsync` | split successes from errors, order preserved |
+| `Result.all` | collect Results, returning the first error |
 | `Result.try`, `Result.tryPromise` | adapt a foreign throwing/rejecting operation |
-| `Result.codec` | boundary-aware serialization and deserialization |
 
 Not provided, because Smithers supplies them another way: `Result.ok` and `Result.err` (use `return` and `throw`), `TaggedError` (use `class ... extends Error`), and `Result.gen`/`yield*` (use `!`).
 
+Serialization is not a Result member. The boundary codecs are module-level
+functions on `smthrs/result` — `encodeResult`, `decodeResult`, `encodeError`,
+`decodeError`, `registerErrorCodec` — because a codec is a property of the
+transport, not of one value. See §Transport.
+
 Results are must-use.
+
+### Deliberately absent
+
+An asynchronous mirror of the combinator set (`andThenAsync`, `tapAsync`,
+`tapErrorAsync`, `tapBothAsync`, `Result.allAsync`, `Result.partitionAsync`) is
+**not** provided. The blocker is not the runtime half; it is that a callback
+returning `Promise<Result<…>>` is a new shape for the must-use ownership walk,
+and an order-sensitive `allAsync` collides with
+[Actions & Flows](/reference/actions-and-flows) §Flow Determinism, which requires
+every arrival-order-dependent combinator to be dispatched through the runtime
+scheduler. Write the `await` explicitly instead: `await` unwraps the Promise and
+leaves an ordinary Result, which the synchronous combinators then handle.
+
+`tryRecover`/`tryRecoverAsync` are absent because `recover` already accepts both
+a plain value and a Result, and it deliberately does **not** recover `panic`. A
+separate "try" recovery would first have to answer whether it enters the
+distinguished panic channel, which §Foreign Exceptions and Defects reserves.
+
+`Result.partition` is absent for the same reason: emitting the failures as a
+plain array erases the panic/domain distinction that recovery is required to
+preserve.
+
+`flatten` and `tapBoth` are the two members whose absence is only half true:
+the runtime implements and tests both, and foreign TypeScript importing
+`smthrs/result` can call them today. They are not listed in the table above
+because the checker's Result surface does not yet declare them, so an authored
+`.sm` calling one is refused by `SMITHERS1301`. They join the table when it does.
 
 ## Error Methods
 
