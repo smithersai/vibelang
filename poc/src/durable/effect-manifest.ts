@@ -237,7 +237,14 @@ const sortedStrings = (values: Iterable<string>): readonly string[] => [...new S
 export const deriveEffectManifest = (
   source: EffectManifestSource,
   options: {
-    readonly logicalFileName: string
+    /**
+     * The **authored** source name (`orders.sm`), never the compiled unit's
+     * (`orders.sm.ts`). A site identity names a position in the program the
+     * author wrote; anchoring it on the virtual TypeScript file this compiler
+     * mints to run a checker made every site id — and therefore, under PR-2,
+     * every journal key — differ between the two backends for the same text.
+     */
+    readonly authoredFileName: string
     readonly flowId: string
     readonly flowVersion: number
     readonly functionName: string
@@ -260,8 +267,8 @@ export const deriveEffectManifest = (
   const recordSite = (node: ts.Node, kind: EffectManifestSite["kind"], key?: string): void => {
     const anchor = anchorOf(node)
     const identity: EffectSiteIdentity = key === undefined
-      ? { file: options.logicalFileName, functionName: options.functionName, kind: "perform", anchor }
-      : { file: options.logicalFileName, functionName: options.functionName, kind: "perform", anchor, key }
+      ? { file: options.authoredFileName, functionName: options.functionName, kind: "perform", anchor }
+      : { file: options.authoredFileName, functionName: options.functionName, kind: "perform", anchor, key }
     // The site table is keyed by the shared content-addressed scheme
     // (`site-id.ts`), with an occurrence counter that exists ONLY to keep two
     // syntactically distinct sites that hash alike from colliding. It is not

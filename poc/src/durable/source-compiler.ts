@@ -248,10 +248,12 @@ interface NormalizedModuleBinding {
 }
 
 /**
- * The caller's file identity with path traversal removed. Derived Action ids
- * are anchored here rather than on the TypeScript-normalized name, so an Action
- * declared in `orders.sm` keeps the id `orders.sm#Lookup` that every other
- * compiler for this language derives for it.
+ * The caller's file identity with path traversal removed. **Every identity this
+ * compiler mints is anchored here** — Action ids, the Flow id, Plan node
+ * identities, and Effect Manifest site identities — so an Action declared in
+ * `orders.sm` keeps the id `orders.sm#Lookup` and the Flow beside it keeps
+ * `orders.sm#Build`, which is what every other compiler for this language
+ * derives for them.
  */
 const authoredLogicalName = (name: string | undefined): string => {
   const candidate = (name ?? "durable-source.ts").replace(/\\/g, "/")
@@ -259,7 +261,28 @@ const authoredLogicalName = (name: string | undefined): string => {
   return parts.join("/") || "durable-source.ts"
 }
 
-const normalizeLogicalFileName = (name: string | undefined): string => {
+/**
+ * The **compiled unit's** name, not the authored source's.
+ *
+ * This compiler checks authored `.sm` text by handing it to a real TypeScript
+ * program as a virtual file at `<root>/__input__/<name>`, and TypeScript only
+ * treats a file as TypeScript if its name ends in a TS extension. The `.ts` this
+ * appends therefore names an artifact of *how* the source is compiled. It is a
+ * legitimate input to `ts.createProgram` and to the position of a diagnostic
+ * this compilation reports; it is **not** an identity, and nothing that names
+ * the authored Flow, its Actions, its Plan nodes, or its Manifest sites may be
+ * anchored on it.
+ *
+ * MEASURED, not stylistic: while the Flow id was anchored here, the reference
+ * spelled it `<case>.sm.ts#Build` and the Go fork spelled it `<case>.sm#Build`
+ * for the same authored text — inside a single Manifest whose Action rows
+ * already agreed on `<case>.sm#Fetch`, so one artifact named one file two ways.
+ * That divergence propagated into every Plan node id, every `debug.callSite`,
+ * every Manifest site id, and both digests, which is why a Manifest digest
+ * could not be a signature (`DECISIONS.md` §PR-1) and why `migration.ts:217`
+ * would have read two backends' output as two different Flows.
+ */
+const compiledUnitFileName = (name: string | undefined): string => {
   const normalized = authoredLogicalName(name)
   return /\.[cm]?tsx?$/.test(normalized) ? normalized : `${normalized}.ts`
 }
@@ -1326,7 +1349,7 @@ class FunctionLowerer {
 
   constructor(
     readonly checked: CheckedSource,
-    readonly logicalFileName: string,
+    readonly authoredFileName: string,
     readonly flowId: string,
     readonly flowVersion: number,
     readonly functionName: string,
@@ -1590,7 +1613,7 @@ class FunctionLowerer {
     this.signalIds.add(signalId)
     const signalContractDigest = digest({ signalId, payloadSchema })
     const identity = {
-      file: this.logicalFileName,
+      file: this.authoredFileName,
       flowId: this.flowId,
       flowVersion: this.flowVersion,
       functionName: this.functionName,
@@ -1616,7 +1639,7 @@ class FunctionLowerer {
       controlDependencies: this.sequencingDependency === undefined ? [] : [this.sequencingDependency],
       debug: {
         label: `signal:${signalId}`,
-        callSite: `${this.logicalFileName}:${position.line + 1}:${position.character + 1}`
+        callSite: `${this.authoredFileName}:${position.line + 1}:${position.character + 1}`
       }
     }
     this.activeNodes.push(node)
@@ -1689,7 +1712,7 @@ class FunctionLowerer {
     identity: Readonly<Record<string, string>>
   ): string {
     const semantic = {
-      file: this.logicalFileName,
+      file: this.authoredFileName,
       flowId: this.flowId,
       flowVersion: this.flowVersion,
       functionName: this.functionName,
@@ -1742,7 +1765,7 @@ class FunctionLowerer {
       controlDependencies: this.sequencingDependency === undefined ? [] : [this.sequencingDependency],
       debug: {
         label: `broadcast:${signalId}`,
-        callSite: `${this.logicalFileName}:${position.line + 1}:${position.character + 1}`
+        callSite: `${this.authoredFileName}:${position.line + 1}:${position.character + 1}`
       }
     }
     this.activeNodes.push(node)
@@ -1788,7 +1811,7 @@ class FunctionLowerer {
       controlDependencies: this.sequencingDependency === undefined ? [] : [this.sequencingDependency],
       debug: {
         label: `queue:${queueId}`,
-        callSite: `${this.logicalFileName}:${position.line + 1}:${position.character + 1}`
+        callSite: `${this.authoredFileName}:${position.line + 1}:${position.character + 1}`
       }
     }
     this.activeNodes.push(node)
@@ -1823,7 +1846,7 @@ class FunctionLowerer {
       )
     }
     const identity = {
-      file: this.logicalFileName,
+      file: this.authoredFileName,
       flowId: this.flowId,
       flowVersion: this.flowVersion,
       functionName: this.functionName,
@@ -1846,7 +1869,7 @@ class FunctionLowerer {
       controlDependencies: this.sequencingDependency === undefined ? [] : [this.sequencingDependency],
       debug: {
         label: "sleep",
-        callSite: `${this.logicalFileName}:${position.line + 1}:${position.character + 1}`
+        callSite: `${this.authoredFileName}:${position.line + 1}:${position.character + 1}`
       }
     }
     this.activeNodes.push(node)
@@ -1956,7 +1979,7 @@ class FunctionLowerer {
     this.usedChildFlows.set(childPlan.digest, childPlan)
     this.usesFormatVersion2 = true
     const identity = {
-      file: this.logicalFileName,
+      file: this.authoredFileName,
       flowId: this.flowId,
       flowVersion: this.flowVersion,
       functionName: this.functionName,
@@ -1985,7 +2008,7 @@ class FunctionLowerer {
       controlDependencies: this.sequencingDependency === undefined ? [] : [this.sequencingDependency],
       debug: {
         label: `childFlow:${childPlan.flowId}`,
-        callSite: `${this.logicalFileName}:${position.line + 1}:${position.character + 1}`
+        callSite: `${this.authoredFileName}:${position.line + 1}:${position.character + 1}`
       }
     }
     this.activeNodes.push(node)
@@ -2216,7 +2239,7 @@ class FunctionLowerer {
     // The single-step encoding stays byte- and identity-stable with the
     // original flat fan-out so existing artifacts and node ids do not churn.
     const identity = {
-      file: this.logicalFileName,
+      file: this.authoredFileName,
       flowId: this.flowId,
       flowVersion: this.flowVersion,
       functionName: this.functionName,
@@ -2249,7 +2272,7 @@ class FunctionLowerer {
       controlDependencies: this.sequencingDependency === undefined ? [] : [this.sequencingDependency],
       debug: {
         label: `fanOut:${stepIdentities.map((step) => step.actionId).join("+")}`,
-        callSite: `${this.logicalFileName}:${position.line + 1}:${position.character + 1}`
+        callSite: `${this.authoredFileName}:${position.line + 1}:${position.character + 1}`
       }
     }
     const node: FanOutNode = stepped
@@ -2635,7 +2658,7 @@ class FunctionLowerer {
 
     this.usesFormatVersion2 = true
     const identity = {
-      file: this.logicalFileName,
+      file: this.authoredFileName,
       flowId: this.flowId,
       flowVersion: this.flowVersion,
       functionName: this.functionName,
@@ -2670,7 +2693,7 @@ class FunctionLowerer {
       controlDependencies: this.sequencingDependency === undefined ? [] : [this.sequencingDependency],
       debug: {
         label: `loopWhile:${descriptor.id}`,
-        callSite: `${this.logicalFileName}:${position.line + 1}:${position.character + 1}`
+        callSite: `${this.authoredFileName}:${position.line + 1}:${position.character + 1}`
       }
     }
     this.activeNodes.push(node)
@@ -2700,7 +2723,7 @@ class FunctionLowerer {
     const whenTrue = this.lowerFragment(expression.whenTrue, `${anchor}:true`, allowFinalAction)
     const whenFalse = this.lowerFragment(expression.whenFalse, `${anchor}:false`, allowFinalAction)
     const identity = {
-      file: this.logicalFileName,
+      file: this.authoredFileName,
       flowId: this.flowId,
       flowVersion: this.flowVersion,
       functionName: this.functionName,
@@ -2725,7 +2748,7 @@ class FunctionLowerer {
       controlDependencies: parentSequencing === undefined ? [] : [parentSequencing],
       debug: {
         label: "conditional",
-        callSite: `${this.logicalFileName}:${position.line + 1}:${position.character + 1}`
+        callSite: `${this.authoredFileName}:${position.line + 1}:${position.character + 1}`
       }
     }
     this.activeNodes.push(node)
@@ -2816,7 +2839,7 @@ class FunctionLowerer {
     }
     this.usedActions.set(descriptor.id, descriptor)
     const identity = {
-      file: this.logicalFileName,
+      file: this.authoredFileName,
       flowId: this.flowId,
       flowVersion: this.flowVersion,
       functionName: this.functionName,
@@ -2844,7 +2867,7 @@ class FunctionLowerer {
       controlDependencies: this.sequencingDependency === undefined ? [] : [this.sequencingDependency],
       debug: {
         label: descriptor.id,
-        callSite: `${this.logicalFileName}:${position.line + 1}:${position.character + 1}`
+        callSite: `${this.authoredFileName}:${position.line + 1}:${position.character + 1}`
       }
     }
     this.activeNodes.push(node)
@@ -2886,7 +2909,7 @@ export const compileDurableSource = (
   try {
     if (typeof source !== "string") throw new TypeError("Durable source must be a string")
     if (options === null || typeof options !== "object") throw new TypeError("Durable source compiler options are required")
-    logicalFileName = normalizeLogicalFileName(options.fileName)
+    logicalFileName = compiledUnitFileName(options.fileName)
     if (new TextEncoder().encode(source).byteLength > MAX_SOURCE_BYTES) {
       return {
         ok: false,
@@ -2933,13 +2956,15 @@ export const compileDurableSource = (
     const call = calls[0]
     const sourceFunction = resolvedFunction(checked, call, fail)
     const declarationName = declarationNameFor(call, sourceFunction)
-    const flowId = options.flowId ?? `${logicalFileName}#${declarationName}`
+    // The authored name, never `logicalFileName`: see `compiledUnitFileName`.
+    const authoredFileName = authoredLogicalName(options.fileName)
+    const flowId = options.flowId ?? `${authoredFileName}#${declarationName}`
     const flowVersion = options.flowVersion ?? 1
     if (typeof flowId !== "string" || flowId.trim() === "") fail(call, "SMITHERS4101", "durable Flow id must be non-empty")
     if (!Number.isSafeInteger(flowVersion) || flowVersion < 1) fail(call, "SMITHERS4101", "durable Flow version must be a positive safe integer")
     const lowerer = new FunctionLowerer(
       checked,
-      logicalFileName,
+      authoredFileName,
       flowId,
       flowVersion,
       sourceFunction.name?.text ?? declarationName,
@@ -2982,7 +3007,7 @@ export const compileDurableSource = (
       manifest = deriveEffectManifest(
         checked,
         {
-          logicalFileName,
+          authoredFileName,
           flowId,
           flowVersion,
           functionName: sourceFunction.name?.text ?? declarationName
@@ -3060,7 +3085,7 @@ export const compileEffectManifest = (
   try {
     if (typeof source !== "string") throw new TypeError("Durable source must be a string")
     if (options === null || typeof options !== "object") throw new TypeError("Durable source compiler options are required")
-    logicalFileName = normalizeLogicalFileName(options.fileName)
+    logicalFileName = compiledUnitFileName(options.fileName)
     if (new TextEncoder().encode(source).byteLength > MAX_SOURCE_BYTES) {
       return {
         ok: false,
@@ -3107,7 +3132,9 @@ export const compileEffectManifest = (
     const call = calls[0]
     const sourceFunction = resolvedFunction(checked, call, fail)
     const declarationName = declarationNameFor(call, sourceFunction)
-    const flowId = options.flowId ?? `${logicalFileName}#${declarationName}`
+    // The authored name, never `logicalFileName`: see `compiledUnitFileName`.
+    const authoredFileName = authoredLogicalName(options.fileName)
+    const flowId = options.flowId ?? `${authoredFileName}#${declarationName}`
     const flowVersion = options.flowVersion ?? 1
     if (typeof flowId !== "string" || flowId.trim() === "") fail(call, "SMITHERS4101", "durable Flow id must be non-empty")
     if (!Number.isSafeInteger(flowVersion) || flowVersion < 1) fail(call, "SMITHERS4101", "durable Flow version must be a positive safe integer")
@@ -3116,7 +3143,7 @@ export const compileEffectManifest = (
       diagnostics: [] as const,
       manifest: deriveEffectManifest(
         checked,
-        { logicalFileName, flowId, flowVersion, functionName: sourceFunction.name?.text ?? declarationName },
+        { authoredFileName, flowId, flowVersion, functionName: sourceFunction.name?.text ?? declarationName },
         sourceFunction
       )
     })

@@ -1176,7 +1176,7 @@ export const Build = durable((input: { key: string }) => {
   return Second.run({ key: first.value })
 })
 `,
-      digest: "f900ebbebd87b61a970665937b2b4272b13b4773ff584799bfa58dafa0a4863c"
+      digest: "59c5aca73fbffc51a65e587750d1067bf7dd6544758bcff87c8163bb39bf17ae"
     },
     {
       name: "an Action input reading a signal payload",
@@ -1188,7 +1188,7 @@ export const Build = durable((input: { key: string }) => {
   return Step.run({ key: ticket.token })
 })
 `,
-      digest: "bfb879fd3ed4259efd6feddf0f028bd596e2043d95ba3337bd499f7ff325d799"
+      digest: "8fe5ffa7955e5472efb0c3cfe630e3b7a81ea9e5a7f745fc529e5407e18acad5"
     },
     {
       name: "Action inputs inside both branch arms",
@@ -1199,7 +1199,7 @@ export const Build = durable((input: { flag: boolean; key: string; other: string
   return input.flag ? Step.run({ key: input.key }) : Step.run({ key: input.other })
 })
 `,
-      digest: "883bf09f8b2fadea84b677ee184e44741d728b4a63ec21ceab64f9fc1cca4122"
+      digest: "460eafe92b61f9302d4e7d5946223ad6fa3b26023860424c81fc2ad8f1b06110"
     },
     {
       name: "a literal sleep duration beside an Action input",
@@ -1211,7 +1211,7 @@ export const Build = durable((input: { key: string }) => {
   return Step.run({ key: input.key })
 })
 `,
-      digest: "1dcc4d9d124778a1b95a3ebc6ccf8f8378fa7a9b137da8ee14411d1e728bed9b"
+      digest: "3b25a3246ea8fb77336952e04cb73346d32737e2a0edd1aa46f43e6f1aa91f3f"
     },
     {
       name: "an Action input holding a nested object and an array literal",
@@ -1222,7 +1222,7 @@ export const Build = durable((input: { a: string; b: string }) => {
   return Step.run({ outer: { key: input.a }, keys: [input.a, input.b] })
 })
 `,
-      digest: "9c096b5cf643eb8611aaac6fc41a13e37eeae3e43e6edb045b81b41d4102da6e"
+      digest: "1acb0035d067ca5e8d5151f5a76d3e925d9b2bf2bbca13f69973c6fe775e16ba"
     },
     {
       name: "a fanOut whose items project the Flow input",
@@ -1234,7 +1234,7 @@ export const Build = durable((input: { items: readonly string[] }) => {
   return { seen }
 })
 `,
-      digest: "866cb8267e180519950e0fabcae9e3c1e7cc7b3c4cbfcd13544d7baecaad52e6"
+      digest: "6d968d1588a03c9904b691ac6310b501ae07de7d2e6c2c81a2546cc7aae9294c"
     },
     {
       name: "a loopWhile whose initial state projects the Flow input",
@@ -1246,7 +1246,7 @@ export const Build = durable((input: { source: string }) => {
   return { final }
 })
 `,
-      digest: "38cb12087704c6c8eefa59ab147322983c931d84adace80f21440aadc7ee82c7"
+      digest: "d2ccefb176d894784ee5cf8a27aca5a2a4df505ebdfed6c948dc2db6e1af81bc"
     }
   ]
 
