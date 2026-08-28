@@ -1576,6 +1576,55 @@ SMITHERS4120 SMITHERS4199
 SMITHERS5215 SMITHERS5216 SMITHERS5217
 ```
 
+**Re-derived a SIXTH time on 2026-08-27 (the `SMITHERS4124` / durable
+fail-open revision), and for the first time the prediction was written down
+BEFORE the commands were run.** That matters here, because this revision is the
+one shape that ought to move the figure and does not, and a number recorded
+after the fact cannot show that its stillness was expected.
+
+*Prediction, stated first.* `SMITHERS4124` is not a re-spelling and not a
+re-probe: it is a **genuinely new code**, minted in the reference
+(`poc/src/durable/source-compiler.ts`) and in the fork
+(`compiler/forkbridge/durable.go.txt`, constructed as `d.fail(node, "4124", …)`
+and therefore visible only to the second and third `grep`) in the same revision
+that gave it a case
+(`17/two-error-classes-whose-durable-identities-collide-are-rejected`). So all
+four inputs should move by exactly one — R 110 → 111, F 112 → 113, intersection
+91 → 92, corpus 72 → 73 — the second `comm` should stay empty, and
+**92 − 73 = 19**: unchanged, same nineteen codes.
+
+*Measurement, running the three commands above verbatim from the repository
+root.* **R = 111, F = 113, intersection = 92, corpus = 73, second `comm` empty,
+subtraction = 19, and the nineteen are the same nineteen, digit for digit. The
+measurement agreed with the prediction on every input and on the total.**
+
+**And the reason is NOT a sixth axis — it is the SECOND recorded reason
+recurring**, the `SMITHERS1604` shape: a rule that lands together with its case
+never spends a day in this table. Saying "fifth distinct reason" here would be
+the flattering reading and it would be wrong. What is new is only that the
+recurrence was predicted rather than explained afterwards.
+
+**The genuinely uncomfortable half of this revision is the OTHER change, and it
+is invisible here for a reason the four recorded axes do not cover.** The same
+day, `poc/src/durable/source-compiler.ts` closed a **fail-open**: `flowSchemas`
+caught every failure of its Flow-success descriptor walk and, if the Flow used
+any legacy `Action.define` artifact at all, discarded it and compiled the Flow
+with a weaker `json-value` success contract and **no diagnostic** — so a Flow
+projecting a field its output genuinely does not have compiled clean and then
+faulted at run time as a `ProjectionDefect`. The refusal it now reports is
+`SMITHERS4110`, which is **one of the nineteen above**: in both implementations,
+probed by no case. The figure could not move, because the corpus half could not
+move, because **the corpus cannot reach this rule at all** —
+`conformance/runner/js-lower.mjs:309` calls `compileDurableSource` with **no
+descriptor bindings**, so every Action in a `.sm` case is same-file and
+structural, and the legacy artifact the fail-open depended on can only arrive
+through `smithers plan --bindings <actions.json>` (`src/cli.ts:2023`). A fifth
+axis, if anyone wants to name it: **the table cannot count SURFACES.** A rule
+that is only reachable through an entry point the corpus does not use is
+invisible to both halves of the subtraction at once, and its code can sit in the
+nineteen looking like an ordinary unprobed rule while the behaviour underneath
+it changes from accept to refuse.
+
 **Re-derived a FIFTH time on 2026-08-27 (the capability-argument revision), by
 running the three commands above verbatim from the repository root. NOTHING
 moved, and this time not one input moved either: R = 110, F = 112, intersection
@@ -2493,7 +2542,7 @@ sentence coverage much:
 | 20.20 | the durable source function MUST be **removable** after the compiler emits its plan; a planner or coordinator MUST NOT require the source function or a live side table (`:65`) | **partial** | `Build.artifactSource` is asserted, which shows the artifact is self-describing. Nothing removes the source and re-plans, which is what the sentence actually requires. |
 | 20.21 | a durable source function MAY capture compiler-known immutable values **only**, and MUST NOT observe runtime clock, randomness, environment, mutable state, services, or I/O while the template is constructed (`:69`) | **uncovered** | six named sources, zero cases. §19.16 has the same shape and at least has two. |
 | 20.22 | runtime-dependent control flow MUST be represented explicitly in Plan IR; the compiler MUST reject an operation that would inspect a symbolic value without a corresponding IR representation (`:71`) | **covered across thirteen forms as of 2026-08-26** — it was one | `17/statement-branch-fails-closed` was the corpus's only declared durable diagnostic. Twelve refusal cases now stand beside it, chosen so no two share a walk branch: **operators** — `a-logical-or-fallback…`, `a-nullish-coalescing-fallback…`, `strict-equality-against…`, `an-in-test-on…` (`SMITHERS4111`, the binary family, and `in` is deliberately the one whose *symbolic operand is on the right*), `typeof-on…` (TypeOfExpression) and `logical-negation-of…` (PrefixUnaryExpression, the unary shape a binary-only walk would miss); **calls** — `array-isarray-on…` and `object-is-on…` (`SMITHERS4112`, on two different host namespaces so the rule is a property of the call rather than of one global); **control flow** — `a-conditional-expression-on-a-non-boolean-durable-input-is-rejected` (`SMITHERS4106`; read against `static-plan-shape-is-digest-pinned`, which lowers a *boolean* conditional into a real `branch` node, so the promise is the narrow one), `a-statement-branch-holding-an-action-in-each-arm-is-rejected` (`SMITHERS4106`, the expensive member: each arm calls a different Action, so folding the condition drops an Action out of the Plan and out of every digest computed over it), `a-do-while-loop-in-durable-source-is-rejected` (`SMITHERS4107`, its own rule because the repair is a parameterized template rather than branch lowering, and `do`/`while` is the form whose body runs before its condition is read), and `an-optional-projection-on-a-durable-input-is-rejected` (`SMITHERS4106`). All twelve are green on both backends at identical codes and authored positions. |
-| 20.12b | **an Action's failure channel mints one durable identity per Error class** — failures.mdx:33 "The compiler MUST provide stable nominal identity…" and :209 "Handler selection MUST use compiler-stable nominal identity, not a forgeable user `_tag` or minifier-sensitive constructor name in compiled artifacts", read on the durable persistence boundary of 20.12 | **half covered as of 2026-08-26; the other half is inexpressible — observation gap #15** | **`17/an-actions-failure-channel-mints-one-identity-per-error-class`** opens `plan.actions[0].errorSchema.descriptor` and asserts one variant per declared Error class, one *distinct* identity per variant, and an identity derived from the declaring module and the class's own name. Stability is worth nothing without injectivity: two Error classes arriving under one identity is exactly a forgeable key. It deliberately does **not** declare the identity's spelling — see the case's own notes and gap #15. `js pass / go unsupported`: the fork's `smithers:flows` surface types a durable schema as `{digest, format, role, schemaVersion, shape, source}` with no `descriptor`, so it reports `TS2339` on an authored `.sm` file and no compiler-derived durable failure identity is reachable from `.sm` there in either direction. |
+| 20.12b | **an Action's failure channel mints one durable identity per Error class** — failures.mdx:33 "The compiler MUST provide stable nominal identity…" and :209 "Handler selection MUST use compiler-stable nominal identity, not a forgeable user `_tag` or minifier-sensitive constructor name in compiled artifacts", read on the durable persistence boundary of 20.12 | **fully covered as of 2026-08-27** (was "half covered; the other half is inexpressible — observation gap #15", which closed) | **`17/an-actions-failure-channel-mints-one-identity-per-error-class`** opens `plan.actions[0].errorSchema.descriptor` and asserts one variant per declared Error class, one *distinct* identity per variant, and an identity derived from the declaring module and the class's own name. Stability is worth nothing without injectivity: two Error classes arriving under one identity is exactly a forgeable key. It deliberately does **not** declare the identity's spelling — see the case's own notes and gap #15. **The other half — a COLLISION, two classes normalizing to one identity — is now declared too**, by `17/two-error-classes-whose-durable-identities-collide-are-rejected` and its paired control, `SMITHERS4124@20:10` on **both** backends with byte-identical messages (measured 2026-08-27, `--filter durable-identities`). That is the half gap #15 said could not be expressed. `js pass / go unsupported`: the fork's `smithers:flows` surface types a durable schema as `{digest, format, role, schemaVersion, shape, source}` with no `descriptor`, so it reports `TS2339` on an authored `.sm` file and no compiler-derived durable failure identity is reachable from `.sm` there in either direction. |
 | 20.23 | a durable implementation MUST distinguish four compilation phases: template compilation, deployment build, plan/preview, execution (`:75-80`) | **uncovered** | the corpus reaches phase 1 only. Phases 2–4 have no channel through this harness at all: the runner compiles and runs one program and observes stdout. |
 | 20.24 | plan/preview MUST NOT load or invoke the `durable(...)` function, and MUST NOT load or invoke an Action implementation (`:82`) | **uncovered** | phase 3 is unreachable; see 20.23 |
 | 20.25 | a branch or fan-out whose value is unknown to the planner MUST remain an explicit conditional or parameterized template in the reported plan (`:82`) | **uncovered** | `17/static-plan-shape-is-digest-pinned` uses `input.live ? … : …` in *expression* position and pins its edges, but never inspects the reported plan for a preserved conditional node |
@@ -2972,9 +3021,46 @@ the harness would need.
    `runner/selftest.mjs` that at most one marker names both backends, so adding
    another is a deliberate act rather than a quiet one.
 
-15. **A durable failure-identity COLLISION cannot be expressed, because two
+15. ~~**A durable failure-identity COLLISION cannot be expressed, because two
    sound implementations of the same obligation land in two different
-   expectation kinds.** Recorded 2026-08-26. This is the same family as #13 —
+   expectation kinds.**~~ **CLOSED 2026-08-27.** Recorded 2026-08-26; kept in
+   full below because the reasoning is what the closure had to answer, and
+   because a reader who finds the gap cited elsewhere needs to land somewhere
+   that says why it no longer holds.
+
+   **What closed it.** The gap rested on a measurement — *"the fork compiled
+   this program clean and ran it"* — and on the reading that the only
+   `diagnostics` form available was the reference's *remedy*. Both moved on
+   2026-08-27. Both implementations now mint a code for the collision
+   **itself** (`SMITHERS4124`, at the authored `run` call site), the fork's
+   message is byte-identical to the reference's, and the corpus declares it:
+   `17/two-error-classes-whose-durable-identities-collide-are-rejected` plus its
+   paired control `…-with-distinct-durable-identities-compile`. Re-measured for
+   this entry with `node conformance/runner/run.mjs --backend both --filter
+   durable-identities --json`:
+
+   | case | JS reference | Go fork |
+   | --- | --- | --- |
+   | `…-whose-durable-identities-collide-are-rejected` | `SMITHERS4124@20:10` "Error classes `$Failed` and `_Failed` … share one durable failure identity …" | `SMITHERS4124@20:10`, same sentence |
+   | `…-with-distinct-durable-identities-compile` | `kind: "output"`, stdout `["1"]` | `kind: "output"`, stdout `["1"]` |
+
+   The alternation objection is answered rather than dodged: a code for the
+   *collision* is not a code for the *remedy*. An implementation that took the
+   other sound route — making the spelling injective, so `$Failed` and `_Failed`
+   never share an identity — would have no collision to report and would fail
+   this case. That is a real residual narrowing of the obligation, and the
+   case's notes do **not** record it — they explain why the *message* is pinned
+   now and was not before, which is a different question. Someone should add a
+   sentence saying which remedy the case assumes; this entry is the record until
+   they do. What the closure buys is that the fail-open the gap was recording
+   (one backend accepting the program) can no longer reopen unobserved. The
+   second corroborating row below is **still true** and was re-measured the same
+   day, so the fork's identity *spelling* remains unobservable from `.sm`; only
+   its refusal is.
+
+   *The original entry, unchanged from 2026-08-26 except where marked:*
+
+   This is the same family as #13 —
    a rule the contract cannot state — and it is written down for the same
    reason: a gap the corpus cannot express reopens silently.
 
@@ -3014,8 +3100,8 @@ the harness would need.
 
    | probe | JS reference | Go fork |
    | --- | --- | --- |
-   | `$Failed`/`_Failed` as the two arms of one Action failure channel | `SMITHERS4112@20:10` — refused (the derivation is skipped, so the lowerer reports the ordinary unsupported-call diagnostic at the authored `run` call site) | **compiled clean and ran** — observation `kind: "output"`, zero diagnostics |
-   | the same program printing `errorSchema.descriptor.variants[].identity` | prints them | `TS2339` — the fork's `smithers:flows` types a durable schema as `{digest, format, role, schemaVersion, shape, source}`, with no `descriptor` |
+   | `$Failed`/`_Failed` as the two arms of one Action failure channel | ~~`SMITHERS4112@20:10` — refused (the derivation is skipped, so the lowerer reports the ordinary unsupported-call diagnostic at the authored `run` call site)~~ **stale; `SMITHERS4124@20:10` since 2026-08-27, naming the collision, and the old sentence was false of the program — there is no higher-order or dynamic call in it** | ~~**compiled clean and ran** — observation `kind: "output"`, zero diagnostics~~ **stale; `SMITHERS4124@20:10` since 2026-08-27, byte-identical message** |
+   | the same program printing `errorSchema.descriptor.variants[].identity` | prints them | `TS2339` — the fork's `smithers:flows` types a durable schema as `{digest, format, role, schemaVersion, shape, source}`, with no `descriptor`. **Re-measured 2026-08-27 through `--filter mints-one-identity`: still `TS2339@28:29` plus five `TS7006`, unchanged.** |
 
    The second row is why the first cannot even be adjudicated: the fork's
    identity spelling is **not observable from `.sm` at all**, so the corpus
@@ -3039,6 +3125,11 @@ the harness would need.
    sentence, not a harness change. Failing that, an expectation able to declare
    an alternation of kinds, which is a much larger change to the judge and would
    weaken every other case's exactness. The first is the right answer.
+
+   *(End of the 2026-08-26 entry. The closure above took neither route: it minted
+   a code for the collision rather than for a remedy. The specification sentence
+   is still the right answer and is still unwritten — what changed is that the
+   gap is no longer holding a fail-open while it waits.)*
 
 16. **Comptime object key order is unsettled by the specification, and the
    corpus already ratifies BOTH halves of the contradiction in one file.**
