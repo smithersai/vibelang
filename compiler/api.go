@@ -138,6 +138,19 @@ type CompileRequest struct {
 	// Lowering explicitly selects the internal, identity, or externally lowered
 	// path. The zero value is invalid. LoweringExternal requires in-memory Files.
 	Lowering LoweringMode `json:"lowering,omitempty"`
+	// RootDir is the project root every logical name — and therefore every
+	// identity and every digest — is stated relative to when RootNames are read
+	// from disk. It must be absolute, and it is HOST-SIDE ONLY: `json:"-"` keeps
+	// it off the bridge wire, because by the time a request crosses that wire
+	// every name in it is already logical and the bridge's own fixed `/src`
+	// virtual root is the only root left. See identityPathsForDiskRoots.
+	//
+	// A relative RootName is read from beneath this directory and keeps its own
+	// spelling; an absolute one is restated relative to it and refused if it
+	// escapes. Leaving it empty does NOT fall back to the process working
+	// directory: see identityPathsForDiskRoots for the derived root, which is a
+	// function of the root names alone.
+	RootDir string `json:"-"`
 }
 
 // Artifact describes one emitted file.

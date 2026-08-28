@@ -272,30 +272,40 @@ func hydrateCompileRequest(request CompileRequest) (CompileRequest, CompileResul
 	}
 
 	originalRootNames := request.RootNames
+	logicalNames, err := identityPathsForDiskRoots(originalRootNames, request.RootDir)
+	if err != nil {
+		return request, CompileResult{EmitSkipped: true}, err
+	}
 	request.RootNames = make([]string, 0, len(originalRootNames))
 	request.Files = make([]SourceFile, 0, len(originalRootNames))
-	for _, rootName := range originalRootNames {
-		content, err := os.ReadFile(rootName)
+	for index, rootName := range originalRootNames {
+		diskName := rootName
+		if request.RootDir != "" && !filepath.IsAbs(diskName) {
+			// A stated root makes a relative root name mean "beneath the project
+			// root", never "beneath wherever this process happens to be".
+			diskName = filepath.Join(request.RootDir, diskName)
+		}
+		content, err := os.ReadFile(diskName)
 		if err != nil {
 			result := CompileResult{
 				Diagnostics: []Diagnostic{{
 					Code:     "SMITHERS0003",
 					Category: DiagnosticError,
 					Message:  err.Error(),
-					File:     rootName,
-					Phase:    PhaseParse,
+					// The logical name, as every other Diagnostic.File in this
+					// compiler is. This was the one place the raw argv string —
+					// possibly a full machine path — reached the output wire.
+					// The attempted path is still in Message and in ForkError.Detail.
+					File:  logicalNames[index],
+					Phase: PhaseParse,
 				}},
 				EmitSkipped: true,
 			}
 			return request, result, &ForkError{Op: "read root", Detail: rootName, Err: errors.Join(ErrForkProtocol, err)}
 		}
-		logicalName, err := logicalPathForDiskRoot(rootName)
-		if err != nil {
-			return request, CompileResult{EmitSkipped: true}, err
-		}
-		request.RootNames = append(request.RootNames, logicalName)
+		request.RootNames = append(request.RootNames, logicalNames[index])
 		request.Files = append(request.Files, SourceFile{
-			Path: logicalName,
+			Path: logicalNames[index],
 			Kind: fileKindForPath(rootName),
 			Text: string(content),
 		})
@@ -303,22 +313,126 @@ func hydrateCompileRequest(request CompileRequest) (CompileRequest, CompileResul
 	return request, CompileResult{}, nil
 }
 
-func logicalPathForDiskRoot(name string) (string, error) {
-	logicalName := filepath.Clean(name)
-	if filepath.IsAbs(logicalName) {
-		workingDirectory, err := os.Getwd()
-		if err != nil {
-			return "", &ForkError{Op: "canonicalize root", Detail: name, Err: errors.Join(ErrForkProtocol, err)}
-		}
-		logicalName, err = filepath.Rel(workingDirectory, logicalName)
-		if err != nil {
-			return "", &ForkError{Op: "canonicalize root", Detail: name, Err: errors.Join(ErrForkProtocol, err)}
+// identityPathsForDiskRoots is THE one place a filesystem path becomes a logical
+// name in this package, and therefore the one place an identity, a digest, or a
+// journal key can acquire a file component.
+//
+// It NEVER consults the process working directory. That is the whole point.
+// Until 2026-08-28 it did: an absolute root name was restated relative to
+// the process working directory, so compiling one file from two directories minted two different
+// `flowId`s, two Action `id`s, two `contractDigest`s, two `plan.digest`s and two
+// sets of nominal failure identities for byte-identical source. The digests
+// agreed between the two backends and disagreed between two terminals, which is
+// the opposite of what a signable artifact needs. The working-directory
+// accessor is deliberately ABSENT from this file now rather than merely unused,
+// so the next author has nothing to reach for;
+// TestForkIdentityPathIsNotAllowedToReachTheWorkingDirectory keeps it absent.
+//
+// The rule is the Go half of the reference's `identityFileName`
+// (`poc/src/language/semantic.ts`): root-relative, POSIX-separated, extension
+// intact, a pure function of its arguments.
+//
+//   - A relative root name is ALREADY a logical name. It is only normalized, so
+//     `./a.sm` and `a.sm` cannot mint two identities for one file.
+//   - An absolute root name is restated relative to the project root. A stated
+//     `rootDir` is that root; with none stated, the root is the deepest
+//     directory containing every absolute root name. For a single absolute root
+//     that is its own directory, so the logical name is the basename — exactly
+//     the rule `identityFileName` uses when it has no root to be relative to.
+//
+// Two root names that reduce to one logical name are refused rather than
+// silently collapsed: one file must have one identity, and so must one identity
+// have one file.
+func identityPathsForDiskRoots(rootNames []string, rootDir string) ([]string, error) {
+	if rootDir != "" && !filepath.IsAbs(rootDir) {
+		return nil, &ForkError{
+			Op:     "canonicalize root",
+			Detail: fmt.Sprintf("project root %q must be absolute", rootDir),
+			Err:    ErrForkProtocol,
 		}
 	}
-	if logicalName == "." || logicalName == ".." || strings.HasPrefix(logicalName, ".."+string(filepath.Separator)) {
-		return "", &ForkError{Op: "canonicalize root", Detail: name + " is outside the working directory", Err: ErrForkProtocol}
+	base := rootDir
+	if base == "" {
+		base = commonAncestorDirectory(rootNames)
 	}
-	return filepath.ToSlash(logicalName), nil
+	logicalNames := make([]string, 0, len(rootNames))
+	seen := make(map[string]string, len(rootNames))
+	for _, rootName := range rootNames {
+		logicalName := filepath.Clean(rootName)
+		if filepath.IsAbs(logicalName) {
+			if base == "" {
+				return nil, &ForkError{
+					Op:     "canonicalize root",
+					Detail: rootName + " is absolute and no project root was stated",
+					Err:    ErrForkProtocol,
+				}
+			}
+			relative, err := filepath.Rel(base, logicalName)
+			if err != nil {
+				return nil, &ForkError{Op: "canonicalize root", Detail: rootName, Err: errors.Join(ErrForkProtocol, err)}
+			}
+			logicalName = relative
+		}
+		if logicalName == "." || logicalName == ".." || strings.HasPrefix(logicalName, ".."+string(filepath.Separator)) {
+			detail := rootName + " is outside the project root"
+			if base != "" {
+				detail += " " + base
+			}
+			return nil, &ForkError{Op: "canonicalize root", Detail: detail, Err: ErrForkProtocol}
+		}
+		logicalName = filepath.ToSlash(logicalName)
+		if previous, duplicate := seen[logicalName]; duplicate {
+			return nil, &ForkError{
+				Op:     "canonicalize root",
+				Detail: fmt.Sprintf("%q and %q both name %q under the project root", previous, rootName, logicalName),
+				Err:    ErrForkProtocol,
+			}
+		}
+		seen[logicalName] = rootName
+		logicalNames = append(logicalNames, logicalName)
+	}
+	return logicalNames, nil
+}
+
+// commonAncestorDirectory is the deepest directory containing every absolute
+// name in the set, or "" when the set holds none. Relative names are already
+// logical and are deliberately ignored: they carry no filesystem location to be
+// an ancestor of.
+//
+// Compared path element by path element rather than by string prefix, so
+// `/checkout/apple` cannot be read as living beneath `/checkout/app`.
+func commonAncestorDirectory(names []string) string {
+	var ancestor []string
+	found := false
+	for _, name := range names {
+		if !filepath.IsAbs(name) {
+			continue
+		}
+		parts := strings.Split(filepath.ToSlash(filepath.Dir(filepath.Clean(name))), "/")
+		if !found {
+			ancestor = parts
+			found = true
+			continue
+		}
+		limit := len(ancestor)
+		if len(parts) < limit {
+			limit = len(parts)
+		}
+		shared := 0
+		for shared < limit && ancestor[shared] == parts[shared] {
+			shared++
+		}
+		ancestor = ancestor[:shared]
+	}
+	if !found {
+		return ""
+	}
+	joined := strings.Join(ancestor, "/")
+	if joined == "" {
+		// Every absolute name diverged at the filesystem root itself.
+		joined = "/"
+	}
+	return filepath.FromSlash(joined)
 }
 
 func fileKindForPath(name string) FileKind {

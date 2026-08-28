@@ -42,6 +42,7 @@ import {
   failureIdentityCollisionOf,
   validateActionContractDescriptor
 } from "./schema.ts"
+import { identityFileName } from "./site-id.ts"
 
 const PROJECT_ROOT = "/smithers-durable-source-compiler"
 
@@ -248,17 +249,23 @@ interface NormalizedModuleBinding {
 }
 
 /**
- * The caller's file identity with path traversal removed. **Every identity this
- * compiler mints is anchored here** — Action ids, the Flow id, Plan node
- * identities, and Effect Manifest site identities — so an Action declared in
- * `orders.sm` keeps the id `orders.sm#Lookup` and the Flow beside it keeps
- * `orders.sm#Build`, which is what every other compiler for this language
- * derives for them.
+ * The caller's file identity, in the ONE portable spelling. **Every identity
+ * this compiler mints is anchored here** — Action ids, the Flow id, Plan node
+ * identities, `debug.callSite`, `plan.digest`, and Effect Manifest site
+ * identities — so an Action declared in `orders.sm` keeps the id
+ * `orders.sm#Lookup` and the Flow beside it keeps `orders.sm#Build`, which is
+ * what every other compiler for this language derives for them.
+ *
+ * It used to only REMOVE path traversal, which is not the same thing as making
+ * a name portable: an absolute `fileName` survived as
+ * `Users/someone/checkout/orders.sm`, so the Flow id, every Action id, every
+ * Plan node id and both digests differed between two machines compiling one
+ * file. {@link identityFileName} is the rule, and this compiler compiles
+ * exactly one authored source, which is the case it answers with the basename.
  */
 const authoredLogicalName = (name: string | undefined): string => {
-  const candidate = (name ?? "durable-source.ts").replace(/\\/g, "/")
-  const parts = candidate.split("/").filter((part) => part !== "" && part !== "." && part !== "..")
-  return parts.join("/") || "durable-source.ts"
+  const named = name === undefined || name.trim() === "" ? undefined : identityFileName(name)
+  return named === undefined || named === "" || named === "." || named === ".." ? "durable-source.ts" : named
 }
 
 /**

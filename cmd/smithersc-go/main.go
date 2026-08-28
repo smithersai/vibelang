@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/smithersai/smithers/compiler"
@@ -34,6 +35,7 @@ func runWithFactory(args []string, stdout io.Writer, stderr io.Writer, pinned co
 	var forkCache string
 	var goCommand string
 	var requestPath string
+	var projectRoot string
 	var timeout time.Duration
 	var showVersion bool
 	var showAPIVersion bool
@@ -44,6 +46,7 @@ func runWithFactory(args []string, stdout io.Writer, stderr io.Writer, pinned co
 	flags.StringVar(&forkCache, "fork-cache", "", "cache directory for the pinned bridge binary")
 	flags.StringVar(&goCommand, "go-command", "", "Go executable used on a pinned-bridge cache miss")
 	flags.StringVar(&requestPath, "request", "", "path to one CompileRequest JSON value (in-memory files, options, and lowering mode) instead of root names")
+	flags.StringVar(&projectRoot, "project-root", "", "project root every logical name, identity, and digest is stated relative to; defaults to the deepest directory containing every absolute root source")
 	flags.DurationVar(&timeout, "timeout", 5*time.Minute, "compiler preparation and execution deadline")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -96,6 +99,19 @@ func runWithFactory(args []string, stdout io.Writer, stderr io.Writer, pinned co
 			return 64
 		}
 		request = compiler.CompileRequest{RootNames: flags.Args(), Lowering: compiler.LoweringInternal}
+	}
+	// The ONE place a working directory is allowed to reach a logical name, and
+	// only through a directory the operator typed. `compiler.CompileRequest.RootDir`
+	// is documented absolute and `compiler` itself never calls `os.Getwd`, so an
+	// omitted flag yields a root derived from the root names rather than from
+	// wherever this process was launched.
+	if projectRoot != "" {
+		absoluteRoot, err := filepath.Abs(projectRoot)
+		if err != nil {
+			fmt.Fprintf(stderr, "smithersc-go: --project-root %s: %v\n", projectRoot, err)
+			return 64
+		}
+		request.RootDir = absoluteRoot
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)

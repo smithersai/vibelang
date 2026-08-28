@@ -4,6 +4,7 @@ import { basename, dirname, extname, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as ts from "typescript-js";
 import { compileSmithers } from "./compile.ts";
+import { identityFileName } from "./semantic.ts";
 import { checkEmittedTypeScript } from "./validate.ts";
 export { checkEmittedTypeScript } from "./validate.ts";
 
@@ -28,7 +29,11 @@ export function main(): void {
     fileName: input,
     outputFileName: canonicalOutput,
     runtimeImport,
-    sourceName: relative(process.cwd(), input),
+    // NOT `relative(process.cwd(), input)`: `sourceName` is what every nominal
+    // Error identity this compile mints is anchored on, so a cwd-relative
+    // spelling made `smithers:../../pkg/a.sm:NotFound` a function of the
+    // terminal it was typed in.
+    sourceName: identityFileName(input),
   });
 
   for (const diagnostic of result.analysis.diagnostics) {

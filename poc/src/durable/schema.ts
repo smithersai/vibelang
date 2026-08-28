@@ -1,5 +1,6 @@
 import { resolve } from "node:path"
 import * as ts from "typescript-js"
+import { identityFileName } from "./site-id.ts"
 import {
   assertJson,
   canonicalJson,
@@ -127,10 +128,25 @@ export const failureIdentityCollisionOf = (
 
 const compareText = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0
 
-const logicalFileName = (fileName: string | undefined): string => {
-  const candidate = (fileName ?? "actions.sm").replace(/\\/g, "/")
-  const parts = candidate.split("/").filter((part) => part !== "" && part !== "." && part !== "..")
-  return parts.join("/") || "actions.sm"
+/**
+ * The portable spelling of this compilation unit's file name.
+ *
+ * There used to be a second, weaker rule here — `logicalFileName`, which only
+ * dropped empty/`.`/`..` path segments — and it fed `stableIdentity` directly.
+ * An absolute `fileName` therefore minted a nominal failure identity like
+ * `smithers:Users/someone/checkout/orders.sm#Failed@1`: machine-specific, so
+ * not an identity at all, and not something two backends could ever agree on.
+ * `compileActionContract` compiles exactly ONE source, which is precisely the
+ * case {@link identityFileName} answers with the basename, so the rule needed
+ * here was already written; it was only in the wrong module to be reached.
+ *
+ * The other caller path was already clean: the durable source compiler takes
+ * identities from its own `logicalNameForSource` (`source-compiler.ts`), which
+ * is root-relative.
+ */
+const contractFileName = (fileName: string | undefined): string => {
+  const named = fileName === undefined || fileName.trim() === "" ? undefined : identityFileName(fileName)
+  return named === undefined || named === "" || named === "." || named === ".." ? "actions.sm" : named
 }
 
 const canonicalSymbol = (checker: ts.TypeChecker, symbol: ts.Symbol | undefined): ts.Symbol | undefined => {
@@ -624,7 +640,7 @@ export const deriveDurableValueSchema = (
     const builder = new DescriptorBuilder(
       checker,
       sourceFile,
-      () => logicalFileName(sourceFile.fileName),
+      () => contractFileName(sourceFile.fileName),
       anchor,
       errorSymbol
     )
@@ -867,7 +883,7 @@ export const compileActionContract = (
   source: string,
   options: CompileActionContractOptions
 ): CompileActionContractResult => {
-  const fileName = logicalFileName(options?.fileName)
+  const fileName = contractFileName(options?.fileName)
   let sourceFile = ts.createSourceFile(fileName, typeof source === "string" ? source : "", ts.ScriptTarget.ESNext, true)
   try {
     if (typeof source !== "string") throw new TypeError("Action contract source must be a string")

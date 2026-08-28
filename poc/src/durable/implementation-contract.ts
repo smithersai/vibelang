@@ -17,6 +17,7 @@ import {
   deriveDurableErrorSchema,
   validateActionContractDescriptor
 } from "./schema.ts"
+import { identityFileName } from "./site-id.ts"
 
 const COMPILER_IDENTITY = "smithers-action-implementation-v2" as const
 const authenticated = new WeakSet<object>()
@@ -91,10 +92,19 @@ const sortedUniqueStrings = (value: unknown, path: string): readonly string[] =>
   return value as readonly string[]
 }
 
+/**
+ * The portable spelling of one project source's name.
+ *
+ * This is a fallback only. The value it is normally handed is already
+ * {@link SemanticModel.identityName}, which came from {@link identityFileName}
+ * with the project root; the guard exists because the map being iterated is
+ * keyed by the caller's own spelling, which `semantic.ts` documents as an
+ * addressing key and NOT an identity. Removing path traversal — what this did
+ * before — never made an absolute name portable; it only made it look relative.
+ */
 const logicalSourceName = (fileName: string): string => {
-  const parts = fileName.replace(/\\/g, "/").split("/")
-    .filter((part) => part !== "" && part !== "." && part !== "..")
-  return parts.join("/") || "implementation.sm"
+  const named = fileName.trim() === "" ? "" : identityFileName(fileName)
+  return named === "" || named === "." || named === ".." ? "implementation.sm" : named
 }
 
 const canonicalCheckedExportDigest = (source: string, path: string): string => {
@@ -404,8 +414,11 @@ export const compileActionImplementationContract = (
   const typedFailures = rowFailures.filter((failure) => failure !== "Panic")
   const classDeclarations = new Map<string, ts.ClassDeclaration[]>()
   const logicalBySource = new Map<ts.SourceFile, string>()
-  for (const [logicalName, sourceModel] of project.models) {
-    logicalBySource.set(sourceModel.sourceFile, logicalSourceName(logicalName))
+  for (const [, sourceModel] of project.models) {
+    // `project.models` is keyed by the caller's own spelling — an ADDRESSING
+    // key, which `semantic.ts` says in as many words is not an identity. The
+    // identity is on the model being iterated, one property away.
+    logicalBySource.set(sourceModel.sourceFile, logicalSourceName(sourceModel.identityName))
     const visit = (node: ts.Node): void => {
       if (ts.isClassDeclaration(node) && node.name) {
         const declarations = classDeclarations.get(node.name.text) ?? []
