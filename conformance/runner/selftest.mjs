@@ -584,24 +584,37 @@ test("a durable diagnostic does not discard an output-expecting run", { concurre
   // is refused by the durable pass, the second only by the language stage that
   // used to be skipped.
   //
-  //   1. `$Failed` and `_Failed` normalize to one durable failure identity, so
-  //      the Action's declared failure channel is refused. Matched by shape
-  //      (`SMITHERS41xx`) rather than by number, because which rule in that
-  //      family answers a collision is a live question — see MIGRATION-PLAN R3.
+  //   1. Two sibling-namespaced `Failed` classes mint one durable failure
+  //      identity, so the Action's declared failure channel is refused. Matched
+  //      by shape (`SMITHERS41xx`) rather than by number, because which rule in
+  //      that family answers a collision is a live question — see
+  //      MIGRATION-PLAN R3.
+  //
+  //      This was `$Failed` / `_Failed` until 2026-08-28. That pair collided only
+  //      because the durable failure identity folded every character outside
+  //      `[A-Za-z0-9._/@:+-]` onto `_`; the identity now escapes both components
+  //      reversibly, so the pair compiles and could no longer supply the durable
+  //      defect this selftest needs. Two DIFFERENT declarations sharing a module
+  //      and a class name are the residual no encoding can remove, which is what
+  //      makes them the durable defect that will still be one tomorrow.
   //   2. `Date.now()` is an ambient wall-clock read, which `20-host-globals`
   //      pins as SMITHERS1602. The durable pass knows nothing about it.
   const halfMigrated = [
     'import { durable, Action } from "smithers:flows"',
     "",
-    "class $Failed extends Error {",
-    "  constructor(readonly code: string) { super(`x: ${code}`) }",
+    "namespace Left {",
+    "  export class Failed extends Error {",
+    "    constructor(readonly code: string) { super(`x: ${code}`) }",
+    "  }",
     "}",
     "",
-    "class _Failed extends Error {",
-    "  constructor(readonly reason: string) { super(`x: ${reason}`) }",
+    "namespace Right {",
+    "  export class Failed extends Error {",
+    "    constructor(readonly reason: string) { super(`x: ${reason}`) }",
+    "  }",
     "}",
     "",
-    "class Pick extends Action<(input: { key: string }) => Result<{ value: string }, $Failed | _Failed>> {}",
+    "class Pick extends Action<(input: { key: string }) => Result<{ value: string }, Left.Failed | Right.Failed>> {}",
     "",
     "export const Flow = durable((input: { key: string }) => {",
     "  return Pick.run({ key: input.key })",
@@ -627,7 +640,7 @@ test("a durable diagnostic does not discard an output-expecting run", { concurre
   // request shape is deliberately narrow to guarantee.
   const refusalCase = caseFor({
     expect: "diagnostics",
-    diagnostics: [{ code: "SMITHERS4124", line: 14, column: 20 }],
+    diagnostics: [{ code: "SMITHERS4124", line: 18, column: 20 }],
   });
   const outputCase = caseFor({ expect: "output", stdout: ["1", "0"] });
 
