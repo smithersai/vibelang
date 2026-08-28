@@ -113,6 +113,25 @@ describe("combine and the collection combinators", () => {
     expect(pair.hash(["a", 1])).not.toBe(pair.hash(["b", 1]));
   });
 
+  test("array and tuple hashes separate a hole from an own undefined", () => {
+    // The counterpart of the Equivalence rule: unequal values may collide, but
+    // conflating them here would be a *policy* collision, not an accidental one,
+    // and it would hide a real difference in own enumerable keys.
+    const anything = Hash.array(Hash.any);
+    expect(anything.hash(new Array(1))).not.toBe(anything.hash([undefined]));
+    expect(anything.hash(new Array(1))).toBe(anything.hash(new Array(1)));
+    expect(anything.hash([1, , 3] as unknown[])).not.toBe(anything.hash([1, undefined, 3]));
+
+    const pair = Hash.tuple(Hash.any, Hash.any);
+    expect(pair.hash(new Array(2) as [unknown, unknown])).not.toBe(pair.hash([undefined, undefined]));
+    expect(pair.hash(new Array(2) as [unknown, unknown])).toBe(pair.hash(new Array(2) as [unknown, unknown]));
+  });
+
+  test("the array pairing stays lawful over sparse samples", () => {
+    const samples = [new Array(1), [undefined], new Array(2), [undefined, undefined], [1, , 3] as unknown[]];
+    expect(Hash.checkLaws(Equivalence.array(Equivalence.any), Hash.array(Hash.any), samples)).toBeUndefined();
+  });
+
   test("struct hashing is independent of field declaration order", () => {
     const left = Hash.struct({ x: Hash.number, y: Hash.number });
     const right = Hash.struct({ y: Hash.number, x: Hash.number });
@@ -162,6 +181,11 @@ describe("the hash law", () => {
     // Pairing it with the matching hash restores the law.
     const caseInsensitiveHash = Hash.string.contramap((value: string) => value.toLowerCase());
     expect(Hash.checkLaws(caseInsensitive, caseInsensitiveHash, ["a", "A", "b"])).toBeUndefined();
+  });
+
+  test("checkLaws refuses a sparse sample set instead of law-checking undefined", () => {
+    expect(panics(() => Hash.checkLaws(Equivalence.any, Hash.any, new Array(2)))).toBe(true);
+    expect(Hash.checkLaws(Equivalence.any, Hash.any, [undefined, undefined])).toBeUndefined();
   });
 
   test("checkLaws catches a non-deterministic hash and demands real arguments", () => {

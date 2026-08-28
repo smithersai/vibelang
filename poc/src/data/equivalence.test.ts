@@ -109,6 +109,25 @@ describe("combinators", () => {
     expect(numbers.equals([], [])).toBe(true);
   });
 
+  test("array and tuple compare index ownership before values", () => {
+    // A hole and an own `undefined` read the same through `value[index]`, so a
+    // comparator that only reads values calls them equal. They are not: they
+    // have different own enumerable keys.
+    const anything = Equivalence.array(Equivalence.any);
+    expect(anything.equals(new Array(1), [undefined])).toBe(false);
+    expect(anything.equals([undefined], new Array(1))).toBe(false);
+    expect(anything.equals(new Array(1), new Array(1))).toBe(true);
+    expect(anything.equals([undefined], [undefined])).toBe(true);
+
+    const holed = [1, , 3] as unknown[];
+    expect(anything.equals(holed, [1, undefined, 3])).toBe(false);
+    expect(anything.equals(holed, [1, , 3] as unknown[])).toBe(true);
+
+    const pair = Equivalence.tuple(Equivalence.any, Equivalence.any);
+    expect(pair.equals(new Array(2) as [unknown, unknown], [undefined, undefined])).toBe(false);
+    expect(pair.equals(new Array(2) as [unknown, unknown], new Array(2) as [unknown, unknown])).toBe(true);
+  });
+
   test("struct compares exactly the declared fields and ignores the rest", () => {
     const point = Equivalence.struct({ x: Equivalence.number, y: Equivalence.number });
     expect(point.equals({ x: 1, y: 2 }, { x: 1, y: 2 })).toBe(true);
@@ -155,6 +174,13 @@ describe("the equivalence laws", () => {
     // "within one" is reflexive and symmetric, but 0 ~ 1 and 1 ~ 2 without 0 ~ 2.
     const notTransitive = Equivalence.make<number>((left, right) => Math.abs(left - right) <= 1);
     expect(Equivalence.checkLaws(notTransitive, [0, 1, 2]) ?? "").toContain("transitive");
+  });
+
+  test("checkLaws refuses a sparse sample set instead of law-checking undefined", () => {
+    // Every sample loop reads `samples[index]`, so a hole was silently checked
+    // as `undefined` and the answer was "lawful" over samples that do not exist.
+    expect(panics(() => Equivalence.checkLaws(Equivalence.any, new Array(2)))).toBe(true);
+    expect(Equivalence.checkLaws(Equivalence.any, [undefined, undefined])).toBeUndefined();
   });
 
   test("checkLaws demands real arguments", () => {

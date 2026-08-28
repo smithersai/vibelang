@@ -141,6 +141,18 @@ describe("Json canonical bytes", () => {
 });
 
 describe("JSON nominal errors", () => {
+  test("validate an error path through its holes, not around them", () => {
+    // `path.map` never calls its callback on a hole, so the segment check used
+    // to be skipped entirely and the hole rendered as `$.undefined`.
+    expect(() => new JsonEncodeError(new Array(1) as never, "boom")).toThrow(
+      "JSON error paths contain only strings and array indices",
+    );
+    expect(() => new JsonParseError([undefined as never], "boom")).toThrow(
+      "JSON error paths contain only strings and array indices",
+    );
+    expect(new JsonEncodeError(["rows", 2], "boom").pointer).toBe("$.rows[2]");
+  });
+
   test("wire-round-trip both parse and encode failures", () => {
     const errors = [
       new JsonParseError(["input"], "invalid"),

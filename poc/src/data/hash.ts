@@ -42,6 +42,7 @@
  */
 
 import { panic } from "../runtime/panic.ts";
+import { HOLE_HASH, requireDenseArray } from "./array-shape.ts";
 import { type Equivalence, Equivalence as EquivalenceNamespace } from "./equivalence.ts";
 
 const UINT32_MAX = 0xffffffff;
@@ -245,7 +246,12 @@ function tuple<const Parts extends readonly HashValue<never>[]>(
   return make<readonly unknown[]>((value) => {
     let accumulator = combine(ARRAY_SEED, hashNumber(hashes.length));
     for (let index = 0; index < hashes.length; index += 1) {
-      accumulator = combine(accumulator, (hashes[index] as HashFn)(value[index]));
+      // A hole has no member to hash; folding in `HOLE_HASH` is what keeps this
+      // agreeing with `Equivalence.tuple`. See `./array-shape.ts`.
+      accumulator = combine(
+        accumulator,
+        Object.hasOwn(value, index) ? (hashes[index] as HashFn)(value[index]) : HOLE_HASH,
+      );
     }
     return accumulator;
   }) as Hash<{ readonly [Index in keyof Parts]: HashOf<Parts[Index]> }>;
@@ -255,7 +261,9 @@ function array<T>(item: Hash<T>): Hash<readonly T[]> {
   const hash = requireHash(item, "Hash.array");
   return make<readonly T[]>((value) => {
     let accumulator = combine(ARRAY_SEED, hashNumber(value.length));
-    for (let index = 0; index < value.length; index += 1) accumulator = combine(accumulator, hash(value[index]));
+    for (let index = 0; index < value.length; index += 1) {
+      accumulator = combine(accumulator, Object.hasOwn(value, index) ? hash(value[index]) : HOLE_HASH);
+    }
     return accumulator;
   });
 }
@@ -294,6 +302,7 @@ function checkLaws<T>(equivalence: Equivalence<T>, hash: Hash<T>, samples: reado
   const equals = (left: T, right: T): boolean => equivalence.equals(left, right);
   const hashValue = requireHash(hash, "Hash.checkLaws");
   if (!Array.isArray(samples)) panic("Hash.checkLaws requires an array of samples");
+  requireDenseArray(samples, "Hash.checkLaws samples");
 
   const equivalenceViolation = EquivalenceNamespace.checkLaws(equivalence, samples);
   if (equivalenceViolation !== undefined) return equivalenceViolation;

@@ -9,6 +9,7 @@ import {
   __vsSchema,
   type SchemaDescriptor as BuildSchemaDescriptor,
 } from "../build/schema-runtime.ts";
+import { HOLE_HASH, sameArrayShape } from "../data/array-shape.ts";
 import { Equivalence, type Equivalence as EquivalenceInstance } from "../data/equivalence.ts";
 import { Hash, type Hash as HashInstance } from "../data/hash.ts";
 import { RuntimeValues } from "../runtime/values.ts";
@@ -539,12 +540,18 @@ function equivalentState(state: SchemaState, left: unknown, right: unknown): boo
   switch (state.shape.kind) {
     case "leaf": return false;
     case "array": {
-      if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+      // Index ownership before values, exactly as the object branch below
+      // already does with `Object.hasOwn`: `.every` skips a hole, so a hole and
+      // an own `undefined` used to compare equal. See `../data/array-shape.ts`.
+      if (!Array.isArray(left) || !Array.isArray(right) || !sameArrayShape(left, right)) return false;
       const child = stateOf(state.shape.element);
-      return left.every((item, index) => equivalentState(child, item, right[index]));
+      for (let index = 0; index < left.length; index += 1) {
+        if (!equivalentState(child, left[index], right[index])) return false;
+      }
+      return true;
     }
     case "tuple": {
-      if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+      if (!Array.isArray(left) || !Array.isArray(right) || !sameArrayShape(left, right)) return false;
       return state.shape.elements.every((child, index) => equivalentState(stateOf(child), left[index], right[index]));
     }
     case "object":
@@ -594,14 +601,22 @@ function hashState(state: SchemaState, value: unknown): number {
   switch (state.shape.kind) {
     case "leaf": return Hash.any.hash(value);
     case "array": {
-      let output = Hash.combine(ARRAY_SEED, Hash.number.hash((value as readonly unknown[]).length));
+      const items = value as readonly unknown[];
+      let output = Hash.combine(ARRAY_SEED, Hash.number.hash(items.length));
       const child = stateOf(state.shape.element);
-      for (const item of value as readonly unknown[]) output = Hash.combine(output, hashState(child, item));
+      // `for…of` yields `undefined` at a hole; folding ownership in instead is
+      // what keeps this agreeing with `equivalentState`.
+      for (let index = 0; index < items.length; index += 1) {
+        output = Hash.combine(output, Object.hasOwn(items, index) ? hashState(child, items[index]) : HOLE_HASH);
+      }
       return output;
     }
     case "tuple": {
+      const items = value as readonly unknown[];
       let output = Hash.combine(ARRAY_SEED, Hash.number.hash(state.shape.elements.length));
-      state.shape.elements.forEach((child, index) => { output = Hash.combine(output, hashState(stateOf(child), (value as readonly unknown[])[index])); });
+      state.shape.elements.forEach((child, index) => {
+        output = Hash.combine(output, Object.hasOwn(items, index) ? hashState(stateOf(child), items[index]) : HOLE_HASH);
+      });
       return output;
     }
     case "object": {

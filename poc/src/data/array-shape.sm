@@ -1,0 +1,135 @@
+/**
+ * The one array-shape rule for `data/**` and `schema/**`.
+ *
+ * A JavaScript array may contain a **hole**: an index below `length` that is
+ * not an own property. `new Array(1)` has one, `[undefined]` does not. The two
+ * read identically through `value[0]`, but they are different values —
+ * `Object.keys` lists `"0"` for the second and nothing for the first — and
+ * every way of walking an array disagrees about which it is looking at:
+ *
+ * | walk                              | at a hole                                |
+ * | --------------------------------- | ---------------------------------------- |
+ * | `value[index]`, `for…of`, spread  | yields `undefined`, inventing a member    |
+ * | `.map`                            | skips the callback *and keeps the hole*   |
+ * | `.every` / `.some` / `.forEach`   | skips it — `.every` is vacuously true     |
+ * | `Object.keys`                     | omits it                                  |
+ * | `JSON.stringify`                  | emits `null`                              |
+ *
+ * So a walk written with any one of them silently turns a hole into an own
+ * `undefined`, or silently agrees that a hole *is* an own `undefined`. Both are
+ * shape changes, and a package whose entire contract is "equal shapes compare
+ * equal, and equal values hash equal" can afford neither: two values with
+ * different own enumerable keys must never compare equal, and an encoder must
+ * never certify a round trip that changed the value's shape.
+ *
+ * **The policy, in one sentence: a hole is never an own `undefined`.** It is
+ * enforced at the only two kinds of site that exist.
+ *
+ * - **A site that builds or converts a value rejects a sparse array** instead of
+ *   normalising it into a dense one. `Data.struct`, `Data.tuple`, and every
+ *   `Codec` encoder and decoder refuse. Rejection is already this repository's
+ *   answer everywhere else a value crosses a boundary — `Json.stringify`, the
+ *   durable value checker, the worker wire codec, the error codec, and the
+ *   comptime intrinsic all answer "is a sparse array hole" — so this is one
+ *   policy for the codebase rather than a second one for these two packages. It
+ *   is also the only answer available to a `Codec`, whose wire format has no way
+ *   to *spell* a hole: JSON does not have one.
+ * - **A site that compares or hashes cannot refuse**, because an `Equivalence`
+ *   must be a total relation and must not panic on an input it was handed. It
+ *   instead compares index **ownership before values** (`sameArrayShape`) and
+ *   folds ownership into the hash (`HOLE_HASH`), so the two are never conflated
+ *   and the `Equivalence`/`Hash` law survives either way.
+ *
+ * Every array walk over caller-supplied data in these two packages goes through
+ * this module. `arrayHoleIndex` is the single rule; every other export is an
+ * ergonomic wrapper over it for one caller shape — panic, throw, `Result`, or
+ * boolean — so there is exactly one definition of what a hole is and exactly one
+ * place to change it.
+ *
+ * **A new walk cannot get this wrong by default.** A value that has passed a
+ * gate is branded `DenseArray<T>`, and no ordinary `readonly T[]` is assignable
+ * to that type. A walk written against `DenseArray` therefore *cannot* be handed
+ * an unchecked array, and `itemAt` — the indexed read — accepts nothing else.
+ * Remembering to check is not left to the author of the next walk; the type
+ * checker asks for the check before the walk can be written.
+ */
+
+import { panic } from "smithers:exceptions";
+
+declare const DENSE_ARRAY: unique symbol;
+
+/**
+ * An array proven to have an own data property at every index in `[0, length)`.
+ * Only the gates below produce one, and no ordinary array is assignable to it.
+ * Every JavaScript array walk agrees with every other one on a value of this
+ * type, which is precisely what makes the choice of walk stop mattering.
+ */
+export type DenseArray<T> = readonly T[] & { readonly [DENSE_ARRAY]: true };
+
+/** `arrayHoleIndex`'s answer when there is no hole. */
+export const NO_HOLE = -1;
+
+/**
+ * What a hole contributes to a hash, in place of the member it does not have.
+ * Deliberately not the hash of `undefined`: the entire point of the policy is
+ * that a hole and an own `undefined` are different values, so they must not fold
+ * to the same word.
+ */
+export const HOLE_HASH = 0x7a1e0d55;
+
+/**
+ * The single rule. The index of the first hole in `value`, or `NO_HOLE` when
+ * every index below `length` is an own property. Everything else in this module
+ * is a wrapper around this one loop.
+ */
+export function arrayHoleIndex(value: readonly unknown[]): number {
+  for (let index = 0; index < value.length; index += 1) {
+    if (!Object.hasOwn(value, index)) return index;
+  }
+  return NO_HOLE;
+}
+
+/** The boolean gate, for a predicate that must answer rather than refuse. */
+export function isDenseArray<T>(value: readonly T[]): value is DenseArray<T> {
+  return arrayHoleIndex(value) === NO_HOLE;
+}
+
+/**
+ * The gate. `reject` is handed the index of the first hole and must not return,
+ * so the only way past this call is with a dense array in hand.
+ */
+export function denseArray<T>(value: readonly T[], reject: (index: number) => never): DenseArray<T> {
+  const hole = arrayHoleIndex(value);
+  if (hole !== NO_HOLE) {
+    reject(hole);
+    // `reject` is typed `(index) => never`, so every call site is checked. The
+    // brand is only worth anything if that is also true at run time: a `reject`
+    // that returned would hand a sparse array back wearing `DenseArray`, and
+    // every walk downstream trusts the brand instead of re-checking.
+    panic(`a denseArray reject callback returned instead of refusing the hole at index ${hole}`);
+  }
+  return value as DenseArray<T>;
+}
+
+/** The gate for a library-internal programming error: a sparse array panics. */
+export function requireDenseArray<T>(value: readonly T[], caller: string): DenseArray<T> {
+  return denseArray(value, (index) => panic(`${caller} cannot hold a sparse array (hole at index ${index})`));
+}
+
+/** Read one index of an array that has passed a gate. Accepts nothing that has not. */
+export function itemAt<T>(value: DenseArray<T>, index: number): T {
+  return value[index] as T;
+}
+
+/**
+ * Same length **and** the same index ownership. A comparator calls this before
+ * it looks at a single member, which is what keeps a hole from comparing equal
+ * to an own `undefined` — reading both as `undefined` is exactly the mistake.
+ */
+export function sameArrayShape(left: readonly unknown[], right: readonly unknown[]): boolean {
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index += 1) {
+    if (Object.hasOwn(left, index) !== Object.hasOwn(right, index)) return false;
+  }
+  return true;
+}

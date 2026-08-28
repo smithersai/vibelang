@@ -159,6 +159,29 @@ describe("construction", () => {
     expect(outer.inner).toBe(inner);
     expect(Data.struct(inner)).toBe(inner);
   });
+
+  test("a sparse array is refused rather than silently filled in", () => {
+    // A hole is not an own property, so it has no place in a value whose
+    // equality and hash are defined over own enumerable string keys. Conversion
+    // used to run `Array.prototype.map`, which *preserves* a hole, producing a
+    // frozen Data value with an index that can never be read or written.
+    expect(panics(() => Data.struct({ values: new Array(1) }))).toBe(true);
+    expect(panics(() => Data.tuple(...[] as unknown[], new Array(2)))).toBe(true);
+    expect(panics(() => Data.struct({ nested: { deep: [1, , 3] as unknown[] } }))).toBe(true);
+
+    const trailing = [1];
+    trailing.length = 3;
+    expect(panics(() => Data.struct({ trailing }))).toBe(true);
+
+    const deleted = [1, 2];
+    delete (deleted as unknown as Record<string, unknown>)["0"];
+    expect(panics(() => Data.struct({ deleted }))).toBe(true);
+
+    // An own `undefined` is an ordinary member and is accepted: the module
+    // documents that a Data value may hold `null` or `undefined`.
+    const accepted = Data.struct({ values: [undefined, null] });
+    expect(Object.keys(accepted.values as object)).toEqual(["0", "1"]);
+  });
 });
 
 describe("the reference/structural boundary", () => {

@@ -107,6 +107,7 @@
 import { type ErrorConstructor, errorIs } from "../runtime/errors.ts";
 import { panic } from "../runtime/panic.ts";
 import { type Result, type ResultValue, isResult } from "../runtime/result.ts";
+import { sameArrayShape } from "./array-shape.ts";
 import { Data, type DataBrand, isData, type NotData } from "./data.ts";
 import { sameValueZero } from "./equivalence.ts";
 
@@ -409,7 +410,10 @@ function assertTemplate(template: unknown, pending: Set<object>, depth: number):
 
 function templateMatches(subject: unknown, template: Record<string, unknown> | readonly unknown[]): boolean {
   if (Array.isArray(template)) {
-    if (!Array.isArray(subject) || subject.length !== template.length) return false;
+    // Index ownership before values: `subject[index]` reads a hole as
+    // `undefined`, so a sparse subject would match a template that named
+    // `undefined` in that position. See `./array-shape.ts`.
+    if (!Array.isArray(subject) || !sameArrayShape(subject, template)) return false;
     for (let index = 0; index < template.length; index += 1) {
       if (!leafMatches((subject as readonly unknown[])[index], template[index])) return false;
     }

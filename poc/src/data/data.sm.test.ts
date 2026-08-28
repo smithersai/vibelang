@@ -9,7 +9,7 @@
  *
  * It proves four things, in increasing order of strength:
  *
- * 1. **Acceptance.** The six-module project compiles with zero language and zero
+ * 1. **Acceptance.** The seven-module project compiles with zero language and zero
  *    emitted-TypeScript diagnostics.
  * 2. **Seam-only equality.** Each `.sm` source differs from the TypeScript
  *    original it replaces *only* in the module seam — `../runtime/panic.ts`
@@ -20,17 +20,17 @@
  *    reaches `E`, which is what specification/failures.mdx, "Panic Does Not
  *    Widen a Return Type", requires: a panic in `E` is a panic that
  *    `unwrapOr`/`recover`/`match` can swallow.
- * 4. **Behavioural equivalence, executed.** The six *original* TypeScript test
+ * 4. **Behavioural equivalence, executed.** The seven *original* TypeScript test
  *    suites are replayed unmodified against the emitted `.sm` build, against the
  *    real runtime. They are the module's existing contract, so passing them
  *    unchanged is the equivalence proof.
  *
- * **What it does not prove.** Core Data has *seven* modules, not six.
+ * **What it does not prove.** This directory holds *eight* modules, not seven.
  * `standard-library.mdx` lists `Array Chunk HashMap HashSet Result Data Match`
  * and `./index.ts` exports `Match` from this same package, but `match.ts` has no
  * `.sm` twin: applying `seam()` to it produces ten language errors, so it cannot
  * be admitted without changing something outside this directory. A gate that
- * quietly covered 6 of 7 would read as complete while its one real failure sat
+ * quietly covered 7 of 8 would read as complete while its one real failure sat
  * outside the list, so the exclusion is named in `UNCOVERED` below, its blocker
  * is asserted rather than described, and the module set is derived from disk so
  * a *new* uncovered module fails this gate instead of joining the silence.
@@ -43,8 +43,12 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { compileAndCheckProject, emitProjectDeclarations, readDeclarationEffects } from "../language/index.ts";
 
-/** Load order matters: each module registers its structural rule when it loads. */
-const MODULES = ["equivalence", "hash", "data", "chunk", "hash-map", "hash-set"] as const;
+/**
+ * Load order matters: each module registers its structural rule when it loads.
+ * `array-shape` registers nothing and is the leaf every other module's array
+ * walks go through, so it loads first.
+ */
+const MODULES = ["array-shape", "equivalence", "hash", "data", "chunk", "hash-map", "hash-set"] as const;
 
 /**
  * Core Data modules this gate knowingly does not cover, with the blocker that
@@ -239,9 +243,9 @@ describe("data/** authored in Smithers", () => {
       const run = spawnSync(process.execPath, ["test", root], { cwd: root, encoding: "utf8" });
       const output = `${run.stdout ?? ""}${run.stderr ?? ""}`;
       const summary = /(\d+) pass[\s\S]*?(\d+) fail/.exec(output);
-      // 89 is the six covered suites. The excluded modules' suites are not
+      // 107 is the seven covered suites. The excluded modules' suites are not
       // replayed at all, so this count is a floor on Core Data, not its total.
-      expect(summary === null ? output : `${summary[1]} pass / ${summary[2]} fail`).toBe("89 pass / 0 fail");
+      expect(summary === null ? output : `${summary[1]} pass / ${summary[2]} fail`).toBe("107 pass / 0 fail");
       expect(run.status).toBe(0);
     } finally {
       rmSync(root, { recursive: true, force: true });

@@ -13,6 +13,15 @@ import {
 } from "../runtime/index.ts";
 import type { Result } from "../runtime/result.ts";
 import { isPanic, panic } from "../runtime/panic.ts";
+import {
+  arrayHoleIndex,
+  denseArray,
+  isDenseArray,
+  itemAt,
+  NO_HOLE,
+  requireDenseArray,
+  sameArrayShape,
+} from "../data/array-shape.ts";
 
 const { failure, success } = RuntimeValues;
 
@@ -32,7 +41,12 @@ function renderPath(path: readonly DecodePathSegment[]): string {
 
 function checkedPath(path: readonly DecodePathSegment[]): readonly DecodePathSegment[] {
   if (!Array.isArray(path)) throw new TypeError("DecodeError path must be an array");
-  return Object.freeze(path.map((segment) => {
+  // `.map` never calls its callback on a hole, so the segment check below would
+  // be skipped for one and the hole would survive into a rendered pointer.
+  const segments = denseArray(path, () => {
+    throw new TypeError("DecodeError path segments must be strings or array indices");
+  });
+  return Object.freeze(segments.map((segment) => {
     if (typeof segment === "string") return segment;
     if (typeof segment === "number" && Number.isSafeInteger(segment) && segment >= 0) return segment;
     throw new TypeError("DecodeError path segments must be strings or array indices");
@@ -333,23 +347,27 @@ function array<Domain, Wire>(item: Codec<Domain, Wire>): Codec<readonly Domain[]
   return local({
     encode: (values) => {
       if (!isPlainArray(values)) throw new TypeError("Codec.array.encode expected a plain array");
-      for (let index = 0; index < values.length; index += 1) {
-        if (!Object.hasOwn(values, index)) throw new TypeError(`Codec.array.encode found a sparse hole at ${index}`);
-      }
-      return Object.freeze(values.map((value) => child.encode(value) as Wire));
+      const items = denseArray(values, (index) => {
+        throw new TypeError(`Codec.array.encode found a sparse hole at ${index}`);
+      });
+      return Object.freeze(items.map((value) => child.encode(value) as Wire));
     },
     decode: (wire) => {
       if (!isPlainArray(wire)) return fail([], "expected a plain array");
+      const hole = arrayHoleIndex(wire);
+      if (hole !== NO_HOLE) return fail([hole], "is a sparse array hole");
       const output: Domain[] = [];
       for (let index = 0; index < wire.length; index += 1) {
-        if (!Object.hasOwn(wire, index)) return fail([index], "is a sparse array hole");
         const decoded = prepend(child.decode(wire[index]) as Result<Domain, DecodeError>, index);
         if (decoded.isError()) return decoded as Result<readonly Domain[], DecodeError>;
         output.push(decoded.unwrap());
       }
       return success(Object.freeze(output));
     },
-    accepts: (value) => isPlainArray(value) && value.every(child.accepts),
+    // `.every` skips a hole and is vacuously true over one, so this used to
+    // claim a value the encoder immediately refused -- and `accepts` is what
+    // picks a union variant, so the disagreement escaped as a raw TypeError.
+    accepts: (value) => isPlainArray(value) && isDenseArray(value) && value.every((item) => child.accepts(item)),
   });
 }
 
@@ -362,7 +380,13 @@ function tuple<const Parts extends readonly CodecValue<any, any>[]>(
       if (!isPlainArray(values) || values.length !== children.length) {
         throw new TypeError(`Codec.tuple.encode expected a ${children.length}-element plain tuple`);
       }
-      return Object.freeze(children.map((child, index) => child.encode(values[index]))) as never;
+      // The walk is over `children`, so `values[index]` reads a hole as
+      // `undefined` and the encoded tuple gains an own property the input never
+      // had. Gating the *input* is what stops the shape changing.
+      const items = denseArray(values, (index) => {
+        throw new TypeError(`Codec.tuple.encode found a sparse hole at ${index}`);
+      });
+      return Object.freeze(children.map((child, index) => child.encode(itemAt(items, index)))) as never;
     },
     decode: (wire) => {
       const values: unknown = wire;
@@ -370,17 +394,18 @@ function tuple<const Parts extends readonly CodecValue<any, any>[]>(
       if (values.length !== children.length) {
         return fail([], `expected a ${children.length}-element tuple but received ${values.length}`);
       }
+      const hole = arrayHoleIndex(values);
+      if (hole !== NO_HOLE) return fail([hole], "is a sparse tuple hole");
       const output: unknown[] = [];
       for (let index = 0; index < children.length; index += 1) {
-        if (!Object.hasOwn(values, index)) return fail([index], "is a sparse tuple hole");
         const decoded = prepend(children[index]!.decode(values[index]), index);
         if (decoded.isError()) return decoded as never;
         output.push(decoded.unwrap());
       }
       return success(Object.freeze(output)) as never;
     },
-    accepts: (value) => isPlainArray(value) && value.length === children.length &&
-      children.every((child, index) => child.accepts(value[index])),
+    accepts: (value) => isPlainArray(value) && value.length === children.length && isDenseArray(value) &&
+      children.every((child, index) => child.accepts(itemAt(value, index))),
   });
 }
 
@@ -564,8 +589,16 @@ function roundTripEqual(left: unknown, right: unknown, seen = new WeakMap<object
   if (seen.get(left) === right) return true;
   seen.set(left, right);
   if (Array.isArray(left) || Array.isArray(right)) {
-    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
-    return left.every((value, index) => roundTripEqual(value, right[index], seen));
+    if (!Array.isArray(left) || !Array.isArray(right)) return false;
+    // `.every` skips a hole, so a round trip that turned one into an own
+    // `undefined` used to be certified as unchanged. Ownership first, then
+    // values -- and this comparator feeds both `checkRoundTrip` and the default
+    // `accepts` a custom codec is identified by.
+    if (!sameArrayShape(left, right)) return false;
+    for (let index = 0; index < left.length; index += 1) {
+      if (!roundTripEqual(left[index], right[index], seen)) return false;
+    }
+    return true;
   }
   if (!dataRecord(left) || !dataRecord(right)) return false;
   const leftKeys = Object.keys(left).sort();
@@ -578,10 +611,12 @@ function roundTripEqual(left: unknown, right: unknown, seen = new WeakMap<object
 function checkRoundTrip<Domain, Wire>(codec: Codec<Domain, Wire>, samples: readonly Domain[]): string | undefined {
   const state = stateOf(codec);
   if (!Array.isArray(samples)) panic("Codec.checkRoundTrip requires an array of samples");
-  for (let index = 0; index < samples.length; index += 1) {
+  // A hole in the sample set would silently law-check `undefined` in its place.
+  const cases = requireDenseArray(samples, "Codec.checkRoundTrip samples");
+  for (let index = 0; index < cases.length; index += 1) {
     let wire: unknown;
     try {
-      wire = state.encode(samples[index]);
+      wire = state.encode(itemAt(cases, index));
     } catch (cause) {
       return `encode threw at sample ${index}: ${cause instanceof Error ? cause.message : String(cause)}`;
     }

@@ -436,6 +436,22 @@ describe("structural templates", () => {
     expect(matched(Data.tuple(1, 2, "z"))).toBe(true);
   });
 
+  test("an array template compares index ownership, so a hole is not an own undefined", () => {
+    // `subject[index]` reads a hole as `undefined`, so a sparse subject used to
+    // match a template that named `undefined` in that position — the same
+    // hole/own-`undefined` conflation the rest of this package refuses.
+    const matched = (input: unknown): boolean =>
+      Match.value(input).when([1, undefined, 3], () => true).orElse(() => false).run();
+
+    expect(matched([1, undefined, 3])).toBe(true);
+    expect(matched([1, , 3] as unknown[])).toBe(false);
+
+    const holed = (input: unknown): boolean =>
+      Match.value(input).when([1, , 3] as unknown[] as never, () => true).orElse(() => false).run();
+    expect(holed([1, , 3] as unknown[])).toBe(true);
+    expect(holed([1, undefined, 3])).toBe(false);
+  });
+
   test("a Data value used as a pattern is a value, not a template", () => {
     // The rule worth remembering: plain means template, branded means value.
     const subset = Match.value<unknown>({ x: 1, y: 2 }).when({ x: 1 }, () => "template").orElse(() => "no").run();

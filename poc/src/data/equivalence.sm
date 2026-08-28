@@ -37,6 +37,7 @@
  */
 
 import { panic } from "smithers:exceptions";
+import { requireDenseArray, sameArrayShape } from "./array-shape.sm";
 
 type EqualsFn = (left: unknown, right: unknown) => boolean;
 
@@ -173,6 +174,9 @@ function tuple<const Parts extends readonly EquivalenceValue<never>[]>(
   const comparisons = parts.map((part, index) => requireEquivalence(part, `Equivalence.tuple[${index}]`));
   return make<readonly unknown[]>((left, right) => {
     if (left.length !== comparisons.length || right.length !== comparisons.length) return false;
+    // Index ownership before values: a hole and an own `undefined` both read as
+    // `undefined`, and they are not the same member. See `./array-shape.ts`.
+    if (!sameArrayShape(left, right)) return false;
     for (let index = 0; index < comparisons.length; index += 1) {
       if (!(comparisons[index] as EqualsFn)(left[index], right[index])) return false;
     }
@@ -184,7 +188,8 @@ function array<T>(item: Equivalence<T>): Equivalence<readonly T[]> {
   const equals = requireEquivalence(item, "Equivalence.array");
   return make<readonly T[]>((left, right) => {
     if (left === right) return true;
-    if (left.length !== right.length) return false;
+    // Length *and* index ownership, before a single member is read.
+    if (!sameArrayShape(left, right)) return false;
     for (let index = 0; index < left.length; index += 1) {
       if (!equals(left[index], right[index])) return false;
     }
@@ -224,6 +229,9 @@ function struct<const Fields extends Readonly<Record<string, EquivalenceValue<ne
 function checkLaws<T>(equivalence: Equivalence<T>, samples: readonly T[]): string | undefined {
   const equals = requireEquivalence(equivalence, "Equivalence.checkLaws");
   if (!Array.isArray(samples)) panic("Equivalence.checkLaws requires an array of samples");
+  // Every loop below reads `samples[index]`, so a hole would be law-checked as
+  // `undefined` and reported lawful over a sample that is not there.
+  requireDenseArray(samples, "Equivalence.checkLaws samples");
 
   for (let index = 0; index < samples.length; index += 1) {
     if (!equals(samples[index], samples[index])) return `not reflexive at sample ${index}`;

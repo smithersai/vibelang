@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { catchPanic, isPanic } from "../runtime/panic.ts";
+import { SeededRandom } from "../platform/random.ts";
 import { RuntimeValues, decodeError, encodeError } from "../runtime/index.ts";
 import type { Result } from "../runtime/result.ts";
 import { Codec, CodecValue, DecodeError } from "./codec.ts";
@@ -140,6 +141,72 @@ describe("Codec round-trip laws", () => {
     const lossy = Codec.imap(Codec.string, (value) => value.toLowerCase(), (value: string) => value);
     expect(Codec.checkRoundTrip(lossy, ["LOUD"]) ?? "").toBe("round-trip changed sample 0");
   });
+
+  test("a shape change counts as a changed value, holes included", () => {
+    // The reviewer's case. `new Array(1)` has no own `0`; the encoder used to
+    // hand back `[undefined]`, which does, and the law comparator ran
+    // `left.every`, which skips a hole — so the law certified a transformation
+    // that changed the value's own enumerable keys.
+    const tuple = Codec.tuple(Codec.optional(Codec.string));
+    expect(Codec.checkRoundTrip(tuple, [new Array(1) as never]) ?? "").toContain("encode threw at sample 0");
+    expect(Codec.checkRoundTrip(tuple, [[undefined] as never, ["x"] as never])).toBeUndefined();
+
+    const list = Codec.array(Codec.optional(Codec.string));
+    expect(Codec.checkRoundTrip(list, [new Array(2) as never]) ?? "").toContain("encode threw at sample 0");
+    expect(Codec.checkRoundTrip(list, [[undefined, "x"] as never])).toBeUndefined();
+
+    // A sparse *sample set* would silently test `undefined` in the hole's place.
+    expect(panics(() => Codec.checkRoundTrip(Codec.string, new Array(1) as never))).toBe(true);
+  });
+
+  test("a custom codec's own probe compares index ownership before values", () => {
+    // `Codec.make` without an explicit predicate identifies its domain by
+    // encoding, decoding, and comparing. Spreading densifies, so this codec does
+    // change a sparse input's shape; the comparator has to notice, or the
+    // union below picks a variant that silently rewrites the value.
+    const spreading = Codec.make(
+      (value: readonly (string | undefined)[]) => [...value] as readonly (string | undefined)[],
+      (wire: readonly (string | undefined)[]) => success([...wire] as readonly (string | undefined)[]),
+    );
+    const chooser = Codec.union(spreading as never, Codec.string);
+    expect(() => chooser.encode(new Array(1) as never)).toThrow("matches no variant");
+    expect(chooser.encode(["a"] as never)).toEqual(["a"] as never);
+    expect(chooser.encode("plain" as never)).toBe("plain" as never);
+  });
+
+  test("a seeded sweep of arrays with holes: the law certifies only what kept its shape", () => {
+    const random = SeededRandom.withSeed(0x5eed_1a3f);
+    const shapes = [
+      { name: "array", codec: Codec.array(Codec.optional(Codec.string)) },
+      { name: "tuple-3", codec: Codec.tuple(...Array.from({ length: 3 }, () => Codec.optional(Codec.string))) },
+    ] as const;
+
+    for (let trial = 0; trial < 400; trial += 1) {
+      const shape = shapes[random.int(0, shapes.length)]!;
+      const length = shape.name === "array" ? random.int(0, 5) : 3;
+      const sample = new Array<string | undefined>(length);
+      let holes = 0;
+      for (let index = 0; index < length; index += 1) {
+        const draw = random.int(0, 3);
+        // draw 0 leaves the index a hole; the other two write an own property,
+        // one of which is an own `undefined` — the value a hole impersonates.
+        if (draw === 0) holes += 1;
+        else sample[index] = draw === 1 ? undefined : `s${index}`;
+      }
+
+      const verdict = Codec.checkRoundTrip(shape.codec, [sample as never]);
+      const label = `${shape.name}#${trial} holes=${holes} keys=${Object.keys(sample).join(",")}`;
+      if (holes === 0) {
+        expect([label, verdict]).toEqual([label, undefined]);
+        const decoded = shape.codec.decode(shape.codec.encode(sample as never)).unwrap() as readonly unknown[];
+        // Certified means certified: the own enumerable keys survived intact.
+        expect([label, Object.keys(decoded)]).toEqual([label, Object.keys(sample)]);
+      } else {
+        // A sparse sample can never be certified, because it can never be encoded.
+        expect([label, verdict === undefined]).toEqual([label, false]);
+      }
+    }
+  });
 });
 
 describe("Codec fail-closed decoding", () => {
@@ -151,13 +218,9 @@ describe("Codec fail-closed decoding", () => {
     expect(error.reason).toBe("expected finite number");
   });
 
-  test("rejects tuple arity, sparse arrays, missing fields, extras, and union misses", () => {
+  test("rejects tuple arity, missing fields, extras, and union misses", () => {
     const tuple = Codec.tuple(Codec.string, Codec.number);
     expect(errorOf(tuple.decode(["x"] as never))).toMatchObject({ pointer: "$", reason: "expected a 2-element tuple but received 1" });
-
-    const sparse = new Array(2) as string[];
-    sparse[0] = "x";
-    expect(errorOf(Codec.array(Codec.string).decode(sparse))).toMatchObject({ pointer: "$[1]", reason: "is a sparse array hole" });
 
     const item = Codec.struct({ name: Codec.string });
     expect(errorOf(item.decode({} as never))).toMatchObject({ pointer: "$.name", reason: "is required and must be an enumerable data property" });
@@ -166,6 +229,56 @@ describe("Codec fail-closed decoding", () => {
       pointer: "$",
       reason: "did not match any union variant (expected string; expected boolean)",
     });
+  });
+
+  /**
+   * The old name for this suite's arity test claimed "sparse arrays" while
+   * exercising `Codec.array.decode` alone, so deleting the tuple encoder's check
+   * or the round-trip law's ownership requirement left it green. Every direction
+   * a sparse array can enter a codec is asserted here instead, and the claim now
+   * lives on a test that makes it.
+   */
+  test("rejects a sparse array in every direction: array and tuple, encode and decode", () => {
+    const sparse = new Array(2) as string[];
+    sparse[0] = "x";
+    expect(errorOf(Codec.array(Codec.string).decode(sparse))).toMatchObject({
+      pointer: "$[1]",
+      reason: "is a sparse array hole",
+    });
+    expect(() => Codec.array(Codec.string).encode(sparse)).toThrow("sparse hole at 1");
+
+    const pair = Codec.tuple(Codec.string, Codec.optional(Codec.string));
+    expect(errorOf(pair.decode(sparse as never))).toMatchObject({ pointer: "$[1]", reason: "is a sparse tuple hole" });
+    expect(() => pair.encode(sparse as never)).toThrow("sparse hole at 1");
+
+    // The whole hole: `new Array(1)` against a tuple whose one member accepts
+    // `undefined`, which is the only case where reading the hole "works".
+    const single = Codec.tuple(Codec.optional(Codec.string));
+    expect(() => single.encode(new Array(1) as never)).toThrow("sparse hole at 0");
+    expect(errorOf(single.decode(new Array(1) as never))).toMatchObject({
+      pointer: "$[0]",
+      reason: "is a sparse tuple hole",
+    });
+
+    // `accepts` drives union variant selection, so it has to agree with encode.
+    // It used to say yes (`.every` skips holes) and then encode threw, which is
+    // a TypeError escaping a union that promised to fail closed.
+    const chooser = Codec.union(single as never, Codec.string);
+    expect(() => chooser.encode(new Array(1) as never)).toThrow("matches no variant");
+    const listChooser = Codec.union(Codec.array(Codec.optional(Codec.string)) as never, Codec.string);
+    expect(() => listChooser.encode(new Array(1) as never)).toThrow("matches no variant");
+  });
+
+  test("a DecodeError path is validated through its holes, not around them", () => {
+    // `path.map` skips a hole without calling the validator, so a sparse path
+    // used to slip past the segment check and render as `$.undefined`.
+    expect(() => new DecodeError(new Array(1) as never, "boom")).toThrow(
+      "DecodeError path segments must be strings or array indices",
+    );
+    expect(() => new DecodeError([undefined as never], "boom")).toThrow(
+      "DecodeError path segments must be strings or array indices",
+    );
+    expect(new DecodeError(["rows", 2], "boom").pointer).toBe("$.rows[2]");
   });
 
   test("turns hostile wire inspection into a stable Result failure", () => {

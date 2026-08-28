@@ -174,9 +174,49 @@ describe("Schema-derived Equivalence and Hash", () => {
     expect(hash.hash(samples[0]!)).toBe(hash.hash(samples[1]!));
     expect(Hash.checkLaws(equivalence, hash, samples)).toBeUndefined();
   });
+
+  test("compare index ownership before values, so a hole is not an own undefined", () => {
+    // `Schema.equivalence` and `Schema.hash` are handed caller values directly,
+    // not only parsed ones, so they meet sparse arrays that `Schema.parse`
+    // already refuses. `.every` and `for…of` both skip or invent a hole.
+    const list = Schema.array(Schema.nullable(Schema.string));
+    const equivalence = Schema.equivalence(list);
+    const hash = Schema.hash(list);
+    const hole = new Array(1) as (string | null)[];
+    const own = [null] as (string | null)[];
+
+    expect(equivalence.equals(hole, own)).toBe(false);
+    expect(equivalence.equals(hole, new Array(1) as (string | null)[])).toBe(true);
+    expect(hash.hash(hole)).not.toBe(hash.hash(own));
+    expect(hash.hash(hole)).toBe(hash.hash(new Array(1) as (string | null)[]));
+    expect(Hash.checkLaws(equivalence, hash, [hole, own, new Array(1) as (string | null)[]])).toBeUndefined();
+
+    const pair = Schema.tuple(Schema.nullable(Schema.string), Schema.nullable(Schema.string));
+    const pairEquivalence = Schema.equivalence(pair);
+    const pairHash = Schema.hash(pair);
+    const sparsePair = new Array(2) as [string | null, string | null];
+    expect(pairEquivalence.equals(sparsePair, [null, null])).toBe(false);
+    expect(pairHash.hash(sparsePair)).not.toBe(pairHash.hash([null, null]));
+
+    // And parsing still refuses the hole outright, as it always did.
+    expect(list.parse(hole).isError()).toBe(true);
+  });
 });
 
 describe("ValidationError transport", () => {
+  test("validates a path through its holes, not around them", () => {
+    // The fourth copy of one pattern: `path.map` never calls its callback on a
+    // hole, so the segment check was skipped and `$.undefined` was rendered.
+    // `DecodeError`, `JsonEncodeError`, and `JsonSchemaError` had it too.
+    expect(() => new ValidationError(new Array(1) as never, "boom")).toThrow(
+      "ValidationError path segments must be strings or array indices",
+    );
+    expect(() => new ValidationError([undefined as never], "boom")).toThrow(
+      "ValidationError path segments must be strings or array indices",
+    );
+    expect(new ValidationError(["rows", 2], "boom").pointer).toBe("$.rows[2]");
+  });
+
   test("ordinary Schema failures use the shared wire-registered error", () => {
     const original = validationError(Schema.array(Schema.number), [1, "x"]);
     const decoded = decodeError(encodeError(original));

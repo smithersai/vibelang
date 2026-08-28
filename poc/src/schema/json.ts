@@ -7,6 +7,7 @@ import {
   type NominalError,
 } from "../runtime/index.ts";
 import type { Result } from "../runtime/result.ts";
+import { denseArray } from "../data/array-shape.ts";
 
 const { failure, success } = RuntimeValues;
 
@@ -22,7 +23,11 @@ const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 function checkedPath(path: readonly JsonPathSegment[]): readonly JsonPathSegment[] {
   if (!Array.isArray(path)) throw new TypeError("JSON error path must be an array");
-  return Object.freeze(path.map((segment) => {
+  // `.map` skips a hole without calling the check below, so gate first.
+  const segments = denseArray(path, () => {
+    throw new TypeError("JSON error paths contain only strings and array indices");
+  });
+  return Object.freeze(segments.map((segment) => {
     if (typeof segment === "string") return segment;
     if (typeof segment === "number" && Number.isSafeInteger(segment) && segment >= 0) return segment;
     throw new TypeError("JSON error paths contain only strings and array indices");

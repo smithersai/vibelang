@@ -1,6 +1,7 @@
 /** @module @throws {JsonSchemaError} */
 /** Provisional derivation of JSON Schema draft 2020-12 documents. */
 import { registerErrorCodec, type NominalError } from "../runtime/index.ts";
+import { denseArray } from "../data/array-shape.ts";
 import type { JsonValue } from "./json.ts";
 import {
   inspectSchema,
@@ -15,7 +16,10 @@ export class JsonSchemaError extends Error {
 
   constructor(schemaPath: readonly (string | number)[], reason: string) {
     if (!Array.isArray(schemaPath)) throw new TypeError("JsonSchemaError schemaPath must be an array");
-    const checked = schemaPath.map((segment) => {
+    // `.map` skips a hole without calling the check below, so gate first.
+    const checked = denseArray(schemaPath, () => {
+      throw new TypeError("JsonSchemaError paths contain only strings and array indices");
+    }).map((segment) => {
       if (typeof segment === "string") return segment;
       if (typeof segment === "number" && Number.isSafeInteger(segment) && segment >= 0) return segment;
       throw new TypeError("JsonSchemaError paths contain only strings and array indices");

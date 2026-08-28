@@ -36,6 +36,12 @@
  *   that member is.
  * - Only own enumerable **string** keys participate. Symbol-keyed properties
  *   are not copied and take no part in equality or hashing.
+ * - **A sparse array is refused.** A hole is an index below `length` that is
+ *   *not* an own property, so it has no key to participate with, and freezing
+ *   one would mint a slot that can never be read or written. `./array-shape.ts`
+ *   holds the rule and the reasoning; conversion rejects here, and the array
+ *   comparison and hash below compare index ownership before values so the two
+ *   can never disagree about what a hole is.
  *
  * A cyclic input has no structural equality worth defining, so it panics at
  * construction rather than recursing forever.
@@ -46,6 +52,7 @@
  */
 
 import { panic } from "smithers:exceptions";
+import { HOLE_HASH, requireDenseArray, sameArrayShape } from "./array-shape.sm";
 import { Equivalence as EquivalenceNamespace, registerStructuralEquivalence } from "./equivalence.sm";
 import { Hash as HashNamespace, registerStructuralHash } from "./hash.sm";
 
@@ -122,7 +129,10 @@ function convert(value: unknown, pending: Set<object>): unknown {
   pending.add(value);
   try {
     if (isArray) {
-      const items = (value as readonly unknown[]).map((item) => convert(item, pending));
+      // `Array.prototype.map` *preserves* a hole rather than converting it, so
+      // gating first is what keeps the copy dense. See `./array-shape.ts`.
+      const source = requireDenseArray(value as readonly unknown[], "a Data value");
+      const items = source.map((item) => convert(item, pending));
       return brand(Object.freeze(items));
     }
     const source = value as Record<string, unknown>;
@@ -164,7 +174,11 @@ function dataEquals(left: unknown, right: unknown, recurse: (left: unknown, righ
   if (leftIsArray) {
     const leftItems = left as readonly unknown[];
     const rightItems = right as readonly unknown[];
-    if (leftItems.length !== rightItems.length) return false;
+    // Ownership before values, and it subsumes the length check: reading both
+    // sides by index would report a hole and an own `undefined` as the same
+    // member. Conversion already refuses a sparse array, so this cannot fire on
+    // a value built here; it is what keeps the comparison honest if it ever can.
+    if (!sameArrayShape(leftItems, rightItems)) return false;
     for (let index = 0; index < leftItems.length; index += 1) {
       if (!recurse(leftItems[index], rightItems[index])) return false;
     }
@@ -190,7 +204,14 @@ function dataHash(value: unknown, recurse: (value: unknown) => number): number {
   let accumulator: number;
   if (Array.isArray(value)) {
     accumulator = HashNamespace.combine(TUPLE_SEED, HashNamespace.number.hash(value.length));
-    for (const item of value) accumulator = HashNamespace.combine(accumulator, recurse(item));
+    // `for…of` yields `undefined` at a hole, which would hash it as the member
+    // it does not have. Ownership is folded in instead, matching `dataEquals`.
+    for (let index = 0; index < value.length; index += 1) {
+      accumulator = HashNamespace.combine(
+        accumulator,
+        Object.hasOwn(value, index) ? recurse(value[index]) : HOLE_HASH,
+      );
+    }
   } else {
     const fields = value as Record<string, unknown>;
     const keys = Object.keys(fields).sort();

@@ -63,6 +63,17 @@ export class ValidationError extends Error {
 
 function assertPath(path: readonly SchemaPathSegment[]): SchemaPathSegment[] {
   if (!Array.isArray(path)) throw new TypeError("ValidationError path must be an array");
+  // `.map` never calls its callback on a sparse hole, so the segment check
+  // below would be skipped for one and the hole would render as `$.undefined`.
+  // `poc/src/data/array-shape.ts` is where this rule lives and explains itself;
+  // it is spelled out here rather than imported because this module is the
+  // compiler-owned runtime half of `Schema.derive` and deliberately depends on
+  // nothing but `../runtime/index.ts`.
+  for (let index = 0; index < path.length; index += 1) {
+    if (!Object.hasOwn(path, index)) {
+      throw new TypeError("ValidationError path segments must be strings or array indices");
+    }
+  }
   return path.map((segment) => {
     if (typeof segment === "string") return segment;
     if (typeof segment === "number" && Number.isSafeInteger(segment) && segment >= 0) return segment;

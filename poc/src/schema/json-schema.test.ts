@@ -94,6 +94,16 @@ describe("JsonSchema fail-closed behavior", () => {
 });
 
 describe("JsonSchemaError wire identity", () => {
+  test("validates a schema path through its holes, not around them", () => {
+    expect(() => new JsonSchemaError(new Array(1) as never, "boom")).toThrow(
+      "JsonSchemaError paths contain only strings and array indices",
+    );
+    expect(() => new JsonSchemaError([undefined as never], "boom")).toThrow(
+      "JsonSchemaError paths contain only strings and array indices",
+    );
+    expect(new JsonSchemaError(["properties", 2], "boom").schemaPath).toEqual(["properties", 2]);
+  });
+
   test("round-trips through the nominal Error registry", () => {
     const original = new JsonSchemaError(["properties", 2], "unsupported node");
     const decoded = decodeError(encodeError(original));
