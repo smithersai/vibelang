@@ -48,10 +48,17 @@ There is no failure annotation, prefix propagation expression, postfix catch exp
 The API is modelled on [better-result](https://github.com/dmmulroy/better-result).
 
 This table is the **complete** set of members an authored `.sm` program may call
-on a Result, on the JS reference backend. It is not a subset of a larger library
+on a Result, on **both** backends. It is not a subset of a larger library
 surface: a member that is not listed here does not discharge the must-use
 obligation, so calling one is reported as `SMITHERS1301` ("Result value is not
 consumed") rather than as an unknown property.
+
+`unwrap()` is not on it, and is not an omission: it was the propagation spelling
+before postfix `!`, and the authored call is refused as `SMITHERS1206`
+(`19-retired-syntax/result-dot-unwrap-is-retired`). The compiler-owned runtime
+keeps an `unwrap` as its missed-lowering fallback so an untransformed program
+fails visibly; that is not authoring surface, and it is deliberately excluded
+from the discharge set.
 
 | Method | Meaning |
 | --- | --- |
@@ -67,13 +74,21 @@ consumed") rather than as an unknown property.
 | `Result.all` | collect Results, returning the first error |
 | `Result.try`, `Result.tryPromise` | adapt a foreign throwing/rejecting operation |
 
-`flatten` and `tapBoth` are reachable on the JS reference backend only. The Go
-fork carries its own, independent copy of the must-use discharge set
-(`compiler/forkbridge/lowering.go.txt`), has not learned either name, and still
-refuses both with `SMITHERS1301` — recorded as `xfail(go)` on
+`flatten` and `tapBoth` reach both backends as of 2026-08-28. They were the last
+two members that did not: the Go fork carries its own, independent copy of the
+must-use discharge set (`resultConsumerMembers` in
+`compiler/forkbridge/lowering.go.txt`) and had not learned either name, so it
+refused both with `SMITHERS1301` while the reference ran them. The fork's list
+and both of its prelude classes now declare them, and
+`compiler/fork_result_member_surface_test.go` fails if that list and the
+reference's `RESULT_MEMBER_SIGNATURES` ever name different members again — the
+copy is pinned rather than removed, because the fork's copy is Go source
+compiled into a foreign checkout and cannot read a TypeScript module here.
 `01-result-lifting/result-flatten-collapses-one-level-of-nesting` and
-`01-result-lifting/result-tap-both-observes-whichever-variant-is-active`. See
-**(SA-7)** in [Specification Status](/specification/index) §Specification–Implementation Gaps.
+`01-result-lifting/result-tap-both-observes-whichever-variant-is-active` now
+pass on both backends. See **(SA-7)** in
+[Specification Status](/specification/index) §Specification–Implementation Gaps
+for the ten members that still exist nowhere.
 
 Not provided, because Smithers supplies them another way: `Result.ok` and `Result.err` (use `return` and `throw`), `TaggedError` (use `class ... extends Error`), and `Result.gen`/`yield*` (use `!`).
 

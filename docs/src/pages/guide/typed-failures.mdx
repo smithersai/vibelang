@@ -73,10 +73,22 @@ const port = readSettings("app.json")
 The initial quality-of-life surface is:
 
 - `isOk()`, `isError()`, `match(...)`
-- `map(...)`, `mapError(...)`, `andThen(...)`, `recover(...)`
-- `tap(...)`, `tapError(...)`
-- `unwrap()`, `unwrapOr(...)`, `expect(...)`
+- `map(...)`, `mapError(...)`, `andThen(...)`, `flatten()`, `recover(...)`
+- `tap(...)`, `tapError(...)`, `tapBoth(...)`
+- `unwrapOr(...)`, `expect(...)`
 - `Result.all(...)`, `Result.try(...)`, and `Result.tryPromise(...)`
+
+There is no `unwrap()`. It was the propagation spelling before postfix `!`
+replaced it, and writing it is now a compile error — `SMITHERS1206`, pinned by
+`19-retired-syntax/result-dot-unwrap-is-retired`. Use `!` to propagate, `expect`
+to panic with an invariant message, or `unwrapOr` to supply a fallback. The
+compiler-owned runtime still carries an `unwrap` as its missed-lowering
+fallback, so a program that escaped the transform fails visibly instead of
+silently; that is not authoring surface.
+
+[Results and Errors](/reference/errors) §Result Methods is the complete list and
+the authority. This one repeats it for the guide's narrative, so prefer that page
+if the two ever disagree.
 
 `Result.try` and `Result.tryPromise` exist for foreign JavaScript boundaries that may throw or reject. They are not success/error constructors.
 

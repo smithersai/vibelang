@@ -201,24 +201,30 @@ Members that must inspect a failure value — `tryRecover`, `tapError`, `mapErro
 
 **Open.** Whether Smithers gains an error-extraction form is undecided. It is a real language feature with a spelling to choose, not an oversight, and it is the root of most of the unauthorable members.
 
-**(SA-7) — implementation status, measured 2026-08-28, half-closed 2026-08-28.**
+**(SA-7) — implementation status, measured 2026-08-28.**
 The sentence that stood here — "until it is decided, these members are supplied
 by the compiler-owned runtime" — was false, so record the gap rather than assert
 the fix. The list above is a `direction` obligation on an implementation, and it
-does not yet fully meet it. Callable from authored `.sm` today, on the JS
-reference backend: `isOk isError match map mapError andThen recover tap
-tapError unwrapOr expect flatten tapBoth`, plus the statics `Result.all
+does not yet fully meet it. Callable from authored `.sm` today, on **both**
+backends: `isOk isError match map mapError andThen flatten recover tap
+tapError tapBoth unwrapOr expect`, plus the statics `Result.all
 Result.try Result.tryPromise`. `flatten` and `tapBoth` are the two names that
-moved: the checker's Result surface now declares both (`RESULT_MEMBER_SIGNATURES`
-in `poc/src/language/semantic.ts` drives both the checker admission and the
-must-use discharge set), so `01-result-lifting/result-flatten-collapses-one-level-of-nesting`
+moved, and they moved twice. First on the reference, whose checker Result
+surface now declares both (`RESULT_MEMBER_SIGNATURES` in
+`poc/src/language/semantic.ts` drives both the checker admission and the
+must-use discharge set); then on the Go fork, which carries its own, independent
+copy of that set in `compiler/forkbridge/lowering.go.txt` and had learned
+neither, so it went on refusing both with `SMITHERS1301` — an honest fail-closed
+refusal, recorded as `xfail(go)` — while the reference ran them. Both markers
+are retired: `01-result-lifting/result-flatten-collapses-one-level-of-nesting`
 and `01-result-lifting/result-tap-both-observes-whichever-variant-is-active`
-compile and run on the reference (exit 0, `["Ada Lovelace", "no entry for
+now compile and run on both backends (exit 0, `["Ada Lovelace", "no entry for
 zoe"]` and `["ok Ada Lovelace", "error zoe", "Ada Lovelace", "none"]`
-respectively). The Go fork does not share the fix: `compiler/forkbridge/lowering.go.txt`
-carries its own, independent copy of the discharge set, has not learned either
-name, and still refuses both with `SMITHERS1301` — an honest fail-closed
-refusal, recorded as `xfail(go)` on both cases rather than silently accepted.
+respectively). The fork's copy cannot be folded into the reference's — it is Go
+source compiled into a foreign checkout — so it is pinned instead:
+`compiler/fork_result_member_surface_test.go` reads both files and fails when
+the two name lists differ. `unwrap` is on neither list on purpose; the authored
+spelling is refused as `SMITHERS1206`.
 The other ten names above resolve nowhere on either backend, and the failure
 is not the obvious one — a Result member outside the recognized set does not
 report an unknown property, it fails the must-use walk and is refused as
