@@ -9,6 +9,7 @@ import {
 } from "./source-map.ts";
 import {
   buildSemanticModel,
+  chargesCompilerPanic,
   effectiveChannel,
   expectReceiver,
   expressionShape,
@@ -462,7 +463,7 @@ function lowerStatement(
   if (ts.isExpressionStatement(statement)) {
     const panicCall = unwrapPanicCall(statement.expression, state.model);
     if (panicCall) {
-      if (!panicMaterializes(owner)) return throwPanic(panicCall, owner, state, context, visit, statement);
+      if (!panicMaterializes(owner, state.model)) return throwPanic(panicCall, owner, state, context, visit, statement);
       const prologue: ts.Statement[] = [];
       const failure = lowerPanicValue(panicCall, owner, prologue, state, context, visit);
       state.changed = true;
@@ -619,7 +620,7 @@ function lowerReturn(
   const prologue: ts.Statement[] = [];
   const panicCall = original && unwrapPanicCall(original, state.model);
   if (panicCall) {
-    if (!panicMaterializes(owner)) {
+    if (!panicMaterializes(owner, state.model)) {
       return throwPanic(panicCall, owner, state, context, visit, statement ?? panicCall);
     }
     const failure = lowerPanicValue(panicCall, owner, prologue, state, context, visit);
@@ -862,9 +863,15 @@ function lowerPanicValue(
  * Everywhere else the panic lowers to `throw __vsPanicValue(...)`, which is
  * exactly what the runtime `panic()` does and what `catchPanic` catches, and is
  * the same shape an ordinary `throw` already takes in a plain-channel function.
+ *
+ * The membership test is `chargesCompilerPanic`, not `failures.has("Panic")`.
+ * A failure row is a set of STRINGS and a user `class Panic extends Error`
+ * mints the same member, so the bare spelling let an author's own `Panic`
+ * satisfy a test about the compiler's distinguished channel; see that
+ * predicate for the program it shipped wrong.
  */
-function panicMaterializes(owner: SemanticFunction): boolean {
-  return effectiveChannel(owner) !== "plain" && owner.failures.has("Panic");
+function panicMaterializes(owner: SemanticFunction, model: SemanticModel): boolean {
+  return effectiveChannel(owner) !== "plain" && chargesCompilerPanic(owner, model);
 }
 
 function throwPanic(

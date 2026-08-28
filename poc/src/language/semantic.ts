@@ -1356,8 +1356,7 @@ function declaredFailureRowType(
   if (!signature) return undefined;
   let returnType = checker.getReturnTypeOfSignature(signature);
   returnType = promisedType(returnType, checker) ?? returnType;
-  if (nominalTypeName(returnType) !== "Result") return undefined;
-  return typeArguments(returnType, checker)[1];
+  return compilerResultChannels(returnType, checker)?.error;
 }
 
 /**
@@ -2504,24 +2503,181 @@ export function shapeOfType(type: ts.Type, checker: ts.TypeChecker): TypeShape {
     const inner = shapeOfType(promised, checker);
     return { ...inner, async: true };
   }
-  const name = nominalTypeName(type);
-  const arguments_ = typeArguments(type, checker);
-  if (name === "Result") {
-    const success = arguments_[0];
-    const error = arguments_[1];
+  const channels = compilerResultChannels(type, checker);
+  if (channels) {
     return {
       channel: "result",
       async: false,
-      failures: error ? errorNames(error, checker) : new Set(["Error"]),
-      successType: success,
+      failures: channels.error ? errorNames(channels.error, checker) : new Set(["Error"]),
+      successType: channels.success,
     };
   }
   return { channel: "plain", async: false, failures: new Set(), successType: type };
 }
 
-function nominalTypeName(type: ts.Type): string | undefined {
-  return type.aliasSymbol?.getName() ?? type.getSymbol()?.getName() ??
-    ((type as ts.TypeReference).target?.getSymbol()?.getName());
+/**
+ * Compiler-construct identity, asked of a TYPE: is this the compiler's own
+ * `Result`, the ambient `Promise`, the ambient `Error`? Answered from the
+ * declaration the checker resolved, never from the name the author spelled.
+ *
+ * `nominalTypeName` was here. It was
+ * `aliasSymbol.getName() ?? getSymbol().getName()` with no declaring-file test
+ * of any kind, and it decided all three channels. It was wrong in both
+ * directions, and both directions shipped artifacts.
+ *
+ * Spelling read as identity — a user type named `Result` became the channel:
+ *
+ *     interface Result<A, E> { readonly value: A; readonly other: E }
+ *     function make(): Result<string, number> { return { value: "x", other: 1 } }
+ *     export function use(): string { return make().value }
+ *
+ * published `channel: "result"` with a failure row of `["number"]` — a row
+ * member that is not even an Error — emitted `return __vsResultSuccess({...})`
+ * into a function declared to return the author's own struct, and charged
+ * SMITHERS1301 "Result value is not consumed" against a caller that only read
+ * a field off it. A user `class Result` had `return __vsResultSuccess(undefined)`
+ * spliced into its constructor body. The same name-only reading of `Promise`
+ * unwrapped a user container, and the same reading of `Error` lifted
+ * `throw new Boom()` — where `Boom` extends a user-declared `Error` — into a
+ * failure channel instead of refusing the non-Error throw (SMITHERS1103) it is.
+ *
+ * Identity read as spelling — reading `aliasSymbol` FIRST made the opposite
+ * mistake. `type R<A, E extends Error> = Result<A, E>` answered `"R"`, so
+ * `declaredFailureRowType` returned undefined and the author was told to "use
+ * Result<A, E>" (SMITHERS1101) for a declaration that already was one.
+ *
+ * The prelude declares `readonly __smithersResult: { success: A; error: E }` on
+ * `Result` for exactly this question and nothing consulted it. It is strictly
+ * better than a name plus a declaring-file test, for two reasons that are not
+ * stylistic: `getPropertyOfType` resolves THROUGH a type alias, so the
+ * SMITHERS1101 direction is fixed by the same mechanism rather than by a second
+ * one; and the brand carries the INSTANTIATED channels, so
+ * `type R<A> = Result<A, Missing>` used as `R<number>` reports `Missing`, where
+ * the positional `aliasTypeArguments` read saw a one-element list, found no
+ * second argument, and fell back to a bare `Error`.
+ *
+ * The brand is evidence only when the property resolves to the PRELUDE's
+ * declaration of it. An author can spell `__smithersResult` themselves, and a
+ * structural read would hand them the channel on request. That gate is the same
+ * `isCompilerPrelude` the sound sites in this file already use
+ * ({@link isContextConstructorType}, {@link extendsImportedContext},
+ * {@link isLayerCall}, {@link isPreludeResultBoundaryCall},
+ * {@link isPreludeResultNamespaceMember}).
+ *
+ * `Promise` and `Error` carry no brand and need none: they are ambient
+ * declarations of the TypeScript standard library, which is the same thing
+ * {@link isAmbientPromiseNamespace} already resolves them against.
+ */
+const RESULT_BRAND = "__smithersResult";
+
+function isDeclaredIn(
+  symbol: ts.Symbol | undefined,
+  inFile: (file: ts.SourceFile) => boolean,
+): boolean {
+  return Boolean(symbol?.declarations?.some((declaration) => inFile(declaration.getSourceFile())));
+}
+
+/** Whether `symbol` is declared by the checker-only prelude. */
+export function isCompilerPreludeSymbol(symbol: ts.Symbol | undefined): boolean {
+  return isDeclaredIn(symbol, isCompilerPrelude);
+}
+
+/** The prelude's own `__smithersResult` brand carried by `type`, if it carries one. */
+function compilerResultBrand(type: ts.Type, checker: ts.TypeChecker): ts.Symbol | undefined {
+  const brand = checker.getPropertyOfType(type, RESULT_BRAND);
+  return isCompilerPreludeSymbol(brand) ? brand : undefined;
+}
+
+/** Whether `type` is the compiler's `Result` channel, under any spelling. */
+export function isCompilerResultType(type: ts.Type, checker: ts.TypeChecker): boolean {
+  return compilerResultBrand(type, checker) !== undefined;
+}
+
+/** The instantiated success and error channels the prelude's brand carries. */
+function compilerResultChannels(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+): { readonly success?: ts.Type; readonly error?: ts.Type } | undefined {
+  const brand = compilerResultBrand(type, checker);
+  if (brand === undefined) return undefined;
+  const branded = checker.getTypeOfSymbol(brand);
+  const read = (key: string): ts.Type | undefined => {
+    const member = checker.getPropertyOfType(branded, key);
+    return member ? checker.getTypeOfSymbol(member) : undefined;
+  };
+  return { success: read("success"), error: read("error") };
+}
+
+/**
+ * Whether `type` is one of the named ambient types DECLARED BY the TypeScript
+ * standard library.
+ *
+ * The prelude merges its own members into the global `Error` interface, so the
+ * global still holds a library declaration and answers true. A `.sm` module that
+ * declares its own `Error` or `Promise` shadows the global with a separate
+ * symbol declared only in that module, and answers false. `aliasSymbol` is
+ * deliberately not consulted: an alias of the ambient type is still the ambient
+ * type, which is the SMITHERS1101 direction above.
+ */
+function isAmbientLibraryType(type: ts.Type, names: readonly string[]): boolean {
+  const symbol = type.getSymbol() ?? (type as ts.TypeReference).target?.getSymbol();
+  if (symbol === undefined || !names.includes(symbol.getName())) return false;
+  return isDeclaredIn(symbol, isTypeScriptLibrary);
+}
+
+/** The distinguished panic member of a failure row. */
+export const COMPILER_PANIC_ROW_NAME = "Panic";
+
+/**
+ * Whether `owner`'s failure row charges the COMPILER's `Panic`.
+ *
+ * A row is a set of strings. `addForeignFailures` and the `.expect(...)` rule
+ * add the member `"Panic"` by literal, and `errorNamesOfType` mints the same
+ * string for a user `class Panic extends Error`, so once both are in the set
+ * nothing distinguishes them. `panicMaterializes` (`compile.ts`) reads exactly
+ * that membership to decide whether a real `panic()` becomes a Result VALUE or
+ * stays an unwinding throw, and with a user `Panic` in scope it chose wrongly:
+ *
+ *     class Panic extends Error {}
+ *     export function force(k: string): Result<string, Panic> {
+ *       if (k === "") throw new Panic()
+ *       if (k === "!") Reflect.panic("boom")
+ *       return k
+ *     }
+ *
+ * lowered the `Reflect.panic` to `return __vsResultFailure(__vsPanicValue(...))`,
+ * putting a runtime panic value into a channel whose only declared member is
+ * the author's class — where no `error.is(Panic)` and no exhaustive `match`
+ * will recognize it. That is precisely the fail-open `panicMaterializes`
+ * documents itself as preventing, reached through the row's spelling rather
+ * than through the "returns some Result" test it already rejected.
+ *
+ * The membership is trustworthy exactly while the spelling `Panic` at this
+ * function's location IS the prelude's `Panic`, so that is what is asked, with
+ * the same `isCompilerPrelude` gate the rest of this file uses. A module that
+ * shadows `Panic` and also carries a compiler-minted panic member answers false
+ * and unwinds; unwinding is what a plain-channel function already does with
+ * `panic()` and what `catchPanic` catches, so the ambiguous case fails CLOSED
+ * rather than emitting a value no handler can match.
+ *
+ * Reserving the row name instead — qualifying the author's `Panic` the way
+ * `buildRowNaming` qualifies two colliding user modules — would fix every row
+ * consumer at once, but it changes the serialized row alphabet the Go fork
+ * mirrors. That is a wider, cross-backend change than this defect needs; this
+ * predicate leaves every emitted row byte-identical.
+ */
+export function chargesCompilerPanic(owner: SemanticFunction, model: SemanticModel): boolean {
+  if (!owner.failures.has(COMPILER_PANIC_ROW_NAME)) return false;
+  const symbol = unalias(
+    model.checker.resolveName(
+      COMPILER_PANIC_ROW_NAME,
+      owner.node,
+      ts.SymbolFlags.Type | ts.SymbolFlags.Value,
+      false,
+    ),
+    model.checker,
+  );
+  return isCompilerPreludeSymbol(symbol);
 }
 
 function typeArguments(type: ts.Type, checker: ts.TypeChecker): readonly ts.Type[] {
@@ -2533,9 +2689,10 @@ function typeArguments(type: ts.Type, checker: ts.TypeChecker): readonly ts.Type
   return [];
 }
 
+const AMBIENT_PROMISE_TYPES = ["Promise", "PromiseLike"];
+
 function promisedType(type: ts.Type, checker: ts.TypeChecker): ts.Type | undefined {
-  const name = nominalTypeName(type);
-  if (name !== "Promise" && name !== "PromiseLike") return undefined;
+  if (!isAmbientLibraryType(type, AMBIENT_PROMISE_TYPES)) return undefined;
   return typeArguments(type, checker)[0] ?? checker.getAwaitedType(type);
 }
 
@@ -2763,6 +2920,8 @@ function baseTypesOf(type: ts.Type, checker: ts.TypeChecker): readonly ts.Type[]
   return checker.getBaseTypes(type as ts.InterfaceType) ?? [];
 }
 
+const AMBIENT_ERROR_TYPES = ["Error"];
+
 export function isErrorType(type: ts.Type, checker: ts.TypeChecker, seen = new Set<ts.Type>()): boolean {
   if (seen.has(type)) return false;
   seen.add(type);
@@ -2773,7 +2932,7 @@ export function isErrorType(type: ts.Type, checker: ts.TypeChecker, seen = new S
     const constraint = checker.getBaseConstraintOfType(type);
     return constraint !== undefined && constraint !== type && isErrorType(constraint, checker, seen);
   }
-  if (nominalTypeName(type) === "Error") return true;
+  if (isAmbientLibraryType(type, AMBIENT_ERROR_TYPES)) return true;
   return baseTypesOf(type, checker).some((base) => isErrorType(base, checker, seen));
 }
 
@@ -3759,7 +3918,7 @@ function inferRows(
       for (const expectCall of fn.expectCalls) {
         const receiver = (expectCall.expression as ts.PropertyAccessExpression).expression;
         if (semanticExpressionShape(receiver, checker, callEdges).channel.startsWith("result")) {
-          changed = add(fn.bodyFailures, "Panic") || changed;
+          changed = add(fn.bodyFailures, COMPILER_PANIC_ROW_NAME) || changed;
         }
       }
       // An authored Result.try/tryPromise boundary owns its callback's throw
@@ -4275,10 +4434,10 @@ function foreignErrorValuePath(
 }
 
 function addForeignFailures(target: Set<string>, policy: ForeignPolicy): void {
-  if (policy.kind === "panic") target.add("Panic");
+  if (policy.kind === "panic") target.add(COMPILER_PANIC_ROW_NAME);
   if (policy.kind === "declared" && policy.errorName) {
     target.add(policy.errorName);
-    target.add("Panic");
+    target.add(COMPILER_PANIC_ROW_NAME);
   }
 }
 
@@ -7495,10 +7654,19 @@ function resolvedModuleSourceFile(
   checker: ts.TypeChecker,
 ): ts.SourceFile | undefined {
   const symbol = checker.getSymbolAtLocation(specifier);
-  const declaration = symbol?.declarations?.find((candidate) => {
-    const file = candidate.getSourceFile();
-    return file.fileName !== PRELUDE_NAME;
-  });
+  // `PRELUDE_NAME` is a bare basename and every prelude source file is created
+  // as `resolve(<dir>, PRELUDE_NAME)`, so the comparison that was here —
+  // `file.fileName !== PRELUDE_NAME` — could never be equal and therefore never
+  // excluded anything. It is `isCompilerPrelude` everywhere else in this file
+  // (`endsWith`), and that is what it has to be here: the prelude's own
+  // `declare module` blocks are `.d.ts` declarations carrying no
+  // `@throws {never}` marker, so resolving an authored specifier to one and
+  // handing it to the SMITHERS1510 module-trust pass would refuse the
+  // compiler's own prelude. Nothing reaches that state today because all three
+  // callers filter `COMPILER_INTRINSIC_SPECIFIERS` out first and that set
+  // covers every module the prelude declares — a containment
+  // `compiler-construct-identity.test.ts` now asserts rather than assumes.
+  const declaration = symbol?.declarations?.find((candidate) => !isCompilerPrelude(candidate.getSourceFile()));
   return declaration?.getSourceFile();
 }
 
