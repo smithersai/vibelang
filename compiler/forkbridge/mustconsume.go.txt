@@ -421,9 +421,30 @@ func (a *rowAnalysis) ownershipConsumed(node *ast.Node, collection bool, walk ow
 
 		if walk.kind == boundConsumeResult {
 			if selection, selected := a.prelude.selectMember(parent); selected && selection.receiver == current {
-				if a.prelude.resultInspection(parent) {
-					return true
-				}
+				// A bare member SELECTION discharges nothing; every discharge
+				// below requires a CALL.
+				//
+				// Reading the prelude variants' `ok` discriminant — or the
+				// `value`/`error` payload it narrows to — used to return true
+				// here, so `const r = f(); if (r.ok) { return [r.value] }
+				// return [r.error.key]` compiled and RAN on this backend
+				// (printing the error's own field) while the reference refused
+				// it with SMITHERS1302. That was a fail-open, and the corpus
+				// could not see it because no case spelled the shape.
+				//
+				// specification/failures.mdx, "Compiler-Owned Modules":
+				// `smthrs/result` "is the lowering target: emitted code imports
+				// it... The compiler links it directly, `!` and `expect` are
+				// rejected inside it, and its public API is instance methods."
+				// `ok` is a property of the runtime classes, not an instance
+				// method, so it is not the "inspecting" act in that page's
+				// closing MUST — whose inspection group is `isOk isError
+				// match`, three methods and no properties.
+				//
+				// The emitted lowering still reads `.ok` on its own temporaries
+				// (`if (!__smithersUnwrapped0.ok)`); that is the compiler
+				// writing the representation it owns, which is exactly the
+				// distinction this arm was blurring.
 				if parent.Parent != nil && ast.IsCallExpression(parent.Parent) &&
 					parent.Parent.AsCallExpression().Expression == parent {
 					// An unannotated fallible authored function still has its

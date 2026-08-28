@@ -830,9 +830,21 @@ type preludeSymbols struct {
 	// Result must-consume obligation. The use-site member is recognized by its
 	// prelude declaration identity, never by its spelling.
 	resultConsumerDecls map[*ast.Node]struct{}
-	// resultInspectionDecls contains the compiler-owned discriminant and payload
-	// properties whose read counts as inspecting a Result. Authored reads are
-	// resolved back to these declarations rather than matched by property name.
+	// resultInspectionDecls is the compiler-owned discriminant and payload
+	// properties of the two Result variants: `ok`, and the `value`/`error` the
+	// readonly constructor parameters become. It is a PRELUDE SHAPE assertion —
+	// the completeness check below requires exactly four — and nothing else
+	// reads it.
+	//
+	// It used to feed a `resultInspection` predicate that let an authored read
+	// of one of these DISCHARGE a must-consume obligation, which was a
+	// fail-open: `const r = f(); if (r.ok) { … }` compiled and ran here while
+	// the reference refused it with SMITHERS1302. Removed 2026-08-28. See the
+	// arm it fed in mustconsume.go.txt for the specification sentence, and
+	// conformance/corpus/07-must-consume/reading-a-results-runtime-tag-does-not-consume-it
+	// for the case that pins it. Do not reconnect it: whether the language
+	// gains an error-extraction form at all is an Open decision
+	// (specification/failures.mdx, "Authorability").
 	resultInspectionDecls map[*ast.Node]struct{}
 	contextDecls          map[*ast.Node]struct{} // the compiler-owned `Context.context`
 	panicDecls            map[*ast.Node]struct{} // the compiler-owned `panic(...)` function
@@ -1053,8 +1065,11 @@ func collectMembers(declaration *ast.Node, matches func(*ast.Node) bool, name st
 
 // collectResultInspectionMembers indexes the Result variant's direct `ok`
 // field and the readonly constructor parameter that becomes its `value` or
-// `error` field. Names are consulted only inside the compiler-authored prelude;
-// authored reads are matched to these nodes by the checker.
+// `error` field. Names are consulted only inside the compiler-authored prelude.
+//
+// The four declarations it finds are counted by the completeness check and read
+// by nothing else: an authored read of one of them is NOT a consumption. See
+// the field's own comment for why that changed on 2026-08-28.
 func collectResultInspectionMembers(declaration *ast.Node, into map[*ast.Node]struct{}) {
 	if declaration == nil {
 		return
@@ -1468,15 +1483,6 @@ func (s *preludeSymbols) resultConsumerCall(node *ast.Node) bool {
 	}
 	symbol := s.memberSymbol(selection)
 	return symbolDeclaredBy(symbol, s.resultConsumerDecls)
-}
-
-func (s *preludeSymbols) resultInspection(node *ast.Node) bool {
-	selection, selected := s.selectMember(node)
-	if !selected {
-		return false
-	}
-	symbol := s.memberSymbol(selection)
-	return symbolDeclaredBy(symbol, s.resultInspectionDecls)
 }
 
 func (s *preludeSymbols) promiseCombinatorCall(node *ast.Node) bool {

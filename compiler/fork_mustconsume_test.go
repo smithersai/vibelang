@@ -80,7 +80,38 @@ export function main(): string[] {
 		}
 	})
 
-	t.Run("compiler-owned Result inspection consumes the binding", func(t *testing.T) {
+	// INVERTED 2026-08-28. This subtest asserted the opposite — that reading the
+	// runtime discriminant consumed the binding, under the name "compiler-owned
+	// Result inspection consumes the binding" — and that behaviour was a
+	// fail-open: this backend compiled and RAN the program while the reference
+	// refused it with SMITHERS1302, and no corpus case spelled the shape.
+	//
+	// specification/failures.mdx, "Compiler-Owned Modules": `smthrs/result`'s
+	// "public API is instance methods". `ok` is a property of the two runtime
+	// variant classes, not an instance method, so reading it is not the
+	// "inspecting" act in that page's closing MUST, whose inspection group is
+	// `isOk isError match`. The corpus case is
+	// 07-must-consume/reading-a-results-runtime-tag-does-not-consume-it.
+	t.Run("a compiler-owned Result discriminant read does not consume the binding", func(t *testing.T) {
+		files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: `class Broken extends Error {}
+function load(): Result<number, Broken> {
+    throw new Broken()
+}
+function inspect(): boolean {
+    const outcome = load()
+    return outcome.ok
+}
+`}}
+		result := compileInternalSource(t, files)
+		got := strings.Join(formatDiagnosticPositions(t, files, result), " ")
+		if got != "SMITHERS1302@6:11" {
+			t.Fatalf("discriminant read ownership = %s, want the binding to stay unconsumed; raw %#v", got, result.Diagnostics)
+		}
+	})
+
+	// The recognized inspection spelling still discharges, so the rule above is
+	// a refusal of the PROPERTY read rather than of inspection as such.
+	t.Run("the recognized isError inspection still consumes the binding", func(t *testing.T) {
 		result := compileInternalSource(t, []SourceFile{{
 			Path: "main.sm", Kind: FileKindSmithers,
 			Text: `class Broken extends Error {}
@@ -89,7 +120,7 @@ function load(): Result<number, Broken> {
 }
 function inspect(): boolean {
     const outcome = load()
-    return outcome.ok
+    return outcome.isError()
 }
 `,
 		}})
