@@ -48,10 +48,10 @@ There is no failure annotation, prefix propagation expression, postfix catch exp
 The API is modelled on [better-result](https://github.com/dmmulroy/better-result).
 
 This table is the **complete** set of members an authored `.sm` program may call
-on a Result. It is not a subset of a larger library surface: a member that is not
-listed here does not discharge the must-use obligation, so calling one is
-reported as `SMITHERS1301` ("Result value is not consumed") rather than as an
-unknown property.
+on a Result, on the JS reference backend. It is not a subset of a larger library
+surface: a member that is not listed here does not discharge the must-use
+obligation, so calling one is reported as `SMITHERS1301` ("Result value is not
+consumed") rather than as an unknown property.
 
 | Method | Meaning |
 | --- | --- |
@@ -59,12 +59,21 @@ unknown property.
 | `match({ ok, error })` | exhaustively produce a value from either variant |
 | `map`, `mapError` | transform one side |
 | `andThen` | sequence success-dependent work |
+| `flatten` | collapse one level of Result-in-Result nesting |
 | `recover` | replace an error with a value or a Result |
-| `tap`, `tapError` | observe without changing the Result |
+| `tap`, `tapError`, `tapBoth` | observe without changing the Result |
 | `expr!` | compiler propagation point |
 | `unwrapOr`, `expect` | extract with fallback or invariant message |
 | `Result.all` | collect Results, returning the first error |
 | `Result.try`, `Result.tryPromise` | adapt a foreign throwing/rejecting operation |
+
+`flatten` and `tapBoth` are reachable on the JS reference backend only. The Go
+fork carries its own, independent copy of the must-use discharge set
+(`compiler/forkbridge/lowering.go.txt`), has not learned either name, and still
+refuses both with `SMITHERS1301` — recorded as `xfail(go)` on
+`01-result-lifting/result-flatten-collapses-one-level-of-nesting` and
+`01-result-lifting/result-tap-both-observes-whichever-variant-is-active`. See
+**(SA-7)** in [Specification Status](/specification/index) §Specification–Implementation Gaps.
 
 Not provided, because Smithers supplies them another way: `Result.ok` and `Result.err` (use `return` and `throw`), `TaggedError` (use `class ... extends Error`), and `Result.gen`/`yield*` (use `!`).
 
@@ -96,11 +105,8 @@ distinguished panic channel, which §Foreign Exceptions and Defects reserves.
 plain array erases the panic/domain distinction that recovery is required to
 preserve.
 
-`flatten` and `tapBoth` are the two members whose absence is only half true:
-the runtime implements and tests both, and foreign TypeScript importing
-`smthrs/result` can call them today. They are not listed in the table above
-because the checker's Result surface does not yet declare them, so an authored
-`.sm` calling one is refused by `SMITHERS1301`. They join the table when it does.
+`flatten` and `tapBoth` are no longer in this section: both moved to the table
+above. See the note there, and **(SA-7)**, for the remaining Go-fork gap.
 
 ## Error Methods
 
