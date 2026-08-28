@@ -197,7 +197,7 @@ function matches(testCase, observation, backend) {
     return {
       ok: false,
       detail:
-        `${item.code}@${item.line}:${item.column} fires, but its message does not contain ` +
+        `${item.code}@${item.file}:${item.line}:${item.column} fires, but its message does not contain ` +
         `${JSON.stringify(item.messageContains)}: ${JSON.stringify(message)}`,
     };
   }

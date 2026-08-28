@@ -292,6 +292,15 @@ function authoredPosition(item, compiledFiles, testCase, directory) {
  * anything else — a path in the POC runtime, a synthetic name like
  * `smithers:flows` — is left exactly as it came, because renaming it would be
  * inventing provenance rather than resolving it.
+ *
+ * This depends on `directory` being the REALPATH of the staging root, which is
+ * why `runJsCase` canonicalizes it. Without that, `/var/folders/...` (what
+ * `os.tmpdir()` hands out on macOS) and `/private/var/folders/...` (what the
+ * compiler reports) do not relativize against each other, every asset-stage
+ * diagnostic keeps its absolute path, and the runner reports 12 divergences that
+ * belong to neither backend. A path that escapes anyway is left absolute on
+ * purpose and caught by `auditVerdict`, so the failure is exit 3 with the path
+ * in hand rather than a divergence somebody has to go and diagnose.
  */
 function stagedFile(fileName, directory) {
   if (typeof fileName !== "string" || fileName.length === 0) return fileName;

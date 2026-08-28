@@ -640,10 +640,11 @@ The headline number for the migration is `pass / total` on the Go backend.
 
 ### The harness audits itself
 
-Three things run on every invocation and are reported as `HARNESS INTEGRITY`
-failures (exit 3), never as results. (This said "two" until 2026-08-28; the third
-is new, and the count is stated here rather than left to be inferred because the
-previous list of exit-2 conditions in `run.mjs` said "three" and named two.)
+Four things run on every invocation and are reported as `HARNESS INTEGRITY`
+failures (exit 3), never as results. (This said "two" until 2026-08-28; (3) and
+(4) are new. The count is stated here and re-derived from the list below rather
+than left to be inferred, because the parallel list of exit-2 conditions in
+`run.mjs` said "three" and named two.)
 
 1. **Every satisfied expectation is audited against the work behind it.** Each
    backend declares the stages a verdict depends on (`requiredStages`), each
@@ -672,6 +673,22 @@ previous list of exit-2 conditions in `run.mjs` said "three" and named two.)
    is `mapped: false`, and it sits on an `xfail` row — so nothing satisfied rests
    on one today, which is precisely the state in which this would have gone live
    silently.
+4. **No diagnostic is scored against a file the harness could not relate to the
+   staged project.** Each backend stages a case in a private temporary directory
+   and the harness maps the compiler's reported paths back to the
+   project-relative names the corpus stages. When that mapping fails the path
+   arrives absolute — and `corpus.mjs` refuses an absolute declared `file`, so
+   such a diagnostic cannot match any expectation that can be written. It is not
+   a divergence; it is a comparison the harness could not set up. Concretely: on
+   macOS `os.tmpdir()` yields `/var/folders/...` while the compiler reports the
+   realpath `/private/var/folders/...`, the two do not relativize against each
+   other, and the runner reported **12 divergent, agreement 479/510** — every one
+   in `23-asset-imports`, none of them a disagreement between the two compilers.
+   The staging root is realpath'd now (as `scripts/oracle-differential.mjs`
+   already did, with a comment naming this same hazard), but that is a property
+   of one line, so the property that actually has to hold is checked instead: any
+   future spelling that escapes the relation exits 3 with the path in hand rather
+   than manufacturing divergences in a backend that is behaving correctly.
 
 `node --test test/conformance.test.mjs` additionally runs deliberately broken
 expectations — a corrupted `stdout` line, a diagnostic shifted by one column, and
