@@ -1784,3 +1784,94 @@ test("the check report distinguishes an empty row set from rows it never compute
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// The compiler writes its own runtime import as a package seam, `smthrs/runtime`,
+// which only resolves from an installed consumer. Telling the checker where that
+// package lives used to be done by substituting the seam's *text* for a local
+// path over the whole emitted module before checking it. That substitution could
+// not tell a compiler-written import specifier from an authored string literal
+// or literal type, so `check` type-checked a program that was never emitted --
+// and `run`, which passes an explicit runtime import and so skipped the
+// substitution, reached the opposite verdict on the same source.
+//
+// It diverged in both directions, which is why both are pinned here.
+
+test("check accepts an authored literal type that spells the compiler's runtime seam", () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-seam-literal-")));
+  try {
+    const source = join(root, "literal.sm");
+    // Two spellings of one literal: only the double-quoted one matched
+    // `JSON.stringify("smthrs/runtime")`, so the substitution rewrote the value
+    // and left the type, and TS2322 was reported against a program the compiler
+    // does not emit.
+    writeFileSync(source, "export const seam: 'smthrs/runtime' = \"smthrs/runtime\"\n");
+
+    const checked = run("bin/smithers.js", ["check", source, "--format", "json"]);
+    const checkedReport = JSON.parse(checked.stdout);
+    assert.equal(
+      checkedReport.ok,
+      true,
+      `check refused an authored literal: ${JSON.stringify(checkedReport.files?.[0]?.diagnostics)}`,
+    );
+    assert.equal(checked.status, 0, checked.stderr || checked.stdout);
+
+    const executed = run("bin/smithers.js", ["run", source, "--format", "json"]);
+    assert.equal(JSON.parse(executed.stdout).ok, true, executed.stderr || executed.stdout);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("check and run reach the same verdict on a type derived from the runtime seam", () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-seam-verdict-")));
+  try {
+    const source = join(root, "verdict.sm");
+    // The substituted path ends in `.js`; the seam it replaced does not. A
+    // template-literal type over the seam therefore read `true` under `check`
+    // and `false` under `run` -- `check` ACCEPTING a program `run` refuses.
+    // Nothing here names a machine-local path, so this holds on any checkout.
+    writeFileSync(source, [
+      "type EndsInJs<S extends string> = S extends `${string}.js` ? true : false",
+      'export const seamIsAFilePath: EndsInJs<"smthrs/runtime"> = true',
+      "",
+    ].join("\n"));
+
+    const checked = JSON.parse(run("bin/smithers.js", ["check", source, "--format", "json"]).stdout);
+    const executed = JSON.parse(run("bin/smithers.js", ["run", source, "--format", "json"]).stdout);
+    assert.equal(
+      checked.ok,
+      executed.ok,
+      `check ok=${checked.ok} but run ok=${executed.ok} on the same source`,
+    );
+    // `smthrs/runtime` is a package specifier, not a filesystem path, so the
+    // honest answer is `false` and both surfaces refuse the assignment.
+    assert.equal(checked.ok, false);
+    assert.equal(
+      checked.files[0].diagnostics.map((diagnostic) => diagnostic.code).join(","),
+      "TS2322",
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a .sm diagnostic never quotes a path inside the compiler's own installation", () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-seam-leak-")));
+  const compilerRoot = realpathSync(resolve(process.cwd()));
+  try {
+    const source = join(root, "leak.sm");
+    writeFileSync(source, "export const seam: 'smthrs/runtime' = \"smthrs/runtime\"\nexport const bad: number = \"no\"\n");
+    const report = JSON.parse(run("bin/smithers.js", ["check", source, "--format", "json"]).stdout);
+    for (const file of report.files) {
+      for (const diagnostic of file.diagnostics) {
+        assert.equal(
+          diagnostic.message.includes(compilerRoot),
+          false,
+          `diagnostic leaked a machine-local path: ${diagnostic.message}`,
+        );
+      }
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

@@ -6,6 +6,7 @@ import * as ts from "typescript-js";
 import { AssetCompiler } from "../build/assets.ts";
 import { ComptimeCompiler } from "../build/comptime.ts";
 import { compileComptimeIntrinsics } from "../build/comptime-intrinsic.ts";
+import { DEFAULT_SCHEMA_RUNTIME_IMPORT } from "../build/schema-derive.ts";
 import { compileSourceAssetModules, type CompiledSourceAssetModule } from "../build/source-assets.ts";
 import { digest } from "../build/stable.ts";
 import { analyzeProject } from "./analyze.ts";
@@ -18,7 +19,7 @@ import type {
 } from "./model.ts";
 import { compileProject } from "./project-compile.ts";
 import { composeSourceMaps } from "./source-map.ts";
-import { checkEmittedProject } from "./validate.ts";
+import { checkEmittedProject, DEFAULT_RUNTIME_IMPORT } from "./validate.ts";
 
 /**
  * A bounded but genuine Smithers language server.
@@ -691,6 +692,19 @@ async function stageProject(
 }
 
 let runtimeImportMemo: { readonly path: string | undefined } | undefined;
+let schemaRuntimeImportMemo: { readonly path: string | undefined } | undefined;
+
+function resolvePackagedModule(candidates: readonly string[]): string | undefined {
+  for (const candidate of candidates) {
+    try {
+      const path = fileURLToPath(new URL(candidate, import.meta.url));
+      if (existsSync(path)) return path;
+    } catch {
+      continue;
+    }
+  }
+  return undefined;
+}
 
 /**
  * Locate the packaged runtime so generated modules type-check against it. When
@@ -699,21 +713,26 @@ let runtimeImportMemo: { readonly path: string | undefined } | undefined;
  * that the frontend did not actually find.
  */
 function resolveRuntimeImport(): string | undefined {
-  if (runtimeImportMemo) return runtimeImportMemo.path;
-  let found: string | undefined;
-  for (const candidate of ["../runtime/index.js", "../runtime/index.ts"]) {
-    try {
-      const path = fileURLToPath(new URL(candidate, import.meta.url));
-      if (existsSync(path)) {
-        found = path;
-        break;
-      }
-    } catch {
-      continue;
-    }
-  }
-  runtimeImportMemo = { path: found };
-  return found;
+  runtimeImportMemo ??= { path: resolvePackagedModule(["../runtime/index.js", "../runtime/index.ts"]) };
+  return runtimeImportMemo.path;
+}
+
+/**
+ * The derived-schema seam is the same problem one module over.
+ *
+ * A file that derives a schema is lowered with an added
+ * `import { __vsSchema } from "smthrs/schema-runtime"`, and unlike the runtime
+ * seam the editor pass never told the checker where that package lives. A bare
+ * `smthrs/...` specifier resolves only from an installed consumer, so an editor
+ * open on this repository reported TS2307 on a program `smithers check`
+ * accepts. Resolving it here — rather than rewriting the specifier out of the
+ * checked text — keeps the editor checking the bytes the compiler emits.
+ */
+function resolveSchemaRuntimeImport(): string | undefined {
+  schemaRuntimeImportMemo ??= {
+    path: resolvePackagedModule(["../build/schema-runtime.js", "../build/schema-runtime.ts"]),
+  };
+  return schemaRuntimeImportMemo.path;
 }
 
 let analysisMemo: {
@@ -864,13 +883,21 @@ async function computeProjectDiagnostics(
         additionalRuntimeOutputs: staged.assetOutputs,
       });
       const emitted = Object.values(compiled.files);
+      const schemaRuntimeImport = resolveSchemaRuntimeImport();
       const checked = checkEmittedProject([
         ...emitted.map((file) => ({ fileName: file.outputFileName, code: file.code })),
         ...staged.assetModules.map((module, index) => ({
           fileName: staged.assetOutputs[index]!.outputFileName,
           code: module.source,
         })),
-      ]);
+      ], {
+        moduleOverrides: {
+          [DEFAULT_RUNTIME_IMPORT]: runtimeImport,
+          ...(schemaRuntimeImport === undefined
+            ? {}
+            : { [DEFAULT_SCHEMA_RUNTIME_IMPORT]: schemaRuntimeImport }),
+        },
+      });
       for (const diagnostic of checked) {
         if (diagnostic.category !== ts.DiagnosticCategory.Error) continue;
         if (!diagnostic.file || diagnostic.start === undefined) continue;

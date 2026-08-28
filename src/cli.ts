@@ -27,6 +27,7 @@ import {
   checkEmittedProject,
   composeSourceMaps,
   compileProject,
+  DEFAULT_RUNTIME_IMPORT,
   emitProjectDeclarations,
   formatSmithersSource,
   startSmithersLanguageServer,
@@ -853,7 +854,7 @@ async function compileSmithersFiles(
     if (!lowered) throw new TypeError(`comptime lowering omitted project file '${source.fileName}'`);
     return { fileName: source.fileName, source: lowered.code };
   });
-  const emittedRuntime = options.runtimeImport ?? "smthrs/runtime";
+  const emittedRuntime = options.runtimeImport ?? DEFAULT_RUNTIME_IMPORT;
   const compiled = compileProject(loweredSources, {
     rootDir: project.rootDir,
     outDir,
@@ -953,39 +954,40 @@ async function compileSmithersFiles(
   }
 
   const emittedFiles = compiledFiles;
-  const validationRuntime = options.runtimeImport ??
-    fileURLToPath(new URL("../poc/dist/runtime/index.js", import.meta.url));
-  const validationSchemaRuntime = options.schemaRuntimeImport ??
-    fileURLToPath(new URL("../poc/dist/build/schema-runtime.js", import.meta.url));
-  // A bare `smthrs/...` specifier only resolves from an installed consumer, so
-  // the checker (and the declaration emitter behind it) reads the packaged file
-  // directly. Emitted JavaScript keeps whatever the caller asked for.
-  const validationCode = (file: (typeof emittedFiles)[number]): string => {
-    let code = file.code;
-    if (!options.runtimeImport) {
-      code = code.replaceAll(JSON.stringify(emittedRuntime), JSON.stringify(validationRuntime));
-    }
-    if (!options.schemaRuntimeImport) {
-      code = code.replaceAll(JSON.stringify(emittedSchemaRuntime), JSON.stringify(validationSchemaRuntime));
-    }
-    return code;
+  /**
+   * A bare `smthrs/...` specifier only resolves from an installed consumer, so
+   * the checker and the declaration emitter are told where the packaged files
+   * live. They are told it in *resolution*, and the emitted text is handed to
+   * them untouched.
+   *
+   * This used to be a `replaceAll` of the seam over the whole module before
+   * checking, which meant `check` type-checked a program that was never
+   * emitted: the substitution could not tell a compiler-written import
+   * specifier from an authored string literal or literal type spelled
+   * `"smthrs/runtime"`, and `run` — which passes `runtimeImport` and so skipped
+   * the rewrite — reached the opposite verdict. It diverged in both directions:
+   * `check` refused programs `run` accepted, and, because the substituted path
+   * ends in `.js` while the seam does not, a template-literal type over the
+   * seam let `check` *accept* a program `run` refused.
+   *
+   * The map is built the same way on every surface and consumed only by the
+   * resolver, so no surface can be checking different bytes than it emits.
+   */
+  const packagedModules: Readonly<Record<string, string>> = {
+    [DEFAULT_RUNTIME_IMPORT]: fileURLToPath(new URL("../poc/dist/runtime/index.js", import.meta.url)),
+    [DEFAULT_SCHEMA_RUNTIME_IMPORT]: fileURLToPath(new URL("../poc/dist/build/schema-runtime.js", import.meta.url)),
   };
   /**
    * The declaration emitter reads the checker's resolved path, so a `d.mts` can
-   * quote it back as `import("<absolute>")`. A published declaration must name
-   * the package seam instead of this machine, so the substitution above is
-   * undone on the way out.
+   * quote a packaged module back as `import("<absolute>")`. A published
+   * declaration must name the package seam instead of this machine.
    */
   const restorePackageSpecifiers = (code: string): string => {
     let restored = code;
-    const seams: readonly (readonly [string, string])[] = [
-      ...(options.runtimeImport ? [] : [[validationRuntime, emittedRuntime] as const]),
-      ...(options.schemaRuntimeImport ? [] : [[validationSchemaRuntime, emittedSchemaRuntime] as const]),
-    ];
-    for (const [resolved, seam] of seams) {
+    for (const [seam, packaged] of Object.entries(packagedModules)) {
       restored = restored
-        .replaceAll(JSON.stringify(resolved), JSON.stringify(seam))
-        .replaceAll(JSON.stringify(resolved.replace(/\.js$/, "")), JSON.stringify(seam));
+        .replaceAll(JSON.stringify(packaged), JSON.stringify(seam))
+        .replaceAll(JSON.stringify(packaged.replace(/\.js$/, "")), JSON.stringify(seam));
     }
     return restored;
   };
@@ -1009,10 +1011,11 @@ async function compileSmithersFiles(
     const validation = checkEmittedProject([
       ...emittedFiles.map((file) => ({
         fileName: file.outputFileName,
-        code: validationCode(file),
+        // The emitted bytes, unmodified. Every surface checks what it emits.
+        code: file.code,
       })),
       ...foreign.files.map((file) => ({ fileName: file.outputFileName, code: file.validationCode })),
-    ]);
+    ], { moduleOverrides: packagedModules });
     for (const diagnostic of validation) {
       if (diagnostic.category !== ts.DiagnosticCategory.Error) continue;
       const output = diagnostic.file ? resolve(diagnostic.file.fileName) : undefined;
@@ -1039,14 +1042,14 @@ async function compileSmithersFiles(
     const declarations = emitProjectDeclarations([
       ...emittedFiles.map((file) => ({
         fileName: file.outputFileName,
-        code: validationCode(file),
+        code: file.code,
         effects: file.analysis.rows,
       })),
       ...foreign.files.map((file) => ({
         fileName: file.outputFileName,
         code: file.declarationCode,
       })),
-    ]);
+    ], { moduleOverrides: packagedModules });
     declarationOutputs = declarations.outputs.map((output) => ({
       ...output,
       code: restorePackageSpecifiers(output.code),

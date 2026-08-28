@@ -1,6 +1,7 @@
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import * as ts from "typescript-js";
 import type { FunctionRows } from "./model.ts";
+import { createEmittedModuleResolver, type EmittedModuleResolutionOptions } from "./validate.ts";
 
 export const DECLARATION_EFFECT_TAG = "smithersEffects";
 export const DECLARATION_EFFECT_VERSION = 1 as const;
@@ -277,7 +278,10 @@ export function readDeclarationEffects(
  * Emit declarations for already-lowered modules through one stock TypeScript
  * Program. Inputs and outputs are virtual; callers decide whether to write.
  */
-export function emitProjectDeclarations(sources: readonly DeclarationSource[]): DeclarationEmitResult {
+export function emitProjectDeclarations(
+  sources: readonly DeclarationSource[],
+  resolution?: EmittedModuleResolutionOptions,
+): DeclarationEmitResult {
   if (sources.length === 0) return { outputs: [], diagnostics: [], ok: true };
   const options: ts.CompilerOptions = {
     target: ts.ScriptTarget.ESNext,
@@ -318,15 +322,15 @@ export function emitProjectDeclarations(sources: readonly DeclarationSource[]): 
   };
   host.fileExists = (name) => sourceByName.has(resolve(name)) || fileExists(name);
   host.readFile = (name) => sourceByName.get(resolve(name))?.code ?? readFile(name);
-  host.resolveModuleNames = (moduleNames, containingFile) => moduleNames.map((moduleName) => {
-    if (moduleName.startsWith(".")) {
-      const authored = resolve(dirname(containingFile), moduleName);
-      if (sourceByName.has(authored)) {
-        return { resolvedFileName: authored, extension: ts.Extension.Ts, isExternalLibraryImport: false };
-      }
-    }
-    return ts.resolveModuleName(moduleName, containingFile, options, host).resolvedModule;
-  });
+  // The same resolver the checker uses, for the same reason: a declaration
+  // batch must be produced from the bytes that were emitted, never from a
+  // rewritten copy of them.
+  host.resolveModuleNames = createEmittedModuleResolver(
+    (fileName) => sourceByName.has(fileName),
+    options,
+    host,
+    resolution?.moduleOverrides,
+  );
 
   const emitted = new Map<string, string>();
   host.writeFile = (fileName, code) => {

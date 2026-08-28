@@ -15,6 +15,8 @@ export {
   checkEmittedTypeScript,
   compileAndCheckProject,
   compileAndCheckSmithers,
+  createEmittedModuleResolver,
+  DEFAULT_RUNTIME_IMPORT,
 } from "./validate.ts";
 export type { CompileOptions, CompileResult } from "./compile.ts";
 export type {
@@ -31,6 +33,7 @@ export type {
   CheckedCompileOptions,
   CheckedCompileResult,
   CheckedProjectCompileResult,
+  EmittedModuleResolutionOptions,
 } from "./validate.ts";
 export { formatSmithersSource, isFormattedSmithersSource, smithersTokenAt } from "./format.ts";
 export { startSmithersLanguageServer } from "./lsp.ts";

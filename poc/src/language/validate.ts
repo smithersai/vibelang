@@ -26,6 +26,60 @@ export interface CheckedProjectCompileResult {
 }
 
 /**
+ * How a checker reaches the modules the compiler itself imports from.
+ *
+ * A generated module imports its runtime through a package seam — `smthrs/...`
+ * — which only resolves from an installed consumer. A checker running inside
+ * this repository, or over an `--outDir` anywhere on the filesystem, has to be
+ * told where that package lives.
+ *
+ * It is told here, in module *resolution*, and never by rewriting module
+ * *text*. A caller that rewrote the seam into a local path before checking was
+ * type-checking a program it would never emit: the substitution ran over the
+ * whole module, so an authored string literal or literal type spelled
+ * `"smthrs/runtime"` was rewritten too, and `check` and `run` reached opposite
+ * verdicts on the same source in both directions. Because the override is
+ * keyed by specifier and consumed by the resolver, the bytes a checker sees
+ * are by construction the bytes that were emitted.
+ */
+export const DEFAULT_RUNTIME_IMPORT = "smthrs/runtime";
+
+export interface EmittedModuleResolutionOptions {
+  /**
+   * Compiler-written bare specifiers mapped to the file that declares them.
+   * The mapped path is resolved by stock TypeScript, so a `.js` entry point
+   * finds its sibling declaration exactly as an installed consumer would.
+   */
+  readonly moduleOverrides?: Readonly<Record<string, string>>;
+}
+
+/**
+ * The one module resolver every emitted-module Program shares: authored
+ * relative edges inside the batch, compiler-written package seams through the
+ * override table, everything else through stock resolution.
+ */
+export function createEmittedModuleResolver(
+  isProjectFile: (fileName: string) => boolean,
+  options: ts.CompilerOptions,
+  host: ts.ModuleResolutionHost,
+  moduleOverrides: Readonly<Record<string, string>> | undefined,
+): (moduleNames: readonly string[], containingFile: string) => (ts.ResolvedModuleFull | undefined)[] {
+  return (moduleNames, containingFile) => moduleNames.map((moduleName) => {
+    if (moduleName.startsWith(".")) {
+      const authored = resolve(dirname(containingFile), moduleName);
+      if (isProjectFile(authored)) {
+        return { resolvedFileName: authored, extension: ts.Extension.Ts, isExternalLibraryImport: false };
+      }
+    }
+    if (moduleOverrides && Object.hasOwn(moduleOverrides, moduleName)) {
+      const packaged = moduleOverrides[moduleName]!;
+      return ts.resolveModuleName(packaged, containingFile, options, host).resolvedModule;
+    }
+    return ts.resolveModuleName(moduleName, containingFile, options, host).resolvedModule;
+  });
+}
+
+/**
  * Validate generated TypeScript with a stock TypeScript Program. This is
  * Node-compatible and performs no filesystem writes.
  */
@@ -58,6 +112,7 @@ export function checkEmittedTypeScript(code: string, fileName: string): readonly
 /** Validate a complete generated module set through one stock TypeScript Program. */
 export function checkEmittedProject(
   sources: readonly { readonly fileName: string; readonly code: string }[],
+  resolution?: EmittedModuleResolutionOptions,
 ): readonly ts.Diagnostic[] {
   const options: ts.CompilerOptions = {
     target: ts.ScriptTarget.ESNext,
@@ -89,15 +144,12 @@ export function checkEmittedProject(
   };
   host.fileExists = (name) => sourceByName.has(resolve(name)) || fileExists(name);
   host.readFile = (name) => sourceByName.get(resolve(name))?.code ?? readFile(name);
-  host.resolveModuleNames = (moduleNames, containingFile) => moduleNames.map((moduleName) => {
-    if (moduleName.startsWith(".")) {
-      const authored = resolve(dirname(containingFile), moduleName);
-      if (sourceByName.has(authored)) {
-        return { resolvedFileName: authored, extension: ts.Extension.Ts, isExternalLibraryImport: false };
-      }
-    }
-    return ts.resolveModuleName(moduleName, containingFile, options, host).resolvedModule;
-  });
+  host.resolveModuleNames = createEmittedModuleResolver(
+    (fileName) => sourceByName.has(fileName),
+    options,
+    host,
+    resolution?.moduleOverrides,
+  );
   const rootNames = [...sourceByName.keys()].sort();
   const program = ts.createProgram({ rootNames, options, host });
   return ts.getPreEmitDiagnostics(program);
