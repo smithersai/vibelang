@@ -70,6 +70,7 @@ import { auditBaseline, classify, corpusAnswer, VERDICTS } from "../../scripts/o
 import { loadCorpus, loweringMode, loweringModes, repositoryRoot } from "./corpus.mjs";
 import { harnessText } from "./harness.mjs";
 import { auditVerdict, compareObservations, judge } from "./judge.mjs";
+import { runJsCase } from "./backend-js.mjs";
 import { run } from "./process.mjs";
 
 const backendGoPath = fileURLToPath(new URL("./backend-go.mjs", import.meta.url));
@@ -542,5 +543,147 @@ test("the recorded product-vs-oracle divergence is a live record", async (t) => 
       baseline.divergences.filter((row) => row.direction === "product-accepts").map((row) => row.id),
       [],
     );
+  });
+});
+
+/**
+ * A durable diagnostic must not discard an output-expecting run.
+ *
+ * ## The defect
+ *
+ * `js-lower.mjs` ran the compiler-owned durable source pass, and if ANY module
+ * came back refused it wrote `{ ok: true, files: {}, diagnostics: [<durable>] }`
+ * and returned. The rest of the frontend — Smithers lowering, the language and
+ * portability rules, the stock check of the emitted set, execution — never ran,
+ * for any module in the run, including the ones that lowered cleanly.
+ *
+ * For a case that declares `expect: "diagnostics"` that is correct and stays
+ * correct: the refusal IS the observable behavior and there is nothing else to
+ * measure.
+ *
+ * For a case that declares `expect: "output"` it throws the measurement away.
+ * The report can say "the durable stage refused" and nothing else — not whether
+ * the rest of the program is well formed, not what the emitted set checks as.
+ * A module that is half-migrated therefore reads as a harness that produced
+ * nothing rather than as a program that answered wrongly, and every further
+ * defect in it is discovered one re-run at a time.
+ *
+ * ## Why this is not a corpus case
+ *
+ * A corpus case cannot express it. The corpus is a differential over authored
+ * programs, and this is a property of what the *runner* does with an expectation
+ * — `expect: "output"` is a field of the case, not of the program — so any
+ * corpus case written for it would pass or fail for reasons unrelated to its own
+ * text. Both directions are asserted here, against the real driver, because the
+ * over-correction (dropping the short-circuit outright, or letting a refused
+ * flow reach execution and be scored on its stdout) is a fail-open.
+ */
+test("a durable diagnostic does not discard an output-expecting run", { concurrency: 1 }, async (t) => {
+  // Two INDEPENDENT defects in one module, which is the whole point: the first
+  // is refused by the durable pass, the second only by the language stage that
+  // used to be skipped.
+  //
+  //   1. `$Failed` and `_Failed` normalize to one durable failure identity, so
+  //      the Action's declared failure channel is refused. Matched by shape
+  //      (`SMITHERS41xx`) rather than by number, because which rule in that
+  //      family answers a collision is a live question — see MIGRATION-PLAN R3.
+  //   2. `Date.now()` is an ambient wall-clock read, which `20-host-globals`
+  //      pins as SMITHERS1602. The durable pass knows nothing about it.
+  const halfMigrated = [
+    'import { durable, Action } from "smithers:flows"',
+    "",
+    "class $Failed extends Error {",
+    "  constructor(readonly code: string) { super(`x: ${code}`) }",
+    "}",
+    "",
+    "class _Failed extends Error {",
+    "  constructor(readonly reason: string) { super(`x: ${reason}`) }",
+    "}",
+    "",
+    "class Pick extends Action<(input: { key: string }) => Result<{ value: string }, $Failed | _Failed>> {}",
+    "",
+    "export const Flow = durable((input: { key: string }) => {",
+    "  return Pick.run({ key: input.key })",
+    "})",
+    "",
+    "export function main(): string[] {",
+    "  return [String(Flow.plan.actions.length), `${Date.now()}`]",
+    "}",
+    "",
+  ].join("\n");
+
+  const caseFor = (expectation) => ({
+    id: `selftest/half-migrated-durable-${expectation.expect}`,
+    entry: "main.sm",
+    files: [{ path: "main.sm", kind: "smithers", text: halfMigrated }],
+    expectation,
+  });
+
+  // Only `expect` reaches the driver — `backend-js.mjs` sends it as one boolean
+  // and sends nothing else from the expectation. The declared diagnostics and
+  // stdout below are the minimum `judge.mjs` needs to score the observation;
+  // neither can influence what the frontend does, which is the property the
+  // request shape is deliberately narrow to guarantee.
+  const refusalCase = caseFor({
+    expect: "diagnostics",
+    diagnostics: [{ code: "SMITHERS4124", line: 14, column: 20 }],
+  });
+  const outputCase = caseFor({ expect: "output", stdout: ["1", "0"] });
+
+  const refused = await runJsCase(refusalCase);
+  const kept = await runJsCase(outputCase);
+
+  const codes = (observation) => (observation.diagnostics ?? []).map((item) => item.code).sort();
+
+  await t.test("a diagnostics run still short-circuits on the durable refusal", () => {
+    assert.equal(refused.kind, "diagnostics", JSON.stringify(refused));
+    // Exactly one: the short-circuit is what keeps a declared, exact diagnostic
+    // set from collecting whatever else the un-lowered source says.
+    assert.equal(codes(refused).length, 1, JSON.stringify(codes(refused)));
+    assert.match(codes(refused)[0], /^SMITHERS41\d\d$/);
+    assert.deepEqual(refused.stages, ["lower"]);
+  });
+
+  await t.test("an output run keeps going and reports the defect the durable stage cannot see", () => {
+    assert.equal(kept.kind, "diagnostics", JSON.stringify(kept));
+    const observed = codes(kept);
+    assert.ok(
+      observed.some((code) => /^SMITHERS41\d\d$/.test(code)),
+      `the durable refusal must survive the guard: ${JSON.stringify(observed)}`,
+    );
+    assert.ok(
+      observed.includes("SMITHERS1602"),
+      `the language-stage defect must now be reported too: ${JSON.stringify(observed)}`,
+    );
+    // The behaviour change, stated as a comparison rather than as a constant:
+    // the same program, same driver, reports strictly more under an `output`
+    // expectation than under a `diagnostics` one.
+    assert.ok(observed.length > codes(refused).length);
+  });
+
+  await t.test("and the run stays fail-closed: a refused flow is never scored on its stdout", () => {
+    // The over-correction this guard must not become. Measured: skipping the
+    // short-circuit without carrying the durable diagnostics forward makes the
+    // refusal disappear, flips `emitChecked` to true, and reports the run as
+    // stock `TS2307, TS2339` about the `smithers:flows` import that successful
+    // lowering erases — the acceptance stage running on a program the durable
+    // stage refused.
+    assert.notEqual(kept.kind, "output");
+    assert.ok(
+      !(kept.stages ?? []).includes("emit-check"),
+      `the emitted-TypeScript acceptance stage must not run on a refused program: ${JSON.stringify(kept.stages)}`,
+    );
+    assert.equal(judge(outputCase, kept, "js").status, "fail");
+    assert.deepEqual(auditVerdict(outputCase, kept, judge(outputCase, kept, "js"), { name: "js", requiredStages: {} }), []);
+  });
+
+  await t.test("the driver is told the expectation by the backend, not by a default", () => {
+    // A future edit that drops the field from the request makes the guard inert
+    // and every assertion above still passes on the `diagnostics` half, so the
+    // wiring is asserted at the source as well.
+    const source = readFileSync(backendJsPath, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+    assert.match(source, /expectsOutput:\s*testCase\.expectation\.expect === "output"/);
   });
 });

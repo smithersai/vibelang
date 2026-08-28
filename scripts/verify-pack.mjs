@@ -17,6 +17,8 @@ import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import ts from "typescript-js";
 
+import { gateCompositionViolations } from "./gate-composition.mjs";
+
 const root = resolve(import.meta.dirname, "..");
 const fixtureRoot = resolve(import.meta.dirname, "release-fixtures");
 const temporaryPrefix = "smithers-release-verify-";
@@ -51,6 +53,13 @@ const bun = process.platform === "win32" ? "bun.exe" : "bun";
  * slower machine. If a suite is added to `npm test` again, check this number:
  * the suites grew ~4x in one day, and a timeout is only a safety net while it
  * sits above the work it is netting.
+ *
+ * Since 2026-08-27 this matters before merge and not only at release: this gate
+ * IS the pre-merge gate, entered as `npm run gate:premerge`. It runs the suites
+ * exactly once, through the `npm run prepack` below, and adds the packaging
+ * verification on top — which is the only place `scripts/release-fixtures/**`
+ * ever executes, and therefore the only place a change to the shipped durable
+ * surface is measured. See `scripts/gate-composition.mjs`.
  */
 const commandTimeout = Number(process.env.SMITHERS_VERIFY_TIMEOUT_MS ?? "") || 2_400_000;
 const releaseAssetCacheIdentities = new Set();
@@ -690,8 +699,16 @@ function safeCleanupAssetCache(identity) {
 
 try {
   const lifecyclePackageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-  if (lifecyclePackageJson.scripts?.prepack !== "npm run test") {
-    throw new Error("plain npm pack must retain the non-recursive `npm run test` prepack contract");
+  // This gate is the pre-merge gate (`npm run gate:premerge`), and it reaches
+  // every suite exactly once — through the `npm run prepack` it runs below,
+  // which is `npm run test`. Both halves of that sentence are properties of
+  // package.json rather than of this file, so they are asserted before any of
+  // the work starts. `scripts/gate-composition.mjs` says why each one matters;
+  // `test/gate-composition.test.mjs` asserts the same function in seconds, so a
+  // broken wiring does not have to wait for a thirty-minute run to be found.
+  const compositionViolations = gateCompositionViolations(lifecyclePackageJson.scripts);
+  if (compositionViolations.length > 0) {
+    throw new Error(`package gate composition is unsound:\n- ${compositionViolations.join("\n- ")}`);
   }
   execute(npm, ["run", "clean:dist"], root);
   execute(npm, ["run", "clean:poc"], root);

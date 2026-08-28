@@ -27,8 +27,16 @@
  *     sources: [{ fileName, source }],           // authored `.sm` modules
  *     typeScriptSources: [{ fileName, source }], // foreign `.ts` modules
  *     assets: [fileName],                        // staged non-code files, names only
- *     assetCacheDirectory: string                // unique to this staged run
+ *     assetCacheDirectory: string,               // unique to this staged run
+ *     expectsOutput: boolean                     // the run declares `expect: "output"`
  *   }
+ *
+ * `expectsOutput` is the only field here that carries the case's EXPECTATION
+ * rather than its program, and it is deliberately a single boolean: it must
+ * never be able to change what the compilers are asked, only whether a durable
+ * refusal is allowed to discard the rest of the run. See the guard at the
+ * durable stage below. Absent, it reads as `false`, which is the pre-guard
+ * behavior.
  *
  * Response:
  *   { ok: true, files: { [fileName]: { code, sourceMap, outputFileName } },
@@ -322,7 +330,47 @@ async function main() {
     durableMaps.set(source.fileName, lowered.sourceMap);
     durablyLoweredSources.push({ fileName: source.fileName, source: lowered.code });
   }
-  if (durableDiagnostics.length > 0) {
+  // A durable diagnostic used to discard the WHOLE run: `files` went out empty
+  // and nothing downstream ever ran, for any module, including the ones that
+  // lowered cleanly. For an `expect: "diagnostics"` case that is right — the
+  // refusal IS the observable behavior. For an `expect: "output"` case it throws
+  // the measurement away and reports a half-migrated module as though the
+  // harness produced nothing, rather than as a program that answered wrongly.
+  //
+  // MEASURED on the corpus's own A/B durable module with one extra, unrelated
+  // defect (a `Date.now()`, which only the language stage sees): before, one
+  // diagnostic and `files: {}`; after, both diagnostics and the emitted module
+  // set. Each further defect in such a module used to cost another fix-and-rerun
+  // cycle to discover.
+  //
+  // It stays FAIL-CLOSED, which is the half that matters more, and that is why
+  // the durable diagnostics are carried forward in the `diagnostics` assembly
+  // below rather than simply dropped when the short-circuit is skipped. They
+  // keep `severity: "error"`, so `hasLanguageErrors` stays true, `emitChecked`
+  // stays false, and `backend-js.mjs` still returns a `diagnostics` observation:
+  // a refused flow never reaches an `output` observation and so can never be
+  // scored on its stdout.
+  //
+  // Skipping the short-circuit WITHOUT carrying them — the literal one-line
+  // change — was measured on the same module: the durable refusal disappeared
+  // entirely (`diagnostics: []`), `emitChecked` flipped to `true`, and the run
+  // came back as `TS2307, TS2339` about the `smithers:flows` import that
+  // successful lowering would have erased. That is a refused program running the
+  // acceptance stage, reported under stock TypeScript codes describing this
+  // driver's own un-lowered intermediate instead of the rule that refused it.
+  // Execution was reached only because that un-erased import happens to fail the
+  // emit check; a refusal raised after the import was erased would have had
+  // nothing left to stop it.
+  //
+  // The narrow scope did NOT buy what it looked like it would: all fifteen
+  // `expect: "diagnostics"` cases in `17-durable` that reach this stage were
+  // lowered both ways on 2026-08-27 and none changed its diagnostic set. It
+  // stays scoped anyway. A `diagnostics` expectation is an EXACT set, and a
+  // second defect in such a case would append a diagnostic it never declared —
+  // which is precisely what the `output` half exists to surface and precisely
+  // what the `diagnostics` half has nothing to gain from.
+  const expectsOutput = request.expectsOutput === true;
+  if (durableDiagnostics.length > 0 && !expectsOutput) {
     process.stdout.write(JSON.stringify({
       ok: true,
       files: {},
@@ -375,7 +423,13 @@ async function main() {
     };
   }
 
-  const diagnostics = compiled.diagnostics.map((diagnostic) => {
+  // `durableDiagnostics` is empty on every run that short-circuited or had no
+  // durable failure at all, so this is an exact no-op except on the one path the
+  // guard above opened: an `expect: "output"` run whose durable lowering was
+  // refused. There the durable errors MUST survive — dropping them would let a
+  // refused flow be judged on stdout alone, which is the fail-open this harness
+  // exists to refuse. They are already on authored coordinates.
+  const diagnostics = [...durableDiagnostics, ...compiled.diagnostics.map((diagnostic) => {
     const comptimeMap = comptime?.loweredFiles?.[diagnostic.fileName]?.sourceMap;
     const durableMap = durableMaps.get(diagnostic.fileName);
     const frontendMap = durableMap && comptimeMap
@@ -391,7 +445,7 @@ async function main() {
       column: mapped.column + 1,
       mapped: true,
     };
-  });
+  })];
 
   // The final acceptance stage, and the reason this driver exists rather than a bare
   // `compileProject` call: the emitted module set has to survive a stock

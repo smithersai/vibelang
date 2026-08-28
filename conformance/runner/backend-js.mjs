@@ -117,6 +117,13 @@ export async function runJsCase(testCase, { keepDirectory = false } = {}) {
       // took before assets existed.
       assets: testCase.files.filter((file) => file.kind === "asset").map((file) => file.path),
       assetCacheDirectory: join(directory, ".smithers-asset-cache"),
+      // The one piece of the case's EXPECTATION the driver is told, and it can
+      // only make the driver do more work, never less: a run that declares
+      // `expect: "output"` is not discarded wholesale by a durable diagnostic,
+      // so the report can say the program is wrong rather than say nothing at
+      // all. It cannot make a refused program look accepted — the durable
+      // diagnostics travel with the response either way. See `js-lower.mjs`.
+      expectsOutput: testCase.expectation.expect === "output",
     });
     const lowered = await run("bun", [lowerDriver], { input: payload, cwd: repositoryRoot });
     if (lowered.error) {
