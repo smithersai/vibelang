@@ -51,11 +51,16 @@ import type { ActionDescriptor, DurableSchema, DurableTypeDescriptor } from "./i
  *    "assert … across all 22 cases" implies, which is why `manifestFeatureCase`
  *    below adds the fan-out, loop, queue, broadcast, child-Flow and
  *    branch-with-an-Action-in-each-arm programs the corpus has none of.
- * 2. **A real fail-open in the first Manifest.** On
+ * 2. **A real fail-open in the first Manifest.** On the case then called
  *    `two-error-classes-whose-durable-identities-collide-are-rejected` the Plan
  *    refused with `SMITHERS4124` and the Manifest answered `actions: []` about
  *    a Flow that performs `Pick` — the silent narrowing PR-1 forbids in as many
- *    words. `effect-manifest.ts` now fails closed there. The row below pins it.
+ *    words. `effect-manifest.ts` now fails closed there. That case stopped being
+ *    a refusal on 2026-08-28, when the durable failure identity became injective
+ *    and its `$Failed`/`_Failed` pair turned into ordinary source; it is now
+ *    `…-used-to-collide-now-compile` and its row pins the accepting side. The
+ *    fail-closed behaviour the fail-open produced is still pinned, by the
+ *    `plan-refused` and `both-refused` rows that remain.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -252,10 +257,15 @@ const CORPUS_EXPECTATIONS: Readonly<Record<string, readonly [
   "static-plan-shape-is-digest-pinned": ["plan", undefined, undefined],
   "strict-equality-against-a-durable-input-is-rejected": ["plan-refused", "SMITHERS4111", undefined],
   "the-retired-vibelang-flows-specifier-is-not-compiler-owned": ["both-refused", "SMITHERS4102", "SMITHERS4102"],
-  // The fail-open this cross-check found. Before `effect-manifest.ts` failed
-  // closed on an Action with no derivable contract, this row read
-  // `["plan-refused", "SMITHERS4124", undefined]` with `actions: []`.
-  "two-error-classes-whose-durable-identities-collide-are-rejected": ["both-refused", "SMITHERS4124", "SMITHERS4199"],
+  // This row used to read `["both-refused", "SMITHERS4124", "SMITHERS4199"]`,
+  // and before `effect-manifest.ts` failed closed on an Action with no derivable
+  // contract it read `["plan-refused", "SMITHERS4124", undefined]` with
+  // `actions: []` — the fail-open this cross-check found. Since 2026-08-28 the
+  // durable failure identity is injective, so the `$Failed`/`_Failed` pair the
+  // case holds is no longer a collision and the program compiles. The case was
+  // renamed with its verdict; what this row now pins is that the Manifest and
+  // the Plan still agree on it from the accepting side.
+  "two-error-classes-whose-durable-identities-used-to-collide-now-compile": ["plan", undefined, undefined],
   "two-error-classes-with-distinct-durable-identities-compile": ["plan", undefined, undefined],
   "typeof-on-a-durable-input-is-rejected": ["plan-refused", "SMITHERS4111", undefined],
   "unrelated-local-durable-stays-ordinary": ["both-refused", "SMITHERS4102", "SMITHERS4102"]
