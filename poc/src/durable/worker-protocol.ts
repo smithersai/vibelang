@@ -58,6 +58,35 @@ export const assertWorkerTransportSecret = (secret: string): string => {
 
 const sha256Hex = (bytes: Uint8Array): string => createHash("sha256").update(bytes).digest("hex")
 
+/**
+ * The signed message. A newline joins the six fields, and four of them cannot
+ * hold one: `AUTH_DOMAIN` is a constant, `role` is a two-member union,
+ * `timestampMs` is a safe integer rendered as digits, and the body is 64 hex.
+ * `method` and `path` are the two the caller supplies verbatim, and they are
+ * adjacent — so without the refusal below, `("GET\n/a", "/b")` and
+ * `("GET", "/a\n/b")` produce the SAME bytes and therefore the same MAC. A
+ * signature over one authorizes the other, which is the whole thing a MAC is
+ * for.
+ *
+ * Refusing the separator is the fix rather than escaping or length-prefixing
+ * it, for one reason: an escape changes the bytes and so changes every MAC,
+ * which would make a signed request from a coordinator at one revision
+ * unverifiable by a worker at another. Refusal restores injectivity on the
+ * accepted domain and leaves every well-formed message byte-identical. Nothing
+ * legitimate is lost — RFC 9110 forbids a newline in a method token and in a
+ * request target, so a message this rejects could not have crossed an HTTP
+ * connection in the first place.
+ *
+ * `method.toUpperCase()` is deliberately many-to-one and is safe for the same
+ * reason: HTTP methods are case-insensitive, so `get` and `GET` NAME one
+ * request and folding them is the point rather than a loss. It is
+ * locale-independent (`toUpperCase`, never `toLocaleUpperCase`), so two hosts
+ * in two locales fold identically.
+ *
+ * Throwing here rather than returning is what makes `verifyWorkerHttpMessage`
+ * fail closed: its `catch` turns this into `false`, so a hostile method or path
+ * is an unauthenticated message and not an exception.
+ */
 const macFor = (
   secret: string,
   role: "request" | "response",
@@ -65,8 +94,11 @@ const macFor = (
   method: string,
   path: string,
   bodyBytes: Uint8Array
-): string =>
-  createHmac("sha256", Buffer.from(secret, "hex"))
+): string => {
+  if (method.includes("\n") || path.includes("\n")) {
+    fail("worker auth method and path cannot contain the field separator")
+  }
+  return createHmac("sha256", Buffer.from(secret, "hex"))
     .update([
       AUTH_DOMAIN,
       role,
@@ -76,6 +108,7 @@ const macFor = (
       sha256Hex(bodyBytes)
     ].join("\n"), "utf8")
     .digest("hex")
+}
 
 export interface WorkerHttpAuthInput {
   readonly role: "request" | "response"
