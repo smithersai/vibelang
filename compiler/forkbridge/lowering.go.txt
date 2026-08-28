@@ -3099,7 +3099,9 @@ func (a *rowAnalysis) checkCallbackCoverage(call *ast.Node, callee *functionRows
 			}
 		}
 		if len(uncovered) != 0 {
-			sort.Strings(uncovered)
+			// Authored Error class names; the reference sorts the same list
+			// with `compareText` (poc/src/language/semantic.ts:1355).
+			sortUTF16(uncovered)
 			a.report(call, "SMITHERS1806", "instantiating '"+callee.name+"' here publishes the failure row "+formatRowSet(instantiated)+", which a callback argument's declared "+strings.Join(uncovered, " | ")+" cannot produce; correct the type arguments or widen the row")
 		}
 	}
@@ -4856,12 +4858,18 @@ func (a *rowAnalysis) inferRows() {
 	}
 }
 
+// formatRowSet renders a failure row set into a diagnostic sentence. `rowSet`
+// is a Go map, so the order is not merely a cosmetic choice — an unsorted walk
+// would print a different sentence on different runs. The names are authored
+// Error class names, and the reference renders the same set with
+// `[...values].sort()` (poc/src/language/semantic.ts:3709), which is UTF-16
+// code-unit order.
 func formatRowSet(rows rowSet) string {
 	names := make([]string, 0, len(rows))
 	for _, row := range rows {
 		names = append(names, row.name)
 	}
-	sort.Strings(names)
+	sortUTF16(names)
 	return "{" + strings.Join(names, ", ") + "}"
 }
 
@@ -7745,7 +7753,8 @@ func (l *lowerer) propagatedFailureNames(receiverNode *ast.Node) string {
 	if len(names) == 0 {
 		return "the propagated failure"
 	}
-	sort.Strings(names)
+	// Authored Error class names reaching a diagnostic sentence.
+	sortUTF16(names)
 	return strings.Join(names, ", ")
 }
 
@@ -8188,7 +8197,9 @@ func missingRows(expected []errorRow, cases []matchCase) []string {
 			missing = append(missing, row.name)
 		}
 	}
-	sort.Strings(missing)
+	// Authored Error class names; `poc/src/language/semantic.ts:1250` sorts the
+	// same names with `compareText`.
+	sortUTF16(missing)
 	return missing
 }
 
@@ -8203,7 +8214,8 @@ func extraRows(expected []errorRow, cases []matchCase) []string {
 			extra = append(extra, item.row.name)
 		}
 	}
-	sort.Strings(extra)
+	// Authored Error class names; see missingRows.
+	sortUTF16(extra)
 	return extra
 }
 
@@ -8417,7 +8429,11 @@ func compileInternal(ctx context.Context, options *core.CompilerOptions, project
 	for logicalPath := range project.smithersByLogical {
 		paths = append(paths, logicalPath)
 	}
-	sort.Strings(paths)
+	// Authored module paths. This order is the order the files are lowered in,
+	// so it is the order their diagnostics are reported in; the reference
+	// stages the same inputs with `compareText` on the display name
+	// (poc/src/language/semantic.ts:828).
+	sortUTF16(paths)
 	authoredFiles := make([]*ast.SourceFile, 0, len(paths))
 	for _, logicalPath := range paths {
 		smithers := project.smithersByLogical[logicalPath]
@@ -8508,9 +8524,13 @@ func compileInternal(ctx context.Context, options *core.CompilerOptions, project
 	// Map iteration is unordered, so these are sorted before they join the rest.
 	// A compiler whose diagnostic order changes between identical runs is not
 	// reproducible, however correct each individual diagnostic is.
+	// `File` is an authored module path, so it is ordered by UTF-16 code unit
+	// like every other author-controlled string here; the reference orders the
+	// whole diagnostic list with `compareText(left.fileName, right.fileName)`
+	// (poc/src/language/semantic.ts:760).
 	sort.SliceStable(foreignComptimeDiagnostics, func(left int, right int) bool {
-		if foreignComptimeDiagnostics[left].File != foreignComptimeDiagnostics[right].File {
-			return foreignComptimeDiagnostics[left].File < foreignComptimeDiagnostics[right].File
+		if order := compareUTF16(foreignComptimeDiagnostics[left].File, foreignComptimeDiagnostics[right].File); order != 0 {
+			return order < 0
 		}
 		return foreignComptimeDiagnostics[left].Span.Start < foreignComptimeDiagnostics[right].Span.Start
 	})

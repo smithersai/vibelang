@@ -353,8 +353,14 @@ func (d *durableFunctionLowerer) durableFailureIdentityCollides(failure *checker
 			continue
 		}
 		if claimant.declaration != declaration {
+			// Authored class names. The reference sorts the same pair with
+			// `compareText` (poc/src/durable/schema.ts:454) before building the
+			// SMITHERS4124 sentence, so byte order here would name the two
+			// classes in the other order for a program whose Error classes are
+			// spelled with characters straddling the surrogate boundary — a
+			// legal identifier spelling, since ID_Start admits astral letters.
 			names := []string{claimant.name, name.Text()}
-			sort.Strings(names)
+			sortUTF16(names)
 			return &durableFailureCollision{identity: identity, names: [2]string{names[0], names[1]}}
 		}
 	}
@@ -1300,7 +1306,16 @@ func (d *durableFunctionLowerer) durableTypeDescriptor(t *checker.Type, location
 		return nil, fmt.Errorf("index signatures and callable objects are not durable structural records")
 	}
 	properties := append([]*ast.Symbol(nil), d.owner.checker.GetPropertiesOfType(t)...)
-	sort.Slice(properties, func(i, j int) bool { return properties[i].Name < properties[j].Name })
+	// Field names are authored text, and this order IS the contract: it is the
+	// order the descriptor records, so it is hashed into the successSchema
+	// digest, the Action contractDigest, and the Plan digest. The reference
+	// sorts the same fields with `compareText` (poc/src/durable/schema.ts:401),
+	// which is UTF-16 code-unit order. Byte order was used here until
+	// 2026-08-28 and silently minted a different contract for any Action whose
+	// field names straddle the surrogate boundary; see comptime.go.txt's
+	// "Ordering author-controlled strings" and
+	// conformance/corpus/17-durable/action-success-field-order-is-utf16-not-utf8.
+	sortUTF16By(properties, func(property *ast.Symbol) string { return property.Name })
 	fields := make([]any, 0, len(properties))
 	for _, property := range properties {
 		optional := property.Flags&ast.SymbolFlagsOptional != 0
@@ -1849,6 +1864,10 @@ func durableExpressionDependencies(value any) []any {
 	for key := range set {
 		keys = append(keys, key)
 	}
+	// Byte order is CORRECT here and is left alone deliberately. These are Plan
+	// node ids minted by `stableNodeID` as `src-` plus 24 hex digits, so they
+	// are provably ASCII and the two orders cannot disagree. Converting a site
+	// that does not need the rule would hide which sites do.
 	sort.Strings(keys)
 	result := make([]any, len(keys))
 	for index, key := range keys {

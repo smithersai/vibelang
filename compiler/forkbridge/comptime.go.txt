@@ -266,11 +266,57 @@ func writeCtCanonical(builder *strings.Builder, value ctValue) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Ordering author-controlled strings
+// ---------------------------------------------------------------------------
+//
+// An AUTHOR-CONTROLLED string is any string whose bytes came out of the
+// authored program: an object field name, a class name, a module specifier, a
+// logical file path. Ordering one of those with Go's native `<` is a bug in
+// this bridge, always, and it is a SILENT one — both backends accept the
+// program, both emit a plausible digest-pinned artifact, and the digests simply
+// differ.
+//
+// Go's `<` compares UTF-8 bytes. Every ordering in the reference frontend
+// compares UTF-16 code units: JavaScript's `<`, its default `Array#sort`, and
+// the explicit `compareText` in `poc/src/durable/schema.ts` and
+// `poc/src/language/semantic.ts` are all the same order. The two disagree
+// whenever two names straddle the surrogate range, because an astral character
+// (U+10000 and above) is a surrogate pair starting at 0xD800 in UTF-16 but four
+// bytes starting at 0xF0 in UTF-8:
+//
+//	"\u{1F600}a" vs "�b"   UTF-16: emoji first (D83D < FFFD)
+//	                             UTF-8:  U+FFFD first (EF < F0)
+//
+// Measured, not assumed: an Action success type with exactly those two field
+// names lowered to descriptor fields `[😀a, �b]` in the reference and
+// `[�b, 😀a]` here, which minted a different successSchema digest, a different
+// contractDigest, and a different Plan digest for the same accepted program.
+//
+// So: order author-controlled strings with `sortUTF16`, `sortUTF16By`, or
+// `compareUTF16`, and nothing else. `compiler/fork_utf16_order_test.go` holds
+// the boundary behaviour of these three and keeps a reviewed census of every
+// remaining `sort.Strings` in this bridge, so a new byte-order sort over
+// author-controlled data has to argue for itself instead of appearing quietly.
+//
+// A site that orders provably-ASCII compiler-generated text — a `src-<hex>`
+// node id, a closed capability vocabulary, a process-local dedupe key — is
+// correct with `sort.Strings` and should stay that way. Converting it would
+// hide which sites actually need the rule.
+
 // sortUTF16 orders strings by UTF-16 code unit, the order JavaScript's default
 // sort uses. Go's byte order differs from it above U+FFFF, so comparing bytes
 // would silently disagree with the reference on astral keys.
 func sortUTF16(values []string) {
 	sort.Slice(values, func(i, j int) bool { return compareUTF16(values[i], values[j]) < 0 })
+}
+
+// sortUTF16By is sortUTF16 for a slice that is not `[]string`: it orders any
+// slice by an author-controlled string read off each element. It is stable,
+// because `Array#sort` is, so two elements whose keys compare equal keep the
+// order the checker produced them in on both backends.
+func sortUTF16By[T any](items []T, key func(T) string) {
+	sort.SliceStable(items, func(i, j int) bool { return compareUTF16(key(items[i]), key(items[j])) < 0 })
 }
 
 func compareUTF16(left string, right string) int {

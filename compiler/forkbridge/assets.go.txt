@@ -450,6 +450,14 @@ type compiledAssetModule struct {
 	exports           map[string]compiledAssetValue
 }
 
+// assetAttributesKey canonicalizes an import attribute record into a single
+// comparable string.
+//
+// Byte order is CORRECT here and is left alone deliberately: the result is an
+// EQUALITY key, not an order anyone observes. It is compared only against other
+// keys this function built in the same process (the SMITHERS5215
+// conflicting-attributes test and the `assetModules` map), and any
+// deterministic total order gives the same equality classes.
 func assetAttributesKey(values map[string]string) string {
 	keys := make([]string, 0, len(values))
 	for key := range values {
@@ -1437,7 +1445,11 @@ func prepareAssetModules(p *project, program *compiler.Program) ([]diagnostic, e
 	reports := make([]diagnostic, 0)
 	attributesByTarget := make(map[string]string)
 	files := append([]*ast.SourceFile(nil), program.SourceFiles()...)
-	sort.Slice(files, func(i, j int) bool { return files[i].FileName() < files[j].FileName() })
+	// Authored file names. This order decides which of two sites importing one
+	// asset path with conflicting attributes is the one SMITHERS5215 is
+	// reported at, so it is observable; the reference stages the same files
+	// with `compareText` (poc/src/language/semantic.ts:874).
+	sortUTF16By(files, func(file *ast.SourceFile) string { return file.FileName() })
 	for _, file := range files {
 		logical := logicalNameForSourceFile(p, file)
 		if p.smithersByLogical[logical] == nil {
@@ -1515,9 +1527,12 @@ func prepareAssetModules(p *project, program *compiler.Program) ([]diagnostic, e
 			p.assetModules[key] = module
 		}
 	}
+	// `File` is an authored module path and is ordered by UTF-16 code unit.
+	// `Code` is not: a diagnostic code is compiler-owned (`SMITHERS5215`,
+	// `TS2678`), provably ASCII, and byte order is the same order there.
 	sort.SliceStable(reports, func(i, j int) bool {
-		if reports[i].File != reports[j].File {
-			return reports[i].File < reports[j].File
+		if order := compareUTF16(reports[i].File, reports[j].File); order != 0 {
+			return order < 0
 		}
 		if reports[i].Span.Start != reports[j].Span.Start {
 			return reports[i].Span.Start < reports[j].Span.Start

@@ -587,6 +587,9 @@ func ambientRequirementsForMembers(root string, members []string) []string {
 	for requirement := range seen {
 		requirements = append(requirements, requirement)
 	}
+	// Byte order is CORRECT here and is left alone deliberately: `seen` is keyed
+	// by this file's own closed capability vocabulary (`Clock`, `Host`, …), not
+	// by anything the author spells, so it is provably ASCII.
 	sort.Strings(requirements)
 	return requirements
 }

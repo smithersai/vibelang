@@ -140,6 +140,10 @@ func nativeFlowValueKey(value *nativeFlowValue) string {
 		for index, option := range value.options {
 			parts[index] = nativeFlowValueKey(option)
 		}
+		// Byte order is CORRECT here and is left alone deliberately. The result
+		// is an EQUALITY key, never an order anyone observes: it is compared
+		// only against keys this same function built in this same process, and
+		// any deterministic total order yields the same equality classes.
 		sort.Strings(parts)
 		return "{" + strings.Join(parts, "|") + "}"
 	case nativeFlowNode:
@@ -235,6 +239,8 @@ func nativeFlowBindingsKey(callee *ast.Node, bindings nativeFlowBindings) string
 	for _, value := range bindings {
 		values = append(values, nativeFlowValueKey(value))
 	}
+	// Byte order is CORRECT here: a process-local equality key, as in
+	// nativeFlowValueKey above.
 	sort.Strings(values)
 	return nativeFlowValueKey(nativeFlowNodeValue(callee)) + "|" + strings.Join(values, ",")
 }

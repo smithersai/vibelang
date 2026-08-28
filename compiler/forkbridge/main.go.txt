@@ -1165,7 +1165,9 @@ func finishArtifacts(artifacts []artifact) []artifact {
 	for _, item := range artifacts {
 		finished = append(finished, artifact{Path: emittedFileName(item.Path), Content: item.Content})
 	}
-	sort.Slice(finished, func(i, j int) bool { return finished[i].Path < finished[j].Path })
+	// Emitted artifact paths derive from authored module paths, and this is the
+	// order the caller receives the artifacts in.
+	sortUTF16By(finished, func(item artifact) string { return item.Path })
 	return finished
 }
 

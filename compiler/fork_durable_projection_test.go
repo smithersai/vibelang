@@ -449,6 +449,27 @@ export function main(): string[] { return [` + probe.flow + `.artifactSource, ` 
 // a mutation that removes the sort has a 1-in-3 chance of looking right on any
 // one compile, so a test with one attempt would be a coin toss rather than a
 // gate.
+//
+// The field names STRADDLE THE SURROGATE BOUNDARY, and that is the second thing
+// this test measures. It named its fields `a`, `m`, and `x` until 2026-08-28,
+// which pinned "the walk is sorted" but could not tell a UTF-16 sort from a
+// UTF-8 byte sort, because the two orders coincide on ASCII. That is precisely
+// the hazard that shipped: the sibling descriptor walk in
+// `durableTypeDescriptor` used Go's native `<` and minted a different Action
+// contract digest from the reference for any Action whose field names crossed
+// U+FFFF, with no diagnostic from either backend. This test sat next to it
+// "measuring" the same hazard and could not go red.
+//
+//	name        UTF-16 unit   UTF-8 first byte
+//	"\u{1F600}a"  D83D (pair)  F0
+//	"\uFF58x"     FF58         EF
+//	"\uFFFDm"     FFFD         EF
+//
+// So UTF-16 order is [emoji, fullwidth-x, replacement-char] and UTF-8 byte order
+// is [fullwidth-x, replacement-char, emoji]. The two rules therefore name
+// DIFFERENT sentences from the same program: "durable array" under UTF-16,
+// "durable tuple" under bytes. A regression to `sort.Strings` here fails on
+// every attempt rather than one in three.
 func TestPinnedForkDurableFlowOutputProjectionReportsOneDeterministicSentence(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 	source := durableProjectionPreamble + `
@@ -457,12 +478,18 @@ export const Flow = durable((input: {
   mike: string
   xray: readonly [string, number]
 }) => {
-  return { a: input.alpha.length, m: input.mike.length, x: input.xray.length }
+  return {
+    "\u{1F600}a": input.alpha.length,
+    "\uFFFDm": input.mike.length,
+    "\uFF58x": input.xray.length
+  }
 })
 export function main(): string[] { return [Flow.artifactSource] }
 `
-	// `a` sorts before `m` and `x`, so the array defect is the one both backends
-	// name; the other two would read "durable string" and "durable tuple".
+	// The emoji-led name sorts first in UTF-16 code units, so the array defect is
+	// the one both backends name; the other two would read "durable string" and
+	// "durable tuple". Under Go's byte order the fullwidth-x name would sort
+	// first and this would read "durable tuple" instead.
 	const want = "Flow output cannot project length from durable array"
 	for attempt := 0; attempt < 24; attempt++ {
 		requireSoleDurableRefusal(t, compileDurableWith(t, backend, ctx, source), source, want)

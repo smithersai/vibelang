@@ -345,6 +345,11 @@ func durableEffectManifest(
 		failures = append(failures, identity)
 	}
 
+	// Byte order is CORRECT here and is left alone deliberately, even though it
+	// sits three lines under a `sortUTF16` and does reach the Manifest digest:
+	// `recordSite` mints every site id as `src-` plus 24 hex digits, so these
+	// are provably ASCII and the two orders agree. The authored strings in this
+	// builder — Action ids, failure identities — are the ones sorted above.
 	sort.SliceStable(builder.sites, func(left, right int) bool {
 		return builder.sites[left]["id"].(string) < builder.sites[right]["id"].(string)
 	})
