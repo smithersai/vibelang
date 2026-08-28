@@ -127,6 +127,30 @@ fix; a host without exact settlement hooks is still refused. The amendment
 records a decision, not a shipped state — see
 [Capabilities](/reference/capabilities) §Withdrawn for the reproduction.
 
+**What this gap is waiting on, recorded 2026-08-28 so it is not re-triaged as a
+free choice between the two documents.** The withdrawal's stated reason is
+mechanical, not editorial: §Scoping above says the guarantee holds structurally
+"because the handler holds the environment on its own stack rather than in
+ambient storage", and §Lowering names the mechanism as the one
+[Effects](/specification/effects) defines — `Layer.provide` installing a handler
+that answers a `get` request. On this branch that mechanism is **(SA-3)**, the
+unwired resumable calling convention, and `Layer.provide` still keeps its
+environment in `AsyncLocalStorage`. So the premise the withdrawal reasons from is
+not true here yet, and deleting the enforcement today would not implement the
+amendment — it would drop a guard whose structural replacement does not exist.
+The three withdrawn `MUST NOT`s and the retained guarantee ("an environment MUST
+NOT outlive the computation it scopes") are jointly satisfiable by the
+handler-on-stack mechanism and, on a host with no settlement hook, not by
+ambient storage: revoking on the returned Promise's own reaction would satisfy
+all three prohibitions while letting a reaction queued earlier observe a scope
+that has ended, which is the case `test/layer.test.mjs` pins first. The open
+choice is therefore narrower than "which document is true": either the runtime
+keeps this enforcement until the substrate is wired, or the weaker revocation
+ordering is accepted on hook-less hosts in the interim. Neither side is edited
+here, and six tests — four in `test/layer.test.mjs`, two in
+`poc/src/runtime/runtime.test.ts` — pin the withdrawn behaviour and go red
+exactly when the code is brought to this page.
+
 `Layer.provide(layer, body)` keeping its environment active through `body` and
 the Promise returned by `body` is retained verbatim. Layer merging and nested
 override precedence remain **open** and still fail closed.
