@@ -410,7 +410,7 @@ function lowerStatement(
   if (ts.isClassDeclaration(statement)) {
     const updated = ts.visitEachChild(statement, visit, context) as ts.ClassDeclaration;
     const name = state.errorStarts.get(statement.getStart(state.model.sourceFile));
-    if (!name || !statement.name) return [updated];
+    if (!name || !statement.name || emitsNoRuntimeBinding(statement)) return [updated];
     state.changed = true;
     const register = helper(state, "__vsRegisterError");
     const stableId = nominalErrorIdentity(state.sourceName, name);
@@ -1202,6 +1202,45 @@ function containsBreak(statement: ts.Statement): boolean {
   visit(statement);
   return found;
 }
+
+/**
+ * True when a declaration introduces no runtime binding, so nothing the lowering
+ * emits may name it.
+ *
+ * `declare class X extends Error {}` — and any declaration inside an enclosing
+ * ambient container — is erased entirely by TypeScript. Emitting
+ * `__vsRegisterError(X, …)` beside it produces a module that compiles with zero
+ * diagnostics and then dies while it is still loading with `ReferenceError: X is
+ * not defined`. A clean compile that cannot run is strictly worse than a
+ * diagnostic, and specification/failures.mdx, "Error Classes", conditions the
+ * identity obligation on classes the compiler emits while requiring that
+ * ordinary `Error` behaviour be preserved — which a module that cannot load
+ * violates outright.
+ *
+ * This is deliberately the *only* gate: the identity is still RESERVED, because
+ * `collectErrorDeclarations` — and so the SMITHERS1150 duplicate-name refusal —
+ * is untouched, and two same-named ambient Error classes still collide. The Go
+ * fork draws the line in exactly the same place (`isNominalErrorClass` is
+ * unchanged; its registration site carries the ambient guard), so both backends
+ * reserve identically and neither emits a reference to nothing.
+ *
+ * The walk covers both spellings — the `declare` modifier on the declaration
+ * itself, and an enclosing ambient container — because either one is enough for
+ * TypeScript to emit nothing. `ts.NodeFlags.Ambient` is the binder's own answer
+ * to exactly this question and would be one expression, but it is `@internal`
+ * and absent from the public typings, so the syntactic walk stands in for it.
+ */
+function emitsNoRuntimeBinding(declaration: ts.Declaration): boolean {
+  for (let node: ts.Node | undefined = declaration; node !== undefined; node = node.parent) {
+    if (ts.isSourceFile(node)) return node.isDeclarationFile;
+    if (ts.canHaveModifiers(node) &&
+      ts.getModifiers(node)?.some((modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * The type-only nominal merge for an authored Error class.
  *
