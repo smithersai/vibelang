@@ -285,6 +285,19 @@ func TestPinnedForkTrustedAsyncBindingKeepsItsRejectionChannel(t *testing.T) {
 			// `Promise`, so the narrow question that drives LOWERING answers no.
 			// The trust question is asked through a wider predicate for exactly
 			// this reason, and it may be wider without moving an emitted byte.
+			//
+			// The SMITHERS1301 beside the SMITHERS1502 arrived on 2026-08-28,
+			// when the foreign lift was routed through the must-consume
+			// ownership walk: the lift this call produces is not consumed, and
+			// the reference has always said so. Re-measured on this exact
+			// program, the reference reports
+			// [SMITHERS1101@3:1, SMITHERS1508@4:10, SMITHERS1301@4:16, SMITHERS1502@4:16],
+			// so this expectation had been pinning the fork's side of a
+			// divergence and the new row moves the fork one diagnostic CLOSER to
+			// it. The SMITHERS1508 is still absent and is deliberately not
+			// asserted here: it is the standing union-arm gap recorded on
+			// 09-foreign-calls/a-trusted-union-with-a-promise-constituent-keeps-its-rejection-channel,
+			// which owns that row and states why closing it is not an edit.
 			name:    "an awaited trusted string | Promise<string>",
 			support: implicitTrusted,
 			source: "import { giveUnionPromise } from \"./foreign.ts\"\n" +
@@ -292,7 +305,7 @@ func TestPinnedForkTrustedAsyncBindingKeepsItsRejectionChannel(t *testing.T) {
 				"export async function main(): Promise<string> {\n" +
 				"  return await giveUnionPromise()\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1502@4:16"},
+			reject: []string{"SMITHERS1101@3:1", "SMITHERS1301@4:16", "SMITHERS1502@4:16"},
 		},
 	})
 }

@@ -347,11 +347,23 @@ function lookup(): Result<string, Missing> { return "ada" }
 			// on both backends. So the second diagnostic survives fixing the first
 			// and is a second authored defect, not a consequence of the first.
 			// Suppressing it handed back one error and hid another.
+			//
+			// The second diagnostic is charged at the BINDING, because the call
+			// is bound. It read SMITHERS1301@3:17 — the unbound code, at the
+			// call — until 2026-08-28, when the foreign lift was routed through
+			// the must-consume ownership walk and so acquired the bound/unbound
+			// split every authored producer already had. That is the divergence
+			// 09-foreign-calls/an-untrusted-foreign-result-bound-to-a-name-is-charged-at-the-binding
+			// existed to record, and this expectation had been pinning the fork's
+			// side of it. Both backends were re-measured on this exact program
+			// and both now answer [SMITHERS1510@1:22, SMITHERS1302@3:9]. What
+			// this case asserts is unchanged: a refused module edge does not
+			// excuse the call behind it, and a second diagnostic still survives.
 			name:    "an untrusted initializer does not excuse the foreign calls behind it",
 			support: "export function read(): string { return \"value\" }\n",
 			source: "import { read } from \"./foreign.ts\"\n" +
 				"export function main(): string[] {\n  const value = read()\n  return [value]\n}\n",
-			reject: []string{"SMITHERS1510@1:22", "SMITHERS1301@3:17"},
+			reject: []string{"SMITHERS1510@1:22", "SMITHERS1302@3:9"},
 		},
 	}
 	runFailClosedCases(t, cases)
