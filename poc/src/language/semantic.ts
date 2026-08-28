@@ -62,23 +62,66 @@ function compareText(left: string, right: string): number {
 }
 
 /**
+ * The instance members of the compiler-owned `Result`, as their declaration
+ * text. THE one table: the prelude interface below is generated from it, and
+ * `RESULT_CONSUMERS` — the ownership walk's discharge set — is derived from it.
+ *
+ * They used to be two hand-maintained lists over the same member set, written
+ * 6000 lines apart, and that is this repository's signature defect shape: two
+ * walks over one value where one learns a new form and the other does not.
+ * `flatten` and `tapBoth` were implemented and tested on the runtime
+ * (`poc/src/runtime/result.ts`) and were unreachable from `.sm` anyway, because
+ * neither list had learned them. The refusal did not even name the member: an
+ * undeclared member leaves the Result unconsumed, so the analyzer reported
+ * SMITHERS1301/SMITHERS1302 and returned before the emitted TypeScript could
+ * report the unknown property. A member added here reaches both walks at once.
+ *
+ * `unwrap` is deliberately absent. It is the runtime's missed-lowering
+ * fallback, not authoring surface: the compiler emits an early Result return
+ * for `!`, and `expect` is the sanctioned panicking spelling.
+ */
+const RESULT_MEMBER_SIGNATURES: readonly string[] = [
+  "isOk(): boolean",
+  "isError(): boolean",
+  "match<B>(handlers: { ok(value: A): B; error(error: E): B }): B",
+  "map<B>(fn: (value: A) => B): Result<B, E>",
+  "mapError<F extends Error>(fn: (error: E) => F): Result<A, F>",
+  "andThen<B, F extends Error>(fn: (value: A) => Result<B, F>): Result<B, E | F>",
+  // The `this` constraint mirrors the runtime's "requires a nested Result"
+  // panic guard. It does not produce the refusal on its own: this analyzer
+  // reports its own rules and returns before the emitted TypeScript is checked,
+  // so `lookup(k).flatten()` on a non-nested Result is refused as TS2684
+  // against the runtime's own `this` type, the way every other type error in a
+  // `.sm` surfaces. Declaring it here keeps the authored surface an honest
+  // description of the runtime rather than a wider one.
+  "flatten<B, F extends Error>(this: Result<Result<B, F>, E>): Result<B, E | F>",
+  "recover<B>(fn: (error: E) => B): Result<A | B, never>",
+  "tap(fn: (value: A) => unknown): Result<A, E>",
+  "tapError(fn: (error: E) => unknown): Result<A, E>",
+  "tapBoth(handlers: { ok(value: A): unknown; error(error: E): unknown }): Result<A, E>",
+  "unwrapOr(value: A): A",
+  "expect(message: string): A",
+];
+
+/**
+ * The member name a signature declares — everything before its type parameter
+ * list or its parameter list. Deriving it means each name is written exactly
+ * once, so a table entry cannot declare one member and admit another.
+ */
+function resultMemberName(signature: string): string {
+  const start = signature.search(/[<(]/);
+  if (start <= 0) throw new Error(`unparsable Result member signature: ${signature}`);
+  return signature.slice(0, start);
+}
+
+/**
  * Checker-only declarations. They describe the source language surface without
  * making the POC runtime importable from an uncompiled `.sm` module.
  */
 const PRELUDE = String.raw`
 interface Result<A, E extends Error> {
   readonly __smithersResult: { readonly success: A; readonly error: E }
-  isOk(): boolean
-  isError(): boolean
-  match<B>(handlers: { ok(value: A): B; error(error: E): B }): B
-  map<B>(fn: (value: A) => B): Result<B, E>
-  mapError<F extends Error>(fn: (error: E) => F): Result<A, F>
-  andThen<B, F extends Error>(fn: (value: A) => Result<B, F>): Result<B, E | F>
-  recover<B>(fn: (error: E) => B): Result<A | B, never>
-  tap(fn: (value: A) => unknown): Result<A, E>
-  tapError(fn: (error: E) => unknown): Result<A, E>
-  unwrapOr(value: A): A
-  expect(message: string): A
+${RESULT_MEMBER_SIGNATURES.map((signature) => `  ${signature}`).join("\n")}
 }
 declare const Result: {
   // The failure channel is the union of the collected Results' own failures.
@@ -6091,10 +6134,16 @@ function referenceConsumes(
  * Both are ordinary authored programs; the second is a conformance case. So the
  * receiver surface stays on spelling, deliberately, and the security property
  * comes from the receiver precondition rather than from the member name.
+ *
+ * The spellings are DERIVED from `RESULT_MEMBER_SIGNATURES`, the same table the
+ * prelude interface is generated from, so the set the checker declares and the
+ * set the ownership walk discharges cannot disagree. Hand-maintaining both is
+ * what left `flatten` and `tapBoth` implemented on the runtime and unreachable
+ * from `.sm`. Every declared instance member discharges: each one either
+ * inspects the Result, transforms it into another Result that carries its own
+ * obligation, or eliminates it.
  */
-const RESULT_CONSUMERS = new Set([
-  "isOk", "isError", "match", "map", "mapError", "andThen", "recover", "tap", "tapError", "unwrapOr", "expect",
-]);
+const RESULT_CONSUMERS: ReadonlySet<string> = new Set(RESULT_MEMBER_SIGNATURES.map(resultMemberName));
 
 // A callback that RETURNS a Result used to need its own recognized-combinator
 // list here, because only `andThen`/`recover` flatten what their callback
