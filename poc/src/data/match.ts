@@ -82,13 +82,23 @@
  * runtime but would look assignable-from every member, so allowing it to
  * subtract would turn a proved `.exhaustive()` into a late panic.
  *
- * The honest limits are recorded as type tests next door: a bare predicate
- * proves nothing, a template with a predicate leaf proves nothing, array
- * templates do not refine at the type level, two *unbranded* Error classes of
- * the same shape cannot be told apart by TypeScript (see `NominalError`), and a
- * type guard is trusted the way TypeScript's own `if`/`else` narrowing trusts
- * one — a guard that answers `false` for a value of the type it claims will
- * still have subtracted that type, and the runtime says so with a panic.
+ * The honest limits are recorded as type tests next door. What is *not*
+ * provable: a bare predicate proves nothing; a template with a predicate leaf
+ * proves nothing; array templates do not refine at the type level; a `Data`
+ * value used as a pattern proves nothing, at the top level or as a leaf, and
+ * neither does a `Data` tuple, because it demands whole-value equality rather
+ * than the subset match a template performs, and the subjects it claims are not
+ * a union member; and two *unbranded* Error classes of the same shape cannot be
+ * told apart by TypeScript (see `NominalError`).
+ *
+ * What *is* provable, and is checked as such: a type guard, a literal, a tag, a
+ * class, a fully literal plain template at any depth, and a `Result` variant
+ * arm. A type guard is trusted the way TypeScript's own `if`/`else` narrowing
+ * trusts one — a guard that answers `false` for a value of the type it claims
+ * will still have subtracted that type, and the runtime says so with a panic.
+ * That is the one remaining place where `.exhaustive()` can reach a panic, and
+ * it is the same trust TypeScript itself extends.
+ *
  * `.run()` is the terminal for everything the type system cannot prove: it
  * requires an `.orElse(handler)` fallback, and so is total by construction
  * rather than by proof.
@@ -97,7 +107,7 @@
 import { type ErrorConstructor, errorIs } from "../runtime/errors.ts";
 import { panic } from "../runtime/panic.ts";
 import { type Result, type ResultValue, isResult } from "../runtime/result.ts";
-import { Data, isData } from "./data.ts";
+import { Data, type DataBrand, isData, type NotData } from "./data.ts";
 import { sameValueZero } from "./equivalence.ts";
 
 /** How deep a structural template may nest before it is treated as a mistake. */
@@ -163,8 +173,17 @@ export type LiteralPattern = string | number | boolean | bigint | symbol | null 
 type LiteralPatternFor<Remaining> = [Extract<Remaining, LiteralPattern>] extends [never] ? LiteralPattern
   : Extract<Remaining, LiteralPattern>;
 
-/** A structural template: a plain record or a plain tuple of leaf patterns. */
-export type ShapePattern = { readonly [key: string]: unknown } | readonly unknown[];
+/**
+ * A structural template: a plain record or a plain tuple of leaf patterns.
+ *
+ * `& NotData` is the type-level half of {@link isTemplate}. The runtime already
+ * refuses to read a `Data` value as a template — it is a *value*, compared in
+ * whole — and this bound is the same rule stated where the compiler can see it,
+ * so a `Data` value never reaches the shape overload and never subtracts as
+ * though it were a template. `NotData`'s key is a module-private `unique
+ * symbol`, so an `as const` assertion cannot mint one.
+ */
+export type ShapePattern = ({ readonly [key: string]: unknown } | readonly unknown[]) & NotData;
 
 /** The type a literal or class arm hands its handler, keeping `never` out of the signature. */
 type NarrowTo<Remaining, Candidate> = [Extract<Remaining, Candidate>] extends [never] ? Candidate
@@ -187,8 +206,17 @@ type RefineFields<Member, Shape> = {
   [Key in keyof Member]: Key extends keyof Shape ? RefineLeaf<Member[Key], Shape[Key]> : Member[Key];
 };
 
+/**
+ * A `Data` leaf is passed through unrefined, for the same reason an array
+ * template is: the runtime compares it to the whole field with `Data.equals`,
+ * not key by key, so reading it as a nested subset template would both narrow
+ * the handler's parameter by keys the pattern does not constrain and — because
+ * a `Data` type carries a brand no ordinary member has — drop every member for
+ * want of that key. Unrefined is the honest answer.
+ */
 type RefineLeaf<Field, Leaf> = Leaf extends (value: any) => value is infer Narrowed ? Field & Narrowed
   : Leaf extends (...args: readonly any[]) => unknown ? Field
+  : Leaf extends DataBrand ? Field
   : Leaf extends object ? RefineMember<Field, Leaf>
   : Field & Leaf;
 
@@ -200,13 +228,19 @@ type DropUninhabited<Refined> = true extends
  * Whether a type is one concrete value rather than a whole domain. `"circle"`
  * is; `string` is not; `"low" | "high"` is not, because it stands for two.
  *
- * This is what keeps subtraction sound. A pattern only removes a case from
- * `Remaining` when matching it at runtime provably covers that case, and that
- * holds exactly when every leaf the pattern names is a single literal. A widened
- * pattern — `Data.struct({ kind: "a" })` has type `{ kind: string }`, and a
- * `const level: string` argument is just `string` — would otherwise *look*
+ * This is one of the two things that keep subtraction sound. A pattern only
+ * removes a case from `Remaining` when matching it at runtime provably covers
+ * that case, and for a template that holds exactly when every leaf it names is a
+ * single literal. A widened pattern — a `const level: string` argument is just
+ * `string`, and `{ kind: level }` is `{ kind: string }` — would otherwise *look*
  * assignable-from every member and subtract them all while matching only one
  * value at runtime, turning a proved `.exhaustive()` into a late panic.
+ *
+ * The other is {@link ShapePattern}'s `NotData` bound. Widening is a check on a
+ * pattern's *leaves*, so it says nothing about a pattern that is not a template
+ * at all: `Data.struct({ kind: "a" } as const)` has entirely literal leaves and
+ * would sail through this rule, while the runtime compares it to the whole
+ * subject. Two different questions, so two separate guards.
  */
 type IsSingleLiteral<Candidate> = [Candidate] extends [never] ? false
   : [Candidate] extends [null] ? true
@@ -222,13 +256,26 @@ type NotAUnion<Candidate, Whole = Candidate> = Candidate extends unknown
   ? [Whole] extends [Candidate] ? true : false
   : never;
 
-/** Every leaf a template names is a single literal, so matching it covers the case in full. */
-type AllLeavesLiteral<Shape> = [keyof Shape] extends [never] ? false
+/**
+ * Every leaf a template names is a single literal, so matching it covers the
+ * case in full.
+ *
+ * `Data` answers `false` before anything else is asked. A `Data` value is not a
+ * template at all: the runtime requires the *whole* subject to be `Data.equals`
+ * to it, which is strictly narrower than the subset match a template performs,
+ * so the cases it covers are not the cases `Exclude` would remove. Reaching the
+ * leaf walk at all would be the bug — the leaves of `Data.struct({ kind:
+ * "circle" } as const)` really are single literals, and answering from them
+ * would prove a coverage the runtime never provides.
+ */
+type AllLeavesLiteral<Shape> = Shape extends DataBrand ? false
+  : [keyof Shape] extends [never] ? false
   : Shape extends readonly unknown[] ? false
   : false extends { [Key in keyof Shape]-?: IsLiteralLeaf<Shape[Key]> }[keyof Shape] ? false
   : true;
 
-type IsLiteralLeaf<Leaf> = Leaf extends readonly unknown[] ? false
+type IsLiteralLeaf<Leaf> = Leaf extends DataBrand ? false
+  : Leaf extends readonly unknown[] ? false
   : Leaf extends (...args: readonly any[]) => unknown ? false
   : Leaf extends object ? AllLeavesLiteral<Leaf>
   : IsSingleLiteral<Leaf>;

@@ -55,6 +55,48 @@ const TUPLE_SEED = 0xa54ff53a;
 const dataValues = new WeakSet<object>();
 const hashCache = new WeakMap<object, number>();
 
+/**
+ * The type-level half of the runtime `dataValues` brand.
+ *
+ * `isData` is a WeakSet membership test, so at runtime "is this a Data value?"
+ * is answerable and every consumer that needs the reference/structural boundary
+ * asks it. Nothing corresponding existed in the *types*, and a consumer whose
+ * decision is made at compile time — `Match`, whose `.exhaustive()` is a proof
+ * rather than a check — had no way to ask. It therefore read a Data value as an
+ * ordinary record and drew conclusions the runtime does not honour.
+ *
+ * {@link DataBrand} closes that gap. The key is a module-private `unique
+ * symbol`: it is never exported as a value and no expression outside this file
+ * can produce a property under it, so `as const` — which only stops literal
+ * widening — cannot forge one. `Data.struct` and `Data.tuple` are the sole
+ * sources, and the brand is structurally invisible: it adds no own property, so
+ * `Object.keys`, spreads, equality, and hashing are all unchanged.
+ */
+declare const dataBrand: unique symbol;
+
+/**
+ * The type-level marker on every `Data.struct`/`Data.tuple` result.
+ *
+ * Written as a type literal rather than an `interface` on purpose: TypeScript
+ * synthesises an implicit index signature for anonymous object types but not
+ * for interfaces, and an intersection is only as inferable as its least
+ * inferable member. An `interface` here would stop `DataStruct<Fields>`
+ * satisfying `Record<string, unknown>` and so break `Data.struct(alreadyData)`.
+ */
+export type DataBrand = {
+  readonly [dataBrand]: true;
+};
+
+/**
+ * The complement of {@link DataBrand}: a bound that admits every unbranded type
+ * and rejects a `Data` value. The optional `never` property is what does it —
+ * a type without the key satisfies it vacuously, while `DataBrand`'s `true`
+ * is not assignable to `undefined`.
+ */
+export type NotData = {
+  readonly [dataBrand]?: never;
+};
+
 export function isData(value: unknown): boolean {
   return typeof value === "object" && value !== null && dataValues.has(value);
 }
@@ -176,7 +218,9 @@ registerStructuralHash({
   hash: dataHash,
 });
 
-type DataStruct<Fields> = { readonly [Key in keyof Fields]: Fields[Key] };
+type DataStruct<Fields> = { readonly [Key in keyof Fields]: Fields[Key] } & DataBrand;
+
+type DataTuple<Items extends readonly unknown[]> = Readonly<Items> & DataBrand;
 
 /** A deeply frozen record with structural equality. Nested plain objects and arrays are converted too. */
 function struct<Fields extends Record<string, unknown>>(fields: Fields): DataStruct<Fields> {
@@ -187,8 +231,8 @@ function struct<Fields extends Record<string, unknown>>(fields: Fields): DataStr
 }
 
 /** A deeply frozen tuple with structural equality. Still a real array. */
-function tuple<const Items extends readonly unknown[]>(...items: Items): Readonly<Items> {
-  return convert(items.slice(), new Set()) as Readonly<Items>;
+function tuple<const Items extends readonly unknown[]>(...items: Items): DataTuple<Items> {
+  return convert(items.slice(), new Set()) as DataTuple<Items>;
 }
 
 /**

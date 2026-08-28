@@ -33,6 +33,11 @@ type Event =
   | { readonly _tag: "opened"; readonly at: number }
   | { readonly _tag: "closed"; readonly at: number; readonly reason: string };
 
+/** A union whose discriminant sits one level down, for the nested-leaf assertions. */
+type Placed =
+  | { readonly at: { readonly x: 1 }; readonly tag: "one" }
+  | { readonly at: { readonly x: 2 }; readonly tag: "two" };
+
 /**
  * Two Error classes with *identical* shape. Only the nominal brand tells them
  * apart to TypeScript, and only the constructor tells them apart at runtime —
@@ -65,6 +70,8 @@ declare const maybe: number | undefined;
 declare const attempt: Result<number, TypeError>;
 declare const fault: LeftFault | RightFault;
 declare const anything: unknown;
+declare const placed: Placed;
+declare const pair: readonly [1, 2] | readonly [3, 4];
 
 function tagArmsProveCoverage(): number {
   return Match.value(shape)
@@ -169,6 +176,52 @@ function aWidenedPatternNeverSubtracts(): void {
   const byLiteral = Match.value(level).when(level, () => 0);
   // @ts-expect-error a union-typed literal pattern proves nothing
   byLiteral.exhaustive();
+}
+
+function aDataPatternNeverSubtracts(): void {
+  // The same soundness guard, for the one pattern kind the *runtime* treats
+  // differently from every other object. `Data.struct(...)` is a value, matched
+  // in whole with `Data.equals`, so it covers exactly the subjects structurally
+  // equal to it — never a whole union member. `as const` defeats the widening
+  // guard above (every leaf here really is a single literal), so what keeps this
+  // sound is the nominal brand, which no `as const` can mint.
+  const byData = Match.value(shape)
+    .when(Data.struct({ kind: "circle" } as const), () => "c")
+    .when(Data.struct({ kind: "square" } as const), () => "s");
+  // @ts-expect-error a Data value is a whole-value pattern and proves nothing
+  byData.exhaustive();
+
+  // ... and it is still perfectly usable, with `.run()` as the honest terminal.
+  const answered: string = byData.orElse(() => "other").run();
+  void answered;
+
+  // A Data *tuple* is the same story.
+  const byTuple = Match.value(pair).when(Data.tuple(1, 2), () => "a").when(Data.tuple(3, 4), () => "b");
+  // @ts-expect-error a Data tuple is a whole-value pattern and proves nothing
+  byTuple.exhaustive();
+}
+
+function aDataLeafNeverSubtracts(): void {
+  // One level down, where the Data value is a *leaf* of a plain template. The
+  // enclosing template is still a template; the leaf inside it is still a value.
+  const nested = Match.value(placed)
+    .when({ at: Data.struct({ x: 1 } as const) }, (found) => {
+      // The leaf is passed through unrefined rather than dropping the member:
+      // no over-refusal, so the arm stays writable.
+      const whole: Placed = found;
+      return whole.tag;
+    })
+    .when({ at: Data.struct({ x: 2 } as const) }, () => "two");
+  // @ts-expect-error a Data leaf cannot prove the case is covered
+  nested.exhaustive();
+
+  // The plain-template twin of the same match *does* prove coverage, which is
+  // the negative control: the brand refuses Data values, not templates.
+  const proved: string = Match.value(placed)
+    .when({ at: { x: 1 } }, (found) => found.tag)
+    .when({ at: { x: 2 } }, (found) => found.tag)
+    .exhaustive();
+  void proved;
 }
 
 function absenceIsAnOrdinaryUnionAndProvesCoverage(): string {
@@ -393,6 +446,54 @@ describe("structural templates", () => {
       .orElse(() => "no")
       .run();
     expect(whole).toBe("no");
+  });
+
+  test("a Data pattern does not cover a union member, and the types say so", () => {
+    // The runtime half of `aDataPatternNeverSubtracts`. Arms that look like they
+    // spell out both members of `Shape` cover *neither*: each demands whole-value
+    // equality with a two-key Data value, and a `Shape` has two keys of its own.
+    const arms = <T>(input: T) =>
+      Match.value(input)
+        .when(Data.struct({ kind: "circle" } as const), () => "c")
+        .when(Data.struct({ kind: "square" } as const), () => "s");
+
+    expect(arms(circle).orElse(() => "no arm").run()).toBe("no arm");
+    expect(arms(square).orElse(() => "no arm").run()).toBe("no arm");
+    // Only a subject equal in whole is claimed.
+    expect(arms(Data.struct({ kind: "circle" })).orElse(() => "no arm").run()).toBe("c");
+
+    // `.exhaustive()` on those arms is a compile error (see the type-level
+    // assertion above); the cast is what it would take to reach the terminal
+    // anyway, and it shows the panic the type system now prevents.
+    const forced = arms(circle) as unknown as { exhaustive: () => string };
+    expect(panics(() => forced.exhaustive())).toBe(true);
+    expect(panicMessage(() => forced.exhaustive())).toContain("non-exhaustive Match");
+
+    // The negative control: the plain-template twin is genuinely exhaustive, and
+    // both the proof and the answer survive.
+    const area = (input: Shape): number =>
+      Match.value(input)
+        .when({ kind: "circle" }, (found) => found.radius)
+        .when({ kind: "square" }, (found) => found.side)
+        .exhaustive();
+    expect(area(circle)).toBe(2);
+    expect(area(square)).toBe(3);
+  });
+
+  test("a Data leaf inside a template is a value, not a nested template", () => {
+    const matched = (input: unknown): string =>
+      Match.value(input)
+        .when({ at: Data.struct({ x: 1 } as const) }, () => "one")
+        .orElse(() => "no arm")
+        .run();
+
+    // A plain `{ x: 1 }` field is not `Data.equals` to a Data value...
+    expect(matched({ at: { x: 1 }, tag: "one" })).toBe("no arm");
+    // ...and neither is a Data value with an extra key, because the comparison is
+    // whole-value rather than subset.
+    expect(matched({ at: Data.struct({ x: 1, y: 9 }) })).toBe("no arm");
+    // Equal in whole, so it matches.
+    expect(matched({ at: Data.struct({ x: 1 }), tag: "one" })).toBe("one");
   });
 
   test("templates read through the prototype chain and into class instances", () => {
@@ -672,6 +773,8 @@ void aBarePredicateProvesNothing;
 void literalTemplatesNarrowAndProveCoverage;
 void aTemplateWithAPredicateLeafProvesNothing;
 void aWidenedPatternNeverSubtracts;
+void aDataPatternNeverSubtracts;
+void aDataLeafNeverSubtracts;
 void absenceIsAnOrdinaryUnionAndProvesCoverage;
 void resultVariantsProveCoverage;
 void nominalErrorArmsNarrowAndSubtract;
