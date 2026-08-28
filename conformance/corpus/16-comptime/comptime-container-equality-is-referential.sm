@@ -1,0 +1,44 @@
+import { comptime } from "smithers:comptime"
+
+const containers = comptime(() => {
+  const first = { x: 1 }
+  const alias = first
+  const other = { x: 1 }
+  const array = [1]
+  const arrayAlias = array
+  const holder = { inner: first, list: array }
+  return [
+    first === alias,
+    first === other,
+    array === arrayAlias,
+    array === [1],
+    first !== other,
+    array !== [1],
+    holder.inner === first,
+    holder.list === array,
+    array.slice() === array,
+    holder.inner === holder.list,
+  ]
+})()
+
+const scalars = comptime(() => {
+  const empty: number[] = []
+  return [
+    "a" === "a",
+    "a" === "b",
+    1 === 1,
+    1 === 2,
+    true === true,
+    true === false,
+    null === null,
+    "a" !== "b",
+    empty.length === 0,
+    [10, 20, 30].indexOf(20),
+    ["a", "b"].includes("b"),
+    ["a", "b"].includes("c"),
+  ]
+})()
+
+export function main(): string[] {
+  return [JSON.stringify(containers), JSON.stringify(scalars)]
+}

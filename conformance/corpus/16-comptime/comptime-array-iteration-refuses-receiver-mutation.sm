@@ -1,0 +1,35 @@
+import { comptime } from "smithers:comptime"
+
+const mapped = comptime(() => {
+  const items = [1, 2]
+  return items.map((value: number, index: number, all: number[]) => {
+    if (index === 0) {
+      all[1] = 99
+    }
+    return value
+  })
+})()
+
+const filtered = comptime(() => {
+  const items = [1, 2]
+  return items.filter((value: number, index: number, all: number[]) => {
+    if (index === 0) {
+      all[1] = 99
+    }
+    return value > 50
+  })
+})()
+
+const reduced = comptime(() => {
+  const items = [1, 2]
+  return items.reduce((total: number, value: number, index: number, all: number[]) => {
+    if (index === 0) {
+      all[1] = 99
+    }
+    return total + value
+  }, 0)
+})()
+
+export function main(): string[] {
+  return [JSON.stringify(mapped), JSON.stringify(filtered), String(reduced)]
+}

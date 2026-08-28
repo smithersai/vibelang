@@ -1278,6 +1278,34 @@ const COMPOUND_ASSIGNMENT = new Map<ts.SyntaxKind, ts.SyntaxKind>([
   [ts.SyntaxKind.AsteriskAsteriskEqualsToken, ts.SyntaxKind.AsteriskAsteriskToken],
 ]);
 
+/**
+ * The one strict-equality relation the comptime evaluator is allowed to use.
+ *
+ * Every comptime operation whose JavaScript definition is strict equality --
+ * `===`, `!==`, `Array.prototype.includes`, `Array.prototype.indexOf` -- routes
+ * through here, so a future operation cannot quietly pick a different relation.
+ *
+ * JavaScript compares scalars by value and containers by allocation identity,
+ * and the evaluator's value representation already has exactly that shape: a
+ * comptime scalar is a JavaScript primitive, and a comptime array or object is
+ * the very JavaScript container the comptime body allocated and kept (which is
+ * also what makes `push`, `splice`, and the owned/frozen discipline mean
+ * anything). So plain `===` on two `StableJson` values IS the language
+ * relation, and the correct implementation is the identity function.
+ *
+ * `canonical` deliberately does not appear here. Canonical serialisation
+ * answers "do these two values print the same?", which is a different question
+ * from "are these the same value?", and it must not participate in language
+ * equality at all: it made `{ x: 1 } === { x: 1 }` evaluate to `true` inside
+ * `comptime` and `false` everywhere else, with no diagnostic and with the wrong
+ * constant baked into the emitted program. Canonical rendering remains correct
+ * for `JSON.stringify`, for the emitted result, and for digests -- none of
+ * which are equality.
+ */
+function strictEquals(left: StableJson, right: StableJson): boolean {
+  return left === right;
+}
+
 class StaticExpressionEvaluator {
   readonly #memo = new Map<ts.Symbol, StableJson>();
   readonly #active = new Set<ts.Symbol>();
@@ -1287,6 +1315,8 @@ class StaticExpressionEvaluator {
   readonly #phaseSpecificAllowed: boolean[] = [true];
   /** Containers constructed by this evaluation. Everything else is immutable. */
   readonly #owned = new WeakSet<object>();
+  /** Arrays a `map`/`filter`/`reduce` is iterating right now; see #whileIterating. */
+  readonly #iterating = new WeakSet<object>();
   /**
    * The comptime iteration statements currently executing, innermost last.
    *
@@ -1644,8 +1674,8 @@ class StaticExpressionEvaluator {
     if (kind === ts.SyntaxKind.QuestionQuestionToken) return left === null ? this.evaluate(node.right) : left;
     const right = this.evaluate(node.right);
     switch (kind) {
-      case ts.SyntaxKind.EqualsEqualsEqualsToken: return canonical(left) === canonical(right);
-      case ts.SyntaxKind.ExclamationEqualsEqualsToken: return canonical(left) !== canonical(right);
+      case ts.SyntaxKind.EqualsEqualsEqualsToken: return strictEquals(left, right);
+      case ts.SyntaxKind.ExclamationEqualsEqualsToken: return !strictEquals(left, right);
       case ts.SyntaxKind.PlusToken:
       case ts.SyntaxKind.MinusToken:
       case ts.SyntaxKind.AsteriskToken:
@@ -1796,8 +1826,46 @@ class StaticExpressionEvaluator {
   }
 
   #assertMutable(value: StableJson, node: ts.Node): asserts value is StableJson[] | Record<string, StableJson> {
+    if (value !== null && typeof value === "object" && this.#iterating.has(value)) {
+      this.unsupported(node,
+        "cannot mutate a comptime array while map, filter, or reduce is iterating it");
+    }
     if (value === null || typeof value !== "object" || !this.#owned.has(value) || Object.isFrozen(value)) {
       this.unsupported(node, "comptime mutation requires an array or object constructed by this compile-time evaluation");
+    }
+  }
+
+  /**
+   * Runs `body` with `receiver` closed to mutation, for `map`/`filter`/`reduce`.
+   *
+   * `Array.prototype.map`, `filter`, and `reduce` read `length` once and then
+   * read each index LIVE, so in JavaScript a callback that writes to a
+   * not-yet-visited index changes what the iteration sees. Both evaluators used
+   * to iterate a `slice()` snapshot instead, so the same callback produced a
+   * different array at comptime than at runtime -- silently, and with the
+   * comptime answer baked into the emitted program.
+   *
+   * The fix refuses the mutation rather than reproducing it, because exact
+   * fidelity is not reachable here: a callback that SHORTENS the receiver makes
+   * JavaScript observe holes at the trailing indices, and a hole is not a value
+   * this evaluator can represent -- `#array` rejects sparse literals as
+   * non-canonical JSON. An evaluator cannot be faithful to a semantics whose
+   * results it has no way to express, so the honest options were "quietly
+   * answer differently from runtime" and "refuse", and comptime is fail-closed
+   * everywhere else. With mutation refused, snapshot and live iteration are
+   * indistinguishable, so the loops below now read the receiver directly and
+   * the snapshot concept is gone.
+   *
+   * Re-entrant: iterating the same array from inside its own callback restores
+   * the outer guard rather than clearing it.
+   */
+  #whileIterating<T>(receiver: StableJson[], body: () => T): T {
+    const enclosing = this.#iterating.has(receiver);
+    this.#iterating.add(receiver);
+    try {
+      return body();
+    } finally {
+      if (!enclosing) this.#iterating.delete(receiver);
     }
   }
 
@@ -2041,7 +2109,9 @@ class StaticExpressionEvaluator {
         if (args.length !== 1 || (args[0] !== null && typeof args[0] === "object")) {
           this.unsupported(node, `${member} requires one scalar comptime argument`);
         }
-        return member === "includes" ? receiver.includes(args[0]!) : receiver.indexOf(args[0]!);
+        const needle = args[0]!;
+        const found = receiver.findIndex((element) => strictEquals(element, needle));
+        return member === "includes" ? found !== -1 : found;
       }
       case "map":
       case "filter": {
@@ -2049,15 +2119,17 @@ class StaticExpressionEvaluator {
           this.unsupported(node, "comptime map and filter take exactly one callback argument");
         }
         const callback = this.#callbackFunction(node, 1, 3);
-        const snapshot = receiver.slice();
         const result: StableJson[] = [];
-        this.#allocate(node, snapshot.length + 1);
-        for (let index = 0; index < snapshot.length; index++) {
-          const args = ([snapshot[index]!, index, receiver] as StableJson[]).slice(0, callback.parameters.length);
-          const value = this.#invoke(callback, args).value;
-          if (member === "map") result.push(value);
-          else if (this.#truthy(value)) result.push(snapshot[index]!);
-        }
+        const length = receiver.length;
+        this.#allocate(node, length + 1);
+        this.#whileIterating(receiver, () => {
+          for (let index = 0; index < length; index++) {
+            const args = ([receiver[index]!, index, receiver] as StableJson[]).slice(0, callback.parameters.length);
+            const value = this.#invoke(callback, args).value;
+            if (member === "map") result.push(value);
+            else if (this.#truthy(value)) result.push(receiver[index]!);
+          }
+        });
         return this.#own(result);
       }
       case "reduce": {
@@ -2066,11 +2138,13 @@ class StaticExpressionEvaluator {
         }
         const callback = this.#callbackFunction(node, 2, 4);
         let accumulator = this.evaluate(node.arguments[1]!);
-        const snapshot = receiver.slice();
-        for (let index = 0; index < snapshot.length; index++) {
-          const args = ([accumulator, snapshot[index]!, index, receiver] as StableJson[]).slice(0, callback.parameters.length);
-          accumulator = this.#invoke(callback, args).value;
-        }
+        const length = receiver.length;
+        this.#whileIterating(receiver, () => {
+          for (let index = 0; index < length; index++) {
+            const args = ([accumulator, receiver[index]!, index, receiver] as StableJson[]).slice(0, callback.parameters.length);
+            accumulator = this.#invoke(callback, args).value;
+          }
+        });
         return accumulator;
       }
     }

@@ -1,0 +1,22 @@
+{
+  "title": "a comptime map, filter, or reduce callback may not mutate the array it is iterating",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "VCT1004",
+      "line": 7,
+      "column": 7
+    },
+    {
+      "code": "VCT1004",
+      "line": 17,
+      "column": 7
+    },
+    {
+      "code": "VCT1004",
+      "line": 27,
+      "column": 7
+    }
+  ],
+  "notes": "guide/comptime.mdx:134 -- \"The same function may be callable in both phases when its operations are valid in both\"; reference/comptime.mdx:40 -- \"Implicit evaluation must not change observable runtime semantics\". `Array.prototype.map`, `filter`, and `reduce` read `length` once and then read each index LIVE, so a callback that writes to a not-yet-visited index changes what the iteration sees. Both evaluators iterated a copied snapshot instead, so the three callbacks in this file returned `[1,2]`, `[]`, and `3` at comptime where JavaScript returns `[1,99]`, `[99]`, and `100` -- executed on both backends, silently, with the comptime answer folded into the emitted program. This is the same class as 16-comptime/comptime-container-equality-is-referential and was invisible for the same two reasons: no corpus case mutated a receiver from inside its own callback, and both backends copied the same snapshot, so a cross-backend differential agreed with itself. The expectation refuses rather than reproducing, and that is a deliberate split from the equality case, which was made JS-faithful instead. Referential equality was reachable exactly: both value models already retain container identity, so the correct relation was already representable and refusing a legitimate identity check would have been a worse answer than giving the right one. Live iteration is NOT exactly reachable: a callback that SHORTENS the receiver makes JavaScript observe holes at the trailing indices, and a hole is not a value either evaluator can represent -- array literals are rejected as non-canonical JSON when sparse. An evaluator cannot be faithful to a semantics whose results it has no way to express, so the honest options were \"quietly answer differently from runtime\" and \"refuse\", and comptime is fail-closed everywhere else, which is what makes these divergences anomalies rather than a design stance. Mutation is refused only for the duration of the iteration and only for the array being iterated: the receiver stays ordinary comptime data before and after, every other mutation the owned/frozen discipline already permits is untouched, and the guard is re-entrant, so iterating the same array from inside its own callback restores the outer guard rather than clearing it. With mutation refused, snapshot and live iteration are indistinguishable, so both loops now read the receiver directly and the snapshot concept is gone rather than left as a silent second semantics. Lines 7, 17, and 27 column 7 are the `all[1]` element-access targets -- the construct the author edits -- one per method, so a regression in any single method is a row of its own rather than one masked by the others. VCT1004 / SMITHERS1904 is the existing bounded-subset code on each side; no new code was minted. Both backends: poc/src/build/comptime-intrinsic.ts (StaticExpressionEvaluator #whileIterating / #assertMutable) and compiler/forkbridge/comptime.go.txt (comptimeEvaluator.whileIterating / assertMutable)."
+}

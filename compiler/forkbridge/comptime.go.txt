@@ -166,6 +166,47 @@ func newCtObject() ctValue {
 	return ctValue{kind: ctObject, obj: &ctObjectData{values: map[string]ctValue{}, owned: true}}
 }
 
+// ctStrictEquals is the one strict-equality relation the comptime evaluator is
+// allowed to use. Every operation whose JavaScript definition is strict
+// equality -- `===`, `!==`, `Array.prototype.includes`, `Array.prototype.
+// indexOf` -- routes through here, so a future operation cannot quietly pick a
+// different relation.
+//
+// JavaScript compares scalars by value and containers by allocation identity.
+// This is exactly why ctArrayData and ctObjectData live behind pointers (see
+// the ctValue comment above): the pointer IS the allocation identity, so
+// comparing the pointers is comparing the containers the way the language does.
+// Numbers compare with ==, which reproduces JavaScript on the two values that
+// make strict equality interesting: NaN != NaN, and -0 == 0. Neither can be a
+// canonical comptime number, so the agreement is belt and braces.
+//
+// ctCanonical must never appear in an equality decision. Canonical
+// serialisation answers "do these two values print the same?", which is a
+// different question from "are these the same value?", and using it here made
+// `{ x: 1 } === { x: 1 }` evaluate to `true` inside `comptime` and `false`
+// everywhere else, with no diagnostic and with the wrong constant baked into
+// the emitted program.
+func ctStrictEquals(left ctValue, right ctValue) bool {
+	if left.kind != right.kind {
+		return false
+	}
+	switch left.kind {
+	case ctNull:
+		return true
+	case ctBool:
+		return left.b == right.b
+	case ctNumber:
+		return left.n == right.n
+	case ctString:
+		return left.s == right.s
+	case ctArray:
+		return left.arr == right.arr
+	case ctObject:
+		return left.obj == right.obj
+	}
+	return false
+}
+
 func (o *ctObjectData) has(key string) bool {
 	_, ok := o.values[key]
 	return ok
@@ -217,10 +258,12 @@ func isArrayIndexKey(key string) bool {
 // Canonical rendering
 // ---------------------------------------------------------------------------
 
-// ctCanonical renders the canonical JSON encoding used for structural equality,
-// for `JSON.stringify`, and for nothing else. Keys are sorted by UTF-16 code
-// unit, which is what JavaScript's default `Array.prototype.sort` does, so the
-// two implementations agree on non-ASCII keys as well.
+// ctCanonical renders the canonical JSON encoding used for `JSON.stringify`,
+// for the emitted comptime result, and for nothing else. It is NOT an equality
+// relation: language equality is ctStrictEquals, and canonical text must not
+// participate in it. Keys are sorted by UTF-16 code unit, which is what
+// JavaScript's default `Array.prototype.sort` does, so the two implementations
+// agree on non-ASCII keys as well.
 func ctCanonical(value ctValue) string {
 	var builder strings.Builder
 	writeCtCanonical(&builder, value)
@@ -1511,6 +1554,11 @@ type comptimeEvaluator struct {
 	// both stable and actionable.
 	loops []*ast.Node
 
+	// iterating counts the map/filter/reduce iterations currently in flight over
+	// each array, so a callback cannot mutate the array being iterated. See
+	// whileIterating.
+	iterating map[*ctArrayData]int
+
 	steps       int
 	allocations int
 	callDepth   int
@@ -2000,9 +2048,9 @@ func (e *comptimeEvaluator) binary(node *ast.Node) ctValue {
 	right := e.evaluate(data.Right)
 	switch kind {
 	case ast.KindEqualsEqualsEqualsToken:
-		return ctBoolValue(ctCanonical(left) == ctCanonical(right))
+		return ctBoolValue(ctStrictEquals(left, right))
 	case ast.KindExclamationEqualsEqualsToken:
-		return ctBoolValue(ctCanonical(left) != ctCanonical(right))
+		return ctBoolValue(!ctStrictEquals(left, right))
 	case ast.KindPlusToken, ast.KindMinusToken, ast.KindAsteriskToken, ast.KindSlashToken,
 		ast.KindPercentToken, ast.KindAsteriskAsteriskToken:
 		return e.applyBinary(kind, left, right, node)
@@ -2172,7 +2220,49 @@ func (e *comptimeEvaluator) memberKey(target *ast.Node) string {
 	return ctScalarText(key)
 }
 
+// whileIterating runs body with receiver closed to mutation, for
+// map/filter/reduce.
+//
+// `Array.prototype.map`, `filter`, and `reduce` read `length` once and then
+// read each index LIVE, so in JavaScript a callback that writes to a
+// not-yet-visited index changes what the iteration sees. Both evaluators used
+// to iterate a copied snapshot instead, so the same callback produced a
+// different array at comptime than at runtime -- silently, and with the
+// comptime answer baked into the emitted program.
+//
+// The fix refuses the mutation rather than reproducing it, because exact
+// fidelity is not reachable here: a callback that SHORTENS the receiver makes
+// JavaScript observe holes at the trailing indices, and a hole is not a value
+// this evaluator can represent -- array literals reject sparse elements as
+// non-canonical JSON. An evaluator cannot be faithful to a semantics whose
+// results it has no way to express, so the honest options were "quietly answer
+// differently from runtime" and "refuse", and comptime is fail-closed
+// everywhere else. With mutation refused, snapshot and live iteration are
+// indistinguishable, so the callers now read receiver.arr.items directly and
+// the snapshot copy is gone.
+//
+// The count makes it re-entrant: iterating the same array from inside its own
+// callback restores the outer guard rather than clearing it.
+func (e *comptimeEvaluator) whileIterating(receiver *ctArrayData, body func()) {
+	if e.iterating == nil {
+		e.iterating = map[*ctArrayData]int{}
+	}
+	e.iterating[receiver]++
+	defer func() {
+		if e.iterating[receiver] <= 1 {
+			delete(e.iterating, receiver)
+			return
+		}
+		e.iterating[receiver]--
+	}()
+	body()
+}
+
 func (e *comptimeEvaluator) assertMutable(value ctValue, node *ast.Node) {
+	if value.kind == ctArray && e.iterating[value.arr] > 0 {
+		e.unsupported(node,
+			"cannot mutate a comptime array while map, filter, or reduce is iterating it")
+	}
 	switch value.kind {
 	case ctArray:
 		if value.arr.owned && !value.arr.frozen {
@@ -2842,9 +2932,9 @@ func (e *comptimeEvaluator) arrayCall(receiver ctValue, member string, node *ast
 		if len(args) != 1 || args[0].kind == ctArray || args[0].kind == ctObject {
 			return e.unsupported(node, member+" requires one scalar comptime argument")
 		}
-		needle := ctCanonical(args[0])
+		needle := args[0]
 		for index, item := range receiver.arr.items {
-			if ctCanonical(item) == needle {
+			if ctStrictEquals(item, needle) {
 				if member == "includes" {
 					return ctBoolValue(true)
 				}
@@ -2860,22 +2950,25 @@ func (e *comptimeEvaluator) arrayCall(receiver ctValue, member string, node *ast
 			return e.unsupported(node, "comptime map and filter take exactly one callback argument")
 		}
 		callback := e.callbackFunction(node, 1, 3)
-		snapshot := append([]ctValue(nil), receiver.arr.items...)
-		result := make([]ctValue, 0, len(snapshot))
-		e.allocate(node, len(snapshot)+1)
-		for index, item := range snapshot {
-			args := comptimeCallbackArguments(
-				[]ctValue{item, ctNumberValue(float64(index)), receiver},
-				len(callback.Parameters()))
-			value := e.invoke(callback, args, node, e.phaseSpecificAllowed())
-			if member == "map" {
-				result = append(result, value)
-				continue
+		length := len(receiver.arr.items)
+		result := make([]ctValue, 0, length)
+		e.allocate(node, length+1)
+		e.whileIterating(receiver.arr, func() {
+			for index := 0; index < length; index++ {
+				item := receiver.arr.items[index]
+				args := comptimeCallbackArguments(
+					[]ctValue{item, ctNumberValue(float64(index)), receiver},
+					len(callback.Parameters()))
+				value := e.invoke(callback, args, node, e.phaseSpecificAllowed())
+				if member == "map" {
+					result = append(result, value)
+					continue
+				}
+				if ctTruthy(value) {
+					result = append(result, item)
+				}
 			}
-			if ctTruthy(value) {
-				result = append(result, item)
-			}
-		}
+		})
 		return newCtArray(result)
 	case "reduce":
 		if len(argumentNodes) != 2 {
@@ -2883,13 +2976,15 @@ func (e *comptimeEvaluator) arrayCall(receiver ctValue, member string, node *ast
 		}
 		callback := e.callbackFunction(node, 2, 4)
 		accumulator := e.evaluate(argumentNodes[1])
-		snapshot := append([]ctValue(nil), receiver.arr.items...)
-		for index, item := range snapshot {
-			args := comptimeCallbackArguments(
-				[]ctValue{accumulator, item, ctNumberValue(float64(index)), receiver},
-				len(callback.Parameters()))
-			accumulator = e.invoke(callback, args, node, e.phaseSpecificAllowed())
-		}
+		length := len(receiver.arr.items)
+		e.whileIterating(receiver.arr, func() {
+			for index := 0; index < length; index++ {
+				args := comptimeCallbackArguments(
+					[]ctValue{accumulator, receiver.arr.items[index], ctNumberValue(float64(index)), receiver},
+					len(callback.Parameters()))
+				accumulator = e.invoke(callback, args, node, e.phaseSpecificAllowed())
+			}
+		})
 		return accumulator
 	}
 	return e.unsupported(node, "array method "+member+" is not supported for these comptime arguments")

@@ -187,6 +187,53 @@ describe("compiler-facing comptime intrinsic", () => {
     expect(loaded.second).toEqual({ lowered: "profile" });
   });
 
+  test("strict equality is referential and an iterating callback cannot mutate its receiver", async () => {
+    const build = await compiler();
+    const source = [
+      `import { comptime } from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)};`,
+      `function sameRef(a, b) { return a === b; }`,
+      `const sameRefAtBuild = comptime(sameRef);`,
+      `export const atComptime = sameRefAtBuild([1], [1]);`,
+      `export const atRuntime = sameRef([1], [1]);`,
+      `export const shapes = comptime(() => {`,
+      `  const one = { x: 1 };`,
+      `  const alias = one;`,
+      `  const list = [1];`,
+      `  return [one === alias, one === { x: 1 }, one !== { x: 1 }, list === list, list === [1], list !== [1]];`,
+      `})();`,
+    ].join("\n");
+    const result = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.js": source } });
+    expect(result.ok).toBe(true);
+    // Asserted against JavaScript directly rather than against the other backend:
+    // both backends canonicalized before comparing, so a cross-backend
+    // differential agreed with itself and stayed green over the whole defect.
+    expect(result.calls.map((call) => call.value)).toEqual([false, [true, false, true, true, false, true]]);
+    const loaded = await import(dataModule(result.loweredSources!["main.js"]!));
+    // One emitted module, one retained function, one pair of arguments: the
+    // folded constant and the runtime call must not disagree.
+    expect(loaded.atComptime).toBe(loaded.atRuntime);
+
+    for (const body of [
+      `[1, 2].map((value, index, all) => { if (index === 0) { all[1] = 99; } return value; })`,
+      `[1, 2].filter((value, index, all) => { if (index === 0) { all[1] = 99; } return value > 50; })`,
+      `[1, 2].reduce((total, value, index, all) => { if (index === 0) { all[1] = 99; } return total + value; }, 0)`,
+    ]) {
+      const scratch = await compiler();
+      const refused = await compileComptimeIntrinsics({
+        compiler: scratch.compiler,
+        sources: {
+          "case.ts": `import { comptime } from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)};\ncomptime(() => ${body})();`,
+        },
+      });
+      expect(refused.ok).toBe(false);
+      expect(refused.diagnostics).toEqual([expect.objectContaining({
+        code: ComptimeIntrinsicDiagnosticCode.UnsupportedExpression,
+        file: "case.ts",
+        line: 2,
+      })]);
+    }
+  });
+
   test("eliminates target branches and tracks embedded text through the static cache", async () => {
     const build = await compiler();
     const source = [
