@@ -131,11 +131,50 @@ TypeScript's non-null assertion does not exist in `.sm`. Removing that meaning e
 const name = findUser(id)!?.nickname ?? "anonymous"
 ```
 
+### Where `!` Is Accepted
+
+Placement is **unrestricted**. Because `!` lowers to an expression in every
+position, it preserves the authored evaluation order everywhere, so
+`r!.trim()`, `r![0]`, `maybe ?? r!` and `f(r!)` are all accepted alongside the
+simple `const x = r!` form.
+
+:::warning The prototype has not caught up — (SA-1)
+Re-measured on 2026-08-27 against the conformance reference backend over
+`poc/src`: of the six forms [Failure Semantics](/specification/failures)
+§Refusal Conditions lists as accepted, **two compile** — `r!.length` and
+`r! ?? "fallback"` — and the other four (`r!.trim()`, `r![0]`, `maybe ?? r!`,
+`f(r!)`) are refused with `SMITHERS1204` ("would require control-flow-aware
+evaluation-order rewriting"), which is the *withdrawn* fourth refusal. The corpus
+certifies both the two acceptances and the four refusals in
+`02-unwrap-propagation`. Until the implementation catches up, write the
+propagation as a simple statement.
+
+This gap is recorded as `(SA-1)`; the marker convention and the register of
+current gaps are in [Specification Status](/specification/index)
+§Specification–Implementation Gaps.
+:::
+
+Exactly three conditions refuse a `!` under the current rule, each with its own
+diagnostic:
+
+1. the enclosing function has no Result channel and infers no failures;
+2. the operand's provenance is not a Result;
+3. the `!` is lexically inside a `try` block that has a `catch` clause.
+
+The third one is worth knowing before you reach for `try`/`catch` at an interop
+boundary. The failure exit unwinds the delimited computation: `finally` blocks and
+`using` disposals run, and `catch` clauses do not. Authored text that put a `!`
+inside a `try`/`catch` would read as though the failure were catchable when it is
+not, so it is refused rather than silently lowered. Delivering the failure through
+the JavaScript exception channel so that `catch` observes it is prohibited.
+
+[Failure Semantics](/specification/failures) §Refusal Conditions is normative.
+
 ## Defects and Foreign Exceptions
 
 Expected domain errors belong in `E`. A failed compiler/runtime invariant uses `Reflect.panic(...)`. Any unannotated TypeScript or JavaScript call adds this distinguished checked `panic` case, including undeclared exceptions, Promise rejections, and signature violations. A caller must propagate it, catch it explicitly, or use a trusted adapter to translate it to a specific `Error` subclass. Trusted `@throws {never}` metadata opts out; `@throws {T}` declares a precise foreign channel. Ordinary Result recovery does not swallow panic implicitly.
 
-JavaScript statement-form `try/catch` remains available for low-level interop. It is not the typed recovery API.
+JavaScript statement-form `try/catch` remains available for low-level interop. It is not the typed recovery API, and a `!` may not appear inside a `try` block that has a `catch` clause — see §Where `!` Is Accepted.
 
 ## Cleanup
 
@@ -164,3 +203,10 @@ return temporary
 ```
 
 Smithers previously had `defer` and `errdefer` for this. Both were removed: neither is a TC39 proposal, `using` already covers scope exit, and error-path cleanup is expressible with the Result combinators above. How `using` disposal orders against a compiler-generated `!` early return is [not yet settled](/specification/control-flow).
+
+The same open specification has to cover **abandonment**, which is new: when a
+handler declines to resume a suspended computation, every live `using` and
+`await using` scope in it is disposed in reverse acquisition order and every
+`finally` block runs, while `catch` clauses do not. A computation is never
+abandoned with a resource undisposed. Whether a disposal error raised during
+abandonment can be observed is **open**.

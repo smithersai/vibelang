@@ -29,6 +29,32 @@ Application code should usually depend on a `FileSystem` capability instead.
 thenables can invalidate Smithers's static guarantees. The compatibility
 specification defines which uses add `panic` and which are rejected.
 
+:::note Open — `eval`, and the specification is behind the code
+[Compatibility](/specification/compatibility) §Dynamic Features still carries a
+**locked** sentence permitting `eval` and `Function`, while shipped code already
+closes that escape. This is the one place where **the implementation is
+deliberately ahead of the specification** until the conflict is ratified, and it
+is the most urgent of the open questions in `DECISIONS.md`. Nothing on this page
+decides it either way.
+
+Replay raises the stakes rather than lowering them: an `eval`'d string inside a
+Flow body produces no journal entry, so there is no divergence to detect. See
+[Durable Execution](/specification/durable-execution) §Flow Determinism,
+obligation 2.
+:::
+
+:::note Open — dynamic import
+The ledger, the conformance corpus, and the shipped product disagree three ways.
+The lock reads as permitting it; the compiler reads it narrowly and the corpus
+certifies **two cases as compiling and running**; and the shipped CLI refuses
+**every** dynamic import — including those two — as deferred. Recorded in
+`DECISIONS.md` §TypeScript target. No page should move either side first.
+
+Inside a Flow body a dynamic import is also the unresolvable callee the Effect
+Manifest's soundness rule governs: reject it, or widen the Manifest to the
+callee's whole module. Never narrow.
+:::
+
 ## Adapt a Throwing Boundary
 
 ```ts
@@ -66,6 +92,17 @@ async function fetchUser(
 Authored Smithers consumes Promises with `await`, never instance `.then`, `.catch`, or `.finally`. Imported code may use them internally.
 
 At declaration boundaries, trusted `@throws {never}` metadata removes the default panic case and `@throws {T}` declares the stated failure channel. These annotations are trust claims, not proof that a foreign implementation obeys them.
+
+:::note Open — the marker is doing two jobs
+The `@module @throws {never}` marker carries **module-initialization safety**,
+which it enforces and which is walked transitively, and it sits next to **prelude
+access control**, which is enforced not by the marker but by **specifier form**
+against an exact registry. The two agree today only because the compiler-owned
+runtime modules that construct `Result` variants are unmarked *on purpose*, and
+that unmarkedness is the forgery guarantee. A future edit that "tidied up" the
+unmarkedness would look like a cleanup and be a forgery hole. Recorded in
+`DECISIONS.md` §Compiler and delivery; not resolved here.
+:::
 
 ## Nullable Boundaries
 

@@ -59,7 +59,7 @@ Layer.provide(Production, async () => {
 })
 ```
 
-A base layer is conceptually `Layer<Provides>`. It provides service instances; it does not acquire them or own their lifetime. A missing dependency is a compile error when the closure is known.
+A base layer is conceptually `Layer<Provides>`. It provides service instances; it does not acquire them or own their lifetime. A missing dependency is a compile error when the closure is known — with one recorded exception: a **subclass** of a capability class is assignable to `typeof Capability` but carries a different nominal key, so such a program can check clean and panic at run time. That is [an open question](/reference/capabilities), not a rule this page can state.
 
 Acquire resources in ordinary code and make cleanup explicit with `using` before constructing the Layer. Resource-building conveniences may be added later, but they are not part of the base Layer contract.
 
@@ -102,10 +102,14 @@ may also expose an explicit `Sync` variant.
 
 `Layer.provide(layer, body)` keeps only the dependency environment active until `body` and the Promise returned by `body` settle. It does not discover, supervise, cancel, or join other Promise work. Every Promise started in authored `.sm` must be awaited directly or consumed by a recognized combinator whose returned Promise is itself consumed; detached work is unavailable.
 
-The environment remains active until the Promise returned directly by `body`
-settles, including its fulfillment or rejection transition. A Promise created
-before `provide` is outside the scope unless the body explicitly awaits it.
-This is a lifetime boundary, not task ownership.
+You do not have to arrange that scope by hand. `Layer.provide` installs a handler
+that answers the capability requests inside `body`, and the handler holds the
+environment on its own stack rather than in ambient storage, so an environment
+cannot outlive the computation it scopes — no revocation step, settlement hook,
+or Promise-provenance rule is needed. Any Promise the body returns is fine, and
+hosts that cannot observe Promise settlement synchronously are fully supported.
+This is a lifetime boundary, not task ownership. See
+[Effects](/specification/effects) §Extent Is Structural.
 
 :::note Direction
 Merge and nested-override precedence, cycle diagnostics, and

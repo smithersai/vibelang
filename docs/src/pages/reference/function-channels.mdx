@@ -46,6 +46,20 @@ R = Database | Logger
 
 Duplicate Error members collapse in unions.
 
+## Rows on Function Values
+
+A function's **effect row** is the pair `(E, R)`. It is part of the function's
+static type, is preserved in exported declarations, and is carried by a function
+**value**, not only by a function declaration:
+
+- assigning a function with a non-empty row where a function with a smaller row is expected is a type error;
+- an unannotated function type carries the empty row;
+- a call whose callee the compiler cannot resolve, and whose callee type carries no row, is rejected rather than compiled with an assumed calling convention;
+- a function whose row is empty is never emitted in the resumable calling convention — an infallible function is not wrapped.
+
+The last point is what keeps the row from becoming a tax on ordinary code. See
+[Effects](/specification/effects) §Effect Rows.
+
 ## Public Signatures
 
 ```ts

@@ -25,11 +25,11 @@ smithers doctor --format json
 | Command | Contract |
 | --- | --- |
 | `check` | Checks the complete project graph, including failure and requirement rows, without writing output. |
-| `compile` | Emits JavaScript, declarations, source maps, generated asset modules, and compiled Flow templates as requested. |
+| `compile` | Emits JavaScript, declarations, source maps, generated asset modules, and emitted Flow bodies with their Effect Manifests as requested. |
 | `run` | Checks and executes one application entry on the selected JavaScript host. |
 | `test` | Discovers, checks, and runs the project's tests with deterministic reporting and configured resource limits. |
 | `inspect` | Reports types, failure and requirement rows, compiler-known inputs, generated modules, and Flow metadata without executing the program. |
-| `plan` | Reads compiled Plan IR, validates and optionally specializes preview input, and prints the resulting graph without dispatching Actions. |
+| `plan` | Reads a compiled Flow's Effect Manifest, validates optional preview input, and prints the Flow's reachable Actions, requirement row, external-input contracts, and failure row without loading the Flow body or dispatching Actions. |
 | `build` | Resolves deployment providers and emits coordinator, worker, manifest, codec, and signature inputs for selected Flows. |
 | `format` | Formats supported source files or checks whether they are formatted. |
 | `lsp` | Runs the Smithers language server over stdio. |
@@ -59,8 +59,8 @@ smithers check --project smithers.json --format json
 ```
 
 `check` performs the same graph discovery, asset loading, comptime evaluation,
-Flow lowering, declaration-boundary validation, and semantic checks as
-`compile`, but never emits project artifacts.
+Flow body and Effect Manifest derivation, declaration-boundary validation, and
+semantic checks as `compile`, but never emits project artifacts.
 
 ## Compile
 
@@ -133,20 +133,32 @@ smithers plan build/Build.flow.json --input preview.json
 smithers build --flow Build --outDir dist
 ```
 
-`plan` consumes emitted Plan IR. It verifies the Flow identity and schema,
-validates optional preview input, specializes only branches known from that
-input, and leaves unknown branches and parameterized fan-out explicit. It never
-imports the durable source function or dispatches an Action.
+`plan` performs the **inspection** phase. It consumes a Flow's Effect Manifest
+**(PR-1)**, verifies the Flow identity and schema, validates optional preview
+input, and reports the Flow's reachable Actions, capability requirement row,
+external-input contracts, and failure row. It never loads or invokes the emitted
+Flow body and never dispatches an Action.
+
+What it reports is a **bound on what the Flow may request**, not a prediction of
+what a run will do. The Manifest carries no control-flow edges, no branch
+structure, and no execution counts, so a branch whose condition is unknown is not
+reported at all — the previous behavior of emitting an explicit conditional or a
+parameterized fan-out template is withdrawn, not reworded.
 
 `build` resolves the selected deployment Layers, validates every Action
 provider and policy, partitions coordinator and worker artifacts, derives wire
-codecs, and emits a canonical deployment manifest. Signing is a separate
-explicit step or configured build policy; an unsigned artifact cannot be
-silently treated as authenticated.
+codecs, and emits a canonical deployment manifest. The emitted Flow body must
+survive tree-shaking into every artifact that can create or resume an execution
+of that Flow. Signing is a separate explicit step or configured build policy; an
+unsigned artifact cannot be silently treated as authenticated, and a signature
+attests to what a Flow **is and may request**, not to what a run will do.
 
 :::note Direction
-The final Plan artifact extension, provider configuration, signing commands,
-deployment profiles, and remote publication workflow remain open.
+The artifact extension, provider configuration, signing commands, deployment
+profiles, and remote publication workflow remain open. The command is still
+spelled `plan` although the artifact it reads is the Effect Manifest rather than
+a plan; whether to rename it is a product decision no page has made, so it is
+recorded here rather than pre-empted.
 :::
 
 ## Format

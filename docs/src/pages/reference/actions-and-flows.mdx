@@ -1,4 +1,4 @@
-# Actions & Flows [Reference for durable signatures, planning, and execution]
+# Actions & Flows [Reference for durable signatures, inspection, and execution]
 
 Actions and Flows are compiler and library primitives. The semantics below are
 accepted unless marked open.
@@ -25,7 +25,12 @@ Schemas and channel rows are derived from `FunctionSignature`.
 Name.run(input)
 ```
 
-Inside Flow compilation, `run` emits a Plan IR node and returns a typed symbolic Result. Calling `!` emits an Error propagation edge. Outside Flow compilation, the runtime dispatches the configured implementation.
+Inside a Flow body, `run` emits a **journaled effect request** bearing a stable
+site identity and the derived codecs for its input and answer, and evaluates to
+an ordinary `Result`. Applying `!` to that Result emits the ordinary failure
+exit; it carries no durable-specific meaning. Outside a Flow, the runtime
+dispatches the configured implementation directly. Neither compilation nor
+inspection executes an Action implementation.
 
 ## Flow
 
@@ -35,37 +40,91 @@ import { durable } from "smithers:flows"
 const Name = durable(function Name(
   input: Input,
 ): Result<Output, ActionError> {
-  // Action calls and representable control flow
+  // Action calls and ordinary TypeScript control flow
   return output
 })
 ```
 
-`durable` is a compiler-recognized imported function, not a keyword. Its argument must be an inline or otherwise statically resolvable function. The compiler lowers that function's checked syntax and control flow into Plan IR without invoking it with proxy values.
+`durable` is a compiler-recognized imported function, not a keyword. Its argument must be an inline or otherwise statically resolvable function. The requirement is not that the body can be lowered to a plan; it is that the compiler can **digest, version, and address** the Flow's source.
 
-The source function may capture compiler-known immutable values only. It is removed after plan compilation.
+A Flow is an ordinary function placed under the durable handler. `durable(...)`
+does not change what the function computes; it changes only which handler answers
+its effect requests. Branches, loops, `let` bindings, closure capture, and
+recursion execute unchanged. Capture of ordinary runtime values, including
+mutable local state, is unrestricted.
 
-## Plan/Preview
+The compiler emits the Flow body in the resumable calling convention and
+publishes its Effect Manifest **(PR-1)**. The emitted body must be present in
+every artifact that can create or resume an execution of the Flow, reachable by
+the Flow's pinned source identity; tree-shaking must not remove it. A coordinator
+must not require a live function side table, a proxy-recorded graph, or any value
+that did not arrive from the journal or from the Flow's declared input.
 
-Plan/preview reads emitted Plan IR and may specialize compiler- or input-known branches. It never loads or invokes the durable source function or an Action implementation. Unknown branches and runtime-sized fan-out remain explicit IR templates.
+## Flow Determinism
 
-## Plan IR Nodes
+On **every execution and every resumption**, a Flow body must not observe wall
+clock, monotonic clock, randomness, environment, process state, filesystem,
+network, or mutable host state except through an effect request its handler
+answers; must not evaluate a runtime string as code; must not observe GC timing
+or cross-agent shared memory; and must not observe host time zone or locale
+except through a capability. Every started Promise must be consumed, and every
+arrival-order-dependent combinator must be dispatched through the runtime
+scheduler. Iteration order over host collections is canonicalized at the
+capability boundary.
 
-The initial IR includes:
+[Durable Execution](/specification/durable-execution) §Flow Determinism is
+normative and states which of these are enforced statically.
 
-- constant, input, projection, and pure expression
-- Action call
-- parallel join and explicit sequence
-- branch, switch, Result/Error matching, and completion
-- parameterized loop and fan-out templates
-- inline Flow, child Flow, and next-round handoff
-- durable sleep, signal, and cancellation boundary
-- compensation and finalization
+## Effect Manifest
+
+The compiler publishes, per Flow, the set of reachable Action identities, the
+capability requirement row, the external-input contracts, the failure row, and
+the site table **(PR-1)**. The Manifest is **sound with respect to reachability**
+and may be imprecise about count and order. It carries no control-flow edges, no
+branch structure, and no execution counts: it bounds the request alphabet, it
+does not predict a trace.
+
+A call whose callee the compiler cannot resolve must either be rejected inside a
+Flow body or force the Manifest to include the callee's whole module effect set.
+It must never silently narrow the Manifest.
+
+## Inspection
+
+Inspection reads the Effect Manifest and reports the Flow's reachable Actions,
+requirement row, external-input contracts, and failure row **(PR-1)**. It never
+loads or invokes the Flow body or an Action implementation. It reports a **bound**
+on what a Flow may request and must not be relied on as a prediction of a run; an
+unresolved branch is not reported at all.
 
 ## Ordering
 
-Data and control edges determine Action order. Source order alone does not serialize independent calls. Explicit sequencing syntax is still open.
+Effect ordering is the **program order of the body**. Concurrency is started
+explicitly through a recognized combinator. The runtime assigns each concurrent
+request a deterministic submission index before dispatch, journals the completion
+order it observed, and reproduces that order on resumption. Implicit reordering
+or auto-parallelization of independent Action calls does not occur.
 
-Independent nodes may run concurrently.
+Explicit sequencing syntax is **closed**, not open: there is nothing left to
+sequence. The loss of implicit fan-out parallelism is a real capability loss and
+whether it is acceptable is an **open product question** — see
+[Durable Execution](/specification/durable-execution) §What Replay Trades Away.
+
+## Journal Identity
+
+A journal entry's key is `(siteIdentity, occurrenceIndex)` **(PR-2)**. The site
+identity is content-addressed from the Effect Manifest; the occurrence index is
+assigned at **submission**, in the scheduler's deterministic order — never at
+completion, and never as a bare execution ordinal. Two requests at different
+sites may complete in either order and still converge.
+
+A request whose site identity does not match the journal entry at its occurrence
+index, or a body that completes with journal entries unconsumed, is a
+**divergence**: the runtime names the offending source site, fails the attempt,
+does not commit, and abandons the execution.
+
+An execution is pinned to the Flow source identity it started under; a
+coordinator with a different identity abandons it **(PR-3)**. A facility
+permitting a Flow body to change while executions are live is **open**.
 
 ## Durable Values
 
@@ -76,6 +135,14 @@ Durable<T>
 ```
 
 Plain data derives this contract. `any` and `unknown` require explicit codecs at an Action boundary. Functions, capabilities, handles, and weak references require durable representations or are rejected.
+
+This contract has a second job: it is also the **journaling classifier**. An
+effect request is journaled if and only if its answer satisfies it.
+`Clock.context()` answers with a service, which is not codec-representable, so it
+is not journaled and is re-answered by the handler stack on every resumption;
+`clock.now()` answers with a number, which is, so it is journaled. No annotation,
+marker, or partition syntax is added. See
+[Effects](/specification/effects) §The Journaling Classifier.
 
 ## Recovery Policy
 
@@ -101,26 +168,75 @@ Memoization does not imply determinism or hermeticity.
 
 A deployment build may emit:
 
-- coordinator bundle
-- target-specific worker bundles
+- coordinator bundle, carrying the emitted Flow bodies it can resume
+- tree-shaken TypeScript worker bundles
 - routing and placement manifest
 - derived wire codecs and RPC bindings
 - implementation and policy digests
+- per-Flow Effect Manifests **(PR-1)**
 
 ## Deployment Authentication
 
-A deployment is a canonical signed envelope over the exact Plan, manifest,
-coordinator, worker pools, implementation and policy digests, schemas,
-capability grants, and artifact identities. The coordinator verifies the
-envelope against out-of-band trust roots before it constructs any worker
-transport. A worker pool may use only a transport authorized for its exact
+A deployment is a canonical signed envelope over
+`{flowSourceDigest, effectManifest, journalSchemaVersion, routingManifest}`,
+pinning coordinator, worker artifact, implementation, policy, schema,
+capability-grant, and Flow source identities. `flowSourceDigest` covers exactly
+the emitted Flow bodies that can create or resume an execution. The coordinator
+verifies the envelope against out-of-band trust roots before it constructs any
+worker transport. A worker pool may use only a transport authorized for its exact
 declared sandbox and placement.
 
-The signature authenticates artifact provenance. It does not attest a live
+The signature attests to **what a Flow is and what it may request**. It must not
+be described as attesting to what a run will do. It does not attest a live
 provider closure, prove what bytes a remote worker loaded, provide transport or
 sandbox attestation, or replace freshness, anti-rollback, key custody,
 rotation, revocation, and principal authorization.
 
 ## Open Semantics
 
-Stable persisted ID syntax, loop and fan-out rules, explicit sequencing, wire encoding, schema migration, provider APIs, and deployment configuration are not finalized.
+Persisted-ID **encoding**, journal boundedness and a continue-as-new equivalent,
+whether the loss of implicit fan-out parallelism is acceptable, how an
+order-independent concurrency combinator reaches the deterministic scheduler,
+what the Manifest site-table diff normatively obliges, concurrent-sibling failure
+policy, wire encoding, schema migration, provider APIs, and deployment
+configuration are not finalized.
+
+Stable *source* identity, loop and fan-out semantics, and explicit sequencing are
+**closed**: site identity is normative and program order is order.
+
+## Amendment Record — one-shot delimited continuations, 2026-08-27
+
+The Action contract, durable values, recovery policy, reuse policy, and the
+security caveats on this page are unchanged. What changed is that a Flow is no
+longer a lowered plan. Four claims this page made are withdrawn or inverted:
+
+**Withdrawn — "`run` emits a Plan IR node and returns a typed symbolic Result.
+Calling `!` emits an Error propagation edge."** There are no plan nodes, symbolic
+Results, or edges. `run` emits a journaled request and evaluates to an ordinary
+Result; `!` is the ordinary failure exit.
+
+**Withdrawn — the whole `## Plan IR Nodes` section.** Constants, projections and
+pure expressions are ordinary TypeScript appearing in no artifact; the Action call
+became a journaled request keyed `(siteId, occurrence)`; parallel join became an
+explicit scheduler-mediated combinator; the explicit-sequence node is closed;
+branch, switch, matching and completion became ordinary statements with `!` as
+the failure exit; loop and fan-out templates became ordinary loops, and their
+static ceilings are gone with no replacement (journal boundedness is **open**);
+the next-round handoff is withdrawn. Sleep, signal, cancellation, compensation
+and finalization are retained as runtime behavior rather than node kinds.
+
+**Inverted — "The source function may capture compiler-known immutable values
+only. It is removed after plan compilation."** Both halves are now the opposite.
+Capture is unrestricted, and the emitted body must be present in any artifact
+that can resume an execution. The determinism obligation that replaced the
+capture restriction is stronger in a different direction: it holds on every
+execution and every resumption, not only while a template is built.
+
+**Withdrawn — "Data and control edges determine Action order. Source order alone
+does not serialize independent calls. … Independent nodes may run concurrently."**
+Program order is order. The permission for implicit concurrency is withdrawn as a
+**capability loss**, not a tidy-up.
+
+Sentences marked **(PR-1)**, **(PR-2)**, or **(PR-3)** rest on decisions in
+`DECISIONS.md` §Pending ratification that are **provisional** until the owner
+signs off.

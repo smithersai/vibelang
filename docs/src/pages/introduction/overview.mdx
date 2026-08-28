@@ -121,7 +121,7 @@ const user = getUser(users, id).pipe(
 
 The compiler sees `Result<User, NotFound>` and lowers the plain return and Error throw into its two variants. The caller must propagate or handle that Result. `error.match` is exhaustive over the known Error union.
 
-Result is an ordinary must-use value. There is no generator ceremony or universal effect interpreter; functions remain eager with ordinary stacks.
+Result is an ordinary must-use value. There is no generator ceremony or universal effect interpreter in authored code: you write and call ordinary eager functions, with no `Effect` value, no do-notation, and no `.run()` step. The compiler may emit a function whose effect row is non-empty in a resumable calling convention, but that convention is unspellable in `.sm` and never appears in a type, a declaration, or a diagnostic.
 
 ### Dependencies in the function signature
 
@@ -416,10 +416,11 @@ Every Promise started in authored `.sm` must ultimately be consumed by `await`, 
 
 ### Make execution durable where it matters
 
-Durability is explicit. Actions define persistence boundaries, while the
-compiler lowers functions passed to `durable(...)` into typed, resumable
-execution plans. The runtime coordinates those plans across local or remote
-worker pools without changing their source-level contract.
+Durability is explicit. Actions define persistence boundaries; a function passed
+to `durable(...)` stays an ordinary function and simply runs under a **journaling
+handler**, so branches, loops, closures, and recursion behave exactly as written.
+The runtime coordinates those executions across local or remote worker pools
+without changing their source-level contract.
 
 :::code-group{syncKey=""}
 
@@ -464,12 +465,13 @@ const release = (input: ReleaseInput) =>
 
 :::
 
-The compiler derives success and Error schemas, plan edges, and worker contracts
-from each Action's Result signature. The durable runtime resumes an execution
-after interruption without rerunning Actions whose outcomes are already
-committed, including when coordination and workers run on separate machines.
-Effect adds typed composition and retry policies, but an Effect program is not
-durably journaled across process restarts by itself.
+The compiler derives success and Error schemas and worker contracts from each
+Action's Result signature. The durable runtime resumes an execution after
+interruption by re-executing the body and answering each request from the
+journal, so an Action whose outcome is already committed is not run again —
+including when coordination and workers run on separate machines. Effect adds
+typed composition and retry policies, but an Effect program is not durably
+journaled across process restarts by itself.
 
 ### Start with TypeScript, stay with TypeScript
 
@@ -489,7 +491,7 @@ Smithers is designed to provide these capabilities out of the box:
 - **TypeScript ecosystem:** import TypeScript packages at an explicit foreign boundary while authored `.sm` keeps its own grammar
 - **Foreign source imports:** call Zig and Rust through generated, typed Wasm bindings without hand-written glue
 - **Comptime type generation:** derive validators, codecs, and real types without maintaining a parallel schema language
-- **Durable programs:** compile code into typed, resumable execution plans that can coordinate work across machines
+- **Durable programs:** run ordinary functions under a journaling handler so they resume after interruption and coordinate work across machines
 - **Typed Results:** use must-use `Result<A, E>` values and exhaustive Error matching across synchronous and asynchronous functions
 - **Capability-based dependencies:** make databases, clocks, filesystems, and other services visible in function types
 - **Typed asset imports:** load JSON, Markdown, MDX, SQL, GraphQL, Zig, and Rust through compiler-tracked loaders

@@ -134,4 +134,9 @@ const Build = durable(function Build(
 })
 ```
 
-The compiler lowers the checked body without invoking it. Plan mode reads emitted IR and runs neither the Flow nor any Action. [Learn more](/guide/durable-execution).
+The compiler emits the checked body without invoking it, and publishes a static
+Effect Manifest beside it. `durable(...)` does not change what the function
+computes — branches, loops, closures, and recursion work as written — only which
+handler answers its Action calls, so each completed Action is journaled and a
+restart resumes instead of repeating. Inspection reads the Manifest and runs
+neither the Flow nor any Action. [Learn more](/guide/durable-execution).

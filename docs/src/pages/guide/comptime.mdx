@@ -147,8 +147,15 @@ Comptime is the shared foundation for:
 - compiling Markdown, MDX, SQL, and GraphQL
 - generating Zig and Rust bindings
 - selecting platform implementations
-- supplying compiler-known values captured by durable Flows
+- supplying compiler-known values to durable Flows
 
-Durable Flow lowering is a separate compiler pass initiated by `durable(...)`; it does not execute a Flow through the comptime evaluator.
+A Flow's emitted body and Effect Manifest are produced by a separate compiler
+pass initiated by `durable(...)`; a Flow is never executed through the comptime
+evaluator. A Flow body is not restricted to comptime-known captures — capture of
+ordinary runtime values, including mutable local state, is unrestricted. What a
+Flow body may not do is *observe* the clock, randomness, the environment,
+services, or I/O except through a capability, on every execution and every
+resumption. See
+[Durable Execution](/specification/durable-execution) §Flow Determinism.
 
 Each feature uses the same deterministic evaluator and dependency graph instead of inventing a separate code-generation system.

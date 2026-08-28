@@ -174,7 +174,7 @@ Syntax that would satisfy the three conditions if a use case ever arises, mostly
 | `<T>expr` | legacy assertion, illegal in `.tsx`, universally lint-banned |
 | `import x = require()` / `export =` | pure legacy, banned by `erasableSyntaxOnly` |
 | `label: { … }` as a **statement** | `no-labels` is a default lint rule. Bare labels and `break label` are stock ECMAScript and always parsed; only value-carrying breaks and expression-position labels needed grammar |
-| `yield*` | free if generators are barred from `.sm` |
+| ~~`yield*`~~ | **no longer free.** `yield*` is the compiler's own emission form for a function with a non-empty effect row, and an authored `function*` may not declare or infer one. The slot is reserved, not available. See [Effects](/specification/effects) §What This Page Does Not Add |
 
 Deliberately unavailable: `void` (claimed by the TC39 Discard Bindings proposal), `debugger` and `for...in` (real runtime semantics), and `?`, `??`, `?.` (the absence axis).
 

@@ -44,6 +44,44 @@ documentation defect and must be reconciled; implementation behavior does not
 resolve it. Until reconciliation, the decision ledger is authoritative for the
 specific decision it records.
 
+## Specification–Implementation Gaps
+
+A maturity label says how settled a rule is. It does not say whether the shipped
+compiler implements it. Those are independent axes, and this page's opening
+sentence — that the specification does not describe the behavior of a particular
+implementation — is why they have to be.
+
+Where a gap between this specification and the shipped compiler has actually been
+**measured**, it is marked inline so a reader can find it, and marked with its
+**direction**, because the two directions call for opposite responses. The
+markers are greppable, in the same spirit as the decision ledger's `(PR-n)`
+provisionality markers.
+
+| Marker | Direction | Meaning |
+| --- | --- | --- |
+| **(SA-n)** | specification ahead | this specification promises behavior the shipped compiler refuses today. The marker names the diagnostic codes that refuse it and the conformance cases that certify the refusal. |
+| **(IA-n)** | implementation ahead | the shipped compiler already does something this specification does not permit, or forbids. |
+
+What a marker does and does not mean:
+
+- A marker **records** a gap; it does not resolve one. Nothing carrying `(SA-n)` or `(IA-n)` is thereby weakened, and neither side may be quietly edited to match the other.
+- An example carrying `(SA-n)` states the contract. It is **not** an example of what compiles today: copied into a `.sm` file it draws the diagnostics the marker names.
+- A conformance case certifying the current refusal is evidence **for** the gap, not evidence against the rule. It MUST stay green and MUST NOT be weakened to fit this specification. It is retired when the implementation moves, and its retirement condition is named at the marker.
+- A gap closes when one side is deliberately changed. Until then it is a recorded conflict rather than an unnoticed one.
+
+### Current markers
+
+| Marker | Where | Gap |
+| --- | --- | --- |
+| **(SA-1)** | [Failure Semantics](/specification/failures) §Refusal Conditions | placement of postfix `!` is unrestricted here. The shipped frontend still enforces the withdrawn statement-walk rule and refuses four of the six accepted forms with `SMITHERS1204`. |
+| **(SA-2)** | [Durable Execution](/specification/durable-execution) §Compiler-Recognized API and §Flow | a Flow body is an ordinary function here. The shipped durable frontend is still the static-plan model: it refuses a runtime branch (`SMITHERS4106`) and a runtime loop (`SMITHERS4107`), types `Action.run` as `A \| undefined` rather than `Result<A, E>`, and does not lift a plain `return` to a Result inside a durable body. |
+| **(IA-1)** | [Compatibility](/specification/compatibility) §Dynamic Features | `eval` remains permitted here. The shipped compiler already refuses dynamic code evaluation, and the conformance corpus deliberately certifies the refusal ahead of this page. Recorded there as contested and **open**; this marker labels the direction and decides nothing. |
+
+No document in this repository schedules the work that closes an `(SA-n)` gap.
+The provisional decisions behind the 2026-08-27 revision are recorded in the
+decision ledger under **Pending ratification**; there is no migration plan beside
+them. That absence is recorded here rather than filled in with an invented one.
+
 ## Specification Map
 
 - [Compatibility](/specification/compatibility) defines the TypeScript interop boundary and target model.

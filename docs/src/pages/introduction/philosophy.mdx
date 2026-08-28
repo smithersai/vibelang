@@ -2,7 +2,7 @@
 
 ## TypeScript-Shaped, With an Explicit Boundary
 
-Imported `.ts` and `.js` preserve host behavior. A `.sm` file uses a TypeScript-derived grammar plus Smithers semantic checks and lowering. This boundary permits must-use Results, Promise-chain restrictions, capability inference, and static durable planning without pretending that all JavaScript already obeys those rules.
+Imported `.ts` and `.js` preserve host behavior. A `.sm` file uses a TypeScript-derived grammar plus Smithers semantic checks and lowering. This boundary permits must-use Results, Promise-chain restrictions, capability inference, and statically derived durable boundaries without pretending that all JavaScript already obeys those rules.
 
 ## Expected Failures Are Values
 
@@ -45,7 +45,7 @@ configuration and deterministic testing one mechanism.
 
 ## Comptime Is Hermetic
 
-`comptime(...)` may generate values, types, validators, and loaders, but it cannot silently observe ambient filesystem state, the network, the clock, or randomness. External compiler inputs arrive through tracked imports or loader contexts. Durable planning is separate static lowering initiated by `durable(...)`; a Flow is never run to discover its graph.
+`comptime(...)` may generate values, types, validators, and loaders, but it cannot silently observe ambient filesystem state, the network, the clock, or randomness. External compiler inputs arrive through tracked imports or loader contexts. A Flow's durable boundaries are derived by a separate compiler pass initiated by `durable(...)`; a Flow is never run — with proxy values, symbolic values, or otherwise — to discover what it may request, at any phase including replay.
 
 ## Standard Imports for Non-Code Inputs
 

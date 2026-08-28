@@ -42,7 +42,7 @@ Compiler support enables:
 - one visible `Promise<Result<A, E>>` model for async failure
 - validators derived from ordinary types at comptime
 - target selection and platform capability checking
-- durable Plan IR lowered statically from checked source
+- durable execution derived from checked source, with ordinary control flow
 
 ## Why Result Values?
 
@@ -50,7 +50,19 @@ An earlier design erased a separate failure row and required new propagation and
 
 ## Why Durable Execution Belongs Here
 
-Durable runtimes commonly repeat schemas, error shapes, dependencies, and RPC bindings that the compiler already knows. Passing a statically resolvable function to `durable(...)` lets Smithers lower checked code into Plan IR and derive those boundaries. Planning reads emitted IR; it never executes the Flow or its Actions.
+Durable runtimes commonly repeat schemas, error shapes, dependencies, and RPC bindings that the compiler already knows. Passing a statically resolvable function to `durable(...)` lets Smithers derive those boundaries from types it has already checked.
+
+The function itself stays an ordinary function. `durable(...)` changes only which
+handler answers its Action calls, so branches, loops, closures, and recursion all
+work inside a Flow, and each completed Action is journaled so a restart resumes
+instead of repeating. Inspection reads a compiler-published **Effect Manifest** —
+a bound on what a Flow may request — and never executes the Flow or its Actions.
+
+The trade is stated plainly rather than hidden: the previous design could decide
+statically and totally whether a live execution could move to a new Flow version,
+and could sign an artifact describing *what a Flow will do*. Neither is available
+under replay in that form. See
+[Durable Execution](/specification/durable-execution) §What Replay Trades Away.
 
 Durability remains opt-in. Ordinary functions do not pay for a scheduler.
 
@@ -62,7 +74,7 @@ Smithers is for TypeScript teams that want:
 - explicit transitive dependencies without manual context arguments
 - host-agnostic services across JavaScript runtimes and tests
 - type-driven validation and asset loading
-- statically analyzable durable workflows
+- durable workflows written as ordinary functions, with statically derived boundaries
 
 Smithers fits code that can keep foreign reflection and ambient authority behind
 explicit boundaries. Programs that depend pervasively on unconstrained

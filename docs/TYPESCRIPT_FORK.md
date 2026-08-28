@@ -19,7 +19,8 @@ soundly:
 - must-use Result and Promise-consumption analysis;
 - resolved-identity recognition for compiler-owned modules;
 - type-valued comptime results and generated module symbols;
-- static Flow lowering from checked control and data flow;
+- emission of a non-empty-effect-row function in the resumable calling
+  convention, and derivation of a Flow's Effect Manifest from checked source;
 - declaration metadata, source maps, language-service queries, and diagnostics;
   and
 - atomic whole-project emission after all generated artifacts validate.
@@ -35,9 +36,9 @@ Fork changes MUST be narrow, reviewable, and assigned to one of these seams:
 | --- | --- |
 | source kind and parser | recognize `.sm`, reject retired syntax, and parse declarations in conditionals |
 | binder and checker | nominal Result/Error behavior, failure rows, requirement rows, must-use rules, and intrinsic identity |
-| flow analysis | Result propagation, Promise consumption, capability paths, and durable representability |
+| flow analysis | Result propagation, Promise consumption, capability paths, and durable codec representability |
 | comptime | deterministic evaluation, type production, tracked inputs, and generated modules |
-| durable lowering | lower checked functions to Plan IR without invoking them |
+| durable emission | emit the Flow body in the resumable calling convention and derive its Effect Manifest, without invoking the body |
 | emitter | lower Smithers semantics, preserve module behavior, and emit declarations and source maps |
 | language service | expose the same symbols, rows, diagnostics, navigation, and edits as the compiler |
 
@@ -89,12 +90,20 @@ project resolution
   -> asset/loading graph
   -> comptime evaluation and generated types/modules
   -> failure, requirement, and Promise-consumption analysis
-  -> durable Plan lowering
+  -> durable Flow body emission and Effect Manifest derivation
   -> Smithers semantic lowering
   -> generated-project validation
-  -> declaration, JavaScript, source-map, and Plan emission
+  -> declaration, JavaScript, source-map, and Effect Manifest emission
   -> atomic artifact commit
 ```
+
+The durable stage emits code rather than a plan. A Flow body is compiled in the
+resumable calling convention and must reach every artifact that can resume an
+execution of it; the Effect Manifest published beside it is sets and tables —
+reachable Action identities, requirement row, external-input contracts, failure
+row, site table — and carries no control-flow edges, branch structure, or
+execution counts. See
+[Durable Execution](/specification/durable-execution) §Effect Manifest.
 
 Later phases may request earlier information through explicit compiler APIs,
 but they MUST NOT reparse source text heuristically or execute authored modules

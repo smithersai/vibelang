@@ -88,9 +88,9 @@ At an explicit non-Result boundary, unsafe extraction MAY throw at runtime and M
 
 ### Refusal Conditions
 
-The lowering emits a delegated suspension, which is an expression in every position and therefore preserves the authored evaluation order everywhere. Placement is unrestricted. The conditions that remain on `!` are typing conditions and a control-flow-boundary condition, not lowering conditions.
+The lowering emits a delegated suspension, which is an expression in every position and therefore preserves the authored evaluation order everywhere. Placement is unrestricted **(SA-1)**. The conditions that remain on `!` are typing conditions and a control-flow-boundary condition, not lowering conditions.
 
-`!` is accepted in any expression position:
+`!` is accepted in any expression position **(SA-1)**:
 
 ```ts
 r!.length        // accepted
@@ -100,6 +100,39 @@ r! ?? "fallback" // accepted
 maybe ?? r!      // accepted
 f(r!)            // accepted
 ```
+
+:::warning[(SA-1) — the specification is ahead of the implementation here]
+Measured 2026-08-27 against the conformance JS reference backend over `poc/src`.
+Of the six forms above, **two compile today** and **four are refused**:
+
+| Form | Today | Certified by |
+| --- | --- | --- |
+| `r!.length` | accepted | `02-unwrap-propagation/postfix-bang-as-a-property-access-object-is-accepted` |
+| `r! ?? "fallback"` | accepted | `02-unwrap-propagation/postfix-bang-as-a-nullish-left-operand-is-accepted` |
+| `r!.trim()` | refused `SMITHERS1204` | `02-unwrap-propagation/postfix-bang-before-a-member-call-is-rejected` |
+| `r![0]` | refused `SMITHERS1204` | `02-unwrap-propagation/postfix-bang-before-an-element-access-is-rejected` |
+| `maybe ?? r!` | refused `SMITHERS1204` | `02-unwrap-propagation/postfix-bang-as-a-nullish-right-operand-is-rejected` |
+| `f(r!)` | refused `SMITHERS1204` | `02-unwrap-propagation/postfix-bang-in-a-call-argument-is-rejected` |
+
+A fifth case, `02-unwrap-propagation/unwrap-in-a-compound-expression-is-rejected`,
+certifies two `SMITHERS1204`s on a nested expression the withdrawn rule also
+refused.
+
+`SMITHERS1204` reads "postfix `!` in this expression would require
+control-flow-aware evaluation-order rewriting". That is the **withdrawn**
+lowering speaking: an early `return` is a statement and can only be hoisted to a
+statement position, which is exactly the rationale §Amendment Record retired. The
+sentence above is not aspirational — it follows from the locked lowering, where
+the failure exit is a delegated suspension and therefore an expression. Restating
+the old restriction here would mean re-adopting a rule whose stated reason is no
+longer true.
+
+The five cases above are **not** weakened. They correctly certify what the
+compiler does today, they MUST stay green, and they are the evidence for this
+gap. They are retired — not reinterpreted — when the frontend emits the delegated
+suspension. The coverage rows that cite them are
+`conformance/COVERAGE.md` §4.12–§4.19.
+:::
 
 The `!` operator MUST be rejected unless the enclosing function declares a Result channel or infers a non-empty failure set, and unless the operand's checker-derived provenance is a Result. Each refusal MUST carry its own diagnostic code.
 
@@ -270,6 +303,14 @@ rule is withdrawn with it and MUST NOT be cited. Two of the five conditions —
 no enclosing Result channel and non-Result provenance — were typing conditions
 rather than lowering conditions and survive verbatim under §Refusal Conditions,
 as does the `catch` condition, whose *reason* is rewritten there.
+
+**Withdrawn here, still enforced by the compiler.** The statement-walk rule is
+what the shipped frontend implements: four of the six forms §Refusal Conditions
+now accepts are refused today with `SMITHERS1204`, and five conformance cases
+certify those refusals. That gap is recorded as **(SA-1)** at §Refusal Conditions
+and in [Specification Status](/specification/index) §Specification–Implementation
+Gaps. It is a gap, not a reason to restore the rule: the corpus cases stay green
+and the specification stays as written until the frontend moves.
 
 **Withdrawn — the count of refusals:**
 

@@ -113,7 +113,7 @@ const workflow = durable(function workflow(
 })
 ```
 
-The compiler lowers a statically resolvable durable function to Plan IR without invoking the Flow in plan mode. `durable` is an imported intrinsic, not a keyword.
+The compiler emits a statically resolvable durable function's body and derives its Effect Manifest without ever invoking the body. The function stays an ordinary function: `durable(...)` changes only which handler answers its Action calls. `durable` is an imported intrinsic, not a keyword.
 
 ## Import Attributes
 

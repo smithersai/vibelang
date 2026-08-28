@@ -155,3 +155,26 @@ The library primitives above use FIFO admission, first-observed helper failure,
 child cancellation, and cleanup joining. A Flow's durable scheduler is a
 separate opt-in runtime, not the execution model for ordinary async code.
 :::
+
+## Inside a Flow Body
+
+These combinators behave the same way inside a `durable(...)` body, with one
+addition: the durable runtime owns the dispatch order. Every concurrent effect
+request gets a deterministic submission index before dispatch, the runtime
+journals the completion order it observed, and resumption delivers completions in
+that journaled order. `Promise.race` and `Promise.any` — whose *result* depends on
+arrival order — are reachable only through that scheduler. The scheduler has no
+source-language surface.
+
+:::note Open
+`Promise.all` and its keyed and settled variants are order-independent in their
+result, yet they still start concurrent requests that must acquire submission
+indices deterministically. How an order-independent combinator reaches the
+scheduler is unspecified, and two locked obligations are in tension until it is
+settled. See
+[Durable Execution](/specification/durable-execution) §Deterministic Scheduling.
+
+Separately: what happens to the requests still in flight when one arm of a
+combinator fails — cancelled, awaited, or abandoned, and what is journaled for
+them — is stated by no page. Nothing here should be read as deciding it.
+:::

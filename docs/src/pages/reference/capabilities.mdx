@@ -55,6 +55,18 @@ These names are API direction, not a stable published surface.
 - `provide` removes satisfied requirements from the callback's requirement set.
 - a missing capability is a compile error when the closure is statically known.
 
+:::note Open — subclass substitution at a capability receiver
+That build-time guarantee has a known hole. A concrete `typeof Db` annotation is
+accepted and records the key `Db`, but a **subclass** is assignable to
+`typeof Db` and carries a different nominal key, so a program can check clean
+against a satisfied layer and panic at run time. Both backends behave identically.
+The residual is bounded — a *bound* of `typeof Db` is refused at both receiver
+sites, and a subclass used directly records the subclass — and the unpinned case
+is the middle one. Two of the three candidate fixes would refuse forms the
+language deliberately accepts. Recorded in `DECISIONS.md` §Requirements and
+dependency injection; not resolved here.
+:::
+
 Provider composition is a library API from `smthrs/provider`; there is no special provider statement syntax.
 
 Base Layers receive already acquired service instances. Acquisition and cleanup are explicit ordinary code, initially with `using`; the Layer owns neither the resource nor its finalizer.
@@ -69,10 +81,32 @@ tests supply deterministic ones.
 
 `Layer.provide(layer, body)` keeps the environment active through `body` and the Promise returned by `body`, then revokes it. A Layer does not supervise or join other work, and authored `.sm` has no detached Promise path.
 
-The environment remains active through the exact settlement transition of the
-Promise returned by the body. The asynchronous body must create or explicitly
-await that Promise inside the invocation; adapt a pre-existing Promise with
-`async () => await promise`. A host that cannot preserve this scope MUST fail
-closed.
+Revocation is **structural**, not a settlement hook. `Layer.provide` installs a
+handler that answers the capability keys the layer provides; the handler holds
+the environment on its own stack rather than in ambient storage, and a computation
+that has completed or been abandoned cannot issue a further request. A runtime
+therefore must not require a host promise-settlement hook, must not restrict which
+Promise a provider body returns, and must not refuse an async provider scope on a
+host that cannot observe settlement synchronously. See
+[Effects](/specification/effects) §Extent Is Structural.
 
-Merge and nested-override precedence, cycle diagnostics, and requirement-environment lowering remain to be specified.
+Every started Promise must still be consumed by `await` or a recognized
+combinator whose result is itself consumed. Under replay that is a correctness
+rule rather than lifetime hygiene: an unconsumed Promise is an unjournaled,
+unreproducible interleaving.
+
+Merge and nested-override precedence, cycle diagnostics, and requirement-environment lowering remain to be specified and fail closed.
+
+### Withdrawn — promise-settlement revocation, 2026-08-27
+
+This section previously required that "the asynchronous body must create or
+explicitly await that Promise inside the invocation; adapt a pre-existing Promise
+with `async () => await promise`" and that "a host that cannot preserve this scope
+MUST fail closed."
+
+Those three obligations — the Promise-provenance rule, the author-written adapter,
+and the fail-closed host refusal — are withdrawn as **unnecessary rather than
+relaxed**. The guarantee they protected is unchanged and now holds structurally.
+Hosts previously refused for lacking a synchronous settlement hook are now fully
+supported. See
+[Requirements](/specification/requirements) §Amendment Record.

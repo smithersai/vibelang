@@ -123,7 +123,7 @@ Under replay it becomes a partial static answer plus a named dynamic one. See
 "treat a body edit with live executions as an operational migration" instruction
 is withdrawn.
 
-### Not decided here — five open questions
+### Not decided here — six open questions
 
 These are **not** adopted, not recommended-and-adopted, and MUST NOT be read as
 settled by anything above. Each is recorded in full below with its evidence:
@@ -132,7 +132,16 @@ settled by anything above. Each is recorded in full below with its evidence:
 2. R1 subclass substitution — §Requirements and dependency injection.
 3. Dynamic import: ledger, corpus, and product disagree three ways — §TypeScript target.
 4. `@module @throws {never}` is doing two jobs — §Compiler and delivery.
-5. `compatibility.mdx` §Dynamic Features versus the shipped `eval` refusal — §TypeScript target. **The most urgent of the five**, because shipped behavior already diverges from a locked sentence.
+5. `compatibility.mdx` §Dynamic Features versus the shipped `eval` refusal — §TypeScript target. **The most urgent**, because shipped behavior already diverges from a locked sentence.
+6. Postfix `!` placement: `failures.mdx` §Refusal Conditions versus the shipped `SMITHERS1204` — §Typed failures. Added 2026-08-27 by measurement.
+
+Questions 5 and 6 are the same *kind* of conflict pointing in **opposite
+directions**, and that is the thing a reader must be able to see. In 5 the
+implementation is ahead of a locked permission; in 6 the specification is ahead
+of the implementation. The specification pages carry a direction marker at each
+site — `(IA-n)` and `(SA-n)` — defined in
+[Specification Status](/specification/index) §Specification–Implementation Gaps.
+A marker records a gap and resolves nothing.
 
 Two further gaps were found while applying this revision, in places where the
 proposal was simply silent. They are recorded as questions in §Durable execution
@@ -253,6 +262,40 @@ site-table diff normatively obliges an implementation to do.
   Conditions. The placement and repeated-loop-header conditions are
   **withdrawn**; the 115-case placement measurement that supported them is
   withdrawn with them and must not be cited.
+- **Open — the sentence immediately above is contested by shipped behavior, and
+  here the *specification* is the side that is ahead.** Measured 2026-08-27
+  against the conformance JS reference backend over `poc/src`: of the six forms
+  [Failure Semantics](/specification/failures) §Refusal Conditions lists as
+  accepted, two compile (`r!.length`, `r! ?? "fallback"`) and four are refused
+  with `SMITHERS1204` — "postfix `!` in this expression would require
+  control-flow-aware evaluation-order rewriting" — which is the withdrawn
+  statement-walk rule still being enforced. Five conformance cases in
+  `02-unwrap-propagation` certify those refusals
+  (`postfix-bang-before-a-member-call-is-rejected`,
+  `postfix-bang-before-an-element-access-is-rejected`,
+  `postfix-bang-as-a-nullish-right-operand-is-rejected`,
+  `postfix-bang-in-a-call-argument-is-rejected`, and
+  `unwrap-in-a-compound-expression-is-rejected`), and the product agrees with the
+  corpus, so nothing in `conformance/product-divergence.json` reports it.
+
+  **This is the mirror image of open question 5.** There the implementation is
+  deliberately ahead of a locked permission (`eval`); here the specification is
+  ahead of the implementation. Both are recorded, and each is marked with its
+  direction — `(SA-1)` and `(IA-1)` respectively — so a reader can tell which way
+  a gap points without measuring it again. See
+  [Specification Status](/specification/index) §Specification–Implementation Gaps.
+
+  **What is *not* in question:** the specification sentence stays as written. It
+  is not aspirational — it follows from the locked lowering, in which a failure
+  exit is a delegated suspension and therefore an expression in every position.
+  Restating the old restriction would mean re-adopting a rule whose stated
+  reason ("the lowering emits an early return") is no longer true. Equally, the
+  five corpus cases stay green and must not be weakened to fit the page; they
+  correctly certify what the compiler does today and are the evidence for the
+  gap. **What is open** is only which side moves first and when — a frontend
+  that emits the delegated suspension retires those five cases, and until that
+  lands the language a user can actually write is narrower than this ledger
+  says.
 - **Locked:** Calling `panic(...)` does not widen a return type into
   `Result<A, Panic>`. This follows from the existing rules rather than being a
   new decision: panic is tracked separately from ordinary recoverable Error
@@ -502,7 +545,7 @@ site-table diff normatively obliges an implementation to do.
 - **Locked:** `any` and `eval` remain usable in `.sm`. General Smithers guidance
   may lint against them; the language does not forbid them.
 - **Open — the sentence immediately above is contested, and shipped behavior
-  already diverges from it. This is the most urgent of the five open questions.**
+  already diverges from it. This is the most urgent of the six open questions.**
   The compiler refuses dynamic code evaluation today: `eval`, the `Function`
   constructor, and selection of `constructor` on a callable receiver are all
   rejected, and the conformance corpus certifies the refusal **on purpose, ahead
@@ -1043,7 +1086,7 @@ site-table diff normatively obliges an implementation to do.
 1. Finalize checked versus TypeScript-only semantics for `as`.
 2. Define Layer merge/override rules and requirement-environment lowering; base
    Layers do not own resources or child work.
-3. Ratify or reverse PR-1, PR-2, and PR-3, then resolve the five open questions
+3. Ratify or reverse PR-1, PR-2, and PR-3, then resolve the six open questions
    in the order this ledger ranks them — the `eval` contradiction first, because
    shipped behavior already diverges from a locked sentence, and the fan-out
    product call second, because an explicit combinator cannot be follow-on work.

@@ -33,7 +33,7 @@ Smithers has no `TypeScript` requirement. TypeScript is the only target, so ever
 
 `any` and `eval` remain usable. General Smithers guidance may lint against them; the language does not forbid them.
 
-**Open — contested, and shipped behavior already diverges from the sentence above.** That sentence is Locked and has not been withdrawn. It is nevertheless not what the compiler does: dynamic code evaluation is refused today, and the conformance corpus deliberately certifies the refusal ahead of this page. Until the conflict is ratified one way or the other, it is a recorded conflict rather than an unnoticed one, and neither side may be quietly changed to match. The proposal on the table is:
+**Open — contested, and shipped behavior already diverges from the sentence above (IA-1).** That sentence is Locked and has not been withdrawn. The `(IA-1)` marker records the *direction* of the divergence — the implementation is ahead of this page, the opposite of the `(SA-n)` gaps elsewhere in this specification — and decides nothing; see [Specification Status](/specification/index) §Specification–Implementation Gaps. It is nevertheless not what the compiler does: dynamic code evaluation is refused today, and the conformance corpus deliberately certifies the refusal ahead of this page. Until the conflict is ratified one way or the other, it is a recorded conflict rather than an unnoticed one, and neither side may be quietly changed to match. The proposal on the table is:
 
 > Dynamic code evaluation is unavailable in `.sm`. `eval`, the `Function`
 > constructor, and any selection of `constructor` on a callable receiver MUST be
@@ -191,4 +191,7 @@ would reasonably have taken transform-only for a general build mode.
 
 **Not amended — §Dynamic Features.** The `any`/`eval` sentence remains Locked and
 in force in this document. The conflict recorded there is open and has not been
-decided; nothing on this page may be read as having decided it.
+decided; nothing on this page may be read as having decided it. On 2026-08-27 the
+conflict gained an **(IA-1)** direction marker so that a reader can tell which way
+it points relative to the `(SA-n)` gaps on other pages. A direction label is not a
+decision, and no other word of that section changed.

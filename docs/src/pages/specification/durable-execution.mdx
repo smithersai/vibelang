@@ -8,7 +8,7 @@ Durable execution MUST be opt-in. Ordinary Smithers functions MUST remain ordina
 
 ## Compiler-Recognized API
 
-A Flow MUST be declared with ordinary TypeScript call syntax:
+A Flow MUST be declared with ordinary TypeScript call syntax **(SA-2)**:
 
 ```ts
 import { durable } from "smithers:flows"
@@ -20,6 +20,44 @@ const Build = durable(function Build(
   return Package.run({ code: compiled.code })
 })
 ```
+
+:::warning[(SA-2) — the specification is ahead of the implementation here]
+Measured 2026-08-27 against the conformance JS reference backend over `poc/src`.
+**The sample above does not compile today.** With its Action declarations
+supplied it draws:
+
+```
+SMITHERS4100  Type 'Artifact | undefined' is not assignable to type
+              'Result<Artifact, CompileError | PackageError>'.
+```
+
+`Action.run` is typed `A | undefined` in the shipped frontend rather than
+`Result<A, E>`, so the sample's own return annotation is refused. Removing the
+annotation compiles — which isolates the failure to the annotation, not to the
+Flow shape.
+
+The shipped durable frontend is still the static-plan model this revision
+withdrew. Three further rules refuse what §Flow now promises:
+
+| Written here | Refused today by |
+| --- | --- |
+| a runtime branch inside a Flow body | `SMITHERS4106` — "runtime branches require explicit Plan branch lowering, which this subset does not guess" |
+| a runtime loop inside a Flow body | `SMITHERS4107` — "runtime loops require parameterized Plan templates" |
+| a plain `return` lifted to the Flow's Result channel | `SMITHERS4100` — plain returns are not Result-lifted inside a durable body |
+
+Nothing in `conformance/product-divergence.json` records this. That file measures
+corpus against product; here the corpus and the product agree with each other and
+disagree with this page, so the gap is invisible to every gate. `17-durable`
+carries cases that certify the refusals directly, including
+`a-statement-branch-holding-an-action-in-each-arm-is-rejected`
+(`SMITHERS4106`). Those cases MUST stay green and MUST NOT be weakened; they are
+retired when the frontend executes Flow bodies under the journaling handler.
+
+The decisions this page rests on are recorded in the decision ledger under
+**Pending ratification** (`PR-1`, `PR-2`, `PR-3`). No document in this repository
+schedules the frontend work that closes this gap; see
+[Specification Status](/specification/index) §Specification–Implementation Gaps.
+:::
 
 `durable` is a compiler-recognized function imported from the compiler-owned `smithers:flows` virtual module. It is not a language keyword. The compiler MUST recognize the resolved imported binding, so an aliased import preserves durable behavior while an unrelated function named `durable` remains ordinary.
 
@@ -56,7 +94,7 @@ This contract is also the journaling classifier. An effect request MUST be journ
 
 ## Flow
 
-A Flow is an ordinary function whose execution is placed under the durable handler. `durable(...)` MUST NOT change what the function computes; it MUST change only which handler answers the function's effect requests. Ordinary control flow — branches, loops, `let` bindings, closure capture, and recursion — MUST execute unchanged inside a Flow.
+A Flow is an ordinary function whose execution is placed under the durable handler. `durable(...)` MUST NOT change what the function computes; it MUST change only which handler answers the function's effect requests. Ordinary control flow — branches, loops, `let` bindings, closure capture, and recursion — MUST execute unchanged inside a Flow **(SA-2)**.
 
 The compiler MUST emit the Flow body in the resumable calling convention and MUST publish its Effect Manifest. It MUST NOT invoke the source function with proxy or symbolic JavaScript values to discover the graph, at any phase, including replay.
 

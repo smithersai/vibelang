@@ -53,7 +53,7 @@ Public declarations MUST preserve the inferred row. Its exact TypeScript declara
 
 Platform-sensitive functionality MUST use requirements. This includes filesystem, network, environment, clock, randomness, process, browser document, and comparable host facilities.
 
-Clock and randomness are not merely hygiene. Because a Flow body re-executes on every resumption, routing them through capabilities is the precondition that makes replay correct at all; see [Durable Execution](/specification/durable-execution) §Flow Purity.
+Clock and randomness are not merely hygiene. Because a Flow body re-executes on every resumption, routing them through capabilities is the precondition that makes replay correct at all; see [Durable Execution](/specification/durable-execution) §Flow Determinism.
 
 A capability MAY have multiple host implementations. For example, `FileSystem` MAY be implemented by Node, Bun, Deno, or a test provider.
 
