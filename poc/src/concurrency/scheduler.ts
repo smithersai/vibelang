@@ -56,6 +56,25 @@
  * scheduler that falls back to `Promise.race` when unprovided has exactly that
  * shape and exactly that failure: it degrades to arrival order, silently, in
  * the environment that exists to be deterministic. This one refuses.
+ *
+ * ## The journal round-trips
+ *
+ * {@link ReplayScheduler.journal} is exactly the value
+ * {@link ReplaySchedulerOptions.journal} consumes, and recording a program then
+ * replaying that recording against the same program is a property test, not an
+ * example. It was neither for a while: the recorder wrote one untagged entry
+ * per completion, the replayer read every entry as a `firstReady` decision, and
+ * a program that mixed the two operations recorded a journal that panicked when
+ * replayed against the body that produced it. Both halves had tests; nothing
+ * composed them. {@link JournalRow} is the single type that both halves now
+ * interpret, and it is keyed the way `durable-execution.mdx` §Journal Identity
+ * says a journal entry must be keyed — `(site, occurrence)` — rather than by
+ * position in a stream.
+ *
+ * The one deliberate non-refusal is a missing row. §Replay requires that "the
+ * first request with no journal entry MUST be dispatched", because that is how
+ * a resumed execution gets past the prefix it already recorded. That path is
+ * therefore kept and *counted*: see {@link ReplayScheduler.dispatchedLive}.
  */
 
 import { Clock, TestClock } from "../platform/clock.ts";
@@ -98,17 +117,100 @@ function isSubmission<T>(value: Contender<T>): value is Submission<T> {
   return typeof value === "object" && value !== null && "ticket" in value && "work" in value;
 }
 
-/** One entry of the completion order a run observed. */
-export interface Completion {
-  /** The winning ticket's index, or `-1` for an unticketed contender. */
+// ---------------------------------------------------------------------------
+// Journal rows
+// ---------------------------------------------------------------------------
+
+/** Which scheduler operation a journal row was recorded by. */
+export type JournalOp = "firstReady" | "allReady";
+
+/**
+ * How a journal row names one submission: the ticket's `(index, site)`, or
+ * `index: -1` for a contender that reached the scheduler without a ticket.
+ */
+export interface SubmissionKey {
   readonly index: number;
   readonly site: string;
+}
+
+/**
+ * One row of the journal — the SAME type the recorder writes and the replayer
+ * reads. There used to be two shapes hiding behind one field, and it did not
+ * survive being composed.
+ *
+ * ## What a row means, and why `allReady` rows are not completion order
+ *
+ * A row records **one scheduler operation**, not one completed request. That is
+ * the correction: the previous shape recorded one entry per *completion*, then
+ * fed the whole stream to a cursor that read every entry as a `firstReady`
+ * decision. So a program that mixed the two operations recorded rows that
+ * replay could only misread, and the recorded field's own doc comment — "the
+ * completion order this run observed" — was false for half of them.
+ *
+ * It was false in a second way. `Promise.all`'s output cannot observe arrival
+ * order, so the `allReady` arm sorted its entries back into submission position
+ * before recording them. Those rows were therefore submission order *whatever
+ * happened at runtime*: a tautology wearing the name of an observation. There
+ * is no completion order for an order-independent operation, and recording one
+ * anyway is a lie the file told about itself.
+ *
+ * What an `allReady` DOES have worth pinning is {@link offered}: which
+ * submissions the body dispatched, in submission order. That is a fact about
+ * the body, it can change when the body changes, and `specification/
+ * durable-execution.mdx` §Divergence requires exactly this check — "if the body
+ * issues a request whose site identity does not match the journal entry at that
+ * occurrence index ... MUST report a divergence". So `allReady` rows are
+ * verified for their offered set and carry no {@link winner}, because there is
+ * no arrival order to reproduce; `firstReady` rows are verified the same way
+ * and additionally replay their winner.
+ */
+export interface JournalRow {
+  /** The operation this row records. A row is never read as the other one. */
+  readonly op: JournalOp;
   /**
-   * The deterministic clock reading when the completion was observed, when the
+   * The site identity of the OPERATION — the `(siteIdentity, occurrenceIndex)`
+   * key `durable-execution.mdx` §Journal Identity mandates, not a position in a
+   * stream. See {@link ReplayScheduler.firstReady} for what the default is and
+   * what it costs.
+   */
+  readonly site: string;
+  /** Which occurrence of {@link site} this is, counted at submission. */
+  readonly occurrence: number;
+  /** Every submission the operation was offered, in submission order. */
+  readonly offered: readonly SubmissionKey[];
+  /**
+   * `firstReady` only: the submission the recorded run answered with. Absent on
+   * `allReady` rows, and required on `firstReady` rows — a `firstReady` row
+   * without a winner records nothing.
+   */
+  readonly winner?: SubmissionKey;
+  /**
+   * The deterministic clock reading when the row was recorded, when the
    * scheduler was bound to a `TestClock`. Evidence that no real time passed; it
-   * is NOT part of journal identity, which is `(index, site)` alone.
+   * is NOT part of journal identity, which is `(site, occurrence)` alone.
    */
   readonly at?: number;
+}
+
+/**
+ * What replay did with the journal it was given. Read by tests, not the runtime.
+ *
+ * `replayed < rows` at the end of a body is the "completes while journal entries
+ * remain unconsumed" divergence `durable-execution.mdx` §Divergence names. This
+ * class cannot raise it — it is not told when the body ends — so the audit
+ * exposes both numbers and the caller that owns the body boundary compares
+ * them. That is a gap, stated rather than papered over.
+ */
+export interface ReplayAudit {
+  /** Rows the journal supplied. */
+  readonly rows: number;
+  /** Operations answered from a journal row. */
+  readonly replayed: number;
+  /**
+   * Operations the journal had no row for, which were therefore dispatched
+   * live. See {@link ReplayScheduler.dispatchedLive}.
+   */
+  readonly dispatchedLive: number;
 }
 
 /** What the ticket audit says about one run. Read by tests, not by the runtime. */
@@ -148,8 +250,13 @@ export abstract class Scheduler extends Context {
    * This is the arrival-order operation — the one `Promise.race` and
    * `Promise.any` are, and the one the spec says MUST NOT be reachable except
    * through a scheduler.
+   *
+   * `site` is the operation's site identity, which is half of the journal key
+   * `durable-execution.mdx` §Journal Identity mandates. It is optional because
+   * nothing in the tree can supply a content-addressed one yet; see
+   * {@link ReplayScheduler.firstReady}.
    */
-  abstract firstReady<T>(contenders: Iterable<Contender<T>>): Promise<T>;
+  abstract firstReady<T>(contenders: Iterable<Contender<T>>, site?: string): Promise<T>;
 
   /**
    * Wait for every contender, answering in submission order.
@@ -163,8 +270,11 @@ export abstract class Scheduler extends Context {
    * this method does not settle it: it exists so the tension has a name and a
    * measurement point. See {@link ReplayScheduler.unticketed} for exactly what
    * the counter does and does not see on this path.
+   *
+   * What it does NOT record is a completion order, because it has none to
+   * record — see {@link JournalRow}.
    */
-  abstract allReady<T>(contenders: Iterable<Contender<T>>): Promise<readonly T[]>;
+  abstract allReady<T>(contenders: Iterable<Contender<T>>, site?: string): Promise<readonly T[]>;
 }
 
 /**
@@ -218,6 +328,60 @@ function checkTicket(ticket: Ticket, caller: string): Ticket {
     panic(`${caller} requires a non-empty site`);
   }
   return ticket;
+}
+
+function checkSubmissionKey(key: SubmissionKey, where: string): SubmissionKey {
+  if (typeof key !== "object" || key === null) panic(`${where} requires submission keys`);
+  if (!Number.isSafeInteger(key.index) || key.index < -1) {
+    panic(`${where} requires a whole submission index (or -1 for unticketed)`);
+  }
+  if (typeof key.site !== "string" || key.site.length === 0) panic(`${where} requires a non-empty site`);
+  return Object.freeze({ index: key.index, site: key.site });
+}
+
+function checkJournalRow(row: JournalRow, position: number): JournalRow {
+  const where = `ReplayScheduler.make journal row ${position}`;
+  if (typeof row !== "object" || row === null) panic(`${where} must be a record`);
+  if (row.op !== "firstReady" && row.op !== "allReady") {
+    panic(`${where} must carry op "firstReady" or "allReady"; an untagged row cannot be replayed`);
+  }
+  if (typeof row.site !== "string" || row.site.length === 0) panic(`${where} requires a non-empty site`);
+  if (!Number.isSafeInteger(row.occurrence) || row.occurrence < 0) {
+    panic(`${where} requires a non-negative occurrence index`);
+  }
+  if (!Array.isArray(row.offered)) panic(`${where} must list the submissions it was offered`);
+  const offered = Object.freeze(row.offered.map((key) => checkSubmissionKey(key, where)));
+  if (row.op === "firstReady") {
+    if (row.winner === undefined) panic(`${where} is a firstReady row and must name the submission that won`);
+  } else if (row.winner !== undefined) {
+    panic(`${where} is an allReady row and must not name a winner; allReady observes no arrival order`);
+  }
+  return Object.freeze({
+    op: row.op,
+    site: row.site,
+    occurrence: row.occurrence,
+    offered,
+    ...(row.winner === undefined ? {} : { winner: checkSubmissionKey(row.winner, where) }),
+    ...(row.at === undefined ? {} : { at: row.at }),
+  });
+}
+
+/** `(site, occurrence)` as one lookup key, length-prefixed so no site can forge another's. */
+function rowKey(site: string, occurrence: number): string {
+  return `${site.length}:${site}:${occurrence}`;
+}
+
+function describeKeys(keys: readonly SubmissionKey[]): string {
+  return keys.length === 0 ? "nothing" : keys.map((key) => `${key.index}@${key.site}`).join(", ");
+}
+
+function keyOf<T>(entry: Normalized<T>): SubmissionKey {
+  return Object.freeze({ index: entry.ticket?.index ?? -1, site: entry.ticket?.site ?? UNTICKETED_SITE });
+}
+
+function sameKeys(left: readonly SubmissionKey[], right: readonly SubmissionKey[]): boolean {
+  return left.length === right.length &&
+    left.every((key, at) => key.index === right[at]!.index && key.site === right[at]!.site);
 }
 
 /** Tag each contender's settlement with the contender it came from. */
@@ -281,12 +445,14 @@ export interface ReplaySchedulerOptions {
    */
   readonly clock?: TestClock;
   /**
-   * A completion order a previous run observed. When present the scheduler
-   * REPLAYS it: `firstReady` answers with the contender the journal names,
-   * whatever the host's arrival order is this time, and refuses if the body did
-   * not offer that contender.
+   * The journal a previous run recorded — the value {@link
+   * ReplayScheduler.journal} hands back, unchanged. When present the scheduler
+   * REPLAYS it: each operation looks its own row up by `(site, occurrence)`,
+   * `firstReady` answers with the submission that row names whatever the host's
+   * arrival order is this time, and both operations refuse if the body did not
+   * offer the submissions the row records.
    */
-  readonly journal?: readonly Completion[];
+  readonly journal?: readonly JournalRow[];
 }
 
 /**
@@ -295,18 +461,36 @@ export interface ReplaySchedulerOptions {
  */
 export class ReplayScheduler extends Scheduler {
   readonly #clock: TestClock | undefined;
-  readonly #journal: readonly Completion[] | undefined;
-  readonly #observed: Completion[] = [];
+  readonly #journal: ReadonlyMap<string, JournalRow> | undefined;
+  readonly #recorded: JournalRow[] = [];
   readonly #unticketedSites: string[] = [];
+  readonly #occurrences = new Map<string, number>();
   #next = 0;
   #submissions = 0;
   #unticketed = 0;
-  #cursor = 0;
+  #replayed = 0;
+  #dispatchedLive = 0;
 
-  private constructor(clock: TestClock | undefined, journal: readonly Completion[] | undefined) {
+  private constructor(clock: TestClock | undefined, journal: readonly JournalRow[] | undefined) {
     super();
     this.#clock = clock;
-    this.#journal = journal;
+    if (journal === undefined) {
+      this.#journal = undefined;
+      return;
+    }
+    // Keyed by `(site, occurrence)`, not stored as a stream. A positional
+    // cursor cannot tell "this request has no journal entry" from "the stream
+    // is misaligned", and `durable-execution.mdx` §Replay needs exactly that
+    // distinction to dispatch the first unjournaled request.
+    const byKey = new Map<string, JournalRow>();
+    for (const row of journal) {
+      const key = rowKey(row.site, row.occurrence);
+      if (byKey.has(key)) {
+        panic(`ReplayScheduler.make journal has two rows for ${row.site} occurrence ${row.occurrence}`);
+      }
+      byKey.set(key, row);
+    }
+    this.#journal = byKey;
   }
 
   static make(options: ReplaySchedulerOptions = {}): ReplayScheduler {
@@ -317,9 +501,12 @@ export class ReplayScheduler extends Scheduler {
       panic("ReplayScheduler.make clock option must be a TestClock");
     }
     if (options.journal !== undefined && !Array.isArray(options.journal)) {
-      panic("ReplayScheduler.make journal option must be an array of completions");
+      panic("ReplayScheduler.make journal option must be an array of journal rows");
     }
-    return new ReplayScheduler(options.clock, options.journal === undefined ? undefined : Object.freeze([...options.journal]));
+    return new ReplayScheduler(
+      options.clock,
+      options.journal === undefined ? undefined : options.journal.map(checkJournalRow),
+    );
   }
 
   /**
@@ -355,9 +542,50 @@ export class ReplayScheduler extends Scheduler {
     });
   }
 
-  /** The completion order this run observed — what a journal would record. */
-  get completions(): readonly Completion[] {
-    return Object.freeze([...this.#observed]);
+  /**
+   * The journal this run recorded, one row per scheduler operation, ready to be
+   * handed straight back to `make({ journal })`.
+   *
+   * Deliberately NOT called "the completion order this run observed". Half of
+   * these rows come from an order-independent operation and have no completion
+   * order to report; see {@link JournalRow}. Recording a run and replaying that
+   * exact recording against the same body is the round trip this getter and
+   * {@link ReplaySchedulerOptions.journal} jointly promise, and it is a
+   * property test rather than an example in `scheduler.test.ts`.
+   */
+  get journal(): readonly JournalRow[] {
+    return Object.freeze([...this.#recorded]);
+  }
+
+  /**
+   * Operations that found no journal row and were therefore dispatched live.
+   *
+   * `durable-execution.mdx` §Replay requires this — "the first request with no
+   * journal entry MUST be dispatched" — because that is how a resumed execution
+   * makes progress past the prefix it already recorded. So exhaustion is NOT an
+   * error here, unlike every other refusal in this class.
+   *
+   * It used to be *invisible*, which was the real defect: a replay whose
+   * positional cursor ran off the end silently resumed making live scheduling
+   * decisions, and the run was indistinguishable from one given no journal at
+   * all. Legitimate policy, unobservable execution. This counter is the
+   * observation, on the same footing as {@link unticketed}.
+   *
+   * A journal recorded from a COMPLETE run is total for that run's program, so
+   * a record-then-replay round trip must leave this at zero; a non-zero reading
+   * there means the journal did not cover the body that produced it.
+   */
+  get dispatchedLive(): number {
+    return this.#dispatchedLive;
+  }
+
+  /** What replay did with the journal it was given. */
+  get replay(): ReplayAudit {
+    return Object.freeze({
+      rows: this.#journal?.size ?? 0,
+      replayed: this.#replayed,
+      dispatchedLive: this.#dispatchedLive,
+    });
   }
 
   ticket(site: string): Ticket {
@@ -371,13 +599,37 @@ export class ReplayScheduler extends Scheduler {
     return Object.freeze({ ticket, work: Promise.resolve().then(work) });
   }
 
-  async firstReady<T>(contenders: Iterable<Contender<T>>): Promise<T> {
+  /**
+   * @param site The operation's site identity, defaulting to the operation's
+   * own name.
+   *
+   * The default is honest but coarse, and the coarseness is worth stating.
+   * `durable-execution.mdx` §Journal Identity requires the site identity to be
+   * "content-addressed from the compiler's Effect Manifest", and nothing in
+   * this tree can produce one yet. Under the default, every `firstReady` call
+   * site in a body shares the site `"firstReady"` and is distinguished only by
+   * its occurrence index — which is the same discriminating power a positional
+   * cursor had, so the default loses nothing that was there before. What it
+   * gains is that the *key* is now `(site, occurrence)`: a caller that CAN name
+   * its site gets the spec's keying with no further change here, and two
+   * requests at different sites may complete in either order and still
+   * converge, which a shared stream could not express.
+   */
+  async firstReady<T>(contenders: Iterable<Contender<T>>, site = "firstReady"): Promise<T> {
     const entries = this.#account(contenders, "ReplayScheduler.firstReady");
     if (entries.length === 0) panic("ReplayScheduler.firstReady requires at least one contender");
+    const { row, occurrence } = this.#open("firstReady", site, entries, "ReplayScheduler.firstReady");
 
-    const expected = this.#journal?.[this.#cursor];
-    if (expected !== undefined) {
-      this.#cursor += 1;
+    if (row !== undefined) {
+      const expected = row.winner!;
+      const where = `at ${site} occurrence ${occurrence}`;
+      if (expected.index < 0) {
+        // The recorded run answered with an untracked contender, so the journal
+        // names no submission that any run could offer again.
+        panic(
+          `ReplayScheduler.firstReady diverged ${where}: the journal's winner is an unticketed submission, which no run can reproduce`,
+        );
+      }
       const position = entries.findIndex((entry) =>
         entry.ticket !== undefined && entry.ticket.index === expected.index && entry.ticket.site === expected.site
       );
@@ -385,30 +637,33 @@ export class ReplayScheduler extends Scheduler {
         // Refuses rather than degrades. Falling back to arrival order here is
         // precisely the silent un-journaling this class exists to prevent.
         panic(
-          `ReplayScheduler.firstReady diverged: the journal expects submission ${expected.index} at ${expected.site}, which this run did not offer`,
+          `ReplayScheduler.firstReady diverged ${where}: the journal expects submission ${expected.index} at ${expected.site}, which this run did not offer`,
         );
       }
       const winner = await Promise.resolve(entries[position]!.work);
-      this.#record(entries[position]!);
+      this.#replayed += 1;
+      this.#record("firstReady", site, occurrence, entries, entries[position]!);
       return winner;
     }
 
     const { position, value } = await Promise.race(entries.map(tagged));
-    this.#record(entries[position]!);
+    this.#record("firstReady", site, occurrence, entries, entries[position]!);
     return value;
   }
 
-  async allReady<T>(contenders: Iterable<Contender<T>>): Promise<readonly T[]> {
+  /** @param site As {@link ReplayScheduler.firstReady}, defaulting to `"allReady"`. */
+  async allReady<T>(contenders: Iterable<Contender<T>>, site = "allReady"): Promise<readonly T[]> {
     const entries = this.#account(contenders, "ReplayScheduler.allReady");
     // Order-independent by construction: the answer is in SUBMISSION order, so
-    // no journal check is applied and no divergence is possible here. The
-    // completion order is still recorded, because it is evidence about the
-    // requests started underneath — see `allReady`'s doc comment on the tension.
-    const settled = await Promise.all(entries.map(tagged));
-    for (const { position } of [...settled].sort((left, right) => left.position - right.position)) {
-      this.#record(entries[position]!);
-    }
-    return settled.map((entry) => entry.value);
+    // no ARRIVAL-order check is applied and none is recorded — there is nothing
+    // to record, and the previous version's sorted rows said so by being a
+    // tautology. `#open` still verifies the offered set, which is a real fact
+    // about the body and the one §Divergence asks for.
+    const { row, occurrence } = this.#open("allReady", site, entries, "ReplayScheduler.allReady");
+    const values = await Promise.all(entries.map((entry) => Promise.resolve(entry.work)));
+    if (row !== undefined) this.#replayed += 1;
+    this.#record("allReady", site, occurrence, entries);
+    return values;
   }
 
   #account<T>(contenders: Iterable<Contender<T>>, caller: string): readonly Normalized<T>[] {
@@ -423,11 +678,57 @@ export class ReplayScheduler extends Scheduler {
     return entries;
   }
 
-  #record<T>(entry: Normalized<T>): void {
+  /**
+   * Assign this operation's occurrence index and find the row that keys to it,
+   * verifying everything a row asserts about the body that is not the winner.
+   */
+  #open<T>(
+    op: JournalOp,
+    site: string,
+    entries: readonly Normalized<T>[],
+    caller: string,
+  ): { readonly row: JournalRow | undefined; readonly occurrence: number } {
+    if (typeof site !== "string" || site.length === 0) panic(`${caller} requires a non-empty site`);
+    const occurrence = this.#occurrences.get(site) ?? 0;
+    this.#occurrences.set(site, occurrence + 1);
+    if (this.#journal === undefined) return { row: undefined, occurrence };
+
+    const row = this.#journal.get(rowKey(site, occurrence));
+    if (row === undefined) {
+      // Not a failure: §Replay says the first request with no journal entry is
+      // dispatched, which is how a resumed execution gets past its recorded
+      // prefix. It is COUNTED, because doing it silently was the defect.
+      this.#dispatchedLive += 1;
+      return { row: undefined, occurrence };
+    }
+    const where = `at ${site} occurrence ${occurrence}`;
+    if (row.op !== op) {
+      panic(`${caller} diverged ${where}: the journal records ${row.op} there, not ${op}`);
+    }
+    const offered = entries.map(keyOf);
+    if (!sameKeys(row.offered, offered)) {
+      panic(
+        `${caller} diverged ${where}: the journal records submissions [${describeKeys(row.offered)}] ` +
+          `but this run offered [${describeKeys(offered)}]`,
+      );
+    }
+    return { row, occurrence };
+  }
+
+  #record<T>(
+    op: JournalOp,
+    site: string,
+    occurrence: number,
+    entries: readonly Normalized<T>[],
+    winner?: Normalized<T>,
+  ): void {
     const at = this.#clock?.monotonic();
-    this.#observed.push(Object.freeze({
-      index: entry.ticket?.index ?? -1,
-      site: entry.ticket?.site ?? UNTICKETED_SITE,
+    this.#recorded.push(Object.freeze({
+      op,
+      site,
+      occurrence,
+      offered: Object.freeze(entries.map(keyOf)),
+      ...(winner === undefined ? {} : { winner: keyOf(winner) }),
       ...(at === undefined ? {} : { at }),
     }));
   }
@@ -502,7 +803,7 @@ export function assertFullyTicketed(
  * it must not be yet. This factory exists so that when the wiring lands, the
  * binding it needs already exists and has tests.
  */
-export function testScheduler(bundle: { readonly clock: Clock }, journal?: readonly Completion[]): ReplayScheduler {
+export function testScheduler(bundle: { readonly clock: Clock }, journal?: readonly JournalRow[]): ReplayScheduler {
   if (typeof bundle !== "object" || bundle === null) panic("testScheduler requires a platform bundle");
   if (!(bundle.clock instanceof TestClock)) panic("testScheduler requires a bundle carrying a TestClock");
   return ReplayScheduler.make(journal === undefined ? { clock: bundle.clock } : { clock: bundle.clock, journal });
