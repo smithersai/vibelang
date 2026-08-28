@@ -943,6 +943,24 @@ export class Timeout extends Error {
 const matchOtherSource = `export class NotFound extends Error { }
 `
 
+// `report` reaches its Result's error through `recover` rather than by reading
+// the runtime discriminant. It used to be
+// `const outcome = lookup(key); if (outcome.ok) { return "ok:" + outcome.value }
+// return describe(outcome.error)`, which stopped compiling on 2026-08-28 when a
+// discriminant read stopped discharging the must-consume obligation — the
+// fail-open pinned by
+// conformance/corpus/07-must-consume/reading-a-results-runtime-tag-does-not-consume-it.
+//
+// `report` is load-bearing and the rewrite preserves every observable it had:
+// it is executed at the bottom of this test and must still return "ok:42",
+// "missing:nope" and "timeout:50", which is what exercises the nominal
+// `error.match` dispatch on an error that came OUT of a Result rather than one
+// handed to `describe` directly.
+//
+// `map`/`recover`/`unwrapOr` are used in place of Result `match` deliberately:
+// a Result `.match` survives lowering as a runtime method call, and this test
+// asserts the emitted module contains no `.match(` at all — an assertion aimed
+// at the NOMINAL error match, which must lower to `__smithersErrorIs`.
 const matchMainSource = `import { NotFound as Missing, Timeout } from "./errors.sm";
 
 export function describe(error: Missing | Timeout): string {
@@ -963,11 +981,7 @@ export function lookup(key: string): Result<number, Missing | Timeout> {
 }
 
 export function report(key: string): string {
-    const outcome = lookup(key);
-    if (outcome.ok) {
-        return "ok:" + outcome.value;
-    }
-    return describe(outcome.error);
+    return lookup(key).map((value) => "ok:" + value).recover((error) => describe(error)).unwrapOr("?");
 }
 `
 
