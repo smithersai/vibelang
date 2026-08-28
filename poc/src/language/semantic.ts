@@ -1,5 +1,7 @@
 import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import * as ts from "typescript-js";
+import { DurableCodecError, deriveDurableValueSchema } from "../durable/schema.ts";
+import { EffectSiteIds } from "../durable/site-id.ts";
 import type {
   Analysis,
   AnalyzeOptions,
@@ -262,7 +264,46 @@ export interface SemanticFunction {
    * propagation sets `hasResultPropagation` (SMITHERS1202's input).
    */
   readonly channelSites: { readonly expression: ts.Expression; readonly nonNull: boolean }[];
+  /**
+   * Every capability read in this body, recorded at the one place the analysis
+   * already classifies one.
+   *
+   * `contextRequirement` answers with the receiver AND the call; `collectFacts`
+   * has only ever kept the receiver's name, so the *node* — the thing an
+   * effect lowering has to rewrite into a `get` request — was computed and
+   * discarded on every compile. This array keeps it. It is published on
+   * {@link SemanticModel.capabilitySites} and consumed by nothing.
+   */
+  readonly capabilitySites: { readonly call: ts.CallExpression; readonly receiver: ContextReceiver }[];
+  /**
+   * Every postfix `!` in this body, as the `!` expression itself.
+   *
+   * `channelSites` already records the same sites, but it records the OPERAND
+   * and it mixes them with returned expressions, because what it exists for is
+   * charging the failure row inside the `inferRows` fixpoint. An effect
+   * lowering needs the `!` node — the thing that becomes an `abort` request —
+   * so this array keeps that, separately, and changes nothing about the
+   * charge. Published on {@link SemanticModel.effectSites}; consumed by
+   * nothing.
+   */
+  readonly propagationSites: ts.NonNullExpression[];
   hasResultPropagation: boolean;
+}
+
+/**
+ * One capability read, as the eventual `get` request would see it.
+ *
+ * `receiver` is `contextRequirement`'s verbatim answer, so an `ambiguous`
+ * receiver is recorded as ambiguous rather than dropped — SMITHERS2106 has
+ * already refused the program by the time anyone reads this, and a site table
+ * that silently omitted the refused form would be a table that disagrees with
+ * the diagnostic.
+ */
+export interface CapabilitySite {
+  readonly call: ts.CallExpression;
+  readonly receiver: ContextReceiver;
+  /** The nominal capability key, or `undefined` when the receiver is ambiguous. */
+  readonly name: string | undefined;
 }
 
 export interface SemanticModel {
@@ -282,6 +323,65 @@ export interface SemanticModel {
   readonly errors: readonly ErrorDeclaration[];
   readonly rows: Readonly<Record<string, FunctionRows>>;
   readonly publicFunctions: readonly FunctionDeclaration[];
+  /**
+   * Every `Capability.context()` call in this file, keyed by the call node.
+   *
+   * PUBLISHED FOR A LATER STEP AND CONSUMED BY NOTHING. Under the effect
+   * lowering (`specification/effects.mdx` §Effect Requests) each of these
+   * becomes a `get` request whose key is the nominal capability; today the
+   * emitter passes `Db.context()` through verbatim and this map has no reader.
+   * Adding one is a behaviour change and is a separate step.
+   */
+  readonly capabilitySites: ReadonlyMap<ts.CallExpression, CapabilitySite>;
+  /**
+   * The content-addressed site identity of every request-issuing node in this
+   * file: each capability read (`get`) and each postfix `!` (`abort`).
+   *
+   * PUBLISHED FOR A LATER STEP AND CONSUMED BY NOTHING. `perform` sites — the
+   * Action calls — are deliberately absent: classifying one is the durable
+   * lowerer's job today, and inventing a second classifier here would be
+   * deriving a fact the analysis does not have rather than exposing one it
+   * does.
+   *
+   * The `file` component of each identity is this model's own `fileName`, so
+   * these ids are stable within a project but not yet portable across roots.
+   * Making them root-relative belongs with the Effect Manifest, which is what
+   * `effects.mdx` §Effect Requests makes the identity's source of truth.
+   */
+  readonly effectSites: ReadonlyMap<ts.Node, string>;
+  /**
+   * The capability keys read in this file whose `get` answer MUST be journaled.
+   *
+   * PUBLISHED FOR A LATER STEP AND CONSUMED BY NOTHING.
+   * `specification/effects.mdx` §The Journaling Classifier: "A request MUST be
+   * journaled if and only if its answer satisfies the compiler-checked durable
+   * codec contract", and its worked example is that `Clock.context()` answers
+   * with a service, is therefore NOT journaled, and MUST be re-answered by the
+   * handler stack on every resumption.
+   *
+   * MEASURED, NOT ASSUMED: across all 531 corpus `.sm` files this set is
+   * empty, over 130 capability sites. It is empty *by construction*, and the
+   * reason is worth writing down because it is not the reason the spec gives.
+   * The spec's example says a Clock is not journaled because it is a service.
+   * The implementation is blunter: `Key.context()` always answers with a
+   * Context subclass instance, and the codec predicate refuses every class
+   * instance categorically — "only nominal Error payloads are supported" —
+   * whether it carries methods or is plain data. So the `get` side of the
+   * partition is a constant, and the interesting journaled/replayed boundary
+   * is at capability METHOD calls (`clock.now()`, the spec's own second
+   * example), which no analysis in this tree classifies today. That gap is
+   * named here rather than papered over by widening this field's meaning.
+   *
+   * Kept anyway, and kept fail-closed: it is the field that stops being a
+   * constant the moment a capability answer becomes codec-representable, which
+   * is exactly the hole `platform/host.ts` admits to when it calls its
+   * determinism perimeter "an author's discipline ... not a property of the
+   * language".
+   *
+   * The predicate is the tree's ONE codec predicate
+   * (`durable/schema.ts` `deriveDurableValueSchema`), not a second copy of it.
+   */
+  readonly journaledRequirements: ReadonlySet<string>;
 }
 
 export interface PendingDiagnostic {
@@ -289,6 +389,97 @@ export interface PendingDiagnostic {
   readonly code: string;
   readonly message: string;
   readonly start: number;
+}
+
+/**
+ * The three facts an effect lowering will read, assembled from what the
+ * analysis already collected.
+ *
+ * NOTHING IN THE COMPILER CONSUMES THE RESULT. No diagnostic is raised here,
+ * no existing structure is mutated, and every failure inside the journaling
+ * classifier is swallowed into "not journaled" — the fail-closed answer. This
+ * function is additive by construction, and it has to stay that way: adding a
+ * consumer is what makes the effect lowering observable, and that is a
+ * different step with a different gate.
+ */
+function collectEffectFacts(
+  fileName: string,
+  functions: readonly SemanticFunction[],
+  checker: ts.TypeChecker,
+  sourceFile: ts.SourceFile,
+): {
+  readonly capabilitySites: ReadonlyMap<ts.CallExpression, CapabilitySite>;
+  readonly effectSites: ReadonlyMap<ts.Node, string>;
+  readonly journaledRequirements: ReadonlySet<string>;
+} {
+  const capabilitySites = new Map<ts.CallExpression, CapabilitySite>();
+  const effectSites = new Map<ts.Node, string>();
+  const journaledRequirements = new Set<string>();
+  const ids = new EffectSiteIds();
+
+  const anchorOf = (node: ts.Node): string => {
+    const owner = node.getSourceFile();
+    const { line, character } = owner.getLineAndCharacterOfPosition(node.getStart(owner));
+    return `${line}:${character}`;
+  };
+
+  for (const fn of functions) {
+    for (const site of fn.capabilitySites) {
+      const name = site.receiver.kind === "capability" ? site.receiver.name : undefined;
+      capabilitySites.set(site.call, { call: site.call, receiver: site.receiver, name });
+      // `key` is OMITTED, not set to `undefined`, when the receiver is
+      // ambiguous: the identity is digested through `canonicalJson`, which
+      // refuses `undefined` outright, so spelling the absent key as a present
+      // one turns SMITHERS2106 — a diagnostic — into a compiler crash. Measured
+      // on `05-context-rows`, not reasoned about.
+      const anchor = anchorOf(site.call);
+      effectSites.set(
+        site.call,
+        ids.assign(
+          name === undefined
+            ? { file: fileName, functionName: fn.name, kind: "get", anchor }
+            : { file: fileName, functionName: fn.name, kind: "get", anchor, key: name },
+        ),
+      );
+      if (name !== undefined && isJournaledAnswer(site.call, checker, sourceFile)) {
+        journaledRequirements.add(name);
+      }
+    }
+    for (const site of fn.propagationSites) {
+      effectSites.set(
+        site,
+        ids.assign({ file: fileName, functionName: fn.name, kind: "abort", anchor: anchorOf(site) }),
+      );
+    }
+  }
+
+  return { capabilitySites, effectSites, journaledRequirements };
+}
+
+/**
+ * `specification/effects.mdx` §The Journaling Classifier, applied to a `get`
+ * request's answer: journaled if and only if the answer satisfies the durable
+ * codec contract.
+ *
+ * The predicate is the tree's existing codec derivation, deliberately, so that
+ * there is exactly one answer to "is this codec-representable" and it cannot
+ * drift between the language lane and the durable lane. Any refusal — and any
+ * unexpected failure — means "not codec-representable", which is the
+ * fail-closed side: an unjournaled answer is re-asked on every resumption,
+ * whereas a wrongly journaled one is frozen into the journal.
+ */
+function isJournaledAnswer(
+  call: ts.CallExpression,
+  checker: ts.TypeChecker,
+  sourceFile: ts.SourceFile,
+): boolean {
+  try {
+    deriveDurableValueSchema(checker, sourceFile, call, checker.getTypeAtLocation(call), "success", "capability answer");
+    return true;
+  } catch (error) {
+    if (error instanceof DurableCodecError) return false;
+    return false;
+  }
 }
 
 export function buildSemanticModel(source: string, options: AnalyzeOptions = {}): SemanticModel {
@@ -351,6 +542,7 @@ export function buildSemanticModel(source: string, options: AnalyzeOptions = {})
     errors,
     rows,
     publicFunctions,
+    ...collectEffectFacts(environment.fileName, functions, checker, sourceFile),
   };
 }
 
@@ -480,6 +672,7 @@ export function buildSemanticProjectModels(
       errors: analysis.errors,
       rows: analysis.rows,
       publicFunctions: analysis.functions,
+      ...collectEffectFacts(entry.absoluteName, fileFunctions, checker, entry.sourceFile),
     });
     for (const diagnostic of analysis.diagnostics) {
       allDiagnostics.push({ fileName: entry.displayName, ...diagnostic });
@@ -2059,6 +2252,8 @@ function collectFunctions(sourceFile: ts.SourceFile, checker: ts.TypeChecker): S
         boundaryCallbacks: [],
         callbackValues: [],
         channelSites: [],
+        capabilitySites: [],
+        propagationSites: [],
         hasResultPropagation: false,
       });
     }
@@ -2367,6 +2562,9 @@ function collectFacts(
       }
 
       const capability = contextRequirement(node, checker);
+      // The node this classification was made ABOUT, kept rather than dropped.
+      // Nothing reads it yet; see `SemanticFunction.capabilitySites`.
+      if (capability !== undefined) fn.capabilitySites.push({ call: node, receiver: capability });
       if (capability?.kind === "capability") fn.directRequirements.add(capability.name);
       if (capability?.kind === "ambiguous") {
         diagnostics.push(at(node, sourceFile, "SMITHERS2106", AMBIGUOUS_CONTEXT_RECEIVER_MESSAGE));
@@ -2552,6 +2750,9 @@ function collectResultPropagations(body: ts.ConciseBody, fn: SemanticFunction): 
     }
     if (ts.isNonNullExpression(node)) {
       fn.channelSites.push({ expression: node.expression, nonNull: true });
+      // The same site, as the `!` node itself. Read by nothing; see
+      // `SemanticFunction.propagationSites`.
+      fn.propagationSites.push(node);
     }
     ts.forEachChild(node, visit);
   };
@@ -4260,7 +4461,7 @@ function isInTypePosition(node: ts.Node): boolean {
  * the constructor the receiver evaluates to, so an unpinned receiver produces a
  * checked program that reads a capability its row does not name.
  */
-type ContextReceiver =
+export type ContextReceiver =
   | { readonly kind: "capability"; readonly name: string }
   | { readonly kind: "ambiguous" }
   | { readonly kind: "none" };
@@ -4433,7 +4634,7 @@ function contextReceiverOfType(
  * refusing a program that runs. Anything changed here changes both sides of
  * `Layer.provide` at once, which is the point.
  */
-function contextReceiver(receiver: ts.Expression, checker: ts.TypeChecker, depth = 0): ContextReceiver {
+export function contextReceiver(receiver: ts.Expression, checker: ts.TypeChecker, depth = 0): ContextReceiver {
   if (depth > 16) return AMBIGUOUS_RECEIVER;
   const branches = valueBranches(receiver);
   if (branches) {
@@ -4528,7 +4729,7 @@ function isPreludeContextMember(selection: MemberSelection, checker: ts.TypeChec
  * a context call whose receiver is illegal — that was the fail-open this rule
  * closes, and it is now `ambiguous`.
  */
-function contextRequirement(call: ts.CallExpression, checker: ts.TypeChecker): ContextReceiver | undefined {
+export function contextRequirement(call: ts.CallExpression, checker: ts.TypeChecker): ContextReceiver | undefined {
   const selection = calleeSelection(call, checker);
   if (!selection || selection.name !== "context" || call.arguments.length !== 0) {
     return undefined;
