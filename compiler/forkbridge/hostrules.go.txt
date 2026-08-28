@@ -9,6 +9,8 @@ package main
 //
 //	SMITHERS1601/1602/1603  host globals and host-sensitive operations
 //	SMITHERS1604            dynamic code evaluation (`eval`, `Function`)
+//	SMITHERS1605            determinism-hostile globals (`WeakRef`,
+//	                        `FinalizationRegistry`, `SharedArrayBuffer`, `Atomics`)
 //	SMITHERS1107            class `static {}` initialization blocks
 //	SMITHERS1150            two Error classes with one name in one module
 //	SMITHERS1504            a foreign constructor without `@throws {never}`
@@ -92,18 +94,24 @@ var universalGlobals = map[string]struct{}{
 	"decodeURI": {}, "decodeURIComponent": {}, "encodeURI": {}, "encodeURIComponent": {},
 	// 19.3 Constructor Properties of the Global Object.
 	"AggregateError": {}, "Array": {}, "ArrayBuffer": {}, "BigInt": {}, "BigInt64Array": {}, "BigUint64Array": {},
-	"Boolean": {}, "DataView": {}, "Error": {}, "EvalError": {}, "FinalizationRegistry": {},
+	"Boolean": {}, "DataView": {}, "Error": {}, "EvalError": {},
+	// `FinalizationRegistry` is deliberately absent; see nondeterministicGlobals.
 	// `Function` is deliberately absent; see dynamicCodeGlobals.
 	"Float16Array": {}, "Float32Array": {}, "Float64Array": {},
 	"Int8Array": {}, "Int16Array": {}, "Int32Array": {}, "Iterator": {}, "Map": {}, "Number": {}, "Object": {},
-	"Promise": {}, "Proxy": {}, "RangeError": {}, "ReferenceError": {}, "RegExp": {}, "Set": {}, "SharedArrayBuffer": {},
+	"Promise": {}, "Proxy": {}, "RangeError": {}, "ReferenceError": {}, "RegExp": {}, "Set": {},
+	// `SharedArrayBuffer` is deliberately absent; see nondeterministicGlobals.
 	"String": {}, "Symbol": {}, "SyntaxError": {}, "TypeError": {},
 	"Uint8Array": {}, "Uint8ClampedArray": {}, "Uint16Array": {}, "Uint32Array": {}, "URIError": {},
-	"WeakMap": {}, "WeakRef": {}, "WeakSet": {},
+	// `WeakRef` is deliberately absent; see nondeterministicGlobals. `WeakMap`
+	// and `WeakSet` stay: neither exposes collection, so neither can observe
+	// garbage-collection timing.
+	"WeakMap": {}, "WeakSet": {},
 	// Explicit Resource Management, shipped in the same clause.
 	"AsyncDisposableStack": {}, "DisposableStack": {}, "SuppressedError": {},
-	// 19.4 Other Properties of the Global Object.
-	"Atomics": {}, "JSON": {}, "Reflect": {},
+	// 19.4 Other Properties of the Global Object. `Atomics` is deliberately
+	// absent; see nondeterministicGlobals.
+	"JSON": {}, "Reflect": {},
 	// Annex B, normative for every web-compatible host.
 	"escape": {}, "unescape": {},
 	// `Date`, `Math`, `Intl`, `performance`, and `crypto` are omitted on
@@ -155,6 +163,48 @@ var universalGlobals = map[string]struct{}{
 var dynamicCodeGlobals = map[string]struct{}{
 	"eval":     {},
 	"Function": {},
+}
+
+// nondeterministicGlobals are the four ECMA-262 names whose results are a
+// function of garbage-collection timing or another agent's schedule.
+//
+// specification/compatibility.mdx §Determinism-Sensitive Members states two
+// rows verbatim: `WeakRef`/`FinalizationRegistry` and
+// `SharedArrayBuffer`/`Atomics` "MUST NOT be unconditional globals". The reason
+// is the one §Host Globals gives for the whole allowlist — a Flow body
+// re-executes on every resumption — except that here there is no capability to
+// reach for. `deref()` returning `undefined` is a pure function of collection
+// timing; a shared-memory read observes another agent's schedule. Neither is a
+// value a journal entry could record and replay.
+//
+// Measured 2026-08-28, before this set existed: all four compiled with zero
+// diagnostics and an empty row on both backends, in the same file where the
+// `Date.now()` control reported SMITHERS1602. Being LISTED in universalGlobals
+// made the allowlist assert the opposite of the obligation rather than merely
+// fail to enforce it.
+//
+// They get SMITHERS1605 rather than SMITHERS1601 because 1601's message ends
+// "access it through a Context capability" and these rows say the opposite in as
+// many words: "no capability can mediate it and no journal entry can describe
+// it". SMITHERS1604 is the precedent — same "no capability could provide this"
+// argument, own code, own reason.
+//
+// Unlike dynamicCodeGlobals the line here is the NAME, not the operation: every
+// value use of `WeakRef` is construction and every member of `Atomics` is a
+// shared-memory operation, so there is no safe read to preserve. The two
+// directions a by-name rule can get wrong are pinned in
+// poc/src/language/host-global-allowlist.test.ts — a type position and a lexical
+// shadow stay legal, and `WeakMap`, `WeakSet`, `ArrayBuffer`, and the typed
+// arrays stay available.
+//
+// This is byte-for-byte the reference implementation's NONDETERMINISTIC_GLOBALS
+// (poc/src/language/semantic.ts). The two backends must answer the same question
+// the same way.
+var nondeterministicGlobals = map[string]struct{}{
+	"WeakRef":              {},
+	"FinalizationRegistry": {},
+	"SharedArrayBuffer":    {},
+	"Atomics":              {},
 }
 
 // alwaysForbiddenHostGlobals are refused by NAME, whether or not the ambient
@@ -269,6 +319,7 @@ func (a *rowAnalysis) checkHostGlobals(files []*ast.SourceFile) {
 			}
 			if ast.IsIdentifier(node) {
 				a.reportForbiddenHostGlobal(node)
+				a.reportNondeterministicHostGlobal(node)
 				for _, use := range a.ambientAuthorityUses(node) {
 					switch use.requirement {
 					case "Clock":
@@ -301,6 +352,24 @@ func (a *rowAnalysis) reportForbiddenHostGlobal(node *ast.Node) {
 		"ambient host global '"+node.Text()+"' is unavailable; access it through a Context capability")
 }
 
+// reportNondeterministicHostGlobal refuses the determinism-hostile names with
+// their own reason; see nondeterministicGlobals. Guarded by the same three
+// position tests and the same lexical-shadow test as the allowlist rule above,
+// so a type annotation and a local binding survive.
+func (a *rowAnalysis) reportNondeterministicHostGlobal(node *ast.Node) {
+	if isDeclarationNameIdentifier(node) || isPropertyNameIdentifier(node) || ast.IsPartOfTypeNode(node) {
+		return
+	}
+	if _, hostile := nondeterministicGlobals[node.Text()]; !hostile {
+		return
+	}
+	if a.ambientGlobalKind(node) == ambientGlobalLocal {
+		return
+	}
+	a.report(node, "SMITHERS1605",
+		"ambient host global '"+node.Text()+"' is unavailable; its result is a function of garbage-collection timing or another agent's schedule, which no capability can mediate and no journal entry can describe")
+}
+
 // isForbiddenAmbientGlobal is the host-global prohibition, as an allowlist.
 //
 // Every name the ambient environment publishes is refused unless ECMA-262
@@ -323,6 +392,12 @@ func (a *rowAnalysis) isForbiddenAmbientGlobal(node *ast.Node) bool {
 		return false
 	}
 	if _, sensitive := hostSensitiveGlobals[node.Text()]; sensitive {
+		return false
+	}
+	// Refused by reportNondeterministicHostGlobal as SMITHERS1605 with a
+	// truthful reason. Without this arm they would draw that refusal AND a
+	// SMITHERS1601 whose remedy cannot be satisfied, at the same position.
+	if _, hostile := nondeterministicGlobals[node.Text()]; hostile {
 		return false
 	}
 	// The dynamic-code names are judged per operation by dynamicCodeUse, exactly

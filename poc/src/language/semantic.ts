@@ -7957,22 +7957,77 @@ const UNIVERSAL_GLOBALS: ReadonlySet<string> = new Set([
   "decodeURI", "decodeURIComponent", "encodeURI", "encodeURIComponent",
   // 19.3 Constructor Properties of the Global Object (`Function` excluded above).
   "AggregateError", "Array", "ArrayBuffer", "BigInt", "BigInt64Array", "BigUint64Array",
-  "Boolean", "DataView", "Error", "EvalError", "FinalizationRegistry",
+  "Boolean", "DataView", "Error", "EvalError",
+  // `FinalizationRegistry` is deliberately absent; see NONDETERMINISTIC_GLOBALS.
   "Float16Array", "Float32Array", "Float64Array",
   "Int8Array", "Int16Array", "Int32Array", "Iterator", "Map", "Number", "Object",
-  "Promise", "Proxy", "RangeError", "ReferenceError", "RegExp", "Set", "SharedArrayBuffer",
+  "Promise", "Proxy", "RangeError", "ReferenceError", "RegExp", "Set",
+  // `SharedArrayBuffer` is deliberately absent; see NONDETERMINISTIC_GLOBALS.
   "String", "Symbol", "SyntaxError", "TypeError",
   "Uint8Array", "Uint8ClampedArray", "Uint16Array", "Uint32Array", "URIError",
-  "WeakMap", "WeakRef", "WeakSet",
+  // `WeakRef` is deliberately absent; see NONDETERMINISTIC_GLOBALS. `WeakMap`
+  // and `WeakSet` stay: neither exposes collection, so neither can observe
+  // garbage-collection timing.
+  "WeakMap", "WeakSet",
   // Explicit Resource Management, shipped in the same clause.
   "AsyncDisposableStack", "DisposableStack", "SuppressedError",
-  // 19.4 Other Properties of the Global Object.
-  "Atomics", "JSON", "Reflect",
+  // 19.4 Other Properties of the Global Object. `Atomics` is deliberately
+  // absent; see NONDETERMINISTIC_GLOBALS.
+  "JSON", "Reflect",
   // Annex B, normative for every web-compatible host.
   "escape", "unescape",
   // `Date`, `Math`, `Intl`, `performance`, and `crypto` are omitted on purpose:
   // they are judged per-operation by `ambientAuthorityUses` instead, which is
   // what keeps `Math.max` available while `Math.random` needs `Random`.
+]);
+
+/**
+ * The DETERMINISM-HOSTILE globals. ECMA-262 publishes them, and this table is
+ * why they are nevertheless not in `UNIVERSAL_GLOBALS`.
+ *
+ * `specification/compatibility.mdx` §Determinism-Sensitive Members states the
+ * two rows verbatim: `WeakRef`/`FinalizationRegistry` and
+ * `SharedArrayBuffer`/`Atomics` "MUST NOT be unconditional globals". The reason
+ * is the same one §Host Globals gives for the whole allowlist — a Flow body
+ * re-executes on every resumption, so an operation whose result can differ
+ * between two executions of the same code on the same inputs must be reachable
+ * only through a capability whose answer the runtime journals — except that
+ * here there is no such capability to reach for. `deref()` returning
+ * `undefined` is a pure function of garbage-collection timing; a shared-memory
+ * read observes another agent's schedule. Neither is a value a journal entry
+ * could record and replay.
+ *
+ * Measured 2026-08-28, before this set existed: `new WeakRef(o).deref()`,
+ * `new FinalizationRegistry(() => {})`, `new SharedArrayBuffer(8)`, and
+ * `Atomics.load(...)` each compiled with zero diagnostics and an empty
+ * requirement row, in the same `.sm` file where the `Date.now()` control
+ * correctly reported SMITHERS1602. They were not merely unenforced: being
+ * *listed* in `UNIVERSAL_GLOBALS` made the allowlist assert the opposite of the
+ * obligation.
+ *
+ * ## Why these get their own code rather than joining SMITHERS1601
+ *
+ * SMITHERS1601's message ends "access it through a Context capability", and
+ * these four rows say the opposite in as many words: "no capability can mediate
+ * it and no journal entry can describe it". Pointing an author at a remedy that
+ * cannot be built is the "refusal wearing a costume" that the `crypto` note in
+ * `DYNAMIC_CODE_GLOBALS` rejects by name. SMITHERS1604 is the precedent — it
+ * exists for exactly the same "there is no capability that could provide this"
+ * argument — so this is SMITHERS1605 with its own reason.
+ *
+ * ## Why the line is the NAME here and the OPERATION for `eval`
+ *
+ * `eval` keeps a legal type annotation and a legal `instanceof` because the
+ * hazard is the evaluation, not the binding. There is no comparable safe read
+ * here: every value use of `WeakRef` is construction, and `Atomics` is a
+ * namespace object whose every member is a shared-memory operation. So this
+ * joins the by-name shape, and the two directions a by-name rule can get wrong
+ * are pinned in `host-global-allowlist.test.ts`: a type position and a lexical
+ * shadow both stay legal, and `WeakMap`, `WeakSet`, `ArrayBuffer`, and the
+ * typed arrays all stay available.
+ */
+const NONDETERMINISTIC_GLOBALS: ReadonlySet<string> = new Set([
+  "WeakRef", "FinalizationRegistry", "SharedArrayBuffer", "Atomics",
 ]);
 
 /**
@@ -8098,6 +8153,16 @@ function checkHostGlobals(
       !isDeclarationName(node) && !isPropertyNameNode(node) && !isInTypePosition(node) &&
       isForbiddenAmbientGlobal(node, checker)) {
       diagnostics.push(at(node, sourceFile, "SMITHERS1601", `ambient host global '${node.text}' is unavailable; access it through a Context capability`));
+    }
+    // The determinism-hostile names, refused with their own reason because no
+    // capability can mediate them; see `NONDETERMINISTIC_GLOBALS`. Guarded by
+    // the same three position tests and the same lexical-shadow test as the
+    // allowlist rule above, so a type annotation and a local binding survive.
+    if (ts.isIdentifier(node) &&
+      !isDeclarationName(node) && !isPropertyNameNode(node) && !isInTypePosition(node) &&
+      NONDETERMINISTIC_GLOBALS.has(node.text) &&
+      ambientGlobalKind(node, checker) !== "local") {
+      diagnostics.push(at(node, sourceFile, "SMITHERS1605", `ambient host global '${node.text}' is unavailable; its result is a function of garbage-collection timing or another agent's schedule, which no capability can mediate and no journal entry can describe`));
     }
     // `import.meta` is host authority by this allowlist's own criterion —
     // ECMA-262 hands its properties to the host (`HostGetImportMetaProperties`)
@@ -8417,7 +8482,11 @@ function isForbiddenAmbientGlobal(identifier: ts.Identifier, checker: ts.TypeChe
   return kind === "declared" &&
     !UNIVERSAL_GLOBALS.has(identifier.text) &&
     !HOST_SENSITIVE_GLOBALS.has(identifier.text) &&
-    !DYNAMIC_CODE_GLOBALS.has(identifier.text);
+    !DYNAMIC_CODE_GLOBALS.has(identifier.text) &&
+    // Refused by `checkHostGlobals` as SMITHERS1605 with a truthful reason.
+    // Without this arm they would draw that refusal AND a SMITHERS1601 whose
+    // remedy cannot be satisfied, at the same position.
+    !NONDETERMINISTIC_GLOBALS.has(identifier.text);
 }
 
 function nearestFunction(node: ts.Node): ts.FunctionLikeDeclaration | undefined {

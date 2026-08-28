@@ -175,6 +175,33 @@ The bounded project/ownership checks use stable codes:
   (`Object.getPrototypeOf(fn).constructor`) still escapes; that is the standing
   `any` hole, which defeats every checker-typed rule in this file.
 
+- `SMITHERS1605`: **determinism-hostile globals.** `WeakRef`,
+  `FinalizationRegistry`, `SharedArrayBuffer`, and `Atomics` are in ECMA-262
+  clause 19 and were therefore *in* the allowlist above, which made it assert
+  the opposite of `specification/compatibility.mdx` §Determinism-Sensitive
+  Members rows one and two — both say all four "MUST NOT be unconditional
+  globals". Measured 2026-08-28 on both backends: `new WeakRef(o).deref()`,
+  `new FinalizationRegistry(() => {})`, `new SharedArrayBuffer(8)`, and
+  `Atomics.load(…)` each compiled with zero diagnostics and an empty requirement
+  row, in the same file where the `Date.now()` control reported `SMITHERS1602`.
+  Its own code rather than `SMITHERS1601` because 1601's message ends "access it
+  through a Context capability" and the specification rows say the opposite in as
+  many words: "no capability can mediate it and no journal entry can describe
+  it". `SMITHERS1604` is the precedent — own code, own reason, for the same
+  "there is no capability that could provide this" argument. Unlike
+  `SMITHERS1604` the line is the NAME, not the operation, because every value use
+  of `WeakRef` is construction and every member of `Atomics` is a shared-memory
+  operation, so there is no safe read to preserve; a type position and a lexical
+  shadow still survive, and `WeakMap`, `WeakSet`, `ArrayBuffer`, `DataView` and
+  the typed arrays stay available. Both directions are gated in
+  `host-global-allowlist.test.ts` and certified across backends by
+  `20-host-globals/determinism-hostile-globals-are-refused` and
+  `20-host-globals/determinism-hostile-siblings-stay-available`. Rows three,
+  four, and five of the same table — `Promise.race`/`any` charging `Scheduler`,
+  `Date` instance members charging `Clock`, and `Intl`/`localeCompare` charging
+  `Locale` — are **not** closed by this rule and remain recorded as `(SA-4)`:
+  each needs a requirement kind the ambient vocabulary does not have.
+
 - `SMITHERS1801`: a relative `.sm` import is absent from the supplied project;
   `SMITHERS1804`: a named/default import is not an exported value in that module.
 - `SMITHERS1802`: a cross-module function becomes a **value** that escapes

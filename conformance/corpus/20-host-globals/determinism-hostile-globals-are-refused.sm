@@ -1,0 +1,17 @@
+export function main(): string[] {
+  // Four ECMA-262 globals whose results are a function of host state no journal
+  // entry can describe: garbage-collection timing for the first two, another
+  // agent's schedule for the second two. Unlike the clock and randomness there
+  // is no capability to route them through, so the refusal offers none.
+  const held = { a: 1 }
+  const ref = new WeakRef(held)
+  const registry = new FinalizationRegistry(() => {})
+  const shared = new SharedArrayBuffer(8)
+  const view = new Int32Array(8)
+  return [
+    `${ref.deref() !== undefined}`,
+    `${typeof registry}`,
+    `${shared.byteLength}`,
+    `${Atomics.load(view, 0)}`,
+  ]
+}

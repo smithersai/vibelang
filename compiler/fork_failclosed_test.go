@@ -263,6 +263,82 @@ func TestPinnedForkHostGlobalsNeedCapabilities(t *testing.T) {
 	})
 }
 
+// TestPinnedForkDeterminismHostileGlobalsAreRefused pins
+// specification/compatibility.mdx §Determinism-Sensitive Members rows one and
+// two on this backend: `WeakRef`/`FinalizationRegistry` and
+// `SharedArrayBuffer`/`Atomics` "MUST NOT be unconditional globals".
+//
+// Until 2026-08-28 all four were LISTED in universalGlobals on both backends, so
+// the allowlist asserted the opposite of the obligation rather than merely
+// failing to meet it. Each compiled with zero diagnostics and an empty
+// requirement row, in the same file where the `Date.now()` control reported
+// SMITHERS1602.
+//
+// SMITHERS1605 rather than SMITHERS1601 because 1601's message ends "access it
+// through a Context capability" and these rows say the opposite in as many
+// words. The accepted rows below are the load-bearing half, exactly as in
+// TestPinnedForkHostGlobalsNeedCapabilities: the rule is about four names, not
+// about weak collections or binary data, and a frontend that banned `WeakMap` or
+// `ArrayBuffer` would look correct on the rejection rows and be unusable.
+func TestPinnedForkDeterminismHostileGlobalsAreRefused(t *testing.T) {
+	runFailClosedCases(t, []failClosedCase{
+		{
+			name: "a WeakRef read is garbage-collection timing",
+			source: "export function main(): string[] {\n" +
+				"  const held = { a: 1 }\n" +
+				"  const ref = new WeakRef(held)\n" +
+				"  return [`${ref.deref() !== undefined}`]\n" +
+				"}\n",
+			reject: []string{"SMITHERS1605@3:19"},
+		},
+		{
+			name: "a FinalizationRegistry observes collection",
+			source: "export function main(): string[] {\n" +
+				"  const registry = new FinalizationRegistry(() => {})\n" +
+				"  return [`${typeof registry}`]\n" +
+				"}\n",
+			reject: []string{"SMITHERS1605@2:24"},
+		},
+		{
+			name: "SharedArrayBuffer is cross-agent shared memory",
+			source: "export function main(): string[] {\n" +
+				"  const shared = new SharedArrayBuffer(8)\n" +
+				"  return [`${shared.byteLength}`]\n" +
+				"}\n",
+			reject: []string{"SMITHERS1605@2:22"},
+		},
+		{
+			name: "an Atomics read observes another agent's schedule",
+			source: "export function main(): string[] {\n" +
+				"  const view = new Int32Array(8)\n" +
+				"  return [`${Atomics.load(view, 0)}`]\n" +
+				"}\n",
+			reject: []string{"SMITHERS1605@3:14"},
+		},
+		{
+			name: "the non-hostile siblings stay available",
+			source: "export function main(): string[] {\n" +
+				"  const seen = new WeakSet<object>()\n" +
+				"  const keyed = new WeakMap<object, number>()\n" +
+				"  const key = { a: 1 }\n" +
+				"  seen.add(key)\n" +
+				"  keyed.set(key, 7)\n" +
+				"  const bytes = new Int32Array(new ArrayBuffer(8))\n" +
+				"  return [`${seen.has(key)}`, `${keyed.get(key)}`, `${bytes.length}`]\n" +
+				"}\n",
+			stdout: "true\n7\n2",
+		},
+		{
+			name: "a local binding named Atomics is an ordinary value",
+			source: "export function main(): string[] {\n" +
+				"  const Atomics = { load: (): number => 41 }\n" +
+				"  return [`${Atomics.load()}`]\n" +
+				"}\n",
+			stdout: "41",
+		},
+	})
+}
+
 // TestPinnedForkHostGlobalAllowlist pins the inversion of the host-global rule
 // from a spelling denylist to an allowlist over the ECMAScript-262 global
 // object.

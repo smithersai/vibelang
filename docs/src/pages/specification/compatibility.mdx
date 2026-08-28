@@ -67,28 +67,47 @@ Because a Flow body re-executes on every resumption, an operation whose result c
 | `Date.prototype.getHours`, `getDay`, `getTimezoneOffset`, `toLocaleString`, `toString` | MUST charge `Clock` even when an explicit instant is supplied, because they read the host time zone. `getTime()` stays free. This is the hazard already charged at `Intl.DateTimeFormat` construction. |
 | `Intl.NumberFormat`, `Intl.Collator`, `String.prototype.localeCompare`, `Number.prototype.toLocaleString` | MUST charge a `Locale` requirement. They are functions of the host ICU version and locale data, and `Collator.compare` used as a sort comparator makes the resulting **ordering** host-dependent. |
 
-**(SA-4) — implementation status, measured 2026-08-28: none of the five rows is
-enforced, and the first two are actively contradicted.** In one `.sm` file,
-`new Date(0).getTimezoneOffset()`, `"a".localeCompare("b")`,
-`new WeakRef(o).deref()`, and `new SharedArrayBuffer(8)` all produce zero
+**(SA-4) — implementation status, measured 2026-08-28. Rows one and two are now
+enforced; rows three, four, and five are not.** As first measured, none of the
+five was enforced and the first two were actively *contradicted*: in one `.sm`
+file, `new Date(0).getTimezoneOffset()`, `"a".localeCompare("b")`,
+`new WeakRef(o).deref()`, and `new SharedArrayBuffer(8)` all produced zero
 diagnostics and an empty requirement row, while the control `Date.now()` in the
-same file correctly reports `SMITHERS1602` — so the analysis runs and these
-simply are not walls yet. Three distinct causes, worth separating because they
-need different fixes:
+same file correctly reported `SMITHERS1602` — so the analysis ran and these
+simply were not walls. Three distinct causes, and they did not need the same
+fix, which is why they did not move together:
 
-- `WeakRef`, `FinalizationRegistry`, `SharedArrayBuffer`, and `Atomics` are
-  **listed** in the frontend's `UNIVERSAL_GLOBALS` — permitted unconditionally,
-  the opposite of rows one and two.
-- No `Scheduler` and no `Locale` requirement exists. The frontend's ambient
-  requirement type admits only `Clock`, `Random`, and `Host`, so rows three and
-  five have nothing to charge. (A `Scheduler` class exists in the concurrency
-  library but is not a capability and is not exported.)
-- `Date` is analyzed at the root identifier only, so `new Date(instant)` returns
-  an empty row and no instance member is ever inspected. Row four's "even when
-  an explicit instant is supplied" is not implementable in that shape.
+- **Closed 2026-08-28.** `WeakRef`, `FinalizationRegistry`, `SharedArrayBuffer`,
+  and `Atomics` were **listed** in the frontend's `UNIVERSAL_GLOBALS` and in the
+  Go fork's byte-for-byte copy — permitted unconditionally, the opposite of rows
+  one and two. They are now refused on **both** backends as `SMITHERS1605`, a
+  new code rather than the existing `SMITHERS1601`, because 1601's message ends
+  "access it through a Context capability" and these two rows say the opposite in
+  as many words: no capability can mediate them. `SMITHERS1604` is the precedent
+  for a refusal that names its own reason and offers no capability. The line is
+  the **name**, not the operation, because every value use of `WeakRef` is
+  construction and every member of `Atomics` is a shared-memory operation; a type
+  annotation and a lexical shadow still compile, and `WeakMap`, `WeakSet`,
+  `ArrayBuffer`, `DataView` and the typed arrays stay available. Certified across
+  backends by `20-host-globals/determinism-hostile-globals-are-refused` and its
+  positive control `20-host-globals/determinism-hostile-siblings-stay-available`.
+- **Open.** No `Scheduler` and no `Locale` requirement exists. The frontend's
+  ambient requirement type admits only `Clock`, `Random`, and `Host`, so rows
+  three and five have nothing to charge. (A `Scheduler` class exists in the
+  concurrency library but is not a capability and is not exported.) Unlike rows
+  one and two this is not a list to edit: it adds a requirement kind to the
+  vocabulary that appears in every inferred row, and a requirement no Layer can
+  satisfy would make `Promise.race` and `Intl.NumberFormat` unusable rather than
+  mediated. That is an owner decision about the capability surface, not a defect.
+- **Open.** `Date` is analyzed at the root identifier only, so `new Date(instant)`
+  returns an empty row and no instance member is ever inspected. Row four's "even
+  when an explicit instant is supplied" is not implementable in that shape: it
+  needs type-directed analysis of a *value* whose type is `Date`, which the
+  root-identifier walk never performs.
 
-The obligations stand; the implementation does not meet them, and this section
-carries no `(SA-n)` marker in [Specification](/specification) §Current markers.
+Rows three, four, and five stand as obligations this implementation does not yet
+meet, and remain recorded as **(SA-4)** in
+[Specification](/specification) §Current markers.
 
 These walls MUST be uniform across all `.sm` code and MUST NOT be scoped to Flow bodies. A rule that fires in one file and not another is a per-file dialect, which the decision ledger warns against by name, and it does not work mechanically either: requirement inference is whole-program, so a Flow's helper lives in another file. The cost of uniformity is explicit and accepted — `Intl.Collator` in an ordinary CLI formatter also charges `Locale`.
 

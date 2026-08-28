@@ -1,0 +1,14 @@
+export function main(): string[] {
+  // The load-bearing half of the refusal beside this case. The rule is about
+  // four names, not about weak collections or binary data in general: WeakMap
+  // and WeakSet expose no `deref` and no iteration, so neither can observe
+  // collection, and a non-shared ArrayBuffer is owned by one agent.
+  const key = { a: 1 }
+  const seen = new WeakSet<object>()
+  const keyed = new WeakMap<object, number>()
+  seen.add(key)
+  keyed.set(key, 7)
+  const bytes = new Int32Array(new ArrayBuffer(8))
+  const viewed = new DataView(new ArrayBuffer(4))
+  return [`${seen.has(key)}`, `${keyed.get(key)}`, `${bytes.length}`, `${viewed.byteLength}`]
+}

@@ -173,14 +173,22 @@ describe("the ECMAScript global object stays available", () => {
     "isFinite", "isNaN", "parseFloat", "parseInt",
     "decodeURI", "decodeURIComponent", "encodeURI", "encodeURIComponent",
     "AggregateError", "Array", "ArrayBuffer", "BigInt", "BigInt64Array", "BigUint64Array",
-    "Boolean", "DataView", "Error", "EvalError", "FinalizationRegistry",
+    "Boolean", "DataView", "Error", "EvalError",
     "Float32Array", "Float64Array",
     "Int8Array", "Int16Array", "Int32Array", "Map", "Number", "Object",
-    "Promise", "Proxy", "RangeError", "ReferenceError", "RegExp", "Set", "SharedArrayBuffer",
+    "Promise", "Proxy", "RangeError", "ReferenceError", "RegExp", "Set",
     "String", "Symbol", "SyntaxError", "TypeError",
     "Uint8Array", "Uint8ClampedArray", "Uint16Array", "Uint32Array", "URIError",
-    "WeakMap", "WeakRef", "WeakSet",
-    "Atomics", "JSON", "Reflect",
+    // `WeakRef`, `FinalizationRegistry`, `SharedArrayBuffer`, and `Atomics`
+    // were HERE until 2026-08-28, asserting that reading them draws no
+    // diagnostic at all. That assertion was this file pinning the contradiction
+    // of `specification/compatibility.mdx` §Determinism-Sensitive Members rows
+    // one and two, which say all four "MUST NOT be unconditional globals". They
+    // now live in "determinism-hostile globals are refused by name" below,
+    // which pins both directions separately — the four refusals, and the
+    // `WeakMap`/`WeakSet`/`ArrayBuffer`/typed-array siblings that stay.
+    "WeakMap", "WeakSet",
+    "JSON", "Reflect",
     "escape", "unescape",
   ];
 
@@ -299,6 +307,85 @@ describe("dynamic code evaluation is refused per operation, not by erasing the n
     // pinned in above. (`eval` has no local-binding spelling: strict mode
     // refuses it as a declaration name.)
     expect(diagnose("export function main(): number {\n  const Function = { call: (): number => 1 }\n  return Function.call()\n}\n")).toEqual([]);
+  });
+});
+
+describe("determinism-hostile globals are refused by name, with no capability offered", () => {
+  /**
+   * `specification/compatibility.mdx` §Determinism-Sensitive Members, rows one
+   * and two: `WeakRef`/`FinalizationRegistry` and `SharedArrayBuffer`/`Atomics`
+   * "MUST NOT be unconditional globals". ECMA-262 publishes all four, so
+   * `UNIVERSAL_GLOBALS` admitted them and the two obligations were contradicted
+   * rather than merely unmet — measured 2026-08-28, `new WeakRef(o).deref()` and
+   * `new SharedArrayBuffer(8)` each compiled with zero diagnostics and an empty
+   * requirement row, in the same file where the `Date.now()` control correctly
+   * reported SMITHERS1602.
+   *
+   * They get their OWN code rather than joining SMITHERS1601 because 1601's
+   * message ends "access it through a Context capability" and the specification
+   * rows say the opposite in as many words: "no capability can mediate it and no
+   * journal entry can describe it". Answering a `WeakRef` with a remedy that
+   * cannot exist is the "refusal wearing a costume" the `crypto` note in
+   * `semantic.ts` rejects by name. SMITHERS1604 is the precedent — dynamic code
+   * evaluation is refused per operation, with its own reason, for the same
+   * "there is no capability that could provide this" argument.
+   */
+  const hostile: readonly (readonly [string, string])[] = [
+    ["WeakRef", "new WeakRef({ a: 1 }).deref()"],
+    ["FinalizationRegistry", "new FinalizationRegistry(() => {})"],
+    ["SharedArrayBuffer", "new SharedArrayBuffer(8)"],
+    ["Atomics", "Atomics.load(new Int32Array(8), 0)"],
+  ];
+
+  test("each of the four is refused as SMITHERS1605 at its own root identifier", () => {
+    const observed = hostile.map(([name, expression]) => [name, diagnose(reads(expression))]);
+    expect(observed).toEqual([
+      ["WeakRef", ["SMITHERS1605@2:14"]],
+      ["FinalizationRegistry", ["SMITHERS1605@2:14"]],
+      ["SharedArrayBuffer", ["SMITHERS1605@2:14"]],
+      ["Atomics", [`SMITHERS1605${AT_ROOT}`]],
+    ]);
+  });
+
+  test("the refusal names the reason and offers no capability remedy", () => {
+    const messages = check(reads("new WeakRef({ a: 1 }).deref()")).result.diagnostics
+      .filter((diagnostic) => diagnostic.severity === "error")
+      .map((diagnostic) => diagnostic.message);
+    expect(messages).toEqual([
+      "ambient host global 'WeakRef' is unavailable; its result is a function of garbage-collection timing or another agent's schedule, which no capability can mediate and no journal entry can describe",
+    ]);
+    // The half that would be silently wrong: a capability remedy here would be
+    // unsatisfiable, so the message must not offer one.
+    expect(messages[0]).not.toContain("Context capability");
+    expect(messages[0]).not.toContain(".context()");
+  });
+
+  /**
+   * The positive control this refusal class needs. The rule is about the four
+   * determinism-hostile names, NOT about weak collections or binary data in
+   * general: `WeakMap`/`WeakSet` cannot observe collection (they have no
+   * `deref`, and iteration is not exposed), and a non-shared `ArrayBuffer` is
+   * owned by one agent. Losing these would break the standard library, and an
+   * over-broad by-name refusal is exactly how that happens.
+   */
+  test("the siblings that are NOT determinism-hostile stay available", () => {
+    for (const expression of [
+      "new WeakMap<object, number>().set({}, 1)",
+      "new WeakSet<object>().add({})",
+      "new ArrayBuffer(8).byteLength",
+      "new Int32Array(8).length",
+      "new DataView(new ArrayBuffer(8)).byteLength",
+    ]) {
+      expect([expression, diagnose(reads(expression))]).toEqual([expression, []]);
+    }
+  });
+
+  test("the names are not erased: a type annotation and a local binding stay legal", () => {
+    // Same direction the `eval`/`Function` rule is pinned in above. These are
+    // by-NAME refusals of a value read, so a type position and a lexical shadow
+    // must both survive, or the rule has been widened to "any mention".
+    expect(diagnose("export function main(r: WeakRef<object>): boolean {\n  return r !== undefined\n}\n")).toEqual([]);
+    expect(diagnose("export function main(): number {\n  const Atomics = { load: (): number => 1 }\n  return Atomics.load()\n}\n")).toEqual([]);
   });
 });
 
