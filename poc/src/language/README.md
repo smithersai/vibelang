@@ -71,12 +71,23 @@ if (!checked.ok) {
   only when both language analysis and emitted TypeScript are error-free.
 - `compileAndCheckProject(sources, options)` applies the same acceptance rule
   to one stock TypeScript Program containing all generated modules.
-- `emitProjectDeclarations([{ fileName, code, effects? }])` emits virtual
-  declarations. `DeclarationSource.effects` attaches normalized inferred rows
-  to exported declarations as strict, versioned `@smithersEffects` metadata;
-  `readDeclarationEffects(code, fileName?)` is the public fail-closed decoder.
-  This metadata is explicitly provisional and non-normative: it preserves POC
-  evidence without deciding the eventual declaration/type encoding.
+- `emitProjectDeclarations([{ fileName, code, effects?, runtimeModule? }])`
+  emits virtual declarations. `DeclarationSource.effects` attaches normalized
+  inferred rows to exported declarations as strict, versioned
+  `@smithersEffects` metadata; `readDeclarationEffects(code, fileName?)` is the
+  public fail-closed decoder. This metadata is explicitly provisional and
+  non-normative: it preserves POC evidence without deciding the eventual
+  declaration/type encoding.
+- The same pass collapses the `Result<A, never> | Result<never, E>` split the
+  checker infers from a lowered body. It fires only where three facts hold at
+  once: the union sits in the declaration's generated return channel, every
+  member resolves to the `Result` export of the module the lowering phase
+  imported (`DeclarationSource.runtimeModule`, otherwise recovered from the
+  compiler-written header of `code`), and every member carries `never` in
+  complementary channels. A union failing any of them ships byte-identical, so
+  a user type spelled `Result` and an authored `Result` union are never
+  rewritten. `declaration-artifact.test.ts` measures the emitted bytes and
+  type-checks a consumer against them.
 
 The bounded project/ownership checks use stable codes:
 
