@@ -260,6 +260,82 @@ export interface EffectSiteIdentity {
 export const effectSiteId = (identity: EffectSiteIdentity, occurrence: number): string =>
   `src-${digest({ ...identity, occurrence }).slice(0, 24)}`
 
+/** One request site's claim on a site id. */
+export interface EffectSiteIdClaim {
+  readonly id: string
+  /** `<requestKind>@<anchor>` already holding it, when this claim collides. */
+  readonly collidesWith?: string
+}
+
+/**
+ * Assigns **Effect Manifest** site ids within one Flow's derivation.
+ *
+ * The Manifest's site table is a different assigner from {@link EffectSiteIds}
+ * only because its rows carry a `kind` the id does not: `effect-manifest.ts`
+ * mints every id under `kind: "perform"` and puts the real request kind
+ * (`sleep`, `signal`, `broadcast`, `queue`, `childFlow`) in the ROW. That is
+ * fine on its own — a constant contributes nothing to injectivity either way —
+ * but it is only fine while the occurrence counter is keyed on exactly the
+ * tuple the id is minted from, and it was not:
+ *
+ *     bucket = digest({ ...identity, requestKind })   // partitioned BY kind
+ *     id     = effectSiteId(identity, occurrence)     // blind to kind
+ *
+ * A counter partitioned more finely than the value it disambiguates does not
+ * disambiguate it — it defeats it. Two sites sharing `(file, functionName,
+ * anchor, key)` but differing in `requestKind` each read occurrence `0` out of
+ * their own bucket and then mint the SAME id, which under PR-2 is the same
+ * journal key. Both backends spelled it that way, so no cross-backend digest
+ * comparison could ever see it; only a direct assertion can, which is what
+ * `mint` below exists for.
+ *
+ * The counter is therefore keyed on `digest(identity)` — the id's own tuple,
+ * nothing added — which is byte-for-byte what the Plan lowerer's twin does
+ * (`source-compiler.ts`, eight sites, `const occurrenceKey = digest(identity)`).
+ * Because the previous bucket was a strict refinement of this one, every
+ * program in which the shipped answer was already correct keeps byte-identical
+ * site ids and therefore a byte-identical Manifest digest; the answer moves
+ * only where the shipped answer was a duplicate.
+ *
+ * The refusal is the second half, and it is the half the Plan lowerer has and
+ * the Manifest did not: `SMITHERS4199`, "stable durable node id collision",
+ * raised off a set of already-assigned ids. A site id is 24 hex digits — 96
+ * bits of a SHA-256 — so even with an injective tuple the truncation is a
+ * (astronomically unlikely) source of duplicates, and a duplicated journal key
+ * in the artifact whose digest is meant to be SIGNED is the worst available
+ * outcome. This makes it a refusal instead.
+ *
+ * `mint` is injectable for exactly one reason, and it is the same reason
+ * {@link NominalErrorIdentities} takes one: with the bucket aligned, no
+ * compilable program can trip the guard, and a guard no test can exercise is a
+ * guard the next refactor deletes as dead code. Handing it the SHIPPED bucket
+ * is how the test proves this would have caught the shipped defect. Nothing in
+ * the compiler passes it.
+ */
+export class EffectManifestSiteIds {
+  readonly #occurrences = new Map<string, number>()
+  readonly #assigned = new Map<string, string>()
+  readonly #mint: (identity: EffectSiteIdentity, requestKind: string) => string
+
+  constructor(
+    mint: (identity: EffectSiteIdentity, requestKind: string) => string = (identity) => digest(identity)
+  ) {
+    this.#mint = mint
+  }
+
+  assign(identity: EffectSiteIdentity, requestKind: string): EffectSiteIdClaim {
+    const bucket = this.#mint(identity, requestKind)
+    const occurrence = this.#occurrences.get(bucket) ?? 0
+    this.#occurrences.set(bucket, occurrence + 1)
+    const id = effectSiteId(identity, occurrence)
+    const owner = `${requestKind}@${identity.anchor}`
+    const prior = this.#assigned.get(id)
+    if (prior !== undefined) return { id, collidesWith: prior }
+    this.#assigned.set(id, owner)
+    return { id }
+  }
+}
+
 /**
  * Assigns site ids within one compilation unit, refusing a collision rather
  * than papering over it — the Plan lowerer raises `SMITHERS4199` on the same

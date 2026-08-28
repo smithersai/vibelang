@@ -54,7 +54,7 @@
  */
 import * as ts from "typescript-js"
 import { deriveDurableValueSchema } from "./schema.ts"
-import { effectSiteId, type EffectSiteIdentity } from "./site-id.ts"
+import { EffectManifestSiteIds, type EffectSiteIdentity } from "./site-id.ts"
 import {
   type ActionDescriptor,
   digest,
@@ -257,7 +257,7 @@ export const deriveEffectManifest = (
   const contracts = new Map<string, EffectManifestContract>()
   const failures = new Set<string>()
   const sites: EffectManifestSite[] = []
-  const occurrences = new Map<string, number>()
+  const siteIds = new EffectManifestSiteIds()
 
   const anchorOf = (node: ts.Node): string => {
     const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
@@ -266,6 +266,22 @@ export const deriveEffectManifest = (
 
   const recordSite = (node: ts.Node, kind: EffectManifestSite["kind"], key?: string): void => {
     const anchor = anchorOf(node)
+    // `kind: "perform"` is a CONSTANT here, not the row's kind, and it is left
+    // that way on purpose: it discriminates nothing either way, and putting the
+    // real kind in would move every site id — and so every Manifest digest —
+    // in every durable compile, to fix nothing. What the id is actually
+    // discriminated by is `anchor`, and no two request sites can share one: a
+    // classified call's anchor is the start of its callee's leftmost token, so
+    // two of them can share it only when the inner call IS the outer's callee
+    // prefix — `inner(...)(...)` or `inner(...).run(...)` — and in both shapes
+    // the outer's receiver is a `CallExpression`, which `getSymbolAtLocation`
+    // answers `undefined` for, so the outer classifies to nothing. MEASURED on
+    // both shapes, not assumed.
+    //
+    // That invariant is what keeps this table injective, and it lives in the
+    // parser, three files away, where nobody editing this one will see it. So
+    // the occurrence counter and the collision refusal below hold the line
+    // instead of resting on it.
     const identity: EffectSiteIdentity = key === undefined
       ? { file: options.authoredFileName, functionName: options.functionName, kind: "perform", anchor }
       : { file: options.authoredFileName, functionName: options.functionName, kind: "perform", anchor, key }
@@ -273,11 +289,16 @@ export const deriveEffectManifest = (
     // (`site-id.ts`), with an occurrence counter that exists ONLY to keep two
     // syntactically distinct sites that hash alike from colliding. It is not
     // an execution count and never reaches a set the cross-check compares.
-    const bucket = digest({ ...identity, requestKind: kind })
-    const occurrence = occurrences.get(bucket) ?? 0
-    occurrences.set(bucket, occurrence + 1)
+    const claim = siteIds.assign(identity, kind)
+    if (claim.collidesWith !== undefined) {
+      throw new EffectManifestFailure(
+        `stable durable node id collision ${claim.id}: ${kind}@${anchor} and ${claim.collidesWith} mint one` +
+          ` site id, so one journal key would name two request sites`,
+        node
+      )
+    }
     sites.push({
-      id: effectSiteId({ ...identity, kind: "perform" }, occurrence),
+      id: claim.id,
       kind,
       anchor,
       ...(key === undefined ? {} : { key })

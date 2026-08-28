@@ -90,6 +90,12 @@ type durableManifestBuilder struct {
 	failures     map[string]bool
 	sites        []map[string]any
 	occurrences  map[string]int
+	// siteIDs is the assigned-id set the Plan lowerer keeps under the same
+	// truncation (durable.go.txt, d.nodeIDs). A duplicate here is a duplicate
+	// journal key inside a signed artifact, so it fails the Manifest closed
+	// rather than appending a second row under one id. Values are
+	// `kind@anchor`, for the message.
+	siteIDs map[string]string
 	// failed records the first reason the Manifest could not be stated
 	// soundly. A Manifest with a hole in it is worse than no Manifest: PR-1
 	// says a call the compiler cannot resolve "MUST either be rejected inside a
@@ -111,6 +117,39 @@ func (b *durableManifestBuilder) anchor(node *ast.Node) string {
 // The occurrence counter exists ONLY so two syntactically distinct sites that
 // hash alike cannot collide, exactly as the Plan lowerer's does. It is not an
 // execution count and it never reaches a set the cross-check compares.
+//
+// The counter is keyed on durableDigest(identity) — the id's OWN tuple, with
+// nothing added. It used to be keyed on that tuple plus the request kind:
+//
+//	bucket := durableCopyMap(identity)
+//	bucket["requestKind"] = kind          // partitioned BY kind
+//	occurrenceKey := durableDigest(bucket)
+//	... "id": "src-" + durableDigest(withOccurrence)[:24]   // blind to kind
+//
+// A counter partitioned more finely than the value it disambiguates does not
+// disambiguate it, it defeats it: two sites sharing (file, functionName,
+// anchor, key) and differing only in kind each read occurrence 0 out of their
+// own bucket and then mint the SAME id — under PR-2, the same journal key, in
+// the artifact whose digest is meant to be signed. The reference frontend
+// spelled it the same way, so no cross-backend digest comparison could see it;
+// only a direct assertion can. The Plan lowerer's twin never had it
+// (durable.go.txt, `occurrenceKey := durableDigest(identity)`).
+//
+// The old bucket was a strict refinement of this one, so every program whose
+// site ids were already distinct keeps them byte-for-byte, and with them its
+// Manifest digest. The answer moves only where it was a duplicate.
+//
+// `kind: "perform"` stays a constant in identity: a constant discriminates
+// nothing either way, and splicing the real kind in would move every site id
+// in every durable compile to fix nothing. The id's real discriminator is
+// `anchor`, and two classified request sites cannot share one — a classified
+// call's anchor is the start of its callee's leftmost token, so sharing it
+// requires the inner call to BE the outer's callee prefix, and in that shape
+// the outer's receiver is a call expression, which actionFor does not
+// recognize. That invariant lives in the parser, far from here, which is why
+// the id set below holds the line rather than resting on it: 24 hex digits is
+// 96 bits of a SHA-256, and SMITHERS4199 is what the Plan lowerer raises on
+// exactly this condition (durable.go.txt, `stable durable node id collision`).
 func (b *durableManifestBuilder) recordSite(node *ast.Node, kind string, key string) {
 	anchor := b.anchor(node)
 	identity := map[string]any{
@@ -122,16 +161,21 @@ func (b *durableManifestBuilder) recordSite(node *ast.Node, kind string, key str
 	if key != "" {
 		identity["key"] = key
 	}
-	bucket := durableCopyMap(identity)
-	bucket["requestKind"] = kind
-	occurrenceKey := durableDigest(bucket)
+	occurrenceKey := durableDigest(identity)
 	occurrence := b.occurrences[occurrenceKey]
 	b.occurrences[occurrenceKey] = occurrence + 1
 	withOccurrence := durableCopyMap(identity)
 	withOccurrence["occurrence"] = occurrence
+	id := "src-" + durableDigest(withOccurrence)[:24]
+	if prior, taken := b.siteIDs[id]; taken {
+		b.fail("stable durable node id collision " + id + ": " + kind + "@" + anchor + " and " + prior +
+			" mint one site id, so one journal key would name two request sites")
+		return
+	}
+	b.siteIDs[id] = kind + "@" + anchor
 	row := map[string]any{
 		"anchor": anchor,
-		"id":     "src-" + durableDigest(withOccurrence)[:24],
+		"id":     id,
 		"kind":   kind,
 	}
 	if key != "" {
@@ -289,6 +333,7 @@ func durableEffectManifest(
 		contractRows: make(map[string]map[string]any),
 		failures:     make(map[string]bool),
 		occurrences:  make(map[string]int),
+		siteIDs:      make(map[string]string),
 	}
 	builder.contracts.activeNodes = &builder.contracts.nodes
 
