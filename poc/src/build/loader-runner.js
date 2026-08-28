@@ -264,7 +264,12 @@ function toStable(value, path = "comptime result", seen = new Set()) {
   if (value === null || typeof value === "boolean" || typeof value === "string") return value;
   if (typeof value === "number") {
     if (!isFiniteNumber(value)) throw new SafeTypeError(`${path} is not stable JSON: non-finite number`);
-    return objectIs(value, -0) ? 0 : value;
+    // The in-sandbox mirror of `stable.ts`'s `stableClone`, and it has to make
+    // the same choice: coercing here would silently normalize -0 to 0 before
+    // `stableClone` ever saw it, so the sandboxed comptime path would keep the
+    // behaviour the in-process path refuses. One -0 policy, both sides.
+    if (objectIs(value, -0)) throw new SafeTypeError(`${path} is not stable JSON: negative zero`);
+    return value;
   }
   if (typeof value !== "object") throw new SafeTypeError(`${path} is not stable JSON: ${typeof value}`);
   if (seen.has(value)) throw new SafeTypeError(`${path} is not stable JSON: cyclic value`);
