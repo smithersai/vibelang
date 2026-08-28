@@ -179,12 +179,6 @@ const WORKER_EXIT_SURFACE: WorkerExitSurface = {
 const delay = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, Math.min(MAX_TIMER_DELAY_MS, Math.max(0, milliseconds))))
 
-const delayUntil = async (timestamp: number): Promise<void> => {
-  while (Date.now() < timestamp) {
-    await delay(timestamp - Date.now())
-  }
-}
-
 const cancellationReason = (storedError: JsonValue): JsonValue => {
   if (
     storedError !== null && typeof storedError === "object" && !Array.isArray(storedError) &&
@@ -1954,7 +1948,25 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           exit,
           retryAt
         )) {
-          await delayUntil(retryAt)
+          // Retry backoff is a durable suspension like every other one in this
+          // coordinator (timer, queue, signal), so it parks on the same wakeup
+          // service instead of an uninterruptible sleep. It used to be a bare
+          // `delayUntil(retryAt)` with no contender at all: `cancel()` fences
+          // the node durably and aborts live attempts, but between attempts
+          // there IS no live attempt to abort, so a cancelled execution slept
+          // out its entire backoff before noticing - the one wait in this file
+          // that cancellation could not preempt. Committed state is re-read on
+          // every wake, so a fenced node leaves the loop at once and a missed
+          // notification costs at most one sweep interval.
+          while (Date.now() < retryAt) {
+            const now = Date.now()
+            if (now >= context.deadline) break
+            await this.store.wakeups.wait(
+              context.executionId,
+              Math.min(retryAt, context.deadline, now + context.wakeupSweepMs)
+            )
+            if (this.store.getNode(context.executionId, node.id).exit !== undefined) break
+          }
           continue
         }
         const winner = this.store.getNode(context.executionId, node.id).exit
