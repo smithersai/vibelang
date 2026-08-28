@@ -4,6 +4,12 @@ Status: **Direction**. This is the target coding-agent library contract and does
 not add language syntax. Package names, exact API spellings, journal format,
 sandbox provider, and model-provider adapters remain open.
 
+The specifier used below is one of those open names and is **not** a published
+package: `import("@smithers/agent")` fails with `ERR_MODULE_NOT_FOUND`. The
+library ships as `smthrs/agent` (46 exports), where `CodingAgent.make` exists as
+written and the sandbox is `DenoSubprocessSandbox` rather than
+`TypeScriptSandbox`.
+
 ## Decision
 
 Smithers's default coding agent writes ordinary TypeScript on every turn. The

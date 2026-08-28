@@ -28,17 +28,37 @@ coverage. Exact package names remain directional until explicitly locked.
 | `smthrs/exceptions` | `Panic`, defect/cause inspection, and foreign-boundary guards | Direction |
 | `smthrs/context` | Nominal `Context` capability declaration and lookup | Direction |
 | `smthrs/provider` | Layer construction, composition, and scoped provision | Direction |
-| `smthrs/schema` | Runtime Schema and Codec values derived from compiler type descriptors | Direction |
+| `smthrs/schema-runtime` | Runtime Schema and Codec values derived from compiler type descriptors | Direction |
 | `smthrs/platform` | Platform-neutral capability contracts and pure host-independent values | Direction |
 | `smthrs/data` | Persistent data, equality, hashing, and exhaustive value matching | Direction |
 | `smthrs/concurrency` | Cancellation, joins, governors, streams, queues, semaphores, channels, and worker contracts | Direction |
 | `smthrs/durable` | Plan artifacts, deployment contracts, execution handles, and runtime interfaces | Direction |
 | `smthrs/build` | Programmatic project, loader, comptime, build, and artifact APIs | Direction |
-| `@smithers/agent` | Coding-agent composition, model adapters, typed function bindings, and durable adapters | Direction |
+| `smthrs/agent` | Coding-agent composition, model adapters, typed function bindings, and durable adapters | Direction |
 
-Host implementations may use explicit subpaths such as
-`smthrs/platform/node` or `smthrs/durable/bun`. A host subpath may depend on
-that host; its platform-neutral parent may not.
+`Maturity: Direction` says the **name** is not locked. It does not say the entry
+point is unbuilt, and readers have taken it that way in both directions. Which
+specifiers resolve is a separate, measured fact, re-derivable in one command:
+
+```sh
+node -e 'for (const s of ["smthrs","smthrs/result","smthrs/exceptions","smthrs/context","smthrs/provider","smthrs/schema-runtime","smthrs/platform","smthrs/data","smthrs/concurrency","smthrs/durable","smthrs/build","smthrs/agent"]) import(s).then(()=>console.log("ships  ",s),e=>console.log("absent ",s,e.code))'
+```
+
+Every row above resolves today. `smthrs/schema` does **not** exist and is not
+planned as a second name for the same module: the runtime half of schema
+derivation is the lowering target of the compiler-owned `smithers:schema`, so it
+ships under the name the emitter imports, `smthrs/schema-runtime`. Giving it a
+second, author-shaped alias is exactly the "ordinary runtime fallback" principle
+3 forbids. The agent library ships as `smthrs/agent`, not `@smithers/agent`;
+that scope is not a published package.
+
+Host implementations may use explicit subpaths. The only one that exists today is
+`smthrs/durable/bun` (plus `smthrs/agent/bun` and `smthrs/concurrency/bun`); a
+platform-neutral parent may not depend on a host. There is no
+`smthrs/platform/node` subpath — Node bindings (`NodePlatform`, `NodeFileSystem`,
+`NodeProcess`, `NodeSocket`, `nodePlatform`) are exported from `smthrs/platform`
+itself, which means that entry point does not yet satisfy principle 4 and is the
+open item here.
 
 The package MUST NOT expose `Optional<T>` or portability-target APIs. Absence is
 `T | undefined`, and TypeScript is the sole compilation target.
