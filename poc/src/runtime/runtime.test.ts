@@ -390,6 +390,14 @@ describe("RuntimeValues library construction surface", () => {
     expect(encodeResult(success, { encode: (value) => value, decode: (payload) => payload as number }))
       .toBe('{"version":1,"kind":"success","value":2}');
 
+    // One -0 policy, matching `durable/value.ts`, `schema/json.ts`, and the
+    // comptime intrinsic: the wire codec used to accept negative zero and print
+    // it as `0`, changing the value's identity with no diagnostic.
+    const identity = { encode: (value: number) => value, decode: (payload: unknown) => payload as number };
+    expect(() => encodeResult(RuntimeValues.success(-0), identity)).toThrow("negative zero");
+    expect(encodeResult(RuntimeValues.success(0), identity))
+      .toBe('{"version":1,"kind":"success","value":0}');
+
     // An absent success carries `undefined` itself; there is nothing to unwrap.
     const absent = RuntimeValues.success<string | undefined>(undefined);
     expect(isResult(absent)).toBe(true);

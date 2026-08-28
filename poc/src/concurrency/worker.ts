@@ -509,6 +509,10 @@ function assertJsonValue(value: unknown, depth = 0): asserts value is JsonValue 
   if (value === null || typeof value === "boolean" || typeof value === "string") return;
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new WorkerProtocolError("message contains a non-finite number");
+    // `canonicalJson` renders -0 as "0", so accepting it would change the
+    // value's identity in transit. One -0 policy: refuse it, as durable JSON,
+    // the value wire, and the comptime intrinsic all do.
+    if (Object.is(value, -0)) throw new WorkerProtocolError("message contains negative zero");
     return;
   }
   if (typeof value !== "object") throw new WorkerProtocolError("message contains non-JSON data");

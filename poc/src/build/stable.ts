@@ -26,7 +26,12 @@ function cloneStable(value: unknown, path: string, state: CloneState, depth: num
   if (value === null || typeof value === "boolean" || typeof value === "string") return value;
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new TypeError(`${path} is not durable JSON: non-finite number`);
-    return Object.is(value, -0) ? 0 : value;
+    // Durable JSON rejects -0 rather than silently changing its identity to 0,
+    // which is what `durable/value.ts`, `durable/schema.ts`, `schema/json.ts`,
+    // and the comptime intrinsic all already do. Coercing here made the same
+    // literal mean two different things depending on which phase read it.
+    if (Object.is(value, -0)) throw new TypeError(`${path} is not durable JSON: negative zero`);
+    return value;
   }
   if (typeof value !== "object") throw new TypeError(`${path} is not durable JSON: ${typeof value}`);
   if (state.seen.has(value)) throw new TypeError(`${path} is not durable JSON: cyclic value`);

@@ -40,6 +40,10 @@ function assertJson(
   if (value === null || typeof value === "boolean" || typeof value === "string") return;
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new ValueCodecError(`${path} contains a non-finite number`);
+    // The canonical printer below renders -0 as "0", so accepting it here would
+    // change the value's identity in transit with no diagnostic. Durable JSON
+    // rejects it; so does this wire (`durable/value.ts`, `schema/json.ts`).
+    if (Object.is(value, -0)) throw new ValueCodecError(`${path} contains negative zero`);
     return;
   }
   if (typeof value !== "object") throw new ValueCodecError(`${path} is not JSON data`);

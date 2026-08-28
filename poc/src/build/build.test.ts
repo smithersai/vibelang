@@ -472,6 +472,16 @@ describe("comptime assets and derived schemas", () => {
     let nested: unknown = null;
     for (let index = 0; index < 600; index++) nested = [nested];
     expect(() => stableClone(nested)).toThrow("nesting is too deep");
+
+    // One -0 policy. `durable/value.ts`, `schema/json.ts`, `durable/schema.ts`,
+    // and the comptime intrinsic all refuse negative zero; this clone said it
+    // was rejecting anything that "is not durable JSON" while silently changing
+    // -0 into 0, so the same literal had two fates depending on the phase.
+    expect(() => stableClone(-0)).toThrow("negative zero");
+    expect(() => stableClone({ a: -0 })).toThrow("negative zero");
+    expect(() => stableClone([1, -0])).toThrow("negative zero");
+    expect(stableClone(0)).toBe(0);
+    expect(stableClone(-1)).toBe(-1);
   });
 
   test("ordinary TypeScript declarations produce validator IR", () => {
