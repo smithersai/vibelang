@@ -2254,6 +2254,54 @@ func (a *rowAnalysis) checkNestedResultContracts() {
 	}
 }
 
+// isRowQualifierUnit reports whether one UTF-16 code unit survives a module row
+// qualifier verbatim: [A-Za-z0-9._/-].
+//
+// '+' is deliberately outside it, and that is the whole reason
+// moduleRowQualifier is reversible: an unescaped '+' can never occur, so every
+// '+' in a qualifier starts exactly one five-unit escape. Same withholding
+// trick as isEscapedIdentityPathUnit, over a smaller alphabet — '@' and ':' are
+// verbatim there and escaped here, because a row name is spelled
+// `Name@qualifier` and keeping '@' out of the qualifier makes the join
+// unambiguous on its own.
+func isRowQualifierUnit(unit uint16) bool {
+	return unit >= '0' && unit <= '9' || unit >= 'A' && unit <= 'Z' || unit >= 'a' && unit <= 'z' ||
+		unit == '.' || unit == '_' || unit == '/' || unit == '-'
+}
+
+// moduleRowQualifier is the module half of a disambiguated nominal row name.
+//
+// A disambiguator that re-collides is not one. The predecessor of this function
+// rewrote every character outside [A-Za-z0-9._/-] to '_', which is many-to-one
+// on exactly the input it is reached for: `a b.sm` and `a_b.sm` both cleaned to
+// `a_b`, so two distinct `Boom` classes were handed ONE row name by the very
+// mechanism that exists because their bare names already collided.
+//
+// `+%04X` fixes it the same way stableErrorIdentity's escape does — a bijection
+// onto its image, so distinct module paths cannot converge. A path spelled
+// entirely in the alphabet is its own escape, so every qualifier this compiler
+// has ever minted is unchanged; only the ones that were already colliding move.
+//
+// It walks UTF-16 CODE UNITS, not runes, and that is load-bearing across
+// backends rather than a detail. The predecessor was `for _, character := range
+// qualifier`, which walks runes and wrote one '_' per rune, while the reference
+// frontend's `.replace(/…/g, "_")` had no `u` flag and walked code units. For an
+// astral character in a module path the two therefore disagreed outright:
+// `x😀.sm` minted `x_` here and `x__` there. stableErrorIdentity and
+// durableFailureIdentity already encode through utf16 for precisely this
+// reason; this is the third site.
+func moduleRowQualifier(qualifier string) string {
+	units := make([]uint16, 0, len(qualifier))
+	for _, unit := range utf16.Encode([]rune(qualifier)) {
+		if isRowQualifierUnit(unit) {
+			units = append(units, unit)
+			continue
+		}
+		units = append(units, utf16.Encode([]rune(fmt.Sprintf("+%04X", unit)))...)
+	}
+	return string(utf16.Decode(units))
+}
+
 func (a *rowAnalysis) buildRowNames(files []*ast.SourceFile) {
 	byName := make(map[string]map[*ast.Symbol]*ast.SourceFile)
 	for _, file := range files {
@@ -2284,16 +2332,7 @@ func (a *rowAnalysis) buildRowNames(files []*ast.SourceFile) {
 		for symbol, file := range items {
 			qualifier := strings.TrimPrefix(file.FileName(), "/src/")
 			qualifier = strings.TrimSuffix(qualifier, ".sm")
-			var cleaned strings.Builder
-			for _, character := range qualifier {
-				if character >= 'A' && character <= 'Z' || character >= 'a' && character <= 'z' ||
-					character >= '0' && character <= '9' || strings.ContainsRune("._/-", character) {
-					cleaned.WriteRune(character)
-				} else {
-					cleaned.WriteByte('_')
-				}
-			}
-			a.rowNames[symbol] = name + "@" + cleaned.String()
+			a.rowNames[symbol] = name + "@" + moduleRowQualifier(qualifier)
 		}
 	}
 }

@@ -2492,15 +2492,77 @@ interface RowNaming {
 const rowNamingByChecker = new WeakMap<ts.TypeChecker, RowNaming>();
 
 /**
+ * `[A-Za-z0-9._/-]` — every UTF-16 code unit that survives the qualifier
+ * verbatim.
+ *
+ * `+` is deliberately outside it, and that is the whole reason the encoding
+ * below is reversible: an unescaped `+` can never occur, so every `+` in a
+ * qualifier starts exactly one five-unit escape. It is the same withholding
+ * trick `escapeIdentityPath` (`../durable/site-id.ts`) uses, over a smaller
+ * alphabet: `@` and `:` are verbatim there and escaped here, because a row
+ * name is spelled `Name@qualifier` and keeping `@` out of the qualifier makes
+ * the join unambiguous on its own, rather than only because a class name
+ * happens to be a TypeScript identifier.
+ */
+function isRowQualifierUnit(unit: number): boolean {
+  return (unit >= 0x30 && unit <= 0x39) || (unit >= 0x41 && unit <= 0x5a) ||
+    (unit >= 0x61 && unit <= 0x7a) ||
+    unit === 0x2e /* . */ || unit === 0x5f /* _ */ || unit === 0x2f /* / */ || unit === 0x2d /* - */;
+}
+
+/**
  * The qualifier is derived from a model's {@link identityFileName}, never from
  * the caller's raw spelling: a caller may name its sources by absolute path,
  * and a nominal row identity carrying `/Users/<someone>/checkout/...` is not a
  * nominal identity. The Go fork spells the same qualifier by trimming its
  * `/src/` virtual root (`compiler/forkbridge/lowering.go.txt`), so the two
  * backends agree only while this side stays root-relative too.
+ *
+ * A disambiguator that re-collides is not one. This function's predecessor
+ * rewrote every unit outside `[A-Za-z0-9._/-]` to `_`, which is many-to-one and
+ * on exactly the input it is reached for:
+ *
+ *     a b.sm  and  a_b.sm   ->  Boom@a_b
+ *
+ * Two modules in that relation each declaring `class Boom extends Error` were
+ * handed ONE row name by the very mechanism that exists because their bare
+ * names already collided. Downstream, `errorNamesOfType` returns a `Set`, so
+ * the two rows merge into one member and `Error.match` exhaustiveness
+ * (SMITHERS1253/1254) accepts a case for one as covering the other — a wrong
+ * answer, silently, with no diagnostic anywhere on the path.
+ *
+ * `+XXXX` (four upper-case hex units, always four) fixes it the same way
+ * `escapeIdentityPath` did: it is a bijection onto its image, so distinct
+ * module paths cannot converge. A path spelled entirely in the alphabet is its
+ * own escape, so every qualifier this project has ever minted is unchanged;
+ * only the paths that were already colliding move.
+ *
+ * The units are UTF-16 CODE UNITS, and that is load-bearing across backends,
+ * not a detail. The predecessor's `.replace(/…/g, "_")` had no `u` flag, so it
+ * walked code units too — but the Go mirror's `for _, character := range
+ * qualifier` walks RUNES and writes one `_` per rune. For an astral character
+ * in a module path the two backends therefore disagreed outright: `x😀.sm`
+ * minted `x__` here and `x_` in the fork. `stableErrorIdentity` and
+ * `durableFailureIdentity` both already go through `utf16.Encode([]rune(…))`
+ * for precisely this reason; this is the third site, and the fork's mirror now
+ * does the same. No conformance case could have caught it: the corpus contains
+ * no module path outside the alphabet AND no Error/Context class name declared
+ * in two modules, so `buildRowNaming` never qualifies anything there at all.
+ *
+ * The `.sm` strip is injective on the accepted domain and only there:
+ * `createProjectProgram` refuses a project source whose name does not end in
+ * `.sm`, so `x.sm -> x` cannot meet an authored `x`.
  */
 export function moduleRowQualifier(identityName: string): string {
-  return identityName.replace(/\.sm$/, "").replace(/[^A-Za-z0-9._/-]/g, "_");
+  const trimmed = identityName.replace(/\.sm$/, "");
+  let escaped = "";
+  for (let index = 0; index < trimmed.length; index++) {
+    const unit = trimmed.charCodeAt(index);
+    escaped += isRowQualifierUnit(unit)
+      ? trimmed[index]
+      : `+${unit.toString(16).toUpperCase().padStart(4, "0")}`;
+  }
+  return escaped;
 }
 
 function rowNameForSymbol(
@@ -2534,6 +2596,17 @@ function buildRowNaming(entries: readonly ProjectEntry[], checker: ts.TypeChecke
   for (const [name, values] of declarationsByName) {
     const distinct = new Set(values.map((value) => value.symbol));
     if (distinct.size < 2) continue;
+    // `Name@qualifier` is injective over (class name, module) and no further:
+    // the class name is a TypeScript identifier so it holds no `@`, the
+    // qualifier's alphabet excludes `@`, and `moduleRowQualifier` is a
+    // bijection. What it cannot separate is two DISTINCT symbols with one name
+    // in one module — `function a() { class Boom extends Error {} }` beside a
+    // second `Boom` in another function of the same file. For Error rows that
+    // program is already refused, by SMITHERS1150, which walks nested
+    // declarations too; for a Context row reached through
+    // `extendsImportedContext` it is not refused anywhere, and the two rows
+    // still merge. That gap is narrower than the one above but it is real, and
+    // it is named here rather than left for the next reader to rediscover.
     for (const value of values) {
       bySymbol.set(value.symbol, `${name}@${moduleRowQualifier(value.identityName)}`);
     }

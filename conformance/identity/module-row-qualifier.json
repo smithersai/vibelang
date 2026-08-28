@@ -1,0 +1,74 @@
+{
+  "why": "Cross-language test vectors for THE module row qualifier -- the module half of a disambiguated nominal row name, `Name@qualifier`. Both backends mint it independently: the reference frontend in poc/src/language/semantic.ts (moduleRowQualifier) and the Go fork in compiler/forkbridge/lowering.go.txt (moduleRowQualifier, reached from buildRowNames). It is minted ONLY when two or more modules in one project declare an Error or Context class with the same name, which is why it is a disambiguator; a disambiguator the two backends spell differently, or that folds two modules back together, is worse than none. Two hand-maintained copies of one algorithm is exactly the shape that produced the defect this file exists for, so the copies are pinned against each other HERE rather than against two separately maintained expectations. Regenerate by RUNNING a backend, never by hand or from a report: poc/src/language/module-row-qualifier.test.ts checks the reference against these rows, and compiler/fork_row_qualifier_test.go compiles each viaFork row with the pinned fork and reads the qualifier back out of the SMITHERS1101 failure row.",
+  "algorithm": "qualifier := escape(strip(identityName)), where strip removes one trailing \".sm\" and escape emits a UTF-16 code unit verbatim when it is in [A-Za-z0-9._/-] and otherwise emits \"+\" followed by exactly four upper-case hex digits of the unit. '+' is withheld from the alphabet, so every '+' in the output introduces exactly one five-unit escape and the encoding is a bijection onto its image. Nothing is folded and nothing is truncated, so two distinct module paths never converge. The row name is then className + \"@\" + qualifier, which is unambiguous because a class name is a TypeScript identifier and the alphabet excludes '@'.",
+  "viaFork": "false marks a row the Go fork cannot be handed as a FILE NAME at all -- virtualFileName (compiler/forkbridge/main.go.txt) fail-closes on an absolute name, a name containing a colon, and an empty name. Those rows still pin the algorithm on the reference side; they are unreachable input for the end-to-end fork check, not exemptions from agreement.",
+  "predecessor": "Every character outside [A-Za-z0-9._/-] was rewritten to '_'. That is many-to-one on exactly the input the qualifier is reached for, so `a b.sm` and `a_b.sm` were handed ONE row name by the very mechanism that exists because their bare class names already collided. The reference walked UTF-16 code units (a non-`u` regex) and the fork walked runes, so on an astral character the two backends disagreed outright as well: `x<U+1F600>.sm` minted `x__` on the reference and `x_` on the fork.",
+  "vectors": [
+    {
+      "why": "an ordinary root-relative name loses only its extension",
+      "module": "main.sm",
+      "viaFork": true,
+      "qualifier": "main"
+    },
+    {
+      "why": "a nested POSIX path is unchanged",
+      "module": "app/orders/checkout.sm",
+      "viaFork": true,
+      "qualifier": "app/orders/checkout"
+    },
+    {
+      "why": "a name made of . _ - / survives verbatim, so no qualifier this project has ever minted moves",
+      "module": "a-b_c.d/e.sm",
+      "viaFork": true,
+      "qualifier": "a-b_c.d/e"
+    },
+    {
+      "why": "MEASURED COLLISION: a space used to fold onto the underscore below",
+      "module": "a b.sm",
+      "viaFork": true,
+      "qualifier": "a+0020b"
+    },
+    {
+      "why": "MEASURED COLLISION: the other half of the pair, unchanged, which is what made the fold silent",
+      "module": "a_b.sm",
+      "viaFork": true,
+      "qualifier": "a_b"
+    },
+    {
+      "why": "'+' is the escape introducer and so must escape itself, or the encoding is not reversible",
+      "module": "a+b.sm",
+      "viaFork": true,
+      "qualifier": "a+002Bb"
+    },
+    {
+      "why": "'@' is escaped, which is what keeps the Name@qualifier join unambiguous on its own",
+      "module": "@scope/a.sm",
+      "viaFork": true,
+      "qualifier": "+0040scope/a"
+    },
+    {
+      "why": "a BMP non-ASCII unit is one escape on both backends; the predecessor agreed here, which is why the divergence below went unnoticed",
+      "module": "café.sm",
+      "viaFork": true,
+      "qualifier": "caf+00E9"
+    },
+    {
+      "why": "MEASURED DIVERGENCE: an astral character is TWO UTF-16 code units, so it is two escapes. The predecessor wrote 'x__' on the reference (code units) and 'x_' on the fork (runes) -- a live cross-backend disagreement no conformance case could see",
+      "module": "x😀.sm",
+      "viaFork": true,
+      "qualifier": "x+D83D+DE00"
+    },
+    {
+      "why": "only ONE trailing .sm is stripped, so a doubled extension cannot reach the single-extension name",
+      "module": "a.sm.sm",
+      "viaFork": true,
+      "qualifier": "a.sm"
+    },
+    {
+      "why": "a colon escapes, but the fork refuses the file name itself",
+      "module": "a:b.sm",
+      "viaFork": false,
+      "qualifier": "a+003Ab"
+    }
+  ]
+}
