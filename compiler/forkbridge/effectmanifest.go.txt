@@ -223,10 +223,11 @@ func (b *durableManifestBuilder) classify(node *ast.Node) {
 // Action's declared failure channel carries.
 //
 // The same walk durableFailureIdentityCollides makes, reporting the identities
-// instead of the collision. This bridge still emits the legacy stub error
-// schema into the Plan, so the Plan carries none of these; they exist in the
-// Manifest because PR-1 names a failure row, and nothing in the cross-check
-// compares them across the two artifacts.
+// instead of the collision. Derived from the Action's declared failure TYPE, not
+// read back out of the contract's error schema, even though that schema now
+// carries the same identities: PR-1 wants the Manifest to be an independent
+// derivation from the checked source, and nothing in the cross-check compares
+// the two artifacts' failure rows against each other.
 func durableManifestFailureRow(d *durableFunctionLowerer, failure *checker.Type) []string {
 	if failure == nil || d == nil {
 		return nil

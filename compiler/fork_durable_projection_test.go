@@ -320,18 +320,33 @@ export function main(): string[] { return [Flow.artifactSource] }
 	}
 }
 
-// TestPinnedForkDurableFlowOutputProjectionCheckLeavesPlanDigestsByteIdentical
-// is the second half of the over-correction direction and the stronger half:
-// not merely "it still compiles" but "it compiles to exactly the same bytes".
+// TestPinnedForkDurableFlowOutputProjectionDerivesTheSuccessSchema is the
+// second half of the over-correction direction and the stronger half: not
+// merely "it still compiles" but "it compiles to exactly the bytes the
+// reference compiles it to".
 //
-// The check derives a descriptor to answer one question and then discards it.
-// `plan()` still emits `durableLegacySchema("success")` for every Flow that
-// uses an Action, and the return expression's own TypeScript type for every
-// Flow that does not. Each digest below was measured against a bridge built
-// from this file's parent revision, BEFORE the check existed, and is asserted
-// here so that a later lane cannot quietly turn this validation pass into an
-// emission change.
-func TestPinnedForkDurableFlowOutputProjectionCheckLeavesPlanDigestsByteIdentical(t *testing.T) {
+// WHAT THIS TEST USED TO SAY, AND WHY THAT PREMISE IS GONE. It was
+// `...CheckLeavesPlanDigestsByteIdentical`, and its digests were measured
+// against a bridge built BEFORE the projection walk existed, to prove the walk
+// derived a descriptor only to discard it. That was true and worth pinning
+// while `plan()` emitted `durableLegacySchema("success")` for every Flow using
+// an Action — and it was also, exactly, the defect: a stub where the reference
+// emits a structural schema was the sole structural difference between the two
+// backends' Plans, and the reason `plan.digest` diverged on every comparable
+// program. The walk now feeds `d.successSchema`, so "unchanged from before the
+// walk" is no longer a property this bridge should have.
+//
+// So the pin is re-aimed rather than deleted, at a strictly stronger claim.
+// Every `digest` below was regenerated on 2026-08-28 by RUNNING BOTH BACKENDS
+// over that exact program — `poc/src/durable/source-compiler.ts` through
+// `compileDurableSource`, and this bridge through `cmd/smithersc-go` — and the
+// two agreed byte-for-byte on the whole Plan, not only on the digest. A value
+// here is therefore cross-backend agreement, which is what a Plan digest has to
+// be before a Manifest digest can be a signature; it is not a historical
+// snapshot of one implementation. `shape` is pinned beside it because a silent
+// return to the stub would keep the test honest only if the digest moved, and
+// naming the shape says which of the two answers is expected.
+func TestPinnedForkDurableFlowOutputProjectionDerivesTheSuccessSchema(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 	for _, probe := range []struct {
 		name   string
@@ -348,8 +363,8 @@ export const Flow = durable((input: { key: string }) => {
   const found = Step.run({ key: input.key })!
   return { value: found.value }
 })`,
-			shape:  "json-value",
-			digest: "44fffbbfe7be6fe2e48fb8b6941ce997c72b2b5e2eaac03456da5db9ca5fd51f",
+			shape:  "structural",
+			digest: "a4512066af51b6f2b7b8f77fdda7291da6f54d1866ed2a8e1bb26943ab0b5009",
 		},
 		{
 			name: "branch join over two Actions",
@@ -359,8 +374,8 @@ class Right extends Action<(input: { k: string }) => Result<{ v: string }, Error
 export const Flow = durable((input: { flag: boolean; k: string }) => {
   return { v: (input.flag ? Left.run({ k: input.k })! : Right.run({ k: input.k })!).v }
 })`,
-			shape:  "json-value",
-			digest: "bfcf2cc32e4d970e1b5b7dc4a520128ea7499cbaf6187b172992693864be1c1b",
+			shape:  "structural",
+			digest: "92fb943a8ffe695eee398eed80260d99447f370629264203250cff19370c2532",
 		},
 		{
 			// The reference asserted this direction with a `fanOut` and a
@@ -375,8 +390,8 @@ export const Flow = durable((input: { k: string }) => {
   const pair = sequential(A.run({ k: input.k }), B.run({ k: input.k }))
   return { v: pair[0].v, w: pair[1].w }
 })`,
-			shape:  "json-value",
-			digest: "0b94e6f0d89437502135abfe03d09661b84f5020c801058851599c2d77a3367f",
+			shape:  "structural",
+			digest: "57f8a2a262aabf1b3bd8417c20a014bc879092e3fc36c0c4ed8130ca237efcda",
 		},
 		{
 			name: "Action, branch, timer, sequential and signal together",
@@ -391,13 +406,18 @@ export const Build = durable((input: { key: string; live: boolean }) => {
   const approval = waitSignal<string>("build.approval")
   return { approval, pair, selected }
 })`,
-			shape:  "json-value",
-			digest: "df6d65f7ba72a17232a70daf887ccd6e64ad28f01f8633e85abd1bec63630ba9",
+			shape:  "structural",
+			digest: "a67b44af011b31dab88d21530542a582951b42ee735e665aa5a32d1b29425021",
 		},
 		{
-			// The Action-free control: this one keeps a STRUCTURAL success
-			// schema, so the pin also says the check did not start feeding its
-			// derived descriptor into the emitted schema.
+			// The Action-free control, and the one row whose digest did NOT
+			// move: its success schema was already structural, because the
+			// widened TypeScript type of `{ key: input.key }` and the walk's
+			// descriptor of the same expression happen to agree here. They do
+			// not always — `return { ok: true }` types as `{ ok: boolean }` and
+			// walks to `{kind:"literal",value:true}` — which is why the
+			// TypeScript-type derivation was replaced rather than kept for the
+			// Action-free case.
 			name: "no Action, structural success schema",
 			flow: "Flow",
 			body: `export const Flow = durable((input: { key: string }) => {
@@ -415,11 +435,11 @@ export function main(): string[] { return [` + probe.flow + `.artifactSource, ` 
 			result := compileDurableWith(t, backend, ctx, source)
 			if result.EmitSkipped || len(result.Diagnostics) != 0 {
 				encoded, _ := json.Marshal(result.Diagnostics)
-				t.Fatalf("the weaker-contract path must survive: emitSkipped=%v %s", result.EmitSkipped, encoded)
+				t.Fatalf("a derivable Flow boundary must survive: emitSkipped=%v %s", result.EmitSkipped, encoded)
 			}
 			want := "static-plan-artifact," + probe.shape + "," + probe.digest
 			if got := runComptimeProgram(t, result); got != want {
-				t.Fatalf("Plan is no longer byte-identical:\n got %q\nwant %q", got, want)
+				t.Fatalf("Plan no longer matches the reference:\n got %q\nwant %q", got, want)
 			}
 		})
 	}
@@ -955,15 +975,21 @@ export function main(): string[] { return [Flow.artifactSource] }
 	}
 }
 
-// TestPinnedForkDurableNodeInputProjectionLeavesPlanDigestsByteIdentical is the
+// TestPinnedForkDurableNodeInputProjectionMatchesTheReferencePlan is the
 // stronger half of the over-correction direction: not "it still compiles" but
-// "it compiles to exactly the same bytes".
+// "it compiles to exactly the bytes the reference compiles it to".
 //
-// Every digest below was measured against a bridge built BEFORE the node-input
-// walk existed, and each program exercises a node whose input the new walk now
-// visits. The check derives a descriptor to answer one question and discards it;
-// nothing about the emitted schemas, contract digests or Plan bytes may move.
-func TestPinnedForkDurableNodeInputProjectionLeavesPlanDigestsByteIdentical(t *testing.T) {
+// Each program exercises a node whose input the node-input walk visits. The
+// node-input descriptors really are still derived-and-discarded — only the
+// OUTPUT walk's descriptor becomes the Flow's success schema, which is the
+// reference's own split (`flowSchemas` keeps `nodeInputFailures` out of the
+// schema decision on purpose). What changed under this test is the success
+// schema beside them; see the note on
+// TestPinnedForkDurableFlowOutputProjectionDerivesTheSuccessSchema for why the
+// pin is now cross-backend agreement rather than a historical snapshot. Every
+// digest below was regenerated on 2026-08-28 by running both backends over that
+// exact program and comparing the whole Plan, not just the digest.
+func TestPinnedForkDurableNodeInputProjectionMatchesTheReferencePlan(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 	for _, probe := range []struct {
 		name   string
@@ -979,8 +1005,8 @@ export const Flow = durable((input: { key: string }) => {
   const first = Step.run({ key: input.key })!
   return Second.run({ key: first.value })
 })`,
-			shape:  "json-value",
-			digest: "44e66c1950418367c5560dcdf840cc92229a2160edbaef425d7da0a09dd019be",
+			shape:  "structural",
+			digest: "8606ec99adfb59112b2eb7f31a0993fd19db5b4e44dc622189072e20a5e09062",
 		},
 		{
 			name: "Action input reads a signal payload",
@@ -989,8 +1015,8 @@ export const Flow = durable((input: { key: string }) => {
   const ticket = waitSignal<{ token: string }>("build.approval")
   return Step.run({ key: ticket.token })
 })`,
-			shape:  "json-value",
-			digest: "8cb0c0a5dd1565991337628abf6810c4d9ffefc6932602b144cf72c17f0f9b00",
+			shape:  "structural",
+			digest: "959c7af7266aaf7240df1a824a7d3817e871dd279d6983604af21c8e55071272",
 		},
 		{
 			name: "Action inputs inside both branch arms",
@@ -998,8 +1024,8 @@ export const Flow = durable((input: { key: string }) => {
 export const Flow = durable((input: { flag: boolean; key: string; other: string }) => {
   return input.flag ? Step.run({ key: input.key }) : Step.run({ key: input.other })
 })`,
-			shape:  "json-value",
-			digest: "5c503f7a482bcfe8c70a02690d3382f9d2b7bc3d0ded2ad89de998858efb20f9",
+			shape:  "structural",
+			digest: "3fefdc06735af32555f87c9977b3744dd67319d244381fe02fbb058e9c39d014",
 		},
 		{
 			name: "timer duration beside an Action input",
@@ -1008,8 +1034,8 @@ export const Flow = durable((input: { key: string }) => {
   sleep(25)
   return Step.run({ key: input.key })
 })`,
-			shape:  "json-value",
-			digest: "f6439407939e0564f9b23767cf83fd4870f83af1717b628e7e38802f5ae689f1",
+			shape:  "structural",
+			digest: "5a63ea209681fcabbc29145e410457324b48ba2e551fcd54a06fa53b16c7f2dc",
 		},
 		{
 			name: "Action input holding a nested object and an array literal",
@@ -1017,8 +1043,8 @@ export const Flow = durable((input: { key: string }) => {
 export const Flow = durable((input: { a: string; b: string }) => {
   return Step.run({ outer: { key: input.a }, keys: [input.a, input.b] })
 })`,
-			shape:  "json-value",
-			digest: "88832ec6262f36a59ef0d77b83beb9f45253fd074ce9762c923f58163dfec2a8",
+			shape:  "structural",
+			digest: "95e09456b31dfae5fc5bcb6ed3689f3cc05e384f7864a3551dc236c96114ba9c",
 		},
 		{
 			name: "sequential pair whose inputs both project the Flow input",
@@ -1028,13 +1054,12 @@ export const Flow = durable((input: { k: string; j: string }) => {
   const pair = sequential(A.run({ k: input.k }), B.run({ k: input.j }))
   return { v: pair[0].v, w: pair[1].w }
 })`,
-			shape:  "json-value",
-			digest: "307c74bb2a4b9ca286d1b95aa892519ca96bb12758d385a0500001ca004ec0ed",
+			shape:  "structural",
+			digest: "bfe608c1e7dfd1be20a561e7f77b1d3e32e6d6f63edd92d7848d5adb0a285f54",
 		},
 		{
-			// The Action-free control: the only one whose success schema is
-			// structural, so it also says the node walk did not start feeding a
-			// derived descriptor into the emitted schema.
+			// The Action-free control, and the one row whose digest did not
+			// move; see the same row in the output test above.
 			name: "no Action at all, structural success schema",
 			body: `export const Flow = durable((input: { key: string }) => {
   return { key: input.key }
@@ -1054,7 +1079,7 @@ export function main(): string[] { return [Flow.artifactSource, Flow.plan.flowSc
 			}
 			want := "static-plan-artifact," + probe.shape + "," + probe.digest
 			if got := runComptimeProgram(t, result); got != want {
-				t.Fatalf("Plan is no longer byte-identical:\n got %q\nwant %q", got, want)
+				t.Fatalf("Plan no longer matches the reference:\n got %q\nwant %q", got, want)
 			}
 		})
 	}

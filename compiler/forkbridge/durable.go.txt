@@ -139,9 +139,10 @@ type durableAction struct {
 	// See lowerAction.
 	collision *durableFailureCollision
 	// failureType is the Action's declared failure channel, kept so the Effect
-	// Manifest can state a failure row. Nothing in the Plan reads it: this
-	// bridge still emits the legacy stub error schema, so no digest, artifact,
-	// or Plan byte depends on it.
+	// Manifest can state a failure row from the same type the contract's error
+	// schema is derived from, rather than from the derived schema — the Manifest
+	// is meant to be an independent derivation, and projecting it out of the
+	// Plan would validate nothing about a world with no Plan in it.
 	failureType *checker.Type
 }
 
@@ -265,10 +266,12 @@ const durableMaxIdentityLength = 256
 // while the runtime identity beside it does not, and why a guard on the runtime
 // spelling would not see the collision at all.
 //
-// Nothing is emitted from this function. This bridge still emits the legacy
-// stub error schema (see actionFor), so no digest, artifact, or Plan byte
-// depends on it; it exists so that the two implementations refuse the same
-// programs.
+// This IS emitted: `durableErrorDescriptor` puts it in every structural error
+// variant, so it is hashed into the Action's `errorSchema` digest, its
+// `contractDigest`, the Flow's `flowSchemas.error`, and the Plan digest. It was
+// derived-and-discarded until 2026-08-28, when the error channel stopped being a
+// stub, so the normalization and the bound below are now contract bytes rather
+// than a refusal test — which is why they are defined on UTF-16 code units.
 //
 // The normalization and the bound are defined on UTF-16 code units because the
 // reference is JavaScript string surgery: `String.prototype.replace` with a
@@ -365,6 +368,313 @@ func (d *durableFunctionLowerer) durableFailureIdentityCollides(failure *checker
 		}
 	}
 	return nil
+}
+
+// durableMaxUnionVariants bounds an Error union, exactly as the reference
+// frontend's MAX_UNION_VARIANTS does.
+const durableMaxUnionVariants = 128
+
+// durableMaxObjectFields bounds one Error payload's field count, exactly as the
+// reference frontend's MAX_OBJECT_FIELDS does.
+const durableMaxObjectFields = 1024
+
+// durableErrorSymbol resolves the built-in `Error` TYPE at one authored
+// location, the way the reference's `checker.resolveName("Error", anchor,
+// SymbolFlags.Type, false)` does.
+//
+// Resolved at the location rather than from a compiler-owned anchor on purpose:
+// an authored `class Error` shadowing the built-in must be seen by BOTH
+// implementations as the same symbol, or the two would disagree about which
+// failure channels are the weakened built-in one.
+func (d *durableFunctionLowerer) durableErrorSymbol(location *ast.Node) *ast.Symbol {
+	return d.owner.checker.GetMergedSymbol(
+		d.owner.checker.ResolveName("Error", location, ast.SymbolFlagsType, false))
+}
+
+// durableTypeSymbol is the reference's `typeReferenceSymbol(type, checker) ??
+// canonicalSymbol(checker, type.symbol)`: the declaration a type names.
+func (d *durableFunctionLowerer) durableTypeSymbol(t *checker.Type) *ast.Symbol {
+	if t == nil {
+		return nil
+	}
+	return d.owner.checker.GetMergedSymbol(t.Symbol())
+}
+
+// durableErrorSchemaFor derives the error schema one Action contract carries, or
+// the legacy weakened schema for the one failure channel the reference also
+// declines to describe.
+//
+// THE WEAKENING IS NOT A FALLBACK. `Result<Success, Error>` — the built-in
+// `Error` and nothing else — carries no nominal payload either implementation
+// can describe, and the reference's `weakenUnderivableErrors` reaches
+// `derivedSchema("error")` for exactly that channel and no other. Every other
+// underivable channel is refused on both sides. Widening this to "derivation
+// threw, so emit the stub" would be the fail-open that produced this bridge's
+// original defect: a stub schema is a DIFFERENT digest, so a silent fallback
+// mints a contract identity the reference never mints and the two backends
+// disagree again with no diagnostic anywhere.
+func (d *durableFunctionLowerer) durableErrorSchemaFor(failure *checker.Type, location *ast.Node) (map[string]any, error) {
+	errorSymbol := d.durableErrorSymbol(location)
+	if errorSymbol == nil {
+		return nil, fmt.Errorf("compiler could not resolve the built-in Error type")
+	}
+	if durableIsWhollyBuiltInErrorChannel(d, failure, errorSymbol) {
+		return durableLegacySchema("error"), nil
+	}
+	descriptor, err := d.durableErrorDescriptor(failure, location, errorSymbol)
+	if err != nil {
+		return nil, err
+	}
+	return durableStructuralSchema("error", descriptor), nil
+}
+
+// durableIsWhollyBuiltInErrorChannel is the reference's
+// `isWhollyBuiltInErrorChannel`: every constituent resolves to the built-in
+// `Error` symbol itself, rather than to a class declaration extending it.
+func durableIsWhollyBuiltInErrorChannel(d *durableFunctionLowerer, failure *checker.Type, errorSymbol *ast.Symbol) bool {
+	if failure == nil {
+		return false
+	}
+	constituents := []*checker.Type{failure}
+	if failure.IsUnion() {
+		constituents = failure.Types()
+	}
+	if len(constituents) == 0 {
+		return false
+	}
+	for _, constituent := range constituents {
+		if d.durableTypeSymbol(constituent) != errorSymbol {
+			return false
+		}
+	}
+	return true
+}
+
+// durableErrorDescriptor is the reference's `DescriptorBuilder.error`: one
+// `{kind:"error", identity, name, payload}` variant per declared Error class,
+// deduplicated and ordered canonically when the channel is a union.
+//
+// The union is joined with `durableCanonicalUnion`, which is the reference's own
+// rule — dedupe by canonical JSON, order by UTF-16 code unit, collapse a
+// single survivor to the bare variant. Flattening is a no-op here (a variant is
+// always an `error` record, never a nested union) and is left to that one
+// function rather than duplicated, so the ordering rule has one home.
+func (d *durableFunctionLowerer) durableErrorDescriptor(
+	failure *checker.Type,
+	location *ast.Node,
+	errorSymbol *ast.Symbol,
+) (any, error) {
+	if failure == nil {
+		return nil, fmt.Errorf("checker returned no failure type")
+	}
+	if failure.IsUnion() {
+		members := failure.Types()
+		if len(members) > durableMaxUnionVariants {
+			return nil, fmt.Errorf("failure channel exceeds the Error union variant limit")
+		}
+		variants := make([]any, 0, len(members))
+		for _, member := range members {
+			variant, err := d.durableErrorDescriptor(member, location, errorSymbol)
+			if err != nil {
+				return nil, err
+			}
+			variants = append(variants, variant)
+		}
+		if len(variants) == 0 {
+			return nil, fmt.Errorf("failure channel has no Error variants")
+		}
+		return durableCanonicalUnion(variants), nil
+	}
+	if failure.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown|checker.TypeFlagsTypeParameter) != 0 {
+		return nil, fmt.Errorf("failure channel must name a concrete Error class or union")
+	}
+	declaration := classDeclarationOf(d.durableTypeSymbol(failure))
+	if declaration == nil {
+		return nil, fmt.Errorf("failure channel must be an ordinary named class extending Error")
+	}
+	name := declaration.Name()
+	if name == nil || !ast.IsIdentifier(name) {
+		return nil, fmt.Errorf("failure channel must be an ordinary named class extending Error")
+	}
+	if !d.durableExtendsError(declaration, errorSymbol, make(map[*ast.Node]bool)) {
+		return nil, fmt.Errorf("failure channel class " + name.Text() + " does not extend Error")
+	}
+	payload, err := d.durableErrorPayload(declaration, errorSymbol, make(map[*ast.Node]bool))
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"identity": durableFailureIdentity(durableLogicalFile(ast.GetSourceFileOfNode(declaration)), name.Text()),
+		"kind":     "error",
+		"name":     name.Text(),
+		"payload":  payload,
+	}, nil
+}
+
+// durableExtendsError answers the reference's `extendsError`: does this class
+// reach the built-in `Error` through its extends chain.
+func (d *durableFunctionLowerer) durableExtendsError(
+	declaration *ast.Node,
+	errorSymbol *ast.Symbol,
+	visited map[*ast.Node]bool,
+) bool {
+	if declaration == nil || visited[declaration] {
+		return false
+	}
+	visited[declaration] = true
+	clauses := declaration.ClassLikeData().HeritageClauses
+	if clauses == nil {
+		return false
+	}
+	for _, clauseNode := range clauses.Nodes {
+		clause := clauseNode.AsHeritageClause()
+		if clause.Token != ast.KindExtendsKeyword || clause.Types == nil {
+			continue
+		}
+		for _, base := range clause.Types.Nodes {
+			symbol := d.durableTypeSymbol(d.owner.checker.GetTypeAtLocation(base))
+			if symbol != nil && symbol == errorSymbol {
+				return true
+			}
+			if baseClass := classDeclarationOf(symbol); baseClass != nil &&
+				d.durableExtendsError(baseClass, errorSymbol, visited) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// durableErrorPayload is the reference's `errorPayload`: the object descriptor
+// one Error class carries on the wire, assembled from its base classes' payload
+// fields, its own property declarations, and its constructor's parameter
+// properties — the three spellings that survive `structuredClone`.
+//
+// Base fields are merged FIRST so a derived class's own declaration of the same
+// name wins, which is the reference's `Map#set` order. The final order is UTF-16
+// on the field name, not insertion order, so the descriptor — and therefore the
+// contract digest — cannot depend on how a class happened to be written.
+func (d *durableFunctionLowerer) durableErrorPayload(
+	declaration *ast.Node,
+	errorSymbol *ast.Symbol,
+	visited map[*ast.Node]bool,
+) (any, error) {
+	if visited[declaration] {
+		return nil, fmt.Errorf("Error inheritance chain is recursive")
+	}
+	visited[declaration] = true
+	defer delete(visited, declaration)
+
+	fields := make(map[string]map[string]any)
+	if clauses := declaration.ClassLikeData().HeritageClauses; clauses != nil {
+		for _, clauseNode := range clauses.Nodes {
+			clause := clauseNode.AsHeritageClause()
+			if clause.Token != ast.KindExtendsKeyword || clause.Types == nil {
+				continue
+			}
+			for _, base := range clause.Types.Nodes {
+				symbol := d.durableTypeSymbol(d.owner.checker.GetTypeAtLocation(base))
+				if symbol != nil && symbol == errorSymbol {
+					continue
+				}
+				baseDeclaration := classDeclarationOf(symbol)
+				if baseDeclaration == nil {
+					return nil, fmt.Errorf("Error class has an unsupported base class")
+				}
+				inherited, err := d.durableErrorPayload(baseDeclaration, errorSymbol, visited)
+				if err != nil {
+					return nil, err
+				}
+				record, _ := inherited.(map[string]any)
+				items, _ := record["fields"].([]any)
+				for _, item := range items {
+					field, _ := item.(map[string]any)
+					if field == nil {
+						continue
+					}
+					fieldName, _ := field["name"].(string)
+					fields[fieldName] = field
+				}
+			}
+		}
+	}
+
+	add := func(fieldName string, optional bool, typeNode *ast.Node, location *ast.Node) error {
+		value, err := d.durableTypeDescriptor(
+			d.owner.checker.GetTypeFromTypeNode(typeNode), location, make(map[checker.TypeId]bool), optional)
+		if err != nil {
+			return fmt.Errorf("Error payload field %s: %w", fieldName, err)
+		}
+		if value == nil {
+			return fmt.Errorf("Error payload field %s has no encodable value type", fieldName)
+		}
+		fields[fieldName] = map[string]any{"name": fieldName, "optional": optional, "value": value}
+		return nil
+	}
+
+	for _, member := range declaration.ClassLikeData().Members.Nodes {
+		switch {
+		case ast.IsPropertyDeclaration(member):
+			if ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) {
+				continue
+			}
+			memberName := member.Name()
+			if memberName != nil && ast.IsPrivateIdentifier(memberName) {
+				return nil, fmt.Errorf("Error class has a private payload field")
+			}
+			if ast.HasSyntacticModifier(member, ast.ModifierFlagsPrivate|ast.ModifierFlagsProtected) {
+				return nil, fmt.Errorf("Error class has a private/protected payload field")
+			}
+			property := member.AsPropertyDeclaration()
+			if property.Type == nil || memberName == nil ||
+				!(ast.IsIdentifier(memberName) || ast.IsStringLiteral(memberName) || ast.IsNumericLiteral(memberName)) {
+				return nil, fmt.Errorf("Error payload fields need static names and explicit types")
+			}
+			optional := property.PostfixToken != nil && property.PostfixToken.Kind == ast.KindQuestionToken
+			if err := add(memberName.Text(), optional, property.Type, member); err != nil {
+				return nil, err
+			}
+		case member.Kind == ast.KindConstructor:
+			for _, parameter := range member.Parameters() {
+				// A parameter property is exactly the reference's test: one of
+				// `public`, `private`, `protected`, `readonly`. `override` is
+				// deliberately not in the set — it does not declare a field.
+				if !ast.HasSyntacticModifier(parameter, ast.ModifierFlagsPublic|ast.ModifierFlagsPrivate|
+					ast.ModifierFlagsProtected|ast.ModifierFlagsReadonly) {
+					continue
+				}
+				if ast.HasSyntacticModifier(parameter, ast.ModifierFlagsPrivate|ast.ModifierFlagsProtected) {
+					return nil, fmt.Errorf("Error class has a private/protected constructor field")
+				}
+				data := parameter.AsParameterDeclaration()
+				parameterName := parameter.Name()
+				if parameterName == nil || !ast.IsIdentifier(parameterName) ||
+					data.Type == nil || data.DotDotDotToken != nil {
+					return nil, fmt.Errorf("Error constructor fields need identifier names and explicit non-rest types")
+				}
+				optional := data.QuestionToken != nil || data.Initializer != nil
+				if err := add(parameterName.Text(), optional, data.Type, parameter); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	names := make([]string, 0, len(fields))
+	for fieldName := range fields {
+		names = append(names, fieldName)
+	}
+	// Author-controlled field names: UTF-16, not Go's byte order. See
+	// durableTypeDescriptor's note and compiler/fork_utf16_order_test.go.
+	sortUTF16(names)
+	if len(names) > durableMaxObjectFields {
+		return nil, fmt.Errorf("Error payload exceeds the field limit")
+	}
+	ordered := make([]any, 0, len(names))
+	for _, fieldName := range names {
+		ordered = append(ordered, fields[fieldName])
+	}
+	return map[string]any{"fields": ordered, "kind": "object"}, nil
 }
 
 func durableDeclarationName(call *ast.Node, function *ast.Node) string {
@@ -588,13 +898,6 @@ func (d *durableFunctionLowerer) lowerFunction(function *ast.Node) (durableValue
 			if !ok {
 				return durableValue{}, false
 			}
-			if len(d.actions) == 0 {
-				successDescriptor, err := d.durableTypeDescriptor(d.owner.checker.GetTypeAtLocation(expression), expression, make(map[checker.TypeId]bool), false)
-				if err != nil {
-					return d.fail(expression, "4110", "durable Flow success is not structurally encodable: "+err.Error())
-				}
-				d.successSchema = durableStructuralSchema("success", successDescriptor)
-			}
 			returned = true
 			continue
 		}
@@ -628,13 +931,20 @@ func (d *durableFunctionLowerer) lowerFunction(function *ast.Node) (durableValue
 		return d.fail(body, "4109", "durable source function must return a value")
 	}
 	// The output expression is complete here, and so are `d.nodes`, `d.actions`
-	// and `d.inputSchema` — everything the projection check reads. It runs for
-	// EVERY Flow, not only for the ones whose success schema stays the legacy
-	// stub: the structural derivation above answers a different question (can
-	// the return expression's TypeScript TYPE be encoded) and says nothing about
-	// whether the Plan's own paths can be walked. It covers the output AND every
-	// value a Plan node consumes; an Action input is the position that compiled
-	// and ran with an unsatisfiable projection until this covered it.
+	// and `d.inputSchema` — everything the boundary walk reads. It covers the
+	// output AND every value a Plan node consumes; an Action input is the
+	// position that compiled and ran with an unsatisfiable projection until this
+	// covered it.
+	//
+	// The walk's OUTPUT descriptor is the Flow's success contract, and this is
+	// where `d.successSchema` is now set from. It used to be derived here only
+	// for an action-free Flow, and from the return expression's TypeScript TYPE
+	// rather than from the Plan — two different answers to two different
+	// questions. The TypeScript type is WIDENED (`return { ok: true }` typed
+	// `{ ok: boolean }`), while the reference derives `{kind:"literal",
+	// value:true}` from the Plan value expression, so even the action-free case
+	// the fork did derive could disagree; a Flow with an Action got the legacy
+	// stub and disagreed always.
 	if !d.checkFlowBoundary(function, output) {
 		return durableValue{}, false
 	}
@@ -894,7 +1204,20 @@ func (d *durableFunctionLowerer) lowerConditional(node *ast.Node, anchor string,
 	branch := map[string]any{
 		"condition":           condition.ir,
 		"controlDependencies": durableControlDependencies(parentSequence),
-		"debug":               d.debug(node, "conditional"),
+		// The `?` TOKEN, not the conditional expression. Every other node kind
+		// here anchors its callSite on the construct's own start, and a branch
+		// looks like it should too — but a conditional expression starts at the
+		// same character its CONDITION starts at, so that anchor names a position
+		// that is already the condition's and says nothing about the branch. The
+		// reference picks `expression.questionToken.getStart(...)` for that
+		// reason (poc/src/durable/source-compiler.ts, lowerConditionalExpression).
+		//
+		// This is not cosmetic: `debug` is inside the Plan node, so it is hashed
+		// into `plan.digest`. Anchoring on the expression was the LAST structural
+		// difference between the two backends' Plans once the three stub schemas
+		// below were derived — it is why static-plan-shape-is-digest-pinned still
+		// minted two digests when every schema in it already agreed.
+		"debug": d.debug(conditional.QuestionToken, "conditional"),
 		"dependencies":        durableExpressionDependencies(condition.ir),
 		"id":                  id,
 		"kind":                "branch",
@@ -1051,20 +1374,19 @@ func (d *durableFunctionLowerer) actionFor(reference *ast.Node) (durableAction, 
 	if err != nil {
 		return durableAction{invalid: "Action success is not structurally encodable: " + err.Error()}, true
 	}
-	// The failure channel is not part of the schema this bridge emits — the
-	// error schema below is still the legacy stub — but it is part of what a
-	// durable contract must be able to describe, and the reference refuses to
-	// derive a contract whose declared Error classes cannot be told apart on the
-	// wire. Checking it here, and emitting nothing from it, keeps the two
-	// implementations' refusal surfaces identical without minting a contract
-	// identity this bridge does not carry: every accepted contract's schemas,
-	// digests, and Plan bytes are exactly what they were.
+	// The failure channel must be describable before it can be derived: the
+	// reference refuses to derive a contract whose declared Error classes cannot
+	// be told apart on the wire. Checked first, and separately, because it is
+	// the one underivable failure channel whose reason a diagnostic names.
 	if collision := d.durableFailureIdentityCollides(failureType); collision != nil {
 		return durableAction{collision: collision}, true
 	}
 	inputSchema := durableStructuralSchema("input", inputDescriptor)
 	successSchema := durableStructuralSchema("success", successDescriptor)
-	errorSchema := durableLegacySchema("error")
+	errorSchema, err := d.durableErrorSchemaFor(failureType, declaration)
+	if err != nil {
+		return durableAction{invalid: "Action failure channel is not structurally encodable: " + err.Error()}, true
+	}
 	contract := map[string]any{
 		"errorSchema":   errorSchema,
 		"id":            id,
@@ -1389,11 +1711,14 @@ func durableCanonicalUnion(variants []any) any {
 // as the reference, so a conformance case can declare one text for both
 // backends.
 //
-// It is a CHECK ONLY. `plan()` still emits exactly the schemas it emitted
-// before — `durableLegacySchema("success")` whenever the Flow uses an Action,
-// and the return expression's own TypeScript type otherwise. Every program that
-// still compiles keeps a byte-identical Plan digest; the derived descriptor is
-// discarded once it has answered the question.
+// It is ALSO the derivation. Until 2026-08-28 the descriptor this walk produced
+// was discarded once it had answered the projection question, and `plan()` emitted
+// `durableLegacySchema("success")` whenever the Flow used an Action and the return
+// expression's widened TypeScript type otherwise — the sole structural difference
+// between the two backends' Plans on every comparable program, and the reason
+// `plan.digest` diverged even for all-ASCII source. `checkFlowBoundary` now records
+// the output descriptor as the Flow's success schema, which is what the reference
+// has always done with the same walk's result.
 //
 // ON THE CAUSE SPLIT THE REFERENCE NEEDED, AND WHY THIS BRIDGE DOES NOT.
 // The reference has to tell two failures apart, because a legacy `Action.define`
@@ -1780,19 +2105,28 @@ func durablePlanNodeValues(nodes []any) []durablePlanValue {
 // exact sentence. The node-value walk is strictly narrowing — only a Flow whose
 // output is clean can newly refuse — so no already-refused program changes its
 // answer.
+// On accepting, it records the output descriptor as `d.successSchema`. The
+// reference does exactly this: `flowSchemas` runs the same walk and, when the
+// output produced no failure, emits `structuralSchema("success",
+// successDescriptor)`. Its two other outcomes are unreachable here — the weaker
+// `derivedSchema("success")` needs a legacy Action descriptor this bridge has no
+// binding surface for, and its `throw` is this function's refusal — so
+// "accepted" and "structural success schema" are the same condition, and the
+// schema is set on exactly the path that proved the descriptor is complete.
 func (d *durableFunctionLowerer) checkFlowBoundary(function *ast.Node, output durableValue) bool {
 	failures := make([]string, 0, 1)
-	walk := func(value any, subject string) {
-		d.flowOutputDescriptor(value, func(reason string) any {
+	walk := func(value any, subject string) any {
+		return d.flowOutputDescriptor(value, func(reason string) any {
 			failures = append(failures, subject+" "+reason)
 			return durableUnknownDescriptor{}
 		})
 	}
-	walk(output.ir, "Flow output")
+	successDescriptor := walk(output.ir, "Flow output")
 	for _, entry := range durablePlanNodeValues(d.nodes) {
 		walk(entry.value, entry.subject)
 	}
 	if len(failures) == 0 {
+		d.successSchema = durableStructuralSchema("success", successDescriptor)
 		return true
 	}
 	d.fail(function, "4110", "durable Flow boundary is not structurally encodable: "+failures[0])
@@ -1903,6 +2237,30 @@ func durableStructuralSchema(role string, descriptor any) map[string]any {
 	return schema
 }
 
+// flowErrorSchema is the reference's `flowErrorSchema`: the Flow's failure
+// channel is the union of its Actions' failure channels.
+//
+// The weakening is CONTAGIOUS and that is the reference's rule, not a shortcut:
+// one Action whose error schema states no descriptor leaves the whole Flow's
+// error channel undescribed, because a union missing one arm would claim the
+// Flow can only fail in the ways the other Actions declare. `Result<Success,
+// Error>` is the channel that reaches it — see durableErrorSchemaFor.
+func (d *durableFunctionLowerer) flowErrorSchema(actionIDs []string) map[string]any {
+	descriptors := make([]any, 0, len(actionIDs))
+	for _, id := range actionIDs {
+		schema, _ := d.actions[id].descriptor["errorSchema"].(map[string]any)
+		descriptor, structural := durableSchemaDescriptor(schema)
+		if !structural {
+			return durableLegacySchema("error")
+		}
+		descriptors = append(descriptors, descriptor)
+	}
+	if len(descriptors) == 0 {
+		return durableLegacySchema("error")
+	}
+	return durableStructuralSchema("error", durableCanonicalUnion(descriptors))
+}
+
 func (d *durableFunctionLowerer) plan(output durableValue) map[string]any {
 	actionIDs := make([]string, 0, len(d.actions))
 	for id := range d.actions {
@@ -1919,14 +2277,20 @@ func (d *durableFunctionLowerer) plan(output durableValue) map[string]any {
 		"input":   d.inputSchema,
 		"success": d.successSchema,
 	}
+	// Defensive only, and provably unreached: `lowerFunction` sets `inputSchema`
+	// before it lowers a single statement and `checkFlowBoundary` sets
+	// `successSchema` on the only path that returns an accepted Flow, so a nil
+	// here would be a compiler defect. Kept as the weakened schema rather than a
+	// panic because the reference's envelope admits it, and removed only when
+	// something makes the two states distinguishable.
 	if d.inputSchema == nil {
 		flowSchemas["input"] = durableLegacySchema("input")
 	}
 	if d.successSchema == nil {
 		flowSchemas["success"] = durableLegacySchema("success")
 	}
-	if len(actions) != 0 {
-		flowSchemas["error"] = durableLegacySchema("error")
+	if len(actionIDs) != 0 {
+		flowSchemas["error"] = d.flowErrorSchema(actionIDs)
 	}
 	semantic := map[string]any{
 		"actions":       actions,
