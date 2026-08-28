@@ -2,8 +2,8 @@
   "schema": "smithers.product-divergence/v1",
   "measuredBy": "scripts/oracle-differential.mjs",
   "purpose": "Every corpus case where `node bin/smithers.js check` disagrees with the case's declared expectation. The conformance runner measures two BACKENDS; neither is the shipped CLI, so this file is the written record of how far the product is from the contract the corpus is quoted as stating. `direction` product-accepts is the dangerous one — the corpus requires a refusal and the product compiled it. `verdict` says which side is wrong; `decision-needed` rows may not be moved by either side until the decisions ledger owner settles them. A row disappears when the divergence is FIXED, never when it is tolerated. The `total` field records the corpus size at the last revision and is DESCRIPTIVE, not a gate: it has gone stale twice (424 -> 438 -> 465) simply because the corpus grows, and gating on its equality would train re-baselining rather than catch anything. The gate is the divergence SET.",
-  "total": 508,
-  "divergent": 60,
+  "total": 510,
+  "divergent": 59,
   "divergences": [
     {
       "id": "01-result-lifting/a-star-re-export-of-the-compiler-owned-prelude-is-refused",
@@ -22,16 +22,6 @@
       "verdict": "product-wrong",
       "cause": "runtime-graph-refuses-before-the-semantic-stage",
       "note": "src/cli.ts:753-777 runs buildRelativeRuntimeGraph before the semantic stage and returns as soon as it has anything to say. Here it does not even produce a diagnostic: it throws a TypeError that backendFailure (src/cli.ts:1418-1432) turns into a code-less, position-less SMITHERS_PROJECT_ERROR, so the rule the corpus pins is never reached. Both sides refuse the program, so this is a diagnostic-identity divergence, not a safety hole. The corpus states the contract correctly; the fix is for the graph to defer an edge it cannot resolve to the semantic stage instead of aborting the run."
-    },
-    {
-      "id": "02-unwrap-propagation/postfix-bang-in-a-labeled-statement-body-is-accepted",
-      "direction": "product-refuses",
-      "corpus": "ACCEPTED",
-      "product": "TS2322@postfix-bang-in-a-labeled-statement-body-is-accepted.mjs:22:5",
-      "verdict": "product-wrong",
-      "cause": "reference-labeled-statement-lowering-defect-shared-by-the-product",
-      "note": "This row is NOT a product-vs-oracle pipeline divergence: the CLI and the JS reference backend now give the identical answer, TS2322 on the emitted module, and the corpus already records that answer as this case's xfail(js). The corpus is right about the language rule (specification/failures.mdx, 'Accepted Placements'; the Go fork compiles this program and prints 'Ada Lovelace'), and the reference's labeled-statement lowering — which the product shares — is the defect. Retire this row together with the case's xfail(js) marker. Before the src/cli.ts fix in this lane the CLI answered 'diagnostic source map has no mapping for 22:5' and reported no diagnostic at all, so it was strictly worse than the oracle rather than equal to it.",
-      "xfailBackends": "js"
     },
     {
       "id": "09-foreign-calls/a-bare-panic-type-resolves-without-an-import",
