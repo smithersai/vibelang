@@ -211,8 +211,23 @@ function validate(expectation, path) {
           throw new Error(`${path}: ${entry.code}'s messageContains must be a non-empty substring of the message`);
         }
       }
+      // Optional, and the entry module when omitted — which is every declared
+      // diagnostic in the corpus today. It exists because the judge compares the
+      // file a diagnostic landed in, and without a way to declare one a case
+      // could never pin a diagnostic in an auxiliary `*.mod.sm` at all. The
+      // staged-path check lives in `loadCorpus`, where the case's files are
+      // known: a `file` nothing stages is unsatisfiable by construction and
+      // would otherwise read as a permanent backend divergence.
+      if (entry.file !== undefined) {
+        if (typeof entry.file !== "string" || entry.file.length === 0) {
+          throw new Error(`${path}: ${entry.code}'s file must be a non-empty staged path`);
+        }
+        if (entry.file.includes("\\") || entry.file.startsWith("/")) {
+          throw new Error(`${path}: ${entry.code}'s file ${JSON.stringify(entry.file)} must be a relative POSIX path`);
+        }
+      }
       for (const key of Object.keys(entry)) {
-        if (!["code", "line", "column", "messageContains"].includes(key)) {
+        if (!["code", "line", "column", "file", "messageContains"].includes(key)) {
           throw new Error(`${path}: unknown field ${JSON.stringify(key)} on expected diagnostic ${entry.code}`);
         }
       }
@@ -299,6 +314,20 @@ export function loadCorpus({ filter } = {}) {
         kind: "asset",
         text: readFileSync(join(assetRoot, asset.from), "utf8"),
       });
+    }
+
+    // A declared `file` must name a file this case stages. Checked here rather
+    // than in `validate` because only now are the staged paths known, and
+    // checked at all because the failure is otherwise silent and permanent: the
+    // judge would compare against a file no backend can ever report, and every
+    // run would score the case as a divergence in both implementations.
+    for (const declared of expectation.diagnostics ?? []) {
+      if (declared.file === undefined) continue;
+      if (files.some((file) => file.path === declared.file)) continue;
+      throw new Error(
+        `${relative(repositoryRoot, path)}: ${declared.code} is declared in ${JSON.stringify(declared.file)}, ` +
+          `which this case does not stage (staged: ${files.map((file) => file.path).join(", ")})`,
+      );
     }
 
     const id = relative(corpusRoot, path).replace(/\.sm$/, "");

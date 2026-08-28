@@ -22,10 +22,25 @@
  *   --fork-checkout <dir>   pinned smithersai/TypeScript checkout
  *
  * Exit code: non-zero when a backend the caller asked to gate on has failures.
- * **`--backend both` gates on BOTH backends**, including the fork: a Go verdict
- * failure exits 1 even when the reference is entirely green. Measured, not
- * asserted — a case scored `js pass / go FAIL` under `--backend both` exits 1,
- * and the same run under `--report-only` exits 0.
+ * **`--backend both` gates on BOTH backends**, including the fork, in both of
+ * the ways a backend can fail to be green:
+ *
+ *   - a Go *verdict* failure exits 1 even when the reference is entirely green.
+ *     Measured, not asserted — a case scored `js pass / go FAIL` under
+ *     `--backend both` exits 1, and the same run under `--report-only` exits 0.
+ *   - a Go backend that could not be *prepared* exits 2. `both` asked for the
+ *     fork, so a run in which the fork never compiled a case is not a
+ *     measurement of the fork, and saying so is the only honest outcome.
+ *
+ * The second half was added on 2026-08-28 and is the more embarrassing of the
+ * two, because the first had already been fixed: a Go FAIL gated under `both`
+ * while a Go that never ran did not, so "we looked and found a divergence"
+ * exited 1 and "we never looked" exited 0. `both` is the DEFAULT mode, which
+ * made the bare `node conformance/runner/run.mjs` degrade silently into
+ * `--backend js` on any machine without a fork checkout while still printing
+ * `0 divergent` and `Markers holding a fail-open: 0`. A caller who wants the
+ * reference gate without a fork asks for `--backend js`, which is documented as
+ * exactly that and is unaffected.
  *
  * This paragraph said the opposite until 2026-08-26, and it is worth knowing why
  * rather than just that it was fixed. `--backend both` really did fall through
@@ -48,10 +63,11 @@
  *           checks it claims (see `auditVerdict`), or a summary whose counts do
  *           not add up to the rows that were rendered
  *   exit 2  a case the harness could not measure at all; or a backend that was
- *           asked for and could not be prepared; or a run in which NO case was
+ *           asked for and could not be prepared — "asked for" means named by
+ *           `--backend`, so `both` asks for both; or a run in which NO case was
  *           measured at all — `--filter` matching nothing used to print
  *           `0/0 pass` and exit 0, which is green without doing the work.
- *           `runner/selftest.mjs` holds that last one.
+ *           `runner/selftest.mjs` holds the last two.
  *
  * (The list said "three" and named the first two of the exit-2 conditions; the
  * empty-run check was added later and never joined it. Counted again here from
@@ -70,7 +86,7 @@
 import { loadCorpus, loadInterop } from "./corpus.mjs";
 import { jsBackend, runJsCase, runJsInterop } from "./backend-js.mjs";
 import { goBackend, prepareGoBackend, runGoCase, runGoInterop } from "./backend-go.mjs";
-import { auditVerdict, compareObservations, judge } from "./judge.mjs";
+import { auditVerdict, canonicalExpectation, compareObservations, judge } from "./judge.mjs";
 import { mapPool } from "./process.mjs";
 
 /**
@@ -79,6 +95,29 @@ import { mapPool } from "./process.mjs";
  * a status cannot be introduced later and quietly fall out of the scoreboard.
  */
 const STATUS_ORDER = ["pass", "xpass", "xfail", "unsupported", "fail", "unmeasured"];
+
+/** Every backend this runner knows how to ask. Order is report order. */
+const BACKENDS = ["js", "go"];
+
+/**
+ * The backends one `--backend` value asks for.
+ *
+ * One definition, because the question is asked four times — what to prepare,
+ * what to enforce availability on, what to summarize and render, and what to
+ * gate the exit code on — and it used to be hand-written at every one of those
+ * sites, in three different spellings (`b === "js" || b === "both"`, `b !== "go"`,
+ * and a bare `b === "go"`). Eight transcriptions of one three-valued question is
+ * eight chances to write a different answer, and one of them did: the
+ * availability arm enforced `js`/`both` for the reference and only `go` for the
+ * fork, so `--backend both` on a machine that could not prepare the fork printed
+ * `go: unavailable — <reason>` and exited 0.
+ *
+ * The two gating sites below iterate this list rather than naming a backend
+ * each, so a backend cannot be enforced in one place and forgotten in the other.
+ */
+export function requestedBackends(backend) {
+  return BACKENDS.filter((name) => backend === name || backend === "both");
+}
 
 function parseArguments(argv) {
   const options = { backend: "both", interop: false, onlyInterop: false, json: false, quiet: false };
@@ -138,11 +177,19 @@ function truncateNote(text) {
   return text.length <= NOTE_WIDTH ? text : `${text.slice(0, NOTE_WIDTH - 3)}... [truncated]`;
 }
 
-/** One line naming what a case declares, for the divergence sections. */
+/**
+ * One line naming what a case declares, for the divergence sections.
+ *
+ * The file is printed alongside the position, in the same spelling
+ * `judge.mjs`'s `formatDiagnostics` uses for the observed side, so the
+ * `expected:`/`observed:` pair under a divergence can be read as a diff. It
+ * printed `code@line:column` while the file was not compared, which made a
+ * wrong-file divergence render as two identical lines.
+ */
 function describeExpectation(entry) {
   if (entry.expect === "output") return `stdout ${JSON.stringify(entry.declared?.stdout ?? [])}`;
   const declared = (entry.declared?.diagnostics ?? [])
-    .map((item) => `${item.code}@${item.line}:${item.column}`)
+    .map((item) => (item.file === undefined ? `${item.code}@${item.line}:${item.column}` : `${item.code}@${item.file}:${item.line}:${item.column}`))
     .join(", ");
   return `diagnostics [${declared}]`;
 }
@@ -174,8 +221,9 @@ const CLASS = {
 
 export async function runConformance(options = {}) {
   const backend = options.backend ?? "both";
-  const wantJs = backend === "js" || backend === "both";
-  const wantGo = backend === "go" || backend === "both";
+  const requested = requestedBackends(backend);
+  const wantJs = requested.includes("js");
+  const wantGo = requested.includes("go");
   // `options.cases` exists for the harness's own self-test, which runs
   // deliberately broken expectations through the real backends and asserts the
   // runner notices. Nothing else supplies it; the corpus on disk is the corpus.
@@ -191,10 +239,13 @@ export async function runConformance(options = {}) {
       expect: testCase.expectation.expect,
       xfail: testCase.expectation.xfail,
       // The declared expectation travels with the row so a report can be read
-      // — and a divergence understood — without going back to the corpus.
+      // — and a divergence understood — without going back to the corpus. In
+      // the canonical form the judge actually compared, so a diagnostic that
+      // named no file shows the entry it was resolved to rather than leaving a
+      // reader to work out which file the row is about.
       declared: {
         stdout: testCase.expectation.stdout,
-        diagnostics: testCase.expectation.diagnostics,
+        diagnostics: testCase.expectation.expect === "diagnostics" ? canonicalExpectation(testCase) : undefined,
       },
       results: {},
       agreement: undefined,
@@ -576,7 +627,8 @@ exit codes
   0  the backends asked to gate were green
   1  a verdict failure on a backend asked to gate (suppressed by --report-only).
      --backend both gates on BOTH: a Go failure exits 1 with the reference green
-  2  a case could not be measured, a requested backend could not be prepared, or
+  2  a case could not be measured, a requested backend could not be prepared
+     (--backend both requests both, so an unpreparable fork exits 2), or
      no case was measured at all
   3  a harness-integrity failure: a verdict not backed by the checks it claims,
      or a summary whose counts disagree with the rows
@@ -596,14 +648,20 @@ async function main(argv) {
     return 0;
   }
 
+  // The one derivation of "which backends did the caller ask for", shared with
+  // `runConformance` and with both gating loops below. It was spelled three
+  // different ways across those four sites, and the table's spelling
+  // (`!== "go"` / `!== "js"`) was the only one that could not be compared to the
+  // others by eye.
+  const requested = requestedBackends(options.backend);
   const report = await runConformance(options);
   if (options.json) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else {
     process.stdout.write(
       `${renderTable(report, {
-        wantJs: options.backend !== "go",
-        wantGo: options.backend !== "js",
+        wantJs: requested.includes("js"),
+        wantGo: requested.includes("go"),
         quiet: options.quiet,
       })}\n`,
     );
@@ -627,12 +685,35 @@ async function main(argv) {
     return 2;
   }
 
-  // The JS reference is a gate. The Go backend is a measurement while the
-  // migration is in progress, and only gates when it is asked for alone.
-  if (options.backend === "js" || options.backend === "both") {
-    if (report.backends.js && !report.backends.js.available) return 2;
+  // A backend the caller ASKED FOR and the harness could not prepare is a
+  // failure to measure, on every backend, in every mode — `both` included.
+  //
+  // This arm used to enforce the reference under `js`/`both` and the fork only
+  // under `go`, so `--backend both` with an absent fork checkout printed
+  // `go: unavailable — <reason>`, `0 divergent`, `Markers holding a fail-open: 0`
+  // and exited 0. `both` is the DEFAULT mode, so that was the bare
+  // `node conformance/runner/run.mjs` every gate quotes, silently degrading into
+  // `--backend js` while still reading like a two-backend run.
+  //
+  // The asymmetry was backwards on its own terms as well. A Go *verdict* failure
+  // has gated under `both` since 2026-08-26, so "we looked at the fork and found
+  // a divergence" exited 1 while "we never looked at the fork at all" exited 0.
+  // A caller who genuinely wants the reference gate without a fork checkout asks
+  // for it by name: `--backend js` is documented as exactly that, and the loop
+  // below never enforces a backend nobody requested.
+  //
+  // The reason goes to stderr rather than only into `renderTable`, because
+  // `--json` prints no table and a machine-readable run got no reason at all.
+  for (const name of requested) {
+    const prepared = report.backends[name];
+    if (prepared && !prepared.available) {
+      process.stderr.write(
+        `conformance: the ${name} backend was requested and could not be prepared: ${prepared.reason}\n` +
+          `conformance: this run is not a measurement of ${name}\n`,
+      );
+      return 2;
+    }
   }
-  if (options.backend === "go" && report.backends.go && !report.backends.go.available) return 2;
 
   // A run that measured nothing is not a green run, it is an absent one. With
   // `--filter` matching no case (or a corpus that failed to load) every bucket
@@ -652,12 +733,7 @@ async function main(argv) {
     return 2;
   }
   if (options.reportOnly) return 0;
-  const jsFailures = (report.summary.js?.fail ?? 0) + (report.summary.jsInterop?.fail ?? 0);
-  const goFailures = (report.summary.go?.fail ?? 0) + (report.summary.goInterop?.fail ?? 0);
-  if (options.backend === "js" || options.backend === "both") {
-    if (jsFailures > 0) return 1;
-  }
-  // `--backend both` used to gate on the reference alone: the `go` arm below was
+  // `--backend both` used to gate on the reference alone: the `go` arm was
   // reached only by `--backend go`, so a run that measured both backends fell
   // through to `return 0` no matter how many Go cases failed or how far the two
   // backends had drifted apart. That is the "green without doing the work" shape
@@ -665,9 +741,18 @@ async function main(argv) {
   // and printed `ok`, a `node --test` glob that exited 0 having run nothing, a
   // `doctor` that returned a hardcoded `ok: true`, and this. It mattered: the
   // exit code was quoted as evidence of zero divergences while `fail` on the Go
-  // side is exactly how a divergence is recorded (see DIVERGENCE_STATUS above).
-  if (options.backend === "go" || options.backend === "both") {
-    if (goFailures > 0) return 1;
+  // side is exactly how a divergence is recorded.
+  //
+  // Fixed on 2026-08-26 by adding `|| "both"` to the `go` arm — which left the
+  // availability arm above still hand-written per backend, and therefore still
+  // wrong for `both`. Both arms now iterate one list, so the next backend added
+  // is enforced in both places or in neither.
+  const failures = {
+    js: (report.summary.js?.fail ?? 0) + (report.summary.jsInterop?.fail ?? 0),
+    go: (report.summary.go?.fail ?? 0) + (report.summary.goInterop?.fail ?? 0),
+  };
+  for (const name of requested) {
+    if (failures[name] > 0) return 1;
   }
   return 0;
 }

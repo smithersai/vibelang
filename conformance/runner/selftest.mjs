@@ -70,7 +70,8 @@ import { auditBaseline, classify, corpusAnswer, VERDICTS } from "../../scripts/o
 import { loadCorpus, loweringMode, loweringModes, repositoryRoot } from "./corpus.mjs";
 import { harnessText } from "./harness.mjs";
 import { auditVerdict, compareObservations, judge } from "./judge.mjs";
-import { runJsCase } from "./backend-js.mjs";
+import { jsBackend, runJsCase } from "./backend-js.mjs";
+import { goBackend } from "./backend-go.mjs";
 import { run } from "./process.mjs";
 
 const backendGoPath = fileURLToPath(new URL("./backend-go.mjs", import.meta.url));
@@ -685,5 +686,312 @@ test("a durable diagnostic does not discard an output-expecting run", { concurre
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/(^|[^:])\/\/.*$/gm, "$1");
     assert.match(source, /expectsOutput:\s*testCase\.expectation\.expect === "output"/);
+  });
+});
+
+/**
+ * A backend the caller ASKED FOR and the harness could not prepare is a failure
+ * to measure, in every `--backend` mode.
+ *
+ * ## The defect
+ *
+ * The availability arm of the exit code was written twice, once per backend, and
+ * the two copies did not say the same thing: the reference was enforced under
+ * `js` and `both`, the fork only under `go`. So `--backend both` on a machine
+ * that cannot prepare the fork printed `go: unavailable — <reason>` in the table
+ * and **exited 0**. That is the shape this repository keeps finding — green
+ * without doing the work — and it is worse here than in most places, because
+ * `both` is the DEFAULT mode: the bare `node conformance/runner/run.mjs` that
+ * every gate and every README line quotes.
+ *
+ * The asymmetry was also backwards on its own terms. A Go *verdict* failure
+ * already gated under `both` (fixed 2026-08-26). So "we looked at the fork and
+ * found a divergence" exited 1 while "we never looked at the fork at all"
+ * exited 0.
+ *
+ * ## Why this is not a corpus case
+ *
+ * No `.sm` program can express it: the input is the CLI's own `--backend` value
+ * against a backend that never ran a case. The whole matrix is asserted — three
+ * modes against each backend being unpreparable, including the four cells that
+ * were already right — because the defect was an inconsistency BETWEEN cells,
+ * and a test that checked only the broken one would not have seen it either.
+ */
+test("a requested backend that could not be prepared refuses the run, in every mode", { concurrency: 1 }, async (t) => {
+  const runner = join(repositoryRoot, "conformance", "runner", "run.mjs");
+  // One cheap, green case. A mode that is expected to exit 0 must exit 0 having
+  // MEASURED something — an empty run is its own exit 2, asserted above, and
+  // would satisfy an exit-code assertion here for entirely the wrong reason.
+  const green = "01-result-lifting/return-lifts-into-success";
+  const invoke = (args, environment) =>
+    run(process.execPath, [runner, "--filter", green, "--quiet", ...args], {
+      cwd: repositoryRoot,
+      timeout: 900_000,
+      env: environment,
+    });
+
+  // Two ways to make a backend unpreparable, neither of which touches the tree.
+  // `--fork-checkout` at a path that does not exist takes out the Go backend
+  // alone. A PATH with no `bun` on it takes out the JS backend's probe — and
+  // `go` with it, which is why every assertion below names the backend the run
+  // reported rather than trusting the exit code by itself.
+  const noFork = ["--fork-checkout", join(tmpdir(), "smithers-conformance-no-such-fork-checkout")];
+  const noTools = { PATH: join(tmpdir(), "smithers-conformance-empty-path") };
+  const unprepared = (name) => new RegExp(`the ${name} backend was requested and could not be prepared`);
+
+  await t.test("--backend both refuses a run whose fork could not be prepared", async () => {
+    // The defect, executed. Before the fix this exited 0 with the reference
+    // green and the fork never built.
+    const both = await invoke(["--backend", "both", ...noFork]);
+    assert.equal(both.status, 2, `expected exit 2, got ${both.status}\n${both.stdout}\n${both.stderr}`);
+    assert.match(both.stderr, unprepared("go"));
+  });
+
+  await t.test("--backend go refuses it too", async () => {
+    const go = await invoke(["--backend", "go", ...noFork]);
+    assert.equal(go.status, 2, `expected exit 2, got ${go.status}\n${go.stdout}\n${go.stderr}`);
+    assert.match(go.stderr, unprepared("go"));
+  });
+
+  await t.test("--backend js does not, because it never asked for the fork", async () => {
+    // The over-correction guard. Enforcing availability for a backend the caller
+    // did not request would make the reference gate unrunnable on any machine
+    // without a fork checkout, which is precisely the escape hatch that makes
+    // gating `both` affordable.
+    const js = await invoke(["--backend", "js", ...noFork]);
+    assert.equal(js.status, 0, `expected exit 0, got ${js.status}\n${js.stdout}\n${js.stderr}`);
+    assert.match(js.stdout, /JS reference: {2}1\/1 pass/);
+  });
+
+  await t.test("an unpreparable reference refuses every mode that asks for it", async () => {
+    for (const mode of ["js", "both"]) {
+      const measured = await invoke(["--backend", mode], noTools);
+      assert.equal(
+        measured.status,
+        2,
+        `--backend ${mode} expected exit 2, got ${measured.status}\n${measured.stdout}\n${measured.stderr}`,
+      );
+      assert.match(measured.stderr, unprepared("js"));
+    }
+  });
+
+  await t.test("the reason reaches stderr, not only the rendered table", async () => {
+    // `--json` prints no table at all, so a reason carried only by `renderTable`
+    // is a reason a machine-readable run does not get. The exit code says the
+    // run is not a measurement; this says which backend and why.
+    const jsonRun = await invoke(["--backend", "both", "--json", ...noFork]);
+    assert.equal(jsonRun.status, 2, jsonRun.stderr);
+    assert.match(jsonRun.stderr, unprepared("go"));
+    assert.match(jsonRun.stderr, /pinned smithersai\/TypeScript checkout is absent/);
+    const report = JSON.parse(jsonRun.stdout);
+    assert.equal(report.backends.go.available, false);
+    assert.equal(report.backends.js.available, true);
+  });
+});
+
+/**
+ * A diagnostic's FILE is part of the answer, and a position the harness could
+ * not map is not an authored position.
+ *
+ * ## The defect
+ *
+ * `backend-js.mjs` deliberately records both — an emit-check diagnostic it could
+ * not anchor keeps its generated position and says so with `mapped: false`, and
+ * every observation carries the file the diagnostic landed in. `judge.mjs` then
+ * threw both away: the canonicalizer kept `code`, `line`, `column`, `message`
+ * and `messageContains` and dropped the rest, and both of its consumers compared
+ * only code, line and column.
+ *
+ * Two executed consequences, neither of which any corpus case can see:
+ *
+ *   1. a diagnostic reported in the WRONG FILE satisfies an expectation whose
+ *      coordinates it happens to share — a generated coordinate that merely
+ *      coincides with an authored one certifies the rule;
+ *   2. two backends diagnosing DIFFERENT FILES print as agreeing, because
+ *      `compareObservations` rendered both sides through the same lossy
+ *      canonicalizer.
+ *
+ * And a `mapped: false` position is a coordinate in emitted TypeScript that the
+ * harness is comparing against a coordinate in authored Smithers. Satisfying an
+ * expectation with one is the same class of defect as satisfying an `output`
+ * case without running the emit check: the verdict rests on work that did not
+ * happen, so it belongs to `auditVerdict` and exit 3 rather than to `fail` —
+ * scoring it a divergence would blame a backend for the harness's own gap.
+ *
+ * ## Why this is not a corpus case
+ *
+ * The corpus is a differential over authored programs, and both halves are
+ * properties of how the harness COMPARES two answers rather than of either
+ * answer. Measured on 2026-08-28: across all 510 cases the reference produces
+ * 470 diagnostics, of which exactly one is `mapped: false` (on an `xfail` row,
+ * so no satisfied verdict rests on it today) and none lands outside its entry
+ * file. Both defects are therefore latent, and a corpus that is entirely green
+ * is exactly the state in which they stay invisible.
+ */
+test("a diagnostic's file and its mapping are part of the answer", async (t) => {
+  const diagnostic = (overrides = {}) => ({
+    code: "SMITHERS1802",
+    line: 3,
+    column: 38,
+    message: "probe",
+    file: "main.sm",
+    mapped: true,
+    ...overrides,
+  });
+  // JS-shaped: `lower` is the stage `jsBackend.requiredStages` demands behind a
+  // satisfied `diagnostics` verdict, so these observations are audited for the
+  // thing under test rather than tripping the stage audit first.
+  const observed = (overrides = {}) => ({
+    kind: "diagnostics",
+    stage: "language",
+    stages: ["lower"],
+    diagnostics: [diagnostic(overrides)],
+  });
+  const declaring = (overrides = {}) => ({
+    id: "probe",
+    entry: "main.sm",
+    expectation: {
+      expect: "diagnostics",
+      diagnostics: [{ code: "SMITHERS1802", line: 3, column: 38, ...overrides }],
+    },
+  });
+
+  await t.test("a diagnostic in the entry still satisfies an expectation that names no file", () => {
+    // The default, and the reason 510 cases keep their verdicts: an expectation
+    // with no `file` means the entry, which is where every declared diagnostic
+    // in the corpus lands today.
+    assert.equal(judge(declaring(), observed(), "js").status, "pass");
+  });
+
+  await t.test("a diagnostic in the WRONG file does not", () => {
+    const verdict = judge(declaring(), observed({ file: "wrong-module.mod.sm" }), "js");
+    assert.equal(verdict.status, "fail", JSON.stringify(verdict));
+    assert.match(verdict.detail, /wrong-module\.mod\.sm/);
+    assert.match(verdict.detail, /main\.sm/);
+  });
+
+  await t.test("an expectation may name an auxiliary module, and then the entry does not satisfy it", () => {
+    const inModule = declaring({ file: "companion.mod.sm" });
+    assert.equal(judge(inModule, observed({ file: "companion.mod.sm" }), "js").status, "pass");
+    assert.equal(judge(inModule, observed({ file: "main.sm" }), "js").status, "fail");
+  });
+
+  await t.test("two backends diagnosing different files do not agree", () => {
+    assert.equal(compareObservations(observed(), observed({ file: "main.sm" })).agree, true);
+    const divergent = compareObservations(observed(), observed({ file: "wrong-module.mod.sm", mapped: undefined }));
+    assert.equal(divergent.agree, false, JSON.stringify(divergent));
+    assert.match(divergent.detail, /wrong-module\.mod\.sm/);
+  });
+
+  await t.test("`mapped` is not compared across backends, because only one backend has it", () => {
+    // The fork reports no mapping at all — it checks the authored `.sm`
+    // directly, so it has nothing to map. Comparing the field would report a
+    // divergence on every diagnostics case in the corpus. The FILE is the
+    // substantive difference; the mapping is a claim about this harness.
+    assert.equal(compareObservations(observed({ mapped: true }), observed({ mapped: undefined })).agree, true);
+  });
+
+  await t.test("a satisfied verdict resting on an unmapped position is a harness-integrity failure", () => {
+    const unmapped = observed({ mapped: false });
+    const verdict = judge(declaring(), unmapped, "js");
+    assert.equal(verdict.status, "pass", "the coordinates still line up; that is exactly the danger");
+    const violations = auditVerdict(declaring(), unmapped, verdict, jsBackend);
+    assert.ok(
+      violations.some((text) => text.includes("could not resolve")),
+      `expected an unmapped-position violation, saw: ${JSON.stringify(violations)}`,
+    );
+  });
+
+  await t.test("a mapped position, and an unsatisfied verdict, are not", () => {
+    // Both over-correction guards. A `fail` is a statement about a backend and
+    // is allowed to rest on whatever the backend said, and the ordinary mapped
+    // case must stay silent or the audit fires on all 470 diagnostics.
+    assert.deepEqual(auditVerdict(declaring(), observed(), judge(declaring(), observed(), "js"), jsBackend), []);
+    const wrongFile = observed({ file: "wrong-module.mod.sm", mapped: false });
+    assert.deepEqual(auditVerdict(declaring(), wrongFile, judge(declaring(), wrongFile, "js"), jsBackend), []);
+  });
+
+  await t.test("only a backend that reports mapping is audited for it", () => {
+    // The fork's diagnostics carry no `mapped` field. Auditing `!== true` on
+    // every backend would make every Go diagnostics pass a harness-integrity
+    // failure, so the check is driven by a capability each backend declares —
+    // and declaring it is what keeps the audit from going quiet if the JS
+    // backend ever stops recording the field.
+    assert.equal(jsBackend.reportsMapping, true);
+    assert.notEqual(goBackend.reportsMapping, true);
+    const fromTheFork = { ...observed({ mapped: undefined }), stage: "compile", stages: ["compile"] };
+    assert.deepEqual(auditVerdict(declaring(), fromTheFork, { status: "pass" }, goBackend), []);
+  });
+
+  await t.test("a file the harness could not relate to the staged project is an integrity failure", () => {
+    // The macOS staging-root defect, reproduced as an observation rather than
+    // as an environment: `os.tmpdir()` yields `/var/folders/...` while the
+    // compiler reports the realpath `/private/var/folders/...`, the two do not
+    // relativize against each other, and every asset-stage diagnostic kept its
+    // absolute path. Measured on the tree that had it: **12 divergent,
+    // agreement 479/510**, all in `23-asset-imports` and none of them a
+    // disagreement between the two compilers.
+    //
+    // The root is canonicalized now, but that is a property of one line. This
+    // asserts the property that has to hold: a path the harness could not
+    // relate is never SCORED. Exit 3 with the path in hand, not a divergence
+    // somebody has to go and diagnose in a backend that is behaving correctly.
+    const absolute = observed({ file: "/private/var/folders/qy/T/smithers-conformance-js-Ol9d79/main.sm" });
+    const violations = auditVerdict(declaring(), absolute, judge(declaring(), absolute, "js"), jsBackend);
+    assert.ok(
+      violations.some((text) => text.includes("could not relate")),
+      `expected an unrelatable-path violation, saw: ${JSON.stringify(violations)}`,
+    );
+    // And it fires whatever the verdict was, because an absolute path corrupts
+    // the comparison in both directions — it manufactured twelve FAILs, and it
+    // would equally have hidden a real one.
+    assert.ok(
+      auditVerdict(declaring(), absolute, { status: "fail" }, jsBackend).some((text) =>
+        text.includes("could not relate"),
+      ),
+    );
+  });
+
+  await t.test("no corpus case produces one", () => {
+    // The live measurement behind the paragraph above, kept as an assertion so
+    // the staging root cannot quietly stop being canonical. Cheap: it reads the
+    // corpus, not the backends.
+    for (const testCase of loadCorpus({})) {
+      for (const file of testCase.files) {
+        assert.ok(
+          !file.path.startsWith("/"),
+          `${testCase.id} stages ${file.path}, which is not a project-relative path`,
+        );
+      }
+    }
+  });
+
+  await t.test("every observation the JS backend produces carries a project-relative file", () => {
+    // Measured, not assumed: the asset stage reported its diagnostics at the
+    // ABSOLUTE path of a per-case `mkdtemp` staging directory, so 14 of the
+    // corpus's 470 diagnostics carried a machine-specific path with a random
+    // suffix. Nothing compared the field, so nothing noticed — and the moment it
+    // is compared, an absolute path can never equal a declared one.
+    const source = readFileSync(backendJsPath, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+    assert.match(source, /function stagedFile\(/);
+    assert.match(source, /reportsMapping: true/);
+  });
+
+  await t.test("the corpus accepts a declared file and refuses one nothing stages", () => {
+    const cases = loadCorpus({});
+    // Every declared diagnostic that names a file must name a file the case
+    // actually stages, or the expectation is unsatisfiable by construction and
+    // would read as a backend divergence forever.
+    for (const testCase of cases) {
+      for (const item of testCase.expectation.diagnostics ?? []) {
+        if (item.file === undefined) continue;
+        assert.ok(
+          testCase.files.some((file) => file.path === item.file),
+          `${testCase.id}: declares ${item.code} in ${item.file}, which the case does not stage`,
+        );
+      }
+    }
   });
 });

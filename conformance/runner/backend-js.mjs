@@ -21,9 +21,9 @@
  * one `test/conformance.test.mjs` gates the build on.
  */
 
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { comptimeTarget, repositoryRoot } from "./corpus.mjs";
 import { harnessText } from "./harness.mjs";
@@ -65,6 +65,16 @@ export const jsBackend = {
    * bridge has no source-asset pass at all), so only this backend declares one.
    */
   assetStage: "assets",
+  /**
+   * This backend resolves emit-check positions back to authored source and
+   * records whether it succeeded, so every diagnostic it produces carries
+   * `mapped`. Declaring the capability is what lets `judge.mjs` refuse a
+   * satisfied verdict that rests on a position it could not resolve, without
+   * that check firing on the fork — which checks the authored `.sm` directly and
+   * has nothing to map. A backend that stopped recording the field while still
+   * declaring this would go red rather than silently disable the audit.
+   */
+  reportsMapping: true,
   async probe() {
     const bun = await run("bun", ["--version"]);
     if (bun.error || bun.status !== 0) return "bun is required to run the JS instrument backend";
@@ -83,7 +93,14 @@ export const jsBackend = {
  *   { kind: "error", stages, reason }             — the backend itself broke
  */
 export async function runJsCase(testCase, { keepDirectory = false } = {}) {
-  const directory = await mkdtemp(join(tmpdir(), "smithers-conformance-js-"));
+  // Realpath'd, and not cosmetically. macOS hands out `/var/folders/...`
+  // temporary directories and the frontend canonicalizes them to
+  // `/private/var/folders/...`, so a diagnostic's file and this project's root
+  // are two spellings of one path and `stagedFile` below can relate neither to
+  // the other. `scripts/oracle-differential.mjs` stages its root the same way
+  // for the same reason. Canonicalizing once here also means `rootDir` and every
+  // emitted path agree with what the compiler reports back.
+  const directory = await realpath(await mkdtemp(join(tmpdir(), "smithers-conformance-js-")));
   try {
     // Assets are written before lowering, not after. The source-asset compiler
     // reads them from disk beneath the project root, tracks their bytes in its
@@ -157,7 +174,7 @@ export async function runJsCase(testCase, { keepDirectory = false } = {}) {
         stages: staged,
         diagnostics: errors.map((item) => ({
           code: item.code,
-          file: item.fileName,
+          file: stagedFile(item.fileName, directory),
           line: item.line,
           column: item.column,
           message: item.message,
@@ -178,7 +195,7 @@ export async function runJsCase(testCase, { keepDirectory = false } = {}) {
         kind: "diagnostics",
         stage: "emit",
         stages: [...staged, "emit-check"],
-        diagnostics: response.emitDiagnostics.map((item) => authoredPosition(item, response.files, testCase)),
+        diagnostics: response.emitDiagnostics.map((item) => authoredPosition(item, response.files, testCase, directory)),
       };
     }
 
@@ -230,10 +247,10 @@ export async function runJsCase(testCase, { keepDirectory = false } = {}) {
  *     file-less diagnostic): keep the generated position and say so with
  *     `mapped: false`, so a reviewer can see the harness did not resolve it.
  */
-function authoredPosition(item, compiledFiles, testCase) {
+function authoredPosition(item, compiledFiles, testCase, directory) {
   const base = { code: `TS${item.code}`, message: item.message, mapped: false };
   if (item.fileName === undefined || item.line === undefined) {
-    return { ...base, file: item.fileName, line: 0, column: 0 };
+    return { ...base, file: stagedFile(item.fileName, directory), line: 0, column: 0 };
   }
   const absolute = resolve(item.fileName);
   const foreign = testCase.files.find(
@@ -242,18 +259,45 @@ function authoredPosition(item, compiledFiles, testCase) {
   if (foreign) return { ...base, file: foreign.path, line: item.line, column: item.column, mapped: true };
 
   const owner = Object.entries(compiledFiles).find(([, file]) => resolve(file.outputFileName) === absolute);
-  if (!owner) return { ...base, file: item.fileName, line: item.line, column: item.column };
+  if (!owner) return { ...base, file: stagedFile(item.fileName, directory), line: item.line, column: item.column };
   const [authoredName, file] = owner;
   if (!file.sourceMap) return { ...base, file: authoredName, line: item.line, column: item.column };
   const mapped = originalPosition(file.sourceMap, item.line - 1, item.column - 1);
   if (!mapped) return { ...base, file: authoredName, line: item.line, column: item.column };
   return {
     ...base,
-    file: mapped.source,
+    file: stagedFile(mapped.source, directory),
     line: mapped.line + 1,
     column: mapped.column + 1,
     mapped: true,
   };
+}
+
+/**
+ * Name a diagnostic's file the way the corpus stages it: a project-relative
+ * POSIX path, the same string the Go backend reports and the same string an
+ * expectation may declare.
+ *
+ * The frontend reports some diagnostics at the ABSOLUTE path of this case's
+ * `mkdtemp` staging directory. Measured on 2026-08-28: 14 of the 470 diagnostics
+ * the reference produces across the corpus — every one of them from the
+ * source-asset stage — carried a path like
+ * `/private/var/folders/.../smithers-conformance-js-Ol9d79Gg6B4Q/<case>.sm`.
+ * Nothing compared the field, so nothing noticed, and two things were true at
+ * once: the `--json` report was not reproducible text (the suffix is random per
+ * case per run), and the moment the file DOES take part in a comparison an
+ * absolute path can never equal a declared or a fork-reported one.
+ *
+ * `relative` is used only when the path really is inside the staging root;
+ * anything else — a path in the POC runtime, a synthetic name like
+ * `smithers:flows` — is left exactly as it came, because renaming it would be
+ * inventing provenance rather than resolving it.
+ */
+function stagedFile(fileName, directory) {
+  if (typeof fileName !== "string" || fileName.length === 0) return fileName;
+  const within = relative(resolve(directory), resolve(fileName));
+  if (within.length === 0 || within.startsWith("..") || isAbsolute(within)) return fileName;
+  return within.split(sep).join("/");
 }
 
 /**

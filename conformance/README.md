@@ -55,7 +55,7 @@ can be handed straight to the CLI (`bun poc/src/language/cli.ts <case>.sm out.ts
 | `title` | one sentence stating the promise the case pins. Required. |
 | `expect` | `"output"` or `"diagnostics"`. Required. |
 | `stdout` | for `expect: "output"`, the exact lines the program must print, in order. |
-| `diagnostics` | for `expect: "diagnostics"`, `[{ code, line, column }]` in **authored** 1-based coordinates, optionally with `messageContains` — see below. A code is a Smithers rule (`SMITHERS1205`), a compiler-owned comptime rule (`VCT1004`), or, for syntax Smithers shares with TypeScript and whose behavior it keeps, the stock TypeScript diagnostic itself (`TS2678`). |
+| `diagnostics` | for `expect: "diagnostics"`, `[{ code, line, column }]` in **authored** 1-based coordinates, optionally with `file` and `messageContains` — see below. A code is a Smithers rule (`SMITHERS1205`), a compiler-owned comptime rule (`VCT1004`), or, for syntax Smithers shares with TypeScript and whose behavior it keeps, the stock TypeScript diagnostic itself (`TS2678`). `file` is the staged module the diagnostic fires in and defaults to the case's entry. |
 | `modules` | extra `*.mod.sm` modules in the same directory that the case imports. |
 | `typescript` | foreign modules from `conformance/support/` that the case imports. |
 | `assets` | non-code files from `conformance/assets/` that the case imports — see "Staging a non-code asset" below. |
@@ -72,22 +72,55 @@ Matching is exact in both directions:
   cascade that the language really does produce is declared in full rather than
   filtered out, because "which diagnostics fire" is part of the contract.
 
-### A diagnostic in a `*.mod.sm` is declared by position alone
+### A diagnostic in a `*.mod.sm` names its file
 
-A declared diagnostic has no `file` field. Both backends record one on the
-observation, and `--json` prints it, but the judge compares code, line, and
-column only. A multi-module case therefore declares a companion diagnostic in an
-auxiliary module by its authored line and column *in that module* — see
-`05-context-rows/requirement-propagates-across-modules`, whose companion module
-carries its own declared positions. (The example this paragraph used to give was
+A declared diagnostic may carry an optional **`file`**: the staged path of the
+module it fires in. Omitted, it means the case's entry — which is where every
+declared diagnostic in the corpus lands today. The judge compares code, file,
+line and column, and so does the cross-backend comparison, so a rule that fires
+in the *wrong* module at coordinates that happen to match cannot satisfy a case,
+and two backends diagnosing different files cannot print as agreeing.
+
+**This paragraph asserted the opposite until 2026-08-28**, and the correction is
+the interesting part. It said a declared diagnostic has no `file` field, that
+both backends record one and `--json` prints it, and that the judge compares
+code, line and column only — all four true, and the last one a fail-open the
+document described as a design. Executed: a diagnostic carrying
+`file: "wrong-module.sm"` scored `{"status":"pass"}` with an empty audit against
+a real multi-module expectation, and the differential comparator reported
+`{"agree":true}` between `main.sm` and `wrong-module.sm`. The paragraph's
+consequence — *"if two diagnostics could collide on the same code and the same
+line and column in two different files, the expectation cannot tell them apart —
+move one, or split the case"* — was a workaround asking case authors to arrange
+around a defect in the harness. There is nothing to arrange around now.
+
+The example this paragraph gave was wrong too, in a way worth recording:
+`05-context-rows/requirement-propagates-across-modules` was cited as a case
+"whose companion module carries its own declared positions", and it is an
+`expect: "output"` case that declares **no diagnostics at all**. It had replaced
 `21-native-pin/a-pin-reaching-a-host-module-through-a-re-export-is-rejected`,
-deleted with the portability withdrawal on 2026-08-23.)
+deleted with the portability withdrawal on 2026-08-23, and nothing checked that
+the replacement demonstrated the thing being described. Re-derived on 2026-08-28:
+of the 510 cases, 24 declare `modules` and 10 of those are `diagnostics` cases —
+and in all 10 every declared diagnostic lands in the **entry**, so the corpus has
+**no instance of this pattern**. `file` is the mechanism that makes writing the
+first one possible; until one exists, this section documents a capability rather
+than a practice.
 
-Two consequences worth knowing before writing one. Give each `*.mod.sm` a name
-distinctive enough to read in a route (they share one flat directory with every
-other case in the area). And if two diagnostics in a case could collide on the
-same code *and* the same line and column in two different files, the expectation
-cannot tell them apart — move one, or split the case.
+Two things to know before writing one. Give each `*.mod.sm` a name distinctive
+enough to read in a route (they share one flat directory with every other case in
+the area). And a declared `file` must name a file the case actually stages —
+`corpus.mjs` refuses one that does not, because a file no backend can ever report
+is an expectation that would read as a permanent divergence in both
+implementations rather than as the typo it is.
+
+> **If you write the first one, `scripts/oracle-differential.mjs` needs the same
+> field.** Its `diagnosticKey` already prints a non-entry file, but `corpusAnswer`
+> renders the declared side as `CODE@line:column` with no file, so the two sides
+> would disagree for a spelling reason and the case would appear in the product
+> divergence baseline as a `both-refuse` row that is really an artifact. Nothing
+> is wrong today — zero cases declare a non-entry `file` — but that gate is
+> outside this directory and will not notice on its own.
 
 ### `messageContains` — when the payload *is* the promise
 
@@ -607,8 +640,10 @@ The headline number for the migration is `pass / total` on the Go backend.
 
 ### The harness audits itself
 
-Two things run on every invocation and are reported as `HARNESS INTEGRITY`
-failures (exit 3), never as results:
+Three things run on every invocation and are reported as `HARNESS INTEGRITY`
+failures (exit 3), never as results. (This said "two" until 2026-08-28; the third
+is new, and the count is stated here rather than left to be inferred because the
+previous list of exit-2 conditions in `run.mjs` said "three" and named two.)
 
 1. **Every satisfied expectation is audited against the work behind it.** Each
    backend declares the stages a verdict depends on (`requiredStages`), each
@@ -622,6 +657,21 @@ failures (exit 3), never as results:
    printed, including the zero ones, and the classes must sum to the number of
    judged rows. A previous summary computed `pass + xpass` over a total and
    simply never mentioned the other buckets.
+3. **No satisfied verdict rests on a position the harness could not map.** The
+   JS backend maps emit-check diagnostics back through the compiler's own source
+   map and, where it cannot, keeps the *generated* position and records
+   `mapped: false` rather than anchoring it somewhere plausible-looking. Nothing
+   read that field, so an authored line and column that happened to coincide with
+   a line and column in emitted TypeScript satisfied the case. This is an
+   integrity failure rather than a `fail` for the same reason (1) is: no backend
+   disagreed with anything — the harness failed to resolve what it was comparing,
+   and calling that a divergence would blame a backend for it. Driven by a
+   capability each backend declares (`reportsMapping`), because the fork checks
+   the authored `.sm` directly and has nothing to map. Measured on 2026-08-28:
+   across all 510 cases the reference emits 470 diagnostics, exactly one of which
+   is `mapped: false`, and it sits on an `xfail` row — so nothing satisfied rests
+   on one today, which is precisely the state in which this would have gone live
+   silently.
 
 `node --test test/conformance.test.mjs` additionally runs deliberately broken
 expectations — a corrupted `stdout` line, a diagnostic shifted by one column, and
@@ -635,19 +685,57 @@ compile — through the real backend, and requires the runner to score all three
 | --- | --- |
 | 0 | the backends asked to gate were green |
 | 1 | a verdict failure on a backend asked to gate (suppressed by `--report-only`) |
-| 2 | a case could not be measured, a requested backend could not be prepared, or **no case was measured at all** |
+| 2 | a case could not be measured, a **requested** backend could not be prepared (`--backend both` requests both), or **no case was measured at all** |
 | 3 | a harness-integrity failure |
 | 64 | a usage error — an unknown option, or a `--backend` that is not `js`/`go`/`both` |
 
-**`--backend both` gates on BOTH backends, the fork included.** A Go verdict
-failure exits 1 even when the reference is entirely green — measured, not
-asserted: a case scored `js pass / go FAIL` under `--backend both` exits 1, and
-the same run under `--report-only` exits 0. It did not always: `--backend both`
-used to reach `return 0` however far the two backends had drifted, because the
-`go` arm was reached only by `--backend go`. That is worth knowing when reading
-any older claim that quotes this runner's exit code as evidence about the fork,
-and it is why the exit code is listed here beside `0 divergent` and the marker
-line rather than instead of them.
+**`--backend both` gates on BOTH backends, the fork included**, in both of the
+ways a backend can fail to be green.
+
+1. A Go **verdict failure** exits 1 even when the reference is entirely green —
+   measured, not asserted: a case scored `js pass / go FAIL` under
+   `--backend both` exits 1, and the same run under `--report-only` exits 0.
+2. A Go backend that could not be **prepared** exits 2. `both` asked for the
+   fork, so a run in which the fork never compiled a case is not a measurement
+   of the fork.
+
+Neither was always true, and the order in which they were fixed is the point.
+(1) landed on 2026-08-26: `--backend both` used to reach `return 0` however far
+the two backends had drifted, because the `go` arm was reached only by
+`--backend go`. (2) landed on 2026-08-28, and until then this sentence promised
+more than the runner delivered — the availability arm was still written once per
+backend and enforced the reference under `js`/`both` but the fork only under
+`go`. So `--backend both` with an absent fork checkout printed
+`go: unavailable — <reason>`, `JS reference: 510/510 pass`, `0 divergent`,
+`Markers holding a fail-open: 0`, and **exited 0**.
+
+That gap was worse than the one it survived. `both` is the DEFAULT mode, so the
+bare `node conformance/runner/run.mjs` that this file and every gate quote
+degraded silently into `--backend js` on any machine without a fork checkout,
+while still printing a scoreboard that reads like a two-backend run. And the
+asymmetry was backwards on its own terms: after (1), *"we looked at the fork and
+found a divergence"* exited 1 while *"we never looked at the fork at all"* exited
+0. Both arms now iterate one `requestedBackends()` list, so a backend cannot be
+enforced in one and forgotten in the other. `conformance/runner/selftest.mjs`
+holds the whole matrix — three modes against each backend being unpreparable,
+including the four cells that were already right, because the defect was an
+inconsistency *between* cells.
+
+**What an exit-0 `--backend both` run now proves about the fork.** That the
+pinned, digest-verified, forkpatch-applied fork was built, handshaken and asked
+every case in the corpus, and that no case it answered contradicted its declared
+expectation. Read the printed `Go fork match: N/510` line for how much of the
+corpus it *implements* — `unsupported` is not a failure and does not gate — and
+the `Markers holding a fail-open: N` line for what its `xfail`s are holding.
+Exit 0 no longer has the "…or the fork never ran" branch it silently had, so it
+is now safe to quote as evidence that the fork was measured. Any claim about the
+fork dated before 2026-08-28 that rests on this runner's exit code is quoting a
+number that could not distinguish a green fork from an absent one; re-measure it
+rather than repeating it.
+
+A caller who wants the reference gate on a machine with no fork checkout asks for
+it by name — `--backend js` is documented above as exactly that, is unaffected by
+any of this, and is what the JS-only gate uses.
 
 ## Using this harness as a fork implementer
 
