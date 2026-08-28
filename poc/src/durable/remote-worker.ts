@@ -106,6 +106,13 @@ export class RemoteHttpWorker implements DurableWorker {
     this.poolManifest = poolManifest
     this.#manifest = manifest
     this.#gate = new LocalWorker(pool, manifest, providers)
+    // `poolManifest` is the only thing standing between this client and a host
+    // serving a different bundle: `#ensureHandshake` compares the host's
+    // advertised digests against exactly these fields. As a public field it
+    // could be reassigned after construction, which would make the handshake
+    // authenticate whatever the attacker wanted it to. Private state
+    // (`#handshake`) is unaffected by the freeze.
+    Object.freeze(this)
   }
 
   async #post(path: string, body: unknown, signal: AbortSignal): Promise<Uint8Array> {
@@ -210,7 +217,13 @@ export class RemoteHttpWorker implements DurableWorker {
     // arrive over the wire instead of being severed mid-response.
     return withInvocationBudget(
       invocation,
-      { label: "remote", signal, graceMs: INVOKE_GRACE_MS },
+      {
+        label: "remote",
+        route: prepared.route,
+        protocolDefectName: "RemoteProtocolDefect",
+        signal,
+        graceMs: INVOKE_GRACE_MS
+      },
       async (budgetSignal) => {
         let responseBytes: Uint8Array
         try {
@@ -229,9 +242,11 @@ export class RemoteHttpWorker implements DurableWorker {
               (decoded as { source: unknown }).source !== "committed")) {
             throw new TypeError("worker host invoke response has invalid fields")
           }
-          // The engine's validateWorkerExit still applies its exact discriminant
-          // and structural codecs before this exit can be persisted or cached.
-          return (decoded as { exit: unknown }).exit as WorkerExit
+          // A worker host is not a trusted producer of exits: nothing here can
+          // verify what it actually ran, only what it claims. The budget seam
+          // this returns into decodes the exit against the route's exact
+          // discriminant and structural codecs before any caller sees it.
+          return (decoded as { exit: unknown }).exit
         } catch (error) {
           return defect(
             "RemoteProtocolDefect",

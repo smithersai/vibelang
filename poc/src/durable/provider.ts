@@ -21,7 +21,7 @@ import {
   type WorkerPoolManifest
 } from "./ir.ts"
 import { ActionFailure } from "./authoring.ts"
-import { validateDurableValue } from "./schema.ts"
+import { decodeWorkerExit, validateDurableValue } from "./schema.ts"
 import {
   assertActionImplementationContractMatchesAction,
   requireCompilerAuthenticatedContract,
@@ -710,7 +710,13 @@ export const manifestWorkerGate = (manifest: DeploymentManifest, poolId: string)
 export const prepareManifestInvocation = (
   gate: ManifestWorkerGate,
   rawInvocation: Invocation,
-  signal: AbortSignal = new AbortController().signal,
+  // Deliberately NOT defaulted. A defaulted never-aborting signal made the
+  // pre-start cancellation check below dead code on exactly the transport that
+  // forgot to pass one (the worker host, whose caller is an HTTP client that
+  // can disconnect): every other transport passed one and looked identical at
+  // the call site. A caller with genuinely no cancellation channel must say so
+  // by constructing the inert signal itself.
+  signal: AbortSignal,
   verify?: (invocation: Invocation, route: ActionRouteManifest) => boolean
 ): PreparedManifestInvocation => {
   // The worker gate uses the exact canonical wire codec used by persisted artifacts.
@@ -865,20 +871,39 @@ export const invocationBudgetExhausted = (invocation: Invocation, label: string)
  *
  * The derived signal is aborted on every exit path, not just the timeout, so a
  * finished attempt can never leave work it started still running.
+ *
+ * This is ALSO the one place a worker's exit is admitted, which is why `run`
+ * returns `unknown` and this helper returns `WorkerExit`. An exit that crossed a
+ * process or a network boundary is untrusted input; three of the five transports
+ * used to cast the bytes they received straight to `WorkerExit` and rely on the
+ * coordinator re-decoding them, so the property "no transport hands back an
+ * undecoded exit" lived in a comment at each call site instead of in the type.
+ * Routing every transport's raw result through `decodeWorkerExit` here makes the
+ * unsafe thing unreachable: a transport CANNOT return an unvalidated exit,
+ * because the only path out of the budget seam decodes. Decoding is idempotent,
+ * so the coordinator's own `validateWorkerExit` remains exactly as it was.
  */
 export const withInvocationBudget = async (
   invocation: Invocation,
   options: {
-    /** Names this transport in the budget defect. */
+    /** Names this transport in the budget defect and in exit diagnostics. */
     readonly label: string
+    /** The manifest route whose structural codecs this exit must satisfy. */
+    readonly route: ActionRouteManifest
+    /** Defect name for an exit whose `kind` is not a known discriminant. */
+    readonly protocolDefectName?: string
     /** Caller cancellation, forwarded into `run`. */
     readonly signal?: AbortSignal
     readonly graceMs?: number
   },
-  run: (signal: AbortSignal) => Promise<WorkerExit>
+  run: (signal: AbortSignal) => Promise<unknown>
 ): Promise<WorkerExit> => {
+  const decode = (raw: unknown): WorkerExit => decodeWorkerExit(options.route, raw, {
+    label: options.label,
+    protocolDefectName: options.protocolDefectName ?? "WorkerProtocolCodecDefect"
+  })
   const budgetMs = invocationBudgetMs(invocation, options.graceMs ?? 0)
-  if (budgetMs <= 0) return invocationBudgetExhausted(invocation, options.label)
+  if (budgetMs <= 0) return decode(invocationBudgetExhausted(invocation, options.label))
   const controller = new AbortController()
   const caller = options.signal
   const forward = (): void => controller.abort(caller?.reason)
@@ -887,7 +912,7 @@ export const withInvocationBudget = async (
     else caller.addEventListener("abort", forward, { once: true })
   }
   let timer: ReturnType<typeof setTimeout> | undefined
-  const exhausted = new Promise<WorkerExit>((resolve) => {
+  const exhausted = new Promise<unknown>((resolve) => {
     // Re-armed rather than a single sleep: a far-future persisted deadline
     // exceeds the host timer's 32-bit delay and would otherwise be clamped into
     // firing immediately, cancelling work that has hours of budget left.
@@ -906,7 +931,7 @@ export const withInvocationBudget = async (
     schedule()
   })
   try {
-    return await Promise.race([run(controller.signal), exhausted])
+    return decode(await Promise.race([run(controller.signal), exhausted]))
   } finally {
     if (timer !== undefined) clearTimeout(timer)
     caller?.removeEventListener("abort", forward)
@@ -936,6 +961,15 @@ export class LocalWorker implements DurableWorker {
     this.artifactDigest = poolManifest.artifactDigest
     this.actionTable = poolManifest.actionIds
     this.#gate = manifestWorkerGate(manifest, pool.id)
+    // Nothing may reassign what this worker authenticates against after it has
+    // been admitted. `providers`, `manifest`, and `actionTable` are public
+    // fields; a swapped provider table keeps every manifest digest intact
+    // (`implementationDigest` covers identity and contracts, never a callback
+    // body) and would run different code behind the same authenticated route.
+    // Shallow on purpose: the deployment's own objects are already deeply
+    // frozen, and deep-freezing from here would reach into provider
+    // implementation functions this worker does not own.
+    Object.freeze(this)
   }
 
   /**
@@ -945,7 +979,7 @@ export class LocalWorker implements DurableWorker {
    */
   prepare(
     rawInvocation: Invocation,
-    signal: AbortSignal = new AbortController().signal
+    signal: AbortSignal
   ): PreparedWorkerInvocation {
     let provider: ActionProvider<any, any, any> | undefined
     const prepared = prepareManifestInvocation(this.#gate, rawInvocation, signal, (invocation, route) => {
@@ -987,7 +1021,7 @@ export class LocalWorker implements DurableWorker {
     // handed the derived signal so it can stop.
     return withInvocationBudget(
       invocation,
-      { label: "in-process", signal, graceMs: WORKER_BUDGET_GRACE_MS },
+      { label: "in-process", route, signal, graceMs: WORKER_BUDGET_GRACE_MS },
       async (budgetSignal) => {
       try {
         const output = await provider.implementation(input as any, {

@@ -36,7 +36,6 @@ import {
   assertWorkerTransportSecret,
   type WorkerHostHandshake
 } from "./worker-protocol.ts"
-import { decodeWorkerExit, validateDurableValue, type WorkerExitSurface } from "./schema.ts"
 
 /**
  * The POC remote worker host: one process, one signed deployment, one pool,
@@ -57,6 +56,31 @@ import { decodeWorkerExit, validateDurableValue, type WorkerExitSurface } from "
  * job via fencing tokens); the bundle executes with this process's ambient authority
  * (OS confinement is the DenoBundleWorker's proof, not this transport's); the
  * shared-secret HMAC is a local-trust seam without TLS, rotation, or custody.
+ *
+ * THREE THINGS THIS TRANSPORT HAS THAT ITS SIBLINGS DELIBERATELY DO NOT, so a
+ * later symmetry sweep does not "equalize" them:
+ *
+ * 1. Signature verification. This host is the only party that receives a
+ *    deployment it did not build, so it authenticates the Ed25519 artifact
+ *    against its own out-of-band trust roots. The coordinator-side transports
+ *    are handed a `BuiltDeployment` that `requireLocallyBuiltDeployment` proves
+ *    this process constructed; re-verifying a signature over an object you just
+ *    built in memory attests nothing. Coordinator-side signature authentication
+ *    is one level up and applies to every transport uniformly
+ *    (`createAuthenticatedDurableExecutor`).
+ * 2. Fencing and replay protection (the committed-exit table and the per-node
+ *    fence binding). This is the only transport that accepts requests it did not
+ *    originate: any principal holding the shared secret can send one, and an
+ *    identical signed request can be replayed inside the freshness window. The
+ *    in-process, isolated, and bundle transports are called by exactly one
+ *    caller — the coordinator that owns the store's fencing token — so an
+ *    exactly-once table there would be a second copy of a decision the store has
+ *    already made, and would answer a legitimate re-dispatch from stale memory.
+ * 3. A manifest-only gate (`prepareManifestInvocation` with no `verify` hook).
+ *    Its siblings additionally cross-check the live provider table; this host
+ *    deliberately has none, because it executes digest-pinned bundle code rather
+ *    than host callbacks. The manifest half of the gate is identical, and it is
+ *    the same function, so transport choice cannot weaken it.
  */
 
 const MAX_REQUEST_BYTES = 9 * 1024 * 1024
@@ -120,15 +144,6 @@ const defect = (name: string, message: string): WorkerExit => ({
   defect: { name, message }
 })
 
-/** Names this host's bundle transport to the shared exit decoder. */
-const BUNDLE_EXIT_SURFACE: WorkerExitSurface = {
-  label: "bundle",
-  protocolDefectName: "BundleProtocolDefect"
-}
-
-const validateBundleExit = (route: ActionRouteManifest, value: unknown): WorkerExit =>
-  decodeWorkerExit(route, value, BUNDLE_EXIT_SURFACE)
-
 const loadBundleModule = async (
   bundlePath: string,
   pool: WorkerPoolManifest
@@ -171,7 +186,7 @@ const loadBundleModule = async (
  * Dispatch one invocation into the pool bundle under the coordinator's
  * execution budget.
  *
- * Two properties this must keep, and previously did not:
+ * Three properties this must keep, and previously did not:
  *
  * 1. The budget is `Invocation.budget`, the coordinator's single derivation -
  *    not `min(deadline, lease.expiresAt)`. That claim-time lease snapshot is
@@ -184,6 +199,12 @@ const loadBundleModule = async (
  *    the abandoned dispatch kept running in this process alongside the retry -
  *    a duplicate-execution window that existed on this transport and no other.
  *
+ * 3. The caller's own cancellation is a contender too, not just the budget:
+ *    `signal` is the HTTP client's channel. A coordinator that gives up on this
+ *    request (cancellation, fencing, its own deadline) closes the connection,
+ *    and this dispatch stops instead of running on to the budget with nobody
+ *    waiting for it.
+ *
  * Exported so the budget-and-cancellation behaviour is testable against a
  * substituted module without standing up a signed deployment and a socket.
  *
@@ -191,20 +212,36 @@ const loadBundleModule = async (
  * bundle driver refuses to start and discards a late result once the signal
  * aborts, which closes the commit-a-second-result window, but a bundle body
  * that is one synchronous compute loop still runs to its end - preempting that
- * is the OS-isolation property `DenoBundleWorker` has and this transport does not.
+ * is the OS-isolation property `DenoBundleWorker` has and this transport does
+ * not. The same limit bounds what a client disconnect can achieve: the abort is
+ * observed at the dispatch's next yield.
  */
 export const runBundleInvocation = (
   module: LoadedBundleModule,
   invocation: Invocation,
   input: JsonValue,
-  route: ActionRouteManifest
+  route: ActionRouteManifest,
+  signal?: AbortSignal
 ): Promise<WorkerExit> => withInvocationBudget(
   invocation,
-  { label: "worker host", graceMs: HOST_EXECUTION_GRACE_MS },
-  async (signal) => {
+  {
+    label: "worker host",
+    route,
+    protocolDefectName: "BundleProtocolDefect",
+    signal,
+    graceMs: HOST_EXECUTION_GRACE_MS
+  },
+  async (budgetSignal) => {
+    if (budgetSignal.aborted) {
+      return defect(
+        "InvocationCancelled",
+        `${invocation.actionId} dispatch was cancelled before it started`
+      )
+    }
     try {
-      const raw = await module.invoke({ ...invocation, input }, signal)
-      return validateBundleExit(route, raw)
+      // The exit this returns is decoded by the budget seam, exactly as every
+      // other transport's is.
+      return await module.invoke({ ...invocation, input }, budgetSignal)
     } catch (error) {
       return defect(
         "BundleDispatchDefect",
@@ -276,10 +313,18 @@ export const startWorkerHost = async (options: StartWorkerHostOptions): Promise<
   const runInvocation = (
     invocation: Invocation,
     input: JsonValue,
-    route: ActionRouteManifest
-  ): Promise<WorkerExit> => runBundleInvocation(module, invocation, input, route)
+    route: ActionRouteManifest,
+    signal: AbortSignal
+  ): Promise<WorkerExit> => runBundleInvocation(module, invocation, input, route, signal)
 
-  const handleInvoke = async (bodyBytes: Uint8Array): Promise<JsonValue> => {
+  /**
+   * `signal` is the HTTP request's cancellation channel. Every other transport
+   * hands its caller's signal to the gate and to the dispatch; this host used to
+   * hand neither, which made the gate's pre-start cancellation check dead code
+   * here and let a dispatch keep running after the coordinator had closed the
+   * connection and moved on.
+   */
+  const handleInvoke = async (bodyBytes: Uint8Array, signal: AbortSignal): Promise<JsonValue> => {
     let invocationValue: unknown
     try {
       const decoded = decodeCanonicalJson(bodyBytes, "worker invoke request")
@@ -294,7 +339,7 @@ export const startWorkerHost = async (options: StartWorkerHostOptions): Promise<
         exit: defect("InvocationCodecDefect", error instanceof Error ? error.message : String(error))
       } as unknown as JsonValue
     }
-    const prepared = prepareManifestInvocation(gate, invocationValue as Invocation)
+    const prepared = prepareManifestInvocation(gate, invocationValue as Invocation, signal)
     if (!prepared.ready) return { source: "live", exit: prepared.exit } as unknown as JsonValue
     const invocation = prepared.invocation
     const invocationDigest = digest(invocation)
@@ -357,7 +402,7 @@ export const startWorkerHost = async (options: StartWorkerHostOptions): Promise<
       fencingToken: invocation.fencingToken
     })
     const execution = (async (): Promise<WorkerExit> => {
-      const candidate = await runInvocation(invocation, prepared.input, prepared.route)
+      const candidate = await runInvocation(invocation, prepared.input, prepared.route, signal)
       const latest = fenceBindings.get(nodeKey)
       const exit = latest !== undefined && latest.fencingToken > invocation.fencingToken
         ? defect(
@@ -404,7 +449,7 @@ export const startWorkerHost = async (options: StartWorkerHostOptions): Promise<
         emit({ type: "handshake" })
         return respond(path, 200, handshake as unknown as JsonValue)
       }
-      return respond(path, 200, await handleInvoke(bodyBytes))
+      return respond(path, 200, await handleInvoke(bodyBytes, request.signal))
     }
   })
 

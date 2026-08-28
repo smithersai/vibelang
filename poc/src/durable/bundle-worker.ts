@@ -5,7 +5,6 @@ import {
   digest,
   type DeploymentManifest,
   type Invocation,
-  type JsonValue,
   type WorkerExit
 } from "./ir.ts"
 import {
@@ -41,6 +40,8 @@ export class DenoBundleWorker implements DurableWorker {
   readonly bundleDigest: string
   readonly #gate: LocalWorker
   readonly #sandbox: DenoSubprocessSandbox
+  /** The admitted bundle identity, out of reach of anything holding the instance. */
+  readonly #pinnedBundleDigest: string
 
   constructor(
     pool: WorkerPool,
@@ -80,6 +81,7 @@ export class DenoBundleWorker implements DurableWorker {
       throw new TypeError(`Pool ${pool.id} signed sandbox identity does not match the local Deno runtime`)
     }
     this.bundleDigest = this.bundle.digest
+    this.#pinnedBundleDigest = this.bundle.digest
     this.#gate = new LocalWorker(pool, manifest, providers)
     deepFreeze(this)
   }
@@ -96,16 +98,35 @@ export class DenoBundleWorker implements DurableWorker {
     })
     return withInvocationBudget(
       invocation,
-      { label: "bundle", signal, graceMs: WORKER_BUDGET_GRACE_MS },
+      {
+        label: "bundle",
+        route: prepared.route,
+        protocolDefectName: "BundleProtocolDefect",
+        signal,
+        graceMs: WORKER_BUDGET_GRACE_MS
+      },
       (budgetSignal) => this.#execute(invocation, budgetSignal)
     )
   }
 
-  async #execute(invocation: Invocation, signal: AbortSignal): Promise<WorkerExit> {
+  async #execute(invocation: Invocation, signal: AbortSignal): Promise<unknown> {
     // Digest-verify the exact bytes about to execute, immediately before
     // composition, so a mutated bundle object cannot slip past construction.
     const verified = validateWorkerPoolBundle(this.bundle)
+    if (verified.digest !== this.#pinnedBundleDigest) {
+      return {
+        kind: "defect",
+        defect: {
+          name: "BundleArtifactMismatch",
+          message: `Bundle ${verified.digest} is not the admitted ${this.#pinnedBundleDigest}`
+        }
+      }
+    }
     const source = verified.javascript + bundleInvocationDriver(canonicalJson(invocation))
+    // The sandbox's own `timeoutMs` bounds this process independently of
+    // `Invocation.budget`, deliberately; see the note on the same call in
+    // `isolated-worker.ts`. Here the runtime identity carrying it is pinned only
+    // when the signed pool placement declares `denoSandboxIdentity`.
     const execution = await this.#sandbox.execute(source, {}, {
       sourceDigest: verified.digest,
       turnId: digest({
@@ -126,8 +147,9 @@ export class DenoBundleWorker implements DurableWorker {
         }
       }
     }
-    // The coordinator applies its exact WorkerExit discriminant and structural
-    // Action codecs before this value can be persisted or cached.
-    return execution.result as JsonValue as WorkerExit
+    // Whatever the sandbox produced is untrusted: `withInvocationBudget` is the
+    // only way out of this transport and it decodes against the route's exact
+    // discriminant and structural Action codecs.
+    return execution.result
   }
 }

@@ -7,7 +7,6 @@ import {
   digest,
   type DeploymentManifest,
   type Invocation,
-  type JsonValue,
   type WorkerExit
 } from "./ir.ts"
 import {
@@ -138,6 +137,18 @@ export class DenoIsolatedWorker implements DurableWorker {
   readonly artifact: DenoIsolatedWorkerArtifact
   readonly #gate: LocalWorker
   readonly #sandbox: DenoSubprocessSandbox
+  /**
+   * The artifact identity this worker was ADMITTED with, out of reach of
+   * anything that can touch the instance. `artifact` is a public field, so
+   * before `deepFreeze(this)` below it could simply be reassigned after
+   * construction — every provider/pool/digest check in the constructor passed,
+   * and a completely different `functionExpression` then executed in the
+   * sandbox. The bundle transport already re-verified its bytes immediately
+   * before composing them; this is the same property for this transport, and a
+   * private pin (rather than a re-hash) also refuses a *validly formed* artifact
+   * that is not the one the deployment signature covers.
+   */
+  readonly #pinnedArtifactDigest: string
 
   constructor(
     pool: WorkerPool,
@@ -174,7 +185,9 @@ export class DenoIsolatedWorker implements DurableWorker {
         )
       }
     }
+    this.#pinnedArtifactDigest = this.artifact.digest
     this.#gate = new LocalWorker(pool, manifest, providers)
+    deepFreeze(this)
   }
 
   async invoke(
@@ -189,23 +202,55 @@ export class DenoIsolatedWorker implements DurableWorker {
     })
     return withInvocationBudget(
       invocation,
-      { label: "isolated", signal, graceMs: WORKER_BUDGET_GRACE_MS },
+      {
+        label: "isolated",
+        route: prepared.route,
+        protocolDefectName: "IsolatedProtocolDefect",
+        signal,
+        graceMs: WORKER_BUDGET_GRACE_MS
+      },
       (budgetSignal) => this.#execute(invocation, budgetSignal)
     )
   }
 
-  async #execute(invocation: Invocation, signal: AbortSignal): Promise<WorkerExit> {
+  async #execute(invocation: Invocation, signal: AbortSignal): Promise<unknown> {
+    // Re-verify the exact artifact about to be composed into executable source,
+    // immediately before composing it, against the digest this worker was
+    // admitted with.
+    const verified = validateArtifact(this.artifact)
+    if (verified.digest !== this.#pinnedArtifactDigest) {
+      return {
+        kind: "defect",
+        defect: {
+          name: "IsolatedArtifactMismatch",
+          message: `Isolated worker artifact ${verified.digest} is not the admitted ${this.#pinnedArtifactDigest}`
+        }
+      }
+    }
     const invocationBytes = canonicalJson(invocation)
     const javascript = [
       `const __smithersInvocation = JSON.parse(${JSON.stringify(invocationBytes)});`,
-      `const __smithersHandler = (${this.artifact.functionExpression});`,
+      `const __smithersHandler = (${verified.functionExpression});`,
       "export default async function __smithersWorkerMain() {",
       "  if (typeof __smithersHandler !== 'function') throw new TypeError('Worker artifact must evaluate to a function');",
       "  return await Reflect.apply(__smithersHandler, undefined, [__smithersInvocation]);",
       "}"
     ].join("\n")
+    // DELIBERATE SECOND BOUND, not a stale copy of the budget: the sandbox
+    // enforces its own `timeoutMs` (default 30s) on this process, and it is NOT
+    // derived from `Invocation.budget`. It must not be. That timeout is hashed
+    // into `DenoSubprocessSandbox.identity.configDigest`, which this artifact
+    // pins in `sandboxIdentity` and the deployment signature covers, so deriving
+    // it per invocation would change the artifact digest on every call and break
+    // the pin. It is also a resource guard on a spawned OS process, which is a
+    // different question from how long the coordinator will wait for an answer.
+    // Two honest consequences, both accepted: an Action whose budget exceeds the
+    // pool's configured sandbox timeout is cut off here and nowhere else (raise
+    // the pool's `timeoutMs` — it is the operator's declared per-turn cost bound),
+    // and the sandbox CANCELS rather than abandons when it fires (SIGKILL), so it
+    // never leaves a second live copy of the attempt behind.
     const execution = await this.#sandbox.execute(javascript, {}, {
-      sourceDigest: this.artifact.sourceDigest,
+      sourceDigest: verified.sourceDigest,
       turnId: digest({
         executionId: invocation.executionId,
         nodeId: invocation.nodeId,
@@ -224,8 +269,9 @@ export class DenoIsolatedWorker implements DurableWorker {
         }
       }
     }
-    // The coordinator applies its exact WorkerExit discriminant and structural
-    // Action codecs before this value can be persisted or cached.
-    return execution.result as JsonValue as WorkerExit
+    // Whatever the sandbox produced is untrusted: `withInvocationBudget` is the
+    // only way out of this transport and it decodes against the route's exact
+    // discriminant and structural Action codecs.
+    return execution.result
   }
 }

@@ -421,10 +421,15 @@ test("the coordinator revalidates a hostile worker exit before persistence", asy
   })
   const store = new DurableStore()
   try {
-    const executor = new DurableExecutor(deployment, store)
-    const workers = (executor as unknown as { workers: Map<string, { invoke(): Promise<WorkerExit> }> }).workers
-    const worker = workers.values().next().value!
-    worker.invoke = async () => ({ kind: "success", value: { kind: "done", answer: "hostile" } }) as unknown as WorkerExit
+    // A hostile TRANSPORT, injected the supported way. This used to reassign
+    // `invoke` on the executor's live LocalWorker; the worker transports are
+    // frozen after admission now (their public provider table and pinned
+    // digests are what they authenticate against), so a custom transport is
+    // both the honest spelling and the exact shape this test is about.
+    const worker: { invoke: () => Promise<WorkerExit> } = {
+      invoke: async () => ({ kind: "success", value: { kind: "done", answer: "hostile" } }) as unknown as WorkerExit
+    }
+    const executor = new DurableExecutor(deployment, store, { workerFactory: () => worker })
     await expect(executor.execute(validInput, { executionId: "hostile-worker" })).rejects.toMatchObject({
       name: "DurableActionDefect",
       defect: { name: "SuccessCodecDefect" }
