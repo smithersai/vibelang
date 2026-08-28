@@ -48,6 +48,19 @@ export abstract class ResultValue<A, E extends Error> {
     return next;
   }
 
+  /**
+   * Collapses one level of nesting. This is `andThen(identity)` with the
+   * callback's "did the callback really return a Result?" check kept: a forged
+   * or non-Result payload panics here exactly as it does in `andThen`, so
+   * flattening cannot be used to smuggle an unbranded value into the channel.
+   */
+  flatten<B, F extends Error>(this: ResultValue<Result<B, F>, E>): Result<B, E | F> {
+    const state = stateOf(this);
+    if (!state.ok) return this as unknown as Result<B, E>;
+    if (!isResult(state.value)) panic("Result.flatten requires a nested Result");
+    return state.value;
+  }
+
   recover<B, F extends Error = never>(
     mapper: (error: RecoverableFailure<E>) => B | Result<B, F>,
   ): Result<A | B, F | PanicFailure<E>> {
@@ -70,6 +83,24 @@ export abstract class ResultValue<A, E extends Error> {
   tapError(observer: (error: E) => unknown): Result<A, E> {
     const state = stateOf(this);
     if (!state.ok) observer(state.error);
+    return this;
+  }
+
+  /**
+   * Observes whichever variant is active without changing it. The handler
+   * object is validated the way `match`'s is, so a missing branch is a panic
+   * rather than a silently skipped observation.
+   */
+  tapBoth(handlers: {
+    readonly ok: (value: A) => unknown;
+    readonly error: (error: E) => unknown;
+  }): Result<A, E> {
+    if (typeof handlers?.ok !== "function" || typeof handlers.error !== "function") {
+      panic("Result.tapBoth requires ok and error handlers");
+    }
+    const state = stateOf(this);
+    if (state.ok) handlers.ok(state.value);
+    else handlers.error(state.error);
     return this;
   }
 

@@ -72,8 +72,8 @@ describe("hardened Result runtime", () => {
     const success: ResultType<number, never> = __vsResultSuccess(2);
     const failure = __vsResultFailure(new NotFound("a"));
     for (const method of [
-      "isOk", "isError", "match", "map", "mapError", "andThen", "recover",
-      "tap", "tapError", "unwrap", "unwrapOr", "expect",
+      "isOk", "isError", "match", "map", "mapError", "andThen", "flatten", "recover",
+      "tap", "tapError", "tapBoth", "unwrap", "unwrapOr", "expect",
     ] as const) {
       expect(typeof success[method]).toBe("function");
     }
@@ -139,6 +139,57 @@ describe("hardened Result runtime", () => {
     );
     expect(isPanic(expectationPanic)).toBe(true);
     if (isPanic(expectationPanic)) expect(expectationPanic.rootCause()).toBe(domainError);
+  });
+
+  test("flatten collapses exactly one level and refuses an unbranded payload", () => {
+    const inner = __vsResultSuccess(7);
+    const nested = __vsResultSuccess(inner);
+    expect(nested.flatten()).toBe(inner);
+    expect(nested.flatten().unwrap()).toBe(7);
+
+    // The OUTER failure short-circuits without touching the missing inner value.
+    const outerFailure = __vsResultFailure(new NotFound("outer"));
+    expect(outerFailure.flatten()).toBe(outerFailure);
+
+    // An INNER failure is what flatten is for: it becomes the flat failure.
+    const innerFailure = __vsResultFailure(new Timeout(3));
+    const nestedFailure = __vsResultSuccess(innerFailure);
+    expect(nestedFailure.flatten()).toBe(innerFailure);
+    expect(nestedFailure.flatten().match({ ok: () => -1, error: (error) => error.milliseconds })).toBe(3);
+
+    // Only one level: flattening a doubly nested Result yields a Result.
+    expect(isResult(__vsResultSuccess(nested).flatten().unwrap())).toBe(true);
+
+    // A success carrying a non-Result cannot be laundered into the channel.
+    const unbranded = __vsResultSuccess(Object.freeze({ ok: true, value: 1 }));
+    expect(isPanic(catchPanic(
+      () => (unbranded as unknown as { flatten(): unknown }).flatten(),
+      (error) => error,
+    ))).toBe(true);
+  });
+
+  test("tapBoth observes the active variant only, returns the receiver, and demands both handlers", () => {
+    const success = __vsResultSuccess(4);
+    const domainError = new NotFound("both");
+    const failure = __vsResultFailure(domainError);
+    const inactive = (): never => Reflect.panic("inactive tapBoth branch ran");
+
+    let okSeen = 0;
+    let errorSeen = 0;
+    expect(success.tapBoth({ ok: (value) => { expect(value).toBe(4); okSeen++; }, error: inactive })).toBe(success);
+    expect(failure.tapBoth({ ok: inactive, error: (error) => { expect(error).toBe(domainError); errorSeen++; } })).toBe(failure);
+    expect(okSeen).toBe(1);
+    expect(errorSeen).toBe(1);
+
+    // A half-filled handler object is a panic, exactly as it is for `match`.
+    expect(isPanic(catchPanic(
+      () => success.tapBoth({ ok: (value: number) => value, error: undefined } as never),
+      (error) => error,
+    ))).toBe(true);
+    expect(isPanic(catchPanic(
+      () => success.tapBoth(undefined as never),
+      (error) => error,
+    ))).toBe(true);
   });
 
   test("Result.recover handles domain errors but passes Panic through unchanged", () => {
