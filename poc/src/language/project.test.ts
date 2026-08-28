@@ -155,6 +155,9 @@ describe("checked .sm project rows", () => {
     const runtime = JSON.stringify(resolve(import.meta.dir, "../runtime/index.ts"));
     const inferred = emitProjectDeclarations([{
       fileName: "/virtual/inferred.mts",
+      // Hand-written stand-in for a lowered module: it carries no compiler
+      // header, so it states the runtime it was built against instead.
+      runtimeModule: resolve(import.meta.dir, "../runtime/index.ts"),
       code: `
         import { __vsResultFailure, __vsResultSuccess } from ${runtime}
         export class LocalFailure extends Error {}
