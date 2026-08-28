@@ -579,6 +579,33 @@ class Other extends Error { constructor(readonly why: string) { super(why) } }`
     ? schema.descriptor.variants.map((variant) => variant.kind === "error" ? variant.identity : variant.kind)
     : [])
     .toEqual(["smithers:fence.sm@Failed@1", "smithers:fence.sm@Other@1"])
+
+  // The other fence round 9 recorded, pinned for the same reason. A subclass of
+  // a declared failure is the one shape that reaches dispatch carrying a
+  // registered ancestor but no registration of its own, so if this ever stopped
+  // being refused, `errorIdentity` would answer `undefined` and every such
+  // typed failure would become an auto-retried defect. That is fail-CLOSED, and
+  // still wrong; the refusal is what keeps it from arising at all.
+  const hostCallback = (): never => { throw new Error("host implementation must not run on the bundle path") }
+  expect(() => compileActionImplementationContract({
+    action: accepted.descriptor,
+    implementationId: "fence-subclass",
+    implementationVersion: "1",
+    entryFile: "fence.sm",
+    exportName: "work",
+    implementation: hostCallback,
+    sources: [{
+      fileName: "fence.sm",
+      source: `class Failed extends Error { constructor(readonly code: string) { super(code) } }
+class Other extends Error { constructor(readonly why: string) { super(why) } }
+class Sub extends Failed {}
+export function work(input: { value: number }): Result<{ value: number }, Failed | Other> {
+  if (input.value < 0) throw new Sub("subclass")
+  return { value: input.value }
+}
+`
+    }]
+  })).toThrow("row checker")
 })
 
 /**
