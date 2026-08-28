@@ -248,7 +248,8 @@ func durableLogicalFile(file *ast.SourceFile) string {
 }
 
 // durableMaxIdentityLength bounds a durable failure identity in UTF-16 code
-// units, exactly as the reference frontend's MAX_IDENTITY_LENGTH does.
+// units, exactly as the reference frontend's DURABLE_FAILURE_IDENTITY_UNITS
+// (poc/src/durable/site-id.ts) does.
 const durableMaxIdentityLength = 256
 
 // isDurableIdentityUnit is [A-Za-z0-9._/:-] — the durable failure ENVELOPE

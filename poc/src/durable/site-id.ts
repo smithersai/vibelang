@@ -286,6 +286,52 @@ function escapeDurableIdentityComponent(component: string): string {
  * `conformance/identity/durable-failure-identity.json`, which both backends
  * read, and NOT by reading one another. `logicalFile` is a portable name from
  * {@link identityFileName} — never an absolute path.
+ *
+ * ---------------------------------------------------------------------------
+ * REPLAY COMPATIBILITY. This change is NOT backward compatible with journals
+ * recorded before 2026-08-28, and that is stated here rather than discovered.
+ *
+ * The sibling decision that left `ComponentIdentity.name` alone did so because
+ * the name is persisted in `function_identity_json` and moving it breaks replay
+ * of already-recorded journals. This identity has that property and MORE, so
+ * the same question was asked of it and answered by tracing the value:
+ *
+ *  1. it is hashed into `errorSchema.digest` -> `contractDigest` ->
+ *     `flowSchemas.error` -> `plan.digest` -> the Effect Manifest digest, and
+ *     `durable_executions.plan_digest` / `.manifest_digest` are pinned columns.
+ *     `store.ts` raises `ExecutionMigratedError` when a resumed execution's
+ *     stored digest is not the freshly compiled one, so every UNFINISHED
+ *     execution in an existing database refuses to resume;
+ *  2. it is also written VERBATIM, as a string, into the failure envelope
+ *     (`pool-bundle.ts`, `{ version: 1, identity, payload }`), which is stored
+ *     in `durable_nodes.error_json`, `durable_executions.error_json` and the
+ *     hash-chained `durable_journal.payload_json`. On resume,
+ *     `validateDurableValue` compares that recorded string against the freshly
+ *     derived descriptor's identity, so an already-recorded typed failure is
+ *     re-read as a `PersistedFlowCodecDefect`;
+ *  3. the agent turn journal compares `agent_flow_calls.plan_digest` and
+ *     `agent_host_calls.contract_json` (which embeds `errorSchemaDigest`) and
+ *     raises `TurnJournalDivergenceError` on a mismatch — the exact hazard the
+ *     `ComponentIdentity.name` decision cites, one column over;
+ *  4. `planExecutionMigration` (`./migration.ts`), the one sanctioned way to
+ *     move a live execution between Plan digests, refuses this by construction:
+ *     a respelled identity changes `flowSchemas.error`'s bytes, which it
+ *     reports as `flow-contract-changed`.
+ *
+ * So there is no supported in-place upgrade for a database recorded under the
+ * old spelling, and none is invented here: a shim would have to be a real
+ * decision about wire versioning, not a side effect of an identity repair. The
+ * seam it would use already exists and is the reason the envelope carries a
+ * version at all — the `version: 1` field beside the identity, which a decoder
+ * could pair with the old spelling while `version: 2` carries the new one.
+ *
+ * Why this was still the right change now: the alternative is a spelling that is
+ * not an identity. Two Error classes under one key is a forgeable handler
+ * selection on a persistence boundary, and the artifact this sits underneath is
+ * the one intended to be SIGNED. Replay compatibility with journals whose keys
+ * are ambiguous is not a property worth keeping. The cost is stated so that
+ * whoever ships a release makes the migration decision deliberately.
+ * ---------------------------------------------------------------------------
  */
 export function durableFailureIdentity(logicalFile: string, className: string): string {
   const spelled = `smithers:${escapeDurableIdentityComponent(logicalFile)}@${

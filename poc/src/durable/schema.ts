@@ -24,7 +24,6 @@ const MAX_DESCRIPTOR_DEPTH = 64
 const MAX_DESCRIPTOR_NODES = 10_000
 const MAX_UNION_VARIANTS = 128
 const MAX_OBJECT_FIELDS = 1_024
-const MAX_IDENTITY_LENGTH = 256
 
 const RESULT_PRELUDE = `
 interface Result<A, E extends Error> {
@@ -192,9 +191,10 @@ const identifier = (value: string, label: string): string => {
  * that answers that, and it is now the defensive invariant behind an algorithm
  * that cannot trip it.
  *
- * The identity is still bounded by {@link MAX_IDENTITY_LENGTH}, but the bound is
- * now honoured by digesting the exact spelling rather than by a 48-hex-digit
- * (192-bit) prefix of a digest of the pair.
+ * The 256-unit bound is still enforced — `MAX_IDENTITY_LENGTH` moved to
+ * `site-id.ts` as `DURABLE_FAILURE_IDENTITY_UNITS`, beside the algorithm it
+ * bounds — but it is now honoured by digesting the exact spelling rather than
+ * by keeping a 48-hex-digit (192-bit) prefix of a digest of the pair.
  */
 const stableIdentity = (fileName: string, name: string): string => durableFailureIdentity(fileName, name)
 
