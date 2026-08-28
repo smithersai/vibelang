@@ -4666,12 +4666,22 @@ func (a *rowAnalysis) collectFacts(fn *functionRows) {
 				// the boundary converts it, and neither wrapping the call nor
 				// charging its failure here would be correct.
 				a.foreignCalls[node] = policy
-				if policy.kind != "never" {
-					if a.callPropagatesFailure(node) {
-						a.addForeignFailures(fn.directFailures, policy)
-					} else {
-						a.report(node, "SMITHERS1301", "produced Result must be returned, matched, transformed, inspected, or propagated with postfix !")
-					}
+				// The ROW charge is this pass's business: a lift whose failure
+				// reaches the enclosing channel adds its failures to that row.
+				//
+				// The MUST-CONSUME charge is not, and used to be made here as a
+				// bare `else` — an unconditional SMITHERS1301 at the call. That
+				// put the foreign lift outside the must-consume machinery, so it
+				// could not apply the bound/unbound split (SMITHERS1301 at an
+				// unbound producer, SMITHERS1302 at a binding nothing consumes)
+				// that the same analysis applies to every authored producer, and
+				// it over-reported at every position the ownership walk already
+				// calls a consumption. boundProducedKind now reads the same
+				// foreign table, so checkBoundMustConsume and
+				// checkUnboundMustConsume charge the lift exactly as they charge
+				// an authored Result.
+				if policy.kind != "never" && a.callPropagatesFailure(node) {
+					a.addForeignFailures(fn.directFailures, policy)
 				}
 			}
 			if edge, ok := a.provideEdge(node); ok {

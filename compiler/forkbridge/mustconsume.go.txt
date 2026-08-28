@@ -70,6 +70,20 @@ func (a *rowAnalysis) boundProducedKind(expression *ast.Node) boundConsumeKind {
 				return boundConsumeResult
 			}
 		}
+		// An unannotated foreign call LIFTS a Result that the checker never
+		// sees — the authored success type survives the boundary — so the
+		// foreign table is the only thing that can answer for it, exactly as
+		// propagatedResultOperand already asks. Asking it HERE is what puts the
+		// foreign lift on the same ownership walk as an authored producer, and
+		// so gives it the same bound/unbound split: SMITHERS1301 at an unbound
+		// producer, SMITHERS1302 at a binding nothing consumes. The lift used to
+		// be charged by collectFacts instead, outside the must-consume machinery
+		// altogether, which is why it could not apply a split its own analysis
+		// applies everywhere else. A trusted call carries `kind == "never"` and
+		// is deliberately not a producer.
+		if policy, foreign := a.foreignCalls[inner]; foreign && policy.kind != "never" {
+			return boundConsumeResult
+		}
 	}
 	return boundConsumePlain
 }
