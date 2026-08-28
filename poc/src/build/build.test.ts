@@ -161,6 +161,9 @@ describe("comptime assets and derived schemas", () => {
     const cold = await new ComptimeCompiler({ root, cacheDirectory: join(root, ".cold") }).evaluate(module());
     expect(cached.value).toEqual(cold.value);
     expect(cached.key).toBe(cold.key);
+    // Pin which normalization both walks now share: one fatal-UTF-8 decode
+    // that drops a leading byte-order mark, matching the asset compiler.
+    expect(cold.value).toBe("alpha\n");
   });
 
   test("one asset build snapshots transitive bytes once and invalidates that snapshot on the next build", async () => {

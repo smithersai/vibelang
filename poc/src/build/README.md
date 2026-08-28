@@ -253,7 +253,14 @@ it while the content-independent logical keys, and therefore the generated
 module paths, stay stable. `AssetDependency` now carries the child's `options`
 on asset edges so the edge is self-describing, which is what makes the
 recompile-and-reconcile check possible; the compiler identity moved to
-`smithers-assets@4` for that record change.
+`smithers-assets@4` for that record change. Hashing the recorded child key is
+not on its own sufficient, because that key was computed from the loader
+registry as it stood when the edge was written: revalidation therefore
+recomputes each child's logical key from today's registry through the same
+`#selectLoader`/`#identity` pair the compiling walk uses, so swapping which
+loader owns a child extension, upgrading that loader's `implementationDigest`,
+or bumping its version invalidates every parent above it instead of serving a
+stale artifact.
 
 The preflight bounds authored source strings before TypeScript parsing, rejects missing or legacy assertions, nonliteral attributes,
 type-only/side-effect imports, unsupported re-export and dynamic import forms,
@@ -273,7 +280,11 @@ exhaustion. The defaults are 2 MiB per file, 1,024 files and 16 MiB per graph;
 all are configurable positive limits included in build identity. Cache entries
 are independently capped at 64 MiB on both read and write. Cache revalidation
 inherits the top-level snapshot's inode ownership and refuses noncanonical or
-compiler-cache dependency metadata. A valid result whose
+compiler-cache dependency metadata. Both compilers record and revalidate a
+tracked file through one `snapshotFileDependency`, which produces the value the
+loader observes and the digest stored for it together, so the recording walk
+cannot learn an encoding rule (a byte-order mark, a base64 spelling) that the
+validating walk does not apply. A valid result whose
 envelope exceeds that operational cache limit is returned but deliberately not
 cached. One canonical asset shape is shared by every importer.
 
