@@ -208,8 +208,32 @@ describe("Deno sandbox RPC lifecycle", () => {
     expect(completed).toBe(false)
   })
 
+  /**
+   * The timings here are load-bearing and deliberately generous. This test
+   * proves that a host call still IN FLIGHT when the budget expires is aborted
+   * and its late result discarded, so `slow` must actually be invoked before the
+   * timeout fires. The invariant is:
+   *
+   *     spawn < timeoutMs < slowResolvesAfter < timeoutMs + settleWait
+   *
+   * `timeoutMs` is measured from `execute()`, which INCLUDES spawning a Deno
+   * subprocess. It used to be 25 ms against a 75 ms `slow`, which held only while
+   * spawn happened to beat 25 ms. Under load — several test gates running at once
+   * on this repository — spawn does not, the budget expires before `slow` is ever
+   * called, and the test fails on `aborted` while both timeout assertions still
+   * pass: there was simply nothing to abort. Measured failing that way at a whole
+   * 31 ms of wall clock.
+   *
+   * So the budget now sits far above any plausible spawn rather than just above
+   * an idle one. Do not trim these back to make the suite faster; the ~3.5 s is
+   * buying the absence of a heisentest, and the sibling at the top of this file
+   * already uses a 2 s budget for the same reason.
+   */
   test("aborts timeout calls and ignores late results after the channel closes", async () => {
-    const sandbox = new DenoSubprocessSandbox({ timeoutMs: 25 })
+    const timeoutMs = 1_500
+    const slowResolvesAfter = 2_500
+    const settleWait = 2_000
+    const sandbox = new DenoSubprocessSandbox({ timeoutMs })
     let aborted = false
     let resolvedLate = false
     const slow = defineFunction<{}, { ok: true }>(
@@ -221,7 +245,7 @@ describe("Deno sandbox RPC lifecycle", () => {
         setTimeout(() => {
           resolvedLate = true
           resolve({ ok: true })
-        }, 75)
+        }, slowResolvesAfter)
       }),
       undefined,
       { implementationId: "test/agent/timeout-slow", implementationVersion: "1" },
@@ -236,7 +260,10 @@ describe("Deno sandbox RPC lifecycle", () => {
     expect(execution.error?.name).toBe("SandboxTimeout")
     expect(aborted).toBe(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    // Long enough that `slow` has resolved even though the channel closed at
+    // `timeoutMs`: the point is that its late result is IGNORED, not that it
+    // never arrives.
+    await new Promise((resolve) => setTimeout(resolve, settleWait))
     expect(resolvedLate).toBe(true)
   })
 
