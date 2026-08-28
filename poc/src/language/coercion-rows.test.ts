@@ -428,15 +428,53 @@ describe("an enumeration position charges the getters it runs", () => {
  * hold a failure. Each row below is the measurement that says so — the
  * protocol method is refused at its own declaration, so there is no failure and
  * no must-consume obligation left at the coercion site to drop.
+ *
+ * That holds for a THROWING protocol method (SMITHERS1101) and for a
+ * must-consume value coerced in place (SMITHERS1301). It does NOT hold for a
+ * protocol method declared to return the compiler's `Result`; see the first
+ * test below, which pins the gap rather than assuming it closed.
  */
 describe("the failure and must-consume channels are closed at the protocol method", () => {
-  test("a valueOf that returns a Result is refused where it is declared", () => {
-    const measured = measure(`import { Result } from "smthrs/result"
+  /**
+   * KNOWN GAP, measured rather than asserted away.
+   *
+   * This test read `import { Result } from "smthrs/result"` and expected
+   * SMITHERS1104. `smthrs/result` is the compiler-owned LOWERING TARGET, not a
+   * module an authored `.sm` imports from — the specifier does not resolve, and
+   * the program's real diagnostics are SMITHERS1508/1510 for the unresolvable,
+   * untrusted module. The 1104 came from somewhere else entirely: the channel
+   * was recognized by the SPELLING of the type, so an unresolved import binding
+   * named `Result` read as the compiler's `Result`. The test was green because
+   * of that defect, and it is the only test in the suite that was.
+   *
+   * With identity resolved through the prelude's `__smithersResult` brand
+   * (`semantic.ts`), the same program is still refused — SMITHERS1101 now, plus
+   * the two module diagnostics — so nothing opened here. What the A/B measured
+   * is that the describe block's premise above is FALSE for the compiler's own
+   * `Result`: a `valueOf` declared to return one is charged nothing, on the
+   * pre-change compiler and on this one alike (`[]` on both). The protocol
+   * method is NOT refused at its own declaration for the Result channel; only
+   * the throwing case is, by SMITHERS1101, and only because `valueOf(): number`
+   * cannot represent the failure.
+   *
+   * That gap is pre-existing and belongs to whoever owns the coercion rules, so
+   * it is pinned here rather than closed: both halves are asserted, so closing
+   * it turns this red instead of letting it drift.
+   */
+  test("a valueOf that returns a Result is not yet refused where it is declared", () => {
+    const authored = measure(`class Boom extends Error { readonly _tag = "Boom" as const }
+const obj = { valueOf(): Result<number, Boom> { return null as never } }
+export function f(): number { return +obj }`);
+    expect(authored.codes).toEqual([]);
+
+    // The retired import spelling is refused, and not for its return type.
+    const retired = measure(`import { Result } from "smthrs/result"
 
 class Boom extends Error { readonly _tag = "Boom" as const }
 const obj = { valueOf(): Result<number, Boom> { return Result.ok(1) } }
 export function f(): number { return +obj }`);
-    expect(measured.codes).toContain("SMITHERS1104");
+    expect(retired.codes).toContain("SMITHERS1508");
+    expect(retired.codes).toContain("SMITHERS1510");
   });
 
   test("a valueOf that throws is refused where it is declared", () => {
