@@ -5099,24 +5099,32 @@ func (a *rowAnalysis) checkResultParameters(files []*ast.SourceFile) {
 			if name == nil || !ast.IsIdentifier(name) || !a.prelude.isResultType(a.checker.GetTypeAtLocation(name)) {
 				continue
 			}
+			// Ownership is asked of the parameter's resolved SYMBOL through the
+			// same per-file identifier index checkBoundMustConsume uses for a
+			// binding, and for the same reason: specification/failures.mdx:190
+			// names five consumption ACTS performed on the value, and no
+			// sentence there conditions any of them on the function body the
+			// act is written in.
+			//
+			// This used to be a hand-rolled walk of the body that stopped dead
+			// at every nested function-like, so the fork was inconsistent with
+			// ITSELF — it accepted `const entry = …; run(() => { entry! })` and
+			// refused the byte-equivalent program in which `entry` is a
+			// parameter. Two members of that gap were measured: a consumption
+			// inside a callback body, and a consumption in a sibling
+			// parameter's default (the old walk started at the BODY, so a
+			// default was unreachable too). Both are references to one symbol,
+			// and one index finds both. A shadowing declaration in a nested
+			// scope resolves to a different symbol, so the wider search cannot
+			// manufacture a consumption the narrow one would have missed.
 			symbol := a.symbolAt(name)
 			consumed := false
-			var visit func(*ast.Node) bool
-			visit = func(node *ast.Node) bool {
-				if node != fn.node.Body() && ast.IsFunctionLikeDeclaration(node) {
-					// See evaluatedOutsideFunction.
-					for _, outside := range evaluatedOutsideFunction(node) {
-						visit(outside)
-					}
-					return false
-				}
-				if ast.IsIdentifier(node) && node != name && a.symbolAt(node) == symbol && a.resultParameterReferenceConsumed(node) {
+			for _, reference := range a.identifierReferences(ast.GetSourceFileOfNode(fn.node), symbol) {
+				if reference != name && a.resultParameterReferenceConsumed(reference) {
 					consumed = true
+					break
 				}
-				node.ForEachChild(visit)
-				return false
 			}
-			fn.node.Body().ForEachChild(visit)
 			if !consumed {
 				fn.unconsumedParams[index] = true
 				a.report(name, "SMITHERS1302", "Result parameter must be consumed by returning, matching, transforming, inspecting, or propagating it with postfix !")
