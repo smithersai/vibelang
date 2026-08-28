@@ -90,18 +90,54 @@ type durableValue struct {
 	ir any
 }
 
+// durableFailureCollision is the structured reason behind one specific
+// underivable contract: two DIFFERENT Error class declarations in one Action's
+// failure channel that mint a single durable failure identity.
+//
+// It is a port of the reference frontend's `DurableFailureIdentityCollision`
+// (poc/src/durable/schema.ts), which travels out of a derivation failure for
+// exactly the same purpose: the position a durable diagnostic can report at is
+// the authored `run` call, far from where the collision was detected, so the
+// two class names have to be carried there as data or the call site can only
+// say something generic.
+type durableFailureCollision struct {
+	identity string
+	// The two colliding class names, SORTED. Sorted rather than
+	// claimant-then-collider so the sentence built from them does not depend on
+	// the order a checker enumerated the union in; the reference sorts for the
+	// same reason, and that is what lets both backends emit one text.
+	names [2]string
+}
+
+// durableFailureIdentityCollisionMessage is the sentence SMITHERS4124 carries,
+// byte-for-byte the reference's `durableFailureIdentityCollisionMessage`
+// (poc/src/durable/source-compiler.ts). Kept identical on purpose: a conformance
+// case may declare `messageContains`, and a case declares it once for both
+// backends.
+func durableFailureIdentityCollisionMessage(collision *durableFailureCollision) string {
+	return "Error classes " + collision.names[0] + " and " + collision.names[1] +
+		" in this Action's declared failure channel share one durable failure identity " + collision.identity +
+		"; a decoder on the far side of a persistence boundary selects a handler by identity, so these two" +
+		" classes cannot be told apart on the wire — rename one of them or declare it in its own module"
+}
+
 type durableAction struct {
 	id         string
 	descriptor map[string]any
 	inputType  *checker.Type
 	invalid    string
-	// underivable marks a declaration that IS a compiler-bound Action but whose
-	// durable contract cannot be derived, so it is not an Action this lowering
-	// can name. The reference does not report such a declaration at all — its
-	// `deriveSameFileActions` swallows the derivation failure and skips the
-	// class — and the authored `run` call then finds no descriptor and takes the
-	// ordinary unsupported-call diagnostic. See lowerAction.
-	underivable bool
+	// collision marks a declaration that IS a compiler-bound Action but whose
+	// durable contract cannot be derived, because two Error classes in its
+	// failure channel mint one durable identity. It carries the reason rather
+	// than a bare flag so the authored `run` call can name both classes.
+	//
+	// It used to be `underivable bool`, and the call site then reported the
+	// reference's generic unsupported-call sentence — "higher-order and dynamic
+	// calls are unavailable in durable source lowering" — which is FALSE of the
+	// program that reaches it: `X.run({ ... })` is an ordinary compiler-bound
+	// Action call. Both backends now report SMITHERS4124 at the same position.
+	// See lowerAction.
+	collision *durableFailureCollision
 }
 
 type durableFunctionLowerer struct {
@@ -249,9 +285,14 @@ func durableFailureIdentity(sourceName string, name string) string {
 	return string(utf16.Decode(units))
 }
 
-// durableFailureIdentityCollides reports whether one Action's checked failure
-// channel names two DIFFERENT Error class declarations that mint one durable
-// failure identity.
+// durableFailureIdentityCollides answers the collision in one Action's checked
+// failure channel — the identity and the two DIFFERENT Error class declarations
+// that minted it — or nil when the channel is describable.
+//
+// It returns the pair rather than a bool because the diagnostic names both
+// classes. Naming them is the whole reason SMITHERS4124 exists: with only a
+// bool, the call site had nothing to say and reported the reference's generic
+// unsupported-call sentence instead.
 //
 // The identity is a function of (logical source file, class name) alone, so it
 // is not injective over class declarations. Two spellings of that are reachable
@@ -274,15 +315,19 @@ func durableFailureIdentity(sourceName string, name string) string {
 // Constituents that do not resolve to a class declaration are skipped rather
 // than refused: the built-in `Error` is an interface plus a var in lib.d.ts, and
 // `Result<T, Error>` must keep compiling.
-func (d *durableFunctionLowerer) durableFailureIdentityCollides(failure *checker.Type) bool {
+func (d *durableFunctionLowerer) durableFailureIdentityCollides(failure *checker.Type) *durableFailureCollision {
 	if failure == nil {
-		return false
+		return nil
 	}
 	constituents := []*checker.Type{failure}
 	if failure.IsUnion() {
 		constituents = failure.Types()
 	}
-	claimed := make(map[string]*ast.Node, len(constituents))
+	type claim struct {
+		declaration *ast.Node
+		name        string
+	}
+	claimed := make(map[string]claim, len(constituents))
 	for _, constituent := range constituents {
 		symbol := constituent.Symbol()
 		if symbol == nil {
@@ -299,14 +344,16 @@ func (d *durableFunctionLowerer) durableFailureIdentityCollides(failure *checker
 		identity := durableFailureIdentity(durableLogicalFile(ast.GetSourceFileOfNode(declaration)), name.Text())
 		claimant, claimedBefore := claimed[identity]
 		if !claimedBefore {
-			claimed[identity] = declaration
+			claimed[identity] = claim{declaration: declaration, name: name.Text()}
 			continue
 		}
-		if claimant != declaration {
-			return true
+		if claimant.declaration != declaration {
+			names := []string{claimant.name, name.Text()}
+			sort.Strings(names)
+			return &durableFailureCollision{identity: identity, names: [2]string{names[0], names[1]}}
 		}
 	}
-	return false
+	return nil
 }
 
 func durableDeclarationName(call *ast.Node, function *ast.Node) string {
@@ -837,17 +884,24 @@ func (d *durableFunctionLowerer) lowerAction(node *ast.Node, anchor string) (dur
 	// in a `try`/`catch` whose comment says "A declaration whose signature is
 	// outside the derivable subset is skipped, not fatal: its `run` calls then
 	// find no descriptor and the lowerer reports the ordinary unsupported-call
-	// diagnostic against the authored call site." That call site, that code, and
-	// that sentence are what the reference produces for a colliding failure
-	// channel, so they are what this bridge produces. Reported here rather than
-	// by falling through to the shared unsupported-call branch below, because
-	// falling through would first meet `isChildFlowRun`, which recognises any
-	// compiler-owned `.run` whose receiver is not `Action` itself and would
-	// answer SMITHERS4120 instead. The message is deliberately the reference's
-	// own, unimproved: it does not carry the promise, and a one-sided rewording
-	// would be a divergence for a rule the specification does not spell.
-	if action.underivable {
-		value, valid := d.fail(node, "4112", "higher-order and dynamic calls are unavailable in durable source lowering")
+	// diagnostic against the authored call site." That call site is still where
+	// this is reported, and it is still where the reference reports it.
+	//
+	// The CODE and the SENTENCE are no longer the generic ones. Both backends
+	// used to answer SMITHERS4112, "higher-order and dynamic calls are
+	// unavailable in durable source lowering", which is false of the program
+	// that reaches here — `X.run({ ... })` is an ordinary compiler-bound Action
+	// call, and an author was sent looking for a higher-order call that does not
+	// exist. The reference now keeps the collision's reason out of its `catch`
+	// and re-reports it at the same node as SMITHERS4124; this does the same,
+	// from its own detector, with the same text.
+	//
+	// Still reported here rather than by falling through to the shared
+	// unsupported-call branch below, because falling through would first meet
+	// `isChildFlowRun`, which recognises any compiler-owned `.run` whose
+	// receiver is not `Action` itself and would answer SMITHERS4120 instead.
+	if action.collision != nil {
+		value, valid := d.fail(node, "4124", durableFailureIdentityCollisionMessage(action.collision))
 		return value, true, valid
 	}
 	if call.QuestionDotToken != nil || access.QuestionDotToken != nil || call.TypeArguments != nil || call.Arguments == nil || len(call.Arguments.Nodes) != 1 {
@@ -958,8 +1012,8 @@ func (d *durableFunctionLowerer) actionFor(reference *ast.Node) (durableAction, 
 	// implementations' refusal surfaces identical without minting a contract
 	// identity this bridge does not carry: every accepted contract's schemas,
 	// digests, and Plan bytes are exactly what they were.
-	if d.durableFailureIdentityCollides(failureType) {
-		return durableAction{underivable: true}, true
+	if collision := d.durableFailureIdentityCollides(failureType); collision != nil {
+		return durableAction{collision: collision}, true
 	}
 	inputSchema := durableStructuralSchema("input", inputDescriptor)
 	successSchema := durableStructuralSchema("success", successDescriptor)

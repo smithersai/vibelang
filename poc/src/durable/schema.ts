@@ -70,16 +70,60 @@ export class DurableCodecError extends Error {
   }
 }
 
+/**
+ * The structured reason behind one specific derivation failure: two DIFFERENT
+ * Error class declarations in one Action failure channel that mint a single
+ * durable failure identity.
+ *
+ * It is carried out of derivation as data, rather than being left implicit in
+ * the message, because the durable SOURCE compiler cannot report at the node
+ * this failure names. `deriveSameFileActions` derives every same-file Action
+ * ahead of lowering and skips a declaration it cannot describe, so by the time
+ * an authored `X.run(...)` is lowered the failure is long gone and the call
+ * merely finds no descriptor. Recovering these two class names lets that call
+ * site state the real defect instead of falling through to the generic
+ * unsupported-call message, which is false of a program whose only call is an
+ * ordinary compiler-bound Action call.
+ */
+export interface DurableFailureIdentityCollision {
+  /** The single identity both classes minted. */
+  readonly identity: string
+  /**
+   * The two colliding class names, sorted. Sorted rather than
+   * claimant-then-collider so the sentence a diagnostic builds from this does
+   * not depend on the order a checker happened to enumerate a union in — the
+   * Go bridge derives the same pair from its own traversal and must be able to
+   * produce the same text.
+   */
+  readonly classNames: readonly [string, string]
+}
+
 class ContractFailure extends Error {
   constructor(
     readonly code: ActionContractDiagnostic["code"],
     readonly node: ts.Node,
-    message: string
+    message: string,
+    /** Present only for the identity-collision failure; see the interface. */
+    readonly failureIdentityCollision?: DurableFailureIdentityCollision
   ) {
     super(message)
     this.name = "ContractFailure"
   }
 }
+
+/**
+ * Recovers the structured collision detail from a thrown derivation failure,
+ * or `undefined` when the failure was anything else.
+ *
+ * Written as a guard over `unknown` because its one caller is a `catch`
+ * clause. Every other derivation failure — `any` in the channel, a structural
+ * impostor, an over-budget payload — deliberately answers `undefined` here and
+ * keeps the existing skip-and-report-at-the-call-site behaviour.
+ */
+export const failureIdentityCollisionOf = (
+  failure: unknown
+): DurableFailureIdentityCollision | undefined =>
+  failure instanceof ContractFailure ? failure.failureIdentityCollision : undefined
 
 const compareText = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0
 
@@ -399,11 +443,21 @@ class DescriptorBuilder {
       // parameter is a plain array that may legitimately name one class twice
       // — that already deduplicates descriptors afterwards and must not start
       // refusing instead.
-      this.fail(
+      //
+      // The message and its `SMITHERS4203` code are unchanged: this is what
+      // `compileActionContract` reports, and `schema.test.ts` pins it. What is
+      // new is the structured pair travelling beside it, so the durable source
+      // compiler — which catches this throw far from here and reports at the
+      // authored `run` call instead — can name both classes rather than fall
+      // through to a generic unsupported-call message.
+      const collidingNames: readonly string[] =
+        [declaration.name.text, claimant.name?.text ?? "(anonymous)"].sort(compareText)
+      this.failFailureIdentityCollision(
         `${path} declares Error ${declaration.name.text}, which shares durable failure identity ${identity} ` +
         `with a different Error class ${claimant.name?.text ?? "(anonymous)"}; nominal failure identity is ` +
         `(logical source file, class name), so these two classes cannot be told apart on the wire — rename one ` +
-        `of them or declare it in its own module`
+        `of them or declare it in its own module`,
+        { identity, classNames: [collidingNames[0], collidingNames[1]] }
       )
     }
     const payload = this.errorPayload(declaration, path, depth + 1, new Set())
@@ -500,6 +554,18 @@ class DescriptorBuilder {
 
   private fail(message: string): never {
     throw new ContractFailure("SMITHERS4203", this.anchor, message)
+  }
+
+  /**
+   * The same refusal as {@link fail}, at the same code and the same node, with
+   * the colliding pair attached so a caller that catches it can say which two
+   * classes collided.
+   */
+  private failFailureIdentityCollision(
+    message: string,
+    collision: DurableFailureIdentityCollision
+  ): never {
+    throw new ContractFailure("SMITHERS4203", this.anchor, message, collision)
   }
 }
 

@@ -26,9 +26,9 @@ import (
 // already refuses module-wide and earlier as SMITHERS1150, and two DIFFERENT
 // names that normalize together. `$Failed` and `_Failed` are the smallest such
 // pair. The reference refuses the second family at contract-derivation time and
-// its durable source compiler surfaces the refusal as the ordinary
-// unsupported-call diagnostic against the authored `run` call site; before this
-// test existed the fork compiled that program clean and ran it.
+// its durable source compiler surfaces the refusal as SMITHERS4124 against the
+// authored `run` call site; before this test existed the fork compiled that
+// program clean and ran it.
 //
 // Nothing here is asserted from emitted text alone where execution can speak:
 // the defect's defining property is that the program COMPILES, so a
@@ -77,24 +77,50 @@ export function main(): string {
 `
 
 // TestPinnedForkDurableFailureChannelRefusesACollidingIdentity is the refusal
-// half. The code and the position are the reference's, not this bridge's
-// invention: the reference reports SMITHERS4112 against the authored
-// `Pick.run(...)` call, because its `deriveSameFileActions` skips a declaration
-// whose contract it cannot derive and the call then finds no descriptor.
+// half. The code, the position, AND the sentence are the reference's, not this
+// bridge's invention: the reference reports SMITHERS4124 against the authored
+// `Pick.run(...)` call, because its `deriveSameFileActions` cannot derive the
+// declaration's contract and carries the collision's reason out to that call.
+//
+// Both backends used to answer SMITHERS4112, "higher-order and dynamic calls
+// are unavailable in durable source lowering". The verdict was right and the
+// stated reason was false of the program: there is no higher-order call and no
+// dynamic call in it, and `Pick.run({ key: input.key })` is an ordinary
+// compiler-bound Action call. The reference reached that sentence only by
+// falling through the generic tail of `lowerExpression`, and this bridge
+// reproduced it verbatim to hold backend agreement, so the misdescription lived
+// in two places. The position is unchanged; the code and the sentence now name
+// the real defect.
 func TestPinnedForkDurableFailureChannelRefusesACollidingIdentity(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 
 	result := compileDurableWith(t, backend, ctx, durableCollidingIdentitySource)
-	requireDurableDiagnostic(t, result, "SMITHERS4112", strings.Index(durableCollidingIdentitySource, "Pick.run("))
+	reported := requireDurableDiagnostic(t, result, "SMITHERS4124", strings.Index(durableCollidingIdentitySource, "Pick.run("))
 	if len(result.Artifacts) != 0 {
 		t.Fatalf("a refused durable contract must emit nothing: %v", artifactPaths(result.Artifacts))
+	}
+	// The payload is the promise. A code alone would let this bridge keep
+	// emitting the old sentence under a new number, which is the renumbering
+	// accident the code exists to avoid — so both class names are asserted.
+	for _, want := range []string{
+		"Error classes $Failed and _Failed",
+		"share one durable failure identity",
+		"cannot be told apart on the wire",
+	} {
+		if !strings.Contains(reported.Message, want) {
+			t.Fatalf("SMITHERS4124 message = %q, want it to contain %q", reported.Message, want)
+		}
+	}
+	// The sentence it replaced must be gone, not merely joined.
+	if strings.Contains(reported.Message, "higher-order") || strings.Contains(reported.Message, "dynamic calls") {
+		t.Fatalf("SMITHERS4124 still carries the swallow artifact's sentence: %q", reported.Message)
 	}
 	// Exactly one diagnostic: the two class declarations are not duplicates by
 	// NAME, so SMITHERS1150 does not and must not fire here — this family is
 	// invisible to a name-based rule, which is why it survived until now.
 	observed := formatDiagnosticPositions(t, []SourceFile{{Path: "main.sm", Text: durableCollidingIdentitySource}}, result)
-	if len(observed) != 1 || !strings.HasPrefix(observed[0], "SMITHERS4112@") {
-		t.Fatalf("colliding failure channel diagnostics = %v, want exactly one SMITHERS4112", observed)
+	if len(observed) != 1 || !strings.HasPrefix(observed[0], "SMITHERS4124@") {
+		t.Fatalf("colliding failure channel diagnostics = %v, want exactly one SMITHERS4124", observed)
 	}
 
 	// The collision is a property of the CHANNEL, not of the spelling: each
@@ -148,7 +174,7 @@ export function main(): string {
 	// Under the bound: the normalized spellings are equal, so both classes claim
 	// one identity and the channel is refused.
 	short := channel(strings.Repeat("S", 40))
-	requireDurableDiagnostic(t, compileDurableWith(t, backend, ctx, short), "SMITHERS4112", strings.Index(short, "Pick.run("))
+	requireDurableDiagnostic(t, compileDurableWith(t, backend, ctx, short), "SMITHERS4124", strings.Index(short, "Pick.run("))
 
 	// Over the bound: the reference mints two different digests, so the channel
 	// is injective and compiles. `smithers:` + `main.sm` + `#` + 261 + `@1` is

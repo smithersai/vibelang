@@ -628,3 +628,127 @@ export const Build = durable((input: { key: string }) => {
   // one answer on identical source.
   expect(errorSchemaFor("LooksLikeError")).toEqual({ refused: true, code: "SMITHERS4112" })
 })
+
+/**
+ * `SMITHERS4124`: the collision has its own diagnostic, and the reason it needs
+ * one is that the code it replaced was a *swallow artifact*.
+ *
+ * `deriveSameFileActions` skips a declaration whose contract it cannot derive.
+ * For a colliding failure channel that left `Pick.run({ ... })` — an ordinary
+ * compiler-bound Action call, with no higher-order call and no dynamic call
+ * anywhere in the program — refused as SMITHERS4112, "higher-order and dynamic
+ * calls are unavailable in durable source lowering". The verdict was right and
+ * the stated reason was false, so an author was sent hunting for a call that
+ * does not exist. `conformance/corpus/17-durable/` pins the same repair on both
+ * backends; this file pins the reference's three lowering forms, two of which
+ * the Go bridge cannot reach because it does not implement `fanOut`/`loopWhile`
+ * at all.
+ *
+ * The code is 4124, not the 4114 the migration plan proposed as "the natural
+ * neighbour": 4114 is TAKEN here and means "Action id <id> resolves to
+ * incompatible durable contracts" — one id with two contracts, the mirror image
+ * of this rule — and it does not exist in the Go bridge at all. 4100-4123 are
+ * in use and 4199 is the durable internal-error code, so 4124 is the next free
+ * code in the family.
+ */
+const collidingChannelSource = (body: string) => `
+import { durable, Action, fanOut, loopWhile } from "smithers:flows"
+class $Failed extends Error { constructor(readonly code: string) { super("dollar") } }
+class _Failed extends Error { constructor(readonly reason: string) { super("under") } }
+${body}
+`
+
+test("two Error classes under one durable failure identity draw SMITHERS4124, naming both classes", () => {
+  const forms = {
+    "a returned Action.run": `
+class Pick extends Action<(input: { key: string }) => Result<{ value: string }, $Failed | _Failed>> {}
+export const Build = durable((input: { key: string }) => {
+  return Pick.run({ key: input.key })
+})`,
+    // The postfix-! path had its own false sentence — "postfix ! is supported
+    // only directly on a compiler-bound Action.run(...) Result" — which is
+    // exactly what this operand is.
+    "an intermediate Action.run with postfix !": `
+class Pick extends Action<(input: { key: string }) => Result<{ value: string }, $Failed | _Failed>> {}
+class Tail extends Action<(input: { value: string }) => Result<{ out: string }, $Failed>> {}
+export const Build = durable((input: { key: string }) => {
+  const first = Pick.run({ key: input.key })!
+  return Tail.run({ value: first.value })
+})`,
+    // "fanOut body must target one compiler-bound Action" — it does.
+    "a fanOut step": `
+class Pick extends Action<(input: { id: string }) => Result<{ value: string }, $Failed | _Failed>> {}
+export const Build = durable((input: { ids: readonly string[] }) => {
+  return fanOut(input.ids, (id) => id, (id) => Pick.run({ id }))
+})`,
+    // "loopWhile body must target one compiler-bound Action" — it does.
+    "a loopWhile body": `
+class Pick extends Action<(input: { more: boolean }) => Result<{ more: boolean }, $Failed | _Failed>> {}
+export const Build = durable((input: { more: boolean }) => {
+  return loopWhile({ more: input.more }, (state) => state.more, (state) => Pick.run({ more: state.more }), 8)
+})`
+  } as const
+
+  for (const [label, body] of Object.entries(forms)) {
+    const compiled = compileDurableSource(collidingChannelSource(body), { fileName: "flows/orders.sm" })
+    expect(compiled.ok, label).toBe(false)
+    if (compiled.ok) throw new Error(`${label} must be refused`)
+    expect(compiled.diagnostics.length, label).toBe(1)
+    expect(compiled.diagnostics[0].code, label).toBe("SMITHERS4124")
+    // The payload is the promise: a code alone would let the old sentence
+    // survive under a new number, which is the renumbering accident this repair
+    // exists to avoid.
+    expect(compiled.diagnostics[0].message, label).toContain("Error classes $Failed and _Failed")
+    expect(compiled.diagnostics[0].message, label).toContain("share one durable failure identity")
+    expect(compiled.diagnostics[0].message, label).not.toContain("higher-order")
+  }
+})
+
+test("SMITHERS4124 fires on a COLLISION, not on two Error classes", () => {
+  // The over-correction this repair could ship: a check that refuses any
+  // two-class failure channel. `$Failed`/`_Failed` normalize to one identity;
+  // `Failed`/`Denied` do not, and every form above must still compile.
+  const benign = (body: string) => `
+import { durable, Action, fanOut, loopWhile } from "smithers:flows"
+class Failed extends Error { constructor(readonly code: string) { super("failed") } }
+class Denied extends Error { constructor(readonly reason: string) { super("denied") } }
+${body}
+`
+  const forms = {
+    "a returned Action.run": `
+class Pick extends Action<(input: { key: string }) => Result<{ value: string }, Failed | Denied>> {}
+export const Build = durable((input: { key: string }) => {
+  return Pick.run({ key: input.key })
+})`,
+    "a fanOut step": `
+class Pick extends Action<(input: { id: string }) => Result<{ value: string }, Failed | Denied>> {}
+export const Build = durable((input: { ids: readonly string[] }) => {
+  return fanOut(input.ids, (id) => id, (id) => Pick.run({ id }))
+})`,
+    "a loopWhile body": `
+class Pick extends Action<(input: { more: boolean }) => Result<{ more: boolean }, Failed | Denied>> {}
+export const Build = durable((input: { more: boolean }) => {
+  return loopWhile({ more: input.more }, (state) => state.more, (state) => Pick.run({ more: state.more }), 8)
+})`
+  } as const
+
+  for (const [label, body] of Object.entries(forms)) {
+    const compiled = compileDurableSource(benign(body), { fileName: "flows/orders.sm" })
+    if (!compiled.ok) throw new Error(`${label} must still compile: ${JSON.stringify(compiled.diagnostics)}`)
+    expect(compiled.plan.actions.length, label).toBe(1)
+  }
+
+  // The other direction of the same guard: a genuinely higher-order call must
+  // still draw the REAL SMITHERS4112, whose sentence is true of it.
+  const higherOrder = compileDurableSource(`
+import { durable } from "smithers:flows"
+const identity = <T,>(value: T): T => value
+export const Build = durable((input: { key: string }) => {
+  return identity({ key: input.key })
+})
+`, { fileName: "flows/orders.sm" })
+  expect(higherOrder.ok).toBe(false)
+  if (higherOrder.ok) throw new Error("a higher-order call must be refused")
+  expect(higherOrder.diagnostics[0].code).toBe("SMITHERS4112")
+  expect(higherOrder.diagnostics[0].message).toContain("higher-order and dynamic calls")
+})

@@ -37,10 +37,36 @@ import {
   deriveActionContract,
   deriveDurableValueSchema,
   descriptorTypeScript,
+  type DurableFailureIdentityCollision,
+  failureIdentityCollisionOf,
   validateActionContractDescriptor
 } from "./schema.ts"
 
 const PROJECT_ROOT = "/smithers-durable-source-compiler"
+
+/**
+ * The sentence `SMITHERS4124` carries, kept in one place because the Go bridge
+ * emits the same text.
+ *
+ * It names both classes and the identity they share, which is the whole point
+ * of the code existing: before it, this program was refused with
+ * `SMITHERS4112`, "higher-order and dynamic calls are unavailable in durable
+ * source lowering" — a true sentence about a different program, reached by
+ * falling through the tail of `lowerExpression`, and one that sends an author
+ * hunting for a higher-order call that is not there.
+ *
+ * The pair arrives sorted (see {@link DurableFailureIdentityCollision}), so the
+ * text does not depend on union enumeration order and the two backends agree
+ * without either one having to reproduce the other's traversal.
+ */
+const durableFailureIdentityCollisionMessage = (
+  collision: DurableFailureIdentityCollision
+): string =>
+  `Error classes ${collision.classNames[0]} and ${collision.classNames[1]} in this Action's declared ` +
+  `failure channel share one durable failure identity ${collision.identity}; a decoder on the far side of a ` +
+  `persistence boundary selects a handler by identity, so these two classes cannot be told apart on the ` +
+  `wire — rename one of them or declare it in its own module`
+
 const MAX_SOURCE_BYTES = 2 * 1024 * 1024
 const MAX_FAN_OUT_STEPS = 16
 const MAX_CHILD_FLOW_DEPTH = 8
@@ -145,6 +171,17 @@ interface CheckedSource {
   readonly queueSymbol: ts.Symbol
   readonly broadcastSymbol: ts.Symbol
   readonly actionsBySymbol: ReadonlyMap<ts.Symbol, ActionDescriptor>
+  /**
+   * Same-file Action declarations whose contract could not be derived because
+   * two Error classes in their failure channel mint one durable identity.
+   *
+   * Disjoint from `actionsBySymbol` by construction: an entry here exists only
+   * where derivation threw, so no descriptor was recorded. It is consulted at
+   * the authored `run` call, which is where the reference has always reported
+   * an undescribable Action, so the position does not move — only the code and
+   * the sentence do.
+   */
+  readonly collidingActionsBySymbol: ReadonlyMap<ts.Symbol, DurableFailureIdentityCollision>
   readonly flowsBySymbol: ReadonlyMap<ts.Symbol, PlanTemplate>
   readonly derivedActions: readonly DurableSourceDerivedAction[]
   readonly sourceDiagnostics: readonly ts.Diagnostic[]
@@ -524,6 +561,7 @@ const checkedSource = (
     throw new Error("Durable source compiler failed to bind its compiler-owned intrinsics")
   }
   const actionsBySymbol = new Map<ts.Symbol, ActionDescriptor>()
+  const collidingActionsBySymbol = new Map<ts.Symbol, DurableFailureIdentityCollision>()
   const flowsBySymbol = new Map<ts.Symbol, PlanTemplate>()
   const derivedActions = deriveSameFileActions(
     program,
@@ -532,7 +570,8 @@ const checkedSource = (
     flowsFile,
     resultFile,
     actionIdPrefix,
-    actionsBySymbol
+    actionsBySymbol,
+    collidingActionsBySymbol
   )
   for (const binding of normalizedBindings) {
     const moduleFile = program.getSourceFile(binding.virtualPath)
@@ -570,6 +609,7 @@ const checkedSource = (
     queueSymbol,
     broadcastSymbol,
     actionsBySymbol,
+    collidingActionsBySymbol,
     flowsBySymbol,
     derivedActions,
     sourceDiagnostics
@@ -590,6 +630,19 @@ const checkedSource = (
  * fatal: its `run` calls then find no descriptor and the lowerer reports the
  * ordinary unsupported-call diagnostic against the authored call site, which is
  * a better position than the class declaration.
+ *
+ * Skipping loses the REASON, and for one member of that set the generic
+ * unsupported-call sentence is not merely vague but false: two Error classes in
+ * the failure channel that mint one durable identity leave an authored
+ * `Pick.run({ ... })` — an ordinary compiler-bound Action call, no higher-order
+ * or dynamic call anywhere in the program — refused with "higher-order and
+ * dynamic calls are unavailable in durable source lowering". That one reason is
+ * therefore carried out in `collidingActionsBySymbol` and re-reported at the
+ * same call site as `SMITHERS4124`. The position is unchanged; only the code and
+ * the sentence are. Every other skip keeps its existing behaviour on purpose —
+ * see `source-compiler.test.ts`, "the durable source compiler weakens an error
+ * contract only where the spec allows it", which pins `SMITHERS4112` for a
+ * channel spelled `any` and for a structural impostor.
  */
 const deriveSameFileActions = (
   program: ts.Program,
@@ -598,7 +651,8 @@ const deriveSameFileActions = (
   flowsFile: ts.SourceFile,
   resultFile: ts.SourceFile,
   actionIdPrefix: string,
-  actionsBySymbol: Map<ts.Symbol, ActionDescriptor>
+  actionsBySymbol: Map<ts.Symbol, ActionDescriptor>,
+  collidingActionsBySymbol: Map<ts.Symbol, DurableFailureIdentityCollision>
 ): readonly DurableSourceDerivedAction[] => {
   const actionDeclaration = flowsFile.statements.find(ts.isClassDeclaration)
   const resultDeclaration = resultFile.statements.find(ts.isInterfaceDeclaration)
@@ -648,8 +702,12 @@ const deriveSameFileActions = (
               start: node.getStart(sourceFile, false),
               end: node.getEnd()
             }))
-          } catch {
-            // Left undescribed on purpose; see the doc comment above.
+          } catch (failure) {
+            // Left undescribed on purpose; see the doc comment above. The one
+            // exception is the identity collision, whose reason is kept so the
+            // call site can state it.
+            const collision = failureIdentityCollisionOf(failure)
+            if (collision !== undefined) collidingActionsBySymbol.set(symbol, collision)
           }
         }
       }
@@ -1990,6 +2048,7 @@ class FunctionLowerer {
       const actionSymbol = symbolAtExpression(this.checked.checker, actionReference)
       const descriptor = actionSymbol && this.checked.actionsBySymbol.get(actionSymbol)
       if (descriptor === undefined) {
+        this.failIfFailureIdentityCollides(actionSymbol, actionReference)
         return this.fail(actionReference, "SMITHERS4117", "fanOut body must target one compiler-bound Action")
       }
       if (runCandidate.arguments.length !== 1 || runCandidate.typeArguments !== undefined) {
@@ -2290,6 +2349,7 @@ class FunctionLowerer {
     const actionSymbol = symbolAtExpression(this.checked.checker, actionReference)
     const descriptor = actionSymbol && this.checked.actionsBySymbol.get(actionSymbol)
     if (descriptor === undefined) {
+      this.failIfFailureIdentityCollides(actionSymbol, actionReference)
       return this.fail(actionReference, "SMITHERS4121", "loopWhile body must target one compiler-bound Action")
     }
     if (body.arguments.length !== 1 || body.typeArguments !== undefined) {
@@ -2438,6 +2498,33 @@ class FunctionLowerer {
     }
   }
 
+  /**
+   * Refuses with `SMITHERS4124` when `actionSymbol` names a same-file
+   * compiler-bound Action whose failure channel holds two Error classes under
+   * one durable identity. Returns normally for every other receiver, so each
+   * caller keeps its own behaviour for everything else.
+   *
+   * Shared because THREE lowering forms reach an `X.run(...)` and each had its
+   * own generic sentence for "this symbol has no descriptor": the ordinary
+   * expression path said "higher-order and dynamic calls are unavailable in
+   * durable source lowering", a `fanOut` step said "fanOut body must target one
+   * compiler-bound Action", and a `loopWhile` body said "loopWhile body must
+   * target one compiler-bound Action". All three are false of a program whose
+   * Action IS compiler-bound and whose only defect is a colliding channel — the
+   * first sends the author hunting for a higher-order call, the other two for a
+   * binding mistake. `sequential` needs no call here: its arguments are lowered
+   * through `lowerActionCall`, which already throws past its generic message.
+   *
+   * `node` is each caller's own existing position, deliberately: this changes
+   * what a diagnostic SAYS, never where it points.
+   */
+  private failIfFailureIdentityCollides(actionSymbol: ts.Symbol | undefined, node: ts.Node): void {
+    const collision = actionSymbol && this.checked.collidingActionsBySymbol.get(actionSymbol)
+    if (collision !== undefined) {
+      this.fail(node, "SMITHERS4124", durableFailureIdentityCollisionMessage(collision))
+    }
+  }
+
   private lowerActionCall(
     call: ts.CallExpression,
     anchor: string
@@ -2450,7 +2537,17 @@ class FunctionLowerer {
     if (isTypeOnlyReference(this.checked.checker, actionReference)) return undefined
     const actionSymbol = symbolAtExpression(this.checked.checker, actionReference)
     const descriptor = actionSymbol && this.checked.actionsBySymbol.get(actionSymbol)
-    if (descriptor === undefined) return undefined
+    if (descriptor === undefined) {
+      // Reported here rather than by falling through to `lowerExpression`'s
+      // generic tail, because that tail's sentence — "higher-order and dynamic
+      // calls are unavailable in durable source lowering" — is false of this
+      // program: `X.run({ ... })` is an ordinary compiler-bound Action call.
+      //
+      // Only the collision is promoted. Every other underivable signature still
+      // returns `undefined` and still lands on `SMITHERS4112`, unchanged.
+      this.failIfFailureIdentityCollides(actionSymbol, call)
+      return undefined
+    }
     if (call.arguments.length !== 1 || call.typeArguments !== undefined) {
       return this.fail(call, "SMITHERS4113", `${descriptor.id}.run requires exactly one input argument in durable source`)
     }
