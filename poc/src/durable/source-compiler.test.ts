@@ -878,3 +878,413 @@ export const Build = durable(function Build(input: { source: string }) {
     store.close()
   }
 })
+
+// ---------------------------------------------------------------------------
+// The Flow OUTPUT was only half the rule.
+//
+// `flowSuccessDescriptor` walked the output expression and nothing else, so the
+// same projection defect placed in an ACTION INPUT reached no descriptor at all:
+//
+//   class Step extends Action<(input: { key: number }) => Result<{ value: string }, Error>> {}
+//   export const Flow = durable((input: { items: readonly string[] }) => {
+//     return Step.run({ key: input.items.length })
+//   })
+//
+// Measured before this check existed: that program compiled with zero
+// diagnostics, deployed, executed — and then FAULTED, with `DurableActionDefect`
+// wrapping `{"_tag":"ProjectionDefect","path":["items","length"]}` raised by
+// `pathValue` (engine.ts:209) while evaluating the Action's input. A
+// compile-time-knowable error deferred into a runtime defect, exactly as the
+// Flow-output fail-open above did. The Go fork shared it: it compiled and ran
+// the same source, and the Plan it emitted carries the same
+// `{"kind":"input","path":["items","length"]}`.
+//
+// The repair is the SAME walk, not a second one: `planNodeValues` collects every
+// value a Plan node consumes and `flowSchemas` hands each to
+// `flowSuccessDescriptor` with its own subject. Every code, position and
+// sentence below was measured against the Go fork on the same source text.
+// ---------------------------------------------------------------------------
+
+test("an Action-input projection defect is refused instead of being deferred into a runtime ProjectionDefect", () => {
+  const flowInput = "{ items: readonly string[]; text: string; n: number; " +
+    "obj: { a: string }; nested: { inner: { a: string } }; pair: readonly [string, number] }"
+  // Spelling x position. Only spellings TypeScript itself accepts are here;
+  // `input.obj.missing` draws TS2339 and `input.pair[5]` draws TS2493 long
+  // before lowering, which is why `.length` is the sharp one.
+  const cells: readonly { readonly name: string; readonly action: string; readonly body: string; readonly message: string }[] = [
+    {
+      name: "object literal field",
+      action: "{ key: number }",
+      body: "  return Step.run({ key: input.items.length })",
+      message: "Action flows/orders.sm#Step input cannot project length from durable array"
+    },
+    {
+      name: "bare argument",
+      action: "number",
+      body: "  return Step.run(input.items.length)",
+      message: "Action flows/orders.sm#Step input cannot project length from durable array"
+    },
+    {
+      name: "nested object field",
+      action: "{ outer: { key: number } }",
+      body: "  return Step.run({ outer: { key: input.items.length } })",
+      message: "Action flows/orders.sm#Step input cannot project length from durable array"
+    },
+    {
+      name: "array literal element",
+      action: "{ keys: readonly number[] }",
+      body: "  return Step.run({ keys: [input.items.length] })",
+      message: "Action flows/orders.sm#Step input cannot project length from durable array"
+    },
+    {
+      name: "projection of a prior const binding",
+      action: "{ key: number }",
+      body: "  const c = input.items\n  return Step.run({ key: c.length })",
+      message: "Action flows/orders.sm#Step input cannot project length from durable array"
+    },
+    {
+      name: "bare identifier bound to the projection",
+      action: "{ key: number }",
+      body: "  const n = input.items.length\n  return Step.run({ key: n })",
+      message: "Action flows/orders.sm#Step input cannot project length from durable array"
+    },
+    {
+      name: "computed key spelling",
+      action: "{ key: number }",
+      body: '  return Step.run({ key: input.items["length"] })',
+      message: "Action flows/orders.sm#Step input cannot project length from durable array"
+    },
+    {
+      name: "projection through a durable string",
+      action: "{ key: number }",
+      body: "  return Step.run({ key: input.text.length })",
+      message: "Action flows/orders.sm#Step input cannot project length from durable string"
+    },
+    {
+      name: "nested projection whose last component misses",
+      action: "{ key: number }",
+      body: "  return Step.run({ key: input.nested.inner.a.length })",
+      message: "Action flows/orders.sm#Step input cannot project length from durable string"
+    },
+    {
+      // TypeScript types `pair.length` as the literal `2`, so nothing else
+      // objects and the projection reaches the Plan.
+      name: "non-numeric key on a durable tuple",
+      action: "{ key: number }",
+      body: "  return Step.run({ key: input.pair.length })",
+      message: "Action flows/orders.sm#Step input cannot project length from durable tuple"
+    },
+    {
+      // Two defective fields whose SOURCE order is the reverse of their sorted
+      // order. `flowSuccessDescriptor` visits `Object.keys(...).sort()`, so the
+      // named defect is `alpha`'s and not `zulu`'s — and the Go fork's
+      // `sortUTF16` chooses the same one, which is what lets one corpus case
+      // pin one sentence for both backends. Measured on both: "durable string".
+      name: "two defective fields, source order reversed from sorted order",
+      action: "{ zulu: number; alpha: number }",
+      body: "  return Step.run({ zulu: input.items.length, alpha: input.text.length })",
+      message: "Action flows/orders.sm#Step input cannot project length from durable string"
+    },
+    {
+      // Not an Action input, but the same walk over the same question: a timer
+      // duration is a value the Plan evaluates too, and it names its own node.
+      name: "sleep duration",
+      action: "{ key: string }",
+      body: "  sleep(input.items.length)\n  return Step.run({ key: input.obj.a })",
+      message: "sleep duration cannot project length from durable array"
+    }
+  ]
+
+  for (const cell of cells) {
+    const compiled = compileDurableSource(`
+import { durable, Action, sleep } from "smithers:flows"
+class Step extends Action<(input: ${cell.action}) => Result<{ value: string }, Error>> {}
+export const Build = durable((input: ${flowInput}) => {
+${cell.body}
+})
+`, { fileName: "flows/orders.sm" })
+    if (compiled.ok) throw new Error(`${cell.name}: an Action input the descriptor cannot answer must be refused`)
+    expect(compiled.diagnostics[0].code, cell.name).toBe("SMITHERS4110")
+    expect(compiled.diagnostics[0].message, cell.name).toBe(
+      `durable Flow boundary is not structurally encodable: ${cell.message}`
+    )
+    // Reported at the durable source function, which is where the Flow-output
+    // rule reports and where the Go fork reports, so both name one position.
+    expect([compiled.diagnostics[0].line, compiled.diagnostics[0].column], cell.name).toEqual([4, 30])
+  }
+
+  // The walk's other legs, reached from an Action INPUT rather than an output.
+  // These are the cells that show the check reuses the descriptor walk instead
+  // of re-deriving one that only understands the Flow input.
+  const reuse: readonly { readonly name: string; readonly source: string; readonly message: string }[] = [
+    {
+      name: "a prior Action's success",
+      source: `
+import { durable, Action } from "smithers:flows"
+class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+class Second extends Action<(input: { key: number }) => Result<{ done: string }, Error>> {}
+export const Build = durable((input: { key: string }) => {
+  const first = Step.run({ key: input.key })!
+  return Second.run({ key: first.value.length })
+})
+`,
+      message: "Action flows/orders.sm#Second input cannot project length from durable string"
+    },
+    {
+      name: "a signal payload",
+      source: `
+import { durable, Action, waitSignal } from "smithers:flows"
+class Step extends Action<(input: { key: number }) => Result<{ value: string }, Error>> {}
+export const Build = durable((input: { key: string }) => {
+  const ticket = waitSignal<{ token: string }>("build.approval")
+  return Step.run({ key: ticket.token.length })
+})
+`,
+      message: "Action flows/orders.sm#Step input cannot project length from durable string"
+    },
+    {
+      name: "an Action input inside a branch arm",
+      source: `
+import { durable, Action } from "smithers:flows"
+class Step extends Action<(input: { key: number }) => Result<{ value: string }, Error>> {}
+export const Build = durable((input: { flag: boolean; items: readonly string[]; n: number }) => {
+  return input.flag ? Step.run({ key: input.items.length }) : Step.run({ key: input.n })
+})
+`,
+      message: "Action flows/orders.sm#Step input cannot project length from durable array"
+    },
+    {
+      name: "a sequential argument",
+      source: `
+import { durable, Action, sequential } from "smithers:flows"
+class Step extends Action<(input: { key: number }) => Result<{ value: string }, Error>> {}
+class Second extends Action<(input: { key: string }) => Result<{ done: string }, Error>> {}
+export const Build = durable((input: { items: readonly string[]; text: string }) => {
+  const pair = sequential(Step.run({ key: input.items.length }), Second.run({ key: input.text }))
+  return { pair }
+})
+`,
+      message: "Action flows/orders.sm#Step input cannot project length from durable array"
+    },
+    {
+      // `loopWhile`'s initial state is a Plan value too. This one was ALREADY
+      // refused before the node walk, by the OUTPUT walk, because the loop
+      // node's descriptor joins the initial state into the Flow's output — and
+      // the output-first ordering is what keeps its sentence unchanged.
+      name: "a loopWhile initial state",
+      source: `
+import { durable, Action, loopWhile } from "smithers:flows"
+class Step extends Action<(input: { n: number }) => Result<{ n: number }, Error>> {}
+export const Build = durable((input: { items: readonly string[] }) => {
+  const final = loopWhile({ n: input.items.length }, (state) => state.n > 0, (state) => Step.run({ n: state.n }), 4)
+  return { final }
+})
+`,
+      message: "Flow output cannot project length from durable array"
+    }
+  ]
+  // `fanOut` items has no cell: its expression must type as an array, and every
+  // projection a durable descriptor cannot answer types as something else, so
+  // TypeScript refuses first (measured: SMITHERS4100, "Argument of type
+  // 'undefined' is not assignable to parameter of type 'readonly unknown[]'").
+  // The position IS walked — the digest pin below is the evidence — but no
+  // authored program can reach a defect in it.
+  for (const probe of reuse) {
+    const compiled = compileDurableSource(probe.source, { fileName: "flows/orders.sm" })
+    if (compiled.ok) throw new Error(`${probe.name}: the defect must be refused`)
+    expect(compiled.diagnostics[0].code, probe.name).toBe("SMITHERS4110")
+    expect(compiled.diagnostics[0].message, probe.name).toBe(
+      `durable Flow boundary is not structurally encodable: ${probe.message}`
+    )
+  }
+
+  // A defect in an Action input outranks the legacy weak-contract excuse in
+  // exactly the way one in the output does. Without the cause split reaching
+  // the node walk, the legacy artifact below would swallow it and this Flow
+  // would compile with `json-value` and no diagnostic.
+  const legacy = compileRepresentative(`
+import { durable, Action } from "smithers:flows"
+import { Compile } from "test:source-actions"
+class Package extends Action<(input: { code: number }) => Result<{ artifact: string }, Error>> {}
+export const Build = durable(function Build(input: { source: string; items: readonly string[] }) {
+  const compiled = Compile.run({ source: input.source })!
+  return Package.run({ code: input.items.length })
+})
+`)
+  if (legacy.ok) throw new Error("a defect must outrank a legacy artifact on the input path too")
+  expect(legacy.diagnostics[0].code).toBe("SMITHERS4110")
+  expect(legacy.diagnostics[0].message).toContain(
+    "Action flows/build.sm.ts#Package input cannot project length from durable array"
+  )
+})
+
+test("a Flow with defects in both its output and a node input still names the output's", () => {
+  // The one place this addition could have changed an answer for a program that
+  // ALREADY refused. `flowSchemas` searches the output's failures before any
+  // node's, so a program that refused before the node walk existed keeps its
+  // exact sentence; the addition is strictly narrowing.
+  const compiled = compileDurableSource(`
+import { durable, Action } from "smithers:flows"
+class Step extends Action<(input: { key: number }) => Result<{ value: string }, Error>> {}
+export const Build = durable((input: { items: readonly string[]; text: string }) => {
+  const first = Step.run({ key: input.items.length })!
+  return { v: first.value, n: input.text.length }
+})
+`, { fileName: "flows/orders.sm" })
+  if (compiled.ok) throw new Error("both defects must refuse the Flow")
+  expect(compiled.diagnostics[0].code).toBe("SMITHERS4110")
+  expect(compiled.diagnostics[0].message).toBe(
+    "durable Flow boundary is not structurally encodable: Flow output cannot project length from durable string"
+  )
+})
+
+test("a node input that reads a legacy Action's success keeps the Flow's structural output contract", () => {
+  // The over-correction this repair could ship. The node walk records the SAME
+  // `non-structural` cause the output walk does — that reuse is the point — so
+  // merging the two failure lists would let a legacy leg reached only through an
+  // Action's INPUT push a Flow whose OUTPUT is perfectly structural onto
+  // `derivedSchema("success")`, changing its emitted schema and its Plan digest
+  // for no authoring reason. The lists are kept apart, and this is the program
+  // that says so: its digest was measured before the node walk existed.
+  const compiled = compileRepresentative(`
+import { durable, Action } from "smithers:flows"
+import { Compile } from "test:source-actions"
+class Package extends Action<(input: { code: string }) => Result<{ artifact: string }, Error>> {}
+export const Build = durable(function Build(input: { source: string }) {
+  const compiled = Compile.run({ source: input.source })!
+  return Package.run({ code: compiled.code })
+})
+`)
+  if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
+  expect(compiled.plan.flowSchemas?.success.shape).toBe("structural")
+})
+
+test("every legitimate Action input still compiles to the same Plan bytes, and still runs", async () => {
+  // Digests measured against a byte-identical copy of the compiler from before
+  // the node-input walk existed. The walk derives a descriptor to answer one
+  // question and then discards it: no emitted schema, contract digest or Plan
+  // byte may move.
+  const pinned: readonly { readonly name: string; readonly source: string; readonly digest: string }[] = [
+    {
+      name: "an Action input reading a prior Action success",
+      source: `
+import { durable, Action } from "smithers:flows"
+class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+class Second extends Action<(input: { key: string }) => Result<{ done: string }, Error>> {}
+export const Build = durable((input: { key: string }) => {
+  const first = Step.run({ key: input.key })!
+  return Second.run({ key: first.value })
+})
+`,
+      digest: "f900ebbebd87b61a970665937b2b4272b13b4773ff584799bfa58dafa0a4863c"
+    },
+    {
+      name: "an Action input reading a signal payload",
+      source: `
+import { durable, Action, waitSignal } from "smithers:flows"
+class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+export const Build = durable((input: { key: string }) => {
+  const ticket = waitSignal<{ token: string }>("build.approval")
+  return Step.run({ key: ticket.token })
+})
+`,
+      digest: "bfb879fd3ed4259efd6feddf0f028bd596e2043d95ba3337bd499f7ff325d799"
+    },
+    {
+      name: "Action inputs inside both branch arms",
+      source: `
+import { durable, Action } from "smithers:flows"
+class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+export const Build = durable((input: { flag: boolean; key: string; other: string }) => {
+  return input.flag ? Step.run({ key: input.key }) : Step.run({ key: input.other })
+})
+`,
+      digest: "883bf09f8b2fadea84b677ee184e44741d728b4a63ec21ceab64f9fc1cca4122"
+    },
+    {
+      name: "a literal sleep duration beside an Action input",
+      source: `
+import { durable, Action, sleep } from "smithers:flows"
+class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+export const Build = durable((input: { key: string }) => {
+  sleep(25)
+  return Step.run({ key: input.key })
+})
+`,
+      digest: "1dcc4d9d124778a1b95a3ebc6ccf8f8378fa7a9b137da8ee14411d1e728bed9b"
+    },
+    {
+      name: "an Action input holding a nested object and an array literal",
+      source: `
+import { durable, Action } from "smithers:flows"
+class Step extends Action<(input: { outer: { key: string }; keys: readonly string[] }) => Result<{ value: string }, Error>> {}
+export const Build = durable((input: { a: string; b: string }) => {
+  return Step.run({ outer: { key: input.a }, keys: [input.a, input.b] })
+})
+`,
+      digest: "9c096b5cf643eb8611aaac6fc41a13e37eeae3e43e6edb045b81b41d4102da6e"
+    },
+    {
+      name: "a fanOut whose items project the Flow input",
+      source: `
+import { durable, Action, fanOut } from "smithers:flows"
+class Step extends Action<(input: { source: string }) => Result<{ code: string }, Error>> {}
+export const Build = durable((input: { items: readonly string[] }) => {
+  const seen = fanOut(input.items, (item) => item, (item) => Step.run({ source: item }))
+  return { seen }
+})
+`,
+      digest: "866cb8267e180519950e0fabcae9e3c1e7cc7b3c4cbfcd13544d7baecaad52e6"
+    },
+    {
+      name: "a loopWhile whose initial state projects the Flow input",
+      source: `
+import { durable, Action, loopWhile } from "smithers:flows"
+class Step extends Action<(input: { source: string }) => Result<{ source: string }, Error>> {}
+export const Build = durable((input: { source: string }) => {
+  const final = loopWhile({ source: input.source }, (state) => state.source !== "", (state) => Step.run({ source: state.source }), 4)
+  return { final }
+})
+`,
+      digest: "38cb12087704c6c8eefa59ab147322983c931d84adace80f21440aadc7ee82c7"
+    }
+  ]
+
+  for (const probe of pinned) {
+    const compiled = compileDurableSource(probe.source, { fileName: "flows/orders.sm" })
+    if (!compiled.ok) throw new Error(`${probe.name}: ${JSON.stringify(compiled.diagnostics)}`)
+    expect(compiled.plan.flowSchemas?.success.shape, probe.name).toBe("structural")
+    expect(compiled.plan.digest, probe.name).toBe(probe.digest)
+  }
+
+  // And the accepted Flow is not merely compiled — it executes, with the
+  // Action's input evaluated through the same `pathValue` that faulted before.
+  const executable = compileDurableSource(`
+import { durable, Action } from "smithers:flows"
+class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+export const Build = durable((input: { items: readonly string[]; obj: { a: string } }) => {
+  return Step.run({ key: input.obj.a })
+})
+`, { fileName: "flows/orders.sm" })
+  if (!executable.ok) throw new Error(JSON.stringify(executable.diagnostics))
+  const descriptor = executable.plan.actions[0]
+  const StepLive = Provider.provide(
+    { descriptor } as never,
+    ((value: { key: string }) => ({ value: `ran:${value.key}` })) as never,
+    { implementationId: "node-input-live", implementationVersion: "1" }
+  )
+  const deployment = Deployment.build({
+    id: "node-input-executable",
+    flow: executable.flow,
+    pools: [Worker.pool("node-input-worker", { target: "typescript-bun", providers: [StepLive] })]
+  })
+  const store = new DurableStore()
+  try {
+    expect(await new DurableExecutor(deployment, store).execute(
+      { items: ["a"], obj: { a: "hello" } },
+      { executionId: "node-input-executable" }
+    )).toEqual({ value: "ran:hello" })
+  } finally {
+    store.close()
+  }
+})

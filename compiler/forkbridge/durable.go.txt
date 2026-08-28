@@ -591,6 +591,17 @@ func (d *durableFunctionLowerer) lowerFunction(function *ast.Node) (durableValue
 	if !returned {
 		return d.fail(body, "4109", "durable source function must return a value")
 	}
+	// The output expression is complete here, and so are `d.nodes`, `d.actions`
+	// and `d.inputSchema` — everything the projection check reads. It runs for
+	// EVERY Flow, not only for the ones whose success schema stays the legacy
+	// stub: the structural derivation above answers a different question (can
+	// the return expression's TypeScript TYPE be encoded) and says nothing about
+	// whether the Plan's own paths can be walked. It covers the output AND every
+	// value a Plan node consumes; an Action input is the position that compiled
+	// and ran with an unsatisfiable projection until this covered it.
+	if !d.checkFlowBoundary(function, output) {
+		return durableValue{}, false
+	}
 	return output, true
 }
 
@@ -1305,6 +1316,442 @@ func durableCanonicalUnion(variants []any) any {
 		return ordered[0]
 	}
 	return map[string]any{"kind": "union", "variants": ordered}
+}
+
+// ---------------------------------------------------------------------------
+// Flow output projection check
+// ---------------------------------------------------------------------------
+//
+// `project` above builds Plan IR: it appends a path component to an `input` or
+// `node` expression whenever the authored source reads a member of one. It does
+// NOT check the component against the durable descriptor the value actually
+// carries, and nothing downstream did either — so
+//
+//	return { count: input.items.length }
+//
+// lowered to `{"kind":"input","path":["items","length"]}`, compiled clean, and
+// ran. `.length` is the sharpest spelling of the hole: TypeScript accepts it on
+// an array, so no stock diagnostic fires, the durable input descriptor has no
+// such field, and the engine's `pathValue` refuses a non-numeric part on an
+// array with a runtime ProjectionDefect. A compile-time-knowable error became a
+// runtime fault, silently.
+//
+// This walk is the reference frontend's `flowSuccessDescriptor`
+// (poc/src/durable/source-compiler.ts) ported to the Plan IR this bridge builds.
+// It derives the descriptor the Flow output WOULD carry and reports every
+// projection that descriptor cannot answer, at the same code (SMITHERS4110),
+// the same position (the durable source function), and with the same sentence
+// as the reference, so a conformance case can declare one text for both
+// backends.
+//
+// It is a CHECK ONLY. `plan()` still emits exactly the schemas it emitted
+// before — `durableLegacySchema("success")` whenever the Flow uses an Action,
+// and the return expression's own TypeScript type otherwise. Every program that
+// still compiles keeps a byte-identical Plan digest; the derived descriptor is
+// discarded once it has answered the question.
+//
+// ON THE CAUSE SPLIT THE REFERENCE NEEDED, AND WHY THIS BRIDGE DOES NOT.
+// The reference has to tell two failures apart, because a legacy `Action.define`
+// artifact reaches it through `smithers plan --bindings` carrying a success
+// schema with no descriptor at all: a walk that reads one has learned nothing
+// about the authored Flow, and refusing there would break every descriptor
+// minted before schema derivation existed. So its `fail` takes a cause, a
+// `non-structural` cause may be swallowed into the weaker contract, and a
+// `defect` may not.
+//
+// This bridge has no such artifact. Every Action it lowers is a same-file class
+// whose success descriptor `actionFor` derives structurally, and a declaration
+// whose success type is NOT structurally encodable is refused outright there
+// (SMITHERS4113) rather than admitted with a weaker contract. `fanOut`,
+// `loopWhile`, `dequeue`, `waitBroadcast` and child Flows — the reference's
+// other three non-structural sites — are refused wholesale by this subset. So
+// every failure this walk can record is a defect, measured rather than assumed,
+// and the split would be an enum with one member and an untestable branch.
+//
+// What DOES transfer is the reason the reference stopped aborting on the first
+// failure: the walk keeps going, records every failure, and the diagnostic is
+// the first one in a DETERMINISTIC traversal order. Aborting early is not what
+// makes that wrong here — with one cause, first-failure and first-defect name
+// the same failure. Unordered traversal is. Go randomizes `map` iteration, so a
+// walk that visited an output object's fields in map order would report a
+// different sentence on different runs of the same compiler over the same
+// source. `flowOutputDescriptor` sorts field names with `sortUTF16`, which is
+// the ordering the reference's `Object.keys(...).sort()` produces, so the two
+// implementations also choose the SAME failure to report.
+//
+// A future lane that gives this bridge a binding surface for externally
+// supplied Action descriptors must add the cause back before it adds the weaker
+// contract: swallowing on "this Flow contains a legacy Action" is precisely the
+// fail-open the reference closed.
+
+// durableUnknownDescriptor stands in for a descriptor the walk could not derive.
+//
+// It is a distinct Go type rather than a sentinel value, so "is this the
+// placeholder" is a type assertion and cannot be confused with any real
+// descriptor. The reference's equivalent is a frozen `{ kind: "null" }` compared
+// by object identity, and its own notes record that the guard keeping it out of
+// a union is unverifiable there because it serializes exactly like a real `null`
+// descriptor. Here it serializes like nothing at all: `durableWriteCanonical`
+// panics on an unknown type, so `durableJoinDescriptors`' guard and the
+// composite poisoning below are both load-bearing and mutation-visible rather
+// than belt-and-braces.
+//
+// The invariant that makes that safe: this value NEVER nests inside a composite
+// descriptor. `flowOutputDescriptor` collapses an object or tuple with any
+// unknown part to the unknown descriptor itself, and `durableJoinDescriptors`
+// and `durableProjectDescriptor` both short-circuit on it before any canonical
+// JSON is written. It can never reach a Plan either, because a walk that records
+// a failure refuses the Flow.
+type durableUnknownDescriptor struct{}
+
+func durableIsUnknownDescriptor(descriptor any) bool {
+	_, unknown := descriptor.(durableUnknownDescriptor)
+	return unknown
+}
+
+// durableOutputFail records one failure and yields the placeholder so the walk
+// can continue instead of aborting at the first one.
+type durableOutputFail func(message string) any
+
+// durableDescriptorIndexKey is the reference's `^(0|[1-9][0-9]*)$`: the only
+// projection spellings a tuple or array descriptor can answer.
+func durableDescriptorIndexKey(key string) bool {
+	if key == "0" {
+		return true
+	}
+	if key == "" || key[0] < '1' || key[0] > '9' {
+		return false
+	}
+	for index := 1; index < len(key); index++ {
+		if key[index] < '0' || key[index] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// durableJoinDescriptors is `durableCanonicalUnion` that keeps an unknown leg
+// unknown instead of folding it into a variant. Losing this guard would send the
+// placeholder into `durableCanonicalJSON`.
+func durableJoinDescriptors(variants []any) any {
+	for _, variant := range variants {
+		if durableIsUnknownDescriptor(variant) {
+			return durableUnknownDescriptor{}
+		}
+	}
+	return durableCanonicalUnion(variants)
+}
+
+// durableProjectDescriptor answers one Plan IR path against a durable
+// descriptor, recording a failure for every component the descriptor cannot
+// answer. Ported from the reference's `projectDescriptor`, message for message.
+func durableProjectDescriptor(descriptor any, path []any, fail durableOutputFail) any {
+	if durableIsUnknownDescriptor(descriptor) {
+		return descriptor
+	}
+	if len(path) == 0 {
+		return descriptor
+	}
+	record, isRecord := descriptor.(map[string]any)
+	if !isRecord {
+		// Defensive: every descriptor this walk reads is built by
+		// `durableTypeDescriptor` or by the walk itself, and both produce
+		// records. A nil here would be a compiler defect, not an authoring one.
+		return fail("projects through a value with no durable descriptor")
+	}
+	kind, _ := record["kind"].(string)
+	if kind == "union" {
+		variants, _ := record["variants"].([]any)
+		projected := make([]any, 0, len(variants))
+		for _, variant := range variants {
+			projected = append(projected, durableProjectDescriptor(variant, path, fail))
+		}
+		return durableJoinDescriptors(projected)
+	}
+	head, _ := path[0].(string)
+	tail := path[1:]
+	switch kind {
+	case "object":
+		fields, _ := record["fields"].([]any)
+		for _, item := range fields {
+			field, _ := item.(map[string]any)
+			if field == nil {
+				continue
+			}
+			if name, _ := field["name"].(string); name == head {
+				return durableProjectDescriptor(field["value"], tail, fail)
+			}
+		}
+		return fail("projects missing durable field " + head)
+	case "tuple":
+		if durableDescriptorIndexKey(head) {
+			items, _ := record["items"].([]any)
+			index, err := strconv.Atoi(head)
+			if err != nil || index >= len(items) {
+				return fail("projects missing durable tuple index " + head)
+			}
+			return durableProjectDescriptor(items[index], tail, fail)
+		}
+	case "array":
+		if durableDescriptorIndexKey(head) {
+			return durableProjectDescriptor(record["element"], tail, fail)
+		}
+	}
+	return fail("cannot project " + head + " from durable " + kind)
+}
+
+// durableFindNode resolves one Plan node id, descending into branch arms: an
+// arm's own output references nodes that live inside that arm's node list, not
+// in the Flow's top-level one.
+func durableFindNode(nodes []any, id string) map[string]any {
+	for _, item := range nodes {
+		node, _ := item.(map[string]any)
+		if node == nil {
+			continue
+		}
+		if candidate, _ := node["id"].(string); candidate == id {
+			return node
+		}
+		if kind, _ := node["kind"].(string); kind != "branch" {
+			continue
+		}
+		for _, arm := range []string{"whenTrue", "whenFalse"} {
+			fragment, _ := node[arm].(map[string]any)
+			if fragment == nil {
+				continue
+			}
+			nested, _ := fragment["nodes"].([]any)
+			if found := durableFindNode(nested, id); found != nil {
+				return found
+			}
+		}
+	}
+	return nil
+}
+
+// durableSchemaDescriptor reads the structural descriptor out of one durable
+// schema, reporting absence rather than assuming it.
+func durableSchemaDescriptor(schema map[string]any) (any, bool) {
+	if schema == nil {
+		return nil, false
+	}
+	if shape, _ := schema["shape"].(string); shape != "structural" {
+		return nil, false
+	}
+	descriptor, present := schema["descriptor"]
+	return descriptor, present
+}
+
+// flowNodeDescriptor derives the descriptor one Plan node's value carries, then
+// answers the projection path recorded against it.
+func (d *durableFunctionLowerer) flowNodeDescriptor(expression map[string]any, fail durableOutputFail) any {
+	nodeID, _ := expression["nodeId"].(string)
+	path, _ := expression["path"].([]any)
+	node := durableFindNode(d.nodes, nodeID)
+	if node == nil {
+		return fail("references node " + nodeID + ", which this Plan does not declare")
+	}
+	kind, _ := node["kind"].(string)
+	switch kind {
+	case "action":
+		actionID, _ := node["actionId"].(string)
+		action, declared := d.actions[actionID]
+		if !declared {
+			return fail("references Action " + actionID + ", which this Plan does not declare")
+		}
+		successSchema, _ := action.descriptor["successSchema"].(map[string]any)
+		descriptor, structural := durableSchemaDescriptor(successSchema)
+		if !structural {
+			// Unreachable today: `actionFor` mints every success schema with
+			// `durableStructuralSchema` and refuses a success type it cannot
+			// describe. Kept because it is the one site a binding surface would
+			// make reachable, and it must fail closed until the cause split
+			// above is put back with it.
+			return fail("references an Action without a structural success descriptor")
+		}
+		return durableProjectDescriptor(descriptor, path, fail)
+	case "branch":
+		whenTrue, _ := node["whenTrue"].(map[string]any)
+		whenFalse, _ := node["whenFalse"].(map[string]any)
+		joined := durableJoinDescriptors([]any{
+			d.flowOutputDescriptor(whenTrue["output"], fail),
+			d.flowOutputDescriptor(whenFalse["output"], fail),
+		})
+		return durableProjectDescriptor(joined, path, fail)
+	case "timer":
+		// `sleep(...)` completes with no value; the reference derives the same
+		// `null` descriptor for a timer node.
+		return durableProjectDescriptor(map[string]any{"kind": "null"}, path, fail)
+	case "signal":
+		payloadSchema, _ := node["payloadSchema"].(map[string]any)
+		descriptor, structural := durableSchemaDescriptor(payloadSchema)
+		if !structural {
+			return fail("references a signal without a structural payload descriptor")
+		}
+		return durableProjectDescriptor(descriptor, path, fail)
+	}
+	return fail("references a node without a supported success descriptor")
+}
+
+// flowOutputDescriptor derives the descriptor one Plan value expression carries.
+func (d *durableFunctionLowerer) flowOutputDescriptor(value any, fail durableOutputFail) any {
+	record, isRecord := value.(map[string]any)
+	if !isRecord {
+		return fail("holds a value expression with no durable descriptor")
+	}
+	kind, _ := record["kind"].(string)
+	switch kind {
+	case "literal":
+		return map[string]any{"kind": "literal", "value": record["value"]}
+	case "input":
+		path, _ := record["path"].([]any)
+		descriptor, structural := durableSchemaDescriptor(d.inputSchema)
+		if !structural {
+			return fail("reads a Flow input with no structural descriptor")
+		}
+		return durableProjectDescriptor(descriptor, path, fail)
+	case "node":
+		return d.flowNodeDescriptor(record, fail)
+	case "object":
+		fields, _ := record["fields"].(map[string]any)
+		// Sorted, not map order: see the note above. Go randomizes `map`
+		// iteration, so an unsorted walk would report a different one of several
+		// defective fields on different runs of the same compiler.
+		names := make([]string, 0, len(fields))
+		for name := range fields {
+			names = append(names, name)
+		}
+		sortUTF16(names)
+		derived := make([]any, 0, len(names))
+		unknown := false
+		for _, name := range names {
+			// Every field is walked even after one is unknown, so a defect in a
+			// later field is still recorded rather than masked by an earlier one.
+			field := d.flowOutputDescriptor(fields[name], fail)
+			if durableIsUnknownDescriptor(field) {
+				unknown = true
+				continue
+			}
+			derived = append(derived, map[string]any{"name": name, "optional": false, "value": field})
+		}
+		if unknown {
+			return durableUnknownDescriptor{}
+		}
+		return map[string]any{"fields": derived, "kind": "object"}
+	case "array":
+		items, _ := record["items"].([]any)
+		derived := make([]any, 0, len(items))
+		unknown := false
+		for _, item := range items {
+			element := d.flowOutputDescriptor(item, fail)
+			if durableIsUnknownDescriptor(element) {
+				unknown = true
+				continue
+			}
+			derived = append(derived, element)
+		}
+		if unknown {
+			return durableUnknownDescriptor{}
+		}
+		return map[string]any{"items": derived, "kind": "tuple"}
+	}
+	return fail("holds an unsupported durable value expression")
+}
+
+// durablePlanValue is one value a Plan NODE consumes, paired with the subject a
+// diagnostic about it names.
+type durablePlanValue struct {
+	subject string
+	value   any
+}
+
+// durablePlanNodeValues collects every value a Plan node consumes, in a
+// deterministic order: node order (which is source order, because nodes are
+// appended as they lower), and `whenTrue` before `whenFalse` inside a branch.
+//
+// The Flow OUTPUT is deliberately absent: it is walked separately because its
+// descriptor is the Flow's success contract, while these are derived only to be
+// discarded.
+//
+// This exists because the projection rule was half a rule. The output walk
+// refuses `return { count: input.items.length }`, but `Step.run({ key:
+// input.items.length })` reached no descriptor at all: the Plan carried
+// `{"kind":"input","path":["items","length"]}` into the Action's input and the
+// reference runtime's `pathValue` faulted on it with a `ProjectionDefect`. Same
+// expression language, same descriptors, same question — so the same walk
+// answers it, rather than a second walk that learns a shape this one does not.
+func durablePlanNodeValues(nodes []any) []durablePlanValue {
+	values := make([]durablePlanValue, 0, len(nodes))
+	var visit func(fragmentNodes []any)
+	visit = func(fragmentNodes []any) {
+		for _, item := range fragmentNodes {
+			node, _ := item.(map[string]any)
+			if node == nil {
+				continue
+			}
+			kind, _ := node["kind"].(string)
+			switch kind {
+			case "action":
+				actionID, _ := node["actionId"].(string)
+				values = append(values, durablePlanValue{subject: "Action " + actionID + " input", value: node["input"]})
+			case "timer":
+				values = append(values, durablePlanValue{subject: "sleep duration", value: node["durationMs"]})
+			case "branch":
+				values = append(values, durablePlanValue{subject: "branch condition", value: node["condition"]})
+				for _, arm := range []string{"whenTrue", "whenFalse"} {
+					fragment, _ := node[arm].(map[string]any)
+					if fragment == nil {
+						continue
+					}
+					nested, _ := fragment["nodes"].([]any)
+					visit(nested)
+				}
+			case "signal":
+				// A suspension consumes no Plan value; its payload schema is the
+				// contract and is already pinned into the node's identity.
+			default:
+				// Fail closed. This subset mints exactly `action`, `branch`,
+				// `timer` and `signal`; a fifth kind added without extending
+				// this switch would otherwise reopen the hole silently, which is
+				// how the Action-input case survived the output check.
+				values = append(values, durablePlanValue{
+					subject: "Plan node of kind " + kind,
+					value:   nil,
+				})
+			}
+		}
+	}
+	visit(nodes)
+	return values
+}
+
+// checkFlowBoundary refuses a Flow that reads something its own durable
+// descriptors cannot answer — in its output, and in every value one of its Plan
+// nodes consumes. Reported at the durable source function, which is where the
+// reference reports it, so both backends name one position.
+//
+// Output failures are collected first and named first, deliberately: every
+// program that refuses today refuses on an output failure and must keep its
+// exact sentence. The node-value walk is strictly narrowing — only a Flow whose
+// output is clean can newly refuse — so no already-refused program changes its
+// answer.
+func (d *durableFunctionLowerer) checkFlowBoundary(function *ast.Node, output durableValue) bool {
+	failures := make([]string, 0, 1)
+	walk := func(value any, subject string) {
+		d.flowOutputDescriptor(value, func(reason string) any {
+			failures = append(failures, subject+" "+reason)
+			return durableUnknownDescriptor{}
+		})
+	}
+	walk(output.ir, "Flow output")
+	for _, entry := range durablePlanNodeValues(d.nodes) {
+		walk(entry.value, entry.subject)
+	}
+	if len(failures) == 0 {
+		return true
+	}
+	d.fail(function, "4110", "durable Flow boundary is not structurally encodable: "+failures[0])
+	return false
 }
 
 func (d *durableFunctionLowerer) isChildFlowRun(node *ast.Node) bool {
