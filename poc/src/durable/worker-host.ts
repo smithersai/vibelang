@@ -323,6 +323,13 @@ export const startWorkerHost = async (options: StartWorkerHostOptions): Promise<
    * hand neither, which made the gate's pre-start cancellation check dead code
    * here and let a dispatch keep running after the coordinator had closed the
    * connection and moved on.
+   *
+   * A duplicate request that JOINS an in-flight execution therefore shares the
+   * first client's channel: if that client disconnects, both are answered with
+   * the cancellation, and the cancelled exit is what this identity commits. That
+   * is deliberate and fail-closed — a coordinator retry always carries a fresh
+   * fencing token and is therefore a different invocation identity, so the worst
+   * case is one extra attempt, never a lost or duplicated result.
    */
   const handleInvoke = async (bodyBytes: Uint8Array, signal: AbortSignal): Promise<JsonValue> => {
     let invocationValue: unknown
