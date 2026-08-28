@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import {
   Action,
+  compileActionContract,
   compileDurableSource,
   CoordinatorCrash,
   Deployment,
@@ -228,6 +229,88 @@ test("a manifest-only migration re-routes uncommitted work while the Plan stays 
     expect(await executor.resume("run-manifest", { deadline: Date.now() + 30_000 }).result())
       .toEqual({ label: "hotfix:42" })
     expect(after.calls.first).toBe(0)
+    store.close()
+  })
+})
+
+/**
+ * The test above replaces the coordinator, so it never exercises the case
+ * fencing exists for: a coordinator that is STILL LIVE on the superseded
+ * deployment. This one keeps the old coordinator running and applies the
+ * migration underneath it, at the instant a node success commits — no node is
+ * `running`, so nothing is attempt-fenced and the old coordinator resumes
+ * mid-Flow holding the superseded deployment.
+ *
+ * A manifest-only migration leaves `plan_digest` untouched, so a fence keyed on
+ * the Plan digest alone admits the old coordinator: it claims the remaining
+ * node, runs the superseded implementation, policy, and capability grants, and
+ * commits a terminal outcome for an execution the operator has migrated away
+ * from it. The pinned identity has to be the whole deployment.
+ */
+test("a still-live coordinator is fenced by a manifest-only migration", async () => {
+  await temporaryDatabase(async (filename) => {
+    const before = fixture({
+      id: "live-before",
+      second: SecondV1,
+      implementationVersion: "1",
+      label: "OLD-IMPL"
+    })
+    const after = fixture({
+      id: "live-after",
+      second: SecondV1,
+      implementationVersion: "9",
+      label: "NEW-IMPL"
+    })
+    expect(after.deployment.flow.plan.digest).toBe(before.deployment.flow.plan.digest)
+    expect(after.deployment.manifest.digest).not.toBe(before.deployment.manifest.digest)
+
+    const store = new DurableStore(filename)
+    const migrator = new DurableExecutor(after.deployment, store)
+    let applied: ReturnType<DurableExecutor<never, never>["migrate"]> | undefined
+    const migrateOnFirstCommit = new Proxy(store, {
+      get(target, property) {
+        const value = Reflect.get(target, property, target)
+        if (typeof value !== "function") return value
+        return (...args: unknown[]) => {
+          const result = Reflect.apply(value, target, args)
+          if (applied === undefined && property === "commitSuccess" && result === true) {
+            applied = migrator.migrate("run-live", before.deployment)
+          }
+          return result
+        }
+      }
+    }) as DurableStore
+    const stale = new DurableExecutor(before.deployment, migrateOnFirstCommit)
+    const outcome = await stale.execute({ value: 21 }, {
+      executionId: "run-live",
+      deadline: Date.now() + 30_000
+    }).then(
+      (value): { readonly ok: true; readonly value: unknown } => ({ ok: true, value }),
+      (error: unknown): { readonly ok: false; readonly error: unknown } => ({ ok: false, error })
+    )
+
+    // Nothing was running, so the attempt fence caught nothing: the pinned
+    // deployment identity is the only thing standing between the old
+    // coordinator and this execution.
+    expect(applied).toMatchObject({ applied: true, fencedNodeIds: [], generation: 1 })
+    expect(store.journal("run-live").find((event) => event.type === "execution_migrated")?.payload)
+      .toMatchObject({
+        fromManifestDigest: before.deployment.manifest.digest,
+        toManifestDigest: after.deployment.manifest.digest,
+        fromPlanDigest: before.deployment.flow.plan.digest,
+        toPlanDigest: before.deployment.flow.plan.digest
+      })
+
+    expect(outcome).toMatchObject({ ok: false })
+    if (outcome.ok) throw new Error("unreachable")
+    expect(outcome.error).toBeInstanceOf(ExecutionMigratedError)
+    // Abandoned like a dead process, NOT terminalized: the migrated execution
+    // stays resumable by a coordinator holding the new deployment.
+    expect(store.getExecution("run-live").status).toBe("running")
+    expect(before.calls.second).toBe(0)
+
+    expect(await migrator.resume("run-live", { deadline: Date.now() + 30_000 }).result())
+      .toEqual({ label: "NEW-IMPL:42" })
     store.close()
   })
 })
@@ -487,15 +570,18 @@ test("a migrated execution fences stale coordinators instead of letting them ter
     // writes the terminal, inverse-less `skipped`, and the second writes an
     // absolute wake deadline derived from a Plan this coordinator no longer
     // owns.
-    const stalePlan = before.deployment.flow.plan.digest
+    const stalePinned = {
+      planDigest: before.deployment.flow.plan.digest,
+      manifestDigest: before.deployment.manifest.digest
+    }
     const staleWrites: readonly (readonly [string, () => unknown])[] = [
-      ["claimNode", () => store.claimNode("run-fence", nodeId, "stale-owner", 1000, Date.now(), stalePlan)],
-      ["timeoutNode", () => store.timeoutNode("run-fence", nodeId, "stale", stalePlan)],
-      ["adoptSuccess", () => store.adoptSuccess("run-fence", nodeId, null, "stale", stalePlan)],
-      ["completeExecution", () => store.completeExecution("run-fence", null, stalePlan)],
-      ["failExecution", () => store.failExecution("run-fence", "defect", { name: "X" }, stalePlan)],
-      ["skipNodes", () => store.skipNodes("run-fence", [nodeId], nodeId, "stale-owner", claimed.fencingToken, stalePlan)],
-      ["scheduleTimer", () => store.scheduleTimer("run-fence", nodeId, 60_000, Date.now(), stalePlan)]
+      ["claimNode", () => store.claimNode("run-fence", nodeId, "stale-owner", 1000, Date.now(), stalePinned)],
+      ["timeoutNode", () => store.timeoutNode("run-fence", nodeId, "stale", stalePinned)],
+      ["adoptSuccess", () => store.adoptSuccess("run-fence", nodeId, null, "stale", stalePinned)],
+      ["completeExecution", () => store.completeExecution("run-fence", null, stalePinned)],
+      ["failExecution", () => store.failExecution("run-fence", "defect", { name: "X" }, stalePinned)],
+      ["skipNodes", () => store.skipNodes("run-fence", [nodeId], nodeId, "stale-owner", claimed.fencingToken, stalePinned)],
+      ["scheduleTimer", () => store.scheduleTimer("run-fence", nodeId, 60_000, Date.now(), stalePinned)]
     ]
     for (const [name, write] of staleWrites) {
       expect(() => write(), `${name} must refuse a stale coordinator`).toThrow(ExecutionMigratedError)
@@ -814,15 +900,19 @@ test("an unraced branch still skips its untaken arm, and a lost branch attempt s
     // The skip carries the branch attempt's identity, so an attempt that lost
     // its fence writes nothing rather than terminalizing a live node.
     store.initializeExecution("run-fenced", takesLeft.plan, takesLeft.deployment.manifest, {})
-    const claim = store.claimNode("run-fenced", "n-branch", "owner-1", 60_000, Date.now(), takesLeft.plan.digest)
+    const leftPinned = {
+      planDigest: takesLeft.plan.digest,
+      manifestDigest: takesLeft.deployment.manifest.digest
+    }
+    const claim = store.claimNode("run-fenced", "n-branch", "owner-1", 60_000, Date.now(), leftPinned)
     if (claim.kind !== "claimed") throw new Error("expected a claim")
-    expect(store.skipNodes("run-fenced", ["n-right"], "n-branch", "owner-2", claim.fencingToken, takesLeft.plan.digest))
+    expect(store.skipNodes("run-fenced", ["n-right"], "n-branch", "owner-2", claim.fencingToken, leftPinned))
       .toBe(false)
-    expect(store.skipNodes("run-fenced", ["n-right"], "n-branch", "owner-1", claim.fencingToken + 1, takesLeft.plan.digest))
+    expect(store.skipNodes("run-fenced", ["n-right"], "n-branch", "owner-1", claim.fencingToken + 1, leftPinned))
       .toBe(false)
     expect(store.getNode("run-fenced", "n-right").status).toBe("pending")
     // The live attempt still skips.
-    expect(store.skipNodes("run-fenced", ["n-right"], "n-branch", "owner-1", claim.fencingToken, takesLeft.plan.digest))
+    expect(store.skipNodes("run-fenced", ["n-right"], "n-branch", "owner-1", claim.fencingToken, leftPinned))
       .toBe(true)
     expect(store.getNode("run-fenced", "n-right").status).toBe("skipped")
     store.close()
@@ -974,7 +1064,10 @@ test("a timer's committed wake deadline is durable evidence; an unscheduled time
     const store = new DurableStore(filename)
 
     store.initializeExecution("run-scheduled", long.plan, long.deployment.manifest, {})
-    expect(store.scheduleTimer("run-scheduled", "n-timer", 60_000, 1_000_000, long.plan.digest))
+    expect(store.scheduleTimer("run-scheduled", "n-timer", 60_000, 1_000_000, {
+      planDigest: long.plan.digest,
+      manifestDigest: long.deployment.manifest.digest
+    }))
       .toEqual({ kind: "waiting", wakeAt: 1_060_000, newlyScheduled: true })
     expect(rejectionReason(() => store.migrateExecution("run-scheduled", migration)))
       .toBe("committed-node-semantics-changed")
@@ -983,7 +1076,10 @@ test("a timer's committed wake deadline is durable evidence; an unscheduled time
     // migrates, and the new duration is the one that lands.
     store.initializeExecution("run-unscheduled", long.plan, long.deployment.manifest, {})
     expect(store.migrateExecution("run-unscheduled", migration).applied).toBe(true)
-    expect(store.scheduleTimer("run-unscheduled", "n-timer", 5, 1_000_000, short.plan.digest))
+    expect(store.scheduleTimer("run-unscheduled", "n-timer", 5, 1_000_000, {
+      planDigest: short.plan.digest,
+      manifestDigest: short.deployment.manifest.digest
+    }))
       .toEqual({ kind: "waiting", wakeAt: 1_000_005, newlyScheduled: true })
 
     // ... and an ordinary scheduled timer still runs to completion.
@@ -992,6 +1088,195 @@ test("a timer's committed wake deadline is durable evidence; an unscheduled time
       { executionId: "run-timer", leaseMs: 500 }
     )).toBeNull()
     expect(store.getExecution("run-timer").status).toBe("completed")
+    store.close()
+  })
+})
+
+/**
+ * An attached child Flow migrated out from under a live parent.
+ *
+ * The child's coordinator does exactly the right thing: it is holding the
+ * superseded deployment, so it refuses to commit and throws. That refusal is
+ * not a child FAILURE, and the parent must not read it as one — the parent is
+ * healthy and unmigrated, so it has to abandon its attempt the way it abandons
+ * a dead child process, leaving both executions resumable.
+ *
+ * Recording it as a childFlow terminal exit instead fails the parent, and the
+ * parent's failure then cancels the descendant the operator had just migrated:
+ * the migration is instantly undone by the coordinator that observed it.
+ */
+const childContract = (exportName: string, id: string, version: number, body: string) => {
+  const compiled = compileActionContract(`
+import { Action } from "smithers:flows"
+class ${exportName}Failed extends Error {
+  constructor(readonly code: string) { super(code) }
+}
+export abstract class ${exportName} extends Action<${body}> {}
+`, { fileName: `contracts/migration-${id}.sm`, exportName, id, version })
+  if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
+  return compiled.descriptor
+}
+
+const ChildFirst = Action.fromDescriptor<{ value: number }, { doubled: number }, { code: string }>(
+  childContract(
+    "ChildFirst",
+    "test/migration/ChildFirst",
+    1,
+    "(input: { value: number }) => Result<{ doubled: number }, ChildFirstFailed>"
+  )
+)
+const ChildSecond = Action.fromDescriptor<{ doubled: number }, { label: string }, { code: string }>(
+  childContract(
+    "ChildSecond",
+    "test/migration/ChildSecond",
+    1,
+    "(input: { doubled: number }) => Result<{ label: string }, ChildSecondFailed>"
+  )
+)
+
+const childFlowSource = `
+import { durable } from "smithers:flows"
+import { First, Second } from "test:migration-actions"
+
+throw new Error("the authored child Flow module must never execute")
+
+export const ChildPipeline = durable(function ChildPipeline(input: { value: number }) {
+  const doubled = First.run({ value: input.value })!
+  return Second.run({ doubled: doubled.doubled })
+})
+`
+
+const parentFlowSource = `
+import { durable } from "smithers:flows"
+import { ChildPipeline } from "test:migration-flows"
+
+throw new Error("the authored parent Flow module must never execute")
+
+export const MigrationParent = durable(function MigrationParent(input: { value: number }) {
+  return ChildPipeline.run({ value: input.value })
+})
+`
+
+const compiledChildPlan = (() => {
+  const compiled = compileDurableSource(childFlowSource, {
+    fileName: "flows/migration-child.sm",
+    flowId: "test/migration/ChildPipeline",
+    flowVersion: 1,
+    actions: [
+      { moduleSpecifier: "test:migration-actions", exportName: "First", descriptor: ChildFirst.descriptor },
+      { moduleSpecifier: "test:migration-actions", exportName: "Second", descriptor: ChildSecond.descriptor }
+    ]
+  })
+  if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
+  return compiled.plan
+})()
+
+const compiledParentPlan = (() => {
+  const compiled = compileDurableSource(parentFlowSource, {
+    fileName: "flows/migration-parent.sm",
+    flowId: "test/migration/Parent",
+    flowVersion: 1,
+    actions: [],
+    flows: [{
+      moduleSpecifier: "test:migration-flows",
+      exportName: "ChildPipeline",
+      plan: compiledChildPlan
+    }]
+  })
+  if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
+  return compiled.plan
+})()
+
+/**
+ * Two deployments of the SAME parent and child Plans that differ only in the
+ * child's implementation. A compiled Flow's node ids are content-addressed over
+ * the Action identity at each call site, so any Plan change renames nodes and is
+ * refused as `node-set-changed`: manifest-only is the ONLY migration shape a
+ * Flow with an attached child can ever take.
+ */
+const parentDeploymentFor = (id: string, label: string) => Deployment.build({
+  id,
+  flow: PlanArtifact.load(PlanArtifact.encode(compiledParentPlan)),
+  pools: [Worker.pool("local", {
+    target: "typescript-bun",
+    providers: [
+      Provider.provide(ChildFirst, ({ value }) => ({ doubled: value * 2 }), {
+        implementationId: "migration-child-first",
+        implementationVersion: label,
+        recovery: { mode: "repeatable", maxAttempts: 3 }
+      }),
+      Provider.provide(ChildSecond, ({ doubled }) => ({ label: `${label}:${doubled}` }), {
+        implementationId: "migration-child-second",
+        implementationVersion: label,
+        recovery: { mode: "repeatable", maxAttempts: 3 }
+      })
+    ]
+  })]
+})
+
+test("a migrated attached child abandons its healthy parent instead of terminalizing it", async () => {
+  await temporaryDatabase(async (filename) => {
+    const parentV1 = parentDeploymentFor("child-migrate-before", "v1")
+    const parentV2 = parentDeploymentFor("child-migrate-after", "v2")
+    const childBefore = parentV1.childDeployments.get(compiledChildPlan.digest)
+    const childAfter = parentV2.childDeployments.get(compiledChildPlan.digest)
+    if (childBefore === undefined || childAfter === undefined) {
+      throw new Error("expected both parent deployments to embed their child deployment")
+    }
+    expect(childAfter.manifest.digest).not.toBe(childBefore.manifest.digest)
+
+    const parentNode = parentV1.flow.plan.nodes.find((node: PlanNode) => node.kind === "childFlow")
+    if (parentNode === undefined) throw new Error("expected a childFlow Plan node")
+    const parentId = "run-child-migrate"
+    const childId = `${parentId}::child::${parentNode.id}`
+
+    const store = new DurableStore(filename)
+    const migrator = new DurableExecutor(childAfter, store)
+    // Migrate the CHILD at the instant its first node commits: the child's own
+    // coordinator is still live and now holds the superseded deployment.
+    let applied: { readonly applied: boolean } | undefined
+    const migrateOnFirstCommit = new Proxy(store, {
+      get(target, property) {
+        const value = Reflect.get(target, property, target)
+        if (typeof value !== "function") return value
+        return (...args: unknown[]) => {
+          const result = Reflect.apply(value, target, args)
+          if (applied === undefined && property === "commitSuccess" && result === true) {
+            applied = migrator.migrate(childId, childBefore)
+          }
+          return result
+        }
+      }
+    }) as DurableStore
+
+    const parent = new DurableExecutor(parentV1, migrateOnFirstCommit)
+    const outcome = await parent.execute({ value: 21 }, {
+      executionId: parentId,
+      deadline: Date.now() + 30_000
+    }).then(
+      (value): { readonly ok: true; readonly value: unknown } => ({ ok: true, value }),
+      (error: unknown): { readonly ok: false; readonly error: unknown } => ({ ok: false, error })
+    )
+    expect(applied).toMatchObject({ applied: true })
+
+    expect(outcome).toMatchObject({ ok: false })
+    if (outcome.ok) throw new Error("unreachable")
+    // The child's refusal is not a child FAILURE: the parent abandons its
+    // attempt instead of committing a childFlow terminal exit for it.
+    expect(outcome.error).toBeInstanceOf(ExecutionMigratedError)
+    // Neither execution is terminal: the child the operator just migrated was
+    // NOT cancelled out from under the migration by its own parent.
+    expect(store.getExecution(parentId).status).toBe("running")
+    expect(store.getExecution(childId).status).toBe("running")
+
+    // ... so the operator can finish the rollout they started. The parent is
+    // migrated onto the same new deployment and BOTH executions run to
+    // completion, on work the abandoned attempt left exactly where it was.
+    const resumedParent = new DurableExecutor(parentV2, store)
+    expect(resumedParent.migrate(parentId, parentV1).applied).toBe(true)
+    expect(await resumedParent.resume(parentId, { deadline: Date.now() + 30_000 }).result())
+      .toEqual({ label: "v2:42" })
+    expect(store.getExecution(childId).status).toBe("completed")
     store.close()
   })
 })

@@ -42,7 +42,12 @@ import {
   type SignalDeliveryResult,
   type StoredNodeExit
 } from "./store.ts"
-import { ExecutionMigratedError, planExecutionMigration, type MigrationPlan } from "./migration.ts"
+import {
+  ExecutionMigratedError,
+  planExecutionMigration,
+  type MigrationPlan,
+  type PinnedDeployment
+} from "./migration.ts"
 import { CHILD_EXECUTION_MARKER, contentAdoptionSource, memoAdoptionSource } from "./site-id.ts"
 import { decodeWorkerExit, validateDurableValue, type WorkerExitSurface } from "./schema.ts"
 import {
@@ -179,6 +184,27 @@ const WORKER_EXIT_SURFACE: WorkerExitSurface = {
 
 const delay = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, Math.min(MAX_TIMER_DELAY_MS, Math.max(0, milliseconds))))
+
+/**
+ * The two ways a coordinator loses the right to speak for an execution WITHOUT
+ * the execution being at fault: its process is gone (`CoordinatorCrash`) and
+ * its deployment is gone (`ExecutionMigratedError`). Neither is an outcome, and
+ * every catch that would otherwise turn a thrown value into durable state has
+ * to let both through untouched — a coordinator that abandons leaves the work
+ * exactly as resumable as it found it.
+ *
+ * Treating a migration as an outcome is worse than merely wrong. An attached
+ * child's coordinator refusing to commit is the migration WORKING; recording
+ * that refusal as the child's terminal exit fails the healthy parent, and the
+ * parent's failure then cancels the descendants the operator has just migrated,
+ * so the coordinator that observed the migration is the thing that undoes it.
+ *
+ * This predicate exists so the classification lives in one place: every catch
+ * around a store call that carries {@link DurableExecutor.pinnedDeployment}
+ * asks it, rather than each site re-deciding and one of them forgetting.
+ */
+const isCoordinatorAbandonment = (error: unknown): boolean =>
+  error instanceof CoordinatorCrash || error instanceof ExecutionMigratedError
 
 const cancellationReason = (storedError: JsonValue): JsonValue => {
   if (
@@ -374,19 +400,34 @@ interface RunContext {
 export class DurableExecutor<Input = unknown, Success = unknown> {
   readonly owner = randomUUID()
   /**
-   * The exact Plan this coordinator is authorized to advance. Every mutating
-   * store call carries it — including the two that write durable state without
-   * holding a per-attempt fence of their own, the branch skip (terminal) and
-   * the timer schedule (an absolute wake deadline) — so a coordinator holding a
+   * The exact DEPLOYMENT this coordinator is authorized to advance — the Plan
+   * it would replay and the manifest it would replay it under. Every mutating
+   * store call carries both halves, including the two that write durable state
+   * without holding a per-attempt fence of their own (the branch skip, which is
+   * terminal, and the timer schedule, an absolute wake deadline) and the signal
+   * and queue polls, which consume durable state. So a coordinator holding a
    * superseded deployment cannot claim, materialize, link, skip, schedule,
-   * complete, or fail a migrated execution. The only deliberate exceptions are
-   * `cancelExecution`, where operator intent outranks the pinned Plan, and the
-   * cross-execution producer calls (`enqueue`, `deliverSignal`,
-   * `deliverBroadcast`), which carry the consumer's contract expectation
-   * instead because they are not scoped to this coordinator's Plan.
+   * poll, complete, or fail a migrated execution.
+   *
+   * The manifest half is not decoration. A manifest-only migration leaves the
+   * Plan digest identical and replaces the implementations, routing, policies,
+   * and capability grants this coordinator would run; for any Flow that reaches
+   * the compiler it is also the ONLY migration shape available, because
+   * content-addressed node ids make every Plan change a `node-set-changed`
+   * refusal. A fence on the Plan digest alone admits precisely the coordinator
+   * it exists to exclude.
+   *
+   * The only deliberate exceptions are `cancelExecution`, where operator intent
+   * outranks the pinned deployment, and the cross-execution producer calls
+   * (`enqueue`, `deliverSignal`, `deliverBroadcast`), which carry the
+   * consumer's CONTRACT expectation instead: a producer may live in a different
+   * deployment entirely, so the consumer's manifest is not its to know.
    */
-  private get planDigest(): string {
-    return this.deployment.flow.plan.digest
+  private get pinnedDeployment(): PinnedDeployment {
+    return {
+      planDigest: this.deployment.flow.plan.digest,
+      manifestDigest: this.deployment.manifest.digest
+    }
   }
   private readonly nodes = new Map<string, PlanNode>()
   private readonly routes: Map<string, BuiltDeployment<Input, Success>["manifest"]["routes"][number]>
@@ -549,7 +590,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           message: "Persisted execution deadline exceeded before terminal commit"
         })
       }
-      const finished = this.store.completeExecution(options.executionId, output, this.planDigest)
+      const finished = this.store.completeExecution(options.executionId, output, this.pinnedDeployment)
       if (finished.execution.status === "completed") {
         return checkedFlowSuccess(
           finished.execution.output,
@@ -565,11 +606,10 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         "concurrent Flow failure"
       ))
     } catch (error) {
-      if (error instanceof CoordinatorCrash) throw error // process death leaves the execution resumable
-      // A coordinator that no longer matches the pinned Plan must abandon the
-      // execution exactly like a dead process: it is emphatically NOT entitled
-      // to record a terminal outcome for work it can no longer interpret.
-      if (error instanceof ExecutionMigratedError) throw error
+      // A dead process and a superseded deployment are the same thing here: the
+      // coordinator abandons and is emphatically NOT entitled to record a
+      // terminal outcome for work it can no longer interpret.
+      if (isCoordinatorAbandonment(error)) throw error
       let terminalError = error
       if (error instanceof DurableActionFailure && flowSchemas?.error !== undefined) {
         try {
@@ -589,20 +629,20 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           options.executionId,
           "failure",
           terminalError.failure,
-          this.planDigest
+          this.pinnedDeployment
         )
       } else if (terminalError instanceof DurableActionDefect) {
         finished = this.store.failExecution(
           options.executionId,
           "defect",
           terminalError.defect,
-          this.planDigest
+          this.pinnedDeployment
         )
       } else {
         finished = this.store.failExecution(options.executionId, "defect", {
           name: terminalError instanceof Error ? terminalError.name : "CoordinatorDefect",
           message: terminalError instanceof Error ? terminalError.message : String(terminalError)
-        }, this.planDigest)
+        }, this.pinnedDeployment)
       }
       if (!finished.changed) {
         if (finished.execution.status === "completed") {
@@ -1047,7 +1087,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           node.id,
           this.owner,
           claim.fencingToken,
-          this.planDigest
+          this.pinnedDeployment
         )
         if (!owned) return this.reresolveLostAttempt(node.id, context)
         await Promise.all(chosen.nodes.map((child) => this.resolveNode(child.id, context)))
@@ -1139,10 +1179,10 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           inputDigest: digest(input),
           ...(stepped ? { step: 0 as const } : {})
         })),
-        this.planDigest
+        this.pinnedDeployment
       ).newlyMaterialized
     } catch (error) {
-      if (error instanceof CoordinatorCrash) throw error // process death leaves the fan-out resumable
+      if (isCoordinatorAbandonment(error)) throw error // the fan-out stays resumable
       if (error instanceof DurableActionDefect) throw error
       throw new DurableActionDefect(node.id, {
         name: error instanceof Error ? error.name : "FanOutMaterializationDefect",
@@ -1183,9 +1223,9 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
             step: stepIndex,
             childNodeId: childId,
             inputDigest: digest(input)
-          }, this.planDigest).newlyMaterialized
+          }, this.pinnedDeployment).newlyMaterialized
         } catch (error) {
-          if (error instanceof CoordinatorCrash) throw error // process death leaves the step resumable
+          if (isCoordinatorAbandonment(error)) throw error // the step stays resumable
           if (error instanceof DurableActionDefect) throw error
           throw new DurableActionDefect(node.id, {
             name: error instanceof Error ? error.name : "FanOutStepMaterializationDefect",
@@ -1272,9 +1312,9 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           childNodeId: childId,
           inputDigest: digest(input),
           stateDigest: digest(state)
-        }, this.planDigest).newlyMaterialized
+        }, this.pinnedDeployment).newlyMaterialized
       } catch (error) {
-        if (error instanceof CoordinatorCrash) throw error // process death leaves the round resumable
+        if (isCoordinatorAbandonment(error)) throw error // the round stays resumable
         if (error instanceof DurableActionDefect) throw error
         throw new DurableActionDefect(node.id, {
           name: error instanceof Error ? error.name : "LoopRoundMaterializationDefect",
@@ -1367,10 +1407,13 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         node.id,
         childExecutionId,
         node.planDigest,
-        this.planDigest
+        this.pinnedDeployment
       )
     } catch (error) {
-      if (error instanceof CoordinatorCrash) throw error // process death leaves the parent resumable
+      // Checked before the recorded-exit lookup below: a coordinator that has
+      // just been told its deployment is superseded stops, rather than going on
+      // to interpret a durable exit under a Plan it no longer holds.
+      if (isCoordinatorAbandonment(error)) throw error // the parent stays resumable
       const recorded = this.store.getNode(context.executionId, node.id).exit
       if (recorded !== undefined) return fromStoredExit(node.id, recorded)
       throw new DurableActionDefect(node.id, {
@@ -1394,7 +1437,11 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       })
       exit = { kind: "success", value: output as JsonValue }
     } catch (error) {
-      if (error instanceof CoordinatorCrash) throw error
+      // A migrated child is NOT a failed child. Its coordinator refusing to
+      // commit is the migration working; committing that refusal as this
+      // childFlow node's terminal exit would fail this healthy parent and then
+      // cancel the very child the operator just migrated.
+      if (isCoordinatorAbandonment(error)) throw error
       if (error instanceof DurableActionFailure) {
         exit = { kind: "failure", error: error.failure }
       } else if (error instanceof DurableExecutionAlreadyFailed) {
@@ -1486,7 +1533,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       node.id,
       durationMs,
       Date.now(),
-      this.planDigest
+      this.pinnedDeployment
     )
     if (scheduled.kind === "terminal") return fromStoredExit(node.id, scheduled.exit)
     if (scheduled.newlyScheduled) {
@@ -1502,7 +1549,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           context.executionId,
           node.id,
           `Persisted execution deadline exceeded while waiting for timer ${node.id}`,
-          this.planDigest
+          this.pinnedDeployment
         ))
       }
       if (now >= scheduled.wakeAt) {
@@ -1531,7 +1578,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
   private async resolveQueue(node: QueueNode, context: RunContext): Promise<JsonValue> {
     while (true) {
       const polled = this.store.pollQueue(context.executionId, node.id, {
-        planDigest: this.planDigest,
+        ...this.pinnedDeployment,
         queueId: node.queueId,
         queueContractDigest: node.queueContractDigest
       })
@@ -1548,7 +1595,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           context.executionId,
           node.id,
           `Persisted execution deadline exceeded while waiting on queue ${node.queueId}`,
-          this.planDigest
+          this.pinnedDeployment
         ))
       }
       await this.store.wakeups.wait(
@@ -1564,7 +1611,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
   ): Promise<JsonValue> {
     while (true) {
       const polled = this.store.pollSignal(context.executionId, node.id, {
-        planDigest: this.deployment.flow.plan.digest,
+        ...this.pinnedDeployment,
         signalId: node.signalId,
         signalContractDigest: node.signalContractDigest
       })
@@ -1581,7 +1628,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
           context.executionId,
           node.id,
           `Persisted execution deadline exceeded while waiting for signal ${node.signalId}`,
-          this.planDigest
+          this.pinnedDeployment
         ))
       }
       // Event-driven suspension: the persisted inbox remains the only source
@@ -1617,7 +1664,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
             context.executionId,
             nodeId,
             `Persisted execution deadline exceeded while waiting for ${nodeId}`,
-            this.planDigest
+            this.pinnedDeployment
           )
         }
       }
@@ -1627,7 +1674,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         this.owner,
         context.leaseMs,
         Date.now(),
-        this.planDigest
+        this.pinnedDeployment
       )
       if (claim.kind !== "busy") return claim
       await delay(Math.min(
@@ -2104,7 +2151,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     adoptedFrom: string,
     context: RunContext
   ): Promise<JsonValue> {
-    const adopted = this.store.adoptSuccess(context.executionId, node.id, value, adoptedFrom, this.planDigest)
+    const adopted = this.store.adoptSuccess(context.executionId, node.id, value, adoptedFrom, this.pinnedDeployment)
     if (!adopted) {
       const winner = this.store.getNode(context.executionId, node.id).exit
       if (winner !== undefined) return this.fromActionStoredExit(node, winner)

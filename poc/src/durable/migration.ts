@@ -48,23 +48,77 @@ export class MigrationRejectedError extends Error {
 }
 
 /**
+ * The identity of exactly one deployment: the Plan a coordinator would replay
+ * and the manifest it would replay it under. This — not the Plan digest alone —
+ * is what an execution is pinned to, and what every fence compares.
+ *
+ * BOTH halves are load-bearing. A manifest-only migration (a hotfixed
+ * implementation, a re-routed pool, a changed policy or capability grant)
+ * leaves `planDigest` byte-identical while replacing everything the coordinator
+ * would actually run. It is also not an exotic case: a compiled Plan's node ids
+ * are content-addressed over each call site's Action identity, so ANY Plan
+ * change renames nodes and `assertNodeMigrationCompatible` refuses it as
+ * `node-set-changed`. For every Flow that reaches the compiler — which is every
+ * Flow with an attached child — manifest-only is the only migration shape that
+ * exists.
+ *
+ * The alternative of fencing on `plan_generation` was rejected: the counter
+ * orders migrations OF ONE EXECUTION and says nothing about which deployment a
+ * coordinator holds, so it cannot detect the generation-0 case this fence has
+ * always also been responsible for — a coordinator addressing an execution
+ * pinned to a deployment it does not hold and that was never migrated at all.
+ */
+export interface PinnedDeployment {
+  readonly planDigest: string
+  readonly manifestDigest: string
+}
+
+const SHA256_DIGEST = /^[0-9a-f]{64}$/
+
+/** Fails closed on a structurally invalid pinned identity from any caller. */
+export const assertPinnedDeploymentShape = (
+  value: PinnedDeployment,
+  label: string
+): PinnedDeployment => {
+  if (
+    value === null || typeof value !== "object" || Array.isArray(value) ||
+    typeof value.planDigest !== "string" || !SHA256_DIGEST.test(value.planDigest) ||
+    typeof value.manifestDigest !== "string" || !SHA256_DIGEST.test(value.manifestDigest)
+  ) {
+    throw new TypeError(`Durable ${label} must pin a Plan digest and a deployment manifest digest`)
+  }
+  return value
+}
+
+/**
  * Raised when a coordinator addresses an execution that is not pinned to that
- * coordinator's Plan. It is deliberately NOT a durable failure: a stale
- * coordinator must abandon the execution, never terminalize it.
+ * coordinator's DEPLOYMENT — a different Plan, a different manifest, or both.
+ * It is deliberately NOT a durable failure: a stale coordinator must abandon
+ * the execution the way a dead process does, never terminalize it.
  */
 export class ExecutionMigratedError extends Error {
+  readonly expectedPlanDigest: string
+  readonly pinnedPlanDigest: string
+  readonly expectedManifestDigest: string
+  readonly pinnedManifestDigest: string
   constructor(
     readonly executionId: string,
-    readonly expectedPlanDigest: string,
-    readonly pinnedPlanDigest: string,
+    expected: PinnedDeployment,
+    pinned: PinnedDeployment,
     readonly generation: number
   ) {
+    const identity = `Plan ${pinned.planDigest} / manifest ${pinned.manifestDigest}`
+    const held = `Plan ${expected.planDigest} / manifest ${expected.manifestDigest}`
     super(
       generation > 0
-        ? `Execution ${executionId} was migrated to Plan ${pinnedPlanDigest}; coordinator Plan ${expectedPlanDigest} is stale`
-        : `Execution ${executionId} is pinned to Plan ${pinnedPlanDigest}, not coordinator Plan ${expectedPlanDigest}`
+        ? `Execution ${executionId} was migrated to ${identity}; coordinator ${held} is stale`
+        : `Execution ${executionId} is pinned to ${identity}, not coordinator ${held}`
     )
     this.name = "ExecutionMigratedError"
+    this.expectedPlanDigest = expected.planDigest
+    this.pinnedPlanDigest = pinned.planDigest
+    this.expectedManifestDigest = expected.manifestDigest
+    this.pinnedManifestDigest = pinned.manifestDigest
   }
 }
 

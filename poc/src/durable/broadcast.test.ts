@@ -589,6 +589,7 @@ test("corrupt persisted broadcast state fails closed instead of replaying", asyn
   )
   const expectation = {
     planDigest: deployment.flow.plan.digest,
+    manifestDigest: deployment.manifest.digest,
     signalId: node.signalId,
     signalContractDigest: node.signalContractDigest
   }

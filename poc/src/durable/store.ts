@@ -5,12 +5,14 @@ import { MAX_CHILD_FLOW_DEPTH, validateDeploymentManifest, validatePlanTemplate 
 import { DurableExecutionCancelled } from "./errors.ts"
 import {
   assertNodeMigrationCompatible,
+  assertPinnedDeploymentShape,
   ExecutionMigratedError,
   isCommittedNodeStatus,
   MigrationRejectedError,
   planExecutionMigration,
   type ExecutionMigrationEvidence,
-  type MigrationPlan
+  type MigrationPlan,
+  type PinnedDeployment
 } from "./migration.ts"
 import { CHILD_EXECUTION_MARKER, contentAdoptionSource, memoAdoptionSource } from "./site-id.ts"
 import { WakeupService } from "./wakeup.ts"
@@ -258,9 +260,25 @@ export interface MintedSignalToken {
   readonly senderToken: string
 }
 
-/** Trusted coordinator evidence; it is not supplied by an external sender. */
+/**
+ * A SENDER's evidence that the signal it is delivering matches the contract the
+ * consumer pinned. This is deliberately NOT a coordinator fence and carries no
+ * manifest digest: a producer may live in an entirely different deployment from
+ * the consumer it is signalling, so the consumer's manifest is not the sender's
+ * to know. A mismatch here is a rejected delivery, not a stale coordinator.
+ */
 export interface SignalContractExpectation {
   readonly planDigest: string
+  readonly signalId: string
+  readonly signalContractDigest: string
+}
+
+/**
+ * A CONSUMER coordinator's evidence when it polls its own signal node. Unlike
+ * {@link SignalContractExpectation} this is a pinning fence, so it names the
+ * whole deployment the coordinator holds.
+ */
+export interface SignalPollExpectation extends PinnedDeployment {
   readonly signalId: string
   readonly signalContractDigest: string
 }
@@ -308,9 +326,8 @@ export type QueuePollResult =
     readonly sequence?: number
   }
 
-/** Trusted coordinator evidence for a queue consumer node. */
-export interface QueuePollExpectation {
-  readonly planDigest: string
+/** A CONSUMER coordinator's pinning evidence for a queue consumer node. */
+export interface QueuePollExpectation extends PinnedDeployment {
   readonly queueId: string
   readonly queueContractDigest: string
 }
@@ -884,21 +901,38 @@ export class DurableStore {
 
   /**
    * Fails closed when a caller addresses an execution that is not pinned to the
-   * caller's Plan. Every mutating coordinator entry point routes through this,
-   * so a coordinator holding a superseded deployment cannot claim, materialize,
-   * link, complete, or fail an execution that has since been migrated.
+   * caller's DEPLOYMENT. Every coordinator-scoped entry point routes through
+   * this one comparison — including the signal and queue poll paths, which used
+   * to carry their own inline copy of it — so a coordinator holding a
+   * superseded deployment cannot claim, materialize, link, skip, schedule,
+   * poll, complete, or fail an execution that has since been migrated.
+   *
+   * The pinned identity is the whole deployment, never the Plan digest alone.
+   * `migrateExecution` writes `plan_digest` and `manifest_digest` together and a
+   * manifest-only migration moves only the second, so a fence reading the first
+   * admits exactly the coordinator this exists to exclude: one still live on the
+   * superseded deployment, running the old implementation, policy, and
+   * capability grants against an execution the operator has migrated away from
+   * it. See {@link PinnedDeployment}.
    */
-  private assertPinnedPlan(executionId: string, expectedPlanDigest: string | undefined): void {
-    if (expectedPlanDigest === undefined) return
-    if (typeof expectedPlanDigest !== "string" || !/^[0-9a-f]{64}$/.test(expectedPlanDigest)) {
-      throw new TypeError("Durable pinned Plan digest expectation is invalid")
-    }
+  private assertPinnedDeployment(executionId: string, expected: PinnedDeployment | undefined): void {
+    if (expected === undefined) return
+    assertPinnedDeploymentShape(expected, "pinned deployment expectation")
     const row = this.database.query(
-      "SELECT plan_digest,plan_generation FROM durable_executions WHERE id=?"
-    ).get(executionId) as { readonly plan_digest: string; readonly plan_generation: number } | null
+      "SELECT plan_digest,manifest_digest,plan_generation FROM durable_executions WHERE id=?"
+    ).get(executionId) as {
+      readonly plan_digest: string
+      readonly manifest_digest: string
+      readonly plan_generation: number
+    } | null
     if (row === null) throw new Error(`Unknown durable execution ${executionId}`)
-    if (row.plan_digest !== expectedPlanDigest) {
-      throw new ExecutionMigratedError(executionId, expectedPlanDigest, row.plan_digest, row.plan_generation)
+    if (row.plan_digest !== expected.planDigest || row.manifest_digest !== expected.manifestDigest) {
+      throw new ExecutionMigratedError(
+        executionId,
+        expected,
+        { planDigest: row.plan_digest, manifestDigest: row.manifest_digest },
+        row.plan_generation
+      )
     }
   }
 
@@ -1314,8 +1348,8 @@ export class DurableStore {
         ) {
           throw new ExecutionMigratedError(
             executionId,
-            validatedPlan.digest,
-            existing.plan_digest,
+            { planDigest: validatedPlan.digest, manifestDigest: validatedManifest.digest },
+            { planDigest: existing.plan_digest, manifestDigest: existing.manifest_digest },
             existing.plan_generation ?? 0
           )
         }
@@ -1634,7 +1668,7 @@ export class DurableStore {
     executionId: string,
     fanOutNodeId: string,
     entries: readonly FanOutMaterializationEntry[],
-    expectedPlanDigest?: string
+    pinned?: PinnedDeployment
   ): FanOutMaterializationResult {
     if (typeof fanOutNodeId !== "string" || fanOutNodeId.trim() === "") {
       throw new TypeError("Durable fan-out node id must be non-empty")
@@ -1692,7 +1726,7 @@ export class DurableStore {
     const materializationDigest = digest({ fanOutNodeId, entries: semanticEntries })
 
     const transaction = this.database.transaction((): FanOutMaterializationResult => {
-      this.assertPinnedPlan(executionId, expectedPlanDigest)
+      this.assertPinnedDeployment(executionId, pinned)
       const parent = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id=? AND node_id=?"
       ).get(executionId, fanOutNodeId) as NodeRow | null
@@ -1797,7 +1831,7 @@ export class DurableStore {
     executionId: string,
     fanOutNodeId: string,
     request: FanOutStepMaterializationRequest,
-    expectedPlanDigest?: string
+    pinned?: PinnedDeployment
   ): FanOutStepMaterializationResult {
     if (typeof fanOutNodeId !== "string" || fanOutNodeId.trim() === "") {
       throw new TypeError("Durable fan-out node id must be non-empty")
@@ -1822,7 +1856,7 @@ export class DurableStore {
     }
     const keyJson = canonicalJson(key)
     const transaction = this.database.transaction((): FanOutStepMaterializationResult => {
-      this.assertPinnedPlan(executionId, expectedPlanDigest)
+      this.assertPinnedDeployment(executionId, pinned)
       const parent = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id=? AND node_id=?"
       ).get(executionId, fanOutNodeId) as NodeRow | null
@@ -1928,7 +1962,7 @@ export class DurableStore {
     executionId: string,
     loopNodeId: string,
     request: LoopRoundMaterializationRequest,
-    expectedPlanDigest?: string
+    pinned?: PinnedDeployment
   ): LoopRoundMaterializationResult {
     if (typeof loopNodeId !== "string" || loopNodeId.trim() === "") {
       throw new TypeError("Durable loop node id must be non-empty")
@@ -1948,7 +1982,7 @@ export class DurableStore {
       throw new TypeError("Durable loop round state digest is invalid")
     }
     const transaction = this.database.transaction((): LoopRoundMaterializationResult => {
-      this.assertPinnedPlan(executionId, expectedPlanDigest)
+      this.assertPinnedDeployment(executionId, pinned)
       const parent = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id=? AND node_id=?"
       ).get(executionId, loopNodeId) as NodeRow | null
@@ -2044,7 +2078,7 @@ export class DurableStore {
     nodeId: string,
     childExecutionId: string,
     planDigest: string,
-    expectedParentPlanDigest?: string
+    pinnedParent?: PinnedDeployment
   ): ChildExecutionLinkResult {
     for (const [label, value] of [
       ["parent execution id", parentExecutionId],
@@ -2065,7 +2099,7 @@ export class DurableStore {
       throw new TypeError("Durable child execution id cannot equal its parent execution id")
     }
     const transaction = this.database.transaction((): ChildExecutionLinkResult => {
-      this.assertPinnedPlan(parentExecutionId, expectedParentPlanDigest)
+      this.assertPinnedDeployment(parentExecutionId, pinnedParent)
       const parent = this.database.query(
         "SELECT status FROM durable_executions WHERE id=?"
       ).get(parentExecutionId) as { readonly status: ExecutionStatus } | null
@@ -2210,6 +2244,16 @@ export class DurableStore {
           `Signal ${request.executionId}/${request.nodeId} is a broadcast node and must be delivered with deliverBroadcast`
         )
       }
+      // DELIBERATELY a Plan-digest CONTRACT check and not the pinned-deployment
+      // fence `assertPinnedDeployment` applies everywhere else. The caller here
+      // is a PRODUCER, not this execution's coordinator: it may live in an
+      // entirely different deployment, so the consumer's manifest digest is not
+      // its to know and demanding it would refuse every legitimate
+      // cross-deployment delivery. What it must agree with is the CONTRACT — and
+      // a manifest-only migration cannot move that, because a signal contract is
+      // Plan state. Accordingly this is a rejected delivery, never an
+      // `ExecutionMigratedError`: the sender is told the delivery did not
+      // happen, and no one is told to abandon an execution.
       if (execution.plan_digest !== expectation.planDigest || expectation.signalId !== request.signalId) {
         throw new SignalDeliveryRejectedError(
           `Signal Plan contract does not match ${request.executionId}/${request.nodeId}`
@@ -2316,19 +2360,19 @@ export class DurableStore {
   pollSignal(
     executionId: string,
     nodeId: string,
-    untrustedExpectation: SignalContractExpectation
+    untrustedExpectation: SignalPollExpectation
   ): SignalPollResult {
-    const normalizedExpectation = assertJson(untrustedExpectation, "durable signal contract expectation")
+    const normalizedExpectation = assertJson(untrustedExpectation, "durable signal poll expectation")
     if (
       normalizedExpectation === null || Array.isArray(normalizedExpectation) || typeof normalizedExpectation !== "object" ||
       canonicalJson(Object.keys(normalizedExpectation).sort()) !== canonicalJson([
-        "planDigest", "signalContractDigest", "signalId"
+        "manifestDigest", "planDigest", "signalContractDigest", "signalId"
       ]) ||
-      typeof normalizedExpectation.planDigest !== "string" || !/^[0-9a-f]{64}$/.test(normalizedExpectation.planDigest) ||
       typeof normalizedExpectation.signalContractDigest !== "string" || !/^[0-9a-f]{64}$/.test(normalizedExpectation.signalContractDigest) ||
       typeof normalizedExpectation.signalId !== "string"
-    ) throw new TypeError("Durable signal contract expectation is invalid")
-    const expectation = normalizedExpectation as unknown as SignalContractExpectation
+    ) throw new TypeError("Durable signal poll expectation is invalid")
+    const expectation = normalizedExpectation as unknown as SignalPollExpectation
+    assertPinnedDeploymentShape(expectation, "signal poll expectation")
     const transaction = this.database.transaction((): SignalPollResult => {
       const node = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id=? AND node_id=?"
@@ -2337,18 +2381,10 @@ export class DurableStore {
         throw new TypeError(`Unknown durable signal node ${executionId}/${nodeId}`)
       }
       const { row: contract, broadcast } = this.signalContract(executionId, nodeId)
-      const execution = this.database.query(
-        "SELECT plan_digest,plan_generation FROM durable_executions WHERE id=?"
-      ).get(executionId) as { readonly plan_digest: string; readonly plan_generation: number } | null
-      if (execution === null) throw new Error(`Unknown durable execution ${executionId}`)
-      if (execution.plan_digest !== expectation.planDigest) {
-        throw new ExecutionMigratedError(
-          executionId,
-          expectation.planDigest,
-          execution.plan_digest,
-          execution.plan_generation
-        )
-      }
+      // The same fence every other coordinator entry point uses, not a local
+      // copy of it: a poll consumes durable state, so a coordinator holding a
+      // superseded deployment must not reach one.
+      this.assertPinnedDeployment(executionId, expectation)
       if (
         contract.contract_digest !== expectation.signalContractDigest ||
         contract.signal_id !== expectation.signalId
@@ -2935,14 +2971,14 @@ export class DurableStore {
     if (
       normalizedExpectation === null || Array.isArray(normalizedExpectation) || typeof normalizedExpectation !== "object" ||
       canonicalJson(Object.keys(normalizedExpectation).sort()) !== canonicalJson([
-        "planDigest", "queueContractDigest", "queueId"
+        "manifestDigest", "planDigest", "queueContractDigest", "queueId"
       ]) ||
-      typeof normalizedExpectation.planDigest !== "string" || !/^[0-9a-f]{64}$/.test(normalizedExpectation.planDigest) ||
       typeof normalizedExpectation.queueContractDigest !== "string" ||
       !/^[0-9a-f]{64}$/.test(normalizedExpectation.queueContractDigest) ||
       typeof normalizedExpectation.queueId !== "string"
     ) throw new TypeError("Durable queue poll expectation is invalid")
     const expectation = normalizedExpectation as unknown as QueuePollExpectation
+    assertPinnedDeploymentShape(expectation, "queue poll expectation")
     const transaction = this.database.transaction((): QueuePollResult => {
       const node = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id=? AND node_id=?"
@@ -2950,18 +2986,8 @@ export class DurableStore {
       if (node === null || node.node_kind !== "queue") {
         throw new TypeError(`Unknown durable queue node ${executionId}/${nodeId}`)
       }
-      const execution = this.database.query(
-        "SELECT plan_digest,plan_generation FROM durable_executions WHERE id=?"
-      ).get(executionId) as { readonly plan_digest: string; readonly plan_generation: number } | null
-      if (execution === null) throw new Error(`Unknown durable execution ${executionId}`)
-      if (execution.plan_digest !== expectation.planDigest) {
-        throw new ExecutionMigratedError(
-          executionId,
-          expectation.planDigest,
-          execution.plan_digest,
-          execution.plan_generation
-        )
-      }
+      // The same fence every other coordinator entry point uses.
+      this.assertPinnedDeployment(executionId, expectation)
       const contract = this.queueContract(executionId, nodeId)
       if (
         contract.queueId !== expectation.queueId ||
@@ -3275,7 +3301,7 @@ export class DurableStore {
     nodeId: string,
     durationMs: number,
     now = Date.now(),
-    expectedPlanDigest?: string
+    pinned?: PinnedDeployment
   ): TimerScheduleResult {
     if (
       !Number.isSafeInteger(durationMs) || durationMs < 0 ||
@@ -3285,7 +3311,7 @@ export class DurableStore {
       throw new TypeError("Durable timer duration and wake timestamp must be non-negative safe integers")
     }
     const transaction = this.database.transaction((): TimerScheduleResult => {
-      this.assertPinnedPlan(executionId, expectedPlanDigest)
+      this.assertPinnedDeployment(executionId, pinned)
       const row = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id = ? AND node_id = ?"
       ).get(executionId, nodeId) as NodeRow | null
@@ -3332,7 +3358,7 @@ export class DurableStore {
     owner: string,
     leaseMs: number,
     now = Date.now(),
-    expectedPlanDigest?: string
+    pinned?: PinnedDeployment
   ): ClaimResult {
     if (typeof owner !== "string" || owner.trim() === "") {
       throw new TypeError("Durable node lease owner must be non-empty")
@@ -3345,7 +3371,7 @@ export class DurableStore {
       throw new TypeError("Durable node lease must use safe positive integer timestamps")
     }
     const transaction = this.database.transaction((): ClaimResult => {
-      this.assertPinnedPlan(executionId, expectedPlanDigest)
+      this.assertPinnedDeployment(executionId, pinned)
       const row = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id = ? AND node_id = ?"
       ).get(executionId, nodeId) as NodeRow | null
@@ -3574,13 +3600,13 @@ export class DurableStore {
     nodeId: string,
     value: JsonValue,
     adoptedFrom: string,
-    expectedPlanDigest?: string
+    pinned?: PinnedDeployment
   ): boolean {
     const normalizedValue = assertJson(value, "adopted durable node success")
     const resultJson = canonicalJson(normalizedValue)
     const resultDigest = digest(normalizedValue)
     const transaction = this.database.transaction(() => {
-      this.assertPinnedPlan(executionId, expectedPlanDigest)
+      this.assertPinnedDeployment(executionId, pinned)
       const update = this.database.query(
         `UPDATE durable_nodes SET
           status='succeeded',result_json=?,result_digest=?,error_json=NULL,error_digest=NULL,adopted_from=?,owner=NULL,lease_until=NULL,
@@ -3631,11 +3657,11 @@ export class DurableStore {
     executionId: string,
     nodeId: string,
     message: string,
-    expectedPlanDigest?: string
+    pinned?: PinnedDeployment
   ): StoredNodeExit {
     const defect = { name: "DeadlineExceeded", message }
     const transaction = this.database.transaction((): StoredNodeExit => {
-      this.assertPinnedPlan(executionId, expectedPlanDigest)
+      this.assertPinnedDeployment(executionId, pinned)
       const existing = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id=? AND node_id=?"
       ).get(executionId, nodeId) as NodeRow | null
@@ -3685,7 +3711,7 @@ export class DurableStore {
     branchId: string,
     owner: string,
     fencingToken: number,
-    expectedPlanDigest?: string
+    pinned?: PinnedDeployment
   ): boolean {
     if (typeof owner !== "string" || owner.trim() === "") {
       throw new TypeError("Durable branch skip owner must be non-empty")
@@ -3695,7 +3721,7 @@ export class DurableStore {
     }
     const now = Date.now()
     const transaction = this.database.transaction((): boolean => {
-      this.assertPinnedPlan(executionId, expectedPlanDigest)
+      this.assertPinnedDeployment(executionId, pinned)
       const branch = this.database.query(
         `SELECT node_id FROM durable_nodes
          WHERE execution_id=? AND node_id=? AND status='running' AND owner=? AND fence=?`
@@ -3719,13 +3745,13 @@ export class DurableStore {
   completeExecution(
     executionId: string,
     output: JsonValue,
-    expectedPlanDigest?: string
+    pinned?: PinnedDeployment
   ): FinishExecutionResult {
     const normalizedOutput = assertJson(output, "durable execution output")
     const outputJson = canonicalJson(normalizedOutput)
     const outputDigest = digest(normalizedOutput)
     const transaction = this.database.transaction((): FinishExecutionResult => {
-      this.assertPinnedPlan(executionId, expectedPlanDigest)
+      this.assertPinnedDeployment(executionId, pinned)
       const current = this.database.query(
         "SELECT * FROM durable_executions WHERE id=?"
       ).get(executionId) as ExecutionRow | null
@@ -3758,13 +3784,13 @@ export class DurableStore {
     executionId: string,
     category: "failure" | "defect",
     error: JsonValue,
-    expectedPlanDigest?: string
+    pinned?: PinnedDeployment
   ): FinishExecutionResult {
     const normalizedError = assertJson(error, `durable execution ${category}`)
     const executionError = { category, error: normalizedError }
     const affected = new Set([executionId])
     const transaction = this.database.transaction(() => {
-      this.assertPinnedPlan(executionId, expectedPlanDigest)
+      this.assertPinnedDeployment(executionId, pinned)
       const update = this.database.query(
         `UPDATE durable_executions SET status='failed',output_json=NULL,output_digest=NULL,
           error_json=?,error_digest=?,updated_at=?

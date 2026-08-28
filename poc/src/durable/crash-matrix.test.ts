@@ -467,6 +467,7 @@ test("durable queue and broadcast commits are restart-visible exactly once", asy
     const queueNode = queueFlow.plan.nodes[0] as QueueNode;
     const queueExpectation = {
       planDigest: queueFlow.plan.digest,
+      manifestDigest: queueDeployment.manifest.digest,
       queueId: queueNode.queueId,
       queueContractDigest: queueNode.queueContractDigest,
     };
@@ -528,6 +529,7 @@ test("durable queue and broadcast commits are restart-visible exactly once", asy
     const signalNode = broadcastFlow.plan.nodes[0] as SignalNode;
     const signalExpectation = {
       planDigest: broadcastFlow.plan.digest,
+      manifestDigest: broadcastDeployment.manifest.digest,
       signalId: signalNode.signalId,
       signalContractDigest: signalNode.signalContractDigest,
     };

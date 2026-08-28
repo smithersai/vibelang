@@ -27,13 +27,15 @@ export {
 export {
   assertFlowContractPreserved,
   assertNodeMigrationCompatible,
+  assertPinnedDeploymentShape,
   ExecutionMigratedError,
   isCommittedNodeStatus,
   MigrationRejectedError,
   planExecutionMigration,
   type ExecutionMigrationEvidence,
   type MigrationPlan,
-  type MigrationRejectionReason
+  type MigrationRejectionReason,
+  type PinnedDeployment
 } from "./migration.ts"
 export {
   CoordinatorCrash,
@@ -184,6 +186,7 @@ export {
   type SignalDeliveryRequest,
   type SignalDeliveryResult,
   type SignalInboxState,
+  type SignalPollExpectation,
   type SignalPollResult,
   type StoredExecution,
   type StoredNodeExit,

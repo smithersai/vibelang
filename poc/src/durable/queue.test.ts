@@ -389,6 +389,7 @@ test("corrupt persisted queue state fails closed instead of replaying", () => {
   )
   const expectation = {
     planDigest: deployment.flow.plan.digest,
+    manifestDigest: deployment.manifest.digest,
     queueId: node.queueId,
     queueContractDigest: node.queueContractDigest
   }
