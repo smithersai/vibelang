@@ -26,6 +26,24 @@ import type {
 
 const IDENTITY_UNSAFE = /[^A-Za-z0-9$._/@:+-]/g
 
+/**
+ * Naming, and the same trade `identityName` in `./tools.ts` records at length:
+ * many-to-one on purpose, safe because of what is around it rather than
+ * because of what it does.
+ *
+ * The `-` fold and the 128-unit cut both lose information here too, and a
+ * little more of it — `flowId` is admitted up to 256 characters
+ * (`bindings.ts`), so the version is cut off past 123, and the default `flowId`
+ * is spelled `<file>#<declaration>`, which means the `#` fold is on the ordinary
+ * path rather than an exotic one.
+ *
+ * It is still one field of a `ComponentIdentity` whose `configDigest` folds the
+ * raw `flowId`, `flowVersion` and `planDigest`; the model sees `exposedAs`, not
+ * this; and the journal compares the whole identity. The reason not to escape
+ * it is the same and is the stronger half of the argument: this name is
+ * persisted in `function_identity_json` and re-derived on replay, so changing
+ * the spelling would break replay of work already recorded.
+ */
 function flowIdentityName(contract: FlowContract): string {
   const raw = `flow/${contract.flowId}@${contract.flowVersion}`.replace(IDENTITY_UNSAFE, "-")
   return raw.slice(0, 128)

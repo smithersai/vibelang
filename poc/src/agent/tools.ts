@@ -109,6 +109,41 @@ export class DurableFlowInterrupted extends Error {
   }
 }
 
+/**
+ * Naming. This is many-to-one twice over, and it is CORRECT that way; what
+ * makes it correct is not the function, so the argument lives here.
+ *
+ * Both losses are real. `IDENTITY_UNSAFE` folds every character outside
+ * `[A-Za-z0-9$._/@:+-]` onto `-`, and `-` is itself in that set, so ids
+ * `tool#read`, `tool-read` and `tool read` all mint `action/tool-read@1` — and
+ * `#` is not a hypothetical, it is the separator `source-compiler.ts` puts in
+ * every derived Flow and Action id. `.slice(0, 128)` then cuts `@<version>` off
+ * entirely once the id passes 120 characters, so two VERSIONS of one long-named
+ * Action mint one name. Nothing here compares a minted name against the ones
+ * already handed out.
+ *
+ * Why not an escape: what this returns is one FIELD of a three-field
+ * `ComponentIdentity`, and the other two are not lossy. `configDigest` folds
+ * the raw, un-normalized `action.id` and `action.version` (below), so two
+ * name-colliding tools still differ in the identity, and `journal.ts` compares
+ * the whole `function_identity_json` rather than the name. The model never sees
+ * this string either: what reaches the prompt is `exposedAs`, which is required
+ * to be a TypeScript identifier and is refused outright when it is claimed
+ * twice (`Action tool ... is exposed twice`). So a collision here costs a
+ * human reading a journal an ambiguous label, and costs nothing else.
+ *
+ * And the cost of "fixing" it is not zero: `ComponentIdentity.name` is
+ * PERSISTED, in `function_identity_json`, and re-derived and compared on every
+ * replay. Re-escaping it would make every journal written before the change
+ * diverge from every journal written after — a replay failure on real recorded
+ * work, to fix a label. The lossy spelling stays, and the reason it is safe is
+ * written down instead.
+ *
+ * There is no refusal, and that is the one part of this that is a gap rather
+ * than a decision. It is not added here because a duplicate name is not an
+ * error — two builds of one Action legitimately share it — so the guard would
+ * have to compare identities, which is what the journal already does.
+ */
 function identityName(action: ActionDescriptor): string {
   const raw = `action/${action.id}@${action.version}`.replace(IDENTITY_UNSAFE, "-")
   return raw.slice(0, 128)
