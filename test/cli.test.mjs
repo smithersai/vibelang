@@ -1875,3 +1875,36 @@ test("a .sm diagnostic never quotes a path inside the compiler's own installatio
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// A refused compile writes nothing. Naming an output, a source map, or a
+// declaration for a file that was never created is the report claiming work it
+// did not do; the Go backend already derives all three from its final verdict.
+test("a refused .sm compile names no output, source map, or declaration", () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-refused-output-")));
+  const output = join(root, "out");
+  try {
+    const source = join(root, "refused.sm");
+    writeFileSync(source, "export const bad: number = \"not a number\"\n");
+    const compiled = run("bin/smithers.js", [
+      "compile",
+      source,
+      "--outDir",
+      output,
+      "--declaration",
+      "--sourceMap",
+      "--format",
+      "json",
+    ]);
+    assert.equal(compiled.status, 1, compiled.stderr || compiled.stdout);
+    const report = JSON.parse(compiled.stdout);
+    assert.equal(report.ok, false);
+    const file = report.files[0];
+    assert.ok(file.diagnostics.length > 0);
+    assert.equal(file.output ?? null, null, `refused compile named an output: ${file.output}`);
+    assert.equal(file.sourceMap ?? null, null, `refused compile named a source map: ${file.sourceMap}`);
+    assert.deepEqual(file.declarations ?? [], []);
+    assert.equal(existsSync(output) ? readdirSync(output).length : 0, 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

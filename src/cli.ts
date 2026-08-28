@@ -1185,8 +1185,20 @@ async function compileSmithersFiles(
     }
   }
 
-  if (options.emit !== false &&
-    ![...results.values()].some((result) => result.diagnostics.some((diagnostic) => diagnostic.severity === "error"))) {
+  /**
+   * One verdict decides both whether anything is written and whether the
+   * report is allowed to name a written file.
+   *
+   * `output`, `sourceMap`, and `declarations` are filled in as each stage
+   * produces its artifact, which is long before the last stage that can refuse
+   * the compile has run. A refused compile writes nothing — `commitProjectFiles`
+   * below is guarded — so a report that still carries those paths is naming
+   * files that do not exist. The Go backend already derives all three from its
+   * own final verdict; this is the same guard at the same position.
+   */
+  const emitRefused = [...results.values()].some((result) =>
+    result.diagnostics.some((diagnostic) => diagnostic.severity === "error"));
+  if (options.emit !== false && !emitRefused) {
     const emissions: Array<{ readonly fileName: string; readonly code: string }> = [];
     for (const file of Object.values(compiled.files)) {
       emissions.push({ fileName: file.outputFileName, code: transpiled.get(file.fileName)! });
@@ -1200,7 +1212,11 @@ async function compileSmithersFiles(
     emissions.push(...declarationOutputs);
     commitProjectFiles(outDir, emissions);
   }
-  return [...results.values()].sort((left, right) => compareText(left.input, right.input));
+  return [...results.values()]
+    .map((result): SmithersFileResult => emitRefused
+      ? { ...result, output: undefined, sourceMap: undefined, declarations: [] }
+      : result)
+    .sort((left, right) => compareText(left.input, right.input));
 }
 
 function authoredLineColumn(source: string, offset: number): { readonly line: number; readonly column: number } {
