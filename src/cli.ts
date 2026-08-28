@@ -979,15 +979,26 @@ async function compileSmithersFiles(
   };
   /**
    * The declaration emitter reads the checker's resolved path, so a `d.mts` can
-   * quote a packaged module back as `import("<absolute>")`. A published
-   * declaration must name the package seam instead of this machine.
+   * name a packaged module as a synthesized `import("<absolute>")` type. A
+   * published declaration must name the package seam instead of this machine.
+   *
+   * Scoped to `import(...)` syntax rather than to every occurrence of the path.
+   * A written `import ... from "smthrs/runtime"` keeps its own specifier
+   * through declaration emit and needs nothing done to it, so the only spans
+   * that can carry a resolved path are the synthesized ones — and matching
+   * those exactly is what keeps this from reaching an authored string literal
+   * or literal type that happens to spell the packaged path. That is the same
+   * mistake the checker's seam substitution used to make, one stage later.
    */
   const restorePackageSpecifiers = (code: string): string => {
     let restored = code;
     for (const [seam, packaged] of Object.entries(packagedModules)) {
-      restored = restored
-        .replaceAll(JSON.stringify(packaged), JSON.stringify(seam))
-        .replaceAll(JSON.stringify(packaged.replace(/\.js$/, "")), JSON.stringify(seam));
+      for (const resolved of [packaged, packaged.replace(/\.js$/, "")]) {
+        restored = restored.replaceAll(
+          `import(${JSON.stringify(resolved)})`,
+          `import(${JSON.stringify(seam)})`,
+        );
+      }
     }
     return restored;
   };
