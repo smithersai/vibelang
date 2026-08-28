@@ -124,6 +124,27 @@ func nativeFlowOptions(value *nativeFlowValue) []*nativeFlowValue {
 	return []*nativeFlowValue{value}
 }
 
+// nativeKeyPart makes one component of a composed provenance key
+// self-delimiting: its decimal length, a ':', then the component verbatim.
+//
+// WHY. Every key below joins components with a punctuation separator, and one
+// of those components is always a SOURCE FILE NAME, which is author-controlled.
+// virtualFileName (main.go.txt) refuses an input path containing ':' and
+// nothing else, so ',', '|' and '#' — the three separators used here — are all
+// spellable by an ordinary file on disk. Without a length, `[` a list of the two
+// values `x.sm:1:2` and `y.sm:3:4` `]` and a list of the ONE value from a file
+// named `x.sm:1:2,y.sm` are the same string, and these keys are what
+// nativeFlowUnionValue dedups options by and what the launder walk memoizes on.
+// A collision merges two distinct provenance values or short-circuits a
+// recursion that had not actually been entered, and both of those are
+// fail-OPEN: a foreign or untrusted value that the analysis stops reporting.
+//
+// The decimal length cannot itself contain ':', so the split is unambiguous and
+// the encoding is injective — the same rule that makes the node case below safe.
+func nativeKeyPart(part string) string {
+	return strconv.Itoa(len(part)) + ":" + part
+}
+
 func nativeFlowValueKey(value *nativeFlowValue) string {
 	if value == nil {
 		return "?"
@@ -132,18 +153,20 @@ func nativeFlowValueKey(value *nativeFlowValue) string {
 	case nativeFlowList:
 		parts := make([]string, len(value.values))
 		for index, element := range value.values {
-			parts[index] = nativeFlowValueKey(element)
+			parts[index] = nativeKeyPart(nativeFlowValueKey(element))
 		}
 		return "[" + strings.Join(parts, ",") + "]"
 	case nativeFlowUnion:
 		parts := make([]string, len(value.options))
 		for index, option := range value.options {
-			parts[index] = nativeFlowValueKey(option)
+			parts[index] = nativeKeyPart(nativeFlowValueKey(option))
 		}
 		// Byte order is CORRECT here and is left alone deliberately. The result
 		// is an EQUALITY key, never an order anyone observes: it is compared
 		// only against keys this same function built in this same process, and
 		// any deterministic total order yields the same equality classes.
+		// nativeKeyPart is a bijection on its input, so length-prefixing does
+		// not change which multisets sort to one canonical string.
 		sort.Strings(parts)
 		return "{" + strings.Join(parts, "|") + "}"
 	case nativeFlowNode:
@@ -152,6 +175,14 @@ func nativeFlowValueKey(value *nativeFlowValue) string {
 		if file != nil {
 			name = file.FileName()
 		}
+		// This one needs no length prefix, and the constraint is enforced rather
+		// than assumed: virtualFileName (main.go.txt) REFUSES a compiler input
+		// path containing ':', so a project file name holds none, and the two
+		// trailing components are decimal integers, which hold none either. The
+		// separator is therefore absent from every component and the split is
+		// unambiguous. The three kinds cannot be confused with one another for a
+		// second reason: a node key begins with '/' (virtualFileName prefixes
+		// "/src/") or with the literal "<unknown>", never with '[' or '{'.
 		return name + ":" + strconv.Itoa(value.node.Pos()) + ":" + strconv.Itoa(value.node.End())
 	default:
 		return "?"
@@ -237,12 +268,12 @@ func nativeNamedMember(member *ast.Node, name string) bool {
 func nativeFlowBindingsKey(callee *ast.Node, bindings nativeFlowBindings) string {
 	values := make([]string, 0, len(bindings))
 	for _, value := range bindings {
-		values = append(values, nativeFlowValueKey(value))
+		values = append(values, nativeKeyPart(nativeFlowValueKey(value)))
 	}
 	// Byte order is CORRECT here: a process-local equality key, as in
 	// nativeFlowValueKey above.
 	sort.Strings(values)
-	return nativeFlowValueKey(nativeFlowNodeValue(callee)) + "|" + strings.Join(values, ",")
+	return nativeKeyPart(nativeFlowValueKey(nativeFlowNodeValue(callee))) + "|" + strings.Join(values, ",")
 }
 
 func nativeBindingSymbol(typeChecker *checker.Checker, name *ast.Node) *ast.Symbol {
@@ -1120,7 +1151,13 @@ func (walk *nativeLaunderWalk) dependencyThroughStarExports(file *ast.SourceFile
 	if file == nil {
 		return false
 	}
-	key := file.FileName() + "#" + member
+	// Length-prefixed for the reason nativeKeyPart states: both components are
+	// author-controlled and may hold '#' — a file on disk may be named `a#b.sm`,
+	// and an export name reaches here from `export { x as "a#b" }`. This key is
+	// the RECURSION GUARD for `export *` cycles, so a collision makes the walk
+	// report a cycle it never entered and return false: a dependency edge the
+	// analysis silently stops seeing.
+	key := nativeKeyPart(file.FileName()) + "#" + member
 	if walk.starLookups[key] {
 		return false
 	}
