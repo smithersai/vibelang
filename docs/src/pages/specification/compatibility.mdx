@@ -152,6 +152,40 @@ rejected. Both directions are measurable: `const v: number = arr[2]` and
 `const v: number = "str"` correctly reports `TS2322`. These remain normative
 obligations on a conforming implementation; this one does not yet meet them.
 
+**Sized 2026-08-28, so this is not carried as an unknown.** Three measurements
+refine the paragraph above.
+
+*Where the options live.* No tsconfig is read anywhere in the product — no
+`readConfigFile`, `parseJsonConfigFileContent`, `findConfigFile`, or
+`getParsedCommandLineOfConfigFile` call exists in `src/` or `poc/src/`. The
+mandatory set is not "unchecked" so much as *unrepresented*: the six options are
+five hardcoded `ts.CompilerOptions` literals, and `strict: true` is the only
+member of the mandatory set any of them sets. The CLI compounds this — `smithers`
+declares `--project`/`-p` as "Path to tsconfig.json or its directory" and never
+reads the parsed value, so the flag is accepted and silently discarded.
+
+*The forbidden half is not uniformly unenforced.* The Go fork's bridge already
+has a closed allowlist over its options map (`compilerOptions` in
+`compiler/forkbridge/main.go.txt`) admitting thirteen names, so
+`experimentalDecorators` **is** rejected there — but as an unstructured bridge
+error with no diagnostic code, no span, and no file, and the same arm rejects the
+five mandatory options as "unsupported" rather than requiring them. The reference
+backend has no equivalent chokepoint at all. So the gap is one gate short of a
+half-built mechanism on one backend, not a greenfield.
+
+*The mandatory half is small and has exactly one real obstacle.* Adding all five
+missing options to the checker literals and running the conformance corpus moved
+**2 of 515 cases**, both for one root cause and both in `07-must-consume`:
+under `noUncheckedIndexedAccess`, `results[i]` is `Result<A, E> | undefined`,
+which the `!` provenance walk does not recognize as a Result, so it refuses
+`results[i]!` as `SMITHERS1207` — "postfix `!` requires a `Result` operand". That
+is the interaction the paragraph two below anticipates, and the measurement shows
+its last sentence is not yet satisfiable: `arr[i]!` does **not** compile "when
+`arr` holds Results" once the mandatory option is on, because the index read has
+widened the operand. Closing the mandatory half therefore means the five option
+flags on both backends **plus** teaching Result provenance to see through the
+`| undefined` an index read adds — not a corpus-wide rewrite.
+
 `noUncheckedIndexedAccess` is noisy in index loops, because TypeScript cannot prove `for (let i = 0; i < arr.length; i++)` is in bounds. An index read is `T | undefined` and MUST be narrowed, or read through an extraction helper.
 
 `arr[i]!` does not silently change meaning. Postfix `!` requires a `Result` operand, and `T | undefined` is not one, so the expression is a type error rather than an ambiguity. It compiles only when `arr` holds Results, where it means what `!` means everywhere else.
