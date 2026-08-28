@@ -6,3 +6,9 @@ node_modules/
 *.sqlite-wal
 *.generated.ts
 *.generated.ts.map
+
+# Per-session scratch directories (e.g. .scratch-w4w/) hold throwaway probe
+# scripts and must never be committed. `.scratch-w4w/*probe.ts` landed in
+# git by accident via a blanket checkpoint commit; this keeps that from
+# happening again for any session's scratch directory.
+.scratch-*/
