@@ -4,7 +4,7 @@ import {
   DurableExecutionAlreadyFailed,
   DurableExecutionCancelled,
 } from "../durable/engine.ts"
-import type { PlanTemplate } from "../durable/ir.ts"
+import type { PlanTemplate } from "../durable/plan-ir.ts"
 import { defineFlowFunction } from "./bindings.ts"
 import {
   DurableFlowInterrupted,

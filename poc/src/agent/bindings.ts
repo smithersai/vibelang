@@ -12,7 +12,7 @@ import type {
   DurableSchema,
   DurableTypeDescriptor,
   StructuralDurableSchema,
-} from "../durable/ir.ts"
+} from "../durable/value.ts"
 import { validateActionContractDescriptor, validateDurableSchema } from "../durable/schema.ts"
 import {
   defineComponentIdentity,

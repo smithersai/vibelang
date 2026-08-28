@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { canonicalJson } from "../durable/ir.ts";
+import { canonicalJson } from "../durable/value.ts";
 import { decodeError, encodeError } from "../runtime/index.ts";
 import {
   Json,

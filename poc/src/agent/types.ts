@@ -1,4 +1,4 @@
-import type { ActionDescriptor, DurableSchema, StructuralDurableSchema } from "../durable/ir.ts"
+import type { ActionDescriptor, DurableSchema, StructuralDurableSchema } from "../durable/value.ts"
 
 export type Awaitable<T> = T | Promise<T>
 

@@ -1,5 +1,6 @@
 import { validatePlanTemplate } from "../durable/artifact.ts"
-import type { ActionDescriptor, PlanTemplate } from "../durable/ir.ts"
+import type { PlanTemplate } from "../durable/plan-ir.ts"
+import type { ActionDescriptor } from "../durable/value.ts"
 import { compileActionContract } from "../durable/schema.ts"
 import {
   agentFunctionContractIdentity,
