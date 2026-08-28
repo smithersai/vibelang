@@ -2,7 +2,7 @@
   "schema": "smithers.product-divergence/v1",
   "measuredBy": "scripts/oracle-differential.mjs",
   "purpose": "Every corpus case where `node bin/smithers.js check` disagrees with the case's declared expectation. The conformance runner measures two BACKENDS; neither is the shipped CLI, so this file is the written record of how far the product is from the contract the corpus is quoted as stating. `direction` product-accepts is the dangerous one — the corpus requires a refusal and the product compiled it. `verdict` says which side is wrong; `decision-needed` rows may not be moved by either side until the decisions ledger owner settles them. A row disappears when the divergence is FIXED, never when it is tolerated. The `total` field records the corpus size at the last revision and is DESCRIPTIVE, not a gate: it has gone stale twice (424 -> 438 -> 465) simply because the corpus grows, and gating on its equality would train re-baselining rather than catch anything. The gate is the divergence SET.",
-  "total": 510,
+  "total": 511,
   "divergent": 59,
   "divergences": [
     {
