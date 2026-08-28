@@ -134,6 +134,38 @@ describe("Schema fail-closed categories", () => {
     });
   });
 
+  test("both validation engines word the same rejection the same way", () => {
+    // A record-free tree is parsed by `__vsSchema`; a record-bearing one routes
+    // through this module's adapters. They agreed on every *semantic* question
+    // and disagreed only on wording for a non-array at an array or tuple
+    // position, which leaked which engine had run.
+    const reason = (schema: SchemaType<never>, input: unknown): string =>
+      schema.parse(input).match({ ok: () => "OK", error: (error) => error.message });
+
+    // The one descriptor both engines can be asked about: a record sibling puts
+    // the *tree* on the adapters while the build-compatible child keeps
+    // `__vsSchema`, so this is the same shape asked twice.
+    expect(reason(
+      Schema.struct({ xs: Schema.array(Schema.number), m: Schema.record(Schema.number) }) as never,
+      { xs: "nope", m: {} },
+    )).toBe(reason(Schema.struct({ xs: Schema.array(Schema.number) }) as never, { xs: "nope" }));
+    expect(reason(Schema.struct({ a: Schema.record(Schema.number) }) as never, "nope"))
+      .toBe(reason(Schema.struct({ a: Schema.number }) as never, "nope"));
+
+    // Where only the adapter can run — an array or tuple whose element is a
+    // record — it now names the wanted shape in the build engine's form instead
+    // of answering "expected a plain array", which said which engine had run.
+    expect(reason(Schema.array(Schema.number) as never, "nope")).toBe("$ expected number[]");
+    expect(reason(Schema.array(Schema.record(Schema.number)) as never, "nope")).toBe("$ expected a record[]");
+    expect(reason(Schema.tuple(Schema.number) as never, "nope")).toBe("$ expected [number]");
+    expect(reason(Schema.tuple(Schema.record(Schema.number)) as never, "nope")).toBe("$ expected [a record]");
+
+    // The two wordings that already agreed are unchanged, in both engines.
+    const exotic = Object.setPrototypeOf([], null) as unknown[];
+    expect(reason(Schema.array(Schema.record(Schema.number)) as never, exotic)).toBe("$ expected a plain array");
+    expect(reason(Schema.array(Schema.number) as never, exotic)).toBe("$ expected a plain array");
+  });
+
   test("record adapter fails closed on prototype, symbols, accessors, and nested values", () => {
     const records = Schema.record(Schema.number);
     expect(validationError(records, new Map())).toMatchObject({ pointer: "$", reason: "expected a record" });
