@@ -603,16 +603,7 @@ export function buildSemanticModel(source: string, options: AnalyzeOptions = {})
 
   const errors = collectErrorDeclarations(sourceFile, checker, recovery.parseSource)
     .map((error) => remapErrorDeclaration(error, recovery));
-  const rows: Record<string, FunctionRows> = {};
-  const publicFunctions: FunctionDeclaration[] = [];
-  for (const fn of functions) {
-    if (!fn.publicName) continue;
-    rows[fn.publicName] = {
-      failures: [...fn.failures].sort(),
-      requirements: [...fn.requirements].sort(),
-    };
-    publicFunctions.push(publicFunctionDeclaration(fn, sourceFile, recovery));
-  }
+  const { rows, publicFunctions } = collectPublicRows(functions, sourceFile, recovery);
 
   // `environment.fileName` is an absolute path with a `.ts` suffix the checker
   // needs and no identity may carry. The portable name comes from the caller's
@@ -1036,6 +1027,92 @@ function remapErrorDeclaration(error: ErrorDeclaration, recovery: RecoveredSourc
   return { ...error, start: remapOffset(recovery, error.start), end: remapEnd(recovery, error.end) };
 }
 
+/**
+ * Whether a publicly named function's name is a MODULE-SCOPE binding — the only
+ * kind of name anything downstream can address a row by.
+ *
+ * `annotateDeclarationEffects`, `normalizeDeclarationEffectChannels` and
+ * `splitEffectVariableStatements` (`./declarations.ts`) all look a row up by
+ * `statementDeclarationName(statement)` over `sourceFile.statements`, so a row
+ * belonging to a method or to a function nested inside another function has no
+ * addressable name in the emitted `.d.mts` at all.
+ */
+function isModuleScopeFunction(node: ts.FunctionLikeDeclaration): boolean {
+  if (ts.isFunctionDeclaration(node)) return ts.isSourceFile(node.parent);
+  return ts.isVariableDeclaration(node.parent) &&
+    ts.isVariableDeclarationList(node.parent.parent) &&
+    ts.isVariableStatement(node.parent.parent.parent) &&
+    ts.isSourceFile(node.parent.parent.parent.parent);
+}
+
+/**
+ * The public row table and the public function list for one analyzed file.
+ *
+ * THE DEFECT THIS EXISTS FOR. Both call sites spelled the table inline as
+ * `rows[fn.publicName] = …` in a loop, which is a LAST-WRITER-WINS assignment
+ * over a key that is not unique. `collectFunctions` mints `publicName` as the
+ * BASE name — the `#2` disambiguator goes on `name`, not on `publicName` — and
+ * `isPubliclyNamedFunction` admits function declarations, methods, and
+ * function-valued variable declarations at any nesting depth. So two
+ * declarations sharing one base name is ordinary, accepted TypeScript, and the
+ * second silently overwrote the first. Measured, with zero diagnostics:
+ *
+ *     export function work(): Result<number, Boom> { … }
+ *     export class Holder { work(): Result<number, Bang> { … } }
+ *
+ *     rows == { work: { failures: ["Bang"], requirements: [] } }
+ *
+ * and, run through `annotateDeclarationEffects`, an emitted declaration whose
+ * exported `work` — the one that fails with `Boom` — carries
+ * `@smithersEffects {"version":1,"failures":["Bang"],"requirements":[]}`. That
+ * is not a lost row, it is a WRONG artifact: a downstream module checks against
+ * a failure row belonging to a different function.
+ *
+ * WHY THIS IS A PRECEDENCE RULE AND NOT A REFUSAL. The rest of this repair
+ * campaign answers a collision with a diagnostic, and that is unavailable here:
+ * a diagnostic the Go fork does not also raise makes the two backends disagree
+ * on an accepted program, and the fork's row analysis
+ * (`compiler/forkbridge/lowering.go.txt`) has no `publicName` and no row table
+ * to mirror one into. Refusing a program TypeScript accepts, in one backend
+ * only, would trade a wrong artifact for a divergence.
+ *
+ * So the rule is precedence, and it is chosen by ADDRESSABILITY rather than by
+ * source order: the module-scope declaration owns the name, because it is the
+ * only claimant `./declarations.ts` can ever look the row up for. Two
+ * module-scope claimants cannot occur — TypeScript reports its own duplicate
+ * identifier or duplicate implementation error first — so the winner is unique.
+ *
+ * WHAT IS STILL LOST, named here rather than left to be rediscovered: when two
+ * NON-module-scope declarations share a base name and no module-scope one
+ * claims it, the last still wins, exactly as before. That row is unaddressable
+ * in the emitted declarations either way, so the choice is observable only
+ * through `Analysis.rows` itself; narrowing it further would change the table
+ * for every program with a method in it, to no consumer's benefit.
+ * `Analysis.functions` is unaffected and keeps BOTH declarations — it is a list,
+ * so nothing there was ever overwritten.
+ */
+function collectPublicRows(
+  functions: readonly SemanticFunction[],
+  sourceFile: ts.SourceFile,
+  recovery: RecoveredSource,
+): { rows: Record<string, FunctionRows>; publicFunctions: FunctionDeclaration[] } {
+  const rows: Record<string, FunctionRows> = {};
+  const moduleScopeOwned = new Set<string>();
+  const publicFunctions: FunctionDeclaration[] = [];
+  for (const fn of functions) {
+    if (!fn.publicName) continue;
+    publicFunctions.push(publicFunctionDeclaration(fn, sourceFile, recovery));
+    const moduleScope = isModuleScopeFunction(fn.node);
+    if (!moduleScope && moduleScopeOwned.has(fn.publicName)) continue;
+    if (moduleScope) moduleScopeOwned.add(fn.publicName);
+    rows[fn.publicName] = {
+      failures: [...fn.failures].sort(),
+      requirements: [...fn.requirements].sort(),
+    };
+  }
+  return { rows, publicFunctions };
+}
+
 function publicFunctionDeclaration(
   fn: SemanticFunction,
   sourceFile: ts.SourceFile,
@@ -1120,16 +1197,7 @@ function analysisForFile(
   pending: readonly PendingDiagnostic[],
 ): Analysis {
   const diagnostics = finalizeDiagnostics(pending, recovery, sourceFile);
-  const rows: Record<string, FunctionRows> = {};
-  const publicFunctions: FunctionDeclaration[] = [];
-  for (const fn of functions) {
-    if (!fn.publicName) continue;
-    rows[fn.publicName] = {
-      failures: [...fn.failures].sort(),
-      requirements: [...fn.requirements].sort(),
-    };
-    publicFunctions.push(publicFunctionDeclaration(fn, sourceFile, recovery));
-  }
+  const { rows, publicFunctions } = collectPublicRows(functions, sourceFile, recovery);
   return {
     errors: collectErrorDeclarations(sourceFile, checker, parseSource)
       .map((error) => remapErrorDeclaration(error, recovery)),
