@@ -1,0 +1,31 @@
+import { durable, Action } from "smithers:flows"
+
+// Three field names chosen so UTF-8 byte order and UTF-16 code-unit order
+// disagree. "m" is ASCII, one name begins with U+1F600 (an astral character)
+// and one begins with U+FFFD. In UTF-16 the astral name is a surrogate pair
+// starting at 0xD800, so it sorts BEFORE U+FFFD; in UTF-8 it is four bytes
+// starting at 0xF0, so it sorts AFTER. "m" is the control: first either way.
+//
+// Both names are written as escapes so this file stays ASCII on disk; the
+// checker sees the decoded characters, which is what the sort compares.
+class Emit extends Action<(input: { key: string }) => Result<{
+  m: boolean
+  "\uFFFDb": string
+  "\u{1F600}a": number
+}, Error>> {}
+
+export const Flow = durable((input: { key: string }) => {
+  const emitted = Emit.run({ key: input.key })!
+  return { value: emitted["\uFFFDb"] }
+})
+
+export function main(): string[] {
+  const schema = Flow.plan.actions[0].successSchema
+  return [
+    schema.shape === "structural" && schema.descriptor.kind === "object"
+      ? schema.descriptor.fields.map((field) => field.name).join("|")
+      : "the success schema is not a structural object descriptor",
+    schema.digest,
+    Flow.plan.actions[0].contractDigest,
+  ]
+}
