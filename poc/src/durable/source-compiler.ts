@@ -861,30 +861,96 @@ const literalDescriptor = (value: JsonValue): DurableTypeDescriptor => {
   }
 }
 
+/**
+ * Why a Flow success descriptor could not be derived.
+ *
+ * `non-structural` is the ONE cause the legacy-artifact compatibility path in
+ * `flowSchemas` may swallow: some schema the walk had to read states no
+ * descriptor at all, because it came from a pre-derivation `Action.define`
+ * artifact. Nothing about the authored Flow is wrong; the contract is simply
+ * weaker than this compiler can describe.
+ *
+ * `defect` is everything else — a projection the output genuinely does not
+ * have, a node the walk cannot find, an Action id absent from the Plan's own
+ * action list. These are real refusals and must reach a diagnostic even when
+ * the same Flow happens to also use a legacy artifact.
+ *
+ * Every `fail` site names its cause, so the split cannot silently drift back
+ * into "does this Flow contain a legacy Action anywhere".
+ *
+ * `non-structural` is reachable from exactly four sites, and three of them
+ * (Action, fan-out Action, loop Action) look the failing Action up in this
+ * Plan's own `actions` first — so recording that cause always implies the
+ * action-set guard below is satisfied.
+ */
+type FlowDescriptorFailureCause = "defect" | "non-structural"
+
+interface FlowDescriptorFailure {
+  readonly cause: FlowDescriptorFailureCause
+  readonly message: string
+}
+
+/**
+ * Records one failure and yields a placeholder so the walk can CONTINUE.
+ *
+ * Aborting on the first failure hides the split this type exists to make:
+ * an output that reads a legacy Action's success (a legitimately weak leg,
+ * visited first) would mask a genuine projection defect in a sibling leg, so
+ * the Flow would still compile with the weaker contract and no diagnostic.
+ */
+type FlowDescriptorFail = (cause: FlowDescriptorFailureCause, message: string) => DurableTypeDescriptor
+
+/**
+ * Stands in for a descriptor the walk could not derive. Compared by IDENTITY
+ * and never by shape; it can never reach a Plan, because a schema is only
+ * built from a walk that recorded no failure at all. Projecting through it
+ * yields it again, so one unknowable leg does not manufacture a cascade of
+ * downstream "defects" that were never the author's doing.
+ */
+const unknownDescriptor: DurableTypeDescriptor = Object.freeze({ kind: "null" as const })
+
+/**
+ * `canonicalUnion` that keeps an unknown leg unknown instead of folding it into
+ * a `null` variant.
+ *
+ * Belt and braces, and honestly labelled as such: no program was found where
+ * dropping this guard changes an outcome, because `canonicalUnion` happens to
+ * carry the *same object* through its dedupe map, so the identity check in
+ * `projectDescriptor` still fires on the variant. That is an accident of
+ * `canonicalUnion`'s implementation, not a property it promises — it dedupes by
+ * canonical JSON, and `unknownDescriptor` serializes exactly like a real `null`
+ * descriptor, so a `[unknown, real-null]` pair keeps whichever came last. Losing
+ * the identity would manufacture a spurious `defect` and refuse a Flow the
+ * legacy path should still accept, which is the over-correction direction.
+ */
+const joinDescriptors = (variants: readonly DurableTypeDescriptor[]): DurableTypeDescriptor =>
+  variants.some((variant) => variant === unknownDescriptor) ? unknownDescriptor : canonicalUnion(variants)
+
 const projectDescriptor = (
   descriptor: DurableTypeDescriptor,
   path: readonly string[],
-  fail: (message: string) => never
+  fail: FlowDescriptorFail
 ): DurableTypeDescriptor => {
+  if (descriptor === unknownDescriptor) return descriptor
   if (path.length === 0) return descriptor
   if (descriptor.kind === "union") {
-    return canonicalUnion(descriptor.variants.map((variant) => projectDescriptor(variant, path, fail)))
+    return joinDescriptors(descriptor.variants.map((variant) => projectDescriptor(variant, path, fail)))
   }
   const [head, ...tail] = path
   if (descriptor.kind === "object") {
     const field = descriptor.fields.find((candidate) => candidate.name === head)
-    if (field === undefined) return fail(`Flow output projects missing durable field ${head}`)
+    if (field === undefined) return fail("defect", `Flow output projects missing durable field ${head}`)
     return projectDescriptor(field.value, tail, fail)
   }
   if (descriptor.kind === "tuple" && /^(0|[1-9][0-9]*)$/.test(head)) {
     const item = descriptor.items[Number(head)]
-    if (item === undefined) return fail(`Flow output projects missing durable tuple index ${head}`)
+    if (item === undefined) return fail("defect", `Flow output projects missing durable tuple index ${head}`)
     return projectDescriptor(item, tail, fail)
   }
   if (descriptor.kind === "array" && /^(0|[1-9][0-9]*)$/.test(head)) {
     return projectDescriptor(descriptor.element, tail, fail)
   }
-  return fail(`Flow output cannot project ${head} from durable ${descriptor.kind}`)
+  return fail("defect", `Flow output cannot project ${head} from durable ${descriptor.kind}`)
 }
 
 const flowSuccessDescriptor = (
@@ -893,7 +959,7 @@ const flowSuccessDescriptor = (
   nodes: readonly PlanNode[],
   actions: readonly ActionDescriptor[],
   childFlows: ReadonlyMap<string, PlanTemplate>,
-  fail: (message: string) => never
+  fail: FlowDescriptorFail
 ): DurableTypeDescriptor => {
   switch (expression.kind) {
     case "literal": return literalDescriptor(expression.value)
@@ -912,13 +978,16 @@ const flowSuccessDescriptor = (
       const node = findNode(nodes)
       if (node?.kind === "action") {
         const action = actions.find((candidate) => candidate.id === node.actionId)
-        if (action === undefined || action.successSchema.shape !== "structural") {
-          return fail(`Flow output references an Action without a structural success descriptor`)
+        if (action === undefined) {
+          return fail("defect", `Flow output references Action ${node.actionId}, which this Plan does not declare`)
+        }
+        if (action.successSchema.shape !== "structural") {
+          return fail("non-structural", `Flow output references an Action without a structural success descriptor`)
         }
         return projectDescriptor(action.successSchema.descriptor, expression.path, fail)
       }
       if (node?.kind === "branch") {
-        const joined = canonicalUnion([
+        const joined = joinDescriptors([
           flowSuccessDescriptor(node.whenTrue.output, input, nodes, actions, childFlows, fail),
           flowSuccessDescriptor(node.whenFalse.output, input, nodes, actions, childFlows, fail)
         ])
@@ -935,10 +1004,19 @@ const flowSuccessDescriptor = (
       }
       if (node?.kind === "fanout") {
         const steps = fanOutSteps(node)
-        const lastStep = steps[steps.length - 1]!
+        const lastStep = steps[steps.length - 1]
+        if (lastStep === undefined) {
+          return fail("defect", `Flow output references a fan-out node with no Action steps`)
+        }
         const action = actions.find((candidate) => candidate.id === lastStep.actionId)
-        if (action === undefined || action.successSchema.shape !== "structural") {
-          return fail(`Flow output references a fan-out Action without a structural success descriptor`)
+        if (action === undefined) {
+          return fail(
+            "defect",
+            `Flow output references fan-out Action ${lastStep.actionId}, which this Plan does not declare`
+          )
+        }
+        if (action.successSchema.shape !== "structural") {
+          return fail("non-structural", `Flow output references a fan-out Action without a structural success descriptor`)
         }
         return projectDescriptor(
           { kind: "array", element: action.successSchema.descriptor },
@@ -948,12 +1026,15 @@ const flowSuccessDescriptor = (
       }
       if (node?.kind === "loop") {
         const action = actions.find((candidate) => candidate.id === node.actionId)
-        if (action === undefined || action.successSchema.shape !== "structural") {
-          return fail(`Flow output references a loop Action without a structural success descriptor`)
+        if (action === undefined) {
+          return fail("defect", `Flow output references loop Action ${node.actionId}, which this Plan does not declare`)
+        }
+        if (action.successSchema.shape !== "structural") {
+          return fail("non-structural", `Flow output references a loop Action without a structural success descriptor`)
         }
         // Zero rounds yields the initial state; otherwise the final round's
         // Action success. The descriptor is their canonical union.
-        const joined = canonicalUnion([
+        const joined = joinDescriptors([
           flowSuccessDescriptor(node.initial, input, nodes, actions, childFlows, fail),
           action.successSchema.descriptor
         ])
@@ -961,13 +1042,16 @@ const flowSuccessDescriptor = (
       }
       if (node?.kind === "childFlow") {
         const child = childFlows.get(node.planDigest)
-        const success = child?.flowSchemas?.success
+        if (child === undefined) {
+          return fail("defect", `Flow output references child Flow ${node.planDigest}, which this Plan does not embed`)
+        }
+        const success = child.flowSchemas?.success
         if (success === undefined || success.shape !== "structural") {
-          return fail(`Flow output references a child Flow without a structural success descriptor`)
+          return fail("non-structural", `Flow output references a child Flow without a structural success descriptor`)
         }
         return projectDescriptor(success.descriptor, expression.path, fail)
       }
-      return fail(`Flow output references a node without a supported success descriptor`)
+      return fail("defect", `Flow output references a node without a supported success descriptor`)
     }
     case "array": return {
       kind: "tuple",
@@ -1014,23 +1098,37 @@ const flowSchemas = (
       "input",
       "Flow input"
     )
+    const failures: FlowDescriptorFailure[] = []
+    const successDescriptor = flowSuccessDescriptor(
+      output,
+      input.descriptor,
+      nodes,
+      actions,
+      childFlows,
+      (cause, message) => {
+        failures.push({ cause, message })
+        return unknownDescriptor
+      }
+    )
+    // A defect outranks every weak-contract excuse. Gating the compatibility
+    // path on the ACTION SET alone — "does this Flow contain any legacy
+    // Action" — fails open: a Flow that projects a field its output genuinely
+    // does not have compiles with the weaker contract and NO diagnostic, and
+    // then faults at run time in `pathValue` as a ProjectionDefect. Only a
+    // failure the walk itself attributed to a schema that states no descriptor
+    // may be swallowed.
+    const defect = failures.find((failure) => failure.cause === "defect")
+    if (defect !== undefined) throw new TypeError(defect.message)
     let success: DurableSchema
-    try {
-      const successDescriptor = flowSuccessDescriptor(
-        output,
-        input.descriptor,
-        nodes,
-        actions,
-        childFlows,
-        (message) => { throw new TypeError(message) }
-      )
+    if (failures.length === 0) {
       success = structuralSchema("success", successDescriptor)
-    } catch (error) {
-      if (!actions.some((action) => action.successSchema.shape !== "structural")) throw error
+    } else if (actions.some((action) => action.successSchema.shape !== "structural")) {
       // Legacy Action.define artifacts remain readable but state their weaker
       // contract explicitly; compiler-derived Action bindings never take this
       // compatibility path.
       success = derivedSchema("success")
+    } else {
+      throw new TypeError(failures[0].message)
     }
     const error = flowErrorSchema(actions)
     return {

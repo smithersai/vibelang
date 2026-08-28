@@ -752,3 +752,129 @@ export const Build = durable((input: { key: string }) => {
   expect(higherOrder.diagnostics[0].code).toBe("SMITHERS4112")
   expect(higherOrder.diagnostics[0].message).toContain("higher-order and dynamic calls")
 })
+
+test("a Flow-output projection defect is refused even when the Flow also uses a legacy Action artifact", async () => {
+  // The fail-open this pins: `flowSchemas` used to catch EVERY failure of the
+  // Flow-success descriptor walk and, if `actions.some(a => a.successSchema.shape
+  // !== "structural")`, discard it and compile the Flow with the weaker
+  // `json-value` contract and NO diagnostic. The guard asked "does this Flow
+  // contain a legacy Action", not "is THIS failure caused by one" — so a
+  // projection the output genuinely does not have was swallowed whenever a
+  // legacy `Action.define` artifact happened to be bound. `.length` is the
+  // sharpest spelling: TypeScript accepts it on an array, the durable descriptor
+  // has no such field, and `pathValue` in the engine refuses a non-numeric part
+  // on an array at run time. So the Flow compiled clean and then FAULTED, which
+  // is the whole cost of the swallow.
+  const defective = `
+import { durable } from "smithers:flows"
+import { Compile } from "test:source-actions"
+export const Build = durable(function Build(input: { source: string; items: readonly string[] }) {
+  const compiled = Compile.run({ source: input.source })!
+  return { code: compiled.code, count: input.items.length }
+})
+`
+  const refused = compileRepresentative(defective)
+  expect(refused.ok).toBe(false)
+  if (refused.ok) throw new Error("a projection the output does not have must be refused")
+  expect(refused.diagnostics[0].code).toBe("SMITHERS4110")
+  expect(refused.diagnostics[0].message).toContain("Flow output cannot project length from durable array")
+
+  // Traversal order must not decide it. `code` sorts before `count`, so the
+  // legitimately weak legacy leg is visited FIRST above; here the defect is
+  // visited first. A first-failure-wins walk passes one of these two and fails
+  // the other, which is the same fail-open wearing traversal order as a hat.
+  const reordered = compileRepresentative(`
+import { durable } from "smithers:flows"
+import { Compile } from "test:source-actions"
+export const Build = durable(function Build(input: { source: string; items: readonly string[] }) {
+  const compiled = Compile.run({ source: input.source })!
+  return { aaa: input.items.length, zzz: compiled.code }
+})
+`)
+  expect(reordered.ok).toBe(false)
+  if (reordered.ok) throw new Error("the defect must be found whichever leg is walked first")
+  expect(reordered.diagnostics[0].code).toBe("SMITHERS4110")
+  expect(reordered.diagnostics[0].message).toContain("Flow output cannot project length from durable array")
+
+  // The same program with no legacy artifact anywhere was ALREADY refused, and
+  // must still be refused at the same code with the same sentence: the repair
+  // removed a difference, it did not add a rule.
+  const noLegacyArtifact = compileDurableSource(`
+import { durable, Action } from "smithers:flows"
+class Lookup extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+export const Build = durable((input: { key: string; items: readonly string[] }) => {
+  const found = Lookup.run({ key: input.key })!
+  return { value: found.value, count: input.items.length }
+})
+`, { fileName: "flows/orders.sm" })
+  expect(noLegacyArtifact.ok).toBe(false)
+  if (noLegacyArtifact.ok) throw new Error("a projection defect must be refused without a legacy artifact too")
+  expect(noLegacyArtifact.diagnostics[0].code).toBe("SMITHERS4110")
+  expect(noLegacyArtifact.diagnostics[0].message).toContain("Flow output cannot project length from durable array")
+})
+
+test("the legacy Action.define compatibility path still compiles, and still runs", async () => {
+  // The over-correction this repair could ship, and the reason the catch is
+  // narrowed rather than deleted: a Flow whose success descriptor genuinely
+  // cannot be derived BECAUSE an Action's success schema is non-structural must
+  // still compile, stating the weaker contract explicitly. All four legs that
+  // read a success schema are exercised, because each has its own `fail` site.
+  const legacyForms = {
+    "a returned Action.run": `
+import { durable } from "smithers:flows"
+import { Compile } from "test:source-actions"
+export const Build = durable(function Build(input: { source: string }) {
+  const compiled = Compile.run({ source: input.source })!
+  return { code: compiled.code }
+})`,
+    "a branch join": `
+import { durable } from "smithers:flows"
+import { Compile } from "test:source-actions"
+export const Build = durable(function Build(input: { source: string; pick: boolean }) {
+  return input.pick ? Compile.run({ source: input.source }) : Compile.run({ source: "fallback" })
+})`,
+    "a fanOut": `
+import { durable, fanOut } from "smithers:flows"
+import { Compile } from "test:source-actions"
+export const Build = durable(function Build(input: { items: readonly string[] }) {
+  const seen = fanOut(input.items, (item) => item, (item) => Compile.run({ source: item }))
+  return { seen }
+})`,
+    "a loopWhile": `
+import { durable, loopWhile } from "smithers:flows"
+import { Compile } from "test:source-actions"
+export const Build = durable(function Build(input: { source: string }) {
+  const final = loopWhile({ source: input.source }, (state) => state.source !== "", (state) => Compile.run({ source: state.source }), 4)
+  return { final }
+})`
+  } as const
+
+  for (const [label, source] of Object.entries(legacyForms)) {
+    const compiled = compileRepresentative(source)
+    if (!compiled.ok) throw new Error(`${label} must still compile: ${JSON.stringify(compiled.diagnostics)}`)
+    // The weaker contract is STATED, not silently structural.
+    expect(compiled.plan.flowSchemas?.success.shape, label).toBe("json-value")
+  }
+
+  // And the weakened Flow is not merely accepted — it executes.
+  const compiled = compileRepresentative(legacyForms["a returned Action.run"])
+  if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
+  const CompileLive = Provider.provide(Compile, ({ source }) => ({ code: `compiled:${source}` }), {
+    implementationId: "legacy-compat-live",
+    implementationVersion: "1"
+  })
+  const deployment = Deployment.build({
+    id: "legacy-compat",
+    flow: compiled.flow,
+    pools: [Worker.pool("legacy-compat-worker", { target: "typescript-bun", providers: [CompileLive] })]
+  })
+  const store = new DurableStore()
+  try {
+    expect(await new DurableExecutor(deployment, store).execute(
+      { source: "hi" },
+      { executionId: "legacy-compat" }
+    )).toEqual({ code: "compiled:hi" })
+  } finally {
+    store.close()
+  }
+})
