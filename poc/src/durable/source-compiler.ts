@@ -2,6 +2,7 @@ import { resolve } from "node:path"
 import * as ts from "typescript-js"
 import type { CompiledFlow } from "./authoring.ts"
 import { encodePlanArtifact, loadCompiledFlow, validatePlanTemplate } from "./artifact.ts"
+import { deriveEffectManifest, type EffectManifest, EffectManifestFailure } from "./effect-manifest.ts"
 import {
   canonicalJson,
   derivedSchema,
@@ -93,6 +94,20 @@ export interface DurableSourceFlowBinding {
   readonly exportName: string
   /** Complete validated child Plan; it must carry structural Flow schemas. */
   readonly plan: PlanTemplate
+  /**
+   * The child's own Effect Manifest, when the caller has one.
+   *
+   * A parent's effect set is **transitive**: `lowerChildFlowCall` copies every
+   * one of the child Plan's Actions into the parent's `usedActions`, so the
+   * parent Plan's requirement row already names them and deployment closure
+   * depends on that. A parent Manifest therefore has to name them too — and it
+   * has to learn them from the child's *Manifest*, not from the child's Plan,
+   * because after the pivot the child publishes no Plan.
+   *
+   * When it is absent the parent's Manifest derivation fails closed rather than
+   * publishing a requirement row that silently omits the child's Actions.
+   */
+  readonly manifest?: EffectManifest
 }
 
 export interface DurableSourceCompileOptions {
@@ -143,6 +158,24 @@ export interface DurableSourceCompileSuccess {
   readonly flow: CompiledFlow<unknown, unknown>
   /** Compiler-owned Action declarations consumed from the compiled source. */
   readonly derivedActions: readonly DurableSourceDerivedAction[]
+  /**
+   * The Flow's **Effect Manifest**, emitted as a second artifact beside the
+   * Plan (`docs/DECISIONS.md` §PR-1, pending ratification).
+   *
+   * Derived by `effect-manifest.ts` from the same checked source this Plan was
+   * lowered from, by its own syntactic descent. It is NOT projected out of
+   * `plan` — a Manifest that could only be projected out of a Plan would
+   * validate nothing about a world with no Plan in it.
+   *
+   * `undefined` when derivation itself failed. That is a fail-OPEN here on
+   * purpose: this field is new, nothing existing may change because of it, and
+   * a Manifest defect must never turn an accepted Plan into a diagnostic. The
+   * fail-CLOSED half lives in the cross-check, which refuses an absent
+   * Manifest and prints `manifestFailure`.
+   */
+  readonly manifest: EffectManifest | undefined
+  /** Why {@link manifest} is absent, when it is. */
+  readonly manifestFailure: string | undefined
 }
 
 export interface DurableSourceCompileFailure {
@@ -182,7 +215,23 @@ interface CheckedSource {
    * the sentence do.
    */
   readonly collidingActionsBySymbol: ReadonlyMap<ts.Symbol, DurableFailureIdentityCollision>
+  /**
+   * The compiler-owned `Action` base class.
+   *
+   * The lowerer never needed it: a `run` call on an Action it could not
+   * describe simply found no descriptor and fell through to the generic
+   * unsupported-call diagnostic, so "this is an Action" and "this is not a
+   * call I lower" were the same answer. The Effect Manifest needs to tell
+   * them apart, because *silently omitting* an Action from a set that claims
+   * to be reachability-sound is a fail-open, while refusing the program is
+   * allowed (`DECISIONS.md` §PR-1: "MUST either be rejected inside a Flow body
+   * or force the Manifest to include the full effect set … it MUST NOT
+   * silently narrow the Manifest").
+   */
+  readonly actionBaseSymbol: ts.Symbol
   readonly flowsBySymbol: ReadonlyMap<ts.Symbol, PlanTemplate>
+  /** Child Manifests, for the transitive half of the parent's effect set. */
+  readonly childManifestsBySymbol: ReadonlyMap<ts.Symbol, EffectManifest>
   readonly derivedActions: readonly DurableSourceDerivedAction[]
   readonly sourceDiagnostics: readonly ts.Diagnostic[]
 }
@@ -394,6 +443,7 @@ const checkedSource = (
   const flowsPath = resolve(PROJECT_ROOT, "__virtual__/flows.d.ts")
   const resultPath = resolve(PROJECT_ROOT, "__virtual__/result.d.ts")
   const normalizedBindings: NormalizedModuleBinding[] = []
+  const childManifestsByExport = new Map<string, EffectManifest>()
   const modules = new Map<string, { path: string; exports: Map<string, ModuleExport> }>()
   const bindExport = (
     index: number,
@@ -446,6 +496,12 @@ const checkedSource = (
       )
     }
     bindExport(index, "Flow", binding.moduleSpecifier, binding.exportName, { kind: "flow", plan })
+    // Kept beside the binding table rather than inside `ModuleExport`, so the
+    // synthesized declaration text and `moduleExportDigest` — which decide the
+    // checked program and the conflict rule — are byte-for-byte what they were.
+    if (binding.manifest !== undefined) {
+      childManifestsByExport.set(`${binding.moduleSpecifier}#${binding.exportName}`, binding.manifest)
+    }
   }
 
   const virtualSources = new Map<string, string>([
@@ -560,9 +616,18 @@ const checkedSource = (
   ) {
     throw new Error("Durable source compiler failed to bind its compiler-owned intrinsics")
   }
+  // The same binding `deriveSameFileActions` makes for itself, read once here
+  // so the Effect Manifest can distinguish "an Action whose contract could not
+  // be derived" from "not an Action at all". Nothing about the Plan reads it.
+  const actionBaseDeclaration = flowsFile.statements.find(ts.isClassDeclaration)
+  const actionBaseSymbol = actionBaseDeclaration?.name && checker.getSymbolAtLocation(actionBaseDeclaration.name)
+  if (actionBaseSymbol === undefined) {
+    throw new Error("Durable source compiler failed to bind its compiler-owned Action base class")
+  }
   const actionsBySymbol = new Map<ts.Symbol, ActionDescriptor>()
   const collidingActionsBySymbol = new Map<ts.Symbol, DurableFailureIdentityCollision>()
   const flowsBySymbol = new Map<ts.Symbol, PlanTemplate>()
+  const childManifestsBySymbol = new Map<ts.Symbol, EffectManifest>()
   const derivedActions = deriveSameFileActions(
     program,
     checker,
@@ -582,7 +647,11 @@ const checkedSource = (
     const symbol = declaration && checker.getSymbolAtLocation(declaration.name)
     if (symbol === undefined) throw new Error(`Durable source compiler failed to bind ${binding.exportName}`)
     if (binding.export.kind === "action") actionsBySymbol.set(symbol, binding.export.descriptor)
-    else flowsBySymbol.set(symbol, binding.export.plan)
+    else {
+      flowsBySymbol.set(symbol, binding.export.plan)
+      const childManifest = childManifestsByExport.get(`${binding.moduleSpecifier}#${binding.exportName}`)
+      if (childManifest !== undefined) childManifestsBySymbol.set(symbol, childManifest)
+    }
   }
   // The checker may recover a duplicate local/import declaration as the
   // imported symbol. Reject those invalid programs before trusting identity.
@@ -610,7 +679,9 @@ const checkedSource = (
     broadcastSymbol,
     actionsBySymbol,
     collidingActionsBySymbol,
+    actionBaseSymbol,
     flowsBySymbol,
+    childManifestsBySymbol,
     derivedActions,
     sourceDiagnostics
   }
@@ -2901,11 +2972,33 @@ export const compileDurableSource = (
     }
     const plan = validatePlanTemplate({ ...semantic, digest: digest(semantic) })
     const artifact = encodePlanArtifact(plan)
+    // The second artifact. Derived from `checked` and `sourceFunction` — the
+    // Plan lowerer's own INPUTS — never from `plan`, `lowerer.nodes`, or
+    // `lowerer.usedActions`. `deriveEffectManifest`'s signature cannot accept
+    // any of those three, which is the enforcement.
+    let manifest: EffectManifest | undefined
+    let manifestFailure: string | undefined
+    try {
+      manifest = deriveEffectManifest(
+        checked,
+        {
+          logicalFileName,
+          flowId,
+          flowVersion,
+          functionName: sourceFunction.name?.text ?? declarationName
+        },
+        sourceFunction
+      )
+    } catch (error) {
+      manifestFailure = error instanceof Error ? error.message : String(error)
+    }
     return Object.freeze({
       ok: true,
       diagnostics: [] as const,
       plan,
       artifact,
+      manifest,
+      manifestFailure,
       flow: loadCompiledFlow(artifact),
       // Every derived declaration is reported, not only the ones this Flow
       // used: they all extend the compiler-owned base, which does not survive
@@ -2929,6 +3022,122 @@ export const compileDurableSource = (
         fallback,
         "SMITHERS4199",
         `durable source compiler failed closed: ${error instanceof Error ? error.message : String(error)}`
+      )]
+    }
+  }
+}
+
+export interface EffectManifestCompileSuccess {
+  readonly ok: true
+  readonly diagnostics: readonly []
+  readonly manifest: EffectManifest
+}
+
+export type EffectManifestCompileResult = EffectManifestCompileSuccess | DurableSourceCompileFailure
+
+/**
+ * Derive a Flow's Effect Manifest **without lowering a Plan**.
+ *
+ * This is the same front half as {@link compileDurableSource} — the size gate,
+ * the checked program, the single compiler-owned `durable(...)` call, and the
+ * function it resolves to — followed by `deriveEffectManifest` instead of
+ * `FunctionLowerer`. No `PlanNode` is constructed on this path, no
+ * `PlanTemplate` is validated, and no artifact is encoded.
+ *
+ * It exists so the step-5 cross-check can compare a Manifest that provably
+ * never saw a Plan against a Plan built by a separate compilation of the same
+ * text. `compileDurableSource` also publishes a Manifest, from the same
+ * derivation over its own checked program; the cross-check asserts the two are
+ * identical, which is what makes "the embedded one is the independent one" a
+ * measured claim rather than a design intention.
+ */
+export const compileEffectManifest = (
+  source: string,
+  options: DurableSourceCompileOptions
+): EffectManifestCompileResult => {
+  let logicalFileName = "durable-source.ts"
+  let sourceFile: ts.SourceFile | undefined
+  try {
+    if (typeof source !== "string") throw new TypeError("Durable source must be a string")
+    if (options === null || typeof options !== "object") throw new TypeError("Durable source compiler options are required")
+    logicalFileName = normalizeLogicalFileName(options.fileName)
+    if (new TextEncoder().encode(source).byteLength > MAX_SOURCE_BYTES) {
+      return {
+        ok: false,
+        diagnostics: [Object.freeze({
+          code: "SMITHERS4101",
+          message: "durable source exceeds the compiler input size limit",
+          file: logicalFileName,
+          line: 1,
+          column: 1,
+          length: 1
+        })]
+      }
+    }
+    const checked = checkedSource(
+      source,
+      logicalFileName,
+      authoredLogicalName(options.fileName),
+      options.actions ?? [],
+      options.flows ?? []
+    )
+    sourceFile = checked.sourceFile
+    if (checked.sourceDiagnostics.length > 0) {
+      const parse = checked.sourceDiagnostics[0]
+      const start = parse.start ?? 0
+      const position = checked.sourceFile.getLineAndCharacterOfPosition(start)
+      return {
+        ok: false,
+        diagnostics: [Object.freeze({
+          code: "SMITHERS4100",
+          message: ts.flattenDiagnosticMessageText(parse.messageText, "\n"),
+          file: logicalFileName,
+          line: position.line + 1,
+          column: position.character + 1,
+          length: Math.max(1, parse.length ?? 1)
+        })]
+      }
+    }
+    const fail = (node: ts.Node, code: string, message: string): never => {
+      throw new LoweringFailure(diagnosticAt(logicalFileName, checked.sourceFile, node, code, message))
+    }
+    const calls = findDurableCalls(checked)
+    if (calls.length === 0) fail(checked.sourceFile, "SMITHERS4102", "no imported smithers:flows durable(...) call was found")
+    if (calls.length > 1) fail(calls[1], "SMITHERS4102", "bounded durable source compilation accepts exactly one durable(...) declaration")
+    const call = calls[0]
+    const sourceFunction = resolvedFunction(checked, call, fail)
+    const declarationName = declarationNameFor(call, sourceFunction)
+    const flowId = options.flowId ?? `${logicalFileName}#${declarationName}`
+    const flowVersion = options.flowVersion ?? 1
+    if (typeof flowId !== "string" || flowId.trim() === "") fail(call, "SMITHERS4101", "durable Flow id must be non-empty")
+    if (!Number.isSafeInteger(flowVersion) || flowVersion < 1) fail(call, "SMITHERS4101", "durable Flow version must be a positive safe integer")
+    return Object.freeze({
+      ok: true,
+      diagnostics: [] as const,
+      manifest: deriveEffectManifest(
+        checked,
+        { logicalFileName, flowId, flowVersion, functionName: sourceFunction.name?.text ?? declarationName },
+        sourceFunction
+      )
+    })
+  } catch (error) {
+    if (error instanceof LoweringFailure) return { ok: false, diagnostics: [error.diagnostic] }
+    const fallback = sourceFile ?? ts.createSourceFile(
+      logicalFileName,
+      typeof source === "string" ? source : "",
+      ts.ScriptTarget.ESNext,
+      true,
+      ts.ScriptKind.TS
+    )
+    const node = error instanceof EffectManifestFailure ? error.node : fallback
+    return {
+      ok: false,
+      diagnostics: [diagnosticAt(
+        logicalFileName,
+        fallback,
+        node,
+        "SMITHERS4199",
+        `durable effect manifest derivation failed closed: ${error instanceof Error ? error.message : String(error)}`
       )]
     }
   }

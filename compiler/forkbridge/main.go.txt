@@ -242,6 +242,12 @@ func compile(ctx context.Context, input request) (result, error) {
 	// individual producers would leave future diagnostic paths vulnerable to
 	// the same global byte drift.
 	project.convertDiagnosticSpansToUTF16(&compiled)
+	// Migration step 5's second artifact, appended only when the request asked
+	// for it and only when this compile emitted at all — a refused project must
+	// keep emitting nothing, which several tests assert as `len(Artifacts) == 0`.
+	if requestedEffectManifest && !compiled.EmitSkipped && len(durableManifestArtifacts) > 0 {
+		compiled.Artifacts = append(compiled.Artifacts, durableManifestArtifacts...)
+	}
 	return compiled, err
 }
 
@@ -1287,6 +1293,17 @@ func compilerOptions(raw map[string]any) (*core.CompilerOptions, error) {
 				return nil, optionError(name, fmt.Errorf("must be a non-empty string"))
 			}
 			requestedComptimeTarget = text
+		case "smithersEffectManifest":
+			// Migration step 5. Asks the durable lowering to publish each
+			// Flow's Effect Manifest, and the Plan it was NOT derived from,
+			// as two extra JSON artifacts so a cross-check can compare them.
+			// Absent — every existing caller — nothing is derived and nothing
+			// is emitted.
+			parsed, ok := value.(bool)
+			if !ok {
+				return nil, optionError(name, fmt.Errorf("must be a boolean"))
+			}
+			requestedEffectManifest = parsed
 		case "module":
 			text, ok := value.(string)
 			if !ok {

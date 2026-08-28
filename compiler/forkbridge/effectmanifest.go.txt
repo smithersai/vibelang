@@ -1,0 +1,369 @@
+package main
+
+// The **Effect Manifest** for the pinned Go fork — the static, sets-and-tables
+// artifact a Flow publishes beside its body.
+//
+// `docs/DECISIONS.md` §PR-1 (pending ratification): "the compiler derives and
+// publishes a static Effect Manifest per Flow — reachable Action identities,
+// capability requirement row, external-input contracts, failure row, and site
+// table. Sets and tables only: no control-flow edges, no branch structure, no
+// execution counts."
+//
+// # What this unit may see, and what it may not
+//
+// The Manifest is derived from the CHECKED SOURCE, never from the Plan. That is
+// the whole point of the artifact: after the continuation pivot there is no
+// Plan to project one out of, so a Manifest that could only be projected out of
+// a Plan would validate nothing.
+//
+// The rule is kept by construction, not by convention:
+//
+//   - durableEffectManifest takes the authored function node and the flow
+//     identity, and NOTHING else from the lowering. It never reads
+//     durableFunctionLowerer.nodes, .actions, .occurrences, or the map that
+//     plan() returns.
+//   - it runs its own traversal — a plain ForEachChild descent — with no value
+//     environment, no dependency edges, no node ids, and no ordering.
+//   - the one thing it borrows is CONTRACT DERIVATION: actionFor and
+//     durableTypeDescriptor, reached through a scratch durableFunctionLowerer
+//     that exists only to carry the checker. Those functions define what an
+//     Action's and a signal's contract identity IS. A second transcription of
+//     them would not test reachability; it would test whether two copies of one
+//     hash agree, and would let a real divergence hide behind a spurious one.
+//
+// A ForEachChild descent gets reachability soundness for free and cannot
+// express anything else: both arms of a conditional are just children, so both
+// arms' Actions are in the Manifest, and the Manifest has no way to say which
+// arm, how many times, or in what order. That is exactly PR-1's discipline —
+// "sound with respect to reachability and imprecise about everything else".
+//
+// # Why the emission is opt-in
+//
+// This is migration step 5, whose whole job is to prove the Manifest against
+// the Plan *before anything is deleted*, under a hard constraint that nothing
+// existing may change. Emitting an extra artifact unconditionally would move
+// the artifact list of every durable compile in the tree. The request option
+// `smithersEffectManifest` therefore gates it: with the option absent — which
+// is every existing caller — this unit produces nothing and observes nothing.
+// Step 12, which retargets `smithers plan` at the Manifest, is where the gate
+// comes off.
+//
+// The `.plan.json` companion is emitted from the same option for one reason:
+// the cross-check test has to compare the two artifacts, and reading the Plan
+// back out of the emitted JavaScript object literal would mean re-parsing
+// generated code. Exposing the Plan for comparison is not the same thing as
+// deriving the Manifest from it.
+
+import (
+	"sort"
+	"strconv"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+// requestedEffectManifest is set from the `smithersEffectManifest` request
+// option. The bridge serves exactly one request per process, so a request
+// option is the whole lifetime of this value — the same reasoning
+// `requestedComptimeTarget` is written under.
+var requestedEffectManifest = false
+
+// durableManifestArtifacts accumulates the extra artifacts one request asked
+// for. Empty unless requestedEffectManifest is set, and read exactly once by
+// compile().
+var durableManifestArtifacts []artifact
+
+type durableManifestBuilder struct {
+	// contracts is a scratch lowerer used ONLY to reach actionFor and the type
+	// descriptor derivation. Its nodes/actions maps are never read, and nothing
+	// it accumulates reaches the Manifest.
+	contracts    *durableFunctionLowerer
+	owner        *lowerer
+	logicalFile  string
+	flowID       string
+	flowVersion  int
+	function     string
+	actions      map[string]map[string]any
+	requirements map[string]bool
+	contractRows map[string]map[string]any
+	failures     map[string]bool
+	sites        []map[string]any
+	occurrences  map[string]int
+	// failed records the first reason the Manifest could not be stated
+	// soundly. A Manifest with a hole in it is worse than no Manifest: PR-1
+	// says a call the compiler cannot resolve "MUST either be rejected inside a
+	// Flow body or force the Manifest to include the full effect set of the
+	// callee's module; it MUST NOT silently narrow the Manifest".
+	failed string
+}
+
+// durableManifestAnchor is the authored `line:character` of a node, zero-based,
+// matching the reference frontend's site anchors.
+func (b *durableManifestBuilder) anchor(node *ast.Node) string {
+	start := scanner.SkipTrivia(b.owner.file.Text(), node.Pos())
+	line, character := scanner.GetECMALineAndUTF16CharacterOfPosition(b.owner.file, start)
+	return strconv.Itoa(line) + ":" + strconv.Itoa(int(character))
+}
+
+// recordSite appends one row to the site table.
+//
+// The occurrence counter exists ONLY so two syntactically distinct sites that
+// hash alike cannot collide, exactly as the Plan lowerer's does. It is not an
+// execution count and it never reaches a set the cross-check compares.
+func (b *durableManifestBuilder) recordSite(node *ast.Node, kind string, key string) {
+	anchor := b.anchor(node)
+	identity := map[string]any{
+		"anchor":       anchor,
+		"file":         b.logicalFile,
+		"functionName": b.function,
+		"kind":         "perform",
+	}
+	if key != "" {
+		identity["key"] = key
+	}
+	bucket := durableCopyMap(identity)
+	bucket["requestKind"] = kind
+	occurrenceKey := durableDigest(bucket)
+	occurrence := b.occurrences[occurrenceKey]
+	b.occurrences[occurrenceKey] = occurrence + 1
+	withOccurrence := durableCopyMap(identity)
+	withOccurrence["occurrence"] = occurrence
+	row := map[string]any{
+		"anchor": anchor,
+		"id":     "src-" + durableDigest(withOccurrence)[:24],
+		"kind":   kind,
+	}
+	if key != "" {
+		row["key"] = key
+	}
+	b.sites = append(b.sites, row)
+}
+
+func (b *durableManifestBuilder) addContract(kind string, identity string, contractDigest string) {
+	b.contractRows[kind+"#"+identity+"#"+contractDigest] = map[string]any{
+		"contractDigest": contractDigest,
+		"identity":       identity,
+		"kind":           kind,
+	}
+}
+
+func (b *durableManifestBuilder) fail(reason string) {
+	if b.failed == "" {
+		b.failed = reason
+	}
+}
+
+// classify records what one call expression contributes to the Manifest.
+func (b *durableManifestBuilder) classify(node *ast.Node) {
+	call := node.AsCallExpression()
+	if ast.IsPropertyAccessExpression(call.Expression) {
+		access := call.Expression.AsPropertyAccessExpression()
+		if !b.owner.durableIntrinsic(access.Name(), "run") {
+			return
+		}
+		action, recognized := b.contracts.actionFor(access.Expression)
+		if !recognized {
+			return
+		}
+		// FAIL CLOSED on an Action whose durable contract cannot be derived —
+		// an identity collision in its failure channel, or a signature outside
+		// the derivable subset. There is no descriptor to state, and dropping
+		// the site would publish "this Flow reaches no such Action" about a
+		// Flow that performs it. The reference frontend refuses the same
+		// programs for the same reason.
+		if action.invalid != "" || action.collision != nil {
+			b.fail("durable Action has no derivable durable contract, so its effect cannot be stated soundly")
+			return
+		}
+		b.actions[action.id] = map[string]any{
+			"contractDigest": action.descriptor["contractDigest"],
+			"id":             action.id,
+			"version":        1,
+		}
+		b.requirements[action.id] = true
+		for _, identity := range durableManifestFailureRow(b.contracts, action.failureType) {
+			b.failures[identity] = true
+		}
+		b.recordSite(node, "perform", action.id)
+		return
+	}
+	if b.owner.durableIntrinsic(call.Expression, "sleep") {
+		b.recordSite(node, "sleep", "")
+		return
+	}
+	if b.owner.durableIntrinsic(call.Expression, "waitSignal") {
+		if call.Arguments == nil || len(call.Arguments.Nodes) != 1 || call.TypeArguments == nil || len(call.TypeArguments.Nodes) != 1 {
+			b.fail("durable signal requires one explicit payload type and one static identity")
+			return
+		}
+		identityExpression := ast.SkipParentheses(call.Arguments.Nodes[0])
+		if !ast.IsStringLiteralLike(identityExpression) {
+			b.fail("durable signal identity must be a string literal, not a runtime value")
+			return
+		}
+		signalID := identityExpression.Text()
+		typeNode := call.TypeArguments.Nodes[0]
+		descriptor, err := b.contracts.durableTypeDescriptor(
+			b.owner.checker.GetTypeFromTypeNode(typeNode), typeNode, make(map[checker.TypeId]bool), false)
+		if err != nil {
+			b.fail("durable signal payload is not structurally encodable: " + err.Error())
+			return
+		}
+		payloadSchema := durableStructuralSchema("input", descriptor)
+		b.addContract("signal", signalID, durableDigest(map[string]any{
+			"payloadSchema": payloadSchema,
+			"signalId":      signalID,
+		}))
+		b.recordSite(node, "signal", signalID)
+	}
+}
+
+// durableManifestFailureRow enumerates the durable failure identities one
+// Action's declared failure channel carries.
+//
+// The same walk durableFailureIdentityCollides makes, reporting the identities
+// instead of the collision. This bridge still emits the legacy stub error
+// schema into the Plan, so the Plan carries none of these; they exist in the
+// Manifest because PR-1 names a failure row, and nothing in the cross-check
+// compares them across the two artifacts.
+func durableManifestFailureRow(d *durableFunctionLowerer, failure *checker.Type) []string {
+	if failure == nil || d == nil {
+		return nil
+	}
+	constituents := []*checker.Type{failure}
+	if failure.IsUnion() {
+		constituents = failure.Types()
+	}
+	identities := make([]string, 0, len(constituents))
+	for _, constituent := range constituents {
+		symbol := constituent.Symbol()
+		if symbol == nil {
+			continue
+		}
+		declaration := classDeclarationOf(d.owner.checker.GetMergedSymbol(symbol))
+		if declaration == nil {
+			continue
+		}
+		name := declaration.Name()
+		if name == nil || !ast.IsIdentifier(name) {
+			continue
+		}
+		identities = append(identities, durableFailureIdentity(
+			durableLogicalFile(ast.GetSourceFileOfNode(declaration)), name.Text()))
+	}
+	return identities
+}
+
+// durableEffectManifest derives one Flow's Effect Manifest from the authored
+// function, or reports why it could not.
+func durableEffectManifest(
+	owner *lowerer,
+	logicalFile string,
+	flowID string,
+	flowVersion int,
+	function string,
+	body *ast.Node,
+) (map[string]any, string) {
+	builder := &durableManifestBuilder{
+		contracts: &durableFunctionLowerer{
+			owner:       owner,
+			flowID:      flowID,
+			flowVersion: flowVersion,
+			function:    function,
+			logicalFile: logicalFile,
+			values:      make(map[*ast.Symbol]durableValue),
+			actions:     make(map[string]durableAction),
+			occurrences: make(map[string]int),
+			nodeIDs:     make(map[string]bool),
+			signalIDs:   make(map[string]bool),
+		},
+		owner:        owner,
+		logicalFile:  logicalFile,
+		flowID:       flowID,
+		flowVersion:  flowVersion,
+		function:     function,
+		actions:      make(map[string]map[string]any),
+		requirements: make(map[string]bool),
+		contractRows: make(map[string]map[string]any),
+		failures:     make(map[string]bool),
+		occurrences:  make(map[string]int),
+	}
+	builder.contracts.activeNodes = &builder.contracts.nodes
+
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsCallExpression(node) {
+			builder.classify(node)
+		}
+		node.ForEachChild(visit)
+		return false
+	}
+	if bodyNode := body.Body(); bodyNode != nil {
+		bodyNode.ForEachChild(visit)
+	}
+	if builder.failed != "" {
+		return nil, builder.failed
+	}
+
+	actionIDs := make([]string, 0, len(builder.actions))
+	for id := range builder.actions {
+		actionIDs = append(actionIDs, id)
+	}
+	sortUTF16(actionIDs)
+	actions := make([]any, 0, len(actionIDs))
+	requirements := make([]any, 0, len(builder.requirements))
+	for _, id := range actionIDs {
+		actions = append(actions, builder.actions[id])
+	}
+	requirementIDs := make([]string, 0, len(builder.requirements))
+	for id := range builder.requirements {
+		requirementIDs = append(requirementIDs, id)
+	}
+	sortUTF16(requirementIDs)
+	for _, id := range requirementIDs {
+		requirements = append(requirements, id)
+	}
+
+	contractKeys := make([]string, 0, len(builder.contractRows))
+	for key := range builder.contractRows {
+		contractKeys = append(contractKeys, key)
+	}
+	sortUTF16(contractKeys)
+	contracts := make([]any, 0, len(contractKeys))
+	for _, key := range contractKeys {
+		contracts = append(contracts, builder.contractRows[key])
+	}
+
+	failureIDs := make([]string, 0, len(builder.failures))
+	for identity := range builder.failures {
+		failureIDs = append(failureIDs, identity)
+	}
+	sortUTF16(failureIDs)
+	failures := make([]any, 0, len(failureIDs))
+	for _, identity := range failureIDs {
+		failures = append(failures, identity)
+	}
+
+	sort.SliceStable(builder.sites, func(left, right int) bool {
+		return builder.sites[left]["id"].(string) < builder.sites[right]["id"].(string)
+	})
+	sites := make([]any, 0, len(builder.sites))
+	for _, site := range builder.sites {
+		sites = append(sites, site)
+	}
+
+	semantic := map[string]any{
+		"actions":         actions,
+		"contracts":       contracts,
+		"failures":        failures,
+		"flowId":          flowID,
+		"flowVersion":     flowVersion,
+		"manifestVersion": 1,
+		"requirements":    requirements,
+		"sites":           sites,
+	}
+	manifest := durableCopyMap(semantic)
+	manifest["digest"] = durableDigest(semantic)
+	return manifest, ""
+}

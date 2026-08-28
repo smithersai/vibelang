@@ -80,6 +80,9 @@ var forkComptimeSource []byte
 //go:embed forkbridge/durable.go.txt
 var forkDurableSource []byte
 
+//go:embed forkbridge/effectmanifest.go.txt
+var forkEffectManifestSource []byte
+
 //go:embed forkbridge/hostrules.go.txt
 var forkHostRulesSource []byte
 
@@ -138,6 +141,7 @@ var forkBridgeFiles = []struct {
 	{target: "cmd/tsc/smitherslowering.go", source: &forkLoweringSource},
 	{target: "cmd/tsc/smitherscomptime.go", source: &forkComptimeSource},
 	{target: "cmd/tsc/smithersdurable.go", source: &forkDurableSource},
+	{target: "cmd/tsc/smitherseffectmanifest.go", source: &forkEffectManifestSource},
 	{target: "cmd/tsc/smithershostrules.go", source: &forkHostRulesSource},
 	{target: "cmd/tsc/smithersretired.go", source: &forkRetiredSyntaxSource},
 	{target: "cmd/tsc/smithersnativeprovenance.go", source: &forkNativeProvenanceSource},

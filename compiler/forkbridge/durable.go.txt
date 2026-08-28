@@ -138,6 +138,11 @@ type durableAction struct {
 	// Action call. Both backends now report SMITHERS4124 at the same position.
 	// See lowerAction.
 	collision *durableFailureCollision
+	// failureType is the Action's declared failure channel, kept so the Effect
+	// Manifest can state a failure row. Nothing in the Plan reads it: this
+	// bridge still emits the legacy stub error schema, so no digest, artifact,
+	// or Plan byte depends on it.
+	failureType *checker.Type
 }
 
 type durableFunctionLowerer struct {
@@ -466,6 +471,31 @@ func (l *lowerer) lowerDurableCall(node *ast.Node) (lowered *ast.Node, matched b
 		return node, true
 	}
 	plan := d.plan(output)
+	// The SECOND artifact, beside the Plan (`DECISIONS.md` §PR-1). Derived from
+	// `function` — the Plan lowerer's own input — by its own traversal in
+	// `effectmanifest.go`; `d`, `d.nodes`, `d.actions` and `plan` are not
+	// passed to it and it cannot reach them.
+	//
+	// Opt-in, so that with the option absent — every existing caller — not one
+	// emitted byte moves. See the header of `effectmanifest.go`.
+	if requestedEffectManifest {
+		manifest, manifestFailure := durableEffectManifest(l, logical, d.flowID, d.flowVersion, functionName, function)
+		durableManifestArtifacts = append(durableManifestArtifacts, artifact{
+			Path:    logical + ".plan.json",
+			Content: []byte(durableCanonicalJSON(plan)),
+		})
+		if manifestFailure != "" {
+			durableManifestArtifacts = append(durableManifestArtifacts, artifact{
+				Path:    logical + ".effect-manifest.json",
+				Content: []byte(durableCanonicalJSON(map[string]any{"error": manifestFailure})),
+			})
+		} else {
+			durableManifestArtifacts = append(durableManifestArtifacts, artifact{
+				Path:    logical + ".effect-manifest.json",
+				Content: []byte(durableCanonicalJSON(manifest)),
+			})
+		}
+	}
 	descriptor := map[string]any{
 		"artifactSource": "static-plan-artifact",
 		"id":             d.flowID,
@@ -1038,7 +1068,7 @@ func (d *durableFunctionLowerer) actionFor(reference *ast.Node) (durableAction, 
 	}
 	descriptor := durableCopyMap(contract)
 	descriptor["contractDigest"] = durableDigest(contract)
-	return durableAction{id: id, descriptor: descriptor, inputType: inputType}, true
+	return durableAction{id: id, descriptor: descriptor, inputType: inputType, failureType: failureType}, true
 }
 
 func (d *durableFunctionLowerer) lowerTimer(node *ast.Node, anchor string) (durableValue, bool, bool) {
