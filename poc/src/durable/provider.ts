@@ -22,6 +22,7 @@ import {
 } from "./ir.ts"
 import { ActionFailure } from "./authoring.ts"
 import { decodeWorkerExit, validateDurableValue } from "./schema.ts"
+import { childDeploymentId } from "./site-id.ts"
 import {
   assertActionImplementationContractMatchesAction,
   requireCompilerAuthenticatedContract,
@@ -104,6 +105,46 @@ const defaultRecovery: RecoveryPolicy = Object.freeze({
 
 const issuedProviders = new WeakMap<object, { readonly implementationContractDigest: string | null }>()
 
+/**
+ * The wire form of a reuse policy — what `policyDigest` covers, what the
+ * deployment manifest pins as `routes[].policy.reuse`, and what a worker
+ * compares its own provider against in `prepare`.
+ *
+ * IT DROPS `reuse.key`, THE MEMO KEY FUNCTION, and that is correct as written.
+ * Two providers differing ONLY in their key function do digest alike, so this is
+ * a real many-to-one step on the input to a pinned, signed artifact; the reason
+ * it is not a defect is a constraint rather than an accident, so it is stated:
+ *
+ *  1. the key function's answer is carried per-invocation, not by this digest.
+ *     `DurableExecutor` computes `explicitKey = reuse.key(input)` and puts THAT
+ *     string into the memo key beside `policyDigest` (`./engine.ts`). So two key
+ *     functions can share a `policyDigest` and still address different memo
+ *     entries the instant they answer differently; when they answer the same,
+ *     the author has declared those inputs equal, which is what a memo key IS.
+ *  2. only one key function can ever run. `buildDeployment` refuses two
+ *     providers for one Action ("ambiguous providers … selection must be
+ *     pinned"), so a deployment has exactly one provider per Action and the
+ *     function that runs is always that one's. A worker never memoizes at all,
+ *     so the `route.policyDigest === provider.policyDigest` check in `prepare`
+ *     is not comparing key functions even implicitly.
+ *  3. `keyVersion` is the declared version of the function, is REQUIRED and
+ *     validated non-empty by `provideAction`, and IS covered here. It is the
+ *     sanctioned way to invalidate memo entries when the function changes
+ *     meaning without changing its answers.
+ *
+ * And it could not be covered honestly anyway: a key function is a closure, and
+ * the only thing available to digest is `Function.prototype.toString`, which is
+ * minifier-sensitive — exactly the identity source `specification/failures.mdx`
+ * ("Error Prototype") forbids in compiled artifacts. A digest that changes when
+ * a bundler renames a variable is not stability, it is noise in a signed
+ * manifest.
+ *
+ * What WOULD make this a defect: giving the key function any effect that is not
+ * observable in its returned string. It is called once per invocation with the
+ * Action's input and nothing else, and its answer is the whole of its
+ * contribution; a key function that read ambient state would break (1) and would
+ * then need its own pinned identity rather than this digest.
+ */
 const serializableReuse = (reuse: ProviderReuse<unknown>): ReusePolicy => {
   switch (reuse.kind) {
     case "execution":
@@ -584,7 +625,7 @@ const buildDeployment = <Input, Success>(options: {
       artifactSource: "static-plan-artifact" as const
     })
     childDeployments.set(childPlan.digest, buildDeployment({
-      id: `${deploymentId}/child/${childPlan.digest.slice(0, 16)}`,
+      id: childDeploymentId(deploymentId, childPlan.digest),
       flow: childFlow,
       pools: workerPools
     }))

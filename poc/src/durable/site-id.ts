@@ -347,6 +347,174 @@ export function durableFailureIdentity(logicalFile: string, className: string): 
   return `smithers.digest:${createHash("sha256").update(spelled, "utf8").digest("hex")}@1`
 }
 
+// ---------------------------------------------------------------------------
+// Durable cache adoption source
+// ---------------------------------------------------------------------------
+
+/**
+ * `[A-Za-z0-9._/@-]` — every unit that survives adoption-source escaping
+ * verbatim.
+ *
+ * `:` is the SEPARATOR and `+` is the escape introducer, and both are withheld
+ * for the reasons {@link isDurableIdentityUnit} states: withholding the
+ * introducer is what makes the encoding reversible, and withholding the
+ * separator is what makes the composed spelling injective. The separator
+ * matters more here than anywhere else in this file because THREE components
+ * are joined, so "parse at the last `:`" is not available even in principle.
+ */
+function isAdoptionSourceUnit(unit: number): boolean {
+  return isIdentityAlphanumericUnit(unit) ||
+    unit === 0x2e /* . */ || unit === 0x5f /* _ */ || unit === 0x2f /* / */ ||
+    unit === 0x40 /* @ */ || unit === 0x2d /* - */
+}
+
+/** REVERSIBLE encoding of one adoption-source component into the alphabet above. */
+function escapeAdoptionSourceComponent(component: string): string {
+  let escaped = ""
+  for (let index = 0; index < component.length; index++) {
+    const unit = component.charCodeAt(index)
+    escaped += isAdoptionSourceUnit(unit)
+      ? component[index]
+      : `+${unit.toString(16).toUpperCase().padStart(4, "0")}`
+  }
+  return escaped
+}
+
+/**
+ * THE provenance string a node records when it adopts a MEMO cache winner, and
+ * the only algorithm anything may spell one with.
+ *
+ * PERSISTED, which is the whole reason this is not left inline. It is written to
+ * `durable_nodes.adopted_from` and — through `emit` — into
+ * `durable_journal.payload_json`, whose `payload_digest` and `event_digest`
+ * are computed from it. A collision here is not a transient mis-read: it is a
+ * durable audit record, inside a hash-chained journal, that names two different
+ * cache entries with one string, and the artifact this sits underneath is the
+ * one intended to be SIGNED.
+ *
+ * THE INJECTIVITY RULE. It used to be spelled twice, inline, as
+ * `memo:${scope}:${generation}:${memoKey}` (`./engine.ts`, `./store.ts`), and
+ * TWO of the three components are free-form author strings: `provideAction`
+ * (`./provider.ts`) validates `scope` and `generation` only for being non-empty
+ * after `trim()`, so both may hold `:`. The measured collision needs no
+ * character outside the old spelling's implicit alphabet at all:
+ *
+ *     scope "a",   generation "b:c" -> memo:a:b:c:<key>
+ *     scope "a:b", generation "c"   -> memo:a:b:c:<key>
+ *
+ * Escaping alone would not have fixed that — neither input contains anything
+ * exotic — which is why the separator is withheld from the component alphabet
+ * rather than merely escaped in it. That is the same lesson `a.sm_B`/`C` versus
+ * `a.sm`/`B_C` taught {@link durableFailureIdentity}.
+ *
+ * `memoKey` is a 64-hex `digest`, so escaping it is a no-op today. It is escaped
+ * anyway: the injectivity argument then rests on nothing outside this function,
+ * and a future memo key that is not a digest cannot quietly reintroduce the
+ * defect.
+ *
+ * There is no length bound to honour and therefore nothing to truncate — a
+ * `TEXT` column and a JSON payload both take the exact spelling.
+ *
+ * REPLAY COMPATIBILITY: unaffected. Unlike {@link durableFailureIdentity}, this
+ * string is WRITE-ONLY. Nothing reads `adopted_from` back, nothing re-derives it
+ * to compare against a recorded one, and it reaches no pinned column: journal
+ * rows recorded under the old spelling keep their own `payload_json` and the
+ * `payload_digest`/`event_digest` computed from THOSE bytes, so the hash chain
+ * over an existing journal still verifies unchanged. Only newly written rows
+ * carry the new spelling.
+ */
+export function memoAdoptionSource(scope: string, generation: string, memoKey: string): string {
+  return `memo:${escapeAdoptionSourceComponent(scope)}:${
+    escapeAdoptionSourceComponent(generation)
+  }:${escapeAdoptionSourceComponent(memoKey)}`
+}
+
+/**
+ * THE provenance string a node records when it adopts a CONTENT cache winner.
+ *
+ * One component after a fixed prefix, so it is injective for free — there is no
+ * separator to destroy and nothing for a second component to be confused with.
+ * It goes through this module anyway so that both adoption sources have one
+ * home, and so that `content:` and `memo:` are visibly disjoint prefixes rather
+ * than two coincidences: a `content:` spelling can never equal a `memo:` one,
+ * whatever the components hold.
+ *
+ * The component is escaped for the reason {@link memoAdoptionSource} escapes its
+ * digest: `contentKey` is a 64-hex `digest` today, so this is a no-op, and the
+ * argument then depends on nothing outside this function.
+ */
+export function contentAdoptionSource(contentKey: string): string {
+  return `content:${escapeAdoptionSourceComponent(contentKey)}`
+}
+
+// ---------------------------------------------------------------------------
+// Attached child execution namespace
+// ---------------------------------------------------------------------------
+
+/**
+ * THE marker that separates a parent execution id from a childFlow node id in
+ * the derived id of an attached child execution, and the reserved substring no
+ * caller-supplied execution id may contain.
+ *
+ * `./engine.ts` derives `parent + MARKER + nodeId` so that a restart resumes the
+ * same attached child instead of spawning a sibling. That derived id is the
+ * PRIMARY KEY of `durable_executions`, so two things claiming one spelling is
+ * two Flows sharing one journal.
+ *
+ * The reservation is what makes the derivation sound, and it is a REFUSAL rather
+ * than an encoding on purpose. Escaping the components would change a durable
+ * primary key — orphaning every already-linked child — to close a hole that is
+ * not in the spelling at all: it is in the two id NAMESPACES overlapping.
+ * `./engine.ts` states both halves of that argument at the derivation site;
+ * `DurableStore.initializeExecution` enforces this half.
+ */
+export const CHILD_EXECUTION_MARKER = "::child::"
+
+// ---------------------------------------------------------------------------
+// Embedded child deployment id
+// ---------------------------------------------------------------------------
+
+/**
+ * THE deployment id of the complete pinned deployment `buildDeployment`
+ * (`./provider.ts`) mints for one embedded child Plan.
+ *
+ * It reaches the child's `DeploymentManifest`, so it is hashed into
+ * `manifest.digest`, which `DurableStore.initializeExecution` pins as
+ * `durable_executions.manifest_digest` for every attached child execution and
+ * which the remote worker handshake compares.
+ *
+ * THE TRUNCATION THIS REPLACES. It was
+ * `${deploymentId}/child/${childPlan.digest.slice(0, 16)}` — a 64-BIT cut of a
+ * SHA-256, which is exactly the "honour a bound by destroying information" step
+ * {@link nominalErrorIdentity} was rewritten to stop doing. Two embedded child
+ * Plans agreeing in their first 16 hex digits minted ONE child deployment id.
+ * There is no bound to honour here at all: `validateDeploymentManifest`
+ * (`./artifact.ts`) checks `deploymentId` for being non-empty and nothing else,
+ * so the cut bought nothing and cost injectivity. The full digest is carried.
+ *
+ * WHY NO ESCAPING, stated rather than assumed. The parent id is free-form and
+ * MAY contain `/child/`, so the spelling looks like the many-to-one joins
+ * repaired above. It is not one: the second component is a `digest`, which is
+ * exactly 64 lower-case hex units and therefore holds no `/`, so the parse is
+ * right-anchored and unique — the last `/child/` followed by 64 hex digits ends
+ * the parent, whatever the parent holds. That is the same argument that makes
+ * `nominalErrorIdentity` injective at its LAST `:`.
+ *
+ * The residual overlap — an authored top-level `deploymentId` spelled to look
+ * derived — is real and is a LABEL collision only, unlike
+ * {@link CHILD_EXECUTION_MARKER}'s namespace, which is a durable primary key. A
+ * deployment id keys nothing: `buildDeployment` registers no id anywhere,
+ * `childDeployments` is keyed by the full child Plan digest, and the remote
+ * worker handshake (`./remote-worker.ts`) compares `deploymentId` only beside
+ * `manifestDigest`, `planDigest`, `artifactDigest`, `bundleDigest` and the
+ * pool's `actionIds` — all of which differ whenever the deployments do, since
+ * the manifest digest covers the id itself. So there is nothing here for a
+ * duplicate label to authorize, and no reservation is imposed on an authored id.
+ */
+export function childDeploymentId(parentDeploymentId: string, childPlanDigest: string): string {
+  return `${parentDeploymentId}/child/${childPlanDigest}`
+}
+
 /** One declaration's claim on a durable failure identity. */
 export interface DurableFailureIdentityClaim {
   readonly identity: string

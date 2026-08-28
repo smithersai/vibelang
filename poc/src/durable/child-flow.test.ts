@@ -661,3 +661,51 @@ test("forged child Flow artifacts and store linkages fail closed", async () => {
     store.close()
   }
 })
+
+// The attached-child execution id NAMESPACE.
+//
+// `./engine.ts` derives an attached child's execution id as
+// `parent + '::child::' + nodeId`, and that derived id is the PRIMARY KEY of
+// `durable_executions`. An execution id is otherwise caller-chosen and only
+// bounded, so the derived namespace and the caller's namespace overlapped: a
+// caller could take the row a Flow was going to derive.
+//
+// WHY A DIFFERENTIAL TEST COULD NOT HAVE FOUND THIS. The durable engine and
+// store are reference-only; the Go fork carries the durable CONTRACT compiler
+// and no runtime, so there is no second backend to disagree. The assertion is
+// direct.
+//
+// RED BEFORE THE FIX: `initializeExecution` accepted the derived id from an
+// unlinked caller, and the parent Flow that later reached its childFlow node
+// then threw `Execution child-namespace::child::<node> is pinned to different
+// input, Plan IR, schemas, or deployment manifest` — permanently, because a
+// parent cannot recover from being unable to create its child.
+test("a caller cannot claim an execution id in the derived attached-child namespace", async () => {
+  const compiled = compileParent()
+  if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
+  const node = childFlowNode(compiled.plan)
+  const deployment = deploymentFor(compiled.plan, "child-namespace")
+  const store = new DurableStore()
+  resetCalls()
+  try {
+    const derived = `child-namespace::child::${node.id}`
+    // The hijack, refused before any row exists.
+    expect(() => store.initializeExecution(derived, compiled.plan, deployment.manifest, { value: 1 }))
+      .toThrow("reserved attached-child namespace")
+    // Any unlinked id in the namespace is refused, not just one a real parent
+    // would derive — the guard is the LINK, not a guess about the spelling.
+    expect(() => store.initializeExecution("nobody::child::anything", compiled.plan, deployment.manifest, { value: 1 }))
+      .toThrow("reserved attached-child namespace")
+    // An id outside the namespace is untouched.
+    const ordinary = store.initializeExecution("child-namespace-ordinary", compiled.plan, deployment.manifest, { value: 1 })
+    expect(ordinary.status).toBe("running")
+
+    // And the legitimate attached child still gets its row: the parent links it
+    // through `registerChildExecution` before creating it, so the link exists.
+    const executor = new DurableExecutor(deployment, store)
+    expect(await executor.execute({ value: 3 }, { executionId: "child-namespace" })).toEqual({ stamped: 106 })
+    expect(store.getExecution(derived).status).toBe("completed")
+  } finally {
+    store.close()
+  }
+})

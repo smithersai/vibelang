@@ -43,6 +43,7 @@ import {
   type StoredNodeExit
 } from "./store.ts"
 import { ExecutionMigratedError, planExecutionMigration, type MigrationPlan } from "./migration.ts"
+import { CHILD_EXECUTION_MARKER, contentAdoptionSource, memoAdoptionSource } from "./site-id.ts"
 import { decodeWorkerExit, validateDurableValue, type WorkerExitSurface } from "./schema.ts"
 import {
   CoordinatorCrash,
@@ -1327,7 +1328,38 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
     // The child execution id is a pure function of the parent execution and
     // node identity, so a restart resumes the same attached child instead of
     // spawning a sibling.
-    const childExecutionId = `${context.executionId}::child::${node.id}`
+    //
+    // WHY THE SEPARATOR IS SAFE HERE AND THE NAMESPACE IS NOT. `::child::` is
+    // NOT withheld from either component's alphabet — a Plan node id is only
+    // `nonEmpty`-validated (`./artifact.ts`) and an execution id only bounded —
+    // so `f(parent, node)` looks like the many-to-one joins this module has been
+    // repairing. It is not, and the two ways it could have been are both closed,
+    // by two different mechanisms rather than by one encoding:
+    //
+    //  1. DERIVED versus DERIVED. Parent `a` with node `n::child::m` and the
+    //     grandchild reached through node `n` then node `m` both spell
+    //     `a::child::n::child::m`. `durable_child_executions` carries
+    //     `UNIQUE (child_execution_id)` beside its `(parent, node)` primary key,
+    //     so the second `registerChildExecution` cannot insert: the collision
+    //     fails CLOSED in the schema, before any execution row exists.
+    //  2. DERIVED versus CALLER-SUPPLIED. This is the one that was open. An
+    //     execution id is caller-chosen, so a caller could start a TOP-LEVEL
+    //     execution named exactly `a::child::n` and take the row this line will
+    //     later derive. Whichever arrives second reaches
+    //     `initializeExecution`'s existing-row branch and either adopts the
+    //     other's journal outright (identical flow, digests and input) or throws
+    //     `pinned to different input, Plan IR, schemas, or deployment manifest`
+    //     — which for the PARENT is unrecoverable: it can never create its
+    //     child, so a caller-chosen id wedges an unrelated Flow permanently.
+    //     `initializeExecution` now refuses an unlinked id in this namespace,
+    //     which is a refusal rather than an encoding precisely because the
+    //     spelling itself is fine; it was the shared namespace that was not.
+    //
+    // Respelling this would have been the wrong repair twice over. It changes no
+    // reachable outcome that (1) and (2) do not already close, and it is a
+    // durable PRIMARY KEY: every already-linked child would be orphaned, which
+    // is a replay break bought for nothing.
+    const childExecutionId = `${context.executionId}${CHILD_EXECUTION_MARKER}${node.id}`
     let linked
     try {
       linked = this.store.registerChildExecution(
@@ -1692,7 +1724,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       const hit = this.store.memoGet(reuse.scope, reuse.generation, memoKey)
       if (hit !== undefined) {
         const checked = this.validateActionSuccess(node, hit)
-        return this.adoptCacheHit(node, checked, `memo:${reuse.scope}:${reuse.generation}:${memoKey}`, context)
+        return this.adoptCacheHit(node, checked, memoAdoptionSource(reuse.scope, reuse.generation, memoKey), context)
       }
       reuseIdentity = { kind: "memo", key: memoKey, inputDigest }
     } else if (reuse.kind === "content") {
@@ -1718,7 +1750,7 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       }
       if (hit !== undefined) {
         const checked = this.validateActionSuccess(node, hit)
-        return this.adoptCacheHit(node, checked, `content:${contentKey}`, context)
+        return this.adoptCacheHit(node, checked, contentAdoptionSource(contentKey), context)
       }
       reuseIdentity = { kind: "content", key: contentKey, inputDigest }
     }

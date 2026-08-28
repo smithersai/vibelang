@@ -12,6 +12,7 @@ import {
   type ExecutionMigrationEvidence,
   type MigrationPlan
 } from "./migration.ts"
+import { CHILD_EXECUTION_MARKER, contentAdoptionSource, memoAdoptionSource } from "./site-id.ts"
 import { WakeupService } from "./wakeup.ts"
 import {
   allPlanNodes,
@@ -1351,6 +1352,31 @@ export class DurableStore {
       const parentLink = this.database.query(
         "SELECT parent_execution_id FROM durable_child_executions WHERE child_execution_id=?"
       ).get(executionId) as { readonly parent_execution_id: string } | null
+      // `::child::` is the namespace `./engine.ts` DERIVES an attached child's
+      // execution id in, and an execution id is otherwise caller-chosen, so
+      // without this the two namespaces overlap and the derived id is not an
+      // identity. A caller could start a top-level execution named exactly
+      // `a::child::n` and take the row the Flow running as `a` will later derive
+      // for its childFlow node `n`; whichever arrives second reaches the
+      // existing-row branch above and either ADOPTS the other's journal (same
+      // flow, digests and input) or throws `pinned to different input, Plan IR,
+      // schemas, or deployment manifest`. For the parent that throw is
+      // unrecoverable — it can never create its child — so a caller-chosen id
+      // wedges an unrelated Flow permanently.
+      //
+      // The link is the discriminator, and it is exact rather than approximate:
+      // `registerChildExecution` runs BEFORE the child's row is created, so a
+      // legitimate attached child always already has one here, and nothing else
+      // can. Which is why this is a refusal and not an escaping: the derived
+      // spelling was never ambiguous about its own components (see the argument
+      // at the derivation site), and respelling it would move a durable primary
+      // key and orphan every already-linked child for nothing.
+      if (parentLink === null && executionId.includes(CHILD_EXECUTION_MARKER)) {
+        throw new TypeError(
+          `Durable execution id ${executionId} is in the reserved attached-child namespace ` +
+          `'${CHILD_EXECUTION_MARKER}' and is not linked to a parent childFlow node`
+        )
+      }
       if (parentLink !== null) {
         const parent = this.database.query(
           "SELECT status FROM durable_executions WHERE id=?"
@@ -3454,7 +3480,7 @@ export class DurableStore {
     const normalizedCandidate = assertJson(candidate, "durable memo success")
     const candidateJson = canonicalJson(normalizedCandidate)
     const candidateDigest = digest(normalizedCandidate)
-    const adoptedFrom = `memo:${scope}:${generation}:${memoKey}`
+    const adoptedFrom = memoAdoptionSource(scope, generation, memoKey)
     const transaction = this.database.transaction((): CachedSuccessCommit => {
       const ownsAttempt = this.database.query(
         `UPDATE durable_nodes SET updated_at=updated_at
@@ -3502,7 +3528,7 @@ export class DurableStore {
     const normalizedCandidate = assertJson(candidate, "durable content success")
     const candidateJson = canonicalJson(normalizedCandidate)
     const candidateDigest = digest(normalizedCandidate)
-    const adoptedFrom = `content:${contentKey}`
+    const adoptedFrom = contentAdoptionSource(contentKey)
     const transaction = this.database.transaction((): CachedSuccessCommit => {
       const ownsAttempt = this.database.query(
         `UPDATE durable_nodes SET updated_at=updated_at
