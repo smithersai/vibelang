@@ -338,6 +338,64 @@ const assertBundleImports = (
   ts.forEachChild(sourceFile, visit)
 }
 
+/**
+ * The compiler-issued nominal Error identities the lowered modules register,
+ * read back out of the emitted registration calls themselves.
+ *
+ * This is deliberately NOT a re-derivation. `nominalErrorIdentity(sourceName,
+ * className)` (`../language/compile.ts`) is minted during lowering against a
+ * project-wide {@link NominalErrorIdentities} assigner whose `sourceName` is a
+ * rootDir-relative spelling this module does not compute; re-minting it here
+ * would be a second, independently-drifting derivation of a key whose whole
+ * value is that exactly one thing mints it. Reading the emitted
+ * `__vsRegisterError(Class, "smithers:<file>:<Class>")` instead takes the key
+ * from the only place it is issued, and drift becomes a build failure below
+ * rather than a bundle that silently maps nothing.
+ *
+ * `__vsRegisterError` is matched by the LOCAL binding the emitted module imports
+ * from {@link RUNTIME_IMPORT_SPECIFIER}, so a same-named local function in the
+ * lowered source cannot contribute a registration.
+ */
+const collectNominalErrorIdentities = (
+  emittedCode: string,
+  label: string,
+  into: Map<string, string>
+): void => {
+  const sourceFile = ts.createSourceFile(`${label}.ts`, emittedCode, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS)
+  const registerLocals = new Set<string>()
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue
+    if (statement.moduleSpecifier.text !== RUNTIME_IMPORT_SPECIFIER) continue
+    const bindings = statement.importClause?.namedBindings
+    if (bindings === undefined || !ts.isNamedImports(bindings)) continue
+    for (const element of bindings.elements) {
+      if ((element.propertyName ?? element.name).text === "__vsRegisterError") registerLocals.add(element.name.text)
+    }
+  }
+  if (registerLocals.size === 0) return
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) && ts.isIdentifier(node.expression) &&
+      registerLocals.has(node.expression.text) && node.arguments.length === 2
+    ) {
+      const [type, identity] = node.arguments
+      if (!ts.isIdentifier(type) || !ts.isStringLiteral(identity)) {
+        return fail(`${label} emits an Error registration this bundle cannot read a compiler-issued identity from`)
+      }
+      const prior = into.get(type.text)
+      if (prior !== undefined && prior !== identity.text) {
+        return fail(
+          `${label} registers Error class ${type.text} under two nominal identities ` +
+          `(${prior}, ${identity.text}); a bundled failure identity must be unambiguous`
+        )
+      }
+      into.set(type.text, identity.text)
+    }
+    ts.forEachChild(node, visit)
+  }
+  ts.forEachChild(sourceFile, visit)
+}
+
 interface BundledAction {
   readonly actionId: string
   readonly actionVersion: number
@@ -349,16 +407,26 @@ interface BundledAction {
   readonly exportName: string
   readonly errorVariants: readonly {
     readonly identity: string
+    /**
+     * The compiler-issued nominal Error identity the bundle SELECTS this variant
+     * by at dispatch. Never a class name: see {@link DISPATCH_SOURCE}.
+     */
+    readonly nominalIdentity: string
     readonly name: string
     readonly fields: readonly { readonly name: string; readonly optional: boolean }[]
   }[]
   readonly modules: readonly BundleModule[]
 }
 
-const errorVariantsFor = (action: ActionDescriptor): BundledAction["errorVariants"] => {
+const errorVariantsFor = (
+  action: ActionDescriptor,
+  nominalIdentityByClass: ReadonlyMap<string, string>,
+  poolId: string
+): BundledAction["errorVariants"] => {
   if (action.errorSchema.shape !== "structural") return []
   const variants: {
     identity: string
+    nominalIdentity: string
     name: string
     fields: { name: string; optional: boolean }[]
   }[] = []
@@ -370,13 +438,39 @@ const errorVariantsFor = (action: ActionDescriptor): BundledAction["errorVariant
     if (descriptor.kind !== "error") {
       return fail(`Action ${action.id} error schema is not a nominal Error or Error union`)
     }
+    // The join is on the class DECLARATION name, at BUILD time, between the
+    // Action contract's declared failure row and the registrations the lowered
+    // closure emitted. Nothing a payload can reach participates: the value it
+    // produces is the compiler-issued identity, and that is the only thing
+    // dispatch compares. `implementation-contract.ts` already refuses a closure
+    // in which a declared failure name resolves to anything other than exactly
+    // one Error class, so this join has exactly one candidate or the build fails.
+    const nominalIdentity = nominalIdentityByClass.get(descriptor.name)
+    if (nominalIdentity === undefined) {
+      return fail(
+        `pool ${poolId} cannot bundle ${action.id}: declared failure ${descriptor.name} has no compiler-issued ` +
+        `nominal Error identity in the checked source closure, so a bundled failure could not be selected by identity`
+      )
+    }
     variants.push({
       identity: descriptor.identity,
+      nominalIdentity,
       name: descriptor.name,
       fields: descriptor.payload.fields.map((field) => ({ name: field.name, optional: field.optional }))
     })
   }
   visit(action.errorSchema.descriptor)
+  const claimed = new Map<string, string>()
+  for (const variant of variants) {
+    const prior = claimed.get(variant.nominalIdentity)
+    if (prior !== undefined && prior !== variant.identity) {
+      return fail(
+        `pool ${poolId} cannot bundle ${action.id}: declared failures ${prior} and ${variant.identity} share ` +
+        `nominal Error identity ${variant.nominalIdentity}, so the bundle could not tell them apart`
+      )
+    }
+    claimed.set(variant.nominalIdentity, variant.identity)
+  }
   return variants.sort((left, right) => left.identity < right.identity ? -1 : left.identity > right.identity ? 1 : 0)
 }
 
@@ -428,8 +522,11 @@ const bundleActionFor = (selection: WorkerPoolBundleSelection, poolId: string): 
     emitted.push({ path, code: file.code })
   }
   const modules: BundleModule[] = []
+  const nominalIdentityByClass = new Map<string, string>()
   for (const file of [...emitted].sort((left, right) => left.path < right.path ? -1 : 1)) {
-    assertBundleImports(file.code, file.path, modulePaths, `${action.id}:${file.path}`)
+    const label = `${action.id}:${file.path}`
+    assertBundleImports(file.code, file.path, modulePaths, label)
+    collectNominalErrorIdentities(file.code, label, nominalIdentityByClass)
     modules.push({
       namespace,
       path: file.path,
@@ -449,7 +546,7 @@ const bundleActionFor = (selection: WorkerPoolBundleSelection, poolId: string): 
     namespace,
     entryModule,
     exportName: retained.exportName,
-    errorVariants: errorVariantsFor(action),
+    errorVariants: errorVariantsFor(action, nominalIdentityByClass, poolId),
     modules
   }
 }
@@ -488,13 +585,46 @@ function __smithersThrownDefect(thrown) {
     return __smithersDefect("DefectCodecDefect", "thrown value could not be encoded");
   }
 }
-function __smithersTypedFailure(action, error) {
-  const name = error && error.constructor ? error.constructor.name : undefined;
-  const matches = action.errorVariants.filter(function (variant) { return variant.name === name; });
+// Which declared failure a raised Error IS, selected by the compiler-issued
+// nominal Error identity and by nothing else.
+//
+// \`error.constructor.name\` used to be the key here, and it is not one.
+// \`constructor\` is an ordinary property lookup, so an own field shadows the
+// prototype's, and \`name\` is a string: between them the PAYLOAD could name its
+// own failure identity. Measured on this bundle before this line changed, with
+// implementations the checked-implementation compiler accepts unchanged
+// (\`Object.defineProperty(err, "constructor", …)\`, \`Object.assign\`, or a plain
+// computed \`err["constructor"] = …\`): a genuine \`Denied\` selected the \`Failed\`
+// variant, and erasing \`constructor\` turned a typed business failure into a
+// defect — which \`engine.ts\` then AUTO-RETRIES. Neither outcome is a refusal.
+//
+// \`runtime.errorIdentity\` is the compiler-issued key instead: the transport
+// registry in \`runtime/errors.ts\`, keyed by PROTOTYPE identity in a WeakMap,
+// populated by the \`__vsRegisterError(Class, "smithers:<file>:<Class>")\` calls
+// the lowered modules emit and this bundle's \`errorVariants\` were built from.
+// Nothing readable from the value reaches it: it is \`Object.getPrototypeOf\` and
+// a WeakMap lookup, behind a native \`instanceof\`. An Error with no registration
+// — a foreign throw, a decoded impostor — answers \`undefined\` and fails closed.
+//
+// specification/failures.mdx §Error Prototype: "Handler selection MUST use
+// compiler-stable nominal identity, not a forgeable user \`_tag\` or
+// minifier-sensitive constructor name in compiled artifacts."
+function __smithersTypedFailure(runtime, action, error) {
+  let identity;
+  try {
+    identity = runtime.errorIdentity(error);
+  } catch (hostile) {
+    identity = undefined;
+  }
+  const matches = typeof identity !== "string"
+    ? []
+    : action.errorVariants.filter(function (variant) { return variant.nominalIdentity === identity; });
   if (matches.length !== 1) {
     return __smithersDefect(
       "BundleFailureMappingDefect",
-      "bundle could not map failure " + String(name) + " for " + action.actionId
+      "bundle could not map failure " +
+        (typeof identity === "string" ? identity : "with no compiler-issued Error identity") +
+        " for " + action.actionId
     );
   }
   const variant = matches[0];
@@ -572,7 +702,7 @@ async function __smithersInvokeAction(invocation, signal) {
       if (runtime.isPanic(error)) {
         return __smithersDefect("Panic", error && error.message ? error.message : "Smithers panic");
       }
-      return __smithersTypedFailure(action, error);
+      return __smithersTypedFailure(runtime, action, error);
     }
     return { kind: "success", value: output };
   } catch (unexpected) {

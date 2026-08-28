@@ -182,6 +182,120 @@ test("a bundle-executed typed failure round-trips as the exact durable wire enve
   store.close()
 })
 
+/**
+ * The sibling the test above could not be.
+ *
+ * That test declares ONE Error class, so its failure row has exactly one
+ * candidate and it round-trips identically whether the bundle selects the
+ * variant by compiler-issued identity or by `error.constructor.name` — deleting
+ * the key rule would not turn it red. This one declares two, and the
+ * implementation shadows `constructor` on a genuine `Denied` so that a
+ * name-keyed selection reads it as the sibling `Failed`. Both classes declare
+ * `code`, so the forged envelope is WELL-FORMED: measured before the key rule
+ * changed, this arrived at the host as
+ * `{ identity: "smithers:shadow-action.sm@Failed@1", payload: { code: "forged" } }`
+ * and was persisted and hash-chained under that identity.
+ *
+ * `pool-bundle.test.ts` pins the same rule against the bundle bytes directly;
+ * this one pins it end to end, through the real digest-verified zero-permission
+ * Deno sandbox and back out as a `DurableActionFailure`.
+ */
+const SHADOW_FILE = "shadow-action.sm"
+const SHADOW_CLASSES = `
+class Failed extends Error { constructor(readonly code: string) { super(code) } }
+class Denied extends Error { constructor(readonly code: string) { super(code) } }
+`
+
+test("a two-variant bundle failure is selected by identity, not by a shadowable constructor name", async () => {
+  hostCalls = 0
+  const isolated = sandbox()
+  const contract = compileActionContract(`
+import { Action } from "smithers:flows"
+${SHADOW_CLASSES}
+export abstract class Work extends Action<
+  (input: { value: number }) => Result<{ value: number }, Failed | Denied>
+> {}
+`, { fileName: SHADOW_FILE, exportName: "Work", id: "test/bundle-worker/Shadow", version: 1 })
+  if (!contract.ok) throw new Error(JSON.stringify(contract.diagnostics))
+  const descriptor = contract.descriptor
+
+  const implementation = compileActionImplementationContract({
+    action: descriptor,
+    implementationId: "bundle-shadow",
+    implementationVersion: "1",
+    entryFile: SHADOW_FILE,
+    exportName: "work",
+    implementation: hostCallback,
+    sources: [{
+      fileName: SHADOW_FILE,
+      source: `${SHADOW_CLASSES}
+export function work(input: { value: number }): Result<{ value: number }, Failed | Denied> {
+  if (input.value < 0) {
+    const denied = new Denied("forged")
+    Object.defineProperty(denied, "constructor", { value: Failed })
+    throw denied
+  }
+  return { value: input.value }
+}
+`
+    }]
+  })
+
+  const compiledPlan = compileDurableSource(`
+import { durable } from "smithers:flows"
+import { Work } from "test:bundle-worker-shadow"
+export const Shadow = durable(function Shadow(input: { value: number }) {
+  return Work.run({ value: input.value })
+})
+`, {
+    fileName: "flows/bundle-worker-shadow.sm",
+    flowId: "test/bundle-worker/Shadow",
+    flowVersion: 1,
+    actions: [Object.freeze({ moduleSpecifier: "test:bundle-worker-shadow", exportName: "Work", descriptor })]
+  })
+  if (!compiledPlan.ok) throw new Error(JSON.stringify(compiledPlan.diagnostics))
+
+  const deployment = Deployment.build({
+    id: "bundle-worker-shadow",
+    flow: PlanArtifact.load(PlanArtifact.encode(compiledPlan.plan)),
+    pools: [Worker.pool("deno-bundle", {
+      target: "typescript-deno",
+      sandbox: isolated.kind,
+      bundle: true,
+      providers: [Provider.provideChecked(
+        Action.fromDescriptor<{ value: number }, { value: number }, { code: string }>(descriptor),
+        hostCallback,
+        {
+          implementationId: "bundle-shadow",
+          implementationVersion: "1",
+          implementationContract: implementation,
+          recovery: { mode: "repeatable", maxAttempts: 1 }
+        }
+      )]
+    })]
+  }) as BuiltDeployment<{ value: number }, { value: number }>
+
+  const bundle = deployment.bundles.get("deno-bundle")!
+  const store = new DurableStore()
+  const executor = new DurableExecutor(deployment, store, {
+    workerFactory: (pool, manifest, providers) =>
+      new DenoBundleWorker(pool, manifest, providers, { bundle, sandbox: isolated })
+  })
+  try {
+    await executor.execute({ value: -1 }, { executionId: "bundle-shadow", deadline: Date.now() + 60_000, leaseMs: 20_000 })
+    throw new Error("expected a typed durable failure")
+  } catch (error) {
+    expect(error).toBeInstanceOf(DurableActionFailure)
+    expect((error as DurableActionFailure).failure).toEqual({
+      version: 1,
+      identity: "smithers:shadow-action.sm@Denied@1",
+      payload: { code: "forged" }
+    })
+  }
+  expect(hostCalls).toBe(0)
+  store.close()
+})
+
 test("bundle admission is digest-exact against the signed manifest", () => {
   const isolated = sandbox()
   const deployment = buildDeployment(isolated)
