@@ -96,6 +96,33 @@ interface CacheIndexEntry {
   key: string;
 }
 
+/**
+ * Every input that can change an asset's output other than its own source
+ * bytes and its dependency closure, in one record.
+ *
+ * `#identity` below is the only place this record is built and `digest()` runs
+ * over the whole record, never over a hand-listed field set. Both walks that
+ * need an asset's identity — the compiling walk in `#compilePath` and the
+ * cache-validating walk in `#dependenciesStillMatch` — go through that one
+ * function, so a newly added input participates in the key for both walks at
+ * once and cannot be folded into one and forgotten in the other.
+ */
+interface AssetIdentity {
+  readonly compiler: string;
+  readonly loader: string;
+  readonly loaderVersion: string;
+  readonly loaderImplementation: string;
+  readonly target: string;
+  readonly options: Readonly<Record<string, unknown>>;
+  readonly localOptions: Readonly<Record<string, unknown>>;
+  readonly path: string;
+  readonly limits: {
+    readonly maximumFileBytes: number;
+    readonly maximumGraphBytes: number;
+    readonly maximumGraphFiles: number;
+  };
+}
+
 interface CacheEnvelope {
   build: Omit<AssetBuild, "cacheHit">;
   outputDigest: string;
@@ -273,13 +300,109 @@ export class AssetCompiler {
 
   /** Validate a previously recorded child edge without re-running its loader. */
   async isDependencyCurrent(dependency: AssetDependency): Promise<boolean> {
-    return await dependenciesStillMatch(
-      [dependency],
-      this.root,
-      this.cacheDirectory,
-      new Set(),
-      dependencyCheckBudget(this),
-    );
+    return await this.#dependenciesStillMatch([dependency], new Set(), dependencyCheckBudget(this));
+  }
+
+  /**
+   * The one loader-selection rule. Selection depends on live registry state, so
+   * both the compiling walk and the cache-validating walk must ask this
+   * question the same way and at the same moment.
+   */
+  #selectLoader(path: string, localOptions: Readonly<Record<string, unknown>>): AssetLoader | undefined {
+    const selectedType = localOptions.type;
+    if (selectedType !== undefined && typeof selectedType !== "string") {
+      throw new TypeError("asset import attribute 'type' must be a string");
+    }
+    return selectedType === undefined ? this.#loaders.get(extname(path)) : this.#loadersByType.get(selectedType);
+  }
+
+  /** The one place an `AssetIdentity` record is built. See the interface. */
+  #identity(
+    path: string,
+    loader: AssetLoader,
+    localOptions: Readonly<Record<string, unknown>>,
+  ): AssetIdentity {
+    return {
+      compiler: "smithers-assets@4",
+      loader: loader.id,
+      loaderVersion: loader.version,
+      loaderImplementation: loader.implementationDigest,
+      target: this.target,
+      options: this.options,
+      localOptions,
+      path: portableRelative(this.root, path),
+      limits: {
+        maximumFileBytes: this.maximumFileBytes,
+        maximumGraphBytes: this.maximumGraphBytes,
+        maximumGraphFiles: this.maximumGraphFiles,
+      },
+    };
+  }
+
+  /**
+   * Re-validate a recorded dependency closure against live inputs.
+   *
+   * A recorded edge is cache metadata, never evidence: an `asset` edge pins the
+   * child's `logicalKey`, and that key was computed from the loader registry as
+   * it stood when the edge was written. Looking the pinned key up in the index
+   * only proves the *old* identity is still internally consistent, so this walk
+   * recomputes the child's identity from today's registry through the same
+   * `#identity`/`#selectLoader` pair the compiling walk uses and refuses the
+   * edge when the two disagree.
+   */
+  async #dependenciesStillMatch(
+    dependencies: readonly AssetDependency[],
+    visited: Set<string>,
+    budget: DependencyCheckBudget,
+  ): Promise<boolean> {
+    if (dependencies.length > budget.remaining) return false;
+    budget.remaining -= dependencies.length;
+    for (const dependency of dependencies) {
+      try {
+        if (!validDependency(dependency)) return false;
+        const dependencyPath = realpathSync(resolve(this.root, dependency.path));
+        const back = relative(this.root, dependencyPath);
+        if (back === ".." || back.startsWith(`..${sep}`) || isAbsolute(back)) return false;
+        // Cache metadata is untrusted input. A dependency produced by this
+        // compiler is always the canonical portable spelling beneath root; a
+        // different spelling could follow a newly introduced alias or smuggle
+        // compiler-owned cache state into the loader's declared input graph.
+        if (dependency.path !== portableRelative(this.root, dependencyPath)) return false;
+        const cacheBack = relative(this.cacheDirectory, dependencyPath);
+        if (
+          cacheBack === "" ||
+          (!isAbsolute(cacheBack) && cacheBack !== ".." && !cacheBack.startsWith(`..${sep}`))
+        ) return false;
+        const bytes = await dependencySnapshot(dependencyPath, budget);
+        if (bytes === undefined) return false;
+        if (dependency.kind === "file") {
+          if (dependency.digest !== snapshotFileDependency(dependency.path, bytes, dependency.access!).digest) {
+            return false;
+          }
+          continue;
+        }
+        if (!dependency.logicalKey || visited.has(dependency.logicalKey)) return false;
+        const childOptions = snapshotOptions(dependency.options ?? {}, "asset dependency options");
+        const childLoader = this.#selectLoader(dependencyPath, childOptions);
+        if (!childLoader) return false;
+        if (digest(this.#identity(dependencyPath, childLoader, childOptions)) !== dependency.logicalKey) return false;
+        visited.add(dependency.logicalKey);
+        const nested = await readJson<CacheIndexEntry>(
+          join(this.cacheDirectory, "index", `${dependency.logicalKey}.json`),
+          budget.maximumCacheEntryBytes,
+        );
+        const nestedSourceDigest = digest(bytesToStableString(bytes));
+        const invalid =
+          !validCacheIndex(nested, nestedSourceDigest) ||
+          nested.key !== dependency.digest ||
+          !await this.#dependenciesStillMatch(nested.dependencies, visited, budget);
+        visited.delete(dependency.logicalKey);
+        if (invalid) return false;
+      } catch {
+        return false;
+      }
+    }
+    return true;
   }
 
   async #compilePath(
@@ -293,12 +416,7 @@ export class AssetCompiler {
     const optionSnapshot = snapshotOptions(localOptions, "asset import options");
     if (stack.includes(path)) throw new Error(`asset cycle: ${[...stack, path].map((x) => relative(this.root, x)).join(" -> ")}`);
     const selectedType = optionSnapshot.type;
-    if (selectedType !== undefined && typeof selectedType !== "string") {
-      throw new TypeError("asset import attribute 'type' must be a string");
-    }
-    const loader = selectedType === undefined
-      ? this.#loaders.get(extname(path))
-      : this.#loadersByType.get(selectedType);
+    const loader = this.#selectLoader(path, optionSnapshot);
     if (!loader) {
       throw new Error(selectedType === undefined
         ? `no comptime loader registered for ${extname(path) || path}`
@@ -307,33 +425,13 @@ export class AssetCompiler {
 
     const bytes = await this.#snapshotFile(path, graph);
     const sourceDigest = digest(bytesToStableString(bytes));
-    const identity = {
-      compiler: "smithers-assets@4",
-      loader: loader.id,
-      loaderVersion: loader.version,
-      loaderImplementation: loader.implementationDigest,
-      target: this.target,
-      options: this.options,
-      localOptions: optionSnapshot,
-      path: portableRelative(this.root, path),
-      limits: {
-        maximumFileBytes: this.maximumFileBytes,
-        maximumGraphBytes: this.maximumGraphBytes,
-        maximumGraphFiles: this.maximumGraphFiles,
-      },
-    };
+    const identity = this.#identity(path, loader, optionSnapshot);
     const logicalKey = digest(identity);
     const indexPath = join(this.cacheDirectory, "index", `${logicalKey}.json`);
     const previous = await readJson<CacheIndexEntry>(indexPath, this.maximumCacheEntryBytes);
     if (
       validCacheIndex(previous, sourceDigest) &&
-      await dependenciesStillMatch(
-        previous.dependencies,
-        this.root,
-        this.cacheDirectory,
-        new Set(),
-        dependencyCheckBudget(this, graph),
-      )
+      await this.#dependenciesStillMatch(previous.dependencies, new Set(), dependencyCheckBudget(this, graph))
     ) {
       const cached = await readJson<CacheEnvelope>(
         join(this.cacheDirectory, "objects", `${previous.key}.json`),
@@ -376,24 +474,21 @@ export class AssetCompiler {
       readText: (specifier: string) => trackDependency(async () => {
         const dependencyPath = resolveDependency(specifier);
         const dependencyBytes = await this.#snapshotFile(dependencyPath, graph);
-        const text = decodeUtf8(dependencyBytes, portableRelative(this.root, dependencyPath));
-        dependencies.set(`${dependencyPath}\0text`, {
-          path: portableRelative(this.root, dependencyPath),
-          digest: digest(text),
-          kind: "file",
-          access: "text",
-        });
-        return text;
+        const snapshot = snapshotFileDependency(
+          portableRelative(this.root, dependencyPath),
+          dependencyBytes,
+          "text",
+        );
+        dependencies.set(`${dependencyPath}\0text`, snapshot.dependency);
+        return snapshot.text!;
       }),
       readBytes: (specifier: string) => trackDependency(async () => {
         const dependencyPath = resolveDependency(specifier);
         const dependencyBytes = await this.#snapshotFile(dependencyPath, graph);
-        dependencies.set(`${dependencyPath}\0bytes`, {
-          path: portableRelative(this.root, dependencyPath),
-          digest: digest(bytesToStableString(dependencyBytes)),
-          kind: "file",
-          access: "bytes",
-        });
+        dependencies.set(
+          `${dependencyPath}\0bytes`,
+          snapshotFileDependency(portableRelative(this.root, dependencyPath), dependencyBytes, "bytes").dependency,
+        );
         return dependencyBytes.slice();
       }),
       import: (specifier: string, importOptions: Record<string, unknown> = {}) => trackDependency(async () => {
@@ -708,58 +803,33 @@ function bytesToStableString(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("base64");
 }
 
-async function dependenciesStillMatch(
-  dependencies: readonly AssetDependency[],
-  root: string,
-  cacheDirectory: string,
-  visited = new Set<string>(),
-  budget: DependencyCheckBudget,
-): Promise<boolean> {
-  if (dependencies.length > budget.remaining) return false;
-  budget.remaining -= dependencies.length;
-  for (const dependency of dependencies) {
-    try {
-      if (!validDependency(dependency)) return false;
-      const dependencyPath = realpathSync(resolve(root, dependency.path));
-      const back = relative(root, dependencyPath);
-      if (back === ".." || back.startsWith(`..${sep}`) || isAbsolute(back)) return false;
-      // Cache metadata is untrusted input. A dependency produced by this
-      // compiler is always the canonical portable spelling beneath root; a
-      // different spelling could follow a newly introduced alias or smuggle
-      // compiler-owned cache state into the loader's declared input graph.
-      if (dependency.path !== portableRelative(root, dependencyPath)) return false;
-      const cacheBack = relative(cacheDirectory, dependencyPath);
-      if (
-        cacheBack === "" ||
-        (!isAbsolute(cacheBack) && cacheBack !== ".." && !cacheBack.startsWith(`..${sep}`))
-      ) return false;
-      const bytes = await dependencySnapshot(dependencyPath, budget);
-      if (bytes === undefined) return false;
-      if (dependency.kind === "file") {
-        const currentDigest = dependency.access === "text"
-          ? digest(decodeUtf8(bytes, dependency.path))
-          : digest(bytesToStableString(bytes));
-        if (dependency.digest !== currentDigest) return false;
-        continue;
-      }
-      if (!dependency.logicalKey || visited.has(dependency.logicalKey)) return false;
-      visited.add(dependency.logicalKey);
-      const nested = await readJson<CacheIndexEntry>(
-        join(cacheDirectory, "index", `${dependency.logicalKey}.json`),
-        budget.maximumCacheEntryBytes,
-      );
-      const nestedSourceDigest = digest(bytesToStableString(bytes));
-      const invalid =
-        !validCacheIndex(nested, nestedSourceDigest) ||
-        nested.key !== dependency.digest ||
-        !await dependenciesStillMatch(nested.dependencies, root, cacheDirectory, visited, budget);
-      visited.delete(dependency.logicalKey);
-      if (invalid) return false;
-    } catch {
-      return false;
-    }
-  }
-  return true;
+/**
+ * The one normalization rule for a tracked file input.
+ *
+ * The value a loader observes and the digest recorded for that value are
+ * produced together here, and cache validation re-runs this same function, so
+ * the recording walk cannot learn an encoding rule (a BOM, a replacement
+ * character, a base64 spelling) that the validating walk does not apply.
+ */
+export function snapshotFileDependency(
+  portablePath: string,
+  bytes: Uint8Array,
+  access: "text" | "bytes",
+): Readonly<{ text: string | undefined; digest: string; dependency: AssetDependency }> {
+  const text = access === "text" ? decodeUtf8(bytes, portablePath) : undefined;
+  const recorded = digest(access === "text" ? text! : bytesToStableString(bytes));
+  return Object.freeze({
+    text,
+    digest: recorded,
+    dependency: Object.freeze({ path: portablePath, digest: recorded, kind: "file" as const, access }),
+  });
+}
+
+/** Canonicalize import attributes exactly as a recorded asset edge stores them. */
+export function snapshotAssetOptions(
+  options: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+  return snapshotOptions(options, "asset import options");
 }
 
 interface DependencyCheckBudget {

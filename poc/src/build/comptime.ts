@@ -1,7 +1,14 @@
 import { readFileSync, realpathSync, statSync } from "node:fs";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import type { AssetBuild, AssetCompiler, AssetDependency, LoaderContext } from "./assets.ts";
+import {
+  snapshotAssetOptions,
+  snapshotFileDependency,
+  type AssetBuild,
+  type AssetCompiler,
+  type AssetDependency,
+  type LoaderContext,
+} from "./assets.ts";
 import { assertSandboxedComptimeModule, type SandboxedComptimeModule } from "./sandboxed-loader.ts";
 import {
   canonical,
@@ -154,16 +161,12 @@ export class ComptimeCompiler {
   readTrackedText(specifier: string, options: { readonly from: string }): TrackedComptimeText {
     const fromFile = this.#resolveFile(options.from, this.root);
     const path = this.#resolveFile(specifier, dirname(fromFile));
-    const value = readFileSync(path, "utf8");
-    return Object.freeze({
-      value,
-      dependency: Object.freeze({
-        path: relative(this.root, path).split(sep).join("/"),
-        digest: digest(value),
-        kind: "file" as const,
-        access: "text" as const,
-      }),
-    });
+    const snapshot = snapshotFileDependency(this.#portable(path), new Uint8Array(readFileSync(path)), "text");
+    return Object.freeze({ value: snapshot.text!, dependency: snapshot.dependency });
+  }
+
+  #portable(path: string): string {
+    return relative(this.root, path).split(sep).join("/");
   }
 
   async #evaluateStatic<T extends StableJson>(
@@ -223,35 +226,31 @@ export class ComptimeCompiler {
       options: this.options,
       readText: async (specifier: string): Promise<string> => {
         const path = this.#resolveFile(specifier, from);
-        const text = await readFile(path, "utf8");
-        dependencies.set(`${path}\0text`, {
-          path: relative(this.root, path).split(sep).join("/"),
-          digest: digest(text),
-          kind: "file",
-          access: "text",
-        });
-        return text;
+        const snapshot = snapshotFileDependency(this.#portable(path), new Uint8Array(await readFile(path)), "text");
+        dependencies.set(`${path}\0text`, snapshot.dependency);
+        return snapshot.text!;
       },
       readBytes: async (specifier: string): Promise<Uint8Array> => {
         const path = this.#resolveFile(specifier, from);
         const bytes = new Uint8Array(await readFile(path));
-        dependencies.set(`${path}\0bytes`, {
-          path: relative(this.root, path).split(sep).join("/"),
-          digest: digest(Buffer.from(bytes).toString("base64")),
-          kind: "file",
-          access: "bytes",
-        });
+        dependencies.set(`${path}\0bytes`, snapshotFileDependency(this.#portable(path), bytes, "bytes").dependency);
         return bytes;
       },
       import: async (specifier: string, importOptions: Record<string, unknown> = {}) => {
         if (!this.assets) throw new Error("comptime asset import requires an AssetCompiler");
         const path = this.#resolveFile(specifier, from);
-        const child = await this.assets.compile(relative(this.root, path), importOptions);
+        // Snapshot the attributes before the child build so the recorded edge
+        // carries the same options the child's identity was computed from. The
+        // edge must be self-describing enough for the asset compiler to
+        // recompute that identity against a later loader registry.
+        const childOptions = snapshotAssetOptions(importOptions);
+        const child = await this.assets.compile(relative(this.root, path), childOptions);
         dependencies.set(`${path}\0asset:${child.logicalKey}`, {
           path: child.path,
           digest: child.key,
           kind: "asset",
           logicalKey: child.logicalKey,
+          options: childOptions,
         });
         const { cacheHit: _cacheHit, ...deterministic } = child;
         return deterministic;
@@ -289,9 +288,7 @@ export class ComptimeCompiler {
           continue;
         }
         const bytes = new Uint8Array(await readFile(path));
-        const current = dependency.access === "text"
-          ? digest(new TextDecoder().decode(bytes))
-          : digest(Buffer.from(bytes).toString("base64"));
+        const current = snapshotFileDependency(dependency.path, bytes, dependency.access!).digest;
         if (dependency.digest !== current) return false;
       } catch {
         return false;
@@ -303,10 +300,8 @@ export class ComptimeCompiler {
   #assertStaticDependencySnapshots(dependencies: readonly AssetDependency[]): void {
     for (const dependency of dependencies) {
       const path = this.#resolveFile(dependency.path, this.root);
-      const bytes = readFileSync(path);
-      const current = dependency.access === "text"
-        ? digest(new TextDecoder().decode(bytes))
-        : digest(bytes.toString("base64"));
+      const bytes = new Uint8Array(readFileSync(path));
+      const current = snapshotFileDependency(dependency.path, bytes, dependency.access!).digest;
       if (current !== dependency.digest) {
         throw new Error(`static comptime dependency changed after it was read: ${dependency.path}`);
       }

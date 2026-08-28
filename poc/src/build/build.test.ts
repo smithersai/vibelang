@@ -87,6 +87,82 @@ describe("comptime assets and derived schemas", () => {
     await expect(compiler.compile("data.kv")).rejects.toThrow("missing other");
   });
 
+  test("an asset cache hit reproduces a cold compile when a transitive loader identity changes", async () => {
+    const root = await mkdtemp(join(tmpdir(), "smithers-transitive-loader-"));
+    roots.push(root);
+    await writeFile(join(root, "child.chi"), "child-source");
+    await writeFile(join(root, "parent.par"), "parent-source");
+    const parentLoader: AssetLoader = {
+      id: "test:parent",
+      version: "1",
+      implementationDigest: "parent-v1",
+      extensions: [".par"],
+      async load(_asset, context) {
+        const child = await context.import("./child.chi");
+        const value = `parent embeds ${String(child.module.value)}`;
+        return {
+          format: "parent", value,
+          emittedTypeScript: `export default ${JSON.stringify(value)}`,
+          declaration: "declare const value: string; export default value",
+          diagnostics: [], spans: [],
+        };
+      },
+    };
+    const childLoader = (id: string, implementationDigest: string, output: string): AssetLoader => ({
+      id,
+      version: "1",
+      implementationDigest,
+      extensions: [".chi"],
+      load() {
+        return {
+          format: "child", value: output,
+          emittedTypeScript: `export default ${JSON.stringify(output)}`,
+          declaration: "declare const value: string; export default value",
+          diagnostics: [], spans: [],
+        };
+      },
+    });
+    const warm = join(root, ".cache");
+    const compilerWith = (child: AssetLoader, cacheDirectory: string) =>
+      inProcessCompiler({ root, cacheDirectory }).register(parentLoader, child);
+    const original = childLoader("test:child-a", "child-a-v1", "[A-OUTPUT]");
+    const first = await compilerWith(original, warm).compile("parent.par");
+    expect(first.module.value).toBe("parent embeds [A-OUTPUT]");
+    expect((await compilerWith(original, warm).compile("parent.par")).cacheHit).toBe(true);
+
+    // The invariant under test is general: whatever the warm cache returns must
+    // be exactly what a cold compile of the same inputs would produce.
+    const variants = [
+      ["owner-swap", childLoader("test:child-b", "child-b-v1", "[B-OUTPUT]")],
+      ["implementation-upgrade", childLoader("test:child-a", "child-a-v2", "[A2-OUTPUT]")],
+      ["version-bump", { ...childLoader("test:child-a", "child-a-v1", "[A3-OUTPUT]"), version: "2" }],
+    ] as const;
+    for (const [label, swapped] of variants) {
+      const cached = await compilerWith(swapped, warm).compile("parent.par");
+      const cold = await compilerWith(swapped, join(root, `.cold-${label}`)).compile("parent.par");
+      expect(`${label}: ${String(cached.module.value)}`).toBe(`${label}: ${String(cold.module.value)}`);
+      expect(cached.key).toBe(cold.key);
+      expect(canonical(cached.module as never)).toBe(canonical(cold.module as never));
+    }
+  });
+
+  test("a comptime cache hit reproduces a cold evaluation when a text dependency gains a BOM", async () => {
+    const root = await mkdtemp(join(tmpdir(), "smithers-comptime-bom-"));
+    roots.push(root);
+    await writeFile(join(root, "dep.txt"), "alpha\n");
+    const modulePath = join(root, "read.mjs");
+    await writeFile(modulePath, `export default async (context) => await context.readText("./dep.txt")`);
+    const module = () => createSandboxedComptimeModule({ id: "test:bom", version: "1", modulePath });
+    const compiler = new ComptimeCompiler({ root, cacheDirectory: join(root, ".cache") });
+    expect((await compiler.evaluate(module())).cacheHit).toBe(false);
+
+    await writeFile(join(root, "dep.txt"), "﻿alpha\n");
+    const cached = await compiler.evaluate(module());
+    const cold = await new ComptimeCompiler({ root, cacheDirectory: join(root, ".cold") }).evaluate(module());
+    expect(cached.value).toEqual(cold.value);
+    expect(cached.key).toBe(cold.key);
+  });
+
   test("one asset build snapshots transitive bytes once and invalidates that snapshot on the next build", async () => {
     const root = await mkdtemp(join(tmpdir(), "smithers-asset-snapshot-"));
     roots.push(root);
