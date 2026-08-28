@@ -600,6 +600,33 @@ describe("nominal Error identity and transport", () => {
     mutableCodec.encode = () => ({ stable: false });
     expect(encodeError(new SnapshotCodec())).toContain('"stable":true');
   });
+
+  test("one -0 policy: the Error wire codec refuses negative zero instead of silently coercing it", () => {
+    // matches durable/value.ts, schema/json.ts, runtime/wire.ts, and
+    // concurrency/worker.ts: stringifyJson renders -0 as "0", so accepting it
+    // in assertJson would change the value's identity in transit with no
+    // diagnostic. The same literal must not have two fates depending on phase.
+    class NegZeroPayload extends Error {}
+    registerErrorCodec(NegZeroPayload, "test:runtime/NegZeroPayload@1", {
+      encode: () => ({ value: -0 }),
+      decode: () => new NegZeroPayload(),
+    });
+    expect(() => encodeError(new NegZeroPayload())).toThrow("negative zero");
+
+    class NegZeroArrayPayload extends Error {}
+    registerErrorCodec(NegZeroArrayPayload, "test:runtime/NegZeroArrayPayload@1", {
+      encode: () => [1, -0] as never,
+      decode: () => new NegZeroArrayPayload(),
+    });
+    expect(() => encodeError(new NegZeroArrayPayload())).toThrow("negative zero");
+
+    class ZeroPayload extends Error {}
+    registerErrorCodec(ZeroPayload, "test:runtime/ZeroPayload@1", {
+      encode: () => ({ value: 0 }),
+      decode: () => new ZeroPayload(),
+    });
+    expect(encodeError(new ZeroPayload())).toContain('"value":0');
+  });
 });
 
 describe("Result transport", () => {

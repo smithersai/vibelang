@@ -463,6 +463,11 @@ function assertJson(value: unknown, path = "$", depth = 0, seen = new Set<object
   if (value === null || typeof value === "boolean" || typeof value === "string") return;
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new ErrorCodecError(`${path} contains a non-finite number`);
+    // stringifyJson below renders -0 as "0", so accepting it here would change
+    // the value's identity in transit with no diagnostic. One -0 policy, as
+    // `durable/value.ts`, `schema/json.ts`, `runtime/wire.ts`, and
+    // `concurrency/worker.ts` all already enforce: refuse it.
+    if (Object.is(value, -0)) throw new ErrorCodecError(`${path} contains negative zero`);
     return;
   }
   if (typeof value !== "object") throw new ErrorCodecError(`${path} is not JSON data`);
