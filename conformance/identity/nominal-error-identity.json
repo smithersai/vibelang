@@ -1,0 +1,161 @@
+{
+  "why": "Cross-language test vectors for THE nominal Error identity algorithm. Both backends mint this identity independently -- the reference frontend in poc/src/durable/site-id.ts (nominalErrorIdentity) and the Go fork in compiler/forkbridge/lowering.go.txt (stableErrorIdentity) -- and an emitted artifact is only interoperable if the two agree byte for byte. Two hand-maintained copies of one algorithm is exactly the shape that produced the defect this file exists for, so the copies are pinned against each other HERE rather than against two separately maintained expectations that can drift apart unnoticed. Regenerate by RUNNING a backend, never by hand or from a report: poc/src/language/nominal-error-identity.test.ts checks the reference against these rows, and compiler/fork_error_identity_test.go compiles each viaFork row with the pinned fork and reads the identity back out of the emitted __smithersRegisterError.",
+  "algorithm": "identity := \"smithers:\" + escape(file) + \":\" + className, where escape emits a UTF-16 code unit verbatim when it is in [A-Za-z0-9._/@:-] (and, at index 0, only when it is in [A-Za-z0-9]) and otherwise emits \"+\" followed by exactly four upper-case hex digits of the unit. When that spelling exceeds 256 UTF-16 code units the identity is instead \"smithers.digest:\" + lower-case hex SHA-256 of the UTF-8 bytes of the spelling. The spelling is never truncated and the file name is never folded, so two distinct (file, className) pairs never converge.",
+  "viaFork": "false marks a row the Go fork cannot be handed as a FILE NAME at all -- virtualFileName (compiler/forkbridge/main.go.txt) fail-closes on an absolute name, a name containing a colon, and an empty name. Those rows still pin the algorithm on the reference side; they are unreachable input for the end-to-end fork check, not exemptions from agreement.",
+  "vectors": [
+    {
+      "why": "an ordinary root-relative name is unchanged",
+      "file": "main.sm",
+      "className": "NotFound",
+      "viaFork": true,
+      "identity": "smithers:main.sm:NotFound"
+    },
+    {
+      "why": "a nested POSIX path is unchanged",
+      "file": "app/orders/checkout.sm",
+      "className": "Declined",
+      "viaFork": true,
+      "identity": "smithers:app/orders/checkout.sm:Declined"
+    },
+    {
+      "why": "a name made of . _ - / survives verbatim",
+      "file": "a-b_c.d/e.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a-b_c.d/e.sm:Boom"
+    },
+    {
+      "why": "a colon survives normalization but the fork refuses the file name itself",
+      "file": "a:b.sm",
+      "className": "Boom",
+      "viaFork": false,
+      "identity": "smithers:a:b.sm:Boom"
+    },
+    {
+      "why": "a leading @ escapes because only the first unit must be alphanumeric",
+      "file": "@scope/a.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:+0040scope/a.sm:Boom"
+    },
+    {
+      "why": "a space is escaped rather than folded onto underscore",
+      "file": "a b.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a+0020b.sm:Boom"
+    },
+    {
+      "why": "the underscore it used to fold onto keeps its own identity",
+      "file": "a_b.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a_b.sm:Boom"
+    },
+    {
+      "why": "a leading dot is escaped rather than prefixed with source_",
+      "file": ".a.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:+002Ea.sm:Boom"
+    },
+    {
+      "why": "the source_ prefix it used to mint keeps its own identity",
+      "file": "source_.a.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:source_.a.sm:Boom"
+    },
+    {
+      "why": "a literal plus is escaped because plus introduces an escape",
+      "file": "a+b.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a+002Bb.sm:Boom"
+    },
+    {
+      "why": "the escape spelling of plus is itself escaped",
+      "file": "a+002Bb.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a+002B002Bb.sm:Boom"
+    },
+    {
+      "why": "a tab is escaped",
+      "file": "a\tb.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a+0009b.sm:Boom"
+    },
+    {
+      "why": "a non-BMP path character becomes two surrogate escapes",
+      "file": "f😀.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:f+D83D+DE00.sm:Boom"
+    },
+    {
+      "why": "a non-ASCII class name is carried verbatim",
+      "file": "main.sm",
+      "className": "Café",
+      "viaFork": true,
+      "identity": "smithers:main.sm:Café"
+    },
+    {
+      "why": "a non-BMP class name is carried verbatim",
+      "file": "main.sm",
+      "className": "𝐁oom",
+      "viaFork": true,
+      "identity": "smithers:main.sm:𝐁oom"
+    },
+    {
+      "why": "exactly at the 256 unit bound stays spelled",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "className": "Left",
+      "viaFork": true,
+      "identity": "smithers:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm:Left"
+    },
+    {
+      "why": "one unit over the bound falls back to a digest",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "className": "Left",
+      "viaFork": true,
+      "identity": "smithers.digest:3f9ee9a9e1c200298897cfc2e714b60f3b78a7bf6c2a68806dae5c4ad4ac3f0d"
+    },
+    {
+      "why": "the sibling over the bound is a different digest",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "className": "Right",
+      "viaFork": true,
+      "identity": "smithers.digest:8fe591ffffa37d309d3bce5615eccf9876b73b2869be26a81f0b115f5ccec23c"
+    },
+    {
+      "why": "the truncation reproduction from the defect report, left",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "className": "Left",
+      "viaFork": true,
+      "identity": "smithers.digest:2d4b3deb872046fb1ddb9198443e92867b182af399dec67562c0de68f2572f76"
+    },
+    {
+      "why": "the truncation reproduction from the defect report, right",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "className": "Right",
+      "viaFork": true,
+      "identity": "smithers.digest:f61f0b461cfd30e4ed9e506409bf2aafabe5fae43acb07e893479c22f378818a"
+    },
+    {
+      "why": "an escape may be what pushes the spelling over the bound",
+      "file": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz .sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers.digest:f042b9a757b1a6c2e35d0ac2b9ac0381138f6b5d8ff63ed59b8b6655ecc3e722"
+    },
+    {
+      "why": "an empty logical file is still injective, and the fork refuses the name",
+      "file": "",
+      "className": "Boom",
+      "viaFork": false,
+      "identity": "smithers::Boom"
+    }
+  ]
+}

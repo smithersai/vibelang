@@ -1,6 +1,6 @@
 import { basename, dirname, extname, relative, resolve, sep } from "node:path";
 import * as ts from "typescript-js";
-import type { Analysis, AnalyzeOptions, FunctionChannel } from "./model.ts";
+import type { Analysis, AnalyzeOptions, Diagnostic, ErrorDeclaration, FunctionChannel } from "./model.ts";
 import {
   composeSourceMaps,
   createOffsetSourceMap,
@@ -18,6 +18,8 @@ import {
   isPanicExitCall,
   isResultExpectExpression,
   isResultPropagationExpression,
+  NominalErrorIdentities,
+  nominalErrorIdentity,
   type CallEdge,
   type SemanticFunction,
   type SemanticModel,
@@ -57,6 +59,54 @@ export interface ProjectEmitBindings {
   readonly stripImportAttributesForSources?: ReadonlySet<string>;
   /** Absolute paths of the authored `.sm` modules in this project. */
   readonly smithersSourceNames?: ReadonlySet<string>;
+  /**
+   * The compilation-wide nominal Error identity assigner.
+   *
+   * `compileProject` passes ONE instance across every module so the invariant
+   * spans the whole compilation rather than one file at a time: the two ways
+   * {@link nominalErrorIdentity}'s predecessor lost injectivity were a
+   * within-file one (the bound cut the class name off) and a cross-file one (two
+   * file names normalized together), and a per-file assigner would only have
+   * seen the first. A single-file `compileSmithers` gets its own instance.
+   */
+  readonly nominalIdentities?: NominalErrorIdentities;
+}
+
+/**
+ * Nominal Error identity collisions across one compilation, one diagnostic per
+ * declaration that could not be given an identity of its own.
+ *
+ * This is a defensive invariant and on today's algorithm it never fires:
+ * {@link nominalErrorIdentity} is injective, and `SMITHERS1150` separately
+ * refuses two Error classes with one name in one module. It exists because the
+ * failure it guards is a fail-OPEN — a clean compile whose artifact throws
+ * `stable Error identity … is already registered` at load — and because the
+ * algorithm has now been weakened into exactly that state twice. With this in
+ * the emit path, a third weakening is a refusal instead of a broken artifact.
+ */
+function nominalIdentityCollisions(
+  sourceName: string,
+  source: string,
+  errors: readonly ErrorDeclaration[],
+  identities: NominalErrorIdentities,
+): readonly Diagnostic[] {
+  const collisions: Diagnostic[] = [];
+  for (const error of errors) {
+    const claim = identities.claim(sourceName, error.name);
+    if (claim.collidesWith === undefined) continue;
+    const clamped = Math.max(0, Math.min(error.start, source.length));
+    const preceding = source.lastIndexOf("\n", clamped - 1);
+    collisions.push({
+      severity: "error",
+      code: "SMITHERS1151",
+      message: `Error class '${error.name}' in '${sourceName}' cannot receive a stable nominal identity: ` +
+        `it mints ${claim.identity}, which '${claim.collidesWith}' already holds`,
+      start: error.start,
+      line: clamped === 0 ? 1 : source.slice(0, clamped).split("\n").length,
+      column: clamped - preceding,
+    });
+  }
+  return collisions;
 }
 
 export interface CompileResult {
@@ -103,19 +153,30 @@ export function compileSemanticModel(
   model: SemanticModel,
   bindings: ProjectEmitBindings = {},
 ): CompileResult {
+  // `sourceName` anchors every identity minted below, so the invariant runs
+  // against the same string the lowerer will use — see the block after it.
+  const identityAnchor = options.sourceName ??
+    (options.fileName === undefined ? "<memory>.sm" : identityFileName(options.fileName));
+  const identityCollisions = nominalIdentityCollisions(
+    identityAnchor,
+    source,
+    model.errors,
+    bindings.nominalIdentities ?? new NominalErrorIdentities(),
+  );
   const analysis: Analysis = {
     errors: model.errors,
     functions: model.publicFunctions,
     rows: model.rows,
-    diagnostics: model.diagnostics,
+    diagnostics: identityCollisions.length === 0
+      ? model.diagnostics
+      : [...model.diagnostics, ...identityCollisions],
   };
   // `sourceName` is the display name AND the anchor of every emitted nominal
-  // Error identity (`stableErrorId`) and of the source map's `sources`, so an
+  // Error identity ({@link nominalErrorIdentity}) and of the source map's `sources`, so an
   // absolute `fileName` falling through to it put a machine-specific path into
   // a runtime identity. The fallback goes through the one portable accessor;
   // `compileProject` still passes an explicit root-relative `sourceName`.
-  const sourceName = options.sourceName ??
-    (options.fileName === undefined ? "<memory>.sm" : identityFileName(options.fileName));
+  const sourceName = identityAnchor;
   const runtimeImport = options.runtimeImport ?? "../runtime/index.ts";
   const identifiers = collectIdentifierTexts(model.sourceFile);
   const state: TransformState = {
@@ -352,7 +413,7 @@ function lowerStatement(
     if (!name || !statement.name) return [updated];
     state.changed = true;
     const register = helper(state, "__vsRegisterError");
-    const stableId = stableErrorId(state.sourceName, name);
+    const stableId = nominalErrorIdentity(state.sourceName, name);
     const brand = nominalErrorInterface(statement, stableId, state);
     return [
       updated,
@@ -1150,16 +1211,6 @@ function hasErrorClassBase(declaration: ts.ClassDeclaration, checker: ts.TypeChe
     if (base?.name && isErrorType(checker.getTypeAtLocation(base.name), checker)) return true;
   }
   return false;
-}
-
-function stableErrorId(sourceName: string, name: string): string {
-  const normalized = sourceName.replace(/[^A-Za-z0-9._/@:+-]/g, "_").replace(/^([^A-Za-z0-9])/, "source_$1");
-  const id = `smithers:${normalized}:${name}`.slice(0, 256);
-  // The class name is carried verbatim, because an Error class name may be any
-  // TypeScript identifier. Never cut a surrogate pair in half doing it: a lone
-  // surrogate is not an identity character and the runtime validator would
-  // refuse the identity while the emitted module was still loading.
-  return /[\uD800-\uDBFF]$/.test(id) ? id.slice(0, -1) : id;
 }
 
 function isCompilerVirtualModule(name: string): boolean {

@@ -1,7 +1,13 @@
 import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import * as ts from "typescript-js";
 import { DurableCodecError, deriveDurableValueSchema } from "../durable/schema.ts";
-import { EffectSiteIds, MEMORY_SOURCE_NAME, identityFileName } from "../durable/site-id.ts";
+import {
+  EffectSiteIds,
+  MEMORY_SOURCE_NAME,
+  NominalErrorIdentities,
+  identityFileName,
+  nominalErrorIdentity,
+} from "../durable/site-id.ts";
 import type {
   Analysis,
   AnalyzeOptions,
@@ -357,6 +363,14 @@ export interface CapabilitySite {
  * compiler imports it under.
  */
 export { identityFileName };
+
+/**
+ * THE nominal Error identity algorithm — see the definition in
+ * `../durable/site-id.ts`. It lives beside {@link identityFileName} because it
+ * consumes that function's answer and nothing else, and it is re-exported here
+ * for the same reason: the lowerer imports its identity rules from one place.
+ */
+export { NominalErrorIdentities, nominalErrorIdentity };
 
 export interface SemanticModel {
   /** The authored `.sm` text. */

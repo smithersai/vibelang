@@ -15,6 +15,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"path"
 	"sort"
@@ -6387,9 +6388,15 @@ type lowerer struct {
 	used                map[string]bool
 	reports             []loweringReport
 	needsPreludeRuntime bool
+
+	// identities is the COMPILE-WIDE nominal Error identity claim map: minted
+	// identity -> "<logical file>:<class name>" of the declaration holding it.
+	// One map is shared by every lowerer in a compilation, because one of the two
+	// collisions this guards spans two modules. See claimNominalErrorIdentity.
+	identities map[string]string
 }
 
-func newLowerer(typeChecker *checker.Checker, prelude *preludeSymbols, analysis *rowAnalysis, comptime *comptimeAnalysis) *lowerer {
+func newLowerer(typeChecker *checker.Checker, prelude *preludeSymbols, analysis *rowAnalysis, comptime *comptimeAnalysis, identities map[string]string) *lowerer {
 	low := &lowerer{
 		emitContext: printer.NewEmitContext(),
 		checker:     typeChecker,
@@ -6397,6 +6404,7 @@ func newLowerer(typeChecker *checker.Checker, prelude *preludeSymbols, analysis 
 		analysis:    analysis,
 		comptime:    comptime,
 		used:        make(map[string]bool),
+		identities:  identities,
 	}
 	low.factory = low.emitContext.Factory
 	low.visitor = low.emitContext.NewNodeVisitor(low.visit)
@@ -6497,34 +6505,81 @@ func preludeSpecifierFor(virtualName string) string {
 // class keeps the same identity no matter where the compiler was invoked from.
 //
 // Every step is defined on UTF-16 code units because the reference frontend's
-// stableErrorId is JavaScript string surgery, and the two identities must be
-// the same string for the same class or the wire is not interoperable. A
-// non-BMP character therefore contributes two replacement units, the bound is
-// 256 units rather than 256 runes, and a trailing lone high surrogate left by
-// the bound is dropped: it is not an identity character, and the runtime
-// validator would refuse the whole identity while the module was still loading.
+// nominalErrorIdentity is JavaScript string surgery, and the two identities must
+// be the same string for the same class or the wire is not interoperable. A
+// non-BMP character therefore contributes two escapes rather than one, and the
+// bound is 256 units rather than 256 runes. The two implementations are pinned
+// against each other by the shared vectors in
+// conformance/identity/nominal-error-identity.json, which both backends read;
+// they are NOT maintained by reading one another.
+//
+// THE INJECTIVITY RULE. Until 2026-08-28 this function normalized the path by
+// rewriting every unit outside [A-Za-z0-9._/@:+-] to '_', prefixed "source_"
+// when the result did not start alphanumerically, and then truncated the whole
+// identity — class name included — to 256 units. All three steps are many-to-one
+// and all three were measured minting ONE identity for TWO distinct classes on
+// this backend, with zero diagnostics:
+//
+//	"a".repeat(250)+".sm" / Left  and  .../Right  -> one 256-unit identity
+//	a b.sm/Boom           and  a_b.sm/Boom        -> smithers:a_b.sm:Boom
+//	.a.sm/Boom            and  source_.a.sm/Boom  -> smithers:source_.a.sm:Boom
+//
+// That is a fail-OPEN: the compiler accepted the program, emitted a plausible
+// artifact, and the artifact threw "stable Error identity ... is already
+// registered" out of smithersRegisterError while it was still loading. So no
+// step here may destroy information. The path is escaped REVERSIBLY (a unit
+// outside the alphabet, and any unit at index 0 that is not alphanumeric,
+// becomes '+' followed by exactly four upper-case hex digits; '+' is withheld
+// from the alphabet so it can introduce an escape and nothing else), and the
+// bound is honoured by DIGESTING the exact spelling rather than by cutting it.
+//
+// "smithers.digest:" cannot be confused with the ordinary "smithers:" spelling —
+// the ninth unit is '.' in one and ':' in the other — and the ordinary spelling
+// is itself injective over the pair, because a class name is a TypeScript
+// identifier and so contains no ':', which makes the last ':' an unambiguous
+// separator. A surrogate is outside the alphabet, so no lone surrogate can reach
+// the output and the old trailing-surrogate trim is no longer reachable.
 func stableErrorIdentity(sourceName string, name string) string {
-	normalized := make([]uint16, 0, len(sourceName)+8)
-	for _, unit := range utf16.Encode([]rune(sourceName)) {
-		if isStableIdentityPathUnit(unit) {
-			normalized = append(normalized, unit)
-		} else {
-			normalized = append(normalized, '_')
-		}
-	}
-	if len(normalized) > 0 && !isStableIdentityAlphanumeric(normalized[0]) {
-		normalized = append(utf16.Encode([]rune("source_")), normalized...)
-	}
 	units := utf16.Encode([]rune("smithers:"))
-	units = append(units, normalized...)
+	for index, unit := range utf16.Encode([]rune(sourceName)) {
+		verbatim := isStableIdentityAlphanumeric(unit)
+		if index > 0 {
+			verbatim = isEscapedIdentityPathUnit(unit)
+		}
+		if verbatim {
+			units = append(units, unit)
+			continue
+		}
+		units = append(units, utf16.Encode([]rune(fmt.Sprintf("+%04X", unit)))...)
+	}
 	units = append(units, utf16.Encode([]rune(":"+name))...)
-	if len(units) > 256 {
-		units = units[:256]
+	spelled := string(utf16.Decode(units))
+	if len(units) <= 256 {
+		return spelled
 	}
-	if len(units) > 0 && units[len(units)-1] >= 0xD800 && units[len(units)-1] <= 0xDBFF {
-		units = units[:len(units)-1]
+	// Digesting the SPELLING rather than the pair is what makes the fallback
+	// injective for free: the spelling is already injective over (file, name), so
+	// the digest inherits that up to SHA-256 collision resistance. []byte(spelled)
+	// is the same byte sequence Node's update(..., "utf8") hashes.
+	return fmt.Sprintf("smithers.digest:%x", sha256.Sum256([]byte(spelled)))
+}
+
+// isEscapedIdentityPathUnit is [A-Za-z0-9._/@:-] — the identity alphabet MINUS
+// '+'. Withholding '+' is what makes stableErrorIdentity's encoding reversible:
+// an unescaped '+' can never occur, so every '+' in the output starts exactly
+// one five-unit escape.
+//
+// It is deliberately NOT isStableIdentityPathUnit, which still admits '+' and is
+// still the alphabet durableFailureIdentity normalizes against.
+func isEscapedIdentityPathUnit(unit uint16) bool {
+	if isStableIdentityAlphanumeric(unit) {
+		return true
 	}
-	return string(utf16.Decode(units))
+	switch unit {
+	case '.', '_', '/', '@', ':', '-':
+		return true
+	}
+	return false
 }
 
 // isStableIdentityPathUnit is the reference frontend's /[^A-Za-z0-9._\/@:+-]/
@@ -6920,7 +6975,9 @@ func declaresSeveralNames(node *ast.Node) bool {
 // emitted class is byte-for-byte what it was before the registration existed.
 func (l *lowerer) lowerNominalErrorClass(node *ast.Node) *ast.Node {
 	visited := l.visitor.VisitEachChild(node)
-	identity := stableErrorIdentity(strings.TrimPrefix(l.file.FileName(), "/src/"), node.Name().Text())
+	logical := strings.TrimPrefix(l.file.FileName(), "/src/")
+	identity := stableErrorIdentity(logical, node.Name().Text())
+	l.claimNominalErrorIdentity(node, logical, identity)
 	statements := []*ast.Node{visited}
 	if brand := l.nominalErrorBrand(node, identity); brand != nil {
 		statements = append(statements, brand)
@@ -6932,6 +6989,39 @@ func (l *lowerer) lowerNominalErrorClass(node *ast.Node) *ast.Node {
 	)
 	statements = append(statements, l.factory.NewExpressionStatement(call))
 	return l.factory.NewSyntaxList(statements)
+}
+
+// claimNominalErrorIdentity holds the compile-wide injectivity invariant on
+// stableErrorIdentity, refusing a second claimant rather than emitting an
+// artifact that cannot load.
+//
+// stableErrorIdentity is injective, so on today's algorithm this never fires.
+// That is the point: it is a defensive invariant, not a filter. SMITHERS1150
+// already refuses two Error classes with ONE NAME in one module, and it would
+// not have seen either collision the algorithm actually shipped — the truncation
+// one was two DIFFERENTLY named classes in one module, and the normalization one
+// was two modules. The only signal in both cases was a clean compile followed by
+// a TypeError out of smithersRegisterError at load time. With this in the emit
+// path, weakening the algorithm again is a diagnostic instead.
+//
+// The claim map is created once per compilation and shared by every lowerer, so
+// the scope is the whole program rather than one file.
+func (l *lowerer) claimNominalErrorIdentity(node *ast.Node, logical string, identity string) {
+	if l.identities == nil {
+		return
+	}
+	claimant := logical + ":" + node.Name().Text()
+	prior, claimed := l.identities[identity]
+	if !claimed {
+		l.identities[identity] = claimant
+		return
+	}
+	if prior == claimant {
+		return
+	}
+	l.report(node, "SMITHERS1151", fmt.Sprintf(
+		"Error class %q in %q cannot receive a stable nominal identity: it mints %s, which %q already holds",
+		node.Name().Text(), logical, identity, prior))
 }
 
 // nominalErrorBrand builds the type-only nominal merge that sits beside an
@@ -8452,6 +8542,8 @@ func compileInternal(ctx context.Context, options *core.CompilerOptions, project
 	comptime := newComptimeAnalysis(program, typeChecker, authoredFiles, requestedComptimeTarget)
 	analysis := newRowAnalysis(typeChecker, prelude, authoredFiles, comptime, project)
 	loweringDiagnostics := make([]diagnostic, 0)
+	// One claim map for the whole compilation — see claimNominalErrorIdentity.
+	nominalIdentities := make(map[string]string)
 	for _, logicalPath := range paths {
 		smithers := project.smithersByLogical[logicalPath]
 		file, ok := byName[smithers.authoredName]
@@ -8459,7 +8551,7 @@ func compileInternal(ctx context.Context, options *core.CompilerOptions, project
 			return result{Diagnostics: collector.converted, Artifacts: []artifact{}, EmitSkipped: true},
 				fmt.Errorf("compiler input %q is absent from the checked program", logicalPath)
 		}
-		low := newLowerer(typeChecker, prelude, analysis, comptime)
+		low := newLowerer(typeChecker, prelude, analysis, comptime, nominalIdentities)
 		lowered := low.transform(file)
 		text, raw := printLowered(low.emitContext, lowered, options)
 		smithers.loweredText = text

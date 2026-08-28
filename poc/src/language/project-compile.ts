@@ -1,7 +1,7 @@
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { Analysis, AnalyzeProjectOptions, ProjectDiagnostic, ProjectSource } from "./model.ts";
 import { compileSemanticModel } from "./compile.ts";
-import { buildSemanticProjectModels } from "./semantic.ts";
+import { buildSemanticProjectModels, NominalErrorIdentities } from "./semantic.ts";
 
 function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -135,6 +135,14 @@ export function compileProject(
   }
 
   const files: Record<string, CompiledProjectFile> = {};
+  // ONE assigner across every module, so the nominal Error identity invariant is
+  // compile-wide rather than per-file. Both ways the algorithm has lost
+  // injectivity were reachable here and only one of them is visible inside a
+  // single module: a bound that cut the class name off collided two siblings in
+  // ONE file, while a lossy path normalization collided two classes across TWO
+  // files. A per-file assigner would have caught only the first.
+  const nominalIdentities = new NominalErrorIdentities();
+  const identityCollisions: ProjectDiagnostic[] = [];
   for (const source of [...sources].sort((left, right) => compareText(left.fileName, right.fileName))) {
     const model = semantic.models.get(source.fileName);
     const fileAnalysis = semantic.analysis.files[source.fileName];
@@ -150,7 +158,15 @@ export function compileProject(
       sourceMap: options.sourceMap,
       sourceName,
       preserveSmithersSpecifiers: options.preserveSmithersSpecifiers,
-    }, model, { outputBySource, stripImportAttributesForSources, smithersSourceNames });
+    }, model, { outputBySource, stripImportAttributesForSources, smithersSourceNames, nominalIdentities });
+    // The invariant is minted per module by `compileSemanticModel` against the
+    // shared assigner above, so lifting it here reports each collision exactly
+    // once, keyed by the caller's own file name like every other project row.
+    for (const diagnostic of compiled.analysis.diagnostics) {
+      if (diagnostic.code === "SMITHERS1151") {
+        identityCollisions.push({ ...diagnostic, fileName: source.fileName });
+      }
+    }
     files[source.fileName] = {
       fileName: source.fileName,
       absoluteFileName,
@@ -160,5 +176,10 @@ export function compileProject(
       analysis: compiled.analysis,
     };
   }
-  return { files, diagnostics: semantic.analysis.diagnostics };
+  return {
+    files,
+    diagnostics: identityCollisions.length === 0
+      ? semantic.analysis.diagnostics
+      : [...semantic.analysis.diagnostics, ...identityCollisions],
+  };
 }

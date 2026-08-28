@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { basename, isAbsolute, normalize, relative, resolve, sep } from "node:path"
 import { digest } from "./value.ts"
 
@@ -56,6 +57,165 @@ export function identityFileName(fileName: string, rootDir?: string): string {
     ? basename(fileName)
     : relative(resolve(rootDir), fileName)
   return portable.split(sep).join("/")
+}
+
+// ---------------------------------------------------------------------------
+// Nominal Error identity
+// ---------------------------------------------------------------------------
+
+/**
+ * UTF-16 code-unit bound on a minted identity.
+ *
+ * The runtime validator (`../runtime/errors.ts`, `STABLE_ERROR_IDENTITY`)
+ * admits one leading character plus 255 more. Its quantifier counts CODE POINTS
+ * under the `u` flag while this bound counts CODE UNITS, so a unit bound of 256
+ * is the conservative side of that inequality: a string of 256 units is at most
+ * 256 code points and therefore always inside the validator's window.
+ */
+const NOMINAL_ERROR_IDENTITY_UNITS = 256
+
+/** `[0-9A-Za-z]`, on one UTF-16 code unit. */
+function isIdentityAlphanumericUnit(unit: number): boolean {
+  return (unit >= 0x30 && unit <= 0x39) ||
+    (unit >= 0x41 && unit <= 0x5a) ||
+    (unit >= 0x61 && unit <= 0x7a)
+}
+
+/**
+ * `[A-Za-z0-9._/@:-]` — every unit that survives escaping verbatim.
+ *
+ * This is the alphabet the runtime validator accepts for a path, MINUS `+`.
+ * `+` is withheld as the escape introducer, which is the whole reason the
+ * encoding below is reversible: an unescaped `+` can never occur, so every `+`
+ * in the output starts exactly one five-unit escape.
+ */
+function isIdentityPathUnit(unit: number): boolean {
+  return isIdentityAlphanumericUnit(unit) ||
+    unit === 0x2e /* . */ || unit === 0x5f /* _ */ || unit === 0x2f /* / */ ||
+    unit === 0x40 /* @ */ || unit === 0x3a /* : */ || unit === 0x2d /* - */
+}
+
+/**
+ * REVERSIBLE encoding of a logical file name into the identity alphabet.
+ *
+ * The predecessor of this function replaced each unit outside the alphabet with
+ * `_` and, when the result did not start alphanumerically, prefixed `source_`.
+ * Both steps were many-to-one, and both were measured minting one identity for
+ * two distinct files with no diagnostic:
+ *
+ *     a b.sm        and  a_b.sm        -> smithers:a_b.sm:Boom
+ *     .a.sm         and  source_.a.sm  -> smithers:source_.a.sm:Boom
+ *
+ * `+XXXX` (four upper-case hex units, always four, never two) fixes both. It is
+ * a bijection onto its image, so distinct file names cannot converge:
+ *
+ *  - a unit outside the alphabet becomes its escape, and `+` itself becomes
+ *    `+002B`, so the escapes are self-delimiting and decode uniquely;
+ *  - the FIRST unit additionally escapes when it is not alphanumeric, which
+ *    replaces the `source_` prefix with something that cannot be spelled by an
+ *    ordinary file name;
+ *  - a surrogate is outside the alphabet, so a non-BMP character encodes as two
+ *    escapes and no lone surrogate can survive into the identity.
+ */
+function escapeIdentityPath(logicalFile: string): string {
+  let escaped = ""
+  for (let index = 0; index < logicalFile.length; index++) {
+    const unit = logicalFile.charCodeAt(index)
+    const verbatim = index === 0 ? isIdentityAlphanumericUnit(unit) : isIdentityPathUnit(unit)
+    escaped += verbatim ? logicalFile[index] : `+${unit.toString(16).toUpperCase().padStart(4, "0")}`
+  }
+  return escaped
+}
+
+/**
+ * THE stable nominal identity of one Error class, and the only algorithm either
+ * backend may mint one with.
+ *
+ * `specification/failures.mdx`, "Error Prototype": "Handler selection MUST use
+ * compiler-stable nominal identity, not a forgeable user `_tag` or
+ * minifier-sensitive constructor name in compiled artifacts." An identity that
+ * two distinct classes can share is not an identity, and the failure is not
+ * quiet: `registerErrorType` refuses the second registration, so the compiler
+ * accepts the program, emits a plausible artifact, and the artifact throws
+ * `stable Error identity … is already registered` while it is still loading.
+ * That is a fail-open — the worst available outcome — and it was reachable two
+ * ways before this function existed, both measured on both backends:
+ *
+ *  - **blind truncation.** The identity was `.slice(0, 256)`-ed AFTER the class
+ *    name was appended, so in a file whose name is long enough the discriminator
+ *    is what gets cut. `"a".repeat(250) + ".sm"` declaring `Left` and `Right`
+ *    minted one 256-unit identity for both, with zero diagnostics.
+ *  - **lossy normalization.** See {@link escapeIdentityPath}.
+ *
+ * Both are fixed here by never destroying information: the path is escaped
+ * reversibly, and the bound is honoured by hashing the exact spelling rather
+ * than by cutting it. `smithers.digest:` cannot be confused with the ordinary
+ * `smithers:` spelling — the ninth unit is `.` in one and `:` in the other —
+ * and the ordinary spelling is itself injective over the pair, because a class
+ * name is a TypeScript identifier and so contains no `:`, which makes the last
+ * `:` an unambiguous separator.
+ *
+ * The result is the byte-identical answer the Go fork's `stableErrorIdentity`
+ * (`compiler/forkbridge/lowering.go.txt`) gives; the two are pinned against each
+ * other by the shared vectors in `conformance/identity/nominal-error-identity.json`,
+ * which both backends read. `logicalFile` is a portable name from
+ * {@link identityFileName} — never an absolute path.
+ */
+export function nominalErrorIdentity(logicalFile: string, className: string): string {
+  const spelled = `smithers:${escapeIdentityPath(logicalFile)}:${className}`
+  if (spelled.length <= NOMINAL_ERROR_IDENTITY_UNITS) return spelled
+  // Digesting the SPELLING rather than the pair is what makes the fallback
+  // injective for free: the spelling is already injective over (file, name), so
+  // the digest inherits that up to SHA-256 collision resistance. `update(…,
+  // "utf8")` is the same byte sequence Go's `[]byte(string)` produces.
+  return `smithers.digest:${createHash("sha256").update(spelled, "utf8").digest("hex")}`
+}
+
+/** One declaration's claim on an identity. */
+export interface NominalErrorIdentityClaim {
+  readonly identity: string
+  /** `<file>:<class>` already holding it, when this claim collides with one. */
+  readonly collidesWith?: string
+}
+
+/**
+ * Assigns nominal Error identities within one compilation, refusing a collision
+ * rather than emitting an artifact that cannot load.
+ *
+ * {@link nominalErrorIdentity} is injective, so on today's algorithm this class
+ * never reports a collision. That is the point: it is a defensive invariant, not
+ * a filter. The defect it exists for was introduced by weakening the algorithm —
+ * twice — and in both cases the compiler's only signal was a clean compile
+ * followed by a runtime `TypeError` out of `registerErrorType`. With this in the
+ * emit path, weakening the algorithm again makes the compiler REFUSE.
+ *
+ * It mirrors {@link EffectSiteIds}, which holds exactly this line for site ids.
+ *
+ * `mint` is injectable for exactly one reason: a guard that the current
+ * algorithm cannot trip is a guard no test can exercise, and a guard no test
+ * exercises is one the next refactor deletes as dead code. Handing it the
+ * PREVIOUS algorithm is how the test proves this would have caught the shipped
+ * defect. Nothing in the compiler passes it.
+ */
+export class NominalErrorIdentities {
+  readonly #assigned = new Map<string, string>()
+  readonly #mint: (logicalFile: string, className: string) => string
+
+  constructor(mint: (logicalFile: string, className: string) => string = nominalErrorIdentity) {
+    this.#mint = mint
+  }
+
+  claim(logicalFile: string, className: string): NominalErrorIdentityClaim {
+    const identity = this.#mint(logicalFile, className)
+    const owner = `${logicalFile}:${className}`
+    const prior = this.#assigned.get(identity)
+    if (prior === undefined) {
+      this.#assigned.set(identity, owner)
+      return { identity }
+    }
+    // One declaration reaching the assigner twice is idempotent, not a collision.
+    return prior === owner ? { identity } : { identity, collidesWith: prior }
+  }
 }
 
 /**
