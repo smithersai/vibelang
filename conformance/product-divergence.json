@@ -344,7 +344,7 @@
     {
       "id": "17-durable/two-error-classes-whose-durable-identities-collide-are-rejected",
       "direction": "both-refuse",
-      "corpus": "SMITHERS4112@20:10",
+      "corpus": "SMITHERS4124@20:10",
       "product": "TS2307@1:33, TS2339@20:15",
       "verdict": "product-wrong",
       "cause": "durable-source-lowering-absent-from-check-and-run",
