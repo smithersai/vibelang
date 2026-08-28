@@ -147,6 +147,28 @@ export class SmithersOk<A> {
     map<B>(mapper: (value: A) => B): SmithersOk<B> { return new SmithersOk(mapper(this.value)); }
     mapError<F>(mapper: (error: never) => F): SmithersOk<A> { return this; }
     andThen<B, F>(mapper: (value: A) => SmithersOk<B> | SmithersErr<F>): SmithersOk<B> | SmithersErr<F> { return mapper(this.value); }
+	// flatten collapses exactly one level of nesting and COMBINES the two
+	// failure channels, as poc/src/runtime/result.ts does.
+	//
+	// Unlike every other member here, the signature is written over the whole
+	// Ok|Err union through an explicit "this" parameter, and the two classes
+	// declare it IDENTICALLY on purpose. A .flatten() call is made on the union,
+	// and the checker forms a union call signature by INTERSECTING the
+	// constituents' "this" types; two different ones would intersect into a type
+	// the receiver is not assignable to, and every authored call site would fail
+	// with TS2684 instead. One shared signature intersects with itself, so the
+	// receiver is accepted and B/F/G are inferred from it: an outer Ok holding
+	// Ok<B> | Err<F>, or an Err<G>, gives back Ok<B> | Err<F | G> — the
+	// reference's Result<B, E | F>, with both failure channels combined rather
+	// than one of them dropped. Calling it on a Result that is not nested is an
+	// ordinary type error at the authored call site, exactly as it is on the
+	// reference, whose declaration carries the same "this" constraint.
+	flatten<B, F, G>(this: SmithersOk<SmithersOk<B> | SmithersErr<F>> | SmithersErr<G>): SmithersOk<B> | SmithersErr<F | G> {
+		if (this instanceof SmithersErr) return this;
+		const inner = this.value;
+		if (!(inner instanceof SmithersOk || inner instanceof SmithersErr)) panic("Result.flatten requires a nested Result");
+		return inner;
+	}
 	recover<B>(mapper: (error: never) => B): SmithersOk<A> { return this; }
 	// tap observes the success variant and MUST NOT replace the Result it
 	// observes: specification/failures.mdx, "Matching and Transformation",
@@ -155,6 +177,23 @@ export class SmithersOk<A> {
 	// returned, not a copy, so identity is preserved as well as value.
 	tap(observer: (value: A) => void): SmithersOk<A> { observer(this.value); return this; }
 	tapError(observer: (error: never) => void): SmithersOk<A> { return this; }
+	// tapBoth observes whichever variant is active — exactly one handler runs —
+	// and, like tap and tapError, returns the receiver rather than a copy.
+	// The handler object is validated the way poc/src/runtime/result.ts
+	// validates it, so a missing branch is a panic rather than a silently
+	// skipped observation; an observer that is not there is a defect, not a
+	// choice not to observe.
+	tapBoth(handlers: { ok: (value: A) => unknown; error: (error: never) => unknown }): SmithersOk<A> {
+		if (typeof handlers?.ok !== "function" || typeof handlers.error !== "function") panic("Result.tapBoth requires ok and error handlers");
+		handlers.ok(this.value);
+		return this;
+	}
+	// The runtime type tag, matching poc/src/runtime/result.ts. Both variants
+	// answer "Result" and not their own class name: String(r) must not tell an
+	// authored program which variant it holds, because isOk/isError/match are
+	// the sanctioned discriminators and a stringified tag that leaked the
+	// variant would be a second, untyped one.
+	get [Symbol.toStringTag](): string { return "Result"; }
 }
 export class SmithersErr<E> {
     readonly ok: false = false;
@@ -168,6 +207,17 @@ export class SmithersErr<E> {
     map<B>(mapper: (value: never) => B): SmithersErr<E> { return this; }
     mapError<F>(mapper: (error: E) => F): SmithersErr<F> { return new SmithersErr(mapper(this.error)); }
     andThen<B, F>(mapper: (value: never) => SmithersOk<B> | SmithersErr<F>): SmithersErr<E> { return this; }
+	// The identical twin of SmithersOk.flatten, and identical DELIBERATELY: see
+	// the comment there. The union call signature intersects the two "this"
+	// types, so the two spellings must be the same one or no call site
+	// type-checks. compiler/fork_result_member_surface_test.go asserts they
+	// stay identical.
+	flatten<B, F, G>(this: SmithersOk<SmithersOk<B> | SmithersErr<F>> | SmithersErr<G>): SmithersOk<B> | SmithersErr<F | G> {
+		if (this instanceof SmithersErr) return this;
+		const inner = this.value;
+		if (!(inner instanceof SmithersOk || inner instanceof SmithersErr)) panic("Result.flatten requires a nested Result");
+		return inner;
+	}
 	// recover handles a recoverable failure and MUST NOT intercept the
 	// distinguished panic channel: specification/failures.mdx, "Panic", makes a
 	// panic a defect only an explicit boundary may observe, and
@@ -189,6 +239,18 @@ export class SmithersErr<E> {
 	// not convert it into a success.
 	tap(observer: (value: never) => void): SmithersErr<E> { return this; }
 	tapError(observer: (error: E) => void): SmithersErr<E> { observer(this.error); return this; }
+	// tapBoth on the failure variant runs the error handler and only the error
+	// handler. Like tapError it observes a Panic as well: observing is not
+	// handling. The handler object is validated before either branch is chosen,
+	// so a malformed object is a panic on BOTH variants rather than only on the
+	// one whose handler is missing.
+	tapBoth(handlers: { ok: (value: never) => unknown; error: (error: E) => unknown }): SmithersErr<E> {
+		if (typeof handlers?.ok !== "function" || typeof handlers.error !== "function") panic("Result.tapBoth requires ok and error handlers");
+		handlers.error(this.error);
+		return this;
+	}
+	// The same tag as SmithersOk, for the reason stated there.
+	get [Symbol.toStringTag](): string { return "Result"; }
 }
 type SmithersAnyResult = SmithersOk<any> | SmithersErr<any>;
 type SmithersOkValue<R> = R extends SmithersOk<infer A> ? A : never;
@@ -1374,9 +1436,26 @@ var resultNamespaceMembers = []string{"try", "tryPromise", "all"}
 // Result ownership obligation. The names are consulted only while indexing the
 // compiler-owned prelude; authored calls are recognized from the declaration
 // nodes collected there.
+//
+// This is the fork's own copy of the reference's RESULT_MEMBER_SIGNATURES
+// (poc/src/language/semantic.ts), in the same order and naming the same
+// members. Two hand-maintained walks over one member set is the defect shape
+// that made `flatten` and `tapBoth` implemented, tested, documented, and
+// unreachable; the reference collapsed its two copies into one table, and this
+// copy cannot be collapsed into that one because it is Go source compiled into
+// a foreign checkout. It is pinned to the reference instead:
+// compiler/fork_result_member_surface_test.go reads BOTH files and fails when
+// the name lists differ, so a member added on one side and not the other is a
+// red test rather than a silent reachability gap.
+//
+// `unwrap` is deliberately not here. The two prelude classes still implement it
+// as the runtime's missed-lowering fallback — `resultUnwrap` collects it, and
+// the retired-syntax rule refuses the authored spelling as SMITHERS1206 — but a
+// member that authored code may not write cannot be a member that discharges an
+// obligation.
 var resultConsumerMembers = []string{
-	"isOk", "isError", "match", "map", "mapError", "andThen",
-	"recover", "tap", "tapError", "unwrapOr", "expect",
+	"isOk", "isError", "match", "map", "mapError", "andThen", "flatten",
+	"recover", "tap", "tapError", "tapBoth", "unwrapOr", "expect",
 }
 
 func (s *preludeSymbols) resultConsumerCall(node *ast.Node) bool {
