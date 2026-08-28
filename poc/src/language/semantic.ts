@@ -7325,7 +7325,20 @@ function isCompilerIntrinsicSpecifier(specifier: string): boolean {
 }
 
 /**
- * The authoritative set of compiler-owned module specifiers.
+ * The authoritative set of compiler-owned module specifiers THIS STAGE OWNS.
+ *
+ * It is not the whole language's registry, and reading it as one is a mistake:
+ * `smithers:schema` is compiler-owned and deliberately absent. The comptime
+ * stage runs first (`lsp.ts` records the order: assets, comptime, rows,
+ * generated TypeScript) and `compileComptimeIntrinsics` lowers every
+ * `smithers:schema` import away — including an import that is never used, whose
+ * whole statement is dropped — so no import of it survives to be classified
+ * here. A `Schema.derive` reference outside `comptime(...)` is refused upstream
+ * as VCT1200. The absence is also fail-CLOSED rather than fail-open: feeding a
+ * module that imports `smithers:schema` straight to the row stage, skipping
+ * comptime, draws SMITHERS1510 (untrusted foreign module), which is the same
+ * artifact `lsp.ts` records for skipping the asset stage — a refusal, not an
+ * admission.
  *
  * Membership is EXACT. Prefix-matching `smithers:`/`smthrs/` has already been a
  * fail-open twice in this repository — once in the withdrawn portability
