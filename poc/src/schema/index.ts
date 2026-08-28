@@ -7,8 +7,14 @@
  * POC surface and may change before the standard library is settled.
  */
 
-export { Codec, CodecValue, DecodeError, isCodec } from "./codec.ts";
-export type { Codec as CodecType, DecodePathSegment } from "./codec.ts";
+export { Codec, CodecValue, DecodeError, OptionalCodecValue, isCodec, isOptionalCodec } from "./codec.ts";
+export type {
+  Codec as CodecType,
+  DecodePathSegment,
+  OptionalCodec,
+  StructDomain,
+  StructWire,
+} from "./codec.ts";
 
 export {
   Json,

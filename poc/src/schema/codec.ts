@@ -133,6 +133,61 @@ class LocalCodec<Domain, Wire> extends CodecValue<Domain, Wire> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Optional struct fields
+// ---------------------------------------------------------------------------
+
+const optionalFields = new WeakMap<object, Codec<unknown, unknown>>();
+const localOptionalFields = new WeakSet<object>();
+
+/**
+ * The marker for a struct field that may be **absent**, and the counterpart of
+ * `Schema.optional`.
+ *
+ * It is deliberately *not* a `Codec`. A `Codec<Domain | undefined, ...>` — which
+ * is what `Codec.optional` builds — describes a field that is always present and
+ * sometimes holds `undefined`, and JSON has no way to spell that: encoding it
+ * produces a wire `Json.stringify` refuses, and the key-omitted form JSON does
+ * carry cannot be decoded back. Absence in a record is the *key not being there*,
+ * so the marker has to be read by `Codec.struct` rather than by a member codec,
+ * which is why it lives at the field position and carries no `encode`/`decode`
+ * of its own.
+ */
+export abstract class OptionalCodecValue<Domain, Wire> {
+  get codec(): Codec<Domain, Wire> {
+    return optionalFieldCodec(this as OptionalCodec<Domain, Wire>);
+  }
+
+  get [Symbol.toStringTag](): string { return "OptionalCodec"; }
+}
+
+export type OptionalCodec<Domain, Wire> = OptionalCodecValue<Domain, Wire>;
+
+class LocalOptionalCodec<Domain, Wire> extends OptionalCodecValue<Domain, Wire> {
+  constructor(codec: Codec<Domain, Wire>) {
+    super();
+    stateOf(codec);
+    optionalFields.set(this, codec as Codec<unknown, unknown>);
+    localOptionalFields.add(this);
+    Object.freeze(this);
+  }
+}
+
+function optionalFieldCodec<Domain, Wire>(value: OptionalCodec<Domain, Wire>): Codec<Domain, Wire> {
+  const codec = optionalFields.get(value as object);
+  if (!codec || !localOptionalFields.has(value as object)) panic("forged optional Codec field");
+  return codec as Codec<Domain, Wire>;
+}
+
+export function isOptionalCodec(value: unknown): value is OptionalCodec<unknown, unknown> {
+  return typeof value === "object" && value !== null && localOptionalFields.has(value);
+}
+
+/** Mark a `Codec.struct` field as one whose absence is an omitted key. */
+function optionalField<Domain, Wire>(codec: Codec<Domain, Wire>): OptionalCodec<Domain, Wire> {
+  return new LocalOptionalCodec(codec);
+}
+
 function requireFunction(value: unknown, label: string): asserts value is (...arguments_: never[]) => unknown {
   if (typeof value !== "function") panic(`${label} requires a function`);
 }
@@ -353,28 +408,70 @@ function ownData(value: object, key: string): unknown | typeof NO_DATA {
 
 const NO_DATA = Symbol("no data");
 
-function struct<const Fields extends Readonly<Record<string, CodecValue<any, any>>>>(
+type StructEntry = CodecValue<any, any> | OptionalCodecValue<any, any>;
+
+type RequiredFieldKeys<Fields extends Readonly<Record<string, StructEntry>>> = {
+  [Key in keyof Fields]-?: Fields[Key] extends OptionalCodecValue<any, any> ? never : Key
+}[keyof Fields];
+type OptionalFieldKeys<Fields extends Readonly<Record<string, StructEntry>>> = {
+  [Key in keyof Fields]-?: Fields[Key] extends OptionalCodecValue<any, any> ? Key : never
+}[keyof Fields];
+type EntryDomain<Entry> = Entry extends OptionalCodecValue<infer Domain, any> ? Domain
+  : Entry extends CodecValue<infer Domain, any> ? Domain : never;
+type EntryWire<Entry> = Entry extends OptionalCodecValue<any, infer Wire> ? Wire
+  : Entry extends CodecValue<any, infer Wire> ? Wire : never;
+
+export type StructDomain<Fields extends Readonly<Record<string, StructEntry>>> = Readonly<
+  { [Key in RequiredFieldKeys<Fields>]: EntryDomain<Fields[Key]> } &
+  { [Key in OptionalFieldKeys<Fields>]?: EntryDomain<Fields[Key]> }
+>;
+export type StructWire<Fields extends Readonly<Record<string, StructEntry>>> = Readonly<
+  { [Key in RequiredFieldKeys<Fields>]: EntryWire<Fields[Key]> } &
+  { [Key in OptionalFieldKeys<Fields>]?: EntryWire<Fields[Key]> }
+>;
+
+interface StructField {
+  readonly name: string;
+  readonly optional: boolean;
+  readonly state: ErasedCodecState;
+}
+
+function struct<const Fields extends Readonly<Record<string, StructEntry>>>(
   fields: Fields,
-): Codec<
-  Readonly<{ [Key in keyof Fields]: DomainOf<Fields[Key]> }>,
-  Readonly<{ [Key in keyof Fields]: WireOf<Fields[Key]> }>
-> {
+): Codec<StructDomain<Fields>, StructWire<Fields>> {
   if (!dataRecord(fields)) panic("Codec.struct requires a record of Codec values");
-  const entries = Object.keys(fields).map((key) => [key, stateOf(fields[key]!)] as const);
-  const names = new Set(entries.map(([key]) => key));
+  const entries: readonly StructField[] = Object.keys(fields).map((name) => {
+    const entry = fields[name]!;
+    return Object.freeze(isOptionalCodec(entry)
+      ? { name, optional: true, state: stateOf(optionalFieldCodec(entry)) }
+      : { name, optional: false, state: stateOf(entry as Codec<unknown, unknown>) });
+  });
+  const names = new Set(entries.map((entry) => entry.name));
+  /**
+   * One predicate for "is this member present?", consulted by encode, decode,
+   * and accepts alike. An optional field may be absent; a present one — optional
+   * or not — must still be an enumerable data property, and no undeclared key is
+   * ever allowed.
+   */
   const checkShape = (value: unknown): value is Record<string, unknown> => {
     if (!dataRecord(value)) return false;
-    const keys = Reflect.ownKeys(value);
-    if (keys.length !== entries.length || keys.some((key) => typeof key !== "string" || !names.has(key))) return false;
-    return entries.every(([key]) => ownData(value, key) !== NO_DATA);
+    for (const key of Reflect.ownKeys(value)) {
+      if (typeof key !== "string" || !names.has(key)) return false;
+    }
+    return entries.every((entry) =>
+      Object.hasOwn(value, entry.name) ? ownData(value, entry.name) !== NO_DATA : entry.optional);
   };
   return local({
     encode: (value) => {
       if (!checkShape(value)) throw new TypeError("Codec.struct.encode expected exactly the declared data fields");
       const output = Object.create(null) as Record<string, unknown>;
-      for (const [key, child] of entries) {
-        Object.defineProperty(output, key, {
-          value: child.encode(ownData(value, key)), enumerable: true, configurable: false, writable: false,
+      for (const entry of entries) {
+        const member = ownData(value, entry.name);
+        // Absence is an omitted key. Encoding it as a present `undefined` is
+        // what made an optional field impossible to carry over JSON.
+        if (member === NO_DATA) continue;
+        Object.defineProperty(output, entry.name, {
+          value: entry.state.encode(member), enumerable: true, configurable: false, writable: false,
         });
       }
       return Object.freeze(output) as never;
@@ -386,18 +483,27 @@ function struct<const Fields extends Readonly<Record<string, CodecValue<any, any
         if (!names.has(key)) return fail([key], "is not declared by the codec");
       }
       const output: Record<string, unknown> = {};
-      for (const [key, child] of entries) {
-        const value = ownData(wire, key);
-        if (value === NO_DATA) return fail([key], "is required and must be an enumerable data property");
-        const decoded = prepend(child.decode(value), key);
+      for (const entry of entries) {
+        const value = ownData(wire, entry.name);
+        if (value === NO_DATA) {
+          if (!entry.optional) return fail([entry.name], "is required and must be an enumerable data property");
+          if (!Object.hasOwn(wire, entry.name)) continue;
+          return fail([entry.name], "is optional but must be an enumerable data property when present");
+        }
+        const decoded = prepend(entry.state.decode(value), entry.name);
         if (decoded.isError()) return decoded as never;
-        Object.defineProperty(output, key, {
+        Object.defineProperty(output, entry.name, {
           value: decoded.unwrap(), enumerable: true, configurable: false, writable: false,
         });
       }
       return success(Object.freeze(output)) as never;
     },
-    accepts: (value) => checkShape(value) && entries.every(([key, child]) => child.accepts(ownData(value, key))),
+    accepts: (value) => checkShape(value) && entries.every((entry) => {
+      const member = ownData(value, entry.name);
+      // `checkShape` already guarantees a required member is data, so a miss
+      // here is an absent optional field, which the codec accepts.
+      return member === NO_DATA || entry.state.accepts(member);
+    }),
   });
 }
 
@@ -430,9 +536,15 @@ function nullable<Domain, Wire>(codec: Codec<Domain, Wire>): Codec<Domain | null
 }
 
 /**
- * A codec over `Domain | undefined`. Absence is the ordinary union member and
- * travels as a missing/`undefined` wire value; there is no container to build
- * (specification/type-system.mdx, "Absence").
+ * A codec over `Domain | undefined`: absence is the ordinary union member and
+ * there is no container to build (specification/type-system.mdx, "Absence").
+ *
+ * The wire value for absence is `undefined`, which is a value JSON cannot carry.
+ * That is fine where the wire never becomes JSON — a tuple slot, an array
+ * element, or an in-process boundary — and it is the wrong tool for a **struct
+ * field**, where absence means the key is not there. Use `Codec.optionalField`
+ * for that; it is the marker `Codec.struct` reads, and it round-trips through
+ * `Json.stringify`/`Json.parse` in both directions.
  */
 function optional<Domain, Wire>(codec: Codec<Domain, Wire>): Codec<Domain | undefined, Wire | undefined> {
   const child = stateOf(codec);
@@ -509,5 +621,7 @@ export const Codec = Object.freeze({
   union,
   nullable,
   optional,
+  optionalField,
+  isOptionalCodec,
   checkRoundTrip,
 });

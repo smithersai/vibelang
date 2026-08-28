@@ -3,6 +3,7 @@ import { catchPanic, isPanic } from "../runtime/panic.ts";
 import { RuntimeValues, decodeError, encodeError } from "../runtime/index.ts";
 import type { Result } from "../runtime/result.ts";
 import { Codec, CodecValue, DecodeError } from "./codec.ts";
+import { Json } from "./json.ts";
 
 const { failure, success } = RuntimeValues;
 
@@ -65,6 +66,47 @@ describe("Codec round-trip laws", () => {
     expect(numbers.decode("nope" as never).isError()).toBe(true);
     expect((numbers.decode(undefined).unwrap() ?? -1)).toBe(-1);
     expect((numbers.decode(0).unwrap() ?? -1)).toBe(0);
+  });
+
+  test("an optional struct field is an omitted key, so it survives a JSON boundary", () => {
+    // `Codec.optional` builds a codec over `Domain | undefined`, which is a
+    // *present* field holding `undefined`. JSON cannot spell that, so used as a
+    // struct field it was dead in both directions: encoding produced a wire
+    // `Json.stringify` refused, and the key-omitted form JSON actually carries
+    // was refused by `struct.decode`. `Codec.optionalField` is the field marker,
+    // mirroring `Schema.optional`.
+    const codec = Codec.struct({ a: Codec.optionalField(Codec.string), b: Codec.number });
+
+    const absent = codec.encode({ b: 1 });
+    expect(Object.keys(absent as object)).toEqual(["b"]);
+    expect(Json.stringify(absent as never).unwrap()).toBe(`{"b":1}`);
+    expect(Object.keys(codec.decode(absent).unwrap() as object)).toEqual(["b"]);
+
+    const present = codec.encode({ a: "x", b: 1 });
+    expect(Object.keys(present as object)).toEqual(["a", "b"]);
+    expect(Json.stringify(present as never).unwrap()).toBe(`{"a":"x","b":1}`);
+    expect(codec.decode(present).unwrap()).toMatchObject({ a: "x", b: 1 });
+
+    // The law holds for both shapes, and a full JSON round trip closes the loop.
+    expect(Codec.checkRoundTrip(codec, [{ b: 1 }, { a: "x", b: 1 }])).toBeUndefined();
+    for (const sample of [{ b: 1 }, { a: "x", b: 1 }]) {
+      const text = Json.stringify(codec.encode(sample) as never).unwrap();
+      expect(codec.decode(Json.parse(text).unwrap() as never).unwrap()).toEqual(sample as never);
+    }
+
+    // A present optional field still has to satisfy its codec, and an omitted
+    // *required* field is still a failure — absence is not a wildcard.
+    expect(errorOf(codec.decode({ a: 5, b: 1 } as never))).toMatchObject({ pointer: "$.a", reason: "expected string" });
+    expect(errorOf(codec.decode({ a: "x" } as never))).toMatchObject({
+      pointer: "$.b",
+      reason: "is required and must be an enumerable data property",
+    });
+    expect(errorOf(codec.decode({ a: "x", b: 1, c: true } as never))).toMatchObject({
+      pointer: "$.c",
+      reason: "is not declared by the codec",
+    });
+    expect(() => codec.encode({ b: 1, c: true } as never)).toThrow("expected exactly the declared data fields");
+    expect(panics(() => Codec.struct({ a: {} as never }))).toBe(true);
   });
 
   test("hold through imap, fallible map, and composition", () => {
