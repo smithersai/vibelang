@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { deriveDurableValueSchema } from "../durable/schema.ts";
 import { EffectSiteIds, effectSiteId } from "../durable/site-id.ts";
-import { buildSemanticModel } from "./semantic.ts";
+import { buildSemanticModel, buildSemanticProjectModels, identityFileName } from "./semantic.ts";
 
 /**
  * `SemanticModel.capabilitySites` / `.effectSites` / `.journaledRequirements`
@@ -179,4 +179,52 @@ test("publishing the three facts moved no row, no diagnostic, and no public decl
   // vacuously satisfied by a pass that never ran.
   expect(built.capabilitySites.size).toBe(1);
   expect(built.effectSites.size).toBe(2);
+});
+
+/**
+ * The gap these close: "stable across recompilation" above is satisfied by an
+ * id that embeds the absolute path of the checkout, because both compilations
+ * in one test run happen in one checkout. `collectEffectFacts` was handed
+ * `entry.absoluteName`, so every id carried `/Users/<someone>/...` and no two
+ * machines — or CI and a laptop — could agree on one. A journal key that is a
+ * function of where the repo was cloned is not a key.
+ */
+const projectSiteIds = (rootDir: string, fileName = "flows/effects.sm"): readonly string[] => {
+  const project = buildSemanticProjectModels([{ fileName, source: SERVICE_CAPABILITY }], { rootDir });
+  expect(project.analysis.diagnostics).toEqual([]);
+  return [...project.models.get(fileName)!.effectSites.values()].sort();
+};
+
+test("effect site ids are byte-identical across two checkout paths", () => {
+  const fromLaptop = projectSiteIds("/tmp/checkout-a");
+  const fromCi = projectSiteIds("/home/ci/some/deeper/checkout-b");
+  expect(fromLaptop).toHaveLength(2);
+  expect(fromCi).toEqual(fromLaptop);
+});
+
+test("a project source named by absolute path mints the same ids as its root-relative spelling", () => {
+  // The caller's spelling is an addressing key, not an identity: `files` and
+  // every diagnostic stay keyed by whatever was supplied, while the id is
+  // derived. Both spellings name the same file, so both must answer alike.
+  expect(projectSiteIds("/tmp/checkout-a", "/tmp/checkout-a/flows/effects.sm"))
+    .toEqual(projectSiteIds("/tmp/checkout-a", "flows/effects.sm"));
+});
+
+test("a single-file model anchors ids on the caller's name, not on the resolved absolute path", () => {
+  // `buildSemanticModel` resolved its name against `process.cwd()` and appended
+  // `.ts` for the checker, then used THAT as the identity, so a single-file id
+  // moved with the working directory as well as with the checkout.
+  const relativeName = [...model(SERVICE_CAPABILITY, "effects.sm").effectSites.values()].sort();
+  const absoluteName = [...model(SERVICE_CAPABILITY, "/elsewhere/entirely/effects.sm").effectSites.values()].sort();
+  expect(relativeName).toHaveLength(2);
+  expect(absoluteName).toEqual(relativeName);
+});
+
+test("identityFileName is the one spelling, and it never yields an absolute path", () => {
+  expect(identityFileName("flows/effects.sm", "/tmp/checkout-a")).toBe("flows/effects.sm");
+  expect(identityFileName("/tmp/checkout-a/flows/effects.sm", "/tmp/checkout-a")).toBe("flows/effects.sm");
+  // `./a.sm` and `a.sm` name one file and must not mint two identities.
+  expect(identityFileName("./flows/effects.sm")).toBe("flows/effects.sm");
+  // No root to be relative to: a single-file analysis has exactly one file.
+  expect(identityFileName("/elsewhere/entirely/effects.sm")).toBe("effects.sm");
 });

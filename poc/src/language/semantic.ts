@@ -1,4 +1,4 @@
-import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, isAbsolute, normalize, relative, resolve, sep } from "node:path";
 import * as ts from "typescript-js";
 import { DurableCodecError, deriveDurableValueSchema } from "../durable/schema.ts";
 import { EffectSiteIds } from "../durable/site-id.ts";
@@ -306,12 +306,74 @@ export interface CapabilitySite {
   readonly name: string | undefined;
 }
 
+/** The name a model with no caller-supplied one is analyzed under. */
+const MEMORY_SOURCE_NAME = "__smithers_memory__.sm";
+
+/**
+ * THE portable spelling of a source file's name, and the only string anything
+ * in this compiler may anchor an identity on — a site id, a digest, a journal
+ * key, a nominal row or Error brand, a `debug.callSite`.
+ *
+ * An identity is not the same thing as an addressing key. `ProjectAnalysis.files`
+ * and `ProjectDiagnostic.fileName` are keyed by the caller's own spelling on
+ * purpose, so a caller can look a file back up by the name it supplied; those
+ * are not identities and do not come from here.
+ *
+ * Root-relative, POSIX-separated, `.sm` extension intact. That is byte-for-byte
+ * the spelling the Go fork already uses: `durableLogicalFile`
+ * (`compiler/forkbridge/durable.go.txt`) trims a FIXED `/src/` virtual root off
+ * the authored name, and `virtualFileName` (`.../main.go.txt`) refuses an
+ * absolute input outright rather than normalizing one. This accessor is the
+ * TypeScript half of that agreement.
+ *
+ * An absolute filesystem path is NOT such a spelling. It differs between two
+ * machines, two checkouts, and CI vs local, so an identity built on one is not
+ * an identity — it cannot be a durable journal key, and two backends compiling
+ * the same program cannot agree on it. The point of routing every identity
+ * through one function is that the next one cannot quietly reach for the
+ * absolute name instead: there is no absolute name on the model to reach for.
+ *
+ * The answer is a function of the caller's own name and root only. It never
+ * consults `process.cwd()`, so it does not change with the directory the
+ * compiler was invoked from.
+ */
+export function identityFileName(fileName: string, rootDir?: string): string {
+  const portable = !isAbsolute(fileName)
+    // An authored relative name is already portable; only normalize it, so
+    // `./a.sm` and `a.sm` cannot mint two identities for one file.
+    ? normalize(fileName)
+    : rootDir === undefined
+    // A single-file analysis has no project to be relative to, and exactly one
+    // file, so the basename is both portable and collision-free.
+    ? basename(fileName)
+    : relative(resolve(rootDir), fileName);
+  return portable.split(sep).join("/");
+}
+
 export interface SemanticModel {
   /** The authored `.sm` text. */
   readonly source: string;
   /** Pre-parse expression recovery relating authored and parsed text. */
   readonly recovery: RecoveredSource;
-  readonly fileName: string;
+  /**
+   * This model's portable name, from {@link identityFileName}: the ONE spelling
+   * every identity derived from this model is anchored on.
+   *
+   * The model deliberately publishes no absolute file name. Module resolution
+   * needs a filesystem location and gets {@link SemanticModel.resolutionDirectory},
+   * which is a directory and therefore cannot be mistaken for — or interpolated
+   * into — an identity.
+   */
+  readonly identityName: string;
+  /**
+   * The absolute directory an authored relative module specifier in this file
+   * resolves against.
+   *
+   * FILESYSTEM PLUMBING, NEVER AN IDENTITY. It is machine-specific by
+   * construction; anything that reaches it to build a stable name has picked
+   * the wrong field and wants {@link SemanticModel.identityName}.
+   */
+  readonly resolutionDirectory: string;
   /** Parsed from RecoveredSource.parseSource; positions are derived offsets. */
   readonly sourceFile: ts.SourceFile;
   readonly program: ts.Program;
@@ -343,10 +405,12 @@ export interface SemanticModel {
    * deriving a fact the analysis does not have rather than exposing one it
    * does.
    *
-   * The `file` component of each identity is this model's own `fileName`, so
-   * these ids are stable within a project but not yet portable across roots.
-   * Making them root-relative belongs with the Effect Manifest, which is what
-   * `effects.mdx` §Effect Requests makes the identity's source of truth.
+   * The `file` component of each identity is this model's
+   * {@link SemanticModel.identityName}, so these ids are portable: the same
+   * program produces the same ids from two different checkout paths, on two
+   * machines, and in CI. It was an absolute filesystem path until the accessor
+   * above became the only way to spell a model's file name, which made these
+   * ids machine-specific and therefore unusable as durable journal keys.
    */
   readonly effectSites: ReadonlyMap<ts.Node, string>;
   /**
@@ -528,10 +592,15 @@ export function buildSemanticModel(source: string, options: AnalyzeOptions = {})
     publicFunctions.push(publicFunctionDeclaration(fn, sourceFile, recovery));
   }
 
+  // `environment.fileName` is an absolute path with a `.ts` suffix the checker
+  // needs and no identity may carry. The portable name comes from the caller's
+  // own spelling, through the one accessor.
+  const identityName = identityFileName(options.fileName ?? MEMORY_SOURCE_NAME);
   return {
     source,
     recovery,
-    fileName: environment.fileName,
+    identityName,
+    resolutionDirectory: dirname(environment.fileName),
     sourceFile,
     program: environment.program,
     checker,
@@ -542,12 +611,21 @@ export function buildSemanticModel(source: string, options: AnalyzeOptions = {})
     errors,
     rows,
     publicFunctions,
-    ...collectEffectFacts(environment.fileName, functions, checker, sourceFile),
+    ...collectEffectFacts(identityName, functions, checker, sourceFile),
   };
 }
 
 interface ProjectEntry {
+  /**
+   * The caller's own spelling. It is the KEY of every published map — the
+   * `ProjectAnalysis.files` record and every `ProjectDiagnostic.fileName` —
+   * because the API contract is that a caller can look a file back up by the
+   * exact name it supplied. That makes it an addressing key, not an identity:
+   * it is whatever the caller wrote, up to and including an absolute path.
+   */
   readonly displayName: string;
+  /** The portable identity spelling, from {@link identityFileName}. */
+  readonly identityName: string;
   readonly absoluteName: string;
   readonly internalName: string;
   /** The parsed (recovery-derived) text; matches sourceFile positions. */
@@ -661,7 +739,8 @@ export function buildSemanticProjectModels(
     models.set(entry.displayName, {
       source: entry.authoredSource,
       recovery: entry.recovery,
-      fileName: entry.absoluteName,
+      identityName: entry.identityName,
+      resolutionDirectory: dirname(entry.absoluteName),
       sourceFile: entry.sourceFile,
       program: environment.program,
       checker,
@@ -672,7 +751,7 @@ export function buildSemanticProjectModels(
       errors: analysis.errors,
       rows: analysis.rows,
       publicFunctions: analysis.functions,
-      ...collectEffectFacts(entry.absoluteName, fileFunctions, checker, entry.sourceFile),
+      ...collectEffectFacts(entry.identityName, fileFunctions, checker, entry.sourceFile),
     });
     for (const diagnostic of analysis.diagnostics) {
       allDiagnostics.push({ fileName: entry.displayName, ...diagnostic });
@@ -738,6 +817,7 @@ function createProjectProgram(
     const recovery = recoverSmithersSyntax(input.source);
     staged.push({
       displayName: input.fileName,
+      identityName: identityFileName(input.fileName, rootDir),
       absoluteName,
       internalName: `${absoluteName}.ts`,
       source: recovery.parseSource,
@@ -2381,8 +2461,16 @@ interface RowNaming {
 
 const rowNamingByChecker = new WeakMap<ts.TypeChecker, RowNaming>();
 
-export function moduleRowQualifier(displayName: string): string {
-  return displayName.replace(/\.sm$/, "").replace(/[^A-Za-z0-9._/-]/g, "_");
+/**
+ * The qualifier is derived from a model's {@link identityFileName}, never from
+ * the caller's raw spelling: a caller may name its sources by absolute path,
+ * and a nominal row identity carrying `/Users/<someone>/checkout/...` is not a
+ * nominal identity. The Go fork spells the same qualifier by trimming its
+ * `/src/` virtual root (`compiler/forkbridge/lowering.go.txt`), so the two
+ * backends agree only while this side stays root-relative too.
+ */
+export function moduleRowQualifier(identityName: string): string {
+  return identityName.replace(/\.sm$/, "").replace(/[^A-Za-z0-9._/-]/g, "_");
 }
 
 function rowNameForSymbol(
@@ -2395,7 +2483,7 @@ function rowNameForSymbol(
 }
 
 function buildRowNaming(entries: readonly ProjectEntry[], checker: ts.TypeChecker): RowNaming {
-  const declarationsByName = new Map<string, Array<{ symbol: ts.Symbol; displayName: string }>>();
+  const declarationsByName = new Map<string, Array<{ symbol: ts.Symbol; identityName: string }>>();
   for (const entry of entries) {
     const visit = (node: ts.Node): void => {
       if (ts.isClassDeclaration(node) && node.name && node.heritageClauses?.length) {
@@ -2404,7 +2492,7 @@ function buildRowNaming(entries: readonly ProjectEntry[], checker: ts.TypeChecke
           extendsImportedContext(node, checker);
         if (symbol && isRowClass) {
           const values = declarationsByName.get(node.name.text) ?? [];
-          values.push({ symbol, displayName: entry.displayName });
+          values.push({ symbol, identityName: entry.identityName });
           declarationsByName.set(node.name.text, values);
         }
       }
@@ -2417,7 +2505,7 @@ function buildRowNaming(entries: readonly ProjectEntry[], checker: ts.TypeChecke
     const distinct = new Set(values.map((value) => value.symbol));
     if (distinct.size < 2) continue;
     for (const value of values) {
-      bySymbol.set(value.symbol, `${name}@${moduleRowQualifier(value.displayName)}`);
+      bySymbol.set(value.symbol, `${name}@${moduleRowQualifier(value.identityName)}`);
     }
   }
   return { bySymbol };

@@ -12,6 +12,7 @@ import {
   effectiveChannel,
   expectReceiver,
   expressionShape,
+  identityFileName,
   isErrorMatchCall,
   isErrorType,
   isPanicExitCall,
@@ -108,7 +109,13 @@ export function compileSemanticModel(
     rows: model.rows,
     diagnostics: model.diagnostics,
   };
-  const sourceName = options.sourceName ?? options.fileName ?? "<memory>.sm";
+  // `sourceName` is the display name AND the anchor of every emitted nominal
+  // Error identity (`stableErrorId`) and of the source map's `sources`, so an
+  // absolute `fileName` falling through to it put a machine-specific path into
+  // a runtime identity. The fallback goes through the one portable accessor;
+  // `compileProject` still passes an explicit root-relative `sourceName`.
+  const sourceName = options.sourceName ??
+    (options.fileName === undefined ? "<memory>.sm" : identityFileName(options.fileName));
   const runtimeImport = options.runtimeImport ?? "../runtime/index.ts";
   const identifiers = collectIdentifierTexts(model.sourceFile);
   const state: TransformState = {
@@ -1163,7 +1170,7 @@ function rewriteImportSpecifier(name: string, state: TransformState): string {
   if (isCompilerVirtualModule(name)) return state.runtimeImport;
   if (!name.startsWith(".") || !state.outputFileName) return name;
   if (state.preserveSmithersSpecifiers && isAuthoredSmithersSpecifier(name, state)) return name;
-  const sourceTarget = resolve(dirname(state.model.fileName), name);
+  const sourceTarget = resolve(state.model.resolutionDirectory, name);
   const projectOutput = projectOutputForSpecifier(sourceTarget, state.projectOutputBySource);
   let rewritten = relative(dirname(state.outputFileName), projectOutput ?? sourceTarget).split(sep).join("/");
   if (!rewritten.startsWith(".")) rewritten = `./${rewritten}`;
@@ -1179,7 +1186,7 @@ function rewriteImportSpecifier(name: string, state: TransformState): string {
 function isAuthoredSmithersSpecifier(name: string, state: TransformState): boolean {
   if (name.endsWith(".sm")) return true;
   if (!state.smithersSourceNames) return false;
-  const sourceTarget = resolve(dirname(state.model.fileName), name);
+  const sourceTarget = resolve(state.model.resolutionDirectory, name);
   return projectSourceCandidates(sourceTarget)
     .some((candidate) => candidate.endsWith(".sm") && state.smithersSourceNames!.has(candidate));
 }
@@ -1279,7 +1286,7 @@ function isLiteralImportAttributeOptions(options: ts.Expression | undefined): bo
 
 function shouldStripImportAttributes(name: string, state: TransformState): boolean {
   if (!name.startsWith(".") || !state.stripImportAttributesForSources) return false;
-  const sourceTarget = resolve(dirname(state.model.fileName), name);
+  const sourceTarget = resolve(state.model.resolutionDirectory, name);
   return projectSourceCandidates(sourceTarget)
     .some((candidate) => state.stripImportAttributesForSources!.has(candidate));
 }
