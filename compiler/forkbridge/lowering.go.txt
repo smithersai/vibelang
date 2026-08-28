@@ -6608,27 +6608,19 @@ func stableErrorIdentity(sourceName string, name string) string {
 // an unescaped '+' can never occur, so every '+' in the output starts exactly
 // one five-unit escape.
 //
-// It is deliberately NOT isStableIdentityPathUnit, which still admits '+' and is
-// still the alphabet durableFailureIdentity normalizes against.
+// It is deliberately NOT isDurableIdentityUnit (durable.go.txt), which withholds
+// '@' as well because the CONTRACT spelling separates its two components with
+// '@' rather than with ':'.
+//
+// isStableIdentityPathUnit, the /[^A-Za-z0-9._\/@:+-]/ complement this file used
+// to carry beside these two, is gone: durableFailureIdentity was its last caller
+// and it no longer folds against an alphabet.
 func isEscapedIdentityPathUnit(unit uint16) bool {
 	if isStableIdentityAlphanumeric(unit) {
 		return true
 	}
 	switch unit {
 	case '.', '_', '/', '@', ':', '-':
-		return true
-	}
-	return false
-}
-
-// isStableIdentityPathUnit is the reference frontend's /[^A-Za-z0-9._\/@:+-]/
-// complement, unit by unit.
-func isStableIdentityPathUnit(unit uint16) bool {
-	if isStableIdentityAlphanumeric(unit) {
-		return true
-	}
-	switch unit {
-	case '.', '_', '/', '@', ':', '+', '-':
 		return true
 	}
 	return false

@@ -1,6 +1,6 @@
 import { resolve } from "node:path"
 import * as ts from "typescript-js"
-import { identityFileName } from "./site-id.ts"
+import { durableFailureIdentity, identityFileName } from "./site-id.ts"
 import {
   assertJson,
   canonicalJson,
@@ -160,55 +160,43 @@ const identifier = (value: string, label: string): string => {
 }
 
 /**
- * The durable failure identity, and the ONE identity site in this compiler that
- * still runs the algorithm `nominalErrorIdentity` (`./site-id.ts`) was written
- * to replace. This is a KNOWN, MEASURED defect left in place deliberately, not
- * an oversight, and the reason is the blast radius rather than the difficulty.
+ * The durable failure identity, now a thin alias of {@link durableFailureIdentity}
+ * (`./site-id.ts`) — which is where the algorithm, its injectivity argument, and
+ * the shared cross-backend vectors that pin it now live.
  *
- * What is wrong with it. `.replace(/[^A-Za-z0-9._/@:+-]/g, "_")` is many-to-one,
- * and `#` — the file/class separator two lines up — is not in that class, so the
- * separator is the first thing destroyed. MEASURED here on 2026-08-28, by
- * compiling two contracts and reading the error schema back out:
+ * WHAT USED TO BE HERE, and why it moved. This site spelled the identity itself:
  *
- *     fileName "a b.sm", class Boom  ->  "smithers:a_b.sm_Boom@1"
- *     fileName "a_b.sm", class Boom  ->  "smithers:a_b.sm_Boom@1"
- *     fileName "orders.sm", Failed   ->  "smithers:orders.sm_Failed@1"
+ *     const raw = `smithers:${fileName}#${name}@1`
+ *     const normalized = raw.replace(/[^A-Za-z0-9._\/@:+-]/g, "_")
+ *     ... normalized.length > 256 ? `smithers:error/${digest({fileName, name}).slice(0, 48)}@1`
  *
- * Two distinct Error classes, one identity, no diagnostic. `claimedErrorIdentities`
- * and SMITHERS4203 do catch this — WITHIN ONE `compileActionContract` call — and
- * two Actions are two calls, so the reachable case is precisely the one the
- * refusal cannot see. What happens next is the fail-open `site-id.ts` documents
- * at length: the compile is clean, the artifact is plausible, and
- * `registerErrorType` throws `stable Error identity ... is already registered`
- * while the module is still loading. The `.slice(0, 48)` fallback is a second,
- * far smaller loss (192 bits) on the same path.
+ * `#` is not in that character class, so the file/class SEPARATOR was the first
+ * thing the normalizer destroyed, and the fold was many-to-one on both
+ * components besides. Measured on 2026-08-28 by compiling contracts and reading
+ * the error schema back out — five spellings onto one identity, no diagnostic:
  *
- * Why it is not fixed here. Because `#` is folded on EVERY input, not just
- * pathological ones, every durable failure identity in existence is spelled
- * `smithers:<file>_<Class>@1` today. Escaping it reversibly moves all of them,
- * and each one is inside an error schema, hence inside a contract digest, hence
- * inside a Plan digest, hence inside an Effect Manifest digest — and the Go
- * fork's `durableFailureIdentity` (`compiler/forkbridge/durable.go.txt`) is the
- * same algorithm and would have to move in the same commit or the two backends
- * stop agreeing. That is a coordinated cross-backend digest migration with its
- * own regeneration and its own conformance churn. Doing it as a side effect of
- * a sweep would be worse than leaving it stated.
+ *     "a b.sm" / Boom, "a_b.sm" / Boom, "a#b.sm" / Boom, "a%b.sm" / Boom,
+ *     "a!b.sm" / Boom      ->  smithers:a_b.sm_Boom@1
  *
- * What to do about it, when someone does: `nominalErrorIdentity` is the finished
- * answer, including the reversible `+XXXX` escape and the digest-the-spelling
- * bound, and `conformance/identity/nominal-error-identity.json` is the shared
- * vector corpus to extend. The one thing this site needs that that one does not
- * is a project-wide claim (`NominalErrorIdentities`), because the per-contract
- * map above is the reason the collision escapes.
+ * and separately, with NO character outside the alphabet on two of the three:
+ *
+ *     "a.sm_B" / C, "a.sm#B" / C, "a.sm" / B_C  ->  smithers:a.sm_B_C@1
+ *
+ * That second family is why escaping alone was not the fix and the separator had
+ * to be withheld from the alphabet as well.
+ *
+ * `claimedErrorIdentities` below and `SMITHERS4203` look like the refusal for
+ * this, and are not: the map is a per-instance field, so it covers a single
+ * `compileActionContract` call, and two Actions are two calls — precisely the
+ * reachable case. {@link DurableFailureIdentities} is the compile-wide claim
+ * that answers that, and it is now the defensive invariant behind an algorithm
+ * that cannot trip it.
+ *
+ * The identity is still bounded by {@link MAX_IDENTITY_LENGTH}, but the bound is
+ * now honoured by digesting the exact spelling rather than by a 48-hex-digit
+ * (192-bit) prefix of a digest of the pair.
  */
-const stableIdentity = (fileName: string, name: string): string => {
-  const raw = `smithers:${fileName}#${name}@1`
-  const normalized = raw.replace(/[^A-Za-z0-9._/@:+-]/g, "_")
-  if (normalized.length > MAX_IDENTITY_LENGTH) {
-    return `smithers:error/${digest({ fileName, name }).slice(0, 48)}@1`
-  }
-  return normalized
-}
+const stableIdentity = (fileName: string, name: string): string => durableFailureIdentity(fileName, name)
 
 interface ContractProgram {
   readonly sourceFile: ts.SourceFile

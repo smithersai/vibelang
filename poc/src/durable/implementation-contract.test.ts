@@ -20,7 +20,7 @@ import {
 } from "./index.ts"
 
 const TYPED_ACTION_FILE = "typed-action.sm"
-const TYPED_FAILURE_IDENTITY = "smithers:typed-action.sm_Missing@1"
+const TYPED_FAILURE_IDENTITY = "smithers:typed-action.sm@Missing@1"
 
 const typedActionSource = (payloadType = "string") => `
 import { Action } from "smithers:flows"

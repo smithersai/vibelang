@@ -2,6 +2,9 @@ package compiler
 
 import (
 	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -36,15 +39,19 @@ import (
 
 const durableCollidingIdentitySource = `import { durable, Action } from "smithers:flows"
 
-class $Failed extends Error {
-    constructor(readonly code: string) { super("dollar " + code) }
+namespace Left {
+    export class Failed extends Error {
+        constructor(readonly code: string) { super("left " + code) }
+    }
 }
 
-class _Failed extends Error {
-    constructor(readonly reason: string) { super("under " + reason) }
+namespace Right {
+    export class Failed extends Error {
+        constructor(readonly reason: string) { super("right " + reason) }
+    }
 }
 
-class Pick extends Action<(input: { key: string }) => Result<{ value: string }, $Failed | _Failed>> {}
+class Pick extends Action<(input: { key: string }) => Result<{ value: string }, Left.Failed | Right.Failed>> {}
 
 export const Build = durable((input: { key: string }) => {
     return Pick.run({ key: input.key })
@@ -103,7 +110,7 @@ func TestPinnedForkDurableFailureChannelRefusesACollidingIdentity(t *testing.T) 
 	// emitting the old sentence under a new number, which is the renumbering
 	// accident the code exists to avoid — so both class names are asserted.
 	for _, want := range []string{
-		"Error classes $Failed and _Failed",
+		"Error classes Failed and Failed",
 		"share one durable failure identity",
 		"cannot be told apart on the wire",
 	} {
@@ -115,51 +122,96 @@ func TestPinnedForkDurableFailureChannelRefusesACollidingIdentity(t *testing.T) 
 	if strings.Contains(reported.Message, "higher-order") || strings.Contains(reported.Message, "dynamic calls") {
 		t.Fatalf("SMITHERS4124 still carries the swallow artifact's sentence: %q", reported.Message)
 	}
-	// Exactly one diagnostic: the two class declarations are not duplicates by
-	// NAME, so SMITHERS1150 does not and must not fire here — this family is
-	// invisible to a name-based rule, which is why it survived until now.
+	// SMITHERS1150 fires here TOO, and that is not this rule failing — it is the
+	// bridge's module-wide RUNTIME identity claim seeing the same two
+	// declarations first. `stableErrorIdentity` is also a function of (file,
+	// class name), so sibling namespaces duplicate the runtime identity as well
+	// as the contract one, and the fork refuses that module-wide. The reference
+	// has no module-wide equivalent and reports SMITHERS4124 alone. That is a
+	// pre-existing both-closed difference in REASONING, not a fail-open, and it
+	// is exactly why the corpus does not pin this family: `17-durable/…-are-…`
+	// was retired to an acceptance case rather than re-pointed at namespaces.
+	//
+	// What is asserted is what this test is for: the durable guard is LIVE, not
+	// dead code shadowed by the earlier rule.
 	observed := formatDiagnosticPositions(t, []SourceFile{{Path: "main.sm", Text: durableCollidingIdentitySource}}, result)
-	if len(observed) != 1 || !strings.HasPrefix(observed[0], "SMITHERS4124@") {
+	durableRefusals := 0
+	for _, item := range observed {
+		if strings.HasPrefix(item, "SMITHERS4124@") {
+			durableRefusals++
+		}
+	}
+	if durableRefusals != 1 {
 		t.Fatalf("colliding failure channel diagnostics = %v, want exactly one SMITHERS4124", observed)
 	}
 
-	// The collision is a property of the CHANNEL, not of the spelling: each
-	// class on its own is an ordinary nominal failure and must still compile.
-	for _, only := range []string{"$Failed", "_Failed"} {
-		source := strings.Replace(durableCollidingIdentitySource, "$Failed | _Failed", only, 1)
-		single := compileDurableWith(t, backend, ctx, source)
-		if single.EmitSkipped || len(single.Diagnostics) != 0 {
-			encoded, _ := json.Marshal(single.Diagnostics)
-			t.Fatalf("%s alone must still compile: %s", only, encoded)
-		}
-	}
+	// The pair that used to reach this refusal through the IDENTITY rather than
+	// through the name, `$Failed | _Failed`, must now compile: the fold that made
+	// them one identity is gone. This is the fork's own half of the red-before
+	// evidence — before 2026-08-28 this program was refused here with
+	// `smithers:main.sm__Failed@1` named in the message.
+	rescued := strings.ReplaceAll(durableCollidingIdentitySource, "Left.Failed | Right.Failed", "$Failed | _Failed")
+	rescued = strings.Replace(rescued, `namespace Left {
+    export class Failed extends Error {
+        constructor(readonly code: string) { super("left " + code) }
+    }
 }
 
-// TestPinnedForkDurableFailureIdentityBoundMatchesTheReference pins the two
-// sides of the length bound, and the over-long half is the assertion that fails
-// if the digest fallback is ever dropped from the port.
-//
-// The reference switches to `smithers:error/<48 hex of digest(file,name)>@1`
-// once the normalized identity is over 256 UTF-16 units, and that digest is
-// injective — so a pair that WOULD normalize together is accepted when it is
-// long enough, and refused when it is not. A port that compared only the
-// normalized spelling would refuse both and would be a one-sided over-refusal
-// on a program the reference compiles.
-func TestPinnedForkDurableFailureIdentityBoundMatchesTheReference(t *testing.T) {
-	backend, ctx := newPinnedTestBackend(t)
-
-	channel := func(suffix string) string {
-		return `import { durable, Action } from "smithers:flows"
-
-class $` + suffix + ` extends Error {
+namespace Right {
+    export class Failed extends Error {
+        constructor(readonly reason: string) { super("right " + reason) }
+    }
+}`, `class $Failed extends Error {
     constructor(readonly code: string) { super("dollar " + code) }
 }
 
-class _` + suffix + ` extends Error {
+class _Failed extends Error {
     constructor(readonly reason: string) { super("under " + reason) }
+}`, 1)
+	accepted := compileDurableWith(t, backend, ctx, rescued)
+	if accepted.EmitSkipped || len(accepted.Diagnostics) != 0 {
+		encoded, _ := json.Marshal(accepted.Diagnostics)
+		t.Fatalf("names that only USED to normalize together must compile: %s", encoded)
+	}
+	identities := durableFailureIdentitiesByClass(t, runComptimeProgram(t, accepted))
+	if identities["$Failed"] != "smithers:main.sm@+0024Failed@1" || identities["_Failed"] != "smithers:main.sm@_Failed@1" {
+		t.Fatalf("rescued pair minted %v", identities)
+	}
 }
 
-class Pick extends Action<(input: { key: string }) => Result<{ value: string }, $` + suffix + ` | _` + suffix + `>> {}
+// TestPinnedForkDurableFailureIdentityBoundMatchesTheReference pins both sides
+// of the length bound, and it is the assertion that fails if the digest fallback
+// is ever dropped from the port or is made to truncate again.
+//
+// Until 2026-08-28 the bound was honoured by keeping a 48-hex-digit (192-bit)
+// prefix of a digest of the PAIR, under a `smithers:error/...@1` spelling. It is
+// now the full SHA-256 of the exact spelling, under `smithers.digest:...@1`, and
+// the spelling is already injective over (file, class name) so the fallback
+// inherits that.
+//
+// The half that matters is the DISCRIMINATOR surviving the bound: two class
+// names long enough to push the identity over 256 units, differing only in their
+// last character, must still mint two different identities. A port that cut the
+// spelling instead of hashing it would fold them together, compile clean, and
+// emit an artifact whose two failure variants cannot be told apart.
+func TestPinnedForkDurableFailureIdentityBoundMatchesTheReference(t *testing.T) {
+	backend, ctx := newPinnedTestBackend(t)
+
+	// `smithers:` + `main.sm` + `@` + 261 + `@1` is 279 units, comfortably past
+	// the 256-unit bound, so both of these take the digest fallback.
+	longLeft := strings.Repeat("L", 260) + "A"
+	longRight := strings.Repeat("L", 260) + "B"
+	source := `import { durable, Action } from "smithers:flows"
+
+class ` + longLeft + ` extends Error {
+    constructor(readonly code: string) { super("left " + code) }
+}
+
+class ` + longRight + ` extends Error {
+    constructor(readonly reason: string) { super("right " + reason) }
+}
+
+class Pick extends Action<(input: { key: string }) => Result<{ value: string }, ` + longLeft + ` | ` + longRight + `>> {}
 
 export const Build = durable((input: { key: string }) => {
     return Pick.run({ key: input.key })
@@ -169,22 +221,29 @@ export function main(): string {
     return JSON.stringify(Build.plan)
 }
 `
-	}
-
-	// Under the bound: the normalized spellings are equal, so both classes claim
-	// one identity and the channel is refused.
-	short := channel(strings.Repeat("S", 40))
-	requireDurableDiagnostic(t, compileDurableWith(t, backend, ctx, short), "SMITHERS4124", strings.Index(short, "Pick.run("))
-
-	// Over the bound: the reference mints two different digests, so the channel
-	// is injective and compiles. `smithers:` + `main.sm` + `#` + 261 + `@1` is
-	// 279 units, comfortably past 256.
-	long := channel(strings.Repeat("L", 260))
-	accepted := compileDurableWith(t, backend, ctx, long)
+	accepted := compileDurableWith(t, backend, ctx, source)
 	if accepted.EmitSkipped || len(accepted.Diagnostics) != 0 {
 		encoded, _ := json.Marshal(accepted.Diagnostics)
-		t.Fatalf("an over-long identity pair falls back to an injective digest and must compile: %s", encoded)
+		t.Fatalf("two over-long class names are injective under the digest fallback and must compile: %s", encoded)
 	}
+	identities := durablePlanFailureIdentities(t, runComptimeProgram(t, accepted))
+	if len(identities) != 2 {
+		t.Fatalf("expected two failure identities, got %v", identities)
+	}
+	for _, identity := range identities {
+		if !strings.HasPrefix(identity, "smithers.digest:") || !strings.HasSuffix(identity, "@1") {
+			t.Fatalf("an over-bound identity must take the digest fallback, got %q", identity)
+		}
+	}
+	if identities[0] == identities[1] {
+		t.Fatalf("the bound folded two class names onto one identity: %q", identities[0])
+	}
+
+	// The residual is length-independent: two DIFFERENT declarations sharing
+	// (file, class name) collide under any injective encoding, so making the
+	// names long must not turn the refusal into an acceptance.
+	long := strings.ReplaceAll(durableCollidingIdentitySource, "Failed", "Failed"+strings.Repeat("Z", 260))
+	requireDurableDiagnostic(t, compileDurableWith(t, backend, ctx, long), "SMITHERS4124", strings.Index(long, "Pick.run("))
 }
 
 // TestPinnedForkDurableDeclaredFailuresStillArrive is the other direction, and
@@ -378,4 +437,232 @@ export function main(): string {
 			t.Fatalf("%s must still compile: %s", item.name, encoded)
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------
+// The shared cross-language vectors, through the fork
+// ---------------------------------------------------------------------------
+
+// durableIdentityVector is one row of
+// conformance/identity/durable-failure-identity.json.
+type durableIdentityVector struct {
+	Why       string `json:"why"`
+	File      string `json:"file"`
+	ClassName string `json:"className"`
+	ViaFork   bool   `json:"viaFork"`
+	Identity  string `json:"identity"`
+}
+
+func loadDurableIdentityVectors(t *testing.T) []durableIdentityVector {
+	t.Helper()
+	text, err := os.ReadFile("../conformance/identity/durable-failure-identity.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var corpus struct {
+		Vectors []durableIdentityVector `json:"vectors"`
+	}
+	if err := json.Unmarshal(text, &corpus); err != nil {
+		t.Fatal(err)
+	}
+	if len(corpus.Vectors) == 0 {
+		t.Fatal("the shared durable identity corpus is empty")
+	}
+	return corpus.Vectors
+}
+
+// durableFailureIdentitiesByClass walks an emitted Plan's JSON and answers every
+// nominal failure variant it carries, keyed by the class's own name.
+//
+// Keyed rather than ordered on purpose: author-controlled strings may only be
+// ordered by sortUTF16 (see fork_utf16_order_test.go), which lives inside the
+// bridge and is not linked into this package, so nothing here sorts.
+func durableFailureIdentitiesByClass(t *testing.T, planJSON string) map[string]string {
+	t.Helper()
+	var plan any
+	if err := json.Unmarshal([]byte(planJSON), &plan); err != nil {
+		t.Fatalf("undecodable Plan: %v", err)
+	}
+	found := map[string]string{}
+	var walk func(node any)
+	walk = func(node any) {
+		switch value := node.(type) {
+		case map[string]any:
+			if kind, _ := value["kind"].(string); kind == "error" {
+				identity, hasIdentity := value["identity"].(string)
+				name, hasName := value["name"].(string)
+				if hasIdentity && hasName {
+					if prior, seen := found[name]; seen && prior != identity {
+						t.Fatalf("class %s carries two identities: %q and %q", name, prior, identity)
+					}
+					found[name] = identity
+				}
+			}
+			for _, child := range value {
+				walk(child)
+			}
+		case []any:
+			for _, child := range value {
+				walk(child)
+			}
+		}
+	}
+	walk(plan)
+	return found
+}
+
+// durablePlanFailureIdentities is the unkeyed view of the same walk, for the
+// bound test, where the two class names are the thing under test.
+func durablePlanFailureIdentities(t *testing.T, planJSON string) []string {
+	t.Helper()
+	identities := []string{}
+	for _, identity := range durableFailureIdentitiesByClass(t, planJSON) {
+		identities = append(identities, identity)
+	}
+	return identities
+}
+
+// The fork mints exactly the durable failure identities the reference does,
+// measured by compiling each vector's file name and class name and reading the
+// identity back out of the emitted Plan.
+//
+// This is the one test that stops the two implementations drifting. It is not a
+// re-derivation of the algorithm in Go test code — that would be a THIRD copy —
+// it is the fork's own output compared against a corpus the reference is checked
+// against by poc/src/durable/durable-failure-identity.test.ts.
+//
+// WHY IT CANNOT BE A DIFFERENTIAL. Both backends spelled this identity the same
+// wrong way, so every cross-backend comparison in the tree agreed, byte for byte,
+// on the colliding answer; the conformance runner reported `0 divergent` on the
+// case that exercises this very channel. Only a direct assertion against a stated
+// expectation can see a defect both copies share, which is what the corpus rows
+// are.
+func TestPinnedForkDurableFailureIdentityMatchesTheSharedVectors(t *testing.T) {
+	backend, ctx := newPinnedTestBackend(t)
+	vectors := loadDurableIdentityVectors(t)
+
+	// Vectors sharing one file name are compiled together, because they describe
+	// several classes in one module.
+	classesByFile := map[string][]durableIdentityVector{}
+	order := []string{}
+	skipped := 0
+	for _, vector := range vectors {
+		if !vector.ViaFork {
+			// virtualFileName fail-closes on these names, so they are unreachable
+			// input here rather than an exemption from agreement. The reference
+			// still pins them.
+			skipped++
+			continue
+		}
+		if _, seen := classesByFile[vector.File]; !seen {
+			order = append(order, vector.File)
+		}
+		classesByFile[vector.File] = append(classesByFile[vector.File], vector)
+	}
+	// Four rows are unreachable input: two whose file name holds a colon or is
+	// empty (virtualFileName fail-closes) and two whose file name has no `.sm`
+	// extension (the bridge protocol refuses the kind). They still pin the
+	// algorithm on the reference. The ceiling is here so that a fifth cannot be
+	// added quietly and turn agreement into a smaller and smaller claim.
+	if skipped > 4 {
+		t.Fatalf("%d vectors are unreachable through the fork; the corpus is drifting out of the fork's reach", skipped)
+	}
+	// `order` is corpus order, which is already deterministic. Nothing here sorts.
+
+	exercised := 0
+	for _, file := range order {
+		group := classesByFile[file]
+		declarations := ""
+		channel := ""
+		for index, vector := range group {
+			declarations += "class " + vector.ClassName +
+				" extends Error {\n    constructor(readonly code: string) { super(\"x \" + code) }\n}\n\n"
+			if index > 0 {
+				channel += " | "
+			}
+			channel += vector.ClassName
+		}
+		source := "import { durable, Action } from \"smithers:flows\"\n\n" + declarations +
+			"class Pick extends Action<(input: { key: string }) => Result<{ value: string }, " + channel + ">> {}\n\n" +
+			"export const Build = durable((input: { key: string }) => {\n    return Pick.run({ key: input.key })\n})\n\n" +
+			"export function main(): string {\n    return JSON.stringify(Build.plan)\n}\n"
+
+		result, err := backend.Compile(ctx, CompileRequest{
+			RootNames: []string{file},
+			Files:     []SourceFile{{Path: file, Kind: FileKindSmithers, Text: source}},
+			Options:   Options{"noEmitOnError": true},
+			Lowering:  LoweringInternal,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.EmitSkipped || len(result.Diagnostics) != 0 {
+			encoded, _ := json.Marshal(result.Diagnostics)
+			t.Fatalf("%q must compile clean: %s", file, encoded)
+		}
+		identities := durableFailureIdentitiesByClass(t, runComptimeProgramNamed(t, result, file))
+		for _, vector := range group {
+			got, present := identities[vector.ClassName]
+			if !present {
+				t.Fatalf("%s\n file %q declared no identity for class %q; saw %v", vector.Why, file, vector.ClassName, identities)
+			}
+			if got != vector.Identity {
+				t.Fatalf("%s\n file %q class %q\n  fork      = %q\n  reference = %q",
+					vector.Why, file, vector.ClassName, got, vector.Identity)
+			}
+			exercised++
+		}
+	}
+	if exercised != len(vectors)-skipped {
+		t.Fatalf("exercised %d of %d reachable vectors", exercised, len(vectors)-skipped)
+	}
+}
+
+// runComptimeProgramNamed is runComptimeProgram for a project whose entry module
+// is not `main.sm`.
+//
+// The vector corpus is a corpus of FILE NAMES, so the entry cannot be renamed to
+// something convenient without deleting the thing under test. The import
+// specifier is JSON-encoded because these names deliberately contain spaces, a
+// `#`, and a non-BMP character.
+func runComptimeProgramNamed(t *testing.T, result CompileResult, sourceName string) string {
+	t.Helper()
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is required to execute the emitted JavaScript")
+	}
+	directory := t.TempDir()
+	for _, item := range result.Artifacts {
+		path := filepath.Join(directory, filepath.FromSlash(item.Path))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, item.Content, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(directory, "package.json"), []byte(`{"type":"module"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// pathToFileURL, not a bare specifier: these names deliberately contain a
+	// space, a `#`, and a non-BMP character, and a `#` in an ESM specifier is a
+	// URL fragment rather than part of the path. The absolute path is handed to
+	// node as JSON and encoded there, so no escaping rule is reimplemented here.
+	entry, err := json.Marshal(filepath.Join(directory, filepath.FromSlash(strings.TrimSuffix(sourceName, ".sm")+".js")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	harness := "import { pathToFileURL } from \"node:url\";\n" +
+		"const module = await import(pathToFileURL(" + string(entry) + ").href);\n" +
+		"process.stdout.write(String(module.main()));\n"
+	if err := os.WriteFile(filepath.Join(directory, "harness.mjs"), []byte(harness), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command(node, "harness.mjs")
+	command.Dir = directory
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("executing the emitted JavaScript failed: %v\n%s", err, output)
+	}
+	return string(output)
 }

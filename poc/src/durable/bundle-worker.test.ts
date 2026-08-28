@@ -174,7 +174,7 @@ test("a bundle-executed typed failure round-trips as the exact durable wire enve
     expect(error).toBeInstanceOf(DurableActionFailure)
     expect((error as DurableActionFailure).failure).toEqual({
       version: 1,
-      identity: "smithers:bundle-first.sm_Failed@1",
+      identity: "smithers:bundle-first.sm@Failed@1",
       payload: { code: "too-low" }
     })
   }

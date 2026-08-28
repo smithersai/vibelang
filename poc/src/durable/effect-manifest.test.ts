@@ -646,7 +646,10 @@ test("failure identities and both digests do not depend on how the file was addr
       sites: standalone.manifest.sites.map((site) => site.id)
     }
   })
-  // `#` is outside `stableIdentity`'s accepted character set and normalizes to `_`.
-  expect(observed[0].failures).toEqual(["smithers:orders.sm_Denied@1", "smithers:orders.sm_Failed@1"])
+  // `@` is the file/class separator, withheld from `durableFailureIdentity`'s
+  // escape alphabet so neither component can spell it. Until 2026-08-28 the
+  // separator was `#`, which was outside the accepted character set and was
+  // folded to `_` — destroying the separator on every input, not just this one.
+  expect(observed[0].failures).toEqual(["smithers:orders.sm@Denied@1", "smithers:orders.sm@Failed@1"])
   for (const answer of observed.slice(1)) expect(answer).toEqual(observed[0])
 })

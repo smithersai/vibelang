@@ -1,0 +1,203 @@
+{
+  "why": "Cross-language test vectors for THE durable failure identity algorithm -- the CONTRACT spelling a persisted failure envelope carries, which is a different string from the runtime spelling in nominal-error-identity.json and is minted by a different function. Both backends mint it independently -- the reference frontend in poc/src/durable/site-id.ts (durableFailureIdentity) and the Go fork in compiler/forkbridge/durable.go.txt (durableFailureIdentity) -- and a persisted failure is only interoperable if the two agree byte for byte. Two hand-maintained copies of one algorithm is exactly the shape that produced the defect this file exists for, so the copies are pinned against each other HERE rather than against two separately maintained expectations that can drift apart unnoticed. Regenerate by RUNNING a backend, never by hand or from a report: poc/src/durable/durable-failure-identity.test.ts checks the reference against these rows, and compiler/fork_durable_identity_test.go compiles each viaFork row with the pinned fork and reads the identity back out of the emitted Plan.",
+  "algorithm": "identity := \"smithers:\" + escape(file) + \"@\" + escape(className) + \"@1\", where escape emits a UTF-16 code unit verbatim when it is in [A-Za-z0-9._/:-] and otherwise emits \"+\" followed by exactly four upper-case hex digits of the unit. '+' is withheld from the alphabet as the escape introducer, and '@' is withheld as the SEPARATOR, so the identity holds exactly two '@' and the parse is unambiguous. When the spelling exceeds 256 UTF-16 code units the identity is instead \"smithers.digest:\" + lower-case hex SHA-256 of the UTF-8 bytes of the spelling + \"@1\". Nothing is folded and nothing is truncated, so two distinct (file, className) pairs never converge.",
+  "viaFork": "false marks a row the Go fork cannot be handed as a FILE NAME at all: virtualFileName (compiler/forkbridge/main.go.txt) fail-closes on an absolute name, a name containing a colon, and an empty name, and the bridge protocol refuses a `smithers` file whose name does not end in `.sm`. The two separator-destruction rows whose file name has no extension (`a.sm_B`, `a.sm#B`) are unreachable for that last reason -- they are reachable on the reference because compileActionContract takes any fileName, and they are the pair that proves escaping alone was not the fix, so they are pinned there rather than dropped. Those rows still pin the algorithm on the reference side; they are unreachable input for the end-to-end fork check, not exemptions from agreement.",
+  "vectors": [
+    {
+      "why": "an ordinary root-relative name is unchanged",
+      "file": "main.sm",
+      "className": "NotFound",
+      "viaFork": true,
+      "identity": "smithers:main.sm@NotFound@1"
+    },
+    {
+      "why": "a nested POSIX path is unchanged",
+      "file": "app/orders/checkout.sm",
+      "className": "Declined",
+      "viaFork": true,
+      "identity": "smithers:app/orders/checkout.sm@Declined@1"
+    },
+    {
+      "why": "a name made of . _ - / survives verbatim",
+      "file": "a-b_c.d/e.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a-b_c.d/e.sm@Boom@1"
+    },
+    {
+      "why": "MEASURED COLLISION: a space used to fold onto the underscore below",
+      "file": "a b.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a+0020b.sm@Boom@1"
+    },
+    {
+      "why": "MEASURED COLLISION: the other half of the pair, unchanged, which is what made the fold silent",
+      "file": "a_b.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a_b.sm@Boom@1"
+    },
+    {
+      "why": "MEASURED COLLISION: the old separator character itself, third member of the same folded family",
+      "file": "a#b.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a+0023b.sm@Boom@1"
+    },
+    {
+      "why": "MEASURED COLLISION: fourth member of the folded family",
+      "file": "a%b.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a+0025b.sm@Boom@1"
+    },
+    {
+      "why": "MEASURED COLLISION: fifth member of the folded family",
+      "file": "a!b.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a+0021b.sm@Boom@1"
+    },
+    {
+      "why": "MEASURED COLLISION, separator destruction: the class name carried the underscore",
+      "file": "a.sm",
+      "className": "B_C",
+      "viaFork": true,
+      "identity": "smithers:a.sm@B_C@1"
+    },
+    {
+      "why": "MEASURED COLLISION, separator destruction: the file name carried it instead, with NO character outside the old alphabet",
+      "file": "a.sm_B",
+      "className": "C",
+      "viaFork": false,
+      "identity": "smithers:a.sm_B@C@1"
+    },
+    {
+      "why": "MEASURED COLLISION, separator destruction: the file name spelled the old separator outright",
+      "file": "a.sm#B",
+      "className": "C",
+      "viaFork": false,
+      "identity": "smithers:a.sm+0023B@C@1"
+    },
+    {
+      "why": "MEASURED COLLISION, class-name collapse: a dollar sign used to fold onto the underscore below",
+      "file": "main.sm",
+      "className": "$Failed",
+      "viaFork": true,
+      "identity": "smithers:main.sm@+0024Failed@1"
+    },
+    {
+      "why": "MEASURED COLLISION, class-name collapse: the other half of that pair",
+      "file": "main.sm",
+      "className": "_Failed",
+      "viaFork": true,
+      "identity": "smithers:main.sm@_Failed@1"
+    },
+    {
+      "why": "a literal plus is escaped because plus introduces an escape",
+      "file": "a+b.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a+002Bb.sm@Boom@1"
+    },
+    {
+      "why": "the escape spelling of plus is itself escaped",
+      "file": "a+002Bb.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a+002B002Bb.sm@Boom@1"
+    },
+    {
+      "why": "the SEPARATOR is withheld from the alphabet, so an at-sign in a file name escapes",
+      "file": "x@y.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:x+0040y.sm@Boom@1"
+    },
+    {
+      "why": "a tab is escaped",
+      "file": "a\tb.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:a+0009b.sm@Boom@1"
+    },
+    {
+      "why": "a non-BMP path character becomes two surrogate escapes",
+      "file": "f😀.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:f+D83D+DE00.sm@Boom@1"
+    },
+    {
+      "why": "a non-ASCII class name is escaped too -- the envelope validator does not accept it verbatim",
+      "file": "main.sm",
+      "className": "Café",
+      "viaFork": true,
+      "identity": "smithers:main.sm@Caf+00E9@1"
+    },
+    {
+      "why": "a non-BMP class name becomes two surrogate escapes",
+      "file": "main.sm",
+      "className": "𝐁oom",
+      "viaFork": true,
+      "identity": "smithers:main.sm@+D835+DC01oom@1"
+    },
+    {
+      "why": "a leading dot is carried, not prefixed with source_",
+      "file": ".a.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:.a.sm@Boom@1"
+    },
+    {
+      "why": "the source_ prefix keeps its own identity",
+      "file": "source_.a.sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers:source_.a.sm@Boom@1"
+    },
+    {
+      "why": "a colon survives escaping but the fork refuses the file name itself",
+      "file": "a:b.sm",
+      "className": "Boom",
+      "viaFork": false,
+      "identity": "smithers:a:b.sm@Boom@1"
+    },
+    {
+      "why": "exactly at the 256 unit bound stays spelled",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "className": "Left",
+      "viaFork": true,
+      "identity": "smithers:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm@Left@1"
+    },
+    {
+      "why": "one unit over the bound falls back to a digest",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "className": "Left",
+      "viaFork": true,
+      "identity": "smithers.digest:2a3966088b59b62fe93ffaa0faca354fc3a22ab1958b57b00b502b4424b04c8e@1"
+    },
+    {
+      "why": "the sibling over the bound is a different digest",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "className": "Right",
+      "viaFork": true,
+      "identity": "smithers.digest:f1814bade8c73ffb677c62e756c2f6810884ebcce8d43e6008b8365c971e9e3d@1"
+    },
+    {
+      "why": "an escape may be what pushes the spelling over the bound",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa .sm",
+      "className": "Boom",
+      "viaFork": true,
+      "identity": "smithers.digest:610b503ead847326c059d69729bc29ba9f7892256621ab7540e93ef57d176666@1"
+    },
+    {
+      "why": "an empty logical file is still injective, and the fork refuses the name",
+      "file": "",
+      "className": "Boom",
+      "viaFork": false,
+      "identity": "smithers:@Boom@1"
+    }
+  ]
+}

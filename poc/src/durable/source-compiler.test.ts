@@ -650,18 +650,35 @@ export const Build = durable((input: { key: string }) => {
  * of this rule — and it does not exist in the Go bridge at all. 4100-4123 are
  * in use and 4199 is the durable internal-error code, so 4124 is the next free
  * code in the family.
+ *
+ * WHY SIBLING NAMESPACES, and not the `$Failed`/`_Failed` pair this fixture
+ * carried until 2026-08-28. That pair was a collision only because
+ * `stableIdentity` folded every character outside `[A-Za-z0-9._/@:+-]` onto `_`;
+ * `durableFailureIdentity` escapes both components reversibly, so the two names
+ * now mint two identities and the program is ordinary, legal source —
+ * `durable-failure-identity.test.ts` pins that, and the benign test below holds
+ * the same pair as a compiling program so the repair cannot silently regress
+ * into a refusal again.
+ *
+ * The residual is what this fixture must be built on instead: the identity is a
+ * function of (logical source file, class name), so two DIFFERENT declarations
+ * sharing both collide under any injective encoding whatsoever. Sibling
+ * namespaces are the smallest spelling of that in authored `.sm`, and unlike the
+ * old pair it is not something a better algorithm can take away. Note the
+ * diagnostic now names one class twice — "Error classes Failed and Failed" —
+ * which is exactly right: the two declarations really do have the same name.
  */
 const collidingChannelSource = (body: string) => `
 import { durable, Action, fanOut, loopWhile } from "smithers:flows"
-class $Failed extends Error { constructor(readonly code: string) { super("dollar") } }
-class _Failed extends Error { constructor(readonly reason: string) { super("under") } }
+namespace Left  { export class Failed extends Error { constructor(readonly code: string) { super("left") } } }
+namespace Right { export class Failed extends Error { constructor(readonly reason: string) { super("right") } } }
 ${body}
 `
 
 test("two Error classes under one durable failure identity draw SMITHERS4124, naming both classes", () => {
   const forms = {
     "a returned Action.run": `
-class Pick extends Action<(input: { key: string }) => Result<{ value: string }, $Failed | _Failed>> {}
+class Pick extends Action<(input: { key: string }) => Result<{ value: string }, Left.Failed | Right.Failed>> {}
 export const Build = durable((input: { key: string }) => {
   return Pick.run({ key: input.key })
 })`,
@@ -669,21 +686,21 @@ export const Build = durable((input: { key: string }) => {
     // only directly on a compiler-bound Action.run(...) Result" — which is
     // exactly what this operand is.
     "an intermediate Action.run with postfix !": `
-class Pick extends Action<(input: { key: string }) => Result<{ value: string }, $Failed | _Failed>> {}
-class Tail extends Action<(input: { value: string }) => Result<{ out: string }, $Failed>> {}
+class Pick extends Action<(input: { key: string }) => Result<{ value: string }, Left.Failed | Right.Failed>> {}
+class Tail extends Action<(input: { value: string }) => Result<{ out: string }, Left.Failed>> {}
 export const Build = durable((input: { key: string }) => {
   const first = Pick.run({ key: input.key })!
   return Tail.run({ value: first.value })
 })`,
     // "fanOut body must target one compiler-bound Action" — it does.
     "a fanOut step": `
-class Pick extends Action<(input: { id: string }) => Result<{ value: string }, $Failed | _Failed>> {}
+class Pick extends Action<(input: { id: string }) => Result<{ value: string }, Left.Failed | Right.Failed>> {}
 export const Build = durable((input: { ids: readonly string[] }) => {
   return fanOut(input.ids, (id) => id, (id) => Pick.run({ id }))
 })`,
     // "loopWhile body must target one compiler-bound Action" — it does.
     "a loopWhile body": `
-class Pick extends Action<(input: { more: boolean }) => Result<{ more: boolean }, $Failed | _Failed>> {}
+class Pick extends Action<(input: { more: boolean }) => Result<{ more: boolean }, Left.Failed | Right.Failed>> {}
 export const Build = durable((input: { more: boolean }) => {
   return loopWhile({ more: input.more }, (state) => state.more, (state) => Pick.run({ more: state.more }), 8)
 })`
@@ -698,16 +715,44 @@ export const Build = durable((input: { more: boolean }) => {
     // The payload is the promise: a code alone would let the old sentence
     // survive under a new number, which is the renumbering accident this repair
     // exists to avoid.
-    expect(compiled.diagnostics[0].message, label).toContain("Error classes $Failed and _Failed")
+    expect(compiled.diagnostics[0].message, label).toContain("Error classes Failed and Failed")
     expect(compiled.diagnostics[0].message, label).toContain("share one durable failure identity")
     expect(compiled.diagnostics[0].message, label).not.toContain("higher-order")
   }
 })
 
+test("a channel whose names only used to normalize together now compiles", () => {
+  // RED BEFORE THE FIX, and the exact program the corpus case
+  // `17-durable/two-error-classes-whose-durable-identities-collide-are-rejected`
+  // refused until 2026-08-28. `stableIdentity` folded `$` onto `_`, so `$Failed`
+  // and `_Failed` were one identity and this drew SMITHERS4124 on both backends.
+  // The refusal was the right verdict for the identity it had; escaping the
+  // class name instead of folding it makes the program ordinary.
+  //
+  // It is held here, as a COMPILING program with two Action failure variants,
+  // so that a future edit which re-narrows the escape cannot quietly restore the
+  // refusal and still be green.
+  const compiled = compileDurableSource(`
+import { durable, Action } from "smithers:flows"
+class $Failed extends Error { constructor(readonly code: string) { super("dollar") } }
+class _Failed extends Error { constructor(readonly reason: string) { super("under") } }
+class Pick extends Action<(input: { key: string }) => Result<{ value: string }, $Failed | _Failed>> {}
+export const Build = durable((input: { key: string }) => {
+  return Pick.run({ key: input.key })
+})
+`, { fileName: "flows/orders.sm" })
+  if (!compiled.ok) throw new Error(`must compile: ${JSON.stringify(compiled.diagnostics)}`)
+  const variants = (compiled.plan.actions[0]!.errorSchema.descriptor as { variants: { identity: string }[] }).variants
+  expect(variants.map((variant) => variant.identity)).toEqual([
+    "smithers:flows/orders.sm@+0024Failed@1",
+    "smithers:flows/orders.sm@_Failed@1"
+  ])
+})
+
 test("SMITHERS4124 fires on a COLLISION, not on two Error classes", () => {
   // The over-correction this repair could ship: a check that refuses any
-  // two-class failure channel. `$Failed`/`_Failed` normalize to one identity;
-  // `Failed`/`Denied` do not, and every form above must still compile.
+  // two-class failure channel. Two DECLARATIONS sharing (file, class name)
+  // collide; `Failed`/`Denied` do not, and every form above must still compile.
   const benign = (body: string) => `
 import { durable, Action, fanOut, loopWhile } from "smithers:flows"
 class Failed extends Error { constructor(readonly code: string) { super("failed") } }

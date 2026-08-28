@@ -794,16 +794,18 @@ export abstract class Work extends Action<(input: { mode: string }) => Result<{ 
 class Failed extends Error { constructor(readonly code: string) { super(code) } }
 const Base = Failed
 namespace N { export class Failed extends Base { constructor(readonly reason: string) { super(reason) } } }
-export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Failed | N.Failed>> {}`],
-    // Distinct NAMES, one identity: `stableIdentity` normalizes every character
-    // outside [A-Za-z0-9._/@:+-] to `_`, so `$Failed` and `_Failed` are one
-    // identity. This spelling was not merely unimplementable — it built, ran,
-    // and emitted two different payloads under a single wire identity.
-    ["two names that normalize to one identity", `
-class $Failed extends Error { constructor(readonly code: string) { super(code) } }
-class _Failed extends Error { constructor(readonly reason: string) { super(reason) } }
-export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, $Failed | _Failed>> {}`]
+export abstract class Work extends Action<(input: { mode: string }) => Result<{ value: number }, Failed | N.Failed>> {}`]
   ] as const
+  // The sixth row that used to live here, `$Failed | _Failed`, is GONE on
+  // purpose. `stableIdentity` folded every character outside
+  // [A-Za-z0-9._/@:+-] onto `_`, so those two names really were one identity —
+  // but that was a defect in the identity, not in the program. Since 2026-08-28
+  // `durableFailureIdentity` escapes both components reversibly and the pair is
+  // ordinary, legal source; `durable-failure-identity.test.ts` pins it minting
+  // two variants. What remains above is the residual NO encoding can remove:
+  // the identity is a function of (logical file, class name), so two different
+  // DECLARATIONS sharing both collide under any injective algorithm whatsoever.
+  // That is why this refusal is still reachable and still load-bearing.
 
   for (const [label, body] of collisions) {
     const compiled = compileCollisionContract(body, `test/schema/collide/${label}`)
@@ -819,13 +821,19 @@ export abstract class Work extends Action<(input: { mode: string }) => Result<{ 
     expect(lines[compiled.diagnostics[0].line - 1], label).toContain("extends Action")
   }
 
-  // The EXECUTED half. `$Failed | _Failed` is the one collision spelling that
-  // survives every downstream gate — the implementation closure holds two
-  // differently-named classes, so the nominal failure schema matches and a
-  // bundle builds. Before the guard this ran and returned two different
-  // payloads under ONE identity, which is a wrong answer no compile-time
-  // assertion can see. If the refusal is ever relaxed, this executes the bundle
-  // and fails on the identity that comes back.
+  // The EXECUTED half, and since 2026-08-28 it is the branch that RUNS.
+  //
+  // `$Failed | _Failed` is the one former-collision spelling that survives every
+  // downstream gate — the implementation closure holds two differently-named
+  // classes, so the nominal failure schema matches and a bundle builds. Under
+  // `stableIdentity` this built, ran, and returned two different payloads under
+  // ONE wire identity: a wrong answer no compile-time assertion could see, which
+  // is why the check is by EXECUTION rather than by reading the contract.
+  //
+  // `durableFailureIdentity` escapes the class name instead of folding it, so
+  // the contract is now accepted and this executes for real. The assertion is
+  // unchanged and is exactly the right one either way: whatever comes back off
+  // the wire, two declared Error classes may not share an identity.
   const normalizing = compileCollisionContract(`
 class $Failed extends Error { constructor(readonly code: string) { super(code) } }
 class _Failed extends Error { constructor(readonly reason: string) { super(reason) } }
@@ -863,8 +871,8 @@ export function work(input: { mode: string }): Result<{ value: number }, NotFoun
   if (input.mode === "denied") throw new Denied("root")
   return { value: 1 }
 }`, ["missing", "denied", "ok"])).toEqual([
-    { kind: "failure", error: { version: 1, identity: `smithers:${COLLIDE_FILE}_NotFound@1`, payload: { path: "/tmp/x" } } },
-    { kind: "failure", error: { version: 1, identity: `smithers:${COLLIDE_FILE}_Denied@1`, payload: { who: "root" } } },
+    { kind: "failure", error: { version: 1, identity: `smithers:${COLLIDE_FILE}@NotFound@1`, payload: { path: "/tmp/x" } } },
+    { kind: "failure", error: { version: 1, identity: `smithers:${COLLIDE_FILE}@Denied@1`, payload: { who: "root" } } },
     { kind: "success", value: { value: 1 } }
   ])
 })
@@ -923,8 +931,8 @@ export abstract class Work extends Action<(input: { mode: string }) => Result<{ 
     "test/schema/file-b/Work", "contracts/b.sm")
   expect(first.ok && second.ok).toBe(true)
   if (!first.ok || !second.ok) throw new Error("expected both single-file contracts to compile")
-  expect(JSON.stringify(first.descriptor.errorSchema)).toContain("smithers:contracts/a.sm_Failed@1")
-  expect(JSON.stringify(second.descriptor.errorSchema)).toContain("smithers:contracts/b.sm_Failed@1")
+  expect(JSON.stringify(first.descriptor.errorSchema)).toContain("smithers:contracts/a.sm@Failed@1")
+  expect(JSON.stringify(second.descriptor.errorSchema)).toContain("smithers:contracts/b.sm@Failed@1")
   expect(first.descriptor.errorSchema.digest).not.toBe(second.descriptor.errorSchema.digest)
 })
 

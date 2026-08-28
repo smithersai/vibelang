@@ -171,6 +171,187 @@ export function nominalErrorIdentity(logicalFile: string, className: string): st
   return `smithers.digest:${createHash("sha256").update(spelled, "utf8").digest("hex")}`
 }
 
+// ---------------------------------------------------------------------------
+// Durable failure identity
+// ---------------------------------------------------------------------------
+
+/**
+ * UTF-16 code-unit bound on a minted durable failure identity.
+ *
+ * The durable failure ENVELOPE validator (`./schema.ts`,
+ * `/^[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,255}$/`) admits one leading character plus
+ * 255 more, so 256 units is exactly the window a minted identity has to fit.
+ */
+const DURABLE_FAILURE_IDENTITY_UNITS = 256
+
+/**
+ * `[A-Za-z0-9._/:-]` — every unit that survives durable escaping verbatim.
+ *
+ * This is the envelope validator's alphabet MINUS `+` and MINUS `@`, and BOTH
+ * withholdings are load-bearing:
+ *
+ *  - `+` is the escape introducer, which is what makes the encoding reversible:
+ *    an unescaped `+` can never occur, so every `+` in the output starts exactly
+ *    one five-unit escape.
+ *  - `@` is the SEPARATOR. Withholding it is what makes the composed spelling
+ *    injective, and it is the step {@link escapeIdentityPath} does not need:
+ *    that one may leave `@` in the path because its separator is `:` and it
+ *    parses at the LAST `:`. Here there are two `@` roles — the file/class
+ *    separator and the trailing `@1` version marker — so "the last one" is not
+ *    enough on its own, and withholding `@` from both components makes the
+ *    count exactly two and the parse unambiguous.
+ *
+ * `moduleRowQualifier` (`../language/semantic.ts`) withholds its own separator
+ * from its own alphabet for exactly this reason. Each identity in this compiler
+ * owns the alphabet its separator forces; they are deliberately not one shared
+ * set.
+ */
+function isDurableIdentityUnit(unit: number): boolean {
+  return isIdentityAlphanumericUnit(unit) ||
+    unit === 0x2e /* . */ || unit === 0x5f /* _ */ || unit === 0x2f /* / */ ||
+    unit === 0x3a /* : */ || unit === 0x2d /* - */
+}
+
+/**
+ * REVERSIBLE encoding of one durable identity component into the alphabet above.
+ *
+ * Applied to BOTH components, which is the difference from
+ * {@link escapeIdentityPath}'s single-component use. The class name has to be
+ * escaped rather than carried verbatim because a TypeScript identifier may hold
+ * `$` and arbitrary `ID_Continue` letters, neither of which the durable envelope
+ * validator accepts — the predecessor met that by folding them onto `_`, which
+ * is precisely how `$Failed` and `_Failed` became one identity.
+ *
+ * There is no index-0 special case. {@link escapeIdentityPath} escapes a
+ * non-alphanumeric first unit to displace a `source_` prefix its predecessor
+ * minted; this site never had that prefix, the composed identity always begins
+ * with the literal `smithers:` so the validator's leading-character rule is
+ * already satisfied, and the encoding is injective with or without it.
+ */
+function escapeDurableIdentityComponent(component: string): string {
+  let escaped = ""
+  for (let index = 0; index < component.length; index++) {
+    const unit = component.charCodeAt(index)
+    escaped += isDurableIdentityUnit(unit)
+      ? component[index]
+      : `+${unit.toString(16).toUpperCase().padStart(4, "0")}`
+  }
+  return escaped
+}
+
+/**
+ * THE durable failure identity of one nominal Error class, and the only
+ * algorithm either backend may mint one with.
+ *
+ * This is the CONTRACT spelling, `smithers:<file>@<Class>@1`. It is deliberately
+ * NOT {@link nominalErrorIdentity}, the RUNTIME spelling `smithers:<file>:<Class>`
+ * that `__smithersRegisterError` carries: the two coexist on purpose, they are
+ * validated by two different rules, and unifying them would silently retag every
+ * persisted failure envelope with a string the envelope validator never accepted.
+ *
+ * `specification/durable-execution.mdx`: "Every value crossing an Action or Flow
+ * persistence boundary MUST satisfy the compiler-checked durable codec
+ * contract"; read with `specification/failures.mdx` "Error Prototype" —
+ * "Handler selection MUST use compiler-stable nominal identity" — the identity
+ * is the key a decoder on the far side of a persistence boundary selects a
+ * handler by. Stability without INJECTIVITY is worth nothing there: two Error
+ * classes arriving under one identity is a forgeable key.
+ *
+ * THE INJECTIVITY RULE. Until 2026-08-28 this was `stableIdentity`
+ * (`./schema.ts`): it spelled `smithers:<file>#<Class>@1` and then rewrote every
+ * unit outside `[A-Za-z0-9._/@:+-]` to `_`. `#` is not in that class, so the
+ * SEPARATOR was the first thing destroyed, and the fold was many-to-one on both
+ * components at once. Three mechanisms were measured on both backends, with zero
+ * diagnostics and a runtime `already registered` throw at the end of each:
+ *
+ *     a b.sm / Boom, a_b.sm / Boom, a#b.sm / Boom, a%b.sm / Boom, a!b.sm / Boom
+ *       -> smithers:a_b.sm_Boom@1          (charset collapse, a 5-member family)
+ *     a.sm_B / C  and  a.sm#B / C  and  a.sm / B_C
+ *       -> smithers:a.sm_B_C@1        (separator destruction; the first and the
+ *                                      third need NO character outside the
+ *                                      alphabet, so escaping alone is not a fix)
+ *     $Failed  and  _Failed  in one file
+ *       -> smithers:<file>__Failed@1              (class-name collapse)
+ *
+ * Every step here is therefore information-preserving: both components are
+ * escaped reversibly, the separator is withheld from the alphabet so it cannot
+ * be spelled by either component, and the length bound is honoured by DIGESTING
+ * the exact spelling rather than by cutting it. `smithers.digest:` cannot be
+ * confused with the ordinary `smithers:` spelling — the ninth unit is `.` in one
+ * and `:` in the other.
+ *
+ * The result is the byte-identical answer the Go fork's `durableFailureIdentity`
+ * (`compiler/forkbridge/durable.go.txt`) gives; the two are pinned against each
+ * other by the shared vectors in
+ * `conformance/identity/durable-failure-identity.json`, which both backends
+ * read, and NOT by reading one another. `logicalFile` is a portable name from
+ * {@link identityFileName} — never an absolute path.
+ */
+export function durableFailureIdentity(logicalFile: string, className: string): string {
+  const spelled = `smithers:${escapeDurableIdentityComponent(logicalFile)}@${
+    escapeDurableIdentityComponent(className)
+  }@1`
+  if (spelled.length <= DURABLE_FAILURE_IDENTITY_UNITS) return spelled
+  // Digesting the SPELLING rather than the pair is what makes the fallback
+  // injective for free: the spelling is already injective over (file, name), so
+  // the digest inherits that up to SHA-256 collision resistance. The `@1` is
+  // kept so that every durable failure identity, spelled or digested, carries
+  // the same version marker. `update(…, "utf8")` is the same byte sequence Go's
+  // `[]byte(string)` produces.
+  return `smithers.digest:${createHash("sha256").update(spelled, "utf8").digest("hex")}@1`
+}
+
+/** One declaration's claim on a durable failure identity. */
+export interface DurableFailureIdentityClaim {
+  readonly identity: string
+  /** `<file>:<class>` already holding it, when this claim collides with one. */
+  readonly collidesWith?: string
+}
+
+/**
+ * Assigns durable failure identities across a WHOLE compilation, refusing a
+ * collision rather than emitting a contract whose failures cannot be told apart.
+ *
+ * The scope is the entire point. `DescriptorBuilder.claimedErrorIdentities`
+ * (`./schema.ts`) is a per-instance field, so it sees exactly one
+ * `compileActionContract` call — and the measured collision was TWO Actions,
+ * which is two calls, so the reachable case was precisely the one the existing
+ * refusal could not see. A guard whose scope is narrower than the space the
+ * identity has to be unique in is not a guard.
+ *
+ * {@link durableFailureIdentity} is injective, so on today's algorithm this
+ * class never reports a collision across distinct (file, class) pairs. That is
+ * the point: it is a defensive invariant, not a filter. The defect it exists for
+ * was introduced by weakening the algorithm, and the compiler's only signal was
+ * a clean compile followed by a runtime `TypeError` out of `registerErrorType`.
+ *
+ * It mirrors {@link NominalErrorIdentities} exactly, including why `mint` is
+ * injectable: a guard the current algorithm cannot trip is a guard no test can
+ * exercise, and a guard no test exercises is one the next refactor deletes as
+ * dead code. Handing it the PREVIOUS algorithm is how the test proves this would
+ * have caught the shipped defect. Nothing in the compiler passes it.
+ */
+export class DurableFailureIdentities {
+  readonly #assigned = new Map<string, string>()
+  readonly #mint: (logicalFile: string, className: string) => string
+
+  constructor(mint: (logicalFile: string, className: string) => string = durableFailureIdentity) {
+    this.#mint = mint
+  }
+
+  claim(logicalFile: string, className: string): DurableFailureIdentityClaim {
+    const identity = this.#mint(logicalFile, className)
+    const owner = `${logicalFile}:${className}`
+    const prior = this.#assigned.get(identity)
+    if (prior === undefined) {
+      this.#assigned.set(identity, owner)
+      return { identity }
+    }
+    // One declaration reaching the assigner twice is idempotent, not a collision.
+    return prior === owner ? { identity } : { identity, collidesWith: prior }
+  }
+}
+
 /** One declaration's claim on an identity. */
 export interface NominalErrorIdentityClaim {
   readonly identity: string

@@ -1,0 +1,43 @@
+import { durable, Action } from "smithers:flows"
+
+// An Action's failure channel is compiled into durable type evidence before
+// TypeScript erases the signature, and each Error class in it becomes a variant
+// carrying a compiler-minted identity. That identity is the key a decoder on the
+// far side of a persistence boundary selects a handler by, so two declared Error
+// classes must arrive as two variants under two DIFFERENT identities.
+//
+// `$Failed` and `_Failed` are the pair that measured the defect. Until
+// 2026-08-28 the identity was spelled `smithers:<file>#<Class>@1` and then had
+// every character outside `[A-Za-z0-9._/@:+-]` rewritten to `_`, so `$` folded
+// onto `_`, both classes minted `smithers:<file>__Failed@1`, and BOTH backends
+// refused the program at SMITHERS4124 — correctly, for the identity they had.
+// The identity now escapes each component reversibly instead of folding it, so
+// the two names are told apart and this is ordinary, legal source.
+//
+// The identities are PRINTED rather than merely counted. The spelling was left
+// unpinned by this corpus while the separator was still being destroyed, on the
+// grounds that pinning it would ratify a spelling that had to move; it has now
+// moved, and both backends were measured minting these bytes.
+class $Failed extends Error {
+  constructor(readonly code: string) { super(`x: ${code}`) }
+}
+
+class _Failed extends Error {
+  constructor(readonly reason: string) { super(`x: ${reason}`) }
+}
+
+class Pick extends Action<(input: { key: string }) => Result<{ value: string }, $Failed | _Failed>> {}
+
+export const Flow = durable((input: { key: string }) => {
+  return Pick.run({ key: input.key })
+})
+
+export function main(): string[] {
+  const variants = Flow.plan.actions[0].errorSchema.descriptor.variants
+  return [
+    String(Flow.plan.actions.length),
+    String(variants.length),
+    variants.map((variant) => variant.identity).join(" "),
+    String(new Set(variants.map((variant) => variant.identity)).size)
+  ]
+}

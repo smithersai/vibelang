@@ -1861,7 +1861,8 @@ re-probe: it is a **genuinely new code**, minted in the reference
 (`compiler/forkbridge/durable.go.txt`, constructed as `d.fail(node, "4124", …)`
 and therefore visible only to the second and third `grep`) in the same revision
 that gave it a case
-(`17/two-error-classes-whose-durable-identities-collide-are-rejected`). So all
+(`17/two-error-classes-whose-durable-identities-used-to-collide-now-compile`). So all
+<!-- renamed 2026-08-28: the case turned over from a refusal to an acceptance when the identity became injective; see observation gap #15's closure note. -->
 four inputs should move by exactly one — R 110 → 111, F 112 → 113, intersection
 91 → 92, corpus 72 → 73 — the second `comm` should stay empty, and
 **92 − 73 = 19**: unchanged, same nineteen codes.
@@ -2818,7 +2819,7 @@ sentence coverage much:
 | 20.20 | the durable source function MUST be **removable** after the compiler emits its plan; a planner or coordinator MUST NOT require the source function or a live side table (`:65`) | **partial** | `Build.artifactSource` is asserted, which shows the artifact is self-describing. Nothing removes the source and re-plans, which is what the sentence actually requires. |
 | 20.21 | a durable source function MAY capture compiler-known immutable values **only**, and MUST NOT observe runtime clock, randomness, environment, mutable state, services, or I/O while the template is constructed (`:69`) | **uncovered** | six named sources, zero cases. §19.16 has the same shape and at least has two. |
 | 20.22 | runtime-dependent control flow MUST be represented explicitly in Plan IR; the compiler MUST reject an operation that would inspect a symbolic value without a corresponding IR representation (`:71`) | **covered across thirteen forms as of 2026-08-26** — it was one | `17/statement-branch-fails-closed` was the corpus's only declared durable diagnostic. Twelve refusal cases now stand beside it, chosen so no two share a walk branch: **operators** — `a-logical-or-fallback…`, `a-nullish-coalescing-fallback…`, `strict-equality-against…`, `an-in-test-on…` (`SMITHERS4111`, the binary family, and `in` is deliberately the one whose *symbolic operand is on the right*), `typeof-on…` (TypeOfExpression) and `logical-negation-of…` (PrefixUnaryExpression, the unary shape a binary-only walk would miss); **calls** — `array-isarray-on…` and `object-is-on…` (`SMITHERS4112`, on two different host namespaces so the rule is a property of the call rather than of one global); **control flow** — `a-conditional-expression-on-a-non-boolean-durable-input-is-rejected` (`SMITHERS4106`; read against `static-plan-shape-is-digest-pinned`, which lowers a *boolean* conditional into a real `branch` node, so the promise is the narrow one), `a-statement-branch-holding-an-action-in-each-arm-is-rejected` (`SMITHERS4106`, the expensive member: each arm calls a different Action, so folding the condition drops an Action out of the Plan and out of every digest computed over it), `a-do-while-loop-in-durable-source-is-rejected` (`SMITHERS4107`, its own rule because the repair is a parameterized template rather than branch lowering, and `do`/`while` is the form whose body runs before its condition is read), and `an-optional-projection-on-a-durable-input-is-rejected` (`SMITHERS4106`). All twelve are green on both backends at identical codes and authored positions. |
-| 20.12b | **an Action's failure channel mints one durable identity per Error class** — failures.mdx:33 "The compiler MUST provide stable nominal identity…" and :209 "Handler selection MUST use compiler-stable nominal identity, not a forgeable user `_tag` or minifier-sensitive constructor name in compiled artifacts", read on the durable persistence boundary of 20.12 | **fully covered as of 2026-08-27** (was "half covered; the other half is inexpressible — observation gap #15", which closed) | **`17/an-actions-failure-channel-mints-one-identity-per-error-class`** opens `plan.actions[0].errorSchema.descriptor` and asserts one variant per declared Error class, one *distinct* identity per variant, and an identity derived from the declaring module and the class's own name. Stability is worth nothing without injectivity: two Error classes arriving under one identity is exactly a forgeable key. It deliberately does **not** declare the identity's spelling — see the case's own notes and gap #15. **The other half — a COLLISION, two classes normalizing to one identity — is now declared too**, by `17/two-error-classes-whose-durable-identities-collide-are-rejected` and its paired control, `SMITHERS4124@20:10` on **both** backends with byte-identical messages (measured 2026-08-27, `--filter durable-identities`). That is the half gap #15 said could not be expressed. **`js pass / go pass` as of 2026-08-28.** It scored `js pass / go unsupported` until then, and the reason was the fork's error-schema stub: the descriptor it type-checks this program against was `{digest, format, role, schemaVersion, shape, source}` with no `descriptor` field, so `errorSchema.descriptor` reported `TS2339` on an authored `.sm` file. The fork now derives the error schema from the declared failure channel, and the two backends were measured byte-identical on this program's whole Plan — both failure identities, both `errorSchema` digests, the `contractDigest` and `plan.digest`. This obligation is now differenced on both backends rather than pinned on the reference alone; the corpus's only remaining `unsupported` count for the Go fork is **0**. |
+| 20.12b | **an Action's failure channel mints one durable identity per Error class** — failures.mdx:33 "The compiler MUST provide stable nominal identity…" and :209 "Handler selection MUST use compiler-stable nominal identity, not a forgeable user `_tag` or minifier-sensitive constructor name in compiled artifacts", read on the durable persistence boundary of 20.12 | **fully covered as of 2026-08-27** (was "half covered; the other half is inexpressible — observation gap #15", which closed) | **`17/an-actions-failure-channel-mints-one-identity-per-error-class`** opens `plan.actions[0].errorSchema.descriptor` and asserts one variant per declared Error class, one *distinct* identity per variant, and an identity derived from the declaring module and the class's own name. Stability is worth nothing without injectivity: two Error classes arriving under one identity is exactly a forgeable key. It deliberately does **not** declare the identity's spelling — see the case's own notes and gap #15. ~~**The other half — a COLLISION, two classes normalizing to one identity — is now declared too**, by `17/two-error-classes-whose-durable-identities-collide-are-rejected` and its paired control, `SMITHERS4124@20:10` on **both** backends with byte-identical messages (measured 2026-08-27, `--filter durable-identities`).~~ **Stale as of 2026-08-28: there is no longer a collision to declare.** The durable failure identity became injective (reversible `+XXXX` escaping of both components, `@` withheld as the separator), so that program compiles and the case turned over into `17/two-error-classes-whose-durable-identities-used-to-collide-now-compile`, which pins the two identities' literal spelling instead — the thing this row and gap #15 both said could not be pinned. The remaining collision family (two declarations sharing module and class name) is refused at different codes on the two backends and is covered off-corpus; see gap #15's closure note. **`js pass / go pass` as of 2026-08-28.** It scored `js pass / go unsupported` until then, and the reason was the fork's error-schema stub: the descriptor it type-checks this program against was `{digest, format, role, schemaVersion, shape, source}` with no `descriptor` field, so `errorSchema.descriptor` reported `TS2339` on an authored `.sm` file. The fork now derives the error schema from the declared failure channel, and the two backends were measured byte-identical on this program's whole Plan — both failure identities, both `errorSchema` digests, the `contractDigest` and `plan.digest`. This obligation is now differenced on both backends rather than pinned on the reference alone; the corpus's only remaining `unsupported` count for the Go fork is **0**. |
 | 20.23 | a durable implementation MUST distinguish four compilation phases: template compilation, deployment build, plan/preview, execution (`:75-80`) | **uncovered** | the corpus reaches phase 1 only. Phases 2–4 have no channel through this harness at all: the runner compiles and runs one program and observes stdout. |
 | 20.24 | plan/preview MUST NOT load or invoke the `durable(...)` function, and MUST NOT load or invoke an Action implementation (`:82`) | **uncovered** | phase 3 is unreachable; see 20.23 |
 | 20.25 | a branch or fan-out whose value is unknown to the planner MUST remain an explicit conditional or parameterized template in the reported plan (`:82`) | **uncovered** | `17/static-plan-shape-is-digest-pinned` uses `input.live ? … : …` in *expression* position and pins its edges, but never inspects the reported plan for a preserved conditional node |
@@ -3320,7 +3321,8 @@ the harness would need.
    2026-08-27. Both implementations now mint a code for the collision
    **itself** (`SMITHERS4124`, at the authored `run` call site), the fork's
    message is byte-identical to the reference's, and the corpus declares it:
-   `17/two-error-classes-whose-durable-identities-collide-are-rejected` plus its
+   `17/two-error-classes-whose-durable-identities-used-to-collide-now-compile` plus its
+<!-- renamed 2026-08-28: the case turned over from a refusal to an acceptance when the identity became injective; see observation gap #15's closure note. -->
    paired control `…-with-distinct-durable-identities-compile`. Re-measured for
    this entry with `node conformance/runner/run.mjs --backend both --filter
    durable-identities --json`:
@@ -3404,7 +3406,9 @@ the harness would need.
    does **not** declare the identity's literal spelling, because declaring
    `smithers:<module>_<Name>@1` would ratify the normalized-separator spelling
    as the contract and make the one-character repair a corpus break for a reason
-   the specification does not state.
+   the specification does not state. *(Still accurate for that case, which was
+   left as it stands. The repair happened on 2026-08-28 and the spelling is now
+   pinned by `…-used-to-collide-now-compile` instead — see the closure note above.)*
 
    **What would have to change to close it:** the specification would have to
    say which remedy is required — that is the cheap and correct fix, and it is a
@@ -3416,6 +3420,56 @@ the harness would need.
    a code for the collision rather than for a remedy. The specification sentence
    is still the right answer and is still unwritten — what changed is that the
    gap is no longer holding a fail-open while it waits.)*
+
+   **CLOSED 2026-08-28 — the second remedy was taken after all.** The entry above
+   costed "make the spelling injective" and declined it because it moves every
+   persisted `errorSchema.digest` and `contractDigest` in existence. That
+   migration has now been done, on both backends in one change. The identity is
+   `smithers:<escaped file>@<escaped class>@1`: each component reversibly escaped
+   (`+XXXX`, four upper-case hex units) and `@`, the separator, withheld from the
+   escape alphabet so neither component can spell it, with the 256-unit bound
+   honoured by digesting the exact spelling instead of cutting it. Nothing is
+   folded, so it is injective over (logical file, class name) and `$Failed` /
+   `_Failed` mint two identities.
+
+   Three things follow, and each closes a paragraph above:
+
+   - The **alternation of kinds** problem dissolves. There is no longer a choice
+     of remedies to pin, because the program is not a collision: it is ordinary
+     source that both backends compile. The case that held the refusal,
+     `two-error-classes-whose-durable-identities-collide-are-rejected`, turned
+     over into `…-used-to-collide-now-compile`, an `output` case on the same
+     program.
+   - The **spelling is now pinned**, which the paragraph above deliberately
+     refused to do while the separator was still being destroyed. That reason is
+     spent: the repair has happened, so ratifying the spelling no longer freezes
+     a string that has to move. The new case prints both identities and both
+     backends were measured minting the same bytes.
+   - The second corroborating row is **no longer true**: the fork's identity
+     spelling IS observable from `.sm` now — `errorSchema.descriptor.variants[]`
+     reaches it on both backends, which is what the new case reads. The `TS2339`
+     that made it unobservable was the fork's legacy stub error schema, gone
+     since the fork began deriving the schema from the declared failure channel.
+
+   What is NOT closed by this, and is now the only residual: the identity remains
+   a function of (logical file, class name), so two DIFFERENT declarations sharing
+   both — sibling namespaces, a namespaced class beside a top-level one of the
+   same name — are indistinguishable under any injective encoding. That family
+   still cannot be a case, but for the ordinary reason given for the same-NAME
+   family rather than for a missing specification sentence: the fork refuses it
+   module-wide as SMITHERS1150 (its RUNTIME identity is a function of the same
+   pair) while the reference reports SMITHERS4124 alone, so a case would freeze
+   two unrelated rules against each other. Both backends keep direct off-corpus
+   coverage of that refusal.
+
+   The cross-backend agreement that used to rest on two hand-maintained copies of
+   one algorithm now rests on `conformance/identity/durable-failure-identity.json`
+   — 28 shared vectors read by both backends' tests, the same mechanism
+   `nominal-error-identity.json` provides for the runtime spelling. That file
+   exists because a differential could never have found this: both backends
+   spelled the identity the same wrong way, so every cross-backend comparison
+   agreed byte-for-byte on the colliding answer and this corpus reported
+   `0 divergent` on the very program that measured it.
 
 16. **Comptime object key order is unsettled by the specification, and the
    corpus already ratifies BOTH halves of the contradiction in one file.**

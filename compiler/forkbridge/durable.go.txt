@@ -251,46 +251,108 @@ func durableLogicalFile(file *ast.SourceFile) string {
 // units, exactly as the reference frontend's MAX_IDENTITY_LENGTH does.
 const durableMaxIdentityLength = 256
 
+// isDurableIdentityUnit is [A-Za-z0-9._/:-] — the durable failure ENVELOPE
+// validator's alphabet (poc/src/durable/schema.ts,
+// /^[A-Za-z0-9][A-Za-z0-9._/@:+-]{0,255}$/) MINUS '+' and MINUS '@'.
+//
+// Both withholdings are load-bearing. '+' is the escape introducer, so an
+// unescaped '+' can never occur and every '+' in the output starts exactly one
+// five-unit escape. '@' is the SEPARATOR, and withholding it from both
+// components is what makes the composed spelling injective: the identity then
+// contains exactly two '@' — the file/class separator and the trailing version
+// marker — so the parse is unambiguous.
+//
+// It is deliberately NOT isEscapedIdentityPathUnit, which admits '@' because
+// stableErrorIdentity's separator is ':' and it parses at the LAST ':'.
+func isDurableIdentityUnit(unit uint16) bool {
+	if isStableIdentityAlphanumeric(unit) {
+		return true
+	}
+	switch unit {
+	case '.', '_', '/', ':', '-':
+		return true
+	}
+	return false
+}
+
+// escapeDurableIdentityComponent is the reference frontend's
+// escapeDurableIdentityComponent (poc/src/durable/site-id.ts), unit for unit.
+//
+// There is no index-0 special case, matching the reference: the composed
+// identity always begins with the literal "smithers:", so the envelope
+// validator's leading-character rule is already satisfied.
+func escapeDurableIdentityComponent(component string) []uint16 {
+	escaped := []uint16{}
+	for _, unit := range utf16.Encode([]rune(component)) {
+		if isDurableIdentityUnit(unit) {
+			escaped = append(escaped, unit)
+			continue
+		}
+		escaped = append(escaped, utf16.Encode([]rune(fmt.Sprintf("+%04X", unit)))...)
+	}
+	return escaped
+}
+
 // durableFailureIdentity mints the identity a durable CONTRACT carries for one
-// nominal Error class. It is a port of the reference frontend's `stableIdentity`
-// (poc/src/durable/schema.ts): `smithers:<logical file>#<class name>@1` with
-// every character outside [A-Za-z0-9._/@:+-] rewritten to `_`, falling back to
-// an injective digest of (file, name) once the result is over the bound.
+// nominal Error class: "smithers:<logical file>@<class name>@1", both components
+// reversibly escaped. It is a port of the reference frontend's
+// `durableFailureIdentity` (poc/src/durable/site-id.ts), and the two are pinned
+// against each other by the shared vectors in
+// conformance/identity/durable-failure-identity.json, which both backends read;
+// they are NOT maintained by reading one another.
 //
 // It is deliberately NOT `stableErrorIdentity`, the RUNTIME spelling
-// `smithers:<file>:<Name>` this bridge emits into `__smithersRegisterError`.
-// The two spellings coexist on purpose and must not be unified here: `:`
-// survives normalization and `#` does not, so the runtime spelling is injective
-// over (file, name) while the contract spelling blurs the separator into the
-// file and the name. That is precisely why a contract identity can collide
-// while the runtime identity beside it does not, and why a guard on the runtime
-// spelling would not see the collision at all.
+// `smithers:<file>:<Name>` this bridge emits into `__smithersRegisterError`. The
+// two spellings coexist on purpose and must not be unified: they are validated
+// by two different rules — the runtime registry's STABLE_ERROR_IDENTITY, and the
+// durable failure ENVELOPE validator, which does not accept '$' or an arbitrary
+// ID_Continue letter — and a persisted envelope carries the contract spelling.
 //
 // This IS emitted: `durableErrorDescriptor` puts it in every structural error
 // variant, so it is hashed into the Action's `errorSchema` digest, its
-// `contractDigest`, the Flow's `flowSchemas.error`, and the Plan digest. It was
-// derived-and-discarded until 2026-08-28, when the error channel stopped being a
-// stub, so the normalization and the bound below are now contract bytes rather
-// than a refusal test — which is why they are defined on UTF-16 code units.
+// `contractDigest`, the Flow's `flowSchemas.error`, and the Plan digest.
 //
-// The normalization and the bound are defined on UTF-16 code units because the
-// reference is JavaScript string surgery: `String.prototype.replace` with a
-// non-unicode character class rewrites each unit of a surrogate pair
-// separately, and `String.prototype.length` counts units. A rune-wise port
-// would disagree with the reference on exactly the inputs this exists to
-// classify. The normalized units can never contain a surrogate — every
-// non-ASCII unit is replaced by `_` — so decoding back is lossless.
+// THE INJECTIVITY RULE. Until 2026-08-28 this spelled `smithers:<file>#<name>@1`
+// and then rewrote every unit outside [A-Za-z0-9._/@:+-] to '_'. '#' is not in
+// that class, so the SEPARATOR was the first thing destroyed, and the fold was
+// many-to-one on both components besides. Measured on this backend, zero
+// diagnostics, ending in a runtime "already registered" throw:
+//
+//	"a b.sm"/Boom, "a_b.sm"/Boom, "a#b.sm"/Boom, "a%b.sm"/Boom, "a!b.sm"/Boom
+//	  -> smithers:a_b.sm_Boom@1        (charset collapse, a five-member family)
+//	"a.sm_B"/C and "a.sm#B"/C and "a.sm"/B_C
+//	  -> smithers:a.sm_B_C@1           (separator destruction — and two of those
+//	                                    three hold NO character outside the
+//	                                    alphabet, so escaping alone is not a fix)
+//	$Failed and _Failed in one file    (class-name collapse)
+//
+// So no step here may destroy information: both components are escaped
+// reversibly, the separator is withheld from the alphabet so neither component
+// can spell it, and the bound is honoured by DIGESTING the exact spelling rather
+// than by cutting it or by keeping a 48-hex-digit prefix. "smithers.digest:"
+// cannot be confused with the ordinary "smithers:" spelling — the ninth unit is
+// '.' in one and ':' in the other.
+//
+// Every step is defined on UTF-16 code units because the reference is JavaScript
+// string surgery and the two identities must be the same string for the same
+// class or the wire is not interoperable. A non-BMP character therefore
+// contributes two escapes rather than one, and the bound is 256 units rather
+// than 256 runes.
 func durableFailureIdentity(sourceName string, name string) string {
-	units := utf16.Encode([]rune("smithers:" + sourceName + "#" + name + "@1"))
-	for index, unit := range units {
-		if !isStableIdentityPathUnit(unit) {
-			units[index] = '_'
-		}
+	units := utf16.Encode([]rune("smithers:"))
+	units = append(units, escapeDurableIdentityComponent(sourceName)...)
+	units = append(units, '@')
+	units = append(units, escapeDurableIdentityComponent(name)...)
+	units = append(units, utf16.Encode([]rune("@1"))...)
+	spelled := string(utf16.Decode(units))
+	if len(units) <= durableMaxIdentityLength {
+		return spelled
 	}
-	if len(units) > durableMaxIdentityLength {
-		return "smithers:error/" + durableDigest(map[string]any{"fileName": sourceName, "name": name})[:48] + "@1"
-	}
-	return string(utf16.Decode(units))
+	// Digesting the SPELLING rather than the pair is what makes the fallback
+	// injective for free: the spelling is already injective over (file, name), so
+	// the digest inherits that up to SHA-256 collision resistance. []byte(spelled)
+	// is the same byte sequence Node's update(..., "utf8") hashes.
+	return fmt.Sprintf("smithers.digest:%x@1", sha256.Sum256([]byte(spelled)))
 }
 
 // durableFailureIdentityCollides answers the collision in one Action's checked
