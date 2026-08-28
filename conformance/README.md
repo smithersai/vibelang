@@ -448,15 +448,18 @@ node scripts/oracle-differential.mjs --jobs 6                # the divergence se
 node -e "const d=require('./conformance/product-divergence.json');const b={};for(const r of d.divergences)b[r.direction]=(b[r.direction]||0)+1;console.log(d.total,d.divergent,b)"
 ```
 
-Re-derived 2026-08-28: the corpus is **507** tracked cases, of which **59
-disagree** with the CLI, and the measured set equalled
-`product-divergence.json` exactly.
+Re-derived 2026-08-28: **507** tracked cases and **59** disagreements at 01:35,
+and the measured set equalled `product-divergence.json` exactly; **508** and
+**60** fifteen minutes later, after a concurrent lane landed one case in
+`17-durable`. Both readings were correct when taken. That is the half-life of a
+number in this file, and it is why the commands above are the authority and this
+sentence is only an example of one.
 
-Read the 59 with its buckets, not as one number. The one that would be alarming
-— **the product ACCEPTING what the corpus refuses — is 0**: no corpus green
-certifies a rule the shipped compiler fails to enforce. Nine are the product
-refusing what the corpus accepts, and fifty are both refusing at a different code
-or position.
+Read the count with its buckets, not as one number. The one that would be
+alarming — **the product ACCEPTING what the corpus refuses — is 0**, and has
+been across every re-derivation: no corpus green certifies a rule the shipped
+compiler fails to enforce. The rest split into the product refusing what the
+corpus accepts, and both refusing at a different code or position.
 
 One operational note, because it looks like a regression and is not: the gate
 measures the corpus **on disk**, not the corpus in git. An untracked
@@ -491,11 +494,13 @@ The three directions the record distinguishes, worst first:
 | `direction` | meaning | today |
 | --- | --- | --- |
 | `product-accepts` | the corpus requires a refusal and the CLI **compiled the program**. A green corpus row is certifying a rule the shipped compiler does not enforce. | **0** |
-| `product-refuses` | the corpus certifies a program that compiles and runs, and the CLI cannot process it | 9 |
+| `product-refuses` | the corpus certifies a program that compiles and runs, and the CLI cannot process it | 10 |
 | `both-refuse` | both refuse, with a different code or a different position — the corpus row rests on a diagnostic no user ever sees | 50 |
 
-The "today" column is a snapshot dated 2026-08-28; the third command above
-regenerates it from the record in one line.
+The "today" column is a snapshot taken 2026-08-28 at 01:50 and it goes stale
+within the hour; the third command above regenerates all three rows from the
+record in one line. Only the `product-accepts` **0** is a standing claim, and
+`selftest.mjs` gates it.
 
 `product-accepts` being empty is the reason this is a recorded divergence rather
 than a stop-the-line defect, and `selftest.mjs` asserts it stays empty.

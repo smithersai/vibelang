@@ -2,8 +2,8 @@
   "schema": "smithers.product-divergence/v1",
   "measuredBy": "scripts/oracle-differential.mjs",
   "purpose": "Every corpus case where `node bin/smithers.js check` disagrees with the case's declared expectation. The conformance runner measures two BACKENDS; neither is the shipped CLI, so this file is the written record of how far the product is from the contract the corpus is quoted as stating. `direction` product-accepts is the dangerous one \u2014 the corpus requires a refusal and the product compiled it. `verdict` says which side is wrong; `decision-needed` rows may not be moved by either side until the decisions ledger owner settles them. A row disappears when the divergence is FIXED, never when it is tolerated. The `total` field records the corpus size at the last revision and is DESCRIPTIVE, not a gate: it has gone stale twice (424 -> 438 -> 465) simply because the corpus grows, and gating on its equality would train re-baselining rather than catch anything. The gate is the divergence SET.",
-  "total": 507,
-  "divergent": 59,
+  "total": 508,
+  "divergent": 60,
   "divergences": [
     {
       "id": "01-result-lifting/a-star-re-export-of-the-compiler-owned-prelude-is-refused",
@@ -259,6 +259,15 @@
       "verdict": "product-wrong",
       "cause": "durable-source-lowering-absent-from-check-and-run",
       "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/action-success-field-order-is-utf16-not-utf8",
+      "direction": "product-refuses",
+      "corpus": "ACCEPTED",
+      "product": "SMITHERS1207@18:19",
+      "verdict": "product-wrong",
+      "cause": "durable-source-lowering-absent-from-check-and-run",
+      "note": "ADDED 2026-08-28 with the corpus case that pins descriptor field order at the surrogate boundary. Same cause and same spelling as 17-durable/a-single-action-flow-lowers-to-a-static-plan and 17-durable/static-plan-shape-is-digest-pinned: `src/cli.ts` has no durable stage in check or run, so `Emit.run({...})!` on line 18 is a `!` on a value the semantic stage does not know is a Result \u2014 `Action.run` is only typed as one after the durable lowering the CLI never performs \u2014 and SMITHERS1207 fires at the call. NOTHING about this row is specific to the case's non-ASCII field names: the product refuses it at the propagation operator, before it could have an opinion about descriptor order at all. Renaming the fields to ASCII produces the identical refusal, which is how that was established rather than assumed. Direction is product-refuses, so product-ACCEPTS stays 0. The row disappears when check and run gain the durable stage, together with the other six 17-durable product-refuses rows; it is not a divergence this case can fix."
     },
     {
       "id": "17-durable/an-action-input-projection-the-descriptor-can-answer-is-accepted",

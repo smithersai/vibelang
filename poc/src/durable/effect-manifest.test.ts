@@ -168,6 +168,13 @@ const CORPUS_EXPECTATIONS: Readonly<Record<string, readonly [
   "a-single-action-flow-lowers-to-a-static-plan": ["plan", undefined, undefined],
   "a-sleep-duration-projection-the-descriptor-does-not-have-is-rejected": ["plan-refused", "SMITHERS4110", undefined],
   "a-statement-branch-holding-an-action-in-each-arm-is-rejected": ["plan-refused", "SMITHERS4106", undefined],
+  // Boundary-straddling Action success field names. Nothing about the Manifest
+  // depends on descriptor field ORDER — it carries contract digests, and the
+  // digest is what the order feeds — so this row is deliberately an ordinary
+  // `"plan"`: the case is here to prove the cross-check still agrees on an
+  // Action whose contract digest is derived from non-ASCII field names, not to
+  // pin a Manifest-specific behaviour.
+  "action-success-field-order-is-utf16-not-utf8": ["plan", undefined, undefined],
   "an-action-input-projection-the-descriptor-can-answer-is-accepted": ["plan", undefined, undefined],
   "an-action-input-projection-the-descriptor-does-not-have-is-rejected": ["plan-refused", "SMITHERS4110", undefined],
   "an-action-input-projection-through-a-durable-string-is-rejected": ["plan-refused", "SMITHERS4110", undefined],
