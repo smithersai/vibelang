@@ -680,15 +680,30 @@ line rather than instead of them.
 
 ## Current `xfail`s
 
-**Eighteen, as of 2026-08-26 (second revision that day).** Sixteen name `go`,
-three name `js`, and one of those names both. **None of the eighteen is a
-fail-open**, and that is a change from earlier the same day: the one fail-open
-this table has carried since 2026-08-25 —
+**Twenty, as of 2026-08-28**, re-derived with the command above rather than by
+adding two to the previous figure. Eighteen name `go`, three name `js`, and one
+of those names both. **None of the twenty is a fail-open** — but read
+`Markers holding a fail-open: N` on the run rather than this sentence, per the
+paragraph below. Every expectation below is written from the documentation and
+none was softened.
+
+**The 2026-08-28 revision added two and retired none.** Both are the same
+reachability gap on the same fork table —
+`01-result-lifting/result-flatten-collapses-one-level-of-nesting` and
+`…/result-tap-both-observes-whichever-variant-is-active` — and they are the first
+rows here filed *by* a reference-side fix rather than against one: `flatten` and
+`tapBoth` were implemented and tested on the runtime while **neither** backend
+could reach them, so there was nothing for a differential to see. That is the
+blind spot this corpus has to be told about, because a member missing from both
+implementations diverges in no direction: the reference reached them by deriving
+its prelude and its discharge set from one table, and the fork has not.
+
+**Standing at the previous revision (2026-08-26, second that day):** eighteen,
+sixteen naming `go`. The one fail-open this table carried since 2026-08-25 —
 `09-foreign-calls/a-foreign-index-signature-read-is-refused-on-one-backend-only`
-— was closed, and its marker survives in the **fail-closed** direction because
-the fork now refuses the program at the reference's position and only the row
-charge is still missing. Every expectation below is written from the
-documentation and none was softened.
+— was closed then, and its marker survives in the **fail-closed** direction
+because the fork now refuses the program at the reference's position and only the
+row charge is still missing.
 
 **Do not read that sentence as durable — read the run instead.** It has now been
 wrong in both directions inside twenty-four hours: the register asserted no
@@ -765,11 +780,14 @@ they pin is present, and only the `SMITHERS1101` row charge is not.
 | `09-foreign-calls/a-foreign-index-signature-read-through-an-element-access-needs-an-adapter` | go | fail-closed (missing row charge) | reports `SMITHERS1506@4:17` and refuses the program; omits the `SMITHERS1101@3:1`. The deliberate pair of the row above — `keyed["width"]` against `keyed.width` — and the pair is the only thing in the corpus that can tell a receiver-keyed rule from one keyed on `ts.PropertyAccessExpression`. On the pre-fix tree the fork compiled this, ran it and exited 0 printing `3`. |
 | `09-foreign-calls/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter` | go | fail-closed (missing row charge) | reports `SMITHERS1506@4:17` and refuses the program; omits the `SMITHERS1101@3:1`. `constructor` is declared only in `lib.es5.d.ts`, which is why this row is the one that shows the member's declaring **file** was never the question either: a foreign object may serve `constructor`, `length` or `toString` from a throwing getter. On the pre-fix tree the fork compiled this, ran it and exited 0 printing `false`. |
 | `09-foreign-calls/destructuring-a-foreign-value-runs-its-accessors` | go | fail-closed (missing row charge) | reports `SMITHERS1506@4:9` — at the binding **pattern**, agreeing with the reference on the position as well as the code — and refuses the program; omits the `SMITHERS1101@3:1`. A property read with no property-access node to see, which is why it is a separate row from the two above. On the pre-fix tree the fork compiled this, ran it and exited 0 printing `3`. |
+| `01-result-lifting/result-flatten-collapses-one-level-of-nesting` | go | fail-closed (member not reachable) | refuses with `[SMITHERS1301@15:19, SMITHERS1301@16:18]` where the reference runs the program: the fork's own copy of the discharge set, `resultConsumerMembers` in `compiler/forkbridge/lowering.go.txt`, is the same eleven names the reference used to hard-code and has not learned `flatten`, so the member is unrecognized and the Result reads as unconsumed. The fork needs **two** edits, and its own start-up assertion `len(resultConsumerDecls) != 2*len(resultConsumerMembers)` says so: the name must join the list *and* both `SmithersOk` and `SmithersErr` must implement it. Added 2026-08-28 with the reference-side fix that made the member reachable at all. |
+| `01-result-lifting/result-tap-both-observes-whichever-variant-is-active` | go | fail-closed (member not reachable) | `[SMITHERS1301@14:19, SMITHERS1301@17:18]`, the same cause on `tapBoth`; the two retire together. Whoever closes them should carry the runtime's handler-object validation across too — a missing branch panics rather than being silently skipped — which no case yet probes on either backend. |
 
-**Sixteen of the eighteen pin current behaviour rather than a regression**, and
+**Eighteen of the twenty pin current behaviour rather than a regression**, and
 each says so in its own `reason`. Only the two arrow-body rows are a live
 over-reach in a rule that moved; the position row, the parameter row, the **six**
-row-charge rows, the two union rows and the four documentation
+row-charge rows, the two union rows, the two Result-member rows and the four
+documentation
 gaps are all pre-existing and were newly *measured* rather than newly caused. The
 distinction is load-bearing: "a gap the fork has not reached yet", "a rule the
 fork had and lost last night", and "a question the specification never answered"

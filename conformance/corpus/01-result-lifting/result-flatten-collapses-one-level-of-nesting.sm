@@ -1,0 +1,21 @@
+export class Missing extends Error {
+  constructor(readonly key: string) { super(`no entry for ${key}`) }
+}
+
+function lookup(key: string): Result<string, Missing> {
+  if (key !== "ada") throw new Missing(key)
+  return "Ada Lovelace"
+}
+
+export function main(): string[] {
+  // `Result.try` over a Result-returning body is the authored form that builds
+  // a genuinely nested Result: the body's own value is the success, so this is
+  // Result<Result<string, Missing>, Panic>. flatten collapses exactly one
+  // level, and the inner failure survives into the combined error channel.
+  const present = Result.try(() => lookup("ada")).flatten()
+  const absent = Result.try(() => lookup("zoe")).flatten()
+  return [
+    present.match({ ok: (value) => value, error: (error) => error.message }),
+    absent.match({ ok: (value) => value, error: (error) => error.message }),
+  ]
+}
