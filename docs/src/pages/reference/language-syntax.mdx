@@ -57,7 +57,12 @@ Absence is an ordinary TypeScript union. There is no `Optional<T>` and no option
 const nickname = findUser(id)!?.nickname ?? "anonymous"
 ```
 
-`arr[2]` is `T | undefined`: `noUncheckedIndexedAccess` is mandatory.
+`arr[2]` is specified to be `T | undefined` —
+[Compatibility](/specification/compatibility) §Mandatory makes
+`noUncheckedIndexedAccess` a required option. **The shipped compiler does not
+enforce it yet**: `const v: number = arr[2]` checks clean today, because every
+`compilerOptions` block it constructs sets `strict: true` and nothing else. Set
+the flag in your own `tsconfig.json` if you want the guarantee.
 ## Requirements
 
 ```ts
@@ -123,10 +128,18 @@ All non-code and foreign-source imports use standard import attributes:
 import config from "./config.json" with { type: "json" }
 import frozen from "./config.json" with { type: "json", mode: "const" }
 import prompt from "./prompt.md" with { type: "text" }
-import kernel from "./kernel.zig" with { type: "zig" }
+import readme from "./readme.md" with { type: "markdown" }
+import page from "./page.mdx" with { type: "mdx" }
+import blob from "./icon.png" with { type: "bytes" }
 ```
 
 Attribute values are strings. Ordinary `.sm`, `.ts`, and `.js` code imports do not need a `type` attribute.
+
+The built-in loader types are exactly `json`, `text`, `bytes`, `markdown`, and
+`mdx`. Any other value — including the foreign-source types `zig`, `rust`, and
+`wasm` that earlier drafts of this page showed — is refused with `SMITHERS5213`,
+"no comptime loader registered for import type '…'", unless a project registers
+its own loader for that type through `comptime.loader`.
 
 ## Deliberately Absent Syntax
 

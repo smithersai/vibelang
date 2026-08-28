@@ -104,10 +104,10 @@ For a known error union, `error.match` is exhaustive and narrows each handler ar
 ```ts
 async function loadUser(
   id: string,
-): Promise<Result<User, Timeout | InvalidResponse>> {
+): Promise<Result<User, HttpError | MalformedResponse | ValidationError>> {
   const http = HttpClient.context()
   const response = (await http.get(`/users/${id}`))!
-  return (await response.json(User))!
+  return UserSchema.parse(response.json()!)!
 }
 ```
 
@@ -179,6 +179,15 @@ JavaScript statement-form `try/catch` remains available for low-level interop. I
 ## Cleanup
 
 Scope-exit cleanup uses TC39 explicit resource management, inherited from TypeScript:
+
+:::warning Illustrative API
+`createTemp`, `replace`, and a writable file handle are **not** on the shipped
+`FileSystem` capability, which declares exactly `readText`, `writeText`,
+`readBytes`, `writeBytes`, `exists`, `remove`, `mkdir`, `readDir`, and a `*Sync`
+counterpart for each. The snippets below illustrate the *shape* of failure
+handling with `using`; write them against the members above, or against your own
+capability that provides the rest.
+:::
 
 ```ts
 function replaceFile(

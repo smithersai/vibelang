@@ -31,6 +31,15 @@ implementation work item, not a documented divergence — nothing in the corpus 
 `conformance/product-divergence.json` records it, because there the corpus and
 the product agree with each other and disagree with the specification.
 
+There is a blunter obstacle in front of that one, measured 2026-08-28: the
+shipped `smithers check` has **no durable stage at all**, so
+`import { durable } from "smithers:flows"` does not even resolve — it reports
+`TS2307: Cannot find module 'smithers:flows'`. The specifier is compiler-owned,
+but only the durable lowering stage erases it, and `check` and `run` never run
+that stage; `compileDurableSource` is reached only from `smithers plan
+--bindings`. So no sample on this page compiles through the ordinary CLI path
+today, independently of the model gap above.
+
 Every durable sample on this page is affected. The marker convention and the
 register of current gaps are in [Specification Status](/specification/index)
 §Specification–Implementation Gaps.
@@ -131,21 +140,37 @@ separate deployment responsibilities.
 Actions are abstract capabilities. Layers install ordinary function implementations and their policies:
 
 ```ts
-import { Action, Layer } from "smthrs/provider"
+import { Provider } from "smthrs/durable/bun"
 
-const BuildActions = Layer.merge(
-  Action.provide(Compile, compileWithEsbuild, {
-    recovery: Action.idempotent,
-    reuse: Action.content,
-  }),
-  Action.provide(Package, packageArtifact, {
-    recovery: Action.idempotent,
-    reuse: Action.execution,
-  }),
-)
+const CompileLive = Provider.provide(Compile, compileWithEsbuild, {
+  implementationId: "compile-bun",
+  implementationVersion: "1.0.0",
+  recovery: { mode: "repeatable", maxAttempts: 2 },
+  reuse: { kind: "content" },
+  target: "typescript-bun",
+})
+
+const PackageLive = Provider.provide(Package, packageArtifact, {
+  implementationId: "package-bun",
+  implementationVersion: "1.0.0",
+  recovery: { mode: "repeatable", maxAttempts: 2 },
+  reuse: { kind: "execution" },
+  target: "typescript-bun",
+})
 ```
 
 The abstract Action owns the durable contract. A deployment layer chooses its implementation, placement, resource limits, and recovery policy.
+
+Two things this snippet used to get wrong, both worth knowing. Providers are
+registered through `Provider.provide` on the durable host entry point, not
+through `Action.provide` on `smthrs/provider` — that name exists but is a stub
+that throws `Action.provide is not part of the prototype runtime; use
+smthrs/durable/bun`. And the policies are plain objects, not constants:
+`Action.idempotent`, `Action.content`, and `Action.execution` do not exist.
+`mode` is one of `repeatable`, `downstream-deduplicated`, `manual`, and `kind`
+is one of `execution`, `memo`, `content` — see
+[Actions & Flows](/reference/actions-and-flows) §Recovery Policy for what each
+one grants.
 
 ## Control Flow in a Flow
 

@@ -39,15 +39,13 @@ Imported TypeScript and JavaScript retain ordinary Promise behavior internally.
 | explicit return annotation | a non-Result annotation on a fallible function is a compile error |
 | calling unannotated TS/JS | adds the distinguished checked `panic` case |
 | `await` | removes only the Promise layer, never unwraps the Result |
-| `any` and `eval` | contribute `TypeScript` rather than being forbidden |
+| `eval` | **forbidden** — `SMITHERS1604`, "ambient dynamic code evaluation through 'eval' is unavailable" |
+| `any` | ordinary TypeScript; it charges no requirement of its own. The `TypeScript` requirement this row once named was withdrawn with the portability pin on 2026-08-23 and no longer exists. |
 | `Error` subclasses | gain nominal identity plus `is`, `matches`, `match`, `matchPartial`, `rootCause` |
-| expression `switch` | no fallthrough; statement `switch` keeps TypeScript behavior |
-| expression `switch` over a closed union | must be exhaustive |
+| statement `switch` | keeps TypeScript behavior. Expression-position `switch` was withdrawn — see §Deliberately Absent Syntax — so the fallthrough and closed-union-exhaustiveness rules earlier drafts stated for it no longer apply to anything. |
 | JavaScript `try` / `catch` | still valid, and never changes a function's Result contract |
 | postfix `!` | propagates a Result error to the caller — Zig's `try foo()`, not an assertion |
 | `??` / `?.` | unchanged nullish semantics; never reinterpreted for failures |
-| `arr[2]` | `T \| undefined` — `noUncheckedIndexedAccess` is mandatory |
-| `{ a?: number }` | does not accept `{ a: undefined }` — `exactOptionalPropertyTypes` is mandatory |
 
 ## Built-ins With Compiler Meaning
 
@@ -68,10 +66,10 @@ These add no grammar. The compiler recognizes the resolved binding identity, so 
 | Difference | Detail |
 | --- | --- |
 | source extension | `.sm`. The JSX-capable extension is **open**; `.smx` is a candidate only |
-| non-code imports | always import attributes — `with { type: "json" \| "text" \| "mdx" \| "zig" }` |
+| non-code imports | always import attributes — `with { type: "json" \| "text" \| "bytes" \| "markdown" \| "mdx" }`, plus any type a project registers with `comptime.loader`. Any other value, `zig` and `rust` included, is `SMITHERS5213`. |
 | const JSON | `with { type: "json", mode: "const" }` yields a deeply readonly literal type |
 | loader selection | file extensions never select a loader |
-| compiler-owned specifiers | exactly `smithers`, `smthrs/`, and `smithers:` — a prefix confers no trust |
+| compiler-owned specifiers | an **exact** six-member set — `smthrs/context`, `smthrs/provider`, `smthrs/schema-runtime`, `smithers:exceptions`, `smithers:comptime`, `smithers:flows` (`COMPILER_INTRINSIC_SPECIFIERS`). A prefix confers no trust, which cuts both ways: bare `smithers` and `smthrs/anything-else` are ordinary foreign modules and draw `SMITHERS1510`. `smithers:schema` is owned upstream by the comptime stage, which lowers it to `smthrs/schema-runtime` before the semantic stage sees it. |
 | host modules | **Direction:** direct host-module use carries an exact requirement such as `Module<"node:fs">` |
 
 ## Considered and Rejected

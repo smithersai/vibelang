@@ -12,7 +12,10 @@ API remain open. Names on this page communicate the intended shape.
 Do not transcribe the specifier: `@smithers/agent` is **not** a published
 package. What ships today is `smthrs/agent`, and `CodingAgent.make` is real on
 it. The sandbox is not — the shipped sandbox is `DenoSubprocessSandbox`, and
-`TypeScriptSandbox` is one of the open constructor names above.
+`TypeScriptSandbox` is one of the open constructor names above. Its limits are
+numbers, not duration or size strings: `timeoutMs: number` and
+`memoryMb: number`, both validated with `Number.isSafeInteger`, so the
+`"30s"` / `"512mb"` spellings below are illustrative only.
 :::
 
 ## Define a Coding Agent
@@ -95,6 +98,13 @@ The agent package supplies ordinary MDX components:
 ```
 
 The Smithers compiler loads MDX as a typed module. The agent library decides how components become provider messages, attachments, and model-specific payloads.
+
+What the shipped renderer actually collects, measured 2026-08-28, is narrower
+than the sample: `<System>`, `<Context>`, and `<Task>` only, and only in paired
+`<X>…</X>` form. A self-closing `<File path="…" />` is not a component the
+renderer knows — it passes through as literal text inside its `<Context>`. It
+is one of the open "MDX component vocabulary" names the note at the top of this
+page refers to.
 
 ## Durable Turns
 

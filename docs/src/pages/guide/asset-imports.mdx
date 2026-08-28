@@ -112,12 +112,19 @@ import image from "./logo.png" with { type: "bytes" }
 
 ## Rust and Zig Source
 
+:::warning Not implemented — measured 2026-08-28
+No `rust` or `zig` loader is registered. The built-in set is exactly `json`,
+`text`, `bytes`, `markdown`, and `mdx`, so both lines below are refused with
+`SMITHERS5213`, "no comptime loader registered for import type 'zig'". This
+section describes intent; nothing here compiles today.
+:::
+
 ```ts
 import { tokenize } from "./parser.rs" with { type: "rust" }
 import { hashMany } from "./hash.zig" with { type: "zig" }
 ```
 
-The compiler invokes the foreign toolchain and produces checked bindings. Host, compiler versions, feature attributes, and the foreign dependency graph are tracked inputs.
+The compiler would invoke the foreign toolchain and produce checked bindings. Host, compiler versions, feature attributes, and the foreign dependency graph are tracked inputs.
 
 ## Existing Native npm Packages
 

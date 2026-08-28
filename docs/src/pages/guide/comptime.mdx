@@ -18,10 +18,14 @@ You do not need to mark routine constant folding.
 Import `comptime` when the result must exist during compilation:
 
 ```ts
-import { comptime } from "smithers:comptime"
+import { comptime, embed } from "smithers:comptime"
 
 const routes = comptime(parseRoutes(embed("./routes.json")))
 ```
+
+`embed` is a second named import from the same module, not an ambient global.
+Importing only `comptime` and calling `embed(...)` is refused with `VCT1004`,
+"call is not a compiler intrinsic".
 
 If `parseRoutes` depends on a runtime value or unavailable capability, compilation fails at that expression instead of moving the work silently to runtime.
 
@@ -48,11 +52,14 @@ const routes = comptime(() => {
 Comptime values can produce types:
 
 ```ts
-import { comptime } from "smithers:comptime"
+import { comptime, embed } from "smithers:comptime"
 
-const definition = comptime(JSON.parse(embed("./api.json")))
-const Api = comptime(deriveApi(definition))
+const Api = comptime(deriveApi(JSON.parse(embed("./api.json"))))
 ```
+
+Compose inside **one** `comptime(...)`. Reading an existing comptime binding
+from inside a second `comptime(...)` — `const a = comptime(1); const b =
+comptime(a + 1)` — is refused with `VCT1004` on the producing call.
 
 `Api` is a type-valued compile-time binding and is a normal checked type
 everywhere it is used. Generated declarations participate in editor tooling
@@ -68,7 +75,15 @@ remains to be specified. Unsupported type production must fail compilation.
 
 ## Target Selection
 
-`comptime.target` describes the selected output environment:
+`comptime.target` describes the selected output environment.
+
+:::warning The documented target names are not reachable yet — measured 2026-08-28
+The shipped `smithers` CLI hard-codes the target to `"node-es2022"` and no flag
+changes it, so the lookup below fails with `VCT1004`, `property "node-es2022" is
+absent from the comptime value`. The pattern is right; give the record a
+`"node-es2022"` key, or key it on whatever `target` your own programmatic host
+passes. See [Comptime](/reference/comptime) §Target Selection.
+:::
 
 ```ts
 import { comptime } from "smithers:comptime"

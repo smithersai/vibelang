@@ -110,3 +110,22 @@ relaxed**. The guarantee they protected is unchanged and now holds structurally.
 Hosts previously refused for lacking a synchronous settlement hook are now fully
 supported. See
 [Requirements](/specification/requirements) §Amendment Record.
+
+:::danger Not yet implemented — (SA-6), measured 2026-08-28
+The runtime on this branch still enforces all three withdrawn obligations, so
+this section describes the decision and not the behaviour. `Layer.provide` is
+implemented with `v8.promiseHooks.createHook` and `AsyncLocalStorage`
+(`poc/src/runtime/layer.ts`) — a settlement hook and ambient storage, which is
+what "structural, not a settlement hook" above says was removed. Reproduce:
+
+```js
+await Layer.provide(layer, () => preExistingPromise)
+// TypeError: Layer.provide async body must return a Promise created by that
+// body; wrap an existing Promise with `async () => await promise`
+```
+
+The refusal quotes the withdrawn adapter verbatim as the required remedy, and a
+host without exact settlement hooks is still refused outright. Until the runtime
+is migrated, treat the paragraph above as the target and the error message as
+the contract.
+:::

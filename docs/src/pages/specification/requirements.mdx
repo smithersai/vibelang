@@ -119,6 +119,14 @@ the fail-closed refusal on a host without a synchronous settlement hook, and the
 author-written `async () => await existingPromise` adapter. Hosts previously
 refused for lacking that hook are now fully supported.
 
+**(SA-6) — unimplemented on this branch, measured 2026-08-28.** All three withdrawn
+obligations are still enforced by `poc/src/runtime/layer.ts`, which still uses
+`v8.promiseHooks.createHook` and `AsyncLocalStorage`. `Layer.provide(l, () =>
+preExistingPromise)` throws, and its message names the withdrawn adapter as the
+fix; a host without exact settlement hooks is still refused. The amendment
+records a decision, not a shipped state — see
+[Capabilities](/reference/capabilities) §Withdrawn for the reproduction.
+
 `Layer.provide(layer, body)` keeping its environment active through `body` and
 the Promise returned by `body` is retained verbatim. Layer merging and nested
 override precedence remain **open** and still fail closed.

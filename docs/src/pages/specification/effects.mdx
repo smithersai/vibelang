@@ -92,6 +92,25 @@ function may request, directly or transitively.
 - A function whose row is empty MUST NOT be emitted in the resumable calling convention. This is the same obligation [Compatibility](/specification/compatibility) states as "infallible functions MUST NOT be wrapped".
 - A call whose callee the compiler cannot resolve, and whose callee type carries no row, MUST be rejected rather than lowered with an assumed convention.
 
+:::danger The lowering in this section is not wired — (SA-3), measured 2026-08-28
+The *substrate* exists and is complete: `poc/src/runtime/effect.ts` implements
+the three request kinds, `Continuation`, `Handler`, `Resumable`, `handle`,
+`resultFrame`, `runHandled`, `capabilityHandler`, and `__vsGet` / `__vsPerform` /
+`__vsPropagate`. Nothing reaches it. That module is not re-exported from the
+runtime index, and the compiler emits no call into it — a grep for those symbols
+across `poc/src/language/compile.ts`, `poc/src/language/semantic.ts`, and `src/`
+returns nothing.
+
+What ships is the pre-pivot early-return lowering. A fallible function compiles
+to an ordinary function with early `return __vsResultFailure(…)` / trailing
+`return __vsResultSuccess(…)` — not a delegated suspension. So the resumable
+calling convention (§Rows Are Types), `!` as an `abort` request (below), and
+`Layer.provide` installing a handler (below) are all obligations this
+implementation does not yet meet; `Layer.provide` uses an ambient environment
+frame plus a Promise settlement hook instead. This page carries no `(SA-n)`
+marker in [Specification Status](/specification/index) and should.
+:::
+
 ## Propagation Is an Abort Request
 
 `e!`, where `e` has checker-derived Result provenance, MUST evaluate to `e`'s

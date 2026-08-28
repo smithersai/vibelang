@@ -72,10 +72,9 @@ Control flow is TypeScript's. The one addition is declarations in conditionals, 
 ## Comptime
 
 ```ts
-import { comptime } from "smithers:comptime"
+import { comptime, embed } from "smithers:comptime"
 
-const schema = comptime(JSON.parse(embed("./routes.json")))
-const Routes = comptime(deriveRoutes(schema))
+const Routes = comptime(deriveRoutes(JSON.parse(embed("./routes.json"))))
 ```
 
 `comptime` is an imported intrinsic, not a keyword. Evaluation is deterministic and dependency-tracked, and it may create types. [Learn more](/guide/comptime).
@@ -95,17 +94,23 @@ Validation returns an ordinary Result. [Learn more](/guide/runtime-validation).
 ```ts
 import config from "./config.json" with { type: "json", mode: "const" }
 import systemPrompt from "./prompts/system.md" with { type: "text" }
-import { hash } from "./simd.zig" with { type: "zig" }
+import icon from "./icon.png" with { type: "bytes" }
 ```
 
-All non-code and foreign-source inputs use import attributes. Custom comptime loaders can turn SQL, GraphQL, YAML, or another format into typed modules. [Learn more](/guide/asset-imports).
+All non-code and foreign-source inputs use import attributes. The built-in
+types are `json`, `text`, `bytes`, `markdown`, and `mdx`; custom comptime
+loaders can turn SQL, GraphQL, YAML, or another format into typed modules.
+Foreign `zig`/`rust` source imports are designed but not implemented — see
+[Asset Imports](/guide/asset-imports). [Learn more](/guide/asset-imports).
 
 ## Multiple Targets
 
 TypeScript is the only compilation target. Platform operations are capabilities,
-and `comptime.target` selects a Node, Bun, Deno, browser, or edge implementation
-without emitting the unused ones. Near-native and Wasm targets were specified
-once and have been withdrawn. [Learn more](/guide/platforms-and-targets).
+and `comptime.target` is designed to select a Node, Bun, Deno, browser, or edge
+implementation without emitting the unused ones — though the shipped CLI pins
+the target to `"node-es2022"` today, so none of those five names is reachable
+from it. Near-native and Wasm targets were specified once and have been
+withdrawn. [Learn more](/guide/platforms-and-targets).
 
 ## Async and Concurrency
 

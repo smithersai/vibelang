@@ -38,15 +38,23 @@ A validation problem is an Error in the Result. It composes with the same propag
 
 ## Decode at a Boundary
 
-Platform APIs can accept a type or derived schema directly:
+Decoding is two explicit steps, and the shipped `HttpResponse` does not fold
+them together:
 
 ```ts
+const AccountSchema = comptime(Schema.derive<Account>())
+
 const http = HttpClient.context()
 const response = (await http.get("/account"))!
-const account = (await response.json(Account))!
+const account = AccountSchema.parse(response.json()!)!
 ```
 
-The type argument asks the compiler or standard library to use the derived codec. Invalid JSON and structurally invalid data remain distinguishable failures when the API declares them separately.
+`response.json()` is synchronous, takes no argument, and answers
+`Result<unknown, MalformedResponse>` — the JSON parse only. There is no
+`response.json(Account)` overload that applies a derived codec. Keeping the
+steps apart is what makes invalid JSON and structurally invalid data
+distinguishable failures: `MalformedResponse` from the first, `ValidationError`
+from the second.
 
 ## Trusted Compiler Inputs
 

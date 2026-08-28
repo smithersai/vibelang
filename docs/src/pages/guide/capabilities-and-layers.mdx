@@ -53,11 +53,19 @@ const Production = Layer.merge(
   Layer.succeed(Users, new PostgresUsers(databaseUrl)),
 )
 
-Layer.provide(Production, async () => {
+Layer.provide(Production, async (): Promise<Result<string, RegisterError>> => {
   const user = (await registerAsync(input))!
   return user.id
 })
 ```
+
+The explicit return annotation is required, not decorative, and this is the
+easiest rule on the page to trip over. **Any** `Layer.provide` callback that can
+fail — whether it propagates with `!`, throws, or is `async` — must spell its
+`Result<A, E>` or `Promise<Result<A, E>>` return type. Leaving it to inference is
+refused with `SMITHERS2105`, "fallible `Layer.provide` callbacks need an explicit
+`Result` (or `Promise<Result>`) contract so the provided computation keeps its
+failure channel". Only a callback with an empty failure row may go unannotated.
 
 A base layer is conceptually `Layer<Provides>`. It provides service instances; it does not acquire them or own their lifetime. A missing dependency is a compile error when the closure is known — with one recorded exception: a **subclass** of a capability class is assignable to `typeof Capability` but carries a different nominal key, so such a program can check clean and panic at run time. That is [an open question](/reference/capabilities), not a rule this page can state.
 
@@ -72,7 +80,7 @@ const Test = Layer.merge(
   Layer.succeed(Users, InMemoryUsers.empty()),
 )
 
-Layer.provide(Test, () => {
+Layer.provide(Test, (): Result<User, RegisterError> => {
   const user = register(fixture)!
   expect(RecordingMailer.sent).toHaveLength(1)
   return user
@@ -97,6 +105,18 @@ The standard platform roster includes `Clock`, `Random`, `Console`,
 `Environment`, `FileSystem`, and `HttpClient`. I/O methods return
 `Promise<Result<A, E>>`; operations that have a legitimate synchronous host API
 may also expose an explicit `Sync` variant.
+
+:::warning Not importable from `.sm` yet — measured 2026-08-28
+The samples on this page declare their own capabilities, which is why they
+compile. Reaching the shipped roster instead — `import { FileSystem } from
+"smthrs/platform"` — is refused with `SMITHERS1510`, "foreign module
+initialization can panic before a checked call boundary", because only six
+specifiers are compiler-owned: `smthrs/context`, `smthrs/provider`,
+`smthrs/schema-runtime`, `smithers:exceptions`, `smithers:comptime`, and
+`smithers:flows`. Every other `smthrs/*` subpath is ordinary foreign code to the
+frontend. The roster is real and works under plain `node`; it is not yet
+reachable from authored Smithers.
+:::
 
 ## Scope and Lifetime
 

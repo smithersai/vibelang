@@ -39,7 +39,7 @@ R = Database | Logger
 | --- | --- | --- |
 | return a Result | union returned errors | union called requirements |
 | `!` | propagate the Result error | replaces `!` |
-| `Result.match` / `recover` | remove or transform handled errors | unchanged |
+| `result.match(…)` / `result.recover(…)` | remove or transform handled errors | unchanged |
 | `throw ErrorSubclass` | add that Error type | unchanged |
 | `Layer.provide` | unchanged | remove provided capabilities |
 | `await` | unwrap Promise only; leave Result | unchanged |
@@ -56,6 +56,18 @@ static type, is preserved in exported declarations, and is carried by a function
 - an unannotated function type carries the empty row;
 - a call whose callee the compiler cannot resolve, and whose callee type carries no row, is rejected rather than compiled with an assumed calling convention;
 - a function whose row is empty is never emitted in the resumable calling convention — an infallible function is not wrapped.
+
+:::warning Two of these are not enforced yet — measured 2026-08-28
+Rows are computed per declaration but not checked at an assignment, and the row
+is **dropped** rather than merely unchecked. Measured in one file:
+`needsDb` reports `requirements: ["Db"]`, and after
+`const slot: () => number = needsDb`, a caller of `slot()` reports
+`requirements: []` with zero diagnostics — so an annotated function type is a
+requirement-row laundering path, not just a missed type error. Likewise
+`function callUnknown(cb: () => number) { return cb() }` compiles rather than
+being rejected. The first and third bullets describe the intended rule; today
+they describe a gap.
+:::
 
 The last point is what keeps the row from becoming a tax on ordinary code. See
 [Effects](/specification/effects) §Effect Rows.

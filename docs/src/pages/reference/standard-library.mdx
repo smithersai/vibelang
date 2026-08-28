@@ -20,8 +20,14 @@ The standard library should:
 Designed areas include:
 
 ```text
-Array  Chunk  HashMap  HashSet  Result  Data  Match
+Chunk  HashMap  HashSet  Result  Data  Match
 ```
+
+`smthrs/data` ships exactly `Chunk`, `HashMap`, `HashSet`, `Data`,
+`Equivalence`, `Hash`, and `Match` (plus their value and guard exports);
+`Result` is on `smthrs/result`. There is no `Array` module — ordinary
+`Array.prototype` is the array API, which is what "TypeScript-compatible
+built-ins remain available" means here.
 
 TypeScript-compatible built-ins remain available. Alternatives should not require wrapper values merely for effect tracking.
 
@@ -38,8 +44,16 @@ Schema  Codec  Json  JsonSchema  Equivalence  Hash
 
 These artifacts are derived at comptime where possible. Parsing failures return Results.
 
-The compiler and library share one type descriptor model for Schema, Codec,
-JSON Schema, Equivalence, and Hash derivation.
+The compiler and library are intended to share one type descriptor model for
+Schema, Codec, JSON Schema, Equivalence, and Hash derivation. **Measured
+2026-08-28**, only `Schema` and `JsonSchema.fromSchema` derive from the
+compiler's `SchemaDescriptor`; `Codec`, `Equivalence`, and `Hash` do not
+(`poc/src/data/equivalence.ts` says so in its own header). And while `Schema`,
+`Codec`, `Json`, and `JsonSchema` all exist and build under `poc/src/schema/`,
+**no package subpath reaches them** — the only schema-related export is
+`smthrs/schema-runtime`, which exposes five names for the compiler's
+`comptime(Schema.derive<T>())` lowering. They are reachable from source, not
+from the published package.
 
 ## Configuration and Time
 
@@ -104,6 +118,13 @@ Action  Flow  Artifact  Signal  Journal  Deployment
 
 These APIs connect compiler-emitted Flow bodies and their Effect Manifests to coordinator and worker runtimes.
 
+Four of those six names are **designed, not shipped**. `Action` and `Flow` exist
+exactly, from `smthrs/durable/authoring` (and `Action` also from
+`smthrs/provider`). `Artifact`, `Signal`, `Journal`, and `Deployment` have no
+bare export on any subpath; the nearest shipped spellings are `PlanArtifact`,
+`SignedDeployment`, and `DeploymentManifest` on `smthrs/durable`, `SignalNode`
+as a durable IR type, and `TurnJournal` in the agent library.
+
 ## Agent Library
 
 The agent library provides MDX prompt rendering, model adapters, TypeScript
@@ -112,4 +133,4 @@ adapters. Exact packaging remains directional.
 
 ## Implementation Strategy
 
-Compute-heavy components may call into Wasm modules, including implementations written in Zig, imported through the asset loaders. JavaScript/Wasm boundaries should be chosen by measurement. Host-specific implementations remain behind capabilities.
+Compute-heavy components may call into Wasm modules, including implementations written in Zig, imported through the asset loaders — a design intent, not a shipped path: no `zig`, `rust`, or `wasm` loader is registered, and such an import is refused with `SMITHERS5213`. JavaScript/Wasm boundaries should be chosen by measurement. Host-specific implementations remain behind capabilities.

@@ -18,7 +18,7 @@ Foreign runtime calls are checked boundaries: an unannotated JavaScript or TypeS
 ```ts [Smithers]
 import { clamp } from "lodash-es"
 
-export function normalizeConfidence(score: number) {
+export function normalizeConfidence(score: number): Result<number, Panic> {
   return Result.try(() => clamp(score, 0, 1))
 }
 ```
@@ -208,10 +208,9 @@ Smithers can run deterministic code during compilation, and the result can be a 
 :::code-group{syncKey=""}
 
 ```ts [Smithers]
-import { comptime } from "smithers:comptime"
+import { comptime, embed } from "smithers:comptime"
 
-const model = comptime(JSON.parse(embed("./account.model.json")))
-const Account = comptime(deriveType(model))
+const Account = comptime(deriveType(JSON.parse(embed("./account.model.json"))))
 
 function displayName(account: Account) {
   return `${account.name} (${account.plan})`
@@ -338,8 +337,11 @@ const response = Effect.gen(function* () {
 #### Rust and Zig import like source modules
 
 Existing Node-API packages built with napi-rs remain ordinary npm dependencies.
-Smithers can also import local Rust and Zig sources, drive the foreign compiler,
-and generate checked Wasm bindings that the JavaScript host calls.
+Smithers is *designed* to import local Rust and Zig sources, drive the foreign
+compiler, and generate checked Wasm bindings that the JavaScript host calls.
+**This part is not implemented**: no `rust` or `zig` loader is registered, so
+the two foreign imports below are refused with `SMITHERS5213` today. The `json`,
+`text`, `bytes`, `markdown`, and `mdx` imports elsewhere on this page do work.
 
 :::code-group{syncKey=""}
 

@@ -16,12 +16,22 @@ A type-only import has no runtime effect. Runtime use of imported TypeScript or 
 
 ```ts
 import { readFile } from "node:fs/promises"
-
-// contributes Module<"node:fs/promises">
 ```
 
 The import constrains the program to a host that supplies that module.
 Application code should usually depend on a `FileSystem` capability instead.
+
+:::warning There is no `Module<…>` requirement — measured 2026-08-28
+An earlier draft said this import "contributes `Module<"node:fs/promises">`". It
+does not, and no such type exists: the frontend's ambient requirement type
+admits only `Clock`, `Random`, and `Host`. The module-requirement machinery was
+part of the portability pin, withdrawn on 2026-08-23. What the import actually
+draws today is `SMITHERS1510` — "foreign module initialization can panic before
+a checked call boundary" — unless the import is type-only or the module carries
+a leading `@module @throws {never}` JSDoc marker. So the host constraint is
+carried by the panic channel, not by a requirement row, and nothing reports it
+as a portability fact.
+:::
 
 ## Dynamic Features
 
@@ -64,7 +74,7 @@ class ConnectFailed extends Error {
   }
 }
 
-function connect(options: Options): Result<Client, ConnectFailed> {
+function connect(options: Options): Result<Client, ConnectFailed | Panic> {
   return Result.try(
     () => legacyConnect(options),
     cause => new ConnectFailed({ cause }),
@@ -73,8 +83,16 @@ function connect(options: Options): Result<Client, ConnectFailed> {
 ```
 
 An unannotated call to `legacyConnect` adds the distinguished checked `panic`
-case. The compiler-trusted `Result.try` adapter contains the call and translates
-the caught value to `ConnectFailed`, so `panic` does not escape this boundary.
+case, and `Result.try` translates a *caught* value to `ConnectFailed`. It does
+**not** discharge the channel: `Panic` stays in the contract, and omitting it
+draws `SMITHERS1104`, "Result contract omits reachable failures Panic". That is
+the intended design — a panic raised inside a foreign call must not be silently
+swallowed by an adapter. Either declare it, as above, or subtract it
+deliberately at the boundary with `rethrowPanics` from `smthrs/result`, which
+re-throws a panic-valued failure so it keeps unwinding to `catchPanic` and
+returns every other Result unchanged.
+
+The same applies to `Result.tryPromise` below.
 
 ## Adapt a Rejecting Promise
 
@@ -108,10 +126,10 @@ unmarkedness would look like a cleanup and be a forgery hole. Recorded in
 
 ```ts
 const user = legacyLookup(id) ?? undefined
-legacyConsume(user.toNullable())
+legacyConsume(user ?? null)
 ```
 
-Smithers does not reinterpret TypeScript optional properties or null unions. They keep their ordinary TypeScript meaning.
+Smithers does not reinterpret TypeScript optional properties or null unions. They keep their ordinary TypeScript meaning. There is no `.toNullable()` and no wrapper to convert: `Optional<T>` was withdrawn, absence is `T | undefined`, and crossing to a `null`-based API is the ordinary `?? null`.
 
 ## Effect Interop
 

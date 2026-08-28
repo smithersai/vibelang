@@ -230,7 +230,12 @@ vocabularies.
 
 ## Foreign source modules
 
-Rust and Zig source files are first-class typed-file imports:
+**Not implemented as of 2026-08-28.** The registered built-in loaders are
+exactly `json`, `text`, `bytes`, `markdown`, and `mdx`
+(`poc/src/build/assets.ts`); a `rust` or `zig` attribute is refused with
+`SMITHERS5213`. The requirements below are the target contract.
+
+Rust and Zig source files are intended to be first-class typed-file imports:
 
 ```typescript
 import { hash } from "./hash.rs" with { type: "rust" };

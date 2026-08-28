@@ -214,6 +214,20 @@ A deployment build may emit:
 
 ## Deployment Authentication
 
+:::warning The shipped envelope has none of these fields — measured 2026-08-28
+`SignedDeploymentArtifact` is
+`{artifactVersion, kind, plan, manifest, signer, signature, digest}`, where
+`manifest` is `{formatVersion, deploymentId, planDigest, coordinatorDigest,
+pools, routes, digest}`. `flowSourceDigest`, `journalSchemaVersion`, and
+`routingManifest` appear in no production source file, and the envelope still
+carries a `PlanTemplate` — the static Plan of the pre-replay model — rather than
+a Flow-source digest plus an Effect Manifest. The Ed25519 signing,
+`authenticateDeployment`, `requireAuthenticatedDeployment`, and the out-of-band
+`TrustedDeploymentKey` described below are all real; the envelope's *contents*
+are the part that has not migrated — the same replay pivot recorded as `(SA-2)`
+in [Specification Status](/specification/index).
+:::
+
 A deployment is a canonical signed envelope over
 `{flowSourceDigest, effectManifest, journalSchemaVersion, routingManifest}`,
 pinning coordinator, worker artifact, implementation, policy, schema,

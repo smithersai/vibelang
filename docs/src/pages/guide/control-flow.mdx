@@ -46,6 +46,15 @@ function write(
 }
 ```
 
+:::warning Illustrative API
+`fs.open` and the file handle it returns do not exist. The shipped `FileSystem`
+capability declares `readText`, `writeText`, `readBytes`, `writeBytes`, `exists`,
+`remove`, `mkdir`, `readDir`, and a `*Sync` counterpart for each — no handle
+type, so nothing here is disposable. The snippet shows what `using` is *for*; a
+working equivalent is `fs.writeTextSync(path, contents)!`. `using` itself is
+real and works on any `Disposable` you supply.
+:::
+
 Cleanup that should run only when the function fails goes in the failure path rather than in a dedicated statement:
 
 ```ts

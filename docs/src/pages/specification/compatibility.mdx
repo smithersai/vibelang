@@ -67,6 +67,29 @@ Because a Flow body re-executes on every resumption, an operation whose result c
 | `Date.prototype.getHours`, `getDay`, `getTimezoneOffset`, `toLocaleString`, `toString` | MUST charge `Clock` even when an explicit instant is supplied, because they read the host time zone. `getTime()` stays free. This is the hazard already charged at `Intl.DateTimeFormat` construction. |
 | `Intl.NumberFormat`, `Intl.Collator`, `String.prototype.localeCompare`, `Number.prototype.toLocaleString` | MUST charge a `Locale` requirement. They are functions of the host ICU version and locale data, and `Collator.compare` used as a sort comparator makes the resulting **ordering** host-dependent. |
 
+**(SA-4) — implementation status, measured 2026-08-28: none of the five rows is
+enforced, and the first two are actively contradicted.** In one `.sm` file,
+`new Date(0).getTimezoneOffset()`, `"a".localeCompare("b")`,
+`new WeakRef(o).deref()`, and `new SharedArrayBuffer(8)` all produce zero
+diagnostics and an empty requirement row, while the control `Date.now()` in the
+same file correctly reports `SMITHERS1602` — so the analysis runs and these
+simply are not walls yet. Three distinct causes, worth separating because they
+need different fixes:
+
+- `WeakRef`, `FinalizationRegistry`, `SharedArrayBuffer`, and `Atomics` are
+  **listed** in the frontend's `UNIVERSAL_GLOBALS` — permitted unconditionally,
+  the opposite of rows one and two.
+- No `Scheduler` and no `Locale` requirement exists. The frontend's ambient
+  requirement type admits only `Clock`, `Random`, and `Host`, so rows three and
+  five have nothing to charge. (A `Scheduler` class exists in the concurrency
+  library but is not a capability and is not exported.)
+- `Date` is analyzed at the root identifier only, so `new Date(instant)` returns
+  an empty row and no instance member is ever inspected. Row four's "even when
+  an explicit instant is supplied" is not implementable in that shape.
+
+The obligations stand; the implementation does not meet them, and this section
+carries no `(SA-n)` marker in [Specification](/specification) §Current markers.
+
 These walls MUST be uniform across all `.sm` code and MUST NOT be scoped to Flow bodies. A rule that fires in one file and not another is a per-file dialect, which the decision ledger warns against by name, and it does not work mechanically either: requirement inference is whole-program, so a Flow's helper lives in another file. The cost of uniformity is explicit and accepted — `Intl.Collator` in an ordinary CLI formatter also charges `Locale`.
 
 ECMA-262 permits implementation-approximated results for `Math.sin`, `cos`, `tan`, `exp`, `log`, `pow`, `**`, `hypot`, `fround`, and `atan2`. A deployment SHOULD pin an engine version across the artifacts that can resume a given execution. A runtime MUST NOT treat a last-ulp difference in these operations as a journal-integrity failure.
@@ -100,6 +123,15 @@ Imported `.ts` and `.tsx` keep their own configuration. The escape-hatch guarant
 | `isolatedModules` | required for correctness under a per-file bundler transform |
 | `verbatimModuleSyntax` | replaces the deprecated `importsNotUsedAsValues` and `preserveValueImports` |
 | `useDefineForClassFields` | the legacy-off behavior is a footgun |
+
+**(SA-5) — implementation status, measured 2026-08-28: only `strict` is enforced.** This
+compiler builds every `compilerOptions` block with `strict: true` and nothing
+else, and it has no tsconfig-validation gate at all, so the other five mandatory
+options are unchecked and none of the eleven forbidden options below is
+rejected. Both directions are measurable: `const v: number = arr[2]` and
+`const o: { a?: number } = { a: undefined }` each check clean, while the control
+`const v: number = "str"` correctly reports `TS2322`. These remain normative
+obligations on a conforming implementation; this one does not yet meet them.
 
 `noUncheckedIndexedAccess` is noisy in index loops, because TypeScript cannot prove `for (let i = 0; i < arr.length; i++)` is in bounds. An index read is `T | undefined` and MUST be narrowed, or read through an extraction helper.
 

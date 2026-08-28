@@ -47,13 +47,24 @@ import { comptime } from "smithers:comptime"
 comptime.target
 ```
 
-The target vocabulary is directional and includes:
+The target vocabulary is directional and is intended to include:
 
 ```text
 node  bun  deno  browser  edge
 ```
 
-A branch resolved from `comptime.target` is eliminated for other targets.
+**Measured 2026-08-28: none of those five is reachable.** `comptime.target` is
+typed as an unconstrained `string` in the prelude, the shipped `smithers` CLI
+hard-codes it to `"node-es2022"`, and no flag changes it — so a lookup keyed on
+the documented names fails with `VCT1004`, `property "node-es2022" is absent
+from the comptime value`. A programmatic host can pass any `target` string
+through `ComptimeOptions`; under the CLI, treat `"node-es2022"` as the only
+value.
+
+A branch resolved from `comptime.target` is eliminated for other targets — but
+only *inside* a comptime evaluation. Reading `comptime.target` in code that is
+retained at runtime, such as `return comptime.target === "bun" ? 1 : 2`, is
+refused with `VCT1006`, so no emitted branch is ever eliminated by that spelling.
 
 ## Allowed Inputs
 
@@ -81,9 +92,9 @@ A loader conceptually receives:
 
 ```ts
 type Loader = (
-  asset: CompilerAsset,
+  asset: LoaderAsset,
   context: LoaderContext,
-) => TypedModule
+) => TypedAssetModule
 ```
 
 The context records transitive imports and reports structured diagnostics.

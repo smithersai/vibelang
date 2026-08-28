@@ -29,7 +29,13 @@ Node, Bun, Deno, browser, edge, and test implementations can satisfy the same ca
 
 ## Selecting a Host
 
-Use `comptime.target` when the implementation differs by host:
+Use `comptime.target` when the implementation differs by host.
+
+:::warning Host names not reachable under the CLI — measured 2026-08-28
+The shipped `smithers` CLI pins the target to `"node-es2022"`, so the `node`,
+`bun`, and `deno` keys below never match and the lookup fails with `VCT1004`.
+See [Comptime](/reference/comptime) §Target Selection.
+:::
 
 ```ts
 import { comptime } from "smithers:comptime"
@@ -47,14 +53,21 @@ Unselected implementations are not emitted.
 
 ## Foreign Sources
 
-Zig and Rust source modules import directly, with compiler-generated typed bindings:
+:::warning Not implemented — measured 2026-08-28
+Neither loader is registered; both imports below are refused with
+`SMITHERS5213`. The built-in loader types are `json`, `text`, `bytes`,
+`markdown`, and `mdx`.
+:::
+
+Zig and Rust source modules are intended to import directly, with
+compiler-generated typed bindings:
 
 ```ts
 import { hashMany } from "./hash.zig" with { type: "zig" }
 import { parse } from "./parser.rs" with { type: "rust" }
 ```
 
-These compile to Wasm modules that the JavaScript host loads and calls. Wasm is a library format here, not a target for Smithers code.
+These would compile to Wasm modules that the JavaScript host loads and calls. Wasm is a library format here, not a target for Smithers code — which is why this section survives the removals above rather than being withdrawn with them.
 
 The compiler owns toolchain invocation and caching. The import's types, source maps, toolchain versions, feature flags, and foreign dependency graph contribute to its cache identity.
 

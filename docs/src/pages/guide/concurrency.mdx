@@ -99,6 +99,17 @@ abort an iterator that ignores both cancellation and `return()`.
 
 ## Streams and Coordination Primitives
 
+:::warning Not importable from `.sm` yet — measured 2026-08-28
+Everything in this section is real and works under plain `node` from
+`smthrs/concurrency`. It is **not** reachable from an authored `.sm` file:
+`import { Queue } from "smthrs/concurrency"` is refused with `SMITHERS1510`,
+because only six specifiers are compiler-owned and `smthrs/concurrency` is not
+one of them. `allKeyed` and `allSettledKeyed` have a second, separate barrier —
+the frontend recognizes those names only as members of the ambient `Promise`
+namespace, a spelling no `lib.es*.d.ts` supplies, so the free-function form is
+reported as `SMITHERS1402`, "started Promise is not consumed".
+:::
+
 The standard library supplies:
 
 - `new Queue<T>(capacity)` / `Queue.bounded<T>(capacity)` implement a bounded

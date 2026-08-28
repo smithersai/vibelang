@@ -25,11 +25,11 @@ Smithers keeps the useful information in ordinary-looking code while representin
 ```ts
 async function getUser(
   id: string,
-): Promise<Result<User, NotFound | Timeout | InvalidResponse>> {
+): Promise<Result<User, NotFound | HttpError | MalformedResponse | ValidationError>> {
   const http = HttpClient.context()
   const response = (await http.get(`/users/${id}`))!
   if (response.status === 404) throw new NotFound(id)
-  return (await response.json(User))!
+  return UserSchema.parse(response.json()!)!
 }
 ```
 

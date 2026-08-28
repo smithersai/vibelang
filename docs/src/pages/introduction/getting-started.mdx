@@ -63,7 +63,9 @@ abstract class Users extends Context {
 
 function getUser(id: string): Result<User, NotFound> {
   const users = Users.context()
-  return users.find(id).toResult(() => new NotFound(id))
+  const user = users.find(id)
+  if (user === undefined) throw new NotFound(id)
+  return user
 }
 ```
 
@@ -105,23 +107,37 @@ import { Layer } from "smthrs/provider"
 
 const App = Layer.succeed(Users, new PostgresUsers(databaseUrl))
 
-const name = Layer.provide(App, () => displayName("42")!)
+const name = Layer.provide(App, () => displayName("42")).unwrapOr("anonymous")
 ```
+
+Note the missing `!` inside the callback. A `Layer.provide` body that propagates
+with `!` is refused — `SMITHERS2105`, "fallible `Layer.provide` callbacks need an
+explicit `Result` (or `Promise<Result>`) contract so the provided computation
+keeps its failure channel". Return the Result from the callback and consume it
+outside, which is what keeps `NotFound` visible in the caller's type.
 
 Removing the `Users` provider is intended to be a compile error. Tests can provide an in-memory implementation without changing application code. A Layer only supplies the environment; resources are acquired and finalized explicitly outside it.
 
 ## Async Results
 
 ```ts
+const UserSchema = comptime(Schema.derive<User>())
+
 async function loadUser(
   id: string,
-): Promise<Result<User, Timeout | NotFound>> {
+): Promise<Result<User, HttpError | MalformedResponse | ValidationError>> {
   const response = (await HttpClient.context().get(`/users/${id}`))!
-  return (await response.json(User))!
+  return UserSchema.parse(response.json()!)!
 }
 ```
 
 `await` unwraps the Promise but leaves the Result. Authored Smithers does not use Promise instance `.then`, `.catch`, or `.finally`.
+
+Note the two steps. `response.json()` is **synchronous** and takes no argument —
+it returns `Result<unknown, MalformedResponse>`, the parse and nothing more.
+Turning that `unknown` into a `User` is a separate, explicit validation against a
+comptime-derived schema; see [Runtime Validation](/guide/runtime-validation).
+There is no `response.json(User)` overload.
 
 ## Next Steps
 

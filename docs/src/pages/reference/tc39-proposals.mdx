@@ -35,7 +35,7 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 | Iterator Join | No position |  |
 | Error Stack Accessor | Committed | the ledger's "cheap stack capture" |
 | RegExp Buffer Boundaries (`\A`, `\z`, `\Z`) | No position |  |
-| Await Dictionary | Committed | the ledger's `Promise.allKeyed` / `allSettledKeyed` |
+| Await Dictionary | Committed | the ledger's `allKeyed` / `allSettledKeyed`. They ship as free functions on `smthrs/concurrency`, not as `Promise` statics — `Promise.allKeyed` is `undefined`. The frontend recognizes those names only as members of the ambient `Promise` namespace, which no `lib.es*.d.ts` supplies, so the shipped free-function form is refused from `.sm` with `SMITHERS1402`. |
 
 ## Stage 2.7
 
