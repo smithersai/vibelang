@@ -15,6 +15,8 @@ import {
 } from "./pool-bundle.ts"
 import {
   LocalWorker,
+  WORKER_BUDGET_GRACE_MS,
+  withInvocationBudget,
   type ActionProvider,
   type DurableWorker,
   type WorkerPool
@@ -92,6 +94,14 @@ export class DenoBundleWorker implements DurableWorker {
       ...prepared.invocation,
       input: prepared.input
     })
+    return withInvocationBudget(
+      invocation,
+      { label: "bundle", signal, graceMs: WORKER_BUDGET_GRACE_MS },
+      (budgetSignal) => this.#execute(invocation, budgetSignal)
+    )
+  }
+
+  async #execute(invocation: Invocation, signal: AbortSignal): Promise<WorkerExit> {
     // Digest-verify the exact bytes about to execute, immediately before
     // composition, so a mutated bundle object cannot slip past construction.
     const verified = validateWorkerPoolBundle(this.bundle)

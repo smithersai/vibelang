@@ -1791,6 +1791,21 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
         downstreamIdempotencyKey: digest({ executionId: context.executionId, nodeId: node.id }),
         capabilityGrant: route.policy.capabilityGrant,
         lease: { owner: this.owner, expiresAt: acquired.leaseExpiresAt },
+        // THE single execution-budget derivation, and it lives here because the
+        // coordinator is the only party that knows the renewed lease. Below,
+        // this attempt heartbeats the store lease every leaseMs/3 for as long as
+        // the work runs and aborts the attempt the instant a renewal is refused,
+        // so the horizon it can honestly promise a worker is the persisted
+        // deadline - never `acquired.leaseExpiresAt`, which is stale by
+        // leaseMs/3 before any transport reads it. Transports enforce exactly
+        // this value; none of them re-derives one from `lease`.
+        //
+        // HONEST LIMITATION: if this coordinator dies mid-attempt, an
+        // out-of-process transport keeps working until the deadline rather than
+        // until the lease lapses. Shortening that needs a renewal channel to the
+        // worker, which this POC does not have; the store's fencing token is
+        // what keeps the orphan's result from being committed.
+        budget: { expiresAt: context.deadline },
         fencingToken: acquired.fencingToken,
         traceContext: context.traceContext
       }

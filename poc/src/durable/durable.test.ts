@@ -763,7 +763,7 @@ test("execution completion rejects failed node state instead of laundering it as
   store.close();
 });
 
-test("the worker rejects expired leases and caller-widened capability grants before code runs", async () => {
+test("the worker rejects expired execution budgets and caller-widened capability grants before code runs", async () => {
   const Work = Action.define<{}, {}>({ id: "test/WorkerAuthority", version: 1 });
   const Program = Flow.define<{}, {}>({ id: "test/WorkerAuthorityFlow", version: 1 }, () => Work.run({}));
   let calls = 0;
@@ -793,19 +793,27 @@ test("the worker rejects expired leases and caller-widened capability grants bef
     deadline: Date.now() + 10_000,
     downstreamIdempotencyKey: digest({ executionId: "worker-authority", nodeId: node.id }),
     capabilityGrant: ["Compute"],
+    // The lease snapshot is deliberately already expired here and is NOT what
+    // gates the invocation: the coordinator renews that lease behind this
+    // snapshot, so only `budget` — the coordinator's live horizon — may refuse
+    // work before it starts.
     lease: { owner: "coordinator", expiresAt: Date.now() - 1 },
+    budget: { expiresAt: Date.now() - 1 },
     fencingToken: 1,
     traceContext: {},
   };
   const expired = await worker.invoke(invocation);
   expect(expired.kind).toBe("defect");
-  if (expired.kind === "defect") expect(expired.defect.name).toBe("LeaseExpired");
+  if (expired.kind === "defect") expect(expired.defect.name).toBe("InvocationBudgetExpired");
   expect(calls).toBe(0);
 
+  // A stale lease snapshot alone must NOT refuse the work: this invocation has
+  // a live budget and an expired lease, and it must get past the budget gate to
+  // fail on the widened capability grant instead.
   const widened = await worker.invoke({
     ...invocation,
     capabilityGrant: ["Compute", "Network"],
-    lease: { ...invocation.lease, expiresAt: Date.now() + 10_000 },
+    budget: { expiresAt: invocation.deadline },
   });
   expect(widened.kind).toBe("defect");
   if (widened.kind === "defect") expect(widened.defect.name).toBe("ManifestVerificationDefect");

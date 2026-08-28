@@ -12,6 +12,8 @@ import {
 } from "./ir.ts"
 import {
   LocalWorker,
+  WORKER_BUDGET_GRACE_MS,
+  withInvocationBudget,
   type ActionProvider,
   type DurableWorker,
   type WorkerPool
@@ -185,6 +187,14 @@ export class DenoIsolatedWorker implements DurableWorker {
       ...prepared.invocation,
       input: prepared.input
     })
+    return withInvocationBudget(
+      invocation,
+      { label: "isolated", signal, graceMs: WORKER_BUDGET_GRACE_MS },
+      (budgetSignal) => this.#execute(invocation, budgetSignal)
+    )
+  }
+
+  async #execute(invocation: Invocation, signal: AbortSignal): Promise<WorkerExit> {
     const invocationBytes = canonicalJson(invocation)
     const javascript = [
       `const __smithersInvocation = JSON.parse(${JSON.stringify(invocationBytes)});`,

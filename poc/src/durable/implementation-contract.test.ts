@@ -196,6 +196,7 @@ test("checked providers bind the exact Action error schema while keeping Panic o
     downstreamIdempotencyKey: digest({ mode }),
     capabilityGrant: [],
     lease: { owner: "test", expiresAt: Date.now() + 10_000 },
+    budget: { expiresAt: Date.now() + 9_000 },
     fencingToken: 1,
     traceContext: {}
   })

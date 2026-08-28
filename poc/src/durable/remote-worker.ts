@@ -11,6 +11,7 @@ import {
 } from "./ir.ts"
 import {
   LocalWorker,
+  withInvocationBudget,
   type ActionProvider,
   type DurableWorker,
   type WorkerPool
@@ -201,40 +202,44 @@ export class RemoteHttpWorker implements DurableWorker {
         error instanceof Error ? error.message : String(error)
       )
     }
-    const budgetMs = Math.min(invocation.deadline, invocation.lease.expiresAt) - Date.now() + INVOKE_GRACE_MS
-    if (budgetMs <= 0) {
-      return defect("DeadlineExceeded", `Deadline exceeded before ${invocation.actionId} invocation`)
-    }
-    let responseBytes: Uint8Array
-    try {
-      responseBytes = await this.#post(
-        WORKER_INVOKE_PATH,
-        { invocation },
-        AbortSignal.any([signal, AbortSignal.timeout(budgetMs)])
-      )
-    } catch (error) {
-      return defect(
-        "RemoteTransportDefect",
-        error instanceof Error ? `${error.name}: ${error.message}` : String(error)
-      )
-    }
-    try {
-      const decoded = decodeCanonicalJson(responseBytes, "worker host invoke response")
-      if (decoded === null || typeof decoded !== "object" || Array.isArray(decoded) ||
-        canonicalJson(Object.keys(decoded).sort()) !== canonicalJson(["exit", "source"]) ||
-        ((decoded as { source: unknown }).source !== "live" &&
-          (decoded as { source: unknown }).source !== "committed")) {
-        throw new TypeError("worker host invoke response has invalid fields")
+    // The coordinator's budget, verbatim. This used to be
+    // `min(deadline, lease.expiresAt)`, which cut every Action longer than
+    // leaseMs off at the claim-time lease snapshot the coordinator had already
+    // renewed - killing here what the in-process, isolated, and bundle
+    // transports ran to completion. The grace lets the host's own budget verdict
+    // arrive over the wire instead of being severed mid-response.
+    return withInvocationBudget(
+      invocation,
+      { label: "remote", signal, graceMs: INVOKE_GRACE_MS },
+      async (budgetSignal) => {
+        let responseBytes: Uint8Array
+        try {
+          responseBytes = await this.#post(WORKER_INVOKE_PATH, { invocation }, budgetSignal)
+        } catch (error) {
+          return defect(
+            "RemoteTransportDefect",
+            error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+          )
+        }
+        try {
+          const decoded = decodeCanonicalJson(responseBytes, "worker host invoke response")
+          if (decoded === null || typeof decoded !== "object" || Array.isArray(decoded) ||
+            canonicalJson(Object.keys(decoded).sort()) !== canonicalJson(["exit", "source"]) ||
+            ((decoded as { source: unknown }).source !== "live" &&
+              (decoded as { source: unknown }).source !== "committed")) {
+            throw new TypeError("worker host invoke response has invalid fields")
+          }
+          // The engine's validateWorkerExit still applies its exact discriminant
+          // and structural codecs before this exit can be persisted or cached.
+          return (decoded as { exit: unknown }).exit as WorkerExit
+        } catch (error) {
+          return defect(
+            "RemoteProtocolDefect",
+            error instanceof Error ? error.message : String(error)
+          )
+        }
       }
-      // The engine's validateWorkerExit still applies its exact discriminant
-      // and structural codecs before this exit can be persisted or cached.
-      return (decoded as { exit: unknown }).exit as WorkerExit
-    } catch (error) {
-      return defect(
-        "RemoteProtocolDefect",
-        error instanceof Error ? error.message : String(error)
-      )
-    }
+    )
   }
 }
 

@@ -517,8 +517,15 @@ function __smithersTypedFailure(action, error) {
   }
   return { kind: "failure", error: { version: 1, identity: variant.identity, payload: payload } };
 }
-async function __smithersInvokeAction(invocation) {
+// \`signal\` is the caller's execution budget. An in-process host cannot preempt
+// a synchronous body, but it CAN refuse to start abandoned work and refuse to
+// hand back a result the caller has already stopped waiting for, which is what
+// keeps a timed-out dispatch from committing a second exit for the same attempt.
+async function __smithersInvokeAction(invocation, signal) {
   try {
+    if (signal && signal.aborted) {
+      return __smithersDefect("InvocationCancelled", "bundle invocation was cancelled before dispatch");
+    }
     if (invocation === null || typeof invocation !== "object" || typeof invocation.actionId !== "string") {
       return __smithersDefect("BundleInvocationDefect", "bundle invocation must name an actionId");
     }
@@ -554,6 +561,9 @@ async function __smithersInvokeAction(invocation) {
       output = await entry(invocation.input);
     } catch (thrown) {
       return __smithersThrownDefect(thrown);
+    }
+    if (signal && signal.aborted) {
+      return __smithersDefect("InvocationCancelled", "bundle invocation was cancelled before it produced a result");
     }
     if (runtime.isResult(output)) {
       const inspected = runtime.__vsInspectResult(output);

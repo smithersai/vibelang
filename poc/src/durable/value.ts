@@ -192,8 +192,29 @@ export interface Invocation {
   readonly deadline: number
   readonly downstreamIdempotencyKey: string
   readonly capabilityGrant: readonly string[]
+  /**
+   * Ownership evidence for this attempt, as it stood at claim time.
+   *
+   * `expiresAt` is a SNAPSHOT. The coordinator renews this lease in the store
+   * every `leaseMs/3` for as long as the attempt runs, and this field is never
+   * restamped, so it is stale before the first heartbeat lands. It is here for
+   * identity and diagnostics only: never derive an execution budget from it.
+   * `budget` is the field that says how long the work may run.
+   */
   readonly lease: {
     readonly owner: string
+    readonly expiresAt: number
+  }
+  /**
+   * The coordinator's committed execution budget for this attempt: the absolute
+   * wall-clock instant after which no transport may let this attempt's work keep
+   * running. The coordinator derives it once (`DurableExecutor`), because it is
+   * the only party that knows the lease it is actively renewing, and every
+   * transport enforces exactly this horizon. That is what makes an Action that
+   * outlives `leaseMs` behave identically in-process, isolated, bundled, and
+   * remote.
+   */
+  readonly budget: {
     readonly expiresAt: number
   }
   readonly fencingToken: number

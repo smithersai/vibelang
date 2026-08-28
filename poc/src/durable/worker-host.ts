@@ -18,6 +18,7 @@ import {
 import {
   manifestWorkerGate,
   prepareManifestInvocation,
+  withInvocationBudget,
   type ManifestWorkerGate
 } from "./provider.ts"
 import {
@@ -99,8 +100,14 @@ export interface StartedWorkerHost {
   readonly stop: () => Promise<void>
 }
 
-interface LoadedBundleModule {
-  readonly invoke: (invocation: unknown) => Promise<unknown>
+export interface LoadedBundleModule {
+  /**
+   * The bundle's dispatch entry point. The signal is the host's execution
+   * budget: the driver refuses to start, and discards a late result, once it
+   * aborts, so budget expiry cancels the work instead of abandoning a second
+   * live copy of it while the coordinator retries.
+   */
+  readonly invoke: (invocation: unknown, signal?: AbortSignal) => Promise<unknown>
   readonly meta: {
     readonly formatVersion: number
     readonly poolId: string
@@ -159,6 +166,53 @@ const loadBundleModule = async (
     bundleDigest
   }
 }
+
+/**
+ * Dispatch one invocation into the pool bundle under the coordinator's
+ * execution budget.
+ *
+ * Two properties this must keep, and previously did not:
+ *
+ * 1. The budget is `Invocation.budget`, the coordinator's single derivation -
+ *    not `min(deadline, lease.expiresAt)`. That claim-time lease snapshot is
+ *    stale after one heartbeat, so it used to cut Actions longer than `leaseMs`
+ *    off here while the in-process, isolated, and bundle transports ran the very
+ *    same Action to completion.
+ * 2. When the budget elapses the work is CANCELLED, not merely abandoned. This
+ *    used to `Promise.race` a timer against `module.invoke` with no signal at
+ *    all: the host answered `WorkerHostTimeout`, the coordinator retried, and
+ *    the abandoned dispatch kept running in this process alongside the retry -
+ *    a duplicate-execution window that existed on this transport and no other.
+ *
+ * Exported so the budget-and-cancellation behaviour is testable against a
+ * substituted module without standing up a signed deployment and a socket.
+ *
+ * HONEST LIMITATION: cancellation here is cooperative and single-threaded. The
+ * bundle driver refuses to start and discards a late result once the signal
+ * aborts, which closes the commit-a-second-result window, but a bundle body
+ * that is one synchronous compute loop still runs to its end - preempting that
+ * is the OS-isolation property `DenoBundleWorker` has and this transport does not.
+ */
+export const runBundleInvocation = (
+  module: LoadedBundleModule,
+  invocation: Invocation,
+  input: JsonValue,
+  route: ActionRouteManifest
+): Promise<WorkerExit> => withInvocationBudget(
+  invocation,
+  { label: "worker host", graceMs: HOST_EXECUTION_GRACE_MS },
+  async (signal) => {
+    try {
+      const raw = await module.invoke({ ...invocation, input }, signal)
+      return validateBundleExit(route, raw)
+    } catch (error) {
+      return defect(
+        "BundleDispatchDefect",
+        error instanceof Error ? error.message : String(error)
+      )
+    }
+  }
+)
 
 export const startWorkerHost = async (options: StartWorkerHostOptions): Promise<StartedWorkerHost> => {
   const secret = assertWorkerTransportSecret(options.secret)
@@ -219,36 +273,11 @@ export const startWorkerHost = async (options: StartWorkerHostOptions): Promise<
     })
   }
 
-  const runInvocation = async (
+  const runInvocation = (
     invocation: Invocation,
     input: JsonValue,
     route: ActionRouteManifest
-  ): Promise<WorkerExit> => {
-    const budgetMs = Math.min(invocation.deadline, invocation.lease.expiresAt) - Date.now() + HOST_EXECUTION_GRACE_MS
-    if (budgetMs <= 0) return defect("DeadlineExceeded", `Deadline exceeded before ${invocation.actionId} invocation`)
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const timeout = new Promise<WorkerExit>((resolveTimeout) => {
-      timer = setTimeout(() => resolveTimeout(defect(
-        "WorkerHostTimeout",
-        `${invocation.actionId} exceeded its deadline/lease budget on the worker host`
-      )), budgetMs)
-      timer.unref?.()
-    })
-    try {
-      const execution = (async (): Promise<WorkerExit> => {
-        const raw = await module.invoke({ ...invocation, input })
-        return validateBundleExit(route, raw)
-      })()
-      return await Promise.race([execution, timeout])
-    } catch (error) {
-      return defect(
-        "BundleDispatchDefect",
-        error instanceof Error ? error.message : String(error)
-      )
-    } finally {
-      if (timer !== undefined) clearTimeout(timer)
-    }
-  }
+  ): Promise<WorkerExit> => runBundleInvocation(module, invocation, input, route)
 
   const handleInvoke = async (bodyBytes: Uint8Array): Promise<JsonValue> => {
     let invocationValue: unknown

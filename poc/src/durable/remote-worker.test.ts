@@ -170,6 +170,7 @@ const invocation = (
     readonly fencingToken?: number
     readonly owner?: string
     readonly leaseExpiresAt?: number
+    readonly budgetExpiresAt?: number
     readonly value?: number
     readonly spinMs?: number
   }
@@ -190,6 +191,7 @@ const invocation = (
     owner: options.owner ?? "remote-test-owner",
     expiresAt: options.leaseExpiresAt ?? Date.now() + 30_000
   },
+  budget: { expiresAt: options.budgetExpiresAt ?? Date.now() + 45_000 },
   fencingToken: options.fencingToken ?? 1,
   traceContext: {}
 })

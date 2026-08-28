@@ -721,7 +721,7 @@ export const prepareManifestInvocation = (
       !hasExactKeys(invocation, [
         "schemaVersion", "executionId", "nodeId", "attempt", "actionId", "actionVersion",
         "actionContractDigest", "implementationDigest", "input", "deadline",
-        "downstreamIdempotencyKey", "capabilityGrant", "lease", "fencingToken", "traceContext"
+        "downstreamIdempotencyKey", "capabilityGrant", "lease", "budget", "fencingToken", "traceContext"
       ]) ||
       invocation.schemaVersion !== 1 ||
       invocation.executionId.trim() === "" ||
@@ -734,6 +734,9 @@ export const prepareManifestInvocation = (
       !hasExactKeys(invocation.lease, ["owner", "expiresAt"]) ||
       !Number.isSafeInteger(invocation.lease.expiresAt) || invocation.lease.expiresAt < 0 ||
       typeof invocation.lease.owner !== "string" || invocation.lease.owner.trim() === "" ||
+      !hasExactKeys(invocation.budget, ["expiresAt"]) ||
+      !Number.isSafeInteger(invocation.budget.expiresAt) || invocation.budget.expiresAt < 0 ||
+      invocation.budget.expiresAt > invocation.deadline ||
       !Array.isArray(invocation.capabilityGrant) ||
       invocation.capabilityGrant.some((item) => typeof item !== "string" || item.trim() === "") ||
       canonicalJson(invocation.capabilityGrant) !== canonicalJson([...new Set(invocation.capabilityGrant)].sort()) ||
@@ -798,13 +801,117 @@ export const prepareManifestInvocation = (
       defect: { name: "DeadlineExceeded", message: `Deadline exceeded before ${invocation.actionId} invocation` }
     } }
   }
-  if (now >= invocation.lease.expiresAt) {
+  // Deliberately NOT `invocation.lease.expiresAt`: that snapshot is stale the
+  // moment the coordinator's first heartbeat renews the store lease, so gating
+  // on it rejects perfectly live long-running Actions on exactly the transports
+  // that happen to look at it. `budget` is the coordinator's live horizon.
+  if (now >= invocation.budget.expiresAt) {
     return { ready: false, exit: {
       kind: "defect",
-      defect: { name: "LeaseExpired", message: `Lease expired before ${invocation.actionId} invocation` }
+      defect: {
+        name: "InvocationBudgetExpired",
+        message: `Execution budget expired before ${invocation.actionId} invocation`
+      }
     } }
   }
   return { ready: true, invocation, input, route }
+}
+
+/**
+ * The single execution-budget derivation every worker transport shares.
+ *
+ * The coordinator owns the horizon (`Invocation.budget`) because it is the only
+ * party that knows the lease it is actively renewing. A transport re-deriving a
+ * budget from `invocation.lease.expiresAt` would be reading a claim-time
+ * snapshot that goes stale after `leaseMs/3`, which is precisely how the same
+ * deployment came to succeed in-process and time out over HTTP.
+ *
+ * `graceMs` is the only per-transport freedom: a layer that waits on another
+ * layer's answer (the remote client waiting on the worker host) allows itself a
+ * little more than the horizon so the inner layer's own verdict wins the race
+ * rather than being cut off mid-wire.
+ */
+export const invocationBudgetMs = (
+  invocation: Invocation,
+  graceMs = 0,
+  now = Date.now()
+): number => invocation.budget.expiresAt - now + graceMs
+
+/**
+ * Default transport grace. The coordinator runs its OWN race against the same
+ * horizon (`DurableExecutor` deadline/cancellation), and its verdict is the
+ * authoritative one, so a transport must not preempt it by a millisecond of
+ * timer jitter. The remote client allows itself more still (`INVOKE_GRACE_MS`)
+ * so the worker host's verdict arrives over the wire rather than being severed.
+ */
+export const WORKER_BUDGET_GRACE_MS = 250
+
+/** Host `setTimeout` delays are 32-bit; a longer budget must be re-armed, not clamped. */
+const MAX_TIMER_DELAY_MS = 2_147_483_647
+
+export const invocationBudgetExhausted = (invocation: Invocation, label: string): WorkerExit => ({
+  kind: "defect",
+  defect: {
+    name: "InvocationBudgetExceeded",
+    message: `${invocation.actionId} exceeded its coordinator execution budget on the ${label} transport`
+  }
+})
+
+/**
+ * Run one attempt under the coordinator's budget and ABORT it when the budget
+ * wins. Every transport funnels through here, so "the budget elapsed" always
+ * means the work was cancelled, never merely abandoned while it keeps running
+ * and the coordinator retries it somewhere else.
+ *
+ * The derived signal is aborted on every exit path, not just the timeout, so a
+ * finished attempt can never leave work it started still running.
+ */
+export const withInvocationBudget = async (
+  invocation: Invocation,
+  options: {
+    /** Names this transport in the budget defect. */
+    readonly label: string
+    /** Caller cancellation, forwarded into `run`. */
+    readonly signal?: AbortSignal
+    readonly graceMs?: number
+  },
+  run: (signal: AbortSignal) => Promise<WorkerExit>
+): Promise<WorkerExit> => {
+  const budgetMs = invocationBudgetMs(invocation, options.graceMs ?? 0)
+  if (budgetMs <= 0) return invocationBudgetExhausted(invocation, options.label)
+  const controller = new AbortController()
+  const caller = options.signal
+  const forward = (): void => controller.abort(caller?.reason)
+  if (caller !== undefined) {
+    if (caller.aborted) forward()
+    else caller.addEventListener("abort", forward, { once: true })
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const exhausted = new Promise<WorkerExit>((resolve) => {
+    // Re-armed rather than a single sleep: a far-future persisted deadline
+    // exceeds the host timer's 32-bit delay and would otherwise be clamped into
+    // firing immediately, cancelling work that has hours of budget left.
+    const schedule = (): void => {
+      const remaining = invocationBudgetMs(invocation, options.graceMs ?? 0)
+      if (remaining > 0) {
+        timer = setTimeout(schedule, Math.min(MAX_TIMER_DELAY_MS, remaining))
+        timer.unref?.()
+        return
+      }
+      // Abort BEFORE resolving: the work must be cancelled by the time the
+      // caller is told the budget elapsed, not after it has already retried.
+      controller.abort(new Error(`${invocation.actionId} exceeded its execution budget`))
+      resolve(invocationBudgetExhausted(invocation, options.label))
+    }
+    schedule()
+  })
+  try {
+    return await Promise.race([run(controller.signal), exhausted])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+    caller?.removeEventListener("abort", forward)
+    controller.abort()
+  }
 }
 
 export class LocalWorker implements DurableWorker {
@@ -875,37 +982,48 @@ export class LocalWorker implements DurableWorker {
     const prepared = this.prepare(rawInvocation, signal)
     if (!prepared.ready) return prepared.exit
     const { invocation, input, provider, route } = prepared
-    try {
-      const output = await provider.implementation(input as any, { invocation, signal })
+    // In-process work is only cooperatively cancellable, but the budget is the
+    // same budget every other transport enforces, and the implementation is
+    // handed the derived signal so it can stop.
+    return withInvocationBudget(
+      invocation,
+      { label: "in-process", signal, graceMs: WORKER_BUDGET_GRACE_MS },
+      async (budgetSignal) => {
       try {
-        return {
-          kind: "success",
-          value: validateDurableValue(route.schemas.success, output, `${invocation.actionId} success`)
-        }
-      } catch (error) {
-        return {
-          kind: "defect",
-          defect: {
-            name: "SuccessCodecDefect",
-            message: error instanceof Error ? error.message : `${invocation.actionId} success failed its durable codec`
-          }
-        }
-      }
-    } catch (error) {
-      if (error instanceof ActionFailure) {
+        const output = await provider.implementation(input as any, {
+          invocation,
+          signal: budgetSignal
+        })
         try {
           return {
-            kind: "failure",
-            error: validateDurableValue(route.schemas.error, error.failure, `${invocation.actionId} failure`)
+            kind: "success",
+            value: validateDurableValue(route.schemas.success, output, `${invocation.actionId} success`)
           }
-        } catch {
+        } catch (error) {
           return {
             kind: "defect",
-            defect: { name: "FailureCodecDefect", message: `${invocation.actionId} produced a non-durable typed failure` }
+            defect: {
+              name: "SuccessCodecDefect",
+              message: error instanceof Error ? error.message : `${invocation.actionId} success failed its durable codec`
+            }
           }
         }
+      } catch (error) {
+        if (error instanceof ActionFailure) {
+          try {
+            return {
+              kind: "failure",
+              error: validateDurableValue(route.schemas.error, error.failure, `${invocation.actionId} failure`)
+            }
+          } catch {
+            return {
+              kind: "defect",
+              defect: { name: "FailureCodecDefect", message: `${invocation.actionId} produced a non-durable typed failure` }
+            }
+          }
+        }
+        return thrownDefect(error)
       }
-      return thrownDefect(error)
-    }
+    })
   }
 }
