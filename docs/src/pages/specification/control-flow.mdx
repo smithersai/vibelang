@@ -56,7 +56,9 @@ Smithers MUST NOT add `defer` or `errdefer`. Scope-exit cleanup uses TC39 explic
 
 Cleanup that must run only on a Result error exit MUST be written explicitly in the failure path — through `mapError`, `recover`, `match`, or an ordinary JavaScript `try`/`catch` at an interop boundary.
 
-Interaction between `using` disposal and compiler-generated early returns from `!` requires further normative specification.
+Interaction between `using` disposal and a compiler-generated failure exit from `!` requires further normative specification.
+
+That specification MUST additionally cover **abandonment**: when a handler declines to resume a suspended computation, every live `using` and `await using` scope in the abandoned computation MUST be disposed, in reverse acquisition order, and every `finally` block MUST run. `catch` clauses MUST NOT run. A runtime MUST NOT allow an abandoned computation to leave a resource undisposed. Whether a disposal error raised during abandonment can be observed by the handler is **open**. See [Effects](/specification/effects) §Abandonment.
 
 ## Grammar Additions in General
 

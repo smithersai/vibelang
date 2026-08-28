@@ -59,7 +59,7 @@ Public, abstract, ambient, and declaration-only contracts MUST express fallibili
 
 Smithers MUST NOT add a general `throws` clause, `!T` type marker, prefix `try` expression, or postfix Result-recovery expression. Panic MUST be explicitly catchable; the final catch spelling is not fixed by this page.
 
-## Propagation
+## Failure Propagation
 
 The postfix `!` operator MUST yield the success value or propagate the error variant from the enclosing Result-returning function:
 
@@ -82,47 +82,32 @@ const name = findUser(id)!?.nickname ?? "anonymous"
 
 Here `!` propagates `NotFound`, `?.` handles an absent nickname, and `??` supplies the absence fallback.
 
-The compiler MUST include the propagated Result's error type in the enclosing function's inferred `E`. The emitted error path MUST return the enclosing error variant rather than throw a recoverable JavaScript exception.
+The compiler MUST include the propagated Result's error type in the enclosing function's inferred `E`. The emitted error path MUST complete the enclosing computation with its error variant rather than throw a recoverable JavaScript exception. Where the enclosing function is emitted in the resumable calling convention defined by [Effects](/specification/effects), "complete" means the computation's completion value, which the handler observes; it does not mean a JavaScript `throw`, and a Result error MUST NOT be delivered through the exception channel at any point.
 
 At an explicit non-Result boundary, unsafe extraction MAY throw at runtime and MUST be visually distinct in API naming or diagnostics.
 
-### Accepted Placements
+### Refusal Conditions
 
-`!` is not accepted in every expression position. The lowering emits an early return, so a placement is sound only where that return preserves the authored evaluation order — the same constraint that governed the withdrawn expression-form grammar.
+The lowering emits a delegated suspension, which is an expression in every position and therefore preserves the authored evaluation order everywhere. Placement is unrestricted. The conditions that remain on `!` are typing conditions and a control-flow-boundary condition, not lowering conditions.
 
-A `!` on a Result operand MUST be accepted if and only if all five hold.
-
-**1. Placement.** Walking outward from the `!` expression, every enclosing node until the nearest statement or arrow function MUST be one of exactly seven forms:
-
-- a parenthesized expression
-- an `await` expression
-- an `as` expression
-- a property access, where the `!` expression is the **object**
-- a `??` binary expression, where the `!` expression is the **left** operand
-- a variable declaration whose initializer is the `!`, in a list with **exactly one** declarator
-- a variable declaration list with **exactly one** declarator
-
-**2.** The `!` MUST NOT be in a repeated loop header.
-**3.** The enclosing function MUST declare a Result channel or infer a non-empty failure set.
-**4.** The `!` MUST NOT be inside a `try` block that has a `catch` clause.
-**5.** The operand's checker-derived provenance MUST be a Result.
-
-Because the walk stops at the nearest **statement**, any construct whose child is directly a statement position admits a `!`. That is why `if (r!)`, `switch (r!)`, and `for (let i = r!; …)` are accepted while every expression-nested position is not.
-
-Two consequences are easy to get wrong and MUST be read from the rule rather than guessed:
+`!` is accepted in any expression position:
 
 ```ts
-r!.length        // accepted — property access with the ! as object
-r!.trim()        // rejected — the allowance ends when the member is called
-r![0]            // rejected — element access is not property access
-r! ?? "fallback" // accepted — ! is the left operand
-maybe ?? r!      // rejected — ! is the right operand
-f(r!)            // rejected — call argument, at any nesting depth
+r!.length        // accepted
+r!.trim()        // accepted
+r![0]            // accepted
+r! ?? "fallback" // accepted
+maybe ?? r!      // accepted
+f(r!)            // accepted
 ```
 
-A rejected placement MUST be a diagnostic, never a silent lowering. Four distinct conditions refuse a `!` and a reader MUST NOT expect one code to cover them: placement, repeated loop header, no enclosing Result channel, presence of a `catch`, and non-Result provenance are separately diagnosed.
+The `!` operator MUST be rejected unless the enclosing function declares a Result channel or infers a non-empty failure set, and unless the operand's checker-derived provenance is a Result. Each refusal MUST carry its own diagnostic code.
 
-Three further contracts disqualify the **enclosing member** from hosting any `!` rather than rejecting the placement: getters and constructors, generators, and class static blocks.
+The `!` MUST NOT be inside a `try` block that has a `catch` clause. The emitted failure exit unwinds the delimited computation: `finally` blocks and `using` disposals run, and `catch` clauses do not. The authored text would read as though the failure were catchable when it is not, so the placement MUST be refused rather than silently lowered. Delivering the failure as a thrown JavaScript exception so that `catch` observes it is prohibited by this section and MUST NOT be adopted as an alternative.
+
+A rejected `!` MUST be a diagnostic, never a silent lowering. Three distinct conditions refuse a `!` and a reader MUST NOT expect one code to cover them: no enclosing Result channel, non-Result provenance, and presence of an enclosing `catch`.
+
+Two further contracts disqualify the **enclosing member** from hosting any `!` rather than rejecting the placement: getters and constructors, and class static blocks. An **authored** `function*` MUST NOT declare or infer a non-empty effect row: the iterator protocol's `throw()` and `return()` injection points mean an authored generator's row is not a function of its own text. The resumable generator form is reserved for compiler emission; its resumption protocol is part of the compiler contract and MUST NOT be spellable in `.sm`.
 
 ## Compiler-Owned Modules
 
@@ -185,7 +170,7 @@ Members that must inspect a failure value — `tryRecover`, `tapError`, `mapErro
 
 `match` MUST require both success and error branches. Transformations MUST preserve or correctly combine the Result error type. Async variants MUST return a Promise of the Result rather than a nested Result.
 
-Smithers MUST NOT expose `Result.ok`, `Result.err`, or a `TaggedError` factory: ordinary `return`, `throw`, and `class ... extends Error` construct those. Smithers MUST NOT require `Result.gen`/`yield*` do-notation, because postfix `!` already provides propagation.
+Smithers MUST NOT expose `Result.ok`, `Result.err`, or a `TaggedError` factory: ordinary `return`, `throw`, and `class ... extends Error` construct those. Smithers MUST NOT require `Result.gen`/`yield*` do-notation in authored source, because postfix `!` already provides propagation. This is a constraint on the authoring surface. The compiler MAY emit `yield*` in the lowered form of a function with a non-empty effect row; that form has no `.sm` spelling and MUST NOT appear in an authored type, a public declaration's value syntax, or a diagnostic.
 
 A Result MUST be treated as a must-use value. A source program MUST NOT silently discard a Result without returning, matching, transforming, inspecting, or unwrapping it.
 
@@ -232,7 +217,7 @@ An author MAY still annotate `Result<A, Panic>` explicitly to materialize a pani
 
 Authored `.sm` code MUST consume Promise instances only through `await`.
 
-Calls to Promise instance `.then()`, `.catch()`, or `.finally()` MUST be compile errors. Imported TypeScript and JavaScript modules retain ordinary Promise behavior internally.
+Calls to Promise instance `.then()`, `.catch()`, or `.finally()` MUST be compile errors. Imported TypeScript and JavaScript modules retain ordinary Promise behavior internally. A Flow body therefore MUST NOT depend on the interleaving of work started inside an imported module: any such work MUST be consumed at the boundary through a single awaited value, and the runtime journals only that value.
 
 Awaiting `Promise<Result<A, E>>` MUST produce `Result<A, E>`. `await` MUST NOT automatically unwrap, recover, or discard the Result.
 
@@ -251,6 +236,55 @@ from TypeScript.
 Cleanup conditioned on the error variant MUST be written explicitly in the
 failure path rather than registered by a dedicated statement form.
 
-Disposal ordering relative to a compiler-generated `!` early return,
-async finalization, cancellation, and cleanup-error composition require further
+Disposal ordering relative to a compiler-generated failure exit, async
+finalization, cancellation, and cleanup-error composition require further
 normative specification.
+
+The specification MUST additionally cover **abandonment**: a handler that
+declines to resume a suspended computation MUST cause that computation's live
+`using` and `await using` scopes to be disposed, in reverse acquisition order,
+before the handler's own result is produced. A runtime MUST NOT allow an
+abandoned computation to leave a resource undisposed. Whether a disposal error
+raised during abandonment can be observed by the handler is **open**.
+
+## Amendment Record — one-shot delimited continuations, 2026-08-27
+
+The failure model on this page is unchanged. What changed is the *lowering* it is
+written against: a failure exit is now a delimited-computation completion rather
+than an emitted early `return`. Three sentences were withdrawn rather than
+edited, and are recorded here so a reader who has quoted them can see what
+replaced them.
+
+**Withdrawn — the placement rule** (previously §Accepted Placements):
+
+> "`!` is not accepted in every expression position. The lowering emits an early
+> return, so a placement is sound only where that return preserves the authored
+> evaluation order — the same constraint that governed the withdrawn
+> expression-form grammar."
+
+With it go the five-condition rule, the seven enclosing forms, the
+repeated-loop-header condition, the statement-walk rationale, and the six worked
+rejections (`r!.trim()`, `r![0]`, `maybe ?? r!`, `f(r!)`). Those forms are now
+**accepted**, permanently. The 115-case placement measurement that supported the
+rule is withdrawn with it and MUST NOT be cited. Two of the five conditions —
+no enclosing Result channel and non-Result provenance — were typing conditions
+rather than lowering conditions and survive verbatim under §Refusal Conditions,
+as does the `catch` condition, whose *reason* is rewritten there.
+
+**Withdrawn — the count of refusals:**
+
+> "Four distinct conditions refuse a `!` … placement, repeated loop header, no
+> enclosing Result channel, presence of a `catch`, and non-Result provenance are
+> separately diagnosed."
+
+That sentence said four and listed five. It is replaced by three.
+
+**Amended — the enclosing-member disqualification.** Generators were previously
+disqualified alongside getters, constructors, and class static blocks. They still
+are, but the rule is now stated as a constraint on an authored `function*`'s
+effect row, because the compiler now emits generators of its own.
+
+**Amended — the emitted error path.** "MUST return the enclosing error variant"
+became "MUST complete the enclosing computation with its error variant". The
+prohibition it carries — a Result error MUST NOT travel through the JavaScript
+exception channel — is unchanged and was strengthened to hold at every point.

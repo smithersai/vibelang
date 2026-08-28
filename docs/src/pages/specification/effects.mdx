@@ -1,0 +1,152 @@
+# Effects [Normative model for effect requests, handlers, and one-shot continuations]
+
+Status: the request/handler model, one-shot resumption, the journaling classifier, and the determinism obligations are **locked**. Versioning under replay and journal boundedness are **open**.
+
+This page defines the substrate that [Failure Semantics](/specification/failures),
+[Requirements](/specification/requirements), and [Durable
+Execution](/specification/durable-execution) are written against. Nothing on this
+page is spellable in `.sm`. It describes what the compiler emits and what a
+conforming runtime MUST do; it does not add an authoring surface. Every authored
+form named here — postfix `!`, `Capability.context()`, `Layer.provide`,
+`durable(...)` — keeps exactly the source syntax and observable behavior its own
+page already specifies.
+
+## Effect Requests
+
+An **effect request** is a value produced at a point in a computation's execution, carrying:
+
+- a **key** — a nominal identity the compiler derives from source and that is stable across modules and compilations
+- an **input** — the request's argument, if any
+- a **site identity** — content-addressed from the request's source position and its enclosing function's identity, plus an **occurrence index** assigned at dispatch
+- an **answer type**, statically known
+
+A request MUST have exactly one of three kinds:
+
+| Kind | Meaning | Resumption |
+| --- | --- | --- |
+| `get` | read a capability | the handler MUST resume with the capability instance |
+| `perform` | run an effect whose answer crosses a persistence boundary | the handler MUST resume with the answer, or MUST NOT resume |
+| `abort` | propagate a failure out of the enclosing computation | the handler MUST NOT resume |
+
+A request MUST NOT be a value in `.sm`. There MUST be no source syntax that
+constructs, names, stores, inspects, compares, or forwards one. Requests are
+produced only by compiler lowering of the constructs defined below.
+
+### Panic Is Not a Request
+
+A `panic(...)`, a `Reflect.panic`, and a compiler or runtime invariant failure
+MUST unwind past every handler without any handler being offered the opportunity
+to answer. A handler MUST NOT be able to convert a panic into a resumption.
+
+[Failure Semantics](/specification/failures) already requires that ordinary
+Result recovery MUST NOT swallow panic implicitly. This extends the same rule to
+handlers.
+
+## One-Shot Delimited Continuations
+
+When a computation issues a request, the remainder of that computation up to its
+nearest enclosing handler delimiter is its **continuation**.
+
+- A continuation MUST be resumable **at most once**. A runtime MUST NOT expose multi-shot resumption, and MUST treat a second resumption of the same continuation as an invariant failure.
+- A continuation MUST NOT be reified as a value visible to authored `.sm`. No source construct MUST be able to obtain, name, store, compare, serialize, or resume one.
+- The emitted representation of a resumable computation and its resumption protocol are a **compiler-owned calling convention**. They MUST NOT appear in an authored type, in the value syntax of a public declaration, or in a diagnostic. A conforming implementation MAY choose any representation that satisfies this section.
+- A computation that has completed, or that a handler has declined to resume, MUST NOT be resumable.
+
+## Handlers
+
+A **handler** delimits a computation and answers requests issued within that
+computation's dynamic extent.
+
+- The handler that answers a request MUST be the **innermost enclosing handler that accepts that request's key**. A handler that does not accept a key MUST forward the request outward unchanged.
+- A handler MUST either answer a request and resume its continuation exactly once, or decline to resume it.
+- A request that reaches the top of the program with no handler that accepts its key MUST produce a panic.
+
+### Abandonment
+
+When a handler declines to resume a continuation, the runtime MUST unwind that
+continuation before the handler's own result is produced: every live `using` and
+`await using` scope in the abandoned computation MUST be disposed, in reverse
+acquisition order, and every `finally` block MUST run. `catch` clauses MUST NOT
+run.
+
+A runtime MUST NOT allow an abandoned computation to leave a resource undisposed.
+Whether a disposal error raised during abandonment can be observed by the handler
+is **open**.
+
+### Extent Is Structural
+
+A handler MUST NOT be reachable from a computation it has already completed or
+abandoned. Because the handler holds its environment on its own stack rather than
+in ambient storage, this is structural: no revocation step, promise-settlement
+observation, or host hook is required, and an implementation MUST NOT require
+one.
+
+## Effect Rows
+
+A function's **effect row** is the pair `(E, R)` the compiler infers today: the
+set of nominal failure identities and the set of nominal capability keys the
+function may request, directly or transitively.
+
+- The row MUST be part of the function's static type, MUST be preserved in exported declarations, and MUST be carried by a function **value**, not only by a function declaration. Assigning a function with a non-empty row where a function with a smaller row is expected MUST be a type error.
+- An unannotated function type carries the empty row.
+- A function whose row is empty MUST NOT be emitted in the resumable calling convention. This is the same obligation [Compatibility](/specification/compatibility) states as "infallible functions MUST NOT be wrapped".
+- A call whose callee the compiler cannot resolve, and whose callee type carries no row, MUST be rejected rather than lowered with an assumed convention.
+
+## Propagation Is an Abort Request
+
+`e!`, where `e` has checker-derived Result provenance, MUST evaluate to `e`'s
+success value, or issue an `abort` request carrying `e`'s error.
+
+The handler for an `abort` request is the compiler-installed frame handler of the
+nearest enclosing function with a non-empty failure row. That handler MUST NOT
+resume; it MUST complete that function with its error variant. The error MUST NOT
+be delivered through the JavaScript exception channel.
+
+Because the lowering is an expression, placement is unrestricted. `!` MUST be
+rejected only when: the enclosing function has no Result channel; the operand's
+provenance is not a Result; or the `!` is lexically inside a `try` block with a
+`catch` clause. [Failure Semantics](/specification/failures) §Failure Propagation
+is normative for those three conditions.
+
+## Layer Provision Installs a Handler
+
+`Layer.provide(layer, body)` MUST install a handler that accepts exactly the
+capability keys the layer provides, and MUST run `body` under it. A `get` request
+whose key the layer provides MUST be answered with the layer's instance and
+resumed. A `get` request whose key it does not provide MUST be forwarded outward.
+
+The four obligations in [Requirements](/specification/requirements) §Lowering —
+preserve async scope, nesting, failure cleanup, and nominal lookup behavior — are
+unchanged. Nested override precedence and layer merging remain **open** and MUST
+fail closed.
+
+## Durable Execution Installs the Journaling Handler
+
+`durable(f)` MUST produce a Flow descriptor for `f` and MUST NOT change what `f`
+computes. Executing the Flow MUST run `f`'s emitted body under the **durable
+handler**.
+
+### The Journaling Classifier
+
+A request MUST be journaled if and only if its answer satisfies the
+compiler-checked durable codec contract defined by [Durable
+Execution](/specification/durable-execution) §Durable Boundary. This is the whole
+classification rule; no annotation, marker, or partition syntax is added.
+
+- `Clock.context()` answers with a service, which is not codec-representable, so it is **not** journaled and MUST be re-answered by the handler stack on every resumption.
+- `clock.now()` answers with a number, which is, so it **is** journaled.
+
+Journal identity, replay, divergence, the determinism obligations of a Flow body,
+deterministic scheduling, versioning, and journal boundedness are specified in
+[Durable Execution](/specification/durable-execution).
+
+## What This Page Does Not Add
+
+The resumable calling convention is a lowering detail, not a language surface.
+Concretely, and normatively:
+
+1. `.sm` MUST have no `Effect<A, E, R>` value, no `Result.gen` do-notation, and no `.run()` step. A program is entered by calling a function.
+2. No source construct MUST be able to obtain, name, store, or resume a continuation.
+3. The convention MUST NOT be named in a diagnostic.
+4. An **authored** `function*` MUST NOT declare or infer a non-empty effect row. The resumable generator form is reserved for compiler emission.
+5. There is no user-visible fiber type. The durable runtime drives emitted bodies with a deterministic scheduler; that scheduler has no source-language surface and is not obtainable from non-durable code.

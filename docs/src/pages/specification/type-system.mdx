@@ -6,7 +6,7 @@ Status: the Result failure model and inferred requirements are **locked**. The e
 
 Smithers extends TypeScript's gradual type system. Existing TypeScript escape hatches remain available on the TypeScript target and MAY be restricted by lint policy rather than the language.
 
-Recoverable errors and requirements add precision without requiring a separate globally strict mode or an Effect interpreter.
+Recoverable errors and requirements add precision without requiring a separate globally strict mode or an Effect interpreter. This is a guarantee about authored functions and their observable behavior. The emitted form of a function with a non-empty effect row MAY be a generator, as defined by [Effects](/specification/effects).
 
 ## Function Type
 
@@ -15,7 +15,7 @@ A Smithers function has:
 - an ordinary return type, which is `Result<A, E>` when the function can fail
 - an inferred set `R` of nominal capability requirements
 
-Functions MUST remain eager. A Result is an ordinary returned value used only by fallible functions; it is not a universal wrapper around all computation.
+Functions MUST remain eager. A Result is an ordinary returned value used only by fallible functions; it is not a universal wrapper around all computation. This is a guarantee about authored functions and their observable behavior. The emitted form of a function with a non-empty effect row MAY be a generator, as defined by [Effects](/specification/effects).
 
 ## Fallibility Inference
 
@@ -45,7 +45,13 @@ declare function fetchUser(
 
 Smithers MUST NOT add `throws E`, `!T`, or another failure-annotation grammar.
 
-The `R` set MUST be inferred from compiler-recognized context access and preserved in exported declarations. Its emitted TypeScript representation remains open.
+The `R` set MUST be inferred from compiler-recognized context access and preserved in exported declarations. Its emitted TypeScript representation remains open, and it MUST additionally carry whether the function is effectful, because a cross-module caller cannot lower its call site without that fact.
+
+### Rows on Function Values
+
+A function's **effect row** is the pair `(E, R)`. The row MUST be part of the function's static type, MUST be preserved in exported declarations, and MUST be carried by a function **value**, not only by a function declaration. Assigning a function with a non-empty row where a function with a smaller row is expected MUST be a type error.
+
+An unannotated function type carries the empty row. A call whose callee the compiler cannot resolve, and whose callee type carries no row, MUST be rejected rather than lowered with an assumed calling convention.
 
 ## Result Composition
 
@@ -99,3 +105,5 @@ Ordinary types MAY be consumed as comptime values. Comptime code MAY derive vali
 There MUST NOT be a separate `runtime type` declaration modifier.
 
 At durable boundaries, Result variants and all enclosed values MUST have compiler-known durable codecs or explicit user-supplied codecs.
+
+The scope of that sentence widens under replay: every journaled effect-request answer is such a boundary, and codec representability is what decides whether a request is journaled at all. See [Effects](/specification/effects) §The Journaling Classifier.

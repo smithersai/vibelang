@@ -13,9 +13,11 @@ Smithers MUST NOT be described or tested as a syntactic superset of TypeScript. 
 
 ## TypeScript Target
 
-The TypeScript target MUST interoperate with the complete TypeScript language in `.ts` and `.tsx` modules. Smithers constructs SHOULD lower into ordinary TypeScript before the stock pipeline finishes checking and emission where feasible.
+The TypeScript target MUST interoperate with the complete TypeScript language in `.ts` and `.tsx` modules. Smithers constructs SHOULD lower into ordinary TypeScript before the stock pipeline finishes checking and emission where feasible. Constructs whose lowering depends on a whole-program row MUST be lowered after inference completes.
 
-Requirement metadata SHOULD erase where it does not require runtime machinery. Result values have an intentional runtime representation; infallible functions MUST NOT be wrapped.
+Requirement metadata SHOULD erase where it does not require runtime machinery. Result values have an intentional runtime representation; infallible functions MUST NOT be wrapped. That last obligation is now the rule that a function whose effect row is empty MUST NOT be emitted in the resumable calling convention defined by [Effects](/specification/effects).
+
+Requirement metadata does not erase completely. Whatever representation is chosen MUST additionally carry whether a function is effectful, because a cross-module caller cannot lower its call site without that fact.
 
 ## Foreign Boundary
 
@@ -31,11 +33,43 @@ Smithers has no `TypeScript` requirement. TypeScript is the only target, so ever
 
 `any` and `eval` remain usable. General Smithers guidance may lint against them; the language does not forbid them.
 
+**Open — contested, and shipped behavior already diverges from the sentence above.** That sentence is Locked and has not been withdrawn. It is nevertheless not what the compiler does: dynamic code evaluation is refused today, and the conformance corpus deliberately certifies the refusal ahead of this page. Until the conflict is ratified one way or the other, it is a recorded conflict rather than an unnoticed one, and neither side may be quietly changed to match. The proposal on the table is:
+
+> Dynamic code evaluation is unavailable in `.sm`. `eval`, the `Function`
+> constructor, and any selection of `constructor` on a callable receiver MUST be
+> refused: a runtime string lies outside every static analysis, so the compiler
+> can neither describe what it requires nor prove that it replays. This holds
+> even for an expression that reads nothing from the host, because purity of a
+> runtime string is not decidable. `any` remains usable, but a receiver typed
+> `any` in a position where the analysis must decide callability MUST be treated
+> as callable — matching the fail-closed default already applied to a dynamically
+> selected member.
+
+Both directions cost something. Adopting the proposal converts a locked permission into a prohibition. Declining it leaves a hole that matters more under replay than it did before: an `eval`'d string produces no journal entry, so it produces no divergence to detect. The full evidence is recorded in the decision ledger.
+
 ## Host Globals
 
 Platform-specific globals such as `process`, `window`, `document`, filesystem, and network MUST NOT be unconditional globals in authored `.sm` code. Host functionality MUST be represented by typed capabilities, normally accessed through the inherited `Capability.context()` method from `smthrs/context`.
 
 Facilities truly present in every supported JavaScript environment MAY be unconditional globals. Host-sensitive operations such as clock and random access MUST still use capabilities.
+
+Because a Flow body re-executes on every resumption, an operation whose result can differ between two executions of the same code on the same inputs MUST be reachable only through a capability whose answer the runtime journals.
+
+### Determinism-Sensitive Members
+
+"Present in every JavaScript environment" is not sufficient on its own. The following are per-member obligations on the rule above, because each names an operation whose result is a function of host state that no journal entry can describe:
+
+| Operation | Obligation |
+| --- | --- |
+| `WeakRef`, `FinalizationRegistry` | MUST NOT be unconditional globals. `deref()` returning `undefined` is a pure function of garbage-collection timing: no capability can mediate it and no journal entry can describe it. |
+| `SharedArrayBuffer`, `Atomics` | MUST NOT be unconditional globals. Cross-agent shared-memory reads and `Atomics.wait` observe another agent's schedule. That ECMA-262 publishes them is true and irrelevant to replay. |
+| `Promise.race`, `Promise.any` | MUST charge a `Scheduler` requirement, because their value *is* arrival order. Every other `Promise` member stays free. |
+| `Date.prototype.getHours`, `getDay`, `getTimezoneOffset`, `toLocaleString`, `toString` | MUST charge `Clock` even when an explicit instant is supplied, because they read the host time zone. `getTime()` stays free. This is the hazard already charged at `Intl.DateTimeFormat` construction. |
+| `Intl.NumberFormat`, `Intl.Collator`, `String.prototype.localeCompare`, `Number.prototype.toLocaleString` | MUST charge a `Locale` requirement. They are functions of the host ICU version and locale data, and `Collator.compare` used as a sort comparator makes the resulting **ordering** host-dependent. |
+
+These walls MUST be uniform across all `.sm` code and MUST NOT be scoped to Flow bodies. A rule that fires in one file and not another is a per-file dialect, which the decision ledger warns against by name, and it does not work mechanically either: requirement inference is whole-program, so a Flow's helper lives in another file. The cost of uniformity is explicit and accepted — `Intl.Collator` in an ordinary CLI formatter also charges `Locale`.
+
+ECMA-262 permits implementation-approximated results for `Math.sin`, `cos`, `tan`, `exp`, `log`, `pow`, `**`, `hypot`, `fround`, and `atan2`. A deployment SHOULD pin an engine version across the artifacts that can resume a given execution. A runtime MUST NOT treat a last-ulp difference in these operations as a journal-integrity failure.
 
 ## Host Modules
 
@@ -106,6 +140,8 @@ The plugin MUST:
 
 The plugin MUST NOT define language semantics. It is a delivery mechanism for the same lowering the compiler performs; a construct MUST NOT behave differently because it was compiled by a bundler rather than by the CLI.
 
+The five obligations above are unchanged, but the fourth carries more weight than it did. Authored code and emitted code now diverge structurally wherever a function has a non-empty effect row, not only at `!` sites, so a missing or approximate source map degrades every diagnostic, stack trace, and debugger step in an effectful program.
+
 ### Checking and Transform Modes
 
 Smithers inference is whole-program: error rows, requirement rows, and must-use analysis cross module boundaries. A per-file bundler transform cannot see that graph.
@@ -117,13 +153,15 @@ The plugin MUST therefore support two modes:
 
 Transform-only MUST NOT be presented as a conforming implementation of the language.
 
+Whether a called function is emitted in the resumable calling convention is whole-program information. A transform-only build therefore fails closed at nearly every call site that reaches a function with a non-empty effect row. Transform-only mode is a fast-rebuild convenience for files with empty rows and MUST NOT be presented as a general build mode.
+
 ### Incrementality
 
-The plugin MUST expose accurate invalidation to the host tool's watch mode. A `.sm` file's transform result depends on its own contents, the contents of the modules it imports whose rows it consumes, comptime inputs, and the target — and every one of those MUST invalidate it.
+The plugin MUST expose accurate invalidation to the host tool's watch mode. A `.sm` file's transform result depends on its own contents, the contents of the modules it imports whose rows it consumes, comptime inputs, and the target — and every one of those MUST invalidate it. This is more sensitive than it was: a callee's row changing from empty to non-empty changes every caller's emitted shape, not only its diagnostics.
 
 ### Declaration Emit
 
-A library published from `.sm` sources MUST be consumable by ordinary TypeScript projects. The plugin or the CLI MUST be able to emit `.d.ts` declarations that preserve Result contracts and requirement rows.
+A library published from `.sm` sources MUST be consumable by ordinary TypeScript projects. The plugin or the CLI MUST be able to emit `.d.ts` declarations that preserve Result contracts, requirement rows, and each exported function's emitted calling convention. A cross-package caller that cannot read a callee's calling convention MUST fail closed rather than assume the ordinary one.
 
 ## Type Assertions
 
@@ -133,3 +171,24 @@ The TypeScript non-null assertion MUST NOT exist in `.sm`. Postfix `!` is the Re
 
 - provably safe assertions erase
 - reifiable assertions may check and defect on failure
+
+## Amendment Record — one-shot delimited continuations, 2026-08-27
+
+**Amended — Declaration Emit.** The previous obligation was:
+
+> "The plugin or the CLI MUST be able to emit `.d.ts` declarations that preserve
+> Result contracts and requirement rows."
+
+A published `.d.ts` must now also carry each exported function's emitted calling
+convention. That is a published ABI, and it is a larger commitment than the
+sentence it replaces.
+
+**Amended — Checking and Transform Modes.** No sentence changed. Its blast radius
+did: transform-only previously failed closed on a corner case and now fails
+closed at nearly every call site reaching a function with a non-empty effect row.
+This is recorded because a reader who last read the page before this revision
+would reasonably have taken transform-only for a general build mode.
+
+**Not amended — §Dynamic Features.** The `any`/`eval` sentence remains Locked and
+in force in this document. The conflict recorded there is open and has not been
+decided; nothing on this page may be read as having decided it.

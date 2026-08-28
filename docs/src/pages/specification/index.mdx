@@ -29,7 +29,7 @@ Smithers defines several distinct subjects of conformance:
 
 - a **source implementation** parses and checks `.sm` programs
 - the **TypeScript backend** preserves TypeScript-compatible source behavior and emits TypeScript/JavaScript artifacts
-- a **durable runtime** executes compiler-produced Flow plans and Action protocols
+- a **durable runtime** executes compiler-emitted Flow bodies under a journaling handler, together with the Action protocols
 
 ## Source of Truth
 
@@ -49,10 +49,11 @@ specific decision it records.
 - [Compatibility](/specification/compatibility) defines the TypeScript interop boundary and target model.
 - [Type System](/specification/type-system) defines function channels, absence, and boundary precision.
 - [Failure Semantics](/specification/failures) defines failures, defects, propagation, and recovery.
+- [Effects](/specification/effects) defines effect requests, one-shot delimited continuations, handlers, and effect rows — the shared substrate the failure, requirement, and durable pages are written against.
 - [Requirements](/specification/requirements) defines `Context` capabilities, inferred requirement rows, and layer satisfaction.
 - [Control Flow](/specification/control-flow) defines the statement model, cleanup, and the one accepted grammar addition.
 - [Comptime](/specification/comptime) defines the imported compiler intrinsic, phase evaluation, and tracked compiler input.
-- [Durable Execution](/specification/durable-execution) defines the imported durable intrinsic, Actions, static Flow lowering, non-executing plan/preview, and runtime guarantees.
+- [Durable Execution](/specification/durable-execution) defines the imported durable intrinsic, Actions, the replay execution model, non-executing inspection, and runtime guarantees.
 
 ## Open Design Work
 

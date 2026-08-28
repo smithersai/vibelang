@@ -35,6 +35,8 @@ function timestamp(message: string): Entry {
 
 The call is intentionally library-shaped: it uses ordinary static method-call syntax and has ordinary runtime behavior after lowering, while the compiler gives it additional static meaning. The receiver MUST identify a `Context` subclass strongly enough for the compiler to record its nominal key.
 
+A reference to a capability's `context` member that is not an immediate call on a statically determined `Context` subclass MUST be rejected. The compiler MUST be able to identify, at every access site, exactly one nominal capability key and one runtime constructor value. This is a precondition of the lowering, not a stylistic restriction: it is what makes rewriting `Capability.context()` into a handler-answered effect request sound.
+
 The context row MUST be part of the function's static type even though it is not written with dedicated function-declaration syntax. Callers MUST NOT pass a context argument by hand.
 
 Lookup MUST remain fully typed. The implementation MUST NOT expose an untyped service locator.
@@ -50,6 +52,8 @@ Public declarations MUST preserve the inferred row. Its exact TypeScript declara
 ## Platform Requirements
 
 Platform-sensitive functionality MUST use requirements. This includes filesystem, network, environment, clock, randomness, process, browser document, and comparable host facilities.
+
+Clock and randomness are not merely hygiene. Because a Flow body re-executes on every resumption, routing them through capabilities is the precondition that makes replay correct at all; see [Durable Execution](/specification/durable-execution) §Flow Purity.
 
 A capability MAY have multiple host implementations. For example, `FileSystem` MAY be implemented by Node, Bun, Deno, or a test provider.
 
@@ -83,14 +87,39 @@ When the compiler knows the complete closure, an unsatisfied capability MUST be 
 
 Provided implementations MUST be scoped to the provided computation. `Layer.provide(layer, body)` MUST keep its environment active through `body` and the Promise returned by `body`, then revoke it. Nested scopes MAY override implementations according to a future explicit precedence rule.
 
-Promise revocation MUST occur at settlement before queued Promise reactions run. A runtime MAY require the Promise to be created by the provider body, and MUST reject an unverifiable pre-existing Promise or a host that cannot observe settlement synchronously. Authors can establish an unaliased boundary with `async () => await existingPromise`; this adapts the lifetime without making the Layer own the underlying work.
+A provided environment MUST NOT be observable outside the dynamic extent of the computation it scopes. Because the handler holds the environment on its own stack rather than in ambient storage, and a completed or abandoned computation cannot issue a further request, revocation is structural. A runtime MUST NOT require a host promise-settlement hook, MUST NOT restrict which Promise a provider body returns, and MUST NOT refuse an async provider scope on a host that cannot observe Promise settlement synchronously.
 
-A base Layer MUST NOT discover, register, cancel, or join child work. Fire-and-forget and detached work are initially unavailable in authored `.sm`; every started Promise MUST be consumed directly by `await` or by a recognized combinator whose resulting Promise is consumed before scope exit.
+A base Layer MUST NOT discover, register, cancel, or join child work. Fire-and-forget and detached work are initially unavailable in authored `.sm`; every started Promise MUST be consumed directly by `await` or by a recognized combinator whose resulting Promise is consumed before scope exit. Under replay this is a correctness rule rather than lifetime hygiene: an unconsumed Promise is an unjournaled, unreproducible interleaving.
 
 Imported JavaScript or TypeScript that starts hidden background work owns that work. Caller-controlled background APIs MUST expose explicit completion or disposal handles through their adapters.
 
 ## Lowering
 
-The TypeScript backend MAY lower requirements through hidden environment parameters, scoped ambient context, or another mechanism that preserves semantics and ordinary source-level call syntax.
+The TypeScript backend MAY lower requirements through hidden environment parameters, scoped ambient context, handler-answered effect requests, or another mechanism that preserves semantics and ordinary source-level call syntax.
 
 Ambient runtime context is not a locked implementation choice. The lowering MUST preserve async scope, nesting, failure cleanup, and nominal lookup behavior.
+
+The accepted mechanism is the one defined by [Effects](/specification/effects): `Capability.context()` issues a `get` request and `Layer.provide` installs the handler that answers it. That page is normative for the mechanism; the four preservation obligations above are normative for what any mechanism must not break.
+
+## Amendment Record — one-shot delimited continuations, 2026-08-27
+
+**Withdrawn — promise-settlement revocation** (previously §Scoping):
+
+> "Promise revocation MUST occur at settlement before queued Promise reactions
+> run. A runtime MAY require the Promise to be created by the provider body, and
+> MUST reject an unverifiable pre-existing Promise or a host that cannot observe
+> settlement synchronously. Authors can establish an unaliased boundary with
+> `async () => await existingPromise`; this adapts the lifetime without making
+> the Layer own the underlying work."
+
+The guarantee it protected — an environment MUST NOT outlive the computation it
+scopes — is unchanged and now holds structurally. Three obligations it imposed
+are withdrawn as unnecessary rather than relaxed: the Promise-provenance rule,
+the fail-closed refusal on a host without a synchronous settlement hook, and the
+author-written `async () => await existingPromise` adapter. Hosts previously
+refused for lacking that hook are now fully supported.
+
+`Layer.provide(layer, body)` keeping its environment active through `body` and
+the Promise returned by `body` is retained verbatim. Layer merging and nested
+override precedence remain **open** and still fail closed.
+

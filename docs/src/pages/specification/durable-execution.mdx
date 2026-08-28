@@ -1,10 +1,10 @@
 # Durable Execution [Normative model for Actions, Flows, and distributed runtime behavior]
 
-Status: the core Action/Flow model and distributed-build requirement are **locked**. Plan details, policies, wire format, and deployment APIs are partly **direction** or **open**.
+Status: the core Action/Flow model, the replay execution model, and the distributed-build requirement are **locked**. Versioning, journal boundedness, policies, wire format, and deployment APIs are partly **direction** or **open**.
 
 ## Scope
 
-Durable execution MUST be opt-in. Ordinary Smithers functions MUST remain ordinary eager functions and MUST NOT be executed by the durable scheduler unless selected through an Action or Flow boundary.
+Durable execution MUST be opt-in. Ordinary Smithers functions MUST remain ordinary eager functions and MUST NOT be executed by the durable scheduler unless selected through an Action or Flow boundary. This is a guarantee about authored functions and their observable behavior. The emitted form of a function with a non-empty effect row MAY be a generator, as defined by [Effects](/specification/effects).
 
 ## Compiler-Recognized API
 
@@ -23,9 +23,9 @@ const Build = durable(function Build(
 
 `durable` is a compiler-recognized function imported from the compiler-owned `smithers:flows` virtual module. It is not a language keyword. The compiler MUST recognize the resolved imported binding, so an aliased import preserves durable behavior while an unrelated function named `durable` remains ordinary.
 
-The argument MUST be an inline function or a function declaration/value that the compiler can resolve statically. Passing an opaque runtime-selected function MUST be a compile error.
+The argument MUST be an inline function or a function declaration/value that the compiler can resolve statically. Passing an opaque runtime-selected function MUST be a compile error. The reason is no longer that the body must be lowered to a plan; it is that the compiler MUST be able to digest, version, and address the Flow's source.
 
-The compiler MUST replace a recognized `durable(...)` call with a serializable Flow descriptor referencing the emitted Plan IR. It MUST NOT emit a runtime callback wrapper. Uncompiled JavaScript execution MUST fail during `smithers:flows` virtual-module loading.
+The compiler MUST replace a recognized `durable(...)` call with a Flow descriptor carrying the Flow's pinned source identity, its derived codecs, its Effect Manifest, and a reference to the emitted Flow body. The descriptor's identity, codecs, and Manifest MUST be serializable; the body MUST NOT be reconstructible from them. It MUST NOT emit a runtime callback wrapper. Uncompiled JavaScript execution MUST fail during `smithers:flows` virtual-module loading.
 
 ## Action
 
@@ -52,55 +52,83 @@ Plain data SHOULD derive the contract automatically. Functions, capabilities, pr
 
 `any` and `unknown` MUST require an explicit codec at the boundary.
 
+This contract is also the journaling classifier. An effect request MUST be journaled if and only if its answer satisfies it; see [Effects](/specification/effects) §The Journaling Classifier.
+
 ## Flow
 
-A Flow is the closed program produced when the compiler lowers a function passed to `durable(...)` into a statically analyzable execution-plan template.
+A Flow is an ordinary function whose execution is placed under the durable handler. `durable(...)` MUST NOT change what the function computes; it MUST change only which handler answers the function's effect requests. Ordinary control flow — branches, loops, `let` bindings, closure capture, and recursion — MUST execute unchanged inside a Flow.
 
-The compiler MUST lower the function's checked syntax, control flow, and data flow into Plan IR. It MUST NOT invoke the source function with proxy or symbolic JavaScript values to discover the graph.
+The compiler MUST emit the Flow body in the resumable calling convention and MUST publish its Effect Manifest. It MUST NOT invoke the source function with proxy or symbolic JavaScript values to discover the graph, at any phase, including replay.
 
-An `Action.run` expression inside the lowered function MUST emit a plan node and a typed symbolic Result. Applying `!` to it MUST emit the Result error-propagation edge. Neither template compilation nor planning MUST execute the Action implementation.
+An `Action.run` expression MUST emit a journaled effect request bearing a stable site identity and the derived codecs for its input and answer. Applying `!` to its Result MUST emit the ordinary failure exit; it MUST NOT be given a durable-specific meaning. Neither compilation nor inspection MUST execute the Action implementation.
 
-Property access and argument passing on a symbolic result MUST create typed projections and dependency edges when representable in Plan IR.
+The emitted Flow body MUST be present in every artifact that can create or resume an execution of that Flow, and MUST be reachable by the Flow's pinned source identity. Tree-shaking MUST NOT remove it from such an artifact. Inspection MUST NOT load it. A coordinator MUST NOT require a live function side table, a proxy-recorded graph, or any value that did not arrive from the journal or from the Flow's declared input.
 
-The durable source function MUST be removable after the compiler emits its plan, schemas, channel rows, identities, and debug map. A planner or coordinator MUST NOT require the source function or a live function side table.
+## Flow Determinism
 
-## Flow Purity
+A Flow body MUST NOT observe wall clock, monotonic clock, randomness, environment, mutable host state, services, or I/O except through an effect request its handler answers. This obligation holds on **every execution and every resumption**, not only during compilation. Capture of ordinary runtime values, including mutable local state and closed-over bindings, is unrestricted.
 
-A durable source function MAY capture compiler-known immutable values, including results produced through `comptime(...)`, only. It MUST NOT observe runtime clock, randomness, environment, mutable state, services, or I/O while the compiler constructs the template.
+All of the following MUST hold on every execution and every resumption of a Flow body:
 
-Runtime-dependent control flow MUST be represented explicitly in Plan IR. The compiler MUST reject an operation that would inspect a symbolic value without a corresponding IR representation.
+1. It MUST NOT observe wall clock, monotonic clock, randomness, environment, process state, filesystem, network, or mutable host state except through a request its handler answers.
+2. It MUST NOT evaluate a runtime string as code.
+3. It MUST NOT observe garbage-collection timing or cross-agent shared memory.
+4. It MUST NOT observe host time zone or host locale data except through a capability.
+5. Every started Promise MUST be consumed by `await` or a recognized combinator whose result is itself consumed before scope exit.
+6. Every combinator whose result depends on arrival order MUST be dispatched through the runtime scheduler (§Deterministic Scheduling).
+7. Iteration order over host-provided collections MUST be canonicalized at the capability boundary.
+
+A conforming implementation MUST enforce 1–6 statically. Obligation 7 is a property of the platform capabilities and MUST be tested rather than inferred.
+
+The per-member obligations that make 1–4 enforceable are in [Compatibility](/specification/compatibility) §Determinism-Sensitive Members. They are uniform across all `.sm` code and are not scoped to Flow bodies.
+
+## Effect Manifest
+
+The compiler MUST publish, for every Flow, a static **Effect Manifest**: the set of Action identities the Flow can reach, its capability requirement row, its external-input contracts, its failure row, and its site table.
+
+Runtime-dependent control flow inside a Flow body MUST use ordinary TypeScript statements and MUST NOT be represented in the Effect Manifest. The Manifest MUST be **sound with respect to reachability** — every Action identity, capability key, and external-input contract a run can reach MUST appear in it — and MAY be imprecise about count and order. A call whose callee the compiler cannot resolve MUST either be rejected inside a Flow body or force the Manifest to include the full effect set of the callee's module; it MUST NOT silently narrow the Manifest.
+
+The Manifest MUST NOT carry control-flow edges, branch structure, or execution counts. It is a bound on the request alphabet, not a prediction of a trace. A Manifest that acquires an edge, a branch, or a count has begun growing back into an execution-plan template.
 
 ## Compilation Phases
 
-A durable implementation MUST distinguish:
+A durable implementation MUST distinguish four phases:
 
-1. **template compilation**, which emits target-neutral Plan IR
+1. **compilation**, which emits the Flow body and its Effect Manifest
 2. **deployment build**, which resolves providers and emits coordinator, worker, and manifest artifacts
-3. **plan/preview**, which reads emitted Plan IR, validates and optionally specializes known inputs, and reports the graph without dispatching Actions
-4. **execution**, which creates or resumes a durable run and schedules ready nodes from the Plan IR
+3. **inspection**, which reads the Effect Manifest and reports the Flow's reachable Actions, requirement row, external-input contracts, and failure row without loading or invoking the Flow body or any Action implementation
+4. **execution**, which creates or resumes a durable run by executing the emitted body under the durable handler
 
-Plan/preview MUST NOT load or invoke the function originally passed to `durable(...)`. It MUST NOT load or invoke an Action implementation. A branch or fan-out whose value is not known to the planner MUST remain an explicit conditional or parameterized template in the reported plan.
+Inspection MUST report a bound on what a Flow may request. It MUST NOT be described as, and MUST NOT be relied on as, a prediction of what a run will do.
 
 The deployment build MUST check the complete provider dependency closure for every emitted worker artifact. Provider layers MUST satisfy the context requirements of each selected Action implementation before deployment.
 
 ## Ordering and Concurrency
 
-Action ordering MUST be determined by data and control edges, not source position alone. Independent Action calls MAY execute concurrently.
+Effect ordering inside a Flow body MUST be the program order of the body. Concurrency MUST be started explicitly through a recognized combinator. The durable runtime MUST assign every concurrent request a deterministic submission index before dispatch, MUST journal the completion order it observed, and MUST reproduce that order on resumption. Implicit reordering or auto-parallelization of independent Action calls MUST NOT occur.
 
-Programs requiring order without a data dependency MUST use an explicit sequencing construct. The construct's syntax is **open**.
+This is a capability regression relative to the previous model, and it is recorded as one in §What Replay Trades Away.
+
+### Deterministic Scheduling
+
+Concurrent effect requests inside a Flow body MUST be dispatched through a runtime-owned scheduler. The scheduler MUST assign each request a submission index in a deterministic order derived from program order, MUST journal the order in which requests completed, and on resumption MUST deliver completions in the journaled order. A combinator whose result depends on arrival order — including `Promise.race` and `Promise.any` — MUST NOT be reachable except through the scheduler. The scheduler has no source-language surface.
+
+**Open.** Combinators whose *result* does not depend on arrival order — `Promise.all` and its keyed and settled variants — remain ordinary and charge no `Scheduler` requirement, yet they start concurrent requests that must still acquire submission indices in a deterministic order. How an order-independent combinator reaches the scheduler is unspecified. Two obligations above are in tension until it is: every concurrent request MUST be dispatched through the scheduler, and every `Promise` member other than `race` and `any` stays free.
 
 ## Durable Suspension and External Signals
 
 Timers and external-signal waits MUST suspend without occupying a worker lease.
 
-An external-signal Plan node MUST own a statically bound identity and a
-compiler-derived durable payload schema. A delivery client MUST NOT supply or
-widen that schema. Delivery MUST address an exact execution and Plan node, carry
-an explicit idempotency key, validate a canonical payload before persistence,
-and commit delivery evidence atomically. Retrying the same key and payload MUST
-be idempotent; a conflicting key or payload for a single-delivery wait MUST fail
-closed. Consumption and the node's terminal result MUST be one durable state
-transition, so restart and concurrent coordinators converge on the same value.
+An external-signal wait MUST own a statically bound identity and a
+compiler-derived durable payload schema, both carried in the Flow's Effect
+Manifest and therefore addressable before the execution reaches the wait. A
+delivery client MUST NOT supply or widen that schema. Delivery MUST address an
+exact execution and site identity, carry an explicit idempotency key, validate a
+canonical payload before persistence, and commit delivery evidence atomically.
+Retrying the same key and payload MUST be idempotent; a conflicting key or
+payload for a single-delivery wait MUST fail closed. Consumption and the wait's
+terminal result MUST be one durable state transition, so restart and concurrent
+coordinators converge on the same value.
 
 The source spelling, execution-handle API, sender authentication and
 authorization, transport, wakeup mechanism, queues/broadcast, multi-delivery
@@ -113,6 +141,30 @@ Every completed Action invocation MUST be journaled within its Flow execution, i
 After restart, the same Flow execution MUST observe the committed outcome instead of repeating the completed invocation.
 
 Replay is mandatory execution history, not an optional cross-execution cache.
+
+Resumption MUST re-execute the Flow body from its entry point. Each request the body issues MUST be answered from the journal entry at its site identity and occurrence index, in order, until the journal is exhausted; the first request with no journal entry MUST be dispatched. The body MUST NOT be invoked with proxy or symbolic values at any phase, including replay.
+
+### Journal Identity
+
+A journal entry's key MUST be `(siteIdentity, occurrenceIndex)`.
+
+The site identity MUST be content-addressed from the compiler's Effect Manifest. The occurrence index MUST be assigned at **submission**, in the scheduler's deterministic order — never at completion, and never as a bare execution ordinal. Two requests at different sites MAY complete in either order and MUST still converge.
+
+### Divergence
+
+If the body issues a request whose site identity does not match the journal entry at that occurrence index, or completes while journal entries remain unconsumed, the runtime MUST report a divergence naming the offending source site, MUST fail the attempt, MUST NOT commit, and MUST abandon the execution rather than record a terminal outcome.
+
+### Versioning
+
+An execution MUST be pinned to the Flow source identity it started under. A coordinator whose Flow source identity differs from an execution's pinned identity MUST **abandon** that execution rather than replay it or record a terminal outcome for it.
+
+A facility permitting a Flow body to change while executions of it are live is **open**. Until it is specified, editing a Flow body with live executions MUST be treated as an operational migration, not a code change.
+
+### Journal Boundedness
+
+A Flow body containing an unbounded loop can journal without bound, and each resumption re-executes the whole prefix of the body, so an execution with *n* requests that is resumed *n* times costs O(n²) body execution. The previous model bounded this by construction, through static ceilings on plan nodes, loop rounds, and fan-out steps. No replacement is specified. A runtime SHOULD impose a journal-size limit and MUST fail closed rather than silently truncate.
+
+This is **open**.
 
 ## Recovery
 
@@ -141,11 +193,9 @@ A content key SHOULD include canonical inputs, implementation and policy digests
 
 A deployment build MUST be capable of emitting a coordinator plus separate tree-shaken TypeScript worker artifacts and a routing manifest.
 
-The canonical Plan and routing manifest MUST be authenticated before a
-coordinator creates workers. Trust roots MUST be supplied out of band; an
-artifact MUST NOT introduce its own signing authority. The authenticated
-manifest MUST pin coordinator, worker artifact, implementation, policy, schema,
-and capability-grant identities.
+The signed artifact MUST be `{flowSourceDigest, effectManifest, journalSchemaVersion, routingManifest}` and MUST be authenticated before a coordinator creates workers. `flowSourceDigest` MUST cover exactly the emitted Flow bodies that can create or resume an execution. Trust roots MUST be supplied out of band; an artifact MUST NOT introduce its own signing authority. A signature over this artifact attests to **what a Flow is and what it may request**. It MUST NOT be described as attesting to what a run will do.
+
+The authenticated manifest MUST pin coordinator, worker artifact, implementation, policy, schema, capability-grant, and Flow source identities.
 
 Coordinator admission MUST NOT silently substitute a weaker transport or
 sandbox than the authenticated pool declares. Any host transport selected for
@@ -167,6 +217,184 @@ properties require separate runtime and key-lifecycle mechanisms.
 An exact host transport binding prevents kind downgrade but is not itself proof
 that the host implementation enforces the named sandbox.
 
+## What Replay Trades Away
+
+Executing the Flow body under a journaling handler buys ordinary control flow
+inside a Flow. It is not free, and this section exists so that neither cost is
+discovered later and reported as a regression.
+
+**Cost 1 — static flow-version divergence detection.** The previous model decided
+statically and totally whether an in-flight execution could move to a new Flow
+version, by diffing two execution-plan templates node by node. That answer was
+available before the new coordinator touched a journal. Under replay no such
+total static answer exists; divergence between a live journal and an edited body
+is the hardest unsolved problem in this class of system, and the state of the art
+detects it only at run time and without a source location.
+
+What replaces it is a **partial static answer plus a named dynamic one**:
+
+| Layer | Recovers | Loses |
+| --- | --- | --- |
+| Pinned source digest, fail-closed (§Versioning) | every rejection reason that does not depend on comparing plan nodes | any ability to *permit* a compatible edit |
+| Effect Manifest site-table diff | the site-level reasons, restated as: a site with committed evidence must not change its semantics | reachability changes — a new `if` arm or a changed loop bound is invisible to the Manifest |
+| Replay divergence detection (§Divergence) | the reachability changes the Manifest cannot see, **and it names the source site**, which a node diff never did | catches them *during* an attempt, after it started, rather than before |
+
+Net: strictly better than detecting divergence at run time with no source
+location and no static layer at all. Strictly worse than the total static answer
+this page previously described.
+
+**Cost 2 — the signable pre-execution artifact.** An operator could previously
+read and sign *what a Flow will do* before it ran. The signed artifact now
+attests to what a Flow **is** and what it **may request**. One honest correction
+shrinks the loss: the previous artifact was already a template rather than a
+trace — this page itself conceded that an unresolved branch or fan-out remained
+an explicit conditional in the reported plan — so for any Flow with
+runtime-dependent control flow it already answered *may*, not *will*. What is
+actually lost is **bounded may**: the static ceilings that made the template
+finite.
+
+| Property | Previous plan artifact | Replay artifact |
+| --- | --- | --- |
+| Which Actions can run | exact set | exact set, reachability-sound |
+| Which capabilities are required | yes | yes |
+| Which external inputs can be delivered, and their schemas | yes | yes |
+| Which failures can escape | yes | yes |
+| Bytes of the code that will run | implied by node semantics | exactly, via `flowSourceDigest` |
+| The order Actions will run in | partial | no |
+| A bound on how many times each runs | yes | no |
+| Human-readable pre-execution graph | yes | no |
+
+The Effect Manifest is what buys back cost 2 and roughly half of cost 1. It MUST
+NOT be described as equivalent to the artifact it replaces.
+
+**Cost 3 — implicit fan-out parallelism.** The previous model executed every
+independent Action concurrently with no author annotation. Under program-order
+execution that is gone and concurrency becomes explicit and scheduler-mediated
+(§Ordering and Concurrency). For a workload whose Actions are model calls, a
+20-way independent fan-out that becomes sequential is a wall-clock regression
+measured in minutes.
+
+**Whether that third cost is acceptable is an open product question and is not
+decided here.** It is recorded in the decision ledger with its trade-off: accept
+it, or ship an explicit concurrency combinator in the same release as the first
+Flow that needs one.
+
 ## Open Questions
 
-The following remain open: stable source IDs, plan loop and fan-out semantics, explicit sequencing, external-signal handle/transport syntax, wire encoding, schema migration, deployment syntax, provider selection, and large-artifact reference protocols.
+The following remain open: **flow-version divergence with live executions**
+(§Versioning), **journal boundedness and a continue-as-new equivalent**
+(§Journal Boundedness), whether the loss of implicit fan-out parallelism is
+acceptable (§What Replay Trades Away), how an order-independent concurrency
+combinator reaches the scheduler (§Deterministic Scheduling), external-signal
+handle and transport syntax, wire encoding, journal-schema migration, deployment
+syntax, provider selection, and large-artifact reference protocols.
+
+Two further gaps are recorded here rather than filled, because no rule for them
+has been written down and inventing one would be worse than naming the absence.
+
+1. **The Manifest site-table diff has no normative rule.** §What Replay Trades Away describes it as recovering "a site with committed evidence must not change its semantics", but that is a description of a capability, not an obligation on an implementation. What counts as a site's *semantics*, and what an implementation MUST do when a site with committed journal evidence changes, are unspecified.
+2. **Disposal errors during abandonment.** Whether a disposal error raised while unwinding an abandoned computation can be observed by the handler is open; see [Effects](/specification/effects) §Abandonment.
+
+Stable source IDs, plan loop and fan-out semantics, and explicit sequencing are
+**closed**: site identity is normative (§Journal Identity) and program order is
+order.
+
+## Amendment Record — one-shot delimited continuations, 2026-08-27
+
+The Action model, the durable boundary, journaling, recovery, reuse, distributed
+deployment, and security obligations on this page are unchanged. What changed is
+that a Flow is no longer a lowered plan. The sentences withdrawn or inverted are
+recorded here rather than deleted silently.
+
+**Withdrawn — the definition of a Flow:**
+
+> "A Flow is the closed program produced when the compiler lowers a function
+> passed to `durable(...)` into a statically analyzable execution-plan template."
+
+**Withdrawn — the lowering:**
+
+> "The compiler MUST lower the function's checked syntax, control flow, and data
+> flow into Plan IR."
+>
+> "An `Action.run` expression inside the lowered function MUST emit a plan node
+> and a typed symbolic Result. Applying `!` to it MUST emit the Result
+> error-propagation edge."
+
+**Withdrawn with no replacement — symbolic projections:**
+
+> "Property access and argument passing on a symbolic result MUST create typed
+> projections and dependency edges when representable in Plan IR."
+
+No symbolic results exist. Property access on a journaled answer is property
+access.
+
+**Inverted — the removability of the source function.** The previous obligation
+was the exact opposite of the current one:
+
+> "The durable source function MUST be removable after the compiler emits its
+> plan, schemas, channel rows, identities, and debug map. A planner or
+> coordinator MUST NOT require the source function or a live function side
+> table."
+
+The emitted Flow body is now the thing that resumes an execution, so it MUST be
+present in any artifact that can resume one. The half of that sentence which
+refused a *live function side table* survives verbatim and is strengthened.
+
+**Withdrawn — the Plan IR representation obligation:**
+
+> "Runtime-dependent control flow MUST be represented explicitly in Plan IR. The
+> compiler MUST reject an operation that would inspect a symbolic value without
+> a corresponding IR representation."
+
+Replaced by the Effect Manifest's reachability-soundness obligation.
+
+**Withdrawn — ordering by edges:**
+
+> "Action ordering MUST be determined by data and control edges, not source
+> position alone. Independent Action calls MAY execute concurrently."
+>
+> "Programs requiring order without a data dependency MUST use an explicit
+> sequencing construct. The construct's syntax is **open**."
+
+Program order is order, so the open question closes and the provisional
+sequencing construct goes with it. The permission for implicit concurrency is
+withdrawn as a capability loss, not as a tidy-up; see §What Replay Trades Away.
+
+**Withdrawn — the phase qualifier on Flow purity.** The old obligation applied
+only "while the compiler constructs the template", which is unsatisfiable under
+replay:
+
+> "A durable source function MAY capture compiler-known immutable values,
+> including results produced through `comptime(...)`, only. It MUST NOT observe
+> runtime clock, randomness, environment, mutable state, services, or I/O while
+> the compiler constructs the template."
+
+The determinism obligation now holds on every execution and every resumption,
+and the capture restriction is lifted: closing over mutable local state is
+unrestricted. The section heading changed from "Flow Purity" to "Flow
+Determinism" for that reason.
+
+**Amended — plan/preview:**
+
+> "Plan/preview MUST NOT load or invoke the function originally passed to
+> `durable(...)`. It MUST NOT load or invoke an Action implementation. A branch
+> or fan-out whose value is not known to the planner MUST remain an explicit
+> conditional or parameterized template in the reported plan."
+
+The second sentence survives inside phase 3. The first is withdrawn in that
+spelling because the artifact inspection reads is the Manifest, not a plan. The
+third is withdrawn because the Manifest carries no control flow: an unresolved
+branch is not reported at all.
+
+**Amended — the phase names.** "template compilation" became "compilation" and
+"plan/preview" became "inspection". The obligation that neither phase executes
+an Action implementation is unchanged; only the phase it names changed.
+
+**Amended — signing:**
+
+> "The canonical Plan and routing manifest MUST be authenticated before a
+> coordinator creates workers."
+
+Trust roots out of band and the prohibition on self-introduced signing authority
+are unchanged. What the signature attests to is narrower, and §What Replay Trades
+Away says so plainly.

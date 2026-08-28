@@ -69,6 +69,7 @@ export default defineConfig({
         { text: 'Compatibility', link: '/specification/compatibility' },
         { text: 'Type System', link: '/specification/type-system' },
         { text: 'Result Semantics', link: '/specification/failures' },
+        { text: 'Effects', link: '/specification/effects' },
         { text: 'Requirements', link: '/specification/requirements' },
         { text: 'Control Flow', link: '/specification/control-flow' },
         { text: 'Comptime', link: '/specification/comptime' },
