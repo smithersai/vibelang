@@ -1,0 +1,13 @@
+{
+  "title": "a sleep duration projecting a field the durable descriptor does not have is refused, and the diagnostic names the duration rather than the Flow output",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS4110",
+      "line": 10,
+      "column": 29,
+      "messageContains": "sleep duration cannot project length from durable array"
+    }
+  ],
+  "notes": "specification/durable-execution.mdx:49 (Durable Boundary Contract): 'Every value crossing an Action or Flow persistence boundary MUST satisfy the compiler-checked durable codec contract', read with :71, 'Runtime-dependent control flow MUST be represented explicitly in Plan IR. The compiler MUST reject an operation that would inspect a symbolic value without a corresponding IR representation.' A timer's duration is a Plan value like any other and is subject to the same contract; a literal duration is already exercised, and must keep compiling, in 17-durable/static-plan-shape-is-digest-pinned. WHY THIS CASE EXISTS AND WHY IT IS NOT REDUNDANT WITH THE ACTION-INPUT ONE: the repair that closed this fail-open works by having every failure site drop its hard-coded \"Flow output \" prefix and letting the collecting walk prepend the subject of the value it is currently visiting. A case whose defect sits in an Action input cannot tell a subject that is chosen correctly from one hard-coded to \"Action <id> input\", and a case whose defect sits in the Flow output cannot tell it from one still hard-coded to \"Flow output\". This one can, because its subject is neither: the value is a timer duration, and the sentence has to say so. It is the case that catches a wrong subject. THE DECLARED POSITION: 10:29 is the `(` of the arrow function, not the `sleep` call and not the projection -- both implementations anchor this rule on the durable source function, because the descriptor that could not answer the path is the Flow's boundary contract rather than any one expression. VERIFIED LOAD-BEARING, not assumed: five mutations run through both backends, each red on BOTH with the diff printed -- line 10 to 11, column 29 to 30, SMITHERS4110 to SMITHERS4111, `durable array` to `durable string`, and `sleep duration cannot project` to `Flow output cannot project`. That last one is the regression this case is FOR, and both backends print `sleep duration cannot project length from durable array` against it. The mutator refuses to run unless the case is green on both backends first AND its search string occurs exactly once in the file, and the file was restored and sha256-compared byte-identical after every one. NO MARKER on either backend: one diagnostic each, same code, line, column and sentence."
+}

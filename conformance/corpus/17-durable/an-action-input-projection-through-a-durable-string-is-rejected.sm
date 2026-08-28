@@ -1,0 +1,16 @@
+import { durable, Action } from "smithers:flows"
+
+// The same rule reached through a different durable kind. `.length` is legal
+// TypeScript on a string exactly as it is on an array, and the durable string
+// descriptor has no more of a `length` field than the array one does, so the
+// sentence has to name the kind it could not project from rather than assuming
+// the container.
+class Step extends Action<(input: { key: number }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { text: string }) => {
+  return Step.run({ key: input.text.length })
+})
+
+export function main(): string[] {
+  return [Flow.artifactSource]
+}

@@ -1,0 +1,13 @@
+{
+  "title": "the Action-input projection refusal names the durable kind it could not project from, not just the field",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS4110",
+      "line": 10,
+      "column": 29,
+      "messageContains": "#Step input cannot project length from durable string"
+    }
+  ],
+  "notes": "specification/durable-execution.mdx:49 (Durable Boundary Contract): 'Every value crossing an Action or Flow persistence boundary MUST satisfy the compiler-checked durable codec contract.' The same rule as an-action-input-projection-the-descriptor-does-not-have-is-rejected, reached through a different durable kind. `.length` is legal TypeScript on a string exactly as it is on an array, so TypeScript refuses neither and the durable descriptor has to; the sentence then has to name the kind it could not project from rather than assuming the container it saw most often. This is the second of the three `cannot project <field> from durable <kind>` spellings the walk can produce (array, string, tuple); the tuple spelling is not in the corpus because reaching it needs a non-numeric key on a tuple, which is the same sentence through a third container and buys nothing the first two do not already hold. VERIFIED LOAD-BEARING, not assumed: four mutations run through both backends, each red on BOTH with the diff printed -- line 10 to 11, column 29 to 30, SMITHERS4110 to SMITHERS4111, and `durable string` to `durable array` in the fragment. That last mutation is the one this case is for, and it is mirrored: the array case's fragment mutated to `durable string` is red too, so the two cases discriminate each other and neither could be satisfied by an implementation that printed one fixed kind. The mutator refuses to run unless the case is green on both backends first AND its search string occurs exactly once in the file, and the file was restored and sha256-compared byte-identical after every one. NO MARKER on either backend: one diagnostic each, same code, line, column and sentence."
+}

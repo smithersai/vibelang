@@ -192,13 +192,14 @@ revision that produced this file.
 Read this before any verdict below.
 
 Sections §1–§20 measure **one thing**: the differential `.sm` conformance corpus
-in `conformance/corpus/`, **503** cases across 23 numbered areas — of which 17
+in `conformance/corpus/`, **507** cases across 23 numbered areas — of which 17
 directories hold cases, five are empty directories left by the 2026-08-23
 withdrawal (§13 and §14 record why), and `21-native-pin/` was deleted outright
 (the figure in this sentence read 260 for several revisions after it stopped
 being true, 422 for two revisions after that, 465 until the round-7 backlog
-revision, 493 until the closure-backlog revision, and 498 until the
-capability-argument revision; re-derive it with
+revision, 493 until the closure-backlog revision, 498 until the
+capability-argument revision, and 503 until the durable-projection revision;
+re-derive it with
 `find conformance/corpus -name '*.expected.json' | wc -l`).
 That is a narrow instrument. It observes a `.sm` program's stdout and its
 **error**-severity diagnostics, and nothing else. **What it is not** is the
@@ -242,6 +243,107 @@ Three consequences a reviewer should carry into everything below:
 ## How and when this page was measured
 
 Numbers move; this is what was measured and when.
+
+**2026-08-27, ninth revision — the durable-projection revision.** Four cases
+added, **503 → 507**, all in `17-durable`. **No new `support/` module, no new
+asset, no new `.mod.sm`**; **no new `xfail` marker and none retired** (18 before
+and after, 16 `go` / 3 `js`, and **none of the four needed one**); cases
+declaring a `messageContains` 38 → **41**; distinct declared diagnostic codes
+80 → **81**, and the `SMITHERS`-only figure the subtraction below uses **73 →
+74**. **No implementation code was written or changed by this lane** — it owns
+`conformance/corpus/**`, `conformance/support/**` and this page. Measured with
+`node conformance/runner/run.mjs --backend both --jobs 4`:
+
+```
+JS reference:  504/507 pass, 0 xpass, 3 xfail, 0 unsupported, 0 divergent, 0 unmeasured
+Go fork match: 490/507 match the reference, 0 xpass, 16 xfail, 1 unsupported, 0 divergent, 0 unmeasured
+Backend agreement: 489/507 identical observations
+Markers holding a fail-open: 0
+exit 0
+```
+
+Baseline for the same command before the revision: 503 cases, JS 500/503 with 3
+`xfail`, Go 486/503 with 16 `xfail`, 1 unsupported, agreement 485/503, exit 0.
+**All four new cases agree on both backends**, so backend agreement rose by
+exactly four and the disagreeing set is unchanged at eighteen rows.
+
+**These four are the corpus's first reach into `SMITHERS4110`, and that matters
+for the subtraction below rather than only for §20.** Three lanes on 2026-08-26
+and 2026-08-27 closed a chain of durable-boundary fail-opens — the reference's
+Flow-output projection walk, then the fork's, then the Action **input** on both —
+and **none of them wrote a corpus case, by design**, because until the last of
+the three landed the program either could not be reached from a `.sm` file at all
+or needed an `xfail(go)` that would have put the first marker into the
+"markers holding a fail-open" register. All three are now closed on both
+backends at the same code, line, column and sentence, so the cases land unmarked.
+The set is
+`17/an-action-input-projection-the-descriptor-does-not-have-is-rejected`
+(`SMITHERS4110@11:29`, "…`#Step input cannot project length from durable
+array`"), its paired positive control
+`17/an-action-input-projection-the-descriptor-can-answer-is-accepted`
+(`expect: "output"`, runs to `["static-plan-artifact"]` on both),
+`17/a-sleep-duration-projection-the-descriptor-does-not-have-is-rejected`
+(`SMITHERS4110@10:29`, "`sleep duration cannot project length from durable
+array`") and
+`17/an-action-input-projection-through-a-durable-string-is-rejected`
+(`SMITHERS4110@10:29`, "…`from durable string`").
+
+**The `sleep` case is worth more than its size and the reason is mechanical.**
+The repair works by having every failure site drop a hard-coded `"Flow output "`
+prefix and letting the collecting walk prepend the subject of the value it is
+visiting. A case whose defect sits in an Action input cannot tell a subject that
+is *chosen* from one hard-coded to `"Action <id> input"`, and a case whose defect
+sits in the Flow output cannot tell it from one still hard-coded to
+`"Flow output"`. The timer-duration case can, because its subject is neither —
+which is why all three refusals declare a `messageContains` naming the subject
+and the projected field. Code and position alone are satisfied by an
+implementation that refuses the right program and calls it the wrong thing.
+
+**The positive control is first-class, not filler.** This is a **narrowing**
+rule: it newly refuses programs both implementations used to compile and run.
+Eleven over-corrections have shipped in this repository and the two lanes
+immediately before this one each removed one, so a refusal-only set would have
+pinned half of what the change promised. The control is the refusal case with
+the projection swapped and nothing else touched — `input.items[0]` where the
+refusal writes `input.items.length`, over `readonly number[]` into
+`{ key: number }` so both spellings type as `number` — and mutating the SOURCE
+back to `.length` turns it into the refusal on both backends at
+`SMITHERS4110@12:29` with the byte-identical sentence. One projection is the
+whole difference between accept and refuse, measured on both implementations.
+
+`node scripts/oracle-differential.mjs`: **507 measured, 59 divergent**,
+`product ACCEPTS what the corpus refuses` still **0** — the dangerous direction
+did not move. The measured set gained **four rows** against
+`conformance/product-divergence.json` and **the baseline was deliberately NOT
+re-baselined**, because this lane does not own that file. All four rows are the
+pre-existing `17-durable` pattern, not a new disagreement: every one of the
+twenty durable cases already in that file is recorded with `TS2307` at the
+`"smithers:flows"` specifier and verdict `product-wrong`, because
+`bin/smithers.js check` does not resolve the compiler-owned virtual module on
+that route. The three refusals join the `both-refuse` bucket (corpus
+`SMITHERS4110`, product `TS2307` + `TS2339`) and the control joins
+`product-refuses` exactly as
+`17/a-plain-projection-reaches-the-plan-as-an-input-expression` already does.
+`node --test conformance/runner/selftest.mjs`: **31 tests, 0 failed, 0
+skipped**. The eighth revision recorded that figure as **26 and "unchanged"; it
+does not reproduce.** `conformance/runner/selftest.mjs` is byte-identical to
+`HEAD` and statically defines 7 top-level tests and 24 subtests, and no test in
+it is generated per corpus case, so 31 is `HEAD`'s number and nothing this lane
+wrote moved it. The 26 is recorded here as stale rather than corrected in place,
+since which revision it stopped being true in is not determinable from this page.
+
+**Every one of the four was verified load-bearing by mutation** — sixteen
+mutations in all, under a mutator that **refuses to run** unless the case is
+green on BOTH backends first *and* its search string occurs **exactly once** in
+the file. That second guard earned its place again here: the first attempt at the
+control's source mutation was refused because `input.items[0]` also appears in
+the comment above the code, and the mutation would have edited the comment and
+come back green. Every declared field of every case was mutated at least once —
+line, column, code and `messageContains` on the three refusals, the stdout line
+and the source projection on the control — each went red on **both** backends
+with the runner's own diff printed, and each file was restored
+**byte-identically by sha256**. The mutations and their outcomes are in the
+cases' own `notes`.
 
 **2026-08-27, eighth revision — the capability-argument revision.** Five cases
 added, **498 → 503**: three in `06-layers` and two in `09-foreign-calls`. **No
@@ -1576,6 +1678,104 @@ SMITHERS4120 SMITHERS4199
 SMITHERS5215 SMITHERS5216 SMITHERS5217
 ```
 
+### Re-derived a SEVENTH time on 2026-08-27 (the durable-projection revision) — **the figure MOVED, and the command is wrong in a second way**
+
+**This is the first revision in which the subtraction moves.** It is also the
+revision that found the recorded command counting a code the fork does not
+report, and missing three the fork does. Both are written out below, prediction
+first, because the prediction was right about the substance and wrong about two
+of the inputs, and the reason it was wrong is the finding.
+
+*Prediction, stated and written to disk before any command was run.* This lane
+writes four corpus cases and changes no implementation, so R, F and the
+intersection should not move at all: **R = 111, F = 113, B = 92, unchanged**. The
+corpus half gains exactly one code — `SMITHERS4110`, declared by a case for the
+first time — so **C = 73 → 74**, the second `comm` stays empty, and
+**92 − 74 = 18**: the figure moves, 19 → 18, for the first time in six
+derivations, and the code that leaves is precisely the one the *fifth* axis
+(SURFACES) said was invisible.
+
+*Measurement, running the three commands above verbatim from the repository
+root.* **R = 111 (as predicted), C = 74 (as predicted), second `comm` empty (as
+predicted) — but F = 114, B = 93, and the subtraction printed 19, not 18.**
+Reporting that as "unchanged at 19" would be false, because the nineteen are
+**not the same nineteen**: `SMITHERS4110` left the set, and `SMITHERS4121`
+entered it.
+
+**`SMITHERS4121` entered because a COMMENT mentions it.** The fork does not
+report `SMITHERS4121` anywhere the recorded command can see; the only literal
+occurrence of that string under `compiler/` is inside a comment in
+`compiler/fork_durable_projection_test.go` — an *untracked* Go test written by
+the two implementation lanes that closed the fail-opens this revision's cases
+pin — explaining that the subset refuses `fanOut` and `loopWhile` wholesale. The
+first of the three `grep`s reads literal `SMITHERS[0-9]{4}` over the whole
+`compiler/` tree, tests and comments included, so **a code a comment MENTIONS is
+counted as a code the fork SPELLS**. Re-running the identical commands with that
+one file excluded gives **R = 111, F = 113, B = 92, C = 74, second `comm` empty,
+subtraction = 18** — the prediction, exactly.
+
+**And the same probe found the corrected derivation's own extraction still
+incomplete.** The 2026-08-26 correction says the fork's codes are built as
+`durableCode("NNNN")` or `d.fail(node, "NNNN", …)` and adds a `grep` for each.
+There is a **third** spelling, and §20 of this very page already names it:
+`compiler/forkbridge/durable.go.txt:745-748` builds four codes from a
+`suffix:` field on a table of unsupported constructs — `4117` (`fanOut`), `4121`
+(`loopWhile`), `4122` (`waitBroadcast`), `4123` (`dequeue`). Neither of the two
+constructed-code `grep`s sees them:
+
+```sh
+grep -oh 'suffix: *"[0-9]\{4\}"' compiler/forkbridge/durable.go.txt |
+  grep -o '[0-9]\{4\}' | sed 's/^/SMITHERS/'          # SMITHERS4117 4121 4122 4123
+```
+
+Of those four, only `4117` was ever in the set, and **only by luck**:
+`compiler/fork_durable_test.go` happens to spell it out. `4122` and `4123` are
+spelled literally nowhere under `compiler/` at all. So the subtraction has been
+**undercounting by three** for as long as the corrected derivation has been in
+use. With the third `grep` added and the untracked test excluded: **R = 111,
+F = 116, B = 95, C = 74, second `comm` empty, subtraction = 21.**
+
+**Three readings, one movement.** Under the recorded method with the
+contamination removed the figure is **19 → 18**; under the corrected method it is
+**22 → 21**; under the verbatim command it prints 19 both times but over a
+changed set. **The delta attributable to this lane is −1 under every reading, and
+the code is `SMITHERS4110` under every reading.**
+
+```
+SMITHERS1901 SMITHERS1902
+SMITHERS4100 SMITHERS4104 SMITHERS4105 SMITHERS4108 SMITHERS4109 SMITHERS4113
+SMITHERS4115 SMITHERS4116 SMITHERS4117 SMITHERS4118 SMITHERS4119 SMITHERS4120
+SMITHERS4121 SMITHERS4122 SMITHERS4123 SMITHERS4199
+SMITHERS5215 SMITHERS5216 SMITHERS5217
+```
+
+**Why it moved, plainly: the fifth axis's debt was paid, and it is the only one
+of the five that a corpus lane could pay.** The SWALLOW revision recorded
+`SMITHERS4110` as the case where "the table cannot count SURFACES" — the rule was
+in both implementations and in no case, and the corpus **could not reach it at
+all**, because the fail-open then depended on a legacy `Action.define` artifact
+that arrives only through `smithers plan --bindings` and the corpus route supplies
+no bindings. Two implementation lanes then moved the same rule onto a surface the
+corpus does reach: the Flow-output projection on the fork, and the Action **input**
+projection on both. A `.sm` file with no bindings at all now reaches
+`SMITHERS4110` on both backends at the same code, line, column and sentence, and
+four cases declare it. That is the axis closing rather than another instance of
+it, and it is worth separating from the four axes that remain open: spellings,
+same-revision arrivals, distance, and sites are all still uncounted.
+
+**The sixth axis is a different kind of thing and it is about the INSTRUMENT, not
+the corpus.** The first five say what the subtraction cannot see about the
+implementations. This one says the subtraction **misreads its own inputs**: it
+extracts codes by matching text over whole directories, so it cannot tell a code
+an implementation *reports* from a code a comment *mentions*, and it does not
+know every way an implementation *spells* one. Both halves are exposed —
+`grep -roh 'SMITHERS[0-9]\{4\}' poc/src src` reads the reference's directories
+the same way — and today the fork's half is additionally sensitive to an
+**untracked** file in someone's working tree, which is not a property any
+recorded figure should have. Anyone quoting this number should run the three
+commands **plus** the `suffix:` grep, and should say which files were in the tree
+when they did.
+
 **Re-derived a SIXTH time on 2026-08-27 (the `SMITHERS4124` / durable
 fail-open revision), and for the first time the prediction was written down
 BEFORE the commands were run.** That matters here, because this revision is the
@@ -2450,23 +2650,26 @@ see and need unit tests rather than cases. `runtime type` (19.14) has an obvious
 home and no case. Five of the seven determinism cases would be near-copies of
 cases that already exist.
 
-## 20. Durable execution — `17-durable/` (22 cases)
+## 20. Durable execution — `17-durable/` (26 cases)
 
 Same correction as §19: the previous revision listed these "so the census is
 complete" and scored none of them.
 
 **This section still comes out mostly uncovered, and that is still the finding —
 but the phase-1 half of it moved a long way on 2026-08-26.** `17-durable` has
-**twenty** cases (`ls conformance/corpus/17-durable/*.expected.json | wc -l` →
-20, up from 6) against the 40 normative sentences below, of which the great
-majority are MUST/MUST NOT
+**twenty-six** cases (`ls conformance/corpus/17-durable/*.expected.json | wc -l`
+→ 26, up from 6, then 20, then 22) against the 40 normative sentences below, of
+which the great majority are MUST/MUST NOT
 (`grep -o MUST docs/src/pages/specification/durable-execution.mdx | wc -l` → 63,
 counting each `MUST NOT` twice). The reference implements **29** durable
 diagnostic codes — 25 in the `SMITHERS41xx` family (`4100`–`4123` plus `4199`)
 and 4 in `SMITHERS42xx` — measured with
 `grep -roh 'SMITHERS4[0-9]\{3\}' poc/src/durable/ | sort -u`. **The corpus
-declares five:** `SMITHERS4103`, `4106`, `4107`, `4111` and `4112`, the last
-three new on 2026-08-26. (`SMITHERS4100` also appears
+declares seven:** `SMITHERS4103`, `4106`, `4107`, `4110`, `4111`, `4112` and
+`4124` — `4111`, `4112` and `4107` new on 2026-08-26, `4124` on 2026-08-27, and
+**`4110` on 2026-08-27 in the durable-projection revision**, which is the one
+that moved the "rules both implementations have and no case probes" subtraction
+for the first time. (`SMITHERS4100` also appears
 under `conformance/corpus/17-durable/`, but only inside a `notes` field recording
 behaviour that was *retired*; it is not a declared diagnostic and nothing asserts
 it.)
@@ -2531,7 +2734,7 @@ sentence coverage much:
 | 20.9 | an **abstract** Action signature MUST state an explicit `Result<A, E>` or `Promise<Result<A, E>>` return type (`:41`) | **uncovered** | `17/static-plan-shape-is-digest-pinned` declares two Actions that *do* spell `Result`, so the honoured direction is incidentally exercised — but no case omits it and asserts the rejection, which is where the obligation lives |
 | 20.10 | capabilities used by an implementation MUST enter the Action's inferred requirement row and MUST NOT become explicit inputs or context parameters (`:43`) | **partial** | `17/static-plan-shape-is-digest-pinned` prints `plan.requirements`, so the row is observable. But with no Action implementation in the corpus, nothing exercises inference *from* an implementation, and nothing pins the MUST NOT half. |
 | 20.11 | source authors MUST NOT repeat Action types as separate schema arguments (`:45`) | **uncovered** | no case attempts the forbidden spelling |
-| 20.12 | every value crossing an Action or Flow persistence boundary MUST satisfy the compiler-checked durable codec contract (`:49`) | **uncovered** | no case crosses a persistence boundary |
+| 20.12 | every value crossing an Action or Flow persistence boundary MUST satisfy the compiler-checked durable codec contract (`:49`) | **partial as of 2026-08-27** — was **uncovered**, "no case crosses a persistence boundary" | Four cases now pin the **projection** half of the contract: a value crossing the boundary along a path the durable descriptor cannot answer is refused, at `SMITHERS4110` on both backends with byte-identical sentences. **`17/an-action-input-projection-the-descriptor-does-not-have-is-rejected`** puts the bad projection in an Action's **input** — the Flow's output is a bare node reference the descriptor answers perfectly, so an output-only check cannot see it — and **`17/a-sleep-duration-projection-the-descriptor-does-not-have-is-rejected`** puts it in a timer duration, which is what pins that the diagnostic names the **subject** of the value it is refusing rather than a hard-coded one; **`17/an-action-input-projection-through-a-durable-string-is-rejected`** pins the second of the three `from durable <kind>` spellings. **`17/an-action-input-projection-the-descriptor-can-answer-is-accepted`** is the paired `expect: "output"` control and is the refusal with the projection swapped and nothing else touched. All four came from three implementation lanes that closed the same fail-open on the reference, then the fork, then the Action input on both: before them **both** implementations compiled these programs and ran them, emitting a Plan that carried `{"kind":"input","path":["items","length"]}` into the executor's `pathValue` and faulted there as a `ProjectionDefect`. Still **partial**, not covered: the ephemeral-value half of the boundary contract is 20.13 and remains uncovered, and nothing in the corpus round-trips a value through persistence — the refusals are compile-time, which is where this sentence's checkable half lives. |
 | 20.13 | functions, capabilities, process handles, and other ephemeral values MUST be rejected without an explicit durable representation (`:51`) | **uncovered** | the central fail-closed rule of the durable boundary, and no case probes it. Fail-open direction: an unrejected ephemeral value is a Flow that replays wrong. |
 | 20.14 | `any` and `unknown` MUST require an explicit codec at the boundary (`:53`) | **uncovered** | no case |
 | 20.15 | the compiler MUST lower checked syntax, control flow, and data flow into Plan IR, and MUST NOT invoke the source function with proxy or symbolic values to discover the graph (`:59`) | **covered as of 2026-08-26 — and the MUST NOT half is now directly observed rather than inferred** | `17/static-plan-shape-is-digest-pinned` pins that the Plan exists with the right node kinds and edges. The **MUST NOT proxy-execute** half used to be inferable only from the statement-branch rejection; **`17/a-plain-projection-reaches-the-plan-as-an-input-expression`** now reads the action node's own `input` value expression and asserts the projection arrived as `{kind:"input", path:["mode"]}`. A lowering that discovered the graph by evaluating the source against a stand-in object emits a `literal` there, so that one stdout line is the difference between the two techniques, observed rather than argued. Mutating that line to `literal` turns the case red on both backends; verified and restored byte-identically. |
@@ -2562,9 +2765,12 @@ sentence coverage much:
 | 20.39 | the canonical Plan and routing manifest MUST be authenticated before workers are created; trust roots MUST be supplied out of band; an artifact MUST NOT introduce its own signing authority; the manifest MUST pin coordinator, worker, implementation, policy, schema, and capability-grant identities (`:140-144`) | **uncovered** | `poc/src/durable/signed-deployment.ts` implements it and `signed-deployment.test.ts` measures it; no corpus case reaches deployment |
 | 20.40 | coordinator admission MUST NOT silently substitute a weaker transport or sandbox; a non-local pool's transport MUST be bound to the exact authenticated sandbox identity (`:146-149`); workers MUST receive only their declared provider authority; cross-boundary messages MUST be validated against derived codecs (`:155`); a valid signature MUST NOT be treated as proof of possession, closure identity, sandbox state, freshness, rollback prevention, or revocation (`:159-162`) | **uncovered** | the security section in full. Real implementations exist under `poc/src/durable/`; the matrix has never scored any of it, and no gate outside that directory's own tests measures it. |
 
-**Honest shape of §20, re-derived 2026-08-26.** Of the forty sentences plus
-20.2b and 20.12b: **12 covered or partial**, all of them inside template
-compilation (phase 1); **30 uncovered**. Three rows moved this revision —
+**Honest shape of §20, re-derived 2026-08-27.** Of the forty sentences plus
+20.2b and 20.12b: **13 covered or partial**, all of them inside template
+compilation (phase 1); **29 uncovered**. The durable-projection revision moved
+exactly one row, 20.12 from *uncovered* to *partial*, and moved no phase-2/3/4
+row, which is the same limit every revision of this section has run into.
+**Re-derived 2026-08-26:** three rows moved that revision —
 20.15 and 20.19 from *partial* to *covered*, 20.22 from one form to thirteen —
 and one row (20.12b) is new. **None of that is a phase-2/3/4 change**, and the
 paragraph below is unchanged for exactly that reason: fourteen new cases bought
@@ -2583,14 +2789,21 @@ abstract signatures), 20.11, 20.13, 20.14 (durable boundary rejections), 20.21
 (flow purity), 20.25 (unknown branch preserved) — are all reachable from template
 compilation today, and each is a **fail-closed** rule. 20.5 was the eighth and is
 covered; 20.15/20.19/20.22 were the ninth through eleventh and closed on
-2026-08-26. Those seven remaining are where corpus work in this area would buy
-the most, and they are the same surface as the sixteen shared-but-unprobed
-durable codes in "rules both implementations have and no case probes": one case
-per fail-closed rule would move both counts at once. **The 2026-08-26 revision is
-the worked demonstration that this is true rather than aspirational** — twelve
-refusal cases were written straight from durable-execution.mdx:59/:63/:71,
-every one was green on both backends the first time it ran, and three codes left
-the shared-but-unprobed set as a result.
+2026-08-26, and 20.12's projection half was the twelfth on 2026-08-27. Those
+seven remaining are where corpus work in this area would buy the most, and they
+are the same surface as the shared-but-unprobed durable codes in "rules both
+implementations have and no case probes" — **sixteen of them** under that
+section's corrected extraction (`4100`, `4104`, `4105`, `4108`, `4109`, `4113`,
+`4115`–`4123`, `4199`), thirteen if the `suffix:`-built codes the recorded
+command cannot see are left out. One case per fail-closed rule would move both
+counts at once. **Two revisions are now the worked demonstration that this is
+true rather than aspirational.** On 2026-08-26 twelve refusal cases were written
+straight from durable-execution.mdx:59/:63/:71, every one green on both backends
+the first time it ran, and three codes left the shared-but-unprobed set. On
+2026-08-27 four more cases were written against `:49`, and **`SMITHERS4110`
+became the first code ever to leave that set for a rule the corpus previously
+could not reach at all** — the fifth axis, SURFACES, closing rather than
+recurring.
 
 **20.21 (flow purity) is the nearest neighbour of what just landed and is
 deliberately still uncovered, so the boundary is worth stating.** The twelve new

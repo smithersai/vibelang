@@ -2,8 +2,8 @@
   "schema": "smithers.product-divergence/v1",
   "measuredBy": "scripts/oracle-differential.mjs",
   "purpose": "Every corpus case where `node bin/smithers.js check` disagrees with the case's declared expectation. The conformance runner measures two BACKENDS; neither is the shipped CLI, so this file is the written record of how far the product is from the contract the corpus is quoted as stating. `direction` product-accepts is the dangerous one \u2014 the corpus requires a refusal and the product compiled it. `verdict` says which side is wrong; `decision-needed` rows may not be moved by either side until the decisions ledger owner settles them. A row disappears when the divergence is FIXED, never when it is tolerated. The `total` field records the corpus size at the last revision and is DESCRIPTIVE, not a gate: it has gone stale twice (424 -> 438 -> 465) simply because the corpus grows, and gating on its equality would train re-baselining rather than catch anything. The gate is the divergence SET.",
-  "total": 498,
-  "divergent": 55,
+  "total": 507,
+  "divergent": 59,
   "divergences": [
     {
       "id": "01-result-lifting/a-star-re-export-of-the-compiler-owned-prelude-is-refused",
@@ -243,6 +243,15 @@
       "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
     },
     {
+      "id": "17-durable/a-sleep-duration-projection-the-descriptor-does-not-have-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4110@10:29",
+      "product": "TS2307@1:40, TS2339@12:15",
+      "verdict": "product-wrong",
+      "cause": "cli-does-not-resolve-the-virtual-smithers-flows-module",
+      "note": "ADDED 2026-08-27 with the durable projection cases. Same cause as the twenty `17-durable` rows already in this bucket, and not a defect in the rule these cases pin: `bin/smithers.js check` does not resolve the virtual `smithers:flows` module, so the shipped CLI reports `TS2307` at the specifier and a `TS2339` cascade, while the conformance backends resolve it and reach the durable lowering that reports `SMITHERS4110`. The corpus measures `compileProject`; the product's durable surface is `smithers plan --bindings` (`src/cli.ts:2023`), which these cases do not exercise. WHAT THE CASES PIN: a projection of a field the durable descriptor cannot answer, in an Action INPUT and in a `sleep` duration -- both of which compiled AND RAN on both backends until 2026-08-27, measured by executing the emitted Plan. The `sleep` case is the one that catches a wrong subject: the fix works by each failure site dropping its hard-coded 'Flow output ' prefix so the caller supplies the subject, so a message reading 'sleep duration' rather than 'Action ... input' is what pins that the subject is chosen rather than hard-coded. product-ACCEPTS remains 0; the accepted control is `product-refuses`, which is the same TS2307 story and not a case the product wrongly admits."
+    },
+    {
       "id": "17-durable/a-statement-branch-holding-an-action-in-each-arm-is-rejected",
       "direction": "both-refuse",
       "corpus": "SMITHERS4106@13:3",
@@ -250,6 +259,33 @@
       "verdict": "product-wrong",
       "cause": "durable-source-lowering-absent-from-check-and-run",
       "note": "The conformance JS backend runs compileDurableSource itself before compiling (conformance/runner/js-lower.mjs:62-127, :286-337): it locates the durable(...) call site, replaces it with the static Plan descriptor and erases the smithers:flows import. src/cli.ts has no durable stage in check or run \u2014 compileDurableSource is reached only from `smithers plan --bindings` (src/cli.ts:1940-1959), which lowers ONE file, requires a bindings file, and neither checks nor runs the program. So the import of smithers:flows survives into the emitted TypeScript and the stock checker answers TS2307/TS2339/TS7006, or \u2014 where the Action call is written with the propagation operator \u2014 the semantic stage answers SMITHERS1207 because Action.run is not typed as a Result without the lowering. NOT 'the durable feature does not exist': `smithers plan --bindings` works and test/durable.test.mjs exercises the library API directly. The accurate statement is narrower and still serious: check and run perform no durable source lowering, so all 20 green 17-durable rows on the scoreboard rest on harness-only plumbing."
+    },
+    {
+      "id": "17-durable/an-action-input-projection-the-descriptor-can-answer-is-accepted",
+      "direction": "product-refuses",
+      "corpus": "ACCEPTED",
+      "product": "TS2307@1:33, TS2339@13:15",
+      "verdict": "product-wrong",
+      "cause": "cli-does-not-resolve-the-virtual-smithers-flows-module",
+      "note": "ADDED 2026-08-27 with the durable projection cases. Same cause as the twenty `17-durable` rows already in this bucket, and not a defect in the rule these cases pin: `bin/smithers.js check` does not resolve the virtual `smithers:flows` module, so the shipped CLI reports `TS2307` at the specifier and a `TS2339` cascade, while the conformance backends resolve it and reach the durable lowering that reports `SMITHERS4110`. The corpus measures `compileProject`; the product's durable surface is `smithers plan --bindings` (`src/cli.ts:2023`), which these cases do not exercise. WHAT THE CASES PIN: a projection of a field the durable descriptor cannot answer, in an Action INPUT and in a `sleep` duration -- both of which compiled AND RAN on both backends until 2026-08-27, measured by executing the emitted Plan. The `sleep` case is the one that catches a wrong subject: the fix works by each failure site dropping its hard-coded 'Flow output ' prefix so the caller supplies the subject, so a message reading 'sleep duration' rather than 'Action ... input' is what pins that the subject is chosen rather than hard-coded. product-ACCEPTS remains 0; the accepted control is `product-refuses`, which is the same TS2307 story and not a case the product wrongly admits."
+    },
+    {
+      "id": "17-durable/an-action-input-projection-the-descriptor-does-not-have-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4110@11:29",
+      "product": "TS2307@1:33, TS2339@12:15",
+      "verdict": "product-wrong",
+      "cause": "cli-does-not-resolve-the-virtual-smithers-flows-module",
+      "note": "ADDED 2026-08-27 with the durable projection cases. Same cause as the twenty `17-durable` rows already in this bucket, and not a defect in the rule these cases pin: `bin/smithers.js check` does not resolve the virtual `smithers:flows` module, so the shipped CLI reports `TS2307` at the specifier and a `TS2339` cascade, while the conformance backends resolve it and reach the durable lowering that reports `SMITHERS4110`. The corpus measures `compileProject`; the product's durable surface is `smithers plan --bindings` (`src/cli.ts:2023`), which these cases do not exercise. WHAT THE CASES PIN: a projection of a field the durable descriptor cannot answer, in an Action INPUT and in a `sleep` duration -- both of which compiled AND RAN on both backends until 2026-08-27, measured by executing the emitted Plan. The `sleep` case is the one that catches a wrong subject: the fix works by each failure site dropping its hard-coded 'Flow output ' prefix so the caller supplies the subject, so a message reading 'sleep duration' rather than 'Action ... input' is what pins that the subject is chosen rather than hard-coded. product-ACCEPTS remains 0; the accepted control is `product-refuses`, which is the same TS2307 story and not a case the product wrongly admits."
+    },
+    {
+      "id": "17-durable/an-action-input-projection-through-a-durable-string-is-rejected",
+      "direction": "both-refuse",
+      "corpus": "SMITHERS4110@10:29",
+      "product": "TS2307@1:33, TS2339@11:15",
+      "verdict": "product-wrong",
+      "cause": "cli-does-not-resolve-the-virtual-smithers-flows-module",
+      "note": "ADDED 2026-08-27 with the durable projection cases. Same cause as the twenty `17-durable` rows already in this bucket, and not a defect in the rule these cases pin: `bin/smithers.js check` does not resolve the virtual `smithers:flows` module, so the shipped CLI reports `TS2307` at the specifier and a `TS2339` cascade, while the conformance backends resolve it and reach the durable lowering that reports `SMITHERS4110`. The corpus measures `compileProject`; the product's durable surface is `smithers plan --bindings` (`src/cli.ts:2023`), which these cases do not exercise. WHAT THE CASES PIN: a projection of a field the durable descriptor cannot answer, in an Action INPUT and in a `sleep` duration -- both of which compiled AND RAN on both backends until 2026-08-27, measured by executing the emitted Plan. The `sleep` case is the one that catches a wrong subject: the fix works by each failure site dropping its hard-coded 'Flow output ' prefix so the caller supplies the subject, so a message reading 'sleep duration' rather than 'Action ... input' is what pins that the subject is chosen rather than hard-coded. product-ACCEPTS remains 0; the accepted control is `product-refuses`, which is the same TS2307 story and not a case the product wrongly admits."
     },
     {
       "id": "17-durable/an-actions-failure-channel-mints-one-identity-per-error-class",

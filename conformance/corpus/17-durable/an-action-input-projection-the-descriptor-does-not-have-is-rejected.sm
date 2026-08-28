@@ -1,0 +1,17 @@
+import { durable, Action } from "smithers:flows"
+
+// The Flow's OUTPUT is a bare node reference the durable descriptor answers
+// perfectly. The projection the descriptor cannot answer sits one level in, in
+// the Action's INPUT. `.length` is the sharp spelling: TypeScript accepts it on
+// an array, so no assignability rule fires first, and the durable descriptor has
+// no such field, so the Plan would carry `{"kind":"input","path":["items",
+// "length"]}` into the executor's `pathValue` and fault there.
+class Step extends Action<(input: { key: number }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { items: readonly string[] }) => {
+  return Step.run({ key: input.items.length })
+})
+
+export function main(): string[] {
+  return [Flow.artifactSource]
+}

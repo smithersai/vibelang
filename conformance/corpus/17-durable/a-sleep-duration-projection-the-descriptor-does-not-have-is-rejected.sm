@@ -1,0 +1,17 @@
+import { durable, Action, sleep } from "smithers:flows"
+
+// The same defect in a value that is not an Action input at all. A timer's
+// duration is a Plan value like any other, and the diagnostic has to say so:
+// this case is red if a failure site hard-codes one subject for every value the
+// boundary walk reaches, because it would then report the Flow output -- or an
+// Action input -- for a defect that is neither.
+class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { key: string; items: readonly string[] }) => {
+  sleep(input.items.length)
+  return Step.run({ key: input.key })
+})
+
+export function main(): string[] {
+  return [Flow.artifactSource]
+}
