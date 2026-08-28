@@ -11,6 +11,7 @@ import {
   type DurableSourceFlowBinding
 } from "./source-compiler.ts"
 import { compileActionContract } from "./schema.ts"
+import type { ActionDescriptor, DurableSchema, DurableTypeDescriptor } from "./ir.ts"
 
 /**
  * **Step 5 of the continuation migration: the Effect Manifest cross-check.**
@@ -61,7 +62,69 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const CORPUS = resolve(HERE, "../../../conformance/corpus/17-durable")
 
 /**
- * The three sets, read off the **Plan**.
+ * Every durable failure identity a descriptor's error channel can carry.
+ *
+ * A third spelling of the walk, deliberately: `effect-manifest.ts` has its own
+ * (`failureIdentities`, not exported) and the Go bridge has a third. If the
+ * Manifest's failure row and this one agree over the same Actions, two
+ * independently written walks over two independently derived artifacts said the
+ * same thing.
+ */
+const descriptorFailureIdentities = (schema: DurableSchema, into: Set<string>): void => {
+  if (schema.shape !== "structural") return
+  const pending: DurableTypeDescriptor[] = [schema.descriptor]
+  while (pending.length > 0) {
+    const descriptor = pending.pop()!
+    if (descriptor.kind === "error") {
+      into.add(descriptor.identity)
+      pending.push(descriptor.payload)
+    } else if (descriptor.kind === "union") pending.push(...descriptor.variants)
+    else if (descriptor.kind === "array") pending.push(descriptor.element)
+    else if (descriptor.kind === "tuple") pending.push(...descriptor.items)
+    else if (descriptor.kind === "object") pending.push(...descriptor.fields.map((field) => field.value))
+  }
+}
+
+/**
+ * The failure set, read off the **Plan**: every failure identity reachable
+ * through the error channel of every Action the Plan pins.
+ *
+ * The descriptors come from the Plan itself (`template.actions`, and the same
+ * for every embedded child Plan) plus the caller's own Action bindings, which
+ * is how the Plan's fan-out and loop nodes name Actions — they carry
+ * `actionId`/`actionVersion`/`actionContractDigest` and no descriptor. An
+ * Action the Plan pins with no descriptor to read is a hard failure rather than
+ * a quietly smaller set: an empty answer would satisfy the comparison against a
+ * Manifest that also found nothing, which is the fail-open this whole file
+ * exists to catch.
+ */
+const planFailures = (
+  plan: PlanTemplate,
+  bindings: readonly DurableSourceActionBinding[],
+): readonly string[] => {
+  const key = (descriptor: ActionDescriptor): string =>
+    `${descriptor.id}@${descriptor.version}#${descriptor.contractDigest}`
+  const byKey = new Map<string, ActionDescriptor>()
+  const index = (template: PlanTemplate): void => {
+    for (const descriptor of template.actions) byKey.set(key(descriptor), descriptor)
+    for (const child of template.childFlows ?? []) index(child)
+  }
+  index(plan)
+  for (const binding of bindings) byKey.set(key(binding.descriptor), binding.descriptor)
+
+  const identities = new Set<string>()
+  for (const pinned of planSets(plan).actions) {
+    const descriptor = byKey.get(pinned)
+    if (descriptor === undefined) {
+      throw new Error(`the Plan pins ${pinned} with no descriptor to read a failure channel from`)
+    }
+    descriptorFailureIdentities(descriptor.errorSchema, identities)
+  }
+  return [...identities].sort()
+}
+
+/**
+ * The three set-shaped comparisons, read off the **Plan**.
  *
  * Deliberately spelled here and not in `effect-manifest.ts`: the Manifest side
  * of the comparison must not be able to reach the Plan side.
@@ -251,6 +314,7 @@ for (const file of corpusCases) {
     expect(manifest.actions).toEqual(plan.actions)
     expect(manifest.capabilities).toEqual(plan.capabilities)
     expect(manifest.contracts).toEqual(plan.contracts)
+    expect(manifest.failures).toEqual(planFailures(compiled.plan, []))
   })
 }
 
@@ -488,6 +552,7 @@ for (const featureCase of FEATURE_CASES) {
     expect(manifest.actions).toEqual(plan.actions)
     expect(manifest.capabilities).toEqual(plan.capabilities)
     expect(manifest.contracts).toEqual(plan.contracts)
+    expect(manifest.failures).toEqual(planFailures(compiled.plan, options.actions))
     // A Manifest that found nothing would satisfy three equalities against a
     // Plan that also found nothing. Every feature case reaches at least one
     // Action or one external-input contract, and this says so.
@@ -529,14 +594,59 @@ test("the Manifest is sets and tables only, with no control flow in it", () => {
     .toEqual(["test/manifest/Publish", "test/manifest/Transform"])
 })
 
+const FAILURE_CASE = "an-actions-failure-channel-mints-one-identity-per-error-class.sm"
+
 test("the Manifest carries a failure row and a site table", () => {
-  const file = "an-actions-failure-channel-mints-one-identity-per-error-class.sm"
-  const source = readFileSync(join(CORPUS, file), "utf8")
-  const standalone = compileEffectManifest(source, { fileName: file })
+  const source = readFileSync(join(CORPUS, FAILURE_CASE), "utf8")
+  const standalone = compileEffectManifest(source, { fileName: FAILURE_CASE })
   expect(standalone.ok).toBe(true)
   if (!standalone.ok) return
+  // Pinned, so the failure cross-check above cannot pass by comparing two
+  // empty sets: this case really does put two identities in the row.
   expect(standalone.manifest.failures.length).toBe(2)
   expect(standalone.manifest.sites.length).toBe(1)
   expect(standalone.manifest.sites[0].kind).toBe("perform")
   expect(standalone.manifest.sites[0].id.startsWith("src-")).toBe(true)
+
+  const compiled = compileDurableSource(source, { fileName: FAILURE_CASE })
+  expect(compiled.ok).toBe(true)
+  if (!compiled.ok) return
+  expect([...standalone.manifest.failures].sort()).toEqual(planFailures(compiled.plan, []))
+})
+
+/**
+ * The failure row is a file name and a class name, so it is the Manifest row
+ * most exposed to a non-portable logical name — and until 2026-08-28 the
+ * durable compilers reached it through helpers that only stripped path
+ * traversal. An absolute `fileName` therefore produced
+ * `smithers:Users/someone/checkout/orders.sm#Failed@1`: a different identity,
+ * a different `contractDigest`, a different `plan.digest` and a different
+ * Manifest digest on every machine, for byte-identical source.
+ *
+ * Two checkout paths, one relative spelling, one answer.
+ */
+test("failure identities and both digests do not depend on how the file was addressed", () => {
+  const source = readFileSync(join(CORPUS, FAILURE_CASE), "utf8")
+  const spellings = [
+    "orders.sm",
+    "./orders.sm",
+    "/private/tmp/checkout-a/orders.sm",
+    "/Users/someone/a-completely-different-checkout/orders.sm"
+  ]
+  const observed = spellings.map((fileName) => {
+    const standalone = compileEffectManifest(source, { fileName, flowId: "test/Portable", flowVersion: 1 })
+    if (!standalone.ok) throw new Error(JSON.stringify(standalone.diagnostics))
+    const compiled = compileDurableSource(source, { fileName, flowId: "test/Portable", flowVersion: 1 })
+    if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
+    return {
+      failures: [...standalone.manifest.failures],
+      manifestDigest: standalone.manifest.digest,
+      planDigest: compiled.plan.digest,
+      actions: compiled.plan.actions.map((action) => `${action.id}@${action.version}#${action.contractDigest}`),
+      sites: standalone.manifest.sites.map((site) => site.id)
+    }
+  })
+  // `#` is outside `stableIdentity`'s accepted character set and normalizes to `_`.
+  expect(observed[0].failures).toEqual(["smithers:orders.sm_Denied@1", "smithers:orders.sm_Failed@1"])
+  for (const answer of observed.slice(1)) expect(answer).toEqual(observed[0])
 })

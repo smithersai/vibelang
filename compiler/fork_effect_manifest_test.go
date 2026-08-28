@@ -67,17 +67,84 @@ type forkPlanFrag struct {
 	Nodes []forkPlanNode `json:"nodes"`
 }
 
+// forkTypeDescriptor is only as much of a durable type descriptor as the
+// failure cross-check needs: the recursive shape, plus the `identity` an
+// `error` node carries.
+type forkTypeDescriptor struct {
+	Kind     string               `json:"kind"`
+	Identity string               `json:"identity"`
+	Payload  *forkTypeDescriptor  `json:"payload"`
+	Variants []forkTypeDescriptor `json:"variants"`
+	Element  *forkTypeDescriptor  `json:"element"`
+	Items    []forkTypeDescriptor `json:"items"`
+	Fields   []struct {
+		Value forkTypeDescriptor `json:"value"`
+	} `json:"fields"`
+}
+
+type forkSchema struct {
+	Shape      string             `json:"shape"`
+	Descriptor forkTypeDescriptor `json:"descriptor"`
+}
+
+type forkPlanAction struct {
+	ID             string     `json:"id"`
+	Version        int        `json:"version"`
+	ContractDigest string     `json:"contractDigest"`
+	ErrorSchema    forkSchema `json:"errorSchema"`
+}
+
 type forkPlan struct {
-	FlowID       string   `json:"flowId"`
-	FlowVersion  int      `json:"flowVersion"`
-	Digest       string   `json:"digest"`
-	Requirements []string `json:"requirements"`
-	Actions      []struct {
-		ID             string `json:"id"`
-		Version        int    `json:"version"`
-		ContractDigest string `json:"contractDigest"`
-	} `json:"actions"`
-	Nodes []forkPlanNode `json:"nodes"`
+	FlowID       string           `json:"flowId"`
+	FlowVersion  int              `json:"flowVersion"`
+	Digest       string           `json:"digest"`
+	Requirements []string         `json:"requirements"`
+	Actions      []forkPlanAction `json:"actions"`
+	Nodes        []forkPlanNode   `json:"nodes"`
+}
+
+// forkPlanFailures walks the error channel of every Action the Plan pins and
+// collects the durable failure identities it can carry.
+//
+// A third independent spelling of the walk on purpose: `effectmanifest.go`
+// derives the Manifest's failure row from the authored program, this reads the
+// Plan's descriptors back out of the emitted JSON, and
+// `poc/src/durable/effect-manifest.test.ts` does the same on the reference. The
+// Manifest's failure row was, until 2026-08-28, the ONE row cross-checked
+// against nothing on either side — while the action, capability and contract
+// sets were compared here from the start — even though it is the row whose
+// contents are a logical file name plus a class name, and therefore the row
+// most exposed to a non-portable name.
+func forkPlanFailures(actions []forkPlanAction, into map[string]bool) {
+	for _, action := range actions {
+		if action.ErrorSchema.Shape != "structural" {
+			continue
+		}
+		pending := []forkTypeDescriptor{action.ErrorSchema.Descriptor}
+		for len(pending) > 0 {
+			descriptor := pending[len(pending)-1]
+			pending = pending[:len(pending)-1]
+			switch descriptor.Kind {
+			case "error":
+				into[descriptor.Identity] = true
+				if descriptor.Payload != nil {
+					pending = append(pending, *descriptor.Payload)
+				}
+			case "union":
+				pending = append(pending, descriptor.Variants...)
+			case "array":
+				if descriptor.Element != nil {
+					pending = append(pending, *descriptor.Element)
+				}
+			case "tuple":
+				pending = append(pending, descriptor.Items...)
+			case "object":
+				for _, field := range descriptor.Fields {
+					pending = append(pending, field.Value)
+				}
+			}
+		}
+	}
 }
 
 func forkPlanContracts(nodes []forkPlanNode, into map[string]bool) {
@@ -127,6 +194,7 @@ func TestPinnedForkEffectManifestAgreesWithThePlan(t *testing.T) {
 	}
 
 	compared := 0
+	comparedFailures := 0
 	comparedNames := []string{}
 	skipped := []string{}
 	for _, name := range names {
@@ -221,6 +289,17 @@ func TestPinnedForkEffectManifestAgreesWithThePlan(t *testing.T) {
 			t.Fatalf("%s: contract set disagrees\n  manifest %v\n  plan     %v", name, got, want)
 		}
 
+		planFailures := map[string]bool{}
+		forkPlanFailures(plan.Actions, planFailures)
+		manifestFailures := map[string]bool{}
+		for _, failure := range manifest.Failures {
+			manifestFailures[failure] = true
+		}
+		if got, want := sortedKeys(manifestFailures), sortedKeys(planFailures); !equalStrings(got, want) {
+			t.Fatalf("%s: failure set disagrees\n  manifest %v\n  plan     %v", name, got, want)
+		}
+		comparedFailures += len(planFailures)
+
 		// PR-1's discipline, asserted rather than trusted: "no control-flow
 		// edges, no branch structure, no execution counts. The moment it
 		// acquires an edge, a branch, or a count, it has started growing back
@@ -240,6 +319,13 @@ func TestPinnedForkEffectManifestAgreesWithThePlan(t *testing.T) {
 	if compared < 5 {
 		t.Fatalf("only %d of %d 17-durable cases produced both artifacts; the cross-check is near-vacuous",
 			compared, len(names))
+	}
+	// Two empty failure sets agree. `an-actions-failure-channel-mints-one-identity-per-error-class`
+	// puts two identities in the row, so a failure comparison that never saw one
+	// is a comparison that was not made.
+	if comparedFailures < 2 {
+		t.Fatalf("the failure cross-check saw %d identities across %d cases; it is vacuous",
+			comparedFailures, compared)
 	}
 	t.Logf("Manifest agrees with the Plan on %d of %d 17-durable cases: %s", compared, len(names),
 		strings.Join(comparedNames, ", "))

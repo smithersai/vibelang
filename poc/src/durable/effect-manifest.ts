@@ -459,16 +459,26 @@ export const deriveEffectManifest = (
 }
 
 /**
- * The three sets the step-5 cross-check compares, projected out of a Manifest.
+ * The four sets the step-5 cross-check compares, projected out of a Manifest.
  *
  * Kept here so the comparison has exactly one spelling on the Manifest side;
  * the Plan side is projected by the test, from the Plan.
+ *
+ * `failures` was the fourth and it was added late. The action, capability and
+ * contract sets were cross-checked against the Plan from the start; the failure
+ * row was derived by `failureIdentities` above and compared against nothing at
+ * all — in either backend — even though it is the one Manifest row whose
+ * contents are a file name plus a class name, and therefore the row most
+ * exposed to a non-portable logical name. A row nothing disagrees with is not
+ * evidence.
  */
 export const effectManifestSets = (manifest: EffectManifest): {
   readonly actions: readonly string[]
   readonly capabilities: readonly string[]
   readonly contracts: readonly string[]
+  readonly failures: readonly string[]
 } => ({
+  failures: [...manifest.failures].sort(),
   actions: manifest.actions
     .map((action) => `${action.id}@${action.version}#${action.contractDigest}`)
     .slice()
