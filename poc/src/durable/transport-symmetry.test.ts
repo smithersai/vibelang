@@ -1,7 +1,4 @@
 import { expect, test } from "bun:test"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
 import { DenoSubprocessSandbox } from "../agent/sandbox.ts"
 import {
   Action,
