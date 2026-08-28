@@ -328,8 +328,17 @@ function ownData(host: object, key: string | number, path: readonly SchemaPathSe
   return descriptor.value;
 }
 
-function plainArray(input: unknown, path: readonly SchemaPathSegment[]): ValidationError | undefined {
-  if (!Array.isArray(input) || Object.getPrototypeOf(input) !== Array.prototype) {
+function plainArray(
+  input: unknown,
+  path: readonly SchemaPathSegment[],
+  descriptor: RuntimeSchemaDescriptor,
+): ValidationError | undefined {
+  // A value that is not an array at all is described by the shape that was
+  // wanted, which is how `__vsSchema` words it. Saying "expected a plain array"
+  // here made the reason leak which of the two engines had run. The prototype
+  // and extra-property wordings below already matched and are unchanged.
+  if (!Array.isArray(input)) return new ValidationError(path, `expected ${describeDescriptor(descriptor)}`);
+  if (Object.getPrototypeOf(input) !== Array.prototype) {
     return new ValidationError(path, "expected a plain array");
   }
   for (const key of Reflect.ownKeys(input)) {
@@ -357,7 +366,7 @@ function array<T>(element: Schema<T>): Schema<readonly T[]> {
   const child = stateOf(element);
   const descriptor: RuntimeSchemaDescriptor = { kind: "array", element: child.descriptor };
   return create(descriptor, { kind: "array", element: element as Schema<unknown> }, (input, path) => {
-    const invalid = plainArray(input, path);
+    const invalid = plainArray(input, path, descriptor);
     if (invalid) return failure(invalid);
     const output: unknown[] = [];
     for (let index = 0; index < (input as unknown[]).length; index += 1) {
@@ -379,7 +388,7 @@ function tuple<const Parts extends readonly SchemaValue<unknown>[]>(
   const children = elements.map(stateOf);
   const descriptor: RuntimeSchemaDescriptor = { kind: "tuple", elements: children.map((child) => child.descriptor) };
   return create(descriptor, { kind: "tuple", elements }, (input, path) => {
-    const invalid = plainArray(input, path);
+    const invalid = plainArray(input, path, descriptor);
     if (invalid) return failure(invalid);
     if ((input as unknown[]).length !== children.length) {
       return failure(new ValidationError(path, `expected a ${children.length}-element tuple but received ${(input as unknown[]).length}`));
