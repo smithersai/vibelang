@@ -285,6 +285,87 @@ export function errorIs<E extends Error>(error: unknown, type: ErrorConstructor<
 }
 
 /**
+ * THE nominal key for a raised Error, and the only thing that may be used as
+ * one.
+ *
+ * `error.constructor` is NOT a nominal key. It is an ordinary property lookup,
+ * so an own enumerable `constructor` field shadows the prototype's — and the
+ * compiler-derived transport codec above reconstructs exactly that kind of own
+ * enumerable field from wire data ({@link derivedErrorInstance}). Keying a
+ * declared failure row on it therefore lets the *payload* name its own failure
+ * identity: a value that really is a `QuoteError` is rejected by a row naming
+ * `QuoteError`, and a row naming whatever string the payload carries accepts
+ * it. Two independent readers of that field is how this repository's effect
+ * substrate spelled it before this function existed.
+ *
+ * What is authoritative instead, in order:
+ *
+ * 1. the transport registry, keyed by prototype identity — the compiler issues
+ *    it through {@link __vsRegisterError} and nothing on the wire can reach it;
+ * 2. failing that, the nearest registered ancestor prototype, so a subclass of
+ *    a registered class still answers with a compiler-issued key;
+ * 3. failing that, the `constructor` a prototype in the chain *owns*, accepted
+ *    only when it is an Error constructor that owns that prototype back. That
+ *    is class-declaration data, not payload data: an own field on the instance
+ *    is never consulted, at any step.
+ *
+ * `Error` is the fail-closed floor — a value with no recoverable class identity
+ * keys as the base class rather than as something the payload chose.
+ */
+export function errorNominalKey(error: unknown): ErrorConstructor {
+  if (!isLocalError(error)) panic("an Error nominal key was requested for a non-Error value");
+  const registration = registrationForError(error);
+  if (registration) return registration.type;
+  let prototype: object | null;
+  try {
+    prototype = Object.getPrototypeOf(error) as object | null;
+  } catch {
+    return Error;
+  }
+  const seen = new Set<object>();
+  while (prototype !== null && !seen.has(prototype)) {
+    seen.add(prototype);
+    const registered = registrationsByPrototype.get(prototype);
+    if (registered) return registered.type;
+    const descriptor = Object.getOwnPropertyDescriptor(prototype, "constructor");
+    const candidate = descriptor && "value" in descriptor ? descriptor.value : undefined;
+    // `candidate.prototype === prototype` is what makes this class-declaration
+    // data rather than a decoration: an ordinary `class X extends Error {}`
+    // owns `X.prototype.constructor === X` and `X.prototype` back.
+    if (isErrorConstructor(candidate) && candidate.prototype === prototype) return candidate;
+    try {
+      prototype = Object.getPrototypeOf(prototype) as object | null;
+    } catch {
+      return Error;
+    }
+  }
+  return Error;
+}
+
+/**
+ * THE answer to "is this value one of the declared failures in this row?".
+ *
+ * Membership is {@link errorIs} — native prototype matching against a
+ * compiler-resolved constructor — so a row entry that is not an Error
+ * constructor (a string, a symbol, a plain object: anything a payload could
+ * have named) matches nothing and the row fails closed. Nothing here reads a
+ * property of `error`.
+ *
+ * `readonly unknown[]` rather than `readonly ErrorConstructor[]` on purpose:
+ * the caller is `runtime/effect.ts`'s `EffectRow.failures`, whose element type
+ * is the broader request-key union, and narrowing it here would move the check
+ * back out to the caller where it was wrong before.
+ */
+export function errorRowIncludes(failures: readonly unknown[], error: unknown): boolean {
+  if (!isLocalError(error)) return false;
+  for (const declared of failures) {
+    if (typeof declared !== "function") continue;
+    if (errorIs(error, declared as ErrorConstructor)) return true;
+  }
+  return false;
+}
+
+/**
  * Narrows to the union of the listed constructors' instance types. Narrowing is
  * only as precise as the classes are nominal; see {@link NominalError}.
  */

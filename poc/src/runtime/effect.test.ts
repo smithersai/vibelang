@@ -15,8 +15,10 @@ import {
   type DispatchedRequest,
   type EffectRow,
   type Handler,
+  type RequestKind,
   type Resumable,
 } from "./effect.ts";
+import { __vsRegisterError, decodeError, encodeError } from "./errors.ts";
 import { Context } from "./layer.ts";
 import { Panic, isPanic, panic } from "./panic.ts";
 import { __vsResultFailure, __vsResultSuccess, isResult, type Result } from "./result.ts";
@@ -511,6 +513,52 @@ describe("the resumption ABI", () => {
     expect(failure.message).toContain("a capability read was not answered");
   });
 
+  test("raise is delivered through a frame that forwarded the request", () => {
+    // The `catch` column of the ABI table is a promise at every nesting depth,
+    // and it was true only at depth 1: a forwarding frame re-threw the outer
+    // handler's `raise` instead of delivering it inward, so the body's `catch`
+    // was skipped and the error escaped `runHandled` as a host exception. That
+    // made recovery depend on handler nesting depth. Abandonment is already
+    // pinned through a frame above; this is the same pin for `raise`.
+    const log: string[] = [];
+    const passthrough: Handler<never> = { accepts: () => false, answer: () => {} };
+    const value = runHandled(
+      () =>
+        handle<string, string>(
+          { accepts: () => true, answer: (_r, k) => k.raise(new Error("host blew up")) },
+          () => handle(passthrough, () => observer(log)),
+        ),
+      { row: { failures: [], capabilities: [Clock] } },
+    );
+    expect(value).toBe("recovered");
+    expect(log).toEqual([
+      "acquire resource",
+      "catch saw host blew up",
+      "finally ran",
+      "dispose resource",
+    ]);
+  });
+
+  test("a forwarding frame still lets a panic unwind past rather than delivering it", () => {
+    // The catch arm that fixes forwarding must not become a way to hand a
+    // suspended body a panic to swallow — §Panic Is Not a Request.
+    const log: string[] = [];
+    const passthrough: Handler<never> = { accepts: () => false, answer: () => {} };
+    const failure = expectPanic(() =>
+      runHandled(
+        () =>
+          handle<string, string>(
+            { accepts: () => true, answer: () => panic("outer handler gave up") },
+            () => handle(passthrough, () => observer(log)),
+          ),
+        { row: { failures: [], capabilities: [Clock] } },
+      ),
+    );
+    expect(failure.message).toContain("outer handler gave up");
+    expect(log.join("|")).not.toContain("catch saw");
+    expect(log).toEqual(["acquire resource", "finally ran", "dispose resource"]);
+  });
+
   test("an abort request MUST NOT be resumed: resuming one is an invariant failure", () => {
     function* body(): Resumable<Result<number, QuoteError>> {
       const value = yield* __vsPropagate(
@@ -530,6 +578,113 @@ describe("the resumption ABI", () => {
       ),
     );
     expect(failure.message).toContain("a failure propagation was resumed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PROPERTY 4b — the decision x kind matrix, every one of the nine cells.
+//
+// §Effect Requests' kind table constrains the resumption, not the request, so
+// the obligation is a relation between a request's kind and the arm of the ABI
+// a handler chose. Two `if`s used to cover four cells and silently admit the
+// five they did not name; the `raise` x `abort` hole let a handler re-enter an
+// aborted computation through its catch clause and complete it successfully,
+// swallowing a declared failure that §Effect Requests says MUST NOT be resumed.
+// Every cell is asserted here, permitted ones included, so a table that loses a
+// row goes red instead of going quiet.
+// ---------------------------------------------------------------------------
+
+describe("the decision x kind matrix", () => {
+  type Arm = "resume" | "raise" | "abandon";
+
+  /** Issues exactly one request of `kind`, and would recover in its own catch. */
+  function bodyFor(kind: RequestKind, log: string[]): () => Resumable<Result<string, QuoteError>> {
+    return function* body(): Resumable<Result<string, QuoteError>> {
+      try {
+        if (kind === "get") {
+          const clock = yield* __vsGet(Clock, "src-matrix-0");
+          log.push(`resumed ${clock.now()}`);
+        } else if (kind === "perform") {
+          log.push(`resumed ${yield* __vsPerform<string>("effect", undefined, "src-matrix-1")}`);
+        } else {
+          yield* __vsPropagate(
+            __vsResultFailure(new QuoteError("declared")) as Result<string, QuoteError>,
+            "src-matrix-2",
+          );
+          log.push("resumed an abort");
+        }
+      } catch {
+        log.push("catch ran");
+        return __vsResultSuccess("swallowed the declared failure");
+      }
+      return __vsResultSuccess("completed");
+    };
+  }
+
+  function cell(kind: RequestKind, arm: Arm): { readonly refusal: string | undefined; readonly log: string[] } {
+    const log: string[] = [];
+    const handler: Handler<Result<string, QuoteError>> = {
+      accepts: (request) => request.kind === kind,
+      answer: (_request, k) => {
+        if (arm === "resume") k.resume(kind === "get" ? new Clock() : "answered");
+        else if (arm === "raise") k.raise(new Error("injected"));
+        else k.abandon(__vsResultFailure(new QuoteError("declined")) as Result<string, QuoteError>);
+      },
+    };
+    try {
+      runHandled(() => handle(handler, bodyFor(kind, log)), { row: ROW });
+      return { refusal: undefined, log };
+    } catch (error) {
+      if (!isPanic(error)) throw error;
+      return { refusal: error.message, log };
+    }
+  }
+
+  const CAPABILITY_READ = "a capability read was not answered";
+  const FAILURE_RESUMED = "a failure propagation was resumed";
+
+  const CELLS: readonly (readonly [RequestKind, Arm, string | undefined])[] = [
+    // "the handler MUST resume with the capability instance".
+    ["get", "resume", undefined],
+    ["get", "raise", CAPABILITY_READ],
+    ["get", "abandon", CAPABILITY_READ],
+    // "the handler MUST resume with the answer, or MUST NOT resume". `raise` is
+    // neither, and is admitted as the host exception channel — question Q-E,
+    // recorded rather than settled. It cannot swallow a declared failure:
+    // a declared failure only ever travels as an `abort`.
+    ["perform", "resume", undefined],
+    ["perform", "raise", undefined],
+    ["perform", "abandon", undefined],
+    // "the handler MUST NOT resume". `raise` IS a resumption.
+    ["abort", "resume", FAILURE_RESUMED],
+    ["abort", "raise", FAILURE_RESUMED],
+    ["abort", "abandon", undefined],
+  ];
+
+  for (const [kind, arm, refusal] of CELLS) {
+    const verdict = refusal === undefined ? "is permitted" : `is refused: ${refusal}`;
+    test(`${arm} on a ${kind} request ${verdict}`, () => {
+      const outcome = cell(kind, arm);
+      expect(outcome.refusal).toBe(refusal);
+    });
+  }
+
+  test("raise on an abort cannot swallow the declared failure it was answering", () => {
+    // The failure this pins: before 2026-08-28 this cell was permitted, the
+    // aborted computation resumed through its catch clause, and `runHandled`
+    // returned an OK Result carrying "swallowed the declared failure".
+    const outcome = cell("abort", "raise");
+    expect(outcome.refusal).toBe(FAILURE_RESUMED);
+    expect(outcome.log).not.toContain("catch ran");
+    expect(outcome.log).not.toContain("resumed an abort");
+  });
+
+  test("THE MATRIX IS NOT VACUOUS: the permitted cells really do run the body", () => {
+    expect(cell("get", "resume").log).toEqual(["resumed 1234"]);
+    expect(cell("perform", "resume").log).toEqual(["resumed answered"]);
+    expect(cell("perform", "raise").log).toEqual(["catch ran"]);
+    expect(cell("perform", "abandon").log).toEqual([]);
+    expect(cell("abort", "abandon").log).toEqual([]);
   });
 });
 
@@ -776,6 +931,123 @@ describe("runHandled and the effect row", () => {
     }
     const value = runHandled(caller, { row: ROW });
     expect(value.match({ ok: () => "ok", error: (e) => e })).toBe(inner);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PROPERTY 6 — a declared failure row is keyed on compiler-issued identity, and
+// never on a field the payload controls.
+//
+// `errors.ts`'s compiler-derived codec reconstructs every own enumerable data
+// property of a transported Error, `constructor` included. When `__vsPropagate`
+// and `resultFrame` each read `error.constructor` to answer "which declared
+// failure is this?", that made the row a test of a *payload-supplied string*: a
+// value that really was a `QuoteError` was refused by a row naming `QuoteError`
+// and admitted by a row naming whatever the payload said. These tests pin the
+// inversion in both directions, so deleting the rule turns them red rather than
+// leaving the substrate quietly forgeable.
+// ---------------------------------------------------------------------------
+
+class RegisteredError extends Error {
+  constructor(readonly reason: string) {
+    super(`registered failure: ${reason}`);
+    this.name = "RegisteredError";
+  }
+}
+__vsRegisterError(RegisteredError, "smithers:effect.test.sm:RegisteredError@1");
+
+/** Shadow the prototype's `constructor` with payload data, then transport it. */
+function forgeKey<E extends Error>(error: E, key: unknown): E {
+  Object.defineProperty(error, "constructor", {
+    value: key,
+    enumerable: true,
+    writable: true,
+    configurable: true,
+  });
+  return decodeError(encodeError(error)) as E;
+}
+
+function propagateUnder<E extends Error>(row: EffectRow, error: E): Result<string, E> {
+  function* body(): Resumable<Result<string, E>> {
+    const label: string = yield* __vsPropagate(__vsResultFailure(error) as Result<string, E>, "src-forge-0");
+    return __vsResultSuccess(label);
+  }
+  return runHandled(body, { row });
+}
+
+describe("a declared failure row is keyed on nominal identity, not on payload data", () => {
+  test("a forged `constructor` field does not let the payload name its own row", () => {
+    const forged = forgeKey(new RegisteredError("nope"), "forged-key");
+    // The transported field really did survive: this is the channel, not a
+    // hypothetical one.
+    expect((forged as unknown as { constructor: unknown }).constructor).toBe("forged-key");
+    const failure = expectPanic(() =>
+      propagateUnder({ failures: ["forged-key"], capabilities: [Clock] }, forged),
+    );
+    expect(failure.message).toContain("declared failures do not include it");
+  });
+
+  test("the row naming the value's real class accepts it despite the forged field", () => {
+    const forged = forgeKey(new RegisteredError("nope"), "forged-key");
+    expect(forged).toBeInstanceOf(RegisteredError);
+    const settled = propagateUnder({ failures: [RegisteredError], capabilities: [Clock] }, forged);
+    expect(settled.match({ ok: () => "ok", error: (e) => e.name })).toBe("RegisteredError");
+  });
+
+  test("the abort request carries the nominal key, not the payload's field", () => {
+    const forged = forgeKey(new RegisteredError("nope"), "forged-key");
+    const handler = recording<Result<string, RegisteredError>>(
+      (request) => request.kind === "abort",
+      (_request, k) => k.abandon(__vsResultFailure(forged) as Result<string, RegisteredError>),
+    );
+    function* body(): Resumable<Result<string, RegisteredError>> {
+      const label: string = yield* __vsPropagate(
+        __vsResultFailure(forged) as Result<string, RegisteredError>,
+        "src-forge-1",
+      );
+      return __vsResultSuccess(label);
+    }
+    runHandled(() => handle(handler, body), { row: { failures: [], capabilities: [Clock] } });
+    expect(handler.answered).toHaveLength(1);
+    expect(handler.answered[0]!.key).toBe(RegisteredError);
+  });
+
+  // ---- negative controls: the rule must not have become an over-refusal ----
+
+  test("NEGATIVE CONTROL: a registered error still matches its own row after transport", () => {
+    const honest = decodeError(encodeError(new RegisteredError("honest"))) as RegisteredError;
+    const settled = propagateUnder({ failures: [RegisteredError], capabilities: [Clock] }, honest);
+    expect(settled.match({ ok: () => "ok", error: (e) => e.reason })).toBe("honest");
+  });
+
+  test("NEGATIVE CONTROL: an unregistered class still matches its own row", () => {
+    // `QuoteError` has no transport identity, which is the ordinary case for an
+    // imported TypeScript `@throws` class. The prototype chain is the key.
+    const settled = propagateUnder(ROW, new QuoteError("plain"));
+    expect(settled.match({ ok: () => "ok", error: (e) => e.reason })).toBe("plain");
+  });
+
+  test("NEGATIVE CONTROL: a subclass of a declared failure is inside the row", () => {
+    class StaleQuote extends QuoteError {}
+    const settled = propagateUnder(ROW, new StaleQuote("stale"));
+    expect(settled.match({ ok: () => "ok", error: (e) => e.name })).toBe("QuoteError");
+  });
+
+  test("a genuine error is still refused by a row that does not name its class", () => {
+    const failure = expectPanic(() =>
+      propagateUnder({ failures: [OtherError], capabilities: [Clock] }, new RegisteredError("nope")),
+    );
+    expect(failure.message).toContain("declared failures do not include it");
+  });
+
+  test("a row entry that is not an Error constructor matches nothing", () => {
+    // Fail-closed: a string or symbol row entry is exactly the shape a forged
+    // payload could name, so it can never admit a failure.
+    const failure = expectPanic(() =>
+      propagateUnder({ failures: ["RegisteredError", Symbol("RegisteredError")], capabilities: [Clock] },
+        new RegisteredError("nope")),
+    );
+    expect(failure.message).toContain("declared failures do not include it");
   });
 });
 

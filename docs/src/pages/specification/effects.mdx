@@ -93,13 +93,51 @@ function may request, directly or transitively.
 - A call whose callee the compiler cannot resolve, and whose callee type carries no row, MUST be rejected rather than lowered with an assumed convention.
 
 :::danger The lowering in this section is not wired — (SA-3), measured 2026-08-28
-The *substrate* exists and is complete: `poc/src/runtime/effect.ts` implements
-the three request kinds, `Continuation`, `Handler`, `Resumable`, `handle`,
-`resultFrame`, `runHandled`, `capabilityHandler`, and `__vsGet` / `__vsPerform` /
-`__vsPropagate`. Nothing reaches it. That module is not re-exported from the
+The *substrate* is present but is not certified complete: `poc/src/runtime/effect.ts`
+implements the three request kinds, `Continuation`, `Handler`, `Resumable`,
+`handle`, `resultFrame`, `runHandled`, `capabilityHandler`, and `__vsGet` /
+`__vsPerform` / `__vsPropagate`, and it records seven questions (Q-A…Q-G) this
+page does not answer. Nothing reaches it. That module is not re-exported from the
 runtime index, and the compiler emits no call into it — a grep for those symbols
 across `poc/src/language/compile.ts`, `poc/src/language/semantic.ts`, and `src/`
 returns nothing.
+
+It was previously described here as "complete", and that claim was false. Three
+defects were measured in it on 2026-08-28, all of them unreachable only because
+nothing is wired to the module.
+
+**A forgeable failure key.** Until 2026-08-28 both `__vsPropagate` and `resultFrame` answered "which declared
+failure is this value?" by reading `error.constructor` — an ordinary property
+lookup, which an own enumerable `constructor` field shadows, and which the
+compiler-derived Error codec in `poc/src/runtime/errors.ts` reconstructs from
+wire data. A declared failure row was therefore matched against a
+payload-controlled string: a value that really was a `QuoteError` was refused by
+a row naming `QuoteError` and admitted by a row naming whatever the payload
+said. Both sites now delegate to one home of Error nominal identity —
+`errorNominalKey` and `errorRowIncludes`, both built on the registry's prototype
+map and on `errorIs`'s native prototype matching — and
+`poc/src/runtime/effect.test.ts` pins the inversion in both directions.
+
+**A declared failure could be swallowed.** The kind table above says of `abort`
+that "the handler MUST NOT resume", and `handle` refused only the `resume` arm
+of the resumption ABI. `raise` is also a resumption — it re-enters the aborted
+computation at its suspension point and runs its `catch` clauses — so a handler
+accepting an `abort` could answer with `raise` and have the computation complete
+successfully. The runtime now derives every one of the nine decision-arm ×
+request-kind cells from a single exhaustive table, `RESUMPTION_MATRIX`; `abort`
+and `get` both refuse `raise`, and `perform` + `raise` is admitted and labelled
+as neither of this page's two sanctioned outcomes rather than left unstated.
+
+**Recovery depended on handler nesting depth.** A handler frame that forwarded a
+request outward re-threw an outer handler's `raise` instead of delivering it
+inward, so at nesting depth two the body's `catch` clauses were skipped and the
+error escaped as a host exception; at depth one they ran. Forwarding is now
+transparent in both directions, with panics still unwinding past every frame.
+
+Because the module is unwired none of this was a reachable fail-open, but wiring
+it in the state it was in would have made a forgeable failure key and a
+swallowable declared failure reachable across typed failures, dependency
+injection, and durable execution at once.
 
 What ships is the pre-pivot early-return lowering. A fallible function compiles
 to an ordinary function with early `return __vsResultFailure(…)` / trailing

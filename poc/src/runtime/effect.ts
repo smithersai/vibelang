@@ -1,3 +1,4 @@
+import { errorNominalKey, errorRowIncludes, isLocalError } from "./errors.ts";
 import type { CapabilityKey, CapabilityService } from "./layer.ts";
 import { isPanic, panic } from "./panic.ts";
 import { __vsInspectResult, __vsResultFailure, isResult, type Result } from "./result.ts";
@@ -60,9 +61,21 @@ import { __vsInspectResult, __vsResultFailure, isResult, type Result } from "./r
  * **Q-E — the third resumption arm.** §Handlers names two outcomes, resume and
  * decline. A generator has three resumptions and `gen.throw` is observably
  * distinct from both — it runs the body's `catch` clauses — so a conforming
- * runtime must either use it or forbid it. No request kind on the page reaches
- * it; {@link Continuation.raise} exists for the host exception channel, refuses
- * panic values, and is unreachable from any specified kind.
+ * runtime must either use it or forbid it. {@link Continuation.raise} exists
+ * for the host exception channel and refuses panic values.
+ *
+ * This paragraph used to end "and is unreachable from any specified kind."
+ * **That was false, and it was load-bearing.** `raise` is offered on every
+ * request a handler accepts, and until 2026-08-28 nothing refused it: a handler
+ * accepting an `abort` could answer with `raise`, re-enter the aborted
+ * computation through its `catch` clause, and complete it successfully — a
+ * declared failure swallowed and the computation resumed, which §Effect
+ * Requests forbids outright ("the handler MUST NOT resume"). The `abort` and
+ * `get` rows are now closed to `raise` by {@link RESUMPTION_MATRIX}, which
+ * states all nine cells. What is genuinely open is the one cell that table
+ * marks unsanctioned: `perform` + `raise`, neither of the page's two outcomes.
+ * It is admitted, and the reason is written beside the cell rather than
+ * asserted as an impossibility here.
  *
  * **Q-F — a request issued while a computation is unwinding.** A `yield` inside
  * a `finally` block suspends `gen.return()` and `gen.throw()` alike. Two
@@ -166,9 +179,16 @@ export interface EffectRow {
  * | `raise(e)`  | `throw(e)`  | a throw at the site  | **runs**| runs                |
  * | `abandon(r)`| `return()`  | nothing              | skipped | runs                |
  *
+ * The `catch` column holds at **every** nesting depth. It did not until
+ * 2026-08-28: a frame that forwarded the request outward re-threw an outer
+ * handler's `raise` instead of delivering it inward, so at depth two the body's
+ * `catch` was skipped and the error escaped as a host exception. See the
+ * forwarding arm of {@link handle}.
+ *
  * `resume` is the answer of a `get` or a `perform`. `abandon` is §Abandonment.
- * `raise` is the host exception channel and no request kind in
- * `specification/effects.mdx` reaches it — see the recorded question.
+ * `raise` is the host exception channel; which request kinds may be answered
+ * with it is {@link RESUMPTION_MATRIX}, not this table — `abort` and `get` both
+ * refuse it, and `perform` is the one cell the page does not sanction.
  *
  * A continuation is resumable **at most once** (§One-Shot Delimited
  * Continuations) and stops being resumable once its frame has moved on.
@@ -287,6 +307,67 @@ interface Decision {
   readonly value: unknown;
 }
 
+/**
+ * THE decision × kind matrix, every one of the nine cells stated.
+ *
+ * §Effect Requests' kind table constrains the *resumption*, not the request, so
+ * the obligation is a relation between a request's kind and the arm of the
+ * resumption ABI a handler chose. It is written out here rather than as a
+ * sequence of `if`s next to {@link handle}'s decision because the shape of the
+ * bug it replaces was exactly that: two guards covering four cells, silently
+ * admitting the five they did not mention. `Record<RequestKind, Record<
+ * DecisionMode, …>>` makes tsc refuse a table with a missing cell, so a fourth
+ * request kind or a fourth resumption arm cannot be added without answering for
+ * every combination.
+ *
+ * A value is the panic message that refuses the cell; `undefined` permits it.
+ *
+ * | kind \ arm | `resume`             | `raise`               | `abandon`            |
+ * | ---------- | -------------------- | --------------------- | -------------------- |
+ * | `get`      | permitted (required) | **refused**           | **refused**          |
+ * | `perform`  | permitted            | permitted — see below | permitted            |
+ * | `abort`    | **refused**          | **refused**           | permitted (required) |
+ *
+ * - `get` — "the handler MUST resume with the capability instance". Both
+ *   non-resume arms are refused; that was already enforced and still is.
+ * - `abort` — "the handler MUST NOT resume". `raise` **is** a resumption: it
+ *   re-enters the aborted computation at its suspension point and runs its
+ *   `catch` clauses, so a handler could answer a declared failure with `raise`
+ *   and have the computation complete successfully, swallowing it. Until
+ *   2026-08-28 only the `resume` arm of this row was refused and `raise` was
+ *   the way through. It is refused with the same message, because the message
+ *   must name the program's mistake — propagating a failure and then resuming
+ *   it — and never the generator convention that carries it (§What This Page
+ *   Does Not Add).
+ * - `perform` + `raise` — the page's two sanctioned outcomes are "resume with
+ *   the answer" and "MUST NOT resume", and this is neither, so it is
+ *   **unsanctioned rather than permitted by the page**. It is admitted here,
+ *   and that is question Q-E left open rather than settled: it is the host
+ *   exception channel {@link Continuation.raise} exists for, refusing it would
+ *   decide Q-E in this module instead of on the page, and unlike the `abort`
+ *   cell it cannot swallow a declared failure — a declared failure only ever
+ *   travels as an `abort`, whose whole row is now closed to `raise`.
+ */
+const RESUMPTION_MATRIX: {
+  readonly [Kind in RequestKind]: { readonly [Mode in DecisionMode]: string | undefined };
+} = {
+  get: {
+    resume: undefined,
+    raise: "a capability read was not answered",
+    abandon: "a capability read was not answered",
+  },
+  perform: {
+    resume: undefined,
+    raise: undefined,
+    abandon: undefined,
+  },
+  abort: {
+    resume: "a failure propagation was resumed",
+    raise: "a failure propagation was resumed",
+    abandon: undefined,
+  },
+};
+
 class OneShotContinuation<B> implements Continuation<B> {
   #taken = false;
   #expired = false;
@@ -368,8 +449,32 @@ export function* handle<A, B>(
       if (!handler.accepts(request)) {
         // §Handlers: "A handler that does not accept a key MUST forward the
         // request outward unchanged." Same object, same occurrence index.
-        carried = yield request;
-        mode = "next";
+        //
+        // Forwarding is transparent in BOTH directions. An outer handler that
+        // answers with `raise` throws at this frame's own `yield`, and without
+        // the catch arm below that throw left `handle` instead of reaching the
+        // computation the request came from: the body's `catch` clauses were
+        // skipped, its `finally` still ran, and the error surfaced as a host
+        // exception. Recovery then depended on how many frames happened to sit
+        // between the raising handler and the body — an author cannot reason
+        // about that, and the ABI table above promises the `catch` runs. Only
+        // the delegating `yield` is wrapped: a throw out of `gen.next` /
+        // `gen.throw` is the body's own and is never re-delivered to it.
+        try {
+          carried = yield request;
+          mode = "next";
+        } catch (raised) {
+          // §Panic Is Not a Request: a panic "MUST unwind past every handler".
+          // `Continuation.raise` already refuses to carry one, so a panic
+          // arriving here is something else unwinding through a suspended
+          // frame — an outer `answer` that panicked, or the top-of-program
+          // refusal — and delivering it inward would hand the body's `catch` a
+          // panic to swallow. It keeps unwinding; the `finally` below still
+          // disposes the delimited computation.
+          if (isPanic(raised)) throw raised;
+          carried = raised;
+          mode = "throw";
+        }
         continue;
       }
       const continuation = new OneShotContinuation<B>(() => {
@@ -386,16 +491,11 @@ export function* handle<A, B>(
         // continuation exactly once, or decline to resume it."
         panic("a request was accepted and then neither answered nor declined");
       }
-      // §Effect Requests, the kind table, checked before the decision is acted
-      // on so that neither violation can be reached by ordering.
-      if (decision.mode === "resume" && request.kind === "abort") {
-        // "the handler MUST NOT resume".
-        panic("a failure propagation was resumed");
-      }
-      if (decision.mode !== "resume" && request.kind === "get") {
-        // "the handler MUST resume with the capability instance".
-        panic("a capability read was not answered");
-      }
+      // §Effect Requests, the kind table, as one exhaustive matrix and checked
+      // before the decision is acted on, so that no violation can be reached by
+      // ordering and no cell can be reached by omission.
+      const refusal = RESUMPTION_MATRIX[request.kind][decision.mode];
+      if (refusal !== undefined) panic(refusal);
       if (decision.mode === "abandon") return decision.value as B;
       carried = decision.value;
       mode = decision.mode === "resume" ? "next" : "throw";
@@ -421,13 +521,21 @@ export function resultFrame<A>(row: EffectRow): Handler<A> {
     },
     answer(request, continuation) {
       const error = request.input;
-      if (!(error instanceof Error)) panic("a failure propagation carried a non-Error value");
+      if (!isLocalError(error)) panic("a failure propagation carried a non-Error value");
       // Derived from §Effect Rows' definition of `E` as the failure identities
       // the function may fail with. `specification/effects.mdx` does not say
       // what a runtime must do when an abort's identity is outside the frame's
       // declared row, so this fails closed and the gap is recorded as a
       // question rather than settled here.
-      if (!row.failures.includes(error.constructor as RequestKey)) {
+      //
+      // The membership test is `errors.ts`'s `errorRowIncludes` and nothing
+      // else. This frame used to re-derive the identity itself, from
+      // `error.constructor` — the second of two independent readers of a field
+      // the transport codec reconstructs from wire data, so a payload carrying
+      // an own enumerable `constructor` chose which row admitted it. Both
+      // readers now delegate to the one home of Error nominal identity, and
+      // neither reads a property of the value.
+      if (!errorRowIncludes(row.failures, error)) {
         panic("a failure propagated out of a function whose declared failures do not include it");
       }
       continuation.abandon(__vsResultFailure(error) as unknown as A);
@@ -527,6 +635,11 @@ export function* __vsPropagate<A, E extends Error>(
 ): Generator<EffectRequest<never>, A, unknown> {
   const inspected = __vsInspectResult(value);
   if (inspected.ok) return inspected.value;
-  yield makeRequest("abort", inspected.error.constructor as RequestKey, inspected.error, site);
+  // §Effect Requests: the key is "a nominal identity the compiler derives from
+  // source", so it comes from `errors.ts`'s `errorNominalKey` — the registry or
+  // the prototype chain — and never from an own field of the value, which a
+  // payload controls. See `errorNominalKey` for what reading `.constructor`
+  // here used to let a forged payload do to a declared failure row.
+  yield makeRequest("abort", errorNominalKey(inspected.error) as RequestKey, inspected.error, site);
   panic("a failure propagation was resumed");
 }
