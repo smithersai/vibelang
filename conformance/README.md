@@ -785,27 +785,48 @@ any of this, and is what the JS-only gate uses.
 
 ## Current `xfail`s
 
-**Twenty, as of 2026-08-28**, re-derived with the command above rather than by
-adding two to the previous figure. Eighteen name `go`, three name `js`, and one
-of those names both. **None of the twenty is a fail-open** — but read
-`Markers holding a fail-open: N` on the run rather than this sentence, per the
-paragraph below. Every expectation below is written from the documentation and
-none was softened.
+**Eleven, as of 2026-08-28 (third revision that day)**, re-derived with the
+command above rather than by subtracting from the previous figure. All eleven
+name `go`; one of them also names `js`. **None of the eleven is a fail-open** —
+but read `Markers holding a fail-open: N` on the run rather than this sentence,
+per the paragraph below. Every expectation below is written from the
+documentation and none was softened.
 
-**The 2026-08-28 revision added two and retired none.** Both are the same
-reachability gap on the same fork table —
-`01-result-lifting/result-flatten-collapses-one-level-of-nesting` and
-`…/result-tap-both-observes-whichever-variant-is-active` — and they are the first
-rows here filed *by* a reference-side fix rather than against one: `flatten` and
-`tapBoth` were implemented and tested on the runtime while **neither** backend
-could reach them, so there was nothing for a differential to see. That is the
-blind spot this corpus has to be told about, because a member missing from both
-implementations diverges in no direction: the reference reached them by deriving
-its prelude and its discharge set from one table, and the fork has not.
+**The third 2026-08-28 revision retired six and added none**, and it is the
+largest retirement this table has recorded in one pass:
+`04-nominal-errors/an-ambient-error-declaration-is-not-registered` (js),
+`02-unwrap-propagation/postfix-bang-in-a-labeled-statement-body-is-accepted` (js),
+`02-unwrap-propagation/postfix-bang-in-a-concise-arrow-body-is-accepted` and
+`07-must-consume/a-fallible-callback-in-a-map-argument-needs-a-contract` (one
+defect, two rows), `07-must-consume/a-result-parameter-is-consumed-by-an-unwrap-inside-a-callback`,
+and `09-foreign-calls/an-untrusted-foreign-result-bound-to-a-name-is-charged-at-the-binding`.
+**Every one of the four fixes behind them was a shared seam rather than a site**,
+and each was measured to have members no case had registered: the arrow-body fix
+covered two of the fork's three hoisting sites and the third was probed and
+cleared; the parameter-ownership fix moved that walk onto the same per-file
+identifier index the binding rule already used and closed a second shape —
+consumption in a sibling parameter's default — nobody had filed; the foreign-lift
+fix routed the lift through the must-consume ownership walk and closed two more,
+including the missing `SMITHERS1301` on
+`09-foreign-calls/a-trusted-union-with-a-promise-constituent-keeps-its-rejection-channel`,
+which no one had asked it to touch; and the labeled-statement fix taught
+`statementMayFallThrough` one arm and closed three unregistered siblings
+(`while (true)`, `for (;;)`, and a nested label). **A marker's stated cause was
+wrong in one of the six** — the labeled-statement row blamed the guard's
+placement, and the guard was already in the right place — which is the argument
+for re-deriving a `reason` against the backend before acting on it.
+
+**The three rows this table carried for the `01-result-lifting` Result-member
+reachability gap were also removed**, having been retired in the corpus at the
+previous revision without this table being updated:
+`result-flatten-collapses-one-level-of-nesting`,
+`result-tap-both-observes-whichever-variant-is-active`, and
+`a-stringified-result-carries-its-own-type-tag`. The table is now derived from
+the corpus row for row; a mismatch between the two is itself the defect.
 
 **Standing at the previous revision (2026-08-26, second that day):** eighteen,
 sixteen naming `go`. The one fail-open this table carried since 2026-08-25 —
-`09-foreign-calls/a-foreign-index-signature-read-is-refused-on-one-backend-only`
+`09-foreign-calls/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter`
 — was closed then, and its marker survives in the **fail-closed** direction
 because the fork now refuses the program at the reference's position and only the
 row charge is still missing.
@@ -836,7 +857,9 @@ report it. All three are `expect: "output"` cases for exactly that reason.
 one a fix could close, since the other two await a sentence rather than an
 implementation — and wrote five more `output` cases around it, because the fix
 closed a whole class of forgeries and one case can only observe one member of a
-class. Two of the eighteen remain in the accepted-and-wrong direction.
+class. Two of the eighteen remained in the accepted-and-wrong direction; **as of
+the third 2026-08-28 revision one does**, `04-nominal-errors/a-function-local-error-class-cannot-be-declared-twice`,
+the other having been the ambient-Error row retired that day.
 
 **The first 2026-08-26 revision added three and retired none.** All three came
 out of the foreign-boundary work: two are diagnostic-set divergences on the same
@@ -867,36 +890,26 @@ they pin is present, and only the `SMITHERS1101` row charge is not.
 
 | case | backend | direction | what the backend does instead |
 | --- | --- | --- | --- |
-| `04-nominal-errors/an-ambient-error-declaration-is-not-registered` | **js** | **accepted, cannot run** | emits `__vsRegisterError(Ambient, …)` for a `declare class`, which introduces no runtime binding, so the accepted program dies while the emitted module is still loading with `ReferenceError: Ambient is not defined`, exit 1. The fork skips ambient declarations at the registration site only — `SMITHERS1150` is unchanged, so two same-named ambient Error classes still collide — and runs. The one place the two backends deliberately differ. |
 | `04-nominal-errors/a-function-local-error-class-cannot-be-declared-twice` | **js + go** | **accepted, cannot run — a shared latent defect** | both compile clean, run the first call, and die on the second with the identical `TypeError: stable Error identity …:Inner is already registered`. Each invocation mints a new constructor claiming the same module-local identity. A **documentation gap**: either such a class is ordinary TypeScript whose behaviour `.sm` keeps, or it cannot receive a stable identity — `SMITHERS1150`'s own sentence — and the compiler must refuse it, in which case the *case* is retired rather than an implementation fixed. The marker does not pick a side. |
 | `09-foreign-calls/a-callback-handed-to-an-untrusted-host-is-still-rejected` | go | fail-closed (missing row charge) | reports the declared `SMITHERS1301` and `SMITHERS1509` but not the `SMITHERS1101`: its `checkForeignBoundaries` reports without charging Panic to the enclosing row, where the reference calls `recordForeignBoundary` beside its report. **Both backends refuse the program**, so this is a diagnostic-set divergence and not a soundness one. Localized rather than guessed: the fork charges the row correctly for the neighbouring `SMITHERS1508`, which `09-foreign-calls/a-foreign-callable-handed-to-a-trusted-binding-is-still-rejected` declares and passes on both. |
 | `09-foreign-calls/a-module-trust-claim-is-not-a-call-site-opt-out` | go | fail-closed (missing row charge) | the same omission on the same rule, reached through a module that carries only the initialization claim. The two retire together. |
-| `02-unwrap-propagation/postfix-bang-in-a-labeled-statement-body-is-accepted` | **js** | fail-closed | accepts the placement, as the rule requires, then lowers it into TypeScript the stock emit check rejects with `TS2322`. A reference lowering defect, and the one row in the whole 2026-08-25 divergence set where the fork is right. |
-| `02-unwrap-propagation/postfix-bang-in-a-concise-arrow-body-is-accepted` | go | fail-closed | `SMITHERS1204`. Its placement walk treats an arrow function as a *rejection* where "Accepted Placements" condition 1 makes it a **stop**. Closing it needs the fork to synthesise a block body for the arrow — a lowering feature, not a table entry. |
-| `07-must-consume/a-fallible-callback-in-a-map-argument-needs-a-contract` | go | fail-closed (extra) | reports the declared `SMITHERS1303` **and adds** `SMITHERS1204` for the `!` in the concise arrow body. Same defect as the row above; the two retire together. |
-| `07-must-consume/a-result-parameter-is-consumed-by-an-unwrap-inside-a-callback` | go | fail-closed | `SMITHERS1302` on a Result **parameter** that is consumed by `entry!` one line later inside a callback. The fork accepts the byte-equivalent program with a **local binding** instead, so it is inconsistent with itself about the same consumption site. |
-| `09-foreign-calls/an-untrusted-foreign-result-bound-to-a-name-is-charged-at-the-binding` | go | divergent position | `SMITHERS1301` at the *call* where the reference reports `SMITHERS1302` at the *binding*. Both refuse; they disagree about where. The fork's foreign-lift reporter does not know about bindings, so it cannot apply the bound/unbound split its own must-consume analysis applies everywhere else. |
 | `09-foreign-calls/a-bare-panic-type-resolves-without-an-import` | go | **documentation gap** | adds `SMITHERS1104` because it does not resolve a bare `Panic` type. **Neither backend should be changed on the strength of this marker** — no sentence says whether the type `Panic` is ambient. The marker records the question at the place it bites. |
-| `01-result-lifting/a-stringified-result-carries-its-own-type-tag` | go | **documentation gap** | prints `[object Object]` where the reference prints `[object Result]`, because the fork's emitted prelude classes declare no `Symbol.toStringTag`. Deliberately pinned: **any** case that stringifies a Result will diverge on this, and it is far better found on purpose here than as a mystery line inside an unrelated case. |
 | `09-foreign-calls/a-fallible-getter-in-an-argument-still-needs-a-contract` | go | **documentation gap** | reports only `SMITHERS1303@8:19` where the reference reports `SMITHERS1105@8:19` beside it, because **the fork implements no `SMITHERS1105` and no `SMITHERS1106` at all** — neither code exists anywhere in it. **Both backends refuse the program**, so this is not a fail-open; they disagree only about how loudly. The specification names neither code, so the marker records the asymmetry instead of picking a side. |
 | `09-foreign-calls/an-untrusted-union-return-is-an-executable-foreign-value-on-one-backend-only` | go | fail-closed (missing extra) | reports `SMITHERS1301@5:23` alone and omits the `SMITHERS1508@6:10` the reference reports for returning a value whose type has a foreign `Promise` constituent (`string \| Promise<string>`). **Both backends refuse the program.** The binding carries no `@throws` claim of any kind, which is the point of the case: it is the control that localizes the row below to `containsForeignExecutableValue`'s union handling rather than to any trust rule. |
 | `09-foreign-calls/a-trusted-union-with-a-promise-constituent-keeps-its-rejection-channel` | go | fail-closed (missing extra) | the same omitted `SMITHERS1508@6:10`, on the same union shape, with a `@throws {never}` marker added. Both backends report `SMITHERS1502` at the same position, so the refusal the case exists to pin is identical and only the cascade differs. The two rows retire together, and the row above is the evidence that the cause is the union handling and not the marker. |
-| `09-foreign-calls/a-foreign-index-signature-read-is-refused-on-one-backend-only` | go | fail-closed (missing row charge) — **was FAIL-OPEN until 2026-08-26** | reports `SMITHERS1506@4:17` — the reference's code at the reference's position — and **refuses the program**; it omits the `SMITHERS1101@3:1`, because its property rule reports without charging Panic to the enclosing row. Same omission as the two row-charge rows above and the three below; all six retire together. **What this row used to say, and why the change matters more than the row does:** until 2026-08-26 the fork compiled this program with zero diagnostics, ran it and exited 0 printing `3`. Its property rule reached a member through that member's declarations, an index-signature member has none, and an empty declaration list was treated as nothing to object to — so a foreign accessor could run inside a function whose row read `failures: []`. That gate is gone and the rule now asks the receiver's provenance alone. The case's own name still says "on one backend only", which is now half true; see its `notes` for why the name is kept. |
+| `09-foreign-calls/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter` | go | fail-closed (missing row charge) — **was FAIL-OPEN until 2026-08-26** | reports `SMITHERS1506@4:17` — the reference's code at the reference's position — and **refuses the program**; it omits the `SMITHERS1101@3:1`, because its property rule reports without charging Panic to the enclosing row. Same omission as the two row-charge rows above and the three below; all six retire together. **What this row used to say, and why the change matters more than the row does:** until 2026-08-26 the fork compiled this program with zero diagnostics, ran it and exited 0 printing `3`. Its property rule reached a member through that member's declarations, an index-signature member has none, and an empty declaration list was treated as nothing to object to — so a foreign accessor could run inside a function whose row read `failures: []`. That gate is gone and the rule now asks the receiver's provenance alone. **The case was renamed on 2026-08-28**, from `a-foreign-index-signature-read-is-refused-on-one-backend-only`, whose whole claim had been false since the fix: the read is refused on both backends and only the row charge is one-sided. Every citation of the old identity was updated in the same change; see its `notes`. |
 | `09-foreign-calls/a-foreign-index-signature-read-through-an-element-access-needs-an-adapter` | go | fail-closed (missing row charge) | reports `SMITHERS1506@4:17` and refuses the program; omits the `SMITHERS1101@3:1`. The deliberate pair of the row above — `keyed["width"]` against `keyed.width` — and the pair is the only thing in the corpus that can tell a receiver-keyed rule from one keyed on `ts.PropertyAccessExpression`. On the pre-fix tree the fork compiled this, ran it and exited 0 printing `3`. |
 | `09-foreign-calls/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter` | go | fail-closed (missing row charge) | reports `SMITHERS1506@4:17` and refuses the program; omits the `SMITHERS1101@3:1`. `constructor` is declared only in `lib.es5.d.ts`, which is why this row is the one that shows the member's declaring **file** was never the question either: a foreign object may serve `constructor`, `length` or `toString` from a throwing getter. On the pre-fix tree the fork compiled this, ran it and exited 0 printing `false`. |
 | `09-foreign-calls/destructuring-a-foreign-value-runs-its-accessors` | go | fail-closed (missing row charge) | reports `SMITHERS1506@4:9` — at the binding **pattern**, agreeing with the reference on the position as well as the code — and refuses the program; omits the `SMITHERS1101@3:1`. A property read with no property-access node to see, which is why it is a separate row from the two above. On the pre-fix tree the fork compiled this, ran it and exited 0 printing `3`. |
-| `01-result-lifting/result-flatten-collapses-one-level-of-nesting` | go | fail-closed (member not reachable) | refuses with `[SMITHERS1301@15:19, SMITHERS1301@16:18]` where the reference runs the program: the fork's own copy of the discharge set, `resultConsumerMembers` in `compiler/forkbridge/lowering.go.txt`, is the same eleven names the reference used to hard-code and has not learned `flatten`, so the member is unrecognized and the Result reads as unconsumed. The fork needs **two** edits, and its own start-up assertion `len(resultConsumerDecls) != 2*len(resultConsumerMembers)` says so: the name must join the list *and* both `SmithersOk` and `SmithersErr` must implement it. Added 2026-08-28 with the reference-side fix that made the member reachable at all. |
-| `01-result-lifting/result-tap-both-observes-whichever-variant-is-active` | go | fail-closed (member not reachable) | `[SMITHERS1301@14:19, SMITHERS1301@17:18]`, the same cause on `tapBoth`; the two retire together. Whoever closes them should carry the runtime's handler-object validation across too — a missing branch panics rather than being silently skipped — which no case yet probes on either backend. |
 
-**Eighteen of the twenty pin current behaviour rather than a regression**, and
-each says so in its own `reason`. Only the two arrow-body rows are a live
-over-reach in a rule that moved; the position row, the parameter row, the **six**
-row-charge rows, the two union rows, the two Result-member rows and the four
-documentation
-gaps are all pre-existing and were newly *measured* rather than newly caused. The
-distinction is load-bearing: "a gap the fork has not reached yet", "a rule the
-fork had and lost last night", and "a question the specification never answered"
-call for three different repairs.
+**All eleven pin current behaviour rather than a regression**, and each says so
+in its own `reason`. The two rows that were a live over-reach in a rule that had
+moved — the arrow-body pair — were the first of this revision's retirements; what
+is left is the **six** row-charge rows, the two union rows and the three
+documentation gaps, every one of them pre-existing and newly *measured* rather
+than newly caused. The distinction is load-bearing: "a gap the fork has not
+reached yet", "a rule the fork had and lost last night", and "a question the
+specification never answered" call for three different repairs.
 
 **The six row-charge rows are one omission, not six**, and they are listed
 separately on purpose: each names a different way to reach it — a callback handed
@@ -906,7 +919,7 @@ by the standard library, and a binding pattern. One row would have been enough t
 track the omission and not enough to notice if a fix closed only one spelling.
 They retire in one edit or the fix was partial.
 
-**Four of the eighteen are the documentation, not a backend.** For those the marker
+**Three of the eleven are the documentation, not a backend.** For those the marker
 does not pick a side: it names both observations, says which sentence is missing,
 and states the condition under which the *case* should be retired instead of an
 implementation "fixed". That is the required shape whenever the documentation
@@ -935,7 +948,7 @@ it now owns that refusal under its own code. Read that zero precisely:
 own here yet", which is loud and honest. The dangerous bucket is a backend
 accepting and running a program the language requires it to refuse, and **no
 marker holds one as of the second 2026-08-26 revision**: the one that did —
-`09-foreign-calls/a-foreign-index-signature-read-is-refused-on-one-backend-only`
+`09-foreign-calls/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter`
 — was closed, and its row moved to fail-closed rather than being retired.
 
 **This spot has now been wrong twice in a day, once in each direction, and that

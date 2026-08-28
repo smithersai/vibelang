@@ -265,7 +265,7 @@ export function main(): number[] {
 
 // TestPinnedForkForeignPropertyReadAsksTheReceiver closes the fork's property
 // rule fail-open recorded as
-// 09-foreign-calls/a-foreign-index-signature-read-is-refused-on-one-backend-only.
+// 09-foreign-calls/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter.
 //
 // The rule stated in its own comment that "the RECEIVER's value provenance is
 // the rule, not the property's declaring file" and then contradicted itself with

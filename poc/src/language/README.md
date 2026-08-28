@@ -303,7 +303,7 @@ The bounded project/ownership checks use stable codes:
   member's own declarations are not consulted, on either backend. The fork used
   to state that rule in a comment and then contradict it with a second gate that
   walked the member's declarations, and that gate was the fail-open recorded as
-  `09-foreign-calls/a-foreign-index-signature-read-is-refused-on-one-backend-only`:
+  `09-foreign-calls/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter`:
   `keyed.width` through a `Record<string, number>` index signature resolves to a
   member with NO declarations, an empty declaration list is not evidence of a
   trust claim, and the fork compiled, ran and exited 0 on a program the

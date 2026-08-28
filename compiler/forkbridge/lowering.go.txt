@@ -4759,7 +4759,7 @@ func (a *rowAnalysis) collectFacts(fn *functionRows) {
 			// This used to state that rule in prose and then contradict it with a
 			// second gate that asked where the MEMBER was declared, and that second
 			// gate is the fail-open the corpus records as
-			// 09-foreign-calls/a-foreign-index-signature-read-is-refused-on-one-backend-only:
+			// 09-foreign-calls/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter:
 			// `keyed.width` through a `Record<string, number>` index signature
 			// resolves to a member with NO declarations, an empty declaration list is
 			// not evidence of a trust claim, and the fork compiled, ran and exited 0
