@@ -1154,9 +1154,54 @@ function statementMayFallThrough(statement: ts.Statement, state: TransformState)
       ? tryFallsThrough || mayFallThrough(statement.catchClause.block.statements, state)
       : tryFallsThrough;
   }
+  // A labeled statement and an unconditional loop are the two forms whose body
+  // can be the whole of a function's control flow while the construct itself
+  // still cannot complete normally. Without these arms the answer defaulted to
+  // `true`, `implicitCompletion` appended `return __vsResultSuccess(undefined)`
+  // after a `return` that always runs, and the stock emitted-module check
+  // rejected the lowered program with TS2322 — a program the rules ACCEPT,
+  // lowered into TypeScript that cannot be checked.
+  //
+  // `break` is the only way out of either, so any `break` beneath the construct
+  // restores the conservative answer. It is counted rather than resolved to its
+  // target: an over-approximation here re-adds a dead statement, which is the
+  // safe direction, while an under-approximation would drop a completion the
+  // program needs. That direction is also self-checking — a function that really
+  // can run off its end without the completion is refused by the emitted-module
+  // check's own "not all code paths return a value", never accepted silently.
+  if (ts.isLabeledStatement(statement)) {
+    return statementMayFallThrough(statement.statement, state) || containsBreak(statement.statement);
+  }
+  if (ts.isWhileStatement(statement) || ts.isDoStatement(statement)) {
+    return statement.expression.kind !== ts.SyntaxKind.TrueKeyword || containsBreak(statement.statement);
+  }
+  if (ts.isForStatement(statement)) {
+    return statement.condition !== undefined || containsBreak(statement.statement);
+  }
   return true;
 }
 
+/**
+ * True when any `break` appears beneath `statement` in the same function.
+ *
+ * Nested functions are not entered: `break` cannot cross a function boundary,
+ * so a `break` inside one belongs to that function's own control flow. Which
+ * construct a given `break` targets is deliberately NOT resolved — see
+ * `statementMayFallThrough` for why the over-approximation is the safe side.
+ */
+function containsBreak(statement: ts.Statement): boolean {
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (found || ts.isFunctionLike(node)) return;
+    if (ts.isBreakStatement(node)) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(statement);
+  return found;
+}
 /**
  * The type-only nominal merge for an authored Error class.
  *
