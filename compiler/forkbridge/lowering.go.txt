@@ -6908,8 +6908,12 @@ func (l *lowerer) classifyTypeNode(typeNode *ast.Node) bool {
 
 // lowerConciseBody wraps the expression body of a Result-returning
 // arrow function, so `(): Result<A, E> => value` becomes `=> new __smithersOk(value)`.
-// Propagation is not lowered out of a concise body: there is no statement list
-// to hoist the guard into, and the prelude's runtime `unwrap` still applies.
+// A propagation point in that body hoists its guard into a block body
+// SYNTHESISED here — `=> { const t = …; if (!t.ok) return t; return Ok(t.value) }`
+// — which is the whole of what "the walk stops at the nearest statement or arrow
+// function" costs to implement, and what safeUnwrapPlacement used to refuse on
+// its behalf.
+//
 // lowerConcisePanicBody replaces `(...) => panic(cause)` with a block body that
 // throws the constructed Panic. See lowerPanicThrow for why the call cannot
 // simply be left in place.
@@ -6941,6 +6945,21 @@ func (l *lowerer) lowerConciseBody(node *ast.Node) *ast.Node {
 	if lifted != body {
 		l.emitContext.AssignSourceMapRange(lifted, original)
 	}
+	loweredBody := lifted
+	if len(l.pending) != 0 {
+		// The guards a propagation point in this body hoisted have nowhere to go
+		// in a concise body, so the concise body becomes a block one. The
+		// authored expression stays the returned value, which keeps the arrow's
+		// declared channel — the one condition 3 asks about — the channel the
+		// early return exits through.
+		returned := l.factory.NewReturnStatement(lifted)
+		l.emitContext.AssignSourceMapRange(returned, original)
+		l.emitContext.SetOriginal(returned, original)
+		statements := append(append([]*ast.Node{}, l.pending...), returned)
+		loweredBody = l.factory.NewBlock(l.factory.NewNodeList(statements), true)
+		l.emitContext.AssignSourceMapRange(loweredBody, original)
+		l.pending = nil
+	}
 	return l.factory.UpdateArrowFunction(
 		arrow,
 		l.visitor.VisitModifiers(arrow.Modifiers()),
@@ -6949,7 +6968,7 @@ func (l *lowerer) lowerConciseBody(node *ast.Node) *ast.Node {
 		arrow.Type,
 		arrow.FullSignature,
 		arrow.EqualsGreaterThanToken,
-		lifted,
+		loweredBody,
 	)
 }
 
@@ -7517,10 +7536,7 @@ func (l *lowerer) lowerExpect(node *ast.Node, receiver *ast.Node) *ast.Node {
 		l.impure = true
 		return l.visitor.VisitEachChild(node)
 	}
-	statement, safe := safeUnwrapPlacement(node)
-	if safe {
-		_, safe = hoistableStatements[statement.Kind]
-	}
+	_, safe := safeUnwrapPlacement(node)
 	if !l.shape.result || l.guardedByCatch || !safe {
 		return leave()
 	}
@@ -7860,11 +7876,27 @@ func (l *lowerer) newPreludeCall(exported string, arguments ...*ast.Node) *ast.N
 }
 
 // safeUnwrapPlacement reports whether a propagation point sits where a checked
-// early return preserves the authored evaluation order, and returns the
-// statement its guard would be hoisted in front of. Only wrappers that neither
-// evaluate anything ahead of the call nor make it conditional are walked
-// through; anything else — an operand, an argument, a branch, a short-circuit
-// right side, a further declarator — ends the walk unsafely.
+// early return preserves the authored evaluation order, and returns the node its
+// guard would be hoisted into: a hoistable STATEMENT, or the ARROW FUNCTION
+// whose concise body the point sits in. Only wrappers that neither evaluate
+// anything ahead of the call nor make it conditional are walked through;
+// anything else — an operand, an argument, a branch, a short-circuit right side,
+// a further declarator — ends the walk unsafely.
+//
+// specification/failures.mdx, "Accepted Placements", condition 1 runs the walk
+// "until the nearest statement OR ARROW FUNCTION". An arrow function is
+// therefore a STOP exactly as a statement is, not a rejection: the propagation
+// returns from the arrow, and condition 3 then asks about that arrow's own
+// declared channel. This answered `false` there, on the ground that "a concise
+// arrow body has no statement list to hoist a guard into" — true of the
+// AUTHORED form and irrelevant to the lowered one, because lowerConciseBody
+// synthesises the block body the guard needs. It was an implementation limit
+// wearing a rule's clothes, and it cost two conformance cases.
+//
+// Membership of hoistableStatements is folded in HERE rather than re-tested by
+// each caller. Both callers had their own copy of that second test, and a
+// placement rule that lives in two places is one edit away from the callers
+// disagreeing about what a safe placement is.
 func safeUnwrapPlacement(call *ast.Node) (*ast.Node, bool) {
 	current := call
 	for current.Parent != nil && !ast.IsStatement(current.Parent) && !ast.IsArrowFunction(current.Parent) {
@@ -7885,11 +7917,23 @@ func safeUnwrapPlacement(call *ast.Node) (*ast.Node, bool) {
 		}
 		current = parent
 	}
-	if current.Parent == nil || ast.IsArrowFunction(current.Parent) {
-		// A concise arrow body has no statement list to hoist a guard into.
+	stop := current.Parent
+	if stop == nil {
 		return nil, false
 	}
-	return current.Parent, true
+	if ast.IsArrowFunction(stop) {
+		// The arrow is a stop only when the walk arrived through its BODY. A
+		// parameter default, a type position or a decorator is evaluated
+		// somewhere the arrow's own return cannot precede.
+		if stop.Body() != current {
+			return nil, false
+		}
+		return stop, true
+	}
+	if _, hoistable := hoistableStatements[stop.Kind]; !hoistable {
+		return nil, false
+	}
+	return stop, true
 }
 
 // isInRepeatedLoopHeader reports whether a node sits in a part of a loop that
@@ -7987,12 +8031,7 @@ func (l *lowerer) lowerPropagation(node *ast.Node, receiver *ast.Node) *ast.Node
 		l.impure = true
 		return l.visitor.VisitEachChild(node)
 	}
-	statement, safe := safeUnwrapPlacement(node)
-	if safe {
-		if _, hoistable := hoistableStatements[statement.Kind]; !hoistable {
-			safe = false
-		}
-	}
+	_, safe := safeUnwrapPlacement(node)
 	switch {
 	case !l.shape.result:
 		// A function that *has* an explicit contract which cannot carry the
