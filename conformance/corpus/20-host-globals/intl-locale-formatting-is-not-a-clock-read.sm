@@ -1,3 +1,22 @@
 export function main(): string[] {
-  return [...Intl.getCanonicalLocales("EN-us"), new Intl.NumberFormat("en-US").format(1)]
+  const segmenter = new Intl.Segmenter("en")
+  return [
+    ...Intl.getCanonicalLocales("EN-us"),
+    new Intl.NumberFormat("en-US").format(1),
+    `${new Intl.Collator("en").compare("a", "a")}`,
+    new Intl.PluralRules("en").select(1),
+    new Intl.ListFormat("en").format(["a"]),
+    typeof new Intl.RelativeTimeFormat("en").format(1, "day"),
+    segmenter.resolvedOptions().locale,
+    typeof new Intl.DisplayNames(["en"], { type: "region" }).of("US"),
+    new Intl.Locale("en-US").baseName,
+    `${Intl.supportedValuesOf("calendar").length > 0}`,
+    `${"a".localeCompare("a")}`,
+    "a".toLocaleUpperCase("en"),
+    "A".toLocaleLowerCase("en"),
+    (1).toLocaleString("en-US"),
+    (1n).toLocaleString("en-US"),
+    typeof [1, 2].toLocaleString(),
+    typeof new Uint8Array([1, 2]).toLocaleString(),
+  ]
 }

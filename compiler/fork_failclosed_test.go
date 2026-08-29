@@ -446,11 +446,25 @@ func TestPinnedForkHostGlobalAllowlist(t *testing.T) {
 			reject: []string{"SMITHERS1602@2:15"},
 		},
 		{
+			// Widened 2026-08-28 with the specification row it mirrors.
+			// compatibility.mdx §Determinism-Sensitive Members row five used to
+			// name four ICU members and the hazard covers thirty; the list was
+			// incomplete, not narrow. All thirty are free on both backends
+			// today, so what this guards is OVER-refusal: the cheapest wrong
+			// implementation of row four or five charges the `Intl` ROOT, which
+			// passes the DateTimeFormat case above perfectly and takes the whole
+			// ICU surface with it. The fork's member table is the same one-name
+			// table the frontend has, and this is the assertion that says so.
+			// The corpus case 20-host-globals/intl-locale-formatting-is-not-a-clock-read
+			// carries the full breadth; keep the two from drifting.
 			name: "the rest of Intl needs no capability",
 			source: "export function main(): string[] {\n" +
-				"  return [...Intl.getCanonicalLocales(\"EN-us\"), new Intl.NumberFormat(\"en-US\").format(1)]\n" +
+				"  return [...Intl.getCanonicalLocales(\"EN-us\"), new Intl.NumberFormat(\"en-US\").format(1),\n" +
+				"    new Intl.PluralRules(\"en\").select(1), new Intl.Locale(\"en-US\").baseName,\n" +
+				"    `${new Intl.Collator(\"en\").compare(\"a\", \"a\")}`, \"a\".toLocaleUpperCase(\"en\"),\n" +
+				"    (1).toLocaleString(\"en-US\")]\n" +
 				"}\n",
-			stdout: "en-US\n1",
+			stdout: "en-US\n1\none\nen-US\n0\nA\n1",
 		},
 		{
 			name: "the ECMAScript global object stays available",

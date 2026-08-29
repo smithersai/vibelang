@@ -23,14 +23,23 @@ Application code should usually depend on a `FileSystem` capability instead.
 
 :::warning There is no `Module<…>` requirement — measured 2026-08-28
 An earlier draft said this import "contributes `Module<"node:fs/promises">`". It
-does not, and no such type exists: the frontend's ambient requirement type
-admits only `Clock`, `Random`, and `Host`. The module-requirement machinery was
+does not, and no such type exists. The module-requirement machinery was
 part of the portability pin, withdrawn on 2026-08-23. What the import actually
 draws today is `SMITHERS1510` — "foreign module initialization can panic before
 a checked call boundary" — unless the import is type-only or the module carries
 a leading `@module @throws {never}` JSDoc marker. So the host constraint is
 carried by the panic channel, not by a requirement row, and nothing reports it
 as a portability fact.
+
+**Corrected 2026-08-28.** This note used to give a second, wrong reason: that
+"the frontend's ambient requirement type admits only `Clock`, `Random`, and
+`Host`". It does not constrain requirements at all. The requirement **row** is
+open — it is every `Context` subclass a program names, so a locally declared
+`Scheduler` or `Locale` publishes `requirements: ["Scheduler"]` /
+`["Locale"]` with no compiler change — and the `"Clock" | "Random" | "Host"`
+union is a *diagnostic-category* discriminator selecting
+`SMITHERS1602`/`1603`/`1601`. `Module<…>` is missing because it was withdrawn,
+which is the first reason and the only true one.
 :::
 
 ## Dynamic Features

@@ -271,8 +271,21 @@ var alwaysForbiddenHostGlobals = map[string]struct{}{
 // `Intl` is here because `new Intl.DateTimeFormat("en").format()` — no
 // argument — formats *now*: a wall-clock read reached through a global the old
 // rule did not model at all, and it compiled clean on both backends. The rest
-// of `Intl` needs no capability, which is the same per-operation shape `Math`
-// already has.
+// of `Intl` needs no capability *here*, which is the same per-operation shape
+// `Math` already has.
+//
+// That is the status quo, not a design statement, and it is a recorded gap.
+// compatibility.mdx §Determinism-Sensitive Members row five says every
+// ICU-backed operation MUST charge a `Locale` requirement — thirty members, of
+// which this file charges none — and it is open as (SA-4). Its verb turns on
+// whether `Locale` is given a source-language surface; row three's verb was
+// decided on 2026-08-28 (charge, landing with migration step 7) and row five's
+// was not. What IS by design is that the exemption is uniform across the whole
+// class, which the corpus case
+// 20-host-globals/intl-locale-formatting-is-not-a-clock-read pins across both
+// backends: a rule that charges the `Intl` ROOT — the cheapest wrong
+// implementation of row four or five — fails there rather than silently taking
+// the standard library's ICU surface with it.
 var hostSensitiveGlobals = map[string]struct{}{
 	"Date":        {},
 	"Math":        {},

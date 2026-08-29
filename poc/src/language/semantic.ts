@@ -8395,7 +8395,20 @@ interface AmbientAuthorityUse {
  * argument — formats *now*: it is a wall-clock read reached through a global
  * the old rule did not model at all, and it compiled clean on both backends.
  * The rest of `Intl` (`NumberFormat`, `Collator`, `ListFormat`, …) needs no
- * capability, which is the same per-operation shape `Math` already has.
+ * capability *here*, which is the same per-operation shape `Math` already has.
+ *
+ * That is the status quo, not a design statement, and it is a recorded gap.
+ * `compatibility.mdx` §Determinism-Sensitive Members row five says every
+ * ICU-backed operation MUST charge a `Locale` requirement — thirty members, of
+ * which this file charges none — and it is open as `(SA-4)`. Its verb turns on
+ * whether `Locale` is given a source-language surface; row three's verb was
+ * decided on 2026-08-28 (charge, landing with migration step 7) and row five's
+ * was not. Do not read the exemption above as saying the ICU surface is free by
+ * design. What IS by design is that the exemption is uniform across the whole
+ * class: `host-global-allowlist.test.ts` enumerates all thirty and requires one
+ * answer for them, so a rule that charges the `Intl` ROOT — the cheapest wrong
+ * implementation of row four or five — fails there instead of silently taking
+ * the standard library's ICU surface with it.
  */
 const HOST_SENSITIVE_GLOBALS: ReadonlySet<string> = new Set([
   "Date",

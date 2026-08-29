@@ -221,14 +221,37 @@ The bounded project/ownership checks use stable codes:
   `Locale` — are **not** closed by this rule and remain recorded as `(SA-4)`.
   Not, as previously recorded here, because "the ambient vocabulary" lacks a
   kind: measured 2026-08-28, the requirement ROW admits any `Context` subclass
-  (`Scheduler.context()` already publishes `requirements: ["Scheduler"]`), and
+  (`Scheduler.context()` already publishes `requirements: ["Scheduler"]`, and a
+  locally declared `Locale` publishes `["Locale"]`), and
   `"Clock" | "Random" | "Host"` in `AmbientAuthorityUse` is a diagnostic-category
   discriminator that picks `SMITHERS1602`/`1603`/`1601` — no ambient site
-  charges a row for any kind, `Date.now()` included. What is undecided is
-  whether "MUST charge" in those rows means a refusal (this file's `Clock`
-  precedent) or an ambient-site row charge; the two specification pages read it
-  differently. See `specification/compatibility.mdx` §Determinism-Sensitive
-  Members.
+  charges a row for any kind, `Date.now()` included, and **nothing needs adding
+  to that union**.
+
+  The verb the two specification pages read differently was **decided on
+  2026-08-28: charge**. `Promise.race`/`Promise.any` stay legal and publish a
+  `Scheduler` requirement a layer satisfies, and `compatibility.mdx` now defines
+  "charge" under its table together with the criterion that reconciles the two
+  pages — the ambient spelling is *additionally* refused only where the
+  capability has a source-language surface the author could write instead, which
+  is why this file's `Clock`/`Random` walls stay `SMITHERS1602`/`1603` and
+  `Scheduler`, which `durable-execution.mdx` says has no such surface, does not.
+  **No code here implements it.** The charge needs an ambient site injecting a
+  nominal key into `R` plus a `race`→scheduler lowering, and lands with
+  migration step 7; `Promise.race` is unchanged today, compiling and running
+  with an empty row, measured beside `Promise.all`, which does the same. Row
+  five's verb is still open — it turns on whether `Locale` is given a
+  source-language surface — while its *membership* was widened the same day from
+  four ICU names to the thirty the hazard covers, re-derived by sweeping the
+  ambient lib and measuring every spelling. All thirty answer identically here
+  today (no diagnostic, empty row) and so does the fork's mirror in
+  `compiler/forkbridge/hostrules.go.txt`, whose `Intl` member table is the same
+  one-name table this file has: `DateTimeFormat` charges `Clock` and the rest of
+  `Intl` is free. That uniformity is what
+  `host-global-allowlist.test.ts` pins, so a later rule that over-applies
+  `Clock` to the `Intl` root — the cheapest wrong implementation of row four or
+  five — fails there rather than silently taking the ICU surface with it. See
+  `specification/compatibility.mdx` §Determinism-Sensitive Members.
 
 - `SMITHERS1801`: a relative `.sm` import is absent from the supplied project;
   `SMITHERS1804`: a named/default import is not an exported value in that module.

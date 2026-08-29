@@ -429,4 +429,103 @@ describe("host-sensitive operations are judged per operation, not per object", (
     expect(diagnose(reads("new Intl.NumberFormat(\"en-US\").format(1)"))).toEqual([]);
     expect(diagnose(reads("new Intl.Collator(\"en-US\").compare(\"a\", \"b\")"))).toEqual([]);
   });
+
+  /**
+   * The whole ICU-backed class answers the SAME way, and this is the assertion
+   * that says so rather than thirty that each say "no diagnostic".
+   *
+   * `specification/compatibility.mdx` §Determinism-Sensitive Members row five
+   * used to name four members — `Intl.NumberFormat`, `Intl.Collator`,
+   * `String.prototype.localeCompare`, `Number.prototype.toLocaleString` — and
+   * the hazard it describes covers thirty. The list was incomplete, not narrow:
+   * every member below is a function of the host ICU version and locale data
+   * for the identical reason, and nothing distinguished the four. The class was
+   * re-derived on 2026-08-28 by sweeping the ambient lib for `Intl` value
+   * members, `toLocale*`, `localeCompare`, and `normalize`, and measuring each
+   * spelling; an earlier estimate of fifteen was fifteen short.
+   *
+   * **This is a positive control, and it is the one row five needs.** Row five
+   * is unenforced — all thirty are free today — so the failure mode is not an
+   * escape but an over-refusal: the cheapest wrong implementation of row four
+   * or row five charges the `Intl` ROOT, which passes every DateTimeFormat
+   * assertion above perfectly and silently takes the entire ICU surface of the
+   * standard library with it. `20-host-globals/determinism-hostile-siblings-stay-available`
+   * guards rows one and two the same way, and `20/the-ecmascript-global-object-stays-available`
+   * guards the allowlist. Asserting UNIFORMITY rather than emptiness is what
+   * survives row five actually landing: when these do charge `Locale` they must
+   * all charge it, and this test then names exactly which members diverged.
+   */
+  test("every ICU-backed member of row five answers identically", () => {
+    const icu: readonly string[] = [
+      // `Intl` namespace value members, minus `DateTimeFormat`, which is row
+      // four's clock hazard rather than row five's locale one.
+      "Intl.getCanonicalLocales(\"EN-us\")",
+      "Intl.supportedValuesOf(\"calendar\")",
+      "new Intl.NumberFormat(\"en-US\").format(1)",
+      "new Intl.Collator(\"en\").compare(\"a\", \"b\")",
+      "new Intl.PluralRules(\"en\").select(1)",
+      "new Intl.ListFormat(\"en\").format([\"a\", \"b\"])",
+      "new Intl.RelativeTimeFormat(\"en\").format(1, \"day\")",
+      "new Intl.Segmenter(\"en\").resolvedOptions().locale",
+      "new Intl.DisplayNames([\"en\"], { type: \"region\" }).of(\"US\")",
+      "new Intl.Locale(\"en-US\").baseName",
+      // Locale-sensitive prototype members. These are instance reads with no
+      // root identifier for the walk to key on, which is WHY they are free and
+      // why row five needs the type-directed analysis row four is blocked on.
+      "\"a\".localeCompare(\"b\")",
+      "\"a\".toLocaleUpperCase(\"en\")",
+      "\"A\".toLocaleLowerCase(\"en\")",
+      "\"a\\u0301\".normalize(\"NFC\")",
+      "(1).toLocaleString(\"en-US\")",
+      "(1n).toLocaleString(\"en-US\")",
+      "[1, 2].toLocaleString()",
+      "({ a: 1 }).toLocaleString()",
+      // `toLocaleString` on each of the twelve typed arrays. Enumerated rather
+      // than sampled: a rule keyed on one array kind closes one and none of the
+      // others, the same way the `eval` rule needed all twenty spellings.
+      "new Int8Array(2).toLocaleString()",
+      "new Uint8Array(2).toLocaleString()",
+      "new Uint8ClampedArray(2).toLocaleString()",
+      "new Int16Array(2).toLocaleString()",
+      "new Uint16Array(2).toLocaleString()",
+      "new Int32Array(2).toLocaleString()",
+      "new Uint32Array(2).toLocaleString()",
+      "new Float16Array(2).toLocaleString()",
+      "new Float32Array(2).toLocaleString()",
+      "new Float64Array(2).toLocaleString()",
+      "new BigInt64Array(2).toLocaleString()",
+      "new BigUint64Array(2).toLocaleString()",
+    ];
+    expect(icu.length).toBe(30);
+    // One answer for the whole class, so a member that diverges is named by the
+    // diff rather than hidden behind a per-expression `toEqual([])`.
+    const answers = icu.map((expression) => [expression, diagnose(reads(expression))] as const);
+    expect(answers).toEqual(icu.map((expression) => [expression, []] as const));
+  });
+
+  test("Date's two unnamed locale members are the same as its named ones", () => {
+    // Row four gained `toLocaleDateString` and `toLocaleTimeString` on
+    // 2026-08-28 by the same argument that widened row five: it already named
+    // `toLocaleString`, and these two read the host time zone identically. They
+    // are free today for the reason the whole row is — `Date` is analyzed at
+    // the root identifier only, so an instance member is never inspected.
+    expect(diagnose(reads("new Date(0).toLocaleString(\"en\")"))).toEqual([]);
+    expect(diagnose(reads("new Date(0).toLocaleDateString(\"en\")"))).toEqual([]);
+    expect(diagnose(reads("new Date(0).toLocaleTimeString(\"en\")"))).toEqual([]);
+  });
+
+  test("Error.prototype.stack is unclassified, and that is recorded rather than decided", () => {
+    // Host-varying and named by no specification page. Measured 2026-08-28 and
+    // deliberately left alone: ECMA-262 publishes no `Error.prototype.stack` at
+    // all, so the allowlist's own criterion — the NAME is admitted because
+    // ECMA-262 publishes it — does not classify a property of an instance;
+    // its variance is across engines and minification rather than between two
+    // hosts at one instant, which §Determinism-Sensitive Members answers with a
+    // SHOULD about pinning an engine version rather than with a capability; and
+    // it is the language's only stack-trace surface, which `src/cli.ts` reads
+    // in the scaffolding it emits. This pins the status quo so that deciding it
+    // later is a visible change rather than a silent one.
+    expect(diagnose("export function main(): string | undefined {\n  return new Error(\"x\").stack\n}\n")).toEqual([]);
+    expect(diagnose("export function main(): string {\n  return new Error(\"x\").message\n}\n")).toEqual([]);
+  });
 });

@@ -1,9 +1,24 @@
 {
-  "title": "Intl minus the clock-reading member: number formatting and locale canonicalisation need no capability",
+  "title": "Intl minus the clock-reading member: the whole ICU-backed class needs no capability, uniformly",
   "expect": "output",
   "stdout": [
     "en-US",
-    "1"
+    "1",
+    "0",
+    "one",
+    "a",
+    "string",
+    "en",
+    "string",
+    "en-US",
+    "true",
+    "0",
+    "A",
+    "a",
+    "1",
+    "1",
+    "string",
+    "string"
   ],
-  "notes": "specification/compatibility.mdx, 'Host Globals': the rule is per-operation, not per-object. This is to `Intl` what 20-host-globals/universal-globals-stay-available is to `Math` — without it, adding `Intl` as an ambient root could be over-applied to the whole object and nothing would notice."
+  "notes": "specification/compatibility.mdx, 'Host Globals': the rule is per-operation, not per-object. This is to `Intl` what 20-host-globals/universal-globals-stay-available is to `Math` — without it, adding `Intl` as an ambient root could be over-applied to the whole object and nothing would notice. WIDENED 2026-08-28, and the expectation below was re-derived by running both backends rather than edited by hand. It used to name two members (`Intl.getCanonicalLocales`, `Intl.NumberFormat`); §Determinism-Sensitive Members row five used to name four, and the ICU hazard it describes covers THIRTY, re-derived by sweeping the ambient lib and measuring every spelling. The row's list was incomplete rather than deliberately narrow, so this case now carries a representative of each shape in it: the nine other `Intl` value members, the four locale-sensitive `String` members, `toLocaleString` on `Number`, `BigInt`, `Array` and a typed array. All of them are free today and row five is unenforced, so THE FAILURE MODE THIS GUARDS IS OVER-REFUSAL, not escape: the cheapest wrong implementation of row four or five charges the `Intl` ROOT, which passes 20-host-globals/intl-datetimeformat-construction-needs-a-clock perfectly and silently takes the entire ICU surface of the standard library with it. Measured: mutating `root === \"Intl\" && member === \"DateTimeFormat\"` to `root === \"Intl\"` turns ten of these members into SMITHERS1602. Both backends produced BYTE-IDENTICAL stdout for all seventeen values on the re-derivation, which is the cross-backend half of the claim — the Go fork's `Intl` member table in compiler/forkbridge/hostrules.go.txt is the same one-name table the frontend has. Values whose result IS host ICU data (`RelativeTimeFormat.format`, `DisplayNames.of`, and the two default-locale `toLocaleString`s) are printed as `typeof`, because pinning their text would make this case itself vary with the host's ICU version — which is the hazard row five names. Row five landing MOVES this case, and that cost is recorded in compatibility.mdx (SA-4); `Intl.getCanonicalLocales` no longer 'stays legal either way', because it is a function of the host's CLDR alias data and is now in row five by its own criterion. The full thirty-member enumeration lives in poc/src/language/host-global-allowlist.test.ts, which checks rather than runs and so can name the twelve typed arrays and `Float16Array` without depending on the host having them."
 }
