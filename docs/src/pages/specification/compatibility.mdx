@@ -91,14 +91,51 @@ fix, which is why they did not move together:
   `ArrayBuffer`, `DataView` and the typed arrays stay available. Certified across
   backends by `20-host-globals/determinism-hostile-globals-are-refused` and its
   positive control `20-host-globals/determinism-hostile-siblings-stay-available`.
-- **Open.** No `Scheduler` and no `Locale` requirement exists. The frontend's
-  ambient requirement type admits only `Clock`, `Random`, and `Host`, so rows
-  three and five have nothing to charge. (A `Scheduler` class exists in the
-  concurrency library but is not a capability and is not exported.) Unlike rows
-  one and two this is not a list to edit: it adds a requirement kind to the
-  vocabulary that appears in every inferred row, and a requirement no Layer can
-  satisfy would make `Promise.race` and `Intl.NumberFormat` unusable rather than
-  mediated. That is an owner decision about the capability surface, not a defect.
+- **Open, and it is a product decision about what "charge" means — re-measured
+  2026-08-28.** The earlier note here said the frontend's ambient requirement
+  type "admits only `Clock`, `Random`, and `Host`, so rows three and five have
+  nothing to charge", and that a `Scheduler` class exists "but is not a
+  capability". Both are wrong, and correcting them relocates the difficulty
+  rather than removing it. Measured through `analyzeProject`: the requirement
+  **row** vocabulary is open — it is every `Context` subclass the program names
+  — and `Scheduler.context().firstReady(xs)` already publishes
+  `requirements: ["Scheduler"]` today with no compiler change, because
+  `poc/src/concurrency/scheduler.ts` **is** `export abstract class Scheduler
+  extends Context` (it is unexported from `concurrency/index.ts`, which is a
+  different and smaller problem). The `"Clock" | "Random" | "Host"` union is not
+  a requirement vocabulary at all: it is a *diagnostic-category* discriminator
+  that selects `SMITHERS1602`/`1603`/`1601`. In the same measurement
+  `Date.now()` published `requirements: []` **and** `SMITHERS1602`. So no
+  ambient site has ever charged a row — not for `Clock` either — and there is
+  no vocabulary for a new kind to be added to.
+  What is genuinely undecided is the verb. Two locked pages read it differently.
+  This page's §Host Globals says an operation whose result can differ between
+  two executions "MUST be reachable only through a capability whose answer the
+  runtime journals", and row four calls the hazard "already charged at
+  `Intl.DateTimeFormat` construction" — which this implementation charges as a
+  `SMITHERS1602` **refusal**, the sense in which
+  `20-host-globals/the-date-constructor-in-a-value-position-is-still-charged`
+  uses the word. Read that way, rows three and five are refusals.
+  [Durable Execution](/specification/durable-execution) §Deterministic
+  Scheduling reads the other way: `Promise.all` and friends "remain ordinary and
+  charge no `Scheduler` requirement", which makes `race`/`any` ordinary-but-
+  charged rather than refused, and "The scheduler has no source-language
+  surface", which a refusal whose remedy is `Scheduler.context()` would create.
+  Neither reading is implementable today. The refusal reading names a remedy
+  that cannot be built — the precedent that produced `SMITHERS1605` rather than
+  `SMITHERS1601` — because no explicit concurrency combinator is specified and
+  `Scheduler` is not exported; and for row five it publishes `Locale`, a
+  capability class that exists nowhere in the tree and whose service contract no
+  page states. The charging reading needs a mechanism no requirement has: an
+  ambient site that injects a nominal key into `R`, plus the lowering that
+  routes `Promise.race` to the scheduler. Both are owner calls, not defects.
+  The cost is smaller than previously assumed and was measured before the shape
+  was chosen: across 591 authored `.sm` files, **zero** name `Promise.race` or
+  `Promise.any` under any spelling, so row three moves **no** corpus case and
+  **no** test; row five moves exactly **one** corpus case
+  (`20-host-globals/intl-locale-formatting-is-not-a-clock-read`, whose
+  `Intl.getCanonicalLocales` half stays legal either way), its one mirrored Go
+  fork subtest, and two assertions in `host-global-allowlist.test.ts`.
 - **Open.** `Date` is analyzed at the root identifier only, so `new Date(instant)`
   returns an empty row and no instance member is ever inspected. Row four's "even
   when an explicit instant is supplied" is not implementable in that shape: it

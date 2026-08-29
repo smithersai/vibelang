@@ -218,8 +218,17 @@ The bounded project/ownership checks use stable codes:
   `20-host-globals/determinism-hostile-siblings-stay-available`. Rows three,
   four, and five of the same table — `Promise.race`/`any` charging `Scheduler`,
   `Date` instance members charging `Clock`, and `Intl`/`localeCompare` charging
-  `Locale` — are **not** closed by this rule and remain recorded as `(SA-4)`:
-  each needs a requirement kind the ambient vocabulary does not have.
+  `Locale` — are **not** closed by this rule and remain recorded as `(SA-4)`.
+  Not, as previously recorded here, because "the ambient vocabulary" lacks a
+  kind: measured 2026-08-28, the requirement ROW admits any `Context` subclass
+  (`Scheduler.context()` already publishes `requirements: ["Scheduler"]`), and
+  `"Clock" | "Random" | "Host"` in `AmbientAuthorityUse` is a diagnostic-category
+  discriminator that picks `SMITHERS1602`/`1603`/`1601` — no ambient site
+  charges a row for any kind, `Date.now()` included. What is undecided is
+  whether "MUST charge" in those rows means a refusal (this file's `Clock`
+  precedent) or an ambient-site row charge; the two specification pages read it
+  differently. See `specification/compatibility.mdx` §Determinism-Sensitive
+  Members.
 
 - `SMITHERS1801`: a relative `.sm` import is absent from the supplied project;
   `SMITHERS1804`: a named/default import is not an exported value in that module.
