@@ -15,6 +15,7 @@ export const Flow = durable((input: { mode: string }) => {
 export function main(): string[] {
   const plan = Flow.plan
   const node = plan.nodes[0]
+  if (node === undefined) return ["the plan has no nodes"]
   if (node.kind !== "action") return ["the only plan node is not an action node"]
   const argument = node.input
   if (argument.kind !== "object") return ["the action input is not an object expression"]

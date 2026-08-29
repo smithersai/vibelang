@@ -164,6 +164,22 @@ function exactKeys(value: Record<string, JsonValue>, expected: readonly string[]
   }
 }
 
+/**
+ * A field `exactKeys` has already proved present, as a `JsonValue`.
+ *
+ * `noUncheckedIndexedAccess` is mandatory (compatibility.mdx §Mandatory), so an
+ * index read into a `Record<string, JsonValue>` is `JsonValue | undefined` and
+ * the exact-keys check above is a narrowing the checker cannot see. §Mandatory's
+ * own guidance is that such a read "MUST be narrowed, or read through an
+ * extraction helper"; this is the helper.
+ */
+function requiredField(record: Record<string, JsonValue>, key: string): JsonValue {
+  if (!Object.prototype.hasOwnProperty.call(record, key)) {
+    throw new ValueCodecError(`encoded value envelope is missing the '${key}' field`);
+  }
+  return record[key] as JsonValue;
+}
+
 function assertCanonical(wire: string, canonical: string): void {
   if (wire !== canonical) throw new ValueCodecError("encoded value is not canonical JSON");
 }
@@ -195,9 +211,9 @@ export function decodeResult<A, E extends Error>(
   }
   if (envelope.kind === "success") {
     exactKeys(envelope, ["version", "kind", "value"]);
-    const canonical = `{"version":1,"kind":"success","value":${stringifyJson(envelope.value)}}`;
+    const canonical = `{"version":1,"kind":"success","value":${stringifyJson(requiredField(envelope, "value"))}}`;
     assertCanonical(wire, canonical);
-    return __vsResultSuccess(decodedPayload(codec, envelope.value));
+    return __vsResultSuccess(decodedPayload(codec, requiredField(envelope, "value")));
   }
   exactKeys(envelope, ["version", "kind", "error"]);
   if (typeof envelope.error !== "string") throw new ValueCodecError("encoded Result error must be a string");

@@ -528,6 +528,13 @@ export function emitProjectDeclarations(
   resolution?: EmittedModuleResolutionOptions,
 ): DeclarationEmitResult {
   if (sources.length === 0) return { outputs: [], diagnostics: [], ok: true };
+  // Deliberately WITHOUT the mandatory table compiler-options.ts spreads into
+  // the checking programs. This one emits `.d.ts` from a module set that has
+  // already passed `checkEmittedProject`, which does carry that table — see the
+  // `options.declaration && no errors` guard in src/cli.ts. Re-stating the
+  // obligation here would re-run a gate that already ran, over a program this
+  // one does not scope to its own files, so a resolved import would be charged
+  // for rules compatibility.mdx §Configuration exempts it from.
   const options: ts.CompilerOptions = {
     target: ts.ScriptTarget.ESNext,
     module: ts.ModuleKind.ESNext,

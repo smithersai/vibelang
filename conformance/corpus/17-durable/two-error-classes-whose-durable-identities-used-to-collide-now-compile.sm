@@ -33,7 +33,9 @@ export const Flow = durable((input: { key: string }) => {
 })
 
 export function main(): string[] {
-  const variants = Flow.plan.actions[0].errorSchema.descriptor.variants
+  const action = Flow.plan.actions[0]
+  if (action === undefined) return ["the plan has no actions"]
+  const variants = action.errorSchema.descriptor.variants
   return [
     String(Flow.plan.actions.length),
     String(variants.length),

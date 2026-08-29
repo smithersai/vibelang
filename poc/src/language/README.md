@@ -89,6 +89,25 @@ if (!checked.ok) {
   rewritten. `declaration-artifact.test.ts` measures the emitted bytes and
   type-checks a consumer against them.
 
+Project configuration is validated by `compiler-options.ts`, which owns the only
+copy of compatibility.mdx §Mandatory and §Forbidden and is mirrored into the Go
+bridge (`compiler/fork_compiler_options_test.go` fails on drift):
+
+- `SMITHERS6001`: a mandatory compiler option is missing, or is stated with a
+  value other than `true`.
+- `SMITHERS6002`: a forbidden compiler option appears in the configuration.
+  Appearing is the violation — `experimentalDecorators: false` is still refused,
+  because §Forbidden says such options "MUST be rejected rather than ignored".
+- `SMITHERS6003`: an option nothing classifies. The fail-closed reading of the
+  same sentence: an option no table names is not silently honored.
+
+Each carries the position of the option the author wrote, which is why the
+configuration is parsed as JSON with `parseJsonText` rather than read out of a
+normalized options bag. The mandatory set reaches the checker through
+`MANDATORY_CHECKER_OPTIONS`; its three emit-shaping members do not reach an emit
+program, because §Mandatory governs the legality of authored `.sm` and not the
+shape of this compiler's output.
+
 The bounded project/ownership checks use stable codes:
 
 - `SMITHERS1002`: the internal `typescript-js` parser-diagnostics field is absent,

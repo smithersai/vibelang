@@ -8,6 +8,7 @@ import {
   mkdirSync,
   mkdtempSync,
   openSync,
+  readFileSync,
   readSync,
   realpathSync,
   renameSync,
@@ -31,6 +32,7 @@ import {
   emitProjectDeclarations,
   formatSmithersSource,
   startSmithersLanguageServer,
+  validateSmithersTsconfig,
 } from "../poc/dist/language/index.js";
 import {
   AssetCompiler,
@@ -725,6 +727,13 @@ async function compileSmithersFiles(
      * the import, and only the compiler ever writes it.
      */
     readonly schemaRuntimeImport?: string;
+    /**
+     * The project's tsconfig.json. Accepted so both backend arms take the same
+     * shape and neither silently drops it; the reference has already validated
+     * it in `readSmithersProjectConfig` by the time it gets here, where the
+     * fork validates it itself over the wire.
+     */
+    readonly configFile?: { readonly path: string; readonly text: string };
     readonly declaration?: boolean;
     readonly sourceMap?: boolean;
     readonly sourceBudget?: {
@@ -1287,6 +1296,8 @@ function compileGoSmithersFiles(
     readonly emit?: boolean;
     readonly declaration?: boolean;
     readonly sourceMap?: boolean;
+    /** The project's tsconfig.json, forwarded so the fork can gate on it too. */
+    readonly configFile?: { readonly path: string; readonly text: string };
   },
 ): readonly SmithersFileResult[] {
   const project = loadSmithersProject(inputNames, options.rootDir);
@@ -1404,6 +1415,7 @@ function compileGoSmithersFiles(
       inlineSources: options.sourceMap === true,
     },
     lowering: "internal",
+    ...(options.configFile ? { configFile: options.configFile } : {}),
   });
 
   const diagnostics = new Map(project.sources.map((source) => [source.fileName, [] as CliDiagnostic[]]));
@@ -1551,6 +1563,57 @@ function commitProjectFiles(
   } finally {
     rmSync(staging, { recursive: true, force: true });
   }
+}
+
+/**
+ * Read and validate the project's `tsconfig.json`, as compatibility.mdx
+ * §Configuration requires and as nothing did before.
+ *
+ * `--project`/`-p` has been declared as "Path to tsconfig.json or its directory"
+ * since the flag existed, and no Smithers-owned code ever dereferenced it: on a
+ * TypeScript input it was re-serialized straight into a spawned `tsc`, and on a
+ * `.sm` input it was refused as an unsupported option, so the file it names was
+ * never opened by this compiler on either path. §Mandatory and §Forbidden were
+ * therefore unrepresented rather than merely unchecked.
+ *
+ * The findings carry SMITHERS6001/6002/6003 and a real position, because
+ * §Forbidden's obligation is that a deprecated option "MUST be rejected rather
+ * than ignored" and a rejection with no span cannot tell the author which line
+ * to delete. Both backends run the same table; see
+ * poc/src/language/compiler-options.ts.
+ */
+function readSmithersProjectConfig(project: string): {
+  readonly fileName: string;
+  readonly text: string;
+  readonly diagnostics: readonly CliDiagnostic[];
+} | { readonly failure: CliDiagnostic } {
+  const requested = resolve(project);
+  const fileName = existsSync(requested) && statSync(requested).isDirectory()
+    ? join(requested, "tsconfig.json")
+    : requested;
+  if (!existsSync(fileName)) {
+    return {
+      failure: {
+        code: "SMITHERS6003",
+        severity: "error",
+        message: `no tsconfig.json at ${fileName}`,
+        file: fileName,
+      },
+    };
+  }
+  const text = readFileSync(fileName, "utf8");
+  return {
+    fileName,
+    text,
+    diagnostics: validateSmithersTsconfig(fileName, text).map((diagnostic) => ({
+      code: diagnostic.code,
+      severity: "error" as const,
+      message: diagnostic.message,
+      file: diagnostic.fileName,
+      line: diagnostic.line,
+      column: diagnostic.column,
+    })),
+  };
 }
 
 function reportSmithersResults(results: readonly SmithersFileResult[]): { ok: boolean; files: readonly SmithersFileResult[] } {
@@ -1847,13 +1910,20 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
       if (containsMixedInputs(smithersInputs)) {
         return context.error({ code: "MIXED_FRONTENDS", exitCode: 2, message: "compile .sm and TypeScript inputs in separate invocations" });
       }
-      const unsupported = unsupportedSmithersOptions(options, new Set(["outDir", "rootDir", "noEmit", "declaration", "sourceMap"]));
+      const unsupported = unsupportedSmithersOptions(options, new Set(["outDir", "rootDir", "noEmit", "declaration", "sourceMap", "project"]));
       if (unsupported.length > 0) {
         return context.error({
           code: "UNSUPPORTED_SMITHERS_OPTION",
           exitCode: 2,
-          message: `.sm compile does not support ${unsupported.join(", ")}; supported options are --outDir, --rootDir, --declaration, --sourceMap, and --noEmit`,
+          message: `.sm compile does not support ${unsupported.join(", ")}; supported options are --project, --outDir, --rootDir, --declaration, --sourceMap, and --noEmit`,
         });
+      }
+      const compileConfig = options.project === undefined ? undefined : readSmithersProjectConfig(options.project);
+      if (compileConfig && "failure" in compileConfig) {
+        return context.error({ code: compileConfig.failure.code, exitCode: 2, message: compileConfig.failure.message });
+      }
+      if (compileConfig && compileConfig.diagnostics.length > 0) {
+        return reportSmithersResults([{ input: compileConfig.fileName, diagnostics: compileConfig.diagnostics }]);
       }
       const collision = duplicateSmithersOutput(smithersInputs, options.outDir);
       if (collision) {
@@ -1873,6 +1943,9 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
       try {
         const compile = backend === "go" ? compileGoSmithersFiles : compileSmithersFiles;
         return reportSmithersResults(await compile(smithersInputs, {
+          ...(compileConfig && !("failure" in compileConfig)
+            ? { configFile: { path: compileConfig.fileName, text: compileConfig.text } }
+            : {}),
           outDir: options.outDir,
           rootDir: options.rootDir,
           emit: !options.noEmit,
@@ -1906,7 +1979,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
       if (containsMixedInputs(smithersInputs)) {
         return context.error({ code: "MIXED_FRONTENDS", exitCode: 2, message: "check .sm and TypeScript inputs in separate invocations" });
       }
-      const unsupported = unsupportedSmithersOptions(options, new Set<keyof CompileOptions>(["rootDir"]));
+      const unsupported = unsupportedSmithersOptions(options, new Set<keyof CompileOptions>(["rootDir", "project"]));
       if (unsupported.length > 0) {
         return context.error({
           code: "UNSUPPORTED_SMITHERS_OPTION",
@@ -1914,9 +1987,19 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
           message: `.sm check does not support ${unsupported.join(", ")}`,
         });
       }
+      const checkConfig = options.project === undefined ? undefined : readSmithersProjectConfig(options.project);
+      if (checkConfig && "failure" in checkConfig) {
+        return context.error({ code: checkConfig.failure.code, exitCode: 2, message: checkConfig.failure.message });
+      }
+      if (checkConfig && checkConfig.diagnostics.length > 0) {
+        return reportSmithersResults([{ input: checkConfig.fileName, diagnostics: checkConfig.diagnostics }]);
+      }
       try {
         const compile = backend === "go" ? compileGoSmithersFiles : compileSmithersFiles;
         return reportSmithersResults(await compile(smithersInputs, {
+          ...(checkConfig && !("failure" in checkConfig)
+            ? { configFile: { path: checkConfig.fileName, text: checkConfig.text } }
+            : {}),
           rootDir: options.rootDir,
           emit: false,
         }));

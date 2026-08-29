@@ -193,7 +193,9 @@ function source(input: { value: string }) {
 }
 export const Built = compileFlow(source)
 export function main(): string[] {
-    return [Built.artifactSource, Built.plan.nodes[0].kind]
+    const first = Built.plan.nodes[0]
+    if (first === undefined) return ["the plan has no nodes"]
+    return [Built.artifactSource, first.kind]
 }
 `
 	resolvedResult := compileDurableWith(t, backend, ctx, resolved)

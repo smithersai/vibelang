@@ -1,6 +1,14 @@
 export { analyzeProject, analyzeSource, parseErrors, parseFunctions } from "./analyze.ts";
 export { compileSmithers } from "./compile.ts";
 export {
+  FORBIDDEN_COMPILER_OPTIONS,
+  isKnownCompilerOption,
+  MANDATORY_CHECKER_OPTIONS,
+  MANDATORY_COMPILER_OPTIONS,
+  validateSmithersTsconfig,
+} from "./compiler-options.ts";
+export type { CompilerOptionDiagnostic } from "./compiler-options.ts";
+export {
   annotateDeclarationEffects,
   DECLARATION_EFFECT_TAG,
   DECLARATION_EFFECT_VERSION,

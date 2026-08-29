@@ -14,6 +14,7 @@ import {
 } from "./schema-derive.ts";
 import type { SchemaDescriptor } from "./schema-runtime.ts";
 import { canonical, compareStableStrings, digest, freezeStable, stableClone, type StableJson } from "./stable.ts";
+import { MANDATORY_CHECKER_OPTIONS } from "../language/compiler-options.ts";
 import { recoverSmithersSyntax, type RecoveredSource } from "../language/recover.ts";
 
 export const COMPTIME_MODULE_SPECIFIER = "smithers:comptime";
@@ -2366,7 +2367,13 @@ function checkedProject(sources: Readonly<Record<string, string>>): CheckedProje
     moduleResolution: ts.ModuleResolutionKind.Bundler,
     allowJs: true,
     checkJs: true,
-    strict: true,
+    // The comptime frontend checks the SAME authored text the language
+    // frontend does, so it must check it under the same options. A comptime
+    // checker that disagreed with the language checker about the type of
+    // `arr[i]` would let a statically evaluated branch take a path the type
+    // system says it cannot; compatibility.mdx §Configuration's "MUST be
+    // uniform" is about exactly this.
+    ...MANDATORY_CHECKER_OPTIONS,
     types: [],
     skipLibCheck: true,
     noEmit: true,

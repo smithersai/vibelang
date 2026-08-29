@@ -338,7 +338,12 @@ export function g(): number {
 	})
 
 	t.Run("an authored record is not a foreign read", func(t *testing.T) {
-		authored := `export function g(): number { const local: Record<string, number> = { k: 1 }; return local.k }
+		// Narrowed for `noUncheckedIndexedAccess` (compatibility.mdx §Mandatory),
+		// which makes an index read into a Record `number | undefined`. The read
+		// itself is what this case is about — that an AUTHORED record read is not
+		// a foreign read and draws no SMITHERS1506 — so the read stays and only
+		// the absence is handled.
+		authored := `export function g(): number { const local: Record<string, number> = { k: 1 }; const read = local.k; return read === undefined ? 0 : read }
 `
 		files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: authored}}
 		if got := formatDiagnosticPositions(t, files, compileInternalSource(t, files)); len(got) != 0 {

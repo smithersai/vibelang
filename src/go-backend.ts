@@ -70,6 +70,15 @@ export interface GoBackendRequest {
   readonly files: readonly GoBackendSourceFile[];
   readonly options: Readonly<Record<string, boolean | string>>;
   readonly lowering: "internal";
+  /**
+   * The project's `tsconfig.json`, by path and text, when the caller has one.
+   *
+   * Text rather than a parsed bag: compatibility.mdx §Forbidden requires the
+   * offending option to be REJECTED, and the fork parses the JSON itself so its
+   * SMITHERS6002 lands on the option the author wrote. Both backends run the
+   * same table; see poc/src/language/compiler-options.ts.
+   */
+  readonly configFile?: { readonly path: string; readonly text: string };
 }
 
 /** A stable product-facing failure code plus the command that repairs it. */

@@ -20,12 +20,14 @@ export const Flow = durable((input: { key: string }) => {
 })
 
 export function main(): string[] {
-  const schema = Flow.plan.actions[0].successSchema
+  const action = Flow.plan.actions[0]
+  if (action === undefined) return ["the plan has no actions"]
+  const schema = action.successSchema
   return [
     schema.shape === "structural" && schema.descriptor.kind === "object"
       ? schema.descriptor.fields.map((field) => field.name).join("|")
       : "the success schema is not a structural object descriptor",
     schema.digest,
-    Flow.plan.actions[0].contractDigest,
+    action.contractDigest,
   ]
 }

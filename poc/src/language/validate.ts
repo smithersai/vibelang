@@ -1,5 +1,6 @@
 import { dirname, resolve } from "node:path";
 import * as ts from "typescript-js";
+import { MANDATORY_CHECKER_OPTIONS } from "./compiler-options.ts";
 import { compileSmithers, type CompileOptions, type CompileResult } from "./compile.ts";
 import {
   compileProject,
@@ -94,7 +95,7 @@ export function checkEmittedTypeScript(code: string, fileName: string): readonly
     allowImportingTsExtensions: true,
     noEmit: true,
     skipLibCheck: true,
-    strict: true,
+    ...MANDATORY_CHECKER_OPTIONS,
   };
   const sourceFile = ts.createSourceFile(output, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const host = ts.createCompilerHost(options);
@@ -123,7 +124,7 @@ export function checkEmittedProject(
     allowImportingTsExtensions: true,
     noEmit: true,
     skipLibCheck: true,
-    strict: true,
+    ...MANDATORY_CHECKER_OPTIONS,
   };
   const sourceByName = new Map<string, { code: string; sourceFile: ts.SourceFile }>();
   for (const source of sources) {
@@ -152,7 +153,23 @@ export function checkEmittedProject(
   );
   const rootNames = [...sourceByName.keys()].sort();
   const program = ts.createProgram({ rootNames, options, host });
-  return ts.getPreEmitDiagnostics(program);
+  // Scoped to the module set the caller handed over, which is what this
+  // function is asked about. A resolved import is a different file under a
+  // different configuration — compatibility.mdx §Configuration: "Imported `.ts`
+  // and `.tsx` keep their own configuration. The escape-hatch guarantee in this
+  // page protects those files, not `.sm`." The filter is what makes the
+  // mandatory options safe to spread above: without it, this repository's own
+  // `poc/src/runtime/errors.ts` and `poc/src/runtime/wire.ts` fail
+  // `exactOptionalPropertyTypes` and charge every program that resolves the
+  // runtime with a TS2345 in a file the authored program does not own.
+  // Measured over the conformance corpus: 150 of 515 cases rejected unscoped,
+  // 7 scoped, and 143 of the 150 were that one library. The conformance harness
+  // was already refusing to score those diagnostics — "an absolute path the
+  // harness could not relate to the staged project. No expectation can declare
+  // one" — so an unscoped diagnostic here could never have been a verdict about
+  // a backend in the first place.
+  return ts.getPreEmitDiagnostics(program)
+    .filter((diagnostic) => !diagnostic.file || sourceByName.has(resolve(diagnostic.file.fileName)));
 }
 
 /** One-call API for integrations which must never accept invalid generated TS. */

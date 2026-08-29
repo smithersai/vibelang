@@ -124,8 +124,20 @@ type Diagnostic struct {
 }
 
 // Options carries compatibility options without prematurely copying upstream's
-// internal Go option structs. Unknown fields are retained for forward compatibility.
+// internal Go option structs.
+//
+// Unknown fields are NOT retained: the bridge has a closed allowlist over this
+// map and refuses anything outside it. That was true before this comment was
+// corrected — the allowlist has always had a `default:` arm — and it is now
+// refused with a diagnostic code rather than a bare error string. See
+// compatibility.mdx §Forbidden and forkbridge/main.go.txt's compilerOptions.
 type Options map[string]any
+
+// ConfigFile is one tsconfig.json, by name and text.
+type ConfigFile struct {
+	Path string `json:"path"`
+	Text string `json:"text"`
+}
 
 // CompileRequest is the serializable boundary used by the TypeScript CLI bridge.
 type CompileRequest struct {
@@ -138,6 +150,13 @@ type CompileRequest struct {
 	// Lowering explicitly selects the internal, identity, or externally lowered
 	// path. The zero value is invalid. LoweringExternal requires in-memory Files.
 	Lowering LoweringMode `json:"lowering,omitempty"`
+	// ConfigFile is the project's tsconfig.json, by name and text, when the
+	// caller has one. It crosses the wire as TEXT rather than as a parsed
+	// options bag because compatibility.mdx §Forbidden requires the offending
+	// option to be REJECTED, and a rejection has to point at what the author
+	// wrote — a normalized bag has no positions. See
+	// forkbridge/main.go.txt's validateSmithersConfigFile.
+	ConfigFile *ConfigFile `json:"configFile,omitempty"`
 	// RootDir is the project root every logical name — and therefore every
 	// identity and every digest — is stated relative to when RootNames are read
 	// from disk. It must be absolute, and it is HOST-SIDE ONLY: `json:"-"` keeps

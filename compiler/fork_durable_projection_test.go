@@ -888,13 +888,15 @@ export const Flow = durable((input: { a: string; b: string }) => {
   return Step.run({ outer: { key: input.a }, keys: [input.a, input.b] })
 })`,
 		},
-		{
-			name: "a numeric index into an input array",
-			body: `class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
-export const Flow = durable((input: { items: readonly string[] }) => {
-  return Step.run({ key: input.items[0] })
-})`,
-		},
+		// "a numeric index into an input ARRAY" was here, feeding
+		// `input.items[0]` to a required `key: string`. It compiled only while
+		// `noUncheckedIndexedAccess` was unenforced; it is now refused, and
+		// TestPinnedForkDurableArrayIndexProjectionIsRefusedUnderTheMandatoryOption
+		// below records that with the three measurements that make it
+		// inexpressible rather than merely unwritten. The tuple row directly
+		// below keeps this table's index-projection coverage, and it is the
+		// spelling that survives: a tuple read at a constant index is not
+		// widened by the option.
 		{
 			name: "a numeric index into an input tuple",
 			body: `class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
@@ -972,6 +974,53 @@ export function main(): string[] { return [Flow.artifactSource] }
 				t.Fatalf("emitted Flow did not run to a static Plan descriptor: %q", got)
 			}
 		})
+	}
+}
+
+// A numeric index into an input ARRAY can no longer be a durable projection,
+// and no spelling recovers it. That is a real consequence of making
+// compatibility.mdx §Mandatory's `noUncheckedIndexedAccess` enforced, and it is
+// recorded here rather than left as a deleted table row.
+//
+// Three measurements close it, all taken 2026-08-28 on this backend:
+//
+//   - `Step.run({ key: input.items[0] })` against a required `key: string` is
+//     SMITHERS4100 — the read is `string | undefined` and does not satisfy the
+//     Action's checked input contract.
+//   - Widening the contract to `key: string | undefined` moves the refusal to
+//     SMITHERS4113, "field key: undefined is not a canonical JSON value".
+//     durable-execution.mdx's canonical JSON has no `undefined`, so the durable
+//     boundary is right to refuse it.
+//   - Narrowing at the projection with `input.items[0] ?? ""` is SMITHERS4111,
+//     "unsupported durable expression KindBinaryExpression". A projection is a
+//     path the descriptor answers; `??` is a computation, and the Plan cannot
+//     record it.
+//
+// So the sound spelling of "index a durable container" is a TUPLE, whose read
+// at a constant index the option does not widen. That row is in the sound table
+// above and still passes.
+func TestPinnedForkDurableArrayIndexProjectionIsRefusedUnderTheMandatoryOption(t *testing.T) {
+	backend, ctx := newPinnedTestBackend(t)
+	source := durableProjectionPreamble + `
+class Step extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
+export const Flow = durable((input: { items: readonly string[] }) => {
+  return Step.run({ key: input.items[0] })
+})
+export function main(): string[] { return [Flow.artifactSource] }
+`
+	result := compileDurableWith(t, backend, ctx, source)
+	if !result.EmitSkipped {
+		t.Fatal("an array-index projection into a required durable field must be refused")
+	}
+	found := false
+	for _, item := range result.Diagnostics {
+		if item.Code == "SMITHERS4100" {
+			found = true
+		}
+	}
+	if !found {
+		encoded, _ := json.Marshal(result.Diagnostics)
+		t.Fatalf("want SMITHERS4100 for the widened index read, got %s", encoded)
 	}
 }
 

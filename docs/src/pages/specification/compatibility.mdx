@@ -143,52 +143,99 @@ Imported `.ts` and `.tsx` keep their own configuration. The escape-hatch guarant
 | `verbatimModuleSyntax` | replaces the deprecated `importsNotUsedAsValues` and `preserveValueImports` |
 | `useDefineForClassFields` | the legacy-off behavior is a footgun |
 
-**(SA-5) — implementation status, measured 2026-08-28: only `strict` is enforced.** This
-compiler builds every `compilerOptions` block with `strict: true` and nothing
-else, and it has no tsconfig-validation gate at all, so the other five mandatory
-options are unchecked and none of the eleven forbidden options below is
-rejected. Both directions are measurable: `const v: number = arr[2]` and
-`const o: { a?: number } = { a: undefined }` each check clean, while the control
-`const v: number = "str"` correctly reports `TS2322`. These remain normative
-obligations on a conforming implementation; this one does not yet meet them.
+**(SA-5) — closed 2026-08-28.** All six mandatory options are enforced, the
+eleven forbidden options are rejected with a diagnostic code and a span, and the
+project's `tsconfig.json` is read and validated on both backends. The two
+directions that used to check clean now report: `const v: number = arr[2]` is
+`TS2322` and `const o: { a?: number } = { a: undefined }` is `TS2375`, beside
+the unchanged control `const v: number = "str"` at `TS2322`.
 
-**Sized 2026-08-28, so this is not carried as an unknown.** Three measurements
-refine the paragraph above.
+*Where the options live.* One table, `MANDATORY_COMPILER_OPTIONS` in
+`poc/src/language/compiler-options.ts`, which every program that decides `.sm`
+legality spreads and which the Go bridge's own option gate mirrors; a test fails
+if the two drift. Before it there was no tsconfig read anywhere in the product —
+no `readConfigFile`, `parseJsonConfigFileContent`, `findConfigFile`, or
+`getParsedCommandLineOfConfigFile` call in `src/` or `poc/src/` — and the
+mandatory set was not "unchecked" so much as *unrepresented*: five hardcoded
+`ts.CompilerOptions` literals of which `strict: true` was the only member of this
+table any of them set. `smithers compile -p` and `smithers check -p` now open the
+file the flag names. The flag was never silently discarded, which is worth
+correcting: on a TypeScript input it was re-serialized into a spawned `tsc`, and
+on a `.sm` input it was refused outright as an unsupported option. It was never
+*read*, which is the defect that mattered.
 
-*Where the options live.* No tsconfig is read anywhere in the product — no
-`readConfigFile`, `parseJsonConfigFileContent`, `findConfigFile`, or
-`getParsedCommandLineOfConfigFile` call exists in `src/` or `poc/src/`. The
-mandatory set is not "unchecked" so much as *unrepresented*: the six options are
-five hardcoded `ts.CompilerOptions` literals, and `strict: true` is the only
-member of the mandatory set any of them sets. The CLI compounds this — `smithers`
-declares `--project`/`-p` as "Path to tsconfig.json or its directory" and never
-reads the parsed value, so the flag is accepted and silently discarded.
+*Three diagnostics carry the gate.* `SMITHERS6001` for a mandatory option that is
+missing or set to anything but `true`, `SMITHERS6002` for a forbidden option, and
+`SMITHERS6003` for an option nothing classifies — the fail-closed reading of
+§Forbidden's "MUST be rejected rather than ignored". Each lands on the option the
+author wrote, because the configuration is parsed as JSON with positions rather
+than through a normalized options bag, which has none.
 
-*The forbidden half is not uniformly unenforced.* The Go fork's bridge already
-has a closed allowlist over its options map (`compilerOptions` in
-`compiler/forkbridge/main.go.txt`) admitting thirteen names, so
-`experimentalDecorators` **is** rejected there — but as an unstructured bridge
-error with no diagnostic code, no span, and no file, and the same arm rejects the
-five mandatory options as "unsupported" rather than requiring them. The reference
-backend has no equivalent chokepoint at all. So the gap is one gate short of a
-half-built mechanism on one backend, not a greenfield.
+*The forbidden half was never uniformly unenforced,* and the register's claim
+that "none of the eleven forbidden options is rejected" was wrong for the Go
+fork. Its bridge has had a closed allowlist over its options map since it was
+written, so `experimentalDecorators` was already refused there — as an
+unstructured error with no code, no file and no span, travelling in the
+envelope's `Error` field rather than in its diagnostics, and the same arm refused
+the five missing mandatory options as "unsupported" rather than requiring them.
+That allowlist is reused rather than replaced: the classification is what was
+added, and `strict: false` is no longer honored.
 
-*The mandatory half is small and has exactly one real obstacle.* Adding all five
-missing options to the checker literals and running the conformance corpus moved
-**2 of 515 cases**, both for one root cause and both in `07-must-consume`:
-under `noUncheckedIndexedAccess`, `results[i]` is `Result<A, E> | undefined`,
-which the `!` provenance walk does not recognize as a Result, so it refuses
-`results[i]!` as `SMITHERS1207` — "postfix `!` requires a `Result` operand". That
-is the interaction the paragraph two below anticipates, and the measurement shows
-its last sentence is not yet satisfiable: `arr[i]!` does **not** compile "when
-`arr` holds Results" once the mandatory option is on, because the index read has
-widened the operand. Closing the mandatory half therefore means the five option
-flags on both backends **plus** teaching Result provenance to see through the
-`| undefined` an index read adds — not a corpus-wide rewrite.
+*The mandatory half had exactly one real obstacle, and it was a contradiction in
+this page.* Turning the five missing options on moved **2 of 515** conformance
+cases, both in `07-must-consume`, both because `noUncheckedIndexedAccess` widens
+`results[i]` to `Result<A, E> | undefined` and the `!` provenance walk refused it
+as `SMITHERS1207`. The refusal was the wrong one of the three things that
+disagreed: the mandated option, the propagation rule, and the worked example
+below, which promised that `arr[i]!` compiles "when `arr` holds Results". The
+value at `results[i]` **is** a Result, widened by the option this section
+mandates. Provenance now sees through that widening on both backends, and the
+lowering asserts it in the emitted TypeScript, where `!` still means the non-null
+assertion this page removes from `.sm` but not from the language `.sm` lowers to.
+
+*Enforcing the options is scoped to `.sm`,* which is the second paragraph of this
+section doing real work. Applying them to the whole emitted program without
+scoping moved **150 of 515** cases, and 143 of those were one fact: the
+compiler's own runtime library did not satisfy `exactOptionalPropertyTypes`, so
+every program that resolved the runtime was rejected for a file the authored
+program does not own. The library was narrowed and the emitted check now reports
+only on the module set it was handed. Six corpus programs were left, all
+genuine: they indexed without narrowing, and they were narrowed.
+
+*Three of the six mandatory options are not type rules,* and forcing them onto
+this compiler's own emit broke a language guarantee rather than enforcing one.
+`verbatimModuleSyntax` and `isolatedModules` decide import elision and
+`useDefineForClassFields` decides class-field semantics; with
+`verbatimModuleSyntax` on the Go fork's emit Program, `import { type T } from
+"./sneaky.ts"` stopped being erased and the named module's initializer RAN,
+which is the exact fail-open the module-initialization trust rule exists to
+prevent. The same Program carries a project's imported `.ts` and `.cts`, and a
+`.cts` module written with `export function` became `TS1287` — this compiler
+charging a foreign file for a rule the paragraph above exempts it from. The
+mandatory set is therefore applied where §Mandatory speaks, to the checking of
+authored `.sm`; the two type-level members travel to the emitted module set as
+well, and the three emit-shaping ones do not.
+
+*One spelling became inexpressible, and that is the option working.* A numeric
+index into a durable Flow's input ARRAY can no longer reach an Action input:
+the read is `T | undefined` and fails the checked input contract, widening the
+contract to `T | undefined` fails canonical JSON, and narrowing with `??` is a
+computation rather than a projection the Plan can record. The spelling that
+survives is a TUPLE, whose read at a constant index the option does not widen.
 
 `noUncheckedIndexedAccess` is noisy in index loops, because TypeScript cannot prove `for (let i = 0; i < arr.length; i++)` is in bounds. An index read is `T | undefined` and MUST be narrowed, or read through an extraction helper.
 
-`arr[i]!` does not silently change meaning. Postfix `!` requires a `Result` operand, and `T | undefined` is not one, so the expression is a type error rather than an ambiguity. It compiles only when `arr` holds Results, where it means what `!` means everywhere else.
+`arr[i]!` does not silently change meaning, and it compiles when `arr` holds
+Results. The `| undefined` an index read adds under `noUncheckedIndexedAccess` is
+not the author's — the option widens the *access*, never the container's element
+type — so it is seen through, and `arr[i]!` means there what `!` means
+everywhere else. A `T | undefined` the author wrote is a different thing and is
+still not a `Result` operand: an array declared `(Result<A, E> | undefined)[]`, a
+heterogeneous tuple's non-Result slot, or a plain `string | undefined` binding
+each make `!` a type error rather than an ambiguity. The two are told apart by
+the container's element type, and the line between them is the one this
+specification draws everywhere else — `!` is the error axis, `?.` and `??` are
+the absence axis.
 
 ### Forbidden
 

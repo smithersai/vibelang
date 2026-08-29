@@ -135,7 +135,7 @@ describe("checked .sm frontend", () => {
   test("keeps prefix bangs, !==, optional chaining, and nullish coalescing ordinary", () => {
     const result = compileCase(`
       class Missing extends Error {}
-      interface Profile { readonly nickname?: string }
+      interface Profile { readonly nickname?: string | undefined }
       function findUser(id: number): Result<Profile | undefined, Missing> {
         if (id < 0) throw new Missing()
         return id === 0 ? undefined : { nickname: id === 1 ? "Ada" : undefined }

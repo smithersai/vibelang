@@ -538,6 +538,24 @@ function requireExactKeys(value: Record<string, JsonValue>, expected: readonly s
   }
 }
 
+/**
+ * A field `requireExactKeys` has already proved present, as a `JsonValue`.
+ *
+ * `noUncheckedIndexedAccess` is mandatory (compatibility.mdx §Mandatory), so an
+ * index read into a `Record<string, JsonValue>` is `JsonValue | undefined` and
+ * the exact-keys check above is a narrowing the checker cannot see. §Mandatory's
+ * own guidance is that such a read "MUST be narrowed, or read through an
+ * extraction helper"; this is the helper. It re-checks rather than asserting, so
+ * a caller that forgets the exact-keys check gets the codec's own error instead
+ * of `undefined` flowing onward.
+ */
+function requiredField(record: Record<string, JsonValue>, key: string, path: string): JsonValue {
+  if (!Object.prototype.hasOwnProperty.call(record, key)) {
+    throw new ErrorCodecError(`${path} is missing the '${key}' field`);
+  }
+  return record[key] as JsonValue;
+}
+
 export function encodeError(error: Error): string {
   if (!isLocalError(error)) throw new ErrorCodecError("only local Error instances can be encoded");
   const registration = registrationForError(error);
@@ -574,13 +592,13 @@ export function decodeError(wire: string): Error {
   if (envelope.version !== 1 || typeof envelope.identity !== "string") {
     throw new ErrorCodecError("encoded Error has an unsupported envelope");
   }
-  const canonicalWire = `{"version":1,"identity":${JSON.stringify(envelope.identity)},"payload":${stringifyJson(envelope.payload)}}`;
+  const canonicalWire = `{"version":1,"identity":${JSON.stringify(envelope.identity)},"payload":${stringifyJson(requiredField(envelope, "payload", "$"))}}`;
   if (wire !== canonicalWire) throw new ErrorCodecError("encoded Error is not canonical JSON");
   const registration = registrationsById.get(envelope.identity);
   if (!registration?.codec) throw new ErrorCodecError(`unknown Error identity ${envelope.identity}`);
   let decoded: Error;
   try {
-    decoded = registration.codec.decode(envelope.payload);
+    decoded = registration.codec.decode(requiredField(envelope, "payload", "$"));
   } catch (cause) {
     throw new ErrorCodecError(`Error codec ${registration.id} failed to decode`, { cause });
   }

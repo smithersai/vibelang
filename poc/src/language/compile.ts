@@ -19,6 +19,7 @@ import {
   isPanicExitCall,
   isResultExpectExpression,
   isResultPropagationExpression,
+  isUnwidenedIndexedAccess,
   NominalErrorIdentities,
   nominalErrorIdentity,
   type CallEdge,
@@ -664,7 +665,14 @@ function rewriteExpression(
   visit: ts.Visitor,
 ): ts.Expression {
   if (ts.isNonNullExpression(expression) && isResultPropagationExpression(expression, state.model)) {
-    const receiver = rewriteExpression(expression.expression, owner, prologue, state, context, visit);
+    const rewritten = rewriteExpression(expression.expression, owner, prologue, state, context, visit);
+    // The operand's `| undefined` came from `noUncheckedIndexedAccess`, not
+    // from anything the author wrote, and the provenance walk has already
+    // proved the value is a Result. Assert that to the stock TypeScript that
+    // checks the emitted module set; see isUnwidenedIndexedAccess.
+    const receiver = isUnwidenedIndexedAccess(expression.expression, state.model)
+      ? state.factory.createNonNullExpression(rewritten)
+      : rewritten;
     const temporary = freshTemporary(state, "result");
     const inspect = helper(state, "__vsInspectResult");
     prologue.push(state.factory.createVariableStatement(undefined,

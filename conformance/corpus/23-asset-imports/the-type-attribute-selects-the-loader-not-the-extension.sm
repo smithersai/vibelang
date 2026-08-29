@@ -7,5 +7,8 @@ import settings from "./settings.yaml" with { type: "text" }
 // built-in claims — is read at all only because the attribute named a loader.
 export function main(): string[] {
   const lines = settings.trimEnd().split("\n")
-  return [`${raw.startsWith("---")}`, lines[0], lines[1]]
+  const first = lines[0]
+  const second = lines[1]
+  if (first === undefined || second === undefined) return ["settings.yaml has fewer than two lines"]
+  return [`${raw.startsWith("---")}`, first, second]
 }

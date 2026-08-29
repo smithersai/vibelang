@@ -1,5 +1,6 @@
 import { resolve } from "node:path"
 import * as ts from "typescript-js"
+import { MANDATORY_CHECKER_OPTIONS } from "../language/compiler-options.ts"
 import type { CompiledFlow } from "./authoring.ts"
 import { encodePlanArtifact, loadCompiledFlow, validatePlanTemplate } from "./artifact.ts"
 import { deriveEffectManifest, type EffectManifest, EffectManifestFailure } from "./effect-manifest.ts"
@@ -564,7 +565,7 @@ const checkedSource = (
     target: ts.ScriptTarget.ESNext,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
-    strict: true,
+    ...MANDATORY_CHECKER_OPTIONS,
     noEmit: true,
     skipLibCheck: true,
     types: []

@@ -107,7 +107,14 @@ const smithersContextFrames: Map<Function, unknown>[] = [];
 export abstract class Context {
 	static context<C extends abstract new (...args: never[]) => Context>(this: C): InstanceType<C> {
 		for (let index = smithersContextFrames.length - 1; index >= 0; index--) {
-			const value = smithersContextFrames[index].get(this);
+			// Bound to a local rather than read twice. compatibility.mdx
+			// §Mandatory makes noUncheckedIndexedAccess mandatory and warns
+			// that it is noisy in index loops, because TypeScript cannot
+			// prove a for-loop index is in bounds; the narrowing it asks
+			// for is this one.
+			const frame = smithersContextFrames[index];
+			if (frame === undefined) continue;
+			const value = frame.get(this);
 			if (value !== undefined) return value as InstanceType<C>;
 		}
 		throw new Panic("unsatisfied Context requirement");
@@ -638,6 +645,23 @@ function smithersUtf8Length(text: string): number {
 	}
 	return total;
 }
+/**
+ * A field smithersRequireExactKeys has already proved present, as a
+ * SmithersJsonValue.
+ *
+ * noUncheckedIndexedAccess is mandatory (compatibility.mdx §Mandatory), so an
+ * index read into a { [key: string]: SmithersJsonValue } is
+ * SmithersJsonValue | undefined and the exact-keys check above is a narrowing
+ * the checker cannot see. §Mandatory's own guidance is that such a read "MUST be
+ * narrowed, or read through an extraction helper"; this is the helper, and it is
+ * the same one requiredField is in poc/src/runtime/errors.ts.
+ */
+function smithersRequiredField(record: { [key: string]: SmithersJsonValue }, key: string, path: string): SmithersJsonValue {
+	if (!Object.prototype.hasOwnProperty.call(record, key)) {
+		throw new ErrorCodecError(path + " is missing the '" + key + "' field");
+	}
+	return record[key] as SmithersJsonValue;
+}
 /** Encode a local Error into the canonical cross-realm wire form. */
 export function smithersEncodeError(error: Error): string {
 	if (!smithersIsLocalError(error)) throw new ErrorCodecError("only local Error instances can be encoded");
@@ -677,7 +701,7 @@ export function smithersDecodeError(wire: string): Error {
 	if (envelope.version !== 1 || typeof envelope.identity !== "string") {
 		throw new ErrorCodecError("encoded Error has an unsupported envelope");
 	}
-	const canonical = "{\"version\":1,\"identity\":" + JSON.stringify(envelope.identity) + ",\"payload\":" + smithersStringifyJson(envelope.payload) + "}";
+	const canonical = "{\"version\":1,\"identity\":" + JSON.stringify(envelope.identity) + ",\"payload\":" + smithersStringifyJson(smithersRequiredField(envelope, "payload", "$")) + "}";
 	if (wire !== canonical) throw new ErrorCodecError("encoded Error is not canonical JSON");
 	const registration = smithersErrorById.get(envelope.identity);
 	if (registration === undefined || registration.codec === undefined) {
@@ -685,7 +709,7 @@ export function smithersDecodeError(wire: string): Error {
 	}
 	let decoded: Error;
 	try {
-		decoded = registration.codec.decode(envelope.payload);
+		decoded = registration.codec.decode(smithersRequiredField(envelope, "payload", "$"));
 	} catch (cause) {
 		throw new ErrorCodecError("Error codec " + registration.id + " failed to decode", { cause });
 	}
@@ -4721,7 +4745,7 @@ func (a *rowAnalysis) collectFacts(fn *functionRows) {
 		fn.accessorUses = append(fn.accessorUses, a.implicitInvocations(node)...)
 		if ast.IsNonNullExpression(node) {
 			operand := node.AsNonNullExpression().Expression
-			if _, failure, ok := a.resultArguments(a.checker.GetTypeAtLocation(operand)); ok {
+			if _, failure, ok := a.resultArguments(a.unwidenedIndexedAccessType(operand)); ok {
 				a.resultPropagations[node] = operand
 				if rows, known := a.rowsOfType(failure); known {
 					addRows(fn.directFailures, rows)
@@ -4846,6 +4870,105 @@ func (a *rowAnalysis) collectInferredResultPropagations(files []*ast.SourceFile)
 // binding edge asks boundProducedKind — the SAME answer checkBoundMustConsume
 // asked about this very declaration — so 1302 and 1207 can never disagree about
 // a bound value again.
+// unwidenedIndexedAccessType is the type an element read would have had if
+// `noUncheckedIndexedAccess` were off, when — and only when — that option is
+// what added the `| undefined`.
+//
+// `noUncheckedIndexedAccess` is mandatory (compatibility.mdx §Mandatory) and
+// turning it on is what put this function here. Under it, `results[i]` over a
+// `Result<A, E>[]` is `Result<A, E> | undefined`; isResultType answers false
+// because isVariantUnion requires EVERY constituent to be `SmithersOk` or
+// `SmithersErr` and `undefined` is neither, so `results[i]!` was refused as
+// SMITHERS1207 "postfix ! requires a Result operand". The value at `results[i]`
+// IS a Result — it was widened by the option the specification itself mandates,
+// not by anything the author wrote.
+//
+// The absence axis stays intact: `!` is the error axis and `?.`/`??` are the
+// absence axis, so a `Result<A, E> | undefined` the AUTHOR wrote is still not a
+// `!` operand. The two are told apart by the container's INDEX type, which the
+// option does not widen — only the access site is widened — so the `|
+// undefined` is dropped only when the container's own element type does not
+// already admit `undefined`. `(Result<A, E> | undefined)[]` therefore keeps its
+// refusal, `string[]` keeps its refusal for the ordinary reason, and a
+// heterogeneous tuple `[Result<A, E>, string]` accepts `pair[0]!` while
+// refusing `pair[1]!` — which is why the ACCESS type is narrowed rather than
+// the index type substituted for it.
+//
+// This is the same rule, over the same four cases, as
+// `unwidenedIndexedAccessType` in poc/src/language/semantic.ts. The two
+// backends must agree here: the reference is the only other implementation of
+// `!`, and a divergence would be a program one backend runs and the other
+// refuses.
+func (a *rowAnalysis) unwidenedIndexedAccessType(expression *ast.Node) *checker.Type {
+	widened := a.checker.GetTypeAtLocation(expression)
+	if expression == nil || !ast.IsElementAccessExpression(expression) || widened == nil || !widened.IsUnion() {
+		return widened
+	}
+	constituents := widened.Types()
+	present := make([]*checker.Type, 0, len(constituents))
+	for _, member := range constituents {
+		if member.Flags()&(checker.TypeFlagsUndefined|checker.TypeFlagsNull) == 0 {
+			present = append(present, member)
+		}
+	}
+	if len(present) == len(constituents) || len(present) == 0 {
+		return widened
+	}
+	container := a.checker.GetTypeAtLocation(expression.Expression())
+	if container == nil {
+		return widened
+	}
+	info := a.checker.GetIndexInfoOfType(container, a.checker.GetNumberType())
+	if info == nil {
+		info = a.checker.GetIndexInfoOfType(container, a.checker.GetStringType())
+	}
+	if info == nil || admitsUndefinedType(info.ValueType()) {
+		return widened
+	}
+	if len(present) == 1 {
+		return present[0]
+	}
+	return a.checker.GetUnionType(present)
+}
+
+// admitsUndefinedType reports whether `undefined` or `null` is already part of
+// t, at the top level. A container whose declared element type says so was
+// written that way by the author, and nothing here may take that back. The
+// reference spells the same test as `getNonNullableType(indexType) !==
+// indexType`, which the fork's checker does not export.
+func admitsUndefinedType(t *checker.Type) bool {
+	if t == nil {
+		return false
+	}
+	nullish := checker.TypeFlagsUndefined | checker.TypeFlagsNull
+	if t.IsUnion() {
+		for _, member := range t.Types() {
+			if member.Flags()&nullish != 0 {
+				return true
+			}
+		}
+		return false
+	}
+	return t.Flags()&nullish != 0
+}
+
+// isUnwidenedIndexedAccess reports whether an element read's `| undefined` was
+// added by `noUncheckedIndexedAccess` and has been seen through above.
+//
+// The lowering asks this because it has to ASSERT in the emitted TypeScript what
+// the provenance walk PROVED about the authored `.sm`: `found[0]!` over a
+// `Result<A, E>[]` binds `const __smithersUnwrappedN = found[0]` and then reads
+// `.ok` off it, and under the mandatory option that binding is
+// `Result<A, E> | undefined`, so the lowered program was rejected with TS18048
+// even though the authored program is legal. Same rule, same reason, and same
+// name as isUnwidenedIndexedAccess in poc/src/language/semantic.ts.
+func (a *rowAnalysis) isUnwidenedIndexedAccess(expression *ast.Node) bool {
+	if expression == nil || !ast.IsElementAccessExpression(expression) {
+		return false
+	}
+	return a.unwidenedIndexedAccessType(expression) != a.checker.GetTypeAtLocation(expression)
+}
+
 func (a *rowAnalysis) resultPropagationOperand(expression *ast.Node) bool {
 	return a.propagatedResultOperand(expression, make(map[*ast.Symbol]bool))
 }
@@ -4854,7 +4977,7 @@ func (a *rowAnalysis) propagatedResultOperand(expression *ast.Node, seen map[*as
 	if expression == nil {
 		return false
 	}
-	if a.prelude.isResultType(a.checker.GetTypeAtLocation(expression)) {
+	if a.prelude.isResultType(a.unwidenedIndexedAccessType(expression)) {
 		return true
 	}
 	if operand := typeOnlyWrapperOperand(expression); operand != nil {
@@ -8076,6 +8199,14 @@ func (l *lowerer) lowerPropagation(node *ast.Node, receiver *ast.Node) *ast.Node
 	}
 
 	visitedReceiver := l.visitor.VisitNode(receiver)
+	// The operand's `| undefined` came from `noUncheckedIndexedAccess`, not
+	// from anything the author wrote, and the provenance walk has already
+	// proved the value is a Result. Assert that in the lowered TypeScript,
+	// where `!` still means the non-null assertion compatibility.mdx removes
+	// from `.sm` but not from the language `.sm` lowers to.
+	if l.analysis != nil && l.analysis.isUnwidenedIndexedAccess(receiver) {
+		visitedReceiver = l.factory.NewNonNullExpression(visitedReceiver, ast.NodeFlagsNone)
+	}
 	name := fmt.Sprintf("%s%d", tempPrefix, l.nextTemp)
 	l.nextTemp++
 

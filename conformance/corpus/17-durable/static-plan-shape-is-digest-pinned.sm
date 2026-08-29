@@ -17,12 +17,19 @@ export const Build = compileFlow((input: { key: string; live: boolean }) => {
 
 export function main(): string[] {
   const plan = Build.plan
+  const first = plan.nodes[0]
+  const second = plan.nodes[1]
+  const fourth = plan.nodes[3]
+  const fifth = plan.nodes[4]
+  if (first === undefined || second === undefined || fourth === undefined || fifth === undefined) {
+    return ["the plan does not have the five nodes this case pins"]
+  }
   return [
     Build.artifactSource,
     plan.nodes.map((node) => node.kind).join(","),
     String(plan.digest.length),
-    String(plan.nodes[1].controlDependencies[0] === plan.nodes[0].id),
-    String(plan.nodes[4].controlDependencies[0] === plan.nodes[3].id),
+    String(second.controlDependencies[0] === first.id),
+    String(fifth.controlDependencies[0] === fourth.id),
     plan.requirements.join(",")
   ]
 }

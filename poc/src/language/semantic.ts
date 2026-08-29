@@ -1,5 +1,6 @@
 import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import * as ts from "typescript-js";
+import { MANDATORY_CHECKER_OPTIONS } from "./compiler-options.ts";
 import { DurableCodecError, deriveDurableValueSchema } from "../durable/schema.ts";
 import {
   EffectSiteIds,
@@ -908,7 +909,7 @@ function createProjectProgram(
     target: ts.ScriptTarget.ESNext,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
-    strict: true,
+    ...MANDATORY_CHECKER_OPTIONS,
     skipLibCheck: true,
     noEmit: true,
     allowJs: true,
@@ -2364,7 +2365,7 @@ function createProgram(source: string, requestedName?: string): {
     target: ts.ScriptTarget.ESNext,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
-    strict: true,
+    ...MANDATORY_CHECKER_OPTIONS,
     skipLibCheck: true,
     noEmit: true,
     allowJs: true,
@@ -3775,7 +3776,7 @@ function signatureFunctions(
 ): readonly SemanticFunction[] {
   if (namesMutableBinding(expression, checker)) return [];
   const found = new Set<SemanticFunction>();
-  for (const signature of checker.getTypeAtLocation(expression).getCallSignatures()) {
+  for (const signature of expressionTypeAt(expression, checker).getCallSignatures()) {
     const declaration = signature.declaration;
     const fn = declaration && functionByNode.get(declaration);
     if (fn) found.add(fn);
@@ -5738,6 +5739,111 @@ function isInsideLayerCallback(node: ts.Node, checker: ts.TypeChecker): boolean 
   return false;
 }
 
+/**
+ * The type an element read would have had if `noUncheckedIndexedAccess` were
+ * off, when — and only when — that option is what added the `| undefined`.
+ *
+ * `noUncheckedIndexedAccess` is mandatory (compatibility.mdx §Mandatory:
+ * "`arr[2]` MUST be `T | undefined`; an index is a lookup that can find
+ * nothing"), and turning it on is what put this function here. Under it,
+ * `results[i]` over a `Result<A, E>[]` is `Result<A, E> | undefined`, the `!`
+ * provenance walk saw a union carrying no `__smithersResult` brand — a union
+ * property resolves only when every constituent has it, and `undefined` has
+ * none — and refused `results[i]!` as SMITHERS1207 "postfix ! requires a Result
+ * operand". Two conformance cases moved on exactly that:
+ * `07-must-consume/an-array-literal-of-results-is-consumed-through-an-index-read`
+ * and `07-must-consume/a-returned-result-collection-is-consumed-by-an-index-read`.
+ *
+ * That refusal was the wrong one of the three things that disagreed. The
+ * mandated option and the propagation rule contradicted each other, and
+ * compatibility.mdx asserted a third thing — that `arr[i]!` "compiles only when
+ * `arr` holds Results" — which the option made unsatisfiable. The value at
+ * `results[i]` IS a Result; it was widened by the option the specification
+ * itself mandates, not by anything the author wrote.
+ *
+ * THE DISTINCTION THIS DRAWS, and why it is not "strip `| undefined` from every
+ * operand". The absence axis stays intact: `!` is the error axis and `?.`/`??`
+ * are the absence axis, so a `Result<A, E> | undefined` the AUTHOR wrote is
+ * still not a `!` operand. The two are told apart by the container's index
+ * type, which the option does not widen — only the access site is widened. So
+ * the `| undefined` is dropped only when the container's own element type does
+ * not already admit `undefined`:
+ *
+ *   * `Result<A, E>[]` — index type `Result<A, E>`, access `Result<A, E> |
+ *     undefined`. Option-added. Dropped, and `arr[i]!` compiles.
+ *   * `(Result<A, E> | undefined)[]` — index type `Result<A, E> | undefined`,
+ *     access the same. Authored. Kept, and `arr[i]!` stays SMITHERS1207.
+ *   * `string[]` — index type `string`. Dropped, leaving `string`, which is not
+ *     a Result, so `arr[i]!` stays SMITHERS1207 for the ordinary reason.
+ *   * `[Result<A, E>, string]` — a heterogeneous tuple. Reading the ACCESS type
+ *     and dropping is what makes `pair[0]!` compile while `pair[1]!` does not;
+ *     computing the shape from the index type instead would have collapsed both
+ *     to `Result<A, E> | string` and refused the first as well.
+ *
+ * Returns undefined when there is nothing to do — no `undefined` constituent,
+ * no index information, or an index type that admits `undefined` — leaving the
+ * caller on the type the checker reported.
+ */
+/**
+ * The type of `expression`, with the `| undefined` `noUncheckedIndexedAccess`
+ * adds to an element READ removed when the option is what added it.
+ *
+ * THE ONE DOOR for "what is this expression really?", because more than one walk
+ * asks. The `!` provenance walk asks it through {@link semanticExpressionShape};
+ * {@link signatureFunctions} asks it to find the checked function a value names,
+ * and a union carrying `undefined` answers `getCallSignatures() === []` for the
+ * same structural reason a union carrying `undefined` answers no
+ * `__smithersResult` brand. Measured: `const list = [capability]; hof(list[0] as
+ * () => unknown)` stopped resolving `capability`, so the caller lost its `Db`
+ * row and its SMITHERS1303 callback contract and drew SMITHERS1101 instead —
+ * one option, two walks, one cause. Routing both through this function is what
+ * keeps a third walk from regrowing the same bug.
+ */
+function expressionTypeAt(expression: ts.Expression, checker: ts.TypeChecker): ts.Type {
+  if (ts.isElementAccessExpression(expression)) {
+    const narrowed = unwidenedIndexedAccessType(expression, checker);
+    if (narrowed) return narrowed;
+  }
+  return checker.getTypeAtLocation(expression);
+}
+
+function unwidenedIndexedAccessType(
+  access: ts.ElementAccessExpression,
+  checker: ts.TypeChecker,
+): ts.Type | undefined {
+  const accessType = checker.getTypeAtLocation(access);
+  const present = checker.getNonNullableType(accessType);
+  if (present === accessType) return undefined;
+  const containerType = checker.getTypeAtLocation(access.expression);
+  const indexType = checker.getIndexTypeOfType(containerType, ts.IndexKind.Number) ??
+    checker.getIndexTypeOfType(containerType, ts.IndexKind.String);
+  // No index information means nothing here can tell an option-added
+  // `| undefined` from an authored one, and an index type that is already
+  // nullable means the author wrote it. Both leave the reported type alone.
+  if (!indexType || checker.getNonNullableType(indexType) !== indexType) return undefined;
+  return present;
+}
+
+/**
+ * Whether an element read's `| undefined` was added by
+ * `noUncheckedIndexedAccess` and has been seen through by the provenance walk.
+ *
+ * The lowering asks this because it has to ASSERT in the emitted TypeScript what
+ * the provenance walk PROVED about the authored `.sm`. `found[0]!` over a
+ * `Result<A, E>[]` lowers to `__vsInspectResult(found[0])`, and the emitted
+ * module set is checked by a stock TypeScript under the same mandatory options —
+ * where `found[0]` is `Result<A, E> | undefined` and `__vsInspectResult` takes a
+ * `Result<A, E>`, so the generated program was rejected with TS2345 even though
+ * the authored program is legal. The emitted `!` is TypeScript's own non-null
+ * assertion, in generated TypeScript, which is the one place in this compiler
+ * where that meaning still exists: compatibility.mdx removes it from `.sm`, not
+ * from the language `.sm` lowers to.
+ */
+export function isUnwidenedIndexedAccess(expression: ts.Expression, model: SemanticModel): boolean {
+  return ts.isElementAccessExpression(expression) &&
+    unwidenedIndexedAccessType(expression, model.checker) !== undefined;
+}
+
 export function semanticExpressionShape(
   expression: ts.Expression,
   checker: ts.TypeChecker,
@@ -5750,6 +5856,10 @@ export function semanticExpressionShape(
   // because it genuinely changes the channel.
   const unwrapped = typeOnlyWrapperOperand(expression);
   if (unwrapped) return semanticExpressionShape(unwrapped, checker, callEdges, seenSymbols);
+  if (ts.isElementAccessExpression(expression)) {
+    const narrowed = unwidenedIndexedAccessType(expression, checker);
+    if (narrowed) return shapeOfType(narrowed, checker);
+  }
   if (ts.isNonNullExpression(expression)) {
     const operand = semanticExpressionShape(expression.expression, checker, callEdges, seenSymbols);
     // `!` extracts from a Result. `Promise<Result<A, E>>` is a Promise, not a

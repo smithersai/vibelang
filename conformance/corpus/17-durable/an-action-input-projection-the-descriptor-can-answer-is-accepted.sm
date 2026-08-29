@@ -3,13 +3,17 @@ import { durable, Action } from "smithers:flows"
 // The paired positive control for the Action-input projection refusals beside
 // it. It is the refusal case with the projection swapped and nothing else
 // touched: `input.items[0]` is an index an array descriptor answers, where
-// `input.items.length` is a field it does not have. Both spellings type as
-// `number`, so the only difference between this program and the refusal is the
-// projection itself -- which is what makes this a control rather than a
-// differently-shaped program that happens to compile.
+// `input.items.length` is a field it does not have, so the only difference
+// between this program and the refusal is the projection itself -- which is what
+// makes this a control rather than a differently-shaped program that happens to
+// compile. The input is a one-element tuple rather than `readonly number[]`
+// because `noUncheckedIndexedAccess` is mandatory: over an array, `items[0]`
+// would be `number | undefined` and would not satisfy `key: number`. Narrowing
+// the TYPE keeps the projection expression untouched, where a `?? 0` would have
+// changed the very thing this case measures.
 class Step extends Action<(input: { key: number }) => Result<{ value: string }, Error>> {}
 
-export const Flow = durable((input: { items: readonly number[] }) => {
+export const Flow = durable((input: { items: readonly [number] }) => {
   return Step.run({ key: input.items[0] })
 })
 

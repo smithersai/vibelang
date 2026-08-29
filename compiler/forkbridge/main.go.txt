@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf16"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
@@ -55,6 +56,18 @@ type request struct {
 	Files     []sourceFile   `json:"files"`
 	Options   map[string]any `json:"options"`
 	Lowering  string         `json:"lowering"`
+	// ConfigFile is the project's `tsconfig.json`, by name and text, when the
+	// caller has one. It travels as TEXT rather than as a parsed options bag
+	// because compatibility.mdx §Forbidden requires the offending option to be
+	// REJECTED, and a rejection has to point at what the author wrote — a
+	// normalized bag has no positions. Absent, the options map is still gated
+	// by compilerOptions below; only the span is lost.
+	ConfigFile *configFile `json:"configFile,omitempty"`
+}
+
+type configFile struct {
+	Path string `json:"path"`
+	Text string `json:"text"`
 }
 
 type span struct {
@@ -219,9 +232,19 @@ func compile(ctx context.Context, input request) (result, error) {
 	if !bundled.Embedded {
 		return result{EmitSkipped: true}, fmt.Errorf("the pinned compiler was built without embedded TypeScript libraries")
 	}
-	options, err := compilerOptions(input.Options)
+	// The configuration gate runs before anything is built. A project whose
+	// `tsconfig.json` violates §Mandatory or §Forbidden is not a project this
+	// compiler can answer about, and answering anyway would be the fail-open
+	// the specification's "MUST be rejected rather than ignored" forbids.
+	if configDiagnostics := validateSmithersConfigFile(input.ConfigFile); len(configDiagnostics) > 0 {
+		return result{EmitSkipped: true, Diagnostics: configDiagnostics}, nil
+	}
+	options, optionDiagnostics, err := compilerOptions(input.Options)
 	if err != nil {
 		return result{EmitSkipped: true}, err
+	}
+	if len(optionDiagnostics) > 0 {
+		return result{EmitSkipped: true, Diagnostics: optionDiagnostics}, nil
 	}
 	project, err := buildProject(input)
 	if err != nil {
@@ -836,7 +859,41 @@ func compileExternal(ctx context.Context, options *core.CompilerOptions, project
 	return result{Diagnostics: collector.converted, Artifacts: finished, EmitSkipped: emitSkipped}, nil
 }
 
+// emitCompilerOptions is the check options with the EMIT-SHAPING members of
+// compatibility.mdx §Mandatory cleared.
+//
+// §Mandatory governs the legality of authored `.sm`. It does not govern the
+// shape of this compiler's own output, and three of its six members are not
+// type rules at all: `verbatimModuleSyntax` and `isolatedModules` decide import
+// elision, and `useDefineForClassFields` decides class-field semantics. Forcing
+// them onto the emit Program was measured breaking a language guarantee rather
+// than enforcing one — `import { type T } from "./sneaky.ts"` stopped being
+// erased, so the named module's initializer RAN and
+// `fork_module_closure_test.go`'s trust oracle printed
+// "[reached] sneaky.ts initializer RAN". Smithers owns that erasure: a
+// type-only import MUST NOT load the module it names, which is the opposite of
+// what verbatim preservation produces.
+//
+// The same Program also carries the imported `.ts` and `.cts` a project names,
+// and §Configuration is explicit that "Imported `.ts` and `.tsx` keep their own
+// configuration. The escape-hatch guarantee in this page protects those files,
+// not `.sm`." A `.cts` module written with `export function` is legal CommonJS
+// TypeScript; under `verbatimModuleSyntax` it is TS1287, which is this compiler
+// charging a foreign file for a rule the specification exempts it from.
+//
+// The two TYPE-level members stay on: `noUncheckedIndexedAccess` and
+// `exactOptionalPropertyTypes` change what type-checks, never what is emitted,
+// which is why the reference can hold its emitted module set to them too.
+func emitCompilerOptions(options *core.CompilerOptions) *core.CompilerOptions {
+	emit := options.Clone()
+	emit.VerbatimModuleSyntax = core.TSUnknown
+	emit.IsolatedModules = core.TSUnknown
+	emit.UseDefineForClassFields = core.TSUnknown
+	return emit
+}
+
 func newEmitProgram(options *core.CompilerOptions, project *project) *compiler.Program {
+	options = emitCompilerOptions(options)
 	fs := bundled.WrapFS(vfstest.FromMap(project.emitFiles, true))
 	return compiler.NewProgram(compiler.ProgramOptions{
 		Config: &tsoptions.ParsedCommandLine{ParsedConfig: &tsoptions.ParsedOptions{
@@ -1191,15 +1248,289 @@ func hasError(items []diagnostic) bool {
 	return false
 }
 
-func compilerOptions(raw map[string]any) (*core.CompilerOptions, error) {
+// smithersMandatoryOptions mirrors MANDATORY_COMPILER_OPTIONS in
+// poc/src/language/compiler-options.ts, which mirrors compatibility.mdx
+// §Mandatory. compiler/forkbridge_options_test.go fails if the two drift.
+var smithersMandatoryOptions = []string{
+	"strict",
+	"noUncheckedIndexedAccess",
+	"exactOptionalPropertyTypes",
+	"isolatedModules",
+	"verbatimModuleSyntax",
+	"useDefineForClassFields",
+}
+
+// smithersForbiddenOptions mirrors FORBIDDEN_COMPILER_OPTIONS in
+// poc/src/language/compiler-options.ts, which mirrors compatibility.mdx
+// §Forbidden.
+var smithersForbiddenOptions = []string{
+	"keyofStringsOnly",
+	"suppressImplicitAnyIndexErrors",
+	"suppressExcessPropertyErrors",
+	"noStrictGenericChecks",
+	"noImplicitUseStrict",
+	"out",
+	"charset",
+	"importsNotUsedAsValues",
+	"preserveValueImports",
+	"experimentalDecorators",
+	"emitDecoratorMetadata",
+}
+
+// smithersPermittedOptions mirrors PERMITTED_COMPILER_OPTIONS in
+// poc/src/language/compiler-options.ts: compatibility.mdx §Emit-Scoped plus the
+// project-layout and additional-soundness names a Smithers project MAY state. A
+// project MAY tighten beyond §Mandatory; it MUST NOT loosen below it.
+var smithersPermittedOptions = []string{
+	"target",
+	"lib",
+	"module",
+	"moduleResolution",
+	"jsx",
+	"downlevelIteration",
+	"importHelpers",
+	"esModuleInterop",
+	"allowSyntheticDefaultImports",
+	"rootDir",
+	"outDir",
+	"baseUrl",
+	"paths",
+	"types",
+	"typeRoots",
+	"declaration",
+	"declarationMap",
+	"declarationDir",
+	"sourceMap",
+	"inlineSources",
+	"inlineSourceMap",
+	"noEmit",
+	"noEmitOnError",
+	"emitDeclarationOnly",
+	"removeComments",
+	"newLine",
+	"preserveConstEnums",
+	"incremental",
+	"composite",
+	"tsBuildInfoFile",
+	"skipLibCheck",
+	"skipDefaultLibCheck",
+	"allowJs",
+	"checkJs",
+	"resolveJsonModule",
+	"allowImportingTsExtensions",
+	"rewriteRelativeImportExtensions",
+	"forceConsistentCasingInFileNames",
+	"moduleDetection",
+	"allowArbitraryExtensions",
+	"customConditions",
+	"noErrorTruncation",
+	"pretty",
+	"noImplicitOverride",
+	"noImplicitReturns",
+	"noFallthroughCasesInSwitch",
+	"noPropertyAccessFromIndexSignature",
+	"noUnusedLocals",
+	"noUnusedParameters",
+	"allowUnreachableCode",
+	"allowUnusedLabels",
+	"strictNullChecks",
+	"strictFunctionTypes",
+	"strictBindCallApply",
+	"strictPropertyInitialization",
+	"strictBuiltinIteratorReturn",
+	"noImplicitAny",
+	"noImplicitThis",
+	"alwaysStrict",
+	"useUnknownInCatchVariables",
+	"comptimeTarget",
+	"smithersEffectManifest",
+}
+
+// isKnownSmithersOption reports whether a Smithers project may mention `name`
+// in its `tsconfig.json` at all. An option nobody has classified is not
+// silently honored — see rejectedOption's SMITHERS6003 arm.
+func isKnownSmithersOption(name string) bool {
+	for _, known := range smithersPermittedOptions {
+		if known == name {
+			return true
+		}
+	}
+	for _, known := range smithersMandatoryOptions {
+		if known == name {
+			return true
+		}
+	}
+	return isForbiddenOption(name)
+}
+
+func isForbiddenOption(name string) bool {
+	for _, forbidden := range smithersForbiddenOptions {
+		if forbidden == name {
+			return true
+		}
+	}
+	return false
+}
+
+// requiredOption is SMITHERS6001: a §Mandatory option was stated with a value
+// other than `true`.
+func requiredOption(name string) diagnostic {
+	return diagnostic{
+		Code:     "SMITHERS6001",
+		Category: "error",
+		Message:  fmt.Sprintf("a Smithers project MUST set '%s: true'", name),
+	}
+}
+
+// rejectedOption is the coded form of the allowlist's default arm:
+// SMITHERS6002 when the specification names the option as forbidden,
+// SMITHERS6003 when nothing classifies it and the fail-closed reading of
+// §Forbidden's "MUST be rejected rather than ignored" applies.
+func rejectedOption(name string) diagnostic {
+	if isForbiddenOption(name) {
+		return diagnostic{
+			Code:     "SMITHERS6002",
+			Category: "error",
+			Message: fmt.Sprintf(
+				"'%s' is a forbidden compiler option in a Smithers project and MUST be removed rather than set to a value",
+				name),
+		}
+	}
+	return diagnostic{
+		Code:     "SMITHERS6003",
+		Category: "error",
+		Message:  fmt.Sprintf("unsupported compiler option '%s' in a Smithers project", name),
+	}
+}
+
+// validateSmithersConfigFile is the fork's half of the tsconfig gate, and the
+// half that carries spans.
+//
+// It parses the configuration as JSON with the fork's own parser, so an
+// offending option is reported at the position the author wrote it — which is
+// what compatibility.mdx §Forbidden's "MUST be rejected rather than ignored"
+// needs and what the previous `fmt.Errorf("unsupported compiler option %q")`
+// could not give. The rule set is validateSmithersTsconfig's in
+// poc/src/language/compiler-options.ts, case for case, because `.sm` legality
+// may not depend on which backend compiled it.
+//
+// Offsets are converted to UTF-16 here rather than by
+// convertDiagnosticSpansToUTF16. That converter maps spans through the PROJECT's
+// files, and a `tsconfig.json` is not one of them — it is never staged, never
+// lowered, and has no logical name. Converting locally is the only place the
+// configuration's own text is in scope.
+func validateSmithersConfigFile(config *configFile) []diagnostic {
+	if config == nil {
+		return nil
+	}
+	parsed := parser.ParseSourceFile(ast.SourceFileParseOptions{
+		FileName: config.Path,
+		Path:     tspath.Path(config.Path),
+	}, config.Text, core.ScriptKindJSON)
+	diagnostics := make([]diagnostic, 0)
+	at := func(code string, message string, start int, length int) {
+		utf16Start := len(utf16.Encode([]rune(config.Text[:start])))
+		utf16Length := len(utf16.Encode([]rune(config.Text[start : start+length])))
+		diagnostics = append(diagnostics, diagnostic{
+			Code:     code,
+			Category: "error",
+			Message:  message,
+			File:     config.Path,
+			Span:     &span{Start: utf16Start, Length: utf16Length},
+		})
+	}
+	nodeSpan := func(node *ast.Node) (int, int) {
+		start := scanner.SkipTrivia(config.Text, node.Pos())
+		return start, node.End() - start
+	}
+
+	var options *ast.Node
+	if len(parsed.Statements.Nodes) > 0 {
+		root := parsed.Statements.Nodes[0].Expression()
+		if root != nil && ast.IsObjectLiteralExpression(root) {
+			for _, property := range root.AsObjectLiteralExpression().Properties.Nodes {
+				if !ast.IsPropertyAssignment(property) {
+					continue
+				}
+				name := property.Name()
+				if name == nil || !ast.IsStringLiteral(name) || name.Text() != "compilerOptions" {
+					continue
+				}
+				if initializer := property.AsPropertyAssignment().Initializer; initializer != nil &&
+					ast.IsObjectLiteralExpression(initializer) {
+					options = initializer
+				}
+			}
+		}
+	}
+	if options == nil {
+		for _, name := range smithersMandatoryOptions {
+			at("SMITHERS6001",
+				fmt.Sprintf("a Smithers project MUST set '%s: true'; this tsconfig has no compilerOptions", name),
+				0, max(1, len(config.Text)))
+		}
+		return diagnostics
+	}
+
+	stated := make(map[string]*ast.Node)
+	for _, property := range options.AsObjectLiteralExpression().Properties.Nodes {
+		if !ast.IsPropertyAssignment(property) {
+			continue
+		}
+		name := property.Name()
+		if name == nil || !ast.IsStringLiteral(name) {
+			continue
+		}
+		stated[name.Text()] = property
+		start, length := nodeSpan(name)
+		if isForbiddenOption(name.Text()) {
+			at("SMITHERS6002", rejectedOption(name.Text()).Message, start, length)
+			continue
+		}
+		if !isKnownSmithersOption(name.Text()) {
+			at("SMITHERS6003", rejectedOption(name.Text()).Message, start, length)
+		}
+	}
+
+	objectStart, objectLength := nodeSpan(options)
+	for _, name := range smithersMandatoryOptions {
+		property, ok := stated[name]
+		if !ok {
+			at("SMITHERS6001", requiredOption(name).Message, objectStart, objectLength)
+			continue
+		}
+		initializer := property.AsPropertyAssignment().Initializer
+		if initializer == nil || initializer.Kind != ast.KindTrueKeyword {
+			start, _ := nodeSpan(property.Name())
+			end := property.End()
+			at("SMITHERS6001", requiredOption(name).Message, start, end-start)
+		}
+	}
+	return diagnostics
+}
+
+func compilerOptions(raw map[string]any) (*core.CompilerOptions, []diagnostic, error) {
 	options := &core.CompilerOptions{
 		Target:           core.ScriptTargetES2022,
 		Module:           core.ModuleKindESNext,
 		ModuleResolution: core.ModuleResolutionKindBundler,
 		RootDir:          "/src",
 		OutDir:           "/out",
-		Strict:           core.TSTrue,
 		SkipLibCheck:     core.TSTrue,
+		// compatibility.mdx §Mandatory, in full. `Strict` was the only member
+		// of that table this bridge set, which made the fork and the reference
+		// agree on `strict` and silently disagree on the other five. They are
+		// defaults rather than caller options because §Configuration forbids
+		// them to vary: "Soundness settings MUST therefore be mandatory and
+		// MUST NOT vary by JavaScript host." The allowlist below still ACCEPTS
+		// each name, so a caller may state the obligation explicitly, but the
+		// value it may state is `true`.
+		Strict:                     core.TSTrue,
+		NoUncheckedIndexedAccess:   core.TSTrue,
+		ExactOptionalPropertyTypes: core.TSTrue,
+		IsolatedModules:            core.TSTrue,
+		VerbatimModuleSyntax:       core.TSTrue,
+		UseDefineForClassFields:    core.TSTrue,
 		// Smithers requires a TypeScript module to be imported by its authored
 		// `./x.ts` spelling — that spelling is what the module-initialization
 		// trust check resolves — so this is a language default, not a caller
@@ -1209,50 +1540,76 @@ func compilerOptions(raw map[string]any) (*core.CompilerOptions, error) {
 		InlineSources:              core.TSTrue,
 		NoEmitOnError:              core.TSTrue,
 	}
-	for name, value := range raw {
+	rejections := make([]diagnostic, 0)
+	// Sorted so a request carrying several rejected options reports them in a
+	// stable order; Go map iteration is randomized per run and a diagnostic
+	// list that reordered between identical compiles would break every
+	// expectation that names more than one.
+	//
+	// sortUTF16 rather than sort.Strings, and that is not a formality here. The
+	// names in this map are CALLER-SUPPLIED — admitting an unclassified one is
+	// the whole point of SMITHERS6003 — and this order is OBSERVED, as the order
+	// of the diagnostics the caller receives. That is precisely the combination
+	// `TestPinnedForkBridgeByteOrderSortsAreReviewed` exists to keep out of a
+	// byte-order sort, so this site is not added to its census; it is moved off
+	// the comparator the census guards.
+	names := make([]string, 0, len(raw))
+	for name := range raw {
+		names = append(names, name)
+	}
+	sortUTF16(names)
+	for _, name := range names {
+		value := raw[name]
 		switch name {
 		case "sourceMap":
 			parsed, err := tristate(value)
 			if err != nil {
-				return nil, optionError(name, err)
+				return nil, nil, optionError(name, err)
 			}
 			options.SourceMap = parsed
 		case "inlineSources":
 			parsed, err := tristate(value)
 			if err != nil {
-				return nil, optionError(name, err)
+				return nil, nil, optionError(name, err)
 			}
 			options.InlineSources = parsed
 		case "declaration":
 			parsed, err := tristate(value)
 			if err != nil {
-				return nil, optionError(name, err)
+				return nil, nil, optionError(name, err)
 			}
 			options.Declaration = parsed
 		case "declarationMap":
 			parsed, err := tristate(value)
 			if err != nil {
-				return nil, optionError(name, err)
+				return nil, nil, optionError(name, err)
 			}
 			options.DeclarationMap = parsed
 		case "noEmitOnError":
 			parsed, err := tristate(value)
 			if err != nil {
-				return nil, optionError(name, err)
+				return nil, nil, optionError(name, err)
 			}
 			options.NoEmitOnError = parsed
 		case "noEmit":
 			parsed, err := tristate(value)
 			if err != nil {
-				return nil, optionError(name, err)
+				return nil, nil, optionError(name, err)
 			}
 			options.NoEmit = parsed
-		case "strict":
+		// compatibility.mdx §Mandatory. Each is ACCEPTED so a project may state
+		// the obligation explicitly, and each is pinned to `true` so stating it
+		// cannot weaken it: `strict: false` used to be honored here, which made
+		// the one mandatory option this bridge did set caller-defeasible.
+		case "strict", "noUncheckedIndexedAccess", "exactOptionalPropertyTypes",
+			"isolatedModules", "verbatimModuleSyntax", "useDefineForClassFields":
 			parsed, err := tristate(value)
 			if err != nil {
-				return nil, optionError(name, err)
+				return nil, nil, optionError(name, err)
 			}
-			options.Strict = parsed
+			if !parsed.IsTrue() {
+				rejections = append(rejections, requiredOption(name))
+			}
 		case "allowImportingTsExtensions":
 			// A `.sm` file that names a TypeScript module by its authored
 			// `./x.ts` spelling is how module-initialization trust is checked;
@@ -1260,19 +1617,19 @@ func compilerOptions(raw map[string]any) (*core.CompilerOptions, error) {
 			// language requires.
 			parsed, err := tristate(value)
 			if err != nil {
-				return nil, optionError(name, err)
+				return nil, nil, optionError(name, err)
 			}
 			options.AllowImportingTsExtensions = parsed
 		case "rewriteRelativeImportExtensions":
 			parsed, err := tristate(value)
 			if err != nil {
-				return nil, optionError(name, err)
+				return nil, nil, optionError(name, err)
 			}
 			options.RewriteRelativeImportExtensions = parsed
 		case "target":
 			text, ok := value.(string)
 			if !ok {
-				return nil, optionError(name, fmt.Errorf("must be a string"))
+				return nil, nil, optionError(name, fmt.Errorf("must be a string"))
 			}
 			switch strings.ToLower(text) {
 			case "es2015":
@@ -1284,7 +1641,7 @@ func compilerOptions(raw map[string]any) (*core.CompilerOptions, error) {
 			case "esnext":
 				options.Target = core.ScriptTargetESNext
 			default:
-				return nil, optionError(name, fmt.Errorf("unsupported value %q", text))
+				return nil, nil, optionError(name, fmt.Errorf("unsupported value %q", text))
 			}
 		case "comptimeTarget":
 			// The typed target value `comptime.target` exposes. It is a
@@ -1292,7 +1649,7 @@ func compilerOptions(raw map[string]any) (*core.CompilerOptions, error) {
 			// target-selected branch stays hermetic and reproducible.
 			text, ok := value.(string)
 			if !ok || text == "" {
-				return nil, optionError(name, fmt.Errorf("must be a non-empty string"))
+				return nil, nil, optionError(name, fmt.Errorf("must be a non-empty string"))
 			}
 			requestedComptimeTarget = text
 		case "smithersEffectManifest":
@@ -1303,13 +1660,13 @@ func compilerOptions(raw map[string]any) (*core.CompilerOptions, error) {
 			// is emitted.
 			parsed, ok := value.(bool)
 			if !ok {
-				return nil, optionError(name, fmt.Errorf("must be a boolean"))
+				return nil, nil, optionError(name, fmt.Errorf("must be a boolean"))
 			}
 			requestedEffectManifest = parsed
 		case "module":
 			text, ok := value.(string)
 			if !ok {
-				return nil, optionError(name, fmt.Errorf("must be a string"))
+				return nil, nil, optionError(name, fmt.Errorf("must be a string"))
 			}
 			switch strings.ToLower(text) {
 			case "esnext":
@@ -1319,10 +1676,19 @@ func compilerOptions(raw map[string]any) (*core.CompilerOptions, error) {
 				options.Module = core.ModuleKindCommonJS
 				options.ModuleResolution = core.ModuleResolutionKindNode10
 			default:
-				return nil, optionError(name, fmt.Errorf("unsupported value %q", text))
+				return nil, nil, optionError(name, fmt.Errorf("unsupported value %q", text))
 			}
 		default:
-			return nil, fmt.Errorf("unsupported compiler option %q", name)
+			// The arm that used to be `fmt.Errorf("unsupported compiler option
+			// %q", name)` — a bare string travelling in the envelope's Error
+			// field rather than in Result.Diagnostics, so it reached the CLI
+			// with no code, no file and no span, and acquired only the generic
+			// SMITHERS_GO_BACKEND at the outermost layer. The allowlist itself
+			// is kept: it was already the only option chokepoint either backend
+			// had. What is added is the classification the specification draws,
+			// so a forbidden option is refused as forbidden rather than as
+			// unknown.
+			rejections = append(rejections, rejectedOption(name))
 		}
 	}
 	if options.DeclarationMap.IsTrue() {
@@ -1336,7 +1702,7 @@ func compilerOptions(raw map[string]any) (*core.CompilerOptions, error) {
 	if options.AllowImportingTsExtensions.IsTrue() && !options.NoEmit.IsTrue() && !options.EmitDeclarationOnly.IsTrue() {
 		options.RewriteRelativeImportExtensions = core.TSTrue
 	}
-	return options, nil
+	return options, rejections, nil
 }
 
 func tristate(value any) (core.Tristate, error) {

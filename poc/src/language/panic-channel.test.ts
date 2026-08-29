@@ -100,6 +100,21 @@ const PANIC = `import { panic } from "smithers:exceptions"\n`;
  * generator), and every call site drew a cascading SMITHERS1301/1302 for an
  * unconsumed Result that only existed because of the widening.
  */
+// The rows that call `fail` guard on the INDEX READ rather than on
+// `values.length === 0`. `noUncheckedIndexedAccess` is mandatory
+// (compatibility.mdx §Mandatory), so `values[0]` is `string | undefined` and
+// `main(): string` cannot return it unnarrowed — the length test never told the
+// checker anything about the read. Narrowing the read keeps every row's actual
+// subject: a `never`-returning helper is called in a guard, and the enclosing
+// function's plain return type is not widened by it.
+//
+// The guard RETURNS the `fail(...)` call rather than calling it as a statement.
+// TypeScript applies never-narrowing to a bare call only when the callee is a
+// name with an explicit TYPE annotation, which `const fail = (m: string): never
+// => panic(m)` is not — the annotation is on the arrow, not on the binding — so
+// the `arrow-concise-body` row alone kept its TS2322. Returning the call needs
+// no narrowing at all: `never` is assignable to every return type, which is the
+// property these rows are about.
 const FORMS: ReadonlyArray<{ readonly name: string; readonly source: string; readonly expected: unknown }> = [
   {
     name: "function-declaration",
@@ -146,8 +161,9 @@ export function main(): string { assertPositive(1); return "ok" }`,
 function fail(message: string): never { panic(message) }
 export function main(): string {
   const values = ["real"]
-  if (values.length === 0) fail("empty")
-  return values[0]
+  const first = values[0]
+  if (first === undefined) return fail("empty")
+  return first
 }`,
     expected: "real",
   },
@@ -157,8 +173,9 @@ export function main(): string {
 function fail(message: string): never { return panic(message) }
 export function main(): string {
   const values = ["real"]
-  if (values.length === 0) fail("empty")
-  return values[0]
+  const first = values[0]
+  if (first === undefined) return fail("empty")
+  return first
 }`,
     expected: "real",
   },
@@ -178,8 +195,9 @@ export function main(): string { return guarded(true) }`,
 const fail = (message: string): never => panic(message)
 export function main(): string {
   const values = ["real"]
-  if (values.length === 0) fail("empty")
-  return values[0]
+  const first = values[0]
+  if (first === undefined) return fail("empty")
+  return first
 }`,
     expected: "real",
   },
