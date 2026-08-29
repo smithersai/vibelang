@@ -55,6 +55,8 @@ Facilities truly present in every supported JavaScript environment MAY be uncond
 
 Because a Flow body re-executes on every resumption, an operation whose result can differ between two executions of the same code on the same inputs MUST be reachable only through a capability whose answer the runtime journals.
 
+That sentence is unchanged and stays Locked. What was *settled* on 2026-08-28 is the verb it is read with, because two Locked pages had read it two ways — see §Determinism-Sensitive Members and the Amendment Record. "Reachable only through a capability" is discharged by a **requirement row**, not by refusing the name.
+
 ### Determinism-Sensitive Members
 
 "Present in every JavaScript environment" is not sufficient on its own. The following are per-member obligations on the rule above, because each names an operation whose result is a function of host state that no journal entry can describe:
@@ -64,8 +66,55 @@ Because a Flow body re-executes on every resumption, an operation whose result c
 | `WeakRef`, `FinalizationRegistry` | MUST NOT be unconditional globals. `deref()` returning `undefined` is a pure function of garbage-collection timing: no capability can mediate it and no journal entry can describe it. |
 | `SharedArrayBuffer`, `Atomics` | MUST NOT be unconditional globals. Cross-agent shared-memory reads and `Atomics.wait` observe another agent's schedule. That ECMA-262 publishes them is true and irrelevant to replay. |
 | `Promise.race`, `Promise.any` | MUST charge a `Scheduler` requirement, because their value *is* arrival order. Every other `Promise` member stays free. |
-| `Date.prototype.getHours`, `getDay`, `getTimezoneOffset`, `toLocaleString`, `toString` | MUST charge `Clock` even when an explicit instant is supplied, because they read the host time zone. `getTime()` stays free. This is the hazard already charged at `Intl.DateTimeFormat` construction. |
-| `Intl.NumberFormat`, `Intl.Collator`, `String.prototype.localeCompare`, `Number.prototype.toLocaleString` | MUST charge a `Locale` requirement. They are functions of the host ICU version and locale data, and `Collator.compare` used as a sort comparator makes the resulting **ordering** host-dependent. |
+| `Date.prototype.getHours`, `getDay`, `getTimezoneOffset`, `toLocaleString`, `toLocaleDateString`, `toLocaleTimeString`, `toString` | MUST charge `Clock` even when an explicit instant is supplied, because they read the host time zone. `getTime()` stays free. This is the hazard `Intl.DateTimeFormat` construction is already refused for, as `SMITHERS1602`. |
+| Every ICU-backed operation: `Intl` other than `DateTimeFormat` — `NumberFormat`, `Collator`, `PluralRules`, `ListFormat`, `RelativeTimeFormat`, `Segmenter`, `DisplayNames`, `Locale`, `supportedValuesOf`, `getCanonicalLocales` — together with `String.prototype.localeCompare`, `toLocaleUpperCase`, `toLocaleLowerCase`, and `normalize`, and `toLocaleString` on `Number`, `BigInt`, `Array`, `Object`, and each of the twelve typed arrays | MUST charge a `Locale` requirement. They are functions of the host ICU version and locale data, and `Collator.compare` used as a sort comparator makes the resulting **ordering** host-dependent. The obligation is the criterion, not the list: any later member whose result is a function of the host's locale or Unicode data joins the row without amending it. `normalize` is in the row by that criterion and is the one member whose variance is the host's **Unicode** version rather than its locale. |
+
+**"Charge", in this table, means the site publishes the named capability's
+requirement into the enclosing function's row**, which a caller discharges by
+providing a layer. Where the capability has a source-language surface the author
+can write instead — `Clock.context()`, `Random.context()` — the *ambient*
+spelling is additionally refused, so the row is charged by the capability call
+rather than by the ambient one; that refusal is `SMITHERS1602`/`SMITHERS1603`,
+and it is why `Date.now()` reports a diagnostic rather than merely publishing a
+requirement. Where the capability deliberately has **no** source-language
+surface, a refusal would name a remedy that cannot be written, and the
+obligation is the row charge alone. Rows one and two are neither: they say in as
+many words that no capability could mediate them, so they are refused with no
+remedy offered (`SMITHERS1605`).
+
+**Amended 2026-08-28 — the fifth row's membership, not its verb.** The row
+previously named four members: `Intl.NumberFormat`, `Intl.Collator`,
+`String.prototype.localeCompare`, `Number.prototype.toLocaleString`. That list
+was incomplete rather than deliberately narrow — every member above carries the
+identical hazard for the identical reason, and a reader had no way to tell the
+four apart from the rest. **Re-derived by sweeping the ambient lib and measuring
+each spelling through `analyzeProject` on 2026-08-28: the class is 30 members,
+not four**, and a prior sweep's estimate of fifteen was also short. All 30 —
+the original four, the eleven that estimate added, and 15 more no page had
+named — measure **identically today**: no diagnostic and an empty requirement
+row, on both backends. So this amendment records no behavioural change and picks
+no verb; it makes the row say what it always meant. Two members of the fourth
+row, `Date.prototype.toLocaleDateString` and `toLocaleTimeString`, were missing
+from it for the same reason and are added by the same argument.
+
+**Not amended — `Error.prototype.stack`, and it needs a decision.** It is
+host-varying and no row above reaches it, which was confirmed by measurement on
+2026-08-28: `new Error("x").stack` and a caught `e.stack` both compile with no
+diagnostic and an empty row. It is deliberately left undecided rather than
+folded into the fifth row, for four reasons. ECMA-262 publishes no
+`Error.prototype.stack` at all, so the allowlist's own criterion — the name is
+admitted because ECMA-262 publishes it — does not classify it, and neither the
+`UNIVERSAL_GLOBALS` seam nor this table's has a slot for it. Its variance is not
+this row's: an ICU member can differ between two hosts at the same instant,
+whereas `stack` is stable within one engine and differs across engines,
+minification, and inlining — which is the shape §Determinism-Sensitive Members
+already answers *below* with a SHOULD ("pin an engine version across the
+artifacts that can resume a given execution") rather than with a capability.
+Reaching it needs the type-directed analysis of an instance member that the
+fourth row is itself blocked on. And it is the language's only stack-trace
+surface: this compiler's own emitted CLI scaffolding reads `error.stack ??
+error.message`, so a refusal or a charge here is a decision about the diagnostic
+surface, which no page has taken.
 
 **(SA-4) — implementation status, measured 2026-08-28. Rows one and two are now
 enforced; rows three, four, and five are not.** As first measured, none of the
@@ -91,51 +140,69 @@ fix, which is why they did not move together:
   `ArrayBuffer`, `DataView` and the typed arrays stay available. Certified across
   backends by `20-host-globals/determinism-hostile-globals-are-refused` and its
   positive control `20-host-globals/determinism-hostile-siblings-stay-available`.
-- **Open, and it is a product decision about what "charge" means — re-measured
-  2026-08-28.** The earlier note here said the frontend's ambient requirement
-  type "admits only `Clock`, `Random`, and `Host`, so rows three and five have
-  nothing to charge", and that a `Scheduler` class exists "but is not a
-  capability". Both are wrong, and correcting them relocates the difficulty
-  rather than removing it. Measured through `analyzeProject`: the requirement
-  **row** vocabulary is open — it is every `Context` subclass the program names
-  — and `Scheduler.context().firstReady(xs)` already publishes
-  `requirements: ["Scheduler"]` today with no compiler change, because
-  `poc/src/concurrency/scheduler.ts` **is** `export abstract class Scheduler
-  extends Context` (it is unexported from `concurrency/index.ts`, which is a
-  different and smaller problem). The `"Clock" | "Random" | "Host"` union is not
-  a requirement vocabulary at all: it is a *diagnostic-category* discriminator
-  that selects `SMITHERS1602`/`1603`/`1601`. In the same measurement
-  `Date.now()` published `requirements: []` **and** `SMITHERS1602`. So no
-  ambient site has ever charged a row — not for `Clock` either — and there is
-  no vocabulary for a new kind to be added to.
-  What is genuinely undecided is the verb. Two locked pages read it differently.
-  This page's §Host Globals says an operation whose result can differ between
-  two executions "MUST be reachable only through a capability whose answer the
-  runtime journals", and row four calls the hazard "already charged at
-  `Intl.DateTimeFormat` construction" — which this implementation charges as a
-  `SMITHERS1602` **refusal**, the sense in which
-  `20-host-globals/the-date-constructor-in-a-value-position-is-still-charged`
-  uses the word. Read that way, rows three and five are refusals.
-  [Durable Execution](/specification/durable-execution) §Deterministic
-  Scheduling reads the other way: `Promise.all` and friends "remain ordinary and
-  charge no `Scheduler` requirement", which makes `race`/`any` ordinary-but-
-  charged rather than refused, and "The scheduler has no source-language
-  surface", which a refusal whose remedy is `Scheduler.context()` would create.
-  Neither reading is implementable today. The refusal reading names a remedy
-  that cannot be built — the precedent that produced `SMITHERS1605` rather than
-  `SMITHERS1601` — because no explicit concurrency combinator is specified and
-  `Scheduler` is not exported; and for row five it publishes `Locale`, a
-  capability class that exists nowhere in the tree and whose service contract no
-  page states. The charging reading needs a mechanism no requirement has: an
-  ambient site that injects a nominal key into `R`, plus the lowering that
-  routes `Promise.race` to the scheduler. Both are owner calls, not defects.
-  The cost is smaller than previously assumed and was measured before the shape
-  was chosen: across 591 authored `.sm` files, **zero** name `Promise.race` or
-  `Promise.any` under any spelling, so row three moves **no** corpus case and
-  **no** test; row five moves exactly **one** corpus case
-  (`20-host-globals/intl-locale-formatting-is-not-a-clock-read`, whose
-  `Intl.getCanonicalLocales` half stays legal either way), its one mirrored Go
-  fork subtest, and two assertions in `host-global-allowlist.test.ts`.
+- **Open in code; the verb is DECIDED. Re-measured 2026-08-28, and the two
+  falsified claims that used to stand here are corrected below.** The earlier
+  note said the frontend's ambient requirement type "admits only `Clock`,
+  `Random`, and `Host`, so rows three and five have nothing to charge", and that
+  a `Scheduler` class exists "but is not a capability". Both are wrong. Measured
+  through `analyzeProject`: the requirement **row** vocabulary is open — it is
+  every `Context` subclass the program names — and `Scheduler.context()` already
+  publishes `requirements: ["Scheduler"]` today with **no compiler change**,
+  because `poc/src/concurrency/scheduler.ts` **is** `export abstract class
+  Scheduler extends Context` (it is unexported from `concurrency/index.ts`,
+  which is a different and smaller problem). A `Locale` declared the same way
+  publishes `requirements: ["Locale"]` on the same measurement. The
+  `"Clock" | "Random" | "Host"` union in `AmbientAuthorityUse` is not a
+  requirement vocabulary at all: it is a *diagnostic-category* discriminator
+  that selects `SMITHERS1602`/`1603`/`1601`, and **nothing needs adding to it**.
+  In the same measurement `Date.now()` published `requirements: []` **and**
+  `SMITHERS1602`. So no ambient site has ever charged a row — not for `Clock`
+  either — and there is no vocabulary for a new kind to be added to.
+
+  **The verb was settled by decision on 2026-08-28: row three CHARGES.**
+  `Promise.race` and `Promise.any` stay legal and publish a `Scheduler`
+  requirement, which a caller discharges by providing a layer. The refusal
+  reading is wrong and is recorded here only so that a reader who met it can see
+  it was answered rather than dropped. It came from two Locked pages reading one
+  word two ways: this page's §Host Globals ("MUST be reachable only through a
+  capability whose answer the runtime journals") and the fourth row's own
+  cross-reference to `Intl.DateTimeFormat`, which this implementation answers
+  with a `SMITHERS1602` **refusal**, read as making rows three and five
+  refusals; [Durable Execution](/specification/durable-execution)
+  §Deterministic Scheduling read the other way — `Promise.all` and friends
+  "remain ordinary and charge no `Scheduler` requirement", which makes
+  `race`/`any` ordinary-but-charged rather than refused, and "The scheduler has
+  no source-language surface", which a refusal whose remedy is
+  `Scheduler.context()` would create. **Durable Execution's sentences won and
+  are unchanged.** What changed is on this page: §Host Globals now states how
+  its obligation is discharged, the paragraph under the table defines "charge",
+  and the fourth row names `SMITHERS1602` instead of using "charged" in the
+  opposite sense. The decision also supplies the criterion that reconciles the
+  two: the ambient spelling is *additionally* refused only where the capability
+  has a source-language surface the author could write instead, which is why
+  `Clock` and `Random` stay refusals and `Scheduler` — which
+  §Deterministic Scheduling says has no such surface — is a charge.
+
+  **The code follows at migration step 7 and is deliberately not attempted
+  here.** Charging needs a mechanism no requirement has: an ambient site that
+  injects a nominal key into `R`, plus the lowering that routes `Promise.race`
+  to the scheduler. `Promise.race`'s behaviour today is unchanged — it compiles,
+  runs, and publishes an empty row, measured 2026-08-28 beside `Promise.all`,
+  which does the same. **Row five's verb is NOT settled by that decision**: it
+  turns on whether `Locale` is given a source-language surface, and `Locale`
+  is a capability class that exists nowhere in the tree and whose service
+  contract no page states.
+
+  The cost was measured before the shape was chosen and one half of it has since
+  moved. Across 591 authored `.sm` files, **zero** name `Promise.race` or
+  `Promise.any` under any spelling, so row three still moves **no** corpus case
+  and **no** test. Row five's cost is larger than previously recorded, because
+  its membership was: it moves `20-host-globals/intl-locale-formatting-is-not-a-clock-read`,
+  its one mirrored Go fork subtest (`fork_failclosed_test.go`, "the rest of Intl
+  needs no capability"), and the `host-global-allowlist.test.ts` assertions —
+  and the earlier note that the case's `Intl.getCanonicalLocales` half "stays
+  legal either way" no longer holds, because `getCanonicalLocales` is a function
+  of the host's CLDR alias data and is now in the row by its own criterion.
 - **Open.** `Date` is analyzed at the root identifier only, so `new Date(instant)`
   returns an empty row and no instance member is ever inspected. Row four's "even
   when an explicit instant is supplied" is not implementable in that shape: it
@@ -144,7 +211,19 @@ fix, which is why they did not move together:
 
 Rows three, four, and five stand as obligations this implementation does not yet
 meet, and remain recorded as **(SA-4)** in
-[Specification](/specification) §Current markers.
+[Specification](/specification) §Current markers. Row three's *verb* is no
+longer part of that gap; its *code* is, and lands with migration step 7.
+
+The fifth row's widened membership does not enlarge that gap, and it was
+verified not to: all 30 members measure identically today — no diagnostic, an
+empty requirement row, on both backends — so the row's four original names were
+never enforced ahead of the twenty-six it now also covers. What the widening
+changes is that the twenty-six are now *recorded* as unmet rather than
+unmentioned, and that an implementation of row five cannot close over four
+members and leave the rest silently open. `20-host-globals/intl-locale-formatting-is-not-a-clock-read`
+and `host-global-allowlist.test.ts` pin that uniformity across the whole class,
+so a later rule that over-applies `Clock` to the `Intl` root — the cheapest
+wrong implementation, and one the four-name case could not catch — fails there.
 
 These walls MUST be uniform across all `.sm` code and MUST NOT be scoped to Flow bodies. A rule that fires in one file and not another is a per-file dialect, which the decision ledger warns against by name, and it does not work mechanically either: requirement inference is whole-program, so a Flow's helper lives in another file. The cost of uniformity is explicit and accepted — `Intl.Collator` in an ordinary CLI formatter also charges `Locale`.
 
@@ -364,3 +443,63 @@ decided; nothing on this page may be read as having decided it. On 2026-08-27 th
 conflict gained an **(IA-1)** direction marker so that a reader can tell which way
 it points relative to the `(SA-n)` gaps on other pages. A direction label is not a
 decision, and no other word of that section changed.
+
+## Amendment Record — the determinism charge verb, 2026-08-28
+
+**Settled by decision, not by this page's own argument.** Two Locked pages used
+one word two ways for determinism-hostile globals. This page's §Host Globals
+("MUST be reachable only through a capability whose answer the runtime
+journals") together with the fourth row's description of the hazard as "already
+charged" at `Intl.DateTimeFormat` — which ships as a `SMITHERS1602` refusal —
+read the third and fifth rows as **refusals**.
+[Durable Execution](/specification/durable-execution) §Deterministic Scheduling
+read them as **charges**: `Promise.all` and its variants "remain ordinary and
+charge no `Scheduler` requirement", which makes `race`/`any` ordinary-but-
+charged, and "The scheduler has no source-language surface", which a refusal
+whose remedy is `Scheduler.context()` would create. A prior revision recorded the
+conflict and correctly declined to choose. **The owner ruled: charge.**
+
+**Amended — §Host Globals.** The obligation sentence is unchanged, verbatim and
+still Locked. One sentence was added after it stating that it is discharged by a
+requirement row rather than by refusing the name.
+
+**Amended — §Determinism-Sensitive Members, third row's reading.**
+`Promise.race` and `Promise.any` stay legal and publish a `Scheduler`
+requirement, which a caller satisfies by providing a layer. The row's own words
+were already "MUST charge a `Scheduler` requirement" and did not change; what
+changed is that "charge" is now defined, in a paragraph under the table, as
+publishing a requirement into the enclosing function's row. That paragraph also
+states the criterion that reconciles the two pages — the ambient spelling is
+*additionally* refused only where the capability has a source-language surface
+the author could write instead, which is why `Clock` and `Random` stay
+`SMITHERS1602`/`1603` and `Scheduler`, which by Durable Execution's rule has no
+such surface, does not.
+
+**Amended — §Determinism-Sensitive Members, fourth row's cross-reference.** The
+clause "This is the hazard already charged at `Intl.DateTimeFormat`
+construction" used "charged" in the refusal sense and was half of what produced
+the conflict. It now names the mechanism instead: `Intl.DateTimeFormat`
+construction is *refused* as `SMITHERS1602`. No obligation in the row changed.
+
+**Amended — §Determinism-Sensitive Members, fourth and fifth rows' membership,
+and NOT their verbs.** The fifth row named four ICU members; the hazard it
+describes covers thirty, re-derived by sweeping the ambient lib and measuring
+each spelling. The fourth row was two Date members short by the same argument.
+All of them measure identically today, so this records no behavioural change.
+
+**Not amended — the fifth row's verb.** It turns on whether `Locale` is given a
+source-language surface, and `Locale` exists nowhere in the tree. Nothing here
+decides it.
+
+**Not amended — `Error.prototype.stack`.** Host-varying, named by no page,
+measured unclassified, and deliberately left so; the reasons are under the
+table.
+
+**Nothing implemented.** `Promise.race`'s behaviour is unchanged: it compiles,
+runs, and publishes an empty row. The charge needs an ambient site that injects
+a nominal key into `R` plus a `race`→scheduler lowering, and lands with
+migration step 7.
+
+**Not amended — §Dynamic Features, again.** The `(IA-1)` conflict recorded there
+is still open and is untouched by this decision. Settling one Locked-page
+conflict does not settle the other, and no word of that section changed.
