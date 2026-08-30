@@ -1,5 +1,13 @@
 import { errorNominalKey, errorRowIncludes, isLocalError } from "./errors.ts";
-import type { CapabilityKey, CapabilityService } from "./layer.ts";
+import {
+  __vsCloseScope,
+  __vsInScope,
+  __vsLayerEntries,
+  __vsOpenScope,
+  type CapabilityKey,
+  type CapabilityService,
+  type EnvironmentScope,
+} from "./layer.ts";
 import { isPanic, panic } from "./panic.ts";
 import { __vsInspectResult, __vsResultFailure, isResult, type Result } from "./result.ts";
 
@@ -423,6 +431,21 @@ class OneShotContinuation<B> implements Continuation<B> {
 }
 
 /**
+ * A wrapper every entry INTO the delimited computation passes through.
+ *
+ * The default runs the step directly, and every existing caller gets exactly
+ * that. `__vsProvide` supplies one that enters its AsyncLocalStorage frame,
+ * because an un-lowered `.sm` capability read — a property accessor, a host
+ * callback — has no generator frame to carry a request and still has to find
+ * its layer. It wraps the four places a step happens (creation, `next`,
+ * `throw`, and the unwind) rather than the whole run: between them the frame is
+ * suspended and the request belongs to whatever encloses THIS handler.
+ */
+export type StepGuard = <T>(step: () => T) => T;
+
+const stepDirectly: StepGuard = (step) => step();
+
+/**
  * §Handlers. Installs `handler` around `body` and forwards outward, unchanged,
  * every request `handler` does not accept.
  *
@@ -434,13 +457,15 @@ class OneShotContinuation<B> implements Continuation<B> {
 export function* handle<A, B>(
   handler: Handler<B>,
   body: () => Resumable<A>,
+  around: StepGuard = stepDirectly,
 ): Generator<AnyRequest, A | B, unknown> {
-  const gen = body();
+  const gen = around(body);
   let mode: "next" | "throw" = "next";
   let carried: unknown;
   try {
     for (;;) {
-      const step: IteratorResult<AnyRequest, A> = mode === "next" ? gen.next(carried) : gen.throw(carried);
+      const step: IteratorResult<AnyRequest, A> = around(() =>
+        mode === "next" ? gen.next(carried) : gen.throw(carried));
       // A throw out of `gen.next`/`gen.throw` is not a request and is never
       // offered to `handler`. That is §Panic Is Not a Request, and it is
       // structural: only `step.value` below ever reaches a handler.
@@ -478,7 +503,7 @@ export function* handle<A, B>(
         continue;
       }
       const continuation = new OneShotContinuation<B>(() => {
-        unwind(gen);
+        around(() => { unwind(gen); });
       });
       try {
         handler.answer(request, continuation);
@@ -504,7 +529,7 @@ export function* handle<A, B>(
     // Unwinding from outside — this frame's own `yield` was abandoned, or a
     // panic is passing through — must still dispose the delimited computation.
     // A no-op once `gen` has completed, which covers every ordinary exit.
-    unwind(gen);
+    around(() => { unwind(gen); });
   }
 }
 
@@ -611,6 +636,88 @@ export function* __vsGet<C extends CapabilityKey>(
 ): Generator<EffectRequest<CapabilityService<C>>, CapabilityService<C>, unknown> {
   const answer = yield makeRequest("get", key, undefined, site);
   return answer as CapabilityService<C>;
+}
+
+/**
+ * Compiler lowering hook for `Layer.provide` inside a resumable computation.
+ *
+ * §Layer Provision Installs a Handler. Two things at once, and they answer two
+ * different populations of reader:
+ *
+ *   - the handler answers every `get` the emitter LOWERED, with `handle`'s own
+ *     forwarding giving nesting for free — an inner scope that does not provide
+ *     a key forwards outward to the scope that does, which is what makes a
+ *     nested `Layer.provide` compose rather than shadow;
+ *   - the environment scope answers every capability read the emitter did NOT
+ *     lower. Those are real and they are not a shortfall to be closed here: a
+ *     read inside a property accessor cannot be a `yield` because an accessor
+ *     cannot be a generator, and a read inside a host callback cannot be one
+ *     because `Array.prototype.map` will not drive it. `layer.ts`'s seam block
+ *     records why the shim outlives the flag.
+ *
+ * `Layer.provide` itself is deliberately not called. Its promise-tracking block
+ * exists to decide when an ASYNC body's extent ends, and a delimited
+ * computation's extent is this frame; engaging it would leave the flag unable
+ * to claim the block is dead. See `__vsPromiseHookLeases`.
+ */
+export function* __vsProvide<A>(
+  layer: unknown,
+  body: () => Resumable<A>,
+): Generator<AnyRequest, A, unknown> {
+  const entries = __vsLayerEntries(layer);
+  // Opened on first entry rather than here, so the scope inherits the
+  // environment that is live when the computation actually starts — which, for
+  // a `yield*`-delegated provide, is its caller's frame and not this generator
+  // object's construction site.
+  let scope: EnvironmentScope | undefined;
+  const around: StepGuard = (step) => {
+    scope ??= __vsOpenScope(entries);
+    return __vsInScope(scope, step);
+  };
+  try {
+    return (yield* handle<A, never>(capabilityHandler<never>(entries), body, around)) as A;
+  } finally {
+    if (scope) __vsCloseScope(scope);
+  }
+}
+
+/**
+ * Compiler lowering hook for `Layer.provide` where there is no enclosing
+ * resumable computation to delegate into — module top level, or the body of a
+ * function the emitter left in the ordinary calling convention.
+ *
+ * This is the delimiter AND the driver, so it is also the one place a request
+ * can reach the top of the program: §Handlers requires that to panic.
+ *
+ * An unanswered `get` panics in `useCapability`'s exact words rather than in
+ * this module's. Two reasons and both are obligations, not taste. §What This
+ * Page Does Not Add requires the message to name the program's mistake — an
+ * unprovided capability — and never the generator convention that carries it.
+ * And the two lowerings of one program must be observationally identical: the
+ * default lowering reaches `useCapability` for this mistake, so a different
+ * sentence here would be a divergence that only shows up on the failing path,
+ * which is the path least likely to have a corpus case pinning it.
+ */
+export function __vsProvideRoot<A>(layer: unknown, body: () => Resumable<A>): A {
+  const previous = currentExecution;
+  currentExecution = { occurrence: 0 };
+  try {
+    const gen = __vsProvide(layer, body);
+    const step = gen.next();
+    if (!step.done) {
+      assertLocalRequest(step.value);
+      const request = step.value;
+      if (request.kind === "get") {
+        const key = request.key as { name?: unknown };
+        const name = typeof key?.name === "string" && key.name.length > 0 ? key.name : "<anonymous capability>";
+        panic(`capability '${name}' was not provided`);
+      }
+      panic(`no handler accepted a ${request.kind} request at ${request.site}`);
+    }
+    return step.value;
+  } finally {
+    currentExecution = previous;
+  }
 }
 
 /** Compiler lowering hook for an effect whose answer crosses a persistence boundary. */

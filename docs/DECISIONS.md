@@ -11,7 +11,7 @@ Status:
 - **Open** — discussed but not decided.
 
 Last reconciled with the published specification pages: 2026-08-27.
-Latest ledger decisions: 2026-08-27.
+Latest ledger decisions: 2026-08-28.
 
 This ledger is the tie-breaker over the published specification pages
 (`specification/index.mdx` §Source of Truth), so it must never be staler than
@@ -201,6 +201,30 @@ site-table diff normatively obliges an implementation to do.
   function with a non-empty row where a function with a smaller row is expected
   is a type error. An unannotated function type carries the empty row. A function
   whose row is empty is never emitted in the resumable calling convention.
+- **Open, and scoped to a flag:** the migration's `effectLowering: "yield"`
+  option (`CompileOptions`, default `"return"`) emits **one** function whose row
+  is empty in the resumable convention: the callback of a `Layer.provide`, which
+  becomes the delimited computation the installed handler runs. Every other
+  function the option lowers has a non-empty requirement row, so the obligation
+  above holds for all of them. The exception is accepted temporarily and only
+  under the flag, and it is recorded here rather than left in a commit message
+  because it is a knowing contradiction of
+  [Compatibility](/specification/compatibility) §TypeScript Target's "infallible
+  functions MUST NOT be wrapped".
+
+  It is narrower than the migration plan budgeted for. That plan expected the
+  option to need a *uniform* convention — every `.sm` function emitted as a
+  generator — because `collectFacts` records no call edge for a call through a
+  value and the emitter would then have no way to choose `yield* f()` over `f()`
+  (gap G2). Measured, the uniform convention was not needed: the checker's
+  resolved signature decides the call site wherever an edge is absent, and a
+  function declaration mentioned anywhere except in callee position is kept in
+  the ordinary convention, which together leave nothing undecided in 515 corpus
+  programs. What remains undecidable — a call through a function-typed
+  **parameter**, where only a requirement row on the callee's TYPE could settle
+  it — is refused outright as `SMITHERS1807` rather than guessed. The refusal
+  retires when that row exists (`requirements` on `TypeShape`), and the flag and
+  this exception retire with it.
 
 ## Typed failures
 

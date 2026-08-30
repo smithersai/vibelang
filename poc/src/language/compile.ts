@@ -16,6 +16,7 @@ import {
   identityFileName,
   isErrorMatchCall,
   isErrorType,
+  isLayerProvideCall,
   isPanicExitCall,
   isResultExpectExpression,
   isResultPropagationExpression,
@@ -48,7 +49,54 @@ export interface CompileOptions extends AnalyzeOptions {
    * Compiler virtual modules and non-`.sm` relative specifiers still rewrite.
    */
   readonly preserveSmithersSpecifiers?: boolean;
+  /**
+   * Which calling convention a function with a non-empty effect row is emitted
+   * in. `"return"` is the default and is the only convention any product path
+   * selects; nothing in `src/`, the CLI, the conformance corpus, or the Go fork
+   * passes this field.
+   *
+   * `"yield"` selects `specification/effects.mdx`'s resumable convention for
+   * the DEPENDENCY half of the row only — a function whose `requirements` are
+   * non-empty and whose `failures` are empty. Failure propagation is untouched
+   * in both modes: `!` still lowers to a `return` of the error variant, and
+   * `SMITHERS1204`/`1703`/`1507` still refuse what they refuse today.
+   *
+   * WHY THE FLAG EXISTS AT ALL, stated where it can be read before it is used.
+   * Under `"yield"` the emitter must decide, at every call site, whether the
+   * callee is a generator. `collectFacts` records a call edge only when the
+   * callee resolves, is foreign, or is a panic exit, so `return f()` over a
+   * parameter `f` records nothing and the decision has no input (gap G2).
+   *
+   * The migration plan budgeted for a UNIFORM convention here — every `.sm`
+   * function this mode touches emitted as a generator — which would have
+   * contradicted `specification/compatibility` §TypeScript Target ("infallible
+   * functions MUST NOT be wrapped") for every infallible function in the
+   * program. Measured, that was not needed. {@link callConvention} decides a
+   * call site four ways and only the fourth is undecidable, and
+   * `ResumableScopes.escaping` keeps a function that could reach it out of the
+   * convention entirely. Across 515 corpus programs nothing is undecided.
+   *
+   * What the contradiction reduces to is ONE function: a `Layer.provide`
+   * callback, whose own row may be empty and which is emitted as a generator
+   * because it is the delimited computation. That is recorded in
+   * `docs/DECISIONS.md` §Function model, and it is why the mode is behind a
+   * flag. It retires with G7 (`requirements` on `TypeShape`), which is also
+   * what retires {@link EFFECT_LOWERING_REFUSAL}: with a row on the callee's
+   * type, case four stops being undecidable.
+   */
+  readonly effectLowering?: EffectLowering;
 }
+
+/** @see CompileOptions.effectLowering */
+export type EffectLowering = "return" | "yield";
+
+/**
+ * The one message the G2 refusal carries, so the emitter and its test name the
+ * same sentence.
+ */
+const EFFECT_LOWERING_REFUSAL =
+  "under effectLowering: \"yield\" this call's callee cannot be resolved and its type carries no effect row, " +
+  "so the emitter cannot decide whether to delegate into it; give the callee a name this module can resolve";
 
 /**
  * @internal Project-level emit bindings resolved once per `compileProject`
@@ -139,8 +187,338 @@ interface TransformState {
   readonly sourceMapOrigins: Map<ts.Node, ts.Node>;
   /** Lowered switch statements proven unable to complete past their clauses. */
   readonly nonFallingSwitches: Set<ts.Node>;
+  /** @see CompileOptions.effectLowering */
+  readonly effectLowering: EffectLowering;
+  /** Empty under `"return"`. @see resumableScopes */
+  readonly scopes: ResumableScopes;
   changed: boolean;
   temporary: number;
+}
+
+/**
+ * The three tables the `"yield"` lowering is decided by, computed once per
+ * module before the transform runs.
+ *
+ * Computed rather than discovered mid-walk because both answers have to be
+ * available at a node BEFORE that node's enclosing function is rebuilt: a call
+ * site needs to know whether its own scope is resumable, and its scope needs to
+ * know whether it contains a call that will be a `yield*`. A walk that answered
+ * either question lazily would answer it differently depending on the order the
+ * transformer happened to reach the two.
+ */
+interface ResumableScopes {
+  /**
+   * Every function in THIS module emitted as a generator: a resumable function
+   * declaration ({@link isResumableFunction}), plus every `Layer.provide`
+   * callback, which becomes the delimited computation whether or not it reads a
+   * capability itself.
+   */
+  readonly generators: ReadonlySet<ts.Node>;
+  /**
+   * Every `Layer.provide` call in this module, mapped to the callback the
+   * emitter can turn into a generator — or `undefined` when it cannot, in which
+   * case the call is left exactly as authored and its capability reads are
+   * answered by the environment shim.
+   */
+  readonly provides: ReadonlyMap<ts.CallExpression, FunctionLikeWithBody | undefined>;
+  /**
+   * Function declarations the project mentions somewhere other than in callee
+   * position, and which therefore MUST keep the ordinary calling convention.
+   *
+   * MEASURED, not anticipated. `the-coercion-row-reaches-the-provide-site-and-runs`
+   * writes `const referenceProperty = { valueOf: referenceImpl }` over a
+   * function declaration that reads a capability; emitted as a generator it
+   * made `Number(referenceProperty)` produce `NaN`, because the coercion
+   * protocol called the slot and got a generator object. Nothing about that is
+   * specific to `valueOf` — an element of an array of handlers, a field, a
+   * default argument, a re-export all do it — so the rule is about the
+   * REFERENCE, not about any host protocol.
+   *
+   * It also carries the soundness argument for {@link callConvention}'s last
+   * arm: a function this set excludes is never a generator, and a function it
+   * does not exclude is only ever reachable by its own name in callee position.
+   * So a call through a value can never reach a generator, and a call the
+   * checker cannot resolve at all can only be a problem where the callee is a
+   * bare name — which is the one shape that arm still refuses.
+   */
+  readonly escaping: ReadonlySet<ts.Node>;
+}
+
+const NO_RESUMABLE_SCOPES: ResumableScopes = {
+  generators: new Set(),
+  provides: new Map(),
+  escaping: new Set(),
+};
+
+/**
+ * A function the `"yield"` lowering emits as a generator.
+ *
+ * DEPENDENCY ONLY, and the second clause is the load-bearing one: a non-empty
+ * `failures` row means the function already carries the OTHER lowering — its
+ * body returns a `Result` and every `!` in it is a `return` of the error
+ * variant — and mixing the two conventions in one function is what step 7
+ * exists to design. Until then a fallible function is left exactly as the
+ * default lowering leaves it, and a capability read inside one reaches the
+ * environment shim.
+ *
+ * Only a FUNCTION DECLARATION qualifies. An arrow or a function expression is
+ * usually a value handed to something that will call it — `Array.prototype.map`,
+ * a `valueOf` slot, a `Result.try` boundary — and none of those will drive a
+ * generator; a method or an accessor cannot be one at all. The uniform
+ * convention is uniform over the population it can be uniform over, and the
+ * refusal below covers what is left.
+ */
+function isResumableFunction(fn: SemanticFunction, scopes: ResumableScopes): boolean {
+  return ts.isFunctionDeclaration(fn.node) && !fn.async &&
+    fn.requirements.size > 0 && fn.failures.size === 0 &&
+    !scopes.escaping.has(fn.node);
+}
+
+/**
+ * Every declaration the project names outside callee position, over the whole
+ * program.
+ *
+ * WHOLE PROGRAM, not this module: the convention a function is emitted in is
+ * decided where it is DECLARED and the escape can be written anywhere, so a
+ * per-module answer would emit a generator in one file because the value
+ * reference sits in another. Declaration files are skipped — nothing in one was
+ * emitted by this compiler — and so are the positions where an identifier names
+ * a binding rather than reading it: the declaration's own name, an import or
+ * export specifier, and a member name.
+ */
+function escapingDeclarations(model: SemanticModel): ReadonlySet<ts.Node> {
+  const escaping = new Set<ts.Node>();
+  const checker = model.checker;
+  const visit = (node: ts.Node): void => {
+    if (ts.isIdentifier(node) && !isBindingPosition(node) && !isCalleePosition(node)) {
+      // `{ reads }` is BOTH a property name and a read of the binding, and
+      // `getSymbolAtLocation` answers with the property. The value symbol is
+      // reached through the shorthand accessor, and it is the one that escapes.
+      const parent = node.parent;
+      const symbol = parent !== undefined && ts.isShorthandPropertyAssignment(parent)
+        ? checker.getShorthandAssignmentValueSymbol(parent)
+        : checker.getSymbolAtLocation(node);
+      const resolved = symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+        ? checker.getAliasedSymbol(symbol)
+        : symbol;
+      for (const declaration of resolved?.declarations ?? []) escaping.add(declaration);
+    }
+    ts.forEachChild(node, visit);
+  };
+  for (const file of model.program.getSourceFiles()) {
+    if (file.isDeclarationFile) continue;
+    visit(file);
+  }
+  return escaping;
+}
+
+/** An identifier that names a binding rather than reading its value. */
+function isBindingPosition(node: ts.Identifier): boolean {
+  const parent = node.parent;
+  if (parent === undefined) return false;
+  if (ts.isImportSpecifier(parent) || ts.isExportSpecifier(parent) || ts.isImportClause(parent) ||
+    ts.isNamespaceImport(parent) || ts.isImportEqualsDeclaration(parent)) {
+    return true;
+  }
+  if (ts.isPropertyAccessExpression(parent) && parent.name === node) return true;
+  if (ts.isQualifiedName(parent) && parent.right === node) return true;
+  if ((ts.isPropertyAssignment(parent) || ts.isMethodDeclaration(parent) ||
+    ts.isPropertyDeclaration(parent) || ts.isPropertySignature(parent)) && parent.name === node) {
+    return true;
+  }
+  // A shorthand property assignment is deliberately absent: `{ referenceImpl }`
+  // both names the binding and READS it, and reading is what escapes.
+  if (ts.isShorthandPropertyAssignment(parent)) return false;
+  return (parent as ts.NamedDeclaration).name === node;
+}
+
+/** An identifier read only to be called immediately, through any number of parentheses. */
+function isCalleePosition(node: ts.Identifier): boolean {
+  let current: ts.Node = node;
+  while (current.parent !== undefined && ts.isParenthesizedExpression(current.parent)) current = current.parent;
+  const parent = current.parent;
+  return parent !== undefined &&
+    (ts.isCallExpression(parent) || ts.isNewExpression(parent) || ts.isTaggedTemplateExpression(parent)) &&
+    ((parent as ts.CallExpression | ts.NewExpression).expression === current ||
+      (ts.isTaggedTemplateExpression(parent) && parent.tag === current));
+}
+
+function resumableScopes(model: SemanticModel, lowering: EffectLowering): ResumableScopes {
+  if (lowering !== "yield") return NO_RESUMABLE_SCOPES;
+  const generators = new Set<ts.Node>();
+  const provides = new Map<ts.CallExpression, FunctionLikeWithBody | undefined>();
+  const escaping = escapingDeclarations(model);
+  const partial: ResumableScopes = { generators, provides, escaping };
+  for (const fn of model.functions) {
+    if (isResumableFunction(fn, partial)) generators.add(fn.node);
+  }
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && isLayerProvideCall(node, model.checker)) {
+      const callback = node.arguments[1];
+      // An inline function literal with a body is the only shape that can be
+      // turned into a generator in place. A callback that is a REFERENCE to a
+      // function declared elsewhere would have to be lowered at its
+      // declaration, which would make one function's convention depend on a
+      // call site in another module; that is exactly the whole-program fact G7
+      // adds and this step does not have.
+      const inline = node.arguments.length === 2 && callback && isFunctionLikeWithBody(callback) &&
+        (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) &&
+        !hasAsyncModifier(callback) && callback.asteriskToken === undefined
+        ? callback
+        : undefined;
+      provides.set(node, inline);
+      if (inline) generators.add(inline);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(model.sourceFile);
+  return partial;
+}
+
+function hasAsyncModifier(node: ts.Node): boolean {
+  return ts.canHaveModifiers(node) &&
+    (ts.getModifiers(node) ?? []).some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword);
+}
+
+/** Whether the expression being rewritten sits directly in a generator scope. */
+function inResumableScope(owner: SemanticFunction | undefined, state: TransformState): boolean {
+  return owner !== undefined && state.scopes.generators.has(owner.node);
+}
+
+/** What the `"yield"` emitter does with one call site. */
+type CallConvention = "plain" | "delegate" | "refuse";
+
+/**
+ * THE ONE TABLE that decides a call site's convention, asked by both the
+ * refusal pass and the emitter so the two cannot disagree.
+ *
+ * The question is only ever "is the callee emitted as a generator", and there
+ * are exactly four ways to answer it:
+ *
+ *   1. A resolved call edge names the callee. {@link isResumableFunction}
+ *      decides, and this is the case for every ordinary `.sm` call.
+ *   2. A foreign edge or a `panic` exit names something that is not a `.sm`
+ *      function body at all, so it is never a generator.
+ *   3. No edge, but the checker resolves the call to a signature with an
+ *      IMPLEMENTATION — a method, an accessor, a constructor, an abstract
+ *      member, a function the analysis owns. The uniform convention decides
+ *      these without an edge, because it lowers only function declarations:
+ *      `directory.lookup(key)` on a capability service is a method and can
+ *      therefore never be a generator, which is why the DI lowering is usable
+ *      at all.
+ *   4. No edge and only a TYPE-level signature — a parameter typed
+ *      `(x: string) => number`, a call through an interface member, a call the
+ *      checker cannot resolve. The value actually called is whatever the caller
+ *      passed, which may be a `.sm` function this mode emitted as a generator,
+ *      and the only fact that could settle it is a requirement row on the
+ *      callee's TYPE. G7 adds that row; today there is none.
+ *
+ * Case 4 is gap G2 and it is REFUSED where it can bite. Emitting `f()` there
+ * would hand the caller a generator object where the program expects a value —
+ * a silent wrong answer, not a crash — and emitting `yield* f()` would fail on
+ * every callee that is not one. A declaration file is exempted: nothing in a
+ * `.d.ts` was emitted by this compiler, so no signature declared in one can
+ * name a generator this mode produced.
+ *
+ * "Where it can bite" is `ResumableScopes.escaping`, and it is what keeps this
+ * from refusing half the corpus. A function this mode emits as a generator is,
+ * by that set's construction, mentioned NOWHERE except in callee position — so
+ * no value in the program can hold one, and an undecidable call through a
+ * member, an `any`, or an expression can never reach one. The one shape that
+ * still can is a bare NAME whose signature is type-level, which is the
+ * `return f()`-over-a-parameter case gap G2 is about and the case that stops
+ * being undecidable when G7 puts a requirement row on the callee's type.
+ *
+ * Reported as `SMITHERS1807`, in the analysis-completeness family, beside
+ * `SMITHERS1802` — which the migration plan measures as already closing roughly
+ * 80% of this same gap.
+ */
+function callConvention(
+  call: ts.CallExpression,
+  model: SemanticModel,
+  scopes: ResumableScopes,
+): CallConvention {
+  const edge = model.callEdges.get(call);
+  if (edge?.callee) return isResumableFunction(edge.callee, scopes) ? "delegate" : "plain";
+  if (edge) return "plain";
+  const declaration = model.checker.getResolvedSignature(call)?.declaration;
+  if (declaration !== undefined) {
+    const known = model.functionByNode.get(declaration);
+    if (known) return isResumableFunction(known, scopes) ? "delegate" : "plain";
+    if (isImplementationSignature(declaration.kind)) return "plain";
+    if (declaration.getSourceFile().isDeclarationFile) return "plain";
+  }
+  let callee: ts.Expression = call.expression;
+  while (ts.isParenthesizedExpression(callee)) callee = callee.expression;
+  return ts.isIdentifier(callee) ? "refuse" : "plain";
+}
+
+/**
+ * A signature that names a body position rather than a type. An abstract member
+ * and an overload signature have no body of their own and still qualify: both
+ * name a declaration site the analysis can see, and neither can be a function
+ * declaration, which is the only shape this mode emits as a generator.
+ */
+function isImplementationSignature(kind: ts.SyntaxKind): boolean {
+  switch (kind) {
+    case ts.SyntaxKind.FunctionDeclaration:
+    case ts.SyntaxKind.FunctionExpression:
+    case ts.SyntaxKind.ArrowFunction:
+    case ts.SyntaxKind.MethodDeclaration:
+    case ts.SyntaxKind.GetAccessor:
+    case ts.SyntaxKind.SetAccessor:
+    case ts.SyntaxKind.Constructor:
+      return true;
+    default:
+      return false;
+  }
+}
+
+/** Every call inside a generator scope whose convention {@link callConvention} refuses. */
+function effectLoweringRefusals(model: SemanticModel, scopes: ResumableScopes): readonly Diagnostic[] {
+  if (scopes.generators.size === 0) return [];
+  const refusals: Diagnostic[] = [];
+  const file = model.sourceFile;
+  const walkScope = (node: ts.Node, root: boolean): void => {
+    if (!root && isFunctionLikeWithBody(node)) {
+      // A nested function has its own convention. If it is itself a generator
+      // scope its body is walked by its own entry in the outer loop.
+      return;
+    }
+    if (ts.isCallExpression(node) && !root) {
+      if (
+        !scopes.provides.has(node) &&
+        !model.capabilitySites.has(node) &&
+        node.expression.kind !== ts.SyntaxKind.ImportKeyword &&
+        !isResultExpectExpression(node, model) &&
+        callConvention(node, model, scopes) === "refuse"
+      ) {
+        // Positioned in AUTHORED coordinates, through the same recovery map
+        // every other diagnostic goes through. The transformer works on the
+        // recovery-derived tree, so a refusal reported at a derived offset in a
+        // module that recovered any syntax at all would point at a column the
+        // author never wrote.
+        const start = model.recovery.toAuthoredAnchor(node.getStart(file));
+        refusals.push({
+          severity: "error",
+          code: "SMITHERS1807",
+          message: EFFECT_LOWERING_REFUSAL,
+          start,
+          ...lineAndColumnOfText(model.recovery.authoredSource, start),
+        });
+      }
+    }
+    ts.forEachChild(node, (child) => walkScope(child, false));
+  };
+  for (const scope of scopes.generators) walkScope(scope, true);
+  refusals.sort((left, right) => left.start - right.start);
+  return refusals;
+}
+
+function lineAndColumnOfText(text: string, offset: number): { line: number; column: number } {
+  const clamped = Math.max(0, Math.min(offset, text.length));
+  const preceding = text.lastIndexOf("\n", clamped - 1);
+  return { line: clamped === 0 ? 1 : text.slice(0, clamped).split("\n").length, column: clamped - preceding };
 }
 
 export function compileSmithers(source: string, options: CompileOptions = {}): CompileResult {
@@ -165,13 +543,21 @@ export function compileSemanticModel(
     model.errors,
     bindings.nominalIdentities ?? new NominalErrorIdentities(),
   );
+  // `?? "return"` is the whole compatibility guarantee of this step: every
+  // caller that does not name the option takes the byte-identical path, and
+  // `scopes` is then the shared empty value, so every predicate below answers
+  // `false` without allocating or walking anything.
+  const effectLowering: EffectLowering = options.effectLowering ?? "return";
+  const scopes = resumableScopes(model, effectLowering);
+  const refusals = effectLoweringRefusals(model, scopes);
+  const emitDiagnostics = [...identityCollisions, ...refusals];
   const analysis: Analysis = {
     errors: model.errors,
     functions: model.publicFunctions,
     rows: model.rows,
-    diagnostics: identityCollisions.length === 0
+    diagnostics: emitDiagnostics.length === 0
       ? model.diagnostics
-      : [...model.diagnostics, ...identityCollisions],
+      : [...model.diagnostics, ...emitDiagnostics],
   };
   // `sourceName` is the display name AND the anchor of every emitted nominal
   // Error identity ({@link nominalErrorIdentity}) and of the source map's `sources`, so an
@@ -201,6 +587,8 @@ export function compileSemanticModel(
     smithersSourceNames: bindings.smithersSourceNames,
     sourceMapOrigins: new Map(),
     nonFallingSwitches: new Set(),
+    effectLowering,
+    scopes,
     // A recovery-derived parse can never claim byte-identity with authored text.
     changed: model.recovery.changed,
     temporary: 0,
@@ -289,6 +677,15 @@ function createTransformer(state: TransformState): ts.TransformerFactory<ts.Sour
       if (ts.isCallExpression(node)) {
         const rewritten = rewriteDynamicImport(node, state);
         if (rewritten) return rewritten;
+        // A `Layer.provide` at module scope has no owning function, so it never
+        // reaches `rewriteExpression`; `lowerStatement` hands module-level
+        // statements straight to this visitor. It is the shape
+        // `export const lines = Layer.provide(...)` takes, and leaving it here
+        // un-lowered would leave the promise-hook block live for exactly the
+        // programs that do not wrap their provide in a function.
+        if (state.scopes.provides.has(node)) {
+          return lowerLayerProvide(node, undefined, undefined, state, context, visit);
+        }
       }
       return ts.visitEachChild(node, visit, context);
     };
@@ -342,6 +739,8 @@ function transformFunction(
     }
   }
 
+  if (state.scopes.generators.has(node)) return asResumable(node, body, state);
+
   if (ts.isFunctionDeclaration(node)) {
     return state.factory.updateFunctionDeclaration(node, node.modifiers, node.asteriskToken, node.name,
       node.typeParameters, node.parameters, node.type, body as ts.Block);
@@ -365,6 +764,47 @@ function transformFunction(
     return state.factory.updateSetAccessorDeclaration(node, node.modifiers, node.name, node.parameters, body as ts.Block);
   }
   return state.factory.updateConstructorDeclaration(node, node.modifiers, node.parameters, body as ts.Block);
+}
+
+/**
+ * Re-emit one lowered function in the resumable calling convention.
+ *
+ * Three things change and nothing else does. The `*` is the convention. The
+ * return type becomes `Resumable<T>` — not decoration: the emitted module set is
+ * checked by STOCK TypeScript (`validate.ts` `checkEmittedTypeScript`), which
+ * rejects `function* f(): string` outright, so a declared return type that was
+ * not rewritten would turn every resumable function into an emit-check failure.
+ * A function with no declared return type keeps none and is inferred.
+ *
+ * An arrow becomes a function expression, because an arrow cannot be a
+ * generator. That changes `this` and `arguments` inside it, and the only arrows
+ * this applies to are `Layer.provide` callbacks — a position where `this` is
+ * already `undefined` under the module's implicit strict mode, since the
+ * callback is invoked as a bare function by `Layer.provide` itself.
+ */
+function asResumable(
+  node: FunctionLikeWithBody,
+  body: ts.ConciseBody,
+  state: TransformState,
+): ts.FunctionLikeDeclaration {
+  state.changed = true;
+  const block = ts.isBlock(body)
+    ? body
+    : state.factory.createBlock([state.factory.createReturnStatement(body)], true);
+  const asterisk = state.factory.createToken(ts.SyntaxKind.AsteriskToken);
+  const returnType = node.type
+    ? state.factory.createTypeReferenceNode(helper(state, "Resumable", "__vsResumable", true), [node.type])
+    : undefined;
+  if (ts.isFunctionDeclaration(node)) {
+    return state.factory.updateFunctionDeclaration(node, node.modifiers, asterisk, node.name,
+      node.typeParameters, node.parameters, returnType, block);
+  }
+  if (ts.isFunctionExpression(node)) {
+    return state.factory.updateFunctionExpression(node, node.modifiers, asterisk, node.name,
+      node.typeParameters, node.parameters, returnType, block);
+  }
+  return state.factory.createFunctionExpression(undefined, asterisk, undefined,
+    node.typeParameters, node.parameters, returnType, block);
 }
 
 function transformBlock(
@@ -698,6 +1138,13 @@ function rewriteExpression(
     if (expression.expression.kind === ts.SyntaxKind.ImportKeyword) {
       return rewriteDynamicImport(expression, state) ?? expression;
     }
+    if (state.scopes.provides.has(expression)) {
+      return lowerLayerProvide(expression, owner, prologue, state, context, visit);
+    }
+    if (inResumableScope(owner, state)) {
+      const request = lowerCapabilityRead(expression, state);
+      if (request) return request;
+    }
     if (isResultExpectExpression(expression, state.model) && effectiveChannel(owner).startsWith("result")) {
       // `r.expect(m)` and `r["expect"](m)` select the same member, so the
       // receiver is read through the shared member-selection helper rather
@@ -772,6 +1219,17 @@ function rewriteExpression(
       updated = wrapForeignCall(updated, edge, state);
       state.changed = true;
     }
+    // A foreign edge and a resolved callee are mutually exclusive
+    // (`collectFacts` computes `foreign` only when `callee` is absent), so the
+    // wrapper above and the delegation below cannot both fire on one call.
+    // `"refuse"` has already been reported as `SMITHERS1807`, which makes the
+    // module an error, so what this arm emits for it is never executed; it
+    // emits the plain call rather than a `yield*` so the printed text stays
+    // readable beside the diagnostic that refused it.
+    if (inResumableScope(owner, state) && callConvention(expression, state.model, state.scopes) === "delegate") {
+      state.changed = true;
+      updated = delegate(updated, state);
+    }
     return updated;
   }
   if (isFunctionLikeWithBody(expression)) return transformFunction(expression, state, context, visit) as ts.Expression;
@@ -782,6 +1240,116 @@ function rewriteExpression(
     return ts.visitEachChild(node, expressionVisitor, context);
   };
   return ts.visitEachChild(expression, expressionVisitor, context) as ts.Expression;
+}
+
+/** `yield* <call>`; the printer supplies whatever parentheses the position needs. */
+function delegate(call: ts.Expression, state: TransformState): ts.Expression {
+  return state.factory.createYieldExpression(
+    state.factory.createToken(ts.SyntaxKind.AsteriskToken),
+    call,
+  );
+}
+
+/**
+ * `Capability.context()` -> `yield* __vsGet(Capability, "<site>")`.
+ *
+ * `undefined` — leave the call exactly as authored — whenever the receiver is
+ * not a plain reference. That is not a shortfall being papered over, and the
+ * list of shapes it declines is the argument: an optional receiver
+ * (`Reader?.context()`), an optional call (`Reader.context?.()`), a ternary, a
+ * type assertion, an IIFE. Every one of them either changes the meaning when
+ * re-evaluated as an argument or has already been evaluated for its effects by
+ * the time the request would be built. `SMITHERS2107` guarantees the RECEIVER
+ * denotes exactly one capability in all of them, so leaving the call verbatim
+ * is sound: it reaches `useCapability`, and the environment scope that
+ * `__vsProvide` opens answers it with the same instance the handler would have.
+ */
+function lowerCapabilityRead(call: ts.CallExpression, state: TransformState): ts.Expression | undefined {
+  const site = state.model.capabilitySites.get(call);
+  if (!site || site.name === undefined) return undefined;
+  const key = capabilityKeyExpression(call);
+  const identity = state.model.effectSites.get(call);
+  if (!key || identity === undefined) return undefined;
+  state.changed = true;
+  return delegate(
+    state.factory.createCallExpression(
+      state.factory.createIdentifier(helper(state, "__vsGet")),
+      undefined,
+      [key, state.factory.createStringLiteral(identity)],
+    ),
+    state,
+  );
+}
+
+/** The receiver of a `Capability.context()` call, when it may be re-evaluated as an argument. */
+function capabilityKeyExpression(call: ts.CallExpression): ts.Expression | undefined {
+  if (call.questionDotToken) return undefined;
+  let callee: ts.Expression = call.expression;
+  while (ts.isParenthesizedExpression(callee)) callee = callee.expression;
+  if (!ts.isPropertyAccessExpression(callee) && !ts.isElementAccessExpression(callee)) return undefined;
+  if (callee.questionDotToken) return undefined;
+  return plainReference(callee.expression);
+}
+
+/**
+ * An identifier, or a dotted chain of them. Re-evaluating one twice is
+ * indistinguishable from evaluating it once, which is the property that lets
+ * the receiver move from the callee position into an argument position.
+ */
+function plainReference(expression: ts.Expression): ts.Expression | undefined {
+  let current: ts.Expression = expression;
+  while (ts.isParenthesizedExpression(current)) current = current.expression;
+  if (ts.isIdentifier(current)) return current;
+  if (ts.isPropertyAccessExpression(current) && !current.questionDotToken &&
+    ts.isIdentifier(current.name) && plainReference(current.expression) !== undefined) {
+    return current;
+  }
+  return undefined;
+}
+
+/**
+ * `Layer.provide(L, () => body)` -> the handler install.
+ *
+ * Two spellings, chosen by whether there is an enclosing resumable computation
+ * to delegate into. Inside one, `yield* __vsProvide(...)` — so an inner scope's
+ * unprovided `get` forwards outward to the scope that does provide it, which is
+ * what makes nesting compose. Outside one — module top level, or a function the
+ * mode left in the ordinary convention, which is the usual shape because a
+ * provide SUBTRACTS its capabilities and so the enclosing function's row is
+ * typically empty — `__vsProvideRoot(...)` is both the delimiter and the
+ * driver, and returns the computation's value rather than a generator.
+ *
+ * A callback the emitter cannot turn into a generator (a reference rather than
+ * a literal, an `async` one, an authored generator) leaves the call verbatim.
+ * `Layer.provide` then runs as it does under the default lowering — including
+ * its promise-tracking block, which is exactly why the conformance backend
+ * asserts on `acquired` leases rather than assuming they are zero.
+ */
+function lowerLayerProvide(
+  call: ts.CallExpression,
+  owner: SemanticFunction | undefined,
+  prologue: ts.Statement[] | undefined,
+  state: TransformState,
+  context: ts.TransformationContext,
+  visit: ts.Visitor,
+): ts.Expression {
+  const callback = state.scopes.provides.get(call);
+  const layer = call.arguments[0];
+  if (!callback || !layer) {
+    return ts.visitEachChild(call, visit, context);
+  }
+  const layerArgument = owner && prologue
+    ? rewriteExpression(layer, owner, prologue, state, context, visit)
+    : (ts.visitNode(layer, visit, ts.isExpression) as ts.Expression);
+  const body = transformFunction(callback, state, context, visit) as ts.Expression;
+  state.changed = true;
+  const inside = inResumableScope(owner, state);
+  const installed = state.factory.createCallExpression(
+    state.factory.createIdentifier(helper(state, inside ? "__vsProvide" : "__vsProvideRoot")),
+    undefined,
+    [layerArgument, body],
+  );
+  return inside ? delegate(installed, state) : installed;
 }
 
 /**

@@ -413,9 +413,29 @@ export interface SemanticModel {
    *
    * PUBLISHED FOR A LATER STEP AND CONSUMED BY NOTHING. Under the effect
    * lowering (`specification/effects.mdx` §Effect Requests) each of these
-   * becomes a `get` request whose key is the nominal capability; today the
-   * emitter passes `Db.context()` through verbatim and this map has no reader.
-   * Adding one is a behaviour change and is a separate step.
+   * becomes a `get` request whose key is the nominal capability. Under
+   * `CompileOptions.effectLowering: "yield"` the emitter reads it; under the
+   * default lowering it still has no reader and `Db.context()` passes through
+   * verbatim.
+   *
+   * ONE SPELLING IS KNOWN MISSING, and it is written down here rather than left
+   * to be discovered by whichever step first depends on the table being total.
+   * A capability read at MODULE TOP LEVEL is not recorded, because
+   * `collectFacts` runs per `SemanticFunction` and module top level is not a
+   * function body — the same structural fact
+   * `05-context-rows/a-top-level-capability-read-is-rejected` was written to
+   * pin, from the other side. Measured across all 541 corpus models on
+   * 2026-08-28: 130 syntactic `.context()` / `["context"]()` calls, 129
+   * recorded, and the single omission is that case's `export const entry =
+   * Directory.context().lookup("ada")`. (The table's own size is 133, because
+   * it also records receiver spellings no syntactic scan finds, such as
+   * `Clock[KEY]()` over a `const` key.)
+   *
+   * It is currently unreachable rather than merely rare: a top-level read
+   * outside a provide is refused by `SMITHERS2102`, and a read inside a
+   * top-level `Layer.provide` callback IS in a function body and IS recorded.
+   * So the omission is masked by a diagnostic, not by the analysis — and it
+   * stops being masked the moment that diagnostic narrows.
    */
   readonly capabilitySites: ReadonlyMap<ts.CallExpression, CapabilitySite>;
   /**
@@ -5221,6 +5241,19 @@ function collectLayerBindings(sourceFile: ts.SourceFile, checker: ts.TypeChecker
   };
   visit(sourceFile);
   return result;
+}
+
+/**
+ * `Layer.provide(layer, body)`, in every spelling the analysis already accepts.
+ *
+ * Exported for the emitter, which under `effectLowering: "yield"` has to
+ * recognize the SAME call the requirement subtraction recognized — a provide
+ * that `checkLayerSatisfaction` certified and the emitter did not lower would
+ * publish an empty requirement row over a computation with no handler under it.
+ * One predicate, so the two answers cannot drift.
+ */
+export function isLayerProvideCall(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
+  return isLayerCall(call, checker, "provide");
 }
 
 function isLayerCall(call: ts.CallExpression, checker: ts.TypeChecker, method: string): boolean {

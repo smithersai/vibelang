@@ -7,6 +7,8 @@ import {
   __vsGet,
   __vsPerform,
   __vsPropagate,
+  __vsProvide,
+  __vsProvideRoot,
   capabilityHandler,
   handle,
   resultFrame,
@@ -19,7 +21,7 @@ import {
   type Resumable,
 } from "./effect.ts";
 import { __vsRegisterError, decodeError, encodeError } from "./errors.ts";
-import { Context } from "./layer.ts";
+import { Context, Layer, __vsPromiseHookLeases, useCapability } from "./layer.ts";
 import { Panic, isPanic, panic } from "./panic.ts";
 import { __vsResultFailure, __vsResultSuccess, isResult, type Result } from "./result.ts";
 
@@ -1178,14 +1180,145 @@ describe("checkEmittedTypeScript: the request union under stock tsc", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Inertness: nothing may depend on this module yet.
+// Layer provision installs a handler (the `effectLowering: "yield"` hooks).
 // ---------------------------------------------------------------------------
 
-test("the continuation runtime is reachable from no authored surface", () => {
-  // specification/effects.mdx §One-Shot Delimited Continuations: a continuation
-  // "MUST NOT be reified as a value visible to authored `.sm`". Until the
-  // emitter exists, the cheapest guarantee of that is that nothing re-exports
-  // this module.
+/**
+ * `__vsProvide` / `__vsProvideRoot`, driven by hand rather than by the emitter.
+ *
+ * The emitted path is measured across 61 conformance cases; what those cases
+ * cannot isolate is the part of this seam that was reasoned about rather than
+ * observed — that the AsyncLocalStorage frame is entered per STEP and not once
+ * around the whole drive. A generator that suspends leaves the frame and
+ * re-enters it, and a request forwarded to an outer handler must be answered in
+ * the OUTER environment. Wrapping the drive once passes every corpus case and
+ * fails the second test below.
+ */
+describe("Layer provision installs a handler", () => {
+  abstract class Directory extends Context {
+    abstract lookup(key: string): string;
+  }
+  abstract class Clock extends Context {
+    abstract now(): number;
+  }
+  const directory: Directory = { lookup: (key) => (key === "ada" ? "Ada" : "none") };
+  const clock: Clock = { now: () => 7 };
+
+  test("a get is answered from the layer and the computation resumes", () => {
+    const value = __vsProvideRoot(Layer.succeed(Directory, directory), function* () {
+      const service = yield* __vsGet(Directory, "src-test-0");
+      return service.lookup("ada");
+    });
+    expect(value).toBe("Ada");
+  });
+
+  /**
+   * The inner scope provides Clock and NOT Directory, so the inner `get` for
+   * Directory must forward outward. `handle`'s forwarding is what makes that
+   * work, and the environment frame must not follow the request out with it.
+   */
+  test("an unprovided key forwards outward to the scope that provides it", () => {
+    const lines = __vsProvideRoot(Layer.succeed(Directory, directory), function* () {
+      const outer = (yield* __vsGet(Directory, "src-test-1")).lookup("ada");
+      const inner = yield* __vsProvide(Layer.succeed(Clock, clock), function* () {
+        const at = (yield* __vsGet(Clock, "src-test-2")).now();
+        return `${(yield* __vsGet(Directory, "src-test-3")).lookup("ada")}@${at}`;
+      });
+      return [outer, inner];
+    });
+    expect(lines).toEqual(["Ada", "Ada@7"]);
+  });
+
+  /**
+   * The compatibility shim, which is the half of this seam that has no
+   * generator under it. `useCapability` is what an un-lowered read compiles to,
+   * and it must find the layer while the delimited computation is running and
+   * must NOT find it afterwards.
+   */
+  test("an un-lowered read reaches the same layer through the environment shim", () => {
+    let outside: unknown = "not read";
+    const inside = __vsProvideRoot(Layer.succeed(Directory, directory), function* () {
+      // No `yield` before this line: the shim has to be live from the first
+      // step, not from the first request.
+      return useCapability(Directory).lookup("ada");
+    });
+    expect(inside).toBe("Ada");
+    try {
+      outside = useCapability(Directory).lookup("ada");
+    } catch (error) {
+      outside = error;
+    }
+    expect(isPanic(outside)).toBe(true);
+  });
+
+  /**
+   * The message is `useCapability`'s, verbatim. The default lowering reaches
+   * that function for this mistake, so a different sentence here would be a
+   * divergence between the two lowerings on the failing path.
+   */
+  test("a get no scope provides panics in the words the other lowering uses", () => {
+    expect(() =>
+      __vsProvideRoot(Layer.succeed(Directory, directory), function* () {
+        return (yield* __vsGet(Clock, "src-test-4")).now();
+      })
+    ).toThrow("capability 'Clock' was not provided");
+  });
+
+  /**
+   * The claim the whole step rests on: `Layer.provide`'s promise-tracking block
+   * is dead under this lowering. `engagements` and not `live`, because `live`
+   * returns to zero after any balanced run — and because on Bun no lease is
+   * ever taken at all, so an assertion on leases would pass here without
+   * measuring anything.
+   */
+  test("the promise-hook apparatus is never engaged", () => {
+    const before = __vsPromiseHookLeases();
+    __vsProvideRoot(Layer.succeed(Directory, directory), function* () {
+      return (yield* __vsGet(Directory, "src-test-5")).lookup("ada");
+    });
+    expect(__vsPromiseHookLeases()).toEqual(before);
+    expect(__vsPromiseHookLeases().live).toBe(0);
+    // The counter can move — proved by moving it — so the assertion above is a
+    // measurement rather than a constant.
+    Layer.provide(Layer.succeed(Directory, directory), () => useCapability(Directory).lookup("ada"));
+    expect(__vsPromiseHookLeases().engagements).toBeGreaterThan(before.engagements);
+  });
+
+  /** A forged layer is refused here exactly as `Layer.provide` refuses one. */
+  test("a forged layer is refused", () => {
+    expect(() => __vsProvideRoot({}, function* () { return 1; })).toThrow("forged Layer value");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Inertness: only the emitter's own hooks may leave this module.
+// ---------------------------------------------------------------------------
+
+/**
+ * This test used to assert that `index.ts` did not mention `effect.ts` at all,
+ * and until the `effectLowering: "yield"` emitter existed that was the cheapest
+ * possible guarantee of §One-Shot Delimited Continuations' "MUST NOT be reified
+ * as a value visible to authored `.sm`". It is no longer available: emitted
+ * modules import their helpers from `runtime/index.ts`, so a lowering hook has
+ * to be re-exported from there to be reachable at all.
+ *
+ * The obligation is unchanged, so what replaces it is the obligation itself
+ * rather than its old proxy: an ALLOWLIST. Every name the barrel takes from
+ * this module is enumerated here, and each one is checked to answer with a
+ * value that is not a request, a continuation, or a handler. `handle`,
+ * `capabilityHandler`, `resultFrame` and `runHandled` — the four that DO traffic
+ * in those — must stay unreachable, and the `__vs` prefix on the three that are
+ * exported is the frontend's reserved namespace, so no authored program can
+ * bind them either.
+ */
+test("only the emitter's lowering hooks are re-exported, and none of them reifies a continuation", () => {
   const index = readFileSync(fileURLToPath(new URL("./index.ts", import.meta.url)), "utf8");
-  expect(index).not.toContain("effect.ts");
+  const exported = [...index.matchAll(/export (?:type )?\{([^}]*)\} from "\.\/effect\.ts";/gu)]
+    .flatMap((match) => match[1]!.split(",").map((name) => name.trim()))
+    .filter((name) => name.length > 0)
+    .sort();
+  expect(exported).toEqual(["AnyRequest", "Resumable", "__vsGet", "__vsProvide", "__vsProvideRoot"]);
+  for (const name of ["handle", "capabilityHandler", "resultFrame", "runHandled", "Continuation", "Handler"]) {
+    expect(exported).not.toContain(name);
+  }
 });

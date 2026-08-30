@@ -1,6 +1,6 @@
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { Analysis, AnalyzeProjectOptions, ProjectDiagnostic, ProjectSource } from "./model.ts";
-import { compileSemanticModel } from "./compile.ts";
+import { compileSemanticModel, type EffectLowering } from "./compile.ts";
 import { buildSemanticProjectModels, NominalErrorIdentities } from "./semantic.ts";
 
 function compareText(left: string, right: string): number {
@@ -27,6 +27,14 @@ export interface CompileProjectOptions extends AnalyzeProjectOptions {
    * `compileAndCheckProject` is not meaningful with this option.
    */
   readonly preserveSmithersSpecifiers?: boolean;
+  /**
+   * @see CompileOptions.effectLowering — forwarded verbatim to every module in
+   * the project. It is a WHOLE-PROJECT choice and cannot be anything else: the
+   * convention a function is emitted in decides how its callers in other
+   * modules call it, so two modules of one project compiled under two values
+   * would disagree about every cross-module call.
+   */
+  readonly effectLowering?: EffectLowering;
   /**
    * Additional authored modules which are emitted by a later integration
    * stage. They participate only in relative-import rewriting; Smithers never
@@ -142,7 +150,7 @@ export function compileProject(
   // ONE file, while a lossy path normalization collided two classes across TWO
   // files. A per-file assigner would have caught only the first.
   const nominalIdentities = new NominalErrorIdentities();
-  const identityCollisions: ProjectDiagnostic[] = [];
+  const emitDiagnostics: ProjectDiagnostic[] = [];
   for (const source of [...sources].sort((left, right) => compareText(left.fileName, right.fileName))) {
     const model = semantic.models.get(source.fileName);
     const fileAnalysis = semantic.analysis.files[source.fileName];
@@ -158,13 +166,20 @@ export function compileProject(
       sourceMap: options.sourceMap,
       sourceName,
       preserveSmithersSpecifiers: options.preserveSmithersSpecifiers,
+      effectLowering: options.effectLowering,
     }, model, { outputBySource, stripImportAttributesForSources, smithersSourceNames, nominalIdentities });
     // The invariant is minted per module by `compileSemanticModel` against the
     // shared assigner above, so lifting it here reports each collision exactly
     // once, keyed by the caller's own file name like every other project row.
+    //
+    // `SMITHERS1807` joins it for the same structural reason and not by
+    // analogy: both are decided during EMIT, so neither exists in
+    // `semantic.analysis.diagnostics`, and a project caller that read only that
+    // list would compile a refused module and report nothing. Under the default
+    // lowering the emitter produces none.
     for (const diagnostic of compiled.analysis.diagnostics) {
-      if (diagnostic.code === "SMITHERS1151") {
-        identityCollisions.push({ ...diagnostic, fileName: source.fileName });
+      if (diagnostic.code === "SMITHERS1151" || diagnostic.code === "SMITHERS1807") {
+        emitDiagnostics.push({ ...diagnostic, fileName: source.fileName });
       }
     }
     files[source.fileName] = {
@@ -178,8 +193,8 @@ export function compileProject(
   }
   return {
     files,
-    diagnostics: identityCollisions.length === 0
+    diagnostics: emitDiagnostics.length === 0
       ? semantic.analysis.diagnostics
-      : [...semantic.analysis.diagnostics, ...identityCollisions],
+      : [...semantic.analysis.diagnostics, ...emitDiagnostics],
   };
 }
