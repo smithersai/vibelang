@@ -48,6 +48,13 @@ import {
   type MigrationPlan,
   type PinnedDeployment
 } from "./migration.ts"
+import {
+  REPLAY_DRIVER_DEFAULT,
+  ReplayDriver,
+  type PerformEffect,
+  type ReplayDriverMode,
+  type RequestKey
+} from "./replay.ts"
 import { CHILD_EXECUTION_MARKER, contentAdoptionSource, memoAdoptionSource } from "./site-id.ts"
 import { decodeWorkerExit, validateDurableValue, type WorkerExitSurface } from "./schema.ts"
 import {
@@ -110,6 +117,15 @@ export interface DurableExecutorOptions {
     manifest: DeploymentManifest,
     providers: BuiltDeployment["providers"]
   ) => DurableWorker
+  /**
+   * Whether this executor may build a replay driver (`./replay.ts`).
+   *
+   * Defaults to {@link REPLAY_DRIVER_DEFAULT}, which is `"off"`. It gates
+   * construction rather than behaviour: with it off, {@link
+   * DurableExecutor.createReplayDriver} refuses and no other method reads it, so
+   * the Plan path is byte-identical whether or not the option is passed.
+   */
+  readonly replayDriver?: ReplayDriverMode
 }
 
 /** Provisional handle-side delivery options: exact fields, no identity authority. */
@@ -1026,6 +1042,46 @@ export class DurableExecutor<Input = unknown, Success = unknown> {
       manifest: this.deployment.manifest,
       journal: this.store.journal(executionId)
     }
+  }
+
+  /**
+   * A replay driver bound to this coordinator's store, lease owner, and pinned
+   * deployment.
+   *
+   * Refused unless the executor was built with `{ replayDriver: "on" }`. The
+   * refusal is the point: it keeps the whole of `./replay.ts` unreachable from
+   * every existing caller while the driver is proven against hand-written
+   * generator bodies, and it costs one comparison on a path nothing else takes.
+   *
+   * The driver gets `pinnedDeployment` unchanged, so a superseded coordinator's
+   * replayed claim is refused by the same `(plan_digest, manifest_digest)` fence
+   * every Plan-path store call carries — including the lazy row insert, which
+   * sits behind that fence inside `claimNode`'s own transaction.
+   */
+  createReplayDriver(options: {
+    readonly executionId: string
+    readonly perform: PerformEffect
+    readonly leaseMs?: number
+    readonly deadline?: number
+    readonly capabilities?: ReadonlyMap<RequestKey, unknown>
+  }): ReplayDriver {
+    const mode = this.executorOptions.replayDriver ?? REPLAY_DRIVER_DEFAULT
+    if (mode !== "on") {
+      throw new Error(
+        "This executor was not built with { replayDriver: \"on\" }; the replay driver is off by default"
+      )
+    }
+    return new ReplayDriver({
+      mode,
+      store: this.store,
+      executionId: options.executionId,
+      owner: this.owner,
+      pinned: this.pinnedDeployment,
+      ...(options.leaseMs === undefined ? {} : { leaseMs: options.leaseMs }),
+      ...(options.deadline === undefined ? {} : { deadline: options.deadline }),
+      ...(options.capabilities === undefined ? {} : { capabilities: options.capabilities }),
+      perform: options.perform
+    })
   }
 
   private resolveNode(nodeId: string, context: RunContext): Promise<JsonValue> {

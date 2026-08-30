@@ -51,6 +51,19 @@ export {
   type SignalDeliveryGrant
 } from "./engine.ts"
 export {
+  isJournalKey,
+  journalKey,
+  REPLAY_DRIVER_DEFAULT,
+  ReplayDivergenceError,
+  ReplayDriver,
+  type DispatchedEffectRequest,
+  type PerformEffect,
+  type ReplayAudit,
+  type ReplayDriverMode,
+  type ReplayDriverOptions,
+  type RequestKey
+} from "./replay.ts"
+export {
   AuthenticatedCoordinator,
   AuthenticatedCoordinatorTransportError,
   createAuthenticatedDurableExecutor,
@@ -171,6 +184,7 @@ export {
   type ChildExecutionLink,
   type ChildExecutionLinkResult,
   type ClaimResult,
+  type LazyNodeCreation,
   type CachedSuccessCommit,
   type ExecutionStatus,
   type FinishExecutionResult,

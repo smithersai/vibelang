@@ -162,6 +162,43 @@ export type ClaimResult =
   | { readonly kind: "busy"; readonly leaseExpiresAt: number }
   | { readonly kind: "terminal"; readonly exit: StoredNodeExit }
 
+/**
+ * Kinds a lazily created node row may NOT carry.
+ *
+ * Derived from `claimNode`'s own refusals rather than chosen: that method
+ * refuses a lease to `signal` and `queue` outright and to a `timer` that has no
+ * committed wake deadline, and the only entry points those three kinds have
+ * (`pollSignal`, `pollQueue`, `scheduleTimer`) each require a row that already
+ * exists. A row created here in one of those kinds could therefore never be
+ * leased by the transaction that created it, and would be a durable trap rather
+ * than a node. The refusal names the reason at creation instead.
+ */
+const UNLEASABLE_NODE_KINDS: readonly string[] = ["signal", "queue", "timer"]
+
+/**
+ * Permission for one `claimNode` call to create the row it is claiming.
+ *
+ * **Why this is a parameter and not a behaviour.** Every node id the Plan
+ * declares already has a row by the time anything claims it — `initializeExecution`
+ * inserts the whole set inside its own `BEGIN IMMEDIATE`. Replay does not have
+ * that set: a journal key is `${siteId}#${occurrence}`, minted when the body
+ * reaches the site, so the id is not known until the claim itself. Passing this
+ * is how a caller says "this id is a journal key, not a Plan node id"; omitting
+ * it keeps `claimNode`'s existing refusal of an unknown node id verbatim, which
+ * is what every Plan-driven caller wants and relies on.
+ *
+ * See {@link DurableStore.claimNode} for the two invariants the eager loop
+ * provided that this path has to re-establish for itself.
+ */
+export interface LazyNodeCreation {
+  /**
+   * `node_kind` for the created row. `signal`, `queue`, and `timer` are refused:
+   * `claimNode` cannot lease any of them, so a row created here in one of those
+   * kinds would be unreachable forever.
+   */
+  readonly nodeKind: string
+}
+
 export type TimerScheduleResult =
   | { readonly kind: "waiting"; readonly wakeAt: number; readonly newlyScheduled: boolean }
   | { readonly kind: "terminal"; readonly exit: StoredNodeExit }
@@ -3352,13 +3389,44 @@ export class DurableStore {
     return result
   }
 
+  /**
+   * Acquire a fenced lease on one node.
+   *
+   * `create` is the lazy node-row path, and it is off unless a caller asks for
+   * it. Two invariants that `initializeExecution`'s eager insert supplied for
+   * free have to be re-established here, because the eager loop got both from
+   * its own surroundings rather than from any statement in it:
+   *
+   * 1. **The row exists under a pinned deployment.** The eager loop ran inside
+   *    the same `BEGIN IMMEDIATE` as the `durable_executions` insert that
+   *    established the pin, so no row could predate it. Here the pin already
+   *    exists and can already have moved, so the fence has to be *ahead* of the
+   *    insert in this same transaction — which is where `assertPinnedDeployment`
+   *    already sits, and where it must stay. A superseded coordinator that
+   *    created a row and only then discovered the migration would have written
+   *    a node for a version this execution is not pinned to, and `migrateExecution`
+   *    has already taken its node census by then.
+   * 2. **The row exists under a RUNNING execution.** The eager loop ran once,
+   *    at creation, when `status` was `'running'` by construction. A lazy insert
+   *    can arrive at any time, including after `cancelExecution` or
+   *    `failExecution` has walked `fenceActiveNodes` and cancelled every node
+   *    there was. Fencing is a complete barrier only while the node set is
+   *    closed; re-opening it means a claim arriving after the barrier could
+   *    create a fresh `pending` row under a terminated execution and be handed
+   *    a lease over it. So the status is read inside this transaction and a
+   *    non-running execution refuses to grow a node.
+   *
+   * Both reads are inside this `BEGIN IMMEDIATE`, so neither can be overtaken
+   * between the check and the insert.
+   */
   claimNode(
     executionId: string,
     nodeId: string,
     owner: string,
     leaseMs: number,
     now = Date.now(),
-    pinned?: PinnedDeployment
+    pinned?: PinnedDeployment,
+    create?: LazyNodeCreation
   ): ClaimResult {
     if (typeof owner !== "string" || owner.trim() === "") {
       throw new TypeError("Durable node lease owner must be non-empty")
@@ -3370,8 +3438,40 @@ export class DurableStore {
     ) {
       throw new TypeError("Durable node lease must use safe positive integer timestamps")
     }
+    if (create !== undefined) {
+      if (typeof create !== "object" || create === null) {
+        throw new TypeError("Durable lazy node creation must be a record")
+      }
+      if (typeof create.nodeKind !== "string" || create.nodeKind.trim() === "") {
+        throw new TypeError("Durable lazy node creation requires a non-empty node kind")
+      }
+      if (UNLEASABLE_NODE_KINDS.includes(create.nodeKind)) {
+        throw new TypeError(
+          `Durable node kind ${create.nodeKind} cannot be created by a claim: claimNode refuses it a lease`
+        )
+      }
+    }
     const transaction = this.database.transaction((): ClaimResult => {
       this.assertPinnedDeployment(executionId, pinned)
+      if (create !== undefined) {
+        const execution = this.database.query(
+          "SELECT status FROM durable_executions WHERE id=?"
+        ).get(executionId) as { readonly status: ExecutionStatus } | null
+        if (execution === null) throw new Error(`Unknown durable execution ${executionId}`)
+        if (execution.status !== "running") {
+          throw new DurableExecutionCancelled({
+            name: "ExecutionTerminated",
+            message:
+              `Durable execution ${executionId} is ${execution.status} and can no longer grow node ${nodeId}`,
+            executionStatus: execution.status
+          })
+        }
+        this.database.query(
+          `INSERT INTO durable_nodes(execution_id,node_id,node_kind,status,attempt,fence,updated_at)
+           VALUES(?,?,?,'pending',0,0,?)
+           ON CONFLICT(execution_id,node_id) DO NOTHING`
+        ).run(executionId, nodeId, create.nodeKind, now)
+      }
       const row = this.database.query(
         "SELECT * FROM durable_nodes WHERE execution_id = ? AND node_id = ?"
       ).get(executionId, nodeId) as NodeRow | null
