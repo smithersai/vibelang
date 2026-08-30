@@ -2332,6 +2332,7 @@ func newRowAnalysis(typeChecker *checker.Checker, prelude *preludeSymbols, files
 	analysis.checkTopLevelRequirements(files)
 	analysis.checkContextReferences(files)
 	analysis.checkTopLevelCheckedChannels(files)
+	analysis.checkPanicCatchBoundaries(files)
 	analysis.checkCrossModuleEscapes(files)
 	// Fail-closed frontend rules (smithershostrules.go). They run last because
 	// none of them contributes a row: each one only decides whether a program
@@ -2912,19 +2913,29 @@ func (a *rowAnalysis) foreignPolicyForCall(call *ast.Node) (foreignPolicy, bool)
 	async := a.checker.GetPromisedTypeOfPromise(returned) != nil
 	annotation, _ := a.foreignThrowsAnnotation(signature.Declaration(), a.carriesRejectionChannel(returned), call)
 	callee := call.AsCallExpression().Expression
-	uncheckedCallee := a.foreignCalleeHasUncheckedResult(callee)
-	// When the callee is itself the unchecked foreign call, that inner call is
-	// the authored boundary whose result is being misused and reports 1507. Do
-	// not add the same-position diagnostic again on the immediately invoked
-	// outer call.
-	orderUnsafe := !a.stableForeignCallee(callee) || uncheckedCallee ||
-		annotation != "never" && a.foreignResultIsUsedAsValue(call)
-	if uncheckedCallee && callee.Kind == ast.KindCallExpression {
-		orderUnsafe = false
-	}
+	// Two conditions, both about PROVENANCE. The third — "the checked result of
+	// this call is used as a value here" — was about PLACEMENT: it existed
+	// because a `Result.try(...)` wrapper had to be hoisted in front of the
+	// statement, and the wrapper is an expression that stays where it was
+	// written. It is retired with the postfix-`!` placement walk; see
+	// DECISIONS.md §Typed failures and specification/failures.mdx §Refusal
+	// Conditions. `foreignResultIsUsedAsValue` went with it.
+	//
+	// A same-position suppression went with it too, and that is worth recording
+	// because deleting the branch without deleting the suppression opened a
+	// hole. `makeCallable()("x")` charges ONE SMITHERS1507 on the reference, at
+	// the outer call, because the outer call's callee is not a stable reference.
+	// This backend used to charge it on the INNER call instead — through the
+	// deleted "used as a value" branch, the inner call's result being read as a
+	// callee — and then suppressed the outer one so the two would not double up
+	// at the shared position. With the inner report gone the suppression left
+	// the shape unreported entirely, MEASURED as `js [1510, 1301, 1507] / go
+	// [1510, 1301]` on that program. The outer call answers the surviving
+	// question on its own.
+	orderUnsafe := !a.stableForeignCallee(callee) || a.foreignCalleeHasUncheckedResult(callee)
 	if orderUnsafe && !a.foreignOrderReports[call] {
 		a.foreignOrderReports[call] = true
-		a.report(call, "SMITHERS1507", "this foreign call/result use is not expression-order-safe in the POC; assign the checked result, propagate it with postfix !, and continue through an explicitly typed local adapter")
+		a.report(call, "SMITHERS1507", "this foreign callee is not a stable reference the compiler can read once, or its result is already an unchecked foreign value; bind the callee to a const and propagate the checked result with postfix !, or continue through an explicitly typed local adapter")
 	}
 	if annotation == "never" {
 		return foreignPolicy{kind: "never", async: async}, true
@@ -3011,61 +3022,6 @@ func (a *rowAnalysis) foreignCalleeHasUncheckedResult(expression *ast.Node) bool
 		}
 	}
 	return false
-}
-
-// foreignResultIsUsedAsValue climbs through forwardingParent for the reason
-// recorded there. This walk knew the parenthesis, `as` and `<T>x` and not
-// `satisfies` — ten lines below stableForeignCallee's comment recording that
-// exact lesson — so adding a pure type check to an accepted untrusted-foreign
-// propagation flipped it to SMITHERS1507, with two more cascade codes behind it.
-func (a *rowAnalysis) foreignResultIsUsedAsValue(call *ast.Node) bool {
-	current := call
-	for forwarded := forwardingParent(current); forwarded != nil; forwarded = forwardingParent(current) {
-		current = forwarded
-	}
-	parent := current.Parent
-	if parent != nil && ast.IsNonNullExpression(parent) && parent.AsNonNullExpression().Expression == current {
-		return false
-	}
-	if parent == nil {
-		return false
-	}
-	if ast.IsCallExpression(parent) || ast.IsNewExpression(parent) {
-		return true
-	}
-	if ast.IsPropertyAccessExpression(parent) && parent.AsPropertyAccessExpression().Expression == current {
-		return true
-	}
-	if ast.IsElementAccessExpression(parent) && parent.AsElementAccessExpression().Expression == current {
-		return true
-	}
-	if ast.IsBinaryExpression(parent) {
-		binary := parent.AsBinaryExpression()
-		if binary.OperatorToken.Kind == ast.KindEqualsToken && binary.Right == current {
-			return true
-		}
-	}
-	if (ast.IsForOfStatement(parent) || ast.IsForInStatement(parent)) && parent.AsForInOrOfStatement().Expression == current {
-		return true
-	}
-	if ast.IsIfStatement(parent) && parent.AsIfStatement().Expression == current ||
-		ast.IsWhileStatement(parent) && parent.AsWhileStatement().Expression == current ||
-		ast.IsDoStatement(parent) && parent.AsDoStatement().Expression == current ||
-		ast.IsSwitchStatement(parent) && parent.AsSwitchStatement().Expression == current {
-		return true
-	}
-	if ast.IsThrowStatement(parent) || ast.IsSpreadElement(parent) || ast.IsSpreadAssignment(parent) {
-		return true
-	}
-	if ast.IsConditionalExpression(parent) {
-		return parent.AsConditionalExpression().Condition == current
-	}
-	if ast.IsArrayLiteralExpression(parent) || ast.IsVariableDeclaration(parent) || ast.IsPropertyAssignment(parent) ||
-		ast.IsReturnStatement(parent) || ast.IsExpressionStatement(parent) ||
-		ast.IsArrowFunction(parent) && parent.Body() == current {
-		return false
-	}
-	return ast.IsExpression(parent)
 }
 
 func (a *rowAnalysis) addForeignFailures(into rowSet, policy foreignPolicy) {
@@ -5585,6 +5541,80 @@ func (a *rowAnalysis) checkTopLevelCheckedChannels(files []*ast.SourceFile) {
 	}
 }
 
+// checkPanicCatchBoundaries is the PANIC half of SMITHERS1205, and it was
+// missing from this backend entirely.
+//
+// The postfix-`!` half lives in `lowerPropagation`, where `l.guardedByCatch`
+// already refuses a propagation whose early return would step past an authored
+// `catch`. The panic half had no implementation at all, which was not a
+// difference of message but a FAIL-OPEN, measured against the reference on
+//
+//	try { if (value < 0) panic("negative"); return "ok" } catch { return "caught" }
+//
+// The reference refuses it SMITHERS1205; this backend compiled it and printed
+// `caught` — the ordinary `catch` swallowing an abort that must reach an
+// explicit panic boundary. `Reflect.panic(...)` measured the same way, and
+// `Result.expect()` — which lowers to the same panic exit — measured the same
+// way through `lowerExpect`'s silent `leave()`.
+//
+// The MESSAGE is deliberately not the postfix-`!` sentence. A panic exit is
+// lowered two ways — a completion value where the enclosing contract names
+// `Panic` (`lowerPanicExit`), an unwinding `throw` where it does not
+// (`lowerPanicThrow`) — so a sentence asserting either one would be false for
+// the other half of the programs this arm fires on. What is true of both is
+// that an ordinary `catch` is the wrong observer.
+//
+// Scope is measured against the reference, not assumed. A call to a HELPER that
+// panics is not reported on either backend — the rule is about the intrinsic
+// written inside the guarded block, not about a transitively aborting callee —
+// and a `try` with only a `finally` guards nothing, so neither backend reports
+// there. A nested function is its own exit owner and resets the flag, exactly as
+// `lowerer.visit` does for `guardedByCatch`.
+func (a *rowAnalysis) checkPanicCatchBoundaries(files []*ast.SourceFile) {
+	for _, file := range files {
+		var visit func(*ast.Node, bool)
+		visit = func(node *ast.Node, caught bool) {
+			if ast.IsFunctionLikeDeclaration(node) {
+				node.ForEachChild(func(child *ast.Node) bool {
+					visit(child, false)
+					return false
+				})
+				return
+			}
+			if node.Kind == ast.KindTryStatement {
+				try := node.AsTryStatement()
+				visit(try.TryBlock, caught || try.CatchClause != nil)
+				if try.CatchClause != nil {
+					visit(try.CatchClause.AsCatchClause().Block, caught)
+				}
+				if try.FinallyBlock != nil {
+					visit(try.FinallyBlock, caught)
+				}
+				return
+			}
+			if caught && ast.IsCallExpression(node) {
+				construct := ""
+				if a.prelude.isPanicCall(node) {
+					construct = "panic(...)"
+				} else if _, isExpect := a.prelude.expectCall(node); isExpect {
+					construct = "Result.expect()"
+				}
+				if construct != "" {
+					a.report(node, "SMITHERS1205", construct+" inside a JavaScript try statement with a catch clause is not lowered because a panic exit is not a recoverable failure this catch may observe: where the enclosing contract materializes the panic the exit is a completion value the catch never sees, and where it does not the catch would swallow an abort that must reach an explicit panic boundary; move the panic point outside the try or handle it at that boundary")
+				}
+			}
+			node.ForEachChild(func(child *ast.Node) bool {
+				visit(child, caught)
+				return false
+			})
+		}
+		file.AsNode().ForEachChild(func(child *ast.Node) bool {
+			visit(child, false)
+			return false
+		})
+	}
+}
+
 // directCallReference reports whether an identifier is the callee of an
 // ordinary call — the shape whose row this analysis already attributes.
 // Parentheses are transparent: `(plain)(1, 2)` resolves and charges exactly what
@@ -6678,23 +6708,24 @@ func newLowerer(typeChecker *checker.Checker, prelude *preludeSymbols, analysis 
 
 // hoistableStatements are the statement kinds where a statement introduced
 // before the statement runs exactly once, in the same order, as the expression
-// it was extracted from. Propagation is only lowered inside these; anywhere
-// else the authored call is left intact and reported.
+// it was extracted from.
 //
-// specification/failures.mdx, "Accepted Placements": "Because the walk stops at
-// the nearest statement, any construct whose child is directly a statement
-// position admits a `!`. That is why `if (r!)`, `switch (r!)`, and
-// `for (let i = r!; …)` are accepted while every expression-nested position is
-// not."
+// This is NO LONGER the propagation placement rule. specification/failures.mdx
+// §Refusal Conditions withdrew the statement-walk that consulted this table, and
+// `conditionallyEvaluatedPosition`/`repeatedlyEvaluatedPosition`/
+// `precededByUnhoistedEffect` replaced it; a propagation's guard is flushed by
+// `visitStatement` in front of whatever statement encloses it, including the
+// kinds absent here. What remains keyed on this table is `l.canHoist`, and the
+// only reader of `l.canHoist` is `matchScrutinee`, which binds a NEW temporary
+// for a computed `Error.match` receiver and needs a statement it may legally
+// precede. Widening it would widen that rule and nothing else.
 //
 //   - A `switch` discriminant is evaluated exactly once, before any clause, so a
-//     guard hoisted in front of the `switch` preserves the authored order.
-//   - A `for` INITIALIZER runs exactly once, before the loop. Its condition and
-//     incrementor run once per iteration and are refused earlier and separately
-//     by isInRepeatedLoopHeader (SMITHERS1703), which returns false only for the
-//     initializer and the body — so admitting the statement kind here cannot
-//     admit a repeated header. A multi-declarator initializer is refused by
-//     safeUnwrapPlacement, which requires exactly one declaration.
+//     statement hoisted in front of the `switch` preserves the authored order.
+//   - A `for` INITIALIZER runs exactly once, before the loop; its condition and
+//     incrementor run once per iteration and are refused separately by
+//     `repeatedlyEvaluatedPosition` (SMITHERS1703), so admitting the statement
+//     kind here cannot admit a repeated header.
 var hoistableStatements = map[ast.Kind]struct{}{
 	ast.KindVariableStatement:   {},
 	ast.KindReturnStatement:     {},
@@ -7047,9 +7078,9 @@ func (l *lowerer) classifyTypeNode(typeNode *ast.Node) bool {
 // arrow function, so `(): Result<A, E> => value` becomes `=> new __smithersOk(value)`.
 // A propagation point in that body hoists its guard into a block body
 // SYNTHESISED here — `=> { const t = …; if (!t.ok) return t; return Ok(t.value) }`
-// — which is the whole of what "the walk stops at the nearest statement or arrow
-// function" costs to implement, and what safeUnwrapPlacement used to refuse on
-// its behalf.
+// — which is the whole of what "the guard is hoisted into the nearest statement
+// or arrow function" costs to implement, and what the withdrawn placement walk
+// used to refuse on its behalf.
 //
 // lowerConcisePanicBody replaces `(...) => panic(cause)` with a block body that
 // throws the constructed Panic. See lowerPanicThrow for why the call cannot
@@ -7673,8 +7704,33 @@ func (l *lowerer) lowerExpect(node *ast.Node, receiver *ast.Node) *ast.Node {
 		l.impure = true
 		return l.visitor.VisitEachChild(node)
 	}
-	_, safe := safeUnwrapPlacement(node)
-	if !l.shape.result || l.guardedByCatch || !safe {
+	// `expect` lowers to the same hoisted guard as `!`, so it inherits the same
+	// three residual positions and nothing else. See
+	// `conditionallyEvaluatedPosition`; the withdrawn `safeUnwrapPlacement` walk
+	// is what used to stand here.
+	//
+	// The three now REPORT rather than silently declining. Silence was a second
+	// defect hiding behind the walk: the reference charges the same code at the
+	// same position from `checkMustConsume`, and this backend answered
+	// `while (next().expect("…")) {…}` with a clean compile. The emitted program
+	// happened to be correct — the authored `.expect(…)` is left in place and the
+	// prelude's own implementation aborts at the authored moment — so this was an
+	// over-acceptance and not a soundness hole, but two backends disagreeing
+	// about whether a program compiles is the divergence this lane exists to
+	// close. specification/failures.mdx, "Accepted Placements": "a rejected
+	// placement MUST be a diagnostic, never a silent lowering."
+	switch {
+	case repeatedlyEvaluatedPosition(node):
+		l.report(node, "SMITHERS1703", "Result.expect() in a loop condition or incrementor is evaluated once per iteration, and the shipped lowering hoists its panic exit in front of the loop, which would run it a different number of times; assign before the loop or expect inside its body")
+		return leave()
+	case conditionallyEvaluatedPosition(node):
+		l.report(node, "SMITHERS1204", "Result.expect() in a conditionally evaluated operand would have its panic exit hoisted to the enclosing statement by the shipped lowering, which would run it when the authored program would not have evaluated the operand at all; assign the Result to a local and expect it unconditionally")
+		return leave()
+	case l.precededByUnhoistedEffect(node):
+		l.report(node, "SMITHERS1204", "Result.expect() after another effect in the same statement would have its panic exit hoisted in front of that effect by the shipped lowering, which would evaluate this receiver too early; assign the Result to a local first, or expect before the other effect")
+		return leave()
+	}
+	if !l.shape.result || l.guardedByCatch {
 		return leave()
 	}
 	call := node.AsCallExpression()
@@ -8012,85 +8068,216 @@ func (l *lowerer) newPreludeCall(exported string, arguments ...*ast.Node) *ast.N
 	)
 }
 
-// safeUnwrapPlacement reports whether a propagation point sits where a checked
-// early return preserves the authored evaluation order, and returns the node its
-// guard would be hoisted into: a hoistable STATEMENT, or the ARROW FUNCTION
-// whose concise body the point sits in. Only wrappers that neither evaluate
-// anything ahead of the call nor make it conditional are walked through;
-// anything else — an operand, an argument, a branch, a short-circuit right side,
-// a further declarator — ends the walk unsafely.
+// conditionallyEvaluatedPosition is the first residue of the WITHDRAWN
+// placement rule, narrowed to what is still true.
 //
-// specification/failures.mdx, "Accepted Placements", condition 1 runs the walk
-// "until the nearest statement OR ARROW FUNCTION". An arrow function is
-// therefore a STOP exactly as a statement is, not a rejection: the propagation
-// returns from the arrow, and condition 3 then asks about that arrow's own
-// declared channel. This answered `false` there, on the ground that "a concise
-// arrow body has no statement list to hoist a guard into" — true of the
-// AUTHORED form and irrelevant to the lowered one, because lowerConciseBody
-// synthesises the block body the guard needs. It was an implementation limit
-// wearing a rule's clothes, and it cost two conformance cases.
+// specification/failures.mdx §Refusal Conditions withdrew the statement-walk
+// this file used to run in `safeUnwrapPlacement`: the failure exit is a
+// delegated suspension, which is an expression in every position, so no
+// *placement* is unsound in principle. What survives is not a rule about
+// placement but a fact about the SHIPPED lowering, which spells that exit as an
+// early `return` and therefore has to hoist a guard to the front of the
+// enclosing statement. Hoisting is only order-preserving where the operand is
+// evaluated unconditionally and exactly once, so exactly two positions are still
+// refused — this one and `repeatedlyEvaluatedPosition`:
 //
-// Membership of hoistableStatements is folded in HERE rather than re-tested by
-// each caller. Both callers had their own copy of that second test, and a
-// placement rule that lives in two places is one edit away from the callers
-// disagreeing about what a safe placement is.
-func safeUnwrapPlacement(call *ast.Node) (*ast.Node, bool) {
-	current := call
-	for current.Parent != nil && !ast.IsStatement(current.Parent) && !ast.IsArrowFunction(current.Parent) {
+//   - a conditionally evaluated operand — the right side of `&&`, `||` and `??`,
+//     either arm of a ternary, anything after an optional-chaining `?.`, and a
+//     `case` label expression, whose guard would run when the authored program
+//     would not have evaluated the operand at all. Measured on this backend by
+//     retiring the guard: `maybe ?? r!` evaluates a skipped operand.
+//
+// Everything the withdrawn walk refused BESIDES these three — a member call, an
+// element access, a call argument, a compound operand, a `for` initializer, a
+// `for…of` iterable — is unconditional and once, and is lowered. The refusals
+// are deliberately NOT scoped to a lowering mode: both lowerings spell a
+// propagation the same way today, so this is a property of the compiler, not of
+// a per-file option.
+//
+// This is the fork's copy of the reference frontend's function of the same name
+// (poc/src/language/semantic.ts). It is a copy of its SEMANTICS, arrived at by
+// running both backends over the same programs, not a transcription: the stop
+// set is `ast.IsFunctionLikeDeclaration`, which is exactly the seven kinds the
+// reference's `isSupportedFunctionLike` names, and `ast.IsStatement` is the same
+// predicate as `ts.isStatement` (statement-but-not-declaration kinds, plus
+// declaration-statement kinds, plus a non-function, non-try Block).
+func conditionallyEvaluatedPosition(node *ast.Node) bool {
+	current := node
+	for current.Parent != nil && !ast.IsStatement(current.Parent) && !ast.IsFunctionLikeDeclaration(current.Parent) {
 		parent := current.Parent
 		switch {
-		case ast.IsParenthesizedExpression(parent), ast.IsAwaitExpression(parent),
-			ast.IsAsExpression(parent):
-		case ast.IsPropertyAccessExpression(parent) && parent.AsPropertyAccessExpression().Expression == current:
-		case ast.IsBinaryExpression(parent) && parent.AsBinaryExpression().OperatorToken.Kind == ast.KindQuestionQuestionToken &&
-			parent.AsBinaryExpression().Left == current:
-			// The normative `result!?.member ?? fallback` shape is safe because
-			// the propagation point is in the always-evaluated left operand. No
-			// other compound form is admitted while precedence remains open.
-		case ast.IsVariableDeclaration(parent) && parent.AsVariableDeclaration().Initializer == current:
-		case ast.IsVariableDeclarationList(parent) && len(parent.AsVariableDeclarationList().Declarations.Nodes) == 1:
-		default:
-			return nil, false
-		}
-		current = parent
-	}
-	stop := current.Parent
-	if stop == nil {
-		return nil, false
-	}
-	if ast.IsArrowFunction(stop) {
-		// The arrow is a stop only when the walk arrived through its BODY. A
-		// parameter default, a type position or a decorator is evaluated
-		// somewhere the arrow's own return cannot precede.
-		if stop.Body() != current {
-			return nil, false
-		}
-		return stop, true
-	}
-	if _, hoistable := hoistableStatements[stop.Kind]; !hoistable {
-		return nil, false
-	}
-	return stop, true
-}
-
-// isInRepeatedLoopHeader reports whether a node sits in a part of a loop that
-// re-evaluates. A `for` initializer runs once and can safely carry an outer
-// prologue; the condition and incrementor cannot.
-func isInRepeatedLoopHeader(node *ast.Node) bool {
-	current := node
-	for current.Parent != nil {
-		parent := current.Parent
-		switch parent.Kind {
-		case ast.KindWhileStatement, ast.KindDoStatement,
-			ast.KindForInStatement, ast.KindForOfStatement:
-			return current != parent.Statement()
-		case ast.KindForStatement:
-			data := parent.AsForStatement()
-			return current != data.Statement && current != data.Initializer
+		case ast.IsBinaryExpression(parent) && parent.AsBinaryExpression().Right == current &&
+			ast.IsLogicalOrCoalescingBinaryOperator(parent.AsBinaryExpression().OperatorToken.Kind):
+			return true
+		case ast.IsConditionalExpression(parent) && parent.AsConditionalExpression().Condition != current:
+			return true
+		// Anything to the right of a `?.` link is skipped when the link
+		// short-circuits.
+		case optionalChainLink(parent) && parent.Expression() != current:
+			return true
+		// A `case` label runs only until one matches, and the switch lowering
+		// puts a prologue in front of the whole `switch`.
+		case ast.IsCaseClause(parent):
+			return true
 		}
 		current = parent
 	}
 	return false
+}
+
+// optionalChainLink reports whether a node carries its own `?.` token. The
+// question is asked of the PARENT of the walk position, which is why the
+// answer has to be per-kind: only these three node kinds can hold one in a
+// position that skips an operand, and `Node.QuestionDotToken` panics on any
+// other kind.
+func optionalChainLink(node *ast.Node) bool {
+	switch node.Kind {
+	case ast.KindPropertyAccessExpression, ast.KindElementAccessExpression, ast.KindCallExpression:
+		return node.QuestionDotToken() != nil
+	}
+	return false
+}
+
+// repeatedlyEvaluatedPosition is the second residue: a loop header that
+// re-evaluates.
+//
+// A `while`/`do` condition, a `for` condition and a `for` incrementor are
+// evaluated once per iteration, and the guard is hoisted in front of the loop,
+// so it would run a different number of times. Measured on this backend by
+// retiring the guard: `while (next()!) {}` lowers to a program that NEVER
+// TERMINATES, because the guard that would have advanced the iterator runs once,
+// before the loop, and the condition it leaves behind is a constant.
+//
+// A `for` INITIALIZER and a `for…of`/`for…in` ITERABLE are each evaluated once,
+// before the first iteration, so hoisting their guard in front of the loop
+// preserves both the order and the count. The withdrawn walk refused the
+// iterable anyway; it is accepted now.
+//
+// @see conditionallyEvaluatedPosition
+func repeatedlyEvaluatedPosition(node *ast.Node) bool {
+	current := node
+	for current.Parent != nil {
+		parent := current.Parent
+		if ast.IsFunctionLikeDeclaration(parent) {
+			return false
+		}
+		switch parent.Kind {
+		case ast.KindWhileStatement:
+			return current == parent.AsWhileStatement().Expression
+		case ast.KindDoStatement:
+			return current == parent.AsDoStatement().Expression
+		case ast.KindForStatement:
+			data := parent.AsForStatement()
+			return current == data.Condition || current == data.Incrementor
+		case ast.KindForInStatement, ast.KindForOfStatement:
+			return false
+		}
+		current = parent
+	}
+	return false
+}
+
+// precededByUnhoistedEffect is the third residue, and the one the withdrawn walk
+// was hiding rather than stating: a guard hoisted to the front of the statement
+// jumps over anything to its LEFT that is not hoisted with it.
+//
+// `g() + r!` lowers to `const t = r; if (!t.ok) return t; g() + t.value`, which
+// evaluates `r`'s producer BEFORE `g()`. The old walk refused it as a
+// "placement", which is why the reordering never had to be described. It is not
+// a placement fact: `scoreOf("a")! + scoreOf("b")!` is the same shape and IS
+// order-preserving, because both guards hoist and they hoist in authored order
+// — `lowerPropagation` clears `l.impure` after appending its own pending
+// statements for exactly that reason.
+//
+// So the condition is about what precedes, not about where the `!` sits: every
+// expression evaluated before it, within the enclosing statement, must be free
+// of effects the lowering leaves behind. A nested propagation counts as free;
+// anything WRAPPING one does not.
+//
+// This is deliberately not `l.impure`, the flag the visitor already maintains.
+// That flag is fed by `isEffectful`, which counts a property or element READ as
+// an effect, and the reference frontend's rule does not: `sink.push(fallible(v)!)`
+// has `sink.push` to the left of the propagation and is accepted on the
+// reference. Reusing the flag would refuse it here and reopen the divergence
+// this change closes.
+//
+// @see conditionallyEvaluatedPosition
+func (l *lowerer) precededByUnhoistedEffect(node *ast.Node) bool {
+	current := node
+	for current.Parent != nil && !ast.IsFunctionLikeDeclaration(current.Parent) {
+		parent := current.Parent
+		reached := false
+		blocked := false
+		parent.ForEachChild(func(child *ast.Node) bool {
+			if child == current {
+				reached = true
+				return false
+			}
+			if !reached && l.unhoistedEffectIn(child) {
+				blocked = true
+				return true
+			}
+			return false
+		})
+		if blocked {
+			return true
+		}
+		if ast.IsStatement(parent) {
+			return false
+		}
+		current = parent
+	}
+	return false
+}
+
+// unhoistedEffectIn reports whether a subtree evaluated ahead of a propagation
+// point leaves an effect behind that the propagation's guard would jump over.
+//
+// @see precededByUnhoistedEffect
+func (l *lowerer) unhoistedEffectIn(subtree *ast.Node) bool {
+	found := false
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		// Creating a closure evaluates nothing inside it.
+		if ast.IsFunctionLikeDeclaration(node) {
+			return false
+		}
+		// A nested propagation hoists its own guard, in authored order, ahead of
+		// this one. Its receiver therefore does NOT stay behind, and descending
+		// into it would count the receiver's call as an unhoisted effect.
+		if ast.IsNonNullExpression(node) && l.analysis != nil && l.analysis.resultPropagations[node] != nil {
+			return false
+		}
+		if _, isExpect := l.prelude.expectCall(node); isExpect {
+			return false
+		}
+		switch node.Kind {
+		case ast.KindCallExpression, ast.KindNewExpression, ast.KindTaggedTemplateExpression,
+			ast.KindAwaitExpression, ast.KindYieldExpression, ast.KindDeleteExpression:
+			found = true
+			return true
+		case ast.KindBinaryExpression:
+			if isAssignmentOperator(node.AsBinaryExpression().OperatorToken.Kind) {
+				found = true
+				return true
+			}
+		case ast.KindPrefixUnaryExpression:
+			operator := node.AsPrefixUnaryExpression().Operator
+			if operator == ast.KindPlusPlusToken || operator == ast.KindMinusMinusToken {
+				found = true
+				return true
+			}
+		case ast.KindPostfixUnaryExpression:
+			operator := node.AsPostfixUnaryExpression().Operator
+			if operator == ast.KindPlusPlusToken || operator == ast.KindMinusMinusToken {
+				found = true
+				return true
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	visit(subtree)
+	return found
 }
 
 // enclosingFunction returns the function-like declaration a node sits in, or
@@ -8168,7 +8355,6 @@ func (l *lowerer) lowerPropagation(node *ast.Node, receiver *ast.Node) *ast.Node
 		l.impure = true
 		return l.visitor.VisitEachChild(node)
 	}
-	_, safe := safeUnwrapPlacement(node)
 	switch {
 	case !l.shape.result:
 		// A function that *has* an explicit contract which cannot carry the
@@ -8187,15 +8373,13 @@ func (l *lowerer) lowerPropagation(node *ast.Node, receiver *ast.Node) *ast.Node
 		}
 		return decline(node, "SMITHERS1202", "postfix ! propagation requires an enclosing Result-returning function")
 	case l.guardedByCatch:
-		return decline(node, "SMITHERS1205", "postfix ! propagation inside a JavaScript try statement with a catch clause is not lowered because its early return would silently bypass the catch handler; move the propagation point outside the try or consume the value explicitly")
-	case isInRepeatedLoopHeader(node):
-		// A loop condition, incrementor, or iteration expression is evaluated
-		// once per iteration, so the early-return guard this propagation lowers
-		// to cannot be hoisted in front of the loop without changing when it
-		// runs. It is a distinct refusal from the general placement rule.
-		return decline(node, "SMITHERS1703", "postfix ! propagation in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or propagate inside its body")
-	case !safe:
-		return decline(node, "SMITHERS1204", "postfix ! in this expression would require control-flow-aware evaluation-order rewriting; assign the Result to a local and propagate it in a simple statement")
+		return decline(node, "SMITHERS1205", "postfix ! propagation inside a JavaScript try statement with a catch clause is not lowered because the failure exit unwinds the computation past this catch clause: finally blocks and using disposals still run, catch never observes the failure, and delivering it as a thrown exception is prohibited; move the propagation point outside the try or consume the value explicitly")
+	case repeatedlyEvaluatedPosition(node):
+		return decline(node, "SMITHERS1703", "postfix ! propagation in a loop condition or incrementor is evaluated once per iteration, and the shipped lowering hoists its failure exit in front of the loop, which would run it a different number of times; assign before the loop or propagate inside its body")
+	case conditionallyEvaluatedPosition(node):
+		return decline(node, "SMITHERS1204", "postfix ! in a conditionally evaluated operand would have its failure exit hoisted to the enclosing statement by the shipped lowering, which would run it when the authored program would not have evaluated the operand at all; assign the Result to a local and propagate it unconditionally")
+	case l.precededByUnhoistedEffect(node):
+		return decline(node, "SMITHERS1204", "postfix ! after another effect in the same statement would have its failure exit hoisted in front of that effect by the shipped lowering, which would evaluate this operand too early; assign the Result to a local first, or propagate before the other effect")
 	}
 
 	visitedReceiver := l.visitor.VisitNode(receiver)

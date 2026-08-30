@@ -291,20 +291,37 @@ pass tracks both and refuses otherwise. Nothing is ever approximated: a refused
 construct is left byte-for-byte intact and reported at its authored span as a
 `lower`-phase diagnostic, and (under `noEmitOnError`) the request emits nothing.
 
-A propagation point is lifted only from a *statement-safe placement*: walking up
-from the call, the only wrappers crossed may be parentheses, `await`, `as`, `!`,
-a property read on the call, and the sole declarator of a single-declarator
-variable statement. An operand, an argument, a conditional branch, a
-short-circuit right side, or a further declarator ends the walk unsafely. This
-is the same rule the TypeScript instrument applies, and it is why
-`a().unwrap() + b().unwrap()` is refused rather than reordered.
+Placement itself is **not** a refusal condition. The statement-walk that used to
+decide it — parentheses, `await`, `as`, a property read, the sole declarator of a
+single-declarator variable statement, and nothing else — was withdrawn by
+`specification/failures.mdx` §Refusal Conditions on 2026-08-30, because the
+failure exit is an expression in every position. What survives is not a rule
+about placement but a fact about the shipped early-`return` lowering, which
+hoists a guard to the front of the enclosing statement. Hoisting preserves the
+authored order exactly where the operand is evaluated unconditionally and once,
+so three residual conditions are refused, and they apply to postfix `!` and
+`Result.expect()` alike:
+
+| Predicate | Refused because | Measured on this backend with the guard removed |
+| --- | --- | --- |
+| `repeatedlyEvaluatedPosition` | a `while`/`do`/`for` condition or a `for` incrementor runs once per iteration; the guard would run a different number of times | `while (next()!) {}` never terminates |
+| `conditionallyEvaluatedPosition` | the right side of `&&`/`\|\|`/`??`, either arm of a ternary, anything after a `?.` link, or a `case` label may not be evaluated at all | `maybe ?? r!` evaluates the skipped operand and propagates its failure |
+| `precededByUnhoistedEffect` | the guard jumps over anything to its left that is not hoisted with it | `g() + r!` calls the producer of `r` before `g()` |
+
+A member call, an element access, a call argument, a compound operand, a `for`
+initializer and a `for…of` iterable are each unconditional and once, and are
+lowered. `a()! + b()!` is **accepted** and order-preserving: both guards hoist,
+and they hoist in authored order. These are the same three predicates the
+TypeScript instrument applies, verified by running both backends over the same
+programs rather than by reading its source.
 
 | Code | Refusal |
 | --- | --- |
 | `SMITHERS1101` | a `Result.unwrap()` whose owner declares a contract that cannot carry the failure (reported at the declaration) |
 | `SMITHERS1202` | `Result.unwrap()` with no enclosing function to carry the failure at all |
-| `SMITHERS1204` | a propagation point outside a statement-safe placement |
-| `SMITHERS1205` | a propagation point inside a `try` with a `catch`, whose early return would make the `catch` silently dead |
+| `SMITHERS1204` | a propagation point in a conditionally evaluated operand, or preceded by an unhoisted effect in the same statement |
+| `SMITHERS1703` | a propagation point in a repeated loop header |
+| `SMITHERS1205` | a propagation point inside a `try` with a `catch`, whose failure exit unwinds past the `catch`; and, in its own sentence, a `panic(...)` or `Result.expect()` there, whose panic exit an ordinary `catch` is the wrong observer for |
 | `SMITHERS1206` | `Optional.unwrap()` with no Optional-capable owner |
 | `SMITHERS1251` | `Error.match` without a single object-literal argument |
 | `SMITHERS1252` | a case that is not a static Error class name with a function handler |
@@ -398,10 +415,16 @@ All through the process protocol:
   own `Result` or `Optional` is untouched while a sibling using the
   compiler-owned ones is lowered, class methods and concise arrows are lowered,
   and a nested non-Result function keeps its authored `throw`.
-- A propagation point outside a statement-safe placement is refused
-  (`SMITHERS1204`) with the authored call left intact, and a propagation point
-  inside a catch-guarded `try` is refused (`SMITHERS1205`) rather than emitting a
-  program whose `catch` is silently dead.
+- A propagation point in a conditionally evaluated operand or preceded by an
+  unhoisted effect is refused (`SMITHERS1204`), and one in a repeated loop header
+  is refused (`SMITHERS1703`), each with the authored call left intact; a
+  propagation point inside a catch-guarded `try` is refused (`SMITHERS1205`)
+  rather than emitting a program whose `catch` is silently dead, and a
+  `panic(...)` or `Result.expect()` there is refused by the same code under its
+  own sentence.
+- A propagation in a member call, an element access, a call argument, a compound
+  operand or a `for…of` iterable is lowered and runs, and two propagations in one
+  compound expression hoist in authored order.
 - The Result and Optional operation surface is executed with `node`: `match`,
   `map`, and `unwrapOr` run on both variants of both channels.
 - A diagnostic raised on a statement the internal lowering rewrote reports the
@@ -438,7 +461,7 @@ program, which is the program whose meaning the language actually defines.
   upstream parser change; the bridge does not fake one with text substitution.
 - Internal lowering covers the Result, Optional, `Result<Optional<…>>`, async
   Result, and nominal `Error.match` channels, and refuses the discarded-channel
-  and unsafe-placement shapes above. It does not implement the cross-function
+  and residual-hoisting shapes above. It does not implement the cross-function
   row analysis (`SMITHERS1302` parameter consumption, `SMITHERS1802`/`SMITHERS1803`
   generic rows, `SMITHERS1806` callback coverage), foreign-module trust
   (`SMITHERS1510`), capability/layer injection, or comptime.

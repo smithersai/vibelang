@@ -1108,10 +1108,18 @@ export function direct(kind: number): Result<number, E> {
 		"return new __smithersOk(__smithersUnwrapped1.value);",
 	} {
 		if !strings.Contains(texts["safe.js"], lowered) {
-			t.Fatalf("a statement-safe placement must still propagate (%q):\n%s", lowered, texts["safe.js"])
+			t.Fatalf("an unconditional, once-evaluated placement must still propagate (%q):\n%s", lowered, texts["safe.js"])
 		}
 	}
 
+	// `summed` is the case that separates the surviving rule from the withdrawn
+	// one. All three functions here are "expression-nested" and the retired
+	// statement-walk refused all four propagation points in them. Only the first
+	// two shapes are still refused, because only they are the thing the shipped
+	// lowering cannot hoist: `side()` is an effect the guard would jump over, and
+	// a ternary arm may not be evaluated at all. `value(kind)! + value(kind+1)!`
+	// hoists BOTH guards, in authored order, so it compiles and runs — pinned
+	// green by TestPinnedForkInternalLoweringHoistsTwoPropagationsInOrder below.
 	unsafe := `export class E extends Error { }
 
 export function value(kind: number): Result<number, E> {
@@ -1138,9 +1146,13 @@ export function summed(kind: number): Result<number, E> {
 	if !result.EmitSkipped || len(result.Artifacts) != 0 {
 		t.Fatalf("a refused propagation must suppress emit: %v", artifactPaths(result.Artifacts))
 	}
-	ordered := requireDiagnostic(t, result, "SMITHERS1204", "unsafe.sm", "evaluation-order rewriting")
+	ordered := requireDiagnostic(t, result, "SMITHERS1204", "unsafe.sm", "after another effect in the same statement")
 	if ordered.Span == nil || ordered.Span.Start != strings.Index(unsafe, "value(kind)!") {
 		t.Fatalf("SMITHERS1204 must land on the authored call: %#v", ordered.Span)
+	}
+	conditional := requireDiagnostic(t, result, "SMITHERS1204", "unsafe.sm", "conditionally evaluated operand")
+	if conditional.Span == nil || conditional.Span.Start != strings.Index(unsafe, "flag ? value(kind)!")+len("flag ? ") {
+		t.Fatalf("SMITHERS1204 must land on the ternary arm: %#v", conditional.Span)
 	}
 	found := 0
 	for _, item := range result.Diagnostics {
@@ -1148,8 +1160,43 @@ export function summed(kind: number): Result<number, E> {
 			found++
 		}
 	}
-	if found != 4 {
-		t.Fatalf("every operand-position propagation must be refused: %#v", result.Diagnostics)
+	if found != 2 {
+		t.Fatalf("exactly the preceded-effect and conditional operands are refused: %#v", result.Diagnostics)
+	}
+}
+
+// TestPinnedForkInternalLoweringHoistsTwoPropagationsInOrder is the acceptance
+// half of the refusal above, and the reason `precededByUnhoistedEffect` asks
+// about what PRECEDES rather than about where the `!` sits.
+//
+// `value(a)! + value(b)!` has a propagation in an operand position the withdrawn
+// statement-walk refused, and it is order-preserving: both guards hoist, they
+// hoist in authored order, and `lowerPropagation` clears the impurity flag after
+// appending its own pending statements so the second point is not charged for the
+// first. The emitted program calls the producers left to right.
+func TestPinnedForkInternalLoweringHoistsTwoPropagationsInOrder(t *testing.T) {
+	source := `export class E extends Error { }
+
+const trace: string[] = [];
+
+export function value(kind: string): Result<number, E> {
+    trace.push(kind);
+    return kind.length;
+}
+
+export function summed(): Result<string[], E> {
+    const total = value("aa")! + value("bbb")!;
+    return [` + "`${total}`" + `, trace.join(",")];
+}
+
+export function main(): string[] {
+    return summed().match({ ok: (value) => value, error: () => ["err"] });
+}
+`
+	result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}})
+	requireCleanCompile(t, result)
+	if got, want := runEmittedMain(t, result), "5\naa,bbb"; got != want {
+		t.Fatalf("emitted program printed %q, want %q", got, want)
 	}
 }
 
@@ -1257,7 +1304,7 @@ export async function chained(key: string): Promise<string> {
 		detail string
 		needle string
 	}{
-		{code: "SMITHERS1205", detail: "silently bypass the catch handler", needle: "lookup(key)!"},
+		{code: "SMITHERS1205", detail: "unwinds the computation past this catch clause", needle: "lookup(key)!"},
 		{code: "SMITHERS1301", detail: "Result value is not consumed", needle: "lookup(key);\n    return \"done\";"},
 		{code: "SMITHERS1402", detail: "started Promise is not consumed", needle: "fetched(key);\n    return \"done\";"},
 		{code: "SMITHERS1401", detail: "unavailable in authored .sm", needle: "fetched(key).then("},

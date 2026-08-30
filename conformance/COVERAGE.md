@@ -236,10 +236,19 @@ reference backend: of the six placements §Refusal Conditions lists as accepted,
 `postfix-bang-before-an-element-access-is-rejected`,
 `postfix-bang-in-a-call-argument-is-rejected` and
 `unwrap-in-a-compound-expression-is-rejected` now carry `expect: "output"` with
-re-derived stdout, keep their filenames so the rows below keep resolving, and
-carry `xfail(go)` markers: the Go fork still holds the withdrawn walk in
-`safeUnwrapPlacement` and refuses these programs, which is a **fail-closed**
-divergence and holds no fail-open.
+re-derived stdout and keep their filenames so the rows below keep resolving.
+
+**The `xfail(go)` markers those four carried were retired on 2026-08-30, the
+same day, by porting the withdrawal to the fork.** `safeUnwrapPlacement`,
+`isInRepeatedLoopHeader` and `foreignResultIsUsedAsValue` are deleted from
+`compiler/forkbridge/lowering.go.txt` and replaced by the reference's three
+predicates, applied to postfix `!` and `Result.expect()` alike. Six markers
+retired in total — the four above plus
+`09-foreign-calls/an-inferred-fallible-callback-into-a-trusted-host-still-needs-a-contract`
+and `09-foreign-calls/an-untrusted-foreign-result-used-in-an-expression-is-rejected`
+— taking the register from 17 to 11 and backend agreement from 498/515 to
+504/515. Nothing in the fork now enforces the withdrawn walk, so no note may
+say that it does.
 
 **Two cases stay red, with rewritten notes, and they are no longer evidence of a
 placement rule.** `postfix-bang-as-a-nullish-right-operand-is-rejected`
@@ -251,6 +260,14 @@ its left. Hoisting `while (next()!) {}` produces a program that never terminates
 which is the measurement that keeps the loop rule alive. A third position —
 `g() + r!`, a propagation preceded by an unhoisted effect — is refused by the
 same code and is not yet pinned by a corpus case.
+
+All three were re-measured on the **Go fork** on 2026-08-30 by disabling its
+newly ported predicates and running the programs: `while (next()!) {}` ran the
+guard once in front of the loop and left a constant condition behind,
+`maybe ?? r!` evaluated the skipped operand and propagated its failure, and
+`g() + r!` traced `score,g` where the authored program traces `g,score`. With
+the predicates in place both backends refuse all three with the same code at the
+same position.
 
 `conformance/product-divergence.json` still has no row for this and correctly so:
 corpus and product agree with each other, and the specification now agrees with

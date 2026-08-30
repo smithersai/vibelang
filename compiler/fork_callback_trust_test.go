@@ -284,10 +284,19 @@ func TestPinnedForkCallbackTrustLeavesNeighbouringRulesAlone(t *testing.T) {
 				"  registerAll([(value) => { sink.push(fallible(value)!) }])\n" +
 				"  return sink\n" +
 				"}\n",
-			// The reference reports the identical pair at the identical
-			// positions; SMITHERS1204 is the postfix-`!`-inside-an-argument rule
-			// and rides along with the contract refusal on both backends.
-			reject: []string{"SMITHERS1204@12:39", "SMITHERS1303@12:16"},
+			// EXACTLY ONE diagnostic, and the absence of the second is what this
+			// case now pins. `sink.push(fallible(value)!)` used to draw a
+			// SMITHERS1204 at 12:39 as well, from the statement-walk that refused
+			// a `!` in a call argument. specification/failures.mdx §Refusal
+			// Conditions withdrew that walk (DECISIONS.md §Typed failures,
+			// 2026-08-30): the argument is evaluated unconditionally, exactly
+			// once, and the only thing to its left is the property read
+			// `sink.push`, which leaves no effect behind for a hoisted guard to
+			// jump over. The callback-ownership rule never consulted placement
+			// and must not have moved with it, so SMITHERS1303 stands alone.
+			// 09-foreign-calls/an-inferred-fallible-callback-into-a-trusted-host-still-needs-a-contract
+			// is the conformance case that holds the pair on both backends.
+			reject: []string{"SMITHERS1303@12:16"},
 		},
 	})
 }

@@ -16,6 +16,20 @@ export function untrustedLength(value: string): number { return value.length }
 func TestPinnedForkForeignCallsRejectOrderUnsafeShapes(t *testing.T) {
 	runFailClosedCases(t, []failClosedCase{
 		{
+			// The SURVIVING branch of SMITHERS1507, and the reason this case is
+			// written separately from the arithmetic one below: the outer call's
+			// callee is `makeCallable()`, which is not a stable reference the
+			// compiler can read once, so the lowered form would put a Result in
+			// callee position. That is PROVENANCE, and it is unaffected by the
+			// placement withdrawal.
+			//
+			// The diagnostic is charged at the OUTER call. It used to be charged
+			// at the inner one — through the retired "used as a value" branch,
+			// the inner call's result being read as a callee — with a
+			// same-position suppression on the outer so the two would not double
+			// up. Both are gone; see `foreignPolicy`. The authored position is
+			// identical either way, because a call expression starts where its
+			// callee starts.
 			name:    "unchecked foreign factory result cannot become the next callee",
 			support: foreignOrderSupport,
 			source: "import { Panic } from \"smithers:exceptions\"\n" +
@@ -26,14 +40,28 @@ func TestPinnedForkForeignCallsRejectOrderUnsafeShapes(t *testing.T) {
 			reject: []string{"SMITHERS1301@4:10", "SMITHERS1507@4:10"},
 		},
 		{
-			name:    "unchecked foreign result cannot feed an arithmetic expression",
+			// The RETIRED branch. `untrustedLength` is a stable identifier and
+			// its result is not itself an unchecked foreign value, so neither
+			// surviving condition holds; all that is left is that the call
+			// produces a `Result<number, Panic>` nothing consumes, which is
+			// SMITHERS1301 and is charged on its own.
+			//
+			// SMITHERS1507 used to ride along because the checked result was
+			// USED AS A VALUE. That was a placement constraint of the hoisted
+			// `Result.try(...)` wrapper wearing a provenance rule's name, and
+			// specification/failures.mdx §Refusal Conditions withdrew the
+			// hoisting argument it rested on (DECISIONS.md §Typed failures,
+			// 2026-08-30). The reference dropped the branch in the same change;
+			// 09-foreign-calls/an-untrusted-foreign-result-used-in-an-expression-is-rejected
+			// is the conformance case that pins the pair on both backends.
+			name:    "an unchecked foreign result in an expression is charged only where it is dropped",
 			support: foreignOrderSupport,
 			source: "import { Panic } from \"smithers:exceptions\"\n" +
 				"import { untrustedLength } from \"./foreign.ts\"\n" +
 				"export function go(): Result<number, Panic> {\n" +
 				"  return untrustedLength(\"x\") + 1\n" +
 				"}\n",
-			reject: []string{"SMITHERS1301@4:10", "SMITHERS1507@4:10"},
+			reject: []string{"SMITHERS1301@4:10"},
 		},
 	})
 }

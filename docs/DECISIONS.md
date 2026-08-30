@@ -382,14 +382,25 @@ site-table diff normatively obliges an implementation to do.
      the measurement corrects the size of the claim without changing the
      decision.
 
-  **What the Go fork does, said plainly rather than left to a marker.** The fork
-  still holds its own copy of the withdrawn walk in `safeUnwrapPlacement`, so it
-  refuses six programs the reference now accepts. That is a **fail-closed**
-  divergence — the fork compiles and runs nothing — and it is recorded as six
-  `xfail(go)` markers whose reasons name the function to change and the
-  condition to replace it with. `Markers holding a fail-open` stays at 0. The
-  reference is the normative backend; a fork that refuses more is a lag, not a
-  second dialect, and the markers are what stop it becoming one silently.
+  **What the Go fork does, said plainly rather than left to a marker.** The
+  fork held its own copy of the withdrawn walk in `safeUnwrapPlacement` for a
+  few hours on 2026-08-30 and refused six programs the reference accepts — a
+  **fail-closed** divergence recorded as six `xfail(go)` markers. **All six were
+  retired the same day.** `safeUnwrapPlacement`, `isInRepeatedLoopHeader` and
+  `foreignResultIsUsedAsValue` are deleted from
+  `compiler/forkbridge/lowering.go.txt` and replaced by the same three
+  predicates, so the two backends now refuse the same three positions for the
+  same stated reason, and the fork applies them to `Result.expect()` as well as
+  to postfix `!`. The port was verified by running both backends over the same
+  programs rather than by transcribing the reference's source, which is what
+  caught two things a transcription would have missed: deleting
+  `foreignResultIsUsedAsValue` alone left `makeCallable()("x")` unreported on the
+  fork, because a same-position suppression it had needed outlived it; and the
+  fork had never implemented the PANIC arm of `SMITHERS1205` at all, so
+  `panic(...)` inside a catch-guarded `try` compiled there and the `catch`
+  swallowed the abort. Both are closed. `Markers holding a fail-open` stays at 0.
+  The reference is the normative backend; a fork that refuses more is a lag, not
+  a second dialect, and the markers are what stop it becoming one silently.
 
 - **Locked:** Calling `panic(...)` does not widen a return type into
   `Result<A, Panic>`. This follows from the existing rules rather than being a
