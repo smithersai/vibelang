@@ -1129,6 +1129,31 @@ site-table diff normatively obliges an implementation to do.
   site reaching a function with a non-empty effect row. It is a fast-rebuild
   convenience for files with empty rows and must not be presented as a general
   build mode.
+- **Measured 2026-08-30, because "the default" was an estimate and this ledger's
+  numbers are supposed to be measured.** Over every cleanly-compiling conformance
+  program (242 cases, 1205 call sites), classifying each call site by whether one
+  file alone can decide the callee's convention: **93.2% are decidable in-file** —
+  same-file declaration 37.6%, compiler prelude or intrinsic 29.8%, lib/host
+  23.2%, foreign `.ts` 2.7% — and **6.8% fail closed**, of which cross-file `.sm`
+  calls are 1.1% and checker-unresolved sites 5.7%. Cross-file callees that
+  actually carry a non-empty effect row — the population the sentence above names
+  — are **0.2%** of all call sites corpus-wide.
+
+  The corpus is 228 of 242 single-module, so that understates a real project.
+  Restricted to the multi-module programs (14 programs, 65 call sites): **21.5%
+  fail closed**, and **4.6%** reach a non-empty-row callee across a file
+  boundary. Over the shipped `poc/src` tree (123 non-test files, 17,014 call
+  sites), **10.7%** of call sites are cross-file within the project.
+
+  **The blast radius is real and it is not "nearly every call site".** The
+  sentence above is true as a conditional — a cross-file call to a non-empty-row
+  callee does fail closed, and one file cannot tell — but read as a claim about
+  how much of a program stops compiling it is high by roughly an order of
+  magnitude: about one call site in five in a multi-module program, not four in
+  five. Recorded so nobody re-derives it, and so the product decision rests on
+  the measured number. **The decision does not change:** transform-only stays
+  unusable as a general build mode, because the fifth of call sites it refuses is
+  not a subset an author can predict, confine, or design around.
 - **Direction:** Comptime loaders and their imported assets participate in the
   compiler's content-addressed incremental graph, forming an early part of the
   broader build-machine design without requiring loader authors to use a

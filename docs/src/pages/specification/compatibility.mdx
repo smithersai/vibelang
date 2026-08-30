@@ -403,6 +403,10 @@ Transform-only MUST NOT be presented as a conforming implementation of the langu
 
 Whether a called function is emitted in the resumable calling convention is whole-program information. A transform-only build therefore fails closed at nearly every call site that reaches a function with a non-empty effect row. Transform-only mode is a fast-rebuild convenience for files with empty rows and MUST NOT be presented as a general build mode.
 
+:::note[Blast radius, measured 2026-08-30]
+The sentence above is a conditional and it is exact: a cross-file call to a callee with a non-empty effect row cannot be lowered from one file, and the build MUST refuse it. It is not a claim that most call sites refuse. Measured over the conformance corpus (242 cleanly-compiling programs, 1205 call sites), 93.2% of call sites are decidable in-file and 6.8% are not; restricted to the multi-module programs, 21.5% of call sites are undecidable in-file and 4.6% reach a non-empty-row callee across a file boundary. Over the reference implementation's own source tree, 10.7% of call sites are cross-file. About one call site in five in a multi-module program, not four in five — and still enough that the mode cannot be offered as a general one, because the refused fifth is not a subset an author can predict or confine. Recorded in `docs/DECISIONS.md` §Build integration.
+:::
+
 ### Incrementality
 
 The plugin MUST expose accurate invalidation to the host tool's watch mode. A `.sm` file's transform result depends on its own contents, the contents of the modules it imports whose rows it consumes, comptime inputs, and the target — and every one of those MUST invalidate it. This is more sensitive than it was: a callee's row changing from empty to non-empty changes every caller's emitted shape, not only its diagnostics.
