@@ -92,7 +92,8 @@ export const jsBackend = {
  *   { kind: "output", stages, stdout: string[], exitCode, stderr }
  *   { kind: "error", stages, reason }             — the backend itself broke
  */
-export async function runJsCase(testCase, { keepDirectory = false } = {}) {
+export async function runJsCase(testCase, options = {}) {
+  const { keepDirectory = false, effectLowering, epilogue } = options;
   // Realpath'd, and not cosmetically. macOS hands out `/var/folders/...`
   // temporary directories and the frontend canonicalizes them to
   // `/private/var/folders/...`, so a diagnostic's file and this project's root
@@ -141,6 +142,10 @@ export async function runJsCase(testCase, { keepDirectory = false } = {}) {
       // all. It cannot make a refused program look accepted — the durable
       // diagnostics travel with the response either way. See `js-lower.mjs`.
       expectsOutput: testCase.expectation.expect === "output",
+      // Absent for the reference backend, so the driver takes the exact
+      // `compileProject` call it took before the option existed. `backend-js-yield.mjs`
+      // is the only caller that sets it.
+      ...(effectLowering === undefined ? {} : { effectLowering }),
     });
     const lowered = await run("bun", [lowerDriver], { input: payload, cwd: repositoryRoot });
     if (lowered.error) {
@@ -212,7 +217,13 @@ export async function runJsCase(testCase, { keepDirectory = false } = {}) {
       await writeFile(join(directory, fileName.replace(/\.sm$/, ".ts")), compiled.code);
     }
     const entryModule = `./${testCase.entry.replace(/\.sm$/, ".ts")}`;
-    await writeFile(join(directory, "conformance-harness.ts"), harnessText(entryModule, identityAccessor));
+    // `epilogue` runs after every line the program printed, so it can only add
+    // an exit code and stderr — never a stdout line, which is the observation
+    // the two JS backends are compared on.
+    await writeFile(
+      join(directory, "conformance-harness.ts"),
+      harnessText(entryModule, identityAccessor) + (epilogue ?? ""),
+    );
 
     const executed = await run("bun", [join(directory, "conformance-harness.ts")], { cwd: directory });
     if (executed.error) {

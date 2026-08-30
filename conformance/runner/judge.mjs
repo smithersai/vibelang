@@ -238,9 +238,32 @@ function looksUnimplemented(observation) {
   return false;
 }
 
+/**
+ * A backend that inherits another's `xfail` markers, and why exactly one does.
+ *
+ * `js-yield` is the reference INSTRUMENT under a different emit option, not a
+ * different implementation: same frontend, same diagnostics, same emitted-code
+ * check. A marker naming `js` is therefore a statement about behaviour
+ * `js-yield` shares, and requiring every such marker to be restated would put a
+ * per-lowering vocabulary into the corpus — one more thing that can be forgotten
+ * on the next marker and produce a `FAIL` that means "nobody updated the list".
+ *
+ * MEASURED: without this, the full corpus under `--backend js-yield` reported
+ * `514/515, 1 divergent` with `Backend agreement: 515/515` — the two lowerings
+ * produced IDENTICAL observations on every case, and the single red row was the
+ * marker not applying rather than anything disagreeing.
+ *
+ * Inheritance is one-directional and does not weaken the marker: an inherited
+ * `xfail` that starts passing still reports `xpass`, so a gap closed under one
+ * lowering and not the other is still visible.
+ */
+const INHERITED_MARKERS = { "js-yield": "js" };
+
 export function judge(testCase, observation, backend) {
   const expectation = testCase.expectation;
-  const expectedToFail = (expectation.xfail?.backends ?? []).includes(backend);
+  const marked = expectation.xfail?.backends ?? [];
+  const expectedToFail = marked.includes(backend) ||
+    (INHERITED_MARKERS[backend] !== undefined && marked.includes(INHERITED_MARKERS[backend]));
 
   // No observation, no verdict. A backend that crashed, timed out, or refused
   // the request has not disagreed with the corpus and has not "not implemented"

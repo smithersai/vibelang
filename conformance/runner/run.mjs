@@ -2,16 +2,18 @@
 /**
  * Smithers differential conformance runner.
  *
- * Three modes, all over the same corpus:
+ * Four modes, all over the same corpus:
  *
- *   --backend js     run the JS instrument only (the reference; a real gate)
- *   --backend go     run the pinned Go fork only (the migration target)
- *   --backend both   run both and diff them (default)
+ *   --backend js        run the JS instrument only (the reference; a real gate)
+ *   --backend go        run the pinned Go fork only (the migration target)
+ *   --backend both      run both and diff them (default)
+ *   --backend js-yield  run the reference and the `effectLowering: "yield"`
+ *                       lowering of the same instrument, and diff them
  *
  * Usage:
  *   node conformance/runner/run.mjs [options]
  *
- *   --backend <js|go|both>  which backends to run (default both)
+ *   --backend <js|go|both|js-yield>  which backends to run (default both)
  *   --filter <substring>    only cases whose id contains the substring
  *   --interop               also run the plain-TypeScript interop spot-check
  *   --only-interop          run only the interop spot-check
@@ -86,6 +88,7 @@
 import { loadCorpus, loadInterop } from "./corpus.mjs";
 import { jsBackend, runJsCase, runJsInterop } from "./backend-js.mjs";
 import { goBackend, prepareGoBackend, runGoCase, runGoInterop } from "./backend-go.mjs";
+import { jsYieldBackend, runJsYieldCase, runJsYieldInterop } from "./backend-js-yield.mjs";
 import { auditVerdict, canonicalExpectation, compareObservations, judge } from "./judge.mjs";
 import { mapPool } from "./process.mjs";
 
@@ -97,7 +100,23 @@ import { mapPool } from "./process.mjs";
 const STATUS_ORDER = ["pass", "xpass", "xfail", "unsupported", "fail", "unmeasured"];
 
 /** Every backend this runner knows how to ask. Order is report order. */
-const BACKENDS = ["js", "go"];
+const BACKENDS = ["js", "go", "js-yield"];
+
+/**
+ * What each `--backend` value asks for, as one table.
+ *
+ * `js-yield` asks for the reference alongside it, exactly as `both` asks for
+ * the reference alongside the fork, and for the same reason: the claim that
+ * backend exists to check is a DIFFERENCE — one program, two calling
+ * conventions, one observation — and a column with nothing beside it cannot
+ * state a difference. See `backend-js-yield.mjs`.
+ */
+const BACKEND_SELECTIONS = {
+  js: ["js"],
+  go: ["go"],
+  both: ["js", "go"],
+  "js-yield": ["js", "js-yield"],
+};
 
 /**
  * The backends one `--backend` value asks for.
@@ -116,7 +135,8 @@ const BACKENDS = ["js", "go"];
  * each, so a backend cannot be enforced in one place and forgotten in the other.
  */
 export function requestedBackends(backend) {
-  return BACKENDS.filter((name) => backend === name || backend === "both");
+  const selection = BACKEND_SELECTIONS[backend];
+  return selection ? BACKENDS.filter((name) => selection.includes(name)) : [];
 }
 
 function parseArguments(argv) {
@@ -160,8 +180,10 @@ function parseArguments(argv) {
         throw new Error(`unknown option ${argument}`);
     }
   }
-  if (!["js", "go", "both"].includes(options.backend)) {
-    throw new Error(`--backend must be js, go, or both (got ${options.backend})`);
+  if (!Object.hasOwn(BACKEND_SELECTIONS, options.backend)) {
+    throw new Error(
+      `--backend must be one of ${Object.keys(BACKEND_SELECTIONS).join(", ")} (got ${options.backend})`,
+    );
   }
   return options;
 }
@@ -224,6 +246,7 @@ export async function runConformance(options = {}) {
   const requested = requestedBackends(backend);
   const wantJs = requested.includes("js");
   const wantGo = requested.includes("go");
+  const wantJsYield = requested.includes("js-yield");
   // `options.cases` exists for the harness's own self-test, which runs
   // deliberately broken expectations through the real backends and asserts the
   // runner notices. Nothing else supplies it; the corpus on disk is the corpus.
@@ -255,7 +278,7 @@ export async function runConformance(options = {}) {
   };
   const byId = new Map(report.cases.map((entry) => [entry.id, entry]));
   const interopById = new Map(report.interop.map((entry) => [entry.id, entry]));
-  const observations = { js: new Map(), go: new Map() };
+  const observations = Object.fromEntries(BACKENDS.map((name) => [name, new Map()]));
 
   if (wantJs) {
     const reason = await jsBackend.probe();
@@ -273,6 +296,33 @@ export async function runConformance(options = {}) {
       await mapPool(interopCases, options.jobs ?? 6, async (interopCase) => {
         const observation = await runJsInterop(interopCase);
         interopById.get(interopCase.id).results.js = { observation, ...judgeInterop(interopCase, observation) };
+      });
+    }
+  }
+
+  if (wantJsYield) {
+    // Runs the same instrument as the reference, so its availability is the
+    // reference's: bun. Probed through its own descriptor anyway, because a
+    // backend that inherited another's availability could not report itself as
+    // unavailable and would be scored on cases it never ran.
+    const reason = await jsYieldBackend.probe();
+    if (reason) {
+      report.backends["js-yield"] = { available: false, reason };
+    } else {
+      report.backends["js-yield"] = { available: true, label: jsYieldBackend.label };
+      await mapPool(cases, options.jobs ?? 6, async (testCase) => {
+        const observation = await runJsYieldCase(testCase);
+        observations["js-yield"].set(testCase.id, observation);
+        const verdict = judge(testCase, observation, "js-yield");
+        report.audit.push(...auditVerdict(testCase, observation, verdict, jsYieldBackend));
+        byId.get(testCase.id).results["js-yield"] = { ...verdict, observation };
+      });
+      await mapPool(interopCases, options.jobs ?? 6, async (interopCase) => {
+        const observation = await runJsYieldInterop(interopCase);
+        interopById.get(interopCase.id).results["js-yield"] = {
+          observation,
+          ...judgeInterop(interopCase, observation),
+        };
       });
     }
   }
@@ -302,16 +352,24 @@ export async function runConformance(options = {}) {
     }
   }
 
-  if (wantJs && wantGo && report.backends.js?.available && report.backends.go?.available) {
+  // The pair is derived from what was requested rather than named, so
+  // `--backend both` still diffs js against go and `--backend js-yield` diffs
+  // js against js-yield with the same code, the same detail strings, and the
+  // same `Backend agreement:` line. A selection of one backend has no pair and
+  // leaves `agreement` undefined, exactly as before.
+  const pair = requested.length === 2 && requested.every((name) => report.backends[name]?.available)
+    ? requested
+    : undefined;
+  if (pair) {
     for (const entry of report.cases) {
-      const left = observations.js.get(entry.id);
-      const right = observations.go.get(entry.id);
+      const left = observations[pair[0]].get(entry.id);
+      const right = observations[pair[1]].get(entry.id);
       if (!left || !right) continue;
-      entry.agreement = compareObservations(left, right);
+      entry.agreement = compareObservations(left, right, pair[0], pair[1]);
     }
   }
 
-  report.summary = summarize(report, { wantJs, wantGo });
+  report.summary = summarize(report, requested, pair);
   report.audit.push(...verifyCounts(report));
   return report;
 }
@@ -336,6 +394,11 @@ function judgeInterop(interopCase, observation) {
   return same
     ? { status: "pass", detail: "" }
     : { status: "fail", detail: `stdout ${JSON.stringify(observation.stdout)} != ${JSON.stringify(expected)}` };
+}
+
+/** One backend's interop bucket in the summary. */
+function interopKey(backend) {
+  return `${backend}Interop`;
 }
 
 function tally(entries, backend) {
@@ -369,12 +432,8 @@ function tally(entries, backend) {
  */
 function verifyCounts(report) {
   const violations = [];
-  for (const [name, entries] of [
-    ["js", report.cases],
-    ["go", report.cases],
-    ["jsInterop", report.interop],
-    ["goInterop", report.interop],
-  ]) {
+  const rows = BACKENDS.flatMap((name) => [[name, report.cases], [interopKey(name), report.interop]]);
+  for (const [name, entries] of rows) {
     const counts = report.summary[name];
     if (!counts) continue;
     const summed = STATUS_ORDER.reduce((total, status) => total + counts[status], 0);
@@ -432,17 +491,14 @@ function failOpenMarkers(report, backend) {
   return holding;
 }
 
-function summarize(report, { wantJs, wantGo }) {
+function summarize(report, requested, pair) {
   const summary = {};
-  if (wantJs && report.backends.js?.available) {
-    summary.js = tally(report.cases, "js");
-    summary.jsInterop = tally(report.interop, "js");
+  const ran = requested.filter((name) => report.backends[name]?.available);
+  for (const name of ran) {
+    summary[name] = tally(report.cases, name);
+    summary[interopKey(name)] = tally(report.interop, name);
   }
-  if (wantGo && report.backends.go?.available) {
-    summary.go = tally(report.cases, "go");
-    summary.goInterop = tally(report.interop, "go");
-  }
-  if (summary.js && summary.go) {
+  if (pair) {
     summary.agreement = {
       compared: report.cases.filter((entry) => entry.agreement).length,
       agreed: report.cases.filter((entry) => entry.agreement?.agree).length,
@@ -452,51 +508,60 @@ function summarize(report, { wantJs, wantGo }) {
   // "no marker holds a fail-open" is a printed measurement rather than a
   // sentence somebody has to remember to update.
   const failOpen = {};
-  if (summary.js) failOpen.js = failOpenMarkers(report, "js");
-  if (summary.go) failOpen.go = failOpenMarkers(report, "go");
-  if (summary.js || summary.go) summary.failOpenMarkers = failOpen;
+  for (const name of ran) failOpen[name] = failOpenMarkers(report, name);
+  if (ran.length > 0) summary.failOpenMarkers = failOpen;
   return summary;
 }
 
-function renderTable(report, { wantJs, wantGo, quiet }) {
+function renderTable(report, { requested, quiet }) {
   const lines = [];
   const idWidth = Math.max(4, ...report.cases.map((entry) => entry.id.length));
+  // One column per requested backend, in report order, each as wide as its own
+  // name needs. A two-backend run renders exactly the two six-wide columns it
+  // always did; a name longer than five characters widens only its own column.
+  const columns = requested.map((name) => ({ name, width: Math.max(6, name.length + 1) }));
   // Counted from the rows this function actually emits, then checked against
   // the summary below. A scoreboard whose totals are computed independently of
   // its rows can disagree with them, and this one did.
-  const rendered = {
-    js: Object.fromEntries(STATUS_ORDER.map((status) => [status, 0])),
-    go: Object.fromEntries(STATUS_ORDER.map((status) => [status, 0])),
-  };
+  const rendered = Object.fromEntries(
+    requested.map((name) => [name, Object.fromEntries(STATUS_ORDER.map((status) => [status, 0]))]),
+  );
+  const cells = (entry) =>
+    columns.map(({ name, width }) => {
+      const result = entry.results[name];
+      return pad(result ? MARK[result.status] : MARK.skip, width);
+    }).join("");
   if (report.cases.length > 0) {
-    const header = `${pad("case", idWidth)}  ${wantJs ? pad("js", 6) : ""}${wantGo ? pad("go", 6) : ""} note`;
+    const header = `${pad("case", idWidth)}  ${columns.map(({ name, width }) => pad(name, width)).join("")} note`;
     if (!quiet) {
       lines.push(header);
       lines.push("-".repeat(header.length));
     }
     let area;
     for (const entry of report.cases) {
-      const js = entry.results.js;
-      const go = entry.results.go;
-      if (js && rendered.js[js.status] !== undefined) rendered.js[js.status] += 1;
-      if (go && rendered.go[go.status] !== undefined) rendered.go[go.status] += 1;
+      for (const { name } of columns) {
+        const result = entry.results[name];
+        if (result && rendered[name][result.status] !== undefined) rendered[name][result.status] += 1;
+      }
       if (quiet) continue;
       if (entry.area !== area) {
         area = entry.area;
         lines.push(`# ${area}`);
       }
       const notes = [];
-      if (js && js.status !== "pass" && js.detail) notes.push(`js ${CLASS[js.status]}: ${js.detail}`);
-      if (go && go.status !== "pass" && go.detail) notes.push(`go ${CLASS[go.status]}: ${go.detail}`);
-      if (entry.agreement && !entry.agreement.agree && !(go && go.status === "unsupported")) {
+      for (const { name } of columns) {
+        const result = entry.results[name];
+        if (result && result.status !== "pass" && result.detail) {
+          notes.push(`${name} ${CLASS[result.status]}: ${result.detail}`);
+        }
+      }
+      // An `unsupported` verdict on the compared backend is already the note;
+      // repeating it as a diff would report the same fact twice.
+      const compared = entry.results[columns[columns.length - 1]?.name];
+      if (entry.agreement && !entry.agreement.agree && !(compared && compared.status === "unsupported")) {
         notes.push(`diff: ${entry.agreement.detail}`);
       }
-      lines.push(
-        `${pad(entry.id, idWidth)}  ` +
-          `${wantJs ? pad(js ? MARK[js.status] : MARK.skip, 6) : ""}` +
-          `${wantGo ? pad(go ? MARK[go.status] : MARK.skip, 6) : ""} ` +
-          truncateNote(notes.join(" | ")),
-      );
+      lines.push(`${pad(entry.id, idWidth)}  ${cells(entry)} ${truncateNote(notes.join(" | "))}`);
     }
     if (!quiet) lines.push("");
   }
@@ -506,11 +571,10 @@ function renderTable(report, { wantJs, wantGo, quiet }) {
   // these are not, because a divergence that is cut off mid-diff is a
   // divergence nobody can act on.
   for (const status of ["fail", "unmeasured"]) {
-    for (const [name, want] of [["js", wantJs], ["go", wantGo]]) {
-      if (!want) continue;
+    for (const name of requested) {
       const hits = report.cases.filter((entry) => entry.results[name]?.status === status);
       if (hits.length === 0) continue;
-      lines.push(`# ${name} ${CLASS[status]} (${MARK[status]}) — ${hits.length}`);
+      lines.push(`# ${name} ${CLASS[status]} (${MARK[status]}) \u2014 ${hits.length}`);
       for (const entry of hits) {
         lines.push(`  ${entry.id}`);
         lines.push(`    expected: ${describeExpectation(entry)}`);
@@ -523,25 +587,21 @@ function renderTable(report, { wantJs, wantGo, quiet }) {
   if (!quiet && report.interop.length > 0) {
     lines.push("# interop (plain TypeScript through the fork)");
     for (const entry of report.interop) {
-      const js = entry.results.js;
-      const go = entry.results.go;
-      const notes = [js && js.status !== "pass" ? `js: ${js.detail}` : "", go && go.status !== "pass" ? `go: ${go.detail}` : ""]
+      const notes = columns
+        .map(({ name }) => {
+          const result = entry.results[name];
+          return result && result.status !== "pass" ? `${name}: ${result.detail}` : "";
+        })
         .filter(Boolean)
         .join(" | ");
-      lines.push(
-        `${pad(entry.id, idWidth)}  ` +
-          `${wantJs ? pad(js ? MARK[js.status] : MARK.skip, 6) : ""}` +
-          `${wantGo ? pad(go ? MARK[go.status] : MARK.skip, 6) : ""} ${notes}`,
-      );
+      lines.push(`${pad(entry.id, idWidth)}  ${cells(entry)} ${notes}`);
     }
     lines.push("");
   }
 
-  for (const [name, available] of [
-    ["js", report.backends.js],
-    ["go", report.backends.go],
-  ]) {
-    if (available && !available.available) lines.push(`${name}: unavailable — ${available.reason}`);
+  for (const name of requested) {
+    const available = report.backends[name];
+    if (available && !available.available) lines.push(`${name}: unavailable \u2014 ${available.reason}`);
   }
 
   const summary = report.summary;
@@ -557,12 +617,18 @@ function renderTable(report, { wantJs, wantGo, quiet }) {
         `, ${classBreakdown(summary.go)}`,
     );
   }
+  if (summary["js-yield"]) {
+    lines.push(
+      `JS yield:      ${summary["js-yield"].pass}/${summary["js-yield"].total} pass` +
+        `, ${classBreakdown(summary["js-yield"])}`,
+    );
+  }
   if (summary.agreement) {
     lines.push(`Backend agreement: ${summary.agreement.agreed}/${summary.agreement.compared} identical observations`);
   }
   if (summary.failOpenMarkers) {
     // Printed on every run, including when it is zero. `0 divergent` is silent
-    // about a fail-open that carries a marker — that is what a marker means —
+    // about a fail-open that carries a marker \u2014 that is what a marker means \u2014
     // so this line is the one that is not, and it is derived from the same
     // observations the table above prints rather than from any document.
     const holding = Object.entries(summary.failOpenMarkers).flatMap(([backend, rows]) =>
@@ -575,21 +641,21 @@ function renderTable(report, { wantJs, wantGo, quiet }) {
           : ""),
     );
     for (const row of holding) {
-      lines.push(`  ${row.backend}: ${row.id} — accepted and ran (exit ${row.exitCode})`);
+      lines.push(`  ${row.backend}: ${row.id} \u2014 accepted and ran (exit ${row.exitCode})`);
     }
   }
-  if (summary.jsInterop?.total) {
-    lines.push(`Interop (js):  ${summary.jsInterop.pass}/${summary.jsInterop.total} pass, ${classBreakdown(summary.jsInterop)}`);
-  }
-  if (summary.goInterop?.total) {
-    lines.push(`Interop (go):  ${summary.goInterop.pass}/${summary.goInterop.total} pass, ${classBreakdown(summary.goInterop)}`);
+  for (const name of requested) {
+    const interop = summary[interopKey(name)];
+    if (interop?.total) {
+      lines.push(`Interop (${name}):  ${interop.pass}/${interop.total} pass, ${classBreakdown(interop)}`);
+    }
   }
 
   // The last word belongs to the cross-check: the classes printed above are
   // recounted from the rows printed at the top, and any disagreement is stated
   // in the same output rather than left for a reader to discover.
-  for (const [name, want] of [["js", wantJs], ["go", wantGo]]) {
-    if (!want || !summary[name]) continue;
+  for (const name of requested) {
+    if (!summary[name]) continue;
     for (const status of STATUS_ORDER) {
       if (rendered[name][status] === summary[name][status]) continue;
       lines.push(
@@ -613,7 +679,10 @@ function classBreakdown(counts) {
 
 const HELP = `usage: node conformance/runner/run.mjs [options]
 
-  --backend <js|go|both>  backends to run (default both)
+  --backend <js|go|both|js-yield>
+                          backends to run (default both). js-yield runs the
+                          reference AND the effectLowering "yield" lowering of
+                          the same instrument, and diffs them
   --filter <substring>    only cases whose id contains the substring
   --interop               also run the plain-TypeScript interop spot-check
   --only-interop          run only the interop spot-check
@@ -632,7 +701,7 @@ exit codes
      no case was measured at all
   3  a harness-integrity failure: a verdict not backed by the checks it claims,
      or a summary whose counts disagree with the rows
-  64 a usage error (unknown option, or a --backend that is not js/go/both)
+  64 a usage error (unknown option, or an unknown --backend value)
 `;
 
 async function main(argv) {
@@ -659,11 +728,7 @@ async function main(argv) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else {
     process.stdout.write(
-      `${renderTable(report, {
-        wantJs: requested.includes("js"),
-        wantGo: requested.includes("go"),
-        quiet: options.quiet,
-      })}\n`,
+      `${renderTable(report, { requested, quiet: options.quiet })}\n`,
     );
   }
 
@@ -678,8 +743,11 @@ async function main(argv) {
   // A case nobody could measure is not a result. It never becomes "unsupported"
   // (which would read as migration progress) and it is not suppressible, on
   // either backend, in any mode.
-  const unmeasured = (report.summary.js?.unmeasured ?? 0) + (report.summary.go?.unmeasured ?? 0) +
-    (report.summary.jsInterop?.unmeasured ?? 0) + (report.summary.goInterop?.unmeasured ?? 0);
+  const unmeasured = requested.reduce(
+    (total, name) =>
+      total + (report.summary[name]?.unmeasured ?? 0) + (report.summary[interopKey(name)]?.unmeasured ?? 0),
+    0,
+  );
   if (unmeasured > 0) {
     process.stderr.write(`conformance: ${unmeasured} case(s) could not be measured; the run is not a measurement\n`);
     return 2;
@@ -723,8 +791,10 @@ async function main(argv) {
   // census to refuse. It is checked after the availability tests above so an
   // unprepared backend still reports itself rather than being described as an
   // empty corpus.
-  const measured = (report.summary.js?.total ?? 0) + (report.summary.go?.total ?? 0) +
-    (report.summary.jsInterop?.total ?? 0) + (report.summary.goInterop?.total ?? 0);
+  const measured = requested.reduce(
+    (total, name) => total + (report.summary[name]?.total ?? 0) + (report.summary[interopKey(name)]?.total ?? 0),
+    0,
+  );
   if (measured === 0) {
     process.stderr.write(
       "conformance: no case was measured, so this run is not a measurement" +
@@ -747,12 +817,9 @@ async function main(argv) {
   // availability arm above still hand-written per backend, and therefore still
   // wrong for `both`. Both arms now iterate one list, so the next backend added
   // is enforced in both places or in neither.
-  const failures = {
-    js: (report.summary.js?.fail ?? 0) + (report.summary.jsInterop?.fail ?? 0),
-    go: (report.summary.go?.fail ?? 0) + (report.summary.goInterop?.fail ?? 0),
-  };
   for (const name of requested) {
-    if (failures[name] > 0) return 1;
+    const failures = (report.summary[name]?.fail ?? 0) + (report.summary[interopKey(name)]?.fail ?? 0);
+    if (failures > 0) return 1;
   }
   return 0;
 }
