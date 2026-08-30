@@ -899,6 +899,66 @@ describe("checked .sm frontend", () => {
     expect(unsupported.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1703")).toBe(true);
   });
 
+  /**
+   * The three positions the withdrawn placement rule left behind.
+   *
+   * `specification/failures.mdx` §Refusal Conditions makes placement
+   * unrestricted, and the statement-walk that refused `r!.trim()`, `f(r!)` and
+   * `a! + b!` is deleted. What survives is not a rule about placement but a
+   * limit of the shipped early-`return` lowering, which hoists its guard to the
+   * front of the enclosing statement: that is order-preserving only where the
+   * operand is evaluated unconditionally, exactly once, and with nothing
+   * effectful to its left.
+   *
+   * Written as one accepted program and one rejected program per predicate,
+   * because each predicate can be lost without the other two moving — and the
+   * accepted halves are the ones that would silently come back if a future edit
+   * widened a predicate instead of narrowing it.
+   */
+  test("keeps exactly the three propagation positions the early-return lowering cannot hoist", () => {
+    const accepted = analyzeSource(`
+      class Failure extends Error {}
+      declare function next(): Result<string, Failure>
+      declare function keys(): Result<readonly string[], Failure>
+      declare function shout(text: string): string
+      function memberCall(): Result<string, Failure> { return next()!.trim() }
+      function callArgument(): Result<string, Failure> { return shout(next()!) }
+      function compound(): Result<string, Failure> { return next()! + next()! }
+      function nullishLeft(): Result<string, Failure> { return next()! ?? "fallback" }
+      function iterable(): Result<number, Failure> {
+        let total = 0
+        for (const key of keys()!) total += key.length
+        return total
+      }
+      function forInitializer(): Result<string, Failure> {
+        for (let value = next()!; value.length > 0; ) return value
+        return ""
+      }
+    `);
+    expect(accepted.diagnostics).toEqual([]);
+
+    const refused = analyzeSource(`
+      class Failure extends Error {}
+      declare function next(): Result<string, Failure>
+      declare function effect(): string
+      function conditionalOperand(maybe: string | undefined): Result<string, Failure> {
+        return maybe ?? next()!
+      }
+      function repeatedHeader(): Result<string, Failure> {
+        while (next()!.length > 0) { return "done" }
+        return ""
+      }
+      function afterAnEffect(): Result<string, Failure> { return effect() + next()! }
+    `);
+    // One per predicate, and nothing else: a fourth diagnostic here means a
+    // position that used to be accepted has been re-refused.
+    expect(refused.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.line])).toEqual([
+      ["SMITHERS1204", 6],
+      ["SMITHERS1703", 9],
+      ["SMITHERS1204", 12],
+    ]);
+  });
+
   test("does not treat an authored Reflect.panic property as the compiler intrinsic", () => {
     const source = `function call(): string { const Reflect = { panic(): string { return "ordinary" } }; return Reflect.panic() }\n`;
     const result = compileCase(source, "shadowed-reflect");

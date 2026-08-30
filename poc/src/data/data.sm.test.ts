@@ -74,7 +74,16 @@ const UNCOVERED = {
   // the host may extend. That is the shape this repository already inverted an
   // allowlist to get away from, so the narrower rule would be the more
   // dangerous one. Recorded as an uncovered code rather than carved out.
-  match: ["SMITHERS1510", "SMITHERS1303", "SMITHERS1301", "SMITHERS1507", "SMITHERS1509", "SMITHERS1604"],
+  //
+  // `SMITHERS1507` LEFT THIS LIST on 2026-08-30 and its absence is now part of
+  // what the row asserts. The rule had two branches, and this module only ever
+  // tripped the second: a checked foreign result USED AS A VALUE. That branch
+  // was a placement constraint of the hoisted `Result.try(...)` wrapper, not a
+  // provenance fact, and it was deleted with the statement-walk that justified
+  // it (`docs/DECISIONS.md` §Typed failures). The surviving branch — a foreign
+  // callee that is not a stable reference — does not fire here, so the module's
+  // blockers are one code shorter. It is still uncovered for the other five.
+  match: ["SMITHERS1510", "SMITHERS1303", "SMITHERS1301", "SMITHERS1509", "SMITHERS1604"],
 } as const;
 
 const DIR = import.meta.dir;

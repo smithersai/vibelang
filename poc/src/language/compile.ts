@@ -58,8 +58,18 @@ export interface CompileOptions extends AnalyzeOptions {
    * `"yield"` selects `specification/effects.mdx`'s resumable convention for
    * the DEPENDENCY half of the row only — a function whose `requirements` are
    * non-empty and whose `failures` are empty. Failure propagation is untouched
-   * in both modes: `!` still lowers to a `return` of the error variant, and
-   * `SMITHERS1204`/`1703`/`1507` still refuse what they refuse today.
+   * in both modes: `!` still lowers to a `return` of the error variant.
+   *
+   * Because it is untouched in both modes, the three refusals that remain on a
+   * propagation are NOT scoped to this option. `SMITHERS1204` and
+   * `SMITHERS1703` refuse a conditionally evaluated operand, a repeated loop
+   * header, and a propagation preceded by an unhoisted effect — the three
+   * positions where hoisting the guard to the front of the statement would move
+   * it — and they answer identically under both values. A refusal that fired
+   * under one and not the other would be the per-file dialect `DECISIONS.md`
+   * warns against by name. They retire with the `"return"` lowering itself, at
+   * which point the failure exit is a delegated suspension and stays where it
+   * was written.
    *
    * WHY THE FLAG EXISTS AT ALL, stated where it can be read before it is used.
    * Under `"yield"` the emitter must decide, at every call site, whether the
