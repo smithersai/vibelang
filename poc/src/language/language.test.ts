@@ -841,7 +841,12 @@ describe("checked .sm frontend", () => {
       function labeled(flag: boolean) { outer: while (flag) break outer }
     `);
     expect(result.diagnostics.map((diagnostic) => diagnostic.code))
-      .toEqual(expect.arrayContaining(["SMITHERS1001", "SMITHERS1204"]));
+      .toEqual(expect.arrayContaining(["SMITHERS1001"]));
+    // `1 + value()!` is no longer refused. `specification/failures.mdx`
+    // §Refusal Conditions withdrew the placement walk, and a compound operand is
+    // evaluated unconditionally and exactly once, so the shipped lowering can
+    // hoist its guard to the enclosing statement without moving it.
+    expect(result.diagnostics.filter((diagnostic) => diagnostic.line === 4)).toEqual([]);
     // A labeled loop is an ordinary TypeScript statement and stays accepted.
     const labeledLine = result.diagnostics.filter((diagnostic) => diagnostic.line === 5);
     expect(labeledLine).toEqual([]);

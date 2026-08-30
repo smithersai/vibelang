@@ -3852,7 +3852,7 @@ function unalias(symbol: ts.Symbol | undefined, checker: ts.TypeChecker): ts.Sym
  * value end up" — and each restated the table by hand, so they drifted exactly
  * as the eight operand walks had: `callPropagates` stripped
  * paren/`as`/`<T>`/`await`, `isReturnedOrPropagated` stripped
- * paren/`as`/`await`, and `foreignResultIsUsedAsValue` stripped
+ * paren/`as`/`await`, and the retired `foreignResultIsUsedAsValue` stripped
  * paren/`as`/`<T>`/`await`. None of the three knew `satisfies`, and the two
  * halves of one rule disagreed about `<T>x`.
  *
@@ -4085,14 +4085,18 @@ function foreignPolicy(
     held,
   );
   const stableCallee = isStableForeignCallee(call.expression, checker);
-  const unsafeUse = annotation !== "never" && foreignResultIsUsedAsValue(call, checker);
-  const lowerable = stableCallee && !origin.uncheckedResult && !unsafeUse;
+  // Two conditions, both about PROVENANCE. The third — "the checked result of
+  // this call is used as a value here" — was about PLACEMENT: it existed because
+  // a `Result.try(...)` wrapper had to be hoisted in front of the statement, and
+  // the wrapper is an expression that stays where it was written. It is retired
+  // with `SMITHERS1204`; see `DECISIONS.md` §Typed failures.
+  const lowerable = stableCallee && !origin.uncheckedResult;
   if (!lowerable) {
     diagnostics.push(at(
       call,
       sourceFile,
       "SMITHERS1507",
-      "this foreign call/result use is not expression-order-safe in the POC; assign the checked result, propagate it with postfix !, and continue through an explicitly typed local adapter",
+      "this foreign callee is not a stable reference the compiler can read once, or its result is already an unchecked foreign value; bind the callee to a const and propagate the checked result with postfix !, or continue through an explicitly typed local adapter",
     ));
   }
   for (const pending of held) diagnostics.push(pending);
@@ -4131,41 +4135,6 @@ function isStableForeignCallee(expression: ts.Expression, checker: ts.TypeChecke
     return isStableForeignCallee(expression.expression, checker);
   }
   return false;
-}
-
-/**
- * Prevent emitting `Result.try(() => make())(...)` before the checked result is
- * propagated.
- *
- * The climb uses the shared `forwardingParent` for the reason recorded there:
- * this walk restated the wrapper table by hand and omitted `satisfies`, so
- * `(parseTyped("ok") satisfies number)!` fell through to the terminal
- * "used as an expression" arm and was refused SMITHERS1507 while the
- * byte-adjacent `parseTyped("ok")!` ran. Over-refusal is as much a defect as a
- * fail-open, and `satisfies` is the one wrapper this codebase has pinned as
- * changing neither value, type, nor trust.
- */
-function foreignResultIsUsedAsValue(call: ts.CallExpression, checker: ts.TypeChecker): boolean {
-  let current: ts.Node = call;
-  for (;;) {
-    const forwarded = forwardingParent(current);
-    if (!forwarded) break;
-    current = forwarded;
-  }
-  const parent = current.parent;
-  if (parent && ts.isNonNullExpression(parent) && parent.expression === current) return false;
-  if (ts.isCallExpression(parent) || ts.isNewExpression(parent)) return true;
-  if ((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === current) return true;
-  if (ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken && parent.right === current) return true;
-  if ((ts.isForOfStatement(parent) || ts.isForInStatement(parent)) && parent.expression === current) return true;
-  if ((ts.isIfStatement(parent) || ts.isWhileStatement(parent) || ts.isDoStatement(parent)) && parent.expression === current) return true;
-  if (ts.isSwitchStatement(parent) && parent.expression === current) return true;
-  if (ts.isThrowStatement(parent) || ts.isSpreadElement(parent) || ts.isSpreadAssignment(parent)) return true;
-  if (ts.isConditionalExpression(parent)) return parent.condition === current;
-  if (ts.isArrayLiteralExpression(parent) || ts.isVariableDeclaration(parent) || ts.isPropertyAssignment(parent) ||
-    ts.isReturnStatement(parent) || ts.isExpressionStatement(parent) ||
-    (ts.isArrowFunction(parent) && parent.body === current)) return false;
-  return Boolean(parent && ts.isExpression(parent));
 }
 
 /**
@@ -6130,10 +6099,12 @@ function checkMustConsume(
       if (isResultPropagation(node, checker, callEdges)) {
         if (!info || (!info.declaredShape.channel.startsWith("result") && info.failures.size === 0)) {
           diagnostics.push(at(node, sourceFile, "SMITHERS1202", "postfix ! propagation requires an enclosing Result-returning function"));
-        } else if (isInRepeatedLoopHeader(node)) {
-          diagnostics.push(at(node, sourceFile, "SMITHERS1703", "postfix ! propagation in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or propagate inside its body"));
-        } else if (!isSafePropagationPlacement(node)) {
-          diagnostics.push(at(node, sourceFile, "SMITHERS1204", "postfix ! in this expression would require control-flow-aware evaluation-order rewriting; assign the Result to a local and propagate it in a simple statement"));
+        } else if (repeatedlyEvaluatedPosition(node)) {
+          diagnostics.push(at(node, sourceFile, "SMITHERS1703", "postfix ! propagation in a loop condition or incrementor is evaluated once per iteration, and the shipped lowering hoists its failure exit in front of the loop, which would run it a different number of times; assign before the loop or propagate inside its body"));
+        } else if (conditionallyEvaluatedPosition(node)) {
+          diagnostics.push(at(node, sourceFile, "SMITHERS1204", "postfix ! in a conditionally evaluated operand would have its failure exit hoisted to the enclosing statement by the shipped lowering, which would run it when the authored program would not have evaluated the operand at all; assign the Result to a local and propagate it unconditionally"));
+        } else if (precededByUnhoistedEffect(node, checker, callEdges)) {
+          diagnostics.push(at(node, sourceFile, "SMITHERS1204", "postfix ! after another effect in the same statement would have its failure exit hoisted in front of that effect by the shipped lowering, which would evaluate this operand too early; assign the Result to a local first, or propagate before the other effect"));
         }
       } else {
         diagnostics.push(at(
@@ -6153,10 +6124,15 @@ function checkMustConsume(
       ));
     }
     if (ts.isCallExpression(node) && isResultExpectCall(node, checker, callEdges)) {
-      if (isInRepeatedLoopHeader(node)) {
-        diagnostics.push(at(node, sourceFile, "SMITHERS1703", "Result.expect() in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering; assign before the loop or expect inside its body"));
-      } else if (!isSafePropagationPlacement(node)) {
-        diagnostics.push(at(node, sourceFile, "SMITHERS1204", "Result.expect() in this expression would require control-flow-aware evaluation-order rewriting; assign the Result to a local and expect it in a simple statement"));
+      // `expect` lowers to the same hoisted guard as `!`, so it inherits the
+      // same two residual positions and nothing else. See
+      // `conditionallyEvaluatedPosition`.
+      if (repeatedlyEvaluatedPosition(node)) {
+        diagnostics.push(at(node, sourceFile, "SMITHERS1703", "Result.expect() in a loop condition or incrementor is evaluated once per iteration, and the shipped lowering hoists its panic exit in front of the loop, which would run it a different number of times; assign before the loop or expect inside its body"));
+      } else if (conditionallyEvaluatedPosition(node)) {
+        diagnostics.push(at(node, sourceFile, "SMITHERS1204", "Result.expect() in a conditionally evaluated operand would have its panic exit hoisted to the enclosing statement by the shipped lowering, which would run it when the authored program would not have evaluated the operand at all; assign the Result to a local and expect it unconditionally"));
+      } else if (precededByUnhoistedEffect(node, checker, callEdges)) {
+        diagnostics.push(at(node, sourceFile, "SMITHERS1204", "Result.expect() after another effect in the same statement would have its panic exit hoisted in front of that effect by the shipped lowering, which would evaluate this receiver too early; assign the Result to a local first, or expect before the other effect"));
       }
     }
     ts.forEachChild(node, visit);
@@ -6716,65 +6692,153 @@ function isPromiseType(type: ts.Type, checker: ts.TypeChecker): boolean {
   return Boolean(promisedType(type, checker));
 }
 
-function isSafePropagationPlacement(expression: ts.Expression): boolean {
-  let current: ts.Node = expression;
-  while (current.parent && !ts.isStatement(current.parent) && !ts.isArrowFunction(current.parent)) {
+/**
+ * The residue of the withdrawn placement rule, narrowed to what is still true.
+ *
+ * `specification/failures.mdx` §Refusal Conditions withdrew the statement-walk:
+ * the failure exit is a delegated suspension, which is an expression in every
+ * position, so no *placement* is unsound in principle. What survives is not a
+ * rule about placement but a fact about the SHIPPED lowering, which spells that
+ * exit as an early `return` and therefore has to hoist a guard to the enclosing
+ * statement. Hoisting is only order-preserving where the operand is evaluated
+ * unconditionally and exactly once, so exactly two positions are still refused:
+ *
+ *   * a conditionally evaluated operand — the right side of `&&`, `||` and `??`,
+ *     either arm of a ternary, anything after an optional-chaining `?.`, and a
+ *     `case` label expression, whose guard would run when the authored program
+ *     would not have evaluated the operand at all;
+ *   * a repeated loop header — a `while`/`do`/`for` condition or a `for`
+ *     incrementor, whose guard would run a different number of times. Measured:
+ *     hoisting `while (next()!) {}` produces a program that never terminates.
+ *
+ * Everything else the old walk refused — a member call, an element access, a
+ * call argument, a compound operand, a `for` initializer, a `for…of` iterable —
+ * is unconditional and once, and is now accepted.
+ *
+ * These two are deliberately NOT scoped to `effectLowering`. Both lowerings
+ * spell a propagation the same way today, so the refusal is a property of the
+ * compiler and not of a per-file option; a diagnostic that fired under one
+ * option and not the other would be the per-file dialect this project's ledger
+ * warns against by name. They retire when the `"return"` lowering does.
+ */
+function conditionallyEvaluatedPosition(node: ts.Node): boolean {
+  let current: ts.Node = node;
+  while (current.parent && !ts.isStatement(current.parent) && !isSupportedFunctionLike(current.parent)) {
     const parent = current.parent;
-    if (ts.isParenthesizedExpression(parent) || ts.isAwaitExpression(parent) || ts.isAsExpression(parent)) {
-      current = parent;
-      continue;
+    if (ts.isBinaryExpression(parent) && parent.right === current &&
+      (parent.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken ||
+        parent.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+        parent.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken)) {
+      return true;
     }
-    if (ts.isPropertyAccessExpression(parent) && parent.expression === current) {
-      current = parent;
-      continue;
+    if (ts.isConditionalExpression(parent) && parent.condition !== current) return true;
+    // Anything to the right of a `?.` link is skipped when the link short-circuits.
+    if ((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent) ||
+      ts.isCallExpression(parent)) && parent.questionDotToken !== undefined &&
+      (parent as { expression: ts.Node }).expression !== current) {
+      return true;
     }
-    // The specification directly requires `result!?.member ?? fallback`.
-    // Only the coalescing left operand is admitted here: hoisting from its
-    // right operand would make conditional work unconditional, and admitting
-    // other compound operators would settle the still-open precedence and
-    // evaluation-order surface by accident.
-    if (ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken &&
-      parent.left === current) {
-      current = parent;
-      continue;
-    }
-    if (ts.isVariableDeclaration(parent) && parent.initializer === current &&
-      ts.isVariableDeclarationList(parent.parent) && parent.parent.declarations.length === 1) {
-      current = parent.parent;
-      continue;
-    }
-    if (ts.isVariableDeclarationList(parent) && parent.declarations.length === 1) {
-      current = parent;
-      continue;
-    }
-    return false;
-  }
-  return true;
-}
-
-function isInRepeatedLoopHeader(node: ts.Node): boolean {
-  let current = node;
-  while (current.parent) {
-    const parent = current.parent;
-    if (ts.isWhileStatement(parent) || ts.isDoStatement(parent) || ts.isForInStatement(parent) ||
-      ts.isForOfStatement(parent)) {
-      return current !== parent.statement;
-    }
-    if (ts.isForStatement(parent)) {
-      // A for initializer runs once and can safely emit an outer prologue. The
-      // condition and incrementor repeat and therefore cannot.
-      return current !== parent.statement && current !== parent.initializer;
-    }
+    // A `case` label runs only until one matches, and the switch lowering puts a
+    // prologue in front of the whole `switch`.
+    if (ts.isCaseClause(parent)) return true;
     current = parent;
   }
   return false;
 }
 
 /**
- * Panic exits and postfix propagation lower to early `return` statements. An
- * enclosing JavaScript `try` with a `catch` clause would silently never see
- * them even though the authored text looks catchable, so those placements are
- * hard errors instead of silently dead catch paths.
+ * The third residue, and the one the withdrawn walk was hiding rather than
+ * stating: a guard hoisted to the front of the statement jumps over anything to
+ * its LEFT that is not hoisted with it.
+ *
+ * `g() + r!` lowers to `const t = inspect(r); if (!t.ok) return …; g() + t.value`,
+ * which calls `r`'s producer BEFORE `g()`. The old walk refused it as a
+ * "placement", which is why the reordering never had to be described. It is not
+ * a placement fact: `scoreOf("a")! + scoreOf("b")!` is the same shape and is
+ * order-preserving, because BOTH guards hoist and they hoist in authored order.
+ *
+ * So the condition is about what precedes, not about where the `!` sits: every
+ * expression evaluated before it, within the enclosing statement, must be free
+ * of effects the lowering leaves behind. A nested propagation counts as free —
+ * its own receiver hoists in order — while anything wrapping one does not.
+ */
+function precededByUnhoistedEffect(
+  node: ts.Node,
+  checker: ts.TypeChecker,
+  callEdges: ReadonlyMap<InvocationExpression, CallEdge>,
+): boolean {
+  let current: ts.Node = node;
+  while (current.parent && !isSupportedFunctionLike(current.parent)) {
+    const parent = current.parent;
+    let reached = false;
+    let blocked = false;
+    ts.forEachChild(parent, (child) => {
+      if (child === current) reached = true;
+      else if (!reached && unhoistedEffectIn(child, checker, callEdges)) blocked = true;
+    });
+    if (blocked) return true;
+    if (ts.isStatement(parent)) return false;
+    current = parent;
+  }
+  return false;
+}
+
+/** @see precededByUnhoistedEffect */
+function unhoistedEffectIn(
+  subtree: ts.Node,
+  checker: ts.TypeChecker,
+  callEdges: ReadonlyMap<InvocationExpression, CallEdge>,
+): boolean {
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    // Creating a closure evaluates nothing inside it.
+    if (isSupportedFunctionLike(node)) return;
+    if (ts.isNonNullExpression(node) && isResultPropagation(node, checker, callEdges)) return;
+    if (ts.isCallExpression(node) && isResultExpectCall(node, checker, callEdges)) return;
+    if (ts.isCallExpression(node) || ts.isNewExpression(node) || ts.isTaggedTemplateExpression(node) ||
+      ts.isAwaitExpression(node) || ts.isYieldExpression(node) || ts.isDeleteExpression(node) ||
+      (ts.isBinaryExpression(node) && node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+        node.operatorToken.kind <= ts.SyntaxKind.LastAssignment) ||
+      ((ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
+        (node.operator === ts.SyntaxKind.PlusPlusToken || node.operator === ts.SyntaxKind.MinusMinusToken))) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(subtree);
+  return found;
+}
+
+/** @see conditionallyEvaluatedPosition */
+function repeatedlyEvaluatedPosition(node: ts.Node): boolean {
+  let current: ts.Node = node;
+  while (current.parent) {
+    const parent = current.parent;
+    if (isSupportedFunctionLike(parent)) return false;
+    if (ts.isWhileStatement(parent) || ts.isDoStatement(parent)) return current === parent.expression;
+    if (ts.isForStatement(parent)) return current === parent.condition || current === parent.incrementor;
+    // A `for…of`/`for…in` iterable is evaluated ONCE, before the first
+    // iteration, so hoisting its guard in front of the loop preserves both the
+    // order and the count. The withdrawn walk refused it anyway.
+    if (ts.isForInStatement(parent) || ts.isForOfStatement(parent)) return false;
+    current = parent;
+  }
+  return false;
+}
+
+/**
+ * A failure exit unwinds the delimited computation. `finally` blocks and `using`
+ * disposals run on the way out; `catch` clauses do not, because the failure is
+ * never delivered through the JavaScript exception channel. The authored text
+ * would read as though the failure were catchable when it is not, so the
+ * placement is a hard error rather than a silently dead catch path.
+ *
+ * `specification/failures.mdx` §Refusal Conditions keeps this rule while
+ * retiring the placement and loop-header rules beside it: those two were
+ * properties of the withdrawn early-`return` lowering, and this one is a
+ * property of the authored text.
  */
 function checkJavaScriptCatchBoundaries(
   sourceFile: ts.SourceFile,
@@ -6800,7 +6864,7 @@ function checkJavaScriptCatchBoundaries(
         node,
         sourceFile,
         "SMITHERS1205",
-        "postfix ! propagation inside a JavaScript try statement with a catch clause is not lowered because its early return would silently bypass the catch handler; move the propagation point outside the try or consume the value explicitly",
+        "postfix ! propagation inside a JavaScript try statement with a catch clause is not lowered because the failure exit unwinds the computation past this catch clause: finally blocks and using disposals still run, catch never observes the failure, and delivering it as a thrown exception is prohibited; move the propagation point outside the try or consume the value explicitly",
       ));
     }
     if (caughtByJavaScript && ts.isCallExpression(node)) {
@@ -6810,7 +6874,13 @@ function checkJavaScriptCatchBoundaries(
           ? "Result.expect()"
           : undefined;
       if (construct) {
-        diagnostics.push(at(node, sourceFile, "SMITHERS1205", `${construct} inside a JavaScript try statement with a catch clause is not lowered because its early-return propagation would silently bypass the catch handler; move the propagation point outside the try or consume the value explicitly`));
+        // Deliberately NOT the postfix-! sentence. A panic exit is lowered two
+        // ways — a completion value where the enclosing contract names `Panic`,
+        // an unwinding throw where it does not — so a message that asserted one
+        // of them would be false for the other half of the programs this arm
+        // fires on. What is true of both is that an ordinary `catch` is the
+        // wrong observer.
+        diagnostics.push(at(node, sourceFile, "SMITHERS1205", `${construct} inside a JavaScript try statement with a catch clause is not lowered because a panic exit is not a recoverable failure this catch may observe: where the enclosing contract materializes the panic the exit is a completion value the catch never sees, and where it does not the catch would swallow an abort that must reach an explicit panic boundary; move the panic point outside the try or handle it at that boundary`));
       }
     }
     ts.forEachChild(node, (child) => visit(child, caughtByJavaScript));

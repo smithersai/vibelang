@@ -1,12 +1,15 @@
 {
-  "title": "postfix ! before an element access is rejected, because element access is not property access",
-  "expect": "diagnostics",
-  "diagnostics": [
-    {
-      "code": "SMITHERS1204",
-      "line": 11,
-      "column": 19
-    }
+  "title": "postfix ! before an element access compiles and runs: element access was never the distinction",
+  "expect": "output",
+  "stdout": [
+    "A"
   ],
-  "notes": "specification/failures.mdx, 'Accepted Placements': 'A `!` on a Result operand MUST be accepted if and only if all five hold', condition 1 being that every enclosing node out to the nearest statement or arrow function is one of exactly seven forms. The section's own worked example: '`r![0]` // rejected — element access is not property access', beside '`r!.length` // accepted'. Condition 1 admits 'a property access, where the `!` expression is the object' and nothing else in that family, so the distinction is in the rule rather than in a table of shapes. specification/compatibility.mdx:72 approaches the same boundary from the other side — `arr[i]!` compiles when `arr` holds Results, which is `!` APPLIED TO an element read, not an element read applied to a `!`. That section also states, normatively, that 'A rejected placement MUST be a diagnostic, never a silent lowering.' This case is one of the rows that enforces it: the silent lowering is the EASY outcome here, because TypeScript's own non-null assertion means something in this position and the emitted program would compile and run. A backend that lowered it silently would be scored `fail` for accepting and running a program the language rejects, not scored `pass` for staying quiet."
+  "notes": "RETIRED REFUSAL, kept under its old filename so the COVERAGE.md row that cites it (§4.14) keeps resolving. specification/failures.mdx §Refusal Conditions withdrew the placement walk; see DECISIONS.md §Typed failures. WHY IT NOW PASSES: `lookup(\"ada\")!` is unconditional, once-evaluated, and has nothing effectful to its left, so its guard hoists to the front of the `const` and the emitted program evaluates `lookup`, checks, then indexes — the authored order. The old rule's distinction between a property access (admitted) and an element access (refused) was a property of its allow-list of seven node kinds and not of evaluation order, which is why it disappears rather than moving. The boundary approached from the other side is unchanged and still pinned elsewhere: specification/compatibility.mdx §Reinterpreted Syntax's `arr[i]!` is `!` APPLIED TO an element read, certified by 07-must-consume/an-array-literal-of-results-is-consumed-through-an-index-read.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "the fork still enforces the withdrawn statement-walk and refuses this program with SMITHERS1204 at the same authored position the retired expectation named. That is a FAIL-CLOSED divergence: the fork compiles nothing and runs nothing, so no marker here holds a fail-open. The reference moved when specification/failures.mdx §Refusal Conditions withdrew the placement rule (DECISIONS.md §Typed failures, 2026-08-30); `safeUnwrapPlacement` in compiler/forkbridge/lowering.go.txt is the fork's copy of the walk and has not been widened yet. MEASURED on both backends with `node conformance/runner/run.mjs --filter 02-unwrap-propagation`. The marker retires when the fork's placement walk is narrowed to the three residual conditions the reference now applies: a conditionally evaluated operand, a repeated loop header, and a propagation preceded by an unhoisted effect in the same statement.",
+    "doc": "specification/failures.mdx §Refusal Conditions: 'The lowering emits a delegated suspension, which is an expression in every position and therefore preserves the authored evaluation order everywhere. Placement is unrestricted.'"
+  }
 }

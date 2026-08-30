@@ -1004,21 +1004,28 @@ function lowerStatement(
   }
 
   if (ts.isForInStatement(statement)) {
-    const expression = rewriteLoopHeaderExpression(statement.expression, owner, state, context, visit);
+    // The ITERABLE is evaluated once, before the first iteration, so a hoisted
+    // propagation guard runs exactly as often as the authored operand did. The
+    // withdrawn placement walk refused this position anyway; `failures.mdx`
+    // §Refusal Conditions accepts it and `repeatedlyEvaluatedPosition` agrees.
+    const prologue: ts.Statement[] = [];
+    const expression = rewriteExpression(statement.expression, owner, prologue, state, context, visit);
     const body = singleStatement(
       lowerStatement(statement.statement, owner, caughtByJavaScript, state, context, visit),
       state,
     );
-    return [state.factory.updateForInStatement(statement, statement.initializer, expression, body)];
+    return [...prologue, state.factory.updateForInStatement(statement, statement.initializer, expression, body)];
   }
 
   if (ts.isForOfStatement(statement)) {
-    const expression = rewriteLoopHeaderExpression(statement.expression, owner, state, context, visit);
+    // See the `for…in` arm: the iterable is a once-evaluated position.
+    const prologue: ts.Statement[] = [];
+    const expression = rewriteExpression(statement.expression, owner, prologue, state, context, visit);
     const body = singleStatement(
       lowerStatement(statement.statement, owner, caughtByJavaScript, state, context, visit),
       state,
     );
-    return [state.factory.updateForOfStatement(
+    return [...prologue, state.factory.updateForOfStatement(
       statement,
       statement.awaitModifier,
       statement.initializer,
@@ -1353,11 +1360,19 @@ function lowerLayerProvide(
 }
 
 /**
- * A Result propagation/expect or panic exit needs statements at the exact evaluation
- * point. Hoisting those statements out of a repeated loop header changes
- * semantics, so semantic analysis rejects the construct and the emitter leaves
- * it untouched. Ordinary calls (including foreign calls, whose wrappers are
- * expressions) can still be rewritten in place.
+ * A REPEATED loop header — a `while`/`do` condition, a `for` condition, a `for`
+ * incrementor.
+ *
+ * A Result propagation/expect or panic exit needs statements at the exact
+ * evaluation point, and hoisting those statements in front of the loop would run
+ * them a different number of times. `repeatedlyEvaluatedPosition` in the
+ * analysis rejects the construct as `SMITHERS1703` and the emitter leaves it
+ * untouched, which keeps the module fail-closed rather than reordered. Ordinary
+ * calls (including foreign calls, whose wrappers are expressions) can still be
+ * rewritten in place.
+ *
+ * The once-evaluated headers — the `for` initializer, and the `for…of`/`for…in`
+ * iterable — do NOT come here; they take an ordinary prologue.
  */
 function rewriteLoopHeaderExpression(
   expression: ts.Expression,

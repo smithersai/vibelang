@@ -1,5 +1,5 @@
 {
-  "title": "postfix propagation in a loop header is rejected: per-iteration propagation needs control-flow lowering",
+  "title": "postfix ! is still rejected in a repeated loop header, and hoisting it would not terminate",
   "expect": "diagnostics",
   "diagnostics": [
     {
@@ -8,5 +8,5 @@
       "column": 31
     }
   ],
-  "notes": "Postfix propagation in a loop condition, incrementor, or iteration expression needs per-iteration control-flow lowering. The emitted error path must return the enclosing error variant; hoisting that path in front of a loop would change when it runs, so this placement fails closed."
+  "notes": "REWRITTEN 2026-08-30. The sentence this case used to quote — 'the emitted error path must return the enclosing error variant; hoisting that path in front of a loop would change when it runs' — survived the withdrawal of the placement rule, but its neighbours did not, so it is restated here as its own reason rather than inherited. specification/failures.mdx §Refusal Conditions now makes placement unrestricted (DECISIONS.md §Typed failures), and the sibling cases in this directory flipped with it. THIS ONE DID NOT, and the measurement is the argument: a `for`/`while`/`do` CONDITION and a `for` INCREMENTOR are evaluated once per iteration, while the guard the shipped early-return lowering hoists is evaluated once, in front of the loop. For this program that would call `limit(key)` once instead of once per iteration. For `while (next()!) {}` it produces a program that NEVER TERMINATES — the condition is read once into a temporary and the loop then spins on a constant. That is the concrete reason this refusal is not relaxable while the early-return lowering ships, and it is a different failure from the conditional-operand case beside it (postfix-bang-as-a-nullish-right-operand-is-rejected), which reorders rather than diverges. WHAT DID CHANGE: the rule is narrowed. `repeatedlyEvaluatedPosition` in poc/src/language/semantic.ts now answers only for the repeated parts of a loop header. A `for` INITIALIZER was always exempt, and the `for…of`/`for…in` ITERABLE is now exempt too — it is evaluated exactly once before the first iteration, so its guard hoists without moving anything, and the withdrawn walk refused it for no reason the lowering supports. SMITHERS1703 is kept rather than renumbered because its cause is unchanged and its scope only shrank, and it is NOT scoped to an `effectLowering` option: both modes spell a propagation the same way today, so a per-option refusal would be the per-file dialect DECISIONS.md warns against."
 }

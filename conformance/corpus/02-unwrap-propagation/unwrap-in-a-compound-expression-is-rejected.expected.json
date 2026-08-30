@@ -1,16 +1,15 @@
 {
-  "title": "postfix propagation in a placement that would need evaluation-order rewriting is rejected instead of reordered",
-  "expect": "diagnostics",
-  "diagnostics": [
-    {
-      "code": "SMITHERS1204",
-      "line": 11,
-      "column": 17
-    },
-    {
-      "code": "SMITHERS1204",
-      "line": 11,
-      "column": 35
-    }
-  ]
+  "title": "two propagations in one compound expression compile and run, and the second one never runs after the first fails",
+  "expect": "output",
+  "stdout": [
+    "error smithers:unwrap-in-a-compound-expression-is-rejected.sm:Missing: no entry for bob"
+  ],
+  "notes": "RETIRED REFUSAL, kept under its old filename so the COVERAGE.md rows that cite it keep resolving. specification/failures.mdx §Refusal Conditions withdrew the five-condition placement walk; see DECISIONS.md §Typed failures. WHY IT NOW PASSES, and it is the clearest demonstration in the corpus of what the withdrawn rule was actually protecting: `scoreOf(\"ada\")! + scoreOf(\"bob\")!` has TWO propagations, and BOTH hoist, in authored order. The emitted statement calls `scoreOf(\"ada\")`, checks it, calls `scoreOf(\"bob\")`, checks it, and only then adds — which is exactly the authored order, so nothing was reordered by admitting it. The stdout is the proof rather than a formality: `bob` is missing, and the program prints that failure, which can only happen if the second guard ran after the second call and not before the first. Contrast `precededByUnhoistedEffect` in poc/src/language/semantic.ts, which still refuses `g() + r!`: there the left operand leaves an effect the lowering does NOT hoist, so the guard would jump in front of it. Two operands, one operator, opposite verdicts — and the difference is what is to the left, not where the `!` sits.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "the fork still enforces the withdrawn statement-walk and refuses this program with the SMITHERS1204s the retired expectation named. That is a FAIL-CLOSED divergence: the fork compiles nothing and runs nothing, so no marker here holds a fail-open. `safeUnwrapPlacement` in compiler/forkbridge/lowering.go.txt is the fork's copy of the withdrawn walk and has not been widened yet. MEASURED on both backends with `node conformance/runner/run.mjs --filter 02-unwrap-propagation`. The marker retires when the fork's walk is narrowed to the three residual conditions the reference now applies: a conditionally evaluated operand, a repeated loop header, and a propagation preceded by an unhoisted effect in the same statement.",
+    "doc": "specification/failures.mdx §Refusal Conditions: 'The lowering emits a delegated suspension, which is an expression in every position and therefore preserves the authored evaluation order everywhere. Placement is unrestricted.'"
+  }
 }

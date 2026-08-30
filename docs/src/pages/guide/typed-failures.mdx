@@ -150,16 +150,22 @@ position, it preserves the authored evaluation order everywhere, so
 `r!.trim()`, `r![0]`, `maybe ?? r!` and `f(r!)` are all accepted alongside the
 simple `const x = r!` form.
 
-:::warning The prototype has not caught up — (SA-1)
-Re-measured on 2026-08-27 against the conformance reference backend over
-`poc/src`: of the six forms [Failure Semantics](/specification/failures)
-§Refusal Conditions lists as accepted, **two compile** — `r!.length` and
-`r! ?? "fallback"` — and the other four (`r!.trim()`, `r![0]`, `maybe ?? r!`,
-`f(r!)`) are refused with `SMITHERS1204` ("would require control-flow-aware
-evaluation-order rewriting"), which is the *withdrawn* fourth refusal. The corpus
-certifies both the two acceptances and the four refusals in
-`02-unwrap-propagation`. Until the implementation catches up, write the
-propagation as a simple statement.
+:::warning One position the prototype still refuses — (SA-1)
+Measured on 2026-08-30 against the conformance reference backend: of the six
+forms [Failure Semantics](/specification/failures) §Refusal Conditions lists as
+accepted, **five compile** — `r!.length`, `r!.trim()`, `r![0]`,
+`r! ?? "fallback"` and `f(r!)`. `maybe ?? r!` is still refused with
+`SMITHERS1204`, and so are two neighbouring positions: a loop condition or
+incrementor (`SMITHERS1703`), and a propagation that follows another effect in
+the same statement, such as `g() + r!`.
+
+The reason is the same in all three, and it is about the prototype's lowering
+rather than about the language. That lowering still spells the failure exit as an
+early `return`, so it lifts a check to the front of the statement. Out of a
+conditionally evaluated operand the check would run when your program would not
+have evaluated the operand at all; out of a loop header it would run once instead
+of once per iteration; and after another effect it would jump in front of that
+effect. Write the propagation as a simple statement in those three shapes.
 
 This gap is recorded as `(SA-1)`; the marker convention and the register of
 current gaps are in [Specification Status](/specification/index)

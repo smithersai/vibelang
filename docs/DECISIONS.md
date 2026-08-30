@@ -286,40 +286,111 @@ site-table diff normatively obliges an implementation to do.
   Conditions. The placement and repeated-loop-header conditions are
   **withdrawn**; the 115-case placement measurement that supported them is
   withdrawn with them and must not be cited.
-- **Open — the sentence immediately above is contested by shipped behavior, and
-  here the *specification* is the side that is ahead.** Measured 2026-08-27
-  against the conformance JS reference backend over `poc/src`: of the six forms
-  [Failure Semantics](/specification/failures) §Refusal Conditions lists as
-  accepted, two compile (`r!.length`, `r! ?? "fallback"`) and four are refused
-  with `SMITHERS1204` — "postfix `!` in this expression would require
-  control-flow-aware evaluation-order rewriting" — which is the withdrawn
-  statement-walk rule still being enforced. Five conformance cases in
-  `02-unwrap-propagation` certify those refusals
-  (`postfix-bang-before-a-member-call-is-rejected`,
-  `postfix-bang-before-an-element-access-is-rejected`,
-  `postfix-bang-as-a-nullish-right-operand-is-rejected`,
-  `postfix-bang-in-a-call-argument-is-rejected`, and
-  `unwrap-in-a-compound-expression-is-rejected`), and the product agrees with the
-  corpus, so nothing in `conformance/product-divergence.json` reports it.
+- **Locked, and this is the irreversible one — `(SA-1)` is narrowed to three
+  positions, 2026-08-30.** The gap recorded here between 2026-08-27 and
+  2026-08-30 was that this ledger said "`!` is accepted in any expression
+  position" while the shipped frontend still enforced the withdrawn
+  statement-walk and refused four of the six accepted forms with
+  `SMITHERS1204`. The implementation has moved to the ledger. What that cost,
+  stated once and measured rather than estimated:
 
-  **This is the mirror image of open question 5.** There the implementation is
-  deliberately ahead of a locked permission (`eval`); here the specification is
-  ahead of the implementation. Both are recorded, and each is marked with its
-  direction — `(SA-1)` and `(IA-1)` respectively — so a reader can tell which way
-  a gap points without measuring it again. See
-  [Specification Status](/specification/index) §Specification–Implementation Gaps.
+  - **The placement walk is deleted.** `isSafePropagationPlacement` and
+    `isInRepeatedLoopHeader` are gone from the reference frontend, and with them
+    the rule that a `!` must reach the enclosing statement through an allow-list
+    of seven node kinds. `r!.trim()`, `r![0]`, `f(r!)`, `a! + b!`, and a
+    propagation in a `for…of`/`for…in` iterable now compile and run.
+  - **`SMITHERS1204` and `SMITHERS1703` are kept and narrowed**, and this is the
+    one place the migration plan's instruction was not followed to the letter.
+    The plan said to retire both. Measured, that is not safe while the shipped
+    lowering spells the failure exit as an early `return`: that exit is a
+    statement, so its guard is hoisted to the front of the enclosing statement,
+    and hoisting is order-preserving only where the operand is evaluated
+    unconditionally, exactly once, and with nothing effectful to its left.
+    Hoisting `while (next()!) {}` produces a program that **never terminates**;
+    hoisting `maybe ?? r!` evaluates an operand the authored program would have
+    skipped; hoisting `g() + r!` jumps the guard in front of `g()`. Three
+    positions therefore remain refused, by the three predicates
+    `repeatedlyEvaluatedPosition`, `conditionallyEvaluatedPosition` and
+    `precededByUnhoistedEffect`. Everything else the old rule refused is
+    accepted.
+  - **The refusals are conditions on the lowering, not on the language, and they
+    are uniform across both `effectLowering` modes.** Both modes spell a
+    propagation the same way today, so no per-file dialect is created — which is
+    the property the plan's "relax unconditionally" instruction existed to
+    protect. They retire when the `"return"` lowering does, not before.
+  - **`SMITHERS1507` is narrowed** to the two conditions that are still about
+    provenance: a foreign callee that is not a stable reference, and an already
+    unchecked foreign Result. The "this checked foreign result is used as a
+    value" arm was a placement constraint of the hoisted `Result.try(...)`
+    wrapper wearing a provenance rule's name; it and its helper are deleted.
+  - **`SMITHERS1506` did not narrow. Measured: zero.** The migration plan
+    predicted twelve narrowings as a consequence of `SMITHERS1507` marking fewer
+    calls unlowerable. Re-run over the 515-case corpus and the 1268-test
+    language suite, no `SMITHERS1506` moved. The prediction was wrong, and it is
+    recorded as wrong rather than quietly dropped.
+  - **`SMITHERS1205` is kept** — `!` inside a `try` that has a `catch` — with a
+    rewritten message, and the rewrite found a second defect. Its old message
+    named an early `return` that the specification no longer describes. Its
+    reason survives intact for `!` and `Result.expect()`: the failure exit
+    unwinds the computation, so `finally` blocks and `using` disposals run and
+    `catch` clauses do not. It does **not** survive for `panic(...)`, which the
+    same check also refuses: a panic lowers to a completion value where the
+    enclosing contract names `Panic` and to an unwinding `throw` where it does
+    not, and a `catch` really does observe the second. The panic arm therefore
+    now carries its own message, true of both lowerings.
 
-  **What is *not* in question:** the specification sentence stays as written. It
-  is not aspirational — it follows from the locked lowering, in which a failure
-  exit is a delegated suspension and therefore an expression in every position.
-  Restating the old restriction would mean re-adopting a rule whose stated
-  reason ("the lowering emits an early return") is no longer true. Equally, the
-  five corpus cases stay green and must not be weakened to fit the page; they
-  correctly certify what the compiler does today and are the evidence for the
-  gap. **What is open** is only which side moves first and when — a frontend
-  that emits the delegated suspension retires those five cases, and until that
-  lands the language a user can actually write is narrower than this ledger
-  says.
+  **Three things this cannot be reverted through, and they are why this is the
+  point of no return.**
+
+  1. **Programs that were illegal are now legal, permanently.** Four conformance
+     cases that certified refusals now certify execution, with re-derived
+     stdout; two more lose a code they used to report. Re-refusing them would
+     break source that compiled.
+  2. **`.d.ts` carries the emitted calling convention**, which
+     [Compatibility](/specification/compatibility) §Library Publishing requires.
+     That is a published ABI: a consumer reads a declaration to decide how to
+     call, so the declaration's shape is part of the package contract rather
+     than an internal detail. **Measured on the emitted bytes 2026-08-30, and
+     the honest reading is narrower than the plan assumed.** For an exported
+     function whose requirement row is non-empty, the default lowering emits
+
+     ```ts
+     export declare function needs(key: string): string;
+     ```
+
+     and `effectLowering: "yield"` emits
+
+     ```ts
+     import { …, type Resumable as __vsResumable } from "smthrs/runtime";
+     export declare function needs(key: string): __vsResumable<string>;
+     ```
+
+     — the convention, in the declaration, as a type a consumer can read. That
+     step was taken by the migration's step 6, not by this one. **This change
+     moved no function's convention**, so the shipped `.d.ts` is byte-identical
+     before and after it: a function whose row is failures-only, including one
+     containing the newly legal placements, still declares `Result<A, E>` with
+     `@smithersEffects {"failures":[…],"requirements":[]}` and no convention
+     marker. The ABI consequence is real and is already published; what is not
+     yet true is that it applies to fallible functions, and it becomes true only
+     when the failure exit becomes a delegated suspension.
+  3. **Transform-only mode detonates.** The sentence at
+     [Compatibility](/specification/compatibility) §Build Integration survives
+     verbatim and its blast radius goes from a corner case to the default,
+     because whether a callee is a generator is cross-module information. It has
+     now been measured rather than asserted; see §Build integration below, where
+     the measurement corrects the size of the claim without changing the
+     decision.
+
+  **What the Go fork does, said plainly rather than left to a marker.** The fork
+  still holds its own copy of the withdrawn walk in `safeUnwrapPlacement`, so it
+  refuses six programs the reference now accepts. That is a **fail-closed**
+  divergence — the fork compiles and runs nothing — and it is recorded as six
+  `xfail(go)` markers whose reasons name the function to change and the
+  condition to replace it with. `Markers holding a fail-open` stays at 0. The
+  reference is the normative backend; a fork that refuses more is a lag, not a
+  second dialect, and the markers are what stop it becoming one silently.
+
 - **Locked:** Calling `panic(...)` does not widen a return type into
   `Result<A, Panic>`. This follows from the existing rules rather than being a
   new decision: panic is tracked separately from ordinary recoverable Error

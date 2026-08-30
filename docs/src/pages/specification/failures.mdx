@@ -101,37 +101,42 @@ maybe ?? r!      // accepted
 f(r!)            // accepted
 ```
 
-:::warning[(SA-1) — the specification is ahead of the implementation here]
-Measured 2026-08-27 against the conformance JS reference backend over `poc/src`.
-Of the six forms above, **two compile today** and **four are refused**:
+:::warning[(SA-1) — narrowed 2026-08-30; five of the six now compile]
+The withdrawal above landed in the implementation on 2026-08-30. `r!.length`,
+`r!.trim()`, `r![0]`, `r! ?? "fallback"` and `f(r!)` all compile and run on the
+reference backend, and the four conformance cases that certified the refusals of
+`r!.trim()`, `r![0]`, `f(r!)` and `scoreOf("a")! + scoreOf("b")!` were flipped to
+`expect: "output"` in the same change.
 
-| Form | Today | Certified by |
+**One of the six is still refused**, and the reason is no longer a rule about
+placement:
+
+| Form | Today | Why |
 | --- | --- | --- |
-| `r!.length` | accepted | `02-unwrap-propagation/postfix-bang-as-a-property-access-object-is-accepted` |
-| `r! ?? "fallback"` | accepted | `02-unwrap-propagation/postfix-bang-as-a-nullish-left-operand-is-accepted` |
-| `r!.trim()` | refused `SMITHERS1204` | `02-unwrap-propagation/postfix-bang-before-a-member-call-is-rejected` |
-| `r![0]` | refused `SMITHERS1204` | `02-unwrap-propagation/postfix-bang-before-an-element-access-is-rejected` |
-| `maybe ?? r!` | refused `SMITHERS1204` | `02-unwrap-propagation/postfix-bang-as-a-nullish-right-operand-is-rejected` |
-| `f(r!)` | refused `SMITHERS1204` | `02-unwrap-propagation/postfix-bang-in-a-call-argument-is-rejected` |
+| `maybe ?? r!` | refused `SMITHERS1204` | the right operand of `??` is **conditionally evaluated** |
 
-A fifth case, `02-unwrap-propagation/unwrap-in-a-compound-expression-is-rejected`,
-certifies two `SMITHERS1204`s on a nested expression the withdrawn rule also
-refused.
+The shipped lowering still spells the failure exit as an early `return`, which is
+a statement, so it hoists a guard to the front of the enclosing statement. Out of
+a conditionally evaluated operand that guard would run when the authored program
+would not have evaluated the operand at all. Two neighbouring positions fail the
+same way: a **repeated loop header** — a `while`/`do`/`for` condition or a `for`
+incrementor — refused as `SMITHERS1703`, where hoisting `while (next()!) {}`
+produces a program that never terminates; and a propagation **preceded in the
+same statement by an effect the lowering does not hoist**, such as `g() + r!`,
+refused as `SMITHERS1204`. A `for` initializer and a `for…of`/`for…in` iterable
+are evaluated once and are accepted.
 
-`SMITHERS1204` reads "postfix `!` in this expression would require
-control-flow-aware evaluation-order rewriting". That is the **withdrawn**
-lowering speaking: an early `return` is a statement and can only be hoisted to a
-statement position, which is exactly the rationale §Amendment Record retired. The
-sentence above is not aspirational — it follows from the locked lowering, where
-the failure exit is a delegated suspension and therefore an expression. Restating
-the old restriction here would mean re-adopting a rule whose stated reason is no
-longer true.
+These three residues are conditions on the **shipped lowering**, not on the
+language. They are deliberately uniform across both `effectLowering` modes: a
+diagnostic that fired under one and not the other would be the per-file dialect
+`DECISIONS.md` warns against by name. They retire when the early-return lowering
+does — under the resumable calling convention the failure exit is a delegated
+suspension, which stays where it was written, and none of the three arises.
 
-The five cases above are **not** weakened. They correctly certify what the
-compiler does today, they MUST stay green, and they are the evidence for this
-gap. They are retired — not reinterpreted — when the frontend emits the delegated
-suspension. The coverage rows that cite them are
-`conformance/COVERAGE.md` §4.12–§4.19.
+The cases that certify what is left are
+`02-unwrap-propagation/postfix-bang-as-a-nullish-right-operand-is-rejected` and
+`02-unwrap-propagation/unwrap-in-a-loop-header-is-rejected`. The coverage rows
+that cite this family are `conformance/COVERAGE.md` §4.12–§4.19.
 :::
 
 The `!` operator MUST be rejected unless the enclosing function declares a Result channel or infers a non-empty failure set, and unless the operand's checker-derived provenance is a Result. Each refusal MUST carry its own diagnostic code.
@@ -335,13 +340,16 @@ no enclosing Result channel and non-Result provenance — were typing conditions
 rather than lowering conditions and survive verbatim under §Refusal Conditions,
 as does the `catch` condition, whose *reason* is rewritten there.
 
-**Withdrawn here, still enforced by the compiler.** The statement-walk rule is
-what the shipped frontend implements: four of the six forms §Refusal Conditions
-now accepts are refused today with `SMITHERS1204`, and five conformance cases
-certify those refusals. That gap is recorded as **(SA-1)** at §Refusal Conditions
-and in [Specification Status](/specification/index) §Specification–Implementation
-Gaps. It is a gap, not a reason to restore the rule: the corpus cases stay green
-and the specification stays as written until the frontend moves.
+**Withdrawn here, and withdrawn in the compiler on 2026-08-30.** The
+statement-walk is deleted from the shipped frontend. Five of the six forms
+§Refusal Conditions accepts now compile and run, and the four conformance cases
+that certified their refusals were flipped to `expect: "output"` in that change.
+What remains is not the rule: three positions where the shipped early-`return`
+lowering cannot hoist its guard without moving it — a conditionally evaluated
+operand, a repeated loop header, and a propagation preceded by an unhoisted
+effect in the same statement. They are recorded, with their measurements, under
+the narrowed **(SA-1)** at §Refusal Conditions and in
+[Specification Status](/specification/index) §Specification–Implementation Gaps.
 
 **Withdrawn — the count of refusals:**
 

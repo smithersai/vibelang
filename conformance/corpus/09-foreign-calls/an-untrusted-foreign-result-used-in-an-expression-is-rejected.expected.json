@@ -1,18 +1,22 @@
 {
   "title": "an untrusted foreign call's result may not be consumed as a raw value in an expression: the lowered form is a Result, not a number",
   "expect": "diagnostics",
-  "typescript": ["foreign.ts"],
+  "typescript": [
+    "foreign.ts"
+  ],
   "diagnostics": [
     {
       "code": "SMITHERS1301",
       "line": 5,
       "column": 10
-    },
-    {
-      "code": "SMITHERS1507",
-      "line": 5,
-      "column": 10
     }
   ],
-  "notes": "specification/failures.mdx:111 (Locked): 'Calling any TypeScript, JavaScript, or other foreign runtime implementation MUST add the distinguished checked `panic` case by default. This applies even when the foreign declaration omits throws.' `parseIntegerUnchecked` omits `@throws`, so `parseIntegerUnchecked(text)` is a `Result<number, Panic>`, and `Result<number, Panic> + 1` is not arithmetic. This is the second, independent branch of the lowerability predicate at poc/src/language/semantic.ts:2110 — `unsafeUse = annotation !== \"never\" && foreignResultIsUsedAsValue(call)` (foreignResultIsUsedAsValue at :2169) — where the first branch is pinned by a-foreign-factory-result-invoked-before-it-is-unwrapped-is-rejected. Two branches, two cases, because an implementation can lose either one without losing the other. BOTH declared diagnostics are the point rather than noise, and they land at the same authored position because the foreign call is the subject of both. SMITHERS1507 says the shape is not expression-order-safe; SMITHERS1301 is the compiler demonstrating WHY, by reporting that it really did produce a Result at 5:10 and that nothing consumed it. A backend that dropped SMITHERS1507 but kept SMITHERS1301 would still be observable here, and so would the reverse. conformance/README.md requires a cascade the language really does produce to be declared in full rather than filtered out; the two backends emit these two in opposite orders and the judge compares the sets, so the order in this file is not a claim. The remedy is the one SMITHERS1507's message names and a-foreign-callable-wrapped-in-a-local-adapter-is-accepted demonstrates: unwrap or match the checked result, then compute."
+  "notes": "specification/failures.mdx §Foreign Exceptions (Locked): 'Calling any TypeScript, JavaScript, or other foreign runtime implementation MUST add the distinguished checked `panic` case by default. This applies even when the foreign declaration omits throws.' `parseIntegerUnchecked` omits `@throws`, so `parseIntegerUnchecked(text)` is a `Result<number, Panic>`, and `Result<number, Panic> + 1` is not arithmetic. SMITHERS1301 is the compiler saying so: it really did produce a Result at 5:10 and nothing consumed it. SMITHERS1507 IS NO LONGER REPORTED HERE, and that is the change this note exists to record. The lowerability predicate in poc/src/language/semantic.ts had two branches, and this case pinned the second: `unsafeUse = annotation !== \"never\" && foreignResultIsUsedAsValue(call)`. That branch was a PLACEMENT rule wearing a provenance rule's name — it existed because the `Result.try(...)` wrapper had to be hoisted in front of the statement, which is the same withdrawn constraint specification/failures.mdx §Refusal Conditions retired for postfix `!` (DECISIONS.md §Typed failures, 2026-08-30). The wrapper is an expression and stays where it was written, so the branch and its helper are deleted. What SMITHERS1507 still means is narrower and is entirely about PROVENANCE: an unstable foreign callee the compiler cannot read once, or a receiver that is already an unchecked foreign value. Its surviving first branch is pinned by a-foreign-factory-result-invoked-before-it-is-unwrapped-is-rejected, which is why that case and this one were written separately in the first place — an implementation can lose either branch without losing the other, and here one of them was deliberately removed. The remedy the old message named is unchanged and still demonstrated by a-foreign-callable-wrapped-in-a-local-adapter-is-accepted: unwrap or match the checked result, then compute.",
+  "xfail": {
+    "backends": [
+      "go"
+    ],
+    "reason": "the fork still reports SMITHERS1507@5:10 beside SMITHERS1301@5:10. Its lowerability predicate in compiler/forkbridge/lowering.go.txt keeps the branch the reference deleted — the one that refused a checked foreign result USED AS A VALUE, which was a placement constraint of the hoisted `Result.try(...)` wrapper and not a provenance fact. FAIL-CLOSED: the fork reports one code more than the reference and compiles nothing either way, so the marker holds no fail-open. MEASURED on both backends with `node conformance/runner/run.mjs --filter 09-foreign-calls`. The marker retires when the fork drops the same branch; its surviving first branch (an unstable foreign callee) must keep firing, and a-foreign-factory-result-invoked-before-it-is-unwrapped-is-rejected is the case that proves it did.",
+    "doc": "specification/failures.mdx §Refusal Conditions: the failure exit is an expression in every position, so a lowering that has to be hoisted is no longer a reason to refuse a placement."
+  }
 }
