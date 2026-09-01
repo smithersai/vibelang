@@ -78,9 +78,24 @@ function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+/**
+ * The cache directory name every consumer searches when
+ * `SMITHERS_TYPESCRIPT_FORK` is unset.
+ *
+ * This script is the *producer*; `src/go-backend.ts`, `scripts/go-test-gate.mjs`,
+ * `scripts/fork-e2e.mjs` and `test/cli-go-backend.test.mjs` are the *consumers*,
+ * and all of them look in `<root>/smithers-ts-fork-cache/<revision>`. The default
+ * here was `smithers-typescript-fork-cache`, so running the documented bare
+ * command — `node scripts/prepare-typescript-fork.mjs --fetch` — produced a
+ * perfectly good checkout in a directory nothing reads, and every consumer then
+ * reported the checkout as absent. `test/cli-go-backend.test.mjs` now refuses
+ * any re-divergence between this literal and the consumers'.
+ */
+const DEFAULT_FORK_CACHE_DIRECTORY_NAME = "smithers-ts-fork-cache";
+
 function parseArguments(argv) {
   const result = {
-    cache: resolve(tmpdir(), "smithers-typescript-fork-cache"),
+    cache: resolve(tmpdir(), DEFAULT_FORK_CACHE_DIRECTORY_NAME),
     fetch: false,
     fullTsc: false,
     source: undefined,

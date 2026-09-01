@@ -27,12 +27,19 @@ function runSmithers(args, env = {}) {
   });
 }
 
+/**
+ * Where a consumer looks for the pinned checkout when neither
+ * `SMITHERS_TYPESCRIPT_FORK` nor `SMITHERS_TYPESCRIPT_FORK_CACHE` is set. Shared
+ * with the drift gate below so that gate reads the live array rather than a copy.
+ */
+const CONSUMER_CACHE_ROOTS = ["/private/tmp/smithers-ts-fork-cache", join(tmpdir(), "smithers-ts-fork-cache")];
+
 function locateForkCheckout() {
   const configured = process.env.SMITHERS_TYPESCRIPT_FORK;
   if (configured) return existsSync(configured) ? resolve(configured) : undefined;
   const cacheRoots = process.env.SMITHERS_TYPESCRIPT_FORK_CACHE
     ? [resolve(process.env.SMITHERS_TYPESCRIPT_FORK_CACHE)]
-    : ["/private/tmp/smithers-ts-fork-cache", join(tmpdir(), "smithers-ts-fork-cache")];
+    : CONSUMER_CACHE_ROOTS;
   return cacheRoots
     .map((cache) => join(cache, forkManifest.revision))
     .find((checkout) => existsSync(join(checkout, "go.work")));
@@ -76,6 +83,84 @@ function makePristineCheckout(t, sourceCheckout) {
   runGit(["-C", checkout, "checkout", "--quiet", "--detach", forkManifest.revision]);
   return checkout;
 }
+
+/**
+ * Every file that names a TypeScript-fork cache root, and whether it produces
+ * one or consumes one. A name here is a *directory* name, not the
+ * `--fork-cache` flag (that is the bridge *binary* cache, a different thing) and
+ * not `conformance/runner`'s per-workspace `"fork-cache"` scratch directory.
+ */
+const FORK_CACHE_NAME_SITES = [
+  "scripts/prepare-typescript-fork.mjs",
+  "scripts/go-test-gate.mjs",
+  "scripts/fork-e2e.mjs",
+  "src/go-backend.ts",
+  "test/cli-go-backend.test.mjs",
+];
+
+/** Files whose user-facing remedy text spells the preparation command out. */
+const FORK_CACHE_REMEDY_SITES = [
+  "test/fork-e2e.test.mjs",
+  "conformance/runner/backend-go.mjs",
+  "scripts/go-test-gate.mjs",
+];
+
+/**
+ * The producer and the consumers must name ONE cache directory.
+ *
+ * `scripts/prepare-typescript-fork.mjs` is the only writer; `src/go-backend.ts`,
+ * `scripts/go-test-gate.mjs`, `scripts/fork-e2e.mjs` and this file are the
+ * readers. They drifted — the writer defaulted to
+ * `smithers-typescript-fork-cache` while every reader searched
+ * `smithers-ts-fork-cache` — so the documented bare command
+ * `node scripts/prepare-typescript-fork.mjs --fetch` prepared a real checkout
+ * into a directory no reader looks in, and the backend then reported
+ * `SMITHERS_GO_CHECKOUT_MISSING` on a machine that had just prepared one.
+ *
+ * A one-shot equality assertion would have caught that and nothing since, so
+ * this derives both sides: the readers' side is `CONSUMER_CACHE_ROOTS` itself
+ * (the array `locateForkCheckout` uses), and the writers'/other readers' side is
+ * every quoted cache-directory literal in the files above.
+ */
+test("the fork preparation script writes the cache directory the Go backend reads", () => {
+  const quotedCacheName = /"(?:\/private\/tmp\/)?((?:[a-z0-9]+-)+fork-cache)"/g;
+  const named = new Map();
+  for (const relative of FORK_CACHE_NAME_SITES) {
+    const source = readFileSync(join(repositoryRoot, relative), "utf8");
+    for (const [, name] of source.matchAll(quotedCacheName)) {
+      (named.get(name) ?? named.set(name, []).get(name)).push(relative);
+    }
+  }
+  assert.deepEqual(
+    [...named.keys()].sort(),
+    ["smithers-ts-fork-cache"],
+    `the fork cache directory name has drifted: ${
+      [...named].map(([name, sites]) => `${name} in ${[...new Set(sites)].join(", ")}`).join("; ")
+    }`,
+  );
+
+  // The consumers' own search array must be built from that one name, so a
+  // rename cannot pass by editing only the literals above.
+  assert.deepEqual(
+    CONSUMER_CACHE_ROOTS,
+    ["/private/tmp/smithers-ts-fork-cache", join(tmpdir(), "smithers-ts-fork-cache")],
+  );
+
+  // And the remedy the tools print must be a command that produces it. This is
+  // the half that was actually load-bearing: the text was already right, and it
+  // was the script's default that disagreed with it.
+  for (const relative of FORK_CACHE_REMEDY_SITES) {
+    const source = readFileSync(join(repositoryRoot, relative), "utf8");
+    // Only literal paths: `go-test-gate.mjs` interpolates the root it just
+    // resolved, which is the same array this test already checks directly.
+    for (const [, target] of source.matchAll(/prepare-typescript-fork\.mjs --fetch --cache (\/[^\s`"'$}]+)/g)) {
+      assert.ok(
+        CONSUMER_CACHE_ROOTS.includes(target),
+        `${relative} tells the operator to prepare ${target}, which no consumer searches`,
+      );
+    }
+  }
+});
 
 test("--backend go fails closed with an actionable code when the checkout is absent", () => {
   const absent = join(tmpdir(), `smithers-c19-absent-${process.pid}`);
