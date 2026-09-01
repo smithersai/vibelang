@@ -1,4 +1,5 @@
 import { Governor, governorFrom, type ConcurrencyBound } from "./governor.ts";
+import { type Arm, type Dispatch, armWork, dispatchVia, Scheduler } from "./scheduler.ts";
 import {
   Cancellation,
   mapUnordered,
@@ -91,22 +92,27 @@ export function bufferedUnordered<Input>(
     directBound ? boundOrOptions as ConcurrencyBound : options!.concurrency,
     "bufferedUnordered concurrency",
   );
-  // KNOWN DEFECT (reproduced, not fixed here). Same shape as the one described
-  // at the matching site in `join.ts`: `bufferedUnordered(source, 2)` ignores a
-  // cancellation that `bufferedUnordered(source, { concurrency: 2 })` honors.
+  // FIXED alongside the matching site in `join.ts`: `bufferedUnordered(source, 2)`
+  // used to ignore a cancellation that `bufferedUnordered(source, { concurrency: 2 })`
+  // honored. Both shapes now resolve the same capability.
   const parent = options
     ? options.cancellation ?? Cancellation.context()
-    : legacyCancellation ?? new Cancellation();
+    : legacyCancellation ?? Cancellation.context();
   if (!(parent instanceof Cancellation)) {
     throw new TypeError("bufferedUnordered cancellation must be a Cancellation");
   }
-  return bufferedUnorderedImpl(inputs, governor, parent);
+  // Resolved here, at CALL time, for the same reason `Cancellation.context()`
+  // is: a generator body runs long after its enclosing Layer has been left, so
+  // a capability read from inside the body would see the consumer's
+  // environment rather than the constructor's.
+  return bufferedUnorderedImpl(inputs, governor, parent, dispatchVia(Scheduler.context()));
 }
 
 async function* bufferedUnorderedImpl<Input>(
   inputs: InputSource<Input>,
   governor: Governor,
   parent: Cancellation,
+  dispatch: Dispatch,
 ): AsyncGenerator<Input> {
   const child = Cancellation.child(parent);
   let iterator: AsyncIterator<Input>;
@@ -117,7 +123,7 @@ async function* bufferedUnorderedImpl<Input>(
     throw error;
   }
 
-  const active = new Map<number, Promise<PullCompletion<Input>>>();
+  const active = new Map<number, Arm<PullCompletion<Input>>>();
   const cancelled = child.whenCancelled();
   let token = 0;
   let sourceDone = false;
@@ -132,25 +138,40 @@ async function* bufferedUnorderedImpl<Input>(
   const fill = (): void => {
     while (!sourceDone && active.size < governor.limit) {
       const current = token++;
-      const pull = governor.run(async (): Promise<PullCompletion<Input>> => {
-        try {
-          child.check();
-          return { kind: "source", token: current, next: await iterator.next() };
-        } catch (error) {
-          return { kind: "source-error", token: current, error: rememberFailure(error) };
-        }
-      });
+      // Ticketed at submission, which for a single-threaded body issuing pulls
+      // in program order IS program order — the deterministic submission index
+      // `durable-execution.mdx` §Deterministic Scheduling requires.
+      const pull = dispatch.start("bufferedUnordered.pull", () =>
+        governor.run(async (): Promise<PullCompletion<Input>> => {
+          try {
+            child.check();
+            return { kind: "source", token: current, next: await iterator.next() };
+          } catch (error) {
+            return { kind: "source-error", token: current, error: rememberFailure(error) };
+          }
+        }));
       active.set(current, pull);
     }
   };
 
   try {
-    const cancellationCompletion = cancelled.then(
-      (error): PullCompletion<Input> => ({ kind: "source-error", token: -1, error: rememberFailure(error) }),
+    // The cancellation arm is ticketed once and re-offered every iteration, so
+    // it keeps one stable submission key across the whole loop rather than
+    // minting a new one per race.
+    const cancellationCompletion = dispatch.start(
+      "bufferedUnordered.cancellation",
+      async (): Promise<PullCompletion<Input>> => ({
+        kind: "source-error",
+        token: -1,
+        error: rememberFailure(await cancelled),
+      }),
     );
     fill();
     while (active.size > 0) {
-      const completion = await Promise.race([cancellationCompletion, ...active.values()]);
+      const completion = await dispatch.firstReady<PullCompletion<Input>>("bufferedUnordered", [
+        cancellationCompletion,
+        ...active.values(),
+      ]);
       if (completion.token >= 0) active.delete(completion.token);
       if (completion.kind === "source-error") throw firstFailure?.error ?? completion.error;
       if (completion.next.done) {
@@ -177,7 +198,9 @@ async function* bufferedUnorderedImpl<Input>(
       void close.catch(() => undefined);
     }
     try {
-      await Promise.allSettled(active.values());
+      // A join, not a race: `allSettled` does not observe arrival order, so it
+      // needs no scheduler and charges no requirement.
+      await Promise.allSettled([...active.values()].map(armWork));
       if (close) await close;
     } catch (error) {
       cleanupFailed = true;

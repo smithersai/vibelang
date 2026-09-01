@@ -1,3 +1,10 @@
+import {
+  HostScheduler,
+  type JournalRow,
+  ReplayScheduler,
+  Scheduler,
+  testScheduler,
+} from "../concurrency/scheduler.ts";
 import { Layer } from "../runtime/layer.ts";
 import { Clock, SystemClock, TestClock } from "./clock.ts";
 import { Console, RecordingConsole, SystemConsole } from "./console.ts";
@@ -26,7 +33,8 @@ export type PlatformCapability =
   | typeof Process
   | typeof Terminal
   | typeof Socket
-  | typeof Sleeper;
+  | typeof Sleeper
+  | typeof Scheduler;
 
 export type PlatformLayer = Layer<PlatformCapability>;
 
@@ -53,6 +61,24 @@ export interface PlatformServices {
    * be deleted without making retries unusable.
    */
   readonly sleeper?: Sleeper;
+  /**
+   * Dispatching concurrent work.
+   *
+   * **Required, unlike every other service added after the original six.**
+   * It was optional while the combinators were being routed onto it, because
+   * each intermediate state had to be one where a bundle that never heard of a
+   * scheduler still ran. That is over: `join.ts`, `async-iterators.ts` and
+   * `stream.ts` now dispatch every concurrent arm through it.
+   *
+   * It is deliberately NOT the same shape of optional as `Sleeper`. An absent
+   * `Sleeper` means "pausing fails closed", which is a legitimate environment.
+   * An absent `Scheduler` would mean "concurrency silently falls back to
+   * arrival order" — a degradation with no observable symptom, which is the
+   * exact failure `platform/schedule.ts` records for the old ambient
+   * `globalThis.setTimeout` fallback. There is no honest way to spell that as
+   * an option, so it is not one.
+   */
+  readonly scheduler: Scheduler;
 }
 
 /** Package already constructed services into one environment. */
@@ -64,6 +90,9 @@ export function platformLayer(services: PlatformServices): PlatformLayer {
     Layer.succeed(Environment, services.environment),
     Layer.succeed(FileSystem, services.fileSystem),
     Layer.succeed(HttpClient, services.http),
+    // Not in the conditional block below: an unprovided Scheduler degrades to
+    // arrival order rather than failing closed, so it has to be here.
+    Layer.succeed(Scheduler, services.scheduler),
   ];
   // Only what the caller supplied is provided: an absent optional service stays
   // unprovided, so reaching for it still fails closed rather than resolving a
@@ -93,6 +122,8 @@ export function nodePlatform(options: NodePlatformOptions = {}): PlatformLayer {
     terminal: options.terminal ?? SystemTerminal.make(),
     socket: options.socket ?? NodeSocket.make(),
     sleeper: options.sleeper ?? SystemSleeper.make(),
+    // Arrival order is the host's here, which is correct outside a durable body.
+    scheduler: options.scheduler ?? HostScheduler.make(),
   });
 }
 
@@ -123,6 +154,13 @@ export interface TestPlatformOptions {
   readonly terminalSize?: TerminalSize;
   /** Cap on unread bytes for every in-memory socket connection. */
   readonly maxBufferedBytes?: number;
+  /**
+   * A journal a previous run recorded, for the deterministic scheduler to
+   * replay. Absent means "record", which is what almost every test wants; the
+   * round trip is recording a run's `scheduler.journal` and handing it back
+   * here.
+   */
+  readonly journal?: readonly JournalRow[];
 }
 
 /** The deterministic bundle plus typed handles on each double, for assertions. */
@@ -139,6 +177,14 @@ export interface TestPlatformServices {
   readonly socket: MemorySocket;
   /** Records every sleep and advances `clock` instead of waiting on a host timer. */
   readonly sleeper: TestSleeper;
+  /**
+   * The deterministic scheduler, exposed as its concrete type so a test can
+   * read `scheduler.unticketed` — the counter the whole scheduler step is
+   * worth. A `Scheduler`-typed handle would hide it, and hiding it is exactly
+   * how a `Promise.race` → `firstReady` swap that changed nothing would pass
+   * unnoticed.
+   */
+  readonly scheduler: ReplayScheduler;
 }
 
 const DEFAULT_TEST_INSTANT = "2026-01-01T00:00:00.000Z";
@@ -174,6 +220,12 @@ export const TestPlatform = Object.freeze({
     // Bound to the same TestClock, so a schedule that reads elapsed time sees
     // the delays it slept without any real time passing.
     const sleeper = TestSleeper.make({ clock });
+    // Bound to the same TestClock as the sleeper, so a journalled completion
+    // stamps deterministic time and no real time passes.
+    const scheduler = testScheduler(
+      { clock },
+      ...(options.journal === undefined ? [] : [options.journal] as const),
+    );
     return Object.freeze({
       layer: platformLayer({
         clock,
@@ -186,6 +238,7 @@ export const TestPlatform = Object.freeze({
         terminal,
         socket,
         sleeper,
+        scheduler,
       }),
       clock,
       random,
@@ -197,6 +250,7 @@ export const TestPlatform = Object.freeze({
       terminal,
       socket,
       sleeper,
+      scheduler,
     });
   },
 });

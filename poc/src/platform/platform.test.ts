@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { HostScheduler } from "../concurrency/scheduler.ts";
 import { Layer } from "../runtime/layer.ts";
 import { catchPanic, isPanic } from "../runtime/panic.ts";
 import { type Result, __vsInspectResult } from "../runtime/result.ts";
@@ -199,6 +200,11 @@ describe("platform layers", () => {
       environment: MapEnvironment.empty(),
       fileSystem: InMemoryFileSystem.make(),
       http: StubHttpClient.make(),
+      // Required, unlike `process`/`terminal`/`socket`/`sleeper`. A bundle
+      // without a `Scheduler` would not fail closed — concurrency would
+      // silently fall back to arrival order — so there is no honest way to
+      // spell it as optional and `PlatformServices` does not.
+      scheduler: HostScheduler.make(),
     };
     const layer = platformLayer(services);
     expect(Layer.provide(layer, () => Clock.context())).toBe(services.clock);

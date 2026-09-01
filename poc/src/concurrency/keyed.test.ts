@@ -23,15 +23,19 @@ describe("keyed Promise combinators", () => {
     expect(Object.hasOwn(result, "inherited")).toBe(false);
   });
 
-  test("rejects with the first input rejection while observing later rejections", async () => {
-    const first = new RangeError("first rejection");
-    const later = new Error("later rejection");
+  // Was "rejects with the first input rejection". That spelling asserted
+  // ARRIVAL order — the fast key won because it settled first — which made the
+  // reported failure a function of host timing. `allKeyed` now reports the
+  // lowest-index rejection, so the answer depends only on key order.
+  test("rejects with the earliest KEY's rejection, not the first to arrive", async () => {
+    const early = new Error("early key rejection");
+    const late = new RangeError("late key rejection");
     const promise = allKeyed({
-      slow: Bun.sleep(5).then(() => { throw later; }),
-      fast: Promise.reject(first),
+      slow: Bun.sleep(5).then(() => { throw early; }),
+      fast: Promise.reject(late),
     });
 
-    await expect(promise).rejects.toBe(first);
+    await expect(promise).rejects.toBe(early);
     await Bun.sleep(10);
   });
 

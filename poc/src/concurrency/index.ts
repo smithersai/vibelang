@@ -23,3 +23,23 @@ export * from "./queue.ts";
 export * from "./semaphore.ts";
 export * from "./channel.ts";
 export * from "./stream.ts";
+export {
+  HostScheduler,
+  ReplayScheduler,
+  Scheduler,
+  assertFullyTicketed,
+  schedulerFor,
+  testScheduler,
+} from "./scheduler.ts";
+export type {
+  Contender,
+  JournalOp,
+  JournalRow,
+  ReplayAudit,
+  ReplaySchedulerOptions,
+  Submission,
+  SubmissionKey,
+  Ticket,
+  TicketAssertion,
+  TicketAudit,
+} from "./scheduler.ts";

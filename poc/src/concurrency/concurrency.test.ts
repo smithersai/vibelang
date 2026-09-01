@@ -1,8 +1,36 @@
 import { describe, expect, test } from "bun:test";
 import { Cancelled, Cancellation, awaitAll, mapUnordered } from "./index.ts";
 import { Layer } from "../runtime/layer.ts";
+import { HostScheduler, Scheduler } from "./scheduler.ts";
 import { decodeError, encodeError, errorIdentity } from "../runtime/errors.ts";
 import { __vsInspectResult } from "../runtime/result.ts";
+
+/**
+ * Provide only a `Scheduler`. These call sites pass their cancellation
+ * explicitly, so they need the other half of the root environment and nothing
+ * more.
+ */
+const withScheduler = <T>(body: () => T): T =>
+  Layer.provide(Layer.succeed(Scheduler, HostScheduler.make()), body);
+
+/**
+ * The root environment a combinator needs: a cancellation token and a
+ * scheduler.
+ *
+ * `Scheduler` became a required platform service when the last `Promise.race`
+ * was routed onto `firstReady`, so every combinator CONSTRUCTION needs one in
+ * scope. `HostScheduler` is the right one here: these tests assert real
+ * completion order, which is exactly what the live scheduler reproduces. The
+ * cancellation half is minted here rather than inside the dispatcher, which is
+ * where the shorthand shapes used to conjure an invisible one nobody could
+ * reach; each test keeps its original meaning — no cancellation is exercised —
+ * but the token is now the caller's.
+ */
+const rootLayer = (cancellation: Cancellation) =>
+  Layer.merge(Layer.succeed(Cancellation, cancellation), Layer.succeed(Scheduler, HostScheduler.make()));
+
+const withRootCancellation = <T>(body: () => T): T =>
+  Layer.provide(rootLayer(new Cancellation()), body);
 
 describe("structured concurrency without fibers", () => {
   test("awaitAll preserves tuple order", async () => {
@@ -31,16 +59,16 @@ describe("structured concurrency without fibers", () => {
 
   test("unordered mapping yields completion order with a bound", async () => {
     const output: number[] = [];
-    for await (const value of mapUnordered([5, 1, 2], 2, async (delay) => {
+    for await (const value of withRootCancellation(() => mapUnordered([5, 1, 2], 2, async (delay) => {
       await Bun.sleep(delay * 2);
       return delay;
-    })) output.push(value);
+    }))) output.push(value);
     expect(output).toEqual([1, 2, 5]);
   });
 
   test("breaking unordered iteration cancels its child token, joins mappers, and leaves its parent alive", async () => {
     const parent = new Cancellation();
-    const layer = Layer.succeed(Cancellation, parent);
+    const layer = rootLayer(parent);
     const finished: number[] = [];
     let child: Cancellation | undefined;
     const mapped = Layer.provide(layer, () => mapUnordered([1, 30], async (delay, token) => {
@@ -59,7 +87,7 @@ describe("structured concurrency without fibers", () => {
     expect(parent.signal.aborted).toBe(false);
     expect(child?.signal.aborted).toBe(true);
     expect(finished).toEqual([1]);
-    expect(() => mapUnordered([], 0, async () => 1)).toThrow("positive integer");
+    expect(() => withScheduler(() => mapUnordered([], 0, async () => 1))).toThrow("positive integer");
   });
 
   test("unordered mapping consumes async inputs and reports mapper failures after cleanup", async () => {
@@ -72,7 +100,7 @@ describe("structured concurrency without fibers", () => {
     const parent = new Cancellation();
     const stopped: number[] = [];
     await expect(async () => {
-      for await (const _value of mapUnordered(inputs(), 2, async (value, token) => {
+      for await (const _value of withScheduler(() => mapUnordered(inputs(), 2, async (value, token) => {
         if (value === 2) {
           await siblingStarted;
           throw new RangeError("mapper failed");
@@ -82,7 +110,7 @@ describe("structured concurrency without fibers", () => {
           await token.whenCancelled().then(() => { stopped.push(value); });
         }
         return value;
-      }, parent)) { /* drain */ }
+      }, parent))) { /* drain */ }
     }).toThrow("mapper failed");
     expect(parent.aborted).toBe(false);
     expect(stopped).toEqual([3]);
@@ -90,10 +118,10 @@ describe("structured concurrency without fibers", () => {
 
   test("parent cancellation propagates to the combinator child without rejecting hidden work", async () => {
     const parent = new Cancellation();
-    const iteration = mapUnordered([1], 1, async (_value, token) => {
+    const iteration = withScheduler(() => mapUnordered([1], 1, async (_value, token) => {
       const cancelled = await token.whenCancelled();
       throw cancelled;
-    }, parent);
+    }, parent));
     const next = iteration.next();
     parent.cancel("parent stopped");
     await expect(next).rejects.toThrow("parent stopped");
@@ -113,7 +141,7 @@ describe("structured concurrency without fibers", () => {
         };
       },
     };
-    const iteration = mapUnordered(hangingSource, 1, async (value) => value, parent);
+    const iteration = withScheduler(() => mapUnordered(hangingSource, 1, async (value) => value, parent));
     const next = iteration.next();
     parent.cancel("stop source");
     await expect(next).rejects.toThrow("stop source");

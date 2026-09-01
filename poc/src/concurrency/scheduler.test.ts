@@ -3,6 +3,11 @@ import { SystemClock, TestClock } from "../platform/clock.ts";
 import { TestPlatform } from "../platform/layers.ts";
 import { Layer } from "../runtime/layer.ts";
 import { isPanic } from "../runtime/panic.ts";
+import { __vsInspectResult } from "../runtime/result.ts";
+import { Cancellation } from "./join.ts";
+import { bufferedUnordered } from "./async-iterators.ts";
+import { Stream } from "./stream.ts";
+import { mapUnordered } from "./join.ts";
 import {
   assertFullyTicketed,
   HostScheduler,
@@ -10,6 +15,7 @@ import {
   ReplayScheduler,
   Scheduler,
   schedulerFor,
+  schedulerIfProvided,
   testScheduler,
 } from "./scheduler.ts";
 
@@ -702,4 +708,89 @@ test("an empty race is refused by both implementations", async () => {
 test("a non-iterable contender set is refused", async () => {
   await panickedAsync(() => ReplayScheduler.make().firstReady(42 as never));
   await panickedAsync(() => ReplayScheduler.make().firstReady([null] as never));
+});
+
+// ---------------------------------------------------------------------------
+// R6: the counter, read over the combinators that were routed onto it
+//
+// Everything above tests the scheduler against contenders a test handed it
+// directly. These tests are the ones the migration step is actually worth:
+// they run the real combinators under a real `TestPlatform` and read
+// `unticketed` afterwards. A swap that kept arrival-order semantics — every
+// `Promise.race` renamed to `firstReady` while the callers still handed over
+// bare promises — produces identical output and passes every OTHER assertion in
+// this repository. It fails here and nowhere else.
+// ---------------------------------------------------------------------------
+
+/**
+ * Assert full ticketing AND prove the counter that says so was live.
+ *
+ * `expect(scheduler.unticketed).toBe(0)` is a fail-open twice over: a scheduler
+ * nothing reached reads zero, and so does a scheduler whose counter is simply
+ * never incremented. `assertFullyTicketed(..., { concurrency: "expected" })`
+ * closes the first hole by refusing a zero over an idle scheduler. This closes
+ * the second, on the very instance the run used: after the assertion passes,
+ * hand that same scheduler a bare promise and watch the counter move. A counter
+ * that cannot move reads zero exactly like a correctly-ticketed run.
+ */
+async function ticketedThroughout(scheduler: ReplayScheduler, label: string): Promise<void> {
+  const before = scheduler.audit;
+  expect(before.submissions).toBeGreaterThan(0);
+  assertFullyTicketed(scheduler, { concurrency: "expected" }, label);
+
+  await scheduler.firstReady([Promise.resolve("bare")], `${label}.counterProbe`);
+  expect(scheduler.audit.unticketed).toBe(before.unticketed + 1);
+  expect(scheduler.audit.unticketedSites).toContain("ReplayScheduler.firstReady");
+}
+
+test("mapUnordered routes every arm through the scheduler with a ticket", async () => {
+  const platform = TestPlatform.make();
+  const cancellation = new Cancellation();
+  const layer = Layer.merge(platform.layer, Layer.succeed(Cancellation, cancellation));
+
+  const mapped = Layer.provide(layer, () =>
+    mapUnordered([1, 2, 3, 4], async (value) => value * 2, { concurrency: 2 }));
+  const collected: number[] = [];
+  for await (const value of mapped) collected.push(value);
+
+  expect(collected.slice().sort((left, right) => left - right)).toEqual([2, 4, 6, 8]);
+  await ticketedThroughout(platform.scheduler, "mapUnordered");
+});
+
+test("bufferedUnordered routes every arm through the scheduler with a ticket", async () => {
+  const platform = TestPlatform.make();
+  const cancellation = new Cancellation();
+  const layer = Layer.merge(platform.layer, Layer.succeed(Cancellation, cancellation));
+
+  const buffered = Layer.provide(layer, () => bufferedUnordered([1, 2, 3, 4], { concurrency: 2 }));
+  const collected: number[] = [];
+  for await (const value of buffered) collected.push(value);
+
+  expect(collected.slice().sort((left, right) => left - right)).toEqual([1, 2, 3, 4]);
+  await ticketedThroughout(platform.scheduler, "bufferedUnordered");
+});
+
+test("Stream.buffer's hand-rolled pull race routes through the scheduler with a ticket", async () => {
+  const platform = TestPlatform.make();
+  // Not a `Promise.race` in the source, which is exactly why it is asserted
+  // separately: a grep-driven migration would have left this one behind and
+  // every other test in the tree would still have passed.
+  const stream = Layer.provide(platform.layer, () => Stream.fromIterable([1, 2, 3]).buffer(2));
+  const collected = __vsInspectResult(await stream.runCollect());
+
+  expect(collected.ok).toBe(true);
+  if (collected.ok) expect(collected.value).toEqual([1, 2, 3]);
+  await ticketedThroughout(platform.scheduler, "Stream.buffer");
+});
+
+test("an unprovided Scheduler is refused rather than degraded to arrival order", () => {
+  // The final state of the migration. While the routing was landing this call
+  // ran fine without a scheduler, on a `Promise.race` fallback; that fallback
+  // is deleted, because a degradation to arrival order has no observable
+  // symptom and so cannot be found once it exists.
+  const cancellation = new Cancellation();
+  expect(() =>
+    Layer.provide(Layer.succeed(Cancellation, cancellation), () =>
+      mapUnordered([1, 2], async (value) => value + 1, { concurrency: 2 }))
+  ).toThrow(/capability 'Scheduler' was not provided/);
 });

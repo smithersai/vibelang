@@ -7,6 +7,7 @@ import {
   type Result,
 } from "../runtime/index.ts";
 import { Governor, governorFrom, type ConcurrencyBound } from "./governor.ts";
+import { type Arm, type Dispatch, armWork, dispatchVia, Scheduler, schedulerFor } from "./scheduler.ts";
 
 function reasonLabel(reason: unknown): string {
   if (typeof reason === "string" && reason.length > 0) return reason;
@@ -90,11 +91,37 @@ export class Cancellation extends Context {
   }
 }
 
-/** Tuple-preserving ordinary Promise join. Result aggregation remains Result.all. */
+/**
+ * Tuple-preserving ordinary Promise join. Result aggregation remains Result.all.
+ *
+ * ## Why not `Promise.all`
+ *
+ * `Promise.all` is order-INDEPENDENT on its success path — the tuple it builds
+ * is in submission order whatever the arrival order was — but its FAILURE path
+ * is not: it rejects with whichever input rejected first *in arrival order*. So
+ * a body whose inputs both fail reports a different error depending on host
+ * timing, and that is arrival order leaking into an observable value.
+ *
+ * Settling every input and reporting the LOWEST-INDEX rejection makes the
+ * answer a function of program order alone. This needs no `Scheduler`: the
+ * choice is decided by position in the argument list, not by when anything
+ * arrived, so there is no interleaving left to journal.
+ *
+ * The cost is stated rather than hidden: rejection now surfaces after every
+ * input has settled rather than at the first failure. `Promise.all` would have
+ * left the later rejections unobserved anyway, so nothing that was awaited
+ * before is dropped — only the moment of reporting moves.
+ */
 export async function awaitAll<const Values extends readonly unknown[]>(
   ...values: Values
 ): Promise<{ -readonly [Index in keyof Values]: Awaited<Values[Index]> }> {
-  return await Promise.all(values) as { -readonly [Index in keyof Values]: Awaited<Values[Index]> };
+  const settled = await Promise.allSettled(values);
+  for (const outcome of settled) {
+    if (outcome.status === "rejected") throw outcome.reason;
+  }
+  return settled.map((outcome) => (outcome as PromiseFulfilledResult<unknown>).value) as {
+    -readonly [Index in keyof Values]: Awaited<Values[Index]>;
+  };
 }
 
 export type Awaitable<T> = T | PromiseLike<T>;
@@ -104,6 +131,15 @@ export interface MapUnorderedOptions {
   readonly concurrency: ConcurrencyBound;
   /** TypeScript adapter escape hatch; authored Smithers normally uses Cancellation.context(). */
   readonly cancellation?: Cancellation;
+  /**
+   * The same escape hatch for the scheduler, and it is load-bearing rather
+   * than decorative: `Stream.interrupt` builds its `mapUnordered` INSIDE an
+   * async generator body, which runs at drive time when the caller's Layer has
+   * long been left. A capability read there would find nothing. So the
+   * enclosing method resolves the scheduler while it still can and hands it
+   * down, exactly as it already does for the cancellation.
+   */
+  readonly scheduler?: Scheduler;
 }
 
 type Mapper<Input, Output> = (input: Input, cancellation: Cancellation) => Awaitable<Output>;
@@ -147,28 +183,26 @@ export function mapUnordered<Input, Output>(
   }
   const bound = modern ? directBound ? optionsOrMapper as ConcurrencyBound : options!.concurrency : mapperOrConcurrency;
   const governor = governorFrom(bound as ConcurrencyBound, "mapUnordered concurrency");
-  // KNOWN DEFECT (reproduced, not fixed here — the fix is a policy call).
-  // Only the options shape consults the dependency model. The two shorthand
-  // shapes substitute `new Cancellation()`, a fresh root nobody holds a
-  // reference to, so `mapUnordered(inputs, mapper, 2)` silently ignores a
-  // cancellation that the otherwise identical
-  // `mapUnordered(inputs, mapper, { concurrency: 2 })` honors, and keeps
-  // running work the caller already cancelled. `bufferedUnordered` and
-  // `filterUnordered` share the defect; `Stream.mapConcurrent` routes into it
-  // whenever no `cancellation` option is supplied.
+  // FIXED (was: KNOWN DEFECT). Every shape now consults the dependency model.
+  // The shorthand shapes used to substitute `new Cancellation()`, a fresh root
+  // nobody holds a reference to, so `mapUnordered(inputs, mapper, 2)` silently
+  // ignored a cancellation that the otherwise identical
+  // `mapUnordered(inputs, mapper, { concurrency: 2 })` honored, and kept
+  // running work the caller had already cancelled.
   //
-  // Unifying on `Cancellation.context()` fixes it but makes every shorthand
-  // call panic outside a Layer (measured: 10 existing concurrency tests fail),
-  // which changes a documented public shape. DECISIONS.md lists language-wide
-  // cancellation as Open, so the choice between that and a
-  // "capability if provided" lookup belongs to whoever settles that decision.
+  // The cost is the one the old comment measured: a shorthand call outside a
+  // Layer now panics instead of running uncancellable. That is the correct
+  // direction — an unprovided capability failing closed — and it is the same
+  // rule the rest of the tree already follows.
   const parent = modern
     ? options
       ? options.cancellation ?? Cancellation.context()
-      : new Cancellation()
-    : legacyCancellation ?? new Cancellation();
+      : Cancellation.context()
+    : legacyCancellation ?? Cancellation.context();
   if (!(parent instanceof Cancellation)) throw new TypeError("mapUnordered cancellation must be a Cancellation");
-  return mapUnorderedImpl(inputs, governor, mapper, parent);
+  // Resolved at CALL time alongside the cancellation, not inside the generator
+  // body: the body runs after its enclosing Layer has been left.
+  return mapUnorderedImpl(inputs, governor, mapper, parent, dispatchVia(schedulerFor(options?.scheduler, "mapUnordered")));
 }
 
 async function* mapUnorderedImpl<Input, Output>(
@@ -176,6 +210,7 @@ async function* mapUnorderedImpl<Input, Output>(
   governor: Governor,
   mapper: Mapper<Input, Output>,
   parent: Cancellation,
+  dispatch: Dispatch,
 ): AsyncGenerator<Output> {
   const child = Cancellation.child(parent);
   let iterator: AsyncIterator<Input>;
@@ -194,13 +229,13 @@ async function* mapUnorderedImpl<Input, Output>(
     child.unlink();
     throw error;
   }
-  const active = new Map<number, Promise<Completion<Output>>>();
+  const active = new Map<number, Arm<Completion<Output>>>();
   let token = 0;
   let sourceDone = false;
   let completedNormally = false;
   let primaryFailure = false;
   let firstFailure: { readonly error: unknown } | undefined;
-  let pendingNext: Promise<SourceCompletion<Input>> | undefined;
+  let pendingNext: Arm<SourceCompletion<Input>> | undefined;
   const cancelled = child.whenCancelled();
   const rememberFailure = (error: unknown): unknown => {
     firstFailure ??= { error };
@@ -219,39 +254,60 @@ async function* mapUnorderedImpl<Input, Output>(
     // AsyncIterator has no universal abort hook. Racing the logical pull lets
     // cleanup join promptly after cancellation while the handler installed on
     // the raw pull continues to contain any late source rejection.
-    pendingNext = Promise.race([
-      pull,
-      cancelled.then((error): SourceCompletion<Input> => ({ kind: "source-error", error })),
-    ]);
+    //
+    // This inner race is load-bearing and is NOT the same decision as the outer
+    // loop's: cancellation already competes out there, but if `pendingNext`
+    // were the bare source pull then a source that never settles after
+    // cancellation would hang the `allSettled` join in `finally`. So it is a
+    // second arrival-order decision, and it gets journalled like one.
+    pendingNext = dispatch.start("mapUnordered.pull", () =>
+      dispatch.firstReady<SourceCompletion<Input>>("mapUnordered.pull", [
+        dispatch.start("mapUnordered.pull.source", () => pull),
+        dispatch.start(
+          "mapUnordered.pull.stop",
+          async (): Promise<SourceCompletion<Input>> => ({ kind: "source-error", error: await cancelled }),
+        ),
+      ]));
   };
 
   const startMapper = (input: Input): void => {
     const current = token++;
-    const task = governor.run(async (): Promise<Completion<Output>> => {
-      try {
-        child.check();
-        return { kind: "value", token: current, value: await mapper(input, child) };
-      } catch (error) {
-        return { kind: "error", token: current, error: rememberFailure(error) };
-      }
-    });
+    // Ticketed at submission: for a body starting mappers in program order the
+    // submission index IS program order, which is what the spec asks for rather
+    // than an approximation of it.
+    const task = dispatch.start("mapUnordered.mapper", () =>
+      governor.run(async (): Promise<Completion<Output>> => {
+        try {
+          child.check();
+          return { kind: "value", token: current, value: await mapper(input, child) };
+        } catch (error) {
+          return { kind: "error", token: current, error: rememberFailure(error) };
+        }
+      }));
     active.set(current, task);
   };
 
   try {
-    const cancellationCompletion = cancelled.then(
-      (error): Completion<Output> => ({ kind: "error", token: -1, error: rememberFailure(error) }),
+    // Ticketed once and re-offered on every iteration, so the cancellation arm
+    // keeps one stable submission key instead of minting a new one per race.
+    const cancellationCompletion = dispatch.start(
+      "mapUnordered.cancellation",
+      async (): Promise<Completion<Output>> => ({
+        kind: "error",
+        token: -1,
+        error: rememberFailure(await cancelled),
+      }),
     );
     scheduleNext();
     while (active.size > 0 || pendingNext) {
       // Put cancellation and mapper completions before the source pull so an
       // already-settled stop/failure cannot accidentally launch more work.
-      const contenders: Array<Promise<Completion<Output> | SourceCompletion<Input>>> = [
+      const contenders: Array<Arm<Completion<Output> | SourceCompletion<Input>>> = [
         cancellationCompletion,
         ...active.values(),
       ];
       if (pendingNext) contenders.push(pendingNext);
-      const completion = await Promise.race(contenders);
+      const completion = await dispatch.firstReady("mapUnordered", contenders);
 
       if (completion.kind === "source-error") {
         pendingNext = undefined;
@@ -291,8 +347,10 @@ async function* mapUnorderedImpl<Input, Output>(
       void close.catch(() => undefined);
     }
     try {
-      const work = pendingNext ? [...active.values(), pendingNext] : [...active.values()];
-      await Promise.allSettled(work);
+      // A join, not a race: `allSettled` cannot observe arrival order, so it
+      // needs no scheduler and charges no requirement.
+      const work: Array<Arm<unknown>> = pendingNext ? [...active.values(), pendingNext] : [...active.values()];
+      await Promise.allSettled(work.map(armWork));
       if (close) await close;
     } catch (error) {
       cleanupFailed = true;

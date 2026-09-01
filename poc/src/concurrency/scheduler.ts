@@ -2,9 +2,18 @@
  * `Scheduler`: the capability every concurrent effect request is dispatched
  * through, and the counter that says whether that is actually true.
  *
- * **Status: provisional, and exported from nowhere.** Nothing in the tree
- * routes through this module yet. `concurrency/index.ts` does not re-export it
- * and `platform/layers.ts` does not provide it; wiring it in is a later step.
+ * **Status: wired, and required.** `concurrency/index.ts` re-exports it and
+ * `platform/layers.ts` provides it as a non-optional platform service. Every
+ * arrival-order decision in `join.ts`, `async-iterators.ts` and `stream.ts` is
+ * dispatched through {@link Dispatch}, so `ReplayScheduler.unticketed` now
+ * reads over the real combinators rather than over contenders a test handed
+ * the scheduler directly.
+ *
+ * Four races were routed, and one of them was not spelled `Promise.race`:
+ * `stream.ts`'s `cancellablePull` was a hand-rolled `new Promise` with a
+ * first-wins `complete`. A migration driven by grepping for `Promise.race`
+ * finds three and silently leaves that one behind, which is worth recording
+ * because leaving it behind has no observable symptom.
  *
  * ---
  *
@@ -289,6 +298,55 @@ export function schedulerFor(explicit: Scheduler | undefined, caller: string): S
     return explicit;
   }
   return Scheduler.context();
+}
+
+/**
+ * One concurrent arm of a combinator: a ticketed {@link Submission} once a
+ * `Scheduler` is provided, and a bare promise while it is still optional.
+ */
+export type Arm<T> = Submission<T> | Promise<T>;
+
+/** The promise inside an arm, for the cleanup joins that wait rather than race. */
+export function armWork<T>(arm: Arm<T>): PromiseLike<T> {
+  return isSubmission(arm) ? arm.work : arm;
+}
+
+/**
+ * A combinator's whole view of the scheduler: start an arm, and ask which arm
+ * is ready first.
+ *
+ * The point of routing every combinator through ONE seam is that the
+ * `undefined`-scheduler arm exists in exactly one place instead of once per
+ * call site. `join.ts` alone has two races and `async-iterators.ts` a third;
+ * open-coding "scheduler ? firstReady : Promise.race" at each of them would
+ * mean three chances to leave one behind, and a left-behind `Promise.race` is
+ * invisible precisely because its output is identical.
+ */
+export interface Dispatch {
+  /** Begin one concurrent arm, ticketed when a scheduler is present. */
+  start<T>(site: string, work: () => Promise<T>): Arm<T>;
+  /** Resolve with the first ready arm. This is the arrival-order operation. */
+  firstReady<T>(site: string, arms: readonly Arm<T>[]): Promise<T>;
+}
+
+/**
+ * Build the seam. Every arm carries a deterministic ticket and every race is
+ * journalled.
+ *
+ * There used to be a second arm here, taken when no `Scheduler` was provided,
+ * which fell back to `Promise.race`. It existed only so that the routing could
+ * land one combinator at a time without any intermediate commit being broken.
+ * It is gone, and it had to go: a fallback to arrival order is invisible in
+ * every output, so a tree that keeps one has no way to tell a routed
+ * combinator from an unrouted one. `Scheduler` is a required platform service
+ * now, and an unprovided one panics like any other missing capability.
+ */
+export function dispatchVia(scheduler: Scheduler): Dispatch {
+  if (!(scheduler instanceof Scheduler)) panic("dispatchVia requires a Scheduler");
+  return Object.freeze({
+    start: <T>(site: string, work: () => Promise<T>): Arm<T> => scheduler.submit(scheduler.ticket(site), work),
+    firstReady: <T>(site: string, arms: readonly Arm<T>[]): Promise<T> => scheduler.firstReady(arms, site),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -798,10 +856,10 @@ export function assertFullyTicketed(
 /**
  * A deterministic scheduler bound to a `TestPlatform` bundle's clock.
  *
- * NOT part of `TestPlatform.make`. Putting `Scheduler` into `platformLayer` is
- * the wiring step, and doing it here would make this module observable — which
- * it must not be yet. This factory exists so that when the wiring lands, the
- * binding it needs already exists and has tests.
+ * This IS what `TestPlatform.make` calls now; the wiring landed. Every
+ * `TestPlatform`-based test therefore has a `ReplayScheduler` on
+ * `platform.scheduler` whose `unticketed` counter can be read directly — which
+ * is the whole verification criterion for the scheduler step.
  */
 export function testScheduler(bundle: { readonly clock: Clock }, journal?: readonly JournalRow[]): ReplayScheduler {
   if (typeof bundle !== "object" || bundle === null) panic("testScheduler requires a platform bundle");

@@ -46,6 +46,21 @@ function keyed<Values extends object>(
 
     const entries: KeyedEntry[] = [];
     let remaining = 1;
+    // The lowest-index rejection seen so far. `allKeyed` used to reject with
+    // whichever input rejected FIRST IN ARRIVAL ORDER, so a dictionary with two
+    // failing entries reported a different error depending on host timing —
+    // arrival order leaking into an observable value. Choosing by key position
+    // makes the answer a function of program order alone, and needs no
+    // `Scheduler`, because position is decided before anything is dispatched.
+    let lowestRejection: { readonly index: number; readonly reason: unknown } | undefined;
+
+    const settle = (): void => {
+      if (variant === "all" && lowestRejection !== undefined) {
+        reject(lowestRejection.reason);
+        return;
+      }
+      resolve(resultRecord(entries) as AwaitedRecord<Values> | SettledRecord<Values>);
+    };
 
     for (const key of keys) {
       let descriptor: PropertyDescriptor | undefined;
@@ -72,22 +87,27 @@ function keyed<Values extends object>(
             ? resolved
             : { status: "fulfilled", value: resolved } satisfies PromiseFulfilledResult<unknown>;
           remaining -= 1;
-          if (remaining === 0) resolve(resultRecord(entries) as AwaitedRecord<Values> | SettledRecord<Values>);
+          if (remaining === 0) settle();
         },
         (reason) => {
           if (variant === "all") {
-            reject(reason);
-            return;
+            // Do NOT reject here: this is only the first rejection to ARRIVE.
+            // Every input is still allowed to settle so the lowest-index one
+            // can win, which is also why no later rejection goes unobserved.
+            if (lowestRejection === undefined || index < lowestRejection.index) {
+              lowestRejection = { index, reason };
+            }
+          } else {
+            entries[index]!.value = { status: "rejected", reason } satisfies PromiseRejectedResult;
           }
-          entries[index]!.value = { status: "rejected", reason } satisfies PromiseRejectedResult;
           remaining -= 1;
-          if (remaining === 0) resolve(resultRecord(entries) as SettledRecord<Values>);
+          if (remaining === 0) settle();
         },
       );
     }
 
     remaining -= 1;
-    if (remaining === 0) resolve(resultRecord(entries) as AwaitedRecord<Values> | SettledRecord<Values>);
+    if (remaining === 0) settle();
   });
 }
 

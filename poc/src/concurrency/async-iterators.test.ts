@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { bufferedUnordered, filterUnordered, mapUnordered } from "./index.ts";
 import { Governor } from "./governor.ts";
-import { Cancelled } from "./join.ts";
+import { Cancellation, Cancelled } from "./join.ts";
+import { Layer } from "../runtime/layer.ts";
+import { HostScheduler, Scheduler } from "./scheduler.ts";
 
 async function collect<Value>(values: AsyncIterable<Value>): Promise<Value[]> {
   const output: Value[] = [];
@@ -25,6 +27,25 @@ function deferred<Value>(): Deferred<Value> {
   return { promise, resolve };
 }
 
+/**
+ * The root environment a combinator needs: a cancellation token and a
+ * scheduler.
+ *
+ * `Scheduler` became a required platform service when the last `Promise.race`
+ * was routed onto `firstReady`, so every combinator CONSTRUCTION needs one in
+ * scope. `HostScheduler` is the right one here: these tests assert real
+ * completion order, which is exactly what the live scheduler reproduces. The
+ * cancellation half is minted here rather than inside the dispatcher, which is
+ * where the shorthand shapes used to conjure an invisible one nobody could
+ * reach; each test keeps its original meaning — no cancellation is exercised —
+ * but the token is now the caller's.
+ */
+const rootLayer = (cancellation: Cancellation) =>
+  Layer.merge(Layer.succeed(Cancellation, cancellation), Layer.succeed(Scheduler, HostScheduler.make()));
+
+const withRootCancellation = <T>(body: () => T): T =>
+  Layer.provide(rootLayer(new Cancellation()), body);
+
 describe("unordered async iterator helpers", () => {
   test("a shared Governor bounds mapUnordered fan-out across iterators", async () => {
     const governor = Governor.withLimit(2);
@@ -39,8 +60,8 @@ describe("unordered async iterator helpers", () => {
     };
 
     const [left, right] = await Promise.all([
-      collect(mapUnordered([1, 2, 3], mapper, governor)),
-      collect(mapUnordered([4, 5, 6], mapper, governor)),
+      collect(withRootCancellation(() => mapUnordered([1, 2, 3], mapper, governor))),
+      collect(withRootCancellation(() => mapUnordered([4, 5, 6], mapper, governor))),
     ]);
 
     expect([...left, ...right].sort()).toEqual([1, 2, 3, 4, 5, 6]);
@@ -50,10 +71,10 @@ describe("unordered async iterator helpers", () => {
 
   test("filterUnordered applies its predicate concurrently and yields passing completion order", async () => {
     const delays = new Map([[1, 12], [2, 1], [3, 3], [4, 1]]);
-    const output = await collect(filterUnordered([1, 2, 3, 4], async (value) => {
+    const output = await collect(withRootCancellation(() => filterUnordered([1, 2, 3, 4], async (value) => {
       await Bun.sleep(delays.get(value)!);
       return value % 2 === 1;
-    }, 2));
+    }, 2)));
 
     expect(output).toEqual([3, 1]);
   });
@@ -71,7 +92,7 @@ describe("unordered async iterator helpers", () => {
         };
       },
     };
-    const iterator = bufferedUnordered(source, 2);
+    const iterator = withRootCancellation(() => bufferedUnordered(source, 2));
     const first = iterator.next();
     await until(() => pulls.length === 2);
     pulls[1]!.resolve({ done: false, value: 20 });
@@ -113,7 +134,7 @@ describe("unordered async iterator helpers", () => {
       },
     };
 
-    for await (const value of bufferedUnordered(source, 3)) {
+    for await (const value of withRootCancellation(() => bufferedUnordered(source, 3))) {
       expect(value).toBe(1);
       break;
     }
@@ -140,7 +161,7 @@ describe("unordered async iterator helpers", () => {
       },
     };
 
-    const operation = collect(mapUnordered(source, 2, async (value, cancellation) => {
+    const operation = collect(withRootCancellation(() => mapUnordered(source, 2, async (value, cancellation) => {
       count += 1;
       if (count === 2) bothStarted();
       await started;
@@ -149,7 +170,7 @@ describe("unordered async iterator helpers", () => {
       expect(cancelled).toBeInstanceOf(Cancelled);
       siblingJoined = true;
       throw new Error("later sibling failure");
-    }));
+    })));
 
     await expect(operation).rejects.toBe(firstFailure);
     expect(siblingJoined).toBe(true);
@@ -162,7 +183,7 @@ describe("unordered async iterator helpers", () => {
     const releaseLater = deferred<void>();
     const allStarted = deferred<void>();
     let started = 0;
-    const iterator = mapUnordered([0, 1, 2], 3, async (value) => {
+    const iterator = withRootCancellation(() => mapUnordered([0, 1, 2], 3, async (value) => {
       started += 1;
       if (started === 3) allStarted.resolve();
       if (value === 0) {
@@ -175,7 +196,7 @@ describe("unordered async iterator helpers", () => {
       }
       await releaseFirst.promise;
       throw firstInTime;
-    });
+    }));
 
     expect(await iterator.next()).toEqual({ done: false, value: "initial" });
     releaseFirst.resolve();
@@ -198,11 +219,11 @@ describe("unordered async iterator helpers", () => {
       }
     }
 
-    await expect(collect(filterUnordered(source(), async (value) => {
+    await expect(collect(withRootCancellation(() => filterUnordered(source(), async (value) => {
       if (value === 1) throw failure;
       await Bun.sleep(20);
       return true;
-    }, 2))).rejects.toBe(failure);
+    }, 2)))).rejects.toBe(failure);
     expect(closed).toBe(true);
   });
 });

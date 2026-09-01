@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Layer, __vsInspectResult, decodeError, encodeError } from "../runtime/index.ts";
+import { HostScheduler, Scheduler } from "./scheduler.ts";
 import {
   Cancellation,
   CancellationRegistration,
@@ -11,10 +12,34 @@ import {
   neverCancelled,
 } from "./index.ts";
 
+/**
+ * Provide only a `Scheduler`. These call sites pass their cancellation
+ * explicitly, so they need the other half of the root environment and nothing
+ * more.
+ */
+const withScheduler = <T>(body: () => T): T =>
+  Layer.provide(Layer.succeed(Scheduler, HostScheduler.make()), body);
+
+/**
+ * The root environment a combinator needs: a cancellation token and a
+ * scheduler.
+ *
+ * `Scheduler` became a required platform service when the last `Promise.race`
+ * was routed onto `firstReady`, so every combinator CONSTRUCTION needs one in
+ * scope. `HostScheduler` is the right one here: these tests assert real
+ * completion order, which is exactly what the live scheduler reproduces. The
+ * cancellation half is minted here rather than inside the dispatcher, which is
+ * where the shorthand shapes used to conjure an invisible one nobody could
+ * reach; each test keeps its original meaning — no cancellation is exercised —
+ * but the token is now the caller's.
+ */
+const rootLayer = (cancellation: Cancellation) =>
+  Layer.merge(Layer.succeed(Cancellation, cancellation), Layer.succeed(Scheduler, HostScheduler.make()));
+
 describe("Cancellation capability", () => {
   test("is a Context capability with coherent Result and AbortSignal views", () => {
     const source = new CancellationSource();
-    const supplied = Layer.provide(Layer.succeed(Cancellation, source), () => Cancellation.context());
+    const supplied = Layer.provide(rootLayer(source), () => Cancellation.context());
     expect(supplied).toBe(source);
     expect(source).toBeInstanceOf(Cancellation);
     expect(source.isCancelled()).toBe(false);
@@ -90,9 +115,9 @@ describe("Cancellation capability", () => {
 
   test("CancellationSource flows through join.ts cancellation and instanceof checks", async () => {
     const source = new CancellationSource();
-    const iteration = mapUnordered([1], async (_value, child) => {
+    const iteration = withScheduler(() => mapUnordered([1], async (_value, child) => {
       throw await child.whenCancelled();
-    }, { concurrency: 1, cancellation: source });
+    }, { concurrency: 1, cancellation: source }));
     const next = iteration.next();
     source.cancel("joined stop");
     await expect(next).rejects.toBeInstanceOf(Cancelled);

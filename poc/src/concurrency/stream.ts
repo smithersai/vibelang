@@ -8,6 +8,7 @@ import {
 } from "../runtime/index.ts";
 import { Governor, governorFrom, type ConcurrencyBound } from "./governor.ts";
 import { mapUnordered, type Awaitable } from "./join.ts";
+import { type Dispatch, dispatchVia, Scheduler } from "./scheduler.ts";
 import {
   Cancellation,
   CancellationSource,
@@ -108,30 +109,41 @@ type PullCompletion<Value> =
   | { readonly kind: "next"; readonly next: IteratorResult<Value> }
   | { readonly kind: "error"; readonly error: unknown };
 
+/**
+ * A source pull that loses to cancellation.
+ *
+ * This WAS a race spelled by hand — a `new Promise` plus a first-wins
+ * `complete` — rather than a `Promise.race`, which is worth saying out loud
+ * because a migration driven by grepping for `Promise.race` finds the two in
+ * `join.ts` and the one in `async-iterators.ts` and silently leaves this one
+ * behind. It is the same arrival-order decision as those three and it is
+ * journalled like them.
+ */
 function cancellablePull<Value>(
   iterator: AsyncIterator<Value>,
   cancellation: Cancellation,
+  dispatch: Dispatch,
 ): Promise<PullCompletion<Value>> {
-  let settled = false;
   let registration: ReturnType<typeof onCancellation> | undefined;
-  return new Promise((resolve) => {
-    const complete = (completion: PullCompletion<Value>) => {
-      if (settled) return;
-      settled = true;
-      registration?.dispose();
-      resolve(completion);
-    };
-    const raw = Promise.resolve()
-      .then(() => iterator.next())
-      .then(
-        (next): PullCompletion<Value> => ({ kind: "next", next }),
-        (error): PullCompletion<Value> => ({ kind: "error", error }),
-      );
-    // The raw pull always owns both handlers even when logical cancellation
-    // wins the race, so a late source rejection is contained.
-    void raw.then(complete);
-    registration = onCancellation(cancellation, (error) => complete({ kind: "error", error }));
+  // Both settlements are folded into the value channel, so this never rejects
+  // and a late source rejection stays contained however the race lands.
+  const raw = Promise.resolve()
+    .then(() => iterator.next())
+    .then(
+      (next): PullCompletion<Value> => ({ kind: "next", next }),
+      (error): PullCompletion<Value> => ({ kind: "error", error }),
+    );
+  const stopped = new Promise<PullCompletion<Value>>((resolve) => {
+    registration = onCancellation(cancellation, (error) => resolve({ kind: "error", error }));
   });
+  return dispatch
+    .firstReady<PullCompletion<Value>>("Stream.pull", [
+      dispatch.start("Stream.pull.source", () => raw),
+      dispatch.start("Stream.pull.stop", () => stopped),
+    ])
+    // Disposal on either outcome, which is what the hand-rolled `settled` flag
+    // was for: a listener left on the token would accumulate per pull.
+    .finally(() => registration?.dispose());
 }
 
 interface BufferProducerOutcome {
@@ -139,7 +151,11 @@ interface BufferProducerOutcome {
   readonly cleanupError?: unknown;
 }
 
-async function* buffered<Value>(source: Stream<Value, Error>, capacity: number): AsyncGenerator<Value> {
+async function* buffered<Value>(
+  source: Stream<Value, Error>,
+  capacity: number,
+  dispatch: Dispatch,
+): AsyncGenerator<Value> {
   const queue = new Queue<Value>(capacity);
   const stop = new CancellationSource();
   const iterator = source[Symbol.asyncIterator]();
@@ -151,7 +167,7 @@ async function* buffered<Value>(source: Stream<Value, Error>, capacity: number):
     let cleanupError: unknown;
     try {
       while (true) {
-        const pull = await cancellablePull(iterator, stop);
+        const pull = await cancellablePull(iterator, stop, dispatch);
         if (pull.kind === "error") throw pull.error;
         if (pull.next.done) {
           sourceDone = true;
@@ -341,7 +357,11 @@ export abstract class Stream<Value, Failure extends Error = Error> implements As
     const validation = new Queue<Value>(queueCapacity);
     validation.shutdown("capacity validation");
     const source = this as unknown as Stream<Value, Error>;
-    return makeStream<Value, Failure>(() => buffered(source, queueCapacity));
+    // Resolved at combinator CONSTRUCTION, like `mapConcurrent` resolves its
+    // cancellation: `makeStream`'s factory runs at iteration time, by which
+    // point the enclosing Layer has been left.
+    const dispatch = dispatchVia(Scheduler.context());
+    return makeStream<Value, Failure>(() => buffered(source, queueCapacity, dispatch));
   }
 
   interrupt(cancellation: CancellationInput): Stream<Value, Failure | Cancelled> {
@@ -349,6 +369,9 @@ export abstract class Stream<Value, Failure extends Error = Error> implements As
       throw new TypeError("Stream.interrupt requires a Cancellation or AbortSignal");
     }
     const source = this;
+    // Resolved HERE, not in the generator below: that body runs at drive time,
+    // outside the Layer this method was called in.
+    const scheduler = Scheduler.context();
     return makeStream<Value, Failure | Cancelled>(() => (async function* () {
       let linked: CancellationSource | undefined;
       const parent = cancellation instanceof AbortSignal
@@ -358,6 +381,7 @@ export abstract class Stream<Value, Failure extends Error = Error> implements As
         for await (const value of mapUnordered(source, async (item) => item, {
           concurrency: 1,
           cancellation: parent,
+          scheduler,
         })) yield value;
       } finally {
         linked?.unlink();
