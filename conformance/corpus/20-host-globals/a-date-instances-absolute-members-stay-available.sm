@@ -1,0 +1,18 @@
+export function main(): string[] {
+  // The positive control for the host-zone refusal beside it. Every member here
+  // is absolute or UTC-anchored, so its result is the same on every host at the
+  // same instant — which is exactly the property row four's refusal is about.
+  // Losing these would make an authored instant unreadable.
+  const instant = new Date(1700000000000)
+  return [
+    `${instant.getTime()}`,
+    `${instant.valueOf()}`,
+    instant.toISOString(),
+    instant.toUTCString(),
+    `${instant.getUTCFullYear()}`,
+    `${instant.getUTCHours()}`,
+    `${instant.getMilliseconds()}`,
+    `${Date.parse("2020-01-01T00:00:00.000Z")}`,
+    `${Date.UTC(2020, 0, 1)}`,
+  ]
+}

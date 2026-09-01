@@ -116,8 +116,10 @@ surface: this compiler's own emitted CLI scaffolding reads `error.stack ??
 error.message`, so a refusal or a charge here is a decision about the diagnostic
 surface, which no page has taken.
 
-**(SA-4) — implementation status, measured 2026-08-28. Rows one and two are now
-enforced; rows three, four, and five are not.** As first measured, none of the
+**(SA-4) — implementation status, measured 2026-09-01. Rows one, two, and four
+are enforced on both backends; rows three and five are enforced on the reference
+frontend only, for a reason recorded below that is about the fork's row
+representation rather than about the rules.** As first measured, none of the
 five was enforced and the first two were actively *contradicted*: in one `.sm`
 file, `new Date(0).getTimezoneOffset()`, `"a".localeCompare("b")`,
 `new WeakRef(o).deref()`, and `new SharedArrayBuffer(8)` all produced zero
@@ -209,10 +211,63 @@ fix, which is why they did not move together:
   needs type-directed analysis of a *value* whose type is `Date`, which the
   root-identifier walk never performs.
 
-Rows three, four, and five stand as obligations this implementation does not yet
-meet, and remain recorded as **(SA-4)** in
-[Specification](/specification) §Current markers. Row three's *verb* is no
-longer part of that gap; its *code* is, and lands with migration step 7.
+**Closed 2026-09-01 — rows three, four, and five, with one recorded residual.**
+Migration step 14 landed all three, and **no new diagnostic code was minted for
+any of them**, which is the constraint that shaped every choice below.
+
+- **Row three.** `Promise.race` and `Promise.any` publish `requirements:
+  ["Scheduler"]` and are refused nowhere, exactly as the settled verb requires.
+  The mechanism is a new one — an ambient site that injects a nominal key into
+  `R` — and it is the mechanism rows three and five share. Cost re-measured
+  across all 604 authored `.sm` files: **zero** name either member, so the row
+  moved no corpus case and no test, as predicted.
+- **Row four.** A `Date` INSTANCE member that reads the host time zone is
+  refused as `SMITHERS1602` — the same code, and the same sentence, as
+  `Date.now()`. That follows from this page's own criterion rather than from a
+  new decision: `Clock` has a source-language surface, so the ambient spelling
+  is additionally refused and the row is charged by the `Clock.context()` the
+  author writes instead. The blocker recorded above was real and is now removed:
+  the rule is type-directed on the RECEIVER, so `new Date(instant)` stays legal
+  and only the zone-reading member is refused. Certified on both backends by
+  `20-host-globals/a-date-instances-host-zone-members-are-refused` and its
+  positive control `a-date-instances-absolute-members-stay-available`, which is
+  the load-bearing half — the cheapest wrong implementation refuses every `Date`
+  member, passes the refusal case perfectly, and makes an authored instant
+  unreadable.
+- **Row four's membership is wider than the seven names**, by this row's own
+  criterion and by the precedent row five set. `getFullYear`, `getMonth`,
+  `getDate`, `getMinutes`, `getSeconds`, `toDateString`, and `toTimeString` read
+  the host zone for the identical reason and nothing distinguished them.
+  `getMilliseconds` is deliberately absent — every IANA offset in the modern
+  database is a whole number of minutes — and so is every setter, which is a
+  write rather than a read.
+- **Row five.** Every ICU-backed member publishes `requirements: ["Locale"]` and
+  is refused nowhere. **Row five's verb was settled by this page's own criterion
+  rather than by a new decision**: the ambient spelling is additionally refused
+  only where the capability has a source-language surface the author could write
+  instead, and `Locale` has none, so the obligation is the row charge alone. If
+  `Locale` is later given such a surface, a `SMITHERS16xx` refusal joins the
+  charge; the charge itself does not change.
+
+**The residual, and it is about representation.** Rows three and five are
+enforced on the reference frontend and **not** on the pinned Go fork. The fork's
+requirement row is a set keyed by resolved `*ast.Symbol`, and its `addRow`
+silently drops a row whose symbol is nil, so it cannot represent a requirement
+for a capability that no declaration in the charging program produces — which is
+precisely what `Scheduler` and `Locale` are. Rows four and the `any` narrowing
+are mirrored on both backends, because both are diagnostics. **The disagreement
+is invisible to the conformance corpus**, which compares stdout, diagnostics and
+exit code and cannot observe a row at all, so it is recorded here and on
+`rowSet` in the fork rather than left to a green scoreboard. Closing it means
+either rekeying the fork's row table by name or minting synthetic symbols for
+ambient capabilities, and neither is smaller than the rows that need it.
+
+**Also closed 2026-09-01 — the `any` hole in §Dynamic Features.** A receiver
+typed `any` in a position where the analysis must decide callability is now
+treated as callable, so `(value as any).constructor` is `SMITHERS1604` where it
+compiled with an empty row before. Both implementations had recorded the hole in
+their own comments. No new code: it is the same operation `SMITHERS1604` already
+names, reached through a receiver the rule previously declined to judge.
 
 The fifth row's widened membership does not enlarge that gap, and it was
 verified not to: all 30 members measure identically today — no diagnostic, an

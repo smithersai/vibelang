@@ -1,0 +1,18 @@
+export function main(): string[] {
+  // An AUTHORED instant, so the construction itself reads no clock and is
+  // deliberately not refused — `new Date(instant)` is legal and stays legal.
+  // What these members read is the HOST TIME ZONE, which differs between two
+  // machines at the same instant and which no journal entry records.
+  const instant = new Date(1700000000000)
+  return [
+    `${instant.getHours()}`,
+    `${instant.getDay()}`,
+    `${instant.getTimezoneOffset()}`,
+    instant.toLocaleString("en-US"),
+    instant.toLocaleDateString("en-US"),
+    instant.toLocaleTimeString("en-US"),
+    instant.toString(),
+    `${instant.getFullYear()}`,
+    instant.toDateString(),
+  ]
+}

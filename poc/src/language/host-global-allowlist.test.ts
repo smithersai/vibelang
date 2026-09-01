@@ -62,6 +62,24 @@ function diagnose(source: string): string[] {
 }
 
 /**
+ * The requirement row `main` publishes, which is what "CHARGE" means.
+ *
+ * This reader exists because `diagnose` could not see rows three and five at
+ * all. Those rows are discharged by a ROW and not by a refusal — the capability
+ * has no source-language surface, so there is no remedy a diagnostic could name
+ * — and every assertion in this file was written against diagnostics. MEASURED:
+ * with row five implemented and only `diagnose` watching, the thirty-member
+ * uniformity test below still passed, because charging `Locale` emits no
+ * diagnostic. A test that cannot observe the thing it is guarding is not
+ * guarding it.
+ */
+function requires(source: string): readonly string[] {
+  const files = check(source).result.files;
+  const only = Object.values(files)[0];
+  return only?.analysis.rows.main?.requirements ?? [];
+}
+
+/**
  * One expression read from a function body. Every root identifier lands at
  * line 2, column 10, so a refusal's position is the same string for every case
  * and a wrong position cannot hide behind a permissive matcher.
@@ -291,10 +309,53 @@ describe("dynamic code evaluation is refused per operation, not by erasing the n
       .toEqual(["SMITHERS1602@2:31"]);
   });
 
+  /**
+   * FAIL CLOSED ON `any`, and this is a separate test from the narrowness one
+   * below because the two pull in opposite directions.
+   *
+   * `compatibility.mdx` §Dynamic Features: "`any` remains usable, but a
+   * receiver typed `any` in a position where the analysis must decide
+   * callability MUST be treated as callable — matching the fail-closed default
+   * already applied to a dynamically selected member." MEASURED before this
+   * landed: `(JSON as any).constructor` compiled with zero diagnostics and an
+   * empty row, while the same selection on a resolved callable was
+   * `SMITHERS1604`. An `any` has neither call nor construct signatures, so the
+   * callability test answered "not callable" for the one receiver type about
+   * which nothing is known.
+   *
+   * This is the hole the migration plan lists under R8 beside `WeakRef.deref()`
+   * and `Promise.race`: an `eval` reached through `any` produces no journal
+   * entry, therefore no divergence to detect.
+   */
+  test("a receiver typed `any` is treated as callable", () => {
+    expect(diagnose("export function main(v: any): string {\n  return typeof v.constructor\n}\n"))
+      .toEqual(["SMITHERS1604@2:19"]);
+    expect(diagnose("export function main(): string {\n  return typeof (JSON as any).constructor\n}\n"))
+      .toEqual(["SMITHERS1604@2:31"]);
+  });
+
+  /**
+   * `unknown` is deliberately NOT treated as callable, and needs no arm of its
+   * own: it is the type you must narrow before using, so stock TypeScript
+   * refuses the selection first and there is nothing for this rule to decide.
+   */
+  test("a receiver typed `unknown` is refused by TypeScript, not by this rule", () => {
+    const source = "export function main(v: unknown): string {\n  return typeof v.constructor\n}\n";
+    // No LANGUAGE diagnostic: this rule declines to answer, which is the claim.
+    expect(diagnose(source)).toEqual([]);
+    // And the program is still refused — by stock TypeScript, whose diagnostics
+    // reach `emitDiagnostics` rather than the language list `diagnose` reads.
+    // Asserting only the empty list above would have said "accepted".
+    const checked = check(source);
+    expect(checked.ok).toBe(false);
+    expect(checked.emitDiagnostics.length).toBeGreaterThan(0);
+  });
+
   test("an ordinary value's `constructor` is not the Function constructor", () => {
     // The receiver test is what keeps the second arm narrow. None of these
     // compiles a string, and a rule keyed on the member NAME would refuse all
-    // of them.
+    // of them. Each has a RESOLVED non-callable type, which is what
+    // distinguishes them from the `any` above.
     expect(diagnose("export function main(): string {\n  return typeof ({ a: 1 }).constructor\n}\n")).toEqual([]);
     expect(diagnose("export function main(): string {\n  return typeof [1].constructor\n}\n")).toEqual([]);
     expect(diagnose("export function main(): string {\n  return typeof \"x\".constructor\n}\n")).toEqual([]);
@@ -424,10 +485,21 @@ describe("host-sensitive operations are judged per operation, not per object", (
     expect(diagnose(reads("Intl"))).toEqual([`SMITHERS1602${AT_ROOT}`]);
   });
 
-  test("the rest of Intl needs no capability", () => {
-    expect(diagnose(reads("Intl.getCanonicalLocales(\"EN-us\")"))).toEqual([]);
-    expect(diagnose(reads("new Intl.NumberFormat(\"en-US\").format(1)"))).toEqual([]);
-    expect(diagnose(reads("new Intl.Collator(\"en-US\").compare(\"a\", \"b\")"))).toEqual([]);
+  test("the rest of Intl is not refused, and charges Locale instead", () => {
+    // Row five's verb is CHARGE, not refuse. `compatibility.mdx`
+    // §Determinism-Sensitive Members: the ambient spelling is additionally
+    // refused only "where the capability has a source-language surface the
+    // author can write instead", and `Locale` is a capability class that exists
+    // nowhere in this tree — a refusal would name `Locale.context()`, which
+    // cannot be written. So both halves are asserted: no diagnostic, and a row.
+    for (const expression of [
+      "Intl.getCanonicalLocales(\"EN-us\")",
+      "new Intl.NumberFormat(\"en-US\").format(1)",
+      "new Intl.Collator(\"en-US\").compare(\"a\", \"b\")",
+    ]) {
+      expect([expression, diagnose(reads(expression))]).toEqual([expression, []]);
+      expect([expression, requires(reads(expression))]).toEqual([expression, ["Locale"]]);
+    }
   });
 
   /**
@@ -444,16 +516,23 @@ describe("host-sensitive operations are judged per operation, not per object", (
    * members, `toLocale*`, `localeCompare`, and `normalize`, and measuring each
    * spelling; an earlier estimate of fifteen was fifteen short.
    *
-   * **This is a positive control, and it is the one row five needs.** Row five
-   * is unenforced — all thirty are free today — so the failure mode is not an
-   * escape but an over-refusal: the cheapest wrong implementation of row four
-   * or row five charges the `Intl` ROOT, which passes every DateTimeFormat
-   * assertion above perfectly and silently takes the entire ICU surface of the
-   * standard library with it. `20-host-globals/determinism-hostile-siblings-stay-available`
-   * guards rows one and two the same way, and `20/the-ecmascript-global-object-stays-available`
-   * guards the allowlist. Asserting UNIFORMITY rather than emptiness is what
-   * survives row five actually landing: when these do charge `Locale` they must
-   * all charge it, and this test then names exactly which members diverged.
+   * **Row five has now landed, and this test is what it landed against.** The
+   * uniformity framing was written for exactly this moment: "when these do
+   * charge `Locale` they must all charge it, and this test then names exactly
+   * which members diverged." So the assertion moved from `[]` to `["Locale"]`
+   * and stayed one answer for the whole class.
+   *
+   * It also moved from `diagnose` to `requires`, and that change is the whole
+   * reason the test kept its teeth. Row five's verb is CHARGE, which emits no
+   * diagnostic — MEASURED: with the rule implemented and only `diagnose`
+   * watching, this test still passed on all thirty members while asserting
+   * `[]`, because it was reading a channel the rule does not write to.
+   *
+   * Both directions are still guarded. Over-refusal is the failure mode the
+   * cheapest wrong implementation produces — charging the `Intl` ROOT passes
+   * every `DateTimeFormat` assertion above perfectly and silently takes the
+   * entire ICU surface with it — so the diagnostics are asserted empty as well
+   * as the row asserted uniform.
    */
   test("every ICU-backed member of row five answers identically", () => {
     const icu: readonly string[] = [
@@ -498,20 +577,114 @@ describe("host-sensitive operations are judged per operation, not per object", (
     ];
     expect(icu.length).toBe(30);
     // One answer for the whole class, so a member that diverges is named by the
-    // diff rather than hidden behind a per-expression `toEqual([])`.
-    const answers = icu.map((expression) => [expression, diagnose(reads(expression))] as const);
-    expect(answers).toEqual(icu.map((expression) => [expression, []] as const));
+    // diff rather than hidden behind a per-expression assertion.
+    const rows = icu.map((expression) => [expression, requires(reads(expression))] as const);
+    expect(rows).toEqual(icu.map((expression) => [expression, ["Locale"]] as const));
+    // And not refused: row five charges, it does not refuse.
+    const refusals = icu.map((expression) => [expression, diagnose(reads(expression))] as const);
+    expect(refusals).toEqual(icu.map((expression) => [expression, []] as const));
   });
 
-  test("Date's two unnamed locale members are the same as its named ones", () => {
-    // Row four gained `toLocaleDateString` and `toLocaleTimeString` on
-    // 2026-08-28 by the same argument that widened row five: it already named
-    // `toLocaleString`, and these two read the host time zone identically. They
-    // are free today for the reason the whole row is — `Date` is analyzed at
-    // the root identifier only, so an instance member is never inspected.
-    expect(diagnose(reads("new Date(0).toLocaleString(\"en\")"))).toEqual([]);
-    expect(diagnose(reads("new Date(0).toLocaleDateString(\"en\")"))).toEqual([]);
-    expect(diagnose(reads("new Date(0).toLocaleTimeString(\"en\")"))).toEqual([]);
+  /**
+   * **Row four, landed.** These were free because `Date` was analyzed at the
+   * ROOT IDENTIFIER only: `new Date(instant)` correctly returned an empty row —
+   * the instant is authored — and no instance member was ever inspected after
+   * it. So `new Date(0).getTimezoneOffset()` compiled clean in the same file
+   * where the `Date.now()` control reported `SMITHERS1602`.
+   *
+   * `SMITHERS1602` and not a new code, because it is the same refusal for the
+   * same reason as `Date.now()`. Row four's verb is CHARGE `Clock`, and `Clock`
+   * DOES have a source-language surface, so by `compatibility.mdx`'s own
+   * reconciling criterion the ambient spelling is additionally refused and the
+   * row is charged by the `Clock.context()` the author writes instead. That is
+   * why the row here is empty and the diagnostic is not — the same pair
+   * `Date.now()` has published all along.
+   *
+   * The member set is WIDER than the seven the row names, by the row's own
+   * criterion and by the precedent row five set when its four names measured
+   * twenty-six short. Every local getter reads the zone identically.
+   */
+  test("a Date instance's host-zone members are refused, at the member", () => {
+    const zoneReads: readonly string[] = [
+      // The seven the specification names.
+      "new Date(0).getHours()",
+      "new Date(0).getDay()",
+      "new Date(0).getTimezoneOffset()",
+      "new Date(0).toLocaleString(\"en\")",
+      "new Date(0).toLocaleDateString(\"en\")",
+      "new Date(0).toLocaleTimeString(\"en\")",
+      "new Date(0).toString()",
+      // The seven that carry the identical hazard for the identical reason.
+      "new Date(0).getFullYear()",
+      "new Date(0).getMonth()",
+      "new Date(0).getDate()",
+      "new Date(0).getMinutes()",
+      "new Date(0).getSeconds()",
+      "new Date(0).toDateString()",
+      "new Date(0).toTimeString()",
+    ];
+    // Reported at the MEMBER, not at the root: the root is `new Date(0)`, which
+    // is legal, and pointing there would name the wrong operation.
+    const observed = zoneReads.map((expression) => [expression, diagnose(reads(expression))] as const);
+    expect(observed).toEqual(zoneReads.map((expression) => [expression, ["SMITHERS1602@2:22"]] as const));
+    // The refusal charges nothing, exactly as `Date.now()` charges nothing.
+    expect(requires(reads("new Date(0).getHours()"))).toEqual([]);
+  });
+
+  /**
+   * The positive control row four needs, and the one an over-broad rule breaks.
+   * `getTime()` is named in the row as staying free, and every UTC-anchored
+   * member stays free by the same sentence: their results do not depend on the
+   * host zone. Without this, a rule keyed on "any `Date` member" passes every
+   * assertion above and makes an absolute instant unreadable.
+   */
+  test("a Date instance's absolute and UTC members stay free", () => {
+    for (const expression of [
+      "new Date(0).getTime()",
+      "new Date(0).valueOf()",
+      "new Date(0).toISOString()",
+      "new Date(0).toUTCString()",
+      "new Date(0).toJSON()",
+      "new Date(0).getUTCHours()",
+      "new Date(0).getUTCFullYear()",
+      "new Date(0).getMilliseconds()",
+    ]) {
+      expect([expression, diagnose(reads(expression))]).toEqual([expression, []]);
+      expect([expression, requires(reads(expression))]).toEqual([expression, []]);
+    }
+  });
+
+  /**
+   * Row three, and the whole of it: `Promise.race` and `Promise.any` "MUST
+   * charge a `Scheduler` requirement, because their value *is* arrival order.
+   * Every other `Promise` member stays free."
+   *
+   * NO REFUSAL, deliberately, and this is the assertion that pins the decision.
+   * `durable-execution.mdx` §Deterministic Scheduling says the scheduler "has no
+   * source-language surface", so a refusal here would name `Scheduler.context()`
+   * as a remedy the author cannot write. The refusal reading was considered and
+   * answered rather than dropped; asserting the empty diagnostics list beside
+   * the row is what keeps it answered.
+   */
+  test("Promise.race and Promise.any charge Scheduler, and nothing else does", () => {
+    for (const expression of ["Promise.race([Promise.resolve(1)])", "Promise.any([Promise.resolve(1)])"]) {
+      expect([expression, requires(reads(expression))]).toEqual([expression, ["Scheduler"]]);
+      expect([expression, diagnose(reads(expression))]).toEqual([expression, []]);
+    }
+    for (const expression of [
+      "Promise.all([Promise.resolve(1)])",
+      "Promise.allSettled([Promise.resolve(1)])",
+      "Promise.resolve(1)",
+    ]) {
+      expect([expression, requires(reads(expression))]).toEqual([expression, []]);
+      expect([expression, diagnose(reads(expression))]).toEqual([expression, []]);
+    }
+  });
+
+  /** Identity, not spelling — the direction every other rule here is pinned in. */
+  test("a local binding named Promise charges nothing", () => {
+    expect(diagnose("export function main(): number {\n  const Promise = { race: (): number => 1 }\n  return Promise.race()\n}\n")).toEqual([]);
+    expect(requires("export function main(): number {\n  const Promise = { race: (): number => 1 }\n  return Promise.race()\n}\n")).toEqual([]);
   });
 
   test("Error.prototype.stack is unclassified, and that is recorded rather than decided", () => {

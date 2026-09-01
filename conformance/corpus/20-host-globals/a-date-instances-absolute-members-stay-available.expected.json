@@ -1,0 +1,16 @@
+{
+  "title": "A Date instance's absolute and UTC members stay available: row four refuses the host time zone, not the Date",
+  "expect": "output",
+  "stdout": [
+    "1700000000000",
+    "1700000000000",
+    "2023-11-14T22:13:20.000Z",
+    "Tue, 14 Nov 2023 22:13:20 GMT",
+    "2023",
+    "22",
+    "0",
+    "1577836800000",
+    "1577836800000"
+  ],
+  "notes": "THE POSITIVE CONTROL for `a-date-instances-host-zone-members-are-refused`, and the load-bearing half of that pair. specification/compatibility.mdx §Determinism-Sensitive Members row four names the members that read the host time zone and says in the same breath that '`getTime()` stays free'. The cheapest wrong implementation of that row refuses ANY member of a `Date` instance: it passes every assertion in the refusal case perfectly, and it silently makes an authored instant unreadable — no `getTime`, no `toISOString`, no UTC accessor — which is a strictly worse language than the one that had the hole. Without this case nothing would notice. WHY EACH MEMBER IS HERE RATHER THAN A SAMPLE: `getTime` and `valueOf` are the same absolute number reached two ways and the row names only the first; `toISOString` and `toUTCString` are string renderings that a member-name-keyed rule would catch beside `toString`, which IS refused, so they pin that the key is the ZONE and not the shape of the result; the two `getUTC*` accessors pin that the UTC twin of a refused local getter stays free; `getMilliseconds` is zone-independent because every IANA offset in the modern database is a whole number of minutes, which is the one member of the local family that is NOT in the row and the one most likely to be swept in by a rule written from the family name; and `Date.parse`/`Date.UTC` are the pre-existing root-level exemptions, included so that this case fails if the new instance-level rule is wired in a way that disturbs them. THE STDOUT WAS DERIVED, NOT WRITTEN: every value is a pure function of the authored instant 1700000000000 and of UTC, so it is identical on every host and in every time zone — which is the whole claim. A case that printed a local rendering here would itself vary with the host, which is the hazard row four names."
+}

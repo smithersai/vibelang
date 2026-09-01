@@ -1767,6 +1767,32 @@ type errorRow struct {
 
 // rowSet is a nominal row side table. Its keys are checker-resolved class or
 // type-parameter symbols; TypeFlags remains entirely owned by the fork.
+//
+// KNOWN LIMIT, measured rather than assumed, and it is why two rows of
+// specification/compatibility.mdx §Determinism-Sensitive Members are enforced
+// on the reference frontend and not here.
+//
+// A key is a resolved `*ast.Symbol`, and `addRow` returns false — silently —
+// when `row.symbol` is nil. So this model can represent a requirement only for
+// a capability some declaration IN THE PROGRAM produces. Rows three and five
+// charge capabilities that no declaration produces: `Promise.race` charges
+// `Scheduler` and `"a".localeCompare(b)` charges `Locale`, and neither
+// `Scheduler` nor `Locale` is a class the charging program declares or imports.
+// Wiring an ambient charge into this set therefore drops it and reports
+// success, which reads as "mirrored" while enforcing nothing — the fail-open
+// shape, in the documentation rather than in the analysis.
+//
+// The reference frontend's row is a set of STRINGS and represents them without
+// difficulty. Closing the gap here means either rekeying this table by name —
+// which changes how every row is compared and rendered — or minting synthetic
+// symbols for ambient capabilities, which invents identities inside the fork's
+// nominal model and would have to answer `rowName`'s module qualification for a
+// symbol with no declaration. Both are larger than the rows that need them, and
+// neither is observable through the conformance corpus, which compares stdout
+// and diagnostics and cannot see a row at all.
+//
+// Rows FOUR and the `any` hole in `dynamicCodeUse` ARE mirrored here, because
+// both are diagnostics rather than charges.
 type rowSet map[*ast.Symbol]errorRow
 
 func addRow(into rowSet, row errorRow) bool {

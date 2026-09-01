@@ -330,6 +330,13 @@ func (a *rowAnalysis) checkHostGlobals(files []*ast.SourceFile) {
 				a.report(use.node, "SMITHERS1604",
 					"ambient "+use.description+" is unavailable; it runs a string as code in the host's own scope, so the enclosing row cannot describe what it reads, throws, or requires")
 			}
+			// Row four: a `Date` INSTANCE member that reads the host time zone.
+			// The same code and the same reason as `Date.now()`; see
+			// dateZoneMemberUse.
+			if zoneRead, zone := a.dateZoneMemberUse(node); zone {
+				a.report(zoneRead, "SMITHERS1602",
+					"ambient wall-clock access is unavailable; access it through Clock.context()")
+			}
 			if ast.IsIdentifier(node) {
 				a.reportForbiddenHostGlobal(node)
 				a.reportNondeterministicHostGlobal(node)
@@ -463,11 +470,20 @@ type dynamicCodeEvaluation struct {
 // operand — `Function instanceof Object` puts the object itself in a value
 // position, where it can still be called.
 //
-// A receiver typed `any` reaches neither arm: `Object.getPrototypeOf(fn)` is
-// declared `any` in lib.es5.d.ts, so `Object.getPrototypeOf(function* () {}).constructor`
-// still escapes. That is the standing `any` hole, not a hole in this rule — `any`
-// defeats every checker-typed rule in this file — and it is recorded rather than
-// papered over. The reference has the identical hole at the identical spelling.
+// A receiver typed `any` is treated as CALLABLE, which closes what used to be
+// recorded here as the standing `any` hole. `Object.getPrototypeOf(fn)` is
+// declared `any` in lib.es5.d.ts, so `Object.getPrototypeOf(function* () {})
+// .constructor` escaped, and so did `(JSON as any).constructor` — measured
+// clean on both backends with an empty row. specification/compatibility.mdx
+// §Dynamic Features: "`any` remains usable, but a receiver typed `any` in a
+// position where the analysis must decide callability MUST be treated as
+// callable — matching the fail-closed default already applied to a dynamically
+// selected member." An `any` has neither call nor construct signatures, so the
+// callability test below answered "not callable" for the one receiver type
+// about which nothing is known.
+//
+// `unknown` is deliberately not here: it must be narrowed before use, so the
+// selection does not compile and TypeScript refuses the program first.
 func (a *rowAnalysis) dynamicCodeUse(node *ast.Node) (dynamicCodeEvaluation, bool) {
 	if node == nil {
 		return dynamicCodeEvaluation{}, false
@@ -503,9 +519,12 @@ func (a *rowAnalysis) dynamicCodeUse(node *ast.Node) (dynamicCodeEvaluation, boo
 		return dynamicCodeEvaluation{}, false
 	}
 	receiver := a.checker.GetTypeAtLocation(selection.receiver)
-	if receiver == nil ||
-		(len(a.checker.GetSignaturesOfType(receiver, checker.SignatureKindCall)) == 0 &&
-			len(a.checker.GetSignaturesOfType(receiver, checker.SignatureKindConstruct)) == 0) {
+	if receiver == nil {
+		return dynamicCodeEvaluation{}, false
+	}
+	if receiver.Flags()&checker.TypeFlagsAny == 0 &&
+		len(a.checker.GetSignaturesOfType(receiver, checker.SignatureKindCall)) == 0 &&
+		len(a.checker.GetSignaturesOfType(receiver, checker.SignatureKindConstruct)) == 0 {
 		return dynamicCodeEvaluation{}, false
 	}
 	return dynamicCodeEvaluation{
@@ -784,6 +803,116 @@ func (a *rowAnalysis) ambientGlobalKind(node *ast.Node) ambientGlobalClass {
 		}
 	}
 	return ambientGlobalDeclared
+}
+
+// ---------------------------------------------------------------------------
+// Determinism-sensitive members: the rows that CHARGE, and the row that refuses
+// ---------------------------------------------------------------------------
+
+// dateZoneMembers are the `Date` INSTANCE members whose result is a function of
+// the host time zone.
+//
+// specification/compatibility.mdx §Determinism-Sensitive Members row four:
+// these "MUST charge `Clock` even when an explicit instant is supplied, because
+// they read the host time zone. `getTime()` stays free."
+//
+// WIDER than the seven the row names, by the row's own criterion and by the
+// precedent row five set when its four names measured twenty-six short. Every
+// other LOCAL getter reads the zone for the identical reason. Absent
+// deliberately: `getTime`, `valueOf`, `toISOString`, `toJSON`, `toUTCString`
+// and every `getUTC*` member are absolute or UTC-anchored; `getMilliseconds` is
+// zone-independent; and the SETTERS are writes rather than reads.
+var dateZoneMembers = map[string]struct{}{
+	// The seven the specification names.
+	"getHours": {}, "getDay": {}, "getTimezoneOffset": {},
+	"toLocaleString": {}, "toLocaleDateString": {}, "toLocaleTimeString": {}, "toString": {},
+	// The seven that carry the identical hazard for the identical reason.
+	"getFullYear": {}, "getMonth": {}, "getDate": {}, "getMinutes": {}, "getSeconds": {},
+	"toDateString": {}, "toTimeString": {},
+}
+
+// dateZoneMemberUse reports a read of a `Date` INSTANCE member that reads the
+// host time zone, and the node the refusal is positioned at.
+//
+// This is the type-directed analysis row four was blocked on. `Date` was
+// analyzed at the ROOT IDENTIFIER only, so `new Date(instant)` returned an
+// empty row — correctly, the instant is authored — and no instance member was
+// ever inspected after it. Measured before this rule existed:
+// `new Date(0).getTimezoneOffset()` compiled with zero diagnostics and an empty
+// row on both backends, in the same file where the `Date.now()` control
+// correctly reported SMITHERS1602.
+//
+// Reported as SMITHERS1602 and not as a new code, because it is the same
+// refusal for the same reason as `Date.now()`.
+//
+// Keyed on the RECEIVER'S TYPE and not on the member name, which is the
+// opposite of row five's key and deliberately so: `toString` and
+// `toLocaleString` are members of nearly every value in the language, and a
+// name-keyed rule here would take the standard library with it.
+func (a *rowAnalysis) dateZoneMemberUse(node *ast.Node) (*ast.Node, bool) {
+	if node == nil {
+		return nil, false
+	}
+	if !ast.IsPropertyAccessExpression(node) && !ast.IsElementAccessExpression(node) {
+		return nil, false
+	}
+	if ast.IsPartOfTypeNode(node) {
+		return nil, false
+	}
+	selection, selected := a.prelude.selectMember(node)
+	if !selected {
+		return nil, false
+	}
+	if _, zone := dateZoneMembers[selection.text]; !zone {
+		return nil, false
+	}
+	// The ROOT spelling `Date.toString` is the namespace object's own member and
+	// is already judged by ambientRequirementsForMembers; this rule is about an
+	// instance.
+	if a.isAmbientNamespaceReceiver(selection.receiver) {
+		return nil, false
+	}
+	if !a.isAmbientDateReceiver(selection.receiver) {
+		return nil, false
+	}
+	return selection.name, true
+}
+
+// isAmbientNamespaceReceiver reports whether a receiver is one of the ambient
+// namespace objects the per-operation rules already own, so the member rules
+// above do not charge a row beside a refusal.
+func (a *rowAnalysis) isAmbientNamespaceReceiver(receiver *ast.Node) bool {
+	if receiver == nil || !ast.IsIdentifier(receiver) {
+		return false
+	}
+	if _, sensitive := hostSensitiveGlobals[receiver.Text()]; !sensitive {
+		return false
+	}
+	return a.isAmbientGlobalReference(receiver)
+}
+
+// isAmbientDateReceiver reports whether an expression's TYPE is the TypeScript
+// library's own `Date`, resolved through the declaring file rather than through
+// the name the author spelled.
+func (a *rowAnalysis) isAmbientDateReceiver(receiver *ast.Node) bool {
+	if receiver == nil {
+		return false
+	}
+	t := a.checker.GetTypeAtLocation(receiver)
+	if t == nil {
+		return false
+	}
+	symbol := t.Symbol()
+	if symbol == nil || symbol.Name != "Date" {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file != nil && file.IsDeclarationFile {
+			return true
+		}
+	}
+	return false
 }
 
 // isAmbientGlobalReference reports whether the identifier reads the ambient

@@ -1,0 +1,9 @@
+export function main(): string[] {
+  // `any` erases callability, and the `constructor` of a callable IS the
+  // Function constructor. Reached through an `any` receiver, the selection used
+  // to compile clean with an empty row and hand back a compiler that runs a
+  // string as code in the host's own scope.
+  const opaque: any = JSON
+  const viaAssertion = (JSON as any).constructor
+  return [`${typeof opaque.constructor}`, `${typeof viaAssertion}`]
+}

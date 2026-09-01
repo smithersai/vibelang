@@ -1,0 +1,52 @@
+{
+  "title": "A Date instance's host-zone members are refused: an authored instant does not make reading the host time zone deterministic",
+  "expect": "diagnostics",
+  "diagnostics": [
+    {
+      "code": "SMITHERS1602",
+      "line": 8,
+      "column": 16
+    },
+    {
+      "code": "SMITHERS1602",
+      "line": 9,
+      "column": 16
+    },
+    {
+      "code": "SMITHERS1602",
+      "line": 10,
+      "column": 16
+    },
+    {
+      "code": "SMITHERS1602",
+      "line": 11,
+      "column": 13
+    },
+    {
+      "code": "SMITHERS1602",
+      "line": 12,
+      "column": 13
+    },
+    {
+      "code": "SMITHERS1602",
+      "line": 13,
+      "column": 13
+    },
+    {
+      "code": "SMITHERS1602",
+      "line": 14,
+      "column": 13
+    },
+    {
+      "code": "SMITHERS1602",
+      "line": 15,
+      "column": 16
+    },
+    {
+      "code": "SMITHERS1602",
+      "line": 16,
+      "column": 13
+    }
+  ],
+  "notes": "specification/compatibility.mdx §Determinism-Sensitive Members, ROW FOUR: `Date.prototype.getHours`, `getDay`, `getTimezoneOffset`, `toLocaleString`, `toLocaleDateString`, `toLocaleTimeString`, `toString` 'MUST charge `Clock` even when an explicit instant is supplied, because they read the host time zone. `getTime()` stays free.' The row was recorded as (SA-4) Open with a stated cause: `Date` was analyzed at the ROOT IDENTIFIER only, so `new Date(instant)` correctly returned an empty row — the instant is authored — and no instance member was ever inspected afterwards. Measured before this rule existed, on both backends: every member above compiled with ZERO diagnostics and an empty requirement row, in the same file where the `Date.now()` control correctly reported SMITHERS1602. WHY SMITHERS1602 AND NOT A NEW CODE: row four's verb is CHARGE `Clock`, and the paragraph under the specification's table supplies the criterion that turns a charge into a refusal — 'Where the capability has a source-language surface the author can write instead — `Clock.context()`, `Random.context()` — the ambient spelling is additionally refused, so the row is charged by the capability call rather than by the ambient one; that refusal is SMITHERS1602/SMITHERS1603.' `Clock` has that surface, so this is the same refusal for the same reason as `Date.now()`, and reusing its code is the honest encoding rather than a renumbering. The row this program publishes is therefore EMPTY, exactly as `Date.now()`'s is; the requirement is charged by the `Clock.context()` an author writes instead. WHY THE MEMBER SET IS WIDER THAN THE SEVEN THE ROW NAMES: `getFullYear` and `toDateString` are here, and so are `getMonth`, `getDate`, `getMinutes`, `getSeconds` and `toTimeString` in the implementation's table, because every local getter reads the zone for the identical reason and nothing distinguishes them from the seven. That is row five's own amendment argument applied to row four — 'The obligation is the criterion, not the list' — after row five's four named members measured twenty-six short. POSITION IS AT THE MEMBER, not at the root: the root is `new Date(1700000000000)`, which is legal and must stay legal, and pointing the refusal there would name the wrong operation and tell an author to remove a construction that is fine. THE POSITIVE CONTROL IS A SEPARATE CASE, `a-date-instances-absolute-members-stay-available`, and it is the load-bearing half: the cheapest wrong implementation refuses ANY `Date` member, passes every assertion here perfectly, and makes an absolute instant unreadable. The frontend's `dateZoneMemberUse` and the fork's mirror of it are both keyed on the RECEIVER'S TYPE rather than on the member name, which is the opposite of row five's key and deliberate — `toString` and `toLocaleString` are members of nearly every value in the language, and a name-keyed rule here would take the standard library with it."
+}
