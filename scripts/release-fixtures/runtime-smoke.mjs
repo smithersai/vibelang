@@ -147,20 +147,32 @@ assert.deepEqual(composedMap.sourcesContent, ["const value = 1"]);
 const durableCompiler = loaded.get("./durable/source-compiler");
 const durableArtifact = loaded.get("./durable/artifact");
 const durable = loaded.get("./durable");
-const durableResult = durableCompiler.compileDurableSource([
+const durableSource = [
   'import { durable as lower } from "smithers:flows"',
   "export const Echo = lower(function Echo(input: { value: string }) {",
   "  return input.value",
   "})",
-].join("\n"), {
-  fileName: "flows/echo.ts",
-  flowId: "release/Echo",
-  flowVersion: 1,
-  actions: [],
-});
+].join("\n");
+const durableOptions = { fileName: "flows/echo.ts", flowId: "release/Echo", flowVersion: 1, actions: [] };
+const durableResult = durableCompiler.compileDurableSource(durableSource, durableOptions);
 assert.equal(durableResult.ok, true, JSON.stringify(durableResult.diagnostics));
 assert.equal(durableArtifact.decodePlanArtifact(durableResult.artifact).digest, durableResult.plan.digest);
 assert.equal(durable.compileDurableSource, durableCompiler.compileDurableSource);
+// MIGRATION-PLAN.md §5 R2. The packed runtime is smoke-tested through the
+// Manifest path as well as the Plan path, and the Manifest's published identity
+// is re-derived from its own canonical bytes rather than read off the field —
+// that is the property `smithers plan --outFile` publishes, so this is where a
+// packed build that broke it would be caught.
+const manifestResult = durableCompiler.compileEffectManifest(durableSource, durableOptions);
+assert.equal(manifestResult.ok, true, JSON.stringify(manifestResult.diagnostics));
+assert.equal(manifestResult.manifest.flowId, "release/Echo");
+assert.equal(manifestResult.manifest.manifestVersion, 1);
+assert.deepEqual(manifestResult.manifest.actions, []);
+assert.deepEqual(manifestResult.manifest.sites, []);
+const { digest: declaredManifestDigest, ...manifestSemantic } = manifestResult.manifest;
+assert.equal(durable.digest(manifestSemantic), declaredManifestDigest);
+assert.equal(typeof durable.canonicalJson(manifestResult.manifest), "string");
+assert.equal(durable.compileEffectManifest, durableCompiler.compileEffectManifest);
 assert.equal(typeof durable.validateDurableSchema, "function");
 assert.equal("waitSignal" in durable, false);
 assert.equal(durable.MAX_DURABLE_JSON_NODES, 100_000);

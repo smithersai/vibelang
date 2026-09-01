@@ -21,8 +21,8 @@ export const Flow = durable((input: { key: string }) => {
 })
 
 export function main(): string[] {
-  const action = Flow.plan.actions[0]
-  if (action === undefined) return ["the plan carries no action descriptor"]
+  const action = Flow.manifest.actions[0]
+  if (action === undefined) return ["the manifest carries no action descriptor"]
   const schema = action.errorSchema
   if (schema.shape !== "structural") return ["the error schema is not structural type evidence"]
   const descriptor = schema.descriptor

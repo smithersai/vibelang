@@ -20,8 +20,8 @@ export const Flow = durable((input: { key: string }) => {
 })
 
 export function main(): string[] {
-  const action = Flow.plan.actions[0]
-  if (action === undefined) return ["the plan has no actions"]
+  const action = Flow.manifest.actions[0]
+  if (action === undefined) return ["the manifest has no actions"]
   const schema = action.successSchema
   return [
     schema.shape === "structural" && schema.descriptor.kind === "object"

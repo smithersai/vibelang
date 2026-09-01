@@ -287,9 +287,22 @@ func (b *durableManifestBuilder) classify(node *ast.Node) {
 			b.fail("durable Action has no derivable durable contract, so its effect cannot be stated soundly")
 			return
 		}
+		// The three schemas ride the row as of `MIGRATION-PLAN.md` step 12, so
+		// the corpus observations of `successSchema`/`errorSchema` can move off
+		// `Flow.plan.actions` and onto `Flow.manifest.actions`. They cost the
+		// Manifest digest no discriminating power: `contractDigest` is already
+		// `digest({id, version, inputSchema, successSchema, errorSchema})`
+		// (`durableActionContractDescriptor`), so two Flows whose Actions differ
+		// in any schema already differed in this row before the schemas were in
+		// it. Read straight off `action.descriptor` rather than re-derived: a
+		// second derivation would be a second answer to compare, not the
+		// contract the digest was taken over.
 		b.actions[action.id] = map[string]any{
 			"contractDigest": action.descriptor["contractDigest"],
+			"errorSchema":    action.descriptor["errorSchema"],
 			"id":             action.id,
+			"inputSchema":    action.descriptor["inputSchema"],
+			"successSchema":  action.descriptor["successSchema"],
 			"version":        1,
 		}
 		b.requirements[action.id] = true

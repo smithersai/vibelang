@@ -13,6 +13,7 @@ import {
   type DurableSourceFlowBinding
 } from "./source-compiler.ts"
 import { compileActionContract } from "./schema.ts"
+import { canonicalJson, digest } from "./value.ts"
 import type { ActionDescriptor, DurableSchema, DurableTypeDescriptor } from "./ir.ts"
 
 /**
@@ -716,4 +717,66 @@ test("failure identities and both digests do not depend on how the file was addr
   // folded to `_` — destroying the separator on every input, not just this one.
   expect(observed[0].failures).toEqual(["smithers:orders.sm@Denied@1", "smithers:orders.sm@Failed@1"])
   for (const answer of observed.slice(1)) expect(answer).toEqual(observed[0])
+})
+
+/**
+ * `MIGRATION-PLAN.md` step 12: the Manifest's Action row carries the durable
+ * contract, not just its identity.
+ *
+ * Two claims, and they are separate. The FIRST is that the row's schemas are
+ * the descriptor's own bytes rather than a second derivation — the Manifest
+ * derivation and the Plan lowerer share contract derivation on purpose
+ * (`effect-manifest.ts`'s header: two transcriptions of one hash would let a
+ * real divergence hide behind a spurious one), and a row that re-derived would
+ * be exactly that second transcription.
+ *
+ * The SECOND is the claim on which the widening's cost argument rests: adding
+ * the schemas gives `EffectManifest.digest` no discriminating power it did not
+ * already have, because `contractDigest` is `digest({id, version, inputSchema,
+ * successSchema, errorSchema})`. That is asserted by RE-DERIVING the digest
+ * from the row's own five fields, so if the preimage ever changes shape this
+ * test fails rather than the argument quietly becoming false.
+ *
+ * Without both, "the widening is free" is a sentence in a comment.
+ */
+test("the Manifest Action row carries the descriptor's own contract, and the contract digest re-derives from it", () => {
+  const compiled = compileEffectManifest(
+    `import { durable } from "smithers:flows"
+import { Transform, Publish } from "test:manifest-actions"
+export const Flow = durable((input: { id: string; value: number }) => {
+  const doubled = Transform.run({ id: input.id, value: input.value })!
+  return Publish.run({ id: doubled.id, amount: doubled.doubled })
+})`,
+    { fileName: "orders.sm", flowId: "test/Widened", flowVersion: 1, actions: FEATURE_ACTIONS }
+  )
+  if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
+  const rows = new Map(compiled.manifest.actions.map((action) => [action.id, action]))
+  expect([...rows.keys()]).toEqual(["test/manifest/Publish", "test/manifest/Transform"])
+  for (const binding of [TRANSFORM, PUBLISH]) {
+    const row = rows.get(binding.descriptor.id)
+    if (row === undefined) throw new Error(`no Manifest row for ${binding.descriptor.id}`)
+    // Claim one: the descriptor's own bytes, canonically identical.
+    expect(canonicalJson(row.inputSchema)).toBe(canonicalJson(binding.descriptor.inputSchema))
+    expect(canonicalJson(row.successSchema)).toBe(canonicalJson(binding.descriptor.successSchema))
+    expect(canonicalJson(row.errorSchema)).toBe(canonicalJson(binding.descriptor.errorSchema))
+    expect(row.contractDigest).toBe(binding.descriptor.contractDigest)
+    // Claim two: the digest's preimage is exactly these five fields, so the
+    // schemas were already determined by the row and add no new distinction.
+    expect(digest({
+      id: row.id,
+      version: row.version,
+      inputSchema: row.inputSchema,
+      successSchema: row.successSchema,
+      errorSchema: row.errorSchema
+    })).toBe(row.contractDigest)
+  }
+  // The row must NOT grow a field outside that preimage: one that is not
+  // determined by `contractDigest` would make the Manifest digest discriminate
+  // something the Action contract does not, which is where "sets and tables"
+  // starts eroding into a plan.
+  for (const row of compiled.manifest.actions) {
+    expect(Object.keys(row).sort()).toEqual(
+      ["contractDigest", "errorSchema", "id", "inputSchema", "successSchema", "version"]
+    )
+  }
 })

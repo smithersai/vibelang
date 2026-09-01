@@ -622,13 +622,13 @@ test("a relative .sm import matching two Smithers candidates is rejected", () =>
 
 test("smithers plan emits a canonical durable artifact without executing authored code", async () => {
   const { Action } = await import("smthrs/durable/authoring");
-  const { decodePlanArtifact } = await import("smthrs/durable/artifact");
+  const { canonicalJson, digest } = await import("smthrs/durable");
   const Compile = Action.define({ id: "test/cli/Compile", version: 1 });
   const Package = Action.define({ id: "test/cli/Package", version: 1 });
   const temporary = mkdtempSync(join(tmpdir(), "smithers-plan-cli-"));
   try {
     const bindings = join(temporary, "actions.json");
-    const artifact = join(temporary, "build.plan.json");
+    const artifact = join(temporary, "build.manifest.json");
     const bindingsSource = JSON.stringify({
       flowId: "test/cli/Build",
       flowVersion: 2,
@@ -652,12 +652,22 @@ test("smithers plan emits a canonical durable artifact without executing authore
     assert.equal(compiled.status, 0, compiled.stderr || compiled.stdout);
     const report = JSON.parse(compiled.stdout);
     assert.equal(report.ok, true);
-    assert.equal(report.plan.flowId, "test/cli/Build");
-    assert.deepEqual(report.plan.nodes.map((node) => node.actionId), ["test/cli/Compile", "test/cli/Package"]);
-    const decoded = decodePlanArtifact(new Uint8Array(readFileSync(artifact)));
+    assert.equal(report.manifest.flowId, "test/cli/Build");
+    assert.deepEqual(report.manifest.actions.map((action) => action.id), ["test/cli/Compile", "test/cli/Package"]);
+    // Both Actions are performed, so both take a site row. The site table is a
+    // TABLE — no successor, no count — which is why this asserts the row kinds
+    // and not an order relating them.
+    assert.deepEqual(report.manifest.sites.map((site) => site.kind), ["perform", "perform"]);
+    // The file carries the Manifest's own canonical bytes, so its identity is
+    // re-derivable from its contents rather than taken from the report.
+    const artifactText = readFileSync(artifact, "utf8");
+    const decoded = JSON.parse(artifactText);
     assert.equal(decoded.digest, report.digest);
+    const { digest: _declared, ...semantic } = decoded;
+    assert.equal(digest(semantic), report.digest);
+    assert.equal(artifactText, `${canonicalJson(report.manifest)}\n`);
 
-    const repeatedArtifact = join(temporary, "build-repeated.plan.json");
+    const repeatedArtifact = join(temporary, "build-repeated.manifest.json");
     const repeated = run("bin/smithers.js", [
       "plan",
       "test/fixtures/durable/build.sm",
@@ -672,30 +682,45 @@ test("smithers plan emits a canonical durable artifact without executing authore
     assert.equal(JSON.parse(repeated.stdout).digest, report.digest);
     assert.deepEqual(readFileSync(repeatedArtifact), readFileSync(artifact));
 
-    const rejectedArtifact = join(temporary, "unsupported.plan.json");
-    writeFileSync(rejectedArtifact, "existing artifact must survive");
-    const rejected = run("bin/smithers.js", [
+    // `unsupported.sm` holds a runtime branch with an Action in each arm. Its
+    // history is the whole point of this row. It was `SMITHERS4106` and exited
+    // 1; MIGRATION-PLAN.md step 11 withdrew that wall, so the lowerer DECLINED
+    // the body and step 11's stopgap exited 2 with "this Flow has no static
+    // Plan"; step 12 retargets the command at the Effect Manifest, which has an
+    // answer for this body, so it now exits 0. The Manifest is imprecise on
+    // purpose — both arms are children of the same body, so both Actions are in
+    // it and NOTHING says which arm runs, which is exactly what PR-1 requires
+    // and is why a branch is no longer a reason to refuse.
+    const branchArtifact = join(temporary, "unsupported.manifest.json");
+    const branchy = run("bin/smithers.js", [
       "plan",
       "test/fixtures/durable/unsupported.sm",
       "--bindings",
       bindings,
       "--outFile",
-      rejectedArtifact,
+      branchArtifact,
       "--format",
       "json",
     ]);
-    // `unsupported.sm` holds a runtime branch. Until MIGRATION-PLAN.md step 11
-    // that was `SMITHERS4106` and `smithers plan` exited 1 with a diagnostic;
-    // the wall is withdrawn, so the program is no longer refused and there is
-    // simply no Plan for this command to report. It says so and exits 2 — a
-    // command error rather than a program diagnostic, which is the honest shape
-    // until step 12 retargets `smithers plan` at the Effect Manifest.
-    //
-    // What this row is FOR is unchanged and is the line below it: a run that
-    // produces no artifact must not truncate the file `--outFile` names.
-    assert.equal(rejected.status, 2, rejected.stderr || rejected.stdout);
-    assert.match(rejected.stdout + rejected.stderr, /this Flow has no static Plan/);
-    assert.doesNotMatch(rejected.stdout + rejected.stderr, /SMITHERS41\d\d/);
+    assert.equal(branchy.status, 0, branchy.stderr || branchy.stdout);
+    const branchReport = JSON.parse(branchy.stdout);
+    assert.deepEqual(branchReport.manifest.actions.map((action) => action.id), ["test/cli/Compile"]);
+    assert.deepEqual(branchReport.manifest.sites.map((site) => site.kind), ["perform", "perform"]);
+    assert.doesNotMatch(JSON.stringify(branchReport.manifest), /"branch"|"whenTrue"|"whenFalse"/);
+
+    // A run that produces no artifact must not truncate the file `--outFile`
+    // names. That guard used to ride on the branch program above; the branch is
+    // legal now, so it rides on a program the compiler still refuses — one with
+    // no compiler-owned `durable(...)` call at all.
+    const rejectedArtifact = join(temporary, "no-flow.manifest.json");
+    const noFlowSource = join(temporary, "no-flow.sm");
+    writeFileSync(noFlowSource, 'export const value: string = "no durable declaration"\n');
+    writeFileSync(rejectedArtifact, "existing artifact must survive");
+    const rejected = run("bin/smithers.js", [
+      "plan", noFlowSource, "--bindings", bindings, "--outFile", rejectedArtifact, "--format", "json",
+    ]);
+    assert.equal(rejected.status, 1, rejected.stderr || rejected.stdout);
+    assert.deepEqual(JSON.parse(rejected.stdout).diagnostics.map((entry) => entry.code), ["SMITHERS4102"]);
     assert.equal(readFileSync(rejectedArtifact, "utf8"), "existing artifact must survive");
 
     const duplicateBindings = join(temporary, "duplicate-actions.json");

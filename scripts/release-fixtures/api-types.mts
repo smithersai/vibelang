@@ -24,12 +24,15 @@ import {
   type FlowToolTarget,
 } from "smthrs/agent/bun";
 import { decodePlanArtifact } from "smthrs/durable/artifact";
-import { compileDurableSource } from "smthrs/durable/source-compiler";
+import { compileDurableSource, compileEffectManifest } from "smthrs/durable/source-compiler";
 import {
+  canonicalJson,
   deploymentVerificationKey,
+  digest as durableDigest,
   generateDeploymentSigningKeyPair,
   MAX_DURABLE_JSON_NODES,
   type DeploymentSigningKeyPair,
+  type EffectManifest,
   type SignalNode,
   type TrustedDeploymentKey,
 } from "smthrs/durable";
@@ -100,11 +103,23 @@ const sourceAssets: Promise<SourceAssetCompilation> = compileSourceAssetModules(
   compiler: assetCompiler,
   sources: [{ fileName: "/virtual/main.sm", source: "export const value = 1" }],
 });
-const durable = compileDurableSource(
-  'import { durable } from "smithers:flows"; export const Flow = durable(function Flow(input: string) { return input })',
-  { actions: [] },
-);
+const DURABLE_SOURCE =
+  'import { durable } from "smithers:flows"; export const Flow = durable(function Flow(input: string) { return input })';
+const durable = compileDurableSource(DURABLE_SOURCE, { actions: [] });
 if (durable.ok) decodePlanArtifact(durable.artifact);
+// MIGRATION-PLAN.md §5 R2. `verify:pack` is the only gate that type-checks the
+// PACKED artifact's public durable surface, and it reached that surface through
+// the Plan alone. The Manifest path — the one `smithers plan` now reports and
+// the one that survives the pivot — is checked here from the same specifier.
+const durableManifest = compileEffectManifest(DURABLE_SOURCE, { actions: [] });
+if (durableManifest.ok) {
+  const manifest: EffectManifest = durableManifest.manifest;
+  const { digest: _declared, ...semantic } = manifest;
+  const recomputedManifestDigest: string = durableDigest(semantic);
+  const canonicalManifest: string = canonicalJson(manifest);
+  void recomputedManifestDigest;
+  void canonicalManifest;
+}
 new InMemoryTypeScriptCompiler();
 declare const flowTarget: FlowToolTarget;
 flowTool(flowTarget);

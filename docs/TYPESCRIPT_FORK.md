@@ -102,8 +102,20 @@ resumable calling convention and must reach every artifact that can resume an
 execution of it; the Effect Manifest published beside it is sets and tables —
 reachable Action identities, requirement row, external-input contracts, failure
 row, site table — and carries no control-flow edges, branch structure, or
-execution counts. See
-[Durable Execution](/specification/durable-execution) §Effect Manifest.
+execution counts. See the Durable Execution specification
+(`docs/src/pages/specification/durable-execution.mdx`) §Effect Manifest.
+
+<!--
+Deliberately NOT a Markdown link. `docs/TYPESCRIPT_FORK.md` is one of only two
+Markdown files `package.json`'s `files` list ships, and `scripts/verify-pack.mjs`
+requires every local link in a packaged Markdown file to resolve to another
+SHIPPED path. The specification pages are not shipped, so a link to one is
+either an absolute path (refused as unsafe) or a dangling relative path (refused
+as unshipped) — and `verify:pack` is not in `npm test`, so the break only
+surfaces at release. It surfaced here as a red `npm run gate:premerge` while
+MIGRATION-PLAN.md §5 R2 was being closed.
+-->
+
 
 Later phases may request earlier information through explicit compiler APIs,
 but they MUST NOT reparse source text heuristically or execute authored modules

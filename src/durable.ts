@@ -22,6 +22,25 @@ export {
   type EffectManifestCompileSuccess,
 } from "../poc/dist/durable/source-compiler.js";
 
+/**
+ * The Effect Manifest — the artifact `smithers plan` reports as of
+ * `MIGRATION-PLAN.md` step 12, and the one a Flow always publishes.
+ *
+ * `canonicalJson` and `digest` ride with it deliberately. The CLI writes the
+ * Manifest's OWN canonical bytes to `--outFile`, and `manifest.digest` is
+ * `digest(...)` over exactly that serialization minus the digest field. Without
+ * these two a consumer can read the file but cannot check that its declared
+ * identity is the identity of its contents, which is the only property that
+ * makes a published artifact worth publishing.
+ */
+export type {
+  EffectManifest,
+  EffectManifestAction,
+  EffectManifestContract,
+  EffectManifestSite,
+} from "../poc/dist/durable/effect-manifest.js";
+export { canonicalJson, digest } from "../poc/dist/durable/value.js";
+
 export {
   decodePlanArtifact,
   DurableArtifactError,

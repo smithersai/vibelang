@@ -122,11 +122,47 @@ export interface EffectManifestSource {
   readonly actionBaseSymbol: ts.Symbol
 }
 
-/** One reachable Action identity. */
+/**
+ * One reachable Action identity, with the durable contract that identity names.
+ *
+ * ## Why the three schemas are here (`MIGRATION-PLAN.md` step 12)
+ *
+ * The row carried `{id, version, contractDigest}` while the Manifest was only a
+ * cross-check against a Plan that carried the schemas. Two corpus cases —
+ * `17-durable/action-success-field-order-is-utf16-not-utf8` and
+ * `17-durable/an-actions-failure-channel-mints-one-identity-per-error-class` —
+ * observe `successSchema`/`errorSchema` and could only read them off
+ * `Flow.plan.actions`, which is the artifact the pivot retires. Widening the
+ * row is what lets those observations move rather than be lost.
+ *
+ * ## What it costs the digest: nothing, and that is checkable
+ *
+ * `contractDigest` is `digest({id, version, inputSchema, successSchema,
+ * errorSchema})` — see `schema.ts`'s `compileActionContract` and
+ * `validateActionContractDescriptor`, which RE-DERIVES it from exactly those
+ * five fields and refuses a mismatch. So the three schemas were already
+ * functionally determined by `(id, version, contractDigest)`, and adding them
+ * to the row adds no distinction the Manifest digest could not already make:
+ * two Flows whose Actions differ in any schema already differed in
+ * `contractDigest`, hence already in `EffectManifest.digest`. The equivalence
+ * classes `EffectManifest.digest` induces over programs are therefore
+ * IDENTICAL before and after this change.
+ *
+ * What it does cost is one re-pin: the digest's preimage grew, so every
+ * previously recorded Manifest digest changes exactly once. That is a pinned
+ * constant moving, not a rule weakening — and it is why this row must never
+ * grow a field that is NOT already determined by `contractDigest`. Such a field
+ * would make the Manifest digest discriminate something the Action contract
+ * does not, and `docs/DECISIONS.md` §PR-1's "sets and tables, no counts" is the
+ * boundary that would start to erode.
+ */
 export interface EffectManifestAction {
   readonly id: string
   readonly version: number
   readonly contractDigest: string
+  readonly inputSchema: DurableSchema
+  readonly successSchema: DurableSchema
+  readonly errorSchema: DurableSchema
 }
 
 /**
@@ -446,7 +482,10 @@ export const deriveEffectManifest = (
         actions.set(descriptor.id, {
           id: descriptor.id,
           version: descriptor.version,
-          contractDigest: descriptor.contractDigest
+          contractDigest: descriptor.contractDigest,
+          inputSchema: descriptor.inputSchema,
+          successSchema: descriptor.successSchema,
+          errorSchema: descriptor.errorSchema
         })
         requirements.add(descriptor.id)
         failureIdentities(descriptor.errorSchema, failures)

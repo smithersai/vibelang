@@ -1,3 +1,48 @@
+/**
+ * ## Why this file is still a Plan-node diff, and what has to happen first
+ *
+ * `MIGRATION-PLAN.md` step 12 calls for rewriting this module as "~110 lines of
+ * site-table diff" — {@link assertNodeMigrationCompatible} replaced by a diff
+ * over two `EffectManifest` site tables. That rewrite is BLOCKED, and the
+ * blocker was measured rather than argued:
+ *
+ * ```
+ * plan node ids  [ "action:src-b2a564543ce6ea043c28dabf" ]
+ * manifest sites [ "perform:src-efd2893dcaa39acdb7611bf7" ]
+ * ```
+ *
+ * — one Flow, one `Action.run` call, compiled through `compileDurableSource`
+ * and `compileEffectManifest`. A Plan node id and the Manifest site id for the
+ * SAME call site are different strings. `MIGRATION-PLAN.md` §4 records the two
+ * schemes as already agreeing ("Both backends already agree on this scheme");
+ * the two BACKENDS agree, but the Plan lowerer and the Manifest derivation do
+ * not agree with each other.
+ *
+ * That matters because every judgment below is a lookup keyed by node id
+ * against `durable_nodes.node_id`, and a Plan-engine execution's rows carry
+ * PLAN node ids. A site-table diff would compare a disjoint key space: `frozen`
+ * would be empty for every execution, `decidedBranchIds` would be empty, and
+ * every "this node already committed, its semantics may not move" refusal would
+ * silently become a no-op. A migration that reinterpreted a committed Action
+ * would be ACCEPTED. That is a fail-open, and it is invisible to every existing
+ * test because the tests construct their evidence from the same Plan the diff
+ * reads.
+ *
+ * So the order is: retire the Plan engine, so `durable_nodes` has exactly one
+ * key space (the site id the replay driver already journals — see
+ * `vertical-slice.test.ts`), and only then replace this diff. Doing it in the
+ * other order is the defect, not the cleanup.
+ *
+ * `migration.test.ts` is NOT deletable on the same reasoning. Audited block by
+ * block: of its 14 `test` blocks, 5 are expressed in Plan node shape (Flow
+ * schema freeze, branch-decision freeze, fan-out materialization evidence,
+ * timer deadline evidence, and the branch skip/fence race) and 9 are not —
+ * deployment fencing, stale-coordinator abandon-instead-of-terminalize, crash
+ * idempotency after COMMIT, the two-connection migration race, unknown/terminal
+ * execution, forged-artifact re-derivation, and the attached-child abandon
+ * rule. Those 9 guard the pinning substrate `MIGRATION-PLAN.md` §4 says
+ * SURVIVES the pivot, and a site-table diff does not re-express any of them.
+ */
 import { validateDeploymentManifest, validatePlanTemplate } from "./artifact.ts"
 import {
   allPlanNodes,

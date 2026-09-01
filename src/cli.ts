@@ -45,10 +45,10 @@ import {
   type ComptimeLoweringProvenance,
 } from "../poc/dist/build/index.js";
 import {
-  compileDurableSource,
-  PlanUnrepresentable,
+  compileEffectManifest,
   type DurableSourceActionBinding,
 } from "../poc/dist/durable/source-compiler.js";
+import { canonicalJson } from "../poc/dist/durable/value.js";
 import { resolveTypeScriptCompiler, runTypeScriptCompiler } from "./compiler-process.js";
 import {
   GoBackendFailure,
@@ -2118,13 +2118,35 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
       return { ok, files: inspected };
     },
   })
+  /**
+   * `smithers plan` — the product's only non-executing inspection path
+   * (`MIGRATION-PLAN.md` Q8: "Yes. Deleting it converts a rewrite into a
+   * capability loss for no saving").
+   *
+   * Step 12 changes exactly one thing about it: where the answer comes from.
+   * `compileDurableSource` answered "what Plan does this lower to?", which for
+   * a body holding ordinary control flow has no answer — step 11 withdrew the
+   * six walls that used to refuse such a body, so the lowerer began DECLINING
+   * it and this command gained a stopgap that exited 2 saying so.
+   * `compileEffectManifest` answers "what is this Flow?", which always has an
+   * answer, so the stopgap is gone rather than reworded.
+   *
+   * Deliberately unchanged: the command name, `--bindings` and its complete
+   * `readDurablePlanConfig` validation, `--outFile` and every one of its five
+   * guards (symbolic link, regular file, source/bindings overwrite, canonical
+   * `.sm` input, bounded read), the `SMITHERS_PLAN_ERROR` code, and the exit
+   * codes — 1 for a program the compiler refuses, 2 for a misuse of the
+   * command. A report for a refused program still names `diagnostics`, and
+   * `--outFile` is still written only after the compile succeeds, which is what
+   * keeps a refused run from truncating the file it names.
+   */
   .command("plan", {
     args: files,
     options: z.object({
       bindings: z.string().optional().describe("JSON file mapping imported Actions to pinned descriptors"),
-      outFile: z.string().optional().describe("Write the canonical Plan artifact to this file"),
+      outFile: z.string().optional().describe("Write the canonical Effect Manifest to this file"),
     }),
-    description: "Statically lower one durable(...) declaration without executing authored code",
+    description: "Report one durable(...) declaration's Effect Manifest without executing authored code",
     run(context) {
       try {
         const input = requireOneInput(context.args.files, "smithers plan");
@@ -2134,7 +2156,7 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
         const absolute = source.fileName;
         if (!isSmithersFile(absolute)) throw new TypeError("smithers plan requires a canonical .sm input");
         const config = readDurablePlanConfig(context.options.bindings);
-        const result = compileDurableSource(source.source, {
+        const result = compileEffectManifest(source.source, {
           fileName: basename(absolute),
           flowId: config.flowId,
           flowVersion: config.flowVersion,
@@ -2148,41 +2170,31 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
         if (context.options.outFile) {
           const requestedArtifact = resolve(context.options.outFile);
           if (existsSync(requestedArtifact) && lstatSync(requestedArtifact).isSymbolicLink()) {
-            throw new TypeError("durable Plan output cannot be a symbolic link");
+            throw new TypeError("durable Manifest output cannot be a symbolic link");
           }
           artifact = canonicalFuturePath(requestedArtifact);
           if (existsSync(artifact) && !statSync(artifact).isFile()) {
-            throw new TypeError("durable Plan output must be a regular file when it already exists");
+            throw new TypeError("durable Manifest output must be a regular file when it already exists");
           }
           if (pathsReferToSameFile(artifact, absolute) || pathsReferToSameFile(artifact, config.fileName)) {
-            throw new TypeError("durable Plan output cannot overwrite its source or bindings file");
+            throw new TypeError("durable Manifest output cannot overwrite its source or bindings file");
           }
-          const canonical = new TextDecoder().decode(result.artifact);
-          commitProjectFiles(dirname(artifact), [{ fileName: artifact, code: canonical }]);
+          // The Manifest's OWN canonical bytes, not a second encoding of them:
+          // `manifest.digest` is `digest(...)` over exactly this serialization
+          // minus the digest field, so a reader can re-derive the identity from
+          // the file rather than trusting the field. Writing it any other way
+          // would publish an artifact whose digest cannot be checked against
+          // its own contents.
+          commitProjectFiles(dirname(artifact), [{ fileName: artifact, code: `${canonicalJson(result.manifest)}\n` }]);
         }
         return {
           ok: true,
           file: absolute,
           artifact,
-          digest: result.plan.digest,
-          plan: result.plan,
+          digest: result.manifest.digest,
+          manifest: result.manifest,
         };
       } catch (error) {
-        // A body outside the Plan's static subset is not an error in the
-        // program. `MIGRATION-PLAN.md` step 11 withdrew the six walls that used
-        // to refuse one, so the Plan lowerer signals rather than reports, and
-        // this command — which is a PLAN reporter until step 12 retargets it at
-        // the Effect Manifest — has nothing to print. It says so in those words
-        // rather than surfacing a compiler-internal message.
-        if (error instanceof PlanUnrepresentable) {
-          return context.error({
-            code: "SMITHERS_PLAN_ERROR",
-            exitCode: 2,
-            message:
-              "this Flow has no static Plan: its body holds ordinary control flow the Plan cannot represent, " +
-              "and the compiler publishes its Effect Manifest instead. `smithers plan` reports the Plan only.",
-          });
-        }
         return context.error({
           code: "SMITHERS_PLAN_ERROR",
           exitCode: 2,
