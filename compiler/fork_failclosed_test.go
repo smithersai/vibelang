@@ -449,8 +449,15 @@ func TestPinnedForkHostGlobalAllowlist(t *testing.T) {
 			// Widened 2026-08-28 with the specification row it mirrors.
 			// compatibility.mdx §Determinism-Sensitive Members row five used to
 			// name four ICU members and the hazard covers thirty; the list was
-			// incomplete, not narrow. All thirty are free on both backends
-			// today, so what this guards is OVER-refusal: the cheapest wrong
+			// incomplete, not narrow. All thirty now CHARGE `Locale` on both
+			// backends and are refused nowhere, and this case did not move when
+			// that landed: a charge publishes a row and emits no diagnostic, and
+			// `main` is called by the emitted scaffolding rather than by a
+			// top-level call, so there is no SMITHERS2102 here and the stdout is
+			// byte-identical to what it was when the row was empty. The
+			// cross-backend pin for the charge itself is
+			// TestPinnedForkAmbientRequirementChargesMatchTheSharedVectors.
+			// What this row guards is OVER-refusal: the cheapest wrong
 			// implementation of row four or five charges the `Intl` ROOT, which
 			// passes the DateTimeFormat case above perfectly and takes the whole
 			// ICU surface with it. The fork's member table is the same one-name

@@ -8975,18 +8975,21 @@ function isAmbientNamespaceReceiver(receiver: ts.Expression, checker: ts.TypeChe
  * The rest of `Intl` (`NumberFormat`, `Collator`, `ListFormat`, …) needs no
  * capability *here*, which is the same per-operation shape `Math` already has.
  *
- * That is the status quo, not a design statement, and it is a recorded gap.
- * `compatibility.mdx` §Determinism-Sensitive Members row five says every
- * ICU-backed operation MUST charge a `Locale` requirement — thirty members, of
- * which this file charges none — and it is open as `(SA-4)`. Its verb turns on
- * whether `Locale` is given a source-language surface; row three's verb was
- * decided on 2026-08-28 (charge, landing with migration step 7) and row five's
- * was not. Do not read the exemption above as saying the ICU surface is free by
- * design. What IS by design is that the exemption is uniform across the whole
+ * "Needs no capability *here*" is exact, and it does not mean free. This set
+ * selects a `SMITHERS1601`/`1602`/`1603` REFUSAL and nothing else. The rest of
+ * `Intl` is charged a `Locale` requirement by {@link ambientRequirementCharges},
+ * which is `compatibility.mdx` §Determinism-Sensitive Members row five — a
+ * CHARGE, publishing a row and reporting nothing, because `Locale` has no
+ * source-language surface a refusal could name. Row five's verb was open when
+ * this comment was written and was settled by that criterion; `(SA-4)` is
+ * closed, on both backends.
+ *
+ * What IS by design is that the REFUSAL exemption is uniform across the whole
  * class: `host-global-allowlist.test.ts` enumerates all thirty and requires one
  * answer for them, so a rule that charges the `Intl` ROOT — the cheapest wrong
  * implementation of row four or five — fails there instead of silently taking
- * the standard library's ICU surface with it.
+ * the standard library's ICU surface with it. `ambient-charge.test.ts` and its
+ * Go twin pin the same seam from the other side, and cross-backend.
  */
 const HOST_SENSITIVE_GLOBALS: ReadonlySet<string> = new Set([
   "Date",

@@ -1,0 +1,75 @@
+{
+  "why": "specification/compatibility.mdx §Determinism-Sensitive Members rows THREE and FIVE, as the two backends must both answer them. Row three: `Promise.race`/`Promise.any` MUST charge a `Scheduler` requirement. Row five: every ICU-backed operation MUST charge a `Locale` requirement. Both are CHARGES rather than refusals, because neither capability has a source-language surface an author could be pointed at, so neither emits a diagnostic of its own.\n\nA charge is nonetheless OBSERVABLE, and that is what makes this file possible. A requirement row that nothing discharges is reported at a TOP-LEVEL call as SMITHERS2102, on both backends, with the capability named in the message. The claim that rows three and five are invisible to a differential — recorded for months on `rowSet` and in compatibility.mdx — was true only of a row read directly out of the analysis; it was never true of the row's consequence. Every vector below is a program whose charge reaches a top-level call, so a backend that does not charge answers with an empty diagnostic list and this corpus goes red.\n\nRead by compiler/fork_ambient_charge_test.go (the Go fork, through the pinned bridge) and by poc/src/language/ambient-charge.test.ts (the reference frontend, which additionally asserts the requirement ROW itself, the thing the fork's CompileResult protocol cannot carry). Neither file re-derives the rule; both compare their own backend's output against these vectors, which is what stops the two implementations drifting.\n\nEvery `diagnostics` list was DERIVED by running the reference over the source, not written by hand.",
+  "vectors": [
+    {
+      "name": "promise-race-charges-scheduler",
+      "why": "Row three, the first of its two members. `Promise.race`'s value IS arrival order, so the site publishes `Scheduler` into the enclosing row and the top-level call reports it.",
+      "source": "function raceKind(): string {\n  return typeof Promise.race\n}\nconst kind = raceKind()\nexport function main(): string[] {\n  return [kind]\n}\n",
+      "requirements": ["Scheduler"],
+      "diagnostics": ["SMITHERS2102@4:14"]
+    },
+    {
+      "name": "promise-any-charges-scheduler",
+      "why": "Row three's second member. Named beside `race` by the specification and carrying the identical hazard.",
+      "source": "function anyKind(): string {\n  return typeof Promise.any\n}\nconst kind = anyKind()\nexport function main(): string[] {\n  return [kind]\n}\n",
+      "requirements": ["Scheduler"],
+      "diagnostics": ["SMITHERS2102@4:14"]
+    },
+    {
+      "name": "promise-all-charges-nothing",
+      "why": "The negative control for row three, and the reason its empty list is not vacuous: it is the SAME program shape as the two vectors above with one member name changed. A backend that charges nothing at all passes this and fails both of those; a backend that charges the `Promise` root passes those and fails this. specification/compatibility.mdx: 'Every other `Promise` member stays free.'",
+      "source": "function allKind(): string {\n  return typeof Promise.all\n}\nconst kind = allKind()\nexport function main(): string[] {\n  return [kind]\n}\n",
+      "requirements": [],
+      "diagnostics": []
+    },
+    {
+      "name": "locale-compare-charges-locale",
+      "why": "Row five's PROTOTYPE half, keyed on the member name because `\"a\".localeCompare(\"b\")` has no root identifier a name-keyed walk could see. That asymmetry is why row five went unenforced while row four's `Date.now()` did not.",
+      "source": "function compare(): string {\n  return `${\"a\".localeCompare(\"b\")}`\n}\nconst value = compare()\nexport function main(): string[] {\n  return [value]\n}\n",
+      "requirements": ["Locale"],
+      "diagnostics": ["SMITHERS2102@4:15"]
+    },
+    {
+      "name": "intl-collator-charges-locale",
+      "why": "Row five's `Intl` NAMESPACE half, keyed on the root name. `Collator.compare` used as a sort comparator makes the resulting ORDERING host-dependent, which is the sharpest form of the hazard the row names.",
+      "source": "function collate(): string {\n  return `${new Intl.Collator(\"en\").compare(\"a\", \"a\")}`\n}\nconst value = collate()\nexport function main(): string[] {\n  return [value]\n}\n",
+      "requirements": ["Locale"],
+      "diagnostics": ["SMITHERS2102@4:15"]
+    },
+    {
+      "name": "string-normalize-charges-locale",
+      "why": "In row five by the row's own criterion and the one member whose variance is the host's UNICODE version rather than its locale. Present so that an implementation reading the row as 'the members with `Locale` in the name' fails here.",
+      "source": "function norm(): string {\n  return \"a\".normalize(\"NFC\")\n}\nconst value = norm()\nexport function main(): string[] {\n  return [value]\n}\n",
+      "requirements": ["Locale"],
+      "diagnostics": ["SMITHERS2102@4:15"]
+    },
+    {
+      "name": "intl-datetimeformat-is-refused-and-not-also-charged",
+      "why": "The row-four/row-five seam, and an OBSERVABLE negative rather than an asserted absence. `Intl.DateTimeFormat` construction is row four's clock hazard and is already refused as SMITHERS1602; charging `Locale` on top would publish a requirement row for a program that does not compile. A backend that charges the `Intl` ROOT — the cheapest wrong implementation of row five — adds a SMITHERS2102 here and goes red.",
+      "source": "function fmt(): string {\n  return new Intl.DateTimeFormat(\"en\").format(0)\n}\nconst value = fmt()\nexport function main(): string[] {\n  return [value]\n}\n",
+      "requirements": [],
+      "diagnostics": ["SMITHERS1602@2:14"]
+    },
+    {
+      "name": "a-date-instances-tolocalestring-is-row-four-not-row-five",
+      "why": "`toLocaleString` is in row five's member table AND is a `Date` instance's host-zone read, which row four refuses as SMITHERS1602. The receiver decides: a `Date` receiver is row four's and must not also be charged, or the program publishes a requirement it cannot compile to satisfy.",
+      "source": "function stamp(): string {\n  return new Date(0).toLocaleString(\"en\")\n}\nconst value = stamp()\nexport function main(): string[] {\n  return [value]\n}\n",
+      "requirements": [],
+      "diagnostics": ["SMITHERS1602@2:22"]
+    },
+    {
+      "name": "an-ambient-charge-and-a-nominal-read-of-one-name-are-one-row",
+      "why": "The row is a set of NAMES, and this is the vector that says so across backends. `Locale.context()` charges a NOMINAL row — a capability some declaration in the program produces, identified by its symbol — and `\"a\".localeCompare(\"b\")` charges an AMBIENT one, identified by its name alone. The reference frontend's row is a `Set<string>`, so the two are one requirement there; a backend whose table keys the two differently publishes `{Locale, Locale}` for the same program unless it collapses them where the row is rendered and subtracted. MEASURED on the reference 2026-09-01: one entry, not two. This vector exists because the Go fork's hybrid key genuinely produced the divergence during this work, and no conformance case would have caught it — the runner compares diagnostic codes and positions, never message text.",
+      "source": "import { Context } from \"smthrs/context\"\n\nabstract class Locale extends Context {\n  abstract tag(): string\n}\n\nfunction both(): string {\n  return Locale.context().tag() + `${\"a\".localeCompare(\"b\")}`\n}\nconst v = both()\nexport function main(): string[] {\n  return [v]\n}\n",
+      "requirements": ["Locale"],
+      "diagnostics": ["SMITHERS2102@10:11"]
+    },
+    {
+      "name": "a-local-promise-is-an-ordinary-value",
+      "why": "The lexical-shadow control. Row three is keyed on the ambient `Promise` NAMESPACE through the same predicate the host-global rules use, never on the spelling, so a local binding named `Promise` charges nothing. Its empty list is not vacuous for the same reason `promise-all-charges-nothing`'s is not: it is the `promise-race` program with the receiver rebound.",
+      "source": "function raced(): string {\n  const Promise = { race: (): string => \"local\" }\n  return Promise.race()\n}\nconst value = raced()\nexport function main(): string[] {\n  return [value]\n}\n",
+      "requirements": [],
+      "diagnostics": []
+    }
+  ]
+}

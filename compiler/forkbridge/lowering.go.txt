@@ -1757,53 +1757,125 @@ func loweringReportCategory(report loweringReport) string {
 	return "error"
 }
 
-// errorRow is one member of the statically known error union at a match site.
-// Rows live in this side table keyed by symbol; nothing about a row is ever
-// encoded in a checker TypeFlags bit, which is a full uint32 the fork owns.
+// errorRow is one member of the statically known error union at a match site,
+// or one capability in a requirement row. Nothing about a row is ever encoded in
+// a checker TypeFlags bit, which is a full uint32 the fork owns.
+//
+// A row has one of exactly two identities:
+//
+//   - NOMINAL. The row IS a checker-resolved class or type-parameter symbol.
+//     Every failure row, and every capability a `Capability.context()` read
+//     charges, is nominal: some declaration in the program produces it, so
+//     there is a symbol to be identical to, and two spellings of one class are
+//     one row because they resolve to one symbol.
+//   - AMBIENT. The row is a capability charged by an operation the ambient
+//     environment publishes, and NO declaration in the charging program produces
+//     it, so there is no symbol at all. Identity is the NAME.
+//     specification/compatibility.mdx §Determinism-Sensitive Members rows three
+//     and five are the whole population: `Promise.race`/`any` charge
+//     `Scheduler` and the ICU-backed members charge `Locale`, and neither
+//     `Scheduler` nor `Locale` is a class the charging program declares or
+//     imports.
+//
+// THIS USED TO BE A FAIL-OPEN, and the shape is worth keeping written down
+// because it is the shape that hides. `rowSet` was `map[*ast.Symbol]errorRow`
+// and `addRow` returned false — SILENTLY — for a row whose symbol was nil. So an
+// ambient charge could be wired in, compile clean, and enforce nothing: MEASURED
+// on 2026-09-01, the charge sites for rows three and five were added against the
+// old table and every one of the five charging vectors in
+// compiler/ambient-charge-vectors.json produced output byte-identical to the run
+// with no wiring at all. Migration step 14 met the same wall and removed its own
+// wiring rather than ship something that read as mirrored, which was the right
+// call about the wrong half of the problem.
+//
+// `addRow` now FAILS CLOSED. A row it cannot represent panics instead of being
+// discarded, because an unrepresentable row means the analysis lost a
+// requirement, and losing a requirement quietly is the one outcome a row
+// analysis must not have — every other failure of this table is loud. The
+// precedent for a panic on an impossible state in this bridge is
+// `preludeSymbols.exported`.
 type errorRow struct {
+	symbol *ast.Symbol
+	name   string
+	// ambient marks the row whose identity IS its name. It is an explicit flag
+	// rather than `symbol == nil`, so that an UNRESOLVED nominal row — a bug in
+	// a caller that skipped its nil guard — stays distinguishable from a
+	// deliberately symbol-less one and still fails closed instead of silently
+	// becoming a row named "Error".
+	ambient bool
+}
+
+// rowKey is a row's identity inside a rowSet. Exactly one field is ever set:
+// `symbol` for a nominal row, `name` for an ambient one.
+//
+// A nominal row is keyed by its symbol ALONE, with `name` left empty, which
+// preserves the previous table's identity exactly: two rows for one symbol
+// carrying different rendered names stay one row, as they always did, and
+// `rowName`'s module qualification is unaffected because it never took part in
+// identity.
+//
+// IDENTITY IN THIS TABLE IS NOT WHAT THE ROW PUBLISHES, and the distinction is
+// load-bearing. A nominal `Locale` and an ambient `Locale` are two entries here
+// and ONE published requirement, because the reference frontend's row is a
+// `Set<string>` and a row is a set of capability names. `missingRowSet` and
+// `formatRowSet` are where that collapse happens, and both say why; a table that
+// only got the keys right published `{Locale, Locale}` where the reference
+// published `Locale`, measured 2026-09-01.
+type rowKey struct {
 	symbol *ast.Symbol
 	name   string
 }
 
-// rowSet is a nominal row side table. Its keys are checker-resolved class or
-// type-parameter symbols; TypeFlags remains entirely owned by the fork.
-//
-// KNOWN LIMIT, measured rather than assumed, and it is why two rows of
-// specification/compatibility.mdx §Determinism-Sensitive Members are enforced
-// on the reference frontend and not here.
-//
-// A key is a resolved `*ast.Symbol`, and `addRow` returns false — silently —
-// when `row.symbol` is nil. So this model can represent a requirement only for
-// a capability some declaration IN THE PROGRAM produces. Rows three and five
-// charge capabilities that no declaration produces: `Promise.race` charges
-// `Scheduler` and `"a".localeCompare(b)` charges `Locale`, and neither
-// `Scheduler` nor `Locale` is a class the charging program declares or imports.
-// Wiring an ambient charge into this set therefore drops it and reports
-// success, which reads as "mirrored" while enforcing nothing — the fail-open
-// shape, in the documentation rather than in the analysis.
-//
-// The reference frontend's row is a set of STRINGS and represents them without
-// difficulty. Closing the gap here means either rekeying this table by name —
-// which changes how every row is compared and rendered — or minting synthetic
-// symbols for ambient capabilities, which invents identities inside the fork's
-// nominal model and would have to answer `rowName`'s module qualification for a
-// symbol with no declaration. Both are larger than the rows that need them, and
-// neither is observable through the conformance corpus, which compares stdout
-// and diagnostics and cannot see a row at all.
-//
-// Rows FOUR and the `any` hole in `dynamicCodeUse` ARE mirrored here, because
-// both are diagnostics rather than charges.
-type rowSet map[*ast.Symbol]errorRow
+// key returns the row's identity, and false when it has none. A nominal row with
+// no symbol has lost the identity it is supposed to carry; an ambient row with a
+// symbol, or with no name, never had one. All three are analysis bugs rather
+// than inputs, and addRow refuses them loudly.
+func (row errorRow) key() (rowKey, bool) {
+	if row.ambient {
+		if row.symbol != nil || row.name == "" {
+			return rowKey{}, false
+		}
+		return rowKey{name: row.name}, true
+	}
+	if row.symbol == nil {
+		return rowKey{}, false
+	}
+	return rowKey{symbol: row.symbol}, true
+}
+
+// ambientRow is a capability charged by an ambient operation; see errorRow. It
+// is the only constructor for an ambient row, so a caller cannot reach the
+// unrepresentable shapes by accident.
+func ambientRow(name string) errorRow {
+	return errorRow{name: name, ambient: true}
+}
+
+// rowSet is the nominal-or-ambient row side table; TypeFlags remains entirely
+// owned by the fork.
+type rowSet map[rowKey]errorRow
 
 func addRow(into rowSet, row errorRow) bool {
-	if row.symbol == nil {
+	key, representable := row.key()
+	if !representable {
+		// Fail closed. The alternative is the silent drop this replaced, which
+		// loses a requirement and reports success — see errorRow.
+		panic("smithers: unrepresentable row: " + unrepresentableRowDetail(row))
+	}
+	if _, exists := into[key]; exists {
 		return false
 	}
-	if _, exists := into[row.symbol]; exists {
-		return false
-	}
-	into[row.symbol] = row
+	into[key] = row
 	return true
+}
+
+func unrepresentableRowDetail(row errorRow) string {
+	if !row.ambient {
+		return "a nominal row with no resolved symbol, rendered as " + strconvQuote(row.name)
+	}
+	if row.symbol != nil {
+		return "an ambient row carrying a symbol, rendered as " + strconvQuote(row.name)
+	}
+	return "an ambient row with no name"
 }
 
 func addRows(into rowSet, from rowSet) bool {
@@ -1814,11 +1886,35 @@ func addRows(into rowSet, from rowSet) bool {
 	return changed
 }
 
+// missingRowSet is the rows of `values` that `covered` does not discharge.
+//
+// COMPARED BY NAME, not by key, and that is deliberate rather than loose. This
+// is the capability-discharge subtraction, and the reference frontend's row is a
+// `Set<string>` of capability names, so its subtraction is a name subtraction.
+// Keying identity by symbol here would make the two backends disagree the moment
+// a program has a row whose identity is not a symbol: an ambient `Locale` charge
+// and a `Locale.context()` read are ONE requirement to the reference and would
+// be two to a symbol-keyed subtraction, so a layer providing `Locale` would
+// discharge the row on one backend and leave it standing on the other.
+// MEASURED on the reference 2026-09-01: a function that reads `Locale.context()`
+// and calls `"a".localeCompare(b)` publishes `requirements: ["Locale"]` — one
+// entry, not two.
+//
+// Names are safe to compare because buildRowNames makes them injective over the
+// symbols that reach a row: two modules declaring a same-named capability get
+// `Name@module/path`, which is the whole job of the qualifier, and
+// conformance/identity/module-row-qualifier.json pins the two backends to one
+// answer for it. So a name collision here is the same name collision the
+// reference has, rather than a new one this table invents.
 func missingRowSet(values rowSet, covered rowSet) rowSet {
+	discharged := make(map[string]struct{}, len(covered))
+	for _, row := range covered {
+		discharged[row.name] = struct{}{}
+	}
 	missing := make(rowSet)
-	for symbol, row := range values {
-		if _, ok := covered[symbol]; !ok {
-			missing[symbol] = row
+	for key, row := range values {
+		if _, ok := discharged[row.name]; !ok {
+			missing[key] = row
 		}
 	}
 	return missing
@@ -3216,8 +3312,13 @@ func (a *rowAnalysis) checkCallbackCoverage(call *ast.Node, callee *functionRows
 			continue
 		}
 		uncovered := make([]string, 0)
-		for symbol, row := range callback.declaredFailures {
-			ancestry := a.nominalAncestry(symbol, make(map[*ast.Symbol]bool))
+		for key, row := range callback.declaredFailures {
+			// `key.symbol` for a nominal row and nil for an ambient one, which
+			// nominalAncestry answers with an empty set. A declared FAILURE row
+			// is always nominal — an ambient row is only ever a requirement —
+			// so the nil arm is unreachable here and is nonetheless the safe
+			// answer: an unknown ancestry covers nothing.
+			ancestry := a.nominalAncestry(key.symbol, make(map[*ast.Symbol]bool))
 			covered := false
 			for expected := range instantiated {
 				if _, ok := ancestry[expected]; ok {
@@ -4610,6 +4711,15 @@ func (a *rowAnalysis) collectFacts(fn *functionRows) {
 			}
 			return
 		}
+		// Determinism-sensitive ambient sites that CHARGE rather than refuse.
+		// specification/compatibility.mdx §Determinism-Sensitive Members rows
+		// three and five. Charged HERE, in the per-function walk, because a row
+		// is a property of the enclosing function; checkHostGlobals walks the
+		// whole file and has no function to charge. The reference frontend
+		// charges at the same point in the same walk, for the same reason.
+		for _, requirement := range a.ambientRequirementCharges(node) {
+			addRow(fn.directRequirements, ambientRow(requirement))
+		}
 		if ast.IsThrowStatement(node) && !caught {
 			expression := node.AsThrowStatement().Expression
 			if expression != nil {
@@ -5104,9 +5214,23 @@ func (a *rowAnalysis) inferRows() {
 // Error class names, and the reference renders the same set with
 // `[...values].sort()` (poc/src/language/semantic.ts:3709), which is UTF-16
 // code-unit order.
+// formatRowSet renders a row as the set of NAMES it publishes.
+//
+// Deduplicated, for the reason missingRowSet subtracts by name: the reference
+// frontend's row is a `Set<string>`, so an ambient `Locale` charge and a
+// `Locale.context()` read render as one `Locale` there. Without the dedupe this
+// backend would render `{Locale, Locale}` for the same program — a divergence
+// visible in the text of SMITHERS1101, SMITHERS1806, SMITHERS2101 and
+// SMITHERS2102, and one that no conformance case would catch, because the runner
+// compares diagnostic codes and positions rather than message text.
 func formatRowSet(rows rowSet) string {
 	names := make([]string, 0, len(rows))
+	seen := make(map[string]struct{}, len(rows))
 	for _, row := range rows {
+		if _, duplicate := seen[row.name]; duplicate {
+			continue
+		}
+		seen[row.name] = struct{}{}
 		names = append(names, row.name)
 	}
 	sortUTF16(names)
@@ -7068,7 +7192,7 @@ func (l *lowerer) rowNamesPanic(node *ast.Node) bool {
 	if fn == nil {
 		return false
 	}
-	_, named := fn.failures[l.analysis.canonical(l.prelude.panic)]
+	_, named := fn.failures[rowKey{symbol: l.analysis.canonical(l.prelude.panic)}]
 	return named
 }
 

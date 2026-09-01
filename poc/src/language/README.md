@@ -277,6 +277,36 @@ The bounded project/ownership checks use stable codes:
   an explicit type argument naming a sibling Error class).
 - `SMITHERS1805` is retired: row members now carry module-qualified nominal
   identities, so two modules may declare same-named Errors/Contexts.
+- `SMITHERS1704`, `SMITHERS1706` and `SMITHERS1708` are retired, and the reason
+  is the same for all three: they were machinery for the **expression-form
+  control-flow grammar**, which the specification withdrew on 2026-08-23.
+  `docs/src/pages/specification/control-flow.mdx` §No Expression-Form Grammar now
+  says the opposite of the premise they rested on — "Blocks, `if`, `switch`,
+  `while`, and `for` are statements. None MUST be usable as an expression", and
+  "Smithers MUST NOT add: `if` or `switch` in expression position, braced or
+  braceless" — so **no program in the current language can reach any of the
+  three**, and implementing them would mean first re-adding grammar the
+  specification forbids. `1706` refused a `break`/`continue` escaping a
+  value-producing expression, and there are no value-producing expressions;
+  `1708` refused a value expression in an argument whose callee could not be
+  proven order-stable, and there is no hoisting left to preserve an order for;
+  `1704` was a POC-boundary gate on any labeled statement the control-flow
+  planner did not claim, and the planner is gone.
+  - Re-derived 2026-09-01, because the standing justification cited
+    `poc/src/language/control-flow.ts`, a file deleted in full by the same
+    commit (`4e1ff5c`) with no successor — a citation that could no longer be
+    checked. The withdrawal is supported by the specification above, not by that
+    file.
+  - **What `1704` left behind was measured rather than assumed**, since a
+    withdrawal is only sound if the accepted behaviour is right: a labeled loop
+    and a labeled block now compile and **execute** correctly on both backends,
+    which is what control-flow.mdx §Existing TypeScript Forms requires ("Valid
+    TypeScript statement forms MUST retain their TypeScript behavior") and which
+    nothing asserted until `TestPinnedForkLabeledStatementsAreOrdinary`. A
+    `continue outer` lowered as a plain `continue` would have compiled just as
+    cleanly and printed different values.
+  - `SMITHERS1703` and `SMITHERS1717` are the only surviving members of the
+    `17xx` family, and both are about constructs the language still has.
 - `SMITHERS1303`: an inferred-fallible function crosses a general callback
   boundary without an explicit Result contract. The boundary is a *value* edge,
   not an argument position: the rule follows every function an argument carries,

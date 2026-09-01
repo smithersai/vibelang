@@ -16,6 +16,19 @@
 >   requirement, the portable/required/forbidden classification, and the
 >   portability (native) pin — TypeScript is the only target
 >
+> **Concretely, on the diagnostic codes this document argues about** (added
+> 2026-09-01, because a reader met them here and reasonably concluded they
+> exist): `SMITHERS1702`, `SMITHERS1704`, `SMITHERS1705`, `SMITHERS1706`,
+> `SMITHERS1707`, `SMITHERS1708` and `SMITHERS1709` are implemented in **neither**
+> backend. They were removed from the reference on 2026-08-23 by `4e1ff5c`, and
+> the constructs they judged are forbidden outright by
+> `docs/src/pages/specification/control-flow.mdx` §No Expression-Form Grammar. §5
+> and §8 below therefore weigh two designs against diagnostics that no longer
+> exist; the measurements they record are still true of the fork, and the verdicts
+> are no longer decisions anyone has to take. The reference's retirement ledger is
+> `poc/src/language/README.md`. The only surviving `17xx` codes are
+> `SMITHERS1703` and `SMITHERS1717`.
+>
 > Retained and unaffected: the checked `panic` channel on unannotated foreign
 > calls, and Zig/Rust imports through generated Wasm bindings. Where this document
 > and the specification disagree, the specification wins.

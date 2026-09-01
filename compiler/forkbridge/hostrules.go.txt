@@ -274,18 +274,26 @@ var alwaysForbiddenHostGlobals = map[string]struct{}{
 // of `Intl` needs no capability *here*, which is the same per-operation shape
 // `Math` already has.
 //
-// That is the status quo, not a design statement, and it is a recorded gap.
-// compatibility.mdx §Determinism-Sensitive Members row five says every
-// ICU-backed operation MUST charge a `Locale` requirement — thirty members, of
-// which this file charges none — and it is open as (SA-4). Its verb turns on
-// whether `Locale` is given a source-language surface; row three's verb was
-// decided on 2026-08-28 (charge, landing with migration step 7) and row five's
-// was not. What IS by design is that the exemption is uniform across the whole
+// "Needs no capability HERE" is exact and has been since 2026-09-01: the rest of
+// `Intl` needs no capability from THIS table, which selects a
+// SMITHERS1601/1602/1603 refusal. It is not free. compatibility.mdx
+// §Determinism-Sensitive Members row five charges every ICU-backed operation a
+// `Locale` requirement, and ambientRequirementCharges above does exactly that on
+// this backend — a CHARGE, which publishes a row and reports nothing, because
+// `Locale` has no source-language surface a refusal could name. Row five's verb
+// was open when this comment was first written and was settled by that criterion;
+// (SA-4) is closed.
+//
+// What IS by design is that the refusal exemption is uniform across the whole
 // class, which the corpus case
 // 20-host-globals/intl-locale-formatting-is-not-a-clock-read pins across both
 // backends: a rule that charges the `Intl` ROOT — the cheapest wrong
 // implementation of row four or five — fails there rather than silently taking
-// the standard library's ICU surface with it.
+// the standard library's ICU surface with it. The vector
+// `intl-datetimeformat-is-refused-and-not-also-charged` in
+// compiler/ambient-charge-vectors.json pins the same seam from the other side,
+// and observably: an over-charge there shows up as an extra SMITHERS2102 rather
+// than as a silence.
 var hostSensitiveGlobals = map[string]struct{}{
 	"Date":        {},
 	"Math":        {},
@@ -808,6 +816,143 @@ func (a *rowAnalysis) ambientGlobalKind(node *ast.Node) ambientGlobalClass {
 // ---------------------------------------------------------------------------
 // Determinism-sensitive members: the rows that CHARGE, and the row that refuses
 // ---------------------------------------------------------------------------
+
+// localeSensitiveMembers is row five's PROTOTYPE half, keyed on the member NAME.
+//
+// specification/compatibility.mdx §Determinism-Sensitive Members row five: every
+// ICU-backed operation "MUST charge a `Locale` requirement. They are functions
+// of the host ICU version and locale data, and `Collator.compare` used as a sort
+// comparator makes the resulting ORDERING host-dependent."
+//
+// By name and not by receiver type, and the enumeration is the point: row five
+// covers `toLocaleString` on `Number`, `BigInt`, `Array`, `Object`, and each of
+// the TWELVE typed arrays, so a rule keyed on one receiver type closes one
+// receiver and leaves fifteen open. One member name covers all sixteen and
+// cannot be short by one. That is the OPPOSITE key from row four's
+// dateZoneMembers, which is keyed on the receiver's TYPE precisely because
+// `toString` and `toLocaleString` belong to nearly every value in the language
+// and a name-keyed rule there would take the standard library with it. The two
+// rules meet at `toLocaleString`, and isAmbientDateReceiver is what keeps a
+// `Date` instance in row four rather than charging it here beside a refusal the
+// charged program could never compile past.
+//
+// The cost of keying on the name is that an author's own `toLocaleString` method
+// is charged too. Accepted, for the reason compatibility.mdx accepts
+// `Intl.Collator` in an ordinary CLI formatter charging `Locale`: the walls
+// "MUST be uniform across all `.sm` code", an over-charge is a row a caller
+// discharges rather than a program that stops compiling, and the alternative is
+// the type-directed analysis row four needs and row five does not.
+//
+// `normalize` is in the row by row five's own criterion and is the one member
+// whose variance is the host's UNICODE version rather than its locale.
+//
+// The same five names as the reference frontend's LOCALE_SENSITIVE_MEMBERS in
+// poc/src/language/semantic.ts. The two are held together by the shared vectors
+// in compiler/ambient-charge-vectors.json rather than by this sentence.
+var localeSensitiveMembers = map[string]struct{}{
+	"localeCompare":     {},
+	"toLocaleUpperCase": {},
+	"toLocaleLowerCase": {},
+	"normalize":         {},
+	"toLocaleString":    {},
+}
+
+// ambientRequirementCharges is the ambient operations that CHARGE a capability
+// into the enclosing function's row instead of being refused: rows THREE and
+// FIVE of specification/compatibility.mdx §Determinism-Sensitive Members.
+//
+// The paragraph under that table is the whole rule. "'Charge', in this table,
+// means the site publishes the named capability's requirement into the enclosing
+// function's row, which a caller discharges by providing a layer. Where the
+// capability has a source-language surface the author can write instead —
+// `Clock.context()`, `Random.context()` — the *ambient* spelling is additionally
+// refused ... Where the capability deliberately has **no** source-language
+// surface, a refusal would name a remedy that cannot be written, and the
+// obligation is the row charge alone."
+//
+// So this function is exactly the rows whose capability has no source-language
+// surface, and that is why they report NO diagnostic code, new or existing:
+//
+//   - Row THREE, `Scheduler`. `Promise.race` and `Promise.any` "MUST charge a
+//     `Scheduler` requirement, because their value *is* arrival order". A
+//     refusal here would name `Scheduler.context()` as the remedy, and
+//     specification/durable-execution.mdx §Deterministic Scheduling says the
+//     scheduler "has no source-language surface". Every other `Promise` member
+//     stays free, `Promise.all` included.
+//   - Row FIVE, `Locale`. `Locale` is a capability class that exists nowhere in
+//     this tree, so by the same criterion it can only be a charge: refusing it
+//     would point an author at `Locale.context()`, which is unwritable.
+//
+// Both charges are unsatisfied rows in practice today, and that is the intended
+// end state rather than an omission: an unsatisfied requirement is not a compile
+// error here, so a charged program still compiles, still runs, and publishes the
+// row a caller would have to discharge. That is what distinguishes a charge from
+// a refusal by the back door. It becomes a diagnostic only where a row has
+// nowhere left to go — a TOP-LEVEL call, as SMITHERS2102 — which is also the
+// only place either backend can be held to the charge from outside.
+//
+// ROW FOUR IS NOT HERE, deliberately. `Date`'s host-zone members charge `Clock`,
+// which does have a source-language surface, so by the same criterion the
+// ambient spelling is additionally refused — as SMITHERS1602, by
+// dateZoneMemberUse, exactly as `Date.now()` already is.
+//
+// WHY THIS WAS THE LAST OF THE FIVE ROWS TO LAND HERE, and it was never the
+// rule. The bridge's rowSet was keyed by `*ast.Symbol` and its addRow dropped a
+// symbol-less row SILENTLY, so an ambient charge could be wired in, compile
+// clean, and enforce nothing. Migration step 14 measured that and removed its
+// own wiring rather than ship something that read as mirrored. The
+// representation now carries an ambient row by NAME and addRow fails closed; see
+// errorRow in lowering.go.
+func (a *rowAnalysis) ambientRequirementCharges(node *ast.Node) []string {
+	if node == nil {
+		return nil
+	}
+	if !ast.IsPropertyAccessExpression(node) && !ast.IsElementAccessExpression(node) {
+		return nil
+	}
+	if ast.IsPartOfTypeNode(node) {
+		return nil
+	}
+	// The SHARED selection helper, so an aliased, parenthesised or computed key
+	// answers exactly as the dotted one does — the same reason
+	// ambientRequirementsForRootUse uses it rather than a second literal test.
+	selection, selected := a.prelude.selectMember(node)
+	if !selected || selection.receiver == nil {
+		return nil
+	}
+	receiverIsIdentifier := ast.IsIdentifier(selection.receiver)
+
+	// Row three. Keyed on the ambient `Promise` NAMESPACE through the same
+	// predicate the host-global rules use, never on the spelling, so a local
+	// `const Promise = …` is an ordinary value under any spelling.
+	if receiverIsIdentifier && selection.receiver.Text() == "Promise" &&
+		a.isAmbientGlobalReference(selection.receiver) &&
+		(selection.text == "race" || selection.text == "any") {
+		return []string{"Scheduler"}
+	}
+
+	// Row five, the `Intl` NAMESPACE half, keyed on the root name.
+	if receiverIsIdentifier && selection.receiver.Text() == "Intl" &&
+		a.isAmbientGlobalReference(selection.receiver) {
+		if selection.text == "DateTimeFormat" {
+			// Row FOUR's clock hazard, and it is already refused as
+			// SMITHERS1602. Charging `Locale` on top would publish a
+			// requirement row for a program that does not compile.
+			return nil
+		}
+		return []string{"Locale"}
+	}
+
+	// Row five, the PROTOTYPE half. `"a".localeCompare("b")` has no root
+	// identifier for a name-keyed walk to see, which is the asymmetry that let
+	// row five go unenforced while row four's `Date.now()` did not.
+	if _, locale := localeSensitiveMembers[selection.text]; locale &&
+		!a.isAmbientNamespaceReceiver(selection.receiver) &&
+		!a.isAmbientDateReceiver(selection.receiver) {
+		return []string{"Locale"}
+	}
+	return nil
+}
 
 // dateZoneMembers are the `Date` INSTANCE members whose result is a function of
 // the host time zone.

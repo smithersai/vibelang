@@ -47,8 +47,44 @@ it:**
 | closure capture of a module-scope value | `SMITHERS4110` — "unsupported runtime capture; only input and prior const bindings are available" |
 | recursion, and any call to a project-declared function | `SMITHERS4199` — the Effect Manifest refuses to state a call whose effects it cannot account for |
 
-The last row is **new**, and it is the price of withdrawing the walls rather
-than a regression. `SMITHERS4112` used to refuse every call the Plan could not
+**The Go durable subset, and the four codes a 2026-08-31 census reported as
+having "silently become reference-only".** Re-derived 2026-09-01 against the
+current tree, they are three different facts and only one of them is a gap.
+
+- **`SMITHERS4107` is implemented in neither backend.** It was withdrawn from
+  both by the same act described above. It measured reference-only because the
+  reference's withdrawal *comment* spells `SMITHERS4107` while the fork's spells
+  a bare `4107` — the "text about a rule is not the rule" artifact, applied to a
+  comment about a rule that no longer exists. No case declares it; the one that
+  used to is now `expect: "output"` and passes on both backends.
+- **`SMITHERS4122` and `SMITHERS4123` are implemented in both.** The fork builds
+  them from a `suffix:` field rather than spelling them, which is why a literal
+  grep misses them. What differs is the rule, not its presence: the reference
+  refuses a malformed or conflicting `waitBroadcast`/`dequeue`, and the fork
+  refuses **every** one, because neither suspension form is in its durable
+  subset. That is a strict superset — fail-closed, not fail-open — and
+  `compiler/fork_withdrawn_and_subset_rules_test.go` now spells both codes so the
+  census question is settled by the backend's own output rather than by a grep.
+- **`SMITHERS4114` is genuinely absent from the fork, and unreachable there.**
+  All four of the reference's report sites sit behind a construct the fork
+  refuses *first*, with a code it does implement: child-Flow embedding
+  (`SMITHERS4120`), `fanOut` (`SMITHERS4117`), `loopWhile` (`SMITHERS4121`). The
+  fourth site, an ordinary `Action.run`, cannot fire on its own, because an
+  Action id maps to exactly one descriptor unless a child Plan's actions are
+  merged into the parent's table — and merging them is the child-Flow embedding
+  already refused. Porting `SMITHERS4114` would therefore mean first implementing
+  the three constructs that reach it, which is the durable subset itself. It is
+  recorded as reference-only-by-subset, and the three earlier refusals are pinned
+  in the same file, so a change that teaches this backend any of the three fails
+  there and forces `SMITHERS4114` to be reconsidered in the same edit.
+
+None of the four carries a corpus `xfail(go)` marker and none needs one: **no
+case declares any of them**, so the corpus never implied parity for them. A
+marker can only be attached to a case, and adding a case here would assert
+agreement that the third bullet says does not exist.
+
+The last row of the table above is **new**, and it is the price of withdrawing
+the walls rather than a regression. `SMITHERS4112` used to refuse every call the Plan could not
 name before the Manifest was consulted; with that gone, the Manifest is the only
 thing standing between a Flow body and a silently narrowed effect set, and
 `docs/DECISIONS.md` (Locked) requires it to reject rather than narrow. Closing

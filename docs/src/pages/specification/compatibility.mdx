@@ -116,10 +116,11 @@ surface: this compiler's own emitted CLI scaffolding reads `error.stack ??
 error.message`, so a refusal or a charge here is a decision about the diagnostic
 surface, which no page has taken.
 
-**(SA-4) — implementation status, measured 2026-09-01. Rows one, two, and four
-are enforced on both backends; rows three and five are enforced on the reference
-frontend only, for a reason recorded below that is about the fork's row
-representation rather than about the rules.** As first measured, none of the
+**(SA-4) — CLOSED, measured 2026-09-01. All five per-member walls are enforced
+on both backends.** Rows three and five were the last, and they were enforced on
+the reference frontend only until the same day, for a reason recorded below that
+was about the fork's row representation rather than about the rules — and beside
+a second reason, also recorded below, that was simply false. As first measured, none of the
 five was enforced and the first two were actively *contradicted*: in one `.sm`
 file, `new Date(0).getTimezoneOffset()`, `"a".localeCompare("b")`,
 `new WeakRef(o).deref()`, and `new SharedArrayBuffer(8)` all produced zero
@@ -249,18 +250,56 @@ any of them**, which is the constraint that shaped every choice below.
   `Locale` is later given such a surface, a `SMITHERS16xx` refusal joins the
   charge; the charge itself does not change.
 
-**The residual, and it is about representation.** Rows three and five are
-enforced on the reference frontend and **not** on the pinned Go fork. The fork's
-requirement row is a set keyed by resolved `*ast.Symbol`, and its `addRow`
-silently drops a row whose symbol is nil, so it cannot represent a requirement
-for a capability that no declaration in the charging program produces — which is
-precisely what `Scheduler` and `Locale` are. Rows four and the `any` narrowing
-are mirrored on both backends, because both are diagnostics. **The disagreement
-is invisible to the conformance corpus**, which compares stdout, diagnostics and
-exit code and cannot observe a row at all, so it is recorded here and on
-`rowSet` in the fork rather than left to a green scoreboard. Closing it means
-either rekeying the fork's row table by name or minting synthetic symbols for
-ambient capabilities, and neither is smaller than the rows that need it.
+**The residual is closed, and the two reasons it stood on did not fare the same
+way.**
+
+**The true one was representation.** The fork's requirement row was a set keyed
+by resolved `*ast.Symbol`, and its `addRow` returned false — silently — for a row
+whose symbol was nil, so it could not represent a requirement for a capability
+that no declaration in the charging program produces, which is precisely what
+`Scheduler` and `Locale` are. Wiring an ambient charge into that table dropped it
+and reported success. That is not a hypothetical: on 2026-09-01 the charge sites
+for rows three and five were added against the old table first, and every one of
+the five charging vectors produced output **byte-identical to the run with no
+wiring at all** — a mirrored-looking implementation enforcing nothing, which is
+the shape migration step 14 met and correctly refused to ship. A row now carries
+either a resolved symbol or, for an ambient capability, its **name**, and
+`addRow` **fails closed**: a row it cannot represent aborts the compile with the
+row named, rather than being discarded. Measured on the same expression that had
+just been dropped in silence.
+
+**The false one was that nobody could have noticed.** This page, the fork's own
+`rowSet` comment, and the notes of the one corpus case in the class all said the
+disagreement was invisible to a differential, because the harness compares
+stdout, diagnostics and exit code and cannot observe a row. The premise is true
+and the conclusion does not follow. A row is not observable; an **unsatisfied**
+row is, on both backends, as `SMITHERS2102` at a top-level call, with the
+capability named in the message. Rows three and five could have been compared
+across backends at any point by any program whose charge reaches module scope.
+They now are, against nine shared vectors in
+`compiler/ambient-charge-vectors.json`, read by
+`compiler/fork_ambient_charge_test.go` for the fork and by
+`poc/src/language/ambient-charge.test.ts` for the reference, which additionally
+asserts the requirement row itself. Four of the nine charge nothing and are
+positive vectors with one token changed, so neither wrong direction — charging
+nothing, or charging the `Promise`/`Intl` root — can pass; two of those four
+assert a `SMITHERS1602` refusal *and* the absence of a charge beside it, so an
+over-charge appears as an extra diagnostic rather than as a silence.
+
+**One divergence was created by the fix and caught by it.** A hybrid key —
+symbol for a nominal row, name for an ambient one — keeps nominal identity
+exactly as it was, but it makes an ambient `Locale` charge and a
+`Locale.context()` read two rows where the reference's `Set<string>` makes them
+one. Measured: a function doing both publishes `requirements: ["Locale"]` on the
+reference, and the fork rendered `{Locale, Locale}` into `SMITHERS2102`. **No
+conformance case could have caught that**, because the runner compares diagnostic
+codes and positions and never message text — the same blind spot that let two
+backends mint different row names for a full day in August. The row is now
+subtracted and rendered by name on both backends, which is what a row *is*, and a
+tenth vector pins it.
+
+Rows four and the `any` narrowing were already mirrored on both backends, because
+both are diagnostics.
 
 **Also closed 2026-09-01 — the `any` hole in §Dynamic Features.** A receiver
 typed `any` in a position where the analysis must decide callability is now
