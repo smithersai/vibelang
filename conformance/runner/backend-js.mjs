@@ -31,6 +31,7 @@ import { run } from "./process.mjs";
 import { originalPosition } from "./source-map.mjs";
 
 const lowerDriver = join(repositoryRoot, "conformance", "runner", "js-lower.mjs");
+
 const runtimeImport = join(repositoryRoot, "poc", "src", "runtime", "index.ts");
 const schemaRuntimeImport = join(repositoryRoot, "poc", "src", "build", "schema-runtime.ts");
 
@@ -93,7 +94,7 @@ export const jsBackend = {
  *   { kind: "error", stages, reason }             — the backend itself broke
  */
 export async function runJsCase(testCase, options = {}) {
-  const { keepDirectory = false, effectLowering, epilogue } = options;
+  const { keepDirectory = false } = options;
   // Realpath'd, and not cosmetically. macOS hands out `/var/folders/...`
   // temporary directories and the frontend canonicalizes them to
   // `/private/var/folders/...`, so a diagnostic's file and this project's root
@@ -142,10 +143,6 @@ export async function runJsCase(testCase, options = {}) {
       // all. It cannot make a refused program look accepted — the durable
       // diagnostics travel with the response either way. See `js-lower.mjs`.
       expectsOutput: testCase.expectation.expect === "output",
-      // Absent for the reference backend, so the driver takes the exact
-      // `compileProject` call it took before the option existed. `backend-js-yield.mjs`
-      // is the only caller that sets it.
-      ...(effectLowering === undefined ? {} : { effectLowering }),
     });
     const lowered = await run("bun", [lowerDriver], { input: payload, cwd: repositoryRoot });
     if (lowered.error) {
@@ -217,12 +214,9 @@ export async function runJsCase(testCase, options = {}) {
       await writeFile(join(directory, fileName.replace(/\.sm$/, ".ts")), compiled.code);
     }
     const entryModule = `./${testCase.entry.replace(/\.sm$/, ".ts")}`;
-    // `epilogue` runs after every line the program printed, so it can only add
-    // an exit code and stderr — never a stdout line, which is the observation
-    // the two JS backends are compared on.
     await writeFile(
       join(directory, "conformance-harness.ts"),
-      harnessText(entryModule, identityAccessor) + (epilogue ?? ""),
+      harnessText(entryModule, identityAccessor),
     );
 
     const executed = await run("bun", [join(directory, "conformance-harness.ts")], { cwd: directory });

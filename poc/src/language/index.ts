@@ -26,7 +26,7 @@ export {
   createEmittedModuleResolver,
   DEFAULT_RUNTIME_IMPORT,
 } from "./validate.ts";
-export type { CompileOptions, CompileResult, EffectLowering } from "./compile.ts";
+export type { CompileOptions, CompileResult } from "./compile.ts";
 export type {
   DeclarationEmitResult,
   DeclarationOutput,

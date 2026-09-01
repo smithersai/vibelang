@@ -215,7 +215,7 @@ export interface SliceOrder {
  * §2's program under the effect-request calling convention.
  *
  * This is what the emitter produces for {@link SLICE_SOURCE} once
- * `effectLowering: "yield"` reaches Action calls: the capability read is
+ * the resumable lowering reaches Action calls: the capability read is
  * `__vsGet`, each Action is `__vsPerform`, and the `if` is an ordinary
  * JavaScript branch because under replay the body actually runs. Postfix `!`
  * needs no `__vsPropagate` here — the driver already delivers a committed

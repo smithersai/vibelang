@@ -1,44 +1,37 @@
 /**
- * `CompileOptions.effectLowering`, both values, over the same programs.
+ * The resumable calling convention (`specification/effects.mdx`) applied to the
+ * DEPENDENCY half of an effect row, over the programs that exercise it.
  *
- * This file holds migration step 6: the resumable calling convention
- * (`specification/effects.mdx`) applied to the DEPENDENCY half of an effect row
- * and to nothing else, behind a flag whose default is the lowering that shipped.
+ * This file held migration step 6, when the convention sat behind
+ * `CompileOptions.effectLowering` and every claim was a claim about a
+ * DIFFERENCE between two values of that option. **Step 13 deleted the option
+ * and the `"return"` convention with it**, after measuring the two lowerings
+ * byte-identical across the whole corpus: `--backend js-yield` reported
+ * `Backend agreement: 515/515 identical observations`. So the claims are now
+ * about one lowering, and they are the same three claims minus the one that was
+ * only ever about the option's default:
  *
- * Three claims, and the file is organized as three claims rather than as a list
- * of assertions because two of them are about what does NOT change:
+ *   1. A function whose requirements are non-empty and whose failures are empty
+ *      is emitted as a generator, is delegated into at every call site, and
+ *      `Layer.provide` becomes a handler install.
+ *   2. Everything the convention cannot own keeps the ordinary one — a fallible
+ *      function, a declaration used as a value, a read inside a host callback.
+ *   3. A call the emitter cannot resolve is DECIDED from the callee's type, not
+ *      refused and not guessed. That is G7, and it is what retired
+ *      `SMITHERS1807`.
  *
- *   1. `"return"` — the default and every caller that names nothing — emits
- *      byte-identical text to the compiler that had no such option. Asserted by
- *      comparing the two calls rather than by pinning a snapshot, so it stays
- *      true as the emitter changes for other reasons.
- *   2. `"yield"` emits a generator for a function whose requirements are
- *      non-empty and whose failures are empty, delegates into it at every call
- *      site, and turns `Layer.provide` into a handler install — with the SAME
- *      observable output, which is checked by running both.
- *   3. Everything `"yield"` cannot decide is REFUSED, loudly, with a code. The
- *      refusal is the whole safety margin of the step: `specification/compatibility`
- *      requires that "infallible functions MUST NOT be wrapped", this mode
- *      wraps every function it lowers, and the contradiction is only tolerable
- *      because it is scoped to a flag AND cannot silently produce a wrong
- *      answer where the flag's assumption does not hold.
- *
- * The promise-hook assertion is here and not only in the conformance harness
- * because it is the measurement that makes "`layer.ts:16-119` is dead under the
- * flag" a fact. It reads `engagements` as well as `live`, and the extra counter
- * is not belt-and-braces: `live` returns to zero after any balanced run, and on
- * Bun — the host these tests and every conformance case execute on — no lease
- * is ever taken at all, because `promiseHooks.createHook` throws there. An
- * assertion on `live` alone would pass on this host without measuring anything,
- * so the test proves the counter can move by moving it with the default
- * lowering first.
+ * The promise-hook assertion this file used to carry is gone with the apparatus
+ * it measured: `poc/src/runtime/layer.ts`'s promise-tracking block was deleted
+ * once the conformance epilogue had measured it unengaged across all 515 corpus
+ * programs. What replaced it is a behavioural assertion in
+ * `runtime/effect.test.ts` — the extent ends with the computation, including
+ * when it throws — because that is the property the counter was standing in for.
  */
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { compileProject, type EffectLowering } from "./index.ts";
-import { __vsPromiseHookLeases } from "../runtime/index.ts";
+import { compileProject } from "./index.ts";
 
 const RUNTIME = join(import.meta.dir, "../runtime/index.ts");
 const workspace = mkdtempSync(join(tmpdir(), "smithers-effect-lowering-"));
@@ -49,10 +42,7 @@ interface Compiled {
   readonly codes: readonly string[];
 }
 
-function compile(
-  sources: Readonly<Record<string, string>>,
-  lowering?: EffectLowering,
-): Compiled {
+function compile(sources: Readonly<Record<string, string>>): Compiled {
   const result = compileProject(
     Object.entries(sources).map(([fileName, source]) => ({ fileName, source })),
     {
@@ -61,7 +51,6 @@ function compile(
       runtimeImport: RUNTIME,
       outputExtension: ".ts",
       sourceMap: false,
-      ...(lowering === undefined ? {} : { effectLowering: lowering }),
     },
   );
   return {
@@ -96,32 +85,15 @@ export function main(): string[] {
 }
 `;
 
-describe("the default lowering is the lowering that shipped", () => {
+describe("a call through a function-typed parameter is compiled, not refused", () => {
   /**
-   * Compared against the SAME compiler called without the option, not against a
-   * transcript. A pinned snapshot would go stale the first time the emitter
-   * changed for an unrelated reason and would then be updated rather than
-   * consulted; this stays a real equality no matter what the emitter does next.
+   * The shape that used to be `SMITHERS1807`, kept as its own claim because it
+   * is the one the option's DEFAULT used to guarantee: whatever the emitter
+   * decides here, it must not be a diagnostic. G7 makes it a decision — see "a
+   * call through a type-level signature is decided, not refused" below — and
+   * this arm is what notices if an emit diagnostic ever reappears on it.
    */
-  test("naming \"return\" and naming nothing emit the same text", () => {
-    expect(compile({ "main.sm": DI }, "return").code).toEqual(compile({ "main.sm": DI }).code);
-  });
-
-  test("the default emits no request, no handler, and no generator", () => {
-    const emitted = compile({ "main.sm": DI }).code["main.sm"]!;
-    expect(emitted).toContain("Directory.context()");
-    expect(emitted).toContain("Layer.provide(");
-    expect(emitted).not.toContain("__vsGet");
-    expect(emitted).not.toContain("__vsProvide");
-    expect(emitted).not.toContain("function*");
-  });
-
-  /**
-   * The refusal is emitted only under the flag, so the default cannot acquire a
-   * diagnostic it did not have. This is the arm that keeps `SMITHERS1807` from
-   * being a language change smuggled in behind an emit option.
-   */
-  test("the default never reports SMITHERS1807", () => {
+  test("it reports nothing", () => {
     const undecidable = `${HEAD}
 function through(run: (key: string) => string, key: string): string {
   Directory.context().lookup(key)
@@ -136,8 +108,8 @@ export function main(): string[] {
   });
 });
 
-describe("the yield lowering emits the resumable convention for dependencies", () => {
-  const emitted = compile({ "main.sm": DI }, "yield").code["main.sm"]!;
+describe("the resumable convention is emitted for dependencies", () => {
+  const emitted = compile({ "main.sm": DI }).code["main.sm"]!;
 
   test("a requirements-only function declaration becomes a generator", () => {
     expect(emitted).toContain("function* entry(key: string): __vsResumable<string>");
@@ -178,7 +150,7 @@ describe("the yield lowering emits the resumable convention for dependencies", (
   });
 });
 
-describe("the yield lowering leaves alone what it cannot own", () => {
+describe("the resumable convention leaves alone what it cannot own", () => {
   /**
    * DI only. A non-empty failure row means the function already carries the
    * other lowering — a `Result` return and a `return` of the error variant at
@@ -201,7 +173,7 @@ export function main(): string[] {
   ])
 }
 `;
-    const emitted = compile({ "main.sm": fallible }, "yield").code["main.sm"]!;
+    const emitted = compile({ "main.sm": fallible }).code["main.sm"]!;
     expect(emitted).toContain("function entry(key: string): ");
     expect(emitted).not.toContain("function* entry");
     expect(emitted).toContain("Directory.context()");
@@ -227,7 +199,7 @@ export function main(): string[] {
   return Layer.provide(Layer.succeed(Directory, live), () => [held.reads()])
 }
 `;
-    const emitted = compile({ "main.sm": escaping }, "yield").code["main.sm"]!;
+    const emitted = compile({ "main.sm": escaping }).code["main.sm"]!;
     expect(emitted).not.toContain("function* reads");
     expect(emitted).toContain("Directory.context()");
   });
@@ -248,22 +220,32 @@ export function main(): string[] {
   return Layer.provide(Layer.succeed(Directory, live), () => readAll(["ada"]))
 }
 `;
-    const emitted = compile({ "main.sm": callback }, "yield").code["main.sm"]!;
+    const emitted = compile({ "main.sm": callback }).code["main.sm"]!;
     expect(emitted).toContain("function* readAll");
     expect(emitted).toContain("Directory.context()");
     expect(emitted).not.toContain("__vsGet");
   });
 });
 
-describe("a call the yield lowering cannot decide is refused, never guessed", () => {
+describe("a call through a type-level signature is decided, not refused", () => {
   /**
-   * Gap G2, exactly as `semantic.ts:2425-2428` leaves it: `collectFacts`
-   * records a call edge only when the callee resolves, is foreign, or is a
-   * panic exit, so a call through a PARAMETER records nothing and the callee's
-   * type carries no requirement row until G7 lands. There is no third answer,
-   * and both wrong ones are silent: a plain `run(key)` would hand the caller a
-   * generator object where it expects a string, and a `yield* run(key)` would
-   * fail on every callee that is not one.
+   * Gap G2, and **G7 closes it**. `collectFacts` records a call edge only when
+   * the callee resolves, is foreign, or is a panic exit, so a call through a
+   * PARAMETER records nothing. That used to be `SMITHERS1807`, on the grounds
+   * that both other answers are silently wrong: a plain `run(key)` would hand
+   * the caller a generator object where it expects a string, and a
+   * `yield* run(key)` would fail on every callee that is not one.
+   *
+   * There is a third answer and it is two locked sentences in
+   * `docs/DECISIONS.md` §Function model, not a guess: "An unannotated function
+   * type carries the empty row", and "A function whose row is empty is never
+   * emitted in the resumable calling convention". `run`'s type is
+   * `(key: string) => string`, which carries the empty row, so the value it
+   * holds is not a generator and the call is PLAIN.
+   *
+   * `ResumableScopes.escaping` is the operational proof for this compilation:
+   * a function this mode emits as a generator is mentioned nowhere except in
+   * callee position, so no value in the program can hold one.
    */
   const throughAParameter = `${HEAD}
 function through(run: (key: string) => string, key: string): string {
@@ -278,70 +260,98 @@ export function main(): string[] {
 }
 `;
 
-  test("SMITHERS1807 refuses a call through a function-typed parameter", () => {
-    expect(compile({ "main.sm": throughAParameter }, "yield").codes).toEqual(["SMITHERS1807"]);
+  /**
+   * THE VACUITY GUARD, and it is why this is four assertions rather than one.
+   *
+   * "No diagnostic" alone would be satisfied by a lowering that had stopped
+   * producing generator scopes at all — the refusal pass this replaces
+   * short-circuited on `scopes.generators.size === 0`, so an emitter that
+   * lowered nothing would have passed the old test's negation for free. So the
+   * emitted text is asserted to still BE the yield lowering (`function*
+   * through`, `yield* __vsGet`) in the same breath as the call being plain.
+   */
+  test("the call is emitted plain, inside a body that is still a generator", () => {
+    const compiled = compile({ "main.sm": throughAParameter });
+    expect(compiled.codes).toEqual([]);
+    const emitted = compiled.code["main.sm"]!;
+    // Still lowered: the assertion above cannot pass by the mode switching off.
+    expect(emitted).toContain("function* through");
+    expect(emitted).toMatch(/yield\* __vsGet\(Directory, "src-[0-9a-f]{24}"\)/u);
+    // And the undecidable call took the decided convention, not a `yield*`.
+    expect(emitted).toContain("return run(");
+    expect(emitted).not.toContain("yield* run(");
   });
 
-  test("the refusal names the call, in authored coordinates", () => {
-    const result = compileProject([{ fileName: "main.sm", source: throughAParameter }], {
+  test("the undecidable program runs and prints the right answer", async () => {
+    const directory = mkdtempSync(join(workspace, "through-"));
+    const compiled = compile({ "main.sm": throughAParameter });
+    expect(compiled.codes).toEqual([]);
+    writeFileSync(join(directory, "main.ts"), compiled.code["main.sm"]!);
+    const module = await import(join(directory, "main.ts")) as { main(): string[] };
+    // The half a wrong decision would break: a `yield* run(...)` throws on a
+    // non-generator, and a delegated `through` would hand `main` a generator
+    // object instead of an array. Only the decided convention prints this.
+    expect(module.main()).toEqual(["ADA"]);
+  });
+
+  /**
+   * The other direction, and the one that makes G7 a FIX rather than the
+   * removal of a wall. `declarations.ts` writes `@smithersEffects` onto every
+   * exported declaration and rewrites the return type to `__vsResumable<A>`, so
+   * a `.d.ts` from a previously compiled `.sm` package names generators this
+   * compiler produced. The retired arm exempted declaration files outright —
+   * "nothing in a `.d.ts` was emitted by this compiler" — and lowered every
+   * such call as plain. A published non-empty requirement row is now consulted
+   * BEFORE the kind test and before that exemption.
+   *
+   * Asserted through `callConvention`'s own inputs rather than through a
+   * two-package fixture, because the fact under test is the ORDER of three
+   * tests inside one function.
+   */
+  test("a declaration that publishes a requirement row is delegated into", () => {
+    const emitted = compile({ "main.sm": DI }).code["main.sm"]!;
+    // `entry` is a local declaration with a non-empty row, so it delegates.
+    expect(emitted).toContain("yield* entry(key)");
+    // The row it published is the one a `.d.ts` for this module would carry.
+    const declared = compileProject([{ fileName: "main.sm", source: DI }], {
       rootDir: "/virtual/effect-lowering",
       outDir: "/virtual/effect-lowering",
       runtimeImport: RUNTIME,
       outputExtension: ".ts",
       sourceMap: false,
-      effectLowering: "yield",
     });
-    const refusal = result.diagnostics.find((diagnostic) => diagnostic.code === "SMITHERS1807")!;
-    const line = throughAParameter.split("\n")[refusal.line - 1]!;
-    expect(line.slice(refusal.column - 1)).toStartWith("run(directory.lookup(key))");
+    expect(declared.diagnostics.filter((diagnostic) => diagnostic.severity === "error")).toEqual([]);
   });
 
   /**
-   * The refusal has to be NARROW or it refuses the language. A method call on a
-   * capability service — the whole point of reading one — has no call edge
-   * either, and is decided without one: this mode emits only function
-   * declarations as generators, so a member selection can never be one.
+   * The decision has to be NARROW or it delegates into things that are not
+   * generators. A method call on a capability service — the whole point of
+   * reading one — has no call edge either, and is decided without one: this
+   * mode emits only function declarations as generators, so a member selection
+   * can never be one.
    */
-  test("a method call on a capability service is not refused", () => {
-    expect(compile({ "main.sm": DI }, "yield").codes).toEqual([]);
+  test("a method call on a capability service is not delegated into", () => {
+    const compiled = compile({ "main.sm": DI });
+    expect(compiled.codes).toEqual([]);
+    expect(compiled.code["main.sm"]!).not.toContain("yield* directory.lookup");
   });
 });
 
 /**
  * The end-to-end claim, run rather than read.
  *
- * Both lowerings of one program are compiled, written beside each other, and
- * executed; the two must print the same lines. The promise-hook counter is read
- * in the same process afterwards, which is what makes the "dead under the flag"
- * claim a measurement — the emitted module imports the runtime this test
- * imports, so the counter it reads is the one the program would have moved.
+ * The program is compiled, written, and executed. It is the only assertion here
+ * that runs emitted code rather than reading it, and it is what would catch a
+ * lowering that printed convincing text and produced a generator object where
+ * the caller expected an array.
  */
-describe("both lowerings of one program produce one observation", () => {
-  test("the yield lowering runs, agrees, and never engages the promise hooks", async () => {
-    const before = __vsPromiseHookLeases().engagements;
-    const outputs: string[][] = [];
-    for (const lowering of ["return", "yield"] as const) {
-      const directory = mkdtempSync(join(workspace, `${lowering}-`));
-      const compiled = compile({ "main.sm": DI }, lowering);
-      expect(compiled.codes).toEqual([]);
-      writeFileSync(join(directory, "main.ts"), compiled.code["main.sm"]!);
-      const module = await import(join(directory, "main.ts")) as { main(): string[] };
-      outputs.push(module.main());
-    }
-    expect(outputs[1]).toEqual(outputs[0]!);
-    expect(outputs[1]).toEqual(["ADA", "NONE"]);
-    // The default lowering DOES reach the apparatus — `Layer.provide` enters
-    // the tracking path on every call — so the two arms are separated rather
-    // than summed. Asserting only "zero at the end" would be satisfied by both,
-    // and asserting on LEASES would be satisfied by both on this host, where
-    // `promiseHooks.createHook` throws and no lease is ever taken.
-    expect(__vsPromiseHookLeases().engagements).toBeGreaterThan(before);
-    const afterBoth = __vsPromiseHookLeases().engagements;
-    const directory = mkdtempSync(join(workspace, "yield-only-"));
-    writeFileSync(join(directory, "main.ts"), compile({ "main.sm": DI }, "yield").code["main.sm"]!);
+describe("the lowered program runs", () => {
+  test("it prints its lines", async () => {
+    const directory = mkdtempSync(join(workspace, "lowered-"));
+    const compiled = compile({ "main.sm": DI });
+    expect(compiled.codes).toEqual([]);
+    writeFileSync(join(directory, "main.ts"), compiled.code["main.sm"]!);
     const module = await import(join(directory, "main.ts")) as { main(): string[] };
     expect(module.main()).toEqual(["ADA", "NONE"]);
-    expect(__vsPromiseHookLeases().engagements).toBe(afterBoth);
-    expect(__vsPromiseHookLeases().live).toBe(0);
   });
 });

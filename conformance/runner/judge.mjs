@@ -239,25 +239,21 @@ function looksUnimplemented(observation) {
 }
 
 /**
- * A backend that inherits another's `xfail` markers, and why exactly one does.
+ * A backend that inherits another's `xfail` markers.
  *
- * `js-yield` is the reference INSTRUMENT under a different emit option, not a
- * different implementation: same frontend, same diagnostics, same emitted-code
- * check. A marker naming `js` is therefore a statement about behaviour
- * `js-yield` shares, and requiring every such marker to be restated would put a
- * per-lowering vocabulary into the corpus — one more thing that can be forgotten
- * on the next marker and produce a `FAIL` that means "nobody updated the list".
+ * EMPTY, and deliberately kept rather than inlined away. `js-yield` was the one
+ * entry: the reference INSTRUMENT under a different emit option, not a different
+ * implementation, so a marker naming `js` was a statement about behaviour it
+ * shared. Migration step 13 deleted the `effectLowering` option and retired that
+ * backend — the reference now IS the resumable lowering — so nothing inherits
+ * today. The table stays because the next backend that is one instrument under
+ * two configurations needs this exact answer, and rediscovering it costs a
+ * corpus-wide red run that means "nobody updated the list".
  *
- * MEASURED: without this, the full corpus under `--backend js-yield` reported
- * `514/515, 1 divergent` with `Backend agreement: 515/515` — the two lowerings
- * produced IDENTICAL observations on every case, and the single red row was the
- * marker not applying rather than anything disagreeing.
- *
- * Inheritance is one-directional and does not weaken the marker: an inherited
- * `xfail` that starts passing still reports `xpass`, so a gap closed under one
- * lowering and not the other is still visible.
+ * Inheritance is one-directional and does not weaken a marker: an inherited
+ * `xfail` that starts passing still reports `xpass`.
  */
-const INHERITED_MARKERS = { "js-yield": "js" };
+const INHERITED_MARKERS = {};
 
 export function judge(testCase, observation, backend) {
   const expectation = testCase.expectation;

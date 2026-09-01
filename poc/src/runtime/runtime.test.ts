@@ -708,13 +708,15 @@ describe("Context and lean Layer environments", () => {
     const first = Layer.succeed(Label, { value: "first" });
     const second = Layer.succeed(Label, { value: "second" });
     expect(isLayer(first)).toBe(true);
-    if (process.versions.bun) {
-      expect(Layer.provide(first, () => Label.context().value)).toBe("first");
-      expect(() => Layer.provide(first, async () => "unsupported")).toThrow(
-        "exact Promise settlement hooks are unavailable",
-      );
-      return;
-    }
+    expect(Layer.provide(first, () => Label.context().value)).toBe("first");
+    // This test used to stop here on Bun, because `Layer.provide` REFUSED an
+    // async body on any host without V8 promise hooks and Bun is such a host —
+    // so the overlapping-scope claim below, which is the whole point of the
+    // test, was never measured on the runtime every test in this repository
+    // executes on. Deleting the promise-hook apparatus retired that refusal
+    // (`specification/requirements.mdx` §Scoping: a runtime "MUST NOT refuse an
+    // async provider scope on a host that cannot observe Promise settlement
+    // synchronously"), so the rest of this test now runs everywhere.
     const readLater = async (delay: number) => {
       await new Promise((resolve) => setTimeout(resolve, delay));
       return Label.context().value;
@@ -774,16 +776,30 @@ describe("Context and lean Layer environments", () => {
     releaseDetached();
     expect(isPanic(await detached)).toBe(true);
 
-    if (process.versions.bun) {
-      expect(() => Layer.provide(layer, async () => "unsupported")).toThrow(
-        "exact Promise settlement hooks are unavailable",
-      );
-      return;
-    }
     const asynchronous = Layer.provide(layer, async () => {
       await Promise.resolve();
       return Label.context().value;
     });
     expect(await asynchronous).toBe("scoped");
+  });
+
+  /**
+   * The author-visible wart the promise-hook apparatus imposed, asserted gone.
+   *
+   * That apparatus tracked Promise PROVENANCE — it refused any Promise the
+   * provider body had not itself created, because a pre-existing one may carry
+   * reactions registered before the observer — and told the author to write
+   * `async () => await promise` instead. `specification/requirements.mdx`
+   * §Scoping now prohibits exactly that: a runtime "MUST NOT restrict which
+   * Promise a provider body returns".
+   *
+   * The scope still ends when that Promise settles, which is the half a
+   * permissive rewrite could get wrong by simply never revoking.
+   */
+  test("a provider body may return a Promise it did not create", async () => {
+    const layer = Layer.succeed(Label, { value: "handed-in" });
+    const existing = Promise.resolve("pre-existing");
+    expect(await Layer.provide(layer, () => existing)).toBe("pre-existing");
+    expect(isPanic(catchPanic(() => Label.context(), (error) => error))).toBe(true);
   });
 });

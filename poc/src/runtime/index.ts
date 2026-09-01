@@ -67,14 +67,13 @@ export { RuntimeValues } from "./values.ts";
 export {
   Context,
   Layer,
-  __vsPromiseHookLeases,
   __vsUse,
   isLayer,
   useCapability,
 } from "./layer.ts";
 export type { CapabilityKey, CapabilityService, Layer as LayerType } from "./layer.ts";
 /**
- * The three hooks the `effectLowering: "yield"` emitter writes into a lowered
+ * The three hooks the resumable-lowering emitter writes into a lowered
  * module, and nothing else from `effect.ts`.
  *
  * That file's header records why the module is otherwise unreachable — a
@@ -84,8 +83,7 @@ export type { CapabilityKey, CapabilityService, Layer as LayerType } from "./lay
  * no authored program can bind them, and none of them hands back a request, a
  * continuation, or a handler: `__vsGet` answers with the capability instance,
  * `__vsProvideRoot` answers with the delimited computation's value, and
- * `__vsProvide` answers with a generator the emitter only ever `yield*`s. The
- * default `"return"` lowering emits none of them.
+ * `__vsProvide` answers with a generator the emitter only ever `yield*`s.
  */
 export { __vsGet, __vsProvide, __vsProvideRoot } from "./effect.ts";
 export type { AnyRequest, Resumable } from "./effect.ts";

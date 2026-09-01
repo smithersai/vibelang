@@ -10,6 +10,7 @@ import {
 import {
   buildSemanticModel,
   chargesCompilerPanic,
+  declaredRequirementRow,
   effectiveChannel,
   expectReceiver,
   expressionShape,
@@ -49,64 +50,8 @@ export interface CompileOptions extends AnalyzeOptions {
    * Compiler virtual modules and non-`.sm` relative specifiers still rewrite.
    */
   readonly preserveSmithersSpecifiers?: boolean;
-  /**
-   * Which calling convention a function with a non-empty effect row is emitted
-   * in. `"return"` is the default and is the only convention any product path
-   * selects; nothing in `src/`, the CLI, the conformance corpus, or the Go fork
-   * passes this field.
-   *
-   * `"yield"` selects `specification/effects.mdx`'s resumable convention for
-   * the DEPENDENCY half of the row only — a function whose `requirements` are
-   * non-empty and whose `failures` are empty. Failure propagation is untouched
-   * in both modes: `!` still lowers to a `return` of the error variant.
-   *
-   * Because it is untouched in both modes, the three refusals that remain on a
-   * propagation are NOT scoped to this option. `SMITHERS1204` and
-   * `SMITHERS1703` refuse a conditionally evaluated operand, a repeated loop
-   * header, and a propagation preceded by an unhoisted effect — the three
-   * positions where hoisting the guard to the front of the statement would move
-   * it — and they answer identically under both values. A refusal that fired
-   * under one and not the other would be the per-file dialect `DECISIONS.md`
-   * warns against by name. They retire with the `"return"` lowering itself, at
-   * which point the failure exit is a delegated suspension and stays where it
-   * was written.
-   *
-   * WHY THE FLAG EXISTS AT ALL, stated where it can be read before it is used.
-   * Under `"yield"` the emitter must decide, at every call site, whether the
-   * callee is a generator. `collectFacts` records a call edge only when the
-   * callee resolves, is foreign, or is a panic exit, so `return f()` over a
-   * parameter `f` records nothing and the decision has no input (gap G2).
-   *
-   * The migration plan budgeted for a UNIFORM convention here — every `.sm`
-   * function this mode touches emitted as a generator — which would have
-   * contradicted `specification/compatibility` §TypeScript Target ("infallible
-   * functions MUST NOT be wrapped") for every infallible function in the
-   * program. Measured, that was not needed. {@link callConvention} decides a
-   * call site four ways and only the fourth is undecidable, and
-   * `ResumableScopes.escaping` keeps a function that could reach it out of the
-   * convention entirely. Across 515 corpus programs nothing is undecided.
-   *
-   * What the contradiction reduces to is ONE function: a `Layer.provide`
-   * callback, whose own row may be empty and which is emitted as a generator
-   * because it is the delimited computation. That is recorded in
-   * `docs/DECISIONS.md` §Function model, and it is why the mode is behind a
-   * flag. It retires with G7 (`requirements` on `TypeShape`), which is also
-   * what retires {@link EFFECT_LOWERING_REFUSAL}: with a row on the callee's
-   * type, case four stops being undecidable.
-   */
-  readonly effectLowering?: EffectLowering;
 }
 
-/** @see CompileOptions.effectLowering */
-export type EffectLowering = "return" | "yield";
-
-/**
- * The one message the G2 refusal carries, so the emitter and its test name the
- * same sentence.
- */
-const EFFECT_LOWERING_REFUSAL =
-  "under effectLowering: \"yield\" this call's callee cannot be resolved and its type carries no effect row, " +
-  "so the emitter cannot decide whether to delegate into it; give the callee a name this module can resolve";
 
 /**
  * @internal Project-level emit bindings resolved once per `compileProject`
@@ -197,9 +142,7 @@ interface TransformState {
   readonly sourceMapOrigins: Map<ts.Node, ts.Node>;
   /** Lowered switch statements proven unable to complete past their clauses. */
   readonly nonFallingSwitches: Set<ts.Node>;
-  /** @see CompileOptions.effectLowering */
-  readonly effectLowering: EffectLowering;
-  /** Empty under `"return"`. @see resumableScopes */
+  /** @see resumableScopes */
   readonly scopes: ResumableScopes;
   changed: boolean;
   temporary: number;
@@ -248,17 +191,11 @@ interface ResumableScopes {
    * arm: a function this set excludes is never a generator, and a function it
    * does not exclude is only ever reachable by its own name in callee position.
    * So a call through a value can never reach a generator, and a call the
-   * checker cannot resolve at all can only be a problem where the callee is a
-   * bare name — which is the one shape that arm still refuses.
+   * checker cannot resolve at all can never reach one. The bare-name shape that
+   * arm used to refuse is decided by the callee's type; see G7 there.
    */
   readonly escaping: ReadonlySet<ts.Node>;
 }
-
-const NO_RESUMABLE_SCOPES: ResumableScopes = {
-  generators: new Set(),
-  provides: new Map(),
-  escaping: new Set(),
-};
 
 /**
  * A function the `"yield"` lowering emits as a generator.
@@ -280,7 +217,20 @@ const NO_RESUMABLE_SCOPES: ResumableScopes = {
  */
 function isResumableFunction(fn: SemanticFunction, scopes: ResumableScopes): boolean {
   return ts.isFunctionDeclaration(fn.node) && !fn.async &&
-    fn.requirements.size > 0 && fn.failures.size === 0 &&
+    // `capabilityRequirements`, NOT `requirements`, and the difference is a
+    // measured bug rather than a nicety. An ambient CHARGE
+    // (`specification/compatibility.mdx` §Determinism-Sensitive Members rows
+    // three and five: `Promise.race` charges `Scheduler`,
+    // `"a".localeCompare(b)` charges `Locale`) publishes a requirement with no
+    // `Capability.context()` anywhere to lower into a `get` request. Keyed on
+    // the full row, the first ICU call in a program turned its `main` into a
+    // generator that yields nothing and that nobody drives, and the conformance
+    // harness received `[object Generator]` where it expected `string[]`.
+    //
+    // The row is still the published one; this is only the question "will this
+    // body issue a request", which is the only question the calling convention
+    // turns on.
+    fn.capabilityRequirements.size > 0 && fn.failures.size === 0 &&
     !scopes.escaping.has(fn.node);
 }
 
@@ -353,8 +303,7 @@ function isCalleePosition(node: ts.Identifier): boolean {
       (ts.isTaggedTemplateExpression(parent) && parent.tag === current));
 }
 
-function resumableScopes(model: SemanticModel, lowering: EffectLowering): ResumableScopes {
-  if (lowering !== "yield") return NO_RESUMABLE_SCOPES;
+function resumableScopes(model: SemanticModel): ResumableScopes {
   const generators = new Set<ts.Node>();
   const provides = new Map<ts.CallExpression, FunctionLikeWithBody | undefined>();
   const escaping = escapingDeclarations(model);
@@ -396,7 +345,7 @@ function inResumableScope(owner: SemanticFunction | undefined, state: TransformS
 }
 
 /** What the `"yield"` emitter does with one call site. */
-type CallConvention = "plain" | "delegate" | "refuse";
+type CallConvention = "plain" | "delegate";
 
 /**
  * THE ONE TABLE that decides a call site's convention, asked by both the
@@ -417,31 +366,48 @@ type CallConvention = "plain" | "delegate" | "refuse";
  *      therefore never be a generator, which is why the DI lowering is usable
  *      at all.
  *   4. No edge and only a TYPE-level signature — a parameter typed
- *      `(x: string) => number`, a call through an interface member, a call the
- *      checker cannot resolve. The value actually called is whatever the caller
- *      passed, which may be a `.sm` function this mode emitted as a generator,
- *      and the only fact that could settle it is a requirement row on the
- *      callee's TYPE. G7 adds that row; today there is none.
+ *      `(x: string) => number`, a call through an interface member, a call into
+ *      a `.d.ts`. The value actually called is whatever the caller passed, and
+ *      the only fact that can settle it is a requirement row on the callee's
+ *      TYPE.
  *
- * Case 4 is gap G2 and it is REFUSED where it can bite. Emitting `f()` there
- * would hand the caller a generator object where the program expects a value —
- * a silent wrong answer, not a crash — and emitting `yield* f()` would fail on
- * every callee that is not one. A declaration file is exempted: nothing in a
- * `.d.ts` was emitted by this compiler, so no signature declared in one can
- * name a generator this mode produced.
+ * ## G7 — case 4 is decided, and `SMITHERS1807` is retired
  *
- * "Where it can bite" is `ResumableScopes.escaping`, and it is what keeps this
- * from refusing half the corpus. A function this mode emits as a generator is,
- * by that set's construction, mentioned NOWHERE except in callee position — so
- * no value in the program can hold one, and an undecidable call through a
- * member, an `any`, or an expression can never reach one. The one shape that
- * still can is a bare NAME whose signature is type-level, which is the
- * `return f()`-over-a-parameter case gap G2 is about and the case that stops
- * being undecidable when G7 puts a requirement row on the callee's type.
+ * Case 4 was gap G2 and was REFUSED as `SMITHERS1807`, because emitting `f()`
+ * where the value is a generator hands the caller a generator object — a silent
+ * wrong answer — and `yield* f()` fails on every callee that is not one. There
+ * is now a third answer, and it comes from two locked sentences in
+ * `docs/DECISIONS.md` §Function model rather than from a guess:
  *
- * Reported as `SMITHERS1807`, in the analysis-completeness family, beside
- * `SMITHERS1802` — which the migration plan measures as already closing roughly
- * 80% of this same gap.
+ *   - "An unannotated function type carries the empty row."
+ *   - "A function whose row is empty is never emitted in the resumable calling
+ *     convention."
+ *
+ * Together those make a bare type-level signature DECIDABLE and the answer
+ * `"plain"`, not undecidable. `ResumableScopes.escaping` is the operational
+ * proof for this compilation: a function this mode emits as a generator is
+ * mentioned NOWHERE except in callee position, so no value in the program can
+ * hold one, and a call through a parameter can never reach one.
+ *
+ * ## The fail-open G7 actually closes, which is the other half
+ *
+ * The retired arm exempted declaration files outright — "nothing in a `.d.ts`
+ * was emitted by this compiler". That was FALSE the moment this mode emitted
+ * one. `declarations.ts` writes `@smithersEffects {"requirements":[…]}` onto
+ * every exported declaration and rewrites the return type to
+ * `__vsResumable<A>`, so a `.d.ts` from a previously compiled `.sm` package
+ * names generators this compiler produced — and the exemption lowered every
+ * such call as `plain`. Measured on an emitted declaration: the tag is present,
+ * carries the row, and the old walk reached `isImplementationSignature` first
+ * and answered `plain`.
+ *
+ * So the published row is consulted BEFORE the kind test and before the
+ * declaration-file exemption: a declaration that publishes a non-empty
+ * requirement row is a generator whatever its kind. That ordering is the fix;
+ * the ordering the other way round reproduces the fail-open exactly.
+ *
+ * `SMITHERS1802` stays where it is — the migration plan measures it as closing
+ * roughly 80% of this same gap by keeping the call graph total.
  */
 function callConvention(
   call: ts.CallExpression,
@@ -455,12 +421,17 @@ function callConvention(
   if (declaration !== undefined) {
     const known = model.functionByNode.get(declaration);
     if (known) return isResumableFunction(known, scopes) ? "delegate" : "plain";
+    // G7, and FIRST: a declaration that publishes a row publishes it whatever
+    // its syntactic kind, and both tests below would otherwise answer `plain`
+    // for a generator this compiler emitted.
+    if (declaredRequirementRow(declaration).size > 0) return "delegate";
     if (isImplementationSignature(declaration.kind)) return "plain";
     if (declaration.getSourceFile().isDeclarationFile) return "plain";
   }
-  let callee: ts.Expression = call.expression;
-  while (ts.isParenthesizedExpression(callee)) callee = callee.expression;
-  return ts.isIdentifier(callee) ? "refuse" : "plain";
+  // The type carries the empty row, and a function whose row is empty is never
+  // a generator. See the G7 note above for why this is a decision and not a
+  // guess.
+  return "plain";
 }
 
 /**
@@ -482,47 +453,6 @@ function isImplementationSignature(kind: ts.SyntaxKind): boolean {
     default:
       return false;
   }
-}
-
-/** Every call inside a generator scope whose convention {@link callConvention} refuses. */
-function effectLoweringRefusals(model: SemanticModel, scopes: ResumableScopes): readonly Diagnostic[] {
-  if (scopes.generators.size === 0) return [];
-  const refusals: Diagnostic[] = [];
-  const file = model.sourceFile;
-  const walkScope = (node: ts.Node, root: boolean): void => {
-    if (!root && isFunctionLikeWithBody(node)) {
-      // A nested function has its own convention. If it is itself a generator
-      // scope its body is walked by its own entry in the outer loop.
-      return;
-    }
-    if (ts.isCallExpression(node) && !root) {
-      if (
-        !scopes.provides.has(node) &&
-        !model.capabilitySites.has(node) &&
-        node.expression.kind !== ts.SyntaxKind.ImportKeyword &&
-        !isResultExpectExpression(node, model) &&
-        callConvention(node, model, scopes) === "refuse"
-      ) {
-        // Positioned in AUTHORED coordinates, through the same recovery map
-        // every other diagnostic goes through. The transformer works on the
-        // recovery-derived tree, so a refusal reported at a derived offset in a
-        // module that recovered any syntax at all would point at a column the
-        // author never wrote.
-        const start = model.recovery.toAuthoredAnchor(node.getStart(file));
-        refusals.push({
-          severity: "error",
-          code: "SMITHERS1807",
-          message: EFFECT_LOWERING_REFUSAL,
-          start,
-          ...lineAndColumnOfText(model.recovery.authoredSource, start),
-        });
-      }
-    }
-    ts.forEachChild(node, (child) => walkScope(child, false));
-  };
-  for (const scope of scopes.generators) walkScope(scope, true);
-  refusals.sort((left, right) => left.start - right.start);
-  return refusals;
 }
 
 function lineAndColumnOfText(text: string, offset: number): { line: number; column: number } {
@@ -553,14 +483,8 @@ export function compileSemanticModel(
     model.errors,
     bindings.nominalIdentities ?? new NominalErrorIdentities(),
   );
-  // `?? "return"` is the whole compatibility guarantee of this step: every
-  // caller that does not name the option takes the byte-identical path, and
-  // `scopes` is then the shared empty value, so every predicate below answers
-  // `false` without allocating or walking anything.
-  const effectLowering: EffectLowering = options.effectLowering ?? "return";
-  const scopes = resumableScopes(model, effectLowering);
-  const refusals = effectLoweringRefusals(model, scopes);
-  const emitDiagnostics = [...identityCollisions, ...refusals];
+  const scopes = resumableScopes(model);
+  const emitDiagnostics = identityCollisions;
   const analysis: Analysis = {
     errors: model.errors,
     functions: model.publicFunctions,
@@ -597,7 +521,6 @@ export function compileSemanticModel(
     smithersSourceNames: bindings.smithersSourceNames,
     sourceMapOrigins: new Map(),
     nonFallingSwitches: new Set(),
-    effectLowering,
     scopes,
     // A recovery-derived parse can never claim byte-identity with authored text.
     changed: model.recovery.changed,
@@ -1239,10 +1162,6 @@ function rewriteExpression(
     // A foreign edge and a resolved callee are mutually exclusive
     // (`collectFacts` computes `foreign` only when `callee` is absent), so the
     // wrapper above and the delegation below cannot both fire on one call.
-    // `"refuse"` has already been reported as `SMITHERS1807`, which makes the
-    // module an error, so what this arm emits for it is never executed; it
-    // emits the plain call rather than a `yield*` so the printed text stays
-    // readable beside the diagnostic that refused it.
     if (inResumableScope(owner, state) && callConvention(expression, state.model, state.scopes) === "delegate") {
       state.changed = true;
       updated = delegate(updated, state);

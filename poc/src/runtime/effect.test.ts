@@ -21,7 +21,7 @@ import {
   type Resumable,
 } from "./effect.ts";
 import { __vsRegisterError, decodeError, encodeError } from "./errors.ts";
-import { Context, Layer, __vsPromiseHookLeases, useCapability } from "./layer.ts";
+import { Context, Layer, useCapability } from "./layer.ts";
 import { Panic, isPanic, panic } from "./panic.ts";
 import { __vsResultFailure, __vsResultSuccess, isResult, type Result } from "./result.ts";
 
@@ -1180,7 +1180,7 @@ describe("checkEmittedTypeScript: the request union under stock tsc", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Layer provision installs a handler (the `effectLowering: "yield"` hooks).
+// Layer provision installs a handler (the resumable-lowering hooks).
 // ---------------------------------------------------------------------------
 
 /**
@@ -1265,23 +1265,36 @@ describe("Layer provision installs a handler", () => {
   });
 
   /**
-   * The claim the whole step rests on: `Layer.provide`'s promise-tracking block
-   * is dead under this lowering. `engagements` and not `live`, because `live`
-   * returns to zero after any balanced run — and because on Bun no lease is
-   * ever taken at all, so an assertion on leases would pass here without
-   * measuring anything.
+   * What the retired promise-hook assertion was protecting, asserted directly.
+   *
+   * That test read a counter to prove `Layer.provide`'s promise-tracking block
+   * was never engaged under this lowering — a proxy for the real claim, which
+   * is that this seam answers "when is the extent over?" STRUCTURALLY and needs
+   * no settlement hook to do it. The apparatus is now deleted, so the counter is
+   * gone and the claim is made against the behaviour instead: the extent ends
+   * when the delimited computation ends, and it ends even when the computation
+   * throws.
+   *
+   * The `throw` arm is the one a hook-based revocation got wrong for free and a
+   * structural one has to get right on purpose.
    */
-  test("the promise-hook apparatus is never engaged", () => {
-    const before = __vsPromiseHookLeases();
-    __vsProvideRoot(Layer.succeed(Directory, directory), function* () {
-      return (yield* __vsGet(Directory, "src-test-5")).lookup("ada");
-    });
-    expect(__vsPromiseHookLeases()).toEqual(before);
-    expect(__vsPromiseHookLeases().live).toBe(0);
-    // The counter can move — proved by moving it — so the assertion above is a
-    // measurement rather than a constant.
-    Layer.provide(Layer.succeed(Directory, directory), () => useCapability(Directory).lookup("ada"));
-    expect(__vsPromiseHookLeases().engagements).toBeGreaterThan(before.engagements);
+  test("the extent ends with the computation, including when it throws", () => {
+    const reads: unknown[] = [];
+    expect(() =>
+      __vsProvideRoot(Layer.succeed(Directory, directory), function* () {
+        reads.push(useCapability(Directory).lookup("ada"));
+        yield* __vsGet(Directory, "src-test-5");
+        throw new Error("boom");
+      })
+    ).toThrow("boom");
+    expect(reads).toEqual(["Ada"]);
+    let outside: unknown = "not read";
+    try {
+      outside = useCapability(Directory).lookup("ada");
+    } catch (error) {
+      outside = error;
+    }
+    expect(isPanic(outside)).toBe(true);
   });
 
   /** A forged layer is refused here exactly as `Layer.provide` refuses one. */
@@ -1296,7 +1309,7 @@ describe("Layer provision installs a handler", () => {
 
 /**
  * This test used to assert that `index.ts` did not mention `effect.ts` at all,
- * and until the `effectLowering: "yield"` emitter existed that was the cheapest
+ * and until the resumable-lowering emitter existed that was the cheapest
  * possible guarantee of §One-Shot Delimited Continuations' "MUST NOT be reified
  * as a value visible to authored `.sm`". It is no longer available: emitted
  * modules import their helpers from `runtime/index.ts`, so a lowering hook has

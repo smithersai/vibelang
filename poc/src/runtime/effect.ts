@@ -653,12 +653,12 @@ export function* __vsGet<C extends CapabilityKey>(
  *     read inside a property accessor cannot be a `yield` because an accessor
  *     cannot be a generator, and a read inside a host callback cannot be one
  *     because `Array.prototype.map` will not drive it. `layer.ts`'s seam block
- *     records why the shim outlives the flag.
+ *     records why the shim outlives the lowering.
  *
- * `Layer.provide` itself is deliberately not called. Its promise-tracking block
- * exists to decide when an ASYNC body's extent ends, and a delimited
- * computation's extent is this frame; engaging it would leave the flag unable
- * to claim the block is dead. See `__vsPromiseHookLeases`.
+ * `Layer.provide` itself is deliberately not called. It has to decide when an
+ * ASYNC body's extent ends for a Promise it did not create; a delimited
+ * computation's extent is this frame, and answering it structurally is what let
+ * the promise-tracking apparatus `Layer.provide` used to carry be deleted.
  */
 export function* __vsProvide<A>(
   layer: unknown,

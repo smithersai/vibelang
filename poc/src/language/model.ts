@@ -46,6 +46,24 @@ export interface FunctionRows {
   readonly requirements: readonly string[];
 }
 
+/**
+ * The JSDoc tag an emitted declaration carries its own effect row in.
+ *
+ * `specification/compatibility.mdx` §TypeScript Target: "Requirement metadata
+ * does not erase completely. **Whatever representation is chosen** MUST
+ * additionally carry whether a function is effectful, because a cross-module
+ * caller cannot lower its call site without that fact." This tag is that
+ * representation, and `declarations.ts` both writes and reads it.
+ *
+ * It lives HERE rather than beside its writer because the frontend reads it
+ * too (G7: `TypeShape.requirements`), and `declarations.ts` reaches
+ * `validate.ts` -> `compile.ts` -> `semantic.ts`, so a frontend import of the
+ * writer's module would close an import cycle for two string constants.
+ * `model.ts` is the leaf both sides already depend on.
+ */
+export const DECLARATION_EFFECT_TAG = "smithersEffects";
+export const DECLARATION_EFFECT_VERSION = 1 as const;
+
 export interface Analysis {
   readonly errors: readonly ErrorDeclaration[];
   readonly functions: readonly FunctionDeclaration[];

@@ -70,7 +70,7 @@ import type { DurableStore, JournalEvent, StoredNodeExit } from "./store.ts"
 /**
  * Whether the replay driver may run at all.
  *
- * Additive and reversible, exactly like `CompileOptions.effectLowering`: the
+ * Additive and reversible, exactly as `CompileOptions.effectLowering` was: the
  * default is the shipped path and the new path is unreachable until a caller
  * names it. Nothing in the Plan pipeline reads this — the gate is on
  * constructing a driver, so an executor built without it cannot reach a single

@@ -1,10 +1,13 @@
 import { dirname, resolve } from "node:path";
 import * as ts from "typescript-js";
 import type { FunctionRows } from "./model.ts";
+import { DECLARATION_EFFECT_TAG, DECLARATION_EFFECT_VERSION } from "./model.ts";
 import { createEmittedModuleResolver, type EmittedModuleResolutionOptions } from "./validate.ts";
 
-export const DECLARATION_EFFECT_TAG = "smithersEffects";
-export const DECLARATION_EFFECT_VERSION = 1 as const;
+// Re-exported from their declaring module so this file stays the public home of
+// the declaration-metadata surface while the frontend can read the tag without
+// importing this module. @see model.ts
+export { DECLARATION_EFFECT_TAG, DECLARATION_EFFECT_VERSION };
 
 export interface DeclarationSource {
   readonly fileName: string;

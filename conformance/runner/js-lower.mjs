@@ -29,15 +29,7 @@
  *     assets: [fileName],                        // staged non-code files, names only
  *     assetCacheDirectory: string,               // unique to this staged run
  *     expectsOutput: boolean,                    // the run declares `expect: "output"`
- *     effectLowering?: "return" | "yield"        // absent means the default
  *   }
- *
- * `effectLowering` is the only field that selects a CALLING CONVENTION rather
- * than describing the program, and it is validated as a closed set below rather
- * than forwarded: an unrecognized value reaching `compileProject` would be
- * silently defaulted, and a run that believed it was measuring the resumable
- * convention while measuring the default one is the exact fail-open the third
- * backend exists to make visible.
  *
  * `expectsOutput` is the only field here that carries the case's EXPECTATION
  * rather than its program, and it is deliberately a single boolean: it must
@@ -230,13 +222,6 @@ async function main() {
     );
     return;
   }
-  if (request.effectLowering !== undefined && request.effectLowering !== "return" &&
-    request.effectLowering !== "yield") {
-    process.stdout.write(
-      JSON.stringify({ ok: false, error: `unknown effectLowering ${JSON.stringify(request.effectLowering)}` }),
-    );
-    return;
-  }
   const typeScriptSources = request.typeScriptSources ?? [];
   const assets = await compileAssets(request);
   if (assets && !assets.ok) {
@@ -422,10 +407,6 @@ async function main() {
       ...(assets?.modules ?? []),
     ],
     additionalRuntimeOutputs: assets?.outputs ?? [],
-    // Spread rather than passed as `undefined`: `exactOptionalPropertyTypes` is
-    // mandatory for a Smithers project, and a request that names no convention
-    // must reach `compileProject` with no such property at all.
-    ...(request.effectLowering === undefined ? {} : { effectLowering: request.effectLowering }),
   });
 
   const files = {};

@@ -250,11 +250,30 @@ site-table diff normatively obliges an implementation to do.
   resolved signature decides the call site wherever an edge is absent, and a
   function declaration mentioned anywhere except in callee position is kept in
   the ordinary convention, which together leave nothing undecided in 515 corpus
-  programs. What remains undecidable — a call through a function-typed
+  programs. What used to remain undecidable — a call through a function-typed
   **parameter**, where only a requirement row on the callee's TYPE could settle
-  it — is refused outright as `SMITHERS1807` rather than guessed. The refusal
-  retires when that row exists (`requirements` on `TypeShape`), and the flag and
-  this exception retire with it.
+  it — was refused outright as `SMITHERS1807` rather than guessed.
+
+  **Closed by G7 (`requirements` on `TypeShape`); `SMITHERS1807` is retired.**
+  The arm is now decided from two sentences already Locked above rather than
+  from a new rule: "An unannotated function type carries the empty row", and "A
+  function whose row is empty is never emitted in the resumable calling
+  convention". A parameter typed `(key: string) => string` therefore holds a
+  value that is not a generator, and the call is emitted plain. The requirement
+  row itself is read from the `@smithersEffects` metadata `declarations.ts`
+  already writes onto every emitted declaration — the representation
+  [Compatibility](/specification/compatibility) §TypeScript Target leaves open
+  ("Whatever representation is chosen MUST additionally carry whether a function
+  is effectful").
+
+  G7 also closed a **fail-open** in the same arm, and that is the half worth
+  recording. The retired walk exempted declaration files outright, on the
+  grounds that "nothing in a `.d.ts` was emitted by this compiler". That stopped
+  being true when this mode emitted one: an emitted declaration carries
+  `@smithersEffects` and a `__vsResumable<A>` return type, so a `.d.ts` from a
+  previously compiled `.sm` package names generators this compiler produced, and
+  every call into one was lowered as a plain call. The published row is now
+  consulted **before** the signature-kind test and before that exemption.
 
 ## Typed failures
 

@@ -2,18 +2,16 @@
 /**
  * Smithers differential conformance runner.
  *
- * Four modes, all over the same corpus:
+ * Three modes, all over the same corpus:
  *
  *   --backend js        run the JS instrument only (the reference; a real gate)
  *   --backend go        run the pinned Go fork only (the migration target)
  *   --backend both      run both and diff them (default)
- *   --backend js-yield  run the reference and the `effectLowering: "yield"`
- *                       lowering of the same instrument, and diff them
  *
  * Usage:
  *   node conformance/runner/run.mjs [options]
  *
- *   --backend <js|go|both|js-yield>  which backends to run (default both)
+ *   --backend <js|go|both>  which backends to run (default both)
  *   --filter <substring>    only cases whose id contains the substring
  *   --interop               also run the plain-TypeScript interop spot-check
  *   --only-interop          run only the interop spot-check
@@ -88,7 +86,6 @@
 import { loadCorpus, loadInterop } from "./corpus.mjs";
 import { jsBackend, runJsCase, runJsInterop } from "./backend-js.mjs";
 import { goBackend, prepareGoBackend, runGoCase, runGoInterop } from "./backend-go.mjs";
-import { jsYieldBackend, runJsYieldCase, runJsYieldInterop } from "./backend-js-yield.mjs";
 import { auditVerdict, canonicalExpectation, compareObservations, judge } from "./judge.mjs";
 import { mapPool } from "./process.mjs";
 
@@ -100,22 +97,24 @@ import { mapPool } from "./process.mjs";
 const STATUS_ORDER = ["pass", "xpass", "xfail", "unsupported", "fail", "unmeasured"];
 
 /** Every backend this runner knows how to ask. Order is report order. */
-const BACKENDS = ["js", "go", "js-yield"];
+const BACKENDS = ["js", "go"];
 
 /**
  * What each `--backend` value asks for, as one table.
  *
- * `js-yield` asks for the reference alongside it, exactly as `both` asks for
- * the reference alongside the fork, and for the same reason: the claim that
- * backend exists to check is a DIFFERENCE — one program, two calling
- * conventions, one observation — and a column with nothing beside it cannot
- * state a difference. See `backend-js-yield.mjs`.
+ * `js-yield` was a third value here for the duration of migration step 6: it
+ * ran the same instrument under `effectLowering: "yield"` beside the reference,
+ * because the claim that step made was about a DIFFERENCE — one program, two
+ * calling conventions, one observation. Step 13 deleted the option and made the
+ * resumable convention the only one, so the reference IS that lowering and a
+ * second column would diff a backend against itself. The assertion that column
+ * carried — `Layer.provide` never reaches the promise-hook apparatus — moved
+ * onto the reference and now runs on every case; see `backend-js.mjs`.
  */
 const BACKEND_SELECTIONS = {
   js: ["js"],
   go: ["go"],
   both: ["js", "go"],
-  "js-yield": ["js", "js-yield"],
 };
 
 /**
@@ -246,7 +245,6 @@ export async function runConformance(options = {}) {
   const requested = requestedBackends(backend);
   const wantJs = requested.includes("js");
   const wantGo = requested.includes("go");
-  const wantJsYield = requested.includes("js-yield");
   // `options.cases` exists for the harness's own self-test, which runs
   // deliberately broken expectations through the real backends and asserts the
   // runner notices. Nothing else supplies it; the corpus on disk is the corpus.
@@ -300,33 +298,6 @@ export async function runConformance(options = {}) {
     }
   }
 
-  if (wantJsYield) {
-    // Runs the same instrument as the reference, so its availability is the
-    // reference's: bun. Probed through its own descriptor anyway, because a
-    // backend that inherited another's availability could not report itself as
-    // unavailable and would be scored on cases it never ran.
-    const reason = await jsYieldBackend.probe();
-    if (reason) {
-      report.backends["js-yield"] = { available: false, reason };
-    } else {
-      report.backends["js-yield"] = { available: true, label: jsYieldBackend.label };
-      await mapPool(cases, options.jobs ?? 6, async (testCase) => {
-        const observation = await runJsYieldCase(testCase);
-        observations["js-yield"].set(testCase.id, observation);
-        const verdict = judge(testCase, observation, "js-yield");
-        report.audit.push(...auditVerdict(testCase, observation, verdict, jsYieldBackend));
-        byId.get(testCase.id).results["js-yield"] = { ...verdict, observation };
-      });
-      await mapPool(interopCases, options.jobs ?? 6, async (interopCase) => {
-        const observation = await runJsYieldInterop(interopCase);
-        interopById.get(interopCase.id).results["js-yield"] = {
-          observation,
-          ...judgeInterop(interopCase, observation),
-        };
-      });
-    }
-  }
-
   let goContext;
   if (wantGo) {
     goContext = await prepareGoBackend({ forkCheckout: options.forkCheckout });
@@ -353,10 +324,9 @@ export async function runConformance(options = {}) {
   }
 
   // The pair is derived from what was requested rather than named, so
-  // `--backend both` still diffs js against go and `--backend js-yield` diffs
-  // js against js-yield with the same code, the same detail strings, and the
-  // same `Backend agreement:` line. A selection of one backend has no pair and
-  // leaves `agreement` undefined, exactly as before.
+  // `--backend both` diffs js against go with the same code, the same detail
+  // strings, and the same `Backend agreement:` line. A selection of one backend
+  // has no pair and leaves `agreement` undefined.
   const pair = requested.length === 2 && requested.every((name) => report.backends[name]?.available)
     ? requested
     : undefined;
@@ -617,12 +587,6 @@ function renderTable(report, { requested, quiet }) {
         `, ${classBreakdown(summary.go)}`,
     );
   }
-  if (summary["js-yield"]) {
-    lines.push(
-      `JS yield:      ${summary["js-yield"].pass}/${summary["js-yield"].total} pass` +
-        `, ${classBreakdown(summary["js-yield"])}`,
-    );
-  }
   if (summary.agreement) {
     lines.push(`Backend agreement: ${summary.agreement.agreed}/${summary.agreement.compared} identical observations`);
   }
@@ -679,10 +643,7 @@ function classBreakdown(counts) {
 
 const HELP = `usage: node conformance/runner/run.mjs [options]
 
-  --backend <js|go|both|js-yield>
-                          backends to run (default both). js-yield runs the
-                          reference AND the effectLowering "yield" lowering of
-                          the same instrument, and diffs them
+  --backend <js|go|both>  backends to run (default both)
   --filter <substring>    only cases whose id contains the substring
   --interop               also run the plain-TypeScript interop spot-check
   --only-interop          run only the interop spot-check

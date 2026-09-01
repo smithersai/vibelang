@@ -1,6 +1,6 @@
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { Analysis, AnalyzeProjectOptions, ProjectDiagnostic, ProjectSource } from "./model.ts";
-import { compileSemanticModel, type EffectLowering } from "./compile.ts";
+import { compileSemanticModel } from "./compile.ts";
 import { buildSemanticProjectModels, NominalErrorIdentities } from "./semantic.ts";
 
 function compareText(left: string, right: string): number {
@@ -27,14 +27,6 @@ export interface CompileProjectOptions extends AnalyzeProjectOptions {
    * `compileAndCheckProject` is not meaningful with this option.
    */
   readonly preserveSmithersSpecifiers?: boolean;
-  /**
-   * @see CompileOptions.effectLowering — forwarded verbatim to every module in
-   * the project. It is a WHOLE-PROJECT choice and cannot be anything else: the
-   * convention a function is emitted in decides how its callers in other
-   * modules call it, so two modules of one project compiled under two values
-   * would disagree about every cross-module call.
-   */
-  readonly effectLowering?: EffectLowering;
   /**
    * Additional authored modules which are emitted by a later integration
    * stage. They participate only in relative-import rewriting; Smithers never
@@ -166,19 +158,19 @@ export function compileProject(
       sourceMap: options.sourceMap,
       sourceName,
       preserveSmithersSpecifiers: options.preserveSmithersSpecifiers,
-      effectLowering: options.effectLowering,
     }, model, { outputBySource, stripImportAttributesForSources, smithersSourceNames, nominalIdentities });
     // The invariant is minted per module by `compileSemanticModel` against the
     // shared assigner above, so lifting it here reports each collision exactly
     // once, keyed by the caller's own file name like every other project row.
     //
-    // `SMITHERS1807` joins it for the same structural reason and not by
-    // analogy: both are decided during EMIT, so neither exists in
-    // `semantic.analysis.diagnostics`, and a project caller that read only that
-    // list would compile a refused module and report nothing. Under the default
-    // lowering the emitter produces none.
+    // `SMITHERS1807` used to be lifted here for the same structural reason and
+    // is retired by G7: `callConvention`'s last arm is decided from the
+    // callee's type rather than refused. The lift stays keyed on an explicit
+    // list rather than on "every emit diagnostic", so a future emit-time code
+    // has to name itself here and cannot be silently dropped by a project
+    // caller that reads only `semantic.analysis.diagnostics`.
     for (const diagnostic of compiled.analysis.diagnostics) {
-      if (diagnostic.code === "SMITHERS1151" || diagnostic.code === "SMITHERS1807") {
+      if (diagnostic.code === "SMITHERS1151") {
         emitDiagnostics.push({ ...diagnostic, fileName: source.fileName });
       }
     }

@@ -23,6 +23,7 @@ import type {
   ProjectFileAnalysis,
   ProjectSource,
 } from "./model.ts";
+import { DECLARATION_EFFECT_TAG, DECLARATION_EFFECT_VERSION } from "./model.ts";
 import {
   recoverSmithersSyntax,
   scanTokens as scanRecoveryTokens,
@@ -185,8 +186,32 @@ export interface TypeShape {
   readonly channel: FunctionChannel;
   readonly async: boolean;
   readonly failures: ReadonlySet<string>;
+  /**
+   * The REQUIREMENT half of the effect row, read from the type rather than from
+   * the call graph. **G7.**
+   *
+   * `docs/DECISIONS.md` §Function model, Locked: "A function's effect row is
+   * the pair `(E, R)`. It is part of the function's static type ... and is
+   * carried by a function **value**, not only by a function declaration." and
+   * "An unannotated function type carries the empty row." Both halves are
+   * modelled here: the row is populated from the declaration's own
+   * `@smithersEffects` metadata ({@link declaredRequirementRow}) and is the
+   * EMPTY SET everywhere else, which is the locked default rather than an
+   * "unknown".
+   *
+   * It is deliberately NOT the same quantity as `SemanticFunction.requirements`.
+   * That one is the whole-program inference over the call graph and is what
+   * `Analysis.rows` publishes; this one is what a caller can learn about a
+   * callee it can only see through a type — a `.d.ts` this compiler emitted.
+   * The two agree for a function whose declaration this compilation owns, and
+   * only this one exists for one it does not.
+   */
+  readonly requirements: ReadonlySet<string>;
   readonly successType?: ts.Type;
 }
+
+/** The empty effect row, shared so the common case allocates nothing. */
+const NO_REQUIREMENTS: ReadonlySet<string> = new Set();
 
 export interface ForeignPolicy {
   readonly kind: "panic" | "never" | "declared";
@@ -246,6 +271,17 @@ export interface CallEdge {
    * cannot silently rewrite a concrete row member.
    */
   readonly instantiatedFailures?: ReadonlySet<string>;
+  /**
+   * **G7**, the requirement half of {@link instantiatedFailures}.
+   *
+   * Present only when the resolved signature's declaration published a non-empty
+   * `@smithersEffects` requirement row, so `undefined` means "no row on the
+   * type" rather than "the empty row" — the same reading its failure sibling
+   * has. It is charged in `inferRows` beside the callee's inferred row, which is
+   * a no-op whenever this compilation owns the callee's body (the two agree) and
+   * is the only row available when it does not.
+   */
+  readonly instantiatedRequirements?: ReadonlySet<string>;
 }
 
 export interface ProvideEdge {
@@ -269,6 +305,29 @@ export interface SemanticFunction {
   readonly failures: Set<string>;
   readonly directRequirements: Set<string>;
   readonly requirements: Set<string>;
+  /**
+   * The subset of {@link directRequirements} that came from a
+   * `Capability.context()` SITE — a read the emitter lowers into a `get`
+   * request — rather than from an ambient CHARGE.
+   *
+   * The two used to be the same set, and they stopped being the same set when
+   * `specification/compatibility.mdx` §Determinism-Sensitive Members rows three
+   * and five landed: `Promise.race` charges `Scheduler` and `"a".localeCompare`
+   * charges `Locale` with no `Scheduler.context()` or `Locale.context()`
+   * anywhere in the program. Both belong in the published row — that is what
+   * "charge" means — and neither gives the emitter anything to lower.
+   *
+   * MEASURED, and this is why the distinction exists rather than being tidy:
+   * `isResumableFunction` decides the calling convention on `requirements.size
+   * > 0`, so the moment an ICU call charged a row, the corpus case
+   * `20-host-globals/intl-locale-formatting-is-not-a-clock-read` emitted its
+   * `main` as a GENERATOR — a generator that yields nothing, that nobody
+   * drives, and that handed the harness `[object Generator]` where it expected
+   * `string[]`. The row was right and the convention was wrong.
+   */
+  readonly directCapabilityRequirements: Set<string>;
+  /** {@link directCapabilityRequirements}, transitively. @see inferRows */
+  readonly capabilityRequirements: Set<string>;
   readonly calls: CallEdge[];
   readonly provides: ProvideEdge[];
   /**
@@ -411,12 +470,11 @@ export interface SemanticModel {
   /**
    * Every `Capability.context()` call in this file, keyed by the call node.
    *
-   * PUBLISHED FOR A LATER STEP AND CONSUMED BY NOTHING. Under the effect
-   * lowering (`specification/effects.mdx` §Effect Requests) each of these
-   * becomes a `get` request whose key is the nominal capability. Under
-   * `CompileOptions.effectLowering: "yield"` the emitter reads it; under the
-   * default lowering it still has no reader and `Db.context()` passes through
-   * verbatim.
+   * Under the effect lowering (`specification/effects.mdx` §Effect Requests)
+   * each of these becomes a `get` request whose key is the nominal capability,
+   * and the emitter reads this table to find them. That lowering is now the
+   * only one — the `effectLowering` option and its `Db.context()`-passthrough
+   * alternative were deleted with migration step 13.
    *
    * ONE SPELLING IS KNOWN MISSING, and it is written down here rather than left
    * to be discovered by whichever step first depends on the table being total.
@@ -1369,57 +1427,143 @@ function deferredRowConstituents(type: ts.Type, checker: ts.TypeChecker): readon
   return [...names].sort(compareText);
 }
 
-/** The declared `Result` error type of a function, after unwrapping `Promise`. */
-function declaredFailureRowType(
+/**
+ * The declared effect row of a signature: the pair `(E, R)`.
+ *
+ * **G7.** This used to be `declaredFailureRowType`, which answered `E` alone.
+ * `docs/DECISIONS.md` §Function model locks the row as a PAIR, so the three
+ * functions that read a declared row — this one, {@link genericRowTemplate},
+ * and {@link instantiateEffectRow} — read both halves through this one helper
+ * rather than one half here and none anywhere else.
+ *
+ * The two halves have different carriers, and that asymmetry is the finding
+ * rather than an oversight:
+ *
+ * - `E` is a TYPE. `Result<A, E>`'s error channel is read off the prelude's
+ *   own brand, so it can mention the declaration's type parameters and is
+ *   therefore instantiable per call site.
+ * - `R` is METADATA. The compiler's chosen representation is the
+ *   `@smithersEffects` tag `declarations.ts` writes onto every emitted
+ *   declaration — `specification/compatibility.mdx` §TypeScript Target leaves
+ *   the representation open ("Whatever representation is chosen MUST
+ *   additionally carry whether a function is effectful") and this is it. A JSON
+ *   array of nominal names cannot mention a type parameter, so `R` is never
+ *   deferred and never needs instantiating. The generalization below is
+ *   nevertheless written for both halves, because the asymmetry is a property
+ *   of today's carrier and not of the rule.
+ */
+interface DeclaredEffectRow {
+  /** The declared `Result` error type, after unwrapping `Promise`. */
+  readonly error?: ts.Type;
+  /** Nominal `Context` subclass names the declaration publishes about itself. */
+  readonly requirements: ReadonlySet<string>;
+}
+
+function declaredEffectRow(
   signature: ts.Signature | undefined,
   checker: ts.TypeChecker,
-): ts.Type | undefined {
-  if (!signature) return undefined;
+): DeclaredEffectRow {
+  if (!signature) return { requirements: NO_REQUIREMENTS };
   let returnType = checker.getReturnTypeOfSignature(signature);
   returnType = promisedType(returnType, checker) ?? returnType;
-  return compilerResultChannels(returnType, checker)?.error;
+  return {
+    error: compilerResultChannels(returnType, checker)?.error,
+    requirements: declaredRequirementRow(signature.declaration),
+  };
+}
+
+/**
+ * The requirement row a DECLARATION publishes about itself, or the empty row.
+ *
+ * The empty answer is the LOCKED default, not an "unknown": `DECISIONS.md`
+ * §Function model states "An unannotated function type carries the empty row",
+ * so a signature with no metadata is a signature whose row is empty, and a
+ * caller may lower its call site on that basis. That is what makes
+ * {@link callConvention}'s last arm decidable — see G7 there.
+ *
+ * Read strictly. The tag is compiler-owned and its encoding is canonical
+ * (`declarations.ts` re-serializes and compares), so anything that does not
+ * parse to the exact envelope is treated as absent rather than as a partial
+ * row: a malformed tag must not silently shrink a row, and a row that is
+ * silently WIDER than the truth costs only an unnecessary delegation.
+ */
+export function declaredRequirementRow(declaration: ts.Declaration | undefined): ReadonlySet<string> {
+  if (!declaration) return NO_REQUIREMENTS;
+  const tags = ts.getJSDocTags(declaration).filter((tag) => tag.tagName.text === DECLARATION_EFFECT_TAG);
+  if (tags.length !== 1) return NO_REQUIREMENTS;
+  const comment = tags[0]!.comment;
+  if (typeof comment !== "string" || comment.length > 65_536) return NO_REQUIREMENTS;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(comment);
+  } catch {
+    return NO_REQUIREMENTS;
+  }
+  if (parsed === null || Array.isArray(parsed) || typeof parsed !== "object") return NO_REQUIREMENTS;
+  const record = parsed as Record<string, unknown>;
+  if (record.version !== DECLARATION_EFFECT_VERSION) return NO_REQUIREMENTS;
+  const requirements = record.requirements;
+  if (!Array.isArray(requirements) || !requirements.every((name) => typeof name === "string")) {
+    return NO_REQUIREMENTS;
+  }
+  return requirements.length === 0 ? NO_REQUIREMENTS : new Set(requirements as readonly string[]);
 }
 
 /**
  * A generic success value does not make a concrete Error/Context row
- * polymorphic. Only a declared `Result` error that mentions the declaration's
- * own type parameters (directly or through a deferred type operation) is a
- * polymorphic row template that each call site must instantiate.
+ * polymorphic. Only a declared row that mentions the declaration's own type
+ * parameters (directly or through a deferred type operation) is a polymorphic
+ * row template that each call site must instantiate.
+ *
+ * **G7**: asked of the pair, not of `E` alone. `R`'s carrier is a JSON array of
+ * nominal names, which cannot mention a type parameter, so the requirement half
+ * contributes nothing today and MEASURES nothing — the predicate's answer is
+ * unchanged on every program in the tree. It is written this way so that giving
+ * `R` a type-level carrier later is a change to the carrier and not to this
+ * rule.
  */
 function genericRowTemplate(fn: SemanticFunction, checker: ts.TypeChecker): boolean {
   if (!fn.node.typeParameters?.length) return false;
   const signature = checker.getSignatureFromDeclaration(fn.node);
   if (!signature) return true;
-  const error = declaredFailureRowType(signature, checker);
+  const row = declaredEffectRow(signature, checker);
   // A generic declaration whose row is not a spelled `Result` error has no
   // template to instantiate; its row is whatever its body infers.
-  if (!error) return false;
-  return deferredRowConstituents(error, checker).length > 0;
+  if (!row.error) return false;
+  return deferredRowConstituents(row.error, checker).length > 0;
 }
 
 type RowInstantiation =
-  | { readonly ok: true; readonly failures: ReadonlySet<string> }
+  | {
+    readonly ok: true;
+    readonly failures: ReadonlySet<string>;
+    readonly requirements: ReadonlySet<string>;
+  }
   | { readonly ok: false; readonly unresolved: readonly string[] };
 
 /**
- * Instantiate a polymorphic failure-row template at one checker-resolved
- * direct static call. The checker has already substituted the call's explicit
- * or inferred type arguments into the resolved signature, so the instantiated
- * error type is read straight back out of it. Anything still deferred there
- * (the caller forwarding its own type parameter, an unresolvable conditional)
- * fails closed instead of contributing an approximate row.
+ * Instantiate a polymorphic row template at one checker-resolved direct static
+ * call. The checker has already substituted the call's explicit or inferred
+ * type arguments into the resolved signature, so the instantiated error type is
+ * read straight back out of it. Anything still deferred there (the caller
+ * forwarding its own type parameter, an unresolvable conditional) fails closed
+ * instead of contributing an approximate row.
+ *
+ * **G7**: returns the pair. The requirement half is read off the same resolved
+ * signature and is invariant under substitution, so it is carried rather than
+ * instantiated.
  */
-function instantiateFailureRow(
+function instantiateEffectRow(
   call: ts.CallExpression,
   checker: ts.TypeChecker,
 ): RowInstantiation {
   const signature = checker.getResolvedSignature(call);
   if (!signature) return { ok: false, unresolved: ["the call signature"] };
-  const error = declaredFailureRowType(signature, checker);
-  if (!error) return { ok: false, unresolved: ["the instantiated Result error"] };
-  const unresolved = deferredRowConstituents(error, checker);
+  const row = declaredEffectRow(signature, checker);
+  if (!row.error) return { ok: false, unresolved: ["the instantiated Result error"] };
+  const unresolved = deferredRowConstituents(row.error, checker);
   if (unresolved.length > 0) return { ok: false, unresolved };
-  return { ok: true, failures: errorNames(error, checker) };
+  return { ok: true, failures: errorNames(row.error, checker), requirements: row.requirements };
 }
 
 /** A type's own nominal name plus every base class name above it. */
@@ -1460,7 +1604,7 @@ function uncoveredCallbackRowNames(
   for (const argument of call.arguments) {
     const callback = resolveFunctionReference(argument, checker, functions, functionByNode);
     if (!callback?.explicitReturn || !callback.declaredShape.channel.startsWith("result")) continue;
-    const declared = declaredFailureRowType(checker.getSignatureFromDeclaration(callback.node), checker);
+    const declared = declaredEffectRow(checker.getSignatureFromDeclaration(callback.node), checker).error;
     if (!declared) continue;
     for (const part of typeConstituents(declared)) {
       if (deferredRowConstituents(part, checker).length > 0) continue;
@@ -2443,6 +2587,8 @@ function collectFunctions(sourceFile: ts.SourceFile, checker: ts.TypeChecker): S
         failures: new Set(declaredShape.channel.startsWith("result") ? declaredShape.failures : []),
         directRequirements: new Set(),
         requirements: new Set(),
+        directCapabilityRequirements: new Set(),
+        capabilityRequirements: new Set(),
         calls: [],
         provides: [],
         accessorUses: [],
@@ -2515,7 +2661,10 @@ function functionShape(node: ts.FunctionLikeDeclaration, checker: ts.TypeChecker
     : signature
       ? checker.getReturnTypeOfSignature(signature)
       : checker.getAnyType();
-  return shapeOfType(type, checker);
+  // G7: the declared row is a property of the DECLARATION, not of its return
+  // type, so it is attached here rather than inside `shapeOfType`, which is
+  // asked about types that have no declaration at all.
+  return { ...shapeOfType(type, checker), requirements: declaredRequirementRow(node) };
 }
 
 export function shapeOfType(type: ts.Type, checker: ts.TypeChecker): TypeShape {
@@ -2530,10 +2679,21 @@ export function shapeOfType(type: ts.Type, checker: ts.TypeChecker): TypeShape {
       channel: "result",
       async: false,
       failures: channels.error ? errorNames(channels.error, checker) : new Set(["Error"]),
+      // A TYPE carries no requirement metadata of its own — the carrier is the
+      // declaration's `@smithersEffects` tag. `DECISIONS.md` §Function model
+      // locks the default this leaves behind: "An unannotated function type
+      // carries the empty row."
+      requirements: NO_REQUIREMENTS,
       successType: channels.success,
     };
   }
-  return { channel: "plain", async: false, failures: new Set(), successType: type };
+  return {
+    channel: "plain",
+    async: false,
+    failures: new Set(),
+    requirements: NO_REQUIREMENTS,
+    successType: type,
+  };
 }
 
 /**
@@ -2564,7 +2724,7 @@ export function shapeOfType(type: ts.Type, checker: ts.TypeChecker): TypeShape {
  *
  * Identity read as spelling — reading `aliasSymbol` FIRST made the opposite
  * mistake. `type R<A, E extends Error> = Result<A, E>` answered `"R"`, so
- * `declaredFailureRowType` returned undefined and the author was told to "use
+ * `declaredEffectRow` returned no error channel and the author was told to "use
  * Result<A, E>" (SMITHERS1101) for a declaration that already was one.
  *
  * The prelude declares `readonly __smithersResult: { success: A; error: E }` on
@@ -2986,6 +3146,15 @@ function collectFacts(
       return;
     }
 
+    // Determinism-sensitive ambient sites that CHARGE rather than refuse.
+    // `specification/compatibility.mdx` §Determinism-Sensitive Members, rows
+    // three and five. Charged here, in the per-function walk, because a row is
+    // a property of the enclosing function; `checkHostGlobals` walks the whole
+    // file and has no function to charge.
+    for (const requirement of ambientRequirementCharges(node, checker)) {
+      fn.directRequirements.add(requirement);
+    }
+
     if (ts.isThrowStatement(node) && node.expression && !caughtByJavaScript) {
       const thrown = checker.getTypeAtLocation(node.expression);
       if (!isErrorType(thrown, checker)) {
@@ -3004,7 +3173,12 @@ function collectFacts(
       // The node this classification was made ABOUT, kept rather than dropped.
       // Nothing reads it yet; see `SemanticFunction.capabilitySites`.
       if (capability !== undefined) fn.capabilitySites.push({ call: node, receiver: capability });
-      if (capability?.kind === "capability") fn.directRequirements.add(capability.name);
+      if (capability?.kind === "capability") {
+        fn.directRequirements.add(capability.name);
+        // A SITE, so the emitter has a `get` request to lower here. An ambient
+        // charge reaches `directRequirements` only. @see directCapabilityRequirements
+        fn.directCapabilityRequirements.add(capability.name);
+      }
       if (capability?.kind === "ambiguous") {
         diagnostics.push(at(node, sourceFile, "SMITHERS2106", AMBIGUOUS_CONTEXT_RECEIVER_MESSAGE));
       }
@@ -3018,10 +3192,17 @@ function collectFacts(
         : foreignPolicy(node, checker, sourceFile, authoredBoundary ? [] : diagnostics);
       const propagatesFailure = panicExit || isReturnedOrPropagated(node);
       let instantiatedFailures: ReadonlySet<string> | undefined;
+      let instantiatedRequirements: ReadonlySet<string> | undefined;
       if (callee && genericRowTemplate(callee, checker)) {
-        const instantiation = instantiateFailureRow(node, checker);
+        const instantiation = instantiateEffectRow(node, checker);
         if (instantiation.ok) {
           instantiatedFailures = instantiation.failures;
+          // G7: the requirement half travels with the failure half. It is
+          // `undefined` rather than the empty set when the declaration
+          // publishes nothing, so `inferRows` can tell "this site instantiated
+          // an empty row" from "this site instantiated no row" without a second
+          // flag — the same distinction `instantiatedFailures` already carries.
+          if (instantiation.requirements.size > 0) instantiatedRequirements = instantiation.requirements;
           const uncovered = uncoveredCallbackRowNames(
             node,
             instantiation.failures,
@@ -3058,6 +3239,7 @@ function collectFacts(
         propagatesFailure,
         authoredBoundary: authoredBoundary && Boolean(foreign),
         instantiatedFailures,
+        instantiatedRequirements,
       };
       if (callee || foreign || panicExit) {
         fn.calls.push(edge);
@@ -3911,7 +4093,36 @@ function inferRows(
   for (const fn of functions) {
     for (const failure of fn.directFailures) fn.bodyFailures.add(failure);
     for (const requirement of fn.directRequirements) fn.requirements.add(requirement);
+    for (const requirement of fn.directCapabilityRequirements) fn.capabilityRequirements.add(requirement);
   }
+  /**
+   * Propagate one requirement row into `fn`, keeping the capability half in
+   * step with it.
+   *
+   * ONE helper rather than a second loop beside each of the six edges below,
+   * because the two sets have to travel the SAME edges with the SAME
+   * subtraction. A `Layer.provide` that supplies `Db` removes `Db` from both,
+   * and a second pass that forgot the subtraction would leave a function
+   * resumable after its capabilities were provided — which is exactly the
+   * `main` case that must stay an ordinary function so a test, a CLI, or the
+   * conformance harness can call it and get a value.
+   */
+  const propagate = (
+    fn: SemanticFunction,
+    source: SemanticFunction,
+    names: Iterable<string>,
+    provided?: ReadonlySet<string>,
+  ): boolean => {
+    let moved = false;
+    for (const name of names) {
+      if (provided?.has(name)) continue;
+      moved = add(fn.requirements, name) || moved;
+      if (source.capabilityRequirements.has(name)) {
+        moved = add(fn.capabilityRequirements, name) || moved;
+      }
+    }
+    return moved;
+  };
   let changed = true;
   while (changed) {
     changed = false;
@@ -3925,14 +4136,14 @@ function inferRows(
             changed = add(fn.bodyFailures, failure) || changed;
           }
         }
-        for (const requirement of call.callee.requirements) changed = add(fn.requirements, requirement) || changed;
+        changed = propagate(fn, call.callee, call.callee.requirements) || changed;
       }
       // Reading or writing a property backed by an accessor CALLS it, so its
       // requirements are transitive exactly as an ordinary call's are
       // (`specification/requirements.mdx` §Inference). See accessorInvocations
       // for why the accessor's failure row is not charged here.
       for (const accessor of fn.accessorUses) {
-        for (const requirement of accessor.requirements) changed = add(fn.requirements, requirement) || changed;
+        changed = propagate(fn, accessor, accessor.requirements) || changed;
       }
       // `.expect(...)` consumes a Result but converts its error variant into a
       // panic; that distinguished channel must stay visible on the caller.
@@ -3945,20 +4156,18 @@ function inferRows(
       // An authored Result.try/tryPromise boundary owns its callback's throw
       // scope but still executes the callback's capability requirements.
       for (const callback of fn.boundaryCallbacks) {
-        for (const requirement of callback.requirements) changed = add(fn.requirements, requirement) || changed;
+        changed = propagate(fn, callback, callback.requirements) || changed;
       }
       // A callback handed across a call boundary is invoked inside that call,
       // so its capabilities are this body's capabilities. See
       // `SemanticFunction.callbackValues`.
       for (const callback of fn.callbackValues) {
-        for (const requirement of callback.requirements) changed = add(fn.requirements, requirement) || changed;
+        changed = propagate(fn, callback, callback.requirements) || changed;
       }
       for (const provide of fn.provides) {
         const callback = provide.callback ?? provide.callbackReference;
         if (!callback) continue;
-        for (const requirement of callback.requirements) {
-          if (!provide.provided.has(requirement)) changed = add(fn.requirements, requirement) || changed;
-        }
+        changed = propagate(fn, callback, callback.requirements, provide.provided) || changed;
       }
       // Propagated and returned expressions are charged HERE rather than during
       // collection, because their channel is `effectiveChannel(callee)` — a
@@ -5215,8 +5424,8 @@ function collectLayerBindings(sourceFile: ts.SourceFile, checker: ts.TypeChecker
 /**
  * `Layer.provide(layer, body)`, in every spelling the analysis already accepts.
  *
- * Exported for the emitter, which under `effectLowering: "yield"` has to
- * recognize the SAME call the requirement subtraction recognized — a provide
+ * Exported for the emitter, which has to recognize the SAME call the
+ * requirement subtraction recognized — a provide
  * that `checkLayerSatisfaction` certified and the emitter did not lower would
  * publish an empty requirement row over a computation with no handler under it.
  * One predicate, so the two answers cannot drift.
@@ -5874,6 +6083,11 @@ export function semanticExpressionShape(
         channel: "plain",
         async: false,
         failures: new Set(),
+        // `!` removes the FAILURE channel and nothing else. The requirement row
+        // survives the extraction, exactly as `successType` does: propagating a
+        // failure out of a call does not discharge the capabilities that call
+        // needed.
+        requirements: operand.requirements,
         successType: operand.successType,
       };
     }
@@ -5899,6 +6113,11 @@ export function semanticExpressionShape(
         channel,
         async: callee.async,
         failures: edge.instantiatedFailures ?? callee.failures,
+        // The INFERRED row of the resolved callee, which is strictly better
+        // information than the declared one whenever the callee's body is in
+        // this compilation — and it always is on this arm, because that is what
+        // `edge.callee` means.
+        requirements: edge.instantiatedRequirements ?? callee.requirements,
         successType: callee.declaredShape.successType,
       };
     }
@@ -5906,7 +6125,25 @@ export function semanticExpressionShape(
       const original = shapeOfType(checker.getTypeAtLocation(expression), checker);
       const failures = new Set<string>();
       addForeignFailures(failures, edge.foreign);
-      return { channel: "result", async: edge.foreign.async, failures, successType: original.successType };
+      // A foreign boundary is by definition not a `.sm` declaration this
+      // compiler emitted, so it publishes no row of its own.
+      return {
+        channel: "result",
+        async: edge.foreign.async,
+        failures,
+        requirements: NO_REQUIREMENTS,
+        successType: original.successType,
+      };
+    }
+    // **G7.** No edge: `collectFacts` records one only when the callee resolves
+    // locally, is foreign, or is a panic exit, so a call into a `.d.ts` THIS
+    // COMPILER EMITTED records nothing and used to fall through to a bare type
+    // with the empty row. The declaration published its own row; read it.
+    if (ts.isCallExpression(expression)) {
+      const declared = declaredRequirementRow(checker.getResolvedSignature(expression)?.declaration);
+      if (declared.size > 0) {
+        return { ...shapeOfType(checker.getTypeAtLocation(expression), checker), requirements: declared };
+      }
     }
   }
   if (ts.isIdentifier(expression)) {
@@ -6715,11 +6952,13 @@ function isPromiseType(type: ts.Type, checker: ts.TypeChecker): boolean {
  * call argument, a compound operand, a `for` initializer, a `for…of` iterable —
  * is unconditional and once, and is now accepted.
  *
- * These two are deliberately NOT scoped to `effectLowering`. Both lowerings
- * spell a propagation the same way today, so the refusal is a property of the
- * compiler and not of a per-file option; a diagnostic that fired under one
- * option and not the other would be the per-file dialect this project's ledger
- * warns against by name. They retire when the `"return"` lowering does.
+ * These two were deliberately never scoped to the `effectLowering` option, and
+ * they SURVIVE its deletion. That option only ever selected the convention for
+ * the DEPENDENCY half of the row; failure propagation is still lowered as an
+ * early `return` of the error variant in every function, because
+ * `isResumableFunction` takes only functions whose `failures` row is empty. So
+ * the hoisting these two refuse is still real, and they retire when the failure
+ * exit becomes a delegated suspension — not when the option went away.
  */
 function conditionallyEvaluatedPosition(node: ts.Node): boolean {
   let current: ts.Node = node;
@@ -8397,6 +8636,13 @@ function checkHostGlobals(
       diagnostics.push(at(dynamic.node, sourceFile, "SMITHERS1604", `ambient ${dynamic.description} is unavailable; it runs a string as code in the host's own scope, so the enclosing row cannot describe what it reads, throws, or requires`));
     }
 
+    // Row four: a `Date` INSTANCE member that reads the host time zone. The
+    // same code and the same reason as `Date.now()` — see `dateZoneMemberUse`.
+    const zoneRead = dateZoneMemberUse(node, checker);
+    if (zoneRead) {
+      diagnostics.push(at(zoneRead, sourceFile, "SMITHERS1602", "ambient wall-clock access is unavailable; access it through Clock.context()"));
+    }
+
     for (const use of sensitive) {
       diagnostics.push(at(
         use.root,
@@ -8472,7 +8718,26 @@ function dynamicCodeUse(node: ts.Node, checker: ts.TypeChecker): DynamicCodeUse 
   const selection = memberSelection(node, checker);
   if (!selection || selection.name !== "constructor") return undefined;
   const receiver = checker.getTypeAtLocation(selection.receiver);
-  if (receiver.getCallSignatures().length === 0 && receiver.getConstructSignatures().length === 0) {
+  // FAIL CLOSED ON `any`. `specification/compatibility.mdx` §Dynamic Features:
+  // "`any` remains usable, but a receiver typed `any` in a position where the
+  // analysis must decide callability MUST be treated as callable — matching the
+  // fail-closed default already applied to a dynamically selected member."
+  //
+  // MEASURED before this arm existed: `(JSON as any).constructor` compiled with
+  // zero diagnostics and an empty row, while the same selection on a resolved
+  // callable was `SMITHERS1604`. An `any` type has neither call nor construct
+  // signatures, so the test below answered "not callable" for the one receiver
+  // type about which nothing is known — the exact inversion of the rule. This
+  // is `SMITHERS1605`'s hazard in a different costume: `eval` reached through
+  // the `any` hole produces no journal entry, therefore no divergence to
+  // detect, which is why the migration plan lists it under R8 beside
+  // `WeakRef.deref()` and `Promise.race`.
+  //
+  // `unknown` is deliberately NOT here. It is the type you must narrow before
+  // using, so a `constructor` selection on it does not compile at all and stock
+  // TypeScript already refuses the program.
+  if ((receiver.flags & ts.TypeFlags.Any) === 0 &&
+    receiver.getCallSignatures().length === 0 && receiver.getConstructSignatures().length === 0) {
     return undefined;
   }
   return {
@@ -8482,9 +8747,219 @@ function dynamicCodeUse(node: ts.Node, checker: ts.TypeChecker): DynamicCodeUse 
 }
 
 interface AmbientAuthorityUse {
+  /**
+   * A DIAGNOSTIC CATEGORY, not a capability vocabulary. It selects
+   * `SMITHERS1602`/`1603`/`1601` and nothing else — no ambient site has ever
+   * charged a row through this type, not even for `Clock`, because the sites it
+   * describes are REFUSED and the row is charged by the `Clock.context()` the
+   * author writes instead. The requirement vocabulary is open and is every
+   * `Context` subclass the program names; see {@link ambientRequirementCharges}
+   * for the sites that charge one.
+   */
   readonly requirement: "Clock" | "Random" | "Host";
   readonly description: string;
   readonly root: ts.Identifier;
+}
+
+/**
+ * The ambient operations that CHARGE a capability into the enclosing row
+ * instead of being refused.
+ *
+ * `specification/compatibility.mdx` §Determinism-Sensitive Members, and the
+ * paragraph under its table is the whole rule: "'Charge' means the site
+ * publishes the named capability's requirement into the enclosing function's
+ * row, which a caller discharges by providing a layer. Where the capability has
+ * a source-language surface the author can write instead — `Clock.context()`,
+ * `Random.context()` — the *ambient* spelling is additionally refused ... Where
+ * the capability deliberately has **no** source-language surface, a refusal
+ * would name a remedy that cannot be written, and the obligation is the row
+ * charge alone."
+ *
+ * So this function is exactly the rows whose capability has no source-language
+ * surface, and it is why they produce **no diagnostic code, new or existing**:
+ *
+ * - **Row three, `Scheduler`.** `Promise.race` and `Promise.any` "MUST charge a
+ *   `Scheduler` requirement, because their value *is* arrival order". A refusal
+ *   here would name `Scheduler.context()` as the remedy, and
+ *   `specification/durable-execution.mdx` §Deterministic Scheduling says the
+ *   scheduler "has no source-language surface" — so the refusal reading was
+ *   answered and rejected rather than dropped. Every other `Promise` member
+ *   stays free, `Promise.all` included.
+ * - **Row five, `Locale`.** Every ICU-backed operation is "a function of the
+ *   host ICU version and locale data", and `Collator.compare` used as a sort
+ *   comparator makes the resulting ORDERING host-dependent. `Locale` is a
+ *   capability class that exists nowhere in this tree, so by the criterion
+ *   above it can only be a charge: refusing it would point an author at
+ *   `Locale.context()`, which is unwritable.
+ *
+ * Both charges are unsatisfied rows in practice today, and that is the intended
+ * end state rather than an omission — MEASURED: an unsatisfied requirement is
+ * not a compile error in this implementation, so a charged program still
+ * compiles, still runs, and publishes the row a caller would have to discharge.
+ * That is what distinguishes a charge from a refusal by the back door.
+ *
+ * ROW FOUR IS NOT HERE, deliberately. `Date`'s host-zone members charge `Clock`,
+ * which does have a source-language surface, so by the same criterion the
+ * ambient spelling is additionally refused — as `SMITHERS1602`, exactly as
+ * `Date.now()` already is. See {@link dateZoneMemberUse}.
+ */
+function ambientRequirementCharges(node: ts.Node, checker: ts.TypeChecker): readonly string[] {
+  if (!ts.isPropertyAccessExpression(node) && !ts.isElementAccessExpression(node)) return [];
+  if (isInTypePosition(node)) return [];
+  const selection = memberSelection(node, checker);
+  if (!selection) return [];
+
+  // Row three. Keyed on the ambient `Promise` NAMESPACE rather than on the
+  // spelling, through the same predicate `SMITHERS1401` uses, so a local
+  // `const Promise = …` is an ordinary value under any spelling.
+  if (ts.isIdentifier(selection.receiver) && selection.receiver.text === "Promise" &&
+    isAmbientGlobalReference(selection.receiver, checker) &&
+    (selection.name === "race" || selection.name === "any")) {
+    return ["Scheduler"];
+  }
+
+  // Row five. The `Intl` namespace half is keyed on the root name; the
+  // prototype half is keyed on the member, because `"a".localeCompare("b")` has
+  // no root identifier for a name-keyed walk to see. That asymmetry is the
+  // reason row five went unenforced while row four's `Date.now()` did not.
+  if (ts.isIdentifier(selection.receiver) && selection.receiver.text === "Intl" &&
+    isAmbientGlobalReference(selection.receiver, checker)) {
+    // `DateTimeFormat` is row FOUR's clock hazard, and it is already refused as
+    // `SMITHERS1602`. Charging `Locale` on top would publish a row for a
+    // program that does not compile.
+    return selection.name === "DateTimeFormat" ? [] : ["Locale"];
+  }
+  if (LOCALE_SENSITIVE_MEMBERS.has(selection.name) && !isAmbientNamespaceReceiver(selection.receiver, checker) &&
+    // A `Date` instance's `toLocaleString` is row FOUR's host-zone read, not
+    // row five's locale one, and row four refuses it. Charging `Locale` here as
+    // well would publish a requirement row for a program that does not compile.
+    !isAmbientDateReceiver(selection.receiver, checker)) {
+    return ["Locale"];
+  }
+  return [];
+}
+
+/** Whether an expression's TYPE is the TypeScript library's own `Date`. */
+function isAmbientDateReceiver(receiver: ts.Expression, checker: ts.TypeChecker): boolean {
+  return isAmbientLibraryType(checker.getTypeAtLocation(receiver), ["Date"]);
+}
+
+/**
+ * `Date` INSTANCE members whose result is a function of the host time zone.
+ *
+ * `specification/compatibility.mdx` §Determinism-Sensitive Members row four:
+ * these "MUST charge `Clock` even when an explicit instant is supplied, because
+ * they read the host time zone. `getTime()` stays free."
+ *
+ * WIDER THAN THE SEVEN THE ROW NAMES, by the row's own criterion and by the
+ * precedent its neighbour set. Row four names `getHours`, `getDay`,
+ * `getTimezoneOffset`, `toLocaleString`, `toLocaleDateString`,
+ * `toLocaleTimeString`, and `toString`. Every other LOCAL getter reads the zone
+ * for the identical reason and nothing distinguishes them: `getFullYear`,
+ * `getMonth`, `getDate`, `getMinutes`, and `getSeconds` all differ between two
+ * hosts at one instant, and so do `toDateString` and `toTimeString`. Row five
+ * was amended on exactly this argument — "The obligation is the criterion, not
+ * the list" — after its four named members were measured to be twenty-six
+ * short, and row four was four short for the same reason.
+ *
+ * WHAT IS DELIBERATELY ABSENT, because the criterion excludes it rather than
+ * because the list is short:
+ *
+ * - `getTime`, `valueOf`, `toISOString`, `toJSON`, `toUTCString`, and every
+ *   `getUTC*` member are absolute or UTC-anchored. The row says `getTime()`
+ *   stays free; the others stay free by the same sentence.
+ * - `getMilliseconds` is zone-independent: every IANA offset in the modern
+ *   database is a whole number of minutes.
+ * - The SETTERS are not reads. `setHours` interprets its argument in the host
+ *   zone, which makes the resulting instant host-dependent — but the hazard
+ *   there is a WRITE derived from an authored value, and refusing it would
+ *   refuse constructing a local-time instant at all. Recorded here as noticed
+ *   and left, not as missed.
+ */
+const DATE_ZONE_MEMBERS: ReadonlySet<string> = new Set([
+  // The seven the specification names.
+  "getHours", "getDay", "getTimezoneOffset",
+  "toLocaleString", "toLocaleDateString", "toLocaleTimeString", "toString",
+  // The five local getters and two string renderings that carry the identical
+  // hazard for the identical reason.
+  "getFullYear", "getMonth", "getDate", "getMinutes", "getSeconds",
+  "toDateString", "toTimeString",
+]);
+
+/**
+ * A read of a `Date` INSTANCE member that reads the host time zone.
+ *
+ * This is the type-directed analysis row four was blocked on. `Date` was
+ * analyzed at the ROOT IDENTIFIER only, so `new Date(instant)` returned an
+ * empty row — correctly, the instant is authored — and no instance member was
+ * ever inspected afterwards. Measured before this rule existed:
+ * `new Date(0).getTimezoneOffset()` and `new Date(0).toLocaleString("en")` each
+ * compiled with zero diagnostics and an empty requirement row, in the same file
+ * where the `Date.now()` control correctly reported `SMITHERS1602`.
+ *
+ * Reported as `SMITHERS1602` and not as a new code, because it is the same
+ * refusal for the same reason as `Date.now()`: `Clock` has a source-language
+ * surface, so the ambient spelling is additionally refused and the row is
+ * charged by the `Clock.context()` the author writes instead.
+ *
+ * Keyed on the RECEIVER'S TYPE rather than on the member name, which is the
+ * opposite of row five's key and deliberately so. `toString` and `toLocaleString`
+ * are members of nearly every value in the language; a name-keyed rule would
+ * refuse `String(x)`'s `toString` and take the standard library with it.
+ */
+function dateZoneMemberUse(node: ts.Node, checker: ts.TypeChecker): ts.Node | undefined {
+  if (!ts.isPropertyAccessExpression(node) && !ts.isElementAccessExpression(node)) return undefined;
+  if (isInTypePosition(node)) return undefined;
+  const selection = memberSelection(node, checker);
+  if (!selection || !DATE_ZONE_MEMBERS.has(selection.name)) return undefined;
+  // The ROOT spelling `Date.toString` is the namespace object's own member and
+  // is already judged by `ambientRequirementsForMembers`; this rule is about an
+  // instance.
+  if (isAmbientNamespaceReceiver(selection.receiver, checker)) return undefined;
+  if (!isAmbientDateReceiver(selection.receiver, checker)) return undefined;
+  return selection.nameNode;
+}
+
+/**
+ * The locale-sensitive PROTOTYPE members of row five, by name.
+ *
+ * By name and not by receiver type, and the enumeration is the point. Row five
+ * covers `toLocaleString` on `Number`, `BigInt`, `Array`, `Object`, and each of
+ * the TWELVE typed arrays; a rule keyed on one receiver type closes one and
+ * none of the others, the same way the `eval` rule needed all twenty spellings.
+ * One member name covers all sixteen receivers and cannot be short by one.
+ *
+ * The cost of keying on the name is that an author's own `toLocaleString`
+ * method is charged too. That is accepted for the same reason
+ * `compatibility.mdx` accepts `Intl.Collator` in a CLI formatter charging
+ * `Locale`: the walls "MUST be uniform across all `.sm` code", an over-charge
+ * is a row a caller discharges rather than a program that stops compiling, and
+ * the alternative — resolving every receiver to a built-in prototype — is the
+ * type-directed analysis row four needs and row five does not.
+ *
+ * `normalize` is in the row by row five's own criterion and is the one member
+ * whose variance is the host's **Unicode** version rather than its locale.
+ */
+const LOCALE_SENSITIVE_MEMBERS: ReadonlySet<string> = new Set([
+  "localeCompare",
+  "toLocaleUpperCase",
+  "toLocaleLowerCase",
+  "normalize",
+  "toLocaleString",
+]);
+
+/**
+ * Whether a receiver is one of the ambient NAMESPACE objects the per-operation
+ * rules already own.
+ *
+ * `Date.prototype.toLocaleString` reached through an instance is row five's
+ * business, but `Intl` and `Date` as roots are judged by
+ * `ambientRequirementsForMembers` and `dateZoneMemberUse`, and charging them
+ * here as well would publish `Locale` beside a `SMITHERS1602` refusal.
+ */
+function isAmbientNamespaceReceiver(receiver: ts.Expression, checker: ts.TypeChecker): boolean {
+  return ts.isIdentifier(receiver) && HOST_SENSITIVE_GLOBALS.has(receiver.text) &&
+    isAmbientGlobalReference(receiver, checker);
 }
 
 /**
