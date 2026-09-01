@@ -101,7 +101,7 @@ The example this paragraph gave was wrong too, in a way worth recording:
 `21-native-pin/a-pin-reaching-a-host-module-through-a-re-export-is-rejected`,
 deleted with the portability withdrawal on 2026-08-23, and nothing checked that
 the replacement demonstrated the thing being described. Re-derived on 2026-08-28:
-of the 518 cases (510 when this was written; re-derived 2026-09-01), 24 declare `modules` and 10 of those are `diagnostics` cases —
+of the 521 cases (510 when this was written; re-derived 2026-09-01), 24 declare `modules` and 10 of those are `diagnostics` cases —
 and in all 10 every declared diagnostic lands in the **entry**, so the corpus has
 **no instance of this pattern**. `file` is the mechanism that makes writing the
 first one possible; until one exists, this section documents a capability rather
@@ -800,12 +800,20 @@ any of this, and is what the JS-only gate uses.
 
 ## Current `xfail`s
 
-**Eleven, as of 2026-08-28 (third revision that day)**, re-derived with the
-command above rather than by subtracting from the previous figure. All eleven
-name `go`; one of them also names `js`. **None of the eleven is a fail-open** —
+**Twelve, as of 2026-09-01**, re-derived with the
+command above rather than by subtracting from the previous figure. All twelve
+name `go`; one of them also names `js`. **None of the twelve is a fail-open** —
 but read `Markers holding a fail-open: N` on the run rather than this sentence,
 per the paragraph below. Every expectation below is written from the
 documentation and none was softened.
+
+**The 2026-09-01 revision added one and retired none** —
+`17-durable/two-error-classes-under-one-durable-identity-are-rejected`, the last
+row of the table. It is the first marker this table has carried whose cause is
+that a rule **cannot be reached without also reaching a second rule the two
+backends disagree about**, rather than that one backend is missing something.
+It came in with the three `17-durable` cases that closed the durable half of
+`COVERAGE.md`'s "in both, and in no case" set; the other two need no marker.
 
 **The third 2026-08-28 revision retired six and added none**, and it is the
 largest retirement this table has recorded in one pass:
@@ -916,8 +924,9 @@ they pin is present, and only the `SMITHERS1101` row charge is not.
 | `09-foreign-calls/a-foreign-index-signature-read-through-an-element-access-needs-an-adapter` | go | fail-closed (missing row charge) | reports `SMITHERS1506@4:17` and refuses the program; omits the `SMITHERS1101@3:1`. The deliberate pair of the row above — `keyed["width"]` against `keyed.width` — and the pair is the only thing in the corpus that can tell a receiver-keyed rule from one keyed on `ts.PropertyAccessExpression`. On the pre-fix tree the fork compiled this, ran it and exited 0 printing `3`. |
 | `09-foreign-calls/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter` | go | fail-closed (missing row charge) | reports `SMITHERS1506@4:17` and refuses the program; omits the `SMITHERS1101@3:1`. `constructor` is declared only in `lib.es5.d.ts`, which is why this row is the one that shows the member's declaring **file** was never the question either: a foreign object may serve `constructor`, `length` or `toString` from a throwing getter. On the pre-fix tree the fork compiled this, ran it and exited 0 printing `false`. |
 | `09-foreign-calls/destructuring-a-foreign-value-runs-its-accessors` | go | fail-closed (missing row charge) | reports `SMITHERS1506@4:9` — at the binding **pattern**, agreeing with the reference on the position as well as the code — and refuses the program; omits the `SMITHERS1101@3:1`. A property read with no property-access node to see, which is why it is a separate row from the two above. On the pre-fix tree the fork compiled this, ran it and exited 0 printing `3`. |
+| `17-durable/two-error-classes-under-one-durable-identity-are-rejected` | go | fail-closed (extra diagnostic) — **documentation gap** | reports the declared `SMITHERS4124@20:10` at the identical code, position AND sentence, and additionally reports `SMITHERS1150@15:32` ("duplicate Error class name 'Failed' cannot receive a stable module-local identity"), which the reference does not report on this program. **Both backends refuse it**, so this is a diagnostic-set divergence and not a fail-open. The disagreement is about `SMITHERS1150`, not about the durable rule: both implementations refuse two nominal Error classes sharing one name in one module, and they differ on whether a class declared inside a `namespace` is in that module for the purpose. No sentence in `failures.mdx` or `type-system.mdx` settles it. **The case could not avoid the marker**: the durable failure identity became injective on 2026-08-28, so the only programs still reaching `SMITHERS4124` hold two classes with a genuinely identical name in one file — which is exactly `SMITHERS1150`'s input — and a cross-module spelling mints two identities and never collides. The marker is therefore a property of the rule's reachability rather than of the case's drafting. |
 
-**All eleven pin current behaviour rather than a regression**, and each says so
+**All twelve pin current behaviour rather than a regression**, and each says so
 in its own `reason`. The two rows that were a live over-reach in a rule that had
 moved — the arrow-body pair — were the first of this revision's retirements; what
 is left is the **six** row-charge rows, the two union rows and the three
@@ -1156,25 +1165,35 @@ with what the harness would need to close it — the `xfail` register above with
 full evidence, the Go `unsupported` rows, and the documentation conflicts.
 
 It carries **two** code-set subtractions, and the second one is the one to read
-first. The older section finds rules the reference implements and the fork does
-not — five codes today. The newer one finds rules **both** implementations spell
-and no case probes — **nineteen** codes today (this sentence said twenty-seven for three
-revisions after that figure was superseded by the corrected derivation on the page
-itself; re-derived 2026-08-27 with the page's own commands and unchanged at
-nineteen) — which is strictly worse,
+first. The older section finds rules the reference reports and the fork does
+not — sixteen codes today, of which its table discusses the language rules; that
+table's own 2026-09-01 audit found only one of its five rows measuring as written,
+so read the audit before the rows. The newer one finds rules **both** implementations REPORT
+and no case probes — **twenty-five** codes today (2026-09-01; the figure has been
+restated wrongly on this line twice, so derive it rather than quoting it:
+`node scripts/coverage-codes.mjs subtraction`) — which is strictly worse,
 because a reference-only rule at least produces a divergence the moment someone
 writes a case, while a shared unprobed rule produces nothing in either direction,
 ever.
 
-**Check the commands before you quote the totals.** For three revisions the fork
-half of both subtractions was computed by a grep for literal `SMITHERS[0-9]{4}`
-strings under `compiler/`, which counted a code named only in two design
-documents that say it is *retired* and could not see the nineteen durable codes
-the bridge builds by concatenating a prefix constant with a digit suffix. The
-totals it produced looked stable, which is precisely what made them look
-trustworthy. Both commands are corrected in the page, and it prints the diff
-between the old method and the new one so a reader can check the correction
-rather than the result.
+**Do not derive it with a `grep`.** Both halves of both subtractions were
+computed for eight revisions by matching the literal string `SMITHERS[0-9]{4}`
+over whole directories, which cannot tell a code an implementation **reports**
+from a code a comment **mentions**. It counted rules that exist only in sentences
+saying they are *retired*, counted a rule from three comments describing the
+*other* backend, once depended on an **untracked** file in one contributor's
+working tree, and could not see the durable codes the fork builds by
+concatenating a prefix constant with a digit suffix. The totals it produced
+looked stable, which is precisely what made them look trustworthy; re-measured on
+2026-09-01 it had **sixteen** codes wrong, fourteen in the over direction and two
+in the under.
+
+The census is now `scripts/coverage-codes.mjs`, it prints the old-vs-new diff and
+the residual it declined to count, and its method is gated:
+`scripts/coverage-codes.test.mjs` runs it over `scripts/coverage-codes-fixture/`,
+which holds one specimen of every mention shape that has ever fooled this page. If
+the extractor regresses to counting mentions, that gate goes red — verified with
+four mutations, not assumed.
 
 It states the date, tree, and command every figure came from, because those
 figures move. **Re-derive it rather than patching a line**: a reason recorded

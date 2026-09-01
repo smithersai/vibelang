@@ -199,7 +199,29 @@ export async function runNodeTestFiles({ testFiles, cwd = repositoryRoot, stdio 
  * description of `test/`, so it inherits the census and the skip-is-a-refusal
  * policy exactly like every other file in this gate.
  */
-const EXTERNAL_TEST_FILES = ["conformance/runner/selftest.mjs"];
+const EXTERNAL_TEST_FILES = [
+  "conformance/runner/selftest.mjs",
+  // `scripts/coverage-codes.test.mjs` holds the assertions about the code CENSUS
+  // that COVERAGE.md's two subtractions are derived from. It is here for the
+  // same reason as the file above it: the defect it guards is invisible to the
+  // corpus, because it is a defect in how the repository MEASURES itself rather
+  // than in what either backend does. Until 2026-09-01 that measurement was a
+  // grep that could not tell a code an implementation reports from a code a
+  // comment mentions, and it had been wrong in both directions for eight
+  // revisions while the totals it printed looked stable.
+  "scripts/coverage-codes.test.mjs",
+  // `scripts/compiler-options-route.test.mjs` pins SMITHERS6001/6002/6003 on the
+  // route a user reaches them through (`smithers check -p`), and cross-checks the
+  // two backends against one tsconfig. It is here because the conformance corpus
+  // cannot express a tsconfig at all — the expectation schema has no field for
+  // one and neither backend driver sends one — so these three rules are outside
+  // what any `.sm` case can reach, and were pinned on the validator but on no
+  // delivered route and by no differential. It drives `bin/smithers.js`, so it
+  // needs the build this gate already runs after, and it drives the fork, so it
+  // FAILS rather than skips when the pinned checkout is absent: a run that did
+  // not measure the fork must not be reported as one.
+  "scripts/compiler-options-route.test.mjs",
+];
 
 async function main() {
   const testDirectory = join(repositoryRoot, "test");

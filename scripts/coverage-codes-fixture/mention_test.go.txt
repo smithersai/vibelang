@@ -1,0 +1,25 @@
+// SPECIMEN — a TEST file. The census must not read it at all.
+//
+// This is the SMITHERS4117/SMITHERS4121 trap, and it happened twice. SMITHERS4117
+// was in the fork's code set "only by luck", because compiler/fork_durable_test.go
+// happened to spell it out; SMITHERS4121 entered the set from a comment inside an
+// UNTRACKED Go test in one contributor's working tree, which meant a published
+// figure depended on a file that was not in the repository.
+//
+// A test naming a code is evidence about the test, not about the implementation.
+
+package forkbridge
+
+// SMITHERS9105 in a test's comment must not be counted.
+
+func TestTheSubsetRefusesFanOutWholesale(t *testing.T) {
+	// A live assertion string in a test is still not a report site: the code
+	// travels here as data being CHECKED, not as a diagnostic being RAISED.
+	requireCode(t, result, "SMITHERS9106", "fanOut")
+
+	// And the report-shaped spellings a test uses to drive a backend are the
+	// same shapes an implementation uses, which is exactly why excluding the
+	// FILE is the only reliable discriminator.
+	d.fail(node, "9106", "a test may spell a constructed code too")
+	return Diagnostic{Code: "SMITHERS9105"}
+}
