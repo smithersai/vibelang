@@ -101,7 +101,7 @@ The example this paragraph gave was wrong too, in a way worth recording:
 `21-native-pin/a-pin-reaching-a-host-module-through-a-re-export-is-rejected`,
 deleted with the portability withdrawal on 2026-08-23, and nothing checked that
 the replacement demonstrated the thing being described. Re-derived on 2026-08-28:
-of the 510 cases, 24 declare `modules` and 10 of those are `diagnostics` cases —
+of the 518 cases (510 when this was written; re-derived 2026-09-01), 24 declare `modules` and 10 of those are `diagnostics` cases —
 and in all 10 every declared diagnostic lands in the **entry**, so the corpus has
 **no instance of this pattern**. `file` is the mechanism that makes writing the
 first one possible; until one exists, this section documents a capability rather
@@ -209,8 +209,19 @@ swapping each case's fragment for the other's: both turn red on both backends
 with the message diff printed, and both expectation files were restored
 byte-identically (sha256 compared before and after).
 
-**The newest six, added later on 2026-08-26, are the largest single group and
-show the same use at a position where THREE expressions start at once.** They are
+> [!WARNING]
+> **RETIRED 2026-09-01: the six cases this paragraph describes no longer declare
+> any diagnostic, so none of the six fragments exists.** Migration step 11 felled
+> the branch and loop walls; all six flipped from `expect: "diagnostics"` to
+> `expect: "output"` with zero diagnostics and zero `messageContains`, measured
+> by parsing their expectations. The paragraph is kept because **the technique it
+> teaches is still the right one** and the corpus still holds 34 fragments across
+> 34 cases — but do not go looking for these six, and note what their flip cost:
+> `SMITHERS4111` is now spelled by both implementations and declared by no case
+> at all. See `COVERAGE.md` §20 and the eighth re-derivation.
+
+**The newest six, added later on 2026-08-26, were the largest single group and
+showed the same use at a position where THREE expressions start at once.** They were
 the `SMITHERS4111` cases in `17-durable` — `a-logical-or-fallback-on-a-durable-input-is-rejected`,
 `a-nullish-coalescing-fallback…`, `strict-equality-against…`, `an-in-test-on…`,
 `typeof-on…` and `logical-negation-of…`. Each program passes one operator

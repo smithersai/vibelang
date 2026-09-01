@@ -339,6 +339,39 @@ Three consequences a reviewer should carry into everything below:
 
 Numbers move; this is what was measured and when.
 
+**2026-09-01 — migration step 16, the ledger re-stamp. No case was added,
+deleted or edited by this lane; every figure below is a re-measurement of a tree
+that steps 1–15 had already changed.** Measured with
+`node conformance/runner/run.mjs --backend both --jobs 4`, with the pinned
+TypeScript fork exported:
+
+```
+JS reference:  517/518 pass, 0 xpass, 1 xfail, 0 unsupported, 0 divergent, 0 unmeasured
+Go fork match: 507/518 match the reference, 0 xpass, 11 xfail, 0 unsupported, 0 divergent, 0 unmeasured
+Backend agreement: 508/518 identical observations
+Markers holding a fail-open: 0
+exit 0
+```
+
+`node scripts/oracle-differential.mjs`: **518 cases, 59 divergent, product
+ACCEPTS what the corpus refuses 0**, and "the measured divergence set matches
+`conformance/product-divergence.json` exactly", exit 0. The other gates:
+`bun run check` exit 0 with a Go census of **1609**; `bun test` in `poc/`
+**2634 pass, 1 skip, 0 fail**; `node scripts/node-test-gate.mjs` census **197**;
+`go build ./... && go vet ./...` clean.
+
+> [!NOTE]
+> **This log skipped four days and eight revisions.** The entry below it is dated
+> 2026-08-27 at 507 cases; the corpus passed through 511, 515 and 518 with
+> nothing written here, and migration steps 1–15 — which felled the durable
+> walls, replaced the static Plan with the Effect Manifest, retired
+> `SMITHERS1807`, and made determinism-sensitive members charge requirements —
+> are recorded in this section not at all. The gap is why step 16 found stale
+> figures in six separate places rather than one. **A log that is only written
+> when a corpus lane runs cannot see a revision that changes the implementation
+> and leaves the corpus alone**, which is exactly what most of this migration
+> was.
+
 **2026-08-27, ninth revision — the durable-projection revision.** Four cases
 added, **503 → 507**, all in `17-durable`. **No new `support/` module, no new
 asset, no new `.mod.sm`**; **no new `xfail` marker and none retired** (18 before
@@ -1596,6 +1629,55 @@ and found correct**.
 | `SMITHERS1704` | labeled control flow the POC cannot lower label-aware | `poc/src/language/semantic.ts:3760` | no | no | a POC-boundary gate rather than a specification sentence, but it is still a rejection one implementation makes and the other does not, and no case would notice either behaviour. |
 | `SMITHERS1708` | a value expression in an argument whose callee "cannot be proven order-stable" | `poc/src/language/recover.ts:1337` | **no — and that is correct**, see below | no, **deliberately** | **the one row in this table whose gap has been measured and found not to be a gap.** It entered the table this revision because the old command misread two design documents as an implementation. The fork's design says it retires the rule ("there is no hoisting, so there is no evaluation order to preserve and no callee-stability proof to make"), and that claim was tested rather than taken: handed `return pick()(score, if (on) { … } else { … })` where both `pick()` and the branch push to an observable log, the fork compiles it and prints `callee,arg` — the authored order, identical to the remedy form (`const call = pick()`) and to the same program with no expression-`if` in it at all. So this is a **reference-side provability limitation**, not a fork fail-open, and a case declaring `SMITHERS1708` would make the fork's correct behaviour a conformance failure. Written, measured, and deliberately not landed; see §13.21. |
 
+> [!CAUTION]
+> **Re-measured 2026-09-01 (migration step 16). Only ONE of the five rows in the
+> table above still measures the way it is written, and two of the four errors
+> are PRE-EXISTING rather than migration damage.** This is the section that calls
+> itself the most important on the page, so the audit is stated row by row:
+>
+> - **`SMITHERS1106` — still correct.** `R=1, F=0`. The one surviving row.
+> - **`SMITHERS1704` and `SMITHERS1706` — WITHDRAWN FROM THE REFERENCE, and this
+>   table has cited them at dead paths ever since.** Both measure `R=0, F=0`:
+>   they appear nowhere in `poc/src`, `src` or `compiler`, only in
+>   `poc/PRODUCTION_READINESS.md:740-741` prose. The file this table cites for
+>   `1706`, `poc/src/language/control-flow.ts`, **does not exist**. `git log -S`
+>   dates the removal to `4e1ff5c` ("execute the 2026-08-23 specification
+>   withdrawal") — so these two rows have been wrong since 2026-08-23, through
+>   every revision since, including the four that re-derived the subtraction
+>   below and reported it stable. Nothing in this migration caused it; the
+>   migration is only what made someone re-run the greps.
+> - **`SMITHERS1105` — no longer reference-only BY THE COMMAND, and the command
+>   is wrong.** It measures `F=1`, but all three fork occurrences are
+>   **comments** (`compiler/fork_panic_test.go:81,177`,
+>   `compiler/forkbridge/mustconsume.go.txt:60`) describing the *reference's*
+>   behaviour. The fork still implements no `SMITHERS1105`. The corpus `xfail`
+>   note on `09/a-fallible-getter-in-an-argument-still-needs-a-contract` already
+>   warned in as many words that the bare-code grep had stopped working here and
+>   said to "grep for the quoted report argument, not the bare code"; this table
+>   did not act on it. **A rule the fork does not implement now reads as
+>   implemented — the instrument fails OPEN on the row it exists to catch.**
+> - **`SMITHERS1708` — NEITHER implementation spells it, and this row claims the
+>   reference does.** It measures `R=0, F=1`. The reference side is the new half:
+>   `SMITHERS1708` appears nowhere in `poc/src` or `src`, so the citation in the
+>   row above — `poc/src/language/recover.ts:1337` — is dead (the *file* exists;
+>   the code is not in it). The fork side is the already-documented artefact: its
+>   only occurrences are `compiler/FORK-SEAM-DESIGN.md:662,1460` and
+>   `compiler/GRAMMAR-SPIKE.md:426`, three design-document sentences saying the
+>   rule is **retired**. So a row whose whole subject is "the reference rejects
+>   this and the fork does not" is, measured, a rule *neither* implementation
+>   has. The row's conclusion — that no case should declare it — survives intact
+>   and for a better reason than it gives.
+>
+> **Four of the five errors are one defect: the extraction reads text, and text
+> about a rule is not the rule.** Counting the `SMITHERS1805` and `SMITHERS1708`
+> cases this page already records, and the `SMITHERS1807` phantom the eighth
+> re-derivation below adds, that defect has now been caught **six** times on
+> both sides of the subtraction. It is not an anomaly to note each revision; it
+> is the method. Until the extraction distinguishes a report site from a mention,
+> every figure in this section and the next carries an unquantified error bar,
+> and this table's own membership is the demonstration: **of five rows, one
+> measures as written.**
+
 **One row entered this table this revision and none left it.** `SMITHERS1708`
 entered not because anything changed in either implementation but because the
 method was corrected — which is the more uncomfortable of the two reasons, since
@@ -1771,6 +1853,100 @@ SMITHERS4100 SMITHERS4104 SMITHERS4105 SMITHERS4108 SMITHERS4109 SMITHERS4110
 SMITHERS4113 SMITHERS4115 SMITHERS4116 SMITHERS4117 SMITHERS4118 SMITHERS4119
 SMITHERS4120 SMITHERS4199
 SMITHERS5215 SMITHERS5216 SMITHERS5217
+```
+
+> [!IMPORTANT]
+> **The five `#` figures in the block above are the 2026-08-26 measurement and no
+> longer reproduce.** Running those exact commands on 2026-09-01 prints
+> `R = 117, F = 118, C = 70, B = 97, subtraction = 27`. The commands are still
+> correct; the tree moved under them. Read the EIGHTH re-derivation immediately
+> below before quoting any figure from this section.
+
+### Re-derived an EIGHTH time on 2026-09-01 (migration step 16) — **the largest move the figure has ever made, and the first one in the wrong direction**
+
+*Prediction, written before any command was run.* Steps 11–15 delete the static
+Plan, replace it with the Effect Manifest, retire `SMITHERS1807`, and add no new
+codes at step 14. So R should fall by one (`1807` leaves the reference), F should
+be unchanged, and the corpus half should be unchanged, since the migration was
+described as rewriting case *bodies* rather than case *expectations*. Predicted
+subtraction: **19 → 19, same nineteen.**
+
+*Measurement, running the three commands above verbatim from the repository root
+on the quiescent tree.* **Every input moved and the prediction was wrong on all
+four of them:**
+
+```
+R = 117   (was 111)      F = 118   (was 113)      B = 97   (was 92)
+C =  70   (was  74)      comm -13 B C = NONE      subtraction = 27   (was 19)
+```
+
+**97 − 70 = 27.** The second `comm` is still empty, so the subtraction still
+means what it says. **Eight codes ENTERED the set and none left it** — the first
+net regression this figure has recorded:
+
+```
+SMITHERS1151 SMITHERS4106 SMITHERS4111 SMITHERS4112 SMITHERS4124
+SMITHERS6001 SMITHERS6002 SMITHERS6003
+```
+
+The full 27:
+
+```
+SMITHERS1151 SMITHERS1901 SMITHERS1902
+SMITHERS4100 SMITHERS4104 SMITHERS4105 SMITHERS4106 SMITHERS4108 SMITHERS4109
+SMITHERS4111 SMITHERS4112 SMITHERS4113 SMITHERS4115 SMITHERS4116 SMITHERS4117
+SMITHERS4118 SMITHERS4119 SMITHERS4120 SMITHERS4121 SMITHERS4124 SMITHERS4199
+SMITHERS5215 SMITHERS5216 SMITHERS5217
+SMITHERS6001 SMITHERS6002 SMITHERS6003
+```
+
+**The eight split cleanly into two causes, and only one of them is the
+migration's doing.**
+
+**Four are codes the corpus STOPPED declaring** — `4106`, `4111`, `4112` and
+`4124`. Step 11 felled the branch and loop walls; `compiler/forkbridge/durable.go.txt:1046`
+records it in as many words (`// WALL 1 (4106) and WALL 2 (4107), withdrawn.`).
+The `17-durable` cases that declared those refusals were rewritten into
+ACCEPTANCES that assert `Flow.manifest`, and the declarations went with them.
+**The rules did not leave either implementation — only the cases left.** That is
+the exact bucket this section exists to count, arrived at from the other
+direction than usual: not a rule shipped without a case, but a case retired off a
+rule that is still there. Measured directly rather than inferred: the corpus now
+declares **two** codes in the whole `SMITHERS41xx`/`42xx` space, `SMITHERS4103`
+and `SMITHERS4110`, where §20 still says seven.
+
+**Four are new rules that landed WITHOUT cases** — `SMITHERS1151` (nominal error
+identity) and `SMITHERS6001`/`6002`/`6003` (the §Mandatory and §Forbidden
+compiler-options enforcement, SA-5). These are the `SMITHERS1604` shape running
+in reverse: a rule that lands *with* its case never spends a day in this table,
+and these four landed without one, so they enter it on arrival.
+
+**A seventh axis, and it is the reference side of the sixth.** `SMITHERS1807`
+was **retired by step 13** and is spelled nowhere as a rule — its only remaining
+occurrences are prose recording its own retirement (`poc/src/language/compile.ts:374,376`,
+`poc/src/language/project-compile.ts:166`, three comments in
+`effect-lowering.test.ts`, and `docs/DECISIONS.md:255,257`). The first `grep`
+counts every one of them, so **R still contains a code the reference no longer
+implements**, and `SMITHERS1807` sits in the reference-only column as a phantom.
+This is precisely the `SMITHERS1805` trap this page documented on the reference
+side and the `SMITHERS1708` trap it documented on the fork side — **now caught a
+third time, on a code retired by the very migration that is re-stamping the
+page.** Three occurrences of one instrument defect is no longer a curiosity; the
+extraction reads text, and text about a rule is not the rule.
+
+**Four codes changed columns and the subtraction cannot see it at all.**
+`SMITHERS4107`, `4114`, `4122` and `4123` are now **reference-only** (`R=1, F=0`):
+the fork withdrew `4107` with the walls, and `4122`/`4123` are visible only to
+the `suffix:` grep the seventh revision added, which is still not part of the
+three recorded commands. A code moving from "in both" to "reference-only" leaves
+the subtraction *unchanged* while creating exactly the fail-open this page's
+opening section is about. Anyone quoting the 27 should also run:
+
+```sh
+comm -23 /tmp/R /tmp/F   # reference-only: 20
+comm -13 /tmp/R /tmp/F   # fork-only:      21
+grep -oh 'suffix: *"[0-9]\{4\}"' compiler/forkbridge/durable.go.txt |
+  grep -o '[0-9]\{4\}' | sed 's/^/SMITHERS/'      # 4117 4121 4122 4123
 ```
 
 ### Re-derived a SEVENTH time on 2026-08-27 (the durable-projection revision) — **the figure MOVED, and the command is wrong in a second way**
@@ -2100,19 +2276,25 @@ until this revision.
 | `SMITHERS3006` | the retired `/** @native */` JSDoc marker | `poc/src/targets/classify.ts:830` (the page said `:449` for three revisions; that line no longer holds the rule) | **not writable — severity is `"warning"`.** See observation gap #11: the harness filters to `severity === "error"` on both backends, so a warning cannot be observed at all. This one is *uncoverable*, not merely uncovered. |
 | `SMITHERS4100` | reference: any diagnostic the durable source's own check produced. fork: a `.run` input that is not assignable to the Action's checked input contract | ref `poc/src/durable/source-compiler.ts:2566`; fork `compiler/forkbridge/durable.go.txt:729` | **measured this revision and deliberately not written: the two implementations mean different things by this number.** The reference's `SMITHERS4100` is a *wrapper* that re-emits the first checker diagnostic of the durable source with the checker's own message and position; the fork's is one specific assignability rule. They may coincide on an input-mismatch program and may not, and a case would pin whichever reading its author guessed. Named here so whoever owns the durable bridge can settle it, rather than guessed at. |
 | `SMITHERS4117` | reference: a `fanOut` argument that is not one inline synchronous single-parameter arrow. fork: `fanOut` is not implemented by the Go durable subset at all | ref `poc/src/durable/source-compiler.ts:1690`, `:1703`; fork `compiler/forkbridge/durable.go.txt:562` | **measured this revision and deliberately not written: same problem as `4100`, one step worse.** The reference reports on the malformed arrow; the fork reports on the `fanOut` call, for *any* `fanOut`. A program malformed enough to reach the reference's rule reaches the fork's blanket refusal at a different node, so the case would be a position divergence dressed as a rule. |
-| `4104`, `4105`, `4108`–`4110`, `4113`, `4115`, `4116`, `4118`–`4120`, `4199` | the rest of the durable template-compilation subset | `poc/src/durable/source-compiler.ts`; `compiler/forkbridge/durable.go.txt` | **still the largest single block in this table, and three codes smaller than a revision ago.** It read "nineteen codes both implementations spell, none probed"; **`4107`, `4111` and `4112` left the set on 2026-08-26** when §20's twelve refusal cases landed, each measured green on **both** backends at the identical code and authored position. **Twelve remain in this row, and fourteen `41xx` codes remain in the set** once `4100` and `4117` — the two rows above, where the implementations do not mean the same rule — are counted back in. (This cell said "Sixteen remain" and enumerated `4118`–`4123` until the 2026-08-26 requirement-row revision re-ran the subtraction: `4121`, `4122` and `4123` are **not** in the derived set and appear nowhere in it, so the prose count and the code list had drifted apart from each other as well as from the derivation. Corrected against the machine-computed list rather than by arithmetic on the old sentence.) They are reachable from phase 1, which is the phase the corpus does reach — see §20's closing paragraph, which names 20.8/20.9/20.11/20.13/20.14/20.21/20.25 as the obligations behind them. This is still where the next revision buys the most. |
+| `4104`, `4105`, `4106`, `4108`, `4109`, `4111`–`4113`, `4115`, `4116`, `4118`–`4121`, `4124`, `4199` | the rest of the durable template-compilation subset | `poc/src/durable/source-compiler.ts`; `compiler/forkbridge/durable.go.txt` | **RE-DERIVED 2026-09-01 and it GREW — this is the largest single block in this table and it is now four codes larger than a revision ago, not three smaller.** The previous cell read: "`4107`, `4111` and `4112` left the set on 2026-08-26 when §20's twelve refusal cases landed… Twelve remain in this row, and fourteen `41xx` codes remain in the set." **Two of those three came back and two more joined them.** Migration step 11 felled the branch and loop walls and rewrote the `17-durable` refusal cases into acceptances asserting `Flow.manifest`, so `4106`, `4111`, `4112` and `4124` are no longer declared by any case while both implementations still spell them. `4110` is the only durable code to have left the set and stayed out — it is still declared. `4107` left the set for a different and more serious reason and does not belong in this row any more: **the fork withdrew it entirely**, so it is now reference-only (`R=1, F=0`) and invisible to a subtraction that only counts the intersection. **Sixteen are listed in this row, and eighteen `41xx` codes are in the set** once `4100` and `4117` — the two rows above, where the implementations do not mean the same rule — are counted back in. Corrected against the machine-computed list rather than by arithmetic on the old sentence, which is how the previous two corrections of this same cell were also made; that this cell has now drifted three revisions running is itself the finding. They are reachable from phase 1, which is the phase the corpus does reach — see §20's closing paragraph, which names 20.8/20.9/20.11/20.13/20.14/20.21/20.25 as the obligations behind them. This is still, and by a wider margin than ever, where the next revision buys the most. |
 | `SMITHERS5215` | one path being both a compiler asset module and an authored/runtime code module | `poc/src/build/source-assets.ts:1150`, `:1161`, `:1198`, `:1328` | **measured a revision ago and deliberately not landed.** Reachable on the reference — a `.ts` file staged through the `assets` channel and also imported as code reports `SMITHERS5215@1:20` — but the fork reports `SMITHERS5209` at the same position instead ("asset must be a staged regular file beneath the project root"). Whether that is a fork defect or a consequence of the two-kinds wire protocol (gap #3: an asset crosses as `"typescript"`, so the fork cannot tell a staged asset from a staged code file) **cannot be decided from the conformance side**. Re-checked this revision: unchanged. |
 | `SMITHERS5216` | a generated asset identity colliding with a real path | `poc/src/build/source-assets.ts:1282` | **not writable.** Requires a real file at `.smithers-generated/assets/<digest>.ts` inside the project root; the staged path is derived from the asset's content digest, so a case would have to hard-code a digest and would break the moment the fixture's bytes changed. |
 | `SMITHERS5217` | a generated-module construction failure | `poc/src/build/source-assets.ts:1291` | **not usefully writable.** It carries a third party's exception text and is reached only when `generatedModule(build)` throws, which the built-in loaders do not do for any input a case can stage. The neighbouring `SMITHERS5213` covers the reachable half of "the loader failed" and is pinned. |
 
-**Fourteen of the nineteen are the durable block** — twelve in the
+**Eighteen of the twenty-seven are the durable block** — sixteen in the
 template-compilation row above plus `4100` and `4117` — and they are writable
-today in the sense that the corpus reaches the phase that emits them; the three
-that left on 2026-08-26 prove it, since each one's case was written from the
-specification and was green on both backends the first time it ran. Of the
-remaining five, **two are uncoverable by construction** (`1901`, `1902`, the
-formatter's own rules, reachable only through `smithers format`) and **three are
-unwritable for a recorded mechanical reason** (`5215`, `5216`, `5217`). Two of
+today in the sense that the corpus reaches the phase that emits them; the cases
+that left the set on 2026-08-26 proved it, since each one's case was written from
+the specification and was green on both backends the first time it ran. **That
+proof now cuts the other way and is the sharpest thing on this page:** those same
+cases were rewritten by migration step 11 into acceptances, four of the codes
+came back into the set, and the block is larger than it has ever been. A case
+that pins a refusal is an asset that can be spent, and step 11 spent four of them
+without recording that it had. Of the remaining nine, **two are uncoverable by
+construction** (`1901`, `1902`, the formatter's own rules, reachable only through
+`smithers format`), **three are unwritable for a recorded mechanical reason**
+(`5215`, `5216`, `5217`), and **four are new rules that landed without a case at
+all** (`1151`, `6001`, `6002`, `6003`) and are ordinary corpus work. Two of
 the fourteen — `4100` and `4117` — are the category the previous revision had to
 open: **codes both implementations spell where the two implementations do not
 agree on what the code means.** A subtraction over code *numbers* cannot see
@@ -2361,7 +2543,7 @@ compiler knows the complete closure**". Negative Layer cases therefore place the
 | 9.4b | **the allowlist is wide enough to carry the standard library: the ECMAScript-262 global object stays unconditionally available** | compatibility.mdx §Host Globals ("Facilities truly present in every supported JavaScript environment MAY be unconditional globals"); DECISIONS Locked | **covered as of 2026-08-26** | `20/the-ecmascript-global-object-stays-available`, an `output` case exercising fifteen ECMA-262 clause-19 members. 9.4's `20/universal-globals-stay-available` covers four names; this covers the breadth, because the failure mode of inverting a denylist is an allowlist that is **too narrow**, and a narrow one takes the whole `.sm` standard library with it. Green before the change and after, so it was proved enforced by mutation rather than by a pre-fix demonstration. |
 | 9.4c | **an identifier the program declares nowhere is an ordinary unresolved name, not an ambient host global** | compatibility.mdx §Host Globals, read for what it does NOT reach | **covered as of 2026-08-26** | `20/an-unresolved-name-is-not-a-host-global` (`TS2304`). A SMITHERS error preempts the TypeScript check entirely, so answering a typo with "ambient host global … is unavailable" would REPLACE the diagnostic that names the real problem. `19/builtin-optional-is-unresolved` pins this shape for a type name; this pins it for a **value**, which is the position the allowlist reads. Both backends report `TS2304` here from different stages — the reference from its stock check of the emitted module, mapped back through the compiler's source map — so it was confirmed on both rather than inferred from the type-name case. |
 | 9.1c | **…and a host-authority namespace with NO identifier to key on is still host authority: `import.meta` is refused, and `new.target` is not** | compatibility.mdx §Host Globals, by the allowlist's own criterion — ECMA-262 delegates the properties of `import.meta` to the host through `HostGetImportMetaProperties`, which is precisely what makes something a host facility | **covered as of 2026-08-26, as a pair, and it also closes a live BACKEND DIVERGENCE** | `checkHostGlobals` is identifier-keyed and `import.meta` is a **meta-property**, so it carries no identifier and the whole rule never saw it: `import.meta.url` compiled with `requirements: []` on both backends and **ran, printing the host filesystem path**, while `__dirname` is refused BY NAME two rows above. `20/the-import-meta-namespace-is-refused` declares four `SMITHERS1601`s, all at the `import` keyword — the refusal is the namespace, not the property selected off it, which is what makes a fifth spelling nobody enumerated refuse too. Two of the four (`dirname`, `filename`) were a live divergence before this revision: the reference accepted them and the fork answered `TS2339`, which is exactly the "`types: []` makes the two agree by construction" claim failing for an interface whose shape still comes from whichever ambient lib each backend carries. The guard is `20/the-other-meta-property-stays-available`, an `output` case: the two meta-properties share a syntax node and differ only in a keyword token, so the cheapest wrong implementation refuses the **node** — it passes the refusal case perfectly and is caught only here. Not written and recorded as such: `import.meta` inside an imported `.ts` module stays accepted on both backends (compatibility.mdx §Source Relationship), and pinning it needs a file in `conformance/support/`. |
-| 9.1e | **DETERMINISM-HOSTILE globals are refused by NAME even though ECMA-262 publishes them, and the refusal offers no capability because none could exist** (`SMITHERS1605`) | compatibility.mdx §Determinism-Sensitive Members, rows one and two (`WeakRef`, `FinalizationRegistry` and `SharedArrayBuffer`, `Atomics` "MUST NOT be unconditional globals") | **covered as of 2026-08-28, and all four were a fail-open on BOTH backends until that day** | The gap was not a missing rule but an asserting one: all four were *listed* in `UNIVERSAL_GLOBALS` (`poc/src/language/semantic.ts`) and in the fork's byte-for-byte `universalGlobals` (`compiler/forkbridge/hostrules.go.txt`), so the allowlist stated the opposite of two `MUST NOT`s. Measured: `new WeakRef(o).deref()`, `new FinalizationRegistry(() => {})`, `new SharedArrayBuffer(8)` and `Atomics.load(…)` each compiled with zero diagnostics and an empty requirement row, in the same file where the `Date.now()` control reported `SMITHERS1602`. **THE CODE IS THE POINT**: this is not `SMITHERS1601`, whose message ends "access it through a Context capability", because the two rows say in as many words that no capability can mediate these and no journal entry can describe them — so 1601 would name a remedy that cannot be built. `SMITHERS1604` is the precedent for a refusal that carries its own reason for the same argument. Unlike 1604 the line is the **name** rather than the operation, because every value use of `WeakRef` is construction and every member of `Atomics` is a shared-memory operation, so there is no safe read to preserve. **The acceptance guard is not optional and is `20/determinism-hostile-siblings-stay-available`**: `WeakMap`, `WeakSet`, `ArrayBuffer`, `DataView` and the typed arrays all compile and RUN. Without it the rule can be widened to "any weak collection or buffer" and the refusal case stays green — the same shape 9.4b guards for the allowlist and `20/the-function-type-and-prototype-test-stay-available` guards for 9.1d. Refusal case: `20/determinism-hostile-globals-are-refused`. Rows three, four and five of the same specification table (`Promise.race`/`any` → `Scheduler`, `Date` instance members → `Clock`, `Intl`/`localeCompare` → `Locale`) are **not** covered here and stay recorded as `(SA-4)`. Re-measured 2026-08-28, NOT because "the ambient vocabulary" lacks a requirement kind — the requirement row admits any `Context` subclass and `Scheduler.context()` already publishes `requirements: ["Scheduler"]` (a locally declared `Locale` publishes `["Locale"]`), while `Date.now()` publishes `requirements: []` beside its `SMITHERS1602`, so no ambient site charges a row for any kind and `"Clock" | "Random" | "Host"` is a diagnostic-category discriminator that needs nothing added to it. **The verb was DECIDED on 2026-08-28: charge.** `Promise.race`/`Promise.any` stay legal and publish a `Scheduler` requirement a layer satisfies; `durable-execution.mdx` §Deterministic Scheduling won unchanged and `compatibility.mdx` was amended to match — "charge" is now defined under its table, and the criterion that reconciles the two pages is stated there: the ambient spelling is *additionally* refused only where the capability has a source-language surface the author could write instead, which is why `Clock`/`Random` stay `SMITHERS1602`/`1603`. **No code implements it here**; it needs an ambient site injecting a nominal key into `R` plus a `race`→scheduler lowering and lands with migration step 7, and `Promise.race` is unchanged today — measured compiling, running, and publishing an empty row beside `Promise.all`, which does the same. Row five's verb is still open, because it turns on whether `Locale` is given a source-language surface. Measured cost of settling row three: **0** of 591 authored `.sm` files name `Promise.race`/`Promise.any`, so it moves no case and no test. Row five's cost is larger than previously recorded, because its MEMBERSHIP was: the row named four ICU members and the hazard covers **thirty**, re-derived on 2026-08-28 by sweeping the ambient lib for `Intl` value members, `toLocale*`, `localeCompare` and `normalize` and measuring each spelling — an earlier estimate of fifteen was fifteen short. All thirty measure **identically** today (no diagnostic, empty row, both backends), so widening the row recorded no behavioural change; `20/intl-locale-formatting-is-not-a-clock-read` and its mirrored fork subtest were widened with it (see 9.9a) and `Intl.getCanonicalLocales` no longer "stays legal either way", being a function of the host's CLDR alias data. `Error.prototype.stack` is host-varying, named by no page, measures unclassified, and is deliberately LEFT undecided: ECMA-262 publishes no such property, so the allowlist's ECMA-262-membership criterion does not reach it; its variance is across engines rather than between two hosts at one instant, which the page answers with a SHOULD about pinning an engine version; and it is the only stack-trace surface the language has. |
+| 9.1e | **DETERMINISM-HOSTILE globals are refused by NAME even though ECMA-262 publishes them, and the refusal offers no capability because none could exist** (`SMITHERS1605`) | compatibility.mdx §Determinism-Sensitive Members, rows one and two (`WeakRef`, `FinalizationRegistry` and `SharedArrayBuffer`, `Atomics` "MUST NOT be unconditional globals") | **covered as of 2026-08-28, and all four were a fail-open on BOTH backends until that day** | The gap was not a missing rule but an asserting one: all four were *listed* in `UNIVERSAL_GLOBALS` (`poc/src/language/semantic.ts`) and in the fork's byte-for-byte `universalGlobals` (`compiler/forkbridge/hostrules.go.txt`), so the allowlist stated the opposite of two `MUST NOT`s. Measured: `new WeakRef(o).deref()`, `new FinalizationRegistry(() => {})`, `new SharedArrayBuffer(8)` and `Atomics.load(…)` each compiled with zero diagnostics and an empty requirement row, in the same file where the `Date.now()` control reported `SMITHERS1602`. **THE CODE IS THE POINT**: this is not `SMITHERS1601`, whose message ends "access it through a Context capability", because the two rows say in as many words that no capability can mediate these and no journal entry can describe them — so 1601 would name a remedy that cannot be built. `SMITHERS1604` is the precedent for a refusal that carries its own reason for the same argument. Unlike 1604 the line is the **name** rather than the operation, because every value use of `WeakRef` is construction and every member of `Atomics` is a shared-memory operation, so there is no safe read to preserve. **The acceptance guard is not optional and is `20/determinism-hostile-siblings-stay-available`**: `WeakMap`, `WeakSet`, `ArrayBuffer`, `DataView` and the typed arrays all compile and RUN. Without it the rule can be widened to "any weak collection or buffer" and the refusal case stays green — the same shape 9.4b guards for the allowlist and `20/the-function-type-and-prototype-test-stay-available` guards for 9.1d. Refusal case: `20/determinism-hostile-globals-are-refused`. Rows three, four and five of the same specification table (`Promise.race`/`any` → `Scheduler`, `Date` instance members → `Clock`, `Intl`/`localeCompare` → `Locale`) are **not** covered here and stay recorded as `(SA-4)`. Re-measured 2026-08-28, NOT because "the ambient vocabulary" lacks a requirement kind — the requirement row admits any `Context` subclass and `Scheduler.context()` already publishes `requirements: ["Scheduler"]` (a locally declared `Locale` publishes `["Locale"]`), while `Date.now()` publishes `requirements: []` beside its `SMITHERS1602`, so no ambient site charges a row for any kind and `"Clock" | "Random" | "Host"` is a diagnostic-category discriminator that needs nothing added to it. **The verb was DECIDED on 2026-08-28: charge.** `Promise.race`/`Promise.any` stay legal and publish a `Scheduler` requirement a layer satisfies; `durable-execution.mdx` §Deterministic Scheduling won unchanged and `compatibility.mdx` was amended to match — "charge" is now defined under its table, and the criterion that reconciles the two pages is stated there: the ambient spelling is *additionally* refused only where the capability has a source-language surface the author could write instead, which is why `Clock`/`Random` stay `SMITHERS1602`/`1603`. **IMPLEMENTED 2026-09-01 by migration step 14, and the two sentences this cell used to carry are now false and are replaced rather than deleted.** They read: "**No code implements it here**; it needs an ambient site injecting a nominal key into `R` plus a `race`→scheduler lowering and **lands with migration step 7**, and `Promise.race` is unchanged today — measured compiling, running, and publishing an empty row beside `Promise.all`", and "Row five's verb is still open". Both rows landed, at step **14** rather than 7: `poc/src/language/semantic.ts:8818` returns `["Scheduler"]` for `Promise.race`/`Promise.any` and `:8830` returns `["Locale"]` for the ICU surface minus `Intl.DateTimeFormat`, which stays `SMITHERS1602` as row four. Step 14 added **no** diagnostic code — the obligation is the charge alone, which is exactly what makes the next two paragraphs necessary. **THE CORPUS CANNOT OBSERVE EITHER ROW, AND THIS PAGE MUST NOT BE READ AS CLAIMING IT DOES.** A charge emits no diagnostic and prints nothing, and the corpus expectation schema has **no key for a requirement row at all** — parsing all 518 expectations yields exactly `title`, `expect`, `stdout`, `notes`, `diagnostics`, `typescript`, `xfail`, `modules`, `entry`, `assets`. So no case can spell "this program charges `Locale`", and none does: step 14 moved **zero** corpus cases, and `20/intl-locale-formatting-is-not-a-clock-read` did not move even though its title was rewritten to say "the whole ICU-backed class charges Locale" — the title now claims something the case's `stdout` assertion structurally cannot test. That is a **sixth observation gap of the harness itself**, and it is the one this row now depends on. **AND THERE IS NO CROSS-BACKEND PARITY FOR THESE TWO ROWS: the Go fork cannot represent them.** `compiler/forkbridge/lowering.go.txt:1796` types the row side table as `rowSet map[*ast.Symbol]errorRow`, and `addRow` at `:1798-1801` opens with `if row.symbol == nil { return false }` — a silent drop. `Scheduler` and `Locale` have no declared class symbol, so a fork row for either is discarded without a diagnostic. Step 14 removed the no-op wiring rather than ship something that reads as mirrored, and recorded that on `rowSet` and in `compatibility.mdx`. Any future claim of two-backend agreement on rows three and five is false until `rowSet` can key a symbol-less nominal row. Measured cost of settling row three: **0** of 591 authored `.sm` files name `Promise.race`/`Promise.any`, so it moves no case and no test. Row five's cost is larger than previously recorded, because its MEMBERSHIP was: the row named four ICU members and the hazard covers **thirty**, re-derived on 2026-08-28 by sweeping the ambient lib for `Intl` value members, `toLocale*`, `localeCompare` and `normalize` and measuring each spelling — an earlier estimate of fifteen was fifteen short. All thirty measure **identically** today (no diagnostic, empty row, both backends), so widening the row recorded no behavioural change; `20/intl-locale-formatting-is-not-a-clock-read` and its mirrored fork subtest were widened with it (see 9.9a) and `Intl.getCanonicalLocales` no longer "stays legal either way", being a function of the host's CLDR alias data. `Error.prototype.stack` is host-varying, named by no page, measures unclassified, and is deliberately LEFT undecided: ECMA-262 publishes no such property, so the allowlist's ECMA-262-membership criterion does not reach it; its variance is across engines rather than between two hosts at one instant, which the page answers with a SHOULD about pinning an engine version; and it is the only stack-trace surface the language has. |
 | 9.1d | **DYNAMIC CODE EVALUATION reaches the whole host namespace with no identifier for the allowlist to key on, so the operation is refused while the name stays resolvable** (`SMITHERS1604`) | compatibility.mdx §Host Globals (`process`… MUST NOT be unconditional globals in authored `.sm`) and (host-sensitive operations MUST still use capabilities), read against `eval`; **and it CONTRADICTS compatibility.mdx §Dynamic Features, which needs amending — see 1.6** | **covered as of 2026-08-27, six cases, and twenty of twenty-two measured spellings were a fail-open on BOTH backends until that day** | The escape: `eval("process.platform")` returned the host platform, `eval("Date.now()")` read the clock, `eval("Math.random()")` bypassed `SMITHERS1603` — every one with `failures: []` and `requirements: []` and every one RUNNING, so 9.1, 9.2 and 9.3 were all escapable through one string. Five refusal cases: `20/eval-reaches-the-host-namespace`, `20/eval-reaches-the-clock-and-randomness` (two diagnostics, one per host-sensitive operation, in separate functions so neither can be a cascade of the other), `20/the-function-constructor-is-dynamic-code-evaluation` (`new Function` beside `Reflect.construct(Function, …)`, which writes no `new` keyword — a rule keyed on `NewExpression` closes one and not the other), `20/a-callables-constructor-is-the-function-constructor` (the spelling that reaches the constructor **without naming it**, since every callable inherits `constructor` from `Function.prototype`), and `20/an-aliased-constructor-key-is-the-function-constructor`, which is the intersection with 12.12a and the only case showing either rule is total. **THE RULE IS ON THE READ, NOT THE CALL**, which is why every declared column is an identifier or a member name rather than a call site: twenty of the twenty-two spellings reach the callee through a read — an alias, `(0, eval)`, a shorthand `{ eval }`, `Reflect.apply(Function, …)`, `Function.prototype.constructor` — so a rule keyed on the call closes one spelling and none of the others. `Date` already draws the line here; 9.4a's `20/the-date-constructor-in-a-value-position-is-still-charged` is the same shape. **The acceptance guard is not optional and is `20/the-function-type-and-prototype-test-stay-available`**: `callback: Function` as a type annotation, `f instanceof Function` as a prototype test, and `({ a: 1 }).constructor` as an ordinary member all compile and RUN. Without it the rule can be widened to "any mention of `Function`" and all five refusal cases stay green. Residuals recorded rather than closed: `Object.getPrototypeOf(fn).constructor` still escapes on both backends because `getPrototypeOf` is declared `any` in `lib.es5.d.ts`, and `Function.prototype[Symbol.hasInstance]` is a deliberate over-refusal accepted with reasons by the lane that wrote the rule. |
 | 9.5 | direct host-module usage carries an exact `Module<"node:fs">` requirement | compatibility.mdx §Host Modules (**Direction**) | covered as **Direction evidence** | `21/a-pin-reaching-a-host-module-is-rejected` — `poc/src/targets/classify.ts` spells the requirement `Module<"node:fs">` and `blocksNativePin` rejects it. The *rule* is Direction, so the case pins the implementation's chosen spelling and says so in its notes rather than claiming a locked obligation. |
 
@@ -2685,15 +2867,17 @@ other case measures its own rule.
 | 18.2 | a diagnostic reported after non-ASCII source text keeps its authored column | conformance/README.md ("**authored** 1-based coordinates"); compatibility.mdx §Source Relationship | covered | `22/diagnostic-columns-survive-non-ascii-source-text` — the go marker is **retired**; the fork used to report UTF-8 byte columns |
 | 18.3 | **any** named class extending `Error` is a nominal recoverable error, including one whose identifier is non-ASCII | failures.mdx §Error Classes | covered | `22/a-non-ascii-error-class-name-is-a-nominal-error` — the js marker is **retired**; the stable-Error-identity validator used to be ASCII-only |
 
-## 19. Comptime — `16-comptime/` (10 cases)
+## 19. Comptime — `16-comptime/` (12 cases)
 
 The previous revision listed these obligations "so the census is complete" and
 assigned **no status to any of them**, on the grounds that the area was "owned by
 another lane". Listing without a verdict is not a census, and no other lane
 returned. This is the table.
 
-**Measured 2026-08-23 from source, not from a run.** `16-comptime` has 9 cases
-(`ls conformance/corpus/16-comptime/*.expected.json | wc -l` → 9) against 34
+**Measured 2026-08-23 from source, not from a run; the case count re-measured
+2026-09-01.** `16-comptime` has **12** cases
+(`ls conformance/corpus/16-comptime/*.expected.json | wc -l` → 12, up from 9)
+against 34
 normative sentences below, of which 28 are MUST/MUST NOT
 (`grep -o MUST docs/src/pages/specification/comptime.mdx | wc -l` → 37 including
 the repeated `MUST NOT` halves). The comptime frontend emits **22** diagnostic
@@ -2748,26 +2932,45 @@ see and need unit tests rather than cases. `runtime type` (19.14) has an obvious
 home and no case. Five of the seven determinism cases would be near-copies of
 cases that already exist.
 
-## 20. Durable execution — `17-durable/` (26 cases)
+## 20. Durable execution — `17-durable/` (27 cases)
 
 Same correction as §19: the previous revision listed these "so the census is
 complete" and scored none of them.
 
-**This section still comes out mostly uncovered, and that is still the finding —
-but the phase-1 half of it moved a long way on 2026-08-26.** `17-durable` has
-**twenty-six** cases (`ls conformance/corpus/17-durable/*.expected.json | wc -l`
-→ 26, up from 6, then 20, then 22) against the 40 normative sentences below, of
-which the great majority are MUST/MUST NOT
-(`grep -o MUST docs/src/pages/specification/durable-execution.mdx | wc -l` → 63,
-counting each `MUST NOT` twice). The reference implements **29** durable
-diagnostic codes — 25 in the `SMITHERS41xx` family (`4100`–`4123` plus `4199`)
-and 4 in `SMITHERS42xx` — measured with
-`grep -roh 'SMITHERS4[0-9]\{3\}' poc/src/durable/ | sort -u`. **The corpus
-declares seven:** `SMITHERS4103`, `4106`, `4107`, `4110`, `4111`, `4112` and
-`4124` — `4111`, `4112` and `4107` new on 2026-08-26, `4124` on 2026-08-27, and
-**`4110` on 2026-08-27 in the durable-projection revision**, which is the one
-that moved the "rules both implementations have and no case probes" subtraction
-for the first time. (`SMITHERS4100` also appears
+**This section still comes out mostly uncovered, that is still the finding, and
+on 2026-09-01 the declared-code half of it went BACKWARDS.** The header and this
+paragraph disagreed with each other for four revisions — the header said 22 while
+the body said "twenty", and a later revision moved both to 26 without recounting.
+**Settled by counting rather than by picking one:** `17-durable` has
+**twenty-seven** cases (`ls conformance/corpus/17-durable/*.expected.json | wc -l`
+→ 27, up from 6, then 20, then 22, then 26) against the 40 normative sentences
+below, of which the great majority are MUST/MUST NOT
+(`grep -o MUST docs/src/pages/specification/durable-execution.mdx | wc -l` →
+**139**, counting each `MUST NOT` twice — the page was rewritten by migration
+steps 11–12 and this figure stood at 63 before that). The reference implements
+**30** durable diagnostic codes — 26 in the `SMITHERS41xx` family (`4100`–`4124`
+plus `4199`) and 4 in `SMITHERS42xx` (`4200`–`4203`) — measured with
+`grep -roh 'SMITHERS4[0-9]\{3\}' poc/src/durable/ | sort -u | wc -l` → 30.
+
+> [!WARNING]
+> **The corpus now declares TWO of the thirty: `SMITHERS4103` and `SMITHERS4110`.**
+> This sentence read "declares seven — `SMITHERS4103`, `4106`, `4107`, `4110`,
+> `4111`, `4112` and `4124`" and it is no longer true. Migration step 11 felled
+> the branch and loop walls (`compiler/forkbridge/durable.go.txt:1046`:
+> `// WALL 1 (4106) and WALL 2 (4107), withdrawn.`) and the cases that declared
+> those refusals were rewritten into acceptances asserting `Flow.manifest`. The
+> declarations left with them. **The rules did not leave either implementation** —
+> `4106`, `4111`, `4112` and `4124` are still spelled by both — so all four moved
+> into the "rules both implementations have and no case probes" set, which is
+> most of why that subtraction went 19 → 27 in the same revision. Re-derive with:
+> ```sh
+> python3 -c 'import json,pathlib
+> s={d["code"] for p in pathlib.Path("conformance/corpus").rglob("*.expected.json")
+>    for d in json.loads(p.read_text()).get("diagnostics") or []}
+> print(sorted(c for c in s if c.startswith("SMITHERS4")))'   # 4103, 4110
+> ```
+
+(`SMITHERS4100` also appears
 under `conformance/corpus/17-durable/`, but only inside a `notes` field recording
 behaviour that was *retired*; it is not a declared diagnostic and nothing asserts
 it.)
@@ -4368,11 +4571,14 @@ excluded. It is replaced by:
 > obligation that has a source spelling, an implementation surface in *both*
 > backends, and an observation channel the harness can reach.**
 >
-> That is a claim about `conformance/corpus/` at **438 cases** — the figure sat
+> That is a claim about `conformance/corpus/` at **518 cases** — the figure sat
 > at 260 for two revisions, then 297, 321 and 354 across the three 2026-08-25
-> revisions, then 398, 408, 422, 424 and now 438 across 2026-08-26, each time with
+> revisions, then 398, 408, 422, 424 and 438 across 2026-08-26, then 465, 493,
+> 498, 503, 507, 511, 515 and now **518** (re-derived 2026-09-01 after migration
+> steps 1–15), each time with
 > `find conformance/corpus -name '*.expected.json' | wc -l`. **It stood at 354
-> for two revisions after it stopped being true**, which is the ordinary fate of
+> for two revisions after it stopped being true, and it then stood at 438 for
+> eighty cases' worth of growth** — the ordinary fate of
 > a hand-maintained number on this page and the reason the command is printed
 > beside it: re-derive it, do not read it. It is **not** a
 > claim about the language, and it is **not** a claim about the system.
@@ -4387,28 +4593,42 @@ excluded. It is replaced by:
 > - `smithers:schema` (§22) — a third compiler-owned virtual module the runner
 >   already special-cases, with zero cases;
 > - comptime determinism (§19.16) — **two of seven** ambient sources;
-> - durable execution (§20) — **six cases against forty normative sentences**,
->   with three of the specification's four compilation phases outside anything
->   this harness can observe;
+> - durable execution (§20) — **twenty-seven cases against forty normative
+>   sentences** (re-counted 2026-09-01; this bullet said "six", which was true
+>   eleven revisions ago), with three of the specification's four compilation
+>   phases outside anything this harness can observe — and the area now declares
+>   **two** durable diagnostic codes where it declared seven before migration
+>   step 11 rewrote its refusal cases into acceptances;
 > - the host-sensitive global classification table (§9.6–9.13) — **two of nine**
 >   branches, including the lexical-shadow guard that nothing checks;
-> - **five** rejection rules the reference implements, the fork does not, and no
->   case probes (see "Reference-only rejection rules") — four unchanged, and
+> - **one** rejection rule the reference implements, the fork does not, and no
+>   case probes — `SMITHERS1106`. **Re-measured 2026-09-01: one of the five rows
+>   measures as written, and this bullet said "five" for six revisions.**
+>   `SMITHERS1704` and `SMITHERS1706` were withdrawn
+>   from the reference on 2026-08-23 and this page kept citing them at a file
+>   that no longer exists; `SMITHERS1708` is in neither implementation while the
+>   table says the reference has it; `SMITHERS1105` still is not implemented by
+>   the fork but now measures as though it were, because three fork *comments*
+>   mention it.
+>   See the CAUTION block in "Reference-only rejection rules" — the old text,
+>   kept for the argument it still makes, read: four unchanged, and
 >   `SMITHERS1708` newly added because the old subtraction command misread two
 >   design documents as an implementation;
-> - **nineteen rules both implementations spell and no case probes** (see
->   "Rules both implementations have and no case probes"). This bullet said
->   *twenty-seven* for two revisions, which was the pre-correction figure from a
->   method the same section had already replaced — the corrected derivation gave
->   19 and this restatement was never updated with it. Re-derived on 2026-08-26
->   by the requirement-row revision and **still 19**, from a larger intersection
->   (90) and a larger corpus code set (71); re-derived three more times since —
->   round-7 backlog, closure backlog, and the capability-argument revision — and
->   **still 19, the same nineteen codes, four consecutive revisions for four
->   different reasons** (spellings, then a code that landed with its cases, then
->   distance, then *sites*: a rule right at one call site and absent one argument
->   over). **Fourteen of the nineteen are that durable block**, reachable from
->   the phase the corpus does reach;
+> - **twenty-seven rules both implementations spell and no case probes** (see
+>   "Rules both implementations have and no case probes"). **Re-derived
+>   2026-09-01 after migration steps 1–15 and it moved 19 → 27 — the largest move
+>   the figure has made and the first one in the wrong direction.** For six
+>   revisions this bullet recorded a figure standing still for six different
+>   reasons; it is no longer standing still. Eight codes entered the set and none
+>   left: four because migration step 11 rewrote the `17-durable` refusal cases
+>   into acceptances and the declarations went with them (`4106`, `4111`, `4112`,
+>   `4124` — the rules are still in both implementations), and four because new
+>   rules landed with no case at all (`1151`, and `6001`–`6003`, the
+>   compiler-options enforcement). **Eighteen of the twenty-seven are that
+>   durable block**, reachable from the phase the corpus does reach. Coincidence
+>   worth not misreading: this bullet once said *twenty-seven* by a discredited
+>   method, was corrected to 19, and has now returned to 27 by the correct one —
+>   the number is the same and means something entirely different;
 > - eight of nineteen reference asset-loader rejections (§17.12), with a per-code
 >   reason for each;
 > - **two codes both implementations spell where they do not mean the same rule**
