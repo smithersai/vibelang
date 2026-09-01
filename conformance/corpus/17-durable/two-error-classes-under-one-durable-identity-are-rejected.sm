@@ -1,0 +1,21 @@
+import { durable, Action } from "smithers:flows"
+
+// A durable failure identity is the string a persisted Action failure is
+// recorded under, so a replay can decide which Error class to rebuild. Two
+// classes sharing one identity would make that decision unanswerable: the
+// executor would read one identity out of storage and have two constructors to
+// choose from, and would have to pick by declaration order.
+//
+// Since 2026-08-28 the identity is INJECTIVE over ordinary distinct class names,
+// so the `$Failed`/`_Failed` pair the durable corpus used to hold no longer
+// collides and now compiles. What still collides is two classes that genuinely
+// have the SAME name in one file, which namespaces are the smallest legal
+// spelling of — and unlike the old pair, no better algorithm can take it away.
+namespace Left { export class Failed extends Error { constructor(readonly code: string) { super("left") } } }
+namespace Right { export class Failed extends Error { constructor(readonly reason: string) { super("right") } } }
+
+class Pick extends Action<(input: { key: string }) => Result<{ value: string }, Left.Failed | Right.Failed>> {}
+
+export const Flow = durable((input: { key: string }) => {
+  return Pick.run({ key: input.key })
+})

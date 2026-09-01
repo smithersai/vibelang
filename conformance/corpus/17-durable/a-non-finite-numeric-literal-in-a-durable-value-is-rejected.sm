@@ -1,0 +1,18 @@
+import { durable, Action } from "smithers:flows"
+
+// A durable value is persisted and replayed. `1e999` is a perfectly legal
+// TypeScript numeric literal that evaluates to `Infinity`, and `Infinity` has no
+// JSON encoding: `JSON.stringify(Infinity)` is the string `null`. So a Plan that
+// accepted this literal would persist a `null` where the author wrote a number,
+// and a replay would resume with a different value than the first run computed —
+// silently, because nothing throws.
+//
+// This is a durable-VALUE rule, not one of the branch and loop WALLS that step
+// 11 withdrew. The withdrawal comment in both implementations says so in as many
+// words: the other SMITHERS4111 sites — a non-finite literal, a spread, a
+// duplicate field, an array hole, a computed projection key — stay.
+class Fetch extends Action<(input: { size: number }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { key: string }) => {
+  return Fetch.run({ size: 1e999 })
+})

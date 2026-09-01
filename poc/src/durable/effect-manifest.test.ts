@@ -234,8 +234,13 @@ const manifestActionNames = (manifest: EffectManifest): readonly string[] =>
  *   `compileDurableFlow` publishes a Manifest-backed descriptor with no Plan.
  * `"plan-refused"` — the Plan refuses with the pinned code and no comparison is
  *   possible; the Manifest still derives, and its reachability is checked
- *   against the textual oracle. Every surviving row here is a durable BOUNDARY
- *   rule (`SMITHERS4110`), which the pivot does not touch.
+ *   against the textual oracle. Until 2026-09-01 every surviving row here was a
+ *   durable BOUNDARY rule (`SMITHERS4110`), which the pivot does not touch; two
+ *   durable-VALUE rules joined them when `SMITHERS4111` and `SMITHERS4112` were
+ *   given corpus cases again. Those two are the same shape for this
+ *   cross-check's purposes -- the Plan refuses and the Manifest, which is a set
+ *   of Actions rather than an evaluation, still derives -- and they are the
+ *   reason this outcome is no longer synonymous with the boundary rule.
  * `"both-refused"` — neither artifact exists; the pinned pair of codes is the
  *   evidence that the Manifest refuses for a reason, not by accident.
  */
@@ -247,6 +252,12 @@ const CORPUS_EXPECTATIONS: Readonly<Record<string, readonly [
   "a-conditional-expression-on-a-non-boolean-durable-input-is-rejected": ["plan-declined", "SMITHERS4106", undefined],
   "a-do-while-loop-in-durable-source-is-rejected": ["plan-declined", "SMITHERS4107", undefined],
   "a-logical-or-fallback-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
+  // A durable-VALUE rule, not a wall: `1e999` is finite in the grammar and
+  // Infinity at run time, and Infinity has no JSON encoding. The Plan refuses
+  // it; the Manifest is a set of Actions and does not evaluate the literal, so
+  // it still derives. Declared by
+  // `17-durable/a-non-finite-numeric-literal-in-a-durable-value-is-rejected`.
+  "a-non-finite-numeric-literal-in-a-durable-value-is-rejected": ["plan-refused", "SMITHERS4111", undefined],
   "a-nullish-coalescing-fallback-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
   "a-plain-projection-reaches-the-plan-as-an-input-expression": ["plan", undefined, undefined],
   "a-single-action-flow-lowers-to-a-static-plan": ["plan", undefined, undefined],
@@ -269,6 +280,11 @@ const CORPUS_EXPECTATIONS: Readonly<Record<string, readonly [
   "array-isarray-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4112", undefined],
   "logical-negation-of-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
   "object-is-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4112", undefined],
+  // Postfix `!` on an operand that is not a compiler-bound Action.run(...).
+  // One of the two SMITHERS4112 rules that SURVIVED step 11 (the withdrawn one
+  // was WALL 6, the generic call fallthrough). Same shape as the row above:
+  // the Plan refuses, the Manifest still names the Action the body performs.
+  "postfix-bang-on-a-value-that-is-not-an-action-run-is-rejected": ["plan-refused", "SMITHERS4112", undefined],
   "statement-branch-fails-closed": ["plan-declined", "SMITHERS4106", undefined],
   "static-plan-shape-is-digest-pinned": ["plan", undefined, undefined],
   "strict-equality-against-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
@@ -281,6 +297,15 @@ const CORPUS_EXPECTATIONS: Readonly<Record<string, readonly [
   // case holds is no longer a collision and the program compiles. The case was
   // renamed with its verdict; what this row now pins is that the Manifest and
   // the Plan still agree on it from the accepting side.
+  // The collision that is still constructible now that the identity is
+  // injective: two classes with a genuinely identical name, which `namespace`
+  // is the smallest legal spelling of. Neither artifact exists -- the Plan
+  // names the colliding classes (SMITHERS4124) and the Manifest fails closed on
+  // an Action whose contract it cannot derive (SMITHERS4199), which is the pair
+  // this outcome exists to pin: the Manifest refuses for a REASON, not by
+  // accident. Declared by
+  // `17-durable/two-error-classes-under-one-durable-identity-are-rejected`.
+  "two-error-classes-under-one-durable-identity-are-rejected": ["both-refused", "SMITHERS4124", "SMITHERS4199"],
   "two-error-classes-whose-durable-identities-used-to-collide-now-compile": ["plan", undefined, undefined],
   "two-error-classes-with-distinct-durable-identities-compile": ["plan", undefined, undefined],
   "typeof-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],

@@ -1,0 +1,16 @@
+import { durable, Action } from "smithers:flows"
+
+// Postfix `!` inside a durable body is not TypeScript's non-null assertion. It
+// is the durable subset's spelling of "unwrap this Action's Result and make the
+// step it names a dependency of what follows" — the operator that turns an
+// intermediate `Action.run(...)` into a value the rest of the Flow can use.
+//
+// Applied to anything else it has no such meaning, and there is no node in Plan
+// IR for "assert this is not null". Accepting it would either drop the operator
+// silently or persist a step that never existed, so both implementations refuse
+// the operand that is not a compiler-bound `Action.run(...)`.
+class Fetch extends Action<(input: { v: string }) => Result<{ value: string }, Error>> {}
+
+export const Flow = durable((input: { key: string }) => {
+  return Fetch.run({ v: input.key! })
+})
