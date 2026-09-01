@@ -1911,7 +1911,7 @@ faulted at run time as a `ProjectionDefect`. The refusal it now reports is
 `SMITHERS4110`, which is **one of the nineteen above**: in both implementations,
 probed by no case. The figure could not move, because the corpus half could not
 move, because **the corpus cannot reach this rule at all** —
-`conformance/runner/js-lower.mjs:309` calls `compileDurableSource` with **no
+`conformance/runner/js-lower.mjs` calls the durable frontend with **no
 descriptor bindings**, so every Action in a `.sm` case is same-file and
 structural, and the legacy artifact the fail-open depended on can only arrive
 through `smithers plan --bindings <actions.json>` (`src/cli.ts:2023`). A fifth

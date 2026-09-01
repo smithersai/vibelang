@@ -1,0 +1,21 @@
+// The OBSERVATION for `a-do-while-loop-in-durable-source-is-rejected.sm`, which
+// exports a Flow declaration and nothing else.
+//
+// The program under test may not be edited to make itself observable, so the
+// entry module is this one: it imports the compiled Flow and prints what the
+// compiler made of the program. `.sm` bytes of the case itself are unchanged.
+//
+// The site count is the load-bearing line. A `do`/`while` runs its body an
+// unknown number of times, and the Manifest says `1` because a site is a
+// POSITION, not a round: PR-1 forbids execution counts outright.
+import { Flow } from "./a-do-while-loop-in-durable-source-is-rejected.sm"
+
+export function main(): string[] {
+  const manifest = Flow.manifest
+  return [
+    Flow.artifactSource,
+    Flow.id,
+    manifest.actions.map((action) => action.id).join(" "),
+    String(manifest.sites.length),
+  ]
+}

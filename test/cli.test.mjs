@@ -684,8 +684,18 @@ test("smithers plan emits a canonical durable artifact without executing authore
       "--format",
       "json",
     ]);
-    assert.equal(rejected.status, 1, rejected.stderr || rejected.stdout);
-    assert.match(rejected.stdout + rejected.stderr, /SMITHERS4106/);
+    // `unsupported.sm` holds a runtime branch. Until MIGRATION-PLAN.md step 11
+    // that was `SMITHERS4106` and `smithers plan` exited 1 with a diagnostic;
+    // the wall is withdrawn, so the program is no longer refused and there is
+    // simply no Plan for this command to report. It says so and exits 2 — a
+    // command error rather than a program diagnostic, which is the honest shape
+    // until step 12 retargets `smithers plan` at the Effect Manifest.
+    //
+    // What this row is FOR is unchanged and is the line below it: a run that
+    // produces no artifact must not truncate the file `--outFile` names.
+    assert.equal(rejected.status, 2, rejected.stderr || rejected.stdout);
+    assert.match(rejected.stdout + rejected.stderr, /this Flow has no static Plan/);
+    assert.doesNotMatch(rejected.stdout + rejected.stderr, /SMITHERS41\d\d/);
     assert.equal(readFileSync(rejectedArtifact, "utf8"), "existing artifact must survive");
 
     const duplicateBindings = join(temporary, "duplicate-actions.json");

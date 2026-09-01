@@ -455,15 +455,19 @@ when a case ships assets** (`backend-js.mjs`: "A non-empty list is also what tur
 the source-asset stage on"), skips the comptime frontend entirely for a case with
 no `smithers:comptime` / `smithers:schema` edge, and implements **its own durable
 pipeline** (`js-lower.mjs:62-127`, `:286-337`) — it locates the `durable(...)` call
-site by hand, runs `compileDurableSource`, splices in the static Plan descriptor
-and erases the `smithers:flows` import, all before `compileProject` sees anything.
+site by hand, runs `compileDurableFlow`, splices in the Flow descriptor — a
+static Plan when the legacy lowerer can still hold the body, an Effect Manifest
+when it cannot — and erases the `smithers:flows` import, all before
+`compileProject` sees anything.
 
 `bin/smithers.js` does none of that in that order. `src/cli.ts:753-777` runs a
 source-asset preflight and a runtime-graph resolver over **every** `.sm` before the
 semantic stage, runs comptime unconditionally, and has no durable stage in `check`
-or `run` at all — `compileDurableSource` is reached only from
+or `run` at all — the durable frontend is reached only from
 `smithers plan --bindings` (`src/cli.ts:1940+`), which lowers one file and neither
-checks nor runs the program.
+checks nor runs the program. That command still reports a PLAN, so a Flow whose
+body left the Plan's static subset has nothing for it to print; retargeting it at
+the Manifest is step 12 of `MIGRATION-PLAN.md`.
 
 So a green "N cases, 0 divergent" line is a statement about `compileProject` plus
 `js-lower.mjs`. Measured against the CLI, some of those cases disagree, and every

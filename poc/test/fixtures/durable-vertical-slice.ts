@@ -32,6 +32,7 @@
 import {
   compileDurableSource,
   compileEffectManifest,
+  PlanUnrepresentable,
   type DurableSourceActionBinding
 } from "../../src/durable/source-compiler.ts"
 import { compileActionContract } from "../../src/durable/schema.ts"
@@ -128,9 +129,21 @@ export const sliceManifest = (source: string = SLICE_SOURCE): EffectManifest => 
   return compiled.manifest
 }
 
-/** What the **Plan** lowerer says about a slice source. Empty means it accepted it. */
+/**
+ * What the **Plan** lowerer REPORTS about a slice source. Empty means it raised
+ * nothing — which since `MIGRATION-PLAN.md` step 11 is true both of a program
+ * it accepted and of one it declined, so it is always read beside
+ * {@link planDeclines}.
+ */
 export const slicePlanDiagnostics = (source: string): readonly { code: string; message: string; line: number }[] => {
-  const compiled = compileDurableSource(source, SLICE_COMPILE_OPTIONS)
+  let compiled
+  try {
+    compiled = compileDurableSource(source, SLICE_COMPILE_OPTIONS)
+  } catch (error) {
+    // A declined body is not a diagnostic and must never be reported as one.
+    if (error instanceof PlanUnrepresentable) return []
+    throw error
+  }
   return compiled.ok
     ? []
     : compiled.diagnostics.map((diagnostic) => ({
@@ -138,6 +151,23 @@ export const slicePlanDiagnostics = (source: string): readonly { code: string; m
       message: diagnostic.message,
       line: diagnostic.line
     }))
+}
+
+/**
+ * Whether the Plan lowerer has no shape for this body.
+ *
+ * The replacement for "refused twice today". `true` means the Plan declined —
+ * `PlanUnrepresentable`, no diagnostic — and the Flow publishes an Effect
+ * Manifest instead; `false` means the Plan holds the program.
+ */
+export const planDeclines = (source: string): boolean => {
+  try {
+    compileDurableSource(source, SLICE_COMPILE_OPTIONS)
+    return false
+  } catch (error) {
+    if (error instanceof PlanUnrepresentable) return true
+    throw error
+  }
 }
 
 export interface SliceSites {

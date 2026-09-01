@@ -42,17 +42,30 @@ export const Build = compileFlow(function Build(input: { value: number }) {
   assert.equal(durable.PlanArtifact.decode(result.artifact).digest, result.plan.digest);
   assert.equal(result.flow.artifactSource, "static-plan-artifact");
 
-  const rejected = durable.compileDurableSource(`
+  // A runtime branch used to be refused here as SMITHERS4106. MIGRATION-PLAN.md
+  // step 11 withdrew that wall: the Plan lowerer has no shape for such a body
+  // and SIGNALS so — `PlanUnrepresentable`, never a diagnostic — while the Flow
+  // compiler publishes the Effect Manifest instead. Both halves are asserted
+  // through the PUBLIC package surface, which is what this file exists to
+  // measure: `compileDurableFlow`, `PlanUnrepresentable` and the Manifest types
+  // are exports a consumer can reach.
+  const branchy = `
 import { durable } from "smithers:flows"
 import { Work } from "package-test:actions"
 export const Build = durable(function Build(input: { value: number }) {
   if (input.value) return Work.run({ value: input.value })
   return Work.run({ value: 0 })
 })
-`, { actions });
-  assert.equal(rejected.ok, false);
-  assert.equal(rejected.diagnostics[0].code, "SMITHERS4106");
-  assert.equal(rejected.diagnostics[0].line > 0, true);
+`;
+  assert.throws(
+    () => durable.compileDurableSource(branchy, { actions }),
+    (error) => error instanceof durable.PlanUnrepresentable,
+  );
+  const declined = durable.compileDurableFlow(branchy, { actions });
+  assert.equal(declined.ok, true, declined.ok ? undefined : JSON.stringify(declined.diagnostics));
+  assert.equal(declined.plan, undefined);
+  assert.equal(declined.flow.artifactSource, "effect-manifest");
+  assert.deepEqual(declined.manifest.actions.map((action) => action.id), ["package-test/Work"]);
 });
 
 test("a clean Bun consumer executes a Flow compiled through the public durable facade", () => {

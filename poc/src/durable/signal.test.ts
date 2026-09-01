@@ -5,6 +5,7 @@ import { join } from "node:path"
 import {
   allPlanNodes,
   canonicalJson,
+  compileDurableFlow,
   compileDurableSource,
   ContentIntegrityError,
   CoordinatorCrash,
@@ -149,7 +150,14 @@ test("signal source and artifact contracts fail closed for dynamic, higher-order
      })`
   ]
   for (const [index, invalid] of invalidSources.entries()) {
-    const result = compileDurableSource(invalid, {
+    // `compileDurableFlow`, not `compileDurableSource`: since
+    // `MIGRATION-PLAN.md` step 11 withdrew the Plan lowerer's walls, the Plan
+    // compiler SIGNALS a body it has no shape for instead of refusing it, and
+    // the entry point whose answer is a verdict is this one. Every spelling
+    // here is still refused, and `SMITHERS4199` — the Effect Manifest refusing
+    // to state a call it cannot account for — is inside the `SMITHERS41`
+    // family the assertion below names.
+    const result = compileDurableFlow(invalid, {
       fileName: `flows/invalid-signal-${index}.sm.ts`,
       flowId: `test/invalid-signal-${index}`,
       actions: []

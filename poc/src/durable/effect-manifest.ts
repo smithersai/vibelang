@@ -93,6 +93,20 @@ export interface EffectManifestSource {
   readonly signalSymbol: ts.Symbol
   readonly broadcastSymbol: ts.Symbol
   readonly queueSymbol: ts.Symbol
+  /**
+   * The compiler-owned combinators whose effects live in the callbacks they are
+   * handed, not in the call itself.
+   *
+   * The descent visits a callback body because it is a CHILD of the call, so
+   * `fanOut(xs, f, g)`'s Actions are already in the Manifest by the time the
+   * call is classified. They are named here so the fail-closed rule below can
+   * tell them apart from a call whose effects nothing accounted for — which is
+   * the distinction the Plan lowerer's `SMITHERS4112` wall used to make before
+   * `MIGRATION-PLAN.md` step 11 withdrew it.
+   */
+  readonly fanOutSymbol: ts.Symbol
+  readonly sequentialSymbol: ts.Symbol
+  readonly loopSymbol: ts.Symbol
   readonly actionsBySymbol: ReadonlyMap<ts.Symbol, ActionDescriptor>
   readonly flowsBySymbol: ReadonlyMap<ts.Symbol, EffectManifestChildFlow>
   /**
@@ -345,15 +359,88 @@ export const deriveEffectManifest = (
     contracts.set(`${contract.kind}#${contract.identity}#${contract.contractDigest}`, contract)
   }
 
+  /**
+   * A callee declared entirely in the **default library**.
+   *
+   * `Array.isArray`, `Object.is`, `JSON.stringify`. None of them can reach an
+   * Action, a capability, or an external input, because none of them can see
+   * project code, so a Manifest that says nothing about such a call is still
+   * SOUND. Everything else the walk did not account for is a hole it can see.
+   *
+   * Identified by `hasNoDefaultLib`, which is TypeScript's own mark for a file
+   * carrying `/// <reference no-default-lib="true"/>` — every `lib.*.d.ts` and
+   * nothing this compiler synthesizes. Deliberately not a path prefix: the
+   * durable frontend builds its inputs under a virtual root, and a rule written
+   * against that root would be a second, private definition of "library" that
+   * could drift from the checker's.
+   */
+  const declaredInTheDefaultLibrary = (symbol: ts.Symbol | undefined): boolean => {
+    const declarations = symbol?.declarations ?? []
+    if (declarations.length === 0) return false
+    return declarations.every((declaration) => declaration.getSourceFile().hasNoDefaultLib)
+  }
+
+  /**
+   * FAIL CLOSED on a call this walk did not account for.
+   *
+   * Until `MIGRATION-PLAN.md` step 11 no such call could reach here: the Plan
+   * lowerer refused every call it could not name as `SMITHERS4112` before the
+   * Manifest was ever consulted. That wall is withdrawn, so the Manifest is now
+   * the only thing between a Flow body and a silent narrowing, and
+   * `docs/DECISIONS.md` (Locked) is explicit about which way that has to fall:
+   * "A call whose callee the compiler cannot resolve is either rejected inside
+   * a Flow body or forces the Manifest to include the full effect set of the
+   * callee's module; it never silently narrows the Manifest."
+   *
+   * MEASURED, not hypothesised. Without this branch,
+   * `function helper(key: string) { return Fetch.run({ key })! }` called from a
+   * Flow body published `actions: []` about a Flow that performs `Fetch` — the
+   * same shape of fail-open the step-5 cross-check found in the collision case,
+   * reached through a door the walls used to hold shut.
+   *
+   * THE ONE EXEMPTION, and it is a hole with a name rather than a hole:
+   * `Capability.context()`. PR-1 locks a "capability requirement row" as
+   * Manifest content and this derivation does not build one yet, so a
+   * capability read is neither accounted for nor refused. Refusing it would
+   * break `MIGRATION-PLAN.md` §2's vertical slice, whose first line is
+   * `Rates.context()`; accounting for it means minting a capability identity
+   * and deciding whether a read takes a site row, which is the Manifest-content
+   * work step 12 owns. It is exempted here, ON PURPOSE and BY NAME, so the gap
+   * is one recognised form rather than every unaccounted call.
+   */
+  const unaccounted = (call: ts.CallExpression, callee: ts.Expression, symbol: ts.Symbol | undefined): void => {
+    if (declaredInTheDefaultLibrary(symbol)) return
+    if (symbol === source.fanOutSymbol || symbol === source.sequentialSymbol || symbol === source.loopSymbol) return
+    if (ts.isPropertyAccessExpression(callee) && callee.name.text === "context") return
+    throw new EffectManifestFailure(
+      `this Flow body calls ${callee.getText()}, whose effects the Effect Manifest cannot state; a Manifest ` +
+        `that omitted it would claim a Flow reaches no effect it does reach`,
+      call
+    )
+  }
+
   const classify = (call: ts.CallExpression): void => {
     const callee = skipParentheses(call.expression)
-    if (isTypeOnlyReference(checker, callee)) return
+    // A type-only binding in CALL position is not "no request" — it is a
+    // runtime use of a name the emit erases. It reached here only because the
+    // Plan lowerer used to refuse it first (`SMITHERS4112`), so it fails closed
+    // rather than being waved through as type-world machinery.
+    if (isTypeOnlyReference(checker, callee)) {
+      unaccounted(call, callee, undefined)
+      return
+    }
     // `X.run(input)` — an Action perform, or a child-Flow boundary.
     if (ts.isPropertyAccessExpression(callee) && callee.name.text === "run") {
       const receiver = skipParentheses(callee.expression)
-      if (isTypeOnlyReference(checker, receiver)) return
+      if (isTypeOnlyReference(checker, receiver)) {
+        unaccounted(call, callee, undefined)
+        return
+      }
       const symbol = referencedSymbol(checker, receiver)
-      if (symbol === undefined) return
+      if (symbol === undefined) {
+        unaccounted(call, callee, undefined)
+        return
+      }
       const descriptor = source.actionsBySymbol.get(symbol)
       if (descriptor !== undefined) {
         actions.set(descriptor.id, {
@@ -413,10 +500,16 @@ export const deriveEffectManifest = (
           call
         )
       }
+      // A `.run(...)` on something that is not a compiler-owned Action is an
+      // ordinary call, and gets the ordinary answer below rather than a pass.
+      unaccounted(call, callee, symbol)
       return
     }
     const symbol = referencedSymbol(checker, callee)
-    if (symbol === undefined) return
+    if (symbol === undefined) {
+      unaccounted(call, callee, undefined)
+      return
+    }
     if (symbol === source.sleepSymbol) {
       recordSite(call, "sleep")
       return
@@ -449,7 +542,9 @@ export const deriveEffectManifest = (
         contractDigest: queueContractIdentity(identity, payloadSchema(call, "queue"))
       })
       recordSite(call, "queue", identity)
+      return
     }
+    unaccounted(call, callee, symbol)
   }
 
   // The whole analysis. Every call expression anywhere beneath the durable

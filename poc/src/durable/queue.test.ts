@@ -5,6 +5,7 @@ import { join } from "node:path"
 import {
   allPlanNodes,
   canonicalJson,
+  compileDurableFlow,
   compileDurableSource,
   ContentIntegrityError,
   CoordinatorCrash,
@@ -112,7 +113,14 @@ test("queue source and artifact contracts fail closed for dynamic, spoofed, and 
      export const F = durable(function F(input: {}) { return dequeue<string>("spoof") })`
   ]
   for (const [index, text] of invalid.entries()) {
-    const result = compileDurableSource(text, {
+    // `compileDurableFlow`, not `compileDurableSource`: since
+    // `MIGRATION-PLAN.md` step 11 withdrew the Plan lowerer's walls, the Plan
+    // compiler SIGNALS a body it has no shape for instead of refusing it, and
+    // the entry point whose answer is a verdict is this one. Every spelling
+    // here is still refused, and `SMITHERS4199` — the Effect Manifest refusing
+    // to state a call it cannot account for — is inside the `SMITHERS41`
+    // family the assertion below names.
+    const result = compileDurableFlow(text, {
       fileName: `flows/invalid-queue-${index}.sm.ts`,
       flowId: `test/invalid-queue-${index}`,
       actions: []

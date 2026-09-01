@@ -46,6 +46,7 @@ import {
 } from "../poc/dist/build/index.js";
 import {
   compileDurableSource,
+  PlanUnrepresentable,
   type DurableSourceActionBinding,
 } from "../poc/dist/durable/source-compiler.js";
 import { resolveTypeScriptCompiler, runTypeScriptCompiler } from "./compiler-process.js";
@@ -2167,6 +2168,21 @@ const cli = Cli.create("smithers", { version, description: "Smithers checked pro
           plan: result.plan,
         };
       } catch (error) {
+        // A body outside the Plan's static subset is not an error in the
+        // program. `MIGRATION-PLAN.md` step 11 withdrew the six walls that used
+        // to refuse one, so the Plan lowerer signals rather than reports, and
+        // this command — which is a PLAN reporter until step 12 retargets it at
+        // the Effect Manifest — has nothing to print. It says so in those words
+        // rather than surfacing a compiler-internal message.
+        if (error instanceof PlanUnrepresentable) {
+          return context.error({
+            code: "SMITHERS_PLAN_ERROR",
+            exitCode: 2,
+            message:
+              "this Flow has no static Plan: its body holds ordinary control flow the Plan cannot represent, " +
+              "and the compiler publishes its Effect Manifest instead. `smithers plan` reports the Plan only.",
+          });
+        }
         return context.error({
           code: "SMITHERS_PLAN_ERROR",
           exitCode: 2,

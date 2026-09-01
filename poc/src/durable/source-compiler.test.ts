@@ -2,10 +2,12 @@ import { expect, test } from "bun:test"
 import {
   Action,
   compileActionContract,
+  compileDurableFlow,
   compileDurableSource,
   Deployment,
   DurableExecutor,
   DurableStore,
+  PlanUnrepresentable,
   Provider,
   Worker,
   type DurableSourceActionBinding
@@ -49,12 +51,27 @@ function build(input: { source: string }) {
 export const Build = lowerDurable(build)
 `
 
-const compileRepresentative = (source = representativeSource) => compileDurableSource(source, {
+const REPRESENTATIVE_OPTIONS = {
   fileName: "flows/build.sm.ts",
   flowId: "test/source/Build",
   flowVersion: 3,
   actions: actionBindings
-})
+} as const
+
+const compileRepresentative = (source = representativeSource) =>
+  compileDurableSource(source, REPRESENTATIVE_OPTIONS)
+
+/**
+ * The same program through the **Flow** compiler.
+ *
+ * `compileDurableSource` answers "what Plan does this lower to?" and, since
+ * `MIGRATION-PLAN.md` step 11 withdrew the six walls, raises
+ * {@link PlanUnrepresentable} for a body that has no Plan rather than refusing
+ * it. Every test below that asks "is this program refused?" has to ask the
+ * entry point whose answer is a verdict, which is this one.
+ */
+const compileRepresentativeFlow = (source = representativeSource) =>
+  compileDurableFlow(source, REPRESENTATIVE_OPTIONS)
 
 test("static durable source lowering follows imported aliases and never evaluates source or implementations", async () => {
   let compileImplementations = 0
@@ -285,7 +302,7 @@ export const Build = durable(function Build(input: { source: string }) {
 })
 
 test("unrelated local durable and Action spellings are never treated as compiler intrinsics", () => {
-  const unrelatedDurable = compileRepresentative(`
+  const unrelatedDurable = compileRepresentativeFlow(`
 import { durable as compilerDurable } from "smithers:flows"
 function durable(value: unknown) { return value }
 const Build = durable(function (input: unknown) { return input })
@@ -295,7 +312,7 @@ void compilerDurable
   if (unrelatedDurable.ok) throw new Error("expected unrelated durable spelling to fail")
   expect(unrelatedDurable.diagnostics[0].code).toBe("SMITHERS4102")
 
-  const unrelatedAction = compileRepresentative(`
+  const unrelatedAction = compileRepresentativeFlow(`
 import { durable } from "smithers:flows"
 import { Compile as ImportedCompile } from "test:source-actions"
 const Compile = { run(value: unknown) { return value } }
@@ -304,11 +321,18 @@ export const Build = durable(function Build(input: { source: string }) {
 })
 void ImportedCompile
 `)
+  // Until 2026-08-31 this was `SMITHERS4112` from the Plan lowerer's
+  // higher-order fallthrough. That wall is withdrawn, so the refusal now comes
+  // from the artifact that has to carry the guarantee instead: `Compile.run` on
+  // a local object literal is a call the Effect Manifest cannot account for,
+  // and a Manifest that omitted it would claim a Flow reaches no effect it does
+  // reach. The VERDICT is unchanged and the reason is now true of the program.
   expect(unrelatedAction.ok).toBe(false)
   if (unrelatedAction.ok) throw new Error("expected unrelated Action spelling to fail")
-  expect(unrelatedAction.diagnostics[0].code).toBe("SMITHERS4112")
+  expect(unrelatedAction.diagnostics[0].code).toBe("SMITHERS4199")
+  expect(unrelatedAction.diagnostics[0].message).toContain("the Effect Manifest cannot state")
 
-  const duplicateIntrinsic = compileRepresentative(`
+  const duplicateIntrinsic = compileRepresentativeFlow(`
 import { durable } from "smithers:flows"
 const durable = (value: unknown) => value
 export const Build = durable(function (input: unknown) { return input })
@@ -317,7 +341,7 @@ export const Build = durable(function (input: unknown) { return input })
   if (duplicateIntrinsic.ok) throw new Error("expected conflicting intrinsic declaration to fail")
   expect(duplicateIntrinsic.diagnostics[0].code).toBe("SMITHERS4100")
 
-  const duplicateAction = compileRepresentative(`
+  const duplicateAction = compileRepresentativeFlow(`
 import { durable } from "smithers:flows"
 import { Compile } from "test:source-actions"
 const Compile = { run(value: unknown) { return value } }
@@ -331,7 +355,7 @@ export const Build = durable(function Build(input: { source: string }) {
 })
 
 test("type-only, optional, and mutable bindings cannot impersonate static intrinsics", () => {
-  const typeOnlyIntrinsic = compileRepresentative(`
+  const typeOnlyIntrinsic = compileRepresentativeFlow(`
 import type * as Flows from "smithers:flows"
 export const Build = Flows.durable(function Build(input: unknown) { return input })
 `)
@@ -339,7 +363,7 @@ export const Build = Flows.durable(function Build(input: unknown) { return input
   if (typeOnlyIntrinsic.ok) throw new Error("expected type-only intrinsic failure")
   expect(typeOnlyIntrinsic.diagnostics[0].code).toBe("SMITHERS4102")
 
-  const typeOnlyAction = compileRepresentative(`
+  const typeOnlyAction = compileRepresentativeFlow(`
 import { durable } from "smithers:flows"
 import type * as Actions from "test:source-actions"
 export const Build = durable(function Build(input: { source: string }) {
@@ -348,9 +372,11 @@ export const Build = durable(function Build(input: { source: string }) {
 `)
   expect(typeOnlyAction.ok).toBe(false)
   if (typeOnlyAction.ok) throw new Error("expected type-only Action failure")
-  expect(typeOnlyAction.diagnostics[0].code).toBe("SMITHERS4112")
+  // Same move as the unrelated-Action case above: the wall is gone and the
+  // Manifest's soundness rule is what refuses it now.
+  expect(typeOnlyAction.diagnostics[0].code).toBe("SMITHERS4199")
 
-  const optionalIntrinsic = compileRepresentative(`
+  const optionalIntrinsic = compileRepresentativeFlow(`
 import { durable } from "smithers:flows"
 export const Build = durable?.(function Build(input: unknown) { return input })
 `)
@@ -358,7 +384,7 @@ export const Build = durable?.(function Build(input: unknown) { return input })
   if (optionalIntrinsic.ok) throw new Error("expected optional intrinsic failure")
   expect(optionalIntrinsic.diagnostics[0].code).toBe("SMITHERS4103")
 
-  const reassignedFunction = compileRepresentative(`
+  const reassignedFunction = compileRepresentativeFlow(`
 import { durable } from "smithers:flows"
 import { Compile as C } from "test:source-actions"
 function build(input: { source: string }) { return C.run({ source: input.source }) }
@@ -369,7 +395,7 @@ export const Build = durable(build)
   if (reassignedFunction.ok) throw new Error("expected assigned function failure")
   expect(reassignedFunction.diagnostics[0].code).toBe("SMITHERS4103")
 
-  const mutableFunction = compileRepresentative(`
+  const mutableFunction = compileRepresentativeFlow(`
 import { durable } from "smithers:flows"
 import { Compile as C } from "test:source-actions"
 let build = (input: { source: string }) => C.run({ source: input.source })
@@ -380,24 +406,80 @@ export const Build = durable(build)
   expect(mutableFunction.diagnostics[0].code).toBe("SMITHERS4103")
 })
 
-test("unsupported control flow, captures, mutation, and higher-order calls fail closed at stable source locations", () => {
+/**
+ * The bodies the PLAN cannot hold, and the bodies the durable contract refuses.
+ *
+ * These were one list until 2026-08-31, under one heading, and that was the
+ * confusion `MIGRATION-PLAN.md` step 11 removed. Five of the eight were WALLS:
+ * `SMITHERS4106` on a branch, `SMITHERS4107` on a loop, `SMITHERS4112` on a
+ * call the Plan could not name. They refused ordinary TypeScript because a
+ * never-executed lowering had no node kind for it, and
+ * `specification/durable-execution.mdx` §Flow now says such a body "MUST
+ * execute unchanged inside a Flow". They are withdrawn.
+ *
+ * The other three are CONTRACT rules — a mutable binding, a capture the durable
+ * boundary cannot encode, an intermediate Result left unconsumed — and they are
+ * untouched, which is what keeps the withdrawal from being a general
+ * relaxation.
+ */
+const planDeclinedBodies = [
+  {
+    was: "SMITHERS4106",
+    body: `if (input.source) return C.run({ source: input.source })\n  return C.run({ source: "empty" })`
+  },
+  {
+    was: "SMITHERS4106",
+    body: `return input.source ? C.run({ source: input.source }) : C.run({ source: "empty" })`
+  },
+  {
+    was: "SMITHERS4106",
+    body: `return C.run({ source: input?.source })`
+  },
+  {
+    was: "SMITHERS4107",
+    body: `for (const value of []) { void value }\n  return C.run({ source: input.source })`
+  }
+] as const
+
+test("the bodies the Plan cannot hold are declined without a diagnostic and publish an Effect Manifest", () => {
+  for (const fixture of planDeclinedBodies) {
+    const source = `
+import { durable } from "smithers:flows"
+import { Compile as C } from "test:source-actions"
+export const Build = durable(function Build(input: { source: string }) {
+  ${fixture.body}
+})
+`
+    // The Plan compiler SIGNALS rather than reports. A diagnostic here — under
+    // `fixture.was` or any other code — is a wall being rebuilt.
+    let raised: unknown
+    try {
+      compileRepresentative(source)
+    } catch (error) {
+      raised = error
+    }
+    expect(raised, fixture.was).toBeInstanceOf(PlanUnrepresentable)
+
+    // And the Flow compiler publishes the artifact that CAN hold it. The
+    // Manifest still names `Compile`, so nothing was dropped along with the
+    // Plan: the two arms of the branch and the body of the loop are all just
+    // children of a syntactic descent.
+    const flow = compileDurableFlow(source, {
+      fileName: "flows/build.sm.ts",
+      flowId: "test/source/Build",
+      flowVersion: 3,
+      actions: actionBindings
+    })
+    expect(flow.ok, fixture.was).toBe(true)
+    if (!flow.ok) continue
+    expect(flow.plan).toBeUndefined()
+    expect(flow.flow.artifactSource).toBe("effect-manifest")
+    expect(flow.manifest?.actions.map((action) => action.id)).toEqual(["test/source/Compile"])
+  }
+})
+
+test("durable contract refusals fail closed at stable source locations", () => {
   const cases = [
-    {
-      code: "SMITHERS4106",
-      body: `if (input.source) return C.run({ source: input.source })\n  return C.run({ source: "empty" })`
-    },
-    {
-      code: "SMITHERS4106",
-      body: `return input.source ? C.run({ source: input.source }) : C.run({ source: "empty" })`
-    },
-    {
-      code: "SMITHERS4106",
-      body: `return C.run({ source: input?.source })`
-    },
-    {
-      code: "SMITHERS4107",
-      body: `for (const value of []) { void value }\n  return C.run({ source: input.source })`
-    },
     {
       code: "SMITHERS4105",
       body: `let request = { source: input.source }\n  return C.run(request)`
@@ -406,11 +488,6 @@ test("unsupported control flow, captures, mutation, and higher-order calls fail 
       code: "SMITHERS4110",
       prefix: `const captured = "outside"\n`,
       body: `return C.run({ source: captured })`
-    },
-    {
-      code: "SMITHERS4112",
-      prefix: `function identity(value: unknown) { return value }\n`,
-      body: `return identity(input)`
     },
     {
       code: "SMITHERS4115",
@@ -565,7 +642,7 @@ test("descriptor bindings still describe Actions imported from other modules", (
 })
 
 test("an unrelated local class named Action never gains compiler authority", () => {
-  const compiled = compileDurableSource(`
+  const compiled = compileDurableFlow(`
 import { durable } from "smithers:flows"
 
 class Action<Signature> {
@@ -580,12 +657,16 @@ export const Build = durable((input: { key: string }) => {
 `, { fileName: "flows/orders.sm" })
   expect(compiled.ok).toBe(false)
   if (compiled.ok) throw new Error("a local Action must not lower")
-  // The call is an ordinary higher-order runtime call, not a durable Action.
-  expect(compiled.diagnostics[0].code).toBe("SMITHERS4112")
+  // The call is an ordinary runtime call, not a durable Action. It used to be
+  // refused by the Plan lowerer's higher-order fallthrough (`SMITHERS4112`),
+  // which step 11 withdrew; the Effect Manifest refuses it now, because a call
+  // it cannot account for is a call it must not silently omit.
+  expect(compiled.diagnostics[0].code).toBe("SMITHERS4199")
+  expect(compiled.diagnostics[0].message).toContain("the Effect Manifest cannot state")
 })
 
 test("the durable source compiler weakens an error contract only where the spec allows it", () => {
-  const compileWithErrorChannel = (errorType: string) => compileDurableSource(`
+  const compileWithErrorChannel = (errorType: string) => compileDurableFlow(`
 import { durable, Action } from "smithers:flows"
 class LookupFailed extends Error { constructor(readonly key: string) { super("missing") } }
 class LooksLikeError { name = "LooksLikeError"; message = "not nominal" }
@@ -620,13 +701,21 @@ export const Build = durable((input: { key: string }) => {
   // is skipped, so `Lookup.run` finds no descriptor and the lowerer reports
   // against the authored call site. That is the same outcome every other
   // underivable signature already produces here.
-  expect(errorSchemaFor("any")).toEqual({ refused: true, code: "SMITHERS4112" })
+  //
+  // The code moved from `SMITHERS4112` to `SMITHERS4199` on 2026-08-31 and the
+  // RULE did not. `SMITHERS4112` was the Plan lowerer's higher-order
+  // fallthrough — a true sentence about a different program, which is exactly
+  // why `SMITHERS4124` was minted for the collision case — and step 11
+  // withdrew it. The refusal is now raised where the reason actually lives: the
+  // Effect Manifest cannot state an Action whose contract is underivable, and
+  // says so.
+  expect(errorSchemaFor("any")).toEqual({ refused: true, code: "SMITHERS4199" })
 
   // A structural impostor that does not extend Error is refused here for the
   // same reason `compileActionContract` already refuses it (see
   // `schema.test.ts`, "does not extend Error"). Two derivation entry points,
   // one answer on identical source.
-  expect(errorSchemaFor("LooksLikeError")).toEqual({ refused: true, code: "SMITHERS4112" })
+  expect(errorSchemaFor("LooksLikeError")).toEqual({ refused: true, code: "SMITHERS4199" })
 })
 
 /**
@@ -783,9 +872,9 @@ export const Build = durable((input: { more: boolean }) => {
     expect(compiled.plan.actions.length, label).toBe(1)
   }
 
-  // The other direction of the same guard: a genuinely higher-order call must
-  // still draw the REAL SMITHERS4112, whose sentence is true of it.
-  const higherOrder = compileDurableSource(`
+  // The other direction of the same guard: a genuinely higher-order call is
+  // still refused, by the artifact that now carries the guarantee.
+  const higherOrder = compileDurableFlow(`
 import { durable } from "smithers:flows"
 const identity = <T,>(value: T): T => value
 export const Build = durable((input: { key: string }) => {
@@ -794,8 +883,11 @@ export const Build = durable((input: { key: string }) => {
 `, { fileName: "flows/orders.sm" })
   expect(higherOrder.ok).toBe(false)
   if (higherOrder.ok) throw new Error("a higher-order call must be refused")
-  expect(higherOrder.diagnostics[0].code).toBe("SMITHERS4112")
-  expect(higherOrder.diagnostics[0].message).toContain("higher-order and dynamic calls")
+  // The wall that carried this sentence is withdrawn. What refuses it now is
+  // the Manifest's soundness rule, and the sentence it prints is true of the
+  // program rather than true of a lowering that no longer runs.
+  expect(higherOrder.diagnostics[0].code).toBe("SMITHERS4199")
+  expect(higherOrder.diagnostics[0].message).toContain("the Effect Manifest cannot state")
 })
 
 test("a Flow-output projection defect is refused even when the Flow also uses a legacy Action artifact", async () => {

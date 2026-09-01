@@ -21,41 +21,54 @@ const Build = durable(function Build(
 })
 ```
 
-:::warning[(SA-2) — the specification is ahead of the implementation here]
-Measured 2026-08-27 against the conformance JS reference backend over `poc/src`.
-**The sample above does not compile today.** With its Action declarations
-supplied it draws:
+:::warning[(SA-2) — the specification is partly ahead of the implementation here]
+Re-measured 2026-08-31 against both conformance backends. **Half of this gap is
+closed and the half that remains is smaller and differently shaped**, so the
+whole note is restated rather than amended.
 
-```
-SMITHERS4100  Type 'Artifact | undefined' is not assignable to type
-              'Result<Artifact, CompileError | PackageError>'.
-```
+**Closed.** A runtime branch and a runtime loop inside a Flow body compile on
+both backends. The two rules that refused them — `SMITHERS4106` "runtime
+branches require explicit Plan branch lowering" and `SMITHERS4107` "runtime
+loops require parameterized Plan templates" — are **withdrawn**, together with
+the optional-projection, non-boolean-conditional, unsupported-expression and
+unnameable-call refusals that came from the same lowering. Such a body is no
+longer refused; the Plan lowerer *declines* it without a diagnostic and the
+Flow publishes its Effect Manifest instead. Thirteen `17-durable` cases moved
+with them, from `expect: "diagnostics"` to `expect: "output"`, in one commit and
+on both backends.
 
-`Action.run` is typed `A | undefined` in the shipped frontend rather than
-`Result<A, E>`, so the sample's own return annotation is refused. Removing the
-annotation compiles — which isolates the failure to the annotation, not to the
-Flow shape.
-
-The shipped durable frontend is still the static-plan model this revision
-withdrew. Three further rules refuse what §Flow now promises:
+**Still open, and each one measured on the sample or on a minimal variant of
+it:**
 
 | Written here | Refused today by |
 | --- | --- |
-| a runtime branch inside a Flow body | `SMITHERS4106` — "runtime branches require explicit Plan branch lowering, which this subset does not guess" |
-| a runtime loop inside a Flow body | `SMITHERS4107` — "runtime loops require parameterized Plan templates" |
-| a plain `return` lifted to the Flow's Result channel | `SMITHERS4100` — plain returns are not Result-lifted inside a durable body |
+| the sample's own `Result<Artifact, CompileError \| PackageError>` return annotation | `SMITHERS4100` — `Action.run` is typed `A \| undefined` in the shipped frontend rather than `Result<A, E>`. Removing the annotation compiles, which isolates the failure to the annotation and not to the Flow shape. |
+| a `let` binding inside a Flow body | `SMITHERS4105` — "durable straight-line bindings must use const" |
+| closure capture of a module-scope value | `SMITHERS4110` — "unsupported runtime capture; only input and prior const bindings are available" |
+| recursion, and any call to a project-declared function | `SMITHERS4199` — the Effect Manifest refuses to state a call whose effects it cannot account for |
 
-Nothing in `conformance/product-divergence.json` records this. That file measures
-corpus against product; here the corpus and the product agree with each other and
-disagree with this page, so the gap is invisible to every gate. `17-durable`
-carries cases that certify the refusals directly, including
-`a-statement-branch-holding-an-action-in-each-arm-is-rejected`
-(`SMITHERS4106`). Those cases MUST stay green and MUST NOT be weakened; they are
-retired when the frontend executes Flow bodies under the journaling handler.
+The last row is **new**, and it is the price of withdrawing the walls rather
+than a regression. `SMITHERS4112` used to refuse every call the Plan could not
+name before the Manifest was consulted; with that gone, the Manifest is the only
+thing standing between a Flow body and a silently narrowed effect set, and
+`docs/DECISIONS.md` (Locked) requires it to reject rather than narrow. Closing
+it needs the transitive call-graph analysis and the **capability requirement
+row** that PR-1 names as Manifest content and neither backend derives yet;
+`Capability.context()` is exempted from the refusal by name so the gap is one
+recognised form rather than every unaccounted call.
+
+So §Flow's "branches, loops, `let` bindings, closure capture, and recursion MUST
+execute unchanged inside a Flow" is now **half satisfied**: branches and loops
+do, `let`, capture and recursion do not.
+
+`17-durable` no longer certifies any of the withdrawn refusals. Four refusals in
+that area are unchanged and MUST stay green — `an-opaque-durable-argument-is-rejected`
+(`SMITHERS4103`) and the three `SMITHERS4110` durable-boundary projections —
+because they are rules about the codec contract rather than about the shape of a
+lowering, and nothing in this revision touches them.
 
 The decisions this page rests on are recorded in the decision ledger under
-**Pending ratification** (`PR-1`, `PR-2`, `PR-3`). No document in this repository
-schedules the frontend work that closes this gap; see
+**Pending ratification** (`PR-1`, `PR-2`, `PR-3`); see
 [Specification Status](/specification/index) §Specification–Implementation Gaps.
 :::
 

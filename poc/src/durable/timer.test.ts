@@ -4,7 +4,9 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import {
   CoordinatorCrash,
+  compileDurableFlow,
   compileDurableSource,
+  PlanUnrepresentable,
   Deployment,
   digest,
   DurableActionDefect,
@@ -219,16 +221,33 @@ export const Pause = durable(function Pause(_input: {}) {
     expect(unsupported.diagnostics[0].code).toBe("SMITHERS4108")
   }
 
-  const loop = compile(`
+  // A raw `for` around `sleep(1)` used to be `SMITHERS4107`. `MIGRATION-PLAN.md`
+  // step 11 withdrew that wall: a runtime loop is ordinary control flow inside a
+  // Flow body, so the Plan lowerer DECLINES this program rather than refusing
+  // it, and the Flow publishes an Effect Manifest carrying the one `sleep` site
+  // the source writes — one site, not one per round, because a site is a
+  // position and the Manifest carries no counts.
+  const loopSource = `
 import { durable, sleep } from "smithers:flows"
 export const Pause = durable(function Pause(input: { count: number }) {
   for (let index = 0; index < input.count; index += 1) sleep(1)
   return null
 })
-`)
-  expect(loop.ok).toBe(false)
-  if (loop.ok) throw new Error("expected timer loop to fail")
-  expect(loop.diagnostics[0].code).toBe("SMITHERS4107")
+`
+  let raised: unknown
+  try {
+    compile(loopSource)
+  } catch (error) {
+    raised = error
+  }
+  expect(raised).toBeInstanceOf(PlanUnrepresentable)
+
+  const loop = compileDurableFlow(loopSource, { fileName: "flows/pause.sm.ts", flowId: "test/timer/Pause" })
+  expect(loop.ok).toBe(true)
+  if (!loop.ok) return
+  expect(loop.plan).toBeUndefined()
+  expect(loop.flow.artifactSource).toBe("effect-manifest")
+  expect(loop.manifest?.sites.map((site) => site.kind)).toEqual(["sleep"])
 })
 
 test("the store persists one wake deadline and rejects early or unscheduled claims", () => {

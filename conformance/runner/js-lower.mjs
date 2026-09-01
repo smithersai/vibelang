@@ -75,7 +75,7 @@ import {
   compileComptimeIntrinsics,
   compileSourceAssetModules,
 } from "../../poc/src/build/index.ts";
-import { compileDurableSource } from "../../poc/src/durable/source-compiler.ts";
+import { compileDurableFlow } from "../../poc/src/durable/source-compiler.ts";
 import { originalPosition } from "./source-map.mjs";
 
 function readStdin() {
@@ -321,7 +321,14 @@ async function main() {
     // contracts of Actions declared in this module from its own checked
     // program. Bindings remain the way to describe Actions imported from
     // modules this single-source pass cannot see, which no corpus case uses.
-    const durable = compileDurableSource(source.source, { fileName: source.fileName });
+    //
+    // `compileDurableFlow`, not `compileDurableSource`: the Flow, not the Plan.
+    // A body holding a branch, a loop, or an operator over a runtime value has
+    // no Plan and is not for that reason refused — it publishes an Effect
+    // Manifest and the descriptor says which artifact it came from. Boundary
+    // refusals (`SMITHERS4103`, `SMITHERS4110`, `SMITHERS4124`, …) arrive here
+    // exactly as they did.
+    const durable = compileDurableFlow(source.source, { fileName: source.fileName });
     if (!durable.ok) {
       for (const diagnostic of durable.diagnostics) {
         const comptimeMap = comptime?.loweredFiles?.[source.fileName]?.sourceMap;

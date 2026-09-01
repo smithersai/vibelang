@@ -69,6 +69,36 @@ to reachability and imprecise about everything else. The moment it acquires an
 edge, a branch, or a count, it has started growing back into a plan and the pivot
 has been undone by accretion.
 
+**What the Manifest inherited on 2026-08-31, and what it still owes.** The six
+`SMITHERS41xx` walls in the Plan lowerer are withdrawn — a runtime branch, a
+runtime loop, an optional projection, a non-boolean conditional, an expression
+the Plan could not name, and a call the Plan could not name. A body holding any
+of them is no longer refused: the Plan lowerer declines it without a diagnostic
+and the Flow publishes this Manifest instead. Thirteen `17-durable` conformance
+cases moved with them, on both backends, in one commit.
+
+That transfers a guarantee. `SMITHERS4112` used to refuse every call the Plan
+could not name *before* the Manifest was consulted, so the Manifest's soundness
+obligation was never load-bearing. It is now, and it was **measured failing**:
+a Flow body calling a same-file helper that performs an Action published
+`actions: []`, which is exactly the silent narrowing the locked sentence above
+forbids. Both backends now fail the Manifest closed on any call they cannot
+account for, presuming only a callee declared entirely in the default library.
+
+Two exemptions, named rather than silent, and both are debts this decision owes:
+
+1. **`Capability.context()` is exempted by name.** The capability requirement
+   row is Manifest content this decision locks and neither backend derives yet,
+   so a capability read is neither accounted for nor refused. Refusing it would
+   break the vertical slice, whose first line is one; accounting for it means
+   minting a capability identity and deciding whether a read takes a site row.
+2. **The compiler-owned combinators are exempted**, correctly: `fanOut`,
+   `sequential` and `loopWhile` carry their effects in the callbacks they are
+   handed, and the descent visits those as children.
+
+Neither exemption may be widened, and the first must close when the Manifest's
+exact content is defined.
+
 **To reverse:** strike this block, delete §Effect Manifest from
 [Durable Execution](/specification/durable-execution), and remove the Manifest
 from the Flow descriptor and from the signed artifact in that page's

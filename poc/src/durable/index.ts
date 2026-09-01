@@ -277,13 +277,21 @@ export {
   type WorkerExitSurface
 } from "./schema.ts"
 export {
+  compileDurableFlow,
   compileDurableSource,
+  compileEffectManifest,
   DurableSourceCompiler,
+  PlanUnrepresentable,
+  type DurableFlowCompileResult,
+  type DurableFlowCompileSuccess,
+  type DurableFlowDescriptor,
   type DurableSourceActionBinding,
   type DurableSourceCompileFailure,
   type DurableSourceCompileOptions,
   type DurableSourceCompileResult,
   type DurableSourceCompileSuccess,
   type DurableSourceDiagnostic,
-  type DurableSourceFlowBinding
+  type DurableSourceFlowBinding,
+  type EffectManifestCompileResult,
+  type EffectManifestCompileSuccess
 } from "./source-compiler.ts"

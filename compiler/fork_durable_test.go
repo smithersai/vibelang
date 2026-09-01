@@ -209,14 +209,28 @@ export function main(): string[] {
 		t.Fatalf("emitted Flow retained a runtime callback wrapper:\n%s", emitted)
 	}
 
+	// A runtime branch used to be SMITHERS4106 here. MIGRATION-PLAN.md step 11
+	// withdrew that wall: a branch is ordinary control flow inside a Flow body,
+	// so this compiles, draws NOTHING, and the descriptor it emits is built from
+	// the Effect Manifest rather than from a Plan. `17-durable/statement-branch-
+	// fails-closed` is the same program on the conformance corpus and observes
+	// the same three facts; this row is what says the fork agrees off-corpus too.
 	branch := `import { durable as build } from "smithers:flows"
 export const Bad = build((input: { live: boolean }) => {
     if (input.live) return "yes"
     return "no"
 })
+export function main(): string[] {
+    return [Bad.artifactSource, Bad.id]
+}
 `
 	branchResult := compileDurableWith(t, backend, ctx, branch)
-	requireDurableDiagnostic(t, branchResult, "SMITHERS4106", strings.Index(branch, "if ("))
+	if branchResult.EmitSkipped || len(branchResult.Diagnostics) != 0 {
+		t.Fatalf("a runtime branch in a Flow body was refused: %#v", branchResult.Diagnostics)
+	}
+	if got := runComptimeProgram(t, branchResult); got != "effect-manifest,main.sm#Bad" {
+		t.Fatalf("a declined body did not publish an Effect Manifest descriptor: %q", got)
+	}
 
 	unsupported := `import { durable, fanOut } from "smithers:flows"
 export const Bad = durable((input: { values: string[] }) => {

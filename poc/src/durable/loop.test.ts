@@ -5,7 +5,9 @@ import { join } from "node:path"
 import {
   Action,
   compileActionContract,
+  compileDurableFlow,
   compileDurableSource,
+  PlanUnrepresentable,
   ContentIntegrityError,
   CoordinatorCrash,
   Deployment,
@@ -66,12 +68,14 @@ export const Countdown = durable(function Countdown(input: { count: number }) {
 })
 `
 
-const compileCountdown = (text = source) => compileDurableSource(text, {
+const LOOP_COMPILE_OPTIONS = {
   fileName: "flows/loop.sm",
   flowId: "test/loop/Countdown",
   flowVersion: 1,
   actions: actionBindings
-})
+} as const
+
+const compileCountdown = (text = source) => compileDurableSource(text, LOOP_COMPILE_OPTIONS)
 
 const deploymentFor = (plan: PlanTemplate, id: string) => Deployment.build({
   id,
@@ -172,19 +176,38 @@ test("unsupported loop spellings and budgets fail closed while raw while-loops s
     expect(compiled.diagnostics[0]!.code).toBe(fixture.code)
   }
 
-  // An authored `while` statement still fails closed: only the explicit
-  // compiler-owned template creates a durable loop.
-  const rawWhile = compileCountdown(`
+  // An authored `while` statement used to fail closed as `SMITHERS4107`, on the
+  // grounds that "only the explicit compiler-owned template creates a durable
+  // loop". `MIGRATION-PLAN.md` step 11 withdrew that wall: a runtime loop is
+  // ordinary control flow inside a Flow body. What survives is the half that was
+  // always the real claim — an authored `while` does not become a `loop` PLAN
+  // NODE — and it survives in a stronger form, because the program leaves the
+  // Plan entirely and its Manifest carries the Action with no round budget at
+  // all. The `loopWhile` template above still lowers, which is what keeps this
+  // from being a statement about the template disappearing.
+  const rawWhileSource = `
 import { durable } from "smithers:flows"
 import { Step } from "test:loop-actions"
 export const Countdown = durable(function Countdown(input: { count: number }) {
   while (input.count > 0) { }
   return Step.run({ remaining: input.count, total: 0 })
 })
-`)
-  expect(rawWhile.ok).toBe(false)
-  if (rawWhile.ok) throw new Error("expected raw while rejection")
-  expect(rawWhile.diagnostics[0]!.code).toBe("SMITHERS4107")
+`
+  let raised: unknown
+  try {
+    compileCountdown(rawWhileSource)
+  } catch (error) {
+    raised = error
+  }
+  expect(raised).toBeInstanceOf(PlanUnrepresentable)
+
+  const rawWhile = compileDurableFlow(rawWhileSource, LOOP_COMPILE_OPTIONS)
+  expect(rawWhile.ok).toBe(true)
+  if (!rawWhile.ok) return
+  expect(rawWhile.plan).toBeUndefined()
+  expect(rawWhile.flow.artifactSource).toBe("effect-manifest")
+  expect(rawWhile.manifest?.actions.map((action) => action.id)).toEqual(["test/loop/Step"])
+  expect(JSON.stringify(rawWhile.manifest)).not.toContain("maxRounds")
 })
 
 test("forged loop artifacts cannot downgrade the format, widen the budget, or invent operators", () => {

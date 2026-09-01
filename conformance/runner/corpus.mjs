@@ -288,9 +288,22 @@ export function loadCorpus({ filter } = {}) {
     const expectation = readExpectation(path.replace(/\.sm$/, ".expected.json"), relative(repositoryRoot, path));
     validate(expectation, relative(repositoryRoot, path));
 
-    const entry = basename(path);
-    const files = [{ path: entry, kind: "smithers", text }];
-    const staged = new Set([entry]);
+    // The harness entry is the case's own `.sm` unless the case names another
+    // module it stages.
+    //
+    // `entry` has been a declared expectation field since the corpus was
+    // written and nothing ever read it; this is the first case shape that needs
+    // it. A program whose whole content is a `durable(...)` declaration exports
+    // no `main`, and giving it one would edit the program under test — the one
+    // thing a corpus case may never do to make itself pass. So the OBSERVATION
+    // moves into a sibling module that imports the program and prints what the
+    // compiler made of it, and the entry points at the observer. Both backends
+    // derive the harness entry from `testCase.entry`, so honouring it here is
+    // the whole of the change.
+    const declaredEntry = expectation.entry;
+    const entry = declaredEntry ?? basename(path);
+    const files = [{ path: basename(path), kind: "smithers", text }];
+    const staged = new Set([basename(path)]);
     for (const moduleName of expectation.modules ?? []) {
       files.push({
         path: moduleName,
@@ -314,6 +327,27 @@ export function loadCorpus({ filter } = {}) {
         kind: "asset",
         text: readFileSync(join(assetRoot, asset.from), "utf8"),
       });
+    }
+
+    // A declared entry must be a Smithers module this case stages, and it must
+    // not be the case's own `.sm` — a redundant declaration is a declaration
+    // that will be wrong later. Checked here because only now are the staged
+    // paths known, and checked at all because a mis-declared entry would make
+    // both backends execute a module that does not exist and report it as a
+    // harness error on every run.
+    if (declaredEntry !== undefined) {
+      if (typeof declaredEntry !== "string" || declaredEntry.length === 0) {
+        throw new Error(`${relative(repositoryRoot, path)}: entry must be a non-empty staged module name`);
+      }
+      if (declaredEntry === basename(path)) {
+        throw new Error(`${relative(repositoryRoot, path)}: entry names this case's own module, so it says nothing`);
+      }
+      if (!files.some((file) => file.kind === "smithers" && file.path === declaredEntry)) {
+        throw new Error(
+          `${relative(repositoryRoot, path)}: entry ${JSON.stringify(declaredEntry)} is not a Smithers module this ` +
+            `case stages (staged: ${files.filter((file) => file.kind === "smithers").map((file) => file.path).join(", ")})`,
+        );
+      }
     }
 
     // A declared `file` must name a file this case stages. Checked here rather

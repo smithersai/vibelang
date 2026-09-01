@@ -47,8 +47,9 @@ const durablePreludeText = `
 export interface SmithersCompiledFlow<Input, Success> {
 	readonly id: string;
 	readonly version: number;
-	readonly plan: unknown;
-	readonly artifactSource: "static-plan-artifact";
+	readonly plan: any;
+	readonly manifest: any;
+	readonly artifactSource: "static-plan-artifact" | "effect-manifest";
 	readonly run: (input: Input) => Result<Success, unknown>;
 }
 export abstract class Action<Signature extends (input: any) => Result<any, any>> {
@@ -163,6 +164,11 @@ type durableFunctionLowerer struct {
 	inputSchema   map[string]any
 	successSchema map[string]any
 	failed        bool
+	// unrepresentable records that the body is a program the PLAN cannot hold —
+	// a branch, a loop, an operator over a runtime value, a call the Plan cannot
+	// name. It is not a defect in the body and draws no diagnostic; see
+	// planUnrepresentable.
+	unrepresentable bool
 }
 
 func durableCode(suffix string) string { return durableDiagnosticPrefix + suffix }
@@ -852,7 +858,29 @@ func (l *lowerer) lowerDurableCall(node *ast.Node) (lowered *ast.Node, matched b
 	}
 	d.activeNodes = &d.nodes
 	output, ok := d.lowerFunction(function)
-	if !ok || d.failed {
+	if d.failed {
+		return node, true
+	}
+	// The body is a program the Plan cannot hold. Publish the Effect Manifest
+	// and nothing else: `plan` is ABSENT from the descriptor rather than empty,
+	// so a consumer cannot read "no Plan" as "a Plan with no nodes".
+	if !ok && d.unrepresentable {
+		manifest, manifestFailure := durableEffectManifest(l, logical, d.flowID, d.flowVersion, functionName, function)
+		if manifestFailure != "" {
+			// Fail CLOSED. Without a Plan the Manifest is the only artifact the
+			// Flow has, so a Manifest that cannot be stated soundly leaves
+			// nothing to publish and must be a refusal rather than a silence.
+			l.report(function, durableCode("4110"), "durable Flow effect manifest could not be derived: "+manifestFailure)
+			return node, true
+		}
+		return l.durableLiteralExpression(map[string]any{
+			"artifactSource": "effect-manifest",
+			"id":             d.flowID,
+			"manifest":       manifest,
+			"version":        d.flowVersion,
+		}), true
+	}
+	if !ok {
 		return node, true
 	}
 	plan := d.plan(output)
@@ -860,11 +888,12 @@ func (l *lowerer) lowerDurableCall(node *ast.Node) (lowered *ast.Node, matched b
 	// `function` — the Plan lowerer's own input — by its own traversal in
 	// `effectmanifest.go`; `d`, `d.nodes`, `d.actions` and `plan` are not
 	// passed to it and it cannot reach them.
-	//
-	// Opt-in, so that with the option absent — every existing caller — not one
-	// emitted byte moves. See the header of `effectmanifest.go`.
+	manifest, manifestFailure := durableEffectManifest(l, logical, d.flowID, d.flowVersion, functionName, function)
+	// The `.plan.json`/`.effect-manifest.json` companion artifacts stay opt-in:
+	// they exist for the step-5 cross-check, which compares the two artifacts
+	// without re-parsing generated code, and emitting them unconditionally would
+	// move the artifact list of every durable compile in the tree.
 	if requestedEffectManifest {
-		manifest, manifestFailure := durableEffectManifest(l, logical, d.flowID, d.flowVersion, functionName, function)
 		durableManifestArtifacts = append(durableManifestArtifacts, artifact{
 			Path:    logical + ".plan.json",
 			Content: []byte(durableCanonicalJSON(plan)),
@@ -887,6 +916,15 @@ func (l *lowerer) lowerDurableCall(node *ast.Node) (lowered *ast.Node, matched b
 		"plan":           plan,
 		"version":        d.flowVersion,
 	}
+	// `docs/DECISIONS.md` (Locked): the descriptor carries "the Flow's pinned
+	// source identity, its derived codecs, its Effect Manifest, and a reference
+	// to the emitted Flow body". Fail-OPEN when derivation failed, and only
+	// here: a Plan the lowerer accepted must not become a refusal because the
+	// second artifact could not be stated. The Manifest-only path above fails
+	// closed, because there the Manifest is the whole descriptor.
+	if manifestFailure == "" {
+		descriptor["manifest"] = manifest
+	}
 	return l.durableLiteralExpression(descriptor), true
 }
 
@@ -895,6 +933,23 @@ func (d *durableFunctionLowerer) fail(node *ast.Node, suffix string, message str
 		d.owner.report(node, durableCode(suffix), message)
 		d.failed = true
 	}
+	return durableValue{}, false
+}
+
+// planUnrepresentable is what the six walls became.
+//
+// They were diagnostics — 4106 on a branch, 4107 on a loop, 4111 on an operator
+// over a runtime value, 4112 on a call the Plan could not name — and each one
+// refused an ORDINARY TypeScript program because a never-executed lowering had
+// no node kind for it. Under specification/durable-execution.mdx §Flow the body
+// executes, so a branch is a branch and there is nothing left to refuse.
+//
+// It stops the Plan walk exactly as `fail` did and reports NOTHING. The caller
+// publishes the Effect Manifest instead, which is the artifact that can hold
+// this program. The reference twin is `PlanUnrepresentable` in
+// poc/src/durable/source-compiler.ts.
+func (d *durableFunctionLowerer) planUnrepresentable() (durableValue, bool) {
+	d.unrepresentable = true
 	return durableValue{}, false
 }
 
@@ -988,11 +1043,12 @@ func (d *durableFunctionLowerer) lowerFunction(function *ast.Node) (durableValue
 			}
 			return d.fail(statement, "4108", "only compiler-owned sleep(...) and sequential(...) are supported as durable expression statements")
 		}
+		// WALL 1 (4106) and WALL 2 (4107), withdrawn.
 		if statement.Kind == ast.KindIfStatement || statement.Kind == ast.KindSwitchStatement {
-			return d.fail(statement, "4106", "runtime branches require explicit Plan branch lowering, which this subset does not guess")
+			return d.planUnrepresentable()
 		}
 		if ast.IsIterationStatement(statement, false) {
-			return d.fail(statement, "4107", "runtime loops require parameterized Plan templates and are not unrolled by this subset")
+			return d.planUnrepresentable()
 		}
 		return d.fail(statement, "4108", "unsupported durable statement "+statement.Kind.String())
 	}
@@ -1101,8 +1157,9 @@ func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, 
 	}
 	if ast.IsPropertyAccessExpression(expression) {
 		access := expression.AsPropertyAccessExpression()
+		// WALL 3 (4106), withdrawn. Both spellings of it.
 		if access.QuestionDotToken != nil {
-			return d.fail(expression, "4106", "optional projections require explicit Plan branch lowering")
+			return d.planUnrepresentable()
 		}
 		base, ok := d.lowerExpression(access.Expression, anchor, false)
 		if !ok {
@@ -1113,7 +1170,7 @@ func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, 
 	if ast.IsElementAccessExpression(expression) {
 		access := expression.AsElementAccessExpression()
 		if access.QuestionDotToken != nil {
-			return d.fail(expression, "4106", "optional projections require explicit Plan branch lowering")
+			return d.planUnrepresentable()
 		}
 		argument := ast.SkipParentheses(access.ArgumentExpression)
 		if argument == nil || !ast.IsStringOrNumericLiteralLike(argument) {
@@ -1175,9 +1232,16 @@ func (d *durableFunctionLowerer) lowerExpression(node *ast.Node, anchor string, 
 		if d.isChildFlowRun(expression) {
 			return d.fail(expression, "4120", "child Flow embedding is not implemented by the Go durable subset")
 		}
-		return d.fail(expression, "4112", "higher-order and dynamic calls are unavailable in durable source lowering")
+		// WALL 6 (4112), withdrawn. This is the FALLTHROUGH `MIGRATION-PLAN.md`
+		// §5 R3 names, not a rule about higher-order calls: every call the Plan
+		// could not name landed here, `Capability.context()` included. The 4112
+		// on postfix `!` above is a separate rule and stays.
+		return d.planUnrepresentable()
 	}
-	return d.fail(expression, "4111", "unsupported durable expression "+expression.Kind.String())
+	// WALL 5 (4111), withdrawn. The other 4111 sites — a non-finite literal, a
+	// spread, a duplicate field, an array hole, a computed projection key — are
+	// durable-VALUE rules rather than walls, and stay.
+	return d.planUnrepresentable()
 }
 
 func (d *durableFunctionLowerer) project(value durableValue, key string, node *ast.Node) (durableValue, bool) {
@@ -1230,8 +1294,9 @@ func durableBooleanType(t *checker.Type) bool {
 
 func (d *durableFunctionLowerer) lowerConditional(node *ast.Node, anchor string, allowFinalAction bool) (durableValue, bool) {
 	conditional := node.AsConditionalExpression()
+	// WALL 4 (4106), withdrawn.
 	if !durableBooleanType(d.owner.checker.GetTypeAtLocation(conditional.Condition)) {
-		return d.fail(conditional.Condition, "4106", "durable conditional expressions require a statically boolean condition")
+		return d.planUnrepresentable()
 	}
 	condition, ok := d.lowerExpression(conditional.Condition, anchor+":condition", false)
 	if !ok {

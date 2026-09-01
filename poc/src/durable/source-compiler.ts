@@ -194,6 +194,32 @@ class LoweringFailure extends Error {
   }
 }
 
+/**
+ * The body is a program the **Plan** cannot hold. Not a defect in it.
+ *
+ * This is what the six walls became. They used to be diagnostics —
+ * `SMITHERS4106` on a branch, `SMITHERS4107` on a loop, `SMITHERS4111` on an
+ * operator over a runtime value, `SMITHERS4112` on a call the Plan cannot
+ * name — and each one refused an *ordinary TypeScript program* on the grounds
+ * that a never-executed lowering had no node kind for it. Under
+ * [Durable Execution](../../../docs/src/pages/specification/durable-execution.mdx)
+ * §Flow the body executes, so branches, loops, and operators are just
+ * branches, loops, and operators; there is nothing left to refuse.
+ *
+ * It is an exception rather than a diagnostic because {@link compileDurableSource}
+ * is the **Plan** compiler and has no honest Plan to return. Callers that want
+ * the Flow rather than the Plan use {@link compileDurableFlow}, which catches
+ * this and publishes the Effect Manifest instead.
+ *
+ * `reason` names the construct, never the rule — there is no rule any more.
+ */
+export class PlanUnrepresentable extends Error {
+  constructor(readonly node: ts.Node, readonly reason: string) {
+    super(`the Plan lowerer has no representation for ${reason}`)
+    this.name = "PlanUnrepresentable"
+  }
+}
+
 interface CheckedSource {
   readonly sourceFile: ts.SourceFile
   readonly checker: ts.TypeChecker
@@ -1420,14 +1446,15 @@ class FunctionLowerer {
           "only compiler-owned sleep(...) and sequential(...) are supported as durable expression statements"
         )
       }
+      // WALL 1 (SMITHERS4106) and WALL 2 (SMITHERS4107), withdrawn.
       if (ts.isIfStatement(statement) || ts.isSwitchStatement(statement)) {
-        return this.fail(statement, "SMITHERS4106", "runtime branches require explicit Plan branch lowering, which this subset does not guess")
+        throw new PlanUnrepresentable(statement, "a runtime branch statement")
       }
       if (
         ts.isForStatement(statement) || ts.isForInStatement(statement) || ts.isForOfStatement(statement) ||
         ts.isWhileStatement(statement) || ts.isDoStatement(statement)
       ) {
-        return this.fail(statement, "SMITHERS4107", "runtime loops require parameterized Plan templates and are not unrolled by this subset")
+        throw new PlanUnrepresentable(statement, "a runtime loop statement")
       }
       return this.fail(statement, "SMITHERS4108", `unsupported durable statement ${ts.SyntaxKind[statement.kind]}`)
     }
@@ -1497,14 +1524,15 @@ class FunctionLowerer {
       return { kind: "array", items }
     }
     if (ts.isPropertyAccessExpression(expression)) {
+      // WALL 3 (SMITHERS4106), withdrawn. Both spellings of it.
       if (expression.questionDotToken !== undefined) {
-        return this.fail(expression, "SMITHERS4106", "optional projections require explicit Plan branch lowering")
+        throw new PlanUnrepresentable(expression, "an optional property access")
       }
       return this.project(this.lowerExpression(expression.expression, anchor), expression.name.text, expression)
     }
     if (ts.isElementAccessExpression(expression)) {
       if (expression.questionDotToken !== undefined) {
-        return this.fail(expression, "SMITHERS4106", "optional projections require explicit Plan branch lowering")
+        throw new PlanUnrepresentable(expression, "an optional element access")
       }
       const argument = expression.argumentExpression && unwrapParentheses(expression.argumentExpression)
       const key = argument && (ts.isStringLiteral(argument) || ts.isNumericLiteral(argument)) ? argument.text : undefined
@@ -1557,9 +1585,17 @@ class FunctionLowerer {
         }
         return lowered
       }
-      return this.fail(expression, "SMITHERS4112", "higher-order and dynamic calls are unavailable in durable source lowering")
+      // WALL 6 (SMITHERS4112), withdrawn. This is the fallthrough MIGRATION-PLAN
+      // §5 R3 names: it is not a rule about higher-order calls, it is where
+      // every call the Plan could not name — including `Capability.context()` —
+      // landed. The two `SMITHERS4112` refusals above it, on postfix `!` and on
+      // an unresolvable `run` receiver, are separate rules and stay.
+      throw new PlanUnrepresentable(expression, `a call the Plan cannot name (${ts.SyntaxKind[expression.kind]})`)
     }
-    return this.fail(expression, "SMITHERS4111", `unsupported durable expression ${ts.SyntaxKind[expression.kind]}`)
+    // WALL 5 (SMITHERS4111), withdrawn. The other `SMITHERS4111` sites — a
+    // non-finite literal, a spread, a duplicate field, an array hole, a
+    // computed projection key — are durable-VALUE rules, not walls, and stay.
+    throw new PlanUnrepresentable(expression, `an expression the Plan cannot name (${ts.SyntaxKind[expression.kind]})`)
   }
 
   private lowerSignalCall(
@@ -2718,12 +2754,9 @@ class FunctionLowerer {
     const isBoolean = (type: ts.Type): boolean =>
       (type.flags & (ts.TypeFlags.Boolean | ts.TypeFlags.BooleanLiteral)) !== 0 ||
       (type.isUnion() && type.types.length > 0 && type.types.every(isBoolean))
+    // WALL 4 (SMITHERS4106), withdrawn.
     if (!isBoolean(conditionType)) {
-      return this.fail(
-        expression.condition,
-        "SMITHERS4106",
-        "durable conditional expressions require a statically boolean condition"
-      )
+      throw new PlanUnrepresentable(expression.condition, "a conditional whose condition is not statically boolean")
     }
 
     const condition = this.lowerExpression(expression.condition, `${anchor}:condition`)
@@ -3039,6 +3072,10 @@ export const compileDurableSource = (
       derivedActions: checked.derivedActions
     })
   } catch (error) {
+    // Never converted into a diagnostic. `PlanUnrepresentable` says the Plan
+    // has no shape for this body, which under §Flow is not a defect in the
+    // body; swallowing it here would rebuild the walls behind a `SMITHERS4199`.
+    if (error instanceof PlanUnrepresentable) throw error
     if (error instanceof LoweringFailure) return { ok: false, diagnostics: [error.diagnostic] }
     const fallback = sourceFile ?? ts.createSourceFile(
       logicalFileName,
@@ -3064,6 +3101,16 @@ export interface EffectManifestCompileSuccess {
   readonly ok: true
   readonly diagnostics: readonly []
   readonly manifest: EffectManifest
+  /**
+   * Compiler-owned Action declarations consumed from the compiled source, the
+   * same spans {@link DurableSourceCompileSuccess.derivedActions} reports.
+   *
+   * Reported here as well because this is now a compilation path in its own
+   * right rather than only a cross-check: a consumer lowering a `durable(...)`
+   * call whose body has no Plan still has to erase these declarations, and the
+   * only alternative is re-checking the module a second time to find them.
+   */
+  readonly derivedActions: readonly DurableSourceDerivedAction[]
 }
 
 export type EffectManifestCompileResult = EffectManifestCompileSuccess | DurableSourceCompileFailure
@@ -3153,9 +3200,11 @@ export const compileEffectManifest = (
         checked,
         { authoredFileName, flowId, flowVersion, functionName: sourceFunction.name?.text ?? declarationName },
         sourceFunction
-      )
+      ),
+      derivedActions: checked.derivedActions
     })
   } catch (error) {
+    if (error instanceof PlanUnrepresentable) throw error
     if (error instanceof LoweringFailure) return { ok: false, diagnostics: [error.diagnostic] }
     const fallback = sourceFile ?? ts.createSourceFile(
       logicalFileName,
@@ -3176,6 +3225,111 @@ export const compileEffectManifest = (
       )]
     }
   }
+}
+
+/**
+ * The Flow descriptor a recognized `durable(...)` call becomes.
+ *
+ * `docs/DECISIONS.md` (Locked): "A recognized `durable(...)` call becomes a Flow
+ * descriptor carrying the Flow's pinned source identity, its derived codecs, its
+ * Effect Manifest, and a reference to the emitted Flow body."
+ *
+ * `plan` is present only while the legacy Plan lowerer can still hold the body,
+ * and it is on its way out with `plan-ir.ts`. `manifest` is the field that
+ * survives, and `artifactSource` says which of the two this descriptor was
+ * built from so a consumer cannot mistake an absent Plan for an empty one.
+ */
+export interface DurableFlowDescriptor {
+  readonly artifactSource: "static-plan-artifact" | "effect-manifest"
+  readonly id: string
+  readonly version: number
+  readonly manifest: EffectManifest | undefined
+  readonly plan?: PlanTemplate
+}
+
+export interface DurableFlowCompileSuccess {
+  readonly ok: true
+  readonly diagnostics: readonly []
+  readonly flow: DurableFlowDescriptor
+  /** Absent when the body is outside the Plan's static subset. */
+  readonly plan: PlanTemplate | undefined
+  readonly artifact: Uint8Array | undefined
+  readonly manifest: EffectManifest | undefined
+  readonly derivedActions: readonly DurableSourceDerivedAction[]
+}
+
+export type DurableFlowCompileResult = DurableFlowCompileSuccess | DurableSourceCompileFailure
+
+/**
+ * Compile a `durable(...)` module into its **Flow descriptor**.
+ *
+ * This is the entry point the pivot leaves standing.
+ * {@link compileDurableSource} answers "what Plan does this lower to?", which
+ * for a body containing a branch, a loop, or an operator over a runtime value
+ * has no answer and now raises {@link PlanUnrepresentable}. This one answers
+ * "what is this Flow?", which always has an answer: the Effect Manifest.
+ *
+ * ## Why the Plan is still attempted
+ *
+ * Two conformance cases still observe `Flow.plan` — `static-plan-shape-is-
+ * digest-pinned` and `a-plain-projection-reaches-the-plan-as-an-input-
+ * expression` — and `MIGRATION-PLAN.md` step 12 retires them together with
+ * `plan-ir.ts`. Until then a body the Plan CAN hold still publishes one, so
+ * this step moves exactly the verdicts it claims to move and no others.
+ *
+ * ## What still refuses
+ *
+ * Everything that was never a wall. A durable boundary the codec contract
+ * cannot answer (`SMITHERS4110`), an argument the compiler cannot resolve
+ * (`SMITHERS4103`), a failure channel whose identities collide
+ * (`SMITHERS4124`) and the rest are refusals about the *contract*, not about
+ * the shape of a never-executed lowering, and they are reported here exactly
+ * as they were.
+ */
+export const compileDurableFlow = (
+  source: string,
+  options: DurableSourceCompileOptions
+): DurableFlowCompileResult => {
+  let lowered: DurableSourceCompileResult
+  try {
+    lowered = compileDurableSource(source, options)
+  } catch (error) {
+    if (!(error instanceof PlanUnrepresentable)) throw error
+    // The body is a program, not a plan. Publish the Manifest.
+    const derived = compileEffectManifest(source, options)
+    if (!derived.ok) return derived
+    const manifest = derived.manifest
+    return Object.freeze({
+      ok: true as const,
+      diagnostics: [] as const,
+      flow: Object.freeze({
+        artifactSource: "effect-manifest" as const,
+        id: manifest.flowId,
+        version: manifest.flowVersion,
+        manifest
+      }),
+      plan: undefined,
+      artifact: undefined,
+      manifest,
+      derivedActions: derived.derivedActions
+    })
+  }
+  if (!lowered.ok) return lowered
+  return Object.freeze({
+    ok: true as const,
+    diagnostics: [] as const,
+    flow: Object.freeze({
+      artifactSource: "static-plan-artifact" as const,
+      id: lowered.plan.flowId,
+      version: lowered.plan.flowVersion,
+      manifest: lowered.manifest,
+      plan: lowered.plan
+    }),
+    plan: lowered.plan,
+    artifact: lowered.artifact,
+    manifest: lowered.manifest,
+    derivedActions: lowered.derivedActions
+  })
 }
 
 export const DurableSourceCompiler = Object.freeze({ compile: compileDurableSource })

@@ -19,24 +19,29 @@ communicate intent rather than final spelling.
 :::
 
 :::warning This model is newer than the shipped prototype — (SA-2)
-The specification pivoted to replay on 2026-08-27. The prototype compiler in
-this repository still implements the previous static-plan model: it refuses a
-runtime branch (`SMITHERS4106`) and a runtime loop (`SMITHERS4107`) inside a
-`durable(...)` body, types `Action.run` as `A | undefined` rather than
-`Result<A, E>` (so an annotated Flow return draws `SMITHERS4100`), does not lift
-a plain `return` to a Result inside a durable body, and the conformance corpus
-certifies those refusals. Where this page and the prototype disagree, **this page
-follows the specification** and the prototype is behind it. That gap is an
-implementation work item, not a documented divergence — nothing in the corpus or
-`conformance/product-divergence.json` records it, because there the corpus and
-the product agree with each other and disagree with the specification.
+The specification pivoted to replay on 2026-08-27, and **half of the gap closed
+on 2026-08-31**. A runtime branch and a runtime loop inside a `durable(...)` body
+now compile on both backends: `SMITHERS4106` and `SMITHERS4107` are withdrawn,
+along with four sibling refusals from the same lowering, and such a body
+publishes an Effect Manifest instead of a static Plan. Thirteen conformance cases
+moved with them, from certifying the refusals to running the programs.
+
+What is still behind the specification: `Action.run` is typed `A | undefined`
+rather than `Result<A, E>` (so an annotated Flow return draws `SMITHERS4100`), a
+plain `return` is not lifted to a Result inside a durable body, a `let` binding
+is refused (`SMITHERS4105`), closure capture of a module-scope value is refused
+(`SMITHERS4110`), and recursion — or any call to a project-declared function —
+is refused (`SMITHERS4199`), because the Manifest has no transitive call-graph
+analysis yet and refusing is what it must do rather than narrow its effect set
+silently. Where this page and the prototype disagree, **this page follows the
+specification** and the prototype is behind it.
 
 There is a blunter obstacle in front of that one, measured 2026-08-28: the
 shipped `smithers check` has **no durable stage at all**, so
 `import { durable } from "smithers:flows"` does not even resolve — it reports
 `TS2307: Cannot find module 'smithers:flows'`. The specifier is compiler-owned,
 but only the durable lowering stage erases it, and `check` and `run` never run
-that stage; `compileDurableSource` is reached only from `smithers plan
+that stage; the durable frontend is reached only from `smithers plan
 --bindings`. So no sample on this page compiles through the ordinary CLI path
 today, independently of the model gap above.
 

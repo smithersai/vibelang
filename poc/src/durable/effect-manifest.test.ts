@@ -5,8 +5,10 @@ import { fileURLToPath } from "node:url"
 import { effectManifestSets, type EffectManifest } from "./effect-manifest.ts"
 import { allPlanNodes, fanOutSteps, type PlanTemplate } from "./plan-ir.ts"
 import {
+  compileDurableFlow,
   compileDurableSource,
   compileEffectManifest,
+  PlanUnrepresentable,
   type DurableSourceActionBinding,
   type DurableSourceFlowBinding
 } from "./source-compiler.ts"
@@ -44,13 +46,18 @@ import type { ActionDescriptor, DurableSchema, DurableTypeDescriptor } from "./i
  *
  * ## Two things this cross-check found
  *
- * 1. **20 of the 26 cases cannot exercise it at all.** They are refusal cases:
- *    the Plan lowerer rejects them, so there is no Plan to compare against.
- *    Only 6 produce a Plan, and only one of those has more than one Action. The
- *    corpus alone is a much weaker validation of PR-1 than the migration plan's
- *    "assert … across all 22 cases" implies, which is why `manifestFeatureCase`
- *    below adds the fan-out, loop, queue, broadcast, child-Flow and
- *    branch-with-an-Action-in-each-arm programs the corpus has none of.
+ * 1. **19 of the 27 cases cannot exercise it at all**, and step 11 changed why
+ *    rather than how many. Before it, 19 were refusals and the Plan lowerer
+ *    rejected them. After it, 13 of those 19 are `"plan-declined"` — the walls
+ *    fell, so the Plan lowerer does not refuse them, it has no shape for them —
+ *    3 are still `"plan-refused"` under the durable BOUNDARY rule
+ *    `SMITHERS4110`, which the pivot does not touch, and 3 are still
+ *    `"both-refused"`. Only 8 produce a Plan, and only one of those has more
+ *    than one Action. The corpus alone is a much weaker validation of PR-1 than
+ *    the migration plan's "assert … across all 22 cases" implies, which is why
+ *    `manifestFeatureCase` below adds the fan-out, loop, queue, broadcast,
+ *    child-Flow and branch-with-an-Action-in-each-arm programs the corpus has
+ *    none of.
  * 2. **A real fail-open in the first Manifest.** On the case then called
  *    `two-error-classes-whose-durable-identities-collide-are-rejected` the Plan
  *    refused with `SMITHERS4124` and the Manifest answered `actions: []` about
@@ -217,25 +224,33 @@ const manifestActionNames = (manifest: EffectManifest): readonly string[] =>
  * What each `17-durable` case is expected to do on both sides today.
  *
  * `"plan"` — the Plan lowers and the three sets are compared.
+ * `"plan-declined"` — the body is outside the Plan's static subset, so no
+ *   comparison is possible. **These are the rows step 11 flipped**, and the
+ *   second field is the code the row USED to carry, kept as history rather than
+ *   as an expectation: no diagnostic is raised on this path any more. What is
+ *   checked instead is that `compileDurableSource` raises
+ *   {@link PlanUnrepresentable} — a signal, never a diagnostic — and that
+ *   `compileDurableFlow` publishes a Manifest-backed descriptor with no Plan.
  * `"plan-refused"` — the Plan refuses with the pinned code and no comparison is
  *   possible; the Manifest still derives, and its reachability is checked
- *   against the textual oracle. **These are the rows step 11 flips.**
+ *   against the textual oracle. Every surviving row here is a durable BOUNDARY
+ *   rule (`SMITHERS4110`), which the pivot does not touch.
  * `"both-refused"` — neither artifact exists; the pinned pair of codes is the
  *   evidence that the Manifest refuses for a reason, not by accident.
  */
 const CORPUS_EXPECTATIONS: Readonly<Record<string, readonly [
-  "plan" | "plan-refused" | "both-refused",
+  "plan" | "plan-declined" | "plan-refused" | "both-refused",
   string | undefined,
   string | undefined
 ]>> = {
-  "a-conditional-expression-on-a-non-boolean-durable-input-is-rejected": ["plan-refused", "SMITHERS4106", undefined],
-  "a-do-while-loop-in-durable-source-is-rejected": ["plan-refused", "SMITHERS4107", undefined],
-  "a-logical-or-fallback-on-a-durable-input-is-rejected": ["plan-refused", "SMITHERS4111", undefined],
-  "a-nullish-coalescing-fallback-on-a-durable-input-is-rejected": ["plan-refused", "SMITHERS4111", undefined],
+  "a-conditional-expression-on-a-non-boolean-durable-input-is-rejected": ["plan-declined", "SMITHERS4106", undefined],
+  "a-do-while-loop-in-durable-source-is-rejected": ["plan-declined", "SMITHERS4107", undefined],
+  "a-logical-or-fallback-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
+  "a-nullish-coalescing-fallback-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
   "a-plain-projection-reaches-the-plan-as-an-input-expression": ["plan", undefined, undefined],
   "a-single-action-flow-lowers-to-a-static-plan": ["plan", undefined, undefined],
   "a-sleep-duration-projection-the-descriptor-does-not-have-is-rejected": ["plan-refused", "SMITHERS4110", undefined],
-  "a-statement-branch-holding-an-action-in-each-arm-is-rejected": ["plan-refused", "SMITHERS4106", undefined],
+  "a-statement-branch-holding-an-action-in-each-arm-is-rejected": ["plan-declined", "SMITHERS4106", undefined],
   // Boundary-straddling Action success field names. Nothing about the Manifest
   // depends on descriptor field ORDER — it carries contract digests, and the
   // digest is what the order feeds — so this row is deliberately an ordinary
@@ -247,15 +262,15 @@ const CORPUS_EXPECTATIONS: Readonly<Record<string, readonly [
   "an-action-input-projection-the-descriptor-does-not-have-is-rejected": ["plan-refused", "SMITHERS4110", undefined],
   "an-action-input-projection-through-a-durable-string-is-rejected": ["plan-refused", "SMITHERS4110", undefined],
   "an-actions-failure-channel-mints-one-identity-per-error-class": ["plan", undefined, undefined],
-  "an-in-test-on-a-durable-input-is-rejected": ["plan-refused", "SMITHERS4111", undefined],
+  "an-in-test-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
   "an-opaque-durable-argument-is-rejected": ["both-refused", "SMITHERS4103", "SMITHERS4103"],
-  "an-optional-projection-on-a-durable-input-is-rejected": ["plan-refused", "SMITHERS4106", undefined],
-  "array-isarray-on-a-durable-input-is-rejected": ["plan-refused", "SMITHERS4112", undefined],
-  "logical-negation-of-a-durable-input-is-rejected": ["plan-refused", "SMITHERS4111", undefined],
-  "object-is-on-a-durable-input-is-rejected": ["plan-refused", "SMITHERS4112", undefined],
-  "statement-branch-fails-closed": ["plan-refused", "SMITHERS4106", undefined],
+  "an-optional-projection-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4106", undefined],
+  "array-isarray-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4112", undefined],
+  "logical-negation-of-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
+  "object-is-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4112", undefined],
+  "statement-branch-fails-closed": ["plan-declined", "SMITHERS4106", undefined],
   "static-plan-shape-is-digest-pinned": ["plan", undefined, undefined],
-  "strict-equality-against-a-durable-input-is-rejected": ["plan-refused", "SMITHERS4111", undefined],
+  "strict-equality-against-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
   "the-retired-vibelang-flows-specifier-is-not-compiler-owned": ["both-refused", "SMITHERS4102", "SMITHERS4102"],
   // This row used to read `["both-refused", "SMITHERS4124", "SMITHERS4199"]`,
   // and before `effect-manifest.ts` failed closed on an Action with no derivable
@@ -267,11 +282,18 @@ const CORPUS_EXPECTATIONS: Readonly<Record<string, readonly [
   // the Plan still agree on it from the accepting side.
   "two-error-classes-whose-durable-identities-used-to-collide-now-compile": ["plan", undefined, undefined],
   "two-error-classes-with-distinct-durable-identities-compile": ["plan", undefined, undefined],
-  "typeof-on-a-durable-input-is-rejected": ["plan-refused", "SMITHERS4111", undefined],
+  "typeof-on-a-durable-input-is-rejected": ["plan-declined", "SMITHERS4111", undefined],
   "unrelated-local-durable-stays-ordinary": ["both-refused", "SMITHERS4102", "SMITHERS4102"]
 }
 
-const corpusCases = readdirSync(CORPUS).filter((name) => name.endsWith(".sm")).sort()
+// `*.mod.sm` is a sibling module a case stages, never a case: `loadCorpus`
+// applies the same rule (`conformance/runner/corpus.mjs`, `walk`). Since step
+// 11 the thirteen flipped cases each stage one as their observation entry, and
+// including them here would ask this cross-check to compile a module that has
+// no `durable(...)` call in it at all.
+const corpusCases = readdirSync(CORPUS)
+  .filter((name) => name.endsWith(".sm") && !name.endsWith(".mod.sm"))
+  .sort()
 
 test("the 17-durable corpus is exactly the set of cases this cross-check pins", () => {
   // A new corpus case must land in the table above with a deliberate verdict,
@@ -286,6 +308,38 @@ for (const file of corpusCases) {
     const expectation = CORPUS_EXPECTATIONS[name]
     expect(expectation).toBeDefined()
     const [outcome, planCode, manifestCode] = expectation
+
+    // The body is outside the Plan's static subset. The Plan compiler signals
+    // that rather than reporting it, and the Flow compiler publishes the
+    // Manifest — which is the whole of what step 11 changed, asserted on the
+    // compiler rather than through the conformance harness.
+    if (outcome === "plan-declined") {
+      let raised: unknown
+      try {
+        compileDurableSource(source, { fileName: file })
+      } catch (error) {
+        raised = error
+      }
+      expect(raised).toBeInstanceOf(PlanUnrepresentable)
+      // No diagnostic anywhere on this path. A `SMITHERS41xx` reappearing here
+      // under any spelling is a wall being rebuilt.
+      expect(String((raised as Error).message)).not.toContain("SMITHERS")
+
+      const flow = compileDurableFlow(source, { fileName: file })
+      expect(flow.ok).toBe(true)
+      if (!flow.ok) return
+      expect(flow.plan).toBeUndefined()
+      expect(flow.artifact).toBeUndefined()
+      expect(flow.flow.artifactSource).toBe("effect-manifest")
+      const derived = compileEffectManifest(source, { fileName: file })
+      expect(derived.ok).toBe(true)
+      if (!derived.ok) return
+      expect(flow.manifest).toEqual(derived.manifest)
+      // Reachability is still checked against the textual oracle, which is the
+      // half a missing Plan cannot check for itself.
+      expect(manifestActionNames(derived.manifest)).toEqual(sameFileActionNamesPerformed(source))
+      return
+    }
 
     const compiled = compileDurableSource(source, { fileName: file })
     const standalone = compileEffectManifest(source, { fileName: file })

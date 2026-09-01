@@ -37,7 +37,7 @@ export function main(): string[] {
   if (action === undefined) return ["the plan has no actions"]
   const variants = action.errorSchema.descriptor.variants
   return [
-    String(Flow.plan.actions.length),
+    String(Flow.manifest.actions.length),
     String(variants.length),
     variants.map((variant) => variant.identity).join(" "),
     String(new Set(variants.map((variant) => variant.identity)).size)

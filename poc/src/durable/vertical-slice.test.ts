@@ -2,9 +2,11 @@
  * The vertical slice — `MIGRATION-PLAN.md` §2, and its three assertions.
  *
  * §2's program is two Actions, one capability read, and one runtime branch,
- * "refused twice today". This file proves the replacement path carries it end to
+ * "refused twice today" — a premise `MIGRATION-PLAN.md` step 11 retired, since
+ * the walls that refused it are withdrawn and the Plan lowerer now DECLINES it
+ * without a diagnostic. This file proves the replacement path carries it end to
  * end: the compiler derives a Manifest with a site table for a program its Plan
- * lowerer refuses, the driver turns those site ids into journal keys, a real
+ * cannot hold, the driver turns those site ids into journal keys, a real
  * `SIGKILL` lands between the two Actions, and the resumed body re-runs from the
  * top without re-invoking what already committed.
  *
@@ -60,6 +62,7 @@ import {
   SLICE_SOURCE,
   SLICE_SOURCE_WITHOUT_BRANCH,
   SLICE_SOURCE_WITHOUT_CAPABILITY,
+  planDeclines,
   sliceDeployment,
   sliceManifest,
   slicePlanDiagnostics,
@@ -73,38 +76,46 @@ import {
 
 /**
  * §2 opens with a claim about the program, not about the runtime: it is
- * "**Refused twice today**". If that stopped being true the slice would be
- * proving a path around a wall that is no longer there, so it is measured.
+ * "**Refused twice today**". **That claim expired at step 11**, and this test is
+ * what says so rather than letting the file keep asserting yesterday's premise.
  *
- * The plan predicts `SMITHERS4110` for the capability read. The measured code is
- * `SMITHERS4112` — `Rates.context()` reaches `lowerExpression`'s higher-order
- * fallthrough before any capture rule sees it. That is R3's fallthrough
- * (`MIGRATION-PLAN.md` §5) observed on a second program, and it is recorded here
- * rather than corrected in passing.
+ * What step 9 measured, and why it is history now. §2 predicted `SMITHERS4110`
+ * for the capability read; the measured code was `SMITHERS4112` —
+ * `Rates.context()` reached `lowerExpression`'s higher-order fallthrough before
+ * any capture rule saw it, which is `MIGRATION-PLAN.md` §5's R3 fallthrough
+ * observed on a second program. The branch drew `SMITHERS4106`. Step 11
+ * withdrew both walls, so neither code exists on this path any more.
+ *
+ * The premise the slice actually needs is unchanged and is stronger than the
+ * diagnostics were: **the Plan still cannot hold this program.** It now says so
+ * by declining rather than by refusing, and the two features §2 names are still
+ * attributable one at a time — remove the capability read and the branch alone
+ * still declines; remove both and the Plan lowers. Without that third row the
+ * decline is attributable to anything in the program.
  */
-test("the slice's program is refused twice by the Plan lowerer, once per feature §2 names", () => {
-  const full = slicePlanDiagnostics(SLICE_SOURCE)
-  expect(full.map((diagnostic) => diagnostic.code)).toEqual(["SMITHERS4112"])
-  expect(full[0]!.message).toContain("higher-order and dynamic calls")
-  expect(full[0]!.line).toBe(5) // `const rates = Rates.context()`
+test("the slice's program is one the Plan cannot hold, feature by feature, and it is no longer refused", () => {
+  // Not a diagnostic. A `SMITHERS41xx` here in any spelling is a wall rebuilt.
+  expect(slicePlanDiagnostics(SLICE_SOURCE)).toEqual([])
+  expect(planDeclines(SLICE_SOURCE)).toBe(true)
 
-  // Remove the capability read and the SECOND refusal surfaces: the branch.
-  const branchOnly = slicePlanDiagnostics(SLICE_SOURCE_WITHOUT_CAPABILITY)
-  expect(branchOnly.map((diagnostic) => diagnostic.code)).toEqual(["SMITHERS4106"])
-  expect(branchOnly[0]!.message).toContain("runtime branches require explicit Plan branch lowering")
+  // The branch alone is enough, with the capability read removed.
+  expect(slicePlanDiagnostics(SLICE_SOURCE_WITHOUT_CAPABILITY)).toEqual([])
+  expect(planDeclines(SLICE_SOURCE_WITHOUT_CAPABILITY)).toBe(true)
 
   // Remove both and the Plan lowerer accepts it. Without this row the two
-  // refusals above are attributable to anything in the program; with it they
+  // declines above are attributable to anything in the program; with it they
   // are attributable to exactly the two features §2 names.
+  expect(planDeclines(SLICE_SOURCE_WITHOUT_BRANCH)).toBe(false)
   expect(slicePlanDiagnostics(SLICE_SOURCE_WITHOUT_BRANCH)).toEqual([])
 })
 
 /**
  * The Manifest, unlike the Plan, holds the whole program. This is the artifact
  * the journal keys come from, so "the compiler can describe a program it cannot
- * lower" is the precondition for everything below.
+ * lower" is the precondition for everything below — and since step 11 it is
+ * also what the compiler PUBLISHES for such a program, rather than a refusal.
  */
-test("the Effect Manifest holds the program the Plan lowerer refuses", () => {
+test("the Effect Manifest holds the program the Plan lowerer cannot", () => {
   const manifest = sliceManifest()
   expect(manifest.actions.map((action) => action.id)).toEqual([CAPTURE_ID, GET_QUOTE_ID])
   expect(manifest.sites).toHaveLength(2)

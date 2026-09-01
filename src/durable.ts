@@ -4,14 +4,22 @@
  * the POC coordinator persists through Bun's SQLite runtime.
  */
 export {
+  compileDurableFlow,
   compileDurableSource,
+  compileEffectManifest,
   DurableSourceCompiler,
+  PlanUnrepresentable,
+  type DurableFlowCompileResult,
+  type DurableFlowCompileSuccess,
+  type DurableFlowDescriptor,
   type DurableSourceActionBinding,
   type DurableSourceCompileFailure,
   type DurableSourceCompileOptions,
   type DurableSourceCompileResult,
   type DurableSourceCompileSuccess,
   type DurableSourceDiagnostic,
+  type EffectManifestCompileResult,
+  type EffectManifestCompileSuccess,
 } from "../poc/dist/durable/source-compiler.js";
 
 export {

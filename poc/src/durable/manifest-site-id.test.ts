@@ -157,10 +157,18 @@ const manifestOf = (source: string) =>
   })
 
 test("no two request sites in one Flow share an anchor, so no two share an id", () => {
-  // The two shapes in which two call expressions share a start position. In both
-  // the outer call classifies to nothing, which is the invariant the site table
-  // rests on — and the reason the collision above is unreachable rather than
-  // merely unobserved.
+  // The shape in which two call expressions share a start position: a call OF a
+  // call. The inner `dequeue(...)` records its queue site; the outer one calls
+  // the answer.
+  //
+  // Until `MIGRATION-PLAN.md` step 11 the outer call classified to nothing, and
+  // that silence was this test's stated invariant. It is now a REFUSAL, and the
+  // invariant is stronger for it: the Plan lowerer's `SMITHERS4112` wall used to
+  // refuse a dynamic call before the Manifest was consulted, so with the wall
+  // withdrawn a Manifest that stayed silent here would be claiming a Flow
+  // reaches no effect while it calls a value it cannot name. Two sites can still
+  // never share an anchor, and now they cannot share one for a second reason:
+  // the outer call does not reach the site table at all.
   const outerIsACallOfACall = manifestOf(
     `import { durable, dequeue } from "smithers:flows"
 export const F = durable(function F(input: { id: string }) {
@@ -168,9 +176,9 @@ export const F = durable(function F(input: { id: string }) {
   return { id: input.id, j: j }
 })`
   )
-  expect(outerIsACallOfACall.ok).toBe(true)
-  if (outerIsACallOfACall.ok) {
-    expect(outerIsACallOfACall.manifest.sites.map((site) => `${site.kind}@${site.anchor}`)).toEqual(["queue@2:12"])
+  expect(outerIsACallOfACall.ok).toBe(false)
+  if (!outerIsACallOfACall.ok) {
+    expect(outerIsACallOfACall.diagnostics[0]?.message).toContain("the Effect Manifest cannot state")
   }
 
   // Every kind the derivation can record, in one Flow, with one key string

@@ -57,6 +57,7 @@ package main
 import (
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
@@ -198,16 +199,82 @@ func (b *durableManifestBuilder) fail(reason string) {
 	}
 }
 
+// durableManifestProjectRoot is where main.go stages every authored and
+// support file (virtualFileName). A declaration outside it is a default library
+// or an ambient declaration the compiled project did not supply.
+const durableManifestProjectRoot = "/src/"
+
+// declaredInTheDefaultLibrary reports whether every declaration of a callee
+// lives outside the compiled project.
+//
+// The reference twin (`poc/src/durable/effect-manifest.ts`) asks TypeScript's
+// own `hasNoDefaultLib` mark instead of a path prefix. This fork's parser
+// IGNORES the `no-default-lib` pragma, so the mark does not exist here and the
+// staging root is the only thing that separates the two populations. The two
+// spellings coincide on every program either backend can be handed: the bridge
+// stages authored and support files under `/src/` and nothing else, and a
+// `lib.*.d.ts` is never staged.
+func (b *durableManifestBuilder) declaredInTheDefaultLibrary(symbol *ast.Symbol) bool {
+	if symbol == nil || len(symbol.Declarations) == 0 {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil || strings.HasPrefix(file.FileName(), durableManifestProjectRoot) {
+			return false
+		}
+	}
+	return true
+}
+
+// unaccounted FAILS CLOSED on a call this walk did not account for.
+//
+// Until `MIGRATION-PLAN.md` step 11 no such call could reach here: the Plan
+// lowerer refused every call it could not name as 4112 before the Manifest was
+// ever consulted. That wall is withdrawn, so the Manifest is now the only thing
+// between a Flow body and a silent narrowing, and `docs/DECISIONS.md` (Locked)
+// says which way it has to fall: "A call whose callee the compiler cannot
+// resolve is either rejected inside a Flow body or forces the Manifest to
+// include the full effect set of the callee's module; it never silently narrows
+// the Manifest."
+//
+// THE ONE EXEMPTION is `Capability.context()`, and it is a hole with a name
+// rather than a hole: PR-1 locks a capability requirement row as Manifest
+// content and neither backend derives one yet. Exempting it by name keeps the
+// gap to one recognised form. The reference twin exempts exactly the same form.
+func (b *durableManifestBuilder) unaccounted(callee *ast.Node, symbol *ast.Symbol) {
+	if b.declaredInTheDefaultLibrary(symbol) {
+		return
+	}
+	// A compiler-owned combinator's effects live in the callbacks it is handed,
+	// and the descent has already visited those as CHILDREN of this call. The
+	// list is the prelude's own exports rather than a hand-picked subset, so a
+	// new intrinsic cannot arrive and be silently classified as project code.
+	for _, intrinsic := range []string{"fanOut", "sequential", "loopWhile", "waitBroadcast", "dequeue", "sleep", "waitSignal"} {
+		if b.owner.durableIntrinsic(callee, intrinsic) {
+			return
+		}
+	}
+	if ast.IsPropertyAccessExpression(callee) &&
+		callee.AsPropertyAccessExpression().Name().Text() == "context" {
+		return
+	}
+	b.fail("this Flow body calls a function whose effects the Effect Manifest cannot state; a Manifest that " +
+		"omitted it would claim a Flow reaches no effect it does reach")
+}
+
 // classify records what one call expression contributes to the Manifest.
 func (b *durableManifestBuilder) classify(node *ast.Node) {
 	call := node.AsCallExpression()
 	if ast.IsPropertyAccessExpression(call.Expression) {
 		access := call.Expression.AsPropertyAccessExpression()
 		if !b.owner.durableIntrinsic(access.Name(), "run") {
+			b.unaccounted(call.Expression, b.owner.durableCanonicalSymbolAt(access.Name()))
 			return
 		}
 		action, recognized := b.contracts.actionFor(access.Expression)
 		if !recognized {
+			b.unaccounted(call.Expression, b.owner.durableCanonicalSymbolAt(access.Expression))
 			return
 		}
 		// FAIL CLOSED on an Action whose durable contract cannot be derived —
@@ -260,7 +327,9 @@ func (b *durableManifestBuilder) classify(node *ast.Node) {
 			"signalId":      signalID,
 		}))
 		b.recordSite(node, "signal", signalID)
+		return
 	}
+	b.unaccounted(call.Expression, b.owner.durableCanonicalSymbolAt(call.Expression))
 }
 
 // durableManifestFailureRow enumerates the durable failure identities one
