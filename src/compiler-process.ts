@@ -29,3 +29,33 @@ export function runTypeScriptCompiler(
   }
   return result.status ?? 1;
 }
+
+export interface CapturedTypeScriptRun {
+  readonly status: number;
+  readonly stdout: string;
+  readonly stderr: string;
+}
+
+/**
+ * Run the native TypeScript CLI and capture its output instead of inheriting
+ * the terminal. Project mode uses this to type-check the TypeScript roots of a
+ * mixed project and fold the compiler's findings into the structured report,
+ * so `--format json` stays a single envelope.
+ */
+export function captureTypeScriptCompiler(
+  args: readonly string[],
+  options: { cwd?: string | undefined } = {},
+): CapturedTypeScriptRun {
+  const result = spawnSync(resolveTypeScriptCompiler(), ["--typescript", ...args], {
+    cwd: options.cwd,
+    env: process.env,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (result.error) throw result.error;
+  return {
+    status: result.signal ? 1 : (result.status ?? 1),
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+  };
+}

@@ -67,6 +67,16 @@ vibe check --project vibelang.json --format json
 Flow body and Effect Manifest derivation, declaration-boundary validation, and
 semantic checks as `compile`, but never emits project artifacts.
 
+With `--project` (`-p`) and no entry, the native compiler expands the
+configuration's `files`, `include` and `exclude` (JSONC and `extends`
+included) for every root it names. The `.vibe` roots go through the checked
+frontend; the TypeScript roots that no `.vibe` root reaches are type-checked
+by the TypeScript compiler under the same configuration, and both sets of
+findings arrive in one report. A configuration that weakens a mandatory option
+is refused before any source is opened, but only when it names a `.vibe`
+root: an ordinary TypeScript project keeps TypeScript's own option rules and
+is forwarded to the TypeScript compiler as before.
+
 ## Compile
 
 ```bash
@@ -77,7 +87,11 @@ vibe compile src/index.vibe \
 ```
 
 `compile` emits the complete reachable graph. Output paths are deterministic
-and contained by `--outDir`. Relative runtime edges are rewritten to emitted
+and contained by `--outDir`. In project mode (`-p` without an entry) the
+configuration's `outDir`, `declaration`, `sourceMap` and `noEmit` apply
+exactly as they would to `tsc -p`, command-line flags win over them, and the
+TypeScript roots of a mixed project are checked before anything is published,
+so a refused project emits nothing. Relative runtime edges are rewritten to emitted
 artifacts; package and host-module imports remain external unless the project
 selects a bundling integration.
 

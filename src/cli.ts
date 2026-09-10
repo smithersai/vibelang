@@ -24,18 +24,21 @@ import { randomBytes } from "node:crypto";
 import {
   existsSync,
   lstatSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
   renameSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Cli, z } from "incur";
 import { getNativeCompiler } from "../poc/dist/compiler/native.js";
+import type { NativeProjectConfigResult } from "../poc/dist/compiler/protocol.js";
 
 import {
   analyzeProject,
@@ -50,7 +53,7 @@ import {
   type DurableSourceActionBinding,
 } from "../poc/dist/durable/source-compiler.js";
 import { canonicalJson } from "../poc/dist/durable/value.js";
-import { resolveTypeScriptCompiler, runTypeScriptCompiler } from "./compiler-process.js";
+import { captureTypeScriptCompiler, resolveTypeScriptCompiler, runTypeScriptCompiler } from "./compiler-process.js";
 import {
   GoBackendFailure,
   asGoBackendFailure,
@@ -557,6 +560,189 @@ function readVibeLangProjectConfig(project: string): {
   };
 }
 
+interface VibeLangProjectInputs {
+  readonly fileName: string;
+  readonly text: string;
+  /** Effective-configuration findings (TS and VIBE600x), extends included. */
+  readonly diagnostics: readonly CliDiagnostic[];
+  /** Absolute `.vibe` roots the configuration names or matches. */
+  readonly files: readonly string[];
+  /** Absolute TypeScript/JavaScript roots that are not reached from a `.vibe` root. */
+  readonly typeScriptFiles: readonly string[];
+  readonly configDirectory: string;
+  /**
+   * The configuration text the frontends may validate again, present only
+   * when the chain is a single file: a child of an `extends` chain is not the
+   * effective configuration, and text-only validation would refuse it.
+   */
+  readonly configFile?: { readonly path: string; readonly text: string };
+  readonly rootDir?: string;
+  readonly outDir?: string;
+  readonly declaration: boolean;
+  readonly sourceMap: boolean;
+  readonly noEmit: boolean;
+}
+
+/**
+ * Project mode: `vibe check -p tsconfig.json`, `vibe compile -p tsconfig.json`.
+ *
+ * The pinned compiler expands a configuration only for the extensions it
+ * owns, so a bare `-p` used to type-check the project's TypeScript files and
+ * never open a `.vibe` file: a project whose only defect was a dropped Result
+ * passed with exit 0 and no output, and a project of nothing but `.vibe`
+ * files was refused as having no inputs. The native `discoverProject`
+ * operation now expands the same `files`/`include`/`exclude` the
+ * configuration declares, JSONC and `extends` included, for every root the
+ * project has; the `.vibe` roots go to the checked frontend and the
+ * TypeScript roots keep their own compiler. The language's mandatory-option
+ * diagnostics (VIBE600x) gate only a project that has `.vibe` roots:
+ * compatibility.mdx scopes the mandatory set to `.vibe`, and an ordinary
+ * TypeScript project keeps its own configuration contract.
+ */
+function discoverVibeLangProjectInputs(project: string): VibeLangProjectInputs | { readonly failure: CliDiagnostic } {
+  const requested = resolve(project);
+  const fileName = existsSync(requested) && statSync(requested).isDirectory()
+    ? join(requested, "tsconfig.json")
+    : requested;
+  if (!existsSync(fileName)) {
+    return { failure: { code: "VIBE6003", severity: "error", message: `no tsconfig.json at ${fileName}`, file: fileName } };
+  }
+  let discovered: NativeProjectConfigResult;
+  try {
+    discovered = getNativeCompiler().discoverProject({ path: fileName });
+  } catch (error) {
+    return {
+      failure: {
+        code: "VIBE6003",
+        severity: "error",
+        message: `project configuration could not be read: ${error instanceof Error ? error.message : String(error)}`,
+        file: fileName,
+      },
+    };
+  }
+  const sources = new Map(discovered.configurations.map((configuration) => [configuration.path, configuration.text]));
+  const diagnostics: CliDiagnostic[] = discovered.diagnostics.map((issue) => {
+    const source = issue.file === undefined ? undefined : sources.get(issue.file);
+    const position = source !== undefined && issue.span !== undefined ? authoredLineColumn(source, issue.span.start) : undefined;
+    return {
+      code: issue.code,
+      severity: "error",
+      message: issue.message,
+      file: issue.file ?? fileName,
+      ...(position === undefined ? {} : { line: position.line, column: position.column }),
+    };
+  });
+  const text = sources.get(fileName) ?? readFileSync(fileName, "utf8");
+  return {
+    fileName,
+    text,
+    diagnostics,
+    files: discovered.files.filter(isVibeLangFile),
+    typeScriptFiles: discovered.files.filter((file) => !isVibeLangFile(file)),
+    configDirectory: dirname(fileName),
+    ...(discovered.configurations.length === 1 ? { configFile: { path: fileName, text } } : {}),
+    ...(discovered.options.rootDir === "" ? {} : { rootDir: discovered.options.rootDir }),
+    ...(discovered.options.outDir === "" ? {} : { outDir: discovered.options.outDir }),
+    declaration: discovered.options.declaration,
+    sourceMap: discovered.options.sourceMap,
+    noEmit: discovered.options.noEmit,
+  };
+}
+
+/**
+ * The configuration handed to a frontend for a `-p` run with explicit
+ * entries: the text-only validation, unchanged, whose findings and positions
+ * the compiler-option route tests pin. Discovery's effective-configuration
+ * findings gate the bare `-p` run, where the entries come from the
+ * configuration itself.
+ */
+function projectConfigForEntries(requested: string):
+  | { readonly fileName: string; readonly text: string; readonly diagnostics: readonly CliDiagnostic[]; readonly configFile: { readonly path: string; readonly text: string } }
+  | { readonly failure: CliDiagnostic } {
+  const config = readVibeLangProjectConfig(requested);
+  if ("failure" in config) return config;
+  return { ...config, configFile: { path: config.fileName, text: config.text } };
+}
+
+/** tsc's plain diagnostic line: `file(line,col): error TSnnnn: message`. */
+const TSC_LOCATED_DIAGNOSTIC = /^(?<file>.+?)\((?<line>\d+),(?<column>\d+)\): (?<severity>error|warning) (?<code>TS\d+): (?<message>.*)$/u;
+const TSC_GLOBAL_DIAGNOSTIC = /^(?<severity>error|warning) (?<code>TS\d+): (?<message>.*)$/u;
+
+/**
+ * Type-check the TypeScript roots of a mixed project with the TypeScript
+ * compiler itself, under the project's own configuration, and fold its
+ * findings into the structured report. Routing the `.vibe` roots through the
+ * checked frontend must not make a broken `plain.ts` disappear from
+ * `vibe check -p`, and a refused project must not publish a partial build.
+ */
+function checkTypeScriptRoots(configFileName: string): { readonly ok: boolean; readonly results: readonly VibeLangFileResult[] } {
+  const run = captureTypeScriptCompiler(["--noEmit", "--pretty", "false", "-p", configFileName], { cwd: dirname(configFileName) });
+  const byFile = new Map<string, CliDiagnostic[]>();
+  const record = (file: string, diagnostic: CliDiagnostic): void => {
+    const list = byFile.get(file) ?? [];
+    list.push(diagnostic);
+    byFile.set(file, list);
+  };
+  for (const line of `${run.stdout}\n${run.stderr}`.split(/\r?\n/u)) {
+    const located = TSC_LOCATED_DIAGNOSTIC.exec(line);
+    if (located?.groups) {
+      const file = resolve(dirname(configFileName), located.groups.file!);
+      record(file, {
+        code: located.groups.code!,
+        severity: located.groups.severity === "warning" ? "warning" : "error",
+        message: located.groups.message!,
+        file,
+        line: Number(located.groups.line),
+        column: Number(located.groups.column),
+      });
+      continue;
+    }
+    const global = TSC_GLOBAL_DIAGNOSTIC.exec(line);
+    if (global?.groups) {
+      record(configFileName, {
+        code: global.groups.code!,
+        severity: global.groups.severity === "warning" ? "warning" : "error",
+        message: global.groups.message!,
+        file: configFileName,
+      });
+    }
+  }
+  const failed = run.status !== 0;
+  if (failed && ![...byFile.values()].flat().some((diagnostic) => diagnostic.severity === "error")) {
+    record(configFileName, {
+      code: "VIBELANG_TYPESCRIPT",
+      severity: "error",
+      message: `the TypeScript compiler exited with status ${run.status}: ${(run.stderr || run.stdout || "no output").trim().slice(0, 4096)}`,
+      file: configFileName,
+    });
+  }
+  return {
+    ok: !failed,
+    results: [...byFile.entries()].map(([input, diagnostics]) => ({ input, diagnostics })),
+  };
+}
+
+/**
+ * Let a temporary output directory resolve the `vibelang` package the way an
+ * installed consumer's project does.
+ *
+ * `vibe run` and `vibe test` redirect the `vibelang/runtime` seam at the
+ * packaged file, but the derived-schema seam `vibelang/schema-runtime`
+ * deliberately keeps its bare specifier (a resolvable local path would make the
+ * frontend read `__vsSchema` as an untrusted foreign module), so a program
+ * that derived a schema failed with ERR_MODULE_NOT_FOUND whenever no
+ * `node_modules/vibelang` sat above its source: a checkout, a global install,
+ * a scratch directory. The link points at this package's own root, whose
+ * `exports` map already names every seam, so the emitted specifier resolves
+ * to the same files an installed consumer would load.
+ */
+function stagePackageResolution(directory: string): void {
+  const packageRoot = fileURLToPath(new URL("../", import.meta.url)).replace(/[\\/]+$/, "");
+  const modules = join(directory, "node_modules");
+  mkdirSync(modules, { recursive: true });
+  symlinkSync(packageRoot, join(modules, "vibelang"), process.platform === "win32" ? "junction" : "dir");
+}
+
 function reportVibeLangResults(results: readonly VibeLangFileResult[]): { ok: boolean; files: readonly VibeLangFileResult[] } {
   const ok = results.every((result) => !result.diagnostics.some((diagnostic) => diagnostic.severity === "error"));
   if (!ok) process.exitCode = 1;
@@ -838,8 +1024,23 @@ const cli = Cli.create("vibe", { version, description: "VibeLang: the programmin
     description: "Compile .vibe with the checked frontend, or delegate TS/JS to TypeScript",
     hint: "Use vibec when exact raw tsc argument compatibility is required.",
     async run(context) {
-      const inputFiles = context.args.files;
+      let inputFiles = context.args.files;
       const { backend, ...options } = context.options;
+      const bare = inputFiles === undefined || inputFiles.length === 0;
+      const project = options.project === undefined || !bare ? undefined : discoverVibeLangProjectInputs(options.project);
+      if (project && "failure" in project) {
+        return context.error({ code: project.failure.code, exitCode: 2, message: project.failure.message });
+      }
+      let discovered: VibeLangProjectInputs | undefined;
+      if (project) {
+        if (project.diagnostics.length > 0) {
+          return reportVibeLangResults([{ input: project.fileName, diagnostics: project.diagnostics }]);
+        }
+        if (project.files.length > 0) {
+          discovered = project;
+          inputFiles = [...project.files];
+        }
+      }
       if (backend === "js" && !inputFiles?.some(isVibeLangFile)) {
         return finishCompiler(runTypeScriptCompiler(compilerArgs(inputFiles, options)));
       }
@@ -862,14 +1063,16 @@ const cli = Cli.create("vibe", { version, description: "VibeLang: the programmin
           message: `.vibe compile does not support ${unsupported.join(", ")}; supported options are --project, --outDir, --rootDir, --declaration, --sourceMap, and --noEmit`,
         });
       }
-      const compileConfig = options.project === undefined ? undefined : readVibeLangProjectConfig(options.project);
+      const compileConfig = discovered ?? (options.project === undefined ? undefined : projectConfigForEntries(options.project));
       if (compileConfig && "failure" in compileConfig) {
         return context.error({ code: compileConfig.failure.code, exitCode: 2, message: compileConfig.failure.message });
       }
       if (compileConfig && compileConfig.diagnostics.length > 0) {
         return reportVibeLangResults([{ input: compileConfig.fileName, diagnostics: compileConfig.diagnostics }]);
       }
-      const collision = duplicateVibeLangOutput(vibelangInputs, options.outDir);
+      const outDir = options.outDir ?? discovered?.outDir;
+      const emit = !options.noEmit && !(discovered?.noEmit ?? false);
+      const collision = duplicateVibeLangOutput(vibelangInputs, outDir);
       if (collision) {
         return context.error({
           code: "DUPLICATE_VIBELANG_OUTPUT",
@@ -884,17 +1087,23 @@ const cli = Cli.create("vibe", { version, description: "VibeLang: the programmin
           message: ".vibe compile cannot combine --noEmit with --declaration or --sourceMap",
         });
       }
+      // The TypeScript roots of a mixed project are checked first, under the
+      // project's own configuration: a refused project publishes nothing.
+      if (discovered && discovered.typeScriptFiles.length > 0) {
+        const typescript = checkTypeScriptRoots(discovered.fileName);
+        if (!typescript.ok) return reportVibeLangResults(typescript.results);
+      }
       try {
         const compile = backend === "go" ? compileGoVibeLangFiles : compileVibeLangFiles;
         return reportVibeLangResults(await compile(vibelangInputs, {
-          ...(compileConfig && !("failure" in compileConfig)
-            ? { configFile: { path: compileConfig.fileName, text: compileConfig.text } }
+          ...(compileConfig && !("failure" in compileConfig) && compileConfig.configFile
+            ? { configFile: compileConfig.configFile }
             : {}),
-          outDir: options.outDir,
-          rootDir: options.rootDir,
-          emit: !options.noEmit,
-          declaration: options.declaration,
-          sourceMap: options.sourceMap,
+          outDir,
+          rootDir: options.rootDir ?? discovered?.rootDir ?? discovered?.configDirectory,
+          emit,
+          declaration: options.declaration || (emit && discovered?.declaration) || undefined,
+          sourceMap: options.sourceMap || (emit && discovered?.sourceMap) || undefined,
         }));
       } catch (error) {
         return backendFailure(context, error);
@@ -907,8 +1116,23 @@ const cli = Cli.create("vibe", { version, description: "VibeLang: the programmin
     alias: { project: "p", watch: "w" },
     description: "Check .vibe rows and emitted TS, or type-check TS/JS without emitting",
     async run(context) {
-      const inputFiles = context.args.files;
+      let inputFiles = context.args.files;
       const { backend, ...options } = context.options;
+      const bare = inputFiles === undefined || inputFiles.length === 0;
+      const project = options.project === undefined || !bare ? undefined : discoverVibeLangProjectInputs(options.project);
+      if (project && "failure" in project) {
+        return context.error({ code: project.failure.code, exitCode: 2, message: project.failure.message });
+      }
+      let discovered: VibeLangProjectInputs | undefined;
+      if (project) {
+        if (project.diagnostics.length > 0) {
+          return reportVibeLangResults([{ input: project.fileName, diagnostics: project.diagnostics }]);
+        }
+        if (project.files.length > 0) {
+          discovered = project;
+          inputFiles = [...project.files];
+        }
+      }
       if (backend === "js" && !inputFiles?.some(isVibeLangFile)) {
         return finishCompiler(runTypeScriptCompiler(["--noEmit", ...compilerArgs(inputFiles, options)]));
       }
@@ -931,22 +1155,26 @@ const cli = Cli.create("vibe", { version, description: "VibeLang: the programmin
           message: `.vibe check does not support ${unsupported.join(", ")}`,
         });
       }
-      const checkConfig = options.project === undefined ? undefined : readVibeLangProjectConfig(options.project);
+      const checkConfig = discovered ?? (options.project === undefined ? undefined : projectConfigForEntries(options.project));
       if (checkConfig && "failure" in checkConfig) {
         return context.error({ code: checkConfig.failure.code, exitCode: 2, message: checkConfig.failure.message });
       }
       if (checkConfig && checkConfig.diagnostics.length > 0) {
         return reportVibeLangResults([{ input: checkConfig.fileName, diagnostics: checkConfig.diagnostics }]);
       }
+      const typescript = discovered && discovered.typeScriptFiles.length > 0
+        ? checkTypeScriptRoots(discovered.fileName)
+        : undefined;
       try {
         const compile = backend === "go" ? compileGoVibeLangFiles : compileVibeLangFiles;
-        return reportVibeLangResults(await compile(vibelangInputs, {
-          ...(checkConfig && !("failure" in checkConfig)
-            ? { configFile: { path: checkConfig.fileName, text: checkConfig.text } }
+        const results = await compile(vibelangInputs, {
+          ...(checkConfig && !("failure" in checkConfig) && checkConfig.configFile
+            ? { configFile: checkConfig.configFile }
             : {}),
-          rootDir: options.rootDir,
+          rootDir: options.rootDir ?? discovered?.rootDir ?? discovered?.configDirectory,
           emit: false,
-        }));
+        });
+        return reportVibeLangResults([...(typescript?.results ?? []), ...results]);
       } catch (error) {
         return backendFailure(context, error);
       }
@@ -966,11 +1194,12 @@ const cli = Cli.create("vibe", { version, description: "VibeLang: the programmin
         const inputPath = realpathSync(resolve(input));
         temporary = mkdtempSync(join(dirname(inputPath), ".vibelang-run-"));
         writeFileSync(join(temporary, "package.json"), "{\"type\":\"module\"}\n");
+        stagePackageResolution(temporary);
         const runtime = fileURLToPath(new URL("../poc/dist/runtime/index.js", import.meta.url));
         // The derived-schema seam deliberately keeps its package specifier here:
         // a resolvable local path would make the frontend read `__vsSchema` as an
-        // untrusted foreign module, and `vibelang/schema-runtime` resolves from
-        // the emitted module for every installed consumer.
+        // untrusted foreign module. It resolves through the package link staged
+        // above, exactly as it does from an installed consumer's node_modules.
         const results = context.options.backend === "go"
           ? compileGoVibeLangFiles([input], { outDir: temporary })
           : await compileVibeLangFiles([input], { outDir: temporary, runtimeImport: runtime });
@@ -1404,6 +1633,7 @@ const cli = Cli.create("vibe", { version, description: "VibeLang: the programmin
         }
         temporary = mkdtempSync(join(commonSourceRoot(canonicalInputs), ".vibelang-test-"));
         writeFileSync(join(temporary, "package.json"), "{\"type\":\"module\"}\n");
+        stagePackageResolution(temporary);
         const runtime = fileURLToPath(new URL("../poc/dist/runtime/index.js", import.meta.url));
         const results = await compileVibeLangFiles(inputs, {
           outDir: temporary,
@@ -1543,6 +1773,8 @@ const cli = Cli.create("vibe", { version, description: "VibeLang: the programmin
       };
     },
   });
+
+cli.command((await import("./durable-cli.js")).durableCli);
 
 await cli.serve(undefined, {
   stdout(text) {

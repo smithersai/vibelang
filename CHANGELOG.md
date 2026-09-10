@@ -6,6 +6,28 @@ All notable changes to VibeLang are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `vibe check -p` and `vibe compile -p` without an entry now expand the
+  configuration's `.vibe` roots through the native `discoverProject`
+  operation (JSONC and `extends` included) and hand them to the checked
+  frontend. Before, project mode only forwarded the TypeScript files to the
+  TypeScript compiler: a project whose `.vibe` file dropped a Result passed
+  with exit 0 and no output, a weakened `tsconfig.json` passed the same way,
+  and a project of nothing but `.vibe` files was refused with TS18003. The
+  TypeScript roots of a mixed project are still type-checked, and their
+  findings are folded into the same report.
+- `vibe run` and `vibe test` now resolve the derived-schema runtime
+  (`vibelang/schema-runtime`) from a checkout, a global install or a scratch
+  directory: the temporary output directory links the package the way an
+  installed consumer's `node_modules` does, instead of failing with
+  `ERR_MODULE_NOT_FOUND` unless `vibelang` happened to be installed above
+  the source.
+- Bridge preparation now serializes patching of a shared TypeScript checkout
+  across bridge caches with a lock keyed by the checkout, so two preparations
+  given different caches (the conformance runner and its self-test each use
+  a private one) no longer observe a half-patched checkout on a cold cache.
+
 ### Changed
 
 - The package root now shares `vibelang/compiler`'s pinned native Go request
