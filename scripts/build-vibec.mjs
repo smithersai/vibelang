@@ -29,14 +29,14 @@ const proxyPath = resolve(vendorDirectory, "go-proxy");
 const pinnedGoVersion = "go1.26.0";
 const forkSources = [
   {
-    logicalPath: "tsc/cmd/smithersc/main.go",
-    sourcePath: resolve(root, "cmd/smithersc/forksrc/cmd/smithersc/main.go.txt"),
+    logicalPath: "tsc/cmd/vibec/main.go",
+    sourcePath: resolve(root, "cmd/vibec/forksrc/cmd/vibec/main.go.txt"),
   },
   {
-    logicalPath: "tsc/internal/smithers/marker.go",
+    logicalPath: "tsc/internal/vibelang/marker.go",
     sourcePath: resolve(
       root,
-      "cmd/smithersc/forksrc/internal/smithers/marker.go.txt",
+      "cmd/vibec/forksrc/internal/vibelang/marker.go.txt",
     ),
   },
 ];
@@ -53,7 +53,7 @@ const buildSparsePatterns = [
 ];
 
 function fail(message) {
-  console.error(`smithersc build: ${message}`);
+  console.error(`vibec build: ${message}`);
   process.exit(1);
 }
 
@@ -86,11 +86,11 @@ function commandVersion(command) {
 }
 
 function resolveGo() {
-  const requested = process.env.SMITHERS_GO;
+  const requested = process.env.VIBELANG_GO;
   if (requested) {
     const version = commandVersion(requested);
     if (!version?.includes(` ${pinnedGoVersion} `)) {
-      fail(`SMITHERS_GO must name ${pinnedGoVersion}; got ${version ?? "an unusable command"}`);
+      fail(`VIBELANG_GO must name ${pinnedGoVersion}; got ${version ?? "an unusable command"}`);
     }
     return requested;
   }
@@ -204,7 +204,7 @@ function parseArguments(argv) {
     checkout: undefined,
     output: resolve(
       root,
-      `node_modules/.cache/smithers/${process.platform === "win32" ? "smithersc.exe" : "smithersc"}`,
+      `node_modules/.cache/vibelang/${process.platform === "win32" ? "vibec.exe" : "vibec"}`,
     ),
   };
   if (argv[0] === "build" || argv[0] === "verify") result.command = argv.shift();
@@ -219,7 +219,7 @@ function parseArguments(argv) {
         break;
       case "--help":
         process.stdout.write(
-          "usage: build-smithersc.mjs [build|verify] [--checkout PATH] [--output PATH]\n" +
+          "usage: build-vibec.mjs [build|verify] [--checkout PATH] [--output PATH]\n" +
             "\nverify performs two isolated offline builds and requires identical SHA-256 digests.\n",
         );
         process.exit(0);
@@ -278,7 +278,7 @@ function materializeCheckout(workDirectory) {
 }
 
 function buildOnce(requestedCheckout, goCommand) {
-  const workDirectory = mkdtempSync(join(tmpdir(), "smithers-smithersc-build-"));
+  const workDirectory = mkdtempSync(join(tmpdir(), "vibelang-vibec-build-"));
   const createdDirectories = [];
   const injectedSources = [];
   function removeInjectedSources() {
@@ -312,7 +312,7 @@ function buildOnce(requestedCheckout, goCommand) {
       copyFileSync(source.sourcePath, logicalSource);
       injectedSources.push(logicalSource);
     }
-    const output = resolve(workDirectory, "smithersc");
+    const output = resolve(workDirectory, "vibec");
     const moduleCache = resolve(workDirectory, "gomodcache");
     mkdirSync(moduleCache);
     const environment = {
@@ -338,10 +338,10 @@ function buildOnce(requestedCheckout, goCommand) {
         "-trimpath",
         "-buildvcs=false",
         "-ldflags",
-        `-buildid= -X github.com/microsoft/TypeScript/tsc/internal/smithers.ForkRevision=${manifest.revision}`,
+        `-buildid= -X github.com/microsoft/TypeScript/tsc/internal/vibelang.ForkRevision=${manifest.revision}`,
         "-o",
         output,
-        "./cmd/smithersc",
+        "./cmd/vibec",
       ],
       { cwd: resolve(checkout, "tsc"), env: environment },
     );
