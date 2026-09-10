@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,7 +11,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/smithersai/smithers/compiler"
+	"github.com/smithersai/vibelang/compiler"
+	"github.com/smithersai/vibelang/compiler/wirejson"
 )
 
 const version = "0.0.1"
@@ -28,7 +28,7 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func runWithFactory(args []string, stdout io.Writer, stderr io.Writer, pinned compilerFactory) int {
-	flags := flag.NewFlagSet("smithersc-go", flag.ContinueOnError)
+	flags := flag.NewFlagSet("vibec-go", flag.ContinueOnError)
 	var flagOutput bytes.Buffer
 	flags.SetOutput(&flagOutput)
 	var forkCheckout string
@@ -39,8 +39,8 @@ func runWithFactory(args []string, stdout io.Writer, stderr io.Writer, pinned co
 	var timeout time.Duration
 	var showVersion bool
 	var showAPIVersion bool
-	flags.BoolVar(&showVersion, "version", false, "print the smithersc-go version")
-	flags.BoolVar(&showVersion, "v", false, "print the smithersc-go version")
+	flags.BoolVar(&showVersion, "version", false, "print the vibec-go version")
+	flags.BoolVar(&showVersion, "v", false, "print the vibec-go version")
 	flags.BoolVar(&showAPIVersion, "api-version", false, "print the compiler transport API version")
 	flags.StringVar(&forkCheckout, "fork-checkout", "", "exact smithersai/TypeScript checkout in either pristine or fully forkpatch-applied state")
 	flags.StringVar(&forkCache, "fork-cache", "", "cache directory for the pinned bridge binary")
@@ -60,7 +60,7 @@ func runWithFactory(args []string, stdout io.Writer, stderr io.Writer, pinned co
 		return 64
 	}
 	if showVersion {
-		if _, err := fmt.Fprintf(stdout, "smithersc-go %s\n", version); err != nil {
+		if _, err := fmt.Fprintf(stdout, "vibec-go %s\n", version); err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
@@ -74,28 +74,28 @@ func runWithFactory(args []string, stdout io.Writer, stderr io.Writer, pinned co
 		return 0
 	}
 	if timeout <= 0 {
-		fmt.Fprintln(stderr, "smithersc-go: --timeout must be positive")
+		fmt.Fprintln(stderr, "vibec-go: --timeout must be positive")
 		return 64
 	}
 	if forkCheckout == "" && (forkCache != "" || goCommand != "") {
-		fmt.Fprintln(stderr, "smithersc-go: --fork-cache and --go-command require --fork-checkout")
+		fmt.Fprintln(stderr, "vibec-go: --fork-cache and --go-command require --fork-checkout")
 		return 64
 	}
 	var request compiler.CompileRequest
 	if requestPath != "" {
 		if len(flags.Args()) != 0 {
-			fmt.Fprintln(stderr, "smithersc-go: --request and root sources are mutually exclusive")
+			fmt.Fprintln(stderr, "vibec-go: --request and root sources are mutually exclusive")
 			return 64
 		}
 		loaded, err := loadRequest(requestPath)
 		if err != nil {
-			fmt.Fprintf(stderr, "smithersc-go: --request %s: %v\n", requestPath, err)
+			fmt.Fprintf(stderr, "vibec-go: --request %s: %v\n", requestPath, err)
 			return 64
 		}
 		request = loaded
 	} else {
 		if len(flags.Args()) == 0 {
-			fmt.Fprintln(stderr, "smithersc-go: at least one root source is required")
+			fmt.Fprintln(stderr, "vibec-go: at least one root source is required")
 			return 64
 		}
 		request = compiler.CompileRequest{RootNames: flags.Args(), Lowering: compiler.LoweringInternal}
@@ -108,7 +108,7 @@ func runWithFactory(args []string, stdout io.Writer, stderr io.Writer, pinned co
 	if projectRoot != "" {
 		absoluteRoot, err := filepath.Abs(projectRoot)
 		if err != nil {
-			fmt.Fprintf(stderr, "smithersc-go: --project-root %s: %v\n", projectRoot, err)
+			fmt.Fprintf(stderr, "vibec-go: --project-root %s: %v\n", projectRoot, err)
 			return 64
 		}
 		request.RootDir = absoluteRoot
@@ -121,7 +121,7 @@ func runWithFactory(args []string, stdout io.Writer, stderr io.Writer, pinned co
 	if forkCheckout == "" {
 		backend = compiler.New()
 	} else if pinned == nil {
-		err = errors.New("smithersc-go: pinned compiler factory is nil")
+		err = errors.New("vibec-go: pinned compiler factory is nil")
 	} else {
 		backend, err = pinned(ctx, compiler.ForkConfig{
 			CheckoutDirectory: forkCheckout,
@@ -130,7 +130,7 @@ func runWithFactory(args []string, stdout io.Writer, stderr io.Writer, pinned co
 		})
 	}
 	if err == nil && backend == nil {
-		err = errors.New("smithersc-go: compiler factory returned a nil backend")
+		err = errors.New("vibec-go: compiler factory returned a nil backend")
 	}
 
 	result := compiler.CompileResult{EmitSkipped: true}
@@ -138,10 +138,10 @@ func runWithFactory(args []string, stdout io.Writer, stderr io.Writer, pinned co
 		result, err = backend.Compile(ctx, request)
 	}
 	if err != nil && !errors.Is(err, compiler.ErrNotImplemented) {
-		code := "SMITHERS_GO_BACKEND"
+		code := "VIBELANG_GO_BACKEND"
 		message := err.Error()
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			code = "SMITHERS_GO_TIMEOUT"
+			code = "VIBELANG_GO_TIMEOUT"
 			if !errors.Is(err, context.DeadlineExceeded) {
 				message = context.DeadlineExceeded.Error() + ": " + message
 			}
@@ -160,7 +160,7 @@ func runWithFactory(args []string, stdout io.Writer, stderr io.Writer, pinned co
 	if result.Artifacts == nil {
 		result.Artifacts = []compiler.Artifact{}
 	}
-	if encodeErr := json.NewEncoder(stdout).Encode(result); encodeErr != nil {
+	if encodeErr := wirejson.Encode(stdout, result); encodeErr != nil {
 		fmt.Fprintln(stderr, encodeErr)
 		return 1
 	}
@@ -190,15 +190,9 @@ func loadRequest(path string) (compiler.CompileRequest, error) {
 	if err != nil {
 		return compiler.CompileRequest{}, err
 	}
-	decoder := json.NewDecoder(bytes.NewReader(content))
-	decoder.DisallowUnknownFields()
 	var request compiler.CompileRequest
-	if err := decoder.Decode(&request); err != nil {
+	if err := wirejson.Decode(bytes.NewReader(content), &request); err != nil {
 		return compiler.CompileRequest{}, err
-	}
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return compiler.CompileRequest{}, errors.New("expected one JSON request value")
 	}
 	return request, nil
 }

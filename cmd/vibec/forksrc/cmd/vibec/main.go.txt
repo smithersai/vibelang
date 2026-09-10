@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/microsoft/TypeScript/tsc/internal/smithers"
+	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 func main() {
 	if len(os.Args) > 2 || (len(os.Args) == 2 && os.Args[1] != "--version") {
-		fmt.Fprintln(os.Stderr, "usage: smithersc [--version]")
+		fmt.Fprintln(os.Stderr, "usage: vibec [--version]")
 		os.Exit(2)
 	}
-	fmt.Print(smithers.Marker())
+	fmt.Print(vibelang.Marker())
 }

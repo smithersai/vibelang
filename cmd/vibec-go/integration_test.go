@@ -14,23 +14,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smithersai/smithers/compiler"
+	"github.com/smithersai/vibelang/compiler"
 )
 
 func TestPinnedCLIProcessCompilesDiskRoots(t *testing.T) {
-	checkout := os.Getenv("SMITHERS_TYPESCRIPT_FORK")
+	checkout := os.Getenv("VIBELANG_TYPESCRIPT_FORK")
 	if checkout == "" {
-		t.Skip("set SMITHERS_TYPESCRIPT_FORK to run the executable CLI test")
+		t.Skip("set VIBELANG_TYPESCRIPT_FORK to run the executable CLI test")
 	}
 	repositoryRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
-	executable := filepath.Join(t.TempDir(), "smithersc-go")
+	executable := filepath.Join(t.TempDir(), "vibec-go")
 	if runtime.GOOS == "windows" {
 		executable += ".exe"
 	}
-	build := exec.Command("go", "build", "-o", executable, "./cmd/smithersc-go")
+	build := exec.Command("go", "build", "-o", executable, "./cmd/vibec-go")
 	build.Dir = repositoryRoot
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build CLI: %v\n%s", err, output)
@@ -41,7 +41,7 @@ func TestPinnedCLIProcessCompilesDiskRoots(t *testing.T) {
 		"--fork-checkout", checkout,
 		"--fork-cache", cache,
 		"--timeout", "3m",
-		"compiler/testdata/identity.sm",
+		"compiler/testdata/identity.vibe",
 	}, 0)
 	if valid.EmitSkipped || len(valid.Diagnostics) != 0 {
 		t.Fatalf("unexpected valid result: %#v", valid)
@@ -61,9 +61,9 @@ func TestPinnedCLIProcessCompilesDiskRoots(t *testing.T) {
 		"--fork-checkout", checkout,
 		"--fork-cache", cache,
 		"--timeout", "3m",
-		"compiler/testdata/invalid.sm",
+		"compiler/testdata/invalid.vibe",
 	}, 1)
-	if !invalid.EmitSkipped || len(invalid.Artifacts) != 0 || len(invalid.Diagnostics) != 1 || invalid.Diagnostics[0].Code != "TS2322" || invalid.Diagnostics[0].File != "compiler/testdata/invalid.sm" {
+	if !invalid.EmitSkipped || len(invalid.Artifacts) != 0 || len(invalid.Diagnostics) != 1 || invalid.Diagnostics[0].Code != "TS2322" || invalid.Diagnostics[0].File != "compiler/testdata/invalid.vibe" {
 		t.Fatalf("unexpected invalid result: %#v", invalid)
 	}
 
@@ -71,8 +71,8 @@ func TestPinnedCLIProcessCompilesDiskRoots(t *testing.T) {
 		"--fork-checkout", checkout,
 		"--fork-cache", cache,
 		"--timeout", "3m",
-		"compiler/testdata/multi/main.sm",
-		"compiler/testdata/multi/util.sm",
+		"compiler/testdata/multi/main.vibe",
+		"compiler/testdata/multi/util.vibe",
 	}, 0)
 	if multi.EmitSkipped || len(multi.Diagnostics) != 0 {
 		t.Fatalf("unexpected multi-file result: %#v", multi)
@@ -91,25 +91,25 @@ func TestPinnedCLIProcessCompilesDiskRoots(t *testing.T) {
 	if _, ok := contents["compiler/testdata/multi/util.js"]; !ok {
 		t.Fatalf("missing multi-file util.js: %#v", multi.Artifacts)
 	}
-	if !strings.Contains(contents["compiler/testdata/multi/main.js.map"], "multi/main.sm") {
+	if !strings.Contains(contents["compiler/testdata/multi/main.js.map"], "multi/main.vibe") {
 		t.Fatalf("multi-file map lost authored identity: %q", contents["compiler/testdata/multi/main.js.map"])
 	}
 }
 
 func TestPinnedCLIProcessCompilesExternallyLoweredRequest(t *testing.T) {
-	checkout := os.Getenv("SMITHERS_TYPESCRIPT_FORK")
+	checkout := os.Getenv("VIBELANG_TYPESCRIPT_FORK")
 	if checkout == "" {
-		t.Skip("set SMITHERS_TYPESCRIPT_FORK to run the executable CLI test")
+		t.Skip("set VIBELANG_TYPESCRIPT_FORK to run the executable CLI test")
 	}
 	repositoryRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
-	executable := filepath.Join(t.TempDir(), "smithersc-go")
+	executable := filepath.Join(t.TempDir(), "vibec-go")
 	if runtime.GOOS == "windows" {
 		executable += ".exe"
 	}
-	build := exec.Command("go", "build", "-o", executable, "./cmd/smithersc-go")
+	build := exec.Command("go", "build", "-o", executable, "./cmd/vibec-go")
 	build.Dir = repositoryRoot
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build CLI: %v\n%s", err, output)
@@ -121,14 +121,14 @@ func TestPinnedCLIProcessCompilesExternallyLoweredRequest(t *testing.T) {
 	// `action`→`function` — while the second lowered line is deliberately
 	// unmapped generated code.
 	request := compiler.CompileRequest{
-		RootNames: []string{"main.sm"},
+		RootNames: []string{"main.vibe"},
 		Files: []compiler.SourceFile{{
-			Path: "main.sm",
-			Kind: compiler.FileKindSmithers,
+			Path: "main.vibe",
+			Kind: compiler.FileKindVibeLang,
 			Text: authored,
 			Lowered: &compiler.LoweredSource{
 				Text:      lowered,
-				SourceMap: `{"version":3,"sources":["main.sm"],"names":[],"mappings":"AAAA,QAAM"}`,
+				SourceMap: `{"version":3,"sources":["main.vibe"],"names":[],"mappings":"AAAA,QAAM"}`,
 			},
 		}},
 		Lowering: compiler.LoweringExternal,
@@ -157,29 +157,29 @@ func TestPinnedCLIProcessCompilesExternallyLoweredRequest(t *testing.T) {
 	if !strings.Contains(contents["main.js"], "function answer()") {
 		t.Fatalf("lowered TypeScript was not emitted: %q", contents["main.js"])
 	}
-	if !strings.Contains(contents["main.js.map"], `"sources":["../src/main.sm"]`) {
+	if !strings.Contains(contents["main.js.map"], `"sources":["../src/main.vibe"]`) {
 		t.Fatalf("composed map lost authored identity: %q", contents["main.js.map"])
 	}
 }
 
 // TestPinnedCLIProcessCompilesInternallyLoweredRequest drives the Go-native
-// lowering across the real process boundary: the CLI submits an unlowered `.sm`
+// lowering across the real process boundary: the CLI submits an unlowered `.vibe`
 // request and the pinned bridge returns emitted JavaScript that constructs
 // Result variants instead of throwing.
 func TestPinnedCLIProcessCompilesInternallyLoweredRequest(t *testing.T) {
-	checkout := os.Getenv("SMITHERS_TYPESCRIPT_FORK")
+	checkout := os.Getenv("VIBELANG_TYPESCRIPT_FORK")
 	if checkout == "" {
-		t.Skip("set SMITHERS_TYPESCRIPT_FORK to run the executable CLI test")
+		t.Skip("set VIBELANG_TYPESCRIPT_FORK to run the executable CLI test")
 	}
 	repositoryRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
-	executable := filepath.Join(t.TempDir(), "smithersc-go")
+	executable := filepath.Join(t.TempDir(), "vibec-go")
 	if runtime.GOOS == "windows" {
 		executable += ".exe"
 	}
-	build := exec.Command("go", "build", "-o", executable, "./cmd/smithersc-go")
+	build := exec.Command("go", "build", "-o", executable, "./cmd/vibec-go")
 	build.Dir = repositoryRoot
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build CLI: %v\n%s", err, output)
@@ -209,8 +209,8 @@ func TestPinnedCLIProcessCompilesInternallyLoweredRequest(t *testing.T) {
 		"    return error.match({ Boom: () => \"boom\", Late: () => \"late\" });\n" +
 		"}\n"
 	requestJSON, err := json.Marshal(compiler.CompileRequest{
-		RootNames: []string{"main.sm"},
-		Files:     []compiler.SourceFile{{Path: "main.sm", Kind: compiler.FileKindSmithers, Text: authored}},
+		RootNames: []string{"main.vibe"},
+		Files:     []compiler.SourceFile{{Path: "main.vibe", Kind: compiler.FileKindVibeLang, Text: authored}},
 		Lowering:  compiler.LoweringInternal,
 	})
 	if err != nil {
@@ -249,10 +249,10 @@ func TestPinnedCLIProcessCompilesInternallyLoweredRequest(t *testing.T) {
 	// install, so the spelling this asserts is the whole rule — not a detail of
 	// how the same dispatch happens to be printed.
 	for _, lowered := range []string{
-		"return new __smithersErr(new Boom());",
-		"return new __smithersOk(n);",
-		"__smithersErrorIs(error, Boom) ?",
-		"__smithersErrorIs(error, Late) ?",
+		"return new __vibelangErr(new Boom());",
+		"return new __vibelangOk(n);",
+		"__vibelangErrorIs(error, Boom) ?",
+		"__vibelangErrorIs(error, Late) ?",
 	} {
 		if !strings.Contains(contents["main.js"], lowered) {
 			t.Fatalf("lowered form %q missing: %q", lowered, contents["main.js"])
@@ -276,7 +276,7 @@ func TestPinnedCLIProcessCompilesInternallyLoweredRequest(t *testing.T) {
 		}
 	}
 	// The withdrawn Optional container has no lowering left to emit.
-	for _, withdrawn := range []string{"__smithersSome", "__smithersNone", "__smithersOptional"} {
+	for _, withdrawn := range []string{"__vibelangSome", "__vibelangNone", "__vibelangOptional"} {
 		if strings.Contains(contents["main.js"], withdrawn) {
 			t.Fatalf("withdrawn Optional lowering %q reappeared: %q", withdrawn, contents["main.js"])
 		}
@@ -284,7 +284,7 @@ func TestPinnedCLIProcessCompilesInternallyLoweredRequest(t *testing.T) {
 	if strings.Contains(contents["main.js"], ".match(") {
 		t.Fatalf("the authored match survived lowering: %q", contents["main.js"])
 	}
-	if _, ok := contents["__smithers_prelude.js"]; !ok {
+	if _, ok := contents["__vibelang_prelude.js"]; !ok {
 		t.Fatalf("the compiler-owned prelude runtime was not emitted: %v", contents)
 	}
 }

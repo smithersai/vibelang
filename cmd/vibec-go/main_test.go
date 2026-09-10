@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smithersai/smithers/compiler"
+	"github.com/smithersai/vibelang/compiler"
 )
 
 type compilerFunc func(context.Context, compiler.CompileRequest) (compiler.CompileResult, error)
@@ -46,7 +46,7 @@ func TestMetadataFlagsRemainDependencyFree(t *testing.T) {
 		args []string
 		want string
 	}{
-		{args: []string{"--version"}, want: "smithersc-go " + version + "\n"},
+		{args: []string{"--version"}, want: "vibec-go " + version + "\n"},
 		{args: []string{"--api-version"}, want: strconv.Itoa(compiler.APIVersion) + "\n"},
 	} {
 		var stdout bytes.Buffer
@@ -101,7 +101,7 @@ func TestMetadataFlagsRespectParsingAndDoubleDash(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
 		exit := runWithFactory([]string{"--help"}, &stdout, &stderr, nil)
-		if exit != 0 || !strings.Contains(stdout.String(), "Usage of smithersc-go") || stderr.Len() != 0 {
+		if exit != 0 || !strings.Contains(stdout.String(), "Usage of vibec-go") || stderr.Len() != 0 {
 			t.Fatalf("exit=%d stdout=%q stderr=%q", exit, stdout.String(), stderr.String())
 		}
 	})
@@ -117,7 +117,7 @@ func TestExplicitPinnedForkCompilesRootsThroughSelectedBackend(t *testing.T) {
 		"--fork-cache", "/compiler/cache",
 		"--go-command", "/toolchain/go",
 		"--timeout", "2s",
-		"main.sm",
+		"main.vibe",
 	}, &stdout, &stderr, func(_ context.Context, config compiler.ForkConfig) (compiler.Compiler, error) {
 		gotConfig = config
 		return compilerFunc(func(_ context.Context, request compiler.CompileRequest) (compiler.CompileResult, error) {
@@ -136,11 +136,11 @@ func TestExplicitPinnedForkCompilesRootsThroughSelectedBackend(t *testing.T) {
 	if gotConfig.CheckoutDirectory != "/checked/fork" || gotConfig.CacheDirectory != "/compiler/cache" || gotConfig.GoCommand != "/toolchain/go" {
 		t.Fatalf("unexpected config: %#v", gotConfig)
 	}
-	if len(gotRequest.RootNames) != 1 || gotRequest.RootNames[0] != "main.sm" {
+	if len(gotRequest.RootNames) != 1 || gotRequest.RootNames[0] != "main.vibe" {
 		t.Fatalf("unexpected request: %#v", gotRequest)
 	}
 	if gotRequest.Lowering != compiler.LoweringInternal {
-		t.Fatalf("positional roots must run Smithers lowering, got %q", gotRequest.Lowering)
+		t.Fatalf("positional roots must run VibeLang lowering, got %q", gotRequest.Lowering)
 	}
 	result := decodeResult(t, &stdout)
 	if result.EmitSkipped || len(result.Artifacts) != 1 || result.Artifacts[0].Path != "main.js" {
@@ -152,7 +152,7 @@ func TestDiagnosticsAndBackendFailureUseMachineReadableResultAndFailureExit(t *t
 	t.Run("diagnostic", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
-		exit := runWithFactory([]string{"--fork-checkout", "/fork", "broken.sm"}, &stdout, &stderr,
+		exit := runWithFactory([]string{"--fork-checkout", "/fork", "broken.vibe"}, &stdout, &stderr,
 			func(context.Context, compiler.ForkConfig) (compiler.Compiler, error) {
 				return compilerFunc(func(context.Context, compiler.CompileRequest) (compiler.CompileResult, error) {
 					return compiler.CompileResult{
@@ -173,7 +173,7 @@ func TestDiagnosticsAndBackendFailureUseMachineReadableResultAndFailureExit(t *t
 	t.Run("backend", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
-		exit := runWithFactory([]string{"--fork-checkout", "/fork", "main.sm"}, &stdout, &stderr,
+		exit := runWithFactory([]string{"--fork-checkout", "/fork", "main.vibe"}, &stdout, &stderr,
 			func(context.Context, compiler.ForkConfig) (compiler.Compiler, error) {
 				return nil, errors.New("fork unavailable")
 			})
@@ -181,7 +181,7 @@ func TestDiagnosticsAndBackendFailureUseMachineReadableResultAndFailureExit(t *t
 			t.Fatalf("backend exit=%d stderr=%q", exit, stderr.String())
 		}
 		result := decodeResult(t, &stdout)
-		if !result.EmitSkipped || result.Diagnostics == nil || result.Artifacts == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "SMITHERS_GO_BACKEND" || strings.Contains(stdout.String(), ":null") {
+		if !result.EmitSkipped || result.Diagnostics == nil || result.Artifacts == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "VIBELANG_GO_BACKEND" || strings.Contains(stdout.String(), ":null") {
 			t.Fatal("backend construction failure must report skipped emit")
 		}
 	})
@@ -189,7 +189,7 @@ func TestDiagnosticsAndBackendFailureUseMachineReadableResultAndFailureExit(t *t
 	t.Run("nil backend", func(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
-		exit := runWithFactory([]string{"--fork-checkout", "/fork", "main.sm"}, &stdout, &stderr,
+		exit := runWithFactory([]string{"--fork-checkout", "/fork", "main.vibe"}, &stdout, &stderr,
 			func(context.Context, compiler.ForkConfig) (compiler.Compiler, error) {
 				return nil, nil
 			})
@@ -202,10 +202,10 @@ func TestDiagnosticsAndBackendFailureUseMachineReadableResultAndFailureExit(t *t
 func TestRequestFlagForwardsFullCompileRequest(t *testing.T) {
 	requestPath := filepath.Join(t.TempDir(), "request.json")
 	requestJSON := `{
-		"rootNames": ["main.sm"],
+		"rootNames": ["main.vibe"],
 		"files": [{
-			"path": "main.sm",
-			"kind": "smithers",
+			"path": "main.vibe",
+			"kind": "vibelang",
 			"text": "authored",
 			"lowered": {"text": "lowered", "sourceMap": "{}"}
 		}],
@@ -229,7 +229,7 @@ func TestRequestFlagForwardsFullCompileRequest(t *testing.T) {
 		t.Fatalf("exit=%d stderr=%q", exit, stderr.String())
 	}
 	if gotRequest.Lowering != compiler.LoweringExternal ||
-		len(gotRequest.RootNames) != 1 || gotRequest.RootNames[0] != "main.sm" ||
+		len(gotRequest.RootNames) != 1 || gotRequest.RootNames[0] != "main.vibe" ||
 		len(gotRequest.Files) != 1 || gotRequest.Files[0].Text != "authored" ||
 		gotRequest.Files[0].Lowered == nil || gotRequest.Files[0].Lowered.Text != "lowered" ||
 		gotRequest.Files[0].Lowered.SourceMap != "{}" ||
@@ -241,7 +241,7 @@ func TestRequestFlagForwardsFullCompileRequest(t *testing.T) {
 
 func TestRequestFlagUsageErrorsExitBeforeBackendPreparation(t *testing.T) {
 	valid := filepath.Join(t.TempDir(), "request.json")
-	if err := os.WriteFile(valid, []byte(`{"rootNames":["main.sm"]}`), 0o644); err != nil {
+	if err := os.WriteFile(valid, []byte(`{"rootNames":["main.vibe"]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	writeRequest := func(t *testing.T, content string) string {
@@ -259,7 +259,7 @@ func TestRequestFlagUsageErrorsExitBeforeBackendPreparation(t *testing.T) {
 	}{
 		{
 			name:   "request with positional roots",
-			args:   []string{"--request", valid, "main.sm"},
+			args:   []string{"--request", valid, "main.vibe"},
 			detail: "mutually exclusive",
 		},
 		{
@@ -274,13 +274,23 @@ func TestRequestFlagUsageErrorsExitBeforeBackendPreparation(t *testing.T) {
 		},
 		{
 			name:   "unknown request field",
-			args:   []string{"--request", writeRequest(t, `{"rootNames":["main.sm"],"unknown":true}`)},
+			args:   []string{"--request", writeRequest(t, `{"rootNames":["main.vibe"],"unknown":true}`)},
 			detail: "unknown field",
 		},
 		{
 			name:   "trailing request JSON",
-			args:   []string{"--request", writeRequest(t, `{"rootNames":["main.sm"]}{}`)},
+			args:   []string{"--request", writeRequest(t, `{"rootNames":["main.vibe"]}{}`)},
 			detail: "one JSON request value",
+		},
+		{
+			name:   "unpaired surrogate source",
+			args:   []string{"--request", writeRequest(t, `{"rootNames":["main.vibe"],"files":[{"path":"main.vibe","kind":"vibelang","text":"const x = '\ud800'"}]}`)},
+			detail: "unpaired UTF-16 surrogate",
+		},
+		{
+			name:   "invalid UTF8 source",
+			args:   []string{"--request", writeRequest(t, "{\"rootNames\":[\"main.vibe\"],\"files\":[{\"path\":\"main.vibe\",\"kind\":\"vibelang\",\"text\":\"\xff\"}]}")},
+			detail: "invalid UTF-8",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -333,7 +343,7 @@ func TestTimeoutCoversBackendExecutionAndKeepsJSONProtocol(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	started := time.Now()
-	exit := runWithFactory([]string{"--fork-checkout", "/fork", "--timeout", "20ms", "main.sm"}, &stdout, &stderr,
+	exit := runWithFactory([]string{"--fork-checkout", "/fork", "--timeout", "20ms", "main.vibe"}, &stdout, &stderr,
 		func(context.Context, compiler.ForkConfig) (compiler.Compiler, error) {
 			return compilerFunc(func(ctx context.Context, _ compiler.CompileRequest) (compiler.CompileResult, error) {
 				<-ctx.Done()
@@ -344,7 +354,7 @@ func TestTimeoutCoversBackendExecutionAndKeepsJSONProtocol(t *testing.T) {
 		t.Fatalf("exit=%d elapsed=%s stderr=%q", exit, time.Since(started), stderr.String())
 	}
 	result := decodeResult(t, &stdout)
-	if !result.EmitSkipped || len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "SMITHERS_GO_TIMEOUT" || !strings.Contains(result.Diagnostics[0].Message, context.DeadlineExceeded.Error()) || strings.Contains(stdout.String(), ":null") {
+	if !result.EmitSkipped || len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "VIBELANG_GO_TIMEOUT" || !strings.Contains(result.Diagnostics[0].Message, context.DeadlineExceeded.Error()) || strings.Contains(stdout.String(), ":null") {
 		t.Fatal("timeout must retain a machine-readable skipped result")
 	}
 }
@@ -352,12 +362,12 @@ func TestTimeoutCoversBackendExecutionAndKeepsJSONProtocol(t *testing.T) {
 func TestDependencyFreeScaffoldHasStableJSONCollections(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	exit := runWithFactory([]string{"main.sm"}, &stdout, &stderr, nil)
+	exit := runWithFactory([]string{"main.vibe"}, &stdout, &stderr, nil)
 	if exit != 2 || !strings.Contains(stderr.String(), compiler.ErrNotImplemented.Error()) || strings.Contains(stdout.String(), ":null") {
 		t.Fatalf("exit=%d stdout=%q stderr=%q", exit, stdout.String(), stderr.String())
 	}
 	result := decodeResult(t, &stdout)
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "SMITHERS0001" || result.Artifacts == nil {
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "VIBE0001" || result.Artifacts == nil {
 		t.Fatalf("unexpected scaffold result: %#v", result)
 	}
 }

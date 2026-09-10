@@ -1,9 +1,9 @@
-// Package smithers is the narrow extension seam owned by the Smithers fork.
+// Package vibelang is the narrow extension seam owned by the VibeLang fork.
 //
-// This source is mapped to tsc/internal/smithers at build time. Its logical
+// This source is mapped to tsc/internal/vibelang at build time. Its logical
 // package path is therefore inside the TypeScript Go module and may import the
 // compiler's internal packages without weakening Go's internal visibility.
-package smithers
+package vibelang
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ var ForkRevision = "unconfigured"
 //go:noinline
 func Marker() string {
 	return fmt.Sprintf(
-		"smithers-extension=%s\ntypescript-fork=%s\ntypescript-core=%s\nfork-internal=github.com/microsoft/TypeScript/tsc/internal/core.Version\n",
+		"vibelang-extension=%s\ntypescript-fork=%s\ntypescript-core=%s\nfork-internal=github.com/microsoft/TypeScript/tsc/internal/core.Version\n",
 		ExtensionVersion,
 		ForkRevision,
 		core.Version(),
