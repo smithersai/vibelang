@@ -1,0 +1,159 @@
+#!/usr/bin/env node
+// Generates docs/src/pages/reference/diagnostics.mdx: every VIBEnnnn diagnostic
+// the conformance corpus observes, with the message the native-backed SDK profile
+// actually emits, the corpus case that demonstrates it, and the specification
+// citation the case records. Codes the shared compiler/hosts define but this SDK
+// run does not observe are listed separately; this is not standalone coverage.
+//
+// The messages come from running the corpus, not from reading source, so the
+// page cannot describe a message the compiler does not produce.
+//
+//   node scripts/diagnostics-reference.mjs           # regenerate the page
+//   node scripts/diagnostics-reference.mjs --check   # fail if the page is stale
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { assertNoUndetectedConstruction, forkCensus, referenceCensus } from "./coverage-codes.mjs";
+import { loadCorpus } from "../conformance/runner/corpus.mjs";
+import { validateDiagnosticObservation } from "./diagnostics-observation.mjs";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = resolve(here, "..");
+const corpus = join(root, "conformance", "corpus");
+const target = join(root, "docs", "src", "pages", "reference", "diagnostics.mdx");
+const check = process.argv.includes("--check");
+
+const runner = spawnSync(
+  process.execPath,
+  [join(root, "conformance", "runner", "run.mjs"), "--backend", "js", "--jobs", "4", "--json", "--report-only"],
+  { cwd: root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, timeout: 300_000, killSignal: "SIGKILL" },
+);
+let report;
+try {
+  report = JSON.parse(runner.stdout);
+} catch {
+  process.stderr.write(`diagnostics-reference: the conformance runner produced no JSON\n${runner.stderr}\n`);
+  process.exit(1);
+}
+try {
+  validateDiagnosticObservation(runner, report, loadCorpus().map((entry) => entry.id));
+} catch (error) {
+  process.stderr.write(`${error.message}\n${runner.stderr ?? ""}\n`);
+  process.exit(1);
+}
+
+/** First citation in a case's notes: "specification/x.mdx, 'Section'" or "specification/x.mdx §Section". */
+function citation(notes) {
+  if (typeof notes !== "string") return undefined;
+  const match = /((?:specification|guide|reference)\/[a-z-]+\.mdx)(?:,\s*'([^']+)'|\s*§\s*([^:.;\n]+))?/u.exec(notes);
+  if (!match) return undefined;
+  const page = match[1].replace(/\.mdx$/u, "");
+  const section = (match[2] ?? match[3] ?? "").trim();
+  return { page, section };
+}
+
+const byCode = new Map();
+for (const entry of report.cases) {
+  const observation = entry.results?.js?.observation;
+  if (!observation || observation.kind !== "diagnostics") continue;
+  const expectedPath = join(corpus, `${entry.id}.expected.json`);
+  const expected = existsSync(expectedPath) ? JSON.parse(readFileSync(expectedPath, "utf8")) : {};
+  for (const diagnostic of observation.diagnostics ?? []) {
+    if (!/^VIBE\d{4}$/u.test(diagnostic.code)) continue;
+    if (!byCode.has(diagnostic.code)) byCode.set(diagnostic.code, { messages: new Map(), cases: new Set(), citations: new Map() });
+    const record = byCode.get(diagnostic.code);
+    if (!record.messages.has(diagnostic.message)) record.messages.set(diagnostic.message, entry.id);
+    record.cases.add(entry.id);
+    const cite = citation(expected.notes);
+    if (cite) record.citations.set(`${cite.page}#${cite.section}`, cite);
+  }
+}
+
+// Share the coverage ledger's report-site census. A language-directory grep
+// misses body/asset/module diagnostics and Go prefix-constructed codes, while
+// counting retired diagnostics that only remain in comments.
+assertNoUndetectedConstruction();
+const referenceCodes = referenceCensus().reported;
+const forkCodes = forkCensus().reported;
+const implemented = new Set([...referenceCodes, ...forkCodes]);
+const uncovered = [...implemented].filter((code) => !byCode.has(code)).sort();
+
+const FAMILIES = [
+  [1000, "Language, Results, and foreign boundaries"],
+  [2000, "Requirements and Layers"],
+  [3000, "Portability (withdrawn)"],
+  [4000, "Durable execution"],
+  [5000, "Comptime and asset imports"],
+  [6000, "Compiler options"],
+  [7000, "Schema and data"],
+];
+function family(code) {
+  const number = Number(code.slice(4));
+  let name = "Other";
+  for (const [floor, label] of FAMILIES) if (number >= floor) name = label;
+  return name;
+}
+
+// Messages may contain backticks (they quote source spellings); inside a code span a
+// backtick would end the span and expose `{}` to MDX as an expression, so they become quotes.
+const escape = (text) => text.replace(/`/gu, "'").replace(/\|/gu, "\\|").replace(/</gu, "&lt;").replace(/>/gu, "&gt;").replace(/\n/gu, " ");
+
+const lines = [];
+lines.push("# Diagnostics [Every VIBE code the corpus observes, with the message the compiler emits]");
+lines.push("");
+lines.push("{/* Generated by scripts/diagnostics-reference.mjs from the conformance corpus. Do not edit by hand; run the script. */}");
+lines.push("");
+lines.push(`This page is generated from the conformance corpus by running every case through the native-backed SDK profile (the runner's historical \`js\` label) and recording the diagnostics it emits. It lists **${byCode.size}** observed codes and **${uncovered.length}** implementation-defined codes this SDK run does not observe. Regenerate it with \`node scripts/diagnostics-reference.mjs\`.`);
+lines.push("");
+lines.push("A diagnostic code names a rule. The message names the construct that broke it and, where the rule has one, the remedy. The corpus case is an example program that draws the code, and the citation is the specification sentence the case pins.");
+lines.push("");
+lines.push("Diagnostics beginning `TS` are TypeScript's own and are not listed here.");
+lines.push("");
+
+let currentFamily;
+for (const code of [...byCode.keys()].sort()) {
+  const record = byCode.get(code);
+  const fam = family(code);
+  if (fam !== currentFamily) {
+    currentFamily = fam;
+    lines.push(`## ${fam}`);
+    lines.push("");
+    lines.push("| Code | Message the compiler emits | Corpus case | Specification |");
+    lines.push("| --- | --- | --- | --- |");
+  }
+  const messages = [...record.messages.keys()];
+  const shown = messages.slice(0, 2).map((message) => `\`${escape(message)}\``).join("<br/>");
+  const more = messages.length > 2 ? `<br/>… and ${messages.length - 2} more wording(s)` : "";
+  const cases = [...record.cases].sort();
+  const caseText = `\`${cases[0]}\`${cases.length > 1 ? ` (+${cases.length - 1})` : ""}`;
+  const cites = [...record.citations.values()];
+  const citeText = cites.length === 0
+    ? "—"
+    : cites.slice(0, 2).map((cite) => `[${cite.section || cite.page}](/${cite.page})`).join(", ");
+  lines.push(`| \`${code}\` | ${shown}${more} | ${caseText} | ${citeText} |`);
+}
+lines.push("");
+lines.push("## Defined but not observed in this SDK corpus run");
+lines.push("");
+lines.push("These codes have report sites in the shared native Go compiler or the thin SDK hosts, but the current SDK corpus run does not observe them. This inventory uses the same comment/test-filtered census as `conformance/COVERAGE.md`, including constructed codes across Go source files. The SDK column includes its shared native engine; these are not independent compiler implementations. A report site is not proof that every emission profile can reach it, nor that a corpus case exercises it.");
+lines.push("");
+lines.push("| Code | SDK + shared Go | Go compiler/bridge |");
+lines.push("| --- | --- | --- |");
+for (const code of uncovered) {
+  lines.push(`| \`${code}\` | ${referenceCodes.has(code) ? "yes" : "—"} | ${forkCodes.has(code) ? "yes" : "—"} |`);
+}
+lines.push("");
+
+const output = `${lines.join("\n")}`;
+if (check) {
+  const current = existsSync(target) ? readFileSync(target, "utf8") : "";
+  if (current !== output) {
+    process.stderr.write("diagnostics-reference: docs/src/pages/reference/diagnostics.mdx is stale; run node scripts/diagnostics-reference.mjs\n");
+    process.exit(1);
+  }
+  process.stdout.write("diagnostics-reference: up to date\n");
+} else {
+  writeFileSync(target, output);
+  process.stdout.write(`diagnostics-reference: wrote ${target} (${byCode.size} observed codes, ${uncovered.length} unobserved)\n`);
+}
