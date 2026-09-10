@@ -11,6 +11,6 @@ export const config = { retries: 3 };
 // 09-foreign-calls/an-unmarked-module-behind-a-trusted-relay-is-refused
 // requires that same file to be REFUSED behind a static edge.
 //
-// `config` is exported eagerly so the authored `.sm` can bind a value without
+// `config` is exported eagerly so the authored `.vibe` can bind a value without
 // calling `load`, which keeps the case's `typeof` a plain module read and
 // leaves the deferral the only thing under test.

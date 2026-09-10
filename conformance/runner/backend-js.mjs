@@ -1,24 +1,25 @@
 /**
- * The JS reference backend: the TypeScript analysis instrument under
- * `poc/src/language`, reached only through its documented public API.
+ * The SDK-hosted backend (historical "js" label): the native Go compiler
+ * reached through the public APIs under `poc/src/language` and its JS runtime.
  *
- *   authored `.sm`
+ *   authored `.vibe`
  *     -> `compileComptimeIntrinsics` (compiler-owned comptime evaluation)
  *     -> `compileProject` (real lowering + language diagnostics), under bun
- *     -> `checkEmittedProject` (stock TypeScript check of the emitted set)
+ *     -> `checkEmittedProject` (native Go TypeScript check of the emitted set)
  *     -> emitted TypeScript written beside the case's foreign `.ts` modules
  *     -> executed by bun through the shared harness
  *
  * The second step is not optional. `compileAndCheckProject` — the frontend's own
  * one-call acceptance — refuses a program whose emitted TypeScript the stock
- * checker rejects, and so does the `smithers` CLI. A harness that ran only the first
+ * checker rejects, and so does the `vibe` CLI. A harness that ran only the first
  * step would score such a case green by *omitting a check*, which is exactly the
  * fail-open shape the corpus exists to catch. Emit-check diagnostics are mapped
  * back through the compiler's own source map so a case can name the authored
  * line and column, like every other declared diagnostic.
  *
- * This backend is the oracle the Go fork is measured against, so it is also the
- * one `test/conformance.test.mjs` gates the build on.
+ * Both profiles are gated by `test/conformance.test.mjs`. They share native
+ * parsing, checking and lowering: this comparison detects delivery/runtime
+ * differences, not bugs common to two independent compiler implementations.
  */
 
 import { mkdtemp, mkdir, realpath, rm, writeFile } from "node:fs/promises";
@@ -33,7 +34,11 @@ import { originalPosition } from "./source-map.mjs";
 const lowerDriver = join(repositoryRoot, "conformance", "runner", "js-lower.mjs");
 
 const runtimeImport = join(repositoryRoot, "poc", "src", "runtime", "index.ts");
-const schemaRuntimeImport = join(repositoryRoot, "poc", "src", "build", "schema-runtime.ts");
+// Preserve the compiler-owned package seam through every checking stage, just
+// as the product CLI does. Rewriting it to a filesystem path before row analysis
+// would reclassify the compiler's schema factory as an untrusted foreign call.
+const schemaRuntimeImport = "vibelang/schema-runtime";
+const schemaRuntimePath = join(repositoryRoot, "poc", "src", "build", "schema-runtime.ts");
 
 /**
  * This backend's compiler-stable Error identity accessor, for the shared
@@ -60,6 +65,7 @@ export const jsBackend = {
     diagnostics: ["lower"],
   },
   emitCheckStage: "emit-check",
+  sourceCheckStage: "source-check",
   /**
    * The stage a verdict must have gone through before this backend may call a
    * case that ships `assets` satisfied. The Go fork has no counterpart (its
@@ -71,7 +77,7 @@ export const jsBackend = {
    * records whether it succeeded, so every diagnostic it produces carries
    * `mapped`. Declaring the capability is what lets `judge.mjs` refuse a
    * satisfied verdict that rests on a position it could not resolve, without
-   * that check firing on the fork — which checks the authored `.sm` directly and
+   * that check firing on the fork — which checks the authored `.vibe` directly and
    * has nothing to map. A backend that stopped recording the field while still
    * declaring this would go red rather than silently disable the audit.
    */
@@ -102,13 +108,13 @@ export async function runJsCase(testCase, options = {}) {
   // the other. `scripts/oracle-differential.mjs` stages its root the same way
   // for the same reason. Canonicalizing once here also means `rootDir` and every
   // emitted path agree with what the compiler reports back.
-  const directory = await realpath(await mkdtemp(join(tmpdir(), "smithers-conformance-js-")));
+  const directory = await realpath(await mkdtemp(join(tmpdir(), "vibelang-conformance-js-")));
   try {
     // Assets are written before lowering, not after. The source-asset compiler
     // reads them from disk beneath the project root, tracks their bytes in its
     // cache identity, and reconciles their file identity against project code —
     // none of which an in-memory stub would exercise. `rootDir` is this
-    // directory, so `./config.json` in the authored `.sm` is this file.
+    // directory, so `./config.json` in the authored `.vibe` is this file.
     for (const file of testCase.files) {
       if (file.kind !== "asset") continue;
       await mkdir(dirname(join(directory, file.path)), { recursive: true });
@@ -119,13 +125,14 @@ export async function runJsCase(testCase, options = {}) {
       // The cache is part of this case's unique mkdtemp staging tree. It is
       // deleted with that tree, so neither another case nor a later run can
       // observe warm state from this evaluation.
-      comptimeCacheDirectory: join(directory, ".smithers-comptime-cache"),
+      comptimeCacheDirectory: join(directory, ".vibelang-comptime-cache"),
       // One declared target for both backends; see corpus.mjs.
       comptimeTarget,
       runtimeImport,
       schemaRuntimeImport,
+      schemaRuntimePath,
       sources: testCase.files
-        .filter((file) => file.kind === "smithers")
+        .filter((file) => file.kind === "vibelang")
         .map((file) => ({ fileName: file.path, source: file.text })),
       typeScriptSources: testCase.files
         .filter((file) => file.kind === "typescript")
@@ -135,7 +142,7 @@ export async function runJsCase(testCase, options = {}) {
       // stage on, so a case that ships no asset takes exactly the pipeline it
       // took before assets existed.
       assets: testCase.files.filter((file) => file.kind === "asset").map((file) => file.path),
-      assetCacheDirectory: join(directory, ".smithers-asset-cache"),
+      assetCacheDirectory: join(directory, ".vibelang-asset-cache"),
       // The one piece of the case's EXPECTATION the driver is told, and it can
       // only make the driver do more work, never less: a run that declares
       // `expect: "output"` is not discarded wholesale by a durable diagnostic,
@@ -167,6 +174,7 @@ export async function runJsCase(testCase, options = {}) {
     // really read them: a green asset case that never opened the file would be
     // the same fail-open shape the emit-check audit exists to catch.
     const staged = response.assetsCompiled === true ? ["lower", "assets"] : ["lower"];
+    if (response.sourceChecked === true) staged.push("source-check");
 
     const errors = response.diagnostics.filter((item) => item.severity === "error");
     if (errors.length > 0) {
@@ -201,19 +209,30 @@ export async function runJsCase(testCase, options = {}) {
       };
     }
 
+    // Resolve the already-checked emitted package seam to the SAME source
+    // runtime instance the harness uses. Stage this after frontend analysis;
+    // stock emit checking resolves it through its explicit module override.
+    if (Object.values(response.files).some(file => file.code.includes('"vibelang/schema-runtime"'))) {
+      const schemaPackage = join(directory, "node_modules", "vibelang");
+      await mkdir(schemaPackage, { recursive: true });
+      await writeFile(join(schemaPackage, "package.json"), JSON.stringify({
+        type: "module", exports: { "./schema-runtime": "./schema-runtime.ts" },
+      }));
+      await writeFile(join(schemaPackage, "schema-runtime.ts"), `export * from ${JSON.stringify(schemaRuntimePath)};\n`);
+    }
     for (const file of testCase.files) {
       if (file.kind === "typescript") await writeFile(join(directory, file.path), file.text);
     }
     // The compiler-issued module for each asset, at the exact output path the
-    // emitted `.sm` was rewritten to import.
+    // emitted `.vibe` was rewritten to import.
     for (const generated of response.generatedFiles ?? []) {
       await mkdir(dirname(generated.fileName), { recursive: true });
       await writeFile(generated.fileName, generated.code);
     }
     for (const [fileName, compiled] of Object.entries(response.files)) {
-      await writeFile(join(directory, fileName.replace(/\.sm$/, ".ts")), compiled.code);
+      await writeFile(join(directory, fileName.replace(/\.vibe$/, ".ts")), compiled.code);
     }
-    const entryModule = `./${testCase.entry.replace(/\.sm$/, ".ts")}`;
+    const entryModule = `./${testCase.entry.replace(/\.vibe$/, ".ts")}`;
     await writeFile(
       join(directory, "conformance-harness.ts"),
       harnessText(entryModule, identityAccessor),
@@ -246,8 +265,8 @@ export async function runJsCase(testCase, options = {}) {
  * Three shapes, and none of them silently invents a position:
  *   - the diagnostic is inside a case's own foreign `.ts` module: that file is
  *     passed through verbatim, so its position already is the authored one;
- *   - the diagnostic is inside an emitted `.sm` module and the compiler's source
- *     map anchors it: report the authored `.sm` line and column;
+ *   - the diagnostic is inside an emitted `.vibe` module and the compiler's source
+ *     map anchors it: report the authored `.vibe` line and column;
  *   - anything else (an unmapped generated line, a diagnostic in the runtime, a
  *     file-less diagnostic): keep the generated position and say so with
  *     `mapped: false`, so a reviewer can see the harness did not resolve it.
@@ -287,7 +306,7 @@ function authoredPosition(item, compiledFiles, testCase, directory) {
  * `mkdtemp` staging directory. Measured on 2026-08-28: 14 of the 470 diagnostics
  * the reference produces across the corpus — every one of them from the
  * source-asset stage — carried a path like
- * `/private/var/folders/.../smithers-conformance-js-Ol9d79Gg6B4Q/<case>.sm`.
+ * `/private/var/folders/.../vibelang-conformance-js-Ol9d79Gg6B4Q/<case>.vibe`.
  * Nothing compared the field, so nothing noticed, and two things were true at
  * once: the `--json` report was not reproducible text (the suffix is random per
  * case per run), and the moment the file DOES take part in a comparison an
@@ -295,7 +314,7 @@ function authoredPosition(item, compiledFiles, testCase, directory) {
  *
  * `relative` is used only when the path really is inside the staging root;
  * anything else — a path in the POC runtime, a synthetic name like
- * `smithers:flows` — is left exactly as it came, because renaming it would be
+ * `vibelang:flows` — is left exactly as it came, because renaming it would be
  * inventing provenance rather than resolving it.
  *
  * This depends on `directory` being the REALPATH of the staging root, which is
@@ -333,7 +352,7 @@ export function splitLines(text) {
 
 /** Compile and execute one plain-TypeScript interop file through the JS backend. */
 export async function runJsInterop(interopCase) {
-  const directory = await mkdtemp(join(tmpdir(), "smithers-conformance-js-interop-"));
+  const directory = await mkdtemp(join(tmpdir(), "vibelang-conformance-js-interop-"));
   try {
     await mkdir(directory, { recursive: true });
     await writeFile(join(directory, interopCase.entry), interopCase.text);

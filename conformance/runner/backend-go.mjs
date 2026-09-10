@@ -1,11 +1,11 @@
 /**
- * The Go fork backend: `cmd/smithersc-go --request` against the pinned,
+ * The Go fork backend: `cmd/vibec-go --request` against the pinned,
  * digest-verified, forkpatch-applied smithersai/TypeScript checkout, in
  * protocol-v3 `lowering: "internal"` mode.
  *
- *   authored `.sm`
+ *   authored `.vibe`
  *     -> one CompileRequest with `lowering: "internal"`
- *     -> the fork's own parser/checker/printer plus the Go Smithers lowering
+ *     -> the fork's own parser/checker/printer plus the Go VibeLang lowering
  *     -> emitted JavaScript executed by node through the shared harness
  *
  * `lowering: "internal"` is deliberate: it is the migration target. The
@@ -32,20 +32,20 @@ import { splitLines } from "./backend-js.mjs";
  * This backend's compiler-stable Error identity accessor, for the shared
  * harness's failure line.
  *
- * The fork injects `__smithers_prelude.ts` into every internally lowered
+ * The fork injects `__vibelang_prelude.ts` into every internally lowered
  * project and emits it beside the program, and a root-level emitted module
- * imports it as `./__smithers_prelude.js` — so the harness, which is written
+ * imports it as `./__vibelang_prelude.js` — so the harness, which is written
  * into the same emit directory as the entry module, names it the same way and
- * reads the registry the emitted `smithersRegisterError` calls populated. See
+ * reads the registry the emitted `vibelangRegisterError` calls populated. See
  * `conformance/runner/harness.mjs`.
  */
-const identityAccessor = { module: "./__smithers_prelude.js", name: "smithersErrorIdentity" };
+const identityAccessor = { module: "./__vibelang_prelude.js", name: "vibelangErrorIdentity" };
 
 export const goBackend = {
   name: "go",
-  label: "Go fork + verified forkpatch series (cmd/smithersc-go, lowering: internal)",
+  label: "Go fork + verified forkpatch series (cmd/vibec-go, lowering: internal)",
   /**
-   * The fork checks the authored `.sm` directly, so its "compile" stage is both
+   * The fork checks the authored `.vibe` directly, so its "compile" stage is both
    * the language check and the emitted-code check; there is no separate emit
    * pass to skip. `conformance/runner/judge.mjs` audits every satisfied
    * expectation against these.
@@ -67,7 +67,7 @@ export async function prepareGoBackend({ forkCheckout } = {}) {
   if (!checkout || !existsSync(checkout)) {
     return {
       unavailable:
-        "the pinned smithersai/TypeScript checkout is absent; run `node scripts/prepare-typescript-fork.mjs --fetch --cache /private/tmp/smithers-ts-fork-cache` or point SMITHERS_TYPESCRIPT_FORK at a checkout",
+        "the pinned smithersai/TypeScript checkout is absent; run `node scripts/prepare-typescript-fork.mjs --fetch --cache /private/tmp/vibelang-ts-fork-cache` or point VIBELANG_TYPESCRIPT_FORK at a checkout",
     };
   }
   const go = await run("go", ["version"]);
@@ -75,13 +75,13 @@ export async function prepareGoBackend({ forkCheckout } = {}) {
   const node = await run(process.execPath, ["--version"]);
   if (node.error || node.status !== 0) return { unavailable: "node is required to execute the fork's emitted JavaScript" };
 
-  const workspace = await mkdtemp(join(tmpdir(), "smithers-conformance-go-"));
+  const workspace = await mkdtemp(join(tmpdir(), "vibelang-conformance-go-"));
   let binary;
   try {
     binary = buildBridgeBinary(join(workspace, "bin"), {});
   } catch (error) {
     await rm(workspace, { recursive: true, force: true });
-    return { unavailable: `could not build cmd/smithersc-go: ${error.message}` };
+    return { unavailable: `could not build cmd/vibec-go: ${error.message}` };
   }
   const context = {
     checkout,
@@ -97,7 +97,7 @@ export async function prepareGoBackend({ forkCheckout } = {}) {
   // pristine series, rejects mixed state, builds the series-keyed bridge, and
   // performs its revision+series handshake. Treat any failure here as backend
   // unavailability instead of manufacturing one misleading result per case.
-  const probeDirectory = await mkdtemp(join(tmpdir(), "smithers-conformance-go-probe-"));
+  const probeDirectory = await mkdtemp(join(tmpdir(), "vibelang-conformance-go-probe-"));
   try {
     const invoked = await invokeBridge(
       context,
@@ -136,11 +136,11 @@ export async function prepareGoBackend({ forkCheckout } = {}) {
  * The wire `kind` for one staged file.
  *
  * The protocol has a third kind — `FileKindAsset` is declared in
- * `compiler/api.go` — but the bridge's own switch accepts only `"smithers"` and
+ * `compiler/api.go` — but the bridge's own switch accepts only `"vibelang"` and
  * `"typescript"` and errors on anything else, and an errored request is a
  * *rejected* request, which the judge scores `unmeasured`: a failure to measure,
  * not a measurement. So an asset goes over the wire under the only kind the
- * bridge accepts for a file that is not `.sm`, at the same path and with the
+ * bridge accepts for a file that is not `.vibe`, at the same path and with the
  * same bytes the JS backend staged, and is deliberately left out of `rootNames`.
  *
  * The consequence is the honest one: the fork has no source-asset pass, so it
@@ -163,12 +163,12 @@ async function invokeBridge(context, request, directory) {
   );
   if (invoked.error) return { rejected: `could not run the bridge binary: ${invoked.error.message}` };
   if (invoked.status === 64 || invoked.stdout.trim() === "") {
-    return { rejected: `smithersc-go rejected the request (exit ${invoked.status}): ${invoked.stderr.trim().slice(0, 400)}` };
+    return { rejected: `vibec-go rejected the request (exit ${invoked.status}): ${invoked.stderr.trim().slice(0, 400)}` };
   }
   try {
     return { result: JSON.parse(invoked.stdout) };
   } catch {
-    return { rejected: `smithersc-go did not return one CompileResult: ${invoked.stdout.slice(0, 400)}` };
+    return { rejected: `vibec-go did not return one CompileResult: ${invoked.stdout.slice(0, 400)}` };
   }
 }
 
@@ -179,11 +179,11 @@ async function invokeBridge(context, request, directory) {
  * for a request the bridge would not even accept.
  */
 export async function runGoCase(context, testCase) {
-  const directory = await mkdtemp(join(tmpdir(), "smithers-conformance-go-case-"));
+  const directory = await mkdtemp(join(tmpdir(), "vibelang-conformance-go-case-"));
   try {
     const request = {
       // A staged asset is a project input, not a compilation root: nothing
-      // should be checked or emitted *from* `config.json`. The authored `.sm`
+      // should be checked or emitted *from* `config.json`. The authored `.vibe`
       // that imports it is the root.
       rootNames: testCase.files.filter((file) => file.kind !== "asset").map((file) => file.path),
       files: testCase.files.map((file) => ({ path: file.path, kind: forkFileKind(file), text: file.text })),
@@ -196,7 +196,7 @@ export async function runGoCase(context, testCase) {
       // Sent explicitly, from the one constant in corpus.mjs, for the same
       // reason `comptimeTarget` is: an omitted `lowering` is a mode the corpus
       // cannot observe. It used to select the stock TypeScript checker and no
-      // Smithers rule at all. `conformance/runner/selftest.mjs` holds that
+      // VibeLang rule at all. `conformance/runner/selftest.mjs` holds that
       // assertion, because no corpus case ever reaches this branch.
       lowering: loweringMode,
     };
@@ -227,7 +227,7 @@ export async function runGoCase(context, testCase) {
       await writeFile(destination, Buffer.from(artifact.content ?? "", "base64"));
     }
     await writeFile(join(emitDirectory, "package.json"), `${JSON.stringify({ type: "module" })}\n`);
-    const entryModule = `./${testCase.entry.replace(/\.sm$/, ".js")}`;
+    const entryModule = `./${testCase.entry.replace(/\.vibe$/, ".js")}`;
     await writeFile(join(emitDirectory, "conformance-harness.mjs"), harnessText(entryModule, identityAccessor));
 
     const executed = await run(process.execPath, [join(emitDirectory, "conformance-harness.mjs")], {
@@ -251,7 +251,7 @@ export async function runGoCase(context, testCase) {
 
 /** Send one plain-TypeScript interop file through the fork and run the emit. */
 export async function runGoInterop(context, interopCase) {
-  const directory = await mkdtemp(join(tmpdir(), "smithers-conformance-go-interop-"));
+  const directory = await mkdtemp(join(tmpdir(), "vibelang-conformance-go-interop-"));
   try {
     const request = {
       rootNames: [interopCase.entry],

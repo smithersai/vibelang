@@ -1,5 +1,5 @@
 // Ordinary TypeScript async behavior, including rejection handling and
-// Promise combinators, which authored `.sm` deliberately forbids.
+// Promise combinators, which authored `.vibe` deliberately forbids.
 
 async function delayed<T>(value: T): Promise<T> {
   await Promise.resolve();

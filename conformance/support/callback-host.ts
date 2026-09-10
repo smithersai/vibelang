@@ -14,15 +14,15 @@
  * TypeScript that starts hidden background work owns that work. Caller-
  * controlled background APIs MUST expose explicit completion or disposal
  * handles through their adapters." The obligation lands on the adapter, in
- * TypeScript, not on the Smithers caller.
+ * TypeScript, not on the VibeLang caller.
  *
  * The exports below are deliberately four spellings of one call so the cases
  * that use them differ in nothing but the marker:
  *
  *   onSignal        a trusted registration        — accepted
- *   onSignalUnsafe  the same, with no claim       — refused, SMITHERS1509
+ *   onSignalUnsafe  the same, with no claim       — refused, VIBE1509
  *   getHandler      hands a foreign callable BACK — refused at the use site,
- *                                                   SMITHERS1508
+ *                                                   VIBE1508
  *   registerAll     a trusted registration taking a list of listeners
  *
  * Each listener is invoked synchronously so a corpus case can declare what it
@@ -45,7 +45,7 @@ export function onSignalUnsafe(name: string, listener: (name: string) => void): 
   listener(name);
 }
 
-/** A foreign callable handed BACK to Smithers.
+/** A foreign callable handed BACK to VibeLang.
  * @throws {never}
  */
 export function getHandler(): (name: string) => void {

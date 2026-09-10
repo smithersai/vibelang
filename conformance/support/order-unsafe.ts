@@ -4,7 +4,7 @@
  * Every export here carries the `@throws {never}` its own call needs, so a case
  * that imports this module and is still refused is refused for the shape of the
  * expression rather than for an untrusted call. The trust claim below is the
- * module-initialization one (`SMITHERS1510`); it never doubles as a
+ * module-initialization one (`VIBE1510`); it never doubles as a
  * function-level opt-out.
  *
  * @module

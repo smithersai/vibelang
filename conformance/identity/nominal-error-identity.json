@@ -1,161 +1,161 @@
 {
-  "why": "Cross-language test vectors for THE nominal Error identity algorithm. Both backends mint this identity independently -- the reference frontend in poc/src/durable/site-id.ts (nominalErrorIdentity) and the Go fork in compiler/forkbridge/lowering.go.txt (stableErrorIdentity) -- and an emitted artifact is only interoperable if the two agree byte for byte. Two hand-maintained copies of one algorithm is exactly the shape that produced the defect this file exists for, so the copies are pinned against each other HERE rather than against two separately maintained expectations that can drift apart unnoticed. Regenerate by RUNNING a backend, never by hand or from a report: poc/src/language/nominal-error-identity.test.ts checks the reference against these rows, and compiler/fork_error_identity_test.go compiles each viaFork row with the pinned fork and reads the identity back out of the emitted __smithersRegisterError.",
-  "algorithm": "identity := \"smithers:\" + escape(file) + \":\" + className, where escape emits a UTF-16 code unit verbatim when it is in [A-Za-z0-9._/@:-] (and, at index 0, only when it is in [A-Za-z0-9]) and otherwise emits \"+\" followed by exactly four upper-case hex digits of the unit. When that spelling exceeds 256 UTF-16 code units the identity is instead \"smithers.digest:\" + lower-case hex SHA-256 of the UTF-8 bytes of the spelling. The spelling is never truncated and the file name is never folded, so two distinct (file, className) pairs never converge.",
+  "why": "Cross-language test vectors for THE nominal Error identity algorithm. Both backends mint this identity independently -- the reference frontend in poc/src/durable/site-id.ts (nominalErrorIdentity) and the Go fork in compiler/forkbridge/lowering.go.txt (stableErrorIdentity) -- and an emitted artifact is only interoperable if the two agree byte for byte. Two hand-maintained copies of one algorithm is exactly the shape that produced the defect this file exists for, so the copies are pinned against each other HERE rather than against two separately maintained expectations that can drift apart unnoticed. Regenerate by RUNNING a backend, never by hand or from a report: poc/src/language/nominal-error-identity.test.ts checks the reference against these rows, and compiler/fork_error_identity_test.go compiles each viaFork row with the pinned fork and reads the identity back out of the emitted __vibelangRegisterError.",
+  "algorithm": "identity := \"vibelang:\" + escape(file) + \":\" + className, where escape emits a UTF-16 code unit verbatim when it is in [A-Za-z0-9._/@:-] (and, at index 0, only when it is in [A-Za-z0-9]) and otherwise emits \"+\" followed by exactly four upper-case hex digits of the unit. When that spelling exceeds 256 UTF-16 code units the identity is instead \"vibelang.digest:\" + lower-case hex SHA-256 of the UTF-8 bytes of the spelling. The spelling is never truncated and the file name is never folded, so two distinct (file, className) pairs never converge.",
   "viaFork": "false marks a row the Go fork cannot be handed as a FILE NAME at all -- virtualFileName (compiler/forkbridge/main.go.txt) fail-closes on an absolute name, a name containing a colon, and an empty name. Those rows still pin the algorithm on the reference side; they are unreachable input for the end-to-end fork check, not exemptions from agreement.",
   "vectors": [
     {
       "why": "an ordinary root-relative name is unchanged",
-      "file": "main.sm",
+      "file": "main.vibe",
       "className": "NotFound",
       "viaFork": true,
-      "identity": "smithers:main.sm:NotFound"
+      "identity": "vibelang:main.vibe:NotFound"
     },
     {
       "why": "a nested POSIX path is unchanged",
-      "file": "app/orders/checkout.sm",
+      "file": "app/orders/checkout.vibe",
       "className": "Declined",
       "viaFork": true,
-      "identity": "smithers:app/orders/checkout.sm:Declined"
+      "identity": "vibelang:app/orders/checkout.vibe:Declined"
     },
     {
       "why": "a name made of . _ - / survives verbatim",
-      "file": "a-b_c.d/e.sm",
+      "file": "a-b_c.d/e.vibe",
       "className": "Boom",
       "viaFork": true,
-      "identity": "smithers:a-b_c.d/e.sm:Boom"
+      "identity": "vibelang:a-b_c.d/e.vibe:Boom"
     },
     {
       "why": "a colon survives normalization but the fork refuses the file name itself",
-      "file": "a:b.sm",
+      "file": "a:b.vibe",
       "className": "Boom",
       "viaFork": false,
-      "identity": "smithers:a:b.sm:Boom"
+      "identity": "vibelang:a:b.vibe:Boom"
     },
     {
       "why": "a leading @ escapes because only the first unit must be alphanumeric",
-      "file": "@scope/a.sm",
+      "file": "@scope/a.vibe",
       "className": "Boom",
       "viaFork": true,
-      "identity": "smithers:+0040scope/a.sm:Boom"
+      "identity": "vibelang:+0040scope/a.vibe:Boom"
     },
     {
       "why": "a space is escaped rather than folded onto underscore",
-      "file": "a b.sm",
+      "file": "a b.vibe",
       "className": "Boom",
       "viaFork": true,
-      "identity": "smithers:a+0020b.sm:Boom"
+      "identity": "vibelang:a+0020b.vibe:Boom"
     },
     {
       "why": "the underscore it used to fold onto keeps its own identity",
-      "file": "a_b.sm",
+      "file": "a_b.vibe",
       "className": "Boom",
       "viaFork": true,
-      "identity": "smithers:a_b.sm:Boom"
+      "identity": "vibelang:a_b.vibe:Boom"
     },
     {
       "why": "a leading dot is escaped rather than prefixed with source_",
-      "file": ".a.sm",
+      "file": ".a.vibe",
       "className": "Boom",
       "viaFork": true,
-      "identity": "smithers:+002Ea.sm:Boom"
+      "identity": "vibelang:+002Ea.vibe:Boom"
     },
     {
       "why": "the source_ prefix it used to mint keeps its own identity",
-      "file": "source_.a.sm",
+      "file": "source_.a.vibe",
       "className": "Boom",
       "viaFork": true,
-      "identity": "smithers:source_.a.sm:Boom"
+      "identity": "vibelang:source_.a.vibe:Boom"
     },
     {
       "why": "a literal plus is escaped because plus introduces an escape",
-      "file": "a+b.sm",
+      "file": "a+b.vibe",
       "className": "Boom",
       "viaFork": true,
-      "identity": "smithers:a+002Bb.sm:Boom"
+      "identity": "vibelang:a+002Bb.vibe:Boom"
     },
     {
       "why": "the escape spelling of plus is itself escaped",
-      "file": "a+002Bb.sm",
+      "file": "a+002Bb.vibe",
       "className": "Boom",
       "viaFork": true,
-      "identity": "smithers:a+002B002Bb.sm:Boom"
+      "identity": "vibelang:a+002B002Bb.vibe:Boom"
     },
     {
       "why": "a tab is escaped",
-      "file": "a\tb.sm",
+      "file": "a\tb.vibe",
       "className": "Boom",
       "viaFork": true,
-      "identity": "smithers:a+0009b.sm:Boom"
+      "identity": "vibelang:a+0009b.vibe:Boom"
     },
     {
       "why": "a non-BMP path character becomes two surrogate escapes",
-      "file": "f😀.sm",
+      "file": "f😀.vibe",
       "className": "Boom",
       "viaFork": true,
-      "identity": "smithers:f+D83D+DE00.sm:Boom"
+      "identity": "vibelang:f+D83D+DE00.vibe:Boom"
     },
     {
       "why": "a non-ASCII class name is carried verbatim",
-      "file": "main.sm",
+      "file": "main.vibe",
       "className": "Café",
       "viaFork": true,
-      "identity": "smithers:main.sm:Café"
+      "identity": "vibelang:main.vibe:Café"
     },
     {
       "why": "a non-BMP class name is carried verbatim",
-      "file": "main.sm",
+      "file": "main.vibe",
       "className": "𝐁oom",
       "viaFork": true,
-      "identity": "smithers:main.sm:𝐁oom"
+      "identity": "vibelang:main.vibe:𝐁oom"
     },
     {
       "why": "exactly at the 256 unit bound stays spelled",
-      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.vibe",
       "className": "Left",
       "viaFork": true,
-      "identity": "smithers:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm:Left"
+      "identity": "vibelang:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.vibe:Left"
     },
     {
       "why": "one unit over the bound falls back to a digest",
-      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.vibe",
       "className": "Left",
       "viaFork": true,
-      "identity": "smithers.digest:3f9ee9a9e1c200298897cfc2e714b60f3b78a7bf6c2a68806dae5c4ad4ac3f0d"
+      "identity": "vibelang.digest:8e109c1603c9788ed10a81d357e54a717d3a620511c08e6083b1e57d3609ca1a"
     },
     {
       "why": "the sibling over the bound is a different digest",
-      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.vibe",
       "className": "Right",
       "viaFork": true,
-      "identity": "smithers.digest:8fe591ffffa37d309d3bce5615eccf9876b73b2869be26a81f0b115f5ccec23c"
+      "identity": "vibelang.digest:7797f98fc54fa31ecff1711b01c06051b5902cf1a43d67188466661163f5e526"
     },
     {
       "why": "the truncation reproduction from the defect report, left",
-      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.vibe",
       "className": "Left",
       "viaFork": true,
-      "identity": "smithers.digest:2d4b3deb872046fb1ddb9198443e92867b182af399dec67562c0de68f2572f76"
+      "identity": "vibelang.digest:d70c575f3d9dfe10288b3477e538335c4f75d460362f19c886bfe21edd90de7b"
     },
     {
       "why": "the truncation reproduction from the defect report, right",
-      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.sm",
+      "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.vibe",
       "className": "Right",
       "viaFork": true,
-      "identity": "smithers.digest:f61f0b461cfd30e4ed9e506409bf2aafabe5fae43acb07e893479c22f378818a"
+      "identity": "vibelang.digest:438fe98c233f4a418fdab5eba082a23279f43189f9f2572a663f321b324f26b0"
     },
     {
       "why": "an escape may be what pushes the spelling over the bound",
-      "file": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz .sm",
+      "file": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz .vibe",
       "className": "Boom",
       "viaFork": true,
-      "identity": "smithers.digest:f042b9a757b1a6c2e35d0ac2b9ac0381138f6b5d8ff63ed59b8b6655ecc3e722"
+      "identity": "vibelang.digest:690db485d0dc341e6c82a226c8e607c153e2024963d794bbad86e7026b6e02df"
     },
     {
       "why": "an empty logical file is still injective, and the fork refuses the name",
       "file": "",
       "className": "Boom",
       "viaFork": false,
-      "identity": "smithers::Boom"
+      "identity": "vibelang::Boom"
     }
   ]
 }

@@ -16,13 +16,13 @@
  */
 
 /**
- * The Go comptime port intentionally uses `SMITHERS19xx` for the reference
+ * The Go comptime port intentionally uses `VIBE19xx` for the reference
  * frontend's `VCT10xx` rules, preserving the final two digits one-for-one.
  * Canonicalize that documented spelling difference at the contract boundary;
  * raw observations in the JSON report retain the backend's actual code.
  *
  * SCOPED TO THE FORK ON PURPOSE, and the scope is the whole point. The
- * reference ALSO spells `SMITHERS1900`, `SMITHERS1901` and `SMITHERS1902`, and
+ * reference ALSO spells `VIBE1900`, `VIBE1901` and `VIBE1902`, and
  * there they are unrelated FORMATTER rules — mask budget, overlapping masks,
  * and overlapping language-service edits (`poc/src/language/format.ts:646`,
  * `:667`, `:700`) — not comptime rules. Aliasing unconditionally rewrote those
@@ -35,14 +35,14 @@
  * exists to catch.
  *
  * It was latent, not live: the formatter is reachable only through the
- * `smithers format` subcommand (`src/cli.ts:1505`) and never through
+ * `vibe format` subcommand (`src/cli.ts:1505`) and never through
  * `compileProject`, which is the only path the harness observes, and no case
- * declares a `SMITHERS19xx` code. `auditReferenceCodeSpace` below keeps it that
+ * declares a `VIBE19xx` code. `auditReferenceCodeSpace` below keeps it that
  * way by failing the harness loudly if a reference observation ever carries one.
  */
 function contractDiagnosticCode(code, backend) {
   if (backend !== "go") return code;
-  const comptimeAlias = /^SMITHERS19(\d{2})$/.exec(code);
+  const comptimeAlias = /^VIBE19(\d{2})$/.exec(code);
   return comptimeAlias ? `VCT10${comptimeAlias[1]}` : code;
 }
 
@@ -88,7 +88,7 @@ function sortDiagnostics(list, backend = "contract") {
       // different program point.
       file: item.file,
       // Whether the harness resolved this position back to authored source.
-      // Never *compared* — the fork checks the authored `.sm` directly and has
+      // Never *compared* — the fork checks the authored `.vibe` directly and has
       // nothing to map, so comparing it would report a divergence on every
       // diagnostics case — but `auditVerdict` reads it, and canonicalization
       // must not be where it disappears.
@@ -221,14 +221,14 @@ function describeMismatch(declared, observation) {
 
 /**
  * Does this Go observation look like "not implemented yet" rather than
- * "implemented differently"? Stock TypeScript codes on an authored `.sm` file
- * mean the fork parsed or checked Smithers syntax it has no handling for; only
- * a SMITHERS code is the fork claiming a language rule of its own.
+ * "implemented differently"? Stock TypeScript codes on an authored `.vibe` file
+ * mean the fork parsed or checked VibeLang syntax it has no handling for; only
+ * a VIBE code is the fork claiming a language rule of its own.
  */
 function looksUnimplemented(observation) {
   if (observation.kind === "rejected" || observation.kind === "error") return true;
   if (observation.kind === "diagnostics") {
-    return observation.diagnostics.some((item) => !/^SMITHERS\d{4}$/.test(item.code));
+    return observation.diagnostics.some((item) => !/^VIBE\d{4}$/.test(item.code));
   }
   if (observation.kind === "output" && observation.exitCode !== 0) {
     // A crash naming a runtime hook the fork never emitted is a missing
@@ -283,16 +283,16 @@ export function judge(testCase, observation, backend) {
 }
 
 /**
- * The `SMITHERS19xx` code range means two different things in the two
+ * The `VIBE19xx` code range means two different things in the two
  * implementations: comptime rules in the Go fork, formatter rules in the
  * reference. `contractDiagnosticCode` therefore translates the range for the
  * fork only, which is correct exactly as long as the reference never emits one
  * on the observed path — today it cannot, because the formatter lives behind
- * the `smithers format` subcommand and the harness only ever drives
+ * the `vibe format` subcommand and the harness only ever drives
  * `compileProject`.
  *
  * That is a property of the current wiring, not a law, so it is checked rather
- * than assumed. If a reference observation ever carries a `SMITHERS19xx`, the
+ * than assumed. If a reference observation ever carries a `VIBE19xx`, the
  * two code spaces have collided and any verdict involving it is unsafe: report
  * it as a harness-integrity failure (`run.mjs` exit 3) instead of scoring the
  * case. The fix at that point is to renumber one of the two rule families, not
@@ -301,10 +301,10 @@ export function judge(testCase, observation, backend) {
 function auditReferenceCodeSpace(observation, backend, label) {
   if (backend.name === "go" || observation.kind !== "diagnostics") return [];
   return (observation.diagnostics ?? [])
-    .filter((item) => /^SMITHERS19\d{2}$/.test(item.code ?? ""))
+    .filter((item) => /^VIBE19\d{2}$/.test(item.code ?? ""))
     .map((item) =>
       `${label}: the reference emitted ${item.code}, which collides with the Go fork's comptime ` +
-      `alias range (SMITHERS19xx -> VCT10xx). In the reference that range is the formatter's, so ` +
+      `alias range (VIBE19xx -> VCT10xx). In the reference that range is the formatter's, so ` +
       `no verdict over it can be trusted until one of the two families is renumbered.`,
     );
 }
@@ -416,12 +416,16 @@ export function auditVerdict(testCase, observation, verdict, backend) {
     if (satisfied && (observation.diagnostics ?? []).length !== expectation.diagnostics.length) {
       violations.push(`${label}: a diagnostics expectation was satisfied without comparing the same number of diagnostics`);
     }
-    // A declared stock-TypeScript code is a claim about the *emitted* program,
-    // so it can only be satisfied by the stage that checks the emitted program.
+    // Stock-TypeScript diagnostics can now originate in native authored-source
+    // checking, which correctly suppresses emission on a refusal. Require a
+    // real checker stage; do not invent an emitted-code check for absent code.
     const wantsEmitStage = expectation.diagnostics.some((entry) => entry.code.startsWith("TS"));
     const emitStage = backend.emitCheckStage;
-    if (satisfied && wantsEmitStage && emitStage && !stages.includes(emitStage)) {
-      violations.push(`${label}: a TS-code expectation was satisfied without running the ${emitStage} stage`);
+    const sourceStage = backend.sourceCheckStage;
+    if (satisfied && wantsEmitStage && emitStage && !stages.includes(emitStage) &&
+      !(sourceStage && stages.includes(sourceStage))) {
+      violations.push(`${label}: a TS-code expectation was satisfied without running the ${emitStage}` +
+        `${sourceStage ? ` or ${sourceStage}` : ""} stage`);
     }
     violations.push(...auditMappedPositions(observation, verdict, backend, label, satisfied));
   }
@@ -448,7 +452,7 @@ export function auditVerdict(testCase, observation, verdict, backend) {
  * the case is about.
  *
  * Driven by a capability the backend declares, not by the presence of the field.
- * The fork reports no mapping at all (it checks the authored `.sm` directly and
+ * The fork reports no mapping at all (it checks the authored `.vibe` directly and
  * has nothing to map), so auditing `!== true` unconditionally would fail every
  * Go diagnostics pass. Reading `backend.reportsMapping` also means a reference
  * backend that ever stops recording the field goes red here instead of quietly
@@ -473,21 +477,21 @@ function auditMappedPositions(observation, verdict, backend, label, satisfied) {
  * them from `observations.js` / `observations.go`), and each side is translated
  * into contract spelling under its OWN backend identity. Canonicalizing both
  * sides as one backend would apply the fork's comptime alias to the reference,
- * where `SMITHERS19xx` means a formatter rule — see `contractDiagnosticCode`.
+ * where `VIBE19xx` means a formatter rule — see `contractDiagnosticCode`.
  *
  * The diagnostics arm compares the same program point `matches` compares — code,
  * file, line, column — because "the two backends agree" and "the backend
  * satisfied the case" have to mean the same relation or the scoreboard's two
  * halves are measuring different things. It used to compare the two sides'
  * RENDERED strings, which is how the file got lost here as well: the renderer
- * omitted it, so `main.sm` and `wrong-module.mod.sm` at the same coordinates
+ * omitted it, so `main.vibe` and `wrong-module.mod.vibe` at the same coordinates
  * rendered identically and printed as agreement. Equality is now computed from
  * the fields; `formatDiagnostics` is only ever asked to describe a disagreement
  * that has already been decided.
  *
  * `mapped` is deliberately not part of the relation. It is this harness's record
  * of whether IT could resolve a position, not a claim either implementation
- * makes — the fork checks the authored `.sm` directly and never reports one — so
+ * makes — the fork checks the authored `.vibe` directly and never reports one — so
  * comparing it would manufacture a divergence on every diagnostics case in the
  * corpus. It is audited instead, in `auditVerdict`.
  */

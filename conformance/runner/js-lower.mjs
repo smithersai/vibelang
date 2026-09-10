@@ -1,5 +1,6 @@
 /**
- * Bun-invoked lowering driver for the JS reference backend.
+ * Bun-invoked SDK host driver (the historical "js" backend label).
+ * Its compiler is native Go, not an independent TypeScript 5.9 reference.
  *
  * The JS instrument (`poc/src/language`) is TypeScript, so it can only be
  * imported from a runtime that executes TypeScript directly. This process is
@@ -8,8 +9,8 @@
  *
  * Acceptance composes the compiler-owned standalone frontends first: comptime
  * over a complete project and durable source lowering for a module with a
- * `smithers:flows` edge. Smithers lowering and language/portability diagnostics
- * follow, and then — only when the program has no frontend errors — a stock
+ * `vibelang:flows` edge. VibeLang lowering and language/portability diagnostics
+ * follow, and then — only when the program has no frontend errors — a native Go
  * TypeScript check of the *emitted* module set via `checkEmittedProject`. A
  * lowering that produces TypeScript the stock checker rejects has not compiled
  * the program, and a harness that skips the last stage scores such a case by
@@ -24,7 +25,7 @@
  *     comptimeCacheDirectory: string,            // unique to this staged run
  *     runtimeImport: string,                     // specifier for runtime helpers
  *     schemaRuntimeImport: string,               // specifier for derived schemas
- *     sources: [{ fileName, source }],           // authored `.sm` modules
+ *     sources: [{ fileName, source }],           // authored `.vibe` modules
  *     typeScriptSources: [{ fileName, source }], // foreign `.ts` modules
  *     assets: [fileName],                        // staged non-code files, names only
  *     assetCacheDirectory: string,               // unique to this staged run
@@ -53,21 +54,20 @@
  */
 
 import { resolve } from "node:path";
-import * as ts from "typescript-js";
+import { getNativeCompiler } from "../../poc/src/compiler/native.ts";
 
 import {
   checkEmittedProject,
   compileProject,
   composeSourceMaps,
 } from "../../poc/src/language/index.ts";
-import { createOffsetSourceMap } from "../../poc/src/language/source-map.ts";
 import {
   AssetCompiler,
   ComptimeCompiler,
   compileComptimeIntrinsics,
   compileSourceAssetModules,
 } from "../../poc/src/build/index.ts";
-import { compileDurableFlow } from "../../poc/src/durable/source-compiler.ts";
+import { compileDurableModule } from "../../poc/src/durable/module-compiler.ts";
 import { originalPosition } from "./source-map.mjs";
 
 function readStdin() {
@@ -79,94 +79,12 @@ function readStdin() {
   });
 }
 
-function durableCallSite(source, fileName) {
-  const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const directNames = new Set();
-  const namespaceNames = new Set();
-  const flowImports = [];
-  for (const statement of file.statements) {
-    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) ||
-      statement.moduleSpecifier.text !== "smithers:flows") continue;
-    flowImports.push(statement);
-    const bindings = statement.importClause?.namedBindings;
-    if (bindings && ts.isNamedImports(bindings)) {
-      for (const binding of bindings.elements) {
-        if ((binding.propertyName?.text ?? binding.name.text) === "durable") directNames.add(binding.name.text);
-      }
-    } else if (bindings && ts.isNamespaceImport(bindings)) {
-      namespaceNames.add(bindings.name.text);
-    }
-  }
-  const calls = [];
-  const visit = (node) => {
-    if (ts.isCallExpression(node)) {
-      const expression = node.expression;
-      if ((ts.isIdentifier(expression) && directNames.has(expression.text)) ||
-        (ts.isPropertyAccessExpression(expression) && expression.name.text === "durable" &&
-          ts.isIdentifier(expression.expression) && namespaceNames.has(expression.expression.text))) {
-        calls.push(node);
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(file);
-  if (calls.length !== 1) {
-    throw new TypeError(`durable lowering succeeded but ${fileName} has ${calls.length} compiler-owned durable call sites`);
-  }
-  return { call: calls[0], flowImports };
-}
-
-function replaceDurableCall(source, fileName, flow, derivedActions) {
-  const { call, flowImports } = durableCallSite(source, fileName);
-  const replacements = [
-    ...flowImports.map((statement) => ({ start: statement.getFullStart(), end: statement.end, text: "" })),
-    // The compiler-owned Action declarations it consumed. Their contracts are
-    // in the Plan and their base class disappears with the import, so they are
-    // erased at exactly the ranges the compiler reported -- never at ranges the
-    // harness guessed for itself.
-    ...(derivedActions ?? []).map((action) => ({ start: action.start, end: action.end, text: "" })),
-    { start: call.getStart(), end: call.end, text: JSON.stringify(flow) },
-  ].sort((left, right) => left.start - right.start || left.end - right.end);
-  let cursor = 0;
-  let code = "";
-  const runs = [];
-  for (const replacement of replacements) {
-    if (replacement.start < cursor || replacement.end < replacement.start || replacement.end > source.length) {
-      throw new TypeError(`durable source replacements overlap or exceed ${fileName}`);
-    }
-    if (replacement.start > cursor) {
-      const derivedStart = code.length;
-      const kept = source.slice(cursor, replacement.start);
-      code += kept;
-      runs.push({ derivedStart, authoredStart: cursor, length: kept.length });
-    }
-    code += replacement.text;
-    cursor = replacement.end;
-  }
-  if (cursor < source.length) {
-    const derivedStart = code.length;
-    const kept = source.slice(cursor);
-    code += kept;
-    runs.push({ derivedStart, authoredStart: cursor, length: kept.length });
-  }
-  return {
-    code,
-    sourceMap: createOffsetSourceMap({
-      derivedText: code,
-      authoredText: source,
-      runs,
-      sourceName: fileName,
-      fileName: `${fileName}.durable.ts`,
-    }),
-  };
-}
-
 /**
  * The compiler-owned source-asset stage.
  *
- * Runs over the AUTHORED `.sm` text, exactly as `src/cli.ts` does, because that
+ * Runs over the AUTHORED `.vibe` text, exactly as `src/cli.ts` does, because that
  * is where the authored import attributes and the authored positions of every
- * `SMITHERS52xx` refusal are. The compiler reads each asset from disk beneath
+ * `VIBE52xx` refusal are. The compiler reads each asset from disk beneath
  * `rootDir`; the harness has already staged them there, and passes only their
  * names so nothing here can substitute content the compiler did not read.
  *
@@ -180,13 +98,13 @@ async function compileAssets(request) {
       root: request.rootDir,
       cacheDirectory: request.assetCacheDirectory,
       target: request.comptimeTarget,
-      options: { frontend: "smithers-conformance-js@1" },
+      options: { frontend: "vibelang-conformance-js@1" },
     }),
     sources: request.sources.map((source) => ({ fileName: source.fileName, source: source.source })),
   });
   const outputs = compiled.modules.map((module) => ({
     sourceFileName: module.sourceFileName,
-    outputFileName: resolve(request.rootDir, "__smithers_assets__", `${module.logicalKey}.ts`),
+    outputFileName: resolve(request.rootDir, "__vibelang_assets__", `${module.logicalKey}.ts`),
     resolutionAliases: module.resolutionAliases,
     stripImportAttributes: true,
   }));
@@ -238,12 +156,13 @@ async function main() {
   }
   // The standalone comptime frontend is a whole-project pass once either
   // compiler-owned module is present. Without such an edge it must be an exact
-  // no-op: in particular, syntax owned by later Smithers lowering must not be
-  // reclassified as a comptime parse failure. TypeScript's lexical preprocessor
-  // finds module references without attempting to parse the Smithers grammar.
-  const usesComptimeFrontend = request.sources.some((source) =>
-    ts.preProcessFile(source.source, true, true).importedFiles.some((reference) =>
-      reference.fileName === "smithers:comptime" || reference.fileName === "smithers:schema"
+  // no-op: in particular, syntax owned by later VibeLang lowering must not be
+  // reclassified as a comptime parse failure. The native syntax inventory
+  // reports import edges without granting semantic acceptance to this source.
+  const usesComptimeFrontend = getNativeCompiler().inspect(request.sources.map((source, index) =>
+    ({ path: `conformance-input-${index}.ts`, text: source.source, scriptKind: "typescript" })
+  )).files.some((source) => source.moduleSyntax.some((reference) =>
+      reference.specifier === "vibelang:comptime" || reference.specifier === "vibelang:schema"
     )
   );
   let comptime;
@@ -254,7 +173,7 @@ async function main() {
         root: request.rootDir,
         cacheDirectory: request.comptimeCacheDirectory,
         target: request.comptimeTarget,
-        options: { frontend: "smithers-conformance-js@1" },
+        options: { frontend: "vibelang-conformance-js@1" },
       }),
       sources: Object.fromEntries(request.sources.map((source) => [source.fileName, source.source])),
       schemaRuntimeImport: request.schemaRuntimeImport,
@@ -295,8 +214,10 @@ async function main() {
   const durableDiagnostics = [];
   const durablyLoweredSources = [];
   for (const source of loweredSources) {
-    const usesDurableFrontend = ts.preProcessFile(source.source, true, true).importedFiles.some(
-      (reference) => reference.fileName === "smithers:flows",
+    const usesDurableFrontend = getNativeCompiler().inspect([
+      { path: "conformance-durable.ts", text: source.source, scriptKind: "typescript" },
+    ]).files[0].moduleSyntax.some(
+      (reference) => reference.specifier === "vibelang:flows",
     );
     if (!usesDurableFrontend) {
       durablyLoweredSources.push(source);
@@ -311,9 +232,15 @@ async function main() {
     // A body holding a branch, a loop, or an operator over a runtime value has
     // no Plan and is not for that reason refused — it publishes an Effect
     // Manifest and the descriptor says which artifact it came from. Boundary
-    // refusals (`SMITHERS4103`, `SMITHERS4110`, `SMITHERS4124`, …) arrive here
+    // refusals (`VIBE4103`, `VIBE4110`, `VIBE4124`, …) arrive here
     // exactly as they did.
-    const durable = compileDurableFlow(source.source, { fileName: source.fileName });
+    const lowered = comptime?.loweredFiles?.[source.fileName];
+    const durable = compileDurableModule(source.source, { fileName: source.fileName,
+      ...(lowered ? { sourceOrigin: {
+        text: request.sources.find(authored => authored.fileName === source.fileName).source,
+        sourceMap: lowered.sourceMap, loweringIdentity: lowered.identity,
+      } } : {}),
+    });
     if (!durable.ok) {
       for (const diagnostic of durable.diagnostics) {
         const comptimeMap = comptime?.loweredFiles?.[source.fileName]?.sourceMap;
@@ -333,9 +260,8 @@ async function main() {
       durablyLoweredSources.push(source);
       continue;
     }
-    const lowered = replaceDurableCall(source.source, source.fileName, durable.flow, durable.derivedActions);
-    durableMaps.set(source.fileName, lowered.sourceMap);
-    durablyLoweredSources.push({ fileName: source.fileName, source: lowered.code });
+    if (durable.sourceMap) durableMaps.set(source.fileName, durable.sourceMap);
+    durablyLoweredSources.push({ fileName: source.fileName, source: durable.code });
   }
   // A durable diagnostic used to discard the WHOLE run: `files` went out empty
   // and nothing downstream ever ran, for any module, including the ones that
@@ -361,7 +287,7 @@ async function main() {
   // Skipping the short-circuit WITHOUT carrying them — the literal one-line
   // change — was measured on the same module: the durable refusal disappeared
   // entirely (`diagnostics: []`), `emitChecked` flipped to `true`, and the run
-  // came back as `TS2307, TS2339` about the `smithers:flows` import that
+  // came back as `TS2307, TS2339` about the `vibelang:flows` import that
   // successful lowering would have erased. That is a refused program running the
   // acceptance stage, reported under stock TypeScript codes describing this
   // driver's own un-lowered intermediate instead of the rule that refused it.
@@ -410,6 +336,7 @@ async function main() {
   });
 
   const files = {};
+  const frontendRefused = compiled.diagnostics.some(diagnostic => diagnostic.severity === "error");
   for (const [fileName, file] of Object.entries(compiled.files)) {
     const comptimeMap = comptime?.loweredFiles?.[fileName]?.sourceMap;
     const durableMap = durableMaps.get(fileName);
@@ -419,10 +346,10 @@ async function main() {
     } else if (!durableMap) {
       frontendMap = comptimeMap;
     }
-    if (frontendMap && !file.sourceMap) throw new TypeError(`frontend source map is missing for ${fileName}`);
+    if (frontendMap && !file.sourceMap && !frontendRefused) throw new TypeError(`frontend source map is missing for ${fileName}`);
     files[fileName] = {
       code: file.code,
-      sourceMap: frontendMap
+      sourceMap: frontendMap && file.sourceMap
         ? composeSourceMaps(file.sourceMap, frontendMap, `${file.outputFileName}.frontend.ts`)
         : file.sourceMap,
       outputFileName: file.outputFileName,
@@ -475,20 +402,20 @@ async function main() {
     }
     // The generated asset modules are part of the emitted set, so a program
     // whose asset module does not type-check is rejected here rather than
-    // failing at run time — the same rule the emitted `.sm` modules are held to.
+    // failing at run time — the same rule the emitted `.vibe` modules are held to.
     for (const generated of generatedFiles) emitted.push(generated);
-    emitDiagnostics = checkEmittedProject(emitted)
-      .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)
+    emitDiagnostics = checkEmittedProject(emitted, {
+      moduleOverrides: { "vibelang/schema-runtime": request.schemaRuntimePath },
+    })
+      .filter((diagnostic) => diagnostic.category === "error")
       .map((diagnostic) => {
-        const position = diagnostic.file && diagnostic.start !== undefined
-          ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start)
-          : undefined;
+        const position = diagnostic.position;
         return {
-          code: diagnostic.code,
-          fileName: diagnostic.file ? diagnostic.file.fileName : undefined,
+          code: Number(diagnostic.code.slice(2)),
+          fileName: diagnostic.file,
           line: position ? position.line + 1 : undefined,
           column: position ? position.character + 1 : undefined,
-          message: ts.flattenDiagnosticMessageText(diagnostic.messageText, " "),
+          message: diagnostic.message.replaceAll("\n", " "),
         };
       });
   }
@@ -497,6 +424,9 @@ async function main() {
     ok: true,
     files,
     diagnostics,
+    // Set only after compileProject returns from its native checked-lowering
+    // query, never for asset/comptime/durable short-circuit refusals above.
+    sourceChecked: true,
     emitChecked: !hasLanguageErrors,
     emitDiagnostics,
     assetsCompiled: assets !== undefined,

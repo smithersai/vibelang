@@ -5,14 +5,14 @@
  * `specification/compatibility.mdx`, "Foreign Boundary": "Trusted
  * `@throws {never}` metadata opts out" of the default checked panic case. That
  * claim is about the **call**. The *value* a trusted call returns is still
- * foreign, and returning an executable foreign value out of `.sm` loses its
- * panic provenance — which `SMITHERS1508` refuses.
+ * foreign, and returning an executable foreign value out of `.vibe` loses its
+ * panic provenance — which `VIBE1508` refuses.
  *
- * `environmentNamesArray` returns an object, so a `.sm` function that returns
- * its result is refused. `fillBytes` writes into a buffer `.sm` already owns
+ * `environmentNamesArray` returns an object, so a `.vibe` function that returns
+ * its result is refused. `fillBytes` writes into a buffer `.vibe` already owns
  * and returns nothing, which is the spelling that works today and costs one
  * line. Both directions are pinned, so whichever way the open question about
- * `SMITHERS1508`'s object-return wall is settled, the corpus records the state
+ * `VIBE1508`'s object-return wall is settled, the corpus records the state
  * it was settled from.
  *
  * @module
@@ -26,7 +26,7 @@ export function environmentNamesArray(): readonly string[] {
   return ["a", "b"];
 }
 
-/** A trusted call that writes into a Smithers-owned buffer and returns nothing.
+/** A trusted call that writes into a VibeLang-owned buffer and returns nothing.
  * @throws {never}
  */
 export function fillBytes(target: Uint8Array): void {

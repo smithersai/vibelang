@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Smithers differential conformance runner.
+ * VibeLang differential conformance runner.
  *
  * Three modes, all over the same corpus:
  *
- *   --backend js        run the JS instrument only (the reference; a real gate)
- *   --backend go        run the pinned Go fork only (the migration target)
+ *   --backend js        run the SDK host/JS runtime profile of the Go compiler
+ *   --backend go        run the standalone profile of the same Go compiler
  *   --backend both      run both and diff them (default)
  *
  * Usage:

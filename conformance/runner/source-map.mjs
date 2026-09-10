@@ -1,6 +1,6 @@
 /**
  * Minimal version-3 source-map reader, used to move a diagnostic reported in
- * emitted TypeScript back onto the authored `.sm` line and column.
+ * emitted TypeScript back onto the authored `.vibe` line and column.
  *
  * The corpus's whole point is that line 1 of a case file is line 1 of the
  * program, so a diagnostic the harness reports has to be expressible in

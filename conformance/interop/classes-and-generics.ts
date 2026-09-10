@@ -1,5 +1,5 @@
 // Ordinary TypeScript: classes, parameter properties, abstract members,
-// generics with constraints, and static state. Nothing Smithers-specific.
+// generics with constraints, and static state. Nothing VibeLang-specific.
 
 abstract class Shape {
   protected constructor(readonly name: string) {}

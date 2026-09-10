@@ -16,12 +16,12 @@
  * ## The defect
  *
  * `compiler.LoweringIdentity` used to be the empty string — the zero value of
- * `LoweringMode` — and `cmd/smithersc-go` built its positional-argument request
+ * `LoweringMode` — and `cmd/vibec-go` built its positional-argument request
  * with no `Lowering` field at all. A zero value that is also a legal value is
  * not a default; it is a fail-open. Every positional CLI invocation therefore
  * selected identity lowering, which runs the stock TypeScript checker over the
- * TypeScript-shaped subset of Smithers and applies no Smithers rule whatsoever.
- * `smithersc-go main.sm` reported a clean compile on programs the language
+ * TypeScript-shaped subset of VibeLang and applies no VibeLang rule whatsoever.
+ * `vibec-go main.vibe` reported a clean compile on programs the language
  * requires it to refuse.
  *
  * It is fixed at both ends: `LoweringIdentity` is now the explicit string
@@ -32,7 +32,7 @@
  *
  * `conformance/runner/backend-go.mjs` sends `lowering` explicitly on every
  * request it builds — the forkpatch probe, every corpus case, and every interop
- * file. So no `.sm` program, however written, can reach the omitted-mode path.
+ * file. So no `.vibe` program, however written, can reach the omitted-mode path.
  * A corpus case asserting this would be asserting something about the runner
  * while pretending to assert something about the language, and it would pass
  * for a reason unrelated to its own text.
@@ -50,7 +50,7 @@
  * (2) is what makes this more than a spelling check. It demonstrates the
  * consequence of the original defect against the current tree, without
  * reverting anyone's fix: the same two-file program that `"internal"` refuses
- * with two Smithers diagnostics compiles clean, exit 0, under `"identity"`.
+ * with two VibeLang diagnostics compiles clean, exit 0, under `"identity"`.
  *
  * The Go half of the fix has its own unit coverage at
  * `compiler/lowered_test.go:159-162`. This file is the conformance-side
@@ -66,7 +66,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { buildBridgeBinary, locateForkCheckout } from "../../scripts/fork-e2e.mjs";
-import { auditBaseline, classify, corpusAnswer, VERDICTS } from "../../scripts/oracle-differential.mjs";
+import { auditBaseline, classify, corpusAnswer, CLI, VERDICTS } from "../../scripts/oracle-differential.mjs";
 import { loadCorpus, loweringMode, loweringModes, repositoryRoot } from "./corpus.mjs";
 import { harnessText } from "./harness.mjs";
 import { auditVerdict, compareObservations, judge } from "./judge.mjs";
@@ -76,6 +76,12 @@ import { run } from "./process.mjs";
 
 const backendGoPath = fileURLToPath(new URL("./backend-go.mjs", import.meta.url));
 const backendJsPath = fileURLToPath(new URL("./backend-js.mjs", import.meta.url));
+
+test("the product differential invokes the executable the package actually publishes", () => {
+  const manifest = JSON.parse(readFileSync(join(repositoryRoot, "package.json"), "utf8"));
+  assert.equal(CLI, join(repositoryRoot, manifest.bin.vibe));
+  assert.ok(readFileSync(CLI, "utf8").startsWith("#!/usr/bin/env node"));
+});
 
 test("the harness never sends an implicit lowering mode", () => {
   // The exact shape of the original defect: a zero value that is also a legal
@@ -116,28 +122,28 @@ test("the harness never sends an implicit lowering mode", () => {
 test("the bridge refuses a request that omits the lowering mode", { concurrency: 1 }, async (t) => {
   const checkout = await locateForkCheckout();
   if (!checkout) {
-    t.skip("the pinned smithersai/TypeScript checkout is absent; set SMITHERS_TYPESCRIPT_FORK");
+    t.skip("the pinned smithersai/TypeScript checkout is absent; set VIBELANG_TYPESCRIPT_FORK");
     return;
   }
 
-  const workspace = await mkdtemp(join(tmpdir(), "smithers-conformance-selftest-"));
+  const workspace = await mkdtemp(join(tmpdir(), "vibelang-conformance-selftest-"));
   t.after(() => rm(workspace, { recursive: true, force: true }));
   const binary = buildBridgeBinary(join(workspace, "bin"), {});
   const cache = join(workspace, "fork-cache");
 
   /**
-   * A two-file program that is *valid TypeScript* and *invalid Smithers*.
+   * A two-file program that is *valid TypeScript* and *invalid VibeLang*.
    *
    * `untrusted.ts` carries no leading `@module` / `@throws {never}`
-   * initialization trust claim, so a `.sm` module may not statically import it
-   * (SMITHERS1510), and the unconsumed checked result of the untrusted call is
-   * SMITHERS1301. Nothing about either file is a syntax question, which is the
+   * initialization trust claim, so a `.vibe` module may not statically import it
+   * (VIBE1510), and the unconsumed checked result of the untrusted call is
+   * VIBE1301. Nothing about either file is a syntax question, which is the
    * point: identity lowering parses it happily and simply never asks.
    */
   const files = [
     {
-      path: "main.sm",
-      kind: "smithers",
+      path: "main.vibe",
+      kind: "vibelang",
       text: 'import { shout } from "./untrusted.ts"\n\nexport function main(): string[] {\n  return [shout("hi")]\n}\n',
     },
     {
@@ -148,9 +154,9 @@ test("the bridge refuses a request that omits the lowering mode", { concurrency:
   ];
 
   const send = async (lowering) => {
-    const directory = await mkdtemp(join(tmpdir(), "smithers-conformance-selftest-request-"));
+    const directory = await mkdtemp(join(tmpdir(), "vibelang-conformance-selftest-request-"));
     try {
-      const request = { rootNames: ["main.sm"], files, options: {} };
+      const request = { rootNames: ["main.vibe"], files, options: {} };
       if (lowering !== undefined) request.lowering = lowering;
       const requestPath = join(directory, "request.json");
       await writeFile(requestPath, `${JSON.stringify(request, null, 2)}\n`);
@@ -180,7 +186,7 @@ test("the bridge refuses a request that omits the lowering mode", { concurrency:
       /lowering mode is required/,
       "the refusal must name the missing mode rather than fail for an incidental reason",
     );
-    assert.deepEqual(omitted.codes, ["SMITHERS0004", "SMITHERS_GO_BACKEND"]);
+    assert.deepEqual(omitted.codes, ["VIBE0004", "VIBELANG_GO_BACKEND"]);
   });
 
   await t.test("an unknown mode is refused too", async () => {
@@ -189,22 +195,22 @@ test("the bridge refuses a request that omits the lowering mode", { concurrency:
     assert.match(bogus.stderr, /unsupported lowering mode "nonsense"/);
   });
 
-  await t.test("the mode the harness sends really does apply Smithers rules", async () => {
+  await t.test("the mode the harness sends really does apply VibeLang rules", async () => {
     const internal = await send(loweringMode);
     // This file asserts how the harness ASKS its question; what the language
     // ANSWERS belongs to a corpus case. Until 2026-08-25 this assertion was
-    // `deepEqual(codes, ["SMITHERS1301", "SMITHERS1510"])`, which quietly made
-    // it both — and when the fork stopped reporting the SMITHERS1301 for the
+    // `deepEqual(codes, ["VIBE1301", "VIBE1510"])`, which quietly made
+    // it both — and when the fork stopped reporting the VIBE1301 for the
     // Result the untrusted call discards, this request-shape test went red for
     // a language disagreement it does not own. That disagreement is now pinned
     // where it belongs, by `09-foreign-calls/foreign-module-without-a-trust-marker`
     // and its `xfail` (go), which states the whole argument and would report
     // XPASS the moment the fork agrees again. What THIS test needs is only that
-    // the mode the harness sends applies Smithers rules at all — the module
+    // the mode the harness sends applies VibeLang rules at all — the module
     // trust refusal on a program that is valid TypeScript — against the subtest
     // below, where identity lowering applies none of them.
     assert.ok(
-      internal.codes.includes("SMITHERS1510"),
+      internal.codes.includes("VIBE1510"),
       `internal lowering must refuse an untrusted static foreign module edge; got [${internal.codes.join(", ")}]`,
     );
   });
@@ -213,10 +219,10 @@ test("the bridge refuses a request that omits the lowering mode", { concurrency:
     // This is the consequence of the original defect, measured rather than
     // argued: the identical request under the mode the empty string used to
     // select compiles clean. Had `lowering` stayed omittable, every positional
-    // `smithersc-go` invocation would have reported this program as valid.
+    // `vibec-go` invocation would have reported this program as valid.
     const identity = await send("identity");
     assert.equal(identity.status, 0, "identity lowering compiles the TypeScript-shaped subset");
-    assert.deepEqual(identity.codes, [], "identity lowering applies no Smithers rule");
+    assert.deepEqual(identity.codes, [], "identity lowering applies no VibeLang rule");
   });
 });
 
@@ -282,15 +288,15 @@ test("a failure line is observed by identity, and each backend supplies its own 
     // implementations spell one concept differently — the same reason the
     // Result representation is normalized rather than assumed.
     assert.match(strip(backendJsPath), /name: "errorIdentity"/);
-    assert.match(strip(backendGoPath), /name: "smithersErrorIdentity"/);
-    assert.match(strip(backendGoPath), /module: "\.\/__smithers_prelude\.js"/);
+    assert.match(strip(backendGoPath), /name: "vibelangErrorIdentity"/);
+    assert.match(strip(backendGoPath), /module: "\.\/__vibelang_prelude\.js"/);
   });
 
   await t.test("the identity is preferred, and the fallback cannot be mistaken for one", async () => {
     // Executed rather than pattern-matched: the harness is a program, and what
     // matters is the line it prints. Two runs of the real `harnessText` output,
     // differing only in what the accessor returns.
-    const directory = await mkdtemp(join(tmpdir(), "smithers-conformance-selftest-harness-"));
+    const directory = await mkdtemp(join(tmpdir(), "vibelang-conformance-selftest-harness-"));
     t.after(() => rm(directory, { recursive: true, force: true }));
     await writeFile(join(directory, "package.json"), `${JSON.stringify({ type: "module" })}\n`);
     await writeFile(
@@ -316,8 +322,8 @@ test("a failure line is observed by identity, and each backend supplies its own 
     };
 
     assert.equal(
-      await observe('  return "smithers:program.sm:Boom";'),
-      "error smithers:program.sm:Boom: bad value -2",
+      await observe('  return "vibelang:program.vibe:Boom";'),
+      "error vibelang:program.vibe:Boom: bad value -2",
       "a registered Error must be observed by its compiler-stable identity",
     );
     assert.equal(
@@ -370,25 +376,25 @@ test("a run that measured nothing is refused rather than reported as green", { c
 });
 
 /**
- * The `SMITHERS19xx` range means two different things in the two
+ * The `VIBE19xx` range means two different things in the two
  * implementations, and the judge translates it for exactly one of them.
  *
- * The Go comptime port numbers its rules `SMITHERS19xx` where the reference
+ * The Go comptime port numbers its rules `VIBE19xx` where the reference
  * frontend uses `VCT10xx`, last two digits one-for-one, so the judge
  * canonicalizes the fork's spelling at the contract boundary. The reference
- * ALSO spells `SMITHERS1900`/`1901`/`1902` — and there they are the formatter's
+ * ALSO spells `VIBE1900`/`1901`/`1902` — and there they are the formatter's
  * mask-budget, overlapping-mask and overlapping-edit rules
  * (`poc/src/language/format.ts:646`, `:667`, `:700`), unrelated to comptime.
  *
  * While that translation was unconditional it applied to the reference too, so
  * a reference formatter failure was rewritten onto a live comptime code and a
- * case declaring `VCT1001` could be satisfied by `SMITHERS1901` — the judge
+ * case declaring `VCT1001` could be satisfied by `VIBE1901` — the judge
  * scoring an agreement it had never checked. Measured before the fix: `judge`
  * returned `pass` for exactly that pair.
  *
  * No corpus case can reach it today (the formatter is only reachable through
- * the `smithers format` subcommand, never through `compileProject`, and no case
- * declares a `SMITHERS19xx` code), which is precisely why it needs an assertion
+ * the `vibe format` subcommand, never through `compileProject`, and no case
+ * declares a `VIBE19xx` code), which is precisely why it needs an assertion
  * rather than a corpus case: it is a property of the harness, invisible to a
  * differential oracle over authored programs, and it would go live silently.
  */
@@ -405,22 +411,22 @@ test("the comptime code alias is scoped to the fork", async (t) => {
   });
 
   await t.test("the fork's comptime spelling is still translated", () => {
-    assert.equal(judge(declaring("VCT1004"), diagnostics("SMITHERS1904"), "go").status, "pass");
+    assert.equal(judge(declaring("VCT1004"), diagnostics("VIBE1904"), "go").status, "pass");
   });
 
   await t.test("a reference formatter code does not satisfy a comptime case", () => {
-    assert.equal(judge(declaring("VCT1001"), diagnostics("SMITHERS1901"), "js").status, "fail");
+    assert.equal(judge(declaring("VCT1001"), diagnostics("VIBE1901"), "js").status, "fail");
   });
 
   await t.test("the same literal code on both backends is not agreement", () => {
     // Two different rules that happen to share a number must not compare equal.
-    assert.equal(compareObservations(diagnostics("SMITHERS1901"), diagnostics("SMITHERS1901")).agree, false);
+    assert.equal(compareObservations(diagnostics("VIBE1901"), diagnostics("VIBE1901")).agree, false);
   });
 
-  await t.test("a reference SMITHERS19xx is a harness-integrity failure", () => {
+  await t.test("a reference VIBE19xx is a harness-integrity failure", () => {
     const violations = auditVerdict(
       declaring("VCT1001"),
-      diagnostics("SMITHERS1901"),
+      diagnostics("VIBE1901"),
       { status: "pass" },
       { name: "js", requiredStages: {} },
     );
@@ -434,12 +440,12 @@ test("the comptime code alias is scoped to the fork", async (t) => {
   // outside the contested range, on either backend.
   await t.test("ordinary codes are untouched on both backends", () => {
     for (const backend of ["js", "go"]) {
-      assert.equal(judge(declaring("SMITHERS4112"), diagnostics("SMITHERS4112"), backend).status, "pass");
+      assert.equal(judge(declaring("VIBE4112"), diagnostics("VIBE4112"), backend).status, "pass");
     }
     assert.deepEqual(
       auditVerdict(
-        declaring("SMITHERS4112"),
-        diagnostics("SMITHERS4112"),
+        declaring("VIBE4112"),
+        diagnostics("VIBE4112"),
         { status: "pass" },
         { name: "js", requiredStages: {} },
       ).filter((text) => text.includes("collides")),
@@ -452,11 +458,11 @@ test("the comptime code alias is scoped to the fork", async (t) => {
  * The recorded product-vs-oracle divergence must stay a live record.
  *
  * `conformance/runner/run.mjs` measures two BACKENDS. Neither of them is
- * `bin/smithers.js`: the JS reference reaches the frontend through
+ * `bin/vibe.js`: the JS reference reaches the frontend through
  * `conformance/runner/js-lower.mjs`, which turns the source-asset stage on only
  * for a case that ships assets, skips comptime for a case with no
  * compiler-owned edge, and runs a durable source pass of its own; the shipped
- * CLI runs an asset preflight and a runtime-graph resolver over every `.sm`
+ * CLI runs an asset preflight and a runtime-graph resolver over every `.vibe`
  * before the semantic stage and has no durable stage in `check` at all. So
  * "424 cases, 0 divergent" is a statement about `compileProject` plus
  * `js-lower.mjs`, and `conformance/product-divergence.json` is the written
@@ -504,22 +510,22 @@ test("the recorded product-vs-oracle divergence is a live record", async (t) => 
   await t.test("the differential judges by the corpus's own relation, not one of its own", () => {
     // Code AND authored position, exactly as `judge.mjs` compares them, and in
     // the same sorted spelling — a differential that compared codes only would
-    // score `SMITHERS1510@1:23` and `SMITHERS1510@4:1` as agreement.
+    // score `VIBE1510@1:23` and `VIBE1510@4:1` as agreement.
     assert.equal(
-      corpusAnswer({ expect: "diagnostics", diagnostics: [{ code: "SMITHERS1510", line: 1, column: 23 }] }),
-      "SMITHERS1510@1:23",
+      corpusAnswer({ expect: "diagnostics", diagnostics: [{ code: "VIBE1510", line: 1, column: 23 }] }),
+      "VIBE1510@1:23",
     );
     assert.equal(
       corpusAnswer({
         expect: "diagnostics",
         diagnostics: [
-          { code: "SMITHERS1510", line: 1, column: 23 },
-          { code: "SMITHERS1301", line: 4, column: 11 },
+          { code: "VIBE1510", line: 1, column: 23 },
+          { code: "VIBE1301", line: 4, column: 11 },
         ],
       }),
-      "SMITHERS1301@4:11, SMITHERS1510@1:23",
+      "VIBE1301@4:11, VIBE1510@1:23",
     );
-    // An `output` case is required to be ACCEPTED. `smithers run` executes an
+    // An `output` case is required to be ACCEPTED. `vibe run` executes an
     // emitted module directly and never calls the `main()` the conformance
     // harness calls, so the gate does not claim to compare printed output; the
     // harness still owns that half.
@@ -530,8 +536,8 @@ test("the recorded product-vs-oracle divergence is a live record", async (t) => 
     // A product that ACCEPTS what the corpus refuses is the case where a green
     // scoreboard row certifies a rule the shipped compiler does not enforce.
     assert.equal(classify({ expect: "diagnostics", diagnostics: [] }, "ACCEPTED"), "product-accepts");
-    assert.equal(classify({ expect: "diagnostics", diagnostics: [] }, "SMITHERS1510@1:1"), "both-refuse");
-    assert.equal(classify({ expect: "output", stdout: [] }, "SMITHERS1207@1:1"), "product-refuses");
+    assert.equal(classify({ expect: "diagnostics", diagnostics: [] }, "VIBE1510@1:1"), "both-refuse");
+    assert.equal(classify({ expect: "output", stdout: [] }, "VIBE1207@1:1"), "product-refuses");
     assert.equal(classify({ expect: "output", stdout: [] }, "ACCEPTED"), undefined);
   });
 
@@ -554,7 +560,7 @@ test("the recorded product-vs-oracle divergence is a live record", async (t) => 
  *
  * `js-lower.mjs` ran the compiler-owned durable source pass, and if ANY module
  * came back refused it wrote `{ ok: true, files: {}, diagnostics: [<durable>] }`
- * and returned. The rest of the frontend — Smithers lowering, the language and
+ * and returned. The rest of the frontend — VibeLang lowering, the language and
  * portability rules, the stock check of the emitted set, execution — never ran,
  * for any module in the run, including the ones that lowered cleanly.
  *
@@ -586,7 +592,7 @@ test("a durable diagnostic does not discard an output-expecting run", { concurre
   //
   //   1. Two sibling-namespaced `Failed` classes mint one durable failure
   //      identity, so the Action's declared failure channel is refused. Matched
-  //      by shape (`SMITHERS41xx`) rather than by number, because which rule in
+  //      by shape (`VIBE41xx`) rather than by number, because which rule in
   //      that family answers a collision is a live question — see
   //      MIGRATION-PLAN R3.
   //
@@ -598,9 +604,9 @@ test("a durable diagnostic does not discard an output-expecting run", { concurre
   //      and a class name are the residual no encoding can remove, which is what
   //      makes them the durable defect that will still be one tomorrow.
   //   2. `Date.now()` is an ambient wall-clock read, which `20-host-globals`
-  //      pins as SMITHERS1602. The durable pass knows nothing about it.
+  //      pins as VIBE1602. The durable pass knows nothing about it.
   const halfMigrated = [
-    'import { durable, Action } from "smithers:flows"',
+    'import { durable, Action } from "vibelang:flows"',
     "",
     "namespace Left {",
     "  export class Failed extends Error {",
@@ -628,8 +634,8 @@ test("a durable diagnostic does not discard an output-expecting run", { concurre
 
   const caseFor = (expectation) => ({
     id: `selftest/half-migrated-durable-${expectation.expect}`,
-    entry: "main.sm",
-    files: [{ path: "main.sm", kind: "smithers", text: halfMigrated }],
+    entry: "main.vibe",
+    files: [{ path: "main.vibe", kind: "vibelang", text: halfMigrated }],
     expectation,
   });
 
@@ -640,7 +646,7 @@ test("a durable diagnostic does not discard an output-expecting run", { concurre
   // request shape is deliberately narrow to guarantee.
   const refusalCase = caseFor({
     expect: "diagnostics",
-    diagnostics: [{ code: "SMITHERS4124", line: 18, column: 20 }],
+    diagnostics: [{ code: "VIBE4124", line: 18, column: 20 }],
   });
   const outputCase = caseFor({ expect: "output", stdout: ["1", "0"] });
 
@@ -651,10 +657,10 @@ test("a durable diagnostic does not discard an output-expecting run", { concurre
 
   await t.test("a diagnostics run still short-circuits on the durable refusal", () => {
     assert.equal(refused.kind, "diagnostics", JSON.stringify(refused));
-    // Exactly one: the short-circuit is what keeps a declared, exact diagnostic
-    // set from collecting whatever else the un-lowered source says.
-    assert.equal(codes(refused).length, 1, JSON.stringify(codes(refused)));
-    assert.match(codes(refused)[0], /^SMITHERS41\d\d$/);
+    // Both are from durable compilation: native checking reports the duplicate
+    // nominal claim before the underivable Manifest. The ambient Date failure
+    // in the ordinary language stage must not leak past this short-circuit.
+    assert.deepEqual(codes(refused), ["VIBE1150", "VIBE4199"]);
     assert.deepEqual(refused.stages, ["lower"]);
   });
 
@@ -662,11 +668,11 @@ test("a durable diagnostic does not discard an output-expecting run", { concurre
     assert.equal(kept.kind, "diagnostics", JSON.stringify(kept));
     const observed = codes(kept);
     assert.ok(
-      observed.some((code) => /^SMITHERS41\d\d$/.test(code)),
+      observed.some((code) => /^VIBE41\d\d$/.test(code)),
       `the durable refusal must survive the guard: ${JSON.stringify(observed)}`,
     );
     assert.ok(
-      observed.includes("SMITHERS1602"),
+      observed.includes("VIBE1602"),
       `the language-stage defect must now be reported too: ${JSON.stringify(observed)}`,
     );
     // The behaviour change, stated as a comparison rather than as a constant:
@@ -679,7 +685,7 @@ test("a durable diagnostic does not discard an output-expecting run", { concurre
     // The over-correction this guard must not become. Measured: skipping the
     // short-circuit without carrying the durable diagnostics forward makes the
     // refusal disappear, flips `emitChecked` to true, and reports the run as
-    // stock `TS2307, TS2339` about the `smithers:flows` import that successful
+    // stock `TS2307, TS2339` about the `vibelang:flows` import that successful
     // lowering erases — the acceptance stage running on a program the durable
     // stage refused.
     assert.notEqual(kept.kind, "output");
@@ -724,7 +730,7 @@ test("a durable diagnostic does not discard an output-expecting run", { concurre
  *
  * ## Why this is not a corpus case
  *
- * No `.sm` program can express it: the input is the CLI's own `--backend` value
+ * No `.vibe` program can express it: the input is the CLI's own `--backend` value
  * against a backend that never ran a case. The whole matrix is asserted — three
  * modes against each backend being unpreparable, including the four cells that
  * were already right — because the defect was an inconsistency BETWEEN cells,
@@ -748,8 +754,8 @@ test("a requested backend that could not be prepared refuses the run, in every m
   // alone. A PATH with no `bun` on it takes out the JS backend's probe — and
   // `go` with it, which is why every assertion below names the backend the run
   // reported rather than trusting the exit code by itself.
-  const noFork = ["--fork-checkout", join(tmpdir(), "smithers-conformance-no-such-fork-checkout")];
-  const noTools = { PATH: join(tmpdir(), "smithers-conformance-empty-path") };
+  const noFork = ["--fork-checkout", join(tmpdir(), "vibelang-conformance-no-such-fork-checkout")];
+  const noTools = { PATH: join(tmpdir(), "vibelang-conformance-empty-path") };
   const unprepared = (name) => new RegExp(`the ${name} backend was requested and could not be prepared`);
 
   await t.test("--backend both refuses a run whose fork could not be prepared", async () => {
@@ -825,7 +831,7 @@ test("a requested backend that could not be prepared refuses the run, in every m
  *      canonicalizer.
  *
  * And a `mapped: false` position is a coordinate in emitted TypeScript that the
- * harness is comparing against a coordinate in authored Smithers. Satisfying an
+ * harness is comparing against a coordinate in authored VibeLang. Satisfying an
  * expectation with one is the same class of defect as satisfying an `output`
  * case without running the emit check: the verdict rests on work that did not
  * happen, so it belongs to `auditVerdict` and exit 3 rather than to `fail` —
@@ -843,11 +849,11 @@ test("a requested backend that could not be prepared refuses the run, in every m
  */
 test("a diagnostic's file and its mapping are part of the answer", async (t) => {
   const diagnostic = (overrides = {}) => ({
-    code: "SMITHERS1802",
+    code: "VIBE1802",
     line: 3,
     column: 38,
     message: "probe",
-    file: "main.sm",
+    file: "main.vibe",
     mapped: true,
     ...overrides,
   });
@@ -862,10 +868,10 @@ test("a diagnostic's file and its mapping are part of the answer", async (t) => 
   });
   const declaring = (overrides = {}) => ({
     id: "probe",
-    entry: "main.sm",
+    entry: "main.vibe",
     expectation: {
       expect: "diagnostics",
-      diagnostics: [{ code: "SMITHERS1802", line: 3, column: 38, ...overrides }],
+      diagnostics: [{ code: "VIBE1802", line: 3, column: 38, ...overrides }],
     },
   });
 
@@ -877,27 +883,27 @@ test("a diagnostic's file and its mapping are part of the answer", async (t) => 
   });
 
   await t.test("a diagnostic in the WRONG file does not", () => {
-    const verdict = judge(declaring(), observed({ file: "wrong-module.mod.sm" }), "js");
+    const verdict = judge(declaring(), observed({ file: "wrong-module.mod.vibe" }), "js");
     assert.equal(verdict.status, "fail", JSON.stringify(verdict));
-    assert.match(verdict.detail, /wrong-module\.mod\.sm/);
-    assert.match(verdict.detail, /main\.sm/);
+    assert.match(verdict.detail, /wrong-module\.mod\.vibe/);
+    assert.match(verdict.detail, /main\.vibe/);
   });
 
   await t.test("an expectation may name an auxiliary module, and then the entry does not satisfy it", () => {
-    const inModule = declaring({ file: "companion.mod.sm" });
-    assert.equal(judge(inModule, observed({ file: "companion.mod.sm" }), "js").status, "pass");
-    assert.equal(judge(inModule, observed({ file: "main.sm" }), "js").status, "fail");
+    const inModule = declaring({ file: "companion.mod.vibe" });
+    assert.equal(judge(inModule, observed({ file: "companion.mod.vibe" }), "js").status, "pass");
+    assert.equal(judge(inModule, observed({ file: "main.vibe" }), "js").status, "fail");
   });
 
   await t.test("two backends diagnosing different files do not agree", () => {
-    assert.equal(compareObservations(observed(), observed({ file: "main.sm" })).agree, true);
-    const divergent = compareObservations(observed(), observed({ file: "wrong-module.mod.sm", mapped: undefined }));
+    assert.equal(compareObservations(observed(), observed({ file: "main.vibe" })).agree, true);
+    const divergent = compareObservations(observed(), observed({ file: "wrong-module.mod.vibe", mapped: undefined }));
     assert.equal(divergent.agree, false, JSON.stringify(divergent));
-    assert.match(divergent.detail, /wrong-module\.mod\.sm/);
+    assert.match(divergent.detail, /wrong-module\.mod\.vibe/);
   });
 
   await t.test("`mapped` is not compared across backends, because only one backend has it", () => {
-    // The fork reports no mapping at all — it checks the authored `.sm`
+    // The fork reports no mapping at all — it checks the authored `.vibe`
     // directly, so it has nothing to map. Comparing the field would report a
     // divergence on every diagnostics case in the corpus. The FILE is the
     // substantive difference; the mapping is a claim about this harness.
@@ -920,7 +926,7 @@ test("a diagnostic's file and its mapping are part of the answer", async (t) => 
     // is allowed to rest on whatever the backend said, and the ordinary mapped
     // case must stay silent or the audit fires on all 470 diagnostics.
     assert.deepEqual(auditVerdict(declaring(), observed(), judge(declaring(), observed(), "js"), jsBackend), []);
-    const wrongFile = observed({ file: "wrong-module.mod.sm", mapped: false });
+    const wrongFile = observed({ file: "wrong-module.mod.vibe", mapped: false });
     assert.deepEqual(auditVerdict(declaring(), wrongFile, judge(declaring(), wrongFile, "js"), jsBackend), []);
   });
 
@@ -949,7 +955,7 @@ test("a diagnostic's file and its mapping are part of the answer", async (t) => 
     // asserts the property that has to hold: a path the harness could not
     // relate is never SCORED. Exit 3 with the path in hand, not a divergence
     // somebody has to go and diagnose in a backend that is behaving correctly.
-    const absolute = observed({ file: "/private/var/folders/qy/T/smithers-conformance-js-Ol9d79/main.sm" });
+    const absolute = observed({ file: "/private/var/folders/qy/T/vibelang-conformance-js-Ol9d79/main.vibe" });
     const violations = auditVerdict(declaring(), absolute, judge(declaring(), absolute, "js"), jsBackend);
     assert.ok(
       violations.some((text) => text.includes("could not relate")),

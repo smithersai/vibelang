@@ -5,7 +5,7 @@
  * so a boundary that admits a thrown value into the declared `@throws {T}`
  * channel with a bare `instanceof` admits anything at all — and the Result then
  * carries a failure that never came from `T`. The module itself is honest: its
- * leading JSDoc carries the initialization trust claim `SMITHERS1510` requires,
+ * leading JSDoc carries the initialization trust claim `VIBE1510` requires,
  * exactly as `foreign.ts` does, so the case that imports it is about the
  * function-level channel and not about module trust.
  *

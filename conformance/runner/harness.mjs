@@ -5,7 +5,7 @@
  * `Result<string[], E>` (optionally as a Promise). The two backends represent a
  * Result differently at runtime — the JS instrument returns the POC runtime's
  * `ResultValue` (a `match` method, private state), while the Go fork's internal
- * lowering returns its prelude's `SmithersOk`/`SmithersErr` (a public `ok` tag) — so this
+ * lowering returns its prelude's `VibeLangOk`/`VibeLangErr` (a public `ok` tag) — so this
  * harness normalizes both to the same printed lines. Normalizing the
  * *representation* is what makes a single declared expectation legitimately
  * comparable across two implementations; nothing here normalizes the
@@ -36,7 +36,7 @@
  * line carries the compiler-stable identity:
  *
  *   js  `errorIdentity`          from the POC runtime the emitted program imports
- *   go  `smithersErrorIdentity`  from the `__smithers_prelude.js` it emits
+ *   go  `vibelangErrorIdentity`  from the `__vibelang_prelude.js` it emits
  *
  * Both are read from the same module instance the program itself registered
  * into — the JS backend's absolute `runtimeImport` and the fork's own relative
@@ -55,7 +55,7 @@
 
 const HARNESS_PROLOGUE = `
 function describeError(error) {
-  const identity = __smithersIdentityOf(error);
+  const identity = __vibelangIdentityOf(error);
   const name =
     typeof identity === "string" && identity.length > 0
       ? identity
@@ -106,7 +106,7 @@ export function harnessText(entrySpecifier, identityAccessor) {
   }
   return [
     `import * as program from ${JSON.stringify(entrySpecifier)};`,
-    `import { ${identityAccessor.name} as __smithersIdentityOf } from ${JSON.stringify(identityAccessor.module)};`,
+    `import { ${identityAccessor.name} as __vibelangIdentityOf } from ${JSON.stringify(identityAccessor.module)};`,
     HARNESS_PROLOGUE,
   ].join("\n");
 }

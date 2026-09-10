@@ -2,7 +2,7 @@
  * Trusted foreign TypeScript boundary for the conformance corpus.
  *
  * A statically imported foreign module must carry a leading JSDoc
- * initialization trust claim (`SMITHERS1510`) before any `.sm` module may import it,
+ * initialization trust claim (`VIBE1510`) before any `.vibe` module may import it,
  * because an ESM initializer can fail before a Result boundary exists. That
  * module tag never doubles as a function-level opt-out, so each export below
  * carries — or deliberately omits — its own `@throws` contract.

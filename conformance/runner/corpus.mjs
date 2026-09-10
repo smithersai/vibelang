@@ -1,12 +1,12 @@
 /**
  * Corpus discovery and expectation parsing.
  *
- * A conformance case is one authored `.sm` file under `conformance/corpus/<area>/`
- * whose name does not end in `.mod.sm` (those are auxiliary modules imported by a
+ * A conformance case is one authored `.vibe` file under `conformance/corpus/<area>/`
+ * whose name does not end in `.mod.vibe` (those are auxiliary modules imported by a
  * case), paired with a sibling `<case>.expected.json`.
  *
- * The expectation lives beside the source rather than inside it so the `.sm` file
- * stays pristine authored Smithers: line 1 of the case is line 1 of the program,
+ * The expectation lives beside the source rather than inside it so the `.vibe` file
+ * stays pristine authored VibeLang: line 1 of the case is line 1 of the program,
  * which is what lets a negative case name the exact authored line and column of
  * its diagnostic without those numbers shifting whenever the expectation is
  * edited. It also means every corpus file can be fed straight to the CLI.
@@ -48,19 +48,19 @@ export const comptimeTarget = "node-es2022";
  * interop file — written down once so the harness cannot send an implicit one.
  *
  * `"internal"` is the migration target: the fork's own parser, checker, printer
- * and Go Smithers lowering. `"external"` would have the JS instrument do the
+ * and Go VibeLang lowering. `"external"` would have the JS instrument do the
  * lowering and measure the reference again; `"identity"` runs the stock
  * TypeScript checker over the TypeScript-shaped subset and applies **no
- * Smithers rule at all**.
+ * VibeLang rule at all**.
  *
  * That last mode is why this is a constant rather than three string literals.
  * `compiler.LoweringIdentity` used to be the empty string, i.e. the zero value
- * of `LoweringMode`, and `cmd/smithersc-go` built positional requests with no
+ * of `LoweringMode`, and `cmd/vibec-go` built positional requests with no
  * `Lowering` field — so every positional invocation silently selected identity
- * and compiled `.sm` through the TypeScript checker only. It is fixed at both
+ * and compiled `.vibe` through the TypeScript checker only. It is fixed at both
  * ends (`compiler/api.go:54`, `compiler/lowered.go:19`), and the modes are
  * measurably not interchangeable: sent the same two-file program, `"internal"`
- * reports SMITHERS1510 and SMITHERS1301 while `"identity"` exits 0 with zero
+ * reports VIBE1510 and VIBE1301 while `"identity"` exits 0 with zero
  * diagnostics.
  *
  * No corpus case can observe any of that, because the runner always sends a
@@ -99,11 +99,11 @@ function readExpectation(expectationPath, path) {
 }
 
 /**
- * A declared diagnostic is a Smithers rule (`SMITHERS1205`), a compiler-owned
- * comptime rule (`VCT1004`), or, for syntax Smithers shares with TypeScript and
+ * A declared diagnostic is a VibeLang rule (`VIBE1205`), a compiler-owned
+ * comptime rule (`VCT1004`), or, for syntax VibeLang shares with TypeScript and
  * whose behavior it keeps, the stock TypeScript diagnostic itself (`TS2678`).
  */
-const DIAGNOSTIC_CODE = /^(SMITHERS\d{4}|VCT\d{4}|TS\d{4,5})$/;
+const DIAGNOSTIC_CODE = /^(VIBE\d{4}|VCT\d{4}|TS\d{4,5})$/;
 
 const KNOWN_FIELDS = new Set([
   "title",
@@ -119,7 +119,7 @@ const KNOWN_FIELDS = new Set([
 ]);
 
 /**
- * A staged non-code file: the path a case's authored `.sm` imports.
+ * A staged non-code file: the path a case's authored `.vibe` imports.
  *
  * Kept deliberately narrow. The Go bridge stages a case entirely in-request and
  * refuses any input path that escapes its virtual project
@@ -150,8 +150,8 @@ function normalizeAssetEntry(entry, path, staged) {
   if (from.includes("/")) {
     throw new Error(`${path}: asset source ${JSON.stringify(from)} must name a file directly in conformance/assets/`);
   }
-  if (/\.sm$/.test(target)) {
-    throw new Error(`${path}: asset ${JSON.stringify(target)} must not be staged with a .sm extension`);
+  if (/\.vibe$/.test(target)) {
+    throw new Error(`${path}: asset ${JSON.stringify(target)} must not be staged with a .vibe extension`);
   }
   if (staged.has(target)) throw new Error(`${path}: two files are staged at ${JSON.stringify(target)}`);
   staged.add(target);
@@ -181,10 +181,10 @@ function validate(expectation, path) {
     }
     for (const entry of expectation.diagnostics) {
       if (typeof entry?.code !== "string" || !DIAGNOSTIC_CODE.test(entry.code)) {
-        throw new Error(`${path}: every expected diagnostic needs a SMITHERSnnnn, VCTnnnn, or TSnnnn code`);
+        throw new Error(`${path}: every expected diagnostic needs a VIBEnnnn, VCTnnnn, or TSnnnn code`);
       }
       // A `TS` code is a claim about *TypeScript's* behavior on shared syntax,
-      // which the compatibility rule says Smithers keeps. Such a claim is only
+      // which the compatibility rule says VibeLang keeps. Such a claim is only
       // as good as the evidence behind it, so the case has to carry it.
       if (entry.code.startsWith("TS") && (typeof expectation.notes !== "string" || expectation.notes.length === 0)) {
         throw new Error(
@@ -214,7 +214,7 @@ function validate(expectation, path) {
       // Optional, and the entry module when omitted — which is every declared
       // diagnostic in the corpus today. It exists because the judge compares the
       // file a diagnostic landed in, and without a way to declare one a case
-      // could never pin a diagnostic in an auxiliary `*.mod.sm` at all. The
+      // could never pin a diagnostic in an auxiliary `*.mod.vibe` at all. The
       // staged-path check lives in `loadCorpus`, where the case's files are
       // known: a `file` nothing stages is unsatisfiable by construction and
       // would otherwise read as a permanent backend divergence.
@@ -261,7 +261,7 @@ function walk(directory, out) {
       walk(path, out);
       continue;
     }
-    if (!entry.endsWith(".sm") || entry.endsWith(".mod.sm")) continue;
+    if (!entry.endsWith(".vibe") || entry.endsWith(".mod.vibe")) continue;
     out.push(path);
   }
   return out;
@@ -274,21 +274,21 @@ function walk(directory, out) {
  * Three kinds, and both backends stage all three from this one list so the two
  * observations are of the same project:
  *
- *   smithers    the authored `.sm` entry plus any `*.mod.sm` sibling it imports
+ *   vibelang    the authored `.vibe` entry plus any `*.mod.vibe` sibling it imports
  *   typescript  foreign `.ts` modules from `conformance/support/`
  *   asset       non-code files from `conformance/assets/` — `.json`, `.md`,
  *               `.mdx`, `.txt`, and custom-loader inputs such as `.yaml` — put
- *               at exactly the path the authored `.sm` imports, so an asset
+ *               at exactly the path the authored `.vibe` imports, so an asset
  *               import is a real compiler-tracked file read rather than a stub
  */
 export function loadCorpus({ filter } = {}) {
   const cases = [];
   for (const path of walk(corpusRoot, [])) {
     const text = readFileSync(path, "utf8");
-    const expectation = readExpectation(path.replace(/\.sm$/, ".expected.json"), relative(repositoryRoot, path));
+    const expectation = readExpectation(path.replace(/\.vibe$/, ".expected.json"), relative(repositoryRoot, path));
     validate(expectation, relative(repositoryRoot, path));
 
-    // The harness entry is the case's own `.sm` unless the case names another
+    // The harness entry is the case's own `.vibe` unless the case names another
     // module it stages.
     //
     // `entry` has been a declared expectation field since the corpus was
@@ -302,12 +302,12 @@ export function loadCorpus({ filter } = {}) {
     // the whole of the change.
     const declaredEntry = expectation.entry;
     const entry = declaredEntry ?? basename(path);
-    const files = [{ path: basename(path), kind: "smithers", text }];
+    const files = [{ path: basename(path), kind: "vibelang", text }];
     const staged = new Set([basename(path)]);
     for (const moduleName of expectation.modules ?? []) {
       files.push({
         path: moduleName,
-        kind: "smithers",
+        kind: "vibelang",
         text: readFileSync(join(dirname(path), moduleName), "utf8"),
       });
       staged.add(moduleName);
@@ -329,8 +329,8 @@ export function loadCorpus({ filter } = {}) {
       });
     }
 
-    // A declared entry must be a Smithers module this case stages, and it must
-    // not be the case's own `.sm` — a redundant declaration is a declaration
+    // A declared entry must be a VibeLang module this case stages, and it must
+    // not be the case's own `.vibe` — a redundant declaration is a declaration
     // that will be wrong later. Checked here because only now are the staged
     // paths known, and checked at all because a mis-declared entry would make
     // both backends execute a module that does not exist and report it as a
@@ -342,10 +342,10 @@ export function loadCorpus({ filter } = {}) {
       if (declaredEntry === basename(path)) {
         throw new Error(`${relative(repositoryRoot, path)}: entry names this case's own module, so it says nothing`);
       }
-      if (!files.some((file) => file.kind === "smithers" && file.path === declaredEntry)) {
+      if (!files.some((file) => file.kind === "vibelang" && file.path === declaredEntry)) {
         throw new Error(
-          `${relative(repositoryRoot, path)}: entry ${JSON.stringify(declaredEntry)} is not a Smithers module this ` +
-            `case stages (staged: ${files.filter((file) => file.kind === "smithers").map((file) => file.path).join(", ")})`,
+          `${relative(repositoryRoot, path)}: entry ${JSON.stringify(declaredEntry)} is not a VibeLang module this ` +
+            `case stages (staged: ${files.filter((file) => file.kind === "vibelang").map((file) => file.path).join(", ")})`,
         );
       }
     }
@@ -364,12 +364,12 @@ export function loadCorpus({ filter } = {}) {
       );
     }
 
-    const id = relative(corpusRoot, path).replace(/\.sm$/, "");
+    const id = relative(corpusRoot, path).replace(/\.vibe$/, "");
     if (filter && !id.includes(filter)) continue;
     cases.push({
       id,
       area: areaOf(path),
-      name: basename(path, ".sm"),
+      name: basename(path, ".vibe"),
       sourcePath: path,
       entry,
       files,

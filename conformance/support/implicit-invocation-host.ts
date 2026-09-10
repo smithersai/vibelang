@@ -2,7 +2,7 @@
  * Foreign TypeScript reached through the language's *implicit* invocation
  * protocols rather than through a call expression.
  *
- * Nothing below is written as `f(x)` at a use site. `.sm` invokes
+ * Nothing below is written as `f(x)` at a use site. `.vibe` invokes
  * `Symbol.iterator`, an own enumerable getter,
  * `Symbol.toPrimitive`/`valueOf`/`toString`, a template tag, a base
  * constructor, or a decorator on the author's behalf, and every one of those
@@ -10,7 +10,7 @@
  * scopes the panic case to *calling* an unannotated foreign runtime value, and
  * each of these positions is such a call with no call expression to see.
  *
- * The leading claim is module-initialization trust only (`SMITHERS1510`); no
+ * The leading claim is module-initialization trust only (`VIBE1510`); no
  * export carries a function-level `@throws` contract, which is the point.
  *
  * @module
