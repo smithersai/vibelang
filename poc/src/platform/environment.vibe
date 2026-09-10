@@ -1,4 +1,4 @@
-import { Context } from "smthrs/context";
+import { Context } from "vibelang/context";
 import { collectEnvironmentNames, environmentValue } from "./host.ts";
 
 /**

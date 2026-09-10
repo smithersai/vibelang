@@ -15,7 +15,6 @@ import {
   ReplayScheduler,
   Scheduler,
   schedulerFor,
-  schedulerIfProvided,
   testScheduler,
 } from "./scheduler.ts";
 

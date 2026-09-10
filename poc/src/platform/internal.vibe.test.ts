@@ -1,15 +1,15 @@
 /**
- * The gate for `internal.sm`, the one `poc/src/platform` module that can be
- * authored in Smithers today.
+ * The gate for `internal.vibe`, the one `poc/src/platform` module that can be
+ * authored in VibeLang today.
  *
  * `platform/**` is the floor of the capability system, and almost none of it is
  * portable: a capability's *implementation* must read an ambient host global
- * (`process`, `Date.now`), which `.sm` forbids and offers no opt-out from, and
- * every module that declares its own `Error` needs a payload codec that `.sm`
+ * (`process`, `Date.now`), which `.vibe` forbids and offers no opt-out from, and
+ * every module that declares its own `Error` needs a payload codec that `.vibe`
  * has no seam to register. `internal.ts` does neither — it is pure host-detail
- * inspection over `unknown` — so it compiles as `.sm` with no transform at all.
+ * inspection over `unknown` — so it compiles as `.vibe` with no transform at all.
  *
- * A `.sm` source is invisible to `bun run check` and to both poc tsconfigs, so
+ * A `.vibe` source is invisible to `bun run check` and to both poc tsconfigs, so
  * this test is the build step as well as the test: it compiles the module,
  * asserts the acceptance rule, executes the emitted code, and compares every
  * verdict against the TypeScript original across a sample matrix.
@@ -20,18 +20,18 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { compileAndCheckSmithers } from "../language/index.ts";
+import { compileAndCheckVibeLang } from "../language/index.ts";
 import { causeDetail as typeScriptCauseDetail, errnoCode as typeScriptErrnoCode } from "./internal.ts";
 
-const SOURCE_FILE = resolve(import.meta.dir, "internal.sm");
+const SOURCE_FILE = resolve(import.meta.dir, "internal.vibe");
 const RUNTIME_IMPORT = resolve(import.meta.dir, "../runtime/index.ts");
 
 function compile() {
-  return compileAndCheckSmithers(readFileSync(SOURCE_FILE, "utf8"), {
+  return compileAndCheckVibeLang(readFileSync(SOURCE_FILE, "utf8"), {
     fileName: SOURCE_FILE,
-    outputFileName: resolve(import.meta.dir, "internal.sm.generated.ts"),
+    outputFileName: resolve(import.meta.dir, "internal.vibe.generated.ts"),
     runtimeImport: RUNTIME_IMPORT,
-    sourceName: "internal.sm",
+    sourceName: "internal.vibe",
   });
 }
 
@@ -45,8 +45,8 @@ let cached: Promise<{ module: SmModule; dispose: () => void }> | undefined;
 function load(): Promise<{ module: SmModule; dispose: () => void }> {
   cached ??= (async () => {
     const checked = compile();
-    if (!checked.ok) throw new TypeError("internal.sm did not compile");
-    const root = mkdtempSync(join(tmpdir(), "smithers-platform-internal-sm-"));
+    if (!checked.ok) throw new TypeError("internal.vibe did not compile");
+    const root = mkdtempSync(join(tmpdir(), "vibelang-platform-internal-sm-"));
     const entry = join(root, "internal.ts");
     writeFileSync(entry, checked.result.code);
     const module = await import(pathToFileURL(entry).href) as SmModule;
@@ -91,8 +91,8 @@ const SAMPLES: readonly unknown[] = [
   Promise.resolve(),
 ];
 
-describe("platform/internal authored in Smithers", () => {
-  test("the .sm source satisfies the acceptance rule with no diagnostics", () => {
+describe("platform/internal authored in VibeLang", () => {
+  test("the .vibe source satisfies the acceptance rule with no diagnostics", () => {
     const checked = compile();
     expect(checked.result.analysis.diagnostics).toEqual([]);
     expect(checked.emitDiagnostics).toEqual([]);
@@ -109,7 +109,7 @@ describe("platform/internal authored in Smithers", () => {
   test("the module needs no lowering at all: the emitted code is the authored source", () => {
     // `internal.ts` has no `panic`, no `throw`, and no Result, so the compiler
     // has nothing to lower. This is the cheapest possible port and the proof
-    // that plain TypeScript in the Smithers idiom passes through untouched.
+    // that plain TypeScript in the VibeLang idiom passes through untouched.
     const checked = compile();
     expect(checked.result.code).toBe(readFileSync(SOURCE_FILE, "utf8"));
     for (const hook of ["__vsInspectResult", "__vsResultSuccess", "__vsResultFailure", "__vsPanicValue"]) {
@@ -117,7 +117,7 @@ describe("platform/internal authored in Smithers", () => {
     }
   });
 
-  test("the .sm source is identical to the TypeScript original it replaces", () => {
+  test("the .vibe source is identical to the TypeScript original it replaces", () => {
     expect(readFileSync(SOURCE_FILE, "utf8")).toBe(readFileSync(resolve(import.meta.dir, "internal.ts"), "utf8"));
   });
 
@@ -135,7 +135,7 @@ describe("platform/internal authored in Smithers", () => {
     });
   });
 
-  test("the documented policies hold in the executed .sm build", async () => {
+  test("the documented policies hold in the executed .vibe build", async () => {
     const { module, dispose } = await load();
     try {
       // errnoCode reports only a non-empty string `code`, and nothing else.

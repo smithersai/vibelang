@@ -60,7 +60,7 @@ export class InputClosed extends TerminalError {
     this.name = "InputClosed";
   }
 }
-export interface InputClosed extends NominalError<"smithers:InputClosed@1"> {}
+export interface InputClosed extends NominalError<"vibelang:InputClosed@1"> {}
 
 /**
  * There is no interactive input to read at all — the double was given no script,
@@ -77,7 +77,7 @@ export class NotInteractive extends TerminalError {
     this.name = "NotInteractive";
   }
 }
-export interface NotInteractive extends NominalError<"smithers:NotInteractive@1"> {}
+export interface NotInteractive extends NominalError<"vibelang:NotInteractive@1"> {}
 
 /** Anything the host reported that has no dedicated nominal case. */
 export class TerminalFailure extends TerminalError {
@@ -91,7 +91,7 @@ export class TerminalFailure extends TerminalError {
     this.name = "TerminalFailure";
   }
 }
-export interface TerminalFailure extends NominalError<"smithers:TerminalFailure@1"> {}
+export interface TerminalFailure extends NominalError<"vibelang:TerminalFailure@1"> {}
 
 function decodeStream(value: JsonValue): TerminalStream {
   if (typeof value !== "string" || !STREAMS.has(value)) throw new TypeError("invalid TerminalError stream");
@@ -101,8 +101,8 @@ function decodeStream(value: JsonValue): TerminalStream {
 type StreamErrorConstructor = new (stream?: TerminalStream, message?: string) => TerminalError;
 
 const streamErrors: ReadonlyArray<readonly [StreamErrorConstructor, string]> = [
-  [InputClosed, "smithers:InputClosed@1"],
-  [NotInteractive, "smithers:NotInteractive@1"],
+  [InputClosed, "vibelang:InputClosed@1"],
+  [NotInteractive, "vibelang:NotInteractive@1"],
 ];
 
 for (const [type, id] of streamErrors) {
@@ -120,7 +120,7 @@ for (const [type, id] of streamErrors) {
   });
 }
 
-registerErrorCodec(TerminalFailure, "smithers:TerminalFailure@1", {
+registerErrorCodec(TerminalFailure, "vibelang:TerminalFailure@1", {
   encode: (error): JsonValue => ({ stream: error.stream, code: error.code, message: error.message }),
   decode: (payload) => {
     if (

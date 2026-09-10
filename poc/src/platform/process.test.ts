@@ -48,19 +48,19 @@ describe("Process", () => {
   test("TestProcess satisfies the contract from declared values", () => {
     assertProcessContract(TestProcess.make());
     const declared = TestProcess.make({
-      argv: ["/bin/smithers", "build", "--watch"],
+      argv: ["/bin/vibelang", "build", "--watch"],
       cwd: "/workspace",
       pid: 99,
       platform: "win32",
     });
-    expect(declared.argv()).toEqual(["/bin/smithers", "build", "--watch"]);
+    expect(declared.argv()).toEqual(["/bin/vibelang", "build", "--watch"]);
     expect(declared.cwd()).toBe("/workspace");
     expect(declared.pid()).toBe(99);
     expect(declared.platform()).toBe("win32");
 
-    declared.setCwd("/elsewhere").setArgv(["/bin/smithers"]);
+    declared.setCwd("/elsewhere").setArgv(["/bin/vibelang"]);
     expect(declared.cwd()).toBe("/elsewhere");
-    expect(declared.argv()).toEqual(["/bin/smithers"]);
+    expect(declared.argv()).toEqual(["/bin/vibelang"]);
     expect(panics(() => declared.setCwd(""))).toBe(true);
     expect(panics(() => TestProcess.make({ pid: 0 }))).toBe(true);
     expect(panics(() => TestProcess.make({ argv: [1] as unknown as string[] }))).toBe(true);
@@ -172,10 +172,10 @@ describe("Process", () => {
   });
 
   test("the platform bundles provide Process", () => {
-    const platform = TestPlatform.make({ argv: ["/bin/smithers", "run"], pid: 7, cwd: "/bundle" });
+    const platform = TestPlatform.make({ argv: ["/bin/vibelang", "run"], pid: 7, cwd: "/bundle" });
     const fromTest = Layer.provide(platform.layer, () => Process.context());
     expect(fromTest).toBe(platform.process);
-    expect(fromTest.argv()).toEqual(["/bin/smithers", "run"]);
+    expect(fromTest.argv()).toEqual(["/bin/vibelang", "run"]);
     expect(fromTest.pid()).toBe(7);
     expect(fromTest.cwd()).toBe("/bundle");
 

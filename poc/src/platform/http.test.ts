@@ -130,7 +130,7 @@ describe("HttpClient", () => {
   test("FetchHttpClient sends method, headers, and body, and lowercases response headers", async () => {
     const seen: Array<{ url: string; method: string; headers: Record<string, string>; body?: string }> = [];
     const client = FetchHttpClient.make({
-      headers: { "User-Agent": "smithers" },
+      headers: { "User-Agent": "vibelang" },
       fetch: fakeFetch((url, init) => {
         seen.push({ url, ...init });
         return { status: 200, headers: { "X-Trace-Id": "abc" }, body: "ok" };
@@ -142,7 +142,7 @@ describe("HttpClient", () => {
     expect(seen).toEqual([{
       url: ENDPOINT,
       method: "POST",
-      headers: { "User-Agent": "smithers", Authorization: "token" },
+      headers: { "User-Agent": "vibelang", Authorization: "token" },
       body: "payload",
     }]);
   });

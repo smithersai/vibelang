@@ -7,13 +7,16 @@ import { Clock, SystemClock, TestClock } from "./clock.ts";
 function assertClockContract(clock: Clock): void {
   const first = clock.now();
   expect(Number.isFinite(first)).toBe(true);
-  expect(clock.date().getTime()).toBe(first);
+  expect(Number.isFinite(clock.date().getTime())).toBe(true);
   // date() must hand back a fresh value; mutating it cannot move the clock.
   const borrowed = clock.date();
-  borrowed.setTime(0);
-  expect(clock.now()).toBe(first);
-  expect(clock.monotonic()).toBeGreaterThanOrEqual(0);
-  expect(clock.monotonic()).toBeGreaterThanOrEqual(0);
+  expect(clock.date()).not.toBe(borrowed);
+  borrowed.setTime(Number.NaN);
+  expect(Number.isFinite(clock.now())).toBe(true);
+  expect(Number.isFinite(clock.date().getTime())).toBe(true);
+  const monotonic = clock.monotonic();
+  expect(monotonic).toBeGreaterThanOrEqual(0);
+  expect(clock.monotonic()).toBeGreaterThanOrEqual(monotonic);
 }
 
 describe("Clock", () => {
@@ -30,6 +33,7 @@ describe("Clock", () => {
     const clock = TestClock.at("2026-08-20T12:00:00Z");
     assertClockContract(clock);
     expect(clock.now()).toBe(Date.parse("2026-08-20T12:00:00Z"));
+    expect(clock.date().getTime()).toBe(clock.now());
     expect(clock.iso()).toBe("2026-08-20T12:00:00.000Z");
     expect(clock.monotonic()).toBe(0);
     expect(clock.now()).toBe(clock.now());

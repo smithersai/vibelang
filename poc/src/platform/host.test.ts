@@ -6,8 +6,8 @@ import * as host from "./host.ts";
  *
  * `host.ts`'s module comment says every export is primitive-valued or `void`,
  * and then says the honest thing about that claim: the part of it that no rule
- * enforces "remains an author's discipline backed by `SMITHERS1508`, not a
- * property of the language." `SMITHERS1508` refuses a *trusted binding* that
+ * enforces "remains an author's discipline backed by `VIBE1508`, not a
+ * property of the language." `VIBE1508` refuses a *trusted binding* that
  * returns an executable foreign value; it does not see a plain object. So a
  * future binding that hands back `{ handle, openedAtMs }` — a host object
  * carrying timing-dependent state — passes every gate in the tree today, and
@@ -34,7 +34,7 @@ import * as host from "./host.ts";
  * signature admits. It is a perimeter over the module's shape, not a proof
  * about its callees. The caller-allocated-collection pattern
  * (`fillRandomBytes`, `collectEnvironmentNames`) is unaffected on purpose:
- * filling a Smithers-owned collection is precisely the sanctioned way for a
+ * filling a VibeLang-owned collection is precisely the sanctioned way for a
  * host value to reach the other side, and both of those return `void`.
  */
 
@@ -116,10 +116,10 @@ test("every host.ts export is primitive-valued or void", () => {
     expect(
       isPrimitiveOrUndefined(returned),
       `host.ts export \`${name}\` returned a ${describeValue(returned)}. Every export must return a ` +
-        `primitive or undefined: SMITHERS1508 refuses a trusted binding that returns an EXECUTABLE ` +
+        `primitive or undefined: VIBE1508 refuses a trusted binding that returns an EXECUTABLE ` +
         `foreign value, and sees nothing wrong with a plain object, so a returned object carrying ` +
         `host state — a handle, a timestamp, an iterator — would cross the determinism perimeter ` +
-        `unchecked. Fill a caller-allocated Smithers collection instead, as fillRandomBytes and ` +
+        `unchecked. Fill a caller-allocated VibeLang collection instead, as fillRandomBytes and ` +
         `collectEnvironmentNames do.`,
     ).toBe(true);
   }

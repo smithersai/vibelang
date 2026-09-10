@@ -41,9 +41,9 @@
  * branded structural type.
  */
 
-import { panic } from "smithers:exceptions";
-import { HOLE_HASH, requireDenseArray } from "./array-shape.sm";
-import { type Equivalence, Equivalence as EquivalenceNamespace } from "./equivalence.sm";
+import { panic } from "vibelang:exceptions";
+import { HOLE_HASH, requireDenseArray } from "./array-shape.vibe";
+import { type Equivalence, Equivalence as EquivalenceNamespace } from "./equivalence.vibe";
 
 const UINT32_MAX = 0xffffffff;
 

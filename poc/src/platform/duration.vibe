@@ -28,7 +28,7 @@
  */
 
 import type { JsonValue } from "../runtime/errors.ts";
-import { panic } from "smithers:exceptions";
+import { panic } from "vibelang:exceptions";
 import type { ValueCodec } from "../runtime/wire.ts";
 import { valueCodec } from "./wire-adapter.ts";
 
@@ -264,7 +264,7 @@ function decodeMillis(payload: JsonValue): Result<number, TypeError> {
  * identities — `encodeResult` takes the codec as an argument —
  * so this is exported explicitly and handed to those functions at the boundary.
  * `decode` throws (rather than panicking) so a malformed payload surfaces as the
- * runtime's `ValueCodecError`, like every other codec failure. In Smithers that
+ * runtime's `ValueCodecError`, like every other codec failure. In VibeLang that
  * expected failure is an ordinary `Result` failure, and ./wire-adapter.ts turns
  * it into the throw the foreign `ValueCodec` interface requires.
  */

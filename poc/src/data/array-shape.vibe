@@ -54,7 +54,7 @@
  * checker asks for the check before the walk can be written.
  */
 
-import { panic } from "smithers:exceptions";
+import { panic } from "vibelang:exceptions";
 
 declare const DENSE_ARRAY: unique symbol;
 

@@ -40,9 +40,9 @@
  * element type that has its own absent member.
  */
 
-import { panic } from "smithers:exceptions";
-import { type Equivalence, Equivalence as EquivalenceNamespace, registerStructuralEquivalence } from "./equivalence.sm";
-import { type Hash, Hash as HashNamespace, registerStructuralHash } from "./hash.sm";
+import { panic } from "vibelang:exceptions";
+import { type Equivalence, Equivalence as EquivalenceNamespace, registerStructuralEquivalence } from "./equivalence.vibe";
+import { type Hash, Hash as HashNamespace, registerStructuralHash } from "./hash.vibe";
 
 const CHUNK_SEED = 0x517cc1b7;
 

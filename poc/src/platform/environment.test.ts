@@ -12,7 +12,7 @@ function assertEnvironmentContract(environment: Environment, presentName: string
   expect(typeof present.length).toBe("number"); // narrowed to string
 
   // An unset variable is absence — `undefined` — not a failure.
-  const absent = environment.get("SMITHERS_DEFINITELY_UNSET_9f3a");
+  const absent = environment.get("VIBELANG_DEFINITELY_UNSET_9f3a");
   expect(absent).toBeUndefined();
   expect(absent ?? "<absent>").toBe("<absent>");
   expect(absent?.length).toBeUndefined();
@@ -24,7 +24,7 @@ function assertEnvironmentContract(environment: Environment, presentName: string
 
 describe("Environment", () => {
   test("ProcessEnvironment reads the live process environment", () => {
-    const name = "SMITHERS_PLATFORM_TEST_VAR";
+    const name = "VIBELANG_PLATFORM_TEST_VAR";
     process.env[name] = "live";
     try {
       const environment: Environment = ProcessEnvironment.make();

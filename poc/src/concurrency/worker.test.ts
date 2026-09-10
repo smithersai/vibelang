@@ -246,7 +246,7 @@ describe("provisional typed workers", () => {
     // reach a job that has already left both #queue and #active. Every await
     // below therefore carries a deadline — a leak would hang a plain await
     // rather than fail it.
-    const directory = await mkdtemp(join(tmpdir(), "smithers-worker-codec-"));
+    const directory = await mkdtemp(join(tmpdir(), "vibelang-worker-codec-"));
     try {
       const modulePath = join(directory, "realm-only.ts");
       await writeFile(modulePath, [
@@ -255,7 +255,7 @@ describe("provisional typed workers", () => {
         "export class RealmOnlyError extends Error {",
         "  constructor(readonly code: string) { super(`realm-only: ${code}`); this.name = \"RealmOnlyError\"; }",
         "}",
-        "registerErrorCodec(RealmOnlyError as never, \"smithers:test/RealmOnly@1\", {",
+        "registerErrorCodec(RealmOnlyError as never, \"vibelang:test/RealmOnly@1\", {",
         "  encode: (error: RealmOnlyError) => ({ code: error.code }),",
         "  decode: () => { throw new TypeError(\"unreachable in this realm\"); },",
         "});",

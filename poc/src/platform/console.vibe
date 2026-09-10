@@ -1,4 +1,4 @@
-import { Context } from "smthrs/context";
+import { Context } from "vibelang/context";
 import { writeStandardError, writeStandardOut } from "./host.ts";
 
 export type ConsoleLevel = "info" | "warn" | "error";
@@ -32,14 +32,14 @@ export interface SystemConsoleOptions {
  * The host's own standard streams behind the published `OutputStream` contract.
  *
  * `process.stdout` cannot be named here — specification/compatibility.mdx,
- * "Host Globals", forbids a host global in authored `.sm` and has no
+ * "Host Globals", forbids a host global in authored `.vibe` and has no
  * implementation-side carve-out. The route is the module boundary: these two
- * classes are Smithers-owned adapters, and the single host write per operation
+ * classes are VibeLang-owned adapters, and the single host write per operation
  * lives in ./host.ts, which is ordinary TypeScript and keeps its own semantics.
  *
  * They are `OutputStream` implementations rather than a returned host object
  * because a trusted binding that *returns* a host object is refused
- * (`SMITHERS1508`): a trust claim clears the panic channel for the call, while
+ * (`VIBE1508`): a trust claim clears the panic channel for the call, while
  * the returned value stays foreign.
  */
 class StandardOutStream implements OutputStream {

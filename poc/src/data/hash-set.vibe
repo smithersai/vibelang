@@ -24,10 +24,10 @@
  * part of it, so the structural hash is a commutative fold.
  */
 
-import { panic } from "smithers:exceptions";
-import { type Equivalence, Equivalence as EquivalenceNamespace, registerStructuralEquivalence } from "./equivalence.sm";
-import { type Hash, Hash as HashNamespace, registerStructuralHash } from "./hash.sm";
-import { type HashMap, HashMap as HashMapNamespace } from "./hash-map.sm";
+import { panic } from "vibelang:exceptions";
+import { type Equivalence, Equivalence as EquivalenceNamespace, registerStructuralEquivalence } from "./equivalence.vibe";
+import { type Hash, Hash as HashNamespace, registerStructuralHash } from "./hash.vibe";
+import { type HashMap, HashMap as HashMapNamespace } from "./hash-map.vibe";
 
 const SET_SEED = 0xbb67ae85;
 

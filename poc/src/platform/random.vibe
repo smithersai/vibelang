@@ -1,5 +1,5 @@
-import { Context } from "smthrs/context";
-import { panic } from "smithers:exceptions";
+import { Context } from "vibelang/context";
+import { panic } from "vibelang:exceptions";
 import { fillRandomBytes, randomUint32 } from "./host.ts";
 
 const MAX_BYTES = 1 << 20;
@@ -68,7 +68,7 @@ function uniformBelow(span: number, nextUint32: () => number): number {
 /**
  * Node/Bun live implementation backed by the host CSPRNG.
  *
- * The two host reads live in `./host.ts`, the trusted binding: authored `.sm`
+ * The two host reads live in `./host.ts`, the trusted binding: authored `.vibe`
  * may not name a host global (specification/compatibility.mdx, "Host Globals"),
  * and the live implementation of a standard capability is assigned to the
  * JavaScript host (reference/capabilities.mdx, "Platform Services"). The

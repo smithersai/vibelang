@@ -7,9 +7,9 @@ const root = join(import.meta.dir, "..");
 // exact Promise-settlement hooks, which Node provides and Bun does not, so Bun
 // only transpiles the bundle and Node executes it; running the generated file
 // directly under Bun exercises the documented fail-closed rejection instead.
-const stagedLanguageDemo = join(mkdtempSync(join(tmpdir(), "smithers-demo-")), "language-demo.mjs");
+const stagedLanguageDemo = join(mkdtempSync(join(tmpdir(), "vibelang-demo-")), "language-demo.mjs");
 const demos: Array<{ name: string; command: string[] }> = [
-  { name: "language compile", command: ["bun", "src/language/cli.ts", "examples/language/demo.sm"] },
+  { name: "language compile", command: ["bun", "src/language/cli.ts", "examples/language/demo.vibe"] },
   {
     name: "language runtime bundle",
     command: ["bun", "build", "examples/language/demo.generated.ts", "--target=node", `--outfile=${stagedLanguageDemo}`],
@@ -37,5 +37,5 @@ for (const demo of demos) {
   if (exitCode !== 0) throw new Error(`${demo.name} failed with exit code ${exitCode}`);
 }
 
-console.log("\nAll Smithers POC surfaces completed.");
+console.log("\nAll VibeLang POC surfaces completed.");
 

@@ -5,9 +5,9 @@
  * **Why this module exists.** `specification/compatibility.mdx`, "Host Globals",
  * is a Locked MUST: "Platform-specific globals such as `process`, `window`,
  * `document`, filesystem, and network MUST NOT be unconditional globals in
- * authored `.sm` code", and "Host-sensitive operations such as clock and random
+ * authored `.vibe` code", and "Host-sensitive operations such as clock and random
  * access MUST still use capabilities." That prohibition is scoped to *authored
- * `.sm`*, and it has no implementation-side carve-out — a class that extends a
+ * `.vibe`*, and it has no implementation-side carve-out — a class that extends a
  * `Context` subclass, or that is named `SystemClock`, buys nothing, because the
  * rule never consults either.
  *
@@ -18,11 +18,11 @@
  * implementations**; tests supply deterministic ones." The live implementation
  * belongs to the JavaScript host, and "Source Relationship" guarantees that side
  * its own semantics: `.ts` modules "MUST retain their own complete syntax and
- * behavior when imported by Smithers." "Foreign Boundary" then says how `.sm`
+ * behavior when imported by VibeLang." "Foreign Boundary" then says how `.vibe`
  * reaches them: "Calling an unannotated foreign runtime value MUST add the
  * checked `panic` case … Trusted `@throws {never}` metadata opts out."
  *
- * So: the abstract capability and its live implementation are authored in `.sm`,
+ * So: the abstract capability and its live implementation are authored in `.vibe`,
  * and the single host read per operation lives here, in ordinary TypeScript,
  * where the prohibition does not apply.
  *
@@ -36,21 +36,21 @@
  *
  * Every export is primitive-valued or `void`. That is deliberate, and most of it
  * is enforced: a trusted binding that *returns* a host object is refused with
- * `SMITHERS1508` ("returning an executable foreign value would lose its panic
+ * `VIBE1508` ("returning an executable foreign value would lose its panic
  * provenance"), because a trust claim clears the panic channel for the *call*
  * while the returned value stays foreign. Where a caller needs a collection, the
- * binding fills a Smithers-owned one that the caller allocated.
+ * binding fills a VibeLang-owned one that the caller allocated.
  *
  * This paragraph used to claim the shape was **forced**, and that was wrong. A
- * `Promise` is neither primitive nor caught by `SMITHERS1508`, so a trusted
+ * `Promise` is neither primitive nor caught by `VIBE1508`, so a trusted
  * `async` binding — the exact shape the next platform binding takes, a trusted
  * `readFile` or `fetch` — slipped through: `@throws {never}` removes the panic
  * case for the *call*, and an `async` function does not throw at the call, it
  * rejects afterwards. The claim was true of the code and false as a guarantee.
  * `@throws {never}` on an `async` or `Promise`-returning binding is now refused
- * outright (`SMITHERS1502`), so the discipline this module follows by hand is
+ * outright (`VIBE1502`), so the discipline this module follows by hand is
  * checked for that shape too; the rest of it — that no export hands back a host
- * object — remains an author's discipline backed by `SMITHERS1508`, not a
+ * object — remains an author's discipline backed by `VIBE1508`, not a
  * property of the language. Read the marker on every export below as a claim
  * about a SYNCHRONOUS throw, because that is the only channel it can describe.
  *
@@ -80,7 +80,7 @@ export function randomUint32(): number {
 /**
  * Fill `target` with uniform bytes from the host CSPRNG.
  *
- * `target` is allocated by the caller, in Smithers, and is filled in place — the
+ * `target` is allocated by the caller, in VibeLang, and is filled in place — the
  * binding returns nothing, so no foreign value crosses back.
  *
  * The chunking loop lives here rather than in the caller because the quota is a
@@ -121,8 +121,8 @@ export function environmentValue(name: string): string | undefined {
 /**
  * Append every defined environment variable name to `into`, sorted.
  *
- * `into` is allocated by the caller, in Smithers. Returning the host's own array
- * instead is refused (`SMITHERS1508`), so the collection crosses the boundary by
+ * `into` is allocated by the caller, in VibeLang. Returning the host's own array
+ * instead is refused (`VIBE1508`), so the collection crosses the boundary by
  * being filled rather than by being handed over.
  *
  * Cannot throw: `Object.keys` of an ordinary object and `Array.prototype.sort`

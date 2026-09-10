@@ -68,8 +68,8 @@ describe("built-in instances", () => {
   });
 
   test("string and boolean compare by value", () => {
-    expect(Equivalence.string.equals("smithers", "smithers")).toBe(true);
-    expect(Equivalence.string.equals("smithers", "lang")).toBe(false);
+    expect(Equivalence.string.equals("vibelang", "vibelang")).toBe(true);
+    expect(Equivalence.string.equals("vibelang", "lang")).toBe(false);
     expect(Equivalence.boolean.equals(true, true)).toBe(true);
     expect(Equivalence.boolean.equals(true, false)).toBe(false);
   });

@@ -49,14 +49,14 @@
  * over it.
  */
 
-import { panic } from "smithers:exceptions";
+import { panic } from "vibelang:exceptions";
 import {
   type Equivalence,
   Equivalence as EquivalenceNamespace,
   registerStructuralEquivalence,
   sameValueZero,
-} from "./equivalence.sm";
-import { type Hash, Hash as HashNamespace, registerStructuralHash } from "./hash.sm";
+} from "./equivalence.vibe";
+import { type Hash, Hash as HashNamespace, registerStructuralHash } from "./hash.vibe";
 
 const MAP_SEED = 0x6a09e667;
 
