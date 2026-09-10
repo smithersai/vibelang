@@ -2,13 +2,13 @@ import { defineConfig } from 'vocs/config'
 
 export default defineConfig({
   accentColor: 'light-dark(#646cff, #a5a9ff)',
-  baseUrl: 'https://docs.smithers.sh',
+  baseUrl: 'https://vibelang.sh',
   checkDeadlinks: true,
   colorScheme: 'light dark',
   description:
-    'Smithers is TypeScript-shaped code with Result errors, capability-based dependencies, comptime, and durable execution compiled in.',
+    'VibeLang is TypeScript-shaped code with Result errors, capability-based dependencies, comptime, and durable execution compiled in.',
   editLink: {
-    link: 'https://github.com/smithersai/smithers/edit/main/docs/src/pages/:path',
+    link: 'https://github.com/smithersai/vibelang/edit/main/docs/src/pages/:path',
   },
   iconUrl: '/icon.svg',
   logoUrl: {
@@ -24,7 +24,7 @@ export default defineConfig({
         { text: 'Getting Started', link: '/introduction/getting-started' },
         { text: 'Overview', link: '/introduction/overview' },
         { text: 'Philosophy', link: '/introduction/philosophy' },
-        { text: 'Why Smithers', link: '/introduction/why-smithers' },
+        { text: 'Why VibeLang', link: '/introduction/why-vibelang' },
       ],
     },
     {
@@ -42,6 +42,7 @@ export default defineConfig({
         { text: 'Concurrency', link: '/guide/concurrency' },
         { text: 'Durable Execution', link: '/guide/durable-execution' },
         { text: 'TypeScript Interop', link: '/guide/typescript-interop' },
+        { text: 'Bundlers', link: '/guide/bundlers' },
         { text: 'Agent Library', link: '/guide/agent-library' },
       ],
     },
@@ -56,6 +57,7 @@ export default defineConfig({
         { text: 'Comptime', link: '/reference/comptime' },
         { text: 'Actions & Flows', link: '/reference/actions-and-flows' },
         { text: 'CLI', link: '/reference/cli' },
+        { text: 'Diagnostics', link: '/reference/diagnostics' },
         { text: 'Standard Library', link: '/reference/standard-library' },
         { text: 'Differences from TypeScript', link: '/reference/typescript-differences' },
         { text: 'TC39 Proposals', link: '/reference/tc39-proposals' },
@@ -78,10 +80,10 @@ export default defineConfig({
     },
   ],
   socials: [
-    { icon: 'github', link: 'https://github.com/smithersai/smithers' },
+    { icon: 'github', link: 'https://github.com/smithersai/vibelang' },
   ],
-  title: 'Smithers',
-  titleTemplate: '%s | Smithers',
+  title: 'VibeLang',
+  titleTemplate: '%s | VibeLang',
   topNav: [
     {
       text: 'Guide',
@@ -104,7 +106,7 @@ export default defineConfig({
       items: [
         {
           text: 'Decision ledger',
-          link: 'https://github.com/smithersai/smithers/blob/main/docs/DECISIONS.md',
+          link: 'https://github.com/smithersai/vibelang/blob/main/docs/DECISIONS.md',
         },
         {
           text: 'Roadmap',

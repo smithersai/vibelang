@@ -1,6 +1,6 @@
 # Function Channels [Reference for values, errors, and requirements]
 
-Every Smithers function is analyzed across three conceptual channels, but all runtime values use ordinary types:
+Every VibeLang function is analyzed across three conceptual channels, but all runtime values use ordinary types:
 
 | Parameter | Meaning | Runtime representation |
 | --- | --- | --- |
@@ -57,16 +57,53 @@ static type, is preserved in exported declarations, and is carried by a function
 - a call whose callee the compiler cannot resolve, and whose callee type carries no row, is rejected rather than compiled with an assumed calling convention;
 - a function whose row is empty is never emitted in the resumable calling convention — an infallible function is not wrapped.
 
-:::warning Two of these are not enforced yet — measured 2026-08-28
-Rows are computed per declaration but not checked at an assignment, and the row
-is **dropped** rather than merely unchecked. Measured in one file:
-`needsDb` reports `requirements: ["Db"]`, and after
-`const slot: () => number = needsDb`, a caller of `slot()` reports
-`requirements: []` with zero diagnostics — so an annotated function type is a
-requirement-row laundering path, not just a missed type error. Likewise
-`function callUnknown(cb: () => number) { return cb() }` compiles rather than
-being rejected. The first and third bullets describe the intended rule; today
-they describe a gap.
+:::note Implementation checkpoint, 2026-09-06
+Both backends now reject requirement-row erasure at callable assignment and
+argument boundaries, including aliases, members, containers and higher-order
+variance. Shared tests also reject hiding an owned Result or Promise behind a
+`() => void` or widened return type.
+
+A parameter typed `() => number` has the locked empty row, so calling it is
+decidable and remains legal; `VIBE1807` is retired. The assignment that
+would put a capability-dependent function into that parameter is refused.
+
+JS declaration artifacts now carry explicit calling conventions and nominal
+requirement tables. Source-free tests cover aliases, members, overloads,
+returned closures and forwarded package calls. Cross-backend declaration/runtime
+linking and complete opaque-container coverage are not yet certified.
+
+The Go compiler now publishes and consumes eager callable contracts through
+ordinary declaration emission. Source-free execution tests cover methods,
+constructors, returned closures, aliases, re-exports, forwarded private
+capability identities, Result channels and async calls. Requirement tables
+preserve the original constructors; a same-spelled class cannot replace one.
+
+Source-free coverage now also includes native accessor, coercion, iterator and
+disposal calls. Object accessors retain separate `get`/`set` signatures, including
+the rows of returned versus accepted callables. The compiler-owned
+`@vibelangAccessor {"version":1,"enumerable":false}` record preserves class
+accessor provenance when TypeScript publishes an anonymous instance as a type
+literal; object-literal accessors use `true`. This keeps object spread and rest
+from charging prototype getters they never invoke. Malformed records and
+authored claims are refused. Native disposal still cannot discard a Result or
+an unowned Promise, including across a declaration-only boundary. A published
+resumable callable cannot be invoked by an ordinary native protocol driver.
+
+Structural object views are checked too: getter reads, setter writes and own
+getter enumeration have distinct requirement rows. An annotation or index
+signature cannot replace those contracts with plain data, and generic readers
+cannot hide them behind a weaker parameter bound. Inferred aliases, `typeof`,
+mapped accessor views and pure generic identity functions preserve the row.
+Actual object-spread results are plain data; the declaration publisher no
+longer mistakes their retained source-location information for getter identity.
+
+Callable metadata remains version 2. Go-produced module envelopes use version 3
+to identify their runtime ABI explicitly. These tests link producer and consumer
+to the same Go prelude instance. The JS frontend refuses that module envelope,
+and Go refuses unlinked runtime locations or ABIs, with `VIBE1810`. General
+shared-runtime linking and resumable declaration calls remain open; this is not
+cross-backend package certification. An escaping function-local capability that
+cannot be represented by the current declaration table is refused at publication.
 :::
 
 The last point is what keeps the row from becoming a tax on ordinary code. See
@@ -79,10 +116,10 @@ export declare function boundary(): Result<A, E>
 export declare function asyncBoundary(): Promise<Result<A, E>>
 ```
 
-These are ordinary generic return types, not failure annotations. Context requirements are inferred from `Capability.context()` and retained in Smithers analysis metadata. The declaration-file representation for `R` remains compiler-owned.
+These are ordinary generic return types, not failure annotations. Context requirements are inferred from `Capability.context()` and retained in VibeLang analysis metadata. The declaration-file representation for `R` remains compiler-owned.
 
 Declaration artifacts preserve failure and requirement rows for downstream
-Smithers compilation and tooling. Compiler-generated success and Error unions
+VibeLang compilation and tooling. Compiler-generated success and Error unions
 are represented as one `Result<A, E>`, and each exported callable retains its
 own channel metadata.
 
@@ -103,10 +140,10 @@ Every imported TypeScript or JavaScript runtime call adds the distinguished chec
 
 ## Async Boundary
 
-Smithers does not add an error generic to Promise. It wraps an ordinary Result:
+VibeLang does not add an error generic to Promise. It wraps an ordinary Result:
 
 ```ts
 Promise<Result<A, E>>
 ```
 
-Authored Smithers uses only `await` for Promise consumption. The compiler rejects `.then`, `.catch`, and `.finally` calls.
+Authored VibeLang uses only `await` for Promise consumption. The compiler rejects `.then`, `.catch`, and `.finally` calls.

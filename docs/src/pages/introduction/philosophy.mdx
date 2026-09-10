@@ -2,11 +2,11 @@
 
 ## TypeScript-Shaped, With an Explicit Boundary
 
-Imported `.ts` and `.js` preserve host behavior. A `.sm` file uses a TypeScript-derived grammar plus Smithers semantic checks and lowering. This boundary permits must-use Results, Promise-chain restrictions, capability inference, and statically derived durable boundaries without pretending that all JavaScript already obeys those rules.
+Imported `.ts` and `.js` preserve host behavior. A `.vibe` file uses a TypeScript-derived grammar plus VibeLang semantic checks and lowering. This boundary permits must-use Results, Promise-chain restrictions, capability inference, and statically derived durable boundaries without pretending that all JavaScript already obeys those rules.
 
 ## Expected Failures Are Values
 
-Smithers uses `Result<A, E>` and `Promise<Result<A, E>>` as ordinary runtime types. The compiler makes them pleasant to author:
+VibeLang uses `Result<A, E>` and `Promise<Result<A, E>>` as ordinary runtime types. The compiler makes them pleasant to author:
 
 ```ts
 function loadConfig(
@@ -31,8 +31,8 @@ The compiler may infer success/error unions and context requirements from a body
 Compile-time and durable semantics are anchored by resolved imports:
 
 ```ts
-import { comptime } from "smithers:comptime"
-import { durable } from "smithers:flows"
+import { comptime } from "vibelang:comptime"
+import { durable } from "vibelang:flows"
 ```
 
 This keeps code visually close to TypeScript, allows aliases, and avoids reserving words. Import identity—not spelling alone—activates the compiler behavior.
@@ -68,5 +68,5 @@ source-level contract.
 
 The product follows Go's shape: compiler, formatter, language service, tests,
 standard library, and build integration as one coherent distribution. Its
-compiler architecture is a minimal-diff TypeScript fork with narrow Smithers
+compiler architecture is a minimal-diff TypeScript fork with narrow VibeLang
 seams.

@@ -3,7 +3,7 @@
 ## Explicit Form
 
 ```ts
-import { comptime } from "smithers:comptime"
+import { comptime } from "vibelang:comptime"
 
 const value = comptime(expression)
 const buildFunction = comptime(functionValue)
@@ -20,7 +20,7 @@ const value = comptime(() => {
 })()
 ```
 
-The compiler recognizes the resolved import identity. Import aliases retain these semantics; unrelated functions named `comptime` do not. `smithers:comptime` is a compiler-owned virtual module and has no ordinary uncompiled runtime fallback.
+The compiler recognizes the resolved import identity. Import aliases retain these semantics; unrelated functions named `comptime` do not. `vibelang:comptime` is a compiler-owned virtual module and has no ordinary uncompiled runtime fallback.
 
 Valid result categories include:
 
@@ -42,7 +42,7 @@ The compiler may evaluate code automatically when all inputs are known. Implicit
 ## Target
 
 ```ts
-import { comptime } from "smithers:comptime"
+import { comptime } from "vibelang:comptime"
 
 comptime.target
 ```
@@ -54,7 +54,7 @@ node  bun  deno  browser  edge
 ```
 
 **Measured 2026-08-28: none of those five is reachable.** `comptime.target` is
-typed as an unconstrained `string` in the prelude, the shipped `smithers` CLI
+typed as an unconstrained `string` in the prelude, the shipped `vibe` CLI
 hard-codes it to `"node-es2022"`, and no flag changes it — so a lookup keyed on
 the documented names fails with `VCT1004`, `property "node-es2022" is absent
 from the comptime value`. A programmatic host can pass any `target` string

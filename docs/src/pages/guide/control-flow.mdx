@@ -1,8 +1,8 @@
 # Control Flow [TypeScript's control flow, plus one standards-track addition]
 
-Smithers control flow is TypeScript control flow. `if`, `switch`, `for`, `while`, blocks, labels, and `break` all behave exactly as they do in TypeScript, and none of them is an expression.
+VibeLang control flow is TypeScript control flow. `if`, `switch`, `for`, `while`, blocks, labels, and `break` all behave exactly as they do in TypeScript, and none of them is an expression.
 
-That is a deliberate reversal of an earlier design. Smithers previously added expression-position `if` and `switch`, labeled block and loop values, a value-carrying `break :label`, a loop `else` completion, and `defer`/`errdefer`. All of it worked, and all of it has been removed, because none corresponded to a TC39 proposal and TypeScript could already express every one of them:
+That is a deliberate reversal of an earlier design. VibeLang previously added expression-position `if` and `switch`, labeled block and loop values, a value-carrying `break :label`, a loop `else` completion, and `defer`/`errdefer`. All of it worked, and all of it has been removed, because none corresponded to a TC39 proposal and TypeScript could already express every one of them:
 
 | Removed form | What TypeScript already does |
 | --- | --- |
@@ -79,7 +79,7 @@ function readPort(config: Config): Result<number, InvalidConfig> {
 }
 ```
 
-There is no throw expression. The TC39 proposal is at Stage 2; if it reaches TypeScript, Smithers inherits it rather than inventing it.
+There is no throw expression. The TC39 proposal is at Stage 2; if it reaches TypeScript, VibeLang inherits it rather than inventing it.
 
 ## Loops
 

@@ -1,4 +1,4 @@
-# Why Smithers [Why application structure belongs in the compiler]
+# Why VibeLang [Why application structure belongs in the compiler]
 
 TypeScript describes values well, but serious applications also need to describe expected errors, dependencies, validation boundaries, and durable execution.
 
@@ -20,7 +20,7 @@ Effect systems implemented as libraries make success, failure, and requirements 
 
 ## The Compiler Answer
 
-Smithers keeps the useful information in ordinary-looking code while representing expected failure honestly as a value:
+VibeLang keeps the useful information in ordinary-looking code while representing expected failure honestly as a value:
 
 ```ts
 async function getUser(
@@ -50,7 +50,7 @@ An earlier design erased a separate failure row and required new propagation and
 
 ## Why Durable Execution Belongs Here
 
-Durable runtimes commonly repeat schemas, error shapes, dependencies, and RPC bindings that the compiler already knows. Passing a statically resolvable function to `durable(...)` lets Smithers derive those boundaries from types it has already checked.
+Durable runtimes commonly repeat schemas, error shapes, dependencies, and RPC bindings that the compiler already knows. Passing a statically resolvable function to `durable(...)` lets VibeLang derive those boundaries from types it has already checked.
 
 The function itself stays an ordinary function. `durable(...)` changes only which
 handler answers its Action calls, so branches, loops, closures, and recursion all
@@ -66,9 +66,9 @@ under replay in that form. See
 
 Durability remains opt-in. Ordinary functions do not pay for a scheduler.
 
-## When Smithers Fits
+## When VibeLang Fits
 
-Smithers is for TypeScript teams that want:
+VibeLang is for TypeScript teams that want:
 
 - expected failures as must-use values with concise function bodies
 - explicit transitive dependencies without manual context arguments
@@ -76,6 +76,6 @@ Smithers is for TypeScript teams that want:
 - type-driven validation and asset loading
 - durable workflows written as ordinary functions, with statically derived boundaries
 
-Smithers fits code that can keep foreign reflection and ambient authority behind
+VibeLang fits code that can keep foreign reflection and ambient authority behind
 explicit boundaries. Programs that depend pervasively on unconstrained
 JavaScript reflection cannot retain all of its static guarantees.

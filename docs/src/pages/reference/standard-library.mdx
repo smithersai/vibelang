@@ -1,89 +1,83 @@
-# Standard Library [Target modules and design contract]
+# Standard Library [What ships on each package subpath, and what does not yet]
 
-The Smithers standard library is a product direction. Module names and
-signatures on this page are illustrative unless a linked specification locks
-them.
+This page is a map of the `vibelang` package as it ships, measured on
+2026-09-05 against the package's own export list. Module names below are real
+import specifiers. Where a name is a design intent rather than an export, the
+page says so.
 
 ## Design Contract
 
-The standard library should:
+The standard library:
 
-- operate on ordinary Smithers values and functions
-- return `Result<A, E>` for recoverable errors
-- define platform services as abstract classes extending `Context`
-- work across JavaScript hosts where applicable
-- derive schemas and codecs from ordinary types
-- include structured concurrency without a fiber runtime
+- operates on ordinary VibeLang values and functions
+- returns `Result<A, E>` for recoverable errors
+- defines platform services as abstract classes extending `Context`
+- works across JavaScript hosts where applicable
+- derives schemas and codecs from ordinary types
+- includes structured concurrency without a fiber runtime
 
-## Core Data
+TypeScript-compatible built-ins remain available. There is no `Array` module —
+ordinary `Array.prototype` is the array API. Collection misses use `T |
+undefined`.
 
-Designed areas include:
+## One caveat before the map
 
-```text
-Chunk  HashMap  HashSet  Result  Data  Match
-```
+:::warning Importable from TypeScript today, not yet from `.vibe` — measured 2026-09-05
+Every subpath below resolves from ordinary TypeScript and JavaScript. From a
+`.vibe` file, only `vibelang/context` and `vibelang/provider` are recognized by
+the compiler. Importing any other subpath from `.vibe` is refused with
+`VIBE1510`, "foreign module initialization can panic before a checked call
+boundary", because the compiler treats the package's other modules as untrusted
+foreign code, and a capability class declared there (`Console`, `Clock`,
+`FileSystem`) is not recognized as a capability: `Console.context()` from
+`vibelang/platform` is an ordinary foreign call, not a requirement.
 
-`smthrs/data` ships exactly `Chunk`, `HashMap`, `HashSet`, `Data`,
-`Equivalence`, `Hash`, and `Match` (plus their value and guard exports);
-`Result` is on `smthrs/result`. There is no `Array` module — ordinary
-`Array.prototype` is the array API, which is what "TypeScript-compatible
-built-ins remain available" means here.
+The consequence is visible in [Getting Started](/introduction/getting-started):
+the scaffold declares its own `Console` instead of importing the shipped one.
 
-TypeScript-compatible built-ins remain available. Alternatives should not require wrapper values merely for effect tracking.
+Closing this is a compiler change, not a library change, and it is small:
+extend the trusted-specifier registry (the reference's `vibelang/context` and
+`vibelang/provider` entries, and the Go bridge's matching list) to the
+subpaths on this page, and let capability-base recognition accept the runtime's
+`Context` declaration as well as the prelude's. Until it lands, declare
+capabilities in `.vibe` and implement them behind a `.ts` adapter carrying
+`@module` and `@throws {never}`.
+:::
 
-Collection misses use `T | undefined`. Maps and sets preserve insertion order
-and use explicit `Equivalence` and `Hash` instances where JavaScript identity is
-not the desired key relation. Persistent representation is an internal choice
-and does not change value semantics.
+## The map
 
-## Schema and Encoding
-
-```text
-Schema  Codec  Json  JsonSchema  Equivalence  Hash
-```
-
-These artifacts are derived at comptime where possible. Parsing failures return Results.
-
-The compiler and library are intended to share one type descriptor model for
-Schema, Codec, JSON Schema, Equivalence, and Hash derivation. **Measured
-2026-08-28**, only `Schema` and `JsonSchema.fromSchema` derive from the
-compiler's `SchemaDescriptor`; `Codec`, `Equivalence`, and `Hash` do not
-(`poc/src/data/equivalence.ts` says so in its own header). And while `Schema`,
-`Codec`, `Json`, and `JsonSchema` all exist and build under `poc/src/schema/`,
-**no package subpath reaches them** — the only schema-related export is
-`smthrs/schema-runtime`, which exposes five names for the compiler's
-`comptime(Schema.derive<T>())` lowering. They are reachable from source, not
-from the published package.
+| Subpath | Exports | Notes |
+| --- | --- | --- |
+| `vibelang/result` | `Result` and its members: `isOk`, `isError`, `match`, `map`, `mapError`, `andThen`, `andThenAsync`, `flatten`, `recover`, `tryRecover`, `tryRecoverAsync`, `tap`, `tapError`, `tapBoth` and their `Async` variants, `unwrapOr`, `expect`; statics `Result.all`, `allAsync`, `partition`, `partitionAsync`, `try`, `tryPromise`, `codec` | In `.vibe`, `Result` is built in; propagate with postfix `!`. There is no `Result.ok` or `Result.err`. |
+| `vibelang/context` | `Context` | The capability base class; `X.context()` is compiler-recognized. Importable from `.vibe`. |
+| `vibelang/provider` | `Layer` | `Layer.succeed`, `Layer.provide`, and the environment kernel. Importable from `.vibe`. |
+| `vibelang/exceptions` | `Panic`, `panic`, `isPanic`, `makePanic`, `catchPanic`, `catchPanicPromise` | The checked `panic` channel every unannotated foreign call adds. |
+| `vibelang/platform` | `Clock` (`SystemClock`, `TestClock`); `Random` (`SystemRandom`, `SeededRandom`); `Console` (`SystemConsole`, `RecordingConsole`); `Environment` (`ProcessEnvironment`, `MapEnvironment`); `FileSystem` (`NodeFileSystem`, `InMemoryFileSystem`); `Path`, `InvalidPath`; `Process` (`NodeProcess`, `TestProcess`, `ProcessExited`); `Schedule`, `Sleeper` (`SystemSleeper`, `TestSleeper`); `Config` and its errors; `Duration`, `Instant`; `NodePlatform`, `TestPlatform`, `platformLayer` | Each capability ships a live Node/Bun implementation and a deterministic test one. There is no `HttpClient` or `Socket` export yet; pages that name them describe a design intent. |
+| `vibelang/data` | `Chunk`, `HashMap`, `HashSet`, `Data`, `Match`, `Equivalence`, `Hash` (with their value and guard exports) | Persistent collections with explicit equivalence and hashing. |
+| `vibelang/schema` | `Schema`, `Codec`, `Json`, `JsonSchema`, `Equivalence`, `Hash`, plus `DecodeError`, `JsonParseError`, `JsonEncodeError`, `JsonSchemaError`, the JSON size limits, and the `is*` guards | Runtime validation and encoding. Added 2026-09-05; the modules existed but no subpath reached them. `Schema` and `JsonSchema.fromSchema` derive from the compiler's `SchemaDescriptor`; `Codec`, `Equivalence`, and `Hash` do not yet. |
+| `vibelang/schema-runtime` | `__vsSchema` and the derived-schema runtime | Compiler output contract for `comptime(Schema.derive<T>())`; not for direct use. |
+| `vibelang/concurrency` | joins, `Stream`, `Queue`, `Semaphore`, `Channel`, `Governor`, keyed combinators, cancellation, async-iterator helpers, worker contracts, and the deterministic `Scheduler` | Platform-neutral. `vibelang/concurrency/bun` adds the Bun-backed pieces. |
+| `vibelang/durable` | `compileDurableBody`, `compileDurableModule`, `validateDurableBodyArtifact`, `validateEffectManifest`, `canonicalJson`, `digest`, the descriptor and artifact types | Node-safe compilation and artifact validation. |
+| `vibelang/durable/authoring` | `Action`, `Flow` | The authoring surface a `.vibe` Flow reaches through `vibelang:flows`. |
+| `vibelang/durable/bun` | the executor, `DurableStore`, providers, workers, signed deployments | Bun-only: SQLite journaling lives here. |
+| `vibelang/agent` | `CodingAgent.make`, bindings, fakes, model helpers, the Deno subprocess sandbox, Action tools | Node-safe. `vibelang/agent/bun` adds SQLite journaling and durable Flow tools. |
+| `vibelang/build` | asset loaders, comptime evaluation, foreign compiler adapters | The hermetic build slice behind import attributes and `comptime`. |
+| `vibelang`, `vibelang/compiler` | data-only requests to the pinned native Go compiler | Compiler tooling; no 5.9 Program/checker facade. |
+| `vibelang/language`, `vibelang/vibe` | the high-level programmatic frontend | Still migrating remaining compiler-library paths to Go. |
 
 ## Configuration and Time
 
-```text
-Config  Duration  Instant  Schedule
-```
-
-Reading environment variables or the wall clock requires a capability. Pure duration arithmetic does not.
-
-`Duration`, `Instant`, and `Schedule` are pure values. Waiting is explicit
-through a `Sleeper` capability. Configuration reads use `Environment`; they do
-not read ambient process state.
+`Duration`, `Instant`, and `Schedule` are pure values. Reading the wall clock
+needs `Clock`; waiting is explicit through a `Sleeper`; configuration reads use
+`Environment` and never ambient process state.
 
 ## Platform Services
 
-```text
-FileSystem  HttpClient  Clock  Random  Environment  Console
-Path  Process  Socket  Terminal
-```
-
-Each service can have Node, Bun, Deno, browser, edge, and test implementations where the host supports it.
-
-Each capability includes deterministic test implementations. `Path` is a pure
-POSIX or Windows namespace selected explicitly rather than an ambient host
-read. Platform Layers bundle compatible implementations for a host.
-
-Services use the same library-shaped declaration and access model as application capabilities:
+Services use the same library-shaped declaration and access model as
+application capabilities:
 
 ```ts
-import { Context } from "smthrs/context"
+import { Context } from "vibelang/context"
 
 abstract class Clock extends Context {
   abstract now(): Instant
@@ -95,42 +89,40 @@ function timestamp(): Instant {
 }
 ```
 
-The inherited `Clock.context()` method is compiler-aware: it adds `Clock` to `timestamp`'s inferred context channel, while callers continue to use `timestamp()` with no explicit context argument. Layers from `smthrs/provider` supply the target-specific implementation.
+The inherited `Clock.context()` method is compiler-aware: it adds `Clock` to
+`timestamp`'s inferred requirement row, while callers continue to use
+`timestamp()` with no explicit context argument. Layers from
+`vibelang/provider` supply the host-specific implementation.
 
 ## Concurrency and Streams
 
-```text
-Stream  Queue  Semaphore  Channel
-```
-
-The library uses static concurrency combinators, cancellation, and workers rather than introducing Effect-style fibers or parser-level Promise syntax. TC39 concurrency governors may provide a future limit for async-iterator fan-out.
-
-The concurrency library includes typed cancellation, keyed joins, FIFO
-governors, bounded Queue, fair Semaphore, Channel, lazy Stream, and typed worker
-contracts. Helpers contain and join work they start. Queue and Stream runners
-preserve typed cancellation and failure Results.
+The library uses static concurrency combinators, cancellation, and workers
+rather than Effect-style fibers or parser-level Promise syntax. Helpers contain
+and join the work they start; Queue and Stream runners preserve typed
+cancellation and failure Results. Inside a durable Flow, arrival-order
+combinators (`Promise.race`, `Promise.any`) are reachable only through the
+deterministic `Scheduler`.
 
 ## Durable Runtime
 
-```text
-Action  Flow  Artifact  Signal  Journal  Deployment
-```
-
-These APIs connect compiler-emitted Flow bodies and their Effect Manifests to coordinator and worker runtimes.
-
-Four of those six names are **designed, not shipped**. `Action` and `Flow` exist
-exactly, from `smthrs/durable/authoring` (and `Action` also from
-`smthrs/provider`). `Artifact`, `Signal`, `Journal`, and `Deployment` have no
-bare export on any subpath; the nearest shipped spellings are `PlanArtifact`,
-`SignedDeployment`, and `DeploymentManifest` on `smthrs/durable`, `SignalNode`
-as a durable IR type, and `TurnJournal` in the agent library.
+`Action` and `Flow` are the two authoring names. `Artifact`, `Signal`,
+`Journal`, and `Deployment` are design names, not exports; the shipped
+spellings are `PlanArtifact`, `SignedDeployment`, and `DeploymentManifest` on
+`vibelang/durable`, `SignalNode` as a durable IR type, and `TurnJournal` in the
+agent library.
 
 ## Agent Library
 
 The agent library provides MDX prompt rendering, model adapters, TypeScript
 compilation, sandbox execution, and optional Action and Flow durability
-adapters. Exact packaging remains directional.
+adapters. It ships as `vibelang/agent`; the constructor names on the
+[Agent Library](/guide/agent-library) page are directional except where that
+page says otherwise.
 
 ## Implementation Strategy
 
-Compute-heavy components may call into Wasm modules, including implementations written in Zig, imported through the asset loaders — a design intent, not a shipped path: no `zig`, `rust`, or `wasm` loader is registered, and such an import is refused with `SMITHERS5213`. JavaScript/Wasm boundaries should be chosen by measurement. Host-specific implementations remain behind capabilities.
+Compute-heavy components may call into Wasm modules, including implementations
+written in Zig, imported through the asset loaders — a design intent, not a
+shipped path: no `zig`, `rust`, or `wasm` loader is registered, and such an
+import is refused with `VIBE5213`. JavaScript/Wasm boundaries should be chosen
+by measurement. Host-specific implementations remain behind capabilities.

@@ -1,6 +1,6 @@
 # Results and Errors [Return expected failures as values]
 
-Smithers uses ordinary TypeScript-shaped code and makes expected failure explicit in the return type. A synchronous fallible function returns `Result<A, E>`; an asynchronous one returns `Promise<Result<A, E>>`.
+VibeLang uses ordinary TypeScript-shaped code and makes expected failure explicit in the return type. A synchronous fallible function returns `Result<A, E>`; an asynchronous one returns `Promise<Result<A, E>>`.
 
 ## Declare an Error
 
@@ -36,7 +36,7 @@ function readSettings(
 }
 ```
 
-Inside a `Result`-returning function, Smithers lowers plain `return value` to the success variant and `throw error` to the error variant. Returning an existing compatible `Result` does not nest it. Consequently source code does not need `Result.ok` or `Result.err`, and those constructors are not part of the authoring API.
+Inside a `Result`-returning function, VibeLang lowers plain `return value` to the success variant and `throw error` to the error variant. Returning an existing compatible `Result` does not nest it. Consequently source code does not need `Result.ok` or `Result.err`, and those constructors are not part of the authoring API.
 
 When a body has no annotation, the compiler infers `A` from returned values and `E` from reachable `Error` throws, returned Results, and `!` propagation points.
 
@@ -51,7 +51,7 @@ function loadApplication(): Result<Application, ReadSettingsError> {
 }
 ```
 
-On success it produces the value. On error it returns that error from the enclosing `Result`-returning function. In plain JavaScript without Smithers lowering, it throws the original error so a missed compiler transform fails visibly.
+On success it produces the value. On error it returns that error from the enclosing `Result`-returning function. In plain JavaScript without VibeLang lowering, it throws the original error so a missed compiler transform fails visibly.
 
 Results are must-use values. Discarding a Result is a diagnostic unless the code explicitly acknowledges it.
 
@@ -79,7 +79,7 @@ The initial quality-of-life surface is:
 - `Result.all(...)`, `Result.try(...)`, and `Result.tryPromise(...)`
 
 There is no `unwrap()`. It was the propagation spelling before postfix `!`
-replaced it, and writing it is now a compile error — `SMITHERS1206`, pinned by
+replaced it, and writing it is now a compile error — `VIBE1206`, pinned by
 `19-retired-syntax/result-dot-unwrap-is-retired`. Use `!` to propagate, `expect`
 to panic with an invariant message, or `unwrapOr` to supply a fallback. The
 compiler-owned runtime still carries an `unwrap` as its missed-lowering
@@ -123,7 +123,7 @@ async function loadUser(
 }
 ```
 
-Authored Smithers bans Promise instance `.then()`, `.catch()`, and `.finally()`. Use `await`, then handle the resulting `Result`. Imported JavaScript and TypeScript libraries may use ordinary Promise internals behind their boundary.
+Authored VibeLang bans Promise instance `.then()`, `.catch()`, and `.finally()`. Use `await`, then handle the resulting `Result`. Imported JavaScript and TypeScript libraries may use ordinary Promise internals behind their boundary.
 
 ## Propagation
 
@@ -135,7 +135,7 @@ const user = findUser(id)!
 
 If the Result is a success, `!` yields the value. If it is an error, the enclosing function returns that error variant — no exception is thrown. This is the job Zig gives `try foo()`, using an operator TypeScript already has, so it costs no grammar.
 
-TypeScript's non-null assertion does not exist in `.sm`. Removing that meaning entirely is what makes the operator unambiguous, and it was an unsound escape hatch most codebases already lint against.
+TypeScript's non-null assertion does not exist in `.vibe`. Removing that meaning entirely is what makes the operator unambiguous, and it was an unsound escape hatch most codebases already lint against.
 
 `??` and `?.` are untouched — they still mean exactly what they mean in TypeScript. Failure and absence are separate axes, and both can appear in one expression:
 
@@ -150,26 +150,15 @@ position, it preserves the authored evaluation order everywhere, so
 `r!.trim()`, `r![0]`, `maybe ?? r!` and `f(r!)` are all accepted alongside the
 simple `const x = r!` form.
 
-:::warning One position the prototype still refuses — (SA-1)
-Measured on 2026-08-30 against the conformance reference backend: of the six
-forms [Failure Semantics](/specification/failures) §Refusal Conditions lists as
-accepted, **five compile** — `r!.length`, `r!.trim()`, `r![0]`,
-`r! ?? "fallback"` and `f(r!)`. `maybe ?? r!` is still refused with
-`SMITHERS1204`, and so are two neighbouring positions: a loop condition or
-incrementor (`SMITHERS1703`), and a propagation that follows another effect in
-the same statement, such as `g() + r!`.
+:::note Implementation checkpoint — (SA-1), closed 2026-09-05
+Both backends now execute all six illustrated expression positions, including
+`maybe ?? r!`, repeated loop headers, and propagation after another effect in
+the same statement. Delegated suspension preserves authored evaluation order;
+there is no need to split those expressions into statements.
 
-The reason is the same in all three, and it is about the prototype's lowering
-rather than about the language. That lowering still spells the failure exit as an
-early `return`, so it lifts a check to the front of the statement. Out of a
-conditionally evaluated operand the check would run when your program would not
-have evaluated the operand at all; out of a loop header it would run once instead
-of once per iteration; and after another effect it would jump in front of that
-effect. Write the propagation as a simple statement in those three shapes.
-
-This gap is recorded as `(SA-1)`; the marker convention and the register of
-current gaps are in [Specification Status](/specification/index)
-§Specification–Implementation Gaps.
+This retires the placement refusals `VIBE1204` and `VIBE1703`, not
+the Result-provenance checks, caught-`try` restriction, or refusal of fallible
+generator functions. See [Failure Semantics](/specification/failures).
 :::
 
 Exactly three conditions refuse a `!` under the current rule, each with its own
@@ -229,7 +218,7 @@ return temporary
   .tapError(() => fs.remove(temporary.path))
 ```
 
-Smithers previously had `defer` and `errdefer` for this. Both were removed: neither is a TC39 proposal, `using` already covers scope exit, and error-path cleanup is expressible with the Result combinators above. How `using` disposal orders against a compiler-generated `!` early return is [not yet settled](/specification/control-flow).
+VibeLang previously had `defer` and `errdefer` for this. Both were removed: neither is a TC39 proposal, `using` already covers scope exit, and error-path cleanup is expressible with the Result combinators above. How `using` disposal orders against a compiler-generated `!` early return is [not yet settled](/specification/control-flow).
 
 The same open specification has to cover **abandonment**, which is new: when a
 handler declines to resume a suspended computation, every live `using` and

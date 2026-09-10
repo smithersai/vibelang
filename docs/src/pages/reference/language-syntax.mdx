@@ -1,14 +1,14 @@
-# Language Syntax [Quick reference for Smithers source forms]
+# Language Syntax [Quick reference for VibeLang source forms]
 
-Smithers keeps additions TypeScript-shaped where possible. Compiler-recognized behavior is exposed through imported functions and ordinary generic types instead of new keywords.
+VibeLang keeps additions TypeScript-shaped where possible. Compiler-recognized behavior is exposed through imported functions and ordinary generic types instead of new keywords.
 
 ## Source Files
 
 | Form | Status | Meaning |
 | --- | --- | --- |
-| `.sm` | Locked | Smithers source file |
+| `.vibe` | Locked | VibeLang source file |
 | `.ts` | Locked | imported TypeScript with TypeScript behavior |
-| `.smx` | Open | candidate JSX-capable Smithers extension |
+| `.vibex` | Open | candidate JSX-capable VibeLang extension |
 
 ## Results and Errors
 
@@ -25,7 +25,7 @@ function operation(): Result<Value, Name> {
 }
 ```
 
-Plain returns and throws are compiler-lifted in a Result-returning function. Propagate a Result with postfix `!` — TypeScript's non-null assertion is removed in `.sm`, and `!` takes the role Zig gives `try foo()`. Recover with `match`, `recover`, or `error.match`:
+Plain returns and throws are compiler-lifted in a Result-returning function. Propagate a Result with postfix `!` — TypeScript's non-null assertion is removed in `.vibe`, and `!` takes the role Zig gives `try foo()`. Recover with `match`, `recover`, or `error.match`:
 
 ```ts
 const value = operation()!
@@ -36,7 +36,7 @@ const label = operation().match({
 })
 ```
 
-An async fallible function returns `Promise<Result<A, E>>`. `await` unwraps only the Promise. Promise `.then`, `.catch`, and `.finally` are banned in authored Smithers.
+An async fallible function returns `Promise<Result<A, E>>`. `await` unwraps only the Promise. Promise `.then`, `.catch`, and `.finally` are banned in authored VibeLang.
 
 ## Absence
 
@@ -60,8 +60,8 @@ const nickname = findUser(id)!?.nickname ?? "anonymous"
 `arr[2]` is `T | undefined` — [Compatibility](/specification/compatibility)
 §Mandatory makes `noUncheckedIndexedAccess` a required option, and the compiler
 enforces it: `const v: number = arr[2]` is a `TS2322`. Your own `tsconfig.json`
-MUST state it, along with the rest of §Mandatory; `smithers check -p
-tsconfig.json` reports `SMITHERS6001` for one that is missing.
+MUST state it, along with the rest of §Mandatory; `vibe check -p
+tsconfig.json` reports `VIBE6001` for one that is missing.
 
 The one place the widening does not bite is the operator that would otherwise
 contradict it. `arr[i]!` compiles when `arr` holds Results: the `| undefined` an
@@ -72,7 +72,7 @@ declare optional — `(Result<A, E> | undefined)[]` — is not a `!` operand, be
 ## Requirements
 
 ```ts
-import { Context } from "smthrs/context"
+import { Context } from "vibelang/context"
 
 const store = Store.context()
 const log = Logger.context()
@@ -103,7 +103,7 @@ Cleanup uses TC39 explicit resource management, inherited from TypeScript. Error
 ## Comptime
 
 ```ts
-import { comptime } from "smithers:comptime"
+import { comptime } from "vibelang:comptime"
 
 const value = comptime(expression)
 const generatedFunction = comptime(functionValue)
@@ -115,7 +115,7 @@ Passing a value requests deterministic compile-time evaluation. Passing a functi
 ## Durable Functions
 
 ```ts
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 
 const workflow = durable(function workflow(
   input: Input,
@@ -139,11 +139,11 @@ import page from "./page.mdx" with { type: "mdx" }
 import blob from "./icon.png" with { type: "bytes" }
 ```
 
-Attribute values are strings. Ordinary `.sm`, `.ts`, and `.js` code imports do not need a `type` attribute.
+Attribute values are strings. Ordinary `.vibe`, `.ts`, and `.js` code imports do not need a `type` attribute.
 
 The built-in loader types are exactly `json`, `text`, `bytes`, `markdown`, and
 `mdx`. Any other value — including the foreign-source types `zig`, `rust`, and
-`wasm` that earlier drafts of this page showed — is refused with `SMITHERS5213`,
+`wasm` that earlier drafts of this page showed — is refused with `VIBE5213`,
 "no comptime loader registered for import type '…'", unless a project registers
 its own loader for that type through `comptime.loader`.
 

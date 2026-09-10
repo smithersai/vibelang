@@ -1,6 +1,6 @@
 # Asset Imports [Turn project files into typed modules at compile time]
 
-Smithers treats compiler-known files as tracked source inputs. Every non-code or foreign-source import uses standard import attributes; the `type` attribute selects a built-in or user-defined loader.
+VibeLang treats compiler-known files as tracked source inputs. Every non-code or foreign-source import uses standard import attributes; the `type` attribute selects a built-in or user-defined loader.
 
 ## Built-In Formats
 
@@ -68,7 +68,7 @@ There is no runtime file path to deploy. The compiler tracks and embeds the Mark
 ## Custom Loaders
 
 ```ts
-import { comptime } from "smithers:comptime"
+import { comptime } from "vibelang:comptime"
 
 const loadYaml = async (asset, context) => {
   const value = parseYaml(asset.text())
@@ -115,7 +115,7 @@ import image from "./logo.png" with { type: "bytes" }
 :::warning Not implemented — measured 2026-08-28
 No `rust` or `zig` loader is registered. The built-in set is exactly `json`,
 `text`, `bytes`, `markdown`, and `mdx`, so both lines below are refused with
-`SMITHERS5213`, "no comptime loader registered for import type 'zig'". This
+`VIBE5213`, "no comptime loader registered for import type 'zig'". This
 section describes intent; nothing here compiles today.
 :::
 
@@ -135,7 +135,7 @@ import { transform } from "@acme/native-transform"
 ```
 
 On Node or Bun, its Node-API addon remains a runtime dependency and constrains
-the compatible JavaScript host. Smithers does not treat such a package as
+the compatible JavaScript host. VibeLang does not treat such a package as
 host-independent.
 
 ## MDX Is General Purpose

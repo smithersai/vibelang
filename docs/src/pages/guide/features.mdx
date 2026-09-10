@@ -1,6 +1,6 @@
 # Features [A tour of the language model]
 
-Smithers starts from TypeScript-shaped source and adds compiler semantics where they make application behavior explicit and statically analyzable.
+VibeLang starts from TypeScript-shaped source and adds compiler semantics where they make application behavior explicit and statically analyzable.
 
 ## Values, Errors, and Requirements
 
@@ -40,12 +40,12 @@ const profile = loadProfile(id).match({
 const user = cache.get(id) ?? guestUser
 ```
 
-Absence is an ordinary `T | undefined` union. Smithers adds no `Optional<T>`: TypeScript already expresses absence precisely, and keeping it distinct from `Result` costs nothing.
+Absence is an ordinary `T | undefined` union. VibeLang adds no `Optional<T>`: TypeScript already expresses absence precisely, and keeping it distinct from `Result` costs nothing.
 
 ## Capabilities and Layers
 
 ```ts
-import { Context } from "smthrs/context"
+import { Context } from "vibelang/context"
 
 abstract class Clock extends Context {
   abstract now(): Instant
@@ -72,7 +72,7 @@ Control flow is TypeScript's. The one addition is declarations in conditionals, 
 ## Comptime
 
 ```ts
-import { comptime, embed } from "smithers:comptime"
+import { comptime, embed } from "vibelang:comptime"
 
 const Routes = comptime(deriveRoutes(JSON.parse(embed("./routes.json"))))
 ```
@@ -114,7 +114,7 @@ withdrawn. [Learn more](/guide/platforms-and-targets).
 
 ## Async and Concurrency
 
-Async fallible work returns `Promise<Result<A, E>>`. Authored `.sm` consumes Promises only with `await`; Promise instance chaining is banned.
+Async fallible work returns `Promise<Result<A, E>>`. Authored `.vibe` consumes Promises only with `await`; Promise instance chaining is banned.
 
 ```ts
 const results = await Promise.all([
@@ -129,7 +129,7 @@ const [profile, activity] = Result.all(results)!
 ## Durable Execution
 
 ```ts
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 
 const Build = durable(function Build(
   input: BuildInput,

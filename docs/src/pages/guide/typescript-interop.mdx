@@ -1,8 +1,8 @@
-# TypeScript Interop [Adopt Smithers without leaving the JavaScript ecosystem]
+# TypeScript Interop [Adopt VibeLang without leaving the JavaScript ecosystem]
 
-Imported `.ts` and `.js` modules keep their host behavior. A `.sm` file opts into must-use Results, Promise-chain restrictions, capability inference, and other Smithers semantics.
+Imported `.ts` and `.js` modules keep their host behavior. A `.vibe` file opts into must-use Results, Promise-chain restrictions, capability inference, and other VibeLang semantics.
 
-Smithers is intentionally TypeScript-shaped, but `.sm` is not a syntactic superset of TypeScript. Complete TypeScript remains in imported `.ts`/`.tsx` modules; only explicitly documented shared syntax and behavior carry across.
+VibeLang is intentionally TypeScript-shaped, but `.vibe` is not a syntactic superset of TypeScript. Complete TypeScript remains in imported `.ts`/`.tsx` modules; only explicitly documented shared syntax and behavior carry across.
 
 ## Type-Only Imports
 
@@ -25,7 +25,7 @@ Application code should usually depend on a `FileSystem` capability instead.
 An earlier draft said this import "contributes `Module<"node:fs/promises">`". It
 does not, and no such type exists. The module-requirement machinery was
 part of the portability pin, withdrawn on 2026-08-23. What the import actually
-draws today is `SMITHERS1510` — "foreign module initialization can panic before
+draws today is `VIBE1510` — "foreign module initialization can panic before
 a checked call boundary" — unless the import is type-only or the module carries
 a leading `@module @throws {never}` JSDoc marker. So the host constraint is
 carried by the panic channel, not by a requirement row, and nothing reports it
@@ -38,28 +38,22 @@ open — it is every `Context` subclass a program names, so a locally declared
 `Scheduler` or `Locale` publishes `requirements: ["Scheduler"]` /
 `["Locale"]` with no compiler change — and the `"Clock" | "Random" | "Host"`
 union is a *diagnostic-category* discriminator selecting
-`SMITHERS1602`/`1603`/`1601`. `Module<…>` is missing because it was withdrawn,
+`VIBE1602`/`1603`/`1601`. `Module<…>` is missing because it was withdrawn,
 which is the first reason and the only true one.
 :::
 
 ## Dynamic Features
 
 `any`, `eval`, unconstrained reflection, Promise subclassing, and custom
-thenables can invalidate Smithers's static guarantees. The compatibility
+thenables can invalidate VibeLang's static guarantees. The compatibility
 specification defines which uses add `panic` and which are rejected.
 
-:::note Open — `eval`, and the specification is behind the code
-[Compatibility](/specification/compatibility) §Dynamic Features still carries a
-**locked** sentence permitting `eval` and `Function`, while shipped code already
-closes that escape. This is the one place where **the implementation is
-deliberately ahead of the specification** until the conflict is ratified, and it
-is the most urgent of the open questions in `DECISIONS.md`. Nothing on this page
-decides it either way.
-
-Replay raises the stakes rather than lowering them: an `eval`'d string inside a
-Flow body produces no journal entry, so there is no divergence to detect. See
-[Durable Execution](/specification/durable-execution) §Flow Determinism,
-obligation 2.
+:::note Decided 2026-09-06 — `eval` is refused
+`eval`, the `Function` constructor, and `constructor` on a callable are refused
+in `.vibe` (`VIBE1604`). The specification and the compiler now agree; see
+[Compatibility](/specification/compatibility) §Dynamic Features. Inside a Flow
+body the stakes are higher still: an `eval`'d string produces no journal entry,
+so there is no divergence to detect.
 :::
 
 :::note Open — dynamic import
@@ -94,10 +88,10 @@ function connect(options: Options): Result<Client, ConnectFailed | Panic> {
 An unannotated call to `legacyConnect` adds the distinguished checked `panic`
 case, and `Result.try` translates a *caught* value to `ConnectFailed`. It does
 **not** discharge the channel: `Panic` stays in the contract, and omitting it
-draws `SMITHERS1104`, "Result contract omits reachable failures Panic". That is
+draws `VIBE1104`, "Result contract omits reachable failures Panic". That is
 the intended design — a panic raised inside a foreign call must not be silently
 swallowed by an adapter. Either declare it, as above, or subtract it
-deliberately at the boundary with `rethrowPanics` from `smthrs/result`, which
+deliberately at the boundary with `rethrowPanics` from `vibelang/result`, which
 re-throws a panic-valued failure so it keeps unwinding to `catchPanic` and
 returns every other Result unchanged.
 
@@ -116,9 +110,18 @@ async function fetchUser(
 }
 ```
 
-Authored Smithers consumes Promises with `await`, never instance `.then`, `.catch`, or `.finally`. Imported code may use them internally.
+Authored VibeLang consumes Promises with `await`, never instance `.then`, `.catch`, or `.finally`. Imported code may use them internally.
 
 At declaration boundaries, trusted `@throws {never}` metadata removes the default panic case and `@throws {T}` declares the stated failure channel. These annotations are trust claims, not proof that a foreign implementation obeys them.
+
+The JS CLI stages a relative JavaScript library's companion declarations and
+their transitive type dependencies with its runtime output. It checks consumers
+against those declarations rather than re-inferring erased JavaScript, and
+`--declaration` preserves the contracts in the output layout. Declaration files
+share the runtime graph's path, alias and size limits. They do not exempt module
+initialization: the runtime and its foreign declaration-facing API still need
+the separate initialization claim described below. Published VibeLang callable
+metadata alone does not grant that trust.
 
 :::note Open — the marker is doing two jobs
 The `@module @throws {never}` marker carries **module-initialization safety**,
@@ -138,7 +141,7 @@ const user = legacyLookup(id) ?? undefined
 legacyConsume(user ?? null)
 ```
 
-Smithers does not reinterpret TypeScript optional properties or null unions. They keep their ordinary TypeScript meaning. There is no `.toNullable()` and no wrapper to convert: `Optional<T>` was withdrawn, absence is `T | undefined`, and crossing to a `null`-based API is the ordinary `?? null`.
+VibeLang does not reinterpret TypeScript optional properties or null unions. They keep their ordinary TypeScript meaning. There is no `.toNullable()` and no wrapper to convert: `Optional<T>` was withdrawn, absence is `T | undefined`, and crossing to a `null`-based API is the ordinary `?? null`.
 
 ## Effect Interop
 

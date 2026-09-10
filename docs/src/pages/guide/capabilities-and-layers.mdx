@@ -1,11 +1,11 @@
 # Capabilities & Layers [Make dependencies visible and provide them by scope]
 
-Smithers models a dependency as a capability in a compiler-tracked requirement channel. A Context class defines and accesses a service; a base Layer packages an already acquired implementation into an environment.
+VibeLang models a dependency as a capability in a compiler-tracked requirement channel. A Context class defines and accesses a service; a base Layer packages an already acquired implementation into an environment.
 
 ## Define a Capability
 
 ```ts
-import { Context } from "smthrs/context"
+import { Context } from "vibelang/context"
 
 abstract class Mailer extends Context {
   abstract send(message: Message): Result<Receipt, MailError>
@@ -45,7 +45,7 @@ The compiler propagates `Users`, `Mailer`, and `Clock` through the ordinary call
 ## Build and Provide a Layer
 
 ```ts
-import { Layer } from "smthrs/provider"
+import { Layer } from "vibelang/provider"
 
 const Production = Layer.merge(
   Layer.succeed(Clock, SystemClock),
@@ -63,7 +63,7 @@ The explicit return annotation is required, not decorative, and this is the
 easiest rule on the page to trip over. **Any** `Layer.provide` callback that can
 fail — whether it propagates with `!`, throws, or is `async` — must spell its
 `Result<A, E>` or `Promise<Result<A, E>>` return type. Leaving it to inference is
-refused with `SMITHERS2105`, "fallible `Layer.provide` callbacks need an explicit
+refused with `VIBE2105`, "fallible `Layer.provide` callbacks need an explicit
 `Result` (or `Promise<Result>`) contract so the provided computation keeps its
 failure channel". Only a callback with an empty failure row may go unannotated.
 
@@ -106,21 +106,21 @@ The standard platform roster includes `Clock`, `Random`, `Console`,
 `Promise<Result<A, E>>`; operations that have a legitimate synchronous host API
 may also expose an explicit `Sync` variant.
 
-:::warning Not importable from `.sm` yet — measured 2026-08-28
+:::warning Not importable from `.vibe` yet — measured 2026-08-28
 The samples on this page declare their own capabilities, which is why they
 compile. Reaching the shipped roster instead — `import { FileSystem } from
-"smthrs/platform"` — is refused with `SMITHERS1510`, "foreign module
+"vibelang/platform"` — is refused with `VIBE1510`, "foreign module
 initialization can panic before a checked call boundary", because only six
-specifiers are compiler-owned: `smthrs/context`, `smthrs/provider`,
-`smthrs/schema-runtime`, `smithers:exceptions`, `smithers:comptime`, and
-`smithers:flows`. Every other `smthrs/*` subpath is ordinary foreign code to the
+specifiers are compiler-owned: `vibelang/context`, `vibelang/provider`,
+`vibelang/schema-runtime`, `vibelang:exceptions`, `vibelang:comptime`, and
+`vibelang:flows`. Every other `vibelang/*` subpath is ordinary foreign code to the
 frontend. The roster is real and works under plain `node`; it is not yet
-reachable from authored Smithers.
+reachable from authored VibeLang.
 :::
 
 ## Scope and Lifetime
 
-`Layer.provide(layer, body)` keeps only the dependency environment active until `body` and the Promise returned by `body` settle. It does not discover, supervise, cancel, or join other Promise work. Every Promise started in authored `.sm` must be awaited directly or consumed by a recognized combinator whose returned Promise is itself consumed; detached work is unavailable.
+`Layer.provide(layer, body)` keeps only the dependency environment active until `body` and the Promise returned by `body` settle. It does not discover, supervise, cancel, or join other Promise work. Every Promise started in authored `.vibe` must be awaited directly or consumed by a recognized combinator whose returned Promise is itself consumed; detached work is unavailable.
 
 You do not have to arrange that scope by hand. `Layer.provide` installs a handler
 that answers the capability requests inside `body`, and the handler holds the

@@ -1,10 +1,10 @@
-# TC39 Proposals [Where Smithers stands on every active proposal]
+# TC39 Proposals [Where VibeLang stands on every active proposal]
 
-Smithers is a TypeScript-derived language, so a standards-track proposal is the cheapest possible source of new syntax: adopting one costs a grammar patch that upstream will eventually make unnecessary, while inventing an equivalent costs the same patch forever. The decision ledger therefore records an explicit adopt-early list, and an explicit set of standing rejections.
+VibeLang is a TypeScript-derived language, so a standards-track proposal is the cheapest possible source of new syntax: adopting one costs a grammar patch that upstream will eventually make unnecessary, while inventing an equivalent costs the same patch forever. The decision ledger therefore records an explicit adopt-early list, and an explicit set of standing rejections.
 
 This page states a position for every proposal currently at Stage 1, 2, 2.7, or 3.
 
-Exactly one row below is marked **Adopted**. Smithers adds a single source form beyond TypeScript, and it is standards-track. Every other capability is expressed with ordinary TypeScript syntax.
+Exactly one row below is marked **Adopted**. VibeLang adds a single source form beyond TypeScript, and it is standards-track. Every other capability is expressed with ordinary TypeScript syntax.
 
 Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals) on **August 23, 2026**. Stages move; re-check before relying on one.
 
@@ -12,7 +12,7 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 
 | Status | Meaning |
 | --- | --- |
-| **Adopted** | part of the Smithers target language |
+| **Adopted** | part of the VibeLang target language |
 | **Committed** | accepted for adopt-early inclusion as its source contract matures |
 | **Reserved** | deliberately not adopted, but the design accounts for it |
 | **Rejected** | a standing rejection in the ledger |
@@ -22,12 +22,12 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 
 ## Stage 3
 
-| Proposal | Smithers | Note |
+| Proposal | VibeLang | Note |
 | --- | --- | --- |
 | Legacy RegExp features in JavaScript | No position |  |
 | Source Phase Imports | Committed | on the adopt-early list |
 | Dynamic Code Brand Checks | No position |  |
-| Deferring Module Evaluation | Reserved | unrelated to cleanup; Smithers reserves room to inherit its eventual syntax |
+| Deferring Module Evaluation | Reserved | unrelated to cleanup; VibeLang reserves room to inherit its eventual syntax |
 | Non-extensible Applies to Private | No position |  |
 | Import Text | Committed | already expressible as `with { type: "text" }` |
 | iterator chunking | No position |  |
@@ -35,11 +35,11 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 | Iterator Join | No position |  |
 | Error Stack Accessor | Committed | the ledger's "cheap stack capture" |
 | RegExp Buffer Boundaries (`\A`, `\z`, `\Z`) | No position |  |
-| Await Dictionary | Committed | the ledger's `allKeyed` / `allSettledKeyed`. They ship as free functions on `smthrs/concurrency`, not as `Promise` statics — `Promise.allKeyed` is `undefined`. The frontend recognizes those names only as members of the ambient `Promise` namespace, which no `lib.es*.d.ts` supplies, so the shipped free-function form is refused from `.sm` with `SMITHERS1402`. |
+| Await Dictionary | Committed | the ledger's `allKeyed` / `allSettledKeyed`. They ship as free functions on `vibelang/concurrency`, not as `Promise` statics — `Promise.allKeyed` is `undefined`. The frontend recognizes those names only as members of the ambient `Promise` namespace, which no `lib.es*.d.ts` supplies, so the shipped free-function form is refused from `.vibe` with `VIBE1402`. |
 
 ## Stage 2.7
 
-| Proposal | Smithers | Note |
+| Proposal | VibeLang | Note |
 | --- | --- | --- |
 | Decorators | No position |  |
 | Decorator Metadata | No position |  |
@@ -50,10 +50,10 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 
 ## Stage 2
 
-| Proposal | Smithers | Note |
+| Proposal | VibeLang | Note |
 | --- | --- | --- |
 | `function.sent` metaproperty | No position |  |
-| `throw` expressions | Reserved | deliberately deferred — Smithers adds no throw-expression grammar until this lands upstream |
+| `throw` expressions | Reserved | deliberately deferred — VibeLang adds no throw-expression grammar until this lands upstream |
 | Function implementation hiding | No position |  |
 | collection normalization | No position |  |
 | Module Expressions | Committed | on the adopt-early list |
@@ -84,14 +84,14 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 
 ## Stage 1
 
-| Proposal | Smithers | Note |
+| Proposal | VibeLang | Note |
 | --- | --- | --- |
 | `export v from "mod";` statements | No position |  |
 | Observable | No position |  |
 | SES (Secure EcmaScript) | No position |  |
 | `of` and `from` on collection constructors | No position |  |
 | Error stacks | No position |  |
-| `do` expressions | Reserved | the nearest standards-track analog to a value-position block; Smithers has no expression-form control flow and would inherit this rather than invent one |
+| `do` expressions | Reserved | the nearest standards-track analog to a value-position block; VibeLang has no expression-form control flow and would inherit this rather than invent one |
 | Change `Number.parseInt`/`parseFloat` to not coerce `null`/`undefined`/`NaN` | No position |  |
 | Binary AST | No position |  |
 | First-class protocols | No position |  |
@@ -107,7 +107,7 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 | Slice notation | No position |  |
 | Module Keys | No position |  |
 | class Access Expressions | No position |  |
-| Pattern Matching | Reserved | Smithers adds no expression-form control-flow grammar, deliberately leaving room to converge with this rather than pre-empting it with an invented form |
+| Pattern Matching | Reserved | VibeLang adds no expression-form control-flow grammar, deliberately leaving room to converge with this rather than pre-empting it with an invented form |
 | Dynamic Modules | No position |  |
 | Built In Modules (aka JS Standard Library) | No position |  |
 | uniform parsing of quasi-standard `Date.parse` input | No position |  |
@@ -118,7 +118,7 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 | Private declarations | No position |  |
 | Emitter | No position |  |
 | Reverse iteration | No position |  |
-| Declarations in Conditionals | **Adopted** | `if (const x = f(); cond)` — **the only grammar Smithers adds**, and a Stage 1 proposal |
+| Declarations in Conditionals | **Adopted** | `if (const x = f(); cond)` — **the only grammar VibeLang adds**, and a Stage 1 proposal |
 | Readonly Collections | No position |  |
 | Support for Distributed Promise Pipelining | Rejected | standing rejection |
 | Wavy Dot: Syntactic Support for Promise Pipelining | Rejected | standing rejection |
@@ -168,7 +168,7 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 | Iterator unique | No position |  |
 | Improved Escapes for Template Literals | No position |  |
 | Function and Object Literal Decorators | No position |  |
-| Strict Enforcement of 'using' | Reserved | `using` is the cleanup story; Smithers adds no `defer` statement |
+| Strict Enforcement of 'using' | Reserved | `using` is the cleanup story; VibeLang adds no `defer` statement |
 | Signals | No position |  |
 | Concurrency Control | Committed | the ledger's "governors" — a governor limits fan-out, it does not own child-task lifetimes |
 | Unordered Async Iterator Helpers | Committed | on the adopt-early list |
@@ -198,7 +198,7 @@ Proposal list fetched from [`tc39/proposals`](https://github.com/tc39/proposals)
 
 ## Already Finished
 
-Smithers depends on several Stage 4 proposals that no longer appear above: import attributes, JSON modules, iterator helpers, and explicit resource management (`using`). `using` is the one worth naming — it is the whole cleanup story, and how its disposal orders against a compiler-generated `!` early return is [not yet settled](/specification/control-flow).
+VibeLang depends on several Stage 4 proposals that no longer appear above: import attributes, JSON modules, iterator helpers, and explicit resource management (`using`). `using` is the one worth naming — it is the whole cleanup story, and how its disposal orders against a compiler-generated `!` early return is [not yet settled](/specification/control-flow).
 
 ## Not Standards-Track
 

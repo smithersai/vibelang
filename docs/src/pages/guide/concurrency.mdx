@@ -1,13 +1,13 @@
 # Concurrency [Use async functions and typed workers without a fiber runtime]
 
-Smithers keeps ordinary async functions. Expected async failure is `Promise<Result<A, E>>`, and `await` unwraps only the Promise.
+VibeLang keeps ordinary async functions. Expected async failure is `Promise<Result<A, E>>`, and `await` unwraps only the Promise.
 
-Concurrency helpers are ordinary TypeScript library APIs. Smithers adds no
+Concurrency helpers are ordinary TypeScript library APIs. VibeLang adds no
 fiber runtime or Promise-specific parser syntax.
 
 ## Promise Discipline
 
-Authored `.sm` code cannot call Promise instance `.then()`, `.catch()`, or `.finally()`. Use `await`, then inspect or propagate the Result:
+Authored `.vibe` code cannot call Promise instance `.then()`, `.catch()`, or `.finally()`. Use `await`, then inspect or propagate the Result:
 
 ```ts
 const userResult = await loadUser(id)
@@ -54,7 +54,7 @@ const [profile, activity] = Result.all(results)!
 
 `Promise.all` handles Promise scheduling. `Result.all` collects the successful values or returns the first Error. This uses standard call syntax and introduces no special `await.all` grammar.
 
-The Promise returned by a call or combinator owns that task lifetime from the caller's perspective. Every started Promise must ultimately be consumed with `await` before its enclosing scope exits. Authored `.sm` has no fire-and-forget or detach operation.
+The Promise returned by a call or combinator owns that task lifetime from the caller's perspective. Every started Promise must ultimately be consumed with `await` before its enclosing scope exits. Authored `.vibe` has no fire-and-forget or detach operation.
 
 Keyed joins preserve names as well as tuple-style joins preserve positions:
 
@@ -99,15 +99,15 @@ abort an iterator that ignores both cancellation and `return()`.
 
 ## Streams and Coordination Primitives
 
-:::warning Not importable from `.sm` yet — measured 2026-08-28
+:::warning Not importable from `.vibe` yet — measured 2026-08-28
 Everything in this section is real and works under plain `node` from
-`smthrs/concurrency`. It is **not** reachable from an authored `.sm` file:
-`import { Queue } from "smthrs/concurrency"` is refused with `SMITHERS1510`,
-because only six specifiers are compiler-owned and `smthrs/concurrency` is not
+`vibelang/concurrency`. It is **not** reachable from an authored `.vibe` file:
+`import { Queue } from "vibelang/concurrency"` is refused with `VIBE1510`,
+because only six specifiers are compiler-owned and `vibelang/concurrency` is not
 one of them. `allKeyed` and `allSettledKeyed` have a second, separate barrier —
 the frontend recognizes those names only as members of the ambient `Promise`
 namespace, a spelling no `lib.es*.d.ts` supplies, so the free-function form is
-reported as `SMITHERS1402`, "started Promise is not consumed".
+reported as `VIBE1402`, "started Promise is not consumed".
 :::
 
 The standard library supplies:
@@ -147,7 +147,7 @@ and host support remain open.
 
 ## Limiting Fan-Out
 
-Concurrency governors limit how much work may run simultaneously; they do not define child ownership or Error composition. A structured library combinator may own, cancel, and join the work it starts, but a Layer never does. Smithers intends to follow viable JavaScript proposals or standard-library APIs instead of adding parser syntax for throttling.
+Concurrency governors limit how much work may run simultaneously; they do not define child ownership or Error composition. A structured library combinator may own, cancel, and join the work it starts, but a Layer never does. VibeLang intends to follow viable JavaScript proposals or standard-library APIs instead of adding parser syntax for throttling.
 
 The library spells this `Governor.withLimit(limit)`. `acquire()`
 returns an idempotently releasable permit and `run(operation)` releases in

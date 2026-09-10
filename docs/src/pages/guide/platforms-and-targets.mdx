@@ -1,15 +1,15 @@
 # Hosts [One target, several JavaScript runtimes]
 
-TypeScript is the only compilation target. A `.sm` program emits TypeScript or JavaScript, and the interesting variation is *which JavaScript host* it runs on — Node, Bun, Deno, a browser, or an edge runtime.
+TypeScript is the only compilation target. A `.vibe` program emits TypeScript or JavaScript, and the interesting variation is *which JavaScript host* it runs on — Node, Bun, Deno, a browser, or an edge runtime.
 
 ## What Was Removed
 
-Smithers previously specified a near-native target through LLVM and a Wasm target, and carried machinery to keep programs checkable against both:
+VibeLang previously specified a near-native target through LLVM and a Wasm target, and carried machinery to keep programs checkable against both:
 
 | Removed | Why |
 | --- | --- |
 | near-native / LLVM target | it expands the language around a second runtime and ABI without serving the TypeScript-first product |
-| Wasm compilation target | foreign Wasm modules are useful, but compiling general Smithers programs to Wasm is not part of the product |
+| Wasm compilation target | foreign Wasm modules are useful, but compiling general VibeLang programs to Wasm is not part of the product |
 | the `TypeScript` requirement | with one target, every program has it, so it recorded nothing |
 | portable / `TypeScript`-required / forbidden classification | nothing to be portable *to* |
 | the portability pin | nothing to assert |
@@ -21,7 +21,7 @@ Two things people associate with that machinery are **not** removed:
 
 ## Platform as Capability
 
-Host functionality is a typed capability rather than an ambient global. `process`, `window`, `document`, filesystem, and network are not in scope in authored `.sm`; they arrive as dependencies.
+Host functionality is a typed capability rather than an ambient global. `process`, `window`, `document`, filesystem, and network are not in scope in authored `.vibe`; they arrive as dependencies.
 
 Only facilities present in every JavaScript environment may be unconditional globals, and host-sensitive operations on otherwise universal objects — clock, random — still need capabilities.
 
@@ -32,13 +32,13 @@ Node, Bun, Deno, browser, edge, and test implementations can satisfy the same ca
 Use `comptime.target` when the implementation differs by host.
 
 :::warning Host names not reachable under the CLI — measured 2026-08-28
-The shipped `smithers` CLI pins the target to `"node-es2022"`, so the `node`,
+The shipped `vibe` CLI pins the target to `"node-es2022"`, so the `node`,
 `bun`, and `deno` keys below never match and the lookup fails with `VCT1004`.
 See [Comptime](/reference/comptime) §Target Selection.
 :::
 
 ```ts
-import { comptime } from "smithers:comptime"
+import { comptime } from "vibelang:comptime"
 
 const implementations = {
   node: NodeFileSystem,
@@ -55,7 +55,7 @@ Unselected implementations are not emitted.
 
 :::warning Not implemented — measured 2026-08-28
 Neither loader is registered; both imports below are refused with
-`SMITHERS5213`. The built-in loader types are `json`, `text`, `bytes`,
+`VIBE5213`. The built-in loader types are `json`, `text`, `bytes`,
 `markdown`, and `mdx`.
 :::
 
@@ -67,7 +67,7 @@ import { hashMany } from "./hash.zig" with { type: "zig" }
 import { parse } from "./parser.rs" with { type: "rust" }
 ```
 
-These would compile to Wasm modules that the JavaScript host loads and calls. Wasm is a library format here, not a target for Smithers code — which is why this section survives the removals above rather than being withdrawn with them.
+These would compile to Wasm modules that the JavaScript host loads and calls. Wasm is a library format here, not a target for VibeLang code — which is why this section survives the removals above rather than being withdrawn with them.
 
 The compiler owns toolchain invocation and caching. The import's types, source maps, toolchain versions, feature flags, and foreign dependency graph contribute to its cache identity.
 

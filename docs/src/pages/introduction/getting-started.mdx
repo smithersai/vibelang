@@ -2,7 +2,7 @@
 
 ## Overview
 
-Smithers uses a TypeScript-derived frontend. A `.sm` file opts into Smithers semantics; imported `.ts` and `.js` files retain their normal behavior.
+VibeLang uses a TypeScript-derived frontend. A `.vibe` file opts into VibeLang semantics; imported `.ts` and `.js` files retain their normal behavior.
 
 The language focuses on:
 
@@ -16,40 +16,128 @@ Compiler intrinsics such as `comptime(...)` and `durable(...)` are imported func
 ## Create a Project
 
 ```bash
-npm install --save-dev smthrs
+npm install --save-dev vibelang
+npx vibe init
 ```
 
-Create `answer.sm`:
-
-```ts
-class InvalidAnswer extends Error {}
-
-function answer(valid: boolean): Result<number, InvalidAnswer> {
-  if (!valid) throw new InvalidAnswer("invalid")
-  return 42
-}
-
-answer(true).match({
-  ok: value => `answer=${value}`,
-  error: () => "failed",
-})
-```
-
-Check and run it:
+`vibe init` writes three files into the current directory. Check and run them:
 
 ```bash
-npx smithers check answer.sm
-npx smithers run answer.sm
+npx vibe check main.vibe
+npx vibe run main.vibe
+```
+
+```text
+hello, Ada
 ```
 
 `check` validates the complete project graph without emitting artifacts. `run`
 checks the graph and executes the selected entry module. See the [CLI
-reference](/reference/cli) for the target command contract.
+reference](/reference/cli) for the command contract.
+
+### The three files
+
+The project's `tsconfig.json` sets the six soundness options every `.vibe`
+project must carry. `vibe check -p tsconfig.json` refuses a project that weakens
+one of them, so start from this file rather than from `tsc --init`.
+
+```json [tsconfig.json]
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "useDefineForClassFields": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["**/*.vibe", "**/*.ts"]
+}
+```
+
+`main.vibe` is the program. Nothing is ambient in `.vibe`: `console`,
+`process`, the clock, and the network are not in scope, so even printing a line
+goes through a capability. Here the program declares one, `Console`, and
+provides an implementation with a `Layer`.
+
+```ts [main.vibe]
+import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
+import { writeLine } from "./stdout.ts"
+
+abstract class Console extends Context {
+  abstract info(message: string): void
+}
+
+class StdoutConsole extends Console {
+  info(message: string): void {
+    writeLine(message)
+  }
+}
+
+class NotFound extends Error {}
+
+function greeting(id: number): Result<string, NotFound> {
+  if (id !== 1) throw new NotFound(`no user ${id}`)
+  return "hello, Ada"
+}
+
+const App = Layer.succeed(Console, new StdoutConsole())
+
+Layer.provide(App, () => {
+  const console = Console.context()
+  greeting(1).match({
+    ok: text => console.info(text),
+    error: error => console.info(`failed: ${error.message}`),
+  })
+})
+```
+
+`stdout.ts` is the one place the program touches the host. It is ordinary
+TypeScript, so it may use `console`. Its leading JSDoc carries a trust claim the
+compiler honours: with `@module` and `@throws {never}` present, importing it adds
+no `panic` case to the caller's failure row. Without the claim, the import is
+refused as `VIBE1510` until you wrap the call in a checked adapter.
+
+```ts [stdout.ts]
+/**
+ * The one place this program touches the host. Ordinary TypeScript, with a
+ * trust claim the compiler honours: importing it adds no panic channel.
+ * @module
+ * @throws {never}
+ */
+
+/** @throws {never} */
+export function writeLine(text: string): void {
+  console.log(text)
+}
+```
+
+Three things happened in twenty lines. `greeting` returned `Result<string,
+NotFound>` without any constructor: the plain `return` became the success value
+and the `throw` became the failure value. `Console.context()` added `Console` to
+the requirement row of the callback, and `Layer.provide` satisfied it. And the
+host boundary was crossed exactly once, in a file whose trust claim is visible.
+
+:::note The shipped platform roster is not importable from `.vibe` yet — measured 2026-09-05
+`vibelang/platform` ships `Console`, `SystemConsole`, `Clock`, `FileSystem`,
+and the rest of the roster for TypeScript callers, but importing it from a
+`.vibe` file is refused with `VIBE1510` because the module carries no trust
+marker, and a class declared there is not yet recognized as a capability. That
+is why the scaffold declares its own `Console`. The compiler change that closes
+this is recorded in the [Standard Library](/reference/standard-library) page.
+:::
 
 ## Your First Fallible Function
 
 ```ts
-import { Context } from "smthrs/context"
+import { Context } from "vibelang/context"
 
 class NotFound extends Error {
   constructor(readonly id: string) {
@@ -100,10 +188,51 @@ function displayName(id: string): Result<string, NotFound> {
 
 Inside a Result-returning body, a plain return is lifted to success and a thrown Error is lifted to error. No explicit success/error constructor is needed.
 
+Here is the same idea as one complete file. The rows `vibe check` reports for it
+name `NotFound` as the failure and `Users` as the requirement of both functions.
+
+```ts [users.vibe]
+import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
+
+type User = { name: string }
+
+class NotFound extends Error {
+  constructor(readonly id: string) {
+    super(`User not found: ${id}`)
+  }
+}
+
+abstract class Users extends Context {
+  abstract find(id: string): User | undefined
+}
+
+function getUser(id: string): Result<User, NotFound> {
+  const user = Users.context().find(id)
+  if (user === undefined) throw new NotFound(id)
+  return user
+}
+
+function displayName(id: string): Result<string, NotFound> {
+  const user = getUser(id)!
+  return user.name
+}
+
+class MemoryUsers extends Users {
+  find(id: string): User | undefined {
+    return id === "42" ? { name: "Ada" } : undefined
+  }
+}
+
+const App = Layer.succeed(Users, new MemoryUsers())
+
+export const name = Layer.provide(App, () => displayName("42")).unwrapOr("anonymous")
+```
+
 ## Provide a Capability
 
 ```ts
-import { Layer } from "smthrs/provider"
+import { Layer } from "vibelang/provider"
 
 const App = Layer.succeed(Users, new PostgresUsers(databaseUrl))
 
@@ -111,7 +240,7 @@ const name = Layer.provide(App, () => displayName("42")).unwrapOr("anonymous")
 ```
 
 Note the missing `!` inside the callback. A `Layer.provide` body that propagates
-with `!` is refused — `SMITHERS2105`, "fallible `Layer.provide` callbacks need an
+with `!` is refused — `VIBE2105`, "fallible `Layer.provide` callbacks need an
 explicit `Result` (or `Promise<Result>`) contract so the provided computation
 keeps its failure channel". Return the Result from the callback and consume it
 outside, which is what keeps `NotFound` visible in the caller's type.
@@ -131,7 +260,7 @@ async function loadUser(
 }
 ```
 
-`await` unwraps the Promise but leaves the Result. Authored Smithers does not use Promise instance `.then`, `.catch`, or `.finally`.
+`await` unwraps the Promise but leaves the Result. Authored VibeLang does not use Promise instance `.then`, `.catch`, or `.finally`.
 
 Note the two steps. `response.json()` is **synchronous** and takes no argument —
 it returns `Result<unknown, MalformedResponse>`, the parse and nothing more.
@@ -144,4 +273,5 @@ There is no `response.json(User)` overload.
 - Tour [Features](/guide/features).
 - Learn [Results and Errors](/guide/typed-failures).
 - Learn [Capabilities and Layers](/guide/capabilities-and-layers).
+- Read the [CLI reference](/reference/cli) and the [diagnostics reference](/reference/diagnostics).
 - Read [Specification Status](/specification/) to distinguish locked rules from directional and open design.

@@ -1,0 +1,122 @@
+# Bundlers [Use the same Go compiler inside an existing build]
+
+`vibelang/unplugin` delivers the CLI's checked project pipeline to Vite, Rollup,
+Rolldown, webpack, Rspack, Rsbuild, esbuild, Farm, and Bun. Parsing, inference,
+checking, lowering, and JavaScript emission still belong to the pinned Go
+TypeScript compiler. The JavaScript plugin does not use a second compiler API.
+
+The plugin is new alpha delivery. Its build-and-execute coverage currently uses
+Node and Bun, not a browser runtime. In particular, the existing capability
+runtime uses Node's async context APIs; choosing a browser target string does
+not supply a browser implementation of those APIs.
+
+## An esbuild Project
+
+Install `vibelang` and your bundler. For example, an existing esbuild build can
+use this configuration:
+
+```js
+import { build } from "esbuild"
+import vibelang from "vibelang/unplugin"
+
+await build({
+  entryPoints: ["src/main.vibe"],
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  outfile: "dist/main.mjs",
+  sourcemap: true,
+  plugins: [vibelang.esbuild({
+    root: process.cwd(),
+    entries: ["src/main.vibe"],
+    target: "node-es2022",
+  })],
+})
+```
+
+`entries` is the complete set of checked `.vibe` roots, relative to `root`.
+Relative `.vibe` imports are discovered with the CLI's resolver. No file is
+emitted before that program is accepted, including other explicit roots the
+bundler has not requested yet. An independent `.vibe` file outside that closure
+is refused; add it to `entries` instead of treating it as a separate unchecked
+program.
+
+`root` defaults to the current working directory. It is the canonical source
+identity and dependency boundary, not the output directory. `target` defaults
+to `node-es2022` and participates in comptime and loader cache identity. Emitted
+code is ES2022 ESM; the host bundler owns subsequent downleveling and packaging.
+Keep the target explicit when a comptime program reads `comptime.target`.
+
+## Host Factories
+
+All factories take the same options object:
+
+| Host | Factory |
+| --- | --- |
+| Vite | `vibelang.vite(options)` |
+| Rollup | `vibelang.rollup(options)` |
+| Rolldown | `vibelang.rolldown(options)` |
+| webpack | `vibelang.webpack(options)` |
+| Rspack | `vibelang.rspack(options)` |
+| Rsbuild | `vibelang.rsbuild(options)` |
+| esbuild | `vibelang.esbuild(options)` |
+| Farm | `vibelang.farm(options)` |
+| Bun | `vibelang.bun(options)` |
+
+The plugin requires Node 22.12 or newer, or Bun 1.2.22 or newer. Returned plugin
+handles are structurally compatible with each host's plugin interface. Merely
+importing the factory does not require installing all nine hosts' type packages.
+
+Put VibeLang first in the host's plugin list. It requests pre-transform ordering
+where the host supports that and supplies JavaScript from its load hook, before
+the host parses a `.vibe` file. It leaves ordinary `.ts`, `.tsx`, `.js`, and `.jsx`
+transforms to the host. Relative `.vibe`, extensionless, and `.js`-substitution
+imports use the same authored-file resolution as the CLI. Query/hash variants
+such as `main.vibe?raw` are explicitly refused.
+
+Assets become issued in-memory modules. The plugin does not create an output
+directory or let unissued virtual IDs stand in for checked asset modules.
+The esbuild adapter requires `bundle: true`: its rewritten module IDs must pass
+through host resolution, not escape into unbundled JavaScript. Use `vibe compile`
+when you need a directory of separately emitted modules.
+
+## Checking, Rebuilds, and Maps
+
+`mode: "checked"` is the default. `mode: "transform-only"` is a conservative
+single-file convenience, **not a conforming implementation or a general build
+mode**. The current subset refuses every non-compiler module dependency rather
+than guessing a cross-module calling convention. Local language checking still
+occurs in Go.
+
+The watch inventory includes imported source, package metadata and declarations,
+comptime reads, loader dependencies, and negative resolution probes. A changed
+callee invalidates the checked project even when the caller's text is unchanged.
+Failed builds retain their observed inputs so creating a missing dependency can
+trigger recovery. Target is fixed for a plugin instance; changing it requires a
+new instance and cannot reuse the old instance's output.
+
+Vite's dev server needs special dependency transport: its ordinary watch-file
+API also creates module-graph imports and cannot represent missing probes as
+modules. The plugin polls its bounded input inventory at 250 ms, including
+package declarations under `node_modules`, invalidates checked module caches,
+and requests a full client reload. It releases those watchers when the server
+closes. This is conservative reload behavior, not state-preserving hot replacement.
+
+Every module carries an authored source map. Import-address rewrites use spans
+from the Go parser and compose the existing map; generated addresses are left
+unmapped. Enable source-map output in the host to retain the final bundled map.
+Farm's normal Node build preserves these maps. In the measured Farm 1.7.11
+`library-node` mode, Farm omits final maps even for ordinary JavaScript; the
+plugin still supplies the authored map to its transform pipeline.
+
+## Declarations and Durable Scope
+
+Use the CLI's `vibe compile --declaration` to publish declarations alongside a
+bundled library. Those declarations preserve Result contracts, requirement rows,
+and calling conventions. The bundler plugin does not generate declarations itself.
+
+The new plugin refuses `vibelang:flows` instead of materializing the withdrawn
+ordinary-body durable profile. Use `vibe plan` for the current static Plan
+pipeline. Production durable-host packaging and Plan integration into general
+bundled execution are still unfinished; a successful bundler test is not a
+claim that those obligations are complete. See [Durable Execution](/guide/durable-execution).

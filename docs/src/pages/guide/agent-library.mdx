@@ -1,6 +1,6 @@
 # Agent Library [Run generated TypeScript with an explicit authority surface]
 
-Smithers's coding-agent library builds on ordinary TypeScript, typed functions,
+VibeLang's coding-agent library builds on ordinary TypeScript, typed functions,
 Actions, Flows, and the built-in MDX loader. It does not add agent-specific
 language syntax.
 
@@ -9,8 +9,8 @@ The library contract is accepted, while the package name, constructor names,
 MDX component vocabulary, provider adapters, journal format, and durable-turn
 API remain open. Names on this page communicate the intended shape.
 
-Do not transcribe the specifier: `@smithers/agent` is **not** a published
-package. What ships today is `smthrs/agent`, and `CodingAgent.make` is real on
+Do not transcribe the specifier: `@vibelang/agent` is **not** a published
+package. What ships today is `vibelang/agent`, and `CodingAgent.make` is real on
 it. The sandbox is not — the shipped sandbox is `DenoSubprocessSandbox`, and
 `TypeScriptSandbox` is one of the open constructor names above. Its limits are
 numbers, not duration or size strings: `timeoutMs: number` and
@@ -23,7 +23,7 @@ numbers, not duration or size strings: `timeoutMs: number` and
 An agent receives a model, prompt, sandbox, and table of callable functions:
 
 ```ts
-import { CodingAgent, TypeScriptSandbox } from "@smithers/agent"
+import { CodingAgent, TypeScriptSandbox } from "@vibelang/agent"
 import CodingPrompt from "./coding-agent.mdx" with { type: "mdx" }
 
 const Coder = CodingAgent.make({
@@ -97,7 +97,7 @@ The agent package supplies ordinary MDX components:
 <Task>{task}</Task>
 ```
 
-The Smithers compiler loads MDX as a typed module. The agent library decides how components become provider messages, attachments, and model-specific payloads.
+The VibeLang compiler loads MDX as a typed module. The agent library decides how components become provider messages, attachments, and model-specific payloads.
 
 What the shipped renderer actually collects, measured 2026-08-28, is narrower
 than the sample: `<System>`, `<Context>`, and `<Task>` only, and only in paired

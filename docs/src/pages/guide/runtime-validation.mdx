@@ -1,14 +1,14 @@
 # Runtime Validation [Derive schemas from the types you already use]
 
-Static types disappear before untrusted data reaches your program. Smithers uses comptime to derive runtime validators and codecs from ordinary types.
+Static types disappear before untrusted data reaches your program. VibeLang uses comptime to derive runtime validators and codecs from ordinary types.
 
 ## Derive a Schema
 
 Start with the application type:
 
 ```ts
-import { comptime } from "smithers:comptime"
-import { Schema } from "smithers:schema"
+import { comptime } from "vibelang:comptime"
+import { Schema } from "vibelang:schema"
 
 type SignupRequest = {
   email: string

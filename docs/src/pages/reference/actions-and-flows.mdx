@@ -34,7 +34,7 @@ inspection executes an Action implementation.
 Outside a Flow, `run` **refuses**. There is no direct-dispatch path: it throws
 `Action.run and durable control helpers are valid only while compiling a Flow`
 (`poc/src/durable/authoring.ts`), and the platform-neutral facade
-`smthrs/provider` throws its own equivalent. This is deliberate rather than
+`vibelang/provider` throws its own equivalent. This is deliberate rather than
 unfinished — an Action that executed without a journal would produce an effect
 the coordinator cannot replay, deduplicate, or attribute to a site identity, so
 the refusal is what keeps the recovery and reuse policies below meaningful. To
@@ -44,7 +44,7 @@ run it durably, call it from a Flow.
 ## Flow
 
 ```ts
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 
 const Name = durable(function Name(
   input: Input,

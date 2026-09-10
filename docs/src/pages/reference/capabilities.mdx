@@ -3,7 +3,7 @@
 ## Declaration and Access
 
 ```ts
-import { Context } from "smthrs/context"
+import { Context } from "vibelang/context"
 
 abstract class Service extends Context {
   abstract operation(input: Input): Result<Output, ServiceError>
@@ -67,7 +67,7 @@ language deliberately accepts. Recorded in `DECISIONS.md` §Requirements and
 dependency injection; not resolved here.
 :::
 
-Provider composition is a library API from `smthrs/provider`; there is no special provider statement syntax.
+Provider composition is a library API from `vibelang/provider`; there is no special provider statement syntax.
 
 Base Layers receive already acquired service instances. Acquisition and cleanup are explicit ordinary code, initially with `using`; the Layer owns neither the resource nor its finalizer.
 
@@ -79,7 +79,7 @@ tests supply deterministic ones.
 
 ## Scope and Open Semantics
 
-`Layer.provide(layer, body)` keeps the environment active through `body` and the Promise returned by `body`, then revokes it. A Layer does not supervise or join other work, and authored `.sm` has no detached Promise path.
+`Layer.provide(layer, body)` keeps the environment active through `body` and the Promise returned by `body`, then revokes it. A Layer does not supervise or join other work, and authored `.vibe` has no detached Promise path.
 
 Revocation is **structural**, not a settlement hook. `Layer.provide` installs a
 handler that answers the capability keys the layer provides; the handler holds
@@ -111,21 +111,12 @@ Hosts previously refused for lacking a synchronous settlement hook are now fully
 supported. See
 [Requirements](/specification/requirements) §Amendment Record.
 
-:::danger Not yet implemented — (SA-6), measured 2026-08-28
-The runtime on this branch still enforces all three withdrawn obligations, so
-this section describes the decision and not the behaviour. `Layer.provide` is
-implemented with `v8.promiseHooks.createHook` and `AsyncLocalStorage`
-(`poc/src/runtime/layer.ts`) — a settlement hook and ambient storage, which is
-what "structural, not a settlement hook" above says was removed. Reproduce:
+:::note Implementation checkpoint — (SA-6), 2026-09-05
+The runtime no longer requires V8 settlement hooks or an adapter for a
+pre-existing Promise. Compiled Layer scopes install lexical handlers; ordinary
+eager and native callers also use an AsyncLocalStorage compatibility bridge.
 
-```js
-await Layer.provide(layer, () => preExistingPromise)
-// TypeError: Layer.provide async body must return a Promise created by that
-// body; wrap an existing Promise with `async () => await promise`
-```
-
-The refusal quotes the withdrawn adapter verbatim as the required remedy, and a
-host without exact settlement hooks is still refused outright. Until the runtime
-is migrated, treat the paragraph above as the target and the error message as
-the contract.
+The earlier promise-provenance error shown here is historical, not a current
+remedy. Promise ownership and environment lifetime still apply, and complete
+structural coverage is not established merely by removing the old refusal.
 :::

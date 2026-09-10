@@ -1,5 +1,5 @@
 ---
-title: Smithers · The Programming language for agents
+title: VibeLang · The programming language for agents
 layout: minimal
 description: A TypeScript-derived language with compiler support for reliable tools and agents.
 showAskAi: false
@@ -10,16 +10,16 @@ showSidebar: false
 
 import { CopyPromptButton } from '../components/CopyPromptButton'
 
-<div className="smithers-home">
-  <div className="smithers-home__art" aria-hidden="true" />
+<div className="vibelang-home">
+  <div className="vibelang-home__art" aria-hidden="true" />
 
-  <section className="smithers-home__hero">
-    <div className="smithers-home__example" aria-label="Smithers code example">
-      <div className="smithers-home-code__header">
-        <span>main.sm</span>
-        <span className="smithers-home-code__status"><i /> read only</span>
+  <section className="vibelang-home__hero">
+    <div className="vibelang-home__example" aria-label="VibeLang code example">
+      <div className="vibelang-home-code__header">
+        <span>main.vibe</span>
+        <span className="vibelang-home-code__status"><i /> read only</span>
       </div>
-      <pre className="smithers-home-code"><code>
+      <pre className="vibelang-home-code"><code>
         <span className="line"><i>1</i><b>class</b> <strong>NotFound</strong> <b>extends</b> Error {'{}'}</span>
         <span className="line"><i>2</i></span>
         <span className="line"><i>3</i><b>function</b> <strong>getUser</strong>(id: <em>number</em>): <strong>Result</strong>&lt;<em>string</em>, <strong>NotFound</strong>&gt; {'{'}</span>
@@ -29,42 +29,39 @@ import { CopyPromptButton } from '../components/CopyPromptButton'
         <span className="line"><i>7</i>{'}'}</span>
         <span className="line"><i>8</i></span>
         <span className="line"><i>9</i><b>export function</b> <strong>main</strong>(): <strong>Result</strong>&lt;<em>string</em>, <strong>NotFound</strong>&gt; {'{'}</span>
-        <span className="line"><i>10</i>  <b>return</b> getUser(<mark>2</mark>)<strong>!</strong></span>
-        <span className="line"><i>11</i>{'}'}</span>
+        <span className="line"><i>10</i>  <b>const</b> user = getUser(<mark>2</mark>)<strong>!</strong></span>
+        <span className="line"><i>11</i>  <b>return</b> <q>`hello ${'{'}user{'}'}`</q></span>
+        <span className="line"><i>12</i>{'}'}</span>
       </code></pre>
-      <div className="smithers-home-code__output"><span>output</span><strong>missing</strong></div>
+      <div className="vibelang-home-code__output"><span>vibe check</span><strong>main · failures: NotFound · requirements: none</strong></div>
     </div>
 
-    <div className="smithers-home__intro">
-      <div className="smithers-home__eyebrow">The Programming language for agents</div>
-      <h1><span className="smithers-gradient">Smithers</span></h1>
-      <div className="smithers-home__tagline">
+    <div className="vibelang-home__intro">
+      <div className="vibelang-home__eyebrow">The programming language for agents</div>
+      <h1><span className="vibelang-gradient">VibeLang</span></h1>
+      <div className="vibelang-home__tagline">
         Build <span>reliable agentic systems</span> with the full power of the <span>TypeScript ecosystem</span>.
       </div>
-      <div className="smithers-home__actions">
+      <div className="vibelang-home__actions">
         <CopyPromptButton />
-        <button className="smithers-watch-video" type="button" aria-disabled="true">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 5 7 5-7 5Z" /></svg>
-          Watch Video
-        </button>
       </div>
-      <div id="smithers-home-install">
+      <div id="vibelang-home-install">
 
   :::code-group{syncKey=""}
 
   ```bash [npm]
-  npm install --save-dev smthrs
-  npx smithers init
+  npm install --save-dev vibelang
+  npx vibe init
   ```
 
   ```bash [pnpm]
-  pnpm add --save-dev smthrs
-  pnpm exec smithers init
+  pnpm add --save-dev vibelang
+  pnpm exec vibe init
   ```
 
   ```bash [bun]
-  bun add --dev smthrs
-  bunx smithers init
+  bun add --dev vibelang
+  bunx vibe init
   ```
 
   :::

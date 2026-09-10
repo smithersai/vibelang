@@ -1,6 +1,6 @@
 # Comptime [Evaluate deterministic code and produce types during compilation]
 
-Smithers uses compile-time execution for work that the compiler can prove depends only on compiler-known inputs. The imported `comptime(...)` compiler intrinsic requires evaluation and reports an error when the work cannot be completed during the build. It is ordinary call syntax, not a language keyword.
+VibeLang uses compile-time execution for work that the compiler can prove depends only on compiler-known inputs. The imported `comptime(...)` compiler intrinsic requires evaluation and reports an error when the work cannot be completed during the build. It is ordinary call syntax, not a language keyword.
 
 ## Automatic Evaluation
 
@@ -18,7 +18,7 @@ You do not need to mark routine constant folding.
 Import `comptime` when the result must exist during compilation:
 
 ```ts
-import { comptime, embed } from "smithers:comptime"
+import { comptime, embed } from "vibelang:comptime"
 
 const routes = comptime(parseRoutes(embed("./routes.json")))
 ```
@@ -52,7 +52,7 @@ const routes = comptime(() => {
 Comptime values can produce types:
 
 ```ts
-import { comptime, embed } from "smithers:comptime"
+import { comptime, embed } from "vibelang:comptime"
 
 const Api = comptime(deriveApi(JSON.parse(embed("./api.json"))))
 ```
@@ -78,7 +78,7 @@ remains to be specified. Unsupported type production must fail compilation.
 `comptime.target` describes the selected output environment.
 
 :::warning The documented target names are not reachable yet — measured 2026-08-28
-The shipped `smithers` CLI hard-codes the target to `"node-es2022"` and no flag
+The shipped `vibe` CLI hard-codes the target to `"node-es2022"` and no flag
 changes it, so the lookup below fails with `VCT1004`, `property "node-es2022" is
 absent from the comptime value`. The pattern is right; give the record a
 `"node-es2022"` key, or key it on whatever `target` your own programmatic host
@@ -86,7 +86,7 @@ passes. See [Comptime](/reference/comptime) §Target Selection.
 :::
 
 ```ts
-import { comptime } from "smithers:comptime"
+import { comptime } from "vibelang:comptime"
 
 const transports = {
   browser: BrowserTransport,
@@ -106,7 +106,7 @@ Branches for other targets are removed from the artifact. Their implementations 
 Comptime can read source assets through tracked imports and embedding APIs:
 
 ```ts
-import { comptime } from "smithers:comptime"
+import { comptime } from "vibelang:comptime"
 import query from "./find-user.sql" with { type: "text" }
 
 const plan = comptime(optimize(query))
@@ -134,7 +134,7 @@ Hermetic does not mean isolated from all input. It means every input is declared
 The same function may be callable in both phases when its operations are valid in both:
 
 ```ts
-import { comptime } from "smithers:comptime"
+import { comptime } from "vibelang:comptime"
 
 function slugify(value: string): string {
   return value.trim().toLowerCase().replaceAll(" ", "-")

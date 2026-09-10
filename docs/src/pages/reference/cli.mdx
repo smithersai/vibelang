@@ -1,25 +1,30 @@
 # CLI [Target compiler, tooling, and deployment commands]
 
-The `smithers` command operates on one checked project graph. Project commands
-resolve `.sm`, TypeScript, JavaScript, generated asset modules, compiler-known
+The `vibe` command operates on one checked project graph. Project commands
+resolve `.vibe`, TypeScript, JavaScript, generated asset modules, compiler-known
 inputs, and package declarations before they emit or execute anything.
 
 Users do not select a compiler implementation or lowering backend. The command
-contract is defined by Smithers semantics and the selected JavaScript host.
+contract is defined by VibeLang semantics and the selected JavaScript host.
+
+This page includes target commands; not every command below is shipped. The
+`plan` section documents the current native Go-backed inspection command.
+Existing `--backend js|go` flags select SDK or direct-native delivery profiles,
+not different compiler libraries: both use the same pinned Go TypeScript engine.
 
 ## Commands
 
 ```bash
-smithers check src/index.sm
-smithers compile src/index.sm --outDir build
-smithers run src/index.sm
-smithers test
-smithers inspect src/index.sm --format json
-smithers plan build/Build.flow.json --input preview.json
-smithers build --outDir dist
-smithers format . --check
-smithers lsp
-smithers doctor --format json
+vibe check src/index.vibe
+vibe compile src/index.vibe --outDir build
+vibe run src/index.vibe
+vibe test
+vibe inspect src/index.vibe --format json
+vibe plan src/build.vibe --input preview.json --providers providers.json --planId build/preview
+vibe build --outDir dist
+vibe format . --check
+vibe lsp
+vibe doctor --format json
 ```
 
 | Command | Contract |
@@ -29,15 +34,15 @@ smithers doctor --format json
 | `run` | Checks and executes one application entry on the selected JavaScript host. |
 | `test` | Discovers, checks, and runs the project's tests with deterministic reporting and configured resource limits. |
 | `inspect` | Reports types, failure and requirement rows, compiler-known inputs, generated modules, and Flow metadata without executing the program. |
-| `plan` | Reads a compiled Flow's Effect Manifest, validates optional preview input, and prints the Flow's reachable Actions, requirement row, external-input contracts, and failure row without loading the Flow body or dispatching Actions. |
+| `plan` | Derives and publishes a keyed node graph from checked source, explicit input and provider declarations, without executing the Flow or dispatching Actions. Historical Manifest inspection requires explicit compatibility mode. |
 | `build` | Resolves deployment providers and emits coordinator, worker, manifest, codec, and signature inputs for selected Flows. |
 | `format` | Formats supported source files or checks whether they are formatted. |
-| `lsp` | Runs the Smithers language server over stdio. |
+| `lsp` | Runs the VibeLang language server over stdio. |
 | `doctor` | Reports whether the configured compiler, JavaScript host, foreign toolchains, signing setup, and sandbox providers satisfy the project contract. |
 
 ## Project Selection
 
-Commands load project configuration from the nearest Smithers configuration
+Commands load project configuration from the nearest VibeLang configuration
 file unless `--project` selects one explicitly. An entry path is resolved inside
 that project. Source identity uses canonical project-relative paths; aliases
 that make one file appear under multiple identities are rejected.
@@ -54,8 +59,8 @@ selection, and exact project-root flags remain to be specified.
 ## Check
 
 ```bash
-smithers check src/index.sm
-smithers check --project smithers.json --format json
+vibe check src/index.vibe
+vibe check --project vibelang.json --format json
 ```
 
 `check` performs the same graph discovery, asset loading, comptime evaluation,
@@ -65,7 +70,7 @@ semantic checks as `compile`, but never emits project artifacts.
 ## Compile
 
 ```bash
-smithers compile src/index.sm \
+vibe compile src/index.vibe \
   --outDir build \
   --declaration \
   --sourceMap
@@ -77,14 +82,14 @@ artifacts; package and host-module imports remain external unless the project
 selects a bundling integration.
 
 Declarations preserve public Result failures and compiler-inferred requirement
-rows for downstream Smithers consumers. Source maps trace generated JavaScript
-back through Smithers and comptime lowering to authored source. Compiler-created
+rows for downstream VibeLang consumers. Source maps trace generated JavaScript
+back through VibeLang and comptime lowering to authored source. Compiler-created
 text with no authored location remains explicitly unmapped.
 
 ## Run
 
 ```bash
-smithers run src/index.sm -- arg1 arg2
+vibe run src/index.vibe -- arg1 arg2
 ```
 
 `run` checks the same graph as `compile`, creates an isolated temporary output
@@ -98,8 +103,8 @@ separate result fields and never corrupt the command envelope.
 ## Test
 
 ```bash
-smithers test
-smithers test test/account.sm --timeout 30s --format json
+vibe test
+vibe test test/account.vibe --timeout 30s --format json
 ```
 
 The test runner discovers tests according to project configuration, checks all
@@ -116,8 +121,8 @@ fixtures, watch mode, and coverage integration remain open.
 ## Inspect
 
 ```bash
-smithers inspect src/index.sm
-smithers inspect src/index.sm --format json
+vibe inspect src/index.vibe
+vibe inspect src/index.vibe --format json
 ```
 
 `inspect` is a read-only semantic query. Its structured output includes the
@@ -126,47 +131,101 @@ comptime and loader inputs, generated module identities, and compiled Flow and
 Action contracts. It does not classify code for withdrawn non-TypeScript
 targets.
 
-## Plan and Build
+## Plan
 
 ```bash
-smithers plan build/Build.flow.json --input preview.json
-smithers build --flow Build --outDir dist
+vibe plan src/build.vibe \
+  --input preview.json \
+  --providers providers.json \
+  --planId build/preview \
+  --outFile build/preview.plan.json \
+  --format json
 ```
 
-`plan` performs the **inspection** phase. It consumes a Flow's Effect Manifest
-**(PR-1)**, verifies the Flow identity and schema, validates optional preview
-input, and reports the Flow's reachable Actions, capability requirement row,
-external-input contracts, and failure row. It never loads or invokes the emitted
-Flow body and never dispatches an Action.
+`plan` defaults to `--profile keyed`. It accepts exactly one `.vibe` source entry
+and requires the three explicit options above. The input file contains the JSON
+encoding of the Flow's input, including for a Flow that performs no Actions. The
+providers file contains an array; each referenced Action needs an explicit
+declaration of this shape (use `[]` when no provider is needed):
 
-What it reports is a **bound on what the Flow may request**, not a prediction of
-what a run will do. The Manifest carries no control-flow edges, no branch
-structure, and no execution counts, so a branch whose condition is unknown is not
-reported at all — the previous behavior of emitting an explicit conditional or a
-parameterized fan-out template is withdrawn, not reworded.
+```json
+[
+  {
+    "actionId": "build.vibe#Compile",
+    "implementationId": "compile/v1",
+    "implementationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "tier": "sealed",
+    "effects": { "boundaryMode": "hard", "reads": [], "writes": [] },
+    "layers": [],
+    "capabilities": []
+  }
+]
+```
 
-`build` resolves the selected deployment Layers, validates every Action
-provider and policy, partitions coordinator and worker artifacts, derives wire
-codecs, and emits a canonical deployment manifest. The emitted Flow body must
-survive tree-shaking into every artifact that can create or resume an execution
-of that Flow. Signing is a separate explicit step or configured build policy; an
-unsigned artifact cannot be silently treated as authenticated, and a signature
-attests to what a Flow **is and may request**, not to what a run will do.
+These are inspection declarations, not verified provider bytes or execution
+authority. The example digest is a placeholder, not an authenticated bundle.
+The compiler does not infer missing providers, tiers or effects. A graph digest
+does not constitute approval: execution separately requires authenticated
+source/provider/runtime artifacts and approval of the complete invocation,
+including its input, authority envelope and deployment identity.
 
-:::note Direction
-The artifact extension, provider configuration, signing commands, deployment
-profiles, and remote publication workflow remain open. The command is still
-spelled `plan` although the artifact it reads is the Effect Manifest rather than
-a plan; whether to rename it is a product decision no page has made, so it is
-recorded here rather than pre-empted.
+The Go compiler checks the source and input contract and emits canonical Plan
+bytes containing all nodes in the supported graph, dependency edges, keys,
+declared effects, `baseDigest`, and `digest`. It never invokes the authored Flow,
+module initializers or callbacks to discover work. Static child Flows, bounded
+static fan-out and checked pure value computations are supported. Ordinary
+loops, mutable/module captures, graph-dependent branch selection and bounded
+runtime rounds still refuse; rejection never falls back to body replay or a
+sets-only Manifest.
+
+`--exportName` selects an exported Flow when needed. `--flowId` overrides its
+declaration-derived identity; `--flowVersion` defaults to 1 and must be a positive
+safe integer. `--rootDir` bounds source discovery and sets project-relative
+identities; it defaults to the entry file's directory. Only deterministically
+resolved `.vibe` dependencies inside that root are included. Ambiguous imports
+and hard-link identity aliases refuse. The source closure is limited to 257
+files and 2 MiB in total. Input and provider files are limited to 16 MiB each.
+All files must be regular UTF-8 files. Original source bytes, including a source
+BOM, contribute to identity; JSON BOMs, duplicate keys, negative zero and other
+noncanonical durable values are rejected by Go before a host JSON parser can
+discard that evidence.
+
+The JSON report carries `profile: "keyed"`, `planId`, `digest`, and `plan`.
+`--outFile` writes the compiler's canonical Plan bytes followed by a newline,
+only after successful checking. It cannot name a source, dependency, input or
+providers file, including a hard-link alias, or an output symlink (even a dangling
+one). A refusal preserves the prior output. Native source/data refusals exit 1.
+Command-handler misuse, unreadable files and output collisions exit 2. The CLI
+argument parser's own schema errors (for example, an invalid `--flowVersion`)
+exit 1 with `VALIDATION_ERROR` before the command handler runs.
+
+Historical inspection remains available explicitly:
+
+```bash
+vibe plan src/build.vibe --profile manifest-compat \
+  --bindings actions.json --outFile build/preview.manifest.json --format json
+```
+
+This mode preserves the old Effect Manifest and binding-file contract; it is
+not a keyed Plan or execution approval. Supplying `--bindings` alone does not
+select it. Mixing keyed options with this compatibility profile is refused.
+
+## Build
+
+:::note Target deployment command
+Deployment-provider resolution, coordinator/worker packaging and signing policy
+remain product-integration work. The shipped `vibe build` still forwards
+TypeScript project-reference builds to the Go compiler; it is not yet a command
+for deploying a durable Flow. The keyed `plan` command does not change the
+historical `compile`/`run` body-emission path into the new durable runtime.
 :::
 
 ## Format
 
 ```bash
-smithers format src test
-smithers format . --check
-smithers format src/index.sm --stdout
+vibe format src test
+vibe format . --check
+vibe format src/index.vibe --stdout
 ```
 
 Formatting is deterministic and semantics-preserving. Files are written
@@ -177,7 +236,7 @@ also performs no writes.
 ## Language Server
 
 ```bash
-smithers lsp
+vibe lsp
 ```
 
 The language server speaks Content-Length-framed JSON-RPC 2.0 over stdin and
@@ -189,27 +248,34 @@ Editor behavior must use the same project model and diagnostics as `check`.
 Language-service recovery may return partial editor results, but it cannot make
 invalid code appear valid.
 
+The current alpha server supports full-document synchronization, diagnostics,
+hover, definition and formatting; the other target methods above are not yet
+implemented. Formatting, token lookup and static module-literal inspection use
+the native Go compiler. Module navigation uses the literal's exact UTF-16 range,
+excluding import-attribute strings. Semantic diagnostics and hover also use the
+Go-backed language frontend; no TypeScript 5.x compiler-library fallback remains.
+
 ## TypeScript Compatibility Commands
 
-Smithers accepts ordinary `.ts`, `.tsx`, and JavaScript-family modules in the
+VibeLang accepts ordinary `.ts`, `.tsx`, and JavaScript-family modules in the
 same project. For scripts that require exact native TypeScript CLI behavior,
 the distribution exposes a compatibility command:
 
 ```bash
-smithersc --project tsconfig.json --noEmit
-smithersc --build --verbose
+vibec --project tsconfig.json --noEmit
+vibec --build --verbose
 ```
 
-`smithersc` preserves TypeScript argument ordering, exit behavior, and output.
-It does not enable `.sm` semantics. A `tsc` alias may be installed only when the
-user requests it; Smithers must not unexpectedly replace an existing compiler.
+`vibec` preserves TypeScript argument ordering, exit behavior, and output.
+It does not enable `.vibe` semantics. A `tsc` alias may be installed only when the
+user requests it; VibeLang must not unexpectedly replace an existing compiler.
 
 ## Structured Output
 
 ```bash
-smithers check src/index.sm --format json
-smithers inspect src/index.sm --format json
-smithers test --format json
+vibe check src/index.vibe --format json
+vibe inspect src/index.vibe --format json
+vibe test --format json
 ```
 
 All commands support a versioned machine-readable result envelope. It contains

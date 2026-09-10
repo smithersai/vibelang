@@ -1,21 +1,21 @@
 ---
 title: Overview
-description: An overview of Smithers's language model, features, and design goals.
+description: An overview of VibeLang's language model, features, and design goals.
 ---
 
 # Overview
 
-Smithers starts with TypeScript-shaped source, then makes a small set of intentional changes needed to build reliable programs in the AI era.
+VibeLang starts with TypeScript-shaped source, then makes a small set of intentional changes needed to build reliable programs in the AI era.
 
 ### It's (almost) TypeScript
 
-Smithers is not a syntactic superset of TypeScript. Shared syntax keeps TypeScript behavior unless a divergence is explicitly documented, while imported `.ts`, `.tsx`, and JavaScript modules retain their own complete syntax and runtime semantics. On the TypeScript target, `.sm` constructs lower to ordinary TypeScript/JavaScript where feasible.
+VibeLang is not a syntactic superset of TypeScript. Shared syntax keeps TypeScript behavior unless a divergence is explicitly documented, while imported `.ts`, `.tsx`, and JavaScript modules retain their own complete syntax and runtime semantics. On the TypeScript target, `.vibe` constructs lower to ordinary TypeScript/JavaScript where feasible.
 
 Foreign runtime calls are checked boundaries: an unannotated JavaScript or TypeScript call adds the distinguished `panic` case. Trusted `@throws {never}` metadata opts out and `@throws {T}` declares a more precise channel.
 
 :::code-group{syncKey=""}
 
-```ts [Smithers]
+```ts [VibeLang]
 import { clamp } from "lodash-es"
 
 export function normalizeConfidence(score: number): Result<number, Panic> {
@@ -41,15 +41,15 @@ export function normalizeConfidence(score: number): number {
 
 :::
 
-LLMs have no issue learning and using Smithers because it's so close to TypeScript.
+LLMs have no issue learning and using VibeLang because it's so close to TypeScript.
 
 ### Typesafe Errors as Values
 
-One of Smithers's only changes to TypeScript is that errors are treated as strongly typed values that must be handled.
+One of VibeLang's only changes to TypeScript is that errors are treated as strongly typed values that must be handled.
 
 :::code-group{syncKey=""}
 
-```ts [Smithers]
+```ts [VibeLang]
 class NotFound extends Error {
   constructor(readonly id: string) {
     super(`User not found: ${id}`)
@@ -121,16 +121,16 @@ const user = getUser(users, id).pipe(
 
 The compiler sees `Result<User, NotFound>` and lowers the plain return and Error throw into its two variants. The caller must propagate or handle that Result. `error.match` is exhaustive over the known Error union.
 
-Result is an ordinary must-use value. There is no generator ceremony or universal effect interpreter in authored code: you write and call ordinary eager functions, with no `Effect` value, no do-notation, and no `.run()` step. The compiler may emit a function whose effect row is non-empty in a resumable calling convention, but that convention is unspellable in `.sm` and never appears in a type, a declaration, or a diagnostic.
+Result is an ordinary must-use value. There is no generator ceremony or universal effect interpreter in authored code: you write and call ordinary eager functions, with no `Effect` value, no do-notation, and no `.run()` step. The compiler may emit a function whose effect row is non-empty in a resumable calling convention, but that convention is unspellable in `.vibe` and never appears in a type, a declaration, or a diagnostic.
 
 ### Dependencies in the function signature
 
-Smithers uses an Effect-inspired context package instead of adding dependency-injection syntax. Its API looks like an ordinary library, but the compiler tracks every accessed service in the function's type signature.
+VibeLang uses an Effect-inspired context package instead of adding dependency-injection syntax. Its API looks like an ordinary library, but the compiler tracks every accessed service in the function's type signature.
 
 :::code-group{syncKey=""}
 
-```ts [Smithers]
-import { Context } from "smthrs/context"
+```ts [VibeLang]
+import { Context } from "vibelang/context"
 
 abstract class Clock extends Context {
   abstract now(): Date
@@ -203,12 +203,12 @@ The inherited `context()` method is compiler-aware. It adds the capability class
 
 ### Comptime can produce real types
 
-Smithers can run deterministic code during compilation, and the result can be a real TypeScript type. Here, a project-defined comptime function turns a tracked model file into a type the rest of the program uses normally.
+VibeLang can run deterministic code during compilation, and the result can be a real TypeScript type. Here, a project-defined comptime function turns a tracked model file into a type the rest of the program uses normally.
 
 :::code-group{syncKey=""}
 
-```ts [Smithers]
-import { comptime, embed } from "smithers:comptime"
+```ts [VibeLang]
+import { comptime, embed } from "vibelang:comptime"
 
 const Account = comptime(deriveType(JSON.parse(embed("./account.model.json"))))
 
@@ -248,19 +248,19 @@ function displayName(account: Account) {
 
 :::
 
-Effect can derive a type from an Effect schema, but the schema must become the source of truth. Smithers comptime can execute an ordinary, project-defined derivation and return a type. The compiler tracks every input, caches the result, and reports a compile error if evaluation depends on runtime state.
+Effect can derive a type from an Effect schema, but the schema must become the source of truth. VibeLang comptime can execute an ordinary, project-defined derivation and return a type. The compiler tracks every input, caches the result, and reports a compile error if evaluation depends on runtime state.
 
 ### Files become typed modules
 
-Compiler-known files participate in the same type system and incremental build graph. Smithers takes the direct-import ergonomics of [Bun's loaders](https://bun.sh/docs/bundler/loaders) and extends them with compile-time types and dependency tracking.
+Compiler-known files participate in the same type system and incremental build graph. VibeLang takes the direct-import ergonomics of [Bun's loaders](https://bun.sh/docs/bundler/loaders) and extends them with compile-time types and dependency tracking.
 
 #### JSON that keeps its literals
 
-Ordinary TypeScript can import JSON, but values such as strings and numbers are widened. Smithers's const form preserves the file as a deeply readonly literal value.
+Ordinary TypeScript can import JSON, but values such as strings and numbers are widened. VibeLang's const form preserves the file as a deeply readonly literal value.
 
 :::code-group{syncKey=""}
 
-```ts [Smithers]
+```ts [VibeLang]
 import config from "./agent.config.json" with {
   type: "json",
   mode: "const",
@@ -298,7 +298,7 @@ A Markdown file imports as a string at compile time. It can go straight into a m
 
 :::code-group{syncKey=""}
 
-```ts [Smithers]
+```ts [VibeLang]
 import systemPrompt from "./system.md" with { type: "text" }
 
 const response = (await model.generate({
@@ -337,15 +337,15 @@ const response = Effect.gen(function* () {
 #### Rust and Zig import like source modules
 
 Existing Node-API packages built with napi-rs remain ordinary npm dependencies.
-Smithers is *designed* to import local Rust and Zig sources, drive the foreign
+VibeLang is *designed* to import local Rust and Zig sources, drive the foreign
 compiler, and generate checked Wasm bindings that the JavaScript host calls.
 **This part is not implemented**: no `rust` or `zig` loader is registered, so
-the two foreign imports below are refused with `SMITHERS5213` today. The `json`,
+the two foreign imports below are refused with `VIBE5213` today. The `json`,
 `text`, `bytes`, `markdown`, and `mdx` imports elsewhere on this page do work.
 
 :::code-group{syncKey=""}
 
-```ts [Smithers]
+```ts [VibeLang]
 import { createCanvas } from "@napi-rs/canvas"
 import { rank } from "./rank.rs" with { type: "rust" }
 import { tokenize } from "./tokenize.zig" with { type: "zig" }
@@ -377,15 +377,15 @@ const ranked = Effect.try({
 
 :::
 
-This follows Bun's proven loader model: text files can import as strings, `.node` files use its N-API loader, and [Node-API](https://bun.sh/docs/runtime/node-api) is its stable native boundary. Smithers adds generated source bindings and records source locations, toolchain versions, and dependency edges so diagnostics, watch mode, and remote caching stay correct across every format.
+This follows Bun's proven loader model: text files can import as strings, `.node` files use its N-API loader, and [Node-API](https://bun.sh/docs/runtime/node-api) is its stable native boundary. VibeLang adds generated source bindings and records source locations, toolchain versions, and dependency edges so diagnostics, watch mode, and remote caching stay correct across every format.
 
 ### Concurrency keeps standard call syntax
 
-Async functions remain ordinary async functions. Authored Smithers consumes Promises only with `await`; a static or library combinator starts concurrent work, and `Result.all` combines expected outcomes.
+Async functions remain ordinary async functions. Authored VibeLang consumes Promises only with `await`; a static or library combinator starts concurrent work, and `Result.all` combines expected outcomes.
 
 :::code-group{syncKey=""}
 
-```ts [Smithers]
+```ts [VibeLang]
 const results = await Promise.all([
   loadProfile(userId),
   loadActivity(userId),
@@ -412,9 +412,9 @@ const load = Effect.all([
 
 :::
 
-Smithers bans Promise instance `.then()`, `.catch()`, and `.finally()` in authored source. Structured cancellation and child ownership belong in an explicit library combinator rather than custom parser syntax. Effect provides those guarantees through Effect values and its fiber runtime.
+VibeLang bans Promise instance `.then()`, `.catch()`, and `.finally()` in authored source. Structured cancellation and child ownership belong in an explicit library combinator rather than custom parser syntax. Effect provides those guarantees through Effect values and its fiber runtime.
 
-Every Promise started in authored `.sm` must ultimately be consumed by `await`, directly or through a recognized combinator whose returned Promise is consumed. There is no detach operation, and Layers do not supervise task lifetime.
+Every Promise started in authored `.vibe` must ultimately be consumed by `await`, directly or through a recognized combinator whose returned Promise is consumed. There is no detach operation, and Layers do not supervise task lifetime.
 
 ### Make execution durable where it matters
 
@@ -426,8 +426,8 @@ without changing their source-level contract.
 
 :::code-group{syncKey=""}
 
-```ts [Smithers]
-import { durable } from "smithers:flows"
+```ts [VibeLang]
+import { durable } from "vibelang:flows"
 
 abstract class Research extends Action<
   (input: ResearchInput) => Result<Report, ResearchFailed>
@@ -477,20 +477,20 @@ journaled across process restarts by itself.
 
 ### Start with TypeScript, stay with TypeScript
 
-Use the TypeScript ecosystem as it is — its packages, tools, and deployment infrastructure. Smithers emits ordinary TypeScript, so adoption is incremental and reversible, and compute-heavy work can call into Zig or Rust through generated Wasm bindings without switching languages.
+Use the TypeScript ecosystem as it is — its packages, tools, and deployment infrastructure. VibeLang emits ordinary TypeScript, so adoption is incremental and reversible, and compute-heavy work can call into Zig or Rust through generated Wasm bindings without switching languages.
 
 TypeScript is the only compilation target. Near-native and general Wasm targets
 are outside the language contract. Wasm remains available as a library format
 for foreign modules called by a JavaScript host.
 
-Teams can adopt Smithers inside an existing TypeScript codebase and change
+Teams can adopt VibeLang inside an existing TypeScript codebase and change
 JavaScript hosts or deployment topologies without changing the language model.
 
 ## Features
 
-Smithers is designed to provide these capabilities out of the box:
+VibeLang is designed to provide these capabilities out of the box:
 
-- **TypeScript ecosystem:** import TypeScript packages at an explicit foreign boundary while authored `.sm` keeps its own grammar
+- **TypeScript ecosystem:** import TypeScript packages at an explicit foreign boundary while authored `.vibe` keeps its own grammar
 - **Foreign source imports:** call Zig and Rust through generated, typed Wasm bindings without hand-written glue
 - **Comptime type generation:** derive validators, codecs, and real types without maintaining a parallel schema language
 - **Durable programs:** run ordinary functions under a journaling handler so they resume after interruption and coordinate work across machines
@@ -503,9 +503,9 @@ Smithers is designed to provide these capabilities out of the box:
 
 Reliable agents need more than a tool-call protocol. They need explicit authority, recoverable failures, runtime validation, deterministic compilation, and durable work that can resume after interruption.
 
-Smithers makes those concerns part of one language model. Generated TypeScript runs with an explicit function surface, platform access is capability-based, and Actions or Flows add durability only where the program asks for it.
+VibeLang makes those concerns part of one language model. Generated TypeScript runs with an explicit function surface, platform access is capability-based, and Actions or Flows add durability only where the program asks for it.
 
-Read the [Agent Library guide](/guide/agent-library) or start with [Why Smithers?](/introduction/why-smithers).
+Read the [Agent Library guide](/guide/agent-library) or start with [Why VibeLang?](/introduction/why-vibelang).
 
 ## Help shape the language
 
@@ -513,4 +513,4 @@ Read the [specification status](/specification/) for the target contract and its
 **Locked**, **Direction**, and **Open** maturity labels. Concrete feedback on
 directional and open decisions can still change the language.
 
-Review the [specification](/specification/) or join the project on [GitHub](https://github.com/smithersai/smithers).
+Review the [specification](/specification/) or join the project on [GitHub](https://github.com/smithersai/vibelang).

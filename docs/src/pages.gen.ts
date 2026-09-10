@@ -21,7 +21,7 @@ type Page =
   | { path: '/introduction/getting-started'; render: 'static' }
   | { path: '/introduction/overview'; render: 'static' }
   | { path: '/introduction/philosophy'; render: 'static' }
-  | { path: '/introduction/why-smithers'; render: 'static' }
+  | { path: '/introduction/why-vibelang'; render: 'static' }
   | { path: '/reference/actions-and-flows'; render: 'static' }
   | { path: '/reference/capabilities'; render: 'static' }
   | { path: '/reference/cli'; render: 'static' }
@@ -36,6 +36,7 @@ type Page =
   | { path: '/specification/comptime'; render: 'static' }
   | { path: '/specification/control-flow'; render: 'static' }
   | { path: '/specification/durable-execution'; render: 'static' }
+  | { path: '/specification/effects'; render: 'static' }
   | { path: '/specification/failures'; render: 'static' }
   | { path: '/specification'; render: 'static' }
   | { path: '/specification/requirements'; render: 'static' }

@@ -47,14 +47,14 @@ There is no failure annotation, prefix propagation expression, postfix catch exp
 
 The API is modelled on [better-result](https://github.com/dmmulroy/better-result).
 
-This table is the **complete** set of members an authored `.sm` program may call
+This table is the **complete** set of members an authored `.vibe` program may call
 on a Result, on **both** backends. It is not a subset of a larger library
 surface: a member that is not listed here does not discharge the must-use
-obligation, so calling one is reported as `SMITHERS1301` ("Result value is not
+obligation, so calling one is reported as `VIBE1301` ("Result value is not
 consumed") rather than as an unknown property.
 
 `unwrap()` is not on it, and is not an omission: it was the propagation spelling
-before postfix `!`, and the authored call is refused as `SMITHERS1206`
+before postfix `!`, and the authored call is refused as `VIBE1206`
 (`19-retired-syntax/result-dot-unwrap-is-retired`). The compiler-owned runtime
 keeps an `unwrap` as its missed-lowering fallback so an untransformed program
 fails visibly; that is not authoring surface, and it is deliberately excluded
@@ -65,69 +65,43 @@ from the discharge set.
 | `isOk()`, `isError()` | inspect and narrow the variant |
 | `match({ ok, error })` | exhaustively produce a value from either variant |
 | `map`, `mapError` | transform one side |
-| `andThen` | sequence success-dependent work |
+| `andThen`, `andThenAsync` | sequence success-dependent work; the async form returns a Promise |
 | `flatten` | collapse one level of Result-in-Result nesting |
 | `recover` | replace an error with a value or a Result |
+| `tryRecover`, `tryRecoverAsync` | recover with a checked fallible callback |
 | `tap`, `tapError`, `tapBoth` | observe without changing the Result |
+| `tapAsync`, `tapErrorAsync`, `tapBothAsync` | await observers without changing the Result |
 | `expr!` | compiler propagation point |
 | `unwrapOr`, `expect` | extract with fallback or invariant message |
-| `Result.all` | collect Results, returning the first error |
+| `Result.all`, `Result.allAsync` | collect Results, selecting the first error by input order |
+| `Result.partition`, `Result.partitionAsync` | collect successes and recoverable failures separately |
 | `Result.try`, `Result.tryPromise` | adapt a foreign throwing/rejecting operation |
+| `Result.codec` | compose a checked codec for the success and nominal Error channels |
 
-`flatten` and `tapBoth` reach both backends as of 2026-08-28. They were the last
-two members that did not: the Go fork carries its own, independent copy of the
-must-use discharge set (`resultConsumerMembers` in
-`compiler/forkbridge/lowering.go.txt`) and had not learned either name, so it
-refused both with `SMITHERS1301` while the reference ran them. The fork's list
-and both of its prelude classes now declare them, and
-`compiler/fork_result_member_surface_test.go` fails if that list and the
-reference's `RESULT_MEMBER_SIGNATURES` ever name different members again — the
-copy is pinned rather than removed, because the fork's copy is Go source
-compiled into a foreign checkout and cannot read a TypeScript module here.
-`01-result-lifting/result-flatten-collapses-one-level-of-nesting` and
-`01-result-lifting/result-tap-both-observes-whichever-variant-is-active` now
-pass on both backends. See **(SA-7)** in
-[Specification Status](/specification/index) §Specification–Implementation Gaps
-for the ten members that still exist nowhere.
+The member set is implemented on both backends as of 2026-09-05, including the
+async mirrors, fallible recovery, partitions and codecs. The independent Go
+prelude and reference checker lists are pinned by
+`compiler/fork_result_member_surface_test.go`; executed collection and codec
+fixtures cover their behavior. See **(SA-7)** in
+[Specification Status](/specification/index).
 
-Not provided, because Smithers supplies them another way: `Result.ok` and `Result.err` (use `return` and `throw`), `TaggedError` (use `class ... extends Error`), and `Result.gen`/`yield*` (use `!`).
-
-Serialization is not a Result member. The boundary codecs are module-level
-functions on `smthrs/result` — `encodeResult`, `decodeResult`, `encodeError`,
-`decodeError`, `registerErrorCodec` — because a codec is a property of the
-transport, not of one value. See §Transport.
-
-Results are must-use.
+Async collections join every submitted input before returning, including when
+iteration fails partway through submission. They choose failures by input order,
+not arrival order. Their returned Promise still must be consumed. Ordinary
+recovery and partitioning do not turn a panic into a domain failure.
 
 ### Deliberately absent
 
-An asynchronous mirror of the combinator set (`andThenAsync`, `tapAsync`,
-`tapErrorAsync`, `tapBothAsync`, `Result.allAsync`, `Result.partitionAsync`) is
-**not** provided. The blocker is not the runtime half; it is that a callback
-returning `Promise<Result<…>>` is a new shape for the must-use ownership walk,
-and an order-sensitive `allAsync` collides with
-[Actions & Flows](/reference/actions-and-flows) §Flow Determinism, which requires
-every arrival-order-dependent combinator to be dispatched through the runtime
-scheduler. Write the `await` explicitly instead: `await` unwraps the Promise and
-leaves an ordinary Result, which the synchronous combinators then handle.
+`Result.ok` and `Result.err` have no authored spelling: use `return` and
+`throw`. Declare ordinary Error subclasses instead of a `TaggedError`
+factory, and use `!` instead of `Result.gen`/`yield*` do-notation.
+These restrictions are distinct from the now-implemented Result members.
 
-`tryRecover`/`tryRecoverAsync` are absent because `recover` already accepts both
-a plain value and a Result, and it deliberately does **not** recover `panic`. A
-separate "try" recovery would first have to answer whether it enters the
-distinguished panic channel, which §Foreign Exceptions and Defects reserves.
-
-`Result.partition` is absent for the same reason: emitting the failures as a
-plain array erases the panic/domain distinction that recovery is required to
-preserve.
-
-`flatten` and `tapBoth` are no longer in this section: both moved to the table
-above, and as of 2026-08-28 there is no Go-fork gap left behind them — the fork's
-own copy of the discharge set declares both, its two prelude classes implement
-both, and the `xfail(go)` markers on
-`01-result-lifting/result-flatten-collapses-one-level-of-nesting` and
-`01-result-lifting/result-tap-both-observes-whichever-variant-is-active` are
-retired. See the note there. **(SA-7)** now records only the ten members this
-section gives reasons for.
+Results remain must-use. Serialization helpers on `vibelang/result`
+(`encodeResult`, `decodeResult`, `encodeError`, `decodeError` and
+`registerErrorCodec`) coexist with `Result.codec`, which composes a checked
+Result boundary codec. Neither makes arbitrary Error objects or forged Results
+persistable. See §Transport.
 
 ## Error Methods
 
@@ -152,7 +126,7 @@ async function load(): Promise<Result<Output, Timeout>> {
 }
 ```
 
-`await` unwraps the Promise and leaves the Result. Promise instance `.then()`, `.catch()`, and `.finally()` are compile errors in authored Smithers.
+`await` unwraps the Promise and leaves the Result. Promise instance `.then()`, `.catch()`, and `.finally()` are compile errors in authored VibeLang.
 
 ## Foreign Exceptions and Defects
 
