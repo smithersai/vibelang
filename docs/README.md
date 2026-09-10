@@ -1,4 +1,4 @@
-# Smithers documentation site
+# VibeLang documentation site
 
 The documentation site is built with [Vocs](https://vocs.dev). Source pages live in `src/pages`, navigation lives in `vocs.config.ts`, and static assets live in `public`.
 
@@ -26,7 +26,7 @@ Vocs checks internal links during the production build. Generated output is writ
 
 ## Deploy to Cloudflare
 
-The production site is deployed to `https://docs.smithers.sh` with [Alchemy](https://alchemy.run). The domain must already be an active zone in the Cloudflare account used to deploy.
+The production site is deployed to `https://vibelang.sh` with [Alchemy](https://alchemy.run). The domain must already be an active zone in the Cloudflare account used to deploy.
 
 Preview the infrastructure changes, then deploy from this directory:
 
@@ -42,7 +42,7 @@ On the first run, Alchemy prompts for Cloudflare authentication. It stores deplo
 - Guide pages explain how to use a feature and lead with examples.
 - Reference pages provide compact syntax and API lookup.
 - Specification pages distinguish locked behavior, accepted direction, and open design questions.
-- All product pages describe target Smithers behavior, including examples and
+- All product pages describe target VibeLang behavior, including examples and
   CLI/API reference pages.
 - Do not report repository progress, implementation coverage, POC behavior,
   backend parity, or production readiness in the product documentation.

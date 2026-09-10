@@ -5,7 +5,7 @@ still need design work.
 
 ## Locked requirements
 
-- Smithers can import non-code files through comptime loaders.
+- VibeLang can import non-code files through comptime loaders.
 - Every non-code or foreign-source import uses standard import attributes. The
   required string-valued `type` selects its loader; other string attributes
   configure that loader.
@@ -18,7 +18,7 @@ still need design work.
   files for those imports.
 - Existing Node-API packages, including packages built with napi-rs, remain
   ordinary npm dependencies on TypeScript runtimes. Consuming one does not
-  require Smithers-specific foreign-import syntax.
+  require VibeLang-specific foreign-import syntax.
 - Projects and packages can define loaders for any other file extension, such
   as YAML, SQL, GraphQL, images, or domain-specific formats.
 - A loader produces a normal typed module. It may export comptime values,
@@ -39,7 +39,7 @@ still need design work.
 ## TypeScript and TC39 compatibility
 
 Existing TypeScript imports keep their TypeScript meaning. In particular,
-Smithers must not silently make an already-valid TypeScript JSON import readonly
+VibeLang must not silently make an already-valid TypeScript JSON import readonly
 or change its runtime behavior.
 
 Const preservation is opt-in through import attributes:
@@ -63,24 +63,24 @@ import image from "./logo.png" with { type: "bytes" };
 ```
 
 `.ts` files continue through TypeScript's normal module rules. Loader extensions
-apply to `.sm` imports or when a TypeScript project explicitly enables the
-Smithers loader integration.
+apply to `.vibe` imports or when a TypeScript project explicitly enables the
+VibeLang loader integration.
 
 ## Bun inspiration
 
-Smithers follows Bun's useful typed-file ergonomics without adopting every Bun
+VibeLang follows Bun's useful typed-file ergonomics without adopting every Bun
 runtime mechanism. Bun can import `.txt` through its built-in text loader and
-can apply that loader to another extension with an import attribute. Smithers's
+can apply that loader to another extension with an import attribute. VibeLang's
 built-in `.md` string module applies the same direct-import idea to the common
 prompt-authoring case.
 
 Bun also has a dedicated `napi` loader for `.node` native addons, and its
 Node-API documentation presents Node-API as the stable route for native code.
-That is the model for consuming existing native npm packages on Smithers's
+That is the model for consuming existing native npm packages on VibeLang's
 TypeScript runtimes.
 
 By contrast, Bun documents `bun:ffi` and its C-ABI binding generation as
-experimental and not suitable for production reliance. Smithers's direct Rust
+experimental and not suitable for production reliance. VibeLang's direct Rust
 and Zig imports are compiler-owned, tracked foreign builds with generated typed
 modules; they are not specified as a thin wrapper over Bun's experimental C
 FFI.
@@ -93,12 +93,12 @@ References: [Bun loaders](https://bun.com/docs/bundler/loaders),
 
 A loader is a compile-time function from a compiler-owned asset and tracked
 loader context to a typed module description. This build-time object is not the
-runtime `Context` imported from `smthrs/context`; using it records incremental
+runtime `Context` imported from `vibelang/context`; using it records incremental
 dependencies and does not add capabilities to a function's `R` row. The
 candidate declaration shape is:
 
 ```typescript
-import { comptime } from "smithers:comptime";
+import { comptime } from "vibelang:comptime";
 
 export default comptime.loader("yaml", async (asset, context) => {
   const value = parseYaml(asset.text());
@@ -128,6 +128,21 @@ only inside the hermetic loader environment. The final typed-module builder,
 package registration, glob or extension selection, options, and declaration
 spelling remain open.
 
+Implementation checkpoint, 2026-09-06: registration recognition and sandbox
+source extraction now run in the native Go TypeScript compiler. The host adds
+content digests and invokes the existing sandbox; it does not parse or execute
+registrations. The bounded spelling accepts an inline function, a top-level
+function with an executable body, or an earlier single-declaration `const`
+initialized with a function. Compiler-only values cannot escape into the
+sandbox module, including through shorthand properties or namespace aliases.
+The host asset preflight now also uses Go for import discovery, authored
+positions, generated-module validation and code-module resolution. Optional
+disk resolution is read-only and confined to the explicitly supplied project
+root; it never evaluates module bodies. The host still owns asset reads,
+tracked loader execution, cache commits and file-identity admission.
+This checkpoint does not finalize the provisional registration API or claim
+that the language frontend as a whole has migrated to Go.
+
 The essential semantics do not depend on this spelling:
 
 1. Module resolution selects a loader.
@@ -137,7 +152,7 @@ The essential semantics do not depend on this spelling:
 5. The compiler emits only the runtime exports actually used by the program; erased
    types and comptime-only values produce no runtime code.
 
-A loader result must be representable in checked Smithers IR or supply an
+A loader result must be representable in checked VibeLang IR or supply an
 equivalent typed module plus span map. Returning untyped generated source is an
 interop fallback, not the preferred interface.
 
@@ -233,7 +248,7 @@ vocabularies.
 **Not implemented as of 2026-08-28.** The registered built-in loaders are
 exactly `json`, `text`, `bytes`, `markdown`, and `mdx`
 (`poc/src/build/assets.ts`); a `rust` or `zig` attribute is refused with
-`SMITHERS5213`. The requirements below are the target contract.
+`VIBE5213`. The requirements below are the target contract.
 
 Rust and Zig source files are intended to be first-class typed-file imports:
 
@@ -245,7 +260,7 @@ import { tokenize } from "./tokenizer.zig" with { type: "zig" };
 For each direct `.rs` or `.zig` import, the compiler must:
 
 1. select a foreign-language adapter for the JavaScript host and Wasm toolchain;
-2. derive a checked Smithers module interface from the exported foreign
+2. derive a checked VibeLang module interface from the exported foreign
    contract;
 3. generate the necessary typed bindings and foreign artifact;
 4. record the source, transitive foreign dependencies, toolchain, options, and
@@ -255,7 +270,7 @@ For each direct `.rs` or `.zig` import, the compiler must:
 
 The generated interface is the source of truth. Users must not need a parallel
 `.d.ts` file merely to describe the imported symbols. Changes to an exported
-foreign type or function invalidate and recheck Smithers consumers.
+foreign type or function invalidate and recheck VibeLang consumers.
 
 Direct Rust and Zig source imports produce Wasm library modules called by the
 JavaScript host. ABI layout, ownership, allocation, async callbacks, error
@@ -272,7 +287,7 @@ import { transform } from "@scope/native-transform";
 ```
 
 This includes napi-rs packages. On Node.js or Bun, the package's normal npm
-entry point and `.node` loader select the platform binary. Smithers does not
+entry point and `.node` loader select the platform binary. VibeLang does not
 recompile the package's Rust source merely because napi-rs produced it, and it
 does not require a direct `.rs` import.
 

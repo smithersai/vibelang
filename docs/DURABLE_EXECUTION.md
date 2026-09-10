@@ -1,9 +1,12 @@
 # Durable execution
 
-Status: design draft. The core Action/Flow model, the replay execution model, and
-the distributed-build requirement are locked in [`DECISIONS.md`](DECISIONS.md) and
-in [Durable Execution](/specification/durable-execution); everything else here is
-a proposed baseline unless that ledger says otherwise.
+Status: **historical ordinary-body replay draft**. The September 6 owner
+decision in [`DECISIONS.md`](DECISIONS.md) supersedes this model. The current
+[durable specification](src/pages/specification/durable-execution.mdx) describes
+static keyed Plans, full invocation approval and lineage-based history. The
+text below remains a record of the August 27 pivot, not a current source of
+replay, journal identity or Flow-body retention requirements. Sections not yet
+reconciled must be interpreted under the owner's decision, never the reverse.
 
 > [!IMPORTANT]
 > **Re-derived on 2026-08-27 against one-shot delimited continuations.**
@@ -33,7 +36,7 @@ a proposed baseline unless that ledger says otherwise.
 
 ## Product contract
 
-Smithers durable execution is a compiler and runtime contract. It does not
+VibeLang durable execution is a compiler and runtime contract. It does not
 require applications to depend on a separate graph-building workflow DSL.
 
 - An **Action** is an open runtime implementation behind a closed, durable
@@ -42,7 +45,7 @@ require applications to depend on a separate graph-building workflow DSL.
   handler. `durable(...)` does not change what the function computes; it changes
   only which handler answers the function's effect requests. Branches, loops,
   `let` bindings, closure capture, and recursion execute unchanged inside it.
-- Action implementations are ordinary Smithers functions/callbacks. Their
+- Action implementations are ordinary VibeLang functions/callbacks. Their
   success and typed failure are inferred from the body when the return
   annotation is omitted. Abstract Action signatures use explicit
   `Result<A, E>` contracts because they have no body. Requirements are inferred
@@ -55,7 +58,7 @@ require applications to depend on a separate graph-building workflow DSL.
   same Action invocation protocol.
 
 ```ts
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 
 abstract class Compile extends Action<
   (input: CompileInput) => Result<CompileOutput, CompileError>
@@ -89,7 +92,7 @@ source identity, its derived codecs, its Effect Manifest **(PR-1)**, and a
 reference to the emitted Flow body. The identity, codecs, and Manifest are
 serializable; the body is not reconstructible from them. It is not a runtime
 callback wrapper. Uncompiled JavaScript fails while loading the compiler-owned
-`smithers:flows` virtual module.
+`vibelang:flows` virtual module.
 
 The compiler emits the checked function body in the resumable calling
 convention. It does **not** call the function with proxies to discover a graph —
@@ -207,14 +210,14 @@ canonicalized iteration order at the capability boundary.
 
 The per-member walls that make the first four enforceable live in
 [Compatibility](/specification/compatibility) §Determinism-Sensitive Members and
-are **uniform across all `.sm` code**, not scoped to Flow bodies. That uniformity
+are **uniform across all `.vibe` code**, not scoped to Flow bodies. That uniformity
 is deliberate and its cost is accepted: requirement inference is whole-program, so
 a Flow's helper lives in another file, and a rule that fired only inside a Flow
 would be a per-file dialect.
 
 **Obligation 2 sits on an unratified conflict, and this draft does not settle
 it.** "MUST NOT evaluate a runtime string as code" is enforced today by a shipped
-refusal (`SMITHERS1604`: `eval`, the `Function` constructor, and selection of
+refusal (`VIBE1604`: `eval`, the `Function` constructor, and selection of
 `constructor` on a callable receiver). But
 [Compatibility](/specification/compatibility) §Dynamic Features still carries the
 Locked sentence "`any` and `eval` remain usable … the language does not forbid
@@ -337,7 +340,7 @@ contract. Plain data derives this automatically. Functions, capabilities,
 process handles, weak references, and other ephemeral values require an
 explicit durable representation or are rejected at the Action boundary.
 `any`/`unknown` require an explicit codec there; this is not a restriction on
-ordinary Smithers code.
+ordinary VibeLang code.
 
 That contract has acquired a second job under the pivot: **it is also the
 journaling classifier.** A request is journaled if and only if its answer
@@ -430,7 +433,7 @@ not reset them.
 
 ## Providers
 
-Provider composition comes from `smthrs/provider`; there is no special
+Provider composition comes from `vibelang/provider`; there is no special
 `provide { ... }` statement. Exact API spelling remains open. A base dependency
 environment has the type:
 
@@ -457,7 +460,7 @@ Ordinary implementations obtain services through the compiler-recognized
 context library rather than through explicit function parameters:
 
 ```ts
-import { Context } from "smthrs/context"
+import { Context } from "vibelang/context"
 
 abstract class ArtifactStore extends Context {
   abstract put(artifact: Artifact): Result<ArtifactRef, ArtifactStoreError>
@@ -476,7 +479,7 @@ requirement in the deployment closure.
 Conceptually:
 
 ```ts
-import { Action, Layer } from "smthrs/provider"
+import { Action, Layer } from "vibelang/provider"
 
 const BuildActions = Layer.merge(
   Action.provide(Compile, compileWithEsbuild, {
@@ -539,7 +542,7 @@ A deployment declares worker pools. A pool has:
 The concrete configuration syntax is still open. Its shape is approximately:
 
 ```ts
-import { Deployment, Layer, Worker } from "smthrs/provider"
+import { Deployment, Layer, Worker } from "vibelang/provider"
 
 export default Deployment.make({
   workers: [
@@ -741,7 +744,7 @@ needed:
   from durable payloads according to policy.
 
 The integrity of the durable intrinsic itself rests on a mechanism whose
-ownership is **an open question**. `smithers:flows` is a compiler-owned virtual
+ownership is **an open question**. `vibelang:flows` is a compiler-owned virtual
 module, and "uncompiled JavaScript fails while loading it" is enforced by
 specifier form against an exact registry of compiler-intrinsic specifiers, with
 prefix matching deliberately refused because it has already been a fail-open
@@ -759,7 +762,7 @@ This section governs distributed Action workers. A code-writing agent may use a
 smaller sandbox implemented entirely by its library: generated code is placed
 in an otherwise confined evaluator and receives only explicitly passed
 functions, some of which may invoke Actions or Flows. That agent sandbox adds no
-Smithers syntax or compiler security model; see
+VibeLang syntax or compiler security model; see
 [`AGENT_LIBRARY.md`](AGENT_LIBRARY.md).
 
 ## What this model gives up
@@ -800,7 +803,7 @@ The Effect Manifest **(PR-1)** buys back cost 2 outright and roughly half of cos
 1. **It is not a free trade**, and the Manifest must not be described as
 equivalent to the artifact it replaces.
 
-## What Smithers should reuse from `flows`
+## What VibeLang should reuse from `flows`
 
 Keep the proven ideas:
 
@@ -918,7 +921,7 @@ the guide, reference, and introduction pages still described the plan model.
 **Resolved on 2026-08-27.** `guide/durable-execution`,
 `reference/actions-and-flows`, `reference/cli` (`plan` command),
 `reference/language-syntax`, `reference/comptime`, `guide/comptime`,
-`guide/features`, `introduction/why-smithers`, `introduction/overview`,
+`guide/features`, `introduction/why-vibelang`, `introduction/overview`,
 `introduction/philosophy`, `reference/standard-library` and
 `docs/TYPESCRIPT_FORK.md` were re-derived against the specification, each with a
 withdrawal record where a claim inverted. `poc/src/durable/README.md` still cites
@@ -930,8 +933,8 @@ neither is a documentation problem. Both were re-measured on 2026-08-27 and both
 now carry a direction marker on the specification page that states the gap; see
 [Specification Status](/specification/index) §Specification–Implementation Gaps.
 
-- **`failures.mdx` §Refusal Conditions has been reached by the implementation — `(SA-1)`, narrowed 2026-08-30.** "Placement is unrestricted" now holds for five of the six worked forms: `r!.length`, `r!.trim()`, `r![0]`, `r! ?? "fallback"` and `f(r!)` all compile and run on the reference backend, and the four corpus cases that certified their refusals were flipped to `expect: "output"` with `xfail(go)` markers, the Go fork still holding the withdrawn walk. What is left is not a placement rule: the shipped early-`return` lowering cannot hoist its guard out of a conditionally evaluated operand (`maybe ?? r!`, `SMITHERS1204`), a repeated loop header (`SMITHERS1703`; hoisting `while (next()!) {}` never terminates), or past an unhoisted effect earlier in the same statement (`g() + r!`, `SMITHERS1204`). Those three are uniform across both `effectLowering` modes and retire with that lowering.
-- **The durable frontend has left the plan model half way — `(SA-2)`, narrowed 2026-08-31.** A runtime branch and a runtime loop inside a `durable(...)` body now compile on both backends: `SMITHERS4106` and `SMITHERS4107` are **withdrawn**, together with the optional-projection and non-boolean-conditional refusals that shared `SMITHERS4106`, the unsupported-expression `SMITHERS4111` fallthrough, and the unnameable-call `SMITHERS4112` fallthrough. Such a body is not refused; the Plan lowerer declines it without a diagnostic and the Flow publishes its Effect Manifest instead, and thirteen `17-durable` cases moved from `expect: "diagnostics"` to `expect: "output"` in one commit. What is left: `Action.run` is typed `A | undefined` rather than `Result<A, E>`, so the annotated Flow signature that this file and `durable-execution.mdx` both show still does not check — measured as `SMITHERS4100` — a plain `return` inside a durable body is still not Result-lifted, a `let` binding is still refused (`SMITHERS4105`), closure capture is still refused (`SMITHERS4110`), and recursion or any call to a project-declared function is now refused by the Effect Manifest (`SMITHERS4199`) rather than by the withdrawn wall, because the Manifest must reject a call it cannot account for instead of narrowing its effect set silently.
+- **`failures.mdx` §Refusal Conditions has been reached by the implementation — `(SA-1)`, narrowed 2026-08-30.** "Placement is unrestricted" now holds for five of the six worked forms: `r!.length`, `r!.trim()`, `r![0]`, `r! ?? "fallback"` and `f(r!)` all compile and run on the reference backend, and the four corpus cases that certified their refusals were flipped to `expect: "output"` with `xfail(go)` markers, the Go fork still holding the withdrawn walk. What is left is not a placement rule: the shipped early-`return` lowering cannot hoist its guard out of a conditionally evaluated operand (`maybe ?? r!`, `VIBE1204`), a repeated loop header (`VIBE1703`; hoisting `while (next()!) {}` never terminates), or past an unhoisted effect earlier in the same statement (`g() + r!`, `VIBE1204`). Those three are uniform across both `effectLowering` modes and retire with that lowering.
+- **The durable frontend has left the plan model half way — `(SA-2)`, narrowed 2026-08-31.** A runtime branch and a runtime loop inside a `durable(...)` body now compile on both backends: `VIBE4106` and `VIBE4107` are **withdrawn**, together with the optional-projection and non-boolean-conditional refusals that shared `VIBE4106`, the unsupported-expression `VIBE4111` fallthrough, and the unnameable-call `VIBE4112` fallthrough. Such a body is not refused; the Plan lowerer declines it without a diagnostic and the Flow publishes its Effect Manifest instead, and thirteen `17-durable` cases moved from `expect: "diagnostics"` to `expect: "output"` in one commit. What is left: `Action.run` is typed `A | undefined` rather than `Result<A, E>`, so the annotated Flow signature that this file and `durable-execution.mdx` both show still does not check — measured as `VIBE4100` — a plain `return` inside a durable body is still not Result-lifted, a `let` binding is still refused (`VIBE4105`), closure capture is still refused (`VIBE4110`), and recursion or any call to a project-declared function is now refused by the Effect Manifest (`VIBE4199`) rather than by the withdrawn wall, because the Manifest must reject a call it cannot account for instead of narrowing its effect set silently.
 
 The `conformance/COVERAGE.md` §4.12–§4.19 citations of "failures.mdx §Accepted
 Placements", a section this revision deleted, were repointed on 2026-08-27; see
@@ -978,7 +981,7 @@ capture restriction.
 > specializes known input, and reports the execution graph. … Unknown branches and
 > runtime-sized fan-out remain explicit templates."
 >
-> "Smithers emits portable expression IR and compiler-stable identities. Plan mode
+> "VibeLang emits portable expression IR and compiler-stable identities. Plan mode
 > analyzes that emitted artifact; it never executes a Flow source function."
 
 The phase is **inspection** and it reads the Effect Manifest **(PR-1)**. The
@@ -1056,10 +1059,10 @@ model gives up says so plainly.
 **(PR-2)**. That is what lets a divergence report name a source location.
 
 **Amended — the reuse-from-`flows` list.** Three "replace library limitations"
-claims inverted; they are tabulated in §What Smithers should reuse from `flows`
+claims inverted; they are tabulated in §What VibeLang should reuse from `flows`
 rather than deleted. `Node<A, E, R>` is removed as a user-visible algebra:
 [Effects](/specification/effects) §What This Page Does Not Add is normative that
-`.sm` has no `Effect<A, E, R>` value, no `Result.gen` do-notation, and no `.run()`
+`.vibe` has no `Effect<A, E, R>` value, no `Result.gen` do-notation, and no `.run()`
 step. The `(A, E, R)` triple survives as the compiler-inferred effect row.
 
 **Amended — the stable-ID proposal.** Its safety motivation — "renaming a symbol

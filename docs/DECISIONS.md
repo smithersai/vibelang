@@ -1,7 +1,7 @@
-# Smithers decision ledger
+# VibeLang decision ledger
 
 This ledger records accepted design decisions. Together with the published
-specification pages and linked design drafts, it forms the Smithers product
+specification pages and linked design drafts, it forms the VibeLang product
 specification.
 
 Status:
@@ -33,6 +33,39 @@ durable runtime does at run time, and — recorded plainly in
 two capabilities that are given up to get there.
 
 ## Pending ratification — one-shot delimited continuations, 2026-08-27
+
+<!-- brand-gate: allow-start -->
+> **Owner decision, 2026-09-06 — durable execution works exactly like Smithers 1.0.**
+> The owner's durable execution library is Smithers 1.0
+> (`smithersai/smithers`, release candidate 2026-08-31, packages `@smthrs/flow`,
+> `@smthrs/plan`, `@smthrs/journal`, `@smthrs/engine`, `@smthrs/time-travel`,
+> `@smthrs/keys`), which will eventually migrate onto this language. Its model
+> is the contract for every durable question in this ledger, and it is the
+> **plan model**, not the replay-of-ordinary-control-flow model adopted below:
+>
+> | Question | Smithers 1.0 | Disposition of the 2026-08-27 rule |
+> | --- | --- | --- |
+> | What is published before a run | a **plan**: the full node graph with edges, node keys, declared effects, and a digest (`baseDigest` for generation zero, `digest` advancing as rounds append); approvals bind to the digest; `flow plan` shows it without executing | **PR-1 reversed**: the sets-only Effect Manifest is replaced by a plan carrying edges and keys |
+> | How journal work is identified | **content keys**: `key1_` + SHA-256 of canonical JSON of the node's declared material and dependency keys; journal frames are `{ lineageId, seq }`; forks create descendant lineages | **PR-2 reversed**: identity is content-addressed from the plan, not a source site plus occurrence |
+> | Code changes with runs in flight | fail closed: identity is checked at launch and on resume, changed work needs a new plan and approval; dynamic work arrives as **appended bounded rounds** (patterns declare "the conservative graph with its bound") | **PR-3 kept**, with rounds and re-approval as the versioning story |
+> | Parallelism | independent graph nodes run when ready; `Node.all` fans out explicitly; priority orders ready work without changing identity | the 2026-08-27 loss of implicit parallelism is **not accepted** |
+> | Flow bodies | symbolic: a body describes how results connect (`Action.call`, `Node.andThen`, `Node.all`, `Node.branch`, bounded loop patterns); it never reads a planned value or does I/O | ordinary `let`/loops/recursion in a Flow body are **withdrawn**; the compiler derives the plan statically from the checked source, which is the pre-pivot "plan from code, never by running it" rule, and is stricter than Smithers' runtime proxy evaluation |
+> | Recovery tiers | `sealed` (cache-reusable across runs), `compensable`, `irreversible`; only sealed work shares results by content key | matches the recovery/reuse split already in this ledger; adopt Smithers' names |
+> | History operations | replay (pure fold, never executes), fork (child run, copied prefix), rewind (truncate suffix, compensate, audit), recovery on startup | adopt as the execution-control surface |
+>
+> **What this means for alpha 0.** The executable-body path demonstrated on
+> 2026-09-05 (delimiters, replay driver, `body-compiler`, `module-compiler`)
+> implements the withdrawn model. It is not thrown away, but it is no longer the
+> product direction: the durable stage must emit a Smithers-shaped plan from the
+> checked Flow body, and the runtime must speak Smithers' journal, key, plan and
+> approval shapes so that the two systems interoperate and Smithers can later
+> host `.vibe` Flows. The specification pages still describe the 2026-08-27 model
+> and are to be rewritten against `smithersai/smithers` docs
+> (`apps/site/src/content/docs/docs/concepts/*.mdx`) one section at a time.
+>
+> The provisional text below is kept as the record of the pivot it describes.
+<!-- brand-gate: allow-end -->
+
 
 **Three decisions below were adopted on a recommendation and are awaiting the
 owner's sign-off.** They are written into the ledger and the specification pages
@@ -70,14 +103,14 @@ edge, a branch, or a count, it has started growing back into a plan and the pivo
 has been undone by accretion.
 
 **What the Manifest inherited on 2026-08-31, and what it still owes.** The six
-`SMITHERS41xx` walls in the Plan lowerer are withdrawn — a runtime branch, a
+`VIBE41xx` walls in the Plan lowerer are withdrawn — a runtime branch, a
 runtime loop, an optional projection, a non-boolean conditional, an expression
 the Plan could not name, and a call the Plan could not name. A body holding any
 of them is no longer refused: the Plan lowerer declines it without a diagnostic
 and the Flow publishes this Manifest instead. Thirteen `17-durable` conformance
 cases moved with them, on both backends, in one commit.
 
-That transfers a guarantee. `SMITHERS4112` used to refuse every call the Plan
+That transfers a guarantee. `VIBE4112` used to refuse every call the Plan
 could not name *before* the Manifest was consulted, so the Manifest's soundness
 obligation was never load-bearing. It is now, and it was **measured failing**:
 a Flow body calling a same-file helper that performs an Action published
@@ -158,12 +191,12 @@ is withdrawn.
 These are **not** adopted, not recommended-and-adopted, and MUST NOT be read as
 settled by anything above. Each is recorded in full below with its evidence:
 
-1. Whether losing implicit fan-out parallelism is acceptable — §Durable execution. A **product** call, not an engineering one.
+1. ~~Whether losing implicit fan-out parallelism is acceptable~~ — **answered 2026-09-06: not acceptable; Smithers runs independent nodes concurrently and has explicit `Node.all`.** <!-- brand-gate: allow -->
 2. R1 subclass substitution — §Requirements and dependency injection.
 3. Dynamic import: ledger, corpus, and product disagree three ways — §TypeScript target.
 4. `@module @throws {never}` is doing two jobs — §Compiler and delivery.
-5. `compatibility.mdx` §Dynamic Features versus the shipped `eval` refusal — §TypeScript target. **The most urgent**, because shipped behavior already diverges from a locked sentence.
-6. Postfix `!` placement: `failures.mdx` §Refusal Conditions versus the shipped `SMITHERS1204` — §Typed failures. Added 2026-08-27 by measurement.
+5. ~~`compatibility.mdx` §Dynamic Features versus the shipped `eval` refusal~~ — **decided 2026-09-06: the compiler is right; `eval` is refused.** See §TypeScript target.
+6. Postfix `!` placement: `failures.mdx` §Refusal Conditions versus the shipped `VIBE1204` — §Typed failures. Added 2026-08-27 by measurement.
 
 Questions 5 and 6 are the same *kind* of conflict pointing in **opposite
 directions**, and that is the thing a reader must be able to see. In 5 the
@@ -181,32 +214,45 @@ site-table diff normatively obliges an implementation to do.
 
 ## Identity and compatibility
 
-- **Locked:** The language is named **Smithers**.
-- **Locked:** Smithers source uses `.sm`.
-- **Open:** The JSX-capable extension has not been confirmed; `.smx` must not
+- **Locked:** The language is named **VibeLang**.
+  **Re-affirmed 2026-09-05 by the owner, after an interim rename.** Between
+  2026-08-23 and 2026-09-05 the project carried the name of a sibling product; that
+  name collided with a live npm package, GitHub repository, and domain, and was
+  withdrawn. <!-- brand-gate: allow --> The VibeLang identity is spelled: package
+  `vibelang`; command `vibe` (with `vibec` and `vtsserver` as the TypeScript
+  compatibility binaries); compiler-owned specifiers `vibelang:comptime`,
+  `vibelang:flows`, `vibelang:exceptions`; subpaths `vibelang/<module>`; diagnostic
+  codes `VIBEnnnn`; environment variables `VIBELANG_*`; documentation at
+  https://vibelang.sh. `scripts/rename-to-vibelang.mjs` performs the spelling
+  change idempotently and `scripts/brand-gate.mjs` refuses a regression.
+- **Locked:** VibeLang source uses `.vibe`.
+- **Locked (2026-09-05):** The product headline is **"The programming language for
+  agents."** It leads the README, the documentation landing page, and the package
+  description.
+- **Open:** The JSX-capable extension has not been confirmed; `.vibex` must not
   imply a stricter or sounder language mode.
-- **Locked:** Smithers is not a syntactic superset of TypeScript. `.sm` has an
+- **Locked:** VibeLang is not a syntactic superset of TypeScript. `.vibe` has an
   intentionally TypeScript-derived grammar with a small set of deliberate,
   documented differences such as Result propagation and declarations in
   conditionals.
-- **Locked:** Smithers can directly import TypeScript and JavaScript modules.
+- **Locked:** VibeLang can directly import TypeScript and JavaScript modules.
   `.ts`, `.tsx`, and JavaScript sources retain their own syntax and semantics;
-  they are interoperability inputs, not source that must parse as `.sm`.
-- **Locked:** Syntax shared by Smithers and TypeScript keeps TypeScript behavior
-  unless a divergence is explicitly accepted and documented. Smithers does not
+  they are interoperability inputs, not source that must parse as `.vibe`.
+- **Locked:** Syntax shared by VibeLang and TypeScript keeps TypeScript behavior
+  unless a divergence is explicitly accepted and documented. VibeLang does not
   make gratuitous syntax changes.
-- **Locked:** Smithers adds precision incrementally rather than imposing a
+- **Locked:** VibeLang adds precision incrementally rather than imposing a
   globally sound type system. TypeScript escape hatches remain available and
   can be discouraged by lint rules.
 
 ## Function model
 
-- **Locked:** **Authored** functions remain ordinary, eager functions. `.sm` has
+- **Locked:** **Authored** functions remain ordinary, eager functions. `.vibe` has
   no `Effect<A, E, R>` value, no `Result.gen` do-notation, and no `.run()` step:
   a program is entered by calling a function. The compiler may emit a function
   whose inferred effect row is non-empty in a **resumable calling convention**,
   and a compiler-owned handler loop may drive it. That convention is a lowering
-  detail, not a language surface: it is unspellable in `.sm`, never appears in an
+  detail, not a language surface: it is unspellable in `.vibe`, never appears in an
   authored type or public declaration's value syntax, is never named in a
   diagnostic, and no source construct can obtain, name, store, or resume a
   continuation. See [Effects](/specification/effects).
@@ -221,7 +267,7 @@ site-table diff normatively obliges an implementation to do.
   possible. `Result<A, E>` makes the public failure contract explicit;
   compiler-aware context types preserve `R` in editor and declaration
   signatures.
-- **Locked:** Smithers does not introduce an Effect-style fiber runtime, or any
+- **Locked:** VibeLang does not introduce an Effect-style fiber runtime, or any
   user-visible fiber type. The durable runtime drives emitted bodies with a
   deterministic scheduler; that scheduler has no source-language surface and is
   not obtainable from non-durable code.
@@ -231,7 +277,7 @@ site-table diff normatively obliges an implementation to do.
   function with a non-empty row where a function with a smaller row is expected
   is a type error. An unannotated function type carries the empty row. A function
   whose row is empty is never emitted in the resumable calling convention.
-- **Open, and scoped to a flag:** the migration's `effectLowering: "yield"`
+- **Historical implementation exception, still unratified:** the migration's `effectLowering: "yield"`
   option (`CompileOptions`, default `"return"`) emits **one** function whose row
   is empty in the resumable convention: the callback of a `Layer.provide`, which
   becomes the delimited computation the installed handler runs. Every other
@@ -242,8 +288,14 @@ site-table diff normatively obliges an implementation to do.
   [Compatibility](/specification/compatibility) §TypeScript Target's "infallible
   functions MUST NOT be wrapped".
 
+  **Implementation correction, 2026-09-05:** that flag was subsequently removed;
+  it is not a current option or a boundary on the shipped lowering. Compiled
+  provider computations now reach lexical handlers without opting into a flag.
+  The paragraphs below record the migration history, not a usable option.
+  This correction does not ratify an empty-row calling-convention exception.
+
   It is narrower than the migration plan budgeted for. That plan expected the
-  option to need a *uniform* convention — every `.sm` function emitted as a
+  option to need a *uniform* convention — every `.vibe` function emitted as a
   generator — because `collectFacts` records no call edge for a call through a
   value and the emitter would then have no way to choose `yield* f()` over `f()`
   (gap G2). Measured, the uniform convention was not needed: the checker's
@@ -252,15 +304,15 @@ site-table diff normatively obliges an implementation to do.
   the ordinary convention, which together leave nothing undecided in 515 corpus
   programs. What used to remain undecidable — a call through a function-typed
   **parameter**, where only a requirement row on the callee's TYPE could settle
-  it — was refused outright as `SMITHERS1807` rather than guessed.
+  it — was refused outright as `VIBE1807` rather than guessed.
 
-  **Closed by G7 (`requirements` on `TypeShape`); `SMITHERS1807` is retired.**
+  **Closed by G7 (`requirements` on `TypeShape`); `VIBE1807` is retired.**
   The arm is now decided from two sentences already Locked above rather than
   from a new rule: "An unannotated function type carries the empty row", and "A
   function whose row is empty is never emitted in the resumable calling
   convention". A parameter typed `(key: string) => string` therefore holds a
   value that is not a generator, and the call is emitted plain. The requirement
-  row itself is read from the `@smithersEffects` metadata `declarations.ts`
+  row itself is read from the `@vibelangEffects` metadata `declarations.ts`
   already writes onto every emitted declaration — the representation
   [Compatibility](/specification/compatibility) §TypeScript Target leaves open
   ("Whatever representation is chosen MUST additionally carry whether a function
@@ -270,34 +322,34 @@ site-table diff normatively obliges an implementation to do.
   recording. The retired walk exempted declaration files outright, on the
   grounds that "nothing in a `.d.ts` was emitted by this compiler". That stopped
   being true when this mode emitted one: an emitted declaration carries
-  `@smithersEffects` and a `__vsResumable<A>` return type, so a `.d.ts` from a
-  previously compiled `.sm` package names generators this compiler produced, and
+  `@vibelangEffects` and a `__vsResumable<A>` return type, so a `.d.ts` from a
+  previously compiled `.vibe` package names generators this compiler produced, and
   every call into one was lowered as a plain call. The published row is now
   consulted **before** the signature-kind test and before that exemption.
 
 ## Typed failures
 
 - **Locked:** Any ordinary class extending `Error` is a nominal recoverable
-  error. Smithers does not require a `TaggedError("Name")` factory or separate
+  error. VibeLang does not require a `TaggedError("Name")` factory or separate
   error-declaration syntax. The compiler supplies stable identity and transport
   metadata without changing normal `Error` behavior.
 - **Locked:** The `Result` type is built in. Its quality-of-life API is modelled
   on Dillon Mulroy's `better-result`: matching, transformation, sequencing,
   recovery, observation (including the `tap*` family and async variants),
   collection (`all`, `allAsync`, `partition`, `partitionAsync`), foreign
-  adaptation (`try`, `tryPromise`), and codecs. Smithers omits `Result.ok`,
+  adaptation (`try`, `tryPromise`), and codecs. VibeLang omits `Result.ok`,
   `Result.err`, and `TaggedError` because ordinary `return`, `throw`, and
   `class ... extends Error` construct those, and omits `Result.gen`/`yield*`
   do-notation because postfix `!` already propagates. That omission is a
   constraint on the authoring surface. The compiler may emit `yield*` in the
-  lowered form of a function with a non-empty effect row; that form has no `.sm`
+  lowered form of a function with a non-empty effect row; that form has no `.vibe`
   spelling.
 - **Locked:** Postfix `!` is the spelling for propagating an error from a
   Result-returning function. `findUser(id)!` yields the success value or returns
   the enclosing function's error variant. The compiler tracks the error type and
   lowers the error path; it never throws a recoverable JavaScript exception.
   This is Zig's `try foo()` with an operator TypeScript already has.
-- **Locked:** The TypeScript non-null assertion is removed from `.sm`. `x!` no
+- **Locked:** The TypeScript non-null assertion is removed from `.vibe`. `x!` no
   longer asserts non-nullness, and the definite-assignment form `x!: T` is gone
   with it. Removing the old meaning entirely is what makes the slot safe to
   reuse: there is no ambiguity, and the assertion was an unsound escape hatch
@@ -315,19 +367,19 @@ site-table diff normatively obliges an implementation to do.
 - **Direction:** Each reinterpretation is a per-file dialect divergence that no
   editor, linter, or formatter will flag. The cost scales badly, so the budget
   is small and each use must earn its place.
-- **Locked:** `smthrs/result` and the Smithers runtime are compiler-owned and are
-  not required to be authored in Smithers. This is structural, not a
+- **Locked:** `vibelang/result` and the VibeLang runtime are compiler-owned and are
+  not required to be authored in VibeLang. This is structural, not a
   convenience: `result` is the lowering target, so emitted code imports it and
   authoring it in the language whose lowering depends on it is circular. The
   compiler links it, `!`/`expect` are rejected inside it, and its public API is
-  instance methods, which `.sm` cannot author because `this` is never a Result
-  operand. A standard library written in Smithers may exclude these modules
+  instance methods, which `.vibe` cannot author because `this` is never a Result
+  operand. A standard library written in VibeLang may exclude these modules
   without being incomplete.
-- **Open:** Whether Smithers gains an **error-extraction form**. The language
+- **Open:** Whether VibeLang gains an **error-extraction form**. The language
   currently has no way to get the error value out of a Result — `!` propagates
   it and `match` is callable but not authorable — so `tryRecover`, `tapError`,
   `mapError`, `partition`'s error half, and `flatten` cannot be written in
-  Smithers. This is a real language feature with a spelling to choose, and it is
+  VibeLang. This is a real language feature with a spelling to choose, and it is
   the root of most of the unauthorable API surface.
 - **Locked:** `!` is accepted in any expression position. Three conditions refuse
   it: no enclosing Result channel, non-Result operand provenance, and an
@@ -340,7 +392,7 @@ site-table diff normatively obliges an implementation to do.
   2026-08-30 was that this ledger said "`!` is accepted in any expression
   position" while the shipped frontend still enforced the withdrawn
   statement-walk and refused four of the six accepted forms with
-  `SMITHERS1204`. The implementation has moved to the ledger. What that cost,
+  `VIBE1204`. The implementation has moved to the ledger. What that cost,
   stated once and measured rather than estimated:
 
   - **The placement walk is deleted.** `isSafePropagationPlacement` and
@@ -348,7 +400,7 @@ site-table diff normatively obliges an implementation to do.
     the rule that a `!` must reach the enclosing statement through an allow-list
     of seven node kinds. `r!.trim()`, `r![0]`, `f(r!)`, `a! + b!`, and a
     propagation in a `for…of`/`for…in` iterable now compile and run.
-  - **`SMITHERS1204` and `SMITHERS1703` are kept and narrowed**, and this is the
+  - **`VIBE1204` and `VIBE1703` are kept and narrowed**, and this is the
     one place the migration plan's instruction was not followed to the letter.
     The plan said to retire both. Measured, that is not safe while the shipped
     lowering spells the failure exit as an early `return`: that exit is a
@@ -367,17 +419,17 @@ site-table diff normatively obliges an implementation to do.
     propagation the same way today, so no per-file dialect is created — which is
     the property the plan's "relax unconditionally" instruction existed to
     protect. They retire when the `"return"` lowering does, not before.
-  - **`SMITHERS1507` is narrowed** to the two conditions that are still about
+  - **`VIBE1507` is narrowed** to the two conditions that are still about
     provenance: a foreign callee that is not a stable reference, and an already
     unchecked foreign Result. The "this checked foreign result is used as a
     value" arm was a placement constraint of the hoisted `Result.try(...)`
     wrapper wearing a provenance rule's name; it and its helper are deleted.
-  - **`SMITHERS1506` did not narrow. Measured: zero.** The migration plan
-    predicted twelve narrowings as a consequence of `SMITHERS1507` marking fewer
+  - **`VIBE1506` did not narrow. Measured: zero.** The migration plan
+    predicted twelve narrowings as a consequence of `VIBE1507` marking fewer
     calls unlowerable. Re-run over the 515-case corpus and the 1268-test
-    language suite, no `SMITHERS1506` moved. The prediction was wrong, and it is
+    language suite, no `VIBE1506` moved. The prediction was wrong, and it is
     recorded as wrong rather than quietly dropped.
-  - **`SMITHERS1205` is kept** — `!` inside a `try` that has a `catch` — with a
+  - **`VIBE1205` is kept** — `!` inside a `try` that has a `catch` — with a
     rewritten message, and the rewrite found a second defect. Its old message
     named an early `return` that the specification no longer describes. Its
     reason survives intact for `!` and `Result.expect()`: the failure exit
@@ -410,7 +462,7 @@ site-table diff normatively obliges an implementation to do.
      and `effectLowering: "yield"` emits
 
      ```ts
-     import { …, type Resumable as __vsResumable } from "smthrs/runtime";
+     import { …, type Resumable as __vsResumable } from "vibelang/runtime";
      export declare function needs(key: string): __vsResumable<string>;
      ```
 
@@ -419,7 +471,7 @@ site-table diff normatively obliges an implementation to do.
      moved no function's convention**, so the shipped `.d.ts` is byte-identical
      before and after it: a function whose row is failures-only, including one
      containing the newly legal placements, still declares `Result<A, E>` with
-     `@smithersEffects {"failures":[…],"requirements":[]}` and no convention
+     `@vibelangEffects {"failures":[…],"requirements":[]}` and no convention
      marker. The ABI consequence is real and is already published; what is not
      yet true is that it applies to fallible functions, and it becomes true only
      when the failure exit becomes a delegated suspension.
@@ -445,7 +497,7 @@ site-table diff normatively obliges an implementation to do.
   caught two things a transcription would have missed: deleting
   `foreignResultIsUsedAsValue` alone left `makeCallable()("x")` unreported on the
   fork, because a same-position suppression it had needed outlived it; and the
-  fork had never implemented the PANIC arm of `SMITHERS1205` at all, so
+  fork had never implemented the PANIC arm of `VIBE1205` at all, so
   `panic(...)` inside a catch-guarded `try` compiled there and the `catch`
   swallowed the abort. Both are closed. `Markers holding a fail-open` stays at 0.
   The reference is the normative backend; a fork that refuses more is a lag, not
@@ -468,7 +520,7 @@ site-table diff normatively obliges an implementation to do.
   `error.match({...})` is exhaustive for a statically known error union and keys
   cases by compiler-stable nominal Error identity.
 - **Locked:** There is no general `throws` clause, prefix `try` expression,
-  postfix recovery expression, or `!T` marker. Smithers does have an explicit
+  postfix recovery expression, or `!T` marker. VibeLang does have an explicit
   way to catch the distinguished `panic` channel; ordinary JavaScript
   `try/catch` remains available inside imported JavaScript and TypeScript.
 - **Locked:** An unannotated function that reaches `throw error`, propagates an
@@ -478,12 +530,12 @@ site-table diff normatively obliges an implementation to do.
 - **Locked:** Every imported JavaScript or TypeScript runtime value is assumed
   capable of throwing unexpectedly or rejecting, even when its declared return
   type does not say so. Calling it therefore adds the distinguished, checked
-  `panic` case to the Smithers failure channel by default. This also covers a
+  `panic` case to the VibeLang failure channel by default. This also covers a
   foreign implementation violating its declared signature.
 - **Locked:** A caller must propagate that `panic`, explicitly catch it, or call
   through a trusted adapter that catches and translates it. There is no
   unchecked direct use of an unannotated JavaScript or TypeScript function.
-- **Locked:** `panic` is available from `smithers:exceptions` and accepts an
+- **Locked:** `panic` is available from `vibelang:exceptions` and accepts an
   optional message or underlying error. `Reflect.panic` and compiler/runtime
   invariant failures enter the same distinguished channel.
 - **Locked:** The compiler recognizes JSDoc on JavaScript and TypeScript
@@ -493,7 +545,7 @@ site-table diff normatively obliges an implementation to do.
   declarations and tooling. Exact rules for overloads, multiple annotations,
   declaration merging, validation, and generic error types remain to be
   specified.
-- **Locked:** Smithers does not add `defer` or `errdefer`. Cleanup uses TC39
+- **Locked:** VibeLang does not add `defer` or `errdefer`. Cleanup uses TC39
   explicit resource management (`using`), which is already standard and already
   in TypeScript. Deferred cleanup was convenient but not a TypeScript pain point
   worth new grammar. Rollback on a Result error exit is written as ordinary code
@@ -502,7 +554,7 @@ site-table diff normatively obliges an implementation to do.
 
 ## Absence and nullability
 
-- **Locked:** Smithers has no built-in `Optional<T>`. Absence uses TypeScript's
+- **Locked:** VibeLang has no built-in `Optional<T>`. Absence uses TypeScript's
   existing `T | undefined` unions with ordinary narrowing, optional chaining,
   and nullish coalescing. TypeScript already expresses this precisely, and every
   JavaScript consumer already understands it.
@@ -519,7 +571,7 @@ site-table diff normatively obliges an implementation to do.
 ## Requirements and dependency injection
 
 - **Locked:** A capability is an abstract class extending `Context` from
-  `smthrs/context`. The class is both its service contract and nominal key,
+  `vibelang/context`. The class is both its service contract and nominal key,
   providing an Effect-inspired model with less generic ceremony.
 - **Locked:** `Capability.context()` is a compiler-recognized library call. It
   returns the capability instance and adds its class to the enclosing function's
@@ -527,7 +579,7 @@ site-table diff normatively obliges an implementation to do.
 - **Locked:** The inferred context is part of the function's static type. It is
   not an explicit argument that callers pass by hand.
 - **Locked:** Requirements propagate through callers by inference.
-- **Locked:** Provider composition is imported from `smthrs/provider`, not
+- **Locked:** Provider composition is imported from `vibelang/provider`, not
   expressed as a special `provide { ... }` block.
 - **Locked:** Layers package and provide implementations to ordinary functions;
   they are dependency environments, not task supervisors or implicit resource
@@ -555,7 +607,7 @@ site-table diff normatively obliges an implementation to do.
   it does not own that service's lifetime. Resource-owning Layer conveniences
   may be added later without changing this base rule.
 - **Locked:** Fire-and-forget and detached work are initially unavailable in
-  authored `.sm`. Every started Promise must be consumed by `await` or by a
+  authored `.vibe`. Every started Promise must be consumed by `await` or by a
   recognized combinator whose resulting Promise is itself consumed before the
   enclosing scope exits.
 - **Locked:** Imported JavaScript or TypeScript that starts hidden background
@@ -653,6 +705,13 @@ site-table diff normatively obliges an implementation to do.
   `Intl` and locale-comparison members charge a `Locale` requirement, because
   they are functions of the host ICU version and locale data — and a collator
   used as a sort comparator makes the resulting *ordering* host-dependent.
+  **Correction, 2026-09-05:** a local Date setter reads the host zone while
+  computing its write. Multi-component construction and offset-less date-time
+  parsing read it too. The previous implementation-status exemption for setters
+  and for every argument-taking constructor/parse call contradicted this locked
+  criterion; it was not a separate permission. UTC setters, numeric instants,
+  and provably absolute standardized strings remain free. The reference and Go
+  checker changes are pinned by `compiler/date-determinism-vectors.json`.
 - **Locked:** Those walls are **uniform**, not scoped to Flow bodies. A rule that
   fires in one file and not another is a per-file dialect, which this ledger
   already warns against by name, and it does not work mechanically either:
@@ -681,12 +740,12 @@ site-table diff normatively obliges an implementation to do.
 
 - **Locked:** TypeScript is the only compilation target. The TypeScript target
   accepts and interoperates with complete TypeScript in imported `.ts`/`.tsx`
-  modules. Authored `.sm` follows the intentionally distinct Smithers grammar.
+  modules. Authored `.vibe` follows the intentionally distinct VibeLang grammar.
 - **Locked:** A compiled near-native target through LLVM is **withdrawn**. It was
   previously locked as a MUST, was never implemented, and was the largest unmet
   obligation in the repository.
 - **Locked:** Wasm as a compilation target is **withdrawn**. Wasm remains
-  available as a *library* format: a `.sm` program running on a JavaScript host
+  available as a *library* format: a `.vibe` program running on a JavaScript host
   may import Zig or Rust through generated Wasm bindings, which is an asset
   loader rather than a target.
 - **Locked:** The built-in `TypeScript` requirement, the portable /
@@ -697,10 +756,15 @@ site-table diff normatively obliges an implementation to do.
 - **Locked:** The checked `panic` channel on unannotated foreign calls is
   independent of the above and is retained. It exists because JavaScript can
   throw, not because a second target exists.
-- **Locked:** `any` and `eval` remain usable in `.sm`. General Smithers guidance
-  may lint against them; the language does not forbid them.
-- **Open — the sentence immediately above is contested, and shipped behavior
-  already diverges from it. This is the most urgent of the six open questions.**
+- **Locked (owner, 2026-09-06):** dynamic code evaluation is refused in `.vibe`:
+  `eval`, the `Function` constructor, and `constructor` selection on a callable
+  (`VIBE1604`). `any` remains usable. Supersedes the 2026-08-23 sentence "`any` and
+  `eval` remain usable … the language does not forbid them", which is withdrawn;
+  the corpus cases certifying the refusal are the contract. Reason: one `eval`
+  makes the enclosing function's failure and requirement rows unknowable for every
+  caller, and an `eval`'d string inside a Flow produces no journal entry.
+- **Decided 2026-09-06 — the record of the conflict below is history.** It stood
+  as the most urgent open question from 2026-08-27 to 2026-09-06.
   The compiler refuses dynamic code evaluation today: `eval`, the `Function`
   constructor, and selection of `constructor` on a callable receiver are all
   rejected, and the conformance corpus certifies the refusal **on purpose, ahead
@@ -711,7 +775,7 @@ site-table diff normatively obliges an implementation to do.
   **Why it was changed anyway, and it is a good reason.** Two `MUST`s in the same
   specification document were being violated, measured, on both backends —
   "Platform-specific globals … MUST NOT be unconditional globals in authored
-  `.sm` code" and "Host-sensitive operations such as clock and random access MUST
+  `.vibe` code" and "Host-sensitive operations such as clock and random access MUST
   still use capabilities". Before the refusal landed, `Date.now()` was refused
   while `eval("Date.now()")` reported no failures, no requirements, and ran;
   `eval("process.platform")` returned the host platform on both backends with
@@ -756,7 +820,7 @@ site-table diff normatively obliges an implementation to do.
   Independently of which reading is right, **the shipped CLI refuses every
   dynamic import**, including the two the corpus certifies as compiling and
   running, with a code-less project error rather than the diagnostic the corpus
-  pins: "Smithers dynamic import is deferred until the frontend can preserve its
+  pins: "VibeLang dynamic import is deferred until the frontend can preserve its
   exact rewrite map". A computed specifier is refused earlier still, with a
   different code-less error than the one the corpus pins.
 
@@ -782,16 +846,23 @@ site-table diff normatively obliges an implementation to do.
   when possible, while an imported compiler intrinsic forces compile-time
   evaluation.
 - **Locked:** Comptime is not a language keyword. Source imports `comptime` from
-  `smithers:comptime` and passes it a value or function. The compiler recognizes
+  `vibelang:comptime` and passes it a value or function. The compiler recognizes
   the resolved binding rather than its local spelling, so aliases work and
   unrelated functions named `comptime` remain ordinary.
 - **Locked:** `comptime(value)` forces evaluation of the argument during
   compilation. `comptime(functionValue)` marks and returns a compile-time
   function; it does not invoke the function merely because it was passed.
-- **Locked:** `smithers:comptime` is a compiler-owned virtual module. Recognized
+- **Locked:** `vibelang:comptime` is a compiler-owned virtual module. Recognized
   imports and calls are lowered or erased, and uncompiled execution must fail
   while loading the virtual module rather than evaluating arguments at runtime.
 - **Locked:** Comptime may generate types.
+- **Correction, 2026-09-05:** The existing evaluation/replacement and shared
+  TypeScript-semantics rules require preserving observable object-property order.
+  The implementation had reused sorted metadata encoding for program
+  `JSON.stringify`, emitted objects, and cached values. These are now separate:
+  program values retain own-property order; canonical cache metadata pins their
+  order-sensitive JSON bytes. Static and sandbox comptime cache versions are
+  bumped so old sorted results cannot be reused as the corrected semantics.
 - **Locked:** Comptime I/O follows Zig's model. Compiler-known imports/embedding,
   including JSON used to derive types, are supported; arbitrary unavailable
   runtime operations are not silently performed during compilation.
@@ -803,18 +874,18 @@ site-table diff normatively obliges an implementation to do.
 
 ## Control flow
 
-- **Locked:** Smithers adds no expression-form control-flow grammar. Blocks,
+- **Locked:** VibeLang adds no expression-form control-flow grammar. Blocks,
   `if`, `switch`, `while`, and `for` are TypeScript statements and keep
   TypeScript behavior. A value-position `if` is a ternary, and a value-position
   `switch` is a function call or a lookup — neither is a TypeScript pain point
   worth new grammar.
-- **Locked:** Smithers does not add labeled `break` values, loop `else`
+- **Locked:** VibeLang does not add labeled `break` values, loop `else`
   completion, labeled block or loop values, `defer`, `errdefer`, a braceless
   value `if`, or an arrow-arm switch. None of these is a TC39 proposal.
 - **Locked:** The one accepted grammar addition is declarations in conditionals,
   adopted early from the TC39 Stage 1 proposal of that name. It is accepted
   because it is standards-track, not because it is convenient.
-- **Locked:** Smithers does not add a throw-expression grammar in the initial
+- **Locked:** VibeLang does not add a throw-expression grammar in the initial
   scope. Ordinary `throw` statements produce Result errors; expression-form
   throw may be reconsidered when the TC39 proposal is available upstream.
 - **Locked:** A future grammar addition requires an active TC39 proposal. Value
@@ -835,10 +906,10 @@ site-table diff normatively obliges an implementation to do.
   in the journaled order. A combinator whose result depends on arrival order —
   including `Promise.race` and `Promise.any` — is not reachable except through
   the scheduler. The scheduler has no source-language surface.
-- **Locked:** Smithers follows TC39's module-expression, source-phase import,
+- **Locked:** VibeLang follows TC39's module-expression, source-phase import,
   shared-struct, concurrency-governor, and cancellation work where it fits.
   A governor limits fan-out; it does not own child-task lifetimes.
-- **Locked:** Smithers does not add special Promise or join grammar. Static or
+- **Locked:** VibeLang does not add special Promise or join grammar. Static or
   library combinators start concurrent work, `await` consumes the resulting
   Promise, and Result combinators collect expected outcomes.
 - **Direction:** A structured-concurrency library combinator may own child
@@ -847,7 +918,7 @@ site-table diff normatively obliges an implementation to do.
   the dependency model rather than manually threaded tokens. Under one-shot
   continuations cancellation *is* "the handler declines to resume", which is a
   cleaner fit for the dependency model than a token was.
-- **Locked:** Authored `.sm` code must transitively consume every started
+- **Locked:** Authored `.vibe` code must transitively consume every started
   Promise with `await`: either directly or through a recognized combinator such
   as `Promise.all` whose result is awaited. Promise instance chaining through
   `.then()`, `.catch()`, or `.finally()` is a compile error. Imported
@@ -855,7 +926,7 @@ site-table diff normatively obliges an implementation to do.
 - **Locked:** Awaiting a fallible async operation produces its
   `Result<A, E>`; `await` does not silently unwrap or discard the Result.
 - **Direction:** Promise subclasses, custom thenables, and other behavior that
-  prevents sound consumption or lifetime analysis may be rejected in `.sm`;
+  prevents sound consumption or lifetime analysis may be rejected in `.vibe`;
   the exact supported Promise subset is still open. This becomes more urgent
   under replay, where the question is determinism rather than lifetime analysis
   alone.
@@ -870,22 +941,22 @@ site-table diff normatively obliges an implementation to do.
 
 - **Locked:** Durable execution is a language-level feature, not merely an
   observability library.
-- **Locked:** Smithers's durable execution supersedes the need to build the
+- **Locked:** VibeLang's durable execution supersedes the need to build the
   separate `~/flows` library. That implementation is prior art and reusable
   runtime machinery, not the required user API.
 - **Locked:** An Action is an abstract runtime operation with an open,
   replaceable provider implementation and a closed typed signature.
 - **Locked:** An Action implementation is an ordinary function or callback.
-  There is no separate Effect value in Smithers and no Action implementation
+  There is no separate Effect value in VibeLang and no Action implementation
   wrapper beyond the policy/provider object that installs the function.
 - **Locked:** Action signatures return `Result<A, E>` or
   `Promise<Result<A, E>>`; input, success, Error, and requirement information
   comes from that ordinary function signature. Persistence schemas/codecs are
   compiler-derived rather than repeated as schema arguments.
 - **Locked:** Durable declaration is not a language keyword. Source imports
-  `durable` from `smithers:flows` and passes it a statically resolvable function.
+  `durable` from `vibelang:flows` and passes it a statically resolvable function.
   The compiler recognizes the resolved binding rather than its local spelling.
-- **Locked:** `smithers:flows` is a compiler-owned virtual module. A recognized
+- **Locked:** `vibelang:flows` is a compiler-owned virtual module. A recognized
   `durable(...)` call becomes a Flow descriptor carrying the Flow's pinned source
   identity, its derived codecs, its Effect Manifest, and a reference to the
   emitted Flow body — not a runtime callback wrapper. The identity, codecs, and
@@ -1067,7 +1138,7 @@ site-table diff normatively obliges an implementation to do.
   durable Actions, compiled Flows, or typed adapters around tools and MCPs.
 - **Locked:** The code-writing agent and its sandbox are entirely library-level
   features. The agent library supplies an otherwise confined execution
-  environment by default; Smithers adds no agent-specific sandbox syntax,
+  environment by default; VibeLang adds no agent-specific sandbox syntax,
   effect system, or runtime requirement.
 - **Direction:** The reusable agent primitives cover prompt rendering, model
   invocation, turn/history state, TypeScript compilation and execution,
@@ -1083,7 +1154,7 @@ site-table diff normatively obliges an implementation to do.
 ## Standard library
 
 - **Locked:** The standard library should match or improve on the breadth of
-  Effect's standard library while presenting ordinary Smithers APIs.
+  Effect's standard library while presenting ordinary VibeLang APIs.
 - **Locked:** Platform is a universal dependency and platform implementations
   are selected through capabilities and comptime.
 - **Direction:** Compute-heavy components may call into Wasm modules, especially
@@ -1101,12 +1172,12 @@ site-table diff normatively obliges an implementation to do.
   unordered operation; `Promise.allKeyed`/`allSettledKeyed`; declarations in
   conditionals; discard bindings; Import Text and Import Bytes;
   cheap stack capture; `Reflect.panic`; cancellation; and a worker failure
-  protocol. Smithers does not add Promise or structured-join parser syntax.
+  protocol. VibeLang does not add Promise or structured-join parser syntax.
 - **Locked:** Capabilities subsume AsyncContext for compiled dependency
   propagation; an interop adapter may exist at TypeScript boundaries. The reason
-  is no longer "Smithers keeps its own async-local frame" but "the handler
+  is no longer "VibeLang keeps its own async-local frame" but "the handler
   answers the request, and no ambient store is consulted".
-- **Locked:** Smithers does not own expression-form control-flow grammar. See
+- **Locked:** VibeLang does not own expression-form control-flow grammar. See
   [Control flow](#control-flow): blocks, `if`, `switch`, `while`, and `for` are
   TypeScript statements. Room is deliberately left for future pattern-matching
   syntax to converge with TC39 rather than being pre-empted by an invented
@@ -1124,13 +1195,43 @@ site-table diff normatively obliges an implementation to do.
 
 - **Locked:** Build on the Go compiler now located under `tsc/` in
   `microsoft/TypeScript`, tracking upstream with a minimal diff.
-- **Locked:** The canonical compiler fork is `smithersai/TypeScript`. Smithers
+- **Reaffirmed by the user, 2026-09-06:** The Go compiler is the sole compiler
+  and tooling implementation. Migrate existing uses of the TypeScript 5.9
+  JavaScript compiler API into Go; do not retain a second semantic core or a
+  JavaScript fallback. JavaScript runtime/output and thin host/protocol bindings
+  remain compatible. The old package facade exposing 5.9 compiler objects is
+  not a compatibility obligation that can override this direction. Track the
+  migration and its verification in `compiler/GO-MIGRATION.md`.
+  **Implementation checkpoint, 2026-09-07:** the package root exposes
+  the same native request API as `vibelang/compiler`. The high-level language,
+  comptime, schema and durable compilers now delegate to Go, and the 5.9
+  implementation and dependency alias are removed. The compiler-object aliases,
+  pass-through plugin/AST shims, `unstable/*` facades and `tsserver`/`vtsserver`
+  launchers are removed too. `vibec` and ordinary-TypeScript CLI operations use
+  the same pinned native executable, not a dependency's separate compiler.
+  `vibe lsp` remains the editor protocol; it is not relabeled as the retired
+  TypeScript server protocol. Snapshot 60 passes the complete serial release
+  gate, including installed Node/Bun package consumers and reproducibility;
+  the detailed measurement is in `compiler/GO-MIGRATION.md`. This does not settle the
+  separate durable-model migration or establish alpha-0 completion.
+- **Locked (owner, 2026-09-06): the Go compiler is the only compiler.** The
+  TypeScript-language frontend under `poc/src/language` (with the comptime and
+  durable compilers beside it under `poc/src/build` and `poc/src/durable`) is
+  built on the TypeScript **5.9** JavaScript compiler, a generation Microsoft has
+  superseded with TypeScript 7 in Go. It was an unapproved shortcut, not a
+  product path. Consequences: the `vibe` CLI defaults to the Go backend as soon as
+  the Go bridge passes every conformance case and reports requirement rows over
+  its protocol; the 5.9-based frontend is then demoted to a test oracle and
+  scheduled for removal; no new compiler feature lands on the 5.9 side first.
+  The Go bridge measured 527/554 conformance cases on 2026-09-05, with the 27
+  expected failures registered in `conformance/README.md`.
+- **Locked:** The canonical compiler fork is `smithersai/TypeScript`. VibeLang
   vendors an exact fork revision at `vendor/typescript` as a squashed Git
   subtree; fork revisions are pinned in `typescript-fork.json`.
 - **Locked:** The fork should make TypeScript extensible/configurable through a
-  narrow plugin interface rather than embedding every Smithers feature directly
+  narrow plugin interface rather than embedding every VibeLang feature directly
   throughout upstream code.
-- **Locked:** The TypeScript backend lowers Smithers constructs into TypeScript
+- **Locked:** The TypeScript backend lowers VibeLang constructs into TypeScript
   before the ordinary TypeScript pipeline completes checking and emission where
   feasible. "Where feasible" narrows: constructs whose lowering depends on a
   whole-program row are lowered after inference completes, because generator
@@ -1140,15 +1241,15 @@ site-table diff normatively obliges an implementation to do.
   caller that cannot read a callee's calling convention fails closed rather than
   assuming the ordinary one. This is a published ABI and a larger commitment than
   the rows alone were.
-- **Direction:** Delivery hooks such as content mappers may feed `.sm` source
-  into the compiler, but semantic phases share one checked Smithers IR rather
+- **Direction:** Delivery hooks such as content mappers may feed `.vibe` source
+  into the compiler, but semantic phases share one checked VibeLang IR rather
   than parallel frontend models.
 - **Open:** The exact compiler seams and plugin ABI require an architecture
   audit of the pinned upstream TypeScript revision.
 - **Locked:** The toolchain should follow Go's batteries-included model:
   compiler, formatter, test tooling, language service, and build integration in
   one coherent distribution.
-- **Locked:** `.sm` soundness configuration is mandatory and identical on every
+- **Locked:** `.vibe` soundness configuration is mandatory and identical on every
   JavaScript host: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
   `isolatedModules`, `verbatimModuleSyntax`, and `useDefineForClassFields`.
   Making soundness target-conditional would mean a file valid for TypeScript is
@@ -1160,7 +1261,7 @@ site-table diff normatively obliges an implementation to do.
   `emitDecoratorMetadata`. TypeScript's `erasableSyntaxOnly` set is treated as
   guidance about which forms are dying.
 - **Locked:** Emit, module, and library options select output rather than
-  legality. They remain configurable, since a `.sm` program may be emitted for
+  legality. They remain configurable, since a `.vibe` program may be emitted for
   Node, Bun, Deno, a browser, or an edge runtime.
 - **Locked:** Decorators are not the mechanism for `comptime`, `durable`, or
   `native`. The Stage 2.7 proposal attaches only to classes, methods,
@@ -1168,18 +1269,18 @@ site-table diff normatively obliges an implementation to do.
   which is where those intrinsics apply. Free-function and parameter decorators
   are separate Stage 1 proposals. The imported-intrinsic call form also gives
   resolved-binding-identity recognition, which decorators cannot.
-- **Locked:** Smithers must work inside existing JavaScript builds without
-  adopting a Smithers-specific build system. `.sm` compiles to TypeScript before
+- **Locked:** VibeLang must work inside existing JavaScript builds without
+  adopting a VibeLang-specific build system. `.vibe` compiles to TypeScript before
   any other build tool processes it, so every downstream plugin sees ordinary
   TypeScript.
 - **Locked:** That integration ships as an `unplugin` factory, giving Vite,
   Rollup, webpack, esbuild, Rspack, Rolldown, Farm, and the Bun bundler one
   implementation instead of one hand-maintained adapter each. The plugin runs
-  first in the host pipeline, emits source maps, and resolves `.sm` specifiers.
+  first in the host pipeline, emits source maps, and resolves `.vibe` specifiers.
 - **Locked:** The plugin is delivery, not semantics. The same lowering the CLI
   performs is what a bundler gets; nothing may behave differently because it was
   built by a bundler.
-- **Direction:** Because Smithers inference is whole-program and a bundler
+- **Direction:** Because VibeLang inference is whole-program and a bundler
   transform is per-file, the plugin offers a checked mode that drives a real
   program and a transform-only mode for fast rebuilds. Transform-only fails
   closed on anything needing cross-module information and is not a conforming
@@ -1194,7 +1295,7 @@ site-table diff normatively obliges an implementation to do.
   program (242 cases, 1205 call sites), classifying each call site by whether one
   file alone can decide the callee's convention: **93.2% are decidable in-file** —
   same-file declaration 37.6%, compiler prelude or intrinsic 29.8%, lib/host
-  23.2%, foreign `.ts` 2.7% — and **6.8% fail closed**, of which cross-file `.sm`
+  23.2%, foreign `.ts` 2.7% — and **6.8% fail closed**, of which cross-file `.vibe`
   calls are 1.1% and checker-unresolved sites 5.7%. Cross-file callees that
   actually carry a non-empty effect row — the population the sentence above names
   — are **0.2%** of all call sites corpus-wide.
@@ -1233,7 +1334,7 @@ site-table diff normatively obliges an implementation to do.
   panic before any checked call boundary is refused unless its leading JSDoc
   carries both `@module` and `@throws {never}`, and that refusal walks
   transitively through reached foreign modules. Job two is **access control for
-  the compiler-owned prelude**: authored `.sm` must not reach a `Result`
+  the compiler-owned prelude**: authored `.vibe` must not reach a `Result`
   constructor. Job two is *not* enforced by the marker at all — it is enforced by
   **specifier form**, against an exact registry of compiler-intrinsic specifiers,
   with prefix matching deliberately refused because it has already been a
@@ -1244,7 +1345,7 @@ site-table diff normatively obliges an implementation to do.
   are **unmarked on purpose, and their unmarkedness is the forgery guarantee**:
   `result.ts` also exports the lowering hooks that construct Result variants, so
   trusting the whole module would put a `Result` constructor one import away from
-  authored `.sm`. The brand seam authored `.sm` *is* allowed to reach lives in a
+  authored `.vibe`. The brand seam authored `.vibe` *is* allowed to reach lives in a
   separate module that carries the claim truthfully, and every one of its exports
   is a predicate or an assertion — nothing there can construct a Result, a Panic,
   or an Error. That separation is pinned by a test that shows an unmarked wrapper

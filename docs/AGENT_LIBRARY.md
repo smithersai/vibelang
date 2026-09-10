@@ -5,14 +5,14 @@ not add language syntax. Package names, exact API spellings, journal format,
 sandbox provider, and model-provider adapters remain open.
 
 The specifier used below is one of those open names and is **not** a published
-package: `import("@smithers/agent")` fails with `ERR_MODULE_NOT_FOUND`. The
-library ships as `smthrs/agent` (46 exports), where `CodingAgent.make` exists as
+package: `import("@vibelang/agent")` fails with `ERR_MODULE_NOT_FOUND`. The
+library ships as `vibelang/agent`, where `CodingAgent.make` exists as
 written and the sandbox is `DenoSubprocessSandbox` rather than
 `TypeScriptSandbox`.
 
 ## Decision
 
-Smithers's default coding agent writes ordinary TypeScript on every turn. The
+VibeLang's default coding agent writes ordinary TypeScript on every turn. The
 generated program runs in a sandbox and receives only an explicit table of
 callable functions. It has no ambient filesystem, network, process,
 environment, module loader, tools, or MCP access.
@@ -26,12 +26,12 @@ durable(...) Flow     -> typed high-level function
 
 An MCP protocol and a tool-calling protocol are adapters, not separate agent
 semantics. The agent loop and sandbox belong to a library/runtime, not to the
-Smithers grammar or type system.
+VibeLang grammar or type system.
 
 ## Candidate API
 
 ```ts
-import { CodingAgent, TypeScriptSandbox } from "@smithers/agent"
+import { CodingAgent, TypeScriptSandbox } from "@vibelang/agent"
 import CodingPrompt from "./coding-agent.mdx" with { type: "mdx" }
 
 const Coder = CodingAgent.make({
@@ -49,14 +49,14 @@ const Coder = CodingAgent.make({
   }
 })
 
-const result = (await Coder.run({ task }))!
+const result = await Coder.run({ task })
 ```
 
 The generated source has one entry point and one authority-bearing argument:
 
 ```ts
 export default async function turn(functions: Functions) {
-  const source = (await functions.readFile({ path: "src/index.ts" }))!
+  const source = await functions.readFile({ path: "src/index.ts" })
   return functions.build({ source })
 }
 ```
@@ -67,11 +67,15 @@ RPC proxies into the durable executor; a local composition may use ordinary
 closures. Only Action and Flow calls receive durable execution semantics.
 
 This explicit argument is the authority boundary for untrusted generated
-TypeScript, not Smithers's capability mechanism. Authored Smithers functions
+TypeScript, not VibeLang's capability mechanism. Authored VibeLang functions
 obtain capabilities through the inherited `Capability.context()` method from
-`smthrs/context`, and those requirements appear in the function's static
+`vibelang/context`, and those requirements appear in the function's static
 type without adding a source parameter. The sandbox passes `functions`
 deliberately because generated code is otherwise denied ambient authority.
+
+Generated TypeScript does not use VibeLang `!` propagation. The Action/Flow RPC
+adapter validates the wire contract and returns its success value through the
+Promise; a failure crosses the sandbox's structured exception boundary.
 
 ## MDX prompts
 
@@ -90,7 +94,7 @@ model API without compiler support.
 
 The MDX component named `Context` is prompt markup supplied by the agent
 library. It is unrelated to the `Context` capability base class in
-`smthrs/context`.
+`vibelang/context`.
 
 ## Turn lifecycle
 
@@ -142,16 +146,30 @@ function, normally an Action when it must be replayable.
 
 ### Flow adapter
 
-`flowTool(target, options)` illustrates a callable adapter projected from a
-validated compiled Plan. It derives an execution identity from the turn,
-accepted-source digest, exposed function and call site, Flow and Plan identity,
-and input digest, then commits that attachment before starting work. Replay
-joins the same execution and reuses committed Action results. A different input
-or Plan fails as journal divergence instead of mutating the pinned execution.
+`flowTool(target, options)` projects a validated executable body (or a
+compatibility Plan) into the generated-code surface. It derives an execution
+identity from the turn, accepted-source digest, exposed function and call site,
+Flow artifact identity, and input digest, then commits the attachment before
+starting work. Replay joins the same execution and reuses committed Action
+results. A different input or artifact fails as journal divergence instead of
+mutating the pinned execution.
+
+A deployed executor target pins its validated routing manifest in the Flow
+contract as `deploymentDigest`. This also participates in turn identity, even
+with an explicit function identity: changing a provider or policy must not
+reuse a completed old turn's answer without reaching the coordinator. The
+historical `planDigest` field pins the complete body artifact for executable
+Flows; it is not just a source-text digest. A custom body/Plan-only adapter has
+no routing manifest to inspect, so its required implementation identity/version
+and configuration must identify its complete external wiring. Declared provider
+identities do not attest to arbitrary host closure code; hosts must change them
+when implementations change.
 
 The agent journal and durable store MUST define crash-safe attachment semantics
-even when they cannot share one storage transaction. Deployment-envelope
-verification, remote coordinator handoff, principal authorization, and stable
+even when they cannot share one storage transaction. The executable-body tests
+now cover a signed/authenticated coordinator, the real TypeScript sandbox,
+interrupted-turn reattachment, and completed-turn replay without a model or
+executor call. Remote coordinator handoff, principal authorization, and stable
 identity for data-dependent call sites remain open.
 
 The journal must record the model/provider version, prompt digest, callable
@@ -176,12 +194,12 @@ syntax.
 
 ## Library/runtime responsibilities
 
-`@smithers/agent` owns prompt rendering, the code-writing loop, diagnostic
+`@vibelang/agent` owns prompt rendering, the code-writing loop, diagnostic
 repair, model adapters, MCP/tool adapters, sandbox creation, resource limits,
 function-proxy transport, durable turn orchestration, logging, redaction, and
-policy. The Smithers library contract supports generated TypeScript. Other
+policy. The VibeLang library contract supports generated TypeScript. Other
 source languages or agent strategies may use the same Action and Flow boundary
-without changing Smithers.
+without changing VibeLang.
 
 The library should expose independently replaceable primitives for prompt
 rendering, model invocation/streaming, turn state, TypeScript extraction and
