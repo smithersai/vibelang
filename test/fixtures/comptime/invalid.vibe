@@ -1,0 +1,3 @@
+import { comptime as staticValue } from "vibelang:comptime"
+
+export const invalid = staticValue

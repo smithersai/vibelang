@@ -1,3 +1,0 @@
-import { comptime as staticValue } from "smithers:comptime"
-
-export const invalid = staticValue

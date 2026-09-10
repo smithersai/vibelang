@@ -6,7 +6,7 @@
  * path plus the name, so the directories here are load-bearing.
  *
  * The real `poc/examples/agent/anthropic-model.test.ts:378` gates a live
- * Anthropic API call on `SMITHERS_LIVE_MODEL`; this mirrors its shape.
+ * Anthropic API call on `VIBELANG_LIVE_MODEL`; this mirrors its shape.
  */
 
 import { expect, test } from "bun:test";
@@ -17,6 +17,6 @@ test("a test beside the live-model skip", () => {
   expect(1).toBe(1);
 });
 
-test.if(LIVE)("answers a real request (set SMITHERS_LIVE_MODEL=1 with a credential to run)", () => {
+test.if(LIVE)("answers a real request (set VIBELANG_LIVE_MODEL=1 with a credential to run)", () => {
   throw new Error("the live-model body must not run without a credential");
 });

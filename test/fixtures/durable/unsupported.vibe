@@ -1,4 +1,4 @@
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { Compile } from "test:cli-actions"
 
 export const Unsupported = durable(function Unsupported(input: { source: string }) {

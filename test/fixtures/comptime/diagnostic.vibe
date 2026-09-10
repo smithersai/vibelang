@@ -1,4 +1,4 @@
-import { comptime as staticValue } from "smithers:comptime"
+import { comptime as staticValue } from "vibelang:comptime"
 
 const config = staticValue(
   {

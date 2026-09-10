@@ -15,7 +15,7 @@ test("an honest test runs", () => {
 });
 
 test("a second honest test runs", () => {
-  expect("smithers").toContain("smith");
+  expect("vibelang").toContain("vibe");
 });
 
 test("a third honest test runs", () => {

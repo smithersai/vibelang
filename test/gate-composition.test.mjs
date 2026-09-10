@@ -95,4 +95,18 @@ test("the pre-merge gate runs the suites and the packaging verification, once ea
       JSON.stringify(violations),
     );
   });
+
+  await t.test("the product differential cannot be removed or replaced by a non-gating invocation", () => {
+    const removed = { ...scripts, test: scripts.test.replace(" && node scripts/oracle-differential.mjs", "") };
+    assert.ok(gateCompositionViolations(removed).some(text => text.includes("scripts/oracle-differential.mjs")));
+    for (const option of ["--filter 17-durable", "--update", "--help"]) {
+      const changed = { ...scripts, test: scripts.test.replace("scripts/oracle-differential.mjs", `scripts/oracle-differential.mjs ${option}`) };
+      assert.ok(gateCompositionViolations(changed).some(text => text.includes("complete read-only oracle differential")), option);
+    }
+  });
+
+  await t.test("the native type check of POC source and test files cannot disappear", () => {
+    const removed = { ...scripts, test: scripts.test.replace(" && node node_modules/typescript/lib/tsc.js -p poc/tsconfig.json", "") };
+    assert.ok(gateCompositionViolations(removed).some(text => text.includes("poc/tsconfig.json")));
+  });
 });

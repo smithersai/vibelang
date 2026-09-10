@@ -8,8 +8,8 @@ import {
   __setErrorIdentity,
   errorCases,
   errorIdentity,
-} from "smthrs/result";
-import { Panic } from "smthrs/exceptions";
+} from "vibelang/result";
+import { Panic } from "vibelang/exceptions";
 
 class NotFound extends Error {
   constructor(id) {
@@ -136,9 +136,9 @@ test("a user's own value named Optional is ordinary code", () => {
   assert.deepEqual(Object.keys(mine).sort(), ["present", "value"]);
 });
 
-test("the withdrawn `smthrs/optional` subpath no longer resolves", async () => {
+test("the withdrawn `vibelang/optional` subpath no longer resolves", async () => {
   await assert.rejects(
-    () => import("smthrs/optional"),
+    () => import("vibelang/optional"),
     (error) => error.code === "ERR_PACKAGE_PATH_NOT_EXPORTED",
   );
 });

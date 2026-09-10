@@ -125,7 +125,7 @@ test("the one live-model skip is allowed by name, and only at its own path", asy
   // Named, not counted: it appears in the census on every run, green ones
   // included, and it is still the only skip that does not refuse the run.
   assert.match(counted.line, /skipped 1/);
-  assert.match(counted.line, /SMITHERS_LIVE_MODEL/);
+  assert.match(counted.line, /VIBELANG_LIVE_MODEL/);
   assert.deepEqual(coverageRefusals(completed.records), []);
 
   // The allowance is keyed on the path as well as the name: the same skip

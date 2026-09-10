@@ -1,22 +1,21 @@
 /**
- * Smithers differential conformance gate.
+ * VibeLang delivery-profile conformance gate. Both compiler paths now use Go;
+ * "js" and "go" are compatibility labels, not independent implementations.
  *
  * Two very different jobs live in this file, deliberately:
  *
- *   1. The JS instrument (`poc/src/language`) is run over the whole `.sm`
+ *   1. The JS instrument (`poc/src/language`) is run over the whole `.vibe`
  *      corpus and every declared expectation must hold. This is a real
  *      regression gate today: the corpus is the language contract, so a change
  *      that alters an accepted program's output, or that moves/renames/loses a
  *      diagnostic, fails the build here.
  *
- *   2. The pinned Go fork is run over the same corpus in report-only mode. It
- *      is the migration target, not yet the implementation, so it prints its
- *      match count and never fails the build. The headline number that matters
- *      while the semantics move into Go is "N/M cases the Go backend matches
- *      the reference"; watching it climb is the point of the harness.
+ *   2. The pinned Go fork is run over the same corpus. Reviewed xfail markers
+ *      record its narrower implementation; new divergences, unmarked unsupported
+ *      cases, stale markers, and ordinary TypeScript interop failures gate here.
  *
- * Both halves skip cleanly with an actionable message when their toolchain is
- * absent, so `npm test` stays green on a machine that has not fetched the fork.
+ * An absent toolchain is reported as a skip here and refused by the enclosing
+ * Node gate's census. `npm test` cannot pass without measuring both backends.
  */
 
 import assert from "node:assert/strict";
@@ -36,9 +35,9 @@ function missingTool(command, argument) {
 
 const skipJs = missingTool("bun", "--version");
 
-function describeFailures(entries, backend) {
+function describeFailures(entries, backend, statuses = ["fail"]) {
   return entries
-    .filter((entry) => entry.results[backend]?.status === "fail")
+    .filter((entry) => statuses.includes(entry.results[backend]?.status))
     .map((entry) => `  ${entry.id}: ${entry.results[backend].detail}`)
     .join("\n");
 }
@@ -139,10 +138,27 @@ test("a pass that skipped a stage is a harness-integrity failure, not a pass", (
   const uncheckedViolations = auditVerdict(testCase, unchecked, judge(testCase, unchecked, "js"), jsBackend);
   assert.equal(uncheckedViolations.length, 1, "a pass without the emit-check stage must be reported");
   assert.match(uncheckedViolations[0], /emit-check/);
+  const sourceCheckedOnly = { ...complete, stages: ["lower", "source-check", "execute"] };
+  assert.match(auditVerdict(testCase, sourceCheckedOnly, verdict, jsBackend).join("\n"), /emit-check/,
+    "source checking must not stand in for emitted-code checking of an executed program");
 
   // And an observation that claims nothing at all cannot buy a pass either.
   const empty = { ...complete, stages: [] };
   assert.equal(auditVerdict(testCase, empty, judge(testCase, empty, "js"), jsBackend).length, 1);
+});
+
+test("a native source refusal earns a TS diagnostic verdict without pretending to emit", () => {
+  const testCase = { id: "native-source-refusal", entry: "main.vibe", expectation: {
+    expect: "diagnostics", diagnostics: [{ code: "TS2322", line: 1, column: 5 }],
+  } };
+  const observed = { kind: "diagnostics", stages: ["lower", "source-check"], diagnostics: [
+    { code: "TS2322", file: "main.vibe", line: 1, column: 5, message: "type mismatch", mapped: true },
+  ] };
+  const verdict = judge(testCase, observed, "js");
+  assert.equal(verdict.status, "pass");
+  assert.deepEqual(auditVerdict(testCase, observed, verdict, jsBackend), []);
+  assert.match(auditVerdict(testCase, { ...observed, stages: ["lower"] }, verdict, jsBackend).join("\n"),
+    /TS-code expectation.*emit-check or source-check/);
 });
 
 /**
@@ -153,7 +169,7 @@ test("a crashed or refusing backend is scored as a failure to measure", () => {
   const testCase = loadCorpus()[0];
   for (const observation of [
     { kind: "error", stages: [], reason: "could not run bun" },
-    { kind: "rejected", stages: [], reason: "smithersc-go rejected the request (exit 64)" },
+    { kind: "rejected", stages: [], reason: "vibec-go rejected the request (exit 64)" },
   ]) {
     for (const backend of ["js", "go"]) {
       const verdict = judge(testCase, observation, backend);
@@ -195,8 +211,10 @@ test(
       `plain TypeScript must keep its behavior:\n${describeFailures(report.interop, "js")}`,
     );
     // A case the harness could not measure is never a pass and never a skip.
-    assert.equal(summary.js.unmeasured, 0, "every corpus case must have been measured");
-    assert.equal(summary.jsInterop.unmeasured, 0, "every interop file must have been measured");
+    assert.equal(summary.js.unmeasured, 0,
+      `every corpus case must have been measured:\n${describeFailures(report.cases, "js", ["unmeasured"])}`);
+    assert.equal(summary.jsInterop.unmeasured, 0,
+      `every interop file must have been measured:\n${describeFailures(report.interop, "js", ["unmeasured"])}`);
 
     // An xpass means a case marked xfail now behaves as the specification says.
     // That is good news, but the marker has to be retired deliberately, so it
@@ -206,10 +224,14 @@ test(
         t.diagnostic(`xpass: ${entry.id} — ${entry.results.js.detail}`);
       }
     }
+    assert.equal(summary.js.xpass, 0, "retire stale reference xfail markers after verifying the implemented behavior");
+    assert.equal(summary.js.unsupported, 0, "an unmarked unsupported case is a reference regression");
+    assert.equal(summary.jsInterop.unsupported, 0, "all ordinary TypeScript interop cases must execute");
+    assert.deepEqual(summary.failOpenMarkers?.js ?? [], [], "an xfail marker must not hide accepting a required refusal");
   },
 );
 
-test("the Go fork's conformance is measured, not gated", { timeout: 1_800_000 }, async (t) => {
+test("the Go fork satisfies the reviewed conformance baseline and plain TypeScript interop", { timeout: 1_800_000 }, async (t) => {
   if (skipJs) {
     t.skip(skipJs);
     return;
@@ -237,17 +259,37 @@ test("the Go fork's conformance is measured, not gated", { timeout: 1_800_000 },
     }
   }
 
-  // Report-only, by design: the Go backend is mid-migration. The only thing
-  // asserted is that the harness itself produced a verdict for every case, so a
-  // silently empty measurement cannot masquerade as progress.
+  // Gating, since 2026-09-05. The Go backend is still mid-migration, and the
+  // corpus records that honestly: a case the fork cannot run yet carries an
+  // `xfail` marker naming the backend and the reason (conformance/README.md
+  // keeps the register). What must never happen silently is a NEW divergence —
+  // a case with no marker whose Go verdict disagrees with the reference — or a
+  // marker that has gone stale because the fork caught up (`xpass`). Both were
+  // report-only before, so `npm test` could go green over a fresh Go regression.
+  const divergent = report.cases.filter((entry) => entry.results.go?.status === "fail").map((entry) => entry.id);
+  assert.deepEqual(
+    divergent,
+    [],
+    `the Go backend diverges from the reference on unmarked cases; fix the fork or add an xfail marker with its reason:\n${divergent.join("\n")}`,
+  );
+  const xpass = report.cases.filter((entry) => entry.results.go?.status === "xpass").map((entry) => entry.id);
+  assert.deepEqual(
+    xpass,
+    [],
+    `these xfail(go) markers are stale — the fork now agrees; retire them in the case and in conformance/README.md:\n${xpass.join("\n")}`,
+  );
   assert.equal(
     summary.go.total,
     report.cases.length,
     "every corpus case must receive a Go verdict, even if that verdict is unsupported",
   );
-  // Report-only covers "the fork does not do this yet" and "the fork does it
-  // differently". It does not cover "the harness never found out", which would
-  // otherwise inflate `unsupported` with cases nobody measured.
-  assert.equal(summary.go.unmeasured, 0, "a Go case that could not be measured is a harness failure, not a result");
-  assert.equal(summary.goInterop.unmeasured, 0, "an interop file that could not be measured is a harness failure");
+  assert.equal(summary.go.unsupported, 0, "unsupported Go cases need a reviewed per-case baseline, not an unmarked escape");
+  assert.equal(summary.goInterop.fail, 0, `plain TypeScript must keep its behavior:\n${describeFailures(report.interop, "go")}`);
+  assert.equal(summary.goInterop.unsupported, 0, "all ordinary TypeScript interop cases must execute");
+  assert.deepEqual(summary.failOpenMarkers?.go ?? [], [], "an xfail marker must not hide accepting a required refusal");
+  // A missing observation is never an expected implementation limitation.
+  assert.equal(summary.go.unmeasured, 0,
+    `a Go case that could not be measured is a harness failure, not a result:\n${describeFailures(report.cases, "go", ["unmeasured"])}`);
+  assert.equal(summary.goInterop.unmeasured, 0,
+    `an interop file that could not be measured is a harness failure:\n${describeFailures(report.interop, "go", ["unmeasured"])}`);
 });

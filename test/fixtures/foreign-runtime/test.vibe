@@ -1,4 +1,4 @@
-import { foreignSummary } from "./main.sm"
+import { foreignSummary } from "./main.vibe"
 
 export function testForeignGraph(): Result<string, Panic> {
   return foreignSummary()!

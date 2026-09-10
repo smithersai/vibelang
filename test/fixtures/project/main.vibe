@@ -1,4 +1,4 @@
-import { load, type Missing } from "./service.sm"
+import { load, type Missing } from "./service.vibe"
 
 export function run(): Result<string, Missing> {
   return load(true)!

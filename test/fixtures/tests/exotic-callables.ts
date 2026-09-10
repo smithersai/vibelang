@@ -1,6 +1,6 @@
 /**
  * Deliberately trusted test-only adapter that builds the callable shapes the
- * `.sm` frontend does not spell, so `smithers test` can be pinned against every
+ * `.vibe` frontend does not spell, so `vibe test` can be pinned against every
  * way a generator can reach the runner.
  *
  * Each of these was measured to pass without running before the runner learned

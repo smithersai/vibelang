@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import test from "node:test";
 
 // The relative runtime graph is a compiler-internal module with no package
-// subpath: `smthrs/*` deliberately publishes no compiler internals. It is
+// subpath: `vibelang/*` deliberately publishes no compiler internals. It is
 // still root-owned code the CLI composes, so it is exercised from its build
 // output the way the CLI loads it.
 const { buildRelativeRuntimeGraph, transpileRelativeRuntimeGraph } = await import(
@@ -22,11 +22,11 @@ const MARKER = "/** @module @throws {never} */";
 const key = (index) => String(index).repeat(2).padStart(64, "0abcdef");
 
 function workspace(name) {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), `smithers-graph-${name}-`)));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), `vibelang-graph-${name}-`)));
   return { root, outDir: join(root, "output") };
 }
 
-function smithersSeed(root, name, source) {
+function vibelangSeed(root, name, source) {
   const fileName = join(root, name);
   mkdirSync(join(fileName, ".."), { recursive: true });
   writeFileSync(fileName, source);
@@ -35,9 +35,9 @@ function smithersSeed(root, name, source) {
 
 function generatedAsset(outDir, logicalKey, source, resolutionAliases = []) {
   return {
-    sourceFileName: `.smithers-generated/assets/${logicalKey}.ts`,
+    sourceFileName: `.vibelang-generated/assets/${logicalKey}.ts`,
     source,
-    outputFileName: join(outDir, "__smithers_assets__", `${logicalKey}.mjs`),
+    outputFileName: join(outDir, "__vibelang_assets__", `${logicalKey}.mjs`),
     resolutionAliases,
   };
 }
@@ -47,6 +47,101 @@ function fileNamed(graph, name) {
   assert.notEqual(found, undefined, `graph is missing ${name}`);
   return found;
 }
+
+for (const [extension, source] of [
+  ["ts", "export const answer: number = 42;"],
+  ["mts", "export const answer: number = 42;"],
+  ["cts", "export const answer: number = 42;"],
+  ["js", "export const answer = 42;"],
+  ["mjs", "export const answer = 42;"],
+  ["cjs", "module.exports = { answer: 42 };"],
+  ["tsx", "const React = { createElement: (_: unknown, props: {value: number}) => props.value }; export const answer = <item value={42}/>;"],
+  ["jsx", "const React = { createElement: (_, props) => props.value }; export const answer = <item value={42}/>;"],
+]) test(`native foreign transpilation executes .${extension} and preserves its source map`, async () => {
+  const { root, outDir } = workspace(`native-transpile-${extension}`);
+  try {
+    const seed = vibelangSeed(root, "main.vibe", `import { answer } from "./value.${extension}"; export const result = answer;`);
+    const authored = `${MARKER}\n// astral 🦀\r\n${source}`;
+    writeFileSync(join(root, `value.${extension}`), authored);
+    const graph = buildRelativeRuntimeGraph({ rootDir: root, outDir, vibelangSources: [seed],
+      vibelangOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }], budget: BUDGET });
+    assert.deepEqual(graph.diagnostics, []);
+    const transpiled = transpileRelativeRuntimeGraph(graph, { sourceMap: true });
+    assert.deepEqual(transpiled.diagnostics, []);
+    assert.equal(transpiled.files.length, 1);
+    const file = transpiled.files[0];
+    const map = JSON.parse(file.sourceMap);
+    assert.equal(map.version, 3);
+    assert.deepEqual(map.sourcesContent, [authored]);
+    assert.equal(map.file, `value.${file.format === "cjs" ? "cjs" : "mjs"}`);
+    assert.equal(map.sources.length, 1);
+    assert(map.sources[0].endsWith(`/value.${extension}`));
+    assert(map.mappings.length > 0);
+    if (file.format === "cjs") {
+      const module = { exports: {} };
+      new Function("exports", "module", file.code)(module.exports, module);
+      assert.equal(module.exports.answer, 42);
+    } else {
+      const module = await import("data:text/javascript;base64," + Buffer.from(file.code).toString("base64"));
+      assert.equal(module.answer, 42);
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+for (const newline of ["\n", "\r\n", "\r", "\u2028", "\u2029"]) test(`native foreign parse refusal preserves UTF16 spans across ${JSON.stringify(newline)}`, () => {
+  const { root, outDir } = workspace("native-transpile-refusal");
+  try {
+    const seed = vibelangSeed(root, "main.vibe", 'import { value } from "./value.ts";');
+    const source = `${MARKER}${newline}// 🦀${newline}export const value = ;`;
+    writeFileSync(join(root, "value.ts"), source);
+    const graph = buildRelativeRuntimeGraph({ rootDir: root, outDir, vibelangSources: [seed],
+      vibelangOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }], budget: BUDGET });
+    const transpiled = transpileRelativeRuntimeGraph(graph, { sourceMap: true });
+    assert(transpiled.diagnostics.some(diagnostic => diagnostic.code === "TS1109" && diagnostic.phase === "parse" &&
+      diagnostic.file === join(root, "value.ts") && diagnostic.span.start === source.lastIndexOf(";")));
+    assert.equal(transpiled.files[0].code, "");
+    assert.equal(transpiled.files[0].sourceMap, undefined);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("JavaScript declaration companions retain their bounded transitive type graph", () => {
+  const { root, outDir } = workspace("declaration-companions");
+  try {
+    const seed = vibelangSeed(root, "main.vibe", 'import { value } from "./library.mjs"; export const result = value;');
+    writeFileSync(join(root, "library.mjs"), `${MARKER}\nexport const value = { count: 1 };`);
+    writeFileSync(join(root, "library.d.mts"), 'import type { Value } from "./types.js"; export declare const value: Value;');
+    writeFileSync(join(root, "types.d.ts"), 'export interface Value { count: number }');
+    const graph = buildRelativeRuntimeGraph({ rootDir: root, outDir, vibelangSources: [seed],
+      vibelangOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }], budget: BUDGET });
+    assert.deepEqual(graph.diagnostics, []);
+    assert.equal(graph.files.length, 1);
+    assert.equal(graph.fileCount, 4);
+    assert.equal(graph.checkerDependencies.length, 2);
+    const companion = graph.declarationSources.find(file => file.fileName === join(root, "library.d.mts"));
+    assert.equal(companion.runtimeOutputFileName, join(outDir, "__vibelang_foreign__/library.mjs"));
+    assert.match(companion.code, /"\.\/types\.mjs"/);
+    assert.equal(graph.declarationSources.find(file => file.fileName === join(root, "types.d.ts")).outputFileName,
+      join(outDir, "__vibelang_foreign__/types.d.mts"));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+for (const failure of ["file budget", "symlink", "untrusted initialization"]) test(`declaration companions cannot bypass ${failure}`, () => {
+  const { root, outDir } = workspace("declaration-companion-refusal");
+  try {
+    const seed = vibelangSeed(root, "main.vibe", 'import { value } from "./library.mjs"; export const result = value;');
+    writeFileSync(join(root, "library.mjs"), `${failure === "untrusted initialization" ? "" : MARKER}\nexport const value = 1;`);
+    const declaration = "/** @vibelangModule {\"version\":2,\"runtimes\":[]} */ export declare const value: number;";
+    if (failure === "symlink") {
+      writeFileSync(join(root, "alias.d.mts"), declaration);
+      symlinkSync(join(root, "alias.d.mts"), join(root, "library.d.mts"));
+    } else writeFileSync(join(root, "library.d.mts"), declaration);
+    const build = () => buildRelativeRuntimeGraph({ rootDir: root, outDir, vibelangSources: [seed],
+      vibelangOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+      budget: { ...BUDGET, ...(failure === "file budget" ? { maximumFiles: 2 } : {}) } });
+    if (failure === "untrusted initialization") assert.equal(build().diagnostics[0].code, "VIBE1510");
+    else assert.throws(build, failure === "symlink" ? /symbolic-link alias/ : /source files/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
 
 test("a nested generated asset graph rewrites every sibling edge onto the emitted layout", () => {
   const { root, outDir } = workspace("nested");
@@ -62,16 +157,16 @@ test("a nested generated asset graph rewrites every sibling edge onto the emitte
       return generatedAsset(outDir, logicalKey, source, index === 0 ? ["config.json"] : []);
     });
 
-    const seed = smithersSeed(
+    const seed = vibelangSeed(
       root,
-      "main.sm",
+      "main.vibe",
       'import config from "./config.json" with { type: "json" }\nexport const answer = config\n',
     );
     const graph = buildRelativeRuntimeGraph({
       rootDir: root,
       outDir,
-      smithersSources: [seed],
-      smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+      vibelangSources: [seed],
+      vibelangOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
       generatedRuntimeSources: generated,
       budget: BUDGET,
     });
@@ -91,7 +186,7 @@ test("a nested generated asset graph rewrites every sibling edge onto the emitte
       } else {
         assert.equal(file.rewrittenSource, file.source);
       }
-      assert.equal(file.outputFileName, join(outDir, "__smithers_assets__", `${logicalKey}.mjs`));
+      assert.equal(file.outputFileName, join(outDir, "__vibelang_assets__", `${logicalKey}.mjs`));
     }
 
     for (const output of graph.additionalRuntimeOutputs) {
@@ -108,19 +203,19 @@ test("a nested generated asset graph rewrites every sibling edge onto the emitte
   }
 });
 
-test("a Smithers module may re-export a generated asset", () => {
+test("a VibeLang module may re-export a generated asset", () => {
   const { root, outDir } = workspace("re-export");
   try {
-    const seed = smithersSeed(
+    const seed = vibelangSeed(
       root,
-      "main.sm",
+      "main.vibe",
       'export { answer } from "./config.json" with { type: "json", mode: "const" }\n',
     );
     const graph = buildRelativeRuntimeGraph({
       rootDir: root,
       outDir,
-      smithersSources: [seed],
-      smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+      vibelangSources: [seed],
+      vibelangOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
       generatedRuntimeSources: [generatedAsset(
         outDir,
         key(0),
@@ -143,7 +238,7 @@ test("a Smithers module may re-export a generated asset", () => {
 test("a literal dynamic asset import resolves and its emitted specifier is restated once", () => {
   const { root, outDir } = workspace("dynamic");
   try {
-    const seed = smithersSeed(root, "main.sm", [
+    const seed = vibelangSeed(root, "main.vibe", [
       "export async function readLater(): Promise<number> {",
       '  const config = await import("./config.json", { with: { type: "json", mode: "const" } })',
       "  return config.default.answer",
@@ -153,8 +248,8 @@ test("a literal dynamic asset import resolves and its emitted specifier is resta
     const graph = buildRelativeRuntimeGraph({
       rootDir: root,
       outDir,
-      smithersSources: [seed],
-      smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+      vibelangSources: [seed],
+      vibelangOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
       generatedRuntimeSources: [generatedAsset(
         outDir,
         key(0),
@@ -168,22 +263,22 @@ test("a literal dynamic asset import resolves and its emitted specifier is resta
     const authored = seed.fileName;
     const output = join(outDir, "main.mjs");
     const emitted = 'export async function readLater() {\n  const config = await import("./config.json");\n  return config.default.answer;\n}\n';
-    const rewritten = graph.rewriteSmithersRuntimeCalls(emitted, authored, output);
-    assert.match(rewritten, new RegExp(`import\\("\\./__smithers_assets__/${key(0)}\\.mjs"\\)`));
+    const rewritten = graph.rewriteVibeLangRuntimeCalls(emitted, authored, output);
+    assert.match(rewritten, new RegExp(`import\\("\\./__vibelang_assets__/${key(0)}\\.mjs"\\)`));
 
     // Whichever stage restates the specifier first, running the rewrite again is
     // a no-op rather than an "unresolved dynamic import" failure.
-    assert.equal(graph.rewriteSmithersRuntimeCalls(rewritten, authored, output), rewritten);
+    assert.equal(graph.rewriteVibeLangRuntimeCalls(rewritten, authored, output), rewritten);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("a Smithers dynamic import that is not a generated asset is still deferred", () => {
+test("a VibeLang dynamic import that is not a generated asset is still deferred", () => {
   const { root, outDir } = workspace("deferred");
   try {
     writeFileSync(join(root, "plain.ts"), "export const value = 1\n");
-    const seed = smithersSeed(root, "main.sm", [
+    const seed = vibelangSeed(root, "main.vibe", [
       "export async function load(): Promise<number> {",
       '  const module = await import("./plain.ts")',
       "  return module.value",
@@ -194,11 +289,11 @@ test("a Smithers dynamic import that is not a generated asset is still deferred"
       () => buildRelativeRuntimeGraph({
         rootDir: root,
         outDir,
-        smithersSources: [seed],
-        smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+        vibelangSources: [seed],
+        vibelangOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
         budget: BUDGET,
       }),
-      /Smithers dynamic import is deferred/,
+      /VibeLang dynamic import is deferred/,
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -208,17 +303,17 @@ test("a Smithers dynamic import that is not a generated asset is still deferred"
 test("a type-only edge to a generated asset is rejected", () => {
   const { root, outDir } = workspace("type-only");
   try {
-    const seed = smithersSeed(
+    const seed = vibelangSeed(
       root,
-      "main.sm",
+      "main.vibe",
       'import type config from "./config.json" with { type: "json" }\nexport type Config = typeof config\n',
     );
     assert.throws(
       () => buildRelativeRuntimeGraph({
         rootDir: root,
         outDir,
-        smithersSources: [seed],
-        smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+        vibelangSources: [seed],
+        vibelangOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
         generatedRuntimeSources: [generatedAsset(
           outDir,
           key(0),
@@ -237,12 +332,12 @@ test("a type-only edge to a generated asset is rejected", () => {
 test("a generated asset module may only import a sibling generated module", () => {
   const { root, outDir } = workspace("edges");
   try {
-    const seed = smithersSeed(root, "main.sm", "export const answer = 1\n");
+    const seed = vibelangSeed(root, "main.vibe", "export const answer = 1\n");
     const build = (source) => buildRelativeRuntimeGraph({
       rootDir: root,
       outDir,
-      smithersSources: [seed],
-      smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+      vibelangSources: [seed],
+      vibelangOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
       generatedRuntimeSources: [generatedAsset(outDir, key(0), source)],
       budget: BUDGET,
     });
@@ -267,13 +362,13 @@ test("a generated asset module may only import a sibling generated module", () =
 test("generated asset modules may not form an import cycle", () => {
   const { root, outDir } = workspace("cycle");
   try {
-    const seed = smithersSeed(root, "main.sm", "export const answer = 1\n");
+    const seed = vibelangSeed(root, "main.vibe", "export const answer = 1\n");
     assert.throws(
       () => buildRelativeRuntimeGraph({
         rootDir: root,
         outDir,
-        smithersSources: [seed],
-        smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+        vibelangSources: [seed],
+        vibelangOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
         generatedRuntimeSources: [
           generatedAsset(outDir, key(0), `${MARKER}\nimport child from "./${key(1)}.ts";\nconst value = child;\nexport default value;\n`),
           generatedAsset(outDir, key(1), `${MARKER}\nimport child from "./${key(0)}.ts";\nconst value = child;\nexport default value;\n`),
@@ -293,14 +388,14 @@ test("generated asset modules may not form an import cycle", () => {
 // This walk is the ONLY implementation of the module-initialization trust rule
 // that follows the graph transitively — `checkForeignModuleInitializers` in the
 // reference and `checkForeignModuleTrust` in the fork both iterate the authored
-// `.sm`'s own statements — so every module reached at depth two or more is
+// `.vibe`'s own statements — so every module reached at depth two or more is
 // judged here and nowhere else. Both defects these tests pin were measured
 // running an untrusted foreign initializer on a project that reported ok: true.
 // ---------------------------------------------------------------------------
 
 /**
- * `main.sm` reaches `sneaky<ext>` through `depth - 1` marker-carrying hops, so
- * the authored Smithers source only ever imports trusted code and the graph is
+ * `main.vibe` reaches `sneaky<ext>` through `depth - 1` marker-carrying hops, so
+ * the authored VibeLang source only ever imports trusted code and the graph is
  * the only thing that can refuse the unmarked module.
  */
 function trustChain(name, { header, extension = ".ts", depth = 2, carrier }) {
@@ -320,13 +415,13 @@ function trustChain(name, { header, extension = ".ts", depth = 2, carrier }) {
   for (let level = 3; level <= depth; level += 1) hops.push([`hop${level}`, reach(level === 3 ? "carrier" : `hop${level - 1}`)]);
   for (const [module, body] of hops) writeFileSync(join(root, `${module}${extension}`), `${MARKER}\n${body}`);
   const entry = hops.length === 0 ? `sneaky${extension}` : `${hops.at(-1)[0]}${extension}`;
-  const seed = smithersSeed(root, "main.sm", `import "./${entry}"\nexport const answer = 1\n`);
+  const seed = vibelangSeed(root, "main.vibe", `import "./${entry}"\nexport const answer = 1\n`);
   try {
     const graph = buildRelativeRuntimeGraph({
       rootDir: root,
       outDir,
-      smithersSources: [seed],
-      smithersOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
+      vibelangSources: [seed],
+      vibelangOutputs: [{ sourceFileName: seed.fileName, outputFileName: join(outDir, "main.mjs") }],
       budget: BUDGET,
     });
     return graph.diagnostics.map((diagnostic) => `${diagnostic.code}@${basename(diagnostic.fileName)}`);
@@ -359,7 +454,7 @@ test("the module trust marker is read with the exact case the specification prin
     for (const depth of [1, 2, 3]) {
       assert.deepEqual(
         trustChain("miscased", { header, depth }),
-        ["SMITHERS1510@sneaky.ts"],
+        ["VIBE1510@sneaky.ts"],
         `${header} at depth ${depth}`,
       );
     }
@@ -380,7 +475,7 @@ test("the module trust marker must be a JSDoc comment, not a substring of the le
   ];
   for (const [description, header] of refused) {
     for (const depth of [1, 2]) {
-      assert.deepEqual(trustChain("comment-kind", { header, depth }), ["SMITHERS1510@sneaky.ts"], `${description} at depth ${depth}`);
+      assert.deepEqual(trustChain("comment-kind", { header, depth }), ["VIBE1510@sneaky.ts"], `${description} at depth ${depth}`);
     }
   }
 
@@ -411,7 +506,7 @@ test("JSDoc whitespace inside the trust marker is exactly space, tab, carriage r
     ["a vertical tab inside the braces", "/** @module @throws {\vnever\v} */"],
     ["a byte-order mark inside the braces", `/** @module @throws {${BOM}never${BOM}} */`],
   ]) {
-    assert.deepEqual(trustChain("marker-space", { header, depth: 2 }), ["SMITHERS1510@sneaky.ts"], description);
+    assert.deepEqual(trustChain("marker-space", { header, depth: 2 }), ["VIBE1510@sneaky.ts"], description);
   }
   for (const [description, header] of [
     ["tabs between the tags", "/** @module\t@throws\t{never} */"],
@@ -477,7 +572,7 @@ test("an edge is a module-initialization edge unless it is proven deferred", () 
       const observed = trustChain("edge-kind", { extension, depth: 2, carrier });
       assert.deepEqual(
         observed,
-        expected === "init" ? [`SMITHERS1510@sneaky${extension}`] : [],
+        expected === "init" ? [`VIBE1510@sneaky${extension}`] : [],
         `${extension}: ${carrier.split("\n")[0]}`,
       );
     }

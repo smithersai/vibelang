@@ -1,4 +1,4 @@
-import { panic } from "smithers:exceptions"
+import { panic } from "vibelang:exceptions"
 
 export function testCamelBoundary(): number {
   return 1

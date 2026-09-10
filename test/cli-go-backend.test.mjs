@@ -17,8 +17,8 @@ const repositoryRoot = process.cwd();
 const forkManifest = JSON.parse(readFileSync(join(repositoryRoot, "typescript-fork.json"), "utf8"));
 const forkSeries = JSON.parse(readFileSync(join(repositoryRoot, "compiler/forkpatch/series.json"), "utf8"));
 
-function runSmithers(args, env = {}) {
-  return spawnSync(process.execPath, ["bin/smithers.js", ...args], {
+function runVibeLang(args, env = {}) {
+  return spawnSync(process.execPath, ["bin/vibe.js", ...args], {
     cwd: repositoryRoot,
     encoding: "utf8",
     env: { ...process.env, ...env },
@@ -29,16 +29,16 @@ function runSmithers(args, env = {}) {
 
 /**
  * Where a consumer looks for the pinned checkout when neither
- * `SMITHERS_TYPESCRIPT_FORK` nor `SMITHERS_TYPESCRIPT_FORK_CACHE` is set. Shared
+ * `VIBELANG_TYPESCRIPT_FORK` nor `VIBELANG_TYPESCRIPT_FORK_CACHE` is set. Shared
  * with the drift gate below so that gate reads the live array rather than a copy.
  */
-const CONSUMER_CACHE_ROOTS = ["/private/tmp/smithers-ts-fork-cache", join(tmpdir(), "smithers-ts-fork-cache")];
+const CONSUMER_CACHE_ROOTS = ["/private/tmp/vibelang-ts-fork-cache", join(tmpdir(), "vibelang-ts-fork-cache")];
 
 function locateForkCheckout() {
-  const configured = process.env.SMITHERS_TYPESCRIPT_FORK;
+  const configured = process.env.VIBELANG_TYPESCRIPT_FORK;
   if (configured) return existsSync(configured) ? resolve(configured) : undefined;
-  const cacheRoots = process.env.SMITHERS_TYPESCRIPT_FORK_CACHE
-    ? [resolve(process.env.SMITHERS_TYPESCRIPT_FORK_CACHE)]
+  const cacheRoots = process.env.VIBELANG_TYPESCRIPT_FORK_CACHE
+    ? [resolve(process.env.VIBELANG_TYPESCRIPT_FORK_CACHE)]
     : CONSUMER_CACHE_ROOTS;
   return cacheRoots
     .map((cache) => join(cache, forkManifest.revision))
@@ -46,8 +46,7 @@ function locateForkCheckout() {
 }
 
 const forkCheckout = locateForkCheckout();
-const missingForkMessage =
-  "Go backend checkout unavailable; prepare and patch it to run the experimental backend integration case";
+const missingForkMessage = "source checkout unavailable for the build-isolation probe";
 
 function parsedPureJson(result) {
   assert.equal(result.stderr, "");
@@ -67,7 +66,7 @@ function runGit(args, options = {}) {
 }
 
 function makePristineCheckout(t, sourceCheckout) {
-  const root = mkdtempSync(join(tmpdir(), "smithers-cli-pristine-fork-"));
+  const root = mkdtempSync(join(tmpdir(), "vibelang-cli-pristine-fork-"));
   const checkout = join(root, "typescript");
   t.after(() => rmSync(root, { recursive: true, force: true }));
   runGit(["clone", "--quiet", "--shared", "--no-checkout", sourceCheckout, checkout]);
@@ -94,7 +93,7 @@ const FORK_CACHE_NAME_SITES = [
   "scripts/prepare-typescript-fork.mjs",
   "scripts/go-test-gate.mjs",
   "scripts/fork-e2e.mjs",
-  "src/go-backend.ts",
+  "poc/src/compiler/native.ts",
   "test/cli-go-backend.test.mjs",
 ];
 
@@ -108,21 +107,22 @@ const FORK_CACHE_REMEDY_SITES = [
 /**
  * The producer and the consumers must name ONE cache directory.
  *
- * `scripts/prepare-typescript-fork.mjs` is the only writer; `src/go-backend.ts`,
+ * `scripts/prepare-typescript-fork.mjs` is the only writer; the source-only
+ * preparation path in `poc/src/compiler/native.ts`,
  * `scripts/go-test-gate.mjs`, `scripts/fork-e2e.mjs` and this file are the
  * readers. They drifted — the writer defaulted to
- * `smithers-typescript-fork-cache` while every reader searched
- * `smithers-ts-fork-cache` — so the documented bare command
+ * `vibelang-typescript-fork-cache` while every reader searched
+ * `vibelang-ts-fork-cache` — so the documented bare command
  * `node scripts/prepare-typescript-fork.mjs --fetch` prepared a real checkout
  * into a directory no reader looks in, and the backend then reported
- * `SMITHERS_GO_CHECKOUT_MISSING` on a machine that had just prepared one.
+ * `VIBELANG_GO_CHECKOUT_MISSING` on a machine that had just prepared one.
  *
  * A one-shot equality assertion would have caught that and nothing since, so
  * this derives both sides: the readers' side is `CONSUMER_CACHE_ROOTS` itself
  * (the array `locateForkCheckout` uses), and the writers'/other readers' side is
  * every quoted cache-directory literal in the files above.
  */
-test("the fork preparation script writes the cache directory the Go backend reads", () => {
+test("the fork preparation script writes the cache directory native build tooling reads", () => {
   const quotedCacheName = /"(?:\/private\/tmp\/)?((?:[a-z0-9]+-)+fork-cache)"/g;
   const named = new Map();
   for (const relative of FORK_CACHE_NAME_SITES) {
@@ -133,7 +133,7 @@ test("the fork preparation script writes the cache directory the Go backend read
   }
   assert.deepEqual(
     [...named.keys()].sort(),
-    ["smithers-ts-fork-cache"],
+    ["vibelang-ts-fork-cache"],
     `the fork cache directory name has drifted: ${
       [...named].map(([name, sites]) => `${name} in ${[...new Set(sites)].join(", ")}`).join("; ")
     }`,
@@ -143,7 +143,7 @@ test("the fork preparation script writes the cache directory the Go backend read
   // rename cannot pass by editing only the literals above.
   assert.deepEqual(
     CONSUMER_CACHE_ROOTS,
-    ["/private/tmp/smithers-ts-fork-cache", join(tmpdir(), "smithers-ts-fork-cache")],
+    ["/private/tmp/vibelang-ts-fork-cache", join(tmpdir(), "vibelang-ts-fork-cache")],
   );
 
   // And the remedy the tools print must be a command that produces it. This is
@@ -162,31 +162,42 @@ test("the fork preparation script writes the cache directory the Go backend read
   }
 });
 
-test("--backend go fails closed with an actionable code when the checkout is absent", () => {
-  const absent = join(tmpdir(), `smithers-c19-absent-${process.pid}`);
+test("--backend go uses its packaged compiler with no checkout or Go executable", () => {
+  const absent = join(tmpdir(), `vibelang-c19-absent-${process.pid}`);
   assert.equal(existsSync(absent), false);
-  const result = runSmithers([
+  const result = runVibeLang([
     "check",
-    "test/fixtures/basic.sm",
+    "test/fixtures/basic.vibe",
     "--backend",
     "go",
     "--format",
     "json",
-  ], { SMITHERS_TYPESCRIPT_FORK: absent });
+  ], { VIBELANG_TYPESCRIPT_FORK: absent, VIBELANG_GO: join(absent, "go"), PATH: "" });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const report = parsedPureJson(result);
+  assert.equal(report.ok, true);
+  assert.deepEqual(report.files[0].diagnostics, []);
+});
+
+test("--backend go fails closed for an unavailable explicit native executable", () => {
+  const absent = join(tmpdir(), `vibelang-native-absent-${process.pid}`);
+  assert.equal(existsSync(absent), false);
+  const result = runVibeLang(["check", "test/fixtures/basic.vibe", "--backend", "go", "--format", "json"], {
+    VIBELANG_NATIVE_COMPILER: absent,
+  });
   assert.equal(result.status, 2, result.stderr || result.stdout);
   const report = parsedPureJson(result);
-  assert.equal(report.code, "SMITHERS_GO_CHECKOUT_MISSING");
-  assert.match(report.message, /node scripts\/prepare-typescript-fork\.mjs --fetch --cache/);
-  assert.match(report.message, /node compiler\/forkpatch\/forkpatch\.mjs apply --checkout/);
-  assert.doesNotMatch(report.message, /fallback/i);
+  assert.equal(report.code, "VIBELANG_GO_INSTALLATION");
+  assert.match(report.message, /Native compiler executable is unavailable/);
+  assert.match(report.message, /matching VibeLang native package/);
+  assert.doesNotMatch(report.message, /--backend js/);
 });
 
 test("JS and Go run backends execute identical Result lifting and postfix propagation", {
-  skip: forkCheckout ? false : missingForkMessage,
 }, (t) => {
-  const project = mkdtempSync(join(tmpdir(), "smithers-cli-backend-parity-"));
+  const project = mkdtempSync(join(tmpdir(), "vibelang-cli-backend-parity-"));
   t.after(() => rmSync(project, { recursive: true, force: true }));
-  const source = join(project, "main.sm");
+  const source = join(project, "main.vibe");
   writeFileSync(source, [
     "declare const process: { stdout: { write(value: string): boolean } }",
     "class InvalidScore extends Error {}",
@@ -205,8 +216,8 @@ test("JS and Go run backends execute identical Result lifting and postfix propag
 
   const reports = new Map();
   for (const backend of ["js", "go"]) {
-    const result = runSmithers(["run", source, "--backend", backend, "--format", "json"], {
-      SMITHERS_TYPESCRIPT_FORK: forkCheckout,
+    const result = runVibeLang(["run", source, "--backend", backend, "--format", "json"], {
+      VIBELANG_TYPESCRIPT_FORK: forkCheckout,
     });
     assert.equal(result.status, 0, `${backend}: ${result.stderr || result.stdout}`);
     const report = parsedPureJson(result);
@@ -216,17 +227,16 @@ test("JS and Go run backends execute identical Result lifting and postfix propag
   }
   assert.deepEqual(reports.get("go"), reports.get("js"));
 
-  const defaultResult = runSmithers(["run", source, "--format", "json"]);
+  const defaultResult = runVibeLang(["run", source, "--format", "json"]);
   assert.equal(defaultResult.status, 0, defaultResult.stderr || defaultResult.stdout);
   assert.deepEqual(parsedPureJson(defaultResult), reports.get("js"));
 });
 
 test("both backend JSON reports keep authored diagnostic positions and one report shape", {
-  skip: forkCheckout ? false : missingForkMessage,
 }, (t) => {
-  const project = mkdtempSync(join(tmpdir(), "smithers-cli-backend-diagnostic-"));
+  const project = mkdtempSync(join(tmpdir(), "vibelang-cli-backend-diagnostic-"));
   t.after(() => rmSync(project, { recursive: true, force: true }));
-  const source = join(project, "invalid.sm");
+  const source = join(project, "invalid.vibe");
   writeFileSync(source, [
     "class BadValue extends Error {}",
     "function invalid(): Result<number, BadValue> {",
@@ -237,8 +247,8 @@ test("both backend JSON reports keep authored diagnostic positions and one repor
   const canonicalSource = realpathSync(source);
 
   for (const backend of ["js", "go"]) {
-    const result = runSmithers(["check", source, "--backend", backend, "--format", "json"], {
-      SMITHERS_TYPESCRIPT_FORK: forkCheckout,
+    const result = runVibeLang(["check", source, "--backend", backend, "--format", "json"], {
+      VIBELANG_TYPESCRIPT_FORK: forkCheckout,
     });
     assert.equal(result.status, 1, `${backend}: ${result.stderr || result.stdout}`);
     const report = parsedPureJson(result);
@@ -270,7 +280,7 @@ test("both backend JSON reports keep authored diagnostic positions and one repor
   }
 });
 
-test("--backend go rejects a pristine unpatched checkout with the exact apply remedy", {
+test("--backend go neither uses nor mutates an unrelated pristine build checkout", {
   skip: forkCheckout ? false : missingForkMessage,
 }, (t) => {
   const pristine = makePristineCheckout(t, forkCheckout);
@@ -283,22 +293,22 @@ test("--backend go rejects a pristine unpatched checkout with the exact apply re
   assert.equal(status.status, 0, status.stderr || status.stdout);
   assert.equal(JSON.parse(status.stdout).state, "pristine");
 
-  const result = runSmithers([
+  const result = runVibeLang([
     "check",
-    "test/fixtures/basic.sm",
+    "test/fixtures/basic.vibe",
     "--backend",
     "go",
     "--format",
     "json",
-  ], { SMITHERS_TYPESCRIPT_FORK: pristine });
-  assert.equal(result.status, 2, result.stderr || result.stdout);
+  ], { VIBELANG_TYPESCRIPT_FORK: pristine });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
   const report = parsedPureJson(result);
-  assert.equal(report.code, "SMITHERS_GO_CHECKOUT_UNPATCHED");
-  assert.equal(
-    report.message,
-    `The pinned TypeScript fork checkout is pristine but unpatched. Remedy: run ` +
-      `\`node compiler/forkpatch/forkpatch.mjs apply --checkout '${pristine}'\`.`,
-  );
+  assert.equal(report.ok, true);
+  const after = spawnSync(process.execPath, ["compiler/forkpatch/forkpatch.mjs", "status", "--checkout", pristine], {
+    cwd: repositoryRoot, encoding: "utf8",
+  });
+  assert.equal(after.status, 0, after.stderr || after.stdout);
+  assert.equal(JSON.parse(after.stdout).state, "pristine");
 });
 
 /**
@@ -320,25 +330,25 @@ test("--backend go rejects a pristine unpatched checkout with the exact apply re
  */
 test("a Go diagnostic is attributed to the request source it names, or to none", async () => {
   const { GoBackendFailure, resolveGoDiagnosticFile } = await import("../dist/go-backend.js");
-  const sources = new Set(["main.sm", "nested/helper.sm"]);
+  const sources = new Set(["main.vibe", "nested/helper.vibe"]);
 
   // The ordinary case, and the one a fail-closed guard must not break.
-  assert.equal(resolveGoDiagnosticFile("main.sm", sources), "main.sm");
-  assert.equal(resolveGoDiagnosticFile("nested/helper.sm", sources), "nested/helper.sm");
+  assert.equal(resolveGoDiagnosticFile("main.vibe", sources), "main.vibe");
+  assert.equal(resolveGoDiagnosticFile("nested/helper.vibe", sources), "nested/helper.vibe");
 
   // Project-level: no file, so no file is claimed.
   assert.equal(resolveGoDiagnosticFile(undefined, sources), undefined);
   assert.equal(resolveGoDiagnosticFile("", sources), undefined);
 
-  // The defect: a name the request never sent used to become "main.sm".
+  // The defect: a name the request never sent used to become "main.vibe".
   assert.throws(
-    () => resolveGoDiagnosticFile("elsewhere.sm", sources),
+    () => resolveGoDiagnosticFile("elsewhere.vibe", sources),
     (error) => {
       assert.ok(error instanceof GoBackendFailure);
-      assert.equal(error.code, "SMITHERS_GO_PROTOCOL");
-      assert.match(error.message, /"elsewhere\.sm"/);
+      assert.equal(error.code, "VIBELANG_GO_PROTOCOL");
+      assert.match(error.message, /"elsewhere\.vibe"/);
       assert.match(error.message, /not one of the 2 source file\(s\)/);
-      assert.match(error.message, /"main\.sm"/);
+      assert.match(error.message, /"main\.vibe"/);
       return true;
     },
   );
@@ -346,8 +356,8 @@ test("a Go diagnostic is attributed to the request source it names, or to none",
   // A near miss is still a miss: an absolute path is not the logical name the
   // request sent, and silently accepting one would reopen the same hole.
   assert.throws(
-    () => resolveGoDiagnosticFile("/tmp/project/main.sm", sources),
-    { code: "SMITHERS_GO_PROTOCOL" },
+    () => resolveGoDiagnosticFile("/tmp/project/main.vibe", sources),
+    { code: "VIBELANG_GO_PROTOCOL" },
   );
 });
 
@@ -355,24 +365,24 @@ test("a Go diagnostic is attributed to the request source it names, or to none",
  * Foreign `.ts`/`.js` dependencies reach the Go request.
  *
  * **Why here, and not anywhere else that already looked green.** The Go request
- * is built in `compileGoSmithersFiles`, and only the CLI builds it. Nothing else
- * in the repository walks that code path: `poc/src/platform/platform.sm.test.ts`
+ * is built in `compileGoVibeLangFiles`, and only the CLI builds it. Nothing else
+ * in the repository walks that code path: `poc/src/platform/platform.vibe.test.ts`
  * calls `compileAndCheckProject` from `poc/src/language`, which is the reference
  * frontend in-process and never produces a Go request at all; and the
  * conformance corpus stages its foreign `.ts` through
  * `conformance/runner/backend-go.mjs`, which assembles its own request from the
  * case's `typescript` list. Both are therefore structurally blind to what the
  * CLI sends. So "531/531 Go gate, 364 conformance cases, 0 divergent" was true
- * at the same time as `--backend go` being unable to compile a single `.sm` that
+ * at the same time as `--backend go` being unable to compile a single `.vibe` that
  * imports a foreign `.ts` — the whole ported platform standard library and the
- * repository's own `poc/examples/language/demo.sm` included. The request used to
- * be `project.sources.map(... kind: "smithers" ...)` over a walk that collects
- * only `.sm`, so the `"typescript"` kind the protocol has always declared was
+ * repository's own `poc/examples/language/demo.vibe` included. The request used to
+ * be `project.sources.map(... kind: "vibelang" ...)` over a walk that collects
+ * only `.vibe`, so the `"typescript"` kind the protocol has always declared was
  * produced by nothing, `ResolveExternalModuleName` returned nil, and every
- * foreign import was refused with SMITHERS1510 — the right code for the wrong
+ * foreign import was refused with VIBE1510 — the right code for the wrong
  * reason.
  *
- * This file is the location that can see it: it spawns `bin/smithers.js` against
+ * This file is the location that can see it: it spawns `bin/vibe.js` against
  * a real on-disk project, which is the only way the request producer runs, and
  * it is discovered by `scripts/node-test-gate.mjs` like every other
  * `test/*.test.mjs`.
@@ -387,7 +397,7 @@ test("a Go diagnostic is attributed to the request source it names, or to none",
  * reach on its own.
  */
 function writeProject(t, name, files) {
-  const root = mkdtempSync(join(tmpdir(), `smithers-cli-foreign-${name}-`));
+  const root = mkdtempSync(join(tmpdir(), `vibelang-cli-foreign-${name}-`));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   for (const [relativeName, text] of Object.entries(files)) {
     const target = join(root, relativeName);
@@ -400,8 +410,8 @@ function writeProject(t, name, files) {
 function checkedByBothBackends(entry) {
   const observed = new Map();
   for (const backend of ["js", "go"]) {
-    const result = runSmithers(["check", entry, "--backend", backend, "--format", "json"], {
-      SMITHERS_TYPESCRIPT_FORK: forkCheckout,
+    const result = runVibeLang(["check", entry, "--backend", backend, "--format", "json"], {
+      VIBELANG_TYPESCRIPT_FORK: forkCheckout,
     });
     observed.set(backend, { status: result.status, report: parsedPureJson(result) });
   }
@@ -410,19 +420,18 @@ function checkedByBothBackends(entry) {
 
 const TRUSTED = "/** @module @throws {never} */\n";
 
-test("--backend go stages the foreign dependencies a .sm project imports", {
-  skip: forkCheckout ? false : missingForkMessage,
+test("--backend go stages the foreign dependencies a .vibe project imports", {
 }, (t) => {
   // One project, several members of the class at once: a direct `./x.ts`, a
   // foreign module that imports another foreign module, a foreign module two
-  // `.sm` files share, a `.sm` that is itself imported doing the importing, a
+  // `.vibe` files share, a `.vibe` that is itself imported doing the importing, a
   // type-only edge, a namespace-free re-export, and an asset beside a foreign
   // import. Each was independently measured broken before staging.
   const root = writeProject(t, "resolves", {
-    "main.sm": [
+    "main.vibe": [
       `import { top } from "./chain.ts"`,
       `import { shared } from "./shared.ts"`,
-      `import { fromLib } from "./lib.sm"`,
+      `import { fromLib } from "./lib.vibe"`,
       `import type { Shape } from "./shapes.ts"`,
       `import label from "./label.json" with { type: "json" }`,
       `export function main(shape: Shape): string {`,
@@ -430,7 +439,7 @@ test("--backend go stages the foreign dependencies a .sm project imports", {
       `}`,
       ``,
     ].join("\n"),
-    "lib.sm": [
+    "lib.vibe": [
       `import { shared } from "./shared.ts"`,
       `export function fromLib(): string { return shared }`,
       ``,
@@ -442,7 +451,7 @@ test("--backend go stages the foreign dependencies a .sm project imports", {
     "label.json": `{ "name": "label" }\n`,
   });
 
-  const observed = checkedByBothBackends(join(root, "main.sm"));
+  const observed = checkedByBothBackends(join(root, "main.vibe"));
   for (const [backend, { status, report }] of observed) {
     assert.equal(
       status,
@@ -455,19 +464,18 @@ test("--backend go stages the foreign dependencies a .sm project imports", {
 });
 
 test("--backend go refuses an untrusted foreign module for its trust claim, not for failing to resolve", {
-  skip: forkCheckout ? false : missingForkMessage,
 }, (t) => {
   const root = writeProject(t, "untrusted", {
-    "main.sm": `import { value } from "./untrusted.ts"\nexport function main(): string { return value }\n`,
+    "main.vibe": `import { value } from "./untrusted.ts"\nexport function main(): string { return value }\n`,
     "untrusted.ts": `export const value = "untrusted";\n`,
   });
 
-  const observed = checkedByBothBackends(join(root, "main.sm"));
+  const observed = checkedByBothBackends(join(root, "main.vibe"));
   for (const [backend, { status, report }] of observed) {
     assert.equal(status, 1, `${backend} accepted an untrusted foreign module`);
     assert.equal(report.ok, false);
     const refusals = report.files.flatMap((file) => file.diagnostics)
-      .filter((diagnostic) => diagnostic.code === "SMITHERS1510");
+      .filter((diagnostic) => diagnostic.code === "VIBE1510");
     assert.equal(refusals.length, 1, `${backend}: ${JSON.stringify(report, null, 2)}`);
     // The distinction this whole test exists for. "Could not be resolved" is
     // what the backend said before the sources were staged, and it is not a
@@ -481,25 +489,24 @@ test("--backend go refuses an untrusted foreign module for its trust claim, not 
 });
 
 test("--backend go still refuses a foreign graph that is untrusted transitively", {
-  skip: forkCheckout ? false : missingForkMessage,
 }, (t) => {
   // The fail-open staging could have opened. The fork's own module-trust check
-  // reads the edges an authored `.sm` spells, so a facade that carries the claim
+  // reads the edges an authored `.vibe` spells, so a facade that carries the claim
   // and re-exports a module that does not is trusted from that side alone;
   // importing the facade still evaluates the untrusted module. The relative
   // runtime graph computes the transitive static-initialization closure, and the
   // CLI stops on it before either backend runs.
   const root = writeProject(t, "transitive", {
-    "main.sm": `import { value } from "./facade.ts"\nexport function main(): string { return value }\n`,
+    "main.vibe": `import { value } from "./facade.ts"\nexport function main(): string { return value }\n`,
     "facade.ts": `${TRUSTED}export { value } from "./untrusted.ts";\n`,
     "untrusted.ts": `export const value = "untrusted";\n`,
   });
 
-  const observed = checkedByBothBackends(join(root, "main.sm"));
+  const observed = checkedByBothBackends(join(root, "main.vibe"));
   for (const [backend, { status, report }] of observed) {
     assert.equal(status, 1, `${backend} accepted a transitively untrusted foreign graph`);
     const refusals = report.files.flatMap((file) => file.diagnostics)
-      .filter((diagnostic) => diagnostic.code === "SMITHERS1510");
+      .filter((diagnostic) => diagnostic.code === "VIBE1510");
     assert.equal(refusals.length, 1, `${backend}: ${JSON.stringify(report, null, 2)}`);
     assert.equal(realpathSync(refusals[0].file), realpathSync(join(root, "untrusted.ts")));
   }
@@ -507,44 +514,42 @@ test("--backend go still refuses a foreign graph that is untrusted transitively"
 });
 
 test("--backend go refuses a foreign dependency outside the project root", {
-  skip: forkCheckout ? false : missingForkMessage,
 }, (t) => {
   // The project root is inferred from the single input, so it is `project/` and
   // `../escaped.ts` is outside it. Reusing the reference walk is what makes this
-  // refusal reach the Go path at all: it used to answer with SMITHERS1510 for
+  // refusal reach the Go path at all: it used to answer with VIBE1510 for
   // the unresolved module instead, which named neither the escape nor the file.
   const root = writeProject(t, "escape", {
     "escaped.ts": `${TRUSTED}export const value = "escaped";\n`,
-    "project/main.sm": `import { value } from "../escaped.ts"\nexport function main(): string { return value }\n`,
+    "project/main.vibe": `import { value } from "../escaped.ts"\nexport function main(): string { return value }\n`,
   });
 
   for (const backend of ["js", "go"]) {
-    const result = runSmithers(["check", join(root, "project/main.sm"), "--backend", backend, "--format", "json"], {
-      SMITHERS_TYPESCRIPT_FORK: forkCheckout,
+    const result = runVibeLang(["check", join(root, "project/main.vibe"), "--backend", backend, "--format", "json"], {
+      VIBELANG_TYPESCRIPT_FORK: forkCheckout,
     });
     assert.equal(result.status, 2, `${backend} admitted a dependency outside the project root`);
     const report = parsedPureJson(result);
-    assert.equal(report.code, "SMITHERS_PROJECT_ERROR");
+    assert.equal(report.code, "VIBELANG_PROJECT_ERROR");
     assert.match(report.message, /outside the project root/);
   }
 });
 
-test("a .sm project with no foreign dependency compiles identically on both backends", {
-  skip: forkCheckout ? false : missingForkMessage,
+test("a .vibe project with no foreign dependency compiles identically on both backends", {
 }, (t) => {
   // The control for the staging change: a request that gains no staged sources
-  // must be the request it always was. Two `.sm` files, one importing the other,
+  // must be the request it always was. Two `.vibe` files, one importing the other,
   // so the walk runs and produces an empty foreign set rather than never running.
   const root = writeProject(t, "none", {
-    "main.sm": [
-      `import { doubled, InvalidScore } from "./helper.sm"`,
+    "main.vibe": [
+      `import { doubled, InvalidScore } from "./helper.vibe"`,
       `export function main(value: number): Result<number, InvalidScore> {`,
       `  const checked = doubled(value)!`,
       `  return checked + 1`,
       `}`,
       ``,
     ].join("\n"),
-    "helper.sm": [
+    "helper.vibe": [
       `export class InvalidScore extends Error {}`,
       `export function doubled(value: number): Result<number, InvalidScore> {`,
       `  if (value < 0) throw new InvalidScore("negative")`,
@@ -554,7 +559,7 @@ test("a .sm project with no foreign dependency compiles identically on both back
     ].join("\n"),
   });
 
-  const observed = checkedByBothBackends(join(root, "main.sm"));
+  const observed = checkedByBothBackends(join(root, "main.vibe"));
   for (const [backend, { status, report }] of observed) {
     assert.equal(status, 0, `${backend}: ${JSON.stringify(report, null, 2)}`);
     assert.equal(report.ok, true);

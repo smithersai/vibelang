@@ -17,12 +17,12 @@ import {
   type PlanTemplate,
   type SignedDeploymentArtifact,
   type TrustedDeploymentKey,
-} from "smthrs/durable";
-import { compileDurableSource as compileDirectly } from "smthrs/durable/source-compiler";
-import { compileEffectManifest as deriveDirectly } from "smthrs/durable/source-compiler";
+} from "vibelang/durable";
+import { compileDurableSource as compileDirectly } from "vibelang/durable/source-compiler";
+import { compileEffectManifest as deriveDirectly } from "vibelang/durable/source-compiler";
 
 const SOURCE = `
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 export const Identity = durable(function Identity(input: unknown) {
   return input
 })
@@ -50,7 +50,7 @@ if (derived.ok) {
   const actions: readonly EffectManifestAction[] = manifest.actions;
   void actions;
   // The published identity is re-derivable from the published bytes. That is
-  // the property `smithers plan --outFile` now depends on, so it is typed here.
+  // the property `vibe plan --profile manifest-compat --outFile` depends on.
   const { digest: _declared, ...semantic } = manifest;
   const recomputed: string = digest(semantic);
   const canonical: string = canonicalJson(manifest);

@@ -5,8 +5,17 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const packageRoot = dirname(require.resolve("smthrs/package.json"));
-const packageMetadata = JSON.parse(readFileSync(require.resolve("smthrs/package.json"), "utf8"));
+const packageRoot = dirname(require.resolve("vibelang/package.json"));
+const packageMetadata = JSON.parse(readFileSync(require.resolve("vibelang/package.json"), "utf8"));
+
+test("the product dependency graph does not select another TypeScript compiler", () => {
+  for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
+    const names = Object.keys(packageMetadata[field] ?? {});
+    assert.equal(names.some(name => name === "typescript" || name === "typescript-js" || name.startsWith("@typescript/")), false,
+      `${field} may not supply an unpinned compiler`);
+  }
+  assert.equal(Object.keys(packageMetadata.exports).some(name => name.startsWith("./unstable/")), false);
+});
 
 function exportTargets(target, output = []) {
   if (typeof target === "string") {
@@ -34,11 +43,29 @@ test("every declared package export points at a file the package actually ships"
   }
 });
 
+test("the native compiler subpath exposes a Go request API, not a JavaScript compiler facade", async () => {
+  const api = await import("vibelang/compiler");
+  assert.deepEqual(packageMetadata.exports["./compiler"], { types: "./dist/compiler.d.ts", default: "./dist/compiler.js" });
+  assert.equal(typeof api.NativeCompiler, "function");
+  assert.equal(api.createProgram, undefined);
+  assert.equal(api.TypeChecker, undefined);
+  assert.equal(api.SyntaxKind, undefined);
+  const compiler = api.getNativeCompiler();
+  assert.equal(compiler.identity.apiVersion, api.NATIVE_API_VERSION);
+  assert.match(compiler.identity.compilerVersion, /^7\./);
+  const result = compiler.compile({ rootNames: ["main.vibe"], files: [{ path: "main.vibe", kind: "vibelang", text: "export const answer: number = 42;" }], lowering: "internal" });
+  assert.equal(result.emitSkipped, false, JSON.stringify(result.diagnostics));
+  const output = result.artifacts.find(item => item.path === "main.js");
+  assert(output);
+  const module = await import("data:text/javascript;base64," + output.content);
+  assert.equal(module.answer, 42);
+});
+
 test("the derived-schema runtime resolves under the bare specifier generated code emits", async () => {
   // `comptime(Schema.derive<T>())` lowers to `import { __vsSchema } from
-  // "smthrs/schema-runtime"`, so this subpath is part of the compiler's
+  // "vibelang/schema-runtime"`, so this subpath is part of the compiler's
   // output contract, not a convenience re-export.
-  const schemaRuntime = await import("smthrs/schema-runtime");
+  const schemaRuntime = await import("vibelang/schema-runtime");
   assert.equal(typeof schemaRuntime.__vsSchema, "function");
   assert.equal(schemaRuntime.derivedSchema, schemaRuntime.__vsSchema);
   assert.equal(typeof schemaRuntime.ValidationError, "function");
@@ -75,7 +102,7 @@ test("the derived-schema runtime resolves under the bare specifier generated cod
 });
 
 test("the platform capability library is reachable from the package subpath", async () => {
-  const platform = await import("smthrs/platform");
+  const platform = await import("vibelang/platform");
 
   // One representative from each area the standard library lists, so a missing
   // re-export in the facade fails here rather than in a consumer's build.
@@ -97,7 +124,7 @@ test("the platform capability library is reachable from the package subpath", as
     "NodePlatform",
     "TestPlatform",
   ]) {
-    assert.notEqual(platform[name], undefined, `smthrs/platform must export ${name}`);
+    assert.notEqual(platform[name], undefined, `vibelang/platform must export ${name}`);
   }
 
   assert.equal(platform.Duration.seconds(2).toMillis(), 2_000);
@@ -124,7 +151,7 @@ test("the platform capability library is reachable from the package subpath", as
 });
 
 test("the Core Data slice is reachable from the package subpath", async () => {
-  const data = await import("smthrs/data");
+  const data = await import("vibelang/data");
 
   const chunk = data.Chunk.of(1, 2, 3);
   assert.equal(data.isChunk(chunk), true);
@@ -159,8 +186,8 @@ test("the Core Data slice is reachable from the package subpath", async () => {
   assert.equal(typeof data.Hash.any.hash(chunk), "number");
 });
 
-test("smthrs/concurrency carries the platform-neutral primitives and leaves the worker host on Bun", async () => {
-  const concurrency = await import("smthrs/concurrency");
+test("vibelang/concurrency carries the platform-neutral primitives and leaves the worker host on Bun", async () => {
+  const concurrency = await import("vibelang/concurrency");
 
   for (const name of [
     "Queue",
@@ -171,10 +198,10 @@ test("smthrs/concurrency carries the platform-neutral primitives and leaves the 
     "CancellationSource",
     "Cancellation",
   ]) {
-    assert.equal(typeof concurrency[name], "function", `smthrs/concurrency must export ${name}`);
+    assert.equal(typeof concurrency[name], "function", `vibelang/concurrency must export ${name}`);
   }
   for (const name of ["awaitAll", "mapUnordered", "allKeyed", "allSettledKeyed", "bufferedUnordered"]) {
-    assert.equal(typeof concurrency[name], "function", `smthrs/concurrency must export ${name}`);
+    assert.equal(typeof concurrency[name], "function", `vibelang/concurrency must export ${name}`);
   }
 
   assert.deepEqual(await concurrency.awaitAll(Promise.resolve(1), Promise.resolve("two")), [1, "two"]);
@@ -202,20 +229,20 @@ test("smthrs/concurrency carries the platform-neutral primitives and leaves the 
   assert.equal("TypedWorker" in concurrency, false);
 });
 
-test("smthrs/concurrency/bun is the Bun-only worker host and fails closed on Node", async () => {
+test("vibelang/concurrency/bun is the Bun-only worker host and fails closed on Node", async () => {
   assert.deepEqual(packageMetadata.exports["./concurrency/bun"], {
     types: "./poc/dist/concurrency/index.d.ts",
     default: "./poc/dist/concurrency/index.js",
   });
 
   if (typeof globalThis.Bun === "object") {
-    const workers = await import("smthrs/concurrency/bun");
+    const workers = await import("vibelang/concurrency/bun");
     assert.equal(typeof workers.TypedWorker, "function");
     return;
   }
   let rejected;
   try {
-    await import("smthrs/concurrency/bun");
+    await import("vibelang/concurrency/bun");
   } catch (error) {
     rejected = error;
   }
@@ -226,9 +253,9 @@ test("smthrs/concurrency/bun is the Bun-only worker host and fails closed on Nod
 /**
  * The package deliberately publishes `tsc` and `tsserver` — it is a drop-in
  * TypeScript compiler, and dropping in is the point. But npm resolves a bin
- * collision silently: with both `smthrs` and `typescript` installed it links
+ * collision silently: with both `vibelang` and `typescript` installed it links
  * exactly one `tsc` into `node_modules/.bin`, by alphabetical package name,
- * with no warning and no trace of the loser. `smthrs` sorts first, so the
+ * with no warning and no trace of the loser. `vibelang` sorts first, so the
  * default outcome is that a consumer's `tsc` quietly stops being the
  * TypeScript they pinned.
  *
@@ -257,4 +284,19 @@ test("a bin name that collides with another package is documented in the shipped
     assert.match(readme, /node_modules\/\.bin/, "the README must say where the collision happens");
     assert.match(readme, /\btypescript\b/, "the README must name the package it collides with");
   }
+});
+
+test("the schema slice is reachable from the package subpath", async () => {
+  // `vibelang/schema` is the runtime-validation and encoding slice of the
+  // standard library: Schema, Codec, Json, JsonSchema, plus the Equivalence and
+  // Hash seam they derive from. Before it existed the modules built under
+  // poc/src/schema but no subpath reached them.
+  const schema = await import("vibelang/schema");
+  for (const name of ["Schema", "Codec", "Json", "JsonSchema", "Equivalence", "Hash"]) {
+    assert.ok(name in schema, `vibelang/schema must export ${name}`);
+  }
+  assert.deepEqual(packageMetadata.exports["./schema"], {
+    types: "./dist/schema.d.ts",
+    default: "./dist/schema.js",
+  });
 });

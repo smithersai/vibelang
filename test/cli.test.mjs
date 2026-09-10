@@ -35,19 +35,20 @@ function snapshotTree(root, directory = root, output = {}) {
   return output;
 }
 
-test("smithersc forwards raw TypeScript CLI flags", () => {
-  const result = run("bin/smithersc.js", ["--version"]);
+test("vibec forwards raw TypeScript CLI flags to the pinned language compiler", async () => {
+  const result = run("bin/vibec.js", ["--version"]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Version 7\.0\./);
+  const { getNativeCompiler } = await import("vibelang/compiler");
+  assert.equal(result.stdout, `Version ${getNativeCompiler().identity.compilerVersion}\n`);
 });
 
-test("smithersc type-checks ordinary TypeScript", () => {
-  const result = run("bin/smithersc.js", ["--noEmit", "test/fixtures/basic.ts"]);
+test("vibec type-checks ordinary TypeScript", () => {
+  const result = run("bin/vibec.js", ["--noEmit", "test/fixtures/basic.ts"]);
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
 test("Incur CLI publishes its command surface", () => {
-  const result = run("bin/smithers.js", ["--help"]);
+  const result = run("bin/vibe.js", ["--help"]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /compile/);
   assert.match(result.stdout, /doctor/);
@@ -55,23 +56,23 @@ test("Incur CLI publishes its command surface", () => {
 });
 
 test("Incur check command delegates to the compiler", () => {
-  const result = run("bin/smithers.js", ["check", "test/fixtures/basic.ts", "--strict"]);
+  const result = run("bin/vibe.js", ["check", "test/fixtures/basic.ts", "--strict"]);
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
-test("Smithers CLI checks, inspects, compiles, and runs .sm source", () => {
-  const checked = run("bin/smithers.js", ["check", "test/fixtures/basic.sm", "--format", "json"]);
+test("VibeLang CLI checks, inspects, compiles, and runs .vibe source", () => {
+  const checked = run("bin/vibe.js", ["check", "test/fixtures/basic.vibe", "--format", "json"]);
   assert.equal(checked.status, 0, checked.stderr || checked.stdout);
   assert.equal(JSON.parse(checked.stdout).ok, true);
 
-  const inspected = run("bin/smithers.js", ["inspect", "test/fixtures/basic.sm", "--format", "json"]);
+  const inspected = run("bin/vibe.js", ["inspect", "test/fixtures/basic.vibe", "--format", "json"]);
   assert.equal(inspected.status, 0, inspected.stderr || inspected.stdout);
   const inspection = JSON.parse(inspected.stdout);
   assert.deepEqual(inspection.files[0].language.rows.answer.failures, ["InvalidAnswer"]);
 
-  const output = mkdtempSync(join(tmpdir(), "smithers-cli-test-"));
+  const output = mkdtempSync(join(tmpdir(), "vibelang-cli-test-"));
   try {
-    const compiled = run("bin/smithers.js", ["compile", "test/fixtures/basic.sm", "--outDir", output, "--format", "json"]);
+    const compiled = run("bin/vibe.js", ["compile", "test/fixtures/basic.vibe", "--outDir", output, "--format", "json"]);
     assert.equal(compiled.status, 0, compiled.stderr || compiled.stdout);
     assert.equal(JSON.parse(compiled.stdout).ok, true);
     assert.equal(existsSync(join(output, "basic.mjs")), true);
@@ -81,16 +82,16 @@ test("Smithers CLI checks, inspects, compiles, and runs .sm source", () => {
     rmSync(output, { recursive: true, force: true });
   }
 
-  const executed = run("bin/smithers.js", ["run", "test/fixtures/basic.sm"]);
+  const executed = run("bin/vibe.js", ["run", "test/fixtures/basic.vibe"]);
   assert.equal(executed.status, 0, executed.stderr || executed.stdout);
   assert.match(executed.stdout, /ok: true/);
 });
 
 test("source asset imports work across compile, check, inspect, run, and test", async () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-assets-")));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-assets-")));
   let assetCacheIdentity;
   try {
-    const source = join(root, "main.sm");
+    const source = join(root, "main.vibe");
     const output = join(root, "output");
     const noEmitOutput = join(root, "no-emit-output");
     writeFileSync(join(root, "config.json"), '{"answer":42,"label":"asset"}\n');
@@ -101,7 +102,7 @@ test("source asset imports work across compile, check, inspect, run, and test", 
       export function testAsset(): void { const exact: 42 = config.answer }
     `);
 
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile",
       source,
       "--rootDir",
@@ -123,7 +124,7 @@ test("source asset imports work across compile, check, inspect, run, and test", 
 
     const logicalKey = report.files[0].assets.modules[0].logicalKey;
     const mainJavaScript = join(output, "main.mjs");
-    const assetJavaScript = join(output, "__smithers_assets__", `${logicalKey}.mjs`);
+    const assetJavaScript = join(output, "__vibelang_assets__", `${logicalKey}.mjs`);
     assert.equal(existsSync(mainJavaScript), true);
     assert.equal(existsSync(`${mainJavaScript}.map`), true);
     assert.equal(existsSync(join(output, "main.d.mts")), true);
@@ -131,14 +132,14 @@ test("source asset imports work across compile, check, inspect, run, and test", 
     assert.equal(existsSync(`${assetJavaScript}.map`), true);
     assert.equal(existsSync(assetJavaScript.replace(/\.mjs$/, ".d.mts")), true);
     const emittedMain = readFileSync(mainJavaScript, "utf8");
-    assert.match(emittedMain, new RegExp(`__smithers_assets__/${logicalKey}\\.mjs`));
+    assert.match(emittedMain, new RegExp(`__vibelang_assets__/${logicalKey}\\.mjs`));
     assert.doesNotMatch(emittedMain, /\bwith\s*\{|\bassert\s*\{/);
     assert.equal(JSON.parse(readFileSync(`${assetJavaScript}.map`, "utf8")).version, 3);
     const namespace = await import(`${pathToFileURL(mainJavaScript).href}?cold=${Date.now()}`);
     assert.equal(namespace.answer, 42);
     assert.equal(namespace.readAsset(), 42);
 
-    const repeated = run("bin/smithers.js", [
+    const repeated = run("bin/vibe.js", [
       "compile",
       source,
       "--rootDir",
@@ -155,7 +156,7 @@ test("source asset imports work across compile, check, inspect, run, and test", 
     assert.equal(repeatedReport.files[0].assets.modules[0].cacheHit, true);
     assert.equal(repeatedReport.files[0].assets.modules[0].logicalKey, logicalKey);
 
-    const noEmit = run("bin/smithers.js", [
+    const noEmit = run("bin/vibe.js", [
       "compile",
       source,
       "--rootDir",
@@ -170,73 +171,73 @@ test("source asset imports work across compile, check, inspect, run, and test", 
     assert.equal(JSON.parse(noEmit.stdout).ok, true);
     assert.equal(existsSync(noEmitOutput), false);
 
-    const checked = run("bin/smithers.js", ["check", source, "--rootDir", root, "--format", "json"]);
+    const checked = run("bin/vibe.js", ["check", source, "--rootDir", root, "--format", "json"]);
     assert.equal(checked.status, 0, checked.stderr || checked.stdout);
     assert.equal(JSON.parse(checked.stdout).files[0].rows.readAsset.failures.length, 0);
 
-    const inspected = run("bin/smithers.js", ["inspect", source, "--format", "json"]);
+    const inspected = run("bin/vibe.js", ["inspect", source, "--format", "json"]);
     assert.equal(inspected.status, 0, inspected.stderr || inspected.stdout);
     const inspection = JSON.parse(inspected.stdout);
     assert.deepEqual(inspection.files[0].language.rows.readAsset, { failures: [], requirements: [] });
 
-    const executed = run("bin/smithers.js", ["run", source, "--format", "json"]);
+    const executed = run("bin/vibe.js", ["run", source, "--format", "json"]);
     assert.equal(executed.status, 0, executed.stderr || executed.stdout);
     assert.equal(JSON.parse(executed.stdout).ok, true);
 
-    const tested = run("bin/smithers.js", ["test", source, "--format", "json"]);
+    const tested = run("bin/vibe.js", ["test", source, "--format", "json"]);
     assert.equal(tested.status, 0, tested.stderr || tested.stdout);
     assert.equal(JSON.parse(tested.stdout).summary, "1 passed, 0 failed");
   } finally {
     rmSync(root, { recursive: true, force: true });
     if (typeof assetCacheIdentity === "string" && /^[0-9a-f]{64}$/.test(assetCacheIdentity)) {
-      rmSync(join(tmpdir(), "smithers-source-asset-cache-v1", assetCacheIdentity), { recursive: true, force: true });
+      rmSync(join(tmpdir(), "vibelang-source-asset-cache-v1", assetCacheIdentity), { recursive: true, force: true });
     }
   }
 });
 
 test("source asset diagnostics fail inspect stably and commit no partial output", () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-assets-rejected-")));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-assets-rejected-")));
   try {
-    const source = join(root, "main.sm");
+    const source = join(root, "main.vibe");
     const output = join(root, "output");
     mkdirSync(output);
     writeFileSync(join(output, "sentinel.txt"), "preserve");
     writeFileSync(join(root, "config.json"), "{}\n");
     writeFileSync(source, 'import config from "./config.json"\nexport const value = config\n');
 
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile", source, "--rootDir", root, "--outDir", output, "--format", "json",
     ]);
     assert.equal(compiled.status, 1, compiled.stderr || compiled.stdout);
     const report = JSON.parse(compiled.stdout);
-    assert.equal(report.files[0].diagnostics.some((item) => item.code === "SMITHERS5201"), true);
+    assert.equal(report.files[0].diagnostics.some((item) => item.code === "VIBE5201"), true);
     assert.deepEqual(readdirSync(output), ["sentinel.txt"]);
 
-    const inspected = run("bin/smithers.js", ["inspect", source, "--format", "json"]);
+    const inspected = run("bin/vibe.js", ["inspect", source, "--format", "json"]);
     assert.equal(inspected.status, 1, inspected.stderr || inspected.stdout);
     const inspection = JSON.parse(inspected.stdout);
-    assert.equal(inspection.code, "SMITHERS_ASSET_IMPORT");
-    assert.equal(inspection.assets.diagnostics.some((item) => item.code === "SMITHERS5201"), true);
+    assert.equal(inspection.code, "VIBELANG_ASSET_IMPORT");
+    assert.equal(inspection.assets.diagnostics.some((item) => item.code === "VIBE5201"), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
 test("prototype package subpaths expose real compiler and runtime APIs", async () => {
-  const language = await import("smthrs/language");
-  const smithers = await import("smthrs/smithers");
-  const runtime = await import("smthrs/runtime");
+  const language = await import("vibelang/language");
+  const vibelang = await import("vibelang/vibe");
+  const runtime = await import("vibelang/runtime");
 
-  assert.equal(typeof language.compileSmithers, "function");
+  assert.equal(typeof language.compileVibeLang, "function");
   assert.equal(typeof language.annotateDeclarationEffects, "function");
   assert.equal(typeof language.readDeclarationEffects, "function");
-  assert.equal(typeof smithers.annotateDeclarationEffects, "function");
-  assert.equal(typeof smithers.readDeclarationEffects, "function");
+  assert.equal(typeof vibelang.annotateDeclarationEffects, "function");
+  assert.equal(typeof vibelang.readDeclarationEffects, "function");
   const annotated = language.annotateDeclarationEffects(
     "export declare function sample(): string;\n",
     { sample: { failures: ["Missing"], requirements: ["Clock"] } },
   );
-  assert.deepEqual(smithers.readDeclarationEffects(annotated).sample, {
+  assert.deepEqual(vibelang.readDeclarationEffects(annotated).sample, {
     failures: ["Missing"],
     requirements: ["Clock"],
   });
@@ -245,8 +246,8 @@ test("prototype package subpaths expose real compiler and runtime APIs", async (
 });
 
 test("root Context and Layer subpaths execute the real async environment", async () => {
-  const { Context } = await import("smthrs/context");
-  const { Layer } = await import("smthrs/provider");
+  const { Context } = await import("vibelang/context");
+  const { Layer } = await import("vibelang/provider");
   class Clock extends Context {}
   const service = { now: () => 42 };
 
@@ -261,21 +262,21 @@ test("root Context and Layer subpaths execute the real async environment", async
 // test/format.test.mjs and test/lsp.test.mjs. This keeps the usage-error and
 // stdout-ownership contracts next to the rest of the command surface.
 test("format and lsp report usage errors without the old NOT_IMPLEMENTED stub", () => {
-  const formatted = run("bin/smithers.js", ["format", "--format", "json"]);
+  const formatted = run("bin/vibe.js", ["format", "--format", "json"]);
   assert.equal(formatted.status, 2);
   assert.equal(JSON.parse(formatted.stdout).code, "INVALID_INPUT");
 
   // The language server owns stdout for the whole session, so a closed stdin
   // ends it with the LSP code for `exit` without `shutdown` and prints nothing.
-  const lsp = run("bin/smithers.js", ["lsp"]);
+  const lsp = run("bin/vibe.js", ["lsp"]);
   assert.equal(lsp.status, 1);
   assert.equal(lsp.stdout, "");
 });
 
-test("smithers test runs exported checked and async test functions", () => {
-  const passing = run("bin/smithers.js", [
+test("vibe test runs exported checked and async test functions", () => {
+  const passing = run("bin/vibe.js", [
     "test",
-    "test/fixtures/tests/passing.sm",
+    "test/fixtures/tests/passing.vibe",
     "--format",
     "json",
   ]);
@@ -285,14 +286,14 @@ test("smithers test runs exported checked and async test functions", () => {
   assert.equal(passingReport.tests.length, 2);
   assert.equal(passingReport.tests.every((item) => item.ok), true);
   assert.deepEqual(passingReport.tests.map((item) => item.name), [
-    "test/fixtures/tests/passing.sm#testAsyncSuccess",
-    "test/fixtures/tests/passing.sm#testCheckedSuccess",
+    "test/fixtures/tests/passing.vibe#testAsyncSuccess",
+    "test/fixtures/tests/passing.vibe#testCheckedSuccess",
   ]);
-  assert.equal(passingReport.tests.some((item) => item.name.includes("smithers-test-")), false);
+  assert.equal(passingReport.tests.some((item) => item.name.includes("vibelang-test-")), false);
 
-  const failing = run("bin/smithers.js", [
+  const failing = run("bin/vibe.js", [
     "test",
-    "test/fixtures/tests/failing.sm",
+    "test/fixtures/tests/failing.vibe",
     "--format",
     "json",
   ]);
@@ -303,9 +304,9 @@ test("smithers test runs exported checked and async test functions", () => {
   assert.equal(failingReport.tests[0].ok, false);
   assert.match(failingReport.tests[0].error, /expected test failure/);
 
-  const hanging = run("bin/smithers.js", [
+  const hanging = run("bin/vibe.js", [
     "test",
-    "test/fixtures/tests/hanging.sm",
+    "test/fixtures/tests/hanging.vibe",
     "--timeoutMs",
     "100",
     "--format",
@@ -317,14 +318,14 @@ test("smithers test runs exported checked and async test functions", () => {
   assert.match(hangingReport.summary, /exceeded 100ms/);
 });
 
-test("smithers test rejects ambiguous discovery and bounds hostile test processes", () => {
-  const missing = run("bin/smithers.js", ["test", "--format", "json"]);
+test("vibe test rejects ambiguous discovery and bounds hostile test processes", () => {
+  const missing = run("bin/vibe.js", ["test", "--format", "json"]);
   assert.equal(missing.status, 2, missing.stderr || missing.stdout);
   assert.equal(JSON.parse(missing.stdout).code, "INVALID_INPUT");
 
-  const noTests = run("bin/smithers.js", [
+  const noTests = run("bin/vibe.js", [
     "test",
-    "test/fixtures/tests/no-tests.sm",
+    "test/fixtures/tests/no-tests.vibe",
     "--format",
     "json",
   ]);
@@ -338,45 +339,45 @@ test("smithers test rejects ambiguous discovery and bounds hostile test processe
   }, { discovered: 0, passed: 0, failed: 1, summary: "0 passed, 1 failed" });
   assert.equal(noTestsReport.tests[0].name, "<discovery>");
 
-  const forged = run("bin/smithers.js", [
+  const forged = run("bin/vibe.js", [
     "test",
-    "test/fixtures/tests/protocol-forge.sm",
+    "test/fixtures/tests/protocol-forge.vibe",
     "--format",
     "json",
   ]);
   assert.equal(forged.status, 2, forged.stderr || forged.stdout);
   const forgedReport = JSON.parse(forged.stdout);
-  assert.equal(forgedReport.code, "SMITHERS_TEST_ERROR");
+  assert.equal(forgedReport.code, "VIBELANG_TEST_ERROR");
   assert.match(forgedReport.message, /without its result protocol/);
 
-  const flooded = run("bin/smithers.js", [
+  const flooded = run("bin/vibe.js", [
     "test",
-    "test/fixtures/tests/output-flood.sm",
+    "test/fixtures/tests/output-flood.vibe",
     "--format",
     "json",
   ]);
   assert.equal(flooded.status, 2, flooded.stderr || flooded.stdout);
   const floodedReport = JSON.parse(flooded.stdout);
-  assert.equal(floodedReport.code, "SMITHERS_TEST_ERROR");
+  assert.equal(floodedReport.code, "VIBELANG_TEST_ERROR");
   assert.match(floodedReport.message, /ENOBUFS|maxBuffer/i);
 
-  const duplicate = run("bin/smithers.js", [
+  const duplicate = run("bin/vibe.js", [
     "test",
-    "test/fixtures/tests/passing.sm",
-    "test/fixtures/tests/passing.sm",
+    "test/fixtures/tests/passing.vibe",
+    "test/fixtures/tests/passing.vibe",
     "--format",
     "json",
   ]);
   assert.equal(duplicate.status, 2, duplicate.stderr || duplicate.stdout);
   assert.match(JSON.parse(duplicate.stdout).message, /same canonical module/);
 
-  const temporary = mkdtempSync(join(tmpdir(), "smithers-test-adversarial-"));
+  const temporary = mkdtempSync(join(tmpdir(), "vibelang-test-adversarial-"));
   try {
-    const alias = join(temporary, "passing.sm");
-    symlinkSync(resolve("test/fixtures/tests/passing.sm"), alias);
-    const aliasDuplicate = run("bin/smithers.js", [
+    const alias = join(temporary, "passing.vibe");
+    symlinkSync(resolve("test/fixtures/tests/passing.vibe"), alias);
+    const aliasDuplicate = run("bin/vibe.js", [
       "test",
-      "test/fixtures/tests/passing.sm",
+      "test/fixtures/tests/passing.vibe",
       alias,
       "--format",
       "json",
@@ -384,11 +385,11 @@ test("smithers test rejects ambiguous discovery and bounds hostile test processe
     assert.equal(aliasDuplicate.status, 2, aliasDuplicate.stderr || aliasDuplicate.stdout);
     assert.match(JSON.parse(aliasDuplicate.stdout).message, /same canonical module/);
 
-    const hardLinkSource = join(temporary, "passing-hard-link-source.sm");
-    copyFileSync(resolve("test/fixtures/tests/passing.sm"), hardLinkSource);
-    const hardLinkAlias = join(temporary, "passing-hard-link.sm");
+    const hardLinkSource = join(temporary, "passing-hard-link-source.vibe");
+    copyFileSync(resolve("test/fixtures/tests/passing.vibe"), hardLinkSource);
+    const hardLinkAlias = join(temporary, "passing-hard-link.vibe");
     linkSync(hardLinkSource, hardLinkAlias);
-    const hardLinkDuplicate = run("bin/smithers.js", [
+    const hardLinkDuplicate = run("bin/vibe.js", [
       "test",
       hardLinkSource,
       hardLinkAlias,
@@ -398,9 +399,9 @@ test("smithers test rejects ambiguous discovery and bounds hostile test processe
     assert.equal(hardLinkDuplicate.status, 2, hardLinkDuplicate.stderr || hardLinkDuplicate.stdout);
     assert.match(JSON.parse(hardLinkDuplicate.stdout).message, /same canonical module/);
 
-    const oversized = join(temporary, "oversized.sm");
+    const oversized = join(temporary, "oversized.vibe");
     writeFileSync(oversized, " ".repeat(2 * 1024 * 1024 + 1));
-    const oversizedResult = run("bin/smithers.js", ["test", oversized, "--format", "json"]);
+    const oversizedResult = run("bin/vibe.js", ["test", oversized, "--format", "json"]);
     assert.equal(oversizedResult.status, 2, oversizedResult.stderr || oversizedResult.stdout);
     assert.match(JSON.parse(oversizedResult.stdout).message, /exceeds 2097152 bytes/);
   } finally {
@@ -409,16 +410,16 @@ test("smithers test rejects ambiguous discovery and bounds hostile test processe
 });
 
 // A generator function is the one callable shape whose body does not run when
-// it is called. `smithers test` used to call it, see a generator object that is
+// it is called. `vibe test` used to call it, see a generator object that is
 // not a `Result`, and record `ok: true` — so a test whose body was a single
 // `panic` was counted in `discovered`, counted in `passed`, and certified. Ten
 // spellings reached that blind spot and every one of them is pinned here, each
 // with a body that throws a marker if it ever executes: the assertion cannot be
 // satisfied by a body that quietly ran.
-test("smithers test refuses every generator shape instead of certifying an unrun body", () => {
-  const result = run("bin/smithers.js", [
+test("vibe test refuses every generator shape instead of certifying an unrun body", () => {
+  const result = run("bin/vibe.js", [
     "test",
-    "test/fixtures/tests/generator-shapes.sm",
+    "test/fixtures/tests/generator-shapes.vibe",
     "--format",
     "json",
   ]);
@@ -474,10 +475,10 @@ test("smithers test refuses every generator shape instead of certifying an unrun
 // camel-case boundary rule, and every name it rejected was dropped in silence:
 // not run, not counted, named nowhere. `testÉcole` panics, so this pins that
 // the widened names are *executed* and not merely counted.
-test("smithers test discovers every test-prefixed export, not only camel-case ones", () => {
-  const result = run("bin/smithers.js", [
+test("vibe test discovers every test-prefixed export, not only camel-case ones", () => {
+  const result = run("bin/vibe.js", [
     "test",
-    "test/fixtures/tests/discovery-names.sm",
+    "test/fixtures/tests/discovery-names.vibe",
     "--format",
     "json",
   ]);
@@ -501,12 +502,12 @@ test("smithers test discovers every test-prefixed export, not only camel-case on
 });
 
 test("doctor reports implemented project compiler and test-runner surfaces", () => {
-  const result = run("bin/smithers.js", ["doctor", "--format", "json"]);
+  const result = run("bin/vibe.js", ["doctor", "--format", "json"]);
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const report = JSON.parse(result.stdout);
-  assert.match(report.surfaces.smithersCompile, /cross-module/);
-  assert.match(report.surfaces.smithersCompile, /declarations/);
-  assert.match(report.surfaces.smithersCompile, /source maps/);
+  assert.match(report.surfaces.vibelangCompile, /cross-module/);
+  assert.match(report.surfaces.vibelangCompile, /declarations/);
+  assert.match(report.surfaces.vibelangCompile, /source maps/);
   assert.match(report.surfaces.testRunner, /test\*/);
   assert.doesNotMatch(report.surfaces.testRunner, /not implemented/);
   // `test*` is glob notation, and for six rounds it was a camel-case boundary
@@ -514,6 +515,11 @@ test("doctor reports implemented project compiler and test-runner surfaces", () 
   // and the one shape it refuses, or the promise is wider than the code.
   assert.match(report.surfaces.testRunner, /name begins with test/);
   assert.match(report.surfaces.testRunner, /generator functions refused/);
+  assert.equal(Object.hasOwn(report, "javascriptApi"), false);
+  assert.deepEqual(report.compilerPipeline, {
+    generatedChecking: "native-go", declarations: "native-go",
+    languageFrontend: "native-go",
+  });
 });
 
 test("doctor derives ok from the checks it performed and names each probe outcome", () => {
@@ -521,7 +527,7 @@ test("doctor derives ok from the checks it performed and names each probe outcom
   // had never assessed. It must now be derived, and each probe must say which
   // of absent / failed / timeout / no-version-output it observed rather than
   // collapsing all four into one value.
-  const result = run("bin/smithers.js", ["doctor", "--format", "json"]);
+  const result = run("bin/vibe.js", ["doctor", "--format", "json"]);
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const report = JSON.parse(result.stdout);
   assert.equal(report.ok, true);
@@ -542,10 +548,10 @@ test("doctor derives ok from the checks it performed and names each probe outcom
 test("an optional foreign toolchain being absent does not make doctor unhealthy", () => {
   // The negative direction of the check above: `ok` must not regress into
   // demanding Zig or Rust, which no command needs.
-  const bare = join(tmpdir(), "smithers-doctor-empty-path");
+  const bare = join(tmpdir(), "vibelang-doctor-empty-path");
   mkdirSync(bare, { recursive: true });
   try {
-    const result = spawnSync(process.execPath, ["bin/smithers.js", "doctor", "--format", "json"], {
+    const result = spawnSync(process.execPath, ["bin/vibe.js", "doctor", "--format", "json"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: { ...process.env, PATH: bare },
@@ -563,23 +569,23 @@ test("an optional foreign toolchain being absent does not make doctor unhealthy"
   }
 });
 
-test("a relative .sm import that names two sources is rejected instead of silently choosing one", () => {
-  // `./dep.js` is the emitted name of `./dep.sm`, so it resolves to the
-  // Smithers source. When a real `dep.js` also exists, that one specifier
+test("a relative .vibe import that names two sources is rejected instead of silently choosing one", () => {
+  // `./dep.js` is the emitted name of `./dep.vibe`, so it resolves to the
+  // VibeLang source. When a real `dep.js` also exists, that one specifier
   // denotes two different modules; taking the first candidate silently
   // shadowed a real module and emitted `./dep.mjs` in its place, with
   // `ok: true` and artifacts written. Every other extension already lets the
   // literal file win and be checked as foreign.
-  const project = mkdtempSync(join(tmpdir(), "smithers-ambiguous-import-"));
+  const project = mkdtempSync(join(tmpdir(), "vibelang-ambiguous-import-"));
   try {
     const source = join(project, "src");
     mkdirSync(source, { recursive: true });
-    writeFileSync(join(source, "dep.sm"), 'export const NAME: string = "from-dep-sm"\n');
-    writeFileSync(join(source, "main.sm"), 'import { NAME } from "./dep.js"\nexport function main(): string { return NAME }\n');
+    writeFileSync(join(source, "dep.vibe"), 'export const NAME: string = "from-dep-sm"\n');
+    writeFileSync(join(source, "main.vibe"), 'import { NAME } from "./dep.js"\nexport function main(): string { return NAME }\n');
 
     // Positive direction: with no literal `dep.js`, the emit-name convention
     // must keep working exactly as before.
-    const resolved = run("bin/smithers.js", ["check", join(source, "main.sm"), "--format", "json"]);
+    const resolved = run("bin/vibe.js", ["check", join(source, "main.vibe"), "--format", "json"]);
     assert.equal(resolved.status, 0, resolved.stderr || resolved.stdout);
     const resolvedReport = JSON.parse(resolved.stdout);
     assert.equal(resolvedReport.ok, true);
@@ -588,7 +594,7 @@ test("a relative .sm import that names two sources is rejected instead of silent
     // Negative direction: a real `dep.js` beside it makes the specifier
     // ambiguous, and the CLI must fail closed.
     writeFileSync(join(source, "dep.js"), 'export const NAME = "from-dep-js";\n');
-    const ambiguous = run("bin/smithers.js", ["check", join(source, "main.sm"), "--format", "json"]);
+    const ambiguous = run("bin/vibe.js", ["check", join(source, "main.vibe"), "--format", "json"]);
     assert.equal(ambiguous.status, 2, ambiguous.stdout);
     assert.match(JSON.parse(ambiguous.stdout).message, /ambiguous/);
   } finally {
@@ -596,23 +602,23 @@ test("a relative .sm import that names two sources is rejected instead of silent
   }
 });
 
-test("a relative .sm import matching two Smithers candidates is rejected", () => {
-  // `./dep` matches both `dep.sm` and `dep/index.sm`. Either is a plausible
+test("a relative .vibe import matching two VibeLang candidates is rejected", () => {
+  // `./dep` matches both `dep.vibe` and `dep/index.vibe`. Either is a plausible
   // reading, so neither may be chosen silently.
-  const project = mkdtempSync(join(tmpdir(), "smithers-ambiguous-dir-"));
+  const project = mkdtempSync(join(tmpdir(), "vibelang-ambiguous-dir-"));
   try {
     const source = join(project, "src");
     mkdirSync(join(source, "dep"), { recursive: true });
-    writeFileSync(join(source, "dep", "index.sm"), 'export const NAME: string = "from-index"\n');
-    writeFileSync(join(source, "main.sm"), 'import { NAME } from "./dep"\nexport function main(): string { return NAME }\n');
+    writeFileSync(join(source, "dep", "index.vibe"), 'export const NAME: string = "from-index"\n');
+    writeFileSync(join(source, "main.vibe"), 'import { NAME } from "./dep"\nexport function main(): string { return NAME }\n');
 
     // Positive direction: the directory form alone still resolves.
-    const directory = run("bin/smithers.js", ["check", join(source, "main.sm"), "--format", "json"]);
+    const directory = run("bin/vibe.js", ["check", join(source, "main.vibe"), "--format", "json"]);
     assert.equal(directory.status, 0, directory.stderr || directory.stdout);
     assert.equal(JSON.parse(directory.stdout).ok, true);
 
-    writeFileSync(join(source, "dep.sm"), 'export const NAME: string = "from-file"\n');
-    const ambiguous = run("bin/smithers.js", ["check", join(source, "main.sm"), "--format", "json"]);
+    writeFileSync(join(source, "dep.vibe"), 'export const NAME: string = "from-file"\n');
+    const ambiguous = run("bin/vibe.js", ["check", join(source, "main.vibe"), "--format", "json"]);
     assert.equal(ambiguous.status, 2, ambiguous.stdout);
     assert.match(JSON.parse(ambiguous.stdout).message, /does not resolve deterministically/);
   } finally {
@@ -620,12 +626,36 @@ test("a relative .sm import matching two Smithers candidates is rejected", () =>
   }
 });
 
-test("smithers plan emits a canonical durable artifact without executing authored code", async () => {
-  const { Action } = await import("smthrs/durable/authoring");
-  const { canonicalJson, digest } = await import("smthrs/durable");
+for (const newline of ["\n", "\r\n", "\r", "\u2028", "\u2029"]) test(`native JSON binding-key checks preserve authored UTF16 positions across ${JSON.stringify(newline)}`, () => {
+  const temporary = mkdtempSync(join(tmpdir(), "vibelang-native-json-cli-"));
+  try {
+    const bindings = join(temporary, "actions.json");
+    const artifact = join(temporary, "flow.manifest.json");
+    const key = '"\\u0066lowId"';
+    // JSON permits LS/PS inside a string value, not as inter-token whitespace.
+    const prefix = newline === "\u2028" || newline === "\u2029"
+      ? `{"marker":"🦀${newline}",` : `{"marker":"🦀",${newline}`;
+    const source = `${prefix}"flowId":"first",${key}:"second","actions":[]}`;
+    assert.doesNotThrow(() => JSON.parse(source));
+    writeFileSync(bindings, source);
+    writeFileSync(artifact, "must survive");
+    const result = run("bin/vibe.js", ["plan", "--profile", "manifest-compat", "test/fixtures/durable/build.vibe", "--bindings", bindings,
+      "--outFile", artifact, "--format", "json"]);
+    assert.equal(result.status, 2, result.stderr || result.stdout);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.code, "VIBELANG_PLAN_ERROR");
+    const before = source.slice(0, source.indexOf(key)).split(/\r\n|[\r\n\u2028\u2029]/);
+    assert.equal(report.message, `durable bindings contain duplicate key "flowId" at ${before.length}:${before.at(-1).length+1}`);
+    assert.equal(readFileSync(artifact, "utf8"), "must survive");
+  } finally { rmSync(temporary, { recursive: true, force: true }); }
+});
+
+test("explicit manifest-compat inspection emits a canonical historical artifact without executing authored code", async () => {
+  const { Action } = await import("vibelang/durable/authoring");
+  const { canonicalJson, digest } = await import("vibelang/durable");
   const Compile = Action.define({ id: "test/cli/Compile", version: 1 });
   const Package = Action.define({ id: "test/cli/Package", version: 1 });
-  const temporary = mkdtempSync(join(tmpdir(), "smithers-plan-cli-"));
+  const temporary = mkdtempSync(join(tmpdir(), "vibelang-plan-cli-"));
   try {
     const bindings = join(temporary, "actions.json");
     const artifact = join(temporary, "build.manifest.json");
@@ -639,9 +669,10 @@ test("smithers plan emits a canonical durable artifact without executing authore
     });
     writeFileSync(bindings, bindingsSource);
 
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "plan",
-      "test/fixtures/durable/build.sm",
+      "--profile", "manifest-compat",
+      "test/fixtures/durable/build.vibe",
       "--bindings",
       bindings,
       "--outFile",
@@ -652,6 +683,7 @@ test("smithers plan emits a canonical durable artifact without executing authore
     assert.equal(compiled.status, 0, compiled.stderr || compiled.stdout);
     const report = JSON.parse(compiled.stdout);
     assert.equal(report.ok, true);
+    assert.equal(report.profile, "manifest-compat");
     assert.equal(report.manifest.flowId, "test/cli/Build");
     assert.deepEqual(report.manifest.actions.map((action) => action.id), ["test/cli/Compile", "test/cli/Package"]);
     // Both Actions are performed, so both take a site row. The site table is a
@@ -668,9 +700,10 @@ test("smithers plan emits a canonical durable artifact without executing authore
     assert.equal(artifactText, `${canonicalJson(report.manifest)}\n`);
 
     const repeatedArtifact = join(temporary, "build-repeated.manifest.json");
-    const repeated = run("bin/smithers.js", [
+    const repeated = run("bin/vibe.js", [
       "plan",
-      "test/fixtures/durable/build.sm",
+      "--profile", "manifest-compat",
+      "test/fixtures/durable/build.vibe",
       "--bindings",
       bindings,
       "--outFile",
@@ -682,19 +715,14 @@ test("smithers plan emits a canonical durable artifact without executing authore
     assert.equal(JSON.parse(repeated.stdout).digest, report.digest);
     assert.deepEqual(readFileSync(repeatedArtifact), readFileSync(artifact));
 
-    // `unsupported.sm` holds a runtime branch with an Action in each arm. Its
-    // history is the whole point of this row. It was `SMITHERS4106` and exited
-    // 1; MIGRATION-PLAN.md step 11 withdrew that wall, so the lowerer DECLINED
-    // the body and step 11's stopgap exited 2 with "this Flow has no static
-    // Plan"; step 12 retargets the command at the Effect Manifest, which has an
-    // answer for this body, so it now exits 0. The Manifest is imprecise on
-    // purpose — both arms are children of the same body, so both Actions are in
-    // it and NOTHING says which arm runs, which is exactly what PR-1 requires
-    // and is why a branch is no longer a reason to refuse.
+    // Historical Manifest inspection includes sites from both arms but makes
+    // no execution-order or selection claim. This compatibility behavior is
+    // deliberately NOT the keyed Plan command's default acceptance contract.
     const branchArtifact = join(temporary, "unsupported.manifest.json");
-    const branchy = run("bin/smithers.js", [
+    const branchy = run("bin/vibe.js", [
       "plan",
-      "test/fixtures/durable/unsupported.sm",
+      "--profile", "manifest-compat",
+      "test/fixtures/durable/unsupported.vibe",
       "--bindings",
       bindings,
       "--outFile",
@@ -708,26 +736,25 @@ test("smithers plan emits a canonical durable artifact without executing authore
     assert.deepEqual(branchReport.manifest.sites.map((site) => site.kind), ["perform", "perform"]);
     assert.doesNotMatch(JSON.stringify(branchReport.manifest), /"branch"|"whenTrue"|"whenFalse"/);
 
-    // A run that produces no artifact must not truncate the file `--outFile`
-    // names. That guard used to ride on the branch program above; the branch is
-    // legal now, so it rides on a program the compiler still refuses — one with
-    // no compiler-owned `durable(...)` call at all.
+    // Refusal must preserve the prior output under the compatibility profile
+    // too. A module with no compiler-owned durable declaration is refused.
     const rejectedArtifact = join(temporary, "no-flow.manifest.json");
-    const noFlowSource = join(temporary, "no-flow.sm");
+    const noFlowSource = join(temporary, "no-flow.vibe");
     writeFileSync(noFlowSource, 'export const value: string = "no durable declaration"\n');
     writeFileSync(rejectedArtifact, "existing artifact must survive");
-    const rejected = run("bin/smithers.js", [
-      "plan", noFlowSource, "--bindings", bindings, "--outFile", rejectedArtifact, "--format", "json",
+    const rejected = run("bin/vibe.js", [
+      "plan", "--profile", "manifest-compat", noFlowSource, "--bindings", bindings, "--outFile", rejectedArtifact, "--format", "json",
     ]);
     assert.equal(rejected.status, 1, rejected.stderr || rejected.stdout);
-    assert.deepEqual(JSON.parse(rejected.stdout).diagnostics.map((entry) => entry.code), ["SMITHERS4102"]);
+    assert.deepEqual(JSON.parse(rejected.stdout).diagnostics.map((entry) => entry.code), ["VIBE4102"]);
     assert.equal(readFileSync(rejectedArtifact, "utf8"), "existing artifact must survive");
 
     const duplicateBindings = join(temporary, "duplicate-actions.json");
     writeFileSync(duplicateBindings, '{"flowId":"first","flowId":"second","actions":[]}');
-    const duplicateConfig = run("bin/smithers.js", [
+    const duplicateConfig = run("bin/vibe.js", [
       "plan",
-      "test/fixtures/durable/build.sm",
+      "--profile", "manifest-compat",
+      "test/fixtures/durable/build.vibe",
       "--bindings",
       duplicateBindings,
       "--format",
@@ -735,16 +762,17 @@ test("smithers plan emits a canonical durable artifact without executing authore
     ]);
     assert.equal(duplicateConfig.status, 2, duplicateConfig.stderr || duplicateConfig.stdout);
     const duplicateConfigReport = JSON.parse(duplicateConfig.stdout);
-    assert.equal(duplicateConfigReport.code, "SMITHERS_PLAN_ERROR");
+    assert.equal(duplicateConfigReport.code, "VIBELANG_PLAN_ERROR");
     assert.match(duplicateConfigReport.message, /duplicate key "flowId"/);
 
     const reservedExportBindings = join(temporary, "reserved-export.json");
     writeFileSync(reservedExportBindings, JSON.stringify({
       actions: [{ moduleSpecifier: "test:cli-actions", exportName: "default", descriptor: Compile.descriptor }],
     }));
-    const reservedExport = run("bin/smithers.js", [
+    const reservedExport = run("bin/vibe.js", [
       "plan",
-      "test/fixtures/durable/build.sm",
+      "--profile", "manifest-compat",
+      "test/fixtures/durable/build.vibe",
       "--bindings",
       reservedExportBindings,
       "--format",
@@ -753,19 +781,20 @@ test("smithers plan emits a canonical durable artifact without executing authore
     assert.equal(reservedExport.status, 2, reservedExport.stderr || reservedExport.stdout);
     assert.match(JSON.parse(reservedExport.stdout).message, /non-keyword identifier exportName/);
 
-    const sourceCopy = join(temporary, "source.sm");
-    const sourceText = readFileSync("test/fixtures/durable/build.sm", "utf8");
+    const sourceCopy = join(temporary, "source.vibe");
+    const sourceText = readFileSync("test/fixtures/durable/build.vibe", "utf8");
     writeFileSync(sourceCopy, sourceText);
-    const overwriteSource = run("bin/smithers.js", [
-      "plan", sourceCopy, "--bindings", bindings, "--outFile", sourceCopy, "--format", "json",
+    const overwriteSource = run("bin/vibe.js", [
+      "plan", "--profile", "manifest-compat", sourceCopy, "--bindings", bindings, "--outFile", sourceCopy, "--format", "json",
     ]);
     assert.equal(overwriteSource.status, 2, overwriteSource.stderr || overwriteSource.stdout);
     assert.match(JSON.parse(overwriteSource.stdout).message, /cannot overwrite its source or bindings/);
     assert.equal(readFileSync(sourceCopy, "utf8"), sourceText);
 
-    const overwriteBindings = run("bin/smithers.js", [
+    const overwriteBindings = run("bin/vibe.js", [
       "plan",
-      "test/fixtures/durable/build.sm",
+      "--profile", "manifest-compat",
+      "test/fixtures/durable/build.vibe",
       "--bindings",
       bindings,
       "--outFile",
@@ -777,9 +806,10 @@ test("smithers plan emits a canonical durable artifact without executing authore
     assert.match(JSON.parse(overwriteBindings.stdout).message, /cannot overwrite its source or bindings/);
     assert.equal(readFileSync(bindings, "utf8"), bindingsSource);
 
-    const directoryOutput = run("bin/smithers.js", [
+    const directoryOutput = run("bin/vibe.js", [
       "plan",
-      "test/fixtures/durable/build.sm",
+      "--profile", "manifest-compat",
+      "test/fixtures/durable/build.vibe",
       "--bindings",
       bindings,
       "--outFile",
@@ -794,9 +824,10 @@ test("smithers plan emits a canonical durable artifact without executing authore
     const symbolicArtifact = join(temporary, "symbolic.plan.json");
     writeFileSync(redirectedArtifact, "existing redirected artifact must survive");
     symlinkSync(redirectedArtifact, symbolicArtifact);
-    const symbolicOutput = run("bin/smithers.js", [
+    const symbolicOutput = run("bin/vibe.js", [
       "plan",
-      "test/fixtures/durable/build.sm",
+      "--profile", "manifest-compat",
+      "test/fixtures/durable/build.vibe",
       "--bindings",
       bindings,
       "--outFile",
@@ -810,27 +841,27 @@ test("smithers plan emits a canonical durable artifact without executing authore
 
     const hardLink = join(temporary, "source-hard-link.plan");
     linkSync(sourceCopy, hardLink);
-    const overwriteHardLink = run("bin/smithers.js", [
-      "plan", sourceCopy, "--bindings", bindings, "--outFile", hardLink, "--format", "json",
+    const overwriteHardLink = run("bin/vibe.js", [
+      "plan", "--profile", "manifest-compat", sourceCopy, "--bindings", bindings, "--outFile", hardLink, "--format", "json",
     ]);
     assert.equal(overwriteHardLink.status, 2, overwriteHardLink.stderr || overwriteHardLink.stdout);
     assert.match(JSON.parse(overwriteHardLink.stdout).message, /cannot overwrite its source or bindings/);
     assert.equal(readFileSync(sourceCopy, "utf8"), sourceText);
 
     const disguisedTarget = join(temporary, "disguised.ts");
-    const disguisedInput = join(temporary, "disguised.sm");
+    const disguisedInput = join(temporary, "disguised.vibe");
     writeFileSync(disguisedTarget, sourceText);
     symlinkSync(disguisedTarget, disguisedInput);
-    const disguised = run("bin/smithers.js", [
-      "plan", disguisedInput, "--bindings", bindings, "--format", "json",
+    const disguised = run("bin/vibe.js", [
+      "plan", "--profile", "manifest-compat", disguisedInput, "--bindings", bindings, "--format", "json",
     ]);
     assert.equal(disguised.status, 2, disguised.stderr || disguised.stdout);
-    assert.match(JSON.parse(disguised.stdout).message, /canonical \.sm input/);
+    assert.match(JSON.parse(disguised.stdout).message, /canonical \.vibe input/);
 
-    const oversizedSource = join(temporary, "oversized.sm");
+    const oversizedSource = join(temporary, "oversized.vibe");
     writeFileSync(oversizedSource, " ".repeat(2 * 1024 * 1024 + 1));
-    const oversized = run("bin/smithers.js", [
-      "plan", oversizedSource, "--bindings", bindings, "--format", "json",
+    const oversized = run("bin/vibe.js", [
+      "plan", "--profile", "manifest-compat", oversizedSource, "--bindings", bindings, "--format", "json",
     ]);
     assert.equal(oversized.status, 2, oversized.stderr || oversized.stdout);
     assert.match(JSON.parse(oversized.stdout).message, /exceeds 2097152 bytes/);
@@ -839,50 +870,50 @@ test("smithers plan emits a canonical durable artifact without executing authore
   }
 });
 
-test(".sm commands fail closed instead of ignoring TypeScript-only options", () => {
-  const compile = run("bin/smithers.js", [
+test(".vibe commands fail closed instead of ignoring TypeScript-only options", () => {
+  const compile = run("bin/vibe.js", [
     "compile",
-    "test/fixtures/basic.sm",
+    "test/fixtures/basic.vibe",
     "--target",
     "es2020",
     "--format",
     "json",
   ]);
   assert.equal(compile.status, 2);
-  assert.equal(JSON.parse(compile.stdout).code, "UNSUPPORTED_SMITHERS_OPTION");
+  assert.equal(JSON.parse(compile.stdout).code, "UNSUPPORTED_VIBELANG_OPTION");
 
-  const check = run("bin/smithers.js", [
+  const check = run("bin/vibe.js", [
     "check",
-    "test/fixtures/basic.sm",
+    "test/fixtures/basic.vibe",
     "--strict",
     "--format",
     "json",
   ]);
   assert.equal(check.status, 2);
-  assert.equal(JSON.parse(check.stdout).code, "UNSUPPORTED_SMITHERS_OPTION");
+  assert.equal(JSON.parse(check.stdout).code, "UNSUPPORTED_VIBELANG_OPTION");
 
-  const conflicting = run("bin/smithers.js", [
+  const conflicting = run("bin/vibe.js", [
     "compile",
-    "test/fixtures/basic.sm",
+    "test/fixtures/basic.vibe",
     "--noEmit",
     "--declaration",
     "--format",
     "json",
   ]);
   assert.equal(conflicting.status, 2);
-  assert.equal(JSON.parse(conflicting.stdout).code, "CONFLICTING_SMITHERS_OPTIONS");
+  assert.equal(JSON.parse(conflicting.stdout).code, "CONFLICTING_VIBELANG_OPTIONS");
 });
 
-test(".sm commands reject mixing .sm with TypeScript inputs in one invocation", () => {
-  const temporary = mkdtempSync(join(tmpdir(), "smithers-mixed-inputs-"));
+test(".vibe commands reject mixing .vibe with TypeScript inputs in one invocation", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "vibelang-mixed-inputs-"));
   try {
     const typescript = join(temporary, "extra.ts");
     writeFileSync(typescript, "export const extra = 1\n");
     const output = join(temporary, "output");
 
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile",
-      "test/fixtures/basic.sm",
+      "test/fixtures/basic.vibe",
       typescript,
       "--outDir",
       output,
@@ -893,9 +924,9 @@ test(".sm commands reject mixing .sm with TypeScript inputs in one invocation", 
     assert.equal(JSON.parse(compiled.stdout).code, "MIXED_FRONTENDS");
     assert.equal(existsSync(output), false);
 
-    const checked = run("bin/smithers.js", [
+    const checked = run("bin/vibe.js", [
       "check",
-      "test/fixtures/basic.sm",
+      "test/fixtures/basic.vibe",
       typescript,
       "--format",
       "json",
@@ -908,10 +939,10 @@ test(".sm commands reject mixing .sm with TypeScript inputs in one invocation", 
 });
 
 test("compile, check, and run use strict bounded UTF-8 project reads", () => {
-  const temporary = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-source-bounds-")));
+  const temporary = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-source-bounds-")));
   const output = join(temporary, "output");
   try {
-    const invalid = join(temporary, "invalid.sm");
+    const invalid = join(temporary, "invalid.vibe");
     writeFileSync(invalid, Buffer.from([0x65, 0x78, 0x70, 0x6f, 0x72, 0x74, 0x20, 0xc3, 0x28]));
     const invocations = [
       ["compile", invalid, "--outDir", output, "--format", "json"],
@@ -919,16 +950,16 @@ test("compile, check, and run use strict bounded UTF-8 project reads", () => {
       ["run", invalid, "--format", "json"],
     ];
     for (const invocation of invocations) {
-      const result = run("bin/smithers.js", invocation);
+      const result = run("bin/vibe.js", invocation);
       assert.equal(result.status, 2, result.stderr || result.stdout);
       const report = JSON.parse(result.stdout);
-      assert.equal(report.code, "SMITHERS_PROJECT_ERROR");
+      assert.equal(report.code, "VIBELANG_PROJECT_ERROR");
       assert.match(report.message, /not valid UTF-8/);
     }
 
-    const oversized = join(temporary, "oversized.sm");
+    const oversized = join(temporary, "oversized.vibe");
     writeFileSync(oversized, " ".repeat(2 * 1024 * 1024 + 1));
-    const bounded = run("bin/smithers.js", [
+    const bounded = run("bin/vibe.js", [
       "compile",
       oversized,
       "--outDir",
@@ -944,12 +975,12 @@ test("compile, check, and run use strict bounded UTF-8 project reads", () => {
   }
 });
 
-test(".sm JavaScript source maps compose back to authored source", () => {
-  const output = mkdtempSync(join(tmpdir(), "smithers-source-map-"));
+test(".vibe JavaScript source maps compose back to authored source", () => {
+  const output = mkdtempSync(join(tmpdir(), "vibelang-source-map-"));
   try {
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile",
-      "test/fixtures/basic.sm",
+      "test/fixtures/basic.vibe",
       "--outDir",
       output,
       "--sourceMap",
@@ -961,11 +992,14 @@ test(".sm JavaScript source maps compose back to authored source", () => {
     assert.match(javascript, /sourceMappingURL=basic\.mjs\.map/);
     const map = JSON.parse(readFileSync(join(output, "basic.mjs.map"), "utf8"));
     assert.equal(map.version, 3);
+    assert.equal(map.sources.length, 1);
+    // A source map may cross macOS's /tmp -> /private/tmp spelling boundary.
+    // Compare the authored file identity, not the temporary directory alias.
     assert.equal(
-      resolve(output, map.sources[0]),
-      resolve("test/fixtures/basic.sm"),
+      realpathSync(resolve(output, map.sources[0])),
+      realpathSync("test/fixtures/basic.vibe"),
     );
-    assert.match(map.sourcesContent[0], /class InvalidAnswer/);
+    assert.deepEqual(map.sourcesContent, [readFileSync("test/fixtures/basic.vibe", "utf8")]);
     assert.equal(typeof map.mappings, "string");
     assert.notEqual(map.mappings.length, 0);
   } finally {
@@ -973,13 +1007,13 @@ test(".sm JavaScript source maps compose back to authored source", () => {
   }
 });
 
-test(".sm CLI lowers checker-owned comptime across the project before compile, check, run, and test", async () => {
-  const { readDeclarationEffects } = await import("smthrs/language");
-  const project = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-comptime-project-")));
+test(".vibe CLI lowers checker-owned comptime across the project before compile, check, run, and test", async () => {
+  const { readDeclarationEffects } = await import("vibelang/language");
+  const project = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-comptime-project-")));
   const output = join(project, "output");
   let cacheIdentity;
   try {
-    for (const name of ["config.sm", "main.sm", "test.sm"]) {
+    for (const name of ["config.vibe", "main.vibe", "test.vibe"]) {
       writeFileSync(
         join(project, name),
         readFileSync(join("test/fixtures/comptime", name), "utf8"),
@@ -988,7 +1022,7 @@ test(".sm CLI lowers checker-owned comptime across the project before compile, c
 
     const compileArgs = [
       "compile",
-      join(project, "main.sm"),
+      join(project, "main.vibe"),
       "--outDir",
       output,
       "--sourceMap",
@@ -996,10 +1030,10 @@ test(".sm CLI lowers checker-owned comptime across the project before compile, c
       "--format",
       "json",
     ];
-    const cold = run("bin/smithers.js", compileArgs);
+    const cold = run("bin/vibe.js", compileArgs);
     assert.equal(cold.status, 0, cold.stderr || cold.stdout);
     const coldReport = JSON.parse(cold.stdout);
-    const coldMain = coldReport.files.find((file) => file.input === join(project, "main.sm"));
+    const coldMain = coldReport.files.find((file) => file.input === join(project, "main.vibe"));
     cacheIdentity = coldMain.comptime.cacheIdentity;
     assert.equal(coldMain.comptime.calls.length, 1);
     assert.equal(coldMain.comptime.calls[0].cacheHit, false);
@@ -1007,7 +1041,7 @@ test(".sm CLI lowers checker-owned comptime across the project before compile, c
       "remove-import",
       "intrinsic-call",
     ]);
-    assert.equal(coldMain.comptime.provenance.edits[1].mappedOrigin.file, "config.sm");
+    assert.equal(coldMain.comptime.provenance.edits[1].mappedOrigin.file, "config.vibe");
     assert.deepEqual(coldMain.rows.readCompiled, { failures: ["ConfigFailure"], requirements: [] });
     assert.deepEqual(readdirSync(output).sort(), [
       "config.d.mts",
@@ -1024,19 +1058,19 @@ test(".sm CLI lowers checker-owned comptime across the project before compile, c
     });
     const coldJavascript = readFileSync(join(output, "main.mjs"));
     const coldMap = readFileSync(join(output, "main.mjs.map"));
-    assert.doesNotMatch(coldJavascript.toString("utf8"), /smithers:comptime|staticValue\s*\(/);
+    assert.doesNotMatch(coldJavascript.toString("utf8"), /vibelang:comptime|staticValue\s*\(/);
     const decodedMap = JSON.parse(coldMap.toString("utf8"));
-    assert.equal(decodedMap.x_smithers_comptime, undefined);
-    assert.equal(decodedMap.sourcesContent.some((source) => source.includes("smithers:comptime")), true);
+    assert.equal(decodedMap.x_vibelang_comptime, undefined);
+    assert.equal(decodedMap.sourcesContent.some((source) => source.includes("vibelang:comptime")), true);
     assert.deepEqual(
       new Set(decodedMap.sources.map((source) => resolve(output, source))),
-      new Set([join(project, "main.sm"), join(project, "config.sm")]),
+      new Set([join(project, "main.vibe"), join(project, "config.vibe")]),
     );
 
-    const warm = run("bin/smithers.js", compileArgs);
+    const warm = run("bin/vibe.js", compileArgs);
     assert.equal(warm.status, 0, warm.stderr || warm.stdout);
     const warmReport = JSON.parse(warm.stdout);
-    const warmMain = warmReport.files.find((file) => file.input === join(project, "main.sm"));
+    const warmMain = warmReport.files.find((file) => file.input === join(project, "main.vibe"));
     assert.equal(warmMain.comptime.calls[0].cacheHit, true);
     assert.equal(warmMain.comptime.calls[0].key, coldMain.comptime.calls[0].key);
     assert.equal(warmMain.comptime.calls[0].logicalKey, coldMain.comptime.calls[0].logicalKey);
@@ -1046,39 +1080,39 @@ test(".sm CLI lowers checker-owned comptime across the project before compile, c
     assert.deepEqual(readFileSync(join(output, "main.mjs.map")), coldMap);
 
     mkdirSync(join(project, "node_modules"));
-    symlinkSync(resolve("."), join(project, "node_modules", "smthrs"), process.platform === "win32" ? "junction" : "dir");
+    symlinkSync(resolve("."), join(project, "node_modules", "vibelang"), process.platform === "win32" ? "junction" : "dir");
     const loaded = await import(`${pathToFileURL(join(output, "main.mjs")).href}?identity=${warmMain.comptime.identity}`);
     assert.deepEqual(loaded.compiled, { code: 42, message: "comptime cli works" });
 
-    const checked = run("bin/smithers.js", ["check", join(project, "main.sm"), "--format", "json"]);
+    const checked = run("bin/vibe.js", ["check", join(project, "main.vibe"), "--format", "json"]);
     assert.equal(checked.status, 0, checked.stderr || checked.stdout);
-    const checkedMain = JSON.parse(checked.stdout).files.find((file) => file.input === join(project, "main.sm"));
+    const checkedMain = JSON.parse(checked.stdout).files.find((file) => file.input === join(project, "main.vibe"));
     assert.equal(checkedMain.comptime.calls[0].cacheHit, true);
 
-    const executed = run("bin/smithers.js", ["run", join(project, "main.sm"), "--format", "json"]);
+    const executed = run("bin/vibe.js", ["run", join(project, "main.vibe"), "--format", "json"]);
     assert.equal(executed.status, 0, executed.stderr || executed.stdout);
     assert.equal(JSON.parse(executed.stdout).ok, true);
 
-    const tested = run("bin/smithers.js", ["test", join(project, "test.sm"), "--format", "json"]);
+    const tested = run("bin/vibe.js", ["test", join(project, "test.vibe"), "--format", "json"]);
     assert.equal(tested.status, 0, tested.stderr || tested.stdout);
     assert.equal(JSON.parse(tested.stdout).summary, "1 passed, 0 failed");
   } finally {
     rmSync(project, { recursive: true, force: true });
     if (typeof cacheIdentity === "string" && /^[0-9a-f]{64}$/.test(cacheIdentity)) {
-      rmSync(join(tmpdir(), "smithers-comptime-cache-v1", cacheIdentity), { recursive: true, force: true });
+      rmSync(join(tmpdir(), "vibelang-comptime-cache-v1", cacheIdentity), { recursive: true, force: true });
     }
   }
 });
 
-test(".sm CLI executes bounded comptime functions with target, tracked embed, and generated literal types", async () => {
-  const project = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-comptime-function-")));
+test(".vibe CLI executes bounded comptime functions with target, tracked embed, and generated literal types", async () => {
+  const project = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-comptime-function-")));
   const output = join(project, "output");
   let cacheIdentity;
   try {
-    const input = join(project, "main.sm");
+    const input = join(project, "main.vibe");
     writeFileSync(join(project, "config.json"), JSON.stringify({ answer: 42 }));
     writeFileSync(input, [
-      `import { comptime, embed } from "smithers:comptime"`,
+      `import { comptime, embed } from "vibelang:comptime"`,
       `export const generated = comptime(() => {`,
       `  if (comptime.target === "node-es2022") {`,
       `    const config = JSON.parse(embed("./config.json"))`,
@@ -1091,7 +1125,7 @@ test(".sm CLI executes bounded comptime functions with target, tracked embed, an
       `export function readGenerated(): number { return generated.config.answer }`,
     ].join("\n"));
 
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile",
       input,
       "--outDir",
@@ -1111,7 +1145,7 @@ test(".sm CLI executes bounded comptime functions with target, tracked embed, an
       access: dependency.access,
     })), [{ path: "config.json", kind: "file", access: "text" }]);
     const javascript = readFileSync(join(output, "main.mjs"), "utf8");
-    assert.doesNotMatch(javascript, /UNSELECTED_COMPTIME_BRANCH|smithers:comptime|embed\s*\(/);
+    assert.doesNotMatch(javascript, /UNSELECTED_COMPTIME_BRANCH|vibelang:comptime|embed\s*\(/);
     const declaration = readFileSync(join(output, "main.d.mts"), "utf8");
     assert.match(declaration, /readonly target: "node-es2022"/);
     assert.match(declaration, /readonly answer: 42/);
@@ -1120,17 +1154,17 @@ test(".sm CLI executes bounded comptime functions with target, tracked embed, an
   } finally {
     rmSync(project, { recursive: true, force: true });
     if (typeof cacheIdentity === "string" && /^[0-9a-f]{64}$/.test(cacheIdentity)) {
-      rmSync(join(tmpdir(), "smithers-comptime-cache-v1", cacheIdentity), { recursive: true, force: true });
+      rmSync(join(tmpdir(), "vibelang-comptime-cache-v1", cacheIdentity), { recursive: true, force: true });
     }
   }
 });
 
-test(".sm CLI returns intrinsic diagnostics without writing project outputs", () => {
-  const output = mkdtempSync(join(tmpdir(), "smithers-cli-comptime-invalid-"));
+test(".vibe CLI returns intrinsic diagnostics without writing project outputs", () => {
+  const output = mkdtempSync(join(tmpdir(), "vibelang-cli-comptime-invalid-"));
   try {
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile",
-      "test/fixtures/comptime/invalid.sm",
+      "test/fixtures/comptime/invalid.vibe",
       "--outDir",
       output,
       "--format",
@@ -1152,14 +1186,14 @@ test(".sm CLI returns intrinsic diagnostics without writing project outputs", ()
 });
 
 test("post-comptime diagnostics map back to authored lines after multiline replacement", () => {
-  const project = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-comptime-diagnostic-")));
-  const output = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-comptime-diagnostic-output-")));
-  const source = readFileSync("test/fixtures/comptime/diagnostic.sm", "utf8");
+  const project = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-comptime-diagnostic-")));
+  const output = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-comptime-diagnostic-output-")));
+  const source = readFileSync("test/fixtures/comptime/diagnostic.vibe", "utf8");
   let cacheIdentity;
   try {
-    const input = join(project, "diagnostic.sm");
+    const input = join(project, "diagnostic.vibe");
     writeFileSync(input, source);
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile",
       input,
       "--outDir",
@@ -1169,7 +1203,7 @@ test("post-comptime diagnostics map back to authored lines after multiline repla
     ]);
     assert.equal(compiled.status, 1, compiled.stderr || compiled.stdout);
     const report = JSON.parse(compiled.stdout);
-    const diagnostic = report.files[0].diagnostics.find((item) => item.code === "SMITHERS1102");
+    const diagnostic = report.files[0].diagnostics.find((item) => item.code === "VIBE1102");
     assert.ok(diagnostic);
     assert.equal(diagnostic.file, input);
     assert.equal(diagnostic.line, source.slice(0, source.indexOf("export function describe")).split("\n").length);
@@ -1181,17 +1215,17 @@ test("post-comptime diagnostics map back to authored lines after multiline repla
     rmSync(project, { recursive: true, force: true });
     rmSync(output, { recursive: true, force: true });
     if (typeof cacheIdentity === "string" && /^[0-9a-f]{64}$/.test(cacheIdentity)) {
-      rmSync(join(tmpdir(), "smithers-comptime-cache-v1", cacheIdentity), { recursive: true, force: true });
+      rmSync(join(tmpdir(), "vibelang-comptime-cache-v1", cacheIdentity), { recursive: true, force: true });
     }
   }
 });
 
-test(".sm output moved to an outDir keeps relative imports resolvable", () => {
-  const output = mkdtempSync(join(tmpdir(), "smithers-relative-import-"));
+test(".vibe output moved to an outDir keeps relative imports resolvable", () => {
+  const output = mkdtempSync(join(tmpdir(), "vibelang-relative-import-"));
   try {
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile",
-      "test/fixtures/relative-import.sm",
+      "test/fixtures/relative-import.vibe",
       "--outDir",
       output,
       "--format",
@@ -1206,12 +1240,12 @@ test(".sm output moved to an outDir keeps relative imports resolvable", () => {
   }
 });
 
-test(".sm stages and executes a bounded mixed TypeScript/JavaScript runtime graph", () => {
-  const output = mkdtempSync(join(tmpdir(), "smithers-foreign-runtime-"));
+test(".vibe stages and executes a bounded mixed TypeScript/JavaScript runtime graph", () => {
+  const output = mkdtempSync(join(tmpdir(), "vibelang-foreign-runtime-"));
   try {
     const args = [
       "compile",
-      "test/fixtures/foreign-runtime/main.sm",
+      "test/fixtures/foreign-runtime/main.vibe",
       "--outDir",
       output,
       "--declaration",
@@ -1219,7 +1253,7 @@ test(".sm stages and executes a bounded mixed TypeScript/JavaScript runtime grap
       "--format",
       "json",
     ];
-    const cold = run("bin/smithers.js", args);
+    const cold = run("bin/vibe.js", args);
     assert.equal(cold.status, 0, cold.stderr || cold.stdout);
     const report = JSON.parse(cold.stdout);
     assert.equal(report.ok, true);
@@ -1229,7 +1263,7 @@ test(".sm stages and executes a bounded mixed TypeScript/JavaScript runtime grap
     });
 
     const coldTree = snapshotTree(output);
-    const foreignRoot = "__smithers_foreign__/lib";
+    const foreignRoot = "__vibelang_foreign__/lib";
     for (const name of [
       "trusted.mjs",
       "nested.mjs",
@@ -1246,7 +1280,7 @@ test(".sm stages and executes a bounded mixed TypeScript/JavaScript runtime grap
       "common-nested.cjs",
     ]) assert.ok(coldTree[`${foreignRoot}/${name}`], `missing staged foreign output ${name}`);
     assert.equal(Object.keys(coldTree).some((name) => name.includes("types-only")), false);
-    assert.match(coldTree["main.mjs"].toString("utf8"), /\.\/__smithers_foreign__\/lib\/trusted\.mjs/);
+    assert.match(coldTree["main.mjs"].toString("utf8"), /\.\/__vibelang_foreign__\/lib\/trusted\.mjs/);
     assert.match(coldTree[`${foreignRoot}/trusted.mjs`].toString("utf8"), /\.\/nested\.mjs/);
     assert.match(coldTree[`${foreignRoot}/dynamic.mjs`].toString("utf8"), /import\("\.\/nested\.mjs"\)/);
     assert.match(coldTree[`${foreignRoot}/common.cjs`].toString("utf8"), /require\("\.\/common-nested\.cjs"\)/);
@@ -1256,33 +1290,33 @@ test(".sm stages and executes a bounded mixed TypeScript/JavaScript runtime grap
     assert.equal(foreignMap.version, 3);
     assert.match(foreignMap.sourcesContent[0], /unsafeTs\(value: string\)/);
 
-    const warm = run("bin/smithers.js", args);
+    const warm = run("bin/vibe.js", args);
     assert.equal(warm.status, 0, warm.stderr || warm.stdout);
     const warmTree = snapshotTree(output);
     assert.deepEqual(Object.keys(warmTree).sort(), Object.keys(coldTree).sort());
     for (const name of Object.keys(coldTree)) assert.deepEqual(warmTree[name], coldTree[name], name);
 
-    const checked = run("bin/smithers.js", [
+    const checked = run("bin/vibe.js", [
       "check",
-      "test/fixtures/foreign-runtime/main.sm",
+      "test/fixtures/foreign-runtime/main.vibe",
       "--format",
       "json",
     ]);
     assert.equal(checked.status, 0, checked.stderr || checked.stdout);
     assert.equal(JSON.parse(checked.stdout).ok, true);
 
-    const executed = run("bin/smithers.js", [
+    const executed = run("bin/vibe.js", [
       "run",
-      "test/fixtures/foreign-runtime/main.sm",
+      "test/fixtures/foreign-runtime/main.vibe",
       "--format",
       "json",
     ]);
     assert.equal(executed.status, 0, executed.stderr || executed.stdout);
     assert.equal(JSON.parse(executed.stdout).ok, true);
 
-    const tested = run("bin/smithers.js", [
+    const tested = run("bin/vibe.js", [
       "test",
-      "test/fixtures/foreign-runtime/test.sm",
+      "test/fixtures/foreign-runtime/test.vibe",
       "--format",
       "json",
     ]);
@@ -1294,12 +1328,12 @@ test(".sm stages and executes a bounded mixed TypeScript/JavaScript runtime grap
 });
 
 test("foreign module initialization fails closed while a dynamic-import adapter stays on the async panic boundary", () => {
-  const temporary = mkdtempSync(join(tmpdir(), "smithers-module-init-"));
+  const temporary = mkdtempSync(join(tmpdir(), "vibelang-module-init-"));
   const staticProject = join(temporary, "static");
   const dynamicProject = join(temporary, "dynamic");
   try {
     for (const project of [staticProject, dynamicProject]) mkdirSync(project, { recursive: true });
-    writeFileSync(join(staticProject, "main.sm"), `
+    writeFileSync(join(staticProject, "main.vibe"), `
       import { value } from "./adapter.ts"
       export function read(): number { return value }
     `);
@@ -1310,9 +1344,9 @@ test("foreign module initialization fails closed while a dynamic-import adapter 
     `);
     writeFileSync(join(staticProject, "nested.ts"), "export const nested = 1\n");
     const staticOutput = join(staticProject, "output");
-    const rejected = run("bin/smithers.js", [
+    const rejected = run("bin/vibe.js", [
       "compile",
-      join(staticProject, "main.sm"),
+      join(staticProject, "main.vibe"),
       "--outDir",
       staticOutput,
       "--format",
@@ -1320,12 +1354,12 @@ test("foreign module initialization fails closed while a dynamic-import adapter 
     ]);
     assert.equal(rejected.status, 1, rejected.stderr || rejected.stdout);
     const rejectedReport = JSON.parse(rejected.stdout);
-    const diagnostic = rejectedReport.files[0].diagnostics.find((item) => item.code === "SMITHERS1510");
+    const diagnostic = rejectedReport.files[0].diagnostics.find((item) => item.code === "VIBE1510");
     assert.ok(diagnostic);
     assert.equal(diagnostic.file, realpathSync(join(staticProject, "nested.ts")));
     assert.equal(existsSync(join(staticOutput, "main.mjs")), false);
 
-    writeFileSync(join(dynamicProject, "main.sm"), `
+    writeFileSync(join(dynamicProject, "main.vibe"), `
       import { load } from "./adapter.ts"
       export async function read(): Promise<Result<string, Panic>> {
         return (await load())!
@@ -1343,9 +1377,9 @@ test("foreign module initialization fails closed while a dynamic-import adapter 
       throw new Error("captured by import rejection")
     `);
     const dynamicOutput = join(dynamicProject, "output");
-    const accepted = run("bin/smithers.js", [
+    const accepted = run("bin/vibe.js", [
       "compile",
-      join(dynamicProject, "main.sm"),
+      join(dynamicProject, "main.vibe"),
       "--outDir",
       dynamicOutput,
       "--format",
@@ -1353,7 +1387,7 @@ test("foreign module initialization fails closed while a dynamic-import adapter 
     ]);
     assert.equal(accepted.status, 0, accepted.stderr || accepted.stdout);
     const acceptedReport = JSON.parse(accepted.stdout);
-    assert.equal(acceptedReport.files[0].diagnostics.some((item) => item.code === "SMITHERS1510"), false);
+    assert.equal(acceptedReport.files[0].diagnostics.some((item) => item.code === "VIBE1510"), false);
     assert.equal(existsSync(join(dynamicOutput, "main.mjs")), true);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
@@ -1361,7 +1395,7 @@ test("foreign module initialization fails closed while a dynamic-import adapter 
 });
 
 test("mixed runtime graph resolution fails closed without changing output", () => {
-  const temporary = mkdtempSync(join(tmpdir(), "smithers-foreign-adversarial-"));
+  const temporary = mkdtempSync(join(tmpdir(), "vibelang-foreign-adversarial-"));
   try {
     const reject = (name, files, pattern, prepare) => {
       const project = join(temporary, name);
@@ -1375,9 +1409,9 @@ test("mixed runtime graph resolution fails closed without changing output", () =
         writeFileSync(destination, source);
       }
       prepare?.(project);
-      const compiled = run("bin/smithers.js", [
+      const compiled = run("bin/vibe.js", [
         "compile",
-        join(project, "main.sm"),
+        join(project, "main.vibe"),
         "--outDir",
         output,
         "--format",
@@ -1385,69 +1419,69 @@ test("mixed runtime graph resolution fails closed without changing output", () =
       ]);
       assert.equal(compiled.status, 2, compiled.stderr || compiled.stdout);
       const report = JSON.parse(compiled.stdout);
-      assert.equal(report.code, "SMITHERS_PROJECT_ERROR");
+      assert.equal(report.code, "VIBELANG_PROJECT_ERROR");
       assert.match(report.message, pattern);
       assert.deepEqual(snapshotTree(output), { "sentinel.txt": Buffer.from("preserve") });
     };
 
     reject("dynamic", {
-      "main.sm": 'import { value } from "./dynamic.ts"\nexport const result = value\n',
+      "main.vibe": 'import { value } from "./dynamic.ts"\nexport const result = value\n',
       "dynamic.ts": 'const target = "./value.ts"\nexport const value = import(target)\n',
       "value.ts": "export const value = 1\n",
     }, /module specifier must be a string literal/);
 
-    reject("smithers-dynamic", {
-      "main.sm": 'export const pending = import("./value.ts")\n',
+    reject("vibelang-dynamic", {
+      "main.vibe": 'export const pending = import("./value.ts")\n',
       "value.ts": "export const value = 1\n",
-    }, /Smithers dynamic import is deferred/);
+    }, /VibeLang dynamic import is deferred/);
 
     reject("esm-require", {
-      "main.sm": 'import { value } from "./value.ts"\nexport const result = value\n',
+      "main.vibe": 'import { value } from "./value.ts"\nexport const result = value\n',
       "value.ts": 'export const value = require("node:path")\n',
     }, /ESM sources cannot use require/);
 
     reject("aliased-require", {
-      "main.sm": 'import value from "./value.cjs"\nexport const result = value\n',
+      "main.vibe": 'import value from "./value.cjs"\nexport const result = value\n',
       "value.cjs": 'const load = require\nmodule.exports = load("./nested.cjs")\n',
       "nested.cjs": "module.exports = 1\n",
     }, /require may not be aliased/);
 
     reject("outside/project", {
-      "main.sm": 'import { value } from "../outside.ts"\nexport const result = value\n',
+      "main.vibe": 'import { value } from "../outside.ts"\nexport const result = value\n',
       "../outside.ts": "export const value = 1\n",
     }, /outside the project root/);
 
     reject("outside-type/project", {
-      "main.sm": 'import type { Secret } from "./types.ts"\nexport const value: Secret = "ok"\n',
+      "main.vibe": 'import type { Secret } from "./types.ts"\nexport const value: Secret = "ok"\n',
       "types.ts": 'export type { Secret } from "../secret.ts"\n',
       "../secret.ts": 'export type Secret = "ok"\n',
     }, /checker dependency is outside the project root/);
 
     reject("collision", {
-      "main.sm": 'import { one } from "./same.ts"\nimport { two } from "./same.mts"\nexport const value = one + two\n',
+      "main.vibe": 'import { one } from "./same.ts"\nimport { two } from "./same.mts"\nexport const value = one + two\n',
       "same.ts": "export const one = 1\n",
       "same.mts": "export const two = 2\n",
     }, /runtime outputs collide/);
 
     reject("invalid-utf8", {
-      "main.sm": 'import { value } from "./invalid.ts"\nexport const result = value\n',
+      "main.vibe": 'import { value } from "./invalid.ts"\nexport const result = value\n',
       "invalid.ts": Buffer.from([0xff, 0xfe]),
     }, /not valid UTF-8/);
 
     reject("oversized", {
-      "main.sm": 'import "./large.ts"\n',
+      "main.vibe": 'import "./large.ts"\n',
       "large.ts": Buffer.alloc(2 * 1024 * 1024 + 1, 0x20),
     }, /exceeds 2097152 bytes/);
 
     reject("symlink", {
-      "main.sm": 'import { real } from "./real.ts"\nimport { real as alias } from "./alias.ts"\nexport const value = real + alias\n',
+      "main.vibe": 'import { real } from "./real.ts"\nimport { real as alias } from "./alias.ts"\nexport const value = real + alias\n',
       "real.ts": "export const real = 1\n",
     }, /symbolic-link alias/, (project) => {
       symlinkSync(join(project, "real.ts"), join(project, "alias.ts"));
     });
 
     reject("hardlink", {
-      "main.sm": 'import { real } from "./real.ts"\nimport { real as alias } from "./alias.ts"\nexport const value = real + alias\n',
+      "main.vibe": 'import { real } from "./real.ts"\nimport { real as alias } from "./alias.ts"\nexport const value = real + alias\n',
       "real.ts": "export const real = 1\n",
     }, /hard-link aliases/, (project) => {
       linkSync(join(project, "real.ts"), join(project, "alias.ts"));
@@ -1457,13 +1491,13 @@ test("mixed runtime graph resolution fails closed without changing output", () =
   }
 });
 
-test(".sm CLI discovers, checks, and emits a cross-module project graph", async () => {
-  const { readDeclarationEffects } = await import("smthrs/language");
-  const output = mkdtempSync(join(tmpdir(), "smithers-project-"));
+test(".vibe CLI discovers, checks, and emits a cross-module project graph", async () => {
+  const { readDeclarationEffects } = await import("vibelang/language");
+  const output = mkdtempSync(join(tmpdir(), "vibelang-project-"));
   try {
-    const checked = run("bin/smithers.js", [
+    const checked = run("bin/vibe.js", [
       "check",
-      "test/fixtures/project/main.sm",
+      "test/fixtures/project/main.vibe",
       "--format",
       "json",
     ]);
@@ -1471,12 +1505,12 @@ test(".sm CLI discovers, checks, and emits a cross-module project graph", async 
     const checkedReport = JSON.parse(checked.stdout);
     assert.equal(checkedReport.ok, true);
     assert.equal(checkedReport.files.length, 2);
-    const main = checkedReport.files.find((file) => file.input.endsWith("/project/main.sm"));
+    const main = checkedReport.files.find((file) => file.input.endsWith("/project/main.vibe"));
     assert.deepEqual(main.rows.run, { failures: ["Missing"], requirements: [] });
 
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile",
-      "test/fixtures/project/main.sm",
+      "test/fixtures/project/main.vibe",
       "--outDir",
       output,
       "--declaration",
@@ -1490,8 +1524,9 @@ test(".sm CLI discovers, checks, and emits a cross-module project graph", async 
     assert.equal(existsSync(join(output, "service.d.mts")), true);
     assert.match(readFileSync(join(output, "main.mjs"), "utf8"), /from "\.\/service\.mjs"/);
     const mainDeclaration = readFileSync(join(output, "main.d.mts"), "utf8");
-    assert.match(mainDeclaration, /run\(\): Result<string, Missing>/);
-    assert.match(mainDeclaration, /@smithersEffects/);
+    assert.match(mainDeclaration, /type ResultType as __vsResultType/);
+    assert.match(mainDeclaration, /run\(\): __vsResultType<string, Missing>/);
+    assert.match(mainDeclaration, /@vibelangEffects/);
     assert.deepEqual(readDeclarationEffects(mainDeclaration, join(output, "main.d.mts")).run, {
       failures: ["Missing"],
       requirements: [],
@@ -1500,16 +1535,16 @@ test(".sm CLI discovers, checks, and emits a cross-module project graph", async 
     rmSync(output, { recursive: true, force: true });
   }
 
-  const executed = run("bin/smithers.js", ["run", "test/fixtures/project/main.sm"]);
+  const executed = run("bin/vibe.js", ["run", "test/fixtures/project/main.vibe"]);
   assert.equal(executed.status, 0, executed.stderr || executed.stdout);
 });
 
-test(".sm project compilation fails closed before writing any module", () => {
-  const output = mkdtempSync(join(tmpdir(), "smithers-project-error-"));
+test(".vibe project compilation fails closed before writing any module", () => {
+  const output = mkdtempSync(join(tmpdir(), "vibelang-project-error-"));
   try {
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile",
-      "test/fixtures/project/missing-import.sm",
+      "test/fixtures/project/missing-import.vibe",
       "--outDir",
       output,
       "--format",
@@ -1518,36 +1553,36 @@ test(".sm project compilation fails closed before writing any module", () => {
     assert.equal(compiled.status, 1, compiled.stderr || compiled.stdout);
     const report = JSON.parse(compiled.stdout);
     assert.equal(report.ok, false);
-    assert.equal(report.files[0].diagnostics.some((item) => item.code === "SMITHERS1801"), true);
+    assert.equal(report.files[0].diagnostics.some((item) => item.code === "VIBE1801"), true);
     assert.equal(existsSync(join(output, "missing-import.mjs")), false);
   } finally {
     rmSync(output, { recursive: true, force: true });
   }
 });
 
-test(".sm compilation rejects colliding outputs before writing", () => {
-  const output = mkdtempSync(join(tmpdir(), "smithers-output-collision-"));
+test(".vibe compilation rejects colliding outputs before writing", () => {
+  const output = mkdtempSync(join(tmpdir(), "vibelang-output-collision-"));
   try {
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile",
-      "test/fixtures/basic.sm",
-      "test/fixtures/basic.sm",
+      "test/fixtures/basic.vibe",
+      "test/fixtures/basic.vibe",
       "--outDir",
       output,
       "--format",
       "json",
     ]);
     assert.equal(compiled.status, 2);
-    assert.equal(JSON.parse(compiled.stdout).code, "DUPLICATE_SMITHERS_OUTPUT");
+    assert.equal(JSON.parse(compiled.stdout).code, "DUPLICATE_VIBELANG_OUTPUT");
     assert.equal(existsSync(join(output, "basic.mjs")), false);
   } finally {
     rmSync(output, { recursive: true, force: true });
   }
 });
 
-test(".sm compilation rejects a symlinked output ancestor without escaping outDir", () => {
+test(".vibe compilation rejects a symlinked output ancestor without escaping outDir", () => {
   if (process.platform === "win32") return;
-  const temporary = realpathSync(mkdtempSync(join(tmpdir(), "smithers-output-symlink-")));
+  const temporary = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-output-symlink-")));
   try {
     const sourceRoot = join(temporary, "source");
     const sourceDirectory = join(sourceRoot, "nested");
@@ -1556,11 +1591,11 @@ test(".sm compilation rejects a symlinked output ancestor without escaping outDi
     mkdirSync(sourceDirectory, { recursive: true });
     mkdirSync(output);
     mkdirSync(outside);
-    const source = join(sourceDirectory, "main.sm");
+    const source = join(sourceDirectory, "main.vibe");
     writeFileSync(source, "export const answer = 42\n");
     symlinkSync(outside, join(output, "nested"), "dir");
 
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile",
       source,
       "--rootDir",
@@ -1578,8 +1613,8 @@ test(".sm compilation rejects a symlinked output ancestor without escaping outDi
   }
 });
 
-test("inspect does not apply .sm semantics silently to TypeScript files", () => {
-  const inspected = run("bin/smithers.js", [
+test("inspect does not apply .vibe semantics silently to TypeScript files", () => {
+  const inspected = run("bin/vibe.js", [
     "inspect",
     "test/fixtures/basic.ts",
     "--format",
@@ -1589,19 +1624,19 @@ test("inspect does not apply .sm semantics silently to TypeScript files", () => 
   assert.equal(JSON.parse(inspected.stdout).code, "INVALID_INPUT");
 });
 
-// A declaration in a conditional is Smithers's one grammar addition and does
+// A declaration in a conditional is VibeLang's one grammar addition and does
 // not parse under stock TypeScript. Postfix `!` is then checked as Result
 // propagation rather than TypeScript's non-null assertion.
-// The CLI runs three passes over authored `.sm` text before the checked
+// The CLI runs three passes over authored `.vibe` text before the checked
 // frontend sees it — the source-asset import preflight, the comptime intrinsic
 // frontend, and the target portability analysis — and every one of them has to
 // run the frontend's pre-parse recovery first.
-const DIVERGENT_FORMS_FIXTURE = resolve("poc/examples/language/divergent-forms.sm");
+const DIVERGENT_FORMS_FIXTURE = resolve("poc/examples/language/divergent-forms.vibe");
 const DIVERGENT_FORMS_HOST = resolve("poc/examples/language/foreign.ts");
 
 function stageDivergentForms() {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-divergent-")));
-  copyFileSync(DIVERGENT_FORMS_FIXTURE, join(root, "divergent-forms.sm"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-divergent-")));
+  copyFileSync(DIVERGENT_FORMS_FIXTURE, join(root, "divergent-forms.vibe"));
   copyFileSync(DIVERGENT_FORMS_HOST, join(root, "foreign.ts"));
   return root;
 }
@@ -1615,10 +1650,10 @@ const DIVERGENT_FORMS_OUTPUT = [
 
 test("conditional declarations and postfix propagation check, inspect, compile, run, and test", () => {
   const root = stageDivergentForms();
-  const source = join(root, "divergent-forms.sm");
+  const source = join(root, "divergent-forms.vibe");
   const output = join(root, "output");
   try {
-    const checked = run("bin/smithers.js", ["check", source, "--format", "json"]);
+    const checked = run("bin/vibe.js", ["check", source, "--format", "json"]);
     assert.equal(checked.status, 0, checked.stderr || checked.stdout);
     const checkReport = JSON.parse(checked.stdout);
     assert.equal(checkReport.ok, true);
@@ -1632,7 +1667,7 @@ test("conditional declarations and postfix propagation check, inspect, compile, 
     // with the parser's TS1109 cascade. Seeing EVERY authored function is what
     // proves the recovery ran: a shredded parse loses the ones after the first
     // divergent form.
-    const inspected = run("bin/smithers.js", ["inspect", source, "--format", "json"]);
+    const inspected = run("bin/vibe.js", ["inspect", source, "--format", "json"]);
     assert.equal(inspected.status, 0, inspected.stderr || inspected.stdout);
     const inspection = JSON.parse(inspected.stdout);
     assert.equal(inspection.ok, true);
@@ -1649,7 +1684,7 @@ test("conditional declarations and postfix propagation check, inspect, compile, 
       "weighted",
     ]);
 
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile", source, "--outDir", output, "--declaration", "--sourceMap", "--format", "json",
     ]);
     assert.equal(compiled.status, 0, compiled.stderr || compiled.stdout);
@@ -1657,21 +1692,22 @@ test("conditional declarations and postfix propagation check, inspect, compile, 
     assert.equal(existsSync(join(output, "divergent-forms.mjs")), true);
     assert.equal(existsSync(join(output, "divergent-forms.mjs.map")), true);
     const declaration = readFileSync(join(output, "divergent-forms.d.mts"), "utf8");
-    assert.match(declaration, /export declare function scoreOf\(key: string\): Result<number, Missing>;/);
+    assert.match(declaration, /type ResultType as __vsResultType/);
+    assert.match(declaration, /export declare function scoreOf\(key: string\): __vsResultType<number, Missing>;/);
     assert.match(declaration, /export declare function firstPassing\(scores: number\[\]\): number;/);
     const map = JSON.parse(readFileSync(join(output, "divergent-forms.mjs.map"), "utf8"));
     assert.equal(map.sources.length, 1);
-    assert.match(map.sources[0], /divergent-forms\.sm$/);
+    assert.match(map.sources[0], /divergent-forms\.vibe$/);
     assert.equal(map.sourcesContent[0], readFileSync(source, "utf8"));
 
     // The end-to-end proof: the emitted module executes the conditional
     // declaration, postfix propagation, and ordinary TypeScript control flow.
-    const executed = run("bin/smithers.js", ["run", source]);
+    const executed = run("bin/vibe.js", ["run", source]);
     assert.equal(executed.status, 0, executed.stderr || executed.stdout);
     assert.equal(executed.stdout.startsWith(`${DIVERGENT_FORMS_OUTPUT}\n`), true, executed.stdout);
     assert.match(executed.stdout, /ok: true/);
 
-    const tested = run("bin/smithers.js", ["test", source, "--format", "json"]);
+    const tested = run("bin/vibe.js", ["test", source, "--format", "json"]);
     assert.equal(tested.status, 0, tested.stderr || tested.stdout);
     const testReport = JSON.parse(tested.stdout);
     assert.equal(testReport.summary, "1 passed, 0 failed");
@@ -1684,13 +1720,13 @@ test("conditional declarations and postfix propagation check, inspect, compile, 
 });
 
 test("pre-pass diagnostics keep authored positions across a recovery rewrite", () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-authored-position-")));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-authored-position-")));
   try {
     // Recovering the conditional declaration on line 6 opens a synthetic
     // scope ahead of its containing statement, so every later construct sits one
     // line further down in the text the pre-passes actually parse. Both
     // diagnostics below must still name the AUTHORED line.
-    const source = join(root, "main.sm");
+    const source = join(root, "main.vibe");
     writeFileSync(root + "/data.json", "{}\n");
     writeFileSync(
       source,
@@ -1711,20 +1747,20 @@ test("pre-pass diagnostics keep authored positions across a recovery rewrite", (
       ].join("\n"),
     );
 
-    const checked = run("bin/smithers.js", ["check", source, "--format", "json"]);
+    const checked = run("bin/vibe.js", ["check", source, "--format", "json"]);
     assert.equal(checked.status, 1, checked.stderr || checked.stdout);
     const report = JSON.parse(checked.stdout);
     assert.deepEqual(report.files[0].diagnostics.map((item) => ({
       code: item.code,
       line: item.line,
       column: item.column,
-    })), [{ code: "SMITHERS5201", line: 11, column: 16 }]);
+    })), [{ code: "VIBE5201", line: 11, column: 16 }]);
 
     // The same recovery rewrite on a module the checker accepts: the pre-pass
     // opens a synthetic scope at line 6, and the frontend still cuts
     // the module from its AUTHORED text, so a file with no comptime call is
     // byte-identical before and after the pre-passes run.
-    const recovered = join(root, "recovered.sm");
+    const recovered = join(root, "recovered.vibe");
     writeFileSync(
       recovered,
       [
@@ -1739,7 +1775,7 @@ test("pre-pass diagnostics keep authored positions across a recovery rewrite", (
         "",
       ].join("\n"),
     );
-    const recoveredChecked = run("bin/smithers.js", ["check", recovered, "--format", "json"]);
+    const recoveredChecked = run("bin/vibe.js", ["check", recovered, "--format", "json"]);
     assert.equal(recoveredChecked.status, 0, recoveredChecked.stderr || recoveredChecked.stdout);
     const recoveredReport = JSON.parse(recoveredChecked.stdout);
     assert.deepEqual(recoveredReport.files[0].diagnostics, []);
@@ -1764,11 +1800,11 @@ test("pre-pass diagnostics keep authored positions across a recovery rewrite", (
  * than a fabricated answer.
  */
 test("the check report distinguishes an empty row set from rows it never computed", () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-cli-rows-")));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-rows-")));
   try {
-    const populated = join(root, "populated.sm");
+    const populated = join(root, "populated.vibe");
     writeFileSync(populated, [
-      'import { Context } from "smthrs/context"',
+      'import { Context } from "vibelang/context"',
       "",
       "abstract class Clock extends Context {",
       "  abstract now(): number",
@@ -1783,15 +1819,15 @@ test("the check report distinguishes an empty row set from rows it never compute
       "}",
       "",
     ].join("\n"));
-    const populatedReport = JSON.parse(run("bin/smithers.js", ["check", populated, "--format", "json"]).stdout);
+    const populatedReport = JSON.parse(run("bin/vibe.js", ["check", populated, "--format", "json"]).stdout);
     assert.deepEqual(populatedReport.files[0].rows.stamp, { failures: ["Missing"], requirements: ["Clock"] });
     assert.equal(populatedReport.files[0].rowsUnavailable, undefined);
 
     // A module with no authored function has no rows to report. That is a
     // measured answer, and it must keep printing as one.
-    const bare = join(root, "bare.sm");
+    const bare = join(root, "bare.vibe");
     writeFileSync(bare, "export const value = 1\n");
-    const bareChecked = run("bin/smithers.js", ["check", bare, "--format", "json"]);
+    const bareChecked = run("bin/vibe.js", ["check", bare, "--format", "json"]);
     assert.equal(bareChecked.status, 0, bareChecked.stderr || bareChecked.stdout);
     const bareReport = JSON.parse(bareChecked.stdout);
     assert.deepEqual(bareReport.files[0].rows, {});
@@ -1799,7 +1835,7 @@ test("the check report distinguishes an empty row set from rows it never compute
 
     // The source-asset stage refuses this module, so the row analysis never
     // runs. Reporting `{}` here would answer a question nobody measured.
-    const unmeasured = join(root, "unmeasured.sm");
+    const unmeasured = join(root, "unmeasured.vibe");
     writeFileSync(unmeasured, [
       'import missing from "./absent.txt" with { type: "text" }',
       "",
@@ -1808,7 +1844,7 @@ test("the check report distinguishes an empty row set from rows it never compute
       "}",
       "",
     ].join("\n"));
-    const unmeasuredChecked = run("bin/smithers.js", ["check", unmeasured, "--format", "json"]);
+    const unmeasuredChecked = run("bin/vibe.js", ["check", unmeasured, "--format", "json"]);
     assert.equal(unmeasuredChecked.status, 1, unmeasuredChecked.stderr || unmeasuredChecked.stdout);
     const unmeasuredReport = JSON.parse(unmeasuredChecked.stdout);
     assert.equal(unmeasuredReport.files[0].rows, undefined);
@@ -1820,7 +1856,7 @@ test("the check report distinguishes an empty row set from rows it never compute
   }
 });
 
-// The compiler writes its own runtime import as a package seam, `smthrs/runtime`,
+// The compiler writes its own runtime import as a package seam, `vibelang/runtime`,
 // which only resolves from an installed consumer. Telling the checker where that
 // package lives used to be done by substituting the seam's *text* for a local
 // path over the whole emitted module before checking it. That substitution could
@@ -1832,16 +1868,16 @@ test("the check report distinguishes an empty row set from rows it never compute
 // It diverged in both directions, which is why both are pinned here.
 
 test("check accepts an authored literal type that spells the compiler's runtime seam", () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-seam-literal-")));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-seam-literal-")));
   try {
-    const source = join(root, "literal.sm");
+    const source = join(root, "literal.vibe");
     // Two spellings of one literal: only the double-quoted one matched
-    // `JSON.stringify("smthrs/runtime")`, so the substitution rewrote the value
+    // `JSON.stringify("vibelang/runtime")`, so the substitution rewrote the value
     // and left the type, and TS2322 was reported against a program the compiler
     // does not emit.
-    writeFileSync(source, "export const seam: 'smthrs/runtime' = \"smthrs/runtime\"\n");
+    writeFileSync(source, "export const seam: 'vibelang/runtime' = \"vibelang/runtime\"\n");
 
-    const checked = run("bin/smithers.js", ["check", source, "--format", "json"]);
+    const checked = run("bin/vibe.js", ["check", source, "--format", "json"]);
     const checkedReport = JSON.parse(checked.stdout);
     assert.equal(
       checkedReport.ok,
@@ -1850,7 +1886,7 @@ test("check accepts an authored literal type that spells the compiler's runtime 
     );
     assert.equal(checked.status, 0, checked.stderr || checked.stdout);
 
-    const executed = run("bin/smithers.js", ["run", source, "--format", "json"]);
+    const executed = run("bin/vibe.js", ["run", source, "--format", "json"]);
     assert.equal(JSON.parse(executed.stdout).ok, true, executed.stderr || executed.stdout);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -1858,27 +1894,27 @@ test("check accepts an authored literal type that spells the compiler's runtime 
 });
 
 test("check and run reach the same verdict on a type derived from the runtime seam", () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-seam-verdict-")));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-seam-verdict-")));
   try {
-    const source = join(root, "verdict.sm");
+    const source = join(root, "verdict.vibe");
     // The substituted path ends in `.js`; the seam it replaced does not. A
     // template-literal type over the seam therefore read `true` under `check`
     // and `false` under `run` -- `check` ACCEPTING a program `run` refuses.
     // Nothing here names a machine-local path, so this holds on any checkout.
     writeFileSync(source, [
       "type EndsInJs<S extends string> = S extends `${string}.js` ? true : false",
-      'export const seamIsAFilePath: EndsInJs<"smthrs/runtime"> = true',
+      'export const seamIsAFilePath: EndsInJs<"vibelang/runtime"> = true',
       "",
     ].join("\n"));
 
-    const checked = JSON.parse(run("bin/smithers.js", ["check", source, "--format", "json"]).stdout);
-    const executed = JSON.parse(run("bin/smithers.js", ["run", source, "--format", "json"]).stdout);
+    const checked = JSON.parse(run("bin/vibe.js", ["check", source, "--format", "json"]).stdout);
+    const executed = JSON.parse(run("bin/vibe.js", ["run", source, "--format", "json"]).stdout);
     assert.equal(
       checked.ok,
       executed.ok,
       `check ok=${checked.ok} but run ok=${executed.ok} on the same source`,
     );
-    // `smthrs/runtime` is a package specifier, not a filesystem path, so the
+    // `vibelang/runtime` is a package specifier, not a filesystem path, so the
     // honest answer is `false` and both surfaces refuse the assignment.
     assert.equal(checked.ok, false);
     assert.equal(
@@ -1890,13 +1926,13 @@ test("check and run reach the same verdict on a type derived from the runtime se
   }
 });
 
-test("a .sm diagnostic never quotes a path inside the compiler's own installation", () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-seam-leak-")));
+test("a .vibe diagnostic never quotes a path inside the compiler's own installation", () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-seam-leak-")));
   const compilerRoot = realpathSync(resolve(process.cwd()));
   try {
-    const source = join(root, "leak.sm");
-    writeFileSync(source, "export const seam: 'smthrs/runtime' = \"smthrs/runtime\"\nexport const bad: number = \"no\"\n");
-    const report = JSON.parse(run("bin/smithers.js", ["check", source, "--format", "json"]).stdout);
+    const source = join(root, "leak.vibe");
+    writeFileSync(source, "export const seam: 'vibelang/runtime' = \"vibelang/runtime\"\nexport const bad: number = \"no\"\n");
+    const report = JSON.parse(run("bin/vibe.js", ["check", source, "--format", "json"]).stdout);
     for (const file of report.files) {
       for (const diagnostic of file.diagnostics) {
         assert.equal(
@@ -1914,13 +1950,13 @@ test("a .sm diagnostic never quotes a path inside the compiler's own installatio
 // A refused compile writes nothing. Naming an output, a source map, or a
 // declaration for a file that was never created is the report claiming work it
 // did not do; the Go backend already derives all three from its final verdict.
-test("a refused .sm compile names no output, source map, or declaration", () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "smithers-refused-output-")));
+test("a refused .vibe compile names no output, source map, or declaration", () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-refused-output-")));
   const output = join(root, "out");
   try {
-    const source = join(root, "refused.sm");
+    const source = join(root, "refused.vibe");
     writeFileSync(source, "export const bad: number = \"not a number\"\n");
-    const compiled = run("bin/smithers.js", [
+    const compiled = run("bin/vibe.js", [
       "compile",
       source,
       "--outDir",
@@ -1941,5 +1977,51 @@ test("a refused .sm compile names no output, source map, or declaration", () => 
     assert.equal(existsSync(output) ? readdirSync(output).length : 0, 0);
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("vibe init scaffolds a project that check accepts and run prints from", async () => {
+  const { existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join, resolve } = await import("node:path");
+  const { spawnSync } = await import("node:child_process");
+  const project = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-cli-init-")));
+  const cli = resolve("bin/vibe.js");
+  const invoke = (args) => spawnSync(process.execPath, [cli, ...args], { cwd: project, encoding: "utf8" });
+  try {
+    // The package must resolve from the scaffolded project the way it does for a user.
+    mkdirSync(join(project, "node_modules"));
+    symlinkSync(resolve("."), join(project, "node_modules", "vibelang"), process.platform === "win32" ? "junction" : "dir");
+
+    const init = invoke(["init", "--format", "json"]);
+    assert.equal(init.status, 0, init.stderr || init.stdout);
+    const report = JSON.parse(init.stdout);
+    assert.deepEqual(report.written, ["tsconfig.json", "main.vibe", "stdout.ts"]);
+    assert.deepEqual(report.skipped, []);
+    for (const file of report.written) assert.ok(existsSync(join(project, file)), `${file} was written`);
+
+    // The tsconfig `init` writes must pass the checker's own project validation
+    // (mandatory soundness options present, no unclassified option). The old
+    // `tsc --init` delegate produced a file that failed exactly here.
+    const checked = invoke(["check", "-p", "tsconfig.json", "main.vibe", "--format", "json"]);
+    assert.equal(checked.status, 0, checked.stderr || checked.stdout);
+    const checkedReport = JSON.parse(checked.stdout);
+    assert.equal(checkedReport.ok, true, JSON.stringify(checkedReport.files?.[0]?.diagnostics));
+
+    // The program prints through a capability, not through an ambient global.
+    const ran = invoke(["run", "main.vibe"]);
+    assert.equal(ran.status, 0, ran.stderr || ran.stdout);
+    assert.match(ran.stdout, /^hello, Ada$/mu);
+
+    // A second init keeps existing files; --force rewrites them.
+    const again = JSON.parse(invoke(["init", "--format", "json"]).stdout);
+    assert.deepEqual(again.written, []);
+    assert.deepEqual(again.skipped, ["tsconfig.json", "main.vibe", "stdout.ts"]);
+    const before = readFileSync(join(project, "main.vibe"), "utf8");
+    const forced = JSON.parse(invoke(["init", "--force", "--format", "json"]).stdout);
+    assert.deepEqual(forced.written, ["tsconfig.json", "main.vibe", "stdout.ts"]);
+    assert.equal(readFileSync(join(project, "main.vibe"), "utf8"), before);
+  } finally {
+    rmSync(project, { recursive: true, force: true });
   }
 });

@@ -1,7 +1,7 @@
-import { durable } from "smithers:flows"
+import { durable } from "vibelang:flows"
 import { Compile, Package } from "test:cli-actions"
 
-throw new Error("smithers plan evaluated the authored module")
+throw new Error("vibe plan evaluated the authored module")
 
 export const Build = durable(function Build(input: { source: string }) {
   const compiled = Compile.run({ source: input.source })!

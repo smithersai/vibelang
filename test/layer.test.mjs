@@ -28,9 +28,9 @@
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Context } from "smthrs/context";
-import { catchPanic, isPanic } from "smthrs/exceptions";
-import { Layer } from "smthrs/provider";
+import { Context } from "vibelang/context";
+import { catchPanic, isPanic } from "vibelang/exceptions";
+import { Layer } from "vibelang/provider";
 
 class Label extends Context {}
 
