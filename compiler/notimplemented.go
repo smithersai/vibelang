@@ -7,7 +7,7 @@ import (
 )
 
 // ErrNotImplemented allows callers to branch without matching diagnostic text.
-var ErrNotImplemented = errors.New("smithers compiler feature not implemented")
+var ErrNotImplemented = errors.New("vibe compiler feature not implemented")
 
 // NotImplementedError identifies a compiler surface that is only scaffolded.
 type NotImplementedError struct {
@@ -26,12 +26,12 @@ func New() Compiler { return notImplementedCompiler{} }
 type notImplementedCompiler struct{}
 
 func (notImplementedCompiler) Compile(_ context.Context, request CompileRequest) (CompileResult, error) {
-	feature := "Smithers compilation"
+	feature := "VibeLang compilation"
 	if len(request.RootNames) == 0 {
 		feature = "project discovery"
 	}
 	diagnostic := Diagnostic{
-		Code:     "SMITHERS0001",
+		Code:     "VIBE0001",
 		Category: DiagnosticError,
 		Message:  feature + " is not implemented in the Go compiler scaffold",
 		Phase:    PhaseParse,

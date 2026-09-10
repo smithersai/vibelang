@@ -14,11 +14,19 @@ import (
 // revalidates independently; this Go-side pass exists so malformed producer
 // output fails fast with a structured error even without a fork checkout.
 func validateLoweredRequest(request CompileRequest) error {
+	if request.SourcePolicy != nil && request.Lowering != LoweringTypeScript {
+		return errors.New("sourcePolicy requires the explicit TypeScript-only mode")
+	}
 	switch request.Lowering {
 	case "":
 		return errors.New("lowering mode is required")
-	case LoweringIdentity, LoweringInternal:
+	case LoweringIdentity, LoweringInternal, LoweringTypeScript:
 		for _, file := range request.Files {
+			logicalPath := strings.ToLower(path.Clean(strings.ReplaceAll(file.Path, "\\", "/")))
+			if request.Lowering == LoweringTypeScript &&
+				(file.Kind != FileKindTypeScript || strings.HasSuffix(logicalPath, ".vibe") || strings.HasSuffix(logicalPath, ".vibex")) {
+				return fmt.Errorf("TypeScript-only mode refuses non-TypeScript input %q", file.Path)
+			}
 			if file.Lowered != nil {
 				return fmt.Errorf("file %q carries lowered content but the request does not use %q lowering", file.Path, LoweringExternal)
 			}
@@ -29,14 +37,14 @@ func validateLoweredRequest(request CompileRequest) error {
 			return fmt.Errorf("%q lowering requires in-memory files; disk roots cannot carry lowered content", LoweringExternal)
 		}
 		for _, file := range request.Files {
-			if file.Kind != FileKindSmithers {
+			if file.Kind != FileKindVibeLang {
 				if file.Lowered != nil {
-					return fmt.Errorf("file %q is not a .sm file and must not carry lowered content", file.Path)
+					return fmt.Errorf("file %q is not a .vibe file and must not carry lowered content", file.Path)
 				}
 				continue
 			}
 			if file.Lowered == nil {
-				return fmt.Errorf("%q lowering requires lowered content for .sm file %q", LoweringExternal, file.Path)
+				return fmt.Errorf("%q lowering requires lowered content for .vibe file %q", LoweringExternal, file.Path)
 			}
 			if file.Lowered.Text == "" {
 				return fmt.Errorf("lowered text for %q is empty", file.Path)
@@ -254,8 +262,8 @@ func decodeVLQ(text string, position int) (value int, next int, err error) {
 }
 
 // lineIndex converts between byte offsets and (line, UTF-16 column) positions
-// of one immutable text. Lines split on '\n'; a '\r' before it belongs to the
-// preceding line's content.
+// of one immutable text. Line boundaries follow TypeScript: CRLF is one break;
+// bare CR, LF, U+2028 and U+2029 are also breaks, not source-map columns.
 type lineIndex struct {
 	text   string
 	starts []int
@@ -263,9 +271,16 @@ type lineIndex struct {
 
 func newLineIndex(text string) *lineIndex {
 	starts := []int{0}
-	for offset := 0; offset < len(text); offset++ {
-		if text[offset] == '\n' {
+	for offset, character := range text {
+		switch character {
+		case '\n':
 			starts = append(starts, offset+1)
+		case '\r':
+			if offset+1 == len(text) || text[offset+1] != '\n' {
+				starts = append(starts, offset+1)
+			}
+		case '\u2028', '\u2029':
+			starts = append(starts, offset+3)
 		}
 	}
 	return &lineIndex{text: text, starts: starts}
@@ -280,7 +295,17 @@ func (index *lineIndex) lineText(line int) string {
 	start := index.starts[line]
 	end := len(index.text)
 	if line+1 < len(index.starts) {
-		end = index.starts[line+1] - 1
+		end = index.starts[line+1]
+		if index.text[end-1] == '\n' {
+			end--
+			if end > start && index.text[end-1] == '\r' {
+				end--
+			}
+		} else if index.text[end-1] == '\r' {
+			end--
+		} else {
+			end -= 3 // UTF-8 U+2028 / U+2029
+		}
 	}
 	return index.text[start:end]
 }

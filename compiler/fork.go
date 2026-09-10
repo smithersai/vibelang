@@ -16,16 +16,20 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
+	"unicode/utf16"
+
+	"github.com/smithersai/vibelang/compiler/wirejson"
+	runtimesources "github.com/smithersai/vibelang/poc"
 )
 
 // PinnedTypeScriptRevision is the exact smithersai/TypeScript revision this
 // bridge accepts. Keep it in sync with typescript-fork.json; a test enforces
 // the lock.
-const PinnedTypeScriptRevision = "c087644e82dc3d48cf87e4c5519eeaaea9daf35c"
+const PinnedTypeScriptRevision = "bf7f49d6f5ad3254d03ed83dd07ab510ae4e582a"
 
 const forkBridgeAPIVersion = APIVersion
 
@@ -80,6 +84,57 @@ var forkComptimeSource []byte
 //go:embed forkbridge/durable.go.txt
 var forkDurableSource []byte
 
+//go:embed forkbridge/durable_templates.go.txt
+var forkDurableTemplatesSource []byte
+
+//go:embed forkbridge/durable_contract_compatibility.go.txt
+var forkDurableContractCompatibilitySource []byte
+
+//go:embed forkbridge/durable_bindings.go.txt
+var forkDurableBindingsSource []byte
+
+//go:embed forkbridge/plan_child_flows.go.txt
+var forkPlanChildFlowsSource []byte
+
+//go:embed forkbridge/plan_source.go.txt
+var forkPlanSource []byte
+
+//go:embed forkbridge/keyed_plan.go.txt
+var forkKeyedPlanSource []byte
+
+//go:embed forkbridge/keyed_plan_keys.go.txt
+var forkKeyedPlanKeysSource []byte
+
+//go:embed forkbridge/keyed_plan_effects.go.txt
+var forkKeyedPlanEffectsSource []byte
+
+//go:embed forkbridge/keyed_plan_unicode.go.txt
+var forkKeyedPlanUnicodeSource []byte
+
+//go:embed forkbridge/keyed_source.go.txt
+var forkKeyedSource []byte
+
+//go:embed forkbridge/keyed_source_check.go.txt
+var forkKeyedSourceCheck []byte
+
+//go:embed forkbridge/keyed_source_values.go.txt
+var forkKeyedSourceValues []byte
+
+//go:embed forkbridge/keyed_source_expand.go.txt
+var forkKeyedSourceExpand []byte
+
+//go:embed forkbridge/keyed_source_branch.go.txt
+var forkKeyedSourceBranch []byte
+
+//go:embed forkbridge/keyed_source_statements.go.txt
+var forkKeyedSourceStatements []byte
+
+//go:embed forkbridge/keyed_source_facts.go.txt
+var forkKeyedSourceFacts []byte
+
+//go:embed forkbridge/durable_source_flows.go.txt
+var forkDurableSourceFlows []byte
+
 //go:embed forkbridge/effectmanifest.go.txt
 var forkEffectManifestSource []byte
 
@@ -98,8 +153,126 @@ var forkAssetSource []byte
 //go:embed forkbridge/mustconsume.go.txt
 var forkMustConsumeSource []byte
 
+//go:embed forkbridge/callablerows.go.txt
+var forkCallableRowsSource []byte
+
+//go:embed forkbridge/declarations.go.txt
+var forkDeclarationsSource []byte
+
+//go:embed forkbridge/declaration_emit.go.txt
+var forkDeclarationEmitSource []byte
+
+//go:embed forkbridge/ownershipflow.go.txt
+var forkOwnershipFlowSource []byte
+
+//go:embed forkbridge/typescript.go.txt
+var forkTypeScriptSource []byte
+
+//go:embed forkbridge/inspect.go.txt
+var forkInspectSource []byte
+
+//go:embed forkbridge/format.go.txt
+var forkFormatSource []byte
+
+//go:embed forkbridge/loader_registration.go.txt
+var forkLoaderRegistrationSource []byte
+
+//go:embed forkbridge/asset_output.go.txt
+var forkAssetOutputSource []byte
+
+//go:embed forkbridge/asset_imports.go.txt
+var forkAssetImportsSource []byte
+
+//go:embed forkbridge/transpile.go.txt
+var forkTranspileSource []byte
+
+//go:embed forkbridge/bundle_modules.go.txt
+var forkBundleModulesSource []byte
+
+//go:embed forkbridge/canonical_function.go.txt
+var forkCanonicalFunctionSource []byte
+
+//go:embed forkbridge/runtime_modules.go.txt
+var forkRuntimeModulesSource []byte
+
+//go:embed forkbridge/durable_module.go.txt
+var forkDurableModuleSource []byte
+
+//go:embed forkbridge/schema_syntax.go.txt
+var forkSyntaxSchemaSource []byte
+
+//go:embed forkbridge/checked_schemas.go.txt
+var forkCheckedSchemasSource []byte
+
+//go:embed forkbridge/source_recovery.go.txt
+var forkSourceRecoverySource []byte
+
+//go:embed forkbridge/comptime_plan.go.txt
+var forkComptimePlanSource []byte
+
+//go:embed forkbridge/language_analysis.go.txt
+var forkLanguageAnalysisSource []byte
+
+//go:embed forkbridge/language_analysis_runtime.go.txt
+var forkLanguageAnalysisRuntimeSource []byte
+
+//go:embed forkbridge/sdk_lowering.go.txt
+var forkSDKLoweringSource []byte
+
+//go:embed forkbridge/sdk_declarations.go.txt
+var forkSDKDeclarationsSource []byte
+
+//go:embed forkbridge/sdk_source_map.go.txt
+var forkSDKSourceMapSource []byte
+
+//go:embed forkbridge/language_lowering.go.txt
+var forkLanguageLoweringSource []byte
+
+//go:embed forkbridge/comptime_strings.go.txt
+var forkComptimeStringsSource []byte
+
+//go:embed forkbridge/runtime_factory.go.txt
+var forkRuntimeFactorySource []byte
+
+//go:embed forkbridge/action_contract.go.txt
+var forkActionContractSource []byte
+
+//go:embed forkbridge/checked_function.go.txt
+var forkCheckedFunctionSource []byte
+
+//go:embed forkbridge/generated_project.go.txt
+var forkGeneratedProjectSource []byte
+
+//go:embed forkbridge/dependency_trace.go.txt
+var forkDependencyTraceSource []byte
+
+//go:embed forkbridge/declaration_text.go.txt
+var forkDeclarationTextSource []byte
+
+//go:embed forkbridge/generated_declarations.go.txt
+var forkGeneratedDeclarationsSource []byte
+
+//go:embed forkbridge/body_contract.go.txt
+var forkBodyContractSource []byte
+
+//go:embed forkbridge/body_lowering.go.txt
+var forkBodyLoweringSource []byte
+
+//go:embed forkbridge/schema.go.txt
+var forkSchemaSource []byte
+
+// Runtime source is a build input, included in the executable/cache identity.
+// Quoting it as Go data avoids an independent generated copy of the validator.
+var forkSchemaRuntimeSource = []byte("package main\nconst schemaRuntimeSource = " + strconv.Quote(runtimesources.Schema) + "\n")
+
+// The same Unicode-preserving JSON boundary is compiled into the Go host and
+// the standalone fork executable; it is not reimplemented in the overlay.
+//
+//go:embed wirejson/wire.go
+var forkWireJSONSource []byte
+
 // forkPatchFiles is the exact ordered, digest-gated patch series compiled into
-// this bridge build. Embedding it keeps a distributed smithersc-go binary
+// this bridge build. Embedding it keeps a distributed vibec-go binary
 // fail-closed: preparation never depends on finding a mutable repository next
 // to the executable, and changing series.json or any recorded patch changes
 // the bridge cache identity.
@@ -138,16 +311,71 @@ var forkBridgeFiles = []struct {
 	source *[]byte
 }{
 	{target: "cmd/tsc/main.go", source: &forkBridgeSource},
-	{target: "cmd/tsc/smitherslowering.go", source: &forkLoweringSource},
-	{target: "cmd/tsc/smitherscomptime.go", source: &forkComptimeSource},
-	{target: "cmd/tsc/smithersdurable.go", source: &forkDurableSource},
-	{target: "cmd/tsc/smitherseffectmanifest.go", source: &forkEffectManifestSource},
-	{target: "cmd/tsc/smithershostrules.go", source: &forkHostRulesSource},
-	{target: "cmd/tsc/smithersretired.go", source: &forkRetiredSyntaxSource},
-	{target: "cmd/tsc/smithersnativeprovenance.go", source: &forkNativeProvenanceSource},
-	{target: "cmd/tsc/smithersassets.go", source: &forkAssetSource},
-	{target: "cmd/tsc/smithersmustconsume.go", source: &forkMustConsumeSource},
-	{target: "internal/checker/smithersbridge.go", source: &forkCheckerBridgeSource},
+	{target: "cmd/tsc/vibelanglowering.go", source: &forkLoweringSource},
+	{target: "cmd/tsc/vibecomptime.go", source: &forkComptimeSource},
+	{target: "cmd/tsc/vibelangdurable.go", source: &forkDurableSource},
+	{target: "cmd/tsc/vibelangdurabletemplates.go", source: &forkDurableTemplatesSource},
+	{target: "cmd/tsc/vibelangdurablecontractcompatibility.go", source: &forkDurableContractCompatibilitySource},
+	{target: "cmd/tsc/vibelangdurablebindings.go", source: &forkDurableBindingsSource},
+	{target: "cmd/tsc/vibelangplanchildflows.go", source: &forkPlanChildFlowsSource},
+	{target: "cmd/tsc/vibelangplansource.go", source: &forkPlanSource},
+	{target: "cmd/tsc/vibelangkeyedplan.go", source: &forkKeyedPlanSource},
+	{target: "cmd/tsc/vibelangkeyedplankeys.go", source: &forkKeyedPlanKeysSource},
+	{target: "cmd/tsc/vibelangkeyedplaneffects.go", source: &forkKeyedPlanEffectsSource},
+	{target: "cmd/tsc/vibelangkeyedplanunicode.go", source: &forkKeyedPlanUnicodeSource},
+	{target: "cmd/tsc/vibelangkeyedsource.go", source: &forkKeyedSource},
+	{target: "cmd/tsc/vibelangkeyedsourcecheck.go", source: &forkKeyedSourceCheck},
+	{target: "cmd/tsc/vibelangkeyedsourcevalues.go", source: &forkKeyedSourceValues},
+	{target: "cmd/tsc/vibelangkeyedsourceexpand.go", source: &forkKeyedSourceExpand},
+	{target: "cmd/tsc/vibelangkeyedsourcebranch.go", source: &forkKeyedSourceBranch},
+	{target: "cmd/tsc/vibelangkeyedsourcestatements.go", source: &forkKeyedSourceStatements},
+	{target: "cmd/tsc/vibelangkeyedsourcefacts.go", source: &forkKeyedSourceFacts},
+	{target: "cmd/tsc/vibelangdurablesourceflows.go", source: &forkDurableSourceFlows},
+	{target: "cmd/tsc/vibelangeffectmanifest.go", source: &forkEffectManifestSource},
+	{target: "cmd/tsc/vibelanghostrules.go", source: &forkHostRulesSource},
+	{target: "cmd/tsc/vibelangretired.go", source: &forkRetiredSyntaxSource},
+	{target: "cmd/tsc/vibelangnativeprovenance.go", source: &forkNativeProvenanceSource},
+	{target: "cmd/tsc/vibelangassets.go", source: &forkAssetSource},
+	{target: "cmd/tsc/vibelangmustconsume.go", source: &forkMustConsumeSource},
+	{target: "cmd/tsc/vibecallablerows.go", source: &forkCallableRowsSource},
+	{target: "cmd/tsc/vibelangdeclarations.go", source: &forkDeclarationsSource},
+	{target: "cmd/tsc/vibelangdeclarationemit.go", source: &forkDeclarationEmitSource},
+	{target: "cmd/tsc/vibelangownershipflow.go", source: &forkOwnershipFlowSource},
+	{target: "cmd/tsc/vibelangtypescript.go", source: &forkTypeScriptSource},
+	{target: "cmd/tsc/vibelanginspect.go", source: &forkInspectSource},
+	{target: "cmd/tsc/vibelangformat.go", source: &forkFormatSource},
+	{target: "cmd/tsc/vibelangloaderregistration.go", source: &forkLoaderRegistrationSource},
+	{target: "cmd/tsc/vibelangassetoutput.go", source: &forkAssetOutputSource},
+	{target: "cmd/tsc/vibelangassetimports.go", source: &forkAssetImportsSource},
+	{target: "cmd/tsc/vibelangtranspile.go", source: &forkTranspileSource},
+	{target: "cmd/tsc/vibelangbundlemodules.go", source: &forkBundleModulesSource},
+	{target: "cmd/tsc/vibelangcanonicalfunction.go", source: &forkCanonicalFunctionSource},
+	{target: "cmd/tsc/vibelangruntimemodules.go", source: &forkRuntimeModulesSource},
+	{target: "cmd/tsc/vibelangdurablemodule.go", source: &forkDurableModuleSource},
+	{target: "cmd/tsc/vibelangsyntaxschema.go", source: &forkSyntaxSchemaSource},
+	{target: "cmd/tsc/vibelangcheckedschemas.go", source: &forkCheckedSchemasSource},
+	{target: "cmd/tsc/vibelangsourcerecovery.go", source: &forkSourceRecoverySource},
+	{target: "cmd/tsc/vibelangcomptimeplan.go", source: &forkComptimePlanSource},
+	{target: "cmd/tsc/vibelanglanguageanalysis.go", source: &forkLanguageAnalysisSource},
+	{target: "cmd/tsc/vibelangsdklowering.go", source: &forkSDKLoweringSource},
+	{target: "cmd/tsc/vibelangsdkdeclarations.go", source: &forkSDKDeclarationsSource},
+	{target: "cmd/tsc/vibelangsdkmap.go", source: &forkSDKSourceMapSource},
+	{target: "cmd/tsc/vibelanglanguagelowering.go", source: &forkLanguageLoweringSource},
+	{target: "cmd/tsc/vibelanglanguageanalysisruntime.go", source: &forkLanguageAnalysisRuntimeSource},
+	{target: "cmd/tsc/vibelangcomptimestrings.go", source: &forkComptimeStringsSource},
+	{target: "cmd/tsc/vibelangruntimefactory.go", source: &forkRuntimeFactorySource},
+	{target: "cmd/tsc/vibelangactioncontract.go", source: &forkActionContractSource},
+	{target: "cmd/tsc/vibelangcheckedfunction.go", source: &forkCheckedFunctionSource},
+	{target: "cmd/tsc/vibelanggeneratedproject.go", source: &forkGeneratedProjectSource},
+	{target: "cmd/tsc/vibelangdependencytrace.go", source: &forkDependencyTraceSource},
+	{target: "cmd/tsc/vibelangdeclarationtext.go", source: &forkDeclarationTextSource},
+	{target: "cmd/tsc/vibelanggenerateddeclarations.go", source: &forkGeneratedDeclarationsSource},
+	{target: "cmd/tsc/vibelangbodycontract.go", source: &forkBodyContractSource},
+	{target: "cmd/tsc/vibelangbodylowering.go", source: &forkBodyLoweringSource},
+	{target: "cmd/tsc/vibelangschema.go", source: &forkSchemaSource},
+	{target: "cmd/tsc/vibelangschemaruntime.go", source: &forkSchemaRuntimeSource},
+	{target: "cmd/tsc/vibewirejson/wire.go", source: &forkWireJSONSource},
+	{target: "internal/checker/vibelangbridge.go", source: &forkCheckerBridgeSource},
 }
 
 // NewPinnedFork verifies the exact locked fork revision, applies or verifies
@@ -162,14 +390,56 @@ func NewPinnedFork(ctx context.Context, config ForkConfig) (Compiler, error) {
 	return &forkCompiler{executable: executable}, nil
 }
 
+// PreparedFork describes a verified standalone native compiler. The executable
+// embeds the upstream libraries and accepts CompileRequest JSON on stdin; it
+// does not need this module, a source checkout, or Go after preparation. SHA256
+// covers the actual executable bytes, not just its declared source identity.
+type PreparedFork struct {
+	Executable      string `json:"executable"`
+	APIVersion      int    `json:"apiVersion"`
+	Revision        string `json:"revision"`
+	PatchSeries     string `json:"patchSeries"`
+	CompilerVersion string `json:"compilerVersion"`
+	SHA256          string `json:"sha256"`
+	OS              string `json:"os"`
+	Arch            string `json:"arch"`
+}
+
+// PreparePinnedFork is the build/package boundary for native host bindings.
+// It uses exactly the preparation and identity checks of NewPinnedFork.
+func PreparePinnedFork(ctx context.Context, config ForkConfig) (PreparedFork, error) {
+	executable, err := preparePinnedForkBridge(ctx, config)
+	if err != nil {
+		return PreparedFork{}, err
+	}
+	identity, err := bridgeBuildIdentity(ctx, executable)
+	if err != nil {
+		return PreparedFork{}, err
+	}
+	file, err := os.Open(executable)
+	if err != nil {
+		return PreparedFork{}, err
+	}
+	defer file.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return PreparedFork{}, err
+	}
+	return PreparedFork{
+		Executable: executable, APIVersion: identity.APIVersion, Revision: identity.Revision,
+		PatchSeries: identity.PatchSeries, CompilerVersion: identity.CompilerVersion,
+		SHA256: hex.EncodeToString(hash.Sum(nil)), OS: runtime.GOOS, Arch: runtime.GOARCH,
+	}, nil
+}
+
 type forkCompiler struct {
 	executable string
 }
 
-type forkEnvelope struct {
+type forkEnvelope[T any] struct {
 	APIVersion       int            `json:"apiVersion"`
 	CompilerRevision string         `json:"compilerRevision"`
-	Result           *CompileResult `json:"result"`
+	Result           *T             `json:"result"`
 	Error            *forkWireError `json:"error,omitempty"`
 }
 
@@ -190,12 +460,852 @@ func (c *forkCompiler) Compile(ctx context.Context, request CompileRequest) (Com
 		return CompileResult{EmitSkipped: true}, err
 	}
 
-	payload, err := json.Marshal(request)
+	compiled, err := exchangeFork[CompileResult](ctx, c.executable, nil, request)
+	if compiled == nil {
+		return CompileResult{EmitSkipped: true}, err
+	}
+	if compiled.Diagnostics == nil || compiled.Artifacts == nil {
+		return CompileResult{EmitSkipped: true}, &ForkError{Op: "validate response", Detail: "missing result or result collections", Err: ErrForkProtocol}
+	}
+	return *compiled, err
+}
+
+func (c *forkCompiler) Inspect(ctx context.Context, request InspectionRequest) (InspectionResult, error) {
+	inspected, err := exchangeFork[InspectionResult](ctx, c.executable, []string{"--inspect"}, request)
+	if inspected == nil {
+		return InspectionResult{}, err
+	}
 	if err != nil {
-		return CompileResult{EmitSkipped: true}, &ForkError{Op: "encode request", Err: errors.Join(ErrForkProtocol, err)}
+		return *inspected, err
+	}
+	if inspected.Files == nil || len(inspected.Files) != len(request.Files) {
+		return InspectionResult{}, &ForkError{Op: "validate response", Detail: "missing inspected sources", Err: ErrForkProtocol}
+	}
+	for index, file := range inspected.Files {
+		json := request.Files[index].ScriptKind == "json"
+		if file.Path != request.Files[index].Path || file.Diagnostics == nil || file.ModuleSyntax == nil ||
+			json != (file.JSONDuplicateKeys != nil) || (json && len(file.ModuleSyntax) != 0) ||
+			request.Files[index].DeclarationBindings != (file.DeclarationBindings != nil) || (json && file.DeclarationBindings != nil) {
+			return InspectionResult{}, &ForkError{Op: "validate response", Detail: "missing inspection collections", Err: ErrForkProtocol}
+		}
+		extent := utf16Extent(request.Files[index].Text)
+		if file.DeclarationBindings != nil {
+			bindings := *file.DeclarationBindings
+			if bindings == nil || len(bindings) > 100_000 || (len(file.Diagnostics) != 0 && len(bindings) != 0) {
+				return InspectionResult{}, &ForkError{Op: "validate response", Detail: "invalid declaration inventory", Err: ErrForkProtocol}
+			}
+			previousEnd := 0
+			for _, binding := range bindings {
+				where := binding.Span
+				valid := (binding.Kind == "variable" || binding.Kind == "function") &&
+					where.Start >= previousEnd && where.Length >= 1 && where.Start <= extent && where.Length <= extent-where.Start &&
+					(binding.Name == nil || *binding.Name != "")
+				if name := binding.NameSpan; name == nil {
+					valid = valid && binding.Kind == "function" && binding.Name == nil
+				} else {
+					valid = valid && name.Start >= where.Start && name.Length >= 1 && name.Start <= where.Start+where.Length &&
+						name.Length <= where.Start+where.Length-name.Start && (binding.Kind != "function" || binding.Name != nil)
+				}
+				if !valid {
+					return InspectionResult{}, &ForkError{Op: "validate response", Detail: "invalid declaration binding range/identity", Err: ErrForkProtocol}
+				}
+				previousEnd = where.Start + where.Length
+			}
+		}
+		for _, item := range file.ModuleSyntax {
+			valid := item.Span.Start >= 0 && item.Span.Length >= 0 && item.Span.Start <= extent && item.Span.Length <= extent-item.Span.Start
+			if item.Specifier == nil {
+				valid = valid && item.SpecifierSpan == nil && item.SpecifierKind == ""
+			} else {
+				literal := item.SpecifierSpan
+				valid = valid && literal != nil && (item.SpecifierKind == "string" || item.SpecifierKind == "template")
+				if literal != nil {
+					valid = valid && literal.Start >= item.Span.Start && literal.Length >= 0 && literal.Start <= item.Span.Start+item.Span.Length && literal.Length <= item.Span.Start+item.Span.Length-literal.Start
+				}
+			}
+			if !valid {
+				return InspectionResult{}, &ForkError{Op: "validate response", Detail: "invalid module literal range/kind", Err: ErrForkProtocol}
+			}
+		}
+	}
+	return *inspected, err
+}
+
+func (c *forkCompiler) Format(ctx context.Context, request FormatRequest) (FormatResult, error) {
+	formatted, err := exchangeFork[FormatResult](ctx, c.executable, []string{"--format"}, request)
+	if formatted == nil {
+		return FormatResult{Code: request.Text, Diagnostics: []FormatDiagnostic{}}, err
+	}
+	if err == nil && (formatted.Diagnostics == nil || formatted.Changed != (formatted.Code != request.Text) ||
+		(!formatted.OK && (formatted.Code != request.Text || len(formatted.Diagnostics) == 0)) ||
+		(formatted.OK && len(formatted.Diagnostics) != 0)) {
+		return FormatResult{Code: request.Text}, &ForkError{Op: "validate response", Detail: "inconsistent formatting result", Err: ErrForkProtocol}
+	}
+	return *formatted, err
+}
+
+func (c *forkCompiler) TokenAt(ctx context.Context, request TokenRequest) (TokenResult, error) {
+	located, err := exchangeFork[TokenResult](ctx, c.executable, []string{"--token-at"}, request)
+	if located == nil {
+		return TokenResult{}, err
+	}
+	return *located, err
+}
+
+func (c *forkCompiler) LoaderRegistration(ctx context.Context, request LoaderRegistrationRequest) (LoaderRegistrationResult, error) {
+	result, err := exchangeFork[LoaderRegistrationResult](ctx, c.executable, []string{"--loader-registration"}, request)
+	if result == nil {
+		return LoaderRegistrationResult{}, err
+	}
+	if err == nil && (result.Diagnostics == nil || result.OK != (len(result.Diagnostics) == 0) ||
+		(result.Registration != nil && (!result.OK || !result.Identified || result.Registration.FileName != request.FileName)) ||
+		(request.Mode == "recognize" && result.OK && result.Registration == nil) ||
+		(request.Mode == "discover" && (!result.OK || result.Identified || result.Registration != nil))) {
+		return LoaderRegistrationResult{}, &ForkError{Op: "validate response", Detail: "inconsistent loader registration result", Err: ErrForkProtocol}
+	}
+	return *result, err
+}
+
+func (c *forkCompiler) ValidateAssetOutput(ctx context.Context, request AssetOutputRequest) (AssetOutputResult, error) {
+	result, err := exchangeFork[AssetOutputResult](ctx, c.executable, []string{"--asset-output"}, request)
+	if result == nil {
+		return AssetOutputResult{}, err
+	}
+	if err == nil && (result.References == nil || result.OK != (result.Message == "") || (!result.OK && len(result.References) != 0)) {
+		return AssetOutputResult{}, &ForkError{Op: "validate response", Detail: "inconsistent asset-output validation", Err: ErrForkProtocol}
+	}
+	return *result, err
+}
+
+func (c *forkCompiler) AssetImports(ctx context.Context, request AssetImportsRequest) (AssetImportsResult, error) {
+	result, err := exchangeFork[AssetImportsResult](ctx, c.executable, []string{"--asset-imports"}, request)
+	if result == nil {
+		return AssetImportsResult{}, err
+	}
+	if err != nil {
+		return *result, err
+	}
+	if result.Files == nil || len(result.Files) != len(request.Files) {
+		return AssetImportsResult{}, &ForkError{Op: "validate response", Detail: "missing asset import sources", Err: ErrForkProtocol}
+	}
+	for index, file := range result.Files {
+		if file.Path != request.Files[index].Path || file.Requests == nil || file.OrdinaryImports == nil || file.Diagnostics == nil ||
+			(len(file.Diagnostics) != 0 && (len(file.Requests) != 0 || len(file.OrdinaryImports) != 0)) {
+			return AssetImportsResult{}, &ForkError{Op: "validate response", Detail: "inconsistent asset import collections", Err: ErrForkProtocol}
+		}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) Transpile(ctx context.Context, request TranspileRequest) (TranspileResult, error) {
+	result, err := exchangeFork[TranspileResult](ctx, c.executable, []string{"--transpile"}, request)
+	if result == nil {
+		return TranspileResult{}, err
+	}
+	if err != nil {
+		return *result, err
+	}
+	if result.Files == nil || len(result.Files) != len(request.Files) {
+		return TranspileResult{}, &ForkError{Op: "validate response", Detail: "missing transpiled sources", Err: ErrForkProtocol}
+	}
+	for index, file := range result.Files {
+		hasErrors := false
+		for _, diagnostic := range file.Diagnostics {
+			hasErrors = hasErrors || diagnostic.Category == DiagnosticError
+		}
+		if file.Path != request.Files[index].Path || file.Diagnostics == nil || file.EmitSkipped != hasErrors ||
+			(file.EmitSkipped && (file.JavaScript != "" || file.SourceMap != "")) {
+			return TranspileResult{}, &ForkError{Op: "validate response", Detail: "inconsistent transpiled source", Err: ErrForkProtocol}
+		}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) BundleModules(ctx context.Context, request BundleModulesRequest) (BundleModulesResult, error) {
+	result, err := exchangeFork[BundleModulesResult](ctx, c.executable, []string{"--bundle-modules"}, request)
+	if result == nil {
+		return BundleModulesResult{}, err
+	}
+	if err != nil {
+		return *result, err
+	}
+	paths := map[string]bool{}
+	for _, source := range request.Files {
+		paths[source.Path] = true
+	}
+	valid := result.Diagnostics != nil && result.Registrations != nil && (len(result.Diagnostics) == 0 || len(result.Registrations) == 0)
+	for _, diagnostic := range result.Diagnostics {
+		valid = valid && paths[diagnostic.Path] && diagnostic.Message != ""
+	}
+	classes := map[string]bool{}
+	for _, item := range result.Registrations {
+		valid = valid && paths[item.Path] && item.ClassName != "" && !classes[item.ClassName]
+		classes[item.ClassName] = true
+	}
+	if !valid {
+		return BundleModulesResult{}, &ForkError{Op: "validate response", Detail: "inconsistent bundle module facts", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) CanonicalFunction(ctx context.Context, request CanonicalFunctionRequest) (CanonicalFunctionResult, error) {
+	result, err := exchangeFork[CanonicalFunctionResult](ctx, c.executable, []string{"--canonical-function"}, request)
+	if result == nil {
+		return CanonicalFunctionResult{}, err
+	}
+	if err == nil && (result.OK != (result.Message == "") || result.OK != (result.Code != "")) {
+		return CanonicalFunctionResult{}, &ForkError{Op: "validate response", Detail: "inconsistent canonical function", Err: ErrForkProtocol}
+	}
+	return *result, err
+}
+
+func (c *forkCompiler) RuntimeModules(ctx context.Context, request RuntimeModulesRequest) (RuntimeModulesResult, error) {
+	result, err := exchangeFork[RuntimeModulesResult](ctx, c.executable, []string{"--runtime-modules"}, request)
+	if result == nil {
+		return RuntimeModulesResult{}, err
+	}
+	if err != nil {
+		return *result, err
+	}
+	valid := result.Files != nil && len(result.Files) == len(request.Files)
+	if valid {
+		for index, file := range result.Files {
+			valid = valid && file.Path == request.Files[index].Path && file.Edges != nil && file.Diagnostics != nil && file.ParseDiagnostics != nil && file.Resolutions != nil &&
+				(len(file.Diagnostics) == 0 || (len(file.Edges) == 0 && len(file.Resolutions) == 0 && !file.LeadingNoThrow)) &&
+				(request.ResolutionRoot != "" || len(file.Resolutions) == 0)
+		}
+	}
+	if !valid {
+		return RuntimeModulesResult{}, &ForkError{Op: "validate response", Detail: "inconsistent runtime module facts", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) DurableModule(ctx context.Context, request DurableModuleRequest) (DurableModuleResult, error) {
+	result, err := exchangeFork[DurableModuleResult](ctx, c.executable, []string{"--durable-module"}, request)
+	if result == nil || err != nil {
+		return DurableModuleResult{}, err
+	}
+	valid := result.Diagnostics != nil && result.Imports != nil && result.Calls != nil && result.Removals != nil &&
+		(len(result.Diagnostics) == 0 || len(result.Imports)+len(result.Calls)+len(result.Removals) == 0) &&
+		(len(result.Calls) == 1 || len(result.Removals) == 0)
+	limit := utf16Extent(request.Source)
+	for _, spans := range [][]Span{result.Imports, result.Calls, result.Removals} {
+		previous := -1
+		for _, item := range spans {
+			valid = valid && item.Start > previous && item.Start >= 0 && item.Length > 0 && item.Start <= limit && item.Length <= limit-item.Start
+			previous = item.Start
+		}
+	}
+	if !valid {
+		return DurableModuleResult{}, &ForkError{Op: "validate response", Detail: "inconsistent durable module facts", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) SyntaxSchema(ctx context.Context, request SyntaxSchemaRequest) (SyntaxSchemaResult, error) {
+	result, err := exchangeFork[SyntaxSchemaResult](ctx, c.executable, []string{"--syntax-schema"}, request)
+	if result == nil || err != nil {
+		return SyntaxSchemaResult{}, err
+	}
+	if result.OK != (result.SchemaJSON != "") || result.OK != (result.Message == "") || (result.OK && result.ParseError) ||
+		(result.OK && (len(result.SchemaJSON) > 16*1024*1024 || !json.Valid([]byte(result.SchemaJSON)))) {
+		return SyntaxSchemaResult{}, &ForkError{Op: "validate response", Detail: "inconsistent syntax schema", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) CheckedSchemas(ctx context.Context, request CheckedSchemasRequest) (CheckedSchemasResult, error) {
+	result, err := exchangeFork[CheckedSchemasResult](ctx, c.executable, []string{"--checked-schemas"}, request)
+	if result == nil || err != nil {
+		return CheckedSchemasResult{}, err
+	}
+	valid := len(result.Schemas) == len(request.Queries)
+	for _, schema := range result.Schemas {
+		valid = valid && schema.OK == (schema.SchemaJSON != "") && schema.OK == (schema.Message == "") &&
+			((schema.OK && schema.Failure == "" && len(schema.SchemaJSON) <= 2*1024*1024 && json.Valid([]byte(schema.SchemaJSON))) ||
+				(!schema.OK && (schema.Failure == "unsupported" || schema.Failure == "budget")))
+	}
+	if !valid {
+		return CheckedSchemasResult{}, &ForkError{Op: "validate response", Detail: "inconsistent checked schemas", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) PlanComptime(ctx context.Context, request ComptimePlanRequest) (ComptimePlanResult, error) {
+	result, err := exchangeFork[ComptimePlanResult](ctx, c.executable, []string{"--comptime-plan"}, request)
+	if result == nil || err != nil {
+		return ComptimePlanResult{}, err
+	}
+	extents := map[string]int{}
+	for _, file := range request.Files {
+		extents[file.Path] = utf16Extent(file.Text)
+	}
+	validRange := func(where ComptimePlanRange) bool {
+		extent, exists := extents[where.File]
+		return exists && where.Span.Start >= 0 && where.Span.Length >= 0 && where.Span.Start <= extent-where.Span.Length
+	}
+	valid := result.Diagnostics != nil && result.Reads != nil && result.Calls != nil && result.Edits != nil &&
+		result.Complete == (len(result.Diagnostics) == 0 && len(result.Reads) == 0) &&
+		(result.Complete || (len(result.Calls) == 0 && len(result.Edits) == 0))
+	for _, issue := range result.Diagnostics {
+		valid = valid && validRange(issue.At) && issue.Message != "" && (strings.HasPrefix(issue.Code, "VCT10") || strings.HasPrefix(issue.Code, "VCT12"))
+	}
+	for _, read := range result.Reads {
+		valid = valid && validRange(read.At) && read.Specifier != ""
+	}
+	for _, call := range result.Calls {
+		valid = valid && validRange(call.At) && validRange(call.Argument) && validRange(call.MappedOrigin) && call.Origins != nil && call.Inputs != nil && len(call.ValueJSON) <= 8*1024*1024 && json.Valid([]byte(call.ValueJSON))
+		for _, origin := range call.Origins {
+			valid = valid && validRange(origin)
+		}
+		previous := -1
+		for _, index := range call.Inputs {
+			valid = valid && index > previous && index < len(request.Inputs)
+			previous = index
+		}
+	}
+	for _, edit := range result.Edits {
+		valid = valid && validRange(edit.At) && validRange(edit.MappedOrigin) && edit.Origins != nil &&
+			(edit.Kind == "remove-import" || edit.Kind == "function-marker" || edit.Kind == "intrinsic-call" || edit.Kind == "schema-runtime-import" || edit.Kind == "type-alias")
+		for _, origin := range edit.Origins {
+			valid = valid && validRange(origin)
+		}
+	}
+	if !valid {
+		return ComptimePlanResult{}, &ForkError{Op: "validate response", Detail: "inconsistent comptime phase plan", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) AnalyzeLanguage(ctx context.Context, request LanguageAnalysisRequest) (LanguageAnalysisResult, error) {
+	payload, err := exchangeFork[json.RawMessage](ctx, c.executable, []string{"--analyze-language"}, request)
+	if payload == nil || err != nil {
+		return LanguageAnalysisResult{}, err
+	}
+	return decodeLanguageAnalysis(payload, request)
+}
+
+func decodeLanguageAnalysis(payload *json.RawMessage, request LanguageAnalysisRequest) (LanguageAnalysisResult, error) {
+	var decoded LanguageAnalysisResult
+	if len(*payload) > 32*1024*1024 || !languageAnalysisWireShape(*payload, request.TraceDependencies) {
+		return LanguageAnalysisResult{}, &ForkError{Op: "validate response", Detail: "missing or oversized language analysis fields", Err: ErrForkProtocol}
+	}
+	if err := wirejson.Decode(bytes.NewReader(*payload), &decoded); err != nil {
+		return LanguageAnalysisResult{}, &ForkError{Op: "decode response", Detail: "invalid language analysis fields", Err: errors.Join(ErrForkProtocol, err)}
+	}
+	result := &decoded
+	inputs := map[string][]uint16{}
+	allInputs := map[string]int{}
+	for _, file := range request.Files {
+		allInputs[file.Path] = utf16Extent(file.Text)
+		if file.Kind == FileKindVibeLang {
+			inputs[file.Path] = utf16.Encode([]rune(file.Text))
+		}
+	}
+	valid := result.Files != nil && result.Diagnostics != nil && len(result.Files) == len(inputs) && len(result.Diagnostics) <= 4096
+	previous := ""
+	declarations := 0
+	rowsValid := func(rows []string) bool {
+		if rows == nil || len(rows) > 10_000 {
+			return false
+		}
+		for i, name := range rows {
+			if name == "" || len(name) > 64*1024 || strings.ContainsRune(name, 0) || (i > 0 && compareProtocolUTF16(rows[i-1], name) >= 0) {
+				return false
+			}
+		}
+		return true
+	}
+	for _, file := range result.Files {
+		source, exists := inputs[file.Path]
+		valid = valid && exists && (previous == "" || compareProtocolUTF16(previous, file.Path) < 0) && file.Errors != nil && file.Functions != nil &&
+			(file.Analyzed || len(file.Errors)+len(file.Functions) == 0) && (!result.Checked || file.Analyzed)
+		previous = file.Path
+		declarations += len(file.Errors) + len(file.Functions)
+		valid = valid && declarations <= 100_000
+		last := -1
+		for _, e := range file.Errors {
+			valid = valid && e.Name != "" && e.Start > last && e.Start >= 0 && e.End > e.Start && e.End <= len(source) && len(utf16.Encode([]rune(e.FieldsSource))) <= e.End-e.Start
+			if valid {
+				valid = strings.Contains(string(utf16.Decode(source[e.Start:e.End])), e.FieldsSource)
+			}
+			last = e.Start
+		}
+		last = -1
+		for _, f := range file.Functions {
+			valid = valid && f.Name != "" && (f.Channel == "plain" || f.Channel == "result") && f.Start > last && f.Start >= 0 &&
+				f.End > f.Start && f.End <= len(source) && f.BodyStart >= f.Start && f.BodyEnd >= f.BodyStart && f.BodyEnd <= f.End &&
+				rowsValid(f.Failures) && rowsValid(f.Requirements) && (f.Channel != "plain" || len(f.Failures) == 0)
+			last = f.Start
+		}
+	}
+	hasFailure := false
+	for _, issue := range result.Diagnostics {
+		hasFailure = hasFailure || issue.Category == DiagnosticError
+		valid = valid && issue.Code != "" && issue.Message != "" &&
+			(issue.Category == DiagnosticError || issue.Category == DiagnosticWarning || issue.Category == DiagnosticMessage || issue.Category == DiagnosticSuggestion) &&
+			(issue.Phase == "" || issue.Phase == PhaseParse || issue.Phase == PhaseBind || issue.Phase == PhaseCheck || issue.Phase == PhaseLower || issue.Phase == PhaseEmit || issue.Phase == PhaseComptime)
+		if issue.Span != nil {
+			valid = valid && issue.Span.Start >= 0 && issue.Span.Length >= 0 && issue.File != ""
+			if extent, exists := allInputs[issue.File]; exists {
+				valid = valid && issue.Span.Start <= extent && issue.Span.Length <= max(1, extent-issue.Span.Start)
+			}
+		}
+	}
+	valid = valid && result.Checked != hasFailure && validDependencyTrace(result.Dependencies, request.TraceDependencies, request.ResolutionRoot)
+	if request.TraceDependencies && request.ResolutionRoot == "" && result.Dependencies != nil {
+		valid = valid && len(result.Dependencies.Files)+len(result.Dependencies.Directories) == 0
+	}
+	if !valid {
+		return LanguageAnalysisResult{}, &ForkError{Op: "validate response", Detail: "inconsistent language analysis", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+// encoding/json otherwise treats absent/null booleans as false. In particular,
+// a lost moduleScope flag would silently change the public row-table owner.
+func languageAnalysisWireShape(raw json.RawMessage, trace bool) bool {
+	record := func(raw json.RawMessage, keys ...string) map[string]json.RawMessage {
+		var fields map[string]json.RawMessage
+		if json.Unmarshal(raw, &fields) != nil || len(fields) != len(keys) {
+			return nil
+		}
+		for _, key := range keys {
+			if fields[key] == nil || bytes.Equal(bytes.TrimSpace(fields[key]), []byte("null")) {
+				return nil
+			}
+		}
+		return fields
+	}
+	keys := []string{"checked", "diagnostics", "files"}
+	if trace {
+		keys = append(keys, "dependencies")
+	}
+	root := record(raw, keys...)
+	if root == nil {
+		return false
+	}
+	var files []json.RawMessage
+	if json.Unmarshal(root["files"], &files) != nil {
+		return false
+	}
+	for _, raw := range files {
+		file := record(raw, "path", "analyzed", "errors", "functions")
+		if file == nil {
+			return false
+		}
+		var errors, functions []json.RawMessage
+		if json.Unmarshal(file["errors"], &errors) != nil || json.Unmarshal(file["functions"], &functions) != nil {
+			return false
+		}
+		for _, item := range errors {
+			if record(item, "name", "fieldsSource", "start", "end") == nil {
+				return false
+			}
+		}
+		for _, item := range functions {
+			if record(item, "name", "exported", "async", "channel", "explicitReturn", "start", "end", "bodyStart", "bodyEnd", "moduleScope", "failures", "requirements") == nil {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (c *forkCompiler) RecoverSource(ctx context.Context, request SourceRecoveryRequest) (SourceRecoveryResult, error) {
+	result, err := exchangeFork[SourceRecoveryResult](ctx, c.executable, []string{"--recover-source"}, request)
+	if result == nil || err != nil {
+		return SourceRecoveryResult{}, err
+	}
+	// Decode each string once. Source maps can contain many runs; repeatedly
+	// scanning the whole source for every range made validation quadratic.
+	authored, derived := utf16.Encode([]rune(request.Text)), utf16.Encode([]rune(result.Code))
+	valid := result.Changed == (result.Code != request.Text) && len(derived) <= 4*1024*1024+65536 && len(result.Tokens) <= 1_000_000 &&
+		result.Tokens != nil && result.Verbatim != nil && result.Glue != nil && result.Diagnostics != nil && result.RejectedStarts != nil
+	type interval struct{ start, end int }
+	ranges := []interval{}
+	previous := 0
+	for _, run := range result.Verbatim {
+		inBounds := run.DerivedStart >= previous && run.AuthoredStart >= 0 && run.Length >= 0 && run.AuthoredStart <= len(authored)-run.Length && run.DerivedStart <= len(derived)-run.Length
+		valid = valid && inBounds
+		if inBounds {
+			valid = valid && slices.Equal(authored[run.AuthoredStart:run.AuthoredStart+run.Length], derived[run.DerivedStart:run.DerivedStart+run.Length])
+		}
+		previous = run.DerivedStart + run.Length
+		ranges = append(ranges, interval{run.DerivedStart, previous})
+	}
+	previous = 0
+	for _, run := range result.Glue {
+		valid = valid && run.DerivedStart >= previous && run.Length > 0 && run.Anchor >= 0 && run.Anchor <= len(authored) && run.DerivedStart <= len(derived)-run.Length
+		previous = run.DerivedStart + run.Length
+		ranges = append(ranges, interval{run.DerivedStart, previous})
+	}
+	sort.Slice(ranges, func(i, j int) bool {
+		if ranges[i].start == ranges[j].start {
+			return ranges[i].end < ranges[j].end
+		}
+		return ranges[i].start < ranges[j].start
+	})
+	covered := 0
+	for _, span := range ranges {
+		valid = valid && span.start == covered
+		covered = span.end
+	}
+	valid = valid && covered == len(derived)
+	previous = -1
+	for _, start := range result.RejectedStarts {
+		valid = valid && start > previous && start <= len(derived)
+		previous = start
+	}
+	for _, issue := range result.Diagnostics {
+		valid = valid && issue.Severity == "error" && issue.Code == "VIBE1717" && issue.Message != "" && issue.Start >= 0 && issue.Start <= len(authored)
+	}
+	previous = 0
+	for _, token := range result.Tokens {
+		inBounds := token.Start >= previous && token.End > token.Start && token.End <= len(authored)
+		valid = valid && inBounds && token.Kind != ""
+		if inBounds {
+			valid = valid && slices.Equal(authored[token.Start:token.End], utf16.Encode([]rune(token.Text)))
+		}
+		for i, character := range token.Kind {
+			valid = valid && ((character >= 'A' && character <= 'Z') || (character >= 'a' && character <= 'z') || (i > 0 && character >= '0' && character <= '9'))
+		}
+		previous = token.End
+	}
+	if result.IdentityFallback {
+		valid = valid && !result.Changed && len(result.Diagnostics) == 1 && len(result.RejectedStarts) == 0 && len(result.Glue) == 0
+	}
+	if !valid {
+		return SourceRecoveryResult{}, &ForkError{Op: "validate response", Detail: "inconsistent source recovery", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) RuntimeFactory(ctx context.Context, request RuntimeFactoryRequest) (RuntimeFactoryResult, error) {
+	result, err := exchangeFork[RuntimeFactoryResult](ctx, c.executable, []string{"--runtime-factory"}, request)
+	if result == nil || err != nil {
+		return RuntimeFactoryResult{}, err
+	}
+	if result.OK != (result.Code != "") || result.OK != (result.Message == "") || utf16Extent(result.Code) > 4*1024*1024 {
+		return RuntimeFactoryResult{}, &ForkError{Op: "validate response", Detail: "inconsistent runtime factory", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) ActionContract(ctx context.Context, request ActionContractRequest) (ActionContractResult, error) {
+	result, err := exchangeFork[ActionContractResult](ctx, c.executable, []string{"--action-contract"}, request)
+	if result == nil || err != nil {
+		return ActionContractResult{}, err
+	}
+	valid := result.OK == (result.ContractJSON != "") && result.OK == (len(result.Diagnostics) == 0) && result.Diagnostics != nil &&
+		len(result.Diagnostics) <= 32 && len(result.ContractJSON) <= 16*1024*1024
+	if result.OK {
+		valid = valid && json.Valid([]byte(result.ContractJSON))
+	}
+	for _, issue := range result.Diagnostics {
+		valid = valid && issue.File == request.FileName && issue.Category == DiagnosticError && issue.Phase == PhaseCheck &&
+			(issue.Code == "VIBE4200" || issue.Code == "VIBE4201" || issue.Code == "VIBE4202" || issue.Code == "VIBE4203")
+	}
+	if !valid {
+		return ActionContractResult{}, &ForkError{Op: "validate response", Detail: "inconsistent Action contract", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) ValidateConfig(ctx context.Context, request ConfigFile) (ConfigValidationResult, error) {
+	result, err := exchangeFork[ConfigValidationResult](ctx, c.executable, []string{"--validate-config"}, request)
+	if result == nil || err != nil {
+		return ConfigValidationResult{}, err
+	}
+	valid := result.Diagnostics != nil && len(result.Diagnostics) <= 4096
+	for _, issue := range result.Diagnostics {
+		valid = valid && issue.File == request.Path && issue.Category == DiagnosticError && issue.Span != nil
+		if issue.Span != nil {
+			valid = valid && issue.Span.Start >= 0 && issue.Span.Length >= 0 && issue.Span.Start <= utf16Extent(request.Text) && issue.Span.Length <= utf16Extent(request.Text)-issue.Span.Start
+		}
+	}
+	if !valid {
+		return ConfigValidationResult{}, &ForkError{Op: "validate response", Detail: "inconsistent configuration diagnostics", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) DiscoverProject(ctx context.Context, request ProjectConfigRequest) (ProjectConfigResult, error) {
+	result, err := exchangeFork[ProjectConfigResult](ctx, c.executable, []string{"--discover-project"}, request)
+	if result == nil || err != nil { return ProjectConfigResult{}, err }
+	absolute := func(value string) bool { return value != "" && len(value) <= 16*1024 && !strings.ContainsAny(value, "\x00\\") && filepath.IsAbs(value) && filepath.Clean(value) == value }
+	valid := result.Files != nil && len(result.Files) <= 4096 && result.Configurations != nil && len(result.Configurations) <= 1024 && result.Diagnostics != nil && len(result.Diagnostics) <= 4096
+	seen := map[string]bool{}
+	for _, file := range result.Files { valid = valid && absolute(file) && !seen[file]; seen[file] = true }
+	sources := map[string]string{}
+	bytes := 0
+	for _, source := range result.Configurations {
+		_, duplicate := sources[source.Path]
+		valid = valid && absolute(source.Path) && !duplicate && len(source.Text) <= 2*1024*1024
+		sources[source.Path] = source.Text
+		bytes += len(source.Text)
+	}
+	valid = valid && bytes <= 8*1024*1024 && (result.Options.RootDir == "" || absolute(result.Options.RootDir)) && (result.Options.OutDir == "" || absolute(result.Options.OutDir))
+	for _, issue := range result.Diagnostics {
+		valid = valid && issue.Category == DiagnosticError
+		if issue.File == "" { valid = valid && issue.Span == nil; continue }
+		source, found := sources[issue.File]
+		valid = valid && found
+		if issue.Span != nil { valid = valid && issue.Span.Start >= 0 && issue.Span.Length >= 0 && issue.Span.Start <= utf16Extent(source) && issue.Span.Length <= utf16Extent(source)-issue.Span.Start }
+	}
+	if !valid { return ProjectConfigResult{}, &ForkError{Op: "validate response", Detail: "inconsistent project configuration", Err: ErrForkProtocol} }
+	return *result, nil
+}
+
+func (c *forkCompiler) CheckGeneratedProject(ctx context.Context, request GeneratedProjectRequest) (GeneratedProjectResult, error) {
+	result, err := exchangeFork[GeneratedProjectResult](ctx, c.executable, []string{"--check-generated-project"}, request)
+	if result == nil || err != nil {
+		return GeneratedProjectResult{}, err
+	}
+	extents := make(map[string]int, len(request.Files))
+	for _, file := range request.Files {
+		extents[file.Path] = utf16Extent(file.Text)
+	}
+	valid := result.Diagnostics != nil && len(result.Diagnostics) <= 4096 && validDependencyTrace(result.Dependencies, request.TraceDependencies, "")
+	if request.TraceDependencies && !request.DiskDependencies && result.Dependencies != nil {
+		valid = valid && len(result.Dependencies.Files)+len(result.Dependencies.Directories) == 0
+	}
+	for _, issue := range result.Diagnostics {
+		code, numeric := strings.CutPrefix(issue.Code, "TS")
+		_, codeError := strconv.ParseUint(code, 10, 32)
+		valid = valid && numeric && codeError == nil && (issue.Phase == PhaseParse || issue.Phase == PhaseBind || issue.Phase == PhaseCheck) &&
+			(issue.Category == DiagnosticError || issue.Category == DiagnosticWarning || issue.Category == DiagnosticSuggestion || issue.Category == DiagnosticMessage)
+		if issue.File == "" {
+			valid = valid && issue.Span == nil
+			continue
+		}
+		extent, found := extents[issue.File]
+		valid = valid && found
+		if issue.Span != nil {
+			valid = valid && issue.Span.Start >= 0 && issue.Span.Length >= 0 && issue.Span.Start <= extent && issue.Span.Length <= extent-issue.Span.Start
+		}
+	}
+	if !valid {
+		return GeneratedProjectResult{}, &ForkError{Op: "validate response", Detail: "inconsistent generated-project diagnostics", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) DeclarationText(ctx context.Context, request DeclarationTextRequest) (DeclarationTextResult, error) {
+	result, err := exchangeFork[DeclarationTextResult](ctx, c.executable, []string{"--declaration-text"}, request)
+	if result == nil || err != nil {
+		return DeclarationTextResult{}, err
+	}
+	valid := len(result.Text) <= 4*1024*1024 && result.Effects != nil && len(result.Effects) <= 4096
+	if request.Operation == "read" {
+		valid = valid && result.Text == request.Text
+	} else {
+		valid = valid && len(result.Effects) == 0
+	}
+	for name, row := range result.Effects {
+		valid = valid && name != "" && len(name) <= 4096 && row.Failures != nil && row.Requirements != nil && len(row.Failures) <= 1024 && len(row.Requirements) <= 1024
+		for _, list := range [][]string{row.Failures, row.Requirements} {
+			for index, name := range list {
+				valid = valid && name != "" && utf16Extent(name) <= 1024 && (index == 0 || compareProtocolUTF16(list[index-1], name) < 0)
+			}
+		}
+	}
+	if !valid {
+		return DeclarationTextResult{}, &ForkError{Op: "validate response", Detail: "inconsistent declaration text result", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) BodyContract(ctx context.Context, request BodyContractRequest) (BodyContractResult, error) {
+	result, err := exchangeFork[BodyContractResult](ctx, c.executable, []string{"--body-contract"}, request)
+	if result == nil || err != nil {
+		return BodyContractResult{}, err
+	}
+	valid := result.Diagnostics != nil && len(result.Diagnostics) <= 4096 && len(result.Message) <= 16*1024 && len(result.SchemasJSON) <= 16*1024*1024 &&
+		(result.Reason == "" || result.Reason == "check" || result.Reason == "entry" || result.Reason == "boundary") &&
+		result.OK == (result.Reason == "") && result.OK == (result.Message == "") && result.OK == (result.SchemasJSON != "")
+	extents := make(map[string]int)
+	for _, file := range request.Project.Files {
+		extents[file.Path] = utf16Extent(file.Text)
+	}
+	hasErrors := false
+	for _, issue := range result.Diagnostics {
+		code, numeric := strings.CutPrefix(issue.Code, "TS")
+		_, codeError := strconv.ParseUint(code, 10, 32)
+		valid = valid && numeric && codeError == nil && (issue.Phase == PhaseParse || issue.Phase == PhaseBind || issue.Phase == PhaseCheck) &&
+			(issue.Category == DiagnosticError || issue.Category == DiagnosticWarning || issue.Category == DiagnosticSuggestion || issue.Category == DiagnosticMessage)
+		hasErrors = hasErrors || issue.Category == DiagnosticError
+		if issue.File == "" {
+			valid = valid && issue.Span == nil
+		} else {
+			extent, found := extents[issue.File]
+			valid = valid && found
+			if issue.Span != nil {
+				valid = valid && issue.Span.Start >= 0 && issue.Span.Length >= 0 && issue.Span.Start <= extent && issue.Span.Length <= extent-issue.Span.Start
+			}
+		}
+	}
+	valid = valid && hasErrors == (result.Reason == "check")
+	if result.OK {
+		var schemas map[string]map[string]json.RawMessage
+		valid = valid && json.Unmarshal([]byte(result.SchemasJSON), &schemas) == nil && len(schemas) == 3
+		for key, role := range map[string]string{"inputSchema": "input", "successSchema": "success", "failureSchema": "error"} {
+			schema := schemas[key]
+			var format, actualRole, shape, source, digest string
+			var version int
+			valid = valid && len(schema) == 7 && json.Unmarshal(schema["format"], &format) == nil && format == "canonical-json" &&
+				json.Unmarshal(schema["schemaVersion"], &version) == nil && version == 1 && json.Unmarshal(schema["role"], &actualRole) == nil && actualRole == role &&
+				json.Unmarshal(schema["shape"], &shape) == nil && shape == "structural" && json.Unmarshal(schema["source"], &source) == nil && source == "compiler-derived" &&
+				json.Unmarshal(schema["digest"], &digest) == nil && len(digest) == 64 && len(schema["descriptor"]) > 0 && schema["descriptor"][0] == '{'
+			if _, err := hex.DecodeString(digest); err != nil {
+				valid = false
+			}
+		}
+	}
+	if !valid {
+		return BodyContractResult{}, &ForkError{Op: "validate response", Detail: "inconsistent body contract", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func compareProtocolUTF16(left, right string) int {
+	a, b := utf16.Encode([]rune(left)), utf16.Encode([]rune(right))
+	for index := 0; index < len(a) && index < len(b); index++ {
+		if a[index] < b[index] {
+			return -1
+		}
+		if a[index] > b[index] {
+			return 1
+		}
+	}
+	return len(a) - len(b)
+}
+
+func (c *forkCompiler) EmitGeneratedDeclarations(ctx context.Context, request GeneratedDeclarationsRequest) (GeneratedDeclarationsResult, error) {
+	result, err := exchangeFork[GeneratedDeclarationsResult](ctx, c.executable, []string{"--emit-generated-declarations"}, request)
+	if result == nil || err != nil {
+		return GeneratedDeclarationsResult{}, err
+	}
+	valid := result.Outputs != nil && result.Diagnostics != nil && len(result.Outputs) <= len(request.Project.Files) && len(result.Diagnostics) <= 4096
+	expected := make(map[string]bool)
+	extents := make(map[string]int)
+	for _, file := range request.Project.Files {
+		name := file.Path
+		if !strings.HasSuffix(name, ".d.ts") && !strings.HasSuffix(name, ".d.mts") && !strings.HasSuffix(name, ".d.cts") {
+			ext := filepath.Ext(name)
+			suffix := ".d.ts"
+			if ext == ".mts" || ext == ".mjs" {
+				suffix = ".d.mts"
+			}
+			if ext == ".cts" || ext == ".cjs" {
+				suffix = ".d.cts"
+			}
+			name = strings.TrimSuffix(name, ext) + suffix
+		}
+		expected[name] = true
+		extents[file.Path] = utf16Extent(file.Text)
+	}
+	bytes := 0
+	for _, file := range result.Outputs {
+		valid = valid && expected[file.Path] && len(file.Text) <= 4*1024*1024
+		delete(expected, file.Path)
+		bytes += len(file.Text)
+	}
+	valid = valid && bytes <= 16*1024*1024 && (!result.OK || len(expected) == 0) && (result.OK || len(result.Outputs) == 0)
+	for _, issue := range result.Diagnostics {
+		code, numeric := strings.CutPrefix(issue.Code, "TS")
+		_, codeError := strconv.ParseUint(code, 10, 32)
+		valid = valid && numeric && codeError == nil && (issue.Phase == PhaseParse || issue.Phase == PhaseBind || issue.Phase == PhaseCheck || issue.Phase == PhaseEmit)
+		valid = valid && (issue.Category == DiagnosticError || issue.Category == DiagnosticWarning || issue.Category == DiagnosticSuggestion || issue.Category == DiagnosticMessage) && (!result.OK || issue.Category != DiagnosticError)
+		if issue.File == "" {
+			valid = valid && issue.Span == nil
+		} else {
+			extent, found := extents[issue.File]
+			valid = valid && found
+			if issue.Span != nil {
+				valid = valid && issue.Span.Start >= 0 && issue.Span.Length >= 0 && issue.Span.Start <= extent && issue.Span.Length <= extent-issue.Span.Start
+			}
+		}
+	}
+	if !valid {
+		return GeneratedDeclarationsResult{}, &ForkError{Op: "validate response", Detail: "inconsistent generated declaration result", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func (c *forkCompiler) CheckedFunction(ctx context.Context, request CheckedFunctionRequest) (CheckedFunctionResult, error) {
+	result, err := exchangeFork[CheckedFunctionResult](ctx, c.executable, []string{"--checked-function"}, request)
+	if result == nil || err != nil {
+		return CheckedFunctionResult{}, err
+	}
+	valid := result.Diagnostics != nil && len(result.Diagnostics) <= 4096 &&
+		result.OK == (result.Function != nil) && result.OK == (result.Message == "") && len(result.Message) <= 16*1024
+	for _, issue := range result.Diagnostics {
+		valid = valid && (!result.OK || issue.Category != DiagnosticError)
+	}
+	if result.OK {
+		fn := result.Function
+		valid = valid && fn.File == request.EntryFile && fn.Name == request.ExportName &&
+			fn.Span.Start >= 0 && fn.Span.Length > 0 && fn.Requirements != nil && fn.TypedFailures != nil &&
+			len(fn.FailureSchemaJSON) <= 8*1024*1024 && validCheckedFunctionSchema([]byte(fn.FailureSchemaJSON), "error")
+		if request.DurableBoundary {
+			var schemas map[string]json.RawMessage
+			valid = valid && len(fn.ValueSchemasJSON) <= 16*1024*1024 && wirejson.ValidateUnique([]byte(fn.ValueSchemasJSON)) == nil &&
+				wirejson.Decode(strings.NewReader(fn.ValueSchemasJSON), &schemas) == nil && len(schemas) == 3 &&
+				validCheckedFunctionSchema(schemas["inputSchema"], "input") && validCheckedFunctionSchema(schemas["successSchema"], "success")
+			var completion string
+			valid = valid && json.Unmarshal(schemas["completion"], &completion) == nil && (completion == "value" || completion == "promise")
+		} else {
+			valid = valid && fn.ValueSchemasJSON == ""
+		}
+		found := false
+		for _, file := range request.Files {
+			if file.Path == fn.File {
+				found = true
+				valid = valid && fn.Span.Start <= utf16Extent(file.Text) && fn.Span.Length <= utf16Extent(file.Text)-fn.Span.Start
+			}
+		}
+		valid = valid && found
+	}
+	if !valid {
+		return CheckedFunctionResult{}, &ForkError{Op: "validate response", Detail: "inconsistent checked function", Err: ErrForkProtocol}
+	}
+	return *result, nil
+}
+
+func validCheckedFunctionSchema(raw []byte, role string) bool {
+	var schema map[string]json.RawMessage
+	if wirejson.ValidateUnique(raw) != nil || wirejson.Decode(bytes.NewReader(raw), &schema) != nil || len(schema) != 7 {
+		return false
+	}
+	var format, actualRole, shape, source, digest string
+	var version int
+	if json.Unmarshal(schema["format"], &format) != nil || format != "canonical-json" ||
+		json.Unmarshal(schema["schemaVersion"], &version) != nil || version != 1 ||
+		json.Unmarshal(schema["role"], &actualRole) != nil || actualRole != role ||
+		json.Unmarshal(schema["shape"], &shape) != nil || shape != "structural" ||
+		json.Unmarshal(schema["source"], &source) != nil || source != "compiler-derived" ||
+		json.Unmarshal(schema["digest"], &digest) != nil || len(digest) != 64 || strings.ToLower(digest) != digest {
+		return false
+	}
+	if _, err := hex.DecodeString(digest); err != nil {
+		return false
+	}
+	var descriptor map[string]json.RawMessage
+	return json.Unmarshal(schema["descriptor"], &descriptor) == nil && descriptor != nil
+}
+
+func exchangeFork[T any](ctx context.Context, executable string, args []string, request any) (*T, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	payload, err := wirejson.Marshal(request)
+	if err != nil {
+		return nil, &ForkError{Op: "encode request", Err: errors.Join(ErrForkProtocol, err)}
 	}
 
-	command := exec.CommandContext(ctx, c.executable)
+	command := exec.CommandContext(ctx, executable, args...)
 	command.Stdin = bytes.NewReader(payload)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -203,50 +1313,44 @@ func (c *forkCompiler) Compile(ctx context.Context, request CompileRequest) (Com
 	command.Stderr = &stderr
 	if err := command.Run(); err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return CompileResult{EmitSkipped: true}, ctxErr
+			return nil, ctxErr
 		}
-		return CompileResult{EmitSkipped: true}, &ForkError{
+		return nil, &ForkError{
 			Op:     "execute bridge",
 			Detail: strings.TrimSpace(stderr.String()),
 			Err:    errors.Join(ErrForkUnavailable, err),
 		}
 	}
 
-	decoder := json.NewDecoder(bytes.NewReader(stdout.Bytes()))
-	decoder.DisallowUnknownFields()
-	var envelope forkEnvelope
-	if err := decoder.Decode(&envelope); err != nil {
-		return CompileResult{EmitSkipped: true}, &ForkError{Op: "decode response", Detail: stderr.String(), Err: errors.Join(ErrForkProtocol, err)}
-	}
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return CompileResult{EmitSkipped: true}, &ForkError{Op: "decode response", Detail: stderr.String(), Err: errors.Join(ErrForkProtocol, fmt.Errorf("expected one JSON value: %w", err))}
+	var envelope forkEnvelope[T]
+	if err := wirejson.Decode(bytes.NewReader(stdout.Bytes()), &envelope); err != nil {
+		return nil, &ForkError{Op: "decode response", Detail: stderr.String(), Err: errors.Join(ErrForkProtocol, err)}
 	}
 	if envelope.APIVersion != forkBridgeAPIVersion || envelope.CompilerRevision != PinnedTypeScriptRevision {
-		return CompileResult{EmitSkipped: true}, &ForkError{
+		return nil, &ForkError{
 			Op:     "validate response",
 			Detail: fmt.Sprintf("got API %d revision %q", envelope.APIVersion, envelope.CompilerRevision),
 			Err:    ErrForkProtocol,
 		}
 	}
-	if envelope.Result == nil || envelope.Result.Diagnostics == nil || envelope.Result.Artifacts == nil {
-		return CompileResult{EmitSkipped: true}, &ForkError{Op: "validate response", Detail: "missing result or result collections", Err: ErrForkProtocol}
-	}
 	if envelope.Error != nil {
-		return *envelope.Result, &ForkError{
+		return envelope.Result, &ForkError{
 			Op:     envelope.Error.Code,
 			Detail: envelope.Error.Message,
 			Err:    ErrForkProtocol,
 		}
 	}
-	return *envelope.Result, nil
+	if envelope.Result == nil {
+		return nil, &ForkError{Op: "validate response", Detail: "missing result or result collections", Err: ErrForkProtocol}
+	}
+	return envelope.Result, nil
 }
 
 func hydrateCompileRequest(request CompileRequest) (CompileRequest, CompileResult, error) {
 	if len(request.RootNames) == 0 {
 		result := CompileResult{
 			Diagnostics: []Diagnostic{{
-				Code:     "SMITHERS0002",
+				Code:     "VIBE0002",
 				Category: DiagnosticError,
 				Message:  "the pinned compiler bridge requires at least one root name",
 				Phase:    PhaseParse,
@@ -258,7 +1362,7 @@ func hydrateCompileRequest(request CompileRequest) (CompileRequest, CompileResul
 	if err := validateLoweredRequest(request); err != nil {
 		result := CompileResult{
 			Diagnostics: []Diagnostic{{
-				Code:     "SMITHERS0004",
+				Code:     "VIBE0004",
 				Category: DiagnosticError,
 				Message:  err.Error(),
 				Phase:    PhaseLower,
@@ -289,7 +1393,7 @@ func hydrateCompileRequest(request CompileRequest) (CompileRequest, CompileResul
 		if err != nil {
 			result := CompileResult{
 				Diagnostics: []Diagnostic{{
-					Code:     "SMITHERS0003",
+					Code:     "VIBE0003",
 					Category: DiagnosticError,
 					Message:  err.Error(),
 					// The logical name, as every other Diagnostic.File in this
@@ -333,7 +1437,7 @@ func hydrateCompileRequest(request CompileRequest) (CompileRequest, CompileResul
 // intact, a pure function of its arguments.
 //
 //   - A relative root name is ALREADY a logical name. It is only normalized, so
-//     `./a.sm` and `a.sm` cannot mint two identities for one file.
+//     `./a.vibe` and `a.vibe` cannot mint two identities for one file.
 //   - An absolute root name is restated relative to the project root. A stated
 //     `rootDir` is that root; with none stated, the root is the deepest
 //     directory containing every absolute root name. For a single absolute root
@@ -437,8 +1541,8 @@ func commonAncestorDirectory(names []string) string {
 
 func fileKindForPath(name string) FileKind {
 	switch strings.ToLower(filepath.Ext(name)) {
-	case ".sm":
-		return FileKindSmithers
+	case ".vibe":
+		return FileKindVibeLang
 	default:
 		return FileKindTypeScript
 	}
@@ -472,6 +1576,7 @@ func loadPinnedForkPatchSeries() (*pinnedForkPatchSeries, error) {
 	patches := make(map[string][]byte, len(manifest.Patches))
 	recorded := make(map[string]struct{}, len(manifest.Patches))
 	hasher := sha256.New()
+	fmt.Fprintf(hasher, "apiVersion:%d\x00", forkBridgeAPIVersion)
 	hasher.Write(manifestBytes)
 	hasher.Write([]byte{0})
 	for _, entry := range manifest.Patches {
@@ -603,7 +1708,7 @@ func preparePinnedForkBridge(ctx context.Context, config ForkConfig) (string, er
 		if err != nil {
 			return "", &ForkError{Op: "locate cache", Err: errors.Join(ErrForkUnavailable, err)}
 		}
-		cacheBase = filepath.Join(cacheBase, "smithers", "typescript-bridge")
+		cacheBase = filepath.Join(cacheBase, "vibelang", "typescript-bridge")
 	}
 	cacheBase, err = resolvePathForCreation(cacheBase)
 	if err != nil {
@@ -617,7 +1722,10 @@ func preparePinnedForkBridge(ctx context.Context, config ForkConfig) (string, er
 		hasher.Write([]byte{0})
 	}
 	digest := [sha256.Size]byte(hasher.Sum(nil))
-	cacheDirectory := filepath.Join(cacheBase, PinnedTypeScriptRevision+"-"+series.identity+"-"+hex.EncodeToString(digest[:])+"-"+runtime.GOOS+"-"+runtime.GOARCH)
+	// The former layout used a mkdir lock whose owner could disappear without
+	// removing it. Never steal/remove one of those locks or share its output
+	// directory with an older, possibly still-running preparation process.
+	cacheDirectory := filepath.Join(cacheBase, forkPreparationCacheLayout, PinnedTypeScriptRevision+"-"+series.identity+"-"+hex.EncodeToString(digest[:])+"-"+runtime.GOOS+"-"+runtime.GOARCH)
 	if pathsOverlap(checkout, cacheDirectory) {
 		return "", &ForkError{
 			Op:     "locate cache",
@@ -637,7 +1745,7 @@ func preparePinnedForkBridge(ctx context.Context, config ForkConfig) (string, er
 		return "", err
 	}
 
-	executableName := "smithers-typescript-bridge"
+	executableName := "vibelang-typescript-bridge"
 	if runtime.GOOS == "windows" {
 		executableName += ".exe"
 	}
@@ -714,7 +1822,7 @@ func preparePinnedForkBridge(ctx context.Context, config ForkConfig) (string, er
 		return "", &ForkError{Op: "install bridge", Err: errors.Join(ErrForkUnavailable, err)}
 	}
 	identity, handshakeErr := bridgeBuildIdentity(ctx, executable)
-	if handshakeErr != nil || identity.Revision != PinnedTypeScriptRevision || identity.PatchSeries != series.identity {
+	if handshakeErr != nil || identity.APIVersion != forkBridgeAPIVersion || identity.Revision != PinnedTypeScriptRevision || identity.PatchSeries != series.identity {
 		detail := fmt.Sprintf("bridge reported revision %q patch series %q", identity.Revision, identity.PatchSeries)
 		if handshakeErr != nil {
 			detail += ": " + handshakeErr.Error()
@@ -764,23 +1872,6 @@ func pathContains(parent string, child string) bool {
 		return false
 	}
 	return relative == "." || relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
-}
-
-func acquireForkPreparationLock(ctx context.Context, directory string) (func(), error) {
-	for {
-		if err := os.Mkdir(directory, 0o700); err == nil {
-			return func() { _ = os.Remove(directory) }, nil
-		} else if !errors.Is(err, os.ErrExist) {
-			return nil, err
-		}
-		timer := time.NewTimer(25 * time.Millisecond)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return nil, ctx.Err()
-		case <-timer.C:
-		}
-	}
 }
 
 type forkPatchCheckoutState struct {
@@ -1014,13 +2105,15 @@ func runGitApply(ctx context.Context, checkout string, check bool, reverse bool,
 }
 
 type forkBridgeBuildIdentity struct {
-	Revision    string `json:"revision"`
-	PatchSeries string `json:"patchSeries"`
+	APIVersion      int    `json:"apiVersion"`
+	Revision        string `json:"revision"`
+	PatchSeries     string `json:"patchSeries"`
+	CompilerVersion string `json:"compilerVersion"`
 }
 
 func bridgeHasIdentity(ctx context.Context, executable string, patchSeries string) bool {
 	identity, err := bridgeBuildIdentity(ctx, executable)
-	return err == nil && identity.Revision == PinnedTypeScriptRevision && identity.PatchSeries == patchSeries
+	return err == nil && identity.APIVersion == forkBridgeAPIVersion && identity.Revision == PinnedTypeScriptRevision && identity.PatchSeries == patchSeries
 }
 
 func bridgeBuildIdentity(ctx context.Context, executable string) (forkBridgeBuildIdentity, error) {
