@@ -1,2 +1,2 @@
-/** The checked Smithers runtime used by generated `.sm` modules. */
+/** The checked VibeLang runtime used by generated `.vibe` modules. */
 export * from "../poc/dist/runtime/index.js";

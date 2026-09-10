@@ -14,6 +14,7 @@ export {
 export type {
   InspectedResult,
   Result as ResultType,
+  ResultCodec,
 } from "../poc/dist/runtime/result.js";
 export {
   ValueCodecError,

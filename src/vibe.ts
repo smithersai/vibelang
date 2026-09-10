@@ -1,0 +1,65 @@
+// The native compiler API replaces the retired TypeScript 5.9 object facade.
+// High-level language helpers below remain separate migration work.
+export * from "./compiler.js";
+import {
+  annotateDeclarationEffects,
+  analyzeProject,
+  analyzeSource,
+  checkEmittedProject,
+  checkEmittedTypeScript,
+  composeSourceMaps,
+  compileAndCheckProject,
+  compileAndCheckVibeLang,
+  compileProject,
+  compileVibeLang,
+  DECLARATION_EFFECT_TAG,
+  DECLARATION_EFFECT_VERSION,
+  emitProjectDeclarations,
+  normalizeDeclarationEffectChannels,
+  parseErrors,
+  parseFunctions,
+  readDeclarationEffects,
+} from "../poc/dist/language/index.js";
+
+export {
+  annotateDeclarationEffects,
+  analyzeProject,
+  analyzeSource,
+  checkEmittedProject,
+  checkEmittedTypeScript,
+  composeSourceMaps,
+  compileAndCheckProject,
+  compileAndCheckVibeLang,
+  compileProject,
+  compileVibeLang,
+  DECLARATION_EFFECT_TAG,
+  DECLARATION_EFFECT_VERSION,
+  emitProjectDeclarations,
+  normalizeDeclarationEffectChannels,
+  parseErrors,
+  parseFunctions,
+  readDeclarationEffects,
+};
+export type {
+  Analysis,
+  AnalyzeProjectOptions,
+  CheckedCompileOptions,
+  CheckedCompileResult,
+  CheckedProjectCompileResult,
+  CompileProjectOptions,
+  CompileProjectResult,
+  CompiledProjectFile,
+  DeclarationEmitResult,
+  DeclarationOutput,
+  DeclarationSource,
+  CompileOptions as VibeLangCompileOptions,
+  CompileResult as VibeLangCompileResult,
+  Diagnostic as VibeLangDiagnostic,
+  FunctionRows,
+  ProjectAnalysis,
+  ProjectDiagnostic,
+  ProjectFileAnalysis,
+  ProjectSource,
+} from "../poc/dist/language/index.js";
+
+export const version = "0.0.1";
