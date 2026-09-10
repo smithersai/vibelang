@@ -1,8 +1,33 @@
 /**
- * Platform-neutral durable source compilation and Plan artifact validation.
- * Execution and provider installation remain on `smthrs/durable/bun` because
- * the POC coordinator persists through Bun's SQLite runtime.
+ * Platform-neutral durable source compilation and executable artifact validation.
+ * The authenticated keyed node worker also runs on Node. Scheduler admission
+ * and durable storage belong to its host; the historical body coordinator
+ * remains on `vibelang/durable/bun` because it uses Bun's SQLite runtime.
  */
+export {
+  KeyedSourceInterpreter, KeyedSourceInterpreterError, KeyedSourceEvaluationError,
+  type KeyedSourceEvidence, type KeyedSourceNodeInspection, type KeyedResolvedInput, type PreparedKeyedNode,
+} from "../poc/dist/durable/keyed-interpreter.js";
+export {
+  KeyedControlError, type KeyedControl, type KeyedControlTicket, type KeyedControlInspection, type KeyedControlStatus,
+} from "../poc/dist/durable/keyed-control.js";
+export {
+  encodeKeyedValue, decodeKeyedValue, keyedValuePath, KeyedValueError, KEYED_VALUE_LIMITS, type KeyedValue,
+} from "../poc/dist/durable/keyed-value.js";
+export {
+  createAuthenticatedKeyedNodeWorker, KeyedNodeExecutionError,
+  type AuthenticatedKeyedNodeWorker, type KeyedNodeWork, type KeyedNodeExit,
+} from "../poc/dist/durable/keyed-executor.js";
+export {
+  createKeyedWorkerRuntime, buildKeyedSourceDeployment, encodeSignedKeyedSourceDeployment,
+  authenticateKeyedSourceDeployment, compileAuthenticatedKeyedInvocation, restoreAuthenticatedKeyedInvocation,
+  keyedInvocationApprovalTarget,
+  SignedKeyedSourceDeployment, KeyedDeploymentError,
+  type KeyedSourceDeclaration, type KeyedProviderPolicy, type KeyedDeployedProvider,
+  type KeyedSourceDeployment, type KeyedWorkerRuntime, type BuildKeyedSourceDeploymentOptions,
+  type AuthenticatedKeyedSourceDeployment, type AuthenticatedKeyedInvocation, type KeyedApprovalEnvelope, type KeyedApprovalTarget,
+} from "../poc/dist/durable/keyed-deployment.js";
+
 export {
   compileDurableFlow,
   compileDurableSource,
@@ -22,9 +47,15 @@ export {
   type EffectManifestCompileSuccess,
 } from "../poc/dist/durable/source-compiler.js";
 
+export { compileDurableBody, type DurableBodyCompileResult } from "../poc/dist/durable/body-compiler.js";
+export { compileDurableModule, type DurableModuleCompileResult } from "../poc/dist/durable/module-compiler.js";
+export { validateDurableBodyArtifact, type DurableBodyArtifact } from "../poc/dist/durable/body-artifact.js";
+export { validateEffectManifest } from "../poc/dist/durable/manifest-artifact.js";
+
 /**
- * The Effect Manifest — the artifact `smithers plan` reports as of
- * `MIGRATION-PLAN.md` step 12, and the one a Flow always publishes.
+ * Historical Effect Manifest inspection, selected explicitly by
+ * `vibe plan --profile manifest-compat`. The default Plan command publishes
+ * the native keyed graph instead; a Manifest is not that graph or its approval.
  *
  * `canonicalJson` and `digest` ride with it deliberately. The CLI writes the
  * Manifest's OWN canonical bytes to `--outFile`, and `manifest.digest` is
@@ -69,13 +100,25 @@ export {
 export {
   ActionImplementationContractError,
   compileActionImplementationContract,
+  compileActionImplementationSourceContract,
   validateActionImplementationContract,
   type CompileActionImplementationOptions,
+  type CompileActionImplementationSourceOptions,
 } from "../poc/dist/durable/implementation-contract.js";
+
+export {
+  buildWorkerPoolBundle,
+  validateWorkerPoolBundle,
+  WorkerPoolBundleError,
+  WorkerPoolBundles,
+  type BuildWorkerPoolBundleOptions,
+  type WorkerPoolBundle,
+  type WorkerPoolBundleSelection,
+} from "../poc/dist/durable/pool-bundle.js";
 
 /**
  * Canonical Ed25519 deployment envelopes are Node-safe. The coordinator gate
- * itself remains on `smthrs/durable/bun` with the SQLite executor.
+ * itself remains on `vibelang/durable/bun` with the SQLite executor.
  */
 export {
   authenticateDeployment,
@@ -86,6 +129,9 @@ export {
   generateDeploymentSigningKeyPair,
   requireAuthenticatedDeployment,
   SignedDeployment,
+  SignedBodyDeployment,
+  type AuthenticatedBodyDeployment,
+  type SignedBodyDeploymentArtifact,
   type AuthenticatedDeployment,
   type DeploymentSigningKeyPair,
   type SignedDeploymentArtifact,
