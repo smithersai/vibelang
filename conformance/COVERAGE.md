@@ -1,5 +1,168 @@
 # Coverage matrix — locked language obligations vs. the conformance corpus
 
+## Current Plan contract and historical corpus boundary, 2026-09-08
+
+The durable specification and guide now describe the September 6 owner's static
+Plan model. Their withdrawn ordinary-body text is preserved under
+`docs/src/pages/{specification,guide}/history/durable-replay.mdx`. The SA-2 and
+SA-8 register entries distinguish current keyed source/worker delivery from
+unfinished runtime admission, branch/round and lifecycle integration.
+
+This does **not** retire or reinterpret a corpus expectation. The 554 cases and
+their fourteen marked cases remain unchanged. Existing executable-body and
+Manifest observations certify compatibility behavior, not the current Plan
+contract. Their historical sentence citations must be read against the archived
+model; the new source-to-Plan path is separately measured by native source,
+worker, CLI and upstream-integration tests. A corpus driver for that new path
+remains additional coverage work, not something this ledger claims to have run.
+
+The documentation checker now sends `plan=<id>` examples through the real
+default `vibe plan` command and independently verifies successful graph bytes
+with Go. It rejects compiler-process failures, missing/contradictory JSON reports,
+wrong delivery profiles and malformed metadata instead of treating missing file
+diagnostics as success. The first seven regression controls measured six
+failures before the fix; the focused final group passes 30/30. The actual docs
+gate measures six programs: three keyed (two success, one declared refusal),
+one explicit historical body and two ordinary checks. The old complete body
+example remains tested rather than deleted. No marker, corpus expectation or
+product differential baseline is weakened.
+
+## Native delivery integration and marker retirement, 2026-09-07
+
+The 554 authored sources are unchanged. The first full post-retirement run was
+not green: SDK 542 pass, one XPASS, one xfail and ten failures; standalone Go
+530 pass, six XPASSes and eighteen xfails. Asset forwarders to a hidden generated
+directory used a bare rather than relative specifier, erasing default types and
+losing named Markdown/MDX exports. Native forwarding now uses an explicit `./`,
+and compiler-created forwarding modules remain in the SDK's checked scope.
+Positive named/default imports and a refused nonexistent property pin both halves.
+
+Foreign provenance now reads the native lowering's success shape across await,
+propagation and aliases. A Promise inside a synchronously lifted Result remains
+executable; an awaited primitive success is not mistaken for a foreign object.
+SDK negatives cover escaped and implicitly coerced unions; native runtime tests
+execute the valid propagate-then-await form. Explicit Result getters execute on
+both profiles, allowing the obsolete POC accessor-shape diagnostic to retire
+without weakening the argument's failure-channel refusal. The new SDK group
+passes 33 tests/139 assertions; the focused native group passes (6.158s). Its
+first run exposed two new test harnesses returning a scalar where the harness
+requires string arrays; correcting those test outputs changed no compiler code.
+
+Eleven markers retire: six already-fixed foreign row-charge cases, two repaired
+union cases, the obsolete getter limitation, the replaced parameter-default
+emitter and the retired Result.match diagnostic convention. The latter now pins
+native TS2345 and its full missing-property diagnostic chain. Four durable
+negative cases require the native body's complete early-refusal cascade rather
+than suppressing source errors to mimic the retired frontend; their boundary
+message assertions remain. The duplicate nominal claim is now required on both
+profiles. Its SDK observation no longer declares VIBE4124, which remains a
+standalone Plan diagnostic and must not be counted as a declared-code probe.
+
+The full post-fix behavioral gate exits zero: **SDK 553 pass/one xfail; standalone
+Go 540 pass/14 xfails; both interop sets 6/6; zero unexpected failures, XPASSes,
+unsupported, unmeasured or fail-open markers**. Raw observations agree on 541/554.
+Fourteen marked cases remain (all Go, one also SDK); the current register is in
+README.md. There are 43 declared message fragments. Full Node, Bun, Go, CLI
+differential and packaged-release measurements must follow this checkpoint.
+
+The report-site census is re-derived for this architecture: 127 codes in SDK
+hosts plus shared Go sources, 121 in native sources, and 71 VIBE codes declared
+by the corpus (79 across all diagnostic families). All 71 are in the native
+report-site set. Fifty native codes have no declared corpus probe, including
+VIBE4124 after the earlier nominal/Manifest refusal above. This is a source
+inventory, not proof every report site is reachable under each delivery profile;
+the generated diagnostic reference separately measures emitted messages.
+
+## Native-only language implementation checkpoint, 2026-09-07
+
+The ordinary JavaScript compiler implementation (`semantic.ts` and its private
+lowering, callable-row, ownership and declaration helpers) has been removed.
+The `js` and `go` runner labels now select SDK and standalone profiles of the
+same Go language implementation, not independent semantic implementations.
+The remaining durable Plan/manifest/schema compiler-library consumers have now
+been ported to Go; the SDK host and conformance import-discovery driver no longer
+load TypeScript 5.9, and its direct package dependency is removed. Imported Action
+and child-Flow contracts are bound by native symbols, with separate Manifest
+derivation and runtime artifact validation. Earlier per-backend censuses and all
+release counts below are historical until rerun;
+source-text subtraction between TypeScript host files and Go files no longer
+measures missing language rules in independent compilers.
+
+The imported-binding regression adds forged-envelope, schema/digest, type-only,
+alias and version checks, plus SQLite restart after a child boundary with no
+provider reinvocation. The first complete post-retirement durable run was
+604/611, not green: depth counting, type-only classification and diagnostic
+precedence were corrected, and four assertions were updated for earlier native
+contract refusals. No corpus source, declared expectation, expected-failure
+marker or product-divergence record was changed by this migration checkpoint.
+The complete post-fix durable rerun is green: **612 tests, 4,311 assertions,
+56 files, 100.41s**. Public Plan/Manifest/child compilation also passes a child
+process test whose import hook refuses JavaScript compiler-library imports.
+This does not replace the pending full conformance and release measurements.
+The full native Go gate also passes: **4,087 tests/subtests, zero failures,
+zero skips**, with eleven isolated internal invariants included.
+
+The four private test consumers were migrated without dropping their semantic
+obligations. Nine native internal tests now exercise real checker/lowering
+invariants in an isolated test-only overlay, including the deliberately forced
+`VIBE1151` collision and all module-qualifier vectors. The old
+`nominal-error-identity-guard.test.ts` harness is replaced by
+`compiler/fork_internal_invariants_test.go` and its embedded Go tests. Actual
+SDK rows, emitted propagation sites, portable identities and module fences
+remain covered by 33 passing public-observation tests (186 assertions).
+
+The first full language run after removal measured 1,890 passes and three LSP
+failures: the native body map decoder rejected comptime's provenance extension.
+The fix accepts that known metadata field, validates every pinned map source,
+and leaves foreign-source request segments unmapped. All 29 LSP tests then
+passed, followed by the combined module/comptime/replay/LSP group: 39 passes,
+228 assertions. The full post-fix language suite passes 1,893 tests (10,221
+assertions). The Go gate measured 3,928/3,929 passing, zero skips; its sole
+failure was a textual inventory check still opening the removed compiler. Its
+replacement compares the Go Result surface with the actual SDK runtime and
+passes all three focused inventory tests. The later full Go rerun passed all
+4,050 tests/subtests with no failures or skips (compiler package 349.510s).
+
+The Go Plan path additionally supports queue and broadcast waits, with exact
+pre-migration Plan/Manifest digest pins, malformed-input and contract-conflict
+tests in `compiler/fork_durable_inputs_test.go`, and a native-compile/SQLite
+restart integration in `poc/src/durable/plan-input-native.test.ts`. The full
+durable suite passes 602 tests (4,124 assertions). These are unit/integration
+coverage additions, not new corpus cases. No corpus source, expectation,
+xfail marker or product-divergence allowance changed in this step.
+
+Subsequent native Plan work adds bounded loop and single/multi-step fan-out
+coverage in `compiler/fork_durable_{loop,fanout}_test.go`. The tests pin the
+pre-migration artifact/node digests and independently exercise native callback
+assignability before erasure, strict serialized projections, capture refusal,
+Action contract conflicts and template ceilings. The three direct-native
+Plan runtime tests (`plan-{input,loop,fanout}-native.test.ts`) pass together:
+three tests, 70 assertions, SQLite restart without repeating committed work,
+stable keyed fan-out children with input-ordered results, loop ceiling and
+duplicate-key refusal. This precedes the API-36 work below; the full Go result
+does not certify the remaining standalone compiler API migration.
+
+API 36 now has standalone native Plan/Manifest tests in
+`compiler/fork_plan_source_test.go`, with exact emission/query bytes, portable
+identities, unused Action declaration spans, Unicode positions, propagated
+member typing and explicit unrepresentable-versus-refused behavior. Separate
+Go/SDK protocol tests refuse malformed completion states and leaked artifacts.
+The native runtime group also consumes direct query artifacts: four tests,
+99 assertions, including SQLite fan-out resumption. The query/protocol Go group
+passes (5.280s), SDK protocol tests pass three tests/36 assertions, and native
+SDK typechecking passes. Imported descriptor bindings and host replacement
+remain open. There is still no new corpus case or marker change in this step.
+
+The same port found and reproduced a missing wire-contract check in ordinary
+Go Plan erasure: an earlier fan-out step's string could reach a numeric Action
+input with no diagnostic. New template and ordinary-Action regressions now
+refuse incompatible serialized values before erasure. A tenth internal
+invariant covers 31 codec-compatibility cases and the bounded traversal depth.
+The combined Go durable/Plan/Manifest/protocol/invariant group passes in
+49.871s. The full durable runtime suite passes 605 tests and 4,206 assertions
+across 55 files (104.23s), and native SDK typechecking passes. This is additional
+regression coverage, not a changed corpus marker or a final release certificate.
+
 > [!IMPORTANT]
 > **Specification drift — read `docs/DECISIONS.md` and
 > `docs/src/pages/specification/**` first.**
@@ -11,7 +174,7 @@
 >   breaks and loop `else` — grammar is now one form, `if (const x = f(); cond)`
 > - `Optional<T>` — absence is now `T | undefined`
 > - `.unwrap()` — propagation is now postfix `!`, and the TypeScript non-null
->   assertion is removed from `.sm`
+>   assertion is removed from `.vibe`
 > - the near-native/LLVM and Wasm compilation targets, the `TypeScript`
 >   requirement, the portable/required/forbidden classification, and the
 >   portability (native) pin — TypeScript is the only target
@@ -29,6 +192,294 @@
 > also names the two places where the corpus and the product now agree with each
 > other and disagree with the specification, which is a shape no gate can see.
 
+## Native parameter-default checkpoint, 2026-09-07
+
+The corpus still has 554 cases. The unchanged parameter-default program now
+expects output `0`, grounded in requirements.mdx §Inference's ordinary-call rule.
+The pre-change expectation was measured against the live native fix: Go compiled
+and executed it with that output; the legacy emitter refused at `VIBE1802@3:38`.
+A JS-only marker records that missing implementation while the legacy path is
+being replaced. There are now 25 marked cases: 24 Go, two JS, one shared.
+Neither the source nor its imported module was changed to evade a diagnostic.
+The full post-change corpus exits zero: JS 552 pass/two xfail, Go 530 pass/24
+xfail; both six interop cases; no unexpected failures, XPASS, unsupported,
+unmeasured or fail-open markers. Raw observations agree on 530 cases. The
+product/oracle remeasurement remains pending. This measurement predates the
+optional JSON-hook follow-up and native SDK emitter work.
+
+Native unit tests separately reject unprovided default requirements, execute
+provided defaults, and preserve the row when consuming only published
+declarations and JavaScript. The native group passes in 91.504s; the subsequent
+prepared-binary cache change plus added isolation/cold-cache tests passes in
+19.420s. Each compilation still starts a fresh compiler process. Six affected
+public language test files pass 238 tests and 376 assertions in 23.45s.
+The same native review corrects erased ambient type queries and distinguishes
+ordinary JSON objects from Number/String wrapper coercion after serialization
+hooks. These checks do not complete the Go-only emitter/body migration.
+
+## Native source-analysis checkpoint, 2026-09-07
+
+All 554 unchanged cases are measured: JS 553 pass/one xfail; Go 529 pass/24
+xfail/one XPASS. Neither backend has ordinary failures, unsupported or unmeasured
+cases, or a marker holding a fail-open. Both pass all six TypeScript interop
+cases. Raw observations agree on 531 cases. The ambient `Panic` type case's Go
+marker is retired after that XPASS, leaving 24 marked cases (all Go, one also
+JS); source and expected diagnostics are unchanged. Its original documentation
+question is now answered by the alpha-0 availability note in `failures.mdx`:
+native source analysis preserves the existing public type spelling, without
+installing a global constructor value. The focused post-retirement run passes
+the unchanged case on both backends with no marker or disagreement. The subsequent
+frozen snapshot-58 full serial release exits zero: its conformance gates record
+553 JS passes/one xfail, 530 Go passes/24 xfails, and both interop sets 6/6.
+This snapshot predates the live parameter-default and JSON-coercion changes.
+
+This follows the complete 1,869-test public language-directory rerun. Private
+runtime export classification now also recognizes the reference's reserved
+`__vs` hook spellings in native Go. Observation gap #13's historical TS2305
+barrier no longer prevents writing a shared refusal case for those names, but
+no such fixture was added here; native and public unit tests cover the matrix.
+Neither checkpoint completes the Go-only migration or changes cleanup semantics.
+
+## Native manifest closure checkpoint, 2026-09-07
+
+The unchanged 41-case durable area measures 41 JS passes and 28 Go passes,
+two Go XPASSes and 11 Go xfails, with no other mismatches, unmeasured cases or
+fail-open markers. The project-helper and recursive-descriptor Go markers are
+retired after those measurements; authored source and stdout remain unchanged.
+There were then 25 marked cases in the complete 554-case corpus (all Go, one
+also JS); the later full-corpus measurement is recorded above.
+
+The observations are descriptor publication, not Go body execution. New native
+unit tests additionally inspect the transitive action, requirement and site
+sets; getters, constructors, tagged templates and coercion edges are included.
+Local Layer discharge preserves get sites; opaque/mutable callees refuse.
+Neither a marker retirement nor this implementation checkpoint decides the
+September 6 Plan/body model or completes the Go-only migration.
+
+## Native generated-code checker checkpoint, 2026-09-06
+
+The corpus stays at 554 cases. Its JS-labelled language frontend now checks
+generated TypeScript with the native Go compiler. The first full measurement
+passes 552 JS cases with one existing xfail and one diagnostic-only mismatch;
+Go matches 528 with 26 xfails. No case is unmeasured or unsupported and no marker
+holds an invalid-program acceptance. The sole new mismatch is
+`01-result-lifting/result-match-requires-both-branches`: the native checker over
+the SDK's ResultValue reports `TS2741` naming the missing `error` property, where
+the removed 5.9 checker reported `TS2345`. Both are at the original argument,
+11:31. Go's authored Result union still reports `TS2345` at 11:31.
+
+The expectation now pins the measured native generated-code diagnostic and the
+missing-property message, keeping the source and required refusal unchanged.
+A Go-only diagnostic comparison marker records the different authored Result
+signature. This makes 27 marked cases (all Go, one also JS) and 42 cases with
+`messageContains`. The complete remeasurement now passes 553 JS cases with one
+declared xfail; Go matches 527 with 27 declared xfails. There are no unexpected
+failures, XPASSes, unsupported or unmeasured cases, or fail-open markers. Raw
+observations agree on 528 of 554 cases. No diagnostic-code aliases
+or harness comparison rules were relaxed. See `compiler/GO-MIGRATION.md` for
+implementation, protocol, CLI/editor and package-isolation checks.
+
+## Accessor structural-view checkpoint, 2026-09-06
+
+Complete serial snapshot 20 now verifies this follow-up: 262 Node, 3,331 Bun
+and 2,175 Go tests pass, with one explicitly credentialed Bun skip. The corpus
+is unchanged, the 554-case CLI oracle retains exactly its 20 reviewed
+differences and zero product-only accepts, and installed-package,
+reproducibility and documentation gates pass. Its source/archive digests and
+full log are in `compiler/IMPLEMENTATION-PLAN.md`. This is a **pre-migration
+baseline**: the subsequent user-directed migration to one current Go compiler
+is recorded in `compiler/GO-MIGRATION.md` and is not certified by this run.
+
+The corpus is still 554 cases. A separate shared matrix adds 35 local and seven
+source-free accessor-assignment cases: data annotations, read/write rows,
+enumeration provenance, indexers, containers and generic readers/copies. It
+also preserves inferred/typeof/mapped views, pure identity, key-only operations
+and already-materialized spread data. The CLI refuses an erased imported
+accessor contract without emitting its consumer. The 325-test focused JS group
+and the corrected Go publication/map group pass; measured logs are in
+`compiler/IMPLEMENTATION-PLAN.md`. This follow-up postdates snapshot 17 and
+does not change any corpus marker, settle cleanup precedence or certify alpha-0.
+
+## Declaration-only implicit invocation checkpoint, 2026-09-06
+
+The corpus remains unchanged at 554 cases. Twenty-six new shared implementation
+vectors publish real declarations and compile fresh source-free consumers:
+accessor, coercion, iterator and disposer rows, own/prototype enumeration,
+separate getter/setter callable contracts, and disposal completion ownership.
+Seven shared malformed-accessor records and additional ownership, convention,
+mapping and CLI controls cover the declaration boundary. The CLI tests retain
+its initialization trust checks and verify relocated declaration dependencies
+after removing the original library. Focused results are recorded in
+`compiler/IMPLEMENTATION-PLAN.md`. Complete serial release snapshot 17 now
+certifies this follow-up: 262 Node, 3,286 Bun and 2,128 Go tests pass, with the
+one explicitly credentialed Bun skip. Corpus/interop, CLI oracle, installed
+package consumers, reproducibility and docs also pass. Its input and archive
+digests are recorded in the implementation plan; it predates the accessor
+structural-view work above.
+
+Snapshot 18 stopped in Node's Go-conformance test on 19 newly refused durable
+cases. The new generic-bound check had also inspected the compiler-owned
+callback's uninstantiated completion. The prelude boundary is now aligned with
+JS, and the unchanged Go corpus again measures 526 matches, 28 declared expected
+failures and zero unexpected divergence or unmeasured cases. Two additional
+generic callback ownership controls retain existing refusals. No marker or
+expectation changed. Snapshot 18 is not a release certificate.
+
+Snapshot 19 passed Node, then stopped on a duplicate existing diagnostic in the
+Bun duration-port test (3,329 pass, one fail, one credentialed skip). The
+generic-bound relation now supplements only a valid instantiated relation;
+the old assertion is unchanged and a new shared count control pins one
+diagnostic per failed relation. The reviewer's original probes and four-stage
+crash/restart demo were also rerun successfully on that snapshot, apart from
+the explicitly unresolved cleanup decision. Snapshot 19 is not a release
+certificate; see the implementation plan for the measured logs.
+No corpus marker or expectation was added or weakened, and this does not settle
+cleanup precedence or certify cross-backend runtime linking.
+
+## Disposal protocol checkpoint, 2026-09-06
+
+The corpus is unchanged at 554 cases. Thirty-seven new shared implementation
+vectors cover native disposal requirement rows and must-consume completions:
+sync/async selection, nullish fallback, union resources, provided execution,
+for-using cleanup, foreign provenance, inferred return types and discarded data
+containers. Both backends pass the matrix. Eight additional body tests and one
+shipped-CLI test close native protocol consumers that could silently skip
+durable requests; ordinary cleanup and explicit suspending `finally` remain
+controls. This is an explicit unsupported calling-convention boundary, not
+implementation of resumable native protocols or a cleanup-precedence decision.
+No corpus expectation or marker was added, removed or weakened. The focused
+measurements are in `compiler/IMPLEMENTATION-PLAN.md`. Complete serial release
+snapshot 16 now certifies this work: 256 Node, 3,248 Bun and 2,089 Go tests pass,
+with the one explicitly credentialed Bun skip. The corpus/interop and CLI-oracle
+counts are unchanged from snapshot 15; package/installed-consumer and documentation
+gates also pass. Exact snapshot and package digests are in the implementation plan.
+
+## Durable value and diagnostic-inventory checkpoint, 2026-09-06
+
+The corpus remains 554 cases. Ten new implementation tests cover mutable Flow
+and Action inputs/answers/results without mutable persistence evidence, including
+live/replayed answers and both compatibility output schemas. Nine more cover
+Manifest resolution of ordinary methods on inferred extracted Action payloads,
+plus opaque-method, missing-propagation and effectful-callback refusal controls.
+Their compiler/Manifest/module group passes 131 tests (1,037 assertions). These
+are implementation tests, not new corpus cases or retired expected failures.
+
+The generated diagnostics reference previously maintained a separate narrow
+grep and omitted 31 implementation codes. It now uses this ledger's existing
+`scripts/coverage-codes.mjs` report-site census for both implementations. Its
+fresh JS observation lists 73 codes, plus 56 more implementation-defined codes
+not observed in that JS run. The latter is not a Go observation claim. Two new
+Node checks pin the complete inventory and per-backend availability; together
+with the census tests they pass 32 tests. Neither the corpus expectations nor
+the census extraction rules changed for this correction. These follow-ups
+are now certified by complete serial release snapshot 15: 255 Node, 3,203 Bun
+and 2,051 Go tests pass (one explicitly credentialed Bun skip). All 554 corpus
+cases retain JS 553 plus one declared expected failure, Go 526 plus 28 declared
+expected failures, and the exact 20-row shipped-CLI divergence baseline with
+zero product-only accepts. Package/installed-consumer and documentation gates
+also pass. Exact digests are in `compiler/IMPLEMENTATION-PLAN.md`; the later
+disposal-protocol follow-up is not part of that snapshot.
+
+## Executable timer checkpoint, 2026-09-06
+
+The corpus still has 554 cases. The existing sleep-duration projection source
+is unchanged, but its expectation now follows the current §Flow contract:
+ordinary `input.items.length` computes a number before crossing the durable
+timer boundary. Its historical Plan-only diagnostic is no longer a restriction
+on executable bodies. A Go-only expected failure records that backend's missing
+body support; this adds no fail-open marker. The expectation files now contain
+28 marked cases (all Go, one also JS) and 41 cases with `messageContains`.
+
+The JS durable area passes all 41 cases. The changed case was measured on both
+backends: JS passes, Go remains refused at `VIBE4110@10:29`, and neither marker
+holds a fail-open. Its filtered shipped-CLI comparison also agrees. Beyond the descriptor observation,
+`poc/src/durable/body-timer.test.ts` executes the unchanged corpus source with
+two items, checks the persisted duration of 2, and replays both timer and Action
+without a second worker invocation. Its seventeen timer tests also cover null
+results, aliases/helpers, loops, async bodies, lease-free suspension, cancelled
+and competing coordinators, tampered answers, request-identity divergence and a
+real SIGKILL after scheduling followed by fresh-process signed execution.
+Timer artifacts now require body version 2 and cannot downgrade their feature
+contract; version-1 Action-only bodies remain readable. The surrounding
+body/replay/legacy timer/module group passes 115 tests, and the
+five public durable tests include CLI emit/declarations/maps and signed timer
+execution. The complete serial release snapshot 14 has now passed: JS 553/554
+plus one declared expected failure; Go 526/554 plus 28 declared expected failures;
+six interop cases per backend. All 554 shipped-CLI comparisons retain the exact
+20-row reviewed divergence set, with zero product-only accepts. The Node, Bun,
+Go, package/installed-consumer and docs gates also pass; exact counts and snapshot
+digests are in `compiler/IMPLEMENTATION-PLAN.md`. The measurements below remain
+their dated historical checkpoints.
+
+## Authored-generator row checkpoint, 2026-09-06
+
+`compiler/generator-row-vectors.json` adds seventeen shared implementation tests
+for the existing prohibition on authored generators with non-empty effect rows.
+The new cases catch capability requirements that previously escaped the source
+refusal, including a Go-accepted iterator resumed outside its provider scope.
+Both backends now report `VIBE1106`; pure and internally provided generators
+still execute. An ambient-access control keeps its existing `VIBE1602` refusal.
+Ordinary iterator methods are also executed under a satisfying Layer and still
+charge their requirements when unsupplied; the generator rule is not an
+iteration ban. The combined invocation/generator regressions pass 89 tests on
+each backend (201 assertions on JS).
+These are not additional corpus fixtures; the corpus still contains 554 cases.
+The existing `05-context-rows/an-invocation-with-no-call-expression-still-charges-its-row`
+negative fixture also contains two requirement-bearing authored generators. Its
+complete cascade now includes `VIBE1106@26:28` and `VIBE1106@34:1`, as required by
+effects.mdx rule 4. All six original `VIBE2102` obligations remain unchanged;
+both backends report the identical eight-code/position cascade. No marker or
+output expectation changed. The generated diagnostics reference was regenerated
+to include the newly reached capability-row wording of `VIBE1106`.
+
+## Comptime value-identity checkpoint, 2026-09-06
+
+The 554-case corpus does not yet measure alias preservation when comptime data
+is materialized. Twelve new shared compiler vectors in
+`compiler/comptime-identity-vectors.json` cover shared versus distinct
+objects/arrays, nested sharing, shallow copies, property order, and own
+`__proto__` data. The Go execution group passes all twelve plus three invalid or
+over-budget graph controls. Reference tests exercise compiler replacement,
+cache reloads, and the real sandbox process with the same vectors; the initial
+identity/order group passes 54 tests and 357 assertions. The subsequent fully
+checked-emission/build regression group passes 133 tests and 1,949 assertions;
+the broader Go comptime/asset/schema group also passes. These are implementation
+tests, not twelve additional corpus cases; no expectation or marker changed.
+
+## Go declaration publication checkpoint, 2026-09-06
+
+Source-free producer/consumer execution now also covers Go-generated
+declarations, outside the unchanged 554-case corpus. Eighteen callable shapes,
+private and forwarded Context identities, same-name collision controls, Result
+and async execution, comment removal, declaration maps, imported function
+containers and re-exports are exercised in
+`compiler/fork_declaration_publish_test.go`. Publication refuses an escaping
+function-local requirement with no representable constructor table entry.
+
+These Go consumers share the producer's Go prelude instance. Version-3 Go module
+envelopes explicitly identify that runtime ABI; callable tags remain version 2.
+Wrong/missing ABI identity and unlinked runtime locations refuse, and a reference
+test pins refusal of the Go module envelope rather than pretending its runtime
+is compatible. General installed-package/shared-runtime linking is still open.
+No source-corpus fixture, expectation, marker or count changed.
+
+## Declaration reader checkpoint, 2026-09-05 (historical)
+
+`VIBE1810` is now implemented by both frontends, still outside the 554-case
+source corpus. The Go declaration reader has 35 focused cases in
+`compiler/fork_declaration_contract_test.go`: canonical versioned envelopes,
+nominal requirement tables, callable assignment, provided callbacks, nested
+callable types, malformed/old metadata, reserved source claims and runtime
+incompatibility. The reference has declaration-metadata and actual source-free
+producer/consumer tests under `poc/src/language/`.
+
+This is not corpus coverage or completed cross-backend package interoperability.
+The source corpus does not observe emitted declaration artifacts. At this
+checkpoint Go metadata emission still lacked compiled-library/consumer tests;
+the later publication checkpoint above adds them. Runtime linking and resumable
+declaration calls remain open and are refused where unsupported.
+No corpus expectation, marker, or count changed for this reader checkpoint.
+
 ## Withdrawal record — the portability targets, 2026-08-23
 
 The fourth bullet above is no longer drift. The machinery was removed the same
@@ -38,7 +489,7 @@ corpus and its per-row prose still describes the tree as it was; read a
 portability row as a record of what was once measured.
 
 **Removed from the corpus:** all 27 cases of `21-native-pin` (plus its 16
-`*.mod.sm` auxiliary modules), `18-typescript-requirement/with-statement-is-forbidden`
+`*.mod.vibe` auxiliary modules), `18-typescript-requirement/with-statement-is-forbidden`
 (the only case for the withdrawn *forbidden* classification bucket), and
 `23-asset-imports/an-asset-import-adds-no-runtime-platform-requirement`. Corpus
 size **260 → 231 cases across 22 areas**; both backends re-measured at
@@ -54,9 +505,9 @@ them" — which is exactly what their observables already measured.
 `18/type-only-import-adds-no-requirement` cited the removed "Runtime TypeScript
 Dependency" section and now cites type-system.mdx "Foreign Boundaries", which
 still says type-only imports add no runtime requirement.
-`18/class-static-block-is-rejected` was never a portability case (SMITHERS1107 is
+`18/class-static-block-is-rejected` was never a portability case (VIBE1107 is
 a function-channel ownership rule) and the whole of `20-host-globals` is the
-**capability system**, not portability: SMITHERS1601/1602/1603 come from the
+**capability system**, not portability: VIBE1601/1602/1603 come from the
 frontend and compatibility.mdx keeps "Host Globals" verbatim. The area directory
 is still named `18-typescript-requirement` for its history; nothing in it pins a
 `TypeScript` requirement any more.
@@ -64,14 +515,14 @@ is still named `18-typescript-requirement` for its history; nothing in it pins a
 **Coverage LOST, and it is a real regression, not a tidy-up.** §17.11 — "loading
 happens during compilation and adds no runtime platform requirement"
 (ASSET_LOADERS.md, Locked) — was observable *only* through the pin, which was the
-one channel that reported a transitive requirement graph to a `.sm` program. Its
+one channel that reported a transitive requirement graph to a `.vibe` program. Its
 case is deleted and the obligation is now **uncovered**, with no writable
 replacement: the surviving frontend charges nominal Context capabilities only, so
 a program cannot observe whether a compile-time asset edge contributed a platform
 requirement. It is still asserted at the unit level
 (`compiler/fork_asset_test.go`, and the asset specifier's absence from the
 runtime artifact in `compiler/fork_reexport_test.go`). The same is true of every
-other row below whose observation channel was `SMITHERS3001`.
+other row below whose observation channel was `VIBE3001`.
 
 **Rows superseded by the withdrawal** — read as history: §8.14, §8.21, §10.6,
 §10.6b, §10.7, §10.8, §10.9, §10.10 (its `with` half), §10.11, §10.13, §10.14,
@@ -92,14 +543,14 @@ lines of this file beginning with `|`, match `` `NN/name` `` and
 **637 table-row citations; 85 do not resolve.** 36 name `21-native-pin`, which
 does not exist. 47 name `10-defer`, `11-expression-if-switch`,
 `12-labeled-block-values` or `13-loop-values`, which are **empty directories** —
-0 `.sm` files each, as is `03-optionals`. 2 name a case in a live area, and both
+0 `.vibe` files each, as is `03-optionals`. 2 name a case in a live area, and both
 sit in rows this list already supersedes (§10.10 and §17.11).
 
 Most of the 85 are in rows the list above already covers. The rows that still
 read as **live coverage** and were not covered are now added to it: **§1.4,
 §1.5, §7.3, §8.20, §9.5, §10.1, §10.3, §10.4, §10.5, the whole of §13, the whole
-of §14, Q1, Q2, Q4**, and the two SMITHERS code-census rows marked "**WRITTEN
-this revision**" for `SMITHERS1713` and `SMITHERS3005` — both of those cases
+of §14, Q1, Q2, Q4**, and the two VIBE code-census rows marked "**WRITTEN
+this revision**" for `VIBE1713` and `VIBE3005` — both of those cases
 went with their directories. §13 and §14 carry their own banners as well,
 because they are the two sections in which **every** row is superseded and a
 reader landing on a single obligation would otherwise never reach this note.
@@ -118,9 +569,9 @@ keep the name the measurement used.
 The record above removed the portability half. It did **not** reach the
 frontend's own requirement rows, which are a different code path in
 `poc/src/language/semantic.ts` and kept charging a `TypeScript` requirement at
-eight sites. That reached users directly: `smithers compile` printed
-`requirements[1]: TypeScript` on ordinary functions, and `smithers run` refused
-an ordinary program with `SMITHERS2102 top-level call has unsatisfied
+eight sites. That reached users directly: `vibe compile` printed
+`requirements[1]: TypeScript` on ordinary functions, and `vibe run` refused
+an ordinary program with `VIBE2102 top-level call has unsatisfied
 requirements TypeScript`. No gate caught it, and the corpus could not: no case
 made a top-level call into a function that imported a foreign module, which is
 the one shape where the member is observable. The two backends had **silently
@@ -130,7 +581,7 @@ computing it then, the JS reference did not.
 **Only the member was withdrawn.** The requirement-row mechanism, nominal
 `Context` rows, `Layer` provision and subtraction, `Clock`/`Random`/`Host`
 charging for ambient host globals, transitive propagation, durable contract
-derivation, and `SMITHERS2102` itself are the capability system and are
+derivation, and `VIBE2102` itself are the capability system and are
 untouched.
 
 **Added to the corpus**, all three passing on both backends with 0 divergent:
@@ -138,12 +589,12 @@ untouched.
 - `18-typescript-requirement/a-trusted-foreign-import-adds-no-requirement` — the
   acceptance direction, observed through a top-level call, which is legal only
   when the callee's row is empty. Measured divergent before the fix
-  (`SMITHERS2102@15:1`, `SMITHERS2102@16:1` on the JS reference; the Go fork
+  (`VIBE2102@15:1`, `VIBE2102@16:1` on the JS reference; the Go fork
   already passed).
 - `18-typescript-requirement/a-provided-capability-row-closes-completely-around-a-foreign-import`
   — the reduced reproduction: one capability provided by a layer plus a trusted
   foreign import, with a top-level call. Also measured divergent before the fix
-  (`SMITHERS2102@29:17` on the JS reference).
+  (`VIBE2102@29:17` on the JS reference).
 - `05-context-rows/an-unsatisfied-top-level-requirement-names-exactly-the-capability`
   — the refusal direction, with `messageContains` on the capability's own name.
   The removal direction is trivially satisfiable by a frontend that stopped
@@ -251,15 +702,23 @@ and `09-foreign-calls/an-untrusted-foreign-result-used-in-an-expression-is-rejec
 say that it does.
 
 **Two cases stay red, with rewritten notes, and they are no longer evidence of a
-placement rule.** `postfix-bang-as-a-nullish-right-operand-is-rejected`
-(`SMITHERS1204`) and `unwrap-in-a-loop-header-is-rejected` (`SMITHERS1703`) pin
-the residue of the shipped early-`return` lowering: it hoists its guard to the
-front of the enclosing statement, which is order-preserving only where the
-operand is evaluated unconditionally, exactly once, and with nothing effectful to
-its left. Hoisting `while (next()!) {}` produces a program that never terminates,
-which is the measurement that keeps the loop rule alive. A third position —
-`g() + r!`, a propagation preceded by an unhoisted effect — is refused by the
-same code and is not yet pinned by a corpus case.
+placement rule** — ~~a paragraph that closed itself on 2026-09-05~~.
+`postfix-bang-as-a-nullish-right-operand-is-rejected` (`VIBE1204`) and
+`unwrap-in-a-loop-header-is-rejected` (`VIBE1703`) pinned the residue of the
+shipped early-`return` lowering: it hoisted its guard to the front of the
+enclosing statement, which is order-preserving only where the operand is
+evaluated unconditionally, exactly once, and with nothing effectful to its left.
+The third position — `g() + r!`, a propagation preceded by an unhoisted effect —
+gained its case on 2026-09-05
+(`02/an-unhoisted-effect-before-a-propagation-in-one-statement-is-rejected`),
+and the same day the delimiter lowering landed on BOTH backends and retired all
+three residues at once: all three cases flipped to `expect: "output"` printing
+values only the authored evaluation order produces, and `VIBE1204` and
+`VIBE1703` are now declared by NO case — they join `VIBE4111` in the
+felled-wall pattern the README's RETIRED box records: codes an implementation
+may still spell, certified by nothing, until the lowerings that report them are
+gone too. The retirement condition was written in each case's own notes before
+it happened, which is what let the flips be routine instead of a re-litigation.
 
 All three were re-measured on the **Go fork** on 2026-08-30 by disabling its
 newly ported predicates and running the programs: `while (next()!) {}` ran the
@@ -277,8 +736,8 @@ both except on the narrowed residue, which the specification page records under
 
 A second gap of the same shape, **`(SA-2)`**, exists in `17-durable` and is
 recorded on `docs/src/pages/specification/durable-execution.mdx` rather than
-here: the durable frontend is still the static-plan model, so `SMITHERS4106`,
-`SMITHERS4107` and `SMITHERS4100` refuse what that page now promises. Same
+here: the durable frontend is still the static-plan model, so `VIBE4106`,
+`VIBE4107` and `VIBE4100` refuse what that page now promises. Same
 structure — corpus and product agree, specification disagrees, no
 `product-divergence.json` row.
 
@@ -286,17 +745,19 @@ structure — corpus and product agree, specification disagrees, no
 
 Read this before any verdict below.
 
-Sections §1–§20 measure **one thing**: the differential `.sm` conformance corpus
-in `conformance/corpus/`, **507** cases across 23 numbered areas — of which 17
-directories hold cases, five are empty directories left by the 2026-08-23
+Sections §1–§20 measure **one thing**: the differential `.vibe` conformance corpus
+in `conformance/corpus/`, **554** cases across 24 numbered areas — of which 18
+directories hold cases (`24-schema/` is new as of 2026-09-05), five are empty
+directories left by the 2026-08-23
 withdrawal (§13 and §14 record why), and `21-native-pin/` was deleted outright
 (the figure in this sentence read 260 for several revisions after it stopped
 being true, 422 for two revisions after that, 465 until the round-7 backlog
 revision, 493 until the closure-backlog revision, 498 until the
-capability-argument revision, and 503 until the durable-projection revision;
+capability-argument revision, 503 until the durable-projection revision, and 521 until the
+2026-09-05 spec-coverage lane;
 re-derive it with
 `find conformance/corpus -name '*.expected.json' | wc -l`).
-That is a narrow instrument. It observes a `.sm` program's stdout and its
+That is a narrow instrument. It observes a `.vibe` program's stdout and its
 **error**-severity diagnostics, and nothing else. **What it is not** is the
 boundary of what is tested: runtime behaviour, packaging, build-cache identity,
 and store transactions are outside its reach entirely, and observation gap #18
@@ -313,7 +774,7 @@ For several revisions this page treated that instrument's reach as the boundary
 of the system, and the result was a census with holes in it that no reader could
 see. This revision adds the surfaces the corpus does not reach and the matrix
 had never named — the CLI, formatter, and language server (§21); the
-`smithers:schema` virtual module (§22); the bounded portable Wasm backend
+`vibelang:schema` virtual module (§22); the bounded portable Wasm backend
 (10.14); the host-sensitive global classification table (§9.6–9.13) — and gives
 comptime and durable execution real status tables (§19, §20) instead of an
 unscored list. It also corrects a statement that was simply false: the previous
@@ -339,13 +800,170 @@ Three consequences a reviewer should carry into everything below:
 
 Numbers move; this is what was measured and when.
 
+**2026-09-05 — concurrent VibeLang rename follow-up.** The first post-rename
+release run exposed two stale payload expectations (`VIBELANG` and the five-byte
+`VIBE\n` asset), a negative retired-specifier case importing the newly current
+specifier, and `.vibe` Flow bodies leaking their authored extension to stock tsc.
+The payload expectations now follow the authored bytes; the historical retired
+case id now probes `smithers:flows`, not the current `vibelang:flows`. The body <!-- brand-gate: allow -->
+compiler constructs a virtual `.body.ts` filename independently of source suffix,
+with an executed `.vibe`/`.ts` unit control. No case or marker is added. Verification
+is being rerun using a fresh offline pinned fork checkout, since the previous
+patched cache carries the old language identifiers. Earlier measurements below
+do not certify the renamed tree. The Action UTF-16-order fixture additionally
+repins its contract digest for the `.vibe` source identity; both backends agree
+on the new digest, with field ordering and both codecs unchanged.
+
+**2026-09-05 — product grammar gate and baseline retirement.** Asset preflight
+now uses the frontend's own grammar diagnostic implementation when parsing
+prevents discovery, while parseable retired types still reach the checker for
+their full semantic cascade. The asset/retired-syntax focus passes 47 tests;
+the follow-up CLI test compares every retired-syntax corpus refusal and its
+complete cascade. A full CLI run measured 554 cases, zero product-only accepts,
+53 fixed rows and one new missing-cascade discrepancy, subsequently fixed and
+tested. The 53 fixed rows (38 durable, 15 retired syntax) are retired from the
+baseline without replacement markers. A fresh full 554-case run matches the
+remaining 20-row record exactly: two product refusals, 18 diagnostic differences
+and zero product-only accepts. The normal test chain now includes this gate;
+root conformance also enforces unmarked unsupported cases and Go interop.
+
+**2026-09-05 — all-path ownership and observable comptime order.** A fresh
+Node gate exposed 14 reference failures after the review fixes: nine positive
+programs deferred observing a Result across a later propagation, possible panic
+or rejecting await; three invalid-Promise-bang cases gained consequence-only
+ownership diagnostics; and two comptime expectations sorted object keys instead
+of preserving the authored literal's insertion order. None was hidden behind a
+new expected-failure marker. The nine positive programs now explicitly inspect
+their Results before those exit points, preserving their stdout and tested API;
+the shared ownership matrix adds the corresponding negative paths and positive
+controls. An invalid bang forwards its operand's ownership unchanged (it is
+still refused by VIBE1207), and exact diagnostic-cascade tests distinguish
+forwarding from stringifying a Promise. The two comptime stdout contracts now
+follow the authored object order, including nested values, as required by the
+shared-syntax and comptime observation rules. Counts remain 554 corpus cases.
+Fresh backend measurements are recorded after the next full run, not inferred
+from the edits.
+
+**2026-09-05 — implementation follow-up to the completed fixture handoff.** The
+corpus remains 554 cases. Six former Plan-wall refusals now assert acceptance:
+checked helpers, mutable locals, module captures, array/string length, and
+recursion. `poc/src/durable/body-compiler.test.ts` additionally compiles the actual
+non-recursive corpus sources, executes their live/replayed requests, checks exact
+inputs/outputs and proves one worker call. Terminating recursion is executed in a
+separate test; the recursive corpus fixture is not invoked during compilation.
+
+The explicit Result-return Flow sample now compiles and executes, and observes
+the Flow identity instead of demanding an optional legacy Plan. Native Error has
+a structural `javascript:Error@1` codec on both backends; the UTF-16 fixture's
+contract hash was repinned after both independently agreed, with its success hash
+and field order unchanged. Non-finite request literals still report `VIBE4111`,
+schema arguments still report `VIBE4113`, and non-Result propagation reaches
+ordinary `VIBE1207` on the reference.
+
+The JS schema round-trip became XPASS when the instrument preserved its
+compiler-owned package seam through analysis; that marker is retired. Row checking,
+stock emitted-TypeScript checking and execution all remain mandatory. Harness
+selftest: 50/50. Expectation census: 27 marked cases (27 Go, one also JS), 42 cases
+with `messageContains`. The Go generator refusal already passes without a marker.
+SA-1's stale specification warning is corrected too.
+
+The full runtime gate passed 2,730 tests with zero failures and its one named
+live-model skip. New callback regressions expose and now refuse a native consumer
+that silently discards suspended Actions; general resumable callbacks remain
+unfinished. Full corpus/product/Node/Go remeasurement follows these changes, so the
+handoff figures below describe their earlier tree, not this implementation state.
+
+Signed executable-body and real process-kill/restart tests now cover durable phases
+beyond descriptor observations. CLI/Go body emission, imported closure modules,
+external capability providers and durable external-input drivers remain real
+implementation work, not structurally untestable excuses.
+
+**2026-09-05 — the spec-coverage lane. Thirty-three cases were added, three were
+flipped, and the corpus gained its first `24-schema` area.** This lane owns
+`conformance/**` only; it wrote no implementation code, and it ran concurrently
+with the resumable-lowering migration lane, which changed both backends under it
+— twice, mid-measurement — so the figures below are stamped against a tree whose
+implementation side was still moving. What this lane added, by area:
+
+- **`16-comptime` +6**: the five uncovered ambient-determinism sources of §19.16
+  (environment, process state, network, mutable host state, filesystem — all
+  `VCT1004`, the near-copies that row predicted) and §19.6's MUST-NOT-invoke
+  half (`a-function-passed-to-comptime-is-not-invoked`).
+- **`20-host-globals` +9**: the four uncovered classification branches of
+  §9.6–9.13 (`Date.UTC`, `performance`, both sides of the `crypto` split, the
+  lexical shadow) plus the three remaining whole-root escape branches, and the
+  corpus's first observations of the §Determinism-Sensitive-Members CHARGES —
+  `promise-race-charges-a-scheduler-requirement` /
+  `locale-compare-charges-a-locale-requirement` (`VIBE2102` with the
+  capability named in `messageContains`, taken byte-for-byte from
+  `compiler/ambient-charge-vectors.json` so corpus and vectors cannot drift) and
+  the `promise-all` negative control.
+- **`17-durable` +11**: the (SA-2) residue certifications (`VIBE4105` let,
+  `VIBE4110` capture, `VIBE4199` project call and recursion), the
+  durable-boundary rules of 20.13/20.14 (a function value, a capability, an
+  `any` input — `VIBE4199`, `messageContains "no derivable durable
+  contract"`), 20.9's teeth, 20.11's schema-argument refusal (`VIBE4113`,
+  the corpus's first), the second `VIBE4103` branch, and — flipped the same
+  day it was authored — the specification sample's `Result` annotation as an
+  `expect: "output"` `xfail js`, because the fork already compiles it.
+- **`02-unwrap-propagation` +2**: the fallible-generator refusal
+  (`VIBE1101`+`1106`, closing §2.17's refusal direction) and the third
+  (SA-1) residue (`g() + r!`) — authored as a refusal certification and flipped
+  to output within the hour when the migration lane's delimiter lowering
+  retired all three residues on both backends. `VIBE1204` and
+  `VIBE1703` are now declared by no case.
+- **`19-retired-syntax` +1**: `runtime-type-modifier-is-not-claimed`
+  (`VIBE1000`), closing §19.14.
+- **`24-schema` +2, a new area**: §22.1's round-trip (an `xfail js+go` recording
+  that the product compiles and runs what BOTH conformance backends refuse — the
+  derived-schema-is-foreign seam §22.3 predicted) and §22.2's `any`/`unknown`
+  refusal (`VCT1204`, `xfail go`).
+
+Markers: **+12 added, −4 retired as XPASS inside the same session** (the three
+residue flips and the fallible generator's fork half went green live as the
+migration lane mirrored the fork), net register 12 → 24 marked cases. Declared
+`VIBE4xxx` codes 5 → 9; total declared distinct codes now include the first
+`VIBE1000`, `VIBE4100`, `VIBE4105`, `VIBE4113`, `VIBE4199`
+and `VCT1204`. Measured with `node conformance/runner/run.mjs --backend both
+--jobs 4` at the end of the lane, exit 0:
+
+```
+JS reference:  551/554 pass, 0 xpass, 3 xfail, 0 unsupported, 0 divergent, 0 unmeasured
+Go fork match: 532/554 match the reference, 0 xpass, 22 xfail, 0 unsupported, 0 divergent, 0 unmeasured
+Backend agreement: 532/554 identical observations
+Markers holding a fail-open: 0
+```
+
+An interim measurement an hour earlier read 3 js divergent and 5 go unsupported
+— all one cause and not this lane's: the migration lane's in-flight `match`
+emission failed the stock check (`TS2345 … Resumable<…>`) on the three
+`04-nominal-errors` match cases, `02/unwrap-joins-two-error-types-into-one-row`
+and `15/generic-row-instantiation`. That lane fixed its emission in the same
+session and all five returned to green with their expectations untouched, which
+is recorded here as the worked example of what sharing a working tree with an
+implementation lane looks like from the corpus's side.
+
+The other gates, same session: `node scripts/oracle-differential.mjs` — **554
+cases, 75 divergent, product ACCEPTS what the corpus refuses 0**, "the measured
+divergence set matches `conformance/product-divergence.json` exactly", exit 0
+(the record was re-derived with `--update`; every new row carries a verdict; the
+three (SA-1) residue rows that would have been `product-accepts` were resolved
+by the case flips instead, so that bucket stays **0**, and seven transient
+`05-context-rows` crash rows plus the three `04` rows above were measured FIXED
+and deleted within the session). `node --test conformance/runner/selftest.mjs`
+50/50. `node --test test/conformance.test.mjs` 6/6, exit 0. One caution for the
+next measurer: while the migration lane rebuilds `poc/dist`, the oracle
+intermittently reports `NO-JSON exit 1 … ERR_MODULE_NOT_FOUND
+poc/dist/language/index.js` on arbitrary cases — re-run on a quiet tree before
+recording anything.
+
 **2026-09-01 (second revision that day) — the coverage lane. Three cases were
 added and the code census was replaced.** The cases are
 `17-durable/a-non-finite-numeric-literal-in-a-durable-value-is-rejected`
-(`SMITHERS4111`),
+(`VIBE4111`),
 `…/postfix-bang-on-a-value-that-is-not-an-action-run-is-rejected`
-(`SMITHERS4112`) and `…/two-error-classes-under-one-durable-identity-are-rejected`
-(`SMITHERS4124`, `xfail go`); the census is `scripts/coverage-codes.mjs`, and the
+(`VIBE4112`) and `…/two-error-classes-under-one-durable-identity-are-rejected`
+(`VIBE4124`, `xfail go`); the census is `scripts/coverage-codes.mjs`, and the
 subtraction it derives is the NINTH re-derivation below. Measured with
 `node conformance/runner/run.mjs`, with the pinned TypeScript fork exported:
 
@@ -361,8 +979,8 @@ exit 0
 ACCEPTS what the corpus refuses 0**, and "the measured divergence set matches
 `conformance/product-divergence.json` exactly", exit 0. The three new rows are
 all `both-refuse` and all carry the cause the twenty-five `17-durable` rows
-beside them carry — `bin/smithers.js check` calls no durable frontend, so the
-product cannot report a `SMITHERS41xx` on any program. The other gates:
+beside them carry — `bin/vibe.js check` calls no durable frontend, so the
+product cannot report a `VIBE41xx` on any program. The other gates:
 `bun run check` exit 0 with a Go census of **1626**; `bun test` in `poc/`
 **2652 pass, 1 skip, 0 fail**; `node scripts/node-test-gate.mjs` census **230**;
 `go build ./... && go vet ./...` clean; `npm run verify:pack` exit 0.
@@ -386,7 +1004,7 @@ product-ACCEPTS; Go census 1609; `poc/` 2634 pass, 1 skip, 0 fail; Node gate 197
 > 2026-08-27 at 507 cases; the corpus passed through 511, 515 and 518 with
 > nothing written here, and migration steps 1–15 — which felled the durable
 > walls, replaced the static Plan with the Effect Manifest, retired
-> `SMITHERS1807`, and made determinism-sensitive members charge requirements —
+> `VIBE1807`, and made determinism-sensitive members charge requirements —
 > are recorded in this section not at all. The gap is why step 16 found stale
 > figures in six separate places rather than one. **A log that is only written
 > when a corpus lane runs cannot see a revision that changes the implementation
@@ -395,10 +1013,10 @@ product-ACCEPTS; Go census 1609; `poc/` 2634 pass, 1 skip, 0 fail; Node gate 197
 
 **2026-08-27, ninth revision — the durable-projection revision.** Four cases
 added, **503 → 507**, all in `17-durable`. **No new `support/` module, no new
-asset, no new `.mod.sm`**; **no new `xfail` marker and none retired** (18 before
+asset, no new `.mod.vibe`**; **no new `xfail` marker and none retired** (18 before
 and after, 16 `go` / 3 `js`, and **none of the four needed one**); cases
 declaring a `messageContains` 38 → **41**; distinct declared diagnostic codes
-80 → **81**, and the `SMITHERS`-only figure the subtraction below uses **73 →
+80 → **81**, and the `VIBE`-only figure the subtraction below uses **73 →
 74**. **No implementation code was written or changed by this lane** — it owns
 `conformance/corpus/**`, `conformance/support/**` and this page. Measured with
 `node conformance/runner/run.mjs --backend both --jobs 4`:
@@ -416,26 +1034,26 @@ Baseline for the same command before the revision: 503 cases, JS 500/503 with 3
 **All four new cases agree on both backends**, so backend agreement rose by
 exactly four and the disagreeing set is unchanged at eighteen rows.
 
-**These four are the corpus's first reach into `SMITHERS4110`, and that matters
+**These four are the corpus's first reach into `VIBE4110`, and that matters
 for the subtraction below rather than only for §20.** Three lanes on 2026-08-26
 and 2026-08-27 closed a chain of durable-boundary fail-opens — the reference's
 Flow-output projection walk, then the fork's, then the Action **input** on both —
 and **none of them wrote a corpus case, by design**, because until the last of
-the three landed the program either could not be reached from a `.sm` file at all
+the three landed the program either could not be reached from a `.vibe` file at all
 or needed an `xfail(go)` that would have put the first marker into the
 "markers holding a fail-open" register. All three are now closed on both
 backends at the same code, line, column and sentence, so the cases land unmarked.
 The set is
 `17/an-action-input-projection-the-descriptor-does-not-have-is-rejected`
-(`SMITHERS4110@11:29`, "…`#Step input cannot project length from durable
+(`VIBE4110@11:29`, "…`#Step input cannot project length from durable
 array`"), its paired positive control
 `17/an-action-input-projection-the-descriptor-can-answer-is-accepted`
 (`expect: "output"`, runs to `["static-plan-artifact"]` on both),
 `17/a-sleep-duration-projection-the-descriptor-does-not-have-is-rejected`
-(`SMITHERS4110@10:29`, "`sleep duration cannot project length from durable
+(`VIBE4110@10:29`, "`sleep duration cannot project length from durable
 array`") and
 `17/an-action-input-projection-through-a-durable-string-is-rejected`
-(`SMITHERS4110@10:29`, "…`from durable string`").
+(`VIBE4110@10:29`, "…`from durable string`").
 
 **The `sleep` case is worth more than its size and the reason is mechanical.**
 The repair works by having every failure site drop a hard-coded `"Flow output "`
@@ -457,7 +1075,7 @@ the projection swapped and nothing else touched — `input.items[0]` where the
 refusal writes `input.items.length`, over `readonly number[]` into
 `{ key: number }` so both spellings type as `number` — and mutating the SOURCE
 back to `.length` turns it into the refusal on both backends at
-`SMITHERS4110@12:29` with the byte-identical sentence. One projection is the
+`VIBE4110@12:29` with the byte-identical sentence. One projection is the
 whole difference between accept and refuse, measured on both implementations.
 
 `node scripts/oracle-differential.mjs`: **507 measured, 59 divergent**,
@@ -467,10 +1085,10 @@ did not move. The measured set gained **four rows** against
 re-baselined**, because this lane does not own that file. All four rows are the
 pre-existing `17-durable` pattern, not a new disagreement: every one of the
 twenty durable cases already in that file is recorded with `TS2307` at the
-`"smithers:flows"` specifier and verdict `product-wrong`, because
-`bin/smithers.js check` does not resolve the compiler-owned virtual module on
+`"vibelang:flows"` specifier and verdict `product-wrong`, because
+`bin/vibe.js check` does not resolve the compiler-owned virtual module on
 that route. The three refusals join the `both-refuse` bucket (corpus
-`SMITHERS4110`, product `TS2307` + `TS2339`) and the control joins
+`VIBE4110`, product `TS2307` + `TS2339`) and the control joins
 `product-refuses` exactly as
 `17/a-plain-projection-reaches-the-plan-as-an-input-expression` already does.
 `node --test conformance/runner/selftest.mjs`: **31 tests, 0 failed, 0
@@ -496,10 +1114,10 @@ cases' own `notes`.
 
 **2026-08-27, eighth revision — the capability-argument revision.** Five cases
 added, **498 → 503**: three in `06-layers` and two in `09-foreign-calls`. **No
-new `support/` module, no new asset, no new `.mod.sm`**; **no new `xfail` marker
+new `support/` module, no new asset, no new `.mod.vibe`**; **no new `xfail` marker
 and none retired** (18 before and after, 16 `go` / 3 `js`, and none of the five
 needed one); `messageContains` 36 → **37**; distinct declared diagnostic codes
-**79 before and 79 after**, and the `SMITHERS`-only figure the subtraction below
+**79 before and 79 after**, and the `VIBE`-only figure the subtraction below
 uses **72 before and 72 after**. **No implementation code was written or changed
 by this lane** — it owns `conformance/corpus/**`, `conformance/support/**` and
 this page. Measured with `node conformance/runner/run.mjs --backend both
@@ -521,7 +1139,7 @@ unchanged at eighteen rows; the per-case rows diff against the baseline is
 exactly the five added lines and the three summary lines, and nothing else.
 
 **These five close a hole the previous revisions could not see, one ARGUMENT
-away from a site the corpus already covered.** `SMITHERS2106`'s settled rule —
+away from a site the corpus already covered.** `VIBE2106`'s settled rule —
 resolve a capability reference by SYNTAX first and by TYPE second, and refuse
 what cannot be pinned to exactly one class declaration — governs the
 `X.context()` receiver and was found on 2026-08-27 not to be applied at
@@ -546,13 +1164,13 @@ over-correction guards and are `expect: "output"` on purpose**
 `an-ordinary-tagged-template-is-not-the-panic-intrinsic`). The guards are not
 filler: the fix behind them removed **13 reference over-refusals on programs that
 run**, this repository has shipped **ten** over-corrections, and a
-`SMITHERS1503` keyed on the identifier `panic` closes one of the refusal case's
+`VIBE1503` keyed on the identifier `panic` closes one of the refusal case's
 four spellings while taking `local.panic`b`` with it.
 
 **One shape is deliberately NOT in the corpus and is named here so nobody adds
 it by accident.** `let C = Directory; C = Twin; Layer.succeed(C, directory)` is
 accepted and panics at run time on **both** backends today. That is
-`SMITHERS2106`'s own pre-existing residual — the identical shape at the
+`VIBE2106`'s own pre-existing residual — the identical shape at the
 `.context()` receiver behaves the same way, untouched — and closing it needs a
 new rule that has to move both walks together. It is pinned as an explicit
 known-residual **unit** test (`poc/src/language/layer-capability-argument.test.ts`),
@@ -583,7 +1201,7 @@ added, **493 → 498**, all five in `09-foreign-calls`; **nine new `support/`
 modules** and no new asset; **no new `xfail` marker and none retired** (18 before
 and after, and none of the five needed one); `messageContains` 33 → **36**;
 distinct declared diagnostic codes **79 before and 79 after** — the five cases
-declare exactly one code, `SMITHERS1510`, which twenty-one other cases already
+declare exactly one code, `VIBE1510`, which twenty-one other cases already
 declare. **No implementation code was written or changed by this lane** — it owns
 `conformance/corpus/**`, `conformance/support/**` and this page. Measured with
 `node conformance/runner/run.mjs --backend both --jobs 4`:
@@ -631,10 +1249,10 @@ assertion cannot tell *trusted* from *silently dropped*.
 `product ACCEPTS what the corpus refuses` still **0**. **The measured set moved by
 exactly three rows and this lane did not re-baseline the record**, exactly as the
 sixth revision did not. The three are the three refusal cases, all `both-refuse`,
-all with the product reporting `SMITHERS1510` at the FOREIGN module's first
+all with the product reporting `VIBE1510` at the FOREIGN module's first
 statement (`miscased-relay-target.ts:2:1`, `unmarked-relay-target.ts:1:1` twice)
-where the corpus declares it at the `.sm` import specifier. That is the recorded
-`duplicate-SMITHERS1510-implementation-in-the-runtime-graph` cause, which nine
+where the corpus declares it at the `.vibe` import specifier. That is the recorded
+`duplicate-VIBE1510-implementation-in-the-runtime-graph` cause, which nine
 rows already carry: `src/relative-runtime-graph.ts` already walked the closure and
 reports before the semantic stage, which is why the shipped CLI was never affected
 by this defect and why its position anchors differently. The bucket goes 9 → 12
@@ -658,7 +1276,7 @@ deferral proof fails. The mutator refused to run a case unless it was green on
 **both** backends first and refused any mutation whose search string did not occur
 exactly once in the file. **One further mutation came back GREEN and is reported
 rather than hidden**: redirecting the depth-3 chain's middle relay at a module the
-case does not stage produces the *same* `SMITHERS1510@1:24`, because an unresolved
+case does not stage produces the *same* `VIBE1510@1:24`, because an unresolved
 relative initialization edge is fail-closed on both backends ("that specifier could
 not be resolved to a module carrying …"). That is a non-discriminating mutation,
 correctly refused by the exactly-once/green-first guard rather than a defect in the
@@ -671,10 +1289,10 @@ five in `01-result-lifting`, four in `05-context-rows`, three in
 `02-unwrap-propagation`; **five new `support/` modules** (the first revision since
 2026-08-25 to need any) and no new asset; **no new `xfail` marker and none
 retired** (18 before and after); `messageContains` 27 → **33**; distinct declared
-diagnostic codes 78 → **79**, the one new code being `SMITHERS1604`, which the
+diagnostic codes 78 → **79**, the one new code being `VIBE1604`, which the
 `18-typescript-requirement` case that replaced `eval-is-usable-and-not-forbidden`
 brought in before this lane started — **the twenty-eight cases themselves declare
-no code the corpus did not already declare** (`SMITHERS1103`, `1104`, `1503`,
+no code the corpus did not already declare** (`VIBE1103`, `1104`, `1503`,
 `1510`, `1602`, `1604`, `2102`), which is the same shape as the revision below it
 and for the same reason. **No implementation code was written or changed by this
 lane** — it owns `conformance/corpus/**` and this page. The eleven defects the
@@ -722,10 +1340,10 @@ one figure on this page that changed shape rather than size. The three are
 `09/a-line-comment-holding-the-trust-marker-does-not-confer-module-trust`,
 `09/a-block-comment-holding-the-trust-marker-does-not-confer-module-trust` and
 `09/exotic-whitespace-in-the-trust-marker-does-not-confer-module-trust`, all
-`both-refuse`, all with the product reporting `SMITHERS1510` at the FOREIGN
-module's first statement where the corpus declares it at the `.sm` import
+`both-refuse`, all with the product reporting `VIBE1510` at the FOREIGN
+module's first statement where the corpus declares it at the `.vibe` import
 specifier. That is not a new defect: it is the recorded
-`duplicate-SMITHERS1510-implementation-in-the-runtime-graph` cause, which six rows
+`duplicate-VIBE1510-implementation-in-the-runtime-graph` cause, which six rows
 already carry including the two sibling cases
 `09/miscased-trust-markers-do-not-confer-module-trust` and
 `09/near-miss-trust-markers-do-not-confer-module-trust`. The bucket goes 6 → 9 and
@@ -754,7 +1372,7 @@ and the fork's `checkForeignModuleTrust` both stop at depth 1. Measured on both
 backends this revision, and the blocker is *wider* than the lane that reported it
 recorded: an entirely UNMARKED module reached through a marked relay is accepted
 too, not merely a miscased one, while the direct import of either is refused
-`SMITHERS1510@1:24`. A case there would have to declare `expect: "output"`, which
+`VIBE1510@1:24`. A case there would have to declare `expect: "output"`, which
 would contradict the CLI's correct refusal and ADD a `product-refuses` row rather
 than close one. It stays specified and unwritten until the reference walks the
 reached-module closure.
@@ -772,7 +1390,7 @@ reached-module closure.
 **2026-08-27, fifth revision — the round-6 backlog revision.** Twenty-seven cases
 added, **438 → 465** — eleven in `05-context-rows`, six in `06-layers`, six in
 `09-foreign-calls`, four in `07-must-consume`; no new `support/` module and no new
-asset (every case uses `.sm` alone or a support module that already existed);
+asset (every case uses `.vibe` alone or a support module that already existed);
 **no new `xfail` marker and none retired** (18 before and after); `messageContains`
 19 → **27**; distinct declared diagnostic codes **78 before and 78 after — the
 first revision in this page's history to add cases and add no code**, which is
@@ -832,7 +1450,7 @@ file, so no mutation could land in prose instead of in a declaration.
 **One claim this lane had been about to write down was measured false and is
 recorded instead.** Several `output` negatives argue "a wrongly charged row would
 be an unsatisfied top-level requirement and the program would be refused". It
-would not. `SMITHERS2102` fires on top-level **calls**, and a case's functions are
+would not. `VIBE2102` fires on top-level **calls**, and a case's functions are
 reached through `main`, which the harness calls — so a wrongly charged row is not
 refused, it **aborts**: `Panic: capability 'Db' was not provided` on the reference
 and `Panic: unsatisfied Context requirement` on the fork, exit code 1 on both.
@@ -842,10 +1460,10 @@ and is now what their notes say.
 
 **2026-08-26, fourth revision — the requirement-row revision.** Fourteen cases
 added, **424 → 438** — twelve in `05-context-rows`, two in `20-host-globals`; no
-new `support/` module and no new asset (every case is self-contained `.sm`); **no
+new `support/` module and no new asset (every case is self-contained `.vibe`); **no
 new `xfail` marker and none retired** (18 before and after); `messageContains`
 18 → **19**; distinct declared diagnostic codes 76 → **78**, the two new ones
-being `SMITHERS2106` and `SMITHERS2107`. **No implementation code was written or
+being `VIBE2106` and `VIBE2107`. **No implementation code was written or
 changed by this lane** — it owns `conformance/corpus/**` and this page and
 nothing else; the four rules the cases pin were closed the same day by two other
 lanes, in `poc/src/language/semantic.ts` and `compiler/forkbridge/*.go.txt`, and
@@ -889,7 +1507,7 @@ records its mutation and its restore hash).
 
 **2026-08-26, third revision — the six-lane backlog pass.** Fourteen cases added,
 408 → **422**, all fourteen in `17-durable`; no new `support/` module and no new
-asset (every case is self-contained `.sm`); **no new `xfail` marker and none
+asset (every case is self-contained `.vibe`); **no new `xfail` marker and none
 retired**; `messageContains` 12 → **18**. **No implementation code was written or
 changed, and that was verified rather than asserted**: `sha256` of
 `poc/src/durable/{source-compiler,schema,ir,artifact}.ts` and
@@ -918,9 +1536,9 @@ says sixteen, so the number in circulation was stale. Read the run.
 **Thirteen of the fourteen are green on both backends. The fourteenth is the
 first `unsupported` row this corpus has ever carried**, and it is honest rather
 than regrettable: `17/an-actions-failure-channel-mints-one-identity-per-error-class`
-reads `plan.actions[0].errorSchema.descriptor`, and the fork's `smithers:flows`
+reads `plan.actions[0].errorSchema.descriptor`, and the fork's `vibelang:flows`
 surface has no `descriptor` on a durable schema, so it reports stock `TS2339` on
-an authored `.sm` file — the harness's own definition of "parsed Smithers syntax
+an authored `.vibe` file — the harness's own definition of "parsed VibeLang syntax
 it has no handling for". `unsupported` does not gate (only `fail` does), so exit
 stays 0; the cost is one row of backend agreement and it buys the first corpus
 observation of a compiler-derived durable failure identity.
@@ -928,7 +1546,7 @@ observation of a compiler-derived durable failure identity.
 **None of the fourteen was demonstrated failing against pre-fix behaviour, and
 that is stated here because conflating it with the alternative is the thing this
 page keeps warning about.** The durable lane's fix hardened the *runtime
-authoring guard* (`poc/src/durable/authoring.ts`); the `.sm` path these cases
+authoring guard* (`poc/src/durable/authoring.ts`); the `.vibe` path these cases
 exercise was measured failing closed on every one of these forms both before and
 after it. **They pin current behaviour on the normative path**, which had one
 declared refusal rule on one form before this revision. The two acceptance cases
@@ -1029,7 +1647,7 @@ restored, and sha256-compared byte-identical to the original.
 
 **2026-08-25, fourth revision — the five-lane backlog revision, and one harness
 change.** Thirty-three cases added, 321 → **354**; eight new `support/` modules,
-thirteen new `*.mod.sm` companions, and one strengthened observation in the
+thirteen new `*.mod.vibe` companions, and one strengthened observation in the
 shared harness; **five** new `xfail` markers, none retired. Three
 existing expectations were **rewritten** because the harness now observes
 something stronger. Measured with
@@ -1066,9 +1684,9 @@ three of the five lanes edited the same two files.** A detached worktree at
 `dede442` with the whole working tree overlaid, its control arm confirmed to
 reproduce the main tree case for case, and then a *targeted* revert per lane
 rather than a file restore: a reverse patch built from the L1 lane's own saved
-before/after for `SMITHERS1802`; the two `instanceof` right-operand exemption
+before/after for `VIBE1802`; the two `instanceof` right-operand exemption
 blocks for the host-global lane; three separable sites for the error-transport
-lane (the emitted registration, `smithersErrorIs`, and the unguarded name read);
+lane (the emitted registration, `vibelangErrorIs`, and the unguarded name read);
 one condition plus its mirrored pair for the callback-trust lane; and the three
 regexes plus two `strings.ToLower` calls for the marker-casing lane. Every revert
 was restored and re-verified byte-identical against the main tree afterwards.
@@ -1093,9 +1711,9 @@ exit 0
 **`exit 0` and `0 divergent` for the first time since the panic rule landed on
 both backends.** The previous revision's single red row —
 `09-foreign-calls/a-panic-in-an-if-body-still-needs-the-panic-channel`, which
-declared `SMITHERS1101@2:1` for exactly the program
+declared `VIBE1101@2:1` for exactly the program
 `specification/failures.mdx` §Panic Does Not Widen a Return Type now makes legal
-— was **replaced, not deleted**. It keeps its `.sm` byte for byte, is renamed
+— was **replaced, not deleted**. It keeps its `.vibe` byte for byte, is renamed
 `a-panic-in-an-if-body-keeps-a-plain-return-type`, and declares
 `expect: output ["done"]`. Read that replacement together with the `1 xfail` and
 the `7 xfail`, exactly as this page has always asked: `0 divergent` means "no
@@ -1123,9 +1741,9 @@ Plus `node --test conformance/runner/selftest.mjs` → 9/9, 0 skipped
 (`selftest.mjs` not modified). Tree: working copy on
 `poc/pre-withdrawal-checkpoint` at `dede442`, with uncommitted work from the
 convergence lane, the callback-contract lane, the panic lane, the data lane and a
-live `SMITHERS1802`/`for-of` lane. **This revision did not re-derive the code-set
+live `VIBE1802`/`for-of` lane. **This revision did not re-derive the code-set
 subtractions or the census sections**; it corrected the rows it touched and the
-two `SMITHERS1105`/`SMITHERS1106` rows that this revision's own work moved out of
+two `VIBE1105`/`VIBE1106` rows that this revision's own work moved out of
 the "spelled by one implementation and probed by no case" bucket.
 
 **2026-08-25, second revision — the convergence revision.** Fifty cases added,
@@ -1145,7 +1763,7 @@ exit 1
 **Read the `1 divergent` and the `exit 1` before anything else, because they are
 not this revision's.** The single failing case is
 `09-foreign-calls/a-panic-in-an-if-body-still-needs-the-panic-channel`, which
-declares `SMITHERS1101@2:1` and is now accepted and run by **both** backends.
+declares `VIBE1101@2:1` and is now accepted and run by **both** backends.
 That was **proved, not assumed, to belong to the live panic lane**: the
 uncommitted working-tree edit to `poc/src/language/semantic.ts` deletes
 `fn.directFailures.add("Panic")` for an authored `panic(...)` exit and cites
@@ -1154,13 +1772,13 @@ that replaces it; `compiler/forkbridge/lowering.go.txt` carries the mirror-image
 edit with the same citation; both files were modified at 12:21 while this
 revision was running, hours after the convergence lane finished; and the case
 that moved declares exactly the code that edit changes. That case, and the
-`SMITHERS1101`/`SMITHERS1105` obligations behind it, belong to that lane to
+`VIBE1101`/`VIBE1105` obligations behind it, belong to that lane to
 re-specify and re-pin. **Settled by the third revision above** — the expectation
 was replaced from the specification, the rule was pinned in both directions by
-twenty-two new cases, and the `SMITHERS1105` obligation the sentence above defers
+twenty-two new cases, and the `VIBE1105` obligation the sentence above defers
 turned out to be an unmeasured backend asymmetry rather than a panic question;
-see §7.24–7.27. **No case in this revision depends on `SMITHERS1101`,
-`SMITHERS1105`, or panic widening**, which was a deliberate boundary and is why
+see §7.24–7.27. **No case in this revision depends on `VIBE1101`,
+`VIBE1105`, or panic widening**, which was a deliberate boundary and is why
 the rest of the corpus is unmoved by an in-flight rule change to both backends
 at once.
 
@@ -1242,7 +1860,7 @@ areas. Per-area counts, re-measured with
 | 06-layers | 7 | | 22-source-text-fidelity | 3 | | 23-asset-imports | 21 |
 | 07-must-consume | 11 | | 08-promise-chaining | 10 | | **total** | **204** |
 
-Supporting files, re-measured after the withdrawal: **7** `*.mod.sm` auxiliary
+Supporting files, re-measured after the withdrawal: **7** `*.mod.vibe` auxiliary
 modules (23 before it, 17 before that — 16 of them belonged to `21-native-pin`),
 **8** `conformance/support/*.ts` foreign modules, **8** `conformance/assets/*`
 staged files, **6** `conformance/interop/*.ts`.
@@ -1285,7 +1903,7 @@ applies to them: **a reason recorded here can go stale as fast as a number can.*
 
 **And this revision found something worse than a stale reason: a wrong
 method.** The command this page prints for the fork's code set —
-`grep -roh 'SMITHERS[0-9]\{4\}' compiler/ | sort -u` — is wrong in both
+`grep -roh 'VIBE[0-9]\{4\}' compiler/ | sort -u` — is wrong in both
 directions, and every figure derived from it for the last three revisions was
 wrong with it. It counted one code the fork does not implement (a code named
 only in two design documents that say it is **retired**) and missed nineteen the
@@ -1312,9 +1930,9 @@ it, because that sentence is a dated measurement and its reasoning held up.
 "rules both implementations have and no case probes" subtraction is **19 for the
 fourth revision running**, and this time not one input moved either: R = 110,
 F = 112, intersection = 91, corpus = 72. The five cases declare exactly one code
-between them, `SMITHERS1510`, which twenty-one other cases already declare. The
+between them, `VIBE1510`, which twenty-one other cases already declare. The
 subtraction counts codes and cannot count **distance** any more than it could
-count spellings — `SMITHERS1510` had five cases while both backends ran an
+count spellings — `VIBE1510` had five cases while both backends ran an
 untrusted initializer one edge away. The figure that moved is backend agreement,
 **475/493 → 480/498**, and the reason it is the right figure to read is that
 closing 58 measured divergences on the two implementations moved it by **zero**.
@@ -1350,7 +1968,7 @@ commands and the argument.
 **Three rows this revision put into `conformance/product-divergence.json`'s
 future and did not write.** The three trust-marker refusal cases move the
 oracle-differential measured set from 49 to 52, all `both-refuse`, all the
-already-recorded `duplicate-SMITHERS1510-implementation-in-the-runtime-graph`
+already-recorded `duplicate-VIBE1510-implementation-in-the-runtime-graph`
 cause, `product ACCEPTS` still 0. The record is not this lane's file and was not
 re-baselined; that gate exits 1 until the three rows are added with
 `verdict: "product-wrong"`.
@@ -1390,7 +2008,7 @@ revision exists at all rather than being a footnote to the last one.
 
 | # | what was unpinned | what pins it now |
 | --- | --- | --- |
-| M | **a callee could move its Results into a container, return them, and charge nobody.** `return` was treated as an unconditional discharge for a stored value, and the caller was never charged, because the walk started only from producers whose own value *is* a Result — and a call returning `readonly Result<A,E>[]` is a plain value. The obligation left the callee and arrived nowhere; both backends compiled, ran and exited 0 on a program that threw and dropped a checked `SaveFailed`. | 7 cases in `07-must-consume`. **Four refusals** — the executed defect (`SMITHERS1301@15:20`), its `await` spelling, the `1402` twin for a container of started Promises, and the `: unknown` launder that keeps the return-type gate honest — all four demonstrated failing on the pre-fix tree on **both** backends with identical stdout. **Three acceptance guards**, proved enforced by mutation: `Result.all` over a returned collection, an index read off an unbound one, and — the sharpest — a **published** collection with no caller in the file, which is the only case that can see the obvious over-fix of refusing the callee. |
+| M | **a callee could move its Results into a container, return them, and charge nobody.** `return` was treated as an unconditional discharge for a stored value, and the caller was never charged, because the walk started only from producers whose own value *is* a Result — and a call returning `readonly Result<A,E>[]` is a plain value. The obligation left the callee and arrived nowhere; both backends compiled, ran and exited 0 on a program that threw and dropped a checked `SaveFailed`. | 7 cases in `07-must-consume`. **Four refusals** — the executed defect (`VIBE1301@15:20`), its `await` spelling, the `1402` twin for a container of started Promises, and the `: unknown` launder that keeps the return-type gate honest — all four demonstrated failing on the pre-fix tree on **both** backends with identical stdout. **Three acceptance guards**, proved enforced by mutation: `Result.all` over a returned collection, an index read off an unbound one, and — the sharpest — a **published** collection with no caller in the file, which is the only case that can see the obvious over-fix of refusing the callee. |
 | F | **the fork's foreign property rule read the MEMBER's declarations while its own comment said it read the RECEIVER's provenance.** The verdict was right on the dotted, declared-member spelling and wrong everywhere else; the corpus had only that one spelling, so the whole claim was unpinned. | 3 cases in `09-foreign-calls`, each a spelling the old gate admitted: an element access, a member declared only in `lib.es5.d.ts`, and a binding pattern with no member expression. All three compiled, ran and exited 0 on the fork's pre-fix tree. All three carry `xfail(go)` for the row charge alone, which is a different rule. |
 
 **A correct verdict resting on a stale reason is the shape this repository keeps
@@ -1404,7 +2022,7 @@ would answer differently, which is what the three `09` cases are.
 `09/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter` stated, as
 measured fact, that the fork compiled the program with zero diagnostics and ran
 it. That stopped being true when the fail-open closed, and the marker was
-*correct to keep* — the fork still omits the `SMITHERS1101` — so nothing in any
+*correct to keep* — the fork still omits the `VIBE1101` — so nothing in any
 run would have flagged it. A marker that survives a partial fix carries a reason
 that describes a backend that no longer exists. Re-read a `reason` against the
 backend before quoting it.
@@ -1465,11 +2083,11 @@ direction, however many times it is rewritten.
 | --- | --- | --- |
 | R1 | **the whole native-pin portability surface below the import list.** Sixteen cases in `21-native-pin` all reached the host through an import or a re-export. Nothing pinned a module-level initializer, an immediately-invoked function, a callback a visible callee invokes, a class instance whose method reads authority, a `Layer.provide` callback, or the transitive module load graph. | 9 cases in `21-native-pin`, one per class, each asserting the **composed dependency route** with `messageContains` and not merely the code. **Four of them fail on the fork** — see the register. |
 | R2 | **the negative half of every one of those rules.** An over-correction is the direction that refuses a portable program, and `classify.ts`'s own header records that this analyzer has shipped one three times. | 3 acceptance controls, written as adjacent twins rather than as separate cases: a callee that only STORES its callback (an `expect: "output"` case that compiles and runs), a layer whose provided capability really is subtracted, and — measured and stated in the case's own notes — the fact that the storing twin **passes on a backend that enters no callback at all**, so it certifies nothing when read alone. |
-| R3 | **`SMITHERS3005`, the gate on the whole native-pin area** — and both of its branches, which report at different positions. | `21-native-pin/a-pin-whose-argument-is-not-a-project-function-is-rejected` (at the argument) and `a-pin-given-two-arguments-is-rejected` (at the call). |
-| R4 | **four more codes both implementations spell and no case probed**: `SMITHERS1503` (a `panic(...)` exit written where a value is expected), `SMITHERS1713` (an async `errdefer` over a directly returned Promise — recorded as **partial** at 14.7 with "isolating it needs a narrower program", which this is), `SMITHERS2103` (a `Layer.provide` callback that resolves to nothing checkable), and `SMITHERS4103` (an opaque `durable(...)` argument, obligation 20.5, the durable area's exact analogue of R3). | one case each in `09-foreign-calls`, `10-defer`, `06-layers`, `17-durable`. |
-| R5 | **the method behind this page's two headline subtractions.** Both are computed from `grep -roh 'SMITHERS[0-9]\{4\}' compiler/`, which reads design documents and test files as if they were implementation and cannot see a code the implementation builds by concatenation. | both sections below now print a corrected command, the corrected set, **and the diff against the old method**: 1 false positive, 19 false negatives. |
+| R3 | **`VIBE3005`, the gate on the whole native-pin area** — and both of its branches, which report at different positions. | `21-native-pin/a-pin-whose-argument-is-not-a-project-function-is-rejected` (at the argument) and `a-pin-given-two-arguments-is-rejected` (at the call). |
+| R4 | **four more codes both implementations spell and no case probed**: `VIBE1503` (a `panic(...)` exit written where a value is expected), `VIBE1713` (an async `errdefer` over a directly returned Promise — recorded as **partial** at 14.7 with "isolating it needs a narrower program", which this is), `VIBE2103` (a `Layer.provide` callback that resolves to nothing checkable), and `VIBE4103` (an opaque `durable(...)` argument, obligation 20.5, the durable area's exact analogue of R3). | one case each in `09-foreign-calls`, `10-defer`, `06-layers`, `17-durable`. |
+| R5 | **the method behind this page's two headline subtractions.** Both are computed from `grep -roh 'VIBE[0-9]\{4\}' compiler/`, which reads design documents and test files as if they were implementation and cannot see a code the implementation builds by concatenation. | both sections below now print a corrected command, the corrected set, **and the diff against the old method**: 1 false positive, 19 false negatives. |
 
-**One case was written, measured, and deliberately not landed**: `SMITHERS1708`.
+**One case was written, measured, and deliberately not landed**: `VIBE1708`.
 See §13.21 — the evidence says the fork is right and the reference's refusal is a
 limitation of its own lowering strategy, so pinning it would have made the
 fork's correct behaviour a conformance failure.
@@ -1494,9 +2112,9 @@ both turned out to be larger than that revision's list of them.
 
 | # | what was unpinned | what pins it now |
 | --- | --- | --- |
-| Q1 | **`SMITHERS1507`/`SMITHERS1508`** — order-unsafe foreign call and provenance-escape shapes. Present in *both* implementations and in *neither* the corpus, which is the worst combination: nothing would notice either backend losing them. | 4 refusals + 2 acceptance controls in `09-foreign-calls`, covering both branches of the lowerability predicate and two of the four escape sites. §7.17, §7.20–7.22. |
-| Q2 | the **Go CLI's default lowering mode**. `LoweringIdentity` was the empty string, i.e. the zero value of `LoweringMode`, and `cmd/smithersc-go` built positional requests with no `Lowering` field, so every positional invocation compiled `.sm` through the stock TypeScript checker and applied **no Smithers rule at all**. Fixed at both ends; nothing on the conformance side asserted it, and **no corpus case can**, because the runner always sends a mode explicitly. | `conformance/runner/selftest.mjs`, plus a named `loweringMode` constant in `corpus.mjs` that every Go request now reads. See §21.7. |
-| Q3 | **8 of the 12 remaining asset rejections**, prioritised by that revision's own instruction to take the fail-open direction of the Locked static-selection rule first. | 4 refusals + 1 acceptance control in `23-asset-imports` (`SMITHERS5206`, `5207`, `5213`, `5218`). One of them was a live Go fail-open, and it is the marker this revision retired. §17.12. |
+| Q1 | **`VIBE1507`/`VIBE1508`** — order-unsafe foreign call and provenance-escape shapes. Present in *both* implementations and in *neither* the corpus, which is the worst combination: nothing would notice either backend losing them. | 4 refusals + 2 acceptance controls in `09-foreign-calls`, covering both branches of the lowerability predicate and two of the four escape sites. §7.17, §7.20–7.22. |
+| Q2 | the **Go CLI's default lowering mode**. `LoweringIdentity` was the empty string, i.e. the zero value of `LoweringMode`, and `cmd/vibec-go` built positional requests with no `Lowering` field, so every positional invocation compiled `.vibe` through the stock TypeScript checker and applied **no VibeLang rule at all**. Fixed at both ends; nothing on the conformance side asserted it, and **no corpus case can**, because the runner always sends a mode explicitly. | `conformance/runner/selftest.mjs`, plus a named `loweringMode` constant in `corpus.mjs` that every Go request now reads. See §21.7. |
+| Q3 | **8 of the 12 remaining asset rejections**, prioritised by that revision's own instruction to take the fail-open direction of the Locked static-selection rule first. | 4 refusals + 1 acceptance control in `23-asset-imports` (`VIBE5206`, `5207`, `5213`, `5218`). One of them was a live Go fail-open, and it is the marker this revision retired. §17.12. |
 | Q4 | **the other subtraction.** The reference-only section subtracts the fork's code set from the reference's. It had never subtracted the *corpus's* code set from the **intersection** — the rules both implementations spell and no case probes. That set was recorded as **13 codes**; this revision's corrected method makes the comparable figure **27**. | recomputed and tabled in §"Rules both implementations have and no case probes". |
 
 ### What the revision four before that changed
@@ -1512,10 +2130,10 @@ oracle rather than in a backend.
 
 | # | what was unpinned | what pins it now |
 | --- | --- | --- |
-| P1 | the entire **re-export surface**: zero of the corpus's `.sm` files contained `export … from` or `export *`, in any area | 7 cases in `21-native-pin` and 1 in `09-foreign-calls`. Writing them found a Go fail-open nobody had measured; it is now closed and those five markers are retired. |
+| P1 | the entire **re-export surface**: zero of the corpus's `.vibe` files contained `export … from` or `export *`, in any area | 7 cases in `21-native-pin` and 1 in `09-foreign-calls`. Writing them found a Go fail-open nobody had measured; it is now closed and those five markers are retired. |
 | P2 | the retired **`vibelang:flows`** specifier, which the Go bridge carried in both its compiler-owned and its durable module tables | `17-durable/the-retired-vibelang-flows-specifier-is-not-compiler-owned`, paired with `a-single-action-flow-lowers-to-a-static-plan` |
 | P3 | the **module-initialization trust marker** grammar — all three of its holes, one of which is triggered by the header the specification tells authors to write | 3 cases in `09-foreign-calls` |
-| P4 | **`@throws {Never}`** case sensitivity, and 4 **import-attribute shape** rules (`SMITHERS5203`/`5204`/`5205`, incl. the no-substitution template literal) | 1 case in `09-foreign-calls`, 4 in `23-asset-imports` |
+| P4 | **`@throws {Never}`** case sensitivity, and 4 **import-attribute shape** rules (`VIBE5203`/`5204`/`5205`, incl. the no-substitution template literal) | 1 case in `09-foreign-calls`, 4 in `23-asset-imports` |
 | P5 | **shadowed compiler-owned namespaces**: a user's own `Result`/`Promise` discharging must-consume by spelling | 4 cases in `07-must-consume` (2 refusals, 2 acceptance controls) |
 | P6 | **the harness's own equality relation**: the JS driver pinned `comptime.target` to `node-es2022` while the Go request sent `options: {}` and the bridge defaulted to `typescript-node`, so every comptime case compared two compilations of two different programs | one shared `comptimeTarget` constant in `conformance/runner/corpus.mjs`, sent explicitly to both backends, plus `16-comptime/the-comptime-target-is-one-declared-input-for-both-backends` |
 
@@ -1529,12 +2147,12 @@ Five things it says were wrong before:
 | --- | --- | --- |
 | C1 | 10.13 and observation gap #2: "There is no native or **Wasm** backend… no implementation surface exists." | The native/LLVM half is right. The Wasm half is false: `poc/src/targets/portable-backend.ts` is 4,180 lines with 65 diagnostic codes and executes real WebAssembly. Row **10.14** now records it, with the corpus pinning zero of its codes. |
 | C2 | §19 and §20 listed comptime and durable obligations "so the census is complete" and assigned **no status to any of them**, deferring to "other lanes". | No other lane returned. Both sections now have one row per normative sentence with a verdict and a named reason. §20 comes out **31 of 40 uncovered**. |
-| C3 | 7.17: `SMITHERS1507`/`SMITHERS1508` "both fire and are *observed* in the corpus, but only as cascade members inside other cases." | Neither code appears anywhere under `conformance/corpus/`, and `conformance/runner/judge.mjs` requires a satisfied diagnostics expectation to compare the same number of diagnostics — an undeclared cascade member would fail the case, not ride inside it. Both are **uncovered**. (They were also absent from the fork when that was written; both have since been ported, and both are still uncovered.) |
+| C3 | 7.17: `VIBE1507`/`VIBE1508` "both fire and are *observed* in the corpus, but only as cascade members inside other cases." | Neither code appears anywhere under `conformance/corpus/`, and `conformance/runner/judge.mjs` requires a satisfied diagnostics expectation to compare the same number of diagnostics — an undeclared cascade member would fail the case, not ride inside it. Both are **uncovered**. (They were also absent from the fork when that was written; both have since been ported, and both are still uncovered.) |
 | C4 | Documentation conflict #1: loops-as-expressions "**resolved**… No conflict remains." | Only the specification page was narrowed. `docs/DECISIONS.md:289` still locks `while`/`for` as expressions, and `specification/index.mdx:54` makes the ledger win a conflict. See **Q1**. |
-| C5 | §17: "What remains open here is genuinely open… rather than untested." | Fifteen of the nineteen reference asset rejections (`SMITHERS5201`–`5219`) are neither open nor covered, and three of them are the fail-open direction of a Locked rule. See **§17.12**. |
+| C5 | §17: "What remains open here is genuinely open… rather than untested." | Fifteen of the nineteen reference asset rejections (`VIBE5201`–`5219`) are neither open nor covered, and three of them are the fail-open direction of a Locked rule. See **§17.12**. |
 
 And four surfaces it had never mentioned at all, now added: the CLI (§21),
-`smithers:schema` (§22), the host-sensitive global classification table
+`vibelang:schema` (§22), the host-sensitive global classification table
 (§9.6–9.13), and the reference-only rejection rules (its own section above).
 
 ### What changed in the revision six before that
@@ -1550,7 +2168,7 @@ been re-tested and made specific, and two of its `xfail` markers are retired.
 | gap #3, "**Assets cannot be staged.** `corpus.mjs` knows two file kinds" | **closed.** `corpus.mjs` knows three. Two narrower limits replace it (gaps #3 and #7 below), both traced to the Go wire protocol rather than to the corpus. |
 | §11.11 concurrency library — "both backends stage the project as one flat directory" | **still unwritable, and the reason is now measured rather than reasoned.** Staging shape was never the binding constraint; module resolution is. See §11.11. |
 | §11.10 cancellation — "`grep -rl cancel poc/src/{language,runtime,targets}` finds only `lsp.ts`" | **the grep was too narrow.** `poc/src/concurrency/cancellation.ts` exists. The conclusion survives — it is a library, not a language channel — but the recorded evidence was wrong and is corrected in §11.10. |
-| go `xfail` on `01/top-level-expect-is-rejected` (the fork accepted and ran a top-level `Result.expect`) | **retired.** The runner reported `XPASS`; the fork now reports `SMITHERS1505` at the authored position. |
+| go `xfail` on `01/top-level-expect-is-rejected` (the fork accepted and ran a top-level `Result.expect`) | **retired.** The runner reported `XPASS`; the fork now reports `VIBE1505` at the authored position. |
 | go `xfail` on `22/diagnostic-columns-survive-non-ascii-source-text` (UTF-8 byte columns) | **retired.** `XPASS`; the fork now reports authored UTF-16 columns. |
 | the four `js` markers the previous revision's register listed (both arrow-arm switch cases, the async native pin, the non-ASCII Error class name) | **already retired from the corpus before this revision measured**, and all four now pass on both backends. The register in `README.md` had gone stale against the corpus it describes, which is why retirements are now recorded in each case's own `notes`. |
 
@@ -1573,22 +2191,22 @@ scoreboard would keep saying zero.
 The old command was:
 
 ```sh
-grep -roh 'SMITHERS[0-9]\{4\}' compiler/ | sort -u        # WRONG — do not use
+grep -roh 'VIBE[0-9]\{4\}' compiler/ | sort -u        # WRONG — do not use
 ```
 
 It is wrong in **both** directions, and every figure derived from it since it was
 introduced was wrong with it:
 
-- **1 false positive.** `SMITHERS1708` appears in `compiler/` only in
+- **1 false positive.** `VIBE1708` appears in `compiler/` only in
   `FORK-SEAM-DESIGN.md:642`/`:1440` and `GRAMMAR-SPIKE.md:398`/`:832` — two design
-  documents, all four sentences saying the fork **retires** it ("`SMITHERS1707`
-  and `SMITHERS1708` do not arise at all: there is no hoisting"). Prose about a
+  documents, all four sentences saying the fork **retires** it ("`VIBE1707`
+  and `VIBE1708` do not arise at all: there is no hoisting"). Prose about a
   rule is not the rule. This is the same trap the page already knew about on the
-  reference side, where `SMITHERS1805` had to be set aside because it appears only
+  reference side, where `VIBE1805` had to be set aside because it appears only
   in `poc/src/language/README.md` recording its own retirement — the fix was
   applied to one side and not the other.
 - **19 false negatives.** `compiler/forkbridge/durable.go.txt:27,118` declares
-  `const durableDiagnosticPrefix = "SMITHERS"` and
+  `const durableDiagnosticPrefix = "VIBE"` and
   `func durableCode(suffix string) string { return durableDiagnosticPrefix + suffix }`,
   and its failure helper is called as `d.fail(node, "4104", …)` with a bare digit
   string. **No literal-code grep can see any of them.** The fork implements
@@ -1600,21 +2218,21 @@ The corrected commands, which are the whole basis of this section and of the one
 after it:
 
 ```sh
-grep -roh 'SMITHERS[0-9]\{4\}' poc/src/ | sort -u > /tmp/ref-codes    # 204; no
+grep -roh 'VIBE[0-9]\{4\}' poc/src/ | sort -u > /tmp/ref-codes    # 204; no
                        # constructed codes on the reference side, verified with
-                       # grep -rn '"SMITHERS" *+' poc/src/  ->  no matches
+                       # grep -rn '"VIBE" *+' poc/src/  ->  no matches
 
 # the fork: implementation sources only, then the codes it CONSTRUCTS
 { find compiler -name '*.go' ! -name '*_test.go' -print0
   find compiler/forkbridge -name '*.go.txt' -print0; } \
-  | xargs -0 grep -oh 'SMITHERS[0-9]\{4\}' | sort -u   > /tmp/fork-literal   # 95
+  | xargs -0 grep -oh 'VIBE[0-9]\{4\}' | sort -u   > /tmp/fork-literal   # 95
 grep -roh 'suffix: "[0-9]\{4\}"\|durableCode("[0-9]\{4\}")\|fail([^"]*"[0-9]\{4\}"' \
   compiler/forkbridge/ | grep -o '"[0-9]\{4\}"' | tr -d '"' | sort -u \
-  | sed 's/^/SMITHERS/'                                > /tmp/fork-built     # 22
+  | sed 's/^/VIBE/'                                > /tmp/fork-built     # 22
 cat /tmp/fork-literal /tmp/fork-built | sort -u        > /tmp/fork-codes     # 117
 
-grep -roh '"code": "SMITHERS[0-9]\{4\}"' conformance/corpus/ \
-  | grep -o 'SMITHERS[0-9]\{4\}' | sort -u             > /tmp/corpus-codes   # 77
+grep -roh '"code": "VIBE[0-9]\{4\}"' conformance/corpus/ \
+  | grep -o 'VIBE[0-9]\{4\}' | sort -u             > /tmp/corpus-codes   # 77
 
 comm -23 /tmp/ref-codes /tmp/fork-codes                    # reference-only   100
 comm -12 /tmp/ref-codes /tmp/fork-codes > /tmp/both-codes  # in both          104
@@ -1624,31 +2242,31 @@ comm -23 /tmp/both-codes /tmp/corpus-codes                 # in both, no case  2
 **A reader who wants to check this page should run the diff, not the totals:**
 
 ```sh
-comm -23 /tmp/fork-codes-old /tmp/fork-codes   # SMITHERS1708 — prose only
+comm -23 /tmp/fork-codes-old /tmp/fork-codes   # VIBE1708 — prose only
 comm -13 /tmp/fork-codes-old /tmp/fork-codes   # 4103 4104 4105 4107-4113 4115
                                                # 4116 4118-4123 4199 — constructed
 ```
 
 Measured 2026-08-23, on the quiescent tree: the reference names **204** codes,
 the fork **117** (recorded as 98 last revision, by the wrong command), and the
-corpus declares **77** (was 73 — this revision added `SMITHERS1503`, `2103`,
+corpus declares **77** (was 73 — this revision added `VIBE1503`, `2103`,
 `3005`, `4103`, and `1713`).
 
-The `1xxx` difference is **eight** codes, not seven: `SMITHERS1002`, `1105`,
+The `1xxx` difference is **eight** codes, not seven: `VIBE1002`, `1105`,
 `1106`, `1704`, `1706`, **`1708`**, `1805`, `1900`. Three are not language rules
 and are set aside with their reason. **Five are** — one more than the previous
-revision recorded, because `SMITHERS1708` was never in the fork at all. None of
+revision recorded, because `VIBE1708` was never in the fork at all. None of
 the five has a case, and the last one is a row of a kind this table has not had
 before: a reference-only rule whose absence from the fork has been **measured
 and found correct**.
 
 | code | what the reference rejects | evidence | in fork? | in corpus? | severity of a fail-open |
 | --- | --- | --- | --- | --- | --- |
-| `SMITHERS1105` | a constructor or accessor carrying a Result channel | `poc/src/language/semantic.ts:1968` | no | **YES, as of the third revision** — `09/a-fallible-getter-in-an-argument-still-needs-a-contract`, `xfail go` | `failures.mdx` §Compiler Lifting requires a reachable recoverable Error exit to return or infer a Result; `type-system.mdx` §Fallibility Inference says the compiler MUST reject the function "rather than permit an untyped exception path". Neither page carves out constructors or accessors. **Measured rather than feared: the fork does NOT fail open on the probed shape.** It refuses the same program with `SMITHERS1303` at the same authored position, because the getter is in an argument and the failure crosses a value edge. What the fork lacks is the accessor-shape refusal itself, so the fail-open severity above applies only to a fallible accessor with NO value edge to catch it — which no case yet probes, and which needs a program the harness can observe. See §7.28. |
-| `SMITHERS1106` | a fallible generator | `poc/src/language/semantic.ts:1971` | no | **partially, as of the third revision** — `09/a-generator-may-abort-with-a-panic` is the corpus's first `function*`, and pins the *accepted* direction (a generator that PANICS is not fallible and needs no channel). The refusal itself is still unprobed. | same rule, same direction. The reference reported `SMITHERS1101` + `SMITHERS1106` and the fork only `SMITHERS1101` for a panicking generator until the panic non-widening rule made both accept it; a generator with an ORDINARY recoverable failure still splits the two backends the same way `SMITHERS1105` does, and is the sibling case §7.28 names as not yet written. |
-| `SMITHERS1706` | a `break`/`continue` or case-label jump escaping a value-producing expression | `poc/src/language/control-flow.ts:255`, `poc/src/language/semantic.ts:3846`, `:3854`, `:3878` | no | no | the expression forms in `control-flow.mdx` MUST have "a statically determined success type from its reachable value-producing exits". An escaping jump is an exit the type was not computed from. |
-| `SMITHERS1704` | labeled control flow the POC cannot lower label-aware | `poc/src/language/semantic.ts:3760` | no | no | a POC-boundary gate rather than a specification sentence, but it is still a rejection one implementation makes and the other does not, and no case would notice either behaviour. |
-| ~~`SMITHERS1708`~~ **ROW WITHDRAWN 2026-09-01** | a value expression in an argument whose callee "cannot be proven order-stable" | **no citation survives**: the code is in neither implementation (`R = 0, F = 0`), it appears in no specification page, and `control-flow.mdx` §No Expression-Form Grammar forbids the construct it was about — so implementing it would mean re-adding banned grammar | no | no, **deliberately** | **the one row in this table whose gap has been measured and found not to be a gap.** It entered the table this revision because the old command misread two design documents as an implementation. The fork's design says it retires the rule ("there is no hoisting, so there is no evaluation order to preserve and no callee-stability proof to make"), and that claim was tested rather than taken: handed `return pick()(score, if (on) { … } else { … })` where both `pick()` and the branch push to an observable log, the fork compiles it and prints `callee,arg` — the authored order, identical to the remedy form (`const call = pick()`) and to the same program with no expression-`if` in it at all. So this is a **reference-side provability limitation**, not a fork fail-open, and a case declaring `SMITHERS1708` would make the fork's correct behaviour a conformance failure. Written, measured, and deliberately not landed; see §13.21. |
+| `VIBE1105` | a constructor or accessor carrying a Result channel | `poc/src/language/semantic.ts:1968` | no | **YES, as of the third revision** — `09/a-fallible-getter-in-an-argument-still-needs-a-contract`, `xfail go` | `failures.mdx` §Compiler Lifting requires a reachable recoverable Error exit to return or infer a Result; `type-system.mdx` §Fallibility Inference says the compiler MUST reject the function "rather than permit an untyped exception path". Neither page carves out constructors or accessors. **Measured rather than feared: the fork does NOT fail open on the probed shape.** It refuses the same program with `VIBE1303` at the same authored position, because the getter is in an argument and the failure crosses a value edge. What the fork lacks is the accessor-shape refusal itself, so the fail-open severity above applies only to a fallible accessor with NO value edge to catch it — which no case yet probes, and which needs a program the harness can observe. See §7.28. |
+| `VIBE1106` | a fallible generator | `poc/src/language/semantic.ts:1971` | no | **partially, as of the third revision** — `09/a-generator-may-abort-with-a-panic` is the corpus's first `function*`, and pins the *accepted* direction (a generator that PANICS is not fallible and needs no channel). The refusal itself is still unprobed. | same rule, same direction. The reference reported `VIBE1101` + `VIBE1106` and the fork only `VIBE1101` for a panicking generator until the panic non-widening rule made both accept it; a generator with an ORDINARY recoverable failure still splits the two backends the same way `VIBE1105` does, and is the sibling case §7.28 names as not yet written. |
+| `VIBE1706` | a `break`/`continue` or case-label jump escaping a value-producing expression | `poc/src/language/control-flow.ts:255`, `poc/src/language/semantic.ts:3846`, `:3854`, `:3878` | no | no | the expression forms in `control-flow.mdx` MUST have "a statically determined success type from its reachable value-producing exits". An escaping jump is an exit the type was not computed from. |
+| `VIBE1704` | labeled control flow the POC cannot lower label-aware | `poc/src/language/semantic.ts:3760` | no | no | a POC-boundary gate rather than a specification sentence, but it is still a rejection one implementation makes and the other does not, and no case would notice either behaviour. |
+| ~~`VIBE1708`~~ **ROW WITHDRAWN 2026-09-01** | a value expression in an argument whose callee "cannot be proven order-stable" | **no citation survives**: the code is in neither implementation (`R = 0, F = 0`), it appears in no specification page, and `control-flow.mdx` §No Expression-Form Grammar forbids the construct it was about — so implementing it would mean re-adding banned grammar | no | no, **deliberately** | **the one row in this table whose gap has been measured and found not to be a gap.** It entered the table this revision because the old command misread two design documents as an implementation. The fork's design says it retires the rule ("there is no hoisting, so there is no evaluation order to preserve and no callee-stability proof to make"), and that claim was tested rather than taken: handed `return pick()(score, if (on) { … } else { … })` where both `pick()` and the branch push to an observable log, the fork compiles it and prints `callee,arg` — the authored order, identical to the remedy form (`const call = pick()`) and to the same program with no expression-`if` in it at all. So this is a **reference-side provability limitation**, not a fork fail-open, and a case declaring `VIBE1708` would make the fork's correct behaviour a conformance failure. Written, measured, and deliberately not landed; see §13.21. |
 
 > [!CAUTION]
 > **Re-measured 2026-09-01 (migration step 16). Only ONE of the five rows in the
@@ -1656,8 +2274,8 @@ and found correct**.
 > are PRE-EXISTING rather than migration damage.** This is the section that calls
 > itself the most important on the page, so the audit is stated row by row:
 >
-> - **`SMITHERS1106` — still correct.** `R=1, F=0`. The one surviving row.
-> - **`SMITHERS1704` and `SMITHERS1706` — WITHDRAWN FROM THE REFERENCE, and this
+> - **`VIBE1106` — still correct.** `R=1, F=0`. The one surviving row.
+> - **`VIBE1704` and `VIBE1706` — WITHDRAWN FROM THE REFERENCE, and this
 >   table has cited them at dead paths ever since.** Both measure `R=0, F=0`:
 >   they appear nowhere in `poc/src`, `src` or `compiler`, only in
 >   `poc/PRODUCTION_READINESS.md:740-741` prose. The file this table cites for
@@ -1667,19 +2285,19 @@ and found correct**.
 >   every revision since, including the four that re-derived the subtraction
 >   below and reported it stable. Nothing in this migration caused it; the
 >   migration is only what made someone re-run the greps.
-> - **`SMITHERS1105` — no longer reference-only BY THE COMMAND, and the command
+> - **`VIBE1105` — no longer reference-only BY THE COMMAND, and the command
 >   is wrong.** It measures `F=1`, but all three fork occurrences are
 >   **comments** (`compiler/fork_panic_test.go:81,177`,
 >   `compiler/forkbridge/mustconsume.go.txt:60`) describing the *reference's*
->   behaviour. The fork still implements no `SMITHERS1105`. The corpus `xfail`
+>   behaviour. The fork still implements no `VIBE1105`. The corpus `xfail`
 >   note on `09/a-fallible-getter-in-an-argument-still-needs-a-contract` already
 >   warned in as many words that the bare-code grep had stopped working here and
 >   said to "grep for the quoted report argument, not the bare code"; this table
 >   did not act on it. **A rule the fork does not implement now reads as
 >   implemented — the instrument fails OPEN on the row it exists to catch.**
-> - **`SMITHERS1708` — NEITHER implementation spells it, and this row claims the
+> - **`VIBE1708` — NEITHER implementation spells it, and this row claims the
 >   reference does.** It measures `R=0, F=1`. The reference side is the new half:
->   `SMITHERS1708` appears nowhere in `poc/src` or `src`, so the citation in the
+>   `VIBE1708` appears nowhere in `poc/src` or `src`, so the citation in the
 >   row above — `poc/src/language/recover.ts:1337` — is dead (the *file* exists;
 >   the code is not in it). The fork side is the already-documented artefact: its
 >   only occurrences are `compiler/FORK-SEAM-DESIGN.md:662,1460` and
@@ -1690,8 +2308,8 @@ and found correct**.
 >   and for a better reason than it gives.
 >
 > **Four of the five errors are one defect: the extraction reads text, and text
-> about a rule is not the rule.** Counting the `SMITHERS1805` and `SMITHERS1708`
-> cases this page already records, and the `SMITHERS1807` phantom the eighth
+> about a rule is not the rule.** Counting the `VIBE1805` and `VIBE1708`
+> cases this page already records, and the `VIBE1807` phantom the eighth
 > re-derivation below adds, that defect has now been caught **six** times on
 > both sides of the subtraction. It is not an anomaly to note each revision; it
 > is the method. Until the extraction distinguishes a report site from a mention,
@@ -1699,7 +2317,7 @@ and found correct**.
 > and this table's own membership is the demonstration: **of five rows, one
 > measures as written.**
 
-**One row entered this table this revision and none left it.** `SMITHERS1708`
+**One row entered this table this revision and none left it.** `VIBE1708`
 entered not because anything changed in either implementation but because the
 method was corrected — which is the more uncomfortable of the two reasons, since
 it means the row was wrong on this page for three revisions while the number
@@ -1707,35 +2325,40 @@ above it looked stable. What else changed is what happened to the three rows
 that left in the revision before, and that is worth stating because it is the
 whole argument for the next section.
 
-`SMITHERS1502`, `SMITHERS1507` and `SMITHERS1508` were listed here as
+`VIBE1502`, `VIBE1507` and `VIBE1508` were listed here as
 reference-only with no case. All three were then ported into the fork — after a
 census compared the two implementations' full accepted surface, not after any
 case was run. Leaving this table is therefore **not** the same as becoming
 covered: it only means code-set subtraction has stopped being able to see them.
-`SMITHERS1502` did get a case
-(`09-foreign-calls/the-never-annotation-is-case-sensitive`). `SMITHERS1507` and
-`SMITHERS1508` did not, for a whole revision, and during that revision this page
+`VIBE1502` did get a case
+(`09-foreign-calls/the-never-annotation-is-case-sensitive`). `VIBE1507` and
+`VIBE1508` did not, for a whole revision, and during that revision this page
 recorded them as covered when they were not. **This revision writes their
 cases** — see §7.17, §7.20–7.22 — and adds the subtraction that would have
 caught the gap.
 
-**Set aside, with the reason:** `SMITHERS1002` is an internal fail-closed guard
+**Set aside, with the reason:** `VIBE1002` is an internal fail-closed guard
 for a missing parser-diagnostics field (`poc/src/language/semantic.ts:4249`), not
-an authored-source rule. `SMITHERS1900` is a formatter limit
-(`poc/src/language/format.ts:1047`) and the fork has no formatter.
-`SMITHERS1805` appears only in `poc/src/language/README.md:108`, which records it
+an authored-source rule. `VIBE1900` is a formatter limit
+(`poc/src/language/format.ts:1047` in that historical tree). **Updated
+2026-09-06:** native API v7 now implements the formatter and token lookup in
+`compiler/forkbridge/format.go.txt`; the JavaScript formatting entry point is
+a thin binding to that same compiler, not an independent formatter. The
+compile/run corpus still has no formatting channel; native unit tests and
+CLI/editor/installed-consumer tests cover this tool surface.
+`VIBE1805` appears only in `poc/src/language/README.md:108`, which records it
 as **retired** — it is emitted by nothing, and a reader diffing the two code sets
-mechanically would wrongly count it. **`SMITHERS1708` is the same mistake made on
+mechanically would wrongly count it. **`VIBE1708` is the same mistake made on
 the other side of the subtraction**, and the fact that this page had already
 written down the reference-side instance and still missed the fork-side one is
 the argument for running the diff rather than the totals.
 
 **The `4xxx` rows this table used to carry are gone, and that is a correction,
-not progress.** The old command listed `SMITHERS4101`–`4123` and `4199` as
+not progress.** The old command listed `VIBE4101`–`4123` and `4199` as
 reference-only, twenty-four rows of "the fork does not have this". Sixteen of
 them the fork does have; it builds their code strings by concatenation. What is
 genuinely reference-only in the durable family is **seven** codes —
-`SMITHERS4101`, `4102`, `4114`, and the four `SMITHERS420x` — and they are not
+`VIBE4101`, `4102`, `4114`, and the four `VIBE420x` — and they are not
 tabled individually here because §20 already scores the whole area as
 overwhelmingly uncovered for a structural reason (three of the four compilation
 phases have no channel through this harness), which dominates any per-code
@@ -1747,7 +2370,7 @@ out. Each row is one small case away from an answer: write the program, declare
 the reference's code, mark it `xfail go` with the reason. Either the marker is
 the finding, or the fork surprises us and the marker retires — and in both
 outcomes the zero on the scoreboard is worth more than it is today.
-`SMITHERS1708` is the worked example of the third outcome, which this page had
+`VIBE1708` is the worked example of the third outcome, which this page had
 not anticipated: **the fork surprises us and the case must not be written at
 all**, because the reference is the one with the limitation.
 
@@ -1755,7 +2378,7 @@ all**, because the reference is the one with the limitation.
 subtraction only finds rules one implementation spells and the other does not.
 It cannot find a rule both implementations *have* and one of them fails to reach
 — which is what the re-export finding turned out to be, and what **all four of
-this revision's new markers** turned out to be. The fork owns `SMITHERS3001`,
+this revision's new markers** turned out to be. The fork owns `VIBE3001`,
 owns the `TypeScript` classification of `eval`, and charges it inside an
 immediately-invoked function and inside a `Layer.provide` callback; it simply
 never asks which value reaches a call whose selected signature has no body, never
@@ -1770,7 +2393,7 @@ exists, and why it is the one to read first.
 
 This is the second subtraction, added a revision ago and **recomputed from a
 corrected method this revision**. It is the one that would have caught the
-`SMITHERS1507`/`SMITHERS1508` error a revision earlier — and it is now nearly
+`VIBE1507`/`VIBE1508` error a revision earlier — and it is now nearly
 twice the size the old method could see.
 
 > [!IMPORTANT]
@@ -1787,21 +2410,21 @@ comm -23 /tmp/both-codes /tmp/corpus-codes                  #  27  (superseded: 
 
 The reference and the fork spell **104** codes in common (recorded as 85 last
 revision, by the wrong command). The corpus declares 77, and **all 77** are in
-that intersection — last revision's odd one out, `SMITHERS5218`, is in the fork
+that intersection — last revision's odd one out, `VIBE5218`, is in the fork
 now, which is why its marker retired. So 104 − 77 = **twenty-seven** codes are in
 both implementations and in no case:
 
 ```
-SMITHERS1901 SMITHERS1902 SMITHERS3006
-SMITHERS4100 SMITHERS4103* SMITHERS4104 SMITHERS4105 SMITHERS4107* SMITHERS4108
-SMITHERS4109 SMITHERS4110 SMITHERS4111* SMITHERS4112* SMITHERS4113 SMITHERS4115
-SMITHERS4116 SMITHERS4117 SMITHERS4118 SMITHERS4119 SMITHERS4120 SMITHERS4121
-SMITHERS4122 SMITHERS4123 SMITHERS4199
-SMITHERS5215 SMITHERS5216 SMITHERS5217
+VIBE1901 VIBE1902 VIBE3006
+VIBE4100 VIBE4103* VIBE4104 VIBE4105 VIBE4107* VIBE4108
+VIBE4109 VIBE4110 VIBE4111* VIBE4112* VIBE4113 VIBE4115
+VIBE4116 VIBE4117 VIBE4118 VIBE4119 VIBE4120 VIBE4121
+VIBE4122 VIBE4123 VIBE4199
+VIBE5215 VIBE5216 VIBE5217
 ```
 
-*`SMITHERS4103` left the set in the revision that wrote this block, and
-**`SMITHERS4107`, `SMITHERS4111` and `SMITHERS4112` left it on 2026-08-26**; all
+*`VIBE4103` left the set in the revision that wrote this block, and
+**`VIBE4107`, `VIBE4111` and `VIBE4112` left it on 2026-08-26**; all
 four are listed above only so the shape of the durable block stays readable. The
 machine-computed set is the other 23.
 
@@ -1828,36 +2451,36 @@ python3 -c 'import json,pathlib;print(len({d["code"] for p in pathlib.Path("conf
 The previous revision could not re-derive `104 − 77` and flagged it rather than
 adjusting it. That was the right call, and the reason it never reproduced is
 this: **the two halves of the subtraction were drawn from different code
-families.** The corpus declares codes from three — `SMITHERS`, the comptime
+families.** The corpus declares codes from three — `VIBE`, the comptime
 frontend's `VCT`, and TypeScript's own `TS` — so the 76 (then 77) declared codes
-were being subtracted from an intersection that only ever contained `SMITHERS`.
+were being subtracted from an intersection that only ever contained `VIBE`.
 Seven of them (`TS2304`, `TS2339`, `TS2345`, `TS7053`, `VCT1004`, `VCT1005`,
 `VCT1012`) could never have appeared in it. The fork's half was wrong for a
 second, unrelated reason: **18 of its codes are never spelled literally**, being
 built as `durableCode("NNNN")` / `d.fail(node, "NNNN", …)` against the
 `durableDiagnosticPrefix` constant (`compiler/forkbridge/durable.go.txt:28`), so
-a `grep` for `SMITHERS[0-9]{4}` cannot see them.
+a `grep` for `VIBE[0-9]{4}` cannot see them.
 
 Both halves are now extracted the same way, over the same family. These are the
 exact commands, run from the repository root, as the previous revision asked:
 
 ```sh
-# the reference's SMITHERS code space
-grep -roh 'SMITHERS[0-9]\{4\}' poc/src src | sort -u > /tmp/R                      # 109
+# the reference's VIBE code space
+grep -roh 'VIBE[0-9]\{4\}' poc/src src | sort -u > /tmp/R                      # 109
 
 # the fork's: literal spellings UNION the codes it constructs from a bare suffix
-{ grep -roh 'SMITHERS[0-9]\{4\}' compiler/
+{ grep -roh 'VIBE[0-9]\{4\}' compiler/
   grep -rhno 'durableCode("[0-9]\{4\}")'        compiler/forkbridge/durable.go.txt |
-    grep -o '[0-9]\{4\}' | sed 's/^/SMITHERS/'
+    grep -o '[0-9]\{4\}' | sed 's/^/VIBE/'
   grep -rhno 'fail([^,]*, *"[0-9]\{4\}"'        compiler/forkbridge/durable.go.txt |
-    grep -o '"[0-9]\{4\}"' | tr -d '"' | sed 's/^/SMITHERS/'
+    grep -o '"[0-9]\{4\}"' | tr -d '"' | sed 's/^/VIBE/'
 } | sort -u > /tmp/F                                                              # 111
 
 # the corpus, restricted to the same family
 python3 -c 'import json,pathlib
 s={d["code"] for p in pathlib.Path("conformance/corpus").rglob("*.expected.json")
    for d in json.loads(p.read_text()).get("diagnostics") or []}
-print("\n".join(sorted(s)))' | grep '^SMITHERS' > /tmp/C                          #  71
+print("\n".join(sorted(s)))' | grep '^VIBE' > /tmp/C                          #  71
 
 comm -12 /tmp/R /tmp/F > /tmp/B          # in both implementations               #  90
 comm -13 /tmp/B /tmp/C                   # declared but outside the intersection # NONE
@@ -1869,11 +2492,11 @@ mean something: every code the corpus declares really is inside the
 intersection, so nothing is being subtracted that was never there. The 19:
 
 ```
-SMITHERS1901 SMITHERS1902
-SMITHERS4100 SMITHERS4104 SMITHERS4105 SMITHERS4108 SMITHERS4109 SMITHERS4110
-SMITHERS4113 SMITHERS4115 SMITHERS4116 SMITHERS4117 SMITHERS4118 SMITHERS4119
-SMITHERS4120 SMITHERS4199
-SMITHERS5215 SMITHERS5216 SMITHERS5217
+VIBE1901 VIBE1902
+VIBE4100 VIBE4104 VIBE4105 VIBE4108 VIBE4109 VIBE4110
+VIBE4113 VIBE4115 VIBE4116 VIBE4117 VIBE4118 VIBE4119
+VIBE4120 VIBE4199
+VIBE5215 VIBE5216 VIBE5217
 ```
 
 > [!IMPORTANT]
@@ -1894,10 +2517,10 @@ SMITHERS5215 SMITHERS5216 SMITHERS5217
 
 This is the first re-derivation in which the **method** changed rather than the
 tree. Every figure above it was produced by a `grep` for the literal string
-`SMITHERS[0-9]{4}` over whole directories, and the eighth re-derivation ends by
+`VIBE[0-9]{4}` over whole directories, and the eighth re-derivation ends by
 saying, in as many words, that "the extraction reads text, and text about a rule
 is not the rule" — having by then caught that exact defect six times
-(`SMITHERS1805`, `1708`, `4121`, `1105`, `1807`, `4106`/`4107`) and each time
+(`VIBE1805`, `1708`, `4121`, `1105`, `1807`, `4106`/`4107`) and each time
 recorded it as an anomaly rather than fixing it. **Every figure on this page
 therefore carried an unquantified error bar.** This section removes it and
 quantifies what it was.
@@ -1919,12 +2542,12 @@ none — checked, not believed.
 **How many OTHER codes are built that way? Swept, not assumed: none.** The
 question matters because a constructed code is the FALSE-NEGATIVE direction of
 this defect — literal extraction counts it as absent, which shrinks the
-intersection and makes this page understate its own gap — and `SMITHERS4122`
-and `SMITHERS4123` are the two that bit. The sweep looked for every form a code
+intersection and makes this page understate its own gap — and `VIBE4122`
+and `VIBE4123` are the two that bit. The sweep looked for every form a code
 could be assembled from, across both implementations, over non-test sources:
-a prefix constant (`= "SMITHERS"` / `` = `SMITHERS` ``), string concatenation
-(`"SMITHERS" +`, `+ "SMITHERS"`), template interpolation (`` SMITHERS${…} ``),
-`Sprintf("SMITHERS%…")`, and any helper named `…Code(` or constant named
+a prefix constant (`= "VIBE"` / `` = `VIBE` ``), string concatenation
+(`"VIBE" +`, `+ "VIBE"`), template interpolation (`` VIBE${…} ``),
+`Sprintf("VIBE%…")`, and any helper named `…Code(` or constant named
 `…Prefix`. It also ran over the `VCT` and `TS` families. **There is exactly one
 construction site in the entire tree** — `compiler/forkbridge/durable.go.txt:28`
 and the `durableCode` helper at `:174` — and it produces **21** codes, of which
@@ -1937,13 +2560,13 @@ would be picked up automatically.
 
 **The false-negative direction is gated too, and was mutation-tested like the
 rest.** Removing constructed-code extraction entirely turns the fixture red on
-`SMITHERS9007`, `9008` and `9009` — and, run against the real tree, would drop
+`VIBE9007`, `9008` and `9009` — and, run against the real tree, would drop
 F from 110 to 89, the subtraction from 25 to 9, and light up `comm -13 B C`
 with five codes the corpus declares and the fork would then appear not to have.
 That last one is the useful part: **the page's own integrity check catches an
 undercount as well as an overcount.** Removing only the `suffix:` spelling — the
-one the published commands never learned — fails on `SMITHERS9009` and removes
-exactly `SMITHERS4117`, `4121`, `4122` and `4123` from the fork's census, which
+one the published commands never learned — fails on `VIBE9009` and removes
+exactly `VIBE4117`, `4121`, `4122` and `4123` from the fork's census, which
 is the 2026-08-27 finding reproduced on demand instead of rediscovered.
 
 **The command is now one command, and it is falsifiable.** The three greps are
@@ -1961,12 +2584,12 @@ has ever fooled this page — a withdrawal comment, a JSDoc describing the *othe
 backend, a retirement note, a design-document sentence in markdown, a Go test's
 comment, a Go test's live assertion string, a TypeScript test's assertion, an
 equality comparison, a type-union member, and a comment *quoting* a code in full
-report shape — sitting beside real report sites in `SMITHERS90xx`. The census
+report shape — sitting beside real report sites in `VIBE90xx`. The census
 must count the report sites and reject all twelve mentions.
 `scripts/coverage-codes.test.mjs` runs it under `scripts/node-test-gate.mjs`.
 **Verified load-bearing rather than assumed:** four mutations were applied to the
 extractor and each turned the gate red naming the specimen it regressed on —
-removing comment-stripping (`SMITHERS9112` counted), removing the test-file
+removing comment-stripping (`VIBE9112` counted), removing the test-file
 exclusion (`9105`, `9106`), removing the source-extension filter (`9104`, `9105`,
 `9106`, `9108`), and removing the comparison/type-union exclusion (`9107`, `9109`,
 `9110`, `9111`). The file was restored and `sha256`-compared byte-identical after
@@ -1986,55 +2609,55 @@ corpus     C  =    73                           73     (unchanged: this half was
                                                         expectations, not grepped)
 in both    B  =    97                           97     (same size, four members
                                                         changed)
-comm -13 B C  =   NONE                         SMITHERS1105
+comm -13 B C  =   NONE                         VIBE1105
 SUBTRACTION   =    24                           25
 ```
 
 **Sixteen codes were miscounted — fourteen in the over direction and two in the
 under.** Not six.
 
-- **Reference, 4 false positives, 0 false negatives.** `SMITHERS1805` (retired,
+- **Reference, 4 false positives, 0 false negatives.** `VIBE1805` (retired,
   counted from `poc/src/language/README.md` recording its retirement),
-  `SMITHERS1807` (retired by step 13, counted from the comments recording *that*),
-  and `SMITHERS4106`/`SMITHERS4107` (withdrawn with the durable walls at step 11,
+  `VIBE1807` (retired by step 13, counted from the comments recording *that*),
+  and `VIBE4106`/`VIBE4107` (withdrawn with the durable walls at step 11,
   counted from `// WALL n (4106), withdrawn.`).
-- **Fork, 10 false positives, 2 false negatives.** `SMITHERS1105` (three code
+- **Fork, 10 false positives, 2 false negatives.** `VIBE1105` (three code
   comments, every one describing the *reference's* behaviour — the fork
-  implements no such rule); `SMITHERS1702`, `1705`, `1707`, `1708`, `1709`,
+  implements no such rule); `VIBE1702`, `1705`, `1707`, `1708`, `1709`,
   `1710`, `1714`, `1715` (all eight in `compiler/FORK-SEAM-DESIGN.md` and
   `compiler/GRAMMAR-SPIKE.md`, in sentences saying the fork **retires** them);
-  and `SMITHERS4106` again. Missed: `SMITHERS4122` and `SMITHERS4123`, which the
+  and `VIBE4106` again. Missed: `VIBE4122` and `VIBE4123`, which the
   fork builds from the `suffix:` table and no published grep could see.
 
 **Four things this page asserts elsewhere are corrected by it:**
 
-1. **`SMITHERS4106` is reported by NEITHER implementation.** `R = 0, F = 0`. It
+1. **`VIBE4106` is reported by NEITHER implementation.** `R = 0, F = 0`. It
    has been listed since the eighth re-derivation as one of the four codes "the
    corpus STOPPED declaring" while "the rules did not leave either
    implementation" — and that second half is false for this one. Both backends
    hold only withdrawal comments (`poc/src/durable/source-compiler.ts:1449,1527,2757`;
-   `compiler/forkbridge/durable.go.txt:1046,1160,1297`). It is the `SMITHERS1708`
+   `compiler/forkbridge/durable.go.txt:1046,1160,1297`). It is the `VIBE1708`
    situation exactly, now on a third code and on both sides at once, and it means
-   **no corpus case can be written for it**: a case declaring `SMITHERS4106`
+   **no corpus case can be written for it**: a case declaring `VIBE4106`
    would be declaring a rule that does not exist.
-2. **`SMITHERS4122` and `SMITHERS4123` are in BOTH implementations, not
+2. **`VIBE4122` and `VIBE4123` are in BOTH implementations, not
    reference-only.** The eighth re-derivation lists them with `4107` and `4114`
    as codes that "changed columns", `R=1, F=0`. Measured under the corrected
    method they are `R=1, F=1`: `compiler/forkbridge/durable.go.txt:1219-1220`
    builds them from `suffix: "4122"` / `suffix: "4123"` through
    `d.fail(expression, unsupported.suffix, …)`. They therefore belong in the
-   "in both, no case" set, and they are in it below. `SMITHERS4114` measures
-   `R=1, F=0` and its row stands; `SMITHERS4107` measures `R=0, F=0` and is the
+   "in both, no case" set, and they are in it below. `VIBE4114` measures
+   `R=1, F=0` and its row stands; `VIBE4107` measures `R=0, F=0` and is the
    same phantom as `4106`.
 3. **`comm -13 B C` is no longer empty, and it never should have been.** The
-   corpus declares `SMITHERS1105` — four cases in `09-foreign-calls` do — and the
+   corpus declares `VIBE1105` — four cases in `09-foreign-calls` do — and the
    fork does not implement it. The old method hid this by counting `1105` in the
    fork from three comments, so the page's own integrity check, the one whose
    whole purpose is to prove nothing is being subtracted that was never there,
    was returning `NONE` **because of the defect it was supposed to catch**. This
    is the sharpest single demonstration on the page that the instrument was
    failing open, and it is now visible on every run.
-4. **The `SMITHERS1105` row in the reference-only table is right again.** The
+4. **The `VIBE1105` row in the reference-only table is right again.** The
    2026-09-01 CAUTION block above it says the row "measures `F=1`" and that "a
    rule the fork does not implement now reads as implemented". Under the
    corrected method it measures `F=0`. The row's text stands as written; the
@@ -2045,11 +2668,11 @@ under.** Not six.
 
 ```
 27   the eighth re-derivation (df94204)
- -3   SMITHERS4111, SMITHERS4112, SMITHERS4124 — three cases written this
+ -3   VIBE4111, VIBE4112, VIBE4124 — three cases written this
       revision, below
- -1   SMITHERS4106 — reported by neither implementation, so it was never in the
+ -1   VIBE4106 — reported by neither implementation, so it was never in the
       intersection; the extractor fix
- +2   SMITHERS4122, SMITHERS4123 — constructed by the fork, invisible to every
+ +2   VIBE4122, VIBE4123 — constructed by the fork, invisible to every
       published command; the extractor fix
 = 25
 ```
@@ -2063,33 +2686,33 @@ same commands re-run verbatim on this tree print `24` — lower than the correct
 The 25:
 
 ```
-SMITHERS1151 SMITHERS1901 SMITHERS1902
-SMITHERS4100 SMITHERS4104 SMITHERS4105 SMITHERS4108 SMITHERS4109 SMITHERS4113
-SMITHERS4115 SMITHERS4116 SMITHERS4117 SMITHERS4118 SMITHERS4119 SMITHERS4120
-SMITHERS4121 SMITHERS4122 SMITHERS4123 SMITHERS4199
-SMITHERS5215 SMITHERS5216 SMITHERS5217
-SMITHERS6001 SMITHERS6002 SMITHERS6003
+VIBE1151 VIBE1901 VIBE1902
+VIBE4100 VIBE4104 VIBE4105 VIBE4108 VIBE4109 VIBE4113
+VIBE4115 VIBE4116 VIBE4117 VIBE4118 VIBE4119 VIBE4120
+VIBE4121 VIBE4122 VIBE4123 VIBE4199
+VIBE5215 VIBE5216 VIBE5217
+VIBE6001 VIBE6002 VIBE6003
 ```
 
 **Three of the eight codes the eighth re-derivation flagged now have cases**, and
 they are in `17-durable/`: `a-non-finite-numeric-literal-in-a-durable-value-is-rejected`
-(`SMITHERS4111`), `postfix-bang-on-a-value-that-is-not-an-action-run-is-rejected`
-(`SMITHERS4112`), and `two-error-classes-under-one-durable-identity-are-rejected`
-(`SMITHERS4124`, `xfail go`). Each was re-derived rather than restored: the
+(`VIBE4111`), `postfix-bang-on-a-value-that-is-not-an-action-run-is-rejected`
+(`VIBE4112`), and `two-error-classes-under-one-durable-identity-are-rejected`
+(`VIBE4124`, `xfail go`). Each was re-derived rather than restored: the
 programs the deleted cases used no longer refuse, because step 11 withdrew the
 walls those codes used to name and the surviving rules are different ones. Each
 was confirmed to fail when the rule is deleted — the report site was removed from
 `poc/src/durable/source-compiler.ts` in turn and every case turned red, with the
-`SMITHERS4112` deletion producing the sharpest evidence available, `accepted and
+`VIBE4112` deletion producing the sharpest evidence available, `accepted and
 ran`. See each case's `notes`.
 
 **The remaining five cannot be reached by a corpus case at all, and that is a
 finding rather than a backlog item.**
 
-- **`SMITHERS1151`** is a defensive invariant both implementations state cannot
+- **`VIBE1151`** is a defensive invariant both implementations state cannot
   fire: `poc/src/language/compile.ts:80` ("on today's algorithm it never fires:
   `nominalErrorIdentity` is injective") and `compiler/fork_error_identity_test.go:278`
-  ("no program can be written that trips it"). No authored `.sm` can reach it, so
+  ("no program can be written that trips it"). No authored `.vibe` can reach it, so
   there is nothing for a case to author. It is now pinned behaviourally instead,
   by `poc/src/language/nominal-error-identity-guard.test.ts`, which drives a real
   compile through the real diagnostic path with a deliberately non-injective
@@ -2098,14 +2721,14 @@ finding rather than a backlog item.**
   the rule deleted from `compile.ts` the new file goes red (2 of 4) while the
   pre-existing `nominal-error-identity.test.ts` stays **green, 12 of 12**, which
   is why the pin was needed.
-- **`SMITHERS6001`/`6002`/`6003`** validate a `tsconfig.json`, and the corpus has
+- **`VIBE6001`/`6002`/`6003`** validate a `tsconfig.json`, and the corpus has
   no way to express one. Checked at three layers rather than assumed: the
   expectation schema's `KNOWN_FIELDS` (`conformance/runner/corpus.mjs:108`) has no
   such key and `validate()` throws on any other; `backend-js.mjs` builds its whole
-  payload with no config field, and `validateSmithersTsconfig` is imported by
+  payload with no config field, and `validateVibeLangTsconfig` is imported by
   exactly two files in the repository, neither of them the runner; and
   `backend-go.mjs` sends `options: { comptimeTarget }` with no `configFile`, so
-  `validateSmithersConfigFile`'s `if config == nil { return nil }`
+  `validateVibeLangConfigFile`'s `if config == nil { return nil }`
   (`compiler/forkbridge/main.go.txt:1422`) returns nothing on every corpus
   request. **These three were already pinned on the validator** — measured, not
   assumed: each arm was deleted from `poc/src/language/compiler-options.ts` in
@@ -2113,7 +2736,7 @@ finding rather than a backlog item.**
   and 1 failures). What nothing pinned was the **delivered route** and the
   **differential**, which is what this page's harness exists to provide and is
   precisely what it cannot provide here.
-  `scripts/compiler-options-route.test.mjs` now drives `smithers check -p` on both
+  `scripts/compiler-options-route.test.mjs` now drives `vibe check -p` on both
   backends against one tsconfig and requires all eight diagnostics to agree on
   code, position, message and order. Deleting any one arm turns it red on both of
   its subtests.
@@ -2124,7 +2747,7 @@ finding rather than a backlog item.**
 > them as one.** Of the eight codes the eighth re-derivation listed as new
 > arrivals in the "no case probes" set, exactly three could ever have had a case.
 > Four of the other five were pinned all along, by unit tests in both backends
-> that a deletion does breaks; one (`SMITHERS4106`) is a rule that does not exist.
+> that a deletion does breaks; one (`VIBE4106`) is a rule that does not exist.
 > The subtraction measures corpus coverage, which is the right thing for it to
 > measure — but a reader takes it as a measure of RISK, and for a code the corpus
 > is structurally unable to reach it is not one. The set above should be read
@@ -2133,7 +2756,7 @@ finding rather than a backlog item.**
 ### Re-derived an EIGHTH time on 2026-09-01 (migration step 16) — **the largest move the figure has ever made, and the first one in the wrong direction**
 
 *Prediction, written before any command was run.* Steps 11–15 delete the static
-Plan, replace it with the Effect Manifest, retire `SMITHERS1807`, and add no new
+Plan, replace it with the Effect Manifest, retire `VIBE1807`, and add no new
 codes at step 14. So R should fall by one (`1807` leaves the reference), F should
 be unchanged, and the corpus half should be unchanged, since the migration was
 described as rewriting case *bodies* rather than case *expectations*. Predicted
@@ -2153,19 +2776,19 @@ means what it says. **Eight codes ENTERED the set and none left it** — the fir
 net regression this figure has recorded:
 
 ```
-SMITHERS1151 SMITHERS4106 SMITHERS4111 SMITHERS4112 SMITHERS4124
-SMITHERS6001 SMITHERS6002 SMITHERS6003
+VIBE1151 VIBE4106 VIBE4111 VIBE4112 VIBE4124
+VIBE6001 VIBE6002 VIBE6003
 ```
 
 The full 27:
 
 ```
-SMITHERS1151 SMITHERS1901 SMITHERS1902
-SMITHERS4100 SMITHERS4104 SMITHERS4105 SMITHERS4106 SMITHERS4108 SMITHERS4109
-SMITHERS4111 SMITHERS4112 SMITHERS4113 SMITHERS4115 SMITHERS4116 SMITHERS4117
-SMITHERS4118 SMITHERS4119 SMITHERS4120 SMITHERS4121 SMITHERS4124 SMITHERS4199
-SMITHERS5215 SMITHERS5216 SMITHERS5217
-SMITHERS6001 SMITHERS6002 SMITHERS6003
+VIBE1151 VIBE1901 VIBE1902
+VIBE4100 VIBE4104 VIBE4105 VIBE4106 VIBE4108 VIBE4109
+VIBE4111 VIBE4112 VIBE4113 VIBE4115 VIBE4116 VIBE4117
+VIBE4118 VIBE4119 VIBE4120 VIBE4121 VIBE4124 VIBE4199
+VIBE5215 VIBE5216 VIBE5217
+VIBE6001 VIBE6002 VIBE6003
 ```
 
 **The eight split cleanly into two causes, and only one of them is the
@@ -2180,42 +2803,42 @@ ACCEPTANCES that assert `Flow.manifest`, and the declarations went with them.
 the exact bucket this section exists to count, arrived at from the other
 direction than usual: not a rule shipped without a case, but a case retired off a
 rule that is still there. Measured directly rather than inferred: the corpus now
-declares **two** codes in the whole `SMITHERS41xx`/`42xx` space, `SMITHERS4103`
-and `SMITHERS4110`, where §20 still says seven.
+declares **two** codes in the whole `VIBE41xx`/`42xx` space, `VIBE4103`
+and `VIBE4110`, where §20 still says seven.
 
 > [!CAUTION]
 > **Corrected by the NINTH re-derivation: the sentence "the rules did not leave
-> either implementation" is false for `SMITHERS4106`, and the count of two is
-> now five.** `SMITHERS4106` measures `R = 0, F = 0` — both backends hold only
+> either implementation" is false for `VIBE4106`, and the count of two is
+> now five.** `VIBE4106` measures `R = 0, F = 0` — both backends hold only
 > `// WALL n (4106), withdrawn.` comments, and the literal grep that produced
 > this paragraph counted those comments as implementations. The rule DID leave
 > both implementations; only its withdrawal notes remain, which is the same
-> defect this very section documents on the reference side for `SMITHERS1807`
+> defect this very section documents on the reference side for `VIBE1807`
 > two paragraphs below. `4111`, `4112` and `4124` are real and now have cases.
-> The corpus declares **five** codes in the `SMITHERS41xx`/`42xx` space today —
+> The corpus declares **five** codes in the `VIBE41xx`/`42xx` space today —
 > `4103`, `4110`, `4111`, `4112`, `4124`.
 
-**Four are new rules that landed WITHOUT cases** — `SMITHERS1151` (nominal error
-identity) and `SMITHERS6001`/`6002`/`6003` (the §Mandatory and §Forbidden
-compiler-options enforcement, SA-5). These are the `SMITHERS1604` shape running
+**Four are new rules that landed WITHOUT cases** — `VIBE1151` (nominal error
+identity) and `VIBE6001`/`6002`/`6003` (the §Mandatory and §Forbidden
+compiler-options enforcement, SA-5). These are the `VIBE1604` shape running
 in reverse: a rule that lands *with* its case never spends a day in this table,
 and these four landed without one, so they enter it on arrival.
 
-**A seventh axis, and it is the reference side of the sixth.** `SMITHERS1807`
+**A seventh axis, and it is the reference side of the sixth.** `VIBE1807`
 was **retired by step 13** and is spelled nowhere as a rule — its only remaining
 occurrences are prose recording its own retirement (`poc/src/language/compile.ts:374,376`,
 `poc/src/language/project-compile.ts:166`, three comments in
 `effect-lowering.test.ts`, and `docs/DECISIONS.md:255,257`). The first `grep`
 counts every one of them, so **R still contains a code the reference no longer
-implements**, and `SMITHERS1807` sits in the reference-only column as a phantom.
-This is precisely the `SMITHERS1805` trap this page documented on the reference
-side and the `SMITHERS1708` trap it documented on the fork side — **now caught a
+implements**, and `VIBE1807` sits in the reference-only column as a phantom.
+This is precisely the `VIBE1805` trap this page documented on the reference
+side and the `VIBE1708` trap it documented on the fork side — **now caught a
 third time, on a code retired by the very migration that is re-stamping the
 page.** Three occurrences of one instrument defect is no longer a curiosity; the
 extraction reads text, and text about a rule is not the rule.
 
 **Four codes changed columns and the subtraction cannot see it at all.**
-`SMITHERS4107`, `4114`, `4122` and `4123` are now **reference-only** (`R=1, F=0`):
+`VIBE4107`, `4114`, `4122` and `4123` are now **reference-only** (`R=1, F=0`):
 the fork withdrew `4107` with the walls, and `4122`/`4123` are visible only to
 the `suffix:` grep the seventh revision added, which is still not part of the
 three recorded commands. A code moving from "in both" to "reference-only" leaves
@@ -2224,22 +2847,22 @@ opening section is about. Anyone quoting the 27 should also run:
 
 > [!CAUTION]
 > **Corrected by the NINTH re-derivation: only ONE of these four is
-> reference-only.** `SMITHERS4114` measures `R = 1, F = 0` and the claim holds
-> for it. `SMITHERS4122` and `SMITHERS4123` measure `R = 1, F = 1` — the fork
+> reference-only.** `VIBE4114` measures `R = 1, F = 0` and the claim holds
+> for it. `VIBE4122` and `VIBE4123` measure `R = 1, F = 1` — the fork
 > reports both, building them from `suffix: "4122"` / `suffix: "4123"` at
 > `compiler/forkbridge/durable.go.txt:1219-1220` through
 > `d.fail(expression, unsupported.suffix, …)`; this paragraph reaches the
 > opposite conclusion because the `suffix:` spelling was, as it says itself,
 > never added to the recorded commands. They belong in the "in both, no case"
-> set and are in it. `SMITHERS4107` measures `R = 0, F = 0`: like `4106` it is
+> set and are in it. `VIBE4107` measures `R = 0, F = 0`: like `4106` it is
 > reported by neither implementation, so it did not change columns — it left the
 > table entirely.
 >
-> **`SMITHERS4114` is the one row that stands, and it is not a fail-open
+> **`VIBE4114` is the one row that stands, and it is not a fail-open
 > either.** It measures `R = 1, F = 0`, so code-set subtraction is right about
 > it — but the parity lane measured its REACHABILITY and the fork cannot get to
-> the program that would trip it: the site is gated behind `SMITHERS4120`,
-> `SMITHERS4117` and `SMITHERS4121`, every one of which the fork refuses first.
+> the program that would trip it: the site is gated behind `VIBE4120`,
+> `VIBE4117` and `VIBE4121`, every one of which the fork refuses first.
 > A rule one backend lacks but no program can reach on that backend is a
 > difference in code sets and not a difference in accepted programs, which is
 > exactly the distinction this page's opening section says code-set subtraction
@@ -2251,7 +2874,7 @@ opening section is about. Anyone quoting the 27 should also run:
 comm -23 /tmp/R /tmp/F   # reference-only: 20
 comm -13 /tmp/R /tmp/F   # fork-only:      21
 grep -oh 'suffix: *"[0-9]\{4\}"' compiler/forkbridge/durable.go.txt |
-  grep -o '[0-9]\{4\}' | sed 's/^/SMITHERS/'      # 4117 4121 4122 4123
+  grep -o '[0-9]\{4\}' | sed 's/^/VIBE/'      # 4117 4121 4122 4123
 ```
 
 ### Re-derived a SEVENTH time on 2026-08-27 (the durable-projection revision) — **the figure MOVED, and the command is wrong in a second way**
@@ -2265,7 +2888,7 @@ of the inputs, and the reason it was wrong is the finding.
 *Prediction, stated and written to disk before any command was run.* This lane
 writes four corpus cases and changes no implementation, so R, F and the
 intersection should not move at all: **R = 111, F = 113, B = 92, unchanged**. The
-corpus half gains exactly one code — `SMITHERS4110`, declared by a case for the
+corpus half gains exactly one code — `VIBE4110`, declared by a case for the
 first time — so **C = 73 → 74**, the second `comm` stays empty, and
 **92 − 74 = 18**: the figure moves, 19 → 18, for the first time in six
 derivations, and the code that leaves is precisely the one the *fifth* axis
@@ -2275,16 +2898,16 @@ derivations, and the code that leaves is precisely the one the *fifth* axis
 root.* **R = 111 (as predicted), C = 74 (as predicted), second `comm` empty (as
 predicted) — but F = 114, B = 93, and the subtraction printed 19, not 18.**
 Reporting that as "unchanged at 19" would be false, because the nineteen are
-**not the same nineteen**: `SMITHERS4110` left the set, and `SMITHERS4121`
+**not the same nineteen**: `VIBE4110` left the set, and `VIBE4121`
 entered it.
 
-**`SMITHERS4121` entered because a COMMENT mentions it.** The fork does not
-report `SMITHERS4121` anywhere the recorded command can see; the only literal
+**`VIBE4121` entered because a COMMENT mentions it.** The fork does not
+report `VIBE4121` anywhere the recorded command can see; the only literal
 occurrence of that string under `compiler/` is inside a comment in
 `compiler/fork_durable_projection_test.go` — an *untracked* Go test written by
 the two implementation lanes that closed the fail-opens this revision's cases
 pin — explaining that the subset refuses `fanOut` and `loopWhile` wholesale. The
-first of the three `grep`s reads literal `SMITHERS[0-9]{4}` over the whole
+first of the three `grep`s reads literal `VIBE[0-9]{4}` over the whole
 `compiler/` tree, tests and comments included, so **a code a comment MENTIONS is
 counted as a code the fork SPELLS**. Re-running the identical commands with that
 one file excluded gives **R = 111, F = 113, B = 92, C = 74, second `comm` empty,
@@ -2301,7 +2924,7 @@ constructed-code `grep`s sees them:
 
 ```sh
 grep -oh 'suffix: *"[0-9]\{4\}"' compiler/forkbridge/durable.go.txt |
-  grep -o '[0-9]\{4\}' | sed 's/^/SMITHERS/'          # SMITHERS4117 4121 4122 4123
+  grep -o '[0-9]\{4\}' | sed 's/^/VIBE/'          # VIBE4117 4121 4122 4123
 ```
 
 Of those four, only `4117` was ever in the set, and **only by luck**:
@@ -2315,26 +2938,26 @@ F = 116, B = 95, C = 74, second `comm` empty, subtraction = 21.**
 contamination removed the figure is **19 → 18**; under the corrected method it is
 **22 → 21**; under the verbatim command it prints 19 both times but over a
 changed set. **The delta attributable to this lane is −1 under every reading, and
-the code is `SMITHERS4110` under every reading.**
+the code is `VIBE4110` under every reading.**
 
 ```
-SMITHERS1901 SMITHERS1902
-SMITHERS4100 SMITHERS4104 SMITHERS4105 SMITHERS4108 SMITHERS4109 SMITHERS4113
-SMITHERS4115 SMITHERS4116 SMITHERS4117 SMITHERS4118 SMITHERS4119 SMITHERS4120
-SMITHERS4121 SMITHERS4122 SMITHERS4123 SMITHERS4199
-SMITHERS5215 SMITHERS5216 SMITHERS5217
+VIBE1901 VIBE1902
+VIBE4100 VIBE4104 VIBE4105 VIBE4108 VIBE4109 VIBE4113
+VIBE4115 VIBE4116 VIBE4117 VIBE4118 VIBE4119 VIBE4120
+VIBE4121 VIBE4122 VIBE4123 VIBE4199
+VIBE5215 VIBE5216 VIBE5217
 ```
 
 **Why it moved, plainly: the fifth axis's debt was paid, and it is the only one
 of the five that a corpus lane could pay.** The SWALLOW revision recorded
-`SMITHERS4110` as the case where "the table cannot count SURFACES" — the rule was
+`VIBE4110` as the case where "the table cannot count SURFACES" — the rule was
 in both implementations and in no case, and the corpus **could not reach it at
 all**, because the fail-open then depended on a legacy `Action.define` artifact
-that arrives only through `smithers plan --bindings` and the corpus route supplies
+that arrives only through `vibe plan --bindings` and the corpus route supplies
 no bindings. Two implementation lanes then moved the same rule onto a surface the
 corpus does reach: the Flow-output projection on the fork, and the Action **input**
-projection on both. A `.sm` file with no bindings at all now reaches
-`SMITHERS4110` on both backends at the same code, line, column and sentence, and
+projection on both. A `.vibe` file with no bindings at all now reaches
+`VIBE4110` on both backends at the same code, line, column and sentence, and
 four cases declare it. That is the axis closing rather than another instance of
 it, and it is worth separating from the four axes that remain open: spellings,
 same-revision arrivals, distance, and sites are all still uncounted.
@@ -2345,20 +2968,20 @@ implementations. This one says the subtraction **misreads its own inputs**: it
 extracts codes by matching text over whole directories, so it cannot tell a code
 an implementation *reports* from a code a comment *mentions*, and it does not
 know every way an implementation *spells* one. Both halves are exposed —
-`grep -roh 'SMITHERS[0-9]\{4\}' poc/src src` reads the reference's directories
+`grep -roh 'VIBE[0-9]\{4\}' poc/src src` reads the reference's directories
 the same way — and today the fork's half is additionally sensitive to an
 **untracked** file in someone's working tree, which is not a property any
 recorded figure should have. Anyone quoting this number should run the three
 commands **plus** the `suffix:` grep, and should say which files were in the tree
 when they did.
 
-**Re-derived a SIXTH time on 2026-08-27 (the `SMITHERS4124` / durable
+**Re-derived a SIXTH time on 2026-08-27 (the `VIBE4124` / durable
 fail-open revision), and for the first time the prediction was written down
 BEFORE the commands were run.** That matters here, because this revision is the
 one shape that ought to move the figure and does not, and a number recorded
 after the fact cannot show that its stillness was expected.
 
-*Prediction, stated first.* `SMITHERS4124` is not a re-spelling and not a
+*Prediction, stated first.* `VIBE4124` is not a re-spelling and not a
 re-probe: it is a **genuinely new code**, minted in the reference
 (`poc/src/durable/source-compiler.ts`) and in the fork
 (`compiler/forkbridge/durable.go.txt`, constructed as `d.fail(node, "4124", …)`
@@ -2376,7 +2999,7 @@ subtraction = 19, and the nineteen are the same nineteen, digit for digit. The
 measurement agreed with the prediction on every input and on the total.**
 
 **And the reason is NOT a sixth axis — it is the SECOND recorded reason
-recurring**, the `SMITHERS1604` shape: a rule that lands together with its case
+recurring**, the `VIBE1604` shape: a rule that lands together with its case
 never spends a day in this table. Saying "fifth distinct reason" here would be
 the flattering reading and it would be wrong. What is new is only that the
 recurrence was predicted rather than explained afterwards.
@@ -2389,13 +3012,13 @@ any legacy `Action.define` artifact at all, discarded it and compiled the Flow
 with a weaker `json-value` success contract and **no diagnostic** — so a Flow
 projecting a field its output genuinely does not have compiled clean and then
 faulted at run time as a `ProjectionDefect`. The refusal it now reports is
-`SMITHERS4110`, which is **one of the nineteen above**: in both implementations,
+`VIBE4110`, which is **one of the nineteen above**: in both implementations,
 probed by no case. The figure could not move, because the corpus half could not
 move, because **the corpus cannot reach this rule at all** —
 `conformance/runner/js-lower.mjs` calls the durable frontend with **no
-descriptor bindings**, so every Action in a `.sm` case is same-file and
+descriptor bindings**, so every Action in a `.vibe` case is same-file and
 structural, and the legacy artifact the fail-open depended on can only arrive
-through `smithers plan --bindings <actions.json>` (`src/cli.ts:2023`). A fifth
+through `vibe plan --bindings <actions.json>` (`src/cli.ts:2023`). A fifth
 axis, if anyone wants to name it: **the table cannot count SURFACES.** A rule
 that is only reachable through an entry point the corpus does not use is
 invisible to both halves of the subtraction at once, and its code can sit in the
@@ -2414,18 +3037,18 @@ and the fourth DIFFERENT reason, which is the finding.** The first three were:
 the defects were *spellings* (round 7 — `eval` through a shorthand property, a
 `context` key through a `const` alias, a trust marker inside a `//` comment); a
 code entered both implementations and the corpus in the same revision and never
-spent a day in this table (`SMITHERS1604`); and the table cannot count *distance*
+spent a day in this table (`VIBE1604`); and the table cannot count *distance*
 (the closure revision — the rule was probed, at depth 1, while the hole was at
 depth ≥ 2). **This revision's reason is a fourth axis: the table cannot count
-SITES.** The five cases declare exactly three codes — `SMITHERS2101`,
-`SMITHERS2104` and `SMITHERS1503` — and every one was already declared by other
+SITES.** The five cases declare exactly three codes — `VIBE2101`,
+`VIBE2104` and `VIBE1503` — and every one was already declared by other
 cases before this lane: 8, 4 and 3 of them respectively, verified by parsing the
 expectations rather than by reading them. Both implementations already spelled
 all three. Neither half of the subtraction could move. And yet
-`SMITHERS2106`'s resolution rule was **correct at the `X.context()` receiver and
+`VIBE2106`'s resolution rule was **correct at the `X.context()` receiver and
 absent one argument over**, at `Layer.succeed`'s first parameter, where one
 backend fail-opened into a runtime panic and the other published a phantom
-requirement row; and `SMITHERS1503`'s placement boundary was **correct at a
+requirement row; and `VIBE1503`'s placement boundary was **correct at a
 call expression and absent at a tagged template**, which both backends accepted.
 A rule that is right at one site and missing at the next site is one code, two
 implementations and a green corpus away from invisible — and unlike a spelling,
@@ -2444,11 +3067,11 @@ running the three commands above verbatim from the repository root, and NOTHING
 moved: R = 110, F = 112, intersection = 91, corpus = 72, second `comm` empty,
 subtraction = 19, and the nineteen codes below are the same nineteen.** Saying so
 plainly is more informative than the figure. The five cases this revision added
-declare exactly **one** diagnostic code between them, `SMITHERS1510`, and
+declare exactly **one** diagnostic code between them, `VIBE1510`, and
 twenty-one cases that are not this lane's already declare it — verified by parsing
 the expectations rather than by reading them. So the corpus half of the
 subtraction could not move, and neither implementation half moved either, because
-the defect the five cases pin was **not a missing rule**: `SMITHERS1510` was
+the defect the five cases pin was **not a missing rule**: `VIBE1510` was
 implemented, documented, and carried five cases while a foreign module reached at
 depth two behind a properly marked relay ran its untrusted initializer on both
 backends. This is the third revision running in which the subtraction stands still
@@ -2467,7 +3090,7 @@ running the three commands above verbatim from the repository root. The
 subtraction did not move — it is still 19 and still the same nineteen codes — but
 this time EVERY INPUT moved by exactly one: R = 109 → **110**, F = 111 → **112**,
 intersection = 90 → **91**, corpus = 71 → **72**, second `comm` still empty.** The
-one code is `SMITHERS1604`, dynamic code evaluation: two lanes implemented it in
+one code is `VIBE1604`, dynamic code evaluation: two lanes implemented it in
 the reference and the fork on 2026-08-27 and a third replaced
 `18/eval-is-usable-and-not-forbidden` with a case that declares it, so it entered
 both implementations and the corpus in the same revision and never spent a day in
@@ -2477,14 +3100,14 @@ here by construction.
 
 **The twenty-eight cases this revision added declare no code the corpus did not
 already declare**, verified by parsing their expectations rather than by reading
-them: the seven codes across all twenty-eight are `SMITHERS1103`, `1104`, `1503`,
+them: the seven codes across all twenty-eight are `VIBE1103`, `1104`, `1503`,
 `1510`, `1602`, `1604` and `2102`, and every one is declared by at least one case
 that is not mine. So the subtraction is exactly as blind to this revision as it
 was to the last one, and for the same reason stated below: **it counts codes, not
 spellings.** That limit is now worth more than the number, because round 7 is the
 strongest evidence for it this page has. Eleven defects were found in one day.
-Every one of them lived at a code that already had cases — `SMITHERS1510` had
-five, `SMITHERS2102` had a dozen, `SMITHERS1602` had four — and every one of them
+Every one of them lived at a code that already had cases — `VIBE1510` had
+five, `VIBE2102` had a dozen, `VIBE1602` had four — and every one of them
 was invisible to a 465-case corpus reporting `0 divergent`, because what was
 missing was a case at the SPELLING where the rule was broken: `eval` reached
 through a shorthand property, a `context` key reached through a `const` alias, a
@@ -2501,13 +3124,13 @@ subtraction = 19, and the nineteen codes below are the same nineteen.** That is
 the correct answer and it is worth saying why, because a reader who sees
 twenty-seven cases land and this number stand still will otherwise assume the
 page went stale again. **This revision added no diagnostic code to the corpus.**
-All twenty-seven cases declare codes the corpus already declared — `SMITHERS1101`,
+All twenty-seven cases declare codes the corpus already declared — `VIBE1101`,
 `1207`, `1301`, `1303`, `1504`, `1506`, `1507`, `2101`, `2102`, `2104`, `2107` —
 because the rules were never the thing missing. What was missing was a case at the
 *spelling* where each rule was broken, and this table cannot see that distinction:
 it counts codes, not spellings, so a family with one case and a family with
 fourteen look identical to it. **That is a real limit of this subtraction and it
-should be read alongside the count, not instead of it.** `SMITHERS2104` had
+should be read alongside the count, not instead of it.** `VIBE2104` had
 exactly one case before this revision and has three now; the code was never in the
 nineteen either way. The counterfactual the previous revision recorded — run the
 subtraction against a corpus without the two cases that landed with their rule and
@@ -2518,8 +3141,8 @@ time by construction.
 moved is the interesting part.** Every input grew and the answer did not: the
 reference went 107 → **109**, the fork 109 → **111**, the intersection 88 → **90**
 and the corpus 69 → **71**, while the subtraction stayed **19** and the nineteen
-codes are the same nineteen. That is not the set standing still. `SMITHERS2106`
-(an ambiguous `X.context()` receiver) and `SMITHERS2107` (a detached reference to
+codes are the same nineteen. That is not the set standing still. `VIBE2106`
+(an ambiguous `X.context()` receiver) and `VIBE2107` (a detached reference to
 the compiler-recognized `Context.context`) were implemented in both backends and
 pinned by cases **in the same revision**, so they entered the intersection and
 left it in one step and never spent a day in this table. Run the same subtraction
@@ -2530,13 +3153,13 @@ here by construction; a rule that lands without them is what this section is for
 
 Two caveats a reader should carry away rather than the number alone.
 
-**`SMITHERS1901` and `SMITHERS1902` are in that list for a bad reason, not a
+**`VIBE1901` and `VIBE1902` are in that list for a bad reason, not a
 coverage reason.** In the fork they are comptime rules that the judge translates
 to `VCT1001`/`VCT1002`, both of which the corpus *does* declare — so as comptime
 rules they are probed. In the reference the same two numbers are the formatter's
 overlapping-mask and overlapping-edit rules, which are genuinely unprobed and
 genuinely unreachable from the harness (the formatter lives behind the
-`smithers format` subcommand, never `compileProject`). One number, two rules,
+`vibe format` subcommand, never `compileProject`). One number, two rules,
 two different verdicts. That collision was load-bearing in the judge until
 2026-08-26 — see `runner/selftest.mjs`, "the comptime code alias is scoped to
 the fork" — and it is the reason this section now says which family it is
@@ -2544,7 +3167,7 @@ counting in every command.
 
 **The `VCT` family was never in this arithmetic at all.** The reference spells
 **36** `VCT` codes; the corpus declares **3**. Those 33 are not in the list above
-and never were, because the subtraction is over `SMITHERS`. They are not
+and never were, because the subtraction is over `VIBE`. They are not
 directly comparable — the fork implements comptime under its own numbering — but
 recording the shape here is honest, where silently omitting a whole diagnostic
 family from a coverage figure is not.
@@ -2564,27 +3187,27 @@ least produces a *divergence* the moment someone writes a case: one backend
 refuses, the other does not, and the runner says so. A rule both backends have
 and no case probes produces nothing at all, in either direction, ever. If either
 implementation lost it tomorrow the scoreboard would not move, and if both lost
-it the differential oracle would report perfect agreement. `SMITHERS1507` and
-`SMITHERS1508` sat in exactly this set while this page recorded them as covered,
-and `SMITHERS3005` — the gate on the best-covered area on this page — sat in it
+it the differential oracle would report perfect agreement. `VIBE1507` and
+`VIBE1508` sat in exactly this set while this page recorded them as covered,
+and `VIBE3005` — the gate on the best-covered area on this page — sat in it
 until this revision.
 
 | code | what it rejects | reference site | status |
 | --- | --- | --- | --- |
-| `SMITHERS1503` | `panic(...)` outside an expression statement or direct return | `poc/src/language/semantic.ts:1836` | **WRITTEN this revision** — `09-foreign-calls/panic-outside-a-statement-or-return-is-rejected`, green on both. Its accepted twin (`explicit-panic-charges-the-channel`) uses the supported placement, so the pair separates the channel rule from the placement rule. |
-| `SMITHERS1713` | an async `errdefer` that directly returns a Promise before its Result can be inspected | `poc/src/language/semantic.ts:3680-3686` | **WRITTEN this revision** — `10-defer/async-errdefer-cannot-inspect-a-directly-returned-promise`, green on both. This is the "narrower program" 14.7 said was needed: the neighbouring shapes reach `SMITHERS1402`/`1712` first and mask it. |
-| `SMITHERS2103` | a `Layer.provide` callback that does not resolve to a checked local function | `poc/src/language/semantic.ts:2692` | **WRITTEN this revision** — `06-layers/a-provide-callback-that-is-not-a-local-function-is-rejected`, green on both. It is the "what is required" half of *knowing the complete closure*; `SMITHERS2104` (`opaque-layer-is-rejected`) is the "what is provided" half. |
-| `SMITHERS3005` | `native(...)` given something that is not one reference to a function declared in this project | `poc/src/targets/classify.ts:1214` | **WRITTEN this revision, both branches** — `21-native-pin/a-pin-whose-argument-is-not-a-project-function-is-rejected` (at the argument) and `a-pin-given-two-arguments-is-rejected` (at the call). Both green on both. One case would have pinned one branch and left the other free, which is how a backend comes to own half of a code. |
-| `SMITHERS4103` | a `durable(...)` argument that is not inline or statically resolvable | `poc/src/durable/source-compiler.ts:700`, `:705`, `:709`, `:724` | **WRITTEN this revision** — `17-durable/an-opaque-durable-argument-is-rejected`, green on both. It pins obligation **20.5**, which §20 named as the highest-value reachable durable gap, and it is the durable area's exact analogue of `SMITHERS3005`. The corpus now declares **two** durable diagnostics rather than one. Its sibling branch (wrong argument count, reported at the call) is still unwritten. |
-| `SMITHERS1901` | the source does not parse after Smithers masking, so nothing is rewritten | `poc/src/language/format.ts:66` | **not writable here.** Formatter diagnostics, and the corpus has no formatter channel — the harness compiles and runs, it does not format. §21 is where the formatter is scored. |
-| `SMITHERS1902` | the formatted result would not round-trip the authored token stream | `poc/src/language/format.ts:68` | same. |
-| `SMITHERS3006` | the retired `/** @native */` JSDoc marker | `poc/src/targets/classify.ts:830` (the page said `:449` for three revisions; that line no longer holds the rule) | **not writable — severity is `"warning"`.** See observation gap #11: the harness filters to `severity === "error"` on both backends, so a warning cannot be observed at all. This one is *uncoverable*, not merely uncovered. |
-| `SMITHERS4100` | reference: any diagnostic the durable source's own check produced. fork: a `.run` input that is not assignable to the Action's checked input contract | ref `poc/src/durable/source-compiler.ts:2566`; fork `compiler/forkbridge/durable.go.txt:729` | **measured this revision and deliberately not written: the two implementations mean different things by this number.** The reference's `SMITHERS4100` is a *wrapper* that re-emits the first checker diagnostic of the durable source with the checker's own message and position; the fork's is one specific assignability rule. They may coincide on an input-mismatch program and may not, and a case would pin whichever reading its author guessed. Named here so whoever owns the durable bridge can settle it, rather than guessed at. |
-| `SMITHERS4117` | reference: a `fanOut` argument that is not one inline synchronous single-parameter arrow. fork: `fanOut` is not implemented by the Go durable subset at all | ref `poc/src/durable/source-compiler.ts:1690`, `:1703`; fork `compiler/forkbridge/durable.go.txt:562` | **measured this revision and deliberately not written: same problem as `4100`, one step worse.** The reference reports on the malformed arrow; the fork reports on the `fanOut` call, for *any* `fanOut`. A program malformed enough to reach the reference's rule reaches the fork's blanket refusal at a different node, so the case would be a position divergence dressed as a rule. |
+| `VIBE1503` | `panic(...)` outside an expression statement or direct return | `poc/src/language/semantic.ts:1836` | **WRITTEN this revision** — `09-foreign-calls/panic-outside-a-statement-or-return-is-rejected`, green on both. Its accepted twin (`explicit-panic-charges-the-channel`) uses the supported placement, so the pair separates the channel rule from the placement rule. |
+| `VIBE1713` | an async `errdefer` that directly returns a Promise before its Result can be inspected | `poc/src/language/semantic.ts:3680-3686` | **WRITTEN this revision** — `10-defer/async-errdefer-cannot-inspect-a-directly-returned-promise`, green on both. This is the "narrower program" 14.7 said was needed: the neighbouring shapes reach `VIBE1402`/`1712` first and mask it. |
+| `VIBE2103` | a `Layer.provide` callback that does not resolve to a checked local function | `poc/src/language/semantic.ts:2692` | **WRITTEN this revision** — `06-layers/a-provide-callback-that-is-not-a-local-function-is-rejected`, green on both. It is the "what is required" half of *knowing the complete closure*; `VIBE2104` (`opaque-layer-is-rejected`) is the "what is provided" half. |
+| `VIBE3005` | `native(...)` given something that is not one reference to a function declared in this project | `poc/src/targets/classify.ts:1214` | **WRITTEN this revision, both branches** — `21-native-pin/a-pin-whose-argument-is-not-a-project-function-is-rejected` (at the argument) and `a-pin-given-two-arguments-is-rejected` (at the call). Both green on both. One case would have pinned one branch and left the other free, which is how a backend comes to own half of a code. |
+| `VIBE4103` | a `durable(...)` argument that is not inline or statically resolvable | `poc/src/durable/source-compiler.ts:700`, `:705`, `:709`, `:724` | **WRITTEN this revision** — `17-durable/an-opaque-durable-argument-is-rejected`, green on both. It pins obligation **20.5**, which §20 named as the highest-value reachable durable gap, and it is the durable area's exact analogue of `VIBE3005`. The corpus now declares **two** durable diagnostics rather than one. Its sibling branch (wrong argument count, reported at the call) is still unwritten. |
+| `VIBE1901` | the source does not parse after VibeLang masking, so nothing is rewritten | `poc/src/language/format.ts:66` | **not writable here.** Formatter diagnostics, and the corpus has no formatter channel — the harness compiles and runs, it does not format. §21 is where the formatter is scored. |
+| `VIBE1902` | the formatted result would not round-trip the authored token stream | `poc/src/language/format.ts:68` | same. |
+| `VIBE3006` | the retired `/** @native */` JSDoc marker | `poc/src/targets/classify.ts:830` (the page said `:449` for three revisions; that line no longer holds the rule) | **not writable — severity is `"warning"`.** See observation gap #11: the harness filters to `severity === "error"` on both backends, so a warning cannot be observed at all. This one is *uncoverable*, not merely uncovered. |
+| `VIBE4100` | reference: any diagnostic the durable source's own check produced. fork: a `.run` input that is not assignable to the Action's checked input contract | ref `poc/src/durable/source-compiler.ts:2566`; fork `compiler/forkbridge/durable.go.txt:729` | **measured this revision and deliberately not written: the two implementations mean different things by this number.** The reference's `VIBE4100` is a *wrapper* that re-emits the first checker diagnostic of the durable source with the checker's own message and position; the fork's is one specific assignability rule. They may coincide on an input-mismatch program and may not, and a case would pin whichever reading its author guessed. Named here so whoever owns the durable bridge can settle it, rather than guessed at. |
+| `VIBE4117` | reference: a `fanOut` argument that is not one inline synchronous single-parameter arrow. fork: `fanOut` is not implemented by the Go durable subset at all | ref `poc/src/durable/source-compiler.ts:1690`, `:1703`; fork `compiler/forkbridge/durable.go.txt:562` | **measured this revision and deliberately not written: same problem as `4100`, one step worse.** The reference reports on the malformed arrow; the fork reports on the `fanOut` call, for *any* `fanOut`. A program malformed enough to reach the reference's rule reaches the fork's blanket refusal at a different node, so the case would be a position divergence dressed as a rule. |
 | `4104`, `4105`, `4106`, `4108`, `4109`, `4111`–`4113`, `4115`, `4116`, `4118`–`4121`, `4124`, `4199` | the rest of the durable template-compilation subset | `poc/src/durable/source-compiler.ts`; `compiler/forkbridge/durable.go.txt` | **RE-DERIVED 2026-09-01 and it GREW — this is the largest single block in this table and it is now four codes larger than a revision ago, not three smaller.** The previous cell read: "`4107`, `4111` and `4112` left the set on 2026-08-26 when §20's twelve refusal cases landed… Twelve remain in this row, and fourteen `41xx` codes remain in the set." **Two of those three came back and two more joined them.** Migration step 11 felled the branch and loop walls and rewrote the `17-durable` refusal cases into acceptances asserting `Flow.manifest`, so `4106`, `4111`, `4112` and `4124` are no longer declared by any case while both implementations still spell them. `4110` is the only durable code to have left the set and stayed out — it is still declared. `4107` left the set for a different and more serious reason and does not belong in this row any more: **the fork withdrew it entirely**, so it is now reference-only (`R=1, F=0`) and invisible to a subtraction that only counts the intersection. **Sixteen are listed in this row, and eighteen `41xx` codes are in the set** once `4100` and `4117` — the two rows above, where the implementations do not mean the same rule — are counted back in. Corrected against the machine-computed list rather than by arithmetic on the old sentence, which is how the previous two corrections of this same cell were also made; that this cell has now drifted three revisions running is itself the finding. They are reachable from phase 1, which is the phase the corpus does reach — see §20's closing paragraph, which names 20.8/20.9/20.11/20.13/20.14/20.21/20.25 as the obligations behind them. This is still, and by a wider margin than ever, where the next revision buys the most. |
-| `SMITHERS5215` | one path being both a compiler asset module and an authored/runtime code module | `poc/src/build/source-assets.ts:1150`, `:1161`, `:1198`, `:1328` | **measured a revision ago and deliberately not landed.** Reachable on the reference — a `.ts` file staged through the `assets` channel and also imported as code reports `SMITHERS5215@1:20` — but the fork reports `SMITHERS5209` at the same position instead ("asset must be a staged regular file beneath the project root"). Whether that is a fork defect or a consequence of the two-kinds wire protocol (gap #3: an asset crosses as `"typescript"`, so the fork cannot tell a staged asset from a staged code file) **cannot be decided from the conformance side**. Re-checked this revision: unchanged. |
-| `SMITHERS5216` | a generated asset identity colliding with a real path | `poc/src/build/source-assets.ts:1282` | **not writable.** Requires a real file at `.smithers-generated/assets/<digest>.ts` inside the project root; the staged path is derived from the asset's content digest, so a case would have to hard-code a digest and would break the moment the fixture's bytes changed. |
-| `SMITHERS5217` | a generated-module construction failure | `poc/src/build/source-assets.ts:1291` | **not usefully writable.** It carries a third party's exception text and is reached only when `generatedModule(build)` throws, which the built-in loaders do not do for any input a case can stage. The neighbouring `SMITHERS5213` covers the reachable half of "the loader failed" and is pinned. |
+| `VIBE5215` | one path being both a compiler asset module and an authored/runtime code module | `poc/src/build/source-assets.ts:1150`, `:1161`, `:1198`, `:1328` | **measured a revision ago and deliberately not landed.** Reachable on the reference — a `.ts` file staged through the `assets` channel and also imported as code reports `VIBE5215@1:20` — but the fork reports `VIBE5209` at the same position instead ("asset must be a staged regular file beneath the project root"). Whether that is a fork defect or a consequence of the two-kinds wire protocol (gap #3: an asset crosses as `"typescript"`, so the fork cannot tell a staged asset from a staged code file) **cannot be decided from the conformance side**. Re-checked this revision: unchanged. |
+| `VIBE5216` | a generated asset identity colliding with a real path | `poc/src/build/source-assets.ts:1282` | **not writable.** Requires a real file at `.vibelang-generated/assets/<digest>.ts` inside the project root; the staged path is derived from the asset's content digest, so a case would have to hard-code a digest and would break the moment the fixture's bytes changed. |
+| `VIBE5217` | a generated-module construction failure | `poc/src/build/source-assets.ts:1291` | **not usefully writable.** It carries a third party's exception text and is reached only when `generatedModule(build)` throws, which the built-in loaders do not do for any input a case can stage. The neighbouring `VIBE5213` covers the reachable half of "the loader failed" and is pinned. |
 
 **Eighteen of the twenty-seven are the durable block** — sixteen in the
 template-compilation row above plus `4100` and `4117` — and they are writable
@@ -2597,7 +3220,7 @@ came back into the set, and the block is larger than it has ever been. A case
 that pins a refusal is an asset that can be spent, and step 11 spent four of them
 without recording that it had. Of the remaining nine, **two are uncoverable by
 construction** (`1901`, `1902`, the formatter's own rules, reachable only through
-`smithers format`), **three are unwritable for a recorded mechanical reason**
+`vibe format`), **three are unwritable for a recorded mechanical reason**
 (`5215`, `5216`, `5217`), and **four are new rules that landed without a case at
 all** (`1151`, `6001`, `6002`, `6003`) and are ordinary corpus work. Two of
 the fourteen — `4100` and `4117` — are the category the previous revision had to
@@ -2610,7 +3233,7 @@ revision, and the correction is a worked example of the hazard the section
 opens with.** It read "Sixteen of the set are the durable template-compilation
 block" and "Three of the remaining eight are uncoverable by construction
 (`1901`, `1902`, `3006`)" — but the machine-computed list has **fourteen** `41xx`
-codes, not sixteen, and does **not contain `SMITHERS3006` at all**: `3006` is
+codes, not sixteen, and does **not contain `VIBE3006` at all**: `3006` is
 reference-only *and* has severity `"warning"`, so it is named in the table above
 as uncoverable without ever being a member of this set. Sixteen + eight = 24,
 against a stated total of 19, and nobody added them up for a revision. The
@@ -2624,12 +3247,12 @@ on the previous sentence; if this prose and the derivation ever disagree again,
 
 | # | obligation | source | status | cases |
 | --- | --- | --- | --- | --- |
-| 1.1 | Smithers source uses `.sm` | DECISIONS Locked | covered | structural: the corpus is `.sm` only and the Go bridge rejects anything else |
-| 1.2 | `.sm` uses a TypeScript-derived grammar with only documented differences | compatibility.mdx §Source Relationship | covered | the whole corpus; `conformance/interop/*` pins the `.ts` side; **`22/non-ascii-string-content-round-trips`** pins that source text outside ASCII survives lowering |
+| 1.1 | VibeLang source uses `.vibe` | DECISIONS Locked | covered | structural: the corpus is `.vibe` only and the Go bridge rejects anything else |
+| 1.2 | `.vibe` uses a TypeScript-derived grammar with only documented differences | compatibility.mdx §Source Relationship | covered | the whole corpus; `conformance/interop/*` pins the `.ts` side; **`22/non-ascii-string-content-round-trips`** pins that source text outside ASCII survives lowering |
 | 1.3 | `.ts`/`.tsx`/JS keep their own complete syntax and behavior when imported | compatibility.mdx §Source Relationship | covered | `interop/*` (6 files), all of `09-foreign-calls` |
 | 1.4 | shared syntax keeps TypeScript behavior unless a divergence is documented | compatibility.mdx §Source Relationship, DECISIONS Locked | covered | `11/statement-switch-keeps-typescript-fallthrough` (TS2678), `11/statement-switch-fallthrough-over-a-widened-scrutinee`, **`19/retired-clause-words-in-type-positions-stay-ordinary`** (`?:`, `??`, `?.` keep their TypeScript meaning) |
 | 1.5 | adding expression forms MUST NOT reinterpret an existing TypeScript statement | control-flow.mdx §Existing TypeScript Forms | covered | `11/statement-if-is-not-reinterpreted-as-an-expression`, `11/statement-switch-fallthrough-over-a-widened-scrutinee`, **`19/retired-operator-words-as-members-stay-ordinary`** |
-| 1.6 | TypeScript escape hatches stay available on the TypeScript target | compatibility.mdx §Source Relationship, DECISIONS Locked | **covered for `any`; for `eval` the corpus now contradicts the specification on purpose, and the sentence needs amending** | `18/any-is-usable-and-not-forbidden` is unchanged and still passes. **The citation this row carried for three revisions — `18/eval-is-usable-and-not-forbidden` — names a case that no longer exists.** It was replaced on 2026-08-27 by `18/eval-cannot-be-described-by-a-row-and-is-refused` (`SMITHERS1604@5:13`), whose own `notes` carry the full argument and which is where the open question is recorded rather than here. The short form: `compatibility.mdx` §Dynamic Features says "`any` and `eval` remain usable… the language does not forbid them", and two `MUST`s in the same document were being violated by the escape it permitted — `eval("process.platform")` returned the host platform and `eval("Date.now()")` read the clock, both with `failures: []` and `requirements: []`, on **both** backends. A `MUST NOT` outranks a permission, so the escape was closed and the permissive sentence is the one that has to move. **The `any` half of the sentence is unaffected**, which is why the two cases were split rather than retired together. The rule is narrower than "eval is forbidden" — the NAME resolves, the OPERATION is refused — and the guard that keeps it narrow is `20/the-function-type-and-prototype-test-stay-available` (9.1d). |
+| 1.6 | TypeScript escape hatches stay available on the TypeScript target | compatibility.mdx §Source Relationship, DECISIONS Locked | **covered for `any`; for `eval` the corpus now contradicts the specification on purpose, and the sentence needs amending** | `18/any-is-usable-and-not-forbidden` is unchanged and still passes. **The citation this row carried for three revisions — `18/eval-is-usable-and-not-forbidden` — names a case that no longer exists.** It was replaced on 2026-08-27 by `18/eval-cannot-be-described-by-a-row-and-is-refused` (`VIBE1604@5:13`), whose own `notes` carry the full argument and which is where the open question is recorded rather than here. The short form: `compatibility.mdx` §Dynamic Features says "`any` and `eval` remain usable… the language does not forbid them", and two `MUST`s in the same document were being violated by the escape it permitted — `eval("process.platform")` returned the host platform and `eval("Date.now()")` read the clock, both with `failures: []` and `requirements: []`, on **both** backends. A `MUST NOT` outranks a permission, so the escape was closed and the permissive sentence is the one that has to move. **The `any` half of the sentence is unaffected**, which is why the two cases were split rather than retired together. The rule is narrower than "eval is forbidden" — the NAME resolves, the OPERATION is refused — and the guard that keeps it narrow is `20/the-function-type-and-prototype-test-stay-available` (9.1d). |
 | 1.7 | **the retired-grammar sweep is a grammar rule, not token adjacency** | poc README ("Recognition is a **grammar** property"); compatibility.mdx §Source Relationship | covered | **`19/retired-operator-words-as-members-stay-ordinary`**, **`19/retired-clause-words-in-type-positions-stay-ordinary`** — the other half of §16. Nine cases pin that each retired form *is* rejected; these two pin that ordinary TypeScript reusing those words is *not* claimed, which is the false-positive direction a textual sweep fails in. |
 
 ## 2. Function model and Result lifting
@@ -2640,20 +3263,20 @@ on the previous sentence; if this prose and the derivation ever disagree again,
 | 2.2 | `return value` produces the success variant | failures.mdx §Compiler Lifting | covered | `01/return-lifts-into-success` |
 | 2.3 | `throw error` produces the error variant and exits | failures.mdx §Compiler Lifting | covered | `01/throw-lifts-into-failure` |
 | 2.4 | returning an existing compatible Result preserves it without nesting | failures.mdx §Compiler Lifting | covered | `01/returning-an-existing-result-preserves-it`, `19/result-nesting-remains-rejected` |
-| 2.5 | `Result.ok` / `Result.err` are not authoring API | failures.mdx §Compiler Lifting | **covered at the authored spelling and at the module edge; NOT at the compiler's own constructors — see observation gap #13** | `01/result-ok-is-not-an-authoring-constructor` (the dotted spelling), `01/a-computed-result-ok-is-a-compiler-hook` (the element-access spelling, which is the same resolved symbol). The sentence also forbids reaching the constructors the compiler *does* use, and the corpus pins the **module edge** to them on both backends: `01/the-compiler-owned-prelude-is-not-reachable-by-a-path` (`SMITHERS1510@1:23`, a *sanctioned* binding through the forbidden path, so the case is about the path alone) and `01/a-star-re-export-of-the-compiler-owned-prelude-is-refused` (`SMITHERS1510@1:15`, the spelling that names no binding, which no binding rule can see). Their over-correction guards are `01/the-compiler-owned-modules-still-serve-their-authoring-surface` — `Context`, `Layer` and `panic` must still work, so the program has to RUN — and `01/a-local-class-named-after-a-compiler-constructor-is-ordinary`, which stops the rule being implemented as a token filter. **What is NOT covered** is the constructor reached through a *sanctioned* specifier, which each backend closed on 2026-08-25 and which the case format cannot express, because the two backends' constructors have different names. |
+| 2.5 | `Result.ok` / `Result.err` are not authoring API | failures.mdx §Compiler Lifting | **covered at the authored spelling and at the module edge; NOT at the compiler's own constructors — see observation gap #13** | `01/result-ok-is-not-an-authoring-constructor` (the dotted spelling), `01/a-computed-result-ok-is-a-compiler-hook` (the element-access spelling, which is the same resolved symbol). The sentence also forbids reaching the constructors the compiler *does* use, and the corpus pins the **module edge** to them on both backends: `01/the-compiler-owned-prelude-is-not-reachable-by-a-path` (`VIBE1510@1:23`, a *sanctioned* binding through the forbidden path, so the case is about the path alone) and `01/a-star-re-export-of-the-compiler-owned-prelude-is-refused` (`VIBE1510@1:15`, the spelling that names no binding, which no binding rule can see). Their over-correction guards are `01/the-compiler-owned-modules-still-serve-their-authoring-surface` — `Context`, `Layer` and `panic` must still work, so the program has to RUN — and `01/a-local-class-named-after-a-compiler-constructor-is-ordinary`, which stops the rule being implemented as a token filter. **What is NOT covered** is the constructor reached through a *sanctioned* specifier, which each backend closed on 2026-08-25 and which the case format cannot express, because the two backends' constructors have different names. |
 | 2.6 | compiler-owned `Optional<T>` and its constructors are absent | type-system.mdx §Absence | covered | `19/builtin-optional-is-unresolved` |
 | 2.7 | a function with no fallible path is not wrapped in a Result | failures.mdx §Compiler Lifting; compatibility.mdx §TypeScript Target | covered | `01/plain-function-keeps-javascript-throw`, `08/infallible-async-returns-a-plain-promise` |
 | 2.8 | an explicit non-Result annotation over a reachable Error exit is a compile error | failures.mdx §Compiler Lifting; type-system.mdx §Fallibility Inference | covered | `01/contract-omits-reachable-failure`, `19/bang-return-marker-is-retired` |
 | 2.9 | public/abstract/declaration-only contracts spell `Result` directly | failures.mdx §Inference | covered | `01/exported-fallible-needs-result-contract` |
 | 2.10 | `E` is inferred from throws, unwraps, returned Results, foreign boundaries | type-system.mdx §Fallibility Inference | covered | `01/inferred-result-for-an-unannotated-function`, `02/unwrap-joins-two-error-types-into-one-row`, `09/untrusted-foreign-call-charges-panic` |
 | 2.11 | a recoverable `throw` value must extend `Error` | failures.mdx §Error Classes | covered | `01/throw-must-extend-error` |
-| 2.11a | **…and the rule has to be able to RUN: deciding whether a thrown value extends `Error` climbs its base types, and that walk crashed the reference frontend on most non-`Error` operands** | failures.mdx §Error Classes; the precondition is TypeScript's own — `checker.getBaseTypes` handles a tuple, then a symbol flagged `Class \| Interface`, and `Debug.fail`s on anything else | **covered as of 2026-08-27, two cases, and both were a hard CRASH on the reference until that day** | `01/a-thrown-object-literal-is-not-a-recoverable-error` (`SMITHERS1103@2:3`) and `01/a-thrown-const-tuple-is-not-a-recoverable-error` (the same code at the same position). Two cases, not one, because there are **two distinct faults on adjacent lines** of the checker and a guard can close either alone: `throw { code: 1 }` reached `Debug.fail("type must be class or interface")`, while `throw [1, 2] as const` reached the UNGUARDED `type.symbol.flags` dereference one line earlier and died with a `TypeError`, because a tuple reference has no symbol at all. Seventeen operands were measured crashing (an object literal, an arrow, a function expression, `Object.freeze`, a `Proxy`, a getter object, alias-typed, indexed-access-typed, `Record`-typed, cast-through-`unknown`, a union of two literals, a type parameter, a `satisfies` expression, a named tuple, a `readonly` tuple, and the same inside a nested arrow and a class method) — while `throw "x"`, `throw [1]`, `throw 1` and `throw new Date()` were sound throughout, which is exactly why 2.11's single case never saw it. `throw [1]` is the sharp control: `number[]` is a reference whose symbol IS the `Array` interface, so it satisfied the real precondition and an array-throw case could have existed forever without finding this. The fix invented no diagnostic — every crashing operand already had this rule waiting for it — and the reference converged onto the fork, which reported `SMITHERS1103` here all along. The name-keyed route into the same walk is 5.x's `match` family; see `01/an-object-literal-with-a-match-method-is-not-result-match`. |
-| 2.12 | a top-level `throw` cannot be represented as a checked Result | poc README SMITHERS1511 | covered | `01/top-level-throw-is-rejected` |
+| 2.11a | **…and the rule has to be able to RUN: deciding whether a thrown value extends `Error` climbs its base types, and that walk crashed the reference frontend on most non-`Error` operands** | failures.mdx §Error Classes; the precondition is TypeScript's own — `checker.getBaseTypes` handles a tuple, then a symbol flagged `Class \| Interface`, and `Debug.fail`s on anything else | **covered as of 2026-08-27, two cases, and both were a hard CRASH on the reference until that day** | `01/a-thrown-object-literal-is-not-a-recoverable-error` (`VIBE1103@2:3`) and `01/a-thrown-const-tuple-is-not-a-recoverable-error` (the same code at the same position). Two cases, not one, because there are **two distinct faults on adjacent lines** of the checker and a guard can close either alone: `throw { code: 1 }` reached `Debug.fail("type must be class or interface")`, while `throw [1, 2] as const` reached the UNGUARDED `type.symbol.flags` dereference one line earlier and died with a `TypeError`, because a tuple reference has no symbol at all. Seventeen operands were measured crashing (an object literal, an arrow, a function expression, `Object.freeze`, a `Proxy`, a getter object, alias-typed, indexed-access-typed, `Record`-typed, cast-through-`unknown`, a union of two literals, a type parameter, a `satisfies` expression, a named tuple, a `readonly` tuple, and the same inside a nested arrow and a class method) — while `throw "x"`, `throw [1]`, `throw 1` and `throw new Date()` were sound throughout, which is exactly why 2.11's single case never saw it. `throw [1]` is the sharp control: `number[]` is a reference whose symbol IS the `Array` interface, so it satisfied the real precondition and an array-throw case could have existed forever without finding this. The fix invented no diagnostic — every crashing operand already had this rule waiting for it — and the reference converged onto the fork, which reported `VIBE1103` here all along. The name-keyed route into the same walk is 5.x's `match` family; see `01/an-object-literal-with-a-match-method-is-not-result-match`. |
+| 2.12 | a top-level `throw` cannot be represented as a checked Result | poc README VIBE1511 | covered | `01/top-level-throw-is-rejected` |
 | 2.13 | no `throws` clause, `!T`, prefix `try`, or postfix recovery grammar | failures.mdx §Inference; DECISIONS Locked | covered | `19/throws-clause-is-retired`, `19/bang-return-marker-is-retired`, `19/prefix-try-marker-is-retired`, `19/postfix-catch-expression-is-retired` |
 | 2.14 | no throw-expression grammar in the initial scope | control-flow.mdx §Throw Statements; DECISIONS Locked | covered | `19/throw-is-not-an-expression` |
 | 2.15 | **functions remain ordinary and eager: no `Effect` value, interpreter, or `.run()`** | DECISIONS Locked; type-system.mdx §Function Type | covered structurally | every output case calls its functions directly and prints the result; nothing in the corpus interprets a description of work |
-| 2.16 | **a fallible constructor or accessor**: the lifting rule carves out neither | failures.mdx §Compiler Lifting; type-system.mdx §Fallibility Inference ("MUST reject the function rather than permit an untyped exception path") | **covered as of the third revision, by an `xfail go` documentation-gap marker — see §7.28** | The reference rejects with `SMITHERS1105` (`poc/src/language/semantic.ts:2038`). The fork's code set has neither code (`grep -roh 'SMITHERS[0-9]\{4\}' compiler/`), and `compiler/forkbridge/lowering.go.txt:2264-2275` implements the `SMITHERS1101/1104/1102` siblings in one block with no 1105 next to them. 79 corpus cases declare a `constructor(` and **none of them is fallible** (`grep -rl 'constructor(' conformance/corpus/ --include='*.sm' \| wc -l`). See "Reference-only rejection rules". |
-| 2.17 | **a fallible generator** | same | **still uncovered in the refusal direction; the accepted direction is now pinned** | The reference defers it explicitly with `SMITHERS1106` (`poc/src/language/semantic.ts:1971`); the fork has no such code. The sentence this row used to carry — that no corpus case contains a generator at all — **is no longer true**: `09/a-generator-may-abort-with-a-panic` is the first, and it pins that a generator which aborts with `panic(...)` keeps `Generator<string>` and runs on both backends. That is the accepted half. A generator with an ordinary recoverable failure still splits the two backends exactly as §2.16 does and is not yet written. |
+| 2.16 | **a fallible constructor or accessor**: the lifting rule carves out neither | failures.mdx §Compiler Lifting; type-system.mdx §Fallibility Inference ("MUST reject the function rather than permit an untyped exception path") | **covered as of the third revision, by an `xfail go` documentation-gap marker — see §7.28** | The reference rejects with `VIBE1105` (`poc/src/language/semantic.ts:2038`). The fork's code set has neither code (`grep -roh 'VIBE[0-9]\{4\}' compiler/`), and `compiler/forkbridge/lowering.go.txt:2264-2275` implements the `VIBE1101/1104/1102` siblings in one block with no 1105 next to them. 79 corpus cases declare a `constructor(` and **none of them is fallible** (`grep -rl 'constructor(' conformance/corpus/ --include='*.vibe' \| wc -l`). See "Reference-only rejection rules". |
+| 2.17 | **a fallible generator** | same | **covered in both directions as of 2026-09-05** | The reference defers it explicitly with `VIBE1106` (`poc/src/language/semantic.ts:1971`); the fork has no such code. The sentence this row used to carry — that no corpus case contains a generator at all — **is no longer true**: `09/a-generator-may-abort-with-a-panic` is the first, and it pins that a generator which aborts with `panic(...)` keeps `Generator<string>` and runs on both backends. That is the accepted half. ~~A generator with an ordinary recoverable failure still splits the two backends exactly as §2.16 does and is not yet written.~~ **Written 2026-09-05**: `02/a-fallible-generator-is-rejected` — a `!` inside an authored `function*` body, refused at the declaration with the full cascade declared (`VIBE1101` beside `VIBE1106`, both `@10:1`), from failures.mdx §Refusal Conditions: an authored generator MUST NOT declare or infer a non-empty effect row. On the fork this is expected to split exactly as the §2.16 marker (`09/a-fallible-getter-in-an-argument-still-needs-a-contract`) records — the fork implements no `VIBE1106` — and the measurement is recorded on the case itself. |
 
 ## 3. Result combinator surface
 
@@ -2663,8 +3286,8 @@ Every member has a case.
 
 | # | obligation | source | status | cases |
 | --- | --- | --- | --- | --- |
-| 3.1 | `match` requires both success and error branches | failures.mdx §Matching | covered | `01/result-match-requires-both-branches` (TS2345, reached through the emit-check stage) |
-| 3.1a | **…and `match` is not a reserved member name: an ordinary value with a member called `match` is that value's own method** | compatibility.mdx §4 (Locked) forbids invalidating TypeScript's escape hatches, and `match` is an ordinary identifier — `String.prototype.match` is in `lib.es5.d.ts` | **covered as of 2026-08-27, three cases, and all three were a hard CRASH on the reference until that day** | `01/an-object-literal-with-a-match-method-is-not-result-match` (three spellings — dotted, string-literal element access, and a `const`-aliased key — all printing the object's own return value), `01/a-frozen-object-with-a-match-method-compiles`, and `01/a-module-member-named-match-is-the-modules-own`. Three receivers, not one, because the guard that closes the crash can be written three ways and only one of them is right: an object literal has **no symbol**, `Object.freeze`'s `Readonly<T>` mapped type **has** one and is still not a class or an interface, and a module namespace object is neither while also being how `import * as lib; lib.match()` reaches the walk — so **any project with a module exporting a function named `match`, called qualified, could not be compiled at all.** Thirteen receiver kinds and all six call spellings were measured crashing. The third spelling in the first case is the round-7 intersection worth reading: the member-key rule now resolves a `const`-aliased key to the same member symbol, so `own[KEY]()` reaches this walk too and a fix keyed on `PropertyAccessExpression` would leave it crashing. The rules that must still fire were measured unchanged — `SMITHERS1251`, `1253`, `1254`, `1255` on a real `Error.match`, and `SMITHERS1206` on a retired `Result.unwrap()`. The name-independent route into the same walk is 2.11a. |
+| 3.1 | `match` requires both success and error branches | failures.mdx §Matching | covered | `01/result-match-requires-both-branches` (native generated-code TS2741; authored Go union TS2345, diagnostic-only marker; both refuse the missing branch) |
+| 3.1a | **…and `match` is not a reserved member name: an ordinary value with a member called `match` is that value's own method** | compatibility.mdx §4 (Locked) forbids invalidating TypeScript's escape hatches, and `match` is an ordinary identifier — `String.prototype.match` is in `lib.es5.d.ts` | **covered as of 2026-08-27, three cases, and all three were a hard CRASH on the reference until that day** | `01/an-object-literal-with-a-match-method-is-not-result-match` (three spellings — dotted, string-literal element access, and a `const`-aliased key — all printing the object's own return value), `01/a-frozen-object-with-a-match-method-compiles`, and `01/a-module-member-named-match-is-the-modules-own`. Three receivers, not one, because the guard that closes the crash can be written three ways and only one of them is right: an object literal has **no symbol**, `Object.freeze`'s `Readonly<T>` mapped type **has** one and is still not a class or an interface, and a module namespace object is neither while also being how `import * as lib; lib.match()` reaches the walk — so **any project with a module exporting a function named `match`, called qualified, could not be compiled at all.** Thirteen receiver kinds and all six call spellings were measured crashing. The third spelling in the first case is the round-7 intersection worth reading: the member-key rule now resolves a `const`-aliased key to the same member symbol, so `own[KEY]()` reaches this walk too and a fix keyed on `PropertyAccessExpression` would leave it crashing. The rules that must still fire were measured unchanged — `VIBE1251`, `1253`, `1254`, `1255` on a real `Error.match`, and `VIBE1206` on a retired `Result.unwrap()`. The name-independent route into the same walk is 2.11a. |
 | 3.2 | `map` / `andThen` / `recover` preserve or combine the error type | failures.mdx §Matching; type-system.mdx §Result Composition | covered | `01/result-transformations-preserve-the-error-type` |
 | 3.3 | `mapError` rewrites the error channel | failures.mdx §Matching | covered | `01/result-map-error-rewrites-the-error-channel` |
 | 3.4 | `tap` / `tapError` observe without changing the Result | failures.mdx §Matching | covered | `01/result-tap-and-tap-error-observe-without-changing` |
@@ -2673,7 +3296,7 @@ Every member has a case.
 | 3.7 | `Result.all` collects, and reports the first error | failures.mdx §Matching | covered | `01/result-all-collects-and-stops-at-the-first-error` |
 | 3.8 | `Result.try` / `Result.tryPromise` adapt a throwing/rejecting body, retaining Panic | poc README; failures.mdx §Foreign Exceptions | covered | `01/result-try-adapts-a-throwing-body`, `01/result-try-promise-adapts-a-rejecting-body` |
 | 3.9 | `expect` converts the error variant into a panic on the enclosing channel | failures.mdx §Failure Propagation; poc README | covered | `01/expect-charges-the-panic-channel` |
-| 3.10 | **`expect` at a non-Result boundary is visually distinct in diagnostics** | failures.mdx §Failure Propagation; poc README SMITHERS1505 | covered | `01/top-level-expect-is-rejected` — the go marker is **retired**; the fork used to accept and run this program |
+| 3.10 | **`expect` at a non-Result boundary is visually distinct in diagnostics** | failures.mdx §Failure Propagation; poc README VIBE1505 | covered | `01/top-level-expect-is-rejected` — the go marker is **retired**; the fork used to accept and run this program |
 | 3.11 | ordinary Result recovery MUST NOT swallow panic implicitly | failures.mdx §Foreign Exceptions | covered | `09/recover-does-not-swallow-a-panic` |
 | 3.12 | exhaustive recovery MAY remove handled members from `E` | type-system.mdx §Result Composition (MAY) | covered as a MAY | `01/result-transformations-preserve-the-error-type` |
 
@@ -2683,22 +3306,22 @@ Every member has a case.
 | --- | --- | --- | --- | --- |
 | 4.1 | postfix `!` yields the success value or propagates the error variant | failures.mdx §Failure Propagation | covered | `02/unwrap-returns-the-error-variant`, `02/unwrap-stops-at-the-first-failure` |
 | 4.2 | the propagated Result's error type joins the enclosing `E` | failures.mdx §Failure Propagation | covered | `02/unwrap-joins-two-error-types-into-one-row` |
-| 4.2a | **…and it joins it through a type-only WRAPPER and through a local BINDING, which are the two spellings where the join was silently dropped** | failures.mdx §Failure Propagation joined with §Result Model (a declared `E` MUST cover every failure reachable through the function) | **covered as of 2026-08-27, three cases, both directions** | `02/a-satisfies-wrapped-propagation-charges-the-contract` and `02/a-stored-inferred-fallible-result-charges-the-contract` both declare `SMITHERS1104@9:1` — the same code and position 2.5's `01/contract-omits-reachable-failure` declares for the inline spelling — over `outer(): Result<number, Calm>` whose body can only produce `Boom`. Before the fix the reference reported **no Smithers diagnostic at all**, published the row `["Calm"]` (a failure the body cannot produce, while omitting the one it can), and let the stock check of the emitted module refuse the program with an unmapped `TS2322`: a wrong published row, a missed rule, and a refusal pointing at generated code. `as` and `<T>` were already handled and `satisfies` was not, in three walks that each restated the wrapper table by hand. **The binding spelling is the one that needed TWO edges, and recognizing either one alone is worse than recognizing neither**: a backend that accepted `stored!` as a propagation without also charging the row would COMPILE a function publishing `Result<number, Calm>` over a body that can only fail with `Boom`, which is a fail-open in the contract itself. `02/a-stored-inferred-fallible-result-propagates-and-runs` is the acceptance half and is not optional — the same program with a matching contract did not compile on the Go fork at all, drawing `SMITHERS1302` and `SMITHERS1207` at once, two rules contradicting each other about one value on the most ordinary store-then-propagate spelling in the language. It prints both variants, so a backend that recognized the propagation but lost the failure fails it. The callee is deliberately UNANNOTATED in all three, because a row still being computed by the fixpoint is what the reference used to read while deciding whether the propagation existed. The foreign-value counterpart is 7.34a. |
+| 4.2a | **…and it joins it through a type-only WRAPPER and through a local BINDING, which are the two spellings where the join was silently dropped** | failures.mdx §Failure Propagation joined with §Result Model (a declared `E` MUST cover every failure reachable through the function) | **covered as of 2026-08-27, three cases, both directions** | `02/a-satisfies-wrapped-propagation-charges-the-contract` and `02/a-stored-inferred-fallible-result-charges-the-contract` both declare `VIBE1104@9:1` — the same code and position 2.5's `01/contract-omits-reachable-failure` declares for the inline spelling — over `outer(): Result<number, Calm>` whose body can only produce `Boom`. Before the fix the reference reported **no VibeLang diagnostic at all**, published the row `["Calm"]` (a failure the body cannot produce, while omitting the one it can), and let the stock check of the emitted module refuse the program with an unmapped `TS2322`: a wrong published row, a missed rule, and a refusal pointing at generated code. `as` and `<T>` were already handled and `satisfies` was not, in three walks that each restated the wrapper table by hand. **The binding spelling is the one that needed TWO edges, and recognizing either one alone is worse than recognizing neither**: a backend that accepted `stored!` as a propagation without also charging the row would COMPILE a function publishing `Result<number, Calm>` over a body that can only fail with `Boom`, which is a fail-open in the contract itself. `02/a-stored-inferred-fallible-result-propagates-and-runs` is the acceptance half and is not optional — the same program with a matching contract did not compile on the Go fork at all, drawing `VIBE1302` and `VIBE1207` at once, two rules contradicting each other about one value on the most ordinary store-then-propagate spelling in the language. It prints both variants, so a backend that recognized the propagation but lost the failure fails it. The callee is deliberately UNANNOTATED in all three, because a row still being computed by the fixpoint is what the reference used to read while deciding whether the propagation existed. The foreign-value counterpart is 7.34a. |
 | 4.3 | the emitted error path returns rather than throwing | failures.mdx §Failure Propagation | covered | `02/unwrap-stops-at-the-first-failure` |
 | 4.4 | postfix `!` needs an enclosing Result-returning function | failures.mdx §Failure Propagation | covered | `02/unwrap-at-top-level-is-rejected`, `02/unwrap-in-a-non-result-owner-is-rejected` |
-| 4.5 | propagation whose early return would bypass a `catch` is rejected | poc README SMITHERS1205 | covered | `02/unwrap-inside-try-with-catch-is-rejected` |
-| 4.6 | propagation in an order-unpreservable expression is rejected | poc README SMITHERS1204 | covered | `02/unwrap-in-a-compound-expression-is-rejected` |
-| 4.12 | **the placement rule is a WALK to the nearest statement or arrow function, so a construct whose child is directly a statement position admits a `!`** | failures.mdx §Accepted Placements (**withdrawn 2026-08-27**; quoted verbatim in that page's §Amendment Record) — condition 1 and its own consequence sentence: "That is why `if (r!)`, `switch (r!)`, and `for (let i = r!; …)` are accepted". The obligation is no longer live: §Refusal Conditions makes placement unrestricted. This row now pins **current compiler behavior**; the placement half of the `(SA-1)` gap closed 2026-08-30 and the case it cites moved with it | **covered — all three the sentence names** | `02/postfix-bang-in-an-if-condition-is-accepted`, `02/postfix-bang-in-a-switch-discriminant-is-accepted`, `02/postfix-bang-in-a-for-initializer-is-accepted`. The fork refused the last two with `SMITHERS1204` until 2026-08-25 because its hoistable-statement set listed only variable, return, expression, throw and `if`. Written as three cases rather than one because the sentence names three constructs and an implementation can hold any subset. |
+| 4.5 | propagation whose early return would bypass a `catch` is rejected | poc README VIBE1205 | covered | `02/unwrap-inside-try-with-catch-is-rejected` |
+| 4.6 | ~~propagation in an order-unpreservable expression is rejected~~ **the authored effect order is preserved without a refusal (2026-09-05)** | failures.mdx §Refusal Conditions (SA-1, retired) | covered | `02/unwrap-in-a-compound-expression-is-rejected` (flipped 2026-08-30) and `02/an-unhoisted-effect-before-a-propagation-in-one-statement-is-rejected` — authored 2026-09-05 as the third residue's refusal certification and flipped the same day when the delimiter lowering retired all three residues at once; it now prints `bump() + scoreOf("a")!` evaluated left to right. |
+| 4.12 | **the placement rule is a WALK to the nearest statement or arrow function, so a construct whose child is directly a statement position admits a `!`** | failures.mdx §Accepted Placements (**withdrawn 2026-08-27**; quoted verbatim in that page's §Amendment Record) — condition 1 and its own consequence sentence: "That is why `if (r!)`, `switch (r!)`, and `for (let i = r!; …)` are accepted". The obligation is no longer live: §Refusal Conditions makes placement unrestricted. This row now pins **current compiler behavior**; the placement half of the `(SA-1)` gap closed 2026-08-30 and the case it cites moved with it | **covered — all three the sentence names** | `02/postfix-bang-in-an-if-condition-is-accepted`, `02/postfix-bang-in-a-switch-discriminant-is-accepted`, `02/postfix-bang-in-a-for-initializer-is-accepted`. The fork refused the last two with `VIBE1204` until 2026-08-25 because its hoistable-statement set listed only variable, return, expression, throw and `if`. Written as three cases rather than one because the sentence names three constructs and an implementation can hold any subset. |
 | 4.13 | **`r!.length` is accepted and `r!.trim()` is not — the allowance ends when the member is called** | failures.mdx §Accepted Placements (**withdrawn 2026-08-27**; quoted verbatim in that page's §Amendment Record) — worked examples, flagged there as "easy to get wrong and MUST be read from the rule rather than guessed". The obligation is no longer live: §Refusal Conditions makes placement unrestricted. This row now pins **current compiler behavior**; the placement half of the `(SA-1)` gap closed 2026-08-30 and the case it cites moved with it | **covered, both directions** | `02/postfix-bang-as-a-property-access-object-is-accepted` and `02/postfix-bang-before-a-member-call-is-rejected` — the same program with `.length` and `.trim()`. Neither half means anything alone. |
 | 4.14 | **element access is not property access** | failures.mdx §Accepted Placements (**withdrawn 2026-08-27**; quoted verbatim in that page's §Amendment Record) — "`r![0]` // rejected — element access is not property access". The obligation is no longer live: §Refusal Conditions makes placement unrestricted. This row now pins **current compiler behavior**; the placement half of the `(SA-1)` gap closed 2026-08-30 and the case it cites moved with it | covered | `02/postfix-bang-before-an-element-access-is-rejected`. Its counterpart from the other side is `compatibility.mdx:72`'s `arr[i]!` — `!` applied TO an element read — pinned by `07/an-array-literal-of-results-is-consumed-through-an-index-read`. |
-| 4.15 | **`??` admits the LEFT operand and refuses the right** | failures.mdx §Accepted Placements (**withdrawn 2026-08-27**; quoted verbatim in that page's §Amendment Record) — condition 1's fifth form and its two worked examples. The obligation is no longer live: §Refusal Conditions makes placement unrestricted. This row now pins **current compiler behavior**; the placement half of the `(SA-1)` gap closed 2026-08-30 and the case it cites moved with it | **covered, both directions** | `02/postfix-bang-as-a-nullish-left-operand-is-accepted` and `02/postfix-bang-as-a-nullish-right-operand-is-rejected` — one operator, two positions, opposite verdicts. |
+| 4.15 | **`??` admits the LEFT operand and refuses the right** | failures.mdx §Accepted Placements (**withdrawn 2026-08-27**; quoted verbatim in that page's §Amendment Record) — condition 1's fifth form and its two worked examples. The obligation is no longer live: §Refusal Conditions makes placement unrestricted. This row now pins **current compiler behavior**; the placement half of the `(SA-1)` gap closed 2026-08-30 and the case it cites moved with it | **covered, both directions — and the verdicts are no longer opposite as of 2026-09-05** | `02/postfix-bang-as-a-nullish-left-operand-is-accepted` and `02/postfix-bang-as-a-nullish-right-operand-is-rejected` (name now historical): the delimiter lowering retired the last three (SA-1) residues, the right-operand case flipped to `expect: "output"` printing the name the operand computes, and both backends accept both positions. The row now pins that a conditionally evaluated operand is EVALUATED, once, where it was written. |
 | 4.16 | **a call argument is refused at any nesting depth** | failures.mdx §Accepted Placements (**withdrawn 2026-08-27**; quoted verbatim in that page's §Amendment Record) — "`f(r!)` // rejected — call argument, at any nesting depth". The obligation is no longer live: §Refusal Conditions makes placement unrestricted. This row now pins **current compiler behavior**; the placement half of the `(SA-1)` gap closed 2026-08-30 and the case it cites moved with it | covered | `02/postfix-bang-in-a-call-argument-is-rejected`. The commonest shape in the language, and the one an implementation reading the rule as a list of shapes is likeliest to admit. |
-| 4.17 | **a rejected placement MUST be a diagnostic, never a silent lowering** | failures.mdx §Refusal Conditions — **this obligation survives the 2026-08-27 revision verbatim**: "A rejected `!` MUST be a diagnostic, never a silent lowering." (Previously stated in §Accepted Placements.) | **covered structurally, by every refusal row above** | A silent lowering is not a quieter answer here, it is a *different program*: TypeScript's own non-null assertion means something in each of these positions, so a backend that lowered it through unchanged would compile and RUN. The judge scores that `fail` ("accepted and ran… but the case must be rejected"), not `pass`. Each of 4.13/4.14/4.15/4.16's refusal halves says so in its `notes`. The rule was written into the specification to settle a live disagreement in which one backend suppressed `SMITHERS1207` and emitted the `!` through; that carve-out is gone and `08/postfix-bang-on-an-unawaited-promise-result-is-not-a-result-operand` is what would notice it returning. |
-| 4.18 | **an arrow function is where the placement walk STOPS, not a placement it fails** | failures.mdx §Refusal Conditions — the *verdict* survives and is strengthened (placement is unrestricted, so a concise arrow body is accepted a fortiori); the **walk** that produced it was withdrawn 2026-08-27 with §Accepted Placements, condition 1: "until the nearest statement **or arrow function**" | **covered** — both cases were `xfail go` until 2026-08-28, when `lowerConciseBody` learned to synthesise the block body a hoisted guard needs; they were one defect and retired in one edit | `02/postfix-bang-in-a-concise-arrow-body-is-accepted` (**xfail go** — the fork reports `SMITHERS1204`, because a concise arrow body has no statement list to hoist a guard into; closing it needs a synthesised block body) and `07/a-fallible-callback-in-a-map-argument-needs-a-contract` (**xfail go** for the same extra `SMITHERS1204`). The two retire together. `07/a-concise-arrow-body-returning-a-result-is-a-return` is the must-consume half of the same reading. |
+| 4.17 | **a rejected placement MUST be a diagnostic, never a silent lowering** | failures.mdx §Refusal Conditions — **this obligation survives the 2026-08-27 revision verbatim**: "A rejected `!` MUST be a diagnostic, never a silent lowering." (Previously stated in §Accepted Placements.) | **covered structurally, by every refusal row above** | A silent lowering is not a quieter answer here, it is a *different program*: TypeScript's own non-null assertion means something in each of these positions, so a backend that lowered it through unchanged would compile and RUN. The judge scores that `fail` ("accepted and ran… but the case must be rejected"), not `pass`. Each of 4.13/4.14/4.15/4.16's refusal halves says so in its `notes`. The rule was written into the specification to settle a live disagreement in which one backend suppressed `VIBE1207` and emitted the `!` through; that carve-out is gone and `08/postfix-bang-on-an-unawaited-promise-result-is-not-a-result-operand` is what would notice it returning. |
+| 4.18 | **an arrow function is where the placement walk STOPS, not a placement it fails** | failures.mdx §Refusal Conditions — the *verdict* survives and is strengthened (placement is unrestricted, so a concise arrow body is accepted a fortiori); the **walk** that produced it was withdrawn 2026-08-27 with §Accepted Placements, condition 1: "until the nearest statement **or arrow function**" | **covered** — both cases were `xfail go` until 2026-08-28, when `lowerConciseBody` learned to synthesise the block body a hoisted guard needs; they were one defect and retired in one edit | `02/postfix-bang-in-a-concise-arrow-body-is-accepted` (**xfail go** — the fork reports `VIBE1204`, because a concise arrow body has no statement list to hoist a guard into; closing it needs a synthesised block body) and `07/a-fallible-callback-in-a-map-argument-needs-a-contract` (**xfail go** for the same extra `VIBE1204`). The two retire together. `07/a-concise-arrow-body-returning-a-result-is-a-return` is the must-consume half of the same reading. |
 | 4.19 | **a labeled statement is an ordinary statement position for the walk** | failures.mdx §Refusal Conditions — the *verdict* survives and is strengthened (placement is unrestricted, so a labeled statement body is accepted a fortiori); the **walk** that produced it was withdrawn 2026-08-27 with §Accepted Placements, condition 1 | **covered** — an `xfail js` until 2026-08-28. The marker blamed the guard's placement and the guard was already in the right place; the defect was a missing labeled-statement arm in `statementMayFallThrough`, which appended an unreachable completion the emitted-module check then rejected | `02/postfix-bang-in-a-labeled-statement-body-is-accepted`. The reference ACCEPTS the placement, as the rule requires, and then emits TypeScript its own stock check rejects with `TS2322`. That is a lowering defect on the reference, fail-closed, and it is pre-existing: the convergence lane's 510-row emit byte-comparison shows no reference emit changed except one dynamic-import case. **ONE CLAUSE OF THAT CASE'S `notes` IS WRONG AND IS CORRECTED HERE — re-measured 2026-08-28.** It says the over-approximating direction "is also self-checking — a function that really can run off its end without the completion is refused by the emitted-module check's own *not all code paths return a value*, never accepted silently." The **direction** is right (it is refused, on both backends, and nothing fails open) but the **mechanism** named is not what happens. Six such programs were measured — `outer: { … if (c) break outer; return … }`, the same with a plain `break` and no return, `while (true)`/`for (;;)` with a `break`, nested labels with `break inner`, and a bare unlabeled block — and on **all six** the reference reports `TS2322` *Type 'Result<undefined, never>' is not assignable to type 'Result<string[], Missing>'* with `mapped: false`, at a **generated** position past the end of the authored file (lines 21–24 of a 14-line program), because the appended `return __vsResultSuccess(undefined)` is what the stock check objects to. The fork reports `TS2366` *Function lacks ending return statement* at the authored signature (`10:25`) on all six. So the complement of this class is a live **six-for-six diagnostic-identity divergence in which the fork is right**, both backends refuse, and no corpus case spells it. Left unregistered deliberately: it is one cause, the fix is on the reference's `implicitCompletion` rather than in the corpus, and pinning `TS2366` today would need an `xfail js` on six cases for one defect. |
-| 4.7 | propagation in a repeated loop header is rejected | poc README SMITHERS1703 | covered | `02/unwrap-in-a-loop-header-is-rejected` |
+| 4.7 | ~~propagation in a repeated loop header is rejected~~ **a repeated loop header re-evaluates its propagation per iteration (flipped 2026-09-05 with the delimiter lowering; VIBE1703 is retired from the corpus's declared set)** | failures.mdx §Refusal Conditions (SA-1, retired) | covered | `02/unwrap-in-a-loop-header-is-rejected` (name now historical) — `expect: "output"`, printing the sum only a per-iteration `limit(key)!` produces. |
 | 4.8 | `Result.unwrap()` is retired, and postfix `!` on a non-Result is not a non-null assertion | failures.mdx §Failure Propagation; compatibility.mdx §Configuration | covered | `19/result-dot-unwrap-is-retired`, `19/non-result-postfix-bang-is-rejected` |
-| 4.9 | `x!: T` definite assignment is removed from `.sm` | compatibility.mdx §Configuration | covered | `19/definite-assignment-bang-is-rejected` |
+| 4.9 | `x!: T` definite assignment is removed from `.vibe` | compatibility.mdx §Configuration | covered | `19/definite-assignment-bang-is-rejected` |
 | 4.10 | `?.` and `??` remain ordinary nullish operators around propagation | failures.mdx §Failure Propagation | covered | `02/postfix-propagation-keeps-nullish-operators-ordinary`, `19/optional-chaining-and-nullish-coalescing-stay-typescript` |
 | 4.11 | prefix `!`, `!!`, and `!==` retain ordinary TypeScript behavior | compatibility.mdx §Configuration | covered | `19/boolean-negation-stays-typescript` |
 
@@ -2714,11 +3337,11 @@ Every member has a case.
 | 5.6 | `matchPartial` requires an explicit fallback, and routes unlisted failures to it | DECISIONS Locked; failures.mdx §Error Prototype | covered | `04/error-match-partial-needs-a-fallback`, `04/error-match-partial-runs-the-fallback` |
 | 5.7 | `is` and `matches` narrow to the nominal subclass | failures.mdx §Error Prototype | covered | `04/error-is-and-root-cause` |
 | 5.8 | `rootCause` walks a `cause` chain | DECISIONS Locked; failures.mdx §Error Prototype | covered | `04/error-root-cause`, `04/root-cause-walks-a-multi-level-chain` |
-| 5.9 | handler selection uses compiler-stable nominal identity, not a name or `_tag` | failures.mdx §Error Prototype | **covered on both backends as of 2026-08-25, in six spellings, and the fork's half was closed this revision** | `04/same-named-errors-in-two-modules` pins the module-qualified half. `04/error-is-does-not-consult-a-user-installed-has-instance` pins the forgeability half for `is`/`matches` — before 2026-08-25 the fork printed `true, true, true`, because `smithersErrorIs` used a bare `instanceof`, which consults the RIGHT operand's `Symbol.hasInstance`. **`04/a-case-class-that-lies-about-instanceof-must-not-capture-a-sibling` is the same question asked of `match`, and its `xfail go` marker is RETIRED this revision** — the fork used to print `timeout` where the reference prints `notfound:k`, and now agrees. `instanceof` is a forgeable mechanism in more than one direction and at more than one site, so one case cannot hold this closed and five more were written from the sentence: `04/a-lying-case-class-does-not-capture-a-sibling-in-match-partial` (the SECOND spelling of the one lowering — `matchPartial` selects a handler exactly as `match` does), `04/a-case-class-that-denies-its-own-instances-still-receives-them` (the opposite direction: a hook that DENIES its own instances turns a compiler-certified exhaustive match into a runtime abort; the fork used to die with `TypeError: non-exhaustive Error match`), `04/a-case-class-whose-base-lies-does-not-capture-a-sibling` (a static member is INHERITED, so a rule inspecting only the case class's own members satisfies the other two and still selects wrongly), and — the construction half, which is not a `match` at all — `09/a-declared-foreign-channel-does-not-admit-an-unrelated-throw`, where a `@throws {T}` whose `T` lies admitted a `RangeError` into the declared recoverable channel. Two further cases pin what the FIX costs rather than what it buys, because the sound predicate narrows by assignability and can over-subtract: `04/zero-parameter-handlers-close-over-the-matched-value` (a handler with no parameter has nothing to annotate, so without the nominal brand its body reads a member of `never` — `TS2339`, measured on that exact program) and `04/a-match-partial-fallback-over-two-subclasses-of-one-base-still-checks` (exactly one level of a chain may carry a brand, so two subclasses stay mutually assignable on BOTH backends; this is the residual, pinned green). The `is`/`matches` case stays a pair with the rest: line 2 of it is load-bearing, because a rule answering `false` to everything satisfies lines 1 and 3 while having deleted `is`. |
-| 5.10 | two same-named Error classes in one module cannot both get a stable identity | poc README SMITHERS1150 | covered | `04/duplicate-error-class-name-is-rejected`. Its unsettled neighbour is **`04/a-function-local-error-class-cannot-be-declared-twice`** (`xfail js + go`): a class declared inside a function mints a *new constructor per call* claiming the *same* module-local identity, and both backends accept the program and then die on the second call with `TypeError: stable Error identity … is already registered`. The marker does not pick a side — either the registry must tolerate per-call constructors, because ordinary TypeScript syntax keeps its behaviour, or SMITHERS1150's own sentence applies and the compiler must refuse it, in which case the *case* is retired rather than an implementation fixed. |
-| 5.11 | **stable nominal identity** | failures.mdx §Error Classes | **covered as of 2026-08-25 — and it was unobservable until the harness changed** | **`04/a-nominal-error-identity-names-its-declaring-module`** declares the identity string itself as its `stdout`, so the two backends must mint it identically to satisfy one expectation, and it names the declaring `.mod.sm` for a class thrown, propagated and returned entirely from the *importing* module. `01/throw-lifts-into-failure` and the two `02/unwrap-*` cases carry the same-module form as a side effect of their own subject. **None of this was writable before**: the shared harness printed `error.constructor.name`, which §Error Prototype names as the wrong key, and which reads the same whether or not an identity exists — so the fork's total absence of an identity registry produced no divergence in either direction. See "Known observation gaps in the harness itself". |
-| 5.12 | **serialization evidence and cross-realm transport metadata** | failures.mdx §Error Classes | **still unwritable, and now for a precisely stated reason** | The blocker is **reach**, not the runner's process count. `.sm` has no sanctioned path to the transport surface on *either* backend: on the reference `encodeError` lives in the POC runtime, which authored `.sm` may not import without a trusted `.ts` companion, and on the fork it lives in the injected `__smithers_prelude.ts`. The two surfaces are different modules at different paths, so **no single `typescript:` support module can be written that reaches both**, and a case that stages one is not a differential case. A same-realm `encode(decode(x))` would prove only that a function round-trips its own object. Closing it needs an `expect: "transport"` case shape in the runner — execute the emitted program twice, in two processes, passing one wire string between them — which is roughly forty lines and is not this revision's. Covered outside the corpus by `compiler/fork_error_transport_test.go` (two of its seven tests run two separate `node` processes, and two of those cross backends) and by `poc/src/runtime/introspection.test.ts`. |
-| 5.13 | **an ambient Error declaration introduces no runtime binding, so nothing may be emitted that names it** | failures.mdx §Error Classes ("while preserving ordinary `Error` behavior") | **covered** — an `xfail js` until 2026-08-28, when the reference stopped emitting a registration for a declaration that has no runtime binding. The identity is still reserved, so `SMITHERS1150` still refuses two same-named ambient Error classes | `04/an-ambient-error-declaration-is-not-registered`. The reference emits `__vsRegisterError(Ambient, …)` for a `declare class` and the accepted program dies while the emitted module is still loading — a clean compile that cannot run, 0 diagnostics and exit 1. The fork skips ambient declarations **at the registration site only**, so the identity is still reserved and `SMITHERS1150` still refuses two same-named ambient classes. This is the one place the two backends deliberately differ. |
+| 5.9 | handler selection uses compiler-stable nominal identity, not a name or `_tag` | failures.mdx §Error Prototype | **covered on both backends as of 2026-08-25, in six spellings, and the fork's half was closed this revision** | `04/same-named-errors-in-two-modules` pins the module-qualified half. `04/error-is-does-not-consult-a-user-installed-has-instance` pins the forgeability half for `is`/`matches` — before 2026-08-25 the fork printed `true, true, true`, because `vibelangErrorIs` used a bare `instanceof`, which consults the RIGHT operand's `Symbol.hasInstance`. **`04/a-case-class-that-lies-about-instanceof-must-not-capture-a-sibling` is the same question asked of `match`, and its `xfail go` marker is RETIRED this revision** — the fork used to print `timeout` where the reference prints `notfound:k`, and now agrees. `instanceof` is a forgeable mechanism in more than one direction and at more than one site, so one case cannot hold this closed and five more were written from the sentence: `04/a-lying-case-class-does-not-capture-a-sibling-in-match-partial` (the SECOND spelling of the one lowering — `matchPartial` selects a handler exactly as `match` does), `04/a-case-class-that-denies-its-own-instances-still-receives-them` (the opposite direction: a hook that DENIES its own instances turns a compiler-certified exhaustive match into a runtime abort; the fork used to die with `TypeError: non-exhaustive Error match`), `04/a-case-class-whose-base-lies-does-not-capture-a-sibling` (a static member is INHERITED, so a rule inspecting only the case class's own members satisfies the other two and still selects wrongly), and — the construction half, which is not a `match` at all — `09/a-declared-foreign-channel-does-not-admit-an-unrelated-throw`, where a `@throws {T}` whose `T` lies admitted a `RangeError` into the declared recoverable channel. Two further cases pin what the FIX costs rather than what it buys, because the sound predicate narrows by assignability and can over-subtract: `04/zero-parameter-handlers-close-over-the-matched-value` (a handler with no parameter has nothing to annotate, so without the nominal brand its body reads a member of `never` — `TS2339`, measured on that exact program) and `04/a-match-partial-fallback-over-two-subclasses-of-one-base-still-checks` (exactly one level of a chain may carry a brand, so two subclasses stay mutually assignable on BOTH backends; this is the residual, pinned green). The `is`/`matches` case stays a pair with the rest: line 2 of it is load-bearing, because a rule answering `false` to everything satisfies lines 1 and 3 while having deleted `is`. |
+| 5.10 | two same-named Error classes in one module cannot both get a stable identity | poc README VIBE1150 | covered | `04/duplicate-error-class-name-is-rejected`. Its unsettled neighbour is **`04/a-function-local-error-class-cannot-be-declared-twice`** (`xfail js + go`): a class declared inside a function mints a *new constructor per call* claiming the *same* module-local identity, and both backends accept the program and then die on the second call with `TypeError: stable Error identity … is already registered`. The marker does not pick a side — either the registry must tolerate per-call constructors, because ordinary TypeScript syntax keeps its behaviour, or VIBE1150's own sentence applies and the compiler must refuse it, in which case the *case* is retired rather than an implementation fixed. |
+| 5.11 | **stable nominal identity** | failures.mdx §Error Classes | **covered as of 2026-08-25 — and it was unobservable until the harness changed** | **`04/a-nominal-error-identity-names-its-declaring-module`** declares the identity string itself as its `stdout`, so the two backends must mint it identically to satisfy one expectation, and it names the declaring `.mod.vibe` for a class thrown, propagated and returned entirely from the *importing* module. `01/throw-lifts-into-failure` and the two `02/unwrap-*` cases carry the same-module form as a side effect of their own subject. **None of this was writable before**: the shared harness printed `error.constructor.name`, which §Error Prototype names as the wrong key, and which reads the same whether or not an identity exists — so the fork's total absence of an identity registry produced no divergence in either direction. See "Known observation gaps in the harness itself". |
+| 5.12 | **serialization evidence and cross-realm transport metadata** | failures.mdx §Error Classes | **still unwritable, and now for a precisely stated reason** | The blocker is **reach**, not the runner's process count. `.vibe` has no sanctioned path to the transport surface on *either* backend: on the reference `encodeError` lives in the POC runtime, which authored `.vibe` may not import without a trusted `.ts` companion, and on the fork it lives in the injected `__vibelang_prelude.ts`. The two surfaces are different modules at different paths, so **no single `typescript:` support module can be written that reaches both**, and a case that stages one is not a differential case. A same-realm `encode(decode(x))` would prove only that a function round-trips its own object. Closing it needs an `expect: "transport"` case shape in the runner — execute the emitted program twice, in two processes, passing one wire string between them — which is roughly forty lines and is not this revision's. Covered outside the corpus by `compiler/fork_error_transport_test.go` (two of its seven tests run two separate `node` processes, and two of those cross backends) and by `poc/src/runtime/introspection.test.ts`. |
+| 5.13 | **an ambient Error declaration introduces no runtime binding, so nothing may be emitted that names it** | failures.mdx §Error Classes ("while preserving ordinary `Error` behavior") | **covered** — an `xfail js` until 2026-08-28, when the reference stopped emitting a registration for a declaration that has no runtime binding. The identity is still reserved, so `VIBE1150` still refuses two same-named ambient Error classes | `04/an-ambient-error-declaration-is-not-registered`. The reference emits `__vsRegisterError(Ambient, …)` for a `declare class` and the accepted program dies while the emitted module is still loading — a clean compile that cannot run, 0 diagnostics and exit 1. The fork skips ambient declarations **at the registration site only**, so the identity is still reserved and `VIBE1150` still refuses two same-named ambient classes. This is the one place the two backends deliberately differ. |
 | 5.14 | **a class member with a computed name is ordinary TypeScript** | compatibility.mdx §Source Relationship | **covered** | `04/a-computed-class-member-name-is-ordinary-typescript` — four spellings in one class (static method, instance method, getter, static field). Not a language rule: a regression pin for a crash. Before 2026-08-25 any one of them took the Go bridge down with `panic: Unhandled case in Node.Text: *ast.ComputedPropertyName`, from a single unguarded name read used only to render a diagnostic. **A panicking backend scores `unmeasured`, which is a failure to measure rather than a measurement** — the one outcome a differential harness cannot score — so this belongs in the corpus and not only in a Go unit test. Measured against the pre-fix tree it is exactly that. |
 | 5.15 | **an Error subclass whose base is declared in another module satisfies both nominal identities** | failures.mdx §Error Classes | **covered** | `04/an-error-subclass-across-a-module-boundary-keeps-both-identities`. The subclass takes an identity naming its own module and the base keeps one naming its declaring module; a value is nominally both. This pins the *behaviour* those identities implement, beside 5.11 which reads an identity directly. |
 
@@ -2739,53 +3362,53 @@ Every member has a case.
 | 7.1 | calling any unannotated foreign value adds the checked `panic` case | failures.mdx §Foreign Exceptions | covered | `09/untrusted-foreign-call-charges-panic` |
 | 7.2 | a caller must propagate, catch, or adapt that panic | failures.mdx §Foreign Exceptions | covered | `09/untrusted-foreign-call-needs-the-panic-channel` |
 | 7.3 | `@throws {never}` is a trusted opt-out from the *panic case* | failures.mdx §Foreign Exceptions | covered | `09/trusted-foreign-call-is-accepted`; **`21/a-pin-reaching-a-trusted-foreign-call-is-rejected`** pins that it is not an opt-out from the *requirement* |
-| 7.34 | **`satisfies` does not launder foreign provenance, and `as` and a type ANNOTATION erase a trust marker where `satisfies` does not** | compatibility.mdx §Foreign Boundary: the panic case attaches to calling an unannotated foreign value, and "Trusted `@throws {never}` metadata opts out" — the opt-out is a property of the DECLARATION the checker resolves | **covered as of 2026-08-27, three cases; 227 divergences were closed the same day with conformance reporting 0 divergent throughout, because no case put a `satisfies` near a foreign value** | `09/a-satisfies-cannot-launder-foreign-provenance` declares seventeen diagnostics across three rules (`SMITHERS1504`, `1506`, `1101`) over a `satisfies`, a `satisfies` then an `as`, a `const` that holds one, and a double alias, with the DIRECT spelling of each declared alongside so the promise is an equality between spellings rather than a list of refusals. Its load-bearing row is `propVsALocal`: the alternate in the `??` is a LOCAL object, because with a foreign alternate the diagnostic fires whichever branch the rule looked at and the case would be green while observing nothing. `09/an-as-or-an-annotation-erases-a-trust-marker-where-satisfies-does-not` is the only shape in the family where `satisfies` and `as` must give DIFFERENT answers — five pure `satisfies` spellings of a `@throws {never}` tag stay clean while `as`, an annotation, and `satisfies` composed with `as` are refused — so a refactor folding the two operators together passes every other case and breaks this one. `09/an-ordinary-satisfies-a-cast-and-an-annotation-stay-clean` is the over-correction guard and RUNS: three wrappers around a LOCAL object plus a trusted foreign callee reached through `satisfies` and through a parenthesis, the first of which the fork refused until this day. **Deliberately absent:** the marker-PLACEMENT family (a `@throws {never}` on the constructor's own line, on the same line, on the class only, on an implicit constructor) is measured identical on both backends but needs a foreign module `conformance/support/` does not have, and the round-6 corpus lane did not own that directory. |
-| 7.34a | **…and the same wrapper must not COST a foreign propagation its lift: `satisfies` around an untrusted foreign call still produces the checked Result, and the program runs** | failures.mdx §Foreign Exceptions (Locked): an untrusted foreign call adds the distinguished checked panic case and the caller MUST propagate it | **covered as of 2026-08-27, and it is the over-refusal half of 7.34** | `09/a-satisfies-wrapped-foreign-propagation-runs` — `(parseIntegerUnchecked(text) satisfies unknown)!` inside `Result<number, Panic>`, an `expect: "output"` case, so the trusted-module edge, the lift, the propagation and the `match` all execute. Before the round-7 wrapper work the reference refused it with `SMITHERS1507` (its foreign-result walk stopped at the wrapper) and the fork with `SMITHERS1301` plus `SMITHERS1207`. Both were wrong in the SAME direction, and in the OPPOSITE direction from 4.2a's `02/a-satisfies-wrapped-propagation-charges-the-contract`, which requires the identical wrapper to be REFUSED when the contract omits the failure. One table now answers both, so a fix to either direction that regressed the other shows up in one run. The `as` spelling is deliberately not written beside it: a type wrapper whose annotation the lowered `Result` does not satisfy is refused by the stock check of the emitted module, which is pre-existing and a different subject — 7.34's `09/an-as-or-an-annotation-erases-a-trust-marker-where-satisfies-does-not` is where the two operators are required to differ. |
-| 7.23a | **…and the panic INTRINSIC is recognized by the member it selects, not by how the member is spelled — in both directions** | DECISIONS Locked and failures.mdx:219: "`Reflect.panic` and compiler/runtime invariant failures enter the same distinguished panic channel"; §Panic Does Not Widen a Return Type for the accepting half | **covered as of 2026-08-27, as a pair, and one half was a live fail-OPEN the other half's defect created** | `09/an-aliased-reflect-panic-key-is-not-a-value` (`SMITHERS1503`, the same refusal 7.23 pins for the imported spelling) and `09/an-aliased-reflect-panic-key-is-still-a-panic-exit` (`output`, the same acceptance 7.24 pins for the dotted spelling). Both write `Reflect[KEY](...)` with `const KEY = "panic"`. **This pair exists because widening one rule broke another**: once the member-selection helper resolved a `const`-aliased key (12.12a), the panic recognizer still asked for the symbol of the node that SPELLS the member — which on `Reflect[KEY]` is the symbol of `KEY` — so on the Go fork the refusal case COMPILED, RAN and printed `ok` while the acceptance case was refused by the stock checker with `TS2355`, a function with a declared return type that returns nothing. One unrecognized member, two opposite failures, which is why neither direction is safe to pin alone. Eight sibling rules read the same answer and stayed correct only because they were already routed through the shared helper. |
-| 7.35 | **an operator that SELECTS a value does not change where the value came from: `??`, `\|\|`, `&&`, a conditional, a comma, a `const` that holds the selection and a cast over it all leave a foreign value foreign** | compatibility.mdx §Foreign Boundary | **covered as of 2026-08-27, three cases** | The operand walk knew the ternary and the comma and did not know `??`, `\|\|` or `&&`, so a foreign constructor, property read or tag hidden behind a nullish coalesce was accepted and its throw escaped every checked channel. `09/a-selected-foreign-constructor-property-and-tag-are-still-foreign` declares nineteen diagnostics across three rules over seven selector spellings, and **every selector pairs a foreign operand with a LOCAL one, with the local alternate on the RIGHT for `??`/`\|\|`/ternary/comma and on the LEFT for `&&`** — so a walk reading only one side is wrong on at least one row whichever side it picks. `09/a-selected-trusted-foreign-callee-is-still-not-order-safe` records a distinction that reads wrong at first: a `@throws {never}` marker removes the panic case from the CALL and does not make the expression that SELECTS the callee evaluation-order-safe, so five selector spellings of a trusted callee draw `SMITHERS1507` while the direct and parenthesised spellings stay clean. It exists because an earlier draft of the negative case listed `(double ?? localDouble)(2)` as a negative and both backends refused it. `09/selectors-over-local-and-trusted-values-stay-clean` is the over-correction guard and RUNS: `&&` over two locals prints its RIGHT operand's value so the case observes which branch ran, and the local tag returns a constant that appears nowhere in the expected output so the three trusted-tag lines prove the TRUSTED branch was selected and executed. That file omits the comma spelling over two locals for a harness reason worth knowing: `(b, a).retries` is `TS2695` under the stock checker an `output` case must survive, while a refusal case never reaches the emit stage. |
-| 7.4 | `@throws {T}` declares the stated channel, honoured case | failures.mdx §Foreign Exceptions | **covered, and its FORGERY direction was closed and pinned on 2026-08-25** | `09/declared-foreign-throws-is-exposed` pins that an honest `T` really thrown is admitted. `09/a-declared-foreign-channel-does-not-admit-an-unrelated-throw` pins the other side of the same sentence: `@throws {T}` names the class whose instances the boundary admits, so a `T` that installs a lying `Symbol.hasInstance` must NOT widen the channel. The fork's `smithersTry` tested admission with a bare `cause instanceof expected` and printed `error:RangeError` — a `RangeError` delivered as the declared recoverable member, so the checked channel meant nothing while still type-checking; it now prints `error:Panic`, and the case reads `.name` precisely because that separates the two answers. This is the CONSTRUCTION half of the forgeable-mechanism class §5.9 covers for selection, and it is not a `match` at all. Its acceptance controls are 7.4's own honest case and 7.5 — without them a rule that admitted NOTHING would satisfy it. Support module `conformance/support/lying-channel.ts`, whose leading JSDoc carries a genuine initialization trust claim so the case is about the function-level channel and not module trust. |
+| 7.34 | **`satisfies` does not launder foreign provenance, and `as` and a type ANNOTATION erase a trust marker where `satisfies` does not** | compatibility.mdx §Foreign Boundary: the panic case attaches to calling an unannotated foreign value, and "Trusted `@throws {never}` metadata opts out" — the opt-out is a property of the DECLARATION the checker resolves | **covered as of 2026-08-27, three cases; 227 divergences were closed the same day with conformance reporting 0 divergent throughout, because no case put a `satisfies` near a foreign value** | `09/a-satisfies-cannot-launder-foreign-provenance` declares seventeen diagnostics across three rules (`VIBE1504`, `1506`, `1101`) over a `satisfies`, a `satisfies` then an `as`, a `const` that holds one, and a double alias, with the DIRECT spelling of each declared alongside so the promise is an equality between spellings rather than a list of refusals. Its load-bearing row is `propVsALocal`: the alternate in the `??` is a LOCAL object, because with a foreign alternate the diagnostic fires whichever branch the rule looked at and the case would be green while observing nothing. `09/an-as-or-an-annotation-erases-a-trust-marker-where-satisfies-does-not` is the only shape in the family where `satisfies` and `as` must give DIFFERENT answers — five pure `satisfies` spellings of a `@throws {never}` tag stay clean while `as`, an annotation, and `satisfies` composed with `as` are refused — so a refactor folding the two operators together passes every other case and breaks this one. `09/an-ordinary-satisfies-a-cast-and-an-annotation-stay-clean` is the over-correction guard and RUNS: three wrappers around a LOCAL object plus a trusted foreign callee reached through `satisfies` and through a parenthesis, the first of which the fork refused until this day. **Deliberately absent:** the marker-PLACEMENT family (a `@throws {never}` on the constructor's own line, on the same line, on the class only, on an implicit constructor) is measured identical on both backends but needs a foreign module `conformance/support/` does not have, and the round-6 corpus lane did not own that directory. |
+| 7.34a | **…and the same wrapper must not COST a foreign propagation its lift: `satisfies` around an untrusted foreign call still produces the checked Result, and the program runs** | failures.mdx §Foreign Exceptions (Locked): an untrusted foreign call adds the distinguished checked panic case and the caller MUST propagate it | **covered as of 2026-08-27, and it is the over-refusal half of 7.34** | `09/a-satisfies-wrapped-foreign-propagation-runs` — `(parseIntegerUnchecked(text) satisfies unknown)!` inside `Result<number, Panic>`, an `expect: "output"` case, so the trusted-module edge, the lift, the propagation and the `match` all execute. Before the round-7 wrapper work the reference refused it with `VIBE1507` (its foreign-result walk stopped at the wrapper) and the fork with `VIBE1301` plus `VIBE1207`. Both were wrong in the SAME direction, and in the OPPOSITE direction from 4.2a's `02/a-satisfies-wrapped-propagation-charges-the-contract`, which requires the identical wrapper to be REFUSED when the contract omits the failure. One table now answers both, so a fix to either direction that regressed the other shows up in one run. The `as` spelling is deliberately not written beside it: a type wrapper whose annotation the lowered `Result` does not satisfy is refused by the stock check of the emitted module, which is pre-existing and a different subject — 7.34's `09/an-as-or-an-annotation-erases-a-trust-marker-where-satisfies-does-not` is where the two operators are required to differ. |
+| 7.23a | **…and the panic INTRINSIC is recognized by the member it selects, not by how the member is spelled — in both directions** | DECISIONS Locked and failures.mdx:219: "`Reflect.panic` and compiler/runtime invariant failures enter the same distinguished panic channel"; §Panic Does Not Widen a Return Type for the accepting half | **covered as of 2026-08-27, as a pair, and one half was a live fail-OPEN the other half's defect created** | `09/an-aliased-reflect-panic-key-is-not-a-value` (`VIBE1503`, the same refusal 7.23 pins for the imported spelling) and `09/an-aliased-reflect-panic-key-is-still-a-panic-exit` (`output`, the same acceptance 7.24 pins for the dotted spelling). Both write `Reflect[KEY](...)` with `const KEY = "panic"`. **This pair exists because widening one rule broke another**: once the member-selection helper resolved a `const`-aliased key (12.12a), the panic recognizer still asked for the symbol of the node that SPELLS the member — which on `Reflect[KEY]` is the symbol of `KEY` — so on the Go fork the refusal case COMPILED, RAN and printed `ok` while the acceptance case was refused by the stock checker with `TS2355`, a function with a declared return type that returns nothing. One unrecognized member, two opposite failures, which is why neither direction is safe to pin alone. Eight sibling rules read the same answer and stayed correct only because they were already routed through the shared helper. |
+| 7.35 | **an operator that SELECTS a value does not change where the value came from: `??`, `\|\|`, `&&`, a conditional, a comma, a `const` that holds the selection and a cast over it all leave a foreign value foreign** | compatibility.mdx §Foreign Boundary | **covered as of 2026-08-27, three cases** | The operand walk knew the ternary and the comma and did not know `??`, `\|\|` or `&&`, so a foreign constructor, property read or tag hidden behind a nullish coalesce was accepted and its throw escaped every checked channel. `09/a-selected-foreign-constructor-property-and-tag-are-still-foreign` declares nineteen diagnostics across three rules over seven selector spellings, and **every selector pairs a foreign operand with a LOCAL one, with the local alternate on the RIGHT for `??`/`\|\|`/ternary/comma and on the LEFT for `&&`** — so a walk reading only one side is wrong on at least one row whichever side it picks. `09/a-selected-trusted-foreign-callee-is-still-not-order-safe` records a distinction that reads wrong at first: a `@throws {never}` marker removes the panic case from the CALL and does not make the expression that SELECTS the callee evaluation-order-safe, so five selector spellings of a trusted callee draw `VIBE1507` while the direct and parenthesised spellings stay clean. It exists because an earlier draft of the negative case listed `(double ?? localDouble)(2)` as a negative and both backends refused it. `09/selectors-over-local-and-trusted-values-stay-clean` is the over-correction guard and RUNS: `&&` over two locals prints its RIGHT operand's value so the case observes which branch ran, and the local tag returns a constant that appears nowhere in the expected output so the three trusted-tag lines prove the TRUSTED branch was selected and executed. That file omits the comma spelling over two locals for a harness reason worth knowing: `(b, a).retries` is `TS2695` under the stock checker an `output` case must survive, while a refusal case never reaches the emit stage. |
+| 7.4 | `@throws {T}` declares the stated channel, honoured case | failures.mdx §Foreign Exceptions | **covered, and its FORGERY direction was closed and pinned on 2026-08-25** | `09/declared-foreign-throws-is-exposed` pins that an honest `T` really thrown is admitted. `09/a-declared-foreign-channel-does-not-admit-an-unrelated-throw` pins the other side of the same sentence: `@throws {T}` names the class whose instances the boundary admits, so a `T` that installs a lying `Symbol.hasInstance` must NOT widen the channel. The fork's `vibelangTry` tested admission with a bare `cause instanceof expected` and printed `error:RangeError` — a `RangeError` delivered as the declared recoverable member, so the checked channel meant nothing while still type-checking; it now prints `error:Panic`, and the case reads `.name` precisely because that separates the two answers. This is the CONSTRUCTION half of the forgeable-mechanism class §5.9 covers for selection, and it is not a `match` at all. Its acceptance controls are 7.4's own honest case and 7.5 — without them a rule that admitted NOTHING would satisfy it. Support module `conformance/support/lying-channel.ts`, whose leading JSDoc carries a genuine initialization trust claim so the case is about the function-level channel and not module trust. |
 | 7.5 | a violated `@throws {T}` claim still lands in Panic | failures.mdx §Foreign Exceptions; DECISIONS Locked; poc README | covered | `09/declared-foreign-throws-violated-stays-panic` — **the long-standing JS xfail here is retired**; both backends now deliver the violated claim as the Panic member of the declared channel |
 | 7.6 | Promise rejection at an unannotated boundary becomes panic | failures.mdx §Promise Semantics | covered | `09/foreign-rejection-becomes-panic`, `01/result-try-promise-adapts-a-rejecting-body` |
 | 7.20 | **a project module whose own FILENAME contains the letters `import` compiles** | not a language rule — a regression pin for a crash that produced no diagnostic at all | covered | `09/a-module-name-containing-import-does-not-crash-the-specifier-rewrite` (static) and `09/a-dynamic-import-of-a-project-module-is-not-a-foreign-module-edge`, whose own module file is named the same way (dynamic). The fork located candidate dynamic imports by scanning raw source text for the substring `import`, so every occurrence *inside a specifier* resolved back to the same call, duplicated the import entry, produced two identical specifier edits and panicked with `slice bounds out of range` — taking the compile down silently. The hazard was unreachable for as long as the fork refused every dynamic import, and became reachable the moment that refusal was narrowed. **A crash is not a verdict**, which is why it belongs in the corpus rather than only in a Go unit test. |
-| 7.21 | **the type `Panic` may be named in a contract without importing it** | *no sentence settles this* — type-system.mdx:60 establishes that the compiler charges the distinguished checked `panic` case on every unannotated foreign call; nothing on failures.mdx says whether the TYPE naming it is ambient the way `Result` is | **covered by an `xfail go` that is a documentation gap, not a defect verdict** | `09/a-bare-panic-type-resolves-without-an-import`. The reference resolves the bare name; the fork does not and adds `SMITHERS1104`. **Neither backend should be changed on the strength of this marker.** The previous revision met the same divergence as an accident of another case's imports and left it unpinned for that reason; it is pinned here as its own subject so the question is written down at the place it bites. If the specification says `Panic` is ambient, the fork moves; if it says it must be imported, the case is rewritten to import it. |
-| 7.7 | a statically imported foreign module needs a module-initialization trust claim | poc README SMITHERS1510 | covered | `09/foreign-module-without-a-trust-marker` (**its `xfail go` was retired 2026-08-25 after an `XPASS`** — the fork's early return that disabled the ENTIRE foreign policy behind a refused module edge is gone, and enumerating the class found four broken call forms where one had been reported), plus its async spelling `09/an-async-function-returning-an-untrusted-foreign-result-charges-both` |
-| 7.7b | **…and the rule is not escapable by re-spelling the edge** | poc README SMITHERS1510 (the hazard it names — an initializer runs before any call boundary exists — is identical for both spellings); *no specification sentence covers dynamic import at all* | **covered by a pair, both marked, and deliberately narrower than the open question underneath them** | **Both markers were retired 2026-08-25 after an `XPASS`, and the pair became a set of four.** `09/a-dynamic-import-of-an-untrusted-foreign-module-is-refused` (the `js` fail-open: the reference compiled and RAN it while refusing the byte-identical static edge), `09/a-dynamic-import-of-a-project-module-is-not-a-foreign-module-edge` (the `go` over-reach that refused every dynamic import), and now `09/a-dynamic-import-of-a-trusted-foreign-module-is-accepted` and `09/a-dynamic-import-of-a-host-package-is-refused`. Read the four together: the rule is about the TARGET's trust, in every spelling — a project module is ordinary, a host package is foreign, an untrusted foreign module is refused, and a trusted one keeps its claim. `09/a-computed-dynamic-import-specifier-is-refused` is the boundary: a non-literal specifier resolves to no target, so no claim can be read and the fail-closed answer is the only available one. **The trusted-target case still does NOT settle whether the dynamic edge should exist**: `DECISIONS.md:296` is Locked that arbitrary dynamic import expressions remain available, the specification pages say nothing about dynamic import, and if the ledger goes the other way that case is what to retire — it asserts only that trust survives the spelling. The ledger decision REVIEW-fable-1.md F2 asked for is still owed. |
-| 7.7c | **…and the claim certifies the module that WRITES it and no module that module goes on to load: the rule is over the reached-module closure, at every depth** | compatibility.mdx §Runtime TypeScript Dependency and failures.mdx:115 (both Locked) attach the claim to a MODULE's initialization; nothing in either sentence bounds it to the module the authored `.sm` names, and the hazard `SMITHERS1510` states — "foreign module initialization can panic before a checked call boundary" — is identical whether the initializer runs one edge away or three | **covered as of 2026-08-27, five cases, both backends, no `xfail`** | **This is the row the corpus could not have written for seven rounds, and the measurement is the reason it matters.** A foreign module reached at depth ≥ 2 behind a properly marked relay was never asked for its marker on EITHER backend, and both fix lanes measured the failure with a module-scope oracle rather than with diagnostics: **every fail-open cell was executing the untrusted module's initializer** (22 cells on the reference, 21 on the fork), on programs that compiled clean. Three refusals, deliberately separated because they fail identically from outside and are not the same defect: `09/a-trust-marker-does-not-travel-through-a-trusted-module` (the reached module wrote `@MODULE` — *the marker did not match*, which is 7.8c's rule asked one edge out), `09/an-unmarked-module-behind-a-trusted-relay-is-refused` (the reached module wrote nothing at all — *the closure did not ask*), and `09/module-trust-does-not-travel-two-hops` (the same unmarked module behind TWO marked relays — *depth is not a bound*; its middle relay is character-for-character the depth-2 relay apart from a comment, so an implementation that unrolls the check twice passes the second case and fails this one). All three anchor at the authored `.sm` import specifier, `SMITHERS1510@1:24`, the same anchor 7.8b and 7.8c's cases use, and all three declare `messageContains: "@module and @throws {never}"` because the whole risk here is a refusal for the WRONG reason: the relay's own marker is correct, and an implementation that misread *it* would refuse at the identical line and column. **Two over-correction guards land with them and are not optional** — this repository has shipped ten. `09/a-marked-chain-confers-trust-at-every-depth` is the discriminating twin of the second refusal: same shape, and the only difference between the two programs is whether the module at the end of the edge wrote the marker. `09/a-deferred-foreign-loader-needs-no-marker-behind-it` is the deferral proof's guard and **shares the very support module the second refusal requires to be REFUSED**, so an implementation answering by file identity or reachability instead of by edge kind cannot pass both. Both are `expect: "output"` on purpose: a diagnostics assertion cannot tell *trusted* from *silently dropped*. **The prelude forgery guarantee is a compiler-internal edge no corpus case reaches** — `poc/src/runtime/result.ts` and `panic.ts` are deliberately unmarked and that unmarkedness IS the guarantee; the reference's first fix attempt broke it and `poc/src/language/capability-seams.test.ts` SEAM 3 caught it, which remains its only pin. **Deliberately not written:** the `.cts` edge spellings (`require()` at module scope, the IIFE, `import x = require`), because the fork cannot execute them at all and TypeScript refuses import-equals under ESM — they are pinned in `poc/src/language/foreign-module-closure.test.ts` and the fork's closure tests instead. |
+| 7.21 | **the type `Panic` may be named in a contract without importing it** | failures.mdx §Foreign Exceptions, current alpha-0 type-availability note | **covered; Go marker retired after measured XPASS on 2026-09-07** | `09/a-bare-panic-type-resolves-without-an-import` keeps its source and VIBE1510-only expectation. The native public analyzer preserves the previous frontend's ambient type; values still require an import. This was originally a documentation-gap marker, not authority to change the language merely to improve a score. The migration's availability note and native nominal/value-refusal controls state the implemented boundary. |
+| 7.7 | a statically imported foreign module needs a module-initialization trust claim | poc README VIBE1510 | covered | `09/foreign-module-without-a-trust-marker` (**its `xfail go` was retired 2026-08-25 after an `XPASS`** — the fork's early return that disabled the ENTIRE foreign policy behind a refused module edge is gone, and enumerating the class found four broken call forms where one had been reported), plus its async spelling `09/an-async-function-returning-an-untrusted-foreign-result-charges-both` |
+| 7.7b | **…and the rule is not escapable by re-spelling the edge** | poc README VIBE1510 (the hazard it names — an initializer runs before any call boundary exists — is identical for both spellings); *no specification sentence covers dynamic import at all* | **covered by a pair, both marked, and deliberately narrower than the open question underneath them** | **Both markers were retired 2026-08-25 after an `XPASS`, and the pair became a set of four.** `09/a-dynamic-import-of-an-untrusted-foreign-module-is-refused` (the `js` fail-open: the reference compiled and RAN it while refusing the byte-identical static edge), `09/a-dynamic-import-of-a-project-module-is-not-a-foreign-module-edge` (the `go` over-reach that refused every dynamic import), and now `09/a-dynamic-import-of-a-trusted-foreign-module-is-accepted` and `09/a-dynamic-import-of-a-host-package-is-refused`. Read the four together: the rule is about the TARGET's trust, in every spelling — a project module is ordinary, a host package is foreign, an untrusted foreign module is refused, and a trusted one keeps its claim. `09/a-computed-dynamic-import-specifier-is-refused` is the boundary: a non-literal specifier resolves to no target, so no claim can be read and the fail-closed answer is the only available one. **The trusted-target case still does NOT settle whether the dynamic edge should exist**: `DECISIONS.md:296` is Locked that arbitrary dynamic import expressions remain available, the specification pages say nothing about dynamic import, and if the ledger goes the other way that case is what to retire — it asserts only that trust survives the spelling. The ledger decision REVIEW-fable-1.md F2 asked for is still owed. |
+| 7.7c | **…and the claim certifies the module that WRITES it and no module that module goes on to load: the rule is over the reached-module closure, at every depth** | compatibility.mdx §Runtime TypeScript Dependency and failures.mdx:115 (both Locked) attach the claim to a MODULE's initialization; nothing in either sentence bounds it to the module the authored `.vibe` names, and the hazard `VIBE1510` states — "foreign module initialization can panic before a checked call boundary" — is identical whether the initializer runs one edge away or three | **covered as of 2026-08-27, five cases, both backends, no `xfail`** | **This is the row the corpus could not have written for seven rounds, and the measurement is the reason it matters.** A foreign module reached at depth ≥ 2 behind a properly marked relay was never asked for its marker on EITHER backend, and both fix lanes measured the failure with a module-scope oracle rather than with diagnostics: **every fail-open cell was executing the untrusted module's initializer** (22 cells on the reference, 21 on the fork), on programs that compiled clean. Three refusals, deliberately separated because they fail identically from outside and are not the same defect: `09/a-trust-marker-does-not-travel-through-a-trusted-module` (the reached module wrote `@MODULE` — *the marker did not match*, which is 7.8c's rule asked one edge out), `09/an-unmarked-module-behind-a-trusted-relay-is-refused` (the reached module wrote nothing at all — *the closure did not ask*), and `09/module-trust-does-not-travel-two-hops` (the same unmarked module behind TWO marked relays — *depth is not a bound*; its middle relay is character-for-character the depth-2 relay apart from a comment, so an implementation that unrolls the check twice passes the second case and fails this one). All three anchor at the authored `.vibe` import specifier, `VIBE1510@1:24`, the same anchor 7.8b and 7.8c's cases use, and all three declare `messageContains: "@module and @throws {never}"` because the whole risk here is a refusal for the WRONG reason: the relay's own marker is correct, and an implementation that misread *it* would refuse at the identical line and column. **Two over-correction guards land with them and are not optional** — this repository has shipped ten. `09/a-marked-chain-confers-trust-at-every-depth` is the discriminating twin of the second refusal: same shape, and the only difference between the two programs is whether the module at the end of the edge wrote the marker. `09/a-deferred-foreign-loader-needs-no-marker-behind-it` is the deferral proof's guard and **shares the very support module the second refusal requires to be REFUSED**, so an implementation answering by file identity or reachability instead of by edge kind cannot pass both. Both are `expect: "output"` on purpose: a diagnostics assertion cannot tell *trusted* from *silently dropped*. **The prelude forgery guarantee is a compiler-internal edge no corpus case reaches** — `poc/src/runtime/result.ts` and `panic.ts` are deliberately unmarked and that unmarkedness IS the guarantee; the reference's first fix attempt broke it and `poc/src/language/capability-seams.test.ts` SEAM 3 caught it, which remains its only pin. **Deliberately not written:** the `.cts` edge spellings (`require()` at module scope, the IIFE, `import x = require`), because the fork cannot execute them at all and TypeScript refuses import-equals under ESM — they are pinned in `poc/src/language/foreign-module-closure.test.ts` and the fork's closure tests instead. |
 | 7.8 | the module trust claim never doubles as a function-level opt-out | poc README; compatibility.mdx §Runtime TypeScript Dependency; failures.mdx:115 | covered | **`09/module-init-trust-is-not-a-function-level-throws-claim`** is the direct pin: `support/module-init-only.ts` writes ONLY the documented `/** @module @throws {never} */` header, immediately above a first export that always throws, and the throw must still be delivered as a Panic. That header is the trigger — the specification's own happy path — because a file-leading JSDoc is also the leading trivia of the first statement, so an implementation that reads `@throws` from that trivia without excluding the `@module` claim certifies a throwing function. `09/untrusted-foreign-call-charges-panic` keeps the weaker form (an unannotated export of the trusted `support/foreign.ts` still charges Panic). |
-| 7.8b | **the trust marker's grammar is exact: `@module` has a boundary, and `@throws {never}` is not assembled across a JSDoc decoration** | compatibility.mdx §Runtime TypeScript Dependency; failures.mdx:115 | covered | **`09/near-miss-trust-markers-do-not-confer-module-trust`** (both near misses, two `SMITHERS1510`s, one case) and its acceptance control **`09/a-multiline-module-trust-header-is-honoured`**, which is the ordinary multi-line spelling and must keep compiling. Written as a pair deliberately: the obvious way to refuse a split marker is to require the two tags to be adjacent, which would refuse every real header. |
-| 7.8c | **…and the marker has to be in a JSDoc COMMENT, and the whitespace inside it is exactly `[ \t\r\n]`** | failures.mdx:115 (Locked): "The compiler MUST recognize trusted **JSDoc**/declaration metadata at the boundary" — the word is JSDoc, and the same sentence's two productions (`@throws {never}` opts out; `@throws {T}` declares a channel) are separated only by the spelling inside the braces | **covered as of 2026-08-27, four cases, and three of the four spellings were a fail-open on ALL THREE implementations at once** | Two spellings say the comment KIND is the scanner's answer and not a substring search: `09/a-line-comment-holding-the-trust-marker-does-not-confer-module-trust` and `09/a-block-comment-holding-the-trust-marker-does-not-confer-module-trust`, the latter carrying TWO support modules and two `SMITHERS1510`s — `/* @module @throws {never} */` (one asterisk, already refused everywhere and previously untested, so it is the control that makes the second mean something) and `/* /** @module @throws {never} */` (an ordinary block comment whose CONTENT begins `/**`, which is the defect). One spelling says what JSDoc whitespace is: `09/exotic-whitespace-in-the-trust-marker-does-not-confer-module-trust`, whose braces hold U+00A0 and therefore name a type whose spelling is not `never` — the second production, by 7.32's own reasoning about `{Never}`. `\s` in JavaScript matches U+00A0, U+000C, U+000B, U+FEFF and every Unicode space separator; JSDoc's class is `[ \t\r\n]`, and **eight spellings were a live BACKEND DIVERGENCE** (the reference trusted all eight and their initializers RAN; the fork refused all eight) until the reference moved to the fork's narrower class. `09/ordinary-whitespace-in-the-trust-marker-still-confers-module-trust` is the acceptance half and is not optional: the obvious way to narrow the class is to demand the literal bytes `@throws {never}`, which would refuse a marker written across three lines. That support file deliberately carries no `*` decoration on its inner lines, so it and 7.8b's split-marker near miss together say JSDoc whitespace is honoured and JSDoc decoration is not assembled across — an implementation that compacts a comment by deleting its `*` characters passes one and fails the other. **The obvious repair is worse than the defect and was measured to be**: reading the PARSER's attached JSDoc tags disagrees with the scanner on 21 of the 75 marker-carrying files in this repository, because TypeScript attaches only the LAST block before a statement — `conformance/support/foreign.ts` would silently have become untrusted and `conformance/support/split-trust-marker.ts` would have been GRANTED trust. ~~**Not covered, and the blocker was re-measured on 2026-08-27 rather than taken on trust:** the transitive position (a marked relay re-exporting from an unmarked or miscased module) is still ACCEPTED by both backends at depth ≥ 2, so a case there would encode a product-only rule; see the sixth-revision entry under "How and when this page was measured".~~ **Covered later the same day — see 7.7c.** Both backends now walk the reached-module closure, the blocker is gone, and the transitive position is pinned by five cases. The predicate the closure consults is the SAME `hasLeadingModuleNoThrowMarker` / `trustedForeignModule` this row's four spellings interrogate at depth one, on both backends and by construction, so 7.7c's `a-trust-marker-does-not-travel-through-a-trusted-module` is this row's `@MODULE` spelling asked one edge out and must always give the same answer. |
-| 7.9 | a foreign property/accessor read needs an annotated adapter | poc README SMITHERS1506 | covered | `09/foreign-property-read-needs-an-adapter` |
-| 7.10 | a foreign constructor is not lowerable without `@throws {never}` | poc README SMITHERS1504 | covered | `09/foreign-constructor-needs-throws-never` |
-| 7.11 | a callback escaping into foreign code is rejected | poc README SMITHERS1509; requirements.mdx §Scoping | covered | `09/callback-escaping-into-foreign-code-is-rejected` |
-| 7.12 | `panic` is imported from `smithers:exceptions` and accepts a message or Error | failures.mdx §Foreign Exceptions | covered | `09/explicit-panic-charges-the-channel` |
+| 7.8b | **the trust marker's grammar is exact: `@module` has a boundary, and `@throws {never}` is not assembled across a JSDoc decoration** | compatibility.mdx §Runtime TypeScript Dependency; failures.mdx:115 | covered | **`09/near-miss-trust-markers-do-not-confer-module-trust`** (both near misses, two `VIBE1510`s, one case) and its acceptance control **`09/a-multiline-module-trust-header-is-honoured`**, which is the ordinary multi-line spelling and must keep compiling. Written as a pair deliberately: the obvious way to refuse a split marker is to require the two tags to be adjacent, which would refuse every real header. |
+| 7.8c | **…and the marker has to be in a JSDoc COMMENT, and the whitespace inside it is exactly `[ \t\r\n]`** | failures.mdx:115 (Locked): "The compiler MUST recognize trusted **JSDoc**/declaration metadata at the boundary" — the word is JSDoc, and the same sentence's two productions (`@throws {never}` opts out; `@throws {T}` declares a channel) are separated only by the spelling inside the braces | **covered as of 2026-08-27, four cases, and three of the four spellings were a fail-open on ALL THREE implementations at once** | Two spellings say the comment KIND is the scanner's answer and not a substring search: `09/a-line-comment-holding-the-trust-marker-does-not-confer-module-trust` and `09/a-block-comment-holding-the-trust-marker-does-not-confer-module-trust`, the latter carrying TWO support modules and two `VIBE1510`s — `/* @module @throws {never} */` (one asterisk, already refused everywhere and previously untested, so it is the control that makes the second mean something) and `/* /** @module @throws {never} */` (an ordinary block comment whose CONTENT begins `/**`, which is the defect). One spelling says what JSDoc whitespace is: `09/exotic-whitespace-in-the-trust-marker-does-not-confer-module-trust`, whose braces hold U+00A0 and therefore name a type whose spelling is not `never` — the second production, by 7.32's own reasoning about `{Never}`. `\s` in JavaScript matches U+00A0, U+000C, U+000B, U+FEFF and every Unicode space separator; JSDoc's class is `[ \t\r\n]`, and **eight spellings were a live BACKEND DIVERGENCE** (the reference trusted all eight and their initializers RAN; the fork refused all eight) until the reference moved to the fork's narrower class. `09/ordinary-whitespace-in-the-trust-marker-still-confers-module-trust` is the acceptance half and is not optional: the obvious way to narrow the class is to demand the literal bytes `@throws {never}`, which would refuse a marker written across three lines. That support file deliberately carries no `*` decoration on its inner lines, so it and 7.8b's split-marker near miss together say JSDoc whitespace is honoured and JSDoc decoration is not assembled across — an implementation that compacts a comment by deleting its `*` characters passes one and fails the other. **The obvious repair is worse than the defect and was measured to be**: reading the PARSER's attached JSDoc tags disagrees with the scanner on 21 of the 75 marker-carrying files in this repository, because TypeScript attaches only the LAST block before a statement — `conformance/support/foreign.ts` would silently have become untrusted and `conformance/support/split-trust-marker.ts` would have been GRANTED trust. ~~**Not covered, and the blocker was re-measured on 2026-08-27 rather than taken on trust:** the transitive position (a marked relay re-exporting from an unmarked or miscased module) is still ACCEPTED by both backends at depth ≥ 2, so a case there would encode a product-only rule; see the sixth-revision entry under "How and when this page was measured".~~ **Covered later the same day — see 7.7c.** Both backends now walk the reached-module closure, the blocker is gone, and the transitive position is pinned by five cases. The predicate the closure consults is the SAME `hasLeadingModuleNoThrowMarker` / `trustedForeignModule` this row's four spellings interrogate at depth one, on both backends and by construction, so 7.7c's `a-trust-marker-does-not-travel-through-a-trusted-module` is this row's `@MODULE` spelling asked one edge out and must always give the same answer. |
+| 7.9 | a foreign property/accessor read needs an annotated adapter | poc README VIBE1506 | covered | `09/foreign-property-read-needs-an-adapter` |
+| 7.10 | a foreign constructor is not lowerable without `@throws {never}` | poc README VIBE1504 | covered | `09/foreign-constructor-needs-throws-never` |
+| 7.11 | a callback escaping into foreign code is rejected | poc README VIBE1509; requirements.mdx §Scoping | covered | `09/callback-escaping-into-foreign-code-is-rejected` |
+| 7.12 | `panic` is imported from `vibelang:exceptions` and accepts a message or Error | failures.mdx §Foreign Exceptions | covered | `09/explicit-panic-charges-the-channel` |
 | 7.13 | `Reflect.panic` enters the same distinguished channel | DECISIONS Locked; failures.mdx §Foreign Exceptions | covered | `09/reflect-panic-enters-the-panic-channel` |
 | 7.14 | ordinary `try/catch` stays valid and does not change the Result contract | failures.mdx §JavaScript try/catch | covered | `01/plain-function-keeps-javascript-throw`, `09/try-catch-does-not-change-the-result-contract` |
-| 7.15 | **module trust is exact: a package merely *starting* with the intrinsic letters is foreign** | poc README ("Prefixes do not confer trust") | covered | **`09/a-bare-package-with-the-intrinsic-letters-is-foreign`**. The previous revision recorded this as unwritable on the grounds that a bare specifier cannot resolve in the harness's flat staging tree; that reason was wrong. `SMITHERS1510` is decided lexically from the specifier, so the rule is reached before resolution matters. Inspecting rather than calling the binding keeps the case to the one diagnostic. |
+| 7.15 | **module trust is exact: a package merely *starting* with the intrinsic letters is foreign** | poc README ("Prefixes do not confer trust") | covered | **`09/a-bare-package-with-the-intrinsic-letters-is-foreign`**. The previous revision recorded this as unwritable on the grounds that a bare specifier cannot resolve in the harness's flat staging tree; that reason was wrong. `VIBE1510` is decided lexically from the specifier, so the rule is reached before resolution matters. Inspecting rather than calling the binding keeps the case to the one diagnostic. |
 | 7.16 | overload / declaration-merging / generic / multiple-tag `@throws` rules | DECISIONS **Direction**; failures.mdx:115 "remain open" | **partially covered as of 2026-08-26, and the cases say Direction rather than Locked** | The *exact* semantics remain undecided and this row is not claiming otherwise. What the five new cases pin is the **default and its direction**, which is Locked: compatibility.mdx §Foreign Boundary makes the panic case a MUST on every unannotated foreign call, and DECISIONS.md Locked makes `@throws {never}` "a trusted opt-out from the default `panic` case" — one claim, about one call — so a claim the compiler cannot reduce to a single usable answer for the call in front of it does not opt out and the MUST stands. `09/one-marked-overload-does-not-trust-the-unmarked-one` (a marker on the numeric overload does not certify the string overload a call resolves to) with its acceptance twin `09/a-call-resolving-to-the-marked-overload-is-still-trusted`; `09/a-never-claim-followed-by-a-declared-channel-is-refused` and `09/a-declared-channel-followed-by-a-never-claim-is-refused-identically`, a deliberate pair whose whole content is that the same two claims in either order give the same verdict at the same position — before 2026-08-26 they gave **opposite** verdicts and only one order failed closed — with its own acceptance twin `09/two-identical-throws-claims-are-redundant-not-contradictory` (two IDENTICAL claims are redundant, not contradictory, so a rule that counted tags rather than distinct claims would satisfy the pair and fail here). Both backends agree on all five. **Each case's `notes` records that this is a Direction entry and that the case is rewritten, not defended, if the specification later chooses a different rule.** See 7.18: the refusal to honour an unreifiable claim is a separate question. |
-| 7.16a | **an implicit invocation is a foreign call: `for…of`, spread, object spread, interpolation and the coercing operators all invoke a foreign member with no call expression to lower** | compatibility.mdx §Foreign Boundary (Locked) — the MUST is on *calling*, and each of these positions is a call the grammar spells without a callee; poc/src/language/README.md registers the closure under `SMITHERS1506` as one predicate over an expression's POSITION | **covered as of 2026-08-26** | `09/a-for-of-over-a-foreign-iterable-keeps-the-panic-case`, `09/a-spread-of-a-foreign-iterable-keeps-the-panic-case` (the same protocol under a second spelling, deliberately kept as its own case), `09/an-object-spread-of-a-foreign-value-runs-its-getters` (the enumeration protocol), `09/template-interpolation-of-a-foreign-value-runs-its-coercion` and `09/a-coercing-operator-on-a-foreign-value-keeps-the-panic-case` (the coercion protocol). All five were **demonstrated failing** on a reconstructed pre-change tree, where each compiled clean and ran with the enclosing row reading `failures: []`. The over-correction guards are 7.16b. |
-| 7.16b | **…and the rule does not widen: an authored value invokes nothing foreign, and a trusted binding's primitive keeps the language's own protocol members** | the same MUST, read for what it does NOT reach; poc/src/language/README.md, `SMITHERS1506` ("the value must have foreign provenance, and `foreignValueCanExecute` must be true, so a trusted binding's `string` may still be interpolated, iterated and spread") | **covered as of 2026-08-26** | `09/ordinary-iteration-spread-and-interpolation-stay-clean` (all three protocols over authored values, an `output` case so a broken lowering is caught as well as a broken rule) and `09/a-trusted-bindings-string-may-still-be-interpolated-and-iterated` (the second gate specifically: provenance alone is not sufficient). Both were proved enforced by mutation rather than assumed, since neither could be demonstrated failing — they were green before the change and after it, which is the point of them. |
-| 7.16c | **a call-like foreign form with no call expression: a tagged template, an implicit `super(...)`, and a decorator** | compatibility.mdx §Foreign Boundary (Locked); poc/src/language/README.md, `SMITHERS1504` names all three spellings beside `new Foreign(...)` | **covered as of 2026-08-26** | `09/a-foreign-tagged-template-is-a-call-with-no-call-expression` with its acceptance twin `09/a-trusted-tag-is-accepted-and-runs`; `09/constructing-a-subclass-of-a-foreign-class-runs-the-base-constructor` with its boundary twin `09/declaring-a-subclass-of-a-foreign-class-without-constructing-it-is-clean` (the `extends` clause runs no constructor — a first draft of the rule charged the clause and broke `17-durable/the-retired-vibelang-flows-specifier-is-not-compiler-owned`, which pins that boundary only as a side effect); and `09/a-foreign-decorator-is-invoked-when-the-declaration-is-evaluated`, which carries no `SMITHERS1101` beside it because the invocation happens as the module is evaluated rather than inside any row — there is no enclosing contract that could have carried the channel. On the pre-change tree the decorator case compiled clean and the emitted program **died while loading**, exit 1. |
+| 7.16a | **an implicit invocation is a foreign call: `for…of`, spread, object spread, interpolation and the coercing operators all invoke a foreign member with no call expression to lower** | compatibility.mdx §Foreign Boundary (Locked) — the MUST is on *calling*, and each of these positions is a call the grammar spells without a callee; poc/src/language/README.md registers the closure under `VIBE1506` as one predicate over an expression's POSITION | **covered as of 2026-08-26** | `09/a-for-of-over-a-foreign-iterable-keeps-the-panic-case`, `09/a-spread-of-a-foreign-iterable-keeps-the-panic-case` (the same protocol under a second spelling, deliberately kept as its own case), `09/an-object-spread-of-a-foreign-value-runs-its-getters` (the enumeration protocol), `09/template-interpolation-of-a-foreign-value-runs-its-coercion` and `09/a-coercing-operator-on-a-foreign-value-keeps-the-panic-case` (the coercion protocol). All five were **demonstrated failing** on a reconstructed pre-change tree, where each compiled clean and ran with the enclosing row reading `failures: []`. The over-correction guards are 7.16b. |
+| 7.16b | **…and the rule does not widen: an authored value invokes nothing foreign, and a trusted binding's primitive keeps the language's own protocol members** | the same MUST, read for what it does NOT reach; poc/src/language/README.md, `VIBE1506` ("the value must have foreign provenance, and `foreignValueCanExecute` must be true, so a trusted binding's `string` may still be interpolated, iterated and spread") | **covered as of 2026-08-26** | `09/ordinary-iteration-spread-and-interpolation-stay-clean` (all three protocols over authored values, an `output` case so a broken lowering is caught as well as a broken rule) and `09/a-trusted-bindings-string-may-still-be-interpolated-and-iterated` (the second gate specifically: provenance alone is not sufficient). Both were proved enforced by mutation rather than assumed, since neither could be demonstrated failing — they were green before the change and after it, which is the point of them. |
+| 7.16c | **a call-like foreign form with no call expression: a tagged template, an implicit `super(...)`, and a decorator** | compatibility.mdx §Foreign Boundary (Locked); poc/src/language/README.md, `VIBE1504` names all three spellings beside `new Foreign(...)` | **covered as of 2026-08-26** | `09/a-foreign-tagged-template-is-a-call-with-no-call-expression` with its acceptance twin `09/a-trusted-tag-is-accepted-and-runs`; `09/constructing-a-subclass-of-a-foreign-class-runs-the-base-constructor` with its boundary twin `09/declaring-a-subclass-of-a-foreign-class-without-constructing-it-is-clean` (the `extends` clause runs no constructor — a first draft of the rule charged the clause and broke `17-durable/the-retired-vibelang-flows-specifier-is-not-compiler-owned`, which pins that boundary only as a side effect); and `09/a-foreign-decorator-is-invoked-when-the-declaration-is-evaluated`, which carries no `VIBE1101` beside it because the invocation happens as the module is evaluated rather than inside any row — there is no enclosing contract that could have carried the channel. On the pre-change tree the decorator case compiled clean and the emitted program **died while loading**, exit 1. |
 | 7.16d | **`@throws {never}` cannot describe an async or `Promise`-returning binding, because the marker is an opt-out for the CALL and an async binding fails by rejecting afterwards** | compatibility.mdx §Foreign Boundary (Locked): "JavaScript and TypeScript may throw, **reject**, or violate a declaration" | **covered as of 2026-08-26** | `09/a-trusted-async-binding-keeps-its-rejection-channel` and `09/a-trusted-promise-returning-binding-keeps-its-rejection-channel` — the pair is the evidence that the rule asks about the rejection channel rather than about the `async` keyword, and the sugar-free spelling is the one the next platform binding actually takes. `09/a-trusted-union-with-a-promise-constituent-keeps-its-rejection-channel` extends it to a union constituent (**`xfail go`**, cascade only). The controls, both `output` cases that must still run: `09/an-untrusted-async-binding-still-charges-exactly-panic` (the unmarked spelling is unchanged — the refusal could have been implemented by charging something extra everywhere and nothing in a refusal-only corpus would have noticed) and `09/a-declared-async-channel-is-still-honoured` (only the OPT-OUT is unusable; `@throws {T}` adds a name and loses nothing). |
-| 7.16e | **the read half of the rule asks the RECEIVER's provenance and nothing else — not the member's declarations, and not the file those declarations live in** | compatibility.mdx §Foreign Boundary (Locked); poc/src/language/README.md, `SMITHERS1506` ("The read half of the rule asks the **receiver** one question and nothing else … The member's own declarations are not consulted, on either backend") | **covered on the reference by four cases; all four `xfail go` for the row charge alone (7.31), none for the read** | `09/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter` (`keyed.width`, a member with NO declarations — an index signature is a declaration of the CONTAINER and was never a trust claim about the member), its **deliberate pair** `09/a-foreign-index-signature-read-through-an-element-access-needs-an-adapter` (`keyed["width"]`, the same member off the same value), `09/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter` (`constructor`, declared only in `lib.es5.d.ts` — the half the index-signature cases cannot make, since a rule may stop treating an empty declaration list as consent and still decide by where the member is declared), and `09/destructuring-a-foreign-value-runs-its-accessors` (a read with **no member expression at all**, reported at the pattern). **Why four and not one.** The corpus had only the dotted index-signature case when the fork's second gate — the one that walked the member's declarations — was deleted, and a single case cannot tell a rule that reads the receiver from a rule that happens to refuse `keyed.width`. Three of the four were demonstrated failing on a reconstructed pre-fix tree, where the fork compiled, ran and exited 0 on each; the fourth is the case that was already filed as the fail-open and whose marker this revision rewrote. |
-| 7.17 | foreign factory/result invoked before an expression-safe unwrap (`SMITHERS1507`); executable foreign provenance escaping a higher-order/return/store boundary (`SMITHERS1508`) | poc README:125, :127; the Locked rule behind both is failures.mdx:111 | **covered** | Two revisions of history on this one row, and it is the reason the section above exists. Two revisions ago it said "**partial**: both fire and are *observed* in the corpus, but only as cascade members inside other cases" — false, because `judge.mjs` requires a satisfied diagnostics expectation to compare the **same number** of diagnostics, so an undeclared cascade member fails a case rather than riding inside it. The previous revision corrected it to **uncovered** and moved both codes into "Reference-only rejection rules". Then both were ported into the fork, which removed them from *that* table too — leaving two rules present in both implementations, probed by nothing, and visible to neither subtraction this page performed. **This revision writes the cases.** See 7.20–7.22 for the four refusals and two acceptance controls. `grep -rl '"code": "SMITHERS150[78]"' conformance/corpus/ \| wc -l` → **4**. |
-| 7.20 | **an untrusted foreign call's result may not be consumed where the lowered `Result` cannot go** (`SMITHERS1507`) | failures.mdx:111 (Locked) "Calling any TypeScript, JavaScript, or other foreign runtime implementation MUST add the distinguished checked `panic` case by default"; compatibility.mdx:24 "The caller must propagate, explicitly catch, or safely adapt that channel" | **covered** | Both branches of the lowerability predicate (`poc/src/language/semantic.ts:2110`), one case each, because an implementation can lose either without losing the other. `09/a-foreign-factory-result-invoked-before-it-is-unwrapped-is-rejected` is the `!stableCallee` branch — `makeParser()(text)`, where lowering would place a `Result` in **callee** position; its single declared diagnostic is load-bearing, because the inner factory call is at the same authored position and a backend that charged it too would be observable. `09/an-untrusted-foreign-result-used-in-an-expression-is-rejected` is the `unsafeUse` branch — `parseIntegerUnchecked(text) + 1` — and declares `SMITHERS1301` alongside `SMITHERS1507` deliberately: the must-consume diagnostic is the compiler demonstrating that it really did produce a `Result` there. |
-| 7.21 | **executable foreign provenance may not leave the checked scope** (`SMITHERS1508`) | poc README:127; the same failures.mdx:111 MUST, read at a site where there is no call to attach the channel to | **covered** | Two of the four emission sites. `09/a-foreign-callable-escaping-through-a-local-higher-order-call-is-rejected` is the argument site: the foreign function is never called in the module at all, it is invoked through a *parameter*, which has no foreign origin to follow (`semantic.ts:2329-2357`), so the throw would cross the declared `Result<number[], Panic>` with no boundary anywhere on the path. `09/returning-a-foreign-callable-is-rejected` is the return site, and declares `Result<(text: string) => number, Panic>` on purpose: a `Result` around a callable wraps its *delivery*, not its later invocation, so declaring one does not discharge the rule. The mutable-alias and assignment sites (`semantic.ts:1203`, `:1252`) are **uncovered**. **Two more sites landed 2026-08-25.** `09/a-foreign-callable-handed-to-a-trusted-binding-is-still-rejected` is the argument site *inside a trusted call* — see 7.30, where it is the fail-open guard, because that position used to belong to `SMITHERS1509` and the refusal had to be transferred here rather than deleted. And `09/a-trusted-binding-returning-an-object-still-loses-foreign-provenance` is the residual **object-return wall**: a `@throws {never}` claim covers the call's panic channel and says nothing about the methods of a value the call hands back, because a trusted factory can legitimately return a handle whose methods throw. That question is genuinely **open** — no sentence settles whether the claim should reach the returned type — so it is pinned in **both** directions, with `09/a-trusted-binding-filling-a-smithers-owned-buffer-is-accepted` as the acceptance control: a buffer constructed in `.sm`, written by the binding, nothing foreign crossing back. It asserts the bytes and not just the length, so a binding accepted without running would not satisfy it. Without that pair, a lane narrowing `foreignTypeCanExecute` cannot tell an intended acceptance from a regression. |
-| 7.22 | the remedies both diagnostics prescribe are reachable, and the channel they protect is real | the message text of `SMITHERS1507` and `SMITHERS1508` | **covered** | `09/a-foreign-factory-result-bound-to-a-local-is-accepted` and `09/a-foreign-callable-wrapped-in-a-local-adapter-is-accepted`. Both are `output` cases and both print `panic` on their second line, so they show the throw arriving as the distinguished checked panic case after crossing the boundary the refusal case was refused for. Without them a rule that refused *every* foreign factory call, or *every* callable argument, would satisfy 7.20 and 7.21 exactly and the corpus could not tell it from a correct one. |
-| 7.18 | **a foreign `@throws {T}` claim the compiler cannot reify to one imported Error constructor is refused** | failures.mdx:115 (`@throws {T}` annotations "are trust claims and MUST remain visible in declarations and tooling") | **covered** | **`09/the-never-annotation-is-case-sensitive`**. Previously uncovered, and previously reference-only. Both halves moved: the fork now emits `SMITHERS1502`, and the case pins the sharpest instance of the rule — `@throws {Never}` is not the lowercase opt-out, so it is a declared channel naming a class that is not in scope, and it is refused (`SMITHERS1502`) with the call keeping its panic policy (`SMITHERS1301`). A case-insensitive comparison accepts the same source with no diagnostic at all and certifies the function infallible, which is the fail-open direction on the trust boundary. Still **not** blocked by 7.16's Open decision: what is open is which channel an overloaded or generic annotation produces, not whether an unreifiable one may be believed. |
-| 7.7a | **…and the Result an untrusted foreign call lifts is charged by the same bound/unbound split as an authored producer** | type-system.mdx:60 and :56; the split the corpus pins in `07/result-must-be-consumed` (`SMITHERS1301` at an unbound producer) and `07/result-parameter-must-be-consumed` (`SMITHERS1302` at a binding) | **covered** — an `xfail go` position divergence until 2026-08-28, when the foreign lift was routed through the must-consume ownership walk instead of being charged beside the row | `09/an-untrusted-foreign-result-bound-to-a-name-is-charged-at-the-binding`. Both backends refuse the program and both are right about WHAT is wrong; the fork reports `SMITHERS1301` at the call where the reference reports `SMITHERS1302` at the binding, because its foreign-lift reporter does not know about bindings. Pre-existing, and visible only because the cascade suppression that was hiding the whole second diagnostic was removed — the ordinary shape of a fix, which does not create the defect underneath but stops concealing it. |
+| 7.16e | **the read half of the rule asks the RECEIVER's provenance and nothing else — not the member's declarations, and not the file those declarations live in** | compatibility.mdx §Foreign Boundary (Locked); poc/src/language/README.md, `VIBE1506` ("The read half of the rule asks the **receiver** one question and nothing else … The member's own declarations are not consulted, on either backend") | **covered on the reference by four cases; all four `xfail go` for the row charge alone (7.31), none for the read** | `09/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter` (`keyed.width`, a member with NO declarations — an index signature is a declaration of the CONTAINER and was never a trust claim about the member), its **deliberate pair** `09/a-foreign-index-signature-read-through-an-element-access-needs-an-adapter` (`keyed["width"]`, the same member off the same value), `09/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter` (`constructor`, declared only in `lib.es5.d.ts` — the half the index-signature cases cannot make, since a rule may stop treating an empty declaration list as consent and still decide by where the member is declared), and `09/destructuring-a-foreign-value-runs-its-accessors` (a read with **no member expression at all**, reported at the pattern). **Why four and not one.** The corpus had only the dotted index-signature case when the fork's second gate — the one that walked the member's declarations — was deleted, and a single case cannot tell a rule that reads the receiver from a rule that happens to refuse `keyed.width`. Three of the four were demonstrated failing on a reconstructed pre-fix tree, where the fork compiled, ran and exited 0 on each; the fourth is the case that was already filed as the fail-open and whose marker this revision rewrote. |
+| 7.17 | foreign factory/result invoked before an expression-safe unwrap (`VIBE1507`); executable foreign provenance escaping a higher-order/return/store boundary (`VIBE1508`) | poc README:125, :127; the Locked rule behind both is failures.mdx:111 | **covered** | Two revisions of history on this one row, and it is the reason the section above exists. Two revisions ago it said "**partial**: both fire and are *observed* in the corpus, but only as cascade members inside other cases" — false, because `judge.mjs` requires a satisfied diagnostics expectation to compare the **same number** of diagnostics, so an undeclared cascade member fails a case rather than riding inside it. The previous revision corrected it to **uncovered** and moved both codes into "Reference-only rejection rules". Then both were ported into the fork, which removed them from *that* table too — leaving two rules present in both implementations, probed by nothing, and visible to neither subtraction this page performed. **This revision writes the cases.** See 7.20–7.22 for the four refusals and two acceptance controls. `grep -rl '"code": "VIBE150[78]"' conformance/corpus/ \| wc -l` → **4**. |
+| 7.20 | **an untrusted foreign call's result may not be consumed where the lowered `Result` cannot go** (`VIBE1507`) | failures.mdx:111 (Locked) "Calling any TypeScript, JavaScript, or other foreign runtime implementation MUST add the distinguished checked `panic` case by default"; compatibility.mdx:24 "The caller must propagate, explicitly catch, or safely adapt that channel" | **covered** | Both branches of the lowerability predicate (`poc/src/language/semantic.ts:2110`), one case each, because an implementation can lose either without losing the other. `09/a-foreign-factory-result-invoked-before-it-is-unwrapped-is-rejected` is the `!stableCallee` branch — `makeParser()(text)`, where lowering would place a `Result` in **callee** position; its single declared diagnostic is load-bearing, because the inner factory call is at the same authored position and a backend that charged it too would be observable. `09/an-untrusted-foreign-result-used-in-an-expression-is-rejected` is the `unsafeUse` branch — `parseIntegerUnchecked(text) + 1` — and declares `VIBE1301` alongside `VIBE1507` deliberately: the must-consume diagnostic is the compiler demonstrating that it really did produce a `Result` there. |
+| 7.21 | **executable foreign provenance may not leave the checked scope** (`VIBE1508`) | poc README:127; the same failures.mdx:111 MUST, read at a site where there is no call to attach the channel to | **covered** | Two of the four emission sites. `09/a-foreign-callable-escaping-through-a-local-higher-order-call-is-rejected` is the argument site: the foreign function is never called in the module at all, it is invoked through a *parameter*, which has no foreign origin to follow (`semantic.ts:2329-2357`), so the throw would cross the declared `Result<number[], Panic>` with no boundary anywhere on the path. `09/returning-a-foreign-callable-is-rejected` is the return site, and declares `Result<(text: string) => number, Panic>` on purpose: a `Result` around a callable wraps its *delivery*, not its later invocation, so declaring one does not discharge the rule. The mutable-alias and assignment sites (`semantic.ts:1203`, `:1252`) are **uncovered**. **Two more sites landed 2026-08-25.** `09/a-foreign-callable-handed-to-a-trusted-binding-is-still-rejected` is the argument site *inside a trusted call* — see 7.30, where it is the fail-open guard, because that position used to belong to `VIBE1509` and the refusal had to be transferred here rather than deleted. And `09/a-trusted-binding-returning-an-object-still-loses-foreign-provenance` is the residual **object-return wall**: a `@throws {never}` claim covers the call's panic channel and says nothing about the methods of a value the call hands back, because a trusted factory can legitimately return a handle whose methods throw. That question is genuinely **open** — no sentence settles whether the claim should reach the returned type — so it is pinned in **both** directions, with `09/a-trusted-binding-filling-a-vibelang-owned-buffer-is-accepted` as the acceptance control: a buffer constructed in `.vibe`, written by the binding, nothing foreign crossing back. It asserts the bytes and not just the length, so a binding accepted without running would not satisfy it. Without that pair, a lane narrowing `foreignTypeCanExecute` cannot tell an intended acceptance from a regression. |
+| 7.22 | the remedies both diagnostics prescribe are reachable, and the channel they protect is real | the message text of `VIBE1507` and `VIBE1508` | **covered** | `09/a-foreign-factory-result-bound-to-a-local-is-accepted` and `09/a-foreign-callable-wrapped-in-a-local-adapter-is-accepted`. Both are `output` cases and both print `panic` on their second line, so they show the throw arriving as the distinguished checked panic case after crossing the boundary the refusal case was refused for. Without them a rule that refused *every* foreign factory call, or *every* callable argument, would satisfy 7.20 and 7.21 exactly and the corpus could not tell it from a correct one. |
+| 7.18 | **a foreign `@throws {T}` claim the compiler cannot reify to one imported Error constructor is refused** | failures.mdx:115 (`@throws {T}` annotations "are trust claims and MUST remain visible in declarations and tooling") | **covered** | **`09/the-never-annotation-is-case-sensitive`**. Previously uncovered, and previously reference-only. Both halves moved: the fork now emits `VIBE1502`, and the case pins the sharpest instance of the rule — `@throws {Never}` is not the lowercase opt-out, so it is a declared channel naming a class that is not in scope, and it is refused (`VIBE1502`) with the call keeping its panic policy (`VIBE1301`). A case-insensitive comparison accepts the same source with no diagnostic at all and certifies the function infallible, which is the fail-open direction on the trust boundary. Still **not** blocked by 7.16's Open decision: what is open is which channel an overloaded or generic annotation produces, not whether an unreifiable one may be believed. |
+| 7.7a | **…and the Result an untrusted foreign call lifts is charged by the same bound/unbound split as an authored producer** | type-system.mdx:60 and :56; the split the corpus pins in `07/result-must-be-consumed` (`VIBE1301` at an unbound producer) and `07/result-parameter-must-be-consumed` (`VIBE1302` at a binding) | **covered** — an `xfail go` position divergence until 2026-08-28, when the foreign lift was routed through the must-consume ownership walk instead of being charged beside the row | `09/an-untrusted-foreign-result-bound-to-a-name-is-charged-at-the-binding`. Both backends refuse the program and both are right about WHAT is wrong; the fork reports `VIBE1301` at the call where the reference reports `VIBE1302` at the binding, because its foreign-lift reporter does not know about bindings. Pre-existing, and visible only because the cascade suppression that was hiding the whole second diagnostic was removed — the ordinary shape of a fix, which does not create the defect underneath but stops concealing it. |
 | 7.19 | **a re-export is a module edge and carries the same initialization trust claim an import does** | compatibility.mdx §Runtime TypeScript Dependency (Locked) | **covered, both backends** | **`09/a-re-exported-foreign-module-still-needs-a-trust-marker`** — the first corpus case in any area to contain a re-export. It carried an `xfail go` marker for one revision: the fork compiled and ran the program because it never examined an export declaration. The fork's `staticRuntimeModuleEdge` now owns runtime export declarations, the marker was measured `XPASS` and retired, and the retirement is recorded in the case's own `notes`. |
-| 7.23 | **`panic(...)` is an exit and not a value: a placement the compiler cannot lower is refused rather than guessed at** (`SMITHERS1503`) | failures.mdx:113 (Locked) "A caller MUST propagate panic, explicitly catch it, or use a trusted adapter"; the POC narrows the lowerable placements | **covered** | **`09/panic-outside-a-statement-or-return-is-rejected`**, green on both. A POC lowering boundary rather than a specification sentence, pinned because an unpinned boundary is one the other implementation can put somewhere else. Its accepted twin is 7.12's `09/explicit-panic-charges-the-channel`, which uses the supported expression-statement placement, so the pair separates the *channel* rule from the *placement* rule. It also produced this revision's one measured backend wording difference: the two implementations spell this diagnostic's message with one word between them, which is why the case declares no `messageContains`. **Extended on 2026-08-27 (the capability-argument revision) to the TAG position, which is where this boundary was fail-open on BOTH backends**: a tagged template is a call with no call expression, and until that day `` panic`x` ``, `` abort`x` `` through a `const` alias, `` (panic satisfies typeof panic)`x` `` and `` Reflect.panic`x` `` all compiled — the fork lowering the last into a runtime `TypeError: Reflect.panic is not a function`. Since both backends accepted them, **no divergence could ever have been reported**, which is why this row read "covered" while the hole was open. `09/the-panic-intrinsic-is-a-call-and-not-a-template-tag` holds all four at `SMITHERS1503`, and its four spellings share no mechanism (bare identifier; a value binding; the type-only-wrapper table; an ambient member leaf test), so a rule keyed on the identifier `panic` closes exactly one of them. `09/an-ordinary-tagged-template-is-not-the-panic-intrinsic` is the acceptance guard that makes closing it that way impossible: it holds a LOCAL function named `panicTag`, a local object member literally named `panic`, and `String.raw`, alongside `panic(...)` and its alias still calling and still returning. The parenthesised tag `` (panic)`x` `` was measured during that revision and is refused identically on both backends at the same position and with the same message — recorded in the case's `notes` and deliberately not added, because it is a spelling nobody measured in the PRE-fix state. |
-| 7.24 | **`panic(...)` MUST NOT force a return type to widen into `Result<A, Panic>`** | failures.mdx §Panic Does Not Widen a Return Type (the whole section, new on 2026-08-25); DECISIONS.md Locked, "the prohibition is on the compiler forcing it" | **covered, fourteen cases, both backends** | The rule is stated once and holds over a whole class of constructs, so it is pinned per construct rather than once: `09/a-panic-in-an-if-body-keeps-a-plain-return-type` (the replaced case — same `.sm`, new expectation), `a-panic-in-a-plain-return-function-does-not-widen-it`, `a-panic-as-a-concise-arrow-body-is-an-abort`, `a-panic-two-helpers-deep-leaves-both-callers-plain`, `an-accessor-may-read-its-state-through-a-panicking-helper`, `a-constructor-a-getter-and-a-setter-may-all-abort`, `an-object-literal-method-and-getter-may-abort`, `an-instance-and-a-static-method-may-abort-with-a-panic`, `a-generator-may-abort-with-a-panic`, `an-async-function-may-abort-with-a-panic`, `an-exported-void-assertion-needs-no-result-contract`, `an-inline-callback-may-abort-with-a-panic`, `reflect-panic-under-a-plain-return-type-is-the-same-abort`, and `an-unannotated-panicking-function-infers-no-result-to-swallow-it`. **All fourteen are `expect: output` and every one executes**, which is deliberate: the defect this rule closes was a program that compiled and misbehaved, so a diagnostics-only pin would have been the wrong instrument. **All fourteen fail against the tree with only the panic fix reverted**, with the observed pre-fix diagnostics recorded per case in each `notes` — `SMITHERS1101` on the declaration and `SMITHERS1301`/`SMITHERS1302`/`SMITHERS1303` at the call for most of them, `SMITHERS1102` for the exported form, and additionally `SMITHERS1105` (accessors, constructors, setters) or `SMITHERS1106` (generators) on the reference only. The three constructs where the refusal was a **contradiction with no legal spelling** — a getter, a constructor and a generator each simultaneously required to declare a Result and forbidden to — are why the class is enumerated instead of sampled. |
+| 7.23 | **`panic(...)` is an exit and not a value: a placement the compiler cannot lower is refused rather than guessed at** (`VIBE1503`) | failures.mdx:113 (Locked) "A caller MUST propagate panic, explicitly catch it, or use a trusted adapter"; the POC narrows the lowerable placements | **covered** | **`09/panic-outside-a-statement-or-return-is-rejected`**, green on both. A POC lowering boundary rather than a specification sentence, pinned because an unpinned boundary is one the other implementation can put somewhere else. Its accepted twin is 7.12's `09/explicit-panic-charges-the-channel`, which uses the supported expression-statement placement, so the pair separates the *channel* rule from the *placement* rule. It also produced this revision's one measured backend wording difference: the two implementations spell this diagnostic's message with one word between them, which is why the case declares no `messageContains`. **Extended on 2026-08-27 (the capability-argument revision) to the TAG position, which is where this boundary was fail-open on BOTH backends**: a tagged template is a call with no call expression, and until that day `` panic`x` ``, `` abort`x` `` through a `const` alias, `` (panic satisfies typeof panic)`x` `` and `` Reflect.panic`x` `` all compiled — the fork lowering the last into a runtime `TypeError: Reflect.panic is not a function`. Since both backends accepted them, **no divergence could ever have been reported**, which is why this row read "covered" while the hole was open. `09/the-panic-intrinsic-is-a-call-and-not-a-template-tag` holds all four at `VIBE1503`, and its four spellings share no mechanism (bare identifier; a value binding; the type-only-wrapper table; an ambient member leaf test), so a rule keyed on the identifier `panic` closes exactly one of them. `09/an-ordinary-tagged-template-is-not-the-panic-intrinsic` is the acceptance guard that makes closing it that way impossible: it holds a LOCAL function named `panicTag`, a local object member literally named `panic`, and `String.raw`, alongside `panic(...)` and its alias still calling and still returning. The parenthesised tag `` (panic)`x` `` was measured during that revision and is refused identically on both backends at the same position and with the same message — recorded in the case's `notes` and deliberately not added, because it is a spelling nobody measured in the PRE-fix state. |
+| 7.24 | **`panic(...)` MUST NOT force a return type to widen into `Result<A, Panic>`** | failures.mdx §Panic Does Not Widen a Return Type (the whole section, new on 2026-08-25); DECISIONS.md Locked, "the prohibition is on the compiler forcing it" | **covered, fourteen cases, both backends** | The rule is stated once and holds over a whole class of constructs, so it is pinned per construct rather than once: `09/a-panic-in-an-if-body-keeps-a-plain-return-type` (the replaced case — same `.vibe`, new expectation), `a-panic-in-a-plain-return-function-does-not-widen-it`, `a-panic-as-a-concise-arrow-body-is-an-abort`, `a-panic-two-helpers-deep-leaves-both-callers-plain`, `an-accessor-may-read-its-state-through-a-panicking-helper`, `a-constructor-a-getter-and-a-setter-may-all-abort`, `an-object-literal-method-and-getter-may-abort`, `an-instance-and-a-static-method-may-abort-with-a-panic`, `a-generator-may-abort-with-a-panic`, `an-async-function-may-abort-with-a-panic`, `an-exported-void-assertion-needs-no-result-contract`, `an-inline-callback-may-abort-with-a-panic`, `reflect-panic-under-a-plain-return-type-is-the-same-abort`, and `an-unannotated-panicking-function-infers-no-result-to-swallow-it`. **All fourteen are `expect: output` and every one executes**, which is deliberate: the defect this rule closes was a program that compiled and misbehaved, so a diagnostics-only pin would have been the wrong instrument. **All fourteen fail against the tree with only the panic fix reverted**, with the observed pre-fix diagnostics recorded per case in each `notes` — `VIBE1101` on the declaration and `VIBE1301`/`VIBE1302`/`VIBE1303` at the call for most of them, `VIBE1102` for the exported form, and additionally `VIBE1105` (accessors, constructors, setters) or `VIBE1106` (generators) on the reference only. The three constructs where the refusal was a **contradiction with no legal spelling** — a getter, a constructor and a generator each simultaneously required to declare a Result and forbidden to — are why the class is enumerated instead of sampled. |
 | 7.25 | **…but an author MAY still annotate `Result<A, Panic>` explicitly, and it still materializes** | failures.mdx §Panic Does Not Widen a Return Type: "An author MAY still annotate `Result<A, Panic>` explicitly to materialize a panic as a value; that is how panic is made explicitly catchable" | **covered, and deliberately unchanged** | `09/explicit-panic-charges-the-channel`, `09/reflect-panic-enters-the-panic-channel` and `09/a-panic-in-an-if-body-is-a-simple-exit` already pinned the annotated direction and were **not touched** by this revision — the last of these is the byte-for-byte annotated twin of the replaced case, and the pair is what makes the MUST-NOT and the MAY legible side by side. The panic lane measured all three emitting byte-identically before and after the rule. The MUST-NOT and the MAY are one rule with two halves and neither is safe to pin alone: pinning only the MUST-NOT licenses an implementation that stops materializing panics altogether, which would delete the only explicit catch the language has. |
-| 7.26 | **the rule is scoped to `panic(...)`: an ordinary recoverable `throw`, an untrusted foreign call, and `throw new Panic(...)` all still widen** | failures.mdx §Compiler Lifting and DECISIONS Locked (a `throw error` infers `Result<A, E>`); failures.mdx §Foreign Exceptions and DECISIONS.md:291 (Locked, the foreign panic case is independent and retained); failures.mdx §Foreign Exceptions names exactly two spellings of the distinguished channel, `panic` from `smithers:exceptions` and `Reflect.panic` | **covered, three cases, both backends** | `09/an-ordinary-recoverable-throw-still-requires-a-result` (`SMITHERS1101@7:1`), `09/an-untrusted-foreign-call-propagated-with-bang-still-charges-panic` (`SMITHERS1101@3:1`, the postfix-`!` spelling beside 7.2's `return` spelling) and `09/throwing-a-panic-instance-is-an-ordinary-recoverable-exit` (`SMITHERS1101@3:1` + `SMITHERS1301@8:44`). **These three are the only cases in this revision that pin current behaviour rather than a fixed defect, and that is the point of them**: they were measured identical before and after the panic fix, which is the evidence that the fix was made at the panic charge and not at the widening machinery. §Panic Does Not Widen a Return Type derives itself from the premise that panic is tracked *separately from ordinary recoverable Error variants*; if `throw new Missing(...)` stopped widening too, the derivation would have no premise left and the recoverable channel would be gone. The foreign case carries a recorded tension: the section's own reasoning (a panic in `E` is consumable by `unwrapOr`/`recover`/`match`) applies verbatim to the foreign channel, which this row pins as still widening. That is a ledger question, named in the case's `notes` with the condition for rewriting both foreign cases together, and deliberately not settled here. `throw new Panic(...)` is a real foot-gun pinned at today's answer so a change of mind has to be deliberate. |
+| 7.26 | **the rule is scoped to `panic(...)`: an ordinary recoverable `throw`, an untrusted foreign call, and `throw new Panic(...)` all still widen** | failures.mdx §Compiler Lifting and DECISIONS Locked (a `throw error` infers `Result<A, E>`); failures.mdx §Foreign Exceptions and DECISIONS.md:291 (Locked, the foreign panic case is independent and retained); failures.mdx §Foreign Exceptions names exactly two spellings of the distinguished channel, `panic` from `vibelang:exceptions` and `Reflect.panic` | **covered, three cases, both backends** | `09/an-ordinary-recoverable-throw-still-requires-a-result` (`VIBE1101@7:1`), `09/an-untrusted-foreign-call-propagated-with-bang-still-charges-panic` (`VIBE1101@3:1`, the postfix-`!` spelling beside 7.2's `return` spelling) and `09/throwing-a-panic-instance-is-an-ordinary-recoverable-exit` (`VIBE1101@3:1` + `VIBE1301@8:44`). **These three are the only cases in this revision that pin current behaviour rather than a fixed defect, and that is the point of them**: they were measured identical before and after the panic fix, which is the evidence that the fix was made at the panic charge and not at the widening machinery. §Panic Does Not Widen a Return Type derives itself from the premise that panic is tracked *separately from ordinary recoverable Error variants*; if `throw new Missing(...)` stopped widening too, the derivation would have no premise left and the recoverable channel would be gone. The foreign case carries a recorded tension: the section's own reasoning (a panic in `E` is consumable by `unwrapOr`/`recover`/`match`) applies verbatim to the foreign channel, which this row pins as still widening. That is a ledger question, named in the case's `notes` with the condition for rewriting both foreign cases together, and deliberately not settled here. `throw new Panic(...)` is a real foot-gun pinned at today's answer so a change of mind has to be deliberate. |
 | 7.27 | **the panic materialization gate keys on the published row naming `Panic`, not on the function returning some Result** | failures.mdx §Foreign Exceptions: "The distinguished `panic` case is tracked separately from ordinary recoverable Error variants. Ordinary Result recovery MUST NOT swallow panic implicitly" | **covered — and this is the fail-open pin of this revision** | `09/an-inferred-error-channel-does-not-absorb-a-panic`. A function with **no return annotation** that both `throw`s a recoverable `Missing` and calls `panic(...)`. It genuinely has a Result channel, so an implementation deciding materialization by asking "does this function return some Result?" answers yes and turns the panic into the error variant of `Result<string, Missing>`. Measured against the pre-fix tree, this program **compiled with zero diagnostics on both backends and printed `"missing: empty key"`** — an invariant violation delivered into the caller's expected-error branch wearing the name of a lookup miss, with nothing reported before or during execution. It now prints `"panic: empty key"`, observed through `Result.try`, the only boundary that can see it. Lines 1 and 2 of the same program are the over-correction guard: an implementation that stopped materializing by dropping the whole failure row breaks them. Its third corner is 7.25's `explicit-panic-charges-the-channel`, the row that DOES name `Panic` and where materialization is required. Closing 7.24 without this gate would have widened the hole from "inferred functions only" to "always", which is why the pin is an `output` case that executes and not a row assertion. Its companion refusals are `09/unwrap-or-cannot-reach-a-panicking-plain-return-type` and `09/recover-cannot-reach-a-panicking-plain-return-type`, which say the same thing from the other side: on a function with no annotation the recovery surface does not merely fail, it does not exist (`TS2339`, with `messageContains` on the receiver type so the case cannot be satisfied by a `TS2339` about something else). The third member the section names, `match`, is deliberately not written — on a plain `string` receiver it resolves to `String.prototype.match` and produces a stock TypeScript cascade that is a fact about the JavaScript standard library, not about this rule. |
-| 7.29 | **the two lowering boundaries the non-widening rule deliberately did not move** (`SMITHERS1505` at module top level, `SMITHERS1107` in a class static initializer block) | failures.mdx §Panic Does Not Widen a Return Type is scoped to a **function's** return type; neither position has one. Both codes are declared POC/fork lowering boundaries rather than normative sentences, of the same family as `SMITHERS1503` and `SMITHERS1511` | **covered, two cases, both backends, both measured unchanged across the revert** | `09/a-top-level-panic-is-still-refused` (`SMITHERS1505@3:1`) and `09/a-panic-in-a-static-initializer-block-is-still-refused` (`SMITHERS1107@4:3`). These close the enumeration §7.24 opens: of every construct that can host a `panic(...)`, these two are the only ones that must still be refused for a reason of their own, and **until this revision neither had a corpus case**. That mattered more than it sounds — the rule removed `SMITHERS1101` from every other member of the class, so a static block reads as one more member of a list while being governed by a different rule entirely, and a later lane widening §7.24 into "a panic is legal anywhere" would have broken nothing in the corpus. Moving either one means teaching the lowerer to emit a panic in that position, not relaxing a rule; if that happens, both cases are **rewritten to the accepted direction rather than deleted**. **One honest caveat, recorded in the top-level case's own `notes` rather than hidden:** the `SMITHERS1505` message argues from the reasoning §Panic Does Not Widen a Return Type just abolished ("cannot be represented as a checked Result"). The refusal is still right, for a different reason than the one it gives. No `messageContains` is declared, deliberately — the text is the part that should change, and pinning it would freeze the wrong argument into the contract. |
-| 7.28 | **an accessor or generator that cannot carry a Result channel is refused** (`SMITHERS1105`, `SMITHERS1106`) | *no sentence names either code.* failures.mdx:190 requires only that a checked failure not be silently discarded; both codes are declared POC lowering boundaries (`poc/src/language/semantic.ts:1968`, `:1971`) of the same family as `SMITHERS1503` | **covered by an `xfail go` that is a documentation gap, not a defect verdict** | `09/a-fallible-getter-in-an-argument-still-needs-a-contract`. **The Go backend implements no `SMITHERS1105` and no `SMITHERS1106` at all** — neither code appears anywhere in the fork. That is not a missed shape but a missing rule, and it means the two backends have always disagreed on every fallible accessor, constructor and generator. It was invisible because those two codes sat in the worst bucket this page tracks: **spelled by one implementation and probed by no case**, which produces no divergence in either direction, ever. It became visible only when 7.24 removed `SMITHERS1101` from the *panicking* half of the same class, leaving the ordinary-`Error` half as the residual. **Both backends refuse this program** — the fork with `SMITHERS1303@8:19`, the reference with `SMITHERS1105@8:19` beside it — so no checked failure escapes and this is not a fail-open; `SMITHERS1303` is the refusal that matters, because it is the one about a failure channel crossing a value edge, and both report it at the same authored position. **Neither backend should move on this marker.** Retire it by implementing the two codes in the fork if the accessor limitation is made normative, or by dropping the declaration to `[SMITHERS1303@8:19]` if accessors may carry a channel or the limitation is declared implementation-defined. Read it beside 7.24's `an-accessor-may-read-its-state-through-a-panicking-helper`: the panicking twin of this program is now accepted and runs, because a getter that panics has no failure channel to lose — which is exactly why it lost its refusal and this one did not. |
+| 7.29 | **the two lowering boundaries the non-widening rule deliberately did not move** (`VIBE1505` at module top level, `VIBE1107` in a class static initializer block) | failures.mdx §Panic Does Not Widen a Return Type is scoped to a **function's** return type; neither position has one. Both codes are declared POC/fork lowering boundaries rather than normative sentences, of the same family as `VIBE1503` and `VIBE1511` | **covered, two cases, both backends, both measured unchanged across the revert** | `09/a-top-level-panic-is-still-refused` (`VIBE1505@3:1`) and `09/a-panic-in-a-static-initializer-block-is-still-refused` (`VIBE1107@4:3`). These close the enumeration §7.24 opens: of every construct that can host a `panic(...)`, these two are the only ones that must still be refused for a reason of their own, and **until this revision neither had a corpus case**. That mattered more than it sounds — the rule removed `VIBE1101` from every other member of the class, so a static block reads as one more member of a list while being governed by a different rule entirely, and a later lane widening §7.24 into "a panic is legal anywhere" would have broken nothing in the corpus. Moving either one means teaching the lowerer to emit a panic in that position, not relaxing a rule; if that happens, both cases are **rewritten to the accepted direction rather than deleted**. **One honest caveat, recorded in the top-level case's own `notes` rather than hidden:** the `VIBE1505` message argues from the reasoning §Panic Does Not Widen a Return Type just abolished ("cannot be represented as a checked Result"). The refusal is still right, for a different reason than the one it gives. No `messageContains` is declared, deliberately — the text is the part that should change, and pinning it would freeze the wrong argument into the contract. |
+| 7.28 | **an accessor or generator that cannot carry a Result channel is refused** (`VIBE1105`, `VIBE1106`) | *no sentence names either code.* failures.mdx:190 requires only that a checked failure not be silently discarded; both codes are declared POC lowering boundaries (`poc/src/language/semantic.ts:1968`, `:1971`) of the same family as `VIBE1503` | **covered by an `xfail go` that is a documentation gap, not a defect verdict** | `09/a-fallible-getter-in-an-argument-still-needs-a-contract`. **The Go backend implements no `VIBE1105` and no `VIBE1106` at all** — neither code appears anywhere in the fork. That is not a missed shape but a missing rule, and it means the two backends have always disagreed on every fallible accessor, constructor and generator. It was invisible because those two codes sat in the worst bucket this page tracks: **spelled by one implementation and probed by no case**, which produces no divergence in either direction, ever. It became visible only when 7.24 removed `VIBE1101` from the *panicking* half of the same class, leaving the ordinary-`Error` half as the residual. **Both backends refuse this program** — the fork with `VIBE1303@8:19`, the reference with `VIBE1105@8:19` beside it — so no checked failure escapes and this is not a fail-open; `VIBE1303` is the refusal that matters, because it is the one about a failure channel crossing a value edge, and both report it at the same authored position. **Neither backend should move on this marker.** Retire it by implementing the two codes in the fork if the accessor limitation is made normative, or by dropping the declaration to `[VIBE1303@8:19]` if accessors may carry a channel or the limitation is declared implementation-defined. Read it beside 7.24's `an-accessor-may-read-its-state-through-a-panicking-helper`: the panicking twin of this program is now accepted and runs, because a getter that panics has no failure channel to lose — which is exactly why it lost its refusal and this one did not. |
 
-| 7.30 | **`@throws {never}` opts a call out of the panic case INCLUDING for a callback argument the call was handed** | compatibility.mdx §Foreign Boundary (Locked) — the subject of "Trusted `@throws {never}` metadata opts out" is the **call**; requirements.mdx §Scoping (Locked) assigns the *deferred* half to the imported module — "Imported JavaScript or TypeScript that starts hidden background work owns that work"; failures.mdx §Panic Does Not Widen a Return Type is why "the callback must independently be panic-free" is not an available rule at all | **covered, seven cases, and the middle one is the fail-open guard** | Until 2026-08-25 `SMITHERS1509` claimed **every** callable argument at **every** foreign call, so the only route the language has for `process.on`, `setTimeout`, `socket.on` or `readline` was refused by the rule the binding existed to satisfy. The acceptance is `09/a-callback-registered-through-a-trusted-binding-is-accepted`, whose stdout is produced *by the listener*, so a registration accepted without ever running would not satisfy it. Its refusal twin is `09/a-callback-handed-to-an-untrusted-host-is-still-rejected` — the same program against the untrusted export of the **same module**, so nothing but the marker can be doing the work — and `09/a-module-trust-claim-is-not-a-call-site-opt-out`, which is the same again through a module carrying only the initialization claim. **`09/a-foreign-callable-handed-to-a-trusted-binding-is-still-rejected` is the fail-open guard and the most important case here**: before the fix `SMITHERS1509` covered this program too, and a fix that merely *suppressed* it for trusted calls would have left the program with no diagnostic at all. The refusal had to be **transferred** to `SMITHERS1508`, whose charter actually covers a callable minted in another module — see 7.21 — with the real Panic still charged to the enclosing row. The last three keep the acceptance narrow: `09/an-inferred-fallible-callback-into-a-trusted-host-still-needs-a-contract` (`SMITHERS1303`), `09/an-async-callback-into-a-trusted-host-still-has-no-owner` (`SMITHERS1404`) and `09/a-host-global-inside-a-trusted-registration-is-still-refused` (`SMITHERS1602`) — the callback's own inferred Result channel, its started work, and its body's authority are each owned by a rule that never reads the marker. Five of the seven fail against the pre-fix tree on **both** backends. Two carry an `xfail go`; see 7.31. |
-| 7.31 | **an untrusted foreign call charges the caller's panic row, not merely a diagnostic** | compatibility.mdx §Foreign Boundary: "Calling an unannotated foreign runtime value MUST **add the checked `panic` case**" — adding the case is the row charge, and the diagnostic is downstream of it | **covered by an `xfail go` — a diagnostic-set divergence, not a soundness one** | `09/a-callback-handed-to-an-untrusted-host-is-still-rejected` and `09/a-module-trust-claim-is-not-a-call-site-opt-out` both declare `SMITHERS1101` at the enclosing declaration beside the `SMITHERS1301`/`SMITHERS1509` at the call. **Four more rows joined this class on 2026-08-26** — 7.16e's `09/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter`, `…-through-an-element-access-needs-an-adapter`, `09/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter` and `09/destructuring-a-foreign-value-runs-its-accessors`, each declaring `SMITHERS1101@3:1` beside a `SMITHERS1506` the fork now reports at the reference's position. Six rows, one omission, six different routes to it; they retire in one edit or the fix was partial. The first of the four is the row that used to be the register's fail-open: closing the read left the row charge behind, which is how one marker became six rather than none. The fork reports the latter two and not the first: its `checkForeignBoundaries` reports without calling anything equivalent to the reference's `recordForeignBoundary`. **Both backends refuse both programs**, so nothing escapes. What localizes it rather than leaving it a guess is 7.21's `09/a-foreign-callable-handed-to-a-trusted-binding-is-still-rejected`, which declares the same `SMITHERS1101` for the **neighbouring** `SMITHERS1508` and passes on both — so the fork's row machinery works and only this one reporter skips it. Invisible until this revision because no case had handed a callback to an untrusted host from inside a function with a plain return type. |
-| 7.32 | **the module-initialization trust marker is matched with the exact case the specification prints** | failures.mdx §Foreign Exceptions (Locked): "`@throws {never}` removes the default panic case; `@throws {T}` declares the stated foreign error channel" — two productions of one syntax, separated only by the spelling inside the braces, and `T` is a TypeScript type name, which TypeScript matches case-sensitively | **covered — and this was a live fail-open on both backends until 2026-08-25** | **`09/miscased-trust-markers-do-not-confer-module-trust`**: three near misses in one case — `@throws {Never}`, `@MODULE`, `@THROWS` — each refused independently with its own `SMITHERS1510`, so a fix that closed one boundary and not the others is still visible. A case-insensitive comparison **merges the two productions**, and the implementation silently picks the opt-out: the same source becomes both the trusted claim and channel `Never`. The module half is the more dangerous of the two boundaries, because at the call site a miscased annotation still leaves `SMITHERS1502` and `SMITHERS1301` behind, whereas the module marker's only job is to *suppress* `SMITHERS1510` — so folding case there admits an unchecked foreign initializer with no diagnostic at all. Nine spellings were measured accepted before the fix and the real class is every casing of `module`, `throws` and `never`. `messageContains` declares the marker the author has to write, because code and position alone would be satisfied by a refusal for an unrelated reason — which a leading comment above the JSDoc produces, and which is why those support files have none. The 7.8b positives must keep passing beside it. |
-| 7.33 | **…and at the CALL boundary the tag NAME is exact too, which fails more quietly than the brace content** | the same sentence; a JSDoc tag name is not case-folded by TypeScript's own JSDoc parser | **covered** | `09/a-miscased-throws-tag-name-is-not-an-annotation-at-all` declares **only** `SMITHERS1301`. 7.18's `09/the-never-annotation-is-case-sensitive` miscases the brace *content*, so the annotation is still an annotation and reports `SMITHERS1502` for a channel that cannot be reified. `@THROWS` yields **no annotation at all**, so there is nothing to reify and nothing to complain about — just the default panic case and the unconsumed Result. Two spellings, two failure modes, and only one leaves a second diagnostic behind: a case declaring `SMITHERS1502` here would have been wrong. This boundary was already correct on both backends; the case pins it so a tag-name comparison cannot quietly become case-insensitive the way the module one had. |
+| 7.30 | **`@throws {never}` opts a call out of the panic case INCLUDING for a callback argument the call was handed** | compatibility.mdx §Foreign Boundary (Locked) — the subject of "Trusted `@throws {never}` metadata opts out" is the **call**; requirements.mdx §Scoping (Locked) assigns the *deferred* half to the imported module — "Imported JavaScript or TypeScript that starts hidden background work owns that work"; failures.mdx §Panic Does Not Widen a Return Type is why "the callback must independently be panic-free" is not an available rule at all | **covered, seven cases, and the middle one is the fail-open guard** | Until 2026-08-25 `VIBE1509` claimed **every** callable argument at **every** foreign call, so the only route the language has for `process.on`, `setTimeout`, `socket.on` or `readline` was refused by the rule the binding existed to satisfy. The acceptance is `09/a-callback-registered-through-a-trusted-binding-is-accepted`, whose stdout is produced *by the listener*, so a registration accepted without ever running would not satisfy it. Its refusal twin is `09/a-callback-handed-to-an-untrusted-host-is-still-rejected` — the same program against the untrusted export of the **same module**, so nothing but the marker can be doing the work — and `09/a-module-trust-claim-is-not-a-call-site-opt-out`, which is the same again through a module carrying only the initialization claim. **`09/a-foreign-callable-handed-to-a-trusted-binding-is-still-rejected` is the fail-open guard and the most important case here**: before the fix `VIBE1509` covered this program too, and a fix that merely *suppressed* it for trusted calls would have left the program with no diagnostic at all. The refusal had to be **transferred** to `VIBE1508`, whose charter actually covers a callable minted in another module — see 7.21 — with the real Panic still charged to the enclosing row. The last three keep the acceptance narrow: `09/an-inferred-fallible-callback-into-a-trusted-host-still-needs-a-contract` (`VIBE1303`), `09/an-async-callback-into-a-trusted-host-still-has-no-owner` (`VIBE1404`) and `09/a-host-global-inside-a-trusted-registration-is-still-refused` (`VIBE1602`) — the callback's own inferred Result channel, its started work, and its body's authority are each owned by a rule that never reads the marker. Five of the seven fail against the pre-fix tree on **both** backends. Two carry an `xfail go`; see 7.31. |
+| 7.31 | **an untrusted foreign call charges the caller's panic row, not merely a diagnostic** | compatibility.mdx §Foreign Boundary: "Calling an unannotated foreign runtime value MUST **add the checked `panic` case**" — adding the case is the row charge, and the diagnostic is downstream of it | **covered by an `xfail go` — a diagnostic-set divergence, not a soundness one** | `09/a-callback-handed-to-an-untrusted-host-is-still-rejected` and `09/a-module-trust-claim-is-not-a-call-site-opt-out` both declare `VIBE1101` at the enclosing declaration beside the `VIBE1301`/`VIBE1509` at the call. **Four more rows joined this class on 2026-08-26** — 7.16e's `09/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter`, `…-through-an-element-access-needs-an-adapter`, `09/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter` and `09/destructuring-a-foreign-value-runs-its-accessors`, each declaring `VIBE1101@3:1` beside a `VIBE1506` the fork now reports at the reference's position. Six rows, one omission, six different routes to it; they retire in one edit or the fix was partial. The first of the four is the row that used to be the register's fail-open: closing the read left the row charge behind, which is how one marker became six rather than none. The fork reports the latter two and not the first: its `checkForeignBoundaries` reports without calling anything equivalent to the reference's `recordForeignBoundary`. **Both backends refuse both programs**, so nothing escapes. What localizes it rather than leaving it a guess is 7.21's `09/a-foreign-callable-handed-to-a-trusted-binding-is-still-rejected`, which declares the same `VIBE1101` for the **neighbouring** `VIBE1508` and passes on both — so the fork's row machinery works and only this one reporter skips it. Invisible until this revision because no case had handed a callback to an untrusted host from inside a function with a plain return type. |
+| 7.32 | **the module-initialization trust marker is matched with the exact case the specification prints** | failures.mdx §Foreign Exceptions (Locked): "`@throws {never}` removes the default panic case; `@throws {T}` declares the stated foreign error channel" — two productions of one syntax, separated only by the spelling inside the braces, and `T` is a TypeScript type name, which TypeScript matches case-sensitively | **covered — and this was a live fail-open on both backends until 2026-08-25** | **`09/miscased-trust-markers-do-not-confer-module-trust`**: three near misses in one case — `@throws {Never}`, `@MODULE`, `@THROWS` — each refused independently with its own `VIBE1510`, so a fix that closed one boundary and not the others is still visible. A case-insensitive comparison **merges the two productions**, and the implementation silently picks the opt-out: the same source becomes both the trusted claim and channel `Never`. The module half is the more dangerous of the two boundaries, because at the call site a miscased annotation still leaves `VIBE1502` and `VIBE1301` behind, whereas the module marker's only job is to *suppress* `VIBE1510` — so folding case there admits an unchecked foreign initializer with no diagnostic at all. Nine spellings were measured accepted before the fix and the real class is every casing of `module`, `throws` and `never`. `messageContains` declares the marker the author has to write, because code and position alone would be satisfied by a refusal for an unrelated reason — which a leading comment above the JSDoc produces, and which is why those support files have none. The 7.8b positives must keep passing beside it. |
+| 7.33 | **…and at the CALL boundary the tag NAME is exact too, which fails more quietly than the brace content** | the same sentence; a JSDoc tag name is not case-folded by TypeScript's own JSDoc parser | **covered** | `09/a-miscased-throws-tag-name-is-not-an-annotation-at-all` declares **only** `VIBE1301`. 7.18's `09/the-never-annotation-is-case-sensitive` miscases the brace *content*, so the annotation is still an annotation and reports `VIBE1502` for a channel that cannot be reified. `@THROWS` yields **no annotation at all**, so there is nothing to reify and nothing to complain about — just the default panic case and the unconsumed Result. Two spellings, two failure modes, and only one leaves a second diagnostic behind: a case declaring `VIBE1502` here would have been wrong. This boundary was already correct on both backends; the case pins it so a tag-name comparison cannot quietly become case-insensitive the way the module one had. |
 
 ## 8. Requirements, capabilities, and layers
 
@@ -2794,39 +3417,39 @@ Every member has a case.
 | 8.1 | a capability is an abstract class extending `Context`, declared with ordinary class syntax | requirements.mdx §Capability Identity | covered | every `05/*` and `06/*` case; `19/uses-clause-is-retired` pins the absence of a separate declaration form |
 | 8.2 | `Capability.context()` adds the class to the enclosing `R` row and returns its instance type | requirements.mdx §Context Access | covered | `05/context-requirement-is-satisfied` |
 | 8.2a | **…and the receiver is identified by resolved binding identity, not by syntactic form** | requirements.mdx:36: "The receiver MUST identify a `Context` subclass strongly enough for the compiler to record its nominal key" | covered | `05/a-capability-read-through-a-local-alias-charges-the-row` (a `const` alias; `messageContains` the capability's own name, because an empty row or one naming the local binding would satisfy code-and-position exactly) and `05/a-capability-read-through-a-local-alias-is-subtracted-by-its-layer`, which proves the resolved KEY rather than the refusal — the alias's row is subtracted by `Layer.succeed(Clock, …)` and the program prints `7`. REVIEW-fable-1.md F3 measured the fork accepting the alias with an empty row and panicking at runtime. The computed-receiver spelling of the same rule is `05/a-computed-context-access-charges-the-same-row` (12.12). |
-| 8.2b | **…and when the receiver identifies NO single class, the read is REFUSED rather than silently charged to nothing or to one arm of it** (`SMITHERS2106`) | requirements.mdx:36, read in the closed direction: a receiver that does not identify the subclass "strongly enough" leaves nothing to record, and requirements.mdx §Satisfaction makes an unsatisfied capability an error | **covered as of 2026-08-26, four cases, and every one was a live fail-open on BOTH backends until that day** | 8.2a is the open direction of this sentence and could not see the closed one: an unresolvable receiver returned "not a context call" and fell through with no row and no diagnostic, so `Layer.provide` completeness, transitive caller rows and the top-level check all certified. The four: `05/a-ternary-receiver-does-not-identify-one-capability` (the SYNTACTIC arm — and the case worth reading first, because it is not an empty row but a **misattributed** one: TypeScript subtype-reduces `typeof Reader \| typeof Writer` to `typeof Reader`, so the certified row said `[Reader]`, a Reader-only layer satisfied it exactly, and the program panicked at run time with `capability 'Writer' was not provided`); `05/a-union-typed-capability-receiver-is-rejected` (the TYPE arm, with structurally different capabilities so no reduction occurs and the union really arrives intact); `05/a-generic-capability-receiver-is-rejected` (a type parameter, refused even though its constraint names exactly one class, because a subclass is still substitutable); and `05/a-tuple-element-capability-receiver-is-rejected` (a non-literal index into an `as const` capability registry, which no rule reading declared parameter types can see). The over-correction guard is `05/sound-capability-receivers-keep-their-row-and-run`, an `output` case whose thirteen receivers include two conditional ones whose branches agree, a `typeof Reader` parameter, and `(Reader as any)` recording the **correct** row rather than being refused. |
-| 8.2c | **…and the compiler-recognized `Context.context` member cannot be DETACHED from its capability at all** (`SMITHERS2107`) | requirements.mdx §Context Access: "`Capability.context()` MUST be an inherited, compiler-recognized **call**" — recognition happens at the call, and a detached member reference leaves no call to recognize | **covered as of 2026-08-26, two cases, and this was the worst of the three receiver fail-opens** | `05/a-detached-context-reference-is-rejected` (`Reflect.apply(Reader.context, Reader, [])`) was **accepted with an empty row and RAN on both backends**, reading the capability out of a function whose certified row named nothing. `05/a-bound-context-reference-is-rejected` (`Reader.context.bind(Reader)()`) is a separate case rather than a fold-in because the two spellings had **different verdicts on different backends**: the reference refused the bind form *incidentally* with `TS2571` out of its prelude's typing, while the fork's looser typing accepted it — a verdict divergence resting on a typing accident. Both now answer `SMITHERS2107` alone on both backends, and **the corpus deliberately pins the SMITHERS code and not the TS one**: a frontend refusal short-circuits the emitted-TypeScript stage, so the incidental code is gone, and declaring it would have re-pinned the accident. The over-correction guard is `05/a-member-named-context-on-an-ordinary-value-stays-ordinary`, an `output` case covering a plain object's `context`, an ordinary class's static `context`, `Reflect.get` on a non-capability, and — the one an implementation breaks first — `typeof Reader.context` in a **type position**. Residual, recorded rather than papered over: `Reflect.get(Reader, computedKey)` with a non-literal key stays open on both backends. |
+| 8.2b | **…and when the receiver identifies NO single class, the read is REFUSED rather than silently charged to nothing or to one arm of it** (`VIBE2106`) | requirements.mdx:36, read in the closed direction: a receiver that does not identify the subclass "strongly enough" leaves nothing to record, and requirements.mdx §Satisfaction makes an unsatisfied capability an error | **covered as of 2026-08-26, four cases, and every one was a live fail-open on BOTH backends until that day** | 8.2a is the open direction of this sentence and could not see the closed one: an unresolvable receiver returned "not a context call" and fell through with no row and no diagnostic, so `Layer.provide` completeness, transitive caller rows and the top-level check all certified. The four: `05/a-ternary-receiver-does-not-identify-one-capability` (the SYNTACTIC arm — and the case worth reading first, because it is not an empty row but a **misattributed** one: TypeScript subtype-reduces `typeof Reader \| typeof Writer` to `typeof Reader`, so the certified row said `[Reader]`, a Reader-only layer satisfied it exactly, and the program panicked at run time with `capability 'Writer' was not provided`); `05/a-union-typed-capability-receiver-is-rejected` (the TYPE arm, with structurally different capabilities so no reduction occurs and the union really arrives intact); `05/a-generic-capability-receiver-is-rejected` (a type parameter, refused even though its constraint names exactly one class, because a subclass is still substitutable); and `05/a-tuple-element-capability-receiver-is-rejected` (a non-literal index into an `as const` capability registry, which no rule reading declared parameter types can see). The over-correction guard is `05/sound-capability-receivers-keep-their-row-and-run`, an `output` case whose thirteen receivers include two conditional ones whose branches agree, a `typeof Reader` parameter, and `(Reader as any)` recording the **correct** row rather than being refused. |
+| 8.2c | **…and the compiler-recognized `Context.context` member cannot be DETACHED from its capability at all** (`VIBE2107`) | requirements.mdx §Context Access: "`Capability.context()` MUST be an inherited, compiler-recognized **call**" — recognition happens at the call, and a detached member reference leaves no call to recognize | **covered as of 2026-08-26, two cases, and this was the worst of the three receiver fail-opens** | `05/a-detached-context-reference-is-rejected` (`Reflect.apply(Reader.context, Reader, [])`) was **accepted with an empty row and RAN on both backends**, reading the capability out of a function whose certified row named nothing. `05/a-bound-context-reference-is-rejected` (`Reader.context.bind(Reader)()`) is a separate case rather than a fold-in because the two spellings had **different verdicts on different backends**: the reference refused the bind form *incidentally* with `TS2571` out of its prelude's typing, while the fork's looser typing accepted it — a verdict divergence resting on a typing accident. Both now answer `VIBE2107` alone on both backends, and **the corpus deliberately pins the VIBE code and not the TS one**: a frontend refusal short-circuits the emitted-TypeScript stage, so the incidental code is gone, and declaring it would have re-pinned the accident. The over-correction guard is `05/a-member-named-context-on-an-ordinary-value-stays-ordinary`, an `output` case covering a plain object's `context`, an ordinary class's static `context`, `Reflect.get` on a non-capability, and — the one an implementation breaks first — `typeof Reader.context` in a **type position**. Residual, recorded rather than papered over: `Reflect.get(Reader, computedKey)` with a non-literal key stays open on both backends. |
 | 8.2d | **…and the boundary between a recognized CALL and a detached REFERENCE is one token wide, and both sides of it are now pinned** | requirements.mdx §Context Access: "`Capability.context()` MUST be an inherited, compiler-recognized **call**" | **covered as of 2026-08-27, as a pair, and the accepting half closed the seventh over-correction this repository has shipped** | 8.2c pins that a detached reference is refused. The fork then refused `(Reader.context)()` — a legitimate capability read — as detached, which is the same rule over-firing. `05/a-parenthesised-context-callee-is-still-a-context-call` is the acceptance half: five parenthesised-CALLEE spellings, including a doubled parenthesis, the same callee inside a template, inside a call argument, and inside a nested arrow, all subtracted by one layer and RUNNING. `05/a-detached-context-reference-is-refused-in-every-spelling` is the refusal half at four spellings 8.2c does not reach — as a call argument, as a PARENTHESISED call argument, through a `const` alias, and through `.call`. Lines 11 and 12 of that file are the matched pair: `take((Reader.context))` and `(Reader.context)()` differ by whether a call follows the parenthesis and must get OPPOSITE answers, which no rule keying on 'a parenthesis appears around `X.context`' can produce. `05/sound-capability-receivers-keep-their-row-and-run` is the cousin that covers parentheses around the RECEIVER; it did not cover the callee, and that gap is exactly where the fork fell. |
 | 8.3 | requirement inference is transitive through ordinary calls | requirements.mdx §Inference | covered | `05/requirement-propagates-through-callers`, `05/one-layer-satisfies-a-capability-required-through-many-paths` |
-| 8.3c | **…and an invocation with NO call expression is an ordinary call: a tagged template, a `new`, an implicit `super`, a `for-of`, a spread and a `yield*` all charge their callee's row** | requirements.mdx §Inference | **covered as of 2026-08-27, as a pair** | The row was dropped at every invocation form that is not a call-expression node, and the failure is silent and total — the row comes back empty, every downstream rule certifies, and the read aborts at run time. `05/an-invocation-with-no-call-expression-still-charges-its-row` declares six `SMITHERS2102`s. The sharpest is the **implicit super constructor**: `class Derived extends Base {}` has no constructor, no `super` call and no argument list anywhere in the source, so a walk over written syntax has nothing to visit. The three iterator forms are three rather than one because `for-of`, a spread and a `yield*` reach `Symbol.iterator` by different lowering paths. The over-correction guard is `05/ordinary-invocation-forms-with-no-call-expression-charge-nothing`, the same six forms over callees that read nothing, in a module that deliberately declares a capability and an uncalled function that reads it — so a rule charging the FORM has something to over-fire on. Deliberately excluded from both: coercion-protocol members and a decorator (the latter because the legacy two-argument spelling type-checks under the CLI's options and not under a bare option set, and a case whose green depends on which option set ran will break for the wrong reason). |
+| 8.3c | **…and an invocation with NO call expression is an ordinary call: a tagged template, a `new`, an implicit `super`, a `for-of`, a spread and a `yield*` all charge their callee's row** | requirements.mdx §Inference | **covered as of 2026-08-27, as a pair** | The row was dropped at every invocation form that is not a call-expression node, and the failure is silent and total — the row comes back empty, every downstream rule certifies, and the read aborts at run time. `05/an-invocation-with-no-call-expression-still-charges-its-row` declares six `VIBE2102`s. The sharpest is the **implicit super constructor**: `class Derived extends Base {}` has no constructor, no `super` call and no argument list anywhere in the source, so a walk over written syntax has nothing to visit. The three iterator forms are three rather than one because `for-of`, a spread and a `yield*` reach `Symbol.iterator` by different lowering paths. The over-correction guard is `05/ordinary-invocation-forms-with-no-call-expression-charge-nothing`, the same six forms over callees that read nothing, in a module that deliberately declares a capability and an uncalled function that reads it — so a rule charging the FORM has something to over-fire on. Deliberately excluded from both: coercion-protocol members and a decorator (the latter because the legacy two-argument spelling type-checks under the CLI's options and not under a bare option set, and a case whose green depends on which option set ran will break for the wrong reason). |
 | 8.3d | **…and a COERCION is an ordinary call, at every spelling of the member and at every position that triggers one** | requirements.mdx §Inference; ECMAScript `OrdinaryToPrimitive` decides which member runs | **covered as of 2026-08-27, seven cases; 116 divergences were closed the same day with conformance reporting 0 divergent throughout, because no case spelled a coercion member any way but a method shorthand** | `05/every-spelling-of-a-coercion-member-charges-the-same-row` is an EQUALITY, not a list: ten spellings that were fail-open (arrow and function-expression property values, a computed key written as a string literal and through a `const`, a reference to a function declaration, a shorthand property, a class arrow FIELD, a nested property, a `const` alias, and a getter whose inferred return type is a function) declared beside six that both backends already charged. `05/a-computed-member-name-is-charged-to-the-scope-that-evaluates-it` settles WHICH function is the enclosing one — a computed name is evaluated where the object is built, not by the member it names — with three non-function-valued controls that identify the cause as the member boundary. `05/a-parenthesised-ambient-coercion-callee-charges-the-same-row` pins `(Number)(obj)`/`(String)(obj)` against their unparenthesised twins. The walk itself is pinned in BOTH fall-through directions, which is what stops a future lane flattening it: `05/coercion-members-that-never-run-charge-nothing` (a Db-reading `valueOf` at a string hint is NOT charged, and the printed `[object Object]` is the proof the walk stopped at `toString`) against `05/a-toString-returning-an-object-falls-through-to-valueOf` (when `toString` returns a non-primitive the walk continues and the row IS charged). `05/the-coercion-row-reaches-the-provide-site-and-runs` and `05/a-coercion-row-is-not-subtracted-by-the-wrong-layer` are the pair that says the row is RECORDED and travels rather than that the program was merely not refused — the accepting case alone cannot see a backend that recorded no row, because the layer is installed at run time either way. **Residual, measured and deliberately not pinned:** an explicitly annotated member type, an annotated getter return, and a helper that returns the object are accepted by BOTH backends (shared fail-open R1); `(JSON).stringify(obj)` is a shared fail-open in the member-receiver helper; and `JSON.stringify`/`toString` is a known over-approximation on both. |
-| 8.3a | **…and an accessor access IS an ordinary call, in every spelling** | requirements.mdx §Inference; type-system.mdx §Fallibility Inference (`R` comes from `Capability.context()` calls and transitive callees) | **covered, five cases, and every one of them was a live fail-open until 2026-08-25** | Reading a get-accessor *calls* it — there is no syntax that names an accessor without running it — so it charges the accessor's requirement row. Before this revision **no accessor access charged its row anywhere, on either backend**: a getter read, a setter write, a get/set-pair read, an element access and a destructuring read all compiled with the capability silently dropped, and `SMITHERS1802` refused exactly one corner of that hole (cross-module, get-only, read) while nothing refused the rest. The cases: `05/a-cross-module-accessor-read-charges-the-capability-row` and `05/a-destructured-accessor-read-charges-the-capability-row` (coverage — a *satisfied* provide runs either way, which is why they are not the gate); `05/a-top-level-accessor-read-has-unsatisfied-requirements` and `05/a-top-level-accessor-write-has-unsatisfied-requirements` (`SMITHERS2102`, each with `messageContains` on the capability's own name); and **`06/layer-provide-missing-a-capability-an-accessor-introduces`**, which is the gate — see 8.7a. The destructured case carries **both** the plain and the renamed spelling on purpose: before the fix they disagreed with each other about one call, the plain form compiling with the row dropped while `const { value: n } = source` was refused, so a case carrying only the plain form would have pinned nothing. |
-| 8.3b | **…and a CALLBACK boundary is an ordinary call: a capability read inside a callback charges the function that hands it over** | requirements.mdx §Inference ("Requirement inference MUST be transitive through ordinary calls"), read against the `SMITHERS1303`/`SMITHERS1404` precedent — the compiler already walks this exact value edge for the failure and async channels | **covered as of 2026-08-26, as a pair, and it was a live fail-open on BOTH backends** | The callback-boundary rules were asymmetric: a fallible callback is refused (`SMITHERS1303`), an async callback is refused (`SMITHERS1404`), and a callback that **requires a capability** crossed the same boundaries with the requirement deleted from every row. `xs.map((k) => Reader.context().read(k))` published `requirements: []`, so **8.7's obligation was escapable by inlining the read into a callback** — the shape `05/unsatisfied-top-level-requirement` pins for a direct call. `05/a-callback-capability-escapes-the-top-level-check` is the refusal (`SMITHERS2102`; the diagnostic IS the row assertion, because an empty row produces no diagnostic at all and neither backend exposes a row to an expectation — the Go fork's `CompileResult` protocol carries none). `05/a-capability-read-inside-a-callback-charges-the-caller` is the acceptance half and states what the refusal cannot: the row is subtracted by exactly `Layer.succeed(Reader, …)`, which is the observable form of "the key is Reader". That second case is also the **over-correction guard**, and the over-correction is specific: `Layer.provide`'s own computation must NOT be charged the capabilities its layer provides, or every provide republishes to its caller exactly what it satisfies. Residuals, mirrored on both backends rather than closed: a closure **returned** from a function and one pushed into a module-level array still publish `[]`, because propagation is the wrong tool for a requirement needed later — requirements.mdx §Inference leaves the encoding of a row on a function TYPE explicitly open. |
+| 8.3a | **…and an accessor access IS an ordinary call, in every spelling** | requirements.mdx §Inference; type-system.mdx §Fallibility Inference (`R` comes from `Capability.context()` calls and transitive callees) | **covered, five cases, and every one of them was a live fail-open until 2026-08-25** | Reading a get-accessor *calls* it — there is no syntax that names an accessor without running it — so it charges the accessor's requirement row. Before this revision **no accessor access charged its row anywhere, on either backend**: a getter read, a setter write, a get/set-pair read, an element access and a destructuring read all compiled with the capability silently dropped, and `VIBE1802` refused exactly one corner of that hole (cross-module, get-only, read) while nothing refused the rest. The cases: `05/a-cross-module-accessor-read-charges-the-capability-row` and `05/a-destructured-accessor-read-charges-the-capability-row` (coverage — a *satisfied* provide runs either way, which is why they are not the gate); `05/a-top-level-accessor-read-has-unsatisfied-requirements` and `05/a-top-level-accessor-write-has-unsatisfied-requirements` (`VIBE2102`, each with `messageContains` on the capability's own name); and **`06/layer-provide-missing-a-capability-an-accessor-introduces`**, which is the gate — see 8.7a. The destructured case carries **both** the plain and the renamed spelling on purpose: before the fix they disagreed with each other about one call, the plain form compiling with the row dropped while `const { value: n } = source` was refused, so a case carrying only the plain form would have pinned nothing. |
+| 8.3b | **…and a CALLBACK boundary is an ordinary call: a capability read inside a callback charges the function that hands it over** | requirements.mdx §Inference ("Requirement inference MUST be transitive through ordinary calls"), read against the `VIBE1303`/`VIBE1404` precedent — the compiler already walks this exact value edge for the failure and async channels | **covered as of 2026-08-26, as a pair, and it was a live fail-open on BOTH backends** | The callback-boundary rules were asymmetric: a fallible callback is refused (`VIBE1303`), an async callback is refused (`VIBE1404`), and a callback that **requires a capability** crossed the same boundaries with the requirement deleted from every row. `xs.map((k) => Reader.context().read(k))` published `requirements: []`, so **8.7's obligation was escapable by inlining the read into a callback** — the shape `05/unsatisfied-top-level-requirement` pins for a direct call. `05/a-callback-capability-escapes-the-top-level-check` is the refusal (`VIBE2102`; the diagnostic IS the row assertion, because an empty row produces no diagnostic at all and neither backend exposes a row to an expectation — the Go fork's `CompileResult` protocol carries none). `05/a-capability-read-inside-a-callback-charges-the-caller` is the acceptance half and states what the refusal cannot: the row is subtracted by exactly `Layer.succeed(Reader, …)`, which is the observable form of "the key is Reader". That second case is also the **over-correction guard**, and the over-correction is specific: `Layer.provide`'s own computation must NOT be charged the capabilities its layer provides, or every provide republishes to its caller exactly what it satisfies. Residuals, mirrored on both backends rather than closed: a closure **returned** from a function and one pushed into a module-level array still publish `[]`, because propagation is the wrong tool for a requirement needed later — requirements.mdx §Inference leaves the encoding of a row on a function TYPE explicitly open. |
 | 8.4 | requirements propagate across module boundaries | requirements.mdx §Inference; poc README | covered | `05/requirement-propagates-across-modules` |
 | 8.5 | duplicate nominal requirements collapse | requirements.mdx §Inference | **partial** | `05/one-layer-satisfies-a-capability-required-through-many-paths` pins the observable consequence (one provider satisfies every route). Row de-duplication itself is row text — see "Known observation gaps" #1. |
 | 8.6 | two structurally identical Context subclasses stay different requirements | requirements.mdx §Capability Identity | covered | `05/structurally-identical-contexts-are-distinct-requirements` |
-| 8.6a | **…and `super.context()` in a static charges the CONTAINING capability, not the base class the checker's type for `super` names** | requirements.mdx §Capability Identity (identity is nominal) + §Context Access (the receiver identifies the subclass whose key is recorded) | **covered as of 2026-08-26** | `05/a-super-context-read-charges-the-containing-capability`. A static `super.context()` invokes the inherited static with `this` still bound to the subclass, so `typeof Base` — which is what the checker gives for `super` — is the one key that read can **never** have; both backends recorded it anyway until this revision and the program panicked. This is the one case in the family that asserts a **ROW** rather than a refusal, and the only shape that can: the layer provides the base, `SMITHERS2101` names what is missing, and a backend recording the base would find the layer complete and report nothing. `messageContains` is the capability's own name for that reason — it is the entire content of the case — and the bare name is a substring of both renderings (`missing Registry` on the reference, `missing {Registry}` on the fork), measured on both rather than assumed. It deliberately does **not** settle the wider subtyping question (does `typeof Base` cover `typeof Sub`?), which stays a recorded residual on both backends; `super` is narrower and fully decided. |
+| 8.6a | **…and `super.context()` in a static charges the CONTAINING capability, not the base class the checker's type for `super` names** | requirements.mdx §Capability Identity (identity is nominal) + §Context Access (the receiver identifies the subclass whose key is recorded) | **covered as of 2026-08-26** | `05/a-super-context-read-charges-the-containing-capability`. A static `super.context()` invokes the inherited static with `this` still bound to the subclass, so `typeof Base` — which is what the checker gives for `super` — is the one key that read can **never** have; both backends recorded it anyway until this revision and the program panicked. This is the one case in the family that asserts a **ROW** rather than a refusal, and the only shape that can: the layer provides the base, `VIBE2101` names what is missing, and a backend recording the base would find the layer complete and report nothing. `messageContains` is the capability's own name for that reason — it is the entire content of the case — and the bare name is a substring of both renderings (`missing Registry` on the reference, `missing {Registry}` on the fork), measured on both rather than assumed. It deliberately does **not** settle the wider subtyping question (does `typeof Base` cover `typeof Sub`?), which stays a recorded residual on both backends; `super` is narrower and fully decided. |
 | 8.7 | an unsatisfied capability in a known closure is a compile error | requirements.mdx §Satisfaction | covered | `05/unsatisfied-top-level-requirement`, `06/layer-provide-missing-a-capability` |
 | 8.7a | **…including a capability that only an accessor read introduces** | requirements.mdx §Satisfaction | **covered, and this is the load-bearing case of the accessor set** | **`06/layer-provide-missing-a-capability-an-accessor-introduces`**. The body requires `Label` directly and `Clock` only through `source.value`; the layer supplies `Label`. Before 2026-08-25 this program **compiled with zero diagnostics on both backends and aborted at run time**. It is the only shape that discriminates "the accessor's row travels" from "the accessor's row vanishes", because a satisfied provide runs either way — which is exactly why the two acceptance cases at 8.3a are labelled coverage and this one is the gate. `messageContains` names `Clock`, the capability the layer does **not** supply, so a refusal naming the one it does cannot satisfy it; verified by mutating the declared name red and back on both backends. |
 | 8.7b | **…and the read written DIRECTLY at module top level is charged to the module, not to nobody** | requirements.mdx §Satisfaction: "When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error" — module top level is where the closure is complete, because no caller is left to propagate to | **covered as of 2026-08-26, and it was a live fail-open on BOTH backends** | 8.7's `05/unsatisfied-top-level-requirement` pins the **indirect** spelling: a top-level call to a function whose row names the capability. The direct spelling was charged to nobody, because the machinery that recognizes `Capability.context()` runs per function body and module top level is not one — so `export const entry = Directory.context().lookup("ada")` compiled with zero diagnostics and panicked at run time. A one-line program shape the corpus already pinned was open in its one-line form. `05/a-top-level-capability-read-is-rejected` closes it, and the pair is the evidence that the rule reads the **requirement** rather than the call graph. The acceptance guard is `05/a-capability-read-inside-a-callback-charges-the-caller`, whose read is reachable from module scope through a `Layer.provide` computation and must keep running. Pre-existing observation, untouched by this revision and flagged rather than fixed: a class **field initializer** is treated as module top level by this rule, though it executes at construction, which can be inside a provide scope. |
 | 8.8 | providing a layer removes matching capabilities from the row | requirements.mdx §Satisfaction | covered | `05/context-requirement-is-satisfied`, `06/layer-merge-satisfies-both` |
 | 8.9 | provided implementations are scoped to the provided computation | requirements.mdx §Scoping | covered | `05/capability-is-unavailable-outside-the-provided-scope`, `06/nested-provide-scopes-are-independent` |
 | 8.10 | a base Layer receives an already-acquired service and does not own its lifetime | requirements.mdx §Layer Algebra; DECISIONS Locked | covered | `06/layer-receives-an-already-acquired-service` |
-| 8.11 | an opaque Layer expression fails closed | poc README SMITHERS2104 | covered | `06/opaque-layer-is-rejected` |
-| 8.11a | **…and a TYPE-ONLY wrapper around a layer is not opaqueness: `satisfies`, `as`, an angle-bracket assertion and a parenthesis are erased before anything runs, so the layer under them is the same layer** | requirements.mdx §Layer Algebra ("the compiler recognizes their effect on `R`") + §Satisfaction | **covered as of 2026-08-27, five cases, and until that day NO case anywhere in the corpus put a wrapper near a layer** | This is the gap that let the fork fail open at 143 measured cells while conformance reported 0 divergent, and it is the clearest instance on this page of a defect surviving because nothing spelled it. `06/a-layer-through-a-type-only-wrapper-is-the-same-layer` is the acceptance half: eight wrappers — `satisfies`, `as`, `<T>`, `as unknown as`, a wrapper on a `const` INITIALIZER rather than on the argument, a wrapped operand of `Layer.merge`, and two wrappers on the CAPABILITY argument of `Layer.succeed` — all resolved, all subtracted by one provider, and the program RUNS. `06/a-wrapped-layer-missing-a-capability-names-it` is the discriminator that makes it mean something: a wrapper must not degrade a precise `SMITHERS2101` into `SMITHERS2104`, and `messageContains` names the capability the layer does NOT supply so a refusal naming the supplied one cannot satisfy it. `06/a-laundering-assertion-does-not-change-which-capability-a-layer-provides` is the case a future "resolve the layer from its checker TYPE" rewrite breaks: `Layer.succeed(Clock, clock) as unknown as Layer<typeof Directory>` provides Clock, and a type-reading resolver certifies it as complete and the program panics. `06/a-wrapper-does-not-make-an-opaque-layer-transparent` holds the other direction — a reassigned `let` and a `?:` stay `SMITHERS2104` under the same `satisfies`. `06/a-non-null-assertion-is-not-a-type-only-wrapper` records which spellings are IN the table by pinning one that is out: `!` draws `SMITHERS1207` + `SMITHERS2104` (declared as a set; the two backends emit them in opposite order). **That residual is CLOSED as of the capability-argument revision, 2026-08-27, and needed no marker.** This row read "*Residual, measured and deliberately not pinned:* laundering at the CAPABILITY argument (`Layer.succeed(Directory as unknown as typeof Clock, clock)`) is a live divergence — the fork reads the checker type there, accepts, and panics — and a case for it would need a `go-xfail`." Two lanes applied `SMITHERS2106`'s settled resolution rule at that argument in both implementations, and three cases now hold it, green on both: `06/a-laundering-capability-argument-names-the-capability-the-runtime-registers` is that exact program (`SMITHERS2101@26:20`, `messageContains` naming Directory, because a refusal naming Clock is the plausible wrong answer); `06/a-capability-argument-that-pins-no-single-class-is-opaque` is the half the layer position had no analogue for — two `SMITHERS2104`, and its SECOND provide uses a capability declared structurally identical to `Directory`, so `typeof Directory \| typeof Journal` subtype-reduces to one arm and a type-directed resolver accepts it, which is precisely what the fork did; and `06/a-type-erased-capability-argument-is-the-same-capability` is the acceptance guard for the erasing wrappers (`<any>`, `as any`) and the `const` value alias, where the REFERENCE was the wrong one — it recorded a phantom row named after the alias identifier rather than the class. See §"How and when this page was measured", eighth revision. **What is still not pinned there, and is named in both `06-layers` cases' `notes`:** a REASSIGNED binding at the capability argument (`let C = Directory; C = Twin; Layer.succeed(C, directory)`) is accepted and panics on BOTH backends — `SMITHERS2106`'s own residual, identical at the `.context()` receiver, held as a known-residual unit test rather than as a corpus case that could only pin today's acceptance. |
-| 8.11b | **…and a MUTABLE layer binding is opaque, because the initializer is not what `Layer.provide` receives** | requirements.mdx §Layer Algebra + §Satisfaction | **covered as of 2026-08-27** | `06/a-mutable-layer-binding-is-opaque` — a `let`, a `var`, and a binding reassigned only from **inside a function**. The third is the load-bearing one: a scope-local scan sees a binding assigned exactly once at its declaration and follows it happily, and the certified program then panics because the registry holds the reassigned layer. The negative direction is not duplicated in that file on purpose — `06/layer-provide-missing-a-capability` (a `const` layer that really is missing a capability must answer `SMITHERS2101`, NOT `SMITHERS2104`) and `06/layer-merge-satisfies-both` (a `const` layer that resolves and RUNS) are what stop this rule degrading a precise diagnosis into an opaque one. |
-| 8.12 | a fallible `Layer.provide` callback needs an explicit Result contract | poc README SMITHERS2105 | covered | `06/fallible-provide-callback-needs-a-contract` |
+| 8.11 | an opaque Layer expression fails closed | poc README VIBE2104 | covered | `06/opaque-layer-is-rejected` |
+| 8.11a | **…and a TYPE-ONLY wrapper around a layer is not opaqueness: `satisfies`, `as`, an angle-bracket assertion and a parenthesis are erased before anything runs, so the layer under them is the same layer** | requirements.mdx §Layer Algebra ("the compiler recognizes their effect on `R`") + §Satisfaction | **covered as of 2026-08-27, five cases, and until that day NO case anywhere in the corpus put a wrapper near a layer** | This is the gap that let the fork fail open at 143 measured cells while conformance reported 0 divergent, and it is the clearest instance on this page of a defect surviving because nothing spelled it. `06/a-layer-through-a-type-only-wrapper-is-the-same-layer` is the acceptance half: eight wrappers — `satisfies`, `as`, `<T>`, `as unknown as`, a wrapper on a `const` INITIALIZER rather than on the argument, a wrapped operand of `Layer.merge`, and two wrappers on the CAPABILITY argument of `Layer.succeed` — all resolved, all subtracted by one provider, and the program RUNS. `06/a-wrapped-layer-missing-a-capability-names-it` is the discriminator that makes it mean something: a wrapper must not degrade a precise `VIBE2101` into `VIBE2104`, and `messageContains` names the capability the layer does NOT supply so a refusal naming the supplied one cannot satisfy it. `06/a-laundering-assertion-does-not-change-which-capability-a-layer-provides` is the case a future "resolve the layer from its checker TYPE" rewrite breaks: `Layer.succeed(Clock, clock) as unknown as Layer<typeof Directory>` provides Clock, and a type-reading resolver certifies it as complete and the program panics. `06/a-wrapper-does-not-make-an-opaque-layer-transparent` holds the other direction — a reassigned `let` and a `?:` stay `VIBE2104` under the same `satisfies`. `06/a-non-null-assertion-is-not-a-type-only-wrapper` records which spellings are IN the table by pinning one that is out: `!` draws `VIBE1207` + `VIBE2104` (declared as a set; the two backends emit them in opposite order). **That residual is CLOSED as of the capability-argument revision, 2026-08-27, and needed no marker.** This row read "*Residual, measured and deliberately not pinned:* laundering at the CAPABILITY argument (`Layer.succeed(Directory as unknown as typeof Clock, clock)`) is a live divergence — the fork reads the checker type there, accepts, and panics — and a case for it would need a `go-xfail`." Two lanes applied `VIBE2106`'s settled resolution rule at that argument in both implementations, and three cases now hold it, green on both: `06/a-laundering-capability-argument-names-the-capability-the-runtime-registers` is that exact program (`VIBE2101@26:20`, `messageContains` naming Directory, because a refusal naming Clock is the plausible wrong answer); `06/a-capability-argument-that-pins-no-single-class-is-opaque` is the half the layer position had no analogue for — two `VIBE2104`, and its SECOND provide uses a capability declared structurally identical to `Directory`, so `typeof Directory \| typeof Journal` subtype-reduces to one arm and a type-directed resolver accepts it, which is precisely what the fork did; and `06/a-type-erased-capability-argument-is-the-same-capability` is the acceptance guard for the erasing wrappers (`<any>`, `as any`) and the `const` value alias, where the REFERENCE was the wrong one — it recorded a phantom row named after the alias identifier rather than the class. See §"How and when this page was measured", eighth revision. **What is still not pinned there, and is named in both `06-layers` cases' `notes`:** a REASSIGNED binding at the capability argument (`let C = Directory; C = Twin; Layer.succeed(C, directory)`) is accepted and panics on BOTH backends — `VIBE2106`'s own residual, identical at the `.context()` receiver, held as a known-residual unit test rather than as a corpus case that could only pin today's acceptance. |
+| 8.11b | **…and a MUTABLE layer binding is opaque, because the initializer is not what `Layer.provide` receives** | requirements.mdx §Layer Algebra + §Satisfaction | **covered as of 2026-08-27** | `06/a-mutable-layer-binding-is-opaque` — a `let`, a `var`, and a binding reassigned only from **inside a function**. The third is the load-bearing one: a scope-local scan sees a binding assigned exactly once at its declaration and follows it happily, and the certified program then panics because the registry holds the reassigned layer. The negative direction is not duplicated in that file on purpose — `06/layer-provide-missing-a-capability` (a `const` layer that really is missing a capability must answer `VIBE2101`, NOT `VIBE2104`) and `06/layer-merge-satisfies-both` (a `const` layer that resolves and RUNS) are what stop this rule degrading a precise diagnosis into an opaque one. |
+| 8.12 | a fallible `Layer.provide` callback needs an explicit Result contract | poc README VIBE2105 | covered | `06/fallible-provide-callback-needs-a-contract` |
 | 8.13 | platform-sensitive functionality uses requirements | requirements.mdx §Platform Requirements | covered | `05/*`, `20-host-globals/*` |
 | 8.14 | **portability is determined from the satisfied dependency closure, not the import path** | requirements.mdx §Platform Requirements | covered | **`21/a-pin-is-checked-over-the-closure-not-the-module`** — a TypeScript-requiring sibling the pinned function never calls does not block the pin |
 | 8.15 | `Layer.provide` keeps its environment active through the Promise the body returns, revoking at settlement before queued reactions | requirements.mdx §Scoping; DECISIONS Locked | **unwritable: the harness cannot express a host-conditional expectation** | Re-measured 2026-08-23 on both backends with the documented `async () => await …` adapter shape. **Go/node runs it and prints the value. JS/bun refuses it** with `TypeError: Layer.provide cannot keep an async environment on this host: exact Promise settlement hooks are unavailable` (`poc/src/runtime/layer.ts:98`). Both are conformant: the same Locked entry says "A host without a synchronous Promise-settlement hook must fail closed for an async Layer scope rather than leave authority live for an extra microtask." So this is not an xfail — an xfail would mislabel conformant behavior as a defect. **What the harness would need:** either a per-backend expectation, or a declared host-capability predicate in the expectation schema so one case can state both conformant outcomes. The invariant both hosts *must* share — authority is never available after the scope ends — **is** pinned, by `05/capability-is-unavailable-outside-the-provided-scope`. |
 | 8.16 | nested scope override precedence | requirements.mdx §Scoping ("a future explicit precedence rule"); DECISIONS **Open** | unwritable | **blocked on an Open decision.** `06/nested-provide-scopes-are-independent` pins only the locked part: each scope is active for its own body and composes additively. |
 | 8.17 | Layer merge/override semantics and requirement-environment lowering | DECISIONS **Open** (unresolved design work item 4) | unwritable | **blocked on an Open decision**, by the ledger's own admission |
 | 8.18 | the declaration encoding of the context row | DECISIONS **Open**; requirements.mdx §Lowering ("Ambient runtime context is not a locked implementation choice") | unwritable | **blocked on an Open decision.** The corpus deliberately observes only source-level behavior, which the same entry requires be unchanged by whichever encoding wins. |
-| 8.19 | **a `Layer.provide` callback the compiler cannot resolve to a checked local function is refused** (`SMITHERS2103`) | requirements.mdx §Satisfaction (Locked): "When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error" | **covered** | **`06/a-provide-callback-that-is-not-a-local-function-is-rejected`**, green on both. This is the "what is REQUIRED" half of *knowing the complete closure*; 8.11's `06/opaque-layer-is-rejected` (`SMITHERS2104`) is the "what is PROVIDED" half, and the two had never been read as a pair. The fail-open direction is specific: accepting an unresolvable callback publishes an EMPTY unsatisfied row for a body that may require anything, which silently disables 8.7's obligation for every provide written that way. |
+| 8.19 | **a `Layer.provide` callback the compiler cannot resolve to a checked local function is refused** (`VIBE2103`) | requirements.mdx §Satisfaction (Locked): "When the compiler knows the complete closure, an unsatisfied capability MUST be a compile error" | **covered** | **`06/a-provide-callback-that-is-not-a-local-function-is-rejected`**, green on both. This is the "what is REQUIRED" half of *knowing the complete closure*; 8.11's `06/opaque-layer-is-rejected` (`VIBE2104`) is the "what is PROVIDED" half, and the two had never been read as a pair. The fail-open direction is specific: accepting an unresolvable callback publishes an EMPTY unsatisfied row for a body that may require anything, which silently disables 8.7's obligation for every provide written that way. |
 | 8.20 | **`Layer.provide` keeps its environment active THROUGH the callback, so what the callback reads is reachable** | requirements.mdx §Scoping (Locked) | **covered, one backend** | **`21/a-layer-provide-callback-is-part-of-the-pinned-graph`** and **`21/a-layer-provided-capability-is-subtracted-and-the-pin-still-holds`**, written as a pair. The first requires the callback to be entered; the second is an `expect: "output"` case that requires what the layer provides to be subtracted afterwards, including through an ordinary call. Satisfying either alone is easy and wrong — skip the callback and the second passes for the wrong reason, report everything found inside a provide and the first passes for the wrong reason. Both are green on both backends. |
 | 8.21 | **layer satisfaction subtracts nominal capability rows and nothing else: a provider cannot withdraw a built-in requirement** | requirements.mdx §Satisfaction + §TypeScript Requirement (Locked); compatibility.mdx §Native Pin: "Compilation MUST fail if any reachable operation **or provider** requires TypeScript" | **covered by an `xfail go` — a live fork fail-open** | **`21/a-layer-cannot-subtract-a-requirement-that-blocks-the-pin`**. A capability's row name is a class name and class names are whatever the author writes, so `abstract class TypeScript extends Context` plus `Layer.succeed(TypeScript, …)` is one identifier away from certifying `eval` as native-portable. **The fork does exactly that**: it accepts the program, grants the pin, and runs it, while refusing the byte-identical program with the capability renamed `Config`. See the register. |
 
-`SMITHERS2101` is reported only for a `Layer.provide` at module top level
+`VIBE2101` is reported only for a `Layer.provide` at module top level
 (`!nearestFunction(edge.node)` in `poc/src/language/semantic.ts`). Inside a
 function the unsatisfied requirement propagates to the caller's row instead,
 which is consistent with requirements.mdx §Satisfaction's qualifier "**when the
@@ -2841,15 +3464,15 @@ compiler knows the complete closure**". Negative Layer cases therefore place the
 | 9.2 | host-sensitive clock access still requires a capability | compatibility.mdx §Host Globals | covered | `20/clock-access-needs-a-capability` |
 | 9.3 | host-sensitive randomness still requires a capability | compatibility.mdx §Host Globals | covered | `20/random-access-needs-a-capability` |
 | 9.4 | facilities present in every environment may stay unconditional globals | compatibility.mdx §Host Globals | covered | `20/universal-globals-stay-available` |
-| 9.4a | **…and the rule is per-OPERATION, so `value instanceof Date` is a prototype test rather than a clock read** | compatibility.mdx §Host Globals ("Host-sensitive **operations** such as clock and random access") | **covered as a pair** | `20/value-instanceof-date-is-a-prototype-test-not-a-clock-read` (accepted; `new Date(0)` on its second line is the already-exempt authored-instant form and doubles as its own control) and `20/the-date-constructor-in-a-value-position-is-still-charged` (`SMITHERS1602`). Both backends charged `SMITHERS1602` on `instanceof Date` until 2026-08-25 even though `Date.parse`, `Date.UTC` and `new Date(<instant>)` were already exempt on exactly the same reasoning — the form was simply missed. The refusal half is why the exemption is narrow: only the **right** operand is exempt, because the object in a value position is one property access away from `now()`. Without it, "the right operand of `instanceof`" could be widened to "any mention of `Date`" and nothing would notice. |
-| 9.5a | **the prohibition is scoped to authored `.sm`, and the implementation side is ASSIGNED rather than left open** | compatibility.mdx §Host Globals ("in authored `.sm` code"); reference/capabilities.mdx §Platform Services ("JavaScript hosts provide live implementations"); compatibility.mdx §Source Relationship (`.ts` "MUST retain their own complete syntax and behavior") | **covered as a pair, and the pair is the whole argument** | `20/a-capability-implementation-reads-the-host-through-a-trusted-binding` — an abstract capability, its live implementation, its Layer and its consumer all authored in `.sm`, with the single host read in a trusted `.ts` binding — and `20/a-class-that-looks-like-a-capability-implementation-still-cannot-read-a-host-global` (`SMITHERS1602`), which is the **same program with the host read moved into the `.sm`**. Together they say the opt-out is the module boundary and there is no implementation-side opt-out claimable from `.sm`: extending a `Context` subclass, being the declared capability's implementation shape, and being named like one all buy nothing, because the rule never consults any of them. Read the second one as the guard on the first: if a later lane ever adds an implementation-side opt-out, that case is what stops it from being claimable by ordinary code. Both pin current behaviour — no compiler change was needed for either, which is itself the finding. |
+| 9.4a | **…and the rule is per-OPERATION, so `value instanceof Date` is a prototype test rather than a clock read** | compatibility.mdx §Host Globals ("Host-sensitive **operations** such as clock and random access") | **covered as a pair** | `20/value-instanceof-date-is-a-prototype-test-not-a-clock-read` (accepted; `new Date(0)` on its second line is the already-exempt authored-instant form and doubles as its own control) and `20/the-date-constructor-in-a-value-position-is-still-charged` (`VIBE1602`). Both backends charged `VIBE1602` on `instanceof Date` until 2026-08-25 even though `Date.parse`, `Date.UTC` and `new Date(<instant>)` were already exempt on exactly the same reasoning — the form was simply missed. The refusal half is why the exemption is narrow: only the **right** operand is exempt, because the object in a value position is one property access away from `now()`. Without it, "the right operand of `instanceof`" could be widened to "any mention of `Date`" and nothing would notice. |
+| 9.5a | **the prohibition is scoped to authored `.vibe`, and the implementation side is ASSIGNED rather than left open** | compatibility.mdx §Host Globals ("in authored `.vibe` code"); reference/capabilities.mdx §Platform Services ("JavaScript hosts provide live implementations"); compatibility.mdx §Source Relationship (`.ts` "MUST retain their own complete syntax and behavior") | **covered as a pair, and the pair is the whole argument** | `20/a-capability-implementation-reads-the-host-through-a-trusted-binding` — an abstract capability, its live implementation, its Layer and its consumer all authored in `.vibe`, with the single host read in a trusted `.ts` binding — and `20/a-class-that-looks-like-a-capability-implementation-still-cannot-read-a-host-global` (`VIBE1602`), which is the **same program with the host read moved into the `.vibe`**. Together they say the opt-out is the module boundary and there is no implementation-side opt-out claimable from `.vibe`: extending a `Context` subclass, being the declared capability's implementation shape, and being named like one all buy nothing, because the rule never consults any of them. Read the second one as the guard on the first: if a later lane ever adds an implementation-side opt-out, that case is what stops it from being claimable by ordinary code. Both pin current behaviour — no compiler change was needed for either, which is itself the finding. |
 | 9.1a | **the prohibition is a CLASS, not a spelling list: `and similar host facilities` cannot be enumerated against a namespace the host may extend, so the rule is an allowlist over the ECMA-262 global object** | compatibility.mdx §Host Globals (the MUST NOT is open-ended; the second clause is a **MAY**, so refusing a universally present host facility is spec-legal where admitting a platform-specific one is not); DECISIONS Locked | **covered as of 2026-08-26** | Four refusal cases, each a different class of host authority and each demonstrated failing on a reconstructed pre-change tree: `20/globalthis-aliases-are-refused` (`self`, `top`, `parent`, `frames` — the same object under four spellings, and `self.fetch(...)` compiled clean while `fetch(...)` did not, which is what makes this the case that proves the rule is an allowlist), `20/network-and-thread-globals-are-refused` (`XMLHttpRequest`, `WebSocket`, `EventSource`, `Worker` — `fetch` was the only network global the rule knew), `20/host-identity-globals-are-refused` (`navigator`, `location`, `localStorage`, `sessionStorage`), and `20/scheduling-and-clone-globals-are-refused` (`queueMicrotask`, `clearTimeout`, `clearInterval`, `structuredClone` — the siblings of the two `set*` names that WERE refused, which is the exact shape of a denylist rather than a rule). **THE SPECIFICATION DOES NOT SETTLE WHERE THE LINE FALLS** for universally present non-ECMA-262 globals (`URL`, `TextEncoder`, `AbortController`, `atob`/`btoa`, the streams and fetch types); the implementation refuses them because the MUST NOT/MAY asymmetry makes that the safe direction and because it is the only completable rule, and a specification amendment should say so explicitly. |
 | 9.1b | **the Node global scope and the CommonJS module wrapper are host facilities, and four of them do not exist in the emitted ESM at all** | compatibility.mdx §Host Globals | **covered as of 2026-08-26** | `20/the-node-global-scope-is-refused`. This is also the **backend-agreement pin for the ambient name environment**: the reference frontend runs against the installed `@types` packages and the pinned fork carries none, so these eight names used to answer `clean` on one backend and `TS2591`/`TS2304` on the other — a divergence no corpus case could see unless the *language* answers, which is why they are refused BY NAME rather than left to whichever ambient lib is installed. On the pre-change tree this case scored `js FAIL / go unsupported`; it now passes on both. `__dirname`, `__filename`, `module` and `exports` are worse than unportable — the compiler emits ESM, where they are a guaranteed `ReferenceError` inside a function whose row reads `failures: []`. |
-| 9.4b | **the allowlist is wide enough to carry the standard library: the ECMAScript-262 global object stays unconditionally available** | compatibility.mdx §Host Globals ("Facilities truly present in every supported JavaScript environment MAY be unconditional globals"); DECISIONS Locked | **covered as of 2026-08-26** | `20/the-ecmascript-global-object-stays-available`, an `output` case exercising fifteen ECMA-262 clause-19 members. 9.4's `20/universal-globals-stay-available` covers four names; this covers the breadth, because the failure mode of inverting a denylist is an allowlist that is **too narrow**, and a narrow one takes the whole `.sm` standard library with it. Green before the change and after, so it was proved enforced by mutation rather than by a pre-fix demonstration. |
-| 9.4c | **an identifier the program declares nowhere is an ordinary unresolved name, not an ambient host global** | compatibility.mdx §Host Globals, read for what it does NOT reach | **covered as of 2026-08-26** | `20/an-unresolved-name-is-not-a-host-global` (`TS2304`). A SMITHERS error preempts the TypeScript check entirely, so answering a typo with "ambient host global … is unavailable" would REPLACE the diagnostic that names the real problem. `19/builtin-optional-is-unresolved` pins this shape for a type name; this pins it for a **value**, which is the position the allowlist reads. Both backends report `TS2304` here from different stages — the reference from its stock check of the emitted module, mapped back through the compiler's source map — so it was confirmed on both rather than inferred from the type-name case. |
-| 9.1c | **…and a host-authority namespace with NO identifier to key on is still host authority: `import.meta` is refused, and `new.target` is not** | compatibility.mdx §Host Globals, by the allowlist's own criterion — ECMA-262 delegates the properties of `import.meta` to the host through `HostGetImportMetaProperties`, which is precisely what makes something a host facility | **covered as of 2026-08-26, as a pair, and it also closes a live BACKEND DIVERGENCE** | `checkHostGlobals` is identifier-keyed and `import.meta` is a **meta-property**, so it carries no identifier and the whole rule never saw it: `import.meta.url` compiled with `requirements: []` on both backends and **ran, printing the host filesystem path**, while `__dirname` is refused BY NAME two rows above. `20/the-import-meta-namespace-is-refused` declares four `SMITHERS1601`s, all at the `import` keyword — the refusal is the namespace, not the property selected off it, which is what makes a fifth spelling nobody enumerated refuse too. Two of the four (`dirname`, `filename`) were a live divergence before this revision: the reference accepted them and the fork answered `TS2339`, which is exactly the "`types: []` makes the two agree by construction" claim failing for an interface whose shape still comes from whichever ambient lib each backend carries. The guard is `20/the-other-meta-property-stays-available`, an `output` case: the two meta-properties share a syntax node and differ only in a keyword token, so the cheapest wrong implementation refuses the **node** — it passes the refusal case perfectly and is caught only here. Not written and recorded as such: `import.meta` inside an imported `.ts` module stays accepted on both backends (compatibility.mdx §Source Relationship), and pinning it needs a file in `conformance/support/`. |
-| 9.1e | **DETERMINISM-HOSTILE globals are refused by NAME even though ECMA-262 publishes them, and the refusal offers no capability because none could exist** (`SMITHERS1605`) | compatibility.mdx §Determinism-Sensitive Members, rows one and two (`WeakRef`, `FinalizationRegistry` and `SharedArrayBuffer`, `Atomics` "MUST NOT be unconditional globals") | **covered as of 2026-08-28, and all four were a fail-open on BOTH backends until that day** | The gap was not a missing rule but an asserting one: all four were *listed* in `UNIVERSAL_GLOBALS` (`poc/src/language/semantic.ts`) and in the fork's byte-for-byte `universalGlobals` (`compiler/forkbridge/hostrules.go.txt`), so the allowlist stated the opposite of two `MUST NOT`s. Measured: `new WeakRef(o).deref()`, `new FinalizationRegistry(() => {})`, `new SharedArrayBuffer(8)` and `Atomics.load(…)` each compiled with zero diagnostics and an empty requirement row, in the same file where the `Date.now()` control reported `SMITHERS1602`. **THE CODE IS THE POINT**: this is not `SMITHERS1601`, whose message ends "access it through a Context capability", because the two rows say in as many words that no capability can mediate these and no journal entry can describe them — so 1601 would name a remedy that cannot be built. `SMITHERS1604` is the precedent for a refusal that carries its own reason for the same argument. Unlike 1604 the line is the **name** rather than the operation, because every value use of `WeakRef` is construction and every member of `Atomics` is a shared-memory operation, so there is no safe read to preserve. **The acceptance guard is not optional and is `20/determinism-hostile-siblings-stay-available`**: `WeakMap`, `WeakSet`, `ArrayBuffer`, `DataView` and the typed arrays all compile and RUN. Without it the rule can be widened to "any weak collection or buffer" and the refusal case stays green — the same shape 9.4b guards for the allowlist and `20/the-function-type-and-prototype-test-stay-available` guards for 9.1d. Refusal case: `20/determinism-hostile-globals-are-refused`. Rows three, four and five of the same specification table (`Promise.race`/`any` → `Scheduler`, `Date` instance members → `Clock`, `Intl`/`localeCompare` → `Locale`) are **not** covered here and stay recorded as `(SA-4)`. Re-measured 2026-08-28, NOT because "the ambient vocabulary" lacks a requirement kind — the requirement row admits any `Context` subclass and `Scheduler.context()` already publishes `requirements: ["Scheduler"]` (a locally declared `Locale` publishes `["Locale"]`), while `Date.now()` publishes `requirements: []` beside its `SMITHERS1602`, so no ambient site charges a row for any kind and `"Clock" | "Random" | "Host"` is a diagnostic-category discriminator that needs nothing added to it. **The verb was DECIDED on 2026-08-28: charge.** `Promise.race`/`Promise.any` stay legal and publish a `Scheduler` requirement a layer satisfies; `durable-execution.mdx` §Deterministic Scheduling won unchanged and `compatibility.mdx` was amended to match — "charge" is now defined under its table, and the criterion that reconciles the two pages is stated there: the ambient spelling is *additionally* refused only where the capability has a source-language surface the author could write instead, which is why `Clock`/`Random` stay `SMITHERS1602`/`1603`. **IMPLEMENTED 2026-09-01 by migration step 14, and the two sentences this cell used to carry are now false and are replaced rather than deleted.** They read: "**No code implements it here**; it needs an ambient site injecting a nominal key into `R` plus a `race`→scheduler lowering and **lands with migration step 7**, and `Promise.race` is unchanged today — measured compiling, running, and publishing an empty row beside `Promise.all`", and "Row five's verb is still open". Both rows landed, at step **14** rather than 7: `poc/src/language/semantic.ts:8818` returns `["Scheduler"]` for `Promise.race`/`Promise.any` and `:8830` returns `["Locale"]` for the ICU surface minus `Intl.DateTimeFormat`, which stays `SMITHERS1602` as row four. Step 14 added **no** diagnostic code — the obligation is the charge alone, which is exactly what makes the next two paragraphs necessary. **THE CORPUS CANNOT OBSERVE EITHER ROW, AND THIS PAGE MUST NOT BE READ AS CLAIMING IT DOES.** A charge emits no diagnostic and prints nothing, and the corpus expectation schema has **no key for a requirement row at all** — parsing all 518 expectations yields exactly `title`, `expect`, `stdout`, `notes`, `diagnostics`, `typescript`, `xfail`, `modules`, `entry`, `assets`. So no case can spell "this program charges `Locale`", and none does: step 14 moved **zero** corpus cases, and `20/intl-locale-formatting-is-not-a-clock-read` did not move even though its title was rewritten to say "the whole ICU-backed class charges Locale" — the title now claims something the case's `stdout` assertion structurally cannot test. That is a **sixth observation gap of the harness itself**, and it is the one this row now depends on. **AND THERE IS NO CROSS-BACKEND PARITY FOR THESE TWO ROWS: the Go fork cannot represent them.** `compiler/forkbridge/lowering.go.txt:1796` types the row side table as `rowSet map[*ast.Symbol]errorRow`, and `addRow` at `:1798-1801` opens with `if row.symbol == nil { return false }` — a silent drop. `Scheduler` and `Locale` have no declared class symbol, so a fork row for either is discarded without a diagnostic. Step 14 removed the no-op wiring rather than ship something that reads as mirrored, and recorded that on `rowSet` and in `compatibility.mdx`. Any future claim of two-backend agreement on rows three and five is false until `rowSet` can key a symbol-less nominal row. Measured cost of settling row three: **0** of 591 authored `.sm` files name `Promise.race`/`Promise.any`, so it moves no case and no test. Row five's cost is larger than previously recorded, because its MEMBERSHIP was: the row named four ICU members and the hazard covers **thirty**, re-derived on 2026-08-28 by sweeping the ambient lib for `Intl` value members, `toLocale*`, `localeCompare` and `normalize` and measuring each spelling — an earlier estimate of fifteen was fifteen short. All thirty measure **identically** today (no diagnostic, empty row, both backends), so widening the row recorded no behavioural change; `20/intl-locale-formatting-is-not-a-clock-read` and its mirrored fork subtest were widened with it (see 9.9a) and `Intl.getCanonicalLocales` no longer "stays legal either way", being a function of the host's CLDR alias data. `Error.prototype.stack` is host-varying, named by no page, measures unclassified, and is deliberately LEFT undecided: ECMA-262 publishes no such property, so the allowlist's ECMA-262-membership criterion does not reach it; its variance is across engines rather than between two hosts at one instant, which the page answers with a SHOULD about pinning an engine version; and it is the only stack-trace surface the language has. **TWO CLAIMS IN THIS CELL WERE CORRECTED ON 2026-09-01 (second revision), and both moved in the direction of LESS blindness than the cell asserts.** (a) **"THE CORPUS CANNOT OBSERVE EITHER ROW" is half wrong.** It is true of a SATISFIED row — a charge emits no diagnostic, the expectation schema has no requirement-row key, and that is still why `20/intl-locale-formatting-is-not-a-clock-read` did not move. It is FALSE of an UNSATISFIED one: a row nothing provides is refused, and `SMITHERS2102` names the capability in its message, which is exactly how `05-context-rows/every-spelling-of-a-coercion-member-charges-the-same-row` holds sixteen charges to the right capability today via `messageContains`. So "this program charges `Locale`" IS spellable as a corpus case — as a program that charges it and provides nothing. The sixth observation gap this cell names is therefore **one case wide, not structural**, and it is a backlog item rather than a limit of the harness. Nothing in this revision wrote that case; it is recorded so the next lane does not re-derive the pessimistic version. (b) **"THE GO FORK CANNOT REPRESENT THEM" is out of date for `Locale`.** The parity lane closed the `rowSet` symbol-less-drop for it, and the fork now charges `Locale`; the note on this in `20/intl-locale-formatting-is-not-a-clock-read`'s own expectation has been corrected with it. `Scheduler` was not re-measured by this lane and is not claimed either way here — the sentence above stands for it until the lane that owns `rowSet` says otherwise. **Any reader quoting "no cross-backend parity for these two rows" should re-measure first**; it was true when written and is now, at minimum, half false. |
-| 9.1d | **DYNAMIC CODE EVALUATION reaches the whole host namespace with no identifier for the allowlist to key on, so the operation is refused while the name stays resolvable** (`SMITHERS1604`) | compatibility.mdx §Host Globals (`process`… MUST NOT be unconditional globals in authored `.sm`) and (host-sensitive operations MUST still use capabilities), read against `eval`; **and it CONTRADICTS compatibility.mdx §Dynamic Features, which needs amending — see 1.6** | **covered as of 2026-08-27, six cases, and twenty of twenty-two measured spellings were a fail-open on BOTH backends until that day** | The escape: `eval("process.platform")` returned the host platform, `eval("Date.now()")` read the clock, `eval("Math.random()")` bypassed `SMITHERS1603` — every one with `failures: []` and `requirements: []` and every one RUNNING, so 9.1, 9.2 and 9.3 were all escapable through one string. Five refusal cases: `20/eval-reaches-the-host-namespace`, `20/eval-reaches-the-clock-and-randomness` (two diagnostics, one per host-sensitive operation, in separate functions so neither can be a cascade of the other), `20/the-function-constructor-is-dynamic-code-evaluation` (`new Function` beside `Reflect.construct(Function, …)`, which writes no `new` keyword — a rule keyed on `NewExpression` closes one and not the other), `20/a-callables-constructor-is-the-function-constructor` (the spelling that reaches the constructor **without naming it**, since every callable inherits `constructor` from `Function.prototype`), and `20/an-aliased-constructor-key-is-the-function-constructor`, which is the intersection with 12.12a and the only case showing either rule is total. **THE RULE IS ON THE READ, NOT THE CALL**, which is why every declared column is an identifier or a member name rather than a call site: twenty of the twenty-two spellings reach the callee through a read — an alias, `(0, eval)`, a shorthand `{ eval }`, `Reflect.apply(Function, …)`, `Function.prototype.constructor` — so a rule keyed on the call closes one spelling and none of the others. `Date` already draws the line here; 9.4a's `20/the-date-constructor-in-a-value-position-is-still-charged` is the same shape. **The acceptance guard is not optional and is `20/the-function-type-and-prototype-test-stay-available`**: `callback: Function` as a type annotation, `f instanceof Function` as a prototype test, and `({ a: 1 }).constructor` as an ordinary member all compile and RUN. Without it the rule can be widened to "any mention of `Function`" and all five refusal cases stay green. Residuals recorded rather than closed: `Object.getPrototypeOf(fn).constructor` still escapes on both backends because `getPrototypeOf` is declared `any` in `lib.es5.d.ts`, and `Function.prototype[Symbol.hasInstance]` is a deliberate over-refusal accepted with reasons by the lane that wrote the rule. |
+| 9.4b | **the allowlist is wide enough to carry the standard library: the ECMAScript-262 global object stays unconditionally available** | compatibility.mdx §Host Globals ("Facilities truly present in every supported JavaScript environment MAY be unconditional globals"); DECISIONS Locked | **covered as of 2026-08-26** | `20/the-ecmascript-global-object-stays-available`, an `output` case exercising fifteen ECMA-262 clause-19 members. 9.4's `20/universal-globals-stay-available` covers four names; this covers the breadth, because the failure mode of inverting a denylist is an allowlist that is **too narrow**, and a narrow one takes the whole `.vibe` standard library with it. Green before the change and after, so it was proved enforced by mutation rather than by a pre-fix demonstration. |
+| 9.4c | **an identifier the program declares nowhere is an ordinary unresolved name, not an ambient host global** | compatibility.mdx §Host Globals, read for what it does NOT reach | **covered as of 2026-08-26** | `20/an-unresolved-name-is-not-a-host-global` (`TS2304`). A VIBE error preempts the TypeScript check entirely, so answering a typo with "ambient host global … is unavailable" would REPLACE the diagnostic that names the real problem. `19/builtin-optional-is-unresolved` pins this shape for a type name; this pins it for a **value**, which is the position the allowlist reads. Both backends report `TS2304` here from different stages — the reference from its stock check of the emitted module, mapped back through the compiler's source map — so it was confirmed on both rather than inferred from the type-name case. |
+| 9.1c | **…and a host-authority namespace with NO identifier to key on is still host authority: `import.meta` is refused, and `new.target` is not** | compatibility.mdx §Host Globals, by the allowlist's own criterion — ECMA-262 delegates the properties of `import.meta` to the host through `HostGetImportMetaProperties`, which is precisely what makes something a host facility | **covered as of 2026-08-26, as a pair, and it also closes a live BACKEND DIVERGENCE** | `checkHostGlobals` is identifier-keyed and `import.meta` is a **meta-property**, so it carries no identifier and the whole rule never saw it: `import.meta.url` compiled with `requirements: []` on both backends and **ran, printing the host filesystem path**, while `__dirname` is refused BY NAME two rows above. `20/the-import-meta-namespace-is-refused` declares four `VIBE1601`s, all at the `import` keyword — the refusal is the namespace, not the property selected off it, which is what makes a fifth spelling nobody enumerated refuse too. Two of the four (`dirname`, `filename`) were a live divergence before this revision: the reference accepted them and the fork answered `TS2339`, which is exactly the "`types: []` makes the two agree by construction" claim failing for an interface whose shape still comes from whichever ambient lib each backend carries. The guard is `20/the-other-meta-property-stays-available`, an `output` case: the two meta-properties share a syntax node and differ only in a keyword token, so the cheapest wrong implementation refuses the **node** — it passes the refusal case perfectly and is caught only here. Not written and recorded as such: `import.meta` inside an imported `.ts` module stays accepted on both backends (compatibility.mdx §Source Relationship), and pinning it needs a file in `conformance/support/`. |
+| 9.1e | **DETERMINISM-HOSTILE globals are refused by NAME even though ECMA-262 publishes them, and the refusal offers no capability because none could exist** (`VIBE1605`) | compatibility.mdx §Determinism-Sensitive Members, rows one and two (`WeakRef`, `FinalizationRegistry` and `SharedArrayBuffer`, `Atomics` "MUST NOT be unconditional globals") | **covered as of 2026-08-28, and all four were a fail-open on BOTH backends until that day** | The gap was not a missing rule but an asserting one: all four were *listed* in `UNIVERSAL_GLOBALS` (`poc/src/language/semantic.ts`) and in the fork's byte-for-byte `universalGlobals` (`compiler/forkbridge/hostrules.go.txt`), so the allowlist stated the opposite of two `MUST NOT`s. Measured: `new WeakRef(o).deref()`, `new FinalizationRegistry(() => {})`, `new SharedArrayBuffer(8)` and `Atomics.load(…)` each compiled with zero diagnostics and an empty requirement row, in the same file where the `Date.now()` control reported `VIBE1602`. **THE CODE IS THE POINT**: this is not `VIBE1601`, whose message ends "access it through a Context capability", because the two rows say in as many words that no capability can mediate these and no journal entry can describe them — so 1601 would name a remedy that cannot be built. `VIBE1604` is the precedent for a refusal that carries its own reason for the same argument. Unlike 1604 the line is the **name** rather than the operation, because every value use of `WeakRef` is construction and every member of `Atomics` is a shared-memory operation, so there is no safe read to preserve. **The acceptance guard is not optional and is `20/determinism-hostile-siblings-stay-available`**: `WeakMap`, `WeakSet`, `ArrayBuffer`, `DataView` and the typed arrays all compile and RUN. Without it the rule can be widened to "any weak collection or buffer" and the refusal case stays green — the same shape 9.4b guards for the allowlist and `20/the-function-type-and-prototype-test-stay-available` guards for 9.1d. Refusal case: `20/determinism-hostile-globals-are-refused`. Rows three, four and five of the same specification table (`Promise.race`/`any` → `Scheduler`, `Date` instance members → `Clock`, `Intl`/`localeCompare` → `Locale`) are **not** covered here and stay recorded as `(SA-4)`. Re-measured 2026-08-28, NOT because "the ambient vocabulary" lacks a requirement kind — the requirement row admits any `Context` subclass and `Scheduler.context()` already publishes `requirements: ["Scheduler"]` (a locally declared `Locale` publishes `["Locale"]`), while `Date.now()` publishes `requirements: []` beside its `VIBE1602`, so no ambient site charges a row for any kind and `"Clock" | "Random" | "Host"` is a diagnostic-category discriminator that needs nothing added to it. **The verb was DECIDED on 2026-08-28: charge.** `Promise.race`/`Promise.any` stay legal and publish a `Scheduler` requirement a layer satisfies; `durable-execution.mdx` §Deterministic Scheduling won unchanged and `compatibility.mdx` was amended to match — "charge" is now defined under its table, and the criterion that reconciles the two pages is stated there: the ambient spelling is *additionally* refused only where the capability has a source-language surface the author could write instead, which is why `Clock`/`Random` stay `VIBE1602`/`1603`. **IMPLEMENTED 2026-09-01 by migration step 14, and the two sentences this cell used to carry are now false and are replaced rather than deleted.** They read: "**No code implements it here**; it needs an ambient site injecting a nominal key into `R` plus a `race`→scheduler lowering and **lands with migration step 7**, and `Promise.race` is unchanged today — measured compiling, running, and publishing an empty row beside `Promise.all`", and "Row five's verb is still open". Both rows landed, at step **14** rather than 7: `poc/src/language/semantic.ts:8818` returns `["Scheduler"]` for `Promise.race`/`Promise.any` and `:8830` returns `["Locale"]` for the ICU surface minus `Intl.DateTimeFormat`, which stays `VIBE1602` as row four. Step 14 added **no** diagnostic code — the obligation is the charge alone, which is exactly what makes the next two paragraphs necessary. **THE CORPUS CANNOT OBSERVE EITHER ROW, AND THIS PAGE MUST NOT BE READ AS CLAIMING IT DOES.** A charge emits no diagnostic and prints nothing, and the corpus expectation schema has **no key for a requirement row at all** — parsing all 518 expectations yields exactly `title`, `expect`, `stdout`, `notes`, `diagnostics`, `typescript`, `xfail`, `modules`, `entry`, `assets`. So no case can spell "this program charges `Locale`", and none does: step 14 moved **zero** corpus cases, and `20/intl-locale-formatting-is-not-a-clock-read` did not move even though its title was rewritten to say "the whole ICU-backed class charges Locale" — the title now claims something the case's `stdout` assertion structurally cannot test. That is a **sixth observation gap of the harness itself**, and it is the one this row now depends on. **AND THERE IS NO CROSS-BACKEND PARITY FOR THESE TWO ROWS: the Go fork cannot represent them.** `compiler/forkbridge/lowering.go.txt:1796` types the row side table as `rowSet map[*ast.Symbol]errorRow`, and `addRow` at `:1798-1801` opens with `if row.symbol == nil { return false }` — a silent drop. `Scheduler` and `Locale` have no declared class symbol, so a fork row for either is discarded without a diagnostic. Step 14 removed the no-op wiring rather than ship something that reads as mirrored, and recorded that on `rowSet` and in `compatibility.mdx`. Any future claim of two-backend agreement on rows three and five is false until `rowSet` can key a symbol-less nominal row. Measured cost of settling row three: **0** of 591 authored `.vibe` files name `Promise.race`/`Promise.any`, so it moves no case and no test. Row five's cost is larger than previously recorded, because its MEMBERSHIP was: the row named four ICU members and the hazard covers **thirty**, re-derived on 2026-08-28 by sweeping the ambient lib for `Intl` value members, `toLocale*`, `localeCompare` and `normalize` and measuring each spelling — an earlier estimate of fifteen was fifteen short. All thirty measure **identically** today (no diagnostic, empty row, both backends), so widening the row recorded no behavioural change; `20/intl-locale-formatting-is-not-a-clock-read` and its mirrored fork subtest were widened with it (see 9.9a) and `Intl.getCanonicalLocales` no longer "stays legal either way", being a function of the host's CLDR alias data. `Error.prototype.stack` is host-varying, named by no page, measures unclassified, and is deliberately LEFT undecided: ECMA-262 publishes no such property, so the allowlist's ECMA-262-membership criterion does not reach it; its variance is across engines rather than between two hosts at one instant, which the page answers with a SHOULD about pinning an engine version; and it is the only stack-trace surface the language has. **TWO CLAIMS IN THIS CELL WERE CORRECTED ON 2026-09-01 (second revision), and both moved in the direction of LESS blindness than the cell asserts.** (a) **"THE CORPUS CANNOT OBSERVE EITHER ROW" is half wrong.** It is true of a SATISFIED row — a charge emits no diagnostic, the expectation schema has no requirement-row key, and that is still why `20/intl-locale-formatting-is-not-a-clock-read` did not move. It is FALSE of an UNSATISFIED one: a row nothing provides is refused, and `VIBE2102` names the capability in its message, which is exactly how `05-context-rows/every-spelling-of-a-coercion-member-charges-the-same-row` holds sixteen charges to the right capability today via `messageContains`. So "this program charges `Locale`" IS spellable as a corpus case — as a program that charges it and provides nothing. The sixth observation gap this cell names is therefore **one case wide, not structural**, and it is a backlog item rather than a limit of the harness. Nothing in this revision wrote that case; it is recorded so the next lane does not re-derive the pessimistic version. (b) **"THE GO FORK CANNOT REPRESENT THEM" is out of date for `Locale`.** The parity lane closed the `rowSet` symbol-less-drop for it, and the fork now charges `Locale`; the note on this in `20/intl-locale-formatting-is-not-a-clock-read`'s own expectation has been corrected with it. `Scheduler` was not re-measured by this lane and is not claimed either way here — the sentence above stands for it until the lane that owns `rowSet` says otherwise. **Any reader quoting "no cross-backend parity for these two rows" should re-measure first**; it was true when written and is now, at minimum, half false. |
+| 9.1d | **DYNAMIC CODE EVALUATION reaches the whole host namespace with no identifier for the allowlist to key on, so the operation is refused while the name stays resolvable** (`VIBE1604`) | compatibility.mdx §Host Globals (`process`… MUST NOT be unconditional globals in authored `.vibe`) and (host-sensitive operations MUST still use capabilities), read against `eval`; **and it CONTRADICTS compatibility.mdx §Dynamic Features, which needs amending — see 1.6** | **covered as of 2026-08-27, six cases, and twenty of twenty-two measured spellings were a fail-open on BOTH backends until that day** | The escape: `eval("process.platform")` returned the host platform, `eval("Date.now()")` read the clock, `eval("Math.random()")` bypassed `VIBE1603` — every one with `failures: []` and `requirements: []` and every one RUNNING, so 9.1, 9.2 and 9.3 were all escapable through one string. Five refusal cases: `20/eval-reaches-the-host-namespace`, `20/eval-reaches-the-clock-and-randomness` (two diagnostics, one per host-sensitive operation, in separate functions so neither can be a cascade of the other), `20/the-function-constructor-is-dynamic-code-evaluation` (`new Function` beside `Reflect.construct(Function, …)`, which writes no `new` keyword — a rule keyed on `NewExpression` closes one and not the other), `20/a-callables-constructor-is-the-function-constructor` (the spelling that reaches the constructor **without naming it**, since every callable inherits `constructor` from `Function.prototype`), and `20/an-aliased-constructor-key-is-the-function-constructor`, which is the intersection with 12.12a and the only case showing either rule is total. **THE RULE IS ON THE READ, NOT THE CALL**, which is why every declared column is an identifier or a member name rather than a call site: twenty of the twenty-two spellings reach the callee through a read — an alias, `(0, eval)`, a shorthand `{ eval }`, `Reflect.apply(Function, …)`, `Function.prototype.constructor` — so a rule keyed on the call closes one spelling and none of the others. `Date` already draws the line here; 9.4a's `20/the-date-constructor-in-a-value-position-is-still-charged` is the same shape. **The acceptance guard is not optional and is `20/the-function-type-and-prototype-test-stay-available`**: `callback: Function` as a type annotation, `f instanceof Function` as a prototype test, and `({ a: 1 }).constructor` as an ordinary member all compile and RUN. Without it the rule can be widened to "any mention of `Function`" and all five refusal cases stay green. Residuals recorded rather than closed: `Object.getPrototypeOf(fn).constructor` still escapes on both backends because `getPrototypeOf` is declared `any` in `lib.es5.d.ts`, and `Function.prototype[Symbol.hasInstance]` is a deliberate over-refusal accepted with reasons by the lane that wrote the rule. |
 | 9.5 | direct host-module usage carries an exact `Module<"node:fs">` requirement | compatibility.mdx §Host Modules (**Direction**) | covered as **Direction evidence** | `21/a-pin-reaching-a-host-module-is-rejected` — `poc/src/targets/classify.ts` spells the requirement `Module<"node:fs">` and `blocksNativePin` rejects it. The *rule* is Direction, so the case pins the implementation's chosen spelling and says so in its notes rather than claiming a locked obligation. |
 
 ### 9.6–9.13 The host-sensitive global classification table
@@ -2875,16 +3498,16 @@ effectful code that looks pure, and it feeds straight into the native pin
 | --- | --- | --- | --- | --- |
 | 9.6 | `Date.now` charges `Clock` | `semantic.ts:4461` | covered, **at three key spellings as of 2026-08-27** | `20/clock-access-needs-a-capability` (dotted), `20/a-computed-date-now-is-refused` (string-literal element access), and `20/an-aliased-clock-member-key-is-the-same-clock-read` (`const NOW = "now"` declared at MODULE scope, so the key is resolved across a scope boundary). The third landed with 12.12a's key-TYPE rule and is the direction of it that must stay REFUSED; 9.8 is the direction that must stay accepted, and the two were broken in opposite directions by the same drifted helper. |
 | 9.7 | any **other** `Date` member charges `Clock` | `semantic.ts:4462` | **uncovered** | no case reads a `Date` member other than `now` |
-| 9.8 | `Date.parse` and `Date.UTC` are **exempt** | `semantic.ts:4462` (`!["parse", "UTC"].includes(member)`) | **`Date.parse` covered as of 2026-08-27; `Date.UTC` still uncovered** | `20/an-aliased-pure-member-key-needs-no-capability` is an `output` case reading `Date[PARSE]("2020-01-01T00:00:00.000Z")` beside `Math[MAX](2, 7, 5)` and printing both. It is here rather than only at 9.11 because it pins a measured over-refusal, not a hypothetical one: the Go fork refused **both** members with `SMITHERS1602`/`SMITHERS1603` before round 7, because its ambient-authority walk carried its own key test, an unresolved key fell through to the **whole-root** arm, and that arm charges every member of the object. So one helper answering "which member does this select?" two different ways produced a missed clock read at 9.6 and a refused `Date.parse` here, and only the pair holds both closed. The instant is a fixed authored string, so the printed value is stable and reads no clock. `Date.UTC` is still read by no case. |
+| 9.8 | `Date.parse` and `Date.UTC` are **exempt** | `semantic.ts:4462` (`!["parse", "UTC"].includes(member)`) | **covered, both members, as of 2026-09-05** | `20/an-aliased-pure-member-key-needs-no-capability` is an `output` case reading `Date[PARSE]("2020-01-01T00:00:00.000Z")` beside `Math[MAX](2, 7, 5)` and printing both. It is here rather than only at 9.11 because it pins a measured over-refusal, not a hypothetical one: the Go fork refused **both** members with `VIBE1602`/`VIBE1603` before round 7, because its ambient-authority walk carried its own key test, an unresolved key fell through to the **whole-root** arm, and that arm charges every member of the object. So one helper answering "which member does this select?" two different ways produced a missed clock read at 9.6 and a refused `Date.parse` here, and only the pair holds both closed. The instant is a fixed authored string, so the printed value is stable and reads no clock. ~~`Date.UTC` is still read by no case.~~ **`Date.UTC` covered as of 2026-09-05**: `20/date-utc-is-exempt-from-the-clock-rule` prints `Date.UTC(2020, 0, 1)` — a pure function of its arguments whose result is defined in UTC, so the printed instant is host-independent — and compiles clean, closing the exemption's second half beside `Date.parse`. |
 | 9.9 | `new Date()` with no arguments charges `Clock`; `new Date(x)` with arguments charges **nothing** | `semantic.ts:4438-4441` | **covered as of 2026-08-26, including the boundary the split gets wrong** | The exempt half runs inside `20/value-instanceof-date-is-a-prototype-test-not-a-clock-read`, whose second line is `new Date(0)`. The boundary is `20/a-date-spread-argument-is-still-a-clock-read`: the exemption counted syntactic argument **nodes**, and `new Date(...(instant as [number]))` where the array is empty is one node and **zero** runtime arguments, so it constructed the current time and compiled clean on both backends. A spread has no statically known length and therefore cannot prove an instant was supplied. Demonstrated failing on the pre-change tree, where both backends accepted and ran it. |
-| 9.9a | **`Intl.DateTimeFormat` construction is a clock read, and the rest of `Intl` is not** | compatibility.mdx §Host Globals ("Host-sensitive **operations** such as clock and random access MUST still use capabilities") | **covered as of 2026-08-26, as a pair** | `20/intl-datetimeformat-construction-needs-a-clock` (`SMITHERS1602`) and `20/intl-locale-formatting-is-not-a-clock-read` (`output`). **The acceptance half was WIDENED on 2026-08-28 from two members to seventeen**, and its expectation re-derived by running both backends, which produced byte-identical stdout. compatibility.mdx §Determinism-Sensitive Members row five named four ICU members and the hazard covers thirty — an incomplete list, not a narrow one — so the case now carries a representative of every shape in the class: the nine other `Intl` value members, the four locale-sensitive `String` members, and `toLocaleString` on `Number`, `BigInt`, `Array` and a typed array. Members whose result IS host ICU data are printed as `typeof`, because pinning their text would make the case vary with the host's ICU version, which is the hazard. Measured to be load-bearing by mutation rather than by a pre-fix demonstration: changing `root === "Intl" && member === "DateTimeFormat"` to `root === "Intl"` turns ten of them into `SMITHERS1602`, and a subtler mutation that exempts only the three members the case used to name leaves **every** pre-existing assertion green while the widened one fails. The thirty-member enumeration lives in `host-global-allowlist.test.ts`, which checks rather than runs and so can name all twelve typed arrays without depending on the host having `Float16Array`. `Intl` was not an ambient root the rule modelled at all, so `new Intl.DateTimeFormat("en").format()` formatted *now* with zero diagnostics on both backends. The requirement is charged at **construction** rather than at the call that reads the clock, and that is a deliberate fail-closed choice rather than the finest rule: which call reads it depends on the arity of a call on an *instance* (`format()` formats now, `format(instant)` does not) and `resolvedOptions().timeZone` reads the host time zone with no call at all. The acceptance half is what keeps the rule per-operation rather than per-object — the same relationship 9.11 has for `Math`. |
-| 9.10 | every `performance` member charges `Clock` | `semantic.ts:4464` | **uncovered** | `grep -rn performance conformance/corpus/` finds no use |
+| 9.9a | **`Intl.DateTimeFormat` construction is a clock read, and the rest of `Intl` is not** | compatibility.mdx §Host Globals ("Host-sensitive **operations** such as clock and random access MUST still use capabilities") | **covered as of 2026-08-26, as a pair** | `20/intl-datetimeformat-construction-needs-a-clock` (`VIBE1602`) and `20/intl-locale-formatting-is-not-a-clock-read` (`output`). **The acceptance half was WIDENED on 2026-08-28 from two members to seventeen**, and its expectation re-derived by running both backends, which produced byte-identical stdout. compatibility.mdx §Determinism-Sensitive Members row five named four ICU members and the hazard covers thirty — an incomplete list, not a narrow one — so the case now carries a representative of every shape in the class: the nine other `Intl` value members, the four locale-sensitive `String` members, and `toLocaleString` on `Number`, `BigInt`, `Array` and a typed array. Members whose result IS host ICU data are printed as `typeof`, because pinning their text would make the case vary with the host's ICU version, which is the hazard. Measured to be load-bearing by mutation rather than by a pre-fix demonstration: changing `root === "Intl" && member === "DateTimeFormat"` to `root === "Intl"` turns ten of them into `VIBE1602`, and a subtler mutation that exempts only the three members the case used to name leaves **every** pre-existing assertion green while the widened one fails. The thirty-member enumeration lives in `host-global-allowlist.test.ts`, which checks rather than runs and so can name all twelve typed arrays without depending on the host having `Float16Array`. `Intl` was not an ambient root the rule modelled at all, so `new Intl.DateTimeFormat("en").format()` formatted *now* with zero diagnostics on both backends. The requirement is charged at **construction** rather than at the call that reads the clock, and that is a deliberate fail-closed choice rather than the finest rule: which call reads it depends on the arity of a call on an *instance* (`format()` formats now, `format(instant)` does not) and `resolvedOptions().timeZone` reads the host time zone with no call at all. The acceptance half is what keeps the rule per-operation rather than per-object — the same relationship 9.11 has for `Math`. |
+| 9.10 | every `performance` member charges `Clock` | `semantic.ts:4464` | **covered as of 2026-09-05** | `20/a-performance-member-is-a-clock-read` — `performance.now()`, `VIBE1602@2:16`, the same code `Date.now()` answers with, because the monotonic clock is the same replay hazard as the wall clock and a rule that charged only `Date` would leave effectful code that looks pure. |
 | 9.11 | `Math.random` charges `Random`; any other `Math` member charges nothing | `semantic.ts:4463` and the absent `else` beside it | covered, both directions, **and both at two key spellings as of 2026-08-27** | `20/random-access-needs-a-capability`; `20/universal-globals-stay-available` reads `Math.max` and stays clean; `20/an-aliased-pure-member-key-needs-no-capability` reads `Math[MAX]` and stays clean, which is the spelling the fork refused before round 7 (see 9.8). |
-| 9.12 | `crypto.randomUUID` / `crypto.getRandomValues` charge `Random`; **every other** `crypto` member charges `Host` | `semantic.ts:4465-4466` | **uncovered** | neither side of the split; `grep -rn crypto conformance/corpus/ --include='*.sm'` finds nothing. Note the diagnostic mapping at `semantic.ts:4395`: `Clock` → `SMITHERS1602`, `Random` → `SMITHERS1603`, everything else → `SMITHERS1601`. So the `Host<"crypto">` branch reports the *same* code as `process`/`document`, and a case for it must observe the position rather than a distinct code. |
-| 9.13 | a **lexical shadow** of one of these names stays an ordinary value | `semantic.ts:4417` (`isAmbientGlobalReference`) | **uncovered** | the one that matters most. A local `const Math = { random: () => 4 }` charging `Random` would be a false positive; the classifier guards against it and nothing checks the guard. Exactly parallel to `19/retired-operator-words-as-members-stay-ordinary`, which this page calls out as load-bearing at §1.7. |
-| 9.14 | a whole-root escape — `Date`/`performance` → `Clock`, `Math` → `Random`, `crypto` → `Host` — when the member is dynamically selected | `semantic.ts:4454-4457` | **covered as of 2026-08-27, for the `Date` → `Clock` branch** | `20/a-widening-string-key-escapes-the-whole-object` — `Date["now" as string]()`, `SMITHERS1602@2:14`, the declared column being the `Date` identifier rather than a member name, which is the observable difference between charging the ROOT and charging nothing. This is the conservative direction the row's previous text called "the one a refactor is most likely to relax", and round 7 is why it now has a case: once the member-selection helper was keyed on the checker's string-literal TYPE of the key, its unresolved-key edge became load-bearing, and the fail-open reading of that edge (an unresolved key selects nothing to object to) is exactly the shape of the `context`-key defect at 12.12a, which dropped the capability row and panicked at run time. Note that the sibling boundary on the CAPABILITY side answers differently and correctly so — `05/a-non-literal-computed-capability-access-has-no-statically-known-member` is a stock `TS7053`, because `Clock` is a class with no string index signature while `DateConstructor` has members a `string` key really can reach. Two receivers, two answers, both fail-closed. The `performance`, `Math` and `crypto` branches of the same escape are still uncovered. |
+| 9.12 | `crypto.randomUUID` / `crypto.getRandomValues` charge `Random`; **every other** `crypto` member charges `Host` | `semantic.ts:4465-4466` | **covered, both sides of the split, as of 2026-09-05** | `20/crypto-random-members-need-a-random-capability` pins the `Random` side (`randomUUID` and `getRandomValues`, two `VIBE1603`s) and `20/a-non-random-crypto-member-is-host-authority` pins the `Host` side (`crypto.subtle`, `VIBE1601` — observed by position, exactly as this row said a case must, because the `Host` branch shares its code with `process`/`document`). Previously: neither side; `grep -rn crypto conformance/corpus/ --include='*.vibe'` finds nothing. Note the diagnostic mapping at `semantic.ts:4395`: `Clock` → `VIBE1602`, `Random` → `VIBE1603`, everything else → `VIBE1601`. So the `Host<"crypto">` branch reports the *same* code as `process`/`document`, and a case for it must observe the position rather than a distinct code. |
+| 9.13 | a **lexical shadow** of one of these names stays an ordinary value | `semantic.ts:4417` (`isAmbientGlobalReference`) | **covered as of 2026-09-05** | `20/a-lexical-shadow-of-a-host-sensitive-name-is-ordinary` — five shadows in one `expect: "output"` program (`Math.random`, `Date.now`, `performance.now`, `crypto.randomUUID`, and `Promise.race`, the determinism-table charge) all resolve to the local values and print them, so a classifier keyed on spelling rather than on the ambient binding fails the case in five ways at once. This was the row this table called the one that matters most: the false-positive direction none of the refusal cases can observe. A local `const Math = { random: () => 4 }` charging `Random` would be a false positive; the classifier guards against it and nothing checks the guard. Exactly parallel to `19/retired-operator-words-as-members-stay-ordinary`, which this page calls out as load-bearing at §1.7. |
+| 9.14 | a whole-root escape — `Date`/`performance` → `Clock`, `Math` → `Random`, `crypto` → `Host` — when the member is dynamically selected | `semantic.ts:4454-4457` | **covered as of 2026-09-05, all four branches** | `20/a-widening-string-key-escapes-the-whole-object` — `Date["now" as string]()`, `VIBE1602@2:14`, the declared column being the `Date` identifier rather than a member name, which is the observable difference between charging the ROOT and charging nothing. This is the conservative direction the row's previous text called "the one a refactor is most likely to relax", and round 7 is why it now has a case: once the member-selection helper was keyed on the checker's string-literal TYPE of the key, its unresolved-key edge became load-bearing, and the fail-open reading of that edge (an unresolved key selects nothing to object to) is exactly the shape of the `context`-key defect at 12.12a, which dropped the capability row and panicked at run time. Note that the sibling boundary on the CAPABILITY side answers differently and correctly so — `05/a-non-literal-computed-capability-access-has-no-statically-known-member` is a stock `TS7053`, because `Clock` is a class with no string index signature while `DateConstructor` has members a `string` key really can reach. Two receivers, two answers, both fail-closed. ~~The `performance`, `Math` and `crypto` branches of the same escape are still uncovered.~~ **Covered as of 2026-09-05**: `20/a-widening-string-key-escapes-the-other-host-roots` widens a key over each of the other three roots in one program and declares each root's own code at the root identifier — `Math` → `VIBE1603`, `performance` → `VIBE1602`, `crypto` → `VIBE1601` — so the escape now answers for every branch of `semantic.ts:4454-4457`, not only the `Date` one. |
 
-**Six and a half of the ten branches are pinned, as of 2026-08-27** — 9.6 (now at
+**All ten branches are pinned, as of 2026-09-05** (the count below is the superseded 2026-08-27 reading, kept because its derivation notes are still right about which case pins what). The four rows that closed — 9.8's `Date.UTC` half, 9.10, 9.12, 9.13 — and 9.14's other three roots are dated in their own rows. 9.7 stays uncovered and is now the table's one open row: `DateConstructor` publishes no static member besides `now`, `parse` and `UTC`, so the defensive `semantic.ts:4462` branch has no real member a case could spell — the dynamic-selection route to the same protection is 9.14. Previously: **six and a half of the ten branches, as of 2026-08-27** — 9.6 (now at
 three key spellings), 9.9 (both halves plus the spread boundary), 9.9a, 9.11 (both
 directions, now at two key spellings), 9.14 (the whole-root escape, for its `Date`
 branch only), and **half of 9.8**: `Date.parse` is covered and `Date.UTC` is not,
@@ -2903,7 +3526,7 @@ because the whole-root escape row was given a number when it gained a case.**
 The native pin is the change that reshaped this section. Before it existed, a
 requirement row was only observable through a diagnostic that happened to name
 it, so three obligations here could be pinned only through their consequences.
-`SMITHERS3001` names the blocking requirement and its dependency path, which
+`VIBE3001` names the blocking requirement and its dependency path, which
 makes the row itself observable for the first time.
 
 | # | obligation | source | status | cases |
@@ -2914,68 +3537,68 @@ makes the row itself observable for the first time.
 | 10.4 | `eval` contributes `TypeScript` and is not globally forbidden | compatibility.mdx §Dynamic Features; DECISIONS Locked | covered (both halves) | `18/eval-is-usable-and-not-forbidden`, `21/a-pin-reaching-typescript-is-rejected` |
 | 10.5 | the `TypeScript` requirement propagates transitively like any other | requirements.mdx §TypeScript Requirement; DECISIONS Locked | covered | `21/a-pin-reaching-typescript-transitively-is-rejected` — four ordinary calls between the pin and the `eval`. Previously **partial** for want of an observation channel. |
 | 10.6 | **a native pin rejects any transitive `TypeScript`, over the complete graph, showing the dependency path** | compatibility.mdx §Native Pin; requirements.mdx §TypeScript Requirement | covered | the whole of `21-native-pin` (**27 cases**, 16 before this revision, 9 before that): clean graph accepted, one-hop and four-hop `TypeScript` rejected, host module rejected, trusted foreign call rejected, dynamic import rejected, ordinary capability **accepted**, closure-not-module scoping, async pin. The re-binding block added a revision ago — named, star and chained re-exports, a re-export cycle, a parameter default, and two acceptance controls — is green on both backends with every retirement recorded in its own case's `notes`. **This revision added the eleven cases in 10.15–10.20 below**, which is where the area stopped being about import lists. |
-| 10.6b | **the diagnostic shows the dependency path that introduced the requirement** | compatibility.mdx §Native Pin (SHOULD) | **covered, and now load-bearing** — *observation gap #5 stays closed* | Two revisions ago the path text was unobservable: the expectation format compared code and authored position only, so a pin refused with an EMPTY route satisfied every case in this area exactly. `conformance/runner/corpus.mjs` and `judge.mjs` accept an optional `messageContains` on a declared diagnostic, checked only where declared. **The census, recomputed this revision: 12 declared `messageContains`, all 12 in `21-native-pin`** (was 5), counted by parsing the expectations rather than by grep, because the word now also appears in several `notes`. Seven of the twelve are new and each one names a composed route that did not previously exist in the corpus — `-> initializer-host.mod.sm#pid -> process.pid`, `-> invoking-callee.mod.sm#run`, `-> reader-callee.mod.sm#run -> …#read`, `-> loads-host.mod.sm -> node:fs`. Backend agreement still compares codes and positions only, because message *wording* legitimately differs between the two implementations — **measured this revision on `SMITHERS1503`, where the two messages differ by one word** — so a case names the smallest fragment that carries the promise and never the sentence around it. Where the payload is *not* the promise, this revision declares no `messageContains` at all. |
-| 10.15 | **ambient host authority read by a module-level initializer is in the graph of every function that reads the binding** | requirements.mdx §Platform Requirements (Locked): portability from "the satisfied dependency closure, not merely the source module's import path"; compatibility.mdx §Native Pin | **covered** | **`21/a-host-read-in-a-module-initializer-is-part-of-the-pinned-graph`**, green on both, asserting the route `-> initializer-host.mod.sm#pid -> process.pid`. The read is in no function at all: an analysis that walks function bodies and import lists certifies the program, and running it reads `process`. |
+| 10.6b | **the diagnostic shows the dependency path that introduced the requirement** | compatibility.mdx §Native Pin (SHOULD) | **covered, and now load-bearing** — *observation gap #5 stays closed* | Two revisions ago the path text was unobservable: the expectation format compared code and authored position only, so a pin refused with an EMPTY route satisfied every case in this area exactly. `conformance/runner/corpus.mjs` and `judge.mjs` accept an optional `messageContains` on a declared diagnostic, checked only where declared. **The census, recomputed this revision: 12 declared `messageContains`, all 12 in `21-native-pin`** (was 5), counted by parsing the expectations rather than by grep, because the word now also appears in several `notes`. Seven of the twelve are new and each one names a composed route that did not previously exist in the corpus — `-> initializer-host.mod.vibe#pid -> process.pid`, `-> invoking-callee.mod.vibe#run`, `-> reader-callee.mod.vibe#run -> …#read`, `-> loads-host.mod.vibe -> node:fs`. Backend agreement still compares codes and positions only, because message *wording* legitimately differs between the two implementations — **measured this revision on `VIBE1503`, where the two messages differ by one word** — so a case names the smallest fragment that carries the promise and never the sentence around it. Where the payload is *not* the promise, this revision declares no `messageContains` at all. |
+| 10.15 | **ambient host authority read by a module-level initializer is in the graph of every function that reads the binding** | requirements.mdx §Platform Requirements (Locked): portability from "the satisfied dependency closure, not merely the source module's import path"; compatibility.mdx §Native Pin | **covered** | **`21/a-host-read-in-a-module-initializer-is-part-of-the-pinned-graph`**, green on both, asserting the route `-> initializer-host.mod.vibe#pid -> process.pid`. The read is in no function at all: an analysis that walks function bodies and import lists certifies the program, and running it reads `process`. |
 | 10.16 | **a function invoked where it is written runs where it is written, and contributes no hop of its own** | the same two sentences | **covered** | **`21/a-host-read-behind-an-immediately-invoked-function-is-part-of-the-pinned-graph`**, green on both. It declares the *same* route shape as 10.15 on purpose: `(() => process.pid)()` runs exactly when `process.pid` would have, so a walk that treats a function expression as deferred answers two byte-similar programs differently, and an anonymous immediately-invoked callable must not appear between the binding and the read. `messageContains` pins both halves at once. |
-| 10.17 | **a callback is part of the graph exactly when the callee's visible body invokes it** | requirements.mdx §Inference (Locked): "Requirement inference MUST be transitive through ordinary calls"; compatibility.mdx §Native Pin ("any reachable operation") | **covered by an `xfail go` plus its acceptance twin** | **`21/a-callback-a-callee-invokes-is-part-of-the-pinned-graph`** (route `-> invoking-callee.mod.sm#run`) and **`21/a-callback-a-callee-only-stores-still-satisfies-the-pin`** (an `expect: "output"` case that compiles and runs). **This pair is the most valuable thing in the area** and neither half means anything alone: the two programs are identical at the call and differ only in what the callee's body does, so "charge callback arguments" turns the acceptance case red and "a callback is deferred" turns the refusal green. **The fork accepts, certifies and runs the refusal case** — see the register — and it passes the acceptance case *for the wrong reason*, because a backend that enters no callback satisfies a negative automatically. The acceptance case's own `notes` say so. |
-| 10.18 | **the method that runs is the one on the class the caller constructed, not the interface member the signature selected** | the same two sentences | **covered by an `xfail go`** | **`21/a-class-instance-method-is-part-of-the-pinned-graph`**, asserting the whole route tail `-> reader-callee.mod.sm#run -> …#read` so a route that stopped at the callee fails the case even with the right code at the right position. The callee's parameter is an interface, so the signature a checker selects has no body; reaching the class's method needs the value question. **The fork accepts, certifies and runs it.** |
-| 10.19 | **what a module's evaluation loads is in the graph of every function in it, transitively** | requirements.mdx §Platform Requirements (Locked) | **covered by an `xfail go`** | **`21/a-side-effect-import-chain-is-part-of-the-pinned-graph`**, asserting `-> loads-host.mod.sm -> node:fs`. This is the LOAD graph rather than the call graph: the pinned function calls nothing and names nothing, and a side-effect import has no binding for a tree-shaker or an unused-import rule to remove. **The fork charges the first link and not the chain** — handed the same program with `import "node:fs"` written directly it reports the pin failure correctly, so it owns the rule and does not walk it. |
-| 10.20 | **a native pin whose subject the compiler cannot identify is refused** (`SMITHERS3005`, both branches) | compatibility.mdx §Native Pin (Locked) "a **checked** assertion"; DECISIONS "TypeScript and native classification" (Locked) | **covered** | **`21/a-pin-whose-argument-is-not-a-project-function-is-rejected`** (reported at the argument) and **`21/a-pin-given-two-arguments-is-rejected`** (reported at the call), both green on both. This code is the **gate on this whole section** and was unprobed until now: the other twenty-five cases in the area all hand `native(...)` a well-formed reference, so nothing pinned what happens when the assertion itself is uncheckable. Two cases rather than one because the two branches report at different positions, and a single case would have left the other branch free. |
-| 10.7 | the pin's **source spelling** | compatibility.mdx §Native Pin: "The exact source spelling of a native pin is **open**"; DECISIONS **Open** | unwritable | **blocked on an Open decision.** The corpus commits to the provisional `native(fn)` from `smithers:native` because it is what both backends implement and what the specification prints as the candidate. If the spelling changes, area 21 needs a sweep and nothing else does — the *rule* the cases pin is spelling-independent. |
+| 10.17 | **a callback is part of the graph exactly when the callee's visible body invokes it** | requirements.mdx §Inference (Locked): "Requirement inference MUST be transitive through ordinary calls"; compatibility.mdx §Native Pin ("any reachable operation") | **covered by an `xfail go` plus its acceptance twin** | **`21/a-callback-a-callee-invokes-is-part-of-the-pinned-graph`** (route `-> invoking-callee.mod.vibe#run`) and **`21/a-callback-a-callee-only-stores-still-satisfies-the-pin`** (an `expect: "output"` case that compiles and runs). **This pair is the most valuable thing in the area** and neither half means anything alone: the two programs are identical at the call and differ only in what the callee's body does, so "charge callback arguments" turns the acceptance case red and "a callback is deferred" turns the refusal green. **The fork accepts, certifies and runs the refusal case** — see the register — and it passes the acceptance case *for the wrong reason*, because a backend that enters no callback satisfies a negative automatically. The acceptance case's own `notes` say so. |
+| 10.18 | **the method that runs is the one on the class the caller constructed, not the interface member the signature selected** | the same two sentences | **covered by an `xfail go`** | **`21/a-class-instance-method-is-part-of-the-pinned-graph`**, asserting the whole route tail `-> reader-callee.mod.vibe#run -> …#read` so a route that stopped at the callee fails the case even with the right code at the right position. The callee's parameter is an interface, so the signature a checker selects has no body; reaching the class's method needs the value question. **The fork accepts, certifies and runs it.** |
+| 10.19 | **what a module's evaluation loads is in the graph of every function in it, transitively** | requirements.mdx §Platform Requirements (Locked) | **covered by an `xfail go`** | **`21/a-side-effect-import-chain-is-part-of-the-pinned-graph`**, asserting `-> loads-host.mod.vibe -> node:fs`. This is the LOAD graph rather than the call graph: the pinned function calls nothing and names nothing, and a side-effect import has no binding for a tree-shaker or an unused-import rule to remove. **The fork charges the first link and not the chain** — handed the same program with `import "node:fs"` written directly it reports the pin failure correctly, so it owns the rule and does not walk it. |
+| 10.20 | **a native pin whose subject the compiler cannot identify is refused** (`VIBE3005`, both branches) | compatibility.mdx §Native Pin (Locked) "a **checked** assertion"; DECISIONS "TypeScript and native classification" (Locked) | **covered** | **`21/a-pin-whose-argument-is-not-a-project-function-is-rejected`** (reported at the argument) and **`21/a-pin-given-two-arguments-is-rejected`** (reported at the call), both green on both. This code is the **gate on this whole section** and was unprobed until now: the other twenty-five cases in the area all hand `native(...)` a well-formed reference, so nothing pinned what happens when the assertion itself is uncheckable. Two cases rather than one because the two branches report at different positions, and a single case would have left the other branch free. |
+| 10.7 | the pin's **source spelling** | compatibility.mdx §Native Pin: "The exact source spelling of a native pin is **open**"; DECISIONS **Open** | unwritable | **blocked on an Open decision.** The corpus commits to the provisional `native(fn)` from `vibelang:native` because it is what both backends implement and what the specification prints as the candidate. If the spelling changes, area 21 needs a sweep and nothing else does — the *rule* the cases pin is spelling-independent. |
 | 10.8 | arbitrary dynamic import unavailable in native code | DECISIONS Locked; compatibility.mdx §Native and Wasm Targets | covered | **`21/a-pin-reaching-a-dynamic-import-is-rejected`**. Previously unwritable "because there is no native backend to reject it" — the rule needs a checked native-eligibility assertion, not a native backend. |
-| 10.9 | closures, classes, generics, unions and **async functions** are not rejected merely for needing runtime support | compatibility.mdx §Native and Wasm Targets | covered | `21/a-pin-over-an-async-function-is-accepted` — the js marker is **retired**; the reference used to reject every async pin with `SMITHERS1404`, which made the pin inapplicable to all async code. Green on both now. |
-| 10.10 | a feature classified **forbidden** in authored `.sm` is rejected | compatibility.mdx §Dynamic Features (bucket 3); DECISIONS Locked | covered | `18/class-static-block-is-rejected` (SMITHERS1107), **`18/with-statement-is-forbidden`** (SMITHERS3003, from the portability classifier itself) |
-| 10.11 | classification of `Proxy`, prototype APIs, descriptors, weak refs, thenables, Promise subclassing | compatibility.mdx §Dynamic Features (**Open**); DECISIONS **Open** | unwritable **twice over** | **blocked on an Open decision** — item 1 of the ledger's unresolved-design-work list — **and** blocked on observation gap #11. `SMITHERS3002` ("portability is not classified yet") exists as a *warning* (`poc/src/targets/classify.ts:342`), and both backends filter the diagnostic stream to errors before the runner sees it. So even the one thing a corpus *could* honestly pin while the decision stays open — that the implementation still flags the unclassified construct rather than passing it silently — is unassertable. That second reason is a harness change, not a design decision, and it is now recorded as gap #11 rather than left inside this cell. |
-| 10.12 | type-assertion semantics | compatibility.mdx §Type Assertions (**Open**); DECISIONS **Open** | unwritable **twice over** | as 10.11. `SMITHERS3004` is likewise a warning (`poc/src/targets/classify.ts:297`). |
-| 10.13 | a **native** backend emitting near-native code through LLVM | compatibility.mdx:60 — "Smithers **MUST** support a near-native target through LLVM" | unwritable | **no implementation surface exists.** `grep -ril llvm poc/src/ src/ compiler/ cmd/` returns nothing — the string occurs only in prose files; `specification/index.mdx:83` says so in the same words. The pin is a *checked assertion about* native eligibility, which is why 10.6–10.9 became writable without a backend, but nothing can execute native output. This is the largest single unimplemented **MUST** in the repository — see "Feature complete is not true on the specification's own terms" below. |
-| 10.14 | a **Wasm** backend emitting WebAssembly for a declared host contract | compatibility.mdx:60 (**SHOULD**); `specification/index.mdx:32` names "a **Wasm backend**" as one of five conformance targets | **uncovered — a bounded backend exists and the corpus does not reach it** | **This row corrects a false statement.** The previous revision said at 10.13 and at observation gap #2 that "there is no native or Wasm backend… no implementation surface exists". The native half was right. The Wasm half was wrong. `poc/src/targets/portable-backend.ts` is **4,180 lines** (`wc -l`). It lowers exported, synchronous, non-generic `.sm` functions over `number`/`boolean`/portable-string values into a canonical digest-bound IR (`:3312` binds a `wireDigest` over the contract digest and the frozen exit), compiles that IR to **import-free WAT**, shells out to `wat2wasm` (`:3809`), rejects a module that imports any host authority (`:3728`), instantiates it (`:4114`), and requires exact canonical-exit and wire-digest agreement between the TypeScript evaluator and the Wasm runtime. Context capabilities are carried as value services with the requirement row inside the contract digest; recursion is rejected at compile *and* validation time; loops carry a fuel budget of exactly `PORTABLE_LOOP_FUEL = 1_000_000` condition evaluations (`:271`) whose exhaustion produces the canonical `fuel-exhausted` defect identically in both runtimes (`:274`, `:290`). It ships publicly: `poc/src/targets/index.ts:2` re-exports it and `package.json:70` publishes `smthrs/targets`. **It carries 65 distinct diagnostic codes**, `SMITHERS5001`–`SMITHERS5073` (`grep -oh 'SMITHERS5[0-9]\{3\}' poc/src/targets/portable-backend.ts \| sort -u \| wc -l` → 65). **The corpus pins zero of them.** The only 5xxx codes any case declares are `SMITHERS5201`, `5202`, `5208`, `5209` — asset-loader codes from `poc/src/build/source-assets.ts`, a different family. Its only measurements are `poc/src/targets/portable-backend.test.ts` (1,942 lines) and `scripts/release-fixtures/runtime-smoke.mjs:214-221`. **Why no case:** the fork has no Wasm backend, so a corpus area here could only be `js`-pass / `go`-`unsupported`, which is a one-sided measurement rather than a differential one — but that is an argument about *what kind* of coverage it would be, not a reason for the matrix to say the surface does not exist. |
+| 10.9 | closures, classes, generics, unions and **async functions** are not rejected merely for needing runtime support | compatibility.mdx §Native and Wasm Targets | covered | `21/a-pin-over-an-async-function-is-accepted` — the js marker is **retired**; the reference used to reject every async pin with `VIBE1404`, which made the pin inapplicable to all async code. Green on both now. |
+| 10.10 | a feature classified **forbidden** in authored `.vibe` is rejected | compatibility.mdx §Dynamic Features (bucket 3); DECISIONS Locked | covered | `18/class-static-block-is-rejected` (VIBE1107), **`18/with-statement-is-forbidden`** (VIBE3003, from the portability classifier itself) |
+| 10.11 | classification of `Proxy`, prototype APIs, descriptors, weak refs, thenables, Promise subclassing | compatibility.mdx §Dynamic Features (**Open**); DECISIONS **Open** | unwritable **twice over** | **blocked on an Open decision** — item 1 of the ledger's unresolved-design-work list — **and** blocked on observation gap #11. `VIBE3002` ("portability is not classified yet") exists as a *warning* (`poc/src/targets/classify.ts:342`), and both backends filter the diagnostic stream to errors before the runner sees it. So even the one thing a corpus *could* honestly pin while the decision stays open — that the implementation still flags the unclassified construct rather than passing it silently — is unassertable. That second reason is a harness change, not a design decision, and it is now recorded as gap #11 rather than left inside this cell. |
+| 10.12 | type-assertion semantics | compatibility.mdx §Type Assertions (**Open**); DECISIONS **Open** | unwritable **twice over** | as 10.11. `VIBE3004` is likewise a warning (`poc/src/targets/classify.ts:297`). |
+| 10.13 | a **native** backend emitting near-native code through LLVM | compatibility.mdx:60 — "VibeLang **MUST** support a near-native target through LLVM" | unwritable | **no implementation surface exists.** `grep -ril llvm poc/src/ src/ compiler/ cmd/` returns nothing — the string occurs only in prose files; `specification/index.mdx:83` says so in the same words. The pin is a *checked assertion about* native eligibility, which is why 10.6–10.9 became writable without a backend, but nothing can execute native output. This is the largest single unimplemented **MUST** in the repository — see "Feature complete is not true on the specification's own terms" below. |
+| 10.14 | a **Wasm** backend emitting WebAssembly for a declared host contract | compatibility.mdx:60 (**SHOULD**); `specification/index.mdx:32` names "a **Wasm backend**" as one of five conformance targets | **uncovered — a bounded backend exists and the corpus does not reach it** | **This row corrects a false statement.** The previous revision said at 10.13 and at observation gap #2 that "there is no native or Wasm backend… no implementation surface exists". The native half was right. The Wasm half was wrong. `poc/src/targets/portable-backend.ts` is **4,180 lines** (`wc -l`). It lowers exported, synchronous, non-generic `.vibe` functions over `number`/`boolean`/portable-string values into a canonical digest-bound IR (`:3312` binds a `wireDigest` over the contract digest and the frozen exit), compiles that IR to **import-free WAT**, shells out to `wat2wasm` (`:3809`), rejects a module that imports any host authority (`:3728`), instantiates it (`:4114`), and requires exact canonical-exit and wire-digest agreement between the TypeScript evaluator and the Wasm runtime. Context capabilities are carried as value services with the requirement row inside the contract digest; recursion is rejected at compile *and* validation time; loops carry a fuel budget of exactly `PORTABLE_LOOP_FUEL = 1_000_000` condition evaluations (`:271`) whose exhaustion produces the canonical `fuel-exhausted` defect identically in both runtimes (`:274`, `:290`). It ships publicly: `poc/src/targets/index.ts:2` re-exports it and `package.json:70` publishes `vibelang/targets`. **It carries 65 distinct diagnostic codes**, `VIBE5001`–`VIBE5073` (`grep -oh 'VIBE5[0-9]\{3\}' poc/src/targets/portable-backend.ts \| sort -u \| wc -l` → 65). **The corpus pins zero of them.** The only 5xxx codes any case declares are `VIBE5201`, `5202`, `5208`, `5209` — asset-loader codes from `poc/src/build/source-assets.ts`, a different family. Its only measurements are `poc/src/targets/portable-backend.test.ts` (1,942 lines) and `scripts/release-fixtures/runtime-smoke.mjs:214-221`. **Why no case:** the fork has no Wasm backend, so a corpus area here could only be `js`-pass / `go`-`unsupported`, which is a one-sided measurement rather than a differential one — but that is an argument about *what kind* of coverage it would be, not a reason for the matrix to say the surface does not exist. |
 
 ## 11. Promises and concurrency
 
 | # | obligation | source | status | cases |
 | --- | --- | --- | --- | --- |
-| 11.1 | authored `.sm` consumes Promises only through `await` | failures.mdx §Promise Semantics | covered | `08/await-consumes-the-promise-and-the-result` |
-| 11.2 | Promise instance `.then()` is a compile error | failures.mdx §Promise Semantics | covered | `08/promise-then-is-rejected`, and **`08/promise-then-on-a-bound-promise-is-rejected`** (**marker retired**; the fork has ported the bound/unbound split and both backends now report `[SMITHERS1401@15:25, SMITHERS1403@14:9]`) — the false-negative direction. All three original chaining cases call `.then` directly on a call expression, so all three would still pass if the rule were a syntactic check on `call().then(...)`; this one binds the Promise first. |
+| 11.1 | authored `.vibe` consumes Promises only through `await` | failures.mdx §Promise Semantics | covered | `08/await-consumes-the-promise-and-the-result` |
+| 11.2 | Promise instance `.then()` is a compile error | failures.mdx §Promise Semantics | covered | `08/promise-then-is-rejected`, and **`08/promise-then-on-a-bound-promise-is-rejected`** (**marker retired**; the fork has ported the bound/unbound split and both backends now report `[VIBE1401@15:25, VIBE1403@14:9]`) — the false-negative direction. All three original chaining cases call `.then` directly on a call expression, so all three would still pass if the rule were a syntactic check on `call().then(...)`; this one binds the Promise first. |
 | 11.3 | Promise instance `.catch()` is a compile error | failures.mdx §Promise Semantics | covered | `08/promise-catch-is-rejected` — **the previous revision's js+go xfail is retired**; both backends now report only the declared Promise-discipline diagnostics |
 | 11.4 | Promise instance `.finally()` is a compile error | failures.mdx §Promise Semantics | covered | `08/promise-finally-is-rejected` |
 | 11.5 | every started Promise is consumed before scope exit | requirements.mdx §Scoping; DECISIONS Locked | covered | `07/promise-must-be-consumed`, and — for the same reason 12.1 was an overclaim — one case per discard spelling: `08/a-void-operator-does-not-consume-a-started-promise`, `08/a-comma-expression-discards-its-left-operand-promise`, `08/an-array-literal-in-statement-position-abandons-its-promises`, `08/a-bound-promise-array-that-is-never-awaited-is-refused`. All four were measured compiling and running on the fork before 2026-08-25. |
-| 11.15 | **a started Promise read back out of a container is NOT discharged by awaiting it there** | failures.mdx §Promise Semantics ('Authored `.sm` code MUST consume Promise instances only through `await`') — but *no sentence says what consuming a collection means for a Promise* | **covered, pinned at the currently-agreed answer, and flagged as an open question** | `07/a-started-promise-read-back-out-of-an-object-is-not-consumed` (`SMITHERS1402`, identical on both backends). The container-discharge rule is deliberately Result-only: only a Result read leaves a container. This is arguably the *worse* language answer — the Promise genuinely is awaited — and the convergence lane measured itself introducing exactly this as a NEW divergence in the permissive direction before reverting it, because a lane may not answer a specification question on one side only. **This case is what to retire** if the ledger decides that awaiting a stored Promise through its property discharges it. `07/the-ambient-promise-all-discharges-a-bound-promise` and `08/a-bound-promise-array-is-consumed-by-promise-all` pin the forms that DO discharge. |
+| 11.15 | **a started Promise read back out of a container is NOT discharged by awaiting it there** | failures.mdx §Promise Semantics ('Authored `.vibe` code MUST consume Promise instances only through `await`') — but *no sentence says what consuming a collection means for a Promise* | **covered, pinned at the currently-agreed answer, and flagged as an open question** | `07/a-started-promise-read-back-out-of-an-object-is-not-consumed` (`VIBE1402`, identical on both backends). The container-discharge rule is deliberately Result-only: only a Result read leaves a container. This is arguably the *worse* language answer — the Promise genuinely is awaited — and the convergence lane measured itself introducing exactly this as a NEW divergence in the permissive direction before reverting it, because a lane may not answer a specification question on one side only. **This case is what to retire** if the ledger decides that awaiting a stored Promise through its property discharges it. `07/the-ambient-promise-all-discharges-a-bound-promise` and `08/a-bound-promise-array-is-consumed-by-promise-all` pin the forms that DO discharge. |
 | 11.13 | **a bound array of started Promises is consumed by awaiting a recognized combinator over it** | failures.mdx §Promise Semantics; DECISIONS Locked (Concurrency) | covered | `08/a-bound-promise-array-is-consumed-by-promise-all` (**its `xfail go` was retired 2026-08-25 after an `XPASS`**) — the acceptance half of 11.5's array row, and the ordinary concurrent spelling. The fork recognizes the inline form and the bound SCALAR form and refuses this one. |
-| 11.14 | **postfix `!` requires a Result operand, so an un-awaited `Promise<Result<A, E>>` is not one** | compatibility.mdx:72; failures.mdx §Promise Semantics | covered | `08/postfix-bang-on-an-unawaited-promise-result-is-not-a-result-operand` (**its `xfail go` was retired 2026-08-25 after an `XPASS`**; both halves of the fork's carve-out are gone, including the one that suppressed `SMITHERS1207` and emitted the `!` through unchanged — precisely what failures.mdx forbids outright — stated in §Accepted Placements when this row was written, and surviving verbatim in §Refusal Conditions after that section's withdrawal on 2026-08-27). Deliberately a **pair** with `02/an-unawaited-promise-bang-forwarded-into-a-return-reports-only-the-operand`: the same violation with and without a surviving unconsumed-Promise obligation, two diagnostics in one case and one in the other. `02/await-applied-after-postfix-bang-is-a-non-result-operand` is the third corner — `await lookup(k)!` binds the `!` to the Promise, and `SMITHERS1207` is the diagnostic that names the fix. |
+| 11.14 | **postfix `!` requires a Result operand, so an un-awaited `Promise<Result<A, E>>` is not one** | compatibility.mdx:72; failures.mdx §Promise Semantics | covered | `08/postfix-bang-on-an-unawaited-promise-result-is-not-a-result-operand` (**its `xfail go` was retired 2026-08-25 after an `XPASS`**; both halves of the fork's carve-out are gone, including the one that suppressed `VIBE1207` and emitted the `!` through unchanged — precisely what failures.mdx forbids outright — stated in §Accepted Placements when this row was written, and surviving verbatim in §Refusal Conditions after that section's withdrawal on 2026-08-27). Deliberately a **pair** with `02/an-unawaited-promise-bang-forwarded-into-a-return-reports-only-the-operand`: the same violation with and without a surviving unconsumed-Promise obligation, two diagnostics in one case and one in the other. `02/await-applied-after-postfix-bang-is-a-non-result-operand` is the third corner — `await lookup(k)!` binds the `!` to the Promise, and `VIBE1207` is the diagnostic that names the fix. |
 | 11.6 | a recognized combinator whose Promise is awaited satisfies that rule | DECISIONS Locked | covered | `08/promise-all-is-a-recognized-combinator`, and **`08/result-all-collects-across-concurrent-work`** — the composition rather than the rule: `Promise.all` collects the Promise channel and `Result.all` then collects the Result channel that awaiting it left behind, in that order, and neither collapses into the other. This is how concurrent fallible work is actually written and nothing pinned it before. |
-| 11.7 | an unowned async callback fails closed | poc README SMITHERS1404 | covered | `08/unowned-async-callback-is-rejected` |
+| 11.7 | an unowned async callback fails closed | poc README VIBE1404 | covered | `08/unowned-async-callback-is-rejected` |
 | 11.8 | `await Promise<Result<A,E>>` yields the Result; `await` does not unwrap or discard it | failures.mdx §Promise Semantics | covered | `07/await-leaves-a-result-that-must-still-be-consumed`, `08/await-consumes-the-promise-and-the-result` |
 | 11.9 | an infallible async function returns `Promise<A>` | type-system.mdx §Async Values | covered | `08/infallible-async-returns-a-plain-promise` |
-| 11.10 | cancellation is visible in typed failures and provided through the dependency model | DECISIONS Locked | unwritable | **no *language* surface exists.** The previous revision's evidence was wrong: it grepped `poc/src/{language,runtime,targets}` and concluded nothing existed, but `poc/src/concurrency/cancellation.ts` does, and `reference/standard-library.mdx` §Concurrency and Streams documents "cancellation sources/registrations" in `smthrs/concurrency`. The conclusion survives the correction — cancellation is a **library** value, not a typed failure member, a capability, or a diagnostic in either backend, so there is no language rule to pin — but it is now unwritable for 11.11's reason (the library is unreachable) rather than for want of an implementation. |
-| 11.11 | governors, structured-concurrency combinators, `Promise.allKeyed`, shared structs, `Stream`/`Queue`/`Semaphore`/`Channel` | DECISIONS Locked/Direction (TC39 adoption); standard-library.mdx §Concurrency and Streams | **unwritable from the corpus** — the surface exists, no case can resolve it | These are **library** APIs and the ledger says so ("Smithers does not add Promise or structured-join parser syntax"), so the obligation is a package export, not a language rule. The previous revision blamed flat staging; **staging shape was never the binding constraint, module resolution is.** Measured 2026-08-23 by putting `import { Stream } from "smthrs/concurrency"` through the JS backend directly: `SMITHERS1510@1:24 — 'smthrs/concurrency' could not be resolved`. `smthrs/concurrency` is an ordinary package export (`package.json` → `./dist/concurrency.js`), unlike `smthrs/context` and `smthrs/provider`, which the compiler owns and never resolves from disk. The JS backend executes from a `mkdtemp` tree with no `node_modules` above it, and the Go fork has no filesystem at all — its whole project arrives in one request. **What the harness would need:** a resolvable package root staged into both backends, which on the Go side means a wire-protocol change the harness does not own. Vendoring the API into `conformance/support/` is *not* the fix: it would measure the copy. Ranked low: a library obligation, not a language one. |
+| 11.10 | cancellation is visible in typed failures and provided through the dependency model | DECISIONS Locked | unwritable | **no *language* surface exists.** The previous revision's evidence was wrong: it grepped `poc/src/{language,runtime,targets}` and concluded nothing existed, but `poc/src/concurrency/cancellation.ts` does, and `reference/standard-library.mdx` §Concurrency and Streams documents "cancellation sources/registrations" in `vibelang/concurrency`. The conclusion survives the correction — cancellation is a **library** value, not a typed failure member, a capability, or a diagnostic in either backend, so there is no language rule to pin — but it is now unwritable for 11.11's reason (the library is unreachable) rather than for want of an implementation. |
+| 11.11 | governors, structured-concurrency combinators, `Promise.allKeyed`, shared structs, `Stream`/`Queue`/`Semaphore`/`Channel` | DECISIONS Locked/Direction (TC39 adoption); standard-library.mdx §Concurrency and Streams | **unwritable from the corpus** — the surface exists, no case can resolve it | These are **library** APIs and the ledger says so ("VibeLang does not add Promise or structured-join parser syntax"), so the obligation is a package export, not a language rule. The previous revision blamed flat staging; **staging shape was never the binding constraint, module resolution is.** Measured 2026-08-23 by putting `import { Stream } from "vibelang/concurrency"` through the JS backend directly: `VIBE1510@1:24 — 'vibelang/concurrency' could not be resolved`. `vibelang/concurrency` is an ordinary package export (`package.json` → `./dist/concurrency.js`), unlike `vibelang/context` and `vibelang/provider`, which the compiler owns and never resolves from disk. The JS backend executes from a `mkdtemp` tree with no `node_modules` above it, and the Go fork has no filesystem at all — its whole project arrives in one request. **What the harness would need:** a resolvable package root staged into both backends, which on the Go side means a wire-protocol change the harness does not own. Vendoring the API into `conformance/support/` is *not* the fix: it would measure the copy. Ranked low: a library obligation, not a language one. |
 | 11.12 | the exact native-portable Promise subset | DECISIONS **Direction** ("still open") | unwritable | **blocked on an Open decision** |
 
 ## 12. Must-consume
 
 | # | obligation | source | status | cases |
 | --- | --- | --- | --- | --- |
-| 12.1 | a discarded Result is a compile error | failures.mdx §Matching; type-system.mdx §Result Composition | covered | **Was recorded `covered` by `07/result-must-be-consumed` alone, which was true of one SPELLING of discard and false of the obligation** — the overclaim REVIEW-fable-1.md F1 named, and the same shape that once concealed SMITHERS1507/1508. Eleven discard spellings were then measured compiling and RUNNING on the fork. Now enumerated, one case per spelling: `07/result-must-be-consumed` (bare statement), `07/a-void-operator-does-not-consume-a-result`, `07/a-comma-expression-discards-its-left-operand-result`, `07/a-logical-and-discards-the-result-on-its-right`, `07/a-for-initializer-discards-its-result`, `07/an-as-expression-in-statement-position-does-not-consume-a-result`, `07/a-template-literal-span-does-not-consume-a-result`, `07/an-array-literal-of-results-in-a-discarded-statement-is-refused`, `07/a-discarded-conditional-charges-both-branch-producers`, `07/a-parenthesized-discard-is-charged-at-the-call`. The last two also pin the POSITION, which is where the two backends disagreed. |
+| 12.1 | a discarded Result is a compile error | failures.mdx §Matching; type-system.mdx §Result Composition | covered | **Was recorded `covered` by `07/result-must-be-consumed` alone, which was true of one SPELLING of discard and false of the obligation** — the overclaim REVIEW-fable-1.md F1 named, and the same shape that once concealed VIBE1507/1508. Eleven discard spellings were then measured compiling and RUNNING on the fork. Now enumerated, one case per spelling: `07/result-must-be-consumed` (bare statement), `07/a-void-operator-does-not-consume-a-result`, `07/a-comma-expression-discards-its-left-operand-result`, `07/a-logical-and-discards-the-result-on-its-right`, `07/a-for-initializer-discards-its-result`, `07/an-as-expression-in-statement-position-does-not-consume-a-result`, `07/a-template-literal-span-does-not-consume-a-result`, `07/an-array-literal-of-results-in-a-discarded-statement-is-refused`, `07/a-discarded-conditional-charges-both-branch-producers`, `07/a-parenthesized-discard-is-charged-at-the-call`. The last two also pin the POSITION, which is where the two backends disagreed. |
 | 12.1a | …and the positions the walk visits do not turn ordinary code into an error | failures.mdx §Matching (the rule says nothing about a value that is not a Result) | covered | `07/the-discard-positions-stay-ordinary-for-values-that-are-not-results` — every position the enumeration above added, holding a value that is neither a Result nor a started Promise, in one program that compiles and runs. `07/an-ownership-transfer-in-every-position-is-accepted` is the other guard: binding, returning, the value side of a comma, and an array handed to `Result.all` are transfers, not discards. |
 | 12.10 | **storing a Result in a container transfers ownership to the container; reading it back out is the consumption** | compatibility.mdx:72 (the `arr[i]!` worked example, Locked 2026-08-25); failures.mdx §Matching | covered | `07/an-array-literal-of-results-is-consumed-through-an-index-read` (the specification's own example, as a program), `07/a-tuple-of-results-is-consumed-through-an-index-read`, `07/an-object-literal-holding-a-result-is-consumed-through-its-property` (**its `xfail go` was retired 2026-08-25 after an `XPASS`; the fork's container transfer now recognises object-literal property assignment**), `07/result-all-on-a-bound-array-keeps-the-elements-failure`. Both refusal guards are written beside them: `07/an-array-literal-of-results-that-is-never-consumed-is-refused` (**its `xfail go` was retired 2026-08-25 after an `XPASS`; it was the worst fail-open the corpus has carried — the fork compiled and ran it, discarding two checked failures with nothing reported**) and `07/an-array-literal-of-results-in-a-discarded-statement-is-refused`. |
 | 12.11 | **a forwarding position keeps the obligation rather than discharging or discarding it** | failures.mdx §Matching (`returning` is one of the five forms; a forwarded value is the value the enclosing expression becomes) | covered | `07/a-concise-arrow-body-returning-a-result-is-a-return` (the braced spelling was always accepted; only this one was charged), `07/a-conditional-branch-forwards-its-result` (**its `xfail go` was retired 2026-08-25 after an `XPASS`**), and its condition-position twin `07/a-result-in-a-ternary-condition-is-discarded`, `07/a-satisfies-expression-forwards-its-result`. Their discard twins are 12.1's conditional and parenthesized rows. |
 | 12.12 | **a literal element access is the same member access as the dotted spelling, for every compiler-recognized member** | requirements.mdx §Access; failures.mdx §Result Composition, §Error Prototype, §Promise Semantics; compatibility.mdx §Host Globals | covered | Ten cases across seven areas, because the defect was one blind spot in every recognizer at once and REVIEW-fable-1.md F4 measured it on **both** backends: `05/a-computed-context-access-charges-the-same-row`, `06/a-computed-layer-provide-checks-its-capability-closure`, `08/a-computed-then-on-a-bound-promise-is-rejected`, `08/a-computed-then-on-an-unbound-promise-is-rejected`, `04/a-computed-error-match-is-exhaustiveness-checked`, `01/a-computed-result-ok-is-a-compiler-hook`, `19/a-computed-unwrap-is-the-retired-spelling`, `20/a-computed-date-now-is-refused`, plus the two acceptance halves `07/a-computed-match-discharges-the-obligation` and `07/a-computed-result-all-discharges`, and the over-correction guard `07/an-ordinary-computed-property-access-is-untouched`. The BOUNDARY of the family is `05/a-non-literal-computed-capability-access-has-no-statically-known-member`: a non-literal key resolves to no member, so no recognizer may claim it, and the case pins where it fails closed instead (`TS7053` from the stock check of the emitted module, identical on both backends). FB-report.md §7.3 recorded that path as unpinnable in this harness; it is not, and the case is the correction. |
-| 12.12a | **…and "literal" is the wrong word for it: a key selects a member exactly when the CHECKER gives it a string-literal TYPE, which covers a `const` alias, an alias of an alias, a parenthesis, a `satisfies`, an `as const` and an angle-bracket cast — and stops at a widening `string`** | requirements.mdx:34/:36 for the capability rule; compatibility.mdx §Host Globals for the ambient one; the criterion itself is TypeScript's own, since a string-literal-typed key is precisely when TypeScript resolves an element access to one property symbol | **covered as of 2026-08-27, eight cases across four areas, and this was a fail-open on BOTH backends that ended in a RUN-TIME PANIC** | 12.12 fixed the *literal* spelling in ten recognizers; round 7 measured **seven** further spellings failing open in the reference and five in the fork, all of them dropping the capability row and then aborting with `capability 'Clock' was not provided` at run time. The capability three — `05/a-const-alias-context-key-charges-the-same-row` (`SMITHERS2102@13:28`), `05/a-parenthesised-context-key-charges-the-same-row` and `05/a-satisfies-wrapped-context-key-charges-the-same-row` (both `@11:28`) — are one program with one token changed each, and each declares `messageContains` on the capability's own name for 8.2a's reason. The parenthesised one is a separate case rather than a fold-in because the two backends **disagreed** on it (the fork's own key test happened to skip parentheses and the reference's did not), which is the one shape the differential oracle can see and it saw nothing, because no case named the spelling. The `satisfies` one is chosen for what distinguishes it from its near miss: `satisfies` CHECKS without WIDENING, so `"context" satisfies string` still has the literal type while `"context" as string` does not — and 9.14's `20/a-widening-string-key-escapes-the-whole-object` pins the other side of that same sentence. **The acceptance half is `05/an-aliased-context-key-is-subtracted-by-its-layer`**, and it is the only case in the family that can tell "charges the `Clock` row" from "charges A row": the three refusals are each satisfied by any unsatisfied requirement named `Clock`, whereas here one layer supplies `Clock` and nothing else, so the program compiles only if the row is exactly right and PRINTS only if the access was also lowered to the real context read — which is the half a compile-only case would have missed, since the defect compiled clean and died at run time. Outside `05`, the same rule is pinned at `20/an-aliased-clock-member-key-is-the-same-clock-read` (9.6), `20/an-aliased-pure-member-key-needs-no-capability` (9.8/9.11, the over-refusal direction), `20/an-aliased-constructor-key-is-the-function-constructor` (9.1d), and the `09/an-aliased-reflect-panic-key-*` pair (7.23a) — nine rules read this one answer, and the panic pair is the evidence that widening it can break a rule that was already right. |
-| 12.15 | **a tagged template whose tag returns a Result is a Result-producing invocation, so dropping it is a discard** | failures.mdx:136; type-system.mdx:56 | **covered as of 2026-08-27, as a pair** | The rule recognized a producer by looking for a call expression, and a tagged template is not one, so the whole family was invisible at that spelling: the tag throws, the throw is lifted into the Result it declares, and nothing looks at it. `07/a-dropped-result-from-a-tagged-template-is-refused` declares four `SMITHERS1301`s — the template and an ordinary call, each inside a function and at module top level. The two ordinary calls are the attribution control, and the top-level pair matters separately because the top-level obligation runs through a different traversal from the in-function one on both backends. `07/a-consumed-result-from-a-tagged-template-is-accepted` is the over-correction guard and RUNS; its second line matches on the FAILING side and prints `boom`, which is simultaneously evidence that the tag ran, that its throw was lifted rather than escaping, and that the failure branch was selected. Deliberately excluded: `` panic`x` ``, a recorded open question on both backends. |
-| 12.16 | **an inferred-fallible callback reaching a consumer through an ALIAS is the same value that reaches it directly** | failures.mdx §Inference and Public Contracts | **covered as of 2026-08-27, as a pair** | One alias hop defeated `SMITHERS1303`: the resolver followed a direct reference to a function declaration and stopped at a `const` binding, so the aliased program COMPILED, ran to exit 0, and the throw was swallowed inside the consumer with no diagnostic anywhere. `07/an-aliased-fallible-callback-still-needs-a-contract` declares four — the direct spelling as the attribution control, one `const` hop, TWO hops (so a fix following exactly one initializer is caught), and an object-literal property, which is a different resolution mechanism entirely. `07/an-aliased-total-callback-needs-no-contract` is the over-correction guard and RUNS, with a different key per spelling so the four printed values observe that each spelling reached the consumer with its own argument. Residuals mirrored on both backends and deliberately not pinned: a callback aliased through a MUTABLE binding, and one returned from a helper. |
-| 12.2 | an unconsumed Result **parameter** is a compile error | poc README SMITHERS1302 | covered | `07/result-parameter-must-be-consumed` |
+| 12.12a | **…and "literal" is the wrong word for it: a key selects a member exactly when the CHECKER gives it a string-literal TYPE, which covers a `const` alias, an alias of an alias, a parenthesis, a `satisfies`, an `as const` and an angle-bracket cast — and stops at a widening `string`** | requirements.mdx:34/:36 for the capability rule; compatibility.mdx §Host Globals for the ambient one; the criterion itself is TypeScript's own, since a string-literal-typed key is precisely when TypeScript resolves an element access to one property symbol | **covered as of 2026-08-27, eight cases across four areas, and this was a fail-open on BOTH backends that ended in a RUN-TIME PANIC** | 12.12 fixed the *literal* spelling in ten recognizers; round 7 measured **seven** further spellings failing open in the reference and five in the fork, all of them dropping the capability row and then aborting with `capability 'Clock' was not provided` at run time. The capability three — `05/a-const-alias-context-key-charges-the-same-row` (`VIBE2102@13:28`), `05/a-parenthesised-context-key-charges-the-same-row` and `05/a-satisfies-wrapped-context-key-charges-the-same-row` (both `@11:28`) — are one program with one token changed each, and each declares `messageContains` on the capability's own name for 8.2a's reason. The parenthesised one is a separate case rather than a fold-in because the two backends **disagreed** on it (the fork's own key test happened to skip parentheses and the reference's did not), which is the one shape the differential oracle can see and it saw nothing, because no case named the spelling. The `satisfies` one is chosen for what distinguishes it from its near miss: `satisfies` CHECKS without WIDENING, so `"context" satisfies string` still has the literal type while `"context" as string` does not — and 9.14's `20/a-widening-string-key-escapes-the-whole-object` pins the other side of that same sentence. **The acceptance half is `05/an-aliased-context-key-is-subtracted-by-its-layer`**, and it is the only case in the family that can tell "charges the `Clock` row" from "charges A row": the three refusals are each satisfied by any unsatisfied requirement named `Clock`, whereas here one layer supplies `Clock` and nothing else, so the program compiles only if the row is exactly right and PRINTS only if the access was also lowered to the real context read — which is the half a compile-only case would have missed, since the defect compiled clean and died at run time. Outside `05`, the same rule is pinned at `20/an-aliased-clock-member-key-is-the-same-clock-read` (9.6), `20/an-aliased-pure-member-key-needs-no-capability` (9.8/9.11, the over-refusal direction), `20/an-aliased-constructor-key-is-the-function-constructor` (9.1d), and the `09/an-aliased-reflect-panic-key-*` pair (7.23a) — nine rules read this one answer, and the panic pair is the evidence that widening it can break a rule that was already right. |
+| 12.15 | **a tagged template whose tag returns a Result is a Result-producing invocation, so dropping it is a discard** | failures.mdx:136; type-system.mdx:56 | **covered as of 2026-08-27, as a pair** | The rule recognized a producer by looking for a call expression, and a tagged template is not one, so the whole family was invisible at that spelling: the tag throws, the throw is lifted into the Result it declares, and nothing looks at it. `07/a-dropped-result-from-a-tagged-template-is-refused` declares four `VIBE1301`s — the template and an ordinary call, each inside a function and at module top level. The two ordinary calls are the attribution control, and the top-level pair matters separately because the top-level obligation runs through a different traversal from the in-function one on both backends. `07/a-consumed-result-from-a-tagged-template-is-accepted` is the over-correction guard and RUNS; its second line matches on the FAILING side and prints `boom`, which is simultaneously evidence that the tag ran, that its throw was lifted rather than escaping, and that the failure branch was selected. Deliberately excluded: `` panic`x` ``, a recorded open question on both backends. |
+| 12.16 | **an inferred-fallible callback reaching a consumer through an ALIAS is the same value that reaches it directly** | failures.mdx §Inference and Public Contracts | **covered as of 2026-08-27, as a pair** | One alias hop defeated `VIBE1303`: the resolver followed a direct reference to a function declaration and stopped at a `const` binding, so the aliased program COMPILED, ran to exit 0, and the throw was swallowed inside the consumer with no diagnostic anywhere. `07/an-aliased-fallible-callback-still-needs-a-contract` declares four — the direct spelling as the attribution control, one `const` hop, TWO hops (so a fix following exactly one initializer is caught), and an object-literal property, which is a different resolution mechanism entirely. `07/an-aliased-total-callback-needs-no-contract` is the over-correction guard and RUNS, with a different key per spelling so the four printed values observe that each spelling reached the consumer with its own argument. Residuals mirrored on both backends and deliberately not pinned: a callback aliased through a MUTABLE binding, and one returned from a helper. |
+| 12.2 | an unconsumed Result **parameter** is a compile error | poc README VIBE1302 | covered | `07/result-parameter-must-be-consumed` |
 | 12.3 | returning, matching, transforming, inspecting, and unwrapping all count as consuming | failures.mdx §Matching | covered | `07/consumed-result-is-accepted`, `07/every-listed-consumption-form-is-accepted` (all five forms in one program) |
-| 12.3a | **…and "inspecting" is the three-method inspection group, not a read of the Result's runtime discriminant** | failures.mdx §Compiler-Owned Modules — `smthrs/result` "is the lowering target: emitted code imports it… The compiler links it directly, `!` and `expect` are rejected inside it, and **its public API is instance methods**"; §Matching and Transformation spells the inspection group `isOk isError match`, three methods and no properties | **covered as of 2026-08-28 — landed as an `xfail go` holding a FORK FAIL-OPEN and RETIRED in the same lane by fixing the fork; green on both backends** | `07/reading-a-results-runtime-tag-does-not-consume-it`. The fork accepted, compiled and RAN `const outcome = lookup("zoe"); if (outcome.ok) { return [outcome.value] } return [outcome.error.key]`, printing `zoe` — extracting the ERROR value and reading a field off it with none of the five acts — while the reference refused it with `SMITHERS1302@11:9`. **The cause was one arm**, in `boundConsumeResult` in `compiler/forkbridge/mustconsume.go.txt`: a bare member SELECTION resolving to one of the four declarations `collectResultInspectionMembers` indexes (`ok` on each of `SmithersOk`/`SmithersErr`, plus the `value`/`error` readonly constructor parameters) returned `true` before the walk asked whether the member was CALLED. Removing it makes every discharge require a call, which is what the reference has always required; the predicate it fed (`preludeSymbols.resultInspection`) is deleted and the four declarations are still collected, because the prelude completeness check counts them as a shape assertion. It was deliberate rather than a gap — `compiler/fork_mustconsume_test.go` asserted it under the name "compiler-owned Result inspection consumes the binding", and that subtest is now the **inversion**, beside a new one pinning that `isError()` still discharges, so the rule refuses the PROPERTY read and not inspection as such. **`compiler/fork_result_member_surface_test.go` could not have seen this**: it pins the reference's `RESULT_MEMBER_SIGNATURES` against the fork's `resultConsumerMembers`, and `ok` was on neither list — it lived in a third, separate set. No corpus case reads `.ok`/`.value`/`.error` on a Result, which is why `0 divergent` had been true throughout. **What is NOT closed**: `outcome.ok` still typechecks on the fork, so with the obligation discharged another way first (`unwrapOr` above the tag read) the fork compiles and runs the read while the reference reports `TS2339`. The fork's authored `Result` IS the union of its two runtime classes while the reference's is an opaque interface of fifteen instance methods; separating them needs an authored-facing Result declaration distinct from the representation the fork's own lowering emits `.ok` reads against — a design change, not a walk fix, and fail-**closed** on the reference. Measured beside it: `.value`/`.error` read WITHOUT a `.ok` guard were already `TS2339` on **both**, so the discriminant was the only gateway, and `isOk()` narrows on **neither** (`if (outcome.isOk()) { return [outcome.value] }` is `TS2339` at `.value` on both). That last fact is why this read as a capability: failures.mdx §Authorability states "the language has no form that extracts the error from a Result" and marks "Whether Smithers gains an error-extraction form" **Open**, so the fork had settled an Open decision on its own. The case pins the must-use consequence, which is locked; the spelling belongs to the ledger owner. `07/every-listed-consumption-form-is-accepted` is the acceptance half and already pins `isError()` as the inspecting form. |
+| 12.3a | **…and "inspecting" is the three-method inspection group, not a read of the Result's runtime discriminant** | failures.mdx §Compiler-Owned Modules — `vibelang/result` "is the lowering target: emitted code imports it… The compiler links it directly, `!` and `expect` are rejected inside it, and **its public API is instance methods**"; §Matching and Transformation spells the inspection group `isOk isError match`, three methods and no properties | **covered as of 2026-08-28 — landed as an `xfail go` holding a FORK FAIL-OPEN and RETIRED in the same lane by fixing the fork; green on both backends** | `07/reading-a-results-runtime-tag-does-not-consume-it`. The fork accepted, compiled and RAN `const outcome = lookup("zoe"); if (outcome.ok) { return [outcome.value] } return [outcome.error.key]`, printing `zoe` — extracting the ERROR value and reading a field off it with none of the five acts — while the reference refused it with `VIBE1302@11:9`. **The cause was one arm**, in `boundConsumeResult` in `compiler/forkbridge/mustconsume.go.txt`: a bare member SELECTION resolving to one of the four declarations `collectResultInspectionMembers` indexes (`ok` on each of `VibeLangOk`/`VibeLangErr`, plus the `value`/`error` readonly constructor parameters) returned `true` before the walk asked whether the member was CALLED. Removing it makes every discharge require a call, which is what the reference has always required; the predicate it fed (`preludeSymbols.resultInspection`) is deleted and the four declarations are still collected, because the prelude completeness check counts them as a shape assertion. It was deliberate rather than a gap — `compiler/fork_mustconsume_test.go` asserted it under the name "compiler-owned Result inspection consumes the binding", and that subtest is now the **inversion**, beside a new one pinning that `isError()` still discharges, so the rule refuses the PROPERTY read and not inspection as such. **`compiler/fork_result_member_surface_test.go` could not have seen this**: it pins the reference's `RESULT_MEMBER_SIGNATURES` against the fork's `resultConsumerMembers`, and `ok` was on neither list — it lived in a third, separate set. No corpus case reads `.ok`/`.value`/`.error` on a Result, which is why `0 divergent` had been true throughout. **What is NOT closed**: `outcome.ok` still typechecks on the fork, so with the obligation discharged another way first (`unwrapOr` above the tag read) the fork compiles and runs the read while the reference reports `TS2339`. The fork's authored `Result` IS the union of its two runtime classes while the reference's is an opaque interface of fifteen instance methods; separating them needs an authored-facing Result declaration distinct from the representation the fork's own lowering emits `.ok` reads against — a design change, not a walk fix, and fail-**closed** on the reference. Measured beside it: `.value`/`.error` read WITHOUT a `.ok` guard were already `TS2339` on **both**, so the discriminant was the only gateway, and `isOk()` narrows on **neither** (`if (outcome.isOk()) { return [outcome.value] }` is `TS2339` at `.value` on both). That last fact is why this read as a capability: failures.mdx §Authorability states "the language has no form that extracts the error from a Result" and marks "Whether VibeLang gains an error-extraction form" **Open**, so the fork had settled an Open decision on its own. The case pins the must-use consequence, which is locked; the spelling belongs to the ledger owner. `07/every-listed-consumption-form-is-accepted` is the acceptance half and already pins `isError()` as the inspecting form. |
 | 12.4 | a Result left by `await` still must be consumed | failures.mdx §Promise Semantics | covered | `07/await-leaves-a-result-that-must-still-be-consumed` |
-| 12.5 | an inferred-fallible function crossing a general callback boundary needs a contract | poc README SMITHERS1303 | covered | `07/inferred-fallible-callback-needs-a-contract` |
+| 12.5 | an inferred-fallible function crossing a general callback boundary needs a contract | poc README VIBE1303 | covered | `07/inferred-fallible-callback-needs-a-contract` |
 | 12.5a | **…and the boundary is a VALUE edge, not an argument position** | failures.mdx §Inference and Public Contracts ("Public, abstract, ambient, and declaration-only contracts MUST express fallibility directly with `Result<A, E>`"); the callee invokes a function received inside a container exactly as it invokes one passed directly | **covered, eleven spellings** | `07/a-fallible-callback-inside-an-object-literal-argument-needs-a-contract`, `…-inside-an-array-literal-argument-…`, `a-parenthesized-fallible-callback-argument-…`, `…-through-an-as-cast-…`, `…-argument-to-a-new-expression-…`, `…-two-object-levels-deep-…`, `…-through-a-satisfies-expression-…`, `…-through-an-array-spread-…`, `a-fallible-shorthand-method-in-an-argument-…`, `a-shorthand-property-name-carries-the-same-callback-contract`, `a-try-finally-callback-still-carries-its-throw-across-the-boundary`. **Ten of the eleven were a live fail-open on BOTH backends** and were measured executing with `isOk() === true` carrying a `Result` in the success payload, with zero language *and* zero emitted-TypeScript diagnostics; the eleventh (`new`) was a position neither backend's visitor ever entered. The shorthand-property-name row is the sharpest: `{ transform }` ran on both backends while the byte-equivalent `{ transform: transform }` was refused on both. One case per spelling, for the same reason 12.1 needed one per discard spelling. |
-| 12.5b | **…and an inferred Result return manufactured by the abolished `!` meaning is not a contract** | failures.mdx §Failure Propagation ("`!` MUST NOT retain TypeScript's non-null assertion meaning in `.sm`") with §Inference and Public Contracts | covered | `07/a-propagating-callback-needs-a-contract-even-though-its-inferred-type-is-a-result` (the direct-argument spelling, which is why the defect was invisible to an "it's only object literals" reading) and `07/a-fallible-callback-in-a-map-argument-needs-a-contract` (**xfail go** for an unrelated extra `SMITHERS1204`; see 4.18) — the ordinary `.map(() => r!)` shape, where accepting silently means the propagation returns from the *callback* and the failure never reaches the author's declared channel. |
+| 12.5b | **…and an inferred Result return manufactured by the abolished `!` meaning is not a contract** | failures.mdx §Failure Propagation ("`!` MUST NOT retain TypeScript's non-null assertion meaning in `.vibe`") with §Inference and Public Contracts | covered | `07/a-propagating-callback-needs-a-contract-even-though-its-inferred-type-is-a-result` (the direct-argument spelling, which is why the defect was invisible to an "it's only object literals" reading) and `07/a-fallible-callback-in-a-map-argument-needs-a-contract` (**xfail go** for an unrelated extra `VIBE1204`; see 4.18) — the ordinary `.map(() => r!)` shape, where accepting silently means the propagation returns from the *callback* and the failure never reaches the author's declared channel. |
 | 12.5c | **…and the rule does not fire on a callback that owes nothing** | failures.mdx §Inference and Public Contracts (the rule is about a *fallible* value crossing); §JavaScript try/catch ("its presence MUST NOT change a function's Result contract implicitly") | **covered, five acceptance halves, all executed** | `07/a-contracted-callback-throw-reaches-the-caller-as-a-failure` (proves BOTH directions in one program: the throw arrives as the authored error class, and the plain return is lifted to a plain success rather than nested), `07/a-callback-forwarding-an-existing-result-needs-no-annotation`, `07/an-ordinary-callback-argument-is-untouched`, `07/a-javascript-caught-throw-in-a-callback-needs-no-contract` (one line from the `try`/`finally` refusal above, opposite verdict), `07/a-result-try-boundary-callback-needs-no-contract`. **The forwarding row is not filler**: the obvious stronger rule (always require a spelled annotation) was measured breaking it, `01/result-transformations-preserve-the-error-type`, and two `08-promise-chaining` cases. |
 | 12.13 | **a stored collection is discharged only by giving a Result back, and a BOUND container does not escape the walk** | failures.mdx:190 (the five named forms); the transfer rule of 12.10 | **covered, both directions** | Refusals: `07/array-length-is-not-consumption-of-a-result-collection`, `07/handing-a-result-collection-to-a-user-function-is-not-consumption`, `07/destructuring-a-stored-collection-does-not-release-its-elements`. Acceptances: `07/a-nested-object-literal-is-consumed-through-its-property-chain`, `07/an-object-of-results-returned-from-a-function-is-consumed-by-its-property`, `07/result-all-on-a-bound-array-is-consumed-by-propagating-it`. **The guard that stops the transfer rule from being widened until containers are transparent** is `07/a-lifted-call-stored-into-a-plainly-typed-array-is-still-a-discard`: the call lifts to `Result<number, Panic>` while its declaration still says `number`, so the array's own type is `number[]`, it does not hold the channel, and the store is a fiction. Its foreign twin is `09/foreign-module-without-a-trust-marker`. |
-| 12.13a | **a `return` is a TRANSFER, so the obligation must land on the caller — and it discharges only when the enclosing function's return type still carries the channel** | failures.mdx:190 (`returning` is one of the five forms, and it is a form because the value goes *somewhere*); type-system.mdx:56; requirements.mdx:88 for the Promise half | **covered, both directions, and the refusing half was demonstrated failing pre-fix** | Refusals, all four measured compiling and RUNNING to exit 0 on a reconstructed pre-change tree, on **both** backends, with identical stdout: `07/a-returned-result-collection-charges-its-caller` (`SMITHERS1301@15:20` — the executed defect; it printed `saved 3 records` while a checked `SaveFailed` was thrown and dropped), `07/an-awaited-result-collection-charges-its-caller` (the `await` spelling — removing the Promise layer must leave the collection owed), `07/a-returned-promise-collection-charges-its-caller` (**`SMITHERS1402`**, the twin that proves the receiving predicate names WHICH channel it found rather than answering yes/no — a boolean would have to report `1301` for a container of Promises), and `07/a-collection-laundered-through-an-opaque-return-type-is-still-a-discard` (`pack(): unknown`, charged INSIDE the callee at the element, which is what keeps the two ends of the transfer symmetric: a `return` discharges exactly when the caller inherits). Acceptances, proved enforced by mutation rather than by a pre-fix demonstration, because their whole point is that they were green before and must stay green: `07/a-returned-result-collection-is-consumed-by-result-all`, `07/a-returned-result-collection-is-consumed-by-an-index-read` (unbound — `pack()[0]!` never binds the container), and **`07/a-published-result-collection-with-no-caller-is-an-ordinary-transfer`**, which is the sharpest and which neither of the others substitutes for: the obvious way to close the defect is to refuse the CALLEE, that reading passes both other guards because both of them call `pack()` and consume what comes back, and it would refuse every library that publishes `Result<A,E>[]`. Read it beside the `: unknown` row — the pair fixes the transfer/discard boundary at the RETURN TYPE rather than at the shape of the returned expression. |
-| 12.14 | **a consumption written inside a nested function body is still a consumption** | failures.mdx:190 — the five forms are *acts performed on the value*, and no sentence conditions any of them on the function body the act is written in | **covered by a pair** — one half was `xfail go` until 2026-08-28, when the parameter-ownership walk moved onto the same per-file identifier index the binding rule already used | `07/a-result-consumed-only-inside-a-callback-is-consumed` (a local binding — passes on both) and `07/a-result-parameter-is-consumed-by-an-unwrap-inside-a-callback` (**xfail go** — the fork reports `SMITHERS1302` on a parameter consumed one line later). The pair is what makes the verdict decisive rather than arguable: the two programs differ only in where the Result came from, and the fork accepts one and refuses the other, so it is inconsistent with itself about the same consumption site. **Found by this revision**, as a second diagnostic on 12.5b's case, then isolated with four probes varying one thing at a time. |
+| 12.13a | **a `return` is a TRANSFER, so the obligation must land on the caller — and it discharges only when the enclosing function's return type still carries the channel** | failures.mdx:190 (`returning` is one of the five forms, and it is a form because the value goes *somewhere*); type-system.mdx:56; requirements.mdx:88 for the Promise half | **covered, both directions, and the refusing half was demonstrated failing pre-fix** | Refusals, all four measured compiling and RUNNING to exit 0 on a reconstructed pre-change tree, on **both** backends, with identical stdout: `07/a-returned-result-collection-charges-its-caller` (`VIBE1301@15:20` — the executed defect; it printed `saved 3 records` while a checked `SaveFailed` was thrown and dropped), `07/an-awaited-result-collection-charges-its-caller` (the `await` spelling — removing the Promise layer must leave the collection owed), `07/a-returned-promise-collection-charges-its-caller` (**`VIBE1402`**, the twin that proves the receiving predicate names WHICH channel it found rather than answering yes/no — a boolean would have to report `1301` for a container of Promises), and `07/a-collection-laundered-through-an-opaque-return-type-is-still-a-discard` (`pack(): unknown`, charged INSIDE the callee at the element, which is what keeps the two ends of the transfer symmetric: a `return` discharges exactly when the caller inherits). Acceptances, proved enforced by mutation rather than by a pre-fix demonstration, because their whole point is that they were green before and must stay green: `07/a-returned-result-collection-is-consumed-by-result-all`, `07/a-returned-result-collection-is-consumed-by-an-index-read` (unbound — `pack()[0]!` never binds the container), and **`07/a-published-result-collection-with-no-caller-is-an-ordinary-transfer`**, which is the sharpest and which neither of the others substitutes for: the obvious way to close the defect is to refuse the CALLEE, that reading passes both other guards because both of them call `pack()` and consume what comes back, and it would refuse every library that publishes `Result<A,E>[]`. Read it beside the `: unknown` row — the pair fixes the transfer/discard boundary at the RETURN TYPE rather than at the shape of the returned expression. |
+| 12.14 | **a consumption written inside a nested function body is still a consumption** | failures.mdx:190 — the five forms are *acts performed on the value*, and no sentence conditions any of them on the function body the act is written in | **covered by a pair** — one half was `xfail go` until 2026-08-28, when the parameter-ownership walk moved onto the same per-file identifier index the binding rule already used | `07/a-result-consumed-only-inside-a-callback-is-consumed` (a local binding — passes on both) and `07/a-result-parameter-is-consumed-by-an-unwrap-inside-a-callback` (**xfail go** — the fork reports `VIBE1302` on a parameter consumed one line later). The pair is what makes the verdict decisive rather than arguable: the two programs differ only in where the Result came from, and the fork accepts one and refuses the other, so it is inconsistent with itself about the same consumption site. **Found by this revision**, as a second diagnostic on 12.5b's case, then isolated with four probes varying one thing at a time. |
 | 12.6 | a started Promise must be consumed | DECISIONS Locked | covered | `07/promise-must-be-consumed` |
-| 12.8 | **the discharge set is the compiler's own combinators, not anything spelled like them** | failures.mdx §Matching; DECISIONS Locked (Concurrency) | **covered** | **`07/a-shadowed-result-namespace-does-not-discharge`** (a user's own `const Result = { all: … }` — `SMITHERS1302`) and **`07/a-shadowed-promise-namespace-does-not-discharge`** (a user's own `const Promise = { async all… }` — `SMITHERS1403`, and the member is `async` because a promise-shaped-return guard is satisfied by it). Both were reference fail-opens recognised by RAW SPELLING; both compiled clean before. Each case file carries an `export`, which is load-bearing: without one the source is a global script where a top-level `const Result` MERGES with the ambient declaration instead of shadowing it, and the case would pass without observing the rule. |
-| 12.9 | **the real combinators still discharge** | failures.mdx §Matching; DECISIONS Locked (Concurrency) | **covered** | **`07/the-compiler-owned-result-all-discharges`** and **`07/the-ambient-promise-all-discharges-a-bound-promise`**, both deliberately in the BOUND form the refusal cases use. The over-correction they guard against is measured, not hypothetical: resolving the twelve RECEIVER consumers through the compiler's declarations reports a false `SMITHERS1301` when a member resolves nowhere, or resolves to an unrelated real declaration such as `String.prototype.match` — which is corpus case `01/inferred-result-for-an-unannotated-function`. Only the namespace call lacks a receiver already known to be the compiler's, which is why it is the one that must resolve by identity. |
+| 12.8 | **the discharge set is the compiler's own combinators, not anything spelled like them** | failures.mdx §Matching; DECISIONS Locked (Concurrency) | **covered** | **`07/a-shadowed-result-namespace-does-not-discharge`** (a user's own `const Result = { all: … }` — `VIBE1302`) and **`07/a-shadowed-promise-namespace-does-not-discharge`** (a user's own `const Promise = { async all… }` — `VIBE1403`, and the member is `async` because a promise-shaped-return guard is satisfied by it). Both were reference fail-opens recognised by RAW SPELLING; both compiled clean before. Each case file carries an `export`, which is load-bearing: without one the source is a global script where a top-level `const Result` MERGES with the ambient declaration instead of shadowing it, and the case would pass without observing the rule. |
+| 12.9 | **the real combinators still discharge** | failures.mdx §Matching; DECISIONS Locked (Concurrency) | **covered** | **`07/the-compiler-owned-result-all-discharges`** and **`07/the-ambient-promise-all-discharges-a-bound-promise`**, both deliberately in the BOUND form the refusal cases use. The over-correction they guard against is measured, not hypothetical: resolving the twelve RECEIVER consumers through the compiler's declarations reports a false `VIBE1301` when a member resolves nowhere, or resolves to an unrelated real declaration such as `String.prototype.match` — which is corpus case `01/inferred-result-for-an-unannotated-function`. Only the namespace call lacks a receiver already known to be the compiler's, which is why it is the one that must resolve by identity. |
 | 12.7 | imported TS/JS that starts hidden background work owns that work | DECISIONS Locked; requirements.mdx §Scoping | **unwritable** | **the harness cannot observe this.** The rule is about ownership *inside* a foreign module, which by construction keeps ordinary Promise behavior and is not analyzed. Its enforceable half — a callback escaping into foreign code — is covered by `09/callback-escaping-into-foreign-code-is-rejected`. Observing the rest would need a case that detects work outliving the program, i.e. a timing or handle-count observation the runner does not make. |
 
 ## 13. Expression control flow
@@ -2990,7 +3613,7 @@ makes the row itself observable for the first time.
 >
 > Measured against the tree on 2026-08-26: `11-expression-if-switch/`,
 > `12-labeled-block-values/` and `13-loop-values/` are **empty directories —
-> 0 `.sm` files each**. §13.1–§13.16 cite **23 case names that no longer
+> 0 `.vibe` files each**. §13.1–§13.16 cite **23 case names that no longer
 > exist**, plus the three whole-directory globs `11/*`, `12/*` and `13/*` at
 > §13.1 and §13.2, which now resolve to nothing; Q1, Q2 and Q4 re-cite three of
 > the same 23. A "covered" in a status column below is therefore a record of
@@ -2999,39 +3622,39 @@ makes the row itself observable for the first time.
 | # | obligation | source | status | cases |
 | --- | --- | --- | --- | --- |
 | 13.1 | blocks, `if`, `switch` are usable as expressions | control-flow.mdx §Expression Forms | covered | `11/*`, `12/*` |
-| 13.2 | `while` / `for` produce values **only** through the labeled form with a value break and an `else` | control-flow.mdx:19-22 (**Direction**) — but see **Q1** | covered **against the specification page; contradicted by the ledger** | `13/*` covers `for…of`, counted `for`, and `while`; `11/unlabeled-loop-expression-is-rejected` pins the rejection (`SMITHERS1702`, green on both). The previous revision recorded this conflict as **resolved**. It is not. Only `specification/control-flow.mdx` was narrowed; `docs/DECISIONS.md:289` still reads "**Locked:** Blocks, `if`, `switch`, `while`, and `for` can be expressions", and `specification/index.mdx:54` gives the ledger priority in a conflict. So the corpus is green against the page that loses the tie-break. See Q1. |
+| 13.2 | `while` / `for` produce values **only** through the labeled form with a value break and an `else` | control-flow.mdx:19-22 (**Direction**) — but see **Q1** | covered **against the specification page; contradicted by the ledger** | `13/*` covers `for…of`, counted `for`, and `while`; `11/unlabeled-loop-expression-is-rejected` pins the rejection (`VIBE1702`, green on both). The previous revision recorded this conflict as **resolved**. It is not. Only `specification/control-flow.mdx` was narrowed; `docs/DECISIONS.md:289` still reads "**Locked:** Blocks, `if`, `switch`, `while`, and `for` can be expressions", and `specification/index.mdx:54` gives the ledger priority in a conflict. So the corpus is green against the page that loses the tie-break. See Q1. |
 | 13.3 | an expression construct has a statically determined type from its value-producing exits | control-flow.mdx §Expression Forms | covered | `12/labeled-block-may-complete-without-a-value`, `13/loop-value-without-an-else-is-rejected`, `12/plain-break-out-of-a-value-block-is-rejected` |
-| 13.4 | a value-producing `if` requires an else branch | control-flow.mdx §If; poc README SMITHERS1705 | covered | `11/if-expression-requires-an-else-branch` |
+| 13.4 | a value-producing `if` requires an else branch | control-flow.mdx §If; poc README VIBE1705 | covered | `11/if-expression-requires-an-else-branch` |
 | 13.5 | expression switch value is the selected case's final expression | control-flow.mdx §Switch; DECISIONS Locked | covered | `11/switch-case-final-expression-is-the-value` |
 | 13.6 | expression switches MUST NOT fall through between cases | control-flow.mdx §Switch | covered | `11/expression-switch-does-not-fall-through` |
 | 13.7 | statement switches keep TypeScript fallthrough and `break` | control-flow.mdx §Switch | covered | `11/statement-switch-fallthrough-over-a-widened-scrutinee` |
 | 13.8 | **switch clauses are colon-delimited; there is no arrow-arm switch grammar** | control-flow.mdx §Switch; DECISIONS Locked | covered | `11/arrow-arm-switch-grammar-is-rejected`, `11/arrow-arm-switch-mixes-two-grammars-in-one-switch` — the js markers are **retired**; the reference used to implement the arrow form, which was the previous revision's most serious finding. Both green on both backends. |
-| 13.9 | a closed-union expression switch should be exhaustive | control-flow.mdx:42 (**SHOULD**); poc README SMITHERS1716 | covered — **but as a MUST, not a SHOULD** | `11/switch-expression-missing-a-union-member` declares `SMITHERS1716` and is green on both backends, so what is pinned is a hard error. The specification says SHOULD. An implementation that emitted a warning here would be conformant and would **fail** this case — and per gap #11 the warning would be invisible, so the case could not even be relaxed to match. The previous revision recorded this as "covered as a SHOULD", which understates what the corpus actually enforces. See **Q4**. `11/switch-with-a-default-over-an-open-scrutinee` is the negative control and is unaffected. |
-| 13.10 | an order-unpreservable expression placement is rejected | poc README SMITHERS1707/1709 | covered | `11/if-expression-on-a-short-circuit-right-side-is-rejected`, `11/if-expression-with-a-braceless-branch-is-rejected` |
+| 13.9 | a closed-union expression switch should be exhaustive | control-flow.mdx:42 (**SHOULD**); poc README VIBE1716 | covered — **but as a MUST, not a SHOULD** | `11/switch-expression-missing-a-union-member` declares `VIBE1716` and is green on both backends, so what is pinned is a hard error. The specification says SHOULD. An implementation that emitted a warning here would be conformant and would **fail** this case — and per gap #11 the warning would be invisible, so the case could not even be relaxed to match. The previous revision recorded this as "covered as a SHOULD", which understates what the corpus actually enforces. See **Q4**. `11/switch-with-a-default-over-an-open-scrutinee` is the negative control and is unaffected. |
+| 13.10 | an order-unpreservable expression placement is rejected | poc README VIBE1707/1709 | covered | `11/if-expression-on-a-short-circuit-right-side-is-rejected`, `11/if-expression-with-a-braceless-branch-is-rejected` |
 | 13.11 | labeled `break :label value` combines reachable break values | control-flow.mdx §Labeled Break Values (**Direction**) | covered | `12/labeled-block-produces-a-value`, `12/labeled-block-joins-two-value-types` |
 | 13.12 | **a declaration inside an expression block follows ordinary lexical scope** | control-flow.mdx §Blocks | covered | **`12/a-declaration-in-a-value-block-follows-lexical-scope`** — load-bearing because the lowering textually hoists the labeled block out of the expression it was written in |
-| 13.13 | a value break inside a nested function is rejected | poc README SMITHERS1714/1715 | covered | `12/labeled-block-value-break-inside-a-nested-function-is-rejected` |
-| 13.14 | a plain `break label` that would complete a value block without its value is rejected | poc README SMITHERS1714 | covered | `12/plain-break-out-of-a-value-block-is-rejected` |
+| 13.13 | a value break inside a nested function is rejected | poc README VIBE1714/1715 | covered | `12/labeled-block-value-break-inside-a-nested-function-is-rejected` |
+| 13.14 | a plain `break label` that would complete a value block without its value is rejected | poc README VIBE1714 | covered | `12/plain-break-out-of-a-value-block-is-rejected` |
 | 13.15 | loop `else` supplies the non-break completion value | control-flow.mdx §Loop Else (**Direction**) | covered | `13/loop-value-with-an-else-completion`, `13/while-loop-value-with-an-else-completion`, `13/plain-break-flows-into-the-else-value`, `13/counted-for-loop-value-with-an-else-completion` |
-| 13.16 | a cross-construct value break is rejected (nested label selection unfinalized) | control-flow.mdx §Loop Else; poc README SMITHERS1715 | covered | `13/cross-construct-value-break-is-rejected` |
+| 13.16 | a cross-construct value break is rejected (nested label selection unfinalized) | control-flow.mdx §Loop Else; poc README VIBE1715 | covered | `13/cross-construct-value-break-is-rejected` |
 | 13.17 | declarations in conditionals are adopted | control-flow.mdx §Declarations in Conditions; DECISIONS Locked | covered | `14/*` (6 cases) |
 | 13.18 | a conditional declaration's binding is scoped to the construct and to nothing after it | control-flow.mdx §Blocks; poc README | covered | `14/conditional-declaration-binding-is-visible-in-else` (provisional, noted), `14/conditional-declaration-binding-does-not-escape-the-construct` (TS2304) |
-| 13.19 | an unprovable conditional-declaration shape is rejected | poc README SMITHERS1717 | covered | `14/conditional-declaration-with-a-braceless-branch-is-rejected`, `14/conditional-declaration-with-var-is-rejected` |
+| 13.19 | an unprovable conditional-declaration shape is rejected | poc README VIBE1717 | covered | `14/conditional-declaration-with-a-braceless-branch-is-rejected`, `14/conditional-declaration-with-var-is-rejected` |
 | 13.20 | infinite loops, unreachable completion, nested label selection | control-flow.mdx §Loop Else ("not finalized") | unwritable | **blocked on an Open decision.** The one enforceable consequence — a cross-construct break — is 13.16. |
-| 13.21 | **a value expression in an argument whose callee "cannot be proven order-stable"** (`SMITHERS1708`) | poc README; `poc/src/language/recover.ts:1337`. **No specification sentence requires the rejection** — control-flow.mdx requires that observable behaviour be preserved, which is a different claim | **deliberately NOT covered, and a case must not be written** | The case was written from the docs, measured, and **not landed**. The reference refuses `return pick()(score, if (on) { … } else { … })` because hoisting the branch would move it across a callee it cannot prove side-effect-free. The fork accepts it — and the acceptance was tested rather than assumed: with `pick()` and the branch each pushing to an observable log, the fork compiles the program and prints **`callee,arg`**, the authored order, byte-identical to the remedy the reference's own message prescribes (`const call = pick()`) and to the same program written with no expression-`if` at all. The fork's design documents say why (`compiler/GRAMMAR-SPIKE.md:832`: real `IfExpression` grammar, "there is no hoisting, so there is no evaluation order to preserve and no callee-stability proof to make"). **So this is a reference-side provability limitation, not a fork fail-open, and a corpus case declaring `SMITHERS1708` would turn the fork's correct behaviour into a conformance failure.** Its two siblings `SMITHERS1707` and `SMITHERS1709` are different: the fork implements both, and both are pinned at 13.10. Recorded here rather than in the corpus, which is the same convention `SMITHERS5215` is under. |
+| 13.21 | **a value expression in an argument whose callee "cannot be proven order-stable"** (`VIBE1708`) | poc README; `poc/src/language/recover.ts:1337`. **No specification sentence requires the rejection** — control-flow.mdx requires that observable behaviour be preserved, which is a different claim | **deliberately NOT covered, and a case must not be written** | The case was written from the docs, measured, and **not landed**. The reference refuses `return pick()(score, if (on) { … } else { … })` because hoisting the branch would move it across a callee it cannot prove side-effect-free. The fork accepts it — and the acceptance was tested rather than assumed: with `pick()` and the branch each pushing to an observable log, the fork compiles the program and prints **`callee,arg`**, the authored order, byte-identical to the remedy the reference's own message prescribes (`const call = pick()`) and to the same program written with no expression-`if` at all. The fork's design documents say why (`compiler/GRAMMAR-SPIKE.md:832`: real `IfExpression` grammar, "there is no hoisting, so there is no evaluation order to preserve and no callee-stability proof to make"). **So this is a reference-side provability limitation, not a fork fail-open, and a corpus case declaring `VIBE1708` would turn the fork's correct behaviour into a conformance failure.** Its two siblings `VIBE1707` and `VIBE1709` are different: the fork implements both, and both are pinned at 13.10. Recorded here rather than in the corpus, which is the same convention `VIBE5215` is under. |
 
 ## 14. Cleanup
 
 > [!WARNING]
 > **Every row in this section is history, not live coverage.** The 2026-08-23
 > withdrawal removed `defer` and `errdefer` along with the rest of the fork's
-> grammar patches, and `10-defer/` is an **empty directory — 0 `.sm` files**,
+> grammar patches, and `10-defer/` is an **empty directory — 0 `.vibe` files**,
 > measured against the tree on 2026-08-26. §14.1–§14.7 cite **9 case names
 > that no longer exist**.
 >
 > §14.7 is the row this matters most for: it reads "**covered** …
 > **`10/async-errdefer-cannot-inspect-a-directly-returned-promise`**, green on
-> both", and the SMITHERS code census likewise records `SMITHERS1713` as
+> both", and the VIBE code census likewise records `VIBE1713` as
 > "**WRITTEN this revision**". Both sentences were true when written and are
 > now claims about a deleted file, so the code they cover is unprobed —
 > though the rule itself went with the grammar. §14.8 was already
@@ -3041,11 +3664,11 @@ makes the row itself observable for the first time.
 | --- | --- | --- | --- | --- |
 | 14.1 | `defer` registers cleanup for every scope exit | failures.mdx §Cleanup; control-flow.mdx §Deferred Cleanup | covered | `10/defer-runs-on-every-exit-in-reverse-order` |
 | 14.2 | `errdefer` registers cleanup for a Result error exit only | failures.mdx §Cleanup | covered | `10/errdefer-runs-only-on-the-error-variant`, `10/errdefer-runs-on-unwrap-propagation`, `10/defer-and-errdefer-interleave-in-one-lifo-order` |
-| 14.3 | `errdefer` needs a Result owner | poc README SMITHERS1711 | covered | `10/errdefer-without-a-result-owner-is-rejected` |
+| 14.3 | `errdefer` needs a Result owner | poc README VIBE1711 | covered | `10/errdefer-without-a-result-owner-is-rejected` |
 | 14.4 | multiple deferred operations run in one deterministic order | control-flow.mdx §Deferred Cleanup (**candidate LIFO, not locked**) | covered *as POC evidence* | `10/defer-runs-on-every-exit-in-reverse-order`, `10/defer-and-errdefer-interleave-in-one-lifo-order` — both `notes` fields record that the ordering is not yet locked, so a deliberate change is visible rather than silent |
-| 14.5 | an unsupported `defer` placement or cleanup shape is rejected | poc README SMITHERS1710/1712 | covered | `10/defer-cleanup-must-be-on-the-marker-line`, `10/defer-cleanup-that-can-fail-is-rejected` |
+| 14.5 | an unsupported `defer` placement or cleanup shape is rejected | poc README VIBE1710/1712 | covered | `10/defer-cleanup-must-be-on-the-marker-line`, `10/defer-cleanup-that-can-fail-is-rejected` |
 | 14.6 | an async owner accepts a root awaited plain-Promise cleanup | poc README | covered | `10/async-defer-awaits-its-cleanup` |
-| 14.7 | an async `errdefer` tail returning an unawaited Promise is rejected (`SMITHERS1713`) | poc README | **covered** | **`10/async-errdefer-cannot-inspect-a-directly-returned-promise`**, green on both. The previous revision recorded this as **partial** with the reason "isolating `1713` needs a narrower program", and that reason was correct and is now discharged: the narrower program has an async owner, an `errdefer` whose cleanup is a plain `void` call that cannot itself fail (so `SMITHERS1712` does not fire) and a Result-returning callee awaited nowhere (so `SMITHERS1402` does not fire either), leaving `SMITHERS1713` alone at the RETURN statement. The rule is the one 14.2 depends on: `errdefer` runs only on the error variant, so it must inspect the Result, and a directly returned Promise settles after the `finally` that would run the cleanup — both available guesses lose an obligation. A POC-boundary gate, not a specification sentence, and declared as such. |
+| 14.7 | an async `errdefer` tail returning an unawaited Promise is rejected (`VIBE1713`) | poc README | **covered** | **`10/async-errdefer-cannot-inspect-a-directly-returned-promise`**, green on both. The previous revision recorded this as **partial** with the reason "isolating `1713` needs a narrower program", and that reason was correct and is now discharged: the narrower program has an async owner, an `errdefer` whose cleanup is a plain `void` call that cannot itself fail (so `VIBE1712` does not fire) and a Result-returning callee awaited nowhere (so `VIBE1402` does not fire either), leaving `VIBE1713` alone at the RETURN statement. The rule is the one 14.2 depends on: `errdefer` runs only on the error variant, so it must inspect the Result, and a directly returned Promise settles after the `finally` that would run the cleanup — both available guesses lose an obligation. A POC-boundary gate, not a specification sentence, and declared as such. |
 | 14.8 | async finalization, defects, cancellation, cleanup-error composition | failures.mdx §Cleanup ("require further normative specification") | unwritable | **blocked on an Open decision** — explicitly unspecified by the page that would define it |
 
 ## 15. Cross-module rows and generics
@@ -3054,18 +3677,18 @@ makes the row itself observable for the first time.
 | --- | --- | --- | --- | --- |
 | 15.1 | rows propagate across modules through direct static calls | poc README | covered | `15/generic-row-instantiation`, `05/requirement-propagates-across-modules` |
 | 15.2 | a polymorphic row template instantiates per call site | poc README | covered | `15/generic-row-instantiation` |
-| 15.3 | an unresolved row variable fails closed | poc README SMITHERS1803 | covered | `15/unresolved-row-variable-is-rejected` |
-| 15.4 | a value escaping direct static-call analysis fails closed — **and an ordinary CALL does not** | poc README SMITHERS1802; requirements.mdx §Inference ("Requirement inference MUST be transitive through **ordinary calls**"); compatibility.mdx's fail-closed principle ("any construct whose lowering depends on information the file alone does not carry") | **covered, six cases, and until 2026-08-25 exactly one shape of the rule was probed** | The refusals: `15/higher-order-escape-is-rejected` (the alias escape, unchanged and byte-identical across the fix), **`15/an-object-literal-shorthand-escape-is-rejected`** — `{ count }` compiled on **both** backends where `{ count: count }` was refused, a live fail-open — **`15/a-tagged-template-callee-is-rejected`** and **`15/a-parameter-default-callee-is-rejected`**, both fail-closed because the callee's requirement row is charged **nowhere**, measured rather than assumed, and the second of which the fork used to accept. The acceptances: **`15/a-top-level-cross-module-call-is-an-ordinary-call`** (the `poc/src/data/**` shape — call edges were collected per function *body*, so a top-level call had none and the reference refused it while the fork accepted it), **`15/a-parenthesized-callee-is-an-ordinary-call`** (refused on both, while both already charged the row through the parentheses) and **`15/a-re-exported-binding-is-not-an-escape`**. The pair is the whole point: a rule that refuses a *value* and a rule that refuses a *call* are indistinguishable to a corpus that only ever asked about the value. Note what deliberately stays refused — an `as`-cast callee `(f as () => number)()` charges no row on either backend, so the relaxation stops at parentheses. |
-| 15.5 | an instantiation must nominally cover a callback's declared row | poc README SMITHERS1806 | covered | `15/callback-row-must-be-nominally-covered` |
-| 15.6 | a missing relative `.sm` module fails closed | poc README SMITHERS1801 | covered | `15/missing-relative-module-is-rejected` |
-| 15.7 | **an import of a name the module does not export fails closed** | poc README SMITHERS1804 | covered | **`15/importing-a-name-a-module-does-not-export-is-rejected`** — the sibling half of 15.6: the module is there and the *name* is not, so the binding would otherwise carry an empty row rather than an unknown one |
+| 15.3 | an unresolved row variable fails closed | poc README VIBE1803 | covered | `15/unresolved-row-variable-is-rejected` |
+| 15.4 | a value escaping direct static-call analysis fails closed — **and an ordinary CALL does not** | requirements.mdx §Inference ("Requirement inference MUST be transitive through ordinary calls"); compatibility.mdx §Transform-Only Builds' fail-closed principle | **covered, seven cases; native parameter-default wall retired 2026-09-07** | Alias and shorthand value escapes remain refused by `15/higher-order-escape-is-rejected` and `15/an-object-literal-shorthand-escape-is-rejected`; `15/a-tagged-template-callee-is-rejected` retains its existing refusal. Ordinary calls are covered at module scope, through parentheses, and through a re-exported binding. `15/a-parameter-default-callee-is-rejected` retains its historical id but now expects the unchanged program to print `0`: native analysis charges parameter initialization to the called function, including cross-module calls. A JS-only marker records the legacy emitter's remaining `VIBE1802@3:38` refusal. Native unit tests enforce missing-provider refusal, provided execution, nested defaults and source-free published rows; the pure corpus case alone cannot prove those properties. History: the default case required rejection while neither frontend attributed its requirement row. That implementation safety wall was never a normative prohibition on parameter defaults. |
+| 15.5 | an instantiation must nominally cover a callback's declared row | poc README VIBE1806 | covered | `15/callback-row-must-be-nominally-covered` |
+| 15.6 | a missing relative `.vibe` module fails closed | poc README VIBE1801 | covered | `15/missing-relative-module-is-rejected` |
+| 15.7 | **an import of a name the module does not export fails closed** | poc README VIBE1804 | covered | **`15/importing-a-name-a-module-does-not-export-is-rejected`** — the sibling half of 15.6: the module is there and the *name* is not, so the binding would otherwise carry an empty row rather than an unknown one |
 | 15.8 | row members carry module-qualified nominal identity | poc README | covered | `04/same-named-errors-in-two-modules` |
 
 ## 16. Retired syntax — `19-retired-syntax/` (38 cases)
 
 DECISIONS locks the *absence* of these forms; the poc README records that each
-receives a migration diagnostic (`SMITHERS1001`). A compiler that silently
-accepted one would be accepting a language Smithers does not have.
+receives a migration diagnostic (`VIBE1001`). A compiler that silently
+accepted one would be accepting a language VibeLang does not have.
 
 | # | retired form | replacement | status | case |
 | --- | --- | --- | --- | --- |
@@ -3090,17 +3713,17 @@ accepted one would be accepting a language Smithers does not have.
 | 17.3 | built-in Markdown and MDX loaders | DECISIONS Locked; comptime.mdx | **partial** | **`23/a-markdown-import-exposes-its-source-and-locations`**, **`23/an-mdx-import-produces-a-component-module`**. The **locked** halves are pinned: Markdown's raw-source default, MDX's component vocabulary, MDX expression holes as never-evaluated identifier placeholders, and "Markdown and MDX MUST preserve source locations" — observed by slicing the raw source at the offset the loader reported for a heading and getting that heading back. The **open** half is not claimed: the exported module shapes are explicitly open, so the cases read the provisional `frontmatter`/`headings`/`components`/`expressions` exports only as the channel carrying the locked facts, and say so. |
 | 17.4 | user-defined comptime loaders | DECISIONS Locked | **partial** | The *input* half is covered: **`23/the-type-attribute-selects-the-loader-not-the-extension`** stages a `.yaml` — an extension no built-in claims — and reads it because the attribute named a loader. The *registration* half is not, and is **blocked on an Open decision** (ledger item 7, "Specify the comptime loader registration API"; `ASSET_LOADERS.md` calls the `comptime.loader("yaml", fn)` spelling provisional and "not a locked production contract"). Writing it would also bind the corpus to the POC's Deno loader sandbox, which the Go backend has no counterpart for, so a registration case would be a `js`-only measurement of a provisional spelling. |
 | 17.5 | file extensions do not create a second implicit loader-selection grammar | DECISIONS Locked | covered | **`23/the-type-attribute-selects-the-loader-not-the-extension`** — both directions in one program: a `.md` asked for as `text` comes back as raw text rather than the Markdown module shape, and a `.yaml` is readable only because the attribute named a loader. |
-| 17.6 | a relative `.sm` import resolves within the supplied project, or fails closed | poc README SMITHERS1801/1804 | covered | `15/missing-relative-module-is-rejected`, `15/importing-a-name-a-module-does-not-export-is-rejected`, `15/generic-row-instantiation` |
+| 17.6 | a relative `.vibe` import resolves within the supplied project, or fails closed | poc README VIBE1801/1804 | covered | `15/missing-relative-module-is-rejected`, `15/importing-a-name-a-module-does-not-export-is-rejected`, `15/generic-row-instantiation` |
 | 17.7 | file imports are first-class incremental build nodes | DECISIONS **Direction** | unwritable | **blocked on an Open decision**, and each case gets a fresh comptime *and* asset cache inside its own staging tree, so the corpus cannot observe incremental identity at all. Deliberate: a corpus that shared warm state between cases would not be measuring one program at a time. |
-| 17.8 | a non-code import with no `type` attribute is rejected rather than guessed from the extension | comptime.mdx §Built-In Formats; DECISIONS Locked | covered | **`23/an-asset-import-without-a-type-attribute-is-rejected`** (`SMITHERS5201` at the import declaration). The fail-closed direction of 17.1: the file exists and a JSON loader is registered, and the import is still refused because nothing named the loader. |
-| 17.9 | the withdrawn `assert { ... }` spelling does not select a loader | comptime.mdx §Built-In Formats ("**standard** import attributes"); guide/asset-imports.mdx | covered | **`23/the-legacy-assert-attribute-spelling-is-rejected`** (`SMITHERS5202` at the attribute clause). Load-bearing because `assert { type: "json" }` still parses: accepting it would leave two selection grammars in the language. |
-| 17.10 | a type-only asset import, and a specifier that escapes the project root, fail closed | guide/asset-imports.mdx; ASSET_LOADERS.md (Locked) | covered | **`23/a-type-only-asset-import-is-rejected`** (`SMITHERS5208`; an erased import would take a loader's types without leaving the runtime binding or the build-graph node), **`23/an-asset-path-outside-the-project-root-is-rejected`** (`SMITHERS5209` at the specifier). The second measures the *specifier*: a real `counter.json` is staged inside the root and the escaping spelling is refused anyway. The "exists but outside the root" variant cannot be staged — see gap #7. |
-| 17.11 | loading happens during compilation and adds no runtime platform requirement | ASSET_LOADERS.md (Locked) | **UNCOVERED since 2026-08-23 — its only observation channel was withdrawn.** The obligation stands; the case is deleted because it observed the rule through a native pin, and no surviving `.sm`-observable channel reports a platform requirement. Unit-level only: `compiler/fork_asset_test.go` and the artifact assertion in `compiler/fork_reexport_test.go`. What follows is the pre-withdrawal record. | **`23/an-asset-import-adds-no-runtime-platform-requirement`** (deleted). The previous revision recorded this as the most serious finding on the page, with **both** backends contradicting it. **Both markers are retired**: the reference's portability pass now knows which relative imports the source-asset stage owns, and the fork now has a source-asset stage. Measured `XPASS` on both backends before the markers were deleted, and both now print `production/2`. The retirement and the observation it replaces are recorded in the case's own `notes`. |
+| 17.8 | a non-code import with no `type` attribute is rejected rather than guessed from the extension | comptime.mdx §Built-In Formats; DECISIONS Locked | covered | **`23/an-asset-import-without-a-type-attribute-is-rejected`** (`VIBE5201` at the import declaration). The fail-closed direction of 17.1: the file exists and a JSON loader is registered, and the import is still refused because nothing named the loader. |
+| 17.9 | the withdrawn `assert { ... }` spelling does not select a loader | comptime.mdx §Built-In Formats ("**standard** import attributes"); guide/asset-imports.mdx | covered | **`23/the-legacy-assert-attribute-spelling-is-rejected`** (`VIBE5202` at the attribute clause). Load-bearing because `assert { type: "json" }` still parses: accepting it would leave two selection grammars in the language. |
+| 17.10 | a type-only asset import, and a specifier that escapes the project root, fail closed | guide/asset-imports.mdx; ASSET_LOADERS.md (Locked) | covered | **`23/a-type-only-asset-import-is-rejected`** (`VIBE5208`; an erased import would take a loader's types without leaving the runtime binding or the build-graph node), **`23/an-asset-path-outside-the-project-root-is-rejected`** (`VIBE5209` at the specifier). The second measures the *specifier*: a real `counter.json` is staged inside the root and the escaping spelling is refused anyway. The "exists but outside the root" variant cannot be staged — see gap #7. |
+| 17.11 | loading happens during compilation and adds no runtime platform requirement | ASSET_LOADERS.md (Locked) | **UNCOVERED since 2026-08-23 — its only observation channel was withdrawn.** The obligation stands; the case is deleted because it observed the rule through a native pin, and no surviving `.vibe`-observable channel reports a platform requirement. Unit-level only: `compiler/fork_asset_test.go` and the artifact assertion in `compiler/fork_reexport_test.go`. What follows is the pre-withdrawal record. | **`23/an-asset-import-adds-no-runtime-platform-requirement`** (deleted). The previous revision recorded this as the most serious finding on the page, with **both** backends contradicting it. **Both markers are retired**: the reference's portability pass now knows which relative imports the source-asset stage owns, and the fork now has a source-asset stage. Measured `XPASS` on both backends before the markers were deleted, and both now print `production/2`. The retirement and the observation it replaces are recorded in the case's own `notes`. |
 
-| 17.13 | **`export * from` an asset is rejected; the attributed named/namespace form is not** | ASSET_LOADERS.md (Locked) "The required string-valued `type` selects its loader"; the same page names "bare star re-exports" as unsupported and "attributed named/namespace re-exports" as integrated, in one sentence | covered | **`23/a-bare-star-re-export-of-an-asset-is-rejected`** (`SMITHERS5206` at the statement, 1:1 — its `SMITHERS5207` sibling three lines away in the same walk reports on the *specifier*, which is what distinguishes them) and its acceptance control **`23/a-namespace-re-export-of-an-asset-is-accepted`**. The control is not decoration: the fork's asset discovery and lowering were import-only until this session, so "refuses every asset re-export" was a live way to satisfy the refusal case. |
-| 17.14 | **an asset specifier must be relative** | ASSET_LOADERS.md (Locked) "Loaders use compiler-tracked asset imports rather than ambient filesystem … access"; ":192 Loader identity must be stable across machines. Package resolution and its lock …" | covered | **`23/a-non-relative-asset-specifier-is-rejected`** (`SMITHERS5207` at the specifier). The fail-open is not a missing file — `config.json` **is** staged at the root — but a compile-time read whose input the build graph cannot name, because package resolution depends on `node_modules` layout rather than on anything the graph records. |
-| 17.15 | **a loader that cannot build its asset fails the compile, at the import** | ASSET_LOADERS.md (Locked) "Loading happens during compilation"; "Loader diagnostics … participate in normal type-checking, editor, and source-map behavior" | covered | **`23/a-loader-that-cannot-read-its-asset-fails-the-compile`** (`SMITHERS5213` at the import). `conformance/assets/truncated.json` is a real staged file that is not valid JSON, so the loader is genuinely selected, genuinely runs and genuinely fails — which is what separates this from a missing-file case. No `messageContains`: the two backends report the underlying parser's own words, so the message is a third party's text and is not the contract. |
-| 17.16 | **a dynamic asset import needs a literal specifier and a literal attribute object** | ASSET_LOADERS.md (Locked), twice: the static-selection rule, and "Loading happens during compilation. It does not add `FileSystem` or another runtime platform requirement to the importing program." The page names the spelling: "nonliteral dynamic imports/attributes … remain unsupported." | **covered, `xfail go`** | **`23/a-non-literal-dynamic-asset-import-is-rejected`** (`SMITHERS5218` at the `import(` call). **This is the finding of this revision.** The fork compiles the program clean and emits a **runtime** dynamic import of the asset; the emitted JavaScript exits 1 under node with `ERR_MODULE_NOT_FOUND` for `config.json`. See the `xfail` register. |
+| 17.13 | **`export * from` an asset is rejected; the attributed named/namespace form is not** | ASSET_LOADERS.md (Locked) "The required string-valued `type` selects its loader"; the same page names "bare star re-exports" as unsupported and "attributed named/namespace re-exports" as integrated, in one sentence | covered | **`23/a-bare-star-re-export-of-an-asset-is-rejected`** (`VIBE5206` at the statement, 1:1 — its `VIBE5207` sibling three lines away in the same walk reports on the *specifier*, which is what distinguishes them) and its acceptance control **`23/a-namespace-re-export-of-an-asset-is-accepted`**. The control is not decoration: the fork's asset discovery and lowering were import-only until this session, so "refuses every asset re-export" was a live way to satisfy the refusal case. |
+| 17.14 | **an asset specifier must be relative** | ASSET_LOADERS.md (Locked) "Loaders use compiler-tracked asset imports rather than ambient filesystem … access"; ":192 Loader identity must be stable across machines. Package resolution and its lock …" | covered | **`23/a-non-relative-asset-specifier-is-rejected`** (`VIBE5207` at the specifier). The fail-open is not a missing file — `config.json` **is** staged at the root — but a compile-time read whose input the build graph cannot name, because package resolution depends on `node_modules` layout rather than on anything the graph records. |
+| 17.15 | **a loader that cannot build its asset fails the compile, at the import** | ASSET_LOADERS.md (Locked) "Loading happens during compilation"; "Loader diagnostics … participate in normal type-checking, editor, and source-map behavior" | covered | **`23/a-loader-that-cannot-read-its-asset-fails-the-compile`** (`VIBE5213` at the import). `conformance/assets/truncated.json` is a real staged file that is not valid JSON, so the loader is genuinely selected, genuinely runs and genuinely fails — which is what separates this from a missing-file case. No `messageContains`: the two backends report the underlying parser's own words, so the message is a third party's text and is not the contract. |
+| 17.16 | **a dynamic asset import needs a literal specifier and a literal attribute object** | ASSET_LOADERS.md (Locked), twice: the static-selection rule, and "Loading happens during compilation. It does not add `FileSystem` or another runtime platform requirement to the importing program." The page names the spelling: "nonliteral dynamic imports/attributes … remain unsupported." | **covered, `xfail go`** | **`23/a-non-literal-dynamic-asset-import-is-rejected`** (`VIBE5218` at the `import(` call). **This is the finding of this revision.** The fork compiles the program clean and emits a **runtime** dynamic import of the asset; the emitted JavaScript exits 1 under node with `ERR_MODULE_NOT_FOUND` for `config.json`. See the `xfail` register. |
 
 **This was the largest area with zero coverage; it is now the largest area of
 new coverage.** Two revisions ago it said: "What remains open here is genuinely
@@ -3112,22 +3735,22 @@ this is the second revision to reduce that number:
 
 | # | the asset-code census, re-measured | evidence |
 | --- | --- | --- |
-| 17.12 | `poc/src/build/source-assets.ts` emits **19** asset codes, `SMITHERS5201`–`SMITHERS5219`. The corpus now declares **eleven**: `5201`, `5202`, `5203`, `5204`, `5205`, `5206`, `5207`, `5208`, `5209`, `5213`, `5218`. **Eight** are unpinned: `5210`, `5211`, `5212`, `5214`, `5215`, `5216`, `5217`, `5219`. Four (`5201`, `5202`, `5208`, `5209`) two revisions ago; seven one revision ago; eleven now. | `grep -oh 'SMITHERS52[0-9][0-9]' poc/src/build/source-assets.ts \| sort -u \| wc -l` → 19; `grep -roh '"code": "SMITHERS52[0-9][0-9]"' conformance/corpus/ \| grep -o 'SMITHERS[0-9]*' \| sort -u \| wc -l` → 11; `comm -23` of the two → the eight |
+| 17.12 | `poc/src/build/source-assets.ts` emits **19** asset codes, `VIBE5201`–`VIBE5219`. The corpus now declares **eleven**: `5201`, `5202`, `5203`, `5204`, `5205`, `5206`, `5207`, `5208`, `5209`, `5213`, `5218`. **Eight** are unpinned: `5210`, `5211`, `5212`, `5214`, `5215`, `5216`, `5217`, `5219`. Four (`5201`, `5202`, `5208`, `5209`) two revisions ago; seven one revision ago; eleven now. | `grep -oh 'VIBE52[0-9][0-9]' poc/src/build/source-assets.ts \| sort -u \| wc -l` → 19; `grep -roh '"code": "VIBE52[0-9][0-9]"' conformance/corpus/ \| grep -o 'VIBE[0-9]*' \| sort -u \| wc -l` → 11; `comm -23` of the two → the eight |
 
 The previous revision pinned the three that make loader selection *static* —
-`SMITHERS5203`, `SMITHERS5204`, `SMITHERS5205` — through four cases:
+`VIBE5203`, `VIBE5204`, `VIBE5205` — through four cases:
 
 | case | pins |
 | --- | --- |
-| **`23/a-non-identifier-import-attribute-name-is-rejected`** | `SMITHERS5203`. `_mode` is one character from the real selector and matches no admitted name; accepting it carries an unvalidated key into the loader options *and* into the asset's cache/identity key, so a typo becomes a distinct compiled artifact. |
-| **`23/a-duplicate-import-attribute-is-rejected`** | `SMITHERS5204`, and it is the highest-consequence of the four: a last-wins implementation does not merely accept the program, it compiles a JSON file through the `text` loader. Same source, different value, no diagnostic anywhere. |
-| **`23/a-computed-import-attribute-value-is-rejected`** | `SMITHERS5205` + the `SMITHERS5201` that follows from no loader being named. The identifier is declared above with the value `"json"` precisely so an implementation that resolved it would find a real loader and compile. |
+| **`23/a-non-identifier-import-attribute-name-is-rejected`** | `VIBE5203`. `_mode` is one character from the real selector and matches no admitted name; accepting it carries an unvalidated key into the loader options *and* into the asset's cache/identity key, so a typo becomes a distinct compiled artifact. |
+| **`23/a-duplicate-import-attribute-is-rejected`** | `VIBE5204`, and it is the highest-consequence of the four: a last-wins implementation does not merely accept the program, it compiles a JSON file through the `text` loader. Same source, different value, no diagnostic anywhere. |
+| **`23/a-computed-import-attribute-value-is-rejected`** | `VIBE5205` + the `VIBE5201` that follows from no loader being named. The identifier is declared above with the value `"json"` precisely so an implementation that resolved it would find a real loader and compile. |
 | **`23/a-template-literal-import-attribute-value-is-rejected`** | the same pair, through a different predicate. A no-substitution template literal has the same TEXT as the string literal beside it, and `isStringLiteralLike` matches it while `isStringLiteral` does not — a fourth admission hole the accepted-surface census did not name. |
 
 **This revision took four more, prioritised the same way** — fail-open direction
-of the Locked static-selection rule first, unusual shapes last: `SMITHERS5207`
-(non-relative specifier), `SMITHERS5206` (bare star re-export), `SMITHERS5218`
-(non-literal dynamic import) and `SMITHERS5213` (loader failure), tabled at
+of the Locked static-selection rule first, unusual shapes last: `VIBE5207`
+(non-relative specifier), `VIBE5206` (bare star re-export), `VIBE5218`
+(non-literal dynamic import) and `VIBE5213` (loader failure), tabled at
 17.13–17.16 above, plus one acceptance control.
 
 **The eight that were skipped, each with its reason.** These are measurements,
@@ -3135,14 +3758,14 @@ not guesses; three of them changed a previously recorded reason.
 
 | code | what it rejects | why no case |
 | --- | --- | --- |
-| `SMITHERS5210` | asset hard-link aliases | needs two directory entries for one inode inside the staged project. The `assets` staging channel copies files, and the Go bridge stages entirely in-request with no filesystem identity at all, so the two backends could not be asked the same question. |
-| `SMITHERS5211` | asset graph exceeds *N* files (`:1172`) | the case would have to ship the ceiling. §21.4 records that the CLI side of this same limit is untested too, so **both** enforcements are unmeasured. |
-| `SMITHERS5212` | asset graph exceeds *N* bytes (`:1176`) | same, and the fixture would dominate the repository. Reference-only: not in the fork's code set. |
-| `SMITHERS5214` | loader-emitted diagnostics, passed through with the loader's own `level` | **not observable.** The level may be a warning, and observation gap #11 records that the harness filters to `severity === "error"` on both backends. Reference-only as well. |
-| `SMITHERS5215` | one path being both an asset module and a code module | **measured and deliberately not landed** — the reference reports `SMITHERS5215@1:20` and the fork reports `SMITHERS5209` at the same position, and which of those is right cannot be decided from the conformance side. Full reasoning in §"Rules both implementations have and no case probes". |
-| `SMITHERS5216` | a generated asset identity colliding with a real path | the staged path is derived from the asset's content digest, so a case would hard-code a digest and break when the fixture's bytes changed. |
-| `SMITHERS5217` | a generated-module construction failure | carries a third party's exception text and is unreachable for any input a case can stage. `SMITHERS5213` covers the reachable half of "the loader failed" and **is** pinned. |
-| `SMITHERS5219` | nested generated-module graph invariants (cycle, depth, undeclared dependency, identity mismatch) | needs a loader that emits references to other assets, i.e. the `comptime.loader` registration API — which is **open** (17.4) and provisional. Reference-only. |
+| `VIBE5210` | asset hard-link aliases | needs two directory entries for one inode inside the staged project. The `assets` staging channel copies files, and the Go bridge stages entirely in-request with no filesystem identity at all, so the two backends could not be asked the same question. |
+| `VIBE5211` | asset graph exceeds *N* files (`:1172`) | the case would have to ship the ceiling. §21.4 records that the CLI side of this same limit is untested too, so **both** enforcements are unmeasured. |
+| `VIBE5212` | asset graph exceeds *N* bytes (`:1176`) | same, and the fixture would dominate the repository. Reference-only: not in the fork's code set. |
+| `VIBE5214` | loader-emitted diagnostics, passed through with the loader's own `level` | **not observable.** The level may be a warning, and observation gap #11 records that the harness filters to `severity === "error"` on both backends. Reference-only as well. |
+| `VIBE5215` | one path being both an asset module and a code module | **measured and deliberately not landed** — the reference reports `VIBE5215@1:20` and the fork reports `VIBE5209` at the same position, and which of those is right cannot be decided from the conformance side. Full reasoning in §"Rules both implementations have and no case probes". |
+| `VIBE5216` | a generated asset identity colliding with a real path | the staged path is derived from the asset's content digest, so a case would hard-code a digest and break when the fixture's bytes changed. |
+| `VIBE5217` | a generated-module construction failure | carries a third party's exception text and is unreachable for any input a case can stage. `VIBE5213` covers the reachable half of "the loader failed" and **is** pinned. |
+| `VIBE5219` | nested generated-module graph invariants (cycle, depth, undeclared dependency, identity mismatch) | needs a loader that emits references to other assets, i.e. the `comptime.loader` registration API — which is **open** (17.4) and provisional. Reference-only. |
 
 Ranking the unmeasured guards below the two genuinely-open items inverts the
 severity: an open decision costs nothing until it is made, and an unmeasured
@@ -3172,7 +3795,7 @@ other case measures its own rule.
 | 18.2 | a diagnostic reported after non-ASCII source text keeps its authored column | conformance/README.md ("**authored** 1-based coordinates"); compatibility.mdx §Source Relationship | covered | `22/diagnostic-columns-survive-non-ascii-source-text` — the go marker is **retired**; the fork used to report UTF-8 byte columns |
 | 18.3 | **any** named class extending `Error` is a nominal recoverable error, including one whose identifier is non-ASCII | failures.mdx §Error Classes | covered | `22/a-non-ascii-error-class-name-is-a-nominal-error` — the js marker is **retired**; the stable-Error-identity validator used to be ASCII-only |
 
-## 19. Comptime — `16-comptime/` (12 cases)
+## 19. Comptime — `16-comptime/` (18 cases as of 2026-09-05)
 
 The previous revision listed these obligations "so the census is complete" and
 assigned **no status to any of them**, on the grounds that the area was "owned by
@@ -3195,34 +3818,34 @@ completeness and cross-referenced rather than re-scored.
 
 | # | normative sentence (comptime.mdx) | status | reason / cases |
 | --- | --- | --- | --- |
-| 19.1 | comptime MUST use ordinary TypeScript call syntax, not a keyword (`:7`) | covered | every case imports `{ comptime }` from `smithers:comptime` and calls it |
+| 19.1 | comptime MUST use ordinary TypeScript call syntax, not a keyword (`:7`) | covered | every case imports `{ comptime }` from `vibelang:comptime` and calls it |
 | 19.2 | the compiler MUST recognize the **resolved binding**, not the identifier text (`:13`) | covered | `16/comptime-value-is-evaluated-during-compilation` imports `{ comptime as build }` and the aliased call still evaluates at compile time |
-| 19.3 | aliasing the import MUST preserve its meaning (`:13`) | covered | same case. **This corrects a claim made against this page:** an external triage reported that only the negative twin existed. The positive alias case is `comptime-value-is-evaluated-during-compilation.sm:1`. |
+| 19.3 | aliasing the import MUST preserve its meaning (`:13`) | covered | same case. **This corrects a claim made against this page:** an external triage reported that only the negative twin existed. The positive alias case is `comptime-value-is-evaluated-during-compilation.vibe:1`. |
 | 19.4 | an unrelated function named `comptime` MUST remain ordinary (`:13`) | covered | `16/an-unrelated-local-comptime-stays-an-ordinary-function` |
 | 19.5 | `comptime(value)` MUST be evaluated during compilation and the call replaced by the result (`:15`) | covered | `16/comptime-value-is-evaluated-during-compilation` — template strings, `join`, `toUpperCase`, `%`, `map`, `Object.keys` all resolve before emit |
-| 19.6 | `comptime(fn)` MUST return a compile-time function and **MUST NOT invoke it** merely because it was passed (`:17`) | **partial** | `16/comptime-function-is-interpreted-during-compilation` pins that *calling* the returned function evaluates at compile time. The **MUST NOT invoke** half is unpinned: no case passes a function whose invocation would be observable and then asserts the observation is absent. That is the fail-open direction and it is one cheap `expect: "output"` case away. |
+| 19.6 | `comptime(fn)` MUST return a compile-time function and **MUST NOT invoke it** merely because it was passed (`:17`) | **covered as of 2026-09-05, both halves** | `16/comptime-function-is-interpreted-during-compilation` pins that *calling* the returned function evaluates at compile time. The **MUST NOT invoke** half is `16/a-function-passed-to-comptime-is-not-invoked`, which was the one cheap `expect: "output"` case this row said it was: the merely-passed function's body is exactly the unbounded loop `an-unbounded-comptime-loop-exhausts-its-step-budget` refuses with `VCT1012` when invoked, so a pass that invoked it turns this case into a diagnostic instead of output, and a second, called compile-time function in the same program is the control that evaluation itself still works. |
 | 19.7 | every call of a compile-time function MUST be evaluated during compilation (`:17`) | covered | same case: locals, assignment, `for…of`, `while`, `break`, `continue`, and container mutation all run before emit |
-| 19.8 | the compiler MUST erase or lower recognized imports and calls (`:26`) | covered structurally | every green output case runs with no `smithers:comptime` module present at runtime |
-| 19.9 | uncompiled JavaScript execution MUST **fail during virtual-module loading** rather than provide a runtime fallback (`:26`) | **uncovered** | The mechanism exists and is verified present for the sibling module: `poc/src/build/schema-derive.ts:29-30` emits a stub whose top-level `throw` rejects dependency evaluation before an importing module runs. Nothing measures the `smithers:comptime` equivalent, and the harness cannot: it compiles every case, so the uncompiled path is unreachable by construction. Closing this is a unit test, not a corpus case. |
+| 19.8 | the compiler MUST erase or lower recognized imports and calls (`:26`) | covered structurally | every green output case runs with no `vibelang:comptime` module present at runtime |
+| 19.9 | uncompiled JavaScript execution MUST **fail during virtual-module loading** rather than provide a runtime fallback (`:26`) | **uncovered** | The mechanism exists and is verified present for the sibling module: `poc/src/build/schema-derive.ts:29-30` emits a stub whose top-level `throw` rejects dependency evaluation before an importing module runs. Nothing measures the `vibelang:comptime` equivalent, and the harness cannot: it compiles every case, so the uncompiled path is unreachable by construction. Closing this is a unit test, not a corpus case. |
 | 19.10 | the compiler **MAY** evaluate automatically (`:30`) | not an obligation | a MAY with no fail direction |
 | 19.11 | an explicit `comptime(...)` MUST be evaluated; compilation MUST fail if it cannot be (`:32`) | covered | `16/a-comptime-value-that-is-not-canonical-data-is-rejected` (`VCT1005`) |
 | 19.12 | comptime MUST NOT silently defer explicit work to runtime (`:34`) | covered | same case — the failure is a diagnostic, not a deferral |
-| 19.13 | a generated type MUST participate in ordinary checking, declarations, diagnostics, and editor behavior (`:38`) | **partial** | `16/comptime-binding-used-in-type-position` pins the checking half (a comptime binding read in type position gains a same-named literal type alias and keeps its value). Declarations, diagnostics, and **editor behavior** are not observable from a `.sm` program's stdout; the LSP half is `test/lsp.test.mjs`'s territory and §21's. |
-| 19.14 | the language MUST NOT require a separate `runtime type` declaration modifier (`:40`) | **uncovered** | This is a retired-syntax-shaped obligation with an exact home — `19-retired-syntax` — and no case. DECISIONS locks the same absence. The corpus pins the absence of ten other retired forms (§16); this eleventh one is missing for no reason anybody recorded. |
-| 19.15 | comptime MUST be hermetic and deterministic with respect to declared inputs (`:44`) | **partial** | the two cases below are the only evidence |
-| 19.16 | comptime MUST NOT observe **seven** named ambient sources: filesystem, network, environment variables, process state, wall clock, randomness, mutable host state (`:46-54`) | **partial — two of seven** | covered: wall clock (`16/the-wall-clock-is-unreachable-from-comptime`, `VCT1004`) and randomness (`16/randomness-is-unreachable-from-inside-a-comptime-loop`, `VCT1004`). **Uncovered: filesystem, network, environment variables, process state, and mutable host state.** All five are siblings of the two that exist, use the same diagnostic, and would be near-copies of cases already in the tree. Fail-open direction: an ambient read that slips through makes a "hermetic" compile-time value host-dependent, and every downstream cache identity that includes it becomes wrong rather than merely stale. |
+| 19.13 | a generated type MUST participate in ordinary checking, declarations, diagnostics, and editor behavior (`:38`) | **partial** | `16/comptime-binding-used-in-type-position` pins the checking half (a comptime binding read in type position gains a same-named literal type alias and keeps its value). Declarations, diagnostics, and **editor behavior** are not observable from a `.vibe` program's stdout; the LSP half is `test/lsp.test.mjs`'s territory and §21's. |
+| 19.14 | the language MUST NOT require a separate `runtime type` declaration modifier (`:40`) | **covered as of 2026-09-05** | `19/runtime-type-modifier-is-not-claimed` — the modifier spelling is refused by the grammar gate (`VIBE1000@1:1`) rather than parsed as a modifier or read as an expression statement followed by an ordinary alias. The eleventh retired-syntax-shaped absence now has its case in the exact home this row named; the positive half (an ordinary type participates in reification with no modifier) is `16/comptime-binding-used-in-type-position` and §22's new cases. |
+| 19.15 | comptime MUST be hermetic and deterministic with respect to declared inputs (`:44`) | **covered as evidence of 19.16's seven refusals** | the seven cases below are the evidence (was: two) |
+| 19.16 | comptime MUST NOT observe **seven** named ambient sources: filesystem, network, environment variables, process state, wall clock, randomness, mutable host state (`:46-54`) | **covered — seven of seven, as of 2026-09-05** | covered: wall clock (`16/the-wall-clock-is-unreachable-from-comptime`, `VCT1004`) and randomness (`16/randomness-is-unreachable-from-inside-a-comptime-loop`, `VCT1004`). **The other five closed 2026-09-05 as the near-copies this row predicted, all `VCT1004`:** environment variables (`16/the-environment-is-unreachable-from-comptime`, `process.env`), process state (`16/process-state-is-unreachable-from-comptime`, `process.pid` — a separately named source reached through the same ambient root, so the pair also pins that the refusal is of the binding), network (`16/the-network-is-unreachable-from-comptime`, `fetch`), mutable host state (`16/mutable-host-state-is-unreachable-from-comptime`, `globalThis`), and filesystem (`16/the-filesystem-is-unreachable-from-comptime`, an imported `node:fs` binding, because no supported host gives the filesystem an ambient global — the evaluator must refuse to evaluate the foreign import rather than execute it). |
 | 19.17 | an equivalent value **MAY** enter through a compiler-owned tracked input API (`:56`) | not an obligation | a MAY |
 | 19.18 | compiler-known imports and embedding MUST be supported; the compiler MUST record every such asset as an incremental dependency (`:60`) | **partial** | the import/embed half is §17's `23-asset-imports`. The **incremental-dependency** half is unobservable here: §17.7 records that each case gets a fresh comptime and asset cache inside its own staging tree, deliberately, so the corpus cannot observe incremental identity at all. |
 | 19.19 | arbitrary unavailable runtime I/O MUST NOT be performed merely because a call occurs beneath `comptime` (`:62`) | **partial** | the same two determinism cases; the other five ambient sources of 19.16 are the same gap seen from the other side |
 | 19.20 | `comptime.target` MUST be exposed as a typed value (`:66`) | covered | `16/comptime-target-selects-one-branch` (a target-selected branch is folded and the unselected arm is not emitted) and **`16/the-comptime-target-is-one-declared-input-for-both-backends`**, which reports the target itself rather than branching on one value. The second exists because the first could not fail: it branches on `=== "browser"`, and the two backends were being given *different* declared targets — `node-es2022` on the reference, `typescript-node` on the fork — which both take the same arm. Every comptime case was therefore two compilations of two different programs. One shared `comptimeTarget` constant in `conformance/runner/corpus.mjs` is now sent explicitly to both, and this case is the row that notices if that ever stops being true. |
 | 19.21 | a target-selected branch MUST NOT emit unselected runtime code (`:68`) | **partial** | the same case pins that the **selected** branch's value is what runs. It does not observe the **absence** of the unselected branch in emitted code, because the harness observes stdout and diagnostics, not emit. The case's title claims more than the case measures. |
 | 19.22 | target-dependent loaders and derived artifacts MUST include the target in their cache identity (`:68`) | **uncovered** | same reason as 19.18: no case can observe a cache key, and by design no case shares warm state with another |
-| 19.23 | Smithers MUST support comptime loaders for non-code assets (`:72`) | see §17.1–17.5 | audited there |
+| 19.23 | VibeLang MUST support comptime loaders for non-code assets (`:72`) | see §17.1–17.5 | audited there |
 | 19.24 | a loader MUST satisfy five clauses: immutable compiler-owned bytes, tracked transitive inputs, a checked typed module, preserved source spans, incremental caching (`:74-80`) | see §17.3, §17.4 | source spans pinned by `23/a-markdown-import-exposes-its-source-and-locations`; the registration half is blocked on an Open decision; incremental caching is 19.22's gap |
 | 19.25 | a loader MUST NOT use ambient filesystem, network, clock, random, or process access (`:82`) | **uncovered** | the loader sandbox exists (`poc/src/build/sandboxed-loader.ts`) and no case reaches it, because loader **registration** is blocked on an Open decision (§17.4). The rule is not open; the spelling that would let a case reach it is. |
 | 19.26 | the toolchain MUST include loaders for JSON, Markdown, and MDX (`:86`) | see §17.1, §17.3 | covered, green on both backends (markers retired) |
 | 19.27 | const JSON MUST preserve literals recursively and expose a deeply readonly type; existing TypeScript JSON imports MUST retain TypeScript semantics (`:88`) | see §17.2 | covered, green on both backends (markers retired) |
-| 19.28 | non-code inputs MUST select loader and mode with standard import attributes (`:90-96`) | see §17.1, §17.5, §17.8, §17.9 | **covered in full**, green on both backends. The **staticness** half was the uncovered `SMITHERS5203/5204/5205` trio; it is now four cases, listed in §17. |
+| 19.28 | non-code inputs MUST select loader and mode with standard import attributes (`:90-96`) | see §17.1, §17.5, §17.8, §17.9 | **covered in full**, green on both backends. The **staticness** half was the uncovered `VIBE5203/5204/5205` trio; it is now four cases, listed in §17. |
 | 19.29 | Markdown and MDX MUST preserve source locations (`:98`) | see §17.3 | covered |
 | 19.30 | a cache key MUST include every semantically relevant input, at minimum five named classes (`:102-108`) | **uncovered** | unobservable from the corpus for 19.22's reason. `poc/src/build/stable.ts` and the comptime cache are unit-test territory. |
 | 19.31 | file mtime alone SHOULD NOT invalidate content whose semantic key is unchanged (`:110`) | **uncovered** | same |
@@ -3237,7 +3860,7 @@ see and need unit tests rather than cases. `runtime type` (19.14) has an obvious
 home and no case. Five of the seven determinism cases would be near-copies of
 cases that already exist.
 
-## 20. Durable execution — `17-durable/` (27 cases)
+## 20. Durable execution — `17-durable/` (41 cases as of 2026-09-05)
 
 Same correction as §19: the previous revision listed these "so the census is
 complete" and scored none of them.
@@ -3253,14 +3876,23 @@ below, of which the great majority are MUST/MUST NOT
 (`grep -o MUST docs/src/pages/specification/durable-execution.mdx | wc -l` →
 **139**, counting each `MUST NOT` twice — the page was rewritten by migration
 steps 11–12 and this figure stood at 63 before that). The reference implements
-**30** durable diagnostic codes — 26 in the `SMITHERS41xx` family (`4100`–`4124`
-plus `4199`) and 4 in `SMITHERS42xx` (`4200`–`4203`) — measured with
-`grep -roh 'SMITHERS4[0-9]\{3\}' poc/src/durable/ | sort -u | wc -l` → 30.
+**30** durable diagnostic codes — 26 in the `VIBE41xx` family (`4100`–`4124`
+plus `4199`) and 4 in `VIBE42xx` (`4200`–`4203`) — measured with
+`grep -roh 'VIBE4[0-9]\{3\}' poc/src/durable/ | sort -u | wc -l` → 30.
 
 > [!WARNING]
-> **The corpus declares FIVE of the thirty: `SMITHERS4103`, `4110`, `4111`,
+> **The corpus declares NINE of the thirty as of 2026-09-05: `VIBE4100`,
+> `4103`, `4105`, `4110`, `4111`, `4112`, `4113`, `4124` and `4199`.** The
+> 2026-09-05 coverage lane added `4100` (the (SA-2) `Action.run` typing gap,
+> declared where the annotated sample's return literal fails), `4105` (a `let`
+> binding in a Flow body), `4113` (`Action.run` given a schema second argument),
+> `4199` (the Effect Manifest failing closed on a project-function call, on
+> recursion, and on an underivable durable contract — the boundary rules of
+> 20.13/20.14), and a second branch of `4103` (a `durable(...)` given two
+> arguments, at the CALL). The previous sentence follows.
+> **The corpus declares FIVE of the thirty: `VIBE4103`, `4110`, `4111`,
 > `4112` and `4124`** (2026-09-01).
-> This sentence read "declares seven — `SMITHERS4103`, `4106`, `4107`, `4110`,
+> This sentence read "declares seven — `VIBE4103`, `4106`, `4107`, `4110`,
 > `4111`, `4112` and `4124`", then "declares TWO", and both were wrong in
 > different ways. Migration step 11 felled the branch and loop walls
 > (`compiler/forkbridge/durable.go.txt:1046`:
@@ -3273,7 +3905,7 @@ plus `4199`) and 4 in `SMITHERS42xx` (`4200`–`4203`) — measured with
 > `…/two-error-classes-under-one-durable-identity-are-rejected` — against the
 > rules that SURVIVED the withdrawal rather than the ones it removed, because the
 > programs the old cases used no longer refuse.
-> **The fourth, `SMITHERS4106`, is not coming back: it is reported by NEITHER
+> **The fourth, `VIBE4106`, is not coming back: it is reported by NEITHER
 > implementation.** The intermediate sentence "the rules did not leave either
 > implementation — `4106`, `4111`, `4112` and `4124` are still spelled by both"
 > was produced by a grep that counted the `// WALL n (4106), withdrawn.` comments
@@ -3284,10 +3916,10 @@ plus `4199`) and 4 in `SMITHERS42xx` (`4200`–`4203`) — measured with
 > python3 -c 'import json,pathlib
 > s={d["code"] for p in pathlib.Path("conformance/corpus").rglob("*.expected.json")
 >    for d in json.loads(p.read_text()).get("diagnostics") or []}
-> print(sorted(c for c in s if c.startswith("SMITHERS4")))'   # 4103, 4110
+> print(sorted(c for c in s if c.startswith("VIBE4")))'   # 4103, 4110
 > ```
 
-(`SMITHERS4100` also appears
+(`VIBE4100` also appears
 under `conformance/corpus/17-durable/`, but only inside a `notes` field recording
 behaviour that was *retired*; it is not a declared diagnostic and nothing asserts
 it.)
@@ -3298,7 +3930,7 @@ discovered its graph by evaluating the source function against a proxy
 constant-folded branches out of a Plan, and **26 of 59 measured forms recorded a
 Plan that was not the program written** — one of which reached a
 signature-verified artifact. That defect was in the *runtime authoring* entry
-point (`poc/src/durable/authoring.ts`), not in the `.sm` path, and the `.sm` path
+point (`poc/src/durable/authoring.ts`), not in the `.vibe` path, and the `.vibe` path
 was measured failing closed on every one of those forms both before and after the
 fix. **So these cases do not reproduce a live defect and none of them was
 demonstrated failing pre-fix; they pin CURRENT behaviour on the normative path,**
@@ -3316,7 +3948,7 @@ plus position alone are satisfied by a backend that refused the identifier and
 never looked at the operator; see observation gap #5.
 
 **And the fork's side of this area was mis-measured until this revision.** This
-page's fork code-set command reads literal `SMITHERS[0-9]{4}` strings, and
+page's fork code-set command reads literal `VIBE[0-9]{4}` strings, and
 `compiler/forkbridge/durable.go.txt` builds every one of its durable codes by
 concatenating a prefix constant with a digit suffix (`durableCode("4103")`,
 `d.fail(node, "4104", …)`, `suffix: "4117"`). The fork implements **22** durable
@@ -3325,8 +3957,8 @@ codes — `4100`, `4103`–`4113`, `4115`–`4123`, `4199` — and this page cou
 `compiler/fork_durable_test.go`. So nineteen rules the two implementations
 **share** were being reported as reference-only, and the largest single block in
 "rules both implementations have and no case probes" was invisible. What is
-genuinely reference-only in this family is `SMITHERS4101`, `4102`, `4114` and the
-four `SMITHERS420x`. Two of the shared codes, `4100` and `4117`, turn out to mean
+genuinely reference-only in this family is `VIBE4101`, `4102`, `4114` and the
+four `VIBE420x`. Two of the shared codes, `4100` and `4117`, turn out to mean
 **different rules** in the two implementations; both are tabled in that section
 rather than written as cases.
 
@@ -3341,29 +3973,29 @@ sentence coverage much:
 | # | normative sentence (durable-execution.mdx) | status | reason / cases |
 | --- | --- | --- | --- |
 | 20.1 | durable execution MUST be opt-in; ordinary functions MUST remain ordinary and eager and MUST NOT be scheduled unless selected through an Action or Flow boundary (`:7`) | covered | `17/unrelated-local-durable-stays-ordinary` pins the negative; §2.15's structural argument covers the eager half |
-| 20.2 | a Flow MUST be declared with ordinary TypeScript call syntax from `smithers:flows` (`:11-24`) | covered | the positive cases import from `smithers:flows` and call it, and **`17/a-single-action-flow-lowers-to-a-static-plan`** is the minimal one. |
-| 20.2b | **`smithers:flows` is the ONLY compiler-owned durable specifier: any other spelling is an ordinary module** | DECISIONS Locked ("`smithers:flows` is a compiler-owned virtual module"); durable-execution.mdx:24 | **covered** | **`17/the-retired-vibelang-flows-specifier-is-not-compiler-owned`** — `SMITHERS1510` at the specifier, on both backends. The retired language name `vibelang:flows` was carried in the Go bridge's `compilerModuleSpecifiers` AND its `durableModuleSpecifiers`, so that exact program compiled there, contributed no requirement, did not block a native pin, and lowered a real digest-pinned Plan — a language name that no longer exists behaving as the intrinsic, while the reference had always treated it as foreign. Paired as a deliberate A/B with 20.2's minimal positive: the two cases differ in the specifier and in nothing else that matters, because removing a retired spelling from a compiler-owned table is exactly the edit that can take the real one with it. |
+| 20.2 | a Flow MUST be declared with ordinary TypeScript call syntax from `vibelang:flows` (`:11-24`) | covered | the positive cases import from `vibelang:flows` and call it, and **`17/a-single-action-flow-lowers-to-a-static-plan`** is the minimal one. |
+| 20.2b | **`vibelang:flows` is the ONLY compiler-owned durable specifier: any other spelling is an ordinary module** | DECISIONS Locked ("`vibelang:flows` is a compiler-owned virtual module"); durable-execution.mdx:24 | **covered** | **`17/the-retired-vibelang-flows-specifier-is-not-compiler-owned`** — `VIBE1510` at the specifier, on both backends. The retired language name `vibelang:flows` was carried in the Go bridge's `compilerModuleSpecifiers` AND its `durableModuleSpecifiers`, so that exact program compiled there, contributed no requirement, did not block a native pin, and lowered a real digest-pinned Plan — a language name that no longer exists behaving as the intrinsic, while the reference had always treated it as foreign. Paired as a deliberate A/B with 20.2's minimal positive: the two cases differ in the specifier and in nothing else that matters, because removing a retired spelling from a compiler-owned table is exactly the edit that can take the real one with it. |
 | 20.3 | the compiler MUST recognize the **resolved binding**; an aliased import preserves durable behavior (`:24`) | covered | both positive cases import `{ durable as compileFlow }` — the alias direction is pinned here, unlike comptime's negative-only asymmetry that an external triage attributed to this area |
 | 20.4 | an unrelated function named `durable` remains ordinary (`:24`) | covered | `17/unrelated-local-durable-stays-ordinary` |
-| 20.5 | the argument MUST be an inline function or a statically resolvable function; an opaque runtime-selected function MUST be a compile error (`:26`) | **covered** | **`17/an-opaque-durable-argument-is-rejected`** — `SMITHERS4103` at the argument, green on both. `durable(pick())` chooses the function at run time, which is the one moment a template compiler is not present for, so there is nothing to lower and nothing to digest; accepting it would force the runtime callback wrapper the Locked descriptor rule replaces. This row was named as "directly parallel to `21-native-pin`'s `SMITHERS3005` gap", and both gates were closed in the same revision. **The corpus now declares two durable diagnostics rather than one.** The sibling branch of the same code — a `durable(...)` given the wrong number of arguments, reported at the CALL rather than at the argument — is still unwritten. |
+| 20.5 | the argument MUST be an inline function or a statically resolvable function; an opaque runtime-selected function MUST be a compile error (`:26`) | **covered** | **`17/an-opaque-durable-argument-is-rejected`** — `VIBE4103` at the argument, green on both. `durable(pick())` chooses the function at run time, which is the one moment a template compiler is not present for, so there is nothing to lower and nothing to digest; accepting it would force the runtime callback wrapper the Locked descriptor rule replaces. This row was named as "directly parallel to `21-native-pin`'s `VIBE3005` gap", and both gates were closed in the same revision. **The corpus now declares two durable diagnostics rather than one.** ~~The sibling branch of the same code — a `durable(...)` given the wrong number of arguments, reported at the CALL rather than at the argument — is still unwritten.~~ **Written 2026-09-05**: `17/durable-given-two-arguments-is-rejected`, `VIBE4103` at the call, so a policy-bag second argument is refused rather than silently ignored. |
 | 20.6 | the compiler MUST replace a recognized `durable(...)` with a **serializable Flow descriptor** referencing emitted Plan IR, and MUST NOT emit a runtime callback wrapper (`:28`) | covered | `17/static-plan-shape-is-digest-pinned` reads `Build.plan` and `Build.artifactSource` from the descriptor, so a runtime wrapper would not have produced them |
-| 20.7 | uncompiled JavaScript execution MUST fail during `smithers:flows` virtual-module loading (`:28`) | **uncovered** | 19.9's reason exactly: the harness compiles every case, so the uncompiled path is unreachable from the corpus |
-| 20.8 | an Action implementation MUST be an ordinary Smithers function or callback and MUST NOT require an Effect wrapper or failure annotation (`:39`) | **uncovered** | no case supplies an Action *implementation* at all. Both positive cases declare abstract Actions and never implement one. |
-| 20.9 | an **abstract** Action signature MUST state an explicit `Result<A, E>` or `Promise<Result<A, E>>` return type (`:41`) | **uncovered** | `17/static-plan-shape-is-digest-pinned` declares two Actions that *do* spell `Result`, so the honoured direction is incidentally exercised — but no case omits it and asserts the rejection, which is where the obligation lives |
+| 20.7 | uncompiled JavaScript execution MUST fail during `vibelang:flows` virtual-module loading (`:28`) | **uncovered** | 19.9's reason exactly: the harness compiles every case, so the uncompiled path is unreachable from the corpus |
+| 20.8 | an Action implementation MUST be an ordinary VibeLang function or callback and MUST NOT require an Effect wrapper or failure annotation (`:39`) | **uncovered** | no case supplies an Action *implementation* at all. Both positive cases declare abstract Actions and never implement one. |
+| 20.9 | an **abstract** Action signature MUST state an explicit `Result<A, E>` or `Promise<Result<A, E>>` return type (`:41`) | **covered as of 2026-09-05** | `17/an-unannotated-action-signature-has-no-failure-channel`: the author omits `Result` and then treats the Action as fallible with postfix `!`, and no failure channel is invented for a signature that never declared one — the propagation yields `never` and the member read off it is refused (`VIBE4100`, `messageContains "'never'"` to keep it apart from the other VIBE4100 case in the area). The honoured direction still runs in every positive case. |
 | 20.10 | capabilities used by an implementation MUST enter the Action's inferred requirement row and MUST NOT become explicit inputs or context parameters (`:43`) | **partial** | `17/static-plan-shape-is-digest-pinned` prints `plan.requirements`, so the row is observable. But with no Action implementation in the corpus, nothing exercises inference *from* an implementation, and nothing pins the MUST NOT half. |
-| 20.11 | source authors MUST NOT repeat Action types as separate schema arguments (`:45`) | **uncovered** | no case attempts the forbidden spelling |
-| 20.12 | every value crossing an Action or Flow persistence boundary MUST satisfy the compiler-checked durable codec contract (`:49`) | **partial as of 2026-08-27** — was **uncovered**, "no case crosses a persistence boundary" | Four cases now pin the **projection** half of the contract: a value crossing the boundary along a path the durable descriptor cannot answer is refused, at `SMITHERS4110` on both backends with byte-identical sentences. **`17/an-action-input-projection-the-descriptor-does-not-have-is-rejected`** puts the bad projection in an Action's **input** — the Flow's output is a bare node reference the descriptor answers perfectly, so an output-only check cannot see it — and **`17/a-sleep-duration-projection-the-descriptor-does-not-have-is-rejected`** puts it in a timer duration, which is what pins that the diagnostic names the **subject** of the value it is refusing rather than a hard-coded one; **`17/an-action-input-projection-through-a-durable-string-is-rejected`** pins the second of the three `from durable <kind>` spellings. **`17/an-action-input-projection-the-descriptor-can-answer-is-accepted`** is the paired `expect: "output"` control and is the refusal with the projection swapped and nothing else touched. All four came from three implementation lanes that closed the same fail-open on the reference, then the fork, then the Action input on both: before them **both** implementations compiled these programs and ran them, emitting a Plan that carried `{"kind":"input","path":["items","length"]}` into the executor's `pathValue` and faulted there as a `ProjectionDefect`. Still **partial**, not covered: the ephemeral-value half of the boundary contract is 20.13 and remains uncovered, and nothing in the corpus round-trips a value through persistence — the refusals are compile-time, which is where this sentence's checkable half lives. |
-| 20.13 | functions, capabilities, process handles, and other ephemeral values MUST be rejected without an explicit durable representation (`:51`) | **uncovered** | the central fail-closed rule of the durable boundary, and no case probes it. Fail-open direction: an unrejected ephemeral value is a Flow that replays wrong. |
-| 20.14 | `any` and `unknown` MUST require an explicit codec at the boundary (`:53`) | **uncovered** | no case |
+| 20.11 | source authors MUST NOT repeat Action types as separate schema arguments (`:45`) | **covered as of 2026-09-05** | `17/action-run-takes-no-schema-argument` — the durable frontend's own arity rule refuses a second `Action.run` argument as `VIBE4113` at the call ("requires exactly one input argument in durable source"), so the repeated-schema spelling is inexpressible rather than merely discouraged, and an author who believes a schema argument did something is told rather than shipped. |
+| 20.12 | every value crossing an Action or Flow persistence boundary MUST satisfy the compiler-checked durable codec contract (`:49`) | **partial as of 2026-08-27** — was **uncovered**, "no case crosses a persistence boundary" | Four cases now pin the **projection** half of the contract: a value crossing the boundary along a path the durable descriptor cannot answer is refused, at `VIBE4110` on both backends with byte-identical sentences. **`17/an-action-input-projection-the-descriptor-does-not-have-is-rejected`** puts the bad projection in an Action's **input** — the Flow's output is a bare node reference the descriptor answers perfectly, so an output-only check cannot see it — and **`17/a-sleep-duration-projection-the-descriptor-does-not-have-is-rejected`** puts it in a timer duration, which is what pins that the diagnostic names the **subject** of the value it is refusing rather than a hard-coded one; **`17/an-action-input-projection-through-a-durable-string-is-rejected`** pins the second of the three `from durable <kind>` spellings. **`17/an-action-input-projection-the-descriptor-can-answer-is-accepted`** is the paired `expect: "output"` control and is the refusal with the projection swapped and nothing else touched. All four came from three implementation lanes that closed the same fail-open on the reference, then the fork, then the Action input on both: before them **both** implementations compiled these programs and ran them, emitting a Plan that carried `{"kind":"input","path":["items","length"]}` into the executor's `pathValue` and faulted there as a `ProjectionDefect`. Still **partial**, not covered: the ephemeral-value half of the boundary contract is 20.13 and remains uncovered, and nothing in the corpus round-trips a value through persistence — the refusals are compile-time, which is where this sentence's checkable half lives. |
+| 20.13 | functions, capabilities, process handles, and other ephemeral values MUST be rejected without an explicit durable representation (`:51`) | **covered for two of its named nouns as of 2026-09-05** | `17/an-ephemeral-value-at-the-durable-boundary-is-rejected` (a function value in an Action's input type) and `17/a-capability-at-the-durable-boundary-is-rejected` (a `Context` service instance riding the Flow's own input, kept off a module binding so the closure-capture wall cannot fire first). Both are refused as `VIBE4199` with `messageContains "no derivable durable contract"` — the fragment is load-bearing because the same code at the same shape of position is what the unaccounted-CALL refusal says, and only the message tells the boundary rule from the call-graph rule. This row was the central fail-closed rule with no case; process handles and the explicit-durable-representation escape are still unprobed. |
+| 20.14 | `any` and `unknown` MUST require an explicit codec at the boundary (`:53`) | **covered at the Action boundary as of 2026-09-05** | `17/an-any-typed-action-input-needs-an-explicit-codec` — an `any`-typed input defeats codec derivation, so the Action has no derivable durable contract and the Manifest fails closed (`VIBE4199`) rather than minting a codec that accepts anything. The `unknown` spelling and the comptime-reification side of the same sentence are `24-schema/schema-derive-over-any-is-refused` (`VCT1204`, both spellings). |
 | 20.15 | the compiler MUST lower checked syntax, control flow, and data flow into Plan IR, and MUST NOT invoke the source function with proxy or symbolic values to discover the graph (`:59`) | **covered as of 2026-08-26 — and the MUST NOT half is now directly observed rather than inferred** | `17/static-plan-shape-is-digest-pinned` pins that the Plan exists with the right node kinds and edges. The **MUST NOT proxy-execute** half used to be inferable only from the statement-branch rejection; **`17/a-plain-projection-reaches-the-plan-as-an-input-expression`** now reads the action node's own `input` value expression and asserts the projection arrived as `{kind:"input", path:["mode"]}`. A lowering that discovered the graph by evaluating the source against a stand-in object emits a `literal` there, so that one stdout line is the difference between the two techniques, observed rather than argued. Mutating that line to `literal` turns the case red on both backends; verified and restored byte-identically. |
 | 20.16 | an `Action.run` expression MUST emit a plan node and a typed symbolic Result (`:61`) | covered | same case: `plan.nodes.map(node => node.kind)` is asserted exactly |
 | 20.17 | postfix `!` on it MUST emit the Result error-propagation **edge** (`:61`) | covered | same case asserts `plan.nodes[1].controlDependencies[0] === plan.nodes[0].id` |
 | 20.18 | neither template compilation nor planning MUST execute the Action implementation (`:61`) | **uncovered** | with no implementation anywhere in the corpus, there is nothing whose non-execution could be observed |
-| 20.19 | property access and argument passing on a symbolic result MUST create typed projections and dependency edges when representable (`:63`) | **covered as of 2026-08-26** | `17/static-plan-shape-is-digest-pinned` reads `found.value` off a symbolic result and asserts the resulting edges; **`17/a-plain-projection-reaches-the-plan-as-an-input-expression`** asserts the projection itself — that a `.` access became an `input` expression *carrying its path* — which is the sentence's own words. The qualifier "when representable in Plan IR" is what **`17/an-optional-projection-on-a-durable-input-is-rejected`** pins from the other side: `?.` is a branch wearing the syntax of a projection, so it is refused (`SMITHERS4106@11:25`) rather than waved through beside the plain form. The two are an A/B on one sentence. |
+| 20.19 | property access and argument passing on a symbolic result MUST create typed projections and dependency edges when representable (`:63`) | **covered as of 2026-08-26** | `17/static-plan-shape-is-digest-pinned` reads `found.value` off a symbolic result and asserts the resulting edges; **`17/a-plain-projection-reaches-the-plan-as-an-input-expression`** asserts the projection itself — that a `.` access became an `input` expression *carrying its path* — which is the sentence's own words. The qualifier "when representable in Plan IR" is what **`17/an-optional-projection-on-a-durable-input-is-rejected`** pins from the other side: `?.` is a branch wearing the syntax of a projection, so it is refused (`VIBE4106@11:25`) rather than waved through beside the plain form. The two are an A/B on one sentence. |
 | 20.20 | the durable source function MUST be **removable** after the compiler emits its plan; a planner or coordinator MUST NOT require the source function or a live side table (`:65`) | **partial** | `Build.artifactSource` is asserted, which shows the artifact is self-describing. Nothing removes the source and re-plans, which is what the sentence actually requires. |
 | 20.21 | a durable source function MAY capture compiler-known immutable values **only**, and MUST NOT observe runtime clock, randomness, environment, mutable state, services, or I/O while the template is constructed (`:69`) | **uncovered** | six named sources, zero cases. §19.16 has the same shape and at least has two. |
-| 20.22 | runtime-dependent control flow MUST be represented explicitly in Plan IR; the compiler MUST reject an operation that would inspect a symbolic value without a corresponding IR representation (`:71`) | **covered across thirteen forms as of 2026-08-26** — it was one | `17/statement-branch-fails-closed` was the corpus's only declared durable diagnostic. Twelve refusal cases now stand beside it, chosen so no two share a walk branch: **operators** — `a-logical-or-fallback…`, `a-nullish-coalescing-fallback…`, `strict-equality-against…`, `an-in-test-on…` (`SMITHERS4111`, the binary family, and `in` is deliberately the one whose *symbolic operand is on the right*), `typeof-on…` (TypeOfExpression) and `logical-negation-of…` (PrefixUnaryExpression, the unary shape a binary-only walk would miss); **calls** — `array-isarray-on…` and `object-is-on…` (`SMITHERS4112`, on two different host namespaces so the rule is a property of the call rather than of one global); **control flow** — `a-conditional-expression-on-a-non-boolean-durable-input-is-rejected` (`SMITHERS4106`; read against `static-plan-shape-is-digest-pinned`, which lowers a *boolean* conditional into a real `branch` node, so the promise is the narrow one), `a-statement-branch-holding-an-action-in-each-arm-is-rejected` (`SMITHERS4106`, the expensive member: each arm calls a different Action, so folding the condition drops an Action out of the Plan and out of every digest computed over it), `a-do-while-loop-in-durable-source-is-rejected` (`SMITHERS4107`, its own rule because the repair is a parameterized template rather than branch lowering, and `do`/`while` is the form whose body runs before its condition is read), and `an-optional-projection-on-a-durable-input-is-rejected` (`SMITHERS4106`). All twelve are green on both backends at identical codes and authored positions. |
-| 20.12b | **an Action's failure channel mints one durable identity per Error class** — failures.mdx:33 "The compiler MUST provide stable nominal identity…" and :209 "Handler selection MUST use compiler-stable nominal identity, not a forgeable user `_tag` or minifier-sensitive constructor name in compiled artifacts", read on the durable persistence boundary of 20.12 | **fully covered as of 2026-08-27** (was "half covered; the other half is inexpressible — observation gap #15", which closed) | **`17/an-actions-failure-channel-mints-one-identity-per-error-class`** opens `plan.actions[0].errorSchema.descriptor` and asserts one variant per declared Error class, one *distinct* identity per variant, and an identity derived from the declaring module and the class's own name. Stability is worth nothing without injectivity: two Error classes arriving under one identity is exactly a forgeable key. It deliberately does **not** declare the identity's spelling — see the case's own notes and gap #15. ~~**The other half — a COLLISION, two classes normalizing to one identity — is now declared too**, by `17/two-error-classes-whose-durable-identities-collide-are-rejected` and its paired control, `SMITHERS4124@20:10` on **both** backends with byte-identical messages (measured 2026-08-27, `--filter durable-identities`).~~ **Stale as of 2026-08-28: there is no longer a collision to declare.** The durable failure identity became injective (reversible `+XXXX` escaping of both components, `@` withheld as the separator), so that program compiles and the case turned over into `17/two-error-classes-whose-durable-identities-used-to-collide-now-compile`, which pins the two identities' literal spelling instead — the thing this row and gap #15 both said could not be pinned. The remaining collision family (two declarations sharing module and class name) is refused at different codes on the two backends and is covered off-corpus; see gap #15's closure note. **`js pass / go pass` as of 2026-08-28.** It scored `js pass / go unsupported` until then, and the reason was the fork's error-schema stub: the descriptor it type-checks this program against was `{digest, format, role, schemaVersion, shape, source}` with no `descriptor` field, so `errorSchema.descriptor` reported `TS2339` on an authored `.sm` file. The fork now derives the error schema from the declared failure channel, and the two backends were measured byte-identical on this program's whole Plan — both failure identities, both `errorSchema` digests, the `contractDigest` and `plan.digest`. This obligation is now differenced on both backends rather than pinned on the reference alone; the corpus's only remaining `unsupported` count for the Go fork is **0**. |
+| 20.22 | runtime-dependent control flow MUST be represented explicitly in Plan IR; the compiler MUST reject an operation that would inspect a symbolic value without a corresponding IR representation (`:71`) | **covered across thirteen forms as of 2026-08-26** — it was one | `17/statement-branch-fails-closed` was the corpus's only declared durable diagnostic. Twelve refusal cases now stand beside it, chosen so no two share a walk branch: **operators** — `a-logical-or-fallback…`, `a-nullish-coalescing-fallback…`, `strict-equality-against…`, `an-in-test-on…` (`VIBE4111`, the binary family, and `in` is deliberately the one whose *symbolic operand is on the right*), `typeof-on…` (TypeOfExpression) and `logical-negation-of…` (PrefixUnaryExpression, the unary shape a binary-only walk would miss); **calls** — `array-isarray-on…` and `object-is-on…` (`VIBE4112`, on two different host namespaces so the rule is a property of the call rather than of one global); **control flow** — `a-conditional-expression-on-a-non-boolean-durable-input-is-rejected` (`VIBE4106`; read against `static-plan-shape-is-digest-pinned`, which lowers a *boolean* conditional into a real `branch` node, so the promise is the narrow one), `a-statement-branch-holding-an-action-in-each-arm-is-rejected` (`VIBE4106`, the expensive member: each arm calls a different Action, so folding the condition drops an Action out of the Plan and out of every digest computed over it), `a-do-while-loop-in-durable-source-is-rejected` (`VIBE4107`, its own rule because the repair is a parameterized template rather than branch lowering, and `do`/`while` is the form whose body runs before its condition is read), and `an-optional-projection-on-a-durable-input-is-rejected` (`VIBE4106`). All twelve are green on both backends at identical codes and authored positions. |
+| 20.12b | **an Action's failure channel mints one durable identity per Error class** — failures.mdx:33 "The compiler MUST provide stable nominal identity…" and :209 "Handler selection MUST use compiler-stable nominal identity, not a forgeable user `_tag` or minifier-sensitive constructor name in compiled artifacts", read on the durable persistence boundary of 20.12 | **fully covered as of 2026-08-27** (was "half covered; the other half is inexpressible — observation gap #15", which closed) | **`17/an-actions-failure-channel-mints-one-identity-per-error-class`** opens `plan.actions[0].errorSchema.descriptor` and asserts one variant per declared Error class, one *distinct* identity per variant, and an identity derived from the declaring module and the class's own name. Stability is worth nothing without injectivity: two Error classes arriving under one identity is exactly a forgeable key. It deliberately does **not** declare the identity's spelling — see the case's own notes and gap #15. ~~**The other half — a COLLISION, two classes normalizing to one identity — is now declared too**, by `17/two-error-classes-whose-durable-identities-collide-are-rejected` and its paired control, `VIBE4124@20:10` on **both** backends with byte-identical messages (measured 2026-08-27, `--filter durable-identities`).~~ **Stale as of 2026-08-28: there is no longer a collision to declare.** The durable failure identity became injective (reversible `+XXXX` escaping of both components, `@` withheld as the separator), so that program compiles and the case turned over into `17/two-error-classes-whose-durable-identities-used-to-collide-now-compile`, which pins the two identities' literal spelling instead — the thing this row and gap #15 both said could not be pinned. The remaining collision family (two declarations sharing module and class name) is refused at different codes on the two backends and is covered off-corpus; see gap #15's closure note. **`js pass / go pass` as of 2026-08-28.** It scored `js pass / go unsupported` until then, and the reason was the fork's error-schema stub: the descriptor it type-checks this program against was `{digest, format, role, schemaVersion, shape, source}` with no `descriptor` field, so `errorSchema.descriptor` reported `TS2339` on an authored `.vibe` file. The fork now derives the error schema from the declared failure channel, and the two backends were measured byte-identical on this program's whole Plan — both failure identities, both `errorSchema` digests, the `contractDigest` and `plan.digest`. This obligation is now differenced on both backends rather than pinned on the reference alone; the corpus's only remaining `unsupported` count for the Go fork is **0**. |
 | 20.23 | a durable implementation MUST distinguish four compilation phases: template compilation, deployment build, plan/preview, execution (`:75-80`) | **uncovered** | the corpus reaches phase 1 only. Phases 2–4 have no channel through this harness at all: the runner compiles and runs one program and observes stdout. |
 | 20.24 | plan/preview MUST NOT load or invoke the `durable(...)` function, and MUST NOT load or invoke an Action implementation (`:82`) | **uncovered** | phase 3 is unreachable; see 20.23 |
 | 20.25 | a branch or fan-out whose value is unknown to the planner MUST remain an explicit conditional or parameterized template in the reported plan (`:82`) | **uncovered** | `17/static-plan-shape-is-digest-pinned` uses `input.live ? … : …` in *expression* position and pins its edges, but never inspects the reported plan for a preserved conditional node |
@@ -3395,7 +4027,7 @@ paragraph below is unchanged for exactly that reason: fourteen new cases bought
 depth inside the one phase this harness can reach and bought nothing outside it.
 Twenty-two of the
 thirty are uncovered for one structural reason — the corpus compiles and runs
-a single `.sm` program in one process and observes its stdout, so **three of the
+a single `.vibe` program in one process and observes its stdout, so **three of the
 four compilation phases the specification requires have no channel through this
 harness at all**. That is not a lane's backlog; it is a statement that durable
 execution is measured by `poc/src/durable/*.test.ts` and essentially not by the
@@ -3418,7 +4050,7 @@ counts at once. **Two revisions are now the worked demonstration that this is
 true rather than aspirational.** On 2026-08-26 twelve refusal cases were written
 straight from durable-execution.mdx:59/:63/:71, every one green on both backends
 the first time it ran, and three codes left the shared-but-unprobed set. On
-2026-08-27 four more cases were written against `:49`, and **`SMITHERS4110`
+2026-08-27 four more cases were written against `:49`, and **`VIBE4110`
 became the first code ever to leave that set for a rule the corpus previously
 could not reach at all** — the fifth axis, SURFACES, closing rather than
 recurring.
@@ -3454,7 +4086,7 @@ tested surfaces in the repository.
 | `test/cli-go-backend.test.mjs` | 201 lines |
 
 Those cover `format --check` exiting nonzero, `--check`/`--stdout` mutual
-exclusion, `.sm`+`.ts` mixing rejected, colliding outputs rejected, bounded
+exclusion, `.vibe`+`.ts` mixing rejected, colliding outputs rejected, bounded
 UTF-8 reads, `--backend go` failing closed with its exact remedy command, and
 the `--timeoutMs` bound (`test/cli.test.mjs:308-320` runs a hanging test with
 `--timeoutMs 100` and asserts the report says `exceeded 100ms`).
@@ -3466,16 +4098,16 @@ the part nothing covers, measured rather than asserted.
 | # | contract | evidence | what covers it |
 | --- | --- | --- | --- |
 | 21.1 | `--indentSize` accepts an integer from 1 through 8 (`cli.mdx:301`) | enforced at `src/cli.ts:1831` (`z.number().int().min(1).max(8)`) | **nothing.** `grep -rn indentSize test/` returns no hits. The bound is real and unexercised in both directions. |
-| 21.2 | structured `SMITHERS_GO_*` backend-preparation envelopes, each obliged to print a specific remedy command, and each obliged to "never change backend" (`cli.mdx:97-108`) | **eight** distinct envelope names across seven table rows: `CHECKOUT_MISSING`, `CHECKOUT_REVISION`, `CHECKOUT_UNPATCHED`, `CHECKOUT_DIVERGENT`, `CHECKOUT_INVALID`, `BUILD`, `TIMEOUT`, `PROTOCOL` | **two of eight.** `grep -roh 'SMITHERS_GO_[A-Z_]*' test/ \| sort -u` → `SMITHERS_GO_CHECKOUT_MISSING`, `SMITHERS_GO_CHECKOUT_UNPATCHED`. The other six — including `TIMEOUT` and `PROTOCOL`, the two a user hits when the fork misbehaves — have no test. |
+| 21.2 | structured `VIBELANG_GO_*` backend-preparation envelopes, each obliged to print a specific remedy command, and each obliged to "never change backend" (`cli.mdx:97-108`) | **eight** distinct envelope names across seven table rows: `CHECKOUT_MISSING`, `CHECKOUT_REVISION`, `CHECKOUT_UNPATCHED`, `CHECKOUT_DIVERGENT`, `CHECKOUT_INVALID`, `BUILD`, `TIMEOUT`, `PROTOCOL` | **two of eight.** `grep -roh 'VIBELANG_GO_[A-Z_]*' test/ \| sort -u` → `VIBELANG_GO_CHECKOUT_MISSING`, `VIBELANG_GO_CHECKOUT_UNPATCHED`. The other six — including `TIMEOUT` and `PROTOCOL`, the two a user hits when the fork misbehaves — have no test. |
 | 21.3 | resource ceilings: 2 MiB per source, 16 MiB across the discovered graph, 1,024 source files (`cli.mdx:199-200`) | `src/cli.ts:61-63` (`MAX_CLI_SOURCE_BYTES`, `MAX_TEST_PROJECT_BYTES`, `MAX_TEST_PROJECT_FILES`) | **one of three.** The 2 MiB per-source ceiling is exercised four times (`test/cli.test.mjs:404`, `:597`, `:696`, `:1200`, each writing 2 MiB + 1 byte). The 16 MiB graph ceiling and the 1,024-file ceiling have no test hit. Both are fail-closed limits; an unenforced one is an unbounded compile. |
 | 21.4 | asset ceilings: 1,024 top-level assets, 2 MiB per top-level asset, 16 MiB across them (`cli.mdx:202-203`) | same file | **nothing** measures the asset-count or asset-total ceilings |
-| 21.5 | `smithersc` and the `tsc` alias "forward arguments in their original order" (`cli.mdx:281-286`) | — | **forwarding** is covered (`test/cli.test.mjs:38-45`: `--version`, then `--noEmit <file>`). **Order preservation** is not asserted by any test: no test passes two order-sensitive flags and checks the order survives. |
+| 21.5 | `vibec` and the `tsc` alias "forward arguments in their original order" (`cli.mdx:281-286`) | — | **forwarding** is covered (`test/cli.test.mjs:38-45`: `--version`, then `--noEmit <file>`). **Order preservation** is not asserted by any test: no test passes two order-sensitive flags and checks the order survives. |
 | 21.6 | the LSP's bounded project closure, row hover, definition lookup, whole-document formatting (`specification/index.mdx:44-48`) | — | covered by `test/lsp.test.mjs`, and **not by this matrix**, which has no vocabulary for a JSON-RPC observation |
-| 21.7 | **the lowering mode is explicit, and an omitted one is refused rather than defaulted** (`compiler/api.go:138-140`, "The zero value is invalid") | `compiler.LoweringIdentity` used to be the empty string — the zero value of `LoweringMode` — and `cmd/smithersc-go` built its positional request with no `Lowering` field, so every positional invocation silently selected identity lowering and applied **no Smithers rule at all** | **covered as of this revision, by a harness self-test rather than a case.** `conformance/runner/selftest.mjs`, run with `node --test conformance/runner/selftest.mjs` (6/6). Two halves: a source-level invariant that every `CompileRequest` in `backend-go.mjs` reads the one named `loweringMode` constant from `corpus.mjs` and that no mode is spelled as a string literal; and a live protocol assertion that sends the real bridge four real requests — omitted (refused, `lowering mode is required`), unknown (refused), `"internal"` (reports `SMITHERS1510`+`SMITHERS1301`), and `"identity"` (**exit 0, zero diagnostics on the same program**). The Go side has its own unit coverage at `compiler/lowered_test.go:159-162`; this is deliberately independent of it and goes over the wire. |
+| 21.7 | **the lowering mode is explicit, and an omitted one is refused rather than defaulted** (`compiler/api.go:138-140`, "The zero value is invalid") | `compiler.LoweringIdentity` used to be the empty string — the zero value of `LoweringMode` — and `cmd/vibec-go` built its positional request with no `Lowering` field, so every positional invocation silently selected identity lowering and applied **no VibeLang rule at all** | **covered as of this revision, by a harness self-test rather than a case.** `conformance/runner/selftest.mjs`, run with `node --test conformance/runner/selftest.mjs` (6/6). Two halves: a source-level invariant that every `CompileRequest` in `backend-go.mjs` reads the one named `loweringMode` constant from `corpus.mjs` and that no mode is spelled as a string literal; and a live protocol assertion that sends the real bridge four real requests — omitted (refused, `lowering mode is required`), unknown (refused), `"internal"` (reports `VIBE1510`+`VIBE1301`), and `"identity"` (**exit 0, zero diagnostics on the same program**). The Go side has its own unit coverage at `compiler/lowered_test.go:159-162`; this is deliberately independent of it and goes over the wire. |
 
 **Why the lowering-mode assertion is here and not in `conformance/corpus/`.**
 The corpus can never reach it. `backend-go.mjs` sends a mode on every request it
-builds, so no `.sm` program, however written, exercises the omitted-mode path; a
+builds, so no `.vibe` program, however written, exercises the omitted-mode path; a
 corpus case claiming to pin it would be asserting something about the runner
 while pretending to assert something about the language, and would pass for a
 reason unrelated to its own text. The thing that can regress is the harness's
@@ -3485,7 +4117,7 @@ to catch that regression: restoring one `lowering: "internal"` literal in
 turns it green again.
 
 **Why there is no corpus area for any of this, and why that is the right call.**
-The conformance corpus is a *differential* instrument: it compiles one `.sm`
+The conformance corpus is a *differential* instrument: it compiles one `.vibe`
 program through two backends and compares the observations. The CLI is neither
 backend — it is the program that drives them, and the Go backend does not have a
 CLI of its own to differ from. Building a corpus area here would produce
@@ -3494,7 +4126,17 @@ arrangement is the one the repository already has: `test/cli.test.mjs` owns the
 CLI, and **this page names what that file does not reach** so nobody mistakes a
 green corpus for a checked CLI.
 
-## 22. `smithers:schema` — the third compiler-owned virtual module
+## 22. `vibelang:schema` — the third compiler-owned virtual module
+
+**Native migration update, 2026-09-06.** Both existing cases measured XPASS on
+the Go compiler and their markers were removed without altering diagnostics or
+stdout. The checker-driven native derivation is in
+`compiler/forkbridge/schema.go.txt`; it emits the existing validator source via
+the native Result/codec adapter. Import identity, unsupported types, authored
+positions, budgets and real propagation are additionally checked by native
+unit/integration tests. The historical account below describes how the gap was
+first found, not today's absence of a Go schema pass. The corpus stays at 554
+cases; the current register has 26 marked cases (26 Go, one also JS).
 
 DECISIONS locks, in the comptime section: *"Validators, codecs, schemas,
 equality, hashing, and similar artifacts are derived at comptime from ordinary
@@ -3506,8 +4148,8 @@ The implementation is real and the harness already knows about it:
 
 | fact | evidence |
 | --- | --- |
-| it is a compiler-owned virtual module, third alongside `smithers:comptime` and `smithers:flows` | `poc/src/build/schema-derive.ts:18` — `SCHEMA_MODULE_SPECIFIER = "smithers:schema"` |
-| the conformance runner **already special-cases the specifier** | `conformance/runner/js-lower.mjs:228` triggers the whole-project comptime frontend on `smithers:comptime` **or** `smithers:schema` |
+| it is a compiler-owned virtual module, third alongside `vibelang:comptime` and `vibelang:flows` | `poc/src/build/schema-derive.ts:18` — `SCHEMA_MODULE_SPECIFIER = "vibelang:schema"` |
+| the conformance runner **already special-cases the specifier** | `conformance/runner/js-lower.mjs:228` triggers the whole-project comptime frontend on `vibelang:comptime` **or** `vibelang:schema` |
 | uncompiled execution fails at load rather than falling back | `poc/src/build/schema-derive.ts:29-30` emits a stub whose top-level `throw` rejects dependency evaluation before an importing module runs — the 19.9 mechanism, verified present here |
 | reification **diagnoses rather than silently widening** | `schema-derive.ts:84-85` throws `SchemaDerivationError("unsupported", …)`, reached from `:127` (`any`), `:128` (`unknown`), `:132` (a free type parameter), `:134` (an enum), `:150` (an intersection), `:172` (a recursive type), `:178`, `:191` |
 | the failure is surfaced, not swallowed | `poc/src/build/comptime-intrinsic.ts:515` re-throws anything that is not a `SchemaDerivationError` |
@@ -3515,21 +4157,24 @@ The implementation is real and the harness already knows about it:
 
 | # | obligation | status | reason |
 | --- | --- | --- | --- |
-| 22.1 | validators/codecs/schemas are derived at comptime from ordinary types | **uncovered** | `grep -rn 'smithers:schema' conformance/corpus/` returns nothing. Zero cases in 211. |
-| 22.2 | the reification rejection set diagnoses rather than silently widening | **uncovered** | this is the fail-open direction and the one that matters: a silently widened `any` produces a validator that accepts anything, which is worse than no validator. Nothing in the corpus reaches it. |
-| 22.3 | a derived schema and the native pin | **uncovered**, and it interacts with xfail Finding 1 | Re-measured, and **not** what a first reading suggests. `poc/src/targets/classify.test.ts:952-956` asserts that a function importing `Schema` from `smithers:schema` carries `requirements: ["TypeScript"]`; only the **lowered** form importing `smthrs/schema-runtime` is requirement-free (`:957-961`). The test's own comment at `:950-951` calls `TypeScript` "the conservative answer" and says widening the registry to absorb it "would be an under-report in the direction a pin must never fail". So this is deliberate — but the consequence is the same one xfail Finding 1 reports for assets: **a function that derives a schema cannot be certified native-portable in authored source.** Two compile-time-only facilities now sit in the runtime requirement row for the same structural reason. Nothing in the corpus observes either, and this page had named only one of them. |
+| 22.1 | validators/codecs/schemas are derived at comptime from ordinary types | **covered on both backends, native marker retired 2026-09-06** | `24-schema/schema-derive-round-trips-a-checked-type` compiles and executes its unchanged `ok ada@example.com 36` / `bad $.age expected number` contract. The JS harness seam was fixed on 2026-09-05; the Go compiler now owns the schema module, derives the descriptor from checked types, and emits the shared validator against native branded Results. Both stages remain required. |
+| 22.2 | the reification rejection set diagnoses rather than silently widening | **covered on both backends, native marker retired 2026-09-06** | `24-schema/schema-derive-over-any-is-refused` retains its two `VCT1204` expectations at the `any` and `unknown` type arguments. The Go reification pass now reports both exact codes/positions; it no longer reaches the foreign-import or generic-evaluation refusals. Broader unsupported-type, resource-limit and identity coverage is in `compiler/fork_schema_test.go`. |
+| 22.3 | a derived schema and the native pin | **uncovered**, and it interacts with xfail Finding 1 | Re-measured, and **not** what a first reading suggests. `poc/src/targets/classify.test.ts:952-956` asserts that a function importing `Schema` from `vibelang:schema` carries `requirements: ["TypeScript"]`; only the **lowered** form importing `vibelang/schema-runtime` is requirement-free (`:957-961`). The test's own comment at `:950-951` calls `TypeScript` "the conservative answer" and says widening the registry to absorb it "would be an under-report in the direction a pin must never fail". So this is deliberate — but the consequence is the same one xfail Finding 1 reports for assets: **a function that derives a schema cannot be certified native-portable in authored source.** Two compile-time-only facilities now sit in the runtime requirement row for the same structural reason. Nothing in the corpus observes either, and this page had named only one of them. |
 
-**Expected shape of a case here:** `unsupported go`.
+**Historical expected shape — predicted `unsupported go`, measured `xfail go` (2026-09-05), retired after XPASS (2026-09-06).**
 `docs/TYPESCRIPT_FORK.md:148-150` records that "Schema reification, loader
 registration, and the persistent content-addressed comptime cache remain on the
-TypeScript-instrument side", so the fork legitimately has no rule. That is the
-honest kind of `unsupported` — the fork reports no rule of its own rather than a
-wrong one — and it is worth recording as a row rather than leaving the surface
-unnamed.
+TypeScript-instrument side", so the fork legitimately has no rule. The
+prediction was that this would score as the honest kind of `unsupported`. It
+does not: the fork answers a `vibelang:schema` program with codes of its own —
+`VIBE1510` on the import edge and `VCT1004` (spelled `VIBE1904`) on the
+derive — and a backend claiming rules is scored against them, so the two
+`24-schema` cases carry `xfail go` markers with the measured codes in their
+reasons rather than an unsupported row.
 
 `type-system.mdx:105-109` §Reification is also where obligation 19.14 (no
-separate `runtime type` declaration modifier) is stated a second time. It has no
-case in either place.
+separate `runtime type` declaration modifier) is stated a second time. As of
+2026-09-05 it has its case: `19/runtime-type-modifier-is-not-claimed`.
 
 ---
 
@@ -3546,7 +4191,7 @@ the harness would need.
    observable consequence. **What it would need:** a third expectation kind
    backed by `emitProjectDeclarations` / `readDeclarationEffects`, plus a
    matching channel in the Go bridge. *Materially smaller than it was:* the
-   native pin's `SMITHERS3001` names the blocking requirement and its dependency
+   native pin's `VIBE3001` names the blocking requirement and its dependency
    path, which is what let 10.1, 10.5, and 8.14 leave this bucket.
 2. **There is no native/LLVM backend** (10.13). Nothing can execute native
    output. The pin is an assertion *about* native eligibility, so it did not
@@ -3579,7 +4224,7 @@ the harness would need.
    satisfies a code-and-position expectation exactly, which is a fail-open in
    the harness rather than in a backend. **Eighteen diagnostics in eighteen
    cases declare the field as of 2026-08-26** — it read ten on 2026-08-25, and
-   the six added since are the `SMITHERS4111` cases in §20, each naming the
+   the six added since are the `VIBE4111` cases in §20, each naming the
    SyntaxKind ITS OWN program wrote (`BinaryExpression` / `TypeOfExpression` /
    `PrefixUnaryExpression`) because at the shared authored column three
    expressions start at once (`input`, `input.mode`, and the operator expression
@@ -3611,7 +4256,7 @@ the harness would need.
    positions only — the two implementations word the same rule differently on
    purpose, and making the oracle sensitive to that would manufacture
    divergences. **That is not a hypothetical: this revision measured one.**
-   `SMITHERS1503` reads *"only as an expression statement or direct return"* on
+   `VIBE1503` reads *"only as an expression statement or direct return"* on
    the reference and *"only as an expression statement or a direct return"* on
    the fork, one word apart, at the identical code and position. An early draft
    of `09/panic-outside-a-statement-or-return-is-rejected` declared a fragment
@@ -3630,7 +4275,7 @@ the harness would need.
    same observation, and the Go fork's absence of three of §Error Classes' four
    obligations could not show up in either direction. `harnessText` now takes
    each backend's own identity accessor (`errorIdentity` from the POC runtime;
-   `smithersErrorIdentity` from the emitted `__smithers_prelude.js`), read from
+   `vibelangErrorIdentity` from the emitted `__vibelang_prelude.js`), read from
    the module instance the program registered into, and the failure line carries
    the compiler-stable identity. That is the same normalization the Result
    *representation* already gets — two spellings of one concept — and the
@@ -3641,7 +4286,7 @@ the harness would need.
    would fall back for every case at once, and every case not declaring an
    identity would stay green.
    **What is still missing, and the reason is reach rather than process count:**
-   `.sm` has no sanctioned path to `encodeError`/`decodeError` on *either*
+   `.vibe` has no sanctioned path to `encodeError`/`decodeError` on *either*
    backend, and the two backends' transport surfaces are different modules at
    different paths — so no single `typescript:` support module reaches both, and
    staging one per backend would be two different projects, which is the one
@@ -3654,8 +4299,8 @@ the harness would need.
 7. **A case cannot resolve a package** (11.10, 11.11). A case's files are
    staged into a `mkdtemp` tree (js) or sent in one request (go); neither has a
    `node_modules`, so a bare specifier that is not compiler-owned does not
-   resolve. Measured, not assumed: `import { Stream } from "smthrs/concurrency"`
-   through the JS backend gives `SMITHERS1510@1:24 — 'smthrs/concurrency' could
+   resolve. Measured, not assumed: `import { Stream } from "vibelang/concurrency"`
+   through the JS backend gives `VIBE1510@1:24 — 'vibelang/concurrency' could
    not be resolved`. This is what actually blocks the concurrency library, and
    it is a stronger constraint than the flat-staging reason it replaces.
    **What it would need:** a resolvable package root staged into both backends
@@ -3677,9 +4322,9 @@ the harness would need.
    the case already pins it.
 10. **The Go wire protocol has two file kinds, not three.** `FileKindAsset` is
    declared in `compiler/api.go`, but the bridge's own switch accepts only
-   `"smithers"` and `"typescript"` and errors on anything else — and an errored
+   `"vibelang"` and `"typescript"` and errors on anything else — and an errored
    request is scored `unmeasured`, which is not a measurement. So an asset
-   crosses to the fork under the kind the bridge uses for "not `.sm`", at the
+   crosses to the fork under the kind the bridge uses for "not `.vibe`", at the
    same path and with the same bytes, and out of `rootNames`. It changes nothing
    about what is measured today (the fork has no source-asset stage either way)
    but it is a mislabel the protocol forces, and it is where a fork implementer
@@ -3694,15 +4339,15 @@ the harness would need.
    therefore not "hard to assert" — it is **invisible**, and a case declaring
    one would observe an empty diagnostic list. **What this costs:** the two
    sentinels that keep an Open classification from silently becoming a fail-open
-   are unmeasurable by construction — `SMITHERS3002` ("portability is not
+   are unmeasurable by construction — `VIBE3002` ("portability is not
    classified yet", `poc/src/targets/classify.ts:342`, severity `"warning"`) and
-   `SMITHERS3004` ("type assertion portability is undecided",
+   `VIBE3004` ("type assertion portability is undecided",
    `poc/src/targets/classify.ts:297`, severity `"warning"`). Rows 10.11 and
    10.12 say those decisions are Open, which is true; what they cannot say today
    is that the implementation still *flags* the undecided construct, which is
    the only thing a corpus can honestly claim while a decision stays open.
    **A third warning joined that list a revision ago**, found by the
-   both-implementations subtraction: `SMITHERS3006`, the retired
+   both-implementations subtraction: `VIBE3006`, the retired
    `/** @native */` JSDoc marker (`poc/src/targets/classify.ts:830` — the page
    said `:449` for three revisions and that line no longer holds the rule;
    severity `"warning"`). It is in *both* implementations and cannot be probed by
@@ -3737,11 +4382,11 @@ the harness would need.
 
    `failures.mdx` §Compiler Lifting (Locked) says *"Authors MUST NOT need to
    write `Result.ok(...)` or `Result.err(...)`. Those constructors MUST NOT be
-   part of the ordinary Smithers authoring API."* The sentence names **the
+   part of the ordinary VibeLang authoring API."* The sentence names **the
    constructors**, so the rule has to hold at the constructor and not only at
    the module edge. But the reference's constructors are `__vsResultSuccess` /
-   `__vsResultFailure` / `RuntimeValues`, and the fork's are `SmithersOk` /
-   `SmithersErr`. A `diagnostics` expectation declares one exact
+   `__vsResultFailure` / `RuntimeValues`, and the fork's are `VibeLangOk` /
+   `VibeLangErr`. A `diagnostics` expectation declares one exact
    `code@line:column` set for both backends, and a case can only spell one of
    the two names — so whichever it spells, the *other* backend reports a stock
    `TS2305` for a member that genuinely does not exist in its runtime.
@@ -3751,14 +4396,14 @@ the harness would need.
 
    | route | JS reference | Go fork | judged |
    | --- | --- | --- | --- |
-   | `import { __vsResultSuccess } from "smthrs/context"` | `SMITHERS1201@1:10` | `TS2305@1:10` — *"has no exported member '__vsResultSuccess'"* | go `unsupported` |
-   | `import { SmithersOk } from "smithers:exceptions"` | `TS2305@1:10` — *"has no exported member 'SmithersOk'"* | `SMITHERS1201@1:10` | js `fail` |
+   | `import { __vsResultSuccess } from "vibelang/context"` | `VIBE1201@1:10` | `TS2305@1:10` — *"has no exported member '__vsResultSuccess'"* | go `unsupported` |
+   | `import { VibeLangOk } from "vibelang:exceptions"` | `TS2305@1:10` — *"has no exported member 'VibeLangOk'"* | `VIBE1201@1:10` | js `fail` |
 
    A third route is **nearly** expressible and fails for a second, independent
    reason worth recording separately:
-   `import { SmithersOk } from "./__smithers_prelude.ts"` draws
-   `SMITHERS1510@1:28` on **both** backends, but the fork adds
-   `SMITHERS1201@1:10` on top of it and the reference does not — so the
+   `import { VibeLangOk } from "./__vibelang_prelude.ts"` draws
+   `VIBE1510@1:28` on **both** backends, but the fork adds
+   `VIBE1201@1:10` on top of it and the reference does not — so the
    diagnostic *sets* differ even where the module-edge diagnostic agrees
    exactly. A `diagnostics` case is exact in both directions, so an extra
    diagnostic on one backend cannot be declared away.
@@ -3767,10 +4412,10 @@ the harness would need.
    pinned on both backends, deliberately written so it never names a
    constructor:
    `01-result-lifting/the-compiler-owned-prelude-is-not-reachable-by-a-path`
-   (`SMITHERS1510@1:23`) imports the *sanctioned* binding `Panic` through the
+   (`VIBE1510@1:23`) imports the *sanctioned* binding `Panic` through the
    forbidden path, and
    `01-result-lifting/a-star-re-export-of-the-compiler-owned-prelude-is-refused`
-   (`SMITHERS1510@1:15`) names no binding at all. Those two are green on both
+   (`VIBE1510@1:15`) names no binding at all. Those two are green on both
    backends precisely *because* they avoid the constructor. What stays unpinned
    is the constructor rule reached through a **sanctioned** specifier — the
    sharper half, because there the specifier is legitimate and only the imported
@@ -3801,7 +4446,7 @@ the harness would need.
      status quo and it is not nothing; what it costs is that the rule is no
      longer part of the **contract**, so the two implementations may drift on it
      without the differential oracle noticing, and a fork that quietly dropped
-     `SMITHERS1201` at a sanctioned specifier would keep the corpus green.
+     `VIBE1201` at a sanctioned specifier would keep the corpus green.
 
    Ranked: the first is the right fix, the third is what is true today, and the
    second should be refused explicitly so a later lane does not reach for it as
@@ -3825,7 +4470,7 @@ the harness would need.
 
    | mutation | js | go | run |
    | --- | --- | --- | --- |
-   | the three new `09` row-charge cases, declared `SMITHERS1506` column shifted by 1 (and by 10) | **FAIL**, message diff printed | `xfail` — unchanged | red |
+   | the three new `09` row-charge cases, declared `VIBE1506` column shifted by 1 (and by 10) | **FAIL**, message diff printed | `xfail` — unchanged | red |
    | `04/a-function-local-error-class-cannot-be-declared-twice` (the register's only **both-backends** marker), declared `stdout` replaced by a line the program never prints | `xfail` | `xfail` | **green, exit 0** |
 
    The second row is the finding. That case's `stdout` is not a claim any run
@@ -3863,7 +4508,7 @@ the harness would need.
    this program clean and ran it"* — and on the reading that the only
    `diagnostics` form available was the reference's *remedy*. Both moved on
    2026-08-27. Both implementations now mint a code for the collision
-   **itself** (`SMITHERS4124`, at the authored `run` call site), the fork's
+   **itself** (`VIBE4124`, at the authored `run` call site), the fork's
    message is byte-identical to the reference's, and the corpus declares it:
    `17/two-error-classes-whose-durable-identities-used-to-collide-now-compile` plus its
 <!-- renamed 2026-08-28: the case turned over from a refusal to an acceptance when the identity became injective; see observation gap #15's closure note. -->
@@ -3873,7 +4518,7 @@ the harness would need.
 
    | case | JS reference | Go fork |
    | --- | --- | --- |
-   | `…-whose-durable-identities-collide-are-rejected` | `SMITHERS4124@20:10` "Error classes `$Failed` and `_Failed` … share one durable failure identity …" | `SMITHERS4124@20:10`, same sentence |
+   | `…-whose-durable-identities-collide-are-rejected` | `VIBE4124@20:10` "Error classes `$Failed` and `_Failed` … share one durable failure identity …" | `VIBE4124@20:10`, same sentence |
    | `…-with-distinct-durable-identities-compile` | `kind: "output"`, stdout `["1"]` | `kind: "output"`, stdout `["1"]` |
 
    The alternation objection is answered rather than dodged: a code for the
@@ -3887,7 +4532,7 @@ the harness would need.
    they do. What the closure buys is that the fail-open the gap was recording
    (one backend accepting the program) can no longer reopen unobserved. The
    second corroborating row below is **still true** and was re-measured the same
-   day, so the fork's identity *spelling* remains unobservable from `.sm`; only
+   day, so the fork's identity *spelling* remains unobservable from `.vibe`; only
    its refusal is.
 
    *The original entry, unchanged from 2026-08-26 except where marked:*
@@ -3902,7 +4547,7 @@ the harness would need.
    artifacts."* On the durable persistence boundary those two sentences mean
    the identity must be **injective**: two distinct Error classes arriving under
    one identity is a forgeable key by any other name. The reference's durable
-   contract identity is `smithers:${file}#${name}@1` with every character
+   contract identity is `vibelang:${file}#${name}@1` with every character
    outside `[A-Za-z0-9._/@:+-]` replaced by `_` — **including its own `#`
    separator** — so it is a function of (logical file, class name) that is not
    injective over class declarations. `$Failed` and `_Failed`, two different
@@ -3932,11 +4577,11 @@ the harness would need.
 
    | probe | JS reference | Go fork |
    | --- | --- | --- |
-   | `$Failed`/`_Failed` as the two arms of one Action failure channel | ~~`SMITHERS4112@20:10` — refused (the derivation is skipped, so the lowerer reports the ordinary unsupported-call diagnostic at the authored `run` call site)~~ **stale; `SMITHERS4124@20:10` since 2026-08-27, naming the collision, and the old sentence was false of the program — there is no higher-order or dynamic call in it** | ~~**compiled clean and ran** — observation `kind: "output"`, zero diagnostics~~ **stale; `SMITHERS4124@20:10` since 2026-08-27, byte-identical message** |
-   | the same program printing `errorSchema.descriptor.variants[].identity` | prints them | `TS2339` — the fork's `smithers:flows` types a durable schema as `{digest, format, role, schemaVersion, shape, source}`, with no `descriptor`. **Re-measured 2026-08-27 through `--filter mints-one-identity`: still `TS2339@28:29` plus five `TS7006`, unchanged.** |
+   | `$Failed`/`_Failed` as the two arms of one Action failure channel | ~~`VIBE4112@20:10` — refused (the derivation is skipped, so the lowerer reports the ordinary unsupported-call diagnostic at the authored `run` call site)~~ **stale; `VIBE4124@20:10` since 2026-08-27, naming the collision, and the old sentence was false of the program — there is no higher-order or dynamic call in it** | ~~**compiled clean and ran** — observation `kind: "output"`, zero diagnostics~~ **stale; `VIBE4124@20:10` since 2026-08-27, byte-identical message** |
+   | the same program printing `errorSchema.descriptor.variants[].identity` | prints them | `TS2339` — the fork's `vibelang:flows` types a durable schema as `{digest, format, role, schemaVersion, shape, source}`, with no `descriptor`. **Re-measured 2026-08-27 through `--filter mints-one-identity`: still `TS2339@28:29` plus five `TS7006`, unchanged.** |
 
    The second row is why the first cannot even be adjudicated: the fork's
-   identity spelling is **not observable from `.sm` at all**, so the corpus
+   identity spelling is **not observable from `.vibe` at all**, so the corpus
    cannot ask whether its acceptance is sound or a fail-open. And a
    `diagnostics` case marked `xfail(go)` would put a marker holding a fail-open
    into a register that currently holds none, to record a remedy choice rather
@@ -3948,7 +4593,7 @@ the harness would need.
    (row 20.12b) asserts one variant per class, one distinct identity per
    variant, and an identity derived from module and class name. It deliberately
    does **not** declare the identity's literal spelling, because declaring
-   `smithers:<module>_<Name>@1` would ratify the normalized-separator spelling
+   `vibelang:<module>_<Name>@1` would ratify the normalized-separator spelling
    as the contract and make the one-character repair a corpus break for a reason
    the specification does not state. *(Still accurate for that case, which was
    left as it stands. The repair happened on 2026-08-28 and the spelling is now
@@ -3969,7 +4614,7 @@ the harness would need.
    costed "make the spelling injective" and declined it because it moves every
    persisted `errorSchema.digest` and `contractDigest` in existence. That
    migration has now been done, on both backends in one change. The identity is
-   `smithers:<escaped file>@<escaped class>@1`: each component reversibly escaped
+   `vibelang:<escaped file>@<escaped class>@1`: each component reversibly escaped
    (`+XXXX`, four upper-case hex units) and `@`, the separator, withheld from the
    escape alphabet so neither component can spell it, with the 256-unit bound
    honoured by digesting the exact spelling instead of cutting it. Nothing is
@@ -3990,7 +4635,7 @@ the harness would need.
      a string that has to move. The new case prints both identities and both
      backends were measured minting the same bytes.
    - The second corroborating row is **no longer true**: the fork's identity
-     spelling IS observable from `.sm` now — `errorSchema.descriptor.variants[]`
+     spelling IS observable from `.vibe` now — `errorSchema.descriptor.variants[]`
      reaches it on both backends, which is what the new case reads. The `TS2339`
      that made it unobservable was the fork's legacy stub error schema, gone
      since the fork began deriving the schema from the declared failure channel.
@@ -4001,8 +4646,8 @@ the harness would need.
    same name — are indistinguishable under any injective encoding. That family
    still cannot be a case, but for the ordinary reason given for the same-NAME
    family rather than for a missing specification sentence: the fork refuses it
-   module-wide as SMITHERS1150 (its RUNTIME identity is a function of the same
-   pair) while the reference reports SMITHERS4124 alone, so a case would freeze
+   module-wide as VIBE1150 (its RUNTIME identity is a function of the same
+   pair) while the reference reports VIBE4124 alone, so a case would freeze
    two unrelated rules against each other. Both backends keep direct off-corpus
    coverage of that refusal.
 
@@ -4071,7 +4716,7 @@ the harness would need.
    half-sentence left inside gap #3 ("what is still missing on the reference
    side is a `loaders` channel").
 
-   A source loader is not something a `.sm` file *imports*; it is something a
+   A source loader is not something a `.vibe` file *imports*; it is something a
    *project* registers, and the expectation format has no field for it. The
    `typescript` field stages modules a case imports and the `assets` field
    stages files a case imports — neither is a registration. So the whole
@@ -4106,7 +4751,7 @@ the harness would need.
 
 18. **Three of the six lanes reporting on 2026-08-26 had no compiler-observable
    surface at all, and saying so is the point of this entry.** The corpus is a
-   *compiler* differential harness over authored `.sm` programs. Runtime,
+   *compiler* differential harness over authored `.vibe` programs. Runtime,
    packaging, and store-transaction behaviour is not a thing it measures badly —
    it is a thing it does not measure. Recorded so the next pass does not
    re-derive it:
@@ -4114,7 +4759,7 @@ the harness would need.
    - **The agent sandbox.** A runner pinned at its realpath and then spawned at
      the unresolved path; a teardown identity missing from a hand-listed set
      poisoning a durable call site permanently. Filesystem symlink races and
-     subprocess spawn identity have no `.sm` spelling. Lives in
+     subprocess spawn identity have no `.vibe` spelling. Lives in
      `poc/examples/agent/agent.test.ts` and
      `poc/examples/agent/durable-turn.test.ts`, where that lane wrote 19
      regression tests.
@@ -4135,6 +4780,11 @@ the harness would need.
    pins it".
 
 ## `xfail` register
+
+The current register is the per-case table in `README.md`. The native
+generated-checker checkpoint above adds the Go-only, both-refuse
+`01/result-match-requires-both-branches` diagnostic comparison; the dated
+eleven-marker account below is historical, not the current census.
 
 **Eleven markers, 2026-08-28 (third revision).** All eleven name `go`; one of
 them also names `js`. Six were retired that day — the ambient-Error registration,
@@ -4185,17 +4835,17 @@ revision" below.
 
 | case | backend | what that backend does instead | why it is a defect and not a wrong case |
 | --- | --- | --- | --- |
-| `04/a-function-local-error-class-cannot-be-declared-twice` | **js + go** | both compile clean, run the first call, and die on the second with the identical `TypeError: stable Error identity …:Inner is already registered` | **A DOCUMENTATION GAP, NOT A VERDICT — and the first marker in this register that names both backends.** Each invocation mints a *new* constructor claiming the *same* module-local identity; the registry is right to refuse two constructors for one identity, but the program was accepted. Two repairs, and no sentence chooses: either such a class is ordinary TypeScript whose behaviour compatibility.mdx §Source Relationship says `.sm` keeps, and the registry must tolerate per-call constructors; or it cannot receive a stable module-local identity — which is `SMITHERS1150`'s own sentence — and the compiler must refuse it at compile time, in which case **this case is retired rather than an implementation fixed**. Filing it is how a shared latent defect that neither backend can report about itself stops being invisible. |
-| `09/a-callback-handed-to-an-untrusted-host-is-still-rejected` | go | reports the declared `SMITHERS1301@5:3` and `SMITHERS1509@5:28` but **not** the `SMITHERS1101@3:1` | compatibility.mdx §Foreign Boundary (Locked): calling an unannotated foreign value "MUST **add the checked `panic` case**" — adding the case is the row charge and the diagnostic is downstream of it. The reference calls `recordForeignBoundary(owner, panic)` beside its `SMITHERS1509`; the fork's `checkForeignBoundaries` reports without touching the row. **Both backends refuse the program**, so this is a diagnostic-set divergence and not a soundness one, and a `diagnostics` case is exact in both directions so the omission cannot be declared away. **Localized rather than guessed:** the fork charges the row correctly for the neighbouring `SMITHERS1508`, which `09/a-foreign-callable-handed-to-a-trusted-binding-is-still-rejected` declares and passes on both — so the machinery works and one reporter skips it. Pre-existing, and invisible until this revision because no case had handed a callback to an untrusted host from inside a function with a plain return type. |
-| `09/a-module-trust-claim-is-not-a-call-site-opt-out` | go | the same omission, reached through a module carrying only the initialization claim | the same row, the same rule, the same reporter. The two retire together. Kept as a separate case because what it pins is separate: that a `@module @throws {never}` header answers `SMITHERS1510` and has never doubled as a per-call opt-out. Without it, a lane widening the argument-position rule could let the module header confer call-site trust and open every export of every trusted module at once. |
-| `09/a-bare-panic-type-resolves-without-an-import` | go | adds `SMITHERS1104@3:1` — it does not resolve a bare `Panic` type | **A DOCUMENTATION GAP, NOT A VERDICT.** type-system.mdx:60 makes the compiler charge the distinguished checked `panic` case on every unannotated foreign call, so a contract that spells the channel the compiler itself charges must be able to name it — and `Result` is ambient in `.sm` already. But nothing on failures.mdx says whether the TYPE `Panic` is ambient; it says `panic` is imported from `smithers:exceptions`. The fork is arguably right. Neither backend should move on this marker; a sentence should. |
-| `09/an-untrusted-union-return-is-an-executable-foreign-value-on-one-backend-only` | go | reports `SMITHERS1301@5:23` alone; the reference reports `SMITHERS1508@6:10` beside it | compatibility.mdx §Foreign Boundary. The returned value's type is `string \| Promise<string>` and the `Promise` constituent carries the foreign call out of the function un-awaited, which is what `SMITHERS1508` is for. **Both backends refuse the program**, so this is a diagnostic-set divergence and not a soundness one. The binding here carries **no `@throws` claim at all**, and that is the case's job: it is the control for the row below, and it localizes the shared omission to `containsForeignExecutableValue`'s union handling rather than to any trust rule. **Pre-existing, and measured as such rather than argued:** the case was re-run on a reconstructed tree carrying none of the 2026-08-26 foreign-boundary work and scored `js pass / go xfail` there, identically. |
-| `09/a-trusted-union-with-a-promise-constituent-keeps-its-rejection-channel` | go | reports `[SMITHERS1502@5:23, SMITHERS1301@5:23]`; the reference adds `SMITHERS1508@6:10` | the same union shape as the row above with a `@throws {never}` marker added, so the same omitted cascade. What the case exists to pin — that a union with a `Promise` constituent still carries a rejection channel, so the opt-out marker on it is unusable — is reported **identically on both backends, at the same position, under the same code**. Only the cascade differs, and the control row above is the evidence for where the difference comes from. The two retire together. |
-| `09/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter` | go | reports `SMITHERS1506@4:17` and **refuses the program**; omits the `SMITHERS1101@3:1` | **THIS ROW WAS THE REGISTER'S ONE FAIL-OPEN AND IS NO LONGER.** Until 2026-08-26 the fork compiled this program with zero diagnostics, ran it and exited 0 printing `3`: its property rule consulted the *member's* declarations, an index-signature member has none, and an empty declaration list was treated as nothing to object to, so a foreign accessor could run inside a function whose row read `failures: []`. The second gate that did that is gone; the rule now asks the **receiver's** provenance alone, which is what the fork's own comment had claimed the rule was all along — a correct verdict resting on a stale reason, and the reason was the part that was wrong. What remains is the row charge: compatibility.mdx §Foreign Boundary says the call "MUST **add the checked `panic` case**", the reference charges the row beside its report and the fork does not, so the `SMITHERS1101` is missing. **Both backends now refuse the program**, so this is a diagnostic-set divergence and retires with the other five row-charge rows. Re-measured through `run.mjs --backend both --filter … --json` from source rather than through `bin/smithers.js`, which serves a stale build. |
-| `09/a-foreign-index-signature-read-through-an-element-access-needs-an-adapter` | go | reports `SMITHERS1506@4:17` and refuses the program; omits the `SMITHERS1101@3:1` | The **deliberate pair** of the row above: `keyed["width"]` against `keyed.width`, the same member off the same value. One case cannot tell a rule that reads the receiver from a rule that happens to refuse one spelling, and the corpus had only the dotted one — so the fix above landed with its central claim unpinned. **Demonstrated failing against the pre-fix tree, not merely pinned:** staged into a reconstructed pre-change tree and run through the real runner there, where the fork compiled it, ran it and exited 0 printing `3`. |
-| `09/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter` | go | reports `SMITHERS1506@4:17` and refuses the program; omits the `SMITHERS1101@3:1` | The half of the same argument the index-signature cases cannot make: `constructor` **is** declared, and its only declaration is in `lib.es5.d.ts`. A rule that decides by asking where the member is declared admits this read even after it stops treating an empty declaration list as consent, so the declaring *file* had to be shown not to be the question either. Nothing stops a foreign object serving `constructor`, `length` or `toString` from a throwing getter or a `Proxy` trap, and `lib.es5.d.ts` describes a shape rather than vouching for an object. The receiver here is `spreadable`, whose own `a` getter throws. **Demonstrated failing against the pre-fix tree:** the fork compiled it, ran it and exited 0 printing `false`. |
-| `09/destructuring-a-foreign-value-runs-its-accessors` | go | reports `SMITHERS1506@4:9` — at the binding **pattern**, agreeing with the reference on position as well as code — and refuses the program; omits the `SMITHERS1101@3:1` | `const { width } = keyed` is a property read with **no property-access node to see**, the same shape as the implicit-invocation protocols one level down, which is why it is a third case and not a variant of the first two. The position is the pattern rather than the initializer because the pattern is what decides how many members are read. **Demonstrated failing against the pre-fix tree:** the fork compiled it, ran it and exited 0 printing `3`; it modelled a binding pattern only for *authored* accessor rows and let the foreign case through with no diagnostic at all. |
-| `09/a-fallible-getter-in-an-argument-still-needs-a-contract` | go | reports only `SMITHERS1303@8:19`; the reference reports `SMITHERS1105@8:19` beside it | **A DOCUMENTATION GAP, NOT A VERDICT — and the most consequential of the three, because what it records is a missing RULE, not a missed shape. The fork implements no `SMITHERS1105` and no `SMITHERS1106` anywhere.** So the two backends have always disagreed on every fallible accessor, constructor and generator, and the disagreement was structurally invisible: both codes sat in this page's worst bucket, *spelled by one implementation and probed by no case*, which produces no divergence in either direction ever. §2.16 and §2.17 recorded them as **uncovered** for exactly that reason; this marker is what moves them. It became visible only when the panic non-widening rule removed `SMITHERS1101` from the panicking half of the same class. **Both backends refuse the program**, so nothing escapes — `SMITHERS1303` is the refusal that matters, it is about a failure channel crossing a value edge, and both report it at the same authored position. They differ only in loudness. **No specification sentence names either code**; failures.mdx:190 requires only that the program be refused, and both satisfy it. Neither backend should move on this marker. Retire it by implementing the two codes in the fork if the accessor limitation is made normative, or by dropping the declaration to `[SMITHERS1303@8:19]` if it is not. |
+| `04/a-function-local-error-class-cannot-be-declared-twice` | **js + go** | both compile clean, run the first call, and die on the second with the identical `TypeError: stable Error identity …:Inner is already registered` | **A DOCUMENTATION GAP, NOT A VERDICT — and the first marker in this register that names both backends.** Each invocation mints a *new* constructor claiming the *same* module-local identity; the registry is right to refuse two constructors for one identity, but the program was accepted. Two repairs, and no sentence chooses: either such a class is ordinary TypeScript whose behaviour compatibility.mdx §Source Relationship says `.vibe` keeps, and the registry must tolerate per-call constructors; or it cannot receive a stable module-local identity — which is `VIBE1150`'s own sentence — and the compiler must refuse it at compile time, in which case **this case is retired rather than an implementation fixed**. Filing it is how a shared latent defect that neither backend can report about itself stops being invisible. |
+| `09/a-callback-handed-to-an-untrusted-host-is-still-rejected` | go | reports the declared `VIBE1301@5:3` and `VIBE1509@5:28` but **not** the `VIBE1101@3:1` | compatibility.mdx §Foreign Boundary (Locked): calling an unannotated foreign value "MUST **add the checked `panic` case**" — adding the case is the row charge and the diagnostic is downstream of it. The reference calls `recordForeignBoundary(owner, panic)` beside its `VIBE1509`; the fork's `checkForeignBoundaries` reports without touching the row. **Both backends refuse the program**, so this is a diagnostic-set divergence and not a soundness one, and a `diagnostics` case is exact in both directions so the omission cannot be declared away. **Localized rather than guessed:** the fork charges the row correctly for the neighbouring `VIBE1508`, which `09/a-foreign-callable-handed-to-a-trusted-binding-is-still-rejected` declares and passes on both — so the machinery works and one reporter skips it. Pre-existing, and invisible until this revision because no case had handed a callback to an untrusted host from inside a function with a plain return type. |
+| `09/a-module-trust-claim-is-not-a-call-site-opt-out` | go | the same omission, reached through a module carrying only the initialization claim | the same row, the same rule, the same reporter. The two retire together. Kept as a separate case because what it pins is separate: that a `@module @throws {never}` header answers `VIBE1510` and has never doubled as a per-call opt-out. Without it, a lane widening the argument-position rule could let the module header confer call-site trust and open every export of every trusted module at once. |
+| `09/a-bare-panic-type-resolves-without-an-import` | go | adds `VIBE1104@3:1` — it does not resolve a bare `Panic` type | **A DOCUMENTATION GAP, NOT A VERDICT.** type-system.mdx:60 makes the compiler charge the distinguished checked `panic` case on every unannotated foreign call, so a contract that spells the channel the compiler itself charges must be able to name it — and `Result` is ambient in `.vibe` already. But nothing on failures.mdx says whether the TYPE `Panic` is ambient; it says `panic` is imported from `vibelang:exceptions`. The fork is arguably right. Neither backend should move on this marker; a sentence should. |
+| `09/an-untrusted-union-return-is-an-executable-foreign-value-on-one-backend-only` | go | reports `VIBE1301@5:23` alone; the reference reports `VIBE1508@6:10` beside it | compatibility.mdx §Foreign Boundary. The returned value's type is `string \| Promise<string>` and the `Promise` constituent carries the foreign call out of the function un-awaited, which is what `VIBE1508` is for. **Both backends refuse the program**, so this is a diagnostic-set divergence and not a soundness one. The binding here carries **no `@throws` claim at all**, and that is the case's job: it is the control for the row below, and it localizes the shared omission to `containsForeignExecutableValue`'s union handling rather than to any trust rule. **Pre-existing, and measured as such rather than argued:** the case was re-run on a reconstructed tree carrying none of the 2026-08-26 foreign-boundary work and scored `js pass / go xfail` there, identically. |
+| `09/a-trusted-union-with-a-promise-constituent-keeps-its-rejection-channel` | go | reports `[VIBE1502@5:23, VIBE1301@5:23]`; the reference adds `VIBE1508@6:10` | the same union shape as the row above with a `@throws {never}` marker added, so the same omitted cascade. What the case exists to pin — that a union with a `Promise` constituent still carries a rejection channel, so the opt-out marker on it is unusable — is reported **identically on both backends, at the same position, under the same code**. Only the cascade differs, and the control row above is the evidence for where the difference comes from. The two retire together. |
+| `09/a-foreign-index-signature-read-through-a-property-access-needs-an-adapter` | go | reports `VIBE1506@4:17` and **refuses the program**; omits the `VIBE1101@3:1` | **THIS ROW WAS THE REGISTER'S ONE FAIL-OPEN AND IS NO LONGER.** Until 2026-08-26 the fork compiled this program with zero diagnostics, ran it and exited 0 printing `3`: its property rule consulted the *member's* declarations, an index-signature member has none, and an empty declaration list was treated as nothing to object to, so a foreign accessor could run inside a function whose row read `failures: []`. The second gate that did that is gone; the rule now asks the **receiver's** provenance alone, which is what the fork's own comment had claimed the rule was all along — a correct verdict resting on a stale reason, and the reason was the part that was wrong. What remains is the row charge: compatibility.mdx §Foreign Boundary says the call "MUST **add the checked `panic` case**", the reference charges the row beside its report and the fork does not, so the `VIBE1101` is missing. **Both backends now refuse the program**, so this is a diagnostic-set divergence and retires with the other five row-charge rows. Re-measured through `run.mjs --backend both --filter … --json` from source rather than through `bin/vibe.js`, which serves a stale build. |
+| `09/a-foreign-index-signature-read-through-an-element-access-needs-an-adapter` | go | reports `VIBE1506@4:17` and refuses the program; omits the `VIBE1101@3:1` | The **deliberate pair** of the row above: `keyed["width"]` against `keyed.width`, the same member off the same value. One case cannot tell a rule that reads the receiver from a rule that happens to refuse one spelling, and the corpus had only the dotted one — so the fix above landed with its central claim unpinned. **Demonstrated failing against the pre-fix tree, not merely pinned:** staged into a reconstructed pre-change tree and run through the real runner there, where the fork compiled it, ran it and exited 0 printing `3`. |
+| `09/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter` | go | reports `VIBE1506@4:17` and refuses the program; omits the `VIBE1101@3:1` | The half of the same argument the index-signature cases cannot make: `constructor` **is** declared, and its only declaration is in `lib.es5.d.ts`. A rule that decides by asking where the member is declared admits this read even after it stops treating an empty declaration list as consent, so the declaring *file* had to be shown not to be the question either. Nothing stops a foreign object serving `constructor`, `length` or `toString` from a throwing getter or a `Proxy` trap, and `lib.es5.d.ts` describes a shape rather than vouching for an object. The receiver here is `spreadable`, whose own `a` getter throws. **Demonstrated failing against the pre-fix tree:** the fork compiled it, ran it and exited 0 printing `false`. |
+| `09/destructuring-a-foreign-value-runs-its-accessors` | go | reports `VIBE1506@4:9` — at the binding **pattern**, agreeing with the reference on position as well as code — and refuses the program; omits the `VIBE1101@3:1` | `const { width } = keyed` is a property read with **no property-access node to see**, the same shape as the implicit-invocation protocols one level down, which is why it is a third case and not a variant of the first two. The position is the pattern rather than the initializer because the pattern is what decides how many members are read. **Demonstrated failing against the pre-fix tree:** the fork compiled it, ran it and exited 0 printing `3`; it modelled a binding pattern only for *authored* accessor rows and let the foreign case through with no diagnostic at all. |
+| `09/a-fallible-getter-in-an-argument-still-needs-a-contract` | go | reports only `VIBE1303@8:19`; the reference reports `VIBE1105@8:19` beside it | **A DOCUMENTATION GAP, NOT A VERDICT — and the most consequential of the three, because what it records is a missing RULE, not a missed shape. The fork implements no `VIBE1105` and no `VIBE1106` anywhere.** So the two backends have always disagreed on every fallible accessor, constructor and generator, and the disagreement was structurally invisible: both codes sat in this page's worst bucket, *spelled by one implementation and probed by no case*, which produces no divergence in either direction ever. §2.16 and §2.17 recorded them as **uncovered** for exactly that reason; this marker is what moves them. It became visible only when the panic non-widening rule removed `VIBE1101` from the panicking half of the same class. **Both backends refuse the program**, so nothing escapes — `VIBE1303` is the refusal that matters, it is about a failure channel crossing a value edge, and both report it at the same authored position. They differ only in loudness. **No specification sentence names either code**; failures.mdx:190 requires only that the program be refused, and both satisfy it. Neither backend should move on this marker. Retire it by implementing the two codes in the fork if the accessor limitation is made normative, or by dropping the declaration to `[VIBE1303@8:19]` if it is not. |
 
 **Sixteen of the eighteen pin current behaviour rather than a regression, and the
 markers say which.** Only the two arrow-body rows are an over-reach in a rule
@@ -4226,8 +4876,8 @@ agreement is not conformance, and two implementations agreeing on a program that
 crashes is exactly the shape a differential oracle is blindest to.
 
 **What most of them have in common is again the thing the code-set subtraction
-cannot see.** `SMITHERS1204`, `SMITHERS1301`, `SMITHERS1302`, `SMITHERS1303`,
-`SMITHERS1101` and `SMITHERS1104` are all spelled by both implementations. Most
+cannot see.** `VIBE1204`, `VIBE1301`, `VIBE1302`, `VIBE1303`,
+`VIBE1101` and `VIBE1104` are all spelled by both implementations. Most
 markers here are a rule both backends "have" and one of them answers differently
 in one spelling. They were found by writing ordinary programs. **The three filed
 on accepted programs are not of that kind, and that is the point:** no code is
@@ -4323,7 +4973,7 @@ travels with the case:
 | `07/a-conditional-branch-forwards-its-result` | go | the fork's ownership walk now forwards through a conditional's branch positions; the condition position still discards. |
 | `07/an-object-literal-holding-a-result-is-consumed-through-its-property` | go | the container transfer now recognises object-literal property and spread assignment alongside the array forms. |
 | `08/a-bound-promise-array-is-consumed-by-promise-all` | go | the transfer is no longer Result-only, and the ambient Promise combinators now discharge a *bound* collection. |
-| `08/postfix-bang-on-an-unawaited-promise-result-is-not-a-result-operand` | go | both halves of the `!`-on-a-Promise carve-out were deleted — including the one that suppressed `SMITHERS1207` and emitted the `!` through, which failures.mdx forbids outright ("A rejected `!` MUST be a diagnostic, never a silent lowering") — stated in §Accepted Placements when this row was written, and surviving verbatim in §Refusal Conditions after that section's withdrawal on 2026-08-27. |
+| `08/postfix-bang-on-an-unawaited-promise-result-is-not-a-result-operand` | go | both halves of the `!`-on-a-Promise carve-out were deleted — including the one that suppressed `VIBE1207` and emitted the `!` through, which failures.mdx forbids outright ("A rejected `!` MUST be a diagnostic, never a silent lowering") — stated in §Accepted Placements when this row was written, and surviving verbatim in §Refusal Conditions after that section's withdrawal on 2026-08-27. |
 | `09/foreign-module-without-a-trust-marker` | go | the early return that disabled the entire foreign policy behind a refused module edge was removed. It had suppressed far more than the one diagnostic it was written for. |
 | `09/a-dynamic-import-of-a-project-module-is-not-a-foreign-module-edge` | go | the blanket dynamic-import refusal was narrowed to the rule's actual subject, which also made a latent bridge crash reachable — and it was fixed at the same time (see 7.20). |
 
@@ -4346,7 +4996,7 @@ attribute objects before emit.
 
 The retirement was measured twice, on the tree as found, before anything was
 deleted: `XPASS` in a `node conformance/runner/run.mjs --backend both --jobs 4`
-run, then `--backend go --filter … --json`, which reports `SMITHERS5218` at
+run, then `--backend go --filter … --json`, which reports `VIBE5218` at
 **4:24** with the message *"dynamic asset imports require a literal specifier and
 a literal `with { ... }` attribute object"* — identical to the reference in code,
 position **and message**. The full record of what the fork used to observe is in
@@ -4384,7 +5034,7 @@ because anything regressed:
 
 | row | what the fork did |
 | --- | --- |
-| `17/an-actions-failure-channel-mints-one-identity-per-error-class` | reported stock `TS2339` + five `TS7006` on an authored `.sm` file. Its `smithers:flows` surface types a durable schema as `{digest, format, role, schemaVersion, shape, source}` — **no `descriptor`** — so `plan.actions[0].errorSchema.descriptor` does not exist there and no compiler-derived durable failure identity is reachable from `.sm` on that backend in either direction. `unsupported` is exactly right: not implemented yet, loudly. |
+| `17/an-actions-failure-channel-mints-one-identity-per-error-class` | reported stock `TS2339` + five `TS7006` on an authored `.vibe` file. Its `vibelang:flows` surface types a durable schema as `{digest, format, role, schemaVersion, shape, source}` — **no `descriptor`** — so `plan.actions[0].errorSchema.descriptor` does not exist there and no compiler-derived durable failure identity is reachable from `.vibe` on that backend in either direction. `unsupported` is exactly right: not implemented yet, loudly. |
 
 `unsupported` does not gate — only `fail` does — so the run is still exit 0. What
 it costs is one row of backend agreement (404/422 rather than 405/422), and what
@@ -4394,7 +5044,7 @@ types carry the descriptor.
 
 The previous count was zero across four consecutive measurements. The last row
 before this one — `23/a-type-only-asset-import-is-rejected`, where the
-fork reported a stock `TS2857` where the reference reports `SMITHERS5208` — is
+fork reported a stock `TS2857` where the reference reports `VIBE5208` — is
 gone with the rest of the asset gap: the fork now owns that refusal under its
 own code. The revision before that had three rows (`18/with-statement-is-forbidden`,
 `09/a-bare-package-with-the-intrinsic-letters-is-foreign`,
@@ -4442,7 +5092,7 @@ implementation change, verified by `sha256` on both sides of the run.
    conflict with the ledger, **the ledger wins** until the specification is
    updated."* So the ledger currently locks a form that the specification page
    calls Direction and that **both implementations reject** —
-   `11/unlabeled-loop-expression-is-rejected` declares `SMITHERS1702` and passes
+   `11/unlabeled-loop-expression-is-rejected` declares `VIBE1702` and passes
    on both backends. The document that formally wins is the one that disagrees
    with everything else. Narrowing a specification page does not narrow the
    ledger, and this page should not have said it did.
@@ -4450,12 +5100,12 @@ implementation change, verified by `sha256` on both sides of the run.
    candidate and the poc README calls it POC evidence. The two ordering cases
    pin LIFO and say so in `notes`, so a deliberate change is visible.
 3. **The two intrinsic namespaces are intentional and exact.** Package-exported
-   capability modules are `smthrs/context` and `smthrs/provider`; compiler-owned
-   virtual modules use the colon namespace (`smithers:exceptions`,
-   `smithers:comptime`, `smithers:flows`, `smithers:native`). Neither is trusted
+   capability modules are `vibelang/context` and `vibelang/provider`; compiler-owned
+   virtual modules use the colon namespace (`vibelang:exceptions`,
+   `vibelang:comptime`, `vibelang:flows`, `vibelang:native`). Neither is trusted
    by prefix, which **`09/a-bare-package-with-the-intrinsic-letters-is-foreign`**
    now pins. Any docs still spelling the package modules as
-   `smithers/context` are stale.
+   `vibelang/context` are stale.
 4. **`09/declared-foreign-throws-is-exposed` over-claims in its title.** It says
    a violated contract "still lands in Panic" but only exercises a foreign
    function that honours its `@throws {RangeError}` claim. The violated half is
@@ -4479,7 +5129,7 @@ it urgent rather than tidy.
 | Q1 | **Can `while` and `for` be expressions?** | `docs/DECISIONS.md:289` — "**Locked:** Blocks, `if`, `switch`, `while`, and `for` can be expressions." vs. `specification/control-flow.mdx:19-22` — a **Direction** note saying an unlabeled loop in expression position "is not part of the current locked surface and is rejected by both implementations." `specification/index.mdx:54` gives the ledger priority. | The document that formally wins contradicts both implementations and the corpus. `11/unlabeled-loop-expression-is-rejected` pins the rejection, so **if the ledger is taken at its word, that green case is testing the wrong behaviour.** One sentence in one file settles it. |
 | Q2 | **Is loop `else` required or optional?** | `specification/control-flow.mdx` contradicts **itself**: `:19-21` (§Expression Forms) says a loop value requires "a value-bearing `break` and **required `else`** completion"; `:62` (§Loop Else) says "a loop expression **MAY** provide an `else` value for the path where the loop completes without breaking". | Both implementations require it — `13/loop-value-without-an-else-is-rejected` is green on both. So §Loop Else's MAY describes nothing that exists. A case written from `:62` would assert acceptance and fail; a case written from `:19` is the one in the tree. One of the two sentences has to go. |
 | Q3 | **Can a trusted adapter remove `Panic` from `E`?** | `specification/failures.mdx:113` — a caller MUST "propagate panic, explicitly catch it, or **use a trusted adapter that catches and translates it**", which implies `Panic` leaves the channel. vs. `docs/src/pages/guide/typescript-interop.mdx:46` — "the current POC's `Result.try` helper **conservatively retains `Panic`** in its result type even when a mapper is supplied." | The corpus's own authoring rule is "write the case from the documentation first". A case written straight from `failures.mdx:113` asserts a panic-free channel and **fails today**, so nobody has written it, and the adapter clause of a locked MUST is unmeasured. Either the specification sentence over-promises or `Result.try` under-delivers; a human decides which. |
-| Q4 | **Is switch exhaustiveness a SHOULD or a MUST?** | `specification/control-flow.mdx:42` — "the compiler **SHOULD** require an expression switch to be exhaustive." vs. both implementations, which make it a hard error: `11/switch-expression-missing-a-union-member` declares `SMITHERS1716` and is green on both backends. | §13.9 records this as "covered as a SHOULD" while what is actually pinned is a MUST. That mislabels the strength of a green case: if a future implementation downgraded it to a warning it would be *conformant* with the spec and would **fail** this corpus — and per observation gap #11 the warning would then be invisible, so the case could not even be softened. |
+| Q4 | **Is switch exhaustiveness a SHOULD or a MUST?** | `specification/control-flow.mdx:42` — "the compiler **SHOULD** require an expression switch to be exhaustive." vs. both implementations, which make it a hard error: `11/switch-expression-missing-a-union-member` declares `VIBE1716` and is green on both backends. | §13.9 records this as "covered as a SHOULD" while what is actually pinned is a MUST. That mislabels the strength of a green case: if a future implementation downgraded it to a warning it would be *conformant* with the spec and would **fail** this corpus — and per observation gap #11 the warning would then be invisible, so the case could not even be softened. |
 
 None of these is a lane's work. Each is a one-sentence edit by someone with the
 authority to make it, and each currently makes a conformance case unwritable or
@@ -4493,10 +5143,10 @@ coverage.**
 
 | # | locked obligation | status | evidence |
 | --- | --- | --- | --- |
-| F1 | *"Smithers **MUST** support a near-native target through LLVM"* | **CLOSED 2026-08-23 by withdrawal, not by implementation.** The near-native/LLVM target and the Wasm target were withdrawn from the specification; TypeScript is the only target. This is no longer an unimplemented MUST because it is no longer a MUST. Pre-withdrawal record follows. | `compatibility.mdx:60`. `grep -ril llvm poc/src/ src/ compiler/ cmd/` returns nothing; the string occurs only in prose. This is the single largest unimplemented MUST in the repository and it is the one row 10.13 has always named. It also blocks 20.38 (a deployment build MUST be capable of emitting a **native** worker artifact). |
+| F1 | *"VibeLang **MUST** support a near-native target through LLVM"* | **CLOSED 2026-08-23 by withdrawal, not by implementation.** The near-native/LLVM target and the Wasm target were withdrawn from the specification; TypeScript is the only target. This is no longer an unimplemented MUST because it is no longer a MUST. Pre-withdrawal record follows. | `compatibility.mdx:60`. `grep -ril llvm poc/src/ src/ compiler/ cmd/` returns nothing; the string occurs only in prose. This is the single largest unimplemented MUST in the repository and it is the one row 10.13 has always named. It also blocks 20.38 (a deployment build MUST be capable of emitting a **native** worker artifact). |
 | F2 | compiler and loader sandboxes | **process-level, not container or VM isolation** | `specification/index.mdx:83`. No gate measures isolation strength at any level. |
 | F3 | durable runtime coordination | **no multi-machine coordination** | `specification/index.mdx:84`. §20.23–20.28 and 20.38–20.40 are the sentences this makes unreachable; `poc/src/durable/remote-worker.ts` and `isolated-worker.ts` are single-machine. |
-| F4 | fork patches | **neither vendored into the distribution nor signed** | `specification/index.mdx:81-82`; `docs/TYPESCRIPT_FORK.md` records the series as reviewable and digest-gated but not vendored or signed, and `.sm` as still "a content-mapper extension rather than a built-in source kind" (`index.mdx:41-42`). No gate measures any of it. |
+| F4 | fork patches | **neither vendored into the distribution nor signed** | `specification/index.mdx:81-82`; `docs/TYPESCRIPT_FORK.md` records the series as reviewable and digest-gated but not vendored or signed, and `.vibe` as still "a content-mapper extension rather than a built-in source kind" (`index.mdx:41-42`). No gate measures any of it. |
 
 `specification/index.mdx:80-84` names all four in one paragraph. **This page had
 named only the first**, and named it in a sentence that also made a false claim
@@ -4552,7 +5202,7 @@ and the fork was rebuilt from that tree's `cmd/` and `compiler/`.
 | --- | --- | --- | --- |
 | `07/a-returned-result-collection-charges-its-caller` | the executed defect: a returned Result collection charges its caller | **compiled, ran, exit 0, printed `saved 3 records`** while a checked `SaveFailed` was thrown and dropped | **identical** |
 | `07/an-awaited-result-collection-charges-its-caller` | `await` removes only the Promise layer | **compiled, ran, exit 0, printed `1`** | **identical** |
-| `07/a-returned-promise-collection-charges-its-caller` | the `SMITHERS1402` twin — the predicate names *which* channel | **compiled, ran, exit 0, printed `2`** | **identical** |
+| `07/a-returned-promise-collection-charges-its-caller` | the `VIBE1402` twin — the predicate names *which* channel | **compiled, ran, exit 0, printed `2`** | **identical** |
 | `07/a-collection-laundered-through-an-opaque-return-type-is-still-a-discard` | a `return` discharges only when the return type carries the channel | **compiled, ran, exit 0, printed `false`** | **identical** |
 | `09/a-foreign-index-signature-read-through-an-element-access-needs-an-adapter` | the receiver's provenance, not the spelling | pass — the reference always refused it | **compiled, ran, exit 0, printed `3`** |
 | `09/a-library-declared-member-of-a-foreign-value-still-needs-an-adapter` | the receiver's provenance, not the declaring file | pass — the reference always refused it | **compiled, ran, exit 0, printed `false`** |
@@ -4618,7 +5268,7 @@ union: 19 of 25
 | `an-ordinary-recoverable-throw-still-requires-a-result` | **scope guard** — an ordinary `throw` still widens | pass — pins current | pass — pins current |
 | `an-untrusted-foreign-call-propagated-with-bang-still-charges-panic` | **scope guard** — the foreign channel is untouched | pass — pins current | pass — pins current |
 | `throwing-a-panic-instance-is-an-ordinary-recoverable-exit` | **scope guard** — `throw new Panic` is not a third spelling | pass — pins current | pass — pins current |
-| `a-fallible-getter-in-an-argument-still-needs-a-contract` | the `SMITHERS1105`/`1106` asymmetry | pass — pins current | `xfail` — pins current |
+| `a-fallible-getter-in-an-argument-still-needs-a-contract` | the `VIBE1105`/`1106` asymmetry | pass — pins current | `xfail` — pins current |
 | `a-top-level-panic-is-still-refused` | **lowering boundary** — no return type to keep | `1505@3:1` — pins current | `1505@3:1` — pins current |
 | `a-panic-in-a-static-initializer-block-is-still-refused` | **lowering boundary** — the construct is refused wholesale | `1107@4:3` — pins current | `1107@4:3` — pins current |
 
@@ -4667,7 +5317,7 @@ incidental:
   family again, the container-ownership rows, and the dynamic-import rows.
 - **4 more were `unsupported` on the fork**, which is the honest label for what
   happened: the fork *rejected its own emitted TypeScript* with `TS2322` on
-  ordinary programs, because its lifting consulted the Smithers side table for a
+  ordinary programs, because its lifting consulted the VibeLang side table for a
   direct `!` only and the stale TypeScript meaning of `!` leaked one edge further
   out through a `const` binding's inferred type. Those four are
   `a-contracted-callback-throw-reaches-the-caller-as-a-failure`,
@@ -4687,7 +5337,7 @@ sibling of a crash regression pin. **Nineteen cases pinning current behaviour is
 not nineteen cases of filler** — the corpus has shipped seven over-corrections
 and the guards are what catch the eighth.
 
-**No case in this revision depends on `SMITHERS1101`, `SMITHERS1105`, or panic
+**No case in this revision depends on `VIBE1101`, `VIBE1105`, or panic
 widening.** That was a deliberate boundary: a lane was implementing the new
 §Panic Does Not Widen a Return Type rule across both backends while this revision
 ran. The corpus case that DOES depend on it —
@@ -4696,7 +5346,7 @@ and is the single failing row in this revision's scoreboard. It belongs to them.
 **The third revision settled it**: the expectation was replaced from the
 specification, the case renamed `a-panic-in-an-if-body-keeps-a-plain-return-type`,
 and the rule pinned in both directions by twenty-two further cases (§7.24–§7.29).
-The `SMITHERS1105` half of the deferral turned out not to be a panic question at
+The `VIBE1105` half of the deferral turned out not to be a panic question at
 all — it is an unmeasured backend asymmetry, now carrying its own marker.
 
 ### The previous revision's forty-three — 2026-08-25
@@ -4715,7 +5365,7 @@ pre-fix fork      (go): 215/246 match, 21 divergent, 3 unsupported, 2 xfail, 5 X
 
 The Go column counts every non-matching verdict, not only `divergent`: three of
 its failures were bucketed `unsupported` because the fork reported stock
-TypeScript codes on authored `.sm`, and two were already carrying a marker.
+TypeScript codes on authored `.vibe`, and two were already carrying a marker.
 Union of the two failure sets: **36 cases**, with eight failing on both backends
 — the computed-member family, which is exactly the family the review predicted a
 differential oracle could never see.
@@ -4761,23 +5411,23 @@ worse. It is because the questions had never been asked.
 
 | case | pins | fail-open direction | demonstrated failing against the behaviour it pins? |
 | --- | --- | --- | --- |
-| `21/a-callback-a-callee-invokes-is-part-of-the-pinned-graph` | a callback is in the graph exactly when the callee's visible body invokes it; route `-> invoking-callee.mod.sm#run` | **fork (live)** | **YES** — the fork accepts, certifies and runs it (exit 0, prints `1`). See the register. |
-| `21/a-class-instance-method-is-part-of-the-pinned-graph` | the method that runs is the one on the class the caller constructed, not the interface member the signature selected; route `-> reader-callee.mod.sm#run -> …#read` | **fork (live)** | **YES** — accepted, certified, run. |
+| `21/a-callback-a-callee-invokes-is-part-of-the-pinned-graph` | a callback is in the graph exactly when the callee's visible body invokes it; route `-> invoking-callee.mod.vibe#run` | **fork (live)** | **YES** — the fork accepts, certifies and runs it (exit 0, prints `1`). See the register. |
+| `21/a-class-instance-method-is-part-of-the-pinned-graph` | the method that runs is the one on the class the caller constructed, not the interface member the signature selected; route `-> reader-callee.mod.vibe#run -> …#read` | **fork (live)** | **YES** — accepted, certified, run. |
 | `21/a-layer-cannot-subtract-a-requirement-that-blocks-the-pin` | layer satisfaction subtracts nominal capability rows and never a built-in requirement | **fork (live)** | **YES** — accepted, certified, run, and separated from a missing walk by two probes: the byte-identical program with the capability renamed `Config` is refused. |
-| `21/a-side-effect-import-chain-is-part-of-the-pinned-graph` | the module LOAD graph, transitively; route `-> loads-host.mod.sm -> node:fs` | **fork (live)** | **YES** — pin granted. Isolated to the transitive half: the fork charges a direct `import "node:fs"` correctly. |
-| `21/a-host-read-in-a-module-initializer-is-part-of-the-pinned-graph` | ambient authority read by a module-level initializer; route `-> initializer-host.mod.sm#pid -> process.pid` | **neither today** — it was a live *reference* fail-open one day ago | **no** — both backends refuse it now. Reverting `poc/src/targets/classify.ts` to prove it is not a licence this lane has. |
+| `21/a-side-effect-import-chain-is-part-of-the-pinned-graph` | the module LOAD graph, transitively; route `-> loads-host.mod.vibe -> node:fs` | **fork (live)** | **YES** — pin granted. Isolated to the transitive half: the fork charges a direct `import "node:fs"` correctly. |
+| `21/a-host-read-in-a-module-initializer-is-part-of-the-pinned-graph` | ambient authority read by a module-level initializer; route `-> initializer-host.mod.vibe#pid -> process.pid` | **neither today** — it was a live *reference* fail-open one day ago | **no** — both backends refuse it now. Reverting `poc/src/targets/classify.ts` to prove it is not a licence this lane has. |
 | `21/a-host-read-behind-an-immediately-invoked-function-is-part-of-the-pinned-graph` | a function invoked where it is written runs where it is written, and adds no hop — declared as the *same* route as the case above, which is the contract | same | **no** — pins current behaviour. Its A/B is real though: the two cases differ by one pair of parentheses and must produce the identical route. |
 | `21/a-layer-provide-callback-is-part-of-the-pinned-graph` | `Layer.provide` keeps its environment active THROUGH the callback, so the callback runs | same | **no** — pins current behaviour |
 | `21/a-callback-a-callee-only-stores-still-satisfies-the-pin` | acceptance twin; an `expect: "output"` case that compiles, type-checks its emitted module set, and runs | — | n/a (over-correction guard) — **and it passes on the fork for the wrong reason**, which the case's own `notes` state: a backend that enters no callback satisfies a negative automatically. |
 | `21/a-layer-provided-capability-is-subtracted-and-the-pin-still-holds` | acceptance twin; the provided row really is subtracted, including through an ordinary call, and the pin holds | — | n/a (over-correction guard) |
-| `21/a-pin-whose-argument-is-not-a-project-function-is-rejected` | `SMITHERS3005`, unresolvable-subject branch, reported at the argument. **The gate on the whole area** | **neither** — a rule both implementations have and nothing probed | **no** — pins current behaviour |
-| `21/a-pin-given-two-arguments-is-rejected` | `SMITHERS3005`, arity branch, reported at the call. Written separately because the two branches report at different positions | same | **no** — pins current behaviour |
-| `09/panic-outside-a-statement-or-return-is-rejected` | `SMITHERS1503`: `panic(...)` is an exit, not a value | same | **no** — pins current behaviour. It did find a real backend wording difference (§7.23). |
-| `10/async-errdefer-cannot-inspect-a-directly-returned-promise` | `SMITHERS1713`, isolated at last from `SMITHERS1402`/`1712` | same | **no** — pins current behaviour |
-| `06/a-provide-callback-that-is-not-a-local-function-is-rejected` | `SMITHERS2103`: the "what is required" half of knowing the complete closure | same | **no** — pins current behaviour |
-| `17/an-opaque-durable-argument-is-rejected` | `SMITHERS4103`, obligation 20.5; the durable area's analogue of `SMITHERS3005` | same | **no** — pins current behaviour |
+| `21/a-pin-whose-argument-is-not-a-project-function-is-rejected` | `VIBE3005`, unresolvable-subject branch, reported at the argument. **The gate on the whole area** | **neither** — a rule both implementations have and nothing probed | **no** — pins current behaviour |
+| `21/a-pin-given-two-arguments-is-rejected` | `VIBE3005`, arity branch, reported at the call. Written separately because the two branches report at different positions | same | **no** — pins current behaviour |
+| `09/panic-outside-a-statement-or-return-is-rejected` | `VIBE1503`: `panic(...)` is an exit, not a value | same | **no** — pins current behaviour. It did find a real backend wording difference (§7.23). |
+| `10/async-errdefer-cannot-inspect-a-directly-returned-promise` | `VIBE1713`, isolated at last from `VIBE1402`/`1712` | same | **no** — pins current behaviour |
+| `06/a-provide-callback-that-is-not-a-local-function-is-rejected` | `VIBE2103`: the "what is required" half of knowing the complete closure | same | **no** — pins current behaviour |
+| `17/an-opaque-durable-argument-is-rejected` | `VIBE4103`, obligation 20.5; the durable area's analogue of `VIBE3005` | same | **no** — pins current behaviour |
 
-**One case was written, measured, and deliberately NOT landed**: `SMITHERS1708`
+**One case was written, measured, and deliberately NOT landed**: `VIBE1708`
 (§13.21). The evidence says the fork is right — it preserves the authored
 evaluation order on the exact shape the reference refuses — so pinning the
 reference's refusal would have made correct fork behaviour a conformance failure.
@@ -4809,15 +5459,15 @@ reported the same `211/211` agreement before those fixes and after them.
 | `21/a-clean-re-export-chain-still-satisfies-the-pin` | acceptance control, both re-export spellings | — | n/a (over-correction guard) |
 | `21/a-type-only-re-export-adds-no-requirement` | acceptance control, Locked type-only rule | — | n/a (over-correction guard) |
 | `09/a-re-exported-foreign-module-still-needs-a-trust-marker` | a re-export is a module edge and needs the initialization trust claim | **fork (live)** | **yes** — the fork compiles and runs it |
-| `17/the-retired-vibelang-flows-specifier-is-not-compiler-owned` | only `smithers:flows` is compiler-owned; the retired name is an ordinary unresolvable module | fork (fixed) | **no** — the fix is in the tree and the specifier is gone from both Go tables. Pins current behaviour. The historical defect is recorded with its evidence in the case's `notes`. |
+| `17/the-retired-vibelang-flows-specifier-is-not-compiler-owned` | only `vibelang:flows` is compiler-owned; the retired name is an ordinary unresolvable module | fork (fixed) | **no** — the fix is in the tree and the specifier is gone from both Go tables. Pins current behaviour. The historical defect is recorded with its evidence in the case's `notes`. |
 | `17/a-single-action-flow-lowers-to-a-static-plan` | acceptance control: the real specifier still lowers a Plan | — | n/a (over-correction guard) |
 | `09/module-init-trust-is-not-a-function-level-throws-claim` | the documented `/** @module @throws {never} */` header does not certify the first export | fork (fixed) | **no** — pins current behaviour. Observation is behavioural: under the defect the throw escapes and the program exits non-zero instead of printing `panic`. |
 | `09/near-miss-trust-markers-do-not-confer-module-trust` | `@moduleResolution` is not `@module`; `@throws` + decoration + `{never}` is not the marker | fork (fixed) | **no** — pins current behaviour, both near misses in one case |
 | `09/a-multiline-module-trust-header-is-honoured` | acceptance control: the ordinary multi-line header still confers trust | — | n/a (over-correction guard) |
 | `09/the-never-annotation-is-case-sensitive` | `{Never}` is a declared channel that names no resolvable Error class, not the opt-out | fork (fixed) | **no** — pins current behaviour |
-| `23/a-non-identifier-import-attribute-name-is-rejected` | `SMITHERS5203` | fork (fixed) | **no** — pins current behaviour |
-| `23/a-duplicate-import-attribute-is-rejected` | `SMITHERS5204`; a last-wins reading compiles JSON through the `text` loader | fork (fixed) | **no** — pins current behaviour |
-| `23/a-computed-import-attribute-value-is-rejected` | `SMITHERS5205` + `SMITHERS5201` | fork (fixed) | **no** — pins current behaviour |
+| `23/a-non-identifier-import-attribute-name-is-rejected` | `VIBE5203` | fork (fixed) | **no** — pins current behaviour |
+| `23/a-duplicate-import-attribute-is-rejected` | `VIBE5204`; a last-wins reading compiles JSON through the `text` loader | fork (fixed) | **no** — pins current behaviour |
+| `23/a-computed-import-attribute-value-is-rejected` | `VIBE5205` + `VIBE5201` | fork (fixed) | **no** — pins current behaviour |
 | `23/a-template-literal-import-attribute-value-is-rejected` | the same pair through `isStringLiteralLike`; a hole the census did not name | fork (fixed) | **no** — pins current behaviour |
 | `07/a-shadowed-result-namespace-does-not-discharge` | a user's own `const Result = { all: … }` discharges nothing | reference (fixed) | **no** — pins current behaviour |
 | `07/a-shadowed-promise-namespace-does-not-discharge` | the same at the Promise combinators, with an `async` member that defeats a promise-shape guard | reference (fixed) | **no** — pins current behaviour |
@@ -4858,11 +5508,11 @@ it cannot notice changing back.
 
 | fail-open | why no case | where it is pinned instead |
 | --- | --- | --- |
-| ~~**the Go CLI's default lowering mode ran zero Smithers checks**~~ (`lowering: ""` selected identity, so `smithersc-go file.sm` compiled `.sm` as plain TypeScript and exited 0) | **still no case, and there never can be one**: the runner reaches the fork through `conformance/runner/backend-go.mjs`, which always sends an explicit mode, so every case measures the mode the harness asked for. That is exactly why this one survived at 211/211. | **pinned as of this revision**, outside the corpus: `conformance/runner/selftest.mjs` sends the real bridge four real requests and requires an omitted mode to be refused, an unknown mode to be refused, `"internal"` to report `SMITHERS1510`+`SMITHERS1301` on a two-file program, and `"identity"` to compile that same program clean — which is the consequence of the original defect, measured rather than argued. It also asserts, at the source level, that every request `backend-go.mjs` builds reads the one named `loweringMode` constant. See §21.7. |
+| ~~**the Go CLI's default lowering mode ran zero VibeLang checks**~~ (`lowering: ""` selected identity, so `vibec-go file.vibe` compiled `.vibe` as plain TypeScript and exited 0) | **still no case, and there never can be one**: the runner reaches the fork through `conformance/runner/backend-go.mjs`, which always sends an explicit mode, so every case measures the mode the harness asked for. That is exactly why this one survived at 211/211. | **pinned as of this revision**, outside the corpus: `conformance/runner/selftest.mjs` sends the real bridge four real requests and requires an omitted mode to be refused, an unknown mode to be refused, `"internal"` to report `VIBE1510`+`VIBE1301` on a two-file program, and `"identity"` to compile that same program clean — which is the consequence of the original defect, measured rather than argued. It also asserts, at the source level, that every request `backend-go.mjs` builds reads the one named `loweringMode` constant. See §21.7. |
 | **`weakenUnderivableErrors` shipped enabled**, converting a hard "cannot derive this failure contract" refusal into a silently weaker JSON-value contract | the durable schema-derivation path is not on the corpus compile route | `poc/src/durable/source-compiler.test.ts` and `schema.test.ts` |
-| **a prefix match skipped the Action-contract closure check** for any `smthrs/`- or `smithers:`-prefixed specifier, including ones no registry owns | the implementation-contract subsystem is not on the corpus compile route and the fork has no analogue | `poc/src/durable/implementation-contract.test.ts` |
+| **a prefix match skipped the Action-contract closure check** for any `vibelang/`- or `vibelang:`-prefixed specifier, including ones no registry owns | the implementation-contract subsystem is not on the corpus compile route and the fork has no analogue | `poc/src/durable/implementation-contract.test.ts` |
 | **neither backend validates import-attribute *keys*** — `with { type: "json", secret: "x" }` compiles clean on both | a **shared** hole is permanently invisible to a differential oracle. It is observable only as a single-backend expectation once a rule is decided, and no rule is decided. | nothing |
-| **an authored `.sm` reaching a compiler-owned Result CONSTRUCTOR through a *sanctioned* specifier** — `import { __vsResultSuccess } from "smthrs/context"` on the reference, `import { SmithersOk } from "smithers:exceptions"` on the fork. Both were wide open until 2026-08-25: each backend compiled its own spelling clean and ran it, hand-building both Result variants, so a Result the compiler never constructed at a checked exit carried a failure channel that means nothing. | **closed on both backends, and the corpus still cannot say so.** The two backends' constructors have different NAMES, and one `diagnostics` expectation declares one exact code set — so whichever name a case spells, the other backend answers `TS2305`. Measured both ways; see observation gap **#13**, which also names the three ways to close it and why the cheap one (paired `xfail`s) should be refused. | `compiler/fork_error_brand_test.go`, `poc/src/language/compiler-result-constructors.test.ts` — and, for the **module-edge** half only, `01-result-lifting/the-compiler-owned-prelude-is-not-reachable-by-a-path` and `…/a-star-re-export-of-the-compiler-owned-prelude-is-refused`, which are green on both backends because they deliberately name no constructor. |
+| **an authored `.vibe` reaching a compiler-owned Result CONSTRUCTOR through a *sanctioned* specifier** — `import { __vsResultSuccess } from "vibelang/context"` on the reference, `import { VibeLangOk } from "vibelang:exceptions"` on the fork. Both were wide open until 2026-08-25: each backend compiled its own spelling clean and ran it, hand-building both Result variants, so a Result the compiler never constructed at a checked exit carried a failure channel that means nothing. | **closed on both backends, and the corpus still cannot say so.** The two backends' constructors have different NAMES, and one `diagnostics` expectation declares one exact code set — so whichever name a case spells, the other backend answers `TS2305`. Measured both ways; see observation gap **#13**, which also names the three ways to close it and why the cheap one (paired `xfail`s) should be refused. | `compiler/fork_error_brand_test.go`, `poc/src/language/compiler-result-constructors.test.ts` — and, for the **module-edge** half only, `01-result-lifting/the-compiler-owned-prelude-is-not-reachable-by-a-path` and `…/a-star-re-export-of-the-compiler-owned-prelude-is-refused`, which are green on both backends because they deliberately name no constructor. |
 
 The last row is the one to watch. A differential harness is structurally unable
 to see a defect both implementations share, and this page's whole "zero
@@ -4877,11 +5527,11 @@ tell the difference.
 The previous revision's closing claim was:
 
 > The corpus covers **every locked obligation that has both a source spelling and
-> an implementation surface reachable from a `.sm` program**, across 23 areas.
+> an implementation surface reachable from a `.vibe` program**, across 23 areas.
 
 Read quickly, that is a claim about the *language*. Measured, it is a claim about
 **23 corpus areas**, and the two are not the same thing. The clause "reachable
-from a `.sm` program" was doing all the work and no reader was told how much it
+from a `.vibe` program" was doing all the work and no reader was told how much it
 excluded. It is replaced by:
 
 > **Within the 23 differential corpus areas, the corpus covers every locked
@@ -4902,12 +5552,12 @@ excluded. It is replaced by:
 > Specifically, it excludes — and the sections named here now say so:
 >
 > - the CLI, formatter, and language server (§21) — well tested, never audited
->   here until three revisions ago, and six of eight `SMITHERS_GO_*` envelopes
+>   here until three revisions ago, and six of eight `VIBELANG_GO_*` envelopes
 >   plus three of four resource ceilings still have no test;
 > - the bounded portable Wasm backend (10.14) — 4,180 lines, 65 diagnostic codes,
 >   **zero** pinned by the corpus, and once described on this page as not
 >   existing;
-> - `smithers:schema` (§22) — a third compiler-owned virtual module the runner
+> - `vibelang:schema` (§22) — a third compiler-owned virtual module the runner
 >   already special-cases, with zero cases;
 > - comptime determinism (§19.16) — **two of seven** ambient sources;
 > - durable execution (§20) — **twenty-seven cases against forty normative
@@ -4919,17 +5569,17 @@ excluded. It is replaced by:
 > - the host-sensitive global classification table (§9.6–9.13) — **two of nine**
 >   branches, including the lexical-shadow guard that nothing checks;
 > - **one** rejection rule the reference implements, the fork does not, and no
->   case probes — `SMITHERS1106`. **Re-measured 2026-09-01: one of the five rows
+>   case probes — `VIBE1106`. **Re-measured 2026-09-01: one of the five rows
 >   measures as written, and this bullet said "five" for six revisions.**
->   `SMITHERS1704` and `SMITHERS1706` were withdrawn
+>   `VIBE1704` and `VIBE1706` were withdrawn
 >   from the reference on 2026-08-23 and this page kept citing them at a file
->   that no longer exists; `SMITHERS1708` is in neither implementation while the
->   table says the reference has it; `SMITHERS1105` still is not implemented by
+>   that no longer exists; `VIBE1708` is in neither implementation while the
+>   table says the reference has it; `VIBE1105` still is not implemented by
 >   the fork but now measures as though it were, because three fork *comments*
 >   mention it.
 >   See the CAUTION block in "Reference-only rejection rules" — the old text,
 >   kept for the argument it still makes, read: four unchanged, and
->   `SMITHERS1708` newly added because the old subtraction command misread two
+>   `VIBE1708` newly added because the old subtraction command misread two
 >   design documents as an implementation;
 > - **twenty-seven rules both implementations spell and no case probes** (see
 >   "Rules both implementations have and no case probes"). **Re-derived
@@ -4949,11 +5599,11 @@ excluded. It is replaced by:
 > - eight of nineteen reference asset-loader rejections (§17.12), with a per-code
 >   reason for each;
 > - **two codes both implementations spell where they do not mean the same rule**
->   (`SMITHERS4100`, `SMITHERS4117`) — a category a subtraction over code numbers
+>   (`VIBE4100`, `VIBE4117`) — a category a subtraction over code numbers
 >   cannot see at all, and one this page had to open this revision;
 > - every warning the implementations emit, which the harness filters away before
 >   the runner sees it (observation gap #11). One member of the set above,
->   `SMITHERS3006`, is uncoverable for exactly this reason;
+>   `VIBE3006`, is uncoverable for exactly this reason;
 > - **six members of `poc/src/targets/classify.ts`'s own hazard log**, which are
 >   fail-open by design of the analyzer's boundary and which **no case asserts as
 >   correct** — see "Known-uncovered by design" immediately below. Asserting any
@@ -4961,7 +5611,7 @@ excluded. It is replaced by:
 >
 > And two exclusions no earlier revision could have written, because nothing had
 > looked. **First: a syntactic form neither implementation's corpus coverage
-> touched at all.** Three revisions ago, zero of the corpus's `.sm` files
+> touched at all.** Three revisions ago, zero of the corpus's `.vibe` files
 > contained a re-export; writing the first eight found a Go fail-open that
 > code-set subtraction could not see, because the fork spelled both of the rules
 > it failed to apply. **Second, and this revision's: an entire ANALYSIS the
@@ -5005,7 +5655,7 @@ and the five remaining reference-only rejection rules are one shape where one
 would hide. Nobody knows which way four of them go, and the scoreboard is built
 so that nobody can find out. Fixing that is small: write the program, declare the
 reference's code, mark it `xfail go`. Either the marker is the finding or it
-retires — or, as `SMITHERS1708` turned out, the fork is right and the case must
+retires — or, as `VIBE1708` turned out, the fork is right and the case must
 not be written at all. All three outcomes make the zero worth more than it is
 today.
 
@@ -5071,7 +5721,7 @@ Every uncovered entry above is one of five things, and each row says which.
    category and was wrong; 10.14 records what actually exists.
 3. **A surface no case can reach** — the concurrency library (11.10, 11.11,
    module resolution); the Wasm backend (10.14, reachable in principle and
-   one-sided in practice); `smithers:schema` (§22); the reference-only rejection
+   one-sided in practice); `vibelang:schema` (§22); the reference-only rejection
    rules; eight asset rules (§17.12); the host-global branches (§9.6–9.13); the
    comptime determinism siblings (§19.16); and most of §20. **This category is
    much larger than two revisions ago**, which named one library. Note that
