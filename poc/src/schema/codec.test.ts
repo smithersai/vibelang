@@ -38,7 +38,7 @@ describe("Codec values", () => {
 
 describe("Codec round-trip laws", () => {
   test("hold for every canonical scalar", () => {
-    expect(Codec.checkRoundTrip(Codec.string, ["", "smithers", "😀"])).toBeUndefined();
+    expect(Codec.checkRoundTrip(Codec.string, ["", "vibelang", "😀"])).toBeUndefined();
     expect(Codec.checkRoundTrip(Codec.number, [0, -0, 1.25, Number.MAX_VALUE])).toBeUndefined();
     expect(Codec.checkRoundTrip(Codec.boolean, [true, false])).toBeUndefined();
     expect(Codec.checkRoundTrip(Codec.null, [null])).toBeUndefined();

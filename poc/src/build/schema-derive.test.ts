@@ -2,7 +2,6 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import * as ts from "typescript-js";
 import { checkEmittedProject } from "../language/validate.ts";
 import { decodeError, encodeError } from "../runtime/index.ts";
 import {
@@ -30,7 +29,7 @@ afterAll(async () => {
 });
 
 async function compiler(): Promise<{ root: string; cache: string; compiler: ComptimeCompiler }> {
-  const root = await mkdtemp(join(tmpdir(), "smithers-schema-derive-"));
+  const root = await mkdtemp(join(tmpdir(), "vibelang-schema-derive-"));
   roots.push(root);
   const cache = join(root, ".cache");
   return { root, cache, compiler: new ComptimeCompiler({ root, cacheDirectory: cache, target: "node" }) };
@@ -532,14 +531,14 @@ describe("comptime Schema.derive reification", () => {
     expect(result.diagnostics).toEqual([]);
     const code = result.loweredSources!["main.ts"]!;
     const diagnostics = checkEmittedProject([{ fileName: join(BUILD_DIRECTORY, "__schema_typed__.ts"), code }]);
-    expect(diagnostics.map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"))).toEqual([]);
+    expect(diagnostics.map((diagnostic) => diagnostic.message)).toEqual([]);
 
     const widened = code.replace("export const exact: Signup", "export const exact: { email: number }");
     const rejected = checkEmittedProject([{ fileName: join(BUILD_DIRECTORY, "__schema_widened__.ts"), code: widened }]);
     expect(rejected.length).toBeGreaterThan(0);
   });
 
-  test("lowers .sm source and records the generated edge in provenance", async () => {
+  test("lowers .vibe source and records the generated edge in provenance", async () => {
     const build = await compiler();
     const source = [
       `import { comptime } from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)}`,
@@ -549,17 +548,17 @@ describe("comptime Schema.derive reification", () => {
     ].join("\n");
     const result = await compileComptimeIntrinsics({
       compiler: build.compiler,
-      sources: { "main.sm": source },
-      schemaRuntimeImport: "smthrs/schema-runtime",
+      sources: { "main.vibe": source },
+      schemaRuntimeImport: "vibelang/schema-runtime",
     });
     expect(result.diagnostics).toEqual([]);
-    const lowered = result.loweredFiles!["main.sm"]!;
-    expect(lowered.code).toContain(`import { ${SCHEMA_RUNTIME_BINDING} } from "smthrs/schema-runtime";`);
+    const lowered = result.loweredFiles!["main.vibe"]!;
+    expect(lowered.code).toContain(`import { ${SCHEMA_RUNTIME_BINDING} } from "vibelang/schema-runtime";`);
     expect(lowered.provenance.authoredDigest).toBe(digest(source));
     expect(lowered.provenance.loweredDigest).toBe(digest(lowered.code));
 
     const edge = lowered.provenance.edits.find((edit) => edit.kind === "schema-runtime-import")!;
-    expect(edge.authored).toMatchObject({ file: "main.sm", start: 0, end: 0 });
+    expect(edge.authored).toMatchObject({ file: "main.vibe", start: 0, end: 0 });
     expect(edge.generated.start).toBe(0);
 
     const call = lowered.provenance.edits.find((edit) => edit.kind === "intrinsic-call")!;
@@ -573,7 +572,7 @@ describe("comptime Schema.derive reification", () => {
       mappings: string;
     };
     expect(map.version).toBe(3);
-    expect(map.sources).toEqual(["main.sm"]);
+    expect(map.sources).toEqual(["main.vibe"]);
     expect(map.sourcesContent).toEqual([source]);
     expect(map.mappings.split(";")).toHaveLength(lowered.code.split("\n").length);
   });
@@ -603,6 +602,37 @@ describe("comptime Schema.derive reification", () => {
       { name: "a", optional: false, value: { kind: "string" } },
       { name: "a", optional: false, value: { kind: "string" } },
     ] } as SchemaDescriptor)).toThrow("duplicate property");
+  });
+
+  test("native reification tracks imported VibeLang types and invalidates on dependency-only edits", async () => {
+    const build = await compiler();
+    const sources = {
+      "types.vibe": "export type Item = {count: number};",
+      "main.vibe": IMPORTS + '\nimport type {Item} from "./types.vibe";\n' +
+        "if (const selected = 1; selected > 0) { void selected; }\n" +
+        "export const ItemSchema = comptime(Schema.derive<Item>());",
+    };
+    const compile = () => compileComptimeIntrinsics({compiler:build.compiler,sources});
+    const first = await compile(), second = await compile();
+    expect(first.diagnostics).toEqual([]);
+    expect(second.diagnostics).toEqual([]);
+    expect(first.calls[0]?.build.cacheHit).toBe(false);
+    expect(second.calls[0]?.build.cacheHit).toBe(true);
+    expect(second.calls[0]?.build.key).toBe(first.calls[0]?.build.key);
+    sources["types.vibe"] += " // dependency edit; same descriptor";
+    const changed = await compile();
+    expect(changed.diagnostics).toEqual([]);
+    expect(changed.calls[0]?.value).toEqual(first.calls[0]?.value);
+    expect(changed.calls[0]?.build.key).not.toBe(first.calls[0]?.build.key);
+    expect(changed.calls[0]?.build.cacheHit).toBe(false);
+    sources["types.vibe"] = "export type Item = unknown;";
+    const rejected = await compile();
+    expect(rejected.ok).toBe(false);
+    expect(rejected.diagnostics[0]?.code).toBe(ComptimeIntrinsicDiagnosticCode.SchemaUnsupportedType);
+    const issue = rejected.diagnostics[0]!;
+    expect(issue.file).toBe("main.vibe");
+    expect(issue.line).toBe(5);
+    expect(rejected.loweredSources).toBeUndefined();
   });
 
   test("lowers a multi-file project and executes the generated program under bun", async () => {

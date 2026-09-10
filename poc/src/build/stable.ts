@@ -7,6 +7,8 @@ const MAX_STABLE_NODES = 1_000_000;
 
 interface CloneState {
   readonly seen: Set<object>;
+  readonly copies: Map<object, StableJson>;
+  readonly sortKeys: boolean;
   nodes: number;
 }
 
@@ -17,7 +19,14 @@ export function compareStableStrings(left: string, right: string): number {
 
 /** Clone the only values permitted in build identities and cached loader IR. */
 export function stableClone(value: unknown, path = "value"): StableJson {
-  return cloneStable(value, path, { seen: new Set<object>(), nodes: 0 }, 0);
+  return cloneStable(value, path, { seen: new Set<object>(), copies: new Map(), sortKeys: true, nodes: 0 }, 0);
+}
+
+/** Validate/snapshot program data without changing observable own-property
+ * order or alias identity. Canonical metadata and semantic values are different
+ * representations; JSON serialization alone cannot transport a program graph. */
+export function cloneJsonValue(value: unknown, path = "value"): StableJson {
+  return cloneStable(value, path, { seen: new Set<object>(), copies: new Map(), sortKeys: false, nodes: 0 }, 0);
 }
 
 function cloneStable(value: unknown, path: string, state: CloneState, depth: number): StableJson {
@@ -49,10 +58,17 @@ function cloneStable(value: unknown, path: string, state: CloneState, depth: num
       }
       const output: StableJson[] = [];
       for (let index = 0; index < value.length; index++) {
-        if (!Object.hasOwn(value, index)) throw new TypeError(`${path}[${index}] is not durable JSON: sparse array hole`);
-        output.push(cloneStable(value[index], `${path}[${index}]`, state, depth + 1));
+        const descriptor = Object.getOwnPropertyDescriptor(value, index);
+        if (!descriptor) throw new TypeError(`${path}[${index}] is not durable JSON: sparse array hole`);
+        if (!descriptor.enumerable || !("value" in descriptor)) {
+          throw new TypeError(`${path}[${index}] is not durable JSON: accessor or non-enumerable property`);
+        }
+        output.push(cloneStable(descriptor.value, `${path}[${index}]`, state, depth + 1));
       }
-      return output;
+      if (state.sortKeys) return output;
+      const previous = state.copies.get(value);
+      state.copies.set(value, previous ?? output);
+      return previous ?? output;
     }
 
     const prototype = Object.getPrototypeOf(value);
@@ -60,7 +76,9 @@ function cloneStable(value: unknown, path: string, state: CloneState, depth: num
       throw new TypeError(`${path} is not durable JSON: ${prototype?.constructor?.name ?? "exotic object"}`);
     }
     const output = Object.create(null) as Record<string, StableJson>;
-    for (const key of Reflect.ownKeys(value).sort((left, right) => compareStableStrings(String(left), String(right)))) {
+    const keys = Reflect.ownKeys(value);
+    if (state.sortKeys) keys.sort((left, right) => compareStableStrings(String(left), String(right)));
+    for (const key of keys) {
       if (typeof key !== "string") throw new TypeError(`${path} is not durable JSON: symbol property`);
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
       if (!descriptor || descriptor.enumerable !== true || !("value" in descriptor)) {
@@ -68,7 +86,10 @@ function cloneStable(value: unknown, path: string, state: CloneState, depth: num
       }
       output[key] = cloneStable(descriptor.value, `${path}.${key}`, state, depth + 1);
     }
-    return output;
+    if (state.sortKeys) return output;
+    const previous = state.copies.get(value);
+    state.copies.set(value, previous ?? output);
+    return previous ?? output;
   } finally {
     state.seen.delete(value);
   }

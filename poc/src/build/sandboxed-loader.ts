@@ -4,17 +4,18 @@ import { extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
 import { once } from "node:events";
-import * as ts from "typescript-js";
+import { getNativeCompiler } from "../compiler/native.ts";
 import type {
   AssetLoader,
   LoaderAsset,
   LoaderContext,
   TypedAssetModule,
 } from "./assets.ts";
-import { digest, stableClone } from "./stable.ts";
+import { cloneJsonValue, digest, stableClone } from "./stable.ts";
+import { decodeComptimeValue, encodeComptimeValue, type ComptimeValueGraph } from "./comptime-value.ts";
 import type { StableJson } from "./stable.ts";
 
-const LOADER_PROTOCOL_VERSION = 1;
+const LOADER_PROTOCOL_VERSION = 2;
 const authenticAssetLoaders = new WeakSet<object>();
 
 /**
@@ -23,10 +24,9 @@ const authenticAssetLoaders = new WeakSet<object>();
  *
  * `loader-runner.js` evaluates exactly one ES module, from a
  * `data:text/javascript` URL, and resolves no imports at all. So a filename
- * that *declares* CommonJS (`.cts`, `.cjs`) can never run there — `ts.transpileModule`
- * derives its emitted module kind from the extension and hands back
- * `exports.default = …`, which dies on `exports is not defined` — a `.tsx` file
- * would need a JSX transform the transpile step does not request, and a `.d.ts`
+ * that *declares* CommonJS (`.cts`, `.cjs`) can never run there — CommonJS
+ * output such as `exports.default = …` has no `exports` binding in an ES
+ * module. A `.tsx` file would need a JSX transform this seam does not request, and a `.d.ts`
  * file has no emit. Those return `undefined` and fail closed at the boundary
  * instead of passing every compile-time gate and dying in the sandbox.
  */
@@ -188,8 +188,9 @@ export function createSandboxedLoader(options: SandboxedLoaderOptions): AssetLoa
       ...(options.loweredSource === undefined ? {} : { lowered: executable }),
       // Labelled from the module kind, not from whether the transpile happened
       // to be an identity transform: a TypeScript loader whose emit equals its
-      // source still depends on `ts.version` and must carry it.
-      compiler: kind === "typescript" ? `typescript@${ts.version}` : "javascript",
+      // source still depends on the native compiler. JavaScript validation is
+      // native too; no old parser identity can survive in an accepted cache key.
+      compiler: { kind, native: getNativeCompiler().identity, transport: getNativeCompiler().transportDigest },
       exportName,
       sandbox,
       limits: { timeoutMs, memoryMb, maxOutputBytes, maxInputBytes, maxRequests, maxConcurrentRequests },
@@ -265,7 +266,7 @@ export function createSandboxedComptimeModule(
   const implementationDigest = digest({
     protocol: LOADER_PROTOCOL_VERSION,
     source: compiled.originalSource,
-    compiler: compiled.kind === "typescript" ? `typescript@${ts.version}` : "javascript",
+    compiler: { kind: compiled.kind, native: getNativeCompiler().identity, transport: getNativeCompiler().transportDigest },
     exportName: compiled.exportName,
     sandbox: inspectSandbox(denoPath, runnerPath),
     limits: { timeoutMs, memoryMb, maxOutputBytes, maxInputBytes, maxRequests, maxConcurrentRequests },
@@ -276,7 +277,7 @@ export function createSandboxedComptimeModule(
     sourcePath: compiled.modulePath,
     implementationDigest,
     async evaluate(args: readonly StableJson[], context: LoaderContext) {
-      const clonedArgs = stableClone(args, "comptime arguments") as StableJson[];
+      const clonedArgs = cloneJsonValue(args, "comptime arguments") as StableJson[];
       return await executeSandboxedModule({
         denoPath,
         runnerPath,
@@ -288,7 +289,7 @@ export function createSandboxedComptimeModule(
         maxInputBytes,
         maxRequests,
         maxConcurrentRequests,
-        invocation: { mode: "comptime", args: clonedArgs },
+        invocation: { mode: "comptime", args: encodeComptimeValue(clonedArgs) },
         context,
       });
     },
@@ -348,24 +349,17 @@ function compileSandboxedModule(
 }
 
 function validateSandboxSource(source: string, fileName: string, kind: SandboxModuleKind): void {
-  const scriptKind = kind === "typescript" ? ts.ScriptKind.TS : ts.ScriptKind.JS;
-  const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, scriptKind);
-  const diagnostics = (file as ts.SourceFile & { parseDiagnostics: readonly ts.Diagnostic[] }).parseDiagnostics;
+  const file = getNativeCompiler().inspect([{ path: kind === "typescript" ? "loader.mts" : "loader.mjs", text: source, scriptKind: kind }]).files[0]!;
+  const diagnostics = file.diagnostics;
   if (diagnostics.length > 0) {
     throw new SyntaxError(`sandboxed loader ${fileName} did not parse: ${diagnostics
-      .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"))
+      .map((diagnostic) => diagnostic.message)
       .join("; ")}`);
   }
-  let imported = false;
-  const visit = (node: ts.Node): void => {
-    if (
-      ts.isImportDeclaration(node) || ts.isImportEqualsDeclaration(node) ||
-      (ts.isExportDeclaration(node) && node.moduleSpecifier !== undefined) ||
-      (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword)
-    ) imported = true;
-    ts.forEachChild(node, visit);
-  };
-  visit(file);
+  // Preserve this host's existing restriction exactly. Erased import-type
+  // expressions and import.meta are not runtime imports; agent policy has a
+  // different, stricter rule. The parser reports facts for both consumers.
+  const imported = file.moduleSyntax.some((item) => ["import-declaration", "import-equals", "module-re-export", "dynamic-import"].includes(item.kind));
   if (imported) {
     throw new SyntaxError(`sandboxed loader ${fileName} may not import modules`);
   }
@@ -445,32 +439,27 @@ export function sandboxExecutionIdentity(
 const inspectSandbox = sandboxExecutionIdentity;
 
 function transpileLoader(source: string, fileName: string): string {
-  const output = ts.transpileModule(source, {
-    // `transpileModule` derives the emitted module kind from the *file
-    // extension* and silently overrides `ModuleKind.ESNext`. The sandbox only
-    // ever evaluates an ES module, so the transpile is handed a synthetic ESM
-    // name and the authored name is used only in the diagnostics below.
-    fileName: "smithers-sandboxed-loader.mts",
-    reportDiagnostics: true,
-    compilerOptions: {
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.ESNext,
-      moduleResolution: ts.ModuleResolutionKind.Bundler,
-      strict: true,
-      isolatedModules: true,
-      verbatimModuleSyntax: true,
+  const output = getNativeCompiler().compile({
+    rootNames: ["loader.mts"],
+    files: [{ path: "loader.mts", text: source, kind: "typescript" }],
+    lowering: "typescript",
+    options: {
+      target: "ES2022", module: "ESNext", moduleResolution: "bundler",
+      strict: true, isolatedModules: true, verbatimModuleSyntax: true,
+      // This stage erases a self-contained loader, as transpileModule did. It
+      // is not the language checker or a claim that its host API is typed.
+      noCheck: true, noEmitOnError: true, types: [],
     },
   });
-  const errors = (output.diagnostics ?? []).filter(
-    (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
-  );
-  if (errors.length > 0) {
+  const errors = output.diagnostics.filter((diagnostic) => diagnostic.category === "error");
+  if (errors.length > 0 || output.emitSkipped) {
     throw new SyntaxError(
-      `sandboxed loader ${fileName} did not compile: ` +
-      errors.map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")).join("; "),
+      `sandboxed loader ${fileName} did not compile: ` + errors.map((diagnostic) => diagnostic.message).join("; "),
     );
   }
-  return output.outputText;
+  const artifact = output.artifacts.find((item) => item.path === "loader.mjs");
+  if (!artifact) throw new SyntaxError(`sandboxed loader ${fileName} emitted no native module`);
+  return Buffer.from(artifact.content, "base64").toString("utf8");
 }
 
 interface ExecutionOptions {
@@ -486,7 +475,7 @@ interface ExecutionOptions {
   readonly maxConcurrentRequests: number;
   readonly invocation:
     | { readonly mode: "loader"; readonly asset: LoaderAsset }
-    | { readonly mode: "comptime"; readonly args: readonly StableJson[] };
+    | { readonly mode: "comptime"; readonly args: ComptimeValueGraph };
   readonly context: LoaderContext;
 }
 
@@ -674,7 +663,8 @@ async function executeSandboxedModule(options: ExecutionOptions): Promise<Stable
     if (exitCode !== 0) {
       throw new Error(`sandboxed loader exited with code ${String(exitCode)}: ${stderr.trim()}`);
     }
-    return stableClone(terminal.value, "sandboxed module result");
+    return options.invocation.mode === "comptime" ? decodeComptimeValue(terminal.value)
+      : cloneJsonValue(terminal.value, "sandboxed module result");
   } finally {
     clearTimeout(timer);
     lines.close();
@@ -707,7 +697,7 @@ async function handleRequest(
       default:
         throw new Error("sandboxed loader requested an unsupported context operation");
     }
-    await write({ kind: "response", id: request.id, ok: true, value: stableClone(value) });
+    await write({ kind: "response", id: request.id, ok: true, value: cloneJsonValue(value) });
   } catch (error) {
     await write({
       kind: "response",

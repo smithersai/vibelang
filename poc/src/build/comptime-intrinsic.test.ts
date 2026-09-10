@@ -3,7 +3,8 @@ import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import * as ts from "typescript-js";
+import { getNativeCompiler } from "../compiler/native.ts";
+import { encodeComptimeValue } from "./comptime-value.ts";
 import { checkEmittedProject, checkEmittedTypeScript } from "../language/validate.ts";
 import {
   COMPTIME_MODULE_SPECIFIER,
@@ -22,7 +23,7 @@ afterAll(async () => {
 });
 
 async function compiler(): Promise<{ root: string; cache: string; compiler: ComptimeCompiler }> {
-  const root = await mkdtemp(join(tmpdir(), "smithers-comptime-intrinsic-"));
+  const root = await mkdtemp(join(tmpdir(), "vibelang-comptime-intrinsic-"));
   roots.push(root);
   const cache = join(root, ".cache");
   return { root, cache, compiler: new ComptimeCompiler({ root, cacheDirectory: cache, target: "node" }) };
@@ -33,10 +34,27 @@ function dataModule(source: string): string {
 }
 
 function executableJavaScript(code: string): string {
-  return ts.transpileModule(code, {
-    compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext },
-  }).outputText;
+  const result = getNativeCompiler().transpile({files:[{path:"comptime-output.ts",text:code}],options:{target:"esnext",module:"esnext"}}).files[0]!;
+  if (result.emitSkipped || result.diagnostics.length) throw new Error(JSON.stringify(result.diagnostics));
+  return result.javascript;
 }
+
+test("comptime conditional bindings cover the whole chain and unwind after loop control", async () => {
+  const build = await compiler();
+  const source = `import {comptime} from "vibelang:comptime";
+export const answer=comptime(()=>{
+  const value=40;let total=0;
+  for(let index=0;index<3;index++){
+    if(let value=index;value<2){continue}else if(value===2){total+=value}else{return 0}
+  }
+  return total+value
+})();`;
+  const result=await compileComptimeIntrinsics({compiler:build.compiler,sources:{"main.vibe":source}});
+  expect(result.diagnostics).toEqual([]);
+  expect(result.calls[0]?.value).toBe(42);
+  const loaded=await import(dataModule(executableJavaScript(result.loweredSources!["main.vibe"]!)));
+  expect(loaded.answer).toBe(42);
+});
 
 interface DecodedMapping {
   readonly generatedLine: number;
@@ -128,7 +146,7 @@ function mappedPosition(sourceMap: string, generatedCode: string, generatedOffse
 }
 
 describe("compiler-facing comptime intrinsic", () => {
-  test("checker identity recognizes direct, aliased, and namespace imports in .sm source", async () => {
+  test("checker identity recognizes direct, aliased, and namespace imports in .vibe source", async () => {
     const build = await compiler();
     const source = [
       `import { comptime, comptime as compileNow } from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)};`,
@@ -138,7 +156,7 @@ describe("compiler-facing comptime intrinsic", () => {
       `export const alias = compileNow([null, -2, "ok"]);`,
       `export const namespace = Build.comptime({ answer: 42 });`,
     ].join("\n");
-    const first = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.sm": source } });
+    const first = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.vibe": source } });
     expect(first.ok).toBe(true);
     expect(first.diagnostics).toEqual([]);
     expect(first.calls.map((call) => call.value)).toEqual([
@@ -147,10 +165,10 @@ describe("compiler-facing comptime intrinsic", () => {
       { answer: 42 },
     ]);
     expect(first.calls.every((call) => call.build.cacheHit === false)).toBe(true);
-    expect(first.loweredSources?.["main.sm"]).not.toContain(COMPTIME_MODULE_SPECIFIER);
-    expect(first.loweredSources?.["main.sm"]).not.toContain("comptime(config)");
+    expect(first.loweredSources?.["main.vibe"]).not.toContain(COMPTIME_MODULE_SPECIFIER);
+    expect(first.loweredSources?.["main.vibe"]).not.toContain("comptime(config)");
 
-    const second = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.sm": source } });
+    const second = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.vibe": source } });
     expect(second.ok).toBe(true);
     expect(second.calls.every((call) => call.build.cacheHit === true)).toBe(true);
     expect(second.calls.map((call) => call.build.key)).toEqual(first.calls.map((call) => call.build.key));
@@ -246,23 +264,23 @@ describe("compiler-facing comptime intrinsic", () => {
       `  return JSON.parse(embed("./missing-unselected.json"));`,
       `})();`,
     ].join("\n");
-    await writeFile(join(build.root, "main.sm"), source);
+    await writeFile(join(build.root, "main.vibe"), source);
     await writeFile(join(build.root, "config.json"), JSON.stringify({ answer: 42 }));
 
-    const first = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.sm": source } });
+    const first = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.vibe": source } });
     expect(first.ok).toBe(true);
     expect(first.calls[0]?.value).toEqual({ target: "node", config: { answer: 42 } });
     expect(first.calls[0]?.build.dependencies).toEqual([
       expect.objectContaining({ path: "config.json", kind: "file", access: "text" }),
     ]);
     expect(first.calls[0]?.build.cacheHit).toBe(false);
-    expect(first.loweredSources?.["main.sm"]).not.toContain("missing-unselected");
-    expect(first.loweredSources?.["main.sm"]).toContain("as const");
+    expect(first.loweredSources?.["main.vibe"]).not.toContain("missing-unselected");
+    expect(first.loweredSources?.["main.vibe"]).toContain("as const");
 
-    const warm = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.sm": source } });
+    const warm = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.vibe": source } });
     expect(warm.calls[0]?.build.cacheHit).toBe(true);
     await writeFile(join(build.root, "config.json"), JSON.stringify({ answer: 43 }));
-    const changed = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.sm": source } });
+    const changed = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.vibe": source } });
     expect(changed.calls[0]?.build.cacheHit).toBe(false);
     expect(changed.calls[0]?.value).toEqual({ target: "node", config: { answer: 43 } });
   });
@@ -295,9 +313,9 @@ describe("compiler-facing comptime intrinsic", () => {
       `const atBuild = comptime(wrapper);`,
       `export const value = atBuild();`,
     ].join("\n");
-    await writeFile(join(build.root, "retained.sm"), source);
+    await writeFile(join(build.root, "retained.vibe"), source);
     await writeFile(join(build.root, "config.json"), "{}");
-    const result = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "retained.sm": source } });
+    const result = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "retained.vibe": source } });
     expect(result.ok).toBe(false);
     expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(expect.arrayContaining([
       ComptimeIntrinsicDiagnosticCode.UnsupportedExpression,
@@ -314,12 +332,12 @@ describe("compiler-facing comptime intrinsic", () => {
       `const exactKind: "node" = generated.kind;`,
       `const exactPorts: readonly [80, 443] = generated.ports;`,
     ].join("\n");
-    const result = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "types.sm": source } });
+    const result = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "types.vibe": source } });
     expect(result.ok).toBe(true);
-    const lowered = result.loweredSources!["types.sm"]!;
+    const lowered = result.loweredSources!["types.vibe"]!;
     expect(lowered).toContain("as const");
     expect(checkEmittedTypeScript(lowered, join(build.root, "types.ts"))
-      .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)).toEqual([]);
+      .filter((diagnostic) => diagnostic.category === "error")).toEqual([]);
   });
 
   test("emits deterministic maps and zero-width provenance across erased imports and multiline calls", async () => {
@@ -335,42 +353,42 @@ describe("compiler-facing comptime intrinsic", () => {
       `);`,
       `export const after = untouched;`,
     ].join("\n");
-    const first = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.sm": source } });
+    const first = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.vibe": source } });
     expect(first.ok).toBe(true);
-    const lowered = first.loweredFiles?.["main.sm"];
+    const lowered = first.loweredFiles?.["main.vibe"];
     expect(lowered).toBeDefined();
-    expect(first.loweredSources?.["main.sm"]).toBe(lowered!.code);
+    expect(first.loweredSources?.["main.vibe"]).toBe(lowered!.code);
 
     const decoded = decodeMappings(lowered!.sourceMap);
     expect(decoded.map.version).toBe(3);
-    expect(decoded.map.sources).toEqual(["main.sm"]);
+    expect(decoded.map.sources).toEqual(["main.vibe"]);
     expect(decoded.map.sourcesContent).toEqual([source]);
-    expect(lowered!.provenance).toEqual(JSON.parse(lowered!.sourceMap).x_smithers_comptime);
+    expect(lowered!.provenance).toEqual(JSON.parse(lowered!.sourceMap).x_vibelang_comptime);
     expect(lowered!.provenance.edits.map((edit) => edit.kind)).toEqual(["remove-import", "intrinsic-call"]);
     const removed = lowered!.provenance.edits[0]!;
     expect(removed.generated.start).toBe(removed.generated.end);
     expect(removed.authored.end).toBeGreaterThan(removed.authored.start);
     expect(mappedPosition(lowered!.sourceMap, lowered!.code, removed.generated.start)).toEqual({
-      source: "main.sm",
+      source: "main.vibe",
       ...lineColumnAt(source, removed.authored.end),
     });
 
     const generatedLiteral = lowered!.code.indexOf("({");
     const authoredObject = source.indexOf("{\n", source.indexOf("comptime("));
     expect(mappedPosition(lowered!.sourceMap, lowered!.code, generatedLiteral)).toEqual({
-      source: "main.sm",
+      source: "main.vibe",
       ...lineColumnAt(source, authoredObject),
     });
     const generatedAfter = lowered!.code.indexOf("export const after");
     const authoredAfter = source.indexOf("export const after");
     expect(mappedPosition(lowered!.sourceMap, lowered!.code, generatedAfter)).toEqual({
-      source: "main.sm",
+      source: "main.vibe",
       ...lineColumnAt(source, authoredAfter),
     });
 
-    const second = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.sm": source } });
-    expect(second.loweredFiles?.["main.sm"]).toEqual(lowered);
-    expect(second.loweredFiles?.["main.sm"]?.identity).toBe(lowered!.identity);
+    const second = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "main.vibe": source } });
+    expect(second.loweredFiles?.["main.vibe"]).toEqual(lowered);
+    expect(second.loweredFiles?.["main.vibe"]?.identity).toBe(lowered!.identity);
     expect(second.calls[0]?.build.key).toBe(first.calls[0]?.build.key);
     expect(first.calls[0]?.build.cacheHit).toBe(false);
     expect(second.calls[0]?.build.cacheHit).toBe(true);
@@ -390,17 +408,17 @@ describe("compiler-facing comptime intrinsic", () => {
     expect(Object.getPrototypeOf(loaded.value)).toBe(Object.prototype);
   });
 
-  test("cross-file .sm const data is decoded without evaluating either author module", async () => {
+  test("cross-file .vibe const data is decoded without evaluating either author module", async () => {
     const build = await compiler();
-    const marker = "__smithers_cross_file_was_executed__";
+    const marker = "__vibelang_cross_file_was_executed__";
     delete (globalThis as Record<string, unknown>)[marker];
     const result = await compileComptimeIntrinsics({
       compiler: build.compiler,
       sources: {
-        "config.sm": `globalThis.${marker} = true\nexport const config = { source: "syntax", enabled: true } as const`,
-        "main.sm": [
+        "config.vibe": `globalThis.${marker} = true\nexport const config = { source: "syntax", enabled: true } as const`,
+        "main.vibe": [
           `import { comptime } from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)}`,
-          `import { config } from "./config.sm"`,
+          `import { config } from "./config.vibe"`,
           `export const value = comptime(config)`,
         ].join("\n"),
       },
@@ -412,7 +430,7 @@ describe("compiler-facing comptime intrinsic", () => {
 
   test("maps cross-file const replacements to their initializer and unchanged files identically", async () => {
     const build = await compiler();
-    const marker = "__smithers_mapped_const_was_executed__";
+    const marker = "__vibelang_mapped_const_was_executed__";
     delete (globalThis as Record<string, unknown>)[marker];
     const config = [
       `globalThis.${marker} = true;`,
@@ -420,39 +438,39 @@ describe("compiler-facing comptime intrinsic", () => {
     ].join("\n");
     const main = [
       `import { comptime } from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)};`,
-      `import { config } from "./config.sm";`,
+      `import { config } from "./config.vibe";`,
       `export const value = comptime(config);`,
     ].join("\n");
     const result = await compileComptimeIntrinsics({
       compiler: build.compiler,
-      sources: { "main.sm": main, "config.sm": config },
+      sources: { "main.vibe": main, "config.vibe": config },
     });
     expect(result.ok).toBe(true);
     expect((globalThis as Record<string, unknown>)[marker]).toBeUndefined();
 
-    const loweredMain = result.loweredFiles!["main.sm"]!;
+    const loweredMain = result.loweredFiles!["main.vibe"]!;
     const decodedMain = decodeMappings(loweredMain.sourceMap);
-    expect(decodedMain.map.sources).toEqual(["main.sm", "config.sm"]);
+    expect(decodedMain.map.sources).toEqual(["main.vibe", "config.vibe"]);
     expect(decodedMain.map.sourcesContent).toEqual([main, config]);
     const literalOffset = loweredMain.code.indexOf("({");
     const initializerOffset = config.indexOf("{ source");
     expect(mappedPosition(loweredMain.sourceMap, loweredMain.code, literalOffset)).toEqual({
-      source: "config.sm",
+      source: "config.vibe",
       ...lineColumnAt(config, initializerOffset),
     });
-    expect(loweredMain.provenance.edits[1]?.mappedOrigin.file).toBe("config.sm");
+    expect(loweredMain.provenance.edits[1]?.mappedOrigin.file).toBe("config.vibe");
     expect(loweredMain.provenance.edits[1]?.origins.map((origin) => origin.file)).toEqual([
-      "config.sm",
-      "main.sm",
+      "config.vibe",
+      "main.vibe",
     ]);
 
-    const unchanged = result.loweredFiles!["config.sm"]!;
+    const unchanged = result.loweredFiles!["config.vibe"]!;
     expect(unchanged.code).toBe(config);
     expect(unchanged.provenance.edits).toEqual([]);
     expect(decodeMappings(unchanged.sourceMap).map.sourcesContent).toEqual([config]);
     const unchangedOffset = config.indexOf("export const config");
     expect(mappedPosition(unchanged.sourceMap, unchanged.code, unchangedOffset)).toEqual({
-      source: "config.sm",
+      source: "config.vibe",
       ...lineColumnAt(config, unchangedOffset),
     });
   });
@@ -547,7 +565,7 @@ describe("compiler-facing comptime intrinsic", () => {
 
   test("dynamic syntax is never executed and any frontend error prevents cache writes", async () => {
     const build = await compiler();
-    const marker = "__smithers_comptime_argument_ran__";
+    const marker = "__vibelang_comptime_argument_ran__";
     (globalThis as Record<string, unknown>)[marker] = 0;
     const source = [
       `import { comptime } from ${JSON.stringify(COMPTIME_MODULE_SPECIFIER)};`,
@@ -638,8 +656,8 @@ describe("compiler-facing comptime intrinsic", () => {
   });
 
   test("the ordinary runtime guard rejects before importer body or arguments execute", async () => {
-    const bodyMarker = "__smithers_comptime_body_ran__";
-    const argumentMarker = "__smithers_comptime_runtime_argument_ran__";
+    const bodyMarker = "__vibelang_comptime_body_ran__";
+    const argumentMarker = "__vibelang_comptime_runtime_argument_ran__";
     delete (globalThis as Record<string, unknown>)[bodyMarker];
     delete (globalThis as Record<string, unknown>)[argumentMarker];
     const guard = dataModule(COMPTIME_RUNTIME_GUARD_SOURCE);
@@ -710,7 +728,7 @@ describe("compiler-facing comptime intrinsic", () => {
       `  return { record, kept, joined: kept.join("-") };`,
       `})();`,
     ].join("\n");
-    const first = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "loops.sm": source } });
+    const first = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "loops.vibe": source } });
     expect(first.diagnostics).toEqual([]);
     expect(first.ok).toBe(true);
     expect(first.calls[0]?.value).toEqual({
@@ -720,12 +738,12 @@ describe("compiler-facing comptime intrinsic", () => {
     });
     expect(first.calls[0]?.build.cacheHit).toBe(false);
 
-    const second = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "loops.sm": source } });
+    const second = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "loops.vibe": source } });
     expect(second.ok).toBe(true);
     expect(second.calls[0]?.build.cacheHit).toBe(true);
     expect(second.calls[0]?.build.key).toBe(first.calls[0]!.build.key);
-    expect(second.loweredFiles?.["loops.sm"]).toEqual(first.loweredFiles?.["loops.sm"]);
-    expect(second.loweredSources?.["loops.sm"]).toBe(first.loweredSources?.["loops.sm"]!);
+    expect(second.loweredFiles?.["loops.vibe"]).toEqual(first.loweredFiles?.["loops.vibe"]);
+    expect(second.loweredSources?.["loops.vibe"]).toBe(first.loweredSources?.["loops.vibe"]!);
   });
 
   test("interprets classic for with break, do-while, splice, slice, concat, and string pieces", async () => {
@@ -812,18 +830,18 @@ describe("compiler-facing comptime intrinsic", () => {
       `  return rows;`,
       `})();`,
     ].join("\n");
-    await writeFile(join(build.root, "embed-loop.sm"), source);
+    await writeFile(join(build.root, "embed-loop.vibe"), source);
     await writeFile(join(build.root, "data.txt"), "north\nsouth\n");
-    const first = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "embed-loop.sm": source } });
+    const first = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "embed-loop.vibe": source } });
     expect(first.diagnostics).toEqual([]);
     expect(first.calls[0]?.value).toEqual(["NORTH", "SOUTH"]);
     expect(first.calls[0]?.build.dependencies).toEqual([
       expect.objectContaining({ path: "data.txt", kind: "file", access: "text" }),
     ]);
-    const warm = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "embed-loop.sm": source } });
+    const warm = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "embed-loop.vibe": source } });
     expect(warm.calls[0]?.build.cacheHit).toBe(true);
     await writeFile(join(build.root, "data.txt"), "east\n");
-    const changed = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "embed-loop.sm": source } });
+    const changed = await compileComptimeIntrinsics({ compiler: build.compiler, sources: { "embed-loop.vibe": source } });
     expect(changed.calls[0]?.build.cacheHit).toBe(false);
     expect(changed.calls[0]?.value).toEqual(["EAST"]);
   });
@@ -1099,7 +1117,7 @@ describe("compiler-facing comptime intrinsic", () => {
     const first = await build.compiler.evaluateStatic({ answer: 42 }, { identity: { call: "one" } });
     const objectPath = join(build.cache, "comptime-objects", `${first.key}.json`);
     const envelope = JSON.parse(await readFile(objectPath, "utf8"));
-    envelope.build.value = { answer: 9001 };
+    envelope.build.value = encodeComptimeValue({ answer: 9001 });
     envelope.outputDigest = digest(envelope.build);
     await writeFile(objectPath, JSON.stringify(envelope));
 
@@ -1138,7 +1156,7 @@ describe("type-producing comptime", () => {
       "type-alias",
     ]);
     expect(checkEmittedTypeScript(lowered, join(build.root, "account.ts"))
-      .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)).toEqual([]);
+      .filter((diagnostic) => diagnostic.category === "error")).toEqual([]);
     const loaded = await import(dataModule(executableJavaScript(lowered)));
     expect(loaded.defaults).toEqual({ id: "string", active: true, limits: [1, 2] });
     expect(loaded.opened).toEqual(loaded.defaults);
@@ -1158,7 +1176,7 @@ describe("type-producing comptime", () => {
     const lowered = result.loweredSources!["bad.ts"]!;
     expect(lowered).toContain('type Account = { readonly "id": "string"; };');
     const errors = checkEmittedTypeScript(lowered, join(build.root, "bad.ts"))
-      .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error);
+      .filter((diagnostic) => diagnostic.category === "error");
     expect(errors.length).toBeGreaterThan(0);
   });
 
@@ -1182,7 +1200,7 @@ describe("type-producing comptime", () => {
       "type-alias",
     ]);
     expect(checkEmittedTypeScript(lowered, join(build.root, "erased.ts"))
-      .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)).toEqual([]);
+      .filter((diagnostic) => diagnostic.category === "error")).toEqual([]);
     const loaded = await import(dataModule(executableJavaScript(lowered)));
     expect("Account" in loaded).toBe(false);
     expect(loaded.open({ id: "hi", nested: { flag: true } })).toBe("hi");
@@ -1212,7 +1230,7 @@ describe("type-producing comptime", () => {
     expect(checkEmittedProject([
       { fileName: join(build.root, "main.ts"), code: loweredMain },
       { fileName: join(build.root, "consumer.ts"), code: result.loweredSources!["consumer.ts"]! },
-    ]).filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)).toEqual([]);
+    ]).filter((diagnostic) => diagnostic.category === "error")).toEqual([]);
   });
 
   test("schema-derived bindings used in type position fail closed with VCT1013", async () => {

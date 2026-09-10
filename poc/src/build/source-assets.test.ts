@@ -8,7 +8,7 @@ import { createSandboxedLoader } from "./sandboxed-loader.ts"
 import { compileSourceAssetModules } from "./source-assets.ts"
 
 const withRoot = async (run: (root: string) => Promise<void>): Promise<void> => {
-  const root = await mkdtemp(join(tmpdir(), "smithers-source-assets-"))
+  const root = await mkdtemp(join(tmpdir(), "vibelang-source-assets-"))
   try {
     await run(root)
   } finally {
@@ -33,21 +33,21 @@ describe("checked source asset imports", () => {
       `
       const first = await compileSourceAssetModules({
         compiler: compilerFor(root),
-        sources: [{ fileName: "main.sm", source: authored }]
+        sources: [{ fileName: "main.vibe", source: authored }]
       })
       expect(first.ok).toBe(true)
       expect(first.diagnostics).toHaveLength(0)
       expect(first.modules).toHaveLength(1)
       expect(first.modules[0]).toMatchObject({
-        loader: "smithers:builtin/json@1",
+        loader: "vibelang:builtin/json@1",
         cacheHit: false,
         resolutionAliases: ["config.json"]
       })
       expect(first.modules[0]!.source).toStartWith("/** @module @throws {never} */")
       expect(first.modules[0]!.source).toContain("as const")
 
-      const output = join(root, "out", "__smithers_assets__", `${first.modules[0]!.logicalKey}.mjs`)
-      const compiled = compileProject([{ fileName: "main.sm", source: authored }], {
+      const output = join(root, "out", "__vibelang_assets__", `${first.modules[0]!.logicalKey}.mjs`)
+      const compiled = compileProject([{ fileName: "main.vibe", source: authored }], {
         rootDir: root,
         outDir: join(root, "out"),
         outputExtension: ".mjs",
@@ -61,14 +61,14 @@ describe("checked source asset imports", () => {
         }]
       })
       expect(compiled.diagnostics).toHaveLength(0)
-      expect(compiled.files["main.sm"]!.analysis.rows.count).toEqual({ failures: [], requirements: [] })
-      expect(compiled.files["main.sm"]!.code).toContain(`from "./__smithers_assets__/${first.modules[0]!.logicalKey}.mjs"`)
-      expect(compiled.files["main.sm"]!.code).not.toContain(" with {")
-      expect(compiled.files["main.sm"]!.sourceMap).toBeDefined()
+      expect(compiled.files["main.vibe"]!.analysis.rows.count).toEqual({ failures: [], requirements: [] })
+      expect(compiled.files["main.vibe"]!.code).toContain(`from "./__vibelang_assets__/${first.modules[0]!.logicalKey}.mjs"`)
+      expect(compiled.files["main.vibe"]!.code).not.toContain(" with {")
+      expect(compiled.files["main.vibe"]!.sourceMap).toBeDefined()
 
       const second = await compileSourceAssetModules({
         compiler: compilerFor(root),
-        sources: [{ fileName: "main.sm", source: authored }]
+        sources: [{ fileName: "main.vibe", source: authored }]
       })
       expect(second.ok).toBe(true)
       expect(second.modules[0]!.cacheHit).toBe(true)
@@ -82,44 +82,44 @@ describe("checked source asset imports", () => {
     await withRoot(async (root) => {
       await writeFile(join(root, "config.json"), '{"count":3}\n')
       const cases = [
-        ["missing attributes", 'import config from "./config.json"\nexport { config }', "SMITHERS5201"],
-        ["legacy assertion", 'import config from "./config.json" assert { type: "json" }\nexport { config }', "SMITHERS5202"],
-        ["type only", 'import type config from "./config.json" with { type: "json" }\nexport type Value = typeof config', "SMITHERS5208"],
-        ["side effect", 'import "./config.json" with { type: "json" }', "SMITHERS5208"],
-        ["star re-export", 'export * from "./config.json" with { type: "json" }', "SMITHERS5206"],
-        ["type-only re-export", 'export type { default as config } from "./config.json" with { type: "json" }', "SMITHERS5208"],
-        ["type-only named re-export", 'export { type default as config } from "./config.json" with { type: "json" }', "SMITHERS5208"],
-        ["re-export without attributes", 'export { default as config } from "./config.json"', "SMITHERS5201"],
-        ["type query", 'export type Config = import("./config.json")', "SMITHERS5208"],
-        ["dynamic value", 'const kind = "json"\nimport config from "./config.json" with { type: kind }\nexport { config }', "SMITHERS5205"],
+        ["missing attributes", 'import config from "./config.json"\nexport { config }', "VIBE5201"],
+        ["legacy assertion", 'import config from "./config.json" assert { type: "json" }\nexport { config }', "VIBE5202"],
+        ["type only", 'import type config from "./config.json" with { type: "json" }\nexport type Value = typeof config', "VIBE5208"],
+        ["side effect", 'import "./config.json" with { type: "json" }', "VIBE5208"],
+        ["star re-export", 'export * from "./config.json" with { type: "json" }', "VIBE5206"],
+        ["type-only re-export", 'export type { default as config } from "./config.json" with { type: "json" }', "VIBE5208"],
+        ["type-only named re-export", 'export { type default as config } from "./config.json" with { type: "json" }', "VIBE5208"],
+        ["re-export without attributes", 'export { default as config } from "./config.json"', "VIBE5201"],
+        ["type query", 'export type Config = import("./config.json")', "VIBE5208"],
+        ["dynamic value", 'const kind = "json"\nimport config from "./config.json" with { type: kind }\nexport { config }', "VIBE5205"],
         [
           "dynamic computed specifier",
           'const name = "./config.json"\nexport const config = import(name, { with: { type: "json" } })',
-          "SMITHERS5218"
+          "VIBE5218"
         ],
-        ["dynamic assertion form", 'export const config = import("./config.json", { assert: { type: "json" } })', "SMITHERS5218"],
+        ["dynamic assertion form", 'export const config = import("./config.json", { assert: { type: "json" } })', "VIBE5218"],
         [
           "dynamic spread attributes",
           'const extra = { type: "json" }\nexport const config = import("./config.json", { with: { ...extra } })',
-          "SMITHERS5218"
+          "VIBE5218"
         ],
         [
           "dynamic extra options",
           'export const config = import("./config.json", { with: { type: "json" } }, 1)',
-          "SMITHERS5218"
+          "VIBE5218"
         ],
         [
           "dynamic attribute value",
           'const kind = "json"\nexport const config = import("./config.json", { with: { type: kind } })',
-          "SMITHERS5205"
+          "VIBE5205"
         ],
-        ["dynamic missing type", 'export const config = import("./config.json", { with: { mode: "const" } })', "SMITHERS5201"]
+        ["dynamic missing type", 'export const config = import("./config.json", { with: { mode: "const" } })', "VIBE5201"]
       ] as const
       for (const [label, source, code] of cases) {
         const cacheDirectory = join(root, `.cache-${label.replaceAll(" ", "-")}`)
         const result = await compileSourceAssetModules({
           compiler: new AssetCompiler({ root, cacheDirectory }),
-          sources: [{ fileName: "main.sm", source }]
+          sources: [{ fileName: "main.vibe", source }]
         })
         expect(result.ok, label).toBe(false)
         expect(result.modules, label).toHaveLength(0)
@@ -141,7 +141,7 @@ describe("checked source asset imports", () => {
       const aliases = await compileSourceAssetModules({
         compiler: compilerFor(root, "alias-cache"),
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: `
             import outside from "../outside.json" with { type: "json" }
             import linked from "./config-link.json" with { type: "json" }
@@ -153,13 +153,13 @@ describe("checked source asset imports", () => {
       })
       expect(aliases.ok).toBe(false)
       expect(aliases.modules).toHaveLength(0)
-      expect(aliases.diagnostics.filter((entry) => entry.code === "SMITHERS5209")).toHaveLength(2)
-      expect(aliases.diagnostics.some((entry) => entry.code === "SMITHERS5210")).toBe(true)
+      expect(aliases.diagnostics.filter((entry) => entry.code === "VIBE5209")).toHaveLength(2)
+      expect(aliases.diagnostics.some((entry) => entry.code === "VIBE5210")).toBe(true)
 
       const attributes = await compileSourceAssetModules({
         compiler: compilerFor(root, "attributes-cache"),
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: `
             import broad from "./config.json" with { type: "json" }
             import exact from "./config.json" with { type: "json", mode: "const" }
@@ -169,14 +169,14 @@ describe("checked source asset imports", () => {
       })
       expect(attributes.ok).toBe(false)
       expect(attributes.modules).toHaveLength(0)
-      expect(attributes.diagnostics.some((entry) => entry.code === "SMITHERS5215")).toBe(true)
+      expect(attributes.diagnostics.some((entry) => entry.code === "VIBE5215")).toBe(true)
 
       await writeFile(join(root, "runtime.ts"), "/** @module @throws {never} */\nexport const value = 1\n")
       await link(join(root, "runtime.ts"), join(root, "runtime-data.json"))
       const codeAssetAlias = await compileSourceAssetModules({
         compiler: compilerFor(root, "code-asset-cache"),
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: `
             import { value } from "./runtime"
             import data from "./runtime-data.json" with { type: "text" }
@@ -187,7 +187,7 @@ describe("checked source asset imports", () => {
       expect(codeAssetAlias.ok).toBe(false)
       expect(codeAssetAlias.modules).toHaveLength(0)
       expect(codeAssetAlias.diagnostics).toContainEqual(expect.objectContaining({
-        code: "SMITHERS5215",
+        code: "VIBE5215",
         message: expect.stringContaining("file identity")
       }))
     })
@@ -198,15 +198,15 @@ describe("checked source asset imports", () => {
       const compiler = compilerFor(root, "source-budget-cache")
       await expect(compileSourceAssetModules({
         compiler,
-        sources: [{ fileName: "large.sm", source: "x".repeat(17) }],
+        sources: [{ fileName: "large.vibe", source: "x".repeat(17) }],
         maximumSourceFileBytes: 16,
         maximumTotalSourceBytes: 32
       })).rejects.toThrow("exceeds 16 bytes")
       await expect(compileSourceAssetModules({
         compiler,
         sources: [
-          { fileName: "one.sm", source: "123456789" },
-          { fileName: "two.sm", source: "123456789" }
+          { fileName: "one.vibe", source: "123456789" },
+          { fileName: "two.vibe", source: "123456789" }
         ],
         maximumSourceFileBytes: 16,
         maximumTotalSourceBytes: 17
@@ -214,8 +214,8 @@ describe("checked source asset imports", () => {
       await expect(compileSourceAssetModules({
         compiler,
         sources: [
-          { fileName: "one.sm", source: "" },
-          { fileName: "two.sm", source: "" }
+          { fileName: "one.vibe", source: "" },
+          { fileName: "two.vibe", source: "" }
         ],
         maximumSources: 1
       })).rejects.toThrow("exceeds 1 source files")
@@ -232,7 +232,7 @@ describe("checked source asset imports", () => {
       const nominal = await compileSourceAssetModules({
         compiler: nominalCompiler,
         sources: [{
-          fileName: "nominal.sm",
+          fileName: "nominal.vibe",
           source: 'import value from "./nominal.json" with { type: "json" }\nexport { value }\n'
         }]
       })
@@ -271,14 +271,14 @@ describe("checked source asset imports", () => {
       const changed = await compileSourceAssetModules({
         compiler: swappingCompiler,
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: 'import value from "./value.swap" with { type: "swap" }\nexport { value }\n'
         }]
       })
       expect(changed.ok).toBe(false)
       expect(changed.modules).toHaveLength(0)
       expect(changed.diagnostics).toContainEqual(expect.objectContaining({
-        code: "SMITHERS5213",
+        code: "VIBE5213",
         message: expect.stringContaining("changed filesystem identity")
       }))
     })
@@ -313,7 +313,7 @@ describe("checked source asset imports", () => {
       const result = await compileSourceAssetModules({
         compiler,
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: `
             import good from "./good.json" with { type: "json" }
             import hostile from "./hostile.evil" with { type: "evil" }
@@ -324,7 +324,7 @@ describe("checked source asset imports", () => {
       expect(result.ok).toBe(false)
       expect(result.modules).toHaveLength(0)
       expect(result.diagnostics).toContainEqual(expect.objectContaining({
-        code: "SMITHERS5217",
+        code: "VIBE5217",
         message: expect.stringContaining("executable expression")
       }))
     })
@@ -372,7 +372,7 @@ describe("checked source asset imports", () => {
       const result = await compileSourceAssetModules({
         compiler,
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: `
             import prototype from "./prototype.pure" with { type: "pure" }
             import allocation from "./allocation.bytes" with { type: "alloc" }
@@ -382,7 +382,7 @@ describe("checked source asset imports", () => {
       })
       expect(result.ok).toBe(false)
       expect(result.modules).toHaveLength(0)
-      expect(result.diagnostics.filter((entry) => entry.code === "SMITHERS5217")).toHaveLength(2)
+      expect(result.diagnostics.filter((entry) => entry.code === "VIBE5217")).toHaveLength(2)
       expect(result.diagnostics.some((entry) => entry.message.includes("computed '__proto__'"))).toBe(true)
       expect(result.diagnostics.some((entry) => entry.message.includes("literal byte array"))).toBe(true)
     })
@@ -434,7 +434,7 @@ describe("checked source asset imports", () => {
         const result = await compileSourceAssetModules({
           compiler,
           sources: [{
-            fileName: "main.sm",
+            fileName: "main.vibe",
             source: 'import shape from "./shape.evil" with { type: "evil" }\nexport { shape }\n'
           }]
         })
@@ -443,7 +443,7 @@ describe("checked source asset imports", () => {
           expect(result.modules[0]?.source).toContain("@throws {never}")
         } else {
           expect(result.diagnostics).toContainEqual(expect.objectContaining({
-            code: "SMITHERS5217",
+            code: "VIBE5217",
             message: expect.stringContaining("asset bindings must be const")
           }))
         }
@@ -455,15 +455,15 @@ describe("checked source asset imports", () => {
 describe("asset re-exports and literal dynamic asset imports", () => {
   const authoredSources = [
     {
-      fileName: "config.sm",
+      fileName: "config.vibe",
       source: 'export { default as config } from "./config.json" with { type: "json", mode: "const" }\n'
     },
     {
-      fileName: "bundle.sm",
+      fileName: "bundle.vibe",
       source: 'export * as bundle from "./config.json" with { type: "json", mode: "const" }\n'
     },
     {
-      fileName: "main.sm",
+      fileName: "main.vibe",
       source: [
         'import direct from "./config.json" with { type: "json", mode: "const" }',
         'export const load = async () => (await import("./config.json", { with: { type: "json", mode: "const" } })).default',
@@ -484,7 +484,7 @@ describe("asset re-exports and literal dynamic asset imports", () => {
       expect(first.ok).toBe(true)
       expect(first.modules).toHaveLength(1)
       expect(first.modules[0]).toMatchObject({
-        loader: "smithers:builtin/json@1",
+        loader: "vibelang:builtin/json@1",
         cacheHit: false,
         resolutionAliases: ["config.json"],
         references: [],
@@ -516,7 +516,7 @@ describe("asset re-exports and literal dynamic asset imports", () => {
       const dynamicOnly = await compileSourceAssetModules({
         compiler: compilerFor(root, "dynamic-only-cache"),
         sources: [{
-          fileName: "lazy.sm",
+          fileName: "lazy.vibe",
           source: 'export const load = async () => (await import("./config.json", { with: { type: "json", mode: "const" } })).default\n'
         }]
       })
@@ -553,16 +553,16 @@ describe("asset re-exports and literal dynamic asset imports", () => {
       await writeFile(join(root, "config.json"), "{}\n")
       const conflicts = [
         ["re-export against import", [
-          { fileName: "re.sm", source: 'export { default as config } from "./config.json" with { type: "json", mode: "const" }\n' },
-          { fileName: "main.sm", source: 'import config from "./config.json" with { type: "json" }\nexport { config }\n' }
+          { fileName: "re.vibe", source: 'export { default as config } from "./config.json" with { type: "json", mode: "const" }\n' },
+          { fileName: "main.vibe", source: 'import config from "./config.json" with { type: "json" }\nexport { config }\n' }
         ]],
         ["re-export against re-export", [
-          { fileName: "one.sm", source: 'export { default as config } from "./config.json" with { type: "json", mode: "const" }\n' },
-          { fileName: "two.sm", source: 'export * as config from "./config.json" with { type: "json" }\n' }
+          { fileName: "one.vibe", source: 'export { default as config } from "./config.json" with { type: "json", mode: "const" }\n' },
+          { fileName: "two.vibe", source: 'export * as config from "./config.json" with { type: "json" }\n' }
         ]],
         ["dynamic against import", [
           {
-            fileName: "main.sm",
+            fileName: "main.vibe",
             source: [
               'import config from "./config.json" with { type: "json" }',
               'export const load = async () => (await import("./config.json", { with: { type: "json", mode: "const" } })).default',
@@ -579,7 +579,7 @@ describe("asset re-exports and literal dynamic asset imports", () => {
         })
         expect(result.ok, label).toBe(false)
         expect(result.modules, label).toHaveLength(0)
-        expect(result.diagnostics.some((entry) => entry.code === "SMITHERS5215"), label).toBe(true)
+        expect(result.diagnostics.some((entry) => entry.code === "VIBE5215"), label).toBe(true)
       }
     })
   })
@@ -596,36 +596,36 @@ describe("asset re-exports and literal dynamic asset imports", () => {
       const escaped = await compileSourceAssetModules({
         compiler: compilerFor(root, "escape-cache"),
         sources: [
-          { fileName: "re.sm", source: 'export { default as outside } from "../outside.json" with { type: "json" }\n' },
+          { fileName: "re.vibe", source: 'export { default as outside } from "../outside.json" with { type: "json" }\n' },
           {
-            fileName: "lazy.sm",
+            fileName: "lazy.vibe",
             source: 'export const load = async () => (await import("../outside.json", { with: { type: "json" } })).default\n'
           },
           {
-            fileName: "linked.sm",
+            fileName: "linked.vibe",
             source: 'export const load = async () => (await import("./config-link.json", { with: { type: "json" } })).default\n'
           }
         ]
       })
       expect(escaped.ok).toBe(false)
       expect(escaped.modules).toHaveLength(0)
-      expect(escaped.diagnostics.filter((entry) => entry.code === "SMITHERS5209")).toHaveLength(3)
+      expect(escaped.diagnostics.filter((entry) => entry.code === "VIBE5209")).toHaveLength(3)
 
       const bare = await compileSourceAssetModules({
         compiler: compilerFor(root, "bare-cache"),
         sources: [
-          { fileName: "re.sm", source: 'export { default as data } from "smthrs/data.json" with { type: "json" }\n' },
-          { fileName: "bare.sm", source: 'export const load = async () => (await import("smthrs/data.json", { with: { type: "json" } })).default\n' }
+          { fileName: "re.vibe", source: 'export { default as data } from "vibelang/data.json" with { type: "json" }\n' },
+          { fileName: "bare.vibe", source: 'export const load = async () => (await import("vibelang/data.json", { with: { type: "json" } })).default\n' }
         ]
       })
       expect(bare.ok).toBe(false)
       expect(bare.modules).toHaveLength(0)
-      expect(bare.diagnostics.filter((entry) => entry.code === "SMITHERS5207")).toHaveLength(2)
+      expect(bare.diagnostics.filter((entry) => entry.code === "VIBE5207")).toHaveLength(2)
 
       const codeAlias = await compileSourceAssetModules({
         compiler: compilerFor(root, "code-alias-cache"),
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: [
             'import { value } from "./runtime"',
             'export const load = async () => (await import("./runtime.ts", { with: { type: "text" } })).default',
@@ -636,7 +636,7 @@ describe("asset re-exports and literal dynamic asset imports", () => {
       })
       expect(codeAlias.ok).toBe(false)
       expect(codeAlias.modules).toHaveLength(0)
-      expect(codeAlias.diagnostics.some((entry) => entry.code === "SMITHERS5215")).toBe(true)
+      expect(codeAlias.diagnostics.some((entry) => entry.code === "VIBE5215")).toBe(true)
     })
   })
 })
@@ -675,7 +675,7 @@ describe("nested generated asset module graphs", () => {
     }).register(...loaders)
 
   const nestedSources = [{
-    fileName: "main.sm",
+    fileName: "main.vibe",
     source: 'import settings from "./settings.kv" with { type: "kv" }\nexport { settings }\n'
   }]
 
@@ -701,7 +701,7 @@ describe("nested generated asset module graphs", () => {
       expect(outer.source).toContain(`import schema from "./${inner.logicalKey}.ts"`)
       expect(outer.source).not.toContain("required")
       expect(inner.source).toContain("required")
-      expect(inner.sourceFileName).toBe(`.smithers-generated/assets/${inner.logicalKey}.ts`)
+      expect(inner.sourceFileName).toBe(`.vibelang-generated/assets/${inner.logicalKey}.ts`)
       expect(outer.dependencies).toContainEqual(expect.objectContaining({
         kind: "asset",
         path: "schema.json",
@@ -754,7 +754,7 @@ describe("nested generated asset module graphs", () => {
       const result = await compileSourceAssetModules({
         compiler: nestedCompiler(root, "shared-nested-cache", nestedKvLoader()),
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: [
             'import settings from "./settings.kv" with { type: "kv" }',
             'import schema from "./schema.json" with { type: "json", mode: "const" }',
@@ -863,7 +863,7 @@ describe("nested generated asset module graphs", () => {
           target: "node-es2022"
         }).register(loader),
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: 'import settings from "./settings.snest" with { type: "snest" }\nexport { settings }\n'
         }]
       })
@@ -916,7 +916,7 @@ describe("nested generated asset module graphs", () => {
       return await compileSourceAssetModules({
         compiler: nestedCompiler(root, "chain-cache", chainLoader()),
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: 'import chain from "./link0.chain" with { type: "chain" }\nexport { chain }\n'
         }]
       })
@@ -933,7 +933,7 @@ describe("nested generated asset module graphs", () => {
       expect(excessive.ok).toBe(false)
       expect(excessive.modules).toHaveLength(0)
       expect(excessive.diagnostics).toContainEqual(expect.objectContaining({
-        code: "SMITHERS5219",
+        code: "VIBE5219",
         message: expect.stringContaining("exceeds 4 nested levels")
       }))
     })
@@ -971,37 +971,37 @@ describe("nested generated asset module graphs", () => {
       [
         "undeclared logical key",
         emitting("test:fabricated", ".fab", "fab", () => `import x from "./${fabricated}.ts";\nconst value = { x: x };\nexport default value;\n`, undefined),
-        "SMITHERS5217",
+        "VIBE5217",
         "undeclared asset dependency"
       ],
       [
         "raw asset path",
         emitting("test:raw", ".raw", "raw", () => 'import x from "./schema.json";\nconst value = { x: x };\nexport default value;\n'),
-        "SMITHERS5217",
+        "VIBE5217",
         "only import another generated asset module"
       ],
       [
         "namespace binding",
         emitting("test:namespace", ".ns", "ns", (key) => `import * as x from "./${key}.ts";\nconst value = { x: x };\nexport default value;\n`),
-        "SMITHERS5217",
+        "VIBE5217",
         "import namespace"
       ],
       [
         "type-only binding",
         emitting("test:type-only", ".tonly", "tonly", (key) => `import type x from "./${key}.ts";\nconst value = { end: true };\nexport default value;\n`),
-        "SMITHERS5217",
+        "VIBE5217",
         "runtime bindings"
       ],
       [
         "attributed generated import",
         emitting("test:attributed", ".attr", "attr", (key) => `import x from "./${key}.ts" with { type: "json" };\nconst value = { x: x };\nexport default value;\n`),
-        "SMITHERS5217",
+        "VIBE5217",
         "import attributes"
       ],
       [
         "escaping dependency",
         emitting("test:escape", ".esc", "esc", () => "const value = { end: true };\nexport default value;\n", "../outside.json"),
-        "SMITHERS5213",
+        "VIBE5213",
         "escaped project root"
       ]
     ] as const
@@ -1016,7 +1016,7 @@ describe("nested generated asset module graphs", () => {
         const result = await compileSourceAssetModules({
           compiler: nestedCompiler(root, `nested-${label.replaceAll(" ", "-")}`, loader),
           sources: [{
-            fileName: "main.sm",
+            fileName: "main.vibe",
             source: `import subject from "./subject${extension}" with { type: "${loader.types![0]!}" }\nexport { subject }\n`
           }]
         })
@@ -1036,7 +1036,7 @@ describe("nested generated asset module graphs", () => {
       const result = await compileSourceAssetModules({
         compiler: nestedCompiler(root, "nested-conflict-cache", nestedKvLoader()),
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: [
             'import settings from "./settings.kv" with { type: "kv" }',
             'import schema from "./schema.json" with { type: "json" }',
@@ -1047,7 +1047,7 @@ describe("nested generated asset module graphs", () => {
       })
       expect(result.ok).toBe(false)
       expect(result.modules).toHaveLength(0)
-      expect(result.diagnostics.some((entry) => entry.code === "SMITHERS5215")).toBe(true)
+      expect(result.diagnostics.some((entry) => entry.code === "VIBE5215")).toBe(true)
     })
   })
 
@@ -1076,14 +1076,14 @@ describe("nested generated asset module graphs", () => {
       const result = await compileSourceAssetModules({
         compiler: nestedCompiler(root, "cycle-cache", cycleLoader),
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: 'import cycle from "./left.cyc" with { type: "cyc" }\nexport { cycle }\n'
         }]
       })
       expect(result.ok).toBe(false)
       expect(result.modules).toHaveLength(0)
       expect(result.diagnostics.some(
-        (entry) => entry.code === "SMITHERS5213" && entry.message.includes("asset cycle")
+        (entry) => entry.code === "VIBE5213" && entry.message.includes("asset cycle")
       )).toBe(true)
     })
   })
@@ -1107,7 +1107,7 @@ describe("import-assignment module references", () => {
         })
         expect(result.ok, label).toBe(false)
         expect(result.modules, label).toHaveLength(0)
-        expect(result.diagnostics.map((entry) => entry.code), label).toEqual(["SMITHERS5201"])
+        expect(result.diagnostics.map((entry) => entry.code), label).toEqual(["VIBE5201"])
       }
     })
   })
@@ -1124,7 +1124,7 @@ describe("import-assignment module references", () => {
       })
       expect(shadowed.ok).toBe(false)
       expect(shadowed.modules).toHaveLength(0)
-      expect(shadowed.diagnostics.some((entry) => entry.code === "SMITHERS5215")).toBe(true)
+      expect(shadowed.diagnostics.some((entry) => entry.code === "VIBE5215")).toBe(true)
     })
   })
 

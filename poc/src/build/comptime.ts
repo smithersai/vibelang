@@ -10,8 +10,10 @@ import {
   type LoaderContext,
 } from "./assets.ts";
 import { assertSandboxedComptimeModule, type SandboxedComptimeModule } from "./sandboxed-loader.ts";
+import { decodeComptimeValue, encodeComptimeValue, type ComptimeValueGraph } from "./comptime-value.ts";
 import {
   canonical,
+  cloneJsonValue,
   compareStableStrings,
   digest,
   freezeStable,
@@ -20,6 +22,8 @@ import {
 } from "./stable.ts";
 
 export interface ComptimeCompilerOptions {
+  /** Host-only watch notification, including in-root inputs which are absent. */
+  readonly onDependency?: (absolutePath: string) => void;
   readonly root: string;
   readonly cacheDirectory: string;
   readonly assets?: AssetCompiler;
@@ -54,7 +58,7 @@ interface ComptimeIndex {
 }
 
 interface ComptimeEnvelope {
-  readonly build: Omit<ComptimeBuild, "cacheHit">;
+  readonly build: Omit<ComptimeBuild, "cacheHit" | "value"> & { readonly value: ComptimeValueGraph };
   readonly outputDigest: string;
 }
 
@@ -69,8 +73,11 @@ export class ComptimeCompiler {
   readonly options: Readonly<Record<string, unknown>>;
   readonly assets?: AssetCompiler;
   readonly #inflight = new Map<string, Promise<ComptimeBuild>>();
+  readonly #onDependency?: (absolutePath: string) => void;
 
   constructor(options: ComptimeCompilerOptions) {
+    if (options.onDependency !== undefined && typeof options.onDependency !== "function") throw new TypeError("comptime dependency observer must be a function");
+    this.#onDependency = options.onDependency;
     this.root = realpathSync(resolve(options.root));
     if (!statSync(this.root).isDirectory()) throw new Error("comptime compiler root must be a directory");
     this.cacheDirectory = resolve(options.cacheDirectory);
@@ -95,16 +102,17 @@ export class ComptimeCompiler {
     options: { readonly from?: string } = {},
   ): Promise<ComptimeBuild<T>> {
     assertSandboxedComptimeModule(module);
-    const argumentSnapshot = freezeStable(stableClone(args, "comptime arguments"));
+    const argumentSnapshot = freezeStable(cloneJsonValue(args, "comptime arguments"));
     const from = this.#resolveDirectory(options.from ?? this.#defaultFrom(module.sourcePath));
     const identity = {
-      compiler: "smithers-comptime-poc@3",
+      compiler: "vibelang-comptime-poc@5",
       module: module.id,
       moduleVersion: module.version,
       implementationDigest: module.implementationDigest,
       target: this.target,
       options: this.options,
-      args: argumentSnapshot,
+      // The ordered graph pins both property order and shared allocations.
+      argsGraph: encodeComptimeValue(argumentSnapshot),
       from: relative(this.root, from).split(sep).join("/"),
     };
     const logicalKey = digest(identity);
@@ -129,17 +137,17 @@ export class ComptimeCompiler {
     value: unknown,
     options: StaticComptimeOptions,
   ): Promise<ComptimeBuild<T>> {
-    const valueSnapshot = freezeStable(stableClone(value, "static comptime result")) as T;
+    const valueSnapshot = freezeStable(cloneJsonValue(value, "static comptime result")) as T;
     const frontendIdentity = freezeStable(stableClone(options.identity, "static comptime identity"));
     const dependencies = normalizeStaticDependencies(options.dependencies ?? []);
     this.#assertStaticDependencySnapshots(dependencies);
     const identity = {
-      compiler: "smithers-comptime-static@2",
-      module: "smithers:comptime/static-json",
+      compiler: "vibelang-comptime-static@4",
+      module: "vibelang:comptime/static-json",
       target: this.target,
       options: this.options,
       frontendIdentity,
-      value: valueSnapshot,
+      valueGraph: encodeComptimeValue(valueSnapshot),
     };
     const logicalKey = digest(identity);
     const inflightKey = digest({ logicalKey, dependencies });
@@ -175,7 +183,7 @@ export class ComptimeCompiler {
     identity: Record<string, unknown>,
     logicalKey: string,
   ): Promise<ComptimeBuild<T>> {
-    const module = "smithers:comptime/static-json";
+    const module = "vibelang:comptime/static-json";
     const indexPath = join(this.cacheDirectory, "comptime-static-index", `${logicalKey}.json`);
     const previous = await readJson<ComptimeIndex>(indexPath);
     if (validIndex(previous) && canonical(previous.dependencies) === canonical(dependencies) &&
@@ -187,7 +195,7 @@ export class ComptimeCompiler {
       if (restored) return restored;
     }
 
-    const key = digest({ ...identity, dependencies, value });
+    const key = digest({ ...identity, dependencies, valueGraph: encodeComptimeValue(value) });
     const build: Omit<ComptimeBuild<T>, "cacheHit"> = {
       key,
       logicalKey,
@@ -195,10 +203,7 @@ export class ComptimeCompiler {
       dependencies,
       value,
     };
-    await writeJsonAtomic(join(this.cacheDirectory, "comptime-objects", `${key}.json`), {
-      build,
-      outputDigest: digest(build),
-    } satisfies ComptimeEnvelope);
+    await writeJsonAtomic(join(this.cacheDirectory, "comptime-objects", `${key}.json`), comptimeEnvelope(build));
     await writeJsonAtomic(indexPath, { key, dependencies } satisfies ComptimeIndex);
     return Object.freeze({ ...build, cacheHit: false });
   }
@@ -257,12 +262,12 @@ export class ComptimeCompiler {
       },
     });
 
-    const value = freezeStable(await module.evaluate(args, context)) as T;
+    const value = freezeStable(cloneJsonValue(await module.evaluate(args, context), "comptime result")) as T;
     if (dependencies.size > 10_000) throw new Error("comptime evaluation declared more than 10000 dependencies");
     const dependencyList = Object.freeze([...dependencies.values()]
       .sort((left, right) => compareStableStrings(left.path, right.path) || compareStableStrings(canonical(left), canonical(right)))
       .map((dependency) => Object.freeze({ ...dependency })));
-    const key = digest({ ...identity, dependencies: dependencyList, value });
+    const key = digest({ ...identity, dependencies: dependencyList, valueGraph: encodeComptimeValue(value) });
     const build: Omit<ComptimeBuild<T>, "cacheHit"> = {
       key,
       logicalKey,
@@ -270,10 +275,7 @@ export class ComptimeCompiler {
       dependencies: dependencyList,
       value,
     };
-    await writeJsonAtomic(join(this.cacheDirectory, "comptime-objects", `${key}.json`), {
-      build,
-      outputDigest: digest(build),
-    } satisfies ComptimeEnvelope);
+    await writeJsonAtomic(join(this.cacheDirectory, "comptime-objects", `${key}.json`), comptimeEnvelope(build));
     await writeJsonAtomic(indexPath, { key, dependencies: dependencyList } satisfies ComptimeIndex);
     return Object.freeze({ ...build, cacheHit: false });
   }
@@ -326,7 +328,10 @@ export class ComptimeCompiler {
 
   #resolveFile(specifier: string, from: string): string {
     if (isAbsolute(specifier)) throw new Error(`comptime inputs must be relative: ${specifier}`);
-    const path = realpathSync(resolve(from, specifier));
+    const candidate = resolve(from, specifier);
+    const back = relative(this.root, candidate);
+    if (back !== "" && back !== ".." && !back.startsWith(`..${sep}`) && !isAbsolute(back)) this.#onDependency?.(candidate);
+    const path = realpathSync(candidate);
     this.#assertInsideRoot(path, specifier);
     if (!statSync(path).isFile()) throw new Error(`comptime input must be a regular file: ${specifier}`);
     return path;
@@ -379,18 +384,25 @@ function restoreEnvelope<T extends StableJson>(
 ): ComptimeBuild<T> | undefined {
   if (!envelope || typeof envelope.outputDigest !== "string") return undefined;
   try {
-    if (digest(envelope.build) !== envelope.outputDigest) return undefined;
-    const build = stableClone(envelope.build, "cached comptime build") as unknown as Omit<ComptimeBuild<T>, "cacheHit">;
+    const encoded = cloneJsonValue(envelope.build, "cached comptime build") as unknown as ComptimeEnvelope["build"];
+    if (!encoded || Object.keys(encoded).sort().join(",") !== "dependencies,key,logicalKey,module,value" ||
+      digest(encoded) !== envelope.outputDigest) return undefined;
+    const build = { ...encoded, value: decodeComptimeValue(encoded.value) as T };
     if (
       build.key !== key || build.logicalKey !== logicalKey || build.module !== module ||
       canonical(build.dependencies) !== canonical(dependencies) ||
-      digest({ ...identity, dependencies: build.dependencies, value: build.value }) !== key
+      digest({ ...identity, dependencies: build.dependencies, valueGraph: encodeComptimeValue(build.value) }) !== key
     ) return undefined;
     const cachedDependencies = freezeStable(build.dependencies as unknown as StableJson) as unknown as readonly AssetDependency[];
     return Object.freeze({ ...build, dependencies: cachedDependencies, value: freezeStable(build.value), cacheHit: true });
   } catch {
     return undefined;
   }
+}
+
+function comptimeEnvelope(build: Omit<ComptimeBuild, "cacheHit">): ComptimeEnvelope {
+  const encoded = { ...build, value: encodeComptimeValue(build.value) };
+  return { build: encoded, outputDigest: digest(encoded) };
 }
 
 async function readJson<T>(path: string): Promise<T | undefined> {
@@ -406,7 +418,9 @@ async function writeJsonAtomic(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   const temporary = `${path}.${process.pid}.${crypto.randomUUID()}.tmp`;
   try {
-    await writeFile(temporary, `${canonical(value)}\n`);
+    // Program data is an ordered value graph. Its entry arrays retain semantic
+    // property order even when the surrounding metadata is canonicalized.
+    await writeFile(temporary, `${JSON.stringify(cloneJsonValue(value))}\n`);
     await rename(temporary, path);
   } finally {
     await rm(temporary, { force: true });

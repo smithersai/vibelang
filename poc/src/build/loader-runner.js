@@ -25,6 +25,16 @@ const uint8Slice = Uint8Array.prototype.slice;
 const SafePromise = Promise;
 const SafeError = Error;
 const SafeTypeError = TypeError;
+const SafeMap = Map;
+const SafeSet = Set;
+const safeMapGet = Map.prototype.get;
+const safeMapSet = Map.prototype.set;
+const safeSetHas = Set.prototype.has;
+const safeSetAdd = Set.prototype.add;
+const safeSetDelete = Set.prototype.delete;
+const isSafeInteger = Number.isSafeInteger.bind(Number);
+const mapGet = (map, key) => applyFunction(safeMapGet, map, [key]);
+const mapSet = (map, key, value) => applyFunction(safeMapSet, map, [key, value]);
 let buffered = new Uint8Array();
 
 async function readLine() {
@@ -64,7 +74,7 @@ function send(message) {
 const initialLine = await readLine();
 if (initialLine === undefined) runtime.exit(2);
 const initial = safeParse(initialLine);
-if (initial?.kind !== "init" || initial.protocol !== 1) {
+if (initial?.kind !== "init" || initial.protocol !== 2) {
   await send({ kind: "error", name: "ProtocolError", message: "unsupported loader protocol" });
   runtime.exit(2);
 }
@@ -119,12 +129,12 @@ function deny(name) {
 const stackFrame = (frame) => {
   try {
     const file = frame.getFileName();
-    const shown = typeof file === "string" && file.startsWith("data:") ? file : "smithers:loader-runner";
+    const shown = typeof file === "string" && file.startsWith("data:") ? file : "vibelang:loader-runner";
     const name = frame.getFunctionName();
     const position = `${shown}:${String(frame.getLineNumber())}:${String(frame.getColumnNumber())}`;
     return typeof name === "string" && name !== "" ? `\n    at ${name} (${position})` : `\n    at ${position}`;
   } catch {
-    return "\n    at smithers:loader-runner";
+    return "\n    at vibelang:loader-runner";
   }
 };
 defineProperty(Error, "prepareStackTrace", {
@@ -260,7 +270,8 @@ function base64Bytes(source) {
   return output;
 }
 
-function toStable(value, path = "comptime result", seen = new Set()) {
+function toStable(value, path = "comptime result", seen = new SafeSet(), copies = new SafeMap(), budget = { nodes: 0 }, depth = 0) {
+  if (++budget.nodes > 1_000_000 || depth > 512) throw new SafeTypeError(`${path} exceeds the data depth or expanded-size budget`);
   if (value === null || typeof value === "boolean" || typeof value === "string") return value;
   if (typeof value === "number") {
     if (!isFiniteNumber(value)) throw new SafeTypeError(`${path} is not stable JSON: non-finite number`);
@@ -272,28 +283,36 @@ function toStable(value, path = "comptime result", seen = new Set()) {
     return value;
   }
   if (typeof value !== "object") throw new SafeTypeError(`${path} is not stable JSON: ${typeof value}`);
-  if (seen.has(value)) throw new SafeTypeError(`${path} is not stable JSON: cyclic value`);
-  seen.add(value);
+  if (applyFunction(safeSetHas, seen, [value])) throw new SafeTypeError(`${path} is not stable JSON: cyclic value`);
+  applyFunction(safeSetAdd, seen, [value]);
   try {
     if (isArray(value)) {
       if (getPrototypeOf(value) !== Array.prototype) throw new SafeTypeError(`${path} is not stable JSON: exotic array`);
       const result = [];
       for (let index = 0; index < value.length; index++) {
         if (!hasOwn(value, index)) throw new SafeTypeError(`${path}[${index}] is not stable JSON: sparse array`);
-        result.push(toStable(value[index], `${path}[${index}]`, seen));
+        const descriptor = getOwnPropertyDescriptor(value, index);
+        if (!descriptor || !descriptor.enumerable || !("value" in descriptor)) {
+          throw new SafeTypeError(`${path}[${index}] is not stable JSON: accessor or hidden property`);
+        }
+        result[index] = toStable(descriptor.value, `${path}[${index}]`, seen, copies, budget, depth + 1);
       }
       if (ownKeys(value).some((key) => key !== "length" &&
         (typeof key !== "string" || !/^(0|[1-9]\d*)$/.test(key) || Number(key) >= value.length))) {
         throw new SafeTypeError(`${path} is not stable JSON: unsupported array property`);
       }
-      return result;
+      const previous = mapGet(copies, value);
+      mapSet(copies, value, previous ?? result);
+      return previous ?? result;
     }
     const prototype = getPrototypeOf(value);
     if (prototype !== Object.prototype && prototype !== null) {
       throw new SafeTypeError(`${path} is not stable JSON: exotic object`);
     }
     const result = createObject(null);
-    const keys = ownKeys(value).sort((left, right) => compareText(String(left), String(right)));
+    // Transport the program value, including property order. Canonicalizing
+    // metadata on the host must not change JSON.stringify/Object.keys here.
+    const keys = ownKeys(value);
     for (let index = 0; index < keys.length; index++) {
       const key = keys[index];
       if (typeof key !== "string") throw new SafeTypeError(`${path} is not stable JSON: symbol property`);
@@ -301,16 +320,94 @@ function toStable(value, path = "comptime result", seen = new Set()) {
       if (!descriptor || !descriptor.enumerable || !("value" in descriptor)) {
         throw new SafeTypeError(`${path}.${key} is not stable JSON: accessor or hidden property`);
       }
-      result[key] = toStable(descriptor.value, `${path}.${key}`, seen);
+      result[key] = toStable(descriptor.value, `${path}.${key}`, seen, copies, budget, depth + 1);
     }
-    return result;
+    const previous = mapGet(copies, value);
+    mapSet(copies, value, previous ?? result);
+    return previous ?? result;
   } finally {
-    seen.delete(value);
+    applyFunction(safeSetDelete, seen, [value]);
   }
 }
 
+// The bounded postorder graph protocol in comptime-value.ts. This runner is a
+// standalone sandbox bootstrap; shared identity vectors exercise both codecs
+// across the real process boundary. Reflection and collection methods used
+// after the authored module returns were captured before importing that module.
+function encodeValueGraph(value) {
+  const snapshot = toStable(value);
+  const ids = new SafeMap();
+  const nodes = [];
+  function visit(current) {
+    if (current === null || typeof current !== "object") return current;
+    const prior = mapGet(ids, current);
+    if (prior !== undefined) return ["ref", prior];
+    let node;
+    if (isArray(current)) {
+      const items = [];
+      for (let index = 0; index < current.length; index++) items[index] = visit(current[index]);
+      node = { kind: "array", items };
+    } else {
+      const keys = ownKeys(current);
+      const entries = [];
+      for (let index = 0; index < keys.length; index++) entries[index] = [keys[index], visit(current[keys[index]])];
+      node = { kind: "object", entries };
+    }
+    const index = nodes.length;
+    nodes[index] = node;
+    mapSet(ids, current, index);
+    return ["ref", index];
+  }
+  const root = visit(snapshot);
+  return { version: 1, nodes, root };
+}
+
+function decodeValueGraph(value) {
+  const graph = toStable(value);
+  const keys = (node) => ownKeys(node).sort(compareText).join(",");
+  if (!graph || typeof graph !== "object" || isArray(graph) || keys(graph) !== "nodes,root,version" ||
+    graph.version !== 1 || !isArray(graph.nodes)) throw new SafeTypeError("Invalid comptime value graph envelope");
+  const values = [];
+  const resolve = (reference) => {
+    if (reference === null || typeof reference !== "object") return reference;
+    if (!isArray(reference) || reference.length !== 2 || reference[0] !== "ref" ||
+      !isSafeInteger(reference[1]) || reference[1] < 0 || reference[1] >= values.length) {
+      throw new SafeTypeError("Invalid or forward comptime value reference");
+    }
+    return values[reference[1]];
+  };
+  for (const node of graph.nodes) {
+    if (!node || typeof node !== "object" || isArray(node)) throw new SafeTypeError("Invalid comptime value node");
+    if (node.kind === "array" && keys(node) === "items,kind" && isArray(node.items)) {
+      values.push(node.items.map(resolve));
+    } else if (node.kind === "object" && keys(node) === "entries,kind" && isArray(node.entries)) {
+      // Inputs have ordinary JSON object prototypes, as they did under the
+      // previous JSON transport. Define own keys so __proto__ is still data.
+      const object = {};
+      for (const entry of node.entries) {
+        if (!isArray(entry) || entry.length !== 2 || typeof entry[0] !== "string" || hasOwn(object, entry[0])) {
+          throw new SafeTypeError("Invalid or duplicate comptime object entry");
+        }
+        defineProperty(object, entry[0], { value: resolve(entry[1]), enumerable: true, writable: true, configurable: true });
+      }
+      values.push(object);
+    } else throw new SafeTypeError("Invalid comptime value node shape");
+  }
+  const result = resolve(graph.root);
+  // The compiler emits exactly this field order. Matching the complete graph
+  // also refuses unreachable definitions and noncanonical alias/entry order.
+  if (safeStringify(encodeValueGraph(result)) !== safeStringify(graph)) {
+    throw new SafeTypeError("Noncanonical comptime value graph");
+  }
+  return result;
+}
+
 deepFreeze(initial.context.options);
-if (initial.invocation?.mode === "comptime") deepFreeze(initial.invocation.args);
+if (initial.invocation?.mode === "comptime") {
+  initial.invocation.args = decodeValueGraph(initial.invocation.args);
+  if (!isArray(initial.invocation.args)) throw new SafeTypeError("Comptime arguments must be an array");
+  deepFreeze(initial.invocation.args);
+}
 
 if (typeof initial.sourceBase64 !== "string") {
   await send({ kind: "error", name: "ProtocolError", message: "loader source was missing" });
@@ -363,7 +460,7 @@ try {
       text: () => decode(bytes),
     });
     value = await loader(asset, context);
-  } else if (initial.invocation?.mode === "comptime" && Array.isArray(initial.invocation.args)) {
+  } else if (initial.invocation?.mode === "comptime" && isArray(initial.invocation.args)) {
     const callArguments = new Array(initial.invocation.args.length + 1);
     for (let index = 0; index < initial.invocation.args.length; index++) callArguments[index] = initial.invocation.args[index];
     callArguments[callArguments.length - 1] = context;
@@ -371,7 +468,7 @@ try {
   } else {
     throw new TypeError("sandbox invocation is invalid");
   }
-  await send({ kind: "result", value: toStable(value) });
+  await send({ kind: "result", value: initial.invocation.mode === "comptime" ? encodeValueGraph(value) : toStable(value) });
   reading = false;
   await writeTail;
   runtime.exit(0);

@@ -1,8 +1,9 @@
-import { describe, expect, test } from "bun:test"
+import { beforeAll, describe, expect, test } from "bun:test"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { AssetCompiler } from "./assets.ts"
+import { getNativeCompiler } from "../compiler/native.ts"
 import {
   LoaderRegistrationDiagnosticCode,
   looksLikeLoaderRegistration,
@@ -11,7 +12,7 @@ import {
 import { compileSourceAssetModules, type SourceAssetDiagnostic } from "./source-assets.ts"
 
 const withRoot = async (run: (root: string) => Promise<void>): Promise<void> => {
-  const root = await mkdtemp(join(tmpdir(), "smithers-loader-registration-"))
+  const root = await mkdtemp(join(tmpdir(), "vibelang-loader-registration-"))
   try {
     await run(root)
   } finally {
@@ -54,7 +55,7 @@ const LOADER_BODY = [
 ].join("\n")
 
 const loaderSource = (type = "yaml", suffix = ""): string => [
-  'import { comptime } from "smithers:comptime"',
+  'import { comptime } from "vibelang:comptime"',
   "",
   LOADER_BODY + suffix,
   `export default comptime.loader(${JSON.stringify(type)}, load)`,
@@ -70,7 +71,34 @@ const codes = (diagnostics: readonly SourceAssetDiagnostic[]): string[] => diagn
 const recognize = (source: string, fileName = "yaml-loader.ts") =>
   recognizeLoaderRegistration({ fileName, source })
 
+beforeAll(() => { getNativeCompiler() }, 300_000)
+
 describe("provisional comptime.loader registration recognition", () => {
+  test("compiler-owned values cannot escape through shorthand or a namespace", () => {
+    for (const source of [
+      'import { comptime } from "vibelang:comptime"; const leak = { comptime }; export default comptime.loader("yaml", () => 42);',
+      'import * as tools from "vibelang:comptime"; const leak = { tools }; export default tools.comptime.loader("yaml", () => 42);',
+    ]) {
+      const result = recognize(source)
+      expect(result.ok).toBe(false)
+      expect(result.identified).toBe(true)
+      expect(result.registration).toBeUndefined()
+      expect(result.diagnostics.map(item => item.code)).toContain("VCT1309")
+    }
+  })
+  test("an ambient function declaration is not an executable loader", () => {
+    const result = recognize('import { comptime } from "vibelang:comptime"; declare function load(): unknown; export default comptime.loader("yaml", load);')
+    expect(result.ok).toBe(false)
+    expect(result.identified).toBe(true)
+    expect(result.diagnostics.map(item => item.code)).toEqual(["VCT1308"])
+    expect(result.diagnostics[0]!.message).toContain("executable function body")
+  })
+  test("a type-only named import cannot grant a runtime registration identity", () => {
+    const result = recognize('import { type comptime } from "vibelang:comptime"; export default comptime.loader("yaml", () => 42);')
+    expect(result.ok).toBe(false)
+    expect(result.identified).toBe(false)
+    expect(result.diagnostics.map(item => item.code)).toEqual(["VCT1301", "VCT1304"])
+  })
   test("recognizes a default-exported registration and lowers it for the sandbox", () => {
     const analysis = recognize(loaderSource())
     expect(analysis.ok).toBe(true)
@@ -80,7 +108,7 @@ describe("provisional comptime.loader registration recognition", () => {
     expect(registration.fileName).toBe("yaml-loader.ts")
     // The compiler-owned import cannot exist inside the no-permission sandbox,
     // so the lowered module erases it and default-exports the function itself.
-    expect(registration.sandboxSource).not.toContain("smithers:comptime")
+    expect(registration.sandboxSource).not.toContain("vibelang:comptime")
     expect(registration.sandboxSource).not.toContain("comptime.loader")
     expect(registration.sandboxSource).toContain("export default load;")
     expect(registration.sandboxSource).toContain("const load = (asset: Asset) =>")
@@ -91,7 +119,7 @@ describe("provisional comptime.loader registration recognition", () => {
 
   test("accepts an inline loader function and keeps its authored text", () => {
     const analysis = recognize([
-      'import { comptime } from "smithers:comptime"',
+      'import { comptime } from "vibelang:comptime"',
       'export default comptime.loader("ini", (asset: { text(): string }) => ({',
       '  format: "ini",',
       "  value: asset.text(),",
@@ -121,7 +149,7 @@ describe("provisional comptime.loader registration recognition", () => {
 
   test("rejects a registration whose callee resolves to nothing", () => {
     const analysis = recognize([
-      'import { comptime } from "smithers:comptime"',
+      'import { comptime } from "vibelang:comptime"',
       LOADER_BODY,
       'export default undeclaredRegistry.loader("yaml", load)',
       ""
@@ -133,7 +161,7 @@ describe("provisional comptime.loader registration recognition", () => {
 
   test("rejects a non-literal type", () => {
     const analysis = recognize([
-      'import { comptime } from "smithers:comptime"',
+      'import { comptime } from "vibelang:comptime"',
       'const TYPE = "yaml"',
       LOADER_BODY,
       "export default comptime.loader(TYPE, load)",
@@ -159,7 +187,7 @@ describe("provisional comptime.loader registration recognition", () => {
 
   test("rejects a loader function the sandbox module could not name", () => {
     const analysis = recognize([
-      'import { comptime } from "smithers:comptime"',
+      'import { comptime } from "vibelang:comptime"',
       LOADER_BODY,
       "const helpers = { load }",
       'export default comptime.loader("yaml", helpers.load)',
@@ -193,7 +221,7 @@ describe("provisional comptime.loader registration recognition", () => {
 
   test("rejects a second registration in the same file", () => {
     const analysis = recognize([
-      'import { comptime } from "smithers:comptime"',
+      'import { comptime } from "vibelang:comptime"',
       LOADER_BODY,
       'const extra = comptime.loader("ini", load)',
       "void extra",
@@ -214,7 +242,7 @@ describe("provisional comptime.loader registration recognition", () => {
 
   test("rejects a re-exported registration and any foreign module edge", () => {
     const analysis = recognize([
-      'import { comptime } from "smithers:comptime"',
+      'import { comptime } from "vibelang:comptime"',
       'import { parse } from "./yaml.ts"',
       'export { default } from "./real-loader.ts"',
       ""
@@ -229,7 +257,7 @@ describe("provisional comptime.loader registration recognition", () => {
 
   test("rejects a dynamic import, `export =`, and a missing default export", () => {
     const dynamic = recognize([
-      'import { comptime } from "smithers:comptime"',
+      'import { comptime } from "vibelang:comptime"',
       LOADER_BODY,
       'const later = () => import("./other.ts")',
       "void later",
@@ -240,7 +268,7 @@ describe("provisional comptime.loader registration recognition", () => {
       .toContain(LoaderRegistrationDiagnosticCode.ModuleShape)
 
     const exportEquals = recognize([
-      'import { comptime } from "smithers:comptime"',
+      'import { comptime } from "vibelang:comptime"',
       LOADER_BODY,
       'export = comptime.loader("yaml", load)',
       ""
@@ -255,7 +283,7 @@ describe("provisional comptime.loader registration recognition", () => {
   })
 
   test("rejects a loader file the sandbox transpiler cannot accept", () => {
-    expect(recognize(loaderSource(), "yaml-loader.sm").diagnostics[0]!.code)
+    expect(recognize(loaderSource(), "yaml-loader.vibe").diagnostics[0]!.code)
       .toBe(LoaderRegistrationDiagnosticCode.ModuleShape)
     expect(recognize("export default comptime.loader(", "broken.ts").diagnostics[0]!.code)
       .toBe(LoaderRegistrationDiagnosticCode.Syntax)
@@ -265,7 +293,7 @@ describe("provisional comptime.loader registration recognition", () => {
     expect(looksLikeLoaderRegistration(loaderSource(), "yaml-loader.ts")).toBe(true)
     // An ordinary comptime consumer is not a candidate.
     expect(looksLikeLoaderRegistration(
-      'import { comptime } from "smithers:comptime"\nexport default comptime({ a: 1 })\n',
+      'import { comptime } from "vibelang:comptime"\nexport default comptime({ a: 1 })\n',
       "main.ts"
     )).toBe(false)
     // A file that never mentions the compiler-owned module is not a candidate.
@@ -283,7 +311,7 @@ describe("provisional comptime.loader registration recognition", () => {
       'comptime["loader"]("yaml", load)',
     ]) {
       expect(looksLikeLoaderRegistration(
-        `import { comptime } from "smithers:comptime"\n${LOADER_BODY}\nexport default ${call}\n`,
+        `import { comptime } from "vibelang:comptime"\n${LOADER_BODY}\nexport default ${call}\n`,
         "yaml-loader.ts"
       )).toBe(true)
     }
@@ -291,7 +319,7 @@ describe("provisional comptime.loader registration recognition", () => {
 
   test("the callee is judged on what it resolves to, and only one spelling is accepted", () => {
     const registration = (call: string): string =>
-      ['import { comptime } from "smithers:comptime"', "", LOADER_BODY, `export default ${call}`, ""].join("\n")
+      ['import { comptime } from "vibelang:comptime"', "", LOADER_BODY, `export default ${call}`, ""].join("\n")
     // `a?.b(c)` carries its optional token on the property access, not on the
     // call, so half the optional-chain family used to be accepted by the rule
     // whose own message says it rejects optional chaining.
@@ -331,7 +359,7 @@ describe("provisional comptime.loader registration recognition", () => {
   diagnostics: [], spans: [],
 })`
       const call = 'export default comptime.loader("yaml", load)'
-      return ['import { comptime } from "smithers:comptime"', ...(before ? [declaration, call] : [call, declaration]), ""].join("\n")
+      return ['import { comptime } from "vibelang:comptime"', ...(before ? [declaration, call] : [call, declaration]), ""].join("\n")
     }
     // The lowering emits `export default load;` where the registration stood,
     // so a `const` below it compiled clean and died in the sandbox on
@@ -351,7 +379,7 @@ describe("provisional comptime.loader registration recognition", () => {
   diagnostics: [], spans: [],
 } }`
       const call = 'export default comptime.loader("yaml", load)'
-      return ['import { comptime } from "smithers:comptime"', ...(before ? [declaration, call] : [call, declaration]), ""].join("\n")
+      return ['import { comptime } from "vibelang:comptime"', ...(before ? [declaration, call] : [call, declaration]), ""].join("\n")
     }
     expect(recognize(hoisted(true)).ok).toBe(true)
     expect(recognize(hoisted(false)).ok).toBe(true)
@@ -364,7 +392,7 @@ describe("provisional comptime.loader registration recognition", () => {
   test("only the extensions the sandbox can evaluate are admitted", () => {
     // `.cts` and `.cjs` were advertised and could never run: the sandbox
     // evaluates one ES module from a `data:` URL and has no CommonJS at all.
-    for (const extension of [".cts", ".cjs", ".tsx", ".d.ts", ".sm", ".json"]) {
+    for (const extension of [".cts", ".cjs", ".tsx", ".d.ts", ".vibe", ".json"]) {
       const analysis = recognize(loaderSource(), `yaml-loader${extension}`)
       expect(analysis.ok).toBe(false)
       expect(analysis.identified).toBe(false)
@@ -385,12 +413,12 @@ describe("source-registered loaders in the asset preflight", () => {
       const first = await compileSourceAssetModules({
         compiler: compilerFor(root),
         loaders: ["yaml-loader.ts"],
-        sources: [{ fileName: "main.sm", source: authored() }]
+        sources: [{ fileName: "main.vibe", source: authored() }]
       })
       expect(first.diagnostics).toHaveLength(0)
       expect(first.ok).toBe(true)
       expect(first.modules).toHaveLength(1)
-      expect(first.modules[0]!.loader).toBe("smithers:project-loader/yaml-loader.ts@provisional-1")
+      expect(first.modules[0]!.loader).toBe("vibelang:project-loader/yaml-loader.ts@provisional-1")
       expect(first.modules[0]!.cacheHit).toBe(false)
       expect(first.modules[0]!.source).toContain('["region"]: "us-west"')
       expect(first.modules[0]!.source).toContain("as const")
@@ -398,7 +426,7 @@ describe("source-registered loaders in the asset preflight", () => {
       const replay = await compileSourceAssetModules({
         compiler: compilerFor(root),
         loaders: ["yaml-loader.ts"],
-        sources: [{ fileName: "main.sm", source: authored() }]
+        sources: [{ fileName: "main.vibe", source: authored() }]
       })
       expect(replay.ok).toBe(true)
       expect(replay.modules[0]!.cacheHit).toBe(true)
@@ -412,7 +440,7 @@ describe("source-registered loaders in the asset preflight", () => {
       const edited = await compileSourceAssetModules({
         compiler: compilerFor(root),
         loaders: ["yaml-loader.ts"],
-        sources: [{ fileName: "main.sm", source: authored() }]
+        sources: [{ fileName: "main.vibe", source: authored() }]
       })
       expect(edited.ok).toBe(true)
       expect(edited.modules[0]!.cacheHit).toBe(false)
@@ -426,7 +454,7 @@ describe("source-registered loaders in the asset preflight", () => {
       await writeFile(join(root, "app.yaml"), "region: us-west\n")
       await writeFile(join(root, "required.json"), '{"required":["region"]}\n')
       const tracking = [
-        'import { comptime } from "smithers:comptime"',
+        'import { comptime } from "vibelang:comptime"',
         "",
         "interface Asset { readonly path: string; text(): string }",
         "interface Context { readText(specifier: string): Promise<string> }",
@@ -463,7 +491,7 @@ describe("source-registered loaders in the asset preflight", () => {
         compiler: compilerFor(root),
         // No `loaders:` list. The registration is discovered from `sources`.
         sources: [
-          { fileName: "main.sm", source: authored() },
+          { fileName: "main.vibe", source: authored() },
           { fileName: "yaml-loader.ts", source: tracking }
         ]
       })
@@ -481,19 +509,19 @@ describe("source-registered loaders in the asset preflight", () => {
     // legitimate module that happens to mention the compiler-owned specifier
     // and default-export a call on some local `loader`.
     const localRegistry = [
-      'import { comptime } from "smithers:comptime"',
+      'import { comptime } from "vibelang:comptime"',
       "const registry = { loader: (type: string, fn: unknown) => ({ type, fn }) }",
       'const mode = comptime("release")',
       "export default registry.loader(mode, () => 1)",
       ""
     ].join("\n")
     const notLoaders: readonly (readonly [string, string])[] = [
-      ["main.sm", localRegistry],
+      ["main.vibe", localRegistry],
       ["plugins.ts", localRegistry],
       ["plugins.mts", localRegistry],
       ["plugins2.ts", localRegistry.replace("registry.loader(mode", "registry?.loader(mode")],
-      ["plugins.js", '// see "smithers:comptime"\nconst r = { loader: (t, f) => f }\nexport default r.loader("yaml", () => 1)\n'],
-      ["plugins3.ts", 'import { comptime } from "smithers:comptime"\nimport { registry } from "./registry.ts"\nvoid comptime\nexport default registry.loader("yaml", () => 1)\n'],
+      ["plugins.js", '// see "vibelang:comptime"\nconst r = { loader: (t, f) => f }\nexport default r.loader("yaml", () => 1)\n'],
+      ["plugins3.ts", 'import { comptime } from "vibelang:comptime"\nimport { registry } from "./registry.ts"\nvoid comptime\nexport default registry.loader("yaml", () => 1)\n'],
     ]
     for (const [fileName, source] of notLoaders) {
       await withRoot(async (root) => {
@@ -528,7 +556,7 @@ describe("source-registered loaders in the asset preflight", () => {
       const result = await compileSourceAssetModules({
         compiler: compilerFor(root),
         sources: [
-          { fileName: "main.sm", source: authored() },
+          { fileName: "main.vibe", source: authored() },
           { fileName: "yaml-loader.ts", source: malformed }
         ]
       })
@@ -551,24 +579,24 @@ describe("source-registered loaders in the asset preflight", () => {
       const unused = await compileSourceAssetModules({
         compiler: compilerFor(root, "cache-unused"),
         loaders: ["boom-loader.ts"],
-        sources: [{ fileName: "main.sm", source: 'import a from "./plain.json" with { type: "json" }\nexport const value = a\n' }]
+        sources: [{ fileName: "main.vibe", source: 'import a from "./plain.json" with { type: "json" }\nexport const value = a\n' }]
       })
       expect(unused.diagnostics).toHaveLength(0)
       expect(unused.ok).toBe(true)
-      expect(unused.modules[0]!.loader).toStartWith("smithers:builtin/json@")
+      expect(unused.modules[0]!.loader).toStartWith("vibelang:builtin/json@")
 
       // Selecting the type runs the module inside the sandbox, where the throw
       // surfaces as the existing loader-failure diagnostic.
       const used = await compileSourceAssetModules({
         compiler: compilerFor(root, "cache-used"),
         loaders: ["boom-loader.ts"],
-        sources: [{ fileName: "main.sm", source: authored("boom") }]
+        sources: [{ fileName: "main.vibe", source: authored("boom") }]
       })
       expect(used.ok).toBe(false)
       expect(used.modules).toHaveLength(0)
-      const failure = used.diagnostics.find((entry) => entry.code === "SMITHERS5213")
+      const failure = used.diagnostics.find((entry) => entry.code === "VIBE5213")
       expect(failure?.message).toContain("loader module executed at import time")
-      expect(failure?.fileName).toEndWith("main.sm")
+      expect(failure?.fileName).toEndWith("main.vibe")
     })
   }, 30_000)
 
@@ -580,7 +608,7 @@ describe("source-registered loaders in the asset preflight", () => {
         compiler: compilerFor(root),
         loaders: ["json-loader.ts"],
         sources: [{
-          fileName: "main.sm",
+          fileName: "main.vibe",
           source: 'import config from "./config.json" with { type: "json" }\nexport const count = config.count\n'
         }]
       })
@@ -590,8 +618,8 @@ describe("source-registered loaders in the asset preflight", () => {
         code: LoaderRegistrationDiagnosticCode.BuiltinPrecedence,
         severity: "warning"
       })
-      expect(result.diagnostics[0]!.message).toContain("smithers:builtin/json")
-      expect(result.modules[0]!.loader).toBe("smithers:builtin/json@1")
+      expect(result.diagnostics[0]!.message).toContain("vibelang:builtin/json")
+      expect(result.modules[0]!.loader).toBe("vibelang:builtin/json@1")
     })
   }, 30_000)
 
@@ -603,7 +631,7 @@ describe("source-registered loaders in the asset preflight", () => {
       const result = await compileSourceAssetModules({
         compiler: compilerFor(root),
         loaders: ["a-loader.ts", "b-loader.ts"],
-        sources: [{ fileName: "main.sm", source: authored() }]
+        sources: [{ fileName: "main.vibe", source: authored() }]
       })
       expect(result.ok).toBe(false)
       expect(result.modules).toHaveLength(0)
@@ -620,7 +648,7 @@ describe("source-registered loaders in the asset preflight", () => {
       const declared = await compileSourceAssetModules({
         compiler: compilerFor(root),
         loaders: ["missing-loader.ts"],
-        sources: [{ fileName: "main.sm", source: authored() }]
+        sources: [{ fileName: "main.vibe", source: authored() }]
       })
       expect(declared.ok).toBe(false)
       expect(codes(declared.diagnostics)).toContain(LoaderRegistrationDiagnosticCode.ModuleShape)
@@ -630,7 +658,7 @@ describe("source-registered loaders in the asset preflight", () => {
       const inMemory = await compileSourceAssetModules({
         compiler: compilerFor(root, "cache-memory"),
         sources: [
-          { fileName: "main.sm", source: authored() },
+          { fileName: "main.vibe", source: authored() },
           { fileName: "yaml-loader.ts", source: loaderSource() }
         ]
       })
@@ -646,7 +674,7 @@ describe("source-registered loaders in the asset preflight", () => {
       const result = await compileSourceAssetModules({
         compiler: compilerFor(root),
         sources: [
-          { fileName: "main.sm", source: authored() },
+          { fileName: "main.vibe", source: authored() },
           { fileName: "yaml-loader.ts", source: loaderSource("yaml", "\nconst drift = 1\nvoid drift\n") }
         ]
       })
@@ -664,7 +692,7 @@ describe("source-registered loaders in the asset preflight", () => {
       const result = await compileSourceAssetModules({
         compiler: compilerFor(root),
         loaders: ["yaml-loader.ts"],
-        sources: [{ fileName: "main.sm", source: authored() }]
+        sources: [{ fileName: "main.vibe", source: authored() }]
       })
       expect(result.ok).toBe(false)
       const diagnostic = result.diagnostics.find((entry) =>

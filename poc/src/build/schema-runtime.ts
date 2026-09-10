@@ -93,7 +93,7 @@ function renderPointer(path: readonly SchemaPathSegment[]): string {
   return pointer;
 }
 
-registerErrorCodec(ValidationError, "smithers:ValidationError@1", {
+registerErrorCodec(ValidationError, "vibelang:ValidationError@1", {
   encode: (error): JsonValue => ({
     path: [...error.path],
     reason: error.reason,

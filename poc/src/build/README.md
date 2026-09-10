@@ -1,9 +1,9 @@
 # Build POC
 
 The compiler-facing comptime spike is exposed by `compileComptimeIntrinsics`.
-It accepts an in-memory TypeScript/JavaScript/`.sm` project and an existing
+It accepts an in-memory TypeScript/JavaScript/`.vibe` project and an existing
 `ComptimeCompiler`, resolves calls against a private declaration for
-`"smithers:comptime"` with the TypeScript checker, and returns either completely
+`"vibelang:comptime"` with the TypeScript checker, and returns either completely
 lowered sources or source-located `VCT1xxx` errors. Direct named imports, renamed
 imports, and namespace imports work. An unrelated local function or property
 with the same spelling is never granted compiler authority.
@@ -69,14 +69,14 @@ because a standard source map cannot describe removed ranges. Map and
 provenance generation is validated before cache writes and fails closed with
 `VCT1009` if the bounded POC emitter cannot represent the project.
 
-Frontend composition order is comptime first, then Smithers lowering. Feed each
-`loweredFiles[file].code` to the Smithers project compiler under the same logical
-file name. Compose the Smithers map (Smithers output to comptime-lowered input) as the
+Frontend composition order is comptime first, then VibeLang lowering. Feed each
+`loweredFiles[file].code` to the VibeLang project compiler under the same logical
+file name. Compose the VibeLang map (VibeLang output to comptime-lowered input) as the
 outer map with this comptime map (comptime-lowered input to authored source) as
 the inner map. TypeScript/JavaScript emit maps are then composed as the next
 outer layer. Keep `provenance` alongside the build report: generic version-3
 map composition preserves coordinates and `sourcesContent`, but is not expected
-to retain the custom `x_smithers_comptime` metadata field.
+to retain the custom `x_vibelang_comptime` metadata field.
 
 ## Comptime type production
 
@@ -112,7 +112,7 @@ or a whole-statement replacement in the erased form.
 
 `comptime(Schema.derive<T>())` is the second compiler-owned intrinsic in the same
 frontend. `Schema` comes from a new compiler-owned virtual module,
-`"smithers:schema"`. That import spelling is **provisional**: the specification
+`"vibelang:schema"`. That import spelling is **provisional**: the specification
 fixes reification semantics but has never fixed the import, so the POC claims
 this name to exercise the authoring form end to end. Recognition is by checker
 symbol identity against a private ambient namespace, so direct, renamed, and
@@ -151,7 +151,7 @@ Everything else fails closed with a stable `VCT12xx` code:
 | `VCT1200` | `Schema.derive` outside an explicit `comptime(...)` root, or a compiler-owned schema value escaping into runtime code |
 | `VCT1201` | malformed derive call: value arguments, no or many type arguments, optional chaining |
 | `VCT1202` | a `.derive<T>()` inside a comptime root that does not resolve to the compiler intrinsic |
-| `VCT1203` | malformed `"smithers:schema"` import: default import, unknown export, type-only, or a JavaScript-family source |
+| `VCT1203` | malformed `"vibelang:schema"` import: default import, unknown export, type-only, or a JavaScript-family source |
 | `VCT1204` | the type is not reifiable |
 | `VCT1205` | the file already binds the reserved `__vsSchema` lowering identifier |
 | `VCT1206` | compiler-owned schema module identities could not be established |
@@ -173,7 +173,7 @@ compiler identifier and authored property names only ever appear as string
 values, so no authored name reaches a generated key position. The deriving file
 gains exactly one generated module edge, a zero-width prepended
 `schema-runtime-import` edit whose specifier comes from
-`schemaRuntimeImport` (default `"smthrs/schema-runtime"`); files that only
+`schemaRuntimeImport` (default `"vibelang/schema-runtime"`); files that only
 consume a derived schema gain nothing. Descriptor bytes are the value stored
 through `ComptimeCompiler.evaluateStatic`, so they participate in the existing
 content-addressed comptime identity and identical inputs produce byte-identical
@@ -185,7 +185,7 @@ carries a deeply frozen validated snapshot built with `Object.defineProperty`
 (so a `__proto__` property name stays data), failure carries a
 `ValidationError extends Error` with a structured `path`, a rendered `pointer`,
 and a `reason`, registered through the runtime's public `registerErrorCodec`
-as `smithers:ValidationError@1`. Objects are exact: an undeclared property, a
+as `vibelang:ValidationError@1`. Objects are exact: an undeclared property, a
 borrowed prototype, an accessor, a non-enumerable slot, a sparse or
 extra-property array, and a non-finite number are all rejected. `build/schema.ts`
 remains as the earlier declaration-AST spike used by the asset example; the
@@ -236,7 +236,7 @@ const value = { entries: { region: "us-west" }, schema: schema };
 export default value;
 ```
 
-Every generated module lives at `.smithers-generated/assets/<logicalKey>.ts`,
+Every generated module lives at `.vibelang-generated/assets/<logicalKey>.ts`,
 so `./<logicalKey>.ts` is the only admitted reference spelling. The referenced
 key must be an `kind: "asset"` dependency of that same build, which is why the
 edge cannot name a module the loader never requested through compiler
@@ -244,7 +244,7 @@ authority. The compiler then admits the child through the identical path,
 identity, hard-link, code-overlap, and budget preflight, recompiles it from its
 own declared attributes, and requires the rebuilt logical and content keys to
 equal the ones the parent recorded. Four nested levels are supported
-(`SMITHERS5219` beyond that); type-only imports, namespace bindings, import
+(`VIBE5219` beyond that); type-only imports, namespace bindings, import
 attributes, modifiers, non-generated specifiers, and undeclared keys inside a
 generated module all fail closed. Cache identity already contains the nested
 edge — a parent's content key hashes its dependency list, whose `digest` is the
@@ -253,7 +253,7 @@ it while the content-independent logical keys, and therefore the generated
 module paths, stay stable. `AssetDependency` now carries the child's `options`
 on asset edges so the edge is self-describing, which is what makes the
 recompile-and-reconcile check possible; the compiler identity moved to
-`smithers-assets@4` for that record change. Hashing the recorded child key is
+`vibelang-assets@4` for that record change. Hashing the recorded child key is
 not on its own sufficient, because that key was computed from the loader
 registry as it stood when the edge was written: revalidation therefore
 recomputes each child's logical key from today's registry through the same
@@ -306,11 +306,11 @@ nodes may already have been warmed before a later loader diagnostic.
 
 Three integrations have not caught up with the widened asset graph, so the
 authored forms above are currently checked and issued by this seam without an
-end-to-end `.sm` lowering. The Smithers emitter rewrites and strips attributes
+end-to-end `.vibe` lowering. The VibeLang emitter rewrites and strips attributes
 only on `ImportDeclaration`, so an asset re-export or dynamic import keeps its
 authored specifier and attributes in emitted JavaScript; the semantic module
 graph does not yet resolve a binding re-exported from a generated asset module
-(`SMITHERS1804`); and the root relative runtime graph rejects a Smithers dynamic-import
+(`VIBE1804`); and the root relative runtime graph rejects a VibeLang dynamic-import
 edge, allows only a static import binding for a compiler-generated asset, and
 refuses any module edge inside a generated asset module — which is exactly the
 nested form. Only a project with a custom loader can produce nested modules, so
@@ -318,7 +318,12 @@ the CLI's builtin-loader path is unchanged today.
 
 The root CLI also composes the comptime stage into project `check`, `compile`,
 `run`, and `test`, reports provenance and tracked dependencies, and remaps later
-diagnostics through the comptime map. Generated TypeScript/`.sm` replacements
+diagnostics through the comptime map. Parsing, resolved-binding recognition,
+bounded evaluation, schema reification, generated type aliases and replacement
+text now come from the pinned Go TypeScript compiler. The JavaScript host only
+supplies explicitly requested, root-confined tracked text, marshals cache
+values and composes source maps from authored UTF16 ranges. There is no 5.9
+compiler or evaluator fallback on this path. Generated TypeScript/`.vibe` replacements
 use `as const`, proving that value-derived deep literal types reach checking and
 declaration emit; JavaScript output stays valid JavaScript. Deferred on purpose:
 general author-code evaluation, implicit evaluation, computed types beyond
@@ -339,7 +344,7 @@ loader for one import-attribute `type`.
 
 ```ts
 // yaml-loader.ts
-import { comptime } from "smithers:comptime"
+import { comptime } from "vibelang:comptime"
 
 const load = async (asset, context) => {
   const schema = (await context.import("./app.schema.json", { type: "json", mode: "const" })).module.value
@@ -350,12 +355,12 @@ export default comptime.loader("yaml", load)
 ```
 
 ```ts
-// app-config.sm
+// app-config.vibe
 import config from "./app.yaml" with { type: "yaml" }
 ```
 
 Two rules are not provisional. `comptime` is resolved by **TypeScript checker
-identity** against the compiler-owned `"smithers:comptime"` declaration — the
+identity** against the compiler-owned `"vibelang:comptime"` declaration — the
 same declaration text the comptime lowering frontend uses, exported as
 `COMPTIME_PRELUDE` and extended with the registration surface — so a local
 object with a `loader` method never acquires compiler authority. And the loader
@@ -383,7 +388,7 @@ it, because a denylist inside the process cannot see them.
   but every frame beneath it belonged to `loader-runner.js` and carried its
   absolute path, so `error.stack` reported where the toolchain happens to be
   checked out. `Error.prepareStackTrace` is installed before `Error` is frozen and
-  keeps only `data:` frames, redacting the rest to `smithers:loader-runner`.
+  keeps only `data:` frames, redacting the rest to `vibelang:loader-runner`.
 
 `sandboxExecutionIdentity()` is the record folded whole into every
 `implementationDigest`: runner digest, runtime version, and the pinned
@@ -410,7 +415,7 @@ hard cache miss. An ordinary sandboxed loader's digest is unchanged.
 Discovery has two entry points. `compileSourceAssetModules` accepts a
 `loaders: [paths]` option naming registration files explicitly, and it also
 auto-discovers any file in `sources` that spells the registration. The
-auto-discovery trigger is spelling-only (a `"smithers:comptime"` mention plus a
+auto-discovery trigger is spelling-only (a `"vibelang:comptime"` mention plus a
 default-exported `*.loader(...)` call) and grants nothing; every candidate still
 has to survive checker-identity recognition.
 
@@ -439,7 +444,7 @@ Every registration is registered, not only the ones an authored import selects,
 so a loader-declared nested `context.import(..., { type })` edge resolves too.
 Registration prepares the sandbox; it does not run the module. A loader file
 with a top-level `throw` is still discovered, and the throw surfaces only when
-an asset actually selects its type, as the existing `SMITHERS5213` loader-failure
+an asset actually selects its type, as the existing `VIBE5213` loader-failure
 diagnostic located in the authored importer.
 
 `VCT13xx` is the loader-registration diagnostic family:
@@ -449,7 +454,7 @@ diagnostic located in the authored importer.
 | `VCT1300` | the loader file does not parse |
 | `VCT1301` | module shape: a non-comptime import, import-equals, re-export, dynamic import, a file that is not real/regular/inside the root, a name the sandbox cannot evaluate (`.ts`, `.mts`, `.js`, `.mjs` only — the sandbox evaluates one ES module and has no CommonJS, so `.cts`/`.cjs` are not loader files and `.d.ts` has no emit), or an oversized file |
 | `VCT1302` | registration shape: not exactly one `export default`, an `export =`, or a default export that is not a call |
-| `VCT1303` | the call does not resolve to `comptime.loader` from `"smithers:comptime"` |
+| `VCT1303` | the call does not resolve to `comptime.loader` from `"vibelang:comptime"` |
 | `VCT1304` | the call has no imported compiler identity at all |
 | `VCT1305` | call shape: optional chaining, explicit type arguments, or an arity other than two |
 | `VCT1306` | compiler-owned comptime module identities could not be established |
@@ -482,7 +487,7 @@ export, and `.mdx` produces a typed component module. The shapes below are
 frontmatter exports", "frontmatter typing, component injection, and the default
 export shape"). They are implemented, tested, and deliberately narrow, but they
 are not a ledger decision yet. The built-in loader identities moved to
-`smithers:builtin/markdown@2` and `smithers:builtin/mdx@2` for the change.
+`vibelang:builtin/markdown@2` and `vibelang:builtin/mdx@2` for the change.
 
 `{ type: "text" }` is untouched: it still returns the exact source string and
 emits `const value = "..."; export default value;`.

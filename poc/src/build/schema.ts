@@ -1,8 +1,5 @@
-// The native TypeScript 7 preview intentionally does not expose the historical
-// JavaScript compiler API. This alias is temporary POC scaffolding until the Go
-// compiler has a real Smithers extension/IR seam.
-import * as ts from "typescript-js";
-import { SmithersFailure } from "../runtime/failure.ts";
+import { getNativeCompiler } from "../compiler/native.ts";
+import { VibeLangFailure } from "../runtime/failure.ts";
 
 export type SchemaNode =
   | { kind: "string" | "number" | "boolean" | "null" | "unknown" }
@@ -12,7 +9,7 @@ export type SchemaNode =
   | { kind: "union"; variants: SchemaNode[] }
   | { kind: "object"; properties: Record<string, { optional: boolean; schema: SchemaNode }> };
 
-export class ValidationFailure extends SmithersFailure {
+export class ValidationFailure extends VibeLangFailure {
   declare readonly _tag: "ValidationFailure";
   constructor(readonly path: string, readonly expected: string) {
     super("ValidationFailure");
@@ -21,101 +18,19 @@ export class ValidationFailure extends SmithersFailure {
 }
 
 /**
- * POC for `comptime Schema.derive<T>()`: inspect a normal TypeScript declaration
- * and emit backend-neutral schema IR. The real compiler already owns this AST.
+ * Small declaration-to-validator-IR helper, with native syntax and binding.
+ * The checked language intrinsic is a separate native schema pass. Neither
+ * path invokes authored code merely to derive a schema.
  */
 export function deriveSchema(source: string, typeName: string): SchemaNode {
-  const file = ts.createSourceFile("schema.sm.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const parseDiagnostics = (file as ts.SourceFile & { parseDiagnostics: readonly ts.Diagnostic[] }).parseDiagnostics;
-  if (parseDiagnostics.length > 0) {
-    throw new SyntaxError(`Schema.derive input did not parse: ${parseDiagnostics
-      .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"))
-      .join("; ")}`);
+  const result = getNativeCompiler().syntaxSchema(source, typeName);
+  if (!result.ok) {
+    if (result.parseError) throw new SyntaxError(result.message);
+    throw new Error(result.message);
   }
-  const declarations = new Map<string, ts.TypeNode | ts.InterfaceDeclaration>();
-  for (const statement of file.statements) {
-    if (ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) {
-      if (declarations.has(statement.name.text)) {
-        throw new Error(`Schema.derive found duplicate declaration '${statement.name.text}'`);
-      }
-      declarations.set(statement.name.text, ts.isTypeAliasDeclaration(statement) ? statement.type : statement);
-    }
-  }
-  const root = declarations.get(typeName);
-  if (!root) throw new Error(`type '${typeName}' was not found`);
-  const visiting = new Set<string>();
-
-  const convertMembers = (members: ts.NodeArray<ts.TypeElement>): SchemaNode => {
-    const properties = Object.create(null) as Record<string, { optional: boolean; schema: SchemaNode }>;
-    for (const member of members) {
-      if (!ts.isPropertySignature(member) || !member.type || !member.name) {
-        throw new Error(`Schema.derive only supports property signatures (${member.getText(file)})`);
-      }
-      const name = propertyName(member.name);
-      if (Object.hasOwn(properties, name)) {
-        throw new Error(`Schema.derive found duplicate property '${name}'`);
-      }
-      properties[name] = { optional: Boolean(member.questionToken), schema: convert(member.type) };
-    }
-    return { kind: "object", properties };
-  };
-
-  const convert = (node: ts.TypeNode | ts.InterfaceDeclaration): SchemaNode => {
-    if (ts.isInterfaceDeclaration(node)) {
-      if (node.heritageClauses?.length) {
-        throw new Error(`Schema.derive does not support interface inheritance yet (${node.name.text})`);
-      }
-      return convertMembers(node.members);
-    }
-    switch (node.kind) {
-      case ts.SyntaxKind.StringKeyword: return { kind: "string" };
-      case ts.SyntaxKind.NumberKeyword: return { kind: "number" };
-      case ts.SyntaxKind.BooleanKeyword: return { kind: "boolean" };
-      case ts.SyntaxKind.UnknownKeyword: return { kind: "unknown" };
-    }
-    if (ts.isLiteralTypeNode(node)) {
-      if (node.literal.kind === ts.SyntaxKind.TrueKeyword) return { kind: "literal", value: true };
-      if (node.literal.kind === ts.SyntaxKind.FalseKeyword) return { kind: "literal", value: false };
-      // `null` in type position is a LiteralTypeNode wrapping a NullLiteral,
-      // never a bare NullKeyword TypeNode, so the keyword switch above could
-      // never reach it and `{ kind: "null" }` was dead from derivation down.
-      if (node.literal.kind === ts.SyntaxKind.NullKeyword) return { kind: "null" };
-      if (ts.isStringLiteral(node.literal)) return { kind: "literal", value: node.literal.text };
-      if (ts.isNumericLiteral(node.literal)) return { kind: "literal", value: numericLiteral(node.literal.text, false) };
-      // A negative numeric literal type is a prefix minus over the literal.
-      if (
-        ts.isPrefixUnaryExpression(node.literal) && node.literal.operator === ts.SyntaxKind.MinusToken &&
-        ts.isNumericLiteral(node.literal.operand)
-      ) {
-        return { kind: "literal", value: numericLiteral(node.literal.operand.text, true) };
-      }
-    }
-    if (ts.isArrayTypeNode(node)) return { kind: "array", element: convert(node.elementType) };
-    if (ts.isTupleTypeNode(node)) return { kind: "tuple", elements: node.elements.map(convert) };
-    if (ts.isUnionTypeNode(node)) return { kind: "union", variants: node.types.map(convert) };
-    if (ts.isTypeLiteralNode(node)) return convertMembers(node.members);
-    if (ts.isTypeReferenceNode(node)) {
-      const name = node.typeName.getText(file);
-      const declaration = declarations.get(name);
-      // The author's own declaration wins over the built-in spelling. Testing
-      // `name === "Array"` first shadowed a same-file `Array` even though the
-      // correct binding was already resolved one line down.
-      if (!declaration) {
-        if (name === "Array" && node.typeArguments?.length === 1) {
-          return { kind: "array", element: convert(node.typeArguments[0]) };
-        }
-        throw new Error(`Schema.derive cannot resolve '${name}'`);
-      }
-      if (visiting.has(name)) throw new Error(`recursive durable schema '${name}' needs an explicit representation`);
-      visiting.add(name);
-      const result = convert(declaration);
-      visiting.delete(name);
-      return result;
-    }
-    throw new Error(`Schema.derive does not support ${ts.SyntaxKind[node.kind]} yet`);
-  };
-
-  return freezeSchema(convert(root));
+  // The native binding validates this bounded data grammar before returning.
+  // JSON decoding preserves exact UTF-16 keys/literals, including lone escapes.
+  return freezeSchema(JSON.parse(result.schemaJson) as SchemaNode);
 }
 
 function freezeSchema(schema: SchemaNode): SchemaNode {
@@ -124,6 +39,7 @@ function freezeSchema(schema: SchemaNode): SchemaNode {
     case "tuple": schema.elements.forEach(freezeSchema); Object.freeze(schema.elements); break;
     case "union": schema.variants.forEach(freezeSchema); Object.freeze(schema.variants); break;
     case "object":
+      Object.setPrototypeOf(schema.properties, null);
       for (const property of Object.values(schema.properties)) {
         freezeSchema(property.schema);
         Object.freeze(property);
@@ -132,25 +48,6 @@ function freezeSchema(schema: SchemaNode): SchemaNode {
       break;
   }
   return Object.freeze(schema);
-}
-
-/**
- * Mirrors `schema-derive.ts`, which rejects a non-finite numeric literal and
- * normalizes `-0` to `0`. Without the guard `type T = { a: 1e400 }` derived a
- * literal whose value was `Infinity` — a schema node no encoder can round-trip.
- */
-function numericLiteral(text: string, negative: boolean): number {
-  const magnitude = Number(text);
-  if (!Number.isFinite(magnitude)) {
-    throw new Error(`Schema.derive does not support the non-finite numeric literal '${negative ? "-" : ""}${text}'`);
-  }
-  const value = negative ? -magnitude : magnitude;
-  return value === 0 ? 0 : value;
-}
-
-function propertyName(name: ts.PropertyName): string {
-  if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) return name.text;
-  throw new Error(`computed schema property names are not durable: ${name.getText()}`);
 }
 
 export function parseWithSchema<T>(schema: SchemaNode, input: unknown): T {

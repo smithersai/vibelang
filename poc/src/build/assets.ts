@@ -1,7 +1,7 @@
 import { lstatSync, realpathSync, statSync } from "node:fs";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import * as ts from "typescript-js";
+import { getNativeCompiler } from "../compiler/native.ts";
 import { assertSandboxedLoader } from "./sandboxed-loader.ts";
 import { canonical, compareStableStrings, digest, freezeStable, stableClone, type StableJson } from "./stable.ts";
 
@@ -129,6 +129,9 @@ interface CacheEnvelope {
 }
 
 export interface AssetCompilerOptions {
+  /** Host-only watch notification, before an in-root input is opened. Missing
+   * paths are reported too. This does not grant loader filesystem authority. */
+  onDependency?: (absolutePath: string) => void;
   root: string;
   cacheDirectory: string;
   target?: string;
@@ -160,8 +163,11 @@ export class AssetCompiler {
   readonly #builtinTypes = new Set<string>();
   readonly #topLevelInflight = new Map<string, Promise<AssetBuild>>();
   readonly #unsafeAllowInProcessLoaders: boolean;
+  readonly #onDependency?: (absolutePath: string) => void;
 
   constructor(options: AssetCompilerOptions) {
+    if (options.onDependency !== undefined && typeof options.onDependency !== "function") throw new TypeError("asset dependency observer must be a function");
+    this.#onDependency = options.onDependency;
     this.root = realpathSync(resolve(options.root));
     if (!statSync(this.root).isDirectory()) throw new Error("asset compiler root must be a directory");
     // Keep the authority boundary in the same canonical namespace as source
@@ -323,7 +329,7 @@ export class AssetCompiler {
     localOptions: Readonly<Record<string, unknown>>,
   ): AssetIdentity {
     return {
-      compiler: "smithers-assets@4",
+      compiler: "vibelang-assets@4",
       loader: loader.id,
       loaderVersion: loader.version,
       loaderImplementation: loader.implementationDigest,
@@ -612,9 +618,14 @@ export class AssetCompiler {
 
   #resolveInsideRoot(specifier: string, from: string): string {
     if (isAbsolute(specifier)) throw new Error(`comptime assets must use root-relative or relative imports: ${specifier}`);
+    const candidate = resolve(from, specifier);
+    const candidateBack = relative(this.root, candidate);
+    if (candidateBack !== "" && candidateBack !== ".." && !candidateBack.startsWith(`..${sep}`) && !isAbsolute(candidateBack)) {
+      this.#onDependency?.(candidate);
+    }
     // A lexical `..` check alone lets an in-root symlink grant ambient
     // filesystem authority, so canonicalize before applying the boundary.
-    const resolved = realpathSync(resolve(from, specifier));
+    const resolved = realpathSync(candidate);
     const back = relative(this.root, resolved);
     if (back === ".." || back.startsWith(`..${sep}`) || isAbsolute(back)) {
       throw new Error(`comptime asset escaped project root: ${specifier}`);
@@ -771,15 +782,11 @@ function normalizeLoaderModule(raw: TypedAssetModule, sourcePath: string, source
     }
   }
   const reported = module.diagnostics.filter((diagnostic) => diagnostic.level === "error");
-  const parse = (text: string, fileName: string): string[] => {
-    const file = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    const diagnostics = (file as ts.SourceFile & { parseDiagnostics: readonly ts.Diagnostic[] }).parseDiagnostics;
-    return diagnostics.map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
-  };
-  const syntax = [
-    ...parse(module.emittedTypeScript, `${sourcePath}.generated.ts`),
-    ...parse(module.declaration, `${sourcePath}.generated.d.ts`),
-  ];
+  const inspected = getNativeCompiler().inspect([
+    { path: "generated.ts", text: module.emittedTypeScript, scriptKind: "typescript" },
+    { path: "generated.d.ts", text: module.declaration, scriptKind: "typescript" },
+  ]);
+  const syntax = inspected.files.flatMap((file) => file.diagnostics.map((item) => item.message));
   for (const span of module.spans) {
     if (!Number.isSafeInteger(span.generatedOffset) || span.generatedOffset < 0 || span.generatedOffset > module.emittedTypeScript.length) {
       syntax.push(`invalid generated span offset ${span.generatedOffset}`);
@@ -954,7 +961,7 @@ function constLiteral(value: StableJson): string {
 }
 
 export const jsonLoader: AssetLoader = {
-  id: "smithers:builtin/json",
+  id: "vibelang:builtin/json",
   version: "1",
   implementationDigest: "builtin-json-poc-v1",
   extensions: [".json"],
@@ -984,7 +991,7 @@ export const jsonLoader: AssetLoader = {
 };
 
 export const textLoader: AssetLoader = {
-  id: "smithers:builtin/text",
+  id: "vibelang:builtin/text",
   version: "1",
   implementationDigest: "builtin-text-poc-v1",
   extensions: [".txt", ".text"],
@@ -1003,7 +1010,7 @@ export const textLoader: AssetLoader = {
 };
 
 export const bytesLoader: AssetLoader = {
-  id: "smithers:builtin/bytes",
+  id: "vibelang:builtin/bytes",
   version: "1",
   implementationDigest: "builtin-bytes-poc-v1",
   extensions: [],
@@ -1429,7 +1436,7 @@ const dataLiteral = (value: unknown): string => {
 const indentation = (depth: number): string => "  ".repeat(depth);
 
 export const markdownLoader: AssetLoader = {
-  id: "smithers:builtin/markdown",
+  id: "vibelang:builtin/markdown",
   version: "2",
   implementationDigest: "builtin-markdown-poc-v2",
   extensions: [".md"],
@@ -1784,7 +1791,7 @@ function collectMdx(nodes: readonly ParsedNode[], components: string[], expressi
 }
 
 export const mdxLoader: AssetLoader = {
-  id: "smithers:builtin/mdx",
+  id: "vibelang:builtin/mdx",
   version: "2",
   implementationDigest: "builtin-mdx-poc-v2",
   extensions: [".mdx"],
