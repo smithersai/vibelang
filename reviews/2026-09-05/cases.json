@@ -1,0 +1,117 @@
+[
+  {
+    "name": "async_discard",
+    "stage": "language",
+    "source": "import {Context} from 'vibelang/context'; import {Layer} from 'vibelang/provider'; abstract class C extends Context{abstract n():number} const seen:number[]=[]; function read():number{seen.push(C.context().n());return 9} async function f():Promise<number>{read();return seen.length} export async function main():Promise<number>{return await Layer.provide(Layer.succeed(C,{n:()=>7}),async()=>await f())}"
+  },
+  {
+    "name": "method_discard",
+    "stage": "language",
+    "source": "import {Context} from 'vibelang/context'; import {Layer} from 'vibelang/provider'; abstract class C extends Context{abstract n():number} const seen:number[]=[]; function read():number{seen.push(C.context().n());return 9} class Box{ f():number{read();return seen.length} } export function main():number{return Layer.provide(Layer.succeed(C,{n:()=>7}),()=>new Box().f())}"
+  },
+  {
+    "name": "callback_discard",
+    "stage": "language",
+    "source": "import {Context} from 'vibelang/context'; import {Layer} from 'vibelang/provider'; abstract class C extends Context{abstract n():number} const seen:number[]=[]; function read():number{seen.push(C.context().n());return 9} export function main():number{return Layer.provide(Layer.succeed(C,{n:()=>7}),()=>{[1].forEach(()=>{read()});return seen.length})}"
+  },
+  {
+    "name": "row_assign",
+    "stage": "language",
+    "source": "import {Context} from 'vibelang/context';export abstract class C extends Context{abstract n():number} function read():number{return C.context().n()} const slot:()=>number=read; export function main():number{return slot()}"
+  },
+  {
+    "name": "result_branch",
+    "stage": "language",
+    "source": "class E extends Error{} function read():Result<number,E>{throw new E('lost')} function f(flag:boolean):number{const r=read();if(flag)r.isError();return 7} export function main():string[]{return [String(f(false))]}"
+  },
+  {
+    "name": "result_uninvoked",
+    "stage": "language",
+    "source": "class E extends Error{} function read():Result<number,E>{throw new E('lost')} export function main():string[]{const r=read();const ignored=()=>r.isError();return ['ok']}"
+  },
+  {
+    "name": "result_collection",
+    "stage": "language",
+    "source": "class E extends Error{} function read():Result<number,E>{throw new E('lost')} function pack():Result<number,E>[] {return [read(),read()]} export function main():string[]{const rs=pack();rs[0]?.isError();return ['ok']}"
+  },
+  {
+    "name": "promise_branch",
+    "stage": "language",
+    "source": "async function work():Promise<number>{return 7} async function f(flag:boolean):Promise<number>{const p=work();if(flag)await p;return 3} export async function main():Promise<string[]>{return [String(await f(false))]}"
+  },
+  {
+    "name": "promise_result_abort",
+    "stage": "language",
+    "source": "class E extends Error{} function read():Result<number,E>{throw new E('lost')} async function work():Promise<number>{return 7} async function f():Promise<Result<number,E>>{const p=work();const r=read()!;await p;return r} export async function main():Promise<string[]>{return [String((await f()).unwrapOr(-1))]}"
+  },
+  {
+    "name": "date_parse",
+    "stage": "language",
+    "source": "export function main():number { return Date.parse('2025-01-01T00:00:00') }"
+  },
+  {
+    "name": "date_constructor",
+    "stage": "language",
+    "source": "export function main():number { return new Date(2025,0,1).getTime() }"
+  },
+  {
+    "name": "date_setter",
+    "stage": "language",
+    "source": "export function main():number { const d=new Date(0); d.setHours(12); return d.getTime() }"
+  },
+  {
+    "name": "body_capture",
+    "stage": "body",
+    "source": "import {durable} from 'vibelang:flows';const cfg={n:1};cfg.n=2;export const F=durable((input:number)=>cfg.n+input);"
+  },
+  {
+    "name": "body_date",
+    "stage": "body",
+    "source": "import {durable} from 'vibelang:flows';export const F=durable((input:number)=>{const d=new Date(input);d.setHours(12);return d.getTime()});"
+  },
+  {
+    "name": "body_nested",
+    "stage": "body",
+    "source": "import {durable} from 'vibelang:flows';export function make(bias:number){const F=durable((input:number)=>bias+input);return F;}"
+  },
+  {
+    "name": "ct_stringify",
+    "stage": "comptime",
+    "source": "import {comptime} from 'vibelang:comptime'; const text=comptime(()=>JSON.stringify({z:1,a:2}))(); export function main():string[]{return [text,JSON.stringify({z:1,a:2})]}"
+  },
+  {
+    "name": "ct_parse_keys",
+    "stage": "comptime",
+    "source": "import {comptime} from 'vibelang:comptime'; const keys=comptime(()=>Object.keys(JSON.parse('{\"z\":1,\"a\":2}')).join(','))(); export function main():string[]{return [keys,Object.keys(JSON.parse('{\"z\":1,\"a\":2}')).join(',')]}"
+  },
+  {
+    "name": "ct_object_keys",
+    "stage": "comptime",
+    "source": "import {comptime} from 'vibelang:comptime'; const obj=comptime({z:1,a:2}); export function main():string[]{return [Object.keys(obj).join(','),Object.keys({z:1,a:2}).join(',')]}"
+  },
+  {
+    "name": "finally_return",
+    "stage": "language",
+    "source": "class E extends Error{} function fail():Result<number,E> {throw new E('x')} function f():Result<number,E> { try {return fail()!} finally {return 7} } export function main():number{return f().unwrapOr(-1)}"
+  },
+  {
+    "name": "finally_throw",
+    "stage": "language",
+    "source": "class E extends Error{} function fail():Result<number,E>{throw new E('first')} function f():Result<number,E>{try{return fail()!}finally{throw new E('second')}} export function main():string{return f().match({ok:()=>'',error:e=>e.message})}"
+  },
+  {
+    "name": "async_finally_throw",
+    "stage": "language",
+    "source": "class E extends Error{} async function fail():Promise<Result<number,E>>{throw new E('first')} async function f():Promise<Result<number,E>>{try{return (await fail())!}finally{throw new E('second')}} export async function main():Promise<string>{const r=await f();return r.match({ok:()=>'',error:e=>e.message})}"
+  },
+  {
+    "name": "error_extract",
+    "stage": "language",
+    "source": "class E extends Error{} function fail():Result<number,E>{throw new E('extracted')} function errorOf(r:Result<number,E>):E|undefined{return r.match({ok:()=>undefined,error:e=>e})} export function main():string[]{const error=fail().match({ok:()=>undefined,error:e=>e});return [error?.message??'none']}"
+  },
+  {
+    "name": "result_oob",
+    "stage": "language",
+    "source": "class E extends Error{} function f(rs:Result<number,E>[]):Result<number,E>{return rs[0]!} export function main():string[]{return [String(f([]).unwrapOr(-1))]}"
+  }
+]
