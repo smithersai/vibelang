@@ -3,7 +3,7 @@
  *
  * A `return` is not a discharge — it is a TRANSFER, and a transfer conserves the
  * obligation only if the receiving side is charged for it. For a Result or a
- * started Promise that is automatic: the caller's own SMITHERS1301/SMITHERS1402
+ * started Promise that is automatic: the caller's own VIBE1301/VIBE1402
  * is charged at the call. For a CONTAINER of them it was not charged anywhere,
  * so moving Results into an array and returning it cancelled the obligation
  * outright:
@@ -17,7 +17,7 @@
  * ```
  *
  * `save(2)` throws, the failure never reaches the row, is never consumed, and
- * the program reports success — the exact hazard SMITHERS1301/1302 exist to
+ * the program reports success — the exact hazard VIBE1301/1302 exist to
  * prevent, on both backends. The contrast that names the defect is one call
  * wide: `const arr = [save(1)]; arr.length` inside one function is refused and
  * corpus-pinned (`07-must-consume/array-length-is-not-consumption-of-a-result-collection`),
@@ -56,7 +56,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileAndCheckProject } from "./index.ts";
 
-const workspace = mkdtempSync(join(tmpdir(), "smithers-must-consume-collections-"));
+const workspace = mkdtempSync(join(tmpdir(), "vibelang-must-consume-collections-"));
 afterAll(() => rmSync(workspace, { recursive: true, force: true }));
 
 const RUNTIME = join(import.meta.dir, "../runtime/index.ts");
@@ -68,7 +68,7 @@ function one(): Result<number, Missing> { throw new Missing("gone") }
 let sequence = 0;
 function compile(source: string): readonly string[] {
   sequence += 1;
-  const fileName = join(workspace, `case-${sequence}.sm`);
+  const fileName = join(workspace, `case-${sequence}.vibe`);
   const checked = compileAndCheckProject([{ fileName, source }], {
     rootDir: workspace,
     outDir: join(workspace, "out"),
@@ -179,17 +179,17 @@ export function g(): number { const a = pack(); return a.length }`,
 describe("a returned collection of Results charges its receiver", () => {
   for (const { id, body } of LAUNDERED) {
     test(id, () => {
-      expect(compile(`${PRELUDE}${body}\n`)).toContain("SMITHERS1301");
+      expect(compile(`${PRELUDE}${body}\n`)).toContain("VIBE1301");
     });
   }
 
-  test("a returned collection of started Promises is a SMITHERS1402, not a 1301", () => {
+  test("a returned collection of started Promises is a VIBE1402, not a 1301", () => {
     const codes = compile(`async function work(): Promise<number> { return 1 }
 function starts(): readonly Promise<number>[] { return [work()] }
 export function g(): number { const ps = starts(); return ps.length }
 `);
-    expect(codes).toContain("SMITHERS1402");
-    expect(codes).not.toContain("SMITHERS1301");
+    expect(codes).toContain("VIBE1402");
+    expect(codes).not.toContain("VIBE1301");
   });
 
   test("a class field assigned in a constructor and returned is charged at both ends", () => {
@@ -200,7 +200,7 @@ export function g(): number { const ps = starts(); return ps.length }
 }
 export function g(): number { const b = new Box(); return b.all().length }
 `);
-    expect(codes.filter((code) => code === "SMITHERS1301")).toHaveLength(2);
+    expect(codes.filter((code) => code === "VIBE1301")).toHaveLength(2);
   });
 });
 
@@ -303,6 +303,6 @@ function risky(key: string) {
 export function main(): number[] {
   return [risky("ada")]
 }
-`)).toEqual(["SMITHERS1301"]);
+`)).toEqual(["VIBE1301"]);
   });
 });

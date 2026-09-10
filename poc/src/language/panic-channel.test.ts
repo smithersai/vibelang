@@ -32,17 +32,17 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { compileSmithers } from "./compile.ts";
-import { compileAndCheckSmithers } from "./validate.ts";
+import { compileVibeLang } from "./compile.ts";
+import { compileAndCheckVibeLang } from "./validate.ts";
 import { isPanic } from "../runtime/panic.ts";
 
 const examples = `${import.meta.dir}/../../examples/language`;
 
 function check(source: string, name: string) {
-  return compileAndCheckSmithers(source, {
-    fileName: `${examples}/${name}.sm`,
+  return compileAndCheckVibeLang(source, {
+    fileName: `${examples}/${name}.vibe`,
     outputFileName: `${examples}/${name}.generated.ts`,
-    sourceName: `examples/language/${name}.sm`,
+    sourceName: `examples/language/${name}.vibe`,
     runtimeImport: "../../src/runtime/index.ts",
   });
 }
@@ -54,23 +54,21 @@ function refusals(source: string, name: string): readonly string[] {
     .filter((diagnostic) => diagnostic.severity === "error")
     .map((diagnostic) => `${diagnostic.code}@${diagnostic.line}:${diagnostic.column}`);
   const emitted = compiled.emitDiagnostics.map((diagnostic) => {
-    const position = diagnostic.file && diagnostic.start !== undefined
-      ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start)
-      : undefined;
-    return `TS${diagnostic.code}@${position ? `${position.line + 1}:${position.character + 1}` : "?"}`;
+    const position = diagnostic.position;
+    return `${diagnostic.code}@${position ? `${position.line + 1}:${position.character + 1}` : "?"}`;
   });
   return [...language, ...emitted];
 }
 
 async function execute(source: string, name: string): Promise<Record<string, any>> {
-  const executable = compileSmithers(source, {
-    fileName: `${examples}/${name}.sm`,
+  const executable = compileVibeLang(source, {
+    fileName: `${examples}/${name}.vibe`,
     outputFileName: `${examples}/${name}.generated.ts`,
-    sourceName: `examples/language/${name}.sm`,
+    sourceName: `examples/language/${name}.vibe`,
     runtimeImport: pathToFileURL(`${import.meta.dir}/../runtime/index.ts`).href,
   });
   const javascript = new Bun.Transpiler({ loader: "ts", target: "bun" }).transformSync(executable.code);
-  const directory = await mkdtemp(join(tmpdir(), "smithers-panic-"));
+  const directory = await mkdtemp(join(tmpdir(), "vibelang-panic-"));
   const modulePath = join(directory, `${name}.mjs`);
   try {
     await writeFile(modulePath, javascript);
@@ -90,14 +88,14 @@ function caught(body: () => unknown): unknown {
   }
 }
 
-const PANIC = `import { panic } from "smithers:exceptions"\n`;
+const PANIC = `import { panic } from "vibelang:exceptions"\n`;
 
 /**
  * Every construct that can host a `panic(...)` exit and carries a declared or
  * inferred return type. Before the rule, each of these was refused: the
- * panicking declaration drew SMITHERS1101 (or SMITHERS1102 unannotated, or
- * SMITHERS1105 for an accessor or constructor, or SMITHERS1106 for a
- * generator), and every call site drew a cascading SMITHERS1301/1302 for an
+ * panicking declaration drew VIBE1101 (or VIBE1102 unannotated, or
+ * VIBE1105 for an accessor or constructor, or VIBE1106 for a
+ * generator), and every call site drew a cascading VIBE1301/1302 for an
  * unconsumed Result that only existed because of the widening.
  */
 // The rows that call `fail` guard on the INDEX READ rather than on
@@ -268,8 +266,8 @@ export function main(): string { return box.read(true) }`,
     expected: "real",
   },
   {
-    // The closed contradiction: SMITHERS1101 said "widen to Result" while
-    // SMITHERS1105 said an accessor may not carry a Result channel, on the same
+    // The closed contradiction: VIBE1101 said "widen to Result" while
+    // VIBE1105 said an accessor may not carry a Result channel, on the same
     // line. Seven public getters in `poc/src/data/**` had no legal spelling.
     name: "class-getter",
     source: `${PANIC}
@@ -482,7 +480,7 @@ export function guarded(ok: boolean): string {
 export function withDefault(ok: boolean): string {
   return guarded(ok).unwrapOr("fallback")
 }`;
-    expect(refusals(source, "panic-unwrapor")).toEqual(["TS2339@10:24"]);
+    expect(refusals(source, "panic-unwrapor")).toEqual(["TS2339@8:22"]);
   });
 
   test("recover and match cannot consume it either", () => {
@@ -502,8 +500,8 @@ export function withDefault(ok: boolean): string {
       observed[name] = refusals(source, `panic-${name}`);
     }
     expect(observed).toEqual({
-      recover: ["TS2339@10:24"],
-      match: ["TS2322@10:5", "TS2769@10:32", "TS7006@10:37"],
+      recover: ["TS2339@8:22"],
+      match: ["TS2322@8:3", "TS2769@8:30", "TS7006@8:35"],
     });
   });
 
@@ -511,7 +509,7 @@ export function withDefault(ok: boolean): string {
     // The over-correction guard. `force` publishes `Missing` as its expected
     // error channel; materializing the panic into that channel would hand a
     // Panic to an exhaustive `match` over `Missing`. Before this change the
-    // annotated half was caught by SMITHERS1104 while the INFERRED half
+    // annotated half was caught by VIBE1104 while the INFERRED half
     // compiled clean and emitted `__vsResultFailure(__vsPanicValue(...))` with
     // a published row of `["Missing","Panic"]`.
     const source = `${PANIC}
@@ -540,7 +538,7 @@ export function main(key: string): string {
 });
 
 describe("an author may still choose the widening", () => {
-  const ANNOTATED = `import { Panic, panic } from "smithers:exceptions"
+  const ANNOTATED = `import { Panic, panic } from "vibelang:exceptions"
 export function force(key: string): Result<string, Panic> {
   if (key !== "ada") panic(\`no entry for \${key}\`)
   return "Ada Lovelace"
@@ -553,7 +551,7 @@ export function main(key: string): string {
     expect(refusals(ANNOTATED, "panic-annotated")).toEqual([]);
     const compiled = check(ANNOTATED, "panic-annotated");
     expect(compiled.result.analysis.rows.force).toEqual({ failures: ["Panic"], requirements: [] });
-    expect(compiled.result.code).toContain("return __vsResultFailure(__vsPanicValue(");
+    expect(compiled.result.code).toContain("return __vsResultFailure(new __vsPanicType(");
 
     const module = await execute(ANNOTATED, "panic-annotated-run");
     expect(module.main("ada")).toBe("Ada Lovelace");
@@ -570,7 +568,7 @@ export function main(key: string): string {
 
 describe("the refusals this rule does not touch", () => {
   test("an ordinary recoverable Error exit still requires a Result contract", () => {
-    // failures.mdx §Compiler Lifting: "A `.sm` function with a reachable
+    // failures.mdx §Compiler Lifting: "A `.vibe` function with a reachable
     // recoverable Error exit MUST return or infer a Result. An explicit
     // non-Result return annotation on such a function MUST be a compile error."
     expect(refusals(
@@ -580,7 +578,7 @@ export function guarded(ok: boolean): string {
   return "real"
 }`,
       "panic-control-throw",
-    )).toEqual(["SMITHERS1101@2:1"]);
+    )).toEqual(["VIBE1101@2:1"]);
   });
 
   test("an accessor with an ordinary recoverable failure is still refused", () => {
@@ -590,7 +588,7 @@ export class Box {
   get size(): number { throw new Missing() }
 }`,
       "panic-control-getter",
-    )).toEqual(["SMITHERS1101@3:3", "SMITHERS1105@3:3"]);
+    )).toEqual(["VIBE1101@3:3"]);
   });
 
   test("a generator with an ordinary recoverable failure is still refused", () => {
@@ -601,7 +599,7 @@ export function* items(ok: boolean): Generator<string> {
   yield "real"
 }`,
       "panic-control-generator",
-    )).toEqual(["SMITHERS1101@2:1", "SMITHERS1106@2:1"]);
+    )).toEqual(["VIBE1101@2:1", "VIBE1106@2:1"]);
   });
 
   test("an exported unannotated function with an ordinary failure still spells its contract", () => {
@@ -612,7 +610,7 @@ export function guarded(ok: boolean) {
   return "real"
 }`,
       "panic-control-exported",
-    )).toEqual(["SMITHERS1102@2:1"]);
+    )).toEqual(["VIBE1102@2:1"]);
   });
 
   test("a panic written where a value is expected is still a placement refusal", () => {
@@ -623,27 +621,27 @@ export function force(key: string): string {
   return value
 }`,
       "panic-control-placement",
-    )).toEqual(["SMITHERS1503@4:39"]);
+    )).toEqual(["VIBE1503@4:39"]);
   });
 
   test("a top-level panic and a static block are still refused", () => {
     expect(refusals(`${PANIC}\npanic("no")\n`, "panic-control-top-level"))
-      .toEqual(["SMITHERS1505@3:1"]);
+      .toEqual(["VIBE1505@3:1"]);
     expect(refusals(
       `${PANIC}
 export class Box {
   static { panic("no") }
 }`,
       "panic-control-static-block",
-    )).toEqual(["SMITHERS1107@4:3"]);
+    )).toEqual(["VIBE1107@4:3"]);
   });
 
   test("a fallible getter in an argument still cannot cross a callback boundary", () => {
-    // R1FIX's `H5` recorded SMITHERS1105 as this shape's refusal. SMITHERS1105
+    // R1FIX's `H5` recorded VIBE1105 as this shape's refusal. VIBE1105
     // stops firing for a PANICKING accessor under this rule, so the shape that
     // still carries a failure channel must keep a refusal of its own: it does,
-    // and it is SMITHERS1303, which the Go backend has always been the only
-    // refusal on (it implements no SMITHERS1105).
+    // and it is VIBE1303, which the Go backend has always been the only
+    // refusal on (it implements no VIBE1105).
     expect(refusals(
       `export class Missing extends Error {}
 function apply(handlers: { transform: unknown }): string {
@@ -653,6 +651,6 @@ export function main(): string {
   return apply({ get transform() { throw new Missing() } })
 }`,
       "panic-control-h5",
-    )).toEqual(["SMITHERS1105@6:18", "SMITHERS1303@6:18"]);
+    )).toEqual(["VIBE1303@6:18"]);
   });
 });

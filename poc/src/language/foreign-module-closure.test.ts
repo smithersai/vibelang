@@ -1,17 +1,17 @@
 /**
  * The module-initialization trust marker is asked of every foreign module
- * evaluation REACHES, not only of the ones the authored `.sm` happens to name.
+ * evaluation REACHES, not only of the ones the authored `.vibe` happens to name.
  *
  * `specification/failures.mdx` §Foreign Exceptions (Locked) grants the opt-out
  * per module — "`@throws {never}` removes the default panic case" — and
- * `SMITHERS1510` exists because "a checked call boundary cannot observe an
+ * `VIBE1510` exists because "a checked call boundary cannot observe an
  * exception thrown while ESM is linking/evaluating its static dependency
  * graph". Linking is transitive: importing a marked relay evaluates everything
  * that relay's own evaluation reaches, before any checked call boundary exists.
  * A claim that stopped at depth one would therefore be a claim about the wrong
  * set of modules — and until 2026-08-27 that is exactly what this compiler
  * checked, because `checkForeignModuleInitializers` read only
- * `sourceFile.statements` of the `.sm`.
+ * `sourceFile.statements` of the `.vibe`.
  *
  * Measured before the closure walk landed, on BOTH backends, with a module-scope
  * oracle in the unmarked module: a properly marked relay doing
@@ -39,7 +39,7 @@ import { pathToFileURL } from "node:url";
 
 import { compileAndCheckProject } from "./index.ts";
 
-const workspace = mkdtempSync(join(tmpdir(), "smithers-module-closure-"));
+const workspace = mkdtempSync(join(tmpdir(), "vibelang-module-closure-"));
 afterAll(() => rmSync(workspace, { recursive: true, force: true }));
 
 const RUNTIME = join(import.meta.dir, "../runtime/index.ts");
@@ -53,7 +53,7 @@ interface Compiled {
   readonly code: string;
 }
 
-/** Write one foreign module into the workspace and return its `.sm` specifier. */
+/** Write one foreign module into the workspace and return its `.vibe` specifier. */
 function foreign(name: string, text: string): string {
   writeFileSync(join(workspace, name), text);
   return `./${name}`;
@@ -61,7 +61,7 @@ function foreign(name: string, text: string): string {
 
 function compile(source: string): Compiled {
   sequence += 1;
-  const fileName = join(workspace, `case-${sequence}.sm`);
+  const fileName = join(workspace, `case-${sequence}.vibe`);
   const checked = compileAndCheckProject([{ fileName, source }], {
     rootDir: workspace,
     outDir: join(workspace, "out"),
@@ -86,7 +86,7 @@ function compile(source: string): Compiled {
 async function run(source: string): Promise<readonly string[]> {
   sequence += 1;
   const stamp = `run-${sequence}`;
-  const fileName = join(workspace, `${stamp}.sm`);
+  const fileName = join(workspace, `${stamp}.vibe`);
   const checked = compileAndCheckProject([{ fileName, source }], {
     rootDir: workspace,
     outDir: join(workspace, `${stamp}-out`),
@@ -116,15 +116,15 @@ function announcing(label: string, marker: string): string {
 
 describe("the trust marker is asked of every module initialization reaches", () => {
   test("a marked relay does not lend its claim to the module behind it", () => {
-    // The reproduction, at the position every other SMITHERS1510 case in the
+    // The reproduction, at the position every other VIBE1510 case in the
     // corpus declares: the authored import specifier, which is the only text in
-    // the `.sm` its author can change. The relay's own claim is honest; the
+    // the `.vibe` its author can change. The relay's own claim is honest; the
     // module behind it has made none.
     foreign("relay-plain.ts", `${MARK}export { config } from "./sneaky-plain.ts";\n`);
     foreign("sneaky-plain.ts", announcing("sneaky-plain", ""));
     expect(compile(`import { config } from "./relay-plain.ts"
 export function main(): string { return typeof config }
-`).codes).toEqual(["SMITHERS1510@1:24"]);
+`).codes).toEqual(["VIBE1510@1:24"]);
   });
 
   test("depth is not a bound: two hops and three hops are the same rule", () => {
@@ -133,7 +133,7 @@ export function main(): string { return typeof config }
     foreign("sneaky-d3.ts", announcing("sneaky-d3", ""));
     expect(compile(`import { config } from "./relay-d3.ts"
 export function main(): string { return typeof config }
-`).codes).toEqual(["SMITHERS1510@1:24"]);
+`).codes).toEqual(["VIBE1510@1:24"]);
   });
 
   test("every near-miss spelling is a near miss at depth two as well as at depth one", () => {
@@ -157,7 +157,7 @@ export function main(): string { return typeof config }
       observed[name] = compile(`import { config } from "./relay-${name}.ts"
 export function main(): string { return typeof config }
 `).codes;
-      expected[name] = ["SMITHERS1510@1:24"];
+      expected[name] = ["VIBE1510@1:24"];
     }
     expect(observed).toEqual(expected);
   });
@@ -165,7 +165,7 @@ export function main(): string { return typeof config }
   test("a cycle terminates, and a diamond reports the shared module once", () => {
     // Both shapes exist to prove the walk answers each module once rather than
     // once per path: a cycle would not terminate otherwise, and the diamond
-    // would report `SMITHERS1510` twice for one missing marker.
+    // would report `VIBE1510` twice for one missing marker.
     foreign("cycle-a.ts", `${MARK}import { ping } from "./cycle-b.ts";
 export { config } from "./cycle-sneaky.ts";
 export function pong(): number { return ping(); }
@@ -177,7 +177,7 @@ export function echo(): number { return pong(); }
     foreign("cycle-sneaky.ts", announcing("cycle-sneaky", ""));
     expect(compile(`import { config } from "./cycle-a.ts"
 export function main(): string { return typeof config }
-`).codes).toEqual(["SMITHERS1510@1:24"]);
+`).codes).toEqual(["VIBE1510@1:24"]);
 
     foreign("diamond-left.ts", `${MARK}export { config } from "./diamond-sneaky.ts";\n`);
     foreign("diamond-right.ts", `${MARK}export { config as other } from "./diamond-sneaky.ts";\n`);
@@ -185,7 +185,7 @@ export function main(): string { return typeof config }
     expect(compile(`import { config } from "./diamond-left.ts"
 import { other } from "./diamond-right.ts"
 export function main(): string { return typeof config + typeof other }
-`).codes).toEqual(["SMITHERS1510@1:24"]);
+`).codes).toEqual(["VIBE1510@1:24"]);
   });
 
   test("an untrusted module at depth one is refused once, not cascaded into", () => {
@@ -196,7 +196,7 @@ export function main(): string { return typeof config + typeof other }
     foreign("untrusted-tail.ts", announcing("untrusted-tail", ""));
     expect(compile(`import { config } from "./untrusted-head.ts"
 export function main(): string { return typeof config }
-`).codes).toEqual(["SMITHERS1510@1:24"]);
+`).codes).toEqual(["VIBE1510@1:24"]);
   });
 });
 
@@ -211,7 +211,7 @@ export const config = loaded.config;
     foreign("dyn-sneaky.ts", announcing("dyn-sneaky", ""));
     expect(compile(`import { config } from "./dyn-relay.ts"
 export function main(): string { return typeof config }
-`).codes).toEqual(["SMITHERS1510@1:24"]);
+`).codes).toEqual(["VIBE1510@1:24"]);
 
     // Not awaited, and not even read: the module still evaluates.
     foreign("dyn-void-relay.ts", `${MARK}const pending = import("./dyn-void-sneaky.ts");
@@ -221,7 +221,7 @@ export const config = { retries: 3 };
     foreign("dyn-void-sneaky.ts", announcing("dyn-void-sneaky", ""));
     expect(compile(`import { config } from "./dyn-void-relay.ts"
 export function main(): string { return typeof config }
-`).codes).toEqual(["SMITHERS1510@1:24"]);
+`).codes).toEqual(["VIBE1510@1:24"]);
   });
 
   test("an exported loader module scope also calls is an initialization edge", () => {
@@ -235,7 +235,7 @@ export const config = { retries: 3 };
     foreign("eager-sneaky.ts", announcing("eager-sneaky", ""));
     expect(compile(`import { config } from "./eager-relay.ts"
 export function main(): string { return typeof config }
-`).codes).toEqual(["SMITHERS1510@1:24"]);
+`).codes).toEqual(["VIBE1510@1:24"]);
   });
 
   test("a genuinely deferred exported loader is not an initialization edge", () => {
@@ -274,23 +274,27 @@ export function main(): string { return typeof config }
     expect(observed).toEqual(expected);
   });
 
-  test("a non-relative depth-one edge is still checked, but seeds no closure", () => {
-    // The closure IS the relative runtime graph, and a specifier this
-    // compilation does not resolve, place or emit is outside it — the same
-    // boundary `src/relative-runtime-graph.ts` draws, where a non-relative edge
-    // comes back with no target and never becomes a root.
-    //
-    // This is the boundary that keeps the compiler's own runtime out of the
-    // rule. `runtime/introspection.ts` carries the module claim so authored
-    // `.sm` may call the brand seam; `runtime/result.ts` and `runtime/panic.ts`
-    // deliberately carry none, because trusting them would put a `Result`
-    // constructor one import away from authored `.sm`. That is the forgery
-    // guarantee recorded in `runtime/introspection.ts`'s own header, and
-    // `capability-seams.test.ts` SEAM 3 is the case that would break.
+  test("compiler-owned imports stay separate from bounded foreign module discovery", () => {
+    // Brand inspection is a native compiler-owned seam, not permission to
+    // import arbitrary SDK implementation files outside this project's root.
+    expect(compile(`import { isResult } from "vibelang/result"
+export function main(): string { return isResult(1) ? "yes" : "no" }
+`).codes).toEqual([]);
     const introspection = join(import.meta.dir, "../runtime/introspection.ts");
     expect(compile(`import { isResult } from ${JSON.stringify(introspection)}
 export function main(): string { return isResult(1) ? "yes" : "no" }
+`).codes).toContain("VIBE1510@1:26");
+
+    const marked = join(workspace, "absolute-marked.ts");
+    writeFileSync(marked, MARK + "export const config = 1;");
+    // In-root ordinary modules use project-relative addresses. Physical
+    // absolute paths are not native virtual-project aliases, even in-root.
+    expect(compile(`import { config } from "./absolute-marked.ts"
+export function main(): string { return typeof config }
 `).codes).toEqual([]);
+    expect(compile(`import { config } from ${JSON.stringify(marked)}
+export function main(): string { return typeof config }
+`).codes).toEqual(["VIBE1510@1:24"]);
 
     // The depth-one claim itself is NOT relaxed by that: an unmarked module
     // named by an absolute path is refused exactly as a relative one is.
@@ -298,7 +302,7 @@ export function main(): string { return isResult(1) ? "yes" : "no" }
     writeFileSync(unmarked, announcing("absolute-unmarked", ""));
     expect(compile(`import { config } from ${JSON.stringify(unmarked)}
 export function main(): string { return typeof config }
-`).codes).toEqual([`SMITHERS1510@1:24`]);
+`).codes).toEqual([`VIBE1510@1:24`]);
   });
 });
 

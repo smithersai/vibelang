@@ -55,14 +55,12 @@ export interface FunctionRows {
  * caller cannot lower its call site without that fact." This tag is that
  * representation, and `declarations.ts` both writes and reads it.
  *
- * It lives HERE rather than beside its writer because the frontend reads it
- * too (G7: `TypeShape.requirements`), and `declarations.ts` reaches
- * `validate.ts` -> `compile.ts` -> `semantic.ts`, so a frontend import of the
- * writer's module would close an import cycle for two string constants.
- * `model.ts` is the leaf both sides already depend on.
+ * This shared data leaf keeps the remaining frontend independent of the
+ * declaration writer's native host transport. Compiler-library objects are
+ * not needed merely to name or publish the versioned contract.
  */
-export const DECLARATION_EFFECT_TAG = "smithersEffects";
-export const DECLARATION_EFFECT_VERSION = 1 as const;
+export const DECLARATION_EFFECT_TAG = "vibelangEffects";
+export const DECLARATION_EFFECT_VERSION = 2 as const;
 
 export interface Analysis {
   readonly errors: readonly ErrorDeclaration[];
@@ -74,21 +72,32 @@ export interface Analysis {
 export interface AnalyzeOptions {
   /** Real path when imports should be resolved; a stable virtual path otherwise. */
   readonly fileName?: string;
+  /** Explicit root for bounded dependency resolution, including parent imports.
+   * Defaults to cwd for relative names or the containing directory for absolute names. */
+  readonly rootDir?: string;
+  /** Runtime selector for source-free SDK declarations. Defaults to this SDK. */
+  readonly runtimeImport?: string;
 }
 
 /** One authored module supplied to the no-write project analyzer. */
 export interface ProjectSource {
-  /** Absolute, or relative to AnalyzeProjectOptions.rootDir. Must end in `.sm`. */
+  /** Absolute, or relative to AnalyzeProjectOptions.rootDir. Must end in `.vibe`. */
   readonly fileName: string;
   readonly source: string;
 }
 
 export interface AnalyzeProjectOptions {
-  /** Resolution base for relative source names. Defaults to process.cwd(). */
+  /** Return the Go resolver's bounded file/directory read/probe inventory. */
+  readonly traceDependencies?: boolean;
+  /** Resolution base and dependency boundary. Defaults to cwd for relative names;
+   * absolute-only sources outside cwd use their smallest common directory.
+   * Specify this explicitly to pin portable multi-file nominal identities. */
   readonly rootDir?: string;
+  /** Runtime selector for source-free SDK declarations. Defaults to this SDK. */
+  readonly runtimeImport?: string;
   /**
    * Compiler-generated TypeScript modules addressable from authored imports.
-   * They participate in checker resolution but are never parsed as `.sm`,
+   * They participate in checker resolution but are never parsed as `.vibe`,
    * row-analyzed, or emitted by this API. The caller must separately map and
    * emit their exact source identities.
    */
@@ -109,6 +118,7 @@ export interface ProjectFileAnalysis extends Analysis {
  * keyed by the exact ProjectSource.fileName supplied by the caller.
  */
 export interface ProjectAnalysis {
+  readonly dependencies?: import("../compiler/protocol.ts").NativeDependencyTrace;
   readonly files: Readonly<Record<string, ProjectFileAnalysis>>;
   readonly diagnostics: readonly ProjectDiagnostic[];
 }

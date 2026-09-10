@@ -15,30 +15,30 @@
  *     ASSERTED type, recorded `Cfg`, compiled `ok: true`, RAN, and aborted with
  *     `Panic: unsatisfied Context requirement`. A fail-open.
  *   * `Layer.succeed(<any>Db, db)` — the Go fork read the ERASED type, found no
- *     class, and refused `SMITHERS2104` a program this backend accepted and
+ *     class, and refused `VIBE2104` a program this backend accepted and
  *     RAN.
  *   * `const Alias = Db; Layer.succeed(Alias, db)` — a `const` value alias is
  *     not a class DECLARATION, so this backend fell back to the identifier's
- *     TEXT and recorded the phantom row `Alias`, refusing `SMITHERS2101
+ *     TEXT and recorded the phantom row `Alias`, refusing `VIBE2101
  *     "missing Db"` a program the fork accepted and RAN.
  *
- * The rule applied is `SMITHERS2106`'s, unchanged and not restated: resolve the
+ * The rule applied is `VIBE2106`'s, unchanged and not restated: resolve the
  * SYNTAX first and the checker type second, and refuse when the expression
  * cannot be pinned to exactly one `Context` class declaration. The ordering is
  * load-bearing because TypeScript subtype-reduces `typeof Db | typeof Twin` to
  * `typeof Db` and nothing in the resulting type remembers the other arm — the
- * measurement that decided `SMITHERS2106` in the first place, reproduced here
+ * measurement that decided `VIBE2106` in the first place, reproduced here
  * at the capability argument by `C08`, which the Go fork accepted and which
  * PANICKED reading `Db` after registering `Twin`.
  *
- * Refusal at this site is the fail-closed `SMITHERS2104` the resolver already
+ * Refusal at this site is the fail-closed `VIBE2104` the resolver already
  * answers for every expression it cannot see through. No code is minted:
- * `SMITHERS2106` is the refusal for an unpinned `.context()` RECEIVER, where
+ * `VIBE2106` is the refusal for an unpinned `.context()` RECEIVER, where
  * the alternative is a silent capability read; the alternative here is a layer
- * whose closure is unproven, which is what `SMITHERS2104` says.
+ * whose closure is unproven, which is what `VIBE2104` says.
  *
  * WHAT THIS TABLE CANNOT SEE. Every accepting row is confirmed by the runtime
- * oracle out of band (`smithers run` prints `v: 3`); this file measures only
+ * oracle out of band (`vibe run` prints `v: 3`); this file measures only
  * the diagnostics. And a table built solely from type-PRESERVING spellings is
  * vacuous for this rule — it cannot distinguish a syntax walk from a checker
  * walk, because both answer identically on every one of them. The rows that
@@ -50,8 +50,8 @@
 import { describe, expect, test } from "bun:test";
 import { analyzeProject } from "./index.ts";
 
-const HEAD = `import { Context } from "smthrs/context"
-import { Layer } from "smthrs/provider"
+const HEAD = `import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
 
 abstract class Db extends Context { abstract read(): string }
 abstract class Twin extends Context { abstract read(): string }
@@ -67,7 +67,7 @@ function needsCfg(): number { return Cfg.context().n() }
 `;
 
 function codes(body: string): readonly string[] {
-  const analysis = analyzeProject([{ fileName: "main.sm", source: HEAD + body + "\n" }], {
+  const analysis = analyzeProject([{ fileName: "main.vibe", source: HEAD + body + "\n" }], {
     rootDir: "/virtual/layer-capability",
   });
   return analysis.diagnostics.filter((diagnostic) => diagnostic.severity === "error")
@@ -135,7 +135,7 @@ describe("a LAUNDERING capability argument answers its value, never its type", (
     test(label, () => {
       const body = `${declarations}\nLayer.provide(Layer.succeed(${argument}, ${implementation}), () => ${read}())`;
       // The precise code that NAMES the capability, not the blunt one.
-      expect({ [label]: codes(body) }).toEqual({ [label]: ["SMITHERS2101"] });
+      expect({ [label]: codes(body) }).toEqual({ [label]: ["VIBE2101"] });
     });
   }
 });
@@ -153,7 +153,7 @@ describe("a capability argument that pins no single class is opaque", () => {
   for (const [label, declarations, argument] of ambiguous) {
     test(label, () => {
       const body = `${declarations}\nLayer.provide(Layer.succeed(${argument}, db as never), () => needsDb())`;
-      expect({ [label]: codes(body).includes("SMITHERS2104") }).toEqual({ [label]: true });
+      expect({ [label]: codes(body).includes("VIBE2104") }).toEqual({ [label]: true });
     });
   }
 
@@ -161,10 +161,10 @@ describe("a capability argument that pins no single class is opaque", () => {
    * A parameter has no `const` initializer for the syntax step to read, and its
    * TYPE pins no class: a bound never pins the key even when it names exactly
    * one, because a SUBCLASS substitutes for it and carries a different nominal
-   * key. Both details were settled with `SMITHERS2106` and are inherited here.
+   * key. Both details were settled with `VIBE2106` and are inherited here.
    *
    * `Layer.provide` inside a function never reports the missing-capability
-   * `SMITHERS2101` (that check is top-level only), so the OBSERVABLE half of
+   * `VIBE2101` (that check is top-level only), so the OBSERVABLE half of
    * these two rows is exactly "opaque or not".
    */
   const parameterised: ReadonlyArray<readonly [string, string]> = [
@@ -180,21 +180,21 @@ boot(Db, db)`],
 
   for (const [label, body] of parameterised) {
     test(label, () => {
-      expect({ [label]: codes(body).includes("SMITHERS2104") }).toEqual({ [label]: true });
+      expect({ [label]: codes(body).includes("VIBE2104") }).toEqual({ [label]: true });
     });
   }
 });
 
 describe("the refusals this resolver exists for", () => {
   test("a layer that genuinely misses a capability NAMES it", () => {
-    expect(codes("Layer.provide(Layer.succeed(Cfg, cfg), () => needsDb())")).toEqual(["SMITHERS2101"]);
+    expect(codes("Layer.provide(Layer.succeed(Cfg, cfg), () => needsDb())")).toEqual(["VIBE2101"]);
   });
 
   test("it names it through a wrapper too, and through a const alias", () => {
     expect(codes("Layer.provide(Layer.succeed(Cfg as typeof Cfg, cfg), () => needsDb())"))
-      .toEqual(["SMITHERS2101"]);
+      .toEqual(["VIBE2101"]);
     expect(codes("const Alias = Cfg\nLayer.provide(Layer.succeed(Alias, cfg), () => needsDb())"))
-      .toEqual(["SMITHERS2101"]);
+      .toEqual(["VIBE2101"]);
   });
 
   /**
@@ -213,7 +213,7 @@ describe("the refusals this resolver exists for", () => {
       "function mk(): Layer<typeof Db> { return Layer.succeed(Db, db) }\nLayer.provide(mk(), () => needsDb())",
     ];
     for (const body of mutable) {
-      expect({ [body]: codes(body) }).toEqual({ [body]: ["SMITHERS2104"] });
+      expect({ [body]: codes(body) }).toEqual({ [body]: ["VIBE2104"] });
     }
   });
 
@@ -224,20 +224,20 @@ describe("the refusals this resolver exists for", () => {
     )).toEqual([]);
     expect(codes(
       "Layer.provide(Layer.merge(Layer.succeed(Cfg, cfg), Layer.succeed(Cfg, cfg)), () => needsDb())",
-    )).toEqual(["SMITHERS2101"]);
+    )).toEqual(["VIBE2101"]);
   });
 
   /**
    * The attribution control. `!` is in `contextReceiver`'s wrapper list — it is
    * spelled out there DELIBERATELY, because `as` changes the type and never the
-   * value — so the capability under one still resolves, and `SMITHERS1207`
+   * value — so the capability under one still resolves, and `VIBE1207`
    * refuses the `!` in its own right. If the change had been "assertions are
    * ignored in a layer position" rather than "this site calls the settled
    * receiver resolver", this row is what would have broken: it would have kept
-   * a SMITHERS2104 beside the SMITHERS1207.
+   * a VIBE2104 beside the VIBE1207.
    */
   test("postfix ! is refused in its own right and adds no second refusal", () => {
-    expect(codes("Layer.provide(Layer.succeed(Db!, db), () => needsDb())")).toEqual(["SMITHERS1207"]);
+    expect(codes("Layer.provide(Layer.succeed(Db!, db), () => needsDb())")).toEqual(["VIBE1207"]);
   });
 });
 
@@ -246,7 +246,7 @@ describe("the refusals this resolver exists for", () => {
  *
  * `let C = Db; C = Twin; Layer.succeed(C, db)` is accepted with the row `Db`
  * and PANICS at run time, on both backends. That is not this site's defect and
- * it is not this site's to fix: it is the settled `SMITHERS2106` rule's own
+ * it is not this site's to fix: it is the settled `VIBE2106` rule's own
  * residual, measured identically at the receiver —
  * `let C = Db; C = Twin; C.context()` checks clean with the row `Db` and aborts
  * with `capability 'Twin' was not provided` — because `constantInitializer`
@@ -259,7 +259,7 @@ describe("the refusals this resolver exists for", () => {
  * have: `const`-ness alone would refuse `let C = Db` that is never reassigned,
  * which is a correct program that runs.
  */
-describe("KNOWN RESIDUAL, shared with SMITHERS2106: a reassigned binding", () => {
+describe("KNOWN RESIDUAL, shared with VIBE2106: a reassigned binding", () => {
   test("a reassigned let/var capability argument is accepted, exactly as the receiver is", () => {
     expect(codes("let C = Db\nC = Twin\nLayer.provide(Layer.succeed(C, db), () => needsDb())")).toEqual([]);
     expect(codes("var V = Db\nV = Twin\nLayer.provide(Layer.succeed(V, db), () => needsDb())")).toEqual([]);

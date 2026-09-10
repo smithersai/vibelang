@@ -11,7 +11,7 @@
  *   * the option was OFF in every checker literal, so `arr[i]!` compiled only
  *     because the mandated option was not enforced;
  *   * turning it on moved 2 of 515 conformance cases, both with
- *     `SMITHERS1207 postfix ! requires a Result operand` at an index read of a
+ *     `VIBE1207 postfix ! requires a Result operand` at an index read of a
  *     `Result` array — the specification's own example, refused;
  *   * `const v: number = arr[2]` and `const o: { a?: number } = { a: undefined }`
  *     both checked clean while the control `const v: number = "str"` reported
@@ -30,7 +30,7 @@ import {
   FORBIDDEN_COMPILER_OPTIONS,
   MANDATORY_CHECKER_OPTIONS,
   MANDATORY_COMPILER_OPTIONS,
-  validateSmithersTsconfig,
+  validateVibeLangTsconfig,
 } from "./compiler-options.ts";
 
 const HEAD = `export class Missing extends Error {
@@ -44,7 +44,7 @@ function lookup(key: string): Result<string, Missing> {
 `;
 
 function codes(body: string): string[] {
-  const analysis = analyzeProject([{ fileName: "/project/main.sm", source: HEAD + body }]);
+  const analysis = analyzeProject([{ fileName: "/project/main.vibe", source: HEAD + body }]);
   return analysis.diagnostics.map((diagnostic) => `${diagnostic.code}@${diagnostic.line}:${diagnostic.column}`);
 }
 
@@ -88,7 +88,7 @@ describe("the mandatory option table is the one the specification publishes", ()
   });
 });
 
-describe("validateSmithersTsconfig reports a code and a span", () => {
+describe("validateVibeLangTsconfig reports a code and a span", () => {
   const conforming = `{
   "compilerOptions": {
     "strict": true,
@@ -102,14 +102,14 @@ describe("validateSmithersTsconfig reports a code and a span", () => {
 `;
 
   test("a conforming tsconfig reports nothing", () => {
-    expect(validateSmithersTsconfig("/project/tsconfig.json", conforming)).toEqual([]);
+    expect(validateVibeLangTsconfig("/project/tsconfig.json", conforming)).toEqual([]);
   });
 
-  test("a missing mandatory option is SMITHERS6001 at the compilerOptions object", () => {
+  test("a missing mandatory option is VIBE6001 at the compilerOptions object", () => {
     const text = conforming.replace('    "noUncheckedIndexedAccess": true,\n', "");
-    const found = validateSmithersTsconfig("/project/tsconfig.json", text);
-    expect(found.map((item) => item.code)).toEqual(["SMITHERS6001"]);
-    expect(found[0]!.message).toBe("a Smithers project MUST set 'noUncheckedIndexedAccess: true'");
+    const found = validateVibeLangTsconfig("/project/tsconfig.json", text);
+    expect(found.map((item) => item.code)).toEqual(["VIBE6001"]);
+    expect(found[0]!.message).toBe("a VibeLang project MUST set 'noUncheckedIndexedAccess: true'");
     // The span is the object that should have contained it, so an editor can
     // put the fix where the fix goes.
     expect(text.slice(found[0]!.start, found[0]!.start + 1)).toBe("{");
@@ -118,47 +118,47 @@ describe("validateSmithersTsconfig reports a code and a span", () => {
 
   // The direction that used to be impossible to state at all: `strict: false`
   // was honored by the Go bridge and unrepresented in the reference.
-  test("a mandatory option set to false is SMITHERS6001 at the option", () => {
+  test("a mandatory option set to false is VIBE6001 at the option", () => {
     const text = conforming.replace('"strict": true', '"strict": false');
-    const found = validateSmithersTsconfig("/project/tsconfig.json", text);
-    expect(found.map((item) => item.code)).toEqual(["SMITHERS6001"]);
+    const found = validateVibeLangTsconfig("/project/tsconfig.json", text);
+    expect(found.map((item) => item.code)).toEqual(["VIBE6001"]);
     expect(text.slice(found[0]!.start, found[0]!.start + found[0]!.length)).toBe('"strict": false');
   });
 
-  test("every forbidden option is SMITHERS6002 at the option name", () => {
+  test("every forbidden option is VIBE6002 at the option name", () => {
     for (const name of FORBIDDEN_COMPILER_OPTIONS) {
       const text = conforming.replace('"strict": true,', `"strict": true,\n    "${name}": true,`);
-      const found = validateSmithersTsconfig("/project/tsconfig.json", text);
-      expect(found.map((item) => item.code)).toEqual(["SMITHERS6002"]);
+      const found = validateVibeLangTsconfig("/project/tsconfig.json", text);
+      expect(found.map((item) => item.code)).toEqual(["VIBE6002"]);
       expect(text.slice(found[0]!.start, found[0]!.start + found[0]!.length)).toBe(`"${name}"`);
     }
   });
 
   // §Forbidden says a deprecated option "MUST be rejected rather than ignored",
   // and a value of `false` is still the option appearing in the configuration.
-  test("a forbidden option set to false is still SMITHERS6002", () => {
+  test("a forbidden option set to false is still VIBE6002", () => {
     const text = conforming.replace('"strict": true,', '"strict": true,\n    "experimentalDecorators": false,');
-    expect(validateSmithersTsconfig("/project/tsconfig.json", text).map((item) => item.code))
-      .toEqual(["SMITHERS6002"]);
+    expect(validateVibeLangTsconfig("/project/tsconfig.json", text).map((item) => item.code))
+      .toEqual(["VIBE6002"]);
   });
 
-  test("an unclassified option is SMITHERS6003 at the option name", () => {
+  test("an unclassified option is VIBE6003 at the option name", () => {
     const text = conforming.replace('"strict": true,', '"strict": true,\n    "notAnOption": true,');
-    const found = validateSmithersTsconfig("/project/tsconfig.json", text);
-    expect(found.map((item) => item.code)).toEqual(["SMITHERS6003"]);
+    const found = validateVibeLangTsconfig("/project/tsconfig.json", text);
+    expect(found.map((item) => item.code)).toEqual(["VIBE6003"]);
     expect(text.slice(found[0]!.start, found[0]!.start + found[0]!.length)).toBe('"notAnOption"');
   });
 
   // §Emit-Scoped options "MAY differ by JavaScript host", so naming one is not
-  // an error. This is the row that keeps SMITHERS6003 from being a blanket ban.
+  // an error. This is the row that keeps VIBE6003 from being a blanket ban.
   test("an emit-scoped option is accepted", () => {
     const text = conforming.replace('"strict": true,', '"strict": true,\n    "target": "ES2022",\n    "lib": ["ESNext"],');
-    expect(validateSmithersTsconfig("/project/tsconfig.json", text)).toEqual([]);
+    expect(validateVibeLangTsconfig("/project/tsconfig.json", text)).toEqual([]);
   });
 
   test("a tsconfig with no compilerOptions charges every mandatory option", () => {
-    const found = validateSmithersTsconfig("/project/tsconfig.json", `{ "include": ["src"] }\n`);
-    expect(found.map((item) => item.code)).toEqual(MANDATORY_COMPILER_OPTIONS.map(() => "SMITHERS6001"));
+    const found = validateVibeLangTsconfig("/project/tsconfig.json", `{ "include": ["src"] }\n`);
+    expect(found.map((item) => item.code)).toEqual(MANDATORY_COMPILER_OPTIONS.map(() => "VIBE6001"));
   });
 });
 
@@ -172,10 +172,13 @@ describe("validateSmithersTsconfig reports a code and a span", () => {
  * disagree, which is exactly what `noUncheckedIndexedAccess` creates.
  */
 describe("postfix ! on an index read", () => {
+  // These tests isolate the indexing type rule. Newly produced Results must
+  // also be consumed independently of which dynamic index the caller chooses.
   test("a Result array compiles — the specification's own worked example", () => {
     expect(codes(`
 export function main(i: number): Result<string, Missing> {
   const found: Result<string, Missing>[] = [lookup("ada")]
+  Result.all(found).isError()
   return found[i]!
 }
 `)).toEqual([]);
@@ -196,10 +199,11 @@ export function main(): Result<string, Missing> {
   test("an array whose element type is itself optional is refused", () => {
     expect(codes(`
 export function main(i: number): Result<string, Missing> {
-  const found: (Result<string, Missing> | undefined)[] = [lookup("ada")]
+  const entry = lookup("ada"); entry.isError()
+  const found: (Result<string, Missing> | undefined)[] = [entry]
   return found[i]!
 }
-`)).toEqual(["SMITHERS1207@12:10"]);
+`)).toEqual(["VIBE1207@13:10"]);
   });
 
   test("a non-Result array is refused for the ordinary reason", () => {
@@ -209,7 +213,7 @@ export function main(i: number): Result<string, Missing> {
   const n = names[i]!
   return n
 }
-`)).toEqual(["SMITHERS1207@12:13"]);
+`)).toEqual(["VIBE1207@12:13"]);
   });
 
   // The row that decides HOW the widening is undone. Narrowing the ACCESS type
@@ -228,13 +232,14 @@ export function main(): Result<string, Missing> {
   const s = pair[1]!
   return s
 }
-`)).toContain("SMITHERS1207@12:13");
+`)).toContain("VIBE1207@12:13");
   });
 
   test("a string-indexed record of Results compiles", () => {
     expect(codes(`
 export function main(k: string): Result<string, Missing> {
-  const bag: Record<string, Result<string, Missing>> = { ada: lookup("ada") }
+  const entry = lookup("ada"); entry.isError()
+  const bag: Record<string, Result<string, Missing>> = { ada: entry }
   return bag[k]!
 }
 `)).toEqual([]);
@@ -249,6 +254,6 @@ export function main(): Result<string, Missing> {
   const name = maybe!
   return name
 }
-`)).toEqual(["SMITHERS1207@12:16"]);
+`)).toEqual(["VIBE1207@12:16"]);
   });
 });

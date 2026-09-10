@@ -501,14 +501,29 @@ function selectMapping(values: readonly Mapping[] | undefined, column: number): 
   return low === 0 ? undefined : values[low - 1];
 }
 
+/** Resolve one zero-based generated coordinate; explicit unmapped glue stays absent. */
+export function originalPosition(wire: string, line: number, column: number): {
+  readonly source: string; readonly line: number; readonly column: number;
+} | undefined {
+  if (!Number.isSafeInteger(line) || !Number.isSafeInteger(column) || line < 0 || column < 0 ||
+    line > MAX_COORDINATE || column > MAX_COORDINATE) throw new TypeError("invalid source-map coordinate");
+  const map = parsedMap(wire, "generated");
+  const selected = selectMapping(decodeMappings(map).filter(mapping => mapping.generatedLine === line), column);
+  if (selected?.source === undefined || selected.originalLine === undefined || selected.originalColumn === undefined) return undefined;
+  const originalColumn = selected.originalColumn + column - selected.generatedColumn;
+  if (originalColumn > MAX_COORDINATE) throw new TypeError("source-map coordinate exceeds POC bounds");
+  return { source: normalizedSource(map.sourceRoot, map.sources[selected.source]!),
+    line: selected.originalLine, column: originalColumn };
+}
+
 /** Compose an outer generated map through an inner map without inventing provenance. */
 export function composeSourceMaps(
   javascriptToTypeScript: string,
-  typeScriptToSmithers: string,
+  typeScriptToVibeLang: string,
   outputFileName: string,
 ): string {
   const outer = parsedMap(javascriptToTypeScript, "JavaScript");
-  const inner = parsedMap(typeScriptToSmithers, "Smithers");
+  const inner = parsedMap(typeScriptToVibeLang, "VibeLang");
   const intermediate = intermediateSourceIndex(outer, inner);
   const innerByLine = new Map<number, Mapping[]>();
   for (const mapping of decodeMappings(inner)) {

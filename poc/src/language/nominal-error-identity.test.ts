@@ -19,7 +19,7 @@ import { compileProject } from "./project-compile.ts";
 //
 // The tests that matter here are the ones that were RED before the fix. The
 // pre-existing nominal-error coverage (`nominal-errors.test.ts`) compiles
-// `nominal.sm`, a short already-injective path with distinctly named classes, so
+// `nominal.vibe`, a short already-injective path with distinctly named classes, so
 // every one of its assertions stayed green while the compiler was minting one
 // identity for two classes. Collision resistance could have been deleted without
 // turning the suite red. Each `RED BEFORE THE FIX` case below is a measured
@@ -48,7 +48,7 @@ function compileFiles(rootDir: string, files: readonly { fileName: string; sourc
     rootDir,
     outDir: "/virtual/out",
     outputExtension: ".mjs",
-    runtimeImport: "smthrs/runtime",
+    runtimeImport: "vibelang/runtime",
     sourceMap: false,
   });
 }
@@ -97,7 +97,7 @@ test("every minted identity is one the runtime validator accepts", () => {
   // The registry is process-wide and `registerErrorType` validates before it
   // deduplicates, so one class per identity keeps this test measuring the
   // validator rather than measuring its own second pass.
-  const classes = new Map<string, ErrorConstructor>();
+  const classes = new Map<string, new (message?: string) => Error>();
   for (const vector of VECTORS) {
     const type = classes.get(vector.identity) ?? class extends Error {};
     classes.set(vector.identity, type);
@@ -115,8 +115,8 @@ test("two Error classes in a long-named module receive distinct identities", () 
   // name was appended, so the discriminator was what the bound cut off. Measured
   // on the previous algorithm: both classes minted one 256-unit identity, the
   // compiler reported zero diagnostics, and importing the emitted module threw
-  // `TypeError: stable Error identity smithers:aaaa... is already registered`.
-  const fileName = `${"c".repeat(250)}.sm`;
+  // `TypeError: stable Error identity vibelang:aaaa... is already registered`.
+  const fileName = `${"c".repeat(250)}.vibe`;
   const result = compileFiles("/virtual/truncation", [{
     fileName,
     source: "export class Left extends Error {}\nexport class Right extends Error {}\n",
@@ -133,7 +133,7 @@ test("two Error classes in a long-named module receive distinct identities", () 
 test("the class name survives the length bound instead of being cut off by it", () => {
   // The bound is honoured by digesting the exact spelling, so the discriminator
   // is never the part that is dropped. Same file, four classes, four identities.
-  const fileName = `${"b".repeat(250)}.sm`;
+  const fileName = `${"b".repeat(250)}.vibe`;
   const result = compileFiles("/virtual/truncation-four", [{
     fileName,
     source: ["Alpha", "Beta", "Gamma", "Delta"]
@@ -153,36 +153,36 @@ test("the class name survives the length bound instead of being cut off by it", 
 
 test("two module names that used to normalize together receive distinct identities", () => {
   // RED BEFORE THE FIX. Every unit outside `[A-Za-z0-9._/@:+-]` was rewritten to
-  // `_`, so `a b.sm` and `a_b.sm` both minted `smithers:a_b.sm:Boom` with zero
+  // `_`, so `a b.vibe` and `a_b.vibe` both minted `vibelang:a_b.vibe:Boom` with zero
   // diagnostics -- measured on both backends.
   const files = [
-    { fileName: "p q.sm", source: "export class Boom extends Error {}\n" },
-    { fileName: "p_q.sm", source: "export class Boom extends Error {}\n" },
+    { fileName: "p q.vibe", source: "export class Boom extends Error {}\n" },
+    { fileName: "p_q.vibe", source: "export class Boom extends Error {}\n" },
   ];
   const result = compileFiles("/virtual/normalization", files);
   expect(result.diagnostics).toEqual([]);
 
   const identities = files.flatMap((file) => registeredIdentities(result.files[file.fileName]!.code));
-  expect(identities).toEqual(["smithers:p+0020q.sm:Boom", "smithers:p_q.sm:Boom"]);
+  expect(identities).toEqual(["vibelang:p+0020q.vibe:Boom", "vibelang:p_q.vibe:Boom"]);
   expect(() => registerAll(identities)).not.toThrow();
 });
 
 test("a module name that used to collide with its own source_ disambiguation is distinct", () => {
   // RED BEFORE THE FIX, and found by this lane's own sweep rather than handed to
   // it. The disambiguating prefix was itself many-to-one: a name that did not
-  // start alphanumerically was prefixed `source_`, so `.a.sm` minted
-  // `smithers:source_.a.sm:Boom` -- which is exactly what a file literally named
-  // `source_.a.sm` minted, since that one starts alphanumerically and was left
+  // start alphanumerically was prefixed `source_`, so `.a.vibe` minted
+  // `vibelang:source_.a.vibe:Boom` -- which is exactly what a file literally named
+  // `source_.a.vibe` minted, since that one starts alphanumerically and was left
   // alone. Zero diagnostics on both backends.
   const files = [
-    { fileName: ".q.sm", source: "export class Boom extends Error {}\n" },
-    { fileName: "source_.q.sm", source: "export class Boom extends Error {}\n" },
+    { fileName: ".q.vibe", source: "export class Boom extends Error {}\n" },
+    { fileName: "source_.q.vibe", source: "export class Boom extends Error {}\n" },
   ];
   const result = compileFiles("/virtual/prefix", files);
   expect(result.diagnostics).toEqual([]);
 
   const identities = files.flatMap((file) => registeredIdentities(result.files[file.fileName]!.code));
-  expect(identities).toEqual(["smithers:+002Eq.sm:Boom", "smithers:source_.q.sm:Boom"]);
+  expect(identities).toEqual(["vibelang:+002Eq.vibe:Boom", "vibelang:source_.q.vibe:Boom"]);
   expect(() => registerAll(identities)).not.toThrow();
 });
 
@@ -190,7 +190,7 @@ test("a family of module names that all folded onto one identity now mints one e
   // The charset collapse was not a two-name accident: EVERY unit outside the
   // alphabet mapped to the same `_`, so an entire family converged. Five spellings
   // of one shape, five identities.
-  const names = ["x y.sm", "x_y.sm", "x#y.sm", "x%y.sm", "x!y.sm"];
+  const names = ["x y.vibe", "x_y.vibe", "x#y.vibe", "x%y.vibe", "x!y.vibe"];
   const files = names.map((fileName) => ({ fileName, source: "export class Boom extends Error {}\n" }));
   const result = compileFiles("/virtual/family", files);
   expect(result.diagnostics).toEqual([]);
@@ -206,20 +206,20 @@ test("a family of module names that all folded onto one identity now mints one e
 // ---------------------------------------------------------------------------
 
 test("the emitted registration and the type-only brand carry the algorithm's answer", () => {
-  const fileName = "app/checkout .sm";
+  const fileName = "app/checkout .vibe";
   const result = compileFiles("/virtual/agreement", [{
     fileName,
     source: "export class Declined extends Error {}\n",
   }]);
   expect(result.diagnostics).toEqual([]);
 
-  const expected = nominalErrorIdentity("app/checkout .sm", "Declined");
-  expect(expected).toBe("smithers:app/checkout+0020.sm:Declined");
+  const expected = nominalErrorIdentity("app/checkout .vibe", "Declined");
+  expect(expected).toBe("vibelang:app/checkout+0020.vibe:Declined");
   const code = result.files[fileName]!.code;
   expect(registeredIdentities(code)).toEqual([expected]);
   // The brand is the identity as a type-level literal; a divergence between the
   // two would make the checker and the runtime disagree about the same class.
-  expect(code).toContain(`export interface Declined extends NominalError<"${expected}"> {`);
+  expect(code).toContain(`export interface Declined extends __vsNominalError<"${expected}"> {`);
 });
 
 // ---------------------------------------------------------------------------
@@ -232,17 +232,17 @@ test("the emitted registration and the type-only brand carry the algorithm's ans
  */
 function shippedAlgorithm(sourceName: string, name: string): string {
   const normalized = sourceName.replace(/[^A-Za-z0-9._/@:+-]/g, "_").replace(/^([^A-Za-z0-9])/, "source_$1");
-  const id = `smithers:${normalized}:${name}`.slice(0, 256);
+  const id = `vibelang:${normalized}:${name}`.slice(0, 256);
   return /[\uD800-\uDBFF]$/.test(id) ? id.slice(0, -1) : id;
 }
 
 test("the compile-wide assigner passes every declaration under today's algorithm", () => {
   const identities = new NominalErrorIdentities();
-  expect(identities.claim("a.sm", "Boom")).toEqual({ identity: "smithers:a.sm:Boom" });
+  expect(identities.claim("a.vibe", "Boom")).toEqual({ identity: "vibelang:a.vibe:Boom" });
   // One declaration reaching the assigner twice is idempotent, not a collision.
-  expect(identities.claim("a.sm", "Boom")).toEqual({ identity: "smithers:a.sm:Boom" });
-  expect(identities.claim("b.sm", "Boom")).toEqual({ identity: "smithers:b.sm:Boom" });
-  expect(identities.claim("a.sm", "Bang")).toEqual({ identity: "smithers:a.sm:Bang" });
+  expect(identities.claim("a.vibe", "Boom")).toEqual({ identity: "vibelang:a.vibe:Boom" });
+  expect(identities.claim("b.vibe", "Boom")).toEqual({ identity: "vibelang:b.vibe:Boom" });
+  expect(identities.claim("a.vibe", "Bang")).toEqual({ identity: "vibelang:a.vibe:Bang" });
 });
 
 test("the compile-wide assigner would have refused every collision the shipped algorithm minted", () => {
@@ -251,28 +251,28 @@ test("the compile-wide assigner would have refused every collision the shipped a
   // therefore cannot trip it, so the guard is measured against the algorithm that
   // actually shipped -- which is the only way to show it would have caught this.
   for (const [why, left, right] of [
-    ["blind truncation", [`${"a".repeat(250)}.sm`, "Left"], [`${"a".repeat(250)}.sm`, "Right"]],
-    ["separator normalization", ["a b.sm", "Boom"], ["a_b.sm", "Boom"]],
-    ["the source_ disambiguation prefix", [".a.sm", "Boom"], ["source_.a.sm", "Boom"]],
+    ["blind truncation", [`${"a".repeat(250)}.vibe`, "Left"], [`${"a".repeat(250)}.vibe`, "Right"]],
+    ["separator normalization", ["a b.vibe", "Boom"], ["a_b.vibe", "Boom"]],
+    ["the source_ disambiguation prefix", [".a.vibe", "Boom"], ["source_.a.vibe", "Boom"]],
   ] as const) {
     // The shipped algorithm really did fold these two onto one string.
-    expect([why, shippedAlgorithm(...left)]).toEqual([why, shippedAlgorithm(...right)]);
+    expect([why, shippedAlgorithm(left[0], left[1])]).toEqual([why, shippedAlgorithm(right[0], right[1])]);
 
     const shipped = new NominalErrorIdentities(shippedAlgorithm);
-    expect([why, shipped.claim(...left).collidesWith]).toEqual([why, undefined]);
-    expect([why, shipped.claim(...right).collidesWith]).toEqual([why, `${left[0]}:${left[1]}`]);
+    expect([why, shipped.claim(left[0], left[1]).collidesWith]).toEqual([why, undefined]);
+    expect([why, shipped.claim(right[0], right[1]).collidesWith]).toEqual([why, `${left[0]}:${left[1]}`]);
 
     // And today's algorithm keeps them apart, so the guard stays silent.
     const current = new NominalErrorIdentities();
-    expect([why, current.claim(...left).collidesWith]).toEqual([why, undefined]);
-    expect([why, current.claim(...right).collidesWith]).toEqual([why, undefined]);
+    expect([why, current.claim(left[0], left[1]).collidesWith]).toEqual([why, undefined]);
+    expect([why, current.claim(right[0], right[1]).collidesWith]).toEqual([why, undefined]);
   }
 });
 
 test("a clean project reports no identity diagnostic", () => {
   const result = compileFiles("/virtual/clean", [
-    { fileName: "one.sm", source: "export class Boom extends Error {}\n" },
-    { fileName: "two.sm", source: "export class Boom extends Error {}\n" },
+    { fileName: "one.vibe", source: "export class Boom extends Error {}\n" },
+    { fileName: "two.vibe", source: "export class Boom extends Error {}\n" },
   ]);
-  expect(result.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1151")).toEqual([]);
+  expect(result.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1151")).toEqual([]);
 });

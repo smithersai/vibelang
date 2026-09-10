@@ -10,10 +10,10 @@ import { analyzeProject, compileProject } from "./index.ts";
  * can hand it.
  *
  * `isErrorType` decides the whole failure channel: which `throw` is a
- * recoverable Error (`SMITHERS1103`), which `.match()` is the compiler's
- * `Error.match` and gets exhaustiveness-checked (`SMITHERS1251`/`1253`/`1254`),
+ * recoverable Error (`VIBE1103`), which `.match()` is the compiler's
+ * `Error.match` and gets exhaustiveness-checked (`VIBE1251`/`1253`/`1254`),
  * and which declared row constituent covers an instantiated template
- * (`SMITHERS1806`). It answers by climbing base types, and it climbed them with
+ * (`VIBE1806`). It answers by climbing base types, and it climbed them with
  * `checker.getBaseTypes(type as ts.InterfaceType)` behind nothing but
  * `type.flags & Object`.
  *
@@ -30,7 +30,7 @@ import { analyzeProject, compileProject } from "./index.ts";
  * So ordinary programs took the compiler down. `throw { a: 1 }` and a plain
  * `const own = { match: () => "m" }` followed by `own.match()` both escaped as
  * an unhandled throw out of the checker, which the CLI can only surface as a
- * code-less, position-less `SMITHERS_PROJECT_ERROR` — no diagnostic, no
+ * code-less, position-less `VIBELANG_PROJECT_ERROR` — no diagnostic, no
  * position, nothing an author can act on. `throw [1] as const` produced the
  * TypeError variant. The Go fork compiled all of them correctly, so the
  * reference frontend was the divergent one.
@@ -44,15 +44,15 @@ import { analyzeProject, compileProject } from "./index.ts";
  * that has no heritage is one edit away from declining to climb the ones that
  * do, so every genuine rule this walk feeds is asserted to keep firing: a real
  * `Result` receiver is still exhaustiveness-checked and still RUNS, an Error
- * subclass still reaches `SMITHERS1251`/`1253`/`1254`/`1255`, retired
- * `.unwrap()` is still `SMITHERS1206`, and every non-Error throw is still
- * `SMITHERS1103` rather than silently accepted.
+ * subclass still reaches `VIBE1251`/`1253`/`1254`/`1255`, retired
+ * `.unwrap()` is still `VIBE1206`, and every non-Error throw is still
+ * `VIBE1103` rather than silently accepted.
  */
 
 const RUNTIME = `${import.meta.dir}/../runtime/index.ts`;
 
 function analyze(source: string, name: string) {
-  return analyzeProject([{ fileName: "main.sm", source }], {
+  return analyzeProject([{ fileName: "main.vibe", source }], {
     rootDir: `/virtual/error-heritage-${name}`,
   });
 }
@@ -64,9 +64,9 @@ function codes(analysis: ReturnType<typeof analyzeProject>): readonly string[] {
 
 /** Lower one module, transpile it, and import the result. */
 async function execute(source: string, name: string) {
-  const root = await mkdtemp(join(tmpdir(), `smithers-error-heritage-${name}-`));
+  const root = await mkdtemp(join(tmpdir(), `vibelang-error-heritage-${name}-`));
   try {
-    const compiled = compileProject([{ fileName: "main.sm", source }], {
+    const compiled = compileProject([{ fileName: "main.vibe", source }], {
       rootDir: root,
       outDir: root,
       outputExtension: ".mjs",
@@ -75,7 +75,7 @@ async function execute(source: string, name: string) {
     });
     expect(compiled.diagnostics).toEqual([]);
     const transpiler = new Bun.Transpiler({ loader: "ts", target: "bun" });
-    const file = compiled.files["main.sm"]!;
+    const file = compiled.files["main.vibe"]!;
     await writeFile(file.outputFileName, transpiler.transformSync(file.code));
     return await import(pathToFileURL(file.outputFileName).href) as Record<string, any>;
   } finally {
@@ -140,7 +140,7 @@ describe("the Error heritage walk is total over every receiver shape", () => {
     }
   });
 
-  test("a non-Error throw of any shape is SMITHERS1103, never an unhandled failure", () => {
+  test("a non-Error throw of any shape is VIBE1103, never an unhandled failure", () => {
     // Each entry is `Object`-flagged or otherwise reached the walk. The verdict
     // is a POSITIONED diagnostic in every cell: the walk declining to climb a
     // shape without heritage is what lets the ordinary rule reach its answer.
@@ -164,13 +164,13 @@ describe("the Error heritage walk is total over every receiver shape", () => {
     };
     for (const [name, operand] of Object.entries(operands)) {
       const analysis = analyze(`export function main(): string { throw ${operand} }\n`, name);
-      expect({ [name]: codes(analysis) }).toEqual({ [name]: ["SMITHERS1103"] });
-      const reported = analysis.diagnostics.find((diagnostic) => diagnostic.code === "SMITHERS1103");
+      expect({ [name]: codes(analysis) }).toEqual({ [name]: ["VIBE1103"] });
+      const reported = analysis.diagnostics.find((diagnostic) => diagnostic.code === "VIBE1103");
       expect({ [name]: reported?.line }).toEqual({ [name]: 1 });
     }
   });
 
-  test("a named, aliased, mapped, or generic throw operand is still SMITHERS1103", () => {
+  test("a named, aliased, mapped, or generic throw operand is still VIBE1103", () => {
     const cases: Readonly<Record<string, string>> = {
       typeAliasValue: `type T = { a: number }\nexport function main(): string { const e: T = { a: 1 }\n  throw e }`,
       interfaceValue: `interface I { a: number }\nexport function main(): string { const e: I = { a: 1 }\n  throw e }`,
@@ -186,7 +186,7 @@ describe("the Error heritage walk is total over every receiver shape", () => {
       classMethod: `class K { m(): string { throw { a: 1 } } }\nexport function main(): string { return new K().m() }`,
     };
     for (const [name, source] of Object.entries(cases)) {
-      expect({ [name]: codes(analyze(source, name)) }).toEqual({ [name]: ["SMITHERS1103"] });
+      expect({ [name]: codes(analyze(source, name)) }).toEqual({ [name]: ["VIBE1103"] });
     }
   });
 
@@ -207,20 +207,23 @@ describe("the Error heritage walk is total over every receiver shape", () => {
       }
     `;
     const consumer = `
-      import { attempt, Timeout } from "./library.sm"
+      import { attempt, Timeout } from "./library.vibe"
       type FakeErr = { name: string; message: string }
       export function main(): Result<number, FakeErr | Timeout> {
         return attempt<number, FakeErr>(1, (): Result<number, FakeErr> => { throw { name: "n", message: "m" } })!
       }
     `;
     const analysis = analyzeProject([
-      { fileName: "library.sm", source: library },
-      { fileName: "consumer.sm", source: consumer },
+      { fileName: "library.vibe", source: library },
+      { fileName: "consumer.vibe", source: consumer },
     ], { rootDir: "/virtual/error-heritage-structural" });
     // The structural alias is not a nominal Error, so the throw inside the
     // callback is refused by the ordinary rule. What matters is that a
-    // POSITIONED diagnostic is what comes back at all.
-    expect(codes(analysis)).toEqual(["SMITHERS1103"]);
+    // POSITIONED diagnostic is what comes back at all. The native checker also
+    // refuses to publish FakeErr as a nominal instantiation of the failure row.
+    expect(codes(analysis)).toEqual(["VIBE1103", "VIBE1803"]);
+    expect(analysis.diagnostics.find(issue => issue.code === "VIBE1803")?.message)
+      .toContain("cannot be determined soundly");
     expect(analysis.diagnostics.every((diagnostic) => diagnostic.line > 0)).toBe(true);
   });
 
@@ -236,15 +239,15 @@ describe("the Error heritage walk is total over every receiver shape", () => {
       }
     `;
     const consumer = `
-      import { attempt, Timeout } from "./library.sm"
+      import { attempt, Timeout } from "./library.vibe"
       export class Missing extends Error {}
       export function main(): Result<number, Missing | Timeout> {
         return attempt<number, Missing>(1, (): Result<number, Missing> => { throw new Missing() })!
       }
     `;
     const analysis = analyzeProject([
-      { fileName: "library.sm", source: library },
-      { fileName: "consumer.sm", source: consumer },
+      { fileName: "library.vibe", source: library },
+      { fileName: "consumer.vibe", source: consumer },
     ], { rootDir: "/virtual/error-heritage-nominal" });
     expect(codes(analysis)).toEqual([]);
   });
@@ -261,19 +264,19 @@ describe("the genuine Error and Result rules the walk feeds still fire", () => {
       },
       missingCase: {
         source: `export function main(): string {\n  const e: A | B = new A()\n  return e.match({ A: () => "a" })\n}`,
-        expected: ["SMITHERS1253"],
+        expected: ["VIBE1253"],
       },
       extraCase: {
         source: `export function main(): string {\n  const e: A = new A()\n  return e.match({ A: () => "a", C: () => "c" })\n}`,
-        expected: ["SMITHERS1254"],
+        expected: ["VIBE1254"],
       },
       nonLiteralHandlers: {
         source: `const H = { A: () => "a" }\nexport function main(): string {\n  const e: A = new A()\n  return e.match(H)\n}`,
-        expected: ["SMITHERS1251"],
+        expected: ["VIBE1251"],
       },
       partialWithoutFallback: {
         source: `export function main(): string {\n  const e: A | B = new A()\n  return e.matchPartial({ A: () => "a" })\n}`,
-        expected: ["SMITHERS1255"],
+        expected: ["VIBE1255"],
       },
     };
     for (const [name, { source, expected }] of Object.entries(cases)) {
@@ -288,15 +291,15 @@ describe("the genuine Error and Result rules the walk feeds still fire", () => {
       `class E extends Error { match(): string { return "m" } }\nexport function main(): string {\n  return new E().match()\n}\n`,
       "error-subclass-match",
     );
-    expect(codes(analysis)).toEqual(["SMITHERS1251"]);
+    expect(codes(analysis)).toEqual(["VIBE1251"]);
   });
 
-  test("retired Result.unwrap() is still SMITHERS1206", () => {
+  test("retired Result.unwrap() is still VIBE1206", () => {
     const analysis = analyze(
       `export class Missing extends Error {}\nexport function lookup(k: string): Result<number, Missing> {\n  if (k === "") throw new Missing()\n  return 1\n}\nexport function main(): Result<number, Missing> { return lookup("a").unwrap() }\n`,
       "retired-unwrap",
     );
-    expect(codes(analysis)).toEqual(["SMITHERS1206"]);
+    expect(codes(analysis)).toEqual(["VIBE1206"]);
   });
 
   test("a user's own .match() executes, and a real Result.match still selects both variants", async () => {

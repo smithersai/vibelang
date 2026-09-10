@@ -64,7 +64,7 @@
 import { describe, expect, test } from "bun:test";
 import { analyzeProject } from "./index.ts";
 
-const CAPABILITY = `import { Context } from "smthrs/context"
+const CAPABILITY = `import { Context } from "vibelang/context"
 
 abstract class Db extends Context {
   abstract read(): string
@@ -77,7 +77,7 @@ interface Measured {
 }
 
 function measure(source: string): Measured {
-  const analysis = analyzeProject([{ fileName: "main.sm", source }], {
+  const analysis = analyzeProject([{ fileName: "main.vibe", source }], {
     rootDir: "/virtual/coercion-member-spellings",
   });
   const rows: Measured["rows"] = {};
@@ -196,7 +196,7 @@ const obj = holder.inner`,
     id: "a member on a frozen object",
     declaration:
       `const obj = Object.freeze({ valueOf(): number { return Db.context().read().length } })`,
-    unrelatedCodes: ["SMITHERS2102"],
+    unrelatedCodes: ["VIBE2102"],
   },
 ];
 
@@ -340,7 +340,7 @@ describe("a computed member name is charged to the scope that evaluates it", () 
   test("at module scope the same key has no row to charge and is refused", () => {
     const measured = measure(CAPABILITY + COMPUTED_KEY_HOLDER +
       `export const shape = { [obj as unknown as string]() { return 1 } }`);
-    expect(measured.codes).toContain("SMITHERS2102");
+    expect(measured.codes).toContain("VIBE2102");
   });
 
   test("the METHOD's own row is unaffected — the key is the enclosing scope's, the body is the method's", () => {
@@ -367,12 +367,24 @@ export function f(): number { const shape = { [key]() { return 1 } }; return Obj
     const measured = measure(CAPABILITY + `const obj = { valueOf(): number { return Db.context().read().length } }
 export function f(): number {
   const g = (n: number = +obj): number => n
+  return typeof g === "function" ? 1 : 0
+}`);
+    // Merely creating g does not execute its default. Its requirement must
+    // nevertheless remain attached to g for any subsequent invocation.
+    expect(measured.rows.f?.requirements).toEqual([]);
+    expect(measured.rows.g?.requirements).toEqual(["Db"]);
+  });
+
+  test("calling a function carries its parameter-default requirement", () => {
+    const measured = measure(CAPABILITY + `const obj = { valueOf(): number { return Db.context().read().length } }
+export function f(): number {
+  const g = (n: number = +obj): number => n
   return g(1)
 }`);
-    // Deliberately unclosed: a default runs when the function is CALLED. The
-    // point of the row here is that `evaluatedOutsideFunction` did not quietly
-    // claim it.
-    expect(measured.rows.f?.requirements).toEqual([]);
+    // Callable rows conservatively describe the function, not one argument
+    // combination. Supplying an argument cannot erase its declared effect.
+    expect(measured.rows.g?.requirements).toEqual(["Db"]);
+    expect(measured.rows.f?.requirements).toEqual(["Db"]);
   });
 });
 
@@ -426,7 +438,7 @@ export function f(): string { return (String)(obj) }`);
  * The row TRAVELS — it is recorded, not merely un-refused.
  *
  * Being refused at the coercion site would not show this. Handing the enclosing
- * function the WRONG layer has to draw `SMITHERS2101 "Layer.provide is missing
+ * function the WRONG layer has to draw `VIBE2101 "Layer.provide is missing
  * Db"`, exactly as the direct call spelling's row does, and handing it the RIGHT
  * one has to compile: measured end to end, each of these programs with the right
  * layer runs and prints its value (`arrow: 3`, `fnexpr: DBX`, `key: 1`,
@@ -463,8 +475,8 @@ const obj = { valueOf }`,
 ];
 
 describe("the coercion row reaches the Layer.provide site", () => {
-  const PRELUDE = `import { Context } from "smthrs/context"
-import { Layer } from "smthrs/provider"
+  const PRELUDE = `import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
 
 abstract class Db extends Context {
   abstract read(): string
@@ -493,7 +505,7 @@ function f(): number {
 }
 const log: Log = { write: () => "L" }
 export const v = Layer.provide(Layer.succeed(Log, log), () => f())`);
-      expect(measured.codes).toContain("SMITHERS2101");
+      expect(measured.codes).toContain("VIBE2101");
     });
   }
 });

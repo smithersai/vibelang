@@ -8,14 +8,14 @@
  *
  *     Layer.provide(Layer.succeed(Db, db) satisfies Layer<typeof Db>, () => f())
  *
- * was refused `SMITHERS2104` — "Layer expression is opaque" — while the
+ * was refused `VIBE2104` — "Layer expression is opaque" — while the
  * byte-identical program with the two erased words deleted was accepted, and
  * both emit the SAME JavaScript. Measured: the emitted `.mjs` of the two
  * programs is byte-identical and the accepted one runs and prints `v: 3`, so the
  * refusal was of a program that demonstrably works. `as`, `<T>x`,
  * `as unknown as T`, and every combination of them were refused the same way,
  * and a `Layer.provide` that genuinely lacked a capability answered with the
- * blunt `SMITHERS2104` instead of the `SMITHERS2101` that names the capability.
+ * blunt `VIBE2104` instead of the `VIBE2101` that names the capability.
  *
  * Enumerated as 18 spellings x (19 positions + 6 negative controls) = 450 cells.
  * 132 cells moved (10 layer positions x 13 wrapper spellings, plus the two
@@ -33,12 +33,12 @@
  *     says NOTHING about whether the binding under it can be reassigned, so a
  *     mutable layer is still opaque in all 18 spellings.
  *   * The opaque-expression rule. A conditional, a helper call, an array
- *     element and a spread are still `SMITHERS2104` in all 18 spellings,
+ *     element and a spread are still `VIBE2104` in all 18 spellings,
  *     including the direct one — the wrapper adds nothing either way.
  *
  * `!` is deliberately NOT a row that changes: `typeOnlyWrapperOperand` excludes
  * it because in this language `!` is Result propagation and not a type-level
- * operator, `SMITHERS1207` already refuses it on a non-Result, and a layer
+ * operator, `VIBE1207` already refuses it on a non-Result, and a layer
  * reached through one stays on the fail-closed path. `nonnull` and
  * `nonnull-over-satisfies` are in the table as the attribution controls that
  * prove the change is the TABLE and not "assertions are ignored".
@@ -53,8 +53,8 @@
 import { describe, expect, test } from "bun:test";
 import { analyzeProject } from "./index.ts";
 
-const HEAD = `import { Context } from "smthrs/context"
-import { Layer } from "smthrs/provider"
+const HEAD = `import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
 
 abstract class Db extends Context { abstract read(): string }
 abstract class Cfg extends Context { abstract n(): number }
@@ -67,7 +67,7 @@ function needsBoth(): string { Cfg.context().n(); return Db.context().read() }
 `;
 
 function codes(source: string): readonly string[] {
-  const analysis = analyzeProject([{ fileName: "main.sm", source }], { rootDir: "/virtual/layer-wrappers" });
+  const analysis = analyzeProject([{ fileName: "main.vibe", source }], { rootDir: "/virtual/layer-wrappers" });
   return analysis.diagnostics.filter((diagnostic) => diagnostic.severity === "error")
     .map((diagnostic) => diagnostic.code).sort();
 }
@@ -79,7 +79,7 @@ function codes(source: string): readonly string[] {
  * (TS1355, "A 'const' assertion can only be applied to references to enum
  * members, or string, number, boolean, array, or object literals"), so it is not
  * a spelling a layer can wear. Before the fix that TypeScript error was MASKED
- * by SMITHERS2104; it is visible now, which is the correct answer for it.
+ * by VIBE2104; it is visible now, which is the correct answer for it.
  */
 const TYPE_ONLY: readonly { readonly id: string; readonly wrap: (e: string, t: string) => string }[] = [
   { id: "direct", wrap: (e) => e },
@@ -149,11 +149,11 @@ const POSITIONS: readonly {
   // The direct spelling of each of these is ALREADY refused: the value is
   // genuinely opaque to this POC and no wrapper changes that in either
   // direction. They are here so a later loosening cannot ride in on a wrapper.
-  { id: "a layer returned from a helper (opaque, direct too)", type: LAYER_DB, expected: ["SMITHERS2104"],
+  { id: "a layer returned from a helper (opaque, direct too)", type: LAYER_DB, expected: ["VIBE2104"],
     body: (w) => `function mk(): ${LAYER_DB} { return ${w(SUCCEED, LAYER_DB)} }\nLayer.provide(mk(), () => needsDb())` },
-  { id: "a layer in an array element (opaque, direct too)", type: LAYER_DB, expected: ["SMITHERS2104"],
+  { id: "a layer in an array element (opaque, direct too)", type: LAYER_DB, expected: ["VIBE2104"],
     body: (w) => `const layers = [${w(SUCCEED, LAYER_DB)}]\nLayer.provide(layers[0], () => needsDb())` },
-  { id: "a layer spread into a merge (opaque, direct too)", type: LAYER_DB, expected: ["SMITHERS2104"],
+  { id: "a layer spread into a merge (opaque, direct too)", type: LAYER_DB, expected: ["VIBE2104"],
     body: (w) => `const layers = [${w(SUCCEED, LAYER_DB)}]\nLayer.provide(Layer.merge(...layers), () => needsDb())` },
 ];
 
@@ -190,15 +190,15 @@ describe("a mutable layer binding stays opaque through every wrapper", () => {
   ];
   for (const form of forms) {
     for (const wrapper of TYPE_ONLY) {
-      test(`${form.id} through \`${wrapper.id}\` is SMITHERS2104`, () => {
-        expect(codes(HEAD + form.body(wrapper.wrap(SUCCEED, MUTABLE)))).toEqual(["SMITHERS2104"]);
+      test(`${form.id} through \`${wrapper.id}\` is VIBE2104`, () => {
+        expect(codes(HEAD + form.body(wrapper.wrap(SUCCEED, MUTABLE)))).toEqual(["VIBE2104"]);
       });
     }
-    // `!` is refused on a non-Result in its own right, so it carries SMITHERS1207
+    // `!` is refused on a non-Result in its own right, so it carries VIBE1207
     // BESIDE the opacity refusal rather than instead of it.
     for (const wrapper of NON_NULL) {
-      test(`${form.id} through \`${wrapper.id}\` is SMITHERS2104 beside SMITHERS1207`, () => {
-        expect(codes(HEAD + form.body(wrapper.wrap(SUCCEED, MUTABLE)))).toEqual(["SMITHERS1207", "SMITHERS2104"]);
+      test(`${form.id} through \`${wrapper.id}\` is VIBE2104 beside VIBE1207`, () => {
+        expect(codes(HEAD + form.body(wrapper.wrap(SUCCEED, MUTABLE)))).toEqual(["VIBE1207", "VIBE2104"]);
       });
     }
   }
@@ -208,21 +208,21 @@ describe("a mutable layer binding stays opaque through every wrapper", () => {
  * The blunt refusal was hiding the precise one.
  *
  * `Layer.provide` over a layer that really is missing a capability must answer
- * SMITHERS2101 NAMING it. Every wrapped spelling answered SMITHERS2104
+ * VIBE2101 NAMING it. Every wrapped spelling answered VIBE2104
  * ("opaque") instead, which is a true statement about the old resolver and a
  * false one about the program.
  */
 describe("a Layer.provide missing a capability names it in every wrapper spelling", () => {
   for (const wrapper of TYPE_ONLY) {
-    test(`\`${wrapper.id}\` over a Cfg-only layer is SMITHERS2101, not SMITHERS2104`, () => {
+    test(`\`${wrapper.id}\` over a Cfg-only layer is VIBE2101, not VIBE2104`, () => {
       const source = HEAD + `Layer.provide(${wrapper.wrap("Layer.succeed(Cfg, cfg)", "Layer<typeof Cfg>")}, () => needsDb())`;
-      expect(codes(source)).toEqual(["SMITHERS2101"]);
+      expect(codes(source)).toEqual(["VIBE2101"]);
     });
   }
   for (const wrapper of NON_NULL) {
     test(`\`${wrapper.id}\` is NOT looked through and stays fail-closed`, () => {
       const source = HEAD + `Layer.provide(${wrapper.wrap("Layer.succeed(Cfg, cfg)", "Layer<typeof Cfg>")}, () => needsDb())`;
-      expect(codes(source)).toEqual(["SMITHERS1207", "SMITHERS2104"]);
+      expect(codes(source)).toEqual(["VIBE1207", "VIBE2104"]);
     });
   }
 });
@@ -234,7 +234,7 @@ describe("a Layer.provide missing a capability names it in every wrapper spellin
  * provides one of two different closures and the checker type reduces the two
  * to the first — so no wrapper over it may make it resolvable.
  */
-describe("a genuinely opaque layer expression stays SMITHERS2104", () => {
+describe("a genuinely opaque layer expression stays VIBE2104", () => {
   const opaque: readonly { readonly id: string; readonly expression: string; readonly extra: string }[] = [
     { id: "a conditional between two layers", expression: `flag ? ${SUCCEED} : Layer.succeed(Cfg, cfg)`, extra: `const flag: boolean = Boolean(1)\n` },
     { id: "a call to a local helper", expression: `mk()`, extra: `function mk(): ${LAYER_DB} { return ${SUCCEED} }\n` },
@@ -242,10 +242,10 @@ describe("a genuinely opaque layer expression stays SMITHERS2104", () => {
   ];
   for (const form of opaque) {
     for (const wrapper of [...TYPE_ONLY, ...NON_NULL]) {
-      test(`${form.id} through \`${wrapper.id}\` is still SMITHERS2104`, () => {
+      test(`${form.id} through \`${wrapper.id}\` is still VIBE2104`, () => {
         const wrapped = wrapper.wrap(`(${form.expression})`, "Layer<typeof Db | typeof Cfg>");
         const measured = codes(HEAD + form.extra + `Layer.provide(${wrapped}, () => needsDb())`);
-        expect(measured).toContain("SMITHERS2104");
+        expect(measured).toContain("VIBE2104");
       });
     }
   }

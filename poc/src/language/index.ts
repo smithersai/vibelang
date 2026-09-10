@@ -1,11 +1,11 @@
 export { analyzeProject, analyzeSource, parseErrors, parseFunctions } from "./analyze.ts";
-export { compileSmithers } from "./compile.ts";
+export { compileVibeLang } from "./compile.ts";
 export {
   FORBIDDEN_COMPILER_OPTIONS,
   isKnownCompilerOption,
   MANDATORY_CHECKER_OPTIONS,
   MANDATORY_COMPILER_OPTIONS,
-  validateSmithersTsconfig,
+  validateVibeLangTsconfig,
 } from "./compiler-options.ts";
 export type { CompilerOptionDiagnostic } from "./compiler-options.ts";
 export {
@@ -22,11 +22,11 @@ export {
   checkEmittedProject,
   checkEmittedTypeScript,
   compileAndCheckProject,
-  compileAndCheckSmithers,
-  createEmittedModuleResolver,
+  compileAndCheckVibeLang,
   DEFAULT_RUNTIME_IMPORT,
 } from "./validate.ts";
 export type { CompileOptions, CompileResult } from "./compile.ts";
+export type { EmittedDiagnostic } from "./generated-check.ts";
 export type {
   DeclarationEmitResult,
   DeclarationOutput,
@@ -43,14 +43,14 @@ export type {
   CheckedProjectCompileResult,
   EmittedModuleResolutionOptions,
 } from "./validate.ts";
-export { formatSmithersSource, isFormattedSmithersSource, smithersTokenAt } from "./format.ts";
-export { startSmithersLanguageServer } from "./lsp.ts";
+export { formatVibeLangSource, isFormattedVibeLangSource, vibelangTokenAt } from "./format.ts";
+export { startVibeLangLanguageServer } from "./lsp.ts";
 export type {
   FormatDiagnostic,
   FormatDiagnosticCode,
   FormatOptions,
   FormatResult,
-  SmithersToken,
+  VibeLangToken,
 } from "./format.ts";
 export type { LanguageServerHandle, LanguageServerOptions } from "./lsp.ts";
 export type {

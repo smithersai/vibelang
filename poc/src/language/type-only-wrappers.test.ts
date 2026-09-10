@@ -21,12 +21,12 @@
  * checked `ok: true` with `failures: []` and ZERO diagnostics, and threw
  * `Error: getter blew` at run time out of a function that says it cannot fail.
  * Ten such programs were measured, one per rule the laundering silenced:
- * SMITHERS1504 (foreign constructor, foreign tagged template), SMITHERS1506
+ * VIBE1504 (foreign constructor, foreign tagged template), VIBE1506
  * (property read, element access, optional chain, `for…of`, spread, template
  * interpolation, `+`, computed key, `instanceof`, destructuring),
- * SMITHERS1507/SMITHERS1101 (foreign callee), SMITHERS1508 (a foreign callable
+ * VIBE1507/VIBE1101 (foreign callee), VIBE1508 (a foreign callable
  * handed to a higher-order call, stored through a mutable binding, or returned)
- * and SMITHERS1509 (a callback handed to an untrusted host).
+ * and VIBE1509 (a callback handed to an untrusted host).
  *
  * `satisfies` is the purest laundering wrapper the grammar has: unlike `as` it
  * does not even change the expression's type, so nothing downstream — not the
@@ -39,7 +39,7 @@
  * The fix is `typeOnlyWrapperOperand`: ONE table, called by every value walk,
  * exactly as `valueBranches` is THE ONE TABLE for selecting operators. This
  * file is written as an EQUALITY table for that reason — the assertion is not
- * "the `satisfies` spelling reports SMITHERS1506" but "every type-only wrapper
+ * "the `satisfies` spelling reports VIBE1506" but "every type-only wrapper
  * answers exactly what the direct spelling answers, at every position". A new
  * wrapper is a new row, and a row that passes without a corresponding edit is
  * evidence the table is total rather than that the case was remembered.
@@ -55,7 +55,7 @@
  *     the type, so `getResolvedSignature` still resolves to the marked
  *     declaration and the `@throws {never}` claim still stands.
  *   * `as` and an explicit type ANNOTATION are the opposite case and are pinned
- *     as such: both replace the resolved declaration with a `.sm`-local type
+ *     as such: both replace the resolved declaration with a `.vibe`-local type
  *     node, so both erase the marker and both refuse. That difference is the
  *     whole reason `satisfies` cannot be treated as "a cast that returns its
  *     operand" — the two are the same for provenance and opposite for trust.
@@ -66,7 +66,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileAndCheckProject } from "./index.ts";
 
-const workspace = mkdtempSync(join(tmpdir(), "smithers-type-only-wrappers-"));
+const workspace = mkdtempSync(join(tmpdir(), "vibelang-type-only-wrappers-"));
 afterAll(() => rmSync(workspace, { recursive: true, force: true }));
 
 const RUNTIME = join(import.meta.dir, "../runtime/index.ts");
@@ -162,7 +162,7 @@ function measureTable(
     byLine.set(lines.length, label);
     byName.set(label, name);
   });
-  const fileName = join(workspace, `case-${sequence}.sm`);
+  const fileName = join(workspace, `case-${sequence}.vibe`);
   const checked = compileAndCheckProject([{ fileName, source: `${lines.join("\n")}\n` }], {
     rootDir: workspace,
     outDir: join(workspace, `out-${sequence}`),
@@ -234,7 +234,7 @@ const SELECTOR_WRAPPERS: readonly (readonly [string, Spelling])[] = [
   ["satisfies over the whole selection", (X, T, L) => `((${X} ?? ${L}) satisfies ${T})`],
   // A comma IS a selecting operator (its value is the right operand alone), so
   // it belongs here and not with the type-only wrappers: at a CALLEE position
-  // every selecting spelling adds SMITHERS1507, because the POC cannot emit an
+  // every selecting spelling adds VIBE1507, because the POC cannot emit an
   // order-safe lowering for a callee it cannot name.
   ["satisfies inside a comma", (X, T, L) => `((${L}, (${X} satisfies ${T})))`],
 ];
@@ -475,9 +475,9 @@ describe("a type-only wrapper cannot launder foreign provenance", () => {
  * The exact codes and rows for the ten programs that checked clean and threw a
  * raw host `Error` out of a function declared to return a plain type.
  *
- * Each was executed before the fix through `smithers run`, and each printed the
+ * Each was executed before the fix through `vibe run`, and each printed the
  * host's own message — `getter blew`, `ctor blew`, `tag blew`, `host blew up`,
- * `iter blew`, `toString blew` — with `exitCode 1`, while `smithers check`
+ * `iter blew`, `toString blew` — with `exitCode 1`, while `vibe check`
  * reported `ok: true` and zero diagnostics.
  */
 describe("the measured runtime escapes are refused", () => {
@@ -486,49 +486,49 @@ describe("the measured runtime escapes are refused", () => {
       "a property read behind satisfies",
       `import { client } from "./untrusted.ts"`,
       `return (client satisfies { readonly dangerous: string, m(): string }).dangerous`,
-      ["SMITHERS1101", "SMITHERS1506"],
+      ["VIBE1101", "VIBE1506"],
     ],
     [
       "a construction behind satisfies",
       `import { Ctor } from "./untrusted.ts"`,
       `const o = new (Ctor satisfies new (v: string) => { readonly v: string })("a"); return o.v`,
-      ["SMITHERS1101", "SMITHERS1504", "SMITHERS1506"],
+      ["VIBE1101", "VIBE1504", "VIBE1506"],
     ],
     [
       "a tagged template behind satisfies",
       `import { tag } from "./untrusted.ts"`,
       "return (tag satisfies (parts: TemplateStringsArray) => string)`x`",
-      ["SMITHERS1101", "SMITHERS1504"],
+      ["VIBE1101", "VIBE1504"],
     ],
     [
       "a callee behind satisfies",
       `import { call } from "./untrusted.ts"`,
       `return (call satisfies (value: string) => string)(v)`,
-      ["SMITHERS1101"],
+      ["VIBE1101"],
     ],
     [
       "an iteration behind satisfies",
       `import { iterable } from "./untrusted.ts"`,
       `let out = ""; for (const s of (iterable satisfies Iterable<string>)) { out = out + s } return out`,
-      ["SMITHERS1101", "SMITHERS1506"],
+      ["VIBE1101", "VIBE1506"],
     ],
     [
       "a coercion behind satisfies",
       `import { coercible } from "./untrusted.ts"`,
       "return `v${(coercible satisfies { toString(): string })}`",
-      ["SMITHERS1101", "SMITHERS1506"],
+      ["VIBE1101", "VIBE1506"],
     ],
     [
       "an object-literal property holding a satisfies",
       `import { client } from "./untrusted.ts"`,
       `const holder = { pick: client satisfies { readonly dangerous: string, m(): string } }; return holder.pick.dangerous`,
-      ["SMITHERS1101", "SMITHERS1506"],
+      ["VIBE1101", "VIBE1506"],
     ],
     [
       "an element access behind satisfies unknown",
       `import { client } from "./untrusted.ts"`,
       `return (client satisfies unknown)["dangerous"]`,
-      ["SMITHERS1101", "SMITHERS1506"],
+      ["VIBE1101", "VIBE1506"],
     ],
   ];
 
@@ -654,9 +654,12 @@ describe("legitimate programs through the same wrappers still compile", () => {
         ["satisfies twice", "return ((trustedTag satisfies " + TAG_T + ") satisfies unknown)`x`"],
         ["satisfies in ??", "return ((trustedTag satisfies " + TAG_T + ") ?? trustedTag2)`x`"],
         ["satisfies in ||", "return ((trustedTag satisfies " + TAG_T + ") || trustedTag2)`x`"],
-        ["satisfies in &&", "return (trustedTag2 && (trustedTag satisfies " + TAG_T + "))`x`"],
+        // The condition is a runtime boolean, not a definitely present function
+        // (which upstream correctly diagnoses TS2774). Both callable branches
+        // retain their own trusted declarations.
+        ["satisfies in &&", "return ((c && (trustedTag satisfies " + TAG_T + ")) || trustedTag2)`x`"],
         ["satisfies in a ternary", "return (c ? (trustedTag satisfies " + TAG_T + ") : trustedTag2)`x`"],
-        ["satisfies in a comma", "return ((trustedTag2, (trustedTag satisfies " + TAG_T + ")))`x`"],
+        ["satisfies in a comma", "return ((c = !c, (trustedTag satisfies " + TAG_T + ")))`x`"],
         ["satisfies against a local", "return ((trustedTag satisfies " + TAG_T + ") ?? localTag)`x`"],
         ["a const holding the satisfies", "const g = trustedTag satisfies " + TAG_T + "; return g`x`"],
         ["two const hops", "const a = trustedTag satisfies " + TAG_T + "; const b = a; return b`x`"],
@@ -687,7 +690,7 @@ describe("legitimate programs through the same wrappers still compile", () => {
   /**
    * `satisfies` and `as` are the same for PROVENANCE and opposite for TRUST.
    * `as` replaces the declaration `getResolvedSignature` resolves to with a
-   * `.sm`-local type node, which erases the `@throws {never}` marker; the same
+   * `.vibe`-local type node, which erases the `@throws {never}` marker; the same
    * is true of an explicit type annotation on a `const`. Both refuse, and both
    * refused before this change. If `satisfies` were ever implemented as "an
    * `as` that keeps the operand's type", this test is what would fail.
@@ -704,8 +707,8 @@ describe("legitimate programs through the same wrappers still compile", () => {
       ],
     );
     expect(table["satisfies keeps the marker"]!.codes).toEqual([]);
-    expect(table["as erases it"]!.codes).toEqual(["SMITHERS1101", "SMITHERS1504"]);
-    expect(table["an annotated const erases it"]!.codes).toEqual(["SMITHERS1101", "SMITHERS1504"]);
+    expect(table["as erases it"]!.codes).toEqual(["VIBE1101", "VIBE1504"]);
+    expect(table["an annotated const erases it"]!.codes).toEqual(["VIBE1101", "VIBE1504"]);
     // Composing the two answers what the `as` half answers, not what the
     // `satisfies` half answers: the erasure is the fail-closed direction.
     expect(table["satisfies then as erases it"]!.codes).toEqual(table["as erases it"]!.codes);
@@ -748,7 +751,7 @@ describe("a @throws {never} constructor is honoured where the checker can resolv
     // TypeScript attaches no JSDoc to a same-line member, so this constructor
     // carries no claim and is refused exactly like an unmarked one.
     expect(table["same-line marker"]!.codes).toEqual(table["no marker"]!.codes);
-    expect(table["no marker"]!.codes).toContain("SMITHERS1504");
+    expect(table["no marker"]!.codes).toContain("VIBE1504");
   });
 
   test("a type-only wrapper does not change the constructor verdict either way", () => {
@@ -764,6 +767,6 @@ describe("a @throws {never} constructor is honoured where the checker can resolv
     );
     expect(table["trusted, satisfies"]!.codes).toEqual(table["trusted, direct"]!.codes);
     expect(table["untrusted, satisfies"]!.codes).toEqual(table["untrusted, direct"]!.codes);
-    expect(table["untrusted, direct"]!.codes).toContain("SMITHERS1504");
+    expect(table["untrusted, direct"]!.codes).toContain("VIBE1504");
   });
 });

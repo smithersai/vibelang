@@ -49,7 +49,7 @@
 import { describe, expect, test } from "bun:test";
 import { analyzeProject } from "./index.ts";
 
-const CAPABILITY = `import { Context } from "smthrs/context"
+const CAPABILITY = `import { Context } from "vibelang/context"
 
 abstract class Db extends Context {
   abstract read(): string
@@ -70,7 +70,7 @@ interface Measured {
 }
 
 function measure(source: string): Measured {
-  const analysis = analyzeProject([{ fileName: "main.sm", source }], { rootDir: "/virtual/coercion-rows" });
+  const analysis = analyzeProject([{ fileName: "main.vibe", source }], { rootDir: "/virtual/coercion-rows" });
   const rows: Measured["rows"] = {};
   for (const file of Object.values(analysis.files)) {
     for (const [name, row] of Object.entries(file.rows)) rows[name] = row;
@@ -429,73 +429,64 @@ describe("an enumeration position charges the getters it runs", () => {
  * protocol method is refused at its own declaration, so there is no failure and
  * no must-consume obligation left at the coercion site to drop.
  *
- * That holds for a THROWING protocol method (SMITHERS1101) and for a
- * must-consume value coerced in place (SMITHERS1301). It does NOT hold for a
- * protocol method declared to return the compiler's `Result`; see the first
- * test below, which pins the gap rather than assuming it closed.
+ * A plain-returning method cannot throw recoverable failures (VIBE1101),
+ * and an explicit Result producer cannot be discarded by coercion (VIBE1301).
+ * The native checker also checks the implicit consumer: a method may return a
+ * Result for explicit callers, but coercion cannot consume it (VIBE1303).
  */
 describe("the failure and must-consume channels are closed at the protocol method", () => {
-  /**
-   * KNOWN GAP, measured rather than asserted away.
-   *
-   * This test read `import { Result } from "smthrs/result"` and expected
-   * SMITHERS1104. `smthrs/result` is the compiler-owned LOWERING TARGET, not a
-   * module an authored `.sm` imports from — the specifier does not resolve, and
-   * the program's real diagnostics are SMITHERS1508/1510 for the unresolvable,
-   * untrusted module. The 1104 came from somewhere else entirely: the channel
-   * was recognized by the SPELLING of the type, so an unresolved import binding
-   * named `Result` read as the compiler's `Result`. The test was green because
-   * of that defect, and it is the only test in the suite that was.
-   *
-   * With identity resolved through the prelude's `__smithersResult` brand
-   * (`semantic.ts`), the same program is still refused — SMITHERS1101 now, plus
-   * the two module diagnostics — so nothing opened here. What the A/B measured
-   * is that the describe block's premise above is FALSE for the compiler's own
-   * `Result`: a `valueOf` declared to return one is charged nothing, on the
-   * pre-change compiler and on this one alike (`[]` on both). The protocol
-   * method is NOT refused at its own declaration for the Result channel; only
-   * the throwing case is, by SMITHERS1101, and only because `valueOf(): number`
-   * cannot represent the failure.
-   *
-   * That gap is pre-existing and belongs to whoever owns the coercion rules, so
-   * it is pinned here rather than closed: both halves are asserted, so closing
-   * it turns this red instead of letting it drift.
-   */
-  test("a valueOf that returns a Result is not yet refused where it is declared", () => {
+  test("implicit coercion cannot discard a method's returned Result", () => {
     const authored = measure(`class Boom extends Error { readonly _tag = "Boom" as const }
-const obj = { valueOf(): Result<number, Boom> { return null as never } }
+const obj = { valueOf(): Result<number, Boom> { return 1 } }
 export function f(): number { return +obj }`);
-    expect(authored.codes).toEqual([]);
+    expect(authored.codes).toEqual(["VIBE1303"]);
 
-    // The retired import spelling is refused, and not for its return type.
-    const retired = measure(`import { Result } from "smthrs/result"
+    // The public introspection module does not export the old Result factory.
+    // The exact old program remains refused, independently of coercion rules.
+    const retired = measure(`import { Result } from "vibelang/result"
 
 class Boom extends Error { readonly _tag = "Boom" as const }
 const obj = { valueOf(): Result<number, Boom> { return Result.ok(1) } }
 export function f(): number { return +obj }`);
-    expect(retired.codes).toContain("SMITHERS1508");
-    expect(retired.codes).toContain("SMITHERS1510");
+    expect(retired.codes).toEqual(["TS2724"]);
+  });
+
+  test("implicit coercion cannot abandon a Promise, but an explicit awaited method is usable", () => {
+    const prefix = `const obj = { async valueOf(): Promise<number> { return 1 } };`;
+    expect(measure(prefix + `export function f():number{return +obj}`).codes).toEqual(["VIBE1404"]);
+    expect(measure(prefix + `export async function f():Promise<number>{return +(await obj.valueOf())}`).codes).toEqual([]);
+  });
+
+  test("a skipped coercion member and an explicitly consumed Result stay usable", () => {
+    const prefix = `class Boom extends Error{};const obj={valueOf():Result<number,Boom>{return 1}};`;
+    expect(measure(prefix + 'export function f():string{return `${obj}`}').codes).toEqual([]);
+    expect(measure(prefix + `export function f():number{return obj.valueOf().match({ok:value=>value,error:error=>0})}`).codes).toEqual([]);
+  });
+
+  test("JSON serialization does not invoke an ordinary object's conversion methods", () => {
+    const source = `class Boom extends Error{};const obj={toString():Result<string,Boom>{return "unused"}};export function f():string{return JSON.stringify(obj)}`;
+    const result = measure(source);
+    expect(result.codes).toEqual([]);
+    expect(result.rows.f?.requirements).toEqual([]);
   });
 
   test("a valueOf that throws is refused where it is declared", () => {
     const measured = measure(`class Boom extends Error { readonly _tag = "Boom" as const }
 const obj = { valueOf(): number { throw new Boom() } }
 export function f(): number { return +obj }`);
-    expect(measured.codes).toContain("SMITHERS1101");
+    expect(measured.codes).toContain("VIBE1101");
   });
 
   test("a must-consume value coerced in place is still refused", () => {
-    const measured = measure(`import { Result } from "smthrs/result"
-
-class Boom extends Error { readonly _tag = "Boom" as const }
-function fallible(): Result<number, Boom> { return Result.ok(1) }
+    const measured = measure(`class Boom extends Error { readonly _tag = "Boom" as const }
+function fallible(): Result<number, Boom> { return 1 }
 export function f(): number { return +fallible() }`);
-    expect(measured.codes).toContain("SMITHERS1301");
+    expect(measured.codes).toContain("VIBE1301");
   });
 
   test("a TOP-LEVEL coercion has no row to charge and is refused", () => {
     const measured = measure(CAPABILITY + VALUE_OF + `export const v = +obj`);
-    expect(measured.codes).toContain("SMITHERS2102");
+    expect(measured.codes).toContain("VIBE2102");
   });
 
   test("a coercion inside a function charges that function, not the module", () => {

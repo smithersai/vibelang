@@ -41,20 +41,20 @@ import { join } from "node:path";
 
 import { compileAndCheckProject } from "./index.ts";
 
-const workspace = mkdtempSync(join(tmpdir(), "smithers-host-global-allowlist-"));
+const workspace = mkdtempSync(join(tmpdir(), "vibelang-host-global-allowlist-"));
 afterAll(() => rmSync(workspace, { recursive: true, force: true }));
 
 const RUNTIME = join(import.meta.dir, "../runtime/index.ts");
 
 function check(source: string) {
-  return compileAndCheckProject([{ fileName: join(workspace, "case.sm"), source }], {
+  return compileAndCheckProject([{ fileName: join(workspace, "case.vibe"), source }], {
     rootDir: workspace,
     outDir: join(workspace, "out"),
     runtimeImport: RUNTIME,
   });
 }
 
-/** Language diagnostics over the authored `.sm`, as `CODE@line:column`. */
+/** Language diagnostics over the authored `.vibe`, as `CODE@line:column`. */
 function diagnose(source: string): string[] {
   return check(source).result.diagnostics
     .filter((diagnostic) => diagnostic.severity === "error")
@@ -100,51 +100,51 @@ describe("host globals outside the ECMAScript global object are refused", () => 
   const refused: readonly (readonly [string, string, string])[] = [
     // Aliases of the global object. Refusing `globalThis` while accepting
     // these refused nothing at all.
-    ["self", "self", "SMITHERS1601"],
-    ["top", "top", "SMITHERS1601"],
-    ["parent", "parent", "SMITHERS1601"],
-    ["frames", "frames", "SMITHERS1601"],
+    ["self", "self", "VIBE1601"],
+    ["top", "top", "VIBE1601"],
+    ["parent", "parent", "VIBE1601"],
+    ["frames", "frames", "VIBE1601"],
     // Network and threads: "filesystem, and network MUST NOT be unconditional
     // globals", and `fetch` was the only one of them the old rule knew.
-    ["XMLHttpRequest", "XMLHttpRequest", "SMITHERS1601"],
-    ["WebSocket", "WebSocket", "SMITHERS1601"],
-    ["EventSource", "EventSource", "SMITHERS1601"],
-    ["Worker", "Worker", "SMITHERS1601"],
+    ["XMLHttpRequest", "XMLHttpRequest", "VIBE1601"],
+    ["WebSocket", "WebSocket", "VIBE1601"],
+    ["EventSource", "EventSource", "VIBE1601"],
+    ["Worker", "Worker", "VIBE1601"],
     // Host identity and host-persistent state.
-    ["navigator", "navigator", "SMITHERS1601"],
-    ["location", "location", "SMITHERS1601"],
-    ["localStorage", "localStorage", "SMITHERS1601"],
-    ["sessionStorage", "sessionStorage", "SMITHERS1601"],
+    ["navigator", "navigator", "VIBE1601"],
+    ["location", "location", "VIBE1601"],
+    ["localStorage", "localStorage", "VIBE1601"],
+    ["sessionStorage", "sessionStorage", "VIBE1601"],
     // The Node global scope and the CommonJS module wrapper.
-    ["Buffer", "Buffer", "SMITHERS1601"],
-    ["global", "global", "SMITHERS1601"],
-    ["require", "require", "SMITHERS1601"],
-    ["module", "module", "SMITHERS1601"],
-    ["exports", "exports", "SMITHERS1601"],
-    ["__dirname", "__dirname", "SMITHERS1601"],
-    ["__filename", "__filename", "SMITHERS1601"],
-    ["setImmediate", "setImmediate", "SMITHERS1601"],
+    ["Buffer", "Buffer", "VIBE1601"],
+    ["global", "global", "VIBE1601"],
+    ["require", "require", "VIBE1601"],
+    ["module", "module", "VIBE1601"],
+    ["exports", "exports", "VIBE1601"],
+    ["__dirname", "__dirname", "VIBE1601"],
+    ["__filename", "__filename", "VIBE1601"],
+    ["setImmediate", "setImmediate", "VIBE1601"],
     // The same scheduling authority `setTimeout`/`setInterval` were refused for.
-    ["queueMicrotask", "queueMicrotask", "SMITHERS1601"],
-    ["clearTimeout", "clearTimeout", "SMITHERS1601"],
-    ["clearInterval", "clearInterval", "SMITHERS1601"],
+    ["queueMicrotask", "queueMicrotask", "VIBE1601"],
+    ["clearTimeout", "clearTimeout", "VIBE1601"],
+    ["clearInterval", "clearInterval", "VIBE1601"],
     // `structuredClone` can detach an `ArrayBuffer` through `{ transfer: [...] }`,
     // which falsifies `platform/host.ts`'s `fillRandomBytes` `@throws {never}`
     // claim: `getRandomValues` throws on a detached view.
-    ["structuredClone", "structuredClone", "SMITHERS1601"],
+    ["structuredClone", "structuredClone", "VIBE1601"],
     // Universally present, and still host APIs rather than language ones.
-    ["URL", "URL", "SMITHERS1601"],
-    ["TextEncoder", "TextEncoder", "SMITHERS1601"],
-    ["AbortController", "AbortController", "SMITHERS1601"],
+    ["URL", "URL", "VIBE1601"],
+    ["TextEncoder", "TextEncoder", "VIBE1601"],
+    ["AbortController", "AbortController", "VIBE1601"],
     // The eight the old rule already refused, so the inversion did not drop them.
-    ["process", "process", "SMITHERS1601"],
-    ["window", "window", "SMITHERS1601"],
-    ["document", "document", "SMITHERS1601"],
-    ["console", "console", "SMITHERS1601"],
-    ["fetch", "fetch", "SMITHERS1601"],
-    ["setTimeout", "setTimeout", "SMITHERS1601"],
-    ["setInterval", "setInterval", "SMITHERS1601"],
-    ["globalThis", "globalThis", "SMITHERS1601"],
+    ["process", "process", "VIBE1601"],
+    ["window", "window", "VIBE1601"],
+    ["document", "document", "VIBE1601"],
+    ["console", "console", "VIBE1601"],
+    ["fetch", "fetch", "VIBE1601"],
+    ["setTimeout", "setTimeout", "VIBE1601"],
+    ["setInterval", "setInterval", "VIBE1601"],
+    ["globalThis", "globalThis", "VIBE1601"],
   ];
 
   test("every one of them is refused, at the identifier that named it", () => {
@@ -164,11 +164,12 @@ describe("host globals outside the ECMAScript global object are refused", () => 
     // The rule reaches only names the ambient environment actually publishes,
     // plus the canonical host globals by name. An unresolved identifier is an
     // ordinary typo, and answering it with "ambient host global 'lenght' is
-    // unavailable" would be a worse diagnostic AND would preempt the honest
-    // one: a SMITHERS error stops the pipeline before the TypeScript check.
+    // unavailable" would misclassify it. Native analysis now includes the
+    // upstream TypeScript check, before exposing any generated program.
     const checked = check(reads("missingHelper"));
-    expect(diagnose(reads("missingHelper"))).toEqual([]);
-    expect(checked.emitDiagnostics.map((diagnostic) => `TS${diagnostic.code}`)).toEqual(["TS2304"]);
+    expect(diagnose(reads("missingHelper"))).toEqual(["TS2304@2:10"]);
+    expect(checked.result.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(["TS2304"]);
+    expect(Object.values(checked.result.files).every(file => file.code === "")).toBe(true);
     expect(checked.ok).toBe(false);
   });
 });
@@ -176,7 +177,7 @@ describe("host globals outside the ECMAScript global object are refused", () => 
 describe("the ECMAScript global object stays available", () => {
   /**
    * ECMA-262 clause 19, enumerated. This is the "too narrow" gate: if the
-   * allowlist loses a name, the whole `.sm` standard library loses it too.
+   * allowlist loses a name, the whole `.vibe` standard library loses it too.
    */
   const universal: readonly string[] = [
     "Infinity", "NaN", "undefined",
@@ -210,9 +211,11 @@ describe("the ECMAScript global object stays available", () => {
     "escape", "unescape",
   ];
 
-  test("every name in it compiles with no diagnostic at all", () => {
-    const observed = universal.map((name) => [name, diagnose(reads(name))]);
-    expect(observed).toEqual(universal.map((name) => [name, []]));
+  // Each entry is a complete independently checked project. Keep Bun's normal
+  // per-program timeout when checking crosses the native compiler boundary,
+  // rather than putting the whole global-object inventory under one timeout.
+  for (const name of universal) test(`the universal global ${name} compiles without a diagnostic`, () => {
+    expect(diagnose(reads(name))).toEqual([]);
   });
 
   test("and the operations an author actually writes still run through the checker", () => {
@@ -240,7 +243,7 @@ describe("the ECMAScript global object stays available", () => {
     // `Result` and `Panic` are published by a compiler-owned declaration file.
     // Classifying "declared in a .d.ts" as "the host publishes it" would have
     // refused every Result-returning module in the standard library.
-    expect(diagnose(`import { Panic } from "smithers:exceptions"
+    expect(diagnose(`import { Panic } from "vibelang:exceptions"
 
 function parse(text: string): Result<number, Panic> {
   return Result.try(() => Number.parseInt(text, 10))
@@ -263,8 +266,8 @@ describe("dynamic code evaluation is refused per operation, not by erasing the n
    * this rule existed, on BOTH backends, each with `failures: []
    * requirements: []` and zero diagnostics, each RUNNING:
    * `eval("process.platform")` -> `darwin`, `eval("Date.now()")` -> a wall-clock
-   * instant (where the direct spelling is SMITHERS1602),
-   * `eval("Math.random()")` -> randomness (SMITHERS1603 directly),
+   * instant (where the direct spelling is VIBE1602),
+   * `eval("Math.random()")` -> randomness (VIBE1603 directly),
    * `new Function("return process.platform")()` -> `darwin`, and
    * `eval("globalThis.process.platform")` -> `darwin`, which is the by-name
    * `globalThis` refusal defeated by one sibling spelling.
@@ -278,20 +281,20 @@ describe("dynamic code evaluation is refused per operation, not by erasing the n
    */
   test("every spelling that reaches the host through eval or Function is refused", () => {
     const escapes: readonly (readonly [string, string, string])[] = [
-      ["direct", `eval("process.platform")`, `SMITHERS1604${AT_ROOT}`],
-      ["wall clock", `eval("Date.now()")`, `SMITHERS1604${AT_ROOT}`],
-      ["randomness", `eval("Math.random()")`, `SMITHERS1604${AT_ROOT}`],
-      ["globalThis by another name", `eval("globalThis.process.platform")`, `SMITHERS1604${AT_ROOT}`],
-      ["indirect eval", `(0, eval)("process.platform")`, "SMITHERS1604@2:14"],
-      ["new Function", `new Function("return process.platform")()`, "SMITHERS1604@2:14"],
-      ["Function called", `(Function as any)("return process.platform")()`, "SMITHERS1604@2:11"],
-      ["Function.prototype.constructor", `Function.prototype.constructor`, `SMITHERS1604${AT_ROOT}`],
-      ["Reflect.construct", `Reflect.construct(Function, ["return 1"])`, "SMITHERS1604@2:28"],
-      ["Reflect.apply", `Reflect.apply(Function, undefined, ["return 1"])`, "SMITHERS1604@2:24"],
+      ["direct", `eval("process.platform")`, `VIBE1604${AT_ROOT}`],
+      ["wall clock", `eval("Date.now()")`, `VIBE1604${AT_ROOT}`],
+      ["randomness", `eval("Math.random()")`, `VIBE1604${AT_ROOT}`],
+      ["globalThis by another name", `eval("globalThis.process.platform")`, `VIBE1604${AT_ROOT}`],
+      ["indirect eval", `(0, eval)("process.platform")`, "VIBE1604@2:14"],
+      ["new Function", `new Function("return process.platform")()`, "VIBE1604@2:14"],
+      ["Function called", `(Function as any)("return process.platform")()`, "VIBE1604@2:11"],
+      ["Function.prototype.constructor", `Function.prototype.constructor`, `VIBE1604${AT_ROOT}`],
+      ["Reflect.construct", `Reflect.construct(Function, ["return 1"])`, "VIBE1604@2:28"],
+      ["Reflect.apply", `Reflect.apply(Function, undefined, ["return 1"])`, "VIBE1604@2:24"],
       // No name to key on: `(function () {}).constructor` IS the Function
       // constructor, and `new F("return process.platform")()` measured `darwin`.
-      ["a callable's own constructor", `(function () {}).constructor`, "SMITHERS1604@2:27"],
-      ["an arrow's own constructor", `(() => 1).constructor`, "SMITHERS1604@2:20"],
+      ["a callable's own constructor", `(function () {}).constructor`, "VIBE1604@2:27"],
+      ["an arrow's own constructor", `(() => 1).constructor`, "VIBE1604@2:20"],
     ];
     const observed = escapes.map(([name, expression]) => [name, diagnose(reads(expression))]);
     expect(observed).toEqual(escapes.map(([name, , code]) => [name, [code]]));
@@ -304,9 +307,9 @@ describe("dynamic code evaluation is refused per operation, not by erasing the n
     expect(diagnose("export function main(): boolean {\n  const f = (): number => 1\n  return f instanceof Function\n}\n")).toEqual([]);
     // `constructor instanceof Function` is the exact spelling
     // 20-host-globals/the-date-constructor-in-a-value-position-is-still-charged
-    // carries; it must keep charging SMITHERS1602 and nothing else.
+    // carries; it must keep charging VIBE1602 and nothing else.
     expect(diagnose("export function main(): string[] {\n  const constructor: object = Date as unknown as object\n  return [`${constructor instanceof Function}`]\n}\n"))
-      .toEqual(["SMITHERS1602@2:31"]);
+      .toEqual(["VIBE1602@2:31"]);
   });
 
   /**
@@ -319,7 +322,7 @@ describe("dynamic code evaluation is refused per operation, not by erasing the n
    * already applied to a dynamically selected member." MEASURED before this
    * landed: `(JSON as any).constructor` compiled with zero diagnostics and an
    * empty row, while the same selection on a resolved callable was
-   * `SMITHERS1604`. An `any` has neither call nor construct signatures, so the
+   * `VIBE1604`. An `any` has neither call nor construct signatures, so the
    * callability test answered "not callable" for the one receiver type about
    * which nothing is known.
    *
@@ -329,9 +332,9 @@ describe("dynamic code evaluation is refused per operation, not by erasing the n
    */
   test("a receiver typed `any` is treated as callable", () => {
     expect(diagnose("export function main(v: any): string {\n  return typeof v.constructor\n}\n"))
-      .toEqual(["SMITHERS1604@2:19"]);
+      .toEqual(["VIBE1604@2:19"]);
     expect(diagnose("export function main(): string {\n  return typeof (JSON as any).constructor\n}\n"))
-      .toEqual(["SMITHERS1604@2:31"]);
+      .toEqual(["VIBE1604@2:31"]);
   });
 
   /**
@@ -341,14 +344,12 @@ describe("dynamic code evaluation is refused per operation, not by erasing the n
    */
   test("a receiver typed `unknown` is refused by TypeScript, not by this rule", () => {
     const source = "export function main(v: unknown): string {\n  return typeof v.constructor\n}\n";
-    // No LANGUAGE diagnostic: this rule declines to answer, which is the claim.
-    expect(diagnose(source)).toEqual([]);
-    // And the program is still refused — by stock TypeScript, whose diagnostics
-    // reach `emitDiagnostics` rather than the language list `diagnose` reads.
-    // Asserting only the empty list above would have said "accepted".
+    // No VIBE diagnostic: the native TypeScript checker owns this refusal.
+    expect(diagnose(source)).toEqual(["TS18046@2:17"]);
     const checked = check(source);
     expect(checked.ok).toBe(false);
-    expect(checked.emitDiagnostics.length).toBeGreaterThan(0);
+    expect(checked.result.diagnostics.map(issue => issue.code)).toEqual(["TS18046"]);
+    expect(Object.values(checked.result.files).every(file => file.code === "")).toBe(true);
   });
 
   test("an ordinary value's `constructor` is not the Function constructor", () => {
@@ -380,14 +381,14 @@ describe("determinism-hostile globals are refused by name, with no capability of
    * rather than merely unmet — measured 2026-08-28, `new WeakRef(o).deref()` and
    * `new SharedArrayBuffer(8)` each compiled with zero diagnostics and an empty
    * requirement row, in the same file where the `Date.now()` control correctly
-   * reported SMITHERS1602.
+   * reported VIBE1602.
    *
-   * They get their OWN code rather than joining SMITHERS1601 because 1601's
+   * They get their OWN code rather than joining VIBE1601 because 1601's
    * message ends "access it through a Context capability" and the specification
    * rows say the opposite in as many words: "no capability can mediate it and no
    * journal entry can describe it". Answering a `WeakRef` with a remedy that
    * cannot exist is the "refusal wearing a costume" the `crypto` note in
-   * `semantic.ts` rejects by name. SMITHERS1604 is the precedent — dynamic code
+   * `semantic.ts` rejects by name. VIBE1604 is the precedent — dynamic code
    * evaluation is refused per operation, with its own reason, for the same
    * "there is no capability that could provide this" argument.
    */
@@ -398,13 +399,13 @@ describe("determinism-hostile globals are refused by name, with no capability of
     ["Atomics", "Atomics.load(new Int32Array(8), 0)"],
   ];
 
-  test("each of the four is refused as SMITHERS1605 at its own root identifier", () => {
+  test("each of the four is refused as VIBE1605 at its own root identifier", () => {
     const observed = hostile.map(([name, expression]) => [name, diagnose(reads(expression))]);
     expect(observed).toEqual([
-      ["WeakRef", ["SMITHERS1605@2:14"]],
-      ["FinalizationRegistry", ["SMITHERS1605@2:14"]],
-      ["SharedArrayBuffer", ["SMITHERS1605@2:14"]],
-      ["Atomics", [`SMITHERS1605${AT_ROOT}`]],
+      ["WeakRef", ["VIBE1605@2:14"]],
+      ["FinalizationRegistry", ["VIBE1605@2:14"]],
+      ["SharedArrayBuffer", ["VIBE1605@2:14"]],
+      ["Atomics", [`VIBE1605${AT_ROOT}`]],
     ]);
   });
 
@@ -452,10 +453,10 @@ describe("determinism-hostile globals are refused by name, with no capability of
 
 describe("host-sensitive operations are judged per operation, not per object", () => {
   test("the clock, the monotonic clock, and randomness still need their capability", () => {
-    expect(diagnose(reads("Date.now()"))).toEqual([`SMITHERS1602${AT_ROOT}`]);
-    expect(diagnose(reads("new Date()"))).toEqual(["SMITHERS1602@2:14"]);
-    expect(diagnose(reads("performance.now()"))).toEqual([`SMITHERS1602${AT_ROOT}`]);
-    expect(diagnose(reads("Math.random()"))).toEqual([`SMITHERS1603${AT_ROOT}`]);
+    expect(diagnose(reads("Date.now()"))).toEqual([`VIBE1602${AT_ROOT}`]);
+    expect(diagnose(reads("new Date()"))).toEqual(["VIBE1602@2:14"]);
+    expect(diagnose(reads("performance.now()"))).toEqual([`VIBE1602${AT_ROOT}`]);
+    expect(diagnose(reads("Math.random()"))).toEqual([`VIBE1603${AT_ROOT}`]);
   });
 
   test("a spread argument to `new Date` does not prove an instant was supplied", () => {
@@ -466,7 +467,7 @@ describe("host-sensitive operations are judged per operation, not per object", (
   const instant: readonly number[] = []
   return new Date(...(instant as [number])).getTime()
 }
-`)).toEqual(["SMITHERS1602@3:14"]);
+`)).toEqual(["VIBE1602@3:14"]);
   });
 
   test("an authored instant still constructs without a capability", () => {
@@ -481,8 +482,8 @@ describe("host-sensitive operations are judged per operation, not per object", (
     // fails closed: which call reads the clock depends on the arity of a call
     // on an instance, and `resolvedOptions().timeZone` reads the host zone with
     // no call at all.
-    expect(diagnose(reads("new Intl.DateTimeFormat(\"en-US\").format()"))).toEqual(["SMITHERS1602@2:14"]);
-    expect(diagnose(reads("Intl"))).toEqual([`SMITHERS1602${AT_ROOT}`]);
+    expect(diagnose(reads("new Intl.DateTimeFormat(\"en-US\").format()"))).toEqual(["VIBE1602@2:14"]);
+    expect(diagnose(reads("Intl"))).toEqual([`VIBE1602${AT_ROOT}`]);
   });
 
   test("the rest of Intl is not refused, and charges Locale instead", () => {
@@ -534,8 +535,7 @@ describe("host-sensitive operations are judged per operation, not per object", (
    * entire ICU surface with it — so the diagnostics are asserted empty as well
    * as the row asserted uniform.
    */
-  test("every ICU-backed member of row five answers identically", () => {
-    const icu: readonly string[] = [
+  const icu: readonly string[] = [
       // `Intl` namespace value members, minus `DateTimeFormat`, which is row
       // four's clock hazard rather than row five's locale one.
       "Intl.getCanonicalLocales(\"EN-us\")",
@@ -575,14 +575,12 @@ describe("host-sensitive operations are judged per operation, not per object", (
       "new BigInt64Array(2).toLocaleString()",
       "new BigUint64Array(2).toLocaleString()",
     ];
-    expect(icu.length).toBe(30);
-    // One answer for the whole class, so a member that diverges is named by the
-    // diff rather than hidden behind a per-expression assertion.
-    const rows = icu.map((expression) => [expression, requires(reads(expression))] as const);
-    expect(rows).toEqual(icu.map((expression) => [expression, ["Locale"]] as const));
-    // And not refused: row five charges, it does not refuse.
-    const refusals = icu.map((expression) => [expression, diagnose(reads(expression))] as const);
-    expect(refusals).toEqual(icu.map((expression) => [expression, []] as const));
+  test("row five enumerates all thirty ICU-backed members", () => { expect(icu.length).toBe(30); });
+  // Identical row and acceptance obligations for every member. A named case
+  // identifies a divergence directly and bounds each independent compilation.
+  for (const expression of icu) test(`row five charges Locale without refusing ${expression}`, () => {
+    expect(requires(reads(expression))).toEqual(["Locale"]);
+    expect(diagnose(reads(expression))).toEqual([]);
   });
 
   /**
@@ -590,9 +588,9 @@ describe("host-sensitive operations are judged per operation, not per object", (
    * ROOT IDENTIFIER only: `new Date(instant)` correctly returned an empty row —
    * the instant is authored — and no instance member was ever inspected after
    * it. So `new Date(0).getTimezoneOffset()` compiled clean in the same file
-   * where the `Date.now()` control reported `SMITHERS1602`.
+   * where the `Date.now()` control reported `VIBE1602`.
    *
-   * `SMITHERS1602` and not a new code, because it is the same refusal for the
+   * `VIBE1602` and not a new code, because it is the same refusal for the
    * same reason as `Date.now()`. Row four's verb is CHARGE `Clock`, and `Clock`
    * DOES have a source-language surface, so by `compatibility.mdx`'s own
    * reconciling criterion the ambient spelling is additionally refused and the
@@ -626,7 +624,7 @@ describe("host-sensitive operations are judged per operation, not per object", (
     // Reported at the MEMBER, not at the root: the root is `new Date(0)`, which
     // is legal, and pointing there would name the wrong operation.
     const observed = zoneReads.map((expression) => [expression, diagnose(reads(expression))] as const);
-    expect(observed).toEqual(zoneReads.map((expression) => [expression, ["SMITHERS1602@2:22"]] as const));
+    expect(observed).toEqual(zoneReads.map((expression) => [expression, ["VIBE1602@2:22"]] as const));
     // The refusal charges nothing, exactly as `Date.now()` charges nothing.
     expect(requires(reads("new Date(0).getHours()"))).toEqual([]);
   });

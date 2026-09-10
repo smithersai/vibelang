@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { resolve } from "node:path";
-import * as ts from "typescript-js";
+import { getNativeCompiler } from "../compiler/native.ts";
+import { checkEmittedProject } from "./generated-check.ts";
 import { compileProject, emitProjectDeclarations } from "./index.ts";
 
 /**
@@ -17,7 +18,7 @@ import { compileProject, emitProjectDeclarations } from "./index.ts";
  *
  *  1. `declarationRewrites` — the shipped declaration must be byte-identical to
  *     the declaration stock TypeScript emits for the same lowered module,
- *     except for the `@smithersEffects` lines Smithers adds and the exact
+ *     except for the `@vibelangEffects` lines VibeLang adds and the exact
  *     return-channel lines a case names. A future pass that rewrites anything
  *     else fails here even where nobody thought to write a case for it.
  *  2. `consumerDiagnostics` — a consumer program is type-checked AGAINST the
@@ -59,7 +60,7 @@ function emitBoth(sources: readonly AuthoredSource[], name: string): {
       code: file.code,
       ...(withRows ? { effects: file.analysis.rows } : {}),
     })));
-    expect(result.diagnostics.map((diagnostic) => diagnostic.messageText)).toEqual([]);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.message)).toEqual([]);
     expect(result.ok).toBe(true);
     return new Map(result.outputs.map((output) => [output.fileName, output.code]));
   };
@@ -68,11 +69,20 @@ function emitBoth(sources: readonly AuthoredSource[], name: string): {
 
 /** The declaration text with the compiler's own metadata lines removed. */
 function withoutEffectTags(code: string): readonly string[] {
-  return code.split("\n").filter((line) => !line.includes("@smithersEffects"));
+  // Tags can now sit on anonymous function types, so removing their entire
+  // line would also remove part of the API under test. Remove only compiler
+  // comments and normalize the whitespace those comments introduced. All
+  // declaration tokens and authored comments remain part of the comparison.
+  const text = code.replace(/\/\*\* @vibelang(?:Effects|Module) [^]*?\*\//g, "");
+  const formatted = getNativeCompiler().format({ text, fileName: "comparison.d.ts", newLine: "\n" });
+  expect(formatted.ok).toBe(true);
+  // Metadata-only lines disappear; every declaration token and authored
+  // comment remains in the comparison, now formatted by the native parser.
+  return formatted.code.split("\n").filter(line => line.trim() !== "");
 }
 
 /**
- * Every line the Smithers declaration pass changed, as `before -> after`. An
+ * Every line the VibeLang declaration pass changed, as `before -> after`. An
  * empty list means the shipped artifact is stock TypeScript's own output.
  */
 function declarationRewrites(shipped: ReadonlyMap<string, string>, raw: ReadonlyMap<string, string>): string[] {
@@ -80,7 +90,7 @@ function declarationRewrites(shipped: ReadonlyMap<string, string>, raw: Readonly
   expect([...shipped.keys()].sort()).toEqual([...raw.keys()].sort());
   for (const [fileName, code] of [...shipped].sort(([left], [right]) => (left < right ? -1 : 1))) {
     const after = withoutEffectTags(code);
-    const before = raw.get(fileName)!.split("\n");
+    const before = withoutEffectTags(raw.get(fileName)!);
     expect([fileName, after.length]).toEqual([fileName, before.length]);
     for (const [index, line] of after.entries()) {
       if (line !== before[index]) rewrites.push(`${before[index]!.trim()} -> ${line.trim()}`);
@@ -97,35 +107,9 @@ function declarationRewrites(shipped: ReadonlyMap<string, string>, raw: Readonly
 function consumerDiagnostics(declarations: ReadonlyMap<string, string>, consumer: string): readonly string[] {
   const entry = resolve(OUT_DIR, "consumer.mts");
   const virtual = new Map<string, string>([...declarations, [entry, consumer]]);
-  const options: ts.CompilerOptions = {
-    target: ts.ScriptTarget.ESNext,
-    module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
-    allowImportingTsExtensions: true,
-    noEmit: true,
-    skipLibCheck: true,
-    strict: true,
-  };
-  const host = ts.createCompilerHost(options, true);
-  const getSourceFile = host.getSourceFile.bind(host);
-  const fileExists = host.fileExists.bind(host);
-  const readFile = host.readFile.bind(host);
-  const directoryExists = host.directoryExists?.bind(host);
-  const realpath = host.realpath?.bind(host);
-  host.getSourceFile = (name, languageVersion, onError, shouldCreateNewSourceFile) => {
-    const code = virtual.get(resolve(name));
-    return code === undefined
-      ? getSourceFile(name, languageVersion, onError, shouldCreateNewSourceFile)
-      : ts.createSourceFile(resolve(name), code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  };
-  host.fileExists = (name) => virtual.has(resolve(name)) || fileExists(name);
-  host.readFile = (name) => virtual.get(resolve(name)) ?? readFile(name);
-  host.directoryExists = (name) => resolve(name) === resolve(OUT_DIR) || Boolean(directoryExists?.(name));
-  host.realpath = (name) => (virtual.has(resolve(name)) ? resolve(name) : realpath?.(name) ?? name);
-  const program = ts.createProgram({ rootNames: [entry], options, host });
-  return ts.getPreEmitDiagnostics(program)
-    .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)
-    .map((diagnostic) => `TS${diagnostic.code}`)
+  return checkEmittedProject([...virtual].map(([fileName, code]) => ({fileName, code, configuration: "typescript" as const})))
+    .filter((diagnostic) => diagnostic.category === "error")
+    .map((diagnostic) => diagnostic.code)
     .sort();
 }
 
@@ -171,16 +155,16 @@ const AUTHORED_RUNTIME_UNION = `
 `;
 
 test("an unrelated user type spelled Result is shipped exactly as authored", () => {
-  const { shipped, raw } = emitBoth([{ fileName: "main.sm", source: UNRELATED_USER_TYPE }], "unrelated");
+  const { shipped, raw } = emitBoth([{ fileName: "main.vibe", source: UNRELATED_USER_TYPE }], "unrelated");
   expect(declarationRewrites(shipped, raw)).toEqual([]);
   expect([...shipped.values()][0]).toContain(
     "export declare function run(input: User.Result<string, never> | User.Result<never, RangeError>):" +
-      " Result<number, Boom>;",
+      " __vsResultType<number, Boom>;",
   );
 });
 
 test("a consumer of that declaration still gets TS2345 on a wrong argument", () => {
-  const { shipped } = emitBoth([{ fileName: "main.sm", source: UNRELATED_USER_TYPE }], "unrelated-consumer");
+  const { shipped } = emitBoth([{ fileName: "main.vibe", source: UNRELATED_USER_TYPE }], "unrelated-consumer");
   // The authored union admits `<string, never>` and `<never, RangeError>` and
   // refuses the merged `<string, RangeError>`. A collapsed declaration accepts
   // all three and reports nothing at all — invisible to this repository.
@@ -195,16 +179,16 @@ test("a consumer of that declaration still gets TS2345 on a wrong argument", () 
 });
 
 test("an authored union of real runtime Results is shipped exactly as authored", () => {
-  const { shipped, raw } = emitBoth([{ fileName: "main.sm", source: AUTHORED_RUNTIME_UNION }], "authored-union");
+  const { shipped, raw } = emitBoth([{ fileName: "main.vibe", source: AUTHORED_RUNTIME_UNION }], "authored-union");
   expect(declarationRewrites(shipped, raw)).toEqual([]);
   expect([...shipped.values()][0]).toContain(
-    "export declare function pick(input: Result<string, ParseError> | Result<number, RangeError>):" +
-      " Result<string, ParseError>;",
+    "export declare function pick(input: __vsResultType<string, ParseError> | __vsResultType<number, RangeError>):" +
+      " __vsResultType<string, ParseError>;",
   );
 });
 
 test("a consumer of that declaration still gets TS2345 on a merged Result", () => {
-  const { shipped } = emitBoth([{ fileName: "main.sm", source: AUTHORED_RUNTIME_UNION }], "authored-union-consumer");
+  const { shipped } = emitBoth([{ fileName: "main.vibe", source: AUTHORED_RUNTIME_UNION }], "authored-union-consumer");
   const call = (argument: string) => `
     import { pick, type ParseError } from "./main.mjs"
     import type { Result } from ${JSON.stringify(RUNTIME)}
@@ -221,15 +205,15 @@ test("a consumer of that declaration still gets TS2345 on a merged Result", () =
 test("a namespace-qualified foreign type spelled Result is shipped exactly as authored", () => {
   const { shipped, raw } = emitBoth([
     {
-      fileName: "types.sm",
+      fileName: "types.vibe",
       source: `
         export interface Result<A, B> { readonly left: A; readonly right: B }
       `,
     },
     {
-      fileName: "main.sm",
+      fileName: "main.vibe",
       source: `
-        import type * as user from "./types.sm"
+        import type * as user from "./types.vibe"
         export class Boom extends Error {}
         export function run(
           input: user.Result<string, never> | user.Result<never, RangeError>
@@ -242,13 +226,13 @@ test("a namespace-qualified foreign type spelled Result is shipped exactly as au
   expect(declarationRewrites(shipped, raw)).toEqual([]);
   expect([...shipped].find(([name]) => name.endsWith("main.d.mts"))![1]).toContain(
     "export declare function run(input: user.Result<string, never> | user.Result<never, RangeError>):" +
-      " Result<number, Boom>;",
+      " __vsResultType<number, Boom>;",
   );
 });
 
-test("the compiler-generated channel is still collapsed, and only it", () => {
+test("the compiler-generated delimiter infers one Result without changing unrelated unions", () => {
   const { shipped, raw } = emitBoth([{
-    fileName: "main.sm",
+    fileName: "main.vibe",
     source: `
       export class Missing extends Error {}
       // Not exported, so the checker infers the split channel rather than
@@ -266,16 +250,17 @@ test("the compiler-generated channel is still collapsed, and only it", () => {
   const runtime = JSON.stringify(RUNTIME).slice(1, -1);
   const parameters = "input: Map<string, never> | Map<never, Missing>, id: string";
   const success = "Map<string, never> | Map<never, Missing>";
-  expect(declarationRewrites(shipped, raw)).toEqual([
-    `declare function inner(${parameters}): import("${runtime}").Result<never, Missing> |` +
-      ` import("${runtime}").Result<${success}, never>;` +
-      ` -> declare function inner(${parameters}): import("${runtime}").Result<${success}, Missing>;`,
-  ]);
+  expect(declarationRewrites(shipped, raw)).toEqual([]);
+  for (const declarations of [raw, shipped]) {
+    expect([...declarations.values()].join("\n")).toContain(
+      `declare function inner(${parameters}): import("${runtime}").Result<${success}, Missing>;`,
+    );
+  }
 });
 
 test("a consumer reads the collapsed channel as one Result", () => {
   const { shipped } = emitBoth([{
-    fileName: "main.sm",
+    fileName: "main.vibe",
     source: `
       export class Missing extends Error {}
       function inner(id: string) {
@@ -296,4 +281,27 @@ test("a consumer reads the collapsed channel as one Result", () => {
     declare const sink: (value: string) => void
     sink(load("id"))
   `)).toEqual(["TS2345"]);
+});
+
+test("an inferred function's declaration retains errors issued by propagation requests", () => {
+  const { shipped } = emitBoth([{
+    fileName: "main.vibe",
+    source: `
+      export class Missing extends Error {}
+      export class Invalid extends Error {}
+      function read(n: number): Result<number, Missing> { if (n < 0) throw new Missing(); return n }
+      function validate(n: number): Result<number, Invalid> { if (n === 0) throw new Invalid(); return n }
+      function inner(n: number) { return read(n)! + validate(n)! }
+      export const load = inner
+    `,
+  }], "propagated-inference");
+  const declaration = [...shipped.values()].join("\n");
+  expect(declaration).not.toContain("AbortRequest");
+  expect(declaration).not.toContain("Resumable");
+  expect(consumerDiagnostics(shipped, `
+    import { load, Missing, Invalid } from "./main.mjs";
+    import type { Result } from ${JSON.stringify(RUNTIME)};
+    const valid: Result<number, Missing | Invalid> = load(1);
+    const invalid: Result<number, never> = load(1);
+  `)).toEqual(["TS2322"]);
 });

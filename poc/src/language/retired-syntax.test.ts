@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { analyzeSource } from "./analyze.ts";
-import { compileSmithers } from "./compile.ts";
+import { compileVibeLang } from "./compile.ts";
 import { checkEmittedTypeScript } from "./validate.ts";
 
 /**
@@ -15,7 +15,7 @@ import { checkEmittedTypeScript } from "./validate.ts";
  *    ordinary position compiles clean, and (where it has runtime meaning) is
  *    executed so the "legal" claim is proven rather than asserted;
  *  - a POSITIVE row: the genuinely retired spelling is still refused with
- *    SMITHERS1001 at the exact authored line and column.
+ *    VIBE1001 at the exact authored line and column.
  *
  * A rejection that is too broad is its own bug, and so is a fix that stops
  * rejecting real retired syntax.
@@ -26,7 +26,7 @@ const examples = `${import.meta.dir}/../../examples/language`;
 function retired(source: string) {
   return analyzeSource(source)
     .diagnostics
-    .filter((diagnostic) => diagnostic.code === "SMITHERS1001" || diagnostic.code === "SMITHERS1000")
+    .filter((diagnostic) => diagnostic.code === "VIBE1001" || diagnostic.code === "VIBE1000")
     .map((diagnostic) => `${diagnostic.code}@${diagnostic.line}:${diagnostic.column}`);
 }
 
@@ -40,21 +40,21 @@ function errorCodes(source: string) {
 /** Compile, type-check the emitted TypeScript, and run `main()`. */
 async function runModule(source: string, name: string) {
   const options = {
-    fileName: `${examples}/${name}.sm`,
+    fileName: `${examples}/${name}.vibe`,
     outputFileName: `${examples}/${name}.generated.ts`,
-    sourceName: `examples/language/${name}.sm`,
+    sourceName: `examples/language/${name}.vibe`,
   };
-  const checked = compileSmithers(source, { ...options, runtimeImport: "../../src/runtime/index.ts" });
+  const checked = compileVibeLang(source, { ...options, runtimeImport: "../../src/runtime/index.ts" });
   expect(checked.analysis.diagnostics.filter((diagnostic) => diagnostic.severity === "error")).toEqual([]);
   expect(checkEmittedTypeScript(checked.code, options.outputFileName)
-    .filter((diagnostic) => diagnostic.category === 1)).toEqual([]);
+    .filter((diagnostic) => diagnostic.category === "error")).toEqual([]);
 
-  const executable = compileSmithers(source, {
+  const executable = compileVibeLang(source, {
     ...options,
     runtimeImport: pathToFileURL(`${import.meta.dir}/../runtime/index.ts`).href,
   });
   const javascript = new Bun.Transpiler({ loader: "ts", target: "bun" }).transformSync(executable.code);
-  const directory = await mkdtemp(join(tmpdir(), "smithers-retired-"));
+  const directory = await mkdtemp(join(tmpdir(), "vibelang-retired-"));
   try {
     const modulePath = join(directory, `${name}.mjs`);
     await writeFile(modulePath, javascript);
@@ -74,7 +74,7 @@ describe("retired syntax is recognized by grammar shape, not token adjacency", (
     // The reproduction. `try` and `catch` are ECMAScript reserved words, so an
     // occurrence that is neither statement-form nor an operator with operands
     // is always a property name. Testing only the preceding token reported
-    // both of these as retired Smithers grammar.
+    // both of these as retired VibeLang grammar.
     const source = `
 export function main(): string[] {
   const adapter = { try: (value: number): number => value + 1, catch: (): string => "handled" }
@@ -135,7 +135,7 @@ export async function run(): Promise<string> {
     expect(retired(source)).toEqual([]);
     // Reporting this as retired grammar would send the author to entirely the
     // wrong migration, so the codes are pinned, not merely their absence.
-    expect(errorCodes(source)).toContain("SMITHERS1401");
+    expect(errorCodes(source)).toContain("VIBE1401");
   });
 
   test("the retired prefix `try` marker is still refused at the marker", () => {
@@ -143,21 +143,21 @@ export async function run(): Promise<string> {
     expect(retired(`
 function compute(key: string): string { return key }
 const name = try compute("ada")
-`)).toEqual(["SMITHERS1001@3:14"]);
+`)).toEqual(["VIBE1001@3:14"]);
   });
 
   test("the retired postfix `catch` expression is still refused at the keyword", () => {
     expect(retired(`
 function compute(key: string): string { return key }
 const name = compute("zoe") catch "Guest"
-`)).toEqual(["SMITHERS1001@3:29"]);
+`)).toEqual(["VIBE1001@3:29"]);
   });
 
   test("both retired markers survive together, each at its own position", () => {
     expect(retired(`
 declare const db: { read(): string }
 const value = try db.read() catch "none"
-`)).toEqual(["SMITHERS1001@3:15", "SMITHERS1001@3:29"]);
+`)).toEqual(["VIBE1001@3:15", "VIBE1001@3:29"]);
   });
 
   // ------------------------------------------------------------------
@@ -194,7 +194,7 @@ export function main(): string[] {
     expect(retired(`
 function lookup(id: number): string | undefined { return id === 1 ? "Ada" : undefined }
 const name = lookup(1) orelse "Guest"
-`)).toEqual(["SMITHERS1001@3:24"]);
+`)).toEqual(["VIBE1001@3:24"]);
   });
 
   // ------------------------------------------------------------------
@@ -218,8 +218,8 @@ const name = lookup(1) orelse "Guest"
   });
 
   test("the retired `error Name {}` declaration is still refused at the keyword", () => {
-    expect(retired(`error Missing {}\n`)).toEqual(["SMITHERS1001@1:1"]);
-    expect(retired(`error Missing { id: string }\n`)).toEqual(["SMITHERS1001@1:1"]);
+    expect(retired(`error Missing {}\n`)).toEqual(["VIBE1001@1:1"]);
+    expect(retired(`error Missing { id: string }\n`)).toEqual(["VIBE1001@1:1"]);
   });
 
   // ------------------------------------------------------------------
@@ -248,13 +248,13 @@ class Missing extends Error {}
 export function lookup(key: string): string throws Missing {
   return "Ada Lovelace"
 }
-`)).toEqual(["SMITHERS1001@3:45"]);
+`)).toEqual(["VIBE1001@3:45"]);
     expect(retired(`
 declare const Clock: unknown
 export function stamp(): number uses Clock {
   return 7
 }
-`)).toEqual(["SMITHERS1001@3:33"]);
+`)).toEqual(["VIBE1001@3:33"]);
   });
 
   // ------------------------------------------------------------------
@@ -288,12 +288,12 @@ export function lookup(key: string): !string {
   if (key !== "ada") throw new Missing(key)
   return "Ada Lovelace"
 }
-`)).toEqual(["SMITHERS1001@3:38"]);
+`)).toEqual(["VIBE1001@3:38"]);
     expect(retired(`export function lookup(id: number): ?string {\n  return null\n}\n`))
-      .toEqual(["SMITHERS1001@1:37"]);
+      .toEqual(["VIBE1001@1:37"]);
     // The `!?T` pair reports both markers, each at its own column.
     expect(retired(`export function lookup(id: number): !?string {\n  return null\n}\n`))
-      .toEqual(["SMITHERS1001@1:37", "SMITHERS1001@1:38"]);
+      .toEqual(["VIBE1001@1:37", "VIBE1001@1:38"]);
   });
 
   test("an ordinary optional/ternary `?` is not the `?T` marker", () => {
@@ -330,7 +330,7 @@ export function lookup(key: string): !string {
     expect(retired(`
 function lookup(id: number): string | undefined { return id === 1 ? "Ada" : undefined }
 const name = lookup(1).?
-`)).toEqual(["SMITHERS1001@3:23"]);
+`)).toEqual(["VIBE1001@3:23"]);
   });
 
   // ------------------------------------------------------------------
@@ -361,7 +361,7 @@ const name = lookup(1).?
   // throw is not an expression
   // ------------------------------------------------------------------
 
-  test("statement `throw` is legal and expression `throw` is SMITHERS1000", () => {
+  test("statement `throw` is legal and expression `throw` is VIBE1000", () => {
     expect(retired(`
 class Missing extends Error {}
 export function lookup(key: string): Result<string, Missing> {
@@ -375,7 +375,7 @@ export function lookup(key: string): Result<string, Missing> {
   const name = key === "ada" ? "Ada Lovelace" : throw new Missing(key)
   return name
 }
-`)).toEqual(["SMITHERS1000@4:49"]);
+`)).toEqual(["VIBE1000@4:49"]);
   });
 
   // ------------------------------------------------------------------
@@ -401,7 +401,7 @@ export function lookup(key: string): Result<string, Missing> {
     ];
     for (const [label, body] of rows) {
       const codes = retired(body);
-      expect(`${label}: ${codes.some((code) => code.startsWith("SMITHERS1001")) ? "refused" : codes.join(",")}`)
+      expect(`${label}: ${codes.some((code) => code.startsWith("VIBE1001")) ? "refused" : codes.join(",")}`)
         .toBe(`${label}: refused`);
     }
     // Retired clauses on arrows and methods are not claimed by the migration
@@ -411,7 +411,7 @@ export function lookup(key: string): Result<string, Missing> {
       `class Missing extends Error {}\nconst f = (k: string): string throws Missing => k`,
       `class Missing extends Error {}\nclass A { look(k: string): string throws Missing { return k } }`,
     ]) {
-      expect(retired(body).every((code) => code.startsWith("SMITHERS1000"))).toBe(true);
+      expect(retired(body).every((code) => code.startsWith("VIBE1000"))).toBe(true);
       expect(retired(body).length).toBeGreaterThan(0);
     }
   });
@@ -429,7 +429,7 @@ export function lookup(key: string): Result<string, Missing> {
       const value = old() catch "fallback"
     `)
       .diagnostics
-      .filter((diagnostic) => diagnostic.code === "SMITHERS1001")
+      .filter((diagnostic) => diagnostic.code === "VIBE1001")
       .map((diagnostic) => diagnostic.message)
       .join("\n");
     expect(messages).toContain("historical `error Name {}`");

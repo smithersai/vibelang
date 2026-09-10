@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { analyzeSource } from "./analyze.ts";
-import { compileSmithers } from "./compile.ts";
-import { buildSemanticModel, COMPILER_INTRINSIC_SPECIFIERS } from "./semantic.ts";
+import { analyzeSource, analyzeProject } from "./analyze.ts";
+import { compileVibeLang } from "./compile.ts";
+import { COMPILER_INTRINSIC_SPECIFIERS } from "./compiler-modules.ts";
 
 /**
  * Recognizing a compiler construct by the SPELLING of a type instead of by the
@@ -11,34 +11,34 @@ import { buildSemanticModel, COMPILER_INTRINSIC_SPECIFIERS } from "./semantic.ts
  * identity decides a function's channel, and each of the four was decided by a
  * bare name: `nominalTypeName` (`aliasSymbol.getName() ?? getSymbol().getName()`,
  * with no declaring-file check) for the first three, and membership of the
- * literal row string `"Panic"` for the fourth. A `.sm` author who declares a
+ * literal row string `"Panic"` for the fourth. A `.vibe` author who declares a
  * type of the same name gets the compiler's answer for their own type, and an
  * author who spells the compiler's own type through a `type` alias gets the
  * opposite mistake.
  *
  * Both directions ship. The name-only reading of `Result` injects
  * `__vsResultSuccess` into a function that returns a user struct, and charges
- * SMITHERS1301 against a caller that merely reads a field off it; the name-only
+ * VIBE1301 against a caller that merely reads a field off it; the name-only
  * reading of `Panic` materializes a real `panic()` as a value inside a failure
  * row that contains only the author's own `Panic`, which is exactly the
  * fail-open `panicMaterializes` is documented to prevent.
  *
  * The sound mechanism was already in this file five times over
  * (`isCompilerPrelude`, at 4832/5013/5072/5723/6323/6524) and the prelude
- * already declares a `__smithersResult` brand for precisely this question. Each
+ * already declares a `__vibelangResult` brand for precisely this question. Each
  * case below was RED on the name-only reading; the `negative control` cases pin
  * the compiler's own constructs so a fix cannot buy soundness by ceasing to
  * recognize them.
  */
 
-const FILE = "/virtual/identity.sm";
+const FILE = "/virtual/identity.vibe";
 
 function analyze(source: string) {
   return analyzeSource(source, { fileName: FILE });
 }
 
 function emit(source: string): string {
-  return compileSmithers(source, { fileName: FILE, sourceMap: false }).code;
+  return compileVibeLang(source, { fileName: FILE, sourceMap: false }).code;
 }
 
 function codes(source: string): readonly string[] {
@@ -53,7 +53,7 @@ function channelOf(source: string, name: string): string | undefined {
 // Result: a user type spelled `Result` is not the compiler's channel.
 // ---------------------------------------------------------------------------
 
-/** A plain user struct. Nothing here is a Smithers channel. */
+/** A plain user struct. Nothing here is a VibeLang channel. */
 const USER_RESULT_STRUCT = `
 interface Result<A, E> { readonly value: A; readonly other: E }
 function make(): Result<string, number> { return { value: "x", other: 1 } }
@@ -68,7 +68,7 @@ test("a user type spelled Result is not lowered as the compiler's channel", () =
 });
 
 test("reading a field off a user type spelled Result is not an unconsumed Result", () => {
-  // RED: SMITHERS1301 "Result value is not consumed" against `make().value`.
+  // RED: VIBE1301 "Result value is not consumed" against `make().value`.
   expect(codes(USER_RESULT_STRUCT)).toEqual([]);
 });
 
@@ -79,17 +79,17 @@ class Result<A, E> { constructor(readonly a: A, readonly e: E) {} }
 export function make(): Result<string, MyErr> { return new Result("x", new MyErr()) }
 `;
   // RED: the constructor body became `{ return __vsResultSuccess(undefined); }`
-  // and SMITHERS1105 was charged against a class the compiler does not own.
+  // and VIBE1105 was charged against a class the compiler does not own.
   expect(emit(source)).not.toContain("__vsResultSuccess");
-  expect(codes(source)).not.toContain("SMITHERS1105");
+  expect(codes(source)).not.toContain("VIBE1105");
 });
 
 test("the brand alone does not confer the channel; only the prelude's brand does", () => {
-  // A user may spell `__smithersResult` themselves. The brand is evidence only
+  // A user may spell `__vibelangResult` themselves. The brand is evidence only
   // when the property RESOLVES to the prelude's declaration of it.
   const source = `
 class Missing extends Error {}
-interface Result<A, E> { readonly __smithersResult: { readonly success: A; readonly error: E } }
+interface Result<A, E> { readonly __vibelangResult: { readonly success: A; readonly error: E } }
 export function make(): Result<string, Missing> { return null as never }
 `;
   expect(emit(source)).not.toContain("__vsResultSuccess");
@@ -173,9 +173,9 @@ export function go(): void { throw new Boom("x") }
   // RED: `isErrorType` matched the name, so `throw new Boom("x")` lifted into a
   // failure channel and the emit became `return __vsResultFailure(new
   // Boom("x"))` inside a function declared `: void`. A throw of a non-Error is
-  // SMITHERS1103; recognizing it as an Error is a fail-open.
+  // VIBE1103; recognizing it as an Error is a fail-open.
   expect(emit(source)).not.toContain("__vsResultFailure");
-  expect(codes(source)).toContain("SMITHERS1103");
+  expect(codes(source)).toContain("VIBE1103");
 });
 
 test("negative control: a real Error subclass is still a recoverable failure", () => {
@@ -212,13 +212,13 @@ export function force(k: string): Result<string, Panic> {
 `;
   // RED: `panicMaterializes` asked `owner.failures.has("Panic")`, the row string
   // the author's own class also mints, and emitted
-  // `return __vsResultFailure(__vsPanicValue("boom"))`. That places a runtime
+  // `return __vsResultFailure(new __vsPanicType("boom"))`. That places a runtime
   // panic value in a channel whose only declared member is the author's
   // `Panic`, so a caller's exhaustive `match`/`is(Panic)` does not recognize it
   // — the exact fail-open the `panicMaterializes` comment says it prevents.
   const code = emit(source);
-  expect(code).toContain("throw __vsPanicValue(\"boom\")");
-  expect(code).not.toContain("__vsResultFailure(__vsPanicValue(\"boom\"))");
+  expect(code).toContain("throw new __vsPanicType(\"boom\")");
+  expect(code).not.toContain("__vsResultFailure(new __vsPanicType(\"boom\"))");
 });
 
 test("negative control: a real panic() still materializes into a row holding the compiler's Panic", () => {
@@ -228,7 +228,7 @@ export function force(k: string): Result<string, Panic> {
   return k
 }
 `;
-  expect(emit(source)).toContain("__vsResultFailure(__vsPanicValue(\"boom\"))");
+  expect(emit(source)).toContain("__vsResultFailure(new __vsPanicType(\"boom\"))");
 });
 
 test("negative control: a panic in a plain-channel function still unwinds", () => {
@@ -238,7 +238,7 @@ export function force(k: string): string {
   return k
 }
 `;
-  expect(emit(source)).toContain("throw __vsPanicValue(\"boom\")");
+  expect(emit(source)).toContain("throw new __vsPanicType(\"boom\")");
 });
 
 // ---------------------------------------------------------------------------
@@ -259,43 +259,34 @@ export function go(): number { Db.context(); return 1 }
   expect(analyze(userContext).rows["go"]?.requirements).toEqual([]);
 
   const realContext = `
-import { Context } from "smthrs/context";
+import { Context } from "vibelang/context";
 class Db extends Context {}
 export function go(): number { Db.context(); return 1 }
 `;
   expect(analyze(realContext).rows["go"]?.requirements).toEqual(["Db"]);
 });
 
-test("fence: every module the prelude declares is a compiler-intrinsic specifier", () => {
-  // `resolvedModuleSourceFile` skips declarations that live in the prelude,
-  // because resolving an authored `import ... from "smithers:exceptions"` to the
-  // prelude's own `declare module` would hand the SMITHERS1510 module-trust pass
-  // a `.d.ts` with no `@throws {never}` marker and refuse the compiler's own
-  // prelude. Nothing reaches that state today only because all three call sites
-  // filter compiler-intrinsic specifiers out FIRST. That makes this list
-  // containment the real fence, so it is asserted rather than assumed: add a
-  // `declare module` to the prelude without adding it here and this goes red
-  // instead of the compiler refusing itself.
-  const model = buildSemanticModel(`export function f(): number { return 1 }`, { fileName: FILE });
-  const prelude = model.program.getSourceFiles()
-    .find((file) => file.fileName.endsWith("__smithers_frontend_prelude__.d.ts"));
-  expect(prelude).toBeDefined();
-
-  const declared = [...prelude!.text.matchAll(/declare module "([^"]+)"/g)].map((match) => match[1]!);
-  expect(declared.length).toBeGreaterThan(0);
-  for (const specifier of declared) {
-    expect([specifier, COMPILER_INTRINSIC_SPECIFIERS.has(specifier)]).toEqual([specifier, true]);
+test("fence: the declaration-only bridge is not an authored intrinsic", () => {
+  // The native prelude inventory and resolved-symbol/absolute-path fence are
+  // exercised by TestNativeInvariantCompilerModuleIdentity, without exposing
+  // another compiler's Program/AST to this test driver.
+  const specifier = "vibelang:declaration-types";
+  expect(COMPILER_INTRINSIC_SPECIFIERS.has(specifier)).toBe(false);
+  for (const source of [
+    `import { Context } from "${specifier}"; export class C extends Context {}`,
+    `export type R = import("${specifier}").Result<number, never>`,
+    `export { Context } from "${specifier}"`,
+  ]) {
+    expect(codes(source)).toContain("VIBE1810");
   }
 });
 
-test("fence: the prelude is identified by an absolute path, not by the bare file name", () => {
-  // `PRELUDE_NAME` is a bare basename and every prelude source file is created
-  // with `resolve(<dir>, PRELUDE_NAME)`. A guard spelled `fileName !==
-  // PRELUDE_NAME` is therefore vacuous — it can never be equal, so it never
-  // excludes anything. This pins the fact that makes `endsWith`/`isCompilerPrelude`
-  // the only correct spelling.
-  const model = buildSemanticModel(`export function f(): number { return 1 }`, { fileName: FILE });
-  const prelude = model.program.getSourceFiles()
-    .find((file) => file.fileName.endsWith("__smithers_frontend_prelude__.d.ts"));
-  expect(prelude!.fileName).not.toBe("__smithers_frontend_prelude__.d.ts");
+test("fence: a same-basename authored module does not acquire the compiler prelude's identity", () => {
+  const analysis = analyzeProject([
+    { fileName: "user/__vibelang_prelude.vibe", source: "export interface Result<A, E> { readonly value: A; readonly other: E }" },
+    { fileName: "identity.vibe", source: `import type { Result } from "./user/__vibelang_prelude.vibe";
+      export function make(): Result<number, string> { return { value: 1, other: "a" } }` },
+  ], { rootDir: "/virtual" });
+  expect(analysis.diagnostics).toEqual([]);
+  expect(analysis.files["identity.vibe"]!.functions.find(fn => fn.name === "make")?.channel).toBe("plain");
 });

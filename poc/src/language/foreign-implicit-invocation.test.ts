@@ -54,7 +54,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileAndCheckProject } from "./index.ts";
 
-const workspace = mkdtempSync(join(tmpdir(), "smithers-foreign-implicit-"));
+const workspace = mkdtempSync(join(tmpdir(), "vibelang-foreign-implicit-"));
 afterAll(() => rmSync(workspace, { recursive: true, force: true }));
 
 const RUNTIME = join(import.meta.dir, "../runtime/index.ts");
@@ -233,7 +233,7 @@ interface Compiled {
 let sequence = 0;
 function compile(source: string): Compiled {
   sequence += 1;
-  const fileName = join(workspace, `case-${sequence}.sm`);
+  const fileName = join(workspace, `case-${sequence}.vibe`);
   const checked = compileAndCheckProject([{ fileName, source }], {
     rootDir: workspace,
     outDir: join(workspace, "out"),
@@ -286,8 +286,8 @@ describe("an implicit invocation of a foreign value keeps the checked panic case
       const compiled = compile(`import { iterable, spreadable, stringy } from "./untrusted.ts"
 export function f(): number { ${form.body} }
 `);
-      expect(compiled.codes).toContain("SMITHERS1506");
-      expect(compiled.codes).toContain("SMITHERS1101");
+      expect(compiled.codes).toContain("VIBE1506");
+      expect(compiled.codes).toContain("VIBE1101");
       expect(compiled.rows.f?.failures).toEqual(["Panic"]);
     });
   }
@@ -296,7 +296,7 @@ export function f(): number { ${form.body} }
     const compiled = compile(`import { asyncIterable } from "./untrusted.ts"
 export async function f(): Promise<number> { let t = 0; for await (const n of asyncIterable) t += n; return t }
 `);
-    expect(compiled.codes).toContain("SMITHERS1506");
+    expect(compiled.codes).toContain("VIBE1506");
     expect(compiled.rows.f?.failures).toEqual(["Panic"]);
   });
 
@@ -304,7 +304,7 @@ export async function f(): Promise<number> { let t = 0; for await (const n of as
     const compiled = compile(`import { iterable } from "./untrusted.ts"
 export function* f(): Generator<number> { yield* iterable }
 `);
-    expect(compiled.codes).toContain("SMITHERS1506");
+    expect(compiled.codes).toContain("VIBE1506");
   });
 
   /**
@@ -321,7 +321,7 @@ export function* f(): Generator<number> { yield* iterable }
     const compiled = compile(`import { counter } from "./untrusted.ts"
 export function f(): number { return counter.k++ }
 `);
-    expect(compiled.codes).toContain("SMITHERS1506");
+    expect(compiled.codes).toContain("VIBE1506");
     expect(compiled.rows.f?.failures).toEqual(["Panic"]);
   });
 
@@ -329,7 +329,7 @@ export function f(): number { return counter.k++ }
     const compiled = compile(`import { HasInstance } from "./untrusted.ts"
 export function f(v: unknown): number { return (v instanceof HasInstance) ? 1 : 0 }
 `);
-    expect(compiled.codes).toContain("SMITHERS1506");
+    expect(compiled.codes).toContain("VIBE1506");
     expect(compiled.rows.f?.failures).toEqual(["Panic"]);
   });
 });
@@ -339,7 +339,7 @@ describe("a call-like foreign form with no call expression is refused", () => {
     const compiled = compile(`import { tag } from "./untrusted.ts"
 export function f(): string { return tag\`hello \${1}\` }
 `);
-    expect(compiled.codes).toContain("SMITHERS1504");
+    expect(compiled.codes).toContain("VIBE1504");
     expect(compiled.rows.f?.failures).toEqual(["Panic"]);
   });
 
@@ -348,7 +348,7 @@ export function f(): string { return tag\`hello \${1}\` }
 class Derived extends BoomBase {}
 export function f(): Derived { return new Derived() }
 `);
-    expect(compiled.codes).toContain("SMITHERS1504");
+    expect(compiled.codes).toContain("VIBE1504");
     expect(compiled.rows.f?.failures).toEqual(["Panic"]);
   });
 
@@ -358,7 +358,7 @@ class Mid extends BoomBase {}
 class Leaf extends Mid {}
 export function f(): Leaf { return new Leaf() }
 `);
-    expect(compiled.codes).toContain("SMITHERS1504");
+    expect(compiled.codes).toContain("VIBE1504");
   });
 
   /**
@@ -390,7 +390,7 @@ export function f(): number { return new Derived(1).n }
 @boomDecorator
 export class Decorated {}
 `);
-    expect(compiled.codes).toContain("SMITHERS1504");
+    expect(compiled.codes).toContain("VIBE1504");
   });
 
   test("a TRUSTED tag is still accepted — the refusal is about trust, not about the syntax", () => {
@@ -406,7 +406,7 @@ export function f(): string { return trustedTag\`hello \${1}\` }
 import { stringy } from "./untrusted.ts"
 export function f(): string { return trustedTag\`hello \${stringy}\` }
 `);
-    expect(compiled.codes).toContain("SMITHERS1508");
+    expect(compiled.codes).toContain("VIBE1508");
   });
 });
 
@@ -468,7 +468,7 @@ describe("a TRUSTED synchronous binding keeps its trust in every implicit positi
     const compiled = compile(`import { giveIterable } from "./trusted.ts"
 export function f(): number { let t = 0; for (const n of giveIterable()) t += n; return t }
 `);
-    expect(compiled.codes).toContain("SMITHERS1506");
+    expect(compiled.codes).toContain("VIBE1506");
     expect(compiled.rows.f?.failures).toEqual(["Panic"]);
   });
 });
@@ -493,7 +493,7 @@ describe("@throws {never} cannot describe a rejection channel", () => {
       const compiled = compile(
         `import { giveAsync, givePromise, givePromiseLike, asyncArrow, giveUnionPromise, giveThenable } from "./trusted.ts"\n${form.source}\n`,
       );
-      expect(compiled.codes).toContain("SMITHERS1502");
+      expect(compiled.codes).toContain("VIBE1502");
       expect(compiled.rows.f?.failures).toEqual(["Panic"]);
     });
   }
@@ -502,7 +502,7 @@ describe("@throws {never} cannot describe a rejection channel", () => {
     const compiled = compile(`import { untrustedAsync } from "./trusted.ts"
 export async function f(): Promise<string> { return await untrustedAsync() }
 `);
-    expect(compiled.codes).not.toContain("SMITHERS1502");
+    expect(compiled.codes).not.toContain("VIBE1502");
     expect(compiled.rows.f?.failures).toEqual(["Panic"]);
   });
 
@@ -510,7 +510,7 @@ export async function f(): Promise<string> { return await untrustedAsync() }
     const compiled = compile(`import { untrustedPromise } from "./trusted.ts"
 export async function f(): Promise<string> { return await untrustedPromise() }
 `);
-    expect(compiled.codes).not.toContain("SMITHERS1502");
+    expect(compiled.codes).not.toContain("VIBE1502");
     expect(compiled.rows.f?.failures).toEqual(["Panic"]);
   });
 
@@ -518,7 +518,7 @@ export async function f(): Promise<string> { return await untrustedPromise() }
     const compiled = compile(`import { declaredAsync } from "./trusted.ts"
 export async function f(): Promise<string> { return await declaredAsync() }
 `);
-    expect(compiled.codes).not.toContain("SMITHERS1502");
+    expect(compiled.codes).not.toContain("VIBE1502");
     expect(compiled.rows.f?.failures).toEqual(["Panic", "TypeError"]);
   });
 });
@@ -536,7 +536,7 @@ describe("a trust claim belongs to the resolved signature, not to the symbol", (
       const compiled = compile(
         `import { readValue, ambient, Box, api } from "./overloads.ts"\n${form.source}\n`,
       );
-      expect(compiled.codes).toContain("SMITHERS1101");
+      expect(compiled.codes).toContain("VIBE1101");
       expect(compiled.rows.f?.failures).toEqual(["Panic"]);
     });
   }
@@ -572,8 +572,8 @@ export function f(): string { return neverFirst() }
     const second = compile(`import { declaredFirst } from "./overloads.ts"
 export function f(): string { return declaredFirst() }
 `);
-    expect(first.codes).toContain("SMITHERS1502");
-    expect(second.codes).toContain("SMITHERS1502");
+    expect(first.codes).toContain("VIBE1502");
+    expect(second.codes).toContain("VIBE1502");
     expect(first.rows.f?.failures).toEqual(["Panic"]);
     expect(second.rows.f?.failures).toEqual(["Panic"]);
   });
@@ -631,7 +631,7 @@ describe("a selecting operator carries its operands' foreign provenance", () => 
 function localTag(strings: TemplateStringsArray, ...v: readonly unknown[]): string { return strings.raw.join("") + String(v.length) }
 export function f(flag: boolean): string { return ${form.callee}\`x\` }
 `);
-      expect(compiled.codes).toContain("SMITHERS1504");
+      expect(compiled.codes).toContain("VIBE1504");
     });
   }
 
@@ -640,7 +640,7 @@ export function f(flag: boolean): string { return ${form.callee}\`x\` }
 declare const other: { toString(): string }
 export function f(): string { return (stringy ?? other).toString() }
 `);
-    expect(compiled.codes).toContain("SMITHERS1101");
+    expect(compiled.codes).toContain("VIBE1101");
     expect(compiled.rows.f?.failures).toEqual(["Panic"]);
   });
 
@@ -648,14 +648,14 @@ export function f(): string { return (stringy ?? other).toString() }
     const compiled = compile(`import { BoomBase } from "./untrusted.ts"
 export function f(): unknown { return new (BoomBase ?? BoomBase)() }
 `);
-    expect(compiled.codes).toContain("SMITHERS1504");
+    expect(compiled.codes).toContain("VIBE1504");
   });
 
   test("a foreign property read is still refused behind ??", () => {
     const compiled = compile(`import { spreadable } from "./untrusted.ts"
 export function f(): number { return (spreadable ?? spreadable).a }
 `);
-    expect(compiled.codes).toContain("SMITHERS1506");
+    expect(compiled.codes).toContain("VIBE1506");
   });
 
   // The negative half: the same three operators over values that are not
@@ -677,7 +677,7 @@ export function f(): string { return (h ?? g)() }`,
   }
 
   /**
-   * A trusted foreign callee selected at RUNTIME is refused by SMITHERS1507 —
+   * A trusted foreign callee selected at RUNTIME is refused by VIBE1507 —
    * the POC cannot emit an expression-order-safe lowering for a callee it cannot
    * name — and that was already true of the ternary and the comma before `??`
    * joined the table. The point of sharing one table is that the five spellings
@@ -691,7 +691,7 @@ export function f(): string { return (h ?? g)() }`,
     expect(spelling(`return giveString()`)).toEqual([]);
     expect(spelling(`return (giveString)()`)).toEqual([]);
     const ternary = spelling(`return (flag ? giveString : giveString)()`);
-    expect(ternary).toEqual(["SMITHERS1507"]);
+    expect(ternary).toEqual(["VIBE1507"]);
     for (const selected of [
       `return (giveString ?? giveString)()`,
       `return (giveString || giveString)()`,

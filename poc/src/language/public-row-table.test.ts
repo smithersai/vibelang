@@ -6,15 +6,15 @@ import { annotateDeclarationEffects } from "./declarations.ts";
 //
 // `Analysis.rows` is keyed by a function's public name and is what
 // `annotateDeclarationEffects` (`./declarations.ts`) stamps into an emitted
-// `.d.mts` as `@smithersEffects`. Both sites that build it did so with
+// `.d.mts` as `@vibelangEffects`. Both sites that build it did so with
 // `rows[fn.publicName] = …` inside a loop — last writer wins over a key that is
 // not unique, because `collectFunctions` puts the `#2` disambiguator on `name`
 // and leaves `publicName` as the bare base name.
 //
 // WHY A DIFFERENTIAL TEST COULD NOT HAVE FOUND THIS. There is nothing to
-// differ: the Go fork's row analysis has no `publicName` and emits no row table,
-// so no cross-backend comparison touches this value at all. The assertion is
-// direct — it says what the row must BE.
+// differ in the original oracle: it exposed no public row table. The native
+// analysis API now publishes addressable declarations and these same tests
+// exercise its public projection. The assertion says what the row must BE.
 //
 // RED BEFORE THE FIX, measured on the shipped code with zero diagnostics:
 //
@@ -22,12 +22,12 @@ import { annotateDeclarationEffects } from "./declarations.ts";
 //
 // and the emitted declaration for the exported `work` — the one that fails with
 // `Boom` — carried
-// `@smithersEffects {"version":1,"failures":["Bang"],"requirements":[]}`. Not a
+// `@vibelangEffects {"version":1,"failures":["Bang"],"requirements":[]}`. Not a
 // lost row: a WRONG artifact, checked against by a downstream module.
 
 const twoClaimants = (functionFirst: boolean): string => {
-  const declaration = `export function work(): Result<number, Boom> { return fail(new Boom()) }`;
-  const holder = `export class Holder {\n  work(): Result<number, Bang> { return fail(new Bang()) }\n}`;
+  const declaration = `export function work(): Result<number, Boom> { throw new Boom() }`;
+  const holder = `export class Holder {\n  work(): Result<number, Bang> { throw new Bang() }\n}`;
   return `
 class Boom extends Error { constructor() { super("b") } }
 class Bang extends Error { constructor() { super("g") } }
@@ -37,7 +37,7 @@ ${functionFirst ? `${declaration}\n${holder}` : `${holder}\n${declaration}`}
 
 test("a method cannot take the row of the module-scope function it shares a name with", () => {
   for (const functionFirst of [true, false]) {
-    const analysis = analyzeSource(twoClaimants(functionFirst), { fileName: "a.sm" });
+    const analysis = analyzeSource(twoClaimants(functionFirst), { fileName: "a.vibe" });
     expect(analysis.diagnostics).toEqual([]);
     // The winner is chosen by ADDRESSABILITY, not by source order: only the
     // module-scope declaration has a name `./declarations.ts` can look up.
@@ -48,13 +48,13 @@ test("a method cannot take the row of the module-scope function it shares a name
 });
 
 test("the emitted declaration carries the module-scope function's own row", () => {
-  const analysis = analyzeSource(twoClaimants(true), { fileName: "a.sm" });
+  const analysis = analyzeSource(twoClaimants(true), { fileName: "a.vibe" });
   const emitted = annotateDeclarationEffects(
     `export declare function work(): Result<number, Boom>;\nexport declare class Holder { work(): Result<number, Bang>; }\n`,
     analysis.rows,
     "a.d.mts",
   );
-  expect(emitted).toContain(`@smithersEffects {"version":1,"failures":["Boom"],"requirements":[]}`);
+  expect(emitted).toContain(`@vibelangEffects {"version":2,"failures":["Boom"],"requirements":[],"convention":"eager"}`);
   expect(emitted).not.toContain(`"failures":["Bang"]`);
 });
 
@@ -64,11 +64,11 @@ test("a module-scope function-valued const owns its name too", () => {
 class Boom extends Error { constructor() { super("b") } }
 class Bang extends Error { constructor() { super("g") } }
 export class Holder {
-  work(): Result<number, Bang> { return fail(new Bang()) }
+  work(): Result<number, Bang> { throw new Bang() }
 }
-export const work = (): Result<number, Boom> => fail(new Boom())
+export const work = (): Result<number, Boom> => { throw new Boom() }
 `,
-    { fileName: "a.sm" },
+    { fileName: "a.vibe" },
   );
   expect(analysis.diagnostics).toEqual([]);
   expect(analysis.rows.work).toEqual({ failures: ["Boom"], requirements: [] });
@@ -79,13 +79,13 @@ test("a function nested inside another function cannot take a module-scope row",
     `
 class Boom extends Error { constructor() { super("b") } }
 class Bang extends Error { constructor() { super("g") } }
-export function work(): Result<number, Boom> { return fail(new Boom()) }
+export function work(): Result<number, Boom> { throw new Boom() }
 export function outer(): number {
-  function work(): Result<number, Bang> { return fail(new Bang()) }
+  function work(): Result<number, Bang> { throw new Bang() }
   return 1
 }
 `,
-    { fileName: "a.sm" },
+    { fileName: "a.vibe" },
   );
   expect(analysis.diagnostics).toEqual([]);
   expect(analysis.rows.work).toEqual({ failures: ["Boom"], requirements: [] });
@@ -100,10 +100,10 @@ test("a name no module-scope declaration claims keeps a row rather than none", (
     `
 class Bang extends Error { constructor() { super("g") } }
 export class Holder {
-  work(): Result<number, Bang> { return fail(new Bang()) }
+  work(): Result<number, Bang> { throw new Bang() }
 }
 `,
-    { fileName: "a.sm" },
+    { fileName: "a.vibe" },
   );
   expect(analysis.diagnostics).toEqual([]);
   expect(analysis.rows.work).toEqual({ failures: ["Bang"], requirements: [] });

@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
-import * as ts from "typescript-js";
-import { compileSmithers } from "./compile.ts";
-import { composeSourceMaps, createPreciseSourceMap } from "./source-map.ts";
+import { getNativeCompiler } from "../compiler/native.ts";
+import { compileVibeLang } from "./compile.ts";
+import { compileProject } from "./project-compile.ts";
+import { composeSourceMaps, createPreciseSourceMap, originalPosition } from "./source-map.ts";
 
 const BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const BASE64_VALUE = new Map([...BASE64].map((character, index) => [character, index]));
@@ -137,6 +138,26 @@ function encodeTestMappings(mappings: readonly DecodedSegment[]): string {
   return lines.join(";");
 }
 
+test("single-coordinate lookup preserves offsets, source roots and unmapped glue", () => {
+  const wire = JSON.stringify({ version: 3, sources: ["flow.vibe"], sourceRoot: "src", names: [],
+    mappings: encodeTestMappings([
+      { generatedLine: 0, generatedColumn: 3, source: 0, originalLine: 2, originalColumn: 8 },
+      { generatedLine: 0, generatedColumn: 9 },
+      { generatedLine: 2, generatedColumn: 0, source: 0, originalLine: 4, originalColumn: 1 },
+    ]),
+  });
+  expect(originalPosition(wire, 0, 2)).toBeUndefined();
+  expect(originalPosition(wire, 0, 5)).toEqual({ source: "src/flow.vibe", line: 2, column: 10 });
+  expect(originalPosition(wire, 0, 9)).toBeUndefined();
+  expect(originalPosition(wire, 1, 3)).toBeUndefined();
+  expect(originalPosition(wire, 2, 0)).toEqual({ source: "src/flow.vibe", line: 4, column: 1 });
+  for (const coordinate of [-1, 0.5, NaN, Infinity]) {
+    expect(() => originalPosition(wire, coordinate, 0)).toThrow(TypeError);
+    expect(() => originalPosition(wire, 0, coordinate)).toThrow(TypeError);
+  }
+  expect(() => originalPosition("{}", 0, 0)).toThrow(TypeError);
+});
+
 test("emits deterministic exact identity mappings for unchanged source", () => {
   const source = [
     "export const alpha = 1",
@@ -147,12 +168,12 @@ test("emits deterministic exact identity mappings for unchanged source", () => {
     "",
   ].join("\n");
   const options = {
-    fileName: "/virtual/identity.sm",
+    fileName: "/virtual/identity.vibe",
     outputFileName: "/virtual/identity.generated.ts",
-    sourceName: "src/identity.sm",
+    sourceName: "src/identity.vibe",
   } as const;
-  const first = compileSmithers(source, options);
-  const second = compileSmithers(source, options);
+  const first = compileVibeLang(source, options);
+  const second = compileVibeLang(source, options);
 
   expect(first.code).toBe(source);
   expect(first.sourceMap).toBe(second.sourceMap);
@@ -160,12 +181,12 @@ test("emits deterministic exact identity mappings for unchanged source", () => {
   expect(decoded.map).toMatchObject({
     version: 3,
     file: "identity.generated.ts",
-    sources: ["src/identity.sm"],
+    sources: ["src/identity.vibe"],
     sourcesContent: [source],
   });
   for (let offset = 0; offset < source.length; offset++) {
     if (!/[\n\r\u2028\u2029]/.test(source[offset]!)) {
-      expectExact(first.sourceMap!, first.code, offset, "src/identity.sm", source, offset);
+      expectExact(first.sourceMap!, first.code, offset, "src/identity.vibe", source, offset);
     }
   }
 });
@@ -179,21 +200,21 @@ test("rejects retired .? on a nullable call without claiming invalid source-map 
     "}",
     "",
   ].join("\n");
-  const result = compileSmithers(source, {
-    fileName: "/virtual/retired-dot-question.sm",
+  const result = compileVibeLang(source, {
+    fileName: "/virtual/retired-dot-question.vibe",
     outputFileName: "/virtual/retired-dot-question.generated.ts",
-    sourceName: "src/retired-dot-question.sm",
+    sourceName: "src/retired-dot-question.vibe",
   });
 
   expect(result.analysis.diagnostics.map(({ code, line, column }) => ({ code, line, column }))).toContainEqual({
-    code: "SMITHERS1001",
+    code: "VIBE1001",
     line: 3,
     column: 25,
   });
   expect(result.sourceMap).toBeUndefined();
 });
 
-test("maps transformed tokens exactly and leaves helpers and unwrap temporaries unmapped", () => {
+test("maps transformed tokens exactly and leaves generated delimiter helpers unmapped", () => {
   const source = [
     "class Failure extends Error {}",
     "function leaf(",
@@ -212,81 +233,87 @@ test("maps transformed tokens exactly and leaves helpers and unwrap temporaries 
     "}",
     "",
   ].join("\n");
-  const result = compileSmithers(source, {
-    fileName: "/virtual/transformed.sm",
+  const result = compileVibeLang(source, {
+    fileName: "/virtual/transformed.vibe",
     outputFileName: "/virtual/transformed.generated.ts",
-    sourceName: "src/transformed.sm",
-    runtimeImport: "smthrs/runtime",
+    sourceName: "src/transformed.vibe",
+    runtimeImport: "vibelang/runtime",
   });
   const wire = result.sourceMap!;
 
-  expect(mappedPosition(wire, result.code, result.code.indexOf("Generated"))).toBeUndefined();
+  const helperImport = result.code.indexOf("__vsResultSuccess");
+  expect(helperImport).toBeGreaterThan(0);
+  expect(mappedPosition(wire, result.code, helperImport)).toBeUndefined();
   const success = result.code.lastIndexOf("return __vsResultSuccess(unwrapped)");
-  expectExact(wire, result.code, success, "src/transformed.sm", source, source.lastIndexOf("return unwrapped"));
+  expectExact(wire, result.code, success, "src/transformed.vibe", source, source.lastIndexOf("return unwrapped"));
   expect(mappedPosition(wire, result.code, success + "return ".length)).toBeUndefined();
   expectExact(
     wire,
     result.code,
     success + "return __vsResultSuccess(".length,
-    "src/transformed.sm",
+    "src/transformed.vibe",
     source,
     source.lastIndexOf("unwrapped"),
   );
 
   const failure = result.code.indexOf("return __vsResultFailure(new Failure())");
-  expectExact(wire, result.code, failure, "src/transformed.sm", source, source.indexOf("throw new Failure()"));
+  expectExact(wire, result.code, failure, "src/transformed.vibe", source, source.indexOf("throw new Failure()"));
   expect(mappedPosition(wire, result.code, failure + "return ".length)).toBeUndefined();
   expectExact(
     wire,
     result.code,
     failure + "return __vsResultFailure(".length,
-    "src/transformed.sm",
+    "src/transformed.vibe",
     source,
     source.indexOf("new Failure()"),
   );
 
-  const temporary = result.code.indexOf("__smithers_result_");
-  expect(mappedPosition(wire, result.code, temporary)).toBeUndefined();
-  const inspectedLeaf = result.code.indexOf("leaf(", temporary);
-  expectExact(wire, result.code, inspectedLeaf, "src/transformed.sm", source, source.indexOf("leaf(\n", source.indexOf("const unwrapped")));
+  const propagation = result.code.lastIndexOf("__vsPropagate(");
+  expect(propagation).toBeGreaterThan(0);
+  expect(mappedPosition(wire, result.code, propagation)).toBeUndefined();
+  const inspectedLeaf = result.code.indexOf("leaf(", propagation);
+  expectExact(wire, result.code, inspectedLeaf, "src/transformed.vibe", source, source.indexOf("leaf(\n", source.indexOf("const unwrapped")));
   const inspectedArgument = result.code.indexOf("value", inspectedLeaf);
-  expectExact(wire, result.code, inspectedArgument, "src/transformed.sm", source, source.indexOf("value,", source.indexOf("const unwrapped")));
+  expectExact(wire, result.code, inspectedArgument, "src/transformed.vibe", source, source.indexOf("value,", source.indexOf("const unwrapped")));
 });
 
 test("anchors rewritten import tokens without claiming rewritten columns", () => {
-  const source = 'import { value } from "./dep.sm"\nexport const result = value\n';
-  const result = compileSmithers(source, {
-    fileName: "/virtual/project/src/main.sm",
-    outputFileName: "/virtual/project/dist/main.ts",
-    sourceName: "src/main.sm",
+  const source = 'import { value } from "./dep.vibe"\nexport const result = value\n';
+  const compiled = compileProject([{fileName:"src/main.vibe",source}, {fileName:"src/dep.vibe",source:"export const value = 42"}], {
+    rootDir:"/virtual/project", outDir:"/virtual/project/dist",
   });
-  const rewritten = result.code.indexOf('"../src/dep.sm"');
+  expect(compiled.diagnostics).toEqual([]);
+  const result = compiled.files["src/main.vibe"]!;
+  const rewritten = result.code.indexOf('"./dep.ts"');
   expect(rewritten).toBeGreaterThan(0);
-  expectExact(result.sourceMap!, result.code, rewritten, "src/main.sm", source, source.indexOf('"./dep.sm"'));
-  expectExact(result.sourceMap!, result.code, rewritten + 1, "src/main.sm", source, source.indexOf('"./dep.sm"') + 1);
-  expect(mappedPosition(result.sourceMap!, result.code, rewritten + 2)).toBeUndefined();
-  expectExact(result.sourceMap!, result.code, result.code.indexOf("value"), "src/main.sm", source, source.indexOf("value"));
+  expectExact(result.sourceMap!, result.code, rewritten, "src/main.vibe", source, source.indexOf('"./dep.vibe"'));
+  expectExact(result.sourceMap!, result.code, rewritten + 1, "src/main.vibe", source, source.indexOf('"./dep.vibe"') + 1);
+  expectExact(result.sourceMap!, result.code, rewritten + 6, "src/main.vibe", source, source.indexOf('"./dep.vibe"') + 6);
+  expect(mappedPosition(result.sourceMap!, result.code, rewritten + 7)).toBeUndefined();
+  expectExact(result.sourceMap!, result.code, result.code.indexOf("value"), "src/main.vibe", source, source.indexOf("value"));
 });
 
-test("composes emitted JavaScript locations back to authored .sm source", () => {
+test("composes emitted JavaScript locations back to authored .vibe source", () => {
   const source = `class Failure extends Error {}\nexport function value(): Result<number, Failure> { return 1 }\n`;
-  const lowered = compileSmithers(source, {
-    fileName: "/virtual/source.sm",
+  const lowered = compileVibeLang(source, {
+    fileName: "/virtual/source.vibe",
     outputFileName: "/virtual/output.mjs",
-    sourceName: "src/source.sm",
-    runtimeImport: "smthrs/runtime",
+    sourceName: "src/source.vibe",
+    runtimeImport: "vibelang/runtime",
   });
-  const javascript = ts.transpileModule(lowered.code, {
-    fileName: "/virtual/output.mjs.ts",
-    compilerOptions: {
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.ESNext,
+  const javascript = getNativeCompiler().transpile({
+    files: [{path:"output.mjs.ts",text:lowered.code}],
+    options: {
+      target: "es2022",
+      module: "esnext",
       sourceMap: true,
       inlineSources: true,
     },
-  });
+  }).files[0]!;
+  expect(javascript.emitSkipped).toBe(false);
+  expect(javascript.diagnostics).toEqual([]);
   const composedWire = composeSourceMaps(
-    javascript.sourceMapText!,
+    javascript.sourceMap,
     lowered.sourceMap!,
     "/virtual/output.mjs",
   );
@@ -301,18 +328,18 @@ test("composes emitted JavaScript locations back to authored .sm source", () => 
   expect(composed).toMatchObject({
     version: 3,
     file: "output.mjs",
-    sources: ["src/source.sm"],
+    sources: ["src/source.vibe"],
     sourcesContent: [source],
   });
   expect(composed.mappings.length).toBeGreaterThan(0);
-  const helper = javascript.outputText.lastIndexOf("__vsResultSuccess");
-  expect(mappedPosition(composedWire, javascript.outputText, helper)).toBeUndefined();
-  const generatedValue = javascript.outputText.indexOf("1", helper);
+  const helper = javascript.javascript.lastIndexOf("__vsResultSuccess");
+  expect(mappedPosition(composedWire, javascript.javascript, helper)).toBeUndefined();
+  const generatedValue = javascript.javascript.indexOf("1", helper);
   expectExact(
     composedWire,
-    javascript.outputText,
+    javascript.javascript,
     generatedValue,
-    "src/source.sm",
+    "src/source.vibe",
     source,
     source.lastIndexOf("1"),
   );
@@ -326,7 +353,7 @@ test("composition preserves comptime-style cross-file sourcesContent and unmappe
     version: 3,
     file: "intermediate.ts",
     sourceRoot: "",
-    sources: ["main.sm", "config.sm"],
+    sources: ["main.vibe", "config.vibe"],
     sourcesContent: ["main authored", "config authored"],
     names: [],
     mappings: encodeTestMappings([
@@ -354,11 +381,11 @@ test("composition preserves comptime-style cross-file sourcesContent and unmappe
   const composed = composeSourceMaps(outer, inner, "/virtual/output.js");
   const decoded = decodeSourceMap(composed);
 
-  expect(decoded.map.sources).toEqual(["main.sm", "config.sm", "vendor.ts"]);
+  expect(decoded.map.sources).toEqual(["main.vibe", "config.vibe", "vendor.ts"]);
   expect(decoded.map.sourcesContent).toEqual(["main authored", "config authored", "vendor authored"]);
-  expect(mappedPosition(composed, code, 0)).toEqual({ source: "main.sm", line: 0, column: 0 });
+  expect(mappedPosition(composed, code, 0)).toEqual({ source: "main.vibe", line: 0, column: 0 });
   expect(mappedPosition(composed, code, 4)).toBeUndefined();
-  expect(mappedPosition(composed, code, 8)).toEqual({ source: "config.sm", line: 0, column: 2 });
+  expect(mappedPosition(composed, code, 8)).toEqual({ source: "config.vibe", line: 0, column: 2 });
   expect(mappedPosition(composed, code, 12)).toEqual({ source: "vendor.ts", line: 0, column: 1 });
   expect(mappedPosition(composed, code, 16)).toBeUndefined();
 });
@@ -370,7 +397,7 @@ test("source-map generation and composition fail closed at deterministic bounds"
     generatedBody: oversized,
     generatedPrefix: "",
     source: oversized,
-    sourceName: "oversized.sm",
+    sourceName: "oversized.vibe",
     fileName: "oversized.ts",
     identity: true,
   })).toThrow("1000000 UTF-16 unit POC limit");
@@ -378,7 +405,7 @@ test("source-map generation and composition fail closed at deterministic bounds"
   const inner = JSON.stringify({
     version: 3,
     file: "intermediate.ts",
-    sources: ["source.sm"],
+    sources: ["source.vibe"],
     sourcesContent: ["source"],
     names: [],
     mappings: "AAAA",

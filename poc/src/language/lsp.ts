@@ -2,35 +2,36 @@ import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import * as ts from "typescript-js";
 import { AssetCompiler } from "../build/assets.ts";
 import { ComptimeCompiler } from "../build/comptime.ts";
 import { compileComptimeIntrinsics } from "../build/comptime-intrinsic.ts";
 import { DEFAULT_SCHEMA_RUNTIME_IMPORT } from "../build/schema-derive.ts";
 import { compileSourceAssetModules, type CompiledSourceAssetModule } from "../build/source-assets.ts";
 import { digest } from "../build/stable.ts";
+import { compileDurableModule } from "../durable/module-compiler.ts";
 import { analyzeProject } from "./analyze.ts";
-import { formatSmithersSource, smithersTokenAt } from "./format.ts";
+import { formatVibeLangSource, vibelangTokenAt } from "./format.ts";
+import { editorModuleLinks, type EditorModuleLink } from "./editor-syntax.ts";
 import type {
-  Diagnostic as SmithersDiagnostic,
+  Diagnostic as VibeLangDiagnostic,
   ProjectAnalysis,
   ProjectFileAnalysis,
   ProjectSource,
 } from "./model.ts";
 import { compileProject } from "./project-compile.ts";
-import { composeSourceMaps } from "./source-map.ts";
+import { composeSourceMaps, originalPosition } from "./source-map.ts";
 import { checkEmittedProject, DEFAULT_RUNTIME_IMPORT } from "./validate.ts";
 
 /**
- * A bounded but genuine Smithers language server.
+ * A bounded but genuine VibeLang language server.
  *
  * The protocol is implemented directly - JSON-RPC 2.0 over stdio with
  * `Content-Length` framing - so the toolchain gains an editor surface without
  * gaining a dependency. Diagnostics, hover, and definition are all driven by
  * the real frontend, not by a reimplementation, and formatting reuses
- * `formatSmithersSource`.
+ * `formatVibeLangSource`.
  *
- * ## Verdict agreement with `smithers check`
+ * ## Verdict agreement with `vibe check`
  *
  * A diagnostic an editor shows and a diagnostic the compiler reports must be
  * the same diagnostic: a false error in an editor makes correct code look
@@ -40,19 +41,20 @@ import { checkEmittedProject, DEFAULT_RUNTIME_IMPORT } from "./validate.ts";
  *
  *   1. source assets  (`compileSourceAssetModules`)
  *   2. comptime       (`compileComptimeIntrinsics`)
- *   3. rows           (`analyzeProject`)
- *   4. generated TypeScript (`compileProject` + `checkEmittedProject`)
+ *   3. durable bodies (`compileDurableModule`)
+ *   4. rows           (`analyzeProject`)
+ *   5. generated TypeScript (`compileProject` + `checkEmittedProject`)
  *
  * - each earlier stage's refusal is published on its own, exactly as the CLI
  *   returns without running the later ones. Skipping stage 1 or 2 does not
  *   merely lose their diagnostics: it makes the later stages judge a program
- *   the compiler never sees, so a valid asset import drew SMITHERS1510 (an
+ *   the compiler never sees, so a valid asset import drew VIBE1510 (an
  *   untrusted foreign module) and a valid `comptime(...)` drew TS2307. The
  *   deviations that remain are listed below.
  *
- * Both stages are content-addressed and answer from a cache under the system
+ * The asset and comptime stages are content-addressed and answer from a cache under the system
  * temporary directory, in the language server's own namespace so that an editor
- * session can never write into a cache a `smithers build` is reading. Measured
+ * session can never write into a cache a `vibe build` is reading. Measured
  * on a one-module project: the asset stage costs under a millisecond when the
  * project imports no asset, and the comptime stage costs about as much as
  * `analyzeProject` itself, because it builds a TypeScript program of its own.
@@ -61,16 +63,16 @@ import { checkEmittedProject, DEFAULT_RUNTIME_IMPORT } from "./validate.ts";
  *
  * - `initialize` / `initialized` / `shutdown` / `exit`
  * - `textDocument/didOpen`, `didChange` (**full** document sync), `didClose`
- * - `textDocument/publishDiagnostics`: source-asset (`SMITHERS52xx`) and
- *   comptime (`VCT1xxx`) stage diagnostics, Smithers frontend diagnostics, plus
+ * - `textDocument/publishDiagnostics`: source-asset (`VIBE52xx`) and
+ *   comptime (`VCT1xxx`) and durable (`VIBE4xxx`) stage diagnostics, VibeLang frontend diagnostics, plus
  *   stock TypeScript diagnostics for the generated modules mapped back to
  *   authored positions through the compiler's own source maps - composed with
- *   the comptime lowering's map when a file was actually lowered
+ *   the comptime/durable lowering maps when a file was actually lowered
  * - `textDocument/hover`: a checked function's channel and its inferred failure
  *   and requirement rows, and an authored Error class's fields
- * - `textDocument/definition`: project-local `.sm` functions, Error classes,
- *   and relative `.sm` module specifiers
- * - `textDocument/formatting`: `formatSmithersSource`, as a single whole-document
+ * - `textDocument/definition`: project-local `.vibe` functions, Error classes,
+ *   and relative `.vibe` module specifiers
+ * - `textDocument/formatting`: `formatVibeLangSource`, as a single whole-document
  *   edit; a module the formatter refuses returns no edits
  *
  * ## Deliberately not supported
@@ -84,7 +86,7 @@ import { checkEmittedProject, DEFAULT_RUNTIME_IMPORT } from "./validate.ts";
  *   actions, semantic tokens, inlay hints, or call hierarchy.
  * - No file watching. The project is re-read from disk on every edit, bounded
  *   to `MAX_PROJECT_FILES` modules and `MAX_PROJECT_BYTES` total.
- * - Project membership is the transitive relative-`.sm` import closure of the
+ * - Project membership is the transitive relative-`.vibe` import closure of the
  *   open documents, not a glob of the workspace folder.
  * - **The runtime-graph resolver does not run here, and cannot.** The CLI runs
  *   `buildRelativeRuntimeGraph` between the asset stage and the comptime stage;
@@ -92,22 +94,19 @@ import { checkEmittedProject, DEFAULT_RUNTIME_IMPORT } from "./validate.ts";
  *   imports `poc/dist`, so a module inside `poc/src` cannot reach it without
  *   inverting the dependency. Its absence is visible in three places, all
  *   measured against the corpus: a foreign relative `.ts` neighbour draws
- *   `SMITHERS1510` at the authored import rather than at the foreign module's
+ *   `VIBE1510` at the authored import rather than at the foreign module's
  *   own first line; a dynamic import is judged by the semantic stage alone; and
  *   an unresolvable relative runtime edge does not abort the run. In every one
- *   of those the CLI answers `SMITHERS_PROJECT_ERROR` or a foreign-file
+ *   of those the CLI answers `VIBELANG_PROJECT_ERROR` or a foreign-file
  *   position and the corpus declares what this server publishes - see
  *   `conformance/product-divergence.json`, causes
  *   `runtime-graph-refuses-before-the-semantic-stage`,
- *   `duplicate-SMITHERS1510-implementation-in-the-runtime-graph` and
+ *   `duplicate-VIBE1510-implementation-in-the-runtime-graph` and
  *   `dynamic-import-lock-vs-corpus-vs-product`.
- * - **Rows are analyzed on the AUTHORED text, not the comptime-lowered text.**
- *   The CLI analyzes what the comptime stage produced; doing the same here
- *   would put every row diagnostic, hover, and definition in lowered
- *   coordinates and require a second source-map hop to get back. Only the
- *   generated-TypeScript pass reads the lowered text, because that pass already
- *   owns a map. Measured equal on the corpus: all 10 `16-comptime` cases
- *   publish exactly what `smithers check` reports.
+ * - Diagnostics analyze the same comptime/durable-lowered text as the CLI,
+ *   with composed source maps back to the authored buffers. Hover and definition
+ *   analyze authored declarations separately so removed private Flow helpers
+ *   and shifted declarations still have their original ranges.
  * - Hover and definition are synchronous replies and do not run the compile
  *   stages. They reuse the asset modules the last diagnostics pass produced for
  *   the same buffers; a hover that races the very first pass analyzes without
@@ -117,7 +116,7 @@ import { checkEmittedProject, DEFAULT_RUNTIME_IMPORT } from "./validate.ts";
  *   to a guess.
  */
 
-const SERVER_NAME = "smithers-lsp";
+const SERVER_NAME = "vibelang-lsp";
 const SERVER_VERSION = "0.0.1";
 
 /** Largest single JSON-RPC message accepted from the client. */
@@ -189,7 +188,7 @@ interface LoadedProject {
   /**
    * `rootDir` with every symlink in it resolved, which is the form the compile
    * stages work in: `AssetCompiler` and `ComptimeCompiler` both `realpathSync`
-   * their root, and `smithers check` canonicalizes its inputs the same way
+   * their root, and `vibe check` canonicalizes its inputs the same way
    * before it resolves anything. A macOS temporary directory is the everyday
    * case - `/var/folders/...` and `/private/var/folders/...` name one directory
    * - and mixing the two spellings made a generated asset module unreachable
@@ -204,11 +203,13 @@ interface LoadedProject {
   readonly sources: readonly ProjectSource[];
   /** Project-relative source name -> absolute path, as the client spells it. */
   readonly absoluteByName: ReadonlyMap<string, string>;
+  /** Native literal facts, captured once for this exact project text. */
+  readonly moduleLinksByPath: ReadonlyMap<string, readonly EditorModuleLink[]>;
   readonly truncated: boolean;
 }
 
-function isSmithersPath(path: string): boolean {
-  return extname(path).toLowerCase() === ".sm";
+function isVibeLangPath(path: string): boolean {
+  return extname(path).toLowerCase() === ".vibe";
 }
 
 function toPosix(path: string): string {
@@ -231,27 +232,14 @@ function commonAncestor(paths: readonly string[]): string {
   return root;
 }
 
-/** Static module specifiers, read through TypeScript's own error recovery. */
-function moduleSpecifiers(source: string, fileName: string): readonly string[] {
-  const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const names: string[] = [];
-  for (const statement of file.statements) {
-    if ((ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) &&
-      statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier)) {
-      names.push(statement.moduleSpecifier.text);
-    }
-  }
-  return names;
-}
-
 /** Mirror of the CLI's authored-specifier resolution, including `./x.js` spellings. */
-function resolveSmithersImport(containingFile: string, specifier: string): string | undefined {
+function resolveVibeLangImport(containingFile: string, specifier: string): string | undefined {
   if (!specifier.startsWith(".")) return undefined;
   const exact = resolve(dirname(containingFile), specifier);
   const candidates: string[] = [];
-  if (exact.endsWith(".sm")) candidates.push(exact);
-  else if (extname(exact) === "") candidates.push(`${exact}.sm`, join(exact, "index.sm"));
-  else if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.sm`);
+  if (exact.endsWith(".vibe")) candidates.push(exact);
+  else if (extname(exact) === "") candidates.push(`${exact}.vibe`, join(exact, "index.vibe"));
+  else if (exact.endsWith(".js")) candidates.push(`${exact.slice(0, -3)}.vibe`);
   for (const candidate of candidates) {
     try {
       if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
@@ -273,7 +261,7 @@ function readBoundedFile(path: string): string | undefined {
 }
 
 /**
- * The transitive relative-`.sm` closure of the open documents, with open
+ * The transitive relative-`.vibe` closure of the open documents, with open
  * buffers overriding what is on disk.
  */
 function loadProject(
@@ -283,13 +271,14 @@ function loadProject(
   const overrides = new Map<string, string>();
   const pending: string[] = [];
   for (const document of documents.values()) {
-    if (!isSmithersPath(document.path)) continue;
+    if (!isVibeLangPath(document.path)) continue;
     overrides.set(document.path, document.text);
     pending.push(document.path);
   }
   if (pending.length === 0) return undefined;
 
   const collected = new Map<string, string>();
+  const moduleLinksByPath = new Map<string, readonly EditorModuleLink[]>();
   let totalBytes = 0;
   let truncated = false;
   while (pending.length > 0) {
@@ -307,8 +296,10 @@ function loadProject(
       break;
     }
     collected.set(path, text);
-    for (const specifier of moduleSpecifiers(text, path)) {
-      const resolved = resolveSmithersImport(path, specifier);
+    const links = editorModuleLinks(text, path);
+    moduleLinksByPath.set(path, links);
+    for (const { specifier } of links) {
+      const resolved = resolveVibeLangImport(path, specifier);
       if (resolved && !collected.has(resolved)) pending.push(resolved);
     }
   }
@@ -335,98 +326,17 @@ function loadProject(
     // A root that cannot be resolved is used as spelled; the stages will
     // report their own failure rather than the language server inventing one.
   }
-  return { rootDir, canonicalRootDir, sources, absoluteByName, truncated };
+  return { rootDir, canonicalRootDir, sources, absoluteByName, moduleLinksByPath, truncated };
 }
 
 /* -------------------------------------------------------------------------- */
 /* Source maps                                                                 */
 /* -------------------------------------------------------------------------- */
 
-const BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-const BASE64_VALUES = new Map([...BASE64].map((character, index) => [character, index] as const));
-
-function decodeVlq(segment: string, start: number): readonly [number, number] {
-  let value = 0;
-  let shift = 0;
-  let index = start;
-  for (;;) {
-    if (index >= segment.length || shift > 48) throw new TypeError("invalid source-map VLQ segment");
-    const digit = BASE64_VALUES.get(segment[index++]!);
-    if (digit === undefined) throw new TypeError("invalid source-map base64 digit");
-    value += (digit & 31) * 2 ** shift;
-    if (!Number.isSafeInteger(value)) throw new TypeError("source-map VLQ exceeds the safe integer range");
-    if ((digit & 32) === 0) break;
-    shift += 5;
-  }
-  const magnitude = Math.floor(value / 2);
-  return [(value & 1) === 1 ? -magnitude : magnitude, index];
-}
-
 interface OriginalPosition {
   readonly source: string;
   readonly line: number;
   readonly column: number;
-}
-
-/**
- * Nearest preceding mapping for a generated position, in the compiler's own
- * version-3 maps. Deliberately fail-closed: an unmapped generated position (a
- * compiler-only helper line) yields `undefined` rather than a misleading
- * authored anchor.
- */
-function originalPosition(sourceMap: string, line: number, column: number): OriginalPosition | undefined {
-  const parsed: unknown = JSON.parse(sourceMap);
-  if (typeof parsed !== "object" || parsed === null) return undefined;
-  const map = parsed as { version?: unknown; mappings?: unknown; sources?: unknown };
-  if (map.version !== 3 || typeof map.mappings !== "string" || !Array.isArray(map.sources)) return undefined;
-  const sources = map.sources.filter((entry): entry is string => typeof entry === "string");
-  if (sources.length !== map.sources.length) return undefined;
-
-  let previousSource = 0;
-  let previousLine = 0;
-  let previousColumn = 0;
-  let selected: { generatedColumn: number; source: number; line: number; column: number } | undefined;
-  const lines = map.mappings.split(";");
-  for (let generatedLine = 0; generatedLine < lines.length; generatedLine += 1) {
-    if (generatedLine === line) selected = undefined;
-    let previousGeneratedColumn = 0;
-    const encoded = lines[generatedLine]!;
-    for (const segment of encoded === "" ? [] : encoded.split(",")) {
-      const values: number[] = [];
-      for (let offset = 0; offset < segment.length;) {
-        const [value, next] = decodeVlq(segment, offset);
-        values.push(value);
-        offset = next;
-      }
-      if (values.length !== 1 && values.length !== 4 && values.length !== 5) return undefined;
-      previousGeneratedColumn += values[0]!;
-      if (values.length === 1) {
-        if (generatedLine === line && previousGeneratedColumn <= column) selected = undefined;
-        continue;
-      }
-      previousSource += values[1]!;
-      previousLine += values[2]!;
-      previousColumn += values[3]!;
-      if (previousSource < 0 || previousSource >= sources.length || previousLine < 0 || previousColumn < 0) {
-        return undefined;
-      }
-      if (generatedLine === line && previousGeneratedColumn <= column) {
-        selected = {
-          generatedColumn: previousGeneratedColumn,
-          source: previousSource,
-          line: previousLine,
-          column: previousColumn,
-        };
-      }
-    }
-    if (generatedLine >= line) break;
-  }
-  if (!selected) return undefined;
-  return {
-    source: sources[selected.source]!,
-    line: selected.line,
-    column: selected.column + column - selected.generatedColumn,
-  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -483,7 +393,7 @@ function wholeDocumentRange(text: string): LspRange {
 
 /** The token covering `offset`, so a diagnostic gets a real span rather than a caret. */
 function tokenRangeAt(text: string, offset: number): LspRange {
-  const token = smithersTokenAt(text, offset);
+  const token = vibelangTokenAt(text, offset);
   if (token && token.start <= offset) {
     return { start: positionAt(text, token.start), end: positionAt(text, token.end) };
   }
@@ -495,7 +405,7 @@ function tokenRangeAt(text: string, offset: number): LspRange {
 
 /** The identifier-shaped token covering `offset`, or undefined. */
 function identifierAt(text: string, offset: number): { text: string; start: number; end: number } | undefined {
-  const token = smithersTokenAt(text, offset);
+  const token = vibelangTokenAt(text, offset);
   if (!token || !/^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(token.text)) return undefined;
   return { text: token.text, start: token.start, end: token.end };
 }
@@ -508,7 +418,7 @@ interface PublishedDiagnostic {
   readonly range: LspRange;
   readonly severity: 1 | 2;
   readonly code: string;
-  readonly source: "smithers";
+  readonly source: "vibelang";
   readonly message: string;
 }
 
@@ -516,12 +426,12 @@ function severityOf(diagnostic: { readonly severity: "error" | "warning" }): 1 |
   return diagnostic.severity === "error" ? 1 : 2;
 }
 
-function smithersDiagnosticToLsp(text: string, diagnostic: SmithersDiagnostic): PublishedDiagnostic {
+function vibelangDiagnosticToLsp(text: string, diagnostic: VibeLangDiagnostic): PublishedDiagnostic {
   return {
     range: tokenRangeAt(text, diagnostic.start),
     severity: severityOf(diagnostic),
     code: diagnostic.code,
-    source: "smithers",
+    source: "vibelang",
     message: diagnostic.message,
   };
 }
@@ -545,7 +455,7 @@ function stageDiagnosticToLsp(
     range: tokenRangeAt(text, offset),
     severity: severityOf(diagnostic),
     code: diagnostic.code,
-    source: "smithers",
+    source: "vibelang",
     message: diagnostic.message,
   };
 }
@@ -555,12 +465,12 @@ function stageDiagnosticToLsp(
 /* -------------------------------------------------------------------------- */
 
 /**
- * The compile stages `smithers check` runs before the row pass, in its order.
+ * The compile stages `vibe check` runs before the row pass, in its order.
  *
- * Both are content-addressed and cache into the system temporary directory, so
+ * Assets and comptime are content-addressed and cache into the system temporary directory, so
  * an unchanged buffer costs a cache lookup rather than a re-evaluation. The
  * cache namespace is the language server's own: an editor session can never
- * write into a cache a `smithers build` is reading.
+ * write into a cache a `vibe build` is reading.
  */
 interface StagedProject {
   /** Compiler-generated asset modules the checker must be able to resolve. */
@@ -579,14 +489,14 @@ interface StagedProject {
     readonly resolutionAliases: readonly string[];
     readonly stripImportAttributes: true;
   }[];
-  /** Comptime-lowered text per project-relative source name. */
+  /** Comptime/durable-lowered text per project-relative source name. */
   readonly loweredSources: readonly ProjectSource[];
   /** Lowered-to-authored map per source name; absent when nothing was lowered. */
   readonly loweringMaps: ReadonlyMap<string, string>;
 }
 
 /** Compiler-owned directory the generated asset modules are addressed under. */
-const GENERATED_ASSET_DIRECTORY = "__smithers_assets__";
+const GENERATED_ASSET_DIRECTORY = "__vibelang_assets__";
 
 type StageOutcome =
   | { readonly ok: true; readonly staged: StagedProject }
@@ -595,20 +505,20 @@ type StageOutcome =
 
 function stageCacheDirectory(kind: "source-asset" | "comptime", rootDir: string): string {
   const identity = digest({
-    schema: `smithers.lsp-${kind}-cache/v1`,
+    schema: `vibelang.lsp-${kind}-cache/v1`,
     projectRoot: rootDir,
     target: "node-es2022",
     frontend: LSP_FRONTEND,
   });
-  return resolve(tmpdir(), `smithers-lsp-${kind}-cache-v1`, identity);
+  return resolve(tmpdir(), `vibelang-lsp-${kind}-cache-v1`, identity);
 }
 
-const LSP_FRONTEND = "smithers-lsp@1";
+const LSP_FRONTEND = "vibelang-lsp@1";
 
 /**
- * Run the source-asset and comptime stages over the loaded project. A refusal
- * from either is returned on its own, because that is exactly what the CLI
- * publishes: `compileSmithersFiles` returns the stage's diagnostics without
+ * Run the source-asset, comptime and durable stages over the loaded project. A refusal
+ * from any is returned on its own, because that is exactly what the CLI
+ * publishes: `compileVibeLangFiles` returns the stage's diagnostics without
  * reaching the row pass, so a language server that ran the row pass anyway
  * would publish a rule `check` never prints.
  */
@@ -670,14 +580,37 @@ async function stageProject(
 
   const lowered = comptime.loweredFiles;
   const loweringMaps = new Map<string, string>();
-  const loweredSources = project.sources.map((source) => {
+  const materialized = project.sources.map((source) => {
     const file = lowered[source.fileName];
     if (!file) throw new TypeError(`comptime lowering omitted project file '${source.fileName}'`);
-    // A file with no comptime construct lowers to itself, and then the
-    // frontend's own map already lands on authored coordinates. Only a file
-    // whose text actually moved needs the second hop.
-    if (file.code !== source.source) loweringMaps.set(source.fileName, file.sourceMap);
-    return { fileName: source.fileName, source: file.code };
+    return { source, file, compiled: compileDurableModule(file.code, {
+      fileName: source.fileName,
+      sourceOrigin: { text: source.source, sourceMap: file.sourceMap, loweringIdentity: file.identity },
+    }) };
+  });
+  if (materialized.some(entry => !entry.compiled.ok)) {
+    const byFile = byFileTemplate();
+    for (const { source, file, compiled } of materialized) {
+      if (compiled.ok) continue;
+      for (const diagnostic of compiled.diagnostics) {
+        const mapped = originalPosition(file.sourceMap, diagnostic.line - 1, diagnostic.column - 1);
+        if (!mapped || mapped.source !== source.fileName) {
+          throw new TypeError(`durable diagnostic has no authored source position in '${source.fileName}'`);
+        }
+        byFile.get(source.fileName)!.push(stageDiagnosticToLsp(source.source, {
+          ...diagnostic, severity: "error", line: mapped.line + 1, column: mapped.column + 1,
+        }));
+      }
+    }
+    return { ok: false, byFile };
+  }
+  const loweredSources = materialized.map(({ source, file, compiled }) => {
+    if (!compiled.ok) throw new TypeError("refused durable module reached row analysis");
+    // Only files whose text moved need a hop back to their authored buffer.
+    if (compiled.sourceMap) loweringMaps.set(source.fileName,
+      composeSourceMaps(compiled.sourceMap, file.sourceMap, `${source.fileName}.durable.ts`));
+    else if (file.code !== source.source) loweringMaps.set(source.fileName, file.sourceMap);
+    return { fileName: source.fileName, source: compiled.code };
   });
   const assetOutputs = assets.modules.map((module) => ({
     sourceFileName: resolve(project.canonicalRootDir, module.sourceFileName),
@@ -709,7 +642,7 @@ function resolvePackagedModule(candidates: readonly string[]): string | undefine
 /**
  * Locate the packaged runtime so generated modules type-check against it. When
  * it cannot be found, the generated-TypeScript pass is skipped and only
- * Smithers frontend diagnostics are published; nothing is reported as an error
+ * VibeLang frontend diagnostics are published; nothing is reported as an error
  * that the frontend did not actually find.
  */
 function resolveRuntimeImport(): string | undefined {
@@ -721,10 +654,10 @@ function resolveRuntimeImport(): string | undefined {
  * The derived-schema seam is the same problem one module over.
  *
  * A file that derives a schema is lowered with an added
- * `import { __vsSchema } from "smthrs/schema-runtime"`, and unlike the runtime
+ * `import { __vsSchema } from "vibelang/schema-runtime"`, and unlike the runtime
  * seam the editor pass never told the checker where that package lives. A bare
- * `smthrs/...` specifier resolves only from an installed consumer, so an editor
- * open on this repository reported TS2307 on a program `smithers check`
+ * `vibelang/...` specifier resolves only from an installed consumer, so an editor
+ * open on this repository reported TS2307 on a program `vibe check`
  * accepts. Resolving it here — rather than rewriting the specifier out of the
  * checked text — keeps the editor checking the bytes the compiler emits.
  */
@@ -825,9 +758,9 @@ async function computeProjectDiagnostics(
       bucket.push({
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
         severity: 1,
-        code: "SMITHERS_LSP_PROJECT",
-        source: "smithers",
-        message: `the Smithers project could not be analyzed: ${message}`,
+        code: "VIBELANG_LSP_PROJECT",
+        source: "vibelang",
+        message: `the VibeLang project could not be analyzed: ${message}`,
       });
     }
     return { byFile: buckets, analysis: undefined, project };
@@ -850,7 +783,7 @@ async function computeProjectDiagnostics(
   const byFile = freshByFile();
   let analysis: ProjectAnalysis;
   try {
-    analysis = analyzeProjectMemoized(project, staged.assetModules);
+    analysis = analyzeProjectMemoized({ ...project, sources: staged.loweredSources }, staged.assetModules);
   } catch (error) {
     return projectFailure("analyzeProject", error instanceof Error ? error.message : String(error));
   }
@@ -859,19 +792,29 @@ async function computeProjectDiagnostics(
     const text = textByName.get(diagnostic.fileName);
     const bucket = byFile.get(diagnostic.fileName);
     if (text === undefined || !bucket) continue;
-    bucket.push(smithersDiagnosticToLsp(text, diagnostic));
+    const map = staged.loweringMaps.get(diagnostic.fileName);
+    if (map === undefined) bucket.push(vibelangDiagnosticToLsp(text, diagnostic));
+    else {
+      const mapped = originalPosition(map, diagnostic.line - 1, diagnostic.column - 1);
+      if (!mapped || mapped.source !== diagnostic.fileName) {
+        return projectFailure("row diagnostic mapping", `no authored position for ${diagnostic.code} in '${diagnostic.fileName}'`);
+      }
+      bucket.push(stageDiagnosticToLsp(text, {
+        ...diagnostic, line: mapped.line + 1, column: mapped.column + 1,
+      }));
+    }
   }
 
   const hasErrors = analysis.diagnostics.some((diagnostic) => diagnostic.severity === "error");
   const runtimeImport = resolveRuntimeImport();
   if (!hasErrors && runtimeImport !== undefined) {
     try {
-      // `outDir` is the project root so that relative non-`.sm` imports keep
+      // `outDir` is the project root so that relative non-`.vibe` imports keep
       // resolving exactly as authored. Nothing is written: `compileProject` and
       // `checkEmittedProject` are in-memory APIs.
-      // The generated modules are cut from the COMPTIME-LOWERED text, exactly as
+      // The generated modules are cut from the COMPTIME/DURABLE-LOWERED text, exactly as
       // the CLI cuts them, so `comptime(...)` is already the value it evaluated
-      // to and the compiler-owned `smithers:comptime` import is gone. Checking
+      // to and the compiler-owned `vibelang:comptime` import is gone. Checking
       // the authored text instead reported TS2307 on a program `check` accepts.
       const compiled = compileProject(staged.loweredSources, {
         rootDir: project.canonicalRootDir,
@@ -899,14 +842,14 @@ async function computeProjectDiagnostics(
         },
       });
       for (const diagnostic of checked) {
-        if (diagnostic.category !== ts.DiagnosticCategory.Error) continue;
-        if (!diagnostic.file || diagnostic.start === undefined) continue;
-        const generatedName = resolve(diagnostic.file.fileName);
+        if (diagnostic.category !== "error") continue;
+        if (!diagnostic.file || diagnostic.position === undefined) continue;
+        const generatedName = resolve(diagnostic.file);
         const owner = emitted.find((file) => resolve(file.outputFileName) === generatedName);
         if (!owner?.sourceMap) continue;
-        const generated = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+        const generated = diagnostic.position;
         // Generated -> lowered is the frontend's own map. Lowered -> authored is
-        // the comptime map, and only files whose text actually moved carry one.
+        // the composed stage map; only files whose text actually moved carry one.
         const loweringMap = staged.loweringMaps.get(owner.fileName);
         let mapped: OriginalPosition | undefined;
         try {
@@ -925,9 +868,9 @@ async function computeProjectDiagnostics(
         bucket.push({
           range: tokenRangeAt(text, offset),
           severity: 1,
-          code: `TS${diagnostic.code}`,
-          source: "smithers",
-          message: ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
+          code: diagnostic.code,
+          source: "vibelang",
+          message: diagnostic.message,
         });
       }
     } catch (error) {
@@ -940,8 +883,8 @@ async function computeProjectDiagnostics(
       bucket.push({
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
         severity: 2,
-        code: "SMITHERS_LSP_PROJECT_TRUNCATED",
-        source: "smithers",
+        code: "VIBELANG_LSP_PROJECT_TRUNCATED",
+        source: "vibelang",
         message: `the project exceeded the language server's ${MAX_PROJECT_FILES}-module / ${MAX_PROJECT_BYTES}-byte bound, so diagnostics are incomplete`,
       });
     }
@@ -988,7 +931,7 @@ function hoverMarkdown(text: string, file: ProjectFileAnalysis, offset: number):
     const signature = text.slice(containing.start, containing.bodyStart).trim().replace(/\s*\{$/u, "");
     const channel = CHANNEL_LABELS[containing.channel] ?? containing.channel;
     const contents = [
-      "```smithers",
+      "```vibelang",
       signature,
       "```",
       "",
@@ -1010,7 +953,7 @@ function hoverMarkdown(text: string, file: ProjectFileAnalysis, offset: number):
   const error = file.errors.find((declaration) => declaration.start <= offset && offset < declaration.end);
   if (error) {
     const contents = [
-      "```smithers",
+      "```vibelang",
       `class ${error.name} extends Error`,
       "```",
       "",
@@ -1080,14 +1023,11 @@ function definitionAt(
   const path = project.absoluteByName.get(fileName);
   if (!path) return undefined;
 
-  // A relative `.sm` module specifier jumps to that module.
-  const parsed = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  for (const statement of parsed.statements) {
-    if (!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) continue;
-    const specifier = statement.moduleSpecifier;
-    if (!specifier || !ts.isStringLiteral(specifier)) continue;
-    if (offset < specifier.getStart(parsed) || offset >= specifier.getEnd()) continue;
-    const resolved = resolveSmithersImport(path, specifier.text);
+  // A relative `.vibe` module specifier jumps to that module.
+  const links = project.moduleLinksByPath.get(path) ?? [];
+  for (const link of links) {
+    if (offset < link.start || offset >= link.end) continue;
+    const resolved = resolveVibeLangImport(path, link.specifier);
     if (!resolved) return undefined;
     return {
       uri: pathToFileURL(resolved).href,
@@ -1104,10 +1044,10 @@ function definitionAt(
     return local;
   }
 
-  // Follow the module's own relative `.sm` imports before searching wider.
+  // Follow the module's own relative `.vibe` imports before searching wider.
   const imported: string[] = [];
-  for (const specifier of moduleSpecifiers(text, path)) {
-    const resolved = resolveSmithersImport(path, specifier);
+  for (const { specifier } of links) {
+    const resolved = resolveVibeLangImport(path, specifier);
     if (!resolved) continue;
     for (const [name, candidate] of project.absoluteByName) {
       if (candidate === resolved) imported.push(name);
@@ -1152,7 +1092,7 @@ function positionFrom(value: unknown): LspPosition | undefined {
   return { line, character };
 }
 
-export function startSmithersLanguageServer(options: LanguageServerOptions = {}): LanguageServerHandle {
+export function startVibeLangLanguageServer(options: LanguageServerOptions = {}): LanguageServerHandle {
   const input = options.input ?? process.stdin;
   const output = options.output ?? process.stdout;
   const errorOutput = options.errorOutput ?? process.stderr;
@@ -1356,7 +1296,7 @@ export function startSmithersLanguageServer(options: LanguageServerOptions = {})
         const formatOptions = isRecord(params.options) ? params.options : {};
         const tabSize = typeof formatOptions.tabSize === "number" && Number.isInteger(formatOptions.tabSize) &&
           formatOptions.tabSize >= 1 && formatOptions.tabSize <= 8 ? formatOptions.tabSize : 2;
-        const formatted = formatSmithersSource(document.text, {
+        const formatted = formatVibeLangSource(document.text, {
           fileName: document.path,
           indentSize: tabSize,
         });

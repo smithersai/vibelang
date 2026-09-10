@@ -6,18 +6,18 @@ import { analyzeProject } from "./index.ts";
  * OPEN through three independent mechanisms — each one producing a checked
  * `ok: true` program that reads a capability its declared row does not name:
  *
- * 1. `SMITHERS2106` — the receiver of `Capability.context()` did not have to
+ * 1. `VIBE2106` — the receiver of `Capability.context()` did not have to
  *    identify one `Context` subclass. A union, a tuple element, a type
  *    parameter, an intersection, a class expression, or a laundering cast all
  *    recorded NOTHING, and a union of two structurally identical capabilities
  *    is subtype-reduced by TypeScript to its first constituent, so
  *    `(flag ? Db : Log).context()` recorded `["Db"]` and then panicked with
  *    `capability 'Log' was not provided` under a `Db`-only layer.
- * 2. `SMITHERS2102` at top level — a capability read written directly at module
+ * 2. `VIBE2102` at top level — a capability read written directly at module
  *    scope, or wrapped in a callback handed to a top-level higher-order call,
  *    was charged to nobody, while the indirect spelling (a top-level call to a
  *    function whose row names the capability) was already refused.
- * 3. `SMITHERS2107` — a DETACHED reference to the compiler-recognized
+ * 3. `VIBE2107` — a DETACHED reference to the compiler-recognized
  *    `Context.context` member. `Reflect.apply(Db.context, Db, [])` checked
  *    `ok: true` with `requirements: []` and ran; the `.call`/`.apply`/`.bind`
  *    and aliased spellings were refused only INCIDENTALLY by the stock type
@@ -33,7 +33,7 @@ import { analyzeProject } from "./index.ts";
  * exact row.
  */
 
-const HEADER = `import { Context } from "smthrs/context"
+const HEADER = `import { Context } from "vibelang/context"
 abstract class Db extends Context { abstract find(id: number): string }
 abstract class Log extends Context { abstract write(line: string): void }
 abstract class Twin extends Context { abstract find(id: number): string }
@@ -41,7 +41,7 @@ abstract class Sub extends Db { }
 `;
 
 function analyze(body: string) {
-  return analyzeProject([{ fileName: "main.sm", source: HEADER + body }], {
+  return analyzeProject([{ fileName: "main.vibe", source: HEADER + body }], {
     rootDir: "/virtual/context-receiver",
   });
 }
@@ -52,10 +52,10 @@ function codes(analysis: ReturnType<typeof analyzeProject>): readonly string[] {
 }
 
 function rowOf(analysis: ReturnType<typeof analyzeProject>, name: string): readonly string[] {
-  return analysis.files["main.sm"]?.rows[name]?.requirements ?? [];
+  return analysis.files["main.vibe"]?.rows[name]?.requirements ?? [];
 }
 
-describe("SMITHERS2106 — the receiver of context() must pin one nominal key", () => {
+describe("VIBE2106 — the receiver of context() must pin one nominal key", () => {
   test("every receiver that can evaluate to a different capability is refused", () => {
     // `Twin` is structurally identical to `Db` on purpose: that is what makes
     // TypeScript reduce the union and hand the analysis a receiver type that
@@ -85,7 +85,7 @@ describe("SMITHERS2106 — the receiver of context() must pin one nominal key", 
     ];
     for (const [label, body] of spellings) {
       const analysis = analyze(body);
-      expect({ [label]: codes(analysis) }).toEqual({ [label]: ["SMITHERS2106"] });
+      expect({ [label]: codes(analysis) }).toEqual({ [label]: ["VIBE2106"] });
     }
   });
 
@@ -115,7 +115,7 @@ describe("SMITHERS2106 — the receiver of context() must pin one nominal key", 
     for (const [label, body, requirement] of spellings) {
       const analysis = analyze(body);
       expect({ [label]: codes(analysis) }).toEqual({ [label]: [] });
-      const rows = analysis.files["main.sm"]!.rows;
+      const rows = analysis.files["main.vibe"]!.rows;
       const target = rows.f ?? rows.get;
       expect({ [label]: target?.requirements }).toEqual({ [label]: [requirement] });
     }
@@ -158,32 +158,32 @@ export function f(x: A | B): number { return x.context() }`);
   });
 });
 
-describe("SMITHERS2102 — module evaluation has no row to carry a capability", () => {
+describe("VIBE2102 — module evaluation has no row to carry a capability", () => {
   test("a capability read written directly at top level is refused", () => {
     // The INDIRECT spelling — a top-level call to a function whose row names
     // the capability — was already refused here; the direct one compiled clean
     // and panicked with `capability 'Db' was not provided`.
     const direct = analyze(`export const v = Db.context().find(1)`);
-    expect(codes(direct)).toEqual(["SMITHERS2102"]);
+    expect(codes(direct)).toEqual(["VIBE2102"]);
 
     const indirect = analyze(`function use(): string { return Db.context().find(1) }
 export const v = use()`);
-    expect(codes(indirect)).toEqual(["SMITHERS2102"]);
+    expect(codes(indirect)).toEqual(["VIBE2102"]);
   });
 
   test("a top-level callback that reads a capability is refused", () => {
     const viaCallback = analyze(`export const v = [1, 2].map((x) => Db.context().find(x))`);
-    expect(codes(viaCallback)).toEqual(["SMITHERS2102"]);
+    expect(codes(viaCallback)).toEqual(["VIBE2102"]);
   });
 
   test("an unpinned receiver at top level is still the receiver rule", () => {
     const ambiguous = analyze(`declare const flag: boolean
 export const v = (flag ? Db : Log).context()`);
-    expect(codes(ambiguous)).toEqual(["SMITHERS2106"]);
+    expect(codes(ambiguous)).toEqual(["VIBE2106"]);
   });
 
   test("a top-level read inside a Layer.provide computation stays accepted", () => {
-    const provided = analyze(`import { Layer } from "smthrs/provider"
+    const provided = analyze(`import { Layer } from "vibelang/provider"
 function use(): string { return Db.context().find(1) }
 export const v = Layer.provide(Layer.succeed(Db, { find: (id: number) => \`row \${id}\` }), () => use())`);
     expect(codes(provided)).toEqual([]);
@@ -195,7 +195,7 @@ export const v = Layer.provide(Layer.succeed(Db, { find: (id: number) => \`row \
   });
 });
 
-describe("SMITHERS2107 — Context.context is a call, not a value", () => {
+describe("VIBE2107 — Context.context is a call, not a value", () => {
   test("every detached spelling is refused by a rule, not by a typing accident", () => {
     const spellings: readonly (readonly [string, string])[] = [
       ["Reflect.apply", "export function f(): string { return (Reflect.apply(Db.context, Db, []) as Db).find(1) }"],
@@ -216,8 +216,8 @@ describe("SMITHERS2107 — Context.context is a call, not a value", () => {
     ];
     for (const [label, body] of spellings) {
       const analysis = analyze(body);
-      expect({ [label]: codes(analysis).filter((code) => code.startsWith("SMITHERS")) })
-        .toEqual({ [label]: ["SMITHERS2107"] });
+      expect({ [label]: codes(analysis).filter((code) => code.startsWith("VIBE")) })
+        .toEqual({ [label]: ["VIBE2107"] });
     }
   });
 
@@ -261,16 +261,16 @@ export function f(): string { return S2.read() }`);
   });
 
   test("the layer check sees the key the runtime will look up", () => {
-    const wrongLayer = analyze(`import { Layer } from "smthrs/provider"
+    const wrongLayer = analyze(`import { Layer } from "vibelang/provider"
 abstract class S2 extends Db { static read(): string { return super.context().find(1) } }
 function f(): string { return S2.read() }
 export const v = Layer.provide(Layer.succeed(Db, { find: (id: number) => \`row \${id}\` }), () => f())`);
-    expect(codes(wrongLayer)).toEqual(["SMITHERS2101"]);
+    expect(codes(wrongLayer)).toEqual(["VIBE2101"]);
   });
 });
 
 describe("a requirement crosses every callback boundary the other channels already model", () => {
-  test("the enclosing function publishes the callback's capabilities", () => {
+  test("callback requirements reach the caller but cannot cross an empty-row annotation", () => {
     const positions: readonly (readonly [string, string])[] = [
       ["a builtin higher-order call", "export function f(xs: readonly number[]): string[] { return xs.map((x) => Db.context().find(x)) }"],
       ["an authored higher-order call", "function invoke(fn: () => string): string { return fn() }\nexport function f(): string { return invoke(() => Db.context().find(1)) }"],
@@ -280,17 +280,19 @@ describe("a requirement crosses every callback boundary the other channels alrea
     ];
     for (const [label, body] of positions) {
       const analysis = analyze(body);
-      expect({ [label]: codes(analysis) }).toEqual({ [label]: [] });
+      const borrowed = label === "a builtin higher-order call" || label === "a new-expression argument";
+      expect({ [label]: codes(analysis) }).toEqual({ [label]: borrowed ? [] : ["VIBE1808"] });
       expect({ [label]: rowOf(analysis, "f") }).toEqual({ [label]: ["Db"] });
     }
   });
 
-  test("the shapes that were already sound stay sound", () => {
+  test("callback rows are retained, including the row of a refused authored generator", () => {
     const iife = analyze("export function f(): string { return ((): string => Db.context().find(1))() }");
     expect(rowOf(iife, "f")).toEqual(["Db"]);
 
     const generator = analyze("export function* f(): Generator<string> { yield Db.context().find(1) }");
     expect(rowOf(generator, "f")).toEqual(["Db"]);
+    expect(codes(generator)).toEqual(["VIBE1106"]);
 
     // A callback with no capability inside charges nothing: the propagation
     // follows the callback's own row, not the mere presence of a callback.
@@ -303,14 +305,14 @@ describe("a requirement crosses every callback boundary the other channels alrea
     // The provide site reconciles the computation's row against the layer's
     // provided closure; charging it a second time through the callback edge
     // would report exactly the capabilities the program satisfies.
-    const provided = analyze(`import { Layer } from "smthrs/provider"
+    const provided = analyze(`import { Layer } from "vibelang/provider"
 export function f(): string {
   return Layer.provide(Layer.succeed(Db, { find: (id: number) => \`row \${id}\` }), () => Db.context().find(1))
 }`);
     expect(codes(provided)).toEqual([]);
     expect(rowOf(provided, "f")).toEqual([]);
 
-    const nestedCallback = analyze(`import { Layer } from "smthrs/provider"
+    const nestedCallback = analyze(`import { Layer } from "vibelang/provider"
 export function f(): string {
   return Layer.provide(Layer.succeed(Db, { find: (id: number) => \`row \${id}\` }), () => [1].map((x) => Db.context().find(x)).join(""))
 }`);
@@ -319,7 +321,7 @@ export function f(): string {
   });
 });
 
-describe("SMITHERS1601 — import.meta is an ambient host namespace", () => {
+describe("VIBE1601 — import.meta is an ambient host namespace", () => {
   test("every import.meta spelling is refused", () => {
     // ECMA-262 hands `import.meta`'s properties to the host
     // (`HostGetImportMetaProperties`), which is host authority by
@@ -331,7 +333,7 @@ describe("SMITHERS1601 — import.meta is an ambient host namespace", () => {
     // entries in that list exist to close.
     const spellings: readonly (readonly [string, string])[] = [
       ["url", "export function f(): string { return import.meta.url }"],
-      ["resolve", 'export function f(): string { return import.meta.resolve("smthrs/context") }'],
+      ["resolve", 'export function f(): string { return import.meta.resolve("vibelang/context") }'],
       ["dirname", "export function f(): string { return import.meta.dirname }"],
       ["filename", "export function f(): string { return import.meta.filename }"],
       ["a cast-laundered member", "export function f(): unknown { return (import.meta as { env?: unknown }).env }"],
@@ -339,7 +341,7 @@ describe("SMITHERS1601 — import.meta is an ambient host namespace", () => {
     ];
     for (const [label, body] of spellings) {
       const analysis = analyze(body);
-      expect({ [label]: codes(analysis) }).toEqual({ [label]: ["SMITHERS1601"] });
+      expect({ [label]: codes(analysis) }).toEqual({ [label]: ["VIBE1601"] });
     }
   });
 

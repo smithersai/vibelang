@@ -1,5 +1,5 @@
 /**
- * The callback contract boundary (SMITHERS1303 / SMITHERS2105).
+ * The callback contract boundary (VIBE1303 / VIBE2105).
  *
  * A function value whose `Result` channel is *inferred* changes shape when it is
  * lowered: its `throw` becomes `return __vsResultFailure(...)` and its plain
@@ -19,17 +19,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { analyzeSource } from "./analyze.ts";
-import { compileSmithers } from "./compile.ts";
-import { compileAndCheckSmithers } from "./validate.ts";
+import { compileVibeLang } from "./compile.ts";
+import { compileAndCheckVibeLang } from "./validate.ts";
 import { __vsInspectResult, __vsResultFailure, type Result } from "../runtime/index.ts";
 
 const examples = `${import.meta.dir}/../../examples/language`;
 
 function check(source: string, name: string) {
-  return compileAndCheckSmithers(source, {
-    fileName: `${examples}/${name}.sm`,
+  return compileAndCheckVibeLang(source, {
+    fileName: `${examples}/${name}.vibe`,
     outputFileName: `${examples}/${name}.generated.ts`,
-    sourceName: `examples/language/${name}.sm`,
+    sourceName: `examples/language/${name}.vibe`,
     runtimeImport: "../../src/runtime/index.ts",
   });
 }
@@ -39,14 +39,14 @@ function codes(source: string): readonly string[] {
 }
 
 async function execute(source: string, name: string): Promise<Record<string, any>> {
-  const executable = compileSmithers(source, {
-    fileName: `${examples}/${name}.sm`,
+  const executable = compileVibeLang(source, {
+    fileName: `${examples}/${name}.vibe`,
     outputFileName: `${examples}/${name}.generated.ts`,
-    sourceName: `examples/language/${name}.sm`,
+    sourceName: `examples/language/${name}.vibe`,
     runtimeImport: pathToFileURL(`${import.meta.dir}/../runtime/index.ts`).href,
   });
   const javascript = new Bun.Transpiler({ loader: "ts", target: "bun" }).transformSync(executable.code);
-  const directory = await mkdtemp(join(tmpdir(), "smithers-callback-"));
+  const directory = await mkdtemp(join(tmpdir(), "vibelang-callback-"));
   const modulePath = join(directory, `${name}.mjs`);
   try {
     await writeFile(modulePath, javascript);
@@ -83,7 +83,7 @@ export function mapError(
 
 /**
  * The same intent — a `throw` written directly in an inline callback — in the
- * spelling SMITHERS1303 asks for. The callback carries the explicit `Result`
+ * spelling VIBE1303 asks for. The callback carries the explicit `Result`
  * contract, so the consumer's parameter type says exactly what the lowered
  * callback returns and no nesting can be introduced.
  */
@@ -111,7 +111,7 @@ describe("a fallible callback may not cross a boundary without a spelled contrac
   test("the reported program is refused, at the callback that carries the throw", () => {
     const checked = check(REPORTED, "reported-callback-throw");
     expect(checked.result.analysis.diagnostics).toEqual([
-      expect.objectContaining({ severity: "error", code: "SMITHERS1303", line: 10, column: 12 }),
+      expect.objectContaining({ severity: "error", code: "VIBE1303", line: 10, column: 12 }),
     ]);
     expect(checked.ok).toBe(false);
     // The row it declared is still the row it declared; refusing the program is
@@ -352,7 +352,7 @@ export function forward(flag: boolean): Result<number, Missing> {
       lookup: { failures: ["Missing"], requirements: [] },
       forward: { failures: ["Missing"], requirements: [] },
     });
-    expect(checked.result.code).toContain("__vsInspectResult");
+    expect(checked.result.code).toContain("__vsPropagate");
 
     const module = await execute(source, "ordinary-throw-and-propagation");
     expect(outcome(module.lookup(false))).toEqual({ ok: false, payload: "Missing" });
@@ -365,10 +365,10 @@ export function forward(flag: boolean): Result<number, Missing> {
   test("a program that needs no lowering is still emitted byte-for-byte", () => {
     const source = `declare function take(callback: (n: number) => number): number\n` +
       `export const applied = take((n) => n * 2)\n`;
-    const result = compileSmithers(source, {
-      fileName: `${examples}/untouched-callback.sm`,
+    const result = compileVibeLang(source, {
+      fileName: `${examples}/untouched-callback.vibe`,
       outputFileName: `${examples}/untouched-callback.generated.ts`,
-      sourceName: "examples/language/untouched-callback.sm",
+      sourceName: "examples/language/untouched-callback.vibe",
       runtimeImport: "../../src/runtime/index.ts",
     });
     expect(result.analysis.diagnostics).toEqual([]);

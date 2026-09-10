@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { buildSemanticProject, moduleRowQualifier } from "./semantic.ts";
+import { analyzeProject } from "./analyze.ts";
 
 /**
  * Module row qualifier INJECTIVITY on the reference frontend, and the shared
@@ -13,7 +13,7 @@ import { buildSemanticProject, moduleRowQualifier } from "./semantic.ts";
  * disambiguator that itself re-collides has not done that job, and the shipped
  * one did — measured, not inferred:
  *
- *     a b.sm  and  a_b.sm  ->  Boom@a_b   in BOTH modules, no diagnostic
+ *     a b.vibe  and  a_b.vibe  ->  Boom@a_b   in BOTH modules, no diagnostic
  *
  * `errorNamesOfType` collects row members into a `Set`, so the two rows merged
  * into one member and `Error.match` exhaustiveness accepted a case for one as
@@ -40,11 +40,32 @@ const CORPUS = JSON.parse(
   readFileSync(resolve(import.meta.dir, "../../../conformance/identity/module-row-qualifier.json"), "utf8"),
 ) as { readonly vectors: readonly QualifierVector[] };
 
-test("the shared vectors are the reference's own answer", () => {
+function nativeQualifiers(modules: readonly string[]): ReadonlyMap<string, string> {
+  const analysis = analyzeProject(modules.map(fileName => ({ fileName,
+    source: "export class Boom extends Error {}\nexport function run(): Result<number, Boom> { throw new Boom() }\n",
+  })), { rootDir: "/project" });
+  expect(analysis.diagnostics).toEqual([]);
+  return new Map(modules.map(name => {
+    const failures = analysis.files[name]!.rows.run!.failures;
+    expect(failures).toHaveLength(1);
+    expect(failures[0]!.startsWith("Boom@")).toBe(true);
+    return [name, failures[0]!.slice("Boom@".length)];
+  }));
+}
+
+test("the SDK publishes native row qualifiers matching every stageable shared vector", () => {
   expect(CORPUS.vectors.length).toBeGreaterThan(0);
-  for (const vector of CORPUS.vectors) {
-    expect(`${vector.why}: ${moduleRowQualifier(vector.module)}`).toBe(`${vector.why}: ${vector.qualifier}`);
+  const stageable = CORPUS.vectors.filter(vector => vector.viaFork);
+  const qualifiers = nativeQualifiers(stageable.map(vector => vector.module));
+  for (const vector of stageable) {
+    expect(`${vector.why}: ${qualifiers.get(vector.module)}`).toBe(`${vector.why}: ${vector.qualifier}`);
   }
+  // Pure algorithm coverage, including non-stageable names, now lives in
+  // TestNativeInvariantModuleQualifiers. The wire must not pretend it admits
+  // those names merely to let a JavaScript test reach a private Go function.
+  const refused = CORPUS.vectors.filter(vector => !vector.viaFork);
+  expect(refused.map(vector => vector.module)).toEqual(["a:b.vibe"]);
+  for (const vector of refused) expect(() => nativeQualifiers([vector.module, "partner.vibe"])).toThrow();
 });
 
 /**
@@ -54,27 +75,28 @@ test("the shared vectors are the reference's own answer", () => {
  */
 test("distinct module paths never mint one qualifier", () => {
   const modules = [
-    "a b.sm",
-    "a_b.sm",
-    "a-b.sm",
-    "a+b.sm",
-    "a@b.sm",
-    "a%b.sm",
-    "a\tb.sm",
-    "a b.sm",
-    "café.sm",
-    "café.sm",
-    "x😀.sm",
-    "x__.sm",
-    "x_.sm",
-    "a.sm.sm",
-    "a.sm",
-    "dir/a b.sm",
-    "dir/a_b.sm",
+    "a b.vibe",
+    "a_b.vibe",
+    "a-b.vibe",
+    "a+b.vibe",
+    "a@b.vibe",
+    "a%b.vibe",
+    "a\tb.vibe",
+    "a b.vibe",
+    "café.vibe",
+    "café.vibe",
+    "x😀.vibe",
+    "x__.vibe",
+    "x_.vibe",
+    "a.vibe.vibe",
+    "a.vibe",
+    "dir/a b.vibe",
+    "dir/a_b.vibe",
   ];
+  const qualifiers = nativeQualifiers(modules);
   const byQualifier = new Map<string, string>();
   for (const module of modules) {
-    const qualifier = moduleRowQualifier(module);
+    const qualifier = qualifiers.get(module)!;
     const prior = byQualifier.get(qualifier);
     expect(prior === undefined ? "" : `${prior} and ${module} both mint ${qualifier}`).toBe("");
     byQualifier.set(qualifier, module);
@@ -91,8 +113,10 @@ test("distinct module paths never mint one qualifier", () => {
 test("the escape is reversible", () => {
   const decode = (qualifier: string): string =>
     qualifier.replace(/\+([0-9A-F]{4})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
-  for (const module of ["a b.sm", "a+b.sm", "x😀.sm", "@scope/a.sm", "café.sm", "a:b.sm"]) {
-    expect(decode(moduleRowQualifier(module))).toBe(module.replace(/\.sm$/, ""));
+  const modules = ["a b.vibe", "a+b.vibe", "x😀.vibe", "@scope/a.vibe", "café.vibe"];
+  const qualifiers = nativeQualifiers(modules);
+  for (const module of modules) {
+    expect(decode(qualifiers.get(module)!)).toBe(module.replace(/\.vibe$/, ""));
   }
 });
 
@@ -105,9 +129,9 @@ test("two modules the predecessor folded together get two row names", () => {
   const declaration = (name: string) =>
     `export class Boom extends Error {\n  constructor(readonly value: number) { super("bad") }\n}\n` +
     `export function ${name}(value: number): number {\n  if (value < 0) throw new Boom(value)\n  return value\n}\n`;
-  const analysis = buildSemanticProject([
-    { fileName: "a b.sm", source: declaration("spaced") },
-    { fileName: "a_b.sm", source: declaration("scored") },
+  const analysis = analyzeProject([
+    { fileName: "a b.vibe", source: declaration("spaced") },
+    { fileName: "a_b.vibe", source: declaration("scored") },
   ], { rootDir: "/project" });
 
   const rows = Object.values(analysis.files).flatMap((file) => Object.values(file.rows));

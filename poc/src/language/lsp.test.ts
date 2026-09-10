@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { startSmithersLanguageServer } from "./lsp.ts";
+import { startVibeLangLanguageServer } from "./lsp.ts";
 
 /* -------------------------------------------------------------------------- */
 /* A minimal LSP client: real Content-Length framing over real streams.        */
@@ -112,7 +112,7 @@ function inProcessServer(): Harness {
   const output = new PassThrough();
   const errorOutput = new PassThrough();
   errorOutput.resume();
-  const handle = startSmithersLanguageServer({ input, output, errorOutput });
+  const handle = startVibeLangLanguageServer({ input, output, errorOutput });
   const client = new Client((chunk) => { input.write(chunk); }, output);
   return { client, closed: handle.closed };
 }
@@ -151,7 +151,7 @@ export function lookup(key: string): Result<string, Missing> {
 }
 `;
 
-const APP = `import { lookup } from "./domain.sm"
+const APP = `import { lookup } from "./domain.vibe"
 
 export function greet(key: string): Result<string, Missing> {
   return \`hello \${lookup(key)!}\`
@@ -164,10 +164,10 @@ let domainPath: string;
 let appPath: string;
 
 beforeAll(async () => {
-  workspace = await mkdtemp(join(tmpdir(), "smithers-lsp-"));
-  failingPath = join(workspace, "failing.sm");
-  domainPath = join(workspace, "domain.sm");
-  appPath = join(workspace, "app.sm");
+  workspace = await mkdtemp(join(tmpdir(), "vibelang-lsp-"));
+  failingPath = join(workspace, "failing.vibe");
+  domainPath = join(workspace, "domain.vibe");
+  appPath = join(workspace, "app.vibe");
   await writeFile(failingPath, FAILING, "utf8");
   await writeFile(domainPath, DOMAIN, "utf8");
   await writeFile(appPath, APP, "utf8");
@@ -199,7 +199,7 @@ async function initialize(client: Client): Promise<Message> {
 
 function open(client: Client, path: string, text: string, version = 1): void {
   client.notify("textDocument/didOpen", {
-    textDocument: { uri: uriOf(path), languageId: "smithers", version, text },
+    textDocument: { uri: uriOf(path), languageId: "vibelang", version, text },
   });
 }
 
@@ -207,7 +207,7 @@ function open(client: Client, path: string, text: string, version = 1): void {
 /* Tests                                                                       */
 /* -------------------------------------------------------------------------- */
 
-describe("smithers lsp handshake", () => {
+describe("vibe lsp handshake", () => {
   test("publishes its bounded capability set and shuts down cleanly", async () => {
     const { client, closed } = inProcessServer();
     const response = await initialize(client);
@@ -216,7 +216,7 @@ describe("smithers lsp handshake", () => {
       capabilities: Record<string, unknown>;
       serverInfo: { name: string; version: string };
     };
-    expect(result.serverInfo.name).toBe("smithers-lsp");
+    expect(result.serverInfo.name).toBe("vibelang-lsp");
     expect(result.capabilities).toEqual({
       positionEncoding: "utf-16",
       // 1 is TextDocumentSyncKind.Full: incremental sync is deliberately absent.
@@ -259,7 +259,7 @@ describe("smithers lsp handshake", () => {
   });
 });
 
-describe("smithers lsp diagnostics", () => {
+describe("vibe lsp diagnostics", () => {
   test("publishes the exact frontend diagnostic and range for an opened module", async () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
@@ -276,8 +276,8 @@ describe("smithers lsp diagnostics", () => {
     expect(diagnostics[0]).toEqual({
       range: { start: { line: 4, character: 0 }, end: { line: 4, character: 6 } },
       severity: 1,
-      code: "SMITHERS1102",
-      source: "smithers",
+      code: "VIBE1102",
+      source: "vibelang",
       message: "exported fallible functions must spell Result<A, E> (or Promise<Result<A, E>>) in their public contract",
     });
     client.notify("exit");
@@ -304,7 +304,7 @@ describe("smithers lsp diagnostics", () => {
       contentChanges: [{ text: FAILING }],
     });
     const third = await client.notification("textDocument/publishDiagnostics", uriOf(failingPath));
-    expect((third.params!.diagnostics as { code: string }[]).map((entry) => entry.code)).toEqual(["SMITHERS1102"]);
+    expect((third.params!.diagnostics as { code: string }[]).map((entry) => entry.code)).toEqual(["VIBE1102"]);
     client.notify("exit");
     await closed;
   });
@@ -325,7 +325,7 @@ describe("smithers lsp diagnostics", () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
     const broken = `export function bad(): Result<number, Error> {\n  return "not a number"\n}\n`;
-    const path = join(workspace, "typed.sm");
+    const path = join(workspace, "typed.vibe");
     await writeFile(path, broken, "utf8");
     open(client, path, broken);
     const published = await client.notification("textDocument/publishDiagnostics", uriOf(path));
@@ -341,7 +341,7 @@ describe("smithers lsp diagnostics", () => {
 });
 
 /* -------------------------------------------------------------------------- */
-/* Agreement with `smithers check`                                             */
+/* Agreement with `vibe check`                                             */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -349,14 +349,14 @@ describe("smithers lsp diagnostics", () => {
  * pass but neither of the two compile stages that come before them, so it
  * judged a program the compiler never sees. Both directions are pinned here:
  * a valid program must publish NOTHING, and a refused one must publish the same
- * rule `smithers check` prints - not a later stage's guess about it.
+ * rule `vibe check` prints - not a later stage's guess about it.
  */
-describe("smithers lsp stage agreement with the compiler", () => {
-  async function publishedFor(name: string, text: string): Promise<{ code: string; line: number; character: number }[]> {
+describe("vibe lsp stage agreement with the compiler", () => {
+  async function publishedFor(name: string, text: string, diskText = text): Promise<{ code: string; line: number; character: number }[]> {
     const { client, closed } = inProcessServer();
     await initialize(client);
     const path = join(workspace, name);
-    await writeFile(path, text, "utf8");
+    await writeFile(path, diskText, "utf8");
     open(client, path, text);
     const published = await client.notification("textDocument/publishDiagnostics", uriOf(path));
     client.notify("exit");
@@ -373,35 +373,78 @@ describe("smithers lsp stage agreement with the compiler", () => {
 
   test("a valid comptime program is clean, not TS2307 on the compiler-owned module", async () => {
     // Without the comptime stage the emitted module still imported
-    // `smithers:comptime`, which no resolver answers, so a program `check`
+    // `vibelang:comptime`, which no resolver answers, so a program `check`
     // accepts lit up red in an editor.
     expect(await publishedFor(
-      "lsp-comptime-valid.sm",
-      `import { comptime } from "smithers:comptime"\nexport const v: number = comptime(1 + 1)\n`,
+      "lsp-comptime-valid.vibe",
+      `import { comptime } from "vibelang:comptime"\nexport const v: number = comptime(1 + 1)\n`,
     )).toEqual([]);
   });
 
+  test("durable modules use the CLI's executable-body stage, including private Action helpers", async () => {
+    expect(await publishedFor("lsp-durable-helper.vibe", `import { Action, durable } from "vibelang:flows"
+abstract class Read extends Action<(n: number) => Result<number, never>> {}
+function helper(n: number): Result<number, never> { return Read.run(n)! }
+export const Flow = durable((n: number): Result<number, never> => helper(n)!)
+export function name(): string { return Flow.manifest.flowId }
+`)).toEqual([]);
+  });
+
+  test("durable placement refusals are structured source diagnostics, not generated TypeScript errors", async () => {
+    expect(await publishedFor("lsp-durable-nested.vibe", `import { durable } from "vibelang:flows"
+export function make() {
+  const Flow = durable((n: number) => n + 1)
+  return Flow
+}
+`)).toEqual([{ code: "VIBE4103", line: 2, character: 15 }]);
+  });
+
+  test("comptime and durable maps compose back to the unsaved authored buffer", async () => {
+    expect(await publishedFor("lsp-comptime-durable.vibe", `import { comptime } from "vibelang:comptime"
+import { durable } from "vibelang:flows"
+const seed = comptime({ first: 1, second: 2 })
+export const Flow = durable((n: number) => n + seed.second)
+export function name(): string { return Flow.manifest.flowId }
+`, "export const stale: number = 'the open buffer must win'\n")).toEqual([]);
+    expect(await publishedFor("lsp-comptime-durable-refusal.vibe", `import { comptime } from "vibelang:comptime"
+import { durable } from "vibelang:flows"
+const seed = comptime({ first: 1, second: 2 })
+export function make() {
+  const Flow = durable((n: number) => n + seed.second)
+  return Flow
+}
+`)).toEqual([{ code: "VIBE4103", line: 4, character: 15 }]);
+  });
+
+  test("row diagnostics after comptime retain authored coordinates", async () => {
+    expect(await publishedFor("lsp-comptime-row-position.vibe", `import { comptime } from "vibelang:comptime"
+const seed = comptime({ first: 1, second: 2 })
+class Missing extends Error {}
+export function broken() { throw new Missing() }
+`)).toEqual([{ code: "VIBE1102", line: 3, character: 0 }]);
+  });
+
   test("comptime refusals publish the comptime rule, not a later stage's stand-in", async () => {
-    // Previously SMITHERS1603 (a host-sensitive global) - true of the lowered
+    // Previously VIBE1603 (a host-sensitive global) - true of the lowered
     // program and not what the compiler reports about this one.
     expect(await publishedFor(
-      "lsp-comptime-nondeterminism.sm",
-      `import { comptime } from "smithers:comptime"\nexport const leak = comptime(Math.random())\n`,
+      "lsp-comptime-nondeterminism.vibe",
+      `import { comptime } from "vibelang:comptime"\nexport const leak = comptime(Math.random())\n`,
     )).toEqual([{ code: "VCT1004", line: 1, character: 29 }]);
 
     // Previously TS2307, for the same reason as the valid case above.
     expect(await publishedFor(
-      "lsp-comptime-imposter.sm",
-      "import { comptime } from \"smithers:comptime\"\nexport const v = comptime`1 + 1`\n",
+      "lsp-comptime-imposter.vibe",
+      "import { comptime } from \"vibelang:comptime\"\nexport const v = comptime`1 + 1`\n",
     )).toEqual([{ code: "VCT1006", line: 1, character: 17 }]);
   });
 
-  test("a valid asset import is clean, not five errors led by SMITHERS1510", async () => {
+  test("a valid asset import is clean, not five errors led by VIBE1510", async () => {
     // Without the source-asset stage the row pass saw `./system.txt` as an
     // untrusted foreign module and charged the whole panic-channel cascade:
-    // SMITHERS1510 + 1101 + 1301 + 1507 + 1508 on a green corpus program.
+    // VIBE1510 + 1101 + 1301 + 1507 + 1508 on a green corpus program.
     expect(await publishedFor(
-      "lsp-asset-text.sm",
+      "lsp-asset-text.vibe",
       `import instructions from "./system.txt" with { type: "text" }\n` +
       `export function main(): string[] { return instructions.trimEnd().split("\\n") }\n`,
     )).toEqual([]);
@@ -409,23 +452,23 @@ describe("smithers lsp stage agreement with the compiler", () => {
     // A loader whose type TypeScript cannot resolve on its own. The generated
     // module has to reach the stock checker, or this is TS2307.
     expect(await publishedFor(
-      "lsp-asset-bytes.sm",
+      "lsp-asset-bytes.vibe",
       `import logo from "./logo.bin" with { type: "bytes" }\n` +
       "export function main(): string[] { return [`${logo.length}`] }\n",
     )).toEqual([]);
   });
 
   test("asset refusals publish the asset rule at the asset stage's own position", async () => {
-    // Previously SMITHERS1510 - a different rule, about a different thing.
+    // Previously VIBE1510 - a different rule, about a different thing.
     expect(await publishedFor(
-      "lsp-asset-absolute.sm",
+      "lsp-asset-absolute.vibe",
       `import text from "/etc/hosts" with { type: "text" }\nexport const v = text\n`,
-    )).toEqual([{ code: "SMITHERS5207", line: 0, character: 17 }]);
+    )).toEqual([{ code: "VIBE5207", line: 0, character: 17 }]);
 
     expect(await publishedFor(
-      "lsp-asset-no-attribute.sm",
+      "lsp-asset-no-attribute.vibe",
       `import text from "./system.txt"\nexport const v = text\n`,
-    )).toEqual([{ code: "SMITHERS5201", line: 0, character: 0 }]);
+    )).toEqual([{ code: "VIBE5201", line: 0, character: 0 }]);
   });
 
   test("the stages did not displace the diagnostics that already worked", async () => {
@@ -434,29 +477,29 @@ describe("smithers lsp stage agreement with the compiler", () => {
     // a compiler-owned module that is lowered by the emitter rather than by a
     // stage, and a program with no compiler-owned construct at all.
     expect(await publishedFor(
-      "lsp-plain-failure.sm",
+      "lsp-plain-failure.vibe",
       `class NotFound extends Error {}\nexport function f(id: number) { if (id < 0) throw new NotFound(); return id }\n`,
-    )).toEqual([{ code: "SMITHERS1102", line: 1, character: 0 }]);
+    )).toEqual([{ code: "VIBE1102", line: 1, character: 0 }]);
 
     expect(await publishedFor(
-      "lsp-host-global.sm",
+      "lsp-host-global.vibe",
       `export function f(): number { return process.pid }\n`,
-    )).toEqual([{ code: "SMITHERS1601", line: 0, character: 37 }]);
+    )).toEqual([{ code: "VIBE1601", line: 0, character: 37 }]);
 
     expect(await publishedFor(
-      "lsp-exceptions.sm",
-      `import { panic } from "smithers:exceptions"\n` +
+      "lsp-exceptions.vibe",
+      `import { panic } from "vibelang:exceptions"\n` +
       `export function f(x: boolean): string { if (x) panic("no"); return "y" }\n`,
     )).toEqual([]);
 
     expect(await publishedFor(
-      "lsp-ordinary.sm",
+      "lsp-ordinary.vibe",
       `export function double(n: number): number { return n * 2 }\n`,
     )).toEqual([]);
   });
 });
 
-describe("smithers lsp hover", () => {
+describe("vibe lsp hover", () => {
   test("shows the checked channel and the inferred failure and requirement rows", async () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
@@ -469,7 +512,7 @@ describe("smithers lsp hover", () => {
     const contents = (hover.result as { contents: { kind: string; value: string } }).contents;
     expect(contents.kind).toBe("markdown");
     expect(contents.value).toBe(
-      "```smithers\n" +
+      "```vibelang\n" +
       "export function lookup(key: string): Result<string, Missing>\n" +
       "```\n" +
       "\n" +
@@ -497,8 +540,8 @@ describe("smithers lsp hover", () => {
   });
 });
 
-describe("smithers lsp definition", () => {
-  test("resolves a project-local symbol across .sm modules", async () => {
+describe("vibe lsp definition", () => {
+  test("resolves a project-local symbol across .vibe modules", async () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
     open(client, appPath, APP);
@@ -528,12 +571,12 @@ describe("smithers lsp definition", () => {
   });
 });
 
-describe("smithers lsp formatting", () => {
+describe("vibe lsp formatting", () => {
   test("returns a whole-document edit produced by the formatter", async () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
     const unformatted = `export function f(value:number):number{\nreturn value*2\n}\n`;
-    const path = join(workspace, "unformatted.sm");
+    const path = join(workspace, "unformatted.vibe");
     await writeFile(path, unformatted, "utf8");
     open(client, path, unformatted);
     const formatting = await client.response(client.request("textDocument/formatting", {
@@ -570,7 +613,7 @@ describe("smithers lsp formatting", () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
     const broken = `export function f(): number {\n  return (1 +\n}\n`;
-    const path = join(workspace, "unparseable.sm");
+    const path = join(workspace, "unparseable.vibe");
     open(client, path, broken);
     const formatting = await client.response(client.request("textDocument/formatting", {
       textDocument: { uri: uriOf(path) },
@@ -582,7 +625,7 @@ describe("smithers lsp formatting", () => {
   });
 });
 
-describe("smithers lsp protocol robustness", () => {
+describe("vibe lsp protocol robustness", () => {
   test("answers an unknown request with MethodNotFound and keeps serving", async () => {
     const { client, closed } = inProcessServer();
     await initialize(client);
@@ -650,14 +693,14 @@ describe("smithers lsp protocol robustness", () => {
   });
 });
 
-describe("smithers lsp as a real subprocess", () => {
+describe("vibe lsp as a real subprocess", () => {
   test("speaks the protocol over stdio and exits 0 after shutdown", async () => {
     const runner = join(workspace, "run-lsp.mjs");
     const lspModule = pathToFileURL(fileURLToPath(new URL("./lsp.ts", import.meta.url))).href;
     await writeFile(
       runner,
-      `import { startSmithersLanguageServer } from ${JSON.stringify(lspModule)}\n` +
-      `const handle = startSmithersLanguageServer()\n` +
+      `import { startVibeLangLanguageServer } from ${JSON.stringify(lspModule)}\n` +
+      `const handle = startVibeLangLanguageServer()\n` +
       `process.exit(await handle.closed)\n`,
       "utf8",
     );
@@ -675,7 +718,7 @@ describe("smithers lsp as a real subprocess", () => {
       open(client, failingPath, FAILING);
       const published = await client.notification("textDocument/publishDiagnostics", uriOf(failingPath));
       expect((published.params!.diagnostics as { code: string }[]).map((entry) => entry.code))
-        .toEqual(["SMITHERS1102"]);
+        .toEqual(["VIBE1102"]);
       await client.response(client.request("shutdown"));
       client.notify("exit");
       expect(await exited).toBe(0);

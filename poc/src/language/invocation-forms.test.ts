@@ -19,12 +19,12 @@
  *     `tag: { requirements: ["Db"] }` beside `f: { requirements: [] }` — the
  *     callee's row computed correctly and then dropped at the call — and the
  *     program ran and panicked with `capability 'Db' was not provided`. The same
- *     blind spot silenced must-consume (SMITHERS1301), SMITHERS1303 and
- *     SMITHERS1404 on the tagged-template spelling. 14 broken spellings against
+ *     blind spot silenced must-consume (VIBE1301), VIBE1303 and
+ *     VIBE1404 on the tagged-template spelling. 14 broken spellings against
  *     7 sound, silent on BOTH backends.
  *
  *  2. `resolveFunctionReference` matched only direct symbol identity, so ONE
- *     alias hop defeated SMITHERS1303, SMITHERS1404, the callback requirement
+ *     alias hop defeated VIBE1303, VIBE1404, the callback requirement
  *     row and the `Result.try` boundary row. `hof(fallible)` was refused;
  *     `const alias = fallible; hof(alias)` compiled, ran to exit 0, and the host
  *     observed the lifted `Result` as its plain success value `{}` — the failure
@@ -49,7 +49,7 @@
 import { describe, expect, test } from "bun:test";
 import { analyzeProject } from "./index.ts";
 
-const CAPABILITY = `import { Context } from "smthrs/context"
+const CAPABILITY = `import { Context } from "vibelang/context"
 
 abstract class Db extends Context {
   abstract read(): string
@@ -62,7 +62,7 @@ interface Measured {
 }
 
 function measure(source: string): Measured {
-  const analysis = analyzeProject([{ fileName: "main.sm", source }], { rootDir: "/virtual/invocation-forms" });
+  const analysis = analyzeProject([{ fileName: "main.vibe", source }], { rootDir: "/virtual/invocation-forms" });
   const rows: Measured["rows"] = {};
   for (const file of Object.values(analysis.files)) {
     for (const [name, row] of Object.entries(file.rows)) rows[name] = row;
@@ -83,7 +83,12 @@ function measure(source: string): Measured {
  * anywhere: a row that already passes is evidence the model is total over the
  * grammar rather than a list somebody remembered to extend.
  */
-const INVOCATION_FORMS: readonly { readonly id: string; readonly source: string }[] = [
+const INVOCATION_FORMS: readonly {
+  readonly id: string;
+  readonly source: string;
+  /** The row is still inferred when the authored-generator contract refuses it. */
+  readonly generatorRefusals?: number;
+}[] = [
   { id: "a plain call", source: `
 function g(): string { return Db.context().read() }
 export function f(): string { return g() }` },
@@ -122,19 +127,19 @@ export function f(): string { return new Derived().v }` },
 class Base { readonly v: string; constructor() { this.v = Db.context().read() } }
 class Derived extends Base { constructor() { super() } }
 export function f(): string { return new Derived().v }` },
-  { id: "Symbol.iterator through a spread", source: `
+  { id: "Symbol.iterator through a spread", generatorRefusals: 1, source: `
 class It { *[Symbol.iterator](): Generator<string> { yield Db.context().read() } }
 const it = new It()
 export function f(): readonly string[] { return [...it] }` },
-  { id: "Symbol.iterator through for…of", source: `
+  { id: "Symbol.iterator through for…of", generatorRefusals: 1, source: `
 class It { *[Symbol.iterator](): Generator<string> { yield Db.context().read() } }
 const it = new It()
 export function f(): string { let out = ""; for (const x of it) out += x; return out }` },
-  { id: "Symbol.iterator through array destructuring", source: `
+  { id: "Symbol.iterator through array destructuring", generatorRefusals: 1, source: `
 class It { *[Symbol.iterator](): Generator<string> { yield Db.context().read() } }
 const it = new It()
 export function f(): string { const [a] = it; return a as string }` },
-  { id: "Symbol.iterator through yield*", source: `
+  { id: "Symbol.iterator through yield*", generatorRefusals: 2, source: `
 class It { *[Symbol.iterator](): Generator<string> { yield Db.context().read() } }
 const it = new It()
 export function f(): Generator<string> { function* inner(): Generator<string> { yield* it } return inner() }` },
@@ -162,7 +167,7 @@ export function f(): string { return JSON.stringify(t) }` },
 class P { then(resolve: (v: string) => void): void { resolve(Db.context().read()) } }
 const p = new P()
 export async function f(): Promise<string> { return await p }` },
-  { id: "Symbol.asyncIterator through for await…of", source: `
+  { id: "Symbol.asyncIterator through for await…of", generatorRefusals: 1, source: `
 class It { async *[Symbol.asyncIterator](): AsyncGenerator<string> { yield Db.context().read() } }
 const it = new It()
 export async function f(): Promise<string> { let out = ""; for await (const x of it) out += x; return out }` },
@@ -172,7 +177,7 @@ describe("every invocation form charges the row of what it invokes", () => {
   for (const form of INVOCATION_FORMS) {
     test(form.id, () => {
       const measured = measure(CAPABILITY + form.source);
-      expect(measured.codes).toEqual([]);
+      expect(measured.codes).toEqual(Array.from({ length: form.generatorRefusals ?? 0 }, () => "VIBE1106"));
       expect(measured.rows.f?.requirements).toEqual(["Db"]);
     });
   }
@@ -203,7 +208,7 @@ export function f(): C { return new C() }`,
   ]) {
     test(`${form.id} at top level is refused, not charged to the method`, () => {
       const measured = measure(CAPABILITY + form.source);
-      expect(measured.codes).toEqual(["SMITHERS2102"]);
+      expect(measured.codes).toEqual(["VIBE2102"]);
       expect(measured.rows.f?.requirements).toEqual([]);
     });
   }
@@ -270,27 +275,27 @@ function inner(): string { if (Math.random() > 2) throw new Boom(); return "v" }
 function tag(parts: TemplateStringsArray): string { return parts.join("") + inner() }
 `;
 
-  test("SMITHERS1301: a dropped Result from a tagged template is refused", () => {
+  test("VIBE1301: a dropped Result from a tagged template is refused", () => {
     const dropped = measure(FALLIBLE + `export function f(): void { tag\`bad\` }`);
     const droppedCall = measure(FALLIBLE + `export function f(): void { tag(["bad"] as unknown as TemplateStringsArray) }`);
-    expect(dropped.codes).toContain("SMITHERS1301");
+    expect(dropped.codes).toContain("VIBE1301");
     expect(dropped.codes).toEqual(droppedCall.codes);
   });
 
-  test("SMITHERS1303: an inferred-fallible substitution needs a contract", () => {
+  test("VIBE1303: an inferred-fallible substitution needs a contract", () => {
     const source = `
 class Boom extends Error { constructor() { super("boom") } }
 const fallible = (): string => { throw new Boom() }
 function tag(parts: TemplateStringsArray, cb: () => string): string { return parts.join("") + cb() }
 export function f(): string { return tag\`x\${fallible}\` }`;
-    expect(measure(source).codes).toContain("SMITHERS1303");
+    expect(measure(source).codes).toContain("VIBE1303");
   });
 
-  test("SMITHERS1404: an async substitution needs proven ownership", () => {
+  test("VIBE1404: an async substitution needs proven ownership", () => {
     const source = `
 function tag(parts: TemplateStringsArray, cb: () => Promise<string>): string { void cb(); return parts.join("") }
 export function f(): string { return tag\`x\${async () => "v"}\` }`;
-    expect(measure(source).codes).toContain("SMITHERS1404");
+    expect(measure(source).codes).toContain("VIBE1404");
   });
 
   test("but an ordinary tagged template over ordinary values stays clean", () => {
@@ -304,7 +309,7 @@ export function f(): string { return tag\`x\${() => "v"}\` }`;
 /**
  * `resolveFunctionReference`: one alias hop used to defeat four rules at once.
  * `capability` below reads `Db` and is inferred-fallible, so a spelling that
- * resolves it charges `f` the `Db` row AND draws SMITHERS1303; a spelling that
+ * resolves it charges `f` the `Db` row AND draws VIBE1303; a spelling that
  * does not is silent on both.
  */
 const ALIAS_HEAD = CAPABILITY + `
@@ -327,16 +332,22 @@ describe("a function value is followed to the function it names", () => {
   ]) {
     test(form.id, () => {
       const measured = measure(`${ALIAS_HEAD}export function f(): string { ${form.body} }`);
-      expect(measured.codes).toContain("SMITHERS1303");
+      expect(measured.codes).toContain("VIBE1303");
       expect(measured.rows.f?.requirements).toEqual(["Db"]);
     });
   }
 
-  test("a wrapper arrow charges the row without the contract, because no VALUE crosses", () => {
-    const measured = measure(`${ALIAS_HEAD}export function f(): string { return hof(() => capability()) }`);
-    expect(measured.codes).not.toContain("SMITHERS1303");
-    expect(measured.rows.f?.requirements).toEqual(["Db"]);
-  });
+  for (const wrapper of ["() => capability()", "() => { return capability() }"]) {
+    test(`a wrapper preserves both callable contracts: ${wrapper}`, () => {
+      // The wrapper itself crosses the callback boundary. Returning an
+      // inferred-fallible call is not forwarding an already-Result ABI;
+      // neither an expression body nor a block may erase its failure or Db row.
+      const measured = measure(`${ALIAS_HEAD}export function f(): string { return hof(${wrapper}) }`);
+      expect(measured.codes).toContain("VIBE1303");
+      expect(measured.codes).toContain("VIBE1808");
+      expect(measured.rows.f?.requirements).toEqual(["Db"]);
+    });
+  }
 
   test("a MUTABLE binding resolves to nothing rather than to its stale initializer", () => {
     // Two function values with the same shape have the same TYPE, so narrowing
@@ -344,7 +355,7 @@ describe("a function value is followed to the function it names", () => {
     // with. Reading it would charge `Log` — a capability the program never reads
     // — while dropping the `Db` it does. A wrong row is worse than no row; this
     // is the same reason `constantInitializer` reads only `const` and
-    // SMITHERS1508 refuses a mutable foreign alias.
+    // VIBE1508 refuses a mutable foreign alias.
     const measured = measure(CAPABILITY + `
 abstract class Log extends Context { abstract write(m: string): void }
 function hof(callback: () => string): string { return callback() }
@@ -380,8 +391,8 @@ function inner(): string { return Db.context().read() }
  * `resolveLayerExpression` trusts an initializer forever, so recording a `let`
  * let `Layer.provide` certify a closure it does not have.
  */
-const LAYER_HEAD = `import { Context } from "smthrs/context"
-import { Layer } from "smthrs/provider"
+const LAYER_HEAD = `import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
 
 abstract class Db extends Context { abstract read(): string }
 abstract class Log extends Context { abstract write(m: string): void }
@@ -412,7 +423,7 @@ let app = Layer.succeed(Db, db)
 Layer.provide(app, () => needsDb())` },
   ]) {
     test(`${form.id} is refused as opaque`, () => {
-      expect(measure(LAYER_HEAD + form.tail).codes).toEqual(["SMITHERS2104"]);
+      expect(measure(LAYER_HEAD + form.tail).codes).toEqual(["VIBE2104"]);
     });
   }
 
@@ -429,15 +440,15 @@ const app = Layer.merge(Layer.succeed(Db, db), Layer.succeed(Log, log))
 Layer.provide(app, () => needsBoth())`).codes).toEqual([]);
   });
 
-  test("a const layer that is MISSING a capability is still the precise SMITHERS2101, not the opaque one", () => {
+  test("a const layer that is MISSING a capability is still the precise VIBE2101, not the opaque one", () => {
     expect(measure(LAYER_HEAD + `
 const app = Layer.succeed(Log, log)
-Layer.provide(app, () => needsDb())`).codes).toEqual(["SMITHERS2101"]);
+Layer.provide(app, () => needsDb())`).codes).toEqual(["VIBE2101"]);
   });
 });
 
 /**
- * SMITHERS2107 is about a DETACHED reference, and parentheses do not detach.
+ * VIBE2107 is about a DETACHED reference, and parentheses do not detach.
  * `(Db.context)()` is the same member access, the same `this` binding and the
  * same emitted call as `Db.context()`; refusing it told the author to "invoke it
  * directly as Capability.context()" — advice the program was already following.
@@ -471,9 +482,9 @@ export function f(): string { const c = Db.context; return c().read() }` },
     { id: "calling it through .call", body: `
 export function f(): string { return Db.context.call(Db).read() }` },
   ]) {
-    test(`${form.id} is still SMITHERS2107`, () => {
+    test(`${form.id} is still VIBE2107`, () => {
       const measured = measure(CAPABILITY + form.body);
-      expect(measured.codes).toContain("SMITHERS2107");
+      expect(measured.codes).toContain("VIBE2107");
       expect(measured.rows.f?.requirements).toEqual([]);
     });
   }

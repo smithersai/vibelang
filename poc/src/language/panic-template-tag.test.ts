@@ -7,7 +7,7 @@
  * is demoted into `cause` and the message degrades. Measured before this rule:
  *
  *   * this backend — ``panic`authored message` `` compiled clean and aborted
- *     with `Panic: Smithers panic` and `[cause]: [ 'authored message' ]`, while
+ *     with `Panic: VibeLang panic` and `[cause]: [ 'authored message' ]`, while
  *     `panic("authored message")` aborted with `Panic: authored message`;
  *   * the Go fork — the same program aborted with a `cause` that was the ARRAY
  *     `[ 'authored message' ]` rather than the authored string, so the two
@@ -15,13 +15,13 @@
  *     ``Reflect.panic`authored message` `` survived lowering untouched and the
  *     ACCEPTED program died with `TypeError: Reflect.panic is not a function`.
  *
- * The code is `SMITHERS1503` — the diagnostic that already answers "this is the
+ * The code is `VIBE1503` — the diagnostic that already answers "this is the
  * panic operation, in a spelling the lowering does not support" — reported at
  * the whole tagged expression, exactly where the call form reports it. Minting a
  * second code for the second member of a family that already has one is how a
  * catalogue stops being an index.
  *
- * The SHAPE is `SMITHERS1604`'s, settled this round on the `crypto` precedent:
+ * The SHAPE is `VIBE1604`'s, settled this round on the `crypto` precedent:
  * refuse the OPERATION, leave the NAME resolvable. Refusing an undocumented
  * spelling is also the reversible reading — a refusal can be relaxed by a later
  * decision, where a degraded acceptance already shipped cannot be taken back
@@ -29,21 +29,21 @@
  *
  * WHAT THIS TABLE CANNOT SEE: it measures diagnostics, not messages. That the
  * accepted call spellings still carry their AUTHORED text is a runtime fact,
- * confirmed out of band on both backends (`smithers run` prints
+ * confirmed out of band on both backends (`vibe run` prints
  * `Panic: authored message` for all four call spellings, before and after).
  */
 import { describe, expect, test } from "bun:test";
 import { analyzeProject } from "./index.ts";
 
 function codes(source: string, extra: readonly { fileName: string; source: string }[] = []): readonly string[] {
-  const analysis = analyzeProject([{ fileName: "main.sm", source }, ...extra], {
+  const analysis = analyzeProject([{ fileName: "main.vibe", source }, ...extra], {
     rootDir: "/virtual/panic-tag",
   });
   return analysis.diagnostics.filter((diagnostic) => diagnostic.severity === "error")
     .map((diagnostic) => diagnostic.code).sort();
 }
 
-const IMPORTED = 'import { panic } from "smithers:exceptions"\n\n';
+const IMPORTED = 'import { panic } from "vibelang:exceptions"\n\n';
 
 function inFunction(statement: string, declarations = ""): string {
   return `${IMPORTED}${declarations}
@@ -74,12 +74,12 @@ describe("the panic intrinsic in a template TAG position is refused", () => {
   for (const [label, declarations, statement] of refused) {
     test(label, () => {
       expect({ [label]: codes(inFunction(statement, declarations)) })
-        .toEqual({ [label]: ["SMITHERS1503"] });
+        .toEqual({ [label]: ["VIBE1503"] });
     });
   }
 
   test("at module scope too, where no function channel exists to move it into", () => {
-    expect(codes(`${IMPORTED}panic\`authored message\`\n`)).toEqual(["SMITHERS1503"]);
+    expect(codes(`${IMPORTED}panic\`authored message\`\n`)).toEqual(["VIBE1503"]);
   });
 });
 
@@ -103,11 +103,11 @@ describe("the NAME stays resolvable; only the tag operation is refused", () => {
  * The acceptance guards. Without them the rule can be widened to "any tag whose
  * name is `panic`" and every refusal above stays green — the same trap
  * `20-host-globals/the-function-type-and-prototype-test-stay-available` exists
- * to spring for `SMITHERS1604`.
+ * to spring for `VIBE1604`.
  */
 describe("an ordinary tagged template is untouched, whatever it is called", () => {
   const TAGMOD = {
-    fileName: "tagmod.sm",
+    fileName: "tagmod.vibe",
     source: `/** @throws {never} */
 export function panic(parts: TemplateStringsArray): string {
   return parts.join("")
@@ -125,12 +125,12 @@ boom()
 `)).toEqual([]);
   });
 
-  // An IMPORTED user `panic` draws SMITHERS1802 here for an unrelated,
+  // An IMPORTED user `panic` draws VIBE1802 here for an unrelated,
   // pre-existing reason (a cross-module callee row a tagged template cannot
   // resolve in this harness), measured identically before and after this rule.
   // What matters is that this rule adds nothing to it.
   test("an imported user function named panic is not a panic tag", () => {
-    expect(codes(`import { panic } from "./tagmod.sm"
+    expect(codes(`import { panic } from "./tagmod.vibe"
 
 /** @throws {never} */
 export function boom(): string {
@@ -138,7 +138,7 @@ export function boom(): string {
 }
 
 boom()
-`, [TAGMOD])).not.toContain("SMITHERS1503");
+`, [TAGMOD])).not.toContain("VIBE1503");
   });
 
   test("a LOCAL function named panic is still a tag", () => {

@@ -3,45 +3,44 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import * as ts from "typescript-js";
+import { decodeNativeLanguageAnalysis, NATIVE_API_VERSION } from "../compiler/protocol.ts";
 import { analyzeSource } from "./analyze.ts";
-import { compileSmithers } from "./compile.ts";
-import { internalParseDiagnostics, parseDiagnosticsFailure } from "./semantic.ts";
-import { checkEmittedTypeScript, compileAndCheckSmithers } from "./validate.ts";
+import { compileVibeLang } from "./compile.ts";
+import { checkEmittedTypeScript, compileAndCheckVibeLang } from "./validate.ts";
 import { __vsInspectResult } from "../runtime/index.ts";
 
 const examples = `${import.meta.dir}/../../examples/language`;
 
 function compileCase(source: string, name = "case") {
-  return compileSmithers(source, {
-    fileName: `${examples}/${name}.sm`,
+  return compileVibeLang(source, {
+    fileName: `${examples}/${name}.vibe`,
     outputFileName: `${examples}/${name}.generated.ts`,
-    sourceName: `examples/language/${name}.sm`,
+    sourceName: `examples/language/${name}.vibe`,
     runtimeImport: "../../src/runtime/index.ts",
   });
 }
 
 function emittedErrors(code: string, name = "case") {
   return checkEmittedTypeScript(code, `${examples}/${name}.generated.ts`)
-    .filter((diagnostic) => diagnostic.category === 1);
+    .filter((diagnostic) => diagnostic.category === "error");
 }
 
 async function executeCase(source: string, name: string) {
-  const result = compileSmithers(source, {
-    fileName: `${examples}/${name}.sm`,
+  const result = compileVibeLang(source, {
+    fileName: `${examples}/${name}.vibe`,
     outputFileName: `${examples}/${name}.generated.ts`,
-    sourceName: `examples/language/${name}.sm`,
+    sourceName: `examples/language/${name}.vibe`,
     runtimeImport: "../../src/runtime/index.ts",
   });
-  const executable = compileSmithers(source, {
-    fileName: `${examples}/${name}.sm`,
+  const executable = compileVibeLang(source, {
+    fileName: `${examples}/${name}.vibe`,
     outputFileName: `${examples}/${name}.generated.ts`,
-    sourceName: `examples/language/${name}.sm`,
+    sourceName: `examples/language/${name}.vibe`,
     runtimeImport: pathToFileURL(`${import.meta.dir}/../runtime/index.ts`).href,
   });
   const javascript = new Bun.Transpiler({ loader: "ts", target: "bun" })
     .transformSync(executable.code);
-  const directory = await mkdtemp(join(tmpdir(), "smithers-language-"));
+  const directory = await mkdtemp(join(tmpdir(), "vibelang-language-"));
   const modulePath = join(directory, `${name}.mjs`);
   try {
     await writeFile(modulePath, javascript);
@@ -52,8 +51,8 @@ async function executeCase(source: string, name: string) {
   }
 }
 
-describe("checked .sm frontend", () => {
-  test("keeps unchanged TypeScript byte-for-byte when no Smithers lowering is needed", () => {
+describe("checked .vibe frontend", () => {
+  test("keeps unchanged TypeScript byte-for-byte when no VibeLang lowering is needed", () => {
     const source = `export const double = (value: number): number => value * 2\n`;
     const result = compileCase(source);
     expect(result.code).toBe(source);
@@ -69,7 +68,7 @@ describe("checked .sm frontend", () => {
       const value = old() catch "fallback"
     `);
     const messages = result.diagnostics
-      .filter((diagnostic) => diagnostic.code === "SMITHERS1001")
+      .filter((diagnostic) => diagnostic.code === "VIBE1001")
       .map((diagnostic) => diagnostic.message)
       .join("\n");
     expect(messages).toContain("historical `error Name {}`");
@@ -89,8 +88,8 @@ describe("checked .sm frontend", () => {
         return await load().catch(() => "fallback")
       }
     `);
-    expect(result.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1001")).toHaveLength(0);
-    expect(result.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1401")).toBe(true);
+    expect(result.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1001")).toHaveLength(0);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1401")).toBe(true);
   });
 
   test("infers local Results and emits explicit success, failure, and postfix propagation branches", () => {
@@ -109,8 +108,8 @@ describe("checked .sm frontend", () => {
     expect(result.analysis.rows.root?.failures).toEqual(["Missing"]);
     expect(result.analysis.diagnostics).toHaveLength(0);
     expect(result.code).toContain("return __vsResultFailure(new Missing())");
-    expect(result.code).toContain("__vsInspectResult(leaf(id))");
-    expect(result.code).toContain("ok === false");
+    expect(result.code).toContain("yield* __vsPropagate(leaf(id),");
+    expect(result.code).toContain("return __vsRunResult(function* ()");
     expect(result.code).toContain("return __vsResultSuccess(value + 1)");
     expect(emittedErrors(result.code)).toHaveLength(0);
   });
@@ -124,11 +123,11 @@ describe("checked .sm frontend", () => {
       function nonNull(value: string | undefined): string { return value! }
     `);
     expect(analysis.diagnostics.filter((diagnostic) =>
-      ["SMITHERS1001", "SMITHERS1206", "SMITHERS1207"].includes(diagnostic.code),
+      ["VIBE1001", "VIBE1206", "VIBE1207"].includes(diagnostic.code),
     ).map((diagnostic) => diagnostic.code).sort()).toEqual([
-      "SMITHERS1001",
-      "SMITHERS1206",
-      "SMITHERS1207",
+      "VIBE1001",
+      "VIBE1206",
+      "VIBE1207",
     ]);
   });
 
@@ -143,7 +142,7 @@ describe("checked .sm frontend", () => {
       export function main(flag: boolean): Result<string[], Missing> {
         const name = findUser(1)!?.nickname ?? "anonymous"
         const absent = findUser(0)!?.nickname ?? "anonymous"
-        const value: string = ["smithers"].join("")
+        const value: string = ["vibelang"].join("")
         return [String(!flag), String(!!value), String(value !== ""), name, absent]
       }
     `, "postfix-and-prefix-bang");
@@ -156,22 +155,22 @@ describe("checked .sm frontend", () => {
   test("requires explicit Result contracts only at exported boundaries", () => {
     const local = analyzeSource(`class E extends Error {}; function inferred() { throw new E() }`);
     expect(local.rows.inferred?.failures).toEqual(["E"]);
-    expect(local.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1102")).toBe(false);
+    expect(local.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1102")).toBe(false);
 
     const exported = analyzeSource(`class E extends Error {}; export function inferred() { throw new E() }`);
-    expect(exported.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1102")).toBe(true);
+    expect(exported.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1102")).toBe(true);
   });
 
   test("lowers the checked panic channel to an Error Result value", () => {
     const result = compileCase(`
-      import { Panic, panic } from "smithers:exceptions"
+      import { Panic, panic } from "vibelang:exceptions"
       function checked(fail: boolean): Result<string, Panic> {
         if (fail) panic("bad boundary")
         return "ok"
       }
     `);
     expect(result.analysis.rows.checked?.failures).toEqual(["Panic"]);
-    expect(result.code).toContain("return __vsResultFailure(__vsPanicValue(\"bad boundary\"))");
+    expect(result.code).toContain("return __vsResultFailure(new __vsPanicType(\"bad boundary\"))");
     expect(emittedErrors(result.code)).toHaveLength(0);
   });
 
@@ -190,7 +189,7 @@ describe("checked .sm frontend", () => {
     expect(result.analysis.rows.declared).toEqual({ failures: ["ForeignFailure", "Panic"], requirements: [] });
     expect(result.analysis.rows.unknown).toEqual({ failures: ["Panic"], requirements: [] });
     expect(result.code).toContain("Result.try(() => declaredFailure(true)");
-    expect(result.code).toContain("__vsValidateForeignError(cause, ForeignFailure)");
+    expect(result.code).toMatch(/(__vibelangCause\d+) => __vsValidateForeignError\(\1, ForeignFailure\)/);
     expect(result.code).toContain("Result.tryPromise(() => untrustedAsync(\"x\"))");
     expect(result.code).not.toContain("Result.try(() => trustedLength");
     expect(emittedErrors(result.code, "foreign-boundary")).toHaveLength(0);
@@ -198,20 +197,20 @@ describe("checked .sm frontend", () => {
     const omitted = analyzeSource(`
       import { ForeignFailure, declaredFailure } from "./foreign.ts"
       function wrong(): Result<string, ForeignFailure> { return declaredFailure(true)! }
-    `, { fileName: `${examples}/foreign-omitted.sm` });
+    `, { fileName: `${examples}/foreign-omitted.vibe` });
     expect(omitted.diagnostics.some((diagnostic) =>
-      diagnostic.code === "SMITHERS1104" && diagnostic.message.includes("Panic"),
+      diagnostic.code === "VIBE1104" && diagnostic.message.includes("Panic"),
     )).toBe(true);
 
     const constructor = analyzeSource(`
       import { ForeignFailure } from "./foreign.ts"
       function unsupported(): ForeignFailure { return new ForeignFailure() }
-    `, { fileName: `${examples}/foreign-constructor.sm` });
-    expect(constructor.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1504")).toBe(true);
+    `, { fileName: `${examples}/foreign-constructor.vibe` });
+    expect(constructor.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1504")).toBe(true);
   });
 
   test("fails closed on untrusted foreign module initialization while preserving type-only and dynamic adapters", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "smithers-module-init-"));
+    const directory = await mkdtemp(join(tmpdir(), "vibelang-module-init-"));
     try {
       await writeFile(join(directory, "trusted.ts"), `
         /** @module @throws {never} */
@@ -246,38 +245,38 @@ describe("checked .sm frontend", () => {
       const rejected = analyzeSource(`
         import { value } from "./untrusted.ts"
         export const copied = value
-      `, { fileName: join(directory, "rejected.sm") });
-      expect(rejected.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1510")).toHaveLength(1);
+      `, { fileName: join(directory, "rejected.vibe") });
+      expect(rejected.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1510")).toHaveLength(1);
 
       const late = analyzeSource(`
         import { trustedCall } from "./late-marker.ts"
         function call(): Result<number, Panic> { return trustedCall()! }
-      `, { fileName: join(directory, "late.sm") });
-      expect(late.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1510")).toHaveLength(1);
+      `, { fileName: join(directory, "late.vibe") });
+      expect(late.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1510")).toHaveLength(1);
 
       const ordinary = analyzeSource(`
         import { value } from "./ordinary-marker.ts"
         export const copied = value
-      `, { fileName: join(directory, "ordinary.sm") });
-      expect(ordinary.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1510")).toHaveLength(1);
+      `, { fileName: join(directory, "ordinary.vibe") });
+      expect(ordinary.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1510")).toHaveLength(1);
 
       const ambiguous = analyzeSource(`
         import { value } from "./ambiguous-marker.ts"
         export const copied = value
-      `, { fileName: join(directory, "ambiguous.sm") });
-      expect(ambiguous.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1510")).toHaveLength(1);
+      `, { fileName: join(directory, "ambiguous.vibe") });
+      expect(ambiguous.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1510")).toHaveLength(1);
 
       const accepted = analyzeSource(`
         import type { Label as UntrustedLabel } from "./untrusted.ts"
         import { type Label, value } from "./trusted.ts"
         import { load } from "./adapter.ts"
-        import { panic } from "smithers:exceptions"
+        import { panic } from "vibelang:exceptions"
         const label: Label | UntrustedLabel = value
         async function deferred(): Promise<Result<unknown, Panic>> {
           return (await load())!
         }
-      `, { fileName: join(directory, "accepted.sm") });
-      expect(accepted.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1510")).toHaveLength(0);
+      `, { fileName: join(directory, "accepted.vibe") });
+      expect(accepted.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1510")).toHaveLength(0);
       expect(accepted.rows.deferred?.failures).toEqual(["Panic"]);
     } finally {
       await rm(directory, { recursive: true });
@@ -309,7 +308,7 @@ describe("checked .sm frontend", () => {
     expect(result.analysis.rows.unknownJs).toEqual({ failures: ["Panic"], requirements: [] });
     expect(result.code).not.toContain("Result.try(() => trustedJavaScriptLength");
     expect(result.code).toContain("Result.try(() => declaredJavaScriptFailure(true)");
-    expect(result.code).toContain("__vsValidateForeignError(cause, JavaScriptFailure)");
+    expect(result.code).toMatch(/(__vibelangCause\d+) => __vsValidateForeignError\(\1, JavaScriptFailure\)/);
     expect(result.code).toContain("Result.tryPromise(() => untrustedJavaScriptAsync(\"x\"))");
     expect(emittedErrors(result.code, "foreign-javascript-boundary")).toHaveLength(0);
   });
@@ -361,8 +360,8 @@ describe("checked .sm frontend", () => {
     expect(result.code).toContain("Result.try(() => clientAlias.untrustedMethod(\"X\"))");
     expect(result.code).toContain("Result.try(() => foreignAny.unwrap())");
     expect(result.code).toContain("Result.try(() => stored.invoke(false)");
-    expect(result.code).toContain("cause, foreign.AccessFailure");
-    expect(result.code).toContain("cause, foreign.ForeignFailure");
+    expect(result.code).toMatch(/(__vibelangCause\d+) => __vsValidateForeignError\(\1, AF\)/);
+    expect(result.code).toMatch(/(__vibelangCause\d+) => __vsValidateForeignError\(\1, FF\)/);
     expect(result.code).toContain("Result.try(() => makeCallable())");
     expect(result.code).toContain("Result.try(() => callable(\"x\"))");
     expect(result.code).toContain("Result.tryPromise(() => makeAsyncCallable())");
@@ -423,23 +422,23 @@ describe("checked .sm frontend", () => {
       function unrelatedLocalLookalike(): string {
         return localClient.untrustedMethod(localClient.dangerousValue)
       }
-    `, { fileName: `${examples}/foreign-adversarial.sm` });
+    `, { fileName: `${examples}/foreign-adversarial.vibe` });
 
-    expect(analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1506")).toHaveLength(2);
-    expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1507")).toBe(true);
+    expect(analysis.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1506")).toHaveLength(2);
+    expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1507")).toBe(true);
     // WHICH of the three callback sites is refused, not how many. The two
     // UNTRUSTED hosts (`receiveCallback`, `receiveCallbackOptions`) keep
-    // SMITHERS1509; `trustedCallbackHost` carries `@throws {never}` and does
+    // VIBE1509; `trustedCallbackHost` carries `@throws {never}` and does
     // not, because specification/compatibility.mdx §Foreign Boundary makes the
     // panic case a property of the CALL and says the trust claim "opts out" of
     // it — a claim the binding makes about everything that call does, including
     // invoking the listener it was handed.
     expect(analysis.diagnostics
-      .filter((diagnostic) => diagnostic.code === "SMITHERS1509")
+      .filter((diagnostic) => diagnostic.code === "VIBE1509")
       .map((diagnostic) => `${diagnostic.line}:${diagnostic.column}`))
       .toEqual(["26:25", "27:32"]);
-    expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1508")).toBe(true);
-    expect(analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1504")).toHaveLength(2);
+    expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1508")).toBe(true);
+    expect(analysis.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1504")).toHaveLength(2);
     expect(analysis.rows.getter).toEqual({
       failures: ["AccessFailure", "Panic"],
       requirements: [],
@@ -477,9 +476,9 @@ describe("checked .sm frontend", () => {
         receiveJavaScriptCallback(() => {})!
         receiveJavaScriptCallbackOptions({ onValue: () => {} })!
       }
-    `, { fileName: `${examples}/foreign-javascript-adversarial.sm` });
-    expect(rejected.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1506")).toHaveLength(1);
-    expect(rejected.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1509")).toHaveLength(2);
+    `, { fileName: `${examples}/foreign-javascript-adversarial.vibe` });
+    expect(rejected.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1506")).toHaveLength(1);
+    expect(rejected.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1509")).toHaveLength(2);
     expect(rejected.rows.getter?.failures).toEqual(["JavaScriptAccessFailure", "Panic"]);
   });
 
@@ -495,18 +494,18 @@ describe("checked .sm frontend", () => {
       const declared = declaredJavaScriptFailure(false)
       const pending = untrustedJavaScriptAsync("unsafe")
       const constructed = new JavaScriptFailure("unsafe")
-    `, { fileName: `${examples}/foreign-javascript-top-level.sm` });
+    `, { fileName: `${examples}/foreign-javascript-top-level.vibe` });
 
-    const boundaryErrors = analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1505");
+    const boundaryErrors = analysis.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1505");
     expect(boundaryErrors).toHaveLength(2);
     expect(boundaryErrors.every((diagnostic) => diagnostic.message.includes("top level"))).toBe(true);
-    expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1504")).toBe(true);
+    expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1504")).toBe(true);
   });
 
   test("infers Context requirements transitively and subtracts known Layers", () => {
     const prefix = `
-      import { Context } from "smthrs/context"
-      import { Layer } from "smthrs/provider"
+      import { Context } from "vibelang/context"
+      import { Layer } from "vibelang/provider"
       abstract class Db extends Context { abstract read(): string }
       abstract class Logger extends Context { abstract info(value: string): void }
       function needsBoth(): string {
@@ -519,11 +518,11 @@ describe("checked .sm frontend", () => {
     `);
     expect(nested.rows.needsBoth?.requirements).toEqual(["Db", "Logger"]);
     expect(nested.rows.partiallyProvided?.requirements).toEqual(["Logger"]);
-    expect(nested.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS2101")).toBe(false);
+    expect(nested.diagnostics.some((diagnostic) => diagnostic.code === "VIBE2101")).toBe(false);
 
     const closed = analyzeSource(`${prefix} Layer.provide(DbLive, () => needsBoth())`);
     expect(closed.diagnostics.some((diagnostic) =>
-      diagnostic.code === "SMITHERS2101" && diagnostic.message.includes("Logger"),
+      diagnostic.code === "VIBE2101" && diagnostic.message.includes("Logger"),
     )).toBe(true);
   });
 
@@ -541,10 +540,10 @@ describe("checked .sm frontend", () => {
       function callableDate(): string { return Date(0) }
       function deterministicDate(): number { return new Date(0).getTime() }
     `);
-    expect(ambient.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1602")).toHaveLength(5);
-    expect(ambient.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1603")).toHaveLength(3);
+    expect(ambient.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1602")).toHaveLength(5);
+    expect(ambient.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1603")).toHaveLength(3);
     expect(ambient.diagnostics.some((diagnostic) =>
-      diagnostic.code === "SMITHERS1602" && diagnostic.start > ambient.functions.find((fn) => fn.name === "deterministicDate")!.start,
+      diagnostic.code === "VIBE1602" && diagnostic.start > ambient.functions.find((fn) => fn.name === "deterministicDate")!.start,
     )).toBe(false);
 
     const shadowed = analyzeSource(`
@@ -559,7 +558,7 @@ describe("checked .sm frontend", () => {
       }
     `);
     expect(shadowed.diagnostics.filter((diagnostic) =>
-      diagnostic.code === "SMITHERS1602" || diagnostic.code === "SMITHERS1603",
+      diagnostic.code === "VIBE1602" || diagnostic.code === "VIBE1603",
     )).toHaveLength(0);
   });
 
@@ -616,7 +615,7 @@ describe("checked .sm frontend", () => {
       }
     `);
     const diagnostics = escaped.diagnostics.filter((diagnostic) =>
-      ["SMITHERS1601", "SMITHERS1602", "SMITHERS1603"].includes(diagnostic.code));
+      ["VIBE1601", "VIBE1602", "VIBE1603"].includes(diagnostic.code));
     expect(new Set(diagnostics.map((diagnostic) => `${diagnostic.code}:${diagnostic.start}`)).size)
       .toBe(diagnostics.length);
 
@@ -625,24 +624,24 @@ describe("checked .sm frontend", () => {
       return diagnostics.filter((diagnostic) => diagnostic.code === code &&
         diagnostic.start >= fn.start && diagnostic.start < fn.end);
     };
-    expect(within("aliases", "SMITHERS1602")).toHaveLength(2);
-    expect(within("aliases", "SMITHERS1603")).toHaveLength(1);
-    expect(within("aliases", "SMITHERS1601")).toHaveLength(1);
-    expect(within("objectEscape", "SMITHERS1602")).toHaveLength(2);
-    expect(within("objectEscape", "SMITHERS1603")).toHaveLength(1);
-    expect(within("objectEscape", "SMITHERS1601")).toHaveLength(1);
-    expect(within("destructured", "SMITHERS1602")).toHaveLength(2);
-    expect(within("destructured", "SMITHERS1603")).toHaveLength(2);
-    expect(within("destructured", "SMITHERS1601")).toHaveLength(1);
-    expect(within("computed", "SMITHERS1602")).toHaveLength(4);
-    expect(within("computed", "SMITHERS1603")).toHaveLength(3);
-    expect(within("computed", "SMITHERS1601")).toHaveLength(2);
-    expect(within("deterministic", "SMITHERS1601")).toHaveLength(0);
-    expect(within("deterministic", "SMITHERS1602")).toHaveLength(0);
-    expect(within("deterministic", "SMITHERS1603")).toHaveLength(0);
-    expect(within("shadowed", "SMITHERS1601")).toHaveLength(0);
-    expect(within("shadowed", "SMITHERS1602")).toHaveLength(0);
-    expect(within("shadowed", "SMITHERS1603")).toHaveLength(0);
+    expect(within("aliases", "VIBE1602")).toHaveLength(2);
+    expect(within("aliases", "VIBE1603")).toHaveLength(1);
+    expect(within("aliases", "VIBE1601")).toHaveLength(1);
+    expect(within("objectEscape", "VIBE1602")).toHaveLength(2);
+    expect(within("objectEscape", "VIBE1603")).toHaveLength(1);
+    expect(within("objectEscape", "VIBE1601")).toHaveLength(1);
+    expect(within("destructured", "VIBE1602")).toHaveLength(2);
+    expect(within("destructured", "VIBE1603")).toHaveLength(2);
+    expect(within("destructured", "VIBE1601")).toHaveLength(1);
+    expect(within("computed", "VIBE1602")).toHaveLength(4);
+    expect(within("computed", "VIBE1603")).toHaveLength(3);
+    expect(within("computed", "VIBE1601")).toHaveLength(2);
+    expect(within("deterministic", "VIBE1601")).toHaveLength(0);
+    expect(within("deterministic", "VIBE1602")).toHaveLength(0);
+    expect(within("deterministic", "VIBE1603")).toHaveLength(0);
+    expect(within("shadowed", "VIBE1601")).toHaveLength(0);
+    expect(within("shadowed", "VIBE1602")).toHaveLength(0);
+    expect(within("shadowed", "VIBE1603")).toHaveLength(0);
   });
 
   test("enforces must-consume Results and Promises and bans instance chaining", () => {
@@ -655,9 +654,9 @@ describe("checked .sm frontend", () => {
       async function good(): Promise<void> { await Promise.all([work(), work()]) }
     `);
     const codes = result.diagnostics.map((diagnostic) => diagnostic.code);
-    expect(codes).toContain("SMITHERS1301");
-    expect(codes).toContain("SMITHERS1402");
-    expect(codes).toContain("SMITHERS1401");
+    expect(codes).toContain("VIBE1301");
+    expect(codes).toContain("VIBE1402");
+    expect(codes).toContain("VIBE1401");
     expect(result.diagnostics.some((diagnostic) =>
       diagnostic.start > result.functions.find((fn) => fn.name === "good")!.start &&
       diagnostic.start < result.functions.find((fn) => fn.name === "good")!.end,
@@ -678,7 +677,7 @@ describe("checked .sm frontend", () => {
         })
       }
     `);
-    const mustConsume = analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1301");
+    const mustConsume = analysis.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1301");
     expect(mustConsume).toHaveLength(1);
     expect(mustConsume[0]!.start).toBeGreaterThan(analysis.functions.find((fn) => fn.name === "bad")!.start);
   });
@@ -694,7 +693,7 @@ describe("checked .sm frontend", () => {
         Result.all([r])
       }
     `);
-    expect(shadowedBinding.diagnostics.map((diagnostic) => diagnostic.code)).toContain("SMITHERS1302");
+    expect(shadowedBinding.diagnostics.map((diagnostic) => diagnostic.code)).toContain("VIBE1302");
 
     const shadowedCall = analyzeSource(`
       declare function mightFail(): Result<number, Error>
@@ -703,7 +702,7 @@ describe("checked .sm frontend", () => {
         Result.all([mightFail()])
       }
     `);
-    expect(shadowedCall.diagnostics.map((diagnostic) => diagnostic.code)).toContain("SMITHERS1301");
+    expect(shadowedCall.diagnostics.map((diagnostic) => diagnostic.code)).toContain("VIBE1301");
 
     // A same-spelled member on an unrelated receiver discharges nothing either.
     const impostorReceiver = analyzeSource(`
@@ -714,7 +713,7 @@ describe("checked .sm frontend", () => {
         helpers.all([r])
       }
     `);
-    expect(impostorReceiver.diagnostics.map((diagnostic) => diagnostic.code)).toContain("SMITHERS1302");
+    expect(impostorReceiver.diagnostics.map((diagnostic) => diagnostic.code)).toContain("VIBE1302");
 
     // The genuine combinator still discharges, through the array literal and
     // through a binding that names the same compiler-owned namespace value.
@@ -729,7 +728,7 @@ describe("checked .sm frontend", () => {
       }
     `);
     expect(genuine.diagnostics.filter((diagnostic) =>
-      diagnostic.code === "SMITHERS1301" || diagnostic.code === "SMITHERS1302",
+      diagnostic.code === "VIBE1301" || diagnostic.code === "VIBE1302",
     )).toHaveLength(0);
 
     // Every recognized receiver consumer still discharges, and each is
@@ -751,7 +750,7 @@ describe("checked .sm frontend", () => {
       function expect_(): number { return mightFail().expect("required") }
     `);
     expect(receivers.diagnostics.filter((diagnostic) =>
-      diagnostic.code === "SMITHERS1301" || diagnostic.code === "SMITHERS1302",
+      diagnostic.code === "VIBE1301" || diagnostic.code === "VIBE1302",
     )).toHaveLength(0);
 
     // A lifted call still carries its AUTHORED success type, so the checker has
@@ -764,7 +763,7 @@ describe("checked .sm frontend", () => {
       function use(): number { return fallible()! }
     `);
     expect(lifted.diagnostics.filter((diagnostic) =>
-      diagnostic.code === "SMITHERS1301" || diagnostic.code === "SMITHERS1302",
+      diagnostic.code === "VIBE1301" || diagnostic.code === "VIBE1302",
     )).toHaveLength(0);
   });
 
@@ -776,7 +775,7 @@ describe("checked .sm frontend", () => {
     // Every source here carries an `export`, so it is a MODULE and the local
     // binding really shadows. In a global script a top-level `const Promise`
     // merges with the ambient declaration instead of shadowing it, which is a
-    // TypeScript scoping rule rather than a Smithers one; a `.sm` file is
+    // TypeScript scoping rule rather than a VibeLang one; a `.vibe` file is
     // always a module.
     const shadowed = analyzeSource(`
       declare function work(): Promise<number>
@@ -786,7 +785,7 @@ describe("checked .sm frontend", () => {
         await Promise.all([started])
       }
     `);
-    expect(shadowed.diagnostics.map((diagnostic) => diagnostic.code)).toContain("SMITHERS1403");
+    expect(shadowed.diagnostics.map((diagnostic) => diagnostic.code)).toContain("VIBE1403");
 
     const shadowedCall = analyzeSource(`
       declare function work(): Promise<number>
@@ -795,7 +794,7 @@ describe("checked .sm frontend", () => {
         await Promise.all([work()])
       }
     `);
-    expect(shadowedCall.diagnostics.map((diagnostic) => diagnostic.code)).toContain("SMITHERS1402");
+    expect(shadowedCall.diagnostics.map((diagnostic) => diagnostic.code)).toContain("VIBE1402");
 
     // Every ambient combinator this analyzer recognizes still discharges.
     const genuine = analyzeSource(`
@@ -806,7 +805,7 @@ describe("checked .sm frontend", () => {
       export async function any(): Promise<void> { await Promise.any([work(), work()]) }
     `);
     expect(genuine.diagnostics.filter((diagnostic) =>
-      diagnostic.code === "SMITHERS1402" || diagnostic.code === "SMITHERS1403",
+      diagnostic.code === "VIBE1402" || diagnostic.code === "VIBE1403",
     )).toHaveLength(0);
   });
 
@@ -819,9 +818,9 @@ describe("checked .sm frontend", () => {
       }
     `, "error-match");
     expect(valid.analysis.diagnostics).toHaveLength(0);
-    expect(valid.code).toContain("error.match(__vsErrorCases([Missing,");
-    expect(valid.code).toContain("[Busy,");
-    expect(valid.code).toContain("smithers:examples/language/error-match.sm:Missing");
+    expect(valid.code).toContain("__vsErrorIs(error, Missing)");
+    expect(valid.code).toContain("__vsErrorIs(error, Busy)");
+    expect(valid.code).toContain("vibelang:examples/language/error-match.vibe:Missing");
     expect(emittedErrors(valid.code, "error-match")).toHaveLength(0);
 
     const missing = analyzeSource(`
@@ -829,7 +828,7 @@ describe("checked .sm frontend", () => {
       function bad(error: Missing | Busy) { return error.match({ Missing: () => "x" }) }
     `);
     expect(missing.diagnostics.some((diagnostic) =>
-      diagnostic.code === "SMITHERS1253" && diagnostic.message.includes("Busy"),
+      diagnostic.code === "VIBE1253" && diagnostic.message.includes("Busy"),
     )).toBe(true);
   });
 
@@ -841,7 +840,7 @@ describe("checked .sm frontend", () => {
       function labeled(flag: boolean) { outer: while (flag) break outer }
     `);
     expect(result.diagnostics.map((diagnostic) => diagnostic.code))
-      .toEqual(expect.arrayContaining(["SMITHERS1001"]));
+      .toEqual(expect.arrayContaining(["VIBE1001"]));
     // `1 + value()!` is no longer refused. `specification/failures.mdx`
     // §Refusal Conditions withdrew the placement walk, and a compound operand is
     // evaluated unconditionally and exactly once, so the shipped lowering can
@@ -866,7 +865,7 @@ describe("checked .sm frontend", () => {
     expect(emittedErrors(result.code, "try-catch")).toHaveLength(0);
   });
 
-  test("recursively lowers loop bodies and fails closed on repeated header exits", () => {
+  test("recursively lowers loop bodies and repeated header exits", () => {
     const result = compileCase(`
       class Failure extends Error {}
       function next(): Result<number, Failure> { return 1 }
@@ -883,20 +882,22 @@ describe("checked .sm frontend", () => {
       }
     `, "loops");
     expect(result.analysis.diagnostics).toHaveLength(0);
-    expect(result.code.match(/__vsInspectResult\(next\(\)\)/g)?.length).toBe(2);
+    expect(result.code.match(/yield\* __vsPropagate\(next\(\),/g)?.length).toBe(2);
     expect(result.code).toContain("return __vsResultFailure(new Failure())");
     expect(result.code).toContain("return __vsResultSuccess(value)");
     expect(result.code).toContain("return __vsResultSuccess(index)");
     expect(emittedErrors(result.code, "loops")).toHaveLength(0);
 
-    const unsupported = analyzeSource(`
+    const repeated = compileCase(`
       class Failure extends Error {}
       declare function next(): Result<boolean, Failure>
       function bad(): Result<void, Failure> {
         while (next()!) {}
       }
     `);
-    expect(unsupported.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1703")).toBe(true);
+    expect(repeated.analysis.diagnostics).toEqual([]);
+    expect(repeated.code).toContain("while (yield* __vsPropagate(next(),");
+    expect(emittedErrors(repeated.code)).toEqual([]);
   });
 
   /**
@@ -915,7 +916,7 @@ describe("checked .sm frontend", () => {
    * accepted halves are the ones that would silently come back if a future edit
    * widened a predicate instead of narrowing it.
    */
-  test("keeps exactly the three propagation positions the early-return lowering cannot hoist", () => {
+  test("accepts propagation in every expression position the old hoisting lowering refused", () => {
     const accepted = analyzeSource(`
       class Failure extends Error {}
       declare function next(): Result<string, Failure>
@@ -937,7 +938,7 @@ describe("checked .sm frontend", () => {
     `);
     expect(accepted.diagnostics).toEqual([]);
 
-    const refused = analyzeSource(`
+    const formerlyRefused = analyzeSource(`
       class Failure extends Error {}
       declare function next(): Result<string, Failure>
       declare function effect(): string
@@ -950,13 +951,8 @@ describe("checked .sm frontend", () => {
       }
       function afterAnEffect(): Result<string, Failure> { return effect() + next()! }
     `);
-    // One per predicate, and nothing else: a fourth diagnostic here means a
-    // position that used to be accepted has been re-refused.
-    expect(refused.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.line])).toEqual([
-      ["SMITHERS1204", 6],
-      ["SMITHERS1703", 9],
-      ["SMITHERS1204", 12],
-    ]);
+    // Executed evaluation-order coverage lives in result-delimiter.test.ts.
+    expect(formerlyRefused.diagnostics).toEqual([]);
   });
 
   test("does not treat an authored Reflect.panic property as the compiler intrinsic", () => {
@@ -975,25 +971,25 @@ describe("checked .sm frontend", () => {
       function lifted(): Result<number, Failure> { return 1 }
       export { __vsResultSuccess, lifted }
     `, "helper-alias");
-    expect(result.code).toContain("__vsResultSuccess as __vsResultSuccess$smithers");
-    expect(result.code).toContain("return __vsResultSuccess$smithers(1)");
+    expect(result.code).toContain("__vsResultSuccess as __vsResultSuccess_1");
+    expect(result.code).toContain("return __vsResultSuccess_1(1)");
     expect(emittedErrors(result.code, "helper-alias")).toHaveLength(0);
   });
 
   test("emits an embedded conservative token map and exposes a no-write checked API", () => {
     const options = {
-      fileName: `${examples}/mapped.sm`,
+      fileName: `${examples}/mapped.vibe`,
       outputFileName: `${examples}/mapped.generated.ts`,
-      sourceName: "examples/language/mapped.sm",
+      sourceName: "examples/language/mapped.vibe",
       runtimeImport: "../../src/runtime/index.ts",
     } as const;
     const source = `class E extends Error {}\nfunction value(): Result<number, E> { return 1 }\n`;
-    const checked = compileAndCheckSmithers(source, options);
+    const checked = compileAndCheckVibeLang(source, options);
     expect(checked.ok).toBe(true);
     expect(checked.emitDiagnostics).toHaveLength(0);
     const map = JSON.parse(checked.result.sourceMap!) as { version: number; sources: string[]; sourcesContent: string[] };
     expect(map.version).toBe(3);
-    expect(map.sources).toEqual(["examples/language/mapped.sm"]);
+    expect(map.sources).toEqual(["examples/language/mapped.vibe"]);
     expect(map.sourcesContent).toEqual([source]);
   });
 
@@ -1013,16 +1009,16 @@ describe("checked .sm frontend", () => {
     expect(analysis.rows.checked?.failures).toEqual(["Panic"]);
     expect(analysis.rows.viaInferred?.failures).toEqual(["Panic"]);
     expect(analysis.diagnostics.some((diagnostic) =>
-      diagnostic.code === "SMITHERS1104" && diagnostic.message.includes("Panic"),
+      diagnostic.code === "VIBE1104" && diagnostic.message.includes("Panic"),
     )).toBe(true);
-    expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1101")).toBe(true);
+    expect(analysis.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1101")).toBe(true);
 
     const topLevel = analyzeSource(`
       declare function load(): Result<number, Error>
       const value = load().expect("required")
     `);
     expect(topLevel.diagnostics.some((diagnostic) =>
-      diagnostic.code === "SMITHERS1505" && diagnostic.message.includes("expect"),
+      diagnostic.code === "VIBE1505" && diagnostic.message.includes("expect"),
     )).toBe(true);
   });
 
@@ -1038,15 +1034,15 @@ describe("checked .sm frontend", () => {
       }
     `, "result-expect");
     expect(result.analysis.diagnostics).toHaveLength(0);
-    expect(result.code).toContain("__vsInspectResult");
-    expect(result.code).toContain("__vsPanicValue(new Error(__smithers_expect_message_");
+    expect(result.code).toContain("yield* __vsExpect(lookup(found), \"entry must exist\",");
+    expect(result.code).toContain("__vsRunResult");
     expect(result.code).not.toContain('.expect("entry must exist")');
 
     expect(__vsInspectResult(module.force(true))).toMatchObject({ ok: true, value: "value" });
     const failed = __vsInspectResult(module.force(false)) as { ok: false; error: Error };
     expect(failed.ok).toBe(false);
     expect(failed.error.name).toBe("Panic");
-    expect(failed.error.message).toBe("Smithers panic: entry must exist");
+    expect(failed.error.message).toBe("VibeLang panic: entry must exist");
     expect((failed.error.cause as Error).cause).toBeInstanceOf(module.Missing ?? Error);
   });
 
@@ -1056,7 +1052,7 @@ describe("checked .sm frontend", () => {
       throw new Broken()
       { throw new Broken() }
     `);
-    expect(topThrow.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1511")).toHaveLength(2);
+    expect(topThrow.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1511")).toHaveLength(2);
 
     const statics = analyzeSource(`
       class Holder {
@@ -1068,36 +1064,39 @@ describe("checked .sm frontend", () => {
         }
       }
     `);
-    expect(statics.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1107")).toHaveLength(2);
+    expect(statics.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1107")).toHaveLength(2);
 
     const staticThrow = analyzeSource(`
       class Booted {
         static { throw new Error("boot") }
       }
     `);
-    expect(staticThrow.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1107")).toHaveLength(1);
-    expect(staticThrow.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1511")).toHaveLength(0);
+    expect(staticThrow.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1107")).toHaveLength(1);
+    expect(staticThrow.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1511")).toHaveLength(0);
   });
 
-  test("fails closed when the internal parser diagnostics field is unavailable", () => {
-    const sourceFile = ts.createSourceFile("probe.sm.ts", "const value = 1\n", ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    expect(internalParseDiagnostics(sourceFile)).toBeDefined();
-    expect(parseDiagnosticsFailure(sourceFile)).toBeUndefined();
-    delete (sourceFile as unknown as { parseDiagnostics?: unknown }).parseDiagnostics;
-    expect(internalParseDiagnostics(sourceFile)).toBeUndefined();
-    const failure = parseDiagnosticsFailure(sourceFile);
-    expect(failure?.code).toBe("SMITHERS1002");
-    expect(failure?.severity).toBe("error");
-    expect(analyzeSource("const ok = 1\n").diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1002")).toBe(false);
+  test("fails closed when native diagnostic or declaration facts are unavailable", () => {
+    // The native boundary replaces the old private TS5.9 AST field. Missing
+    // facts must not decode as a successfully checked, empty analysis.
+    const revision = "a".repeat(40);
+    const request = { files: [{ path: "probe.vibe", kind: "vibelang" as const, text: "const value = 1\n" }] };
+    const result = { checked: true, diagnostics: [], files: [{ path: "probe.vibe", analyzed: true, errors: [], functions: [] }] };
+    const decode = (facts: unknown) => decodeNativeLanguageAnalysis(JSON.stringify({
+      apiVersion: NATIVE_API_VERSION, compilerRevision: revision, result: facts,
+    }), revision, request);
+    expect(decode(result).checked).toBe(true);
+    expect(() => decode({ ...result, diagnostics: undefined })).toThrow();
+    expect(() => decode({ ...result, files: [{ ...result.files[0], errors: undefined }] })).toThrow();
+    expect(analyzeSource("const ok = 1\n").diagnostics).toEqual([]);
   });
 
-  test("treats smithers-prefixed package names as foreign, not compiler intrinsics", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "smithers-prefix-"));
+  test("treats vibelang-prefixed package names as foreign, not compiler intrinsics", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "vibelang-prefix-"));
     try {
-      const packageDirectory = join(directory, "node_modules", "smithersutils");
+      const packageDirectory = join(directory, "node_modules", "vibelangutils");
       await mkdir(packageDirectory, { recursive: true });
       await writeFile(join(packageDirectory, "package.json"), JSON.stringify({
-        name: "smithersutils",
+        name: "vibelangutils",
         version: "1.0.0",
         types: "index.d.ts",
       }));
@@ -1108,27 +1107,27 @@ describe("checked .sm frontend", () => {
       ].join("\n"));
 
       const source = `
-        import { helper } from "smithersutils"
+        import { helper } from "vibelangutils"
         function use(): Result<number, Panic> { return helper("x")! }
       `;
-      const analysis = analyzeSource(source, { fileName: join(directory, "case.sm") });
+      const analysis = analyzeSource(source, { fileName: join(directory, "case.vibe") });
       expect(analysis.diagnostics).toHaveLength(0);
       expect(analysis.rows.use).toEqual({ failures: ["Panic"], requirements: [] });
 
-      const compiled = compileSmithers(source, {
-        fileName: join(directory, "case.sm"),
+      const compiled = compileVibeLang(source, {
+        fileName: join(directory, "case.vibe"),
         outputFileName: join(directory, "case.generated.ts"),
-        sourceName: "case.sm",
+        sourceName: "case.vibe",
         runtimeImport: "../../src/runtime/index.ts",
       });
       expect(compiled.code).toContain("Result.try(() => helper(\"x\"))");
 
-      for (const specifier of ["smthrs", "smthrs/contextual", "smthrs/provider/extra",
-        "smithers:exceptions/extra", "smithers:unknown"]) {
+      for (const specifier of ["vibelang", "vibelang/contextual", "vibelang/provider/extra",
+        "vibelang:exceptions/extra", "vibelang:unknown"]) {
         const prefixed = analyzeSource(`import { fake } from ${JSON.stringify(specifier)}\nexport const value = fake\n`, {
-          fileName: join(directory, "prefixed.sm"),
+          fileName: join(directory, "prefixed.vibe"),
         });
-        expect(prefixed.diagnostics.some((diagnostic) => diagnostic.code === "SMITHERS1510"), specifier).toBe(true);
+        expect(prefixed.diagnostics.some((diagnostic) => diagnostic.code === "VIBE1510"), specifier).toBe(true);
       }
     } finally {
       await rm(directory, { recursive: true });
@@ -1137,7 +1136,7 @@ describe("checked .sm frontend", () => {
 
   test("fails closed on panic and Result postfix propagation inside a JavaScript try with a catch clause", () => {
     const analysis = analyzeSource(`
-      import { panic } from "smithers:exceptions"
+      import { panic } from "vibelang:exceptions"
       class Missing extends Error {}
       declare function load(): Result<number, Missing>
       function caughtPanic(): Result<void, Panic> {
@@ -1156,7 +1155,7 @@ describe("checked .sm frontend", () => {
         } catch { return 0 }
       }
     `);
-    const catches = analysis.diagnostics.filter((diagnostic) => diagnostic.code === "SMITHERS1205");
+    const catches = analysis.diagnostics.filter((diagnostic) => diagnostic.code === "VIBE1205");
     expect(catches).toHaveLength(2);
     expect(catches.map((diagnostic) => diagnostic.message.split(" ")[0])).toEqual([
       "panic(...)",
@@ -1193,17 +1192,18 @@ describe("checked .sm frontend", () => {
     expect(scannerFixed.rows.safe?.failures).toEqual(["Panic"]);
   });
 
-  test("checked API rejects TypeScript-invalid lowered output", () => {
-    const checked = compileAndCheckSmithers(`
+  test("checked API rejects TypeScript-invalid completions before exposing output", () => {
+    const checked = compileAndCheckVibeLang(`
       class E extends Error {}
       function wrong(): Result<number, E> { return "not a number" }
     `, {
-      fileName: `${examples}/invalid-output.sm`,
+      fileName: `${examples}/invalid-output.vibe`,
       outputFileName: `${examples}/invalid-output.generated.ts`,
-      sourceName: "examples/language/invalid-output.sm",
+      sourceName: "examples/language/invalid-output.vibe",
       runtimeImport: "../../src/runtime/index.ts",
     });
     expect(checked.ok).toBe(false);
-    expect(checked.emitDiagnostics.length).toBeGreaterThan(0);
+    expect(checked.result.analysis.diagnostics.map(issue => issue.code)).toContain("TS2322");
+    expect(checked.result.code).toBe("");
   });
 });

@@ -21,7 +21,7 @@
  * `rowSet` comment, `compatibility.mdx`, and the notes of the one corpus case in
  * the class concluded from that that the disagreement was invisible to any
  * differential — and it was not. An UNSATISFIED requirement row is reported at a
- * top-level call as `SMITHERS2102`, on both backends, with the capability named
+ * top-level call as `VIBE2102`, on both backends, with the capability named
  * in the message. Every vector in the shared corpus is a program whose charge
  * reaches module scope, so both implementations can be, and now are, held to it.
  *
@@ -29,7 +29,7 @@
  * the fork is also held to, and the requirement ROW, which is the direct
  * observation only this backend can make. The first is the cross-backend
  * agreement; the second is what stops the first from being satisfied by a
- * `SMITHERS2102` that arrived for some other reason.
+ * `VIBE2102` that arrived for some other reason.
  */
 import { afterAll, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -38,7 +38,7 @@ import { join } from "node:path";
 
 import { compileAndCheckProject } from "./index.ts";
 
-const workspace = mkdtempSync(join(tmpdir(), "smithers-ambient-charge-"));
+const workspace = mkdtempSync(join(tmpdir(), "vibelang-ambient-charge-"));
 afterAll(() => rmSync(workspace, { recursive: true, force: true }));
 
 const RUNTIME = join(import.meta.dir, "../runtime/index.ts");
@@ -65,7 +65,7 @@ test("the shared ambient-charge corpus still has the direction it exists to pin"
 for (const vector of vectors) {
   test(vector.name, () => {
     const { result } = compileAndCheckProject(
-      [{ fileName: join(workspace, `${vector.name}.sm`), source: vector.source }],
+      [{ fileName: join(workspace, `${vector.name}.vibe`), source: vector.source }],
       { rootDir: workspace, outDir: join(workspace, "out"), runtimeImport: RUNTIME },
     );
 

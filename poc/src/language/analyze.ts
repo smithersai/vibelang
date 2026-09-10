@@ -7,36 +7,31 @@ import type {
   ProjectAnalysis,
   ProjectSource,
 } from "./model.ts";
-import { buildSemanticModel, buildSemanticProject } from "./semantic.ts";
+import { analyzeNativeSource } from "./native-analysis.ts";
+import { analyzeNativeProject } from "./native-project.ts";
 
-/** Run the TypeScript-backed Smithers semantic pass without emitting code. */
+/** Native Go checked analysis; no emitted artifacts are exposed. */
 export function analyzeSource(source: string, options: AnalyzeOptions = {}): Analysis {
-  const model = buildSemanticModel(source, options);
-  return {
-    errors: model.errors,
-    functions: model.publicFunctions,
-    rows: model.rows,
-    diagnostics: model.diagnostics,
-  };
+  return analyzeNativeSource(source, options);
 }
 
 /**
- * Analyze direct static calls across an in-memory set of `.sm` modules.
+ * Analyze direct static calls across an in-memory set of `.vibe` modules.
  * This is an analysis API only; project transform/declaration emit is deferred.
  */
 export function analyzeProject(
   sources: readonly ProjectSource[],
   options: AnalyzeProjectOptions = {},
 ): ProjectAnalysis {
-  return buildSemanticProject(sources, options);
+  return analyzeNativeProject(sources, options);
 }
 
 /** Ordinary Error subclasses replace the removed `error Name {}` grammar. */
 export function parseErrors(source: string, options: AnalyzeOptions = {}): readonly ErrorDeclaration[] {
-  return buildSemanticModel(source, options).errors;
+  return analyzeNativeSource(source, options).errors;
 }
 
-/** Checked function declarations; this no longer scans historical row syntax. */
+/** Native function declarations; facts on refused source are provisional. */
 export function parseFunctions(source: string, options: AnalyzeOptions = {}): readonly FunctionDeclaration[] {
-  return buildSemanticModel(source, options).publicFunctions;
+  return analyzeNativeSource(source, options).functions;
 }

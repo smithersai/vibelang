@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { compileAndCheckProject } from "./index.ts";
 
 /**
- * The three seams a `.sm` standard library needs, and the two directions each
+ * The three seams a `.vibe` standard library needs, and the two directions each
  * one has to hold in.
  *
  * The load-bearing half of this file is the *negative* half. Opening a way for
@@ -15,7 +15,7 @@ import { compileAndCheckProject } from "./index.ts";
  * looks like a capability implementation.
  */
 
-const workspace = mkdtempSync(join(tmpdir(), "smithers-capability-seams-"));
+const workspace = mkdtempSync(join(tmpdir(), "vibelang-capability-seams-"));
 afterAll(() => rmSync(workspace, { recursive: true, force: true }));
 
 const RUNTIME = join(import.meta.dir, "../runtime/index.ts");
@@ -24,7 +24,7 @@ const INTROSPECTION = join(import.meta.dir, "../runtime/introspection.ts");
 /**
  * The sanctioned host binding. specification/compatibility.mdx, "Source
  * Relationship": `.ts` modules "MUST retain their own complete syntax and
- * behavior when imported by Smithers", and "Foreign Boundary": "Trusted
+ * behavior when imported by VibeLang", and "Foreign Boundary": "Trusted
  * `@throws {never}` metadata opts out" of the default panic case. This module
  * is an ordinary TypeScript module carrying that trust claim.
  */
@@ -32,6 +32,10 @@ writeFileSync(join(workspace, "binding.ts"), `/**
  * @module
  * @throws {never}
  */
+
+// The adapter declares the host it targets explicitly. Native project analysis
+// does not borrow an unrelated ambient @types/node package outside its root.
+declare const process: { readonly env: Readonly<Record<string, string | undefined>> };
 
 /** @throws {never} */
 export function wallClockMillis(): number { return Date.now(); }
@@ -42,7 +46,13 @@ export function randomUnit(): number { return Math.random(); }
 /** @throws {never} */
 export function environmentValue(name: string): string | undefined { return process.env[name]; }
 /** @throws {never} */
-export function fillRandomBytes(target: Uint8Array): void { crypto.getRandomValues(target); }
+export function fillRandomBytes(target: Uint8Array): void {
+  // Web Crypto requires an ordinary ArrayBuffer-backed view. This adapter
+  // also accepts wider Uint8Array contracts without passing a shared buffer.
+  const bytes = new Uint8Array(target.length);
+  crypto.getRandomValues(bytes);
+  target.set(bytes);
+}
 /** @throws {never} */
 export function environmentNamesArray(): readonly string[] { return Object.keys(process.env).sort(); }
 `);
@@ -53,7 +63,7 @@ interface Compiled {
   readonly rows: Readonly<Record<string, { failures: readonly string[]; requirements: readonly string[] }>>;
 }
 
-function compile(source: string, name = "case.sm"): Compiled {
+function compile(source: string, name = "case.vibe"): Compiled {
   const fileName = join(workspace, name);
   const checked = compileAndCheckProject([{ fileName, source }], {
     rootDir: workspace,
@@ -70,8 +80,8 @@ function compile(source: string, name = "case.sm"): Compiled {
 }
 
 describe("SEAM 1 — a capability implementation reaches the host through a trusted binding", () => {
-  test("a live Clock, Random, and Environment are authorable in .sm", () => {
-    const compiled = compile(`import { Context } from "smthrs/context"
+  test("a live Clock, Random, and Environment are authorable in .vibe", () => {
+    const compiled = compile(`import { Context } from "vibelang/context"
 import { wallClockMillis, monotonicMillis, randomUnit, environmentValue, fillRandomBytes } from "./binding.ts"
 
 export abstract class Clock extends Context {
@@ -108,8 +118,8 @@ export function makeClock(): Clock { return new SystemClock() }
   });
 
   test("consumers still charge the capability row, and a layer still subtracts it", () => {
-    const compiled = compile(`import { Context } from "smthrs/context"
-import { Layer } from "smthrs/provider"
+    const compiled = compile(`import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
 import { wallClockMillis, randomUnit } from "./binding.ts"
 
 export abstract class Clock extends Context { abstract now(): number }
@@ -129,7 +139,7 @@ export const LIVE = Layer.succeed(Clock, new SystemClock())
 export const TEST = Layer.succeed(Clock, new FixedClock(1))
 export function runLive(): string { return Layer.provide(LIVE, () => stamp("live")) }
 export function runTest(): string { return Layer.provide(TEST, () => stamp("test")) }
-`, "layers.sm");
+`, "layers.vibe");
     expect(compiled.codes).toEqual([]);
     // Duplicate nominal requirements collapse; two capabilities stay two.
     expect(compiled.rows.stamp).toEqual({ failures: [], requirements: ["Clock", "Random"] });
@@ -157,31 +167,31 @@ export function destructured(): number { const { now } = Date; return now() }
 export function computed(): number { return Date["now"]() }
 export function captured(): unknown { return { Date } }
 export function escaped(sink: (value: unknown) => void): void { sink(Math) }
-`, "ordinary.sm");
+`, "ordinary.vibe");
     const codes = compiled.codes.map((entry) => entry.split("@")[0]);
     expect(codes).toHaveLength(16);
-    expect(new Set(codes)).toEqual(new Set(["SMITHERS1601", "SMITHERS1602", "SMITHERS1603"]));
+    expect(new Set(codes)).toEqual(new Set(["VIBE1601", "VIBE1602", "VIBE1603"]));
   });
 
   test("a class that merely looks like a capability implementation gets no exemption", () => {
     // There is no opt-out to claim: the refusal is unconditional, so neither
     // extending a Context subclass nor being named `SystemClock` buys anything.
-    const compiled = compile(`import { Context } from "smthrs/context"
+    const compiled = compile(`import { Context } from "vibelang/context"
 export abstract class Clock extends Context { abstract now(): number }
 export class ForgedClock extends Clock { now(): number { return Date.now() } }
 export class SystemClock { now(): number { return Date.now() } }
-`, "forged.sm");
-    expect(compiled.codes).toEqual(["SMITHERS1602@3:65", "SMITHERS1602@4:51"]);
+`, "forged.vibe");
+    expect(compiled.codes).toEqual(["VIBE1602@3:65", "VIBE1602@4:51"]);
   });
 
-  test("a host binding returning an object is still refused; a Smithers-owned buffer is not", () => {
+  test("a host binding returning an object is still refused; a VibeLang-owned buffer is not", () => {
     // The residual wall for the port lane, pinned so it cannot regress silently
     // in either direction: the trust marker clears the panic channel, and the
     // foreign-value rules still refuse the returned object itself.
     const refused = compile(`import { environmentNamesArray } from "./binding.ts"
 export function names(): readonly string[] { return environmentNamesArray() }
-`, "objects.sm");
-    expect(refused.codes.map((entry) => entry.split("@")[0])).toEqual(["SMITHERS1101", "SMITHERS1508"]);
+`, "objects.vibe");
+    expect(refused.codes.map((entry) => entry.split("@")[0])).toEqual(["VIBE1101", "VIBE1508"]);
 
     const owned = compile(`import { fillRandomBytes } from "./binding.ts"
 export function bytes(count: number): Uint8Array {
@@ -189,7 +199,7 @@ export function bytes(count: number): Uint8Array {
   fillRandomBytes(target)
   return target
 }
-`, "owned.sm");
+`, "owned.vibe");
     expect(owned.codes).toEqual([]);
   });
 
@@ -199,10 +209,10 @@ export function bytes(count: number): Uint8Array {
     // `Date.parse`, `Date.UTC`, and `new Date(authoredInstant)`; the right
     // operand of `instanceof` reads no host state either.
     const compiled = compile(`export function isDate(value: unknown): boolean { return value instanceof Date }
-export function pureParse(iso: string): number { return Date.parse(iso) }
+export function pureParse(iso: "1970-01-01"): number { return Date.parse(iso) }
 export function authoredInstant(millis: number): number { return new Date(millis).getTime() }
 export function shadowed(value: unknown): boolean { class Date {}; return value instanceof Date }
-`, "instanceof.sm");
+`, "instanceof.vibe");
     expect(compiled.codes).toEqual([]);
     expect(compiled.emitted).toBe(0);
   });
@@ -211,14 +221,21 @@ export function shadowed(value: unknown): boolean { class Date {}; return value 
     const compiled = compile(`export function escapes(): boolean { return (Date as unknown as object) instanceof Function }
 export function stillRefused(): number { return Date.now() }
 export function bareConstruction(): number { return new Date().getTime() }
-`, "escape.sm");
-    expect(compiled.codes).toEqual(["SMITHERS1602@1:46", "SMITHERS1602@2:49", "SMITHERS1602@3:57"]);
+`, "escape.vibe");
+    expect(compiled.codes).toEqual(["VIBE1602@1:46", "VIBE1602@2:49", "VIBE1602@3:57"]);
   });
 });
 
-describe("SEAM 3 — the brand-introspection seam is reachable from .sm", () => {
+describe("SEAM 3 — the brand-introspection seam is reachable from .vibe", () => {
+  test("an absolute runtime path outside the declared project is not implicit authority", () => {
+    const compiled = compile(`import { isResult } from ${JSON.stringify(INTROSPECTION)}
+export function route(value: unknown): boolean { return isResult(value) }
+`, "unbound-runtime.vibe");
+    expect(compiled.codes.map(code => code.split("@")[0])).toContain("VIBE1510");
+  });
+
   test("isResult and isPanic are callable and add no failure channel", () => {
-    const compiled = compile(`import { isResult, isPanic } from ${JSON.stringify(INTROSPECTION)}
+    const compiled = compile(`import { isResult, isPanic } from "vibelang/result"
 
 export function route(scrutinee: unknown): string {
   if (!isResult(scrutinee)) return "not-a-result"
@@ -227,7 +244,7 @@ export function route(scrutinee: unknown): string {
 export function channel(value: unknown): string {
   return isPanic(value) ? "panic" : "plain"
 }
-`, "seam3.sm");
+`, "seam3.vibe");
     expect(compiled.codes).toEqual([]);
     expect(compiled.emitted).toBe(0);
     expect(compiled.rows.route).toEqual({ failures: [], requirements: [] });
@@ -240,7 +257,7 @@ export function isResult(value: unknown): boolean { return brand(value); }
 `);
     const compiled = compile(`import { isResult } from "./unmarked.ts"
 export function route(scrutinee: unknown): string { return isResult(scrutinee) ? "result" : "plain" }
-`, "unmarked-case.sm");
-    expect(compiled.codes.map((entry) => entry.split("@")[0])).toContain("SMITHERS1510");
+`, "unmarked-case.vibe");
+    expect(compiled.codes.map((entry) => entry.split("@")[0])).toContain("VIBE1510");
   });
 });

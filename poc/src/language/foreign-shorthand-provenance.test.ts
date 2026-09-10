@@ -12,7 +12,7 @@
  * directly IMPORTED binding.
  *
  * That reopens the guard `foreign-callback-trust.test.ts` exists to hold shut.
- * `SMITHERS1508`'s charter is that "a `@throws {never}` claim is about THIS
+ * `VIBE1508`'s charter is that "a `@throws {never}` claim is about THIS
  * callee and cannot speak for the panic provenance of a callable minted in
  * another module"; rewriting one property to its shorthand walked straight past
  * it.
@@ -29,7 +29,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileAndCheckProject } from "./index.ts";
 
-const workspace = mkdtempSync(join(tmpdir(), "smithers-shorthand-provenance-"));
+const workspace = mkdtempSync(join(tmpdir(), "vibelang-shorthand-provenance-"));
 afterAll(() => rmSync(workspace, { recursive: true, force: true }));
 
 const RUNTIME = join(import.meta.dir, "../runtime/index.ts");
@@ -72,7 +72,7 @@ interface Compiled {
 let sequence = 0;
 function compile(source: string): Compiled {
   sequence += 1;
-  const fileName = join(workspace, `case-${sequence}.sm`);
+  const fileName = join(workspace, `case-${sequence}.vibe`);
   const checked = compileAndCheckProject([{ fileName, source }], {
     rootDir: workspace,
     outDir: join(workspace, "out"),
@@ -321,7 +321,7 @@ describe("a shorthand property decides exactly what its longhand twin decides", 
       const shorthand = compile(pair.shorthand);
       expect(shorthand.codes).toEqual(longhand.codes);
       // Without this the pair would also be satisfied by accepting both.
-      expect(shorthand.codes.some((code) => code.startsWith("SMITHERS1508@"))).toBe(true);
+      expect(shorthand.codes.some((code) => code.startsWith("VIBE1508@"))).toBe(true);
       expect(shorthand.emitted).toBe(0);
     });
   }
@@ -439,21 +439,21 @@ export function f(): void {
   registerUnsafe({ handler })
 }
 `);
-    expect(longhand.codes).toEqual(["SMITHERS1101@2:1", "SMITHERS1301@4:3", "SMITHERS1509@4:18"]);
+    expect(longhand.codes).toEqual(["VIBE1101@2:1", "VIBE1301@4:3", "VIBE1509@4:18"]);
     expect(shorthand.codes).toEqual(longhand.codes);
   });
 
-  test("an owned callback into an untrusted host is still SMITHERS1509, shorthand or not", () => {
+  test("an owned callback into an untrusted host is still VIBE1509, shorthand or not", () => {
     expect(compile(`import { registerUnsafe } from "./foreign.ts"
 export function f(sink: string[]): void {
   const handler = (name: string): void => { sink.push(name) }
   registerUnsafe({ handler })
 }
-`).codes).toEqual(["SMITHERS1101@2:1", "SMITHERS1301@4:3", "SMITHERS1509@4:18"]);
+`).codes).toEqual(["VIBE1101@2:1", "VIBE1301@4:3", "VIBE1509@4:18"]);
   });
 
   test("a shorthand METHOD that calls a foreign callable is still the callback rule, not this one", () => {
-    // The method is a Smithers-owned closure, so nothing foreign escapes; what
+    // The method is a VibeLang-owned closure, so nothing foreign escapes; what
     // is charged is the checked panic channel of the call inside its body.
     expect(compile(`import { getHandler } from "./foreign.ts"
 export function f(): void {
@@ -461,7 +461,7 @@ export function f(): void {
   const ns = Object.freeze({ run(name: string): void { handler(name) } })
   void ns
 }
-`).codes).toEqual(["SMITHERS1301@4:56"]);
+`).codes).toEqual(["VIBE1301@4:56"]);
   });
 });
 
@@ -472,7 +472,7 @@ export function f(): void {
  * a `ShorthandPropertyAssignment`'s `name` IS its own reference — so
  * `Object.freeze({ process })` was accepted, and the value read back out of it
  * worked. `ambientAuthorityUses` had already carved the shorthand back out for
- * the `Date`/`Math`/`performance`/`crypto` rule and the SMITHERS1601 branch had
+ * the `Date`/`Math`/`performance`/`crypto` rule and the VIBE1601 branch had
  * not, which is why `{ Date }` was refused and `{ process }` was not.
  */
 describe("ambient authority cannot be laundered through a shorthand property either", () => {
@@ -489,7 +489,7 @@ describe("ambient authority cannot be laundered through a shorthand property eit
   void ns
 }
 `,
-      code: "SMITHERS1601",
+      code: "VIBE1601",
     },
     {
       id: "setTimeout",
@@ -503,7 +503,7 @@ describe("ambient authority cannot be laundered through a shorthand property eit
   void ns
 }
 `,
-      code: "SMITHERS1601",
+      code: "VIBE1601",
     },
   ];
 
@@ -521,7 +521,7 @@ describe("ambient authority cannot be laundered through a shorthand property eit
   const ns = { process }
   return \`\${ns.process.platform}\`
 }
-`).codes).toEqual(["SMITHERS1601@2:16"]);
+`).codes).toEqual(["VIBE1601@2:16"]);
   });
 
   test("Date in a shorthand keeps its own capability rule, unchanged", () => {
@@ -531,7 +531,7 @@ describe("ambient authority cannot be laundered through a shorthand property eit
   const ns = Object.freeze({ Date })
   void ns
 }
-`).codes).toEqual(["SMITHERS1602@2:30"]);
+`).codes).toEqual(["VIBE1602@2:30"]);
   });
 
   test("an OWNED binding that merely shares the name is still ordinary", () => {
