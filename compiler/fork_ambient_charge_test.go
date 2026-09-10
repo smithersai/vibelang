@@ -28,7 +28,7 @@ import (
 // class: that the disagreement was INVISIBLE to a differential, because "the
 // harness compares stdout, diagnostics and exit code and cannot see a row at
 // all". The premise is true and the conclusion does not follow. A row is not
-// observable; an UNSATISFIED row is, on both backends, as `SMITHERS2102` at a
+// observable; an UNSATISFIED row is, on both backends, as `VIBE2102` at a
 // top-level call, with the capability named in the message. The two backends
 // could have been compared on rows three and five at any point, by any program
 // whose charge reaches module scope — which is every vector below.
@@ -42,7 +42,7 @@ import (
 // changed: `Promise.all` beside `Promise.race`, a lexically shadowed `Promise`
 // beside the ambient one. A backend that charges nothing passes those four and
 // fails the five positives; one that charges the `Promise` or `Intl` ROOT passes
-// the positives and fails these. The two `SMITHERS1602` vectors are stronger
+// the positives and fails these. The two `VIBE1602` vectors are stronger
 // still — they assert a refusal AND the absence of a charge beside it, so an
 // over-charge appears as an extra diagnostic rather than as a silence.
 
@@ -87,7 +87,7 @@ func TestPinnedForkAmbientRequirementChargesMatchTheSharedVectors(t *testing.T) 
 			charging++
 		}
 		t.Run(vector.Name, func(t *testing.T) {
-			files := []SourceFile{{Path: "case.sm", Kind: FileKindSmithers, Text: vector.Source}}
+			files := []SourceFile{{Path: "case.vibe", Kind: FileKindVibeLang, Text: vector.Source}}
 			result := compileInternalSource(t, files)
 			got := formatDiagnosticPositions(t, files, result)
 			want := append([]string(nil), vector.Diagnostics...)
@@ -99,12 +99,12 @@ func TestPinnedForkAmbientRequirementChargesMatchTheSharedVectors(t *testing.T) 
 					vector.Why, got, want, ambientChargeMessages(result))
 			}
 			// The PUBLISHED ROW, read back out of the message, not merely a
-			// substring test for the capability's name. SMITHERS2102's message
+			// substring test for the capability's name. VIBE2102's message
 			// is built from formatRowSet, so the braces carry the whole row and
 			// this is the closest this backend's protocol gets to the direct row
 			// assertion poc/src/language/ambient-charge.test.ts makes.
 			//
-			// Exactness is the point twice over. A SMITHERS2102 that named the
+			// Exactness is the point twice over. A VIBE2102 that named the
 			// wrong capability, or that arrived because some unrelated rule
 			// charged something, satisfies the position assertion above and
 			// means nothing. And a row that named the RIGHT capability twice —
@@ -152,14 +152,14 @@ func ambientChargeMessages(result CompileResult) []string {
 	return messages
 }
 
-// ambientChargePublishedRow reads the requirement row back out of SMITHERS2102,
+// ambientChargePublishedRow reads the requirement row back out of VIBE2102,
 // whose message formatRowSet renders as `{A, B}`. The bridge's CompileResult
 // protocol carries no rows, so this is how the row is observed from outside —
 // and the fact that it CAN be observed from outside is the finding this file
 // rests on.
 func ambientChargePublishedRow(result CompileResult) ([]string, bool) {
 	for _, item := range result.Diagnostics {
-		if item.Code != "SMITHERS2102" {
+		if item.Code != "VIBE2102" {
 			continue
 		}
 		open := strings.Index(item.Message, "{")

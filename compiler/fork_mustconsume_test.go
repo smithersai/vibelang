@@ -22,10 +22,10 @@ export async function main(): Promise<string[]> {
   return [outcome.unwrapOr("Guest")]
 }
 `
-		files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: authored}}
+		files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored}}
 		result := compileInternalSource(t, files)
 		got := strings.Join(formatDiagnosticPositions(t, files, result), " ")
-		if got != "SMITHERS1401@12:25 SMITHERS1403@11:9" {
+		if got != "VIBE1401@12:25 VIBE1403@11:9" {
 			t.Fatalf("bound Promise diagnostics = %s, want 1401 at the chain and 1403 at the binding; raw %#v", got, result.Diagnostics)
 		}
 	})
@@ -37,10 +37,10 @@ export async function main(): Promise<string[]> {
   return [value]
 }
 `
-		files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: authored}}
+		files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored}}
 		result := compileInternalSource(t, files)
 		got := strings.Join(formatDiagnosticPositions(t, files, result), " ")
-		if got != "SMITHERS1401@3:23 SMITHERS1402@3:23" {
+		if got != "VIBE1401@3:23 VIBE1402@3:23" {
 			t.Fatalf("direct Promise diagnostics = %s, want unbound 1402; raw %#v", got, result.Diagnostics)
 		}
 	})
@@ -56,10 +56,10 @@ export async function main(): Promise<string[]> {
   return ["done"]
 }
 `
-		files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: authored}}
+		files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored}}
 		result := compileInternalSource(t, files)
 		got := strings.Join(formatDiagnosticPositions(t, files, result), " ")
-		if got != "SMITHERS1403@3:9" {
+		if got != "VIBE1403@3:9" {
 			t.Fatalf("shadowed Promise ownership = %s, want only the outer resolved symbol; raw %#v", got, result.Diagnostics)
 		}
 	})
@@ -72,10 +72,10 @@ export function main(): string[] {
   return ["done"]
 }
 `
-		files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: authored}}
+		files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored}}
 		result := compileInternalSource(t, files)
 		got := strings.Join(formatDiagnosticPositions(t, files, result), " ")
-		if got != "SMITHERS1302@4:9" {
+		if got != "VIBE1302@4:9" {
 			t.Fatalf("bound Result ownership = %s, want 1302 at the binding; raw %#v", got, result.Diagnostics)
 		}
 	})
@@ -84,16 +84,16 @@ export function main(): string[] {
 	// runtime discriminant consumed the binding, under the name "compiler-owned
 	// Result inspection consumes the binding" — and that behaviour was a
 	// fail-open: this backend compiled and RAN the program while the reference
-	// refused it with SMITHERS1302, and no corpus case spelled the shape.
+	// refused it with VIBE1302, and no corpus case spelled the shape.
 	//
-	// specification/failures.mdx, "Compiler-Owned Modules": `smthrs/result`'s
+	// specification/failures.mdx, "Compiler-Owned Modules": `vibelang/result`'s
 	// "public API is instance methods". `ok` is a property of the two runtime
 	// variant classes, not an instance method, so reading it is not the
 	// "inspecting" act in that page's closing MUST, whose inspection group is
 	// `isOk isError match`. The corpus case is
 	// 07-must-consume/reading-a-results-runtime-tag-does-not-consume-it.
 	t.Run("a compiler-owned Result discriminant read does not consume the binding", func(t *testing.T) {
-		files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: `class Broken extends Error {}
+		files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: `class Broken extends Error {}
 function load(): Result<number, Broken> {
     throw new Broken()
 }
@@ -104,7 +104,7 @@ function inspect(): boolean {
 `}}
 		result := compileInternalSource(t, files)
 		got := strings.Join(formatDiagnosticPositions(t, files, result), " ")
-		if got != "SMITHERS1302@6:11" {
+		if got != "VIBE1302@6:11" {
 			t.Fatalf("discriminant read ownership = %s, want the binding to stay unconsumed; raw %#v", got, result.Diagnostics)
 		}
 	})
@@ -113,7 +113,7 @@ function inspect(): boolean {
 	// a refusal of the PROPERTY read rather than of inspection as such.
 	t.Run("the recognized isError inspection still consumes the binding", func(t *testing.T) {
 		result := compileInternalSource(t, []SourceFile{{
-			Path: "main.sm", Kind: FileKindSmithers,
+			Path: "main.vibe", Kind: FileKindVibeLang,
 			Text: `class Broken extends Error {}
 function load(): Result<number, Broken> {
     throw new Broken()

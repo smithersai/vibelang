@@ -1,0 +1,371 @@
+{
+  "head": "class Missing extends Error {}\nfunction read(): Result<number, Missing> { throw new Missing() }\nasync function work(): Promise<number> { return 1 }\nasync function readAsync(): Promise<Result<number, Missing>> { return read()! }\n",
+  "cases": [
+    {
+      "name": "conditional Result",
+      "body": "function f(flag: boolean): void { const r = read(); if (flag) r.isError() }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "uninvoked closure",
+      "body": "function f(): void { const r = read(); const ignored = () => r.isError(); }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "conditional closure invocation",
+      "body": "function f(flag: boolean): void { const r = read(); const use = () => r.isError(); if (flag) use() }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "zero iterations",
+      "body": "function f(flag: boolean): void { const r = read(); while (flag) { r.isError(); break } }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "early return",
+      "body": "function f(flag: boolean): void { const r = read(); if (flag) return; r.isError() }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "unreachable consumption",
+      "body": "function f(): void { const r = read(); return; r.isError() }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "conditional Promise",
+      "body": "async function f(flag: boolean): Promise<void> { const p = work(); if (flag) await p }",
+      "code": "VIBE1403"
+    },
+    {
+      "name": "propagation before await",
+      "body": "async function f(): Promise<Result<number, Missing>> { const p = work(); const n = read()!; await p; return n }",
+      "code": "VIBE1403"
+    },
+    {
+      "name": "propagation in consumer argument",
+      "body": "function f(): Result<number, Missing> { const r = read(); return r.unwrapOr(read()!) }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "throw before await",
+      "body": "async function f(flag: boolean): Promise<Result<number, Missing>> { const p = work(); if (flag) throw new Missing(); return await p }",
+      "code": "VIBE1403"
+    },
+    {
+      "name": "short-circuit consumption",
+      "body": "function f(flag: boolean): void { const r = read(); flag && r.isError() }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "missing switch arm",
+      "body": "function f(flag: number): void { const r = read(); switch (flag) { case 1: r.isError(); break } }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "loop overwrite",
+      "body": "function f(): void { for (let i = 0; i < 2; i++) { const r = read(); if (i === 1) r.isError() } }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "Result parameter path",
+      "body": "function f(r: Result<number, Missing>, flag: boolean): void { if (flag) r.isError() }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "uncalled callback consumer",
+      "body": "function ignore(cb: () => boolean): void {} function f(): void { const r = read(); ignore(() => r.isError()) }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "possibly empty native iteration",
+      "body": "function f(values: number[]): void { const r = read(); values.forEach(() => { r.isError() }) }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "selected alias",
+      "body": "function f(flag: boolean): void { const left = read(); const right = read(); const selected = flag ? left : right; selected.isError() }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "skipped switch selector",
+      "body": "function f(flag: number): void { const r = read(); switch (flag) { case 1: break; case r.isError() ? 2 : 3: break } }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "opaque collection return",
+      "body": "function f(): unknown { const r = read(); return [r] }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "reassigned alias",
+      "body": "function f(other: Result<number, Missing>): void { const r = read(); let alias = r; alias = other; alias.isError(); other.isError() }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "partially consumed literal",
+      "body": "function f(): void { const results = [read(), read()]; results[0]?.isError() }",
+      "code": "VIBE1301"
+    },
+    {
+      "name": "partially consumed returned collection",
+      "body": "function pack(): Result<number, Missing>[] { return [read(), read()] } function f(): void { const results = pack(); results[0]?.isError() }",
+      "code": "VIBE1301"
+    },
+    {
+      "name": "conditional collection consumption",
+      "body": "function f(flag: boolean): void { const results = [read(), read()]; if (flag) Result.all(results).isError() }",
+      "code": "VIBE1301"
+    },
+    {
+      "name": "argument propagation after an unbound producer",
+      "body": "function f(): Result<number, Missing> { return read().unwrapOr(read()!) }",
+      "code": "VIBE1301"
+    },
+    {
+      "name": "both branches",
+      "body": "function f(flag: boolean): void { const r = read(); if (flag) r.isError(); else r.isOk() }",
+      "code": null
+    },
+    {
+      "name": "ternary branches",
+      "body": "function f(flag: boolean): boolean { const r = read(); return flag ? r.isError() : r.isOk() }",
+      "code": null
+    },
+    {
+      "name": "definitely invoked closure",
+      "body": "function f(): void { const r = read(); const use = () => r.isError(); use() }",
+      "code": null
+    },
+    {
+      "name": "immediate closure",
+      "body": "function f(): void { const r = read(); (() => r.isError())() }",
+      "code": null
+    },
+    {
+      "name": "known callback invocation",
+      "body": "function invoke(cb: () => boolean): boolean { return cb() } function f(): boolean { const r = read(); return invoke(() => r.isError()) }",
+      "code": null
+    },
+    {
+      "name": "mandatory loop body",
+      "body": "function f(): void { const r = read(); do { r.isError() } while (false) }",
+      "code": null
+    },
+    {
+      "name": "return in one branch",
+      "body": "function f(flag: boolean): Result<number, Missing> { const r = read(); if (flag) return r; return r.unwrapOr(0) }",
+      "code": null
+    },
+    {
+      "name": "conditional production",
+      "body": "function f(flag: boolean): void { if (flag) { const r = read(); r.isError() } }",
+      "code": null
+    },
+    {
+      "name": "Promise before propagation",
+      "body": "async function f(): Promise<Result<number, Missing>> { const p = work(); await p; return read()! }",
+      "code": null
+    },
+    {
+      "name": "finally await after propagation",
+      "body": "async function f(): Promise<Result<number, Missing>> { const p = work(); try { return read()! } finally { await p } }",
+      "code": null
+    },
+    {
+      "name": "finally inspection after return",
+      "body": "function f(flag: boolean): number { const r = read(); try { if (flag) return 1; return 2 } finally { r.isError() } }",
+      "code": null
+    },
+    {
+      "name": "finally on break and continue",
+      "body": "function f(flag: boolean): void { const r = read(); do { try { if (flag) break; continue } finally { r.isError() } } while (false) }",
+      "code": null
+    },
+    {
+      "name": "all switch exits",
+      "body": "function f(flag: number): void { const r = read(); switch (flag) { case 1: r.isError(); break; default: r.isOk(); break } }",
+      "code": null
+    },
+    {
+      "name": "literal live branch",
+      "body": "function f(): void { const r = read(); if (true) r.isError() }",
+      "code": null
+    },
+    {
+      "name": "Promise transferred by return",
+      "body": "function f(): Promise<number> { const p = work(); return p }",
+      "code": null
+    },
+    {
+      "name": "awaited combinator",
+      "body": "async function f(): Promise<void> { const p = work(); await Promise.all([p]) }",
+      "code": null
+    },
+    {
+      "name": "Result transfer through an alias",
+      "body": "function f(): void { const r = read(); const alias = r; alias.isError() }",
+      "code": null
+    },
+    {
+      "name": "every literal member",
+      "body": "function f(): void { const results = [read(), read()]; results[0]?.isError(); results[1]?.isError() }",
+      "code": null
+    },
+    {
+      "name": "every returned member",
+      "body": "function pack(): Result<number, Missing>[] { return [read(), read()] } function f(): void { const results = pack(); results[0]?.isError(); results[1]?.isError() }",
+      "code": null
+    },
+    {
+      "name": "whole collection consumption",
+      "body": "function f(): void { const results = [read(), read()]; Result.all(results).isError() }",
+      "code": null
+    },
+    {
+      "name": "a freshly selected producer",
+      "body": "function f(flag: boolean): void { const result = flag ? read() : read(); result.isError() }",
+      "code": null
+    },
+    {
+      "name": "shorthand collection consumption",
+      "body": "function f(): void { const r = read(); const bag = { r }; bag.r.isError() }",
+      "code": null
+    },
+    {
+      "name": "shorthand returned collection",
+      "body": "function f(): { r: Result<number, Missing> } { const r = read(); return { r } }",
+      "code": null
+    },
+    {
+      "name": "unconsumed shorthand collection",
+      "body": "function f(flag: boolean): void { const r = read(); const bag = { r }; if (flag) bag.r.isError() }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "borrowed Promise alias is still checked",
+      "body": "function f(p: Promise<number>): void { const alias = p }",
+      "code": "VIBE1403"
+    },
+    {
+      "name": "captured Result alias is still checked",
+      "body": "function f(r: Result<number, Missing>): void { r.isError(); function nested(): void { const alias = r } }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "awaited Result consumer argument exits",
+      "body": "async function f(): Promise<Result<number, Missing>> { return (await readAsync()).unwrapOr(read()!) }",
+      "code": "VIBE1301"
+    },
+    {
+      "name": "conditional awaited Result collection",
+      "body": "async function f(flag: boolean): Promise<void> { const results = [await readAsync()]; if (flag) Result.all(results).isError() }",
+      "code": "VIBE1301"
+    },
+    {
+      "name": "partial awaited returned collection",
+      "body": "async function pack(): Promise<Result<number, Missing>[]> { return [read(), read()] } async function f(): Promise<void> { const results = await pack(); results[0]?.isError() }",
+      "code": "VIBE1301"
+    },
+    {
+      "name": "conditional awaited returned collection",
+      "body": "async function pack(): Promise<Result<number, Missing>[]> { return [read()] } async function f(flag: boolean): Promise<void> { const results = await pack(); if (flag) Result.all(results).isError() }",
+      "code": "VIBE1301"
+    },
+    {
+      "name": "awaited Result inspection",
+      "body": "async function f(): Promise<boolean> { return (await readAsync()).isError() }",
+      "code": null
+    },
+    {
+      "name": "awaited Result concise return",
+      "body": "const f = async (): Promise<Result<number, Missing>> => await readAsync();",
+      "code": null
+    },
+    {
+      "name": "awaited returned collection all members",
+      "body": "async function pack(): Promise<Result<number, Missing>[]> { return [read(), read()] } async function f(): Promise<void> { const results = await pack(); results[0]?.isError(); results[1]?.isError() }",
+      "code": null
+    },
+    {
+      "name": "aliased Promise collection joined wholly",
+      "body": "async function pack(): Promise<Result<number, Missing>[]> { return [read(), read()] } async function f(): Promise<void> { const promise = pack(); const results = await promise; Result.all(results).isError() }",
+      "code": null
+    },
+    {
+      "name": "native Promise executor actually runs",
+      "body": "async function f(): Promise<void> { const r = read(); await new Promise<number>(resolve => { r.isError(); resolve(1) }) }",
+      "code": null
+    },
+    {
+      "name": "uninvoked closure inside an executor",
+      "body": "async function f(): Promise<void> { const r = read(); await new Promise<number>(resolve => { const unused = () => r.isError(); resolve(1) }) }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "conditional constructed Promise collection",
+      "body": "async function f(flag: boolean): Promise<void> { const values = [new Promise<number>(resolve => resolve(1))]; if (flag) await Promise.all(values) }",
+      "code": "VIBE1402"
+    },
+    {
+      "name": "Result held across a rejecting await",
+      "body": "async function f(): Promise<void> { const r = read(); await new Promise<void>((resolve, reject) => reject(new Missing())); r.isError() }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "Result held across a possible panic",
+      "body": "function f(flag: boolean): void { const r = read(); if (flag) Reflect.panic('abandon'); r.isError() }",
+      "code": "VIBE1302"
+    },
+    {
+      "name": "later tuple member lost on propagation",
+      "body": "function f(): Result<number[], Missing> { const pair = [read(), read()] as const; return [pair[0]!, pair[1]!] }",
+      "code": "VIBE1301"
+    },
+    {
+      "name": "all tuple members observed before propagation",
+      "body": "function f(): Result<number[], Missing> { const pair = [read(), read()] as const; pair[1].isError(); return [pair[0]!, pair[1]!] }",
+      "code": null
+    },
+    {
+      "name": "Result observed before a later rejecting await",
+      "body": "async function f(): Promise<boolean> { const r = read(); r.isError(); await new Promise<void>((resolve, reject) => reject(new Missing())); return r.isError() }",
+      "code": null
+    },
+    {
+      "name": "invalid Promise bang forwarded into return",
+      "body": "async function f(): Promise<Result<number, Missing>> { const r = readAsync()!; return r }",
+      "code": "VIBE1207",
+      "codes": ["VIBE1207"]
+    },
+    {
+      "name": "invalid Promise bang still forwarded into await",
+      "body": "async function f(): Promise<Result<number, Missing>> { return await readAsync()! }",
+      "code": "VIBE1207",
+      "codes": ["VIBE1207"]
+    },
+    {
+      "name": "invalid Promise bang does not consume a stringified binding",
+      "body": "async function f(): Promise<Result<string[], Missing>> { const r = readAsync()!; return [`${r}`] }",
+      "code": "VIBE1207",
+      "codes": ["VIBE1207", "VIBE1403"]
+    },
+    {
+      "name": "one diagnostic for a returned Result discarded by forEach",
+      "body": "function f(): void { [1].forEach(() => read()!) }",
+      "code": "VIBE1303",
+      "codes": ["VIBE1303"]
+    },
+    {
+      "name": "one diagnostic for an async callback discarded by forEach",
+      "body": "function f(): void { [1].forEach(async () => { await work() }) }",
+      "code": "VIBE1404",
+      "codes": ["VIBE1404"]
+    },
+    {
+      "name": "one diagnostic per unconsumed Result parameter and argument",
+      "body": "function ignore(r: Result<number, Missing>): void {} function f(): void { ignore(read()) }",
+      "code": "VIBE1302",
+      "codes": ["VIBE1301", "VIBE1302"]
+    }
+  ]
+}

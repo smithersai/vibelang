@@ -25,11 +25,11 @@ import (
 //     "Calling a function with unsatisfied requirements MUST add those
 //     capabilities to the caller's `R` row. … Requirement inference MUST be
 //     transitive through ordinary calls." The same blind spot silenced
-//     SMITHERS1301, SMITHERS1303 and SMITHERS1404 on the tagged-template
+//     VIBE1301, VIBE1303 and VIBE1404 on the tagged-template
 //     spelling while refusing the identical call spelling.
 //
 //  2. ONE ALIAS HOP. resolveFunctionReference matched only direct symbol
-//     identity, so `const alias = fallible; hof(alias)` lost SMITHERS1303, the
+//     identity, so `const alias = fallible; hof(alias)` lost VIBE1303, the
 //     callback requirement row, and the `Result.try` boundary row that
 //     `hof(fallible)` keeps.
 //
@@ -45,17 +45,17 @@ import (
 // seven over-corrections have shipped in this codebase, one of them exactly
 // here. Every refusal is paired with the legitimate spelling that must still
 // compile AND RUN and record the RIGHT row — so an empty row panics under the
-// layer, and a wrong row draws SMITHERS2101 naming the capability it invented.
+// layer, and a wrong row draws VIBE2101 naming the capability it invented.
 //
 // These mirror poc/src/language/invocation-forms.test.ts. The shared table
 // runner and its exact-position assertions live in fork_failclosed_test.go.
 
 // invocationCapabilities is the capability module every case below reads. `Log`
 // exists so an UNSATISFIED case can be provided a layer that is complete and
-// wrong: SMITHERS2101 then names the capability the row actually carries, which
+// wrong: VIBE2101 then names the capability the row actually carries, which
 // makes an empty row and a misattributed row two distinguishable failures
 // rather than one.
-const invocationCapabilities = "caps.inv.sm\x00" + `import { Context } from "smthrs/context"
+const invocationCapabilities = "caps.inv.vibe\x00" + `import { Context } from "vibelang/context"
 
 export abstract class Db extends Context {
   abstract read(): string
@@ -67,13 +67,13 @@ export abstract class Log extends Context {
 `
 
 // invocationPrelude is the import header and the two services every case shares.
-const invocationPrelude = "import { Layer } from \"smthrs/provider\"\n" +
-	"import { Db, Log } from \"./caps.inv.sm\"\n" +
+const invocationPrelude = "import { Layer } from \"vibelang/provider\"\n" +
+	"import { Db, Log } from \"./caps.inv.vibe\"\n" +
 	"const db: Db = { read: () => \"DB\" }\n" +
 	"const log: Log = { note: () => \"LOG\" }\n"
 
 // unsatisfied provides ONLY `Log`, so a case whose row correctly names `Db`
-// draws `SMITHERS2101 Layer.provide is missing {Db}` at the provide call — and a
+// draws `VIBE2101 Layer.provide is missing {Db}` at the provide call — and a
 // case whose row is EMPTY draws nothing at all, which is precisely the fail-open
 // being pinned. The position is derived from the source rather than written by
 // hand, so a case can be edited without silently asserting the wrong line.
@@ -82,11 +82,11 @@ func unsatisfied(body string) (source string, position string) {
 	source = head +
 		"const rows = Layer.provide(Layer.succeed(Log, log), () => [f()])\n" +
 		"export function main(): string[] { return rows }\n"
-	return source, "SMITHERS2101@" + strconv.Itoa(strings.Count(head, "\n")+1) + ":14"
+	return source, "VIBE2101@" + strconv.Itoa(strings.Count(head, "\n")+1) + ":14"
 }
 
 // satisfied provides `Db`, so the same program must compile and RUN. The
-// provide site is at MODULE scope in both, because SMITHERS2101 is reported
+// provide site is at MODULE scope in both, because VIBE2101 is reported
 // only where the closure is complete — inside a function the enclosing row
 // carries the requirement instead, and the probe would measure nothing.
 func satisfied(body string) string {
@@ -104,8 +104,9 @@ func satisfied(body string) string {
 // defines `f`, and `f`'s row must name `Db`.
 func TestPinnedForkInvocationFormsChargeTheCalleeRow(t *testing.T) {
 	bodies := []struct {
-		name string
-		body string
+		name              string
+		body              string
+		generatorRefusals []string
 	}{
 		{
 			// The control. This one always worked, and it is here so a rule that
@@ -145,22 +146,26 @@ func TestPinnedForkInvocationFormsChargeTheCalleeRow(t *testing.T) {
 				"function f(): string { return new Derived().v }\n",
 		},
 		{
-			name: "spread runs the authored iterator",
+			name:              "spread runs the authored iterator",
+			generatorRefusals: []string{"VIBE1106@5:14"},
 			body: "const it = { *[Symbol.iterator](): Generator<string> { yield Db.context().read() } }\n" +
 				"function f(): string { return [...it].join(\"\") }\n",
 		},
 		{
-			name: "for-of runs the authored iterator",
+			name:              "for-of runs the authored iterator",
+			generatorRefusals: []string{"VIBE1106@5:14"},
 			body: "const it = { *[Symbol.iterator](): Generator<string> { yield Db.context().read() } }\n" +
 				"function f(): string { let out = \"\"; for (const x of it) out += x; return out }\n",
 		},
 		{
-			name: "array destructuring runs the authored iterator",
+			name:              "array destructuring runs the authored iterator",
+			generatorRefusals: []string{"VIBE1106@5:14"},
 			body: "const it = { *[Symbol.iterator](): Generator<string> { yield Db.context().read() } }\n" +
 				"function f(): string { const [a] = it; return a ?? \"\" }\n",
 		},
 		{
-			name: "yield* runs the authored iterator",
+			name:              "yield* runs the authored iterator",
+			generatorRefusals: []string{"VIBE1106@5:14", "VIBE1106@6:1"},
 			body: "const it = { *[Symbol.iterator](): Generator<string> { yield Db.context().read() } }\n" +
 				"function* outer(): Generator<string> { yield* it }\n" +
 				"function f(): string { return [...outer()].join(\"\") }\n",
@@ -221,7 +226,7 @@ func TestPinnedForkInvocationFormsChargeTheCalleeRow(t *testing.T) {
 			name:    body.name,
 			modules: []string{invocationCapabilities},
 			source:  source,
-			reject:  []string{position},
+			reject:  append([]string{position}, body.generatorRefusals...),
 		})
 	}
 	runFailClosedCases(t, cases)
@@ -239,7 +244,7 @@ func TestPinnedForkAsyncInvocationFormsChargeTheCalleeRow(t *testing.T) {
 				"async function f(): Promise<string> { return await thenable }\n" +
 				"const rows = await Layer.provide(Layer.succeed(Log, log), async () => [await f()])\n" +
 				"export function main(): string[] { return rows }\n",
-			reject: []string{"SMITHERS2101@7:20"},
+			reject: []string{"VIBE2101@7:20"},
 		},
 		{
 			name:    "for await runs the authored async iterator",
@@ -249,7 +254,7 @@ func TestPinnedForkAsyncInvocationFormsChargeTheCalleeRow(t *testing.T) {
 				"async function f(): Promise<string> { let out = \"\"; for await (const x of it) out += x; return out }\n" +
 				"const rows = await Layer.provide(Layer.succeed(Log, log), async () => [await f()])\n" +
 				"export function main(): string[] { return rows }\n",
-			reject: []string{"SMITHERS2101@7:20"},
+			reject: []string{"VIBE1106@5:14", "VIBE2101@7:20"},
 		},
 	})
 }
@@ -258,7 +263,7 @@ func TestPinnedForkAsyncInvocationFormsChargeTheCalleeRow(t *testing.T) {
 // is what separates a correct row from "refuse everything". Each program below
 // is the SAME program as its refusal twin with a layer that satisfies it: an
 // empty row would panic here with `capability 'Db' was not provided`, and a row
-// naming the wrong capability would draw SMITHERS2101.
+// naming the wrong capability would draw VIBE2101.
 func TestPinnedForkInvocationFormsStillCompileAndRun(t *testing.T) {
 	runFailClosedCases(t, []failClosedCase{
 		{
@@ -278,7 +283,9 @@ func TestPinnedForkInvocationFormsStillCompileAndRun(t *testing.T) {
 		{
 			name:    "an authored iterator runs under a satisfying layer",
 			modules: []string{invocationCapabilities},
-			source: satisfied("const it = { *[Symbol.iterator](): Generator<string> { yield Db.context().read() } }\n" +
+			// The iterator is an ordinary eager method: a requirement-bearing
+			// authored generator is independently forbidden, even under a Layer.
+			source: satisfied("const it = { [Symbol.iterator](): Iterator<string> { return [Db.context().read()][Symbol.iterator]() } }\n" +
 				"function f(): string { let out = \"\"; for (const x of it) out += x; return out }\n"),
 			stdout: "DB",
 		},
@@ -370,7 +377,7 @@ func TestPinnedForkTaggedTemplateObligations(t *testing.T) {
 				"  tag([\"bad\"] as unknown as TemplateStringsArray)\n" +
 				"  return []\n" +
 				"}\n",
-			reject: []string{"SMITHERS1301@7:3", "SMITHERS1301@8:3"},
+			reject: []string{"VIBE1301@7:3", "VIBE1301@8:3"},
 		},
 		{
 			name: "an inferred-fallible substitution needs a contract exactly as an argument does",
@@ -384,7 +391,7 @@ func TestPinnedForkTaggedTemplateObligations(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [hostTag`x${fallible}`, hostCall(fallible)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@7:1", "SMITHERS1303@9:22", "SMITHERS1303@9:43"},
+			reject: []string{"VIBE1101@7:1", "VIBE1303@9:22", "VIBE1303@9:43"},
 		},
 		{
 			name: "an async substitution needs a proven owner exactly as an async argument does",
@@ -396,7 +403,7 @@ func TestPinnedForkTaggedTemplateObligations(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [hostTag`x${async () => \"y\"}`, hostCall(async () => \"y\")]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1404@7:22", "SMITHERS1404@7:50"},
+			reject: []string{"VIBE1404@7:22", "VIBE1404@7:50"},
 		},
 		{
 			name:    "a capability-reading substitution charges the enclosing row",
@@ -409,7 +416,7 @@ func TestPinnedForkTaggedTemplateObligations(t *testing.T) {
 				"function f(): string { return hostTag`x${() => Db.context().read()}` }\n" +
 				"const rows = Layer.provide(Layer.succeed(Log, log), () => [f()])\n" +
 				"export function main(): string[] { return rows }\n",
-			reject: []string{"SMITHERS2101@10:14"},
+			reject: []string{"VIBE2101@10:14"},
 		},
 		{
 			// A tagged template that produces a Result and CONSUMES it is an
@@ -432,7 +439,7 @@ func TestPinnedForkTaggedTemplateObligations(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 // TestPinnedForkAliasedFunctionValueResolves pins the six indirections that used
-// to defeat SMITHERS1303, SMITHERS1404 and the callback requirement row, next to
+// to defeat VIBE1303, VIBE1404 and the callback requirement row, next to
 // the direct spelling they must agree with.
 func TestPinnedForkAliasedFunctionValueResolves(t *testing.T) {
 	const carrier = "class Boom extends Error { constructor() { super(\"boom\") } }\n" +
@@ -458,21 +465,21 @@ func TestPinnedForkAliasedFunctionValueResolves(t *testing.T) {
 				"  ]\n" +
 				"}\n",
 			reject: []string{
-				"SMITHERS1303@10:9", "SMITHERS1303@11:9", "SMITHERS1303@12:9",
-				"SMITHERS1303@13:9", "SMITHERS1303@14:9", "SMITHERS1303@15:9",
-				"SMITHERS1303@16:9",
+				"VIBE1303@10:9", "VIBE1303@11:9", "VIBE1303@12:9",
+				"VIBE1303@13:9", "VIBE1303@14:9", "VIBE1303@15:9",
+				"VIBE1303@16:9",
 			},
 		},
 		{
 			name:    "an aliased callback charges the capability row the direct spelling charges",
 			modules: []string{invocationCapabilities},
 			source: invocationPrelude +
-				"function hof(callback: () => unknown): string { callback(); return \"x\" }\n" +
+				"function hof(callback: typeof capability): string { callback(); return \"x\" }\n" +
 				"const capability = (): string => Db.context().read()\n" +
 				"function f(): string { const alias = capability; return hof(alias) }\n" +
 				"const rows = Layer.provide(Layer.succeed(Log, log), () => [f()])\n" +
 				"export function main(): string[] { return rows }\n",
-			reject: []string{"SMITHERS2101@8:14"},
+			reject: []string{"VIBE2101@8:14"},
 		},
 		{
 			name: "an aliased async callback needs the same proven owner",
@@ -482,18 +489,13 @@ func TestPinnedForkAliasedFunctionValueResolves(t *testing.T) {
 				"  const alias = asyncCb\n" +
 				"  return [hof(asyncCb), hof(alias)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1404@5:15", "SMITHERS1404@5:29"},
+			reject: []string{"VIBE1404@5:15", "VIBE1404@5:29"},
 		},
 		{
-			// THE GUARD, and the reason a MUTABLE binding is declined outright
-			// rather than read through its type. Two function values with the same
-			// shape have the same TYPE, so narrowing cannot separate them and the
-			// binding keeps the type it was initialized with. Reading it here would
-			// charge `Log` — a capability this program never reads — while dropping
-			// the `Db` it does. A wrong row is worse than no row; this program is
-			// accepted, and the remaining hole is the mutable-binding class, not
-			// the alias class.
-			name:    "a reassigned binding is declined rather than misattributed",
+			// Both old holes are now type errors: replacing the inferred Log row
+			// with Db, and passing the retained row through an empty-row callback
+			// annotation. A surrounding provider cannot authorize row erasure.
+			name:    "a reassigned binding cannot erase either callable requirement",
 			modules: []string{invocationCapabilities},
 			source: invocationPrelude +
 				"function hof(callback: () => unknown): string { callback(); return \"x\" }\n" +
@@ -502,7 +504,7 @@ func TestPinnedForkAliasedFunctionValueResolves(t *testing.T) {
 				"function f(): string { let cb = usesLog; cb = usesDb; return hof(cb) }\n" +
 				"const rows = Layer.provide(Layer.merge(Layer.succeed(Db, db), Layer.succeed(Log, log)), () => [f()])\n" +
 				"export function main(): string[] { return rows }\n",
-			stdout: "x",
+			reject: []string{"VIBE1808@8:47", "VIBE1808@8:66"},
 		},
 		{
 			// The other direction for the alias rule: an alias to a function with
@@ -526,7 +528,7 @@ func TestPinnedForkAliasedFunctionValueResolves(t *testing.T) {
 // TestPinnedForkMutableLayerBindingIsRefused pins the const-only rule and, just
 // as importantly, that it did not degrade a precise diagnosis into an opaque
 // one: a `const` layer that is genuinely MISSING a capability must still draw
-// SMITHERS2101 naming it, not the blunt SMITHERS2104.
+// VIBE2101 naming it, not the blunt VIBE2104.
 func TestPinnedForkMutableLayerBindingIsRefused(t *testing.T) {
 	const layerPrelude = invocationPrelude +
 		"function needsDb(): string { return Db.context().read() }\n"
@@ -540,7 +542,7 @@ func TestPinnedForkMutableLayerBindingIsRefused(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return Layer.provide(app, () => [needsDb()])\n" +
 				"}\n",
-			reject: []string{"SMITHERS2104@9:24"},
+			reject: []string{"VIBE2104@9:24"},
 		},
 		{
 			name:    "a reassigned var layer is opaque",
@@ -551,7 +553,7 @@ func TestPinnedForkMutableLayerBindingIsRefused(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return Layer.provide(app, () => [needsDb()])\n" +
 				"}\n",
-			reject: []string{"SMITHERS2104@9:24"},
+			reject: []string{"VIBE2104@9:24"},
 		},
 		{
 			name:    "a layer reassigned inside a helper is opaque",
@@ -563,7 +565,7 @@ func TestPinnedForkMutableLayerBindingIsRefused(t *testing.T) {
 				"  swap()\n" +
 				"  return Layer.provide(app, () => [needsDb()])\n" +
 				"}\n",
-			reject: []string{"SMITHERS2104@10:24"},
+			reject: []string{"VIBE2104@10:24"},
 		},
 		{
 			// A `let` that is never reassigned is refused too. That is FAIL-CLOSED,
@@ -576,11 +578,11 @@ func TestPinnedForkMutableLayerBindingIsRefused(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return Layer.provide(app, () => [needsDb()])\n" +
 				"}\n",
-			reject: []string{"SMITHERS2104@8:24"},
+			reject: []string{"VIBE2104@8:24"},
 		},
 		{
 			// THE PRECISION TEST. If the const-only rule had been written as "give
-			// up on anything uncertain", this would have become SMITHERS2104 and
+			// up on anything uncertain", this would have become VIBE2104 and
 			// the author would have lost the sentence naming the missing
 			// capability.
 			name:    "a const layer missing a capability still draws the precise 2101",
@@ -589,7 +591,7 @@ func TestPinnedForkMutableLayerBindingIsRefused(t *testing.T) {
 				"const app = Layer.succeed(Log, log)\n" +
 				"const rows = Layer.provide(app, () => [needsDb()])\n" +
 				"export function main(): string[] { return rows }\n",
-			reject: []string{"SMITHERS2101@7:14"},
+			reject: []string{"VIBE2101@7:14"},
 		},
 		{
 			name:    "a const layer still resolves and runs",
@@ -619,7 +621,7 @@ func TestPinnedForkMutableLayerBindingIsRefused(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 // TestPinnedForkParenthesizedContextCalleeRecordsItsRow pins both halves of
-// SMITHERS2107 at once. Grouping never detaches a receiver — ECMAScript detaches
+// VIBE2107 at once. Grouping never detaches a receiver — ECMAScript detaches
 // through an assignment, a comma, or an argument position — so `(Db.context)()`
 // must record the row and must not be refused, while every spelling that puts
 // another node between the member and its call must still be.
@@ -654,7 +656,7 @@ func TestPinnedForkParenthesizedContextCalleeRecordsItsRow(t *testing.T) {
 				"function f(): string { return (Db.context)().read() }\n" +
 				"const rows = Layer.provide(Layer.succeed(Log, log), () => [f()])\n" +
 				"export function main(): string[] { return rows }\n",
-			reject: []string{"SMITHERS2101@6:14"},
+			reject: []string{"VIBE2101@6:14"},
 		},
 		{
 			// And the rule it must not swallow. Each of these separates the member
@@ -671,7 +673,7 @@ func TestPinnedForkParenthesizedContextCalleeRecordsItsRow(t *testing.T) {
 				"  return Layer.provide(Layer.succeed(Db, db), () => f())\n" +
 				"}\n",
 			reject: []string{
-				"SMITHERS2107@7:16", "SMITHERS2107@8:16", "SMITHERS2107@8:35", "SMITHERS2107@8:64",
+				"VIBE2107@7:16", "VIBE2107@8:16", "VIBE2107@8:35", "VIBE2107@8:64",
 			},
 		},
 	})

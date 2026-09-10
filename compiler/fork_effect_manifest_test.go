@@ -21,7 +21,7 @@ import (
 // knows, that has to surface while the Plan still exists to disagree with it.
 //
 // The pinned fork emits both artifacts when a request sets
-// `smithersEffectManifest`. The Manifest is derived by `effectmanifest.go` from
+// `vibelangEffectManifest`. The Manifest is derived by `effectmanifest.go` from
 // the authored function; the Plan by `durable.go`'s lowerer. Neither reads the
 // other. This test reads both back and compares the action set, the capability
 // set, and the contract set over every `17-durable` conformance case.
@@ -184,7 +184,7 @@ func TestPinnedForkEffectManifestAgreesWithThePlan(t *testing.T) {
 	}
 	names := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		if strings.HasSuffix(entry.Name(), ".sm") {
+		if strings.HasSuffix(entry.Name(), ".vibe") {
 			names = append(names, entry.Name())
 		}
 	}
@@ -204,8 +204,8 @@ func TestPinnedForkEffectManifestAgreesWithThePlan(t *testing.T) {
 		}
 		result, err := backend.Compile(ctx, CompileRequest{
 			RootNames: []string{name},
-			Files:     []SourceFile{{Path: name, Kind: FileKindSmithers, Text: string(text)}},
-			Options:   Options{"noEmitOnError": true, "smithersEffectManifest": true},
+			Files:     []SourceFile{{Path: name, Kind: FileKindVibeLang, Text: string(text)}},
+			Options:   Options{"noEmitOnError": true, "vibelangEffectManifest": true},
 			Lowering:  LoweringInternal,
 		})
 		if err != nil {
@@ -230,7 +230,7 @@ func TestPinnedForkEffectManifestAgreesWithThePlan(t *testing.T) {
 			// Manifest silently skipping a Flow.
 			// Only this case's own module; the compiler-owned prelude names the
 			// marker in a type it declares.
-			emittedModule := strings.TrimSuffix(name, ".sm") + ".js"
+			emittedModule := strings.TrimSuffix(name, ".vibe") + ".js"
 			if strings.Contains(texts[emittedModule], "static-plan-artifact") {
 				t.Fatalf("%s: %s carries a lowered Plan but no Effect Manifest was emitted", name, emittedModule)
 			}
@@ -337,14 +337,14 @@ func TestPinnedForkEffectManifestAgreesWithThePlan(t *testing.T) {
 // may change": with the option absent, not one artifact moves.
 func TestPinnedForkEffectManifestIsOptIn(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
-	source, err := os.ReadFile(filepath.Join(effectManifestCorpus, "static-plan-shape-is-digest-pinned.sm"))
+	source, err := os.ReadFile(filepath.Join(effectManifestCorpus, "static-plan-shape-is-digest-pinned.vibe"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	compile := func(options Options) CompileResult {
 		result, err := backend.Compile(ctx, CompileRequest{
-			RootNames: []string{"main.sm"},
-			Files:     []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: string(source)}},
+			RootNames: []string{"main.vibe"},
+			Files:     []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: string(source)}},
 			Options:   options,
 			Lowering:  LoweringInternal,
 		})
@@ -354,7 +354,7 @@ func TestPinnedForkEffectManifestIsOptIn(t *testing.T) {
 		return result
 	}
 	plain := compile(Options{"noEmitOnError": true})
-	withManifest := compile(Options{"noEmitOnError": true, "smithersEffectManifest": true})
+	withManifest := compile(Options{"noEmitOnError": true, "vibelangEffectManifest": true})
 
 	plainTexts := artifactTextsByPath(t, plain.Artifacts)
 	manifestTexts := artifactTextsByPath(t, withManifest.Artifacts)

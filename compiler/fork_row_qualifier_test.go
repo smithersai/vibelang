@@ -16,9 +16,9 @@ import (
 // identity, so buildRowNames renames every colliding declaration to
 // `Name@module/path`. A disambiguator that itself re-collides has not done that
 // job, and the shipped one did — MEASURED on the fork, by compiling and reading
-// the failure row back out of SMITHERS1101:
+// the failure row back out of VIBE1101:
 //
-//	files "a b.sm" and "a_b.sm", each declaring Boom
+//	files "a b.vibe" and "a_b.vibe", each declaring Boom
 //	  -> "explicit return type cannot represent recoverable failures {Boom@a_b}"
 //	     in BOTH files
 //	  no diagnostic anywhere says the two are one
@@ -31,7 +31,7 @@ import (
 // wrote one '_' per rune; the reference walked UTF-16 code units (a non-`u`
 // regex class) and wrote one '_' per unit. For an astral character in a module
 // path the two backends therefore minted different row names for the same
-// program: `x😀.sm` gave `x_` here and `x__` there. No conformance case could
+// program: `x😀.vibe` gave `x_` here and `x__` there. No conformance case could
 // see it — the corpus contains no module path outside [A-Za-z0-9._/-] and no
 // class name declared in two modules, so buildRowNames never qualifies anything
 // there, and the runner compares diagnostic codes and positions rather than
@@ -67,7 +67,7 @@ func loadRowQualifierVectors(t *testing.T) []rowQualifierVector {
 }
 
 // rowQualifierSource declares a Boom and a function whose EXPLICIT return type
-// cannot carry it, which is what makes the row name observable: SMITHERS1101's
+// cannot carry it, which is what makes the row name observable: VIBE1101's
 // message is built from formatRowSet(fn.bodyFailures).
 func rowQualifierSource(function string) string {
 	return "export class Boom extends Error {\n" +
@@ -83,17 +83,17 @@ func rowQualifierSource(function string) string {
 func boomRowIn(t *testing.T, result CompileResult, file string) string {
 	t.Helper()
 	for _, item := range result.Diagnostics {
-		if item.Code != "SMITHERS1101" || item.File != file {
+		if item.Code != "VIBE1101" || item.File != file {
 			continue
 		}
 		open := strings.Index(item.Message, "{")
 		closed := strings.LastIndex(item.Message, "}")
 		if open < 0 || closed < open {
-			t.Fatalf("SMITHERS1101 in %q carries no failure row: %q", file, item.Message)
+			t.Fatalf("VIBE1101 in %q carries no failure row: %q", file, item.Message)
 		}
 		return item.Message[open+1 : closed]
 	}
-	t.Fatalf("no SMITHERS1101 for %q in %#v", file, result.Diagnostics)
+	t.Fatalf("no VIBE1101 for %q in %#v", file, result.Diagnostics)
 	return ""
 }
 
@@ -111,12 +111,12 @@ func boomRowIn(t *testing.T, result CompileResult, file string) string {
 // against by poc/src/language/module-row-qualifier.test.ts.
 //
 // Every vector is compiled against ONE fixed partner module, because the
-// qualifier is only minted when a name collides. The partner is `zz-partner.sm`,
+// qualifier is only minted when a name collides. The partner is `zz-partner.vibe`,
 // whose own qualifier is pinned by the same assertion.
 func TestPinnedForkModuleRowQualifierMatchesTheSharedVectors(t *testing.T) {
 	vectors := loadRowQualifierVectors(t)
 
-	const partner = "zz-partner.sm"
+	const partner = "zz-partner.vibe"
 	skipped := 0
 	exercised := 0
 	for _, vector := range vectors {
@@ -131,8 +131,8 @@ func TestPinnedForkModuleRowQualifierMatchesTheSharedVectors(t *testing.T) {
 			t.Fatalf("vector %q collides with the fixed partner module", vector.Module)
 		}
 		result := compileInternalSource(t, []SourceFile{
-			{Path: vector.Module, Kind: FileKindSmithers, Text: rowQualifierSource("subject")},
-			{Path: partner, Kind: FileKindSmithers, Text: rowQualifierSource("partner")},
+			{Path: vector.Module, Kind: FileKindVibeLang, Text: rowQualifierSource("subject")},
+			{Path: partner, Kind: FileKindVibeLang, Text: rowQualifierSource("partner")},
 		})
 		got := boomRowIn(t, result, vector.Module)
 		want := "Boom@" + vector.Qualifier
@@ -165,14 +165,14 @@ func TestPinnedForkModuleRowQualifierMatchesTheSharedVectors(t *testing.T) {
 // for, and the one it used to answer with a single name for both.
 func TestPinnedForkModuleRowQualifierSeparatesNormalizedModuleNames(t *testing.T) {
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "a b.sm", Kind: FileKindSmithers, Text: rowQualifierSource("spaced")},
-		{Path: "a_b.sm", Kind: FileKindSmithers, Text: rowQualifierSource("scored")},
+		{Path: "a b.vibe", Kind: FileKindVibeLang, Text: rowQualifierSource("spaced")},
+		{Path: "a_b.vibe", Kind: FileKindVibeLang, Text: rowQualifierSource("scored")},
 		// '+' is the escape introducer, so it must escape itself or the encoding
 		// is not reversible and this third module folds onto one of the first two.
-		{Path: "a+b.sm", Kind: FileKindSmithers, Text: rowQualifierSource("plussed")},
+		{Path: "a+b.vibe", Kind: FileKindVibeLang, Text: rowQualifierSource("plussed")},
 	})
 	rows := map[string]string{}
-	for _, file := range []string{"a b.sm", "a_b.sm", "a+b.sm"} {
+	for _, file := range []string{"a b.vibe", "a_b.vibe", "a+b.vibe"} {
 		row := boomRowIn(t, result, file)
 		if prior, clash := rows[row]; clash {
 			t.Fatalf("%s and %s were handed one row name %q", prior, file, row)
@@ -200,14 +200,14 @@ func TestPinnedForkModuleRowQualifierSeparatesNormalizedModuleNames(t *testing.T
 // backends that are supposed to be interchangeable.
 func TestPinnedForkModuleRowQualifierCountsUTF16CodeUnits(t *testing.T) {
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "x\U0001F600.sm", Kind: FileKindSmithers, Text: rowQualifierSource("astral")},
-		{Path: "x__.sm", Kind: FileKindSmithers, Text: rowQualifierSource("scored")},
+		{Path: "x\U0001F600.vibe", Kind: FileKindVibeLang, Text: rowQualifierSource("astral")},
+		{Path: "x__.vibe", Kind: FileKindVibeLang, Text: rowQualifierSource("scored")},
 	})
-	astral := boomRowIn(t, result, "x\U0001F600.sm")
+	astral := boomRowIn(t, result, "x\U0001F600.vibe")
 	if astral != "Boom@x+D83D+DE00" {
 		t.Fatalf("astral module row = %q, want %q (one escape per UTF-16 unit, not per rune)", astral, "Boom@x+D83D+DE00")
 	}
-	if scored := boomRowIn(t, result, "x__.sm"); scored == astral {
-		t.Fatalf("the astral module and %q were handed one row name %q", "x__.sm", astral)
+	if scored := boomRowIn(t, result, "x__.vibe"); scored == astral {
+		t.Fatalf("the astral module and %q were handed one row name %q", "x__.vibe", astral)
 	}
 }

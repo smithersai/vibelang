@@ -14,7 +14,7 @@ import (
 // pin-only assertions went with them. What is asserted here now is what
 // survived the withdrawal and still depends on the same traversal:
 //
-//   - the module-edge trust rule across re-exports (SMITHERS1510), which
+//   - the module-edge trust rule across re-exports (VIBE1510), which
 //     `staticRuntimeModuleEdge` and `nativeExportIsTypeOnly` own;
 //   - compile-time asset identity through a re-export, which
 //     `assetProvenanceThroughBindings` owns;
@@ -27,9 +27,9 @@ import (
 
 func compileReExportProject(t *testing.T, backend Compiler, source string, extras ...SourceFile) CompileResult {
 	t.Helper()
-	files := append([]SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}}, extras...)
+	files := append([]SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: source}}, extras...)
 	result, err := backend.Compile(t.Context(), CompileRequest{
-		RootNames: []string{"main.sm"},
+		RootNames: []string{"main.vibe"},
 		Files:     files,
 		Options:   Options{},
 		Lowering:  LoweringInternal,
@@ -67,25 +67,25 @@ func TestPinnedForkReExportModuleEdgeTrust(t *testing.T) {
 	backend, _ := newPinnedTestBackend(t)
 
 	t.Run("named re-export of an untrusted foreign module is charged", func(t *testing.T) {
-		source := "import { helper } from \"./launder.sm\"\n" +
+		source := "import { helper } from \"./launder.vibe\"\n" +
 			"export function main(): string[] { return [typeof helper] }\n"
 		result := compileReExportProject(t, backend, source,
-			SourceFile{Path: "launder.sm", Kind: FileKindSmithers,
+			SourceFile{Path: "launder.vibe", Kind: FileKindVibeLang,
 				Text: "export { helper } from \"./untrusted.ts\"\n"},
 			SourceFile{Path: "untrusted.ts", Kind: FileKindTypeScript,
 				Text: "export function helper(value: number): number { return value + 1 }\n"},
 		)
-		if len(diagnosticMessages(result, "SMITHERS1510")) == 0 {
+		if len(diagnosticMessages(result, "VIBE1510")) == 0 {
 			t.Fatalf("a re-export of an untrusted foreign module must be charged: %#v", result.Diagnostics)
 		}
 	})
 
 	t.Run("type-only re-export is not charged", func(t *testing.T) {
-		source := "import type { Settings } from \"./types.sm\"\n" +
+		source := "import type { Settings } from \"./types.vibe\"\n" +
 			"const local: Settings = { size: 3 }\n" +
 			"export function main(): string[] { return [String(local.size)] }\n"
 		result := compileReExportProject(t, backend, source,
-			SourceFile{Path: "types.sm", Kind: FileKindSmithers,
+			SourceFile{Path: "types.vibe", Kind: FileKindVibeLang,
 				Text: "export type { Settings } from \"./foreign.ts\"\n"},
 			SourceFile{Path: "foreign.ts", Kind: FileKindTypeScript,
 				Text: "export interface Settings { readonly size: number }\n"},
@@ -106,12 +106,12 @@ func TestPinnedForkReExportAcceptanceControls(t *testing.T) {
 	backend, _ := newPinnedTestBackend(t)
 
 	t.Run("ordinary project values through named and star exports", func(t *testing.T) {
-		source := "import { LIMIT } from \"./named.sm\"\nimport { STEP } from \"./star.sm\"\n" +
+		source := "import { LIMIT } from \"./named.vibe\"\nimport { STEP } from \"./star.vibe\"\n" +
 			"export function main(): string[] { return [String(LIMIT + STEP)] }\n"
 		result := compileReExportProject(t, backend, source,
-			SourceFile{Path: "named.sm", Kind: FileKindSmithers, Text: `export { LIMIT } from "./values.sm"` + "\n"},
-			SourceFile{Path: "star.sm", Kind: FileKindSmithers, Text: `export * from "./values.sm"` + "\n"},
-			SourceFile{Path: "values.sm", Kind: FileKindSmithers, Text: "export const LIMIT = 1\nexport const STEP = 2\n"},
+			SourceFile{Path: "named.vibe", Kind: FileKindVibeLang, Text: `export { LIMIT } from "./values.vibe"` + "\n"},
+			SourceFile{Path: "star.vibe", Kind: FileKindVibeLang, Text: `export * from "./values.vibe"` + "\n"},
+			SourceFile{Path: "values.vibe", Kind: FileKindVibeLang, Text: "export const LIMIT = 1\nexport const STEP = 2\n"},
 		)
 		if result.EmitSkipped || len(result.Diagnostics) != 0 {
 			t.Fatalf("clean re-exports must compile: %#v", result.Diagnostics)
@@ -122,11 +122,11 @@ func TestPinnedForkReExportAcceptanceControls(t *testing.T) {
 	})
 
 	t.Run("compiler-owned virtual modules", func(t *testing.T) {
-		source := "import { Layer, Context } from \"./compiler.sm\"\n" +
+		source := "import { Layer, Context } from \"./compiler.vibe\"\n" +
 			"export function main(): string[] { void Layer; void Context; return [\"1\"] }\n"
 		result := compileReExportProject(t, backend, source,
-			SourceFile{Path: "compiler.sm", Kind: FileKindSmithers,
-				Text: "export { Layer } from \"smthrs/provider\"\nexport * from \"smthrs/context\"\n"},
+			SourceFile{Path: "compiler.vibe", Kind: FileKindVibeLang,
+				Text: "export { Layer } from \"vibelang/provider\"\nexport * from \"vibelang/context\"\n"},
 		)
 		if result.EmitSkipped || len(result.Diagnostics) != 0 {
 			t.Fatalf("compiler-owned re-exports must remain edge-free: %#v", result.Diagnostics)
@@ -141,10 +141,10 @@ func TestPinnedForkReExportAcceptanceControls(t *testing.T) {
 	// the binding walk has to. If the walk stopped answering, the specifier
 	// would reach the runtime artifact, which is what the last assertion reads.
 	t.Run("compile-time asset re-export", func(t *testing.T) {
-		source := "import { config } from \"./asset.sm\"\n" +
+		source := "import { config } from \"./asset.vibe\"\n" +
 			"export function main(): string[] { return [String(config.answer)] }\n"
 		result := compileReExportProject(t, backend, source,
-			SourceFile{Path: "asset.sm", Kind: FileKindSmithers,
+			SourceFile{Path: "asset.vibe", Kind: FileKindVibeLang,
 				Text: `export { default as config } from "./config.json" with { type: "json", mode: "const" }` + "\n"},
 			SourceFile{Path: "config.json", Kind: FileKindAsset, Text: `{"answer":42}`},
 		)
@@ -179,7 +179,7 @@ func TestPinnedForkInvokedWhereDefinedChargesTheFailureChannel(t *testing.T) {
 			source: boom + "\nexport function halve(value: number) {\n" +
 				"  return (() => { if (value < 0) throw new Boom(value); return value / 2 })()\n" +
 				"}\n",
-			reject: []string{"SMITHERS1102@5:1"},
+			reject: []string{"VIBE1102@5:1"},
 		},
 		{
 			// The same body, merely DEFINED. If the walk charged it, `halve`

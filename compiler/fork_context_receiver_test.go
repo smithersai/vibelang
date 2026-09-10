@@ -21,7 +21,7 @@ import "testing"
 // it replaces. Every accepting case here compiles AND RUNS under a layer that
 // provides exactly the capabilities the row must contain, so a row that is
 // empty panics at run time and a row that names the wrong capability draws
-// SMITHERS2101 — neither can pass by being merely accepted.
+// VIBE2101 — neither can pass by being merely accepted.
 //
 // The shared table runner and its exact-position assertions live in
 // fork_failclosed_test.go.
@@ -31,7 +31,7 @@ import "testing"
 // subtype reduction: `typeof Db | typeof Twin` reduces to `typeof Db`, and
 // nothing in the resulting TYPE remembers the other arm. That is why the
 // receiver is resolved syntax first and type second.
-const capabilityModule = "caps.mod.sm\x00" + `import { Context } from "smthrs/context"
+const capabilityModule = "caps.mod.vibe\x00" + `import { Context } from "vibelang/context"
 
 export abstract class Db extends Context {
   abstract find(id: number): string
@@ -48,7 +48,7 @@ export abstract class Twin extends Context {
 export abstract class Sub extends Db { }
 `
 
-// TestPinnedForkAmbiguousContextReceiverIsRefused pins SMITHERS2106.
+// TestPinnedForkAmbiguousContextReceiverIsRefused pins VIBE2106.
 //
 // The worst case is the second one: `Db` and `Twin` share a shape, TypeScript
 // reduces the union to `typeof Db`, and the row recorded `Db` — a MISATTRIBUTED
@@ -62,19 +62,19 @@ func TestPinnedForkAmbiguousContextReceiverIsRefused(t *testing.T) {
 		{
 			name:    "a ternary over two capabilities pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Db, Log } from \"./caps.mod.sm\"\n" +
+			source: "import { Db, Log } from \"./caps.mod.vibe\"\n" +
 				"export function main(): string[] {\n" +
 				"  const flag = Db !== Log\n" +
 				"  return [(flag ? Db : Log).context() === undefined ? \"a\" : \"b\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@4:11"},
+			reject: []string{"VIBE2106@4:11"},
 		},
 		{
 			// THE GATE. Certified, layer-satisfied, and it panicked.
 			name:    "a ternary over two structurally identical capabilities is not the first arm",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db, Twin } from \"./caps.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db, Twin } from \"./caps.mod.vibe\"\n" +
 				"function read(flag: boolean): string {\n" +
 				"  return (flag ? Db : Twin).context().find(1)\n" +
 				"}\n" +
@@ -82,44 +82,44 @@ func TestPinnedForkAmbiguousContextReceiverIsRefused(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return Layer.provide(Layer.succeed(Db, db), () => [read(false)])\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@4:10"},
+			reject: []string{"VIBE2106@4:10"},
 		},
 		{
 			name:    "a const bound to a ternary carries the branches its type reduced away",
 			modules: []string{capabilityModule},
-			source: "import { Db, Twin } from \"./caps.mod.sm\"\n" +
+			source: "import { Db, Twin } from \"./caps.mod.vibe\"\n" +
 				"export function main(): string[] {\n" +
 				"  const flag = Db !== Twin\n" +
 				"  const capability = flag ? Db : Twin\n" +
 				"  return [capability.context().find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@5:11"},
+			reject: []string{"VIBE2106@5:11"},
 		},
 		{
 			name:    "a nullish default over two capabilities pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Db, Log } from \"./caps.mod.sm\"\n" +
+			source: "import { Db, Log } from \"./caps.mod.vibe\"\n" +
 				"export function main(): string[] {\n" +
 				"  const held: typeof Log | undefined = Log\n" +
 				"  void (held ?? Db).context()\n" +
 				"  return [\"x\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@4:8"},
+			reject: []string{"VIBE2106@4:8"},
 		},
 		{
 			name:    "a logical-or over two structurally identical capabilities pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Db, Twin } from \"./caps.mod.sm\"\n" +
+			source: "import { Db, Twin } from \"./caps.mod.vibe\"\n" +
 				"export function main(): string[] {\n" +
 				"  const held: typeof Twin | undefined = Twin\n" +
 				"  return [((held || Db)).context().find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@4:11"},
+			reject: []string{"VIBE2106@4:11"},
 		},
 		{
 			name:    "a union-typed parameter pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Db, Log } from \"./caps.mod.sm\"\n" +
+			source: "import { Db, Log } from \"./caps.mod.vibe\"\n" +
 				"function read(capability: typeof Db | typeof Log): void {\n" +
 				"  void capability.context()\n" +
 				"}\n" +
@@ -127,28 +127,28 @@ func TestPinnedForkAmbiguousContextReceiverIsRefused(t *testing.T) {
 				"  read(Db)\n" +
 				"  return [\"x\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@3:8"},
+			reject: []string{"VIBE2106@3:8"},
 		},
 		{
 			// A subclass is a DIFFERENT nominal key, so a union of a class with
 			// its own subclass pins nothing either.
 			name:    "a union of a capability with its subclass pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Db, Sub } from \"./caps.mod.sm\"\n" +
+			source: "import { Db, Sub } from \"./caps.mod.vibe\"\n" +
 				"function read(capability: typeof Db | typeof Sub): string {\n" +
 				"  return capability.context().find(1)\n" +
 				"}\n" +
 				"export function main(): string[] {\n" +
 				"  return [read(Db)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@3:10"},
+			reject: []string{"VIBE2106@3:10"},
 		},
 		{
 			// `let` is excluded from the const-initializer follow on purpose:
 			// the reassignment makes the initializer no evidence at all.
 			name:    "a reassigned local pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Db, Log } from \"./caps.mod.sm\"\n" +
+			source: "import { Db, Log } from \"./caps.mod.vibe\"\n" +
 				"function read(flag: boolean): void {\n" +
 				"  let capability: typeof Db | typeof Log = Db\n" +
 				"  if (flag) capability = Log\n" +
@@ -158,12 +158,12 @@ func TestPinnedForkAmbiguousContextReceiverIsRefused(t *testing.T) {
 				"  read(false)\n" +
 				"  return [\"x\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@5:8"},
+			reject: []string{"VIBE2106@5:8"},
 		},
 		{
 			name:    "a tuple element under a union index pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Db, Log } from \"./caps.mod.sm\"\n" +
+			source: "import { Db, Log } from \"./caps.mod.vibe\"\n" +
 				"const registry = [Db, Log] as const\n" +
 				"function read(index: 0 | 1): void {\n" +
 				"  void registry[index].context()\n" +
@@ -172,18 +172,18 @@ func TestPinnedForkAmbiguousContextReceiverIsRefused(t *testing.T) {
 				"  read(0)\n" +
 				"  return [\"x\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@4:8"},
+			reject: []string{"VIBE2106@4:8"},
 		},
 		{
 			name:    "an index-signature lookup pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Db, Log } from \"./caps.mod.sm\"\n" +
+			source: "import { Db, Log } from \"./caps.mod.vibe\"\n" +
 				"const table: Record<string, typeof Db | typeof Log> = { db: Db, log: Log }\n" +
 				"export function main(): string[] {\n" +
 				"  void table[\"db\"].context()\n" +
 				"  return [\"x\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@4:8"},
+			reject: []string{"VIBE2106@4:8"},
 		},
 		{
 			// A bound never pins the key even when it names EXACTLY ONE class:
@@ -191,7 +191,7 @@ func TestPinnedForkAmbiguousContextReceiverIsRefused(t *testing.T) {
 			// nominal key is a different one.
 			name:    "a type parameter bounded by one capability still pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Db } from \"./caps.mod.vibe\"\n" +
 				"function read<C extends typeof Db>(capability: C): void {\n" +
 				"  void capability.context()\n" +
 				"}\n" +
@@ -199,12 +199,12 @@ func TestPinnedForkAmbiguousContextReceiverIsRefused(t *testing.T) {
 				"  read(Db)\n" +
 				"  return [\"x\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@3:8"},
+			reject: []string{"VIBE2106@3:8"},
 		},
 		{
 			name:    "a type parameter with a default bound pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Db } from \"./caps.mod.vibe\"\n" +
 				"function read<C extends typeof Db = typeof Db>(capability: C): void {\n" +
 				"  void capability.context()\n" +
 				"}\n" +
@@ -212,7 +212,7 @@ func TestPinnedForkAmbiguousContextReceiverIsRefused(t *testing.T) {
 				"  read(Db)\n" +
 				"  return [\"x\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@3:8"},
+			reject: []string{"VIBE2106@3:8"},
 		},
 		{
 			// The language's own helper bound, `abstract new (...args: never[])
@@ -220,20 +220,20 @@ func TestPinnedForkAmbiguousContextReceiverIsRefused(t *testing.T) {
 			// used to erase the row completely.
 			name:    "a structural cast inside a generic helper pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Context } from \"smthrs/context\"\n" +
-				"import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Context } from \"vibelang/context\"\n" +
+				"import { Db } from \"./caps.mod.vibe\"\n" +
 				"function get<C extends abstract new (...args: never[]) => Context>(capability: C): InstanceType<C> {\n" +
 				"  return (capability as unknown as { context(): InstanceType<C> }).context()\n" +
 				"}\n" +
 				"export function main(): string[] {\n" +
 				"  return [get(Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@4:10"},
+			reject: []string{"VIBE2106@4:10"},
 		},
 		{
 			name:    "an intersection of two capabilities pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Db, Log } from \"./caps.mod.sm\"\n" +
+			source: "import { Db, Log } from \"./caps.mod.vibe\"\n" +
 				"function read(capability: typeof Db & typeof Log): void {\n" +
 				"  void capability.context()\n" +
 				"}\n" +
@@ -241,39 +241,39 @@ func TestPinnedForkAmbiguousContextReceiverIsRefused(t *testing.T) {
 				"  void read\n" +
 				"  return [\"x\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@3:8"},
+			reject: []string{"VIBE2106@3:8"},
 		},
 		{
 			// An anonymous class extending `Context` has a nominal key no
 			// `Layer` can ever name, so the read can never be provided.
 			name: "an anonymous class expression pins no nameable key",
-			source: "import { Context } from \"smthrs/context\"\n" +
+			source: "import { Context } from \"vibelang/context\"\n" +
 				"export function main(): string[] {\n" +
 				"  void (class extends Context { }).context()\n" +
 				"  return [\"x\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@3:8"},
+			reject: []string{"VIBE2106@3:8"},
 		},
 		{
 			name:    "a value read out of an object of capabilities pins neither",
 			modules: []string{capabilityModule},
-			source: "import { Db, Log } from \"./caps.mod.sm\"\n" +
+			source: "import { Db, Log } from \"./caps.mod.vibe\"\n" +
 				"export function main(): string[] {\n" +
 				"  void Object.values({ db: Db, log: Log })[0].context()\n" +
 				"  return [\"x\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@3:8"},
+			reject: []string{"VIBE2106@3:8"},
 		},
 		{
 			name:    "a namespace-qualified ternary pins neither",
 			modules: []string{capabilityModule},
-			source: "import * as caps from \"./caps.mod.sm\"\n" +
+			source: "import * as caps from \"./caps.mod.vibe\"\n" +
 				"export function main(): string[] {\n" +
 				"  const flag = caps.Db !== caps.Log\n" +
 				"  void (flag ? caps.Db : caps.Log).context()\n" +
 				"  return [\"x\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2106@4:8"},
+			reject: []string{"VIBE2106@4:8"},
 		},
 	})
 }
@@ -285,7 +285,7 @@ func TestPinnedForkAmbiguousContextReceiverIsRefused(t *testing.T) {
 // Each accepting case COMPILES AND RUNS under a layer providing exactly the
 // capabilities its rows must contain. An empty row would panic at run time with
 // `capability 'X' was not provided`; a row naming the wrong capability would
-// draw SMITHERS2101 at the provide site. Acceptance alone proves neither.
+// draw VIBE2101 at the provide site. Acceptance alone proves neither.
 func TestPinnedForkPinnedContextReceiversKeepTheirRowAndRun(t *testing.T) {
 	runFailClosedCases(t, []failClosedCase{
 		{
@@ -293,8 +293,8 @@ func TestPinnedForkPinnedContextReceiversKeepTheirRowAndRun(t *testing.T) {
 			// SAME capability, under a layer that provides exactly it.
 			name:    "every receiver that pins one capability keeps its row and runs",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db } from \"./caps.mod.vibe\"\n" +
 				"const Alias = Db\n" +
 				"const registry = { db: Db }\n" +
 				"const tuple = [Db] as const\n" +
@@ -336,8 +336,8 @@ func TestPinnedForkPinnedContextReceiversKeepTheirRowAndRun(t *testing.T) {
 			// doing it, so the fix is a CORRECT ROW, not a refusal of casts.
 			name:    "a cast through any keeps the operand's row and runs",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db } from \"./caps.mod.vibe\"\n" +
 				"function read(): string[] {\n" +
 				"  const opaque: any = Db\n" +
 				"  return [\n" +
@@ -358,8 +358,8 @@ func TestPinnedForkPinnedContextReceiversKeepTheirRowAndRun(t *testing.T) {
 			// taken this with it.
 			name:    "a cast over an opaque value records the asserted capability",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db } from \"./caps.mod.vibe\"\n" +
 				"function read(opaque: unknown): string {\n" +
 				"  return (opaque as typeof Db).context().find(1)\n" +
 				"}\n" +
@@ -373,8 +373,8 @@ func TestPinnedForkPinnedContextReceiversKeepTheirRowAndRun(t *testing.T) {
 			// A subclass receiver is its OWN nominal key.
 			name:    "a subclass receiver records the subclass",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Sub } from \"./caps.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Sub } from \"./caps.mod.vibe\"\n" +
 				"function read(): string { return Sub.context().find(1) }\n" +
 				"const sub: Sub = { find: (id: number) => `sub ${id}` }\n" +
 				"export function main(): string[] {\n" +
@@ -388,12 +388,12 @@ func TestPinnedForkPinnedContextReceiversKeepTheirRowAndRun(t *testing.T) {
 			// must name the right one.
 			name:    "a subclass receiver's row is the subclass, not its base",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db, Sub } from \"./caps.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db, Sub } from \"./caps.mod.vibe\"\n" +
 				"function read(): string { return Sub.context().find(1) }\n" +
 				"const db: Db = { find: (id: number) => `row ${id}` }\n" +
 				"export const lines = Layer.provide(Layer.succeed(Db, db), () => [read()])\n",
-			reject: []string{"SMITHERS2101@5:22"},
+			reject: []string{"VIBE2101@5:22"},
 		},
 		{
 			// `super.context()` in a static invokes the inherited static with
@@ -403,20 +403,20 @@ func TestPinnedForkPinnedContextReceiversKeepTheirRowAndRun(t *testing.T) {
 			// The assertion here is the ROW, not a refusal.
 			name:    "super.context() in a static records the containing class",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db } from \"./caps.mod.vibe\"\n" +
 				"abstract class Nested extends Db {\n" +
 				"  static read(): string { return super.context().find(1) }\n" +
 				"}\n" +
 				"const db: Db = { find: (id: number) => `row ${id}` }\n" +
 				"export const lines = Layer.provide(Layer.succeed(Db, db), () => [Nested.read()])\n",
-			reject: []string{"SMITHERS2101@7:22"},
+			reject: []string{"VIBE2101@7:22"},
 		},
 		{
 			name:    "super.context() in a static runs once the containing class is provided",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db } from \"./caps.mod.vibe\"\n" +
 				"abstract class Nested extends Db {\n" +
 				"  static read(): string { return super.context().find(1) }\n" +
 				"}\n" +
@@ -455,7 +455,7 @@ func TestPinnedForkPinnedContextReceiversKeepTheirRowAndRun(t *testing.T) {
 	})
 }
 
-// TestPinnedForkDetachedContextReferenceIsRefused pins SMITHERS2107.
+// TestPinnedForkDetachedContextReferenceIsRefused pins VIBE2107.
 //
 // The row is recorded at the CALL from the receiver, so every spelling that
 // separates the member from its receiver erases the row while keeping the
@@ -465,7 +465,7 @@ func TestPinnedForkPinnedContextReceiversKeepTheirRowAndRun(t *testing.T) {
 // INCIDENTALLY, through the stock type check over its emitted module — a
 // verdict resting on a typing accident there and on nothing at all here.
 func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
-	const preamble = "import { Db } from \"./caps.mod.sm\"\n"
+	const preamble = "import { Db } from \"./caps.mod.vibe\"\n"
 	runFailClosedCases(t, []failClosedCase{
 		{
 			name:    "Reflect.apply over the member is a capability read with no row",
@@ -473,7 +473,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 			source: preamble + "export function main(): string[] {\n" +
 				"  return [(Reflect.apply(Db.context, Db, []) as Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:26"},
+			reject: []string{"VIBE2107@3:26"},
 		},
 		{
 			name:    "Reflect.get with a literal key reaches the same member",
@@ -482,7 +482,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 				"  const read = Reflect.get(Db, \"context\") as () => Db\n" +
 				"  return [read.call(Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:16"},
+			reject: []string{"VIBE2107@3:16"},
 		},
 		{
 			name:    "Object.getOwnPropertyDescriptor with a literal key reaches it too",
@@ -490,7 +490,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 			source: preamble + "export function main(): string[] {\n" +
 				"  return [Object.getOwnPropertyDescriptor(Db, \"context\") === undefined ? \"a\" : \"b\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:11"},
+			reject: []string{"VIBE2107@3:11"},
 		},
 		{
 			name:    "call detaches the member",
@@ -498,7 +498,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 			source: preamble + "export function main(): string[] {\n" +
 				"  return [Db.context.call(Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:11"},
+			reject: []string{"VIBE2107@3:11"},
 		},
 		{
 			name:    "apply detaches the member",
@@ -506,7 +506,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 			source: preamble + "export function main(): string[] {\n" +
 				"  return [Db.context.apply(Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:11"},
+			reject: []string{"VIBE2107@3:11"},
 		},
 		{
 			name:    "bind detaches the member",
@@ -514,7 +514,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 			source: preamble + "export function main(): string[] {\n" +
 				"  return [Db.context.bind(Db)().find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:11"},
+			reject: []string{"VIBE2107@3:11"},
 		},
 		{
 			name:    "an alias detaches the member",
@@ -523,7 +523,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 				"  const read = Db.context\n" +
 				"  return [read.call(Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:16"},
+			reject: []string{"VIBE2107@3:16"},
 		},
 		{
 			name:    "an element-access alias detaches the member",
@@ -532,7 +532,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 				"  const read = Db[\"context\"]\n" +
 				"  return [read.call(Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:16"},
+			reject: []string{"VIBE2107@3:16"},
 		},
 		{
 			name:    "an optional-chain alias detaches the member",
@@ -541,7 +541,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 				"  const read = Db?.context\n" +
 				"  return [read.call(Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:16"},
+			reject: []string{"VIBE2107@3:16"},
 		},
 		{
 			name:    "a comma expression detaches the member",
@@ -549,7 +549,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 			source: preamble + "export function main(): string[] {\n" +
 				"  return [(0, Db.context)().find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:15"},
+			reject: []string{"VIBE2107@3:15"},
 		},
 		{
 			name:    "object destructuring detaches the member",
@@ -558,7 +558,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [context.call(Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@2:9"},
+			reject: []string{"VIBE2107@2:9"},
 		},
 		{
 			name:    "renamed object destructuring detaches it too",
@@ -567,7 +567,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [read.call(Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@2:9"},
+			reject: []string{"VIBE2107@2:9"},
 		},
 		{
 			name:    "an array literal detaches the member",
@@ -575,7 +575,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 			source: preamble + "export function main(): string[] {\n" +
 				"  return [[Db.context][0].call(Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:12"},
+			reject: []string{"VIBE2107@3:12"},
 		},
 		{
 			name:    "an object literal detaches the member",
@@ -583,7 +583,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 			source: preamble + "export function main(): string[] {\n" +
 				"  return [({ get: Db.context }).get.call(Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:19"},
+			reject: []string{"VIBE2107@3:19"},
 		},
 		{
 			name:    "a class field detaches the member",
@@ -592,7 +592,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [new Holder().read.call(Db).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@2:32"},
+			reject: []string{"VIBE2107@2:32"},
 		},
 		{
 			name:    "handing the member to another function detaches it",
@@ -601,7 +601,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [run(Db.context).find(1)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@4:15"},
+			reject: []string{"VIBE2107@4:15"},
 		},
 		{
 			name:    "void, a property read, and interpolation all detach it",
@@ -610,7 +610,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 				"  void Db.context\n" +
 				"  return [Db.context.name, `${Db.context}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS2107@3:8", "SMITHERS2107@4:11", "SMITHERS2107@4:31"},
+			reject: []string{"VIBE2107@3:8", "VIBE2107@4:11", "VIBE2107@4:31"},
 		},
 		{
 			// The other direction. A type position reads nothing, an ordinary
@@ -620,8 +620,8 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 			// recorded rather than pretended away.
 			name:    "invoking it directly, naming its type, and non-capability members stay legal",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db } from \"./caps.mod.vibe\"\n" +
 				"export type Read = typeof Db.context\n" +
 				"const shaped = { context: (): string => \"literal\" }\n" +
 				"const { context: shapedRead } = shaped\n" +
@@ -646,7 +646,7 @@ func TestPinnedForkDetachedContextReferenceIsRefused(t *testing.T) {
 // TestPinnedForkCallbackRequirementsChargeTheCaller closes the third mechanism.
 //
 // The callback-boundary rules were asymmetric: a callback that can FAIL is
-// refused (SMITHERS1303) and an ASYNC one is refused (SMITHERS1404), while a
+// refused (VIBE1303) and an ASYNC one is refused (VIBE1404), while a
 // callback that REQUIRES a capability crossed the same boundaries with the
 // requirement deleted from every row. The callback is invoked synchronously
 // inside the enclosing call and reads the capability through the runtime's
@@ -662,12 +662,14 @@ func TestPinnedForkCallbackRequirementsChargeTheCaller(t *testing.T) {
 			// rows were empty and the provide site had nothing to satisfy.
 			name:    "a capability read inside a callback reaches the provide site and runs",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db } from \"./caps.mod.sm\"\n" +
-				"class Runner { constructor(readonly handlers: { ok: () => string }) {} }\n" +
-				"function invoke(read: () => string): string { return read() }\n" +
-				"function optional(read?: () => string): string { return read?.() ?? \"none\" }\n" +
-				"function runAll(reads: (() => string)[]): string[] { return reads.map((read) => read()) }\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db } from \"./caps.mod.vibe\"\n" +
+				// A plain function annotation promises an empty row. Preserve the
+				// callback's Db requirement explicitly through every container.
+				"class Runner { constructor(readonly handlers: { ok: typeof shorthand }) {} }\n" +
+				"function invoke(read: typeof shorthand): string { return read() }\n" +
+				"function optional(read?: typeof shorthand): string { return read?.() ?? \"none\" }\n" +
+				"function runAll(reads: (typeof shorthand)[]): string[] { return reads.map((read) => read()) }\n" +
 				"function named(id: number): string { return Db.context().find(id) }\n" +
 				"const shorthand = (): string => Db.context().find(6)\n" +
 				"function every(): string[] {\n" +
@@ -693,12 +695,12 @@ func TestPinnedForkCallbackRequirementsChargeTheCaller(t *testing.T) {
 			// the capability the callback reads, and the diagnostic names it.
 			name:    "a callback's capability is missing from a layer that does not provide it",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db, Log } from \"./caps.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db, Log } from \"./caps.mod.vibe\"\n" +
 				"function read(ids: number[]): string[] { return ids.map((id) => Db.context().find(id)) }\n" +
 				"const log: Log = { write: () => undefined }\n" +
 				"export const lines = Layer.provide(Layer.succeed(Log, log), () => read([1]))\n",
-			reject: []string{"SMITHERS2101@5:22"},
+			reject: []string{"VIBE2101@5:22"},
 		},
 		{
 			// THE OVER-CORRECTION THIS FIX COULD HAVE MADE. `Layer.provide`'s
@@ -709,8 +711,8 @@ func TestPinnedForkCallbackRequirementsChargeTheCaller(t *testing.T) {
 			// flat and nested, and both must RUN.
 			name:    "a Layer.provide computation is not charged the capabilities its layer provides",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db } from \"./caps.mod.vibe\"\n" +
 				"const db: Db = { find: (id: number) => `row ${id}` }\n" +
 				"function flat(): string { return Layer.provide(Layer.succeed(Db, db), () => Db.context().find(1)) }\n" +
 				"function nested(): string[] {\n" +
@@ -751,44 +753,44 @@ func TestPinnedForkTopLevelCapabilityReadIsRefused(t *testing.T) {
 		{
 			name:    "a direct top-level capability read is refused",
 			modules: []string{capabilityModule},
-			source: "import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Db } from \"./caps.mod.vibe\"\n" +
 				"const row = Db.context().find(1)\n" +
 				"export function main(): string[] { return [row] }\n",
-			reject: []string{"SMITHERS2102@2:13"},
+			reject: []string{"VIBE2102@2:13"},
 		},
 		{
 			name:    "a top-level read through an unpinned receiver is refused as ambiguous",
 			modules: []string{capabilityModule},
-			source: "import { Db, Log } from \"./caps.mod.sm\"\n" +
+			source: "import { Db, Log } from \"./caps.mod.vibe\"\n" +
 				"const flag = Db !== Log\n" +
 				"const value = (flag ? Db : Log).context()\n" +
 				"export function main(): string[] { return [value === undefined ? \"a\" : \"b\"] }\n",
-			reject: []string{"SMITHERS2106@3:15"},
+			reject: []string{"VIBE2106@3:15"},
 		},
 		{
 			name:    "a capability read inside a top-level callback is refused",
 			modules: []string{capabilityModule},
-			source: "import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Db } from \"./caps.mod.vibe\"\n" +
 				"const rows = [1].map((id) => Db.context().find(id))\n" +
 				"export function main(): string[] { return rows }\n",
-			reject: []string{"SMITHERS2102@2:14"},
+			reject: []string{"VIBE2102@2:14"},
 		},
 		{
 			name:    "a capability read inside a top-level constructor argument is refused",
 			modules: []string{capabilityModule},
-			source: "import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Db } from \"./caps.mod.vibe\"\n" +
 				"class Runner { constructor(readonly handlers: { ok: () => string }) {} }\n" +
 				"const runner = new Runner({ ok: () => Db.context().find(1) })\n" +
 				"export function main(): string[] { return [runner.handlers.ok()] }\n",
-			reject: []string{"SMITHERS2102@3:16"},
+			reject: []string{"VIBE1808@3:27", "VIBE2102@3:16"},
 		},
 		{
 			// The other direction: a top-level read INSIDE a Layer.provide
 			// computation has a provider and must stay accepted, and run.
 			name:    "a top-level read inside a Layer.provide computation is accepted and runs",
 			modules: []string{capabilityModule},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db } from \"./caps.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db } from \"./caps.mod.vibe\"\n" +
 				"const db: Db = { find: (id: number) => `row ${id}` }\n" +
 				"const rows = Layer.provide(Layer.succeed(Db, db), () => [Db.context().find(1), ...[2].map((id) => Db.context().find(id))])\n" +
 				"export function main(): string[] { return rows }\n",
@@ -797,7 +799,7 @@ func TestPinnedForkTopLevelCapabilityReadIsRefused(t *testing.T) {
 	})
 }
 
-// TestPinnedForkImportMetaIsRefused pins SMITHERS1601 on the ambient
+// TestPinnedForkImportMetaIsRefused pins VIBE1601 on the ambient
 // `import.meta` namespace.
 //
 // ECMA-262 hands its properties to the host through
@@ -819,7 +821,7 @@ func TestPinnedForkImportMetaIsRefused(t *testing.T) {
 				"export function fileName(): string { return import.meta.filename }\n" +
 				"export function main(): string[] { return [whereAmI()] }\n",
 			reject: []string{
-				"SMITHERS1601@1:45", "SMITHERS1601@2:46", "SMITHERS1601@3:46", "SMITHERS1601@4:45",
+				"VIBE1601@1:45", "VIBE1601@2:46", "VIBE1601@3:46", "VIBE1601@4:45",
 			},
 		},
 		{
@@ -830,7 +832,7 @@ func TestPinnedForkImportMetaIsRefused(t *testing.T) {
 				"export function interpolated(): string { return `at ${import.meta.url}` }\n" +
 				"export function main(): string[] { return [whole() === undefined ? \"a\" : \"b\"] }\n",
 			reject: []string{
-				"SMITHERS1601@1:42", "SMITHERS1601@2:49", "SMITHERS1601@3:58", "SMITHERS1601@4:55",
+				"VIBE1601@1:42", "VIBE1601@2:49", "VIBE1601@3:58", "VIBE1601@4:55",
 			},
 		},
 		{

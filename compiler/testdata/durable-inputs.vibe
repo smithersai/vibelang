@@ -1,0 +1,16 @@
+import { durable, waitSignal, waitBroadcast, dequeue } from "vibelang:flows"
+
+export const Build = durable(function Build(input: { enabled: boolean }) {
+    const approval = waitSignal<{ ok: boolean }>("approval")
+    const announcement = waitBroadcast<{ note: string }>("announcement")
+    const first = dequeue<{ id: string }>("jobs")
+    const second = dequeue<{ id: string }>("jobs")
+    const selected = input.enabled
+        ? waitBroadcast<{ note: string }>("selected")
+        : { note: "offline" }
+    return { approval, announcement, first, second, selected }
+})
+
+export function main(): string {
+    return JSON.stringify({ plan: Build.plan, manifest: Build.manifest })
+}

@@ -1,0 +1,16 @@
+import { durable, Action, loopWhile } from "vibelang:flows"
+
+class Step extends Action<(input: { remaining: number; total: number }) => Result<{ remaining: number; total: number }, Error>> {}
+
+export const Build = durable(function Build(input: { count: number }) {
+    return loopWhile(
+        { remaining: input.count, total: 0 },
+        state => state.remaining > 0,
+        state => Step.run({ remaining: state.remaining, total: state.total }),
+        5
+    )
+})
+
+export function main(): string {
+    return JSON.stringify({ plan: Build.plan, manifest: Build.manifest })
+}

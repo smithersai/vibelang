@@ -79,7 +79,7 @@ var reviewedByteOrderSorts = []byteOrderSortReview{
 	{
 		file:     "assets.go.txt",
 		function: "assetAttributesKey",
-		reason: "A process-local equality key for the SMITHERS5215 conflict test and " +
+		reason: "A process-local equality key for the VIBE5215 conflict test and " +
 			"the assetModules map; never rendered as an order.",
 	},
 }

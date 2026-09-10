@@ -13,9 +13,9 @@ import (
 func TestPinnedForkDiagnosticSpansUseUTF16(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 	source := "const fidelity = \"—😀e\u0301\"\nexport const home = process.env.HOME\n"
-	files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}}
+	files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: source}}
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm"},
+		RootNames: []string{"main.vibe"},
 		Files:     files,
 		Options:   Options{},
 		Lowering:  LoweringInternal,
@@ -25,13 +25,13 @@ func TestPinnedForkDiagnosticSpansUseUTF16(t *testing.T) {
 	}
 	var diagnostic *Diagnostic
 	for index := range result.Diagnostics {
-		if result.Diagnostics[index].Code == "SMITHERS1601" {
+		if result.Diagnostics[index].Code == "VIBE1601" {
 			diagnostic = &result.Diagnostics[index]
 			break
 		}
 	}
 	if diagnostic == nil || diagnostic.Span == nil {
-		t.Fatalf("missing source-located SMITHERS1601: %#v", result.Diagnostics)
+		t.Fatalf("missing source-located VIBE1601: %#v", result.Diagnostics)
 	}
 	byteStart := strings.Index(source, "process")
 	wantStart := len(utf16.Encode([]rune(source[:byteStart])))
@@ -44,8 +44,8 @@ func TestPinnedForkDiagnosticSpansUseUTF16(t *testing.T) {
 	if diagnostic.Span.Start != wantStart || diagnostic.Span.Length != len("process") {
 		t.Fatalf("diagnostic span = %#v, want UTF-16 start %d length %d", diagnostic.Span, wantStart, len("process"))
 	}
-	if got := strings.Join(formatDiagnosticPositions(t, files, result), " "); got != "SMITHERS1601@2:21" {
-		t.Fatalf("authored diagnostic position = %s, want SMITHERS1601@2:21", got)
+	if got := strings.Join(formatDiagnosticPositions(t, files, result), " "); got != "VIBE1601@2:21" {
+		t.Fatalf("authored diagnostic position = %s, want VIBE1601@2:21", got)
 	}
 }
 
@@ -68,16 +68,16 @@ const first = parse("7").expect("the literal is a number")
 
 export function main(): string[] { return [String(first)] }
 `,
-			reject: []string{"SMITHERS1505@7:15"},
+			reject: []string{"VIBE1505@7:15"},
 		},
 		{
 			name: "both compiler-owned panic spellings have no module-level channel",
-			source: `import { panic as fail } from "smithers:exceptions"
+			source: `import { panic as fail } from "vibelang:exceptions"
 fail("first")
 Reflect.panic("second")
 export function main(): string[] { return [] }
 `,
-			reject: []string{"SMITHERS1505@2:1", "SMITHERS1505@3:1"},
+			reject: []string{"VIBE1505@2:1", "VIBE1505@3:1"},
 		},
 		{
 			name: "declared and default foreign failures need a module-level channel",
@@ -97,7 +97,7 @@ export function trusted(): number { return 1 }
 export function declared(): number { return 2 }
 export function untrusted(): number { return 3 }
 `,
-			reject: []string{"SMITHERS1505@3:11", "SMITHERS1505@4:11"},
+			reject: []string{"VIBE1505@3:11", "VIBE1505@4:11"},
 		},
 		{
 			name: "unrelated expect and panic spellings stay ordinary",
@@ -126,29 +126,29 @@ export function main(): string[] { return [scope.with] }
 		},
 		{
 			name: "an unresolved lookalike package has no intrinsic trust",
-			source: `import { helper } from "smithersutils"
+			source: `import { helper } from "vibelangutils"
 
 export function main(): string[] {
   return [typeof helper === "function" ? "present" : "absent"]
 }
 `,
-			reject: []string{"SMITHERS1510@1:24"},
+			reject: []string{"VIBE1510@1:24"},
 		},
 		{
 			name: "a missing exported binding fails the checked module closure",
-			source: `import { absent } from "./helper.sm"
+			source: `import { absent } from "./helper.vibe"
 export function main(): string[] { return [typeof absent] }
 `,
-			modules: []string{"helper.sm\x00" + `export function present(value: number): number { return value + 1 }
+			modules: []string{"helper.vibe\x00" + `export function present(value: number): number { return value + 1 }
 `},
-			reject: []string{"SMITHERS1804@1:10"},
+			reject: []string{"VIBE1804@1:10"},
 		},
 		{
 			name: "a renamed real export is resolved by identity rather than local spelling",
-			source: `import { present as absent } from "./helper.sm"
+			source: `import { present as absent } from "./helper.vibe"
 export function main(): string[] { return [String(absent(41))] }
 `,
-			modules: []string{"helper.sm\x00" + `export function present(value: number): number { return value + 1 }
+			modules: []string{"helper.vibe\x00" + `export function present(value: number): number { return value + 1 }
 `},
 			stdout: "42",
 		},

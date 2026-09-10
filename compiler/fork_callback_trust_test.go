@@ -2,7 +2,7 @@ package compiler
 
 import "testing"
 
-// A Smithers callback crossing a foreign boundary: whose obligation is its
+// A VibeLang callback crossing a foreign boundary: whose obligation is its
 // failure channel, on the Go fork.
 //
 // specification/compatibility.mdx, "Foreign Boundary" (Locked): "Calling an
@@ -17,7 +17,7 @@ import "testing"
 // Caller-controlled background APIs MUST expose explicit completion or disposal
 // handles through their adapters." That assigns the deferred half of a
 // registration to the imported module and puts the lifetime obligation on the
-// adapter, not on `.sm`.
+// adapter, not on `.vibe`.
 //
 // specification/failures.mdx, "Panic Does Not Widen a Return Type" (Locked): a
 // function "MUST therefore be able to abort with `panic(...)` while keeping a
@@ -60,7 +60,7 @@ export function awaitable(listener: () => Promise<void>): void {
   void listener();
 }
 
-/** A foreign callable handed BACK to Smithers. @throws {never} */
+/** A foreign callable handed BACK to VibeLang. @throws {never} */
 export function getHandler(): (name: string) => void {
   return () => {};
 }
@@ -72,7 +72,7 @@ export function onSignalUnsafe(name: string, listener: (name: string) => void): 
 `
 
 // callbackTrustModuleOnly carries the module-initialization claim and NOTHING
-// per function, which is the boundary SMITHERS1510 answers and never a per-call
+// per function, which is the boundary VIBE1510 answers and never a per-call
 // opt-out.
 const callbackTrustModuleOnly = `/**
  * @module
@@ -83,11 +83,11 @@ export function onSignalModuleOnly(name: string, listener: (name: string) => voi
 }
 `
 
-// TestPinnedForkTrustedBindingAcceptsASmithersCallback is the acceptance
-// direction: every shape that can carry a Smithers function value into a
+// TestPinnedForkTrustedBindingAcceptsAVibeLangCallback is the acceptance
+// direction: every shape that can carry a VibeLang function value into a
 // trusted call compiles, and the emitted program RUNS. A diagnostics-only
 // assertion would not show that the registration actually fires.
-func TestPinnedForkTrustedBindingAcceptsASmithersCallback(t *testing.T) {
+func TestPinnedForkTrustedBindingAcceptsAVibeLangCallback(t *testing.T) {
 	runFailClosedCases(t, []failClosedCase{
 		{
 			name:    "an inline arrow reaches a trusted host",
@@ -155,7 +155,7 @@ func TestPinnedForkTrustedBindingAcceptsASmithersCallback(t *testing.T) {
 		{
 			name:    "a callback that aborts with panic keeps the plain contract",
 			support: callbackTrustForeign,
-			source: "import { panic } from \"smithers:exceptions\"\n" +
+			source: "import { panic } from \"vibelang:exceptions\"\n" +
 				"import { onSignal } from \"./foreign.ts\"\n" +
 				"\n" +
 				"function install(sink: string[]): void {\n" +
@@ -187,7 +187,8 @@ func TestPinnedForkUntrustedBindingStillRefusesACallback(t *testing.T) {
 				"  onSignalUnsafe(\"SIGINT\", (name) => { sink.push(name) })\n" +
 				"  return sink\n" +
 				"}\n",
-			reject: []string{"SMITHERS1301@5:3", "SMITHERS1509@5:28"},
+			// The refused boundary still contributes Panic before row inference.
+			reject: []string{"VIBE1101@3:1", "VIBE1301@5:3", "VIBE1509@5:28"},
 		},
 		{
 			name:    "a module-level trust claim is not a per-call opt-out",
@@ -199,13 +200,13 @@ func TestPinnedForkUntrustedBindingStillRefusesACallback(t *testing.T) {
 				"  onSignalModuleOnly(\"SIGINT\", (name) => { sink.push(name) })\n" +
 				"  return sink\n" +
 				"}\n",
-			reject: []string{"SMITHERS1301@5:3", "SMITHERS1509@5:32"},
+			reject: []string{"VIBE1101@3:1", "VIBE1301@5:3", "VIBE1509@5:32"},
 		},
 	})
 }
 
 // TestPinnedForkForeignCallableIntoATrustedBindingIsStillRefused guards the
-// fail-open the narrow fix would have opened. SMITHERS1509 used to claim EVERY
+// fail-open the narrow fix would have opened. VIBE1509 used to claim EVERY
 // callable argument at a foreign call, so it also covered a callable minted in
 // another module. Now that a trusted call no longer claims the position, the
 // neighbouring provenance rule takes it back: a `@throws {never}` claim is about
@@ -222,7 +223,7 @@ func TestPinnedForkForeignCallableIntoATrustedBindingIsStillRefused(t *testing.T
 				"  onSignal(\"SIGINT\", handler)\n" +
 				"  return []\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1508@5:22"},
+			reject: []string{"VIBE1101@3:1", "VIBE1508@5:22"},
 		},
 		{
 			name:    "a foreign callable handed over directly",
@@ -233,7 +234,7 @@ func TestPinnedForkForeignCallableIntoATrustedBindingIsStillRefused(t *testing.T
 				"  onSignal(\"SIGINT\", getHandler())\n" +
 				"  return []\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1508@4:22"},
+			reject: []string{"VIBE1101@3:1", "VIBE1508@4:22"},
 		},
 	})
 }
@@ -253,7 +254,7 @@ func TestPinnedForkCallbackTrustLeavesNeighbouringRulesAlone(t *testing.T) {
 				"  awaitable(async () => { sink.push(\"tick\") })\n" +
 				"  return sink\n" +
 				"}\n",
-			reject: []string{"SMITHERS1404@5:13"},
+			reject: []string{"VIBE1404@5:13"},
 		},
 		{
 			name:    "a host global inside the callback body is still refused",
@@ -265,7 +266,7 @@ func TestPinnedForkCallbackTrustLeavesNeighbouringRulesAlone(t *testing.T) {
 				"  onSignal(\"SIGINT\", () => { sink.push(`${Date.now()}`) })\n" +
 				"  return sink\n" +
 				"}\n",
-			reject: []string{"SMITHERS1602@5:43"},
+			reject: []string{"VIBE1602@5:43"},
 		},
 		{
 			name:    "an inferred-fallible callback still needs a spelled Result contract",
@@ -286,17 +287,17 @@ func TestPinnedForkCallbackTrustLeavesNeighbouringRulesAlone(t *testing.T) {
 				"}\n",
 			// EXACTLY ONE diagnostic, and the absence of the second is what this
 			// case now pins. `sink.push(fallible(value)!)` used to draw a
-			// SMITHERS1204 at 12:39 as well, from the statement-walk that refused
+			// VIBE1204 at 12:39 as well, from the statement-walk that refused
 			// a `!` in a call argument. specification/failures.mdx §Refusal
 			// Conditions withdrew that walk (DECISIONS.md §Typed failures,
 			// 2026-08-30): the argument is evaluated unconditionally, exactly
 			// once, and the only thing to its left is the property read
 			// `sink.push`, which leaves no effect behind for a hoisted guard to
 			// jump over. The callback-ownership rule never consulted placement
-			// and must not have moved with it, so SMITHERS1303 stands alone.
+			// and must not have moved with it, so VIBE1303 stands alone.
 			// 09-foreign-calls/an-inferred-fallible-callback-into-a-trusted-host-still-needs-a-contract
 			// is the conformance case that holds the pair on both backends.
-			reject: []string{"SMITHERS1303@12:16"},
+			reject: []string{"VIBE1303@12:16"},
 		},
 	})
 }

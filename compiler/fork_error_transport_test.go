@@ -138,7 +138,7 @@ func expectBool(t *testing.T, observed map[string]any, key string, want bool) {
 // for it at all.
 func TestPinnedForkMintsNominalErrorIdentityFromTheModulePath(t *testing.T) {
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "pkg/deep/service.sm", Kind: FileKindSmithers, Text: transportSource},
+		{Path: "pkg/deep/service.vibe", Kind: FileKindVibeLang, Text: transportSource},
 	})
 	texts := requireCleanCompile(t, result)
 	emitted, ok := texts["pkg/deep/service.js"]
@@ -146,10 +146,10 @@ func TestPinnedForkMintsNominalErrorIdentityFromTheModulePath(t *testing.T) {
 		t.Fatalf("missing emitted module: %v", artifactPaths(result.Artifacts))
 	}
 	for _, want := range []string{
-		`__smithersRegisterError(InvalidPath, "smithers:pkg/deep/service.sm:InvalidPath");`,
-		`__smithersRegisterError(Fieldless, "smithers:pkg/deep/service.sm:Fieldless");`,
-		`__smithersRegisterError(Sub, "smithers:pkg/deep/service.sm:Sub");`,
-		`__smithersRegisterError(Base, "smithers:pkg/deep/service.sm:Base");`,
+		`__vibelangRegisterError(InvalidPath, "vibelang:pkg/deep/service.vibe:InvalidPath");`,
+		`__vibelangRegisterError(Fieldless, "vibelang:pkg/deep/service.vibe:Fieldless");`,
+		`__vibelangRegisterError(Sub, "vibelang:pkg/deep/service.vibe:Sub");`,
+		`__vibelangRegisterError(Base, "vibelang:pkg/deep/service.vibe:Base");`,
 	} {
 		if !strings.Contains(emitted, want) {
 			t.Fatalf("missing registration %q:\n%s", want, emitted)
@@ -162,7 +162,7 @@ func TestPinnedForkMintsNominalErrorIdentityFromTheModulePath(t *testing.T) {
 		t.Fatalf("the authored class must be emitted unchanged:\n%s", emitted)
 	}
 	// The declaration file is a type surface and carries no registration.
-	if declaration := texts["pkg/deep/service.d.sm.ts"]; strings.Contains(declaration, "RegisterError") {
+	if declaration := texts["pkg/deep/service.d.vibe.ts"]; strings.Contains(declaration, "RegisterError") {
 		t.Fatalf("declarations must not carry the runtime registration: %q", declaration)
 	}
 }
@@ -171,7 +171,7 @@ func TestPinnedForkMintsNominalErrorIdentityFromTheModulePath(t *testing.T) {
 // they may never collapse into one another.
 func TestPinnedForkSameNamedErrorsInTwoModulesStayDistinct(t *testing.T) {
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: `import { charge, Missing as PaymentsMissing } from "./payments.sm"
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: `import { charge, Missing as PaymentsMissing } from "./payments.vibe"
 
 export class Missing extends Error {
     constructor(readonly key: string) { super("directory has no " + key); }
@@ -183,7 +183,7 @@ export function main(): string[] {
     return [charge("zoe").match({ ok: (value) => value, error: (error) => error.message })];
 }
 `},
-		{Path: "payments.sm", Kind: FileKindSmithers, Text: `export class Missing extends Error {
+		{Path: "payments.vibe", Kind: FileKindVibeLang, Text: `export class Missing extends Error {
     constructor(readonly key: string) { super("payments has no " + key); }
 }
 
@@ -194,27 +194,27 @@ export function charge(key: string): Result<string, Missing> {
 `},
 	})
 	texts := requireCleanCompile(t, result)
-	if !strings.Contains(texts["main.js"], `__smithersRegisterError(Missing, "smithers:main.sm:Missing");`) {
-		t.Fatalf("main.sm identity is wrong:\n%s", texts["main.js"])
+	if !strings.Contains(texts["main.js"], `__vibelangRegisterError(Missing, "vibelang:main.vibe:Missing");`) {
+		t.Fatalf("main.vibe identity is wrong:\n%s", texts["main.js"])
 	}
-	if !strings.Contains(texts["payments.js"], `__smithersRegisterError(Missing, "smithers:payments.sm:Missing");`) {
-		t.Fatalf("payments.sm identity is wrong:\n%s", texts["payments.js"])
+	if !strings.Contains(texts["payments.js"], `__vibelangRegisterError(Missing, "vibelang:payments.vibe:Missing");`) {
+		t.Fatalf("payments.vibe identity is wrong:\n%s", texts["payments.js"])
 	}
 
 	// Registration of two same-named classes must not collide, and each wire
 	// must decode back to its own class and only its own class.
 	directory := stageEmitted(t, result.Artifacts)
-	observed := runRealm(t, directory, "distinct.mjs", `import { smithersEncodeError, smithersDecodeError, smithersErrorIdentity } from "./__smithers_prelude.js";
+	observed := runRealm(t, directory, "distinct.mjs", `import { vibelangEncodeError, vibelangDecodeError, vibelangErrorIdentity } from "./__vibelang_prelude.js";
 import { Missing, PaymentsMissing } from "./main.js";
 const local = new Missing("zoe");
 const remote = new PaymentsMissing("zoe");
-const localWire = smithersEncodeError(local);
-const remoteWire = smithersEncodeError(remote);
-const backLocal = smithersDecodeError(localWire);
-const backRemote = smithersDecodeError(remoteWire);
+const localWire = vibelangEncodeError(local);
+const remoteWire = vibelangEncodeError(remote);
+const backLocal = vibelangDecodeError(localWire);
+const backRemote = vibelangDecodeError(remoteWire);
 console.log(JSON.stringify({
-  localIdentity: smithersErrorIdentity(local),
-  remoteIdentity: smithersErrorIdentity(remote),
+  localIdentity: vibelangErrorIdentity(local),
+  remoteIdentity: vibelangErrorIdentity(remote),
   localWire,
   remoteWire,
   localIsLocal: backLocal instanceof Missing,
@@ -225,10 +225,10 @@ console.log(JSON.stringify({
   remoteMessage: backRemote.message,
 }));
 `, "")
-	expectString(t, observed, "localIdentity", "smithers:main.sm:Missing")
-	expectString(t, observed, "remoteIdentity", "smithers:payments.sm:Missing")
-	expectString(t, observed, "localWire", `{"version":1,"identity":"smithers:main.sm:Missing","payload":{"key":"zoe","message":"directory has no zoe"}}`)
-	expectString(t, observed, "remoteWire", `{"version":1,"identity":"smithers:payments.sm:Missing","payload":{"key":"zoe","message":"payments has no zoe"}}`)
+	expectString(t, observed, "localIdentity", "vibelang:main.vibe:Missing")
+	expectString(t, observed, "remoteIdentity", "vibelang:payments.vibe:Missing")
+	expectString(t, observed, "localWire", `{"version":1,"identity":"vibelang:main.vibe:Missing","payload":{"key":"zoe","message":"directory has no zoe"}}`)
+	expectString(t, observed, "remoteWire", `{"version":1,"identity":"vibelang:payments.vibe:Missing","payload":{"key":"zoe","message":"payments has no zoe"}}`)
 	expectBool(t, observed, "localIsLocal", true)
 	expectBool(t, observed, "localIsRemote", false)
 	expectBool(t, observed, "remoteIsRemote", true)
@@ -243,14 +243,14 @@ console.log(JSON.stringify({
 // durable representation."
 func TestPinnedForkDerivesTheErrorCodecFromPlainData(t *testing.T) {
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: transportSource},
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: transportSource},
 	})
 	directory := stageEmitted(t, requireCleanCompileArtifacts(t, result))
-	observed := runRealm(t, directory, "derive.mjs", `import { smithersEncodeError } from "./__smithers_prelude.js";
+	observed := runRealm(t, directory, "derive.mjs", `import { vibelangEncodeError } from "./__vibelang_prelude.js";
 import { InvalidPath, Fieldless, Structured, Ephemeral, Base, Sub } from "./main.js";
 const out = {};
 const attempt = (label, make) => {
-  try { out[label] = smithersEncodeError(make()); }
+  try { out[label] = vibelangEncodeError(make()); }
   catch (failure) { out[label] = failure.name + ": " + failure.message; }
 };
 attempt("fields", () => new InvalidPath("/etc", "not a directory"));
@@ -267,15 +267,15 @@ console.log(JSON.stringify(out));
 `, "")
 	// Plain data derives: message plus every own enumerable data property, with
 	// object keys canonically sorted.
-	expectString(t, observed, "fields", `{"version":1,"identity":"smithers:main.sm:InvalidPath","payload":{"message":"invalid path /etc: not a directory","path":"/etc","reason":"not a directory"}}`)
-	expectString(t, observed, "fieldless", `{"version":1,"identity":"smithers:main.sm:Fieldless","payload":{"message":""}}`)
-	expectString(t, observed, "structured", `{"version":1,"identity":"smithers:main.sm:Structured","payload":{"code":7,"detail":{"kind":"io"},"message":"structured","tags":["a","b"]}}`)
+	expectString(t, observed, "fields", `{"version":1,"identity":"vibelang:main.vibe:InvalidPath","payload":{"message":"invalid path /etc: not a directory","path":"/etc","reason":"not a directory"}}`)
+	expectString(t, observed, "fieldless", `{"version":1,"identity":"vibelang:main.vibe:Fieldless","payload":{"message":""}}`)
+	expectString(t, observed, "structured", `{"version":1,"identity":"vibelang:main.vibe:Structured","payload":{"code":7,"detail":{"kind":"io"},"message":"structured","tags":["a","b"]}}`)
 	// A subclass carries its own identity, and its inherited fields still derive.
-	expectString(t, observed, "base", `{"version":1,"identity":"smithers:main.sm:Base","payload":{"message":"base disk","resource":"disk"}}`)
-	expectString(t, observed, "sub", `{"version":1,"identity":"smithers:main.sm:Sub","payload":{"message":"base disk","resource":"disk"}}`)
+	expectString(t, observed, "base", `{"version":1,"identity":"vibelang:main.vibe:Base","payload":{"message":"base disk","resource":"disk"}}`)
+	expectString(t, observed, "sub", `{"version":1,"identity":"vibelang:main.vibe:Sub","payload":{"message":"base disk","resource":"disk"}}`)
 	// `cause` supplied through the Error options bag is non-enumerable, so it is
 	// host state rather than payload and never reaches the wire.
-	expectString(t, observed, "cause", `{"version":1,"identity":"smithers:main.sm:Fieldless","payload":{"message":"m"}}`)
+	expectString(t, observed, "cause", `{"version":1,"identity":"vibelang:main.vibe:Fieldless","payload":{"message":"m"}}`)
 	// Ephemeral and non-data values are REJECTED, and the refusal names the
 	// exact path rather than dropping the field silently.
 	expectString(t, observed, "ephemeral", "ErrorCodecError: $.payload.close is not JSON data")
@@ -288,27 +288,27 @@ console.log(JSON.stringify(out));
 // halves run in two separate node processes and only the wire string crosses.
 func TestPinnedForkErrorCrossesARealmBoundary(t *testing.T) {
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: transportSource},
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: transportSource},
 	})
 	directory := stageEmitted(t, requireCleanCompileArtifacts(t, result))
 
-	sender := runRealm(t, directory, "sender.mjs", `import { smithersEncodeError } from "./__smithers_prelude.js";
+	sender := runRealm(t, directory, "sender.mjs", `import { vibelangEncodeError } from "./__vibelang_prelude.js";
 import { InvalidPath } from "./main.js";
-console.log(JSON.stringify({ wire: smithersEncodeError(new InvalidPath("/etc", "not a directory")) }));
+console.log(JSON.stringify({ wire: vibelangEncodeError(new InvalidPath("/etc", "not a directory")) }));
 `, "")
 	wire, ok := sender["wire"].(string)
 	if !ok {
 		t.Fatalf("sender realm produced no wire: %#v", sender)
 	}
 
-	receiver := runRealm(t, directory, "receiver.mjs", `import { smithersDecodeError, smithersErrorIdentity } from "./__smithers_prelude.js";
+	receiver := runRealm(t, directory, "receiver.mjs", `import { vibelangDecodeError, vibelangErrorIdentity } from "./__vibelang_prelude.js";
 import { InvalidPath, describe } from "./main.js";
-const back = smithersDecodeError(process.argv[2]);
+const back = vibelangDecodeError(process.argv[2]);
 console.log(JSON.stringify({
   message: back.message,
   path: back.path,
   reason: back.reason,
-  identity: smithersErrorIdentity(back),
+  identity: vibelangErrorIdentity(back),
   isError: back instanceof Error,
   isInvalidPath: back instanceof InvalidPath,
   prototypeExact: Object.getPrototypeOf(back) === InvalidPath.prototype,
@@ -320,7 +320,7 @@ console.log(JSON.stringify({
 	expectString(t, receiver, "message", "invalid path /etc: not a directory")
 	expectString(t, receiver, "path", "/etc")
 	expectString(t, receiver, "reason", "not a directory")
-	expectString(t, receiver, "identity", "smithers:main.sm:InvalidPath")
+	expectString(t, receiver, "identity", "vibelang:main.vibe:InvalidPath")
 	// "while preserving ordinary Error behavior" — on the far side too.
 	expectBool(t, receiver, "isError", true)
 	expectBool(t, receiver, "isInvalidPath", true)
@@ -335,30 +335,30 @@ console.log(JSON.stringify({
 // nominal identity, and no hand-written wire may be decoded into one.
 func TestPinnedForkErrorTransportRefusesForgeries(t *testing.T) {
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: transportSource},
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: transportSource},
 	})
 	directory := stageEmitted(t, requireCleanCompileArtifacts(t, result))
-	observed := runRealm(t, directory, "forgery.mjs", `import { smithersEncodeError, smithersDecodeError, smithersErrorIdentity } from "./__smithers_prelude.js";
+	observed := runRealm(t, directory, "forgery.mjs", `import { vibelangEncodeError, vibelangDecodeError, vibelangErrorIdentity } from "./__vibelang_prelude.js";
 import { InvalidPath } from "./main.js";
 const out = {};
 const attempt = (label, body) => {
   try { out[label] = { ok: body() }; }
   catch (failure) { out[label] = { refused: failure.name + ": " + failure.message }; }
 };
-attempt("lookAlikeObject", () => smithersEncodeError({ name: "InvalidPath", message: "m", path: "/x", reason: "r" }));
-attempt("lookAlikeError", () => { const e = new Error("m"); e.name = "InvalidPath"; e.path = "/x"; return smithersEncodeError(e); });
-attempt("runtimeSubclass", () => { class Sneaky extends InvalidPath {}; return smithersEncodeError(new Sneaky("/x", "r")); });
-attempt("unregisteredClass", () => { class Impostor extends Error {}; return smithersEncodeError(new Impostor("m")); });
-attempt("hasInstanceLiar", () => { class Liar extends Error { static [Symbol.hasInstance]() { return true; } } return smithersEncodeError(new Liar("m")); });
-attempt("unknownIdentity", () => smithersDecodeError('{"version":1,"identity":"smithers:other.sm:InvalidPath","payload":{"message":"m"}}'));
-attempt("nonCanonicalOrder", () => smithersDecodeError('{"version":1,"identity":"smithers:main.sm:InvalidPath","payload":{"path":"/x","message":"m"}}'));
-attempt("prettyPrinted", () => smithersDecodeError('{\n  "version": 1,\n  "identity": "smithers:main.sm:InvalidPath",\n  "payload": { "message": "m" }\n}'));
-attempt("wrongVersion", () => smithersDecodeError('{"version":2,"identity":"smithers:main.sm:InvalidPath","payload":{"message":"m"}}'));
-attempt("extraEnvelopeField", () => smithersDecodeError('{"version":1,"identity":"smithers:main.sm:InvalidPath","payload":{"message":"m"},"extra":1}'));
-attempt("notJson", () => smithersDecodeError("not json"));
-attempt("notAString", () => smithersDecodeError(17));
-attempt("stealARegisteredIdentity", () => { class Impostor extends Error {}; return String(smithersErrorIdentity(new Impostor("m"))); });
-out.lookAlikeHasNoIdentity = smithersErrorIdentity({ name: "InvalidPath", message: "m" }) === undefined;
+attempt("lookAlikeObject", () => vibelangEncodeError({ name: "InvalidPath", message: "m", path: "/x", reason: "r" }));
+attempt("lookAlikeError", () => { const e = new Error("m"); e.name = "InvalidPath"; e.path = "/x"; return vibelangEncodeError(e); });
+attempt("runtimeSubclass", () => { class Sneaky extends InvalidPath {}; return vibelangEncodeError(new Sneaky("/x", "r")); });
+attempt("unregisteredClass", () => { class Impostor extends Error {}; return vibelangEncodeError(new Impostor("m")); });
+attempt("hasInstanceLiar", () => { class Liar extends Error { static [Symbol.hasInstance]() { return true; } } return vibelangEncodeError(new Liar("m")); });
+attempt("unknownIdentity", () => vibelangDecodeError('{"version":1,"identity":"vibelang:other.vibe:InvalidPath","payload":{"message":"m"}}'));
+attempt("nonCanonicalOrder", () => vibelangDecodeError('{"version":1,"identity":"vibelang:main.vibe:InvalidPath","payload":{"path":"/x","message":"m"}}'));
+attempt("prettyPrinted", () => vibelangDecodeError('{\n  "version": 1,\n  "identity": "vibelang:main.vibe:InvalidPath",\n  "payload": { "message": "m" }\n}'));
+attempt("wrongVersion", () => vibelangDecodeError('{"version":2,"identity":"vibelang:main.vibe:InvalidPath","payload":{"message":"m"}}'));
+attempt("extraEnvelopeField", () => vibelangDecodeError('{"version":1,"identity":"vibelang:main.vibe:InvalidPath","payload":{"message":"m"},"extra":1}'));
+attempt("notJson", () => vibelangDecodeError("not json"));
+attempt("notAString", () => vibelangDecodeError(17));
+attempt("stealARegisteredIdentity", () => { class Impostor extends Error {}; return String(vibelangErrorIdentity(new Impostor("m"))); });
+out.lookAlikeHasNoIdentity = vibelangErrorIdentity({ name: "InvalidPath", message: "m" }) === undefined;
 out.lookAlikeErrorIsNotNominal = (() => { const e = new Error("m"); e.name = "InvalidPath"; return e.is(InvalidPath); })();
 out.genuineIsNotALiar = (() => { class Liar extends Error {} Object.defineProperty(Liar, Symbol.hasInstance, { value: () => true }); return new InvalidPath("/x", "r").is(Liar); })();
 console.log(JSON.stringify(out));
@@ -369,7 +369,7 @@ console.log(JSON.stringify(out));
 		"runtimeSubclass":   "ErrorCodecError: Error has no registered transport codec",
 		"unregisteredClass": "ErrorCodecError: Error has no registered transport codec",
 		"hasInstanceLiar":   "ErrorCodecError: Error has no registered transport codec",
-		"unknownIdentity":   "ErrorCodecError: unknown Error identity smithers:other.sm:InvalidPath",
+		"unknownIdentity":   "ErrorCodecError: unknown Error identity vibelang:other.vibe:InvalidPath",
 		"nonCanonicalOrder": "ErrorCodecError: encoded Error is not canonical JSON",
 		"prettyPrinted":     "ErrorCodecError: encoded Error is not canonical JSON",
 		"wrongVersion":      "ErrorCodecError: encoded Error has an unsupported envelope",
@@ -407,26 +407,26 @@ console.log(JSON.stringify(out));
 // cannot be given two.
 func TestPinnedForkNominalIdentityCannotBeClaimedTwice(t *testing.T) {
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: transportSource},
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: transportSource},
 	})
 	directory := stageEmitted(t, requireCleanCompileArtifacts(t, result))
-	observed := runRealm(t, directory, "claims.mjs", `import { smithersRegisterError } from "./__smithers_prelude.js";
+	observed := runRealm(t, directory, "claims.mjs", `import { vibelangRegisterError } from "./__vibelang_prelude.js";
 import { InvalidPath, Fieldless } from "./main.js";
 const out = {};
 const attempt = (label, body) => {
   try { out[label] = { ok: String(body()) }; }
   catch (failure) { out[label] = { refused: failure.name + ": " + failure.message }; }
 };
-attempt("stealAnotherClassIdentity", () => { class Impostor extends Error {} return smithersRegisterError(Impostor, "smithers:main.sm:InvalidPath"); });
-attempt("secondIdentityForOneClass", () => smithersRegisterError(InvalidPath, "smithers:main.sm:Other"));
-attempt("reRegisterSameIdentity", () => { smithersRegisterError(Fieldless, "smithers:main.sm:Fieldless"); return "idempotent"; });
-attempt("notAnErrorClass", () => smithersRegisterError(class NotAnError {}, "smithers:main.sm:NotAnError"));
-attempt("invalidIdentity", () => { class Other extends Error {} return smithersRegisterError(Other, "has a space"); });
+attempt("stealAnotherClassIdentity", () => { class Impostor extends Error {} return vibelangRegisterError(Impostor, "vibelang:main.vibe:InvalidPath"); });
+attempt("secondIdentityForOneClass", () => vibelangRegisterError(InvalidPath, "vibelang:main.vibe:Other"));
+attempt("reRegisterSameIdentity", () => { vibelangRegisterError(Fieldless, "vibelang:main.vibe:Fieldless"); return "idempotent"; });
+attempt("notAnErrorClass", () => vibelangRegisterError(class NotAnError {}, "vibelang:main.vibe:NotAnError"));
+attempt("invalidIdentity", () => { class Other extends Error {} return vibelangRegisterError(Other, "has a space"); });
 console.log(JSON.stringify(out));
 `, "")
 	for label, want := range map[string]string{
-		"stealAnotherClassIdentity": "TypeError: stable Error identity smithers:main.sm:InvalidPath is already registered",
-		"secondIdentityForOneClass": "TypeError: Error constructor is already registered as smithers:main.sm:InvalidPath",
+		"stealAnotherClassIdentity": "TypeError: stable Error identity vibelang:main.vibe:InvalidPath is already registered",
+		"secondIdentityForOneClass": "TypeError: Error constructor is already registered as vibelang:main.vibe:InvalidPath",
 		"notAnErrorClass":           "TypeError: Error identity requires a class extending Error",
 		"invalidIdentity":           `TypeError: invalid stable Error identity: "has a space"`,
 	} {
@@ -451,7 +451,7 @@ console.log(JSON.stringify(out));
 // that, because a clean compile that cannot run is not an acceptance.
 func TestPinnedForkDoesNotRegisterAnAmbientErrorDeclaration(t *testing.T) {
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: `declare class Ambient extends Error {
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: `declare class Ambient extends Error {
     readonly key: string;
 }
 

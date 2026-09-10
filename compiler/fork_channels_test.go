@@ -41,7 +41,7 @@ export async function fetchLength(text: string): Promise<number> {
 		{
 			name:    "Result.try turns a throwing body into a Result",
 			support: foreign,
-			source: "import { Panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic } from \"vibelang:exceptions\"\n" +
 				"import { parseIntegerUnchecked } from \"./foreign.ts\"\n" +
 				"\n" +
 				"function parse(text: string): Result<number, Panic> {\n" +
@@ -59,7 +59,7 @@ export async function fetchLength(text: string): Promise<number> {
 		{
 			name:    "Result.tryPromise turns a rejecting body into a Result",
 			support: foreign,
-			source: "import { Panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic } from \"vibelang:exceptions\"\n" +
 				"import { fetchLength } from \"./foreign.ts\"\n" +
 				"\n" +
 				"async function measure(text: string): Promise<Result<number, Panic>> {\n" +
@@ -68,6 +68,8 @@ export async function fetchLength(text: string): Promise<number> {
 				"\n" +
 				"export async function main(): Promise<string[]> {\n" +
 				"  const present = await measure(\"abcd\")\n" +
+				// Observe the first Result before the second await can exit.
+				"  present.isError()\n" +
 				"  const rejected = await measure(\"boom\")\n" +
 				"  return [\n" +
 				"    present.match({ ok: (value) => `${value}`, error: () => \"panic\" }),\n" +
@@ -108,7 +110,7 @@ export function parseIntegerUnchecked(text: string): number {
 		{
 			name:    "recover handles an Error and lets a Panic survive",
 			support: foreign,
-			source: "import { Panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic } from \"vibelang:exceptions\"\n" +
 				"import { parseIntegerUnchecked } from \"./foreign.ts\"\n" +
 				"\n" +
 				"export class Missing extends Error {\n" +
@@ -142,14 +144,14 @@ export function parseIntegerUnchecked(text: string): number {
 // TestPinnedForkExplicitPanicChargesTheChannel pins that `panic(...)` reaches
 // the caller's `match` error branch rather than aborting the process.
 // specification/failures.mdx, "Foreign Exceptions": "panic is imported from
-// smithers:exceptions and accepts an optional message or underlying Error."
+// vibelang:exceptions and accepts an optional message or underlying Error."
 // The declared `Result<string, Panic>` is only true if the caller can observe
 // it, so this test executes the emitted program rather than reading its text.
 func TestPinnedForkExplicitPanicChargesTheChannel(t *testing.T) {
 	runFailClosedCases(t, []failClosedCase{
 		{
 			name: "a panic statement becomes the error variant",
-			source: "import { Panic, panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic, panic } from \"vibelang:exceptions\"\n" +
 				"\n" +
 				"function force(key: string): Result<string, Panic> {\n" +
 				"  if (key !== \"ada\") panic(`no entry for ${key}`)\n" +
@@ -166,7 +168,7 @@ func TestPinnedForkExplicitPanicChargesTheChannel(t *testing.T) {
 		},
 		{
 			name: "a directly returned panic becomes the error variant",
-			source: "import { Panic, panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic, panic } from \"vibelang:exceptions\"\n" +
 				"\n" +
 				"function force(key: string): Result<string, Panic> {\n" +
 				"  if (key !== \"ada\") return panic(\"defect\")\n" +
@@ -180,7 +182,7 @@ func TestPinnedForkExplicitPanicChargesTheChannel(t *testing.T) {
 		},
 		{
 			name: "a panic in a value position has no defined Result lowering",
-			source: "import { Panic, panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic, panic } from \"vibelang:exceptions\"\n" +
 				"\n" +
 				"function force(key: string): Result<string, Panic> {\n" +
 				"  const value = key === \"ada\" ? \"Ada Lovelace\" : panic(\"defect\")\n" +
@@ -190,7 +192,7 @@ func TestPinnedForkExplicitPanicChargesTheChannel(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [force(\"ada\").match({ ok: (value) => value, error: () => \"panic\" })]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1503@4:50"},
+			reject: []string{"VIBE1503@4:50"},
 		},
 		{
 			name: "a user-declared panic function stays an ordinary function",
@@ -206,14 +208,10 @@ func TestPinnedForkExplicitPanicChargesTheChannel(t *testing.T) {
 	})
 }
 
-// TestPinnedForkPropagationInARepeatedLoopHeaderIsRejected separates the two
-// placement refusals. specification/failures.mdx, "Propagation": "The emitted
-// error path MUST return the enclosing error variant rather than throw a
-// recoverable JavaScript exception." A loop condition or incrementor runs once
-// per iteration, so the guard cannot be hoisted in front of the loop — but a
-// `for` initializer runs exactly once and a loop body is an ordinary statement
-// list, and both must keep working.
-func TestPinnedForkPropagationInARepeatedLoopHeaderIsRejected(t *testing.T) {
+// A propagation in a repeated condition stays at that expression's evaluation
+// position. The delimited Result body makes the former placement refusal
+// unnecessary; both successful completion and failure must execute correctly.
+func TestPinnedForkPropagationInARepeatedLoopHeaderRuns(t *testing.T) {
 	const limitModule = "export class Missing extends Error {\n" +
 		"  constructor(readonly key: string) { super(`no entry for ${key}`) }\n" +
 		"}\n" +
@@ -224,7 +222,7 @@ func TestPinnedForkPropagationInARepeatedLoopHeaderIsRejected(t *testing.T) {
 		"}\n\n"
 	runFailClosedCases(t, []failClosedCase{
 		{
-			name: "postfix propagation in a for condition is rejected",
+			name: "postfix propagation in a for condition runs",
 			source: limitModule +
 				"export function count(key: string): Result<number, Missing> {\n" +
 				"  let total = 0\n" +
@@ -232,11 +230,12 @@ func TestPinnedForkPropagationInARepeatedLoopHeaderIsRejected(t *testing.T) {
 				"    total += index\n" +
 				"  }\n" +
 				"  return total\n" +
-				"}\n",
-			reject: []string{"SMITHERS1703@12:31"},
+				"}\n" +
+				"export function main(): string[] { return [count(\"ada\").match({ok: n => `${n}`, error: e => e.key}), count(\"zoe\").match({ok: n => `${n}`, error: e => e.key})] }\n",
+			stdout: "3\nzoe",
 		},
 		{
-			name: "postfix propagation in a while condition is rejected",
+			name: "postfix propagation in a while condition runs",
 			source: limitModule +
 				"export function count(key: string): Result<number, Missing> {\n" +
 				"  let total = 0\n" +
@@ -244,8 +243,9 @@ func TestPinnedForkPropagationInARepeatedLoopHeaderIsRejected(t *testing.T) {
 				"    total += 1\n" +
 				"  }\n" +
 				"  return total\n" +
-				"}\n",
-			reject: []string{"SMITHERS1703@12:18"},
+				"}\n" +
+				"export function main(): string[] { return [count(\"ada\").match({ok: n => `${n}`, error: e => e.key}), count(\"zoe\").match({ok: n => `${n}`, error: e => e.key})] }\n",
+			stdout: "3\nzoe",
 		},
 		{
 			// A `for` INITIALIZER runs exactly once, so it is neither a repeated
@@ -256,7 +256,7 @@ func TestPinnedForkPropagationInARepeatedLoopHeaderIsRejected(t *testing.T) {
 			// `for (let i = r!; …)` are accepted while every expression-nested
 			// position is not."
 			//
-			// This case previously asserted SMITHERS1204 and recorded, in its own
+			// This case previously asserted VIBE1204 and recorded, in its own
 			// comment, that "the JS reference does lower this form, so the two
 			// implementations differ here in the SAFE direction". They no longer
 			// differ. The condition and incrementor rows above are what keep the
@@ -367,7 +367,7 @@ func TestPinnedForkComputedErrorMatchCaseAlsoReportsTheUncoveredMember(t *testin
 				"    }),\n" +
 				"  })]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1252@20:35", "SMITHERS1253@20:35"},
+			reject: []string{"VIBE1252@20:35", "VIBE1253@20:35"},
 		},
 		{
 			name: "static class-name cases stay exhaustive and run",
@@ -392,7 +392,7 @@ func TestPinnedForkComputedErrorMatchCaseAlsoReportsTheUncoveredMember(t *testin
 // (Locked): "The earlier ?T, payload-capture, orelse, and .? grammar MUST NOT
 // be part of the initial language."
 //
-// The negative rows matter as much: `.sm` withdraws both TypeScript postfix
+// The negative rows matter as much: `.vibe` withdraws both TypeScript postfix
 // non-null assertions and definite-assignment markers to free `!` for Result
 // propagation. Prefix negation, `!==`, `?.`, and `??` remain ordinary.
 func TestPinnedForkRetiredTypeGrammarIsReportedAsAMigration(t *testing.T) {
@@ -407,7 +407,7 @@ func TestPinnedForkRetiredTypeGrammarIsReportedAsAMigration(t *testing.T) {
 				"  if (key !== \"ada\") throw new Missing(key)\n" +
 				"  return \"Ada Lovelace\"\n" +
 				"}\n",
-			reject: []string{"SMITHERS1001@5:38", "SMITHERS1101@5:1"},
+			reject: []string{"VIBE1001@5:38", "VIBE1101@5:1"},
 		},
 		{
 			name: "the question optional grammar is retired",
@@ -415,19 +415,19 @@ func TestPinnedForkRetiredTypeGrammarIsReportedAsAMigration(t *testing.T) {
 				"  if (id === 1) return \"Ada\"\n" +
 				"  return null\n" +
 				"}\n",
-			reject: []string{"SMITHERS1001@1:37"},
+			reject: []string{"VIBE1001@1:37"},
 		},
 		{
-			name: "a postfix non-null assertion is unavailable in smithers",
+			name: "a postfix non-null assertion is unavailable in vibelang",
 			source: "export function main(): string[] {\n" +
 				"  const entries = new Map<string, string>([[\"ada\", \"Ada Lovelace\"]])\n" +
 				"  const found = entries.get(\"ada\")!\n" +
 				"  return [found]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1207@3:17"},
+			reject: []string{"VIBE1207@3:17"},
 		},
 		{
-			name: "a definite assignment assertion is unavailable in smithers",
+			name: "a definite assignment assertion is unavailable in vibelang",
 			source: "class Holder {\n" +
 				"  value!: string\n" +
 				"}\n" +
@@ -436,13 +436,13 @@ func TestPinnedForkRetiredTypeGrammarIsReportedAsAMigration(t *testing.T) {
 				"  local = \"assigned\"\n" +
 				"  return [new Holder().value, local]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1001@2:8", "SMITHERS1001@5:12"},
+			reject: []string{"VIBE1001@2:8", "VIBE1001@5:12"},
 		},
 		{
 			name: "prefix bangs comparisons and nullish operators stay ordinary",
 			source: "export function main(): string[] {\n" +
 				"  const failed = false\n" +
-				"  const value: string = [\"smithers\"].join(\"\")\n" +
+				"  const value: string = [\"vibelang\"].join(\"\")\n" +
 				"  const absent: { name?: string } = {}\n" +
 				"  return [String(!failed), String(!!value), String(value !== \"\"), absent?.name ?? \"Guest\"]\n" +
 				"}\n",

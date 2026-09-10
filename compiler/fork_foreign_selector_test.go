@@ -25,7 +25,7 @@ import (
 //	(utag ?? otherTag)`x`                accepted, `failures: []`, threw at run time
 //
 // while `new Untrusted("a")`, `client.dangerous` and `` utag`x` `` were each
-// refused. SMITHERS1504, SMITHERS1506 and SMITHERS1508 were escapable by typing
+// refused. VIBE1504, VIBE1506 and VIBE1508 were escapable by typing
 // two characters, and a raw host `Error` left a function whose row said it could
 // not fail.
 //
@@ -100,7 +100,7 @@ var foreignSelectors = []struct {
 	{"parenthesised nullish", func(f, a string) string { return "((" + f + " ?? " + a + "))" }},
 }
 
-// foreignSelectorPositions are the USE positions. Each renders a whole `.sm`
+// foreignSelectorPositions are the USE positions. Each renders a whole `.vibe`
 // module around a selected value; the rule that governs the position is named
 // so a failure says which one moved.
 var foreignSelectorPositions = []struct {
@@ -117,44 +117,44 @@ var foreignSelectorPositions = []struct {
 	{
 		name: "a foreign constructor", imports: "Untrusted, Other", foreign: "Untrusted", alternate: "Other",
 		body:    func(s string) string { return "  const made = new " + s + "(\"a\")\n  return [made.v]\n" },
-		governs: "SMITHERS1504",
+		governs: "VIBE1504",
 	},
 	{
 		name: "a foreign property read", imports: "client, otherClient", foreign: "client", alternate: "otherClient",
 		body:    func(s string) string { return "  return [" + s + ".dangerous]\n" },
-		governs: "SMITHERS1506",
+		governs: "VIBE1506",
 	},
 	{
 		name: "a foreign element-access read", imports: "client, otherClient", foreign: "client", alternate: "otherClient",
 		body:    func(s string) string { return "  return [" + s + "[\"dangerous\"]]\n" },
-		governs: "SMITHERS1506",
+		governs: "VIBE1506",
 	},
 	{
 		name: "a foreign tagged-template tag", imports: "utag, otherTag", foreign: "utag", alternate: "otherTag",
 		body:    func(s string) string { return "  return [" + s + "`x`]\n" },
-		governs: "SMITHERS1504",
+		governs: "VIBE1504",
 	},
 	{
 		name: "a foreign iterable spread", imports: "iterable, otherIterable", foreign: "iterable", alternate: "otherIterable",
 		body:    func(s string) string { return "  return [..." + s + "]\n" },
-		governs: "SMITHERS1506",
+		governs: "VIBE1506",
 	},
 	{
 		name: "a foreign iterable in for…of", imports: "iterable, otherIterable", foreign: "iterable", alternate: "otherIterable",
 		body: func(s string) string {
 			return "  const out: string[] = []\n  for (const part of " + s + ") out.push(part)\n  return out\n"
 		},
-		governs: "SMITHERS1506",
+		governs: "VIBE1506",
 	},
 	{
 		name: "a foreign callable handed to a local higher-order call", imports: "untrusted, other", foreign: "untrusted", alternate: "other",
 		body:    func(s string) string { return "  return [localHof(" + s + ")]\n" },
-		governs: "SMITHERS1508",
+		governs: "VIBE1508",
 	},
 	{
 		name: "a foreign callable stored through a mutable alias", imports: "untrusted, other", foreign: "untrusted", alternate: "other",
 		body:    func(s string) string { return "  let held = " + s + "\n  return [typeof held]\n" },
-		governs: "SMITHERS1508",
+		governs: "VIBE1508",
 	},
 }
 
@@ -174,11 +174,11 @@ func selectorModule(imports, body string) string {
 func diagnosticCodes(t *testing.T, backend Compiler, ctx context.Context, source, support string) []string {
 	t.Helper()
 	files := []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: source},
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: source},
 		{Path: "foreign.ts", Kind: FileKindTypeScript, Text: support},
 	}
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm", "foreign.ts"},
+		RootNames: []string{"main.vibe", "foreign.ts"},
 		Files:     files,
 		Options:   Options{},
 		Lowering:  LoweringInternal,
@@ -203,7 +203,7 @@ func diagnosticCodes(t *testing.T, backend Compiler, ctx context.Context, source
 // TABLE assertion. It is written as an equality against the direct spelling
 // rather than as a per-spelling code list on purpose: the property being pinned
 // is that the selecting operators carry provenance, not that they happen to
-// report SMITHERS1504 today.
+// report VIBE1504 today.
 func TestPinnedForkSelectedForeignValueAnswersLikeTheDirectSpelling(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 	for _, position := range foreignSelectorPositions {
@@ -253,7 +253,7 @@ func TestPinnedForkSelectedForeignValuePositions(t *testing.T) {
 				"  const made = new (Untrusted ?? Other)(\"a\")\n" +
 				"  return [made.v]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1504@4:16", "SMITHERS1506@5:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1504@4:16", "VIBE1506@5:11"},
 		},
 		{
 			name:    "a nullish-selected foreign property read",
@@ -263,7 +263,7 @@ func TestPinnedForkSelectedForeignValuePositions(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [(client ?? otherClient).dangerous]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1506@4:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1506@4:11"},
 		},
 		{
 			name:    "a nullish-selected foreign tagged-template tag",
@@ -273,7 +273,7 @@ func TestPinnedForkSelectedForeignValuePositions(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [(utag ?? otherTag)`x`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1504@4:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1504@4:11"},
 		},
 		{
 			name:    "a ternary-selected foreign constructor is the same defect",
@@ -284,7 +284,7 @@ func TestPinnedForkSelectedForeignValuePositions(t *testing.T) {
 				"  const made = new (flag ? Untrusted : Other)(\"a\")\n" +
 				"  return [made.v]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1504@4:16", "SMITHERS1506@5:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1504@4:16", "VIBE1506@5:11"},
 		},
 		{
 			name:    "a const that HOLDS the selection is the same defect",
@@ -295,7 +295,7 @@ func TestPinnedForkSelectedForeignValuePositions(t *testing.T) {
 				"  const held = client ?? otherClient\n" +
 				"  return [held.dangerous]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1506@5:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1506@5:11"},
 		},
 		{
 			name:    "a cast over the selection is the same defect",
@@ -305,7 +305,7 @@ func TestPinnedForkSelectedForeignValuePositions(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [((client ?? otherClient) as { readonly dangerous: string }).dangerous]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1506@4:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1506@4:11"},
 		},
 	})
 }
@@ -382,8 +382,8 @@ func TestPinnedForkSelectingOperatorsStayUsable(t *testing.T) {
 			// walk that always had it, kept here so that renaming the table into
 			// a shared one cannot quietly change the answer it gave before.
 			name: "a capability receiver selected between two spellings of ONE capability still resolves",
-			source: "import { Context } from \"smthrs/context\"\n" +
-				"import { Layer } from \"smthrs/provider\"\n" +
+			source: "import { Context } from \"vibelang/context\"\n" +
+				"import { Layer } from \"vibelang/provider\"\n" +
 				"\n" +
 				"abstract class Db extends Context {\n" +
 				"  abstract read(): string\n" +

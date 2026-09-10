@@ -113,7 +113,7 @@ func TestPinnedForkResultTapObservesWithoutChanging(t *testing.T) {
 			// reaches the caller's error branch.
 			name:    "tapError observes a Panic and still leaves it in the error channel",
 			support: "/**\n * @module\n * @throws {never}\n */\n\n/** No @throws claim: every call charges the distinguished Panic channel. */\nexport function boom(): number {\n  throw new RangeError(\"the host refused\");\n}\n",
-			source: "import { Panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic } from \"vibelang:exceptions\"\n" +
 				"import { boom } from \"./foreign.ts\"\n" +
 				"\n" +
 				"export function main(): string[] {\n" +
@@ -140,7 +140,7 @@ func TestPinnedForkReflectPanicEntersThePanicChannel(t *testing.T) {
 	runFailClosedCases(t, []failClosedCase{
 		{
 			name: "Reflect.panic reaches the caller's error branch",
-			source: "import { Panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic } from \"vibelang:exceptions\"\n" +
 				"\n" +
 				"function force(key: string): Result<string, Panic> {\n" +
 				"  if (key !== \"ada\") Reflect.panic(`no entry for ${key}`)\n" +
@@ -159,7 +159,7 @@ func TestPinnedForkReflectPanicEntersThePanicChannel(t *testing.T) {
 			// The two authored spellings must reach the SAME channel, so the
 			// same `match` error branch observes both.
 			name: "the imported and ambient spellings reach the same channel",
-			source: "import { Panic, panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic, panic } from \"vibelang:exceptions\"\n" +
 				"\n" +
 				"function imported(): Result<string, Panic> {\n" +
 				"  panic(\"imported\")\n" +
@@ -205,7 +205,7 @@ func TestPinnedForkReflectPanicEntersThePanicChannel(t *testing.T) {
 			// Result meaning, so it is refused rather than emitted — the ambient
 			// spelling is held to exactly the rule the imported one is.
 			name: "Reflect.panic in a value position is refused, not emitted",
-			source: "import { Panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic } from \"vibelang:exceptions\"\n" +
 				"\n" +
 				"function force(key: string): Result<string, Panic> {\n" +
 				"  const value = key === \"ada\" ? \"Ada Lovelace\" : Reflect.panic(key)\n" +
@@ -215,7 +215,7 @@ func TestPinnedForkReflectPanicEntersThePanicChannel(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [force(\"ada\").unwrapOr(\"none\")]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1503@4:50"},
+			reject: []string{"VIBE1503@4:50"},
 		},
 	})
 }

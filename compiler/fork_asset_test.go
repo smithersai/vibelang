@@ -26,53 +26,53 @@ func TestPinnedForkAssetImportSelection(t *testing.T) {
 			source:    "import counter from \"./counter.json\"\nexport function main(): string[] { return [counter.label] }\n",
 			assetPath: "counter.json", assetKind: FileKindAsset,
 			assetText: `{"count":3,"label":"widgets"}`,
-			want:      []string{"SMITHERS5201@1:1"},
+			want:      []string{"VIBE5201@1:1"},
 		},
 		{
 			name:      "legacy assert clause is rejected at the recovered attribute node",
 			source:    "import counter from \"./counter.json\" assert { type: \"json\" }\nexport function main(): string[] { return [counter.label] }\n",
 			assetPath: "counter.json", assetKind: FileKindAsset,
 			assetText: `{"count":3,"label":"widgets"}`,
-			want:      []string{"SMITHERS5202@1:38"},
+			want:      []string{"VIBE5202@1:38"},
 		},
 		{
 			name:      "type-only asset import is rejected at the declaration",
 			source:    "import type counter from \"./counter.json\" with { type: \"json\" }\nexport type Counter = typeof counter\n",
 			assetPath: "counter.json", assetKind: FileKindAsset,
 			assetText: `{"count":3,"label":"widgets"}`,
-			want:      []string{"SMITHERS5208@1:1"},
+			want:      []string{"VIBE5208@1:1"},
 		},
 		{
 			name:      "escaping asset specifier is rejected at the specifier",
 			source:    "import counter from \"../counter.json\" with { type: \"json\" }\nexport function main(): string[] { return [counter.label] }\n",
 			assetPath: "counter.json", assetKind: FileKindAsset,
 			assetText: `{"count":3,"label":"widgets"}`,
-			want:      []string{"SMITHERS5209@1:21"},
+			want:      []string{"VIBE5209@1:21"},
 		},
 		{
 			name:      "an unimplemented custom loader remains honestly unsupported",
 			source:    "import settings from \"./settings.yaml\" with { type: \"yaml\" }\nexport function main(): string[] { return [`${settings}`] }\n",
 			assetPath: "settings.yaml", assetKind: FileKindAsset,
 			assetText: "retries: 2\n",
-			want:      []string{"SMITHERS_GO_ASSET_LOADER_UNSUPPORTED@1:1"},
+			want:      []string{"VIBELANG_GO_ASSET_LOADER_UNSUPPORTED@1:1"},
 		},
 		{
 			name:      "legacy harness non-root kind still exposes missing selection",
 			source:    "import counter from \"./counter.json\"\nexport function main(): string[] { return [counter.label] }\n",
 			assetPath: "counter.json", assetKind: FileKindTypeScript,
 			assetText: `{"count":3,"label":"widgets"}`,
-			want:      []string{"SMITHERS5201@1:1"},
+			want:      []string{"VIBE5201@1:1"},
 		},
 	}
 
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			files := []SourceFile{
-				{Path: "main.sm", Kind: FileKindSmithers, Text: testCase.source},
+				{Path: "main.vibe", Kind: FileKindVibeLang, Text: testCase.source},
 				{Path: testCase.assetPath, Kind: testCase.assetKind, Text: testCase.assetText},
 			}
 			result, err := backend.Compile(ctx, CompileRequest{
-				RootNames: []string{"main.sm"},
+				RootNames: []string{"main.vibe"},
 				Files:     files,
 				Options:   Options{},
 				Lowering:  LoweringInternal,
@@ -96,9 +96,9 @@ func TestPinnedForkAssetImportSelection(t *testing.T) {
 func compileAssetProgram(t *testing.T, source string, assets ...SourceFile) CompileResult {
 	t.Helper()
 	backend, ctx := newPinnedTestBackend(t)
-	files := append([]SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}}, assets...)
+	files := append([]SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: source}}, assets...)
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm"},
+		RootNames: []string{"main.vibe"},
 		Files:     files,
 		Options:   Options{},
 		Lowering:  LoweringInternal,
@@ -120,32 +120,32 @@ func TestPinnedForkAssetAttributeShapeValidation(t *testing.T) {
 		{
 			name:   "attribute names use the static identifier grammar",
 			source: "import config from \"./config.json\" with { type: \"json\", _mode: \"const\" }\nexport { config }\n",
-			want:   []string{"SMITHERS5203@1:57"},
+			want:   []string{"VIBE5203@1:57"},
 		},
 		{
 			name:   "duplicate attributes cannot replace loader selection",
 			source: "import config from \"./config.json\" with { type: \"json\", type: \"text\" }\nexport { config }\n",
-			want:   []string{"SMITHERS5204@1:57"},
+			want:   []string{"VIBE5204@1:57"},
 		},
 		{
 			name:   "attribute values must be string literals",
 			source: "const kind = \"json\"\nimport config from \"./config.json\" with { type: kind }\nexport { config }\n",
-			want:   []string{"SMITHERS5201@2:1", "SMITHERS5205@2:49"},
+			want:   []string{"VIBE5201@2:1", "VIBE5205@2:49"},
 		},
 		{
 			name:   "template literals do not become identity strings",
 			source: "import config from \"./config.json\" with { type: `json` }\nexport { config }\n",
-			want:   []string{"SMITHERS5201@1:1", "SMITHERS5205@1:49"},
+			want:   []string{"VIBE5201@1:1", "VIBE5205@1:49"},
 		},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			files := []SourceFile{
-				{Path: "main.sm", Kind: FileKindSmithers, Text: testCase.source},
+				{Path: "main.vibe", Kind: FileKindVibeLang, Text: testCase.source},
 				asset,
 			}
 			result, err := backend.Compile(ctx, CompileRequest{
-				RootNames: []string{"main.sm"},
+				RootNames: []string{"main.vibe"},
 				Files:     files,
 				Options:   Options{},
 				Lowering:  LoweringInternal,
@@ -202,7 +202,7 @@ export async function main(): Promise<string[]> {
 		t.Fatalf("a compiler-owned dynamic asset edge reached runtime output:\n%s", emitted)
 	}
 	for _, artifact := range artifactPaths(result.Artifacts) {
-		if strings.Contains(artifact, "config") || strings.Contains(artifact, "smithers-assets") {
+		if strings.Contains(artifact, "config") || strings.Contains(artifact, "vibelang-assets") {
 			t.Fatalf("a checker-only asset module became a runtime artifact: %v", artifactPaths(result.Artifacts))
 		}
 	}
@@ -224,7 +224,7 @@ export async function main(): Promise<string[]> {
   return [loaded.default.mode]
 }
 `,
-			want: "SMITHERS5218",
+			want: "VIBE5218",
 		},
 		{
 			name: "computed template specifier",
@@ -234,7 +234,7 @@ export async function main(): Promise<string[]> {
   return [loaded.default.mode]
 }
 `,
-			want: "SMITHERS5218",
+			want: "VIBE5218",
 		},
 		{
 			name: "computed options object",
@@ -244,7 +244,7 @@ export async function main(): Promise<string[]> {
   return [loaded.default.mode]
 }
 `,
-			want: "SMITHERS5218",
+			want: "VIBE5218",
 		},
 		{
 			name: "legacy dynamic assertion",
@@ -253,7 +253,7 @@ export async function main(): Promise<string[]> {
   return [loaded.default.mode]
 }
 `,
-			want: "SMITHERS5218",
+			want: "VIBE5218",
 		},
 		{
 			name: "spread dynamic attributes",
@@ -263,7 +263,7 @@ export async function main(): Promise<string[]> {
   return [loaded.default.mode]
 }
 `,
-			want: "SMITHERS5218",
+			want: "VIBE5218",
 		},
 		{
 			name: "extra dynamic options argument",
@@ -272,7 +272,7 @@ export async function main(): Promise<string[]> {
   return [loaded.default.mode]
 }
 `,
-			want: "SMITHERS5218",
+			want: "VIBE5218",
 		},
 		{
 			name: "duplicate dynamic attribute",
@@ -281,7 +281,7 @@ export async function main(): Promise<string[]> {
   return [loaded.default.mode]
 }
 `,
-			want: "SMITHERS5204",
+			want: "VIBE5204",
 		},
 		{
 			name: "invalid dynamic attribute name",
@@ -290,7 +290,7 @@ export async function main(): Promise<string[]> {
   return [loaded.default.mode]
 }
 `,
-			want: "SMITHERS5203",
+			want: "VIBE5203",
 		},
 		{
 			name: "nonliteral dynamic attribute value",
@@ -300,7 +300,7 @@ export async function main(): Promise<string[]> {
   return [loaded.default.mode]
 }
 `,
-			want: "SMITHERS5205",
+			want: "VIBE5205",
 		},
 		{
 			name: "asset import without attributes",
@@ -309,7 +309,7 @@ export async function main(): Promise<string[]> {
   return [loaded.default.mode]
 }
 `,
-			want: "SMITHERS5201",
+			want: "VIBE5201",
 		},
 	}
 	for _, testCase := range tests {
@@ -335,7 +335,7 @@ export async function main(): Promise<string[]> {
 // that carries the leading `@module` / `@throws {never}` claim carries it
 // through the dynamic spelling exactly as through the static one. Refusing a
 // module that HAS the claim would answer the open ledger question
-// (docs/DECISIONS.md:266 versus the SMITHERS1510 model) by fiat.
+// (docs/DECISIONS.md:266 versus the VIBE1510 model) by fiat.
 func TestPinnedForkDynamicCodeImportsUseConservativeFrontendRefusal(t *testing.T) {
 	code := SourceFile{
 		Path: "code.ts", Kind: FileKindTypeScript,
@@ -362,8 +362,8 @@ func TestPinnedForkDynamicCodeImportsUseConservativeFrontendRefusal(t *testing.T
   return [loaded.value]
 }
 `, untrustedCode)
-	if codes := requireDiagnosticCodes(untrusted); codes != "SMITHERS1510" {
-		t.Fatalf("untrusted literal dynamic code import diagnostics = %s, want SMITHERS1510: %#v", codes, untrusted.Diagnostics)
+	if codes := requireDiagnosticCodes(untrusted); codes != "VIBE1510" {
+		t.Fatalf("untrusted literal dynamic code import diagnostics = %s, want VIBE1510: %#v", codes, untrusted.Diagnostics)
 	}
 	if !untrusted.EmitSkipped || len(untrusted.Artifacts) != 0 {
 		t.Fatalf("a refused literal dynamic module edge emitted artifacts: %v", artifactPaths(untrusted.Artifacts))
@@ -373,8 +373,8 @@ func TestPinnedForkDynamicCodeImportsUseConservativeFrontendRefusal(t *testing.T
 export function load(): Promise<unknown> { return import(chosen) }
 export function main(): string[] { return ["not loaded"] }
 `, code)
-	if codes := requireDiagnosticCodes(computed); codes != "SMITHERS1510" {
-		t.Fatalf("computed dynamic code import diagnostics = %s, want SMITHERS1510: %#v", codes, computed.Diagnostics)
+	if codes := requireDiagnosticCodes(computed); codes != "VIBE1510" {
+		t.Fatalf("computed dynamic code import diagnostics = %s, want VIBE1510: %#v", codes, computed.Diagnostics)
 	}
 	if !computed.EmitSkipped || len(computed.Artifacts) != 0 {
 		t.Fatalf("a refused computed dynamic module edge emitted artifacts: %v", artifactPaths(computed.Artifacts))
@@ -477,12 +477,12 @@ export function main(): string[] {
 }
 `
 	result := compileAssetProgram(t, source, SourceFile{
-		Path: "logo.bin", Kind: FileKindAsset, Text: "SMITHERS\n",
+		Path: "logo.bin", Kind: FileKindAsset, Text: "VIBELANG\n",
 	})
 	if result.EmitSkipped || len(result.Diagnostics) != 0 {
 		t.Fatalf("bytes asset must compile clean: %#v", result.Diagnostics)
 	}
-	if got := runComptimeProgram(t, result); got != "9,83,77,true" {
+	if got := runComptimeProgram(t, result); got != "9,86,73,true" {
 		t.Fatalf("bytes runtime value = %q", got)
 	}
 	emitted := mainText(t, result)
@@ -607,8 +607,8 @@ export function main(): string[] { return [String(value.length)] }
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
 			result := compileAssetProgram(t, testCase.source, testCase.asset)
-			if codes := requireDiagnosticCodes(result); codes != "SMITHERS5213" {
-				t.Fatalf("diagnostics %s, want SMITHERS5213: %#v", codes, result.Diagnostics)
+			if codes := requireDiagnosticCodes(result); codes != "VIBE5213" {
+				t.Fatalf("diagnostics %s, want VIBE5213: %#v", codes, result.Diagnostics)
 			}
 			if !result.EmitSkipped || len(result.Artifacts) != 0 {
 				t.Fatalf("a refused loader must emit nothing: %v", artifactPaths(result.Artifacts))

@@ -1,0 +1,76 @@
+{
+  "cases": [
+    {
+      "name": "object literal order",
+      "expression": "({ z: 1, a: 2 })",
+      "observation": "JSON.stringify(value)",
+      "expected": "{\"z\":1,\"a\":2}"
+    },
+    {
+      "name": "JSON stringify order",
+      "expression": "JSON.stringify({ z: 1, a: 2 })",
+      "observation": "value",
+      "expected": "{\"z\":1,\"a\":2}"
+    },
+    {
+      "name": "JSON parse order",
+      "expression": "JSON.parse('{\"z\":1,\"a\":2}')",
+      "observation": "JSON.stringify(value)",
+      "expected": "{\"z\":1,\"a\":2}"
+    },
+    {
+      "name": "keys after parse",
+      "expression": "Object.keys(JSON.parse('{\"z\":1,\"a\":2}'))",
+      "observation": "value.join(\",\")",
+      "expected": "z,a"
+    },
+    {
+      "name": "nested order",
+      "expression": "({ z: { y: 1, b: 2 }, a: [{ x: 3, c: 4 }] })",
+      "observation": "JSON.stringify(value)",
+      "expected": "{\"z\":{\"y\":1,\"b\":2},\"a\":[{\"x\":3,\"c\":4}]}"
+    },
+    {
+      "name": "integer index ordering",
+      "expression": "({ \"10\": 10, z: 1, \"2\": 2, a: 3 })",
+      "observation": "Object.keys(value).join(\",\")",
+      "expected": "2,10,z,a"
+    },
+    {
+      "name": "nonindex numeric strings",
+      "expression": "({ \"4294967295\": 1, \"01\": 2, \"4294967294\": 3, a: 4 })",
+      "observation": "Object.keys(value).join(\",\")",
+      "expected": "4294967294,4294967295,01,a"
+    },
+    {
+      "name": "overwriting preserves insertion slot",
+      "expression": "(() => { const result = { z: 1, a: 2 }; result.z = 3; return result; })()",
+      "observation": "JSON.stringify(value)",
+      "expected": "{\"z\":3,\"a\":2}"
+    },
+    {
+      "name": "fromEntries order",
+      "expression": "Object.fromEntries([[\"z\", 1], [\"a\", 2]])",
+      "observation": "JSON.stringify(value)",
+      "expected": "{\"z\":1,\"a\":2}"
+    },
+    {
+      "name": "parse duplicate last value first position",
+      "expression": "JSON.parse('{\"z\":1,\"a\":2,\"z\":3}')",
+      "observation": "JSON.stringify(value)",
+      "expected": "{\"z\":3,\"a\":2}"
+    },
+    {
+      "name": "own proto data remains data",
+      "expression": "JSON.parse('{\"z\":1,\"__proto__\":{\"safe\":true},\"a\":2}')",
+      "observation": "JSON.stringify(value)",
+      "expected": "{\"z\":1,\"__proto__\":{\"safe\":true},\"a\":2}"
+    },
+    {
+      "name": "unicode and HTML string bytes",
+      "expression": "JSON.stringify({ z: \"<>&\", \"😀\": \"x\", \"é\": \"y\", a: \"\\n\" })",
+      "observation": "value",
+      "expected": "{\"z\":\"<>&\",\"😀\":\"x\",\"é\":\"y\",\"a\":\"\\n\"}"
+    }
+  ]
+}

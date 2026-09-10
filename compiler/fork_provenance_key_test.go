@@ -17,10 +17,10 @@ import (
 // reaching `dependencyThroughStarExports` may hold `#` too (`export { x as
 // "a#b" }`). The joins were therefore many-to-one:
 //
-//	list of ["x.sm:1:2", "y.sm:3:4"]      -> [x.sm:1:2,y.sm:3:4]
-//	list of ["x.sm:1:2,y.sm:3:4"]         -> [x.sm:1:2,y.sm:3:4]
-//	file "a.sm",   member "b#c"           -> a.sm#b#c
-//	file "a.sm#b", member "c"             -> a.sm#b#c
+//	list of ["x.vibe:1:2", "y.vibe:3:4"]      -> [x.vibe:1:2,y.vibe:3:4]
+//	list of ["x.vibe:1:2,y.vibe:3:4"]         -> [x.vibe:1:2,y.vibe:3:4]
+//	file "a.vibe",   member "b#c"           -> a.vibe#b#c
+//	file "a.vibe#b", member "c"             -> a.vibe#b#c
 //
 // WHAT A COLLISION COSTS. These are not rendered anywhere; they are equality
 // keys. `nativeFlowUnionValue` dedups its options by one, so a collision MERGES
@@ -113,8 +113,8 @@ func TestProvenanceKeyPartsSurviveASeparatorInAFileName(t *testing.T) {
 	// Two node keys from two files, against one node key from a file whose name
 	// holds the separator. `virtualFileName` accepts both names: neither has a
 	// ':' outside the position suffix this join's components already end with.
-	two := []string{"/src/x.sm:1:2", "/src/y.sm:3:4"}
-	one := []string{"/src/x.sm:1:2,/src/y.sm:3:4"}
+	two := []string{"/src/x.vibe:1:2", "/src/y.vibe:3:4"}
+	one := []string{"/src/x.vibe:1:2,/src/y.vibe:3:4"}
 
 	if joinRaw(two...) != joinRaw(one...) {
 		t.Fatalf("the shipped join was expected to collide; it did not: %q vs %q", joinRaw(two...), joinRaw(one...))
@@ -124,10 +124,10 @@ func TestProvenanceKeyPartsSurviveASeparatorInAFileName(t *testing.T) {
 	}
 
 	// And the `#` join, whose second component is an export name.
-	if nativeKeyPartForTest("a.sm")+"#"+"b#c" == nativeKeyPartForTest("a.sm#b")+"#"+"c" {
+	if nativeKeyPartForTest("a.vibe")+"#"+"b#c" == nativeKeyPartForTest("a.vibe#b")+"#"+"c" {
 		t.Fatalf("length-prefixed star-export key still collides")
 	}
-	if "a.sm"+"#"+"b#c" != "a.sm#b"+"#"+"c" {
+	if "a.vibe"+"#"+"b#c" != "a.vibe#b"+"#"+"c" {
 		t.Fatalf("the shipped star-export join was expected to collide; it did not")
 	}
 }

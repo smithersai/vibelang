@@ -150,7 +150,7 @@ func TestForkPatchPreparationRejectsWrongRevisionBeforeApplying(t *testing.T) {
 		t.Fatal(err)
 	}
 	run("add", "README")
-	run("-c", "user.name=Smithers Test", "-c", "user.email=test@invalid", "commit", "--quiet", "-m", "wrong revision")
+	run("-c", "user.name=VibeLang Test", "-c", "user.email=test@invalid", "commit", "--quiet", "-m", "wrong revision")
 
 	series, err := loadPinnedForkPatchSeries()
 	if err != nil {

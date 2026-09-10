@@ -23,7 +23,7 @@ import (
 // The consequence, measured on this backend before the fix:
 //
 //	Layer.provide(Layer.succeed(Db, db) satisfies Layer<typeof Db>, body)
-//	    -> SMITHERS2104 "Layer expression is opaque"
+//	    -> VIBE2104 "Layer expression is opaque"
 //	Layer.provide(Layer.succeed(Db, db), body)
 //	    -> ok: true, and it RUNS
 //
@@ -36,8 +36,8 @@ import (
 //
 // The second half of the defect is the one that matters more than the
 // over-refusal. `resolveLayer`'s `bool` result is the fail-closed switch: when
-// it is false the caller answers the BLUNT SMITHERS2104 instead of the PRECISE
-// SMITHERS2101 that names the capability the program forgot. So a program that
+// it is false the caller answers the BLUNT VIBE2104 instead of the PRECISE
+// VIBE2101 that names the capability the program forgot. So a program that
 // genuinely forgot `Db` was told "this layer is opaque" rather than "Db is
 // missing", purely because someone wrote `satisfies` — the diagnostic stopped
 // naming the bug. That is the `theMissingCapabilityIsNamed` block below.
@@ -75,7 +75,7 @@ import (
 // THE TABLE and not "assertions are ignored here".
 //
 // `x as const` is not a legal spelling for a layer at all. TypeScript itself
-// refuses `<call> as const` with TS1355, and SMITHERS2104 had been MASKING that
+// refuses `<call> as const` with TS1355, and VIBE2104 had been MASKING that
 // error; unmasking it is the correct answer, not a regression.
 //
 // # The const-only tightening is orthogonal and must survive
@@ -101,12 +101,12 @@ const layerSupport = `/**
 export const unused = "unused";
 `
 
-// layerModule renders one whole `.sm` program around a layer expression. Two
+// layerModule renders one whole `.vibe` program around a layer expression. Two
 // capabilities, so a control can be MISSING one and the precise diagnostic has
 // something to name.
 func layerModule(body string) string {
-	return `import { Context } from "smthrs/context"
-import { Layer } from "smthrs/provider"
+	return `import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
 
 abstract class Db extends Context {
   abstract read(): string
@@ -220,14 +220,14 @@ var layerWrapperPositions = []struct {
 		body: func(w string) string {
 			return "function mk(): Layer<typeof Db> { return " + w + " }\nLayer.provide(mk(), () => { f() })\n"
 		},
-		governs: "SMITHERS2104",
+		governs: "VIBE2104",
 	},
 	{
 		name: "a layer read out of an array (opaque in the direct spelling too)", typeText: "Layer<typeof Db>",
 		body: func(w string) string {
 			return "const layers = [" + w + "]\nLayer.provide(layers[0], () => { f() })\n"
 		},
-		governs: "SMITHERS2104",
+		governs: "VIBE2104",
 	},
 }
 
@@ -237,7 +237,7 @@ func TestPinnedForkLayerThroughATypeOnlyWrapperIsTheSameLayer(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 	for _, position := range layerWrapperPositions {
 		t.Run(position.name, func(t *testing.T) {
-			direct := smithersDiagnosticCodes(t, backend, ctx,
+			direct := vibelangDiagnosticCodes(t, backend, ctx,
 				layerModule(position.body("Layer.succeed(Db, db)")), layerSupport)
 			if position.governs == "" {
 				if len(direct) != 0 {
@@ -254,7 +254,7 @@ func TestPinnedForkLayerThroughATypeOnlyWrapperIsTheSameLayer(t *testing.T) {
 				}
 				t.Run(wrapper.name, func(t *testing.T) {
 					wrapped := wrapper.spelling("Layer.succeed(Db, db)", position.typeText)
-					got := smithersDiagnosticCodes(t, backend, ctx,
+					got := vibelangDiagnosticCodes(t, backend, ctx,
 						layerModule(position.body(wrapped)), layerSupport)
 					if strings.Join(got, " ") != strings.Join(direct, " ") {
 						t.Fatalf("%s answers %v; the direct spelling answers %v — a wrapper that "+
@@ -288,8 +288,8 @@ func TestPinnedForkLayerWrapperKeepsEveryRefusalTheResolverExistsFor(t *testing.
 				return "Layer.provide(" +
 					strings.Replace(w, "Layer.succeed(Db, db)", "Layer.succeed(Cfg, cfg)", 1) + ", () => { f() })\n"
 			},
-			expect: "SMITHERS2101",
-			why: "the PRECISE code that names the missing capability, not the blunt SMITHERS2104; " +
+			expect: "VIBE2101",
+			why: "the PRECISE code that names the missing capability, not the blunt VIBE2104; " +
 				"before the fix every wrapped spelling degraded to the blunt one and the diagnostic stopped naming the bug",
 		},
 		{
@@ -298,7 +298,7 @@ func TestPinnedForkLayerWrapperKeepsEveryRefusalTheResolverExistsFor(t *testing.
 				return "let app: Layer<typeof Db | typeof Cfg> = " + w +
 					"\napp = Layer.succeed(Cfg, cfg)\nLayer.provide(app, () => { f() })\n"
 			},
-			expect: "SMITHERS2104",
+			expect: "VIBE2104",
 			why: "the const-only tightening: a reassigned layer certified a Layer.provide as complete " +
 				"and then panicked at run time, and looking through a wrapper must not undo that",
 		},
@@ -308,7 +308,7 @@ func TestPinnedForkLayerWrapperKeepsEveryRefusalTheResolverExistsFor(t *testing.
 				return "var app: Layer<typeof Db | typeof Cfg> = " + w +
 					"\napp = Layer.succeed(Cfg, cfg)\nLayer.provide(app, () => { f() })\n"
 			},
-			expect: "SMITHERS2104",
+			expect: "VIBE2104",
 			why:    "as the let twin; `var` broke identically when it was measured",
 		},
 		{
@@ -316,7 +316,7 @@ func TestPinnedForkLayerWrapperKeepsEveryRefusalTheResolverExistsFor(t *testing.
 			body: func(w string) string {
 				return "let app = " + w + "\nLayer.provide(app, () => { f() })\n"
 			},
-			expect: "SMITHERS2104",
+			expect: "VIBE2104",
 			why: "collectLayerBindings records `const` only, and fail-closed means a binding that MIGHT be " +
 				"reassigned is refused rather than resolved from a possibly-stale initializer",
 		},
@@ -327,7 +327,7 @@ func TestPinnedForkLayerWrapperKeepsEveryRefusalTheResolverExistsFor(t *testing.
 					strings.Replace(w, "Layer.succeed(Db, db)", "(flag ? Layer.succeed(Db, db) : Layer.succeed(Cfg, cfg))", 1) +
 					"\nLayer.provide(app, () => { f() })\n"
 			},
-			expect: "SMITHERS2104",
+			expect: "VIBE2104",
 			why:    "a conditional belongs to valueBranches, CAN change which layer arrives, and is not a type-only wrapper",
 		},
 		{
@@ -337,7 +337,7 @@ func TestPinnedForkLayerWrapperKeepsEveryRefusalTheResolverExistsFor(t *testing.
 					strings.Replace(w, "Layer.succeed(Db, db)", "mk()", 1) +
 					"\nLayer.provide(app, () => { f() })\n"
 			},
-			expect: "SMITHERS2104",
+			expect: "VIBE2104",
 			why:    "the POC cannot see through a helper's return in the direct spelling either",
 		},
 	}
@@ -347,7 +347,7 @@ func TestPinnedForkLayerWrapperKeepsEveryRefusalTheResolverExistsFor(t *testing.
 			for _, wrapper := range layerTypeOnlyWrappers {
 				t.Run(wrapper.name, func(t *testing.T) {
 					wrapped := wrapper.spelling("Layer.succeed(Db, db)", negative.typeText)
-					got := smithersDiagnosticCodes(t, backend, ctx,
+					got := vibelangDiagnosticCodes(t, backend, ctx,
 						layerModule(negative.body(wrapped)), layerSupport)
 					if strings.Join(got, " ") != negative.expect {
 						t.Fatalf("%s answers %v; every spelling of this program must answer exactly [%s] — %s",
@@ -372,10 +372,10 @@ func TestPinnedForkLayerResolutionReadsSyntaxNotTheCheckerType(t *testing.T) {
 		// run time is keyed on `Cfg`. A type-directed walk would answer `{Db}`
 		// and accept a program that panics.
 		source := layerModule("Layer.provide(Layer.succeed(Cfg, cfg) as unknown as Layer<typeof Db>, () => { f() })\n")
-		got := smithersDiagnosticCodes(t, backend, ctx, source, layerSupport)
-		if strings.Join(got, " ") != "SMITHERS2101" {
+		got := vibelangDiagnosticCodes(t, backend, ctx, source, layerSupport)
+		if strings.Join(got, " ") != "VIBE2101" {
 			t.Fatalf("a layer laundered to `Layer<typeof Db>` answered %v; it must stay refused with the "+
-				"PRECISE SMITHERS2101 naming the missing Db, because the walk reads the syntax under the "+
+				"PRECISE VIBE2101 naming the missing Db, because the walk reads the syntax under the "+
 				"wrapper and not the type the wrapper claims", got)
 		}
 	})
@@ -388,7 +388,7 @@ func TestPinnedForkLayerResolutionReadsSyntaxNotTheCheckerType(t *testing.T) {
 			"<any>Layer.succeed(Db, db)",
 		} {
 			source := layerModule("Layer.provide(" + spelling + ", () => { f() })\n")
-			if got := smithersDiagnosticCodes(t, backend, ctx, source, layerSupport); len(got) != 0 {
+			if got := vibelangDiagnosticCodes(t, backend, ctx, source, layerSupport); len(got) != 0 {
 				t.Fatalf("`%s` was refused with %v; the wrapper is erased at emit and the layer underneath "+
 					"is the same call, so this is the same program as the direct spelling", spelling, got)
 			}
@@ -406,11 +406,11 @@ func TestPinnedForkLayerNonNullIsNotInTheWrapperTable(t *testing.T) {
 		"(Layer.succeed(Db, db) satisfies Layer<typeof Db>)!",
 	} {
 		source := layerModule("Layer.provide(" + spelling + ", () => { f() })\n")
-		got := smithersDiagnosticCodes(t, backend, ctx, source, layerSupport)
-		if strings.Join(got, " ") != "SMITHERS1207 SMITHERS2104" {
+		got := vibelangDiagnosticCodes(t, backend, ctx, source, layerSupport)
+		if strings.Join(got, " ") != "VIBE1207 VIBE2104" {
 			t.Fatalf("`%s` answered %v; `!` is this language's checked Result propagation, NOT a type-only "+
-				"wrapper, so it must draw SMITHERS1207 in its own right and leave the layer on the "+
-				"fail-closed SMITHERS2104 path", spelling, got)
+				"wrapper, so it must draw VIBE1207 in its own right and leave the layer on the "+
+				"fail-closed VIBE2104 path", spelling, got)
 		}
 	}
 }
@@ -427,6 +427,6 @@ func TestPinnedForkLayerAsConstIsTypeScriptsOwnRefusal(t *testing.T) {
 	codes := diagnosticCodes(t, backend, ctx, source, layerSupport)
 	if strings.Join(codes, " ") != "TS1355" {
 		t.Fatalf("`Layer.succeed(Db, db) as const` answered %v; it must be TypeScript's own TS1355 alone — "+
-			"SMITHERS2104 was masking it, and unmasking it is the answer, not a regression", codes)
+			"VIBE2104 was masking it, and unmasking it is the answer, not a regression", codes)
 	}
 }

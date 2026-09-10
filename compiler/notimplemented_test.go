@@ -5,12 +5,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/smithersai/smithers/compiler"
+	"github.com/smithersai/vibelang/compiler"
 )
 
 func TestScaffoldReturnsStructuredNotImplemented(t *testing.T) {
 	result, err := compiler.New().Compile(context.Background(), compiler.CompileRequest{
-		RootNames: []string{"main.sm"},
+		RootNames: []string{"main.vibe"},
 		Lowering:  compiler.LoweringInternal,
 	})
 	if !errors.Is(err, compiler.ErrNotImplemented) {
@@ -19,7 +19,7 @@ func TestScaffoldReturnsStructuredNotImplemented(t *testing.T) {
 	if !result.EmitSkipped || len(result.Diagnostics) != 1 {
 		t.Fatalf("unexpected result: %#v", result)
 	}
-	if result.Diagnostics[0].Code != "SMITHERS0001" {
+	if result.Diagnostics[0].Code != "VIBE0001" {
 		t.Fatalf("unexpected diagnostic: %#v", result.Diagnostics[0])
 	}
 }

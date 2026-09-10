@@ -42,89 +42,89 @@ function one(): Result<number, Missing> { throw new Missing("gone") }
 			name: "an array of Results returned and read for its length",
 			body: `function pack(): readonly Result<number, Missing>[] { return [one()] }
 export function g(): number { const a = pack(); return a.length }`,
-			want: "SMITHERS1301@4:41",
+			want: "VIBE1301@4:41",
 		},
 		{
 			name: "an object of Results returned and never read at all",
 			body: `function hold(): { readonly r: Result<number, Missing> } { return { r: one() } }
 export function g(): number { const b = hold(); return 0 }`,
-			want: "SMITHERS1301@4:41",
+			want: "VIBE1301@4:41",
 		},
 		{
 			name: "a tuple of Results returned",
 			body: `function pack(): readonly [Result<number, Missing>] { return [one()] }
 export function g(): number { const t = pack(); return t.length }`,
-			want: "SMITHERS1301@4:41",
+			want: "VIBE1301@4:41",
 		},
 		{
 			name: "a nested container of Results returned",
 			body: `function pack(): readonly (readonly Result<number, Missing>[])[] { return [[one()]] }
 export function g(): number { const n = pack(); return n.length }`,
-			want: "SMITHERS1301@4:41",
+			want: "VIBE1301@4:41",
 		},
 		{
 			name: "a container returned through a ternary",
 			body: `function pack(flag: boolean): readonly Result<number, Missing>[] { return flag ? [one()] : [] }
 export function g(): number { const a = pack(true); return a.length }`,
-			want: "SMITHERS1301@4:41",
+			want: "VIBE1301@4:41",
 		},
 		{
 			name: "an async function returning Promise<Result[]>, awaited and dropped",
 			body: `async function pack(): Promise<readonly Result<number, Missing>[]> { return [one()] }
 export async function g(): Promise<number> { const a = await pack(); return a.length }`,
-			want: "SMITHERS1301@4:62",
+			want: "VIBE1301@4:62",
 		},
 		{
 			name: "an arrow with an inferred container return type",
 			body: `const pack = () => [one()]
 export function g(): number { const a = pack(); return a.length }`,
-			want: "SMITHERS1301@4:41",
+			want: "VIBE1301@4:41",
 		},
 		{
 			name: "a container returned from a callback and dropped",
 			body: `export function g(): number { return [1].map(() => [one()]).length }`,
-			want: "SMITHERS1301@3:38",
+			want: "VIBE1301@3:38",
 		},
 		{
 			name: "a container laundered through a return type that cannot carry the channel",
 			body: `function pack(): unknown { return [one()] }
 export function g(): number { const a = pack(); return 0 }`,
-			want: "SMITHERS1301@3:36",
+			want: "VIBE1301@3:36",
 		},
 		{
 			name: "a container bound inside the callee and then returned",
 			body: `function pack(): readonly Result<number, Missing>[] { const arr = [one()]; return arr }
 export function g(): number { const a = pack(); return a.length }`,
-			want: "SMITHERS1301@4:41",
+			want: "VIBE1301@4:41",
 		},
 		{
 			name: "a returned container iterated with for-of",
 			body: `function pack(): readonly Result<number, Missing>[] { return [one()] }
 export function g(): number { let n = 0; for (const r of pack()) { n += 1 } return n }`,
-			want: "SMITHERS1301@4:58",
+			want: "VIBE1301@4:58",
 		},
 		{
 			name: "a returned container discarded as a statement",
 			body: `function pack(): readonly Result<number, Missing>[] { return [one()] }
 export function g(): number { pack(); return 0 }`,
-			want: "SMITHERS1301@4:31",
+			want: "VIBE1301@4:31",
 		},
 		{
 			name: "a container returned from an object method",
 			body: `const api = { pack(): readonly Result<number, Missing>[] { return [one()] } }
 export function g(): number { const a = api.pack(); return a.length }`,
-			want: "SMITHERS1301@4:41",
+			want: "VIBE1301@4:41",
 		},
 		{
 			name: "a container returned through an as-cast",
 			body: `function pack(): readonly Result<number, Missing>[] { return [one()] as readonly Result<number, Missing>[] }
 export function g(): number { const a = pack(); return a.length }`,
-			want: "SMITHERS1301@4:41",
+			want: "VIBE1301@4:41",
 		},
 	}
 	for _, testCase := range refused {
 		t.Run(testCase.name, func(t *testing.T) {
-			files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: prelude + testCase.body + "\n"}}
+			files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: prelude + testCase.body + "\n"}}
 			got := strings.Join(formatDiagnosticPositions(t, files, compileInternalSource(t, files)), " ")
 			if !strings.Contains(got, testCase.want) {
 				t.Fatalf("diagnostics = %s, want it to contain %s", got, testCase.want)
@@ -137,10 +137,10 @@ export function g(): number { const a = pack(); return a.length }`,
 function starts(): readonly Promise<number>[] { return [work()] }
 export function g(): number { const ps = starts(); return ps.length }
 `
-		files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: authored}}
+		files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored}}
 		got := strings.Join(formatDiagnosticPositions(t, files, compileInternalSource(t, files)), " ")
-		if got != "SMITHERS1402@3:42" {
-			t.Fatalf("diagnostics = %s, want SMITHERS1402@3:42", got)
+		if got != "VIBE1402@3:42" {
+			t.Fatalf("diagnostics = %s, want VIBE1402@3:42", got)
 		}
 	})
 }
@@ -201,7 +201,7 @@ export function g(): Result<number, Missing> { const bag = hold(); return bag.fo
 	}
 	for _, testCase := range accepted {
 		t.Run(testCase.name, func(t *testing.T) {
-			files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: prelude + testCase.body + "\n"}}
+			files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: prelude + testCase.body + "\n"}}
 			got := formatDiagnosticPositions(t, files, compileInternalSource(t, files))
 			if len(got) != 0 {
 				t.Fatalf("diagnostics = %v, want none", got)
@@ -222,7 +222,7 @@ export async function g(): Promise<number> {
   return all.length
 }
 `
-		files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: authored}}
+		files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored}}
 		if got := formatDiagnosticPositions(t, files, compileInternalSource(t, files)); len(got) != 0 {
 			t.Fatalf("diagnostics = %v, want none", got)
 		}
@@ -233,7 +233,7 @@ export async function g(): Promise<number> {
 function pack(): readonly number[] { return [two()] }
 export function g(): number { const a = pack(); return a.length }
 `
-		files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: authored}}
+		files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored}}
 		if got := formatDiagnosticPositions(t, files, compileInternalSource(t, files)); len(got) != 0 {
 			t.Fatalf("diagnostics = %v, want none", got)
 		}
@@ -255,10 +255,10 @@ export function main(): number[] {
   return [risky("ada")]
 }
 `
-		files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: authored}}
+		files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored}}
 		got := strings.Join(formatDiagnosticPositions(t, files, compileInternalSource(t, files)), " ")
-		if got != "SMITHERS1301@7:11" {
-			t.Fatalf("diagnostics = %s, want the single element discard SMITHERS1301@7:11", got)
+		if got != "VIBE1301@7:11" {
+			t.Fatalf("diagnostics = %s, want the single element discard VIBE1301@7:11", got)
 		}
 	})
 }
@@ -293,21 +293,21 @@ export interface Shape { readonly tag: string }
 		body string
 		want string
 	}{
-		{"an index-signature read, dotted", `export function g(): number { return keyed.k }`, "SMITHERS1506@2:38"},
-		{"an index-signature read, element access", `export function g(): number { return keyed["k"] }`, "SMITHERS1506@2:38"},
-		{"an index-signature read with a computed key", `export function g(name: string): number { return keyed[name] }`, "SMITHERS1506@2:50"},
-		{"a numeric index read off a foreign array", `export function g(): number { return listed[0] }`, "SMITHERS1506@2:38"},
-		{"a library-declared member off a foreign value", `export function g(): number { return listed.length }`, "SMITHERS1506@2:38"},
-		{"a declared member, element-access spelling", `export function g(): number { return declaredMember["value"] }`, "SMITHERS1506@2:38"},
-		{"a write through an index signature", `export function g(): number { keyed.k = 2; return 0 }`, "SMITHERS1506@2:31"},
-		{"an optional-chained index-signature read", `export function g(): number { return keyed?.k }`, "SMITHERS1506@2:38"},
-		{"destructuring a foreign value", `export function g(): number { const { k } = keyed; return k }`, "SMITHERS1506@2:37"},
+		{"an index-signature read, dotted", `export function g(): number { return keyed.k }`, "VIBE1506@2:38"},
+		{"an index-signature read, element access", `export function g(): number { return keyed["k"] }`, "VIBE1506@2:38"},
+		{"an index-signature read with a computed key", `export function g(name: string): number { return keyed[name] }`, "VIBE1506@2:50"},
+		{"a numeric index read off a foreign array", `export function g(): number { return listed[0] }`, "VIBE1506@2:38"},
+		{"a library-declared member off a foreign value", `export function g(): number { return listed.length }`, "VIBE1506@2:38"},
+		{"a declared member, element-access spelling", `export function g(): number { return declaredMember["value"] }`, "VIBE1506@2:38"},
+		{"a write through an index signature", `export function g(): number { keyed.k = 2; return 0 }`, "VIBE1506@2:31"},
+		{"an optional-chained index-signature read", `export function g(): number { return keyed?.k }`, "VIBE1506@2:38"},
+		{"destructuring a foreign value", `export function g(): number { const { k } = keyed; return k }`, "VIBE1506@2:37"},
 	}
 	for _, testCase := range refused {
 		t.Run(testCase.name, func(t *testing.T) {
 			authored := "import { keyed, listed, declaredMember } from \"./foreign.ts\"\n" + testCase.body + "\n"
 			files := []SourceFile{
-				{Path: "main.sm", Kind: FileKindSmithers, Text: authored},
+				{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored},
 				{Path: "foreign.ts", Kind: FileKindTypeScript, Text: foreign},
 			}
 			got := strings.Join(formatDiagnosticPositions(t, files, compileInternalSource(t, files)), " ")
@@ -328,12 +328,12 @@ export function g(): number {
 }
 `
 		files := []SourceFile{
-			{Path: "main.sm", Kind: FileKindSmithers, Text: authored},
+			{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored},
 			{Path: "foreign.ts", Kind: FileKindTypeScript, Text: foreign},
 		}
 		got := strings.Join(formatDiagnosticPositions(t, files, compileInternalSource(t, files)), " ")
-		if got != "SMITHERS1506@3:10" {
-			t.Fatalf("diagnostics = %s, want exactly one SMITHERS1506@3:10", got)
+		if got != "VIBE1101@2:1 VIBE1506@3:10" {
+			t.Fatalf("diagnostics = %s, want the Panic contract error and exactly one VIBE1506@3:10", got)
 		}
 	})
 
@@ -341,11 +341,11 @@ export function g(): number {
 		// Narrowed for `noUncheckedIndexedAccess` (compatibility.mdx §Mandatory),
 		// which makes an index read into a Record `number | undefined`. The read
 		// itself is what this case is about — that an AUTHORED record read is not
-		// a foreign read and draws no SMITHERS1506 — so the read stays and only
+		// a foreign read and draws no VIBE1506 — so the read stays and only
 		// the absence is handled.
 		authored := `export function g(): number { const local: Record<string, number> = { k: 1 }; const read = local.k; return read === undefined ? 0 : read }
 `
-		files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: authored}}
+		files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored}}
 		if got := formatDiagnosticPositions(t, files, compileInternalSource(t, files)); len(got) != 0 {
 			t.Fatalf("diagnostics = %v, want none", got)
 		}
@@ -358,7 +358,7 @@ export function g(): number {
 export function g(s: Shape): string { return s.tag }
 `
 		files := []SourceFile{
-			{Path: "main.sm", Kind: FileKindSmithers, Text: authored},
+			{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored},
 			{Path: "foreign.ts", Kind: FileKindTypeScript, Text: foreign},
 		}
 		if got := formatDiagnosticPositions(t, files, compileInternalSource(t, files)); len(got) != 0 {

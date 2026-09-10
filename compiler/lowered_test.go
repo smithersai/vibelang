@@ -115,6 +115,40 @@ func TestLineIndexPositionsRoundTrip(t *testing.T) {
 	}
 }
 
+func TestLineIndexTypeScriptNewlineForms(t *testing.T) {
+	for _, newline := range []string{"\n", "\r\n", "\r", "\u2028", "\u2029"} {
+		t.Run(newline, func(t *testing.T) {
+			text := "😀a" + newline + "é" + newline + newline
+			index := newLineIndex(text)
+			if index.lineCount() != 4 || index.lineText(0) != "😀a" || index.lineText(1) != "é" || index.lineText(2) != "" || index.lineText(3) != "" {
+				t.Fatalf("incorrect newline boundaries: %+v", index)
+			}
+			for _, position := range []struct{ offset, line, column int }{
+				{0, 0, 0}, {len("😀"), 0, 2}, {len("😀a"), 0, 3},
+				{len("😀a" + newline), 1, 0}, {len("😀a" + newline + "é"), 1, 1},
+				{len("😀a" + newline + "é" + newline), 2, 0}, {len(text), 3, 0},
+			} {
+				line, column := index.position(position.offset)
+				if line != position.line || column != position.column || index.byteOffset(line, column) != position.offset {
+					t.Fatalf("byte %d = (%d,%d), want (%d,%d)", position.offset, line, column, position.line, position.column)
+				}
+			}
+			if index.utf16Length(0) != 3 || index.utf16Length(1) != 1 || index.byteOffset(0, 100) != len("😀a") {
+				t.Fatal("line terminators were counted as source-map content")
+			}
+		})
+	}
+	index := newLineIndex("a\r\nb\rc\u2028d\u2029e\n")
+	if index.lineCount() != 6 {
+		t.Fatal("mixed newline count: ", index.lineCount())
+	}
+	for line, content := range []string{"a", "b", "c", "d", "e", ""} {
+		if index.lineText(line) != content {
+			t.Fatalf("mixed line %d = %q", line, index.lineText(line))
+		}
+	}
+}
+
 func validExternalRequest() CompileRequest {
 	authored := "action answer(): number { return 42 }\n"
 	lowered := "function answer(): number { return 42 }\n"
@@ -122,14 +156,14 @@ func validExternalRequest() CompileRequest {
 		{{genCol: 0, srcLine: 0, srcCol: 0}, {genCol: 8, srcLine: 0, srcCol: 6}},
 	})
 	return CompileRequest{
-		RootNames: []string{"main.sm"},
+		RootNames: []string{"main.vibe"},
 		Files: []SourceFile{{
-			Path: "main.sm",
-			Kind: FileKindSmithers,
+			Path: "main.vibe",
+			Kind: FileKindVibeLang,
 			Text: authored,
 			Lowered: &LoweredSource{
 				Text:      lowered,
-				SourceMap: `{"version":3,"sources":["main.sm"],"names":[],"mappings":"` + mappings + `"}`,
+				SourceMap: `{"version":3,"sources":["main.vibe"],"names":[],"mappings":"` + mappings + `"}`,
 			},
 		}},
 		Lowering: LoweringExternal,
@@ -141,21 +175,21 @@ func TestValidateLoweredRequestAcceptsWellFormedInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	identity := CompileRequest{
-		RootNames: []string{"main.sm"},
-		Files:     []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: "export {};\n"}},
+		RootNames: []string{"main.vibe"},
+		Files:     []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: "export {};\n"}},
 		Lowering:  LoweringIdentity,
 	}
 	if err := validateLoweredRequest(identity); err != nil {
 		t.Fatal(err)
 	}
 	// Disk-hydrated identity requests carry no in-memory files.
-	if err := validateLoweredRequest(CompileRequest{RootNames: []string{"main.sm"}, Lowering: LoweringIdentity}); err != nil {
+	if err := validateLoweredRequest(CompileRequest{RootNames: []string{"main.vibe"}, Lowering: LoweringIdentity}); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestValidateLoweredRequestRejectsOmittedMode(t *testing.T) {
-	err := validateLoweredRequest(CompileRequest{RootNames: []string{"main.sm"}})
+	err := validateLoweredRequest(CompileRequest{RootNames: []string{"main.vibe"}})
 	if err == nil || !strings.Contains(err.Error(), "lowering mode is required") {
 		t.Fatalf("omitted lowering mode must fail closed, got %v", err)
 	}
@@ -172,7 +206,7 @@ func TestValidateLoweredRequestAcceptsContentAndGeneratedOnlySegments(t *testing
 		{{genCol: 0, srcLine: 0, srcCol: 0}, {genCol: 8, srcLine: 0, srcCol: 6}},
 		{{genCol: 0, generatedOnly: true}},
 	})
-	request.Files[0].Lowered.SourceMap = `{"version":3,"file":"main.sm.ts","sources":["./main.sm"],"names":[],"mappings":"` + mappings +
+	request.Files[0].Lowered.SourceMap = `{"version":3,"file":"main.vibe.ts","sources":["./main.vibe"],"names":[],"mappings":"` + mappings +
 		`","sourcesContent":[` + jsonString(authored) + `]}`
 	if err := validateLoweredRequest(request); err != nil {
 		t.Fatal(err)
@@ -206,7 +240,7 @@ func TestValidateLoweredRequestRejectsMalformedInput(t *testing.T) {
 			detail: "requires in-memory files",
 		},
 		{
-			name: "smithers file without lowered content",
+			name: "vibelang file without lowered content",
 			mutate: func(r *CompileRequest) {
 				r.Files[0].Lowered = nil
 			},
@@ -237,77 +271,77 @@ func TestValidateLoweredRequestRejectsMalformedInput(t *testing.T) {
 		{
 			name: "unknown map field",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":"","ignoreList":[]}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":"","ignoreList":[]}`
 			},
 			detail: "parse",
 		},
 		{
 			name: "trailing JSON value",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":""}{}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":""}{}`
 			},
 			detail: "one JSON value",
 		},
 		{
 			name: "wrong version",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":2,"sources":["main.sm"],"mappings":""}`
+				r.Files[0].Lowered.SourceMap = `{"version":2,"sources":["main.vibe"],"mappings":""}`
 			},
 			detail: "version must be 3",
 		},
 		{
 			name: "source root set",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sourceRoot":"/src","sources":["main.sm"],"mappings":""}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sourceRoot":"/src","sources":["main.vibe"],"mappings":""}`
 			},
 			detail: "sourceRoot must be empty",
 		},
 		{
 			name: "sources name a different file",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["other.sm"],"mappings":""}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["other.vibe"],"mappings":""}`
 			},
 			detail: "must name the authored file",
 		},
 		{
 			name: "sources with two entries",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm","main.sm"],"mappings":""}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe","main.vibe"],"mappings":""}`
 			},
 			detail: "exactly the authored file",
 		},
 		{
 			name: "sourcesContent mismatch",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"sourcesContent":["different"],"mappings":""}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"sourcesContent":["different"],"mappings":""}`
 			},
 			detail: "does not match the supplied authored text",
 		},
 		{
 			name: "missing mappings",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"]}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"]}`
 			},
 			detail: "mappings is required",
 		},
 		{
 			name: "invalid VLQ character",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":"AA?A"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":"AA?A"}`
 			},
 			detail: "invalid VLQ character",
 		},
 		{
 			name: "nonzero source index",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":"ACAA"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":"ACAA"}`
 			},
 			detail: "does not name the authored file",
 		},
 		{
 			name: "mapping beyond lowered text",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":";;;AAAA"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":";;;AAAA"}`
 			},
 			detail: "beyond the lowered text",
 		},
@@ -315,7 +349,7 @@ func TestValidateLoweredRequestRejectsMalformedInput(t *testing.T) {
 			name: "mapping beyond lowered line",
 			mutate: func(r *CompileRequest) {
 				mappings := encodeTestMappings([][]testSegment{{{genCol: 400, srcLine: 0, srcCol: 0}}})
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":"` + mappings + `"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":"` + mappings + `"}`
 			},
 			detail: "beyond lowered line",
 		},
@@ -323,7 +357,7 @@ func TestValidateLoweredRequestRejectsMalformedInput(t *testing.T) {
 			name: "mapping beyond authored text",
 			mutate: func(r *CompileRequest) {
 				mappings := encodeTestMappings([][]testSegment{{{genCol: 0, srcLine: 9, srcCol: 0}}})
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":"` + mappings + `"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":"` + mappings + `"}`
 			},
 			detail: "beyond the authored text",
 		},
@@ -331,14 +365,14 @@ func TestValidateLoweredRequestRejectsMalformedInput(t *testing.T) {
 			name: "mapping beyond authored line",
 			mutate: func(r *CompileRequest) {
 				mappings := encodeTestMappings([][]testSegment{{{genCol: 0, srcLine: 0, srcCol: 300}}})
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"mappings":"` + mappings + `"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"mappings":"` + mappings + `"}`
 			},
 			detail: "beyond authored line",
 		},
 		{
 			name: "name index out of range",
 			mutate: func(r *CompileRequest) {
-				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.sm"],"names":[],"mappings":"AAAAA"}`
+				r.Files[0].Lowered.SourceMap = `{"version":3,"sources":["main.vibe"],"names":[],"mappings":"AAAAA"}`
 			},
 			detail: "name index",
 		},

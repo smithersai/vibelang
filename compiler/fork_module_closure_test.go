@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-// The reached-module closure for SMITHERS1510.
+// The reached-module closure for VIBE1510.
 //
-// `checkForeignModuleTrust` used to iterate the authored `.sm`'s own statements
+// `checkForeignModuleTrust` used to iterate the authored `.vibe`'s own statements
 // and stop, so a foreign module reached at DEPTH >= 2 was never asked for the
 // module-initialization trust marker. Measured on this backend with a runtime
 // oracle: a properly marked `relay.ts` doing `export { config } from "./sneaky.ts"`,
@@ -29,7 +29,7 @@ import (
 // from "silently dropped". So every accepting case in this file EXECUTES the
 // emitted program and asserts on what its module scopes announced.
 
-// closureCase is one authored `.sm` program plus the foreign modules it reaches.
+// closureCase is one authored `.vibe` program plus the foreign modules it reaches.
 // `reject` lists every diagnostic the program must produce as `CODE@line:column`;
 // an empty list means the program must compile and RUN, and `stdout` is then the
 // exact combined output — module-scope announcements included, in evaluation
@@ -52,7 +52,7 @@ func runClosureCases(t *testing.T, cases []closureCase) {
 	backend, ctx := newPinnedTestBackend(t)
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: testCase.source}}
+			files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: testCase.source}}
 			for _, module := range testCase.support {
 				files = append(files, SourceFile{Path: module.path, Kind: FileKindTypeScript, Text: module.text})
 			}
@@ -112,7 +112,7 @@ const closureMain = "import { config } from \"./relay.ts\"\n" +
 // depth and through every graph shape that used to reach an unmarked module.
 //
 // The authored position is the same `1:24` the depth-one rule already reports —
-// the `.sm` import specifier, the only text in the authored file its author can
+// the `.vibe` import specifier, the only text in the authored file its author can
 // change — so a reader of the diagnostic is pointed at the edge they wrote and
 // not at a file they may not own.
 func TestPinnedForkModuleTrustDoesNotStopAtDepthOne(t *testing.T) {
@@ -125,7 +125,7 @@ func TestPinnedForkModuleTrustDoesNotStopAtDepthOne(t *testing.T) {
 				{path: "relay.ts", text: closureTrustMarker + "export { config } from \"./sneaky.ts\";\n"},
 				unmarked,
 			},
-			reject: []string{"SMITHERS1510@1:24"},
+			reject: []string{"VIBE1510@1:24"},
 		},
 		{
 			name:   "depth three: depth is not a bound on module evaluation",
@@ -135,7 +135,7 @@ func TestPinnedForkModuleTrustDoesNotStopAtDepthOne(t *testing.T) {
 				{path: "middle.ts", text: closureTrustMarker + "export { config } from \"./sneaky.ts\";\n"},
 				unmarked,
 			},
-			reject: []string{"SMITHERS1510@1:24"},
+			reject: []string{"VIBE1510@1:24"},
 		},
 		{
 			name:   "a cycle between two marked relays terminates the walk",
@@ -151,7 +151,7 @@ func TestPinnedForkModuleTrustDoesNotStopAtDepthOne(t *testing.T) {
 					"export function echo(): number { return pong(); }\n"},
 				unmarked,
 			},
-			reject: []string{"SMITHERS1510@1:24"},
+			reject: []string{"VIBE1510@1:24"},
 		},
 		{
 			name: "a diamond reports the shared unmarked module once, not once per path",
@@ -166,7 +166,7 @@ func TestPinnedForkModuleTrustDoesNotStopAtDepthOne(t *testing.T) {
 				{path: "relay2.ts", text: closureTrustMarker + "export { config as other } from \"./sneaky.ts\";\n"},
 				unmarked,
 			},
-			reject: []string{"SMITHERS1510@1:24"},
+			reject: []string{"VIBE1510@1:24"},
 		},
 		{
 			name:   "two distinct unmarked modules behind one relay are both named",
@@ -178,7 +178,7 @@ func TestPinnedForkModuleTrustDoesNotStopAtDepthOne(t *testing.T) {
 				unmarked,
 				{path: "sneaky2.ts", text: "globalThis.console.log(\"second\");\nexport const other = 1;\n"},
 			},
-			reject: []string{"SMITHERS1510@1:24", "SMITHERS1510@1:24"},
+			reject: []string{"VIBE1510@1:24", "VIBE1510@1:24"},
 		},
 		{
 			name: "an untrusted module at depth one is refused at the edge the author wrote, and the marked path is refused separately",
@@ -192,7 +192,7 @@ func TestPinnedForkModuleTrustDoesNotStopAtDepthOne(t *testing.T) {
 				{path: "relay.ts", text: closureTrustMarker + "export { config } from \"./sneaky.ts\";\n"},
 				unmarked,
 			},
-			reject: []string{"SMITHERS1510@1:24", "SMITHERS1510@2:34"},
+			reject: []string{"VIBE1510@1:24", "VIBE1510@2:34"},
 		},
 		{
 			name: "the dynamic spelling of the authored edge seeds the same closure",
@@ -204,7 +204,7 @@ func TestPinnedForkModuleTrustDoesNotStopAtDepthOne(t *testing.T) {
 				{path: "relay.ts", text: closureTrustMarker + "export { config } from \"./sneaky.ts\";\n"},
 				unmarked,
 			},
-			reject: []string{"SMITHERS1510@2:31"},
+			reject: []string{"VIBE1510@2:31"},
 		},
 	})
 }
@@ -386,7 +386,7 @@ func TestPinnedForkModuleTrustClosureAsksTheSameMarkerPredicate(t *testing.T) {
 			name:    name,
 			source:  closureMain,
 			support: []closureSupport{relay, {path: "sneaky.ts", text: header + closureTargetBody}},
-			reject:  []string{"SMITHERS1510@1:24"},
+			reject:  []string{"VIBE1510@1:24"},
 		}
 	}
 	runClosureCases(t, []closureCase{
@@ -441,7 +441,7 @@ func TestPinnedForkModuleTrustClosureAsksTheSameMarkerPredicate(t *testing.T) {
 // external module reference at all — so the walk cannot read the sibling's
 // marker even when the sibling HAS one. The choice is between refusing a marked
 // module and admitting an unread one, and fail-closed is the direction this rule
-// takes everywhere else, including the depth-one branch for an authored `.sm`'s
+// takes everywhere else, including the depth-one branch for an authored `.vibe`'s
 // own unresolvable edge.
 //
 // It is bounded: the remedy the diagnostic already names (a static
@@ -464,7 +464,7 @@ func TestPinnedForkModuleTrustClosureFailsClosedOnAnUnresolvableRequire(t *testi
 				{path: "relay.cts", text: moduleScopeRequire},
 				{path: "sneaky.cts", text: closureTargetBody},
 			},
-			reject: []string{"SMITHERS1510@1:24"},
+			reject: []string{"VIBE1510@1:24"},
 		},
 		{
 			name:   "a module-scope require of a MARKED sibling is refused too, because the marker cannot be read",
@@ -473,7 +473,7 @@ func TestPinnedForkModuleTrustClosureFailsClosedOnAnUnresolvableRequire(t *testi
 				{path: "relay.cts", text: moduleScopeRequire},
 				{path: "sneaky.cts", text: closureTrustMarker + closureTargetBody},
 			},
-			reject: []string{"SMITHERS1510@1:24"},
+			reject: []string{"VIBE1510@1:24"},
 		},
 		{
 			name:   "an IIFE hands the function value to module scope, so its require is an initialization edge",
@@ -485,7 +485,7 @@ func TestPinnedForkModuleTrustClosureFailsClosedOnAnUnresolvableRequire(t *testi
 					"export const config = loaded.config;\n"},
 				{path: "sneaky.cts", text: closureTrustMarker + closureTargetBody},
 			},
-			reject: []string{"SMITHERS1510@1:24"},
+			reject: []string{"VIBE1510@1:24"},
 		},
 		{
 			name:   "a property of an exported object literal is not a proven deferral",
@@ -497,7 +497,7 @@ func TestPinnedForkModuleTrustClosureFailsClosedOnAnUnresolvableRequire(t *testi
 					"export const config = { retries: 3 };\n"},
 				{path: "sneaky.cts", text: closureTrustMarker + closureTargetBody},
 			},
-			reject: []string{"SMITHERS1510@1:24"},
+			reject: []string{"VIBE1510@1:24"},
 		},
 	})
 }
@@ -507,8 +507,8 @@ func TestPinnedForkModuleTrustClosureFailsClosedOnAnUnresolvableRequire(t *testi
 // only `ImportDeclaration` and `ExportDeclaration`, so
 // `import x = require("./y")` — a third spelling of the same static module load,
 // evaluated exactly when an `import … from` in the same slot would be — carried
-// no trust boundary at all. Measured before the fix: an authored `.sm` naming an
-// UNMARKED module that way produced no SMITHERS1510 from this rule, while the
+// no trust boundary at all. Measured before the fix: an authored `.vibe` naming an
+// UNMARKED module that way produced no VIBE1510 from this rule, while the
 // reference reported it at the specifier.
 //
 // The type-only spelling loads nothing and is excluded, exactly as
@@ -523,10 +523,9 @@ func TestPinnedForkImportEqualsRequireIsARuntimeModuleEdge(t *testing.T) {
 				"  return [typeof sneaky.config]\n" +
 				"}\n",
 			support: []closureSupport{{path: "sneaky.ts", text: closureTargetBody}},
-			// SMITHERS1506 is the pre-existing foreign property-read rule reporting
-			// on `sneaky.config`; it is unrelated to this gap and is asserted here
-			// only so the case pins the whole observation rather than a subset.
-			reject: []string{"SMITHERS1510@1:25", "SMITHERS1506@4:18"},
+			// The foreign property read keeps both its refusal and its Panic
+			// row obligation. Pin the whole observation, not just the module edge.
+			reject: []string{"VIBE1101@3:1", "VIBE1510@1:25", "VIBE1506@4:18"},
 		},
 		{
 			name: "the type-only spelling loads nothing and needs no marker",
@@ -552,7 +551,7 @@ func TestPinnedForkImportEqualsRequireIsARuntimeModuleEdge(t *testing.T) {
 					"export const config = sneaky.config;\n"},
 				{path: "sneaky.cts", text: closureTargetBody},
 			},
-			reject: []string{"SMITHERS1510@1:24"},
+			reject: []string{"VIBE1510@1:24"},
 		},
 	})
 }
@@ -574,7 +573,7 @@ func TestPinnedForkModuleTrustClosureStopsAtTheGraphBoundary(t *testing.T) {
 				"  return [typeof config]\n" +
 				"}\n",
 			support: []closureSupport{{path: "sneaky.ts", text: closureTargetBody}},
-			reject:  []string{"SMITHERS1510@1:24"},
+			reject:  []string{"VIBE1510@1:24"},
 		},
 		{
 			// ...and it seeds NO closure, which is the half that keeps the
@@ -587,13 +586,13 @@ func TestPinnedForkModuleTrustClosureStopsAtTheGraphBoundary(t *testing.T) {
 			// by an ABSOLUTE path.
 			//
 			// This is a real discriminator on this backend, not a vacuous one.
-			// SMITHERS1510 is an ANALYSIS diagnostic and an analysis error
+			// VIBE1510 is an ANALYSIS diagnostic and an analysis error
 			// short-circuits emit, so a widened seed makes this program report
-			// SMITHERS1510@1:24 instead. Measured both ways: with the seed narrowed
+			// VIBE1510@1:24 instead. Measured both ways: with the seed narrowed
 			// to `.`-prefixed specifiers the analysis stays silent and the fork's own
 			// emit-stage rooted-path check is what refuses; with the seed widened to
 			// `isPathModuleSpecifier` (which also admits `/`) it reports
-			// SMITHERS1510@1:24. The TS code below is therefore the assertion that
+			// VIBE1510@1:24. The TS code below is therefore the assertion that
 			// the closure did NOT fire.
 			name: "a rooted-path depth-one edge seeds no closure",
 			source: "import { config } from \"/src/relay.ts\"\n" +
@@ -617,10 +616,10 @@ func TestPinnedForkModuleTrustClosureStopsAtTheGraphBoundary(t *testing.T) {
 			support: []closureSupport{
 				{path: "relay.ts", text: closureTrustMarker +
 					"export { config } from \"./sneaky.ts\";\n" +
-					"import \"./__smithers_prelude.ts\";\n"},
+					"import \"./__vibelang_prelude.ts\";\n"},
 				{path: "sneaky.ts", text: closureTrustMarker + closureTargetBody},
 			},
-			reject: []string{"SMITHERS1510@1:24"},
+			reject: []string{"VIBE1510@1:24"},
 		},
 	})
 }

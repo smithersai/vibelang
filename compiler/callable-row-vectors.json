@@ -1,0 +1,285 @@
+{
+  "head": "\nimport { Context } from 'vibelang/context';\nimport { Layer } from 'vibelang/provider';\nabstract class C extends Context { abstract n(): number }\nabstract class D extends Context { abstract n(): number }\nfunction read(): number { return C.context().n() }\nfunction other(): number { return D.context().n() }\nfunction pure(): number { return 1 }\n",
+  "cases": [
+    {
+      "name": "annotated binding",
+      "body": "const slot: () => number = read;",
+      "accepted": false
+    },
+    {
+      "name": "annotated arrow",
+      "body": "const slot: () => number = () => C.context().n();",
+      "accepted": false
+    },
+    {
+      "name": "alias",
+      "body": "const alias = read; const slot: () => number = alias;",
+      "accepted": false
+    },
+    {
+      "name": "object property",
+      "body": "const slot: { run: () => number } = { run: read };",
+      "accepted": false
+    },
+    {
+      "name": "shorthand property",
+      "body": "const slot: { read: () => number } = { read };",
+      "accepted": false
+    },
+    {
+      "name": "nested property",
+      "body": "const slot: { child: { run: () => number } } = { child: { run: read } };",
+      "accepted": false
+    },
+    {
+      "name": "array element",
+      "body": "const slot: (() => number)[] = [read];",
+      "accepted": false
+    },
+    {
+      "name": "tuple element",
+      "body": "const slot: [() => number, number] = [read, 0];",
+      "accepted": false
+    },
+    {
+      "name": "property mutation",
+      "body": "const slot = { run: pure }; slot.run = read;",
+      "accepted": false
+    },
+    {
+      "name": "binding mutation",
+      "body": "let slot = pure; slot = read;",
+      "accepted": false
+    },
+    {
+      "name": "narrower inferred row",
+      "body": "let slot = read; slot = other;",
+      "accepted": false
+    },
+    {
+      "name": "returned callback",
+      "body": "function make(): () => number { return read }",
+      "accepted": false
+    },
+    {
+      "name": "expression-bodied return",
+      "body": "const make = (): (() => number) => read;",
+      "accepted": false
+    },
+    {
+      "name": "argument",
+      "body": "function take(f: () => number): number { return f() } function main() { return take(read) }",
+      "accepted": false
+    },
+    {
+      "name": "nested argument",
+      "body": "function take(f: { run: () => number }): number { return f.run() } function main() { return take({ run: read }) }",
+      "accepted": false
+    },
+    {
+      "name": "explicit generic instantiation",
+      "body": "function identity<T>(v: T): T { return v } const slot = identity<() => number>(read);",
+      "accepted": false
+    },
+    {
+      "name": "assertion",
+      "body": "const slot = read as (() => number);",
+      "accepted": false
+    },
+    {
+      "name": "satisfies",
+      "body": "const slot = read satisfies (() => number);",
+      "accepted": false
+    },
+    {
+      "name": "default parameter",
+      "body": "function take(f: () => number = read): number { return f() }",
+      "accepted": false
+    },
+    {
+      "name": "class field",
+      "body": "class Box { run: () => number = read }",
+      "accepted": false
+    },
+    {
+      "name": "method implementation",
+      "body": "const box: { run(): number } = { run() { return C.context().n() } };",
+      "accepted": false
+    },
+    {
+      "name": "higher-order variance",
+      "body": "function needsPure(f: () => number): number { return f() } const slot: (f: typeof read) => number = needsPure;",
+      "accepted": false
+    },
+    {
+      "name": "conditional alternative",
+      "body": "function make(flag: boolean) { const slot: typeof read = flag ? read : other; return slot }",
+      "accepted": false
+    },
+    {
+      "name": "aliased conditional",
+      "body": "function make(flag: boolean) { const f = flag ? read : other; const slot: typeof read = f; return slot }",
+      "accepted": false
+    },
+    {
+      "name": "conditional object property",
+      "body": "function make(flag: boolean) { const slot: { run: typeof read } = { run: flag ? read : other }; return slot }",
+      "accepted": false
+    },
+    {
+      "name": "class implementation",
+      "body": "interface Pure { run(): number } class Box implements Pure { run(): number { return C.context().n() } }",
+      "accepted": false
+    },
+    {
+      "name": "class override",
+      "body": "class Base { run(): number { return 0 } } class Child extends Base { run(): number { return C.context().n() } }",
+      "accepted": false
+    },
+    {
+      "name": "plain annotation",
+      "body": "const slot: () => number = pure;",
+      "accepted": true
+    },
+    {
+      "name": "inferred alias",
+      "body": "const slot = read;",
+      "accepted": true
+    },
+    {
+      "name": "typeof annotation",
+      "body": "const slot: typeof read = read;",
+      "accepted": true
+    },
+    {
+      "name": "smaller row",
+      "body": "const slot: typeof read = pure;",
+      "accepted": true
+    },
+    {
+      "name": "inferred object",
+      "body": "const slot = { read };",
+      "accepted": true
+    },
+    {
+      "name": "inferred array",
+      "body": "const slot = [read];",
+      "accepted": true
+    },
+    {
+      "name": "inferred generic",
+      "body": "function identity<T>(v: T): T { return v } const slot = identity(read);",
+      "accepted": true
+    },
+    {
+      "name": "typeof return",
+      "body": "function make(): typeof read { return read }",
+      "accepted": true
+    },
+    {
+      "name": "typeof argument",
+      "body": "function take(f: typeof read): number { return f() } function main() { return take(read) }",
+      "accepted": true
+    },
+    {
+      "name": "row union",
+      "body": "const slot: typeof read | typeof other = read;",
+      "accepted": true
+    },
+    {
+      "name": "second union alternative",
+      "body": "const slot: typeof read | typeof other = other;",
+      "accepted": true
+    },
+    {
+      "name": "mutable explicit row union",
+      "body": "let slot: typeof read | typeof other = read; slot = other;",
+      "accepted": true
+    },
+    {
+      "name": "coercion member satisfies preserves its row",
+      "body": "const numeric = { valueOf: read }; const slot = numeric satisfies typeof numeric;",
+      "accepted": true
+    },
+    {
+      "name": "coercion member satisfies cannot claim an empty row",
+      "body": "const numeric = { valueOf: read }; const slot = numeric satisfies { valueOf(): number };",
+      "accepted": false
+    },
+    {
+      "name": "generic contravariance",
+      "body": "interface Receiver<T> { run: (f: T) => number } const accept: Receiver<typeof read> = { run: () => 1 }; const slot: Receiver<() => number> = accept;",
+      "accepted": true
+    },
+    {
+      "name": "contravariant callback",
+      "body": "function acceptsC(f: typeof read): number { return 1 } const slot: (f: () => number) => number = acceptsC;",
+      "accepted": true
+    },
+    {
+      "name": "provided callback",
+      "body": "function main(): number { return Layer.provide(Layer.succeed(C, { n: pure }), () => read()) }",
+      "accepted": true
+    },
+    {
+      "name": "immediate native callback",
+      "body": "function main(): number { const values = [1].map(() => read()); return values[0] ?? 0 }",
+      "accepted": true
+    },
+    {
+      "name": "pure shorthand argument",
+      "body": "function accept(box: { pure: typeof pure }): number { return box.pure() } function f(): number { return accept({ pure }) }",
+      "accepted": true
+    },
+    {
+      "name": "data shorthand argument",
+      "body": "function accept(box: { n: number }): number { return box.n } function f(): number { const n = 1; return accept({ n }) }",
+      "accepted": true
+    },
+    {
+      "name": "conditional shorthand row",
+      "body": "function f(flag: boolean) { const selected = flag ? read : other; const slot: { selected: typeof read } = { selected }; return slot }",
+      "accepted": false
+    },
+    {
+      "name": "native Promise executor borrows its row",
+      "body": "function f(): Promise<number> { return new Promise<number>(resolve => resolve(C.context().n())) }",
+      "accepted": true
+    },
+    {
+      "name": "user constructor cannot borrow by spelling",
+      "body": "class Box { constructor(callback: () => number) {} } function f() { return new Box(read) }",
+      "accepted": false
+    },
+    {
+      "name": "recursive generic collection widening",
+      "body": "interface Chain<T> { concat(other: Chain<T>): Chain<T>; map<U>(f: (value: T) => U): Chain<U>; get(): T | undefined } function widen<T>(value: Chain<T>): Chain<unknown> { return value }",
+      "accepted": true
+    },
+    {
+      "name": "recursive multi-parameter generic collection widening",
+      "body": "interface Bucket<K, V> { concat(other: Bucket<K, V>): Bucket<K, V>; map<U>(f: (value: V) => U): Bucket<K, U>; key(): K; value(): V } function widen<K, V>(value: Bucket<K, V>): Bucket<unknown, unknown> { return value }",
+      "accepted": true
+    },
+    {
+      "name": "recursive constrained generic collection preserves rows",
+      "body": "interface Chain<T> { concat(other: Chain<T>): Chain<T>; map<U extends T>(f: (value: T) => U): Chain<U>; get(): T | undefined } function retain(value: Chain<typeof read>): Chain<typeof read> { return value }",
+      "accepted": true
+    },
+    {
+      "name": "recursive generic collection cannot erase a concrete row",
+      "body": "interface Chain<T> { concat(other: Chain<T>): Chain<T>; map<U>(f: (value: T) => U): Chain<U>; get(): T | undefined } function erase(value: Chain<typeof read>): Chain<() => number> { return value }",
+      "accepted": false
+    },
+    {
+      "name": "recursive constrained generic collection cannot merge row arguments",
+      "body": "interface Chain<T> { concat(other: Chain<T>): Chain<T>; map<U extends T>(f: (value: T) => U): Chain<U>; get(): T | undefined } function erase(value: Chain<typeof read>): Chain<typeof other> { return value }",
+      "accepted": false
+    },
+    {
+      "name": "a recursive member does not hide a later concrete callable mismatch",
+      "body": "interface Chain<T> { concat(other: Chain<T>): Chain<T>; map<U>(f: (value: T) => U): Chain<U>; get(): T | undefined } interface Source { chain: Chain<number>; run: typeof read } interface Target { chain: Chain<unknown>; run: () => number } function erase(value: Source): Target { return value }",
+      "accepted": false
+    }
+  ]
+}

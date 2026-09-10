@@ -20,7 +20,7 @@ import (
 //	Layer.succeed(Db as unknown as typeof Cfg, cfg)   // body reads Cfg
 //	    -> ok: true, RAN, `Panic: unsatisfied Context requirement`   [FAIL-OPEN]
 //	Layer.succeed(<any>Db, db)                        // body reads Db
-//	    -> SMITHERS2104, refused; the reference accepted it and RAN  [OVER-REFUSAL]
+//	    -> VIBE2104, refused; the reference accepted it and RAN  [OVER-REFUSAL]
 //	Layer.succeed(off ? Db : Twin, twin)              // body reads Db, off = false
 //	    -> ok: true, RAN, panicked reading Db after registering Twin [FAIL-OPEN]
 //
@@ -33,13 +33,13 @@ import (
 // The fix routes the capability argument through `contextReceiverOf` and
 // deletes `classReferenceSymbol`, whose only caller it was. No rule is restated
 // and no code is minted: an argument that pins no single class lands on
-// `resolveLayer`'s own fail-closed `false`, which is the blunt SMITHERS2104 the
+// `resolveLayer`'s own fail-closed `false`, which is the blunt VIBE2104 the
 // resolver already answers for every expression it cannot see through.
 //
 // # What this table CANNOT see
 //
 // It measures diagnostics, not runtime behaviour; the panics quoted above were
-// measured out of band with `smithers run --backend go`. And a table built only
+// measured out of band with `vibe run --backend go`. And a table built only
 // from type-PRESERVING spellings is VACUOUS for this rule — a syntax walk and a
 // checker walk answer identically on every one of them, which is exactly why
 // the previous 18-spelling matrix reported this site "SOUND on all 18". The
@@ -83,7 +83,7 @@ func TestPinnedForkLayerCapabilityArgumentPinsOneContextClass(t *testing.T) {
 		t.Run(cell.name, func(t *testing.T) {
 			source := layerCapabilityModule(cell.declarations +
 				"Layer.provide(Layer.succeed(" + cell.argument + ", db), () => { f() })\n")
-			if got := smithersDiagnosticCodes(t, backend, ctx, source, layerSupport); len(got) != 0 {
+			if got := vibelangDiagnosticCodes(t, backend, ctx, source, layerSupport); len(got) != 0 {
 				t.Fatalf("%s must resolve to Db and be accepted, but reported %v", cell.argument, got)
 			}
 		})
@@ -116,11 +116,11 @@ func TestPinnedForkLayerCapabilityArgumentReadsSyntaxNotTheCheckerType(t *testin
 			source := layerCapabilityModule(cell.declarations +
 				"Layer.provide(Layer.succeed(" + cell.argument + ", " + cell.implementation +
 				"), () => { " + cell.read + "() })\n")
-			got := smithersDiagnosticCodes(t, backend, ctx, source, layerSupport)
+			got := vibelangDiagnosticCodes(t, backend, ctx, source, layerSupport)
 			// The PRECISE code that names the capability, not the blunt one:
 			// the syntax still spells which constructor the runtime registers.
-			if strings.Join(got, " ") != "SMITHERS2101" {
-				t.Fatalf("%s launders the TYPE but not the VALUE; it must stay SMITHERS2101 "+
+			if strings.Join(got, " ") != "VIBE2101" {
+				t.Fatalf("%s launders the TYPE but not the VALUE; it must stay VIBE2101 "+
 					"naming the capability the runtime never registers, but answered %v", cell.argument, got)
 			}
 		})
@@ -150,23 +150,23 @@ func TestPinnedForkLayerCapabilityArgumentRefusesAnUnpinnedArgument(t *testing.T
 		t.Run(cell.name, func(t *testing.T) {
 			source := layerCapabilityModule(cell.declarations +
 				"Layer.provide(Layer.succeed(" + cell.argument + ", db as never), () => { f() })\n")
-			got := smithersDiagnosticCodes(t, backend, ctx, source, layerSupport)
+			got := vibelangDiagnosticCodes(t, backend, ctx, source, layerSupport)
 			found := false
 			for _, code := range got {
-				if code == "SMITHERS2104" {
+				if code == "VIBE2104" {
 					found = true
 				}
 			}
 			if !found {
 				t.Fatalf("%s pins no single Context class, so the closure is unproven and the layer "+
-					"must be opaque (SMITHERS2104); it answered %v", cell.argument, got)
+					"must be opaque (VIBE2104); it answered %v", cell.argument, got)
 			}
 		})
 	}
 
 	// A bare type parameter is ambiguous EVEN WHEN ITS BOUND NAMES ONE CLASS,
 	// because a subclass substitutes for it and carries a different nominal key.
-	// That detail was settled with SMITHERS2106 and is inherited here, not
+	// That detail was settled with VIBE2106 and is inherited here, not
 	// restated.
 	parameterised := []struct {
 		name string
@@ -192,10 +192,10 @@ boot(Db, db)
 
 	for _, cell := range parameterised {
 		t.Run(cell.name, func(t *testing.T) {
-			got := smithersDiagnosticCodes(t, backend, ctx, layerCapabilityModule(cell.body), layerSupport)
+			got := vibelangDiagnosticCodes(t, backend, ctx, layerCapabilityModule(cell.body), layerSupport)
 			found := false
 			for _, code := range got {
-				if code == "SMITHERS2104" {
+				if code == "VIBE2104" {
 					found = true
 				}
 			}
@@ -224,19 +224,19 @@ func TestPinnedForkLayerCapabilityArgumentKeepsTheRulesItDependsOn(t *testing.T)
 		{
 			name:   "a layer that genuinely misses a capability NAMES it",
 			body:   "Layer.provide(Layer.succeed(Cfg, cfg), () => { f() })\n",
-			expect: "SMITHERS2101",
-			why:    "the precise code, not the blunt SMITHERS2104",
+			expect: "VIBE2101",
+			why:    "the precise code, not the blunt VIBE2104",
 		},
 		{
 			name:   "it names it through a wrapper too",
 			body:   "Layer.provide(Layer.succeed(Cfg as typeof Cfg, cfg), () => { f() })\n",
-			expect: "SMITHERS2101",
+			expect: "VIBE2101",
 			why:    "a wrapper is erased at emit, so it cannot change which capability is missing",
 		},
 		{
 			name:   "it names it through a const value alias",
 			body:   "const Alias = Cfg\nLayer.provide(Layer.succeed(Alias, cfg), () => { f() })\n",
-			expect: "SMITHERS2101",
+			expect: "VIBE2101",
 			why:    "a const alias IS its initializer, so the missing capability is still Db",
 		},
 		{
@@ -244,21 +244,21 @@ func TestPinnedForkLayerCapabilityArgumentKeepsTheRulesItDependsOn(t *testing.T)
 			body: "let app: Layer<typeof Db> = Layer.succeed(Db, db)\n" +
 				"app = Layer.succeed(Cfg, cfg) as unknown as Layer<typeof Db>\n" +
 				"Layer.provide(app, () => { f() })\n",
-			expect: "SMITHERS2104",
+			expect: "VIBE2104",
 			why:    "collectLayerBindings' const-ONLY rule is orthogonal to this site and must survive",
 		},
 		{
 			name: "a never-reassigned let LAYER binding stays opaque",
 			body: "let app: Layer<typeof Db> = Layer.succeed(Db, db)\n" +
 				"Layer.provide(app, () => { f() })\n",
-			expect: "SMITHERS2104",
+			expect: "VIBE2104",
 			why:    "the const-only rule keys on the DECLARATION, not on reachability",
 		},
 		{
 			name: "an opaque conditional LAYER stays opaque",
 			body: "const a = Layer.succeed(Db, db)\nconst b = Layer.succeed(Db, db)\n" +
 				"Layer.provide(flag ? a : b, () => { f() })\n",
-			expect: "SMITHERS2104",
+			expect: "VIBE2104",
 			why:    "opaque stays opaque",
 		},
 		{
@@ -276,17 +276,17 @@ func TestPinnedForkLayerCapabilityArgumentKeepsTheRulesItDependsOn(t *testing.T)
 		{
 			name:   "postfix ! is refused in its own right and adds no second refusal",
 			body:   "Layer.provide(Layer.succeed(Db!, db), () => { f() })\n",
-			expect: "SMITHERS1207",
+			expect: "VIBE1207",
 			why: "the attribution control: `!` IS in contextReceiverOf's spelled-out wrapper list, " +
 				"so the capability under it still resolves and only the `!` itself is refused. " +
 				"If the change had been 'assertions are ignored in a layer position' this row would " +
-				"have kept a SMITHERS2104 beside the SMITHERS1207",
+				"have kept a VIBE2104 beside the VIBE1207",
 		},
 	}
 
 	for _, cell := range cases {
 		t.Run(cell.name, func(t *testing.T) {
-			got := smithersDiagnosticCodes(t, backend, ctx, layerCapabilityModule(cell.body), layerSupport)
+			got := vibelangDiagnosticCodes(t, backend, ctx, layerCapabilityModule(cell.body), layerSupport)
 			if strings.Join(got, " ") != cell.expect {
 				t.Fatalf("expected %q (%s), got %v", cell.expect, cell.why, got)
 			}
@@ -294,7 +294,7 @@ func TestPinnedForkLayerCapabilityArgumentKeepsTheRulesItDependsOn(t *testing.T)
 	}
 }
 
-// KNOWN RESIDUAL, shared with SMITHERS2106 and pinned so it cannot be read as
+// KNOWN RESIDUAL, shared with VIBE2106 and pinned so it cannot be read as
 // intentional. `let C = Db; C = Twin; Layer.succeed(C, db)` is accepted with the
 // row `Db` and PANICS, on BOTH backends — because `constantInitializer` excludes
 // `let` and the walk then falls through to the checker type, which TypeScript
@@ -311,20 +311,20 @@ func TestPinnedForkLayerCapabilityArgumentReassignedBindingResidual(t *testing.T
 		"let C = Db\nC = Twin\nLayer.provide(Layer.succeed(C, db), () => { f() })\n",
 		"var V = Db\nV = Twin\nLayer.provide(Layer.succeed(V, db), () => { f() })\n",
 	} {
-		if got := smithersDiagnosticCodes(t, backend, ctx, layerCapabilityModule(body), layerSupport); len(got) != 0 {
+		if got := vibelangDiagnosticCodes(t, backend, ctx, layerCapabilityModule(body), layerSupport); len(got) != 0 {
 			t.Fatalf("this residual is recorded as ACCEPTED; if it now reports %v the rule moved "+
-				"and SMITHERS2106's receiver walk must move with it", got)
+				"and VIBE2106's receiver walk must move with it", got)
 		}
 	}
 }
 
-// layerCapabilityModule renders one whole `.sm` program. `Twin` is
+// layerCapabilityModule renders one whole `.vibe` program. `Twin` is
 // structurally identical to `Db` on purpose: that is what makes TypeScript
 // subtype-reduce `typeof Db | typeof Twin` and lets a type-directed resolver
 // record the wrong nominal key.
 func layerCapabilityModule(body string) string {
-	return `import { Context } from "smthrs/context"
-import { Layer } from "smthrs/provider"
+	return `import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
 
 abstract class Db extends Context {
   abstract read(): string
@@ -360,14 +360,14 @@ const flag: boolean = true
 //     `Panic` whose `cause` was the ARRAY [ 'authored message' ] rather than the
 //     authored string — a structurally different Panic value from the one the
 //     call spelling builds, and from the one the reference builds (whose message
-//     degraded outright, to "Smithers panic");
+//     degraded outright, to "VibeLang panic");
 //   - `Reflect.panic` in a tag position survived lowering untouched, and the
 //     ACCEPTED program died with `TypeError: Reflect.panic is not a function`.
 //
-// The code is SMITHERS1503, which already answers "this is the panic operation
+// The code is VIBE1503, which already answers "this is the panic operation
 // in a spelling the lowering does not support", reported at the whole tagged
 // expression exactly where the call form reports it. The SHAPE is
-// SMITHERS1604's: refuse the OPERATION, leave the NAME resolvable.
+// VIBE1604's: refuse the OPERATION, leave the NAME resolvable.
 //
 // The acceptance block is not decoration. Without it the rule can be widened to
 // "any tag whose name is `panic`" and every refusal above stays green.
@@ -395,19 +395,19 @@ func TestPinnedForkPanicIsACallAndNotATemplateTag(t *testing.T) {
 	for _, cell := range refused {
 		t.Run(cell.name, func(t *testing.T) {
 			source := panicTagModule(cell.declarations, "  "+cell.statement+"\n")
-			got := smithersDiagnosticCodes(t, backend, ctx, source, layerSupport)
-			if strings.Join(got, " ") != "SMITHERS1503" {
+			got := vibelangDiagnosticCodes(t, backend, ctx, source, layerSupport)
+			if strings.Join(got, " ") != "VIBE1503" {
 				t.Fatalf("%s is the panic operation in a spelling the lowering does not support; "+
-					"expected SMITHERS1503, got %v", cell.statement, got)
+					"expected VIBE1503, got %v", cell.statement, got)
 			}
 		})
 	}
 
 	t.Run("at module scope too", func(t *testing.T) {
-		source := "import { panic } from \"smithers:exceptions\"\n\npanic`authored message`\n"
-		got := smithersDiagnosticCodes(t, backend, ctx, source, layerSupport)
-		if strings.Join(got, " ") != "SMITHERS1503" {
-			t.Fatalf("expected SMITHERS1503 at module scope, got %v", got)
+		source := "import { panic } from \"vibelang:exceptions\"\n\npanic`authored message`\n"
+		got := vibelangDiagnosticCodes(t, backend, ctx, source, layerSupport)
+		if strings.Join(got, " ") != "VIBE1503" {
+			t.Fatalf("expected VIBE1503 at module scope, got %v", got)
 		}
 	})
 
@@ -426,7 +426,7 @@ func TestPinnedForkPanicIsACallAndNotATemplateTag(t *testing.T) {
 	for _, cell := range accepted {
 		t.Run("the name stays resolvable: "+cell.name, func(t *testing.T) {
 			source := panicTagModule(cell.declarations, "  "+cell.statement+"\n")
-			if got := smithersDiagnosticCodes(t, backend, ctx, source, layerSupport); len(got) != 0 {
+			if got := vibelangDiagnosticCodes(t, backend, ctx, source, layerSupport); len(got) != 0 {
 				t.Fatalf("%s is a CALL and must stay accepted, but reported %v", cell.statement, got)
 			}
 		})
@@ -458,7 +458,7 @@ func TestPinnedForkPanicIsACallAndNotATemplateTag(t *testing.T) {
 
 	for _, guard := range guards {
 		t.Run("acceptance guard: "+guard.name, func(t *testing.T) {
-			if got := smithersDiagnosticCodes(t, backend, ctx, guard.source, layerSupport); len(got) != 0 {
+			if got := vibelangDiagnosticCodes(t, backend, ctx, guard.source, layerSupport); len(got) != 0 {
 				t.Fatalf("this tag is not the panic intrinsic and must stay accepted, but reported %v; "+
 					"a rule widened to 'any tag named panic' fails exactly here and nowhere else", got)
 			}
@@ -471,7 +471,7 @@ func TestPinnedForkPanicIsACallAndNotATemplateTag(t *testing.T) {
 	// capability-argument binding needs.
 	t.Run("KNOWN RESIDUAL: a let alias used as a tag is still accepted", func(t *testing.T) {
 		source := panicTagModule("let p = panic\n", "  p`authored message`\n")
-		if got := smithersDiagnosticCodes(t, backend, ctx, source, layerSupport); len(got) != 0 {
+		if got := vibelangDiagnosticCodes(t, backend, ctx, source, layerSupport); len(got) != 0 {
 			t.Fatalf("this residual is recorded as ACCEPTED; if it now reports %v the const-only "+
 				"binding step moved and every walk that shares it must move together", got)
 		}
@@ -479,6 +479,6 @@ func TestPinnedForkPanicIsACallAndNotATemplateTag(t *testing.T) {
 }
 
 func panicTagModule(declarations, statement string) string {
-	return "import { panic } from \"smithers:exceptions\"\n\n" + declarations +
+	return "import { panic } from \"vibelang:exceptions\"\n\n" + declarations +
 		"\n/** @throws {never} */\nexport function boom(): void {\n" + statement + "}\n\nboom()\n"
 }

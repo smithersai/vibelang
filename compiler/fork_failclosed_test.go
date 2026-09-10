@@ -23,14 +23,14 @@ import (
 // The authored positions are read off the source text in the case tables, not
 // copied out of an implementation run.
 
-// failClosedCase is one authored `.sm` program and the observation it must
+// failClosedCase is one authored `.vibe` program and the observation it must
 // produce. `reject` lists every diagnostic the program must produce, as
 // `CODE@line:column`; an empty list means the program must compile and run.
 type failClosedCase struct {
 	name    string
 	source  string
 	support string   // optional foreign `.ts` module compiled as `foreign.ts`
-	modules []string // optional extra `.sm` modules, as "name.sm\x00text"
+	modules []string // optional extra `.vibe` modules, as "name.vibe\x00text"
 	reject  []string
 	stdout  string // required output when the program must be accepted
 }
@@ -40,13 +40,13 @@ func runFailClosedCases(t *testing.T, cases []failClosedCase) {
 	backend, ctx := newPinnedTestBackend(t)
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: testCase.source}}
+			files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: testCase.source}}
 			if testCase.support != "" {
 				files = append(files, SourceFile{Path: "foreign.ts", Kind: FileKindTypeScript, Text: testCase.support})
 			}
 			for _, module := range testCase.modules {
 				name, text, _ := strings.Cut(module, "\x00")
-				files = append(files, SourceFile{Path: name, Kind: FileKindSmithers, Text: text})
+				files = append(files, SourceFile{Path: name, Kind: FileKindVibeLang, Text: text})
 			}
 			rootNames := make([]string, 0, len(files))
 			for _, file := range files {
@@ -168,7 +168,7 @@ func runEmittedMain(t *testing.T, result CompileResult) string {
 }
 
 // ---------------------------------------------------------------------------
-// Host globals — SMITHERS1601 / SMITHERS1602 / SMITHERS1603
+// Host globals — VIBE1601 / VIBE1602 / VIBE1603
 // ---------------------------------------------------------------------------
 
 // TestPinnedForkHostGlobalsNeedCapabilities pins the locked rule from
@@ -188,7 +188,7 @@ func TestPinnedForkHostGlobalsNeedCapabilities(t *testing.T) {
 				"  const stamp = Date.now()\n" +
 				"  return [`${stamp}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1602@2:17"},
+			reject: []string{"VIBE1602@2:17"},
 		},
 		{
 			name: "randomness needs Random",
@@ -196,7 +196,7 @@ func TestPinnedForkHostGlobalsNeedCapabilities(t *testing.T) {
 				"  const roll = Math.random()\n" +
 				"  return [`${roll}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1603@2:16"},
+			reject: []string{"VIBE1603@2:16"},
 		},
 		{
 			name: "a bare Date construction reads the clock",
@@ -204,7 +204,7 @@ func TestPinnedForkHostGlobalsNeedCapabilities(t *testing.T) {
 				"  const now = new Date()\n" +
 				"  return [`${now.getTime()}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1602@2:19"},
+			reject: []string{"VIBE1602@2:19"},
 		},
 		{
 			name: "the whole object escaping is charged to the object",
@@ -214,7 +214,7 @@ func TestPinnedForkHostGlobalsNeedCapabilities(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [take(Math)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1603@5:16"},
+			reject: []string{"VIBE1603@5:16"},
 		},
 		{
 			name: "a destructured host-sensitive member is charged",
@@ -222,7 +222,7 @@ func TestPinnedForkHostGlobalsNeedCapabilities(t *testing.T) {
 				"  const { random } = Math\n" +
 				"  return [`${typeof random}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1603@2:22"},
+			reject: []string{"VIBE1603@2:22"},
 		},
 		{
 			name: "platform globals are unavailable outright",
@@ -231,7 +231,7 @@ func TestPinnedForkHostGlobalsNeedCapabilities(t *testing.T) {
 				"  const title = document.title\n" +
 				"  return [platform, title]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1601@2:20", "SMITHERS1601@3:17"},
+			reject: []string{"VIBE1601@2:20", "VIBE1601@3:17"},
 		},
 		{
 			name: "universal facilities stay available",
@@ -272,9 +272,9 @@ func TestPinnedForkHostGlobalsNeedCapabilities(t *testing.T) {
 // the allowlist asserted the opposite of the obligation rather than merely
 // failing to meet it. Each compiled with zero diagnostics and an empty
 // requirement row, in the same file where the `Date.now()` control reported
-// SMITHERS1602.
+// VIBE1602.
 //
-// SMITHERS1605 rather than SMITHERS1601 because 1601's message ends "access it
+// VIBE1605 rather than VIBE1601 because 1601's message ends "access it
 // through a Context capability" and these rows say the opposite in as many
 // words. The accepted rows below are the load-bearing half, exactly as in
 // TestPinnedForkHostGlobalsNeedCapabilities: the rule is about four names, not
@@ -289,7 +289,7 @@ func TestPinnedForkDeterminismHostileGlobalsAreRefused(t *testing.T) {
 				"  const ref = new WeakRef(held)\n" +
 				"  return [`${ref.deref() !== undefined}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1605@3:19"},
+			reject: []string{"VIBE1605@3:19"},
 		},
 		{
 			name: "a FinalizationRegistry observes collection",
@@ -297,7 +297,7 @@ func TestPinnedForkDeterminismHostileGlobalsAreRefused(t *testing.T) {
 				"  const registry = new FinalizationRegistry(() => {})\n" +
 				"  return [`${typeof registry}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1605@2:24"},
+			reject: []string{"VIBE1605@2:24"},
 		},
 		{
 			name: "SharedArrayBuffer is cross-agent shared memory",
@@ -305,7 +305,7 @@ func TestPinnedForkDeterminismHostileGlobalsAreRefused(t *testing.T) {
 				"  const shared = new SharedArrayBuffer(8)\n" +
 				"  return [`${shared.byteLength}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1605@2:22"},
+			reject: []string{"VIBE1605@2:22"},
 		},
 		{
 			name: "an Atomics read observes another agent's schedule",
@@ -313,7 +313,7 @@ func TestPinnedForkDeterminismHostileGlobalsAreRefused(t *testing.T) {
 				"  const view = new Int32Array(8)\n" +
 				"  return [`${Atomics.load(view, 0)}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1605@3:14"},
+			reject: []string{"VIBE1605@3:14"},
 		},
 		{
 			name: "the non-hostile siblings stay available",
@@ -368,7 +368,7 @@ func TestPinnedForkHostGlobalAllowlist(t *testing.T) {
 				"  const list = frames\n" +
 				"  return [`${typeof alias}`, `${typeof frame}`, `${typeof outer}`, `${typeof list}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1601@2:17", "SMITHERS1601@3:17", "SMITHERS1601@4:17", "SMITHERS1601@5:16"},
+			reject: []string{"VIBE1601@2:17", "VIBE1601@3:17", "VIBE1601@4:17", "VIBE1601@5:16"},
 		},
 		{
 			name: "network and thread globals are refused",
@@ -379,7 +379,7 @@ func TestPinnedForkHostGlobalAllowlist(t *testing.T) {
 				"  const thread = Worker\n" +
 				"  return [`${typeof request}`, `${typeof socket}`, `${typeof events}`, `${typeof thread}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1601@2:19", "SMITHERS1601@3:18", "SMITHERS1601@4:18", "SMITHERS1601@5:18"},
+			reject: []string{"VIBE1601@2:19", "VIBE1601@3:18", "VIBE1601@4:18", "VIBE1601@5:18"},
 		},
 		{
 			name: "host identity and host-persistent state are refused",
@@ -390,7 +390,7 @@ func TestPinnedForkHostGlobalAllowlist(t *testing.T) {
 				"  const session = sessionStorage\n" +
 				"  return [`${typeof agent}`, `${typeof here}`, `${typeof durable}`, `${typeof session}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1601@2:17", "SMITHERS1601@3:16", "SMITHERS1601@4:19", "SMITHERS1601@5:19"},
+			reject: []string{"VIBE1601@2:17", "VIBE1601@3:16", "VIBE1601@4:19", "VIBE1601@5:19"},
 		},
 		{
 			name: "the Node global scope and the CommonJS module wrapper are refused",
@@ -407,8 +407,8 @@ func TestPinnedForkHostGlobalAllowlist(t *testing.T) {
 				"    `${typeof published}`, `${typeof directory}`, `${typeof file}`, `${typeof soon}`]\n" +
 				"}\n",
 			reject: []string{
-				"SMITHERS1601@2:17", "SMITHERS1601@3:16", "SMITHERS1601@4:16", "SMITHERS1601@5:19",
-				"SMITHERS1601@6:21", "SMITHERS1601@7:21", "SMITHERS1601@8:16", "SMITHERS1601@9:16",
+				"VIBE1601@2:17", "VIBE1601@3:16", "VIBE1601@4:16", "VIBE1601@5:19",
+				"VIBE1601@6:21", "VIBE1601@7:21", "VIBE1601@8:16", "VIBE1601@9:16",
 			},
 		},
 		{
@@ -420,7 +420,7 @@ func TestPinnedForkHostGlobalAllowlist(t *testing.T) {
 				"  const copy = structuredClone\n" +
 				"  return [`${typeof soon}`, `${typeof cancel}`, `${typeof stop}`, `${typeof copy}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1601@2:16", "SMITHERS1601@3:18", "SMITHERS1601@4:16", "SMITHERS1601@5:16"},
+			reject: []string{"VIBE1601@2:16", "VIBE1601@3:18", "VIBE1601@4:16", "VIBE1601@5:16"},
 		},
 		{
 			// The `new Date(instant)` exemption is about the RUNTIME arity, and
@@ -431,7 +431,7 @@ func TestPinnedForkHostGlobalAllowlist(t *testing.T) {
 				"  const instant: readonly number[] = []\n" +
 				"  return [`${new Date(...(instant as [number])).getTime()}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1602@3:18"},
+			reject: []string{"VIBE1602@3:18"},
 		},
 		{
 			// `new Intl.DateTimeFormat("en").format()` formats *now*, through a
@@ -443,7 +443,7 @@ func TestPinnedForkHostGlobalAllowlist(t *testing.T) {
 			source: "export function main(): string[] {\n" +
 				"  return [new Intl.DateTimeFormat(\"en-US\").format()]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1602@2:15"},
+			reject: []string{"VIBE1602@2:15"},
 		},
 		{
 			// Widened 2026-08-28 with the specification row it mirrors.
@@ -453,7 +453,7 @@ func TestPinnedForkHostGlobalAllowlist(t *testing.T) {
 			// backends and are refused nowhere, and this case did not move when
 			// that landed: a charge publishes a row and emits no diagnostic, and
 			// `main` is called by the emitted scaffolding rather than by a
-			// top-level call, so there is no SMITHERS2102 here and the stdout is
+			// top-level call, so there is no VIBE2102 here and the stdout is
 			// byte-identical to what it was when the row was empty. The
 			// cross-backend pin for the charge itself is
 			// TestPinnedForkAmbientRequirementChargesMatchTheSharedVectors.
@@ -529,11 +529,11 @@ func TestPinnedForkHostGlobalRuleResolvesBySymbolNotSpelling(t *testing.T) {
 		},
 		{
 			name: "an imported binding named Math is not the host global",
-			source: "import { Math } from \"./clock.sm\"\n" +
+			source: "import { Math } from \"./clock.vibe\"\n" +
 				"export function main(): string[] {\n" +
 				"  return [`${Math.random()}`]\n" +
 				"}\n",
-			modules: []string{"clock.sm\x00export const Math = { random: () => 3 }\n"},
+			modules: []string{"clock.vibe\x00export const Math = { random: () => 3 }\n"},
 			stdout:  "3",
 		},
 		{
@@ -553,13 +553,13 @@ func TestPinnedForkHostGlobalRuleResolvesBySymbolNotSpelling(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [shadowed(), `${Math.random()}`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1603@6:26"},
+			reject: []string{"VIBE1603@6:26"},
 		},
 	})
 }
 
 // ---------------------------------------------------------------------------
-// Class `static {}` blocks — SMITHERS1107
+// Class `static {}` blocks — VIBE1107
 // ---------------------------------------------------------------------------
 
 func TestPinnedForkClassStaticBlockIsRejected(t *testing.T) {
@@ -576,7 +576,7 @@ func TestPinnedForkClassStaticBlockIsRejected(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return Registry.entries\n" +
 				"}\n",
-			reject: []string{"SMITHERS1107@3:3"},
+			reject: []string{"VIBE1107@3:3"},
 		},
 		{
 			name: "static field initializers are still accepted",
@@ -594,7 +594,7 @@ func TestPinnedForkClassStaticBlockIsRejected(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Duplicate Error class names — SMITHERS1150
+// Duplicate Error class names — VIBE1150
 // ---------------------------------------------------------------------------
 
 func TestPinnedForkDuplicateErrorClassNameIsRejected(t *testing.T) {
@@ -618,11 +618,11 @@ func TestPinnedForkDuplicateErrorClassNameIsRejected(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [outer().message, inner().message]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1150@9:9"},
+			reject: []string{"VIBE1150@9:9"},
 		},
 		{
 			name: "the same name in two modules keeps its module-qualified row",
-			source: "import { Missing as DirectoryMissing } from \"./directory.sm\"\n" +
+			source: "import { Missing as DirectoryMissing } from \"./directory.vibe\"\n" +
 				"\n" +
 				"export class Missing extends Error {\n" +
 				"  constructor() { super(\"local\") }\n" +
@@ -632,7 +632,7 @@ func TestPinnedForkDuplicateErrorClassNameIsRejected(t *testing.T) {
 				"  const other: Error = new DirectoryMissing()\n" +
 				"  return [new Missing().message, other.message]\n" +
 				"}\n",
-			modules: []string{"directory.sm\x00export class Missing extends Error {\n  constructor() { super(\"directory\") }\n}\n"},
+			modules: []string{"directory.vibe\x00export class Missing extends Error {\n  constructor() { super(\"directory\") }\n}\n"},
 			stdout:  "local\ndirectory",
 		},
 		{
@@ -656,7 +656,7 @@ func TestPinnedForkDuplicateErrorClassNameIsRejected(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Foreign boundaries — SMITHERS1504 / SMITHERS1509
+// Foreign boundaries — VIBE1504 / VIBE1509
 // ---------------------------------------------------------------------------
 
 // failClosedForeign is a trusted foreign module carrying the module-level
@@ -701,7 +701,7 @@ func TestPinnedForkForeignConstructorNeedsThrowsNever(t *testing.T) {
 		{
 			name:    "an untrusted foreign constructor is rejected",
 			support: failClosedForeign,
-			source: "import { Panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic } from \"vibelang:exceptions\"\n" +
 				"import { Counter } from \"./foreign.ts\"\n" +
 				"\n" +
 				"function start(): Result<number, Panic> {\n" +
@@ -712,7 +712,7 @@ func TestPinnedForkForeignConstructorNeedsThrowsNever(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [start().match({ ok: (value) => `${value}`, error: () => \"panic\" })]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1504@5:19"},
+			reject: []string{"VIBE1504@5:19"},
 		},
 		{
 			name:    "a checker-resolved @throws never constructor is accepted",
@@ -745,7 +745,7 @@ func TestPinnedForkCallbackEscapingIntoForeignCodeIsRejected(t *testing.T) {
 		{
 			name:    "an inline callback handed to foreign code is rejected",
 			support: failClosedForeign,
-			source: "import { Panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic } from \"vibelang:exceptions\"\n" +
 				"import { applyTwice } from \"./foreign.ts\"\n" +
 				"\n" +
 				"function bump(value: number): Result<number, Panic> {\n" +
@@ -755,12 +755,12 @@ func TestPinnedForkCallbackEscapingIntoForeignCodeIsRejected(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [bump(21).match({ ok: (value) => `${value}`, error: () => \"panic\" })]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1509@5:28"},
+			reject: []string{"VIBE1509@5:28"},
 		},
 		{
 			name:    "a named callback reaches the same rule through its symbol",
 			support: failClosedForeign,
-			source: "import { Panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic } from \"vibelang:exceptions\"\n" +
 				"import { applyTwice } from \"./foreign.ts\"\n" +
 				"\n" +
 				"const step = (input: number): number => input + 1\n" +
@@ -772,7 +772,7 @@ func TestPinnedForkCallbackEscapingIntoForeignCodeIsRejected(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [bump(21).match({ ok: (value) => `${value}`, error: () => \"panic\" })]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1509@7:28"},
+			reject: []string{"VIBE1509@7:28"},
 		},
 		{
 			name:    "an ordinary data argument crosses the same boundary freely",
@@ -799,7 +799,7 @@ func TestPinnedForkCallbackEscapingIntoForeignCodeIsRejected(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Async callback ownership — SMITHERS1404
+// Async callback ownership — VIBE1404
 // ---------------------------------------------------------------------------
 
 func TestPinnedForkUnownedAsyncCallbackIsRejected(t *testing.T) {
@@ -819,7 +819,7 @@ func TestPinnedForkUnownedAsyncCallbackIsRejected(t *testing.T) {
 				"  })\n" +
 				"  return seen\n" +
 				"}\n",
-			reject: []string{"SMITHERS1404@8:21"},
+			reject: []string{"VIBE1404@8:21"},
 		},
 		{
 			name: "a synchronous callback starts no Promise and is accepted",
@@ -889,13 +889,13 @@ export interface Settings {
 		},
 		{
 			// Two independent defects, not one and a cascade. The module edge has no
-			// trust claim (SMITHERS1510), AND the unannotated foreign call lifts to
+			// trust claim (VIBE1510), AND the unannotated foreign call lifts to
 			// `Result<string, Panic>` which this `string[]` return drops
-			// (SMITHERS1301) — specification/type-system.mdx:60 and :56, neither of
+			// (VIBE1301) — specification/type-system.mdx:60 and :56, neither of
 			// which is conditioned on the trust of the edge the call arrived
 			// through. 09-foreign-calls/the-never-annotation-is-case-sensitive is
 			// the control: the same call shape over a module with a genuine trust
-			// header is charged SMITHERS1301 at the same position on both backends.
+			// header is charged VIBE1301 at the same position on both backends.
 			name:    "a value import of the same module still needs the trust claim",
 			support: untrusted,
 			source: "import { shout } from \"./foreign.ts\"\n" +
@@ -903,7 +903,7 @@ export interface Settings {
 				"export function main(): string[] {\n" +
 				"  return [shout(\"ada\")]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1510@1:23", "SMITHERS1301@4:11"},
+			reject: []string{"VIBE1510@1:23", "VIBE1301@4:11"},
 		},
 	})
 }

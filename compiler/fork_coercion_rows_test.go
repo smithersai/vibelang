@@ -58,7 +58,7 @@ import (
 // coercionSeam declares the capability and every member shape the walk has to
 // tell apart. It is a separate module so the members are ordinary cross-module
 // checked functions, exactly as an authored program would have them.
-const coercionSeam = "seam.mod.sm\x00" + `import { Context } from "smthrs/context"
+const coercionSeam = "seam.mod.vibe\x00" + `import { Context } from "vibelang/context"
 
 export abstract class Db extends Context {
   abstract read(): string
@@ -139,7 +139,7 @@ var coercionPositions = []struct {
 	{"Math.max, second argument", "const v = Math.max(0, numeric as unknown as number)\n"},
 	{"parentheses", "const v = +(numeric)\n"},
 	{"a type assertion", "const v = +(numeric as unknown as number)\n"},
-	{"a satisfies expression", "const v = +(numeric satisfies { valueOf(): number })\n"},
+	{"a satisfies expression preserving the member row", "const v = +(numeric satisfies typeof numeric)\n"},
 	{"an alias", "const held = numeric\nconst v = +held\n"},
 	{"a property of an object literal", "const holder = { inner: numeric }\nconst v = +holder.inner\n"},
 	{"a ternary", "const v = +(true ? numeric : numeric)\n"},
@@ -164,7 +164,7 @@ var coercionStringPositions = []struct {
 }
 
 func coercionModule(body string, imports string) string {
-	return "import { " + imports + " } from \"./seam.mod.sm\"\n" +
+	return "import { " + imports + " } from \"./seam.mod.vibe\"\n" +
 		body +
 		"export function main(): string[] {\n  return [`${v}`]\n}\n"
 }
@@ -176,11 +176,11 @@ func coercionCodes(t *testing.T, backend Compiler, ctx context.Context, source s
 	t.Helper()
 	name, text, _ := strings.Cut(coercionSeam, "\x00")
 	files := []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: source},
-		{Path: name, Kind: FileKindSmithers, Text: text},
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: source},
+		{Path: name, Kind: FileKindVibeLang, Text: text},
 	}
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm", name},
+		RootNames: []string{"main.vibe", name},
 		Files:     files,
 		Options:   Options{},
 		Lowering:  LoweringInternal,
@@ -205,7 +205,7 @@ func coercionCodes(t *testing.T, backend Compiler, ctx context.Context, source s
 // assertion. It is an equality against `obj.valueOf()` rather than a
 // per-operator code list on purpose: the property being pinned is that a
 // coercion POSITION is an ordinary call, not that `+obj` happens to report
-// SMITHERS2102 today.
+// VIBE2102 today.
 func TestPinnedForkCoercionPositionAnswersLikeTheExplicitCall(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 	for _, table := range []struct {
@@ -223,12 +223,12 @@ func TestPinnedForkCoercionPositionAnswersLikeTheExplicitCall(t *testing.T) {
 			control := coercionCodes(t, backend, ctx, coercionModule(table.positions[0].body, table.imports))
 			found := false
 			for _, code := range control {
-				if code == "SMITHERS2102" {
+				if code == "VIBE2102" {
 					found = true
 				}
 			}
 			if !found {
-				t.Fatalf("the explicit-call control must already report SMITHERS2102, but reported %v; "+
+				t.Fatalf("the explicit-call control must already report VIBE2102, but reported %v; "+
 					"an accepting baseline would make every equality below vacuous", control)
 			}
 			for _, position := range table.positions[1:] {
@@ -245,6 +245,17 @@ func TestPinnedForkCoercionPositionAnswersLikeTheExplicitCall(t *testing.T) {
 	}
 }
 
+func TestPinnedForkCoercionAnnotationCannotEraseTheMemberRequirement(t *testing.T) {
+	backend, ctx := newPinnedTestBackend(t)
+	// Unlike the preserving wrapper in the position matrix, this annotation
+	// claims an empty row. The coercion still charges Db; satisfying a smaller
+	// callable contract is an independent type error, even behind `satisfies`.
+	got := coercionCodes(t, backend, ctx, coercionModule("const v = +(numeric satisfies { valueOf(): number })\n", "numeric"))
+	if strings.Join(got, " ") != "VIBE1808 VIBE2102" {
+		t.Fatalf("row-erasing coercion annotation: got %v, want VIBE1808 and VIBE2102", got)
+	}
+}
+
 // TestPinnedForkCoercionWalksOrdinaryToPrimitive pins the walk in BOTH
 // directions. The accepting rows are the load-bearing ones: they are the
 // programs a flattened "charge all three members" would refuse, and they RUN.
@@ -253,35 +264,35 @@ func TestPinnedForkCoercionWalksOrdinaryToPrimitive(t *testing.T) {
 		{
 			name:    "a number hint over a valueOf-only object charges valueOf",
 			modules: []string{coercionSeam},
-			source:  "import { numeric } from \"./seam.mod.sm\"\nconst v = +numeric\nexport function main(): string[] {\n  return [`${v}`]\n}\n",
-			reject:  []string{"SMITHERS2102@2:12"},
+			source:  "import { numeric } from \"./seam.mod.vibe\"\nconst v = +numeric\nexport function main(): string[] {\n  return [`${v}`]\n}\n",
+			reject:  []string{"VIBE2102@2:12"},
 		},
 		{
 			// Object.prototype.valueOf returns the object ITSELF, so the number
 			// hint does not stop there and really does run `toString`.
 			name:    "a number hint over a toString-only object falls through to toString",
 			modules: []string{coercionSeam},
-			source:  "import { stringy } from \"./seam.mod.sm\"\nconst v = +(stringy as unknown as number)\nexport function main(): string[] {\n  return [`${v}`]\n}\n",
-			reject:  []string{"SMITHERS2102@2:12"},
+			source:  "import { stringy } from \"./seam.mod.vibe\"\nconst v = +(stringy as unknown as number)\nexport function main(): string[] {\n  return [`${v}`]\n}\n",
+			reject:  []string{"VIBE2102@2:12"},
 		},
 		{
 			// Object.prototype.toString answers, so the string hint stops there
 			// and `valueOf` is unreachable. The program prints `[object Object]`.
 			name:    "a string hint over a valueOf-only object charges NOTHING and runs",
 			modules: []string{coercionSeam},
-			source:  "import { numeric } from \"./seam.mod.sm\"\nexport function main(): string[] {\n  return [`${numeric}`]\n}\n",
+			source:  "import { numeric } from \"./seam.mod.vibe\"\nexport function main(): string[] {\n  return [`${numeric}`]\n}\n",
 			stdout:  "[object Object]",
 		},
 		{
 			name:    "String over a valueOf-only object charges NOTHING and runs",
 			modules: []string{coercionSeam},
-			source:  "import { numeric } from \"./seam.mod.sm\"\nexport function main(): string[] {\n  return [String(numeric)]\n}\n",
+			source:  "import { numeric } from \"./seam.mod.vibe\"\nexport function main(): string[] {\n  return [String(numeric)]\n}\n",
 			stdout:  "[object Object]",
 		},
 		{
 			name:    "an element-access key over a valueOf-only object charges NOTHING and runs",
 			modules: []string{coercionSeam},
-			source: "import { numeric } from \"./seam.mod.sm\"\n" +
+			source: "import { numeric } from \"./seam.mod.vibe\"\n" +
 				"export function main(): string[] {\n" +
 				"  const table: Record<string, number> = { a: 1 }\n" +
 				"  return [`${table[numeric as unknown as string] ?? 0}`]\n" +
@@ -293,24 +304,24 @@ func TestPinnedForkCoercionWalksOrdinaryToPrimitive(t *testing.T) {
 			// TypeScript accepts, and then the string hint reaches `valueOf`.
 			name:    "a string hint falls through a toString that does not answer",
 			modules: []string{coercionSeam},
-			source:  "import { fallsThrough } from \"./seam.mod.sm\"\nconst v = `x${fallsThrough}`\nexport function main(): string[] {\n  return [v]\n}\n",
-			reject:  []string{"SMITHERS2102@2:15"},
+			source:  "import { fallsThrough } from \"./seam.mod.vibe\"\nconst v = `x${fallsThrough}`\nexport function main(): string[] {\n  return [v]\n}\n",
+			reject:  []string{"VIBE2102@2:15"},
 		},
 		{
-			// `!` is deliberately NOT stripped by `charge`: in `.sm` it is the
+			// `!` is deliberately NOT stripped by `charge`: in `.vibe` it is the
 			// checked propagation boundary and it really does change the value.
-			// The row still travels through it; SMITHERS1207 is the separate
+			// The row still travels through it; VIBE1207 is the separate
 			// rule that refuses `!` over a value that is not a Result.
 			name:    "a non-null assertion keeps the row and adds its own rule",
 			modules: []string{coercionSeam},
-			source:  "import { numeric } from \"./seam.mod.sm\"\nconst v = +numeric!\nexport function main(): string[] {\n  return [`${v}`]\n}\n",
-			reject:  []string{"SMITHERS1207@2:12", "SMITHERS2102@2:12"},
+			source:  "import { numeric } from \"./seam.mod.vibe\"\nconst v = +numeric!\nexport function main(): string[] {\n  return [`${v}`]\n}\n",
+			reject:  []string{"VIBE1207@2:12", "VIBE2102@2:12"},
 		},
 		{
 			name:    "Symbol.toPrimitive shadows valueOf and toString",
 			modules: []string{coercionSeam},
-			source:  "import { exotic } from \"./seam.mod.sm\"\nconst v = +exotic\nexport function main(): string[] {\n  return [`${v}`]\n}\n",
-			reject:  []string{"SMITHERS2102@2:12"},
+			source:  "import { exotic } from \"./seam.mod.vibe\"\nconst v = +exotic\nexport function main(): string[] {\n  return [`${v}`]\n}\n",
+			reject:  []string{"VIBE2102@2:12"},
 		},
 	})
 }
@@ -324,15 +335,15 @@ func TestPinnedForkInstanceofChargesSymbolHasInstance(t *testing.T) {
 		{
 			name:    "instanceof charges the right operand's Symbol.hasInstance",
 			modules: []string{coercionSeam},
-			source: "import { matcher } from \"./seam.mod.sm\"\n" +
+			source: "import { matcher } from \"./seam.mod.vibe\"\n" +
 				"const v = ({} as unknown) instanceof matcher\n" +
 				"export function main(): string[] {\n  return [`${v}`]\n}\n",
-			reject: []string{"SMITHERS2102@2:38"},
+			reject: []string{"VIBE2102@2:38"},
 		},
 		{
 			name:    "instanceof does NOT charge a static toString, and the program runs",
 			modules: []string{coercionSeam},
-			source: "import { Named } from \"./seam.mod.sm\"\n" +
+			source: "import { Named } from \"./seam.mod.vibe\"\n" +
 				"export function main(): string[] {\n" +
 				"  return [`${new Named() instanceof Named}`]\n" +
 				"}\n",
@@ -349,25 +360,25 @@ func TestPinnedForkObjectSpreadRunsItsOwnEnumerableGetters(t *testing.T) {
 		{
 			name:    "an object spread runs the value's own enumerable getters",
 			modules: []string{coercionSeam},
-			source: "import { boxed } from \"./seam.mod.sm\"\n" +
+			source: "import { boxed } from \"./seam.mod.vibe\"\n" +
 				"const copy = { ...boxed }\n" +
 				"export function main(): string[] {\n  return [`${copy.size}`]\n}\n",
-			reject: []string{"SMITHERS2102@2:19"},
+			reject: []string{"VIBE2102@2:19"},
 		},
 		{
 			name:    "a rest destructuring runs them too",
 			modules: []string{coercionSeam},
-			source: "import { boxed } from \"./seam.mod.sm\"\n" +
+			source: "import { boxed } from \"./seam.mod.vibe\"\n" +
 				"const { ...rest } = boxed\n" +
 				"export function main(): string[] {\n  return [`${rest.size}`]\n}\n",
-			reject: []string{"SMITHERS2102@2:9"},
+			reject: []string{"VIBE2102@2:9"},
 		},
 		{
 			// A getter declared in a CLASS body lives on the prototype, is not
 			// an own property, and is not copied. Charging it would refuse this.
 			name:    "a class PROTOTYPE getter is not an own property, and the spread runs",
 			modules: []string{coercionSeam},
-			source: "import { Prototyped } from \"./seam.mod.sm\"\n" +
+			source: "import { Prototyped } from \"./seam.mod.vibe\"\n" +
 				"export function main(): string[] {\n" +
 				"  const copy = { ...new Prototyped() }\n" +
 				"  return [`${Object.keys(copy).length}`]\n" +
@@ -406,7 +417,7 @@ func TestPinnedForkCoercionPositionsStayUsable(t *testing.T) {
 			// governs both halves of the rule.
 			name:    "a tagged template does NOT coerce its substitutions, and the program runs",
 			modules: []string{coercionSeam},
-			source: "import { stringy } from \"./seam.mod.sm\"\n" +
+			source: "import { stringy } from \"./seam.mod.vibe\"\n" +
 				"/** @throws {never} */\n" +
 				"function tag(parts: TemplateStringsArray, ...values: unknown[]): string {\n" +
 				"  return parts.raw.join(\"|\") + values.length\n" +
@@ -420,7 +431,7 @@ func TestPinnedForkCoercionPositionsStayUsable(t *testing.T) {
 			// ToBoolean, SameValueZero and strict equality run no user code.
 			name:    "strict equality, truthiness and switch run no member",
 			modules: []string{coercionSeam},
-			source: "import { numeric } from \"./seam.mod.sm\"\n" +
+			source: "import { numeric } from \"./seam.mod.vibe\"\n" +
 				"export function main(): string[] {\n" +
 				"  const strict = (numeric as unknown) === 1\n" +
 				"  const truthy = numeric ? 1 : 0\n" +
@@ -434,7 +445,7 @@ func TestPinnedForkCoercionPositionsStayUsable(t *testing.T) {
 			// never coerce it. The position table omits them deliberately.
 			name:    "the selecting operators run no member",
 			modules: []string{coercionSeam},
-			source: "import { numeric } from \"./seam.mod.sm\"\n" +
+			source: "import { numeric } from \"./seam.mod.vibe\"\n" +
 				"export function main(): string[] {\n" +
 				"  const chosen = (numeric ?? numeric) && (true ? numeric : numeric)\n" +
 				"  return [`${typeof chosen}${!numeric}`]\n" +
@@ -446,7 +457,7 @@ func TestPinnedForkCoercionPositionsStayUsable(t *testing.T) {
 			// an ordinary call and charges nothing of the ambient rule.
 			name:    "a local binding named Number is an ordinary call",
 			modules: []string{coercionSeam},
-			source: "import { numeric } from \"./seam.mod.sm\"\n" +
+			source: "import { numeric } from \"./seam.mod.vibe\"\n" +
 				"function Number(value: unknown): number { return 42 }\n" +
 				"export function main(): string[] {\n" +
 				"  return [`${Number(numeric)}`]\n" +
@@ -465,20 +476,20 @@ func TestPinnedForkCoercionRowReachesTheProvideSite(t *testing.T) {
 		{
 			name:    "a provide site sees a requirement only a coercion introduces",
 			modules: []string{coercionSeam},
-			source: "import { Context } from \"smthrs/context\"\n" +
-				"import { Layer } from \"smthrs/provider\"\n" +
-				"import { numeric } from \"./seam.mod.sm\"\n" +
+			source: "import { Context } from \"vibelang/context\"\n" +
+				"import { Layer } from \"vibelang/provider\"\n" +
+				"import { numeric } from \"./seam.mod.vibe\"\n" +
 				"abstract class Label extends Context {\n  abstract text(): string\n}\n" +
 				"function measure(): string {\n  return `${Label.context().text()}${+numeric}`\n}\n" +
 				"const label: Label = { text: () => \"t\" }\n" +
 				"export const lines = Layer.provide(Layer.succeed(Label, label), () => [measure()])\n",
-			reject: []string{"SMITHERS2101@11:22"},
+			reject: []string{"VIBE2101@11:22"},
 		},
 		{
 			name:    "a satisfied coercion requirement runs",
 			modules: []string{coercionSeam},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Db, numeric } from \"./seam.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Db, numeric } from \"./seam.mod.vibe\"\n" +
 				"function measure(): number {\n  return +numeric\n}\n" +
 				"const db: Db = { read: () => \"DBX\" }\n" +
 				"export function main(): string[] {\n" +

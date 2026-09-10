@@ -1,0 +1,23 @@
+{
+  "spec": "specification/effects.mdx, What This Page Does Not Add, rule 4; specification/failures.mdx, enclosing-member disqualification",
+  "prelude": "import { Context } from 'vibelang/context'; import { Layer } from 'vibelang/provider'; abstract class C extends Context { abstract value(): number }\n",
+  "cases": [
+    { "name": "direct requirement", "source": "function* values() { yield C.context().value(); }", "refuse": true },
+    { "name": "transitive requirement", "source": "function read() { return C.context().value() } function* values() { yield read(); }", "refuse": true },
+    { "name": "callback requirement", "source": "function* values() { yield [1].map(() => C.context().value()); }", "refuse": true },
+    { "name": "generator expression", "source": "const values = function*() { yield C.context().value(); };", "refuse": true },
+    { "name": "object generator method", "source": "const api = { *values() { yield C.context().value(); } };", "refuse": true },
+    { "name": "class generator method", "source": "class API { *values() { yield C.context().value(); } }", "refuse": true },
+    { "name": "static generator method", "source": "class API { static *values() { yield C.context().value(); } }", "refuse": true },
+    { "name": "async generator", "source": "async function* values() { await Promise.resolve(); yield C.context().value(); }", "refuse": true },
+    { "name": "computed iterator method", "source": "const api = { *[Symbol.iterator]() { yield C.context().value(); } };", "refuse": true },
+    { "name": "ambient syntax is refused before row inference", "source": "function* values() { yield Date.now(); }", "refuse": true, "code": "VIBE1602", "messageContains": "Clock.context()" },
+    { "name": "cleanup requirement", "source": "function* values() { try { yield 1; } finally { C.context().value(); } }", "refuse": true },
+    { "name": "providing only iterator creation cannot provide resumption", "source": "function* values() { yield C.context().value(); } export function main() { const iterator = Layer.provide(Layer.succeed(C, { value: () => 7 }), () => values()); return iterator.next().value; }", "refuse": true },
+    { "name": "declared failure without a failing body", "source": "class Boom extends Error {} function* values(): Result<number, Boom> { return 1; }", "refuse": true },
+    { "name": "pure generator stays ordinary", "source": "function* values() { yield 1; yield 2; } export function main() { return [...values()].join(','); }", "refuse": false, "expected": "1,2" },
+    { "name": "internally provided requirement leaves an empty row", "source": "function* values() { yield Layer.provide(Layer.succeed(C, { value: () => 7 }), () => C.context().value()); } export function main() { return [...values()].join(','); }", "refuse": false, "expected": "7" },
+    { "name": "ordinary iterator methods may carry provided requirements", "source": "const values = { [Symbol.iterator](): Iterator<number> { return [C.context().value()][Symbol.iterator](); } }; function read() { const [first] = values; let total = 0; for (const value of values) total += value; return [first, total, ...values].join(','); } export function main() { return Layer.provide(Layer.succeed(C, { value: () => 7 }), () => read()); }", "refuse": false, "expected": "7,7,7" },
+    { "name": "ordinary iterator methods retain unsupplied requirements", "source": "const values = { [Symbol.iterator](): Iterator<number> { return [C.context().value()][Symbol.iterator](); } }; function read() { return [...values].join(','); } export const unprovided = read();", "refuse": true, "code": "VIBE2102", "messageContains": "requirements" }
+  ]
+}

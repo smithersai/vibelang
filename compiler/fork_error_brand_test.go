@@ -14,7 +14,7 @@ import (
 //
 // specification/failures.mdx, "Compiler Lifting" (Locked): "Authors MUST NOT
 // need to write `Result.ok(...)` or `Result.err(...)`. Those constructors MUST
-// NOT be part of the ordinary Smithers authoring API."
+// NOT be part of the ordinary VibeLang authoring API."
 //
 // Every claim below is measured by RUNNING the emitted JavaScript, not by
 // reading it, except where the claim is explicitly about the emitted text (the
@@ -123,13 +123,13 @@ export function classify(error: NotFound | Denier): string {
 export function main(): string[] { return [classify(new Denier("k"))]; }
 `,
 			// A bare `instanceof` answered false here and the program died in
-			// smithersMatchFailed: denial is the other half of the same hole,
+			// vibelangMatchFailed: denial is the other half of the same hole,
 			// and it turns a total match into a crash rather than a wrong answer.
 			want: "denier:k",
 		},
 	} {
 		t.Run(item.name, func(t *testing.T) {
-			result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: item.source}})
+			result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: item.source}})
 			texts := requireCleanCompile(t, result)
 			if strings.Contains(texts["main.js"], " instanceof ") {
 				t.Fatalf("handler selection must not be lowered to instanceof:\n%s", texts["main.js"])
@@ -162,7 +162,7 @@ export function lookup(key: string): string {
 }
 `
 	}
-	main := `import { Panic } from "smithers:exceptions"
+	main := `import { Panic } from "vibelang:exceptions"
 import { lookup, Chosen } from "./host.ts"
 
 export function run(key: string): Result<string, Chosen | Panic> {
@@ -199,7 +199,7 @@ export function main(): string[] {
 	} {
 		t.Run(item.name, func(t *testing.T) {
 			result := compileInternalSource(t, []SourceFile{
-				{Path: "main.sm", Kind: FileKindSmithers, Text: main},
+				{Path: "main.vibe", Kind: FileKindVibeLang, Text: main},
 				{Path: "host.ts", Kind: FileKindTypeScript, Text: host(item.class, item.body)},
 			})
 			requireCleanCompile(t, result)
@@ -224,7 +224,7 @@ export function main(): string[] {
 func TestPinnedForkStructurallyIdenticalSiblingsStayDistinguishable(t *testing.T) {
 	t.Run("two same-named classes in two modules", func(t *testing.T) {
 		result := compileInternalSource(t, []SourceFile{
-			{Path: "main.sm", Kind: FileKindSmithers, Text: `import { Missing as PaymentsMissing } from "./payments.sm"
+			{Path: "main.vibe", Kind: FileKindVibeLang, Text: `import { Missing as PaymentsMissing } from "./payments.vibe"
 
 export class Missing extends Error {
     constructor(readonly key: string) { super("local " + key); }
@@ -238,7 +238,7 @@ export function main(): string[] {
     return [classify(new Missing("zoe")), classify(new PaymentsMissing("zoe"))];
 }
 `},
-			{Path: "payments.sm", Kind: FileKindSmithers, Text: `export class Missing extends Error {
+			{Path: "payments.vibe", Kind: FileKindVibeLang, Text: `export class Missing extends Error {
     constructor(readonly key: string) { super("payments has no " + key); }
 }
 `},
@@ -247,14 +247,14 @@ export function main(): string[] {
 		// The identity in the brand is the identity in the registration, so the
 		// nominal key and the wire key cannot drift apart.
 		for _, want := range []string{
-			`export interface Missing extends __SmithersNominalError<"smithers:main.sm:Missing"> {`,
+			`export interface Missing extends __VibeLangNominalError<"vibelang:main.vibe:Missing"> {`,
 		} {
-			if !strings.Contains(texts["main.d.sm.ts"], want) {
-				t.Fatalf("missing %q in declarations:\n%s", want, texts["main.d.sm.ts"])
+			if !strings.Contains(texts["main.d.vibe.ts"], want) {
+				t.Fatalf("missing %q in declarations:\n%s", want, texts["main.d.vibe.ts"])
 			}
 		}
-		if !strings.Contains(texts["payments.d.sm.ts"], `extends __SmithersNominalError<"smithers:payments.sm:Missing">`) {
-			t.Fatalf("payments.sm brand is wrong:\n%s", texts["payments.d.sm.ts"])
+		if !strings.Contains(texts["payments.d.vibe.ts"], `extends __VibeLangNominalError<"vibelang:payments.vibe:Missing">`) {
+			t.Fatalf("payments.vibe brand is wrong:\n%s", texts["payments.d.vibe.ts"])
 		}
 		if got, want := runEmittedMain(t, result), "local:zoe\nfallback:payments has no zoe"; got != want {
 			t.Fatalf("classify = %q, want %q", got, want)
@@ -262,7 +262,7 @@ export function main(): string[] {
 	})
 
 	t.Run("two same-shape classes in one module", func(t *testing.T) {
-		result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: `export class MissingA extends Error {
+		result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: `export class MissingA extends Error {
     constructor(readonly key: string) { super("a " + key); }
 }
 
@@ -280,11 +280,11 @@ export function main(): string[] {
 `}})
 		texts := requireCleanCompile(t, result)
 		for _, want := range []string{
-			`export interface MissingA extends __SmithersNominalError<"smithers:main.sm:MissingA">`,
-			`export interface MissingB extends __SmithersNominalError<"smithers:main.sm:MissingB">`,
+			`export interface MissingA extends __VibeLangNominalError<"vibelang:main.vibe:MissingA">`,
+			`export interface MissingB extends __VibeLangNominalError<"vibelang:main.vibe:MissingB">`,
 		} {
-			if !strings.Contains(texts["main.d.sm.ts"], want) {
-				t.Fatalf("missing %q in declarations:\n%s", want, texts["main.d.sm.ts"])
+			if !strings.Contains(texts["main.d.vibe.ts"], want) {
+				t.Fatalf("missing %q in declarations:\n%s", want, texts["main.d.vibe.ts"])
 			}
 		}
 		if got, want := runEmittedMain(t, result), "a:x\nfallback:b y"; got != want {
@@ -302,7 +302,7 @@ export function main(): string[] {
 	// does not exist on type 'never'", on a program the reference accepts.
 	t.Run("zero-parameter handlers closing over the scrutinee", func(t *testing.T) {
 		result := compileInternalSource(t, []SourceFile{
-			{Path: "main.sm", Kind: FileKindSmithers, Text: `import { Missing as PaymentsMissing } from "./payments.sm"
+			{Path: "main.vibe", Kind: FileKindVibeLang, Text: `import { Missing as PaymentsMissing } from "./payments.vibe"
 
 export class Missing extends Error {
     constructor(readonly key: string) { super("local " + key); }
@@ -319,7 +319,7 @@ export function main(): string[] {
     return [classify(new Missing("zoe")), classify(new PaymentsMissing("zoe"))];
 }
 `},
-			{Path: "payments.sm", Kind: FileKindSmithers, Text: `export class Missing extends Error {
+			{Path: "payments.vibe", Kind: FileKindVibeLang, Text: `export class Missing extends Error {
     constructor(readonly key: string) { super("payments has no " + key); }
 }
 `},
@@ -337,7 +337,7 @@ export function main(): string[] {
 	// lowered program checking. This is the residual the reference frontend has
 	// too, pinned here as a working program rather than left to be discovered.
 	t.Run("two subclasses of one branded base", func(t *testing.T) {
-		result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: `export abstract class Family extends Error {}
+		result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: `export abstract class Family extends Error {}
 
 export class Left extends Family {
     constructor(readonly key: string) { super("l " + key); }
@@ -356,12 +356,12 @@ export function main(): string[] {
 }
 `}})
 		texts := requireCleanCompile(t, result)
-		if !strings.Contains(texts["main.d.sm.ts"], `export interface Family extends __SmithersNominalError<"smithers:main.sm:Family">`) {
-			t.Fatalf("the top of the chain must carry the brand:\n%s", texts["main.d.sm.ts"])
+		if !strings.Contains(texts["main.d.vibe.ts"], `export interface Family extends __VibeLangNominalError<"vibelang:main.vibe:Family">`) {
+			t.Fatalf("the top of the chain must carry the brand:\n%s", texts["main.d.vibe.ts"])
 		}
-		for _, unwanted := range []string{"interface Left extends __SmithersNominalError", "interface Right extends __SmithersNominalError"} {
-			if strings.Contains(texts["main.d.sm.ts"], unwanted) {
-				t.Fatalf("a subclass must inherit its ancestor's brand, not carry its own:\n%s", texts["main.d.sm.ts"])
+		for _, unwanted := range []string{"interface Left extends __VibeLangNominalError", "interface Right extends __VibeLangNominalError"} {
+			if strings.Contains(texts["main.d.vibe.ts"], unwanted) {
+				t.Fatalf("a subclass must inherit its ancestor's brand, not carry its own:\n%s", texts["main.d.vibe.ts"])
 			}
 		}
 		if got, want := runEmittedMain(t, result), "left:a\nfallback:r b"; got != want {
@@ -439,7 +439,7 @@ export function main(): string[] { return [classify(new Missing("k"))]; }
 		},
 	} {
 		t.Run(item.name, func(t *testing.T) {
-			result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: item.source}})
+			result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: item.source}})
 			requireCleanCompile(t, result)
 			if got := runEmittedMain(t, result); got != item.want {
 				t.Fatalf("classify = %q, want %q", got, item.want)
@@ -453,7 +453,7 @@ export function main(): string[] { return [classify(new Missing("k"))]; }
 // its type parameter list. Both exclusions are TypeScript's, not the language's,
 // and both match the reference frontend's nominalErrorInterface.
 func TestPinnedForkBrandsExactlyTheClassesTheReferenceBrands(t *testing.T) {
-	result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: `export class FileError extends Error {
+	result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: `export class FileError extends Error {
     constructor(readonly path: string) { super("file " + path); }
 }
 
@@ -470,13 +470,13 @@ export function main(): string[] {
 }
 `}})
 	texts := requireCleanCompile(t, result)
-	declaration := texts["main.d.sm.ts"]
-	if !strings.Contains(declaration, `export interface FileError extends __SmithersNominalError<"smithers:main.sm:FileError">`) {
+	declaration := texts["main.d.vibe.ts"]
+	if !strings.Contains(declaration, `export interface FileError extends __VibeLangNominalError<"vibelang:main.vibe:FileError">`) {
 		t.Fatalf("the base of the chain must be branded:\n%s", declaration)
 	}
 	for _, unwanted := range []string{
-		"interface FileNotFound extends __SmithersNominalError",
-		"interface Parameterized extends __SmithersNominalError",
+		"interface FileNotFound extends __VibeLangNominalError",
+		"interface Parameterized extends __VibeLangNominalError",
 	} {
 		if strings.Contains(declaration, unwanted) {
 			t.Fatalf("unexpected brand %q:\n%s", unwanted, declaration)
@@ -486,10 +486,10 @@ export function main(): string[] {
 	// the two decisions are independent and only the brand has the TypeScript
 	// constraint.
 	for _, want := range []string{
-		`__smithersRegisterError(FileError, "smithers:main.sm:FileError");`,
-		`__smithersRegisterError(FileNotFound, "smithers:main.sm:FileNotFound");`,
-		`__smithersRegisterError(Parameterized, "smithers:main.sm:Parameterized");`,
-		`__smithersRegisterError(Local, "smithers:main.sm:Local");`,
+		`__vibelangRegisterError(FileError, "vibelang:main.vibe:FileError");`,
+		`__vibelangRegisterError(FileNotFound, "vibelang:main.vibe:FileNotFound");`,
+		`__vibelangRegisterError(Parameterized, "vibelang:main.vibe:Parameterized");`,
+		`__vibelangRegisterError(Local, "vibelang:main.vibe:Local");`,
 	} {
 		if !strings.Contains(texts["main.js"], want) {
 			t.Fatalf("missing registration %q:\n%s", want, texts["main.js"])
@@ -501,23 +501,23 @@ export function main(): string[] {
 // mention it at all — not the interface, not the type-only import specifier, and
 // not the `unique symbol` the prelude declares for it.
 func TestPinnedForkNominalBrandLeavesTheEmittedJavaScriptUntouched(t *testing.T) {
-	result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: `export class NotFound extends Error {
+	result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: `export class NotFound extends Error {
     constructor(readonly key: string) { super("not found " + key); }
 }
 
 export function main(): string[] { return [new NotFound("k").message]; }
 `}})
 	texts := requireCleanCompile(t, result)
-	for _, unwanted := range []string{"SmithersNominalError", "smithersNominalErrorBrand"} {
+	for _, unwanted := range []string{"VibeLangNominalError", "vibelangNominalErrorBrand"} {
 		if strings.Contains(texts["main.js"], unwanted) {
 			t.Fatalf("emitted JavaScript must not mention %q:\n%s", unwanted, texts["main.js"])
 		}
-		if strings.Contains(texts["__smithers_prelude.js"], unwanted) {
+		if strings.Contains(texts["__vibelang_prelude.js"], unwanted) {
 			t.Fatalf("emitted prelude JavaScript must not mention %q", unwanted)
 		}
 	}
-	if !strings.Contains(texts["main.d.sm.ts"], `import { type SmithersNominalError as __SmithersNominalError }`) {
-		t.Fatalf("the declaration must carry the brand's type-only import:\n%s", texts["main.d.sm.ts"])
+	if !strings.Contains(texts["main.d.vibe.ts"], `import { type VibeLangNominalError as __VibeLangNominalError }`) {
+		t.Fatalf("the declaration must carry the brand's type-only import:\n%s", texts["main.d.vibe.ts"])
 	}
 }
 
@@ -531,7 +531,7 @@ export function main(): string[] { return [new NotFound("k").message]; }
 // over-corrected.
 func TestPinnedForkGenuineSelectionStillNarrowsAndRuns(t *testing.T) {
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: `import { Missing as Relayed } from "./payments.sm"
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: `import { Missing as Relayed } from "./payments.vibe"
 
 export class NotFound extends Error {
     constructor(readonly key: string) { super("not found " + key); }
@@ -583,7 +583,7 @@ export function main(): string[] {
     ];
 }
 `},
-		{Path: "payments.sm", Kind: FileKindSmithers, Text: `export class Missing extends Error {
+		{Path: "payments.vibe", Kind: FileKindVibeLang, Text: `export class Missing extends Error {
     constructor(readonly key: string) { super("payments has no " + key); }
 }
 `},
@@ -606,39 +606,39 @@ export function main(): string[] {
 // constructors it exports. A Result the compiler did not construct at a checked
 // exit has a failure channel that means nothing, so a program that hand-builds
 // one must not compile.
-func TestPinnedForkAuthoredSmithersCannotReachThePreludeByPath(t *testing.T) {
+func TestPinnedForkAuthoredVibeLangCannotReachThePreludeByPath(t *testing.T) {
 	for _, item := range []struct {
 		name   string
 		source string
 	}{
-		{name: "a direct import", source: `import { SmithersOk, SmithersErr } from "./__smithers_prelude.ts"
+		{name: "a direct import", source: `import { VibeLangOk, VibeLangErr } from "./__vibelang_prelude.ts"
 export function main(): string[] { return ["x"]; }
 `},
-		{name: "a renamed import", source: `import { SmithersOk as Ok } from "./__smithers_prelude.ts"
+		{name: "a renamed import", source: `import { VibeLangOk as Ok } from "./__vibelang_prelude.ts"
 export function main(): string[] { return ["x"]; }
 `},
-		{name: "a namespace import", source: `import * as Prelude from "./__smithers_prelude.ts"
+		{name: "a namespace import", source: `import * as Prelude from "./__vibelang_prelude.ts"
 export function main(): string[] { return ["x"]; }
 `},
-		{name: "a re-export", source: `export { SmithersOk } from "./__smithers_prelude.ts"
+		{name: "a re-export", source: `export { VibeLangOk } from "./__vibelang_prelude.ts"
 export function main(): string[] { return ["x"]; }
 `},
-		{name: "a star re-export", source: `export * from "./__smithers_prelude.ts"
+		{name: "a star re-export", source: `export * from "./__vibelang_prelude.ts"
 export function main(): string[] { return ["x"]; }
 `},
-		{name: "the emitted .js spelling", source: `import { SmithersOk } from "./__smithers_prelude.js"
+		{name: "the emitted .js spelling", source: `import { VibeLangOk } from "./__vibelang_prelude.js"
 export function main(): string[] { return ["x"]; }
 `},
 		{name: "a dynamic import", source: `export async function reach(): Promise<string> {
-    const prelude = await import("./__smithers_prelude.ts");
+    const prelude = await import("./__vibelang_prelude.ts");
     return typeof prelude;
 }
 export function main(): string[] { return ["x"]; }
 `},
 	} {
 		t.Run(item.name, func(t *testing.T) {
-			result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: item.source}})
-			requireDiagnostic(t, result, "SMITHERS1510", "main.sm", "")
+			result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: item.source}})
+			requireDiagnostic(t, result, "VIBE1510", "main.vibe", "")
 		})
 	}
 }
@@ -647,47 +647,47 @@ export function main(): string[] { return ["x"]; }
 // names, which the module-trust rule correctly does not charge — they are the
 // language's own names for a compiler-owned module. What must not be reachable
 // through them is the CONSTRUCTOR, which is what the Locked sentence names.
-func TestPinnedForkAuthoredSmithersCannotReachTheResultConstructors(t *testing.T) {
+func TestPinnedForkAuthoredVibeLangCannotReachTheResultConstructors(t *testing.T) {
 	for _, item := range []struct {
 		name   string
 		source string
 	}{
-		{name: "through smthrs/context", source: `import { SmithersOk } from "smthrs/context"
+		{name: "through vibelang/context", source: `import { VibeLangOk } from "vibelang/context"
 export function main(): string[] { return ["x"]; }
 `},
-		{name: "through smthrs/provider", source: `import { SmithersErr } from "smthrs/provider"
+		{name: "through vibelang/provider", source: `import { VibeLangErr } from "vibelang/provider"
 export function main(): string[] { return ["x"]; }
 `},
-		{name: "through smithers:exceptions", source: `import { SmithersOk, SmithersErr } from "smithers:exceptions"
+		{name: "through vibelang:exceptions", source: `import { VibeLangOk, VibeLangErr } from "vibelang:exceptions"
 export function main(): string[] { return ["x"]; }
 `},
-		{name: "renamed", source: `import { SmithersOk as Ok } from "smithers:exceptions"
+		{name: "renamed", source: `import { VibeLangOk as Ok } from "vibelang:exceptions"
 export function main(): string[] { return ["x"]; }
 `},
-		{name: "re-exported", source: `export { SmithersOk } from "smithers:exceptions"
+		{name: "re-exported", source: `export { VibeLangOk } from "vibelang:exceptions"
 export function main(): string[] { return ["x"]; }
 `},
-		{name: "through a namespace member read", source: `import * as Exceptions from "smithers:exceptions"
-export function main(): string[] { return [typeof Exceptions.SmithersOk]; }
+		{name: "through a namespace member read", source: `import * as Exceptions from "vibelang:exceptions"
+export function main(): string[] { return [typeof Exceptions.VibeLangOk]; }
 `},
 	} {
 		t.Run(item.name, func(t *testing.T) {
-			result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: item.source}})
-			requireDiagnostic(t, result, "SMITHERS1201", "main.sm", "compiler-owned Result constructor")
+			result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: item.source}})
+			requireDiagnostic(t, result, "VIBE1201", "main.vibe", "compiler-owned Result constructor")
 		})
 	}
 
-	// A `.sm` module in the middle of the chain does not launder the
+	// A `.vibe` module in the middle of the chain does not launder the
 	// constructor: the relay is refused where it names it.
 	t.Run("through a re-export chain in a project module", func(t *testing.T) {
 		result := compileInternalSource(t, []SourceFile{
-			{Path: "main.sm", Kind: FileKindSmithers, Text: `import { SmithersOk } from "./relay.sm"
-export function main(): string[] { return [typeof SmithersOk]; }
+			{Path: "main.vibe", Kind: FileKindVibeLang, Text: `import { VibeLangOk } from "./relay.vibe"
+export function main(): string[] { return [typeof VibeLangOk]; }
 `},
-			{Path: "relay.sm", Kind: FileKindSmithers, Text: `export { SmithersOk } from "smithers:exceptions"
+			{Path: "relay.vibe", Kind: FileKindVibeLang, Text: `export { VibeLangOk } from "vibelang:exceptions"
 `},
 		})
-		requireDiagnostic(t, result, "SMITHERS1201", "relay.sm", "compiler-owned Result constructor")
+		requireDiagnostic(t, result, "VIBE1201", "relay.vibe", "compiler-owned Result constructor")
 	})
 }
 
@@ -696,9 +696,9 @@ export function main(): string[] { return [typeof SmithersOk]; }
 // function for the compiler's own emitted code, and a local binding that merely
 // SHARES a name with a compiler constructor is an ordinary value.
 func TestPinnedForkCompilerOwnedModulesStillServeTheirAuthoringSurface(t *testing.T) {
-	result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: `import { Context } from "smthrs/context"
-import { Layer } from "smthrs/provider"
-import { panic, Panic } from "smithers:exceptions"
+	result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: `import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
+import { panic, Panic } from "vibelang:exceptions"
 
 abstract class Clock extends Context {
     abstract now(): number;
@@ -713,7 +713,7 @@ export class Missing extends Error {
 }
 
 // An author's own binding that merely shares a compiler constructor's NAME.
-class SmithersOk {
+class VibeLangOk {
     constructor(readonly label: string) {}
 }
 
@@ -735,7 +735,7 @@ export function main(): string[] {
     const missing = lookup("zoe").match({ ok: (value) => value, error: (error) => error.match({ Missing: (failure) => "missing:" + failure.key }) });
     const timed = Layer.provide(Layer.succeed(Clock, new FixedClock()), () => stamp());
     const defect = Result.try(() => refuse()).match({ ok: () => "no defect", error: (failure) => "defect:" + (failure instanceof Panic) });
-    return [found, missing, timed, defect, new SmithersOk("mine").label];
+    return [found, missing, timed, defect, new VibeLangOk("mine").label];
 }
 `}})
 	requireCleanCompile(t, result)

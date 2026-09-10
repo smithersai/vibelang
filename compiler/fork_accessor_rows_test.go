@@ -2,7 +2,7 @@ package compiler
 
 import "testing"
 
-// An accessor access is an ordinary call, and SMITHERS1802 refuses values.
+// An accessor access is an ordinary call, and VIBE1802 refuses values.
 //
 // specification/requirements.mdx §Inference (normative):
 //
@@ -18,11 +18,11 @@ import "testing"
 // Reading `box.size` CALLS the getter and `box.first = 1` CALLS the setter;
 // neither spelling can name the accessor without running it. So an accessor
 // access is an ordinary call, its row is transitive, and there is nothing for
-// SMITHERS1802 to fail closed on.
+// VIBE1802 to fail closed on.
 //
 // The defect this closes came in two halves that had to move together:
 //
-//  1. SMITHERS1802 refused a cross-module get-only accessor READ, and refused a
+//  1. VIBE1802 refused a cross-module get-only accessor READ, and refused a
 //     cross-module direct call made at module top level — both ordinary calls.
 //  2. No accessor access charged the accessor's row anywhere, on either
 //     backend. A same-module accessor, a setter, and a get/set pair all
@@ -37,7 +37,7 @@ import "testing"
 // directions: the requirement must reach the provide site, and must be
 // discharged there once the layer supplies it.
 func TestPinnedForkAccessorAccessChargesItsRow(t *testing.T) {
-	const seam = "seam.mod.sm\x00" + `import { Context } from "smthrs/context"
+	const seam = "seam.mod.vibe\x00" + `import { Context } from "vibelang/context"
 
 export abstract class Clock extends Context {
   abstract now(): number
@@ -53,41 +53,41 @@ export class Stamp {
 
 export function stamp(): Stamp { return new Stamp() }
 `
-	const imports = "import { Stamp, stamp } from \"./seam.mod.sm\"\n"
+	const imports = "import { Stamp, stamp } from \"./seam.mod.vibe\"\n"
 
 	runFailClosedCases(t, []failClosedCase{
 		{
 			// Every spelling of "read this accessor" at module top level. There
 			// is no enclosing function row to carry the capability, exactly as
-			// for a top-level call — which has always drawn SMITHERS2102.
+			// for a top-level call — which has always drawn VIBE2102.
 			name:    "a top-level getter read reports its unsatisfied requirement",
 			modules: []string{seam},
 			source:  imports + "const value = stamp().value\nexport function main(): string[] {\n  return [`${value}`]\n}\n",
-			reject:  []string{"SMITHERS2102@2:15"},
+			reject:  []string{"VIBE2102@2:15"},
 		},
 		{
 			name:    "a top-level setter write reports its unsatisfied requirement",
 			modules: []string{seam},
 			source:  imports + "const holder = stamp()\nholder.mark = 1\nexport function main(): string[] {\n  return [\"x\"]\n}\n",
-			reject:  []string{"SMITHERS2102@3:1"},
+			reject:  []string{"VIBE2102@3:1"},
 		},
 		{
 			name:    "a top-level get-set pair read reports its unsatisfied requirement",
 			modules: []string{seam},
 			source:  imports + "const value = stamp().pair\nexport function main(): string[] {\n  return [`${value}`]\n}\n",
-			reject:  []string{"SMITHERS2102@2:15"},
+			reject:  []string{"VIBE2102@2:15"},
 		},
 		{
 			name:    "a top-level element access with a literal key reports it too",
 			modules: []string{seam},
 			source:  imports + "const value = stamp()[\"value\"]\nexport function main(): string[] {\n  return [`${value}`]\n}\n",
-			reject:  []string{"SMITHERS2102@2:15"},
+			reject:  []string{"VIBE2102@2:15"},
 		},
 		{
 			name:    "a top-level destructured getter read reports it too",
 			modules: []string{seam},
 			source:  imports + "const { value } = stamp()\nexport function main(): string[] {\n  return [`${value}`]\n}\n",
-			reject:  []string{"SMITHERS2102@2:9"},
+			reject:  []string{"VIBE2102@2:9"},
 		},
 		{
 			// THE GATE. Before the row edge this compiled clean on both
@@ -95,22 +95,22 @@ export function stamp(): Stamp { return new Stamp() }
 			// nothing but the `source.value` read — never reached the closure.
 			name:    "a provide site sees a requirement only an accessor read introduces",
 			modules: []string{seam},
-			source: "import { Context } from \"smthrs/context\"\n" +
-				"import { Layer } from \"smthrs/provider\"\n" +
+			source: "import { Context } from \"vibelang/context\"\n" +
+				"import { Layer } from \"vibelang/provider\"\n" +
 				imports +
 				"abstract class Label extends Context {\n  abstract text(): string\n}\n" +
 				"function readStamp(source: Stamp): string {\n  return `${Label.context().text()}${source.value}`\n}\n" +
 				"const label: Label = { text: () => \"t\" }\n" +
 				"export const lines = Layer.provide(Layer.succeed(Label, label), () => [readStamp(stamp())])\n",
-			reject: []string{"SMITHERS2101@11:22"},
+			reject: []string{"VIBE2101@11:22"},
 		},
 		{
 			// The same program with the capability supplied: the row is
 			// discharged and the accessor runs.
 			name:    "a satisfied accessor requirement runs",
 			modules: []string{seam},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Clock, Stamp, stamp } from \"./seam.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Clock, Stamp, stamp } from \"./seam.mod.vibe\"\n" +
 				"function readStamp(source: Stamp): number {\n  return source.value\n}\n" +
 				"const clock: Clock = { now: () => 7 }\n" +
 				"export function main(): string[] {\n" +
@@ -118,11 +118,11 @@ export function stamp(): Stamp { return new Stamp() }
 			stdout: "7",
 		},
 		{
-			// The exact poc/src/data/hash-set.sm shape: a branded value type
+			// The exact poc/src/data/hash-set.vibe shape: a branded value type
 			// whose members read a sibling module's get-only accessor. Six such
-			// reads were the SMITHERS1802 half of that module's residual errors.
+			// reads were the VIBE1802 half of that module's residual errors.
 			name: "a cross-module get-only accessor read carries no row and runs",
-			modules: []string{"map.mod.sm\x00" + `export class HashMapValue {
+			modules: []string{"map.mod.vibe\x00" + `export class HashMapValue {
   private readonly entries: number[]
   constructor(entries: number[]) { this.entries = entries }
   get size(): number { return this.entries.length }
@@ -130,7 +130,7 @@ export function stamp(): Stamp { return new Stamp() }
 
 export function mapOf(entries: number[]): HashMapValue { return new HashMapValue(entries) }
 `},
-			source: "import { HashMapValue, mapOf } from \"./map.mod.sm\"\n" +
+			source: "import { HashMapValue, mapOf } from \"./map.mod.vibe\"\n" +
 				"class HashSetValue {\n" +
 				"  private readonly backing: HashMapValue\n" +
 				"  constructor(entries: number[]) { this.backing = mapOf(entries) }\n" +
@@ -144,8 +144,8 @@ export function mapOf(entries: number[]): HashMapValue { return new HashMapValue
 		{
 			name:    "a satisfied destructured accessor requirement runs",
 			modules: []string{seam},
-			source: "import { Layer } from \"smthrs/provider\"\n" +
-				"import { Clock, Stamp, stamp } from \"./seam.mod.sm\"\n" +
+			source: "import { Layer } from \"vibelang/provider\"\n" +
+				"import { Clock, Stamp, stamp } from \"./seam.mod.vibe\"\n" +
 				"function readStamp(source: Stamp): number {\n  const { value } = source\n  return value\n}\n" +
 				"const clock: Clock = { now: () => 7 }\n" +
 				"export function main(): string[] {\n" +
@@ -156,10 +156,10 @@ export function mapOf(entries: number[]): HashMapValue { return new HashMapValue
 }
 
 // TestPinnedForkCrossModuleEscapeRefusesValuesNotCalls pins both directions of
-// SMITHERS1802 itself: an ordinary call is accepted wherever its row is
+// VIBE1802 itself: an ordinary call is accepted wherever its row is
 // attributed, and a function that becomes a value is still refused.
 func TestPinnedForkCrossModuleEscapeRefusesValuesNotCalls(t *testing.T) {
-	const registry = "registry.mod.sm\x00" + `export interface Rule {
+	const registry = "registry.mod.vibe\x00" + `export interface Rule {
   readonly name: string
   readonly matches: (value: unknown) => boolean
 }
@@ -170,7 +170,7 @@ export function register(rule: Rule): void { rules.push(rule) }
 
 export function count(): number { return rules.length }
 `
-	const imports = "import { register, count } from \"./registry.mod.sm\"\n"
+	const imports = "import { register, count } from \"./registry.mod.vibe\"\n"
 
 	runFailClosedCases(t, []failClosedCase{
 		{
@@ -214,25 +214,25 @@ export function count(): number { return rules.length }
 			name:    "aliasing a cross-module function to a const is still refused",
 			modules: []string{registry},
 			source:  imports + "export const chosen = count\nexport function main(): string[] {\n  return [`${chosen()}`]\n}\n",
-			reject:  []string{"SMITHERS1802@2:23"},
+			reject:  []string{"VIBE1802@2:23"},
 		},
 		{
 			name:    "handing a cross-module function to a callback argument is still refused",
 			modules: []string{registry},
 			source:  imports + "export function main(): string[] {\n  return [1].map(count).map(String)\n}\n",
-			reject:  []string{"SMITHERS1802@3:18"},
+			reject:  []string{"VIBE1802@3:18"},
 		},
 		{
 			name:    "a cross-module function in an array literal is still refused",
 			modules: []string{registry},
 			source:  imports + "const table = [count]\nexport function main(): string[] {\n  return [`${table.length}`]\n}\n",
-			reject:  []string{"SMITHERS1802@2:16"},
+			reject:  []string{"VIBE1802@2:16"},
 		},
 		{
 			name:    "a cross-module function as an object literal property is still refused",
 			modules: []string{registry},
 			source:  imports + "const table = { run: count }\nexport function main(): string[] {\n  return [`${table.run()}`]\n}\n",
-			reject:  []string{"SMITHERS1802@2:22"},
+			reject:  []string{"VIBE1802@2:22"},
 		},
 		{
 			// `{ count }` carries the same value `{ count: count }` does. The
@@ -242,41 +242,41 @@ export function count(): number { return rules.length }
 			name:    "an object literal shorthand is refused like the explicit spelling",
 			modules: []string{registry},
 			source:  imports + "const table = { count }\nexport function main(): string[] {\n  return [`${table.count()}`]\n}\n",
-			reject:  []string{"SMITHERS1802@2:17"},
+			reject:  []string{"VIBE1802@2:17"},
 		},
 		{
 			name:    "binding a cross-module function is still refused",
 			modules: []string{registry},
 			source:  imports + "const bound = count.bind(null)\nexport function main(): string[] {\n  return [`${bound()}`]\n}\n",
-			reject:  []string{"SMITHERS1802@2:15"},
+			reject:  []string{"VIBE1802@2:15"},
 		},
 		{
 			name:    "a default export expression is still refused",
 			modules: []string{registry},
 			source:  imports + "export default count\nexport function main(): string[] {\n  return [\"x\"]\n}\n",
-			reject:  []string{"SMITHERS1802@2:16"},
+			reject:  []string{"VIBE1802@2:16"},
 		},
 		{
 			// A tagged template is not a CallExpression: no call edge is built
 			// and the callee's row is charged nowhere, so this stays closed.
 			name:    "a tagged template callee is still refused",
-			modules: []string{"tag.mod.sm\x00export function tag(strings: TemplateStringsArray): string { return strings[0] }\n"},
-			source:  "import { tag } from \"./tag.mod.sm\"\nexport function main(): string[] {\n  return [tag`x`]\n}\n",
-			reject:  []string{"SMITHERS1802@3:11"},
+			modules: []string{"tag.mod.vibe\x00export function tag(strings: TemplateStringsArray): string { return strings[0] }\n"},
+			source:  "import { tag } from \"./tag.mod.vibe\"\nexport function main(): string[] {\n  return [tag`x`]\n}\n",
+			reject:  []string{"VIBE1802@3:11"},
 		},
 		{
-			// A parameter default is walked by neither the body pass nor the
-			// top-level passes, so nothing charges the callee's row there.
-			name:    "a cross-module call in a parameter default is still refused",
+			// Parameter defaults contribute to their callee's row, including
+			// ordinary calls across a checked source-module boundary.
+			name:    "a cross-module call in a parameter default is attributed",
 			modules: []string{registry},
 			source:  imports + "export function go(total: number = count()): number {\n  return total\n}\nexport function main(): string[] {\n  return [`${go()}`]\n}\n",
-			reject:  []string{"SMITHERS1802@2:36"},
+			stdout:  "0",
 		},
 		{
 			name:    "a namespace-imported function aliased to a const is still refused",
 			modules: []string{registry},
-			source:  "import * as registry from \"./registry.mod.sm\"\nconst chosen = registry.count\nexport function main(): string[] {\n  return [`${chosen()}`]\n}\n",
-			reject:  []string{"SMITHERS1802@2:25"},
+			source:  "import * as registry from \"./registry.mod.vibe\"\nconst chosen = registry.count\nexport function main(): string[] {\n  return [`${chosen()}`]\n}\n",
+			reject:  []string{"VIBE1802@2:25"},
 		},
 	})
 }

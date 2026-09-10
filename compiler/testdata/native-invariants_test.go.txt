@@ -1,0 +1,502 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"strconv"
+	"strings"
+	"testing"
+	"unicode/utf16"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+)
+
+// Only this Go test build renames the production implementation and installs
+// this wrapper. No public compiler request can select or replace an algorithm.
+var nativeInvariantMint = productionStableErrorIdentity
+
+func TestNativeInvariantExplicitPlanBindings(t *testing.T) {
+	contract := map[string]any{"id": "test/Action", "version": 3,
+		"inputSchema":   durableStructuralSchema("input", map[string]any{"kind": "number"}),
+		"successSchema": durableStructuralSchema("success", map[string]any{"kind": "number"}),
+		"errorSchema":   durableStructuralSchema("error", map[string]any{"kind": "never"})}
+	contract["contractDigest"] = durableDigest(contract)
+	binding := planSourceActionBinding{ModuleSpecifier: "./actions", ExportName: "Work", DescriptorJSON: durableCanonicalJSON(contract)}
+	source := `import {durable} from "vibelang:flows";import {Work} from "./actions";export const Build=durable((n:number)=>{return Work.run(n)})`
+	got, err := compilePlanSource(context.Background(), planSourceRequest{Source: source, FileName: "source.vibe", FlowVersion: 1, Mode: "plan", Actions: []planSourceActionBinding{binding}})
+	if err != nil || got.Status != "plan" {
+		p, _ := buildProject(request{Lowering: "internal", RootNames: []string{"input.vibe"}, Files: []sourceFile{{Path: "input.vibe", Kind: "vibelang", Text: source}}})
+		p.checkedFiles[durableVirtualName] = planSourcePreludeText
+		staged, installErr := installPlanActionBindings(p, []planSourceActionBinding{binding})
+		options, _, _ := compilerOptions(map[string]any{"target": "esnext"})
+		configureInternalModules(options)
+		program := newCheckProgram(options, p)
+		var details []string
+		for _, file := range program.SourceFiles() {
+			if strings.HasPrefix(file.FileName(), "/src/") {
+				details = append(details, file.FileName())
+				for _, imported := range file.Imports() {
+					details = append(details, imported.Text())
+				}
+			}
+		}
+		t.Fatalf("binding failed: %+v err=%v staged=%+v install=%v graph=%v diagnostics=%v", got, err, staged, installErr, details, program.GetSemanticDiagnostics(context.Background(), nil))
+	}
+}
+
+func stableErrorIdentity(sourceName, name string) string {
+	return nativeInvariantMint(sourceName, name)
+}
+
+func historicalInvariantMint(sourceName, name string) string {
+	var normalized strings.Builder
+	for _, unit := range utf16.Encode([]rune(sourceName)) {
+		if isStableIdentityAlphanumeric(unit) || strings.ContainsRune("._/@:+-", rune(unit)) {
+			normalized.WriteRune(rune(unit))
+		} else {
+			normalized.WriteByte('_')
+		}
+	}
+	path := normalized.String()
+	if path != "" && !isStableIdentityAlphanumeric(uint16(path[0])) {
+		path = "source_" + path
+	}
+	units := utf16.Encode([]rune("vibelang:" + path + ":" + name))
+	if len(units) > 256 {
+		units = units[:256]
+	}
+	if len(units) > 0 && units[len(units)-1] >= 0xd800 && units[len(units)-1] <= 0xdbff {
+		units = units[:len(units)-1]
+	}
+	return string(utf16.Decode(units))
+}
+
+func invariantCompile(t *testing.T, names ...string) result {
+	t.Helper()
+	input := request{Lowering: "internal", Options: map[string]any{"target": "esnext"}, RootNames: []string{}, Files: []sourceFile{}}
+	for _, name := range names {
+		input.RootNames = append(input.RootNames, name)
+		input.Files = append(input.Files, sourceFile{Path: name, Kind: "vibelang", Text: "\nexport class Boom extends Error {}\n"})
+	}
+	got, err := compile(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+func invariantCollisions(result result) []diagnostic {
+	found := []diagnostic{}
+	for _, issue := range result.Diagnostics {
+		if issue.Code == "VIBE1151" {
+			found = append(found, issue)
+		}
+	}
+	return found
+}
+
+func TestNativeInvariantNominalCollision(t *testing.T) {
+	nativeInvariantMint = historicalInvariantMint
+	t.Cleanup(func() { nativeInvariantMint = productionStableErrorIdentity })
+	got := invariantCompile(t, "a b.vibe", "a_b.vibe")
+	failures := invariantCollisions(got)
+	if len(failures) != 1 || !got.EmitSkipped || len(got.Artifacts) != 0 {
+		t.Fatalf("collision was not an emission refusal: %+v", got)
+	}
+	issue := failures[0]
+	for _, text := range []string{`Error class "Boom" in "a_b.vibe"`, "cannot receive a stable nominal identity", "vibelang:a_b.vibe:Boom", `"a b.vibe:Boom" already holds`} {
+		if !strings.Contains(issue.Message, text) {
+			t.Fatalf("missing %q in %+v", text, issue)
+		}
+	}
+	if issue.Category != "error" || issue.File != "a_b.vibe" || issue.Span == nil || issue.Span.Start != 1 || issue.Span.Length != len("export class Boom extends Error {}") {
+		t.Fatalf("collision lost the authored declaration position: %+v, span %+v", issue, issue.Span)
+	}
+}
+
+func TestNativeInvariantNominalCompileScope(t *testing.T) {
+	nativeInvariantMint = historicalInvariantMint
+	t.Cleanup(func() { nativeInvariantMint = productionStableErrorIdentity })
+	for _, name := range []string{"a b.vibe", "a_b.vibe"} {
+		got := invariantCompile(t, name)
+		if len(got.Diagnostics) != 0 || got.EmitSkipped {
+			t.Fatalf("separate compile retained another compilation's claims: %+v", got)
+		}
+	}
+	if len(invariantCollisions(invariantCompile(t, "a b.vibe", "a_b.vibe"))) != 1 {
+		t.Fatal("claim map is no longer compile-wide")
+	}
+}
+
+func TestNativeInvariantNominalIdempotence(t *testing.T) {
+	const source = "\nexport class Boom extends Error {}\n"
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/src/a b.vibe", Path: tspath.Path("/src/a b.vibe")}, source, core.ScriptKindTS)
+	class := file.Statements.Nodes[0]
+	claims := map[string]string{}
+	for count := 0; count < 2; count++ {
+		low := &lowerer{file: file, identities: claims}
+		low.claimNominalErrorIdentity(class, "a b.vibe", historicalInvariantMint("a b.vibe", "Boom"))
+		if len(low.reports) != 0 {
+			t.Fatalf("repeat claim was a collision: %+v", low.reports)
+		}
+	}
+	if len(claims) != 1 {
+		t.Fatalf("repeat claim changed inventory: %+v", claims)
+	}
+	conflicting := &lowerer{file: file, identities: claims}
+	conflicting.claimNominalErrorIdentity(class, "a_b.vibe", historicalInvariantMint("a_b.vibe", "Boom"))
+	if len(conflicting.reports) != 1 || conflicting.reports[0].code != "VIBE1151" {
+		t.Fatal("idempotence erased collision detection")
+	}
+}
+
+func TestNativeInvariantNominalProductionControl(t *testing.T) {
+	nativeInvariantMint = productionStableErrorIdentity
+	got := invariantCompile(t, "a b.vibe", "a_b.vibe")
+	if len(got.Diagnostics) != 0 || got.EmitSkipped {
+		t.Fatalf("production algorithm refuses distinct names: %+v", got)
+	}
+	if stableErrorIdentity("a b.vibe", "Boom") == stableErrorIdentity("a_b.vibe", "Boom") {
+		t.Fatal("production identities collided")
+	}
+}
+
+func TestNativeInvariantModuleQualifiers(t *testing.T) {
+	bytes, err := os.ReadFile(os.Getenv("VIBELANG_NATIVE_INVARIANT_VECTORS"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var corpus struct {
+		Vectors []struct {
+			Module    string
+			Qualifier string
+		}
+	}
+	if err := json.Unmarshal(bytes, &corpus); err != nil {
+		t.Fatal(err)
+	}
+	if len(corpus.Vectors) == 0 {
+		t.Fatal("empty qualifier vectors")
+	}
+	seen := map[string]string{}
+	for _, vector := range corpus.Vectors {
+		logical := strings.TrimSuffix(vector.Module, ".vibe")
+		actual := moduleRowQualifier(logical)
+		if actual != vector.Qualifier {
+			t.Fatalf("%q: got %q want %q", vector.Module, actual, vector.Qualifier)
+		}
+		if prior, ok := seen[actual]; ok && prior != vector.Module {
+			t.Fatalf("%q and %q share %q", prior, vector.Module, actual)
+		}
+		seen[actual] = vector.Module
+		units := []uint16{}
+		for offset := 0; offset < len(actual); {
+			if actual[offset] != '+' {
+				units = append(units, uint16(actual[offset]))
+				offset++
+				continue
+			}
+			if offset+5 > len(actual) {
+				t.Fatalf("incomplete qualifier escape: %q", actual)
+			}
+			var value uint16
+			for _, digit := range actual[offset+1 : offset+5] {
+				value <<= 4
+				if digit >= '0' && digit <= '9' {
+					value += uint16(digit - '0')
+				} else if digit >= 'A' && digit <= 'F' {
+					value += uint16(digit - 'A' + 10)
+				} else {
+					t.Fatalf("invalid escape: %q", actual)
+				}
+			}
+			units = append(units, value)
+			offset += 5
+		}
+		if string(utf16.Decode(units)) != logical {
+			t.Fatalf("qualifier lost information: %q -> %q", logical, actual)
+		}
+	}
+}
+
+// Private AST/checker invariants belong beside the native implementation, not
+// in a second compiler API exported to a JavaScript test runner. These helpers
+// use the real production analysis with the checker's actual callback lifetime.
+func invariantAnalysis(t *testing.T, source string, consume func(*internalAuthoredAnalysis)) {
+	t.Helper()
+	project, err := buildProject(request{Lowering: "internal", RootNames: []string{"effects.vibe"},
+		Files: []sourceFile{{Path: "effects.vibe", Kind: "vibelang", Text: source}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	options, issues, err := compilerOptions(map[string]any{"target": "esnext"})
+	if err != nil || len(issues) != 0 {
+		t.Fatalf("options: %v, %v", err, issues)
+	}
+	called := false
+	got, err := withInternalAuthoredAnalysis(context.Background(), options, project, false, nil, func(state *internalAuthoredAnalysis) (result, error) {
+		called = true
+		consume(state)
+		return result{Diagnostics: state.collector.converted, Artifacts: []artifact{}}, nil
+	})
+	if err != nil || !called || len(got.Diagnostics) != 0 {
+		t.Fatalf("analysis not measured: called=%v err=%v diagnostics=%+v", called, err, got.Diagnostics)
+	}
+}
+
+const invariantServiceSource = `
+import { Context } from "vibelang/context"
+abstract class Reader extends Context { abstract read(key: string): string }
+class Missing extends Error {}
+function lookup(key: string): Result<string, Missing> { return key }
+export function run(key: string): Result<string, Missing> {
+  const found = lookup(key)!
+  return Reader.context().read(found)
+}
+`
+
+func invariantEffectNodes(state *internalAuthoredAnalysis) []*ast.Node {
+	nodes := []*ast.Node{}
+	var walk func(*ast.Node) bool
+	walk = func(node *ast.Node) bool {
+		_, context := state.analysis.contextRequirement(node)
+		if context || node.Kind == ast.KindNonNullExpression {
+			nodes = append(nodes, node)
+		}
+		return node.ForEachChild(walk)
+	}
+	walk(state.files[0].AsNode())
+	return nodes
+}
+
+func invariantLowerer(state *internalAuthoredAnalysis) *lowerer {
+	a := state.analysis
+	low := newLowerer(a.checker, a.prelude, a, a.comptime, map[string]string{})
+	low.file = state.files[0]
+	return low
+}
+
+func TestNativeInvariantContextClassification(t *testing.T) {
+	invariantAnalysis(t, invariantServiceSource, func(state *internalAuthoredAnalysis) {
+		if len(state.analysis.reports[state.files[0]]) != 0 {
+			t.Fatalf("valid service diagnostics: %+v", state.analysis.reports)
+		}
+		nodes := invariantEffectNodes(state)
+		if len(nodes) != 2 {
+			t.Fatalf("want get and abort, found %d", len(nodes))
+		}
+		var call *ast.Node
+		for _, node := range nodes {
+			if ast.IsCallExpression(node) {
+				call = node
+			}
+		}
+		receiver, recognized := state.analysis.contextRequirement(call)
+		if !recognized || receiver.kind != contextReceiverCapability || receiver.symbol == nil || receiver.symbol.Name != "Reader" {
+			t.Fatalf("lost nominal Reader receiver: %+v, recognized=%v", receiver, recognized)
+		}
+		// Classifying the same checked node must be idempotent by symbol identity.
+		again, ok := state.analysis.contextRequirement(call)
+		if !ok || again != receiver {
+			t.Fatal("context classification changed on the same node")
+		}
+	})
+	invariantAnalysis(t, `import { Context } from "vibelang/context";
+abstract class Left extends Context { abstract read(): string }
+abstract class Right extends Context { abstract read(): string }
+export function run(flag: boolean): string { const which = flag ? Left : Right; return which.context().read() }`, func(state *internalAuthoredAnalysis) {
+		nodes := invariantEffectNodes(state)
+		if len(nodes) != 1 {
+			t.Fatalf("ambiguous read disappeared: %d", len(nodes))
+		}
+		receiver, recognized := state.analysis.contextRequirement(nodes[0])
+		if !recognized || receiver.kind != contextReceiverAmbiguous || receiver.symbol != nil {
+			t.Fatalf("ambiguous receiver was certified: %+v", receiver)
+		}
+		issues := state.analysis.reports[state.files[0]]
+		if len(issues) != 1 || issues[0].code != "VIBE2106" {
+			t.Fatalf("lost refusal: %+v", issues)
+		}
+		if id := invariantLowerer(state).effectSite(nodes[0], "get"); !strings.HasPrefix(id, "src-") || len(id) != 28 {
+			t.Fatalf("ambiguous node crashed/lost site identity: %q", id)
+		}
+	})
+	invariantAnalysis(t, `class Context { static context(): number { return 1 } }
+export function run(): number { return Context.context() }`, func(state *internalAuthoredAnalysis) {
+		if len(invariantEffectNodes(state)) != 0 {
+			t.Fatal("user-spelled Context became compiler authority")
+		}
+	})
+}
+
+func TestNativeInvariantEffectSiteIdentity(t *testing.T) {
+	var previous []string
+	for attempt := 0; attempt < 2; attempt++ {
+		invariantAnalysis(t, invariantServiceSource, func(state *internalAuthoredAnalysis) {
+			nodes, low := invariantEffectNodes(state), invariantLowerer(state)
+			if len(nodes) != 2 {
+				t.Fatalf("want two actual authored sites, found %d", len(nodes))
+			}
+			ids := []string{}
+			for _, node := range nodes {
+				kind := "abort"
+				if ast.IsCallExpression(node) {
+					kind = "get"
+				}
+				id := low.effectSite(node, kind)
+				if !strings.HasPrefix(id, "src-") || len(id) != 28 {
+					t.Fatalf("invalid site: %q", id)
+				}
+				if low.effectSite(node, kind) != id {
+					t.Fatal("same-node site was not idempotent")
+				}
+				ids = append(ids, id)
+			}
+			if ids[0] == ids[1] {
+				t.Fatal("distinct authored sites share an identity")
+			}
+			if attempt > 0 && strings.Join(ids, ",") != strings.Join(previous, ",") {
+				t.Fatal("recompilation changed identities")
+			}
+			previous = ids
+			get := invariantLowerer(state).effectSite(nodes[0], "get")
+			abort := invariantLowerer(state).effectSite(nodes[0], "abort")
+			if get == abort {
+				t.Fatal("request kind is missing from identity")
+			}
+			// Test the production collision guard without introducing an alternate
+			// public hashing algorithm: install a conflicting recorded owner.
+			conflict := invariantLowerer(state)
+			conflict.effectSiteOwners[get] = nodes[1]
+			conflict.effectSite(nodes[0], "get")
+			if len(conflict.reports) != 1 || conflict.reports[0].code != "VIBE4199" {
+				t.Fatal("site collision was not refused")
+			}
+		})
+	}
+}
+
+func TestNativeInvariantDurableCapabilityClassifier(t *testing.T) {
+	invariantAnalysis(t, `import { Context } from "vibelang/context";
+abstract class Reader extends Context { abstract read(): string }
+abstract class Settings extends Context { abstract readonly retries: number }
+export function service(): Reader { return Reader.context() }
+export function data(): Settings { return Settings.context() }
+export function record(): { readonly retries: number } { return { retries: 3 } }`, func(state *internalAuthoredAnalysis) {
+		contracts := &durableFunctionLowerer{owner: invariantLowerer(state)}
+		measured := 0
+		for _, node := range state.files[0].Statements.Nodes {
+			if !ast.IsFunctionDeclaration(node) {
+				continue
+			}
+			measured++
+			descriptor, err := contracts.durableTypeDescriptor(state.analysis.checker.GetTypeFromTypeNode(node.Type()), node, map[checker.TypeId]bool{}, false)
+			if node.Name().Text() == "record" {
+				if err != nil || descriptor.(map[string]any)["kind"] != "object" {
+					t.Fatalf("plain record codec refused: %v, %+v", err, descriptor)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), "class instances") {
+				t.Fatalf("capability %s acquired a persistence codec: %v, %+v", node.Name().Text(), err, descriptor)
+			}
+		}
+		if measured != 3 {
+			t.Fatalf("codec classifier inventory: %d", measured)
+		}
+	})
+}
+
+func TestNativeInvariantCompilerModuleIdentity(t *testing.T) {
+	var source strings.Builder
+	for index, specifier := range compilerModuleSpecifiers {
+		source.WriteString("import * as M" + string(rune('A'+index)) + " from " + strconv.Quote(specifier) + ";\n")
+	}
+	source.WriteString("export function run(): number { return 1 }\n")
+	invariantAnalysis(t, source.String(), func(state *internalAuthoredAnalysis) {
+		measured := 0
+		for _, node := range state.files[0].Statements.Nodes {
+			if !ast.IsImportDeclaration(node) {
+				continue
+			}
+			measured++
+			if !state.analysis.prelude.isCompilerModuleSpecifier(node.AsImportDeclaration().ModuleSpecifier) {
+				t.Fatalf("compiler module lost its resolved identity: %s", node.AsImportDeclaration().ModuleSpecifier.Text())
+			}
+		}
+		if measured == 0 || measured != len(compilerModuleSpecifiers) {
+			t.Fatalf("module inventory: %d", measured)
+		}
+		alias := state.analysis.prelude.resultAlias
+		if alias == nil || ast.GetSourceFileOfNode(alias).FileName() != preludeVirtualName || preludeVirtualName == preludeLogicalPath {
+			t.Fatal("prelude Result was not identified by the compiler-owned absolute virtual path")
+		}
+	})
+}
+
+func TestNativeInvariantDurableWireCompatibility(t *testing.T) {
+	kind := func(name string) any { return map[string]any{"kind": name} }
+	literal := func(value any) any { return map[string]any{"kind": "literal", "value": value} }
+	array := func(element any) any { return map[string]any{"kind": "array", "element": element} }
+	tuple := func(items ...any) any { return map[string]any{"kind": "tuple", "items": items} }
+	union := func(variants ...any) any { return durableCanonicalUnion(variants) }
+	field := func(name string, optional bool, value any) any {
+		return map[string]any{"name": name, "optional": optional, "value": value}
+	}
+	object := func(fields ...any) any { return map[string]any{"kind": "object", "fields": fields} }
+	nominal := func(identity string, payload any) any {
+		return map[string]any{"kind": "error", "identity": identity, "name": "Error", "payload": payload}
+	}
+	number, str, boolean := kind("number"), kind("string"), kind("boolean")
+	for _, tc := range []struct {
+		name             string
+		actual, expected any
+		fits             bool
+	}{
+		{"equal", number, number, true},
+		{"mismatch", str, number, false},
+		{"unknown", durableUnknownDescriptor{}, number, false},
+		{"unreachable", kind("never"), number, true},
+		{"literal number", literal(float64(2)), number, true},
+		{"literal string", literal("two"), str, true},
+		{"literal boolean", literal(false), boolean, true},
+		{"literal mismatch", literal("two"), number, false},
+		{"literal narrowing", number, literal(float64(2)), false},
+		{"null", literal(nil), kind("null"), true},
+		{"null literal", kind("null"), literal(nil), true},
+		{"union source", union(number, str), union(number, str, boolean), true},
+		{"union partial source", union(number, str), number, false},
+		{"union target", number, union(number, str), true},
+		{"boolean union", boolean, union(literal(false), literal(true)), true},
+		{"arrays", array(literal("x")), array(str), true},
+		{"array mismatch", array(str), array(number), false},
+		{"tuple array", tuple(literal(2), number), array(number), true},
+		{"empty array", tuple(), array(number), true},
+		{"tuple mismatch", tuple(str), array(number), false},
+		{"fixed tuple", tuple(literal(2), literal("x")), tuple(number, str), true},
+		{"tuple length", tuple(number), tuple(number, str), false},
+		{"array is not fixed tuple", array(number), tuple(number), false},
+		{"required", object(field("n", false, literal(2))), object(field("n", false, number)), true},
+		{"missing", object(), object(field("n", false, number)), false},
+		{"optional absent", object(), object(field("n", true, number)), true},
+		{"required to optional", object(field("n", false, number)), object(field("n", true, number)), true},
+		{"optional to required", object(field("n", true, number)), object(field("n", false, number)), false},
+		{"wire rejects width", object(field("n", false, number), field("s", false, str)), object(field("n", false, number)), false},
+		{"nominal payload", nominal("a@Error@1", object(field("n", false, literal(2)))), nominal("a@Error@1", object(field("n", false, number))), true},
+		{"nominal identity", nominal("a@Error@1", object()), nominal("b@Error@1", object()), false},
+	} {
+		if got := durableDescriptorFits(tc.actual, tc.expected); got != tc.fits {
+			t.Errorf("%s: compatibility %v, want %v", tc.name, got, tc.fits)
+		}
+	}
+	actual, expected := literal(2), number
+	for range 66 {
+		actual, expected = array(actual), array(expected)
+	}
+	if durableDescriptorFits(actual, expected) {
+		t.Fatal("compatibility walk exceeded its depth limit")
+	}
+}

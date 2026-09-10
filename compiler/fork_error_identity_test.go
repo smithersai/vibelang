@@ -17,19 +17,19 @@ import (
 // minifier-sensitive constructor name in compiled artifacts." An identity two
 // distinct classes can share is not an identity, and on this backend the failure
 // was a fail-OPEN: the fork compiled the program with zero diagnostics, emitted a
-// plausible artifact, and `smithersRegisterError` threw
+// plausible artifact, and `vibelangRegisterError` threw
 // `stable Error identity ... is already registered` out of the emitted prelude
 // while the module was still loading.
 //
 // Measured on the fork on 2026-08-28, BEFORE the fix, by compiling and reading
-// the emitted `__smithersRegisterError` calls back out:
+// the emitted `__vibelangRegisterError` calls back out:
 //
-//	"a".repeat(250)+".sm", classes Left and Right
-//	  -> __smithersRegisterError(Left,  "smithers:aaa…a")   (256 units)
-//	  -> __smithersRegisterError(Right, "smithers:aaa…a")   (the same 256 units)
+//	"a".repeat(250)+".vibe", classes Left and Right
+//	  -> __vibelangRegisterError(Left,  "vibelang:aaa…a")   (256 units)
+//	  -> __vibelangRegisterError(Right, "vibelang:aaa…a")   (the same 256 units)
 //	  diagnostics: none
-//	files "a b.sm" and "a_b.sm", each declaring Boom
-//	  -> __smithersRegisterError(Boom, "smithers:a_b.sm:Boom")  in BOTH
+//	files "a b.vibe" and "a_b.vibe", each declaring Boom
+//	  -> __vibelangRegisterError(Boom, "vibelang:a_b.vibe:Boom")  in BOTH
 //	  diagnostics: none
 //
 // So the fork reproduced both mechanisms independently; this was not inferred
@@ -74,7 +74,7 @@ func loadIdentityVectors(t *testing.T) []identityVector {
 // `\w` in Go's regexp is ASCII-only, and an Error class name may be any
 // TypeScript identifier — `Café` and `\u{1D401}oom` are both in the corpus — so the
 // class is captured as "everything before the comma" instead.
-var registerErrorCall = regexp.MustCompile(`__smithersRegisterError\(([^,]+), (".*?[^\\]")\);`)
+var registerErrorCall = regexp.MustCompile(`__vibelangRegisterError\(([^,]+), (".*?[^\\]")\);`)
 
 // emittedIdentities maps class name -> registered identity across every artifact
 // of one compilation, decoding the emitted string literal rather than comparing
@@ -83,7 +83,7 @@ func emittedIdentities(t *testing.T, artifacts []Artifact) map[string]string {
 	t.Helper()
 	found := map[string]string{}
 	for _, item := range artifacts {
-		if strings.HasSuffix(item.Path, "__smithers_prelude.js") {
+		if strings.HasSuffix(item.Path, "__vibelang_prelude.js") {
 			continue
 		}
 		for _, match := range registerErrorCall.FindAllStringSubmatch(string(item.Content), -1) {
@@ -149,7 +149,7 @@ func TestPinnedForkNominalErrorIdentityMatchesTheSharedVectors(t *testing.T) {
 			declarations = append(declarations, "export class "+vector.ClassName+" extends Error {}")
 		}
 		result := compileInternalSource(t, []SourceFile{
-			{Path: file, Kind: FileKindSmithers, Text: strings.Join(declarations, "\n") + "\n"},
+			{Path: file, Kind: FileKindVibeLang, Text: strings.Join(declarations, "\n") + "\n"},
 		})
 		if result.EmitSkipped || len(result.Diagnostics) != 0 {
 			t.Fatalf("%q must compile clean: %#v", file, result.Diagnostics)
@@ -181,9 +181,9 @@ func TestPinnedForkNominalErrorIdentityMatchesTheSharedVectors(t *testing.T) {
 // Two Error classes in one long-named module, which the bound used to fold onto
 // one identity by cutting off the class name that discriminates them.
 func TestPinnedForkNominalErrorIdentitySurvivesALongModuleName(t *testing.T) {
-	file := strings.Repeat("a", 250) + ".sm"
+	file := strings.Repeat("a", 250) + ".vibe"
 	result := compileInternalSource(t, []SourceFile{
-		{Path: file, Kind: FileKindSmithers, Text: "export class Left extends Error {}\nexport class Right extends Error {}\n"},
+		{Path: file, Kind: FileKindVibeLang, Text: "export class Left extends Error {}\nexport class Right extends Error {}\n"},
 	})
 	if result.EmitSkipped || len(result.Diagnostics) != 0 {
 		t.Fatalf("project must check clean: %#v", result.Diagnostics)
@@ -205,13 +205,13 @@ func TestPinnedForkNominalErrorIdentitySurvivesALongModuleName(t *testing.T) {
 // class with one name.
 func TestPinnedForkNominalErrorIdentitySeparatesNormalizedModuleNames(t *testing.T) {
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "a b.sm", Kind: FileKindSmithers, Text: "export class Boom extends Error {}\n"},
-		{Path: "a_b.sm", Kind: FileKindSmithers, Text: "export class Boom extends Error {}\n"},
-		// The disambiguation prefix was itself many-to-one: `.a.sm` used to mint
-		// `smithers:source_.a.sm:Boom`, which is exactly what a module literally
-		// named `source_.a.sm` minted.
-		{Path: ".c.sm", Kind: FileKindSmithers, Text: "export class Boom extends Error {}\n"},
-		{Path: "source_.c.sm", Kind: FileKindSmithers, Text: "export class Boom extends Error {}\n"},
+		{Path: "a b.vibe", Kind: FileKindVibeLang, Text: "export class Boom extends Error {}\n"},
+		{Path: "a_b.vibe", Kind: FileKindVibeLang, Text: "export class Boom extends Error {}\n"},
+		// The disambiguation prefix was itself many-to-one: `.a.vibe` used to mint
+		// `vibelang:source_.a.vibe:Boom`, which is exactly what a module literally
+		// named `source_.a.vibe` minted.
+		{Path: ".c.vibe", Kind: FileKindVibeLang, Text: "export class Boom extends Error {}\n"},
+		{Path: "source_.c.vibe", Kind: FileKindVibeLang, Text: "export class Boom extends Error {}\n"},
 	})
 	if result.EmitSkipped || len(result.Diagnostics) != 0 {
 		t.Fatalf("project must check clean: %#v", result.Diagnostics)
@@ -224,10 +224,10 @@ func TestPinnedForkNominalErrorIdentitySeparatesNormalizedModuleNames(t *testing
 	// byte order and UTF-16 order disagree on exactly the inputs this file is full
 	// of (see fork_utf16_order_test.go), and sortUTF16 lives inside the bridge.
 	want := map[string]bool{
-		"smithers:a+0020b.sm:Boom":   true,
-		"smithers:a_b.sm:Boom":       true,
-		"smithers:+002Ec.sm:Boom":    true,
-		"smithers:source_.c.sm:Boom": true,
+		"vibelang:a+0020b.vibe:Boom":   true,
+		"vibelang:a_b.vibe:Boom":       true,
+		"vibelang:+002Ec.vibe:Boom":    true,
+		"vibelang:source_.c.vibe:Boom": true,
 	}
 	for key, identity := range identities {
 		if !want[identity] {
@@ -244,14 +244,14 @@ func TestPinnedForkNominalErrorIdentitySeparatesNormalizedModuleNames(t *testing
 // diagnostics-only test cannot make, and it is the one that was failing.
 func TestPinnedForkNominalErrorIdentityArtifactLoads(t *testing.T) {
 	// 246 units of module name is the narrow window where this is both a genuine
-	// reproduction and stageable. `smithers:` (9) plus 246 plus `:` is exactly the
+	// reproduction and stageable. `vibelang:` (9) plus 246 plus `:` is exactly the
 	// old 256-unit bound, so the previous algorithm cut BOTH class names off
 	// entirely and handed Left and Right one identity; and the longest emitted
-	// artifact name (`<base>.d.sm.ts`, 251 bytes) still fits the filesystem's
+	// artifact name (`<base>.d.vibe.ts`, 251 bytes) still fits the filesystem's
 	// 255-byte per-component limit, so the emit can be staged and executed.
-	file := strings.Repeat("d", 243) + ".sm"
+	file := strings.Repeat("d", 243) + ".vibe"
 	result := compileInternalSource(t, []SourceFile{
-		{Path: file, Kind: FileKindSmithers, Text: `export class Left extends Error {}
+		{Path: file, Kind: FileKindVibeLang, Text: `export class Left extends Error {}
 export class Right extends Error {}
 
 export function main(): string[] {
@@ -260,10 +260,10 @@ export function main(): string[] {
 `},
 	})
 	directory := stageEmitted(t, requireCleanCompileArtifacts(t, result))
-	observed := runRealm(t, directory, "load.mjs", `import { smithersErrorIdentity } from "./__smithers_prelude.js";
+	observed := runRealm(t, directory, "load.mjs", `import { vibelangErrorIdentity } from "./__vibelang_prelude.js";
 import { Left, Right } from "./`+strings.Repeat("d", 243)+`.js";
-const left = smithersErrorIdentity(new Left());
-const right = smithersErrorIdentity(new Right());
+const left = vibelangErrorIdentity(new Left());
+const right = vibelangErrorIdentity(new Right());
 console.log(JSON.stringify({ left, right, distinct: left !== right }));
 `, "")
 	if observed["distinct"] != any(true) {
@@ -275,7 +275,7 @@ console.log(JSON.stringify({ left, right, distinct: left !== right }));
 // The defensive invariant is present
 // ---------------------------------------------------------------------------
 
-// stableErrorIdentity is injective, so SMITHERS1151 cannot fire on today's
+// stableErrorIdentity is injective, so VIBE1151 cannot fire on today's
 // algorithm and no program can be written that trips it. What CAN be asserted
 // without a second copy of the algorithm is that the guard is still wired into
 // the emit path and still shared across the whole compilation, which is the
@@ -292,7 +292,7 @@ func TestForkNominalIdentityGuardIsWiredIntoTheCompileWideEmitPath(t *testing.T)
 		"newLowerer(typeChecker, prelude, analysis, comptime, nominalIdentities)",
 		// And every nominal Error class passes through it.
 		"l.claimNominalErrorIdentity(node, logical, identity)",
-		`l.report(node, "SMITHERS1151"`,
+		`l.report(node, "VIBE1151"`,
 	} {
 		if !strings.Contains(text, required) {
 			t.Fatalf("the compile-wide nominal identity guard lost %q", required)

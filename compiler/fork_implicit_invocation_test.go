@@ -135,7 +135,7 @@ func TestPinnedForkImplicitForeignInvocationKeepsThePanicCase(t *testing.T) {
 				"  for (const n of iterable) t += n\n" +
 				"  return t\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1506@5:19"},
+			reject: []string{"VIBE1101@3:1", "VIBE1506@5:19"},
 		},
 		{
 			name:    "array spread runs the same iterator",
@@ -145,7 +145,7 @@ func TestPinnedForkImplicitForeignInvocationKeepsThePanicCase(t *testing.T) {
 				"export function main(): number {\n" +
 				"  return [...iterable].length\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1506@4:14"},
+			reject: []string{"VIBE1101@3:1", "VIBE1506@4:14"},
 		},
 		{
 			name:    "object spread runs the value's own getters",
@@ -156,7 +156,7 @@ func TestPinnedForkImplicitForeignInvocationKeepsThePanicCase(t *testing.T) {
 				"  const copied = { ...spreadable }\n" +
 				"  return copied.a\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1506@4:23"},
+			reject: []string{"VIBE1101@3:1", "VIBE1506@4:23"},
 		},
 		{
 			name:    "template interpolation runs toString",
@@ -166,7 +166,7 @@ func TestPinnedForkImplicitForeignInvocationKeepsThePanicCase(t *testing.T) {
 				"export function main(): number {\n" +
 				"  return `x${stringy}`.length\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1506@4:14"},
+			reject: []string{"VIBE1101@3:1", "VIBE1506@4:14"},
 		},
 		{
 			name:    "unary + runs valueOf",
@@ -176,7 +176,7 @@ func TestPinnedForkImplicitForeignInvocationKeepsThePanicCase(t *testing.T) {
 				"export function main(): number {\n" +
 				"  return +stringy\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1506@4:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1506@4:11"},
 		},
 		{
 			name:    "a foreign tagged template is a call with no call expression",
@@ -186,7 +186,7 @@ func TestPinnedForkImplicitForeignInvocationKeepsThePanicCase(t *testing.T) {
 				"export function main(): string {\n" +
 				"  return tag`hello`\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1504@4:10"},
+			reject: []string{"VIBE1101@3:1", "VIBE1504@4:10"},
 		},
 		{
 			name:    "constructing a subclass of a foreign class runs the base constructor",
@@ -198,7 +198,7 @@ func TestPinnedForkImplicitForeignInvocationKeepsThePanicCase(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [typeof new Derived()]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@5:1", "SMITHERS1504@6:18"},
+			reject: []string{"VIBE1101@5:1", "VIBE1504@6:18"},
 		},
 		{
 			// The rule is on the CONSTRUCTION, not on the `extends` clause: a
@@ -268,7 +268,7 @@ func TestPinnedForkTrustedAsyncBindingKeepsItsRejectionChannel(t *testing.T) {
 				"export async function main(): Promise<string> {\n" +
 				"  return await giveAsync()\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1502@4:16"},
+			reject: []string{"VIBE1101@3:1", "VIBE1502@4:16"},
 		},
 		{
 			name:    "an awaited trusted Promise-returning function",
@@ -278,26 +278,12 @@ func TestPinnedForkTrustedAsyncBindingKeepsItsRejectionChannel(t *testing.T) {
 				"export async function main(): Promise<string> {\n" +
 				"  return await givePromise()\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1502@4:16"},
+			reject: []string{"VIBE1101@3:1", "VIBE1502@4:16"},
 		},
 		{
-			// A UNION with a Promise constituent rejects and is not named
-			// `Promise`, so the narrow question that drives LOWERING answers no.
-			// The trust question is asked through a wider predicate for exactly
-			// this reason, and it may be wider without moving an emitted byte.
-			//
-			// The SMITHERS1301 beside the SMITHERS1502 arrived on 2026-08-28,
-			// when the foreign lift was routed through the must-consume
-			// ownership walk: the lift this call produces is not consumed, and
-			// the reference has always said so. Re-measured on this exact
-			// program, the reference reports
-			// [SMITHERS1101@3:1, SMITHERS1508@4:10, SMITHERS1301@4:16, SMITHERS1502@4:16],
-			// so this expectation had been pinning the fork's side of a
-			// divergence and the new row moves the fork one diagnostic CLOSER to
-			// it. The SMITHERS1508 is still absent and is deliberately not
-			// asserted here: it is the standing union-arm gap recorded on
-			// 09-foreign-calls/a-trusted-union-with-a-promise-constituent-keeps-its-rejection-channel,
-			// which owns that row and states why closing it is not an edit.
+			// Lowering adds Result around the complete union. Awaiting that
+			// synchronous Result does not await its success payload, so both the
+			// ownership error and executable-provenance escape remain visible.
 			name:    "an awaited trusted string | Promise<string>",
 			support: implicitTrusted,
 			source: "import { giveUnionPromise } from \"./foreign.ts\"\n" +
@@ -305,7 +291,7 @@ func TestPinnedForkTrustedAsyncBindingKeepsItsRejectionChannel(t *testing.T) {
 				"export async function main(): Promise<string> {\n" +
 				"  return await giveUnionPromise()\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1301@4:16", "SMITHERS1502@4:16"},
+			reject: []string{"VIBE1101@3:1", "VIBE1508@4:10", "VIBE1301@4:16", "VIBE1502@4:16"},
 		},
 	})
 }
@@ -320,7 +306,7 @@ func TestPinnedForkContradictoryThrowsClaimsRefuseInBothOrders(t *testing.T) {
 				"export function main(): string {\n" +
 				"  return neverFirst()\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1502@4:10"},
+			reject: []string{"VIBE1101@3:1", "VIBE1502@4:10"},
 		},
 		{
 			name:    "{TypeError} then {never} — the same two claims, and the same verdict",
@@ -330,7 +316,7 @@ func TestPinnedForkContradictoryThrowsClaimsRefuseInBothOrders(t *testing.T) {
 				"export function main(): string {\n" +
 				"  return declaredFirst()\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1502@4:10"},
+			reject: []string{"VIBE1101@3:1", "VIBE1502@4:10"},
 		},
 		{
 			name:    "two IDENTICAL claims are redundant, not contradictory, and still trust",

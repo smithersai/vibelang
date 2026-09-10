@@ -15,7 +15,7 @@ import "testing"
 // source spellings. The withdrawn control-flow spellings and their near misses
 // are covered exhaustively by conformance/corpus/19-retired-syntax.
 //
-// specification/failures.mdx, "Inference": "Smithers MUST NOT add a general
+// specification/failures.mdx, "Inference": "VibeLang MUST NOT add a general
 // throws clause, !T marker, prefix try expression, or postfix Result-recovery
 // expression." specification/type-system.mdx, "Absence": "The earlier ?T,
 // payload-capture, orelse, and .? grammar MUST NOT be part of the
@@ -35,7 +35,7 @@ func TestPinnedForkRetiredSyntaxIsAMigrationDiagnostic(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [\"unreachable\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1001@1:1"},
+			reject: []string{"VIBE1001@1:1"},
 		},
 		{
 			name: "the orelse operator",
@@ -48,7 +48,7 @@ func TestPinnedForkRetiredSyntaxIsAMigrationDiagnostic(t *testing.T) {
 				"  const name = lookup(1) orelse \"Guest\"\n" +
 				"  return [name]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1001@7:26"},
+			reject: []string{"VIBE1001@7:26"},
 		},
 		{
 			name: "the postfix catch recovery expression",
@@ -60,7 +60,7 @@ func TestPinnedForkRetiredSyntaxIsAMigrationDiagnostic(t *testing.T) {
 				"  const name = compute(\"zoe\") catch \"Guest\"\n" +
 				"  return [name]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1001@6:31"},
+			reject: []string{"VIBE1001@6:31"},
 		},
 		{
 			name: "the prefix try propagation marker",
@@ -72,7 +72,7 @@ func TestPinnedForkRetiredSyntaxIsAMigrationDiagnostic(t *testing.T) {
 				"  const name = try compute(\"ada\")\n" +
 				"  return [name]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1001@6:16"},
+			reject: []string{"VIBE1001@6:16"},
 		},
 		{
 			// The anchor is the DOT, not the question mark. A reader who fixed
@@ -86,7 +86,7 @@ func TestPinnedForkRetiredSyntaxIsAMigrationDiagnostic(t *testing.T) {
 				"  const name = lookup(1).?\n" +
 				"  return [name]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1001@6:25"},
+			reject: []string{"VIBE1001@6:25"},
 		},
 		{
 			name: "the throws row clause",
@@ -97,7 +97,7 @@ func TestPinnedForkRetiredSyntaxIsAMigrationDiagnostic(t *testing.T) {
 				"export function lookup(key: string): string throws Missing {\n" +
 				"  return \"Ada Lovelace\"\n" +
 				"}\n",
-			reject: []string{"SMITHERS1001@5:45"},
+			reject: []string{"VIBE1001@5:45"},
 		},
 		{
 			name: "the named uses requirement clause",
@@ -106,14 +106,14 @@ func TestPinnedForkRetiredSyntaxIsAMigrationDiagnostic(t *testing.T) {
 				"export function stamp(): number uses Clock {\n" +
 				"  return 7\n" +
 				"}\n",
-			reject: []string{"SMITHERS1001@3:33"},
+			reject: []string{"VIBE1001@3:33"},
 		},
 		{
-			// This one is SMITHERS1000, not SMITHERS1001, and the distinction is
+			// This one is VIBE1000, not VIBE1001, and the distinction is
 			// substantive: a throw-expression was never part of the language, so
 			// there is no migration to describe — it is simply not the grammar.
 			// specification/control-flow.mdx, "Throw Statements": the initial
-			// language "MUST NOT add a Smithers-specific throw-expression
+			// language "MUST NOT add a VibeLang-specific throw-expression
 			// grammar."
 			name: "throw used as an expression is a grammar mismatch, not a migration",
 			source: "export class Missing extends Error {\n" +
@@ -124,7 +124,7 @@ func TestPinnedForkRetiredSyntaxIsAMigrationDiagnostic(t *testing.T) {
 				"  const name = key === \"ada\" ? \"Ada Lovelace\" : throw new Missing(key)\n" +
 				"  return name\n" +
 				"}\n",
-			reject: []string{"SMITHERS1000@6:49"},
+			reject: []string{"VIBE1000@6:49"},
 		},
 	})
 }
@@ -140,7 +140,7 @@ func TestPinnedForkRetiredSyntaxGuardsSpareTheLegitimateSpellings(t *testing.T) 
 			// the token immediately before it, which is a `.`.
 			name:    "Result.try stays the public adapter",
 			support: "/**\n * @module\n * @throws {never}\n */\n\n/** No @throws claim. */\nexport function parseIntegerUnchecked(text: string): number {\n  const parsed = Number.parseInt(text, 10);\n  if (Number.isNaN(parsed)) throw new RangeError(text);\n  return parsed;\n}\n",
-			source: "import { Panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic } from \"vibelang:exceptions\"\n" +
 				"import { parseIntegerUnchecked } from \"./foreign.ts\"\n" +
 				"\n" +
 				"function parse(text: string): Result<number, Panic> {\n" +
@@ -185,7 +185,7 @@ func TestPinnedForkRetiredSyntaxGuardsSpareTheLegitimateSpellings(t *testing.T) 
 				"  const name = await load().catch(() => \"guest\")\n" +
 				"  return [name]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1401@6:22", "SMITHERS1402@6:22"},
+			reject: []string{"VIBE1401@6:22", "VIBE1402@6:22"},
 		},
 		{
 			// A member NAMED `try`, `catch`, or `orelse` is an ordinary member.
@@ -255,13 +255,49 @@ func TestPinnedForkRetiredSyntaxGuardsSpareTheLegitimateSpellings(t *testing.T) 
 			name: "prefix bangs comparison and nullish operators are not retired markers",
 			source: "export function main(): string[] {\n" +
 				"  const failed = false\n" +
-				"  const value: string = [\"smithers\"].join(\"\")\n" +
+				"  const value: string = [\"vibelang\"].join(\"\")\n" +
 				"  const absent: { name?: string } = {}\n" +
 				"  return [String(!failed), String(!!value), String(value !== \"\"), absent?.name ?? \"Guest\"]\n" +
 				"}\n",
 			stdout: "true\ntrue\ntrue\nGuest",
 		},
 	})
+}
+
+// A parser error elsewhere in the file must not turn a legal identifier into
+// a retired operator. Both the successful AST and recovery-only grammar gate
+// use these guards, so pin both paths with the same source table.
+func TestPinnedForkRetiredNamesRemainLegalBesideParseErrors(t *testing.T) {
+	for _, source := range []string{
+		`const orelse = () => 1; export function main() {return orelse()}`,
+		`const value = {try() {return 1}, catch() {return 2}}; export function main() {return value.try() + value.catch()}`,
+		`class Value {static try() {return 1}; catch?: () => number}; export function main() {return Value.try()}`,
+		`type Value = {try(): number; catch?(): number}; export const answer = 1`,
+		`type uses = number; function read(): Array<uses> {return [1]}; export function main() {return read()}`,
+		`type throws = number; function read(): throws {return 1}; export function main() {return read()}`,
+		"const error = 1; const Missing = 2;\nerror\nMissing\n{}\nexport const answer = 1",
+	} {
+		for _, broken := range []bool{false, true} {
+			text := source
+			if broken {
+				text += "\nconst broken ="
+			}
+			result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: text}})
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Code == "VIBE1001" {
+					t.Fatalf("a legal name became retired syntax: %s\n%+v", text, result.Diagnostics)
+				}
+			}
+			if broken {
+				requireCode(t, result, "VIBE1000", "supported .vibe grammar")
+				if !result.EmitSkipped || len(result.Artifacts) != 0 {
+					t.Fatal("a parse-refused source emitted executable code")
+				}
+			} else {
+				requireClean(t, result)
+			}
+		}
+	}
 }
 
 func TestPinnedForkMissingRelativeModuleFailsClosed(t *testing.T) {
@@ -271,20 +307,20 @@ func TestPinnedForkMissingRelativeModuleFailsClosed(t *testing.T) {
 			// Type-only is deliberately included: the closure the row analysis
 			// needs is the MODULE set, and a type-only edge still names a module
 			// whose Error and Context declarations rows are built from.
-			name: "an absent relative .sm module is refused at its specifier",
-			source: "import type { Entry } from \"./absent-module.mod.sm\"\n" +
+			name: "an absent relative .vibe module is refused at its specifier",
+			source: "import type { Entry } from \"./absent-module.mod.vibe\"\n" +
 				"\n" +
 				"const local: Entry = { name: \"ada\" }\n" +
 				"\n" +
 				"export function main(): string[] {\n" +
 				"  return [local.name]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1801@1:28"},
+			reject: []string{"VIBE1801@1:28"},
 		},
 		{
-			name:    "a present relative .sm module resolves and runs",
-			modules: []string{"entry.mod.sm\x00" + present},
-			source: "import type { Entry } from \"./entry.mod.sm\"\n" +
+			name:    "a present relative .vibe module resolves and runs",
+			modules: []string{"entry.mod.vibe\x00" + present},
+			source: "import type { Entry } from \"./entry.mod.vibe\"\n" +
 				"\n" +
 				"const local: Entry = { name: \"ada\" }\n" +
 				"\n" +
@@ -296,10 +332,10 @@ func TestPinnedForkMissingRelativeModuleFailsClosed(t *testing.T) {
 		{
 			// A compiler-owned specifier is not a relative path and is never
 			// asked about; neither is a relative TypeScript module, which is not
-			// a Smithers module and carries no rows.
+			// a VibeLang module and carries no rows.
 			name:    "compiler-owned and relative TypeScript specifiers are untouched",
 			support: "/**\n * @module\n * @throws {never}\n */\n\n/** @throws {never} */\nexport function double(value: number): number {\n  return value * 2;\n}\n",
-			source: "import { Panic } from \"smithers:exceptions\"\n" +
+			source: "import { Panic } from \"vibelang:exceptions\"\n" +
 				"import { double } from \"./foreign.ts\"\n" +
 				"\n" +
 				"export function main(): string[] {\n" +
@@ -311,7 +347,7 @@ func TestPinnedForkMissingRelativeModuleFailsClosed(t *testing.T) {
 	})
 }
 
-// TestPinnedForkInferredFallibleCallbackNeedsAContract pins SMITHERS1303.
+// TestPinnedForkInferredFallibleCallbackNeedsAContract pins VIBE1303.
 //
 // specification/failures.mdx, "Inference": "Public, abstract, ambient, and
 // declaration-only contracts MUST express fallibility directly with
@@ -337,7 +373,7 @@ func TestPinnedForkInferredFallibleCallbackNeedsAContract(t *testing.T) {
 				"    return \"Ada Lovelace\"\n" +
 				"  })\n" +
 				"}\n",
-			reject: []string{"SMITHERS1303@10:32"},
+			reject: []string{"VIBE1303@10:32"},
 		},
 		{
 			// Declaring the contract clears it. The rule is about the CALLBACK's

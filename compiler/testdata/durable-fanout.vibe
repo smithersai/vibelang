@@ -1,0 +1,11 @@
+import { durable, Action, fanOut } from "vibelang:flows"
+
+class Read extends Action<(input: { id: string; value: number }) => Result<{ id: string; value: number }, Error>> {}
+
+export const Build = durable(function Build(input: { items: readonly { id: string; value: number }[] }) {
+    return fanOut(input.items, item => item.id, item => Read.run({ id: item.id, value: item.value }))
+})
+
+export function main(): string {
+    return JSON.stringify({ plan: Build.plan, manifest: Build.manifest })
+}

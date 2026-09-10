@@ -16,7 +16,7 @@ import "testing"
 //     `{ getHandler: getHandler }` was refused;
 //   - `reportForbiddenHostGlobal` skipped every identifier
 //     `isDeclarationNameIdentifier` claimed, so `Object.freeze({ process })`
-//     slipped past SMITHERS1601 while its longhand was refused —
+//     slipped past VIBE1601 while its longhand was refused —
 //     `ambientAuthorityUses` had already carved the shorthand back out for the
 //     Date/Math/performance/crypto rule, and this branch had not.
 //
@@ -69,7 +69,7 @@ func TestPinnedForkShorthandKeepsForeignProvenance(t *testing.T) {
 				"  const ns = Object.freeze({ handler: handler })\n" +
 				"  void ns\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1508@5:28"},
+			reject: []string{"VIBE1101@3:1", "VIBE1508@5:28"},
 		},
 		{
 			name:    "a local const in a frozen object, SHORTHAND",
@@ -81,7 +81,7 @@ func TestPinnedForkShorthandKeepsForeignProvenance(t *testing.T) {
 				"  const ns = Object.freeze({ handler })\n" +
 				"  void ns\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1508@5:28"},
+			reject: []string{"VIBE1101@3:1", "VIBE1508@5:28"},
 		},
 		{
 			name:    "a directly IMPORTED callable, longhand",
@@ -92,7 +92,7 @@ func TestPinnedForkShorthandKeepsForeignProvenance(t *testing.T) {
 				"  const ns = Object.freeze({ getHandler: getHandler })\n" +
 				"  void ns\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1508@4:28"},
+			reject: []string{"VIBE1101@3:1", "VIBE1508@4:28"},
 		},
 		{
 			name:    "a directly IMPORTED callable, SHORTHAND",
@@ -103,7 +103,7 @@ func TestPinnedForkShorthandKeepsForeignProvenance(t *testing.T) {
 				"  const ns = Object.freeze({ getHandler })\n" +
 				"  void ns\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1508@4:28"},
+			reject: []string{"VIBE1101@3:1", "VIBE1508@4:28"},
 		},
 		{
 			name:    "a RENAMED import, SHORTHAND",
@@ -114,7 +114,7 @@ func TestPinnedForkShorthandKeepsForeignProvenance(t *testing.T) {
 				"  const ns = Object.freeze({ make })\n" +
 				"  void ns\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1508@4:28"},
+			reject: []string{"VIBE1101@3:1", "VIBE1508@4:28"},
 		},
 		{
 			name:    "a NAMESPACE import, SHORTHAND",
@@ -125,7 +125,7 @@ func TestPinnedForkShorthandKeepsForeignProvenance(t *testing.T) {
 				"  const ns = Object.freeze({ foreign })\n" +
 				"  void ns\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1508@4:28"},
+			reject: []string{"VIBE1101@3:1", "VIBE1508@4:28"},
 		},
 		{
 			name:    "an imported callable returned in a SHORTHAND",
@@ -135,7 +135,7 @@ func TestPinnedForkShorthandKeepsForeignProvenance(t *testing.T) {
 				"export function main(): { readonly getHandler: () => (name: string) => void } {\n" +
 				"  return { getHandler }\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1508@4:10"},
+			reject: []string{"VIBE1101@3:1", "VIBE1508@4:10"},
 		},
 		{
 			name:    "a foreign OBJECT that is not callable, SHORTHAND",
@@ -147,7 +147,7 @@ func TestPinnedForkShorthandKeepsForeignProvenance(t *testing.T) {
 				"  const ns = Object.freeze({ record })\n" +
 				"  void ns\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1508@5:28"},
+			reject: []string{"VIBE1101@3:1", "VIBE1508@5:28"},
 		},
 	})
 }
@@ -163,7 +163,7 @@ func TestPinnedForkAmbientAuthorityThroughAShorthand(t *testing.T) {
 				"  const ns = Object.freeze({ setTimeout: setTimeout })\n" +
 				"  void ns\n" +
 				"}\n",
-			reject: []string{"SMITHERS1601@2:42"},
+			reject: []string{"VIBE1601@2:42"},
 		},
 		{
 			name: "setTimeout in a frozen object, SHORTHAND",
@@ -171,7 +171,7 @@ func TestPinnedForkAmbientAuthorityThroughAShorthand(t *testing.T) {
 				"  const ns = Object.freeze({ setTimeout })\n" +
 				"  void ns\n" +
 				"}\n",
-			reject: []string{"SMITHERS1601@2:30"},
+			reject: []string{"VIBE1601@2:30"},
 		},
 		{
 			name: "the host global read back out of the shorthand is refused at the shorthand",
@@ -179,7 +179,7 @@ func TestPinnedForkAmbientAuthorityThroughAShorthand(t *testing.T) {
 				"  const ns = { setTimeout }\n" +
 				"  return `${typeof ns.setTimeout}`\n" +
 				"}\n",
-			reject: []string{"SMITHERS1601@2:16"},
+			reject: []string{"VIBE1601@2:16"},
 		},
 		{
 			name: "Date in a shorthand keeps its own capability rule, unchanged",
@@ -187,7 +187,7 @@ func TestPinnedForkAmbientAuthorityThroughAShorthand(t *testing.T) {
 				"  const ns = Object.freeze({ Date })\n" +
 				"  void ns\n" +
 				"}\n",
-			reject: []string{"SMITHERS1602@2:30"},
+			reject: []string{"VIBE1602@2:30"},
 		},
 	})
 }
@@ -283,7 +283,7 @@ func TestPinnedForkShorthandLeavesOrdinaryProgramsAlone(t *testing.T) {
 func TestPinnedForkShorthandLeavesNeighbouringRulesAlone(t *testing.T) {
 	runFailClosedCases(t, []failClosedCase{
 		{
-			name:    "an UNTRUSTED host still refuses the shorthand as SMITHERS1509",
+			name:    "an UNTRUSTED host still refuses the shorthand as VIBE1509",
 			support: shorthandProvenanceForeign,
 			source: "import { getHandler, registerUnsafe } from \"./foreign.ts\"\n" +
 				"\n" +
@@ -291,7 +291,7 @@ func TestPinnedForkShorthandLeavesNeighbouringRulesAlone(t *testing.T) {
 				"  const handler = getHandler()\n" +
 				"  registerUnsafe({ handler })\n" +
 				"}\n",
-			reject: []string{"SMITHERS1301@5:3", "SMITHERS1509@5:18"},
+			reject: []string{"VIBE1101@3:1", "VIBE1301@5:3", "VIBE1509@5:18"},
 		},
 		{
 			name:    "a shorthand METHOD calling a foreign callable is the callback rule",
@@ -303,7 +303,7 @@ func TestPinnedForkShorthandLeavesNeighbouringRulesAlone(t *testing.T) {
 				"  const ns = Object.freeze({ run(name: string): void { handler(name) } })\n" +
 				"  void ns\n" +
 				"}\n",
-			reject: []string{"SMITHERS1301@5:56"},
+			reject: []string{"VIBE1301@5:56"},
 		},
 	})
 }

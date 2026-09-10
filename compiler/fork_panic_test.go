@@ -38,7 +38,7 @@ import (
 // TestPinnedForkPanicKeepsAPlainReturnType pins the accepted direction across
 // every construct that can host a `panic(...)` exit. Each row runs.
 func TestPinnedForkPanicKeepsAPlainReturnType(t *testing.T) {
-	const panicImport = "import { panic } from \"smithers:exceptions\"\n"
+	const panicImport = "import { panic } from \"vibelang:exceptions\"\n"
 	runFailClosedCases(t, []failClosedCase{
 		{
 			name:   "a plain function declaration aborts without widening",
@@ -77,8 +77,8 @@ func TestPinnedForkPanicKeepsAPlainReturnType(t *testing.T) {
 		},
 		{
 			// The closed contradiction. Before this rule a getter reading state
-			// through a panicking helper drew SMITHERS1101 (widen to Result) and,
-			// on the reference, SMITHERS1105 (accessors may not carry a Result
+			// through a panicking helper drew VIBE1101 (widen to Result) and,
+			// on the reference, VIBE1105 (accessors may not carry a Result
 			// channel) on the same line, with each remedy forbidden by the other.
 			// Seven public getters in poc/src/data/** had no legal spelling.
 			name:   "a getter, a setter, and a constructor may all abort",
@@ -107,8 +107,8 @@ func TestPinnedForkPanicKeepsAPlainReturnType(t *testing.T) {
 		},
 		{
 			// A panic reached one and two hops away through helpers. Before this
-			// rule the helper itself drew SMITHERS1101 and every call site drew a
-			// cascading SMITHERS1301 for an unconsumed Result that never existed.
+			// rule the helper itself drew VIBE1101 and every call site drew a
+			// cascading VIBE1301 for an unconsumed Result that never existed.
 			name:   "a panic reached two hops deep leaves both callers plain",
 			source: panicImport + "function fail(message: string): never { panic(message) }\nfunction refuse(ok: boolean): void { if (!ok) fail(\"forged\") }\nfunction guarded(ok: boolean): string {\n  refuse(ok)\n  return \"real\"\n}\nexport function main(): string[] {\n  return [guarded(true)]\n}\n",
 			stdout: "real",
@@ -123,7 +123,7 @@ func TestPinnedForkPanicKeepsAPlainReturnType(t *testing.T) {
 		{
 			// The nuance the rule preserves: an author MAY choose the widening.
 			name:   "an author-annotated Result of Panic still materializes the panic",
-			source: "import { Panic, panic } from \"smithers:exceptions\"\nfunction force(key: string): Result<string, Panic> {\n  if (key !== \"ada\") panic(`no entry for ${key}`)\n  return \"Ada Lovelace\"\n}\nexport function main(): string[] {\n  return [\n    force(\"ada\").match({ ok: (value) => value, error: (error) => `panic: ${error.message}` }),\n    force(\"zoe\").match({ ok: (value) => value, error: (error) => `panic: ${error.message}` }),\n  ]\n}\n",
+			source: "import { Panic, panic } from \"vibelang:exceptions\"\nfunction force(key: string): Result<string, Panic> {\n  if (key !== \"ada\") panic(`no entry for ${key}`)\n  return \"Ada Lovelace\"\n}\nexport function main(): string[] {\n  return [\n    force(\"ada\").match({ ok: (value) => value, error: (error) => `panic: ${error.message}` }),\n    force(\"zoe\").match({ ok: (value) => value, error: (error) => `panic: ${error.message}` }),\n  ]\n}\n",
 			stdout: "Ada Lovelace\npanic: no entry for zoe",
 		},
 		{
@@ -138,48 +138,48 @@ func TestPinnedForkPanicKeepsAPlainReturnType(t *testing.T) {
 // touch. A fix that made every panicking spelling legal would have replaced one
 // contradiction with another.
 func TestPinnedForkPanicStillRefusedWhereItMust(t *testing.T) {
-	const panicImport = "import { panic } from \"smithers:exceptions\"\n"
+	const panicImport = "import { panic } from \"vibelang:exceptions\"\n"
 	runFailClosedCases(t, []failClosedCase{
 		{
 			// A recoverable Error exit is NOT a panic. failures.mdx §Compiler
-			// Lifting: "A `.sm` function with a reachable recoverable Error exit
+			// Lifting: "A `.vibe` function with a reachable recoverable Error exit
 			// MUST return or infer a Result. An explicit non-Result return
 			// annotation on such a function MUST be a compile error."
 			name:   "an ordinary throw still requires a Result contract",
 			source: "class Missing extends Error {}\nexport function guarded(key: string): string {\n  if (key !== \"ada\") throw new Missing()\n  return \"Ada Lovelace\"\n}\n",
-			reject: []string{"SMITHERS1101@2:1"},
+			reject: []string{"VIBE1101@2:1"},
 		},
 		{
 			name:   "an exported unannotated function with an ordinary throw still spells its contract",
 			source: "class Missing extends Error {}\nexport function guarded(key: string) {\n  if (key !== \"ada\") throw new Missing()\n  return \"Ada Lovelace\"\n}\n",
-			reject: []string{"SMITHERS1102@2:1"},
+			reject: []string{"VIBE1102@2:1"},
 		},
 		{
 			// `panic(...)` is an EXIT, not a value. The placement rule is a POC
 			// lowering boundary and is unchanged by the widening rule.
 			name:   "a panic written where a value is expected is still refused",
 			source: panicImport + "export function force(key: string): string {\n  const value = key === \"ada\" ? key : panic(`no entry for ${key}`)\n  return value\n}\n",
-			reject: []string{"SMITHERS1503@3:39"},
+			reject: []string{"VIBE1503@3:39"},
 		},
 		{
 			name:   "a top-level panic is still refused",
 			source: panicImport + "panic(\"no\")\nexport function main(): string[] { return [\"done\"] }\n",
-			reject: []string{"SMITHERS1505@2:1"},
+			reject: []string{"VIBE1505@2:1"},
 		},
 		{
 			name:   "a class static block containing a panic is still refused",
 			source: panicImport + "export class Box {\n  static {\n    panic(\"no\")\n  }\n}\n",
-			reject: []string{"SMITHERS1107@3:3"},
+			reject: []string{"VIBE1107@3:3"},
 		},
 		{
 			// A fallible function value crossing a callback boundary is refused by
-			// SMITHERS1303 whether it reaches the boundary as a plain argument or
-			// through an accessor. This is the shape R1FIX recorded as "SMITHERS1105
+			// VIBE1303 whether it reaches the boundary as a plain argument or
+			// through an accessor. This is the shape R1FIX recorded as "VIBE1105
 			// already refused it": on this backend 1105 never existed, so 1303 was
 			// always the refusal, and it survives the widening rule untouched.
 			name:   "a fallible getter in an argument still cannot cross a callback boundary",
 			source: "class Missing extends Error {}\nfunction apply(handlers: { transform: unknown }): string {\n  return String(handlers.transform)\n}\nexport function main(): string[] {\n  return [apply({ get transform() { throw new Missing() } })]\n}\n",
-			reject: []string{"SMITHERS1303@6:19"},
+			reject: []string{"VIBE1303@6:19"},
 		},
 	})
 }
@@ -191,7 +191,7 @@ func TestPinnedForkPanicIsNotAnExpectedError(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 
 	t.Run("a panic from an unannotated function aborts instead of arriving as a failure", func(t *testing.T) {
-		source := "import { panic } from \"smithers:exceptions\"\n" +
+		source := "import { panic } from \"vibelang:exceptions\"\n" +
 			"function guarded(ok: boolean): string {\n" +
 			"  if (!ok) panic(\"forged value\")\n" +
 			"  return \"real\"\n" +
@@ -215,7 +215,7 @@ func TestPinnedForkPanicIsNotAnExpectedError(t *testing.T) {
 		// "fallback" with the panic gone from main()'s row. With the widening
 		// removed there is no Result here at all, so the recovery surface the
 		// panic was being swallowed through does not exist.
-		source := "import { panic } from \"smithers:exceptions\"\n" +
+		source := "import { panic } from \"vibelang:exceptions\"\n" +
 			"function guarded(ok: boolean): string {\n" +
 			"  if (!ok) panic(\"forged value\")\n" +
 			"  return \"real\"\n" +
@@ -237,7 +237,7 @@ func TestPinnedForkPanicIsNotAnExpectedError(t *testing.T) {
 		// The over-correction guard. `force` publishes `Missing` as its expected
 		// error channel; materializing the panic into that channel would hand a
 		// Panic to an exhaustive `match` over `Missing`.
-		source := "import { panic } from \"smithers:exceptions\"\n" +
+		source := "import { panic } from \"vibelang:exceptions\"\n" +
 			"class Missing extends Error {\n" +
 			"  constructor(readonly key: string) { super(`no entry for ${key}`) }\n" +
 			"}\n" +
@@ -269,9 +269,9 @@ func TestPinnedForkPanicIsNotAnExpectedError(t *testing.T) {
 
 func compilePanicProgram(t *testing.T, backend Compiler, ctx context.Context, source string) CompileResult {
 	t.Helper()
-	files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}}
+	files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: source}}
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm"},
+		RootNames: []string{"main.vibe"},
 		Files:     files,
 		Options:   Options{},
 		Lowering:  LoweringInternal,
@@ -287,9 +287,9 @@ func compilePanicProgram(t *testing.T, backend Compiler, ctx context.Context, so
 
 func compilePanicProgramDiagnostics(t *testing.T, backend Compiler, ctx context.Context, source string) []string {
 	t.Helper()
-	files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}}
+	files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: source}}
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm"},
+		RootNames: []string{"main.vibe"},
 		Files:     files,
 		Options:   Options{},
 		Lowering:  LoweringInternal,

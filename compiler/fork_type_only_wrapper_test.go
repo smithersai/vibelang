@@ -37,7 +37,7 @@ import (
 //	function g(): T { return client satisfies T } Error: getter blew
 //
 // while `client.dangerous`, `new Untrusted("bad")`, `` utag`x` `` and the rest
-// were each refused. SMITHERS1504, SMITHERS1506, SMITHERS1508 and the foreign
+// were each refused. VIBE1504, VIBE1506, VIBE1508 and the foreign
 // `Panic` row were escapable by typing ten characters that change no value at
 // all — `satisfies` does not even change the expression's TYPE, so nothing
 // downstream could notice it had been written. Across a 33-spelling × 25-probe
@@ -59,7 +59,7 @@ import (
 // is not decoration. `stableForeignCallee` had the same missing entry pointing
 // the other way: a `@throws {never}` callee named through `satisfies` is still
 // one leaf, still read once, and still carries its marker — and this backend
-// refused it SMITHERS1507 where the reference accepted it and ran it.
+// refused it VIBE1507 where the reference accepted it and ran it.
 //
 // One position per governing rule is pinned here rather than all nineteen: the
 // exhaustive matrix belongs in the lane report, and a test that recompiles 800
@@ -122,7 +122,7 @@ var typeOnlyWrappers = []struct {
 }
 
 // typeOnlyWrapperPositions are the USE positions, one per governing rule. Each
-// renders a whole `.sm` module around a wrapped value, so a failure says which
+// renders a whole `.vibe` module around a wrapped value, so a failure says which
 // rule moved. `localAlternate` is authored, never foreign — see above.
 var typeOnlyWrapperPositions = []struct {
 	name           string
@@ -142,7 +142,7 @@ var typeOnlyWrapperPositions = []struct {
 		typeText: "new (v: string) => { readonly v: string }",
 		locals:   "class LocalCtor { constructor(readonly v: string) {} }\n",
 		body:     func(w string) string { return "  const made = new " + w + "(\"a\")\n  return [\"made\"]\n" },
-		governs:  "SMITHERS1504",
+		governs:  "VIBE1504",
 	},
 	{
 		name: "a foreign property read", imports: "client",
@@ -150,7 +150,7 @@ var typeOnlyWrapperPositions = []struct {
 		typeText: "{ readonly dangerous: string }",
 		locals:   "const localClient = { get dangerous(): string { return \"safe\" } }\n",
 		body:     func(w string) string { return "  return [" + w + ".dangerous]\n" },
-		governs:  "SMITHERS1506",
+		governs:  "VIBE1506",
 	},
 	{
 		name: "a foreign tagged-template tag", imports: "utag",
@@ -158,7 +158,7 @@ var typeOnlyWrapperPositions = []struct {
 		typeText: "(parts: TemplateStringsArray) => string",
 		locals:   "function localTag(parts: TemplateStringsArray): string { return \"l\" }\n",
 		body:     func(w string) string { return "  return [" + w + "`x`]\n" },
-		governs:  "SMITHERS1504",
+		governs:  "VIBE1504",
 	},
 	{
 		name: "a foreign callable handed to a local higher-order call", imports: "untrusted",
@@ -166,7 +166,7 @@ var typeOnlyWrapperPositions = []struct {
 		typeText: "(value: string) => string",
 		locals:   "function localFn(value: string): string { return value }\n",
 		body:     func(w string) string { return "  return [localHof(" + w + ")]\n" },
-		governs:  "SMITHERS1508",
+		governs:  "VIBE1508",
 	},
 }
 
@@ -181,18 +181,18 @@ func wrapperModule(imports, locals, body string) string {
 		"}\n"
 }
 
-// smithersDiagnosticCodes is `diagnosticCodes` with TypeScript's OWN
+// vibelangDiagnosticCodes is `diagnosticCodes` with TypeScript's OWN
 // diagnostics dropped. The wrapper spellings below are not all idiomatic
 // TypeScript — `(a, (b satisfies T))` draws TS2695 ("left side of comma
 // operator is unused and has no side effects") from the checker itself — and
 // TypeScript's opinion about a spelling is not this rule's answer about where a
-// value came from. Only the SMITHERS codes are compared, and nothing here
-// suppresses a SMITHERS code.
-func smithersDiagnosticCodes(t *testing.T, backend Compiler, ctx context.Context, source, support string) []string {
+// value came from. Only the VIBE codes are compared, and nothing here
+// suppresses a VIBE code.
+func vibelangDiagnosticCodes(t *testing.T, backend Compiler, ctx context.Context, source, support string) []string {
 	t.Helper()
 	kept := make([]string, 0, 4)
 	for _, code := range diagnosticCodes(t, backend, ctx, source, support) {
-		if strings.HasPrefix(code, "SMITHERS") {
+		if strings.HasPrefix(code, "VIBE") {
 			kept = append(kept, code)
 		}
 	}
@@ -203,7 +203,7 @@ func smithersDiagnosticCodes(t *testing.T, backend Compiler, ctx context.Context
 // assertion. It is written as an equality against the direct spelling rather
 // than as a per-spelling code list on purpose: the property being pinned is
 // that a wrapper which changes only the type carries the operand's provenance,
-// not that any of these happens to report SMITHERS1506 today.
+// not that any of these happens to report VIBE1506 today.
 //
 // Its final subtest is the attribution control, and it shares this backend: the
 // same wrappers over an AUTHORED value must stay clean, so a fix that merely
@@ -212,7 +212,7 @@ func TestPinnedForkTypeOnlyWrapperAnswersLikeTheDirectSpelling(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 	for _, position := range typeOnlyWrapperPositions {
 		t.Run(position.name, func(t *testing.T) {
-			direct := smithersDiagnosticCodes(t, backend, ctx,
+			direct := vibelangDiagnosticCodes(t, backend, ctx,
 				wrapperModule(position.imports, position.locals,
 					position.body(position.foreign)), wrapperForeign)
 			found := false
@@ -231,7 +231,7 @@ func TestPinnedForkTypeOnlyWrapperAnswersLikeTheDirectSpelling(t *testing.T) {
 				}
 				t.Run(wrapper.name, func(t *testing.T) {
 					wrapped := wrapper.spelling(position.foreign, position.localAlternate, position.typeText)
-					got := smithersDiagnosticCodes(t, backend, ctx,
+					got := vibelangDiagnosticCodes(t, backend, ctx,
 						wrapperModule(position.imports, position.locals,
 							position.body(wrapped)), wrapperForeign)
 					if strings.Join(got, " ") != strings.Join(direct, " ") {
@@ -254,9 +254,9 @@ func TestPinnedForkTypeOnlyWrapperAnswersLikeTheDirectSpelling(t *testing.T) {
 					"export async function main(flag: boolean = true): Promise<string[]> {\n" +
 					"  return [" + wrapped + ".p]\n" +
 					"}\n"
-				if got := smithersDiagnosticCodes(t, backend, ctx, source, wrapperForeign); len(got) != 0 {
+				if got := vibelangDiagnosticCodes(t, backend, ctx, source, wrapperForeign); len(got) != 0 {
 					t.Fatalf("an AUTHORED object read through %s was refused with %v; the wrapper "+
-						"table answers where a value came from, and this one came from `.sm`", wrapped, got)
+						"table answers where a value came from, and this one came from `.vibe`", wrapped, got)
 				}
 			})
 		}
@@ -290,7 +290,7 @@ export class ClassMarkedOnly {
 // # On the trust asymmetry
 //
 // `as` and an explicit type annotation replace the declaration
-// `GetResolvedSignature` resolves to with a `.sm`-local type node, which erases
+// `GetResolvedSignature` resolves to with a `.vibe`-local type node, which erases
 // a `@throws {never}` marker. `satisfies` does not change the type at all, so
 // the marker survives. If `satisfies` were ever implemented as "a cast that
 // keeps the operand's type", the trusted-tag cases below are what would fail.
@@ -299,9 +299,9 @@ export class ClassMarkedOnly {
 //
 // `stableForeignCallee` asks whether a callee is a leaf read once at the point
 // the call happens. A `@throws {never}` callee named through `satisfies` is
-// exactly that, and this backend refused it SMITHERS1507 while the reference
+// exactly that, and this backend refused it VIBE1507 while the reference
 // accepted it and RAN it — five cells of pure over-refusal plus fifteen more
-// where the extra SMITHERS1507 rode alongside a correct diagnostic. This
+// where the extra VIBE1507 rode alongside a correct diagnostic. This
 // codebase has shipped seven over-corrections; an over-refusal is a defect, not
 // a safe default. Every accepted case below asserts stdout, so the value is
 // proven to have flowed rather than the program merely being un-refused.
@@ -328,7 +328,7 @@ export class ClassMarkedOnly {
 //
 //	function make(): string { const o = new SameLineMarked("bad"); return "made" }
 //
-//	reference   SMITHERS1101@4:1 SMITHERS1504@4:37            — refused
+//	reference   VIBE1101@4:1 VIBE1504@4:37            — refused
 //	this fork   ok, zero diagnostics → ran → Error: same-line ctor blew, exit 1
 //
 // So the fork was the fail-open. The claim now comes from the JSDoc the parser
@@ -345,7 +345,7 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [(client satisfies { readonly dangerous: string }).dangerous]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1506@4:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1506@4:11"},
 		},
 		{
 			name:    "a satisfies over a foreign constructor",
@@ -356,7 +356,7 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"  const made = new (Untrusted satisfies new (v: string) => { readonly v: string })(\"a\")\n" +
 				"  return [\"made\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1504@4:16"},
+			reject: []string{"VIBE1101@3:1", "VIBE1504@4:16"},
 		},
 		{
 			name:    "a satisfies over a foreign tagged-template tag",
@@ -366,7 +366,7 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [(utag satisfies (parts: TemplateStringsArray) => string)`x`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1504@4:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1504@4:11"},
 		},
 		{
 			name:    "a satisfies against a LOCAL alternate — the spelling a foreign alternate hides",
@@ -378,7 +378,7 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [((client satisfies { readonly dangerous: string }) ?? localClient).dangerous]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1506@6:11"},
+			reject: []string{"VIBE1101@5:1", "VIBE1506@6:11"},
 		},
 		{
 			name:    "a const that HOLDS the satisfies is the same defect",
@@ -389,7 +389,7 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"  const held = client satisfies { readonly dangerous: string }\n" +
 				"  return [held.dangerous]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1506@5:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1506@5:11"},
 		},
 		{
 			name:    "a satisfies chained with a cast is the same defect",
@@ -399,7 +399,7 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [((client satisfies { readonly dangerous: string }) as { readonly dangerous: string }).dangerous]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1506@4:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1506@4:11"},
 		},
 		{
 			name:    "a foreign callable escaping through a satisfies in a higher-order call",
@@ -411,7 +411,7 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [localHof(untrusted satisfies (value: string) => string)]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@5:1", "SMITHERS1508@6:20"},
+			reject: []string{"VIBE1101@5:1", "VIBE1508@6:20"},
 		},
 
 		// --- the trust asymmetry -------------------------------------------
@@ -433,7 +433,7 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [(trustedTag as (parts: TemplateStringsArray) => string)`x`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1504@4:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1504@4:11"},
 		},
 		{
 			name:    "an annotated const holding the same trusted tag ERASES the marker too",
@@ -444,7 +444,7 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"  const held: (parts: TemplateStringsArray) => string = trustedTag\n" +
 				"  return [held`x`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1504@5:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1504@5:11"},
 		},
 		{
 			name:    "satisfies THEN as composes to the as answer, which is the fail-closed one",
@@ -454,18 +454,30 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"export function main(): string[] {\n" +
 				"  return [((trustedTag satisfies (parts: TemplateStringsArray) => string) as (parts: TemplateStringsArray) => string)`x`]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1504@4:11"},
+			reject: []string{"VIBE1101@3:1", "VIBE1504@4:11"},
 		},
 
 		// --- the over-refusal, closed --------------------------------------
 		{
-			name:    "a trusted foreign callee named through satisfies stays usable and RUNS",
+			name:    "an intervening cast erases a trusted callee marker even after satisfies",
 			support: wrapperForeign,
 			source: "import { trustedFn } from \"./foreign.ts\"\n" +
 				"\n" +
 				"export function main(): string[] {\n" +
 				"  const a = (trustedFn satisfies (value: string) => string)(\"a\")\n" +
 				"  const b = (trustedFn satisfies unknown as (value: string) => string)(\"b\")\n" +
+				"  const c = (((trustedFn) satisfies (value: string) => string))(\"c\")\n" +
+				"  return [a + b + c]\n" +
+				"}\n",
+			reject: []string{"VIBE1302@5:9"},
+		},
+		{
+			name:    "trusted foreign callees through only satisfies still RUN",
+			support: wrapperForeign,
+			source: "import { trustedFn } from \"./foreign.ts\"\n" +
+				"export function main(): string[] {\n" +
+				"  const a = (trustedFn satisfies (value: string) => string)(\"a\")\n" +
+				"  const b = (trustedFn satisfies unknown)(\"b\")\n" +
 				"  const c = (((trustedFn) satisfies (value: string) => string))(\"c\")\n" +
 				"  return [a + b + c]\n" +
 				"}\n",
@@ -510,7 +522,7 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"  const made = new SameLineMarked(\"a\")\n" +
 				"  return [\"made\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1504@4:16"},
+			reject: []string{"VIBE1101@3:1", "VIBE1504@4:16"},
 		},
 		{
 			name:    "a marker on the CLASS does not certify its constructor",
@@ -521,7 +533,7 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"  const made = new ClassMarkedOnly(\"a\")\n" +
 				"  return [\"made\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1504@4:16"},
+			reject: []string{"VIBE1101@3:1", "VIBE1504@4:16"},
 		},
 		{
 			name:    "the same-line marker is not rescued by a satisfies either",
@@ -532,7 +544,7 @@ func TestPinnedForkTypeOnlyWrapperExactPositions(t *testing.T) {
 				"  const made = new (SameLineMarked satisfies new (v: string) => { readonly v: string })(\"a\")\n" +
 				"  return [\"made\"]\n" +
 				"}\n",
-			reject: []string{"SMITHERS1504@4:16"},
+			reject: []string{"VIBE1101@3:1", "VIBE1504@4:16"},
 		},
 		{
 			name:    "an own-line marker is still honoured through a satisfies, and still runs",

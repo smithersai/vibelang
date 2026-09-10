@@ -36,7 +36,7 @@ func compileComptime(t *testing.T, files []SourceFile, options Options) CompileR
 }
 
 func comptimeSources(text string, extra ...SourceFile) []SourceFile {
-	files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: text}}
+	files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: text}}
 	return append(files, extra...)
 }
 
@@ -103,7 +103,7 @@ func mainText(t *testing.T, result CompileResult) string {
 // under an alias, and an unrelated local function that happens to be spelled
 // `comptime` stays an ordinary runtime function.
 func TestPinnedForkComptimeResolvesTheIntrinsicBySymbol(t *testing.T) {
-	result := compileComptime(t, comptimeSources(`import { comptime as build } from "smithers:comptime"
+	result := compileComptime(t, comptimeSources(`import { comptime as build } from "vibelang:comptime"
 
 const table = build({ mode: "fast", retries: 3 })
 
@@ -113,7 +113,7 @@ export function main(): string {
 `), nil)
 	requireClean(t, result)
 	emitted := mainText(t, result)
-	if strings.Contains(emitted, "smithers:comptime") || strings.Contains(emitted, "build(") {
+	if strings.Contains(emitted, "vibelang:comptime") || strings.Contains(emitted, "build(") {
 		t.Fatalf("the compiler-owned import and call must be gone:\n%s", emitted)
 	}
 	if got := runComptimeProgram(t, result); got != `{"mode":"fast","retries":3}` {
@@ -151,18 +151,17 @@ func TestPinnedForkComptimeRefusesAnUnimportedIntrinsic(t *testing.T) {
 `), nil)
 	requireComptimeDiagnostic(t, result, "TS2304")
 	for _, item := range result.Diagnostics {
-		if strings.HasPrefix(item.Code, "SMITHERS19") {
+		if strings.HasPrefix(item.Code, "VIBE19") {
 			t.Fatalf("a spelling alone must not produce a comptime diagnostic: %#v", item)
 		}
 	}
 }
 
-// A name the compiler-owned import introduced, shadowed at the call site by
-// something else, is genuinely ambiguous: the author wrote the compiler's name
-// and got a different binding. That, and only that, is the unrelated-identity
-// refusal.
-func TestPinnedForkComptimeRefusesAShadowedIntrinsicName(t *testing.T) {
-	result := compileComptime(t, comptimeSources(`import { comptime } from "smithers:comptime"
+// specification/comptime, Compiler-Recognized API: an unrelated function must
+// remain ordinary. An outer intrinsic import does not reserve its local name.
+// This used to assert VIBE1902, contradicting that resolved-binding rule.
+func TestPinnedForkComptimePreservesAShadowedIntrinsicName(t *testing.T) {
+	result := compileComptime(t, comptimeSources(`import { comptime } from "vibelang:comptime"
 
 const kept = comptime(1)
 
@@ -171,7 +170,52 @@ export function main(): string {
     return String(comptime(2) + kept)
 }
 `), nil)
-	requireComptimeDiagnostic(t, result, "SMITHERS1902")
+	requireClean(t, result)
+	if got := runComptimeProgram(t, result); got != "4" {
+		t.Fatalf("shadowed call was not executed normally: %q", got)
+	}
+}
+
+func TestPinnedForkComptimeLexicalShadowVariants(t *testing.T) {
+	backend, ctx := newPinnedTestBackend(t)
+	for _, vector := range []struct{ name, source, want string }{
+		{"parameter", `import { comptime } from "vibelang:comptime";
+function apply(comptime: (n: number) => number): number { return comptime(41); }
+export function main(): number { return apply(n => n + 1); }`, "42"},
+		{"alias parameter", `import { comptime as build } from "vibelang:comptime";
+const kept = build(1);
+function apply(build: (n: number) => number): number { return build(40); }
+export function main(): number { return apply(n => n + 1) + kept; }`, "42"},
+		{"function declaration", `import { comptime } from "vibelang:comptime";
+const kept = comptime(1);
+export function main(): number {
+  function comptime(n: number): number { return n + 1; }
+  return comptime(40) + kept;
+}`, "42"},
+		{"mutable local", `import { comptime } from "vibelang:comptime";
+export function main(): number {
+  let comptime = (n: number): number => n + 1;
+  comptime = n => n + 2;
+  return comptime(40);
+}`, "42"},
+		{"namespace shadow", `import * as Build from "vibelang:comptime";
+const kept = Build.comptime(1);
+export function main(): number {
+  const Build = { comptime(n: number): number { return n + 1; } };
+  return Build.comptime(40) + kept;
+}`, "42"},
+	} {
+		t.Run(vector.name, func(t *testing.T) {
+			result, err := backend.Compile(ctx, CompileRequest{RootNames: []string{"main.vibe"}, Files: comptimeSources(vector.source), Lowering: LoweringInternal})
+			if err != nil {
+				t.Fatal(err)
+			}
+			requireClean(t, result)
+			if got := runComptimeProgram(t, result); got != vector.want {
+				t.Fatalf("got %q, want %q", got, vector.want)
+			}
+		})
+	}
 }
 
 func requireComptimeDiagnostic(t *testing.T, result CompileResult, code string) Diagnostic {
@@ -194,9 +238,9 @@ func requireComptimeDiagnostic(t *testing.T, result CompileResult, code string) 
 // ---------------------------------------------------------------------------
 
 func TestPinnedForkComptimeEvaluatesTheStaticValueLanguage(t *testing.T) {
-	result := compileComptime(t, comptimeSources(`import { comptime } from "smithers:comptime"
+	result := compileComptime(t, comptimeSources(`import { comptime } from "vibelang:comptime"
 
-const base = { name: "smithers", version: 2 }
+const base = { name: "vibelang", version: 2 }
 const parts = ["a", "b", "c"]
 
 const summary = comptime({
@@ -220,9 +264,10 @@ export function main(): string {
 `), nil)
 	requireClean(t, result)
 	got := runComptimeProgram(t, result)
-	want := `{"chosen":"two","doubled":4,"greeting":"hello smithers v2","joined":"a-b-c",` +
-		`"keys":["name","version"],"mapped":["a!","b!","c!"],"nested":{"missing":null,"ok":true},` +
-		`"parsed":{"x":[1,2]},"picked":"b","rounded":3,"size":3,"upper":"SMITHERS"}`
+	// Property order is authored program data, not canonical metadata order.
+	want := `{"greeting":"hello vibelang v2","joined":"a-b-c","upper":"VIBELANG","doubled":4,` +
+		`"picked":"b","size":3,"nested":{"ok":true,"missing":null},"mapped":["a!","b!","c!"],` +
+		`"keys":["name","version"],"parsed":{"x":[1,2]},"chosen":"two","rounded":3}`
 	if got != want {
 		t.Fatalf("comptime value language:\n got %s\nwant %s", got, want)
 	}
@@ -238,7 +283,7 @@ export function main(): string {
 // half of the subset — let, assignment, every loop form, break/continue, and
 // mutation of interpreter-owned containers — through both marker spellings.
 func TestPinnedForkComptimeInterpretsCompileTimeFunctions(t *testing.T) {
-	result := compileComptime(t, comptimeSources(`import { comptime } from "smithers:comptime"
+	result := compileComptime(t, comptimeSources(`import { comptime } from "vibelang:comptime"
 
 const rows = ["alpha", "beta", "gamma", "delta"]
 
@@ -282,7 +327,7 @@ export function main(): string {
 `), nil)
 	requireClean(t, result)
 	got := runComptimeProgram(t, result)
-	want := `{"built":{"doubling":8,"index":{"alpha":5,"beta":4,"delta":5},"steps":[3,2,1,0,10],"total":14},"inline":{"acc":6}}`
+	want := `{"built":{"index":{"alpha":5,"beta":4,"delta":5},"total":14,"steps":[3,2,1,0,10],"doubling":8},"inline":{"acc":6}}`
 	if got != want {
 		t.Fatalf("compile-time function interpretation:\n got %s\nwant %s", got, want)
 	}
@@ -324,7 +369,7 @@ func TestPinnedForkComptimeIsHermetic(t *testing.T) {
 		{"an arbitrary host call", `comptime(structuredClone({ a: 1 }))`},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			source := `import { comptime } from "smithers:comptime"
+			source := `import { comptime } from "vibelang:comptime"
 
 declare function readFileSync(path: string, encoding: string): string
 declare function fetch(url: string): unknown
@@ -344,7 +389,7 @@ export function main(): string {
 			}
 			refused := false
 			for _, item := range result.Diagnostics {
-				if strings.HasPrefix(item.Code, "SMITHERS19") {
+				if strings.HasPrefix(item.Code, "VIBE19") {
 					refused = true
 				}
 			}
@@ -363,15 +408,15 @@ export function main(): string {
 //
 // The same `Date.now()` / `Math.random()` outside a comptime evaluation are
 // also refused, but by a different rule and a different code: the host-global
-// capability rule (SMITHERS1602/SMITHERS1603) from
+// capability rule (VIBE1602/VIBE1603) from
 // specification/compatibility.mdx, "Host Globals" (Locked), which requires a
-// capability for clock and random access in authored `.sm` at all. That is the
+// capability for clock and random access in authored `.vibe` at all. That is the
 // deliberate asymmetry recorded in poc/PRODUCTION_READINESS.md: the language
 // frontend rejects them outright, while the target classifier reports them as
-// Clock/Random requirements. A comptime code (SMITHERS19xx) appearing here
+// Clock/Random requirements. A comptime code (VIBE19xx) appearing here
 // would mean the comptime frontend had claimed runtime source it does not own.
 func TestPinnedForkComptimeIsNotWhatRefusesAmbientCalls(t *testing.T) {
-	result := compileComptime(t, comptimeSources(`import { comptime } from "smithers:comptime"
+	result := compileComptime(t, comptimeSources(`import { comptime } from "vibelang:comptime"
 
 const scale = comptime(2)
 
@@ -392,7 +437,7 @@ export function main(): string {
 		}
 	}
 	sort.Strings(codes)
-	if strings.Join(codes, ",") != "SMITHERS1602,SMITHERS1603" {
+	if strings.Join(codes, ",") != "VIBE1602,VIBE1603" {
 		t.Fatalf("ambient host access outside comptime must be refused by the host-global rule, saw %v", codes)
 	}
 }
@@ -403,7 +448,7 @@ export function main(): string {
 // would look hermetic while being broken, and this is the property the emitted
 // text can actually witness.
 func TestPinnedForkComptimeLeavesRuntimeCodeAloneOutsideComptime(t *testing.T) {
-	result := compileComptime(t, comptimeSources(`import { comptime } from "smithers:comptime"
+	result := compileComptime(t, comptimeSources(`import { comptime } from "vibelang:comptime"
 
 const scale = comptime(2)
 
@@ -446,7 +491,7 @@ func TestPinnedForkComptimeEnforcesBudgets(t *testing.T) {
 		{"string growth", `comptime("x".repeat(2000000))`},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			source := `import { comptime } from "smithers:comptime"
+			source := `import { comptime } from "vibelang:comptime"
 
 function deep(n: number): number {
     return deep(n + 1)
@@ -459,7 +504,7 @@ export function main(): string {
 }
 `
 			result := compileComptime(t, comptimeSources(source), nil)
-			requireComptimeDiagnostic(t, result, "SMITHERS1912")
+			requireComptimeDiagnostic(t, result, "VIBE1912")
 		})
 	}
 }
@@ -472,7 +517,7 @@ export function main(): string {
 // specification's target rule: the selected branch's value is what the program
 // observes, and the unselected branch is absent from the emitted artifact.
 func TestPinnedForkComptimeSelectsTheTargetBranch(t *testing.T) {
-	source := `import { comptime } from "smithers:comptime"
+	source := `import { comptime } from "vibelang:comptime"
 
 const settings = comptime(() => {
     if (comptime.target === "browser") {
@@ -490,8 +535,8 @@ export function main(): string {
 		expected string
 		absent   string
 	}{
-		{"browser", `{"pollMilliseconds":250,"transport":"fetch"}`, "node-http"},
-		{"typescript-node", `{"pollMilliseconds":1000,"transport":"node-http"}`, "fetch"},
+		{"browser", `{"transport":"fetch","pollMilliseconds":250}`, "node-http"},
+		{"typescript-node", `{"transport":"node-http","pollMilliseconds":1000}`, "fetch"},
 	} {
 		t.Run(testCase.target, func(t *testing.T) {
 			options := Options{}
@@ -517,7 +562,7 @@ export function main(): string {
 // A function that is kept as runtime code cannot observe a compile-time-only
 // operation, because there is no phase in which it could.
 func TestPinnedForkComptimeRefusesPhaseOnlyWorkInARetainedFunction(t *testing.T) {
-	result := compileComptime(t, comptimeSources(`import { comptime } from "smithers:comptime"
+	result := compileComptime(t, comptimeSources(`import { comptime } from "vibelang:comptime"
 
 function pick(): string {
     return comptime.target === "browser" ? "b" : "n"
@@ -529,7 +574,7 @@ export function main(): string {
     return chosen
 }
 `), nil)
-	requireComptimeDiagnostic(t, result, "SMITHERS1910")
+	requireComptimeDiagnostic(t, result, "VIBE1910")
 }
 
 // ---------------------------------------------------------------------------
@@ -579,12 +624,9 @@ export function main(): string { return String(value) }
 const escaped = [build]
 export function main(): string { return String(escaped.length) }
 `},
-		{"non-ASCII case mapping", comptimeCodeUnsupportedExpression, `const value = comptime("straße".toUpperCase())
-export function main(): string { return value }
-`},
-		{"replaceAll with an empty search", comptimeCodeUnsupportedExpression, `const value = comptime("abc".replaceAll("", "-"))
-export function main(): string { return value }
-`},
+		// Unicode case mapping and empty-search replaceAll are now implemented
+		// natively. Their old refusals moved to the executed string-semantic
+		// vectors in fork_comptime_strings_test.go, on both native emit paths.
 		{"embed without a tracked-input channel", comptimeCodeTrackedInput, `const value = comptime(() => embed("./data.json"))()
 export function main(): string { return String(value) }
 `},
@@ -592,9 +634,9 @@ export function main(): string { return String(value) }
 `},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			header := "import { comptime, embed } from \"smithers:comptime\"\n\n"
+			header := "import { comptime, embed } from \"vibelang:comptime\"\n\n"
 			if testCase.name == "a default import" {
-				header = "import comptime from \"smithers:comptime\"\n\n"
+				header = "import comptime from \"vibelang:comptime\"\n\n"
 			}
 			result := compileComptime(t, comptimeSources(header+testCase.body), nil)
 			requireComptimeDiagnostic(t, result, testCase.code)
@@ -605,7 +647,7 @@ export function main(): string { return String(value) }
 // The whole project is refused when any comptime use is refused: a partially
 // substituted program is one neither the author nor the language defines.
 func TestPinnedForkComptimeIsAllOrNothing(t *testing.T) {
-	result := compileComptime(t, comptimeSources(`import { comptime } from "smithers:comptime"
+	result := compileComptime(t, comptimeSources(`import { comptime } from "vibelang:comptime"
 
 const good = comptime({ a: 1 })
 const bad = comptime(Math.random())
@@ -627,7 +669,7 @@ export function main(): string {
 // refused at the authored specifier instead.
 func TestPinnedForkComptimeRefusesTheIntrinsicInAPlainTypeScriptModule(t *testing.T) {
 	result := compileComptime(t, []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: `import { value } from "./helper.ts"
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: `import { value } from "./helper.ts"
 
 export function main(): string {
     return String(value)
@@ -637,7 +679,7 @@ export function main(): string {
  * @module helper
  * @throws {never}
  */
-import { comptime } from "smithers:comptime"
+import { comptime } from "vibelang:comptime"
 
 export const value = comptime(1)
 `},
@@ -651,7 +693,7 @@ export const value = comptime(1)
 // A nested comptime is named for what it is rather than reported as an unknown
 // operation, because the inner call is already inside a compile-time evaluation.
 func TestPinnedForkComptimeRefusesANestedComptime(t *testing.T) {
-	result := compileComptime(t, comptimeSources(`import { comptime } from "smithers:comptime"
+	result := compileComptime(t, comptimeSources(`import { comptime } from "vibelang:comptime"
 
 const doubled = comptime(comptime(2))
 
@@ -669,7 +711,7 @@ export function main(): string {
 // sub-expression the counter happened to land on. The position a reader needs
 // is the loop; the exact expression is deterministic but arbitrary.
 func TestPinnedForkComptimeBudgetNamesTheLoop(t *testing.T) {
-	source := `import { comptime } from "smithers:comptime"
+	source := `import { comptime } from "vibelang:comptime"
 
 const spun = comptime(() => {
     let n = 0
@@ -684,7 +726,7 @@ export function main(): string {
 }
 `
 	result := compileComptime(t, comptimeSources(source), nil)
-	diagnostic := requireComptimeDiagnostic(t, result, "SMITHERS1912")
+	diagnostic := requireComptimeDiagnostic(t, result, "VIBE1912")
 	if diagnostic.Span == nil {
 		t.Fatal("a budget refusal must carry an authored span")
 	}
@@ -704,7 +746,7 @@ export function main(): string {
 // binding read in type position gains a same-named literal type alias, and a
 // binding read *only* as a type loses its runtime const entirely.
 func TestPinnedForkComptimeProducesTypes(t *testing.T) {
-	result := compileComptime(t, comptimeSources(`import { comptime } from "smithers:comptime"
+	result := compileComptime(t, comptimeSources(`import { comptime } from "vibelang:comptime"
 
 const Config = comptime({ mode: "fast", retries: 3 })
 
@@ -735,7 +777,7 @@ export function main(): string {
 	}
 	// The generated type has to reach declaration emit too, or a consumer of
 	// this module would see the alias disappear at the package boundary.
-	declaration := artifactTextsByPath(t, result.Artifacts)["main.d.sm.ts"]
+	declaration := artifactTextsByPath(t, result.Artifacts)["main.d.vibe.ts"]
 	for _, expected := range []string{`type Config = `, `readonly "mode": "fast"`, `readonly "retries": 3`} {
 		if !strings.Contains(declaration, expected) {
 			t.Fatalf("declaration emit lost the generated comptime type (%q):\n%s", expected, declaration)
@@ -747,7 +789,7 @@ export function main(): string {
 // identical artifacts. A compile-time evaluator that observed anything ambient
 // would eventually fail this even when every individual guard above passed.
 func TestPinnedForkComptimeIsReproducible(t *testing.T) {
-	source := `import { comptime } from "smithers:comptime"
+	source := `import { comptime } from "vibelang:comptime"
 
 const data = comptime(() => {
     const out: Record<string, number> = {}
@@ -775,7 +817,7 @@ export function main(): string {
 			t.Fatalf("artifact %q is not reproducible:\n%s\n---\n%s", path, text, right[path])
 		}
 	}
-	if got := runComptimeProgram(t, first); got != `{"keys":["b","a","c"],"out":{"a":2,"b":1,"c":3},"stamp":"typescript-node"}` {
+	if got := runComptimeProgram(t, first); got != `{"out":{"b":1,"a":2,"c":3},"keys":["b","a","c"],"stamp":"typescript-node"}` {
 		t.Fatalf("reproducible comptime value: %q", got)
 	}
 }
@@ -784,7 +826,7 @@ export function main(): string {
 // silent success: the alias carries the value's literal type, so it can actually
 // reject something.
 func TestPinnedForkComptimeGeneratedTypeRejectsAWiderValue(t *testing.T) {
-	result := compileComptime(t, comptimeSources(`import { comptime } from "smithers:comptime"
+	result := compileComptime(t, comptimeSources(`import { comptime } from "vibelang:comptime"
 
 const Config = comptime({ mode: "fast" })
 
@@ -818,7 +860,7 @@ export function main(): string {
 // A substituted literal keeps the authored call's position, so a diagnostic or
 // a stack frame in the emitted program still points at what the author wrote.
 func TestPinnedForkComptimeKeepsAuthoredPositions(t *testing.T) {
-	source := `import { comptime } from "smithers:comptime"
+	source := `import { comptime } from "vibelang:comptime"
 
 export function main(): string {
     const table = comptime({ answer: 42 })
@@ -841,10 +883,10 @@ export function main(): string {
 // Codes the tests above name, kept beside them so a renamed diagnostic breaks
 // the build rather than quietly stopping a test from asserting anything.
 const (
-	comptimeCodeUnsupportedExpression = "SMITHERS1904"
-	comptimeCodeNoncanonicalResult    = "SMITHERS1905"
-	comptimeCodeUnsupportedUse        = "SMITHERS1906"
-	comptimeCodeInvalidFunction       = "SMITHERS1910"
-	comptimeCodeTrackedInput          = "SMITHERS1911"
-	comptimeCodeArity                 = "SMITHERS1903"
+	comptimeCodeUnsupportedExpression = "VIBE1904"
+	comptimeCodeNoncanonicalResult    = "VIBE1905"
+	comptimeCodeUnsupportedUse        = "VIBE1906"
+	comptimeCodeInvalidFunction       = "VIBE1910"
+	comptimeCodeTrackedInput          = "VIBE1911"
+	comptimeCodeArity                 = "VIBE1903"
 )

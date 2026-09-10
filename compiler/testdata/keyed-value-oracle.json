@@ -1,0 +1,238 @@
+{
+  "revision": "6bcbaa2d03a10afe8fe59934dabe262f55f012e7",
+  "effectVersion": "4.0.0-rc.112",
+  "abi": "vibelang/keyed-source/v2",
+  "records": [
+    {
+      "name": "cache-value-0",
+      "value": null,
+      "encoded": null,
+      "stored": null,
+      "orderPreserved": true
+    },
+    {
+      "name": "cache-value-1",
+      "value": [
+        1,
+        {
+          "z": 2,
+          "a": 3
+        }
+      ],
+      "encoded": {
+        "kind": "array",
+        "items": [
+          1,
+          {
+            "kind": "object",
+            "items": {
+              "z": 2,
+              "a": 3
+            },
+            "order": [
+              "z",
+              "a"
+            ]
+          }
+        ]
+      },
+      "stored": {
+        "items": [
+          1,
+          {
+            "items": {
+              "a": 3,
+              "z": 2
+            },
+            "kind": "object",
+            "order": [
+              "z",
+              "a"
+            ]
+          }
+        ],
+        "kind": "array"
+      },
+      "orderPreserved": true
+    },
+    {
+      "name": "cache-value-2",
+      "value": {
+        "z": 1,
+        "a": {
+          "y": 2,
+          "b": 3
+        }
+      },
+      "encoded": {
+        "kind": "object",
+        "items": {
+          "z": 1,
+          "a": {
+            "kind": "object",
+            "items": {
+              "y": 2,
+              "b": 3
+            },
+            "order": [
+              "y",
+              "b"
+            ]
+          }
+        },
+        "order": [
+          "z",
+          "a"
+        ]
+      },
+      "stored": {
+        "items": {
+          "a": {
+            "items": {
+              "b": 3,
+              "y": 2
+            },
+            "kind": "object",
+            "order": [
+              "y",
+              "b"
+            ]
+          },
+          "z": 1
+        },
+        "kind": "object",
+        "order": [
+          "z",
+          "a"
+        ]
+      },
+      "orderPreserved": true
+    },
+    {
+      "name": "cache-value-3",
+      "value": {
+        "__proto__": {
+          "z": 1,
+          "a": 2
+        },
+        "constructor": 3
+      },
+      "encoded": {
+        "kind": "object",
+        "items": {
+          "__proto__": {
+            "kind": "object",
+            "items": {
+              "z": 1,
+              "a": 2
+            },
+            "order": [
+              "z",
+              "a"
+            ]
+          },
+          "constructor": 3
+        },
+        "order": [
+          "__proto__",
+          "constructor"
+        ]
+      },
+      "stored": {
+        "items": {
+          "__proto__": {
+            "items": {
+              "a": 2,
+              "z": 1
+            },
+            "kind": "object",
+            "order": [
+              "z",
+              "a"
+            ]
+          },
+          "constructor": 3
+        },
+        "kind": "object",
+        "order": [
+          "__proto__",
+          "constructor"
+        ]
+      },
+      "orderPreserved": true
+    },
+    {
+      "name": "cache-value-4",
+      "value": {
+        "kind": "object",
+        "items": {
+          "z": 1,
+          "a": 2
+        },
+        "order": [
+          "authored",
+          "data"
+        ]
+      },
+      "encoded": {
+        "kind": "object",
+        "items": {
+          "kind": "object",
+          "items": {
+            "kind": "object",
+            "items": {
+              "z": 1,
+              "a": 2
+            },
+            "order": [
+              "z",
+              "a"
+            ]
+          },
+          "order": {
+            "kind": "array",
+            "items": [
+              "authored",
+              "data"
+            ]
+          }
+        },
+        "order": [
+          "kind",
+          "items",
+          "order"
+        ]
+      },
+      "stored": {
+        "items": {
+          "items": {
+            "items": {
+              "a": 2,
+              "z": 1
+            },
+            "kind": "object",
+            "order": [
+              "z",
+              "a"
+            ]
+          },
+          "kind": "object",
+          "order": {
+            "items": [
+              "authored",
+              "data"
+            ],
+            "kind": "array"
+          }
+        },
+        "kind": "object",
+        "order": [
+          "kind",
+          "items",
+          "order"
+        ]
+      },
+      "orderPreserved": true
+    }
+  ]
+}

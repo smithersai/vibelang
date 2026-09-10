@@ -49,7 +49,7 @@ import (
 
 // memberSpellingSeam holds the capability alone, so each spelling below is the
 // only thing that differs between one program and the next.
-const memberSpellingSeam = "spelling.mod.sm\x00" + `import { Context } from "smthrs/context"
+const memberSpellingSeam = "spelling.mod.vibe\x00" + `import { Context } from "vibelang/context"
 
 export abstract class Db extends Context {
   abstract read(): string
@@ -160,7 +160,7 @@ var memberSpellings = []struct {
 	},
 	// `Object.freeze({ valueOf() {…} })` is deliberately NOT in this table. The
 	// callback-crossing rule refuses the literal AT THE FREEZE CALL, so the
-	// program carries a SMITHERS2102 that the coercion walk did not put there:
+	// program carries a VIBE2102 that the coercion walk did not put there:
 	// the code-set equality would pass for it whether or not the member was
 	// charged, and the string-hint pairing below could never be clean. A probe
 	// that cannot come out negative measures nothing, so it is pinned on its own
@@ -170,10 +170,10 @@ var memberSpellings = []struct {
 
 // memberSpellingModule puts one spelling in front of one position. The coercion
 // is inside `f` and `f` is called at module scope, so a spelling that is charged
-// draws SMITHERS2102 at the top-level call — which is the row having TRAVELLED,
+// draws VIBE2102 at the top-level call — which is the row having TRAVELLED,
 // not merely the position having been refused.
 func memberSpellingModule(declaration string, returns string) string {
-	return "import { Db } from \"./spelling.mod.sm\"\n" +
+	return "import { Db } from \"./spelling.mod.vibe\"\n" +
 		declaration +
 		"function f(): number {\n  return " + returns + "\n}\n" +
 		"const v = f()\n" +
@@ -188,11 +188,11 @@ func memberSpellingCodes(t *testing.T, backend Compiler, ctx context.Context, so
 	t.Helper()
 	name, text, _ := strings.Cut(memberSpellingSeam, "\x00")
 	files := []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: source},
-		{Path: name, Kind: FileKindSmithers, Text: text},
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: source},
+		{Path: name, Kind: FileKindVibeLang, Text: text},
 	}
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm", name},
+		RootNames: []string{"main.vibe", name},
 		Files:     files,
 		Options:   Options{},
 		Lowering:  LoweringInternal,
@@ -223,12 +223,12 @@ func TestPinnedForkCoercionMemberSpellingsAnswerAlike(t *testing.T) {
 	control := memberSpellingCodes(t, backend, ctx, memberSpellingModule(memberSpellings[0].declaration, "+obj"))
 	found := false
 	for _, code := range control {
-		if code == "SMITHERS2102" {
+		if code == "VIBE2102" {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatalf("the method-shorthand control must already report SMITHERS2102, but reported %v; "+
+		t.Fatalf("the method-shorthand control must already report VIBE2102, but reported %v; "+
 			"an accepting baseline would make every equality below vacuous", control)
 	}
 	for _, spelling := range memberSpellings[1:] {
@@ -253,7 +253,7 @@ func TestPinnedForkCoercionMemberSpellingsAnswerAlike(t *testing.T) {
 			modules: []string{memberSpellingSeam},
 			source: memberSpellingModule(
 				"const obj = Object.freeze({ valueOf(): number { return Db.context().read().length } })\n", "+obj"),
-			reject: []string{"SMITHERS2102@2:13", "SMITHERS2102@6:11"},
+			reject: []string{"VIBE2102@2:13", "VIBE2102@6:11"},
 		}})
 	})
 }
@@ -271,7 +271,7 @@ func TestPinnedForkCoercionWalkSurvivesEverySpelling(t *testing.T) {
 		cases = append(cases, failClosedCase{
 			name:    spelling.name + ", at a string-hint position",
 			modules: []string{memberSpellingSeam},
-			source: "import { Db } from \"./spelling.mod.sm\"\n" +
+			source: "import { Db } from \"./spelling.mod.vibe\"\n" +
 				spelling.declaration +
 				"const v = `${obj}`\n" +
 				"export function main(): string[] {\n  return [v]\n}\n",
@@ -315,7 +315,9 @@ var memberProtocolSpellings = []struct {
 	{
 		"Symbol.iterator",
 		"const obj = { [Symbol.iterator]: (): Iterator<number> => { return [Db.context().read().length][Symbol.iterator]() } }\n",
-		"const obj = { *[Symbol.iterator](): Iterator<number> { yield Db.context().read().length } }\n",
+		// Compare ordinary methods with arrows. An authored generator has a
+		// separate non-empty-row refusal and is not their static-contract twin.
+		"const obj = { [Symbol.iterator](): Iterator<number> { return [Db.context().read().length][Symbol.iterator]() } }\n",
 		"function f(): number {\n  return [...obj].length\n}\nconst v = f()\n",
 	},
 	{
@@ -347,18 +349,18 @@ func TestPinnedForkCoercionMemberSpellingCrossesEveryProtocolMember(t *testing.T
 	for _, member := range memberProtocolSpellings {
 		t.Run(member.name, func(t *testing.T) {
 			body := member.function + "export function main(): string[] {\n  return [`${v}`]\n}\n"
-			method := memberSpellingCodes(t, backend, ctx, "import { Db } from \"./spelling.mod.sm\"\n"+member.method+body)
+			method := memberSpellingCodes(t, backend, ctx, "import { Db } from \"./spelling.mod.vibe\"\n"+member.method+body)
 			found := false
 			for _, code := range method {
-				if code == "SMITHERS2102" {
+				if code == "VIBE2102" {
 					found = true
 				}
 			}
 			if !found {
-				t.Fatalf("the method spelling of %s must already report SMITHERS2102, but reported %v; "+
+				t.Fatalf("the method spelling of %s must already report VIBE2102, but reported %v; "+
 					"an accepting baseline would make the equality vacuous", member.name, method)
 			}
-			arrow := memberSpellingCodes(t, backend, ctx, "import { Db } from \"./spelling.mod.sm\"\n"+member.arrow+body)
+			arrow := memberSpellingCodes(t, backend, ctx, "import { Db } from \"./spelling.mod.vibe\"\n"+member.arrow+body)
 			if strings.Join(arrow, " ") != strings.Join(method, " ") {
 				t.Fatalf("the arrow spelling of %s answers %v; the method spelling answers %v — "+
 					"the position runs the same member either way", member.name, arrow, method)
@@ -378,7 +380,7 @@ func TestPinnedForkCoercionMemberSpellingCrossesEveryProtocolMember(t *testing.T
 func TestPinnedForkComputedMemberNameIsChargedToTheEnclosingScope(t *testing.T) {
 	declaration := "const obj = { toString(): string { return Db.context().read() } }\n"
 	inFunction := func(member string) string {
-		return "import { Db } from \"./spelling.mod.sm\"\n" + declaration +
+		return "import { Db } from \"./spelling.mod.vibe\"\n" + declaration +
 			"function f(): number {\n" + member + "  return 1\n}\n" +
 			"const v = f()\n" +
 			"export function main(): string[] {\n  return [`${v}`]\n}\n"
@@ -388,74 +390,74 @@ func TestPinnedForkComputedMemberNameIsChargedToTheEnclosingScope(t *testing.T) 
 			name:    "an object-literal method name",
 			modules: []string{memberSpellingSeam},
 			source:  inFunction("  const shape = { [obj as unknown as string]() { return 1 } }\n  void shape\n"),
-			reject:  []string{"SMITHERS2102@8:11"},
+			reject:  []string{"VIBE2102@8:11"},
 		},
 		{
 			name:    "an object-literal getter name",
 			modules: []string{memberSpellingSeam},
 			source:  inFunction("  const shape = { get [obj as unknown as string](): number { return 1 } }\n  void shape\n"),
-			reject:  []string{"SMITHERS2102@8:11"},
+			reject:  []string{"VIBE2102@8:11"},
 		},
 		{
 			name:    "an object-literal setter name",
 			modules: []string{memberSpellingSeam},
 			source:  inFunction("  const shape = { set [obj as unknown as string](x: number) { }\n }\n  void shape\n"),
-			reject:  []string{"SMITHERS2102@9:11"},
+			reject:  []string{"VIBE2102@9:11"},
 		},
 		{
 			name:    "an object-literal async method name",
 			modules: []string{memberSpellingSeam},
 			source:  inFunction("  const shape = { async [obj as unknown as string](): Promise<number> { return 1 } }\n  void shape\n"),
-			reject:  []string{"SMITHERS2102@8:11"},
+			reject:  []string{"VIBE2102@8:11"},
 		},
 		{
 			name:    "an object-literal generator method name",
 			modules: []string{memberSpellingSeam},
 			source:  inFunction("  const shape = { *[obj as unknown as string](): Generator<number> { yield 1 } }\n  void shape\n"),
-			reject:  []string{"SMITHERS2102@8:11"},
+			reject:  []string{"VIBE2102@8:11"},
 		},
 		{
 			name:    "a class method name",
 			modules: []string{memberSpellingSeam},
 			source:  inFunction("  class S {\n    [obj as unknown as string]() { return 1 }\n  }\n  void S\n"),
-			reject:  []string{"SMITHERS2102@10:11"},
+			reject:  []string{"VIBE2102@10:11"},
 		},
 		{
 			name:    "a class getter name",
 			modules: []string{memberSpellingSeam},
 			source:  inFunction("  class S {\n    get [obj as unknown as string](): number { return 1 }\n  }\n  void S\n"),
-			reject:  []string{"SMITHERS2102@10:11"},
+			reject:  []string{"VIBE2102@10:11"},
 		},
 		{
 			name:    "a class static method name",
 			modules: []string{memberSpellingSeam},
 			source:  inFunction("  class S {\n    static [obj as unknown as string]() { return 1 }\n  }\n  void S\n"),
-			reject:  []string{"SMITHERS2102@10:11"},
+			reject:  []string{"VIBE2102@10:11"},
 		},
 		{
 			name:    "a class async method name",
 			modules: []string{memberSpellingSeam},
 			source:  inFunction("  class S {\n    async [obj as unknown as string](): Promise<number> { return 1 }\n  }\n  void S\n"),
-			reject:  []string{"SMITHERS2102@10:11"},
+			reject:  []string{"VIBE2102@10:11"},
 		},
 		{
 			// CONTROL: not function-like, and charged before the fix as well.
 			name:    "an object-literal arrow property name — already charged",
 			modules: []string{memberSpellingSeam},
 			source:  inFunction("  const shape = { [obj as unknown as string]: (): number => 1 }\n  void shape\n"),
-			reject:  []string{"SMITHERS2102@8:11"},
+			reject:  []string{"VIBE2102@8:11"},
 		},
 		{
 			name:    "an object-literal value property name — already charged",
 			modules: []string{memberSpellingSeam},
 			source:  inFunction("  const shape = { [obj as unknown as string]: 1 }\n  void shape\n"),
-			reject:  []string{"SMITHERS2102@8:11"},
+			reject:  []string{"VIBE2102@8:11"},
 		},
 		{
 			name:    "a class property declaration name — already charged",
 			modules: []string{memberSpellingSeam},
 			source:  inFunction("  class S {\n    [obj as unknown as string]: number = 1\n  }\n  void S\n"),
-			reject:  []string{"SMITHERS2102@10:11"},
+			reject:  []string{"VIBE2102@10:11"},
 		},
 		{
 			// The resolver half. A TOP-LEVEL computed name is module evaluation
@@ -463,28 +465,28 @@ func TestPinnedForkComputedMemberNameIsChargedToTheEnclosingScope(t *testing.T) 
 			// is written. Teaching only the body walk leaves this open.
 			name:    "a TOP-LEVEL object-literal method name",
 			modules: []string{memberSpellingSeam},
-			source: "import { Db } from \"./spelling.mod.sm\"\n" + declaration +
+			source: "import { Db } from \"./spelling.mod.vibe\"\n" + declaration +
 				"const shape = { [obj as unknown as string]() { return 1 } }\n" +
 				"export function main(): string[] {\n  return [`${Object.keys(shape).length}`]\n}\n",
-			reject: []string{"SMITHERS2102@3:18"},
+			reject: []string{"VIBE2102@3:18"},
 		},
 		{
 			name:    "a TOP-LEVEL class method name",
 			modules: []string{memberSpellingSeam},
-			source: "import { Db } from \"./spelling.mod.sm\"\n" + declaration +
+			source: "import { Db } from \"./spelling.mod.vibe\"\n" + declaration +
 				"class S {\n  [obj as unknown as string]() { return 1 }\n}\n" +
 				"export function main(): string[] {\n  return [`${Object.keys(new S()).length}`]\n}\n",
-			reject: []string{"SMITHERS2102@4:4"},
+			reject: []string{"VIBE2102@4:4"},
 		},
 		{
 			// The carve-out, pinned as a NEGATIVE so a future lane cannot fold
 			// parameter defaults into `evaluatedOutsideFunction` by accident: a
 			// default is evaluated when the function is CALLED, so it belongs to
 			// the callee's own row and not to the scope around it. `g` is never
-			// called, so nothing runs and nothing is charged anywhere.
+			// called, so its requirement is not charged to module evaluation.
 			name:    "a parameter default is NOT evaluated by the enclosing scope",
 			modules: []string{memberSpellingSeam},
-			source: "import { Db } from \"./spelling.mod.sm\"\n" + declaration +
+			source: "import { Db } from \"./spelling.mod.vibe\"\n" + declaration +
 				"function g(x: number = +(obj as unknown as number)): number { return x }\n" +
 				"export function main(): string[] {\n  return [`${typeof g}`]\n}\n",
 			stdout: "function",
@@ -494,7 +496,7 @@ func TestPinnedForkComputedMemberNameIsChargedToTheEnclosingScope(t *testing.T) 
 			// must RUN — the widened walk visits it either way.
 			name:    "a computed method name reading no capability still runs",
 			modules: []string{memberSpellingSeam},
-			source: "import { Db } from \"./spelling.mod.sm\"\n" +
+			source: "import { Db } from \"./spelling.mod.vibe\"\n" +
 				"const plain = { toString(): string { return \"k\" } }\n" +
 				"const shape = { [plain as unknown as string]() { return 1 } }\n" +
 				"export function main(): string[] {\n  return [`${Object.keys(shape).length}${Db.name.length > 0}`]\n}\n",
@@ -509,14 +511,14 @@ func TestPinnedForkComputedMemberNameIsChargedToTheEnclosingScope(t *testing.T) 
 // reported when the layer does not carry it, and is discharged — and the program
 // RUNS — when it does.
 func TestPinnedForkCoercionMemberSpellingRowReachesTheProvideSite(t *testing.T) {
-	// SMITHERS2101 is reported only where the provide site has no enclosing row
+	// VIBE2101 is reported only where the provide site has no enclosing row
 	// to hand the missing requirement to — see `checkOneLayer` — so the WRONG
 	// layer is spelled at module scope and the RIGHT one inside `main`, exactly
 	// as fork_coercion_rows_test.go spells the same pair.
 	head := func(declaration string, expression string) string {
-		return "import { Context } from \"smthrs/context\"\n" +
-			"import { Layer } from \"smthrs/provider\"\n" +
-			"import { Db } from \"./spelling.mod.sm\"\n" +
+		return "import { Context } from \"vibelang/context\"\n" +
+			"import { Layer } from \"vibelang/provider\"\n" +
+			"import { Db } from \"./spelling.mod.vibe\"\n" +
 			"abstract class Label extends Context {\n  abstract text(): string\n}\n" +
 			declaration +
 			"function measure(): string {\n  return `${" + expression + "}`\n}\n"
@@ -537,7 +539,7 @@ func TestPinnedForkCoercionMemberSpellingRowReachesTheProvideSite(t *testing.T) 
 			name:    "an arrow-property valueOf reaches a provide site that lacks it",
 			modules: []string{memberSpellingSeam},
 			source:  wrongLayer("const obj = { valueOf: (): number => { return Db.context().read().length } }\n", "+obj"),
-			reject:  []string{"SMITHERS2101@12:22"},
+			reject:  []string{"VIBE2101@12:22"},
 		},
 		{
 			name:    "an arrow-property valueOf is discharged by the right layer",
@@ -549,7 +551,7 @@ func TestPinnedForkCoercionMemberSpellingRowReachesTheProvideSite(t *testing.T) 
 			name:    "a function-expression toString reaches a provide site that lacks it",
 			modules: []string{memberSpellingSeam},
 			source:  wrongLayer("const obj = { toString: function (): string { return Db.context().read() } }\n", "`${obj}`"),
-			reject:  []string{"SMITHERS2101@12:22"},
+			reject:  []string{"VIBE2101@12:22"},
 		},
 		{
 			name:    "a function-expression toString is discharged by the right layer",
@@ -561,7 +563,7 @@ func TestPinnedForkCoercionMemberSpellingRowReachesTheProvideSite(t *testing.T) 
 			name:    "a shorthand property reaches a provide site that lacks it",
 			modules: []string{memberSpellingSeam},
 			source:  wrongLayer("const valueOf = (): number => { return Db.context().read().length }\nconst obj = { valueOf }\n", "+obj"),
-			reject:  []string{"SMITHERS2101@13:22"},
+			reject:  []string{"VIBE2101@13:22"},
 		},
 		{
 			name:    "a shorthand property is discharged by the right layer",
@@ -573,7 +575,7 @@ func TestPinnedForkCoercionMemberSpellingRowReachesTheProvideSite(t *testing.T) 
 			name:    "a computed member name reaches a provide site that lacks it",
 			modules: []string{memberSpellingSeam},
 			source:  wrongLayer("const obj = { toString(): string { return Db.context().read() } }\n", "Object.keys({ [obj as unknown as string]() { return 1 } }).length"),
-			reject:  []string{"SMITHERS2101@12:22"},
+			reject:  []string{"VIBE2101@12:22"},
 		},
 		{
 			name:    "a computed member name is discharged by the right layer",
@@ -594,7 +596,7 @@ func TestPinnedForkWiderMemberResolutionStaysNarrow(t *testing.T) {
 			// `memberInvocations` is not shared with `accessorInvocations`.
 			name:    "reading the member without calling it charges nothing",
 			modules: []string{memberSpellingSeam},
-			source: "import { Db } from \"./spelling.mod.sm\"\n" +
+			source: "import { Db } from \"./spelling.mod.vibe\"\n" +
 				"const obj = { valueOf: (): number => { return Db.context().read().length } }\n" +
 				"const m = obj.valueOf\n" +
 				"export function main(): string[] {\n  return [`${typeof m === \"function\" ? 1 : 0}`]\n}\n",
@@ -606,7 +608,7 @@ func TestPinnedForkWiderMemberResolutionStaysNarrow(t *testing.T) {
 			// it into an ARROW-spelled `valueOf`/`toString`.
 			name:    "Symbol.toPrimitive shadows an ARROW valueOf and toString",
 			modules: []string{memberSpellingSeam},
-			source: "import { Db } from \"./spelling.mod.sm\"\n" +
+			source: "import { Db } from \"./spelling.mod.vibe\"\n" +
 				"const obj = {\n" +
 				"  [Symbol.toPrimitive]: (hint: string): number => 1 + hint.length - hint.length,\n" +
 				"  valueOf: (): number => { return Db.context().read().length },\n" +
@@ -623,7 +625,7 @@ func TestPinnedForkWiderMemberResolutionStaysNarrow(t *testing.T) {
 			// spelling.
 			name:    "a local Number shadow is an ordinary call, parenthesised too",
 			modules: []string{memberSpellingSeam},
-			source: "import { Db } from \"./spelling.mod.sm\"\n" +
+			source: "import { Db } from \"./spelling.mod.vibe\"\n" +
 				"const obj = { valueOf: (): number => { return Db.context().read().length } }\n" +
 				"function Number(value: unknown): number { return 0 }\n" +
 				"const v = (Number)(obj)\n" +
@@ -636,7 +638,7 @@ func TestPinnedForkWiderMemberResolutionStaysNarrow(t *testing.T) {
 			// an arrow-spelled `toString` here either.
 			name:    "a tagged template does not coerce an ARROW toString",
 			modules: []string{memberSpellingSeam},
-			source: "import { Db } from \"./spelling.mod.sm\"\n" +
+			source: "import { Db } from \"./spelling.mod.vibe\"\n" +
 				"const obj = { toString: (): string => { return Db.context().read() } }\n" +
 				"/** @throws {never} */\n" +
 				"function tag(parts: TemplateStringsArray, ...values: unknown[]): string {\n" +
@@ -652,7 +654,7 @@ func TestPinnedForkWiderMemberResolutionStaysNarrow(t *testing.T) {
 			// spellings are visible.
 			name:    "an object spread does not run a class prototype getter",
 			modules: []string{memberSpellingSeam},
-			source: "import { Db } from \"./spelling.mod.sm\"\n" +
+			source: "import { Db } from \"./spelling.mod.vibe\"\n" +
 				"class Box {\n  get size(): number { return Db.context().read().length }\n}\n" +
 				"const copy = { ...new Box() }\n" +
 				"export function main(): string[] {\n  return [`${Object.keys(copy).length}`]\n}\n",
@@ -663,7 +665,7 @@ func TestPinnedForkWiderMemberResolutionStaysNarrow(t *testing.T) {
 			// — not even an arrow-valued static field.
 			name:    "instanceof does not run a static toString",
 			modules: []string{memberSpellingSeam},
-			source: "import { Db } from \"./spelling.mod.sm\"\n" +
+			source: "import { Db } from \"./spelling.mod.vibe\"\n" +
 				"class Named {\n  static toString = (): string => { return Db.context().read() }\n}\n" +
 				"const v = ({} as unknown) instanceof Named ? 1 : 0\n" +
 				"export function main(): string[] {\n  return [`${v}`]\n}\n",
@@ -673,7 +675,7 @@ func TestPinnedForkWiderMemberResolutionStaysNarrow(t *testing.T) {
 			// An ARROW `valueOf` that reads nothing is an ordinary object.
 			name:    "an arrow valueOf that reads no capability still runs",
 			modules: []string{memberSpellingSeam},
-			source: "import { Db } from \"./spelling.mod.sm\"\n" +
+			source: "import { Db } from \"./spelling.mod.vibe\"\n" +
 				"const obj = { valueOf: (): number => 7 }\n" +
 				"const v = +obj\n" +
 				"export function main(): string[] {\n  return [`${v}${Db.name.length > 0}`]\n}\n",

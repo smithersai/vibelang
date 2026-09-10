@@ -14,7 +14,7 @@ import (
 // The consequence was not theoretical. `return { count: input.items.length }`
 // lowered to `{"kind":"input","path":["items","length"]}`, compiled with zero
 // diagnostics, emitted, and RAN — while the reference frontend refused the same
-// program with SMITHERS4110. `.length` is the sharpest spelling of the hole:
+// program with VIBE4110. `.length` is the sharpest spelling of the hole:
 // TypeScript accepts it on an array so no stock diagnostic fires, the durable
 // input descriptor has no such field, and the engine's `pathValue` refuses a
 // non-numeric part on an array with a runtime ProjectionDefect.
@@ -23,7 +23,7 @@ import (
 // reference backend on the same source text, so the two implementations answer
 // one code, one position and one sentence.
 
-const durableProjectionPreamble = "import { durable, Action, sleep, sequential, waitSignal } from \"smithers:flows\"\n"
+const durableProjectionPreamble = "import { durable, Action, sleep, sequential, waitSignal } from \"vibelang:flows\"\n"
 
 // durableProjectionAnchor is the position both backends report at: the durable
 // source function itself, not the projection. The reference reports from
@@ -49,8 +49,8 @@ func requireSoleDurableRefusal(t *testing.T, result CompileResult, source string
 	}
 	item := result.Diagnostics[0]
 	want := "durable Flow boundary is not structurally encodable: " + message
-	if item.Code != "SMITHERS4110" || item.Message != want || item.File != "main.sm" || item.Phase != PhaseLower {
-		t.Fatalf("diagnostic = %#v, want SMITHERS4110 %q at main.sm during lowering", item, want)
+	if item.Code != "VIBE4110" || item.Message != want || item.File != "main.vibe" || item.Phase != PhaseLower {
+		t.Fatalf("diagnostic = %#v, want VIBE4110 %q at main.vibe during lowering", item, want)
 	}
 	anchor := durableProjectionAnchor(t, source)
 	if item.Span == nil || item.Span.Start != anchor {
@@ -339,7 +339,7 @@ export function main(): string[] { return [Flow.artifactSource] }
 // So the pin is re-aimed rather than deleted, at a strictly stronger claim.
 // Every `digest` below was regenerated on 2026-08-28 by RUNNING BOTH BACKENDS
 // over that exact program — `poc/src/durable/source-compiler.ts` through
-// `compileDurableSource`, and this bridge through `cmd/smithersc-go` — and the
+// `compileDurableSource`, and this bridge through `cmd/vibec-go` — and the
 // two agreed byte-for-byte on the whole Plan, not only on the digest. A value
 // here is therefore cross-backend agreement, which is what a Plan digest has to
 // be before a Manifest digest can be a signature; it is not a historical
@@ -364,7 +364,7 @@ export const Flow = durable((input: { key: string }) => {
   return { value: found.value }
 })`,
 			shape:  "structural",
-			digest: "a4512066af51b6f2b7b8f77fdda7291da6f54d1866ed2a8e1bb26943ab0b5009",
+			digest: "6eafde9ac3f75132a9d51fc3f55c6f21e74e6e1aaa8ad45ba8320a90f5bffbf0",
 		},
 		{
 			name: "branch join over two Actions",
@@ -375,12 +375,12 @@ export const Flow = durable((input: { flag: boolean; k: string }) => {
   return { v: (input.flag ? Left.run({ k: input.k })! : Right.run({ k: input.k })!).v }
 })`,
 			shape:  "structural",
-			digest: "92fb943a8ffe695eee398eed80260d99447f370629264203250cff19370c2532",
+			digest: "66d05dc77dd8efc2f2a8bce8c29a09776468370feda086654f0a1d61b9effa62",
 		},
 		{
 			// The reference asserted this direction with a `fanOut` and a
-			// `loopWhile` leg. This subset refuses both wholesale (SMITHERS4117,
-			// SMITHERS4121), so the two multi-Action shapes it DOES accept stand
+			// `loopWhile` leg. This subset refuses both wholesale (VIBE4117,
+			// VIBE4121), so the two multi-Action shapes it DOES accept stand
 			// in for them: a `sequential` pair and the timer/signal Flow.
 			name: "sequential pair",
 			flow: "Flow",
@@ -391,7 +391,7 @@ export const Flow = durable((input: { k: string }) => {
   return { v: pair[0].v, w: pair[1].w }
 })`,
 			shape:  "structural",
-			digest: "57f8a2a262aabf1b3bd8417c20a014bc879092e3fc36c0c4ed8130ca237efcda",
+			digest: "8b3572f19d0483685034548c68a33c49b8459c02e837b2defaa4655d0c3ff0c4",
 		},
 		{
 			name: "Action, branch, timer, sequential and signal together",
@@ -407,7 +407,7 @@ export const Build = durable((input: { key: string; live: boolean }) => {
   return { approval, pair, selected }
 })`,
 			shape:  "structural",
-			digest: "a67b44af011b31dab88d21530542a582951b42ee735e665aa5a32d1b29425021",
+			digest: "26406d528512d88e0f292d475cbc1b9e673cb6a42e1db49b68e573a7932e5bdb",
 		},
 		{
 			// The Action-free control, and the one row whose digest did NOT
@@ -424,7 +424,7 @@ export const Build = durable((input: { key: string; live: boolean }) => {
   return { key: input.key }
 })`,
 			shape:  "structural",
-			digest: "e5c02f89c98de1b4a345215754153bdfc9c24fe103b76803c12a10e180b379ad",
+			digest: "e79bb06f6a1691159d6f668b9db38c7769faa55b41543a42c8634f8f04b7d8f9",
 		},
 	} {
 		t.Run(probe.name, func(t *testing.T) {
@@ -618,7 +618,7 @@ func TestPinnedForkDurableRefusesANodeInputProjectionItsDescriptorCannotAnswer(t
 export const Flow = durable((input: { items: readonly string[] }) => {
   return Step.run({ key: input.items.length })
 })`,
-			message: "Action main.sm#Step input cannot project length from durable array",
+			message: "Action main.vibe#Step input cannot project length from durable array",
 		},
 		{
 			// The whole argument IS the projection.
@@ -627,7 +627,7 @@ export const Flow = durable((input: { items: readonly string[] }) => {
 export const Flow = durable((input: { items: readonly string[] }) => {
   return Step.run(input.items.length)
 })`,
-			message: "Action main.sm#Step input cannot project length from durable array",
+			message: "Action main.vibe#Step input cannot project length from durable array",
 		},
 		{
 			name: "nested object field",
@@ -635,7 +635,7 @@ export const Flow = durable((input: { items: readonly string[] }) => {
 export const Flow = durable((input: { items: readonly string[] }) => {
   return Step.run({ outer: { key: input.items.length } })
 })`,
-			message: "Action main.sm#Step input cannot project length from durable array",
+			message: "Action main.vibe#Step input cannot project length from durable array",
 		},
 		{
 			name: "array literal element",
@@ -643,7 +643,7 @@ export const Flow = durable((input: { items: readonly string[] }) => {
 export const Flow = durable((input: { items: readonly string[] }) => {
   return Step.run({ keys: [input.items.length] })
 })`,
-			message: "Action main.sm#Step input cannot project length from durable array",
+			message: "Action main.vibe#Step input cannot project length from durable array",
 		},
 		{
 			// The const holds the container; the defect is the projection OFF it.
@@ -653,7 +653,7 @@ export const Flow = durable((input: { items: readonly string[] }) => {
   const c = input.items
   return Step.run({ key: c.length })
 })`,
-			message: "Action main.sm#Step input cannot project length from durable array",
+			message: "Action main.vibe#Step input cannot project length from durable array",
 		},
 		{
 			// The const holds the defect; the argument is a bare identifier.
@@ -663,7 +663,7 @@ export const Flow = durable((input: { items: readonly string[] }) => {
   const n = input.items.length
   return Step.run({ key: n })
 })`,
-			message: "Action main.sm#Step input cannot project length from durable array",
+			message: "Action main.vibe#Step input cannot project length from durable array",
 		},
 		{
 			name: "projection through a durable string",
@@ -671,7 +671,7 @@ export const Flow = durable((input: { items: readonly string[] }) => {
 export const Flow = durable((input: { text: string }) => {
   return Step.run({ key: input.text.length })
 })`,
-			message: "Action main.sm#Step input cannot project length from durable string",
+			message: "Action main.vibe#Step input cannot project length from durable string",
 		},
 		{
 			// TypeScript types `pair.length` as the literal `2`, so nothing else
@@ -681,7 +681,7 @@ export const Flow = durable((input: { text: string }) => {
 export const Flow = durable((input: { pair: readonly [string, number] }) => {
   return Step.run({ key: input.pair.length })
 })`,
-			message: "Action main.sm#Step input cannot project length from durable tuple",
+			message: "Action main.vibe#Step input cannot project length from durable tuple",
 		},
 		{
 			name: "a field the descriptor lacks",
@@ -689,7 +689,7 @@ export const Flow = durable((input: { pair: readonly [string, number] }) => {
 export const Flow = durable((input: { obj: { a: string } }) => {
   return Step.run({ key: input.obj.missing })
 })`,
-			message: "Action main.sm#Step input projects missing durable field missing",
+			message: "Action main.vibe#Step input projects missing durable field missing",
 		},
 		{
 			name: "a nested projection whose last component misses",
@@ -697,7 +697,7 @@ export const Flow = durable((input: { obj: { a: string } }) => {
 export const Flow = durable((input: { nested: { inner: { a: string } } }) => {
   return Step.run({ key: input.nested.inner.a.length })
 })`,
-			message: "Action main.sm#Step input cannot project length from durable string",
+			message: "Action main.vibe#Step input cannot project length from durable string",
 		},
 		{
 			// The bracketed spelling of the same defect must lower identically.
@@ -706,7 +706,7 @@ export const Flow = durable((input: { nested: { inner: { a: string } } }) => {
 export const Flow = durable((input: { items: readonly string[] }) => {
   return Step.run({ key: input.items["length"] })
 })`,
-			message: "Action main.sm#Step input cannot project length from durable array",
+			message: "Action main.vibe#Step input cannot project length from durable array",
 		},
 		{
 			// The walk's Action leg, reached from an input rather than an output.
@@ -717,7 +717,7 @@ export const Flow = durable((input: { key: string }) => {
   const first = Step.run({ key: input.key })!
   return Second.run({ key: first.value.length })
 })`,
-			message: "Action main.sm#Second input cannot project length from durable string",
+			message: "Action main.vibe#Second input cannot project length from durable string",
 		},
 		{
 			// The walk's signal leg, same.
@@ -727,7 +727,7 @@ export const Flow = durable((input: { key: string }) => {
   const ticket = waitSignal<{ token: string }>("build.approval")
   return Step.run({ key: ticket.token.length })
 })`,
-			message: "Action main.sm#Step input cannot project length from durable string",
+			message: "Action main.vibe#Step input cannot project length from durable string",
 		},
 		{
 			name: "Action input inside a branch arm",
@@ -735,7 +735,7 @@ export const Flow = durable((input: { key: string }) => {
 export const Flow = durable((input: { flag: boolean; items: readonly string[]; n: number }) => {
   return input.flag ? Step.run({ key: input.items.length }) : Step.run({ key: input.n })
 })`,
-			message: "Action main.sm#Step input cannot project length from durable array",
+			message: "Action main.vibe#Step input cannot project length from durable array",
 		},
 		{
 			name: "sequential argument",
@@ -745,7 +745,7 @@ export const Flow = durable((input: { items: readonly string[]; text: string }) 
   const pair = sequential(Step.run({ key: input.items.length }), Second.run({ key: input.text }))
   return { pair }
 })`,
-			message: "Action main.sm#Step input cannot project length from durable array",
+			message: "Action main.vibe#Step input cannot project length from durable array",
 		},
 		{
 			// Not an Action input, but the same rule over the same walk: a timer
@@ -824,7 +824,7 @@ export function main(): string[] { return [Flow.artifactSource] }
 `
 	// `alpha` sorts before `mike` and `xray`, so the array defect is the one
 	// both backends name; the other two would read "string" and "tuple".
-	const want = "Action main.sm#Step input cannot project length from durable array"
+	const want = "Action main.vibe#Step input cannot project length from durable array"
 	for attempt := 0; attempt < 24; attempt++ {
 		requireSoleDurableRefusal(t, compileDurableWith(t, backend, ctx, source), source, want)
 	}
@@ -846,7 +846,7 @@ export function main(): string[] { return [Flow.artifactSource] }
 			t,
 			compileDurableWith(t, backend, ctx, reversed),
 			reversed,
-			"Action main.sm#Step input cannot project length from durable string",
+			"Action main.vibe#Step input cannot project length from durable string",
 		)
 	}
 }
@@ -985,13 +985,13 @@ export function main(): string[] { return [Flow.artifactSource] }
 // Three measurements close it, all taken 2026-08-28 on this backend:
 //
 //   - `Step.run({ key: input.items[0] })` against a required `key: string` is
-//     SMITHERS4100 — the read is `string | undefined` and does not satisfy the
+//     VIBE4100 — the read is `string | undefined` and does not satisfy the
 //     Action's checked input contract.
 //   - Widening the contract to `key: string | undefined` moves the refusal to
-//     SMITHERS4113, "field key: undefined is not a canonical JSON value".
+//     VIBE4113, "field key: undefined is not a canonical JSON value".
 //     durable-execution.mdx's canonical JSON has no `undefined`, so the durable
 //     boundary is right to refuse it.
-//   - Narrowing at the projection with `input.items[0] ?? ""` is SMITHERS4111,
+//   - Narrowing at the projection with `input.items[0] ?? ""` is VIBE4111,
 //     "unsupported durable expression KindBinaryExpression". A projection is a
 //     path the descriptor answers; `??` is a computation, and the Plan cannot
 //     record it.
@@ -1014,13 +1014,13 @@ export function main(): string[] { return [Flow.artifactSource] }
 	}
 	found := false
 	for _, item := range result.Diagnostics {
-		if item.Code == "SMITHERS4100" {
+		if item.Code == "VIBE4100" {
 			found = true
 		}
 	}
 	if !found {
 		encoded, _ := json.Marshal(result.Diagnostics)
-		t.Fatalf("want SMITHERS4100 for the widened index read, got %s", encoded)
+		t.Fatalf("want VIBE4100 for the widened index read, got %s", encoded)
 	}
 }
 
@@ -1055,7 +1055,7 @@ export const Flow = durable((input: { key: string }) => {
   return Second.run({ key: first.value })
 })`,
 			shape:  "structural",
-			digest: "8606ec99adfb59112b2eb7f31a0993fd19db5b4e44dc622189072e20a5e09062",
+			digest: "42973160b24a172d86c9e72d0a61b2e3741b44c4b5f313ccc7e07e52e10481fe",
 		},
 		{
 			name: "Action input reads a signal payload",
@@ -1065,7 +1065,7 @@ export const Flow = durable((input: { key: string }) => {
   return Step.run({ key: ticket.token })
 })`,
 			shape:  "structural",
-			digest: "959c7af7266aaf7240df1a824a7d3817e871dd279d6983604af21c8e55071272",
+			digest: "bb3b00088ba8e7ce2fb53524f08e25bf8f87e43b5506b586e5ca21d3f770490f",
 		},
 		{
 			name: "Action inputs inside both branch arms",
@@ -1074,7 +1074,7 @@ export const Flow = durable((input: { flag: boolean; key: string; other: string 
   return input.flag ? Step.run({ key: input.key }) : Step.run({ key: input.other })
 })`,
 			shape:  "structural",
-			digest: "3fefdc06735af32555f87c9977b3744dd67319d244381fe02fbb058e9c39d014",
+			digest: "263c8715628ff503d641597fb57b53e31b0348af411d441bc60b7dfd34aaca1c",
 		},
 		{
 			name: "timer duration beside an Action input",
@@ -1084,7 +1084,7 @@ export const Flow = durable((input: { key: string }) => {
   return Step.run({ key: input.key })
 })`,
 			shape:  "structural",
-			digest: "5a63ea209681fcabbc29145e410457324b48ba2e551fcd54a06fa53b16c7f2dc",
+			digest: "f48844e809e2fc14b157cdafbd0affe194ed02b175689dcb562df10b7830da9e",
 		},
 		{
 			name: "Action input holding a nested object and an array literal",
@@ -1093,7 +1093,7 @@ export const Flow = durable((input: { a: string; b: string }) => {
   return Step.run({ outer: { key: input.a }, keys: [input.a, input.b] })
 })`,
 			shape:  "structural",
-			digest: "95e09456b31dfae5fc5bcb6ed3689f3cc05e384f7864a3551dc236c96114ba9c",
+			digest: "73d44b9863d7d1afdb2c056614442dca023f60fb6d4199fefaf536ebac739115",
 		},
 		{
 			name: "sequential pair whose inputs both project the Flow input",
@@ -1104,7 +1104,7 @@ export const Flow = durable((input: { k: string; j: string }) => {
   return { v: pair[0].v, w: pair[1].w }
 })`,
 			shape:  "structural",
-			digest: "bfe608c1e7dfd1be20a561e7f77b1d3e32e6d6f63edd92d7848d5adb0a285f54",
+			digest: "a6f1669a2072d0906631e2b2c41a8973fc4f473f0da29a2141825233259ec507",
 		},
 		{
 			// The Action-free control, and the one row whose digest did not
@@ -1114,7 +1114,7 @@ export const Flow = durable((input: { k: string; j: string }) => {
   return { key: input.key }
 })`,
 			shape:  "structural",
-			digest: "e5c02f89c98de1b4a345215754153bdfc9c24fe103b76803c12a10e180b379ad",
+			digest: "e79bb06f6a1691159d6f668b9db38c7769faa55b41543a42c8634f8f04b7d8f9",
 		},
 	} {
 		t.Run(probe.name, func(t *testing.T) {

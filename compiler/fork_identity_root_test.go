@@ -16,12 +16,12 @@ import (
 // identities for byte-identical source. Measured, before the fix, on the same
 // program staged in two checkouts:
 //
-//	cwd .../stage/co-a  ->  flowId app/flow.sm#Flow
+//	cwd .../stage/co-a  ->  flowId app/flow.vibe#Flow
 //	                        contractDigest c0e33a87…  plan.digest c6189fcd…
-//	cwd .../stage       ->  flowId co-a/app/flow.sm#Flow
+//	cwd .../stage       ->  flowId co-a/app/flow.vibe#Flow
 //	                        contractDigest f272d3ac…  plan.digest ac8dae0b…
 //	cwd .../stage  (checkout co-b-different-name)
-//	                    ->  flowId co-b-different-name/app/flow.sm#Flow
+//	                    ->  flowId co-b-different-name/app/flow.vibe#Flow
 //	                        contractDigest 13e3e5d7…  plan.digest e82fcfd7…
 //
 // The digests agreed between the two backends and disagreed between two
@@ -40,14 +40,14 @@ import (
 func TestIdentityPathsForDiskRootsUsesTheStatedProjectRoot(t *testing.T) {
 	root := filepath.Join(string(filepath.Separator), "checkout", "a")
 	names, err := identityPathsForDiskRoots([]string{
-		filepath.Join(root, "app", "main.sm"),
-		filepath.Join(root, "app", "lib", "util.sm"),
+		filepath.Join(root, "app", "main.vibe"),
+		filepath.Join(root, "app", "lib", "util.vibe"),
 		filepath.Join("app", "shared.ts"),
 	}, root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"app/main.sm", "app/lib/util.sm", "app/shared.ts"}
+	want := []string{"app/main.vibe", "app/lib/util.vibe", "app/shared.ts"}
 	if !equalStrings(names, want) {
 		t.Fatalf("logical names = %v, want %v", names, want)
 	}
@@ -56,8 +56,8 @@ func TestIdentityPathsForDiskRootsUsesTheStatedProjectRoot(t *testing.T) {
 	// the property a Manifest digest has to have to be a signature.
 	other := filepath.Join(string(filepath.Separator), "elsewhere", "b-with-a-longer-name")
 	elsewhere, err := identityPathsForDiskRoots([]string{
-		filepath.Join(other, "app", "main.sm"),
-		filepath.Join(other, "app", "lib", "util.sm"),
+		filepath.Join(other, "app", "main.vibe"),
+		filepath.Join(other, "app", "lib", "util.vibe"),
 		filepath.Join("app", "shared.ts"),
 	}, other)
 	if err != nil {
@@ -68,16 +68,16 @@ func TestIdentityPathsForDiskRootsUsesTheStatedProjectRoot(t *testing.T) {
 	}
 
 	if _, err := identityPathsForDiskRoots(
-		[]string{filepath.Join(string(filepath.Separator), "outside", "main.sm")}, root,
+		[]string{filepath.Join(string(filepath.Separator), "outside", "main.vibe")}, root,
 	); err == nil {
 		t.Fatal("a root outside the stated project root was accepted")
 	}
-	if _, err := identityPathsForDiskRoots([]string{"main.sm"}, "relative/root"); err == nil {
+	if _, err := identityPathsForDiskRoots([]string{"main.vibe"}, "relative/root"); err == nil {
 		t.Fatal("a relative project root was accepted")
 	}
 	if _, err := identityPathsForDiskRoots([]string{
-		filepath.Join(root, "app", "main.sm"),
-		filepath.Join("app", "main.sm"),
+		filepath.Join(root, "app", "main.vibe"),
+		filepath.Join("app", "main.vibe"),
 	}, root); err == nil {
 		t.Fatal("two roots naming one logical file were accepted")
 	}
@@ -95,38 +95,38 @@ func TestIdentityPathsForDiskRootsDerivesTheRootFromTheRootNames(t *testing.T) {
 		// (poc/src/language/semantic.ts) uses when it has no root to be
 		// relative to.
 		name:  "one absolute root",
-		roots: []string{filepath.Join(separator, "checkout", "app", "flow.sm")},
-		want:  []string{"flow.sm"},
+		roots: []string{filepath.Join(separator, "checkout", "app", "flow.vibe")},
+		want:  []string{"flow.vibe"},
 	}, {
 		name: "several absolute roots share their deepest common directory",
 		roots: []string{
-			filepath.Join(separator, "checkout", "app", "main.sm"),
-			filepath.Join(separator, "checkout", "app", "lib", "util.sm"),
+			filepath.Join(separator, "checkout", "app", "main.vibe"),
+			filepath.Join(separator, "checkout", "app", "lib", "util.vibe"),
 		},
-		want: []string{"main.sm", "lib/util.sm"},
+		want: []string{"main.vibe", "lib/util.vibe"},
 	}, {
 		// A sibling directory whose name merely EXTENDS another's must not be
 		// read as living beneath it: the ancestor is compared element by
 		// element, not as a string prefix.
 		name: "app and apple are siblings, not ancestor and descendant",
 		roots: []string{
-			filepath.Join(separator, "checkout", "app", "main.sm"),
-			filepath.Join(separator, "checkout", "apple", "main.sm"),
+			filepath.Join(separator, "checkout", "app", "main.vibe"),
+			filepath.Join(separator, "checkout", "apple", "main.vibe"),
 		},
-		want: []string{"app/main.sm", "apple/main.sm"},
+		want: []string{"app/main.vibe", "apple/main.vibe"},
 	}, {
-		// Already logical. Normalized so `./a.sm` and `a.sm` cannot mint two
+		// Already logical. Normalized so `./a.vibe` and `a.vibe` cannot mint two
 		// identities for one file, and otherwise left exactly as authored.
 		name:  "relative roots are already logical names",
-		roots: []string{filepath.Join(".", "app", "main.sm"), "shared.ts"},
-		want:  []string{"app/main.sm", "shared.ts"},
+		roots: []string{filepath.Join(".", "app", "main.vibe"), "shared.ts"},
+		want:  []string{"app/main.vibe", "shared.ts"},
 	}, {
 		name: "absolute roots that diverge at the filesystem root",
 		roots: []string{
-			filepath.Join(separator, "one", "main.sm"),
-			filepath.Join(separator, "two", "util.sm"),
+			filepath.Join(separator, "one", "main.vibe"),
+			filepath.Join(separator, "two", "util.vibe"),
 		},
-		want: []string{"one/main.sm", "two/util.sm"},
+		want: []string{"one/main.vibe", "two/util.vibe"},
 	}} {
 		t.Run(testCase.name, func(t *testing.T) {
 			names, err := identityPathsForDiskRoots(testCase.roots, "")
@@ -139,7 +139,7 @@ func TestIdentityPathsForDiskRootsDerivesTheRootFromTheRootNames(t *testing.T) {
 		})
 	}
 
-	if _, err := identityPathsForDiskRoots([]string{filepath.Join("..", "escape.sm")}, ""); err == nil {
+	if _, err := identityPathsForDiskRoots([]string{filepath.Join("..", "escape.vibe")}, ""); err == nil {
 		t.Fatal("a relative root escaping the project was accepted")
 	}
 }
@@ -154,7 +154,7 @@ func TestIdentityPathsForDiskRootsIgnoreTheWorkingDirectory(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	roots := []string{filepath.Join(stage, "co-a", "app", "flow.sm")}
+	roots := []string{filepath.Join(stage, "co-a", "app", "flow.vibe")}
 
 	answers := make([][]string, 0, 3)
 	for _, directory := range []string{stage, filepath.Join(stage, "co-a"), filepath.Join(stage, "co-a", "app")} {
@@ -166,8 +166,8 @@ func TestIdentityPathsForDiskRootsIgnoreTheWorkingDirectory(t *testing.T) {
 		answers = append(answers, names)
 	}
 	for _, answer := range answers {
-		if !equalStrings(answer, []string{"flow.sm"}) {
-			t.Fatalf("logical names = %v from a different working directory, want [flow.sm] from every one", answer)
+		if !equalStrings(answer, []string{"flow.vibe"}) {
+			t.Fatalf("logical names = %v from a different working directory, want [flow.vibe] from every one", answer)
 		}
 	}
 }
@@ -198,7 +198,7 @@ func TestHydrateCompileRequestIdentitiesSurviveTwoCheckoutsAndTwoDirectories(t *
 		if err := os.MkdirAll(directory, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(directory, "flow.sm"), []byte(text), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(directory, "flow.vibe"), []byte(text), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -215,7 +215,7 @@ func TestHydrateCompileRequestIdentitiesSurviveTwoCheckoutsAndTwoDirectories(t *
 			for _, statedRoot := range []string{"", root} {
 				t.Chdir(directory)
 				request, _, err := hydrateCompileRequest(CompileRequest{
-					RootNames: []string{filepath.Join(root, "app", "flow.sm")},
+					RootNames: []string{filepath.Join(root, "app", "flow.vibe")},
 					Lowering:  LoweringInternal,
 					RootDir:   statedRoot,
 				})
@@ -244,7 +244,7 @@ func TestHydrateCompileRequestIdentitiesSurviveTwoCheckoutsAndTwoDirectories(t *
 
 	// Two answers only: one for the derived root and one for the stated root.
 	// Never one per working directory, and never one per checkout.
-	want := map[string][]string{"derived root": {"flow.sm"}, "stated root": {"app/flow.sm"}}
+	want := map[string][]string{"derived root": {"flow.vibe"}, "stated root": {"app/flow.vibe"}}
 	for _, seen := range observations {
 		expected := want[strings.SplitN(seen.label, " / ", 2)[0]]
 		if !equalStrings(seen.names, expected) || !equalStrings(seen.paths, expected) {

@@ -1,0 +1,31 @@
+{
+  "spec": "DECISIONS.md Host Globals: operations that read host inputs require capabilities, uniformly in all .vibe. Date local-zone operations are Clock reads even when computing a write.",
+  "cases": [
+    { "name": "offset-less parse", "body": "return [String(Date.parse('2025-01-01T00:00:00'))]" },
+    { "name": "offset-less constructor", "body": "return [String(new Date('2025-01-01T00:00:00').getTime())]" },
+    { "name": "component constructor", "body": "return [String(new Date(2025, 0, 1).getTime())]" },
+    { "name": "unknown parse input", "body": "function parse(text: string): number { return Date.parse(text) }; return [String(parse('2025-01-01'))]" },
+    { "name": "unknown constructor input", "body": "function date(text: string): number { return new Date(text).getTime() }; return [String(date('2025-01-01'))]" },
+    { "name": "cast cannot fabricate an absolute string", "body": "return [String(Date.parse('2025-01-01T00:00:00' as '1970-01-01'))]" },
+    { "name": "const cast cannot fabricate a numeric instant", "body": "const input = '2025-01-01T00:00:00' as unknown as number; return [String(new Date(input).getTime())]" },
+    { "name": "nonstandard parsing", "body": "return [String(Date.parse('January 1, 2025'))]" },
+    { "name": "invalid calendar fallback", "body": "return [String(Date.parse('1900-02-29T00:00:00Z'))]" },
+    { "name": "detached unknown parse", "body": "const parse = Date.parse; function invoke(text: string): number { return parse(text) }; return [String(invoke('2025-01-01'))]" },
+    { "name": "destructured unknown parse", "body": "const { parse } = Date; function invoke(text: string): number { return parse(text) }; return [String(invoke('2025-01-01'))]" },
+    { "name": "escaped parse callback", "body": "return ['2025-01-01T00:00:00'].map(Date.parse).map(String)" },
+    { "name": "local full year setter", "body": "return [String(new Date(0).setFullYear(2025))]" },
+    { "name": "local month setter", "body": "return [String(new Date(0).setMonth(1))]" },
+    { "name": "local date setter", "body": "return [String(new Date(0).setDate(2))]" },
+    { "name": "local hour setter", "body": "return [String(new Date(0).setHours(12))]" },
+    { "name": "local minute setter", "body": "return [String(new Date(0).setMinutes(12))]" },
+    { "name": "local second setter", "body": "return [String(new Date(0).setSeconds(12))]" },
+    { "name": "local millisecond setter", "body": "return [String(new Date(0).setMilliseconds(12))]" },
+    { "name": "numeric instant", "body": "function stamp(n: number): number { return new Date(n).getTime() }; return [String(stamp(0))]", "output": ["0"] },
+    { "name": "UTC date-only forms", "body": "return [String(Date.parse('1970')), String(Date.parse('1970-01')), String(new Date('1970-01-01').getTime())]", "output": ["0", "0", "0"] },
+    { "name": "UTC time and explicit offsets", "body": "return [String(Date.parse('1970-01-01T00:00Z')), String(Date.parse('1970-01-01T01:00:00+01:00')), String(Date.parse('1969-12-31T23:00:00.000-01:00'))]", "output": ["0", "0", "0"] },
+    { "name": "expanded year and end of day", "body": "return [String(Date.parse('+001970-01-01T00:00:00Z')), String(Date.parse('1970-01-01T24:00:00Z'))]", "output": ["0", "86400000"] },
+    { "name": "UTC construction and mutation", "body": "return [String(Date.UTC(1970, 0, 1)), String(new Date(0).setUTCHours(12)), String(new Date(0).setUTCMinutes(12)), String(new Date(0).setUTCSeconds(12)), String(new Date(0).setUTCMilliseconds(12)), String(new Date(0).setTime(1000))]", "output": ["0", "43200000", "720000", "12000", "12", "1000"] },
+    { "name": "constant parse aliases", "body": "const { ['parse']: parse } = Date; const alias = parse; const instant = '1970-01-01T00:00:00Z'; return [String(alias(instant))]", "output": ["0"] },
+    { "name": "lexical Date shadow", "body": "class Date { static parse(text: string) { return text.length }; setHours(n: number) { return n } }; return [String(Date.parse('local')), String(new Date().setHours(12))]", "output": ["5", "12"] }
+  ]
+}

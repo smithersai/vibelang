@@ -35,9 +35,9 @@ func TestForkAndReferenceOptionTablesAgree(t *testing.T) {
 		referenceName string
 		bridgeName    string
 	}{
-		{"mandatory", "MANDATORY_COMPILER_OPTIONS", "smithersMandatoryOptions"},
-		{"forbidden", "FORBIDDEN_COMPILER_OPTIONS", "smithersForbiddenOptions"},
-		{"permitted", "PERMITTED_COMPILER_OPTIONS", "smithersPermittedOptions"},
+		{"mandatory", "MANDATORY_COMPILER_OPTIONS", "vibelangMandatoryOptions"},
+		{"forbidden", "FORBIDDEN_COMPILER_OPTIONS", "vibelangForbiddenOptions"},
+		{"permitted", "PERMITTED_COMPILER_OPTIONS", "vibelangPermittedOptions"},
 	} {
 		t.Run(table.name, func(t *testing.T) {
 			want := listBetween(t, string(reference),
@@ -84,15 +84,15 @@ func listBetween(t *testing.T, text string, open string, close string) []string 
 func TestForkRejectsAWeakenedMandatoryOption(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm"},
-		Files:     []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: "export function main(): string { return \"ok\" }\n"}},
+		RootNames: []string{"main.vibe"},
+		Files:     []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: "export function main(): string { return \"ok\" }\n"}},
 		Options:   Options{"strict": false},
 		Lowering:  LoweringInternal,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	requireCode(t, result, "SMITHERS6001", "strict")
+	requireCode(t, result, "VIBE6001", "strict")
 }
 
 // §Forbidden: "Options that upstream has deprecated or removed ... MUST be
@@ -103,16 +103,16 @@ func TestForkRejectsForbiddenAndUnknownOptions(t *testing.T) {
 		option string
 		code   string
 	}{
-		{"experimentalDecorators", "SMITHERS6002"},
-		{"emitDecoratorMetadata", "SMITHERS6002"},
-		{"keyofStringsOnly", "SMITHERS6002"},
-		{"importsNotUsedAsValues", "SMITHERS6002"},
-		{"notAnOptionAtAll", "SMITHERS6003"},
+		{"experimentalDecorators", "VIBE6002"},
+		{"emitDecoratorMetadata", "VIBE6002"},
+		{"keyofStringsOnly", "VIBE6002"},
+		{"importsNotUsedAsValues", "VIBE6002"},
+		{"notAnOptionAtAll", "VIBE6003"},
 	} {
 		t.Run(probe.option, func(t *testing.T) {
 			result, err := backend.Compile(ctx, CompileRequest{
-				RootNames: []string{"main.sm"},
-				Files:     []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: "export function main(): string { return \"ok\" }\n"}},
+				RootNames: []string{"main.vibe"},
+				Files:     []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: "export function main(): string { return \"ok\" }\n"}},
 				Options:   Options{probe.option: true},
 				Lowering:  LoweringInternal,
 			})
@@ -142,8 +142,8 @@ func TestForkReportsConfigurationFindingsWithASpan(t *testing.T) {
 }
 `
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames:  []string{"main.sm"},
-		Files:      []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: "export function main(): string { return \"ok\" }\n"}},
+		RootNames:  []string{"main.vibe"},
+		Files:      []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: "export function main(): string { return \"ok\" }\n"}},
 		Options:    Options{},
 		Lowering:   LoweringInternal,
 		ConfigFile: &ConfigFile{Path: "/project/tsconfig.json", Text: config},
@@ -151,7 +151,7 @@ func TestForkReportsConfigurationFindingsWithASpan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	found := requireCode(t, result, "SMITHERS6002", "experimentalDecorators")
+	found := requireCode(t, result, "VIBE6002", "experimentalDecorators")
 	if found.File != "/project/tsconfig.json" {
 		t.Fatalf("file = %q, want the tsconfig", found.File)
 	}
@@ -179,8 +179,8 @@ func TestForkAcceptsAConformingConfiguration(t *testing.T) {
 }
 `
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames:  []string{"main.sm"},
-		Files:      []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: "export function main(): string { return \"ok\" }\n"}},
+		RootNames:  []string{"main.vibe"},
+		Files:      []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: "export function main(): string { return \"ok\" }\n"}},
 		Options:    Options{},
 		Lowering:   LoweringInternal,
 		ConfigFile: &ConfigFile{Path: "/project/tsconfig.json", Text: config},
@@ -189,8 +189,34 @@ func TestForkAcceptsAConformingConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, item := range result.Diagnostics {
-		if strings.HasPrefix(item.Code, "SMITHERS6") {
+		if strings.HasPrefix(item.Code, "VIBE6") {
 			t.Fatalf("a conforming configuration reported %s: %s", item.Code, item.Message)
+		}
+	}
+}
+
+func TestForkJavaScriptCompilerOptions(t *testing.T) {
+	backend, ctx := newPinnedTestBackend(t)
+	for _, options := range []Options{
+		{"allowJs": true, "checkJs": false},
+		{"allowJs": true, "checkJs": true},
+		{"allowJs": false, "checkJs": false},
+	} {
+		result, err := backend.Compile(ctx, CompileRequest{
+			RootNames: []string{"main.vibe"}, Files: []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: `export const value=42`}},
+			Lowering: LoweringInternal, Options: options,
+		})
+		if err != nil || result.EmitSkipped || len(result.Diagnostics) != 0 {
+			t.Fatalf("permitted JavaScript options refused: %+v %v", result, err)
+		}
+	}
+	for _, name := range []string{"allowJs", "checkJs"} {
+		result, err := backend.Compile(ctx, CompileRequest{
+			RootNames: []string{"main.vibe"}, Files: []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: `export const value=42`}},
+			Lowering: LoweringInternal, Options: Options{name: "true"},
+		})
+		if err == nil || !strings.Contains(err.Error(), "must be a boolean") {
+			t.Fatalf("nonboolean %s was accepted: %+v %v", name, result, err)
 		}
 	}
 }
@@ -218,6 +244,9 @@ function lookup(key: string): Result<string, Missing> {
 			name: "a Result array compiles",
 			body: `export function main(i: number): Result<string, Missing> {
   const found: Result<string, Missing>[] = [lookup("ada")]
+  // Observe the known member before an arbitrary index can exit by propagation.
+  // This test isolates index widening, not collection ownership transfer.
+  found[0]?.isError()
   return found[i]!
 }
 `,
@@ -237,7 +266,7 @@ export function main(): Result<string, Missing> {
   return found[i]!
 }
 `,
-			reject: "SMITHERS1207",
+			reject: "VIBE1207",
 		},
 		{
 			name: "a non-Result array is refused",
@@ -247,7 +276,7 @@ export function main(): Result<string, Missing> {
   return n
 }
 `,
-			reject: "SMITHERS1207",
+			reject: "VIBE1207",
 		},
 		{
 			name: "a plain optional binding is still refused",
@@ -257,11 +286,11 @@ export function main(): Result<string, Missing> {
   return name
 }
 `,
-			reject: "SMITHERS1207",
+			reject: "VIBE1207",
 		},
 	} {
 		t.Run(probe.name, func(t *testing.T) {
-			files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: head + probe.body}}
+			files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: head + probe.body}}
 			result := compileInternalSource(t, files)
 			codes := make([]string, 0)
 			for _, item := range result.Diagnostics {
@@ -272,7 +301,7 @@ export function main(): Result<string, Missing> {
 			joined := strings.Join(codes, " ")
 			if probe.reject == "" {
 				if len(codes) != 0 {
-					t.Fatalf("expected a clean compile, got %s", joined)
+					t.Fatalf("expected a clean compile, got %s: %#v", joined, result.Diagnostics)
 				}
 				return
 			}

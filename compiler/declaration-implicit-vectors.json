@@ -1,0 +1,40 @@
+{
+  "prelude": "import { Context } from \"vibelang/context\"; export abstract class C extends Context { abstract value(): number } const seen: number[] = []; export function snapshot() { return seen.reduce((a, b) => a + b, 0) }",
+  "accessorMetadataCases": [
+    { "name": "unknown version", "payload": "{\"version\":99,\"enumerable\":false}" },
+    { "name": "wrong type", "payload": "{\"version\":1,\"enumerable\":\"false\"}" },
+    { "name": "missing enumerable", "payload": "{\"version\":1}" },
+    { "name": "unknown field", "payload": "{\"version\":1,\"enumerable\":false,\"extra\":true}" },
+    { "name": "duplicate field", "payload": "{\"version\":1,\"enumerable\":true,\"enumerable\":false}" },
+    { "name": "noncanonical encoding", "payload": "{\"version\": 1,\"enumerable\":false}" },
+    { "name": "malformed JSON", "payload": "{\"version\":1" }
+  ],
+  "cases": [
+    { "name": "getter", "declaration": "export class Resource { get value(): number { return C.context().value() } }", "body": "return new lib.Resource().value", "value": 7 },
+    { "name": "setter", "declaration": "export class Resource { set value(value: number) { seen.push(value + C.context().value()) } }", "body": "const resource = new lib.Resource(); resource.value = 1; return lib.snapshot()", "value": 8 },
+    { "name": "coercion", "declaration": "export class Resource { toString(): string { return String(C.context().value()) } }", "body": "return String(new lib.Resource()).length", "value": 1 },
+    { "name": "iterator", "declaration": "export class Resource { [Symbol.iterator](): Iterator<number> { return [C.context().value()][Symbol.iterator]() } }", "body": "let total = 0; for (const value of new lib.Resource()) total += value; return total", "value": 7 },
+    { "name": "disposal", "declaration": "export class Resource { [Symbol.dispose](): void { seen.push(C.context().value()) } }", "body": "{ using resource = new lib.Resource() } return lib.snapshot()", "value": 7 },
+    { "name": "async-disposal", "async": true, "declaration": "export class Resource { async [Symbol.asyncDispose](): Promise<void> { await Promise.resolve(); seen.push(C.context().value()) } }", "body": "{ await using resource = new lib.Resource() } return lib.snapshot()", "value": 7 },
+    { "name": "getter-binding", "declaration": "export class Resource { get value(): number { return C.context().value() } }", "body": "const { value } = new lib.Resource(); return value", "value": 7 },
+    { "name": "own-getter-spread", "declaration": "export const resource = { get value(): number { return C.context().value() } }", "body": "const data = { ...lib.resource }; return data.value", "value": 7 },
+    { "name": "own-getter-rest", "declaration": "export const resource = { get value(): number { return C.context().value() } }", "body": "const { ...data } = lib.resource; return data.value", "value": 7 },
+    { "name": "prototype-getter-is-not-enumerated", "pure": true, "declaration": "export class Resource { get value(): number { return C.context().value() } }", "body": "return Object.keys({ ...new lib.Resource() }).length", "value": 0 },
+    { "name": "own-getter-read", "declaration": "export const resource = { get value(): number { return C.context().value() } }", "body": "return lib.resource.value", "value": 7 },
+    { "name": "own-setter", "declaration": "export const resource = { set value(value: number) { seen.push(value + C.context().value()) } }", "body": "lib.resource.value = 1; return lib.snapshot()", "value": 8 },
+    { "name": "own-getter-does-not-invoke-setter", "pure": true, "declaration": "export const resource = { get value(): number { return 1 }, set value(value: number) { seen.push(value + C.context().value()) } }", "body": "return lib.resource.value", "value": 1 },
+    { "name": "setter-is-not-invoked-by-enumeration", "pure": true, "declaration": "export const resource = { set value(value: number) { seen.push(value + C.context().value()) } }", "body": "return Object.keys({ ...lib.resource }).length", "value": 1 },
+    { "name": "own-iterator", "declaration": "export const resource = { [Symbol.iterator](): Iterator<number> { return [C.context().value()][Symbol.iterator]() } }", "body": "let total = 0; for (const value of lib.resource) total += value; return total", "value": 7 },
+    { "name": "own-disposer", "declaration": "export const resource = { [Symbol.dispose](): void { seen.push(C.context().value()) } }", "body": "{ using resource = lib.resource } return lib.snapshot()", "value": 7 },
+    { "name": "getter-returned-callable", "declaration": "export const resource = { get read() { return () => C.context().value() } }", "body": "return lib.resource.read()", "value": 7 },
+    { "name": "returned-object-getter", "declaration": "export function factory() { return { get value(): number { return C.context().value() } } }", "body": "return lib.factory().value", "value": 7 },
+    { "name": "nested-object-getter", "declaration": "export const resource = { get nested() { return { get value(): number { return C.context().value() } } } }", "body": "return lib.resource.nested.value", "value": 7 },
+    { "name": "asymmetric-callable-setter", "pure": true, "requirementContracts": 1, "declaration": "export const resource = { get read() { return () => C.context().value() }, set read(value: () => number) { seen.push(value()) } }", "body": "lib.resource.read = () => 3; return lib.snapshot()", "value": 3 },
+    { "name": "multiline-accessor-types", "pure": true, "requirementContracts": 1, "declaration": "export const resource = { get nested() { return { get value(): number { return C.context().value() }, label: 'value' } }, set nested(value: { readonly value: number; label: string }) { seen.push(value.value) } }; export function after() { return 1 }", "body": "lib.resource.nested = { value: 3, label: 'other' }; return lib.snapshot() + lib.after()", "value": 4 },
+    { "name": "anonymous-prototype-getter-is-not-enumerated", "pure": true, "declaration": "export const resource = new class { get value(): number { return C.context().value() } };", "body": "return Object.keys({ ...lib.resource }).length", "value": 0 },
+    { "name": "merged-own-and-prototype-getters", "declaration": "export function factory(flag: boolean) { return flag ? { get value(): number { return C.context().value() } } : new class { get value(): number { return C.context().value() } } }", "body": "return { ...lib.factory(true) }.value || 0", "value": 7 },
+    { "name": "published-disposer-result-is-unconsumed", "code": "VIBE1303", "declaration": "export class Resource { [Symbol.dispose](): Result<void, Error> { C.context().value(); throw new Error('stop') } }", "body": "{ using resource = new lib.Resource() } return 0", "value": 0 },
+    { "name": "published-disposer-promise-is-unowned", "code": "VIBE1404", "declaration": "export class Resource { [Symbol.dispose](): Promise<void> { C.context().value(); return Promise.resolve() } }", "body": "{ using resource = new lib.Resource() } return 0", "value": 0 },
+    { "name": "published-async-disposer-result-is-unconsumed", "async": true, "code": "VIBE1303", "declaration": "export class Resource { async [Symbol.asyncDispose](): Promise<Result<void, Error>> { await Promise.resolve(); C.context().value(); throw new Error('stop') } }", "body": "{ await using resource = new lib.Resource() } return 0", "value": 0 }
+  ]
+}

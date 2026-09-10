@@ -13,10 +13,10 @@ import (
 func compileDurableWith(t *testing.T, backend Compiler, ctx context.Context, source string) CompileResult {
 	t.Helper()
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm"},
+		RootNames: []string{"main.vibe"},
 		Files: []SourceFile{{
-			Path: "main.sm",
-			Kind: FileKindSmithers,
+			Path: "main.vibe",
+			Kind: FileKindVibeLang,
 			Text: source,
 		}},
 		Options:  Options{"noEmitOnError": true},
@@ -32,7 +32,7 @@ func requireDurableDiagnostic(t *testing.T, result CompileResult, code string, s
 	t.Helper()
 	for _, item := range result.Diagnostics {
 		if item.Code == code {
-			if !result.EmitSkipped || item.Phase != PhaseLower || item.File != "main.sm" || item.Span == nil || item.Span.Start != start {
+			if !result.EmitSkipped || item.Phase != PhaseLower || item.File != "main.vibe" || item.Span == nil || item.Span.Start != start {
 				t.Fatalf("durable diagnostic lost its authored location: %#v", item)
 			}
 			return item
@@ -87,7 +87,7 @@ func TestPinnedForkDurableLowersCheckedASTToAStaticPlan(t *testing.T) {
     sequential,
     sleep,
     waitSignal
-} from "smithers:flows"
+} from "vibelang:flows"
 
 class Lookup extends Action<(input: { key: string }) => Result<{ value: string }, Error>> {}
 class Audit extends Action<(input: { value: string }) => Result<{ saved: boolean }, Error>> {}
@@ -136,7 +136,7 @@ export function main(): string {
 	if err := json.Unmarshal([]byte(runComptimeProgram(t, result)), &plan); err != nil {
 		t.Fatal(err)
 	}
-	if plan.FlowID != "main.sm#Build" || plan.FormatVersion != 1 || len(plan.Digest) != 64 {
+	if plan.FlowID != "main.vibe#Build" || plan.FormatVersion != 1 || len(plan.Digest) != 64 {
 		t.Fatalf("unexpected Plan identity: %#v", plan)
 	}
 	wantKinds := []string{"action", "branch", "timer", "action", "action", "signal"}
@@ -186,7 +186,7 @@ export function main(): string {
 		t.Fatalf("ordinary durable function returned %q", got)
 	}
 
-	resolved := `import { durable as compileFlow, Action } from "smithers:flows"
+	resolved := `import { durable as compileFlow, Action } from "vibelang:flows"
 class Echo extends Action<(input: { value: string }) => Result<string, Error>> {}
 function source(input: { value: string }) {
     return Echo.run(input)
@@ -209,13 +209,13 @@ export function main(): string[] {
 		t.Fatalf("emitted Flow retained a runtime callback wrapper:\n%s", emitted)
 	}
 
-	// A runtime branch used to be SMITHERS4106 here. MIGRATION-PLAN.md step 11
+	// A runtime branch used to be VIBE4106 here. MIGRATION-PLAN.md step 11
 	// withdrew that wall: a branch is ordinary control flow inside a Flow body,
 	// so this compiles, draws NOTHING, and the descriptor it emits is built from
 	// the Effect Manifest rather than from a Plan. `17-durable/statement-branch-
 	// fails-closed` is the same program on the conformance corpus and observes
 	// the same three facts; this row is what says the fork agrees off-corpus too.
-	branch := `import { durable as build } from "smithers:flows"
+	branch := `import { durable as build } from "vibelang:flows"
 export const Bad = build((input: { live: boolean }) => {
     if (input.live) return "yes"
     return "no"
@@ -228,40 +228,42 @@ export function main(): string[] {
 	if branchResult.EmitSkipped || len(branchResult.Diagnostics) != 0 {
 		t.Fatalf("a runtime branch in a Flow body was refused: %#v", branchResult.Diagnostics)
 	}
-	if got := runComptimeProgram(t, branchResult); got != "effect-manifest,main.sm#Bad" {
+	if got := runComptimeProgram(t, branchResult); got != "effect-manifest,main.vibe#Bad" {
 		t.Fatalf("a declined body did not publish an Effect Manifest descriptor: %q", got)
 	}
 
-	unsupported := `import { durable, fanOut } from "smithers:flows"
+	unsupported := `import { durable, fanOut } from "vibelang:flows"
 export const Bad = durable((input: { values: string[] }) => {
     return fanOut(input.values, (value: string) => value, (value: string) => value)
 })
 `
 	unsupportedResult := compileDurableWith(t, backend, ctx, unsupported)
-	requireDurableDiagnostic(t, unsupportedResult, "SMITHERS4117", strings.Index(unsupported, "fanOut(input"))
+	requireDurableDiagnostic(t, unsupportedResult, "VIBE4117", strings.LastIndex(unsupported, "value)"))
 
-	mismatch := `import { durable, Action } from "smithers:flows"
+	mismatch := `import { durable, Action } from "vibelang:flows"
 class Store extends Action<(input: { value: string }) => Result<boolean, Error>> {}
 export const Bad = durable((input: { value: number }) => {
     return Store.run({ value: input.value })
 })
 `
 	mismatchResult := compileDurableWith(t, backend, ctx, mismatch)
-	requireDurableDiagnostic(t, mismatchResult, "SMITHERS4100", strings.Index(mismatch, "{ value: input.value }"))
+	requireDurableDiagnostic(t, mismatchResult, "VIBE4100", strings.Index(mismatch, "{ value: input.value }"))
 }
 
-func TestPinnedForkRetiredVibelangFlowsIsForeign(t *testing.T) {
+// The specifier the previous brand name minted is an ordinary, unresolvable
+// foreign module now: only vibelang:flows is compiler-owned. The corpus case
+// 17-durable/the-retired-vibelang-flows-specifier-is-not-compiler-owned pins the same rule.
+func TestPinnedForkRetiredSpecifierIsForeign(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
-	source := `import { durable } from "vibelang:flows"
-export const observed = durable
-`
+	source := `import { durable } from "smithers:flows"` + // brand-gate: allow — the retired spelling, deliberately
+		"\nexport const observed = durable\n"
 	result := compileDurableWith(t, backend, ctx, source)
-	files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}}
+	files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: source}}
 	observed := formatDiagnosticPositions(t, files, result)
-	if strings.Join(observed, " ") != "SMITHERS1510@1:25" {
-		t.Fatalf("retired vibelang:flows diagnostics %v, want SMITHERS1510@1:25", observed)
+	if strings.Join(observed, " ") != "VIBE1510@1:25" {
+		t.Fatalf("retired specifier diagnostics %v, want VIBE1510@1:25", observed)
 	}
 	if !result.EmitSkipped || len(result.Artifacts) != 0 {
-		t.Fatalf("retired vibelang:flows import must fail closed without emit: %v", artifactPaths(result.Artifacts))
+		t.Fatalf("retired specifier import must fail closed without emit: %v", artifactPaths(result.Artifacts))
 	}
 }

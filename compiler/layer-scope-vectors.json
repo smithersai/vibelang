@@ -1,0 +1,90 @@
+{
+  "head": "import { Context } from 'vibelang/context';\nimport { Layer } from 'vibelang/provider';\nabstract class Db extends Context { abstract value(): number }\nabstract class Cfg extends Context { abstract value(): number }\nfunction readDb(): number { return Db.context().value() }\nfunction readCfg(): number { return Cfg.context().value() }\n",
+  "cases": [
+    {
+      "name": "synchronous calls remain eager",
+      "body": "export function main(): string[] { const value = Layer.provide(Layer.succeed(Db, { value: () => 7 }), () => readDb()); return [String(value)] }",
+      "output": ["7"]
+    },
+    {
+      "name": "an async provider keeps its capability after await",
+      "body": "export async function main(): Promise<string[]> { const value = await Layer.provide(Layer.succeed(Db, { value: () => 7 }), async () => { await Promise.resolve(); return readDb() }); return [String(value)] }",
+      "output": ["7"]
+    },
+    {
+      "name": "ordinary native callbacks inherit an async provider",
+      "body": "export async function main(): Promise<string[]> { return await Layer.provide(Layer.succeed(Db, { value: () => 7 }), async () => { await Promise.resolve(); return [1, 2].map(value => String(value + readDb())) }) }",
+      "output": ["8", "9"]
+    },
+    {
+      "name": "interleaved sibling providers do not exchange capabilities",
+      "body": "export async function main(): Promise<string[]> { const values = await Promise.all([Layer.provide(Layer.succeed(Db, { value: () => 1 }), async () => { await Promise.resolve(); await Promise.resolve(); return readDb() }), Layer.provide(Layer.succeed(Db, { value: () => 2 }), async () => { await Promise.resolve(); return readDb() })]); return values.map(value => String(value)) }",
+      "output": ["1", "2"]
+    },
+    {
+      "name": "nested distinct providers inherit the outer async scope",
+      "body": "export async function main(): Promise<string[]> { return await Layer.provide(Layer.succeed(Db, { value: () => 7 }), async () => { await Promise.resolve(); const value = await Layer.provide(Layer.succeed(Cfg, { value: () => 3 }), async () => { await Promise.resolve(); return readDb() + readCfg() }); return [String(value), String(readDb())] }) }",
+      "output": ["10", "7"]
+    },
+    {
+      "name": "a synchronous nested provider restores the async outer environment",
+      "body": "export async function main(): Promise<string[]> { return await Layer.provide(Layer.succeed(Db, { value: () => 7 }), async () => { await Promise.resolve(); const value = Layer.provide(Layer.succeed(Cfg, { value: () => 3 }), () => readDb() + readCfg()); await Promise.resolve(); return [String(value), String(readDb())] }) }",
+      "output": ["10", "7"]
+    },
+    {
+      "name": "a fallible async delimiter keeps its provider",
+      "body": "async function answer(): Promise<Result<number, Error>> { await Promise.resolve(); return readDb() }\nexport async function main(): Promise<string[]> { return await Layer.provide(Layer.succeed(Db, { value: () => 7 }), async () => { const value = await answer(); return [value.match({ ok: value => String(value), error: error => error.message })] }) }",
+      "output": ["7"]
+    },
+    {
+      "name": "async failure cleanup keeps its provider until completion",
+      "body": "const trace: string[] = [];\nasync function failing(): Promise<Result<number, Error>> { try { throw new Error('failed') } finally { await Promise.resolve(); trace.push(String(readDb())) } }\nexport async function main(): Promise<string[]> { return await Layer.provide(Layer.succeed(Db, { value: () => 7 }), async () => { const result = await failing(); return [...trace, result.match({ ok: value => String(value), error: error => error.message })] }) }",
+      "output": ["7", "failed"]
+    },
+    {
+      "name": "a declared async callback keeps its provider",
+      "body": "async function answer(): Promise<number> { await Promise.resolve(); return readDb() }\nexport async function main(): Promise<string[]> { return [String(await Layer.provide(Layer.succeed(Db, { value: () => 7 }), answer))] }",
+      "output": ["7"]
+    },
+    {
+      "name": "a synchronous callback may return an owned async computation",
+      "body": "async function answer(): Promise<number> { await Promise.resolve(); return readDb() }\nexport async function main(): Promise<string[]> { return [String(await Layer.provide(Layer.succeed(Db, { value: () => 7 }), () => answer()))] }",
+      "output": ["7"]
+    },
+    {
+      "name": "a provider preserves the identity of an existing Promise",
+      "body": "export async function main(): Promise<string[]> { const existing = Promise.resolve(7); const provided = Layer.provide(Layer.succeed(Db, { value: () => 7 }), () => existing); const same = existing === provided; const value = await provided; await existing; return [String(same), String(value)] }",
+      "output": ["true", "7"]
+    },
+    {
+      "name": "a callback with a mixed sync and async completion keeps its scope",
+      "body": "async function answer(): Promise<number> { await Promise.resolve(); return readDb() }\nasync function run(flag: boolean): Promise<string> { const value = await Layer.provide(Layer.succeed(Db, { value: () => 7 }), () => flag ? answer() : 3); return String(value) }\nexport async function main(): Promise<string[]> { return [await run(true), await run(false)] }",
+      "output": ["7", "3"]
+    },
+    {
+      "name": "a conditionally awaited provider still leaves an unowned path",
+      "body": "export async function main(flag: boolean): Promise<string[]> { const work = Layer.provide(Layer.succeed(Db, { value: () => 7 }), async () => { await Promise.resolve(); return readDb() }); if (flag) await work; return [] }",
+      "code": "VIBE1403"
+    },
+    {
+      "name": "a mixed completion must still be consumed on every path",
+      "body": "async function answer(): Promise<number> { await Promise.resolve(); return readDb() }\nexport async function main(flag: boolean, consume: boolean): Promise<string[]> { const value = Layer.provide(Layer.succeed(Db, { value: () => 7 }), () => flag ? answer() : 3); if (consume) await value; return [] }",
+      "code": "VIBE1403"
+    },
+    {
+      "name": "awaiting a choice does not join an array of child Promises",
+      "body": "function children(): Promise<number>[] { return [Promise.resolve(1)] }\nfunction mixed(flag: boolean): Promise<number> | Promise<number>[] { return flag ? Promise.resolve(2) : children() }\nexport async function main(flag: boolean): Promise<string[]> { await mixed(flag); return [] }",
+      "code": "VIBE1402"
+    },
+    {
+      "name": "a scalar type assertion cannot turn an array of Promises into a join",
+      "body": "function children(): Promise<number>[] { return [Promise.resolve(1)] }\nexport async function main(): Promise<string[]> { await (children() as unknown as number); return [] }",
+      "code": "VIBE1402"
+    },
+    {
+      "name": "an unconsumed combinator does not own async provider callbacks",
+      "body": "export function main(): string[] { Promise.all([Layer.provide(Layer.succeed(Db, { value: () => 7 }), async () => { await Promise.resolve(); return readDb() })]); return [] }",
+      "code": "VIBE1404"
+    }
+  ]
+}

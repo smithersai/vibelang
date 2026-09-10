@@ -1,0 +1,17 @@
+{
+  "contract": "Replacing a comptime data value preserves distinct and shared allocations within that value, including observable reference equality and property order.",
+  "cases": [
+    { "name": "shared object", "body": "const same = { n: 1 }; return { a: same, b: same };", "observe": "String(value.a === value.b)", "expected": "true" },
+    { "name": "distinct equal objects", "body": "return { a: { n: 1 }, b: { n: 1 } };", "observe": "String(value.a === value.b)", "expected": "false" },
+    { "name": "shared array", "body": "const same = [1]; return { a: same, b: same };", "observe": "String(value.a === value.b)", "expected": "true" },
+    { "name": "distinct empty arrays", "body": "return { a: [], b: [] };", "observe": "String(value.a === value.b)", "expected": "false" },
+    { "name": "nested shared object", "body": "const same = { n: 1 }; return { a: { child: same }, b: { child: same } };", "observe": "String(value.a.child === value.b.child)", "expected": "true" },
+    { "name": "shared array elements", "body": "const same = { n: 1 }; return [same, same];", "observe": "String(value[0] === value[1])", "expected": "true" },
+    { "name": "shared values retain property order", "body": "const same = { z: 1, a: 2 }; return { z: same, a: same };", "observe": "[Object.keys(value).join(','), Object.keys(value.z).join(','), String(value.z === value.a)].join('|')", "expected": "z,a|z,a|true" },
+    { "name": "prototype spelling remains an own data property", "body": "const same = JSON.parse('{\"__proto__\":7}'); return { a: same, b: same };", "observe": "[Object.keys(value.a).join(','), String(value.a['__proto__']), String(value.a === value.b)].join('|')", "expected": "__proto__|7|true" },
+    { "name": "numeric property order", "body": "const same = {}; return { '10': same, '2': same, x: same };", "observe": "Object.keys(value).join(',') + '|' + String(value['2'] === value.x)", "expected": "2,10,x|true" },
+    { "name": "shared descendant of a shared parent", "body": "const leaf = [1]; const branch = { left: leaf, right: leaf }; return { a: branch, b: branch, c: leaf };", "observe": "String(value.a === value.b && value.a.left === value.c && value.b.right === value.c)", "expected": "true" },
+    { "name": "distinct parents with shared descendants", "body": "const leaf = [1]; return { a: { child: leaf }, b: { child: leaf } };", "observe": "String(value.a !== value.b && value.a.child === value.b.child)", "expected": "true" },
+    { "name": "shallow array copy keeps element identity", "body": "const same = { n: 1 }; const rows = [same]; return { a: rows, b: rows.slice() };", "observe": "String(value.a !== value.b && value.a[0] === value.b[0])", "expected": "true" }
+  ]
+}

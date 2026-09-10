@@ -11,13 +11,13 @@ import (
 
 func newPinnedTestBackend(t *testing.T) (Compiler, context.Context) {
 	t.Helper()
-	checkout := os.Getenv("SMITHERS_TYPESCRIPT_FORK")
+	checkout := os.Getenv("VIBELANG_TYPESCRIPT_FORK")
 	if checkout == "" {
-		t.Skip("set SMITHERS_TYPESCRIPT_FORK to the exact pinned checkout to run the executable fork test")
+		t.Skip("set VIBELANG_TYPESCRIPT_FORK to the exact pinned checkout to run the executable fork test")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	t.Cleanup(cancel)
-	backend, err := NewPinnedFork(ctx, ForkConfig{CheckoutDirectory: checkout, CacheDirectory: t.TempDir()})
+	backend, err := NewPinnedFork(ctx, ForkConfig{CheckoutDirectory: checkout, CacheDirectory: suitePreparedCache})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,14 +73,14 @@ func positionOf(t *testing.T, text string, needle string) (int, int) {
 func TestPinnedForkIdentityMultiFileProjects(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 
-	mainText := "import { seven } from \"./lib/util.sm\"\nimport { base } from \"./shared\"\nexport const answer: number = seven + base;\n"
+	mainText := "import { seven } from \"./lib/util.vibe\"\nimport { base } from \"./shared\"\nexport const answer: number = seven + base;\n"
 	utilText := "export const seven: number = 7;\n"
 	sharedText := "export const base: number = 1;\n"
 	good, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"app/main.sm", "app/lib/util.sm", "app/shared.ts"},
+		RootNames: []string{"app/main.vibe", "app/lib/util.vibe", "app/shared.ts"},
 		Files: []SourceFile{
-			{Path: "app/main.sm", Kind: FileKindSmithers, Text: mainText},
-			{Path: "app/lib/util.sm", Kind: FileKindSmithers, Text: utilText},
+			{Path: "app/main.vibe", Kind: FileKindVibeLang, Text: mainText},
+			{Path: "app/lib/util.vibe", Kind: FileKindVibeLang, Text: utilText},
 			{Path: "app/shared.ts", Kind: FileKindTypeScript, Text: sharedText},
 		},
 		Options:  Options{"declaration": true},
@@ -94,8 +94,8 @@ func TestPinnedForkIdentityMultiFileProjects(t *testing.T) {
 	}
 	texts := artifactTextsByPath(t, good.Artifacts)
 	for _, expected := range []string{
-		"app/main.js", "app/main.js.map", "app/main.d.sm.ts",
-		"app/lib/util.js", "app/lib/util.js.map", "app/lib/util.d.sm.ts",
+		"app/main.js", "app/main.js.map", "app/main.d.vibe.ts",
+		"app/lib/util.js", "app/lib/util.js.map", "app/lib/util.d.vibe.ts",
 		"app/shared.js", "app/shared.js.map", "app/shared.d.ts",
 	} {
 		if _, ok := texts[expected]; !ok {
@@ -107,7 +107,7 @@ func TestPinnedForkIdentityMultiFileProjects(t *testing.T) {
 	}
 	mainJS := texts["app/main.js"]
 	if !strings.Contains(mainJS, "from \"./lib/util.js\"") {
-		t.Fatalf("runtime .sm import was not rewritten: %q", mainJS)
+		t.Fatalf("runtime .vibe import was not rewritten: %q", mainJS)
 	}
 	if !strings.Contains(mainJS, "from \"./shared\"") {
 		t.Fatalf("plain import must stay untouched: %q", mainJS)
@@ -115,12 +115,12 @@ func TestPinnedForkIdentityMultiFileProjects(t *testing.T) {
 	if !strings.Contains(mainJS, "//# sourceMappingURL=main.js.map") {
 		t.Fatalf("missing source map URL: %q", mainJS)
 	}
-	if !strings.Contains(texts["app/main.d.sm.ts"], "answer") {
-		t.Fatalf("missing declaration output: %q", texts["app/main.d.sm.ts"])
+	if !strings.Contains(texts["app/main.d.vibe.ts"], "answer") {
+		t.Fatalf("missing declaration output: %q", texts["app/main.d.vibe.ts"])
 	}
 
 	mainMap, mainPoints := decodeEmittedMap(t, texts["app/main.js.map"])
-	if len(mainMap.Sources) != 1 || mainMap.Sources[0] != "../../src/app/main.sm" {
+	if len(mainMap.Sources) != 1 || mainMap.Sources[0] != "../../src/app/main.vibe" {
 		t.Fatalf("main map sources = %#v", mainMap.Sources)
 	}
 	if len(mainMap.SourcesContent) != 1 || mainMap.SourcesContent[0] == nil || *mainMap.SourcesContent[0] != mainText {
@@ -151,10 +151,10 @@ func TestPinnedForkIdentityMultiFileProjects(t *testing.T) {
 	}
 
 	broken, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm", "util.sm"},
+		RootNames: []string{"main.vibe", "util.vibe"},
 		Files: []SourceFile{
-			{Path: "main.sm", Kind: FileKindSmithers, Text: "import { seven } from \"./util.sm\"\nexport const answer: number = seven;\n"},
-			{Path: "util.sm", Kind: FileKindSmithers, Text: "export const seven: number = \"7\";\n"},
+			{Path: "main.vibe", Kind: FileKindVibeLang, Text: "import { seven } from \"./util.vibe\"\nexport const answer: number = seven;\n"},
+			{Path: "util.vibe", Kind: FileKindVibeLang, Text: "export const seven: number = \"7\";\n"},
 		},
 		Lowering: LoweringIdentity,
 	})
@@ -166,25 +166,25 @@ func TestPinnedForkIdentityMultiFileProjects(t *testing.T) {
 	}
 	found := false
 	for _, item := range broken.Diagnostics {
-		if item.Code == "TS2322" && item.File == "util.sm" && item.Span != nil && item.Span.Start == strings.Index("export const seven: number = \"7\";\n", "seven") && item.Span.Length == len("seven") {
+		if item.Code == "TS2322" && item.File == "util.vibe" && item.Span != nil && item.Span.Start == strings.Index("export const seven: number = \"7\";\n", "seven") && item.Span.Length == len("seven") {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatalf("missing attributed TS2322 in util.sm: %#v", broken.Diagnostics)
+		t.Fatalf("missing attributed TS2322 in util.vibe: %#v", broken.Diagnostics)
 	}
 }
 
 func TestPinnedForkExternalLoweringComposesAuthoredMaps(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 
-	mainAuthored := "import { seven } from \"./util.sm\"\n" +
+	mainAuthored := "import { seven } from \"./util.vibe\"\n" +
 		"export action main(): number { return seven() * 2 }\n" +
-		"export { seven } from \"./util.sm\"\n"
-	mainLowered := "import { seven } from \"./util.sm\"\n" +
+		"export { seven } from \"./util.vibe\"\n"
+	mainLowered := "import { seven } from \"./util.vibe\"\n" +
 		"export function main(): number { return seven() * 2 }\n" +
-		"const __smithers_runtime = 1;\n" +
-		"export { seven } from \"./util.sm\"\n"
+		"const __vibelang_runtime = 1;\n" +
+		"export { seven } from \"./util.vibe\"\n"
 	mainMappings := encodeTestMappings([][]testSegment{
 		{{genCol: 0, srcLine: 0, srcCol: 0}},
 		{{genCol: 0, srcLine: 1, srcCol: 0}, {genCol: 16, srcLine: 1, srcCol: 14}},
@@ -198,24 +198,24 @@ func TestPinnedForkExternalLoweringComposesAuthoredMaps(t *testing.T) {
 	})
 
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm", "util.sm"},
+		RootNames: []string{"main.vibe", "util.vibe"},
 		Files: []SourceFile{
 			{
-				Path: "main.sm",
-				Kind: FileKindSmithers,
+				Path: "main.vibe",
+				Kind: FileKindVibeLang,
 				Text: mainAuthored,
 				Lowered: &LoweredSource{
 					Text:      mainLowered,
-					SourceMap: `{"version":3,"sources":["main.sm"],"names":[],"mappings":"` + mainMappings + `"}`,
+					SourceMap: `{"version":3,"sources":["main.vibe"],"names":[],"mappings":"` + mainMappings + `"}`,
 				},
 			},
 			{
-				Path: "util.sm",
-				Kind: FileKindSmithers,
+				Path: "util.vibe",
+				Kind: FileKindVibeLang,
 				Text: utilAuthored,
 				Lowered: &LoweredSource{
 					Text:      utilLowered,
-					SourceMap: `{"version":3,"sources":["util.sm"],"names":[],"mappings":"` + utilMappings + `"}`,
+					SourceMap: `{"version":3,"sources":["util.vibe"],"names":[],"mappings":"` + utilMappings + `"}`,
 				},
 			},
 		},
@@ -230,8 +230,8 @@ func TestPinnedForkExternalLoweringComposesAuthoredMaps(t *testing.T) {
 	}
 	texts := artifactTextsByPath(t, result.Artifacts)
 	for _, expected := range []string{
-		"main.js", "main.js.map", "main.d.sm.ts",
-		"util.js", "util.js.map", "util.d.sm.ts",
+		"main.js", "main.js.map", "main.d.vibe.ts",
+		"util.js", "util.js.map", "util.d.vibe.ts",
 	} {
 		if _, ok := texts[expected]; !ok {
 			t.Fatalf("missing artifact %q in %v", expected, artifactPaths(result.Artifacts))
@@ -239,24 +239,24 @@ func TestPinnedForkExternalLoweringComposesAuthoredMaps(t *testing.T) {
 	}
 
 	mainJS := texts["main.js"]
-	if !strings.Contains(mainJS, "function main()") || !strings.Contains(mainJS, "const __smithers_runtime = 1;") {
+	if !strings.Contains(mainJS, "function main()") || !strings.Contains(mainJS, "const __vibelang_runtime = 1;") {
 		t.Fatalf("lowered TypeScript was not emitted: %q", mainJS)
 	}
-	if strings.Contains(mainJS, ".sm\"") || !strings.Contains(mainJS, "from \"./util.js\"") {
-		t.Fatalf("runtime .sm import was not rewritten: %q", mainJS)
+	if strings.Contains(mainJS, ".vibe\"") || !strings.Contains(mainJS, "from \"./util.js\"") {
+		t.Fatalf("runtime .vibe import was not rewritten: %q", mainJS)
 	}
 	if !strings.Contains(mainJS, "//# sourceMappingURL=main.js.map") {
 		t.Fatalf("missing source map URL: %q", mainJS)
 	}
-	// Declarations keep the authored `.sm` specifier and the mapped name so a
+	// Declarations keep the authored `.vibe` specifier and the mapped name so a
 	// TypeScript consumer resolves them with allowArbitraryExtensions.
-	mainDTS := texts["main.d.sm.ts"]
-	if !strings.Contains(mainDTS, "declare function main(): number") || !strings.Contains(mainDTS, "from \"./util.sm\"") {
+	mainDTS := texts["main.d.vibe.ts"]
+	if !strings.Contains(mainDTS, "declare function main(): number") || !strings.Contains(mainDTS, "from \"./util.vibe\"") {
 		t.Fatalf("unexpected declaration output: %q", mainDTS)
 	}
 
 	mainMap, mainPoints := decodeEmittedMap(t, texts["main.js.map"])
-	if len(mainMap.Sources) != 1 || mainMap.Sources[0] != "../src/main.sm" {
+	if len(mainMap.Sources) != 1 || mainMap.Sources[0] != "../src/main.vibe" {
 		t.Fatalf("composed sources = %#v", mainMap.Sources)
 	}
 	if len(mainMap.SourcesContent) != 1 || mainMap.SourcesContent[0] == nil || *mainMap.SourcesContent[0] != mainAuthored {
@@ -284,7 +284,7 @@ func TestPinnedForkExternalLoweringComposesAuthoredMaps(t *testing.T) {
 
 	// The helper statement exists only in the lowered text: every mapping on
 	// its emitted line must stay unmapped.
-	helperLine, _ := positionOf(t, mainJS, "__smithers_runtime")
+	helperLine, _ := positionOf(t, mainJS, "__vibelang_runtime")
 	sawHelperMapping := false
 	for _, point := range mainPoints {
 		if point.generatedLine != helperLine {
@@ -300,7 +300,7 @@ func TestPinnedForkExternalLoweringComposesAuthoredMaps(t *testing.T) {
 	}
 
 	utilMap, utilPoints := decodeEmittedMap(t, texts["util.js.map"])
-	if len(utilMap.Sources) != 1 || utilMap.Sources[0] != "../src/util.sm" {
+	if len(utilMap.Sources) != 1 || utilMap.Sources[0] != "../src/util.vibe" {
 		t.Fatalf("composed util sources = %#v", utilMap.Sources)
 	}
 	utilJS := texts["util.js"]
@@ -323,14 +323,14 @@ func TestPinnedForkExternalLoweringMapsDiagnosticsToAuthoredPositions(t *testing
 		t.Fatal("test sample must place the diagnostic behind a non-identity shift")
 	}
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"broken.sm"},
+		RootNames: []string{"broken.vibe"},
 		Files: []SourceFile{{
-			Path: "broken.sm",
-			Kind: FileKindSmithers,
+			Path: "broken.vibe",
+			Kind: FileKindVibeLang,
 			Text: authored,
 			Lowered: &LoweredSource{
 				Text:      lowered,
-				SourceMap: `{"version":3,"sources":["broken.sm"],"names":[],"mappings":"` + mappings + `"}`,
+				SourceMap: `{"version":3,"sources":["broken.vibe"],"names":[],"mappings":"` + mappings + `"}`,
 			},
 		}},
 		Lowering: LoweringExternal,
@@ -343,7 +343,7 @@ func TestPinnedForkExternalLoweringMapsDiagnosticsToAuthoredPositions(t *testing
 	}
 	found := false
 	for _, item := range result.Diagnostics {
-		if item.Code == "TS2322" && item.File == "broken.sm" && item.Phase == PhaseCheck &&
+		if item.Code == "TS2322" && item.File == "broken.vibe" && item.Phase == PhaseCheck &&
 			item.Span != nil && item.Span.Start == strings.Index(authored, "wrong") && item.Span.Length == len("wrong") {
 			found = true
 		}

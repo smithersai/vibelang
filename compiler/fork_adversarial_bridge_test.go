@@ -9,36 +9,36 @@ import (
 )
 
 func TestPinnedForkUnboundProducerContainersMatchReference(t *testing.T) {
-	authored, err := os.ReadFile("testdata/fa-f1-enumeration.sm")
+	authored, err := os.ReadFile("testdata/fa-f1-enumeration.vibe")
 	if err != nil {
 		t.Fatal(err)
 	}
-	files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: string(authored)}}
+	files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: string(authored)}}
 	result := compileInternalSource(t, files)
 	want := []string{
-		"SMITHERS1301@9:41",
-		"SMITHERS1301@10:29",
-		"SMITHERS1301@11:45",
-		"SMITHERS1301@12:36",
-		"SMITHERS1301@13:40",
-		"SMITHERS1301@14:47",
-		"SMITHERS1301@15:51",
-		"SMITHERS1301@16:45",
-		"SMITHERS1301@17:46",
-		"SMITHERS1301@18:41",
-		"SMITHERS1301@19:44",
-		"SMITHERS1301@20:42",
-		"SMITHERS1301@21:53",
-		"SMITHERS1301@22:48",
-		"SMITHERS1301@23:51",
-		"SMITHERS1301@24:46",
-		"SMITHERS1301@25:55",
-		"SMITHERS1402@27:67",
-		"SMITHERS1402@28:62",
-		"SMITHERS1402@29:60",
-		"SMITHERS1402@30:62",
-		"SMITHERS1402@31:55",
-		"SMITHERS1301@32:56",
+		"VIBE1301@9:41",
+		"VIBE1301@10:29",
+		"VIBE1301@11:45",
+		"VIBE1301@12:36",
+		"VIBE1301@13:40",
+		"VIBE1301@14:47",
+		"VIBE1301@15:51",
+		"VIBE1301@16:45",
+		"VIBE1301@17:46",
+		"VIBE1301@18:41",
+		"VIBE1301@19:44",
+		"VIBE1301@20:42",
+		"VIBE1301@21:53",
+		"VIBE1301@22:48",
+		"VIBE1301@23:51",
+		"VIBE1301@24:46",
+		"VIBE1301@25:55",
+		"VIBE1402@27:67",
+		"VIBE1402@28:62",
+		"VIBE1402@29:60",
+		"VIBE1402@30:62",
+		"VIBE1402@31:55",
+		"VIBE1301@32:56",
 	}
 	sort.Strings(want)
 	if got := formatDiagnosticPositions(t, files, result); strings.Join(got, " ") != strings.Join(want, " ") {
@@ -46,7 +46,7 @@ func TestPinnedForkUnboundProducerContainersMatchReference(t *testing.T) {
 	}
 
 	for _, diagnostic := range result.Diagnostics {
-		if diagnostic.Code != "SMITHERS1301" || diagnostic.Span == nil {
+		if diagnostic.Code != "VIBE1301" || diagnostic.Span == nil {
 			continue
 		}
 		line, _ := lineColumnOfOffset(files[0].Text, diagnostic.Span.Start)
@@ -60,11 +60,11 @@ func TestPinnedForkUnboundProducerContainersMatchReference(t *testing.T) {
 }
 
 func TestPinnedForkUnboundProducerAcceptanceControls(t *testing.T) {
-	authored, err := os.ReadFile("testdata/fa-f1-controls.sm")
+	authored, err := os.ReadFile("testdata/fa-f1-controls.vibe")
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: string(authored)}})
+	result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: string(authored)}})
 	requireCleanCompile(t, result)
 	if got := runEmittedMain(t, result); got != "owned\ncomma\nada\nada\nand\nor\n2" {
 		t.Fatalf("acceptance controls printed %q", got)
@@ -80,9 +80,9 @@ func TestPinnedForkUnboundProducerAcceptanceControls(t *testing.T) {
 // module is refused through `import()` exactly as through `import ... from`.
 // It is equally not a licence to refuse dynamic import as such:
 // docs/DECISIONS.md:266 is Locked that "arbitrary dynamic import expressions
-// remain available", and a project `.sm` module crosses no foreign boundary at
+// remain available", and a project `.vibe` module crosses no foreign boundary at
 // all. Refusing a TRUSTED foreign module would answer the open ledger question
-// (DECISIONS.md:266 versus the SMITHERS1510 model) by fiat, which this rule may
+// (DECISIONS.md:266 versus the VIBE1510 model) by fiat, which this rule may
 // not do; a module that carries the claim carries it through either spelling.
 //
 // This test previously asserted the blanket refusal, and the reference frontend
@@ -117,8 +117,8 @@ func TestPinnedForkDynamicCodeImportsFailClosed(t *testing.T) {
 		},
 		{
 			name:     "project module literal is not a foreign module edge",
-			source:   "export async function main(): Promise<string[]> {\n  const loaded = await import(\"./helper.sm\")\n  return [loaded.value]\n}\n",
-			modules:  []SourceFile{{Path: "helper.sm", Kind: FileKindSmithers, Text: projectModule}},
+			source:   "export async function main(): Promise<string[]> {\n  const loaded = await import(\"./helper.vibe\")\n  return [loaded.value]\n}\n",
+			modules:  []SourceFile{{Path: "helper.vibe", Kind: FileKindVibeLang, Text: projectModule}},
 			accepted: true,
 		},
 		{
@@ -130,7 +130,7 @@ func TestPinnedForkDynamicCodeImportsFailClosed(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			files := append([]SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: testCase.source}}, testCase.modules...)
+			files := append([]SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: testCase.source}}, testCase.modules...)
 			result := compileInternalSource(t, files)
 			observed := formatDiagnosticPositions(t, files, result)
 			if testCase.accepted {
@@ -145,7 +145,7 @@ func TestPinnedForkDynamicCodeImportsFailClosed(t *testing.T) {
 				t.Fatalf("test bug: %q is absent", testCase.needle)
 			}
 			line, column := lineColumnOfOffset(testCase.source, start)
-			want := "SMITHERS1510@" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
+			want := "VIBE1510@" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
 			if strings.Join(observed, " ") != want {
 				t.Fatalf("dynamic import diagnostics = %v, want %s; raw %#v", observed, want, result.Diagnostics)
 			}
@@ -165,8 +165,8 @@ func TestPinnedForkDynamicCodeImportsFailClosed(t *testing.T) {
 // range`, taking the whole compile down with no diagnostic at all.
 func TestPinnedForkSpecifierRewriteSurvivesImportInAModuleName(t *testing.T) {
 	files := []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: "export async function main(): Promise<string[]> {\n  const helper = await import(\"./an-import-named-helper.sm\")\n  return [helper.greet(\"ada\")]\n}\n"},
-		{Path: "an-import-named-helper.sm", Kind: FileKindSmithers, Text: "export function greet(name: string): string {\n  return `hello ${name}`\n}\n"},
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: "export async function main(): Promise<string[]> {\n  const helper = await import(\"./an-import-named-helper.vibe\")\n  return [helper.greet(\"ada\")]\n}\n"},
+		{Path: "an-import-named-helper.vibe", Kind: FileKindVibeLang, Text: "export function greet(name: string): string {\n  return `hello ${name}`\n}\n"},
 	}
 	result := compileInternalSource(t, files)
 	requireCleanCompile(t, result)
@@ -193,15 +193,15 @@ func TestPinnedForkContextReceiversResolveByTypeIdentity(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			source := "import { Context } from \"smthrs/context\"\n" +
+			source := "import { Context } from \"vibelang/context\"\n" +
 				"abstract class Clock extends Context { abstract now(): number }\n" + testCase.binding + "\n" +
 				"function timestamp(): number { return " + testCase.receive + ".now() }\n" +
 				"export const stamped = [`${timestamp()}`]\n"
-			files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}}
+			files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: source}}
 			result := compileInternalSource(t, files)
 			call := strings.LastIndex(source, "timestamp()")
 			line, column := lineColumnOfOffset(source, call)
-			want := "SMITHERS2102@" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
+			want := "VIBE2102@" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
 			if got := strings.Join(formatDiagnosticPositions(t, files, result), " "); got != want {
 				t.Fatalf("context diagnostics = %s, want %s; raw %#v", got, want, result.Diagnostics)
 			}
@@ -221,10 +221,10 @@ func TestPinnedForkLiteralComputedCompilerMembers(t *testing.T) {
 					"export async function main(): Promise<string[]> {\n" +
 					"  const value = await work()[\"" + member + "\"](" + callback + ")\n" +
 					"  return [`${value}`]\n}\n"
-				files := []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}}
+				files := []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: source}}
 				result := compileInternalSource(t, files)
 				got := strings.Join(formatDiagnosticPositions(t, files, result), " ")
-				if got != "SMITHERS1401@3:23 SMITHERS1402@3:23" {
+				if got != "VIBE1401@3:23 VIBE1402@3:23" {
 					t.Fatalf("computed %s diagnostics = %s; raw %#v", member, got, result.Diagnostics)
 				}
 			})
@@ -232,8 +232,8 @@ func TestPinnedForkLiteralComputedCompilerMembers(t *testing.T) {
 	})
 
 	t.Run("computed Result and Layer members remain legitimate", func(t *testing.T) {
-		source := `import { Context } from "smthrs/context"
-import { Layer } from "smthrs/provider"
+		source := `import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
 class Missing extends Error {}
 abstract class Clock extends Context { abstract now(): number }
 const live: Clock = { now: () => 7 }
@@ -244,7 +244,7 @@ export function main(): string[] {
   return Layer["provide"](Layer["succeed"](Clock, live), () => [...gathered, read()])
 }
 `
-		result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}})
+		result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: source}})
 		requireCleanCompile(t, result)
 		if got := runEmittedMain(t, result); got != "ada\n7" {
 			t.Fatalf("computed compiler members printed %q", got)
@@ -260,39 +260,39 @@ function lookup(): Result<string, Missing> { return "ada" }
 		{
 			name:   "ternary discard reports both branch producers",
 			source: resultPrelude + "export function main(): string[] {\n  const flag = true\n  flag ? lookup() : lookup()\n  return [\"done\"]\n}\n",
-			reject: []string{"SMITHERS1301@5:10", "SMITHERS1301@5:21"},
+			reject: []string{"VIBE1301@5:10", "VIBE1301@5:21"},
 		},
 		{
 			name:   "parenthesized discard reports the producer",
 			source: resultPrelude + "export function main(): string[] {\n  (lookup())\n  return [\"done\"]\n}\n",
-			reject: []string{"SMITHERS1301@4:4"},
+			reject: []string{"VIBE1301@4:4"},
 		},
 		{
 			// specification/failures.mdx §Panic Does Not Widen a Return Type:
 			// "Calling `panic(...)` MUST NOT force a function's return type to
 			// widen into `Result<A, Panic>`." This case previously declared
-			// SMITHERS1101 here and was the twin of the corpus case
+			// VIBE1101 here and was the twin of the corpus case
 			// 09-foreign-calls/a-panic-in-an-if-body-still-needs-the-panic-channel.
 			// Both are retired by that rule: `main` keeps `string[]` and runs.
 			name: "a panic in an if body keeps a plain return type",
-			source: "import { panic } from \"smithers:exceptions\"\n" +
+			source: "import { panic } from \"vibelang:exceptions\"\n" +
 				"export function main(): string[] {\n  if (false) panic(\"unreachable\")\n  return [\"done\"]\n}\n",
 			stdout: "done",
 		},
 		{
 			// The cascade property the retired case was written for, on a shape
 			// where a contract error genuinely exists: a recoverable `throw`
-			// charges SMITHERS1101 at the declaration, and a panic written where
+			// charges VIBE1101 at the declaration, and a panic written where
 			// a VALUE is expected still charges its own placement refusal. The
 			// reference reports both, so the fork must too.
 			name: "a contract error does not suppress a panic placement refusal",
-			source: "import { panic } from \"smithers:exceptions\"\n" +
+			source: "import { panic } from \"vibelang:exceptions\"\n" +
 				"class Missing extends Error {}\n" +
 				"export function main(): string[] {\n" +
 				"  if (false) throw new Missing()\n" +
 				"  const value = false ? \"a\" : panic(\"unreachable\")\n" +
 				"  return [value]\n}\n",
-			reject: []string{"SMITHERS1101@3:1", "SMITHERS1503@5:31"},
+			reject: []string{"VIBE1101@3:1", "VIBE1503@5:31"},
 		},
 		{
 			// specification/compatibility.mdx:72 — "Postfix `!` requires a `Result`
@@ -304,10 +304,10 @@ function lookup(): Result<string, Missing> { return "ada" }
 			// settles what to do about it: "A rejected placement MUST be a
 			// diagnostic, never a silent lowering", and it names non-Result
 			// provenance as one of the separately diagnosed conditions.
-			// SMITHERS1207 is also the only diagnostic that names the fix —
+			// VIBE1207 is also the only diagnostic that names the fix —
 			// `(await checked())!`.
 			//
-			// This case previously asserted a lone SMITHERS1402 at the producer,
+			// This case previously asserted a lone VIBE1402 at the producer,
 			// suppressing the 1207. That answer and the reference's were swapped by
 			// two lanes correcting toward each other's pre-correction state; the
 			// specification did not move.
@@ -316,12 +316,12 @@ function lookup(): Result<string, Missing> { return "ada" }
 			name: "postfix bang on an unawaited Promise is a non-Result operand",
 			source: resultPrelude + "async function checked(): Promise<Result<string, Missing>> { return \"ada\" }\n" +
 				"export async function main(): Promise<Result<string[], Missing>> {\n  const value = checked()!\n  return [value]\n}\n",
-			reject: []string{"SMITHERS1207@5:17"},
+			reject: []string{"VIBE1207@5:17"},
 		},
 		{
 			// The same violation with the Promise left genuinely unconsumed. `!`
 			// extracts nothing from a Promise, so the value flows into the binding
-			// and the BINDING carries the missing-await obligation — SMITHERS1403
+			// and the BINDING carries the missing-await obligation — VIBE1403
 			// against the name, which is the bound/unbound split both backends
 			// already agree on in
 			// 08-promise-chaining/promise-then-on-a-bound-promise-is-rejected.
@@ -331,7 +331,7 @@ function lookup(): Result<string, Missing> { return "ada" }
 			name: "an unawaited Promise behind a bang still owes its await at the binding",
 			source: resultPrelude + "async function checked(): Promise<Result<string, Missing>> { return \"ada\" }\n" +
 				"export async function main(): Promise<Result<string[], Missing>> {\n  const value = checked()!\n  return [`${value}`]\n}\n",
-			reject: []string{"SMITHERS1403@5:9", "SMITHERS1207@5:17"},
+			reject: []string{"VIBE1403@5:9", "VIBE1207@5:17"},
 		},
 		{
 			// A refused module edge does NOT excuse the calls behind it.
@@ -343,27 +343,27 @@ function lookup(): Result<string, Missing> { return "ada" }
 			// The control that proves it is not a cascade is
 			// 09-foreign-calls/the-never-annotation-is-case-sensitive: the identical
 			// call in the identical shape over a module carrying a GENUINE trust
-			// header is charged SMITHERS1301 at the identical position, and passes
+			// header is charged VIBE1301 at the identical position, and passes
 			// on both backends. So the second diagnostic survives fixing the first
 			// and is a second authored defect, not a consequence of the first.
 			// Suppressing it handed back one error and hid another.
 			//
 			// The second diagnostic is charged at the BINDING, because the call
-			// is bound. It read SMITHERS1301@3:17 — the unbound code, at the
+			// is bound. It read VIBE1301@3:17 — the unbound code, at the
 			// call — until 2026-08-28, when the foreign lift was routed through
 			// the must-consume ownership walk and so acquired the bound/unbound
 			// split every authored producer already had. That is the divergence
 			// 09-foreign-calls/an-untrusted-foreign-result-bound-to-a-name-is-charged-at-the-binding
 			// existed to record, and this expectation had been pinning the fork's
 			// side of it. Both backends were re-measured on this exact program
-			// and both now answer [SMITHERS1510@1:22, SMITHERS1302@3:9]. What
+			// and both now answer [VIBE1510@1:22, VIBE1302@3:9]. What
 			// this case asserts is unchanged: a refused module edge does not
 			// excuse the call behind it, and a second diagnostic still survives.
 			name:    "an untrusted initializer does not excuse the foreign calls behind it",
 			support: "export function read(): string { return \"value\" }\n",
 			source: "import { read } from \"./foreign.ts\"\n" +
 				"export function main(): string[] {\n  const value = read()\n  return [value]\n}\n",
-			reject: []string{"SMITHERS1510@1:22", "SMITHERS1302@3:9"},
+			reject: []string{"VIBE1510@1:22", "VIBE1302@3:9"},
 		},
 	}
 	runFailClosedCases(t, cases)
@@ -394,7 +394,7 @@ export function main(): Result<string[], Missing> {
   return [name]
 }
 `,
-			reject: []string{"SMITHERS1206@4:16"},
+			reject: []string{"VIBE1206@4:16"},
 		},
 		{
 			name: "an unconsumed Result parameter reports its argument once",
@@ -403,7 +403,7 @@ function lookup(): Result<string, Missing> { return "Ada" }
 function ignore(outcome: Result<string, Missing>): string { return "ignored" }
 export function main(): string[] { return [ignore(lookup())] }
 `,
-			reject: []string{"SMITHERS1301@4:51", "SMITHERS1302@3:17"},
+			reject: []string{"VIBE1301@4:51", "VIBE1302@3:17"},
 		},
 	})
 }

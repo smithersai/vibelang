@@ -39,8 +39,8 @@ export function doubled(key: string): Result<number, NotFound> {
 func TestPinnedForkInternalLoweringRewritesResultControlFlow(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm"},
-		Files:     []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: internalLoweringSource}},
+		RootNames: []string{"main.vibe"},
+		Files:     []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: internalLoweringSource}},
 		Options:   Options{"declaration": true},
 		Lowering:  LoweringInternal,
 	})
@@ -56,7 +56,7 @@ func TestPinnedForkInternalLoweringRewritesResultControlFlow(t *testing.T) {
 	if !ok {
 		t.Fatalf("missing main.js: %v", artifactPaths(result.Artifacts))
 	}
-	if _, ok := texts["__smithers_prelude.js"]; !ok {
+	if _, ok := texts["__vibelang_prelude.js"]; !ok {
 		t.Fatalf("the compiler-owned prelude must be emitted: %v", artifactPaths(result.Artifacts))
 	}
 
@@ -67,28 +67,26 @@ func TestPinnedForkInternalLoweringRewritesResultControlFlow(t *testing.T) {
 		}
 	}
 	for _, lowered := range []string{
-		"return new __smithersErr(new NotFound(key));",
-		"return new __smithersOk(found);",
-		"const __smithersUnwrapped0 = lookup(key);",
-		"if (!__smithersUnwrapped0.ok)",
-		"return __smithersUnwrapped0;",
-		"const value = __smithersUnwrapped0.value;",
-		"return new __smithersOk(value * 2);",
+		"return new __vibelangErr(new NotFound(key));",
+		"return new __vibelangOk(found);",
+		"return __vibelangRunResult(function* () {",
+		"const value = yield* __vibelangPropagate(lookup(key),",
+		"return new __vibelangOk(value * 2);",
 	} {
 		if !strings.Contains(emitted, lowered) {
 			t.Fatalf("missing lowered form %q:\n%s", lowered, emitted)
 		}
 	}
-	if declaration := texts["main.d.sm.ts"]; !strings.Contains(declaration, "export declare function lookup(key: string): Result<number, NotFound>;") {
+	if declaration := texts["main.d.vibe.ts"]; !strings.Contains(declaration, "export declare function lookup(key: string): Result<number, NotFound>;") {
 		t.Fatalf("declarations must keep the authored Result signature: %q", declaration)
 	}
 
-	// The lowered `return new __smithersErr(...)` maps back to the authored `throw`.
+	// The lowered `return new __vibelangErr(...)` maps back to the authored `throw`.
 	parsed, points := decodeEmittedMap(t, texts["main.js.map"])
-	if len(parsed.Sources) != 1 || !strings.HasSuffix(parsed.Sources[0], "main.sm") {
+	if len(parsed.Sources) != 1 || !strings.HasSuffix(parsed.Sources[0], "main.vibe") {
 		t.Fatalf("emitted map lost authored identity: %#v", parsed.Sources)
 	}
-	loweredLine, loweredColumn := positionOf(t, emitted, "return new __smithersErr")
+	loweredLine, loweredColumn := positionOf(t, emitted, "return new __vibelangErr")
 	authoredLine, authoredColumn := positionOf(t, internalLoweringSource, "throw new NotFound")
 	if !hasMapping(points, loweredLine, loweredColumn, authoredLine, authoredColumn) {
 		t.Fatalf("lowered throw does not map to the authored throw at %d:%d: %#v", authoredLine, authoredColumn, points)
@@ -217,8 +215,8 @@ export function plain(n: number): number {
 }
 `
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"scope.sm"},
-		Files:     []SourceFile{{Path: "scope.sm", Kind: FileKindSmithers, Text: authored}},
+		RootNames: []string{"scope.vibe"},
+		Files:     []SourceFile{{Path: "scope.vibe", Kind: FileKindVibeLang, Text: authored}},
 		Lowering:  LoweringInternal,
 	})
 	if err != nil {
@@ -229,19 +227,28 @@ export function plain(n: number): number {
 	}
 	emitted := artifactTextsByPath(t, result.Artifacts)["scope.js"]
 	for _, lowered := range []string{
-		"export const half = (n) => new __smithersOk(n / 2);",
-		"return new __smithersErr(new Boom());",
-		"return new __smithersOk(n * 3);",
+		"export const half = (n) => {",
+		"return __vibelangCompleteResult((() => {",
+		"return new __vibelangOk(n / 2);",
+		"return new __vibelangErr(new Boom());",
+		"return new __vibelangOk(n * 3);",
 		"const inner = (x) => x + 1;",
-		"return new __smithersOk(inner(n));",
+		"return new __vibelangOk(inner(n));",
 	} {
 		if !strings.Contains(emitted, lowered) {
 			t.Fatalf("missing lowered form %q:\n%s", lowered, emitted)
 		}
 	}
+	if strings.Contains(emitted, "__vibelangRunResult") {
+		t.Fatalf("non-suspending annotated functions must not allocate a generator frame:\n%s", emitted)
+	}
+	if got := executeEmitted(t, result.Artifacts, `import { half, Calc, outer, plain } from './scope.js';
+console.log(JSON.stringify({ answer: [half(4).unwrapOr(0), new Calc().scale(2).unwrapOr(0), outer(4).unwrapOr(0), plain(-1), new Calc().scale(-1).isError()].join(',') }));`); got["answer"] != "2,6,5,0,true" {
+		t.Fatalf("scoped Result lifting computed %#v", got)
+	}
 	// `plain` does not return a Result, so its authored throw survives.
 	plain := emitted[strings.Index(emitted, "function plain"):]
-	if !strings.Contains(plain, "throw new Boom();") || strings.Contains(plain, "__smithers") {
+	if !strings.Contains(plain, "throw new Boom();") || strings.Contains(plain, "__vibelang") {
 		t.Fatalf("a non-Result function must keep its authored control flow:\n%s", plain)
 	}
 
@@ -255,8 +262,8 @@ export function invalid(n: number): number {
     return n
 }
 `
-	uncaughtResult := compileInternalSource(t, []SourceFile{{Path: "uncaught.sm", Kind: FileKindSmithers, Text: uncaught}})
-	diagnostic := requireDiagnostic(t, uncaughtResult, "SMITHERS1101", "uncaught.sm", "recoverable failures {Boom}")
+	uncaughtResult := compileInternalSource(t, []SourceFile{{Path: "uncaught.vibe", Kind: FileKindVibeLang, Text: uncaught}})
+	diagnostic := requireDiagnostic(t, uncaughtResult, "VIBE1101", "uncaught.vibe", "recoverable failures {Boom}")
 	if diagnostic.Span == nil || diagnostic.Span.Start != strings.Index(uncaught, "export function invalid") {
 		t.Fatalf("uncaught recoverable exit must be charged to the authored contract: %#v", diagnostic.Span)
 	}
@@ -279,10 +286,10 @@ export function shadowed(value: number): Result<number, string> {
 }
 `
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"shadowed.sm", "owned.sm"},
+		RootNames: []string{"shadowed.vibe", "owned.vibe"},
 		Files: []SourceFile{
-			{Path: "shadowed.sm", Kind: FileKindSmithers, Text: shadowed},
-			{Path: "owned.sm", Kind: FileKindSmithers, Text: compilerOwned},
+			{Path: "shadowed.vibe", Kind: FileKindVibeLang, Text: shadowed},
+			{Path: "owned.vibe", Kind: FileKindVibeLang, Text: compilerOwned},
 		},
 		Lowering: LoweringInternal,
 	})
@@ -293,45 +300,45 @@ export function shadowed(value: number): Result<number, string> {
 		t.Fatalf("symbol-identity project must check clean: %#v", result.Diagnostics)
 	}
 	texts := artifactTextsByPath(t, result.Artifacts)
-	if !strings.Contains(texts["shadowed.js"], "return value;") || strings.Contains(texts["shadowed.js"], "__smithersOk") {
+	if !strings.Contains(texts["shadowed.js"], "return value;") || strings.Contains(texts["shadowed.js"], "__vibelangOk") {
 		t.Fatalf("a user-declared Result must not be lowered:\n%s", texts["shadowed.js"])
 	}
-	if !strings.Contains(texts["owned.js"], "return new __smithersOk(value);") {
+	if !strings.Contains(texts["owned.js"], "return new __vibelangOk(value);") {
 		t.Fatalf("the compiler-owned Result must be lowered:\n%s", texts["owned.js"])
 	}
 }
 
 func TestPinnedForkInternalRowsResolveAliasesNamespacesAndCycles(t *testing.T) {
 	files := []SourceFile{
-		{Path: "errors.sm", Kind: FileKindSmithers, Text: `export class Boom extends Error { }
+		{Path: "errors.vibe", Kind: FileKindVibeLang, Text: `export class Boom extends Error { }
 export class Other extends Error { }
 `},
-		{Path: "leaf.sm", Kind: FileKindSmithers, Text: `import { Boom } from "./errors.sm"
+		{Path: "leaf.vibe", Kind: FileKindVibeLang, Text: `import { Boom } from "./errors.vibe"
 export function leaf(value: number): Result<number, Boom> {
     if (value < 0) throw new Boom()
     return value
 }
 `},
-		{Path: "middle.sm", Kind: FileKindSmithers, Text: `import * as graph from "./leaf.sm"
-import { Other } from "./errors.sm"
+		{Path: "middle.vibe", Kind: FileKindVibeLang, Text: `import * as graph from "./leaf.vibe"
+import { Other } from "./errors.vibe"
 export function middle(value: number): Result<number, Other> {
     return graph.leaf(value)
 }
 `},
-		{Path: "cap.sm", Kind: FileKindSmithers, Text: `import { Context } from "smthrs/context"
+		{Path: "cap.vibe", Kind: FileKindVibeLang, Text: `import { Context } from "vibelang/context"
 export abstract class Directory extends Context { abstract read(): string }
 export function read(): string { return Directory.context().read() }
 `},
-		{Path: "a.sm", Kind: FileKindSmithers, Text: `import { b } from "./b.sm"
+		{Path: "a.vibe", Kind: FileKindVibeLang, Text: `import { b } from "./b.vibe"
 export function a(): string { return b(false) }
 `},
-		{Path: "b.sm", Kind: FileKindSmithers, Text: `import { a as again } from "./a.sm"
-import * as capabilities from "./cap.sm"
+		{Path: "b.vibe", Kind: FileKindVibeLang, Text: `import { a as again } from "./a.vibe"
+import * as capabilities from "./cap.vibe"
 export function b(recur: boolean): string {
     return recur ? again() : capabilities.read()
 }
 `},
-		{Path: "main.sm", Kind: FileKindSmithers, Text: `import * as cycle from "./a.sm"
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: `import * as cycle from "./a.vibe"
 export const value = cycle.a()
 `},
 	}
@@ -339,19 +346,19 @@ export const value = cycle.a()
 	if !result.EmitSkipped || len(result.Artifacts) != 0 {
 		t.Fatalf("row diagnostics must suppress emit: %v", artifactPaths(result.Artifacts))
 	}
-	omitted := requireDiagnostic(t, result, "SMITHERS1104", "middle.sm", "Boom")
+	omitted := requireDiagnostic(t, result, "VIBE1104", "middle.vibe", "Boom")
 	if omitted.Span == nil || omitted.Span.Start != strings.Index(files[2].Text, "export function middle") {
-		t.Fatalf("SMITHERS1104 must point at the authored declaration: %#v", omitted)
+		t.Fatalf("VIBE1104 must point at the authored declaration: %#v", omitted)
 	}
-	unsatisfied := requireDiagnostic(t, result, "SMITHERS2102", "main.sm", "Directory")
+	unsatisfied := requireDiagnostic(t, result, "VIBE2102", "main.vibe", "Directory")
 	if unsatisfied.Span == nil || unsatisfied.Span.Start != strings.Index(files[6].Text, "cycle.a()") {
-		t.Fatalf("SMITHERS2102 must point at the namespace call after the cycle reaches a fixed point: %#v", unsatisfied)
+		t.Fatalf("VIBE2102 must point at the namespace call after the cycle reaches a fixed point: %#v", unsatisfied)
 	}
 }
 
 func TestPinnedForkInternalRowsExecuteContextLayers(t *testing.T) {
-	authored := `import { Context } from "smthrs/context"
-import { Layer } from "smthrs/provider"
+	authored := `import { Context } from "vibelang/context"
+import { Layer } from "vibelang/provider"
 
 abstract class Clock extends Context { abstract now(): number }
 function stamped(): string { return "time=" + Clock.context().now() }
@@ -361,7 +368,7 @@ export function main(): string[] {
     return Layer.provide(Layer.succeed(Clock, live), () => [stamped()])
 }
 `
-	result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: authored}})
+	result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored}})
 	requireCleanCompile(t, result)
 	observed := executeEmitted(t, result.Artifacts, `import { main } from "./main.js";
 console.log(JSON.stringify({ line: main()[0] }));
@@ -381,7 +388,7 @@ export function main(): string[] {
     return [Context.context(), Layer.provide(Layer.succeed(), () => "ok")]
 }
 `
-	result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: authored}})
+	result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: authored}})
 	requireCleanCompile(t, result)
 	observed := executeEmitted(t, result.Artifacts, `import { main } from "./main.js";
 console.log(JSON.stringify({ lines: main().join("|") }));
@@ -399,8 +406,8 @@ func TestPinnedForkInternalLoweringMapsDiagnosticsToAuthoredPositions(t *testing
 }
 `
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"broken.sm"},
-		Files:     []SourceFile{{Path: "broken.sm", Kind: FileKindSmithers, Text: authored}},
+		RootNames: []string{"broken.vibe"},
+		Files:     []SourceFile{{Path: "broken.vibe", Kind: FileKindVibeLang, Text: authored}},
 		Lowering:  LoweringInternal,
 	})
 	if err != nil {
@@ -412,13 +419,13 @@ func TestPinnedForkInternalLoweringMapsDiagnosticsToAuthoredPositions(t *testing
 	wantStart := strings.Index(authored, "return")
 	found := false
 	for _, diagnostic := range result.Diagnostics {
-		if diagnostic.Code != "TS2322" || diagnostic.File != "broken.sm" || diagnostic.Phase != PhaseCheck {
+		if diagnostic.Code != "TS2322" || diagnostic.File != "broken.vibe" || diagnostic.Phase != PhaseCheck {
 			continue
 		}
 		if diagnostic.Span == nil || diagnostic.Span.Start != wantStart || diagnostic.Span.Length != len("return") {
 			continue
 		}
-		// The message is restated in Smithers's own vocabulary: the lowered
+		// The message is restated in VibeLang's own vocabulary: the lowered
 		// variant classes are an implementation detail and must not leak.
 		if diagnostic.Message != "Type 'string' is not assignable to the success type 'number' of 'Result<number, RangeError>'." {
 			continue
@@ -426,10 +433,11 @@ func TestPinnedForkInternalLoweringMapsDiagnosticsToAuthoredPositions(t *testing
 		found = true
 	}
 	if !found {
-		t.Fatalf("missing authored-position TS2322 at %d: %#v", wantStart, result.Diagnostics)
+		encoded, _ := json.Marshal(result.Diagnostics)
+		t.Fatalf("missing authored-position/message TS2322 at %d: %s", wantStart, encoded)
 	}
 	for _, diagnostic := range result.Diagnostics {
-		for _, leaked := range []string{"SmithersOk", "SmithersErr", "__smithers"} {
+		for _, leaked := range []string{"VibeLangOk", "VibeLangErr", "__vibelang"} {
 			if strings.Contains(diagnostic.Message, leaked) {
 				t.Fatalf("lowered vocabulary %q leaked into a diagnostic: %q", leaked, diagnostic.Message)
 			}
@@ -437,7 +445,39 @@ func TestPinnedForkInternalLoweringMapsDiagnosticsToAuthoredPositions(t *testing
 	}
 }
 
-func TestPinnedForkInternalLoweringReportsSmithersDiagnosticIdentity(t *testing.T) {
+func TestPinnedForkInternalDiagnosticChainsRetainPayloadDetails(t *testing.T) {
+	backend, ctx := newPinnedTestBackend(t)
+	for _, source := range []string{
+		`export function broken(): Result<{count: number}, RangeError> { return {count: "wrong"}; }`,
+		`interface Item { count: number }; export const item: Item = {count: "wrong"};`,
+	} {
+		t.Run(source, func(t *testing.T) {
+			result, err := backend.Compile(ctx, CompileRequest{
+				RootNames: []string{"broken.vibe"},
+				Files:     []SourceFile{{Path: "broken.vibe", Kind: FileKindVibeLang, Text: source}},
+				Lowering:  LoweringInternal,
+			})
+			if err != nil || !result.EmitSkipped || len(result.Artifacts) != 0 {
+				t.Fatalf("expected checked refusal: %+v err=%v", result, err)
+			}
+			messages := ""
+			for _, diagnostic := range result.Diagnostics {
+				messages += diagnostic.Message + "\n"
+			}
+			if !strings.Contains(messages, "Type 'string' is not assignable to type 'number'") {
+				t.Fatalf("lost the actual payload type mismatch: %s", messages)
+			}
+			if strings.Contains(source, "Result<") && (!strings.Contains(messages, "success type") || !strings.Contains(messages, "property 'count'")) {
+				t.Fatalf("lost the public channel or nested property explanation: %s", messages)
+			}
+			if strings.Contains(messages, "VibeLangOk") || strings.Contains(messages, "VibeLangErr") {
+				t.Fatalf("internal representation leaked: %s", messages)
+			}
+		})
+	}
+}
+
+func TestPinnedForkInternalLoweringReportsVibeLangDiagnosticIdentity(t *testing.T) {
 	authored := `export class Missing extends Error { }
 export class Timeout extends Error { }
 
@@ -461,7 +501,7 @@ export function partial(error: Missing | Timeout): string {
     })
 }
 `
-	result := compileInternalSource(t, []SourceFile{{Path: "identity.sm", Kind: FileKindSmithers, Text: authored}})
+	result := compileInternalSource(t, []SourceFile{{Path: "identity.vibe", Kind: FileKindVibeLang, Text: authored}})
 	if !result.EmitSkipped || len(result.Artifacts) != 0 {
 		t.Fatalf("language diagnostics must suppress emit: %v", artifactPaths(result.Artifacts))
 	}
@@ -469,19 +509,19 @@ export function partial(error: Missing | Timeout): string {
 		code   string
 		needle string
 	}{
-		{code: "SMITHERS1203", needle: "Result<Result<string, Missing>, Missing>"},
-		{code: "SMITHERS1201", needle: "Result.err"},
-		{code: "SMITHERS1201", needle: "Result.ok"},
-		{code: "SMITHERS1255", needle: "error.matchPartial"},
+		{code: "VIBE1203", needle: "Result<Result<string, Missing>, Missing>"},
+		{code: "VIBE1201", needle: "Result.err"},
+		{code: "VIBE1201", needle: "Result.ok"},
+		{code: "VIBE1255", needle: "error.matchPartial"},
 	}
 	if len(result.Diagnostics) != len(wants) {
-		t.Fatalf("expected only the four Smithers diagnostics, got %#v", result.Diagnostics)
+		t.Fatalf("expected only the four VibeLang diagnostics, got %#v", result.Diagnostics)
 	}
 	for _, want := range wants {
 		start := strings.Index(authored, want.needle)
 		found := false
 		for _, item := range result.Diagnostics {
-			if item.Code == want.code && item.File == "identity.sm" && item.Span != nil && item.Span.Start == start {
+			if item.Code == want.code && item.File == "identity.vibe" && item.Span != nil && item.Span.Start == start {
 				found = true
 				if item.Phase != PhaseLower {
 					t.Fatalf("%s must be recognized by semantic/lowering analysis, got phase %q", want.code, item.Phase)
@@ -504,19 +544,19 @@ export function nested(): Result<Result<number, string>, string> {
     return Result.ok(Result.ok(1))
 }
 `
-	texts := requireCleanCompile(t, compileInternalSource(t, []SourceFile{{Path: "shadowed-result.sm", Kind: FileKindSmithers, Text: shadowed}}))
-	if strings.Contains(texts["shadowed-result.js"], "__smithers") || !strings.Contains(texts["shadowed-result.js"], "Result.ok") {
+	texts := requireCleanCompile(t, compileInternalSource(t, []SourceFile{{Path: "shadowed-result.vibe", Kind: FileKindVibeLang, Text: shadowed}}))
+	if strings.Contains(texts["shadowed-result.js"], "__vibelang") || !strings.Contains(texts["shadowed-result.js"], "Result.ok") {
 		t.Fatalf("an authored Result type/value must remain untouched:\n%s", texts["shadowed-result.js"])
 	}
 }
 
 func TestPinnedForkInternalLoweringRelabelsAuthoredGrammarFailures(t *testing.T) {
 	// The same raw parser codes OUTSIDE those recovery-tree situations must not
-	// be translated into a structural Smithers construct: the bridge never
+	// be translated into a structural VibeLang construct: the bridge never
 	// decides by code alone, and TS1109/TS1005 mean something different here
 	// than they do above.
 	//
-	// What such a failure becomes is SMITHERS1000 — an authored `.sm` file that
+	// What such a failure becomes is VIBE1000 — an authored `.vibe` file that
 	// does not parse is not the supported grammar, whatever TypeScript called
 	// the symptom. That is a phase rule, and this block pins the three
 	// properties that make it honest rather than a rename: the parser's own
@@ -526,17 +566,17 @@ func TestPinnedForkInternalLoweringRelabelsAuthoredGrammarFailures(t *testing.T)
 export function missingBrace(): number {
     return 1
 `
-	controlResult := compileInternalSource(t, []SourceFile{{Path: "controls.sm", Kind: FileKindSmithers, Text: controls}})
+	controlResult := compileInternalSource(t, []SourceFile{{Path: "controls.vibe", Kind: FileKindVibeLang, Text: controls}})
 	codes := requireDiagnosticCodes(controlResult)
-	if strings.Contains(codes, "SMITHERS1001") {
-		t.Fatalf("raw codes outside a proved Smithers construct were translated: %#v", controlResult.Diagnostics)
+	if strings.Contains(codes, "VIBE1001") {
+		t.Fatalf("raw codes outside a proved VibeLang construct were translated: %#v", controlResult.Diagnostics)
 	}
 	grammarFailures := 0
 	for _, item := range controlResult.Diagnostics {
-		if item.Code != "SMITHERS1000" {
-			t.Fatalf("an authored .sm parser failure must be reported as a grammar mismatch: %#v", item)
+		if item.Code != "VIBE1000" {
+			t.Fatalf("an authored .vibe parser failure must be reported as a grammar mismatch: %#v", item)
 		}
-		if !strings.Contains(item.Message, "does not match the supported .sm grammar") {
+		if !strings.Contains(item.Message, "does not match the supported .vibe grammar") {
 			t.Fatalf("the grammar mismatch must say so: %#v", item)
 		}
 		// The parser's own text is the only description of what it choked on,
@@ -544,7 +584,7 @@ export function missingBrace(): number {
 		if !strings.Contains(item.Message, "Expression expected.") && !strings.Contains(item.Message, "expected.") {
 			t.Fatalf("the parser's own explanation must be retained: %#v", item)
 		}
-		if item.Span == nil || item.File != "controls.sm" {
+		if item.Span == nil || item.File != "controls.vibe" {
 			t.Fatalf("the authored position must survive relabeling: %#v", item)
 		}
 		grammarFailures++
@@ -552,19 +592,19 @@ export function missingBrace(): number {
 	if grammarFailures == 0 {
 		t.Fatalf("the control source must still be rejected: %#v", controlResult.Diagnostics)
 	}
-	// The rule is scoped to authored `.sm`. A plain TypeScript module in the
+	// The rule is scoped to authored `.vibe`. A plain TypeScript module in the
 	// same project is held to TypeScript's grammar and keeps TypeScript's
-	// identity, because Smithers never claimed to own it.
+	// identity, because VibeLang never claimed to own it.
 	foreignResult := compileInternalSource(t, []SourceFile{
-		{Path: "main.sm", Kind: FileKindSmithers, Text: "export function main(): string[] {\n  return [\"ada\"]\n}\n"},
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: "export function main(): string[] {\n  return [\"ada\"]\n}\n"},
 		{Path: "broken.ts", Kind: FileKindTypeScript, Text: "export const missingExpression = ;\n"},
 	})
 	foreignCodes := requireDiagnosticCodes(foreignResult)
 	if !strings.Contains(foreignCodes, "TS1109") {
 		t.Fatalf("a plain TypeScript parser failure must keep its TypeScript identity: %#v", foreignResult.Diagnostics)
 	}
-	if strings.Contains(foreignCodes, "SMITHERS1000") {
-		t.Fatalf("the .sm grammar rule must not be applied to a plain TypeScript module: %#v", foreignResult.Diagnostics)
+	if strings.Contains(foreignCodes, "VIBE1000") {
+		t.Fatalf("the .vibe grammar rule must not be applied to a plain TypeScript module: %#v", foreignResult.Diagnostics)
 	}
 }
 
@@ -594,7 +634,7 @@ export function inspect(): string[] {
 }
 `
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "errors.sm", Kind: FileKindSmithers, Text: errorAPI},
+		{Path: "errors.vibe", Kind: FileKindVibeLang, Text: errorAPI},
 	})
 	texts := requireCleanCompile(t, result)
 	// The promise is the module EDGE: `Error.prototype.is`/`matches`/`rootCause`
@@ -604,7 +644,7 @@ export function inspect(): string[] {
 	// export; now it also registers its two Error classes, so the same edge is
 	// spelled as a named import — which evaluates the module identically. Both
 	// spellings satisfy the promise; no import at all does not.
-	if !strings.Contains(texts["errors.js"], `"./__smithers_prelude.js";`) {
+	if !strings.Contains(texts["errors.js"], `"./__vibelang_prelude.js";`) {
 		t.Fatalf("Error prototype helpers must pull in the prelude side effect:\n%s", texts["errors.js"])
 	}
 	observed := executeEmitted(t, result.Artifacts, `import { inspect } from "./errors.js";
@@ -624,8 +664,8 @@ export function main(): string[] {
     return [value.value, error.is(FauxError), error.rootCause()]
 }
 `
-	shadowedTexts := requireCleanCompile(t, compileInternalSource(t, []SourceFile{{Path: "shadowed-api.sm", Kind: FileKindSmithers, Text: shadowed}}))
-	if strings.Contains(shadowedTexts["shadowed-api.js"], "__smithers") {
+	shadowedTexts := requireCleanCompile(t, compileInternalSource(t, []SourceFile{{Path: "shadowed-api.vibe", Kind: FileKindVibeLang, Text: shadowed}}))
+	if strings.Contains(shadowedTexts["shadowed-api.js"], "__vibelang") {
 		t.Fatalf("same-spelled authored APIs must not pull in compiler runtime behavior:\n%s", shadowedTexts["shadowed-api.js"])
 	}
 }
@@ -634,10 +674,10 @@ export function main(): string[] {
 // internal lowering owns the lowering, so a producer must not supply one.
 func TestInternalLoweringRejectsSuppliedLowering(t *testing.T) {
 	err := validateLoweredRequest(CompileRequest{
-		RootNames: []string{"main.sm"},
+		RootNames: []string{"main.vibe"},
 		Files: []SourceFile{{
-			Path:    "main.sm",
-			Kind:    FileKindSmithers,
+			Path:    "main.vibe",
+			Kind:    FileKindVibeLang,
 			Text:    "export const answer: number = 1;\n",
 			Lowered: &LoweredSource{Text: "export const answer = 1;\n", SourceMap: "{}"},
 		}},
@@ -767,12 +807,12 @@ export function describe(hit: boolean): string {
 }
 `
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "shadowed.sm", Kind: FileKindSmithers, Text: shadowed},
-		{Path: "nullable.sm", Kind: FileKindSmithers, Text: nullable},
+		{Path: "shadowed.vibe", Kind: FileKindVibeLang, Text: shadowed},
+		{Path: "nullable.vibe", Kind: FileKindVibeLang, Text: nullable},
 	})
 	texts := requireCleanCompile(t, result)
 	for name, text := range map[string]string{"shadowed.js": texts["shadowed.js"], "nullable.js": texts["nullable.js"]} {
-		if strings.Contains(text, "__smithers") {
+		if strings.Contains(text, "__vibelang") {
 			t.Fatalf("%s must be left untouched:\n%s", name, text)
 		}
 	}
@@ -790,10 +830,10 @@ export function bad(key: number): number {
     return value(key)!;
 }
 `
-	contractResult := compileInternalSource(t, []SourceFile{{Path: "contract.sm", Kind: FileKindSmithers, Text: contract}})
-	contractDiagnostic := requireDiagnostic(t, contractResult, "SMITHERS1101", "contract.sm", "explicit return type cannot represent recoverable failures {E}")
+	contractResult := compileInternalSource(t, []SourceFile{{Path: "contract.vibe", Kind: FileKindVibeLang, Text: contract}})
+	contractDiagnostic := requireDiagnostic(t, contractResult, "VIBE1101", "contract.vibe", "explicit return type cannot represent recoverable failures {E}")
 	if contractDiagnostic.Span == nil || contractDiagnostic.Span.Start != strings.Index(contract, "export function bad") {
-		t.Fatalf("SMITHERS1101 must land on the authored declaration: %#v", contractDiagnostic.Span)
+		t.Fatalf("VIBE1101 must land on the authored declaration: %#v", contractDiagnostic.Span)
 	}
 }
 
@@ -825,16 +865,16 @@ export function eager(kind: number): Promise<Result<number, Boom>> {
 `
 
 func TestPinnedForkInternalLoweringLiftsAsyncResults(t *testing.T) {
-	result := compileInternalSource(t, []SourceFile{{Path: "async.sm", Kind: FileKindSmithers, Text: asyncLoweringSource}})
+	result := compileInternalSource(t, []SourceFile{{Path: "async.vibe", Kind: FileKindVibeLang, Text: asyncLoweringSource}})
 	texts := requireCleanCompile(t, result)
 	emitted := texts["async.js"]
 
 	for _, lowered := range []string{
-		"return new __smithersErr(new Boom());",
-		"return new __smithersOk(kind * 3);",
-		"const __smithersUnwrapped0 = (await fetched(kind));",
-		"if (!__smithersUnwrapped0.ok)",
-		"return new __smithersOk(value + 1);",
+		"return new __vibelangErr(new Boom());",
+		"return new __vibelangOk(kind * 3);",
+		"return __vibelangRunResultAsync(async function* () {",
+		"const value = yield* __vibelangPropagate((await fetched(kind)),",
+		"return new __vibelangOk(value + 1);",
 	} {
 		if !strings.Contains(emitted, lowered) {
 			t.Fatalf("missing lowered form %q:\n%s", lowered, emitted)
@@ -846,13 +886,13 @@ func TestPinnedForkInternalLoweringLiftsAsyncResults(t *testing.T) {
 	for _, name := range []string{"function forwarded", "function eager"} {
 		body := emitted[strings.Index(emitted, name):]
 		body = body[:strings.Index(body, "}")]
-		if !strings.Contains(body, "return fetched(kind);") || strings.Contains(body, "__smithers") {
+		if !strings.Contains(body, "return fetched(kind);") || strings.Contains(body, "new __vibelangOk") {
 			t.Fatalf("%s must forward its value unchanged:\n%s", name, body)
 		}
 	}
 
-	if signature := "export declare function fetched(kind: number): Promise<Result<number, Boom>>;"; !strings.Contains(texts["async.d.sm.ts"], signature) {
-		t.Fatalf("declarations must keep %q:\n%s", signature, texts["async.d.sm.ts"])
+	if signature := "export declare function fetched(kind: number): Promise<Result<number, Boom>>;"; !strings.Contains(texts["async.d.vibe.ts"], signature) {
+		t.Fatalf("declarations must keep %q:\n%s", signature, texts["async.d.vibe.ts"])
 	}
 
 	observed := executeEmitted(t, result.Artifacts, `import { fetched, chained, forwarded, eager, Boom } from "./async.js";
@@ -889,14 +929,14 @@ console.log(JSON.stringify({
 // That operand is not a Result. specification/compatibility.mdx:72 —
 // "Postfix `!` requires a `Result` operand" — with specification/failures.mdx,
 // "Promise Semantics": "Awaiting `Promise<Result<A, E>>` MUST produce
-// `Result<A, E>`", so `await` is what removes the Promise layer. SMITHERS1207 is
+// `Result<A, E>`", so `await` is what removes the Promise layer. VIBE1207 is
 // that violation, and it is the diagnostic that names the fix — `(await f(x))!`.
 // specification/failures.mdx, "Accepted Placements", forbids the alternative
 // outright: "A rejected placement MUST be a diagnostic, never a silent
 // lowering."
 //
-// This test previously asserted a lone SMITHERS1402 at the producer and called
-// the 1207 a cascade. The reference reports SMITHERS1207 here and always did;
+// This test previously asserted a lone VIBE1402 at the producer and called
+// the 1207 a cascade. The reference reports VIBE1207 here and always did;
 // both backends now agree on this exact program.
 func TestPinnedForkInternalLoweringKeepsAwaitOrdering(t *testing.T) {
 	authored := `export class Boom extends Error { }
@@ -909,11 +949,11 @@ export async function bad(kind: number): Promise<Result<number, Boom>> {
     return await fetched(kind)!;
 }
 `
-	result := compileInternalSource(t, []SourceFile{{Path: "order.sm", Kind: FileKindSmithers, Text: authored}})
+	result := compileInternalSource(t, []SourceFile{{Path: "order.vibe", Kind: FileKindVibeLang, Text: authored}})
 	if !result.EmitSkipped || len(result.Artifacts) != 0 {
 		t.Fatalf("an unlowerable await must suppress emit: %v", artifactPaths(result.Artifacts))
 	}
-	diagnostic := requireDiagnostic(t, result, "SMITHERS1207", "order.sm", "postfix ! requires a Result operand")
+	diagnostic := requireDiagnostic(t, result, "VIBE1207", "order.vibe", "postfix ! requires a Result operand")
 	wantStart := strings.Index(authored, "fetched(kind)!")
 	if diagnostic.Span == nil || diagnostic.Span.Start != wantStart {
 		t.Fatalf("the rejection must land on the authored postfix expression at %d: %#v", wantStart, diagnostic.Span)
@@ -960,8 +1000,8 @@ const matchOtherSource = `export class NotFound extends Error { }
 // `map`/`recover`/`unwrapOr` are used in place of Result `match` deliberately:
 // a Result `.match` survives lowering as a runtime method call, and this test
 // asserts the emitted module contains no `.match(` at all — an assertion aimed
-// at the NOMINAL error match, which must lower to `__smithersErrorIs`.
-const matchMainSource = `import { NotFound as Missing, Timeout } from "./errors.sm";
+// at the NOMINAL error match, which must lower to `__vibelangErrorIs`.
+const matchMainSource = `import { NotFound as Missing, Timeout } from "./errors.vibe";
 
 export function describe(error: Missing | Timeout): string {
     return error.match({
@@ -987,9 +1027,9 @@ export function report(key: string): string {
 
 func TestPinnedForkInternalLoweringDispatchesNominalErrorMatch(t *testing.T) {
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "errors.sm", Kind: FileKindSmithers, Text: matchErrorsSource},
-		{Path: "other.sm", Kind: FileKindSmithers, Text: matchOtherSource},
-		{Path: "main.sm", Kind: FileKindSmithers, Text: matchMainSource},
+		{Path: "errors.vibe", Kind: FileKindVibeLang, Text: matchErrorsSource},
+		{Path: "other.vibe", Kind: FileKindVibeLang, Text: matchOtherSource},
+		{Path: "main.vibe", Kind: FileKindVibeLang, Text: matchMainSource},
 	})
 	texts := requireCleanCompile(t, result)
 	emitted := texts["main.js"]
@@ -1005,9 +1045,9 @@ func TestPinnedForkInternalLoweringDispatchesNominalErrorMatch(t *testing.T) {
 	// consults the RIGHT operand's `Symbol.hasInstance`, which any class may
 	// install, so the negative assertion below is not stylistic: it is the rule.
 	for _, lowered := range []string{
-		"__smithersErrorIs(error, Missing) ?",
-		"__smithersErrorIs(error, Timeout) ?",
-		"__smithersMatchFailed(error)",
+		"__vibelangErrorIs(error, Missing) ?",
+		"__vibelangErrorIs(error, Timeout) ?",
+		"__vibelangMatchFailed(error)",
 	} {
 		if !strings.Contains(emitted, lowered) {
 			t.Fatalf("missing constructor-keyed case %q:\n%s", lowered, emitted)
@@ -1019,7 +1059,7 @@ func TestPinnedForkInternalLoweringDispatchesNominalErrorMatch(t *testing.T) {
 
 	// The dispatch maps back to the authored match expression.
 	parsedMap, points := decodeEmittedMap(t, texts["main.js.map"])
-	loweredLine, loweredColumn := positionOf(t, emitted, "__smithersErrorIs(error, Missing)")
+	loweredLine, loweredColumn := positionOf(t, emitted, "__vibelangErrorIs(error, Missing)")
 	authoredLine, authoredColumn := positionOf(t, matchMainSource, "error.match({")
 	if len(parsedMap.Sources) != 1 || !hasMapping(points, loweredLine, loweredColumn, authoredLine, authoredColumn) {
 		t.Fatalf("the lowered dispatch does not map to the authored match at %d:%d", authoredLine, authoredColumn)
@@ -1047,25 +1087,25 @@ console.log(JSON.stringify({
 // union, and a same-named class from another module are all refused, and the
 // authored call is left intact rather than approximated.
 func TestPinnedForkInternalLoweringChecksErrorMatchExhaustiveness(t *testing.T) {
-	incomplete := `import { NotFound, Timeout } from "./errors.sm";
+	incomplete := `import { NotFound, Timeout } from "./errors.vibe";
 
 export function describe(error: NotFound | Timeout): string {
     return error.match({ NotFound: (value) => value.key });
 }
 `
 	result := compileInternalSource(t, []SourceFile{
-		{Path: "errors.sm", Kind: FileKindSmithers, Text: matchErrorsSource},
-		{Path: "incomplete.sm", Kind: FileKindSmithers, Text: incomplete},
+		{Path: "errors.vibe", Kind: FileKindVibeLang, Text: matchErrorsSource},
+		{Path: "incomplete.vibe", Kind: FileKindVibeLang, Text: incomplete},
 	})
 	if !result.EmitSkipped || len(result.Artifacts) != 0 {
 		t.Fatalf("a non-exhaustive match must suppress emit: %v", artifactPaths(result.Artifacts))
 	}
-	requireDiagnostic(t, result, "SMITHERS1253", "incomplete.sm", "missing Timeout")
+	requireDiagnostic(t, result, "VIBE1253", "incomplete.vibe", "missing Timeout")
 
 	// The case label spells `NotFound`, but it resolves to a *different* module's
 	// class, so it neither covers the union member nor belongs to it.
-	foreign := `import { NotFound, Timeout } from "./errors.sm";
-import { NotFound as Other } from "./other.sm";
+	foreign := `import { NotFound, Timeout } from "./errors.vibe";
+import { NotFound as Other } from "./other.vibe";
 
 export function describe(error: NotFound | Timeout): string {
     return error.match({
@@ -1075,11 +1115,11 @@ export function describe(error: NotFound | Timeout): string {
 }
 `
 	foreignResult := compileInternalSource(t, []SourceFile{
-		{Path: "errors.sm", Kind: FileKindSmithers, Text: matchErrorsSource},
-		{Path: "other.sm", Kind: FileKindSmithers, Text: matchOtherSource},
-		{Path: "foreign.sm", Kind: FileKindSmithers, Text: foreign},
+		{Path: "errors.vibe", Kind: FileKindVibeLang, Text: matchErrorsSource},
+		{Path: "other.vibe", Kind: FileKindVibeLang, Text: matchOtherSource},
+		{Path: "foreign.vibe", Kind: FileKindVibeLang, Text: foreign},
 	})
-	requireDiagnostic(t, foreignResult, "SMITHERS1253", "foreign.sm", "missing NotFound")
+	requireDiagnostic(t, foreignResult, "VIBE1253", "foreign.vibe", "missing NotFound")
 }
 
 // TestPinnedForkInternalLoweringRefusesUnsafePropagationPlacement proves the
@@ -1102,24 +1142,18 @@ export function direct(kind: number): Result<number, E> {
     return value(kind)!;
 }
 `
-	texts := requireCleanCompile(t, compileInternalSource(t, []SourceFile{{Path: "safe.sm", Kind: FileKindSmithers, Text: safe}}))
+	texts := requireCleanCompile(t, compileInternalSource(t, []SourceFile{{Path: "safe.vibe", Kind: FileKindVibeLang, Text: safe}}))
 	for _, lowered := range []string{
-		"const scored = __smithersUnwrapped0.value;",
-		"return new __smithersOk(__smithersUnwrapped1.value);",
+		"const scored = yield* __vibelangPropagate(value(kind),",
+		"return new __vibelangOk(yield* __vibelangPropagate(value(kind),",
 	} {
 		if !strings.Contains(texts["safe.js"], lowered) {
 			t.Fatalf("an unconditional, once-evaluated placement must still propagate (%q):\n%s", lowered, texts["safe.js"])
 		}
 	}
 
-	// `summed` is the case that separates the surviving rule from the withdrawn
-	// one. All three functions here are "expression-nested" and the retired
-	// statement-walk refused all four propagation points in them. Only the first
-	// two shapes are still refused, because only they are the thing the shipped
-	// lowering cannot hoist: `side()` is an effect the guard would jump over, and
-	// a ternary arm may not be evaluated at all. `value(kind)! + value(kind+1)!`
-	// hoists BOTH guards, in authored order, so it compiles and runs — pinned
-	// green by TestPinnedForkInternalLoweringHoistsTwoPropagationsInOrder below.
+	// Every operand stays in its authored evaluation position. Delimited
+	// propagation no longer needs the old hoisting-placement restrictions.
 	unsafe := `export class E extends Error { }
 
 export function value(kind: number): Result<number, E> {
@@ -1142,26 +1176,14 @@ export function summed(kind: number): Result<number, E> {
     return value(kind)! + value(kind + 1)!;
 }
 `
-	result := compileInternalSource(t, []SourceFile{{Path: "unsafe.sm", Kind: FileKindSmithers, Text: unsafe}})
-	if !result.EmitSkipped || len(result.Artifacts) != 0 {
-		t.Fatalf("a refused propagation must suppress emit: %v", artifactPaths(result.Artifacts))
-	}
-	ordered := requireDiagnostic(t, result, "SMITHERS1204", "unsafe.sm", "after another effect in the same statement")
-	if ordered.Span == nil || ordered.Span.Start != strings.Index(unsafe, "value(kind)!") {
-		t.Fatalf("SMITHERS1204 must land on the authored call: %#v", ordered.Span)
-	}
-	conditional := requireDiagnostic(t, result, "SMITHERS1204", "unsafe.sm", "conditionally evaluated operand")
-	if conditional.Span == nil || conditional.Span.Start != strings.Index(unsafe, "flag ? value(kind)!")+len("flag ? ") {
-		t.Fatalf("SMITHERS1204 must land on the ternary arm: %#v", conditional.Span)
-	}
-	found := 0
-	for _, item := range result.Diagnostics {
-		if item.Code == "SMITHERS1204" {
-			found++
+	accepted := requireCleanCompile(t, compileInternalSource(t, []SourceFile{{Path: "unsafe.vibe", Kind: FileKindVibeLang, Text: unsafe}}))
+	for _, lowered := range []string{
+		"side() + (yield* __vibelangPropagate(value(kind),",
+		"flag ? yield* __vibelangPropagate(value(kind),",
+	} {
+		if !strings.Contains(accepted["unsafe.js"], lowered) {
+			t.Fatalf("propagation must preserve operand position (%q):\n%s", lowered, accepted["unsafe.js"])
 		}
-	}
-	if found != 2 {
-		t.Fatalf("exactly the preceded-effect and conditional operands are refused: %#v", result.Diagnostics)
 	}
 }
 
@@ -1193,7 +1215,7 @@ export function main(): string[] {
     return summed().match({ ok: (value) => value, error: () => ["err"] });
 }
 `
-	result := compileInternalSource(t, []SourceFile{{Path: "main.sm", Kind: FileKindSmithers, Text: source}})
+	result := compileInternalSource(t, []SourceFile{{Path: "main.vibe", Kind: FileKindVibeLang, Text: source}})
 	requireCleanCompile(t, result)
 	if got, want := runEmittedMain(t, result), "5\naa,bbb"; got != want {
 		t.Fatalf("emitted program printed %q, want %q", got, want)
@@ -1231,7 +1253,7 @@ export function shouted(key: string): string {
 }
 
 `
-	result := compileInternalSource(t, []SourceFile{{Path: "surface.sm", Kind: FileKindSmithers, Text: authored}})
+	result := compileInternalSource(t, []SourceFile{{Path: "surface.vibe", Kind: FileKindVibeLang, Text: authored}})
 	texts := requireCleanCompile(t, result)
 	// The operations are library calls, not language constructs: nothing about
 	// them is rewritten.
@@ -1295,7 +1317,7 @@ export async function chained(key: string): Promise<string> {
     return outcome.unwrapOr("Guest");
 }
 `
-	result := compileInternalSource(t, []SourceFile{{Path: "closed.sm", Kind: FileKindSmithers, Text: authored}})
+	result := compileInternalSource(t, []SourceFile{{Path: "closed.vibe", Kind: FileKindVibeLang, Text: authored}})
 	if !result.EmitSkipped || len(result.Artifacts) != 0 {
 		t.Fatalf("a refused program must suppress emit: %v", artifactPaths(result.Artifacts))
 	}
@@ -1304,19 +1326,19 @@ export async function chained(key: string): Promise<string> {
 		detail string
 		needle string
 	}{
-		{code: "SMITHERS1205", detail: "unwinds the computation past this catch clause", needle: "lookup(key)!"},
-		{code: "SMITHERS1301", detail: "Result value is not consumed", needle: "lookup(key);\n    return \"done\";"},
-		{code: "SMITHERS1402", detail: "started Promise is not consumed", needle: "fetched(key);\n    return \"done\";"},
-		{code: "SMITHERS1401", detail: "unavailable in authored .sm", needle: "fetched(key).then("},
+		{code: "VIBE1205", detail: "unwinds the computation past this catch clause", needle: "lookup(key)!"},
+		{code: "VIBE1301", detail: "Result value is not consumed", needle: "lookup(key);\n    return \"done\";"},
+		{code: "VIBE1402", detail: "started Promise is not consumed", needle: "fetched(key);\n    return \"done\";"},
+		{code: "VIBE1401", detail: "unavailable in authored .vibe", needle: "fetched(key).then("},
 	} {
-		diagnostic := requireDiagnostic(t, result, expected.code, "closed.sm", expected.detail)
+		diagnostic := requireDiagnostic(t, result, expected.code, "closed.vibe", expected.detail)
 		if diagnostic.Span == nil || diagnostic.Span.Start != strings.Index(authored, expected.needle) {
 			t.Fatalf("%s must land on the authored construct %q: %#v", expected.code, expected.needle, diagnostic.Span)
 		}
 	}
 	// The recoverable exit inside the catch-guarded try keeps JavaScript throw
 	// behavior rather than becoming an early return the catch could not see.
-	if strings.Contains(requireDiagnosticCodes(result), "SMITHERS1511") {
+	if strings.Contains(requireDiagnosticCodes(result), "VIBE1511") {
 		t.Fatalf("no top-level throw in this program: %#v", result.Diagnostics)
 	}
 
@@ -1326,10 +1348,10 @@ const enabled = true;
 
 if (enabled) throw new Boom();
 `
-	topLevelResult := compileInternalSource(t, []SourceFile{{Path: "top.sm", Kind: FileKindSmithers, Text: topLevel}})
-	diagnostic := requireDiagnostic(t, topLevelResult, "SMITHERS1511", "top.sm", "top-level throw")
+	topLevelResult := compileInternalSource(t, []SourceFile{{Path: "top.vibe", Kind: FileKindVibeLang, Text: topLevel}})
+	diagnostic := requireDiagnostic(t, topLevelResult, "VIBE1511", "top.vibe", "top-level throw")
 	if diagnostic.Span == nil || diagnostic.Span.Start != strings.Index(topLevel, "throw new Boom();") {
-		t.Fatalf("SMITHERS1511 must land on the authored throw: %#v", diagnostic.Span)
+		t.Fatalf("VIBE1511 must land on the authored throw: %#v", diagnostic.Span)
 	}
 }
 
@@ -1353,12 +1375,12 @@ export function main(): string[] {
     return [describe("ada"), describe("zoe"), String(initializations)]
 }
 `
-	result := compileInternalSource(t, []SourceFile{{Path: "values.sm", Kind: FileKindSmithers, Text: authored}})
+	result := compileInternalSource(t, []SourceFile{{Path: "values.vibe", Kind: FileKindVibeLang, Text: authored}})
 	texts := requireCleanCompile(t, result)
 	emitted := texts["values.js"]
 	for _, invalid := range []string{"if (const name"} {
 		if strings.Contains(emitted, invalid) {
-			t.Fatalf("authored Smithers syntax %q reached JavaScript:\n%s", invalid, emitted)
+			t.Fatalf("authored VibeLang syntax %q reached JavaScript:\n%s", invalid, emitted)
 		}
 	}
 	_, points := decodeEmittedMap(t, texts["values.js.map"])

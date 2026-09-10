@@ -23,13 +23,13 @@ import (
 //
 // A durable failure identity is a function of (logical source file, class name)
 // alone, and the CONTRACT spelling the reference mints —
-// `smithers:<file>#<name>@1`, normalized — rewrites its own `#` separator to
+// `vibelang:<file>#<name>@1`, normalized — rewrites its own `#` separator to
 // `_`, so it is not injective over class declarations. Two spellings of that
-// reach authored `.sm`: two same-named classes in one module, which this bridge
-// already refuses module-wide and earlier as SMITHERS1150, and two DIFFERENT
+// reach authored `.vibe`: two same-named classes in one module, which this bridge
+// already refuses module-wide and earlier as VIBE1150, and two DIFFERENT
 // names that normalize together. `$Failed` and `_Failed` are the smallest such
 // pair. The reference refuses the second family at contract-derivation time and
-// its durable source compiler surfaces the refusal as SMITHERS4124 against the
+// its durable source compiler surfaces the refusal as VIBE4124 against the
 // authored `run` call site; before this test existed the fork compiled that
 // program clean and ran it.
 //
@@ -37,7 +37,7 @@ import (
 // the defect's defining property is that the program COMPILES, so a
 // diagnostics-only test would have passed against the broken bridge.
 
-const durableCollidingIdentitySource = `import { durable, Action } from "smithers:flows"
+const durableCollidingIdentitySource = `import { durable, Action } from "vibelang:flows"
 
 namespace Left {
     export class Failed extends Error {
@@ -62,7 +62,7 @@ export function main(): string {
 }
 `
 
-const durableDistinctIdentitySource = `import { durable, Action } from "smithers:flows"
+const durableDistinctIdentitySource = `import { durable, Action } from "vibelang:flows"
 
 export class NotFound extends Error {
     constructor(readonly path: string) { super("missing " + path) }
@@ -85,11 +85,11 @@ export function main(): string {
 
 // TestPinnedForkDurableFailureChannelRefusesACollidingIdentity is the refusal
 // half. The code, the position, AND the sentence are the reference's, not this
-// bridge's invention: the reference reports SMITHERS4124 against the authored
+// bridge's invention: the reference reports VIBE4124 against the authored
 // `Pick.run(...)` call, because its `deriveSameFileActions` cannot derive the
 // declaration's contract and carries the collision's reason out to that call.
 //
-// Both backends used to answer SMITHERS4112, "higher-order and dynamic calls
+// Both backends used to answer VIBE4112, "higher-order and dynamic calls
 // are unavailable in durable source lowering". The verdict was right and the
 // stated reason was false of the program: there is no higher-order call and no
 // dynamic call in it, and `Pick.run({ key: input.key })` is an ordinary
@@ -102,7 +102,7 @@ func TestPinnedForkDurableFailureChannelRefusesACollidingIdentity(t *testing.T) 
 	backend, ctx := newPinnedTestBackend(t)
 
 	result := compileDurableWith(t, backend, ctx, durableCollidingIdentitySource)
-	reported := requireDurableDiagnostic(t, result, "SMITHERS4124", strings.Index(durableCollidingIdentitySource, "Pick.run("))
+	reported := requireDurableDiagnostic(t, result, "VIBE4124", strings.Index(durableCollidingIdentitySource, "Pick.run("))
 	if len(result.Artifacts) != 0 {
 		t.Fatalf("a refused durable contract must emit nothing: %v", artifactPaths(result.Artifacts))
 	}
@@ -115,41 +115,41 @@ func TestPinnedForkDurableFailureChannelRefusesACollidingIdentity(t *testing.T) 
 		"cannot be told apart on the wire",
 	} {
 		if !strings.Contains(reported.Message, want) {
-			t.Fatalf("SMITHERS4124 message = %q, want it to contain %q", reported.Message, want)
+			t.Fatalf("VIBE4124 message = %q, want it to contain %q", reported.Message, want)
 		}
 	}
 	// The sentence it replaced must be gone, not merely joined.
 	if strings.Contains(reported.Message, "higher-order") || strings.Contains(reported.Message, "dynamic calls") {
-		t.Fatalf("SMITHERS4124 still carries the swallow artifact's sentence: %q", reported.Message)
+		t.Fatalf("VIBE4124 still carries the swallow artifact's sentence: %q", reported.Message)
 	}
-	// SMITHERS1150 fires here TOO, and that is not this rule failing — it is the
+	// VIBE1150 fires here TOO, and that is not this rule failing — it is the
 	// bridge's module-wide RUNTIME identity claim seeing the same two
 	// declarations first. `stableErrorIdentity` is also a function of (file,
 	// class name), so sibling namespaces duplicate the runtime identity as well
 	// as the contract one, and the fork refuses that module-wide. The reference
-	// has no module-wide equivalent and reports SMITHERS4124 alone. That is a
+	// has no module-wide equivalent and reports VIBE4124 alone. That is a
 	// pre-existing both-closed difference in REASONING, not a fail-open, and it
 	// is exactly why the corpus does not pin this family: `17-durable/…-are-…`
 	// was retired to an acceptance case rather than re-pointed at namespaces.
 	//
 	// What is asserted is what this test is for: the durable guard is LIVE, not
 	// dead code shadowed by the earlier rule.
-	observed := formatDiagnosticPositions(t, []SourceFile{{Path: "main.sm", Text: durableCollidingIdentitySource}}, result)
+	observed := formatDiagnosticPositions(t, []SourceFile{{Path: "main.vibe", Text: durableCollidingIdentitySource}}, result)
 	durableRefusals := 0
 	for _, item := range observed {
-		if strings.HasPrefix(item, "SMITHERS4124@") {
+		if strings.HasPrefix(item, "VIBE4124@") {
 			durableRefusals++
 		}
 	}
 	if durableRefusals != 1 {
-		t.Fatalf("colliding failure channel diagnostics = %v, want exactly one SMITHERS4124", observed)
+		t.Fatalf("colliding failure channel diagnostics = %v, want exactly one VIBE4124", observed)
 	}
 
 	// The pair that used to reach this refusal through the IDENTITY rather than
 	// through the name, `$Failed | _Failed`, must now compile: the fold that made
 	// them one identity is gone. This is the fork's own half of the red-before
 	// evidence — before 2026-08-28 this program was refused here with
-	// `smithers:main.sm__Failed@1` named in the message.
+	// `vibelang:main.sm__Failed@1` named in the message.
 	rescued := strings.ReplaceAll(durableCollidingIdentitySource, "Left.Failed | Right.Failed", "$Failed | _Failed")
 	rescued = strings.Replace(rescued, `namespace Left {
     export class Failed extends Error {
@@ -174,7 +174,7 @@ class _Failed extends Error {
 		t.Fatalf("names that only USED to normalize together must compile: %s", encoded)
 	}
 	identities := durableFailureIdentitiesByClass(t, runComptimeProgram(t, accepted))
-	if identities["$Failed"] != "smithers:main.sm@+0024Failed@1" || identities["_Failed"] != "smithers:main.sm@_Failed@1" {
+	if identities["$Failed"] != "vibelang:main.vibe@+0024Failed@1" || identities["_Failed"] != "vibelang:main.vibe@_Failed@1" {
 		t.Fatalf("rescued pair minted %v", identities)
 	}
 }
@@ -184,8 +184,8 @@ class _Failed extends Error {
 // is ever dropped from the port or is made to truncate again.
 //
 // Until 2026-08-28 the bound was honoured by keeping a 48-hex-digit (192-bit)
-// prefix of a digest of the PAIR, under a `smithers:error/...@1` spelling. It is
-// now the full SHA-256 of the exact spelling, under `smithers.digest:...@1`, and
+// prefix of a digest of the PAIR, under a `vibelang:error/...@1` spelling. It is
+// now the full SHA-256 of the exact spelling, under `vibelang.digest:...@1`, and
 // the spelling is already injective over (file, class name) so the fallback
 // inherits that.
 //
@@ -197,11 +197,11 @@ class _Failed extends Error {
 func TestPinnedForkDurableFailureIdentityBoundMatchesTheReference(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 
-	// `smithers:` + `main.sm` + `@` + 261 + `@1` is 279 units, comfortably past
+	// `vibelang:` + `main.vibe` + `@` + 261 + `@1` is 279 units, comfortably past
 	// the 256-unit bound, so both of these take the digest fallback.
 	longLeft := strings.Repeat("L", 260) + "A"
 	longRight := strings.Repeat("L", 260) + "B"
-	source := `import { durable, Action } from "smithers:flows"
+	source := `import { durable, Action } from "vibelang:flows"
 
 class ` + longLeft + ` extends Error {
     constructor(readonly code: string) { super("left " + code) }
@@ -231,7 +231,7 @@ export function main(): string {
 		t.Fatalf("expected two failure identities, got %v", identities)
 	}
 	for _, identity := range identities {
-		if !strings.HasPrefix(identity, "smithers.digest:") || !strings.HasSuffix(identity, "@1") {
+		if !strings.HasPrefix(identity, "vibelang.digest:") || !strings.HasSuffix(identity, "@1") {
 			t.Fatalf("an over-bound identity must take the digest fallback, got %q", identity)
 		}
 	}
@@ -243,7 +243,7 @@ export function main(): string {
 	// (file, class name) collide under any injective encoding, so making the
 	// names long must not turn the refusal into an acceptance.
 	long := strings.ReplaceAll(durableCollidingIdentitySource, "Failed", "Failed"+strings.Repeat("Z", 260))
-	requireDurableDiagnostic(t, compileDurableWith(t, backend, ctx, long), "SMITHERS4124", strings.Index(long, "Pick.run("))
+	requireDurableDiagnostic(t, compileDurableWith(t, backend, ctx, long), "VIBE4124", strings.Index(long, "Pick.run("))
 }
 
 // TestPinnedForkDurableDeclaredFailuresStillArrive is the other direction, and
@@ -278,7 +278,7 @@ func TestPinnedForkDurableDeclaredFailuresStillArrive(t *testing.T) {
 	if err := json.Unmarshal([]byte(runComptimeProgram(t, result)), &plan); err != nil {
 		t.Fatal(err)
 	}
-	if plan.FlowID != "main.sm#Build" || len(plan.Actions) != 1 || plan.Actions[0].ID != "main.sm#Pick" {
+	if plan.FlowID != "main.vibe#Build" || len(plan.Actions) != 1 || plan.Actions[0].ID != "main.vibe#Pick" {
 		t.Fatalf("unexpected durable Plan identity: %#v", plan)
 	}
 	if validated := validateWithReferenceArtifactRules(t, result); validated != plan.Digest {
@@ -288,18 +288,18 @@ func TestPinnedForkDurableDeclaredFailuresStillArrive(t *testing.T) {
 	// Both declared failures, executed: minted, encoded to the persisted
 	// envelope, and decoded back in the emitted program's own runtime.
 	directory := stageEmitted(t, result.Artifacts)
-	observed := runRealm(t, directory, "failures.mjs", `import { smithersEncodeError, smithersDecodeError, smithersErrorIdentity } from "./__smithers_prelude.js";
+	observed := runRealm(t, directory, "failures.mjs", `import { vibelangEncodeError, vibelangDecodeError, vibelangErrorIdentity } from "./__vibelang_prelude.js";
 import { NotFound, Denied } from "./main.js";
 const missing = new NotFound("/tmp/x");
 const denied = new Denied("root");
-const missingWire = smithersEncodeError(missing);
-const deniedWire = smithersEncodeError(denied);
-const backMissing = smithersDecodeError(missingWire);
-const backDenied = smithersDecodeError(deniedWire);
+const missingWire = vibelangEncodeError(missing);
+const deniedWire = vibelangEncodeError(denied);
+const backMissing = vibelangDecodeError(missingWire);
+const backDenied = vibelangDecodeError(deniedWire);
 console.log(JSON.stringify({
-  missingIdentity: smithersErrorIdentity(missing),
-  deniedIdentity: smithersErrorIdentity(denied),
-  distinct: smithersErrorIdentity(missing) !== smithersErrorIdentity(denied),
+  missingIdentity: vibelangErrorIdentity(missing),
+  deniedIdentity: vibelangErrorIdentity(denied),
+  distinct: vibelangErrorIdentity(missing) !== vibelangErrorIdentity(denied),
   missingWire,
   deniedWire,
   missingIsMissing: backMissing instanceof NotFound,
@@ -310,11 +310,11 @@ console.log(JSON.stringify({
   deniedWho: backDenied.who,
 }));
 `, "")
-	expectString(t, observed, "missingIdentity", "smithers:main.sm:NotFound")
-	expectString(t, observed, "deniedIdentity", "smithers:main.sm:Denied")
+	expectString(t, observed, "missingIdentity", "vibelang:main.vibe:NotFound")
+	expectString(t, observed, "deniedIdentity", "vibelang:main.vibe:Denied")
 	expectBool(t, observed, "distinct", true)
-	expectString(t, observed, "missingWire", `{"version":1,"identity":"smithers:main.sm:NotFound","payload":{"message":"missing /tmp/x","path":"/tmp/x"}}`)
-	expectString(t, observed, "deniedWire", `{"version":1,"identity":"smithers:main.sm:Denied","payload":{"message":"denied root","who":"root"}}`)
+	expectString(t, observed, "missingWire", `{"version":1,"identity":"vibelang:main.vibe:NotFound","payload":{"message":"missing /tmp/x","path":"/tmp/x"}}`)
+	expectString(t, observed, "deniedWire", `{"version":1,"identity":"vibelang:main.vibe:Denied","payload":{"message":"denied root","who":"root"}}`)
 	expectBool(t, observed, "missingIsMissing", true)
 	expectBool(t, observed, "missingIsDenied", false)
 	expectBool(t, observed, "deniedIsDenied", true)
@@ -332,8 +332,8 @@ console.log(JSON.stringify({
 func TestPinnedForkDurableSameNamedFailuresInTwoModulesStayDistinct(t *testing.T) {
 	backend, ctx := newPinnedTestBackend(t)
 
-	main := `import { durable, Action } from "smithers:flows"
-import { Failed as PaymentsFailed } from "./payments.sm"
+	main := `import { durable, Action } from "vibelang:flows"
+import { Failed as PaymentsFailed } from "./payments.vibe"
 
 export class Failed extends Error {
     constructor(readonly code: string) { super("main " + code) }
@@ -356,10 +356,10 @@ export function main(): string {
 }
 `
 	result, err := backend.Compile(ctx, CompileRequest{
-		RootNames: []string{"main.sm", "payments.sm"},
+		RootNames: []string{"main.vibe", "payments.vibe"},
 		Files: []SourceFile{
-			{Path: "main.sm", Kind: FileKindSmithers, Text: main},
-			{Path: "payments.sm", Kind: FileKindSmithers, Text: payments},
+			{Path: "main.vibe", Kind: FileKindVibeLang, Text: main},
+			{Path: "payments.vibe", Kind: FileKindVibeLang, Text: payments},
 		},
 		Options:  Options{"noEmitOnError": true},
 		Lowering: LoweringInternal,
@@ -373,20 +373,20 @@ export function main(): string {
 	}
 
 	directory := stageEmitted(t, result.Artifacts)
-	observed := runRealm(t, directory, "modules.mjs", `import { smithersEncodeError, smithersErrorIdentity } from "./__smithers_prelude.js";
+	observed := runRealm(t, directory, "modules.mjs", `import { vibelangEncodeError, vibelangErrorIdentity } from "./__vibelang_prelude.js";
 import { Failed, PaymentsFailed } from "./main.js";
 const local = new Failed("a");
 const remote = new PaymentsFailed("b");
 console.log(JSON.stringify({
-  localIdentity: smithersErrorIdentity(local),
-  remoteIdentity: smithersErrorIdentity(remote),
-  distinct: smithersErrorIdentity(local) !== smithersErrorIdentity(remote),
-  localWire: smithersEncodeError(local),
-  remoteWire: smithersEncodeError(remote),
+  localIdentity: vibelangErrorIdentity(local),
+  remoteIdentity: vibelangErrorIdentity(remote),
+  distinct: vibelangErrorIdentity(local) !== vibelangErrorIdentity(remote),
+  localWire: vibelangEncodeError(local),
+  remoteWire: vibelangEncodeError(remote),
 }));
 `, "")
-	expectString(t, observed, "localIdentity", "smithers:main.sm:Failed")
-	expectString(t, observed, "remoteIdentity", "smithers:payments.sm:Failed")
+	expectString(t, observed, "localIdentity", "vibelang:main.vibe:Failed")
+	expectString(t, observed, "remoteIdentity", "vibelang:payments.vibe:Failed")
 	expectBool(t, observed, "distinct", true)
 }
 
@@ -410,7 +410,7 @@ func TestPinnedForkDurableOneClassReachedTwiceIsNotACollision(t *testing.T) {
 		{"a fieldless failure beside a nominal one", "class Bare extends Error {}\n", "Failed | Bare"},
 	}
 	for _, item := range benign {
-		source := `import { durable, Action } from "smithers:flows"
+		source := `import { durable, Action } from "vibelang:flows"
 
 class Failed extends Error {
     constructor(readonly code: string) { super("failed " + code) }
@@ -560,7 +560,7 @@ func TestPinnedForkDurableFailureIdentityMatchesTheSharedVectors(t *testing.T) {
 		classesByFile[vector.File] = append(classesByFile[vector.File], vector)
 	}
 	// Four rows are unreachable input: two whose file name holds a colon or is
-	// empty (virtualFileName fail-closes) and two whose file name has no `.sm`
+	// empty (virtualFileName fail-closes) and two whose file name has no `.vibe`
 	// extension (the bridge protocol refuses the kind). They still pin the
 	// algorithm on the reference. The ceiling is here so that a fifth cannot be
 	// added quietly and turn agreement into a smaller and smaller claim.
@@ -582,14 +582,14 @@ func TestPinnedForkDurableFailureIdentityMatchesTheSharedVectors(t *testing.T) {
 			}
 			channel += vector.ClassName
 		}
-		source := "import { durable, Action } from \"smithers:flows\"\n\n" + declarations +
+		source := "import { durable, Action } from \"vibelang:flows\"\n\n" + declarations +
 			"class Pick extends Action<(input: { key: string }) => Result<{ value: string }, " + channel + ">> {}\n\n" +
 			"export const Build = durable((input: { key: string }) => {\n    return Pick.run({ key: input.key })\n})\n\n" +
 			"export function main(): string {\n    return JSON.stringify(Build.plan)\n}\n"
 
 		result, err := backend.Compile(ctx, CompileRequest{
 			RootNames: []string{file},
-			Files:     []SourceFile{{Path: file, Kind: FileKindSmithers, Text: source}},
+			Files:     []SourceFile{{Path: file, Kind: FileKindVibeLang, Text: source}},
 			Options:   Options{"noEmitOnError": true},
 			Lowering:  LoweringInternal,
 		})
@@ -619,7 +619,7 @@ func TestPinnedForkDurableFailureIdentityMatchesTheSharedVectors(t *testing.T) {
 }
 
 // runComptimeProgramNamed is runComptimeProgram for a project whose entry module
-// is not `main.sm`.
+// is not `main.vibe`.
 //
 // The vector corpus is a corpus of FILE NAMES, so the entry cannot be renamed to
 // something convenient without deleting the thing under test. The import
@@ -648,7 +648,7 @@ func runComptimeProgramNamed(t *testing.T, result CompileResult, sourceName stri
 	// space, a `#`, and a non-BMP character, and a `#` in an ESM specifier is a
 	// URL fragment rather than part of the path. The absolute path is handed to
 	// node as JSON and encoded there, so no escaping rule is reimplemented here.
-	entry, err := json.Marshal(filepath.Join(directory, filepath.FromSlash(strings.TrimSuffix(sourceName, ".sm")+".js")))
+	entry, err := json.Marshal(filepath.Join(directory, filepath.FromSlash(strings.TrimSuffix(sourceName, ".vibe")+".js")))
 	if err != nil {
 		t.Fatal(err)
 	}
